@@ -52,6 +52,34 @@ impl Decls {
         trait_name: Option<&str>,
         pick: impl Fn(&FnDecl) -> bool,
     ) -> Option<Member> {
+        let mut choices = self.impl_choices(recv, name, trait_name, &pick);
+        if choices.len() > 1 {
+            return None;
+        }
+        if let Some((_, m)) = choices.pop() {
+            return Some(m);
+        }
+        // A declared domain meets `Domain` with no impl: its members are the trait's defaults.
+        let tr = self.domain_trait.filter(|_| matches!(recv, Ty::Dom(_)))?;
+        let tr = &self.traits[tr.0];
+        let tm = *tr
+            .methods
+            .get(name)
+            .filter(|_| trait_name.is_none_or(|n| n == tr.name))?;
+        let fd = self.f(tm);
+        pick(fd).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
+    }
+    /// Each fn `name` an impl for `recv` gives, of the trait named `trait_name` when one is given,
+    /// with the trait the impl is of: the fitting impls of the most specific rank, so an impl
+    /// for a written type beats a blanket one of another trait (R08.1.4). More than one is no
+    /// choice: the call says which trait or arguments it means.
+    pub fn impl_choices(
+        &self,
+        recv: &Ty,
+        name: &str,
+        trait_name: Option<&str>,
+        pick: impl Fn(&FnDecl) -> bool,
+    ) -> Vec<(TraitRef, Member)> {
         let sets = match recv {
             Ty::Struct(_, _, ss) => ss.clone(),
             _ => Vec::new(),
@@ -61,20 +89,20 @@ impl Decls {
         let live = (self.impls_by_member.get(name).into_iter().flatten())
             .map(|&k| &self.impls[k])
             .filter(|im| self.live(im));
-        let ordered = (0..3).flat_map(|r| live.clone().filter(move |im| self.impl_rank(im) == r));
-        let found = ordered
-            .into_iter()
-            .find_map(|im| self.impl_gives(im, recv, name, trait_name, &pick, &sets));
-        // A declared domain meets `Domain` with no impl: its members are the trait's defaults.
-        found.or_else(|| {
-            let tr = self.domain_trait.filter(|_| matches!(recv, Ty::Dom(_)))?;
-            let tr = &self.traits[tr.0];
-            let tm = *tr
-                .methods
-                .get(name)
-                .filter(|_| trait_name.is_none_or(|n| n == tr.name))?;
-            pick(self.f(tm)).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
-        })
+        let mut found: Vec<(u8, TraitRef, Member)> = Vec::new();
+        for im in live {
+            let Some(member) = self.impl_gives(im, recv, name, trait_name, &pick, &sets) else {
+                continue;
+            };
+            let rank = self.impl_rank(im);
+            match found.first().map(|f| f.0) {
+                Some(best) if best < rank => continue,
+                Some(best) if best > rank => found.clear(),
+                _ => {}
+            }
+            found.push((rank, im.trait_.clone(), member));
+        }
+        found.into_iter().map(|(_, r, m)| (r, m)).collect()
     }
     /// The member `name` impl `im` gives `recv`: its own fn, or its trait's default.
     fn impl_gives(
@@ -106,31 +134,6 @@ impl Decls {
         let mut targs = vec![recv.clone()];
         targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
         Some(Member::Method(tm, targs, Vec::new()))
-    }
-    /// Two traits whose impls give `recv` a method `name` at the most specific rank either
-    /// reaches: `recv.name()` alone is ambiguous between them (R08.1.4).
-    pub fn tied_traits(&self, recv: &Ty, name: &str) -> Option<(TraitId, TraitId)> {
-        let pick = |f: &FnDecl| f.self_mode != SelfMode::None;
-        let live: Vec<&ImplDecl> = (self.impls_by_member.get(name).into_iter().flatten())
-            .map(|&k| &self.impls[k])
-            .filter(|im| self.live(im))
-            .collect();
-        for r in 0..3 {
-            let mut traits: Vec<TraitId> = Vec::new();
-            for im in live.iter().filter(|im| self.impl_rank(im) == r) {
-                if !traits.contains(&im.trait_.tr)
-                    && self.impl_gives(im, recv, name, None, &pick, &[]).is_some()
-                {
-                    traits.push(im.trait_.tr);
-                }
-            }
-            match traits[..] {
-                [a, b, ..] => return Some((a, b)),
-                [_] => return None,
-                [] => {}
-            }
-        }
-        None
     }
     /// Whether every field of `s` has an impl of `tr`, as a derived impl needs (R08.1.6).
     pub(super) fn fields_have(&self, s: StructId, tr: TraitId) -> bool {
@@ -241,14 +244,19 @@ impl Decls {
                 else {
                     continue;
                 };
-                // The impl that meets it is picked as any is: a written type's before a blanket.
-                let Some(args) = self.impls_of(r.tr).find_map(|m| {
+                // Only the one impl of the most specific rank that meets it fixes them (R08.1.4).
+                let mut fits = (self.impls_of(r.tr)).filter_map(|m| {
                     let b = self.fits_impl(m, &bt)?;
                     let sub = Subst { tys: &b, sets: &[] };
-                    Some(m.trait_.args.iter().map(|a| sub.ty(a)).collect::<Vec<_>>())
-                }) else {
+                    let args: Vec<Ty> = m.trait_.args.iter().map(|a| sub.ty(a)).collect();
+                    Some((self.impl_rank(m), args))
+                });
+                let Some((rank, args)) = fits.next() else {
                     continue;
                 };
+                if fits.next().is_some_and(|(k, _)| k == rank) {
+                    continue;
+                }
                 for (p, a) in r.args.iter().zip(&args) {
                     fit(p, a, &mut binds);
                 }

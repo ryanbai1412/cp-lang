@@ -331,17 +331,48 @@ impl<'a> Cx<'a> {
         call: Option<&[ast::Arg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let (tr, m) = (0..self.d.traits.len()).find_map(|k| {
-            let td = &self.d.traits[k];
-            let m = *td.methods.get(&name.text)?;
-            let fd = self.d.f(m);
-            let tr = TraitId(k);
-            (fd.self_mode == SelfMode::None
-                && takes(fd, call)
-                && td.defaults.is_empty()
-                && self.d.has_impl(&t, tr))
-            .then_some((tr, m))
-        })?;
+        let found: Vec<(TraitId, FnId)> = (0..self.d.traits.len())
+            .filter_map(|k| {
+                let td = &self.d.traits[k];
+                let m = *td.methods.get(&name.text)?;
+                let fd = self.d.f(m);
+                let tr = TraitId(k);
+                (fd.self_mode == SelfMode::None
+                    && takes(fd, call)
+                    && td.defaults.is_empty()
+                    && self.d.has_impl(&t, tr))
+                .then_some((tr, m))
+            })
+            .collect();
+        // An impl for a written type beats a blanket one of another trait (R08.1.4): `Cut<D>`'s
+        // `Domain.count` over `Positions`' `impl<D: Domain> .. for D`.
+        let rank = |tr: TraitId| {
+            (self.d.trait_impls(tr))
+                .filter(|(_, im)| self.d.fits_impl(im, &t).is_some())
+                .map(|(_, im)| self.d.impl_rank(im))
+                .min()
+                .unwrap_or(0)
+        };
+        let best = found.iter().map(|&(tr, _)| rank(tr)).min();
+        let found: Vec<(TraitId, FnId)> = found
+            .into_iter()
+            .filter(|&(tr, _)| Some(rank(tr)) == best)
+            .collect();
+        let (tr, m) = match found[..] {
+            [] => return None,
+            [one] => one,
+            [(a, _), (b, _), ..] => {
+                let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
+                let msg = format!(
+                    "`{}` has `{}` from `{a}` and from `{b}`: say which, as `{a}.{}` (R08.1.4)",
+                    self.show(&t),
+                    name.text,
+                    name.text
+                );
+                self.err(span, Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, msg));
+                return Some(Self::error_node(span));
+            }
+        };
         let r = decls::TraitRef {
             tr,
             args: Vec::new(),
@@ -539,6 +570,62 @@ impl<'a> Cx<'a> {
             }
         }
     }
+    /// `recv.name(args)` as a call of trait `tr`'s fn `m`: every impl's fn, or the trait's
+    /// default, may be the one that runs, and the bound `rt: tr` picks it.
+    fn bound_trait_call(
+        &mut self,
+        recv: TExpr,
+        rt: &Ty,
+        (tr, m): (&decls::TraitRef, FnId),
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> TExpr {
+        self.reach(m);
+        let fd = self.d.f(m);
+        let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
+        if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none()) {
+            let what = Unbuilt::GeneratorAsValue {
+                name: fd.name.clone(),
+            };
+            self.err(span, what);
+        }
+        let fd = self.d.f(m);
+        let mut tys = vec![rt.clone()];
+        tys.extend(tr.args.iter().cloned());
+        let outer = tys.len();
+        while tys.len() < fd.generics.len() {
+            tys.push(self.new_ty());
+        }
+        let sub = Subst {
+            tys: &tys,
+            sets: &[],
+        };
+        let formals = self.formals(&sub, fd);
+        let ret = self.trait_ret(m, tys.clone());
+        let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
+        let recv = if fd.self_mode == SelfMode::Mut {
+            self.mut_recv(recv, span)
+        } else {
+            TArg::Value(recv)
+        };
+        let call = TExpr {
+            kind: TK::CallTrait {
+                tr: tr.clone(),
+                method: name.text.clone(),
+                recv: Some(Box::new(recv)),
+                self_ty: Box::new(rt.clone()),
+                targs: tys[outer..].into(),
+                args,
+            },
+            ty: ret,
+            span,
+        };
+        if held && self.d.recipe.is_some() {
+            return self.recipe(pre, call);
+        }
+        block(pre, call)
+    }
 
     pub(super) fn member(
         &mut self,
@@ -705,53 +792,50 @@ impl<'a> Cx<'a> {
                 let t = &self.d.traits[tr.tr.0];
                 let m = t.methods.get(&name.text).copied();
                 if let Some(m) = m.filter(|m| getter.is_none() || self.d.f(*m).getter) {
-                    // Every impl's fn, or the trait's default, may be the one that runs.
-                    self.reach(m);
-                    let fd = self.d.f(m);
-                    let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
-                    if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none())
-                    {
-                        let what = Unbuilt::GeneratorAsValue {
-                            name: fd.name.clone(),
-                        };
-                        self.err(span, what);
-                    }
-                    let fd = self.d.f(m);
-                    let mut tys = vec![rt.clone()];
-                    tys.extend(tr.args.iter().cloned());
-                    let outer = tys.len();
-                    while tys.len() < fd.generics.len() {
-                        tys.push(self.new_ty());
-                    }
-                    let sub = Subst {
-                        tys: &tys,
-                        sets: &[],
-                    };
-                    let formals = self.formals(&sub, fd);
-                    let ret = self.trait_ret(m, tys.clone());
-                    let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
-                    let recv = if fd.self_mode == SelfMode::Mut {
-                        self.mut_recv(recv, span)
-                    } else {
-                        TArg::Value(recv)
-                    };
-                    let call = TExpr {
-                        kind: TK::CallTrait {
-                            tr: tr.clone(),
-                            method: name.text.clone(),
-                            recv: Some(Box::new(recv)),
-                            self_ty: Box::new(rt.clone()),
-                            targs: tys[outer..].into(),
-                            args,
-                        },
-                        ty: ret,
-                        span,
-                    };
-                    if held && self.d.recipe.is_some() {
-                        return self.recipe(pre, call);
-                    }
-                    return block(pre, call);
+                    return self.bound_trait_call(recv, &rt, (tr, m), name, call, span);
                 }
+            }
+        }
+        // Members are found before extension fns: two impls that give `name` leave the call to
+        // say which (R08.1.2, R08.1.4).
+        if !matches!(rt, Ty::Param(_)) && self.d.lookup_member(&rt, &name.text).is_none() {
+            let choices = self.d.impl_choices(&rt, &name.text, None, |_| true);
+            let mut trs: Vec<TraitId> = choices.iter().map(|c| c.0.tr).collect();
+            trs.sort_by_key(|t| t.0);
+            trs.dedup();
+            match trs[..] {
+                // One trait at several arguments: the bound picks the impl once they are known.
+                [tr] if choices.len() > 1 => {
+                    let r = decls::TraitRef {
+                        tr,
+                        args: (0..choices[0].0.args.len())
+                            .map(|_| self.new_ty())
+                            .collect(),
+                    };
+                    self.obligations
+                        .push((rt.clone(), r.clone(), span, Origin::Bound));
+                    let m = self.d.traits[tr.0].methods[&name.text];
+                    let e = self.bound_trait_call(recv, &rt, (&r, m), name, call, span);
+                    // The expected type may say the arguments: `let b: Bool = 5.cv()`.
+                    if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {
+                        self.unify(&e.ty, w);
+                    }
+                    return e;
+                }
+                [a, b, ..] => {
+                    let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
+                    let (shown, ty) = (self.text(base.span), self.show(&rt));
+                    let m = &name.text;
+                    let text = cpl_diag::msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
+                        .say(&[&shown, m, a, b, &ty, m]);
+                    self.err_help(
+                        name.span,
+                        Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, text),
+                        Some(format!("name the trait: `{a}.{m}({shown})`")),
+                    );
+                    return Self::error_node(span);
+                }
+                _ => {}
             }
         }
         if self.d.ambiguous[self.module.0].contains(&name.text)
@@ -832,19 +916,6 @@ impl<'a> Cx<'a> {
                 }
             }
             Some(decls::Member::Method(m, ts, ss)) => {
-                if let Some((a, b)) = self.d.tied_traits(&rt, &name.text) {
-                    let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
-                    let (shown, ty) = (self.text(base.span), self.show(&rt));
-                    let m = &name.text;
-                    let text = cpl_diag::msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
-                        .say(&[&shown, m, a, b, &ty, m]);
-                    self.err_help(
-                        name.span,
-                        Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, text),
-                        Some(format!("name the trait: `{a}.{m}({shown})`")),
-                    );
-                    return Self::error_node(span);
-                }
                 let fd = self.d.f(m);
                 let walked = walked && fd.region.is_some();
                 if call.is_none() && !fd.getter && !walked {

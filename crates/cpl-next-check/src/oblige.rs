@@ -117,8 +117,46 @@ impl Cx<'_> {
             }
         }
         if last {
-            self.obligations.clear();
+            // A bound still open at the end has one impl only if exactly one fits whatever it
+            // leaves open: more is no choice (R08.1.2).
+            for (t, r, span, _) in std::mem::take(&mut self.obligations) {
+                let t = self.zonk(&t);
+                if matches!(t, Ty::Var(_) | Ty::Param(_) | Ty::Error) || self.mentions_error(&t) {
+                    continue;
+                }
+                let n = self.fitting(&t, &r).len();
+                if n > 1 {
+                    self.ambiguous(&t, &r, n, span);
+                }
+            }
         }
+    }
+    /// The impls of `r` that fit `t`, of the most specific rank: one written for the type
+    /// beats a blanket one (R08.1.2). `Int` has `Into<Char>` and `Into<U64>`: the trait's
+    /// arguments, where known, choose among them.
+    fn fitting(&self, t: &Ty, r: &TraitRef) -> Vec<(usize, Vec<Ty>)> {
+        let want: Vec<Ty> = (self.d.traits[r.tr.0].inputs(&r.args).iter())
+            .map(|a| self.zonk(a))
+            .collect();
+        let mut found: Vec<(usize, Vec<Ty>)> = (self.d.trait_impls(r.tr))
+            .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
+            .filter(|(k, _)| {
+                !self.d.impls[*k].blanket() || self.d.fits_impl(&self.d.impls[*k], t).is_some()
+            })
+            .collect();
+        let rank = |k: &usize| self.d.impl_rank(&self.d.impls[*k]);
+        if let Some(best) = found.iter().map(|(k, _)| rank(k)).min() {
+            found.retain(|(k, _)| rank(k) == best);
+        }
+        found
+    }
+    fn ambiguous(&mut self, t: &Ty, r: &TraitRef, n: usize, span: Span) {
+        let (tr, shown) = (self.d.traits[r.tr.0].name.clone(), self.show(t));
+        let msg = Msg::verdict(
+            cpl_diag::codes::AMBIGUOUS_METHOD,
+            format!("`{shown}` has {n} impls of `{tr}` that fit here: write the trait's arguments"),
+        );
+        self.err(span, msg);
     }
     /// The fn type a lambda of `arity` parameters given for `v` is: the one impl of a trait
     /// bounding `v` that targets a fn type of that arity (`impl<T> Op<T> for (T, T) -> T`), its
@@ -174,7 +212,7 @@ impl Cx<'_> {
         (self.obligations.iter()).any(|(t, ..)| self.shallow(t) == Ty::Var(v))
     }
     /// Whether some part of `t` is still an inference variable.
-    fn unknown(&self, t: &Ty) -> bool {
+    pub(super) fn unknown(&self, t: &Ty) -> bool {
         self.holds(t, &|t| matches!(t, Ty::Var(_)))
     }
     /// Whether `t` is built from an error node's type: a verdict on it is downstream of that error.
@@ -264,28 +302,15 @@ impl Cx<'_> {
             Ty::Error => Some(true),
             _ => {
                 // The impl whose trait arguments fit too: `Int` has `Into<Char>` and `Into<U64>`.
-                let want: Vec<Ty> = (self.d.traits[r.tr.0].inputs(&r.args).iter())
-                    .map(|a| self.zonk(a))
-                    .collect();
-                let mut found: Vec<(usize, Vec<Ty>)> = (self.d.trait_impls(r.tr))
-                    .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
-                    .filter(|(k, _)| {
-                        !self.d.impls[*k].blanket()
-                            || self.d.fits_impl(&self.d.impls[*k], t).is_some()
-                    })
-                    .collect();
-                // An impl for a written type beats a blanket one (R08.1.2).
-                let rank = |k: &usize| self.d.impl_rank(&self.d.impls[*k]);
-                if let Some(best) = found.iter().map(|(k, _)| rank(k)).min() {
-                    found.retain(|(k, _)| rank(k) == best);
-                }
+                let found = self.fitting(t, r);
                 if found.len() > 1 {
-                    if self.unknown(t) || want.iter().any(|a| self.unknown(a)) {
+                    // `want` is zonked, an open argument read as an error: the bound's own
+                    // arguments say whether it is still open.
+                    let inputs = self.d.traits[r.tr.0].inputs(&r.args);
+                    if self.unknown(t) || inputs.iter().any(|a| self.unknown(a)) {
                         return None;
                     }
-                    let (tr, shown) = (self.d.traits[r.tr.0].name.clone(), self.show(t));
-                    let msg = Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, format!("`{shown}` has {} impls of `{tr}` that fit here: write the trait's arguments", found.len()));
-                    self.err(span, msg);
+                    self.ambiguous(t, r, found.len(), span);
                     return Some(true);
                 }
                 let Some((k, mut targs)) = found.into_iter().next() else {

@@ -761,8 +761,12 @@ impl Link<'_> {
                     sets: Vec::new(),
                 })
         };
-        let mut found = None;
+        // The checker let exactly one impl of the most specific rank fit (R08.1.2).
+        let (mut found, mut rank) = (None, None);
         for im in d.impls_of(*tr) {
+            if rank.is_some_and(|r| d.impl_rank(im) > r) {
+                break;
+            }
             let mut binds = vec![None; im.generics.len()];
             if !fits_head(d, im, &st, &mut binds)
                 || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
@@ -771,6 +775,14 @@ impl Link<'_> {
             {
                 continue;
             }
+            if rank.is_some() {
+                self.errors.push(Msg::internal(format!(
+                    "two impls of `{}` give `{method}` for one type",
+                    d.traits[tr.0].name
+                )));
+                break;
+            }
+            rank = Some(d.impl_rank(im));
             self.bound_only(im, &mut binds);
             let binds: Vec<CTy> = binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
             found = match im.methods.get(method) {
@@ -787,7 +799,6 @@ impl Link<'_> {
                     default(im.trait_.args.iter().map(|t| self.ty(t, &env)).collect())
                 }
             };
-            break;
         }
         if found.is_none() && cty_meets(d, &st, *tr) {
             found = default(args.iter().map(|t| self.ty(t, env)).collect());
@@ -1679,22 +1690,37 @@ impl Link<'_> {
                 let Some(bt) = binds[*i].clone() else {
                     continue;
                 };
+                // Only the one impl of the most specific rank that fits fixes them (R08.1.2).
+                let (mut one, mut rank) = (None, None);
                 for m in d.impls_of(r.tr) {
+                    if rank.is_some_and(|k| d.impl_rank(m) > k) {
+                        break;
+                    }
                     let mut b = vec![None; m.generics.len()];
                     if !fit_cty(&m.for_, &bt, &mut b) || !blanket_met(d, m, &b) {
                         continue;
                     }
+                    if rank.is_some() {
+                        one = None;
+                        break;
+                    }
+                    rank = Some(d.impl_rank(m));
                     self.bound_only(m, &mut b);
                     let b: Vec<CTy> = b.into_iter().map(|x| x.unwrap_or(CTy::Error)).collect();
                     let env = Env {
                         targs: &b,
                         sets: &[],
                     };
-                    let args: Vec<CTy> = m.trait_.args.iter().map(|a| self.ty(a, &env)).collect();
-                    for (p, a) in r.args.iter().zip(&args) {
-                        fit_cty(p, a, binds);
-                    }
-                    break;
+                    one = Some(
+                        m.trait_
+                            .args
+                            .iter()
+                            .map(|a| self.ty(a, &env))
+                            .collect::<Vec<CTy>>(),
+                    );
+                }
+                for (p, a) in r.args.iter().zip(one.iter().flatten()) {
+                    fit_cty(p, a, binds);
                 }
             }
             if binds.iter().filter(|b| b.is_none()).count() == unbound {
