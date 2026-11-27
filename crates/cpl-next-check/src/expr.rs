@@ -1761,10 +1761,10 @@ impl<'a> Cx<'a> {
                 let (lo, hi) = (lo.as_deref(), hi.as_deref());
                 self.range_value(lo, hi, *inclusive, step.as_deref(), want, span)
             }
-            ExprKind::Range { step: None, .. } if self.whole_of(want).is_some() => {
-                let d = self.whole_of(want).unwrap_or(Ty::Error);
-                self.domain_value(d, span)
-            }
+            other @ ExprKind::Range { step: None, .. } => match self.whole_of(want) {
+                Some(d) => self.domain_value(d, span),
+                None => self.unbuilt_expr(other, span),
+            },
             ExprKind::By { walk, step } => match &walk.kind {
                 ExprKind::Range {
                     lo: Some(lo),
@@ -1778,16 +1778,13 @@ impl<'a> Cx<'a> {
                 }
             },
             ExprKind::With { base, updates } => self.record_update(base, updates, span),
-            other => {
-                self.err(
-                    span,
-                    Unbuilt::Expression {
-                        kind: crate::kind_name(other),
-                    },
-                );
-                mk(TK::Error, Ty::Error)
-            }
+            other => self.unbuilt_expr(other, span),
         }
+    }
+    fn unbuilt_expr(&mut self, kind: &ExprKind, span: Span) -> TExpr {
+        let kind = crate::kind_name(kind);
+        self.err(span, Unbuilt::Expression { kind });
+        Self::error_node(span)
     }
     pub(super) fn self_field(&self, n: &str) -> Option<usize> {
         let s = self.self_expr(Span::new(0, 0))?;
