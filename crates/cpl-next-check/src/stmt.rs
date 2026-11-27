@@ -1738,17 +1738,16 @@ impl<'a> Cx<'a> {
         out: &mut Vec<TStmt>,
     ) -> Ty {
         let t = self.name_ranges(t, span, out);
-        let mut errs = Vec::new();
         let mut generics = self.generics.clone();
         generics.extend(holes.iter().cloned());
-        let t = decls::body_type(
+        let (t, errs) = decls::body_type(
+            self.d,
             self.d,
             self.module,
             &generics,
             &self.doms,
             &|n: &str| self.owned_named(n),
             &t,
-            &mut errs,
         );
         for e in errs {
             self.err(span, e);

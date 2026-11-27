@@ -262,15 +262,14 @@ impl Cx<'_> {
 
     /// A type written on a lambda's parameter or result.
     fn written_ty(&mut self, t: &ast::Type, span: Span) -> Ty {
-        let mut errs = Vec::new();
-        let t = decls::body_type(
+        let (t, errs) = decls::body_type(
+            self.d,
             self.d,
             self.module,
             &self.generics,
             &self.doms,
             &|n: &str| self.owned_named(n),
             t,
-            &mut errs,
         );
         for e in errs {
             self.err(span, e);
@@ -295,14 +294,14 @@ impl Cx<'_> {
             };
             // Its types are reported once, where its lambda is made.
             let quiet = |c: &mut Self, t: &ast::Type| {
-                let t = decls::body_type(
+                let (t, _) = decls::body_type(
+                    c.d,
                     c.d,
                     c.module,
                     &c.generics,
                     &c.doms,
                     &|n: &str| c.owned_named(n),
                     t,
-                    &mut Vec::new(),
                 );
                 c.fresh_sets(&t)
             };

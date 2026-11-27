@@ -401,16 +401,15 @@ impl<'a> Cx<'a> {
         if self.lookup(n).is_some() || self.d.named(self.module, n).is_some() {
             return None;
         }
-        let mut errs = Vec::new();
         let t = ast::Type::named(n, base.span);
-        let t = decls::body_type(
+        let (t, errs) = decls::body_type(
+            self.d,
             self.d,
             self.module,
             &self.generics,
             &self.doms,
             &|n: &str| self.owned_named(n),
             &t,
-            &mut errs,
         );
         let t = self.shallow(&t);
         if !errs.is_empty() || matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_)) {

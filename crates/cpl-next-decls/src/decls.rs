@@ -1286,31 +1286,14 @@ fn add_fn(
     };
     let hidden = hidden_params(d, &names, &f.bounds, &mut generics);
     let doms = d.doms_in(m);
-    let aliases = d.aliases.clone();
-    let sets = d.struct_sets.clone();
-    let defaults = d.struct_defaults.clone();
-    let tuples = d.tuples.clone();
-    let (sugar, records) = (d.sugar, d.records.clone());
-    let members = d.member_types.clone();
-    let consts = d.consts.clone();
+    let tables = d.tables();
     let mut cx = TyCx {
-        names: &names,
-        consts: &consts,
-        values: d.top_values.clone(),
-        ops: d.operator_fns(),
-        getters: d.domain_getters(),
+        names: &|n: &str| names.get(n).copied(),
+        env: &tables,
         item: Some(item.clone()),
-        struct_sets: &sets,
-        struct_defaults: &defaults,
-        tuples: &tuples,
-        sugar,
-        roles: d.roles,
-        records: &records,
-        members: &members,
         generics: &generics,
         outer: &generics,
         args: None,
-        aliases: &aliases,
         expanding: Vec::new(),
         doms: &doms,
         scoped: &tyconv::unscoped,

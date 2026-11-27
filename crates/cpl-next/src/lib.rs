@@ -441,7 +441,7 @@ fn item_start(item: &ItemId) -> SourceId {
 
 /// Each name the program's module scope gives an item with a declaration, and that item.
 pub(crate) fn items(f: &Front) -> HashMap<String, Item> {
-    use cpl_next_decls::views::{Scope, Signatures};
+    use cpl_next_decls::views::{Scope, TypeTables};
     let declared = |named: decls::Named| -> Option<SourceId> {
         Some(match named {
             decls::Named::Fn(id) => f.d.f(id).span.clone(),

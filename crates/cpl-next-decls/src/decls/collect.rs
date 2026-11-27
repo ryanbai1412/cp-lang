@@ -648,7 +648,6 @@ fn layer(
             )));
         }
     }
-    let aliases = d.aliases.clone();
     // Struct fields first, to a fixed point: a struct holding a struct with function fields has those sets too.
     loop {
         let mut changed = false;
@@ -658,30 +657,15 @@ fn layer(
             };
             let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
             let doms = d.doms_in(*mid);
-            let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
-            let defaults = d.struct_defaults.clone();
-            let tuples = d.tuples.clone();
-            let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
-            let members = d.member_types.clone();
-            let consts = d.consts.clone();
+            let names = d.views[mid.0].clone();
+            let tables = d.tables();
             let mut cx = TyCx {
-                names: &names,
-                consts: &consts,
-                values: d.top_values.clone(),
-                ops: d.operator_fns(),
-                getters: d.domain_getters(),
+                names: &|n: &str| names.get(n).copied(),
+                env: &tables,
                 item: None,
-                struct_sets: &sets,
-                struct_defaults: &defaults,
-                tuples: &tuples,
-                sugar,
-                roles,
-                records: &records,
-                members: &members,
                 generics: &generics,
                 outer: &generics,
                 args: None,
-                aliases: &aliases,
                 expanding: Vec::new(),
                 doms: &doms,
                 scoped: &tyconv::unscoped,
@@ -711,29 +695,15 @@ fn layer(
         }
         let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
         let doms = d.doms_in(*mid);
-        let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
-        let (tuples, defaults) = (d.tuples.clone(), d.struct_defaults.clone());
-        let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
-        let members = d.member_types.clone();
-        let consts = d.consts.clone();
+        let names = d.views[mid.0].clone();
+        let tables = d.tables();
         let mut cx = TyCx {
-            names: &names,
-            consts: &consts,
-            values: d.top_values.clone(),
-            ops: d.operator_fns(),
-            getters: d.domain_getters(),
+            names: &|n: &str| names.get(n).copied(),
+            env: &tables,
             item: None,
-            struct_sets: &sets,
-            struct_defaults: &defaults,
-            tuples: &tuples,
-            sugar,
-            roles,
-            records: &records,
-            members: &members,
             generics: &generics,
             outer: &generics,
             args: None,
-            aliases: &aliases,
             expanding: Vec::new(),
             doms: &doms,
             scoped: &tyconv::unscoped,
@@ -791,30 +761,15 @@ fn layer(
                     let generics: Vec<String> =
                         sd.generics.iter().map(|g| g.text.clone()).collect();
                     let doms = d.doms_in(ModId(mi));
-                    let sets = d.struct_sets.clone();
-                    let defaults = d.struct_defaults.clone();
-                    let tuples = d.tuples.clone();
-                    let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
-                    let members = d.member_types.clone();
-                    let consts = d.consts.clone();
+                    let names = d.views[mi].clone();
+                    let tables = d.tables();
                     let mut cx = TyCx {
-                        names: &d.views[mi].clone(),
-                        consts: &consts,
-                        values: d.top_values.clone(),
-                        ops: d.operator_fns(),
-                        getters: d.domain_getters(),
+                        names: &|n: &str| names.get(n).copied(),
+                        env: &tables,
                         item: None,
-                        struct_sets: &sets,
-                        struct_defaults: &defaults,
-                        tuples: &tuples,
-                        sugar,
-                        roles,
-                        records: &records,
-                        members: &members,
                         generics: &generics,
                         outer: &generics,
                         args: None,
-                        aliases: &aliases,
                         expanding: Vec::new(),
                         doms: &doms,
                         scoped: &tyconv::unscoped,
@@ -827,7 +782,7 @@ fn layer(
                             .iter()
                             .map(|f| {
                                 let ty =
-                                    match input_bound(&f.ty, &cx.values) {
+                                    match input_bound(&f.ty, &tables.values) {
                                         Some((written, name)) => {
                                             let text = FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS
                                                 .say(&[&f.name.text, &written, &name]);
@@ -926,31 +881,15 @@ fn layer(
                     tgen.extend(assoc.iter().map(|(a, ..)| format!("Self.{a}")));
                     let mut errors = Vec::new();
                     let names = d.views[mi].clone();
-                    let sets = d.struct_sets.clone();
-                    let defaults = d.struct_defaults.clone();
-                    let tuples = d.tuples.clone();
-                    let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
-                    let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
-                    let consts = d.consts.clone();
+                    let tables = d.tables();
                     let mut cx = TyCx {
-                        names: &names,
-                        consts: &consts,
-                        values: d.top_values.clone(),
-                        ops: d.operator_fns(),
-                        getters: d.domain_getters(),
+                        names: &|n: &str| names.get(n).copied(),
+                        env: &tables,
                         item: None,
-                        struct_sets: &sets,
-                        struct_defaults: &defaults,
-                        tuples: &tuples,
-                        sugar,
-                        roles,
-                        records: &records,
-                        members: &members,
                         generics: &tgen,
                         outer: &tgen,
                         args: None,
-                        aliases: &aliases,
                         expanding: Vec::new(),
                         doms: &doms,
                         scoped: &tyconv::unscoped,
@@ -1047,32 +986,16 @@ fn layer(
                         generics.push("Self".to_string());
                         generics.len() - 1
                     });
-                    let sets = d.struct_sets.clone();
-                    let defaults = d.struct_defaults.clone();
-                    let tuples = d.tuples.clone();
-                    let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
-                    let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
-                    let consts = d.consts.clone();
+                    let tables = d.tables();
                     let mut cx = TyCx {
-                        names: &names,
-                        consts: &consts,
-                        values: d.top_values.clone(),
-                        ops: d.operator_fns(),
-                        getters: d.domain_getters(),
+                        names: &|n: &str| names.get(n).copied(),
+                        env: &tables,
                         item: Some(item.clone()),
-                        struct_sets: &sets,
-                        struct_defaults: &defaults,
-                        tuples: &tuples,
-                        sugar,
-                        roles,
-                        records: &records,
-                        members: &members,
                         generics: &generics,
                         outer: &generics,
                         args: None,
-                        aliases: &aliases,
                         expanding: Vec::new(),
                         doms: &doms,
                         scoped: &tyconv::unscoped,

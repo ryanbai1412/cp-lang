@@ -480,16 +480,15 @@ impl Cx<'_> {
             {
                 let (lo, d, m, k) = decls::count_end(lo, hi, *inclusive).unwrap_or_default();
                 let m = self.d.domain_getters()[m];
-                let mut errs = Vec::new();
                 let dt = ast::Type::named(d, t.span);
-                let dt = decls::body_type(
+                let (dt, errs) = decls::body_type(
+                    self.d,
                     self.d,
                     self.module,
                     &self.generics,
                     &self.doms,
                     &|n: &str| self.owned_named(n),
                     &dt,
-                    &mut errs,
                 );
                 for e in errs {
                     self.err(span, e);

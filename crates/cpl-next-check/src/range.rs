@@ -435,14 +435,14 @@ impl Cx<'_> {
                 span: Span::default(),
             };
             let (gs, doms) = (&self.generics, &self.doms);
-            let t = decls::body_type(
+            let (t, _) = decls::body_type(
+                self.d,
                 self.d,
                 self.module,
                 gs,
                 doms,
                 &|n: &str| self.owned_named(n),
                 &written,
-                &mut Vec::new(),
             );
             return Some(t).filter(|t| self.is_domain(t));
         }
