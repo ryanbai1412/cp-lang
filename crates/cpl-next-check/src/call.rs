@@ -434,6 +434,7 @@ impl Cx<'_> {
             let ret = self.trait_ret(m, tys);
             return TExpr {
                 kind: TK::CallTrait {
+                    ctx: self.trait_ctx(tr.tr, name),
                     tr: tr.clone(),
                     method: name.to_string(),
                     self_ty: Box::new(recv.ty.clone()),

@@ -74,6 +74,7 @@ impl Cx<'_> {
             span,
         };
         let call = TK::CallTrait {
+            ctx: self.trait_ctx(tr.tr, &new),
             tr: tr.clone(),
             method: new,
             recv: None,
@@ -115,6 +116,7 @@ impl Cx<'_> {
         let v = self.coerce(v, &l.elem);
         TExpr {
             kind: TK::CallTrait {
+                ctx: self.trait_ctx(l.tr.tr, &l.push),
                 tr: l.tr.clone(),
                 method: l.push.clone(),
                 recv: Some(Box::new(TArg::Mut(l.read.clone()))),

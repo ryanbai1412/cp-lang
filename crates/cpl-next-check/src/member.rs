@@ -567,6 +567,7 @@ impl<'a> Cx<'a> {
         let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
         let call = TExpr {
             kind: TK::CallTrait {
+                ctx: self.trait_ctx(tr.tr, &name.text),
                 tr,
                 method: name.text.clone(),
                 recv: None,
@@ -714,6 +715,7 @@ impl<'a> Cx<'a> {
         };
         let call = TExpr {
             kind: TK::CallTrait {
+                ctx: self.trait_ctx(tr.tr, &name.text),
                 tr: tr.clone(),
                 method: name.text.clone(),
                 recv: Some(Box::new(recv)),

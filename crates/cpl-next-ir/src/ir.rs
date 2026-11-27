@@ -442,6 +442,8 @@ pub enum Target<T> {
         targs: Vec<T>,
         /// The call's result type, whose function types carry the sets it passes the impl.
         ret: T,
+        /// The trait's fn's context copy, as `FnRef::ctx`: the impl's copy under the same values.
+        ctx: u32,
     },
     /// Instance IR: the instance to call.
     Inst(usize),

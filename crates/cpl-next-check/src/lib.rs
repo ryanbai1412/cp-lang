@@ -86,6 +86,8 @@ pub enum TK {
         /// The fn's own type arguments, after `Self` and the trait's (`S` of `fn mask<S>`).
         targs: Box<[Ty]>,
         args: Vec<TArg>,
+        /// The trait's fn's context copy the call makes, as `FnRef::ctx` (R09.1.3).
+        ctx: u32,
     },
     CallValue {
         callee: Box<TExpr>,
@@ -279,6 +281,8 @@ pub struct Typed {
     /// The copies of `uses` fns checked under context values a call gave them: `FnRef::ctx`
     /// `k` is the `k`-th (R09.1.4).
     pub ctx_fns: Vec<(FnId, TypedFn)>,
+    /// The copy of an impl's fn that a trait's fn's copy runs when the impl is picked.
+    pub ctx_impls: HashMap<(u32, FnId), u32>,
     pub globals: Vec<Local>,
     pub main: Vec<TStmt>,
     pub lambdas: Vec<LambdaInfo>,
@@ -457,6 +461,7 @@ struct Cx<'a> {
     /// The context copies this check made, by `FnRef::ctx`.
     ctx_made: HashSet<u32>,
     ctx_pending: Vec<(FnId, u32, Vec<CtxFrame>)>,
+    ctx_impls: HashMap<(u32, FnId), u32>,
 }
 
 /// One field a `with` line set, read as `ctx.field` in the rest of its block.
@@ -547,6 +552,7 @@ fn check_with(
         filling: Vec::new(),
         ctx_made: HashSet::new(),
         ctx_pending: Vec::new(),
+        ctx_impls: HashMap::new(),
         d,
         src,
         tys: Vec::new(),
@@ -900,6 +906,7 @@ fn check_with(
         domains: std::mem::take(&mut cx.domains),
         fns,
         ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),
+        ctx_impls: std::mem::take(&mut cx.ctx_impls),
         globals,
         main: main_z,
         lambdas,
@@ -966,7 +973,33 @@ impl<'a> Cx<'a> {
     /// the slice does not build is said once. A trait's method reaches every impl's.
     /// Which copy of `id` a call here makes: 0 when no context it `uses` is set around the
     /// call, else the one checked under the values set (R09.1.3, R09.1.4).
+    /// The copy a call of trait `tr`'s fn `method` makes.
+    pub(crate) fn trait_ctx(&mut self, tr: TraitId, method: &str) -> u32 {
+        match self.d.traits[tr.0].methods.get(method) {
+            Some(&m) => self.ctx_copy(m),
+            None => 0,
+        }
+    }
+    /// A trait's fn's copy has each impl's under the same values, which link picks (`ctx_impls`).
     pub(crate) fn ctx_copy(&mut self, id: FnId) -> u32 {
+        let around: Vec<CtxFrame> = self.frames.iter().rev().cloned().collect();
+        let k = self.copy_under(id, &around);
+        let d = self.d;
+        let f = d.f(id);
+        if let (Some(Owner::Trait(t)), true) = (f.owner, k != 0) {
+            for (_, im) in d.trait_impls(t) {
+                if let Some(&m) = im.methods.get(&f.name) {
+                    let km = self.copy_under(m, &around);
+                    if km != 0 {
+                        self.ctx_impls.insert((k, m), km);
+                    }
+                }
+            }
+        }
+        k
+    }
+    /// The copy of `id` checked under the innermost of `around` that it `uses`, or 0 for none.
+    fn copy_under(&mut self, id: FnId, around: &[CtxFrame]) -> u32 {
         let d = self.d;
         let f = d.f(id);
         let used: Vec<decls::ContextId> = (f.uses.iter())
@@ -976,7 +1009,7 @@ impl<'a> Cx<'a> {
             })
             .collect();
         let mut seen = HashSet::new();
-        let mut frames: Vec<CtxFrame> = (self.frames.iter().rev())
+        let mut frames: Vec<CtxFrame> = (around.iter())
             .filter(|x| used.contains(&x.ctx) && seen.insert((x.ctx, x.field.clone())))
             .cloned()
             .collect();

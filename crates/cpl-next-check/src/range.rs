@@ -876,6 +876,7 @@ impl Cx<'_> {
             .push((v.ty.clone(), r.clone(), span, Origin::Bound));
         TExpr {
             kind: TK::CallTrait {
+                ctx: self.trait_ctx(r.tr, &method),
                 tr: r,
                 method,
                 self_ty: Box::new(v.ty.clone()),

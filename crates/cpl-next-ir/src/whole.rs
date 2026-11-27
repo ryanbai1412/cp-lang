@@ -1,7 +1,7 @@
 //! What link reads of the program as a whole beyond its fns and their set adds (`SetAdds`), which lowering hands on from
 //! the checker so link reads no typed tree.
 use crate::ty::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum VarRef {
@@ -55,6 +55,9 @@ pub struct Whole {
     pub globals: Vec<Global>,
     /// The fns written in the user's program: where event points report entering and leaving.
     pub program_fns: HashSet<FnId>,
+    /// For a call of a trait's fn's `k`-th context copy, the copy of each impl's fn it runs
+    /// (R09.1.3): `(k, impl fn)` to that fn's copy.
+    pub ctx_impls: HashMap<(u32, FnId), u32>,
 }
 
 impl Whole {

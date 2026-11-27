@@ -111,6 +111,7 @@ impl Cx<'_> {
         let r = decls::TraitRef { tr, args: vec![] };
         (self.obligations).push((ty.clone(), r.clone(), span, Origin::Bound));
         let kind = TK::CallTrait {
+            ctx: self.trait_ctx(r.tr, &method),
             tr: r,
             method,
             recv: Some(Box::new(TArg::Value(recv))),
@@ -361,6 +362,7 @@ impl Cx<'_> {
             tys.extend(args.iter().cloned());
             let ty = cx.trait_ret(m, tys);
             let call = TK::CallTrait {
+                ctx: cx.trait_ctx(tr, n),
                 tr: decls::TraitRef {
                     tr,
                     args: args.clone(),

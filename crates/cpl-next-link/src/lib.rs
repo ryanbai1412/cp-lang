@@ -522,6 +522,7 @@ impl Link<'_> {
                 let (st, args) = f.targs.split_first()?;
                 let method = self.d.f(f.decl).name.clone();
                 let mut k = self.trait_key(&tr, args, &method, st, env)?;
+                self.in_copy(&mut k, Some(f.decl), f.ctx);
                 let base = self.d.f(f.decl).n_sets;
                 let ret = (f.sets.iter().skip(base))
                     .map(|s| self.set(s, env))
@@ -532,13 +533,24 @@ impl Link<'_> {
             _ => Some(self.fnref(f, env)),
         }
     }
+    /// A trait's fn's context copy runs the picked fn's copy under the same values (R09.1.3).
+    fn in_copy(&self, k: &mut InstKey, trait_fn: Option<FnId>, ctx: u32) {
+        let FuncKey::Decl(g) = k.func else { return };
+        let copy = match Some(g) == trait_fn {
+            true => Some(ctx),
+            false => self.whole.ctx_impls.get(&(ctx, g)).copied(),
+        };
+        if let (Some(c), true) = (copy, ctx != 0) {
+            k.func = FuncKey::Ctx(g, c);
+        }
+    }
     /// What `f`'s body adds to its set `slot`.
     fn adds(&self, f: FnId, slot: usize) -> Option<SetTy> {
         self.adds.params.get(&(f, slot)).cloned()
     }
     /// An impl's fn takes the sets its caller passes for its result after the impl's own.
     fn with_ret_sets(&self, k: &mut InstKey, ret: Vec<CSet>) {
-        let FuncKey::Decl(g) = k.func else {
+        let Some(g) = k.func.decl() else {
             return;
         };
         let fd = self.d.f(g);
@@ -570,7 +582,7 @@ impl Link<'_> {
                 }
                 let (f, slot) = self.adds.calls[*c].clone();
                 if let Some(k) = self.callee_key(&f, env) {
-                    if let FuncKey::Decl(decl) = k.func {
+                    if let Some(decl) = k.func.decl() {
                         // A trait's result slot is the impl's, after the impl's own sets.
                         let base = self.d.f(f.decl).n_sets;
                         let slot = match decl != f.decl && slot >= base {
@@ -692,10 +704,16 @@ impl Link<'_> {
                 self_ty,
                 targs,
                 ret,
+                ctx,
             } => {
                 let mut k = self.trait_key(tr, args, method, self_ty, env)?;
                 k.targs.extend(targs.iter().map(|t| self.targ(t, env)));
-                if let FuncKey::Decl(g) = k.func {
+                self.in_copy(
+                    &mut k,
+                    self.d.traits[tr.0].methods.get(method).copied(),
+                    *ctx,
+                );
+                if let Some(g) = k.func.decl() {
                     let mut out = vec![None; self.d.f(g).n_ret_sets];
                     let c = self.ty(ret, env);
                     ret_sets_in(&self.d.f(g).ret, &c, &mut out);

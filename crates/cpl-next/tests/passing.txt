@@ -1067,6 +1067,7 @@ core-09/unwrap-none-trap.cp
 core-09/unwrap-some-ok.cp
 core-09/user-context-lexical-without-uses.cp
 core-09/uses-not-inferred-top-level.cp
+core-09/uses-through-a-bound.cp
 core-09/with-not-first.cp
 core-10/array-read-short-input.cp
 core-10/array-short-input.cp

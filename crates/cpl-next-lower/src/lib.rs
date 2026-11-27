@@ -302,6 +302,7 @@ fn whole(d: &Decls, typed: &Typed) -> cpl_next_ir::whole::Whole {
             .map(FnId)
             .filter(|f| d.of_program(d.f(*f).module))
             .collect(),
+        ctx_impls: typed.ctx_impls.clone(),
     }
 }
 
@@ -664,6 +665,7 @@ impl Lw<'_> {
                 self_ty,
                 targs,
                 args,
+                ctx,
             } => {
                 let a = self.args(recv.as_deref(), args, out);
                 let self_ty = match recv {
@@ -678,6 +680,7 @@ impl Lw<'_> {
                         self_ty,
                         targs: targs.to_vec(),
                         ret: e.ty.clone(),
+                        ctx: *ctx,
                     },
                     a,
                     site,
@@ -892,6 +895,7 @@ impl Lw<'_> {
                             self_ty: x.ty.clone(),
                             ret: Ty::Int,
                             targs: Vec::new(),
+                            ctx: 0,
                         };
                         self.spill(int(EK::Call(ord, vec![Arg::Value(v)], site)), out)
                     }
@@ -1307,6 +1311,7 @@ impl Lw<'_> {
                         self_ty: r.map_or(Ty::Error, Self::self_ty),
                         targs: Vec::new(),
                         ret: Ty::Unit,
+                        ctx: 0,
                     },
                 };
                 out.push(Stmt::Region {

@@ -820,6 +820,7 @@ impl<'a> Cx<'a> {
                                 let o = (array.clone(), tr.clone(), s.span, Origin::Bound);
                                 self.obligations.push(o);
                                 let kind = TK::CallTrait {
+                                    ctx: self.trait_ctx(tr.tr, n),
                                     tr,
                                     method: n.clone(),
                                     recv: None,

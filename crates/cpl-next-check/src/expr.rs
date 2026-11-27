@@ -158,6 +158,7 @@ impl<'a> Cx<'a> {
         (self.obligations).push((self_ty.clone(), tr.clone(), span, Origin::Bound));
         TExpr {
             kind: TK::CallTrait {
+                ctx: self.trait_ctx(tr.tr, &method),
                 tr,
                 method,
                 self_ty: Box::new(self_ty.clone()),
@@ -719,6 +720,7 @@ impl<'a> Cx<'a> {
                 let arg = self.coerce(arg, &rt);
                 mk(
                     TK::CallTrait {
+                        ctx: self.trait_ctx(tr.tr, method),
                         tr: tr.clone(),
                         method: method.to_string(),
                         self_ty: Box::new(recv.ty.clone()),

@@ -43,6 +43,7 @@ impl Cx<'_> {
         let n = self.d.traits[tr.0].defaults.len();
         TExpr {
             kind: TK::CallTrait {
+                ctx: self.trait_ctx(tr, &fd.name),
                 tr: decls::TraitRef {
                     tr,
                     args: (1..=n).map(Ty::Param).collect(),
