@@ -340,7 +340,6 @@ core-08/bare-op-at-a-generic-bound-waits-for-its-arg.cp	wrong-reject	check: prog
 core-08/bare-op-binds-its-monoid-after-later-args.cp	wrong-reject	check: program:15:14: E0606: `a function` does not implement `Op3`
 core-08/bare-op-takes-any-from-op-struct-impl.cp	wrong-reject	check: program:6:40: E0606: `T` does not implement `Domain`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
-core-08/bound-element-pattern-binds-its-param.cp	wrong-reject	own: program:7:23: E0603: a function that uses `x` is stored in `out`, which outlives `x`
 core-08/bound-trait-method-yields-the-impl-types.cp	wrong-reject	decls: E0204: unknown trait `Show`
 core-08/const-param-arithmetic.cp	wrong-reject	check: program:8:7: E9999: 
 core-08/const-param.cp	wrong-reject	check: program:5:1: E9999: 
@@ -619,37 +618,8 @@ std-hashmap/hashmap-of-an-int-is-rejected.cp	wrong-error	wanted E0302 on line 3,
 std-hashmap/hashmap-of-pairs-builds.cp	wrong-reject	check: program:3:9: E0201: unknown name `HashMap`
 std-hashmap/hashset-of-a-list-holds-its-elements.cp	wrong-reject	check: program:4:7: E0201: unknown name `HashSet`
 std-hashmap/table-keys-a-map.cp	wrong-reject	check: program:10:1: E0606: `Array<Tuple2<R, C>, Optional<P>>` does not implement `Ord`
-std-heap/drain-break-keeps-the-rest.cp	no-cxx	g++ failed on e56c74cea7b85873.cpp: | e56c74cea7b85873.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | e56c74cea7b85873.cpp:298:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   298 |     return cpl_unit{};
-std-heap/erasableheap-clear-1.cp	no-cxx	g++ failed on c4cc4197ace4bc3e.cpp: | c4cc4197ace4bc3e.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | c4cc4197ace4bc3e.cpp:317:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   317 |     return cpl_unit{};
-std-heap/erasableheap-is_empty-1.cp	no-cxx	g++ failed on 49ed0757ee4776ff.cpp: | 49ed0757ee4776ff.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 49ed0757ee4776ff.cpp:306:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   306 |     return cpl_unit{};
-std-heap/erasableheap-len-1.cp	no-cxx	g++ failed on 9f46de410ecca14f.cpp: | 9f46de410ecca14f.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 9f46de410ecca14f.cpp:306:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   306 |     return cpl_unit{};
-std-heap/erasableheap-new-1.cp	no-cxx	g++ failed on 5ca3115f57627224.cpp: | 5ca3115f57627224.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 5ca3115f57627224.cpp:316:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   316 |     return cpl_unit{};
-std-heap/erasableheap-peek-1.cp	no-cxx	g++ failed on b7a52010922f39f8.cpp: | b7a52010922f39f8.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | b7a52010922f39f8.cpp:316:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   316 |     return cpl_unit{};
-std-heap/erasableheap-pop-1.cp	no-cxx	g++ failed on af26f275a278957b.cpp: | af26f275a278957b.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | af26f275a278957b.cpp:316:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   316 |     return cpl_unit{};
-std-heap/erasableheap-push-1.cp	no-cxx	g++ failed on a0186b8a5745c6ce.cpp: | a0186b8a5745c6ce.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | a0186b8a5745c6ce.cpp:315:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   315 |     return cpl_unit{};
-std-heap/erasableheap-remove-1.cp	no-cxx	g++ failed on 8191f3f58bb7f5e9.cpp: | 8191f3f58bb7f5e9.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 8191f3f58bb7f5e9.cpp:316:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   316 |     return cpl_unit{};
 std-heap/erasableheap-take-1.cp	wrong-reject	check: std.heap:125:9: E0201: unknown name `swap`
-std-heap/heap-clear-1.cp	no-cxx	g++ failed on e65b31a5c12f34a4.cpp: | e65b31a5c12f34a4.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | e65b31a5c12f34a4.cpp:309:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   309 |     return cpl_unit{};
-std-heap/heap-is_empty-1.cp	no-cxx	g++ failed on 33773adc3ea67687.cpp: | 33773adc3ea67687.cpp: In function ‘bool f1(const U9&, int64_t, int64_t)’: | 33773adc3ea67687.cpp:337:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   337 |     return cpl_unit{};
-std-heap/heap-len-1.cp	no-cxx	g++ failed on 3fb55a535c5d3c33.cpp: | 3fb55a535c5d3c33.cpp: In function ‘bool f1(const U9&, int64_t, int64_t)’: | 3fb55a535c5d3c33.cpp:341:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   341 |     return cpl_unit{};
-std-heap/heap-new-1.cp	no-cxx	g++ failed on f043124c72d14619.cpp: | f043124c72d14619.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | f043124c72d14619.cpp:307:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   307 |     return cpl_unit{};
-std-heap/heap-of-1.cp	no-cxx	g++ failed on dfe03ef902c0b5ad.cpp: | dfe03ef902c0b5ad.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | dfe03ef902c0b5ad.cpp:309:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   309 |     return cpl_unit{};
-std-heap/heap-peek-1.cp	no-cxx	g++ failed on aab930ed62882a0b.cpp: | aab930ed62882a0b.cpp: In function ‘bool f1(const U9&, int64_t, int64_t)’: | aab930ed62882a0b.cpp:360:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   360 |     return cpl_unit{};
-std-heap/heap-pop-1.cp	no-cxx	g++ failed on f0e0d7fecfef9cc9.cpp: | f0e0d7fecfef9cc9.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | f0e0d7fecfef9cc9.cpp:308:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   308 |     return cpl_unit{};
-std-heap/heap-pop-empty-unwrap-traps.cp	no-cxx	g++ failed on 80681191d7b2431d.cpp: | 80681191d7b2431d.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 80681191d7b2431d.cpp:292:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   292 |     return cpl_unit{};
-std-heap/heap-push-1.cp	no-cxx	g++ failed on 12558fb3cf8b5d6b.cpp: | 12558fb3cf8b5d6b.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 12558fb3cf8b5d6b.cpp:308:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   308 |     return cpl_unit{};
-std-heap/heap-push-pop-on-empty.cp	no-cxx	g++ failed on 7f43c32f89fa5d31.cpp: | 7f43c32f89fa5d31.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 7f43c32f89fa5d31.cpp:299:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   299 |     return cpl_unit{};
-std-heap/heap-push_all-1.cp	no-cxx	g++ failed on 8b326d248dcdfadd.cpp: | 8b326d248dcdfadd.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 8b326d248dcdfadd.cpp:313:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   313 |     return cpl_unit{};
-std-heap/heap-push_pop-1.cp	no-cxx	g++ failed on 22b4baf0020bc7b6.cpp: | 22b4baf0020bc7b6.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 22b4baf0020bc7b6.cpp:308:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   308 |     return cpl_unit{};
-std-heap/heap-push_pop-2.cp	no-cxx	g++ failed on 2c9ec44f96e4eb1a.cpp: | 2c9ec44f96e4eb1a.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 2c9ec44f96e4eb1a.cpp:308:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   308 |     return cpl_unit{};
-std-heap/heap-replace-top-on-empty.cp	no-cxx	g++ failed on cc782030d8553d35.cpp: | cc782030d8553d35.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | cc782030d8553d35.cpp:307:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   307 |     return cpl_unit{};
-std-heap/heap-replace_top-1.cp	no-cxx	g++ failed on 7ba3a0c326074045.cpp: | 7ba3a0c326074045.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 7ba3a0c326074045.cpp:308:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   308 |     return cpl_unit{};
-std-heap/heap-replace_top-2.cp	no-cxx	g++ failed on 249d725fb4e06685.cpp: | 249d725fb4e06685.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 249d725fb4e06685.cpp:306:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   306 |     return cpl_unit{};
-std-heap/heap-reserve-1.cp	no-cxx	g++ failed on 73cb756f5185121c.cpp: | 73cb756f5185121c.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 73cb756f5185121c.cpp:308:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   308 |     return cpl_unit{};
 std-heap/heap-take-1.cp	wrong-reject	check: std.heap:125:9: E0201: unknown name `swap`
-std-heap/max-heap-ties.cp	no-cxx	g++ failed on 05729eded56f3ab0.cpp: | 05729eded56f3ab0.cpp: In function ‘bool f0(const U0&, S1, S1)’: | 05729eded56f3ab0.cpp:318:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   318 |     return cpl_unit{};
-std-heap/min-heap-empty-pop.cp	no-cxx	g++ failed on 16391cab5aa4e2e9.cpp: | 16391cab5aa4e2e9.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 16391cab5aa4e2e9.cpp:298:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   298 |     return cpl_unit{};
-std-heap/minmaxheap-new-1.cp	no-cxx	g++ failed on 4c8cbe8243da55cc.cpp: | 4c8cbe8243da55cc.cpp: In function ‘bool f0(const U0&, int64_t, int64_t)’: | 4c8cbe8243da55cc.cpp:310:12: error: cannot convert ‘cpl_unit’ to ‘bool’ in return |   310 |     return cpl_unit{};
 std-heap/minmaxheap-take-1.cp	wrong-reject	check: std.heap:717:9: E0405: field `MinMaxHeap._xs` is fixed (not `var`) and cannot be assigned
 std-interval/assign-point-returns-old.cp	wrong-reject	check: std.interval:116:24: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
 std-interval/interval-bodies.cp	wrong-reject	check: std.interval:254:17: E0405: field `IntervalSet.total` is fixed (not `var`) and cannot be assigned
@@ -759,8 +729,6 @@ std-segtree/merge-segs-first-ge-is-read-only.cp	wrong-reject	check: program:13:1
 std-segtree/merge-segs-share-nodes.cp	wrong-reject	check: program:13:14: E0201: unknown name `rand`
 std-segtree/segtree2d-matches-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-seq/adjacent-buckets-counting-sort-span.cp	wrong-reject	check: program:2:7: E0302: expected `List<Int>`, found `List<Tuple2<Int, Int>>`
-std-seq/adjacent-diff-short.cp	wrong-reject	own: std.seq:2606:21: E0608: `x` was moved into another binding; use `.clone()` there to keep both
-std-seq/adjacent_diff-1.cp	wrong-reject	own: std.seq:2606:21: E0608: `x` was moved into another binding; use `.clone()` there to keep both
 std-seq/all-some-unwraps-the-element.cp	wrong-reject	own: std.seq:2292:23: E0603: a function that uses `x` is stored in `out`, which outlives `x`
 std-seq/all_some-1.cp	wrong-reject	own: std.seq:2292:23: E0603: a function that uses `x` is stored in `out`, which outlives `x`
 std-seq/bsearch-true-then-false-traps.cp	wrong-reject	check: program:4:7: E0203: `List<Int>` has no member `bsearch`
@@ -786,7 +754,6 @@ std-seq/next-permutation-last-wraps.cp	wrong-reject	check: std.seq:878:27: E0606
 std-seq/next-permutation-ties.cp	wrong-reject	check: std.seq:878:27: E0606: `2.hidden` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/online-lis-mono-stack-rollback.cp	wrong-reject	check: program:31:7: E0302: expected `List<Int>`, found `List<List<Int>>`
 std-seq/pairs-of-rows-and-of-a-lazy-walk.cp	wrong-reject	check: program:8:28: E0302: expected `List<Int>`, found `Array<$range0, Int>`
-std-seq/partition-empty-and-all-kept.cp	wrong-reject	own: std.seq:513:5: E0603: this returns a value that borrows `$tuple88`: `$tuple88` is gone when the fn returns
 std-seq/perm-cycles-fixed-points.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/perm-cycles-rejects-non-permutation.cp	wrong-reject	check: program:5:7: E0302: expected `List<Int>`, found `List<List<Int>>`
 std-seq/perm-rank-rejects-non-permutation.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one

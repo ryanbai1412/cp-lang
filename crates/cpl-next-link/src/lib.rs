@@ -802,7 +802,8 @@ impl Link<'_> {
                 match (intr, key) {
                     (Some(op), _) => EK::Intr(op, args, *at),
                     (None, Some(k)) => EK::Call(Target::Inst(self.intern(k)), args, *at),
-                    (None, None) => EK::Unit,
+                    // A call nothing runs (a method of a type nothing fixes) still has its type.
+                    (None, None) => EK::Intr(Intr::Unset, Vec::new(), *at),
                 }
             }
         };
