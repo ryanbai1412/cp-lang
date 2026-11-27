@@ -1309,6 +1309,68 @@ def next_core_privilege(root: Path) -> list[str]:
     return hits
 
 
+NEXT_WHOLE_PROGRAM_RE = re.compile(r"&(?:\w+::)*(?:Decls|Typed|Loaded)\b")
+
+
+def next_whole_program_inputs(root: Path) -> list[str]:
+    """Public fns of the new pipeline that take a whole-program value (`&Decls`, `&Typed`,
+    `&Loaded`). The incremental core (handbook/design/next/incremental.md) calls every layer
+    per item over small views, so this shrinks to the whole-program steps: link, ownership
+    after link, canonical, optimized, C++."""
+    out = []
+    for p in _rs_files(root, *_next_srcs(root), tests=False):
+        lines, rel = _lines(p), _rel(root, p)
+        for i, line in enumerate(lines):
+            if not re.match(r"\s*pub(?:\([^)]*\))?\s+fn\s", line):
+                continue
+            sig = []
+            for l in lines[i:i + 20]:
+                sig.append(l)
+                if "{" in l or l.rstrip().endswith(";"):
+                    break
+            params = "".join(sig).split("->")[0]
+            if NEXT_WHOLE_PROGRAM_RE.search(params):
+                out.append(f"{rel}:{i + 1}")
+    return out
+
+
+def _next_file_lines(root: Path, rel: str) -> list[str]:
+    p = root / rel
+    if not p.is_file():
+        return []
+    return [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
+
+
+def next_reference_evaluator_lines(root: Path) -> list[str]:
+    """Code lines of the new pipeline's reference interpreter: one evaluator (the engine)
+    serves constant evaluation, the prover and runs, so this reaches 0 once the engine agrees
+    on every case."""
+    return _next_file_lines(root, "crates/cpl-next/src/interp.rs")
+
+
+def next_core_standin_lines(root: Path) -> list[str]:
+    """Lines of `crates/cpl-next/std.cp`, the private stand-in for core: std loads like any
+    library through the module loader, so this reaches 0 when core lives in std/."""
+    p = root / "crates/cpl-next/std.cp"
+    return [f"crates/cpl-next/std.cp:{i}" for i, l in enumerate(_lines(p), 1) if l.strip()] if p.is_file() else []
+
+
+def next_cpp_runtime_lines(root: Path) -> list[str]:
+    """Lines of C++ written by hand inside the new emitter (its raw-string runtime): each runtime
+    operation is a CP std body or an `ops` table entry, so C++ cannot disagree with the engine."""
+    out, inside = [], False
+    for p in _rs_files(root, *_next_srcs(root), tests=False):
+        rel = _rel(root, p)
+        for i, l in enumerate(_lines(p), 1):
+            opened = 'r#"' in l
+            if inside or opened:
+                if l.strip():
+                    out.append(f"{rel}:{i}")
+                tail = l.split('r#"', 1)[1] if opened else l
+                inside = '"#' not in tail
+    return out
+
+
 def wrong_to_refused(root: Path, ref: str) -> list[str]:
     """Cases `ref` lists wrong that this tree lists neither wrong nor passing: a wrong verdict
     turned into a refusal, which lowers `next_wrong` without fixing the case. Each is refused
@@ -3554,6 +3616,10 @@ COUNTERS = {
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
+    "next_whole_program_inputs": ("public new-pipeline fns taking a whole-program value (Core)", next_whole_program_inputs, True),
+    "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
+    "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
+    "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),

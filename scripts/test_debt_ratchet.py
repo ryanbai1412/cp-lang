@@ -2036,6 +2036,22 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"next_not_passing": 11}, ref="base"), [])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_not_passing": 12}, ref="base")), 1)
 
+    def test_whole_program_inputs_count_layer_fns_taking_the_whole_program(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-check/src"
+            src.mkdir(parents=True)
+            (src / "lib.rs").write_text(
+                "pub fn check(d: &Decls) -> Typed {}\n"
+                "pub fn body(\n    sigs: &dyn Signatures,\n    t: &check::Typed,\n) -> X {}\n"
+                "pub fn item(sigs: &dyn Signatures) -> Typed {}\n"
+                "fn private(d: &Decls) {}\n"
+                'const RT: &str = r#"int a;\n\nint b;"#;\n'
+            )
+            self.assertEqual(dr.next_whole_program_inputs(root),
+                             ["crates/cpl-next-check/src/lib.rs:1", "crates/cpl-next-check/src/lib.rs:2"])
+            self.assertEqual(len(dr.next_cpp_runtime_lines(root)), 2)
+
     def test_wrong_may_rise_by_the_cases_a_refusal_hid(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
