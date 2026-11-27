@@ -38,7 +38,14 @@ impl<'a> Cx<'a> {
         if bits && [&l.ty, &r.ty].iter().any(|t| self.shallow(t) == Ty::Bool) {
             return self.bool_bits(op, &l.ty, &r.ty, span);
         }
-        // `+` and the rest on a type declared outside core are its operator fn (R08.1.5).
+        // `+` and the rest on a type declared outside core, or on a type parameter bound by
+        // the operator's trait, are that trait's fn (R08.1.5).
+        if let Some(found) = (!logic)
+            .then(|| self.operator_trait(op.text(), true, &l.ty))
+            .flatten()
+        {
+            return self.operator_call(found, l, Some(r), span);
+        }
         let operand = [&l.ty, &r.ty]
             .into_iter()
             .find(|t| self.declares_operators(t));
@@ -70,10 +77,49 @@ impl<'a> Cx<'a> {
             span,
         }
     }
-    /// A struct declared outside core, which may give itself operators (R08.1.5). Their
-    /// checking is not built yet, so such an operation is refused.
+    /// A struct declared outside core, which may give itself operators (R08.1.5).
     fn declares_operators(&self, t: &Ty) -> bool {
         matches!(self.shallow(t), Ty::Struct(s, ..) if self.d.s(s).module != decls::CORE)
+    }
+    /// Core's `@operator(text)` trait, binary or prefix, and its fn, when `t`'s operator is
+    /// that trait's: `t` is declared outside core, or a type parameter bound by the trait.
+    fn operator_trait(&self, text: &str, binary: bool, t: &Ty) -> Option<(TraitId, String, FnId)> {
+        let found = (self.d.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
+            let (n, &m) = self.d.traits[tr.0].methods.iter().next()?;
+            (self.d.f(m).params.len() == usize::from(binary)).then(|| (*tr, n.clone(), m))
+        })?;
+        let applies = match self.shallow(t) {
+            Ty::Param(p) => self.bound_traits(p).iter().any(|b| b.tr == found.0),
+            t => self.declares_operators(&t),
+        };
+        applies.then_some(found)
+    }
+    /// `a op b` or `op a` as the operator trait's fn of `a`'s type, which is also its result.
+    fn operator_call(
+        &mut self,
+        (tr, method, m): (TraitId, String, FnId),
+        l: TExpr,
+        r: Option<TExpr>,
+        span: Span,
+    ) -> TExpr {
+        self.reach(m);
+        let self_ty = l.ty.clone();
+        let tr = decls::TraitRef {
+            tr,
+            args: r.iter().map(|r| r.ty.clone()).collect(),
+        };
+        (self.obligations).push((self_ty.clone(), tr.clone(), span, Origin::Bound));
+        TExpr {
+            kind: TK::CallTrait {
+                tr,
+                method,
+                self_ty: Box::new(self_ty.clone()),
+                recv: Some(Box::new(TArg::Value(l))),
+                args: r.map(TArg::Value).into_iter().collect(),
+            },
+            ty: self_ty,
+            span,
+        }
     }
     /// `&`, `|` and `^` are integer operators; on a `Bool` the error names the `Bool` one
     /// (R01.5.9).
@@ -1081,6 +1127,12 @@ impl<'a> Cx<'a> {
                     }
                 };
                 let v = self.expr(expr, Some(&want_t));
+                if let Some(found) = (*op == UnOp::Neg)
+                    .then(|| self.operator_trait("-", false, &v.ty))
+                    .flatten()
+                {
+                    return self.operator_call(found, v, None, span);
+                }
                 let want_t = match self.shallow(&v.ty) {
                     Ty::F64 if *op == UnOp::Neg => Ty::F64,
                     t if *op == UnOp::Neg && self.declares_operators(&t) => {

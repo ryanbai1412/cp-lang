@@ -263,6 +263,9 @@ pub struct Decls {
     pub top_doms: HashMap<String, Ty>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
     pub domain_trait: Option<TraitId>,
+    /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
+    /// a number is its impl's fn (R08.1.5).
+    pub operators: Vec<(String, TraitId)>,
     /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
     pub convert_trait: Option<TraitId>,
     /// Per fn, the type parameters that key an array it names: domain parameters (R04.2).
@@ -786,6 +789,14 @@ pub fn collect(
                         }
                         if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "convert") {
                             d.convert_trait = Some(id);
+                        }
+                        let op = s.decorators.iter().find(|x| x.name.text == "operator");
+                        if let Some(ast::ExprKind::Str(text)) =
+                            op.and_then(|x| x.args.first()).map(|a| &a.value.kind)
+                        {
+                            if let (CORE, [ast::StrPiece::Text(t)]) = (mid, text.as_slice()) {
+                                d.operators.push((t.clone(), id));
+                            }
                         }
                         own[mi].insert(name.text.clone(), Named::Trait(id));
                         d.traits.push(TraitDecl {

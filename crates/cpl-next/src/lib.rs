@@ -206,6 +206,10 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         }
         let g = lower::lower(&d, &t, &owned, &loaded);
         out.extend(diags(Stage::Lower, &g.errors));
+        for (f, es) in &g.deferred {
+            let low = es.iter().map(|e| e.clone().prefixed(Stage::Lower.name()));
+            t.deferred.entry(*f).or_default().extend(low);
+        }
         return Front {
             loaded,
             d,

@@ -295,16 +295,22 @@ trait Ord(Eq):
         if self < other: Ordering.Less elif self == other: Ordering.Equal else: Ordering.Greater
 
 /// `a + b` on a type that is not a number (R08.1.5); `-`, `*`, `/`, `%` and `-a` likewise.
+@operator("+")
 trait Add<Rhs = Self>:
     fn add(self, other: Rhs) -> Self
+@operator("-")
 trait Sub<Rhs = Self>:
     fn sub(self, other: Rhs) -> Self
+@operator("*")
 trait Mul<Rhs = Self>:
     fn mul(self, other: Rhs) -> Self
+@operator("/")
 trait Div<Rhs = Self>:
     fn div(self, other: Rhs) -> Self
+@operator("%")
 trait Rem<Rhs = Self>:
     fn rem(self, other: Rhs) -> Self
+@operator("-")
 trait Neg:
     fn neg(self) -> Self
 
@@ -381,6 +387,14 @@ impl<D: Domain> Into<Int> for Cut<D>:
 
 
 /// The numbers' own operators, so `T: Add` holds of them.
+/// `T.zero`: the identity of `T`'s `+`, where a sum starts (R08.1.5).
+trait Zero:
+    @get fn zero() -> Self
+impl Zero for Int:
+    @get fn zero() -> Int = 0
+impl Zero for U64:
+    @get fn zero() -> U64 = U64(0)
+
 impl Add for Int:
     fn add(self, other: Int) -> Int = self + other
 impl Sub for Int:

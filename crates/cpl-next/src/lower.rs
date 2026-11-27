@@ -14,6 +14,8 @@ pub struct Generic {
     pub funcs: HashMap<FuncKey, Func<Ty>>,
     pub globals: Vec<Ty>,
     pub errors: Vec<Msg>,
+    /// What is wrong in a library fn reached only through a trait, said if an instance runs it.
+    pub deferred: HashMap<FnId, Vec<Msg>>,
     /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
     pub untyped: Vec<Span>,
     /// Where in the loaded modules' text each site (`ir::Site`) is; site 0 has no place.
@@ -61,6 +63,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
         funcs: HashMap::new(),
         globals: Vec::new(),
         errors: Vec::new(),
+        deferred: HashMap::new(),
         untyped: Vec::new(),
         sites: Vec::new(),
     };
@@ -110,6 +113,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
     }
     lw.in_main = false;
     for (id, tf) in &typed.fns {
+        let before = lw.errors.len();
         let fd = d.f(*id);
         lw.off = fd.item;
         lw.made = matches!(fd.owner, Some(crate::decls::Owner::Impl(k)) if d.impls[k].derived);
@@ -149,6 +153,10 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
             body.push(Stmt::Return(Some(v)));
         } else {
             lw.effect(v, &mut body);
+        }
+        if typed.quiet.contains(id) && lw.errors.len() > before {
+            let es = lw.errors.split_off(before);
+            out.deferred.entry(*id).or_default().extend(es);
         }
         out.funcs.insert(
             FuncKey::Decl(*id),
