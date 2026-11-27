@@ -596,7 +596,80 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
     }
 }
 
+/// Whether `b` writes local `l` or lets anything else write it: assigns it or a part, lends
+/// it, takes its address or lends it out.
+pub fn writes<T>(b: &[Stmt<T>], l: usize) -> bool {
+    touches(b, l, Touch::Any)
+}
+/// Whether `b` itself writes local `l`: assigns it or a part, lends it or lends it out. Taking
+/// its address does not count.
+pub fn sets<T>(b: &[Stmt<T>], l: usize) -> bool {
+    touches(b, l, Touch::Set)
+}
+/// Whether `b` takes the address of local `l`, after which any call may write it.
+pub fn addressed<T>(b: &[Stmt<T>], l: usize) -> bool {
+    touches(b, l, Touch::Addr)
+}
+/// Which touches of a local count: writes, address-takings, or both.
+#[derive(Clone, Copy, PartialEq)]
+enum Touch {
+    Set,
+    Addr,
+    Any,
+}
+fn touches<T>(b: &[Stmt<T>], l: usize, all: Touch) -> bool {
+    let at = |p: &Place| all != Touch::Addr && p.local() == Some(l);
+    b.iter().any(|s| match s {
+        Stmt::Let(x, e) => (all != Touch::Addr && *x == l) || touches_in(e, l, all),
+        Stmt::Assign(p, e) => at(p) || touches_in(e, l, all),
+        Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) => touches_in(e, l, all),
+        Stmt::Return(e) => e.as_ref().is_some_and(|e| touches_in(e, l, all)),
+        Stmt::If(c, a, b) => touches_in(c, l, all) || touches(a, l, all) || touches(b, l, all),
+        Stmt::Loop(a, b, _) => touches(a, l, all) || touches(b, l, all),
+        Stmt::Switch(c, arms) => touches_in(c, l, all) || arms.iter().any(|a| touches(a, l, all)),
+        Stmt::Check { cond, .. } => touches_in(cond, l, all),
+        Stmt::Event(_, vs) => vs.iter().any(|v| touches_in(v, l, all)),
+        Stmt::Region { args, body, .. } => touches_args(args, l, all) || touches(body, l, all),
+        Stmt::LendOut(p) => at(p),
+        Stmt::Break | Stmt::Continue => false,
+    })
+}
+fn touches_in<T>(e: &Expr<T>, l: usize, all: Touch) -> bool {
+    match &e.kind {
+        EK::AddrOf(p) | EK::Lent(p) => all != Touch::Set && p.local() == Some(l),
+        EK::Intr(_, args, _) | EK::Call(_, args, _) => touches_args(args, l, all),
+        EK::CallValue(f, xs, _) => {
+            touches_in(f, l, all) || xs.iter().any(|x| touches_in(x, l, all))
+        }
+        EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().any(|x| touches_in(x, l, all)),
+        EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => touches_in(x, l, all),
+        _ => false,
+    }
+}
+pub fn writes_args<T>(args: &[Arg<T>], l: usize) -> bool {
+    touches_args(args, l, Touch::Any)
+}
+fn touches_args<T>(args: &[Arg<T>], l: usize, all: Touch) -> bool {
+    args.iter().any(|a| match a {
+        Arg::Value(v) => touches_in(v, l, all),
+        Arg::Lend(p) => all != Touch::Addr && p.local() == Some(l),
+        Arg::View(_) => false,
+    })
+}
+
 impl Place {
+    /// The local a place is part of.
+    pub fn local(&self) -> Option<usize> {
+        match self {
+            Place::Local(l) => Some(*l),
+            Place::Global(_) => None,
+            Place::Field(b, _)
+            | Place::Variant(b, _)
+            | Place::Deref(b)
+            | Place::Through(b)
+            | Place::Slot(b, _) => b.local(),
+        }
+    }
     /// The variable a place is part of.
     pub fn root_mut(&mut self) -> &mut Place {
         match self {
@@ -607,5 +680,24 @@ impl Place {
             | Place::Through(b) => b.root_mut(),
             p => p,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Taking a local's address lets a call write it, but is no write of the local itself.
+    #[test]
+    fn an_address_is_a_write_only_through_a_call() {
+        let lent = |l| Expr {
+            kind: EK::<()>::Lent(Place::Local(l)),
+            ty: (),
+            site: Site::default(),
+        };
+        let b = vec![Stmt::Expr(lent(0)), Stmt::Assign(Place::Local(1), lent(2))];
+        assert!(writes(&b, 0) && addressed(&b, 0) && !sets(&b, 0));
+        assert!(writes(&b, 1) && !addressed(&b, 1) && sets(&b, 1));
+        assert!(!writes(&b, 3) && !sets(&b, 3));
     }
 }

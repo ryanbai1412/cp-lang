@@ -904,68 +904,6 @@ impl Fc<'_> {
 }
 
 /// Whether evaluating `e` can run a call, which may write a local through a reference.
-/// Whether `b` writes local `l` or lets anything else write it: assigns it or a part, lends
-/// it, takes its address or lends it out.
-fn writes(b: &[Stmt<CTy>], l: usize) -> bool {
-    touches(b, l, true)
-}
-/// Whether `b` takes the address of local `l`, after which any call may write it.
-fn addressed(b: &[Stmt<CTy>], l: usize) -> bool {
-    touches(b, l, false)
-}
-/// Whether `b` writes local `l` (`all`) or only takes its address.
-fn touches(b: &[Stmt<CTy>], l: usize, all: bool) -> bool {
-    let at = |p: &Place| all && root(p) == Some(l);
-    b.iter().any(|s| match s {
-        Stmt::Let(x, e) => (all && *x == l) || touches_in(e, l, all),
-        Stmt::Assign(p, e) => at(p) || touches_in(e, l, all),
-        Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) => touches_in(e, l, all),
-        Stmt::Return(e) => e.as_ref().is_some_and(|e| touches_in(e, l, all)),
-        Stmt::If(c, a, b) => touches_in(c, l, all) || touches(a, l, all) || touches(b, l, all),
-        Stmt::Loop(a, b, _) => touches(a, l, all) || touches(b, l, all),
-        Stmt::Switch(c, arms) => touches_in(c, l, all) || arms.iter().any(|a| touches(a, l, all)),
-        Stmt::Check { cond, .. } => touches_in(cond, l, all),
-        Stmt::Event(_, vs) => vs.iter().any(|v| touches_in(v, l, all)),
-        Stmt::Region { args, body, .. } => touches_args(args, l, all) || touches(body, l, all),
-        Stmt::LendOut(p) => at(p),
-        Stmt::Break | Stmt::Continue => false,
-    })
-}
-fn touches_in(e: &Expr<CTy>, l: usize, all: bool) -> bool {
-    match &e.kind {
-        EK::AddrOf(p) | EK::Lent(p) => root(p) == Some(l),
-        EK::Intr(_, args, _) | EK::Call(_, args, _) => touches_args(args, l, all),
-        EK::CallValue(f, xs, _) => {
-            touches_in(f, l, all) || xs.iter().any(|x| touches_in(x, l, all))
-        }
-        EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().any(|x| touches_in(x, l, all)),
-        EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => touches_in(x, l, all),
-        _ => false,
-    }
-}
-fn writes_args(args: &[Arg<CTy>], l: usize) -> bool {
-    touches_args(args, l, true)
-}
-fn touches_args(args: &[Arg<CTy>], l: usize, all: bool) -> bool {
-    args.iter().any(|a| match a {
-        Arg::Value(v) => touches_in(v, l, all),
-        Arg::Lend(p) => all && root(p) == Some(l),
-        Arg::View(_) => false,
-    })
-}
-/// The local a place is part of.
-fn root(p: &Place) -> Option<usize> {
-    match p {
-        Place::Local(l) => Some(*l),
-        Place::Global(_) => None,
-        Place::Field(b, _)
-        | Place::Variant(b, _)
-        | Place::Deref(b)
-        | Place::Through(b)
-        | Place::Slot(b, _) => root(b),
-    }
-}
-
 fn calls(e: &Expr<CTy>) -> bool {
     match &e.kind {
         EK::Call(..) | EK::CallValue(..) => true,
@@ -1674,14 +1612,12 @@ impl<'a> Fc<'a> {
             .iter()
             .map(|&(at, l)| (base + at, l))
             .collect();
-        // A viewed place stays as it is while the call runs (`Arg::View`), so a parameter the
-        // body never writes reads it in place: no holder to gain and drop.
-        let read_only: Vec<Reg> = g
-            .params
-            .iter()
-            .zip(args)
-            .filter(|((l, _), a)| matches!(a, Arg::View(_)) && !writes(&g.body, *l))
-            .map(|((l, _), _)| off[*l])
+        // A viewed place stays as it is while the call runs (`Arg::View`), so a param own marks
+        // a view (`Func::views`) whose address the body never takes reads it in place: no holder
+        // to gain and drop.
+        let read_only: Vec<Reg> = (g.params.iter().zip(&g.views).zip(args))
+            .filter(|(((l, _), v), a)| **v && matches!(a, Arg::View(_)) && !addressed(&g.body, *l))
+            .map(|(((l, _), _), _)| off[*l])
             .collect();
         let drops: Vec<(Reg, Lay)> = drops
             .into_iter()
