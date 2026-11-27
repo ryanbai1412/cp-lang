@@ -186,7 +186,11 @@ impl Decls {
         loop {
             let unbound = binds.iter().filter(|b| b.is_none()).count();
             for (i, r) in &im.bounds {
-                let Some(bt) = binds[*i].clone() else {
+                // A type not known yet fits every impl, so none fixes the parameter yet.
+                let Some(bt) = binds[*i]
+                    .clone()
+                    .filter(|t| !matches!(t, Ty::Var(_) | Ty::Error))
+                else {
                     continue;
                 };
                 // The impl that meets it is picked as any is: a written type's before a blanket.

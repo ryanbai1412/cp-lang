@@ -183,8 +183,8 @@ impl Visitor for Shapes<'_> {
     }
 }
 
-/// Core's `@positions` trait and the names of its members marked `dom_count`, `dom_nth` and
-/// `dom_ord`: what a domain the compiler declares implements.
+/// The `@positions` trait, in whichever module declares it, and the names of its members marked
+/// `dom_count`, `dom_nth` and `dom_ord`: what a domain the compiler declares implements.
 pub struct Positions {
     pub tr: String,
     pub count: String,
@@ -192,9 +192,9 @@ pub struct Positions {
     pub ord: String,
 }
 
-pub fn positions(core: &[crate::modules::Item]) -> Option<Positions> {
-    let marked = (core.iter().flat_map(|it| &it.stmts))
-        .find(|s| s.decorators.iter().any(|d| d.name.text == "positions"));
+pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<Positions> {
+    let marked =
+        (stmts.into_iter()).find(|s| s.decorators.iter().any(|d| d.name.text == "positions"));
     let Some(StmtKind::Trait { name: tr, body, .. }) = marked.map(|s| &s.kind) else {
         return None;
     };
@@ -219,10 +219,10 @@ pub fn positions(core: &[crate::modules::Item]) -> Option<Positions> {
 
 /// A record of domains is the product domain over its fields, walked row-major with the last
 /// field fastest, as core's tuples are (R04.2.10): per shape, `impl<A: Domain, ..> Domain for
-/// (lo: A, ..)` giving the members core's `@positions` trait marks `dom_count`, `dom_nth` and
+/// (lo: A, ..)` giving the members the `@positions` trait marks `dom_count`, `dom_nth` and
 /// `dom_ord`.
-pub fn domain_impls(
-    core: &[crate::modules::Item],
+pub fn domain_impls<'a>(
+    stmts: impl IntoIterator<Item = &'a ast::Stmt>,
     shapes: &[Vec<String>],
     span: Span,
 ) -> Vec<(String, ast::Stmt)> {
@@ -231,7 +231,7 @@ pub fn domain_impls(
         count,
         nth,
         ord,
-    }) = positions(core)
+    }) = positions(stmts)
     else {
         return Vec::new();
     };

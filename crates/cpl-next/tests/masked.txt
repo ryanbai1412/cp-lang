@@ -59,6 +59,7 @@ core-07/generic-slice-generator-receiver-binds-source.cp
 core-07/in-place-needs-var.cp
 core-07/in-place-verb-on-a-lent-view.cp
 core-07/in-place-verbs.cp
+core-07/key-found-then-stored-through-a-path.cp
 core-07/mut-alias-of-map-key-finds-it-once.cp
 core-07/rev-keeps-keys.cp
 core-07/rev-view-is-not-indexable.cp

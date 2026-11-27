@@ -162,7 +162,7 @@ fn layer(
     };
     let each = crate::synth::derive_each(all());
     let convert = crate::synth::convert_marked(all);
-    let positions = crate::records::positions(&mods[CORE.0].items);
+    let positions = crate::records::positions(all());
     let derived: Vec<Vec<(ItemId, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             // Std's modules get only what a program's records add.
@@ -174,8 +174,7 @@ fn layer(
             };
             if let (true, Some(it)) = (mi == CORE.0, records.first()) {
                 if let Some(at) = it.stmts.first() {
-                    let impls =
-                        crate::records::domain_impls(&mods[CORE.0].items, &new_shapes, at.span);
+                    let impls = crate::records::domain_impls(all(), &new_shapes, at.span);
                     made.extend(impls.into_iter().map(|(n, imp)| (it.id.clone(), n, imp)));
                 }
             }
