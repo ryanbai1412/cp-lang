@@ -9,6 +9,10 @@ use cpl_next_ir::prog::{CTy, Program};
 pub(crate) type Reg = u32;
 /// No jump target: the flow leaves the block.
 pub(crate) const LEAVE: u32 = u32::MAX;
+/// A line no op of the block set: the line of the block run outside it.
+pub(crate) const INHERIT: u32 = u32::MAX;
+/// A call line kept in its chain register, set by a block outside.
+pub(crate) const SAVED: u32 = u32::MAX - 1;
 
 /// How a word prints, compares and shows in an event.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -353,8 +357,6 @@ pub(crate) struct CallCode {
     pub line: u32,
     pub args: Vec<ArgCode>,
     pub d: Reg,
-    /// Where `Op::Enter` kept the line to go back to; a region call enters at the op.
-    pub save: Option<Reg>,
 }
 pub(crate) struct FnCode {
     pub block: u32,
@@ -379,6 +381,11 @@ pub(crate) struct Code {
     pub chains: Vec<Vec<(u32, Reg)>>,
     /// Per block: from which op on each chain holds, in order.
     pub marks: Vec<Vec<(u32, u32)>>,
+    /// Per block whose lines every way through agrees on: each op's line and the call lines of
+    /// its chain (`saved`). A trap reads them here; a block with none sets `at` as it runs.
+    pub lines: Vec<Vec<(u32, u32)>>,
+    /// Call lines of a chain, outermost first: a line, `INHERIT`, or `SAVED`.
+    pub saved: Vec<Vec<u32>>,
     pub blocks: Vec<Vec<Op>>,
     pub funcs: Vec<FnCode>,
     pub places: Vec<PlaceCode>,
@@ -398,6 +405,8 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
     let mut c = Code {
         chains: vec![Vec::new()],
         marks: Vec::new(),
+        lines: Vec::new(),
+        saved: vec![Vec::new()],
         blocks: Vec::new(),
         funcs: Vec::new(),
         places: Vec::new(),
@@ -803,7 +812,7 @@ impl Fc<'_> {
                     self.inline(*f, args, self.line(*site), 0, Some((var, body.clone())));
                     return;
                 }
-                let c = self.call(*f, args, self.line(*site), 0, None);
+                let c = self.call(*f, args, self.line(*site), 0);
                 let block = self.region_body(body);
                 let at = self.ops.len();
                 self.ops.push(Op::Region {
@@ -1125,7 +1134,7 @@ impl Fc<'_> {
                 let save = self.temp(1);
                 let line = self.line(*site);
                 self.ops.push(Op::Enter { line, save });
-                let c = self.call(*f, args, line, d, Some(save));
+                let c = self.call(*f, args, line, d);
                 self.ops.push(Op::Call { c });
             }
             EK::Call(..) => self.fail("an unresolved call reached the engine"),
@@ -1138,7 +1147,7 @@ impl Fc<'_> {
     fn line(&self, site: Site) -> u32 {
         self.f.lines[site as usize]
     }
-    fn call(&mut self, f: usize, args: &[Arg<CTy>], line: u32, d: Reg, save: Option<Reg>) -> u32 {
+    fn call(&mut self, f: usize, args: &[Arg<CTy>], line: u32, d: Reg) -> u32 {
         let mut codes = Vec::with_capacity(args.len());
         for a in args {
             codes.push(match a {
@@ -1166,7 +1175,6 @@ impl Fc<'_> {
             line,
             args: codes,
             d,
-            save,
         });
         c
     }

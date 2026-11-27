@@ -4,25 +4,199 @@
 //! and jumps to the next op go. Every target, table and mark is renumbered with them.
 //! A drop or retain of a value that owns nothing goes, and so does a line kept and put back
 //! around ops that can neither trap nor change the line.
-use crate::compile::{Code, Op, Reg, LEAVE};
+use crate::compile::{Code, Op, Reg, INHERIT, LEAVE, SAVED};
 use crate::layout::Layouts;
 
 pub(crate) fn tidy(c: &mut Code) {
+    let chained: Vec<Reg> = c.chains.iter().flatten().map(|&(_, save)| save).collect();
+    // The chain registers a block reads but one outside it sets: a region body's.
+    let outside: Vec<Reg> = c
+        .marks
+        .iter()
+        .filter_map(|m| m.first())
+        .flat_map(|&(_, ch)| c.chains[ch as usize].iter().map(|&(_, save)| save))
+        .collect();
+    let mut saved: std::collections::HashMap<Vec<u32>, u32> =
+        (c.saved.iter().cloned()).zip(0..).collect();
+    c.lines = vec![Vec::new(); c.blocks.len()];
     for b in 0..c.blocks.len() {
         let mut ops = std::mem::take(&mut c.blocks[b]);
-        let chained: Vec<Reg> = c.chains.iter().flatten().map(|&(_, save)| save).collect();
+        let mut lines = Vec::new();
         let keep = quiet(&ops, &c.tables, &c.lays, &chained);
-        renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep);
+        renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
+        if let Some(fixed) = fixed_lines(&ops, c, b, &outside) {
+            let mut keep = vec![true; ops.len()];
+            for (i, (op, f)) in ops.iter_mut().zip(&fixed).enumerate() {
+                match *op {
+                    Op::Enter { save, .. } if outside.contains(&save) => {
+                        *op = Op::Imm {
+                            d: save,
+                            v: u64::from(f.after),
+                        }
+                    }
+                    Op::At { .. } | Op::Enter { .. } | Op::Restore { .. } => keep[i] = false,
+                    _ => {}
+                }
+            }
+            for f in fixed {
+                let n = c.saved.len() as u32;
+                let s = *saved.entry(f.calls).or_insert_with_key(|calls| {
+                    c.saved.push(calls.clone());
+                    n
+                });
+                lines.push((f.line, s));
+            }
+            renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
+        }
         loop {
             thread(&mut ops, &mut c.tables);
             let keep = kept(&ops, &c.tables);
             if keep.iter().all(|&k| k) {
                 break;
             }
-            renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep);
+            renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
         }
         c.blocks[b] = ops;
+        c.lines[b] = lines;
     }
+}
+
+/// The line at an op that ways setting different lines lead to.
+const MIXED: u32 = u32::MAX - 2;
+
+/// An op that may trap or run code that does: a trap in it reports the line it runs at.
+fn traps(op: &Op) -> bool {
+    !still(op)
+        && !matches!(
+            op,
+            Op::Cmp { .. }
+                | Op::Jump { .. }
+                | Op::JumpIf { .. }
+                | Op::JumpUnless { .. }
+                | Op::Switch { .. }
+                | Op::Leave(_)
+                | Op::Print { .. }
+                | Op::PrintText { .. }
+                | Op::Event { .. }
+                | Op::Text { .. }
+                | Op::InputLeft { .. }
+                | Op::RawEmpty { .. }
+                | Op::At { .. }
+                | Op::Enter { .. }
+                | Op::Restore { .. }
+        )
+}
+
+/// An op's line in a block whose lines every way through agrees on: the line a trap in it
+/// reports, the line after it and the call line of each call in its chain.
+struct Fixed {
+    line: u32,
+    after: u32,
+    calls: Vec<u32>,
+}
+
+/// The line, and the call lines kept in chain registers, when an op starts.
+type Lines = (u32, Vec<(Reg, u32)>);
+
+/// What `op` leaves the lines as, as it sets them when run; `None` for a line a block outside
+/// keeps.
+fn step(op: &Op, c: &Code, (mut line, mut saves): Lines) -> Option<Lines> {
+    match *op {
+        Op::At { line: l } => line = l,
+        Op::Enter { line: l, save } => {
+            if l != 0 {
+                line = l;
+            }
+            match saves.binary_search_by_key(&save, |s| s.0) {
+                Ok(i) => saves[i].1 = line,
+                Err(i) => saves.insert(i, (save, line)),
+            }
+        }
+        Op::Restore { save } => line = saves.iter().find(|s| s.0 == save)?.1,
+        Op::Region { c: k, .. } if c.calls[k as usize].line != 0 => {
+            line = c.calls[k as usize].line;
+        }
+        _ => {}
+    }
+    (line != SAVED).then_some((line, saves))
+}
+
+/// Each op's lines when every way to it sets the same ones, so a trap can read them from a
+/// table and the ops that set them go; `None` when they depend on the way taken.
+fn fixed_lines(ops: &[Op], c: &Code, b: usize, outside: &[Reg]) -> Option<Vec<Fixed>> {
+    let marks = &c.marks[b];
+    let first = marks.first().map_or(0, |m| m.1);
+    let mut start: Vec<(Reg, u32)> = c.chains[first as usize]
+        .iter()
+        .map(|&(_, save)| (save, SAVED))
+        .collect();
+    start.sort_unstable();
+    let mut before: Vec<Option<Lines>> = vec![None; ops.len()];
+    if let Some(b) = before.first_mut() {
+        *b = Some((INHERIT, start));
+    }
+    let mut work = vec![0usize];
+    while let Some(i) = work.pop() {
+        let Some(at) = before.get(i).cloned().flatten() else {
+            continue;
+        };
+        let after = step(&ops[i], c, at)?;
+        let mut next = targets(&ops[i], &c.tables);
+        if !matches!(ops[i], Op::Jump { .. } | Op::Leave(_) | Op::Fail { .. }) {
+            next.push(i as u32 + 1);
+        }
+        for t in next
+            .into_iter()
+            .map(|t| t as usize)
+            .filter(|&t| t < ops.len())
+        {
+            // Ways to an op that set different lines leave none an op that may trap can use.
+            let joined = match &before[t] {
+                None => after.clone(),
+                Some(o) if *o == after => continue,
+                Some(o) => {
+                    let line = if o.0 == after.0 { o.0 } else { MIXED };
+                    let saves = o.1.iter().filter(|s| after.1.contains(s)).copied();
+                    (line, saves.collect())
+                }
+            };
+            before[t] = Some(joined);
+            work.push(t);
+        }
+    }
+    let mut out = Vec::with_capacity(ops.len());
+    for (i, op) in ops.iter().enumerate() {
+        let Some(at) = before[i].clone() else {
+            out.push(Fixed {
+                line: INHERIT,
+                after: INHERIT,
+                calls: Vec::new(),
+            });
+            continue;
+        };
+        let m = marks
+            .partition_point(|m| m.0 as usize <= i)
+            .saturating_sub(1);
+        let chain = marks.get(m).map_or(&[][..], |m| &c.chains[m.1 as usize]);
+        let calls = chain
+            .iter()
+            .map(|&(_, save)| at.1.iter().find(|s| s.0 == save).map(|s| s.1))
+            .collect::<Option<Vec<_>>>()?;
+        let (line, after) = (at.0, step(op, c, at)?.0);
+        let kept = matches!(*op, Op::Enter { save, .. } if outside.contains(&save));
+        if kept && (after == INHERIT || after == MIXED)
+            || traps(op) && (line == MIXED || calls.contains(&MIXED))
+        {
+            return None;
+        }
+        let line = match *op {
+            Op::Region { .. } => after,
+            Op::Check { line: l, .. } if l != 0 => l,
+            _ => line,
+        };
+        out.push(Fixed { line, after, calls });
+    }
+    Some(out)
 }
 
 /// Where a jump to `t` ends up after the jumps it lands on; a cycle of jumps stays.
@@ -215,7 +389,13 @@ fn kept(ops: &[Op], tables: &[Vec<u32>]) -> Vec<bool> {
     seen
 }
 
-fn renumber(ops: &mut Vec<Op>, marks: &mut [(u32, u32)], tables: &mut [Vec<u32>], keep: &[bool]) {
+fn renumber(
+    ops: &mut Vec<Op>,
+    marks: &mut [(u32, u32)],
+    tables: &mut [Vec<u32>],
+    keep: &[bool],
+    lines: &mut Vec<(u32, u32)>,
+) {
     let mut at = Vec::with_capacity(keep.len() + 1);
     let mut n = 0u32;
     for &k in keep {
@@ -229,6 +409,13 @@ fn renumber(ops: &mut Vec<Op>, marks: &mut [(u32, u32)], tables: &mut [Vec<u32>]
         i += 1;
         keep[i - 1]
     });
+    if !lines.is_empty() {
+        let mut i = 0;
+        lines.retain(|_| {
+            i += 1;
+            keep[i - 1]
+        });
+    }
     for op in ops.iter_mut() {
         match op {
             Op::Jump { t } | Op::JumpUnless { t, .. } | Op::JumpIf { t, .. } => *t = to(*t),
@@ -272,7 +459,7 @@ mod tests {
             if keep.iter().all(|&k| k) {
                 break;
             }
-            renumber(&mut ops, &mut marks, &mut [], &keep);
+            renumber(&mut ops, &mut marks, &mut [], &keep, &mut Vec::new());
         }
         let shown: Vec<String> = ops.iter().map(|o| format!("{o:?}")).collect();
         assert_eq!(

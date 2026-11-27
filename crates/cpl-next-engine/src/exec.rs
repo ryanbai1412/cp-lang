@@ -33,10 +33,9 @@ struct RegionAt {
 }
 struct Frame {
     fp: usize,
-    /// Its fn, the frame that called it and the line of the call: a trap's call stack.
+    /// Its fn and the frame that called it: a trap's call stack.
     f: u32,
     parent: Option<usize>,
-    line: u32,
     end: usize,
     region: Option<RegionAt>,
     pending: Option<Flow>,
@@ -52,8 +51,8 @@ struct M<'a> {
     funcs: &'a [Func<CTy>],
     /// The frame whose code is running: a region body runs in its caller's.
     cur: usize,
-    /// Each block run a trap left, innermost first: the block, its op and the frame.
-    trail: Vec<(u32, usize, usize)>,
+    /// Each block run a trap left, innermost first: the block, its op, the frame and `at`.
+    trail: Vec<(u32, usize, usize, u32)>,
     c: &'a Code,
     stack: Vec<u64>,
     /// Object 0 is no object: a handle of 0 has none yet.
@@ -100,7 +99,7 @@ pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
     };
     let fp = c.globals as usize;
     let trap = m.run_fn(c.main, fp, None).err().map(|t| Trap {
-        line: m.at,
+        line: m.trail_lines().first().copied().unwrap_or(0),
         stack: m.call_stack(),
         ..t
     });
@@ -323,7 +322,6 @@ impl M<'_> {
             fp,
             f,
             parent,
-            line: self.at,
             end,
             region,
             pending: None,
@@ -392,11 +390,15 @@ impl M<'_> {
     /// The calls a trap left, innermost first: each frame's fn, and each call inlined into
     /// it, from the chain of the op it stopped at, with the line running in it.
     fn call_stack(&self) -> Vec<String> {
+        let lines = self.trail_lines();
         let mut calls = Vec::new();
-        let (mut k, mut line, mut pos) = (Some(self.cur), self.at, 0);
+        let (mut k, mut pos) = (Some(self.cur), 0);
         while let Some(fr) = k.and_then(|i| self.frames.get(i)) {
+            let mut line = 0;
             if let Some(i) = self.trail[pos..].iter().position(|t| Some(t.2) == k) {
-                let (b, pc, _) = self.trail[pos + i];
+                let (b, pc, _, _) = self.trail[pos + i];
+                let outside = lines.get(pos + i + 1).copied().unwrap_or(0);
+                line = lines[pos + i];
                 pos += i + 1;
                 let marks = &self.c.marks[b as usize];
                 let at = marks
@@ -405,15 +407,38 @@ impl M<'_> {
                 let chain = marks
                     .get(at)
                     .map_or(&[][..], |m| &self.c.chains[m.1 as usize]);
-                for &(g, save) in chain.iter().rev() {
+                let saved = self.c.lines[b as usize]
+                    .get(pc)
+                    .map(|&(_, s)| &self.c.saved[s as usize]);
+                for (j, &(g, save)) in chain.iter().enumerate().rev() {
                     calls.push((g as usize, line));
-                    line = self.stack[fr.fp + save as usize] as u32;
+                    line = match saved.map(|s| s[j]) {
+                        Some(SAVED) | None => self.stack[fr.fp + save as usize] as u32,
+                        Some(l) => l,
+                    };
+                    if line == INHERIT {
+                        line = outside;
+                    }
                 }
             }
             calls.push((fr.f as usize, line));
-            (k, line) = (fr.parent, fr.line);
+            k = fr.parent;
         }
         call_stack(self.funcs, calls)
+    }
+    /// The line each block run of the trail stopped at, innermost first: from the block's
+    /// table, or `at` for a block with none. A block that set none has the line outside it.
+    fn trail_lines(&self) -> Vec<u32> {
+        let mut lines = vec![0; self.trail.len()];
+        let mut outside = 0;
+        for (i, &(b, pc, _, at)) in self.trail.iter().enumerate().rev() {
+            let own = self.c.lines[b as usize].get(pc).map_or(at, |&(l, _)| l);
+            if own != INHERIT {
+                outside = own;
+            }
+            lines[i] = outside;
+        }
+        lines
     }
     fn enter(&mut self, line: u32) -> u32 {
         if line != 0 {
@@ -424,10 +449,12 @@ impl M<'_> {
 
     fn exec(&mut self, b: u32, fr: usize) -> R<Flow> {
         let mut pc = 0;
+        let outside = std::mem::replace(&mut self.at, INHERIT);
         let flow = self.run_block(b, fr, &mut pc);
         if flow.is_err() {
-            self.trail.push((b, pc.saturating_sub(1), fr));
+            self.trail.push((b, pc.saturating_sub(1), fr, self.at));
         }
+        self.at = outside;
         flow
     }
     #[inline(always)]
@@ -518,9 +545,6 @@ impl M<'_> {
                 Op::Enter { line, save } => self.stack[r(save)] = u64::from(self.enter(line)),
                 Op::Call { c: k } => {
                     self.call(k, fr, None)?;
-                    if let Some(save) = c.calls[k as usize].save {
-                        self.at = self.stack[r(save)] as u32;
-                    }
                 }
                 Op::Region {
                     c: k,
@@ -529,9 +553,8 @@ impl M<'_> {
                     lend,
                     jumps,
                 } => {
-                    let here = self.enter(c.calls[k as usize].line);
+                    self.enter(c.calls[k as usize].line);
                     let exit = self.call(k, fr, Some(RegionAt { fr, body, var }))?;
-                    self.at = here;
                     let to = match exit {
                         None => continue,
                         // A generator's region is a loop body: `break` ends the loop.
@@ -554,10 +577,10 @@ impl M<'_> {
                     self.release(lay, Loc::Stack(v));
                     let n = self.size(lay);
                     self.stack.copy_within(r(s)..r(s) + n, v);
-                    let (here, was) = (self.at, self.cur);
+                    let was = self.cur;
                     self.cur = rg.fr;
                     let flow = self.exec(rg.body, rg.fr)?;
-                    (self.at, self.cur) = (here, was);
+                    self.cur = was;
                     match flow {
                         Flow::Normal | Flow::Continue => {}
                         other => return Ok(Flow::Exit(Box::new(other))),
@@ -571,10 +594,10 @@ impl M<'_> {
                     let loc = self.loc(fp, p)?;
                     self.release(lay, Loc::Stack(v));
                     self.read(loc, v, n);
-                    let (here, was) = (self.at, self.cur);
+                    let was = self.cur;
                     self.cur = rg.fr;
                     let flow = self.exec(rg.body, rg.fr)?;
-                    (self.at, self.cur) = (here, was);
+                    self.cur = was;
                     let loc = self.loc(fp, p)?;
                     self.write(loc, v, n);
                     self.stack[v..v + n].fill(0);

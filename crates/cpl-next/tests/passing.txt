@@ -1319,6 +1319,8 @@ next/n_engine_04_inlined_return_into_caller_local.cp
 next/n_engine_05_global_lent_to_inlined_method.cp
 next/n_engine_06_field_assign_from_forwarded_temp.cp
 next/n_engine_07_loop_constant_in_region_body.cp
+next/n_engine_08_trap_line_after_a_join.cp
+next/n_engine_09_trap_in_a_yielded_body.cp
 next/n_enum_01_values_and_order.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp
