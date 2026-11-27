@@ -680,7 +680,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
     }
     if cx.cyclic.get() {
-        cx.errors.push("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name".into());
+        cx.errors.push(Msg::internal("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name"));
     }
     Typed {
         domains: std::mem::take(&mut cx.domains),

@@ -11,7 +11,7 @@ impl<'a> Cx<'a> {
     pub(super) fn list_struct(&mut self, span: Span) -> Option<StructId> {
         let list = self.d.core_struct("List");
         if list.is_none() {
-            self.err(span, "internal: no `List` is declared");
+            self.err(span, Msg::internal("no `List` is declared"));
         }
         list
     }
@@ -458,7 +458,7 @@ impl<'a> Cx<'a> {
     /// A call of the library fn `name` with arguments already typed.
     pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {
         let Some(decl) = self.d.core_fn(name) else {
-            self.err(span, format!("internal: the library has no `{name}`"));
+            self.err(span, Msg::internal(format!("the library has no `{name}`")));
             return TExpr {
                 kind: TK::Error,
                 ty: Ty::Error,

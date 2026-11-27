@@ -220,7 +220,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             }
             match n {
                 "Str" if struct_named(cx.names, "Str").is_none() => {
-                    errors.push("internal: `Str` needs the library's `Str`".into());
+                    errors.push(Msg::internal("`Str` needs the library's `Str`"));
                     Ty::Error
                 }
                 "Raw" if a.len() == 1 => Ty::Raw(Box::new(a.remove(0))),
@@ -312,7 +312,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             match struct_named(cx.names, "Array") {
                 Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
                 None => {
-                    errors.push("internal: `[D]T` needs the library's `Array`".into());
+                    errors.push(Msg::internal("`[D]T` needs the library's `Array`"));
                     Ty::Error
                 }
             }

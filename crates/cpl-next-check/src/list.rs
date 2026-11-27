@@ -29,7 +29,7 @@ impl Cx<'_> {
         };
         let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
         let Some(ctor) = ls.ctor else {
-            self.err(span, "internal: `List` declares no `new`");
+            self.err(span, Msg::internal("`List` declares no `new`"));
             return None;
         };
         let new = self.fnref(ctor, vec![elem.clone()], Vec::new());

@@ -631,8 +631,9 @@ impl Link<'_> {
             found = default(args.iter().map(|t| self.ty(t, env)).collect());
         }
         if found.is_none() {
-            self.errors
-                .push(format!("no impl provides `{method}` for this type").into());
+            self.errors.push(Msg::internal(format!(
+                "no impl provides `{method}` for this type"
+            )));
         }
         found
     }
@@ -789,7 +790,7 @@ fn check_finite(p: &mut Program) {
         visit(p, t, &mut Vec::new(), &mut bad);
     }
     if bad {
-        p.errors.push("a function value captures a function value that can hold itself, so it has no fixed size; keep the steps in a list and apply them in a loop".into());
+        p.errors.push(Msg::internal("a function value captures a function value that can hold itself, so it has no fixed size; keep the steps in a list and apply them in a loop"));
     }
 }
 
@@ -811,7 +812,7 @@ pub fn canonicalize(p: &Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
     if bad.is_empty() {
         Ok(funcs)
     } else {
-        Err(bad.into_iter().map(Msg::from).collect())
+        Err(bad.into_iter().map(Msg::internal).collect())
     }
 }
 
@@ -920,7 +921,7 @@ fn canon_block(
                             arms,
                         ));
                     }
-                    _ => bad.push("internal: a generator value walked without its closure".into()),
+                    _ => bad.push("a generator value walked without its closure".into()),
                 }
             }
             Stmt::Region {
@@ -1254,8 +1255,9 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         }
     }
     if !needs[p.main].is_empty() {
-        p.errors
-            .push("a domain's size is needed where the domain is not in scope".into());
+        p.errors.push(Msg::internal(
+            "a domain's size is needed where the domain is not in scope",
+        ));
         return;
     }
     // Hidden parameters come first, and count as captures: a closure holds them.
@@ -1400,7 +1402,9 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         rw.block(&mut body);
         p.insts[i].body = body;
         if rw.no_source.get() {
-            p.errors.push("internal: a domain's size is used in a fn that neither declares it nor is handed it".into());
+            p.errors.push(Msg::internal(
+                "a domain's size is used in a fn that neither declares it nor is handed it",
+            ));
         }
     }
 }

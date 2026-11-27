@@ -1111,7 +1111,7 @@ fn add_fn(
             f.name.text
         );
         if d.is_library(m) {
-            errors.push(msg.into());
+            errors.push(Msg::internal(msg));
         } else {
             let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS;
             d.misdeclared

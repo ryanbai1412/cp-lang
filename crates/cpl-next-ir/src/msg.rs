@@ -51,28 +51,23 @@ impl Msg {
     pub fn verdict(code: Code, text: impl Into<String>) -> Msg {
         Msg {
             code,
-            ..Msg::from(text.into())
+            ..Msg::internal(text)
         }
     }
 }
 
-impl From<String> for Msg {
-    fn from(text: String) -> Msg {
+impl Msg {
+    /// The pipeline is at fault, not the program: no rule names it.
+    pub fn internal(text: impl Into<String>) -> Msg {
         Msg {
             at: None,
             module: None,
             layer: None,
             refusal: None,
             code: cpl_diag::codes::INTERNAL,
-            text,
+            text: text.into(),
             help: None,
         }
-    }
-}
-
-impl From<&str> for Msg {
-    fn from(text: &str) -> Msg {
-        Msg::from(text.to_string())
     }
 }
 
@@ -80,7 +75,7 @@ impl From<Unbuilt> for Msg {
     fn from(u: Unbuilt) -> Msg {
         Msg {
             refusal: Some(u),
-            ..Msg::from(String::new())
+            ..Msg::internal("")
         }
     }
 }
