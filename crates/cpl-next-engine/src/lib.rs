@@ -6,7 +6,7 @@
 //! reference interpreter's, which `tests/programs.rs` checks on every case.
 mod compile;
 mod exec;
-mod layout;
+use cpl_next_ir::layout;
 mod peep;
 
 use cpl_next_ir::ir::Func;

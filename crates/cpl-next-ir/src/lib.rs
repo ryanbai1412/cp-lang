@@ -5,6 +5,7 @@ pub mod build;
 pub mod facts;
 pub mod ids;
 pub mod ir;
+pub mod layout;
 pub mod msg;
 pub mod ops;
 pub mod opt;

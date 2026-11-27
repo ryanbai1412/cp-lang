@@ -1,12 +1,12 @@
 //! How a value of each type lies in words. A type's layout is a number; `Layouts` gives its
 //! size, its shape and whether it holds storage handles, which copying and dropping count.
-use cpl_next_ir::prog::{CTy, Program};
+use crate::prog::{CTy, Program};
 use std::collections::HashMap;
 
-pub(crate) type Lay = u32;
+pub type Lay = u32;
 
 #[derive(Clone, Debug)]
-pub(crate) enum Shape {
+pub enum Shape {
     /// No words: `Unit`.
     Zero,
     /// One word: an integer, a Bool, a Char, a U64, a domain position or a stack address.
@@ -20,7 +20,7 @@ pub(crate) enum Shape {
 }
 
 #[derive(Default)]
-pub(crate) struct Layouts {
+pub struct Layouts {
     pub shape: Vec<Shape>,
     pub size: Vec<u32>,
     /// The offsets of the handles a value holds, when they are the same for every value (no
