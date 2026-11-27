@@ -1493,9 +1493,7 @@ def next_std_names(root: Path) -> list[str]:
     has no privileged std: the library says what a declaration is (a marker or a trait), and the
     compiler reads that, so this reaches 0."""
     std = root / "crates/cpl-next/std.cp"
-    if not std.is_file():
-        return []
-    sources = [std, *sorted((root / "std").glob("**/*.cp"))]
+    sources = [*([std] if std.is_file() else []), *sorted((root / "std").glob("**/*.cp"))]
     names = {"print", "write", "read"}
     for f in sources:
         names |= set(NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")))

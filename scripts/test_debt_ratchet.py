@@ -1843,6 +1843,13 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
             self.assertEqual(dr.std_names_outside_rt(root), ["any"])
 
+    def test_next_std_names_counts_without_the_core_stand_in(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/seq.cp", "pub fn all<S>(self: S) -> Bool = true\n")
+            self._write(root, "crates/cpl-next-check/src/expr.rs", 'if name == "all" {}\n')
+            self.assertTrue(dr.next_std_names(root))
+
     def test_ir_builtin_names_reads_tuple_arms(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
