@@ -404,6 +404,9 @@ impl<'a> Cx<'a> {
     }
     /// An expression a condition tests: a `Bool`, never an integer or optional read as one (R02.11.1).
     pub(super) fn bool_cond(&mut self, e: &ast::Expr) -> TExpr {
+        if self.question_in_cond(e) {
+            return Self::error_node(e.span);
+        }
         let v = self.expr(e, Some(&Ty::Bool));
         let t = self.shallow(&v.ty);
         if matches!(t, Ty::Bool | Ty::Var(_) | Ty::Error) || self.coercion(&t, &Ty::Bool).is_some()
@@ -570,7 +573,9 @@ impl<'a> Cx<'a> {
     }
     pub(super) fn stmt(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
         let (mark, at) = (self.list_doms.len(), out.len());
+        let outer = std::mem::replace(&mut self.rhs_extent, s.rhs_extent());
         self.stmt_kind(s, out);
+        self.rhs_extent = outer;
         let mut pre = Vec::new();
         for (d, n, span) in self.list_doms.split_off(mark) {
             if !matches!(self.shallow(&d), Ty::Var(_)) {
@@ -1053,7 +1058,7 @@ impl<'a> Cx<'a> {
                 self.stmt(&ast::Stmt { kind, ..s.clone() }, out)
             }
             StmtKind::Expr(e) => {
-                if self.cell_method(e, out) {
+                if self.dropped_question(e) || self.cell_method(e, out) {
                     return;
                 }
                 let v = self.expr(e, None);

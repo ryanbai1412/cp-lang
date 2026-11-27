@@ -1120,6 +1120,9 @@ impl<'a> Cx<'a> {
     /// The value of `e`. One read from a slot of a range type is an `Int` (R03.1.4), unless it
     /// goes straight into a slot of the same range.
     pub(super) fn expr(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
+        if self.rhs_extent.take_if(|at| *at == e.span).is_some() {
+            return self.extent(e, want);
+        }
         let v = self.expr_as_typed(e, want);
         match self.shallow(&v.ty) {
             have @ (Ty::Range(..) | Ty::RangeOf(_))
@@ -1224,7 +1227,10 @@ impl<'a> Cx<'a> {
                 rhs,
                 ..
             } => {
-                let l = self.expr(lhs, None);
+                let l = match lhs.bare_try() {
+                    Some(_) => self.extent(lhs, None),
+                    None => self.expr(lhs, None),
+                };
                 let Some(inner) = self.optional_of(&l.ty) else {
                     if self.shallow(&l.ty) != Ty::Error {
                         let t = self.show(&l.ty);
@@ -1834,6 +1840,7 @@ impl<'a> Cx<'a> {
                 }
             },
             ExprKind::With { base, updates } => self.record_update(base, updates, span),
+            ExprKind::Try(x) => self.question(x, span),
             other => self.unbuilt_expr(other, span),
         }
     }

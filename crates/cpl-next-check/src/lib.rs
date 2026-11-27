@@ -29,6 +29,7 @@ mod list;
 mod member;
 mod oblige;
 mod pattern;
+mod question;
 mod range;
 mod recipe;
 mod stmt;
@@ -361,6 +362,9 @@ struct Cx<'a> {
     const_init: Vec<TStmt>,
     /// Inside `with checks(overflow: off)`: `Int` arithmetic wraps.
     wraps: bool,
+    /// The `?` extents being checked, innermost last, and the statement right-hand side that is one.
+    tries: Vec<question::Extent>,
+    rhs_extent: Option<Span>,
     /// The fields `with` lines set around the code being checked, innermost last (R09.1.2).
     frames: Vec<CtxFrame>,
     /// The lists comprehensions being checked fill, innermost last.
@@ -407,6 +411,8 @@ pub fn check(
     let mut cx = Cx {
         values: consts,
         wraps: false,
+        tries: Vec::new(),
+        rhs_extent: None,
         frames: Vec::new(),
         filling: Vec::new(),
         ctx_copies: HashMap::new(),
@@ -963,7 +969,10 @@ impl<'a> Cx<'a> {
             // An expression that never gives a value is the body, not its result (R01.6.7).
             FnBody::Expr(e) if e.leaves() => self.block(&one_stmt(e), Some(&ret)),
             FnBody::Expr(e) => {
-                let v = self.expr(e, Some(&ret));
+                let v = match e.bare_try() {
+                    Some(_) => self.extent(e, Some(&ret)),
+                    None => self.expr(e, Some(&ret)),
+                };
                 self.coerce(v, &ret)
             }
             FnBody::None => match f.owner {
