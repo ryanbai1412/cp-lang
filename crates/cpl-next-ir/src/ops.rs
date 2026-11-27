@@ -303,6 +303,14 @@ pub fn show_fmt(v: Scalar, f: Fmt, out: &mut String) {
         Scalar::U64(u) if f.zero => write!(out, "{u:0w$}"),
         Scalar::U64(u) => write!(out, "{u:w$}"),
         // Ten decimals unless a precision is given (R10.3.4).
+        // Not a number and the infinities are spelled as C's printf spells them, and padded
+        // with spaces only, so a C++ build prints what the engine prints.
+        Scalar::F64(b) if !f64::from_bits(b).is_finite() => {
+            let x = f64::from_bits(b);
+            let sign = if x.is_sign_negative() { "-" } else { "" };
+            let name = if x.is_nan() { "nan" } else { "inf" };
+            write!(out, "{:>w$}", format!("{sign}{name}"))
+        }
         Scalar::F64(b) => {
             let (x, d) = (f64::from_bits(b), f.digits.unwrap_or(10) as usize);
             match f.zero {

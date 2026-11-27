@@ -1189,6 +1189,70 @@ mod tests {
                 format!("{}\n", i32::from(ops::is_space(c))),
             );
         }
+        let floats = [
+            0.0,
+            -0.0,
+            1.5,
+            -2.25,
+            1e300,
+            -1e-300,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NAN,
+            -f64::NAN,
+        ];
+        let fmts = [
+            (0, false, None),
+            (8, false, None),
+            (8, true, None),
+            (12, true, Some(3)),
+            (0, false, Some(0)),
+        ];
+        for (width, zero, digits) in fmts {
+            let f = ops::Fmt {
+                width,
+                zero,
+                digits,
+            };
+            let shown = |v: ops::Scalar| {
+                let mut out = String::new();
+                ops::show_fmt(v, f, &mut out);
+                format!("[{out}]\n")
+            };
+            let (w, z, d) = (width, zero, digits.unwrap_or(10));
+            for a in ints {
+                case(
+                    format!(
+                        "printf(\"[\"); cpl_outf(INT64_C({a}), {w}, {z}, {d}); printf(\"]\\n\");"
+                    ),
+                    shown(ops::Scalar::Int(a)),
+                );
+            }
+            for a in words {
+                case(
+                    format!(
+                        "printf(\"[\"); cpl_outf(UINT64_C({a}), {w}, {z}, {d}); printf(\"]\\n\");"
+                    ),
+                    shown(ops::Scalar::U64(a)),
+                );
+            }
+            for x in floats {
+                let b = x.to_bits();
+                case(
+                    format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); printf(\"[\"); cpl_outf(x, {w}, {z}, {d}); printf(\"]\\n\");"),
+                    shown(ops::Scalar::F64(b)),
+                );
+            }
+        }
+        for x in floats {
+            let b = x.to_bits();
+            let mut out = String::new();
+            ops::show(ops::Scalar::F64(b), &mut out);
+            case(
+                format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); printf(\"[\"); cpl_out(x); printf(\"]\\n\");"),
+                format!("[{out}]\n"),
+            );
+        }
         let mut cpp = runtime();
         cpp.push_str("#include <sys/wait.h>\nint main() {\n");
         for c in &cases {
