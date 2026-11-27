@@ -510,60 +510,18 @@ impl<'a> Machine<'a> {
         self.at
     }
     fn intr(&mut self, op: Intr, args: &'a [Arg<CTy>], fp: usize) -> R<V> {
+        if ops::on_scalars(op) {
+            let mut xs = [ops::Scalar::Bool(false); 2];
+            for (x, a) in xs.iter_mut().zip(args) {
+                *x =
+                    scalar(&self.arg(a, fp)?).map_or_else(|| broken("a non-scalar operand"), Ok)?;
+            }
+            let Some(v) = ops::scalar(op, &xs[..args.len().min(2)]) else {
+                return broken("operands of kinds the operation does not take");
+            };
+            return Ok(value(v?));
+        }
         Ok(match op {
-            Intr::Add
-            | Intr::Sub
-            | Intr::Mul
-            | Intr::Div
-            | Intr::Rem
-            | Intr::BitAnd
-            | Intr::BitOr
-            | Intr::BitXor
-            | Intr::Pow
-            | Intr::Shl
-            | Intr::Shr
-            | Intr::AddWrap
-            | Intr::SubWrap
-            | Intr::MulWrap
-            | Intr::PowWrap
-            | Intr::ShlWrap => {
-                if let (Arg::Value(x), Arg::Value(y)) = (&args[0], &args[1]) {
-                    if x.ty == CTy::U64 {
-                        let (a, b) = (self.expr(x, fp)?, self.expr(y, fp)?);
-                        return u64_op(op, a, b);
-                    }
-                    if x.ty == CTy::F64 {
-                        let (a, b) = (self.float(&args[0], fp)?, self.float(&args[1], fp)?);
-                        return Ok(V::F64(ops::float(op, a, b)?));
-                    }
-                }
-                let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
-                V::Int(ops::int(op, a, b)?)
-            }
-            Intr::Neg | Intr::Abs if matches!(&args[0], Arg::Value(x) if x.ty == CTy::F64) => {
-                let x = self.float(&args[0], fp)?;
-                V::F64(if op == Intr::Neg {
-                    ops::neg_float(x)
-                } else {
-                    ops::abs_f64(x)
-                })
-            }
-            Intr::Neg => V::Int(ops::neg(self.int(&args[0], fp)?)?),
-            Intr::Abs => V::Int(ops::abs(self.int(&args[0], fp)?)?),
-            Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below => {
-                let (a, b) = (self.arg(&args[0], fp)?, self.arg(&args[1], fp)?);
-                if let (V::F64(a), V::F64(b)) = (&a, &b) {
-                    return Ok(V::Bool(ops::compare_float(op, *a, *b)?));
-                }
-                let (a, b) = match (a, b) {
-                    (V::Int(a), V::Int(b)) => (i128::from(a), i128::from(b)),
-                    (V::Bool(a), V::Bool(b)) => (i128::from(a), i128::from(b)),
-                    (V::U64(a), V::U64(b)) => (i128::from(a), i128::from(b)),
-                    _ => return broken("comparison of a value of another kind"),
-                };
-                V::Bool(ops::compare(op, a, b)?)
-            }
-            Intr::Not => V::Bool(ops::not(self.bool(&args[0], fp)?)),
             Intr::RawEmpty => V::Raw(Rc::new(Store::Any(Vec::new()))),
             Intr::RawNew => {
                 let n = self.int(&args[0], fp)?;
@@ -646,25 +604,6 @@ impl<'a> Machine<'a> {
             }
             Intr::RandWord => V::U64(ops::rand_word(&mut self.rand)),
             Intr::Unset => V::Unit,
-            Intr::ToU64 => V::U64(ops::u64_of_int(self.int(&args[0], fp)?)),
-            Intr::ToF64 => V::F64(ops::f64_of_int(self.int(&args[0], fp)?)),
-            Intr::Float(f) => {
-                let a = self.float(&args[0], fp)?;
-                let b = match args.get(1) {
-                    Some(b) => self.float(b, fp)?,
-                    None => 0.0,
-                };
-                V::F64(ops::float_fn(f, a, b))
-            }
-            Intr::ToInt(r) => V::Int(ops::to_int(r, self.float(&args[0], fp)?)?),
-            Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth | Intr::BitCeil => {
-                let w = match self.arg(&args[0], fp)? {
-                    V::U64(u) => u,
-                    V::Int(i) => ops::u64_of_int(i),
-                    _ => return broken("a word of another kind"),
-                };
-                V::Int(ops::bit_count(op, w)?)
-            }
             Intr::F64Len | Intr::F64Text => {
                 let t = ops::f64_text(self.float(&args[0], fp)?, self.int(&args[1], fp)?);
                 match op {
@@ -672,21 +611,11 @@ impl<'a> Machine<'a> {
                     _ => V::Raw(Rc::new(Store::Any(t.bytes().map(V::Char).collect()))),
                 }
             }
-            Intr::FromU64 => {
-                let V::U64(u) = self.arg(&args[0], fp)? else {
-                    return broken("a U64 operand of another kind");
-                };
-                V::Int(ops::int_of_u64(u)?)
-            }
-            Intr::CharOf => V::Char(ops::char_of(self.int(&args[0], fp)?)?),
-            Intr::CodeOf => match self.arg(&args[0], fp)? {
-                V::Char(c) => V::Int(ops::code_of(c)),
-                _ => return broken("the code of a non-Char"),
-            },
             Intr::ReadInt => {
                 let t = self.input.token();
                 V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)
             }
+            _ => return broken("a scalar operation outside `ops::scalar`"),
         })
     }
 }
@@ -702,15 +631,12 @@ fn scalar(v: &V) -> Option<ops::Scalar> {
     })
 }
 
-fn u64_op(op: Intr, a: V, b: V) -> R<V> {
-    let b = match (op, b) {
-        (Intr::Shl | Intr::Shr, V::Int(b)) => b as u64,
-        (Intr::Shl | Intr::Shr, _) => return broken("a shift amount of another kind"),
-        (_, V::U64(b)) => b,
-        _ => return broken("a U64 operand of another kind"),
-    };
-    let V::U64(a) = a else {
-        return broken("a U64 operand of another kind");
-    };
-    Ok(V::U64(ops::word(op, a, b)?))
+fn value(s: ops::Scalar) -> V {
+    match s {
+        ops::Scalar::Int(i) => V::Int(i),
+        ops::Scalar::U64(u) => V::U64(u),
+        ops::Scalar::F64(x) => V::F64(f64::from_bits(x)),
+        ops::Scalar::Bool(b) => V::Bool(b),
+        ops::Scalar::Char(c) => V::Char(c),
+    }
 }

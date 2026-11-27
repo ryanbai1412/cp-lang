@@ -601,7 +601,7 @@ impl M<'_> {
                         f64::from_bits(self.stack[r(a)]),
                         f64::from_bits(self.stack[r(b)]),
                     );
-                    self.stack[r(d)] = ops::float_fn(f, x, y).to_bits()
+                    self.stack[r(d)] = ops::float_fn(f, x, y)?.to_bits()
                 }
                 Op::ToInt { round, d, a } => {
                     let x = f64::from_bits(self.stack[r(a)]);

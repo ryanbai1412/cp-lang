@@ -21,7 +21,6 @@ macro_rules! put_line {
 
 /// The runtime up to `cpl_trap`.
 const RUNTIME_HEAD: &str = r#"#include <cstdint>
-#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cerrno>
@@ -58,10 +57,6 @@ static int cpl_at = 0;
 
 /// The rest of the runtime, after the trap table `ops::cpp_trap_table` writes.
 const RUNTIME: &str = r#"[[noreturn]] static void cpl_fail(int f) { cpl_trap(cpl_faults[f][0], cpl_faults[f][1]); }
-static inline int64_t cpl_to_int(double y) {
-    if (std::isnan(y) || std::fabs(y) >= 9223372036854775808.0) cpl_fail(CPL_F64_PAST_INT);
-    return (int64_t)y;
-}
 static char cpl_altstack[1 << 16];
 static void cpl_segv(int) {
     // Only `write` is safe here, so the line is printed by hand.
@@ -640,7 +635,7 @@ impl Emit<'_> {
                     Intr::F64Len => format!("cpl_f64_len({}, {})", a[0], a[1]),
                     Intr::F64Text => format!("cpl_f64_text({}, {})", a[0], a[1]),
                     Intr::Float(f) => format!("{}({})", f.cpp(), a.join(", ")),
-                    Intr::ToInt(r) => format!("cpl_to_int({}({}))", r.cpp(), a[0]),
+                    Intr::ToInt(r) => format!("cpl_int_of_f64({}({}))", r.cpp(), a[0]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
                     Intr::Popcount => format!("cpl_popcount((uint64_t)({}))", a[0]),
                     Intr::Ctz => format!("cpl_ctz((uint64_t)({}))", a[0]),
@@ -1166,9 +1161,9 @@ mod tests {
         for x in floats {
             let c = format!("{:?}", f64::from_bits(x.to_bits()));
             let lit = if x.is_nan() {
-                "NAN".to_string()
+                "__builtin_nan(\"\")".to_string()
             } else if x.is_infinite() {
-                "INFINITY".to_string()
+                "__builtin_inf()".to_string()
             } else {
                 c
             };
@@ -1180,7 +1175,7 @@ mod tests {
             ] {
                 case(
                     format!(
-                        "printf(\"%lld\\n\", (long long)cpl_to_int({}({lit})));",
+                        "printf(\"%lld\\n\", (long long)cpl_int_of_f64({}({lit})));",
                         r.cpp()
                     ),
                     expect(ops::to_int(r, x)),
@@ -1207,7 +1202,7 @@ mod tests {
                             ")"
                         },
                     ),
-                    format!("{}\n", hex(ops::float_fn(f, x, 0.75))),
+                    format!("{}\n", hex(ops::float_fn(f, x, 0.75).unwrap())),
                 );
             }
         }

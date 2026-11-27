@@ -128,19 +128,19 @@ pub enum FloatFn {
     Ln,
 }
 impl FloatFn {
-    /// The `<cmath>` fn both engines call: the interpreter's `f64` methods are the same libm.
+    /// The C++ runtime's row for the fn (`ops`), which every engine runs.
     pub fn cpp(self) -> &'static str {
         match self {
-            FloatFn::Sqrt => "std::sqrt",
-            FloatFn::Sin => "std::sin",
-            FloatFn::Cos => "std::cos",
-            FloatFn::Tan => "std::tan",
-            FloatFn::Asin => "std::asin",
-            FloatFn::Acos => "std::acos",
-            FloatFn::Atan2 => "std::atan2",
-            FloatFn::Hypot => "std::hypot",
-            FloatFn::Exp => "std::exp",
-            FloatFn::Ln => "std::log",
+            FloatFn::Sqrt => "cpl_sqrt",
+            FloatFn::Sin => "cpl_sin",
+            FloatFn::Cos => "cpl_cos",
+            FloatFn::Tan => "cpl_tan",
+            FloatFn::Asin => "cpl_asin",
+            FloatFn::Acos => "cpl_acos",
+            FloatFn::Atan2 => "cpl_atan2",
+            FloatFn::Hypot => "cpl_hypot",
+            FloatFn::Exp => "cpl_exp",
+            FloatFn::Ln => "cpl_ln",
         }
     }
 }
@@ -155,10 +155,10 @@ pub enum Rounding {
 impl Rounding {
     pub fn cpp(self) -> &'static str {
         match self {
-            Rounding::Floor => "std::floor",
-            Rounding::Ceil => "std::ceil",
-            Rounding::Round => "std::round",
-            Rounding::Trunc => "std::trunc",
+            Rounding::Floor => "cpl_floor",
+            Rounding::Ceil => "cpl_ceil",
+            Rounding::Round => "cpl_round",
+            Rounding::Trunc => "cpl_trunc",
         }
     }
 }

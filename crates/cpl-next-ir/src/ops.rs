@@ -207,33 +207,30 @@ pub fn float(op: Intr, a: f64, b: f64) -> Result<f64, Fault> {
 }
 
 /// `sqrt`, `sin`, `atan2` and the rest: `b` is read only by the fns of two operands.
-pub fn float_fn(f: FloatFn, a: f64, b: f64) -> f64 {
+pub fn float_fn(f: FloatFn, a: f64, b: f64) -> Result<f64, Fault> {
+    use rules as r;
     match f {
-        FloatFn::Sqrt => a.sqrt(),
-        FloatFn::Sin => a.sin(),
-        FloatFn::Cos => a.cos(),
-        FloatFn::Tan => a.tan(),
-        FloatFn::Asin => a.asin(),
-        FloatFn::Acos => a.acos(),
-        FloatFn::Atan2 => a.atan2(b),
-        FloatFn::Hypot => a.hypot(b),
-        FloatFn::Exp => a.exp(),
-        FloatFn::Ln => a.ln(),
+        FloatFn::Sqrt => r::sqrt(a),
+        FloatFn::Sin => r::sin(a),
+        FloatFn::Cos => r::cos(a),
+        FloatFn::Tan => r::tan(a),
+        FloatFn::Asin => r::asin(a),
+        FloatFn::Acos => r::acos(a),
+        FloatFn::Atan2 => r::atan2(a, b),
+        FloatFn::Hypot => r::hypot(a, b),
+        FloatFn::Exp => r::exp(a),
+        FloatFn::Ln => r::ln(a),
     }
 }
 
 /// An `F64` rounded to an `Int`; NaN and anything past `Int` trap.
 pub fn to_int(r: Rounding, x: f64) -> Result<i64, Fault> {
-    let y = match r {
-        Rounding::Floor => x.floor(),
-        Rounding::Ceil => x.ceil(),
-        Rounding::Round => x.round(),
-        Rounding::Trunc => x.trunc(),
-    };
-    if y.is_nan() || y.abs() >= 9223372036854775808.0 {
-        return Err(Fault::F64PastInt);
-    }
-    Ok(y as i64)
+    rules::int_of_f64(match r {
+        Rounding::Floor => rules::floor(x),
+        Rounding::Ceil => rules::ceil(x),
+        Rounding::Round => rules::round(x),
+        Rounding::Trunc => rules::trunc(x),
+    }?)
 }
 
 /// `-a` on an `F64`.
@@ -369,6 +366,93 @@ impl Input {
         self.at += usize::from(c >= 0);
         c
     }
+}
+
+/// Whether `op` computes a scalar from scalars, so `scalar` gives its meaning.
+pub fn on_scalars(op: Intr) -> bool {
+    use Intr as I;
+    matches!(
+        op,
+        I::Add
+            | I::Sub
+            | I::Mul
+            | I::Div
+            | I::Rem
+            | I::Pow
+            | I::Shl
+            | I::Shr
+            | I::BitAnd
+            | I::BitOr
+            | I::BitXor
+            | I::AddWrap
+            | I::SubWrap
+            | I::MulWrap
+            | I::PowWrap
+            | I::ShlWrap
+            | I::Neg
+            | I::Abs
+            | I::Not
+            | I::Eq
+            | I::Ne
+            | I::Lt
+            | I::Le
+            | I::Gt
+            | I::Ge
+            | I::Below
+            | I::ToU64
+            | I::ToF64
+            | I::FromU64
+            | I::Float(_)
+            | I::ToInt(_)
+            | I::Popcount
+            | I::Ctz
+            | I::Clz
+            | I::BitWidth
+            | I::BitCeil
+            | I::CharOf
+            | I::CodeOf
+    )
+}
+
+/// The one meaning of an operation on scalars, for an evaluator that holds values by kind;
+/// `None` when the operands are of kinds `op` does not take.
+pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
+    use Intr as I;
+    use Scalar as S;
+    let f = f64::from_bits;
+    let fl = |r: Result<f64, Fault>| r.map(|x| S::F64(x.to_bits()));
+    let wide = |s: Scalar| match s {
+        S::Int(i) => Some(i128::from(i)),
+        S::U64(u) => Some(i128::from(u)),
+        S::Bool(b) => Some(i128::from(b)),
+        _ => None,
+    };
+    let cmp = matches!(op, I::Eq | I::Ne | I::Lt | I::Le | I::Gt | I::Ge | I::Below);
+    let counts = matches!(op, I::Popcount | I::Ctz | I::Clz | I::BitWidth | I::BitCeil);
+    Some(match (op, xs) {
+        (_, &[S::F64(a), S::F64(b)]) if cmp => compare_float(op, f(a), f(b)).map(S::Bool),
+        (_, &[a, b]) if cmp => compare(op, wide(a)?, wide(b)?).map(S::Bool),
+        (I::Float(g), &[S::F64(a), S::F64(b)]) => fl(float_fn(g, f(a), f(b))),
+        (_, &[S::F64(a), S::F64(b)]) => fl(float(op, f(a), f(b))),
+        (I::Shl | I::Shr, &[S::U64(a), S::Int(b)]) => word(op, a, b as u64).map(S::U64),
+        (_, &[S::U64(a), S::U64(b)]) => word(op, a, b).map(S::U64),
+        (_, &[S::Int(a), S::Int(b)]) => int(op, a, b).map(S::Int),
+        (I::Neg, &[S::F64(x)]) => fl(Ok(neg_float(f(x)))),
+        (I::Abs, &[S::F64(x)]) => fl(Ok(abs_f64(f(x)))),
+        (I::Neg, &[S::Int(i)]) => neg(i).map(S::Int),
+        (I::Abs, &[S::Int(i)]) => abs(i).map(S::Int),
+        (I::Not, &[S::Bool(b)]) => Ok(S::Bool(not(b))),
+        (I::ToU64, &[S::Int(i)]) => Ok(S::U64(u64_of_int(i))),
+        (I::ToF64, &[S::Int(i)]) => fl(Ok(f64_of_int(i))),
+        (I::FromU64, &[S::U64(u)]) => int_of_u64(u).map(S::Int),
+        (I::Float(g), &[S::F64(a)]) => fl(float_fn(g, f(a), 0.0)),
+        (I::ToInt(r), &[S::F64(x)]) => to_int(r, f(x)).map(S::Int),
+        (_, &[S::U64(w)]) if counts => bit_count(op, w).map(S::Int),
+        (_, &[S::Int(i)]) if counts => bit_count(op, u64_of_int(i)).map(S::Int),
+        (I::CharOf, &[S::Int(i)]) => char_of(i).map(S::Char),
+        (I::CodeOf, &[S::Char(c)]) => Ok(S::Int(code_of(c))),
+        _ => return None,
+    })
 }
 
 /// A value `print` writes and an event shows as text.

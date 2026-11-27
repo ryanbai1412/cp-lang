@@ -9,6 +9,8 @@ use std::fmt::Write;
 pub const INT_LAST: u64 = i64::MAX as u64;
 /// The largest `x` whose `bit_ceil` is an `Int`: `2^62`.
 pub const BIT_CEIL_LAST: i64 = 1 << 62;
+/// `2^63`: a whole `F64` is an `Int` exactly when it is strictly between `-INT_SPAN` and this.
+pub const INT_SPAN: f64 = 9223372036854775808.0;
 type Unit = ();
 
 macro_rules! kernels {
@@ -113,6 +115,22 @@ kernels! {
     char_of(x: i64) -> u8 { Ok(x as u8) } "return cpl_char{(uint8_t)x};"
     size(n: i64) -> usize { Ok(n as usize) } "return (size_t)n;"
     pass(ok: bool) -> Unit { let _ = ok; Ok(()) } "return {};"
+    // The `F64` fns are the C library's in both languages: Rust's `f64` methods call it too.
+    sqrt(a: f64) -> f64 { Ok(a.sqrt()) } "return __builtin_sqrt(a);"
+    sin(a: f64) -> f64 { Ok(a.sin()) } "return __builtin_sin(a);"
+    cos(a: f64) -> f64 { Ok(a.cos()) } "return __builtin_cos(a);"
+    tan(a: f64) -> f64 { Ok(a.tan()) } "return __builtin_tan(a);"
+    asin(a: f64) -> f64 { Ok(a.asin()) } "return __builtin_asin(a);"
+    acos(a: f64) -> f64 { Ok(a.acos()) } "return __builtin_acos(a);"
+    atan2(a: f64, b: f64) -> f64 { Ok(a.atan2(b)) } "return __builtin_atan2(a, b);"
+    hypot(a: f64, b: f64) -> f64 { Ok(a.hypot(b)) } "return __builtin_hypot(a, b);"
+    exp(a: f64) -> f64 { Ok(a.exp()) } "return __builtin_exp(a);"
+    ln(a: f64) -> f64 { Ok(a.ln()) } "return __builtin_log(a);"
+    floor(a: f64) -> f64 { Ok(a.floor()) } "return __builtin_floor(a);"
+    ceil(a: f64) -> f64 { Ok(a.ceil()) } "return __builtin_ceil(a);"
+    round(a: f64) -> f64 { Ok(a.round()) } "return __builtin_round(a);"
+    trunc(a: f64) -> f64 { Ok(a.trunc()) } "return __builtin_trunc(a);"
+    whole(y: f64) -> i64 { Ok(y as i64) } "return (int64_t)y;"
 }
 
 rows! {
@@ -164,6 +182,23 @@ rows! {
     check_variant(ok: bool) -> Unit [!ok => NoVariant] pass;
     check_token(ok: bool) -> Unit [!ok => NoToken] pass;
     check_input(ok: bool) -> Unit [!ok => InputOutside] pass;
+    sqrt(a: f64) -> f64 [] sqrt;
+    sin(a: f64) -> f64 [] sin;
+    cos(a: f64) -> f64 [] cos;
+    tan(a: f64) -> f64 [] tan;
+    asin(a: f64) -> f64 [] asin;
+    acos(a: f64) -> f64 [] acos;
+    atan2(a: f64, b: f64) -> f64 [] atan2;
+    hypot(a: f64, b: f64) -> f64 [] hypot;
+    exp(a: f64) -> f64 [] exp;
+    ln(a: f64) -> f64 [] ln;
+    /// `floor`, `ceil`, `round` (halves away from zero) and `trunc`, still an `F64`.
+    floor(a: f64) -> f64 [] floor;
+    ceil(a: f64) -> f64 [] ceil;
+    round(a: f64) -> f64 [] round;
+    trunc(a: f64) -> f64 [] trunc;
+    /// A whole `F64` as an `Int`; NaN and anything past `Int` trap.
+    int_of_f64(y: f64) -> i64 [!(y > -INT_SPAN && y < INT_SPAN) => F64PastInt] whole;
 }
 
 fn cpp_fn(s: &mut String, name: &str, params: &[(&str, &str)], ret: &str, body: &str) {
@@ -183,6 +218,7 @@ fn cpp_fn(s: &mut String, name: &str, params: &[(&str, &str)], ret: &str, body: 
 fn cty(t: &str) -> &'static str {
     match t {
         "i64" => "int64_t",
+        "f64" => "double",
         "u64" => "uint64_t",
         "u8" => "cpl_char",
         "usize" => "size_t",
@@ -197,7 +233,8 @@ pub fn cpp() -> String {
     let mut s = format!(
         "static const uint64_t INT_LAST = {INT_LAST}ULL;\n\
          static const int64_t BIT_CEIL_LAST = {BIT_CEIL_LAST}LL;\n\
-         static const int64_t MAX_STORAGE = {MAX_STORAGE};\n"
+         static const int64_t MAX_STORAGE = {MAX_STORAGE};\n\
+         static const double INT_SPAN = {INT_SPAN:?};\n"
     );
     kernels_cpp(&mut s);
     rows_cpp(&mut s);
