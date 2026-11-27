@@ -154,10 +154,10 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
             raise ValueError(f"CPL_GATE_PART={part} with --{mode}: only `full` goes with --full")
         out["kind"] = "full"
         return out
-    if part in ("fmt", "corpus", "conform", "std-mutants") or part.startswith(("conform:", "tests:")):
+    if part in ("fmt", "corpus", "conform", "std-mutants", "ratchet") or part.startswith(("conform:", "tests:")):
         if mode != "fast":
             raise ValueError(f"CPL_GATE_PART={part} needs --fast")
-    if part in ("fmt", "corpus", "std-mutants"):
+    if part in ("fmt", "corpus", "std-mutants", "ratchet"):
         out["kind"] = part
     elif part == "conform" or part.startswith("conform:"):
         suites = part.partition(":")[2] or "all"
@@ -171,7 +171,7 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
     elif part.startswith("tests:") and part != "tests:":
         out.update(kind="tests", partition=part.removeprefix("tests:"))
     else:
-        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, std-mutants, tests:<partition>, or full with --full)")
+        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, std-mutants, ratchet, tests:<partition>, or full with --full)")
     return out
 
 
@@ -402,6 +402,9 @@ def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, heal
         values = {"cpl": cpl, "tmp": tmp, "nproc": str(os.cpu_count() or 1)}
         for step in touched_steps(only) if only else STEPS[tier]:
             print(f"\n==> {step.title}", flush=True)
+            if step is RATCHET and tier == "checks" and os.environ.get("CPL_GATE_PART") == "checks":
+                print("skipped: the CI ratchet part runs it after the cpl-next programs run")
+                continue
             missing = [c for c in step.needs if not shutil.which(c)]
             if missing:
                 print(f"check: `{missing[0]}` is not installed; {step.title} needs it", file=sys.stderr)
@@ -988,6 +991,18 @@ class Tail:
             return "corpus part"
         if g["kind"] == "std-mutants":
             return self._std_mutants(env)
+        if g["kind"] == "ratchet":
+            # The ratchet's case-id gates read target/cpl-next/ from a fresh full run.
+            self.step("cpl-next programs (the run the ratchet's list gates read)")
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-next"]):
+                raise Failed("cargo build -p cpl-cli -p cpl-next failed")
+            if self.call(["cargo", "nextest", "run", "-p", "cpl-next", "--test", "programs", "--profile", "gate",
+                          "--no-fail-fast"]):
+                raise Failed("a cpl-next programs test failed; rerun: cargo nextest run -p cpl-next --test programs")
+            self.step(RATCHET.title)
+            if self.call([sys.executable, *RATCHET.argv]):
+                raise Failed(RATCHET.fail)
+            return "ratchet part"
         if g["kind"] == "full":
             self.step("cargo build -p cpl-cli -p cpl-conform -p cpl-next (the binaries the --full suites run)")
             if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform", "-p", "cpl-next"]):

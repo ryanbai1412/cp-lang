@@ -29,6 +29,16 @@ class GatePartTest(unittest.TestCase):
     def test_fmt_and_corpus(self) -> None:
         self.assertEqual([ci.gate_part(p, "fast")["kind"] for p in ("fmt", "corpus")], ["fmt", "corpus"])
 
+    def test_the_ratchet_part_runs_programs_then_the_ratchet(self) -> None:
+        self.assertEqual(ci.gate_part("ratchet", "fast")["kind"], "ratchet")
+        with self.assertRaisesRegex(ValueError, "needs --fast"):
+            ci.gate_part("ratchet", "land")
+        seen = []
+        run = lambda cmd, **kw: seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", "")  # noqa: E731
+        with mock.patch.dict(os.environ, {"CPL_GATE_PART": "checks"}), contextlib.redirect_stdout(io.StringIO()):
+            ci.run_steps("checks", run=run)
+        self.assertFalse(any("scripts/debt-ratchet.py" in " ".join(map(str, c)) for c in seen))
+
     def test_tests_partitions(self) -> None:
         self.assertEqual(ci.gate_part("tests:doc", "fast")["kind"], "doc")
         g = ci.gate_part("tests:hash:1/12", "fast")
@@ -220,7 +230,7 @@ class FakeProc:
 class TailTest(unittest.TestCase):
     FMT = "cargo fmt --all --check"
     CLIPPY = "cargo clippy --workspace --all-targets -- -D warnings"
-    BUILD = "cargo build -q -p cpl-cli -p cpl-conform"
+    BUILD = "cargo build -q -p cpl-cli -p cpl-conform -p cpl-next"
 
     def _tail(self, mode="fast", part="", cached=(), codes=None, procs=None, manifest="m", since=None, sel=None,
               outs=None, **kw):
@@ -372,7 +382,7 @@ class TailTest(unittest.TestCase):
         conform = next(e for e in ev if e.split()[0].endswith("cpl-conform"))
         self.assertTrue(conform.endswith(" all --check"), conform)
         make = next(e for e in ev if e.startswith("scripts/corpus.py make") or " scripts/corpus.py make" in e)
-        order = [ev.index(e) for e in ("-m unittest scripts/test_ci.py", "cargo build -q -p cpl-cli -p cpl-conform",
+        order = [ev.index(e) for e in ("-m unittest scripts/test_ci.py", "cargo build -q -p cpl-cli -p cpl-conform -p cpl-next",
                                          make, conform)]
         self.assertEqual(order, sorted(order))
         self.assertIn("check: conformance part passed in", out)
@@ -494,7 +504,7 @@ class TailTest(unittest.TestCase):
                 ci.gate_part(part, mode)
         with mock.patch.object(ci, "run_steps", return_value=0) as steps:
             code, ev, out, _, _, _ = self._part("full", mode="full")
-        self.assertEqual((code, ev), (0, ["cargo build -q -p cpl-cli -p cpl-conform"]))
+        self.assertEqual((code, ev), (0, ["cargo build -q -p cpl-cli -p cpl-conform -p cpl-next"]))
         self.assertEqual(steps.call_args.args[0], "full")
         self.assertIn("check: full part passed in", out)
         with mock.patch.object(ci, "run_steps", return_value=1):

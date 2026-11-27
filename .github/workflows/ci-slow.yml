@@ -33,7 +33,7 @@ jobs:
         with:
           tools: just@1.59.0
       - name: Debt counters at 0
-        run: uv run python scripts/debt-ratchet.py --zero
+        run: just debt-zero
 
   # Timing budgets report here and never turn main red (decision 225).
   timing:

@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [checks, corpus, fmt, "conform:conformance+spec-blocks", "conform:diff@1/5", "conform:diff@2/5", "conform:diff@3/5", "conform:diff@4/5", "conform:diff@5/5", "conform:corpus+docs", "tests:doc"]
+        part: [checks, corpus, fmt, "conform:conformance+spec-blocks", "conform:diff@1/5", "conform:diff@2/5", "conform:diff@3/5", "conform:diff@4/5", "conform:diff@5/5", "conform:corpus+docs", "tests:doc", ratchet]
     timeout-minutes: 20
     permissions:
       contents: read
@@ -104,14 +104,15 @@ jobs:
       # this push (on main, HEAD is origin/main).
       - name: Fetch the tip before this push
         id: before
-        if: matrix.part == 'checks' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: matrix.part == 'ratchet' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           if git fetch -q --depth=1 origin "${{ github.event.before }}"; then
             echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
           fi
       - name: Fast gate
-        # A hung test holds main's only run slot; a shard takes about 5 min.
-        timeout-minutes: 12
+        # A hung test holds main's only run slot; a shard takes about 5 min, the
+        # ratchet part (a full cpl-next programs run, then the ratchet) about 20.
+        timeout-minutes: ${{ matrix.part == 'ratchet' && 27 || 12 }}
         env:
           CPL_GATE_PART: ${{ matrix.part }}
           CPL_RATCHET_BASE: ${{ steps.before.outputs.sha }}
@@ -124,8 +125,9 @@ jobs:
         run: |
           stdbuf -oL vmstat -t -S M 20 > "$RUNNER_TEMP/vmstat.log" 2>&1 &
           while sleep 60; do date -u +%T; ps -eo pcpu,etimes,args --sort=-pcpu | head -6 | cut -c1-200; done > "$RUNNER_TEMP/top.log" 2>&1 &
-          timeout 680 just check || { s=$?; [ "$s" != 124 ] || { touch "$RUNNER_TEMP/cut-short"
-            echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; }; exit "$s"; }
+          cap=${{ matrix.part == 'ratchet' && 25 || 11 }}
+          timeout $((cap * 60 + 20)) just check || { s=$?; [ "$s" != 124 ] || { touch "$RUNNER_TEMP/cut-short"
+            echo "::error::the gate passed $cap min; the last ==> step above is the slow one"; }; exit "$s"; }
       - name: Memory, swap and CPU during the gate (MB; si/so swapping, wa I/O wait), and its busiest processes
         if: ${{ !cancelled() }}
         run: "[ ! -f \"$RUNNER_TEMP/vmstat.log\" ] || cat \"$RUNNER_TEMP/vmstat.log\" \"$RUNNER_TEMP/top.log\""

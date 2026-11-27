@@ -273,6 +273,10 @@ gen *args:
 debt-ratchet *args:
     uv run python scripts/debt-ratchet.py --check {{args}}
 
+# Fail on any counter that is not at 0 (ci-slow.yml's debt-zero job).
+debt-zero:
+    uv run python scripts/debt-ratchet.py --zero
+
 # Create an isolated git worktree with its own Cargo target directory.
 worktree name:
     git worktree add "../cp-lang-{{name}}" -b "{{name}}"
