@@ -1319,6 +1319,10 @@ next/n_cell_03_method_on_cell.cp
 next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_comp_01_comprehension_is_its_loop.cp
+next/n_const_01_value_worked_out_once.cp
+next/n_const_02_cycle_is_an_error.cp
+next/n_const_03_trap_is_a_compile_error.cp
+next/n_const_04_step_budget.cp
 next/n_const_hoists.cp
 next/n_convert_01_core_types_convert_by_impl.cp
 next/n_convert_02_char_outside_ascii_traps.cp

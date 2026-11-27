@@ -1689,7 +1689,7 @@ impl<'a> Cx<'a> {
                             inclusive,
                         } => {
                             // Its cells count from a number; one from a value is a domain (R04.3.4).
-                            if decls::constant_int(lo).is_none() {
+                            if lo.int_literal().is_none() {
                                 self.err(
                                     span,
                                     Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, "an array over a range that starts at a value: name it as a domain, `domain D = lo..hi`, then `[D]T`"),
@@ -1788,7 +1788,7 @@ impl<'a> Cx<'a> {
                 let msg =
                     Msg::verdict(code, format!("context `{}` has no field `{field}`", c.name));
                 self.err(a.value.span, msg);
-            } else if !constant(&a.value) {
+            } else if self.const_value(&a.value).is_none() {
                 let code = cpl_diag::codes::CONTEXT_NOT_CONSTANT;
                 let msg = Msg::verdict(code, format!("`{}.{field}` is set to a constant", c.name));
                 self.err(a.value.span, msg);
@@ -2083,20 +2083,5 @@ impl<'a> Cx<'a> {
             );
         }
         v
-    }
-}
-
-/// A value fixed when the program is compiled: a literal, `None`, `-k`, or a tuple of them.
-fn constant(e: &ast::Expr) -> bool {
-    match &e.kind {
-        ast::ExprKind::Int(_)
-        | ast::ExprKind::Float(_)
-        | ast::ExprKind::Char(_)
-        | ast::ExprKind::Bool(_)
-        | ast::ExprKind::None => true,
-        ast::ExprKind::Str(ps) => ps.iter().all(|p| matches!(p, ast::StrPiece::Text(_))),
-        ast::ExprKind::Tuple(xs) => xs.iter().all(constant),
-        ast::ExprKind::Unary { expr, .. } => constant(expr),
-        _ => false,
     }
 }

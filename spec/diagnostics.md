@@ -40,6 +40,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0208 | value_name_case | `let N = 5`: values are lowercase; `N` would read as a type |
 | E0209 | definition_cycle | `f`'s parameter types depend on `f` itself: a domain sized by a call of `f` is a parameter type of `f` |
 | E0210 | unknown_intrinsic | no intrinsic `no_such`; the table has popcount |
+| E0211 | const_budget | working out `const N = f(10 ** 9)` took more than 10000000 steps; compute it at run time with `let` |
 | E0301 | wrong_domain | `deg` is indexed by `V`, but `e` is an `E` |
 | E0302 | type_mismatch | `x` is declared an Int, but `"abc"` is a Str |
 | E0303 | wrong_arg_count | `add` takes 2 arguments (a, b), but `b` is missing |

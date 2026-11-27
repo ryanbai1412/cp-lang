@@ -396,6 +396,8 @@ pub(crate) struct Code {
     pub tables: Vec<Vec<u32>>,
     pub lays: Layouts,
     pub globals: u32,
+    /// Where each global's words start.
+    pub global_at: Vec<u32>,
     pub main: u32,
     /// The layout of a string literal's characters.
     pub char_lay: Lay,
@@ -406,6 +408,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
         chains: vec![Vec::new()],
         marks: Vec::new(),
         lines: Vec::new(),
+        global_at: Vec::new(),
         saved: vec![Vec::new()],
         blocks: Vec::new(),
         funcs: Vec::new(),
@@ -427,6 +430,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
         let l = c.lays.of(p, g);
         c.globals += c.lays.size[l as usize];
     }
+    c.global_at = global_at.clone();
     // Every fn's frame shape first: a call needs its callee's.
     let mut offs = Vec::with_capacity(funcs.len());
     for f in funcs {

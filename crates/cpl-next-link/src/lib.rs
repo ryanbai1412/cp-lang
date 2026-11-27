@@ -1202,7 +1202,9 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         match (var, &f.key, info.owner) {
             (VarRef::Global(g), FuncKey::Main | FuncKey::Case, None) => Some(Place::Global(g)),
             // A top-level domain of the file is one shared variable. One inside a block is not: a loop makes a new one.
-            (VarRef::Global(g), _, None) if typed.globals[g].top => Some(Place::Global(g)),
+            (VarRef::Global(g), _, None) if typed.globals.get(g).is_some_and(|x| x.top) => {
+                Some(Place::Global(g))
+            }
             (VarRef::Local(l), FuncKey::Decl(k), Some(o)) if *k == o => Some(Place::Local(l)),
             _ => None,
         }

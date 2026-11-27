@@ -3,6 +3,7 @@
 //! interpreter's rules step for step.
 use crate::compile::*;
 use crate::layout::Lay;
+use crate::Stop;
 use cpl_next_ir::ir::Func;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::CTy;
@@ -65,6 +66,12 @@ struct M<'a> {
     at: u32,
     texts: Vec<u32>,
     scratch: Vec<u32>,
+    /// Steps left: each fn entered and each jump taken back is one.
+    steps: u64,
+    /// No input: a read stops the run, its value being decided at run time.
+    closed: bool,
+    /// Whether a run with no input tried to read.
+    read: bool,
 }
 type R<T> = Result<T, Trap>;
 
@@ -72,8 +79,8 @@ fn broken<T>(rule: &'static str) -> R<T> {
     Err(Fault::Internal(rule).into())
 }
 
-pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
-    let mut m = M {
+fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&str>, steps: u64) -> M<'a> {
+    M {
         c,
         funcs,
         cur: 0,
@@ -89,14 +96,21 @@ pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
         frames: Vec::new(),
         out: String::new(),
         events: Vec::new(),
-        input: ops::tokens(input)
+        input: ops::tokens(input.unwrap_or(""))
             .map(String::from)
             .collect::<Vec<_>>()
             .into_iter(),
         at: 0,
         texts: vec![0; c.texts.len()],
         scratch: Vec::new(),
-    };
+        steps,
+        closed: input.is_none(),
+        read: false,
+    }
+}
+
+pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
+    let mut m = start(c, funcs, Some(input), u64::MAX);
     let fp = c.globals as usize;
     let trap = m.run_fn(c.main, fp, None).err().map(|t| Trap {
         line: m.trail_lines().first().copied().unwrap_or(0),
@@ -110,7 +124,35 @@ pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
     }
 }
 
+/// Runs the program with no input for at most `steps` steps: the words global `g` holds when
+/// it ends. A read of input stops it.
+pub(crate) fn eval(c: &Code, funcs: &[Func<CTy>], g: usize, steps: u64) -> Result<Vec<u64>, Stop> {
+    let mut m = start(c, funcs, None, steps);
+    match m.run_fn(c.main, c.globals as usize, None) {
+        Ok(_) => {
+            let at = c.global_at[g] as usize;
+            let end = (c.global_at.get(g + 1)).map_or(c.globals as usize, |&e| e as usize);
+            Ok(m.stack[at..end].to_vec())
+        }
+        Err(_) if m.read => Err(Stop::Input),
+        Err(_) if m.steps == 0 => Err(Stop::Budget),
+        Err(t) => Err(Stop::Trap(Trap {
+            line: m.trail_lines().first().copied().unwrap_or(0),
+            stack: m.call_stack(),
+            ..t
+        })),
+    }
+}
+
 impl M<'_> {
+    /// One step of the budget.
+    fn step(&mut self) -> R<()> {
+        if self.steps == 0 {
+            return broken("the step budget ran out");
+        }
+        self.steps -= 1;
+        Ok(())
+    }
     fn alloc(&mut self, elem: Lay, len: usize, words: Vec<u64>) -> u32 {
         let o = Obj {
             rc: 1,
@@ -308,6 +350,7 @@ impl M<'_> {
     /// Runs fn `f` in a frame at `fp` whose parameters are already in place. Returns how a
     /// region body left, if it did.
     fn run_fn(&mut self, f: u32, fp: usize, region: Option<RegionAt>) -> R<Option<Flow>> {
+        self.step()?;
         let fc = &self.c.funcs[f as usize];
         // Spec 9.6: no depth counting in the language; this stands for the 1 GB stack running out.
         if self.frames.len() >= 4_000_000 {
@@ -606,14 +649,25 @@ impl M<'_> {
                         self.frames[fr].pending = Some(flow);
                     }
                 }
-                Op::Jump { t } => *pc = t as usize,
+                Op::Jump { t } => {
+                    if (t as usize) < *pc {
+                        self.step()?;
+                    }
+                    *pc = t as usize
+                }
                 Op::JumpUnless { c: x, t } => {
                     if self.stack[r(x)] == 0 {
+                        if (t as usize) < *pc {
+                            self.step()?;
+                        }
                         *pc = t as usize;
                     }
                 }
                 Op::JumpIf { c: x, t } => {
                     if self.stack[r(x)] != 0 {
+                        if (t as usize) < *pc {
+                            self.step()?;
+                        }
                         *pc = t as usize;
                     }
                 }
@@ -735,6 +789,10 @@ impl M<'_> {
                     let len = ops::storage_size(self.stack[r(n)] as i64)?;
                     let words = vec![0; len * self.size(elem)];
                     self.stack[r(d)] = u64::from(self.alloc(elem, len, words));
+                }
+                Op::InputLeft { .. } | Op::ReadInt { .. } if self.closed => {
+                    self.read = true;
+                    return broken("a read with no input");
                 }
                 Op::InputLeft { d } => {
                     self.stack[r(d)] = u64::from(!self.input.as_slice().is_empty())

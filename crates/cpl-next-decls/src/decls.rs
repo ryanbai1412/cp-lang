@@ -1215,39 +1215,19 @@ fn add_fn(
     FnId(d.fns.len() - 1)
 }
 
-/// A whole-number literal, maybe negated or written with an exponent (`1e9`).
-pub fn constant_int(e: &ast::Expr) -> Option<i64> {
-    match &e.kind {
-        ast::ExprKind::Int(i) => i64::try_from(*i).ok(),
-        ast::ExprKind::Paren(x) => constant_int(x),
-        ast::ExprKind::Unary {
-            op: ast::UnOp::Neg,
-            expr,
-        } => constant_int(expr)?.checked_neg(),
-        // `1e9`, `2e5`: a whole number written with an exponent.
-        ast::ExprKind::Float(text) => {
-            let (m, e) = text.split_once(['e', 'E'])?;
-            m.parse::<i64>()
-                .ok()?
-                .checked_mul(10i64.checked_pow(e.parse().ok()?)?)
-        }
-        _ => None,
-    }
-}
-
-/// The ends of a range type when both are constants, as an inclusive pair.
+/// The ends of a range type when both are literals, as an inclusive pair.
 pub fn static_range(
     lo: &Option<Box<ast::Expr>>,
     hi: &Option<Box<ast::Expr>>,
     inclusive: bool,
 ) -> Option<(i64, i64)> {
     let lo = match lo {
-        Some(e) => constant_int(e)?,
+        Some(e) => e.int_literal()?,
         None => i64::MIN + 1,
     };
     let hi = match hi {
-        Some(e) if inclusive => constant_int(e)?,
-        Some(e) => constant_int(e)?.checked_sub(1)?,
+        Some(e) if inclusive => e.int_literal()?,
+        Some(e) => e.int_literal()?.checked_sub(1)?,
         None => i64::MAX,
     };
     Some((lo, hi))

@@ -6,6 +6,8 @@
 //! until it accepts every program, and the landing that switches `cpl` to it deletes
 //! what it replaces.
 
+mod consts;
+
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
 use cpl_next_decls::{decls, diag, modules};
@@ -299,7 +301,8 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     let mut out = diags(Stage::Syntax, &loaded.errors);
     let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
     out.extend(diags(Stage::Decls, &d.errors));
-    let mut t = check::check(&d, &main, &loaded);
+    let values = consts::Evaluator::new(&d, &loaded, &main);
+    let mut t = check::check(&d, &main, &loaded, &values);
     out.extend(diags(Stage::Check, &t.errors));
     let g = lower::lower(&d, &t, &loaded);
     out.extend(diags(Stage::Lower, &g.errors));

@@ -8,7 +8,7 @@ use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef
 use cpl_next_decls::{diag, kind_name, modules, plain, records};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_next_ir::{ir, ty};
+use cpl_next_ir::{ir, ops, ty};
 use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
     TypeKind, UnOp,
@@ -278,6 +278,8 @@ enum SetVar {
 
 struct Cx<'a> {
     d: &'a Decls,
+    /// What a constant expression's value is, worked out by the driver's evaluator.
+    values: &'a dyn Consts,
     /// The loaded modules the spans index, offset by `item`.
     src: &'a crate::modules::Loaded,
     tys: Vec<Option<Ty>>,
@@ -370,8 +372,33 @@ struct CtxFrame {
     value: ast::Expr,
 }
 
-pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Loaded) -> Typed {
+/// The values of constant expressions: the `const_value` query (`handbook/design/next/
+/// incremental.md`). The driver works each out by running it on the engine, the one evaluator,
+/// so the checker holds no evaluator of its own and does not depend on the engine.
+pub trait Consts {
+    /// The value of `e`, written in program item `item`, when nothing it reads is decided at
+    /// run time: `None` for a value that is not a scalar.
+    fn value(&self, item: &ItemId, e: &ast::Expr) -> Result<Option<ops::Scalar>, ConstError>;
+}
+
+/// Why an expression has no value at compile time.
+#[derive(Clone, Debug)]
+pub enum ConstError {
+    /// It reads something decided at run time.
+    Open,
+    /// Working it out trapped, ran past its step budget or read itself: the error, said where
+    /// the expression is.
+    Failed(Box<Msg>),
+}
+
+pub fn check(
+    d: &Decls,
+    main: &[(ItemId, ast::Stmt)],
+    src: &crate::modules::Loaded,
+    consts: &dyn Consts,
+) -> Typed {
     let mut cx = Cx {
+        values: consts,
         wraps: false,
         frames: Vec::new(),
         filling: Vec::new(),
@@ -470,35 +497,24 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
     }
     let mut main_out = Vec::new();
     let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
-    // A domain with constant ends hoists, with the `const`s they read; one read at run time runs
-    // where it is written (R11.1.1).
-    let mut consts = std::collections::HashSet::new();
-    for (_, s) in main {
-        if let cpl_syntax::ast::StmtKind::Const {
-            name,
-            generics,
-            init: Some(init),
-            ..
-        } = &s.kind
-        {
-            if generics.is_empty() && constant(init, &consts) {
-                consts.insert(name.text.clone());
-            }
+    // A `const` with a scalar value, and a domain whose ends have values, hoist; one read at
+    // run time runs where it is written (R11.1.1).
+    let lifted: Vec<Option<ast::Stmt>> = (main.iter())
+        .map(|(off, s)| {
+            cx.item = off.clone();
+            cx.hoisted(s)
+        })
+        .collect();
+    for ((off, _), s) in main.iter().zip(&lifted) {
+        if let Some(s) = s {
+            cx.item = off.clone();
+            main_out.push(TStmt::Item(off.clone()));
+            cx.stmt(s, &mut main_out);
         }
-    }
-    let hoists = |s: &cpl_syntax::ast::Stmt| match &s.kind {
-        cpl_syntax::ast::StmtKind::Domain { def, .. } => constant_domain(def, &consts),
-        cpl_syntax::ast::StmtKind::Const { name, .. } => consts.contains(&name.text),
-        _ => false,
-    };
-    for (off, s) in main.iter().filter(|(_, s)| hoists(s)) {
-        cx.item = off.clone();
-        main_out.push(TStmt::Item(off.clone()));
-        cx.stmt(s, &mut main_out);
     }
     // A bare `with` line comes before the program's first statement (R09.1.1).
     let mut begun = false;
-    for (off, s) in main {
+    for ((off, s), lifted) in main.iter().zip(&lifted) {
         cx.item = off.clone();
         // `@!multitest`: the count is read once and everything below runs once per case.
         if cases.is_none()
@@ -526,7 +542,7 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
             }
         }
         // A hoisted item ran above; `@!multitest` on it still divides the file here.
-        if hoists(s) {
+        if lifted.is_some() {
             continue;
         }
         let into = match &mut cases {
@@ -972,37 +988,6 @@ impl<'a> Cx<'a> {
     }
 }
 
-/// `lo..hi` or `lo..=hi` with integer literal ends.
-/// A literal, a `const` named in `consts`, or `+ - *` of them.
-fn constant(e: &cpl_syntax::ast::Expr, consts: &std::collections::HashSet<String>) -> bool {
-    use cpl_syntax::ast::{BinOp, ExprKind};
-    match &e.kind {
-        ExprKind::Int(_) => true,
-        ExprKind::Name(n) => consts.contains(n),
-        ExprKind::Paren(x) => constant(x, consts),
-        ExprKind::Binary { op, lhs, rhs, .. } => {
-            matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul)
-                && constant(lhs, consts)
-                && constant(rhs, consts)
-        }
-        _ => false,
-    }
-}
-
-/// `lo..hi` or `[n]` with constant ends.
-fn constant_domain(e: &cpl_syntax::ast::Expr, consts: &std::collections::HashSet<String>) -> bool {
-    use cpl_syntax::ast::ExprKind;
-    let end =
-        |e: &Option<Box<cpl_syntax::ast::Expr>>| e.as_deref().is_some_and(|e| constant(e, consts));
-    match &e.kind {
-        ExprKind::Range {
-            lo, hi, step: None, ..
-        } => end(lo) && end(hi),
-        ExprKind::List(xs) => matches!(&xs[..], [x] if constant(x, consts)),
-        _ => false,
-    }
-}
-
 /// `for x in e: yield x`, the body of a generator written as one expression.
 /// The block of the one statement `e`.
 fn one_stmt(e: &ast::Expr) -> ast::Block {
@@ -1076,6 +1061,58 @@ impl Cx<'_> {
     }
     /// A library `const`'s global, checked once, when a read first reaches it: it is set at
     /// program start, above the program's code, after the consts its initializer reads (R01.6.1).
+    /// `e`'s value at compile time, worked out by the driver (`Consts`): `None` when it reads
+    /// something decided at run time or working it out failed, which is said; `Some(None)` for
+    /// a value that is not a scalar.
+    fn const_value(&mut self, e: &ast::Expr) -> Option<Option<ops::Scalar>> {
+        match self.values.value(&self.item, e) {
+            Ok(v) => Some(v),
+            Err(ConstError::Open) => None,
+            Err(ConstError::Failed(m)) => {
+                if !self.errors.iter().any(|x| x.at == m.at && x.code == m.code) {
+                    self.errors.push(*m);
+                }
+                None
+            }
+        }
+    }
+    /// `s` as it runs above the program, if it hoists: a `const` with a scalar value, an `Int`
+    /// written in as its literal, or a domain whose ends have values.
+    fn hoisted(&mut self, s: &ast::Stmt) -> Option<ast::Stmt> {
+        match &s.kind {
+            ast::StmtKind::Const {
+                generics,
+                init: Some(init),
+                ..
+            } if generics.is_empty() => {
+                let v = self.const_value(init)??;
+                let mut s = s.clone();
+                if let (ops::Scalar::Int(i), ast::StmtKind::Const { init: Some(e), .. }) =
+                    (v, &mut s.kind)
+                {
+                    e.kind = ast::ExprKind::Int(i128::from(i));
+                }
+                Some(s)
+            }
+            ast::StmtKind::Domain { def, .. } => {
+                let ends: Vec<&ast::Expr> = match &def.kind {
+                    ast::ExprKind::Range {
+                        lo: Some(lo),
+                        hi: Some(hi),
+                        step: None,
+                        ..
+                    } => vec![lo, hi],
+                    ast::ExprKind::List(xs) if xs.len() == 1 => vec![&xs[0]],
+                    _ => return None,
+                };
+                for e in ends {
+                    self.const_value(e)??;
+                }
+                Some(s.clone())
+            }
+            _ => None,
+        }
+    }
     fn library_const(&mut self, c: decls::ConstId, span: Span) -> Option<(VarRef, Ty)> {
         if let Some(g) = self.consts[c.0] {
             return Some((VarRef::Global(g), self.globals[g].ty.clone()));

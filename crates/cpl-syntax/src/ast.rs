@@ -49,6 +49,26 @@ impl Block {
 }
 
 impl Expr {
+    /// The value of a whole-number literal: a literal read, maybe negated or written with an
+    /// exponent (`1e9`, R01.4.2). An expression that computes, `1e9 + 7`, is not a literal; its
+    /// value is worked out by running it.
+    pub fn int_literal(&self) -> Option<i64> {
+        match &self.kind {
+            ExprKind::Int(i) => i64::try_from(*i).ok(),
+            ExprKind::Paren(x) => x.int_literal(),
+            ExprKind::Unary {
+                op: UnOp::Neg,
+                expr,
+            } => expr.int_literal()?.checked_neg(),
+            ExprKind::Float(text) => {
+                let (m, e) = text.split_once(['e', 'E'])?;
+                m.parse::<i64>()
+                    .ok()?
+                    .checked_mul(10i64.checked_pow(e.parse().ok()?)?)
+            }
+            _ => None,
+        }
+    }
     /// `base[indices]` over `span`: how a table of tables' `dp[r, c, k]`
     /// splits into the cell `dp[r, c]` and its own index `k`.
     pub fn indexed(base: &Expr, indices: &[Expr], span: Span) -> Expr {

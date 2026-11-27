@@ -1085,7 +1085,7 @@ impl<'a> Cx<'a> {
         match &e.kind {
             ExprKind::Int(i) => mk(TK::Int(*i as i64), Ty::Int),
             // A literal with an exponent whose value is a whole number is an `Int` (R01.4.2).
-            ExprKind::Float(text) => match decls::constant_int(e) {
+            ExprKind::Float(text) => match e.int_literal() {
                 Some(i) => mk(TK::Int(i), Ty::Int),
                 None => match text.parse::<f64>() {
                     Ok(x) => mk(TK::Float(x.to_bits()), Ty::F64),

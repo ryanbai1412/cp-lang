@@ -491,6 +491,14 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
             {
                 pass()
             }
+            // A trap the checker finds when it works out a constant (R01.6.1).
+            Expect::Trap { code, line }
+                if diags
+                    .iter()
+                    .any(|d| on_the_program(d) == Some((*line, code.as_str()))) =>
+            {
+                pass()
+            }
             Expect::Exit(1) => pass(),
             Expect::Diag { code, line } => done(
                 "wrong-error",

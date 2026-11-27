@@ -1,6 +1,6 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
-use crate::decls::{constant_int, unnamed, GETTER};
+use crate::decls::{unnamed, GETTER};
 use crate::diag::Msg;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -50,7 +50,7 @@ pub(crate) fn enum_structs(
         let value = match &v.value {
             None => Some(i as i64),
             Some(_) if !v.fields.is_empty() => None,
-            Some(x) => constant_int(x),
+            Some(x) => x.int_literal(),
         };
         if value.is_none() {
             errors.push(
@@ -503,7 +503,7 @@ pub(crate) fn enum_conversions(
             let values: Option<Vec<i64>> = (e.variants.iter().enumerate())
                 .map(|(i, v)| match &v.value {
                     None => Some(i as i64),
-                    Some(x) => constant_int(x),
+                    Some(x) => x.int_literal(),
                 })
                 .collect();
             let Some(values) = values else {

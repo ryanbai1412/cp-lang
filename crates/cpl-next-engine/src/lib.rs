@@ -11,10 +11,27 @@ mod peep;
 
 use cpl_next_ir::ir::Func;
 use cpl_next_ir::prog::{CTy, Program};
-pub use cpl_next_ir::run::Outcome;
+pub use cpl_next_ir::run::{Outcome, Trap};
 
 /// Runs canonical IR on `input`.
 pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
     let code = compile::compile(p, funcs);
     exec::run(&code, funcs, input)
+}
+
+/// How running a program for a value stopped short of it.
+pub enum Stop {
+    Trap(Trap),
+    /// It took more steps than it was given.
+    Budget,
+    /// It reads the input, so its value is decided at run time.
+    Input,
+}
+
+/// Runs canonical IR with no input for at most `steps` steps, each fn entered and each jump
+/// taken back being one: the words global `g` holds when it ends. Compile-time evaluation
+/// runs here, so a constant means what running the program would make it.
+pub fn eval(p: &Program, funcs: &[Func<CTy>], g: usize, steps: u64) -> Result<Vec<u64>, Stop> {
+    let code = compile::compile(p, funcs);
+    exec::eval(&code, funcs, g, steps)
 }

@@ -201,6 +201,8 @@ pub mod codes {
     pub const DEFINITION_CYCLE: Code = Code("E0209");
     /// `@intrinsic("id")` names no table entry, or not with this signature. (R12.14.1)
     pub const UNKNOWN_INTRINSIC: Code = Code("E0210");
+    /// Working out a `const` at compile time took more steps than the fixed budget.
+    pub const CONST_BUDGET: Code = Code("E0211");
 
     pub const WRONG_DOMAIN: Code = Code("E0301");
     pub const TYPE_MISMATCH: Code = Code("E0302");
