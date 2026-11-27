@@ -1109,9 +1109,11 @@ core-10/print-optional-error.cp
 core-10/print-position-as-its-integer.cp
 core-10/print-range-prints-items.cp
 core-10/print-records-enums.cp
+core-10/print-rev-view-honors-sep.cp
 core-10/print-sep-joins-elements-not-fields.cp
 core-10/print-sep-past-64k-keeps-order-interp.cp
 core-10/print-str-is-one-word.cp
+core-10/print-view-honours-sep.cp
 core-10/ragged-read-names-pair-domain.cp
 core-10/rb1-q25-optional-not-print.cp
 core-10/rb1-q39-bool-not-print.cp
@@ -2333,6 +2335,7 @@ std-seq/seq-u15-zip-and-items.cp
 std-seq/seq-u20-first-some.cp
 std-seq/seq-u21-stack-top.cp
 std-seq/seq-u22-flat-map-concat.cp
+std-seq/seq-u24-separator.cp
 std-seq/seq-u26-all-match-positions.cp
 std-seq/seq-u31-compare-sequences.cp
 std-seq/seq-u35-majority.cp

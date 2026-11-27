@@ -4480,79 +4480,57 @@ fn views_and_trackers_walk_and_show():
     let r = [1, 2, 3].ring.span(2, 2)
     assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
 
+/// A view printed as a list is: its elements joined by `sep` when given, else by each one's gap
+/// (R10.3.1). It writes them without `print`'s `Fmt` (precision, base, `none:`): the frozen old
+/// `cpl` reads this file too, and importing std.show breaks it; see migration.md.
+fn write_seq<S: Seq<T>, T: Show>(s: S, mut out: Str, sep: ?Str):
+    var first = true
+    for x in s:
+        if not first:
+            if let g = sep: out.append(g)
+            else: x.gap(mut out)
+        x.write_to(mut out, None)
+        first = false
+
 impl<S: Bidir<T>, T: Show> Show for Rev<S>:
-    fn show(v):
-        var out = ""
-        var first = true
-        for x in v:
-            if not first: out += " "
-            out += "{x}"
-            first = false
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl Show for Filtered<S: Seq<T>, T: Show>:
-    fn show(v):
-        var out = ""
-        var first = true
-        for x in v:
-            if not first: out += " "
-            out += "{x}"
-            first = false
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl Show for Mapped<S: Seq<T>, T, U: Show>:
-    fn show(v):
-        var out = ""
-        var first = true
-        for x in v:
-            if not first: out += " "
-            out += "{x}"
-            first = false
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl<S: Indexed<K, T>, K: Domain, T: Show> Show for Rebased<S>:
-    fn show(v):
-        var out = ""
-        var first = true
-        for x in v.src:
-            if not first: out += " "
-            out += "{x}"
-            first = false
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl<S: Indexed<K, T>, K: Domain, T: Show> Show for Slice<S>:
-    fn show(v):
-        var out = ""
-        var first = true
-        for (_, x) in v.items:
-            if not first: out += " "
-            out += "{x}"
-            first = false
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl Show for Row<R, C, T>:
-    fn show(v):
-        var out = ""
-        for x in v:
-            if not out.is_empty: out += " "
-            out += "{x}"
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl Show for Col<R, C, T>:
-    fn show(v):
-        var out = ""
-        for x in v:
-            if not out.is_empty: out += " "
-            out += "{x}"
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl Show for Rect<R, C, T>:
-    fn show(v):
-        var out = ""
-        for x in v:
-            if not out.is_empty: out += " "
-            out += "{x}"
-        out
+    fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
+    fn gap(self, mut out: Str):
+        out.push('\n')
 
 impl Seq<T> for Stepped<S, T>:
     fn iter(self) -> yields T:

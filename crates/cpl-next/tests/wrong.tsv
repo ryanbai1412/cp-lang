@@ -381,9 +381,7 @@ core-10/parse-enum-command.cp	wrong-reject	check: program:9:12: E0606: `Cmd` doe
 core-10/parse-generic-shapes.cp	wrong-reject	check: program:9:9: E0606: `P` does not implement `Read`
 core-10/parse-scalars-and-errors.cp	wrong-reject	check: program:4:49: E0606: `F64` does not implement `Read`
 core-10/print-forms-parity.cp	wrong-reject	own: program:11:7: E0608: `xs` was moved into another binding; use `.clone()` there to keep both
-core-10/print-rev-view-honors-sep.cp	no-cxx	g++ failed on 74161c819b4fd3e7.cpp: | 74161c819b4fd3e7.cpp: In function ‘cpl_unit f0()’: | 74161c819b4fd3e7.cpp:566:11: error: no match for ‘operator=’ (operand types are ‘S12’ and ‘S16’) |   566 |     l24 = l53;
 core-10/print-shapes.cp	wrong-reject	check: std.strings:359:56: E0310: no parameter named `from`
-core-10/print-view-honours-sep.cp	wrong-output	wanted "3\n2\n1", got "3 2 1\n"
 core-10/read-base-one-array.cp	wrong-reject	check: program:7:19: E0606: `V` does not implement `Read`
 core-10/read-base-one-counted.cp	wrong-reject	check: program:7:13: E0606: `V` does not implement `Read`
 core-10/read-bool-is-not-a-token.cp	wrong-error	wanted E0315 on line 4, got: check: program:6:1: E0606: `Bool` does not implement `Read`
@@ -1110,7 +1108,6 @@ std-seq/seq-u17-slices-are-views.cp	wrong-reject	check: program:4:10: E0302: exp
 std-seq/seq-u18-aggregates-every-shape.cp	wrong-reject	check: std.seq:33:15: E0606: `T` does not implement `Domain`
 std-seq/seq-u19-distinct-sorted.cp	wrong-reject	check: std.seq:497:16: E0201: unknown name `HashSet`
 std-seq/seq-u23-running-extreme.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `scan`
-std-seq/seq-u24-separator.cp	wrong-output	wanted "1, 2, 3\n1, 2, 3\nab\n8-10", got "1, 2, 3\n1, 2, 3\nab\n8 10\n"
 std-seq/seq-u25-one-api-every-shape.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/seq-u27-bsearch-as-cut.cp	wrong-reject	check: program:4:43: E0203: `List<Int>` has no member `bsearch`
 std-seq/seq-u28-count-in-value-range.cp	wrong-reject	check: program:4:9: E0203: `List<Int>` has no member `equal_range`
