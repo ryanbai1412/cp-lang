@@ -158,6 +158,17 @@ impl Cx<'_> {
         let fits = args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b));
         (fits && self.unify(&Ty::Var(v), &f)).then_some(f)
     }
+    /// Whether `t` is an inference variable a pending bound may make a domain: it is bound by
+    /// `Domain`, or is an argument an impl of a bound takes a domain for (`N: Next<V>`).
+    pub(super) fn domain_var(&self, t: &Ty) -> bool {
+        let t = self.shallow(t);
+        matches!(t, Ty::Var(_))
+            && (self.obligations.iter()).any(|(o, r, ..)| {
+                (Some(r.tr) == self.d.domain_trait && self.shallow(o) == t)
+                    || (r.args.iter().enumerate())
+                        .any(|(j, a)| self.shallow(a) == t && self.d.arg_may_be_domain(r.tr, j))
+            })
+    }
     /// Whether a pending bound is on the inference variable `v`: it, not a default, fixes `v`.
     pub(super) fn obliged(&self, v: usize) -> bool {
         (self.obligations.iter()).any(|(t, ..)| self.shallow(t) == Ty::Var(v))

@@ -324,17 +324,25 @@ impl<'a> Cx<'a> {
         }
         // A lambda with unwritten parameter types is checked after the other arguments, whose
         // types and bounds may fix the ones it takes (R06.1.2).
-        let late = |a: &ast::Arg| {
-            matches!(&a.value.kind, ExprKind::Lambda { params, param_tys, .. }
-                if params.len() > param_tys.iter().flatten().count())
-        };
+        // So is an integer literal for a parameter bound by `Domain`: the domain the others fix
+        // makes it a position of that domain (R04.2.18).
+        let late: Vec<bool> = (args.iter().enumerate())
+            .map(|(k, a)| {
+                let position = a.value.int_literal().is_some()
+                    && (slot.iter().position(|s| *s == Some(k)))
+                        .is_some_and(|i| self.domain_var(&formals[i].ty));
+                position
+                    || matches!(&a.value.kind, ExprKind::Lambda { params, param_tys, .. }
+                        if params.len() > param_tys.iter().flatten().count())
+            })
+            .collect();
         let mut typed: Vec<Option<TArg>> = (0..args.len()).map(|_| None).collect();
         for pass in [false, true] {
             if pass {
                 self.solve(false);
             }
             for (k, a) in args.iter().enumerate() {
-                if late(a) != pass {
+                if late[k] != pass {
                     continue;
                 }
                 typed[k] = match slot.iter().position(|s| *s == Some(k)) {

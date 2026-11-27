@@ -546,6 +546,17 @@ impl Decls {
             .map(|&k| (k, &self.impls[k]))
             .filter(|(_, im)| self.live(im))
     }
+    /// Whether an impl of `tr` takes a domain for its argument `j` (`impl<V: Domain, ..>
+    /// Next<V> for [V]S`), so a type a bound of `tr` has there may be one.
+    pub fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool {
+        let Some(dom) = self.domain_trait else {
+            return false;
+        };
+        self.trait_impls(tr).any(|(_, im)| {
+            matches!(im.trait_.args.get(j), Some(Ty::Param(i))
+                if im.bounds.iter().any(|(b, r)| b == i && r.tr == dom))
+        })
+    }
     fn push_impl(&mut self, im: ImplDecl) {
         let k = self.impls.len();
         self.impls_by_trait.entry(im.trait_.tr).or_default().push(k);
