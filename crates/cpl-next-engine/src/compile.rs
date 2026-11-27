@@ -1051,18 +1051,17 @@ impl Fc<'_> {
                         if n > 0 && s != d {
                             self.ops.push(Op::Move { d, s, n });
                         }
-                        self.retain(d, &e.ty);
                     }
                     None => match self.global(p) {
-                        Some(a) => {
-                            self.ops.push(Op::GetG { d, a, n });
-                            self.retain(d, &e.ty);
-                        }
+                        Some(a) => self.ops.push(Op::GetG { d, a, n }),
                         None => {
                             let p = self.place(p);
                             self.ops.push(Op::Load { d, p, lay });
                         }
                     },
+                }
+                if let EK::Copy(_) = e.kind {
+                    self.retain(d, &e.ty);
                 }
             }
             EK::AddrOf(Place::Local(l)) => self.ops.push(Op::Addr { d, s: self.off[*l] }),
@@ -1651,17 +1650,6 @@ impl<'a> Fc<'a> {
             .iter()
             .map(|&(at, l)| (base + at, l))
             .collect();
-        // A viewed place stays as it is while the call runs (`Arg::View`), so a param own marks
-        // a view (`Func::views`) whose address the body never takes reads it in place: no holder
-        // to gain and drop.
-        let read_only: Vec<Reg> = (g.params.iter().zip(&g.views).zip(args))
-            .filter(|(((l, _), v), a)| **v && matches!(a, Arg::View(_)) && !addressed(&g.body, *l))
-            .map(|(((l, _), _), _)| off[*l])
-            .collect();
-        let drops: Vec<(Reg, Lay)> = drops
-            .into_iter()
-            .filter(|(at, _)| !read_only.contains(at))
-            .collect();
         for &(at, lay) in &drops {
             let n = self.c.lays.size[lay as usize];
             self.ops.push(Op::Zero { d: at, n });
@@ -1670,9 +1658,10 @@ impl<'a> Fc<'a> {
         // while the call runs, is that local's registers: no words move in.
         let lent_body = lending.as_ref().map(|l| &l.body[..]);
         let mut aliased = Vec::new();
-        for (&(l, _), a) in g.params.iter().zip(args) {
+        for ((&(l, _), &view), a) in g.params.iter().zip(&g.views).zip(args) {
             let x = match a {
-                Arg::View(Place::Local(x)) if read_only.contains(&off[l]) => *x,
+                // A viewed place stays as it is while the call runs.
+                Arg::View(Place::Local(x)) if view && !addressed(&g.body, l) => *x,
                 Arg::Value(Expr {
                     kind: EK::Copy(Place::Local(x)),
                     ..
@@ -1698,18 +1687,6 @@ impl<'a> Fc<'a> {
             }
             match a {
                 Arg::Value(v) => self.expr(v, to),
-                Arg::View(p) if read_only.contains(&to) => {
-                    let ty = self.place_ty(p);
-                    let n = self.size(&ty);
-                    match self.direct(p) {
-                        Some(s) if n > 0 => self.ops.push(Op::Move { d: to, s, n }),
-                        Some(_) => {}
-                        None => {
-                            let p = self.place(p);
-                            self.ops.push(Op::Take { d: to, p, n });
-                        }
-                    }
-                }
                 Arg::View(p) => {
                     let ty = self.place_ty(p);
                     let lay = self.lay(&ty);

@@ -711,6 +711,37 @@ impl Place {
     }
 }
 
+/// Whether evaluating `e` has no effect and cannot trap, so it may run earlier or later
+/// than written: lowering's sequencing and ownership's temporaries both order by it.
+pub fn pure<T>(e: &Expr<T>) -> bool {
+    match &e.kind {
+        EK::Int(_)
+        | EK::F64(_)
+        | EK::Bool(_)
+        | EK::Text(_)
+        | EK::Unit
+        | EK::Copy(_)
+        | EK::Pass(..)
+        | EK::AddrOf(_)
+        | EK::Lent(_)
+        | EK::Tag(_)
+        | EK::DomLen(_)
+        | EK::DomLo(_)
+        | EK::DomHeld(_)
+        | EK::HasBound(..) => true,
+        EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().all(pure),
+        EK::Inject(x) | EK::MakeUnion(_, x) => pure(x),
+        // Widening is a branch once sets are known, so it is a statement of its own.
+        EK::Widen(_) => false,
+        EK::Intr(i, args, _) => {
+            !i.checked()
+                && !i.effectful()
+                && args.iter().all(|a| matches!(a, Arg::Value(v) if pure(v)))
+        }
+        EK::Call(..) | EK::CallValue(..) => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

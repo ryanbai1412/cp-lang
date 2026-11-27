@@ -53,7 +53,13 @@ struct JudgeProfile { compiler, flags, limits, kept_checks, size_limit, grader_w
   optimisation, never a second meaning.
 - Ownership places every release: `Func::drops` at frame exit and
   `Stmt::Drop` at a discarded value and an overwrite (cpl-next-own).
-  A backend runs each one and places none of its own. Which values hold
+  A backend runs each one and places none of its own. A lent or viewed
+  (`Func::views`) param is the caller's value, so it is never in
+  `Func::drops`: a fresh value given to a viewed param is set in a
+  temporary the caller releases, and an earlier operand with an effect
+  goes to a temporary before it, so effects keep their order. The
+  engine counts a copy only where it lowers an `EK::Copy`; a view and a
+  load take no count. Which values hold
   storage is decided once, by `Program::stores`: ownership places drops
   by it and the engine counts a copy by it, and no backend keeps a bit
   of its own. The engine's optimizer removes a `Drop` only when its

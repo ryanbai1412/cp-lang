@@ -548,7 +548,6 @@ impl M<'_> {
                 Op::Load { d, p, lay } => {
                     let loc = self.look(fp, p)?;
                     self.read(loc, r(d), self.size(lay));
-                    self.retain(lay, r(d));
                 }
                 Op::Peek { d, p } => {
                     let loc = self.look(fp, p)?;
