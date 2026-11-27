@@ -326,19 +326,20 @@ impl Cx<'_> {
             opt,
         )
     }
+    /// `D.count`.
+    fn domain_len(&mut self, d: Ty, span: Span) -> TExpr {
+        match (&d, self.domain_method("dom_count")) {
+            (Ty::Struct(..), Some(count)) => self.domain_count(d.clone(), count, span),
+            _ => TExpr {
+                kind: TK::DomLen(d.clone()),
+                ty: Ty::Int,
+                span,
+            },
+        }
+    }
     /// A domain named as a value: its whole range (R04.2.21).
     pub(super) fn domain_value(&mut self, d: Ty, span: Span) -> TExpr {
-        let int = |kind| TExpr {
-            kind,
-            ty: Ty::Int,
-            span,
-        };
-        let len = match (&d, self.domain_method("dom_count")) {
-            (Ty::Struct(..), Some(count)) => self.domain_count(d.clone(), count, span),
-            _ => int(TK::DomLen(d.clone())),
-        };
-        let args = vec![int(TK::Int(0)), len, int(TK::Int(1))];
-        self.range_of(args, d.clone(), span)
+        self.ord_piece(None, None, d, span)
     }
     /// `j..i` with ends of a type that implements `Domain`, as cuts: the range of them, or, for
     /// a half-open range of cuts where a `Range<D>` is wanted, the piece of `D`'s positions
@@ -355,23 +356,15 @@ impl Cx<'_> {
         let t = self.shallow(&lo.ty);
         let hi = self.expr(hi, Some(&t));
         let hi = self.coerce(hi, &t);
-        let piece = match (want.map(|w| self.shallow(w)), &t) {
-            (Some(Ty::Struct(_, a, _)), Ty::Struct(c, of, _))
-                if Some(*c) == self.d.cut_struct
-                    && a.len() == 1
-                    && of.first().is_some_and(|d| *d == self.shallow(&a[0])) =>
-            {
+        let cuts = self.cut_domain(&t);
+        let piece = match want.map(|w| self.shallow(w)) {
+            Some(Ty::Struct(_, a, _)) if a.len() == 1 && cuts == Some(self.shallow(&a[0])) => {
                 Some(a[0].clone())
             }
             _ => None,
         };
         if piece.is_some() && inclusive {
-            let code = cpl_diag::codes::TYPE_MISMATCH.0;
-            let shown = self.show(&t);
-            self.err(
-                span,
-                format!("{code}: a closed range of `{shown}` is no piece of positions: write `j..i` (R04.4.6)"),
-            );
+            self.closed_cuts(&t, span);
         }
         let lo = self.ordinal(lo, &ord);
         let mut hi = self.ordinal(hi, &ord);
@@ -389,6 +382,53 @@ impl Cx<'_> {
             ));
         }
         (vec![lo, hi, int(TK::Int(1))], piece.unwrap_or(t))
+    }
+    /// `D`, when `t` is core's `@cuts` struct of `D`.
+    pub(super) fn cut_domain(&self, t: &Ty) -> Option<Ty> {
+        match self.shallow(t) {
+            Ty::Struct(c, of, _) if Some(c) == self.d.cut_struct => {
+                of.first().map(|d| self.shallow(d))
+            }
+            _ => None,
+        }
+    }
+    fn closed_cuts(&mut self, t: &Ty, span: Span) {
+        let code = cpl_diag::codes::TYPE_MISMATCH.0;
+        let shown = self.show(t);
+        self.err(
+            span,
+            format!("{code}: a closed range of `{shown}` is no piece of positions: write `j..i` (R04.4.6)"),
+        );
+    }
+    /// `..c` or `c..` with `c` a cut of `d`: the piece of `d`'s positions before or after it
+    /// (R04.4.8), as a `Range<D>`.
+    pub(super) fn cut_piece(
+        &mut self,
+        lo: Option<TExpr>,
+        hi: Option<TExpr>,
+        through: bool,
+        d: Ty,
+        span: Span,
+    ) -> Option<TExpr> {
+        let ord = self.domain_method("dom_ord")?;
+        if through {
+            let t = (lo.iter().chain(&hi)).next().map(|e| e.ty.clone())?;
+            self.closed_cuts(&t, span);
+        }
+        let lo = lo.map(|e| self.ordinal(e, &ord));
+        let hi = hi.map(|e| self.ordinal(e, &ord));
+        Some(self.ord_piece(lo, hi, d, span))
+    }
+    /// The positions of `d` with ordinals `lo..hi`, from the first or to the last when left out.
+    fn ord_piece(&mut self, lo: Option<TExpr>, hi: Option<TExpr>, d: Ty, span: Span) -> TExpr {
+        let int = |kind| TExpr {
+            kind,
+            ty: Ty::Int,
+            span,
+        };
+        let lo = lo.unwrap_or(int(TK::Int(0)));
+        let hi = hi.unwrap_or_else(|| self.domain_len(d.clone(), span));
+        self.range_of(vec![lo, hi, int(TK::Int(1))], d, span)
     }
     /// The fn of core's `Domain` whose body is the intrinsic `op`.
     fn domain_method(&self, op: &str) -> Option<DomainFn> {

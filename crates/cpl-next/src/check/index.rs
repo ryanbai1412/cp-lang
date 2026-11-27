@@ -377,7 +377,19 @@ impl Cx<'_> {
         (lo, hi, through): (Option<&ast::Expr>, Option<&ast::Expr>, bool),
         span: Span,
     ) -> TExpr {
-        let d = self.d;
+        let key = self.key_of(&s.ty).map(|k| self.shallow(&k));
+        let lo = lo.map(|e| self.expr(e, key.as_ref()));
+        let hi = hi.map(|e| self.expr(e, key.as_ref()));
+        // An end that is a cut of the keys: the piece of positions up to or from it (R04.4.8).
+        if let Some(k) = key
+            .filter(|k| (lo.iter().chain(&hi)).any(|e| self.cut_domain(&e.ty).as_ref() == Some(k)))
+        {
+            let f = self.index_fn_for(&s.ty, 1);
+            let piece = self.cut_piece(lo.clone(), hi.clone(), through, k, span);
+            if let (Some(f), Some(r)) = (f, piece) {
+                return self.index_call(f, s, vec![Some(r)], span);
+            }
+        }
         let Some(f) = self.index_fn_for(&s.ty, 3) else {
             self.err(
                 span,
@@ -389,39 +401,22 @@ impl Cx<'_> {
                 span,
             };
         };
-        let end = |e: Option<&ast::Expr>| ast::Arg {
-            name: None,
-            mutable: false,
-            value: e.cloned().unwrap_or(ast::Expr {
-                kind: ExprKind::None,
-                span,
-            }),
+        let through = TExpr {
+            kind: TK::Bool(through),
+            ty: Ty::Bool,
+            span,
         };
-        let args = [
-            end(lo),
-            end(hi),
-            ast::Arg {
-                name: None,
-                mutable: false,
-                value: ast::Expr {
-                    kind: ExprKind::Bool(through),
-                    span,
-                },
-            },
-        ];
-        let f = self.fnref(f, Vec::new(), Vec::new());
-        if let Some(st) = &d.f(f.decl).self_ty {
-            let st = Subst {
-                tys: &f.targs,
-                sets: &f.sets,
-            }
-            .ty(st);
-            self.unify(&s.ty, &st);
-        }
-        self.call_fn(f, Some(TArg::Value(s)), &args, span, None)
+        self.index_call(f, s, vec![lo, hi, Some(through)], span)
     }
-    /// `s[r]` as a call of the `@index` fn `f`, whose `self` and key it fits to `s` and `r`.
-    pub(super) fn index_call(&mut self, f: FnId, s: TExpr, r: TExpr, span: Span) -> TExpr {
+    /// `s[..]` as a call of the `@index` fn `f`, whose `self` and params it fits to `s` and
+    /// `args`; a left-out argument is `None`.
+    pub(super) fn index_call(
+        &mut self,
+        f: FnId,
+        s: TExpr,
+        args: Vec<Option<TExpr>>,
+        span: Span,
+    ) -> TExpr {
         let f = self.fnref(f, Vec::new(), Vec::new());
         let fd = self.d.f(f.decl);
         let sub = Subst {
@@ -432,16 +427,31 @@ impl Cx<'_> {
             let st = sub.ty(st);
             self.unify(&s.ty, &st);
         }
-        let pty = sub.ty(&fd.params[0].ty);
-        let r = self.coerce(r, &pty);
+        // `self`'s impl settles the key type before an argument's literal could.
         self.oblige(&f, span);
+        self.solve(false);
+        let mut out = Vec::new();
+        for (a, p) in args.into_iter().zip(&fd.params) {
+            let pty = sub.ty(&p.ty);
+            let a = match a {
+                Some(a) => self.coerce(a, &pty),
+                None => {
+                    let none = ast::Expr {
+                        kind: ExprKind::None,
+                        span,
+                    };
+                    self.expr(&none, Some(&pty))
+                }
+            };
+            out.push(TArg::Value(a));
+        }
         self.solve(false);
         let ty = self.ret_ty(&f);
         TExpr {
             kind: TK::Call {
                 f,
                 recv: Some(Box::new(TArg::Value(s))),
-                args: vec![TArg::Value(r)],
+                args: out,
             },
             ty,
             span,

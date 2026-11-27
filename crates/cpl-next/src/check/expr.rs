@@ -1323,7 +1323,7 @@ impl<'a> Cx<'a> {
                     return Self::error_node(span);
                 }
                 if let Some(f) = self.index_fn(&b.ty, &i.ty) {
-                    self.index_call(f, b, i, span)
+                    self.index_call(f, b, vec![Some(i)], span)
                 } else {
                     self.literal_key(base, &indices[0], &b.ty);
                     let i = self.index_arg(&b.ty, i);

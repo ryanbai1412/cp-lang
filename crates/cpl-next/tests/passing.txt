@@ -1182,6 +1182,8 @@ next/n_domain_09_literal_is_a_position.cp
 next/n_domain_count_pred.cp
 next/n_domain_cuts.cp
 next/n_domain_cuts_closed.cp
+next/n_domain_cuts_open.cp
+next/n_domain_cuts_open_closed.cp
 next/n_domain_ord.cp
 next/n_domain_trait_01.cp
 next/n_engine_01_inlined_lender_runs_body_in_place.cp
@@ -1211,6 +1213,7 @@ next/n_impl_07_shaped_header.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
+next/n_index_wrong_domain.cp
 next/n_inherent_impl.cp
 next/n_inst_lent_arg_of_a_phantom_param.cp
 next/n_lambda_01_pattern_params.cp

@@ -1662,6 +1662,14 @@ impl<'a> Cx<'a> {
         }
     }
     /// An `Int` used to index an array is checked against the array's domain. The proof that removes the check is the facts layer's.
+    /// A declared domain, or a type that implements core's `Domain`.
+    fn is_domain(&self, t: &Ty) -> bool {
+        match t {
+            Ty::Dom(_) => true,
+            Ty::Struct(..) => (self.d.domain_trait).is_some_and(|tr| self.d.has_impl(t, tr)),
+            _ => false,
+        }
+    }
     pub(super) fn index_arg(&mut self, base: &Ty, i: TExpr) -> TExpr {
         if let Ty::Struct(d, ts, _) = self.shallow(base) {
             if Some(d) == self.array_id() && self.shallow(&i.ty) == Ty::Int {
@@ -1684,6 +1692,25 @@ impl<'a> Cx<'a> {
                     }
                     return self.position(dty, i);
                 }
+            }
+        }
+        // A position of one domain never indexes an array over another (R04.3.1).
+        if let Some(k) = self.key_of(base) {
+            let (k, t) = (self.shallow(&k), self.shallow(&i.ty));
+            if k != t && self.is_domain(&k) && self.is_domain(&t) {
+                let (ks, ts) = (self.show(&k), self.show(&t));
+                self.err(
+                    i.span,
+                    format!(
+                        "{}: a `{ts}` indexes a `[{ks}]` array: index it with a `{ks}`",
+                        cpl_diag::codes::WRONG_DOMAIN.0
+                    ),
+                );
+                return TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span: i.span,
+                };
             }
         }
         // Keys never wrap (R07.2.17).
