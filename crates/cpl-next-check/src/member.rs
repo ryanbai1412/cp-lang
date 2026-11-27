@@ -333,12 +333,15 @@ impl<'a> Cx<'a> {
         };
         let recv = self.expr(&first.value, None);
         let rt = self.shallow(&recv.ty);
-        let tn = &self.d.t(tr).name;
-        let Some(decls::Member::Method(m, ts, ss)) = self.d.impl_member(&rt, &name.text, Some(tn))
+        let Some(decls::Member::Method(m, ts, ss)) = self.d.impl_member(&rt, &name.text, Some(tr))
         else {
             if !self.is_error(&rt) {
                 let ty = self.show(&rt);
-                let text = format!("`{ty}` has no impl of `{tn}` with a `{}`", name.text);
+                let text = format!(
+                    "`{ty}` has no impl of `{}` with a `{}`",
+                    self.d.t(tr).name,
+                    name.text
+                );
                 self.err(span, Msg::verdict(cpl_diag::codes::MISSING_IMPL, text));
             }
             return Some(Self::error_node(span));

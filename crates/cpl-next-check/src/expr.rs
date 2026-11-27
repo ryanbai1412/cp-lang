@@ -686,9 +686,28 @@ impl<'a> Cx<'a> {
     /// `not b < a`, and `a != b` is `not a == b`; operands are still read left to right.
     pub(super) fn op_call(&mut self, op: CmpOp, a: TExpr, b: TExpr, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let Some((trait_name, method)) = op.trait_method() else {
+        // `>`, `<=` and `>=` follow from `<`, and `!=` from `==` (R08.1.5).
+        let token = match op {
+            CmpOp::Eq | CmpOp::Ne => "==",
+            CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge => "<",
+            CmpOp::In | CmpOp::NotIn => return mk(TK::Error, Ty::Error),
+        };
+        let ops: Vec<TraitId> = (self.d.operators.iter())
+            .filter(|(o, _)| o == token)
+            .map(|&(_, tr)| tr)
+            .collect();
+        let named = (ops.iter().copied()).find(|&tr| self.d.seen(self.d.t(tr).module));
+        let Some((named, method)) =
+            named.and_then(|tr| Some((tr, self.d.operator_method(tr)?.0.clone())))
+        else {
+            let msg = format!(
+                "`{}` needs an `@operator(\"{token}\")` trait (R08.1.5)",
+                op.text()
+            );
+            self.err(span, Msg::verdict(cpl_diag::codes::MISSING_IMPL, msg));
             return mk(TK::Error, Ty::Error);
         };
+        let trait_name = self.d.t(named).name.clone();
         let swap = matches!(op, CmpOp::Gt | CmpOp::Le);
         let mut pre = Vec::new();
         let a = if swap && !matches!(a.kind, TK::Var(_)) {
@@ -703,25 +722,21 @@ impl<'a> Cx<'a> {
         let rt = self.shallow(&recv.ty);
         let call = if let Ty::Param(i) = &rt {
             let tr = (self.bound_traits(*i).into_iter())
-                .find(|t| self.d.t(t.tr).name == trait_name)
+                .find(|t| ops.contains(&t.tr))
                 .or_else(|| {
-                    let tr = TraitId(
-                        (self.d.traits.iter())
-                            .position(|t| t.name == trait_name && self.d.seen(t.module))?,
-                    );
-                    self.blanket(*i, tr).then(|| decls::TraitRef {
-                        tr,
+                    self.blanket(*i, named).then(|| decls::TraitRef {
+                        tr: named,
                         args: Vec::new(),
                     })
                 });
             tr.map(|tr| {
-                if let Some(&m) = self.d.t(tr.tr).methods.get(method) {
+                if let Some(&m) = self.d.t(tr.tr).methods.get(method.as_str()) {
                     self.reach(m);
                 }
                 let arg = self.coerce(arg, &rt);
                 mk(
                     TK::CallTrait {
-                        ctx: self.trait_ctx(tr.tr, method),
+                        ctx: self.trait_ctx(tr.tr, &method),
                         tr: tr.clone(),
                         method: method.to_string(),
                         self_ty: Box::new(recv.ty.clone()),
@@ -733,7 +748,7 @@ impl<'a> Cx<'a> {
                 )
             })
         } else if let Some(decls::Member::Method(m, ts, ss)) =
-            self.d.impl_member(&rt, method, Some(trait_name))
+            self.d.impl_member(&rt, &method, Some(named))
         {
             let f = self.fnref(m, ts, ss);
             let ty = self.ret_ty(&f);
@@ -774,7 +789,7 @@ impl<'a> Cx<'a> {
                 self.err(
                     span,
                     Unbuilt::Derived {
-                        tr: trait_name.to_string(),
+                        tr: trait_name.clone(),
                         ty: shown,
                     },
                 );

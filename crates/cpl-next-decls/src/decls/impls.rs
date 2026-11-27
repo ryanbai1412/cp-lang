@@ -31,10 +31,10 @@ impl Decls {
         }
         r
     }
-    /// The fn `name` of an impl for `recv`, of the trait named `trait_name` when one is given,
+    /// The fn `name` of an impl for `recv`, of trait `trait_` when one is given,
     /// or the trait's default when the impl does not write it (R08.1.2).
-    pub fn impl_member(&self, recv: &Ty, name: &str, trait_name: Option<&str>) -> Option<Member> {
-        self.impl_member_with(recv, name, trait_name, |_| true)
+    pub fn impl_member(&self, recv: &Ty, name: &str, trait_: Option<TraitId>) -> Option<Member> {
+        self.impl_member_with(recv, name, trait_, |_| true)
     }
     /// The fn `name` of an impl for `recv` whose declaration `pick` takes: the `at` that reads
     /// (`Indexed`) or the one that lends a place (`IndexedMut`), told apart by signature.
@@ -50,10 +50,10 @@ impl Decls {
         &self,
         recv: &Ty,
         name: &str,
-        trait_name: Option<&str>,
+        trait_: Option<TraitId>,
         pick: impl Fn(&FnDecl) -> bool,
     ) -> Option<Member> {
-        let mut choices = self.impl_choices(recv, name, trait_name, &pick);
+        let mut choices = self.impl_choices(recv, name, trait_, &pick);
         if choices.len() > 1 {
             return None;
         }
@@ -64,16 +64,16 @@ impl Decls {
         // traits' defaults.
         let core = [self.roles.domain, self.roles.order];
         let mut core = (core.into_iter().flatten()).filter(|_| matches!(recv, Ty::Dom(_)));
-        core.find_map(|tr| {
-            let tr = &self.traits[tr.0];
+        core.find_map(|id| {
+            let tr = &self.traits[id.0];
             let tm = *tr
                 .methods
                 .get(name)
-                .filter(|_| trait_name.is_none_or(|n| n == tr.name))?;
+                .filter(|_| trait_.is_none_or(|t| t == id))?;
             pick(self.f(tm)).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
         })
     }
-    /// Each fn `name` an impl for `recv` gives, of the trait named `trait_name` when one is given,
+    /// Each fn `name` an impl for `recv` gives, of trait `trait_` when one is given,
     /// with the trait the impl is of: the fitting impls of the most specific rank, so an impl
     /// for a written type beats a blanket one of another trait (R08.1.4). More than one is no
     /// choice: the call says which trait or arguments it means.
@@ -81,7 +81,7 @@ impl Decls {
         &self,
         recv: &Ty,
         name: &str,
-        trait_name: Option<&str>,
+        trait_: Option<TraitId>,
         pick: impl Fn(&FnDecl) -> bool,
     ) -> Vec<(TraitRef, Member)> {
         // A value's member has a `self`: `Domain.at(x)` is not `Int`'s `at`.
@@ -103,7 +103,7 @@ impl Decls {
                     sets
                 }
             };
-            let Some(member) = self.impl_gives(im, recv, name, trait_name, &pick, &sets) else {
+            let Some(member) = self.impl_gives(im, recv, name, trait_, &pick, &sets) else {
                 continue;
             };
             let rank = self.impl_rank(im);
@@ -122,12 +122,12 @@ impl Decls {
         im: &ImplDecl,
         recv: &Ty,
         name: &str,
-        trait_name: Option<&str>,
+        trait_: Option<TraitId>,
         pick: &impl Fn(&FnDecl) -> bool,
         sets: &[SetTy],
     ) -> Option<Member> {
         let tr = &self.traits[im.trait_.tr.0];
-        if trait_name.is_some_and(|n| n != tr.name) {
+        if trait_.is_some_and(|t| t != im.trait_.tr) {
             return None;
         }
         if let Some(m) = im.methods.get(name).filter(|m| pick(self.f(**m))) {

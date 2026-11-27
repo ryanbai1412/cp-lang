@@ -1193,3 +1193,17 @@ fn the_memory_limit_is_the_judge_the_snapshot_is_built_for() {
     assert!(over(base.with_judge("test", 256)));
     assert!(!over(base.with_judge("test", 1 << 20)));
 }
+
+/// `<` is the `@operator("<")` trait's fn: a bound on another trait of the same name gives none.
+#[test]
+fn an_operator_is_its_operator_trait_not_a_trait_of_its_name() {
+    let src = "trait Ord:\n    fn lt(self, other: Self) -> Bool\n\nfn less<T: Ord>(a: T, b: T) -> Bool = a < b\nprint(less(1, 2))\n";
+    let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+    assert_eq!(
+        ds,
+        [
+            "check: program:5:7: E0606: `Int` does not implement `Ord`",
+            "check: program:4:39: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)",
+        ]
+    );
+}
