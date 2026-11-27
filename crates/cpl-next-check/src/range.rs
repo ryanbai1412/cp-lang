@@ -444,8 +444,21 @@ impl Cx<'_> {
         if self.errors.len() > diagnosed {
             return Err(Box::new(Self::error_node(span)));
         }
-        // An `Int` end where positions are wanted is a position, as `lo..hi`'s start is.
-        let v = match self.whole_of(want) {
+        // An `Int` end where positions are wanted is a position, as `lo..hi`'s start is; an
+        // exclusive literal end is a cut, so it may be the domain's end (R04.4.25).
+        let whole = self.whole_of(want);
+        if let Some(d @ Ty::Dom(_)) = &whole {
+            if !from && !inclusive && step.is_none() && matches!(v.kind, TK::Int(_)) {
+                let int = |kind| TExpr {
+                    kind,
+                    ty: Ty::Int,
+                    span,
+                };
+                let hi = self.cut_ordinal(d.clone(), v);
+                return Ok((vec![int(TK::Int(0)), hi, int(TK::Int(1))], d.clone()));
+            }
+        }
+        let v = match whole {
             Some(d @ Ty::Dom(_)) if step.is_none() && self.shallow(&v.ty) == Ty::Int => {
                 self.coerce(v, &d)
             }
@@ -651,7 +664,12 @@ impl Cx<'_> {
     ) -> (Vec<TExpr>, Ty) {
         let t = self.shallow(&lo.ty);
         let hi = self.expr(hi, Some(&t));
-        let hi = self.coerce(hi, &t);
+        // An exclusive literal end is a cut, so it may be the domain's end (R04.4.25).
+        let cut = !inclusive && matches!(t, Ty::Dom(_)) && matches!(hi.kind, TK::Int(_));
+        let hi = match cut {
+            true => self.cut_ordinal(t.clone(), hi),
+            false => self.coerce(hi, &t),
+        };
         let cuts = self.cut_domain(&t);
         let piece = match want.map(|w| self.shallow(w)) {
             Some(Ty::Struct(_, a, _)) if a.len() == 1 && cuts == Some(self.shallow(&a[0])) => {
@@ -663,7 +681,10 @@ impl Cx<'_> {
             self.closed_cuts(&t, span);
         }
         let lo = self.end_position(lo, &ord);
-        let mut hi = self.end_position(hi, &ord);
+        let mut hi = match cut {
+            true => hi,
+            false => self.end_position(hi, &ord),
+        };
         let int = |kind| TExpr {
             kind,
             ty: Ty::Int,

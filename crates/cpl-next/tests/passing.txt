@@ -358,6 +358,7 @@ core-04/collect-keeps-keys.cp
 core-04/cut-from-int-is-count.cp
 core-04/cut-indexes-positions.cp
 core-04/cut-int-any-base.cp
+core-04/cut-literal-range-to-piece-labels.cp
 core-04/cut-literal-range-to-piece.cp
 core-04/cut-neighbours.cp
 core-04/cut-range-table.cp
@@ -403,6 +404,7 @@ core-04/enum-ord-is-ordinal.cp
 core-04/enum-position-int-is-its-ordinal.cp
 core-04/f1-row-and-column-views.cp
 core-04/f1-row-keeps-column-domain.cp
+core-04/f2-sub-rectangle-offset.cp
 core-04/f2-sub-rectangle.cp
 core-04/filter-iterates-without-keys.cp
 core-04/first-is-optional.cp
@@ -1672,6 +1674,8 @@ next/n_range_02_open_and_stepped_walks.cp
 next/n_range_03_domain_value_ends.cp
 next/n_range_eq.cp
 next/n_range_is_empty.cp
+next/n_range_literal_cut_end.cp
+next/n_range_literal_cut_past.cp
 next/n_range_literal_positions.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp

@@ -1030,6 +1030,34 @@ impl Lw<'_> {
                     ty,
                 }
             }
+            TK::CutOrd(t, x) => {
+                let v = self.expr(x, out);
+                let int = |kind| Expr {
+                    site,
+                    kind,
+                    ty: Ty::Int,
+                };
+                let op = |op, a: Expr<Ty>, b: Expr<Ty>, ty: Ty| Expr {
+                    site,
+                    kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)], 0),
+                    ty,
+                };
+                let ord = op(Intr::Sub, v, int(EK::DomLo(t.clone())), Ty::Int);
+                let ord = self.spill(ord, out);
+                let within = [
+                    op(Intr::Ge, ord.clone(), int(EK::Int(0)), Ty::Bool),
+                    op(Intr::Le, ord.clone(), int(EK::DomLen(t.clone())), Ty::Bool),
+                ];
+                for cond in within {
+                    out.push(Stmt::Check {
+                        kind: CheckKind::Domain,
+                        cond,
+                        msg: "cut outside the domain".into(),
+                        site,
+                    });
+                }
+                ord
+            }
             TK::DomHas(t, x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);

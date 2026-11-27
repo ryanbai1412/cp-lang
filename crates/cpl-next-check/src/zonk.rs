@@ -79,7 +79,7 @@ impl<'a> Cx<'a> {
                     *a = self.zonk(a);
                 }
             }
-            TK::DomFrom(t, b, _) | TK::DomNth(t, b) | TK::DomHas(t, b) => {
+            TK::DomFrom(t, b, _) | TK::CutOrd(t, b) | TK::DomNth(t, b) | TK::DomHas(t, b) => {
                 *t = self.zonk(t);
                 self.zonk_expr(b);
             }

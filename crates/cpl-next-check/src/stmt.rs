@@ -1828,6 +1828,29 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// The Int `i` as a cut of the domain `dty`, the count of positions before it; a literal
+    /// that is never one is E0306 (R04.4.25).
+    pub(super) fn cut_ordinal(&mut self, dty: Ty, i: TExpr) -> TExpr {
+        let span = i.span;
+        if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
+            let (least, most) = self.domains[*d].within;
+            if least.is_some_and(|l| *k < l) || most.is_some_and(|m| *k > m.saturating_add(1)) {
+                let name = self.domains[*d].name.clone();
+                self.err(
+                    span,
+                    Msg::verdict(
+                        cpl_diag::codes::RANGE_STORE_CONST,
+                        format!("`{k}` is never a cut of `{name}`"),
+                    ),
+                );
+            }
+        }
+        TExpr {
+            kind: TK::CutOrd(dty, Box::new(i)),
+            ty: Ty::Int,
+            span,
+        }
+    }
     /// An expression that names storage: a variable, or a field of one.
     /// The name of the `let` a place lies in, if it lies in one.
     pub(super) fn let_root(&self, place: &TExpr) -> Option<String> {

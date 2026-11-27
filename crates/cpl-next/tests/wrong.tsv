@@ -91,12 +91,10 @@ core-04/char-domain-word-read.cp	wrong-reject	check: program:5:17: E0302: expect
 core-04/char-from-idx.cp	wrong-reject	check: program:4:7: E0201: unknown name `Char`
 core-04/char-list-receiver-not-str.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:7: E0203: `List<Char>` has no member `join`
 core-04/cut-literal-fills-cut.cp	wrong-reject	check: program:5:19: E0302: expected `Cut<V>`, found `Int`
-core-04/cut-literal-range-to-piece-labels.cp	wrong-reject	check: program:6:52: E0902: `6` is never a position of `V`
 core-04/e1-generic-param-takes-slice.cp	wrong-reject	check: program:6:16: E0302: expected `Array<_, Int>`, found `Slice<List<Int>>`
 core-04/e2-table-keyed-like-input.cp	wrong-reject	check: std.strings:386:5: E0203: `List<Int>` has no member `rekey`
 core-04/enum-has-ordinal-domain-members.cp	wrong-reject	check: program:5:7: E0203: `Shape` has no `try_at`
 core-04/enum-is-seq-of-variants.cp	wrong-reject	check: program:5:7: E0201: unknown name `D`
-core-04/f2-sub-rectangle-offset.cp	wrong-reject	check: program:6:18: E0902: `4` is never a position of `C`
 core-04/find-all-yields-keys.cp	wrong-reject	check: std.strings:425:8: E0203: `P` has no member `is_empty`
 core-04/grid-col-view-keys-are-rows.cp	wrong-reject	check: program:9:7: E0302: expected `List<Int>`, found `List<R>`
 core-04/grid-row-view-keys-are-columns.cp	wrong-reject	check: program:9:7: E0302: expected `List<Int>`, found `List<C>`

@@ -637,6 +637,16 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         let key = self.key_of(&s.ty).map(|k| self.shallow(&k));
+        // `s[..hi]` with a literal `hi` ends at a cut, so `hi` may be the keys' end (R04.4.25).
+        if let (None, Some(h), false, Some(k @ Ty::Dom(_))) = (lo, hi, through, &key) {
+            if matches!(unparen(h).kind, ExprKind::Int(_)) {
+                let f = self.index_fn_for(&s.ty, 1);
+                if let (Some(f), Some(rt)) = (f, self.range_over(k.clone())) {
+                    let r = self.range_value(None, Some(h), false, None, Some(&rt), span);
+                    return self.index_call(f, s, vec![Some(r)], span);
+                }
+            }
+        }
         let lo = lo.map(|e| self.expr(e, key.as_ref()));
         let hi = hi.map(|e| self.expr(e, key.as_ref()));
         // An end that is a cut of the keys: the piece of positions up to or from it (R04.4.8).
