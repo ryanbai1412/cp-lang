@@ -5,6 +5,10 @@ impl Cx<'_> {
     /// The place an assignment writes, after checking that it may be written.
     pub(super) fn assign_place(&mut self, target: &ast::Expr) -> TExpr {
         let place = self.place(target);
+        // A place that is the error was said where it was made.
+        if self.is_error(&place.ty) {
+            return place;
+        }
         let mut root = &place;
         let mut cache = false;
         while let TK::Field(b, i) = &root.kind {

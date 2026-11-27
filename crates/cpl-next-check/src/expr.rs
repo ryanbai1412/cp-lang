@@ -613,8 +613,15 @@ impl<'a> Cx<'a> {
         (c, b): &(ast::Cond, ast::Block),
         want: Option<&Ty>,
     ) -> (TExpr, TExpr, bool) {
+        let narrows =
+            matches!(c, ast::Cond::Expr(e) if matches!(e.kind, ExprKind::HasBound { .. }));
         let c = self.cond(c);
-        let b2 = self.block(b, want);
+        // A bound test, not built, is refused: the branch it narrows is downstream of it.
+        let b2 = if narrows && self.is_error(&c.ty) {
+            Self::error_node(c.span)
+        } else {
+            self.block(b, want)
+        };
         self.scopes.pop();
         (c, b2, b.leaves())
     }
@@ -787,7 +794,7 @@ impl<'a> Cx<'a> {
     pub(super) fn recv_arg(&mut self, m: FnId, recv: TExpr, span: Span) -> TArg {
         let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
         if self.d.f(m).self_mode == SelfMode::Mut {
-            if !place {
+            if !place && !self.is_error(&recv.ty) {
                 self.err(
                     span,
                     Msg::verdict(

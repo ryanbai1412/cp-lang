@@ -726,6 +726,38 @@ mod tests {
         assert_eq!(verdicts, Vec::<String>::new());
     }
 
+    /// Assigning, or lending `mut`, a place that is the error says nothing more.
+    #[test]
+    fn writing_an_error_place_says_nothing_more() {
+        let only_refusals = |src: &str| {
+            let ds = diags(src);
+            assert!(
+                ds.len() == 1 && ds[0].is_refusal(),
+                "{:?}",
+                ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
+            );
+        };
+        only_refusals("var a = [1, 2, 3]\nlet p = mut a[1]\np += 10\nprint(a[1])\n");
+        let lent: Vec<String> = (diags("var b = [3, 1, 2]\nreverse(mut nope(b))\nprint(b[0])\n"))
+            .iter()
+            .map(|d| d.to_string())
+            .filter(|d| d.starts_with("check: program"))
+            .collect();
+        assert_eq!(lent, ["check: program:2:13: E0201: unknown name `nope`"]);
+    }
+
+    /// A refused bound test leaves the branch it narrows unchecked: it relies on the bound.
+    #[test]
+    fn a_refused_bound_test_says_nothing_of_its_branch() {
+        let src = "trait Ch:\n    fn ch(self) -> Int\nfn f<M>(m: M) -> Int:\n    if M: Ch:\n        return m.ch()\n    0\nprint(f(3))\n";
+        let ds = diags(src);
+        assert!(
+            ds.iter().all(Diag::is_refusal),
+            "{:?}",
+            ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
+        );
+    }
+
     /// `in` with an operand that is the error is the error, as `binary` is.
     #[test]
     fn in_beside_an_error_says_nothing_more() {
