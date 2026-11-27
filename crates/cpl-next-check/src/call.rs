@@ -371,7 +371,8 @@ impl Cx<'_> {
             };
         }
         let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
-        let unbuilt = held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none());
+        let unbuilt =
+            held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.roles().recipe.is_none());
         if unbuilt {
             self.err(
                 span,
@@ -416,7 +417,7 @@ impl Cx<'_> {
             ty,
             span,
         };
-        if held && self.d.recipe.is_some() {
+        if held && self.d.roles().recipe.is_some() {
             return self.recipe(pre, call);
         }
         block(pre, call)

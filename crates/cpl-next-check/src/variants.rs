@@ -17,7 +17,7 @@ impl Cx<'_> {
             // Until `Domain` is a trait type parameters meet by bounds, a parameter is a domain.
             let bounded = match self.shallow(&v.ty) {
                 Ty::Param(i) => {
-                    (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.convert_trait)
+                    (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.roles().convert)
                 }
                 _ => false,
             };
@@ -35,7 +35,7 @@ impl Cx<'_> {
             Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => self.coerce(v, &Ty::Int),
             _ => v,
         };
-        let conv = self.d.convert_trait.and_then(|tr| {
+        let conv = self.d.roles().convert.and_then(|tr| {
             let (m, f) = self.d.t(tr).methods.iter().next()?;
             Some((tr, m.clone(), *f))
         });

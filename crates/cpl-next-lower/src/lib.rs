@@ -887,7 +887,7 @@ impl Lw<'_> {
                     return int(v.kind);
                 }
                 // A parameter may be a domain that is a struct, as `Cut<D>`: its `ord` says it.
-                let v = match (&x.ty, self.d.domain_trait) {
+                let v = match (&x.ty, self.d.roles.domain) {
                     (Ty::Param(_), Some(tr)) => {
                         let ord = Target::Trait {
                             tr,

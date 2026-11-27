@@ -197,7 +197,7 @@ impl Walk<'_> {
     }
     /// A generator value holds what it walks, as a view does (R07.6.2).
     fn walks(&self, t: &CTy) -> bool {
-        matches!(t, CTy::Struct(s, ..) if Some(*s) == self.d.recipe)
+        matches!(t, CTy::Struct(s, ..) if Some(*s) == self.d.roles.recipe)
     }
     fn temp(&self, r: Root) -> bool {
         let name = match r {

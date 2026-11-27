@@ -327,6 +327,25 @@ pub struct Roles {
     pub write: Option<FnId>,
     /// `for x in s`: the trait whose one yielding method walks `s`.
     pub iteration: Option<TraitId>,
+    /// A library's `@recipe` struct: the value of a `-> yields T` call made outside a `for`
+    /// (R07.6.2). Its one field is the closure that walks the call.
+    pub recipe: Option<StructId>,
+    /// The struct core marks `@cuts`: a half-open literal range of its values, where a
+    /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
+    pub cut: Option<StructId>,
+    /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
+    pub domain: Option<TraitId>,
+    /// The trait core marks `@order`: stepping and order, which every domain the compiler declares
+    /// has and a library domain lacks (R04.2.31).
+    pub order: Option<TraitId>,
+    /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
+    pub convert: Option<TraitId>,
+    /// `@counted`: the trait whose one fn counts `domain V = xs`'s positions (R04.2.29).
+    pub counted: Option<TraitId>,
+    /// `@range_bounds`: the trait whose fns give a range's first and past-the-end cuts (R04b.1.5).
+    pub bounds: Option<TraitId>,
+    /// Core's `@interpolation` fn: `put(mut out, x)` appends each piece of an interpolated string.
+    pub interpolate: Option<FnId>,
 }
 
 /// A language role of R11.6.1.
@@ -395,14 +414,8 @@ pub struct Decls {
     pub struct_defaults: Arc<HashMap<StructId, Vec<Option<Ty>>>>,
     /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
     pub tuples: Arc<HashMap<usize, StructId>>,
-    /// A library's `@recipe` struct: the value of a `-> yields T` call made outside a `for`
-    /// (R07.6.2). Its one field is the closure that walks the call.
-    pub recipe: Option<StructId>,
     /// Core's `@member(m)` structs by `m`: `D.m` is the struct at `D` (R06).
     pub member_types: Arc<HashMap<String, StructId>>,
-    /// The struct core marks `@cuts`: a half-open literal range of its values, where a
-    /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
-    pub cut_struct: Option<StructId>,
     /// What literals and type syntax build, each found by its std marker.
     pub sugar: Sugar,
     /// The language roles, each found by its `@role` (R11.6.1).
@@ -437,23 +450,12 @@ pub struct Decls {
     pub ret_holes: Vec<FnId>,
     /// The names the program's top level binds with `let`.
     pub top_values: Arc<HashSet<String>>,
-    /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
-    pub domain_trait: Option<TraitId>,
-    /// The trait core marks `@order`: stepping and order, which every domain the compiler declares
-    /// has and a library domain lacks (R04.2.31).
-    pub order_trait: Option<TraitId>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
     pub operators: Vec<(String, TraitId)>,
     /// `@literal("[]")` and `@literal("[;]")`: the trait a list literal and an array fill build
     /// through (R01.8.8).
     pub literals: Vec<(String, TraitId)>,
-    /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
-    pub convert_trait: Option<TraitId>,
-    /// `@counted`: the trait whose one fn counts `domain V = xs`'s positions (R04.2.29).
-    pub counted_trait: Option<TraitId>,
-    /// `@range_bounds`: the trait whose fns give a range's first and past-the-end cuts (R04b.1.5).
-    pub bounds_trait: Option<TraitId>,
     /// Per fn, the type parameters that key an array it names: domain parameters (R04.2).
     pub domain_params: HashMap<FnId, Vec<usize>>,
     /// The domain parameters whose body steps on them, so they meet `Ordered` (R04.2.31).
@@ -475,8 +477,6 @@ pub struct Decls {
     /// Core's `@input` fns: a value they give is input, so a range slot it fills is the
     /// input's contract (R10.2.2).
     pub input_fns: Vec<FnId>,
-    /// Core's `@interpolation` fn: `put(mut out, x)` appends each piece of an interpolated string.
-    pub interpolate: Option<FnId>,
     /// The `@index` fns, in declaration order.
     pub index_fns: Vec<FnId>,
     /// Per module, whether the program loads it: std's others are declared but out of sight.
@@ -552,7 +552,7 @@ impl Decls {
     /// Each binary operator's fn, for `type_of(+)`.
     /// `Domain`'s getters by name, which a range type's end `D.m` names.
     pub fn domain_getters(&self) -> Arc<HashMap<String, FnId>> {
-        let Some(tr) = self.domain_trait else {
+        let Some(tr) = self.roles.domain else {
             return Arc::default();
         };
         let ms = self.traits[tr.0].methods.iter();
@@ -677,7 +677,7 @@ impl Decls {
     /// Whether an impl of `tr` takes a domain for its argument `j` (`impl<V: Domain, ..>
     /// Next<V> for [V]S`), so a type a bound of `tr` has there may be one.
     pub fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool {
-        let Some(dom) = self.domain_trait else {
+        let Some(dom) = self.roles.domain else {
             return false;
         };
         self.trait_impls(tr).any(|(_, im)| {
@@ -714,7 +714,7 @@ fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> 
 /// A result's `domain C` slot holds the fresh domain's positions, a `Range<C>` (R02.9.3).
 fn fresh_results(d: &mut Decls) {
     // `-> Rooted<V, _, _>`: a `_` in a domain's place is a domain of its own, as a `domain C` is.
-    if let Some(domain) = d.domain_trait {
+    if let Some(domain) = d.roles.domain {
         for f in d.ret_holes.clone() {
             let mut ret = std::mem::replace(&mut d.fns[f.0].ret, Ty::Error);
             fill_holes(d, f, &mut ret, domain);
@@ -813,7 +813,7 @@ fn fill_holes(d: &mut Decls, f: FnId, t: &mut Ty, domain: TraitId) {
 /// which only range types meet. A caller is not held to `Domain`,
 /// since a list keyed by `Int` passes as `[Int]T`.
 fn domain_params(d: &mut Decls, from: usize) {
-    let Some(domain) = d.domain_trait else {
+    let Some(domain) = d.roles.domain else {
         return;
     };
     // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`), or indexes a table
@@ -878,7 +878,7 @@ fn domain_params(d: &mut Decls, from: usize) {
         }
     }
     let dom_fns: Vec<&String> = d.traits[domain.0].methods.keys().collect();
-    let steps: Vec<&String> = (d.order_trait.iter())
+    let steps: Vec<&String> = (d.roles.order.iter())
         .flat_map(|tr| d.traits[tr.0].methods.keys())
         .collect();
     let (used, ordered): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (d.fns.iter().skip(from))
@@ -1599,7 +1599,7 @@ fn add_fn(
         d.input_fns.push(FnId(d.fns.len()));
     }
     if has(Mark::Interpolation) {
-        d.interpolate = Some(FnId(d.fns.len()));
+        d.roles.interpolate = Some(FnId(d.fns.len()));
     }
     if getter && params.iter().any(|p| p.default.is_none()) {
         let msg = format!(

@@ -696,7 +696,7 @@ impl<'a> Cx<'a> {
         self.reach(m);
         let fd = self.d.f(m);
         let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
-        if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none()) {
+        if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.roles().recipe.is_none()) {
             let what = Unbuilt::GeneratorAsValue {
                 name: fd.name.clone(),
             };
@@ -734,7 +734,7 @@ impl<'a> Cx<'a> {
             ty: ret,
             span,
         };
-        if held && self.d.recipe.is_some() {
+        if held && self.d.roles().recipe.is_some() {
             return self.recipe(pre, call);
         }
         block(pre, call)

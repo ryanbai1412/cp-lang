@@ -562,7 +562,7 @@ impl<'a> Cx<'a> {
         }
         if let Some(n) = n {
             let fd = self.d.f(decl);
-            let domain = self.d.domain_trait;
+            let domain = self.d.roles().domain;
             for (i, t) in f.targs.iter().enumerate() {
                 let positions = fd
                     .bounds

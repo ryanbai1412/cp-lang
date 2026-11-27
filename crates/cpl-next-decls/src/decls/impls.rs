@@ -62,7 +62,7 @@ impl Decls {
         }
         // A declared domain meets `Domain` and `Ordered` with no impl: its members are the
         // traits' defaults.
-        let core = [self.domain_trait, self.order_trait];
+        let core = [self.roles.domain, self.roles.order];
         let mut core = (core.into_iter().flatten()).filter(|_| matches!(recv, Ty::Dom(_)));
         core.find_map(|tr| {
             let tr = &self.traits[tr.0];
@@ -192,7 +192,7 @@ impl Decls {
     }
     /// `Domain` or `Ordered`: what every domain the compiler declares meets with no impl.
     pub fn core_domain_trait(&self, tr: TraitId) -> bool {
-        Some(tr) == self.domain_trait || Some(tr) == self.order_trait
+        Some(tr) == self.roles.domain || Some(tr) == self.roles.order
     }
     /// The bound at the root of `t` not meeting `r`: `Tuple1<List<?Int>>` misses `ShowAll`
     /// because `?Int` misses `Show`. It goes down while one impl alone of the most specific

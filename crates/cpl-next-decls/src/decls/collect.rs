@@ -94,8 +94,11 @@ fn layer(
         Some(_) => seen.to_vec(),
         None => vec![true; n],
     };
-    if d.recipe.is_some_and(|r| !d.seen(d.structs[r.0].module)) {
-        d.recipe = None;
+    if d.roles
+        .recipe
+        .is_some_and(|r| !d.seen(d.structs[r.0].module))
+    {
+        d.roles.recipe = None;
     }
     let unseen = |d: &Decls, s: &StructId| !d.seen(d.structs[s.0].module);
     if d.member_types.values().any(|s| unseen(&d, s)) {
@@ -325,7 +328,7 @@ fn layer(
                         if d.is_library(mid)
                             && s.decorators.iter().any(|x| x.mark == Some(Mark::Recipe))
                         {
-                            d.recipe = Some(id);
+                            d.roles.recipe = Some(id);
                         }
                         for (x, role) in super::role_marks(s) {
                             if role == Some(Role::Option) {
@@ -336,7 +339,7 @@ fn layer(
                             d.errors.push(misplaced_role(item, x, role, "struct"));
                         }
                         if marked(s, Mark::Cuts) {
-                            once(&mut d.cut_struct, id, again(item, s, "cuts"), &mut d.errors);
+                            once(&mut d.roles.cut, id, again(item, s, "cuts"), &mut d.errors);
                         }
                         for (n, slot) in [
                             (Mark::List, &mut d.sugar.list),
@@ -415,15 +418,15 @@ fn layer(
                         }
                         if marked(s, Mark::Positions) {
                             let e = again(item, s, "positions");
-                            once(&mut d.domain_trait, id, e, &mut d.errors);
+                            once(&mut d.roles.domain, id, e, &mut d.errors);
                         }
                         if marked(s, Mark::Order) {
                             let e = again(item, s, "order");
-                            once(&mut d.order_trait, id, e, &mut d.errors);
+                            once(&mut d.roles.order, id, e, &mut d.errors);
                         }
                         if marked(s, Mark::Convert) {
                             once(
-                                &mut d.convert_trait,
+                                &mut d.roles.convert,
                                 id,
                                 again(item, s, "convert"),
                                 &mut d.errors,
@@ -431,11 +434,11 @@ fn layer(
                         }
                         if marked(s, Mark::Counted) {
                             let e = again(item, s, "counted");
-                            once(&mut d.counted_trait, id, e, &mut d.errors);
+                            once(&mut d.roles.counted, id, e, &mut d.errors);
                         }
                         if marked(s, Mark::RangeBounds) {
                             let e = again(item, s, "range_bounds");
-                            once(&mut d.bounds_trait, id, e, &mut d.errors);
+                            once(&mut d.roles.bounds, id, e, &mut d.errors);
                         }
                         let lit = s.decorators.iter().find(|x| x.mark == Some(Mark::Literal));
                         if let Some(ast::ExprKind::Str(text)) =
@@ -1074,7 +1077,7 @@ fn layer(
                     // impl's fns meets `Domain` and `Ordered`; the impl itself is not bound by them.
                     let mut fn_bounds = ibounds.clone();
                     if let Some(i) = range_param {
-                        for tr in [d.domain_trait, d.order_trait].into_iter().flatten() {
+                        for tr in [d.roles.domain, d.roles.order].into_iter().flatten() {
                             fn_bounds.push((
                                 i,
                                 TraitRef {

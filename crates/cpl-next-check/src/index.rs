@@ -99,7 +99,7 @@ impl Cx<'_> {
     pub(super) fn is_domain(&self, t: &Ty) -> bool {
         match t {
             Ty::Dom(_) => true,
-            Ty::Struct(..) => (self.d.domain_trait).is_some_and(|tr| self.d.has_impl(t, tr)),
+            Ty::Struct(..) => (self.d.roles().domain).is_some_and(|tr| self.d.has_impl(t, tr)),
             _ => false,
         }
     }

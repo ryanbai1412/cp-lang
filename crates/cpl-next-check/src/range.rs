@@ -78,7 +78,7 @@ impl Cx<'_> {
         call: Option<&[ast::Arg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let core = [self.d.domain_trait, self.d.order_trait];
+        let core = [self.d.roles().domain, self.d.roles().order];
         let m = (core.iter().flatten()).find_map(|tr| self.d.t(*tr).methods.get(&name.text))?;
         self.domain_fn_of(dty, *m, name, call, span)
     }
@@ -91,7 +91,7 @@ impl Cx<'_> {
         call: Option<&[ast::Arg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let core = [self.d.domain_trait, self.d.order_trait];
+        let core = [self.d.roles().domain, self.d.roles().order];
         let tr = (core.into_iter().flatten())
             .find(|tr| self.d.t(*tr).methods.values().any(|&f| f == m))?;
         let fd = self.d.f(m);
@@ -154,7 +154,7 @@ impl Cx<'_> {
         let Ty::Param(i) = t else {
             return false;
         };
-        (self.bound_traits(*i).iter()).any(|r| Some(r.tr) == self.d.domain_trait)
+        (self.bound_traits(*i).iter()).any(|r| Some(r.tr) == self.d.roles().domain)
     }
     /// `[D] k => e`: one cell per position of `D` in its walk order, which is the list
     /// `[e for k in D]` where a `[D]T` is wanted (R02.8.2).
@@ -643,7 +643,7 @@ impl Cx<'_> {
     /// How a range's ends give their positions, when they are values of a domain: a declared
     /// domain's value is its ordinal, and any other type's comes from its `Domain` impl or bound.
     pub(super) fn ord_ends(&self, t: &Ty, step: Option<&ast::Expr>) -> Option<Ends> {
-        let tr = self.d.domain_trait?;
+        let tr = self.d.roles().domain?;
         if step.is_some() {
             return None;
         }
@@ -819,7 +819,7 @@ impl Cx<'_> {
     /// `D`, when `t` is core's `@cuts` struct of `D`.
     pub(super) fn cut_domain(&self, t: &Ty) -> Option<Ty> {
         match self.shallow(t) {
-            Ty::Struct(c, of, _) if Some(c) == self.d.cut_struct => {
+            Ty::Struct(c, of, _) if Some(c) == self.d.roles().cut => {
                 of.first().map(|d| self.shallow(d))
             }
             _ => None,
@@ -870,7 +870,7 @@ impl Cx<'_> {
     }
     /// The fn of core's `Domain` whose body is the intrinsic `op`.
     fn domain_method(&self, op: &str) -> Option<DomainFn> {
-        let tr = self.d.domain_trait?;
+        let tr = self.d.roles().domain?;
         let ms = &self.d.t(tr).methods;
         let (n, &m) = ms
             .iter()
@@ -920,7 +920,7 @@ impl Cx<'_> {
         match self.shallow(t) {
             Ty::Dom(_) => true,
             Ty::Param(i) => {
-                (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.domain_trait)
+                (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.roles().domain)
             }
             _ => false,
         }
@@ -930,7 +930,7 @@ impl Cx<'_> {
     pub(super) fn position_int(&mut self, e: TExpr) -> TExpr {
         if matches!(self.shallow(&e.ty), Ty::Param(_)) {
             let d = self.d;
-            let ord = (d.domain_trait.iter())
+            let ord = (d.roles().domain.iter())
                 .flat_map(|tr| d.t(*tr).methods.values())
                 .find(|&&m| d.f(m).intrinsic.as_deref() == Some("dom_ord"));
             if let Some(&m) = ord {

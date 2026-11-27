@@ -219,7 +219,7 @@ impl Cx<'_> {
         let t = self.shallow(t);
         matches!(t, Ty::Var(_))
             && (self.obligations.iter()).any(|(o, r, ..)| {
-                (Some(r.tr) == self.d.domain_trait && self.shallow(o) == t)
+                (Some(r.tr) == self.d.roles().domain && self.shallow(o) == t)
                     || (r.args.iter().enumerate())
                         .any(|(j, a)| self.shallow(a) == t && self.d.arg_may_be_domain(r.tr, j))
             })
@@ -412,11 +412,11 @@ impl Cx<'_> {
         let mut have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
         let dom = (self.decl).and_then(|f| self.d.domain_params.get(&f));
         if dom.is_some_and(|ds| ds.contains(&i)) {
-            have.extend(self.d.domain_trait);
+            have.extend(self.d.roles().domain);
         }
         let ordered = (self.decl).and_then(|f| self.d.ordered_params.get(&f));
         if ordered.is_some_and(|ds| ds.contains(&i)) {
-            have.extend(self.d.order_trait);
+            have.extend(self.d.roles().order);
         }
         // Blankets chain: `impl<D: Domain + Eq> Ord for D` holds once `impl<D: Domain> Eq for D`
         // has given `Eq`.
@@ -502,8 +502,8 @@ impl Cx<'_> {
         let ordered =
             implied && (self.d.ordered_params.get(&decl)).is_some_and(|ds| ds.contains(&i));
         let implied = [
-            self.d.domain_trait.filter(|_| dom),
-            self.d.order_trait.filter(|_| ordered),
+            self.d.roles().domain.filter(|_| dom),
+            self.d.roles().order.filter(|_| ordered),
         ];
         for tr in implied.into_iter().flatten() {
             let r = TraitRef {

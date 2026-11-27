@@ -9,7 +9,7 @@ impl Cx<'_> {
     /// what it names as long as it is held.
     pub(super) fn recipe(&mut self, mut pre: Vec<TStmt>, call: TExpr) -> TExpr {
         let span = call.span;
-        let Some(gen) = self.d.recipe else {
+        let Some(gen) = self.d.roles().recipe else {
             return block(pre, call);
         };
         let (callee, recv, args, elem) = match call.kind {
@@ -132,7 +132,10 @@ impl Cx<'_> {
     pub(super) fn fn_item_value(&mut self, f: FnRef, span: Span) -> TExpr {
         let generator = matches!(self.d.f(f.decl).region, Some((false, _)));
         let (ps, _) = self.clo_sig(&CloRef::Item(f.clone()));
-        if !generator || self.d.recipe.is_none() || ps.iter().any(|p| matches!(p, Ty::Mut(_))) {
+        if !generator
+            || self.d.roles().recipe.is_none()
+            || ps.iter().any(|p| matches!(p, Ty::Mut(_)))
+        {
             return TExpr {
                 kind: TK::FnItem(f.clone()),
                 ty: Ty::Clo(Box::new(CloRef::Item(f))),
@@ -187,7 +190,7 @@ impl Cx<'_> {
     /// The element a `for` over a generator value walks.
     pub(super) fn recipe_walk(&mut self, e: &TExpr) -> Option<Ty> {
         match self.shallow(&e.ty) {
-            Ty::Struct(s, targs, _) if Some(s) == self.d.recipe => targs.first().cloned(),
+            Ty::Struct(s, targs, _) if Some(s) == self.d.roles().recipe => targs.first().cloned(),
             _ => None,
         }
     }

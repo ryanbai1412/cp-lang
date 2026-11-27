@@ -127,7 +127,7 @@ impl TypeTables for Decls {
         self.operator_fn(op, true)
     }
     fn getter(&self, m: &str) -> Option<FnId> {
-        let tr = self.domain_trait?;
+        let tr = self.roles.domain?;
         (self.traits[tr.0].methods.get(m).copied()).filter(|f| self.fns[f.0].getter)
     }
     fn n_sets(&self, s: StructId) -> usize {

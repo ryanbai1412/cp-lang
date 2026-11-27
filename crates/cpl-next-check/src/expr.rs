@@ -961,7 +961,7 @@ impl<'a> Cx<'a> {
                 self.marked_call(self.d.sugar.str_literal, "str_literal", vec![raw, n], span)
             }
             // `"a{x}b"` appends each piece in turn through core's `@interpolation` fn (R10.3.2).
-            ExprKind::Str(ps) if let Some(put) = self.d.interpolate => {
+            ExprKind::Str(ps) if let Some(put) = self.d.roles().interpolate => {
                 let lit = |ps| ast::Expr {
                     kind: ExprKind::Str(ps),
                     span,

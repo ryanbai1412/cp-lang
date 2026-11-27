@@ -65,7 +65,7 @@ impl Cx<'_> {
             ty,
             span: def.span,
         };
-        let count = match (&t, self.d.counted_trait) {
+        let count = match (&t, self.d.roles().counted) {
             (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), _) => Some(v),
             (_, Some(tr)) if self.has_impl(&t, tr) => self.count_of(tr, v, out),
             _ => None,
@@ -337,7 +337,7 @@ impl Cx<'_> {
             ty: r_ty.clone(),
             span,
         };
-        let bounds = self.d.bounds_trait;
+        let bounds = self.d.roles().bounds;
         let fns = bounds.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
         let (Some(tr), [lo, hi, ..]) = (bounds, &fns[..]) else {
             self.err(
