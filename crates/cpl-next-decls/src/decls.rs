@@ -768,7 +768,8 @@ fn fill_holes(d: &mut Decls, f: FnId, t: &mut Ty, domain: TraitId) {
 /// A type parameter in a place whose struct bounds it by `Domain`, in a fn's signature or in its
 /// owner's fields, is a domain parameter (`struct Dsu<V>: parent: [V]V`, `Range<D>`): its body
 /// may use what every domain has (R04.2). So is one passed where a trait bound's parameter is
-/// one (`S: Indexed<D, T>`, whose `keys` is a `Range<D>`). A caller is not held to `Domain`,
+/// one (`S: Indexed<D, T>`, whose `keys` is a `Range<D>`), and the `Self` of an `impl for _..=_`,
+/// which only range types meet. A caller is not held to `Domain`,
 /// since a list keyed by `Int` passes as `[Int]T`.
 fn domain_params(d: &mut Decls, from: usize) {
     let Some(domain) = d.domain_trait else {
@@ -846,6 +847,7 @@ fn domain_params(d: &mut Decls, from: usize) {
                     .chain(fields.iter().map(|(_, t)| t))
                     .any(|t| keys(d, t, domain, i, 0))
                     || used[k - from].contains(&i)
+                    || matches!(f.owner, Some(Owner::Impl(m)) if d.impls[m].for_ == Ty::AnyRange(i))
             })
             .collect();
         if !added.is_empty() {

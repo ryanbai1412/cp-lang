@@ -2724,3 +2724,5 @@ core-10/yes-answers.cp
 next/n_domain_over_sequence.cp
 std-graph/clique.cp
 std-segtree/wavelet-matrix-matches-sort.cp
+core-10/read-base-param-beats-io.cp
+next/n_read_base_01_tuple_parts_and_strings_take_the_base.cp

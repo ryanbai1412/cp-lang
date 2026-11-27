@@ -14,6 +14,9 @@ pub fn check_value(ok: Bool) = @intrinsic("value_check")
 pub trait Domain:
     /// `D.count`: how many positions it has.
     @get fn count() -> Int = @intrinsic("dom_count")
+    /// `D.counted`: whether it is declared by a count alone (`domain E = [m]`), so `io.base`
+    /// shifts it on input and output (R10.2.2).
+    @get fn counted() -> Bool = @intrinsic("dom_counted")
     /// `D.all`: every position, in walk order (R04.2.30). A value's `s.all(p)` is another member.
     @get fn all() -> Range<Self> = range_of(0, Self.count, 1)
     /// `D.range`: the whole range, the same as `..` (R04.2.4).

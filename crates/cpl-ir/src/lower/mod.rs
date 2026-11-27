@@ -1102,7 +1102,7 @@ impl<'a> Lowerer<'a> {
             self.cur_mod = m;
             let items: Vec<(u32, &'a ast::Stmt)> = self.mod_items(m).collect();
             for (offset, item) in items {
-                if let ast::StmtKind::Domain { name, def } = &item.kind {
+                if let ast::StmtKind::Domain { name, def, .. } = &item.kind {
                     if let Some(Sym::Domain(id)) = self.mod_syms[m].get(&name.text).copied() {
                         self.offset = offset;
                         if let Some(factors) = self.resolve_product_factors(def) {

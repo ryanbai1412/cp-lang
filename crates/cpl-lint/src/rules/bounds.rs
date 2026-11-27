@@ -140,7 +140,7 @@ impl<'f> Bounds<'f> {
                         bounds.define(name, init);
                     }
                 }
-                StmtKind::Domain { name, def } => {
+                StmtKind::Domain { name, def, .. } => {
                     let size = match &def.kind {
                         ExprKind::Range {
                             lo: Some(lo),

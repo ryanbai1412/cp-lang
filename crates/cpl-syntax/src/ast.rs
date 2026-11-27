@@ -205,6 +205,8 @@ pub enum StmtKind {
     Domain {
         name: Name,
         def: Expr,
+        /// Written as a count alone, `[m]`, which `def` holds as `0..m` (R10.2.2).
+        counted: bool,
     },
     TypeAlias {
         name: Name,

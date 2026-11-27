@@ -96,7 +96,7 @@ impl<'a> Lowerer<'a> {
         // 1. Collect struct-owned domains (e.g. `domain Pre = 0..V.K` in `Rooted<V>`).
         let field_names: Vec<&str> = decl.fields.iter().map(|f| f.name.text.as_str()).collect();
         for item in &decl.methods {
-            if let ast::StmtKind::Domain { name, def } = &item.kind {
+            if let ast::StmtKind::Domain { name, def, .. } = &item.kind {
                 let dom_id = self.domains.len();
                 self.domains
                     .push(format!("{}_{}", self.structs[id].def.name, name.text));

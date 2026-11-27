@@ -137,6 +137,11 @@ impl Cx<'_> {
                 span,
             },
             ("dom_at", Some(x)) => self.domain_at(dty, x, span),
+            ("dom_counted", None) => TExpr {
+                kind: TK::DomCounted(dty),
+                ty: Ty::Bool,
+                span,
+            },
             ("dom_ord", Some(v)) => TExpr {
                 kind: TK::Ordinal(Box::new(v)),
                 ty: Ty::Int,

@@ -1387,7 +1387,7 @@ impl<'a> Cx<'a> {
                 };
                 out.push(TStmt::Assert(c, msg, s.span, CheckKind::Assert));
             }
-            StmtKind::Domain { name, def }
+            StmtKind::Domain { name, def, .. }
                 if matches!(def.kind, ExprKind::Tuple(_) | ExprKind::Record(_)) =>
             {
                 let def = self.declare_factors(&name.text, def, s.span, out);
@@ -1402,7 +1402,7 @@ impl<'a> Cx<'a> {
                 };
                 self.doms.insert(name.text.clone(), p);
             }
-            StmtKind::Domain { name, def } => {
+            StmtKind::Domain { name, def, counted } => {
                 let ExprKind::Range {
                     lo: Some(lo),
                     hi: Some(hi),
@@ -1426,6 +1426,7 @@ impl<'a> Cx<'a> {
                 let (lo, end, within, chars) = self.domain_ends(lo, hi, *inclusive);
                 let i = self.declare_domain(&name.text, lo, end, within, s.span, out);
                 self.domains[i].chars = chars;
+                self.domains[i].counted = *counted;
             }
             StmtKind::Yield { value, from: false } => match self.region.clone() {
                 Some((false, t)) => {
@@ -1617,10 +1618,10 @@ impl<'a> Cx<'a> {
         }
         Some(wraps)
     }
-    /// `f()` or `f<T>()` for a fn that takes nothing and gives its one type parameter, as
-    /// `read`: the type argument if written, and the call without it. Bound to a tuple pattern
-    /// with a tuple type it is called once per part, so a later part's type may name an earlier
-    /// part (R10.2.3).
+    /// `f(..)` or `f<T>(..)` for a fn whose parameters all have defaults and that gives its one
+    /// type parameter, as `read(base: 1)`: the type argument if written, and the call without it.
+    /// Bound to a tuple pattern with a tuple type it is called once per part, with the same
+    /// arguments, so a later part's type may name an earlier part (R10.2.3).
     pub(super) fn per_part_call(&self, e: &ast::Expr) -> Option<(Option<ast::Type>, ast::Expr)> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return None;
@@ -1639,11 +1640,11 @@ impl<'a> Cx<'a> {
             .fn_named(self.module, n)
             .filter(|_| self.declared(n))?;
         let fd = self.d.f(f);
-        let shape = args.is_empty() && fd.params.is_empty() && fd.generics.len() == 1;
+        let shape = fd.params.iter().all(|p| p.default.is_some()) && fd.generics.len() == 1;
         (shape && fd.ret == Ty::Param(0)).then(|| {
             let kind = ExprKind::Call {
                 callee: Box::new(base.clone()),
-                args: Vec::new(),
+                args: args.clone(),
             };
             (targ, ast::Expr { kind, span: e.span })
         })

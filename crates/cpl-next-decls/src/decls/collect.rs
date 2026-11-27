@@ -605,7 +605,7 @@ fn layer(
     // A product's record is a core struct, so the program's domains are placed once the views are.
     if base.is_some() {
         for s in mods[n - 1].items.iter().flat_map(|it| &it.stmts) {
-            if let StmtKind::Domain { name, def } = &s.kind {
+            if let StmtKind::Domain { name, def, .. } = &s.kind {
                 let t = product(&mut d, &name.text, def).unwrap_or_else(|| fresh_dom(&d));
                 d.top_doms.entry(name.text.clone()).or_insert(t);
             }

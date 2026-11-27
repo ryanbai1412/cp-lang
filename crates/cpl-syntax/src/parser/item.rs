@@ -818,13 +818,17 @@ impl<'a> Parser<'a> {
                 kind: ExprKind::Name("todo".into()),
                 span: Span::point(self.prev_end()),
             };
-            return StmtKind::Domain { name, def };
+            return StmtKind::Domain {
+                name,
+                def,
+                counted: false,
+            };
         }
         self.expect_token(
             T::Eq,
             "`=` and the domain's range, as in `domain V = 1..=n`",
         );
-        let def = counted_domain(self.expr());
+        let (def, counted) = counted_domain(self.expr());
         if self.at(T::If) {
             let start = self.start();
             self.bump();
@@ -838,10 +842,10 @@ impl<'a> Parser<'a> {
             let start = self.start();
             let name = self.expect_name("a domain name");
             self.bump();
-            let def = counted_domain(self.expr());
+            let (def, counted) = counted_domain(self.expr());
             let span = self.span_from(start);
             self.extra_stmts.push(Stmt {
-                kind: StmtKind::Domain { name, def },
+                kind: StmtKind::Domain { name, def, counted },
                 span,
                 decorators: Vec::new(),
                 public: false,
@@ -851,7 +855,7 @@ impl<'a> Parser<'a> {
             let span = self.span_from(list_start);
             self.planned(span, &crate::planned::DOMAIN_LIST);
         }
-        StmtKind::Domain { name, def }
+        StmtKind::Domain { name, def, counted }
     }
 
     pub(super) fn type_alias(&mut self) -> StmtKind {
@@ -1098,26 +1102,32 @@ impl<'a> Parser<'a> {
 }
 
 /// `domain E = [m]` declares the counted domain `0..m` (core 10.2).
-fn counted_domain(def: Expr) -> Expr {
-    match def.kind {
+fn counted_domain(def: Expr) -> (Expr, bool) {
+    let def = match def.kind {
         ExprKind::List(items) => match <[_; 1]>::try_from(items) {
-            Ok([count]) => Expr {
-                kind: ExprKind::Range {
-                    lo: Some(Box::new(Expr {
-                        kind: ExprKind::Int(0),
-                        span: Span::point(def.span.start),
-                    })),
-                    hi: Some(Box::new(count)),
-                    inclusive: false,
-                    step: None,
-                },
-                span: def.span,
-            },
+            Ok([count]) => {
+                return (
+                    Expr {
+                        kind: ExprKind::Range {
+                            lo: Some(Box::new(Expr {
+                                kind: ExprKind::Int(0),
+                                span: Span::point(def.span.start),
+                            })),
+                            hi: Some(Box::new(count)),
+                            inclusive: false,
+                            step: None,
+                        },
+                        span: def.span,
+                    },
+                    true,
+                )
+            }
             Err(items) => Expr {
                 kind: ExprKind::List(items),
                 ..def
             },
         },
         kind => Expr { kind, ..def },
-    }
+    };
+    (def, false)
 }

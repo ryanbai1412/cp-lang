@@ -46,7 +46,7 @@ fn first_labels(file: &File) -> HashMap<String, i128> {
     struct Firsts(HashMap<String, i128>);
     impl Visitor for Firsts {
         fn stmt(&mut self, stmt: &Stmt) {
-            if let StmtKind::Domain { name, def } = &stmt.kind {
+            if let StmtKind::Domain { name, def, .. } = &stmt.kind {
                 if let ExprKind::Range { lo: Some(lo), .. } = &unparen(def).kind {
                     if let ExprKind::Int(first) = unparen(lo).kind {
                         self.0.insert(name.text.clone(), first);

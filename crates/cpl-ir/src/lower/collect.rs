@@ -50,7 +50,7 @@ impl<'a> Lowerer<'a> {
                     let fields: Vec<&str> =
                         decl.fields.iter().map(|f| f.name.text.as_str()).collect();
                     for item in &decl.methods {
-                        if let ast::StmtKind::Domain { name, def } = &item.kind {
+                        if let ast::StmtKind::Domain { name, def, .. } = &item.kind {
                             let dom = self.domains.len();
                             let owned = format!("{}_{}", self.structs[id].def.name, name.text);
                             self.domains.push(owned);

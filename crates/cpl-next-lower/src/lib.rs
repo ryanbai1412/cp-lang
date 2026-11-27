@@ -289,6 +289,7 @@ fn whole(d: &Decls, typed: &Typed) -> cpl_next_ir::whole::Whole {
                 len: d.len,
                 lo: d.lo,
                 owner: d.owner,
+                counted: d.counted,
             })
             .collect(),
         globals: (typed.globals.iter())
@@ -856,6 +857,7 @@ impl Lw<'_> {
                 }
             }
             TK::DomLen(t) => mk(EK::DomLen(t.clone())),
+            TK::DomCounted(t) => mk(EK::DomCounted(t.clone())),
             TK::HasBound(t, r) => mk(EK::HasBound(t.clone(), r.tr, r.args.clone())),
             TK::Ordinal(x) => {
                 let v = self.expr(x, out);

@@ -32,7 +32,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     for (base, stmt) in file.top_level() {
         let text = |span: cpl_diag::Span| span.shift(base).text(file.src).to_string();
         match &stmt.kind {
-            StmtKind::Domain { name, def } => {
+            StmtKind::Domain { name, def, .. } => {
                 if let ExprKind::Range {
                     lo: Some(lo),
                     hi: Some(hi),

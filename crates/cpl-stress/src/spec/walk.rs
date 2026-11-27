@@ -1485,7 +1485,7 @@ impl Builder<'_> {
                     binds.push(names);
                     parts.push(shape);
                 }
-                StmtKind::Domain { name, def } => {
+                StmtKind::Domain { name, def, .. } => {
                     self.note_char_domain(&name.text, def);
                     let (bounds, read) = match &def.kind {
                         ExprKind::Range {

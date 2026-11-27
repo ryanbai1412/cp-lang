@@ -1093,7 +1093,7 @@ impl<'a> Checker<'a> {
                 self.methods(&e.methods, &self_ty);
                 self.leave_body(body);
             }
-            StmtKind::Domain { name, def } => {
+            StmtKind::Domain { name, def, .. } => {
                 if !self.domain_sum(def) {
                     self.infer(def);
                 }

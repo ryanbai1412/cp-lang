@@ -126,6 +126,8 @@ pub enum TK {
     ReadInt,
     /// The size of a domain type: `D.count`.
     DomLen(Ty),
+    /// Whether a domain type is declared by a count alone: `D.counted` (R10.2.2).
+    DomCounted(Ty),
     /// `D(i)`: an Int becomes a value of the domain, checked.
     DomFrom(Ty, Box<TExpr>, CheckKind),
     /// An Int as a cut of the domain: how many positions come before it, checked (R04.4.25).
@@ -268,6 +270,8 @@ pub struct DomInfo {
     /// Its ends are characters, its positions their codes: `L(c)` takes a `Char` and `Char(l)`
     /// gives one back (R04.2.24).
     pub chars: bool,
+    /// It is declared by a count alone (`domain E = [m]`), so `io.base` shifts it (R10.2.2).
+    pub counted: bool,
 }
 pub struct Typed {
     pub domains: Vec<DomInfo>,
@@ -572,6 +576,7 @@ fn check_with(
                 owner: None,
                 count: None,
                 chars: false,
+                counted: false,
             })
             .collect(),
         fresh_eq: Vec::new(),
@@ -637,6 +642,7 @@ fn check_with(
             owner: None,
             count: None,
             chars: false,
+            counted: false,
         };
     }
     for (at, code, msg) in &d.misdeclared {

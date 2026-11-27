@@ -8,6 +8,7 @@ use std.math.{pow_mod, inv_mod}
 use std.seq.{collect, nth, find, Seq, Indexed, all}
 use std.sparse.{LinearRmq}
 use std.range.{Len, first_true, last_true}
+use std.io.{io}
 
 const CAP = 2_000_000_000
 type Count = 0..=CAP
@@ -356,7 +357,7 @@ pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
 /// example: `"-12".parse<Mod<7>>() == Some(2)`
 /// example: `"3 4".parse<(Int, Int)>() == Some((3, 4))`
 /// example: `"3 4".parse<Int>() == None`
-pub fn parse<T: Read>(self: Str) -> ?T = read<T>(from: self)
+pub fn parse<T: Read>(self: Str) -> ?T uses io = read<T>(from: self)
 
 /// The Z-array of `s`: `z[i]` is the length of the longest common prefix of `s` and the
 /// suffix starting at `i`; `z` at the first key is `s.len`.

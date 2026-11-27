@@ -85,7 +85,8 @@ impl Cx<'_> {
             return true;
         };
         let (lo, end, within) = self.typed_ends(at(TK::Int(0), Ty::Int), count, false);
-        self.declare_domain(name, lo, end, within, span, out);
+        let i = self.declare_domain(name, lo, end, within, span, out);
+        self.domains[i].counted = true;
         true
     }
     /// `xs`'s count through its impl of the `@counted` trait `tr`, `xs` read once in `out`.
@@ -249,6 +250,7 @@ impl Cx<'_> {
             owner: self.decl,
             count,
             chars: false,
+            counted: false,
         }
     }
     /// A product's range factor is a domain of its own, declared here; the product then names it.

@@ -4,23 +4,25 @@
 //!
 //! example: `let (n, k): (Int, Int) = read()`
 use std.tuple.{Tuple2, Tuple3, Tuple4}
+use std.io.{io}
 
 /// A type the input reads, token by token, in order, from the `Input` it is given (R10.2.1).
 pub trait Read:
     fn read(mut input: Input) -> Self
 
 /// `read<T>()`: a `T` from the input, by the type it is read at; one read where a range type is
-/// expected is held to the range as the input's contract (R10.2.1, R10.2.2).
+/// expected is held to the range as the input's contract (R10.2.1, R10.2.2). `base:` is what a
+/// counted domain's first position reads as, at every part of the read (R10.2.2).
 @input
-pub fn read<T: Read>() -> T:
-    var input = Input.stdin()
+pub fn read<T: Read>(base: Int = io.base) -> T uses io:
+    var input = Input.stdin(base)
     T.read(mut input)
 
 /// `read<T>(from: s)`: a `T` read with `s` as the whole input, by the same `Read` impls as
 /// `read<T>()`; `None` on a bad, out-of-range, missing or leftover token. Standard input is
 /// untouched (R10.2.4).
-pub fn read<T: Read>(; from: Str) -> ?T:
-    var input = Input.of(from)
+pub fn read<T: Read>(; from: Str, base: Int = io.base) -> ?T uses io:
+    var input = Input.of(from, base)
     let x = T.read(mut input)
     if input.held(): Some(x) else: None
 
@@ -30,6 +32,8 @@ pub struct Input:
     text: ?Str
     var at: Int
     var failed: Bool
+    /// What a counted domain's first position reads as.
+    base: Int
 
 /// `stdin`, or the string read from with where its reads are: `4 x at 1`.
 impl Show for Input:
@@ -50,10 +54,10 @@ fn blank(c: Int) -> Bool = c == 32 or c in 9..=13
 
 impl Input:
     /// Standard input, whose place the program's one byte source keeps.
-    pub fn stdin() -> Input = Input(None, 0, false)
+    pub fn stdin(base: Int = 0) -> Input = Input(None, 0, false, base)
 
     /// `s` as the whole input.
-    pub fn of(s: Str) -> Input = Input(Some(s.clone()), 0, false)
+    pub fn of(s: Str, base: Int = 0) -> Input = Input(Some(s.clone()), 0, false, base)
 
     /// A `T` read from here, by its `Read` impl: what an impl reads its parts with.
     @input
@@ -129,11 +133,14 @@ impl Input:
         self.end_token()
         if neg: -v else: v
 
-    /// The ordinal of the position of `D` an `Int` token names; traps R0502 outside `D`.
-    fn ord<D: Ordered>(mut self) -> Int:
-        if let v = D.at(self.int()): return v.ord
+    /// The position of `D` an `Int` token names: a counted domain's token is its position plus
+    /// the input's base, any other domain's is its integer, never shifted. Outside `D` a read
+    /// from standard input traps R0502 and one from a string fails (R10.2.2).
+    fn position<D: Ordered>(mut self) -> D:
+        let shift = if D.counted: self.base else: 0
+        if let v = D.at(self.int() - shift): return v
         self.holds(false)
-        0
+        D.nth(0)
 
     /// `n` values read in order.
     fn items<T: Read>(mut self, n: Int) -> List<T>:
@@ -144,14 +151,13 @@ impl Input:
 impl Read for Int:
     fn read(mut input: Input) -> Int = input.int()
 
-/// A range type's value is held to the range as the input's contract (R10.2.2), wherever the
-/// read is: outside it a read from standard input traps R0502 and one from a string fails, so
+/// A position is held to its domain as the input's contract (R10.2.2), wherever the read is, so
 /// `List<1..=3>` reads each item as `1..=3` does.
 impl Read for _..=_:
-    fn read(mut input: Input) -> Self:
-        if let v = Self.at(input.int()): return v
-        input.holds(false)
-        Self.nth(0)
+    fn read(mut input: Input) -> Self = input.position<Self>()
+
+impl<D: Ordered> Read for D:
+    fn read(mut input: Input) -> D = input.position<D>()
 
 /// `I128` reads one whole number; one past `I128`'s range traps R0502 (R10.2.6).
 impl Read for I128:
@@ -208,8 +214,8 @@ impl<T: Read> Read for List<T>:
 /// `l <= r` (R10.2.3).
 impl<D: Ordered> Read for Range<D>:
     fn read(mut input: Input) -> Range<D>:
-        let lo = input.ord<D>()
-        let hi = input.ord<D>()
+        let lo = input.position<D>().ord
+        let hi = input.position<D>().ord
         input.holds(lo <= hi)
         Range(lo, hi - lo + 1, 1)
 

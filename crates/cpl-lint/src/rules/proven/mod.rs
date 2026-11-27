@@ -364,7 +364,7 @@ fn render_count(file: &File, factors: &[Factor]) -> String {
         Factor::Domain(name, size) => file
             .top_level()
             .find_map(|(base, s)| match &s.kind {
-                StmtKind::Domain { name: n, def } if n.text == *name => match &def.kind {
+                StmtKind::Domain { name: n, def, .. } if n.text == *name => match &def.kind {
                     ExprKind::Range {
                         lo: Some(lo),
                         hi: Some(hi),

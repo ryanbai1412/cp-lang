@@ -388,7 +388,7 @@ impl<T: StageTy> V<'_, T> {
                 self.expr(g, "a called value");
                 self.args(xs, "a call's argument");
             }
-            EK::DomLen(t) | EK::DomLo(t) | EK::DomHeld(t) => self.ty(t),
+            EK::DomLen(t) | EK::DomLo(t) | EK::DomHeld(t) | EK::DomCounted(t) => self.ty(t),
             EK::HasBound(t, _, ts) => [t].into_iter().chain(ts).for_each(|t| self.ty(t)),
             EK::Int(_) | EK::F64(_) | EK::Bool(_) | EK::Unit | EK::Text(_) => {}
         }

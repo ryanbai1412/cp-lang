@@ -5,7 +5,7 @@ use super::*;
 use crate::def::DomainInfo;
 use crate::ty::{human_int, Param};
 use cpl_diag::msgs;
-use cpl_syntax::ast::{self, Expr, ExprKind, TypeKind};
+use cpl_syntax::ast::{self, Expr, ExprKind, StmtKind, TypeKind};
 
 /// Types by the name they are filed under: a body's method signatures.
 type Named = Vec<(String, Ty)>;
@@ -1020,7 +1020,7 @@ impl<'a> Checker<'a> {
                 out.insert(0, (e.name.text.clone(), def));
                 out
             }
-            S::Domain { name, def } => {
+            S::Domain { name, def, .. } => {
                 vec![(name.text.clone(), Def::Domain(self.domain_info(def)))]
             }
             S::TypeAlias {
@@ -1900,7 +1900,7 @@ impl<'a> Checker<'a> {
 fn value_domains(fields: &[&str], body: &[ast::Stmt]) -> Vec<String> {
     body.iter()
         .filter_map(|stmt| match &stmt.kind {
-            ast::StmtKind::Domain { name, def } if cpl_syntax::visit::mentions_any(def, fields) => {
+            StmtKind::Domain { name, def, .. } if cpl_syntax::visit::mentions_any(def, fields) => {
                 Some(name.text.clone())
             }
             _ => None,

@@ -75,7 +75,7 @@ pub struct Wire():
 @lint(read_loop, from: "var xs: List<T> = []\nfor _ in a..=b:\n    xs.push(read())", to: "let xs: [a..=b]T = read()", holes: "a, b, T", builtin: "read")
 @lint(read_loop, from: "var xs: List<T> = []\nfor _ in a..b:\n    let v = read()\n    xs.push(v)", to: "let xs: [a..b]T = read()", holes: "a, b, v, T", builtin: "read")
 @lint(read_loop, from: "var xs: List<T> = []\nfor _ in a..=b:\n    let v = read()\n    xs.push(v)", to: "let xs: [a..=b]T = read()", holes: "a, b, v, T", builtin: "read")
-pub fn read_all<T: Read>(until: ?(T -> Bool) = None) -> List<T>:
+pub fn read_all<T: Read>(until: ?(T -> Bool) = None) -> List<T> uses io:
     var xs = List<T>()
     while let x = read<?T>():
         if let stop = until:

@@ -24,6 +24,7 @@ struct Link<'a> {
     /// The type of a slot a value of a type is lent in: ownership's rule (`cpl_next_own`).
     lent: &'a Lend,
     d: &'a Decls,
+    whole: &'a Whole,
     generic: &'a HashMap<FuncKey, Func<Ty>>,
     adds: &'a SetAdds,
     keys: Vec<InstKey>,
@@ -110,6 +111,7 @@ pub fn link(
 ) -> Program {
     let mut l = Link {
         d,
+        whole,
         lent,
         generic,
         adds,
@@ -846,6 +848,10 @@ impl Link<'_> {
                 CTy::Range(lo, _) => EK::Int(lo),
                 _ => EK::Int(0),
             },
+            EK::DomCounted(t) => EK::Bool(match self.targ(t, env) {
+                CTy::Dom(d) => self.whole.dom(DomId(d)).counted,
+                _ => false,
+            }),
             EK::HasBound(t, tr, args) => EK::Bool(self.has_bound(t, *tr, args, env)),
             EK::MakeStruct(xs) => EK::MakeStruct(xs.iter().map(|x| self.expr(x, env)).collect()),
             EK::MakeClosure(xs) => EK::MakeClosure(xs.iter().map(|x| self.expr(x, env)).collect()),

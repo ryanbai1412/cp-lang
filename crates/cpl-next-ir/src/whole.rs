@@ -34,6 +34,8 @@ pub struct Dom {
     pub lo: VarRef,
     /// The fn it is declared in; `None` at top level.
     pub owner: Option<FnId>,
+    /// It is declared by a count alone, so `io.base` shifts it (R10.2.2).
+    pub counted: bool,
 }
 
 /// A global's name, and whether it is a top-level binding of the file rather than one inside

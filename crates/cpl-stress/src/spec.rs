@@ -751,7 +751,7 @@ impl InputSpec {
                         builder.spec.consts.insert(name.text.clone(), value);
                     }
                 }
-                StmtKind::Domain { name, def } => {
+                StmtKind::Domain { name, def, .. } => {
                     builder.note_char_domain(&name.text, def);
                     if let ExprKind::Range {
                         lo: Some(lo),
