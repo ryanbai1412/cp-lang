@@ -369,5 +369,6 @@
   ],
   "next_library_gates": 25,
   "next_name_compares": 74,
-  "next_error_typed": 116
+  "next_error_typed": 116,
+  "next_refused": 494
 }

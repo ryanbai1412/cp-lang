@@ -367,8 +367,14 @@ fi
 # The rebase rewrote main's crate files: corpus_fmt_dirty refuses a stale cpl, so build it.
 [ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
     { echo "land: cargo build -p cpl-cli failed at the rebased tip; the ratchet runs that cpl" >&2; exit 1; }
-[ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py --check >/dev/null ||
+# A counter that improved is lowered to its number in the commit that improved it.
+tighten=--check
+[ -z "$(git rev-list "$main_base"..HEAD)" ] || ! git diff --quiet HEAD -- "$ratchet" || tighten=--tighten
+[ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py $tighten >/dev/null ||
     { uv run --quiet python scripts/debt-ratchet.py --check >&2; exit 1; }
+[ "$tighten" = --check ] || git diff --quiet -- "$ratchet" ||
+    { git commit -q --amend --no-edit --no-verify -- "$ratchet" &&
+        echo "land: lowered the ratchet's improved counters in $(git rev-parse --short HEAD)" >&2; }
 # A decision number is taken once it is on main (decision 505): a heading
 # main never had, even as a `--reserve` stub, would collide with another lane.
 [ ! -f scripts/specgate/decisions.py ] || uv run --quiet python scripts/spec-gate.py decisions --check-landing "$main_base" || exit 1

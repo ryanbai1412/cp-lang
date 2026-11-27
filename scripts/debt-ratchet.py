@@ -1431,11 +1431,15 @@ def next_split(root: Path) -> list[str]:
 
 
 def _wrong_rows_path(root: Path) -> Path:
-    """The `wrong.tsv` to read: the full programs run's own (`target/cpl-next/wrong.tsv`) when it
+    return _run_list_path(root, "wrong.tsv")
+
+
+def _run_list_path(root: Path, name: str) -> Path:
+    """The list `name` to read: the full programs run's own (`target/cpl-next/<name>`) when it
     is newer than HEAD and the committed list, else the committed list. A run is the evidence;
     the committed list is only what someone last copied, and gating on it alone let a swap sit
     in the baseline (09:00 trend audit). A focused run writes `target/cpl-next/only/` instead."""
-    committed, run = root / NEXT_TESTS / "wrong.tsv", root / "target/cpl-next/wrong.tsv"
+    committed, run = root / NEXT_TESTS / name, root / "target/cpl-next" / name
     if not run.is_file():
         return committed
     head = _git(root, "log", "-1", "--format=%ct")
@@ -1702,13 +1706,16 @@ def regressed_named(root: Path, ref: str) -> set[str]:
 def set_swaps(root: Path, ref: str) -> list[str]:
     """Case ids new to a bad set (`next_wrong`, `next_masked`, `next_wrong_accepts`) that `ref`
     had in a better one: a count holds when one case is fixed and another breaks, so each set is
-    compared by id, and a case leaving `passing.txt` for any bucket is one. A wrong verdict on a
+    compared by id, and a case leaving `passing.txt` for any bucket is one, read from a fresh run
+    when there is one (`_run_list_path`), so a lost pass the lists never recorded still fails;
+    the run gives a listed pass that timed out under load one run alone. A wrong verdict on a
     case `ref` refused is an exposure (`unhidden_wrong`), a
     case `ref` lacked is a case added, and neither is a swap; a new wrong-accept always is. A
     regeneration's `Regressed:` trailer admits exactly the cases it names (`regressed_named`)."""
     def rows(where: str, name: str) -> dict[str, str]:
+        here = _run_list_path(root, name)
         lines = _git(root, "show", f"{where}:{NEXT_TESTS}/{name}") if where else \
-            _lines(root / NEXT_TESTS / name) if (root / NEXT_TESTS / name).is_file() else []
+            _lines(here) if here.is_file() else []
         return {l.split("\t")[0].strip(): (l.split("\t") + [""])[1] for l in lines if l.strip()}
     was_wrong, was_passing, was_masked = rows(ref, "wrong.tsv"), rows(ref, "passing.txt"), rows(ref, "masked.txt")
     if not (was_wrong or was_passing):
@@ -1739,6 +1746,16 @@ def next_not_passing(root: Path) -> list[str]:
     cases = [r[len("spec/conformance/"):] for r in _git(root, "ls-files", "spec/conformance/*.cp")]
     cases += ["next/" + r.rsplit("/", 1)[-1] for r in _git(root, "ls-files", NEXT_TESTS + "/programs/*.cp")]
     return [c for c in cases if c not in passing]
+
+
+def next_refused(root: Path) -> list[str]:
+    """Cases the new pipeline refuses: not passing, and on neither `wrong.tsv` nor `masked.txt`.
+    Gated apart from `next_not_passing`, so lifting one refusal never pays for another."""
+    def ids(name: str) -> set[str]:
+        path = root / NEXT_TESTS / name
+        return {l.split("\t")[0].strip() for l in _lines(path) if l.strip()} if path.is_file() else set()
+    answered = ids("wrong.tsv") | ids("masked.txt")
+    return [c for c in next_not_passing(root) if c not in answered]
 
 
 def own_databases(root: Path) -> list[str]:
@@ -4089,6 +4106,7 @@ COUNTERS = {
     "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses: `Unbuilt` variants (Core)", next_refusal_kinds, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
+    "next_refused": ("cases the new pipeline (cpl-next) refuses: on no list (Core)", next_refused, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
     "next_lowered": ("programs cases whose error only lowering finds (Core)", next_lowered, True),
     "next_error_typed": ("programs cases linking an instance that holds an error type (Core)", next_error_typed, True),
@@ -4498,24 +4516,45 @@ def unhidden_wrong(root: Path, ref: str) -> list[str]:
     return [c for c in next_wrong(root) if c in cases and c not in answered]
 
 
-FROZEN_EXCEPTION_RE = re.compile(r"^Frozen-exception:\s*\S", re.M)
+# The commit whose std the old pipeline is pinned to (`crates/cpl-check/frozen/std`).
+FROZEN_PIN = "c7ac8761d^"
+
+
+SKIPPED_RATCHET_RE = re.compile(r"^Skipped:.*\b(ratchet|debt-ratchet|full suite|lists?)\b", re.M | re.I)
+
+
+def skipped_ratchet(root: Path, base: str) -> list[str]:
+    """Commits in `base..HEAD` that touch the new pipeline (`crates/cpl-next*`) and name the
+    ratchet, its lists or the full suite in a `Skipped:` trailer: those are what the ratchet
+    measures, so it is never skipped for them (the 11 AM blind audit found 23 in 435)."""
+    paths = [str(p.relative_to(root)) for p in sorted((root / "crates").glob("cpl-next*"))]
+    if not paths:
+        return []
+    return [f"{sha[:9]}: touches the new pipeline and skips the ratchet in a `Skipped:` trailer; "
+            f"run it (CI's lists jobs do)"
+            for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths)
+            if SKIPPED_RATCHET_RE.search("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
 
 
 def frozen_edits(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that add lines to the frozen old pipeline (migration rule 9: no
     fixes, no features). `old_pipeline_lines` only sees the net, so a fix that deletes more than
-    it adds passes it; this sees each commit. One that must add a line (the old checker reading
-    a std change) names why in a `Frozen-exception:` trailer; a fix goes to a conformance case."""
+    it adds passes it; this sees each commit. No trailer excuses one: the only commit that may
+    add lines is one putting each old-crate file it touches back as it was at `FROZEN_PIN`,
+    which the old pipeline's pinned std reads. A fix goes to a conformance case."""
     paths = [f"crates/{c}" for c in OLD_PIPELINE_CRATES]
+    def restores(sha: str) -> bool:
+        touched = _git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", sha, "--", *paths)
+        def blob(ref: str, f: str) -> str:
+            return "\n".join(_git(root, "rev-parse", "-q", "--verify", f"{ref}:{f}"))
+        return bool(touched) and all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched)
     out = []
     for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
-        if FROZEN_EXCEPTION_RE.search("\n".join(_git(root, "log", "-1", "--format=%B", sha))):
-            continue
         rows = [l.split("\t") for l in _git(root, "show", "--numstat", "--format=", sha, "--", *paths)]
         added = sum(int(r[0]) for r in rows if r[0].isdigit())
-        if added:
+        if added and not restores(sha):
             out.append(f"{sha[:9]}: adds {added} lines to the frozen old pipeline; send the fix to a "
-                       f"conformance case the new pipeline must pass, or name why in a `Frozen-exception:` trailer")
+                       f"conformance case the new pipeline must pass")
     return out
 
 
@@ -4527,9 +4566,9 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     that entry (a new definition of the count, re-measured), or when `ref`
     itself measures at least the raised number (`upstream`): that restores a
     number lowered by hand, it admits no debt. `next_not_passing` may also rise by
-    the number of conformance cases the change adds, and `next_wrong` by the cases `ref`
-    refused that now get their wrong verdict (`unhidden_wrong`). Never on a decisions.md line or
-    a Skipped: trailer. New debt is removed, not admitted.
+    the number of conformance cases the change adds, and `next_wrong` only by the cases a
+    `Regressed:` trailer names, a refusal lifted (`unhidden_wrong`) too. Never on a decisions.md
+    line or a Skipped: trailer. New debt is removed, not admitted.
     """
     shown = _git(root, "show", f"{ref}:scripts/debt-ratchet.json")
     if not shown:
@@ -4539,6 +4578,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     moved = [f"{c}: wrong on {ref}, refused here: fix its verdict, or name it in decisions.md"
              for c in wrong_to_refused(root, ref)]
     moved += frozen_edits(root, base)
+    moved += skipped_ratchet(root, base)
     moved += set_swaps(root, ref)
     # Main lowering a number while this change gates isn't this change raising it:
     # only a number above the change's own base is (the rebase then takes main's).
@@ -4553,9 +4593,9 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     if "rs_near_cap" in old and (set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow)
                                  - set(mine.get("rs_near_cap", [])) - set(mine_allow)):
         raised.append(("rs_near_cap", "rs_near_cap"))
-    # A regeneration's case named `Regressed:`, or one `ref` refused and the tree now
-    # answers wrong (an exposure), may enter a bad set; nothing else may.
-    admitted = regressed_named(root, ref) | set(unhidden_wrong(root, ref))
+    # Only a regeneration's case named `Regressed:` may enter a bad set: one `ref` refused
+    # and the tree now answers wrong (an exposure, `unhidden_wrong`) is named there too.
+    admitted = regressed_named(root, ref)
     raised += [(k, k) for k in ID_SETS
                if k in old and set(baseline.get(k, [])) - set(old[k]) - set(mine.get(k, [])) - admitted]
     # A new case the new pipeline cannot run yet is a case added, not a
@@ -4565,7 +4605,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
                  if l.endswith(".cp")])
     raised = [(n, key) for n, key in raised
               if not (n == "next_not_passing" and baseline[n] - old[n] <= added)
-              and not (n == "next_wrong" and baseline[n] - old[n] <= len(unhidden_wrong(root, ref)))
+              and not (n == "next_wrong" and baseline[n] - old[n] <= len(admitted & set(next_wrong(root))))
               and not (n == "next_wrong_accepts"
                        and baseline[n] - old[n] <= len(admitted & set(next_wrong_accepts(root))))
               and not (n == "next_split" and baseline[n] - old[n] <= len(admitted & set(next_split(root))))]
@@ -4691,6 +4731,8 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument("--check", action="store_true", help="Verify against the ratchet file.")
     group.add_argument("--update", nargs="*", metavar="NAME",
                        help="Write current measurements to the ratchet file; with NAMEs, only those entries.")
+    group.add_argument("--tighten", action="store_true",
+                       help="--check, then lower each improved entry to its measured value (land.sh runs it).")
     group.add_argument("--show", nargs="*", metavar="NAME", help="Print `name count` for counters.")
     group.add_argument("--list", metavar="NAME", help="Print the offenders behind one counter.")
     group.add_argument("--zero", action="store_true",
@@ -4834,6 +4876,12 @@ def main(argv: list[str] | None = None) -> int:
               f"`uv run --quiet python scripts/debt-ratchet.py --update {names}`")
     if errors and notes:
         print(f"debt-ratchet: FAILED on the {len(errors)} ERROR line(s) above, not on the improvements", file=sys.stderr)
+    if args.tighten and not errors and notes:
+        keys = {"rs_over_cap": "rs_file_size_allowlist"}
+        for n in improved(actual, baseline):
+            baseline[keys.get(n, n)] = actual[keys.get(n, n)]
+        args.ratchet.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
+        print("debt-ratchet: lowered the improved entries to their measured values")
     return 1 if errors else 0
 
 

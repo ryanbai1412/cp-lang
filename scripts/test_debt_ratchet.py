@@ -399,12 +399,46 @@ class DebtRatchetTest(unittest.TestCase):
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "check: fix a")
             self._write(root, "crates/cpl-check/src/a.rs", "fn a() { fixed(); std() }\n")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam",
-                "check: read std's new marker\n\nFrozen-exception: old checker reads std/")
+                "check: read std's new marker\n\nFrozen-exception: old checker reads std/\n"
+                "Lane: c\nFrozen-exception-signed-by: g")
+            self._write(root, "crates/cpl-check/src/a.rs", "fn a() { fixed(); std(); more() }\n")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam",
+                "check: read more\n\nFrozen-exception: old checker reads std/\n"
+                "Lane: c\nFrozen-exception-signed-by: c")
             self._write(root, "crates/cpl-check/src/a.rs", "")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "check: delete a")
-            got = dr.frozen_edits(root, base)
-            self.assertEqual(len(got), 1)
-            self.assertIn("adds 1 lines to the frozen old pipeline", got[0])
+            # Putting the file back as it was at the pin adds lines and keeps the freeze.
+            self._write(root, "crates/cpl-check/src/a.rs", "fn a() {}\nfn b() {}\nfn c() {}\n")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "revert(check): to the pin")
+            with mock.patch.object(dr, "FROZEN_PIN", base):
+                got = dr.frozen_edits(root, base)
+            # No trailer excuses a commit, whoever signs it.
+            self.assertEqual(len(got), 3)
+            self.assertTrue(all("adds 1 lines to the frozen old pipeline" in g for g in got))
+
+    def test_skipped_ratchet_flags_new_pipeline_commits_that_skip_it(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            env = dr._git_env()
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, env=env, capture_output=True)
+            commit = lambda m: git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", m)
+            git("init", "-q")
+            self._write(root, "crates/cpl-next-check/src/a.rs", "fn a() {}\n")
+            self._write(root, "docs/a.md", "a\n")
+            git("add", "-A"); commit("base")
+            base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, env=env,
+                                  capture_output=True, text=True).stdout.strip()
+            self._write(root, "crates/cpl-next-check/src/a.rs", "fn a() { b() }\n")
+            commit("check(next): b\n\nSkipped: ratchet, it is slow")
+            self._write(root, "crates/cpl-next-check/src/a.rs", "fn a() { c() }\n")
+            commit("check(next): c\n\nSkipped: full suite and list regeneration")
+            self._write(root, "crates/cpl-next-check/src/a.rs", "fn a() { d() }\n")
+            commit("check(next): d\n\nSkipped: handbook edit, none needed")
+            self._write(root, "docs/a.md", "b\n")
+            commit("docs: b\n\nSkipped: ratchet, docs only")
+            got = dr.skipped_ratchet(root, base)
+            self.assertEqual(len(got), 2)
+            self.assertTrue(all("skips the ratchet" in g for g in got))
 
     def test_std_fn_copies_count_as_duplicates(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -1705,6 +1739,11 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.main(["--update", "--root", str(root), "--ratchet", str(ratchet)]), 0)
             self.assertTrue(json.loads(ratchet.read_text())["stdlib_todo"] == 2)
             self.assertEqual(dr.main(["--check", "--root", str(root), "--ratchet", str(ratchet)]), 0)
+            # An improved counter is lowered to its measured value by `--tighten`, not left as headroom.
+            data = json.loads(ratchet.read_text())
+            ratchet.write_text(json.dumps({**data, "stdlib_todo": 5}))
+            self.assertEqual(dr.main(["--tighten", "--root", str(root), "--ratchet", str(ratchet)]), 0)
+            self.assertEqual(json.loads(ratchet.read_text())["stdlib_todo"], 2)
 
 
     def test_update_refuses_to_raise_a_baseline_above_main(self) -> None:
@@ -2288,7 +2327,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_lent_outside_own(root), ["crates/cpl-next-lower/src/lib.rs:1",
                                                               "crates/cpl-next-lower/src/lib.rs:2"])
 
-    def test_wrong_may_rise_by_the_cases_a_refusal_hid(self) -> None:
+    def test_wrong_rises_by_a_hidden_case_only_when_named(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
@@ -2310,10 +2349,15 @@ class DebtRatchetTest(unittest.TestCase):
             rows = ["core-01/wrong.cp", "core-01/hid.cp", "core-01/passed.cp", "core-01/new.cp"]
             (tests / "wrong.tsv").write_text("".join(f"{r}\twrong-reject\n" for r in rows))
             self.assertEqual(dr.unhidden_wrong(root, "base"), ["core-01/hid.cp"])
+            # An exposure is capped at 0: it rises only as far as `Regressed:` names cases.
+            self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 11}, ref="base")), 1)
+            base = subprocess.run(["git", "rev-parse", "base"], cwd=root, env=dr._git_env(),
+                                  capture_output=True, text=True).stdout.strip()
+            git("commit", "-qam", f"factory(next): lists\n\nRegressed: core-01/hid.cp {base}")
             self.assertEqual(dr.unexplained_bumps(root, {"next_wrong": 11}, ref="base"), [])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 12}, ref="base")), 1)
 
-    def test_a_split_main_refused_may_enter_the_split_set(self) -> None:
+    def test_a_split_main_refused_enters_the_split_set_only_named(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
@@ -2335,6 +2379,10 @@ class DebtRatchetTest(unittest.TestCase):
             git("branch", "base")
             (tests / "wrong.tsv").write_text("".join(f"core-01/{c}.cp\tsplit\n" for c in ["hid", "wrong"]))
             hid = {"next_split": 2, "next_split_ids": ["core-01/hid.cp", "core-01/wrong.cp"]}
+            self.assertEqual(len(dr.unexplained_bumps(root, hid, ref="base")), 2)
+            base = subprocess.run(["git", "rev-parse", "base"], cwd=root, env=dr._git_env(),
+                                  capture_output=True, text=True).stdout.strip()
+            git("commit", "-qam", f"factory(next): lists\n\nRegressed: core-01/hid.cp {base}")
             self.assertEqual(dr.unexplained_bumps(root, hid, ref="base"), [])
             (tests / "passing.txt").write_text("")
             (tests / "wrong.tsv").write_text("".join(f"core-01/{c}.cp\tsplit\n" for c in ["passed", "wrong"]))
@@ -2395,6 +2443,29 @@ class DebtRatchetTest(unittest.TestCase):
             git("add", "-A")
             with mock.patch.dict(os.environ, {"CPL_REGRESSED": f"core-01/ok.cp {cause}"}):
                 self.assertEqual(len(dr.set_swaps(root, "base")), 2)
+
+    def test_a_pass_a_fresh_run_lost_fails_though_the_lists_hold_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, env=dr._git_env(), capture_output=True)
+            git("init", "-q")
+            tests = root / dr.NEXT_TESTS
+            tests.mkdir(parents=True)
+            (tests / "passing.txt").write_text("core-01/ok.cp\n")
+            (tests / "wrong.tsv").write_text("")
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("branch", "base")
+            run = root / "target/cpl-next"
+            run.mkdir(parents=True)
+            (run / "passing.txt").write_text("")
+            (run / "wrong.tsv").write_text("core-01/ok.cp\twrong-output\n")
+            self.assertEqual([s.split(";")[0] for s in dr.set_swaps(root, "base")],
+                             ["core-01/ok.cp: passes on base, wrong here (wrong-output)"])
+            os.utime(run / "passing.txt", (0, 0))
+            os.utime(run / "wrong.tsv", (0, 0))
+            self.assertEqual(dr.set_swaps(root, "base"), [])
 
     def test_a_wrong_case_may_not_become_refused_unless_decisions_names_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
