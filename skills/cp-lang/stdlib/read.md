@@ -2,15 +2,22 @@
 
 # std.read
 
-Reading input, as ordinary CP: `read<T>()` is `T.read()`, and each type reads by its `Read` impl over the input's bytes (R10.2). Core re-exports `Read`, `read` and `read_line`, so no module imports them.
+Reading input, as ordinary CP: `read<T>()` is `T.read(Input.stdin())`, and each type reads by its `Read` impl over an `Input`'s bytes (R10.2). Core re-exports `Read`, `Input`, `read` and `read_line`, so no module imports them.
 
 Import: `use std.read.{...}`.
 
 ## `trait Read`
 
-A type the input reads, token by token, in order (R10.2.1).
+A type the input reads, token by token, in order, from the `Input` it is given (R10.2.1).
+
+## `struct Input`
+
+Where reads take their bytes: standard input, or a `Str` read whole by `read(from:)`, with where its reads are and whether one failed, which a read from standard input traps on instead.
+
+Fields: `text: ?Str`.
 
 ## Functions
 
 - `fn read<T: Read>() -> T` — `read<T>()`: a `T` from the input, by the type it is read at; one read where a range type is expected is held to the range as the input's contract (R10.2.1, R10.2.2).
+- `fn read<T: Read>(; from: Str) -> ?T` — `read<T>(from: s)`: a `T` read with `s` as the whole input, by the same `Read` impls as `read<T>()`; `None` on a bad, out-of-range, missing or leftover token.
 - `fn read_line() -> Str` — `read_line()`: the rest of the line, without its `\n` or a trailing `\r`; after a line's last token it is the next line (R10.2.3, R10.2.8).
