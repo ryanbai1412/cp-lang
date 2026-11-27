@@ -207,6 +207,33 @@ pub enum Form {
     Canonical,
 }
 
+/// A stage of the IR that `cpl-next dump-ir --stage` prints: lowering's generic fns, the linked
+/// instances once ownership settled their copies, then canonical and optimized.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum IrStage {
+    Raw,
+    Owned,
+    Canonical,
+    Optimized,
+}
+
+impl IrStage {
+    pub fn named(name: &str) -> Option<IrStage> {
+        match name {
+            "raw" => Some(IrStage::Raw),
+            "owned" => Some(IrStage::Owned),
+            "canonical" => Some(IrStage::Canonical),
+            "optimized" => Some(IrStage::Optimized),
+            _ => None,
+        }
+    }
+}
+
+/// Each of `fs` as its `Debug` shows it, one after another.
+fn dumped<'a, T: std::fmt::Debug + 'a>(fs: impl IntoIterator<Item = &'a ir::Func<T>>) -> String {
+    fs.into_iter().map(|f| format!("{f:#?}\n")).collect()
+}
+
 pub(crate) struct Compiled {
     prog: inst::Program,
     canon: Vec<ir::Func<inst::CTy>>,

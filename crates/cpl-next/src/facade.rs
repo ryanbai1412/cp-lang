@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
 use crate::{
-    compile, items, std_unchecked, types, units, Compiled, Diag, Form, Front, Item, Outcome, Roots,
-    Stage, Std, Type, TypedAt, Unit,
+    compile, dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage,
+    Item, Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
 };
 
 /// The only input of every query: the program, the libraries it may use, and std.
@@ -164,6 +164,27 @@ impl Session {
             Ok(Program(c))
         });
         built.as_ref().map_err(Vec::as_slice)
+    }
+
+    /// The program's IR at `stage`, for tracing a layer by eye (`cpl-next dump-ir`): lowering's
+    /// fns the program instantiates, by name, and each later stage's in instance order, which
+    /// is what a call names.
+    pub fn ir(&self, stage: IrStage) -> Result<String, &[Diag]> {
+        let c = &self.program()?.0;
+        Ok(match stage {
+            IrStage::Raw => {
+                let reached: std::collections::HashSet<_> =
+                    c.prog.insts.iter().map(|f| &f.key).collect();
+                let mut fs: Vec<_> = (self.front().g.funcs.values())
+                    .filter(|f| reached.contains(&f.key))
+                    .collect();
+                fs.sort_by_cached_key(|f| (f.name.clone(), format!("{:?}", f.key)));
+                dumped(fs)
+            }
+            IrStage::Owned => dumped(&c.prog.insts),
+            IrStage::Canonical => dumped(&c.canon),
+            IrStage::Optimized => dumped(&c.opt),
+        })
     }
 
     /// Every diagnostic of the program, up to `upto`.

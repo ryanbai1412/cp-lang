@@ -8,8 +8,12 @@
 //! `engine`, the run's `.out`, `.err` and then `.code`, and `c++` last; then it prints `done`.
 //! A run that passes MS (less its compile) ends the process, leaving it and the rest unwritten.
 //! For the crate's tests and for measuring; not a shipped command.
+//!
+//! `cpl-next dump-ir --stage raw|owned|canonical|optimized FILE` prints FILE's IR at that stage
+//! through the facade: lowering's generic fns, the linked instances after ownership, then
+//! canonical and optimized IR.
 use cpl_next::facade::{Session, Snapshot, Verdict};
-use cpl_next::{Form, Roots, Std};
+use cpl_next::{Form, IrStage, Roots, Std};
 
 /// The `cpl-next` binary's allocator: malloc and free took a sixth of a worker's check.
 #[cfg(not(target_arch = "wasm32"))]
@@ -48,6 +52,9 @@ fn real_main() {
         let at = args.iter().position(|a| a == f)?;
         args.get(at + 1)
     };
+    if args.first().is_some_and(|a| a == "dump-ir") {
+        return dump_ir(&args[1..]);
+    }
     if has("--all") {
         let Some(ms) = value("--within").and_then(|ms| ms.parse().ok()) else {
             eprintln!("usage: cpl-next --all --within MS [--trace]");
@@ -114,6 +121,42 @@ fn real_main() {
     eprint!("{}", said(&o));
     if o.trap.is_some() {
         std::process::exit(3);
+    }
+}
+
+/// `dump-ir --stage STAGE FILE`.
+fn dump_ir(args: &[String]) {
+    fn usage() -> ! {
+        eprintln!("usage: cpl-next dump-ir --stage raw|owned|canonical|optimized FILE");
+        std::process::exit(2);
+    }
+    let at = args.iter().position(|a| a == "--stage");
+    let Some(stage) = at
+        .and_then(|i| args.get(i + 1))
+        .and_then(|s| IrStage::named(s))
+    else {
+        usage()
+    };
+    let named = |i: usize| at.is_some_and(|at| i == at + 1);
+    let Some((_, path)) =
+        (args.iter().enumerate()).find(|&(i, a)| !a.starts_with("--") && !named(i))
+    else {
+        usage()
+    };
+    let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
+        eprintln!("{path}: {e}");
+        std::process::exit(2);
+    });
+    let session = Session::open(Snapshot::new(Arc::new(std_in_use()), roots(path), &src));
+    match session.ir(stage) {
+        // A reader that stops early (`| head`) is not an error.
+        Ok(text) => drop(std::io::stdout().write_all(text.as_bytes())),
+        Err(ds) => {
+            for d in ds {
+                println!("{d}");
+            }
+            std::process::exit(code(session.verdict()));
+        }
     }
 }
 

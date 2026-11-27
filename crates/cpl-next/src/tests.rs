@@ -1066,3 +1066,28 @@ fn an_unknown_name_offers_the_closest_in_scope() {
         ("change to `total`", vec![("totl", "total")])
     );
 }
+
+#[test]
+fn dump_ir_prints_each_stage_and_a_rejections_diagnostics() {
+    let open = |src: &str| {
+        facade::Session::open(facade::Snapshot::new(
+            std::sync::Arc::new(Std::read()),
+            Roots::std(),
+            src,
+        ))
+    };
+    let s = open("fn twice(n: Int) -> Int = n * 2\nprint(twice(3))\n");
+    for stage in [
+        IrStage::Raw,
+        IrStage::Owned,
+        IrStage::Canonical,
+        IrStage::Optimized,
+    ] {
+        let text = s.ir(stage).unwrap();
+        assert!(text.contains("\"twice\""), "{stage:?}: {text}");
+    }
+    assert_ne!(s.ir(IrStage::Raw).unwrap(), s.ir(IrStage::Owned).unwrap());
+    assert!(open("print(nope)\n").ir(IrStage::Owned).is_err());
+    assert_eq!(IrStage::named("optimized"), Some(IrStage::Optimized));
+    assert_eq!(IrStage::named("opt"), None);
+}
