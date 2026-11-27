@@ -1424,3 +1424,38 @@ traits/Track/Undoing--push.cp	wrong-reject	link: std.window:186:31: E0606: `S` d
 traits/Undo/PotentialDsu--mark.cp	wrong-reject	check: std.dsu:599:16: E0606: `W` has no `impl Eq`, which `==` needs (R08.1.5)
 traits/Undo/PotentialDsu--undo_to.cp	wrong-reject	check: std.dsu:599:16: E0606: `W` has no `impl Eq`, which `==` needs (R08.1.5)
 traits/Versioned/PersistentLazySegTree--get.cp	timeout	the interpreter passed 10 s
+core-01/comprehension-is-binding-not-seen-later.cp	wrong-output	missing ["if let"]
+core-01/lowercase-none-is-retired.cp	wrong-error	wanted E0503 on line 5, got: check: program:5:15: E0201: unknown name `none`
+core-01/lowercase-some-is-retired.cp	wrong-error	wanted E0503 on line 5, got: check: program:5:15: E0201: unknown name `some`
+core-01/lowercase-some-pattern-is-retired.cp	wrong-error	wanted E0503 on line 7, got: check: program:7:5: E0302: `some` cannot match a `?Int`
+core-01/method-without-parens-is-not-a-call.cp	wrong-error	wanted E0302 on line 10, got: check: program:10:12: E0203: `inv` is a method: call it with `()`
+core-01/todo-in-valued-fn-checks.cp	wrong-output	missing ["no errors"]
+core-01/upper-let-names-const.cp	wrong-output	missing ["const"]
+core-04/library-domain-count-trap-names-sizing-site-release.cp	wrong-output	missing ["n <= 25 (line 13): too big", "note: kit/m.cp:8: inside `sized`"]
+core-04/library-domain-count-trap-names-sizing-site.cp	wrong-output	missing ["kit/m.cp:8: inside `sized`"]
+core-07/count-of-bools-free-form.cp	wrong-accept	wanted E0303 on line 7, ran and printed: 2
+core-07/count-of-bools-needs-a-predicate.cp	wrong-accept	wanted E0303 on line 6, ran and printed: 4
+core-07/range-in-brackets-help-names-list.cp	wrong-output	missing ["List(1..=n)"]
+core-07/runs-pair-pattern-suggests-map.cp	wrong-error	wanted E0302 on line 6, got: check: program:6:6: E0203: `Slice<List<Int>>` has no member `_0`
+core-07/suffix-fold-is-removed.cp	wrong-output	missing ["a.rev.scan(+)"]
+core-08/bound-test-names-no-trait.cp	wrong-output	missing ["no trait named `Selectve`"]
+core-08/member-hides-extension-fn.cp	wrong-accept	wanted E0701 on line 8, ran and printed: 
+core-09/asserts-on-block-traps-in-release.cp	wrong-output	missing ["need 3, got 2"]
+core-10/read-i128-too-big-traps-release.cp	wrong-reject	link: std.read:213:9: E0201: unknown name `skip_blank`
+core-10/read-i128-too-big-traps.cp	wrong-reject	link: std.read:213:9: E0201: unknown name `skip_blank`
+core-10/read-u64-too-big-traps-release.cp	wrong-reject	check: program:7:9: E0606: `U64` does not implement `Read`
+core-10/read-u64-too-big-traps.cp	wrong-reject	check: program:6:9: E0606: `U64` does not implement `Read`
+core-11/library-module-no-prelude.cp	wrong-error	wanted E0201 on line 9, got: check: kit.m:1:21: E0201: unknown name `gcd`
+diagnostics/gen-filling-an-array-names-both-readings.cp	wrong-error	wanted E0501 on line 7, got: check: program:7:22: E0606: `Array<0..=2, 0..=9>` does not implement `Random`
+diagnostics/is-empty-fixed-to-len-zero.cp	wrong-output	missing ["empty when its `len` is 0"]
+std-fenwick/sum-over-range-suggests-fold.cp	wrong-error	wanted E0203 on line 5, got: check: std.fenwick:28:42: E0606: `T` does not implement `Domain`
+std-hashmap/ordered-member-on-hash-map-needs-map.cp	wrong-error	wanted E0203 on line 6, got: check: program:4:9: E0201: unknown name `HashMap`
+std-hashmap/ordered-member-on-hash-set-needs-set.cp	wrong-error	wanted E0203 on line 6, got: check: program:4:9: E0201: unknown name `HashSet`
+std-math/isqrt-of-a-negative-traps.cp	wrong-accept	wanted E0902 on line 5, ran and printed: 
+std-rand/shuffled-help-names-rng-shuffle.cp	wrong-output	missing ["rng.shuffle(mut ys)"]
+tools-judge/check-memory-over-the-judges-limit.cp	wrong-accept	wanted exit 1
+tools-judge/release-run-gets-a-large-judge-stack.cp	split	C++: exit None:  ev set SQRT_MAX 3037000499
+tools-judge/release-run-gets-the-judges-stack-and-crashes-like-it.cp	split	C++: exit None:  ev set SQRT_MAX 3037000499
+tools-trace/debug-as-a-value-prints-with-its-line.cp	wrong-reject	check: program:9:24: E0201: unknown name `debug`
+tools-trace/debug-prints-value-with-its-line.cp	wrong-reject	check: program:8:1: E0201: unknown name `debug`
+tools-trace/trap-flushes-output-and-shows-locals.cp	wrong-output	missing ["locals: xs = [1, 2, 3], i = 5"]
