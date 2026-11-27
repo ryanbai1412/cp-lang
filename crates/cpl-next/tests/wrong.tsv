@@ -260,8 +260,6 @@ core-07/view-blocks-a-write-to-its-source.cp	wrong-error	wanted E0602 on line 6,
 core-07/view-has-no-push.cp	wrong-error	wanted E0401 on line 4, got: check: program:4:1: E0203: `Rev<List<Int>>` has no member `push`
 core-07/view-index-by-proven-key.cp	wrong-reject	check: std.seq:3503:28: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 core-07/view-not-in-var.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split	canonical IR: exit Some(101): 
-core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-07/zip-pairs-by-walk.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:11: E0201: unknown name `Bool`
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1

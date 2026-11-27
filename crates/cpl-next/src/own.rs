@@ -55,6 +55,8 @@ struct Fx {
     held: BTreeSet<Pl>,
     /// Function values it calls whose set is a parameter of the fn.
     calls: BTreeSet<SetTy>,
+    /// It yields a value that borrows its own locals, so a walk's item lends from the walk.
+    yields_own: bool,
 }
 impl Fx {
     fn add(&mut self, o: &Fx) {
@@ -62,6 +64,7 @@ impl Fx {
         self.writes.extend(o.writes.iter().cloned());
         self.held.extend(o.held.iter().cloned());
         self.calls.extend(o.calls.iter().cloned());
+        self.yields_own |= o.yields_own;
     }
 }
 
@@ -1307,6 +1310,13 @@ impl Cx<'_> {
                 } else {
                     self.expr(e, fx);
                 }
+                // R05.10.2: a yielded fn value over the generator's own locals lives only as
+                // long as the walk.
+                if matches!(s, TStmt::Yield(_)) {
+                    let own =
+                        |p: &Pl| matches!(p.root, Root::Local(_)) && !self.params.contains(&p.root);
+                    fx.yields_own |= self.sources(e).iter().any(own);
+                }
                 for (h, m) in &self.regions {
                     fx.held.extend(h.iter().chain(m.iter()).cloned());
                 }
@@ -1390,8 +1400,14 @@ impl Cx<'_> {
                         .map(|l| l.ty.clone()),
                     VarRef::Global(g) => self.t.globals.get(*g).map(|l| l.ty.clone()),
                 };
+                let frame = match callee {
+                    Callee::Fn(f) => self.fns.get(&f.decl).is_some_and(|x| x.yields_own),
+                    _ => false,
+                };
                 // An item of a type parameter is not a borrow: each instance copies it if it must.
-                if item_ty.is_some_and(|t| !matches!(t, Ty::Param(_)) && !self.plain(&t, 0)) {
+                if frame
+                    || item_ty.is_some_and(|t| !matches!(t, Ty::Param(_)) && !self.plain(&t, 0))
+                {
                     self.borrowed.insert(item);
                 }
                 self.regions.push((held.clone(), lent.clone()));

@@ -315,7 +315,11 @@ impl<'a> Cx<'a> {
     }
     /// The result type of a call, with "whatever f returns" for a function-value result.
     pub(super) fn ret_ty(&mut self, f: &FnRef) -> Ty {
-        let fd = self.d.f(f.decl);
+        let ret = self.d.f(f.decl).ret.clone();
+        self.result_of(f, &ret)
+    }
+    /// `t`, a type in `f`'s result (what it returns or yields), as one call of `f` gives it.
+    pub(super) fn result_of(&mut self, f: &FnRef, t: &Ty) -> Ty {
         let sub = Subst {
             tys: &f.targs,
             sets: &f.sets,
@@ -323,7 +327,7 @@ impl<'a> Cx<'a> {
         // A call to the fn being checked uses its own result sets: recursion does not get a second copy.
         let own = self.ret_sets.clone();
         let me = self.decl;
-        let t = map_slots(&sub.ty(&fd.ret), &|k| {
+        let t = map_slots(&sub.ty(t), &|k| {
             if me == Some(f.decl) {
                 own[&(f.decl, k)].clone()
             } else {

@@ -154,7 +154,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
                 locals: std::mem::take(&mut lw.locals),
                 body,
                 ret: tf.ret.clone(),
-                region: fd.region.clone(),
+                region: tf.region.clone(),
                 line: lw.src.program_line(fd.span.start),
                 shown: shown_name(d, fd),
             },

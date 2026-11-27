@@ -519,6 +519,9 @@ core-07/view-key-outside-keys-traps.cp
 core-07/view-sees-source-mutation-rejected.cp
 core-07/view-walks.cp
 core-07/with-prev.cp
+core-07/yielded-closure-in-struct-field-writes-generator-local.cp
+core-07/yielded-closure-in-struct-writes-generator-local.cp
+core-07/yielded-closure-writes-generator-local.cp
 core-07/zip-domain-mismatch.cp
 core-07/zip-takes-a-rev.cp
 core-08/assoc-default-names-trait-param.cp
@@ -804,6 +807,7 @@ next/a_clos_02_let_list_capture.cp
 next/a_clos_04_struct_field_closure_shares_var.cp
 next/a_clos_05_let_lambda_recursion.cp
 next/a_clos_06_closure_calls_closure.cp
+next/a_clos_07_generator_yields_closures.cp
 next/a_decl_01_default_param.cp
 next/a_decl_02_field_default.cp
 next/a_decl_03_inherent_impl.cp
@@ -820,6 +824,7 @@ next/a_eq_01_list_and_optional.cp
 next/a_eq_02_tuples.cp
 next/a_eq_03_derived_structs.cp
 next/a_esc_01_closure_into_global.cp
+next/a_esc_03_yielded_closure_kept.cp
 next/a_esc_04_closure_in_returned_tuple.cp
 next/a_esc_05_closure_via_second_closure.cp
 next/a_esc_06_closure_in_returned_list.cp

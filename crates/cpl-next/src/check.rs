@@ -186,6 +186,8 @@ pub struct TypedFn {
     pub locals: Vec<Local>,
     pub body: TExpr,
     pub ret: Ty,
+    /// What it yields or lends, with the sets its body gives a fn-typed result.
+    pub region: Option<(bool, Ty)>,
 }
 pub struct LambdaInfo {
     pub params: Vec<Ty>,
@@ -536,6 +538,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
             l.ty = cx.zonk(&l.ty);
         }
         tf.ret = cx.zonk(&tf.ret);
+        tf.region = (tf.region.take()).map(|(l, t)| (l, cx.zonk(&t)));
     }
     let mut globals = std::mem::take(&mut cx.globals);
     for g in &mut globals {
@@ -678,8 +681,9 @@ impl<'a> Cx<'a> {
             let ty = self.fresh_sets(&p.ty);
             params.push(self.add_local(&p.name, ty));
         }
-        self.region = f.region.clone();
         let slots = self.ret_sets.clone();
+        self.region =
+            (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| slots[&(id, k)].clone())));
         self.ret = map_slots(&f.ret, &|k| slots[&(id, k)].clone());
         let ret = self.ret.clone();
         let body = match &f.body {
@@ -709,6 +713,7 @@ impl<'a> Cx<'a> {
             locals: std::mem::take(&mut self.locals),
             body,
             ret,
+            region: self.region.take(),
         };
         self.decl = None;
         self.module = d.program;

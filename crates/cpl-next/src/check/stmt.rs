@@ -877,11 +877,7 @@ impl<'a> Cx<'a> {
                             ),
                         );
                     };
-                    let elem = Subst {
-                        tys: &f.targs,
-                        sets: &f.sets,
-                    }
-                    .ty(&elem);
+                    let elem = self.result_of(&f, &elem);
                     self.scopes.push(HashMap::new());
                     let var = self.bind(name, elem);
                     let body = self.block(body, None);
