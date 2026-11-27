@@ -618,11 +618,11 @@ mod tests {
         ] {
             assert!(verdict.contains(part), "{part} in {verdict}");
         }
-        let refusal = &json("mod m:\n    pub fn f() -> Int = 1\nprint(m.f())\n")[0];
+        let refusal = &json("var a = [1, 2, 3]\nlet p = mut a[1]\nprint(a[1])\n")[0];
         for part in [
             r#""code":"E0501""#,
-            r#""refusal":"Statement""#,
-            r#""text":"check: program:1:1: slice: "#,
+            r#""refusal":"Expression""#,
+            r#""text":"check: program:2:9: slice: "#,
         ] {
             assert!(refusal.contains(part), "{part} in {refusal}");
         }
@@ -678,9 +678,9 @@ mod tests {
         assert_eq!(ds, ["check: program:1:13: E0201: unknown name `nope`"]);
     }
 
-    /// A refused `mod`, and a `while let` over a refused `read`, leave their names the error.
+    /// A `while let` over a refused `read` leaves its name the error.
     #[test]
-    fn names_of_refused_items_and_reads_say_nothing_more() {
+    fn a_refused_read_leaves_its_name_the_error() {
         let only_refusals = |src: &str| {
             let ds = diags(src);
             assert!(
@@ -689,7 +689,6 @@ mod tests {
                 ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
             );
         };
-        only_refusals("mod m:\n    pub fn f() -> Int = 1\nprint(m.f())\n");
         only_refusals(
             "var xs = List<Int>()\nwhile let x = read<?Int>():\n    xs.push(x)\nprint(xs.len)\n",
         );
