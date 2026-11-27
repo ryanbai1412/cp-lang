@@ -15,6 +15,9 @@ impl<'a> Cx<'a> {
         list
     }
     pub(super) fn binary(&mut self, op: BinOp, l: TExpr, r: TExpr, span: Span) -> TExpr {
+        if self.is_error(&l.ty) || self.is_error(&r.ty) {
+            return Self::error_node(span);
+        }
         // `s + t` on strings is a new string (R02.3.3).
         if op == BinOp::Add && self.is_str(&l.ty) && self.is_str(&r.ty) {
             return self.lib_call("str_concat", vec![l, r], span);
@@ -956,7 +959,7 @@ impl<'a> Cx<'a> {
         }
         if self.d.ambiguous[self.module.0].contains(n) {
             self.two_imports(n, span);
-        } else {
+        } else if !self.refused_names.contains(n) {
             self.err(
                 span,
                 format!("{}: unknown name `{n}`", cpl_diag::codes::UNRESOLVED_NAME.0),
@@ -1284,6 +1287,9 @@ impl<'a> Cx<'a> {
             ExprKind::Field { base, name } => self.member(base, name, None, span, want, &[]),
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let b = self.expr(base, None);
+                if self.is_error(&b.ty) {
+                    return Self::error_node(span);
+                }
                 if let Ty::Raw(t) = self.shallow(&b.ty) {
                     let i = self.expr(&indices[0], Some(&Ty::Int));
                     let i = self.coerce(i, &Ty::Int);

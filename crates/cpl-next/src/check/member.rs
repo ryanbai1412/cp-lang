@@ -19,6 +19,9 @@ impl<'a> Cx<'a> {
         mutates: bool,
     ) -> TExpr {
         let rt = self.shallow(&recv.ty);
+        if rt == Ty::Error {
+            return Self::error_node(span);
+        }
         let Some(decls::Member::Method(m, ts, ss)) = self.d.lookup_member(&rt, name) else {
             self.err(
                 span,
@@ -353,6 +356,9 @@ impl<'a> Cx<'a> {
         let recv = self.expr(base, None);
         self.allow_region = walk;
         let rt = self.shallow(&recv.ty);
+        if rt == Ty::Error {
+            return Self::error_node(span);
+        }
         // `recv.name` without `()` reads a `@get` fn that extends `recv` before a method of that
         // name; walked by a `for`, it names the yielding method.
         let walked = call.is_none() && self.allow_region;

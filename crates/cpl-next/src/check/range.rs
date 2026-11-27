@@ -265,6 +265,7 @@ impl Cx<'_> {
             if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
                 let t = self.show(&v.ty);
                 self.err(e.span, format!("slice: a range value with `{t}` ends"));
+                return Self::error_node(e.span);
             }
             self.coerce(v, &Ty::Int)
         };

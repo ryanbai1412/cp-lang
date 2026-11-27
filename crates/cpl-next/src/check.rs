@@ -312,6 +312,8 @@ struct Cx<'a> {
     /// capture of the fn must be among them (R06.1.7).
     ahead: Vec<(LambdaId, String, Span, std::collections::BTreeSet<VarRef>)>,
     nested: Option<LambdaId>,
+    /// The names of items the checker refused: a use of one is downstream of that refusal.
+    refused_names: std::collections::HashSet<String>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
     joining: bool,
     item_off: u32,
@@ -380,6 +382,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         selves: Vec::new(),
         group: Vec::new(),
         ahead: Vec::new(),
+        refused_names: Default::default(),
         nested: None,
         joining: false,
         item_off: 0,
@@ -630,6 +633,18 @@ impl<'a> Cx<'a> {
                 true
             }
         }
+    }
+    /// What an expression that was diagnosed or refused becomes. An operation on it is the
+    /// error node again and says nothing more, so one fault is one diagnostic.
+    fn error_node(span: Span) -> TExpr {
+        TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        }
+    }
+    fn is_error(&self, t: &Ty) -> bool {
+        self.shallow(t) == Ty::Error
     }
     fn err(&mut self, span: Span, msg: impl Into<String>) {
         self.err_help(span, msg, None);

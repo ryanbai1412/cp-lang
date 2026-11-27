@@ -1046,6 +1046,8 @@ next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
 next/n_bound_01_bare_bound_learns_arguments.cp
 next/n_bound_02_for_walks_through_the_bound.cp
+next/n_cascade_01_member_of_an_error.cp
+next/n_cascade_02_method_of_an_error.cp
 next/n_cell_01_indexed_mut_bound.cp
 next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp

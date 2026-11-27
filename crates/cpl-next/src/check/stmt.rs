@@ -1159,10 +1159,15 @@ impl<'a> Cx<'a> {
                     out.push(TStmt::Expr(b));
                 }
             }
-            other => self.err(
-                s.span,
-                format!("slice: statement {}", crate::kind_name(other)),
-            ),
+            other => {
+                if let Some(n) = crate::decls::item_name(s) {
+                    self.refused_names.insert(n.to_string());
+                }
+                self.err(
+                    s.span,
+                    format!("slice: statement {}", crate::kind_name(other)),
+                )
+            }
         }
     }
     /// Whether `Int` arithmetic wraps under `with checks(...)` (R09.4). A checked build already
