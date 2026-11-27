@@ -180,7 +180,6 @@ core-04/slice-relative-index-by-int-is-wrong-domain.cp	wrong-error	wanted E0301 
 core-04/spec-block-drop-rest.cp	wrong-reject	check: program:9:12: E0302: expected `Slice<List<Int>>`, found `Slice<Slice<List<Int>>>`
 core-04/spec-block-empty-domain-first.cp	wrong-reject	check: program:7:24: E0302: expected `E`, found `()`
 core-04/spec-block-split-by-search.cp	wrong-reject	check: program:8:16: E0302: expected `Str`, found `Slice<Str>`
-core-04/static-method-binds-domain-from-list.cp	split	engine: exit Some(3):  trap: R0401: line 7: a list for `[D]T` has one element per position
 core-04/struct-domain-from-fields-is-per-value.cp	wrong-reject	decls: E0204: unknown type `Idx`
 core-04/struct-domains-of-two-values-dont-mix.cp	wrong-error	wanted E0301 on line 9, got: decls: E0204: unknown type `Idx`
 core-04/table-one-cell-parameter.cp	wrong-reject	check: program:7:9: E0301: a `Tuple2<Int, Int>` indexes a `[Tuple2<R, C>]` array: index it with a `Tuple2<R, C>`
@@ -290,7 +289,6 @@ core-07/generator-expression-body-generic.cp	split	C++: exit Some(1):  ev set BI
 core-07/generator-is-not-indexed.cp	wrong-error	wanted E0606 on line 5, got: check: program:5:7: E0305: `Gen<Int>` is not indexed: it has no `Indexed` impl
 core-07/generator-method-has-no-len.cp	wrong-error	wanted E0606 on line 5, got: check: program:5:7: E0203: `Gen<Int>` has no member `len`
 core-07/generator-with-helper-closures-stops-early.cp	wrong-reject	check: program:15:7: E0606: `Gen<Int>` does not implement `Indexed`
-core-07/generic-mut-int-keyed-array-stays-array.cp	split	engine: exit Some(3): 1 3 3 ev enter bump 1
 core-07/grid-row-and-block.cp	wrong-reject	check: program:6:24: E0302: expected `Tuple2<R, C>`, found `Tuple2<Range<R>, Range<C>>`
 core-07/grid-row-index-and-block-order.cp	wrong-reject	check: program:7:13: E0302: expected `Tuple2<R, C>`, found `Tuple2<Range<R>, Range<C>>`
 core-07/heap-by-desc-lambda.cp	wrong-reject	own: std.heap:141:13: E0602: `self` is written here while `x`, which borrows it, is still used
@@ -380,7 +378,6 @@ core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unkno
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
 core-08/laws-not-assumed.cp	wrong-reject	check: std.algebra:35:38: E0606: `T` does not implement `Domain`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
-core-08/list-built-struct-keeps-its-domain-through-a-bound.cp	split	engine: exit Some(3):  trap: R0401: line 14: a list for `[D]T` has one element per position
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0606: `S` does not implement `Domain`
 core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 5, got: decls: E0204: unknown trait `Monoid`
 core-08/op-through-fn-param.cp	wrong-reject	check: program:5:46: E0302: this function does not fit `(Int, Int) -> Int`

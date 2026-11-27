@@ -333,6 +333,9 @@ struct Cx<'a> {
     /// capture of the fn must be among them (R06.1.7).
     ahead: Vec<(LambdaId, String, Span, std::collections::BTreeSet<VarRef>)>,
     nested: Option<LambdaId>,
+    /// Each list literal of `n` elements made a `[D]T` whose `D` nothing has fixed yet: unless
+    /// its statement fixes it, `D` is the list's positions `0..n` (R04.4.30).
+    list_doms: Vec<(Ty, usize, Span)>,
     /// The names of items the checker refused: a use of one is downstream of that refusal.
     refused_names: std::collections::HashSet<String>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
@@ -450,6 +453,7 @@ pub fn check(
         selves: Vec::new(),
         group: Vec::new(),
         ahead: Vec::new(),
+        list_doms: Vec::new(),
         refused_names: Default::default(),
         nested: None,
         joining: false,

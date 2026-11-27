@@ -508,6 +508,7 @@ impl<'a> Cx<'a> {
             };
             sub.ty(&self.d.f(decl).params[0].ty)
         };
+        let n = self.literal_len(&e);
         let arg = self.coerce(e, &param);
         if !self.unify(&ty, want) {
             self.err(
@@ -517,6 +518,19 @@ impl<'a> Cx<'a> {
                     format!("expected `{}`, found `{}`", self.show(want), self.show(&ty)),
                 ),
             );
+        }
+        if let Some(n) = n {
+            let fd = self.d.f(decl);
+            let domain = self.d.domain_trait;
+            for (i, t) in f.targs.iter().enumerate() {
+                let positions = fd
+                    .bounds
+                    .iter()
+                    .any(|(b, r)| *b == i && Some(r.tr) == domain);
+                if positions && matches!(self.shallow(t), Ty::Var(_)) {
+                    self.list_doms.push((t.clone(), n, span));
+                }
+            }
         }
         TExpr {
             kind: TK::Call {

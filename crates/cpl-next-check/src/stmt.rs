@@ -569,6 +569,25 @@ impl<'a> Cx<'a> {
         }
     }
     pub(super) fn stmt(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
+        let (mark, at) = (self.list_doms.len(), out.len());
+        self.stmt_kind(s, out);
+        let mut pre = Vec::new();
+        for (d, n, span) in self.list_doms.split_off(mark) {
+            if !matches!(self.shallow(&d), Ty::Var(_)) {
+                continue;
+            }
+            let int = |k: usize| ast::Expr {
+                kind: ExprKind::Int(k as _),
+                span,
+            };
+            let (lo, end, within) = self.domain_ends(&int(0), &int(n), false);
+            let name = format!("$range{}", self.domains.len());
+            let i = self.declare_domain(&name, lo, end, within, span, &mut pre);
+            self.unify(&d, &Ty::Dom(i));
+        }
+        out.splice(at..at, pre);
+    }
+    fn stmt_kind(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
         match &s.kind {
             StmtKind::Let {
                 mutable,

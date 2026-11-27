@@ -457,6 +457,7 @@ core-04/scalar-fill-wrong-type.cp
 core-04/scalar-fill.cp
 core-04/slice-drop-keeps-source-keys-traps.cp
 core-04/slice-key-outside-view-traps.cp
+core-04/static-method-binds-domain-from-list.cp
 core-04/stored-cut-range-not-piece.cp
 core-04/trap-in-a-small-fn-names-its-frame.cp
 core-04/tuple-holding-record-fits-named-product.cp
@@ -699,6 +700,7 @@ core-07/fold-with-init.cp
 core-07/generator-expression-body-for.cp
 core-07/generator-expression-body.cp
 core-07/generator-has-no-next.cp
+core-07/generic-mut-int-keyed-array-stays-array.cp
 core-07/grid-of-u64-by-comprehension.cp
 core-07/group-lists-keep-walk-order.cp
 core-07/group-returns-map.cp
@@ -808,6 +810,7 @@ core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
 core-08/law-declared.cp
 core-08/law-must-be-bool.cp
 core-08/lazy-method-sig.cp
+core-08/list-built-struct-keeps-its-domain-through-a-bound.cp
 core-08/match-stored-shape-only.cp
 core-08/member-hides-the-modules-own-fn.cp
 core-08/method-bound-met.cp
@@ -1363,6 +1366,7 @@ next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp
 next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
+next/n_coerce_01_list_literal_is_its_positions.cp
 next/n_comp_01_comprehension_is_its_loop.cp
 next/n_const_01_value_worked_out_once.cp
 next/n_const_02_cycle_is_an_error.cp

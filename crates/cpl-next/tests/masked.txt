@@ -29,6 +29,7 @@ core-04/library-domain-sized-after-read.cp
 core-04/library-domain-sized-per-generic-fn.cp
 core-04/library-domain-sized-per-instance.cp
 core-04/library-domain-walk-queries.cp
+core-04/list-literal-sizes-a-generic-domain.cp
 core-04/pair-symmetric.cp
 core-04/product-cell-keeps-its-ord-in-a-generic-body.cp
 core-04/product-domain-grid-reads-and-indexes.cp
