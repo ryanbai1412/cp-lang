@@ -147,7 +147,11 @@ fn layer(
         vec![crate::modules::Item { id, stmts }]
     })
     .unwrap_or_default();
-    let all = || mods.iter().flat_map(|m| m.items.iter()).flat_map(|it| &it.stmts);
+    let all = || {
+        mods.iter()
+            .flat_map(|m| m.items.iter())
+            .flat_map(|it| &it.stmts)
+    };
     let each = crate::synth::derive_each(all());
     let convert = crate::synth::convert_marked(all);
     let derived: Vec<Vec<(ItemId, String, ast::Stmt)>> = (mods.iter().enumerate())
@@ -177,6 +181,7 @@ fn layer(
         })
         .collect();
     let tables = crate::synth::memo_tables(mods);
+    d.memo_tables = tables.clone();
     let synth: Vec<Vec<(ItemId, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             let mut out = Vec::new();
@@ -303,7 +308,12 @@ fn layer(
                             once(&mut d.domain_trait, id, e, &mut d.errors);
                         }
                         if marked(s, "convert") {
-                            once(&mut d.convert_trait, id, again(item, s, "convert"), &mut d.errors);
+                            once(
+                                &mut d.convert_trait,
+                                id,
+                                again(item, s, "convert"),
+                                &mut d.errors,
+                            );
                         }
                         let op = s.decorators.iter().find(|x| x.name.text == "operator");
                         if let Some(ast::ExprKind::Str(text)) =
@@ -432,7 +442,9 @@ fn layer(
         for (item, name, s) in made {
             // A record is core's struct wherever its impl is written.
             let record = |n: &Named| matches!(n, Named::Struct(s) if d.structs[s.0].record);
-            let found = own[mi].get(name).or_else(|| own[CORE.0].get(name).filter(|n| record(n)));
+            let found = own[mi]
+                .get(name)
+                .or_else(|| own[CORE.0].get(name).filter(|n| record(n)));
             if let Some(Named::Struct(id)) = found.copied() {
                 pending.push((ModId(mi), item.clone(), s, Some(Named::Struct(id))));
             }
@@ -1272,7 +1284,10 @@ fn marked(s: &ast::Stmt, n: &str) -> bool {
 /// A marker names one declaration: a second, in any module, is a duplicate.
 fn again(item: &ItemId, s: &ast::Stmt, n: &str) -> Msg {
     let code = cpl_diag::codes::DUPLICATE_DEFINITION;
-    Msg::at(item.at(s.span), Msg::verdict(code, format!("a second declaration marked `@{n}`")))
+    Msg::at(
+        item.at(s.span),
+        Msg::verdict(code, format!("a second declaration marked `@{n}`")),
+    )
 }
 
 fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Msg>) {

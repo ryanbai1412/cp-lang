@@ -313,6 +313,8 @@ pub struct Decls {
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
+    /// The structs marked `@memo_table(word)`, by word: the table `@memo(word)` keeps (R06.4.1).
+    pub memo_tables: HashMap<String, String>,
     /// Static fns marked `@from_op`: what a bare operator becomes where their struct is wanted (R08.1.9).
     pub from_op: Vec<FnId>,
     /// Core's `@pattern` fns: `f(p)` as a pattern matches the optional `f` makes when it is
@@ -801,17 +803,27 @@ fn exported(sc: &Scopes, t: usize, n: &str) -> Option<Named> {
         if !seen.insert(t) {
             return None;
         }
-        t = sc.imports.iter().filter(|(m, s)| m.0 == t && s.public).find_map(|(_, s)| {
-            let StmtKind::Use {
-                path, names, glob, ..
-            } = &s.kind
-            else {
-                return None;
-            };
-            let module = path.iter().map(|p| p.text.as_str()).collect::<Vec<_>>().join(".");
-            let named = *glob || names.iter().any(|x| x.text == n);
-            named.then(|| sc.names.iter().position(|m| *m == module)).flatten()
-        })?;
+        t = sc
+            .imports
+            .iter()
+            .filter(|(m, s)| m.0 == t && s.public)
+            .find_map(|(_, s)| {
+                let StmtKind::Use {
+                    path, names, glob, ..
+                } = &s.kind
+                else {
+                    return None;
+                };
+                let module = path
+                    .iter()
+                    .map(|p| p.text.as_str())
+                    .collect::<Vec<_>>()
+                    .join(".");
+                let named = *glob || names.iter().any(|x| x.text == n);
+                named
+                    .then(|| sc.names.iter().position(|m| *m == module))
+                    .flatten()
+            })?;
     }
 }
 

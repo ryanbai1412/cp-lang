@@ -182,8 +182,10 @@ impl<'a> Cx<'a> {
         let outer = self.group.len();
         let wraps = self.wraps;
         let frames = self.frames.len();
-        self.declare_nested(&b.stmts);
-        for (i, s) in b.stmts.iter().enumerate() {
+        let memo = cpl_next_decls::memo_block(&b.stmts, &self.d.memo_tables);
+        let stmts = memo.as_deref().unwrap_or(&b.stmts);
+        self.declare_nested(stmts);
+        for (i, s) in stmts.iter().enumerate() {
             // A bare `with` line sets a context for the rest of its block (R09.1.1).
             if let StmtKind::With {
                 ctx,
@@ -211,7 +213,7 @@ impl<'a> Cx<'a> {
                 }
             }
             // A last expression that never gives a value is a statement, as `return` is.
-            if i + 1 == b.stmts.len() {
+            if i + 1 == stmts.len() {
                 if let StmtKind::Expr(e) = &s.kind {
                     if e.leaves() {
                         self.stmt(s, &mut out);
@@ -1189,7 +1191,9 @@ impl<'a> Cx<'a> {
                                 (base, k),
                                 place.span,
                                 out,
-                                Box::new(move |this, cell, out| this.lend_out(&cell, &t, span, out)),
+                                Box::new(move |this, cell, out| {
+                                    this.lend_out(&cell, &t, span, out)
+                                }),
                             );
                         }
                     }

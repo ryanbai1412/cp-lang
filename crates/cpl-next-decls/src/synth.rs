@@ -835,7 +835,11 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt) -> [ast::Stmt; 2] {
         .cloned()
         .collect();
     [
-        stmt(StmtKind::Fn(body)),
+        // Its own span start, apart from `f`'s, which names a block's nested fn.
+        ast::Stmt {
+            span: f.name.span,
+            ..stmt(StmtKind::Fn(body))
+        },
         ast::Stmt {
             kind: StmtKind::Fn(wrapper),
             span,
@@ -843,4 +847,25 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt) -> [ast::Stmt; 2] {
             public: s.public,
         },
     ]
+}
+
+/// A block's statements with each `@memo` fn written out as its table, a `var` of the block, and
+/// its fns; `None` when it has none (R06.4.1).
+pub fn memo_block(stmts: &[ast::Stmt], tables: &HashMap<String, String>) -> Option<Vec<ast::Stmt>> {
+    stmts
+        .iter()
+        .any(|s| memo_table(s, tables).is_some())
+        .then(|| {
+            let mut out = Vec::new();
+            for s in stmts {
+                match memo_table(s, tables) {
+                    Some((f, t)) => {
+                        out.push(memo_var(f, s.span, t));
+                        out.extend(memo_fns(f, s));
+                    }
+                    None => out.push(s.clone()),
+                }
+            }
+            out
+        })
 }
