@@ -14,6 +14,7 @@ use cpl_syntax::ast::{
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+mod call;
 mod expr;
 mod free;
 pub use free::{free_vars, group_free};

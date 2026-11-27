@@ -1626,20 +1626,38 @@ impl<'a> Cx<'a> {
     }
 
     pub(super) fn body_ty(&mut self, t: &ast::Type, span: Span, out: &mut Vec<TStmt>) -> Ty {
+        self.body_ty_open(t, &[], span, out)
+    }
+    /// `t` read with `holes` as type parameters past the fn's own, each then a fresh variable
+    /// for the checker to infer.
+    pub(super) fn body_ty_open(
+        &mut self,
+        t: &ast::Type,
+        holes: &[String],
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> Ty {
         let t = self.name_ranges(t, span, out);
         let mut errs = Vec::new();
-        let t = decls::body_type(
-            self.d,
-            self.module,
-            &self.generics,
-            &self.doms,
-            &t,
-            &mut errs,
-        );
+        let mut generics = self.generics.clone();
+        generics.extend(holes.iter().cloned());
+        let t = decls::body_type(self.d, self.module, &generics, &self.doms, &t, &mut errs);
         for e in errs {
             self.err(span, e.text);
         }
-        self.fresh_sets(&t)
+        let t = self.fresh_sets(&t);
+        if holes.is_empty() {
+            return t;
+        }
+        let tys: Vec<Ty> = (0..self.generics.len())
+            .map(Ty::Param)
+            .chain(holes.iter().map(|_| self.new_ty()))
+            .collect();
+        Subst {
+            tys: &tys,
+            sets: &[],
+        }
+        .ty(&t)
     }
     /// `v`, after a check that it is between the two ends, each inclusive.
     pub(super) fn checked_between(
