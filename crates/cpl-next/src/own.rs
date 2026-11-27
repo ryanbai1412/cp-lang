@@ -6,7 +6,7 @@
 //! function value is the join of the closures its set can hold; a set that is a parameter
 //! of the fn stays symbolic in the summary and is filled in at each call.
 use crate::check::*;
-use crate::decls::{Decls, SelfMode};
+use crate::decls::{Decls, Owner, SelfMode};
 use crate::diag::Msg;
 use crate::ty::*;
 use cpl_diag::{codes, Code, Span};
@@ -260,8 +260,7 @@ impl Cx<'_> {
                 .map(|l| Root::Local(*l))
                 .collect();
             self.expr(&tf.body, &mut fx);
-            let out = self.sources(&tf.body);
-            self.escapes(result_span(&tf.body), &out);
+            self.escapes(result_span(&tf.body), &tf.body);
             // Callers see only what outlives the call: top-level bindings and the parameters.
             let mut ps: Vec<usize> = tf.params.clone();
             ps.extend(tf.self_local);
@@ -277,8 +276,12 @@ impl Cx<'_> {
                 .filter(|i| self.kept.contains(&self.params[*i]))
                 .collect();
             self.keeps.insert(id, kept);
+            let declared = self.d.f(id).lends.clone();
             let lends = (0..self.params.len())
-                .filter(|i| self.returned.contains(&self.params[*i]))
+                .filter(|i| match &declared {
+                    Some(ls) => ls.contains(i) && self.borrowed.contains(&self.params[*i]),
+                    None => self.returned.contains(&self.params[*i]),
+                })
                 .collect();
             self.lends.insert(id, lends);
         }
@@ -461,8 +464,47 @@ impl Cx<'_> {
         }
         out
     }
+    /// The `@cache` field of `self` that the lends result `e` would borrow (R05.10.9).
+    fn lends_cache(&self, e: &TExpr) -> Option<String> {
+        let f = self.d.f(self.cur?);
+        let (Some(Owner::Struct(s)), Some(_), true) =
+            (f.owner, &f.lends, f.self_mode != SelfMode::None)
+        else {
+            return None;
+        };
+        match &e.kind {
+            TK::Block(_, Some(t)) | TK::Elem(t) | TK::Slot(t, _) => self.lends_cache(t),
+            TK::Field(..) => {
+                let p = self.place(e)?;
+                let Some(Step::Field(i)) = p.path.first() else {
+                    return None;
+                };
+                let sd = self.d.s(s);
+                (Some(&p.root) == self.params.first() && sd.cached.get(*i) == Some(&true))
+                    .then(|| sd.fields[*i].0.clone())
+            }
+            TK::Call { f, recv, args } => {
+                let lends = self.lent_args(f.decl);
+                (recv.as_deref().into_iter().chain(args.iter()))
+                    .enumerate()
+                    .filter(|(i, _)| lends.contains(i))
+                    .find_map(|(_, TArg::Value(v) | TArg::Mut(v))| self.lends_cache(v))
+            }
+            _ => None,
+        }
+    }
     /// R05.7.8: a lent value is not returned.
-    fn escapes(&mut self, span: Span, out: &BTreeSet<Pl>) {
+    fn escapes(&mut self, span: Span, e: &TExpr) {
+        let out = &self.sources(e);
+        if let Some(n) = self.lends_cache(e) {
+            return self.err(
+                span,
+                codes::BAD_PROJECTION,
+                format!(
+                    "this lends `@cache` field `{n}`, which a later read may change (R05.10.9)"
+                ),
+            );
+        }
         let mut out = roots(out);
         // A type-parameter parameter the result holds is the caller's to lend (R05.5.3).
         let held: Vec<Root> = (out.iter())
@@ -473,9 +515,18 @@ impl Cx<'_> {
             out.remove(&r);
             self.returned.insert(r);
         }
+        // A fn declared `lends` returns what borrows the sources it names (R05.6.1).
+        let declared = self.cur.and_then(|f| self.d.f(f).lends.clone());
+        for i in declared.iter().flatten() {
+            if let Some(r) = self.params.get(*i).filter(|r| out.remove(r)) {
+                self.returned.insert(*r);
+            }
+        }
         if let Some(r) = out.iter().next() {
             let n = self.root_name(*r);
-            let why = if self.borrowed.contains(r) {
+            let why = if declared.is_some() && self.params.contains(r) {
+                format!("the fn lends only from what its `lends(...)` names, not {n}")
+            } else if self.borrowed.contains(r) {
                 format!("{n} is lent by the caller; return a `.clone()`")
             } else {
                 format!("{n} is gone when the fn returns")
@@ -579,7 +630,10 @@ impl Cx<'_> {
             Some(n) => crate::ir::Intr::named(n)
                 .map(|i| i.lends().iter().copied().collect())
                 .unwrap_or_default(),
-            None => self.lends.get(&f).cloned().unwrap_or_default(),
+            None => match &self.d.f(f).lends {
+                Some(ls) => ls.iter().copied().collect(),
+                None => self.lends.get(&f).cloned().unwrap_or_default(),
+            },
         }
     }
     /// The binding `b` now holds `what`. Its heap borrows (not closure captures, R10) are frozen
@@ -1168,8 +1222,7 @@ impl Cx<'_> {
             TStmt::Expr(e) | TStmt::Assert(e, ..) => self.expr(e, fx),
             TStmt::Return(Some(e)) => {
                 self.expr(e, fx);
-                let out = self.sources(e);
-                self.escapes(e.span, &out);
+                self.escapes(e.span, e);
             }
             TStmt::Let(v, e) => {
                 self.expr(e, fx);

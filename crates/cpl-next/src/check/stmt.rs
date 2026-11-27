@@ -898,6 +898,13 @@ impl<'a> Cx<'a> {
                     }
                     out.push(TStmt::LendOut(p));
                 }
+                // In a read lend, `lend place` returns the place's value (R05.6.3).
+                None if (self.decl).is_some_and(|f| self.d.f(f).lends.is_some()) => {
+                    let ret = self.ret.clone();
+                    let v = self.expr(place, Some(&ret));
+                    let v = self.coerce(v, &ret);
+                    out.push(TStmt::Return(Some(v)));
+                }
                 _ => self.err(
                     s.span,
                     format!(

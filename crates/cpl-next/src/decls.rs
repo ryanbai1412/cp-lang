@@ -57,6 +57,8 @@ pub struct FnDecl {
     /// A fn that runs the caller's code in the middle of its own: a generator (`yields T`,
     /// `false`) or a lender (`lends T`, `true`).
     pub region: Option<(bool, Ty)>,
+    /// A read `lends T` result: the parameters it borrows, receiver first (R05.6.1).
+    pub lends: Option<Vec<usize>>,
     pub body: FnBody,
     /// The name in `= @intrinsic(name)`, when that is its body.
     pub intrinsic: Option<String>,
@@ -1605,10 +1607,37 @@ fn add_fn(
     cx.next_set = None;
     cx.ret_slots = Some(0);
     let mut region = None;
+    let mut lends = None;
     let ret = match (&f.ret, &f.lends) {
-        (_, Some(l)) => {
+        (_, Some(l)) if l.mutable => {
             region = Some((true, conv(&mut cx, &l.ty, &mut errors)));
             Ty::Unit
+        }
+        // A read lend is the fn's value, which borrows every source it names, or every parameter.
+        (_, Some(l)) => {
+            let receiver = (self_mode != SelfMode::None).then_some(self_name.as_str());
+            let names: Vec<&str> = (receiver.into_iter())
+                .chain(params.iter().map(|p| p.name.as_str()))
+                .collect();
+            let mut from = Vec::new();
+            for s in &l.sources {
+                match names.iter().position(|n| *n == s.text) {
+                    Some(i) => from.push(i),
+                    None => errors.push(Msg::at(
+                        Span::new(item + s.span.start, item + s.span.end),
+                        format!(
+                            "{}: `{}` is not a parameter",
+                            cpl_diag::codes::UNRESOLVED_NAME.0,
+                            s.text
+                        ),
+                    )),
+                }
+            }
+            if l.sources.is_empty() {
+                from = (0..names.len()).collect();
+            }
+            lends = Some(from);
+            conv(&mut cx, &l.ty, &mut errors)
         }
         (Some(t), None) => match &t.kind {
             TypeKind::Yields(inner) => {
@@ -1728,6 +1757,7 @@ fn add_fn(
         n_sets,
         n_ret_sets,
         region,
+        lends,
         body: f.body.clone(),
         intrinsic: match &f.body {
             FnBody::Expr(e) => match &e.kind {

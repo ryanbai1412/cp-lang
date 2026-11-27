@@ -19,18 +19,18 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 1 | Spec conformance | unmeasured | `next_not_passing` 3,566 → 0, `conformance_failing` 2 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
+| 1 | Spec conformance | unmeasured | `next_not_passing` 3,556 → 0, `conformance_failing` 2 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
 | 2 | Feature-by-context matrix | unmeasured | no number yet for: cells of the feature-by-context matrix with no case |
 | 3 | Corpus | unmeasured | no number yet for: corpus programs not accepted on every engine |
 | 4 | Std as a program | unmeasured | `ir_builtin_names` 108 → 0, `prelude_privilege` 21 → 0, `std_names_outside_rt` 75 → 0, `backend_std_names` 8 → 0; no number yet for: std modules the new pipeline does not compile (43 today) |
-| 5 | Checker totality | unmeasured | `silent_unknowns` 18,180 → 0, `ir_reinfer` 12 → 0; no number yet for: errors found only in lowering (45 today) |
+| 5 | Checker totality | unmeasured | `silent_unknowns` 18,176 → 0, `ir_reinfer` 12 → 0; no number yet for: errors found only in lowering (45 today) |
 | 6 | Ownership soundness | unmeasured | no number yet for: ownership cases wrong in either direction, written and generated |
 
 ## B. Every way of running a program agrees
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 7 | Engine agreement | unmeasured | `next_wrong` 748 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
+| 7 | Engine agreement | unmeasured | `next_wrong` 736 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
 | 8 | Sanitized C++ | unmeasured | no number yet for: accepted cases whose C++ is not sanitizer-clean and warning-free on GCC and Clang |
 | 9 | IR stage contracts | unmeasured | no number yet for: cases a stage verifier rejects |
 | 10 | Traps | unmeasured | no number yet for: trap code by operation cells that differ between engines |
