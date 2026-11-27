@@ -2009,3 +2009,4 @@ std-seq/seq-u02-first-match-position.cp
 std-seq/seq-u21-stack-top.cp
 std-seq/seq-u61-deque-ends.cp
 std-window/window-push-all.cp
+next/n_domain_members.cp
