@@ -249,6 +249,9 @@ pub struct Roots(Vec<(String, PathBuf)>);
 /// Std's modules as `std/` was when this binary was built, by module name.
 const STD_FILES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_files.rs"));
 
+/// The extension of a std source file.
+const SOURCE_EXT: &str = "cp";
+
 /// The modules of a std directory, by module name.
 fn read_dir_modules(root: &Path) -> Vec<(String, String)> {
     let mut files = Vec::new();
@@ -261,7 +264,7 @@ fn read_dir_modules(root: &Path) -> Vec<(String, String)> {
                 .map_or(String::new(), |s| s.to_string_lossy().into_owned());
             if path.is_dir() {
                 dirs.push((path, format!("{module}.{stem}")));
-            } else if path.extension().is_some_and(|e| e == "cp") {
+            } else if path.extension().is_some_and(|e| e == SOURCE_EXT) {
                 if let Ok(text) = std::fs::read_to_string(&path) {
                     files.push((format!("{module}.{stem}"), text));
                 }
