@@ -29,9 +29,14 @@ pub enum Stop {
 }
 
 /// Runs canonical IR with no input for at most `steps` steps, each fn entered and each jump
-/// taken back being one: the words global `g` holds when it ends. Compile-time evaluation
+/// taken back being one: the words each global of `gs` holds when it ends. Compile-time evaluation
 /// runs here, so a constant means what running the program would make it.
-pub fn eval(p: &Program, funcs: &[Func<CTy>], g: usize, steps: u64) -> Result<Vec<u64>, Stop> {
+pub fn eval(
+    p: &Program,
+    funcs: &[Func<CTy>],
+    gs: &[usize],
+    steps: u64,
+) -> Result<Vec<Vec<u64>>, Stop> {
     let code = compile::compile(p, funcs);
-    exec::eval(&code, funcs, g, steps)
+    exec::eval(&code, funcs, gs, steps)
 }

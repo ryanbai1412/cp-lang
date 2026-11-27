@@ -126,14 +126,21 @@ pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
 
 /// Runs the program with no input for at most `steps` steps: the words global `g` holds when
 /// it ends. A read of input stops it.
-pub(crate) fn eval(c: &Code, funcs: &[Func<CTy>], g: usize, steps: u64) -> Result<Vec<u64>, Stop> {
+pub(crate) fn eval(
+    c: &Code,
+    funcs: &[Func<CTy>],
+    gs: &[usize],
+    steps: u64,
+) -> Result<Vec<Vec<u64>>, Stop> {
     let mut m = start(c, funcs, None, steps);
     match m.run_fn(c.main, c.globals as usize, None) {
-        Ok(_) => {
-            let at = c.global_at[g] as usize;
-            let end = (c.global_at.get(g + 1)).map_or(c.globals as usize, |&e| e as usize);
-            Ok(m.stack[at..end].to_vec())
-        }
+        Ok(_) => Ok((gs.iter())
+            .map(|&g| {
+                let at = c.global_at[g] as usize;
+                let end = (c.global_at.get(g + 1)).map_or(c.globals as usize, |&e| e as usize);
+                m.stack[at..end].to_vec()
+            })
+            .collect()),
         Err(_) if m.read => Err(Stop::Input),
         Err(_) if m.steps == 0 => Err(Stop::Budget),
         Err(t) => Err(Stop::Trap(Trap {
