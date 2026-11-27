@@ -88,9 +88,12 @@ pub enum Unbuilt {
         name: String,
     },
     BoundNotNamed,
+    /// A generic fn's instance needs a domain's count its type argument does not carry: the
+    /// fn's own `domain` (each call a new copy), or, with no `domain`, a type with no count of
+    /// its own, such as a list's `Int` keys used as `D.count`, `D(i)` or `for v in D`.
     DomainTypeArg {
         func: String,
-        domain: String,
+        domain: Option<String>,
     },
     // Statements and control.
     IfLet {
@@ -213,7 +216,11 @@ impl fmt::Display for Unbuilt {
             LibraryBody { func, why } => {
                 write!(f, "library fn `{func}` does not check yet: {why}")
             }
-            DomainTypeArg { func, domain } => write!(
+            DomainTypeArg { func, domain: None } => write!(
+                f,
+                "`{func}` uses a type argument as a domain (`D.count`, `D(i)`, `for v in D`) and is given a type with no count of its own, such as a list's keys"
+            ),
+            DomainTypeArg { func, domain: Some(domain) } => write!(
                 f,
                 "`{func}` is called with its own domain `{domain}` as a type argument, so each call would need a new copy of it; declare the domain outside, or pass its values as `Int`"
             ),

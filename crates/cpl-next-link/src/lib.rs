@@ -219,7 +219,7 @@ pub fn link(
             l.errors.push(
                 Unbuilt::DomainTypeArg {
                     func: generic[&key.func].name.clone(),
-                    domain: whole.dom(DomId(*d)).name.clone(),
+                    domain: Some(whole.dom(DomId(*d)).name.clone()),
                 }
                 .into(),
             );
@@ -1509,15 +1509,16 @@ fn thread_values(p: &mut Program, whole: &Whole) {
     }
     let mut direct = vec![BTreeSet::new(); n];
     let mut calls = vec![BTreeSet::new(); n];
-    let mut bad = false;
+    let mut bad = None;
     for i in 0..n {
-        uses(&p.insts[i].body, &mut direct[i], &mut calls[i], p, &mut bad);
+        let mut b = false;
+        uses(&p.insts[i].body, &mut direct[i], &mut calls[i], p, &mut b);
+        bad = bad.or(b.then_some(i));
     }
-    if bad {
-        p.errors.push(Msg::verdict(
-            cpl_diag::codes::MISSING_IMPL,
-            "a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one",
-        ));
+    if let Some(i) = bad {
+        let func = p.insts[i].shown.clone();
+        p.errors
+            .push(Unbuilt::DomainTypeArg { func, domain: None }.into());
         return;
     }
     // What each instance must be handed: what it or anything it calls uses, less what it can read itself.
