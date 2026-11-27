@@ -1741,6 +1741,7 @@ traits/Hashable/HashVal--hash_token.cp
 traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp
 traits/IndexGet/Array--at.cp
+traits/IndexSet/Map--set.cp
 traits/Indexed/Array--keys.cp
 traits/IndexGet/Items--at.cp
 traits/Indexed/Items--keys.cp
@@ -1795,6 +1796,7 @@ traits/Seq/Mapped--iter.cp
 traits/Seq/Range--iter.cp
 traits/Seq/Rebased--iter.cp
 traits/Seq/Rev--iter.cp
+traits/Seq/Set--iter.cp
 traits/Seq/Slice--iter.cp
 traits/Seq/Str--iter.cp
 traits/Seq/Zipped--iter.cp
@@ -1805,6 +1807,7 @@ traits/Sized/Mapped--len.cp
 traits/Sized/Range--len.cp
 traits/Sized/Rebased--len.cp
 traits/Sized/Rev--len.cp
+traits/Sized/Set--len.cp
 traits/Sized/Slice--len.cp
 traits/Sized/Str--len.cp
 traits/Sized/Zipped--len.cp

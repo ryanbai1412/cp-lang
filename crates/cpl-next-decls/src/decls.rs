@@ -686,8 +686,11 @@ fn outer_view(
     }
     v.extend(own[CORE.0].iter().map(|(n, x)| (n.clone(), *x)));
     let mut imported: HashMap<String, Named> = HashMap::new();
-    for (m, s) in imports.iter().filter(|(m, _)| m.0 == mi) {
-        let _ = m;
+    // A core `pub use` names its items in every module, as core's own declarations are; the
+    // module's own imports come after it.
+    let reexported = |(m, s): &&(ModId, &ast::Stmt)| m.0 == CORE.0 && s.public && mi != CORE.0;
+    let mine = |(m, _): &&(ModId, &ast::Stmt)| m.0 == mi;
+    for (_, s) in (imports.iter().filter(reexported)).chain(imports.iter().filter(mine)) {
         let StmtKind::Use {
             path,
             names: ns,

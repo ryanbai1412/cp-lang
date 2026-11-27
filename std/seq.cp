@@ -1544,12 +1544,12 @@ pub trait Positional<T>: Seq<T> + Sized:
 
 /// `s[k]` read: the element at key `k`. A `List`, an array and a `Map` have it; a `Map`'s keys
 /// are not positions, so it is not `Indexed` (R12.4.5).
-pub trait At<K, T>:
+pub trait IndexGet<K, T>:
     /// The element at key `k`; traps when `s` holds none there.
     fn at(self, k: K) -> T
 
 /// A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
-pub trait Indexed<D, T>: At<D, T> + Keyed<D, T> + Positional<T> + Bidir<T>:
+pub trait Indexed<D, T>: IndexGet<D, T> + Keyed<D, T> + Positional<T> + Bidir<T>:
     type Taken = Slice<Self>
     /// The keys, in walk order.
     @get fn keys(self) -> Range<D>
@@ -1610,7 +1610,7 @@ impl Bidir<U> for Mapped<S: Bidir<T>, T, U>:
 impl Positional<U> for Mapped<S: Indexed<D, T>, T, U>:
     fn nth(self, k: Int) -> U = f(src.nth(k))
 
-impl At<D, U> for Mapped<S: Indexed<D, T>, T, U>:
+impl IndexGet<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     fn at(self, i: D) -> U = f(src.at(i))
 impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     @get fn keys(self) -> Range<D> = src.keys
@@ -1660,7 +1660,7 @@ impl Bidir<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
     fn iter_rev(self) -> yields (T, U):
         for k in (0..shorter(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
 
-impl At<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
+impl IndexGet<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
     fn at(self, i: D) -> (T, U) = (first.at(i), second.nth(i.ord - first.keys.start.ord))
 impl Indexed<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
     @get fn keys(self) -> Range<D> = first.keys.take(shorter(first.len, second.len))
@@ -1765,7 +1765,7 @@ impl Positional<(D, T)> for Items<S: Indexed<D, T>>:
         let i = src.keys[k]
         (i, src.at(i))
 
-impl At<D, (D, T)> for Items<S: Indexed<D, T>>:
+impl IndexGet<D, (D, T)> for Items<S: Indexed<D, T>>:
     fn at(self, i: D) -> (D, T) = (i, src.at(i))
 impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
     @get fn keys(self) -> Range<D> = src.keys
@@ -1887,7 +1887,7 @@ impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Slice<S>:
     /// `(0..len)[k]` is `k`, read as a key so one outside the slice traps R0101 (R07.4.5).
     fn nth(self, k: Int) -> T = self.src.nth(self.lo + (0..self.len)[k])
 
-impl<S: Indexed<K, T>, K: Domain, T> At<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> IndexGet<K, T> for Slice<S>:
     /// `keys[i]` is `i`, checked: a key outside the slice traps R0101, never reading the source
     /// around it (R07.4.5).
     fn at(self, i: K) -> T = self.src.at(self.keys[i])
@@ -1939,7 +1939,7 @@ impl<S: Indexed<K, T>, K: Domain, T> Bidir<T> for Rebased<S>:
 impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Rebased<S>:
     fn nth(self, k: Int) -> T = self.src.nth(k)
 
-impl<S: Indexed<K, T>, K: Domain, T> At<Idx, T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T> IndexGet<Idx, T> for Rebased<S>:
     fn at(self, i: Idx) -> T = self.src.nth(i.ord)
 impl<S: Indexed<K, T>, K: Domain, T> Indexed<Idx, T> for Rebased<S>:
     @get fn keys(self) -> Range<Idx> = Idx.all
@@ -2414,12 +2414,12 @@ pub fn majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) ->
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)[1] == ['a', 'c']`
 @lint(group_into_map, from: "for x in self:\n    (m[k] ??= []).push(v)", to: "let m = self.group(by: x => k, of: x => v)", holes: "m, k, v")
-pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
+pub fn group<S: Seq<T>, T, K: Ord, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
     var out = Map<K, List<U>>()
     for x in self:
         let k = by(x)
-        if out.get(k) == None: out[k] = []
-        out[k].push(of(x))
+        if out.contains(k): out[k].push(of(x))
+        else: out[k] = [of(x)]
     out
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).

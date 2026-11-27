@@ -41,6 +41,10 @@ methods = ["ord", "nth"]
 methods = ["at"]
 [trait.Contains]
 methods = ["contains"]
+[trait.IndexMut]
+methods = ["at"]
+[trait.IndexSet]
+methods = ["set"]
 [[claim]]
 type = "Bool"
 trait = "Random"
@@ -3305,3 +3309,64 @@ let a = [1, 2, 3, 4]
 for k in zip(a[1..], [7, 8]).keys: print(k)
 """
 out = "1\\n2"
+
+[case."IndexGet/Map/at"]
+code = """
+let m = [1: 10, 2: 20]
+print(m[2])
+"""
+out = "20"
+
+[case."IndexMut/Map/at"]
+code = """
+var m = [1: 10]
+m[1] += 5
+m[2] += 3
+print(m[1], m[2], m.len)
+"""
+out = "15 3 2"
+
+[case."IndexSet/Map/set"]
+code = """
+struct P(a: Int)
+var m = Map<Int, P>()
+m[1] = P(3)
+m[1] = P(4)
+print(m[1].a, m.len)
+"""
+out = "4 1"
+
+[case."Show/Map/show"]
+code = """
+let m = [3: 30, 1: 10]
+print(m)
+"""
+out = "1 10\\n3 30"
+
+[case."Seq/Set/iter"]
+code = """
+var s = Set<Int>()
+s.insert(3)
+s.insert(1)
+for x in s: print(x)
+"""
+out = "1\\n3"
+
+[case."Sized/Set/len"]
+code = """
+var s = Set<Int>()
+s.insert(3)
+s.insert(1)
+s.insert(3)
+print(s.len)
+"""
+out = "2"
+
+[case."Show/Set/show"]
+code = """
+var s = Set<Int>()
+s.insert(3)
+s.insert(1)
+print(s)
+"""
+out = "1 3"

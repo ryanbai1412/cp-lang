@@ -1,7 +1,9 @@
 // The core traits: the language gives `==`, `<` and `+` their meaning through them
 // (R08.1.5), so they are declared here rather than in a std file; `Ordering` is std's.
 use std.algebra.{Ordering}
-use std.seq.{At, Keyed, Positional, Indexed, Slice, Seq, Sized}
+use std.seq.{IndexGet, Keyed, Positional, Indexed, Slice, Seq, Sized}
+/// The maps and sets every module names unimported (R07.2.4).
+pub use std.map.{Map, Set}
 
 fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")
 fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
@@ -631,19 +633,19 @@ impl Into<F64> for F64:
 /// array, by its domain's positions (R12.4.5).
 impl<T> Positional<T> for List<T>:
     fn nth(self, k: Int) -> T = self.get(k)
-impl<T> At<Int, T> for List<T>:
+impl<T> IndexGet<Int, T> for List<T>:
     fn at(self, i: Int) -> T = self.get(i)
 impl<T> Indexed<Int, T> for List<T>:
     @get fn keys(self) -> Range<Int> = 0..self.len
 impl Positional<Char> for Str:
     fn nth(self, k: Int) -> Char = self.get(k)
-impl At<Int, Char> for Str:
+impl IndexGet<Int, Char> for Str:
     fn at(self, i: Int) -> Char = self.get(i)
 impl Indexed<Int, Char> for Str:
     @get fn keys(self) -> Range<Int> = 0..self.len
 /// `s[k]` as a place: a write through it lands in `s`, in place (R12.4.6). A `Map`'s starts an
 /// absent key at the default of its values, so `m[k] += 1` counts (R07.12.9).
-pub trait IndexMut<K, T>: At<K, T>:
+pub trait IndexMut<K, T>: IndexGet<K, T>:
     fn at(mut self, k: K) -> lends mut T
 /// An `Indexed` sequence whose cells are places: what `sort`, `reverse` and `swap` write
 /// (R12.4.6).
@@ -681,7 +683,7 @@ impl<D: Domain, T> Keyed<D, T> for Array<D, T>:
         for i in 0..D.count: yield (D.nth(i), raw_get(self.buf, i))
 impl<D: Domain, T> Positional<T> for Array<D, T>:
     fn nth(self, k: Int) -> T = self.get(D.nth(k))
-impl<D: Domain, T> At<D, T> for Array<D, T>:
+impl<D: Domain, T> IndexGet<D, T> for Array<D, T>:
     fn at(self, i: D) -> T = self.get(i)
 impl<D: Domain, T> Indexed<D, T> for Array<D, T>:
     @get fn keys(self) -> Range<D> = D
@@ -699,7 +701,7 @@ impl<D: Domain> Positional<D> for Range<D>:
     fn nth(self, k: Int) -> D:
         check_key(0 <= k and k < self.n)
         D.nth(self.lo + k * self.by)
-impl<D: Domain> At<D, D> for Range<D>:
+impl<D: Domain> IndexGet<D, D> for Range<D>:
     fn at(self, x: D) -> D:
         let d = x.ord - self.lo
         check_key(self.n > 0 and d % self.by == 0 and 0 <= d / self.by and d / self.by < self.n)
@@ -751,295 +753,3 @@ fn cut_ends<D: Domain>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int,
         j = d / k.by + (if through: 1 else: 0)
     (i, j, ok and i <= j and j <= k.n)
 
-/// The balanced search tree under `Set` and `Map`: an AVL tree whose nodes are slots of its
-/// lists, so a removed node's slot is reused. Keys are in `<` order, each once.
-struct OrdTree<K, V>:
-    var keys: List<K> = []
-    var vals: List<V> = []
-    var left: List<Int> = []
-    var right: List<Int> = []
-    var height: List<Int> = []
-    var free: List<Int> = []
-    var root: Int = -1
-    var n: Int = 0
-
-impl<K, V> OrdTree<K, V>:
-    fn key_at(self, t: Int) -> ?K:
-        if t < 0: None else: Some(keys[t])
-
-    /// The node of the least key, or with `last` the greatest; -1 when empty.
-    fn edge(self, last: Bool) -> Int:
-        var t = root
-        while t >= 0:
-            let c = if last: right[t] else: left[t]
-            if c < 0: return t
-            t = c
-        t
-
-    /// Walks the nodes in key order.
-    fn nodes(self) -> yields Int:
-        var stack: List<Int> = []
-        var t = root
-        while t >= 0 or not stack.is_empty:
-            while t >= 0:
-                stack.push(t)
-                t = left[t]
-            let top = stack.pop() ?? -1
-            yield top
-            t = right[top]
-
-    fn clear(mut self):
-        keys.clear()
-        vals.clear()
-        left.clear()
-        right.clear()
-        height.clear()
-        free.clear()
-        root = -1
-        n = 0
-
-impl<K: Ord, V> OrdTree<K, V>:
-    fn h(self, t: Int) -> Int:
-        if t < 0: 0 else: height[t]
-
-    fn fix(mut self, t: Int):
-        let a = self.h(left[t])
-        let b = self.h(right[t])
-        height[t] = if a < b: b + 1 else: a + 1
-
-    fn rot_right(mut self, t: Int) -> Int:
-        let l = left[t]
-        left[t] = right[l]
-        right[l] = t
-        self.fix(t)
-        self.fix(l)
-        l
-
-    fn rot_left(mut self, t: Int) -> Int:
-        let r = right[t]
-        right[t] = left[r]
-        left[r] = t
-        self.fix(t)
-        self.fix(r)
-        r
-
-    fn balance(mut self, t: Int) -> Int:
-        self.fix(t)
-        let b = self.h(left[t]) - self.h(right[t])
-        if b > 1:
-            let l = left[t]
-            if self.h(left[l]) < self.h(right[l]):
-                let c = self.rot_left(l)
-                left[t] = c
-            return self.rot_right(t)
-        if b < -1:
-            let r = right[t]
-            if self.h(right[r]) < self.h(left[r]):
-                let c = self.rot_right(r)
-                right[t] = c
-            return self.rot_left(t)
-        t
-
-    fn node(mut self, k: K, v: V) -> Int:
-        n += 1
-        if let i = free.pop():
-            keys[i] = k
-            vals[i] = v
-            left[i] = -1
-            right[i] = -1
-            height[i] = 1
-            return i
-        keys.push(k)
-        vals.push(v)
-        left.push(-1)
-        right.push(-1)
-        height.push(1)
-        keys.len - 1
-
-    fn ins(mut self, t: Int, k: K, v: V) -> Int:
-        if t < 0: return self.node(k, v)
-        if k < keys[t]:
-            let c = self.ins(left[t], k, v)
-            left[t] = c
-        elif keys[t] < k:
-            let c = self.ins(right[t], k, v)
-            right[t] = c
-        else:
-            vals[t] = v
-            return t
-        self.balance(t)
-
-    /// Sets `k`'s value to `v`, adding `k` when it is absent.
-    fn put(mut self, k: K, v: V):
-        let r = self.ins(root, k, v)
-        root = r
-
-    /// The node holding `k`, or -1.
-    fn find(self, k: K) -> Int:
-        var t = root
-        while t >= 0:
-            if k < keys[t]: t = left[t]
-            elif keys[t] < k: t = right[t]
-            else: return t
-        -1
-
-    /// The node of the greatest key below `k` (`eq`: or equal to it), or -1.
-    fn below(self, k: K, eq: Bool) -> Int:
-        var t = root
-        var best = -1
-        while t >= 0:
-            if keys[t] < k or (eq and not (k < keys[t])):
-                best = t
-                t = right[t]
-            else:
-                t = left[t]
-        best
-
-    /// The node of the least key above `k` (`eq`: or equal to it), or -1.
-    fn above(self, k: K, eq: Bool) -> Int:
-        var t = root
-        var best = -1
-        while t >= 0:
-            if k < keys[t] or (eq and not (keys[t] < k)):
-                best = t
-                t = left[t]
-            else:
-                t = right[t]
-        best
-
-    fn cut_min(mut self, t: Int) -> Int:
-        if left[t] < 0: return right[t]
-        let c = self.cut_min(left[t])
-        left[t] = c
-        self.balance(t)
-
-    fn cut_max(mut self, t: Int) -> Int:
-        if right[t] < 0: return left[t]
-        let c = self.cut_max(right[t])
-        right[t] = c
-        self.balance(t)
-
-    /// Removes the node of the least key, or with `last` the greatest; that node, or -1. Its
-    /// key and value stay readable until the next add.
-    fn pop_edge(mut self, last: Bool) -> Int:
-        let i = self.edge(last)
-        if i < 0: return -1
-        let r = if last: self.cut_max(root) else: self.cut_min(root)
-        root = r
-        n -= 1
-        free.push(i)
-        i
-
-    fn del(mut self, t: Int, k: K) -> Int:
-        if t < 0: return t
-        if k < keys[t]:
-            let c = self.del(left[t], k)
-            left[t] = c
-        elif keys[t] < k:
-            let c = self.del(right[t], k)
-            right[t] = c
-        else:
-            n -= 1
-            free.push(t)
-            if left[t] < 0: return right[t]
-            if right[t] < 0: return left[t]
-            var s = right[t]
-            while left[s] >= 0: s = left[s]
-            let c = self.cut_min(right[t])
-            right[s] = c
-            left[s] = left[t]
-            return self.balance(s)
-        self.balance(t)
-
-    /// Removes `k`; whether it was there.
-    fn drop(mut self, k: K) -> Bool:
-        if self.find(k) < 0: return false
-        let r = self.del(root, k)
-        root = r
-        true
-
-/// An ordered set: its elements in `<` order, each once; `O(log n)` to add, remove and find one
-/// (R07.2.4).
-pub struct Set<T>:
-    var t: OrdTree<T, ()> = OrdTree()
-
-impl<T> Set<T>:
-    @get pub fn len(self) -> Int:
-        t.n
-
-    @get pub fn is_empty(self) -> Bool:
-        t.n == 0
-
-    /// The least element.
-    @get pub fn first(self) -> ?T:
-        t.key_at(t.edge(false))
-
-    /// The greatest element.
-    @get pub fn last(self) -> ?T:
-        t.key_at(t.edge(true))
-
-    pub fn min(self) -> ?T:
-        t.key_at(t.edge(false))
-
-    pub fn max(self) -> ?T:
-        t.key_at(t.edge(true))
-
-    pub fn clear(mut self):
-        t.clear()
-
-    /// The elements in order.
-    pub fn sorted(self) -> List<T>:
-        var out: List<T> = []
-        for i in t.nodes(): out.push(t.keys[i])
-        out
-
-impl<T: Ord> Set<T>:
-    /// Adds `x`; whether it was new.
-    pub fn insert(mut self, x: T) -> Bool:
-        if t.find(x) >= 0: return false
-        t.put(x, ())
-        true
-
-    /// Adds `x`; whether it was new.
-    pub fn add(mut self, x: T) -> Bool:
-        self.insert(x)
-
-    /// Removes `x`; whether it was there.
-    pub fn remove(mut self, x: T) -> Bool:
-        t.drop(x)
-
-    /// Adds `x` when `on`, else removes it.
-    pub fn set(mut self, x: T, on: Bool):
-        if on: t.put(x, ()) else: t.drop(x)
-
-    pub fn contains(self, x: T) -> Bool:
-        t.find(x) >= 0
-
-    pub fn first_ge(self, x: T) -> ?T:
-        t.key_at(t.above(x, true))
-
-    pub fn first_gt(self, x: T) -> ?T:
-        t.key_at(t.above(x, false))
-
-    pub fn last_le(self, x: T) -> ?T:
-        t.key_at(t.below(x, true))
-
-    pub fn last_lt(self, x: T) -> ?T:
-        t.key_at(t.below(x, false))
-
-    /// Removes and returns the least element.
-    pub fn pop_first(mut self) -> ?T:
-        let i = t.pop_edge(false)
-        t.key_at(i)
-
-    /// Removes and returns the greatest element.
-    pub fn pop_last(mut self) -> ?T:
-        let i = t.pop_edge(true)
-        t.key_at(i)
-
-impl<T> Seq<T> for Set<T>:
-    fn iter(self) -> yields T:
-        for i in t.nodes(): yield t.keys[i]
-
-impl<T> Sized for Set<T>:
-    @get fn len(self) -> Int = t.n

@@ -217,6 +217,12 @@ impl<'a> Cx<'a> {
                         self.stmt(s, &mut out);
                         break;
                     }
+                    // `a[i].push(x)` last in a block that gives no value writes the cell, as
+                    // the same line anywhere else in the block does.
+                    let unit = want.is_none_or(|w| self.shallow(w) == Ty::Unit);
+                    if unit && self.cell_method(e, &mut out) {
+                        break;
+                    }
                     let v = self.expr(e, want);
                     value = Some(match want {
                         Some(w) if self.shallow(w) != Ty::Unit => self.coerce(v, w),
@@ -735,7 +741,8 @@ impl<'a> Cx<'a> {
             }
             StmtKind::Assign { target, op, value } => {
                 // `a[i] = v` and `a[i] op= v`: the indices, then the value, are read once; then
-                // `a`'s `IndexedMut` lends the cell and the assignment runs while it is lent (R12.4.6).
+                // `a = v` is `a`'s `IndexSet` write when it has one (spec 12, W8); otherwise `a`'s
+                // `IndexMut` lends the cell and the assignment runs while it is lent (R12.4.6).
                 if let ExprKind::Index { indices, .. } = &target.kind {
                     if indices.len() == 1 {
                         let target = self.hoist_indices(target, out);
@@ -749,6 +756,11 @@ impl<'a> Cx<'a> {
                         };
                         let value = self.hoist(value, cell.as_ref(), "$rhs", out);
                         let (op, span) = (*op, s.span);
+                        if op == ast::AssignOp::Set {
+                            if let Some(set) = self.index_set(base, &indices[0], &value, span) {
+                                return self.stmt(&set, out);
+                            }
+                        }
                         self.through_cell(
                             (base, &indices[0]),
                             target.span,
@@ -1165,21 +1177,23 @@ impl<'a> Cx<'a> {
                     ),
                 ),
                 Some((true, t)) => {
-                    let p = self.place(place);
-                    if !self.unify(&p.ty, &t) {
-                        self.err(
-                            s.span,
-                            Msg::verdict(
-                                cpl_diag::codes::TYPE_MISMATCH,
-                                format!(
-                                    "expected `{}`, found `{}`",
-                                    self.show(&t),
-                                    self.show(&p.ty)
-                                ),
-                            ),
-                        );
+                    // `lend mut s[k]` of a cell that is no slot lends on the cell `s`'s
+                    // `IndexMut` lends (R12.4.6).
+                    if let ExprKind::Index { base, indices } = &super::index::unparen(place).kind {
+                        let seen = self.errors.len();
+                        let probe = self.expr_as_typed(place, None);
+                        self.errors.truncate(seen);
+                        if let ([k], false) = (&indices[..], matches!(probe.kind, TK::Slot(..))) {
+                            let span = s.span;
+                            return self.through_cell(
+                                (base, k),
+                                place.span,
+                                out,
+                                Box::new(move |this, cell, out| this.lend_out(&cell, &t, span, out)),
+                            );
+                        }
                     }
-                    out.push(TStmt::LendOut(p));
+                    self.lend_out(place, &t, s.span, out);
                 }
                 // In a read lend, `lend place` returns the place's value (R05.6.3).
                 None if (self.decl).is_some_and(|f| self.d.f(f).lends.is_some()) => {
@@ -1946,6 +1960,21 @@ impl<'a> Cx<'a> {
             VarRef::Global(i) => (self.globals[*i].fixed, &self.globals[*i].name),
         };
         (fixed && !name.starts_with('$')).then(|| name.clone())
+    }
+
+    /// `lend mut place` in a lender of `t`s: `place` is what its caller's body runs on.
+    fn lend_out(&mut self, place: &ast::Expr, t: &Ty, span: Span, out: &mut Vec<TStmt>) {
+        let p = self.place(place);
+        if !self.unify(&p.ty, t) {
+            self.err(
+                span,
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    format!("expected `{}`, found `{}`", self.show(t), self.show(&p.ty)),
+                ),
+            );
+        }
+        out.push(TStmt::LendOut(p));
     }
 
     pub(super) fn place(&mut self, e: &ast::Expr) -> TExpr {

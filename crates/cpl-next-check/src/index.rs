@@ -169,6 +169,49 @@ impl Cx<'_> {
         }
         any
     }
+    /// `s[k] = v` as `s.set(k, v)` when `s`'s type has an impl of core's `@operator("[]=")`
+    /// trait, `IndexSet`: a write that needs no place (spec 12, W8).
+    pub(super) fn index_set(
+        &mut self,
+        base: &ast::Expr,
+        k: &ast::Expr,
+        v: &ast::Expr,
+        span: Span,
+    ) -> Option<ast::Stmt> {
+        let &(_, tr) = self.d.operators.iter().find(|(o, _)| o == "[]=")?;
+        let name = self.d.traits[tr.0].methods.keys().next()?.clone();
+        let seen = self.errors.len();
+        let b = self.expr_as_typed(base, None);
+        self.errors.truncate(seen);
+        let rt = self.shallow(&b.ty);
+        let d = &self.d;
+        let of_tr = |f: &decls::FnDecl| {
+            matches!(f.owner, Some(decls::Owner::Impl(i)) if d.impls[i].trait_.tr == tr)
+        };
+        d.impl_member_by(&rt, &name, of_tr)?;
+        let callee = ast::Expr {
+            kind: ExprKind::Field {
+                base: Box::new(base.clone()),
+                name: ast::Name { text: name, span },
+            },
+            span,
+        };
+        let args = [k, v].map(|e| ast::Arg {
+            name: None,
+            mutable: false,
+            value: e.clone(),
+        });
+        let call = ExprKind::Call {
+            callee: Box::new(callee),
+            args: args.to_vec(),
+        };
+        Some(ast::Stmt {
+            kind: StmtKind::Expr(ast::Expr { kind: call, span }),
+            span,
+            decorators: Vec::new(),
+            public: false,
+        })
+    }
     /// Runs `inner` while `base[idx]` is lent as a place, through the `at` of `base`'s
     /// `IndexedMut` that lends one (R12.4.6). `inner` gets the lent cell as a name; `g[i][j]`
     /// lends `g[i]` first, then its cell `j` inside that.
