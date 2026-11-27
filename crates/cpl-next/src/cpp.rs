@@ -143,6 +143,8 @@ static inline int64_t cpl_shl_wrap(int64_t a, int64_t b) {
 }
 static inline uint64_t cpl_ushl(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a << b; }
 static inline uint64_t cpl_ushr(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a >> b; }
+static inline int64_t cpl_ctz(uint64_t u) { return u ? __builtin_ctzll(u) : 64; }
+static inline int64_t cpl_clz(uint64_t u) { return u ? __builtin_clzll(u) : 64; }
 static inline int64_t cpl_int_of_u64(uint64_t u) { if (u > (uint64_t)INT64_MAX) cpl_fail(CPL_U64_PAST_INT); return (int64_t)u; }
 static inline cpl_char cpl_char_of(int64_t x) { if (x < 0 || x > 127) cpl_fail(CPL_CHAR_PAST_ASCII); return cpl_char{(uint8_t)x}; }
 template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
@@ -702,6 +704,12 @@ impl Emit<'_> {
                     Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
                     Intr::ToF64 => format!("((double)({}))", a[0]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
+                    Intr::Popcount => {
+                        format!("((int64_t)__builtin_popcountll((uint64_t)({})))", a[0])
+                    }
+                    Intr::Ctz => format!("cpl_ctz((uint64_t)({}))", a[0]),
+                    Intr::Clz => format!("cpl_clz((uint64_t)({}))", a[0]),
+                    Intr::BitWidth => format!("(64 - cpl_clz((uint64_t)({})))", a[0]),
                     Intr::Neg => format!("cpl_neg({})", a[0]),
                     Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
                     Intr::Not => format!("(!{})", a[0]),

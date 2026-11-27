@@ -262,6 +262,16 @@ pub fn u64_of_int(i: i64) -> u64 {
     i as u64
 }
 
+/// `popcount`, `ctz`, `clz` or `bit_width` of a 64-bit word.
+pub fn bit_count(op: Intr, w: u64) -> i64 {
+    i64::from(match op {
+        Intr::Popcount => w.count_ones(),
+        Intr::Ctz => w.trailing_zeros(),
+        Intr::Clz => w.leading_zeros(),
+        _ => 64 - w.leading_zeros(),
+    })
+}
+
 pub fn not(b: bool) -> bool {
     !b
 }

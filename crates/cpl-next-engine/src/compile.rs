@@ -231,6 +231,12 @@ pub(crate) enum Op {
         d: Reg,
         a: Reg,
     },
+    /// `popcount`, `ctz`, `clz` or `bit_width` of a word.
+    BitCount {
+        op: Intr,
+        d: Reg,
+        a: Reg,
+    },
     FromU64 {
         d: Reg,
         a: Reg,
@@ -1217,6 +1223,10 @@ impl Fc<'_> {
             | Intr::Not
             | Intr::ToU64
             | Intr::FromU64
+            | Intr::Popcount
+            | Intr::Ctz
+            | Intr::Clz
+            | Intr::BitWidth
             | Intr::ToF64
             | Intr::CharOf
             | Intr::CodeOf => {
@@ -1230,6 +1240,9 @@ impl Fc<'_> {
                     Intr::Not => Op::Not { d, a },
                     Intr::ToU64 => Op::ToU64 { d, a },
                     Intr::FromU64 => Op::FromU64 { d, a },
+                    Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth => {
+                        Op::BitCount { op, d, a }
+                    }
                     Intr::CharOf => Op::CharOf { d, a },
                     _ => Op::CodeOf { d, a },
                 });

@@ -720,6 +720,9 @@ impl M<'_> {
                     self.stack[r(d)] = v as u64;
                 }
                 Op::ToU64 { d, a } => self.stack[r(d)] = ops::u64_of_int(self.stack[r(a)] as i64),
+                Op::BitCount { op, d, a } => {
+                    self.stack[r(d)] = ops::bit_count(op, self.stack[r(a)]) as u64
+                }
                 Op::FromU64 { d, a } => {
                     self.stack[r(d)] = ops::int_of_u64(self.stack[r(a)])? as u64
                 }

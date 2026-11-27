@@ -71,6 +71,14 @@ pub enum Intr {
     ToU64,
     /// A `U64` as an `Int`; traps past `Int`.
     FromU64,
+    /// A 64-bit word's 1 bits, an `Int` as its two's complement.
+    Popcount,
+    /// A word's 0 bits below its lowest 1 bit; 64 for 0.
+    Ctz,
+    /// A word's 0 bits above its highest 1 bit; 64 for 0.
+    Clz,
+    /// The bits needed to write a word, `64 - clz`.
+    BitWidth,
     /// The `F64` nearest an `Int`.
     ToF64,
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
@@ -110,6 +118,10 @@ impl Intr {
             "code_of" => Intr::CodeOf,
             "u64_of" => Intr::ToU64,
             "int_of_u64" => Intr::FromU64,
+            "popcount" => Intr::Popcount,
+            "ctz" => Intr::Ctz,
+            "clz" => Intr::Clz,
+            "bit_width" => Intr::BitWidth,
             "f64_of" => Intr::ToF64,
             _ => return None,
         })

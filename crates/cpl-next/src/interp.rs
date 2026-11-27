@@ -647,6 +647,17 @@ impl<'a> Machine<'a> {
             Intr::Unset => V::Unit,
             Intr::ToU64 => V::U64(ops::u64_of_int(self.int(&args[0], fp)?)),
             Intr::ToF64 => V::F64(ops::f64_of_int(self.int(&args[0], fp)?)),
+            Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth => {
+                let Arg::Value(a) = &args[0] else {
+                    return broken("lent operand");
+                };
+                let w = match self.expr(a, fp)? {
+                    V::U64(u) => u,
+                    V::Int(i) => ops::u64_of_int(i),
+                    _ => return broken("a word of another kind"),
+                };
+                V::Int(ops::bit_count(op, w))
+            }
             Intr::FromU64 => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");
