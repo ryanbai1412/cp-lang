@@ -14,14 +14,19 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> Option<TExpr> {
-        if let Some(dty) = self.type_path(base) {
+        let mut pre = Vec::new();
+        let dty = match self.written_struct(base, span, &mut pre) {
+            Some(t) => Some(t),
+            None => self.type_path(base),
+        };
+        if let Some(dty) = dty {
             let found = match &dty {
                 Ty::Dom(_) => self.domain_fn(dty.clone(), name, call, span),
                 Ty::Struct(..) => self.type_static(dty.clone(), name, call, span),
                 _ => None,
             };
-            if found.is_some() {
-                return found;
+            if let Some(e) = found {
+                return Some(super::expr::block(pre, e));
             }
             // `D.m` for a `@member(m)` struct, named as a value: the domain of them; `D.m(x)`
             // converts `x` to one (R04.2.5, R04.2.17).
@@ -222,6 +227,44 @@ impl Cx<'_> {
             }
             _ => None,
         }
+    }
+    /// `Subset<V>` written as a value: the struct type at the written arguments.
+    pub(super) fn written_struct(
+        &mut self,
+        e: &ast::Expr,
+        span: Span,
+        pre: &mut Vec<TStmt>,
+    ) -> Option<Ty> {
+        let ExprKind::Generic { base, args } = &e.kind else {
+            return None;
+        };
+        self.struct_at(base, args, span, pre)
+    }
+    /// The struct `base` names at the type arguments `args`.
+    pub(super) fn struct_at(
+        &mut self,
+        base: &ast::Expr,
+        args: &[ast::Type],
+        span: Span,
+        pre: &mut Vec<TStmt>,
+    ) -> Option<Ty> {
+        let ExprKind::Name(n) = &base.kind else {
+            return None;
+        };
+        if self.lookup(n).is_some() || self.d.struct_named(self.module, n).is_none() {
+            return None;
+        }
+        let t = ast::Type {
+            kind: TypeKind::Named {
+                name: ast::Name {
+                    text: n.clone(),
+                    span: base.span,
+                },
+                args: args.to_vec(),
+            },
+            span: base.span,
+        };
+        Some(self.body_ty(&t, span, pre)).filter(|t| matches!(t, Ty::Struct(..)))
     }
     /// `D.m`: the `@member(m)` struct at `D` (R06).
     fn member_type(&self, d: &Ty, m: &str) -> Option<Ty> {

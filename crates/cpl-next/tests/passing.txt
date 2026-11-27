@@ -1297,9 +1297,7 @@ next/n_index_wrong_domain.cp
 next/n_inherent_impl.cp
 next/n_inst_lent_arg_of_a_phantom_param.cp
 next/n_into_01_list_of_a_seq_converts.cp
-next/n_into_01_list_of_a_seq_converts.cp
 next/n_intr_01_word_bit_counts.cp
-next/n_into_01_list_of_a_seq_converts.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
@@ -1715,3 +1713,7 @@ widths/sub-wraps-when-unchecked.cp
 next/n_comp_01_comprehension_is_its_loop.cp
 next/n_alias_01_alias_builds_its_type.cp
 core-08/call-gen-alias.cp
+next/n_static_01_generic_type_names_its_static_fns.cp
+matrix/index/cuts--min_by.cp
+matrix/index/plain--min_by.cp
+matrix/index/product--min_by.cp

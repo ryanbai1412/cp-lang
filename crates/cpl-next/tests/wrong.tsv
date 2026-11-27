@@ -384,7 +384,6 @@ lib-ops-ranges/fenwick-no-act.cp	wrong-error	wanted E0705 on line 3, got: check:
 lib-ops-ranges/range-fenwick-no-act.cp	wrong-error	wanted E0705 on line 5, got: check: program:5:30: E0310: no parameter named `act`
 lints/getter-view-reads-without-parens.cp	wrong-reject	check: program:6:15: E0606: `Rebased<List<Int>>` does not implement `Keyed`
 lints/std-declares-idiom-lints.cp	wrong-error	wanted prefix_totals_list on line 5, got: check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
-matrix/index/cuts--min_by.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 matrix/index/cuts--read.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 matrix/index/enum--count.cp	wrong-reject	check: program:3:7: E0203: `D` has no `count`
 matrix/index/enum--cuts_lr.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `l`
@@ -404,7 +403,6 @@ matrix/index/pair--count.cp	wrong-reject	check: program:3:7: E0203: `Pair` has n
 matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has no `filter`
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 matrix/index/pair--read.cp	wrong-reject	link: E9999: no impl provides `count` for this type
-matrix/index/plain--min_by.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 matrix/index/product--construct.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
 matrix/index/product--count.cp	wrong-reject	check: program:5:27: E0302: expected `Int`, found `Tuple2<Int, Int>`
 matrix/index/product--cuts_lr.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
@@ -414,7 +412,6 @@ matrix/index/product--find.cp	wrong-reject	check: program:5:30: E0302: expected 
 matrix/index/product--first.cp	wrong-reject	check: program:5:25: E0302: expected `Int`, found `Tuple2<Int, Int>`
 matrix/index/product--for.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 matrix/index/product--int.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
-matrix/index/product--min_by.cp	wrong-reject	check: program:5:35: E0302: expected `Int`, found `Tuple2<Int, Int>`
 matrix/index/product--next.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
 matrix/index/product--optional.cp	wrong-reject	check: program:6:15: E0302: expected `Int`, found `Tuple2<Int, Int>`
 matrix/index/product--prev.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
@@ -814,7 +811,6 @@ traits/Bidir/Items--iter_rev.cp	wrong-reject	link: E9999: no impl provides `keys
 traits/Bidir/LinkedList--iter_rev.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
 traits/Bidir/Prefix--iter_rev.cp	wrong-reject	check: program:2:11: E0203: `List<Int>` has no member `scan`
 traits/Bidir/Stepped--iter_rev.cp	wrong-reject	check: std.seq:1993:37: E0606: `S` does not implement `Indexed`
-traits/Bidir/Stepped--iter_rev.cp	wrong-reject	check: std.seq:2000:37: E0606: `S` does not implement `Indexed`
 traits/BitAnd/Bitset--bitand.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
 traits/BitOr/Bitset--bitor.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
 traits/BitXor/Bitset--bitxor.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
