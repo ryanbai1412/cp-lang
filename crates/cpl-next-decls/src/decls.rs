@@ -298,7 +298,6 @@ pub enum Owner {
 pub struct Sugar {
     pub list: Option<StructId>,
     pub str: Option<StructId>,
-    pub optional: Option<StructId>,
     pub map: Option<StructId>,
     pub array: Option<StructId>,
     pub str_literal: Option<FnId>,
@@ -306,8 +305,10 @@ pub struct Sugar {
 }
 
 /// The declarations filling the language roles, each found by its `@role(name)` (R11.6.1).
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Copy)]
 pub struct Roles {
+    /// `?T`, `Some` and `None`: the struct `Optional<T>`.
+    pub option: Option<StructId>,
     /// `print(...)`: shows its values and ends the line, reading `io`'s settings.
     pub print: Option<FnId>,
     /// `write(...)`: `print` without the line end.
@@ -1270,6 +1271,7 @@ fn add_fn(
         struct_defaults: &defaults,
         tuples: &tuples,
         sugar,
+        roles: d.roles,
         records: &records,
         members: &members,
         generics: &generics,
@@ -1497,8 +1499,8 @@ fn add_fn(
             collect::once(slot, id, collect::again(&item, s, n), &mut d.errors);
         }
     }
-    for x in s.decorators.iter().filter(|x| x.name.text == "role") {
-        let slot = match fn_role(x) {
+    for (x, role) in role_marks(s) {
+        let slot = match role {
             Some(Role::Print) => &mut d.roles.print,
             Some(Role::Write) => &mut d.roles.write,
             Some(_) => {
@@ -1895,8 +1897,13 @@ fn fresh_binders(ret: Option<&ast::Type>) -> Vec<(usize, String)> {
     }
 }
 
-/// The role an `@role(name)` names, when `name` is one of R11.6.1's.
-fn fn_role(x: &ast::Decorator) -> Option<Role> {
+/// Each `@role(name)` on `s`, with the role it names when `name` is one of R11.6.1's.
+pub(super) fn role_marks(s: &ast::Stmt) -> impl Iterator<Item = (&ast::Decorator, Option<Role>)> {
+    let marks = s.decorators.iter().filter(|x| x.name.text == "role");
+    marks.map(|x| (x, role_of(x)))
+}
+
+fn role_of(x: &ast::Decorator) -> Option<Role> {
     match &x.args.first()?.value.kind {
         ast::ExprKind::Name(n) => Role::ALL.into_iter().find(|r| r.name() == n),
         _ => None,

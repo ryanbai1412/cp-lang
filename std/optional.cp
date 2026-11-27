@@ -4,7 +4,7 @@
 //! example: `let a: ?Int = Some(3); a == Some(3)`
 
 // `?T`: `T` or `None`. `val` is read only when `some`.
-@optional
+@role(option)
 pub struct Optional<T>:
     some: Bool
     val: T

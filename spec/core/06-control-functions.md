@@ -215,9 +215,9 @@ library or by this spec:
   `@derive` (a trait every struct whose fields all have it gets field by
   field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
   over its type calls), `@variant_check` (the check an `Int` converted to
-  an enum goes through), `@list`, `@str`, `@optional`, `@array` and `@map`
-  (the structs `[a, b]`, `"s"`, `?T`, `[D]T` and `[k: v]` are, whatever a
-  module names `List`, `Str`, `Optional`, `Array` or `Map`), `@str_literal` (the fn that builds a
+  an enum goes through), `@list`, `@str`, `@array` and `@map`
+  (the structs `[a, b]`, `"s"`, `[D]T` and `[k: v]` are, whatever a
+  module names `List`, `Str`, `Array` or `Map`; `?T` is the `option` role of §11.6), `@str_literal` (the fn that builds a
   string literal), `@range_literal` (the fn that builds `lo..hi by k`),
   `@derive_fields` (a trait every struct gets through its fields, packed
   as `@pack` pairs, unless it has its own impl: std's `Show`), `@pack` (the

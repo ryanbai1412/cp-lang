@@ -105,7 +105,6 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "on a struct: the struct a list literal `[a, b]` builds",
     ),
     ("str", "on a struct: the struct a string literal is"),
-    ("optional", "on a struct: the struct `?T` is"),
     ("role", "on a declaration: the language role it fills (R11.6.1)"),
     (
         "map",

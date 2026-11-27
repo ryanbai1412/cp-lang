@@ -32,6 +32,7 @@ pub(super) struct TyCx<'a> {
     pub(super) struct_defaults: &'a HashMap<StructId, Vec<Option<Ty>>>,
     pub(super) tuples: &'a HashMap<usize, StructId>,
     pub(super) sugar: Sugar,
+    pub(super) roles: Roles,
     pub(super) records: &'a HashMap<Vec<String>, StructId>,
     pub(super) members: &'a HashMap<String, StructId>,
     pub(super) generics: &'a [String],
@@ -98,6 +99,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         struct_defaults: cx.struct_defaults,
         tuples: cx.tuples,
         sugar: cx.sugar,
+        roles: cx.roles,
         records: cx.records,
         members: cx.members,
         generics: &decl.generics,
@@ -342,9 +344,9 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             let base = conv(cx, base, errors);
             without(cx, &form, prefix, base, t.span, errors)
         }
-        // `?T` is std's `@optional` struct.
-        TypeKind::Optional(inner) if cx.sugar.optional.is_some() => {
-            let d = cx.sugar.optional.unwrap_or(StructId(0));
+        // `?T` is the struct filling the `option` role.
+        TypeKind::Optional(inner) if cx.roles.option.is_some() => {
+            let d = cx.roles.option.unwrap_or(StructId(0));
             Ty::Struct(d, vec![conv(cx, inner, errors)], Vec::new())
         }
         // `[D]T` is std's `@array` struct `Array<D, T>`.
@@ -504,6 +506,7 @@ pub fn body_type(
             struct_defaults: &d.struct_defaults,
             tuples: &d.tuples,
             sugar: d.sugar,
+            roles: d.roles,
             records: &d.records,
             members: &d.member_types,
             generics,

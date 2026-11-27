@@ -324,13 +324,30 @@ fn layer(
                         {
                             d.recipe = Some(id);
                         }
+                        for (x, role) in super::role_marks(s) {
+                            let msg = match role {
+                                Some(Role::Option) => {
+                                    let dup = again(item, s, "role(option)");
+                                    once(&mut d.roles.option, id, dup, &mut d.errors);
+                                    continue;
+                                }
+                                Some(r) => Msg::verdict(
+                                    cpl_diag::codes::TYPE_MISMATCH,
+                                    format!("`@role({})` is not filled by a struct", r.name()),
+                                ),
+                                None => Msg::verdict(
+                                    cpl_diag::codes::UNRESOLVED_NAME,
+                                    "`@role` names one of the roles of R11.6.1".to_string(),
+                                ),
+                            };
+                            d.errors.push(Msg::at(item.at(x.span), msg));
+                        }
                         if marked(s, "cuts") {
                             once(&mut d.cut_struct, id, again(item, s, "cuts"), &mut d.errors);
                         }
                         for (n, slot) in [
                             ("list", &mut d.sugar.list),
                             ("str", &mut d.sugar.str),
-                            ("optional", &mut d.sugar.optional),
                             ("map", &mut d.sugar.map),
                             ("array", &mut d.sugar.array),
                         ] {
@@ -644,7 +661,7 @@ fn layer(
             let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
             let defaults = d.struct_defaults.clone();
             let tuples = d.tuples.clone();
-            let (sugar, records) = (d.sugar, d.records.clone());
+            let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
             let members = d.member_types.clone();
             let consts = d.consts.clone();
             let mut cx = TyCx {
@@ -658,6 +675,7 @@ fn layer(
                 struct_defaults: &defaults,
                 tuples: &tuples,
                 sugar,
+                roles,
                 records: &records,
                 members: &members,
                 generics: &generics,
@@ -695,7 +713,7 @@ fn layer(
         let doms = d.doms_in(*mid);
         let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
         let (tuples, defaults) = (d.tuples.clone(), d.struct_defaults.clone());
-        let (sugar, records) = (d.sugar, d.records.clone());
+        let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
         let members = d.member_types.clone();
         let consts = d.consts.clone();
         let mut cx = TyCx {
@@ -709,6 +727,7 @@ fn layer(
             struct_defaults: &defaults,
             tuples: &tuples,
             sugar,
+            roles,
             records: &records,
             members: &members,
             generics: &generics,
@@ -775,7 +794,7 @@ fn layer(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
-                    let (sugar, records) = (d.sugar, d.records.clone());
+                    let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
                     let members = d.member_types.clone();
                     let consts = d.consts.clone();
                     let mut cx = TyCx {
@@ -789,6 +808,7 @@ fn layer(
                         struct_defaults: &defaults,
                         tuples: &tuples,
                         sugar,
+                        roles,
                         records: &records,
                         members: &members,
                         generics: &generics,
@@ -909,7 +929,7 @@ fn layer(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
-                    let (sugar, records) = (d.sugar, d.records.clone());
+                    let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
                     let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let consts = d.consts.clone();
@@ -924,6 +944,7 @@ fn layer(
                         struct_defaults: &defaults,
                         tuples: &tuples,
                         sugar,
+                        roles,
                         records: &records,
                         members: &members,
                         generics: &tgen,
@@ -1029,7 +1050,7 @@ fn layer(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
-                    let (sugar, records) = (d.sugar, d.records.clone());
+                    let (sugar, roles, records) = (d.sugar, d.roles, d.records.clone());
                     let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
@@ -1045,6 +1066,7 @@ fn layer(
                         struct_defaults: &defaults,
                         tuples: &tuples,
                         sugar,
+                        roles,
                         records: &records,
                         members: &members,
                         generics: &generics,
