@@ -302,7 +302,7 @@
   "dream_over_32kb": 3,
   "invariant_sites": 0,
   "domain_member_names": 0,
-  "next_wrong": 998,
+  "next_wrong": 1518,
   "next_not_passing": 2474,
   "end_state_unmeasured": 23,
   "facade_today_uses": 274,
@@ -319,10 +319,10 @@
   "next_core_standin_lines": 66,
   "next_cpp_runtime_lines": 152,
   "link_reads_check": 26,
-  "next_wrong_accepts": 19,
+  "next_wrong_accepts": 20,
   "next_core_checks": 6,
   "next_ownership_outside_own": 6,
   "next_layer_foreign_deps": 1,
-  "next_std_unchecked": 40,
+  "next_std_unchecked": 41,
   "next_lowered": 6
 }
