@@ -7,6 +7,33 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::HashMap;
 
+/// An enum-level `@tags(..)` is removed: each variant writes its own `@tag` (R02.7.2, decision
+/// 459). With one plain tag per variant, the help is the rewrite.
+pub(crate) fn enum_level_tags(item: &ItemId, s: &ast::Stmt, e: &ast::EnumDecl) -> Option<Msg> {
+    let x = s.decorators.iter().find(|x| x.name.text == "tags")?;
+    let text = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.say(&[]);
+    let mut m = Msg::at(
+        item.at(x.span),
+        Msg::verdict(cpl_diag::codes::REMOVED_SYNTAX, text),
+    );
+    let tag = |a: &ast::Arg| match &a.value.kind {
+        ast::ExprKind::Str(p) => match p.as_slice() {
+            [ast::StrPiece::Text(t)] => Some(format!("{t:?}")),
+            _ => None,
+        },
+        _ => None,
+    };
+    let each = (x.args.len() == e.variants.len())
+        .then(|| x.args.iter().zip(&e.variants))
+        .into_iter()
+        .flatten()
+        .map(|(a, v)| Some(format!("@tag({}) {}", tag(a)?, v.name.text)))
+        .collect::<Option<Vec<_>>>()
+        .filter(|w| !w.is_empty());
+    m.help = each.map(|w| cpl_diag::habits::ENUM_TAGS.say(&[&e.name.text, &w.join(" | ")]));
+    Some(m)
+}
+
 /// An enum as structs: its own, with no fields (the parser makes its methods an `impl`), then one
 /// per variant holding that variant's payload, named `Enum.Variant`, which no source name can be
 /// (R02.7).
