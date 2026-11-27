@@ -42,3 +42,9 @@ fi
 if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo check -q --workspace --all-targets || fail "cargo check --workspace --all-targets failed"
 fi
+
+# 4. The ratchet (about 25 s warm). A commit-time run can be cut by its 25 s limit and
+# `--no-verify` skips both hooks, so CI's ratchet part holds every main tip to it too.
+if [ -f scripts/debt-ratchet.py ] && command -v uv >/dev/null 2>&1; then
+    uv run --quiet python scripts/debt-ratchet.py --check || fail "debt-ratchet --check failed (above); fix it before pushing"
+fi
