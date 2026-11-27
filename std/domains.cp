@@ -5,6 +5,9 @@
 use std.ranges.{Range, range_of}
 use std.seq.{Seq}
 
+@variant_check
+pub fn check_value(ok: Bool) = @intrinsic("value_check")
+
 /// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
 @positions
 pub trait Domain:

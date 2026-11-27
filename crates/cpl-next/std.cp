@@ -37,23 +37,7 @@ pub use std.read.{Read, Input, read, read_line}
 pub use std.stream.{rand}
 pub use std.mem.{swap}
 
-/// Traps R0102 unless `ok`: a value its type doesn't have, as an `Int` converted to an enum that
-/// is no variant's value (R02.7), or to a cut past a domain's ends (R04.2.17).
-@variant_check
-pub fn check_value(ok: Bool) = @intrinsic("value_check")
-
-/// The largest of two or more values, the first of equal ones (R11.3.3).
-pub fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.max_with(if b > a: b else: a)
-
-/// The smallest of two or more values, the first of equal ones (R11.3.3).
-pub fn min<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.min_with(if b < a: b else: a)
-
-/// A tuple whose fields are all `T`: what `max` and `min` take past their first two values.
-pub trait Alike<T>:
-    /// The largest of `m` and the fields, the first of equal ones.
-    fn max_with(self, m: T) -> T
-    /// The smallest of `m` and the fields, the first of equal ones.
-    fn min_with(self, m: T) -> T
-impl<T: Ord> Alike<T> for ():
-    fn max_with(self, m: T) -> T = m
-    fn min_with(self, m: T) -> T = m
+/// `max(a, b, ..)` and `min(a, b, ..)`.
+pub use std.ops.{max, min, Alike}
+/// The trap of an `Int` converted to an enum or cut it is no value of (R02.7, R04.2.17).
+pub use std.domains.{check_value}

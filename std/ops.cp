@@ -87,6 +87,22 @@ impl Bounded for Char:
 impl Bounded for Bool:
     @get fn MIN() -> Bool = false
     @get fn MAX() -> Bool = true
+
+/// The largest of two or more values, the first of equal ones (R11.3.3).
+pub fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.max_with(if b > a: b else: a)
+
+/// The smallest of two or more values, the first of equal ones (R11.3.3).
+pub fn min<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.min_with(if b < a: b else: a)
+
+/// A tuple whose fields are all `T`: what `max` and `min` take past their first two values.
+pub trait Alike<T>:
+    /// The largest of `m` and the fields, the first of equal ones.
+    fn max_with(self, m: T) -> T
+    /// The smallest of `m` and the fields, the first of equal ones.
+    fn min_with(self, m: T) -> T
+impl<T: Ord> Alike<T> for ():
+    fn max_with(self, m: T) -> T = m
+    fn min_with(self, m: T) -> T = m
 impl Zero for I128:
     @get fn zero() -> I128 = I128(0)
 impl One for I128:

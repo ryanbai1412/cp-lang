@@ -213,6 +213,7 @@ core-02/generated-ctor-moves.cp
 core-02/generic-enum-payload-binds-its-type-argument.cp
 core-02/get-defaults.cp
 core-02/getter-needs-defaults.cp
+core-02/header-var-field-can-be-assigned.cp
 core-02/heap-clone-explicit.cp
 core-02/heap-moves-str.cp
 core-02/inference-annotated-optional.cp
@@ -2178,6 +2179,7 @@ std-math/sieve-tables-at-zero.cp
 std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
 std-matrix/get-outside-columns-traps.cp
+std-models/check-value.cp
 std-models/input.cp
 std-models/map.cp
 std-models/memo-array.cp
