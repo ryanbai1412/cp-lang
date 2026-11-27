@@ -104,13 +104,11 @@ impl Cx<'_> {
                 })
         })
     }
-    /// A fn item given for `v` with no impl of a bound on `v` for its own type is the fn type
-    /// an impl of one targets, as a lambda is (`fn_impl_for`), and coerces to it (R08.1.10). A
-    /// generator's item is a lambda already (`fn_item_value`).
+    /// A fn value given for `v` with no impl of a bound on `v` for its own type is the fn type
+    /// an impl of one targets, as a lambda written there is (`fn_impl_for`), and coerces to it
+    /// (R08.1.10): a fn item, a generator's item (`fn_item_value`) or a closure held in a name.
     fn item_as_fn_impl(&mut self, e: &TExpr, want: &Ty) {
-        let (TK::FnItem(_) | TK::Lambda { .. }, Ty::Var(v), Ty::Clo(c)) =
-            (&e.kind, self.shallow(want), self.shallow(&e.ty))
-        else {
+        let (Ty::Var(v), Ty::Clo(c)) = (self.shallow(want), self.shallow(&e.ty)) else {
             return;
         };
         if (self.bounds_on(v).iter()).any(|tr| self.has_impl(&e.ty, *tr)) {
