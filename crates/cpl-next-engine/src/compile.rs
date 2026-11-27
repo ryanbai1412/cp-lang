@@ -1257,7 +1257,13 @@ impl Fc<'_> {
             },
             Intr::InputLeft => self.ops.push(Op::InputLeft { d }),
             Intr::ReadInt => self.ops.push(Op::ReadInt { d }),
-            Intr::Unset => {}
+            // A value never read still holds no handle, so copying or dropping its holder is sound.
+            Intr::Unset => {
+                if self.owns(ty) {
+                    let n = self.size(ty);
+                    self.ops.push(Op::Zero { d, n });
+                }
+            }
         }
     }
     /// A place's root, its steps and its type.

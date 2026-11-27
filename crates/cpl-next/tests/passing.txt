@@ -1067,6 +1067,7 @@ next/n_facts_02_unproved_n_minus_i_traps.cp
 next/n_facts_03_unproved_index_traps.cp
 next/n_gen_05_expression_body.cp
 next/n_generator_through_bound.cp
+next/n_if_01_none_branch_takes_the_other_type.cp
 next/n_impl_01_inherent_outside_its_module.cp
 next/n_impl_03_trait_args_pick_the_impl.cp
 next/n_impl_04_impls_overlap_only_at_equal_trait_args.cp

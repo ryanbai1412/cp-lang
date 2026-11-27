@@ -443,6 +443,17 @@ impl<'a> Cx<'a> {
     fn is_str(&self, t: &Ty) -> bool {
         matches!(self.shallow(t), Ty::Struct(d, ..) if Some(d) == self.d.core_struct("Str"))
     }
+    /// One `if` branch: its condition, its block checked against `want`, and whether it leaves.
+    fn if_arm(
+        &mut self,
+        (c, b): &(ast::Cond, ast::Block),
+        want: Option<&Ty>,
+    ) -> (TExpr, TExpr, bool) {
+        let c = self.cond(c);
+        let b2 = self.block(b, want);
+        self.scopes.pop();
+        (c, b2, b.leaves())
+    }
     /// `a < b`, `a == b` and the rest on a type that is not a number: its `Ord` or `Eq` fn, from
     /// the bound on a type parameter or the type's impl (R08.1.5). `a > b` is `b < a`, `a <= b` is
     /// `not b < a`, and `a != b` is `not a == b`; operands are still read left to right.
@@ -1590,43 +1601,73 @@ impl<'a> Cx<'a> {
                 branches,
                 otherwise,
             } => {
-                let mut out: Option<TExpr> = None;
-                let want_owned = want.cloned();
-                let else_ = match otherwise {
-                    Some(b) => self.block(b, want_owned.as_ref()),
-                    None => mk(TK::Unit, Ty::Unit),
-                };
-                // With no expected type, the branches meet in a type of their own: each is converted into it.
-                let ty = match (&want_owned, otherwise.is_some()) {
-                    (_, false) => Ty::Unit,
-                    (Some(w), true) => w.clone(),
-                    (None, true) => self.join_ty(&else_.ty.clone()),
-                };
+                let valued = otherwise.is_some();
                 let was_joining = self.joining;
-                self.joining = want_owned.is_none() && otherwise.is_some();
-                let else_leaves = otherwise.as_ref().is_some_and(|o| o.leaves());
-                let mut tail =
-                    if otherwise.is_some() && !else_leaves && self.shallow(&ty) != Ty::Unit {
-                        self.coerce(else_, &ty)
+                self.joining = want.is_none() && valued;
+                // With no expected type, the branches meet in a type of their own: the `else`'s,
+                // or, when it is a bare `None`, that of the first branch giving a value. The rest
+                // are checked against it.
+                let mut ty = want.filter(|_| valued).cloned();
+                let mut arms: Vec<Option<(TExpr, TExpr, bool)>> =
+                    branches.iter().map(|_| None).collect();
+                let mut else_ = None;
+                if let (Some(o), None) = (otherwise, &ty) {
+                    if gives_none(o) {
+                        let first =
+                            (branches.iter()).position(|(_, b)| !b.leaves() && !gives_none(b));
+                        if let Some(i) = first {
+                            let arm = self.if_arm(&branches[i], None);
+                            ty = Some(self.join_ty(&arm.1.ty.clone()));
+                            arms[i] = Some(arm);
+                        }
                     } else {
-                        else_
-                    };
-                for (c, b) in branches.iter().rev() {
-                    let c = self.cond(c);
-                    let leaves = b.leaves();
-                    let b = self.block(b, if otherwise.is_some() { Some(&ty) } else { None });
-                    self.scopes.pop();
+                        self.joining = was_joining;
+                        let e = self.block(o, None);
+                        self.joining = want.is_none();
+                        let t = self.join_ty(&e.ty.clone());
+                        let e = if !o.leaves() && self.shallow(&t) != Ty::Unit {
+                            self.coerce(e, &t)
+                        } else {
+                            e
+                        };
+                        ty = Some(t);
+                        else_ = Some(e);
+                    }
+                }
+                for (arm, br) in arms.iter_mut().zip(branches) {
+                    if arm.is_none() {
+                        *arm = Some(self.if_arm(br, ty.as_ref()));
+                    }
+                }
+                self.joining = was_joining;
+                let checked = else_.is_some();
+                let else_ = match (else_, otherwise) {
+                    (Some(e), _) => e,
+                    (None, Some(o)) => self.block(o, ty.as_ref()),
+                    (None, None) => mk(TK::Unit, Ty::Unit),
+                };
+                let ty = match ty {
+                    _ if !valued => Ty::Unit,
+                    Some(t) => t,
+                    None => self.join_ty(&else_.ty.clone()),
+                };
+                let converts = valued && self.shallow(&ty) != Ty::Unit;
+                let else_leaves = otherwise.as_ref().is_some_and(|o| o.leaves());
+                let mut tail = if converts && !else_leaves && !checked {
+                    self.coerce(else_, &ty)
+                } else {
+                    else_
+                };
+                for (c, b, leaves) in arms.into_iter().flatten().rev() {
                     // A branch that leaves gives no value to convert.
-                    let b = if otherwise.is_some() && !leaves && self.shallow(&ty) != Ty::Unit {
+                    let b = if converts && !leaves {
                         self.coerce(b, &ty)
                     } else {
                         b
                     };
                     tail = mk(TK::If(Box::new(c), Box::new(b), Box::new(tail)), ty.clone());
-                    out = Some(tail.clone());
                 }
-                self.joining = was_joining;
-                out.unwrap_or(tail)
+                tail
             }
             ExprKind::Match { scrutinee, arms } => self.match_(scrutinee, arms, want, span),
             ExprKind::Range {
@@ -1836,4 +1877,10 @@ pub(super) fn block(pre: Vec<TStmt>, e: TExpr) -> TExpr {
         ty,
         span,
     }
+}
+
+/// Whether block `b` ends in a bare `None`, which takes its type from the other branches.
+fn gives_none(b: &ast::Block) -> bool {
+    matches!(b.stmts.last().map(|s| &s.kind),
+        Some(ast::StmtKind::Expr(e)) if matches!(super::index::unparen(e).kind, ExprKind::None))
 }
