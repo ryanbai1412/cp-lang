@@ -1066,10 +1066,13 @@ impl<'a> Cx<'a> {
                     step: None,
                 } = &def.kind
                 else {
-                    return self.err(
+                    self.err(
                         s.span,
                         format!("slice: a domain that is {}", crate::kind_name(&def.kind)),
                     );
+                    self.doms.insert(name.text.clone(), Ty::Error);
+                    self.refused_names.insert(name.text.clone());
+                    return;
                 };
                 let (lo, end, within) = self.domain_ends(lo, hi, *inclusive);
                 self.declare_domain(&name.text, lo, end, within, s.span, out);

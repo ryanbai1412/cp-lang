@@ -476,6 +476,17 @@ mod tests {
         assert_eq!(ds, ["check: std.algebra:33:5: slice: decorator `@from_op`"]);
     }
 
+    /// A refused domain is the error: its uses give no verdict of their own.
+    #[test]
+    fn uses_of_a_refused_domain_say_nothing_more() {
+        let src = "domain R = 0..2\ndomain P = (R, R)\nlet q = P((1, 0))\nprint(P.count + q)\n";
+        let verdicts: Vec<String> = (diags(src).iter())
+            .map(|d| d.to_string())
+            .filter(|d| !d.contains("slice:"))
+            .collect();
+        assert_eq!(verdicts, Vec::<String>::new());
+    }
+
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];
