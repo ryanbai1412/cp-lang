@@ -1690,6 +1690,7 @@ next/n_f64_03_precision_and_specs.cp
 next/n_facts_01_proved_checks_keep_results.cp
 next/n_facts_02_unproved_n_minus_i_traps.cp
 next/n_facts_03_unproved_index_traps.cp
+next/n_finite_01_any_range_impl_head.cp
 next/n_fn_value_01_defaulted_params_are_left_out.cp
 next/n_fnval_01_defaults_fill.cp
 next/n_fnval_02_mut_params.cp
@@ -1768,6 +1769,7 @@ next/n_memo_02_nested_memo_fn_per_block.cp
 next/n_memo_03_captured_var_written_while_cached.cp
 next/n_memo_04_clear_empties_the_cache.cp
 next/n_memo_05_bare_memo_is_an_error.cp
+next/n_memo_06_array_table_per_range_type.cp
 next/n_method_01_range_self_takes_an_int.cp
 next/n_method_02_range_self_checks_the_receiver.cp
 next/n_mod_01_inline_modules.cp
@@ -2143,6 +2145,7 @@ std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
 std-matrix/get-outside-columns-traps.cp
 std-models/map.cp
+std-models/memo-array.cp
 std-models/print-read.cp
 std-models/ranges.cp
 std-models/raw.cp

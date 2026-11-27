@@ -43,11 +43,32 @@ pub trait Domain:
 
 /// `Int` is a domain: its integers are its positions (R04.2.18).
 impl Domain for Int:
-    fn nth(k: Int) -> Int = k
     fn at(x: Int) -> ?Int = x
-    @get fn ord(self) -> Int = self
     @get fn next(self, k: Int = 1) -> ?Int = Some(self + k)
     @get fn prev(self, k: Int = 1) -> ?Int = Some(self - k)
+
+/// A type with finitely many values, so a dense table over it has an end (R06.4.1): a range with
+/// constant ends, a cut of one, or a tuple of them. `Int` is not one.
+@on_unimplemented(code: E0311, "a dense table needs finitely many keys, and `{T}` has no end")
+pub trait Finite
+
+impl Finite for _..=_
+
+impl<D: Domain + Finite> Finite for Cut<D>
+impl<A: Finite, B: Finite> Finite for (A, B)
+impl<A: Finite, B: Finite, C: Finite> Finite for (A, B, C)
+impl<A: Finite, B: Finite, C: Finite, E: Finite> Finite for (A, B, C, E)
+
+/// The table `@memo(array)` keeps: a slot for each position of `K`, made on the first `set`
+/// (R06.4.1).
+@memo_table(array)
+pub struct MemoArray<K: Domain + Finite, V>:
+    /// Each position's result by its ordinal, once one is kept; empty until the first `set`.
+    pub var slots: List<?V> = []
+    pub fn get(self, k: K) -> ?V = if slots.len == 0: None else: slots[k.ord]
+    pub fn set(mut self, k: K, v: V):
+        if slots.len == 0: slots = List.filled(K.count, None)
+        slots[k.ord] = Some(v)
 
 /// A cut of `D`: the place between two neighbouring positions, or at either end, with `k`
 /// positions before it. `D.cuts` names its type and, as a value, the domain of them (R04.2.5).

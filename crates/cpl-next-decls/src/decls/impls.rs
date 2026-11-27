@@ -172,6 +172,9 @@ impl Decls {
     /// (`impl Into<Char> for Int` and not `impl Into<U64> for Int`); fewer are not checked.
     pub fn impl_args_for(&self, im: &ImplDecl, t: &Ty, trait_args: &[Ty]) -> Option<Vec<Ty>> {
         let mut binds = vec![None; im.generics.len()];
+        if im.ranges_only && matches!(t, Ty::Int) {
+            return None;
+        }
         if !fit(&im.for_, t, &mut binds)
             || !(self.traits[im.trait_.tr.0].inputs(&im.trait_.args).iter())
                 .zip(self.traits[im.trait_.tr.0].inputs(trait_args))

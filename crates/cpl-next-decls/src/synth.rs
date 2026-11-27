@@ -893,21 +893,29 @@ pub(crate) fn enum_conversions(
     out
 }
 
-/// The structs marked `@memo_table(word)`, by word: the table a `@memo(word)` fn keeps. Any
-/// module may declare one (R06.4.1).
-pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, String> {
-    (mods
-        .iter()
-        .flat_map(|m| m.items.iter())
-        .flat_map(|it| &it.stmts))
-    .filter_map(|s| match &s.kind {
-        StmtKind::Struct(sd) => (s.decorators.iter())
-            .find(|x| x.name.text == "memo_table")
-            .and_then(memo_word)
-            .map(|w| (w, sd.name.text.clone())),
-        _ => None,
-    })
-    .collect()
+/// The structs marked `@memo_table(word)`, by word: the module that declares the table a
+/// `@memo(word)` fn keeps, and its name there. Any module may declare one (R06.4.1).
+pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, (usize, String)> {
+    (mods.iter().enumerate())
+        .flat_map(|(mi, m)| {
+            m.items
+                .iter()
+                .flat_map(move |it| it.stmts.iter().map(move |s| (mi, s)))
+        })
+        .filter_map(|(mi, s)| match &s.kind {
+            StmtKind::Struct(sd) => (s.decorators.iter())
+                .find(|x| x.name.text == "memo_table")
+                .and_then(memo_word)
+                .map(|w| (w, (mi, sd.name.text.clone()))),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The name every module sees `@memo(word)`'s table under, whatever it imports: none a program
+/// can write, so the expansion finds the marked declaration and nothing in scope.
+pub fn memo_key(word: &str) -> String {
+    format!("$memo({word})")
 }
 
 /// A `@memo` that does not spell its storage: the table is spelled, never picked (R06.4.1).
@@ -1015,7 +1023,7 @@ pub(crate) fn memo_var(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> as
 /// it has the key and else runs the body and keeps its result, and `f.clear()`, which empties the
 /// table. The body's own calls of `f` go through the table.
 pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt, table: &str) -> [ast::Stmt; 3] {
-    let span = s.span;
+    let span = f.sig_span;
     let ex = |kind| ast::Expr { kind, span };
     let var = |n: &str| ex(ast::ExprKind::Name(n.to_string()));
     let arg = |value| ast::Arg {
@@ -1164,7 +1172,7 @@ pub fn memo_block<'s>(
                 match memo_table(s, tables) {
                     Some((f, t)) => {
                         at.push((out.len(), f));
-                        out.push(memo_var(f, s.span, t));
+                        out.push(memo_var(f, f.sig_span, t));
                         out.extend(memo_fns(f, s, t));
                     }
                     None => out.push(s.clone()),

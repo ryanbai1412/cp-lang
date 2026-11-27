@@ -443,6 +443,7 @@ fn pure<T>(e: &Expr<T>) -> bool {
         | EK::Tag(_)
         | EK::DomLen(_)
         | EK::DomLo(_)
+        | EK::DomHeld(_)
         | EK::HasBound(..) => true,
         EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().all(pure),
         EK::Inject(x) | EK::MakeUnion(_, x) => pure(x),
@@ -1032,9 +1033,13 @@ impl Lw<'_> {
             TK::HasBound(t, r) => mk(EK::HasBound(t.clone(), r.tr, r.args.clone())),
             TK::Ordinal(x) => {
                 let v = self.expr(x, out);
+                let kind = match held(&x.ty) {
+                    Some(h) => EK::Intr(Intr::Sub, vec![Arg::Value(v), Arg::Value(h)], 0),
+                    None => v.kind,
+                };
                 Expr {
                     site,
-                    kind: v.kind,
+                    kind,
                     ty: Ty::Int,
                 }
             }
@@ -1104,6 +1109,10 @@ impl Lw<'_> {
                 let last = op(Intr::Add, lo.clone(), last, Ty::Int);
                 check(op(Intr::Le, v.clone(), last, Ty::Bool), out);
                 let ord = op(Intr::Sub, v, lo, Ty::Int);
+                let ord = match held(t) {
+                    Some(h) => op(Intr::Add, ord, h, Ty::Int),
+                    None => ord,
+                };
                 let ord = self.spill(ord, out);
                 Expr {
                     site,
@@ -1189,11 +1198,11 @@ impl Lw<'_> {
                     msg: "a position past the domain's end".into(),
                     site,
                 });
-                Expr {
-                    site,
-                    kind: v.kind,
-                    ty,
-                }
+                let kind = match held(t) {
+                    Some(h) => EK::Intr(Intr::Add, vec![Arg::Value(v), Arg::Value(h)], 0),
+                    None => v.kind,
+                };
+                Expr { site, kind, ty }
             }
             TK::ReadInt => {
                 let v = mk(EK::Intr(Intr::ReadInt, vec![], site));
@@ -1710,4 +1719,19 @@ fn is_place(e: &TExpr) -> bool {
         TK::Field(b, _) => is_place(b),
         _ => false,
     }
+}
+
+/// What a position of `t` is held as, less its ordinal, when it may not be 0: a constant range's
+/// first integer, or a type parameter's, which link knows (`EK::DomHeld`).
+fn held(t: &Ty) -> Option<Expr<Ty>> {
+    let kind = match t {
+        Ty::Param(_) => EK::DomHeld(t.clone()),
+        Ty::Range(lo, _) if *lo != 0 => EK::Int(*lo),
+        _ => return None,
+    };
+    Some(Expr {
+        site: Default::default(),
+        kind,
+        ty: Ty::Int,
+    })
 }

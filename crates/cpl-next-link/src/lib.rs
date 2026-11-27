@@ -309,6 +309,14 @@ impl Link<'_> {
         self.index.insert(k, self.keys.len() - 1);
         self.keys.len() - 1
     }
+    /// A type argument as written: a constant range keeps its ends, so its instance is its own.
+    fn targ(&mut self, t: &Ty, env: &Env) -> CTy {
+        match t {
+            Ty::Range(lo, hi) => CTy::Range(*lo, *hi),
+            Ty::Param(i) => env.targs.get(*i).cloned().unwrap_or(CTy::Error),
+            t => self.ty(t, env),
+        }
+    }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
             Ty::Int | Ty::Range(..) | Ty::RangeOf(_) => CTy::Int,
@@ -326,14 +334,17 @@ impl Link<'_> {
                 t if plain(&|s| self.parts(s), &t, 0) => t,
                 t => CTy::Lent(Box::new(t)),
             },
-            Ty::Param(i) => env.targs.get(*i).cloned().unwrap_or(CTy::Error),
+            Ty::Param(i) => match env.targs.get(*i) {
+                Some(CTy::Range(..)) => CTy::Int,
+                t => t.cloned().unwrap_or(CTy::Error),
+            },
             Ty::Dom(d) => CTy::Dom(*d),
             Ty::Struct(d, ts, ss) => {
                 // A lend changes a struct only through a field that holds it: `Version<S>`
                 // keeps no `S`, so `Version<lent Arr>` is `Version<Arr>`.
                 let held = held_params(self.d, *d);
                 let ts: Vec<CTy> = (ts.iter().enumerate())
-                    .map(|(i, t)| match self.ty(t, env) {
+                    .map(|(i, t)| match self.targ(t, env) {
                         t if held.contains(&i) => t,
                         t => unlent(t),
                     })
@@ -374,7 +385,7 @@ impl Link<'_> {
                 0 => FuncKey::Decl(f.decl),
                 k => FuncKey::Ctx(f.decl, k),
             },
-            targs: f.targs.iter().map(|t| self.ty(t, env)).collect(),
+            targs: f.targs.iter().map(|t| self.targ(t, env)).collect(),
             sets: f.sets.iter().map(|s| self.set(s, env)).collect(),
         }
     }
@@ -471,7 +482,7 @@ impl Link<'_> {
                     .collect();
                 InstKey {
                     func: FuncKey::Lambda(*id),
-                    targs: ts.iter().map(|t| self.ty(t, env)).collect(),
+                    targs: ts.iter().map(|t| self.targ(t, env)).collect(),
                     sets,
                 }
             }
@@ -664,7 +675,7 @@ impl Link<'_> {
                 ret,
             } => {
                 let mut k = self.trait_key(tr, args, method, self_ty, env)?;
-                k.targs.extend(targs.iter().map(|t| self.ty(t, env)));
+                k.targs.extend(targs.iter().map(|t| self.targ(t, env)));
                 if let FuncKey::Decl(g) = k.func {
                     let mut out = vec![None; self.d.f(g).n_ret_sets];
                     let c = self.ty(ret, env);
@@ -684,14 +695,14 @@ impl Link<'_> {
     /// Whether `t` meets trait `tr` at `args` in this instance: an impl fits it, or the type
     /// meets the trait without one (a domain, for `Domain`).
     fn has_bound(&mut self, t: &Ty, tr: TraitId, args: &[Ty], env: &Env) -> bool {
-        let st = unlent(self.ty(t, env));
+        let st = unlent(self.targ(t, env));
         let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
             .map(|a| self.ty(a, env))
             .collect();
         let d = self.d;
         let by_impl = d.impls_of(tr).any(|im| {
             let mut binds = vec![None; im.generics.len()];
-            fit_cty(&im.for_, &st, &mut binds)
+            fits_head(im, &st, &mut binds)
                 && (d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 && blanket_met(d, im, &binds)
@@ -706,7 +717,7 @@ impl Link<'_> {
         self_ty: &Ty,
         env: &Env,
     ) -> Option<InstKey> {
-        let st = unlent(self.ty(self_ty, env));
+        let st = unlent(self.targ(self_ty, env));
         // `Self` of a trait's fn as an item nothing calls (`+` as a value): nothing runs it.
         if st == CTy::Error {
             return None;
@@ -736,7 +747,7 @@ impl Link<'_> {
         let mut found = None;
         for im in d.impls_of(*tr) {
             let mut binds = vec![None; im.generics.len()];
-            if !fit_cty(&im.for_, &st, &mut binds)
+            if !fits_head(im, &st, &mut binds)
                 || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 || !blanket_met(d, im, &binds)
@@ -794,8 +805,19 @@ impl Link<'_> {
             EK::Lent(p) => EK::Copy(self.place(p)),
             EK::AddrOf(p) => EK::AddrOf(p.clone()),
             EK::Tag(p) => EK::Tag(self.place(p)),
-            EK::DomLen(t) => EK::DomLen(self.ty(t, env)),
-            EK::DomLo(t) => EK::DomLo(self.ty(t, env)),
+            // A range with constant ends is the domain of its integers (R04.2.18).
+            EK::DomLen(t) => match self.targ(t, env) {
+                CTy::Range(lo, hi) => EK::Int((hi - lo + 1).max(0)),
+                t => EK::DomLen(t),
+            },
+            EK::DomLo(t) => match self.targ(t, env) {
+                CTy::Range(lo, _) => EK::Int(lo),
+                t => EK::DomLo(t),
+            },
+            EK::DomHeld(t) => match self.targ(t, env) {
+                CTy::Range(lo, _) => EK::Int(lo),
+                _ => EK::Int(0),
+            },
             EK::HasBound(t, tr, args) => EK::Bool(self.has_bound(t, *tr, args, env)),
             EK::MakeStruct(xs) => EK::MakeStruct(xs.iter().map(|x| self.expr(x, env)).collect()),
             EK::MakeClosure(xs) => EK::MakeClosure(xs.iter().map(|x| self.expr(x, env)).collect()),
@@ -1680,20 +1702,30 @@ fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
     }
     d.impls_of(tr).any(|im| {
         let mut b = vec![None; im.generics.len()];
-        fit_cty(&im.for_, t, &mut b)
+        fits_head(im, t, &mut b)
             && (im.bounds.iter()).all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, a, r.tr)))
     })
+}
+/// Whether an impl is for `t`: one for `_..=_` is for every range type but not `Int`.
+fn fits_head(im: &cpl_next_decls::decls::ImplDecl, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
+    !(im.ranges_only && *t == CTy::Int) && fit_cty(&im.for_, t, binds)
 }
 fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
     match (p, t) {
         (Ty::Param(i), _) => match &binds[*i] {
-            Some(b) => b == t,
+            // A range's values are `Int`s: `List<0..=9>`'s `T` meets `ListLiteral<Int>`.
+            Some(b) => {
+                b == t
+                    || [b, t]
+                        .iter()
+                        .all(|x| matches!(x, CTy::Int | CTy::Range(..)))
+            }
             None => {
                 binds[*i] = Some(t.clone());
                 true
             }
         },
-        (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), CTy::Int) => true,
+        (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), CTy::Int | CTy::Range(..)) => true,
         (Ty::Bool, CTy::Bool)
         | (Ty::Char, CTy::Char)
         | (Ty::U64, CTy::U64)

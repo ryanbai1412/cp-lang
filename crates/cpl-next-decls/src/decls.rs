@@ -260,6 +260,8 @@ pub struct ImplDecl {
     pub derived: bool,
     /// A std-derived impl a program's written one replaces (R08.1.6): no lookup finds it.
     pub replaced: bool,
+    /// `impl .. for _..=_`: for every range type, never `Int` itself; `for_` is `Int`.
+    pub ranges_only: bool,
 }
 /// What a top-level name declares.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -386,6 +388,8 @@ pub struct Decls {
     pub coercions: Vec<FnId>,
     /// The structs marked `@memo_table(word)`, by word: the table `@memo(word)` keeps (R06.4.1).
     pub memo_tables: HashMap<String, String>,
+    /// Each `@memo_table(word)` struct's module and name there, by word.
+    pub memo_homes: HashMap<String, (usize, String)>,
     /// Static fns marked `@from_op`: what a bare operator becomes where their struct is wanted (R08.1.9).
     pub from_op: Vec<FnId>,
     /// Core's `@pattern` fns: `f(p)` as a pattern matches the optional `f` makes when it is

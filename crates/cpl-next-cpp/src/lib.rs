@@ -454,7 +454,7 @@ impl Emit<'_> {
             return n;
         }
         let n = match t {
-            CTy::Int | CTy::Dom(_) | CTy::Error => "int64_t".to_string(),
+            CTy::Int | CTy::Range(..) | CTy::Dom(_) | CTy::Error => "int64_t".to_string(),
             CTy::Bool => "bool".to_string(),
             CTy::Char => "cpl_char".to_string(),
             CTy::U64 => "uint64_t".to_string(),
@@ -571,7 +571,9 @@ impl Emit<'_> {
                 format!("cpl_raw_text(\"{lit}\", {})", t.len())
             }
             EK::Unit => "cpl_unit{}".to_string(),
-            EK::DomLen(_) | EK::DomLo(_) => "/* unresolved domain value */".to_string(),
+            EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) => {
+                "/* unresolved domain value */".to_string()
+            }
             EK::HasBound(..) => "/* undecided bound test */".to_string(),
             EK::Copy(p) => self.place(p),
             EK::Lent(p) => format!("(&{})", self.place(p)),

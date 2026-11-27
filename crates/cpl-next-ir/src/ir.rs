@@ -385,6 +385,10 @@ pub enum EK<T> {
     DomLen(T),
     /// The integer of a domain type's first position. Resolved like `DomLen`.
     DomLo(T),
+    /// How far a position of a domain type is held from its ordinal: a range's or `Int`'s are
+    /// held as their integers, so its first one's; a declared domain's as ordinals, 0. Resolved
+    /// by the link step to a constant.
+    DomHeld(T),
     /// Generic IR only: whether a type meets a trait at its arguments (`if T: Tr<A>:`). The
     /// link step makes it a `Bool` and keeps only the branch it takes (R08.2.9).
     HasBound(T, TraitId, Vec<T>),
@@ -553,6 +557,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
             | EK::Text(_)
             | EK::DomLen(_)
             | EK::DomLo(_)
+            | EK::DomHeld(_)
             | EK::HasBound(..) => {}
         }
     }

@@ -1706,6 +1706,7 @@ fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
             | EK::Text(_)
             | EK::DomLen(_)
             | EK::DomLo(_)
+            | EK::DomHeld(_)
             | EK::HasBound(..) => None,
         }
     }

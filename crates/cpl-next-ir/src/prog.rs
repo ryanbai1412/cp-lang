@@ -23,6 +23,9 @@ pub enum CTy {
     Clo(Box<InstKey>),
     /// A domain declared in a body. Its values are positions; its size is a run-time value.
     Dom(usize),
+    /// `lo..=hi` as a type argument: `MemoArray<0..=90, V>` is an instance of its own, whose
+    /// `K.count` is 91. A value of it is an `Int`.
+    Range(i64, i64),
     Error,
 }
 pub type CSet = Vec<InstKey>;

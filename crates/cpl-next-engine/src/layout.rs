@@ -38,9 +38,14 @@ impl Layouts {
         }
         let (shape, size, owns) = match t {
             CTy::Unit | CTy::Error => (Shape::Zero, 0, false),
-            CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::F64 | CTy::Dom(_) | CTy::Ref(_) => {
-                (Shape::Word, 1, false)
-            }
+            CTy::Int
+            | CTy::Range(..)
+            | CTy::Bool
+            | CTy::Char
+            | CTy::U64
+            | CTy::F64
+            | CTy::Dom(_)
+            | CTy::Ref(_) => (Shape::Word, 1, false),
             CTy::Raw(_) => (Shape::Handle, 1, true),
             CTy::Lent(t) => {
                 let l = self.of(p, t);

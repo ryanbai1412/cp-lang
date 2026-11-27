@@ -258,7 +258,10 @@ fn layer(
             made
         })
         .collect();
-    let tables = crate::synth::memo_tables(mods);
+    d.memo_homes = crate::synth::memo_tables(mods);
+    let tables: HashMap<String, String> = (d.memo_homes.keys())
+        .map(|w| (w.clone(), crate::synth::memo_key(w)))
+        .collect();
     d.memo_tables = tables.clone();
     let synth: Vec<Vec<(ItemId, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
@@ -305,7 +308,7 @@ fn layer(
                 .chain(made)
             {
                 if let Some((f, t)) = crate::synth::memo_table(s, &tables).filter(|_| mi >= from) {
-                    main.push((item.clone(), crate::synth::memo_var(f, s.span, t)));
+                    main.push((item.clone(), crate::synth::memo_var(f, f.sig_span, t)));
                     continue;
                 }
                 if let (true, Some(name)) = (s.public, item_name(s)) {
@@ -1024,7 +1027,12 @@ fn layer(
                         ret_slots: None,
                         next_set: Some(0),
                     };
-                    let for_ = conv(&mut cx, target, &mut errors);
+                    let ranges_only = any_range(target);
+                    let for_ = if ranges_only {
+                        Ty::Int
+                    } else {
+                        conv(&mut cx, target, &mut errors)
+                    };
                     let tref =
                         trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
                     // An associated type is the argument the impl's body writes: `type Arc = A`.
@@ -1247,6 +1255,7 @@ fn layer(
                         module: mid,
                         derived,
                         replaced: false,
+                        ranges_only,
                     });
                 }
                 (StmtKind::Fn(f), _) => {
@@ -1403,6 +1412,12 @@ fn remake_views(
                 d.ambiguous.push(ambiguous);
             }
         }
+        for (w, (home, name)) in &d.memo_homes {
+            let t = (*home < sc.own.len()).then(|| sc.own[*home].get(name).copied());
+            if let Some(t) = t.flatten() {
+                Arc::make_mut(&mut d.views[mi]).insert(crate::synth::memo_key(w), t);
+            }
+        }
     }
 }
 
@@ -1553,4 +1568,10 @@ fn unimplemented(item: &ItemId, s: &ast::Stmt, errors: &mut Vec<Msg>) -> Unimple
         }
     }
     out
+}
+
+/// `_..=_` or `_.._` as an impl's type: every range type.
+fn any_range(t: &ast::Type) -> bool {
+    let hole = |e: &Option<Box<ast::Expr>>| matches!(e.as_deref().map(|e| &e.kind), Some(ast::ExprKind::Name(n)) if n == "_");
+    matches!(&t.kind, TypeKind::Range { lo, hi, .. } if hole(lo) && hole(hi))
 }
