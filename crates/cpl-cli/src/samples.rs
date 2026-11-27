@@ -16,7 +16,7 @@ struct Ran {
     /// The first difference from `expected`.
     differs: Option<String>,
     trap: Option<cpl_facade::Trap>,
-    lives: Vec<cpl_facade::today::trace::Live>,
+    lives: Vec<cpl_facade::Live>,
 }
 
 impl Ran {

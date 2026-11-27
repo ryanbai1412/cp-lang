@@ -39,4 +39,4 @@ pub use session::{
     JUDGE_DECORATORS,
 };
 pub use snapshot::{FileId, Snapshot, Text, World};
-pub use trace::{Divergence, Stage};
+pub use trace::{Assigned, Call, Change, Divergence, Live, Place, Shown, Stage, Step, Var};

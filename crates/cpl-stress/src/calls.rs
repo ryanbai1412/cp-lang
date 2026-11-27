@@ -2,8 +2,9 @@
 //! part that returns something else than its alt on the same arguments.
 //! `cpl stress` and the browser's in-process stress both explain with it.
 
-use cpl_facade::today::trace::{mentions, named_values, Recording};
+use cpl_facade::today::trace::{mentions, named_values};
 use cpl_facade::Divergence;
+use cpl_facade::Recording;
 
 /// With `@alt(f)` fns swapped in, the call of a part `f` that first
 /// returns something else than its alt does on the same arguments, with
@@ -91,11 +92,7 @@ pub fn first_call_divergence(
 /// A top-level `var` declared outside every fn that a later call of a fn
 /// starts with another value than its 1st call did: one test left it for
 /// the next. Each such variable's declaration, with both values.
-fn leaked(
-    source: &str,
-    rec: &Recording,
-    call: &cpl_facade::today::trace::Call,
-) -> Vec<(u32, String)> {
+fn leaked(source: &str, rec: &Recording, call: &cpl_facade::Call) -> Vec<(u32, String)> {
     let Some(first) = (rec.calls().iter()).find(|c| c.name == call.name && c.ordinal == 1) else {
         return Vec::new();
     };
@@ -142,8 +139,8 @@ fn leaked(
 fn same_args(
     lines: &[&str],
     body: &str,
-    first: &cpl_facade::today::trace::Call,
-    call: &cpl_facade::today::trace::Call,
+    first: &cpl_facade::Call,
+    call: &cpl_facade::Call,
 ) -> Vec<(u32, String)> {
     if first.args != call.args || first.returned == call.returned || first.returned.is_none() {
         return Vec::new();
@@ -190,8 +187,8 @@ fn body_of(lines: &[&str], name: &str) -> Option<std::ops::Range<usize>> {
 fn made(
     source: &str,
     rec: &Recording,
-    call: &cpl_facade::today::trace::Call,
-    own: &[cpl_facade::today::trace::Step],
+    call: &cpl_facade::Call,
+    own: &[cpl_facade::Step],
 ) -> Vec<(u32, String)> {
     let lines: Vec<&str> = source.lines().collect();
     let Some(last) = own.last() else {
@@ -398,7 +395,7 @@ fn writes(text: &str, name: &str) -> bool {
 
 /// With no step of a wrong call recorded, the `return`s in its body of
 /// the very value it gave: the only lines that make that value as it is.
-fn constant_returns(lines: &[&str], call: &cpl_facade::today::trace::Call) -> Vec<(u32, String)> {
+fn constant_returns(lines: &[&str], call: &cpl_facade::Call) -> Vec<(u32, String)> {
     let (Some(body), Some(value)) = (body_of(lines, &call.name), &call.returned) else {
         return Vec::new();
     };

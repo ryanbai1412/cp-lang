@@ -10,9 +10,8 @@
 use crate::judge::render_trap;
 use crate::{compile_side, Side};
 use cpl_diag::Shown;
-use cpl_facade::today::trace::{
-    first_change, first_change_in, Change, Recording, Replay, TraceConfig,
-};
+use cpl_facade::today::trace::{first_change, first_change_in, Replay, TraceConfig};
+use cpl_facade::{Change, Recording};
 use cpl_json::obj;
 pub(crate) use cpl_json::Value as Json;
 use std::collections::{BTreeMap, HashSet};
@@ -670,7 +669,7 @@ impl Session {
                 let pick = |recorded: &Recording| match &name {
                     None => crate::replay::call_at(recorded, step, frame),
                     Some(name) => {
-                        let named = |c: &&cpl_facade::today::trace::Call| &c.name == name;
+                        let named = |c: &&cpl_facade::Call| &c.name == name;
                         let open = recorded
                             .calls()
                             .iter()

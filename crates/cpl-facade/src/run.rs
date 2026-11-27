@@ -265,7 +265,7 @@ impl From<cpl_interp::Observed> for Outcome {
         Outcome {
             trap: observed.trap.map(Trap),
             debug: observed.debug,
-            recording: observed.recording.map(Recording),
+            recording: observed.recording.map(Recording::from),
             profile: observed.profile,
         }
     }

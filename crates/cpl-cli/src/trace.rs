@@ -1,7 +1,8 @@
 //! `cpl run --trace`, `cpl run --format json` and the tracing half of
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
-use cpl_facade::today::trace::{document, Recording, TraceConfig};
+use cpl_facade::today::trace::{document, TraceConfig};
+use cpl_facade::Recording;
 use cpl_stress::traced::Retraced;
 use std::path::Path;
 

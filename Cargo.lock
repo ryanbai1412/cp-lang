@@ -133,6 +133,7 @@ dependencies = [
  "cpl-diag",
  "cpl-interp",
  "cpl-ir",
+ "cpl-json",
 ]
 
 [[package]]
