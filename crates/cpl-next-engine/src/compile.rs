@@ -519,6 +519,14 @@ impl Fc<'_> {
         let l = self.lay(t);
         self.c.lays.owns[l as usize]
     }
+    /// Whether `r` is a word of one of the fn's locals, which an expression may read.
+    fn local_at(&mut self, r: Reg) -> bool {
+        let f = self.f;
+        (0..f.locals.len()).any(|l| {
+            let (o, n) = (self.off[l], self.size(&f.locals[l]));
+            (o..o + n).contains(&r)
+        })
+    }
     fn temp(&mut self, n: u32) -> Reg {
         let r = self.top;
         self.top += n;
@@ -653,6 +661,12 @@ impl Fc<'_> {
             Stmt::Return(e) => {
                 if let Some(e) = e {
                     let n = self.size(&e.ty);
+                    if n == 1 && !self.local_at(self.ret) {
+                        let ret = self.ret;
+                        self.expr(e, ret);
+                        self.leave(Leave::Return);
+                        return;
+                    }
                     let d = self.temp(n);
                     self.expr(e, d);
                     if n > 0 {
