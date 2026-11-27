@@ -1081,6 +1081,11 @@ impl<'a> Cx<'a> {
             }
             // An expression that never gives a value is the body, not its result (R01.6.7).
             FnBody::Expr(e) if e.leaves() => self.block(&one_stmt(e), Some(&ret)),
+            // A `()` fn's one expression is a statement: its value is dropped, as it would be
+            // last in a block (R06.1.1, R06.4.8).
+            FnBody::Expr(e) if e.bare_try().is_none() && self.shallow(&ret) == Ty::Unit => {
+                self.block(&one_stmt(e), Some(&ret))
+            }
             FnBody::Expr(e) => {
                 let v = match e.bare_try() {
                     Some(_) => self.extent(e, Some(&ret)),

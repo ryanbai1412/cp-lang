@@ -1738,6 +1738,7 @@ next/n_lambda_04_context_fixes_params.cp
 next/n_lambda_04_recursive.cp
 next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
+next/n_lambda_07_unit_body_drops.cp
 next/n_lends_01_result_lent_until_last_use.cp
 next/n_lends_02_write_before_last_use.cp
 next/n_let_02_underscore_runs_and_drops.cp

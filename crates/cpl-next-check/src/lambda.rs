@@ -166,8 +166,17 @@ impl Cx<'_> {
             self.stmt(&open, &mut pre);
         }
         // A body that ends in `return` has no value of its own to give the result.
-        let b = self.expr(body, Some(&ret));
+        // Where a `()` result is wanted the body is a statement, as a `fn`'s is:
+        // `(mut d, e) => d.unite(e.0, e.1)` drops `unite`'s `Bool` (R01.8.1, R06.4.8).
+        let unit = self.shallow(&ret) == Ty::Unit
+            && body.bare_try().is_none()
+            && !matches!(body.kind, ExprKind::Block(_));
+        let b = match unit {
+            true => self.block(&super::one_stmt(body), Some(&ret)),
+            false => self.expr(body, Some(&ret)),
+        };
         let b = match &b.kind {
+            _ if unit => b,
             TK::Block(ss, None) if matches!(ss.last(), Some(TStmt::Return(_))) => b,
             _ => self.coerce(b, &ret),
         };
