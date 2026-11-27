@@ -281,6 +281,16 @@ impl Walk<'_> {
             _ => false,
         }
     }
+    /// Whether a value of `t` has a fn value in it, which holds its captures.
+    fn holds_fn(&self, t: &CTy, depth: usize) -> bool {
+        match t {
+            CTy::Fn(_, _, _) | CTy::Clo(_) => true,
+            CTy::Struct(..) if depth < 8 => {
+                (self.p.parts(t).iter()).any(|f| self.holds_fn(f, depth + 1))
+            }
+            _ => false,
+        }
+    }
     fn plain(&self, t: &CTy) -> bool {
         fn go(w: &Walk, t: &CTy, depth: usize) -> bool {
             match t {
@@ -465,9 +475,7 @@ impl Walk<'_> {
         };
         let e = &*e;
         // A plain value (an `Int` field read among them) holds nothing; fn values hold captures.
-        if self.plain(&e.ty) && !matches!(e.ty, CTy::Clo(_) | CTy::Fn(_, _, _) | CTy::Struct(..))
-            || self.captures_nothing(&e.ty)
-        {
+        if self.plain(&e.ty) && !self.holds_fn(&e.ty, 0) || self.captures_nothing(&e.ty) {
             return BTreeSet::new();
         }
         let mut out = BTreeSet::new();

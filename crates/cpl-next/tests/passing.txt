@@ -2651,3 +2651,4 @@ next/n_read_from_02_a_read_impl_reads_its_input.cp
 next/n_str_is_empty_is_std_code.cp
 next/n_impl_05_fn_item_meets_a_fn_types_impl.cp
 next/n_gen_09_generator_fn_item_as_a_value.cp
+next/n_own_12_plain_tuple_read_from_a_list_is_a_copy.cp
