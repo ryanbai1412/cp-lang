@@ -15,7 +15,6 @@ Fields: `cnt: Int`.
 - `fn new() -> Marks<D>` — \(O(\lvert D \rvert)\); An empty mark set over `D`, with its stamp array allocated once.
 - `fn add(mut self, v: D) -> Bool` — \(O(1)\); Mark `v`.; traps: when `v` is outside `D`
 - `fn remove(mut self, v: D) -> Bool` — \(O(1)\); Unmark `v`.; traps: when `v` is outside `D`
-- `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` is marked; also spelled `v in m`.; traps: when `v` is outside `D`
 - `fn clear(mut self)` — \(O(1)\) amortized; \(O(\lvert D \rvert)\) on the call that wraps the counter; Unmark everything by moving to a new generation, without touching the stamp array.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of marked positions.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no position is marked; `len == 0`.
@@ -31,7 +30,6 @@ Fields: `vals: [D]T`, `default_val: T`, `gen: Int`, `cnt: Int`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of keys present.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no key is present; `len == 0`.
 - `@get fn items(self) -> yields (D, T)` — \(O(\lvert D \rvert)\): it scans the whole domain; Visit every set `(position, value)` pair.
-- `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` has a value.; traps: when `v` is outside `D`
 - `fn get(self, v: D) -> ?T` — \(O(1)\); The value at `v`, or `None` when `v` is absent.; traps: when `v` is outside `D`
 - `fn set(mut self, v: D, val: T)` — \(O(1)\); Give `v` the value `val`, adding `v` when it is absent and overwriting it otherwise.; traps: when `v` is outside `D`
 - `fn remove(mut self, v: D) -> ?T` — \(O(1)\); Remove `v` and return the value it had, or `None` (and change nothing) when it was absent.; traps: when `v` is outside `D`
@@ -51,7 +49,6 @@ Fields: `to_id: HashMap<K, Int>`, `keys: List<K>`.
 - `fn id(mut self, k: K) -> Int` — \(O(1)\) expected; The id of `k`.
 - `fn get(self, k: K) -> ?Int` — \(O(1)\) expected; The id of `k`, or `None` when `k` has not been interned; never adds a key.
 - `fn key(self, i: Int) -> K` — \(O(1)\); The key whose id is `i`; the inverse of `id`.; traps: when `i` is outside `0..len`
-- `fn contains(self, k: K) -> Bool` — \(O(1)\) expected; Whether `k` has been interned; `get(k) != None`.
 - `fn reserve(mut self, cap: Len)` — \(O(\mathit{len})\) when it grows (it moves the keys), \(O(1)\) otherwise; Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not reallocate.; traps: when `cap < 0` or `cap >= 2^31`
 
 ## `struct SparseSet<D>`
@@ -63,7 +60,6 @@ Fields: `dense: List<D>`, `pos: [D]Int`.
 - `fn new() -> SparseSet<D>` — \(O(\lvert D \rvert)\); An empty sparse set over `D`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the set has no elements; `len == 0`.
-- `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` is in the set.; traps: when `v` is outside `D`
 - `fn add(mut self, v: D) -> Bool` — \(O(1)\); Add `v` at the end of the dense order.; traps: when `v` is outside `D`
 - `fn remove(mut self, v: D) -> Bool` — \(O(1)\); Remove `v`, moving the last element of the dense order into its slot.; traps: when `v` is outside `D`
 - `fn clear(mut self)` — \(O(1)\); Remove every element by resetting the length; the sparse table is not touched.

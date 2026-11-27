@@ -34,7 +34,6 @@ Fields: `segs: Map<Int, Int>`, `total: Int`.
 - `fn new() -> IntervalSet<D>` — \(O(1)\); An empty set of positions of `D`.
 - `fn add(mut self, r: Range<D>)` — \(O((1 + \mathit{merged}) \log \mathit{runs})\) amortized; Add every position of `r`, merging runs that overlap or touch it into one maximal run.; traps: when a non-empty `r` reaches outside `D`
 - `fn remove(mut self, r: Range<D>)` — \(O((1 + \mathit{split}) \log \mathit{runs})\) amortized; Remove every position of `r`; a run straddling an end of `r` is cut there.; traps: when a non-empty `r` reaches outside `D`
-- `fn contains(self, i: D) -> Bool` — \(O(\log \mathit{runs})\); Whether position `i` is in the set.; traps: when `i` is outside `D`
 - `fn contains_range(self, r: Range<D>) -> Bool` — \(O(\log \mathit{runs})\); Whether every position of `r` is in the set, i.e.; traps: when a non-empty `r` reaches outside `D`
 - `fn run_at(self, i: D) -> ?Range<D>` — \(O(\log \mathit{runs})\); The maximal run containing position `i`, or `None` when `i` is not in the set.; traps: when `i` is outside `D`
 - `fn next_covered(self, from: D) -> ?D` — \(O(\log \mathit{runs})\); The first position at or after `from` that is in the set, or `None`.; traps: when `from` is outside `D`
@@ -52,7 +51,6 @@ Fields: `segs: Map<Int, Int>`, `total: Int`.
 - `fn new() -> SparseIntervalSet` — \(O(1)\); An empty set of `Int` coordinates, unbounded in both directions.
 - `fn add(mut self, r: Range<Int>)` — \(O((1 + \mathit{merged}) \log \mathit{runs})\) amortized; Add every coordinate of the half-open `r`, merging runs that overlap or touch it.
 - `fn remove(mut self, r: Range<Int>)` — \(O((1 + \mathit{split}) \log \mathit{runs})\) amortized; Remove every coordinate of the half-open `r`; a run straddling an end of `r` is cut there.
-- `fn contains(self, x: Int) -> Bool` — \(O(\log \mathit{runs})\); Whether the coordinate `x` is in the set.
 - `fn next_gap(self, x: Int) -> Int` — \(O(\log \mathit{runs})\); The least coordinate `>= x` that is not in the set; always exists, since the set is finite.
 - `@get fn covered(self) -> Int` — \(O(1)\); The total number of coordinates in the set.
 - `@get fn runs(self) -> Int` — \(O(1)\); The number of maximal intervals.

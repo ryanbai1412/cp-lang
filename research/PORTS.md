@@ -9,7 +9,7 @@ by today's compiler, with its token count; the gap is what the language
 still owes.
 
 Lints counts the `cpl lint --taste` findings (the `handbook/process/porting.md`
-checklist as lints L05xx; 5 over all ports).
+checklist as lints L05xx; 0 over all ports).
 
 | Added | Problem | Port | Tokens | Runtime | Taste | Lints | Areas | Frictions | First friction |
 |---|---|---|---|---|---|---|---|---|---|

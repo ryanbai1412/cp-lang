@@ -27,7 +27,6 @@ An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat a
 - `fn remove_all(mut self, x: K) -> Int` — \(O(\log n)\) expected; Remove all copies of `x` and return how many were removed.
 - `fn remove_at(mut self, c: BagCursor)` — \(O(\log n)\) expected; Remove one copy of the key at cursor `c`, as `remove(key_of(c))` would.; traps: never in release (a stale cursor removes an unspecified key); debug traps when the node of `c` has been freed
 - `fn count(self, x: K) -> Int` — \(O(\log n)\) expected; How many copies of `x` are currently in the bag.
-- `fn contains(self, x: K) -> Bool` — \(O(\log n)\) expected; Whether at least one copy of `x` is in the bag.
 - `@get fn first(self) -> ?K` — \(O(1)\); The smallest element, or `None` when empty.
 - `@get fn last(self) -> ?K` — \(O(1)\); The largest element, or `None` when empty.
 - `fn pop_first(mut self) -> ?K`
@@ -75,7 +74,6 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn add(mut self, x: K) -> Bool` — \(O(\log n)\) expected; Insert `x` if absent; returns `true` when `x` was newly inserted.
 - `fn remove(mut self, x: K) -> Bool` — \(O(\log n)\) expected; Remove `x` if present; returns `true` if removed.
 - `fn set(mut self, x: K, on: Bool)` — \(O(\log n)\) expected; Add `x` when `on` is true, or remove it otherwise, matching `Set.set` and `Bitset.set`.
-- `fn contains(self, x: K) -> Bool` — \(O(\log n)\) expected; Whether `x` is in the set.
 - `@get fn first(self) -> ?K` — \(O(1)\); Smallest key in the set, or `None`.
 - `@get fn last(self) -> ?K` — \(O(1)\); Largest key in the set, or `None`.
 - `fn pop_first(mut self) -> ?K`
@@ -107,7 +105,6 @@ Fields: `ks: SortedBag<K>`, `vals: List<V>`, `vfree: List<Int>`.
 - `fn clear(mut self)` — \(O(1)\); Remove all entries.
 - `fn take(mut self) -> SortedMap<K, V>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 - `fn get(self, k: K) -> ?V` — \(O(\log n)\) expected; Look up `k`, returning `None` if absent.
-- `fn contains(self, k: K) -> Bool` — \(O(\log n)\) expected; Whether `k` is present.
 - `fn set(mut self, k: K, v: V)` — \(O(\log n)\) expected; Insert or overwrite `k -> v` (W8 `IndexSet` backing `m[k] = v`).
 - `fn remove(mut self, k: K) -> ?V` — \(O(\log n)\) expected; Remove `k` and return its previous value, or `None` if absent.
 - `@get fn first(self) -> ?(K, V)` — \(O(1)\); Smallest `(key, val)` pair, or `None` if empty.
@@ -168,7 +165,6 @@ Fields: `bag: AugSortedBag<K, T>`.
 - `@get fn all(self) -> T` — \(O(1)\); Fold of all keys in the set.
 - `fn add(mut self, x: K) -> Bool` — \(O(\log n)\) expected; Insert `x`; returns true if `x` was new.
 - `fn remove(mut self, x: K) -> Bool` — \(O(\log n)\) expected; Remove `x`; returns true if `x` was present.
-- `fn contains(self, x: K) -> Bool` — \(O(\log n)\) expected; Whether `x` is present.
 - `fn rank(self, k: K) -> Int` — \(O(\log n)\) expected; Number of keys strictly less than `k`.
 - `fn nth(self, i: Int) -> ?K` — \(O(\log n)\) expected; The `i`-th smallest key (0-based), or `None`.
 - `@get fn first(self) -> ?K` — \(O(1)\); Smallest key, or `None`.

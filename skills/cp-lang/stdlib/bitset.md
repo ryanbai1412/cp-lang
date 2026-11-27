@@ -62,7 +62,6 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 - `@get fn cap(self) -> Int` — \(O(1)\); The bit capacity: valid indices are `0..cap`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of set bits, kept current by every update.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no bits are set, kept current by every update.
-- `fn contains(self, i: Int) -> Bool` — \(O(1)\); Whether bit `i` is set.; traps: when `i` is not in `0..cap`
 - `fn set(mut self, i: Int, on: Bool = true)` — \(O(1)\); Set bit `i` to `on` in place (W8 `IndexSet` backing `b[i] = on`).; traps: when `i` is not in `0..cap`
 - `fn add(mut self, i: Int) -> Bool` — \(O(1)\); Set bit `i` to 1; returns `true` if bit `i` was previously 0 (matches `Bitset.add`).; traps: when `i` is not in `0..cap`
 - `fn remove(mut self, i: Int) -> Bool` — \(O(1)\); Clear bit `i` to 0; returns `true` if bit `i` was previously 1 (matches `Bitset.remove`).; traps: when `i` is not in `0..cap`
@@ -99,7 +98,6 @@ Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (
 - `fn each(self) -> yields Int` — \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element; \(O(\mathit{bits})\) per element.
 - `fn add(mut self, x: Int)` — \(O(\mathit{bits})\) time, up to `bits` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^bits`
 - `fn remove(mut self, x: Int) -> Bool` — \(O(\mathit{bits})\); Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
-- `fn contains(self, x: Int) -> Bool` — \(O(\mathit{bits})\); Whether `x` is present at least once.
 - `fn count(self, x: Int) -> Int` — \(O(\mathit{bits})\); The multiplicity of `x` currently stored; zero when absent.
 - `fn xor_all(mut self, mask: Int)` — \(O(1)\); Apply a lazy global XOR mask: every stored `y` becomes `y ^ mask`.; traps: when `mask` is not in `0..2^bits`
 - `fn max_xor(self, x: Int) -> ?Int` — \(O(\mathit{bits})\); The maximum value of `x ^ y` over stored `y`, or `None` if empty.; traps: when `x` is not in `0..2^bits`

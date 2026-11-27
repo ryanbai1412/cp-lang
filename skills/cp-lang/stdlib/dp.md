@@ -77,7 +77,7 @@ One state reached by `backtrack`.
 - `fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int` — \(O(n \log n)\) time, \(O(n)\) memory, one `by` call per element; The length of the longest increasing subsequence ending at each position, compared by `by`; `strict: false` allows equal neighbours (non-decreasing).
 - `fn supermasks(m: Int, bits: 0..) -> yields Int` — \(O(2^(\mathit{bits} - \mathit{popcount}(m)))\); Every mask of `bits` bits containing `m`, increasing from `m` to `2^bits - 1`.; traps: when `bits < 0` or `m` is not in `0..2^bits`
 - `fn masks_of_size(bits: 0.., k: Int) -> yields Int` — \(O(C(\mathit{bits}, k))\); Every mask of `bits` bits with exactly `k` bits set, increasing (Gosper's hack).; traps: when `bits < 0` or `k < 0`
-- `fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>` — \(O(2^n)\) time and memory, one `op` call per non-empty mask, for n = `xs.len`; `out[mask]` is the fold under `op` of `xs[i]` for `i` in `mask`, in increasing `i`; `out[0]` is `op`'s identity (W10).
+- `fn subset_folds<T, M: FromOp<T>>(xs: List<T>, op: M) -> List<T>` — \(O(2^n)\) time and memory, one `op` call per non-empty mask, for n = `xs.len`; `out[mask]` is the fold under `op` of `xs[i]` for `i` in `mask`, in increasing `i`; `out[0]` is `op`'s identity (W10).
 - `fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>` — \(O(\mathit{visited})\) steps plus the cost of `next`; Depth-first backtracking from `start`, where `next(s)` yields the states one step on.
 
 ## Example

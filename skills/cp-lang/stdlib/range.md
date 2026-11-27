@@ -24,7 +24,6 @@ A run of positions of `D` read cyclically, possibly wrapping past the last posit
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\); traps: on an empty span
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
-- `fn contains(self, i: D) -> Bool` — \(O(1)\); Whether position `i` is in the run, counting the wrap past the last position.
 
 ## Functions
 

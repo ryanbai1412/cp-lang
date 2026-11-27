@@ -17,7 +17,6 @@ Fields: `default_val: V`, `salt: U64`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the map has no live entries.
 - `fn clear(mut self)` — \(O(\mathit{capacity})\); Remove all entries while keeping allocated capacity.
 - `fn get(self, k: Int) -> ?V` — \(O(1)\) expected; Look up `k`, returning `None` if absent.
-- `fn contains(self, k: Int) -> Bool` — \(O(1)\) expected; Whether `k` is currently present.
 - `fn set(mut self, k: Int, v: V)` — \(O(1)\) expected amortized; Insert or overwrite `k -> v`.
 - `fn get_or_insert(mut self, k: Int, v: V) -> V` — \(O(1)\) expected amortized; Return the value for `k`, inserting `v` first if `k` is absent.
 - `fn remove(mut self, k: Int) -> ?V` — \(O(1)\) expected; Remove `k` if present; returns its old value or `None`.
@@ -39,7 +38,6 @@ Fields: `m: HashMap<K, V>`, `init: V`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of keys with a stored entry.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no keys are stored.
 - `fn get(self, k: K) -> V` — \(O(1)\) expected; Value stored for `k`, or `init` if absent (does not insert).
-- `fn contains(self, k: K) -> Bool` — \(O(1)\) expected; Whether `k` currently has a stored entry.
 - `fn set(mut self, k: K, v: V)` — \(O(1)\) expected amortized; Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`).
 - `fn add(mut self, k: K, delta: V)` — \(O(1)\) expected amortized; Add `delta` to `k`'s value, removing `k` if the result equals `init`.; traps: never (overflow wraps in release, traps in debug)
 - `fn remove(mut self, k: K) -> ?V` — \(O(1)\) expected; Remove `k` and return its previous value, or `None` if absent.

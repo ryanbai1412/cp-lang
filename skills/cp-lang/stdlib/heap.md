@@ -59,7 +59,6 @@ Fields: `heap: List<D>`, `pos: [D]Int`, `keys: [D]?K`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of keys currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
 - `fn each(self) -> yields (D, K)` — \(O(\lvert D \rvert + n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every `(position, key)` entry in pop order; `for x in h` uses this.
-- `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` is currently in the heap.
 - `fn get(self, v: D) -> ?K` — \(O(1)\); Current priority of `v`, or `None` if absent.
 - `@get fn peek(self) -> ?(D, K)` — \(O(1)\); Pair `(v, key)` with the smallest key, or `None` if empty.
 - `fn clear(mut self)` — \(O(\mathit{len})\); Remove all entries from the heap.

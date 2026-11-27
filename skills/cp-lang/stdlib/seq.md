@@ -235,11 +235,11 @@ Fields: `k: Int,`.
 - `@get fn rev<S: Bidir>(self: S) -> Rev<S>` — \(O(1)\)
 - `@get fn items<S: Keyed<K, T>, K, T>(self: S) -> Items<S>` — \(O(1)\)
 - `@get fn first<S: Seq<T>, T>(self: S) -> ?T` — \(O(1)\)
-- `@get fn last<S: Bidir, T>(self: S) -> ?T` — \(O(1)\)
-- `fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T` — \(O(n)\) calls of `p` at most; The last element satisfying `p`, `None` if None does; walks backwards and stops there.; traps: never (beyond what `p` traps on)
+- `@get fn last<S: Bidir<T>, T>(self: S) -> ?T` — \(O(1)\)
+- `fn rfind<S: Bidir<T>, T>(self: S, p: T -> Bool) -> ?T` — \(O(n)\) calls of `p` at most; The last element satisfying `p`, `None` if None does; walks backwards and stops there.; traps: never (beyond what `p` traps on)
 - `fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)` — \(O(n \log n)\) comparisons, \(O(n)\) extra space; Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`.; traps: in `cpl run` and `--checked`, when `cmp` is not a strict weak order (`cmp(x, x)`, or both `cmp(a, b)` and `cmp(b, a)`); otherwise never (beyond what `by` or `cmp` traps on)
 - `fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>` — \(O(n \log n)\) comparisons, \(O(n)\) space; The elements of `self` sorted by `by` or `cmp`: the value form of `sort`.; traps: as `sort`
-- `fn reversed<S: Bidir, T>(self: S) -> List<T>` — \(O(n)\)
+- `fn reversed<S: Bidir<T>, T>(self: S) -> List<T>` — \(O(n)\)
 - `fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).; traps: when `range` falls outside the keys
 - `fn dedup<T>(mut self: List<T>)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
 - `fn deduped<S: Seq<T>, T>(self: S) -> List<T>` — \(O(n)\); `self` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
@@ -317,7 +317,7 @@ Fields: `k: Int,`.
 - `fn chunks_padded<S: Indexed, T>(self: S, k: 1.., pad: T) -> yields List<T>` — \(O(k)\) per chunk; \(O(n)\).; traps: when `k < 1`
 - `fn contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool` — \(O(n)\) comparisons; \(O(n)\).
 - `fn reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T` — \(O(n)\) calls of `f`; \(O(n)\).
-- `fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T` — \(O(n)\) calls of `op`; \(O(n)\).; traps: never (an `op` without a known identity is a compile-time error)
+- `fn fold<S: Seq<T>, T, M: FromOp<T>>(self: S, op: M) -> T` — \(O(n)\) calls of `op`; \(O(n)\).; traps: never (an `op` without a known identity is a compile-time error)
 - `fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc` — \(O(n)\) calls of `f`; \(O(n)\).
 - `fn max_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn min_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
