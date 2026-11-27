@@ -83,12 +83,31 @@ signature above does not change when the view lands.
 | `hover`, `definition` | Scope, Signatures | `items` |
 | `complete` (next) | Scope, Signatures | not built |
 
+### The editor queries lsp and lint still take from `today`
+
+About 66 of `facade_today_uses`' lines are lsp and lint reading the old
+checker (`cpl-check`) directly: its `Analysis`, `Facts` and `Ty`, and its
+built-in member tables. Each has a facade query to take its place,
+answered from cpl-next's views. None of them is wrapped over `cpl-check`
+in the meantime: a facade name for an old checker item only renames it,
+so the lines leave `today` when their query is answered from cpl-next.
+
+| `today` items | Query | Reads |
+|---|---|---|
+| `Analysis`, `Facts`, `Ty`, `types_in` (lint rules, semantic tokens, rename) | `type_at(span)`, `types_in(span)` over an opaque facade `Type` | the typed tree |
+| `reported` | `diagnostics(upto)` | as above |
+| `builtin_members`, `BUILTIN_MEMBERS`, `RANGE_MEMBERS`, `OPTIONAL_MEMBERS`, `POS_MEMBERS`, `domain_member_docs`, `split_builtin_params`, `is_list_form_hook`, `Receiver` | `members(type)` | Signatures: std's members are declarations, so no table is kept |
+| `arity_key`, `import_edit`, `prelude_uses`, `BUILTIN_TYPES` | `complete(at)` | Scope |
+| `DeclKind`, `CalleeKind` | the kind on `Item` | Signatures |
+| `interval`, `RangeEnds`, `Overflow` | `bounds(span)` | the typed tree's range types |
+| `Representation`, `human_bytes` | `layout(at)` | the linked program's layout |
+
 ## Trace and replay
 
-`cpl-facade` hands tools the old interpreter's step log through
+`cpl-facade` used to hand tools the old interpreter's step log through
 `today::trace` and `today::replay`: about 140 of `facade_today_uses`'
-lines (cli 77, stress 51, wasm 13). The trace query takes their place,
-shaped by contract 8 so stage 5's engine can answer it from its event
+lines (cli 77, stress 51, wasm 13). The trace query below has taken their
+place, and `today::trace` is gone. It is shaped by contract 8 so stage 5's engine can answer it from its event
 stream without a tool changing.
 
 ```rust
