@@ -807,7 +807,7 @@ impl Fc<'_> {
                     self.fail("an unresolved region call reached the engine");
                     return;
                 };
-                if *lend && self.lender_inlinable(*f, body) {
+                if *lend && self.inlinable_with_body(*f, body) {
                     let var = self.off[*var];
                     self.inline(*f, args, self.line(*site), 0, Some((var, body.clone())));
                     return;
@@ -835,7 +835,7 @@ impl Fc<'_> {
                 let lay = self.lay(&e.ty);
                 self.ops.push(Op::Yield { s, lay });
             }
-            Stmt::LendOut(p) if self.lending.is_some() => self.lend_in_place(p),
+            Stmt::LendOut(p) if self.lending.is_some() => self.hand_out_in_place(p),
             Stmt::LendOut(p) => {
                 let ty = self.place_ty(p);
                 let lay = self.lay(&ty);
@@ -914,7 +914,7 @@ fn touches(b: &[Stmt<CTy>], l: usize, all: bool) -> bool {
         Stmt::Switch(c, arms) => touches_in(c, l, all) || arms.iter().any(|a| touches(a, l, all)),
         Stmt::Check { cond, .. } => touches_in(cond, l, all),
         Stmt::Event(_, vs) => vs.iter().any(|v| touches_in(v, l, all)),
-        Stmt::Region { args, body, .. } => lends_in(args, l, all) || touches(body, l, all),
+        Stmt::Region { args, body, .. } => touches_args(args, l, all) || touches(body, l, all),
         Stmt::LendOut(p) => at(p),
         Stmt::Break | Stmt::Continue => false,
     })
@@ -922,7 +922,7 @@ fn touches(b: &[Stmt<CTy>], l: usize, all: bool) -> bool {
 fn touches_in(e: &Expr<CTy>, l: usize, all: bool) -> bool {
     match &e.kind {
         EK::AddrOf(p) | EK::Lent(p) => root(p) == Some(l),
-        EK::Intr(_, args, _) | EK::Call(_, args, _) => lends_in(args, l, all),
+        EK::Intr(_, args, _) | EK::Call(_, args, _) => touches_args(args, l, all),
         EK::CallValue(f, xs, _) => {
             touches_in(f, l, all) || xs.iter().any(|x| touches_in(x, l, all))
         }
@@ -931,10 +931,10 @@ fn touches_in(e: &Expr<CTy>, l: usize, all: bool) -> bool {
         _ => false,
     }
 }
-fn lends(args: &[Arg<CTy>], l: usize) -> bool {
-    lends_in(args, l, true)
+fn writes_args(args: &[Arg<CTy>], l: usize) -> bool {
+    touches_args(args, l, true)
 }
-fn lends_in(args: &[Arg<CTy>], l: usize, all: bool) -> bool {
+fn touches_args(args: &[Arg<CTy>], l: usize, all: bool) -> bool {
     args.iter().any(|a| match a {
         Arg::Value(v) => touches_in(v, l, all),
         Arg::Lend(p) => all && root(p) == Some(l),
@@ -1569,26 +1569,25 @@ impl<'a> Fc<'a> {
     }
     /// A lender inlined with the region body its caller hands it: one `lend`, which no flow
     /// of the body leaves.
-    fn lender_inlinable(&self, f: usize, body: &[Stmt<CTy>]) -> bool {
+    fn inlinable_with_body(&self, f: usize, body: &[Stmt<CTy>]) -> bool {
         let g = &self.funcs[f];
         matches!(g.region, Some((true, _)))
             && f != self.c.main as usize
             && !self.inlining.contains(&f)
             && self.inlining.len() < 4
             && cost(&g.body) < INLINE_COST
-            && lend_outs(&g.body) == 1
+            && hand_outs(&g.body) == 1
             && !leaves(body, 0)
     }
     /// An inlined lender's `lend`: the place moves to the region's variable, the caller's body
     /// runs in the caller's context, and the variable moves back, as `Op::LendOut` does.
-    fn lend_in_place(&mut self, p: &Place) {
+    fn hand_out_in_place(&mut self, p: &Place) {
         let Some(mut l) = self.lending.take() else {
             return;
         };
         let ty = self.place_ty(p);
-        let (n, lay) = (self.size(&ty), self.lay(&ty));
+        let n = self.size(&ty);
         let at = self.spot(p);
-        self.ops.push(Op::Drop { s: l.var, lay });
         self.take(l.var, at, n);
         let save = self.temp(1);
         self.ops.push(Op::Enter { line: 0, save });
@@ -1615,7 +1614,7 @@ impl<'a> Fc<'a> {
     }
     /// A call compiled into the caller: the callee's locals are registers of this frame, its
     /// `return` a jump to the end, and its lines, events and drops those of the call. A
-    /// lender gets the region body it lends to (`lend_in_place`).
+    /// lender gets the region body it lends to (`hand_out_in_place`).
     fn inline(
         &mut self,
         f: usize,
@@ -1680,7 +1679,7 @@ impl<'a> Fc<'a> {
                 }) if !writes(&g.body, l) && !drops.iter().any(|&(at, _)| at == off[l]) => *x,
                 _ => continue,
             };
-            if lends(args, x)
+            if writes_args(args, x)
                 || addressed(&self.f.body, x)
                 || lent_body.is_some_and(|b| writes(b, x))
             {
@@ -1768,13 +1767,13 @@ impl<'a> Fc<'a> {
 
 /// How many `lend`s a lender's body runs at most once each; one in a nested region counts
 /// as many.
-fn lend_outs(b: &[Stmt<CTy>]) -> usize {
+fn hand_outs(b: &[Stmt<CTy>]) -> usize {
     b.iter()
         .map(|s| match s {
             Stmt::LendOut(_) => 1,
-            Stmt::If(_, x, y) | Stmt::Loop(x, y, _) => lend_outs(x) + lend_outs(y),
-            Stmt::Switch(_, arms) => arms.iter().map(|a| lend_outs(a)).sum(),
-            Stmt::Region { body, .. } if lend_outs(body) > 0 => 2,
+            Stmt::If(_, x, y) | Stmt::Loop(x, y, _) => hand_outs(x) + hand_outs(y),
+            Stmt::Switch(_, arms) => arms.iter().map(|a| hand_outs(a)).sum(),
+            Stmt::Region { body, .. } if hand_outs(body) > 0 => 2,
             _ => 0,
         })
         .sum()

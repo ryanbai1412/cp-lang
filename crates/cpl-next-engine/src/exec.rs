@@ -677,7 +677,6 @@ impl M<'_> {
                     };
                     let (v, n) = (self.frames[rg.fr].fp + rg.var as usize, self.size(lay));
                     let loc = self.loc(fp, p)?;
-                    self.release(lay, Loc::stack(v));
                     self.read(loc, v, n);
                     let was = self.cur;
                     self.cur = rg.fr;

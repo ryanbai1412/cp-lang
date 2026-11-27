@@ -1119,7 +1119,7 @@ mod tests {
     /// A drop of a register still zero on every way in becomes a zero, and both go when
     /// nothing reads the register; a drop after the register is set again stays.
     #[test]
-    fn a_drop_of_a_register_still_zero_goes() {
+    fn a_release_of_a_register_still_zero_goes() {
         let mut ops = vec![
             Op::Zero { d: 1, n: 1 },
             Op::JumpUnless { c: 5, t: 3 },
