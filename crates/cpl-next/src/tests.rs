@@ -230,7 +230,8 @@ fn outcome(std: &Std, src: &str) -> String {
     match compile(std, src, &Roots::std(), true, None, Checks::CHECKED) {
         Ok(c) => {
             let o = raw(&c);
-            let events: String = o.events.iter().map(|e| format!("{e}\n")).collect();
+            let funcs = c.form(Form::Raw).1;
+            let events: String = o.events.iter().map(|e| e.line(funcs) + "\n").collect();
             format!("{}\n{}{events}{}", c.cpp(), o.output, o.trap.is_some())
         }
         Err(ds) => ds.iter().map(|d| format!("{d}\n")).collect(),
@@ -1065,7 +1066,9 @@ fn each_inst_call(b: &[Stmt<CTy>], f: &mut dyn FnMut(usize, &[cpl_next_ir::ir::A
                 }
                 each_inst_call(body, f)
             }
-            Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(x, f)),
+            Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
+                xs.iter().for_each(|x| expr(x, f))
+            }
             _ => {}
         }
     }
@@ -1504,4 +1507,56 @@ fn streamed_input_reads_as_fixed_input_does() {
         assert!(o.trap.is_none());
         assert_eq!(o.output, want.output);
     }
+}
+
+/// Events name their statement by its fn and site, the same on the interpreter and the engine,
+/// and `At` lines two runs up by call path and visit, not by position in the stream.
+#[test]
+fn events_carry_sites_and_line_up_by_at() {
+    use cpl_next_ir::ir::EventKind;
+    use cpl_next_ir::run::{at, RunInput};
+    let src = "var total = 0\nfn add(x: Int) -> Int = x + 1\nfn bump(k: Int):\n    \
+total = total + add(k)\nlet n: Int = read()\nfor i in 0..n:\n    bump(i)\nprint(total)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let funcs = c.form(Form::Raw).1;
+    let (p, fs) = c.form(Form::Raw);
+    let (two, three) = (
+        cpl_next_interp::run(p, fs, RunInput::fixed("2")),
+        cpl_next_interp::run(p, fs, RunInput::fixed("3")),
+    );
+    assert_eq!(two.events, c.run("2").events);
+    let ats = |o: &Outcome| at(&o.events, funcs);
+    let (a2, a3) = (ats(&two), ats(&three));
+    assert!(
+        a3.starts_with(&a2[..a2.len() - 1]),
+        "a longer run shares the shorter one's start"
+    );
+    let adds: Vec<_> = (two.events.iter().zip(&a2))
+        .filter(|(e, _)| e.kind == EventKind::Enter && funcs[e.func as usize].name == "add")
+        .map(|(_, a)| a)
+        .collect();
+    assert_eq!(adds.len(), 2);
+    assert_ne!(
+        adds[0].call, adds[1].call,
+        "each call of `bump` is its own call path"
+    );
+    assert_eq!((adds[0].nth, adds[0].site.item.name.as_ref()), (0, "add"));
+    let writes = (two.events.iter().zip(&a2)).filter(
+        |(e, _)| matches!(&e.kind, EventKind::Write { shown, .. } if shown.as_ref() == "total"),
+    );
+    let sites: Vec<_> = writes.map(|(_, a)| a.site.clone()).collect();
+    assert_eq!(sites.len(), 3);
+    assert_eq!(
+        sites[1], sites[2],
+        "both writes in `bump` are one statement"
+    );
+    assert_ne!(sites[0], sites[1]);
 }

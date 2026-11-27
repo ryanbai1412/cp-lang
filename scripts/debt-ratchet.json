@@ -330,6 +330,8 @@
   "next_wrong_accepts": 20,
   "next_core_checks": 21,
   "next_ignored_settings": 0,
+  "event_labels": 0,
+  "trace_old_interp_uses": 58,
   "next_ownership_outside_own": 0,
   "fast_unchecked": 0,
   "next_lent_outside_own": 0,

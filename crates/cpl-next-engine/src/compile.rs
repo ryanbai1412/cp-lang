@@ -400,7 +400,9 @@ pub(crate) struct FnCode {
     pub drops: Vec<(Reg, Lay)>,
 }
 pub(crate) struct EventCode {
-    pub label: String,
+    pub kind: cpl_next_ir::ir::EventKind,
+    pub func: u32,
+    pub site: cpl_next_ir::ir::Site,
     pub vals: Vec<(Reg, Kind, Lay)>,
 }
 
@@ -793,9 +795,9 @@ impl Fc<'_> {
                     msg: m,
                 });
             }
-            Stmt::Event(label, vals) => {
-                let mut regs = Vec::with_capacity(vals.len());
-                for v in vals {
+            Stmt::Event(ev) => {
+                let mut regs = Vec::with_capacity(ev.vals.len());
+                for v in &ev.vals {
                     let n = self.size(&v.ty);
                     let d = self.temp(n);
                     self.expr(v, d);
@@ -804,7 +806,9 @@ impl Fc<'_> {
                 }
                 let e = self.c.events.len() as u32;
                 self.c.events.push(EventCode {
-                    label: label.clone(),
+                    kind: ev.kind.clone(),
+                    func: ev.func,
+                    site: ev.site,
                     vals: regs,
                 });
                 self.ops.push(Op::Event { e });
@@ -1544,7 +1548,7 @@ fn cost(b: &[Stmt<CTy>]) -> usize {
                 Stmt::Loop(a, b, _) => cost(a) + cost(b),
                 Stmt::Switch(c, arms) => e(c) + arms.iter().map(|a| cost(a)).sum::<usize>(),
                 Stmt::Check { cond, .. } => e(cond),
-                Stmt::Event(_, vs) => vs.iter().map(e).sum(),
+                Stmt::Event(cpl_next_ir::ir::EventPoint { vals: vs, .. }) => vs.iter().map(e).sum(),
                 Stmt::Region { .. } | Stmt::Yield(_) => INLINE_COST,
                 Stmt::LendOut(_) | Stmt::Drop(_) => 0,
                 Stmt::Break | Stmt::Continue => 0,

@@ -81,7 +81,9 @@ impl Shares<'_> {
                     self.args(args);
                     self.block(body);
                 }
-                Stmt::Event(_, xs) => xs.iter().for_each(|x| self.expr(x)),
+                Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
+                    xs.iter().for_each(|x| self.expr(x))
+                }
                 Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
             }
         }

@@ -2,6 +2,7 @@
 //! After lowering, anything that can trap or has an effect is its own statement:
 //! expressions are pure. That fixes evaluation order for every backend.
 use crate::ty::*;
+use std::sync::Arc;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum FuncKey {
@@ -261,6 +262,46 @@ impl Intr {
 /// called std. Every instance of a generic fn keeps its sites.
 pub type Site = u32;
 
+/// What an event point reports (contract 8's `Semantic`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum EventKind {
+    /// Its fn's body starts; the values are its shown parameters.
+    Enter,
+    /// Its fn returns; the value is its shown result, if any.
+    Exit,
+    /// Top-level binding `global` of the user's file was written; the value is what it holds.
+    /// `shown` is only what a trace calls it.
+    Write { global: u32, shown: Arc<str> },
+}
+
+impl EventKind {
+    /// What a trace line calls it, inside fn `f`.
+    pub fn label(&self, f: &str) -> String {
+        match self {
+            EventKind::Enter => format!("enter {f}"),
+            EventKind::Exit => format!("exit {f}"),
+            EventKind::Write { shown, .. } => format!("set {shown}"),
+        }
+    }
+}
+
+/// An event point: what it reports, where, and the values it shows. `func` and `site` name
+/// the statement it belongs to, `func`'s `sites[site]`, wherever the statement is moved to.
+#[derive(Clone, Debug)]
+pub struct EventPoint<T> {
+    pub kind: EventKind,
+    pub func: u32,
+    pub site: Site,
+    pub vals: Vec<Expr<T>>,
+}
+
+impl<T> EventPoint<T> {
+    /// What a trace line calls it.
+    pub fn label<U>(&self, funcs: &[Func<U>]) -> String {
+        self.kind.label(&funcs[self.func as usize].name)
+    }
+}
+
 /// What a `Check` statement checks, which decides the code its trap carries.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CheckKind {
@@ -445,8 +486,8 @@ pub enum Stmt<T> {
     /// Ownership's release of the value a place holds: at an overwrite, or of a discarded
     /// value's temporary. The place holds no value after it until it is set again.
     Drop(Place),
-    /// A point a trace reports: a label and the values to show. Placed on instance IR, on request only.
-    Event(String, Vec<Expr<T>>),
+    /// A point a trace reports. Placed on instance IR, on request only.
+    Event(EventPoint<T>),
     /// A condition that holds here, which lowering states for the facts (a `for` variable at
     /// or after its start). No backend runs it; the reference interpreter checks it.
     Fact(Expr<T>),
@@ -588,7 +629,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
                 visit_places(body, f);
             }
             Stmt::LendOut(p) | Stmt::Drop(p) => place(p, f),
-            Stmt::Event(_, xs) => xs.iter_mut().for_each(|x| expr(x, f)),
+            Stmt::Event(EventPoint { vals: xs, .. }) => xs.iter_mut().for_each(|x| expr(x, f)),
             Stmt::Break | Stmt::Continue => {}
         }
     }
@@ -626,7 +667,7 @@ fn touches<T>(b: &[Stmt<T>], l: usize, all: Touch) -> bool {
         Stmt::Loop(a, b, _) => touches(a, l, all) || touches(b, l, all),
         Stmt::Switch(c, arms) => touches_in(c, l, all) || arms.iter().any(|a| touches(a, l, all)),
         Stmt::Check { cond, .. } => touches_in(cond, l, all),
-        Stmt::Event(_, vs) => vs.iter().any(|v| touches_in(v, l, all)),
+        Stmt::Event(EventPoint { vals: vs, .. }) => vs.iter().any(|v| touches_in(v, l, all)),
         Stmt::Region { args, body, .. } => touches_args(args, l, all) || touches(body, l, all),
         Stmt::LendOut(p) | Stmt::Drop(p) => at(p),
         Stmt::Break | Stmt::Continue => false,

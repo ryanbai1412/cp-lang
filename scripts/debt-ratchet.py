@@ -1610,6 +1610,24 @@ def next_ignored_settings(root: Path) -> list[str]:
             for n in re.findall(r'"(\w+)"', m.group(1))]
 
 
+def event_labels(root: Path) -> list[str]:
+    """New-pipeline events named by a label string: `Stmt::Event(format!(..), ..)`, or a backend
+    matching one apart as `Event(label, ..)`. An event is a typed point (kind, fn, site) that the facade
+    renders; a label is a second, textual answer to which event fired (events.md). Target 0."""
+    pat = re.compile(r'Event\(\s*(?:format!|"|String::|label\b)')
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            for i, l in enumerate(_lines(p), 1) if pat.search(l)]
+
+
+def trace_old_interp_uses(root: Path) -> list[str]:
+    """Tool and facade lines naming `cpl_interp::trace`, the old pipeline's step log. Trace and
+    the debugger read the new pipeline's event stream instead; the count reaches 0 at the switch
+    that deletes `cpl-interp` (events.md, migration rule 13)."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, tests=False)
+            if not _rel(root, p).startswith("crates/cpl-interp/")
+            for i, l in enumerate(_lines(p), 1) if "cpl_interp::trace" in l]
+
+
 def next_name_compares(root: Path) -> list[str]:
     """Places new-pipeline code compares source text against a fixed identifier: `== "print"`,
     a `"Some" =>` match arm, `matches!(.., "todo")`, `.eq("on")`. Each is the compiler knowing a
@@ -4453,7 +4471,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"next_oracle_callers", "next_ignored_settings","next_layout_outside_table", 
+HARD_ZERO = frozenset({"next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
@@ -4608,6 +4626,8 @@ COUNTERS = {
     "next_late_rejects": ("cases the spec accepts that link or own rejects with a user code: unbuilt features said as errors (Core)", next_late_rejects, True),
     "next_core_checks": ("new-pipeline code singling out core or a std module by id or name (Core)", next_core_checks, True),
     "next_ignored_settings": ("new-pipeline settings accepted and then ignored: an empty arm over source names (Core)", next_ignored_settings, True),
+    "event_labels": ("new-pipeline events named by a label string instead of a typed point (Core)", event_labels, True),
+    "trace_old_interp_uses": ("tool and facade lines reading the old interpreter's trace (Core)", trace_old_interp_uses, True),
     "next_name_compares": ("new-pipeline comparisons of source text against a fixed identifier: names known by text (Core)", next_name_compares, True),
     "next_library_gates": ("new-pipeline checks of whether a module is a library: std-only rules (Core)", next_library_gates, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),

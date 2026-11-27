@@ -155,6 +155,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         let before = lw.errors.len();
         let fd = d.f(*id);
         lw.off = fd.item.clone();
+        lw.sites[0] = fd.item.at(Span::default());
         lw.kept = typed.checks;
         lw.made =
             matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Impl(k)) if d.impls[k].derived);
@@ -1631,6 +1632,7 @@ fn breaks(stmts: &[Stmt<Ty>]) -> bool {
 }
 
 /// A fn's site tables before its first site: site 0, which has no place.
+/// Site 0 is the fn as a whole: where its calls enter and leave, and where compiler-made code is.
 fn fresh_sites() -> (Vec<SourceId>, Vec<u32>) {
     let nowhere = ItemId::file(cpl_next_decls::modules::PROGRAM.into()).at(Span::default());
     (vec![nowhere], vec![0])

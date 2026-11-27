@@ -10,7 +10,9 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, CSet, CTy, InstKey, Program};
 
+mod events;
 mod share;
+pub use events::add_events;
 
 struct Link<'a> {
     /// The type of a slot a value of a type is lent in: ownership's rule (`cpl_next_own`).
@@ -702,9 +704,12 @@ impl Link<'_> {
                 Stmt::Yield(e) => Stmt::Yield(self.expr(e, env)),
                 Stmt::LendOut(p) => Stmt::LendOut(p.clone()),
                 Stmt::Drop(p) => Stmt::Drop(p.clone()),
-                Stmt::Event(l, vs) => {
-                    Stmt::Event(l.clone(), vs.iter().map(|v| self.expr(v, env)).collect())
-                }
+                Stmt::Event(ev) => Stmt::Event(EventPoint {
+                    kind: ev.kind.clone(),
+                    func: ev.func,
+                    site: ev.site,
+                    vals: ev.vals.iter().map(|v| self.expr(v, env)).collect(),
+                }),
                 Stmt::Region {
                     target,
                     args,
@@ -1645,106 +1650,6 @@ fn thread_values(p: &mut Program, whole: &Whole) {
                 "a domain's size is used in a fn that neither declares it nor is handed it",
             ));
         }
-    }
-}
-
-/// Contract 8: event points, placed on instance IR after the link step, only when asked for.
-/// They are not in generic IR and are not uses for ownership. Reported here: entering and
-/// leaving a fn of the user's file, and each write to one of its top-level bindings.
-pub fn add_events(p: &mut Program, whole: &Whole) {
-    fn shown(t: &CTy) -> bool {
-        matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Dom(_))
-    }
-    fn block(b: Vec<Stmt<CTy>>, exit: Option<&str>, whole: &Whole) -> Vec<Stmt<CTy>> {
-        let mut out = Vec::new();
-        for s in b {
-            match s {
-                Stmt::Return(e) => {
-                    if let Some(name) = exit {
-                        out.push(Stmt::Event(
-                            format!("exit {name}"),
-                            e.iter().filter(|e| shown(&e.ty)).cloned().collect(),
-                        ));
-                    }
-                    out.push(Stmt::Return(e));
-                }
-                Stmt::Assign(Place::Global(g), e) => {
-                    let global = whole.global(cpl_next_ir::whole::GlobalId(g));
-                    let (top, name, ty) = (
-                        global.is_some_and(|x| x.top),
-                        global.map(|x| x.name.clone()).unwrap_or_default(),
-                        e.ty.clone(),
-                    );
-                    out.push(Stmt::Assign(Place::Global(g), e));
-                    if top && shown(&ty) && !name.contains('$') {
-                        out.push(Stmt::Event(
-                            format!("set {name}"),
-                            vec![Expr {
-                                site: 0,
-                                kind: EK::Copy(Place::Global(g)),
-                                ty,
-                            }],
-                        ));
-                    }
-                }
-                Stmt::If(c, a, b2) => {
-                    out.push(Stmt::If(c, block(a, exit, whole), block(b2, exit, whole)))
-                }
-                Stmt::Loop(a, b2, s) => {
-                    out.push(Stmt::Loop(block(a, exit, whole), block(b2, exit, whole), s))
-                }
-                Stmt::Switch(c, arms) => out.push(Stmt::Switch(
-                    c,
-                    arms.into_iter().map(|a| block(a, exit, whole)).collect(),
-                )),
-                Stmt::Region {
-                    target,
-                    args,
-                    var,
-                    lend,
-                    body,
-                    site,
-                    body_site,
-                } => out.push(Stmt::Region {
-                    target,
-                    args,
-                    var,
-                    lend,
-                    body: block(body, exit, whole),
-                    site,
-                    body_site,
-                }),
-                other => out.push(other),
-            }
-        }
-        out
-    }
-    for f in &mut p.insts {
-        let user_fn = match &f.key {
-            FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
-                whole.program_fns.contains(id) && f.region.is_none()
-            }
-            _ => false,
-        };
-        let body = std::mem::take(&mut f.body);
-        let name = f.name.clone();
-        let mut body = block(body, if user_fn { Some(&name) } else { None }, whole);
-        if user_fn {
-            let args = f.params[f.n_captures..]
-                .iter()
-                .filter(|(l, _)| shown(&f.locals[*l]))
-                .map(|(l, _)| Expr {
-                    site: 0,
-                    kind: EK::Copy(Place::Local(*l)),
-                    ty: f.locals[*l].clone(),
-                })
-                .collect();
-            body.insert(0, Stmt::Event(format!("enter {name}"), args));
-            if f.ret == CTy::Unit {
-                body.push(Stmt::Event(format!("exit {name}"), vec![]));
-            }
-        }
-        f.body = body;
     }
 }
 

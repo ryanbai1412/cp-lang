@@ -136,7 +136,7 @@ fn real_main() {
         _ => c.run(&input),
     };
     print!("{}", o.output);
-    eprint!("{}", said(&o));
+    eprint!("{}", said(c, &o));
     if o.trap.is_some() {
         std::process::exit(3);
     }
@@ -257,8 +257,9 @@ fn oracle(c: &cpl_next::facade::Program, form: Form, input: &str) -> cpl_next::O
 }
 
 /// What a run writes to stderr: its events, then its trap.
-fn said(o: &cpl_next::Outcome) -> String {
-    let mut s: String = o.events.iter().map(|e| format!("{e}\n")).collect();
+fn said(c: &cpl_next::facade::Program, o: &cpl_next::Outcome) -> String {
+    let funcs = c.form(Form::Raw).1;
+    let mut s: String = o.events.iter().map(|e| e.line(funcs) + "\n").collect();
     if let Some(t) = &o.trap {
         s += &format!("trap: {}: line {}: {}\n", t.code(), t.line, t.msg);
         if t.stack.len() > 1 {
@@ -290,7 +291,7 @@ fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input
             None => c.run(input),
         };
         write(&format!("{name}.out"), &o.output);
-        write(&format!("{name}.err"), &said(&o));
+        write(&format!("{name}.err"), &said(c, &o));
         write(
             &format!("{name}.code"),
             if o.trap.is_some() { "3" } else { "0" },

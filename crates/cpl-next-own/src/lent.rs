@@ -189,7 +189,9 @@ impl Lw<'_> {
                 self.expr(fr, e)
             }
             Stmt::Return(e) => e.iter_mut().for_each(|e| self.expr(fr, e)),
-            Stmt::Event(_, es) => es.iter_mut().for_each(|e| self.expr(fr, e)),
+            Stmt::Event(cpl_next_ir::ir::EventPoint { vals: es, .. }) => {
+                es.iter_mut().for_each(|e| self.expr(fr, e))
+            }
             Stmt::If(c, a, b) => {
                 self.expr(fr, c);
                 self.block(fr, a);
@@ -613,7 +615,9 @@ fn each_call(b: &[Stmt<Ty>], f: &mut impl FnMut(&Target<Ty>, &[Arg<Ty>])) {
             | Stmt::Fact(e)
             | Stmt::Check { cond: e, .. } => ex(e, f),
             Stmt::Return(e) => e.iter().for_each(|e| ex(e, f)),
-            Stmt::Event(_, es) => es.iter().for_each(|e| ex(e, f)),
+            Stmt::Event(cpl_next_ir::ir::EventPoint { vals: es, .. }) => {
+                es.iter().for_each(|e| ex(e, f))
+            }
             Stmt::If(c, a, b) => {
                 ex(c, f);
                 each_call(a, f);

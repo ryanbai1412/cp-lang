@@ -241,7 +241,7 @@ impl Placer<'_> {
             | Stmt::If(e, ..)
             | Stmt::Switch(e, _)
             | Stmt::Check { cond: e, .. } => self.expr(e, out),
-            Stmt::Event(_, es) => self.fields(es, out),
+            Stmt::Event(cpl_next_ir::ir::EventPoint { vals: es, .. }) => self.fields(es, out),
             Stmt::Region { target, args, .. } => {
                 let views = self.callee(target);
                 self.args(&views, args, out)

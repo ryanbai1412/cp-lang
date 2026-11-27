@@ -422,7 +422,9 @@ impl Emit<'_> {
                     });
                     self.name_built(body);
                 }
-                Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(self, x)),
+                Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
+                    xs.iter().for_each(|x| expr(self, x))
+                }
                 Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
             }
         }
@@ -795,9 +797,10 @@ impl Emit<'_> {
                     self.expr(e)
                 ),
                 // Events go to stderr in order; stdout is flushed first so the two streams line up.
-                Stmt::Event(label, vals) => {
-                    put_line!(s, "{pad}fputs({:?}, stderr);", format!("ev {label}"));
-                    for v in vals {
+                Stmt::Event(ev) => {
+                    let label = format!("ev {}", ev.label(self.funcs));
+                    put_line!(s, "{pad}fputs({label:?}, stderr);");
+                    for v in &ev.vals {
                         put_line!(s, "{pad}cpl_ev({});", self.expr(v));
                     }
                     put_line!(s, "{pad}fputc('\\n', stderr);");

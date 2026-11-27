@@ -7,7 +7,7 @@ use crate::Stop;
 use cpl_next_ir::ir::{Func, Intr};
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::CTy;
-use cpl_next_ir::run::{call_stack, Outcome, Trap};
+use cpl_next_ir::run::{call_stack, Fired, Outcome, Trap};
 use cpl_next_ir::run::{Io, Limits, RunInput, Stack};
 
 struct Obj {
@@ -78,7 +78,7 @@ struct M<'a> {
     free: Vec<u32>,
     frames: Vec<Frame>,
     out: String,
-    events: Vec<String>,
+    events: Vec<Fired>,
     input: ops::Input,
     rand: u64,
     at: u32,
@@ -818,18 +818,24 @@ impl M<'_> {
                 }
                 Op::Event { e } => {
                     let ev = &c.events[e as usize];
-                    let mut line = format!("ev {}", ev.label);
+                    let mut vals = Vec::with_capacity(ev.vals.len());
                     for &(s, kind, lay) in &ev.vals {
-                        line.push(' ');
+                        let mut shown = String::new();
                         match scalar(self.stack[r(s)], kind) {
-                            Some(v) => ops::show(v, &mut line),
+                            Some(v) => ops::show(v, &mut shown),
                             None => {
-                                line.push('?');
+                                shown.push('?');
                                 self.release(lay, Loc::stack(r(s)));
                             }
                         }
+                        vals.push(shown);
                     }
-                    self.events.push(line);
+                    self.events.push(Fired {
+                        kind: ev.kind.clone(),
+                        func: ev.func,
+                        site: ev.site,
+                        vals,
+                    });
                 }
                 Op::RawEmpty { d, elem } => {
                     self.stack[r(d)] = u64::from(self.alloc(elem, 0, Vec::new()))

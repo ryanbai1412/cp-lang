@@ -384,7 +384,9 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
                     p => self.read(p),
                 }
             }
-            Stmt::Event(_, es) => es.iter().for_each(|e| self.expr(e, "an event")),
+            Stmt::Event(crate::ir::EventPoint { vals: es, .. }) => {
+                es.iter().for_each(|e| self.expr(e, "an event"))
+            }
         }
     }
 

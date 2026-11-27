@@ -1227,7 +1227,9 @@ impl Walk<'_> {
                 }
                 fx.add(&inner);
             }
-            Stmt::Event(_, xs) => xs.iter().for_each(|x| self.reads(x, fx)),
+            Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
+                xs.iter().for_each(|x| self.reads(x, fx))
+            }
             Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
         }
     }
@@ -1507,7 +1509,9 @@ fn calls_in<'b, T>(b: &'b [Stmt<T>], f: &mut Calls<'b, T>) {
                 args(xs, f);
                 calls_in(body, f);
             }
-            Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(x, f)),
+            Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
+                xs.iter().for_each(|x| expr(x, f))
+            }
             Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
         }
     }
@@ -1805,7 +1809,9 @@ fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
                 Arg::View(_) | Arg::Lend(_) => None,
             })
             .or_else(|| site_of(body, hit)),
-        Stmt::Event(_, xs) => xs.iter().find_map(|x| ex(x, hit)),
+        Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
+            xs.iter().find_map(|x| ex(x, hit))
+        }
         Stmt::LendOut(_) | Stmt::Drop(_) | Stmt::Break | Stmt::Continue => None,
     })
 }

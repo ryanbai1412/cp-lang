@@ -142,7 +142,9 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
                 self.expr(e, pre);
                 bs.iter_mut().for_each(|b| self.block(b));
             }
-            Stmt::Event(_, xs) => xs.iter_mut().for_each(|x| self.expr(x, pre)),
+            Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
+                xs.iter_mut().for_each(|x| self.expr(x, pre))
+            }
             Stmt::Region { args, body, .. } => {
                 self.args(args, pre);
                 self.block(body);

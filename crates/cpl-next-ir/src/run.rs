@@ -1,9 +1,11 @@
 //! What a run of a program comes to, the same for every engine: its output, its events and
 //! how it stopped (contract 7).
-use crate::ir::{Func, FuncKey};
+use crate::ids::SourceId;
+use crate::ir::{EventKind, EventPoint, Func, FuncKey, Site};
 use crate::layout::Layouts;
 use crate::ops::{Fault, Input};
 use crate::prog::Program;
+use std::collections::HashMap;
 
 pub struct Trap {
     pub fault: Fault,
@@ -106,8 +108,89 @@ impl RunInput {
         }
     }
 }
+/// An event a run reported: its point's kind, `func`'s `sites[site]`, and its values shown.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Fired {
+    pub kind: EventKind,
+    pub func: u32,
+    pub site: Site,
+    pub vals: Vec<String>,
+}
+
+impl Fired {
+    /// `p` firing with its values shown.
+    pub fn of<T>(p: &EventPoint<T>, vals: Vec<String>) -> Fired {
+        let (kind, func, site) = (p.kind.clone(), p.func, p.site);
+        Fired {
+            kind,
+            func,
+            site,
+            vals,
+        }
+    }
+    /// Its trace line: `ev enter f 3`.
+    pub fn line<T>(&self, funcs: &[Func<T>]) -> String {
+        let mut s = format!("ev {}", self.kind.label(&funcs[self.func as usize].name));
+        for v in &self.vals {
+            s.push(' ');
+            s.push_str(v);
+        }
+        s
+    }
+}
+
+/// Where an event is in a run (contract 8): each call it is inside, as the fn and which of
+/// its caller's calls it was, its site, and which time that site ran inside this call. Two
+/// runs line up by it, not by position in the stream.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct At {
+    pub call: Vec<(u32, u32)>,
+    pub site: SourceId,
+    pub nth: u32,
+}
+
+/// Each event's `At`, from the stream alone: an `Enter` opens a call and its `Exit` closes it.
+pub fn at<T>(events: &[Fired], funcs: &[Func<T>]) -> Vec<At> {
+    struct Call {
+        path: Vec<(u32, u32)>,
+        calls: u32,
+        seen: HashMap<(u32, Site), u32>,
+    }
+    let open = |path| Call {
+        path,
+        calls: 0,
+        seen: HashMap::new(),
+    };
+    let mut stack = vec![open(Vec::new())];
+    let mut out = Vec::with_capacity(events.len());
+    for e in events {
+        if e.kind == EventKind::Enter {
+            if let Some(caller) = stack.last_mut() {
+                let mut path = caller.path.clone();
+                path.push((e.func, caller.calls));
+                caller.calls += 1;
+                stack.push(open(path));
+            }
+        }
+        let Some(call) = stack.last_mut() else {
+            continue;
+        };
+        let nth = call.seen.entry((e.func, e.site)).or_insert(0);
+        out.push(At {
+            call: call.path.clone(),
+            site: funcs[e.func as usize].sites[e.site as usize].clone(),
+            nth: *nth,
+        });
+        *nth += 1;
+        if e.kind == EventKind::Exit && stack.len() > 1 {
+            stack.pop();
+        }
+    }
+    out
+}
+
 pub struct Outcome {
-    pub events: Vec<String>,
+    pub events: Vec<Fired>,
     pub output: String,
     pub trap: Option<Trap>,
 }

@@ -4,7 +4,7 @@
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::{CTy, Program};
-use cpl_next_ir::run::{call_stack, RunInput, Stack};
+use cpl_next_ir::run::{call_stack, Fired, RunInput, Stack};
 pub use cpl_next_ir::run::{Outcome, Trap};
 use std::rc::Rc;
 
@@ -68,7 +68,7 @@ struct Machine<'a> {
     globals: Vec<V>,
     frames: Vec<Frame<'a>>,
     out: String,
-    pub events: Vec<String>,
+    pub events: Vec<Fired>,
     input: ops::Input,
     rand: u64,
     /// The innermost line of the user's file that is running.
@@ -376,16 +376,12 @@ impl<'a> Machine<'a> {
                         self.frames[fp].pending = Some(flow);
                     }
                 }
-                Stmt::Event(label, vals) => {
-                    let mut line = format!("ev {label}");
-                    for v in vals {
-                        line.push(' ');
-                        match scalar(&self.expr(v, fp)?) {
-                            Some(s) => ops::show(s, &mut line),
-                            None => line.push('?'),
-                        }
+                Stmt::Event(ev) => {
+                    let mut vals = Vec::with_capacity(ev.vals.len());
+                    for v in &ev.vals {
+                        vals.push(ops::shown(scalar(&self.expr(v, fp)?)));
                     }
-                    self.events.push(line);
+                    self.events.push(Fired::of(ev, vals));
                 }
             }
         }
