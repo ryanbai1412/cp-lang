@@ -348,6 +348,26 @@ impl Emit<'_> {
     fn line(&self, site: Site) -> u32 {
         self.lines.get()[site as usize]
     }
+    /// The line of the first operation in `e` that can trap, or 0 if none can.
+    fn trap_line(&self, e: &Expr<CTy>) -> u32 {
+        let first = |xs: &mut dyn Iterator<Item = &Expr<CTy>>| {
+            xs.map(|x| self.trap_line(x)).find(|&l| l != 0)
+        };
+        let inner = match &e.kind {
+            EK::MakeStruct(xs) | EK::MakeClosure(xs) => first(&mut xs.iter()),
+            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => first(&mut std::iter::once(&**x)),
+            EK::Intr(_, args, _) => first(&mut args.iter().filter_map(|a| match a {
+                Arg::Value(x) => Some(x),
+                _ => None,
+            })),
+            _ => None,
+        };
+        match &e.kind {
+            _ if inner.is_some() => inner.unwrap_or(0),
+            EK::Intr(op, _, site) if op.checked() => self.line(*site),
+            _ => 0,
+        }
+    }
     /// Definition order for C++: a type comes after every type it holds by value. Storage
     /// (`cpl_raw<T>`) and references need only T's declaration, which is what lets a
     /// function value reach itself through a list.
@@ -717,10 +737,6 @@ impl Emit<'_> {
             // trap, and around a call, which may run other lines of the user's file.
             let around = match st {
                 Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) => match &e.kind {
-                    EK::Intr(op, _, site) if op.checked() && self.line(*site) != 0 => {
-                        put_line!(s, "{pad}cpl_at = {};", self.line(*site));
-                        None
-                    }
                     EK::Call(_, _, site) => Some(self.line(*site)),
                     _ => None,
                 },
@@ -728,6 +744,15 @@ impl Emit<'_> {
                 Stmt::Yield(_) | Stmt::LendOut(_) => Some(0),
                 _ => None,
             };
+            let read = match st {
+                Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) | Stmt::Yield(e) => Some(e),
+                Stmt::If(e, ..) | Stmt::Switch(e, _) | Stmt::Return(Some(e)) => Some(e),
+                _ => None,
+            };
+            let line = read.map_or(0, |e| self.trap_line(e));
+            if line != 0 && around.is_none() {
+                put_line!(s, "{pad}cpl_at = {line};");
+            }
             match around {
                 Some(0) => put_line!(s, "{pad}{{ int cpl_was = cpl_at;"),
                 Some(line) => put_line!(s, "{pad}{{ const int cpl_was = cpl_at = {line};"),

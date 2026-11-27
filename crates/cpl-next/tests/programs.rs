@@ -958,6 +958,43 @@ fn fast_ops_agree_with_their_bodies() {
     }
 }
 
+/// Without `--trace` a trap names the line of the operation that trapped on every runner,
+/// also when that operation sits inside a `return`, a condition or a larger expression.
+#[test]
+fn a_trap_names_its_line_without_trace() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let dir = here.join("../../target/cpl-next/scratch/trap-lines");
+    std::fs::create_dir_all(&dir).unwrap();
+    let bodies = [
+        (
+            "return",
+            "    if n > 5:\n        return 0\n    return 10 / n\n",
+        ),
+        (
+            "cond",
+            "    if 10 / n > 1:\n        return 1\n    return 2\n",
+        ),
+        ("nested", "    let k = 3\n    return k + 10 / n\n"),
+    ];
+    for (name, body) in bodies {
+        let path = dir.join(format!("{name}.cp"));
+        std::fs::write(&path, format!("fn f(n: Int) -> Int:\n{body}print(f(0))\n")).unwrap();
+        let line = body.lines().position(|l| l.contains("10 / n")).unwrap() + 2;
+        let want = format!("trap: R0203: line {line}: division by zero");
+        let cpp = next(&path, &["--cpp"], b"").stdout;
+        let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
+            .unwrap_or_else(|e| panic!("{name}: {e}"))
+            .0;
+        for (what, ran) in [
+            ("reference", next(&path, &[], b"")),
+            ("engine", next(&path, &["--engine"], b"")),
+            ("C++", run_kept(&bin, b"")),
+        ] {
+            assert_eq!(trap_line(&ran.stderr), want, "{name} on {what}");
+        }
+    }
+}
+
 /// How many words each `@fast` fn is called on: the edge words, then seeded random ones.
 const FAST_WORDS: usize = 256;
 
