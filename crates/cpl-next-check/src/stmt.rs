@@ -481,7 +481,7 @@ impl<'a> Cx<'a> {
                 };
                 let inner = (self.optional_of(&v.ty)).filter(|_| !self.optional_pattern(pat));
                 if inner.is_none() && matches!(pat.kind, PatternKind::Name(_)) {
-                    if self.shallow(&v.ty) != Ty::Error {
+                    if !self.mentions_error(&v.ty) {
                         let t = self.show(&v.ty);
                         self.err(span, Unbuilt::IfLet { ty: t });
                     }
@@ -926,7 +926,7 @@ impl<'a> Cx<'a> {
                     None => v,
                 };
                 let Some(inner) = self.optional_of(&v.ty) else {
-                    if self.shallow(&v.ty) != Ty::Error {
+                    if !self.mentions_error(&v.ty) {
                         let t = self.show(&v.ty);
                         self.err(init.span, Unbuilt::LetElse { ty: t });
                     }

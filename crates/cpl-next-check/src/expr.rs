@@ -1314,7 +1314,7 @@ impl<'a> Cx<'a> {
             ExprKind::Unwrap(x) => {
                 let v = self.expr(x, None);
                 let Some(inner) = self.optional_of(&v.ty) else {
-                    if self.shallow(&v.ty) != Ty::Error {
+                    if !self.mentions_error(&v.ty) {
                         let t = self.show(&v.ty);
                         self.err(span, Unbuilt::Unwrap { ty: t });
                     }
@@ -1344,7 +1344,7 @@ impl<'a> Cx<'a> {
                     None => self.expr(lhs, None),
                 };
                 let Some(inner) = self.optional_of(&l.ty) else {
-                    if self.shallow(&l.ty) != Ty::Error {
+                    if !self.mentions_error(&l.ty) {
                         let t = self.show(&l.ty);
                         self.err(span, Unbuilt::Coalesce { ty: t });
                     }

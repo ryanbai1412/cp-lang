@@ -1634,6 +1634,7 @@ next/n_cascade_07_domain_bound_from_an_error.cp
 next/n_cascade_08_print_a_value_built_from_an_error.cp
 next/n_cascade_09_call_its_arguments_do_not_fit.cp
 next/n_cascade_10_cell_of_a_place_built_from_an_error.cp
+next/n_cascade_11_optional_forms_on_a_type_built_from_an_error.cp
 next/n_cell_01_indexed_mut_bound.cp
 next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp
