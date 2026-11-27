@@ -1508,6 +1508,17 @@ def next_core_checks(root: Path) -> list[str]:
             if not l.lstrip().startswith("//") and re.search(r"[!=]= *CORE\b|\bCORE *[!=]=", l)]
 
 
+def next_ignored_settings(root: Path) -> list[str]:
+    """Settings the new pipeline accepts and then ignores: each source name in a match arm whose
+    body is empty, as `Some("ranges" | "bounds") if on => {}` for `with checks(..)` fields that
+    mean something only under a release profile (shortcut audit S15). The target is 0: each
+    becomes a build input every backend honours, or is refused until it is one."""
+    arm = re.compile(r'^\s*(?:Some\()?((?:"\w+"\s*\|?\s*)+)\)?(?:\s+if\s+[^=]+)?\s*=>\s*\{\}\s*,?\s*$')
+    return [f"{_rel(root, p)}:{i} {n}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            for i, l in enumerate(_lines(p), 1) if (m := arm.match(l))
+            for n in re.findall(r'"(\w+)"', m.group(1))]
+
+
 def next_name_compares(root: Path) -> list[str]:
     """Places new-pipeline code compares source text against a fixed identifier: `== "print"`,
     a `"Some" =>` match arm, `matches!(.., "todo")`, `.eq("on")`. Each is the compiler knowing a
@@ -4275,6 +4286,7 @@ COUNTERS = {
     "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
+    "next_ignored_settings": ("new-pipeline settings accepted and then ignored: an empty arm over source names (Core)", next_ignored_settings, True),
     "next_name_compares": ("new-pipeline comparisons of source text against a fixed identifier: names known by text (Core)", next_name_compares, True),
     "next_library_gates": ("new-pipeline checks of whether a module is a library: std-only rules (Core)", next_library_gates, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),

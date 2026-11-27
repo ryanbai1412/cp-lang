@@ -2307,6 +2307,11 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.fast_unchecked(root), ["std/bits.cp:2 ones"])
             self.assertEqual(dr.next_core_checks(root),
                              ["crates/cpl-next-engine/src/lib.rs:4", "crates/cpl-next-engine/src/lib.rs:6"])
+            (root / "crates/cpl-next-engine/src/set.rs").write_text(
+                'match name {\n    Some("ranges" | "div") if on => {}\n    Some("x") => go(),\n}\n')
+            self.assertEqual(dr.next_ignored_settings(root),
+                             ["crates/cpl-next-engine/src/set.rs:2 ranges", "crates/cpl-next-engine/src/set.rs:2 div"])
+            (root / "crates/cpl-next-engine/src/set.rs").unlink()
             (root / "crates/cpl-next-check").mkdir(parents=True)
             (root / "crates/cpl-next-check/Cargo.toml").write_text(
                 '[dependencies]\ncpl-syntax.workspace = true\ncpl-judge.workspace = true\ncpl-next-ir.workspace = true\n')
