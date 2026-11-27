@@ -25,6 +25,15 @@ mod unify;
 mod variants;
 mod zonk;
 
+/// Why a type must meet a trait, which names the verdict when it does not.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Origin {
+    /// A bound a fn or impl states.
+    Bound,
+    /// `T(x)`: `x` is converted by its `@convert` impl (R04.2.28).
+    Convert,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum VarRef {
     Local(LocalId),
@@ -277,8 +286,8 @@ struct Cx<'a> {
     locals: Vec<Local>,
     scopes: Vec<HashMap<String, LocalId>>,
     self_local: Option<LocalId>,
-    /// Bounds calls must meet, with where: a type, the trait it must implement.
-    obligations: Vec<(Ty, decls::TraitRef, Span)>,
+    /// Bounds calls must meet, with where: a type, the trait it must implement, and why.
+    obligations: Vec<(Ty, decls::TraitRef, Span, Origin)>,
     ret: Ty,
     /// What the fn being checked yields or lends.
     region: Option<(bool, Ty)>,

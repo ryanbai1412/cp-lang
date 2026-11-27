@@ -156,6 +156,7 @@ core-02/enum-exhaustive-match.cp
 core-02/enum-method-is-variant.cp
 core-02/enum-niche-roundtrip.cp
 core-02/enum-nonexhaustive.cp
+core-02/f64-to-int-bare-rejected.cp
 core-02/fixed-field.cp
 core-02/fresh-slot-recursion.cp
 core-02/fresh-type-block-int-escapes.cp
@@ -311,6 +312,7 @@ core-04/h-map-keeps-keys.cp
 core-04/into-int-generic-bound.cp
 core-04/into-int-reads-current-fields.cp
 core-04/keys-of-domain-keyed-array.cp
+core-04/library-type-without-into-is-not-convertible.cp
 core-04/list-fill-copies-per-key.cp
 core-04/list-literal-cell-outside-let-range-traps.cp
 core-04/list-literal-cell-outside-param-range-traps.cp
@@ -760,6 +762,7 @@ diagnostics/foreign-and-and.cp
 diagnostics/foreign-half-open-range.cp
 diagnostics/foreign-let-mut.cp
 diagnostics/foreign-or-or.cp
+diagnostics/int-of-struct-names-into-impl.cp
 diagnostics/missing-name.cp
 diagnostics/missing-pattern.cp
 diagnostics/missing-type.cp
@@ -1043,6 +1046,7 @@ next/n_convert_01_core_types_convert_by_impl.cp
 next/n_convert_02_char_outside_ascii_traps.cp
 next/n_convert_03_enum_of_its_value.cp
 next/n_convert_04_enum_of_no_value_traps.cp
+next/n_convert_05_no_into_impl_is_a_mismatch.cp
 next/n_domain_09_literal_is_a_position.cp
 next/n_domain_count_pred.cp
 next/n_domain_ord.cp

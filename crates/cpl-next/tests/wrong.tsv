@@ -22,7 +22,6 @@ core-02/coalesce-optional-default-keeps-some.cp	wrong-reject	check: program:7:62
 core-02/counted-array-as-list.cp	wrong-reject	check: program:7:13: E0302: expected `List<Int>`, found `Array<$range0, Int>`
 core-02/counted-arrays-share-keys.cp	wrong-reject	check: program:8:33: E0302: expected `$range1`, found `$range0`
 core-02/expected-type-and-unit-forms-are-typed.cp	wrong-reject	check: program:9:9: E0201: unknown name `rand`
-core-02/f64-to-int-bare-rejected.cp	wrong-error	wanted E0302 on line 3, got: check: program:3:7: E0606: `F64` does not implement `Into`
 core-02/fresh-type-block-escape.cp	wrong-accept	wanted E0313 on line 3, ran and printed: 1
 core-02/fresh-types-differ.cp	wrong-error	wanted E0301 on line 6, got: check: program:6:9: E0302: expected `A`, found `B`
 core-02/generic-bound-to-a-range-element-has-its-ends.cp	wrong-reject	check: program:6:34: E0203: `Range<T>` has no member `MAX`
@@ -44,8 +43,6 @@ core-02/str-plus-int.cp	wrong-error	wanted E0309 on line 3, got: check: program:
 core-02/struct-same-arity-is-duplicate.cp	wrong-error	wanted E0202 on line 5, got: check: program:6:7: E0203: `Pair<Int, Int>` has no member `a`
 core-02/type-alias-walks-as-its-type.cp	wrong-reject	check: program:7:10: E0201: unknown name `G`
 core-02/unit-is-ordered.cp	wrong-reject	check: program:9:11: E0606: `()` has no `impl Eq`, which `==` needs (R08.1.5)
-core-03/a-list-or-handle-of-itself-is-fine.cp	wrong-reject	check: std.persistent:32:9: E0203: `List<T>` has no member `reserve`
-core-02/variant-named-like-prelude-type.cp	wrong-reject	check: program:8:15: E0302: expected `OrdTree<_, ()>`, found `Int`
 core-03/byte-slot-is-range.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-03/i128-holds-past-int.cp	wrong-reject	check: program:3:1: E0204: unknown type `I128`
 core-03/narrow-arith-same-answer.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range0, 0..=1000000000>`, found `Array<$range1, Int>`
@@ -89,7 +86,7 @@ core-04/declared-domain-satisfies-domain-bound.cp	wrong-reject	check: std.seq:97
 core-04/dom-cuts.cp	wrong-reject	check: program:4:7: E0203: `Range<V>` has no member `cuts`
 core-04/dom-empty-walks.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-04/dom-wrap.cp	wrong-reject	check: program:4:11: E0203: `Range<V>` has no member `wrap`
-core-04/domain-is-a-seq.cp	wrong-reject	check: program:5:40: E0806: the type of `v` is not known here; write `(v: T) => ...`
+core-04/domain-is-a-seq.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 core-04/domain-mask.cp	wrong-reject	check: program:6:9: E0203: `Range<V>` has no member `mask`
 core-04/domain-mixup.cp	wrong-error	wanted E0301 on line 6, got: check: program:6:11: E0302: expected `V`, found `E`
 core-04/e2-table-keyed-like-input.cp	wrong-reject	check: std.strings:380:27: E0201: unknown name `min`
@@ -378,7 +375,6 @@ matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has 
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 matrix/index/pair--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 matrix/index/plain--builder.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-matrix/index/plain--count.cp	wrong-reject	check: program:3:15: E0806: the type of `x` is not known here; write `(x: T) => ...`
 matrix/index/plain--cuts_lr.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `l`
 matrix/index/plain--fill.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 matrix/index/plain--min_by.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
@@ -406,7 +402,6 @@ next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not 
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
 next/a_own_02_nested_closure_returned.cp	wrong-error	wanted E0603 on line 6, got: link: E0603: `make` returns a function that uses a `var` of the fn that made it; the variable is gone by then
 next/a_own_15_lambda_returns_borrowing_closure.cp	wrong-error	wanted E0603 on line 8, got: link: E0603: `lambda0` returns a function that uses a `var` of the fn that made it; the variable is gone by then
-next/n_scope_01_param_shadows_domain.cp	wrong-reject	check: program:4:15: E0806: the type of `x` is not known here; write `(x: T) => ...`
 next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:5: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: program:14:5: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: program:6:1: E0602: `a` is lent to `fill` for writing, and the call also reaches it another way
@@ -548,18 +543,6 @@ std-search/ternary_max-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has
 std-search/ternary_min-1.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_min-2.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_min-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-search/ternary_max-1.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-search/ternary_max-2.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-search/ternary_max-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-search/ternary_min-1.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-search/ternary_min-2.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-search/ternary_min-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-search/ternary_max-1.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
-std-search/ternary_max-2.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
-std-search/ternary_max-3.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
-std-search/ternary_min-1.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
-std-search/ternary_min-2.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
-std-search/ternary_min-3.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
 std-segtree/merge-seg-merge-and-prune.cp	wrong-reject	check: program:7:35: E0203: `K` has no member `idx`
 std-segtree/merge-seg-singleton-dead.cp	wrong-reject	check: program:6:37: E0203: `K` has no member `idx`
 std-seq/a-bidir-struct-of-its-own-has-last.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`

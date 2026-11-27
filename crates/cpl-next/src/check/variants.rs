@@ -37,7 +37,8 @@ impl Cx<'_> {
             tr,
             args: vec![to.clone()],
         };
-        self.obligations.push((v.ty.clone(), r.clone(), span));
+        self.obligations
+            .push((v.ty.clone(), r.clone(), span, Origin::Convert));
         mk(
             TK::CallTrait {
                 tr: r,

@@ -16,7 +16,8 @@ impl Cx<'_> {
                 tr: r.tr,
                 args: r.args.iter().map(|a| sub.ty(a)).collect(),
             };
-            self.obligations.push((f.targs[*i].clone(), r, span));
+            self.obligations
+                .push((f.targs[*i].clone(), r, span, Origin::Bound));
         }
     }
     /// Meets each bound whose type is known by now; `last` drops those never known.
@@ -24,9 +25,9 @@ impl Cx<'_> {
         loop {
             let pending = std::mem::take(&mut self.obligations);
             let before = pending.len();
-            for (t, r, span) in pending {
+            for (t, r, span, why) in pending {
                 if self.unknown(&t) {
-                    self.obligations.push((t, r, span));
+                    self.obligations.push((t, r, span, why));
                     continue;
                 }
                 let t = self.zonk(&t);
@@ -41,6 +42,20 @@ impl Cx<'_> {
                             self.err(span, msg);
                             continue;
                         }
+                        if why == Origin::Convert {
+                            let to = (r.args.iter().map(|a| self.show(a)))
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            let msg = format!(
+                                "{}: expected `{to}`, found `{shown}`",
+                                cpl_diag::codes::TYPE_MISMATCH.0
+                            );
+                            let help = format!(
+                                "`{shown}` converts to `{to}` only by its own impl: write `impl {tr}<{to}> for {shown}`"
+                            );
+                            self.err_help(span, msg, Some(help));
+                            continue;
+                        }
                         self.err(
                             span,
                             format!(
@@ -49,7 +64,7 @@ impl Cx<'_> {
                             ),
                         );
                     }
-                    None => self.obligations.push((t, r, span)),
+                    None => self.obligations.push((t, r, span, why)),
                 }
             }
             if self.obligations.len() >= before {
@@ -89,8 +104,11 @@ impl Cx<'_> {
                 })
                 .collect();
             let t = t.clone();
-            self.obligations
-                .extend(needs.into_iter().map(|n| (t.clone(), n, span)));
+            self.obligations.extend(
+                needs
+                    .into_iter()
+                    .map(|n| (t.clone(), n, span, Origin::Bound)),
+            );
             return Some(true);
         }
         // A bound the fn states is met as stated; otherwise a parameter meets a trait through a
@@ -171,7 +189,7 @@ impl Cx<'_> {
                     })
                     .collect();
                 self.obligations
-                    .extend(needs.into_iter().map(|(t, b)| (t, b, span)));
+                    .extend(needs.into_iter().map(|(t, b)| (t, b, span, Origin::Bound)));
                 Some(args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)))
             }
         }
