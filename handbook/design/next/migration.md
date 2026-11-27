@@ -78,6 +78,10 @@ deleted for the VM and both remain. These rules are the guard.
 13. **Reuse of old code carries its deletion step in the same plan.**
     Old code reused as scaffolding names the landing that deletes it
     and the counter that reaches 0 there.
+14. **The switch lands only at zero debt.** Stage 5's switching landing
+    requires every gated `next_*` counter in `scripts/debt-ratchet.py`
+    at 0 (`--zero` over them), so no shortcut survives into the end
+    state as "fix it after".
 
 ## Order
 
