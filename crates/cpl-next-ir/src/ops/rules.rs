@@ -244,8 +244,8 @@ rows! {
     i128_of(a: i64) -> i128 [] wide_of;
     i128_of_u64(u: u64) -> i128 [] wide_of_u64;
     /// An `I128` as an `Int`, and as a `U64`.
-    int_of_i128(a: i128) -> i64 [(a > WIDE_INT_LAST) | (a < -WIDE_INT_LAST) => U64PastInt] int_of_wide;
-    u64_of_i128(a: i128) -> u64 [(a < 0) | (a > WIDE_U64_LAST) => Overflow] u64_of_wide;
+    int_of_i128(a: i128) -> i64 [a > WIDE_INT_LAST => U64PastInt, a < -WIDE_INT_LAST => U64PastInt] int_of_wide;
+    u64_of_i128(a: i128) -> u64 [a < 0 => Overflow, a > WIDE_U64_LAST => Overflow] u64_of_wide;
 }
 
 fn cpp_fn(s: &mut String, name: &str, params: &[(&str, &str)], ret: &str, body: &str) {
