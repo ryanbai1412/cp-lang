@@ -10,7 +10,7 @@ use std.seq.{Seq}
 /// position). `B.subsets` is the domain of all `2^|B|` of them, so `[B.subsets]T` is a mask-DP
 /// table, and `Subset<B>.empty` is the empty subset (there is no `{}` literal). Every operation here is \(O(1)\) unless it says otherwise.
 @member(subsets)
-pub struct Subset<B>(bits: U64):
+pub struct Subset<B>(var bits: U64):
     /// The empty subset. There is no `{}` literal: `{}` is an empty block.
     ///
     /// cost: \(O(1)\)

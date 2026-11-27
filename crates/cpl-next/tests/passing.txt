@@ -2893,3 +2893,5 @@ core-10/read-none-sentinel-is-the-none.cp
 core-10/print-forms.cp
 core-10/read-base-arg.cp
 core-10/read-optional-sentinel-at-end-traps.cp
+std-journeys/subset.cp
+std-models/subset.cp

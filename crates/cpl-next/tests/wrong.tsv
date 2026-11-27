@@ -1410,7 +1410,6 @@ core-09/asin-outside-domain-trap.cp	wrong-reject	check: program:5:14: E0606: `F6
 core-09/ln-of-a-negative-traps.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
 core-09/ln-of-negative-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
 core-09/sqrt-negative-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
-std-models/subset.cp	wrong-reject	check: std.subset:84:9: E0405: field `Subset.bits` is fixed (not `var`) and cannot be assigned
 traits/Acts/Action--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 traits/Acts/AddAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
 traits/Acts/AffineAction--action.cp	wrong-reject	check: std.segtree:260:53: E0302: this is not a place that can be assigned or lent
