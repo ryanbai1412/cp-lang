@@ -6,7 +6,7 @@ Unordered pairs of distinct positions: the domain of data given once per pair.
 
 In prelude (no `use` needed): `Pair`.
 
-## `struct Pair<V>(pub lo: V, pub hi: V)`
+## `struct Pair<V: Domain>(pub lo: V, pub hi: V)`
 
 An unordered pair of distinct positions `lo` and `hi` of `V`, `lo` before `hi`.
 
