@@ -63,6 +63,14 @@ impl Text {
         let start = self.starts.get(&at.item).copied().unwrap_or(0);
         Span::new(start + at.span.start, start + at.span.end)
     }
+
+    /// Byte `pos` of the text, from the start of the last item that starts at or before it.
+    pub fn at_offset(&self, pos: u32) -> Option<SourceId> {
+        let (id, start) = (self.starts.iter())
+            .filter(|(_, start)| **start <= pos)
+            .max_by_key(|(id, start)| (**start, id.name.clone(), id.nth))?;
+        Some(id.at(Span::new(pos - start, pos - start)))
+    }
 }
 
 /// A module read and parsed.

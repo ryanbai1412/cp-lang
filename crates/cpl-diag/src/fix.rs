@@ -75,6 +75,48 @@ pub fn splice(src: &str, mut edits: Vec<(Span, String)>) -> Option<String> {
     Some(out)
 }
 
+/// The edit that brings `name` in from `std.<module>`: into the braces of
+/// the file's `use std.<module>.{..}` when it has one, else as a line after
+/// its last top-level `use`, else above its first line of code.
+pub fn import_edit(text: &str, module: &str, name: &str) -> (crate::Span, String) {
+    let head = format!("use std.{module}.{{");
+    let mut after_uses = None;
+    let mut first_code = None;
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        let end = at + line.len();
+        let body = line.trim_end();
+        if let Some(close) = body.strip_prefix(&head).and_then(|_| body.rfind('}')) {
+            let inside = body[head.len()..close].trim();
+            let edit = if inside.is_empty() {
+                name.to_string()
+            } else {
+                format!(", {name}")
+            };
+            let close = (at + close) as u32;
+            return (crate::Span::point(close), edit);
+        }
+        if body.starts_with("use ") {
+            after_uses = Some(end);
+        } else if first_code.is_none()
+            && !body.trim_start().is_empty()
+            && !body.trim_start().starts_with("//")
+        {
+            first_code = Some(at);
+        }
+        at = end;
+    }
+    let line = format!("use std.{module}.{{{name}}}\n");
+    match (after_uses, first_code) {
+        (Some(end), _) if !text[..end].ends_with('\n') => {
+            (crate::Span::point(end as u32), format!("\n{line}"))
+        }
+        (Some(end), _) => (crate::Span::point(end as u32), line),
+        (None, Some(start)) => (crate::Span::point(start as u32), line),
+        (None, None) => (crate::Span::point(text.len() as u32), line),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

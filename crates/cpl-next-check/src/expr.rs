@@ -859,13 +859,14 @@ impl<'a> Cx<'a> {
         if self.d.ambiguous[self.module.0].contains(n) {
             self.two_imports(n, span);
         } else if !self.refused_names.contains(n) {
-            self.err(
-                span,
-                Msg::verdict(
-                    cpl_diag::codes::UNRESOLVED_NAME,
-                    format!("unknown name `{n}`"),
-                ),
+            let mut msg = Msg::verdict(
+                cpl_diag::codes::UNRESOLVED_NAME,
+                format!("unknown name `{n}`"),
             );
+            if let Some(fix) = self.import_fix(n, span) {
+                msg.fixes.push(fix);
+            }
+            self.err(span, msg);
         }
         TExpr {
             kind: TK::Error,
@@ -873,6 +874,20 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// The `use` line that brings in `n`, unknown at `span`, from the first std module that
+    /// exports it as `pub`.
+    fn import_fix(&self, n: &str, span: Span) -> Option<cpl_next_ir::msg::Fix> {
+        let module = (self.d.module_names.iter().enumerate())
+            .find(|(i, m)| m.starts_with("std.") && self.d.exports[*i].get(n).is_some_and(|e| e.1))
+            .map(|(_, m)| m.as_str())?;
+        let text = self.src.text_of(&self.item.at(span));
+        let (point, edit) = cpl_diag::import_edit(&text.text, module.strip_prefix("std.")?, n);
+        Some(cpl_next_ir::msg::Fix {
+            title: format!("add `use {module}.{{{n}}}`"),
+            edits: vec![(text.at_offset(point.start)?, edit)],
+        })
+    }
+
     /// The value of `e`. One read from a slot of a range type is an `Int` (R03.1.4), unless it
     /// goes straight into a slot of the same range.
     pub(super) fn expr(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {

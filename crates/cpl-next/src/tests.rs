@@ -1018,3 +1018,25 @@ fn a_question_in_a_condition_offers_none_as_false() {
         .collect();
     assert_eq!(edits, [("xs.first()? > 0", "(xs.first()? > 0) ?? false")]);
 }
+
+#[test]
+fn an_unknown_std_name_offers_its_use_line() {
+    use crate::facade::{Session, Snapshot};
+    let src = "// mo\nprint(mo_order(3))\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let diags = s.program().err().expect("refused");
+    let d = (diags.iter())
+        .find(
+            |d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::UNRESOLVED_NAME),
+        )
+        .unwrap_or_else(|| panic!("{diags:?}"));
+    let fix = d.fixes.first().expect("a fix");
+    assert_eq!(fix.title, "add `use std.mo.{mo_order}`");
+    let ((span, new), mut fixed) = (&fix.edits[0], src.to_string());
+    fixed.replace_range(span.start as usize..span.end as usize, new);
+    assert_eq!(fixed, "// mo\nuse std.mo.{mo_order}\nprint(mo_order(3))\n");
+}
