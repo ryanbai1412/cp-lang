@@ -202,7 +202,8 @@ library or by this spec:
 - Markers, each on the one declaration it names: `@tuple` (the struct an
   n-tuple of its field count is), `@cuts` (the struct of a domain's cuts),
   `@positions` (the trait a domain's positions implement), `@convert` (the
-  trait `T(x)` calls), `@operator("op")` (the trait an operator calls),
+  trait `T(x)` calls), `@operator("op")` (the trait an operator calls;
+  `"[]"` is the read `s[k]` calls and `"[]="` the write `s[k] = v`),
   `@derive` (a trait every struct whose fields all have it gets field by
   field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
   over its type calls), `@variant_check` (the check an `Int` converted to

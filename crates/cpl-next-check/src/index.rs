@@ -12,11 +12,11 @@ impl Cx<'_> {
     /// `s[i]` is `s.at(i)` of its `Indexed` impl (R12.4.5), read in place; a method of
     /// the type's own named `at` is not indexing.
     pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
-        let at = INDEX_READ;
+        let at = self.index_read();
         let rt = self.recv_ty(&s.ty);
-        let read = self.d.impl_member_by(&rt, at, |f| f.region.is_none());
+        let read = self.d.impl_member_by(&rt, &at, |f| f.region.is_none());
         let call = match (&rt, read) {
-            (Ty::Param(p), _) => self.bound_call(*p, s, at, vec![TArg::Value(i)], span),
+            (Ty::Param(p), _) => self.bound_call(*p, s, &at, vec![TArg::Value(i)], span),
             (_, Some(decls::Member::Method(m, ts, ss))) => {
                 self.call_member(s, (m, ts, ss), vec![TArg::Value(i)], span, false)
             }
@@ -289,11 +289,17 @@ impl Cx<'_> {
             t => Some(t),
         }
     }
+    /// What `s[i]` calls: the method of std's `@operator("[]")` trait (R12.4.5).
+    fn index_read(&self) -> String {
+        let tr = self.d.operators.iter().find(|(o, _)| o == "[]");
+        tr.and_then(|&(_, tr)| self.d.traits[tr.0].methods.keys().next().cloned())
+            .unwrap_or_default()
+    }
     /// The key and cell types of `rt`'s `Indexed` read.
     fn read_sig(&self, rt: &Ty) -> Option<(Ty, Ty)> {
         match self
             .d
-            .impl_member_by(rt, INDEX_READ, |f| f.region.is_none())
+            .impl_member_by(rt, &self.index_read(), |f| f.region.is_none())
         {
             Some(decls::Member::Method(m, ts, _)) => {
                 let sub = Subst {
@@ -310,7 +316,7 @@ impl Cx<'_> {
     pub(super) fn key_of(&mut self, s: &Ty) -> Option<Ty> {
         match self.shallow(s) {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
-                .find(|t| self.d.traits[t.tr.0].methods.contains_key(INDEX_READ))
+                .find(|t| self.d.traits[t.tr.0].methods.contains_key(&self.index_read()))
                 .and_then(|t| t.args.first().cloned()),
             _ => self.read_sig(&self.recv_ty(s)).map(|(k, _)| k),
         }
@@ -423,7 +429,7 @@ impl Cx<'_> {
         let rt = self.shallow(&b.ty);
         let lends = |f: &decls::FnDecl| matches!(f.region, Some((true, _)));
         // A type parameter's cell is lent by the method of its bound; anything else's by its impl.
-        let read = INDEX_READ;
+        let read = &self.index_read();
         let d = self.d;
         let bound = match rt {
             Ty::Param(p) => (self.bound_traits(p).into_iter()).find_map(|tr| {
@@ -725,8 +731,6 @@ impl Cx<'_> {
     }
 }
 
-/// What `s[i]` calls on an `Indexed` receiver: the trait's read (R12.4.5).
-const INDEX_READ: &str = "at";
 
 pub(super) fn unparen(mut e: &ast::Expr) -> &ast::Expr {
     while let ExprKind::Paren(inner) = &e.kind {

@@ -1558,6 +1558,7 @@ pub trait Positional<T>: Seq<T> + Sized:
 
 /// `s[k]` read: the element at key `k`. A `List`, an array and a `Map` have it; a `Map`'s keys
 /// are not positions, so it is not `Indexed` (R12.4.5).
+@operator("[]")
 pub trait IndexGet<K, T>:
     /// The element at key `k`; traps when `s` holds none there.
     fn at(self, k: K) -> T
