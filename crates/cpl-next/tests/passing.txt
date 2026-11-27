@@ -225,6 +225,7 @@ core-04/array-value-declared-count-differs-rejected.cp
 core-04/b1-slice-in-keys-read.cp
 core-04/b1-slice-walk-by-nth-no-lint.cp
 core-04/bsearch-first-removed.cp
+core-04/b3-items-are-keys.cp
 core-04/c1-source-key-into-view.cp
 core-04/d1-literal-slice-index-lint.cp
 core-04/d1-literal-slice-index-traps.cp
@@ -290,6 +291,7 @@ core-04/scalar-fill-wrong-type.cp
 core-04/scalar-fill.cp
 core-04/slice-key-outside-view-traps.cp
 core-04/stored-cut-range-not-piece.cp
+core-04/zip-keyed-by-first.cp
 core-04/zip-pairs-domains-rejected.cp
 core-05/a-closure-in-an-optional-the-callee-only-calls-borrows-its-list.cp
 core-05/a-fn-copies-a-top-level-heap-value-with-clone.cp
@@ -423,6 +425,7 @@ core-06/getter-called-with-parens.cp
 core-06/lambda-annotated-params.cp
 core-06/lambda-arity-past-tuple.cp
 core-06/lambda-nested-tuple-param.cp
+core-06/lambda-pair-params-destructure.cp
 core-06/list-has-no-indices.cp
 core-06/multitest-above-a-const.cp
 core-06/multitest-shared-above.cp
@@ -455,6 +458,8 @@ core-07/domain-rev-walks-backwards.cp
 core-07/filter-not-indexed.cp
 core-07/filter-view-not-indexable.cp
 core-07/indexed-builtins.cp
+core-07/items-keep-keys.cp
+core-07/keys-survive-filter.cp
 core-07/list-param-takes-only-list.cp
 core-07/map-calls-per-read.cp
 core-07/negative-literal-index-is-an-error.cp
@@ -473,6 +478,7 @@ core-07/view-key-outside-keys-traps.cp
 core-07/view-sees-source-mutation-rejected.cp
 core-07/view-walks.cp
 core-07/zip-domain-mismatch.cp
+core-07/zip-takes-a-rev.cp
 core-08/assoc-type-bound-and-alias-where.cp
 core-08/associated-type-default-and-override.cp
 core-08/associated-type.cp
@@ -890,6 +896,7 @@ next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
 next/n_library_module.cp
 next/n_list_01_shrink.cp
+next/n_member_01_getter_first.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
@@ -1012,8 +1019,10 @@ std-seq/all-1.cp
 std-seq/any-1.cp
 std-seq/count-1.cp
 std-seq/map-of-a-list-is-indexed-through-its-source.cp
+std-seq/seq-u15-zip-and-items.cp
 std-seq/seq-u20-first-some.cp
 std-seq/seq-u9-fold-seed.cp
+std-seq/sized-bound-met-by-std-impls-for-built-ins.cp
 std-seq/zip-exact-mixed-element-types.cp
 std-seq/zip-slice-walks-from-view-start.cp
 std-strings/case-trim.cp
@@ -1027,6 +1036,7 @@ tools-cli/exit-1-on-errors.cp
 tools-cli/exit-3-trap.cp
 tools-fmt-lint/lint-never-blocks-run.cp
 traits/Bidir/Filtered--iter_rev.cp
+traits/Bidir/Items--iter_rev.cp
 traits/Bidir/List--iter_rev.cp
 traits/Bidir/Mapped--iter_rev.cp
 traits/Bidir/Range--iter_rev.cp
@@ -1040,6 +1050,8 @@ traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp
 traits/Indexed/Array--at.cp
 traits/Indexed/Array--keys.cp
+traits/Indexed/Items--at.cp
+traits/Indexed/Items--keys.cp
 traits/Indexed/List--at.cp
 traits/Indexed/List--keys.cp
 traits/Indexed/Mapped--at.cp
@@ -1054,6 +1066,15 @@ traits/Indexed/Zipped--keys.cp
 traits/IndexedMut/Array--at.cp
 traits/IndexedMut/List--at.cp
 traits/IndexedMut/Str--at.cp
+traits/Keyed/Array--items.cp
+traits/Keyed/Filtered--items.cp
+traits/Keyed/Items--items.cp
+traits/Keyed/List--items.cp
+traits/Keyed/Mapped--items.cp
+traits/Keyed/Range--items.cp
+traits/Keyed/Slice--items.cp
+traits/Keyed/Str--items.cp
+traits/Keyed/Zipped--items.cp
 traits/Op/Group--folds.cp
 traits/Op/Group--lift.cp
 traits/Op/Group--op.cp
@@ -1063,6 +1084,7 @@ traits/Positional/Slice--nth.cp
 traits/Seq/Array--iter.cp
 traits/Seq/Domain--iter.cp
 traits/Seq/Filtered--iter.cp
+traits/Seq/Items--iter.cp
 traits/Seq/List--iter.cp
 traits/Seq/Mapped--iter.cp
 traits/Seq/Range--iter.cp
@@ -1072,6 +1094,7 @@ traits/Seq/Slice--iter.cp
 traits/Seq/Str--iter.cp
 traits/Seq/Zipped--iter.cp
 traits/Sized/Array--len.cp
+traits/Sized/Items--len.cp
 traits/Sized/List--len.cp
 traits/Sized/Mapped--len.cp
 traits/Sized/Range--len.cp

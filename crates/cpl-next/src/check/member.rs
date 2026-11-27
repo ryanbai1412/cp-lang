@@ -230,15 +230,40 @@ impl<'a> Cx<'a> {
                 return block(pre, call);
             }
         }
+        // A `for` walks `base.name`, not `base`.
+        let walk = std::mem::take(&mut self.allow_region);
         let recv = self.expr(base, None);
+        self.allow_region = walk;
         let rt = self.shallow(&recv.ty);
+        // `recv.name` without `()` reads a `@get` fn that extends `recv` before a method of that
+        // name; walked by a `for`, it names the yielding method.
+        let walked = call.is_none() && self.allow_region;
+        let getter = (call.is_none() && !walked)
+            .then(|| self.d.views[self.module.0].get(&name.text).copied())
+            .flatten()
+            .or_else(|| {
+                (call.is_none() && !walked)
+                    .then(|| self.d.method_for(&name.text, &rt))
+                    .flatten()
+                    .map(decls::Named::Fn)
+            })
+            .filter(|g| matches!(g, decls::Named::Fn(f) if self.d.f(*f).getter));
         // A method of a bound on a type parameter.
         if let Ty::Param(i) = &rt {
             for tr in &self.bound_traits(*i) {
                 let t = &self.d.traits[tr.tr.0];
-                if let Some(m) = t.methods.get(&name.text).copied() {
+                let m = t.methods.get(&name.text).copied();
+                if let Some(m) = m.filter(|m| getter.is_none() || self.d.f(*m).getter) {
                     // Every impl's fn, or the trait's default, may be the one that runs.
                     self.reach(m);
+                    let fd = self.d.f(m);
+                    if fd.region.is_some() && !std::mem::take(&mut self.allow_region) {
+                        let what = format!(
+                            "slice: `{}` yields or lends, and is used other than in a `for` or as the target of an assignment",
+                            fd.name
+                        );
+                        self.err(span, what);
+                    }
                     let fd = self.d.f(m);
                     let mut tys = vec![rt.clone()];
                     tys.extend(tr.args.iter().cloned());
@@ -272,6 +297,7 @@ impl<'a> Cx<'a> {
         let ext = match self.d.lookup_member(&rt, &name.text) {
             None => (self.d.views[self.module.0].get(&name.text).copied())
                 .or_else(|| self.d.method_for(&name.text, &rt).map(decls::Named::Fn)),
+            Some(decls::Member::Method(m, ..)) if !self.d.f(m).getter && getter.is_some() => getter,
             Some(_) => {
                 self.hidden_by_member(&rt, base, name);
                 None
@@ -319,7 +345,8 @@ impl<'a> Cx<'a> {
             }
             Some(decls::Member::Method(m, ts, ss)) => {
                 let fd = self.d.f(m);
-                if call.is_none() && !fd.getter {
+                let walked = walked && fd.region.is_some();
+                if call.is_none() && !fd.getter && !walked {
                     self.err(
                         span,
                         format!(
@@ -329,7 +356,7 @@ impl<'a> Cx<'a> {
                         ),
                     );
                 }
-                let getter = fd.getter && fd.params.is_empty();
+                let getter = (fd.getter || walked) && fd.params.is_empty();
                 let ts = self.written_targs(m, ts, written_targs, span);
                 let f = self.fnref(m, ts, ss);
                 let recv = self.recv_arg(m, recv, span);

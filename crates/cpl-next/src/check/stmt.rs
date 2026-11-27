@@ -717,8 +717,9 @@ impl<'a> Cx<'a> {
                 if let (PatternKind::Name(name), false) =
                     (&pat.kind, matches!(iter.kind, ExprKind::Range { .. }))
                 {
-                    // `for x in gen(args)`, or `for x in xs` through the type's own `each`.
-                    self.allow_region = matches!(iter.kind, ExprKind::Call { .. });
+                    // `for x in gen(args)` or `xs.getter`, or `for x in xs` through the type's own `each`.
+                    self.allow_region =
+                        matches!(iter.kind, ExprKind::Call { .. } | ExprKind::Field { .. });
                     let mut call = self.expr(iter, None);
                     self.allow_region = false;
                     // `for x in g.out(u)` through a bound on `g`'s type parameter.

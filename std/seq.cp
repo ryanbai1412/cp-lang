@@ -1454,7 +1454,7 @@ impl Sized for List<T>:
 
 impl Keyed<Int, T> for List<T>:
     fn items(self) -> yields (Int, T):
-        for (i, x) in self.items: yield (i, x)
+        for i in 0..self.len: yield (i, self[i])
 
 impl Seq<D> for Range<D>:
     fn iter(self) -> yields D:
@@ -1483,7 +1483,7 @@ impl Sized for Str:
 
 impl Keyed<Int, Char> for Str:
     fn items(self) -> yields (Int, Char):
-        for (i, c) in self.items: yield (i, c)
+        for i in 0..self.len: yield (i, self[i])
 
 impl Seq<T> for [D]T:
     fn iter(self) -> yields T:
@@ -1724,7 +1724,7 @@ pub struct Items<S>(
 
 impl Seq<(D, T)> for Items<S: Keyed<D, T>>:
     fn iter(self) -> yields (D, T):
-        for (k, x) in src.items: yield (k, x)
+        for (k, x) in src.items(): yield (k, x)
 
 impl Sized for Items<S: Sized>:
     @get fn len(self) -> Int = src.len
