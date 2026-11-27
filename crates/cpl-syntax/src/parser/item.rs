@@ -1001,7 +1001,16 @@ impl<'a> Parser<'a> {
     pub(super) fn impl_decl(&mut self) -> StmtKind {
         let start = self.start();
         self.bump();
-        let (_, mut bounds) = self.generic_params();
+        let (names, mut bounds) = self.generic_params();
+        // An unbounded parameter is a bound with no traits, so the impl still declares it.
+        for name in names {
+            if !bounds.iter().any(|b| b.name.text == name.text) {
+                bounds.push(Bound {
+                    name,
+                    traits: Vec::new(),
+                });
+            }
+        }
         let first = self.ty();
         let mut extra_traits = Vec::new();
         while self.eat(T::Plus) {

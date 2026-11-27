@@ -2103,3 +2103,4 @@ next/n_bound_03_open_struct_meets_a_bound_later.cp
 next/n_impl_08_bound_leaves_its_assoc_type_out.cp
 std-seq/present-unwraps-pieces.cp
 next/n_unimpl_01_trait_names_its_code_and_help.cp
+next/n_impl_09_spelled_out_params_of_any_length.cp
