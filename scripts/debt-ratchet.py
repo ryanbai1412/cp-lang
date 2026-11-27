@@ -3861,6 +3861,19 @@ def upstream_counters(actual: dict, baseline: dict, bumps: list[str]) -> set[str
     return over | ({b.partition(":")[0] for b in bumps} & set(COUNTERS))
 
 
+def unhidden_wrong(root: Path, ref: str) -> list[str]:
+    """Cases `ref` refused that this tree lists wrong: a refusal no longer hides their wrong
+    verdict, so each admits one to `next_wrong`. A case `ref` passed, or one it lacks, never does."""
+    def ids(name: str) -> set[str]:
+        return {l.split("\t")[0] for l in _git(root, "show", f"{ref}:{NEXT_TESTS}/{name}") if l.strip()}
+    cases = set()
+    for l in _git(root, "ls-tree", "-r", "--name-only", ref, "--", "spec/conformance", f"{NEXT_TESTS}/programs"):
+        if l.endswith(".cp"):
+            cases.add(l.removeprefix("spec/conformance/").replace(f"{NEXT_TESTS}/programs/", "next/"))
+    answered = ids("wrong.tsv") | ids("passing.txt")
+    return [c for c in next_wrong(root) if c in cases and c not in answered]
+
+
 def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
                       upstream: dict | None = None) -> list[str]:
     """Baseline entries raised above `ref`'s.
@@ -3869,7 +3882,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     that entry (a new definition of the count, re-measured), or when `ref`
     itself measures at least the raised number (`upstream`): that restores a
     number lowered by hand, it admits no debt. `next_not_passing` may also rise by
-    the number of conformance cases the change adds. Never on a decisions.md line or
+    the number of conformance cases the change adds, and `next_wrong` by the cases `ref`
+    refused that now get their wrong verdict (`unhidden_wrong`). Never on a decisions.md line or
     a Skipped: trailer. New debt is removed, not admitted.
     """
     shown = _git(root, "show", f"{ref}:scripts/debt-ratchet.json")
@@ -3896,7 +3910,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
                                     NEXT_TESTS + "/programs")
                  if l.endswith(".cp")])
     raised = [(n, key) for n, key in raised
-              if not (n == "next_not_passing" and baseline[n] - old[n] <= added)]
+              if not (n == "next_not_passing" and baseline[n] - old[n] <= added)
+              and not (n == "next_wrong" and baseline[n] - old[n] <= len(unhidden_wrong(root, ref)))]
     zero = [n for n, _ in raised if n in COUNTERS and old.get(n, 1) == 0]
     if zero:
         return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
