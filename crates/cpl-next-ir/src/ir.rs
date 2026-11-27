@@ -306,8 +306,8 @@ pub enum Stmt<T> {
     Assign(Place, Expr<T>),
     Expr(Expr<T>),
     If(Expr<T>, Vec<Stmt<T>>, Vec<Stmt<T>>),
-    /// `Loop(body, step)`: `continue` jumps to `step`.
-    Loop(Vec<Stmt<T>>, Vec<Stmt<T>>),
+    /// `Loop(body, step, site)`: `continue` jumps to `step`; `site` is the source loop's body.
+    Loop(Vec<Stmt<T>>, Vec<Stmt<T>>, Site),
     Switch(Expr<T>, Vec<Vec<Stmt<T>>>),
     Break,
     Continue,
@@ -438,7 +438,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
                 visit_places(x, f);
                 visit_places(y, f);
             }
-            Stmt::Loop(x, y) => {
+            Stmt::Loop(x, y, _) => {
                 visit_places(x, f);
                 visit_places(y, f);
             }

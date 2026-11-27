@@ -702,6 +702,24 @@ mod tests {
             ("f", "xs[0] + xs[1]".len() as u32)
         );
     }
+    /// A lowered loop keeps the node of its body, where a message on the whole loop is placed.
+    #[test]
+    fn a_lowered_loop_keeps_its_body_site() {
+        let src = "fn f(n: Int) -> Int:\n    var i = 0\n    while i < n:\n        i += 1\n    i\nprint(f(3))\n";
+        let f = front(&Std::read(), src, &Roots::std());
+        assert!(f.diags.is_empty(), "{:?}", f.diags);
+        let g = (f.g.funcs.values())
+            .find(|g| g.name == "f" && g.line != 0)
+            .expect("f is lowered");
+        let site = (g.body.iter())
+            .find_map(|s| match s {
+                ir::Stmt::Loop(_, _, s) => Some(*s),
+                _ => None,
+            })
+            .expect("f loops");
+        assert_ne!(site, 0);
+        assert_eq!(g.sites[site as usize].item.name.as_ref(), "f");
+    }
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];

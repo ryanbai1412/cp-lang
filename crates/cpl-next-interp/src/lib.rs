@@ -265,7 +265,7 @@ impl<'a> Machine<'a> {
                         f => return Ok(f),
                     }
                 }
-                Stmt::Loop(body, step) => loop {
+                Stmt::Loop(body, step, _) => loop {
                     match self.block(body, fp)? {
                         Flow::Break => break,
                         f @ (Flow::Return(_) | Flow::Exit(_)) => return Ok(f),

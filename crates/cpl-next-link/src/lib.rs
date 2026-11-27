@@ -480,7 +480,7 @@ impl Link<'_> {
                 Stmt::If(c, a, b) => {
                     Stmt::If(self.expr(c, env), self.block(a, env), self.block(b, env))
                 }
-                Stmt::Loop(a, b) => Stmt::Loop(self.block(a, env), self.block(b, env)),
+                Stmt::Loop(a, b, s) => Stmt::Loop(self.block(a, env), self.block(b, env), *s),
                 Stmt::Switch(c, arms) => Stmt::Switch(
                     self.expr(c, env),
                     arms.iter().map(|a| self.block(a, env)).collect(),
@@ -849,9 +849,10 @@ fn canon_block(
                 canon_block(p, locals, bad, a),
                 canon_block(p, locals, bad, b2),
             )),
-            Stmt::Loop(a, b2) => out.push(Stmt::Loop(
+            Stmt::Loop(a, b2, s) => out.push(Stmt::Loop(
                 canon_block(p, locals, bad, a),
                 canon_block(p, locals, bad, b2),
+                s,
             )),
             Stmt::Switch(c, arms) => out.push(Stmt::Switch(
                 canon_expr(bad, c),
@@ -1200,7 +1201,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                     uses(a, doms, calls, p, bad);
                     uses(b2, doms, calls, p, bad);
                 }
-                Stmt::Loop(a, b2) => {
+                Stmt::Loop(a, b2, _) => {
                     uses(a, doms, calls, p, bad);
                     uses(b2, doms, calls, p, bad);
                 }
@@ -1365,7 +1366,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                         self.block(a);
                         self.block(b2);
                     }
-                    Stmt::Loop(a, b2) => {
+                    Stmt::Loop(a, b2, _) => {
                         self.block(a);
                         self.block(b2);
                     }
@@ -1463,8 +1464,8 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                 Stmt::If(c, a, b2) => {
                     out.push(Stmt::If(c, block(a, exit, typed), block(b2, exit, typed)))
                 }
-                Stmt::Loop(a, b2) => {
-                    out.push(Stmt::Loop(block(a, exit, typed), block(b2, exit, typed)))
+                Stmt::Loop(a, b2, s) => {
+                    out.push(Stmt::Loop(block(a, exit, typed), block(b2, exit, typed), s))
                 }
                 Stmt::Switch(c, arms) => out.push(Stmt::Switch(
                     c,

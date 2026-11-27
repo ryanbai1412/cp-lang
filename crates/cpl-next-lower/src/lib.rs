@@ -1048,7 +1048,8 @@ impl Lw<'_> {
                 }
                 let v = self.expr(b, &mut body);
                 self.effect(v, &mut body);
-                out.push(Stmt::Loop(body, vec![]));
+                let at = self.site(b.span);
+                out.push(Stmt::Loop(body, vec![], at));
             }
             TStmt::For(v, lo, hi, b) => {
                 // `for i in lo..hi`: both ends are evaluated once, before the loop.
@@ -1120,7 +1121,8 @@ impl Lw<'_> {
                     ),
                     ty: Ty::Int,
                 };
-                out.push(Stmt::Loop(body, vec![Stmt::Assign(var, step)]));
+                let at = self.site(b.span);
+                out.push(Stmt::Loop(body, vec![Stmt::Assign(var, step)], at));
             }
             TStmt::Return(e) => {
                 let v = e.as_ref().map(|e| {
@@ -1164,6 +1166,7 @@ impl Lw<'_> {
                         out.push(Stmt::Loop(
                             vec![Stmt::If(more, vec![], vec![Stmt::Break]), call],
                             vec![Stmt::Assign(Place::Local(left), step)],
+                            0,
                         ));
                     }
                     None => {
@@ -1171,6 +1174,7 @@ impl Lw<'_> {
                         out.push(Stmt::Loop(
                             vec![Stmt::If(more, vec![], vec![Stmt::Break]), call],
                             vec![],
+                            0,
                         ));
                     }
                 }
@@ -1462,7 +1466,7 @@ fn ends(stmts: &[Stmt<Ty>]) -> bool {
         Some(Stmt::If(_, a, b)) => ends(a) && ends(b),
         Some(Stmt::Switch(_, arms)) => !arms.is_empty() && arms.iter().all(|a| ends(a)),
         // A loop nothing breaks out of, as `while true` is, only leaves by `return`.
-        Some(Stmt::Loop(body, step)) => !breaks(body) && !breaks(step),
+        Some(Stmt::Loop(body, step, _)) => !breaks(body) && !breaks(step),
         _ => false,
     }
 }

@@ -1491,7 +1491,7 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
                 self.block(a);
                 self.block(b);
             }
-            Stmt::Loop(a, b) => {
+            Stmt::Loop(a, b, _) => {
                 self.block(a);
                 self.block(b);
             }

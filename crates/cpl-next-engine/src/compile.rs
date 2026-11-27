@@ -672,7 +672,7 @@ impl Fc<'_> {
                     self.patch(end, t);
                 }
             }
-            Stmt::Loop(body, step) => {
+            Stmt::Loop(body, step, _) => {
                 self.looping += 1;
                 let head = self.here();
                 self.loops.push(Ctx::Loop {
@@ -910,7 +910,7 @@ fn touches(b: &[Stmt<CTy>], l: usize, all: bool) -> bool {
         Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) => touches_in(e, l, all),
         Stmt::Return(e) => e.as_ref().is_some_and(|e| touches_in(e, l, all)),
         Stmt::If(c, a, b) => touches_in(c, l, all) || touches(a, l, all) || touches(b, l, all),
-        Stmt::Loop(a, b) => touches(a, l, all) || touches(b, l, all),
+        Stmt::Loop(a, b, _) => touches(a, l, all) || touches(b, l, all),
         Stmt::Switch(c, arms) => touches_in(c, l, all) || arms.iter().any(|a| touches(a, l, all)),
         Stmt::Check { cond, .. } => touches_in(cond, l, all),
         Stmt::Print(ps) => ps
@@ -1504,7 +1504,7 @@ fn cost(b: &[Stmt<CTy>]) -> usize {
                 Stmt::Fact(_) => 0,
                 Stmt::Return(x) => x.as_ref().map_or(0, e),
                 Stmt::If(c, a, b) => e(c) + cost(a) + cost(b),
-                Stmt::Loop(a, b) => cost(a) + cost(b),
+                Stmt::Loop(a, b, _) => cost(a) + cost(b),
                 Stmt::Switch(c, arms) => e(c) + arms.iter().map(|a| cost(a)).sum::<usize>(),
                 Stmt::Check { cond, .. } => e(cond),
                 Stmt::Print(ps) => ps.len(),
@@ -1732,7 +1732,7 @@ fn lend_outs(b: &[Stmt<CTy>]) -> usize {
     b.iter()
         .map(|s| match s {
             Stmt::LendOut(_) => 1,
-            Stmt::If(_, x, y) | Stmt::Loop(x, y) => lend_outs(x) + lend_outs(y),
+            Stmt::If(_, x, y) | Stmt::Loop(x, y, _) => lend_outs(x) + lend_outs(y),
             Stmt::Switch(_, arms) => arms.iter().map(|a| lend_outs(a)).sum(),
             Stmt::Region { body, .. } if lend_outs(body) > 0 => 2,
             _ => 0,
@@ -1745,7 +1745,7 @@ fn leaves(b: &[Stmt<CTy>], depth: usize) -> bool {
         Stmt::Return(_) => true,
         Stmt::Break | Stmt::Continue => depth == 0,
         Stmt::If(_, x, y) => leaves(x, depth) || leaves(y, depth),
-        Stmt::Loop(x, y) => leaves(x, depth + 1) || leaves(y, depth + 1),
+        Stmt::Loop(x, y, _) => leaves(x, depth + 1) || leaves(y, depth + 1),
         Stmt::Switch(_, arms) => arms.iter().any(|a| leaves(a, depth)),
         Stmt::Region { body, .. } => leaves(body, depth),
         _ => false,

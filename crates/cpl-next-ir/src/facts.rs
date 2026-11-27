@@ -189,7 +189,7 @@ impl Writes {
                     self.block(a);
                     self.block(b);
                 }
-                Stmt::Loop(a, b) => {
+                Stmt::Loop(a, b, _) => {
                     self.block(a);
                     self.block(b);
                 }
@@ -364,7 +364,7 @@ impl Pass<'_> {
                         _ => self.join(&k, then, other, &kt, &ke),
                     };
                 }
-                Stmt::Loop(body, step) => {
+                Stmt::Loop(body, step, _) => {
                     let mut w = Writes::default();
                     w.block(body);
                     w.block(step);
@@ -486,7 +486,7 @@ fn escaped(funcs: &[Func<CTy>]) -> HashSet<(Option<usize>, usize)> {
                     st(a, f, out);
                     st(b, f, out);
                 }
-                Stmt::Loop(a, b) => {
+                Stmt::Loop(a, b, _) => {
                     st(a, f, out);
                     st(b, f, out);
                 }

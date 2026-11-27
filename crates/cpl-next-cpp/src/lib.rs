@@ -358,7 +358,7 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
                     expr(e, w);
                 }
                 Stmt::Expr(e) => expr(e, w),
-                Stmt::If(_, a, b2) | Stmt::Loop(a, b2) => {
+                Stmt::If(_, a, b2) | Stmt::Loop(a, b2, _) => {
                     block(a, w);
                     block(b2, w);
                 }
@@ -468,7 +468,7 @@ impl Emit<'_> {
                     self.name_built(a);
                     self.name_built(b);
                 }
-                Stmt::Loop(a, b) => {
+                Stmt::Loop(a, b, _) => {
                     self.name_built(a);
                     self.name_built(b);
                 }
@@ -763,7 +763,7 @@ impl Emit<'_> {
                     }
                     put_line!(s, "{pad}}}");
                 }
-                Stmt::Loop(body, step) => {
+                Stmt::Loop(body, step, _) => {
                     *label += 1;
                     let me = *label;
                     put_line!(s, "{pad}for (;;) {{");
@@ -937,7 +937,7 @@ fn recursive_regions(funcs: &[Func<CTy>]) -> Vec<bool> {
         for s in b {
             match s {
                 Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) => ex(e, out),
-                Stmt::If(_, a, b2) | Stmt::Loop(a, b2) => {
+                Stmt::If(_, a, b2) | Stmt::Loop(a, b2, _) => {
                     edges(a, out);
                     edges(b2, out);
                 }

@@ -77,7 +77,7 @@ fn forward(b: &mut Vec<Stmt<CTy>>, uses: &[usize], scalar: &[bool]) {
     let mut i = 0;
     while i < b.len() {
         match &mut b[i] {
-            Stmt::If(_, x, y) | Stmt::Loop(x, y) => {
+            Stmt::If(_, x, y) | Stmt::Loop(x, y, _) => {
                 forward(x, uses, scalar);
                 forward(y, uses, scalar);
             }
