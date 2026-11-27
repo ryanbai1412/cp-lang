@@ -21,10 +21,14 @@ pub(crate) fn tidy(c: &mut Code) {
     let mut saved: std::collections::HashMap<Vec<u32>, u32> =
         (c.saved.iter().cloned()).zip(0..).collect();
     let addressed = addressed(c);
-    // What a fn's caller reads when it leaves: its locals and result, not its temporaries.
-    let mut leaving = vec![None; c.blocks.len()];
+    // What leaving a fn reads of its frame: its result, the lent parameters it writes back
+    // and the locals it drops.
+    let mut leaving: Vec<Option<Vec<Words>>> = vec![None; c.blocks.len()];
     for f in &c.funcs {
-        leaving[f.block as usize] = Some(f.locals);
+        let lent = (f.params.iter().zip(&f.lent)).filter_map(|(&p, &l)| l.then_some(p));
+        let drops = f.drops.iter().map(|&(r, l)| (r, c.lays.size[l as usize]));
+        leaving[f.block as usize] =
+            Some([(0, f.ret)].into_iter().chain(lent).chain(drops).collect());
     }
     c.lines = vec![Vec::new(); c.blocks.len()];
     for b in 0..c.blocks.len() {
@@ -59,7 +63,14 @@ pub(crate) fn tidy(c: &mut Code) {
         let pinned = |r: Reg| r >= addressed[b] || chained.contains(&r) || outside.contains(&r);
         jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut lines);
         forward(&mut ops, &mut c.places, &c.lays, &c.tables, &pinned);
-        let keep = unread(&ops, &c.places, &c.lays, &c.tables, &pinned, leaving[b]);
+        let keep = unread(
+            &ops,
+            &c.places,
+            &c.lays,
+            &c.tables,
+            &pinned,
+            leaving[b].as_deref(),
+        );
         renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
         jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut lines);
         c.blocks[b] = ops;
@@ -692,15 +703,15 @@ fn forward(
 }
 
 /// The ops to keep: not a pure op whose registers nothing reads before they are set again.
-/// `leaving`: the registers below it are what leaving the block reads, when it is a fn's
-/// block; a region body's leaves its frame to the code that lent to it, which may read any.
+/// `leaving`: the registers leaving the block reads, when it is a fn's block; a region
+/// body's leaves its frame to the code that lent to it, which may read any.
 fn unread(
     ops: &[Op],
     places: &[PlaceCode],
     lays: &Layouts,
     tables: &[Vec<u32>],
     pinned: &dyn Fn(Reg) -> bool,
-    leaving: Option<u32>,
+    leaving: Option<&[Words]>,
 ) -> Vec<bool> {
     let fx: Vec<_> = ops.iter().map(|op| effect(op, places, lays)).collect();
     let top = (fx.iter().flatten())
@@ -721,9 +732,9 @@ fn unread(
         }
     };
     let exit = match leaving {
-        Some(n) => {
+        Some(ws) => {
             let mut v = vec![0u64; words];
-            mark(&mut v, &(0, n), true);
+            ws.iter().for_each(|w| mark(&mut v, w, true));
             v
         }
         None => all.clone(),
@@ -892,14 +903,29 @@ mod tests {
                 keep,
             )
         };
-        let (not, keep) = run(&|_| false, Some(1));
+        let (not, keep) = run(&|_| false, Some(&[(0, 1)]));
         assert_eq!(not, "Not { d: 3, a: 1 } [Slot { i: 3, stride: 1 }]");
         assert_eq!(keep, [true, false, true, false, true, true, false, true]);
         let (_, keep) = run(&|_| false, None);
         assert!(keep.iter().all(|&k| k));
-        let (not, keep) = run(&|_| true, Some(1));
+        let (not, keep) = run(&|_| true, Some(&[(0, 1)]));
         assert_eq!(not, "Not { d: 3, a: 2 } [Slot { i: 4, stride: 1 }]");
         assert!(keep.iter().all(|&k| k));
+    }
+
+    /// Leaving a fn reads its result, its lent parameters and the locals it drops, not
+    /// every local: a local's last write that nothing else reads goes.
+    #[test]
+    fn leaving_a_fn_reads_only_what_its_caller_sees() {
+        let ops = [
+            Op::Imm { d: 3, v: 1 },
+            Op::Imm { d: 0, v: 2 },
+            Op::Leave(crate::compile::Leave::Return),
+        ];
+        let lays = Layouts::default();
+        let kept = |leaving: &[Words]| unread(&ops, &[], &lays, &[], &|_| false, Some(leaving));
+        assert_eq!(kept(&[(0, 1)]), [false, true, true]);
+        assert_eq!(kept(&[(0, 1), (3, 1)]), [true, true, true]);
     }
 
     /// A kept line around moves goes; around a `Take`, which can trap, it stays, and a drop
