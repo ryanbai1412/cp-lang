@@ -9,6 +9,8 @@ CI splits --fast across parallel jobs (.github/workflows/ci.yml):
   fmt               fmt_check over every .cp file
   conform[:S+S@N/M] the conformance ratchet (only suites S, shard N/M) and, with the
                     conformance suite, the script unit tests
+  lists@N/M         shard N/M of cpl-next's programs cases against the committed lists
+  ratchet           cpl-next's other programs tests, then the tech-debt ratchet
   tests:doc         the doctests
   tests:<partition> that nextest partition (e.g. tests:hash:1/12), or tests:time:k/n,
                     shard k of n dealt by research/perf/ci-test-times.json
@@ -154,7 +156,7 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
             raise ValueError(f"CPL_GATE_PART={part} with --{mode}: only `full` goes with --full")
         out["kind"] = "full"
         return out
-    if part in ("fmt", "corpus", "conform", "std-mutants", "ratchet") or part.startswith(("conform:", "tests:")):
+    if part in ("fmt", "corpus", "conform", "std-mutants", "ratchet") or part.startswith(("conform:", "tests:", "lists@")):
         if mode != "fast":
             raise ValueError(f"CPL_GATE_PART={part} needs --fast")
     if part in ("fmt", "corpus", "std-mutants", "ratchet"):
@@ -166,12 +168,17 @@ def gate_part(part: str, mode: str) -> dict[str, str]:
             raise ValueError(f"CPL_GATE_PART={part}: `@` needs a shard N/M")
         out.update(kind="conform", suites=suites.replace("+", " ").replace(",", " "),
                    shard=f"--shard {shard}" if shard else "")
+    elif part.startswith("lists@"):
+        shard = part.removeprefix("lists@")
+        if not re.fullmatch(r"[1-9]\d*/[1-9]\d*", shard) or int(shard.split("/")[0]) > int(shard.split("/")[1]):
+            raise ValueError(f"CPL_GATE_PART={part}: want lists@N/M with 1 <= N <= M")
+        out.update(kind="lists", shard=shard)
     elif part == "tests:doc":
         out["kind"] = "doc"
     elif part.startswith("tests:") and part != "tests:":
         out.update(kind="tests", partition=part.removeprefix("tests:"))
     else:
-        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, std-mutants, ratchet, tests:<partition>, or full with --full)")
+        raise ValueError(f"unknown CPL_GATE_PART `{part}` (checks, fmt, corpus, conform, std-mutants, ratchet, lists@N/M, tests:<partition>, or full with --full)")
     return out
 
 
@@ -211,6 +218,7 @@ def _stale(what: str, name: str) -> str:
     return f"{what} is stale; run: uv run scripts/spec-gate.py {name} --write"
 
 
+LISTS_TEST = "every_case_is_where_the_lists_say"
 RATCHET = Step("tech-debt ratchet (scripts/debt-ratchet.py --check)", ("scripts/debt-ratchet.py", "--check"),
                "tech-debt ratchet failed; see scripts/debt-ratchet.json")
 REFS = Step("every corpus path a file names exists (scripts/corpus.py refs)", ("scripts/corpus.py", "refs"),
@@ -991,13 +999,25 @@ class Tail:
             return "corpus part"
         if g["kind"] == "std-mutants":
             return self._std_mutants(env)
-        if g["kind"] == "ratchet":
-            # The ratchet's case-id gates read target/cpl-next/ from a fresh full run.
-            self.step("cpl-next programs (the run the ratchet's list gates read)")
+        if g["kind"] == "lists":
+            # A full run takes about 45 min on a CI runner; the lists@ parts each check a shard,
+            # so together they prove the committed lists are what a fresh run measures.
+            self.step(f"cpl-next programs cases, shard {g['shard']}, against the committed lists")
             if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-next"]):
                 raise Failed("cargo build -p cpl-cli -p cpl-next failed")
             if self.call(["cargo", "nextest", "run", "-p", "cpl-next", "--test", "programs", "--profile", "gate",
-                          "--no-fail-fast"]):
+                          "--no-fail-fast", "-E", f"test(={LISTS_TEST})"],
+                         env={**os.environ, "CPL_NEXT_SHARD": g["shard"]}):
+                raise Failed(f"cases are off the lists; rerun: CPL_NEXT_SHARD={g['shard']} "
+                             f"cargo nextest run -p cpl-next --test programs {LISTS_TEST}")
+            return f"lists@{g['shard']} part"
+        if g["kind"] == "ratchet":
+            # The ratchet's case-id gates read the committed lists, which the lists@ parts check.
+            self.step("cpl-next programs tests but the case lists (the lists@ parts run those)")
+            if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-next"]):
+                raise Failed("cargo build -p cpl-cli -p cpl-next failed")
+            if self.call(["cargo", "nextest", "run", "-p", "cpl-next", "--test", "programs", "--profile", "gate",
+                          "--no-fail-fast", "-E", f"not test(={LISTS_TEST})"]):
                 raise Failed("a cpl-next programs test failed; rerun: cargo nextest run -p cpl-next --test programs")
             self.step(RATCHET.title)
             if self.call([sys.executable, *RATCHET.argv]):

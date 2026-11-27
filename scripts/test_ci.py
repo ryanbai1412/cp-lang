@@ -39,6 +39,13 @@ class GatePartTest(unittest.TestCase):
             ci.run_steps("checks", run=run)
         self.assertFalse(any("scripts/debt-ratchet.py" in " ".join(map(str, c)) for c in seen))
 
+    def test_a_lists_part_checks_its_shard_of_the_cases(self) -> None:
+        g = ci.gate_part("lists@3/8", "fast")
+        self.assertEqual((g["kind"], g["shard"]), ("lists", "3/8"))
+        for bad in ("lists@", "lists@0/8", "lists@9/8", "lists@3"):
+            with self.assertRaisesRegex(ValueError, "lists@N/M"):
+                ci.gate_part(bad, "fast")
+
     def test_tests_partitions(self) -> None:
         self.assertEqual(ci.gate_part("tests:doc", "fast")["kind"], "doc")
         g = ci.gate_part("tests:hash:1/12", "fast")
@@ -393,6 +400,17 @@ class TailTest(unittest.TestCase):
         self.assertFalse([e for e in ev if "unittest" in e or "corpus.py make" in e])
         conform = next(e for e in ev if e.split()[0].endswith("cpl-conform"))
         self.assertTrue(conform.endswith(" diff --shard 1/3 --check --prev /p.json --save /p.json.new"), conform)
+
+    def test_a_lists_part_runs_only_the_list_test_on_its_shard(self) -> None:
+        code, ev, out, _, _, _ = self._part("lists@3/8")
+        self.assertEqual(code, 0)
+        run = next(e for e in ev if e.startswith("cargo nextest run"))
+        self.assertIn(f"-p cpl-next --test programs --profile gate --no-fail-fast -E test(={ci.LISTS_TEST})", run)
+        self.assertIn("check: lists@3/8 part passed in", out)
+        code, ev, _, _, _, _ = self._part("ratchet")
+        self.assertEqual(code, 0)
+        run = next(e for e in ev if e.startswith("cargo nextest run"))
+        self.assertIn(f"-E not test(={ci.LISTS_TEST})", run)
 
     def test_a_failed_conform_ratchet_names_its_rerun(self) -> None:
         code, _, _, err, _, _ = self._part("conform:corpus", codes={str(ci.target_dir() / "debug/cpl-conform").replace(str(ci.ROOT) + "/", ""): 1})

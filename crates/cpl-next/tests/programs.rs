@@ -791,6 +791,9 @@ fn every_case_is_where_the_lists_say() {
             cases.len()
         );
     }
+    let shard = cpl_env::NEXT_SHARD.text().map(|s| shard_spec(&s));
+    let mine = |id: &str| shard.is_none_or(|(i, n)| in_shard(id, i, n));
+    cases.retain(|(id, _)| mine(id));
     let verdicts = parallel::parallel(&cases, |(_, p)| verdict(p));
 
     let (mut passing, mut wrong, mut refused) = (String::new(), String::new(), String::new());
@@ -815,12 +818,13 @@ fn every_case_is_where_the_lists_say() {
     let typed = ERROR_TYPED.lock().unwrap().clone();
     let error_typed: String = (cases.iter())
         .filter(|(_, p)| typed.contains(&fnv(&std::fs::read(p).unwrap_or_default())))
-        .map(|(id, _)| format!("{id}\n"))
+        .map(|(id, _)| format!("{id}
+"))
         .collect();
-    let found = root.join(if only.is_some() {
-        "target/cpl-next/only"
-    } else {
-        "target/cpl-next"
+    let found = root.join(match (&only, shard) {
+        (Some(_), _) => "target/cpl-next/only".to_string(),
+        (None, Some((i, n))) => format!("target/cpl-next/shard-{i}-of-{n}"),
+        (None, None) => "target/cpl-next".to_string(),
     });
     std::fs::create_dir_all(&found).unwrap();
     let queue = queue(&refused);
@@ -919,7 +923,7 @@ fn every_case_is_where_the_lists_say() {
         .keys()
         .chain(listed_wrong.keys())
         .chain(listed_masked.keys())
-        .filter(|id| only.is_none() && !seen.contains(&id.as_str()))
+        .filter(|id| only.is_none() && mine(id) && !seen.contains(&id.as_str()))
     {
         off.push(format!("{id}: listed, but there is no such case"));
     }
@@ -934,7 +938,7 @@ fn every_case_is_where_the_lists_say() {
     );
     if listed_lowered
         .keys()
-        .any(|id| only.is_none() && !lowered.lines().any(|l| l == id))
+        .any(|id| only.is_none() && mine(id) && !lowered.lines().any(|l| l == id))
     {
         println!("cases in tests/lowered.txt are caught before lowering now: copy target/cpl-next/lowered.txt over it");
     }
@@ -954,6 +958,46 @@ fn every_case_is_where_the_lists_say() {
         found.display(),
         off.join("\n")
     );
+}
+
+/// `i/n` of `CPL_NEXT_SHARD`, 1 <= i <= n.
+fn shard_spec(spec: &str) -> (u64, u64) {
+    let parsed = spec
+        .split_once('/')
+        .and_then(|(i, n)| Some((i.trim().parse().ok()?, n.trim().parse().ok()?)));
+    match parsed {
+        Some((i, n)) if 1 <= i && i <= n => (i, n),
+        _ => panic!("CPL_NEXT_SHARD={spec:?}: want i/n with 1 <= i <= n"),
+    }
+}
+
+/// Whether case `id` is in shard `i` of `n`: by a hash of the id alone, so a listed id that
+/// names no case still falls in exactly one shard, which reports it.
+fn in_shard(id: &str, i: u64, n: u64) -> bool {
+    let hash = id.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    });
+    hash % n == i - 1
+}
+
+#[test]
+fn every_id_is_in_exactly_one_shard() {
+    for n in [1, 2, 8] {
+        for id in ["core-01/double-index.cp", "next/n_a.cp", "std-seq/x.cp", ""] {
+            assert_eq!(
+                (1..=n).filter(|&i| in_shard(id, i, n)).count(),
+                1,
+                "{id} in {n}"
+            );
+        }
+    }
+    assert_eq!(shard_spec("3/8"), (3, 8));
+    for bad in ["0/8", "9/8", "8", "a/b"] {
+        assert!(
+            std::panic::catch_unwind(|| shard_spec(bad)).is_err(),
+            "{bad}"
+        );
+    }
 }
 
 /// The refused cases grouped by what refused them, largest group first: the order the
