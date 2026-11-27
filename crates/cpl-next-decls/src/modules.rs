@@ -135,14 +135,18 @@ pub struct Std {
 }
 
 impl Std {
+    /// The std this binary was built with.
     pub fn read() -> Std {
+        Std::from_files(STD_FILES.iter().map(|(m, t)| (m.to_string(), t.to_string())).collect())
+    }
+
+    /// The std in the directory `root`, in place of the one this binary was built with.
+    pub fn read_dir(root: &Path) -> Std {
+        Std::from_files(read_dir_modules(root))
+    }
+
+    fn from_files(mut files: Vec<(String, String)>) -> Std {
         const CORE_TEXT: &str = include_str!("../../cpl-next/std.cp");
-        let mut files = match cpl_env::NEXT_STD_DIR.path() {
-            Some(dir) => read_dir_modules(&dir),
-            None => (STD_FILES.iter())
-                .map(|(m, t)| (m.to_string(), t.to_string()))
-                .collect(),
-        };
         files.sort();
         let placed = std::iter::once((CORE.to_string(), CORE_TEXT.to_string())).chain(files);
         // Each module is read alone, so they are parsed side by side.
@@ -240,7 +244,7 @@ pub struct Roots(Vec<(String, PathBuf)>);
 /// Std's modules as `std/` was when this binary was built, by module name.
 const STD_FILES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_files.rs"));
 
-/// The modules of a std directory `CPL_NEXT_STD_DIR` names in place of the built-in one.
+/// The modules of a std directory, by module name.
 fn read_dir_modules(root: &Path) -> Vec<(String, String)> {
     let mut files = Vec::new();
     let mut dirs = vec![(root.to_path_buf(), "std".to_string())];

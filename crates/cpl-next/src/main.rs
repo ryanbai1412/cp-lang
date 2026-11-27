@@ -56,7 +56,7 @@ fn real_main() {
         return every_case(Duration::from_millis(ms), has("--trace"));
     }
     if has("--std-modules") {
-        let std = Snapshot::new(Arc::new(Std::read()), Roots::std(), "");
+        let std = Snapshot::new(Arc::new(std_in_use()), Roots::std(), "");
         for (m, n) in Session::open(std).std_unchecked() {
             println!("{m}\t{n}");
         }
@@ -73,7 +73,7 @@ fn real_main() {
             std::process::exit(2);
         }
     };
-    let mut snapshot = Snapshot::new(Arc::new(Std::read()), roots(path), &src);
+    let mut snapshot = Snapshot::new(Arc::new(std_in_use()), roots(path), &src);
     if has("--trace") {
         snapshot = snapshot.traced();
     }
@@ -134,7 +134,7 @@ fn code(v: Verdict) -> i32 {
 
 /// `--all`: every case on stdin compiled against one read of std.
 fn every_case(limit: Duration, events: bool) {
-    let std = Snapshot::new(Arc::new(Std::read()), Roots::std(), "");
+    let std = Snapshot::new(Arc::new(std_in_use()), Roots::std(), "");
     for line in std::io::stdin().lock().lines() {
         let Ok(line) = line else { break };
         let Some((path, dir)) = line.split_once('\t') else {
@@ -237,4 +237,9 @@ fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input
     if cfg!(debug_assertions) {
         write("error-typed", &c.error_typed().join("\n"));
     }
+}
+
+/// The std this binary was built with, or the directory `CPL_NEXT_STD_DIR` names.
+fn std_in_use() -> Std {
+    cpl_env::NEXT_STD_DIR.path().map_or_else(Std::read, |dir| Std::read_dir(&dir))
 }
