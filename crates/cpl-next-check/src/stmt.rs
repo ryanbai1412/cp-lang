@@ -1180,6 +1180,19 @@ impl<'a> Cx<'a> {
                 ..
             } => {
                 self.in_for = false;
+                // A bare `..` names no domain to walk (R04.4.11).
+                if let ExprKind::Range {
+                    lo: None,
+                    hi: None,
+                    step: None,
+                    ..
+                } = iter.kind
+                {
+                    let text = cpl_diag::msgs::check::BARE_MEANS_ALL_DIMENSION.say(&[]);
+                    let help = "name what to walk: `for x in D` or `for i in 0..n`".to_string();
+                    let msg = Msg::verdict(cpl_diag::codes::EXPECTED_EXPR, text);
+                    return self.err_help(iter.span, msg, Some(help));
+                }
                 // `for _ in xs` (and `repeat n:`): each item is bound to a name nothing reads.
                 if let PatternKind::Wildcard = pat.kind {
                     let mut named = s.clone();

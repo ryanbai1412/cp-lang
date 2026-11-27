@@ -1880,6 +1880,20 @@ impl<'a> Cx<'a> {
             }
             other @ ExprKind::Range { step: None, .. } => match self.whole_of(want) {
                 Some(d) => self.domain_value(d, span),
+                // Its domain comes from its place: an index or a `Range<D>` slot (R04.8.6).
+                None if matches!(
+                    other,
+                    ExprKind::Range {
+                        lo: None,
+                        hi: None,
+                        ..
+                    }
+                ) =>
+                {
+                    let text = cpl_diag::msgs::check::TYPE_MISMATCH_FULL_RANGE.say(&[]);
+                    self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text));
+                    Self::error_node(span)
+                }
                 None => self.unbuilt_expr(other, span),
             },
             ExprKind::By { walk, step } => match &walk.kind {
