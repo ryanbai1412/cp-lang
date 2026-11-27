@@ -159,7 +159,7 @@ impl Decls {
             (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
             (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
             // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
-            (Some(Ty::Range(..) | Ty::RangeOf(_)), Ty::Int) => true,
+            (Some(Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)), Ty::Int) => true,
             (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
             (None, _) => false,
         }
@@ -320,12 +320,14 @@ fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
         (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) | (Ty::Mut(a), Ty::Mut(b)) => {
             fit(a, b, binds)
         }
+        (Ty::RangeTo(a, m, x, k), Ty::RangeTo(b, n, y, j)) => {
+            m == n && x == y && k == j && fit(a, b, binds)
+        }
         (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
             d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
         }
-        (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => {
-            true
-        }
+        (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Int)
+        | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)) => true,
         (Ty::Clo(x), Ty::Clo(y)) => same_item(x, y),
         // A fn type is a type like any other: `impl<T> Op<T> for (T, T) -> T` fits any set.
         (Ty::Fn(pa, ra, _), Ty::Fn(pb, rb, _)) => {

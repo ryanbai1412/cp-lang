@@ -323,7 +323,7 @@ impl Link<'_> {
     }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
-            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) => CTy::Int,
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => CTy::Int,
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
             Ty::U64 => CTy::U64,
@@ -1757,7 +1757,9 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
                 true
             }
         },
-        (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), CTy::Int | CTy::Range(..)) => true,
+        (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), CTy::Int | CTy::Range(..)) => {
+            true
+        }
         (Ty::Bool, CTy::Bool)
         | (Ty::Char, CTy::Char)
         | (Ty::U64, CTy::U64)

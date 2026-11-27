@@ -71,6 +71,9 @@ impl<'a> Cx<'a> {
                 )
             }
             Ty::Raw(e) => Ty::Raw(Box::new(self.fresh_sets(e))),
+            Ty::RangeTo(e, m, lo, k) => {
+                Ty::RangeTo(Box::new(self.fresh_sets(e)), m.clone(), *lo, *k)
+            }
             Ty::Mut(e) => Ty::Mut(Box::new(self.fresh_sets(e))),
             Ty::Struct(d, ts, ss) => {
                 let mut ss: Vec<SetTy> = ss
@@ -95,6 +98,7 @@ impl<'a> Cx<'a> {
         match self.shallow(t) {
             Ty::Var(_) => Ty::Error,
             Ty::Raw(e) => Ty::Raw(Box::new(self.zonk(&e))),
+            Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(self.zonk(&e)), m, lo, k),
             Ty::Mut(e) => Ty::Mut(Box::new(self.zonk(&e))),
             Ty::Struct(d, ts, ss) => Ty::Struct(
                 d,
@@ -114,6 +118,7 @@ impl<'a> Cx<'a> {
     pub(super) fn followed(&self, t: &Ty) -> Ty {
         match self.shallow(t) {
             Ty::Raw(e) => Ty::Raw(Box::new(self.followed(&e))),
+            Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(self.followed(&e)), m, lo, k),
             Ty::Mut(e) => Ty::Mut(Box::new(self.followed(&e))),
             Ty::Ref(e) => Ty::Ref(Box::new(self.followed(&e))),
             Ty::Struct(d, ts, ss) => {
@@ -246,7 +251,7 @@ impl<'a> Cx<'a> {
     fn occurs(&self, v: usize, t: &Ty) -> bool {
         match self.shallow(t) {
             Ty::Var(x) => x == v,
-            Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) => self.occurs(v, &e),
+            Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => self.occurs(v, &e),
             Ty::Struct(_, ts, _) => ts.iter().any(|t| self.occurs(v, t)),
             Ty::Fn(ps, r, _) => ps.iter().any(|t| self.occurs(v, t)) || self.occurs(v, &r),
             Ty::Clo(c) => match &*c {
@@ -290,6 +295,9 @@ impl<'a> Cx<'a> {
                 true
             }
             (Ty::Raw(x), Ty::Raw(y)) | (Ty::Mut(x), Ty::Mut(y)) => self.unify(x, y),
+            (Ty::RangeTo(x, m, a, k), Ty::RangeTo(y, n, b, j)) => {
+                m == n && a == b && k == j && self.unify(x, y)
+            }
             (Ty::Struct(d1, t1, s1), Ty::Struct(d2, t2, s2)) => {
                 d1 == d2
                     && t1.len() == t2.len()
@@ -310,6 +318,14 @@ impl<'a> Cx<'a> {
             Ty::Int => "Int".into(),
             Ty::Range(lo, hi) => format!("{lo}..={hi}"),
             Ty::RangeOf(_) => "a range with run-time ends".into(),
+            Ty::RangeTo(d, m, lo, k) => {
+                let k = match k {
+                    0 => String::new(),
+                    k if k > 0 => format!(" + {k}"),
+                    k => format!(" - {}", -k),
+                };
+                lo.to_string() + &format!("..={}.{m}{k}", self.show(&d))
+            }
             Ty::Bool => "Bool".into(),
             Ty::Char => "Char".into(),
             Ty::U64 => "U64".into(),
@@ -496,8 +512,8 @@ impl<'a> Cx<'a> {
             (Ty::Raw(p), Ty::Raw(q)) | (Ty::Ref(p), Ty::Ref(q)) | (Ty::Mut(p), Ty::Mut(q)) => {
                 self.fits(&p, &q)
             }
-            (Ty::Range(..) | Ty::RangeOf(_), Ty::Int)
-            | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => true,
+            (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Int)
+            | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)) => true,
             (p, q) => p == q,
         }
     }
@@ -615,7 +631,7 @@ impl<'a> Cx<'a> {
     /// is an `Int`, checked into the range as it is stored (R03.1.4).
     pub(super) fn int_parts(&self, t: &Ty) -> Option<Ty> {
         match self.shallow(t) {
-            Ty::Range(..) | Ty::RangeOf(_) => Some(Ty::Int),
+            Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => Some(Ty::Int),
             Ty::Struct(s, ts, sets) => {
                 let parts = (ts.iter().map(|t| self.int_parts(t))).collect::<Option<Vec<Ty>>>()?;
                 (parts == ts || self.is_tuple(s)).then_some(Ty::Struct(s, parts, sets))
@@ -844,9 +860,45 @@ impl<'a> Cx<'a> {
                 self.held_parts(e, &want_s)
             }
             // Loads widen, stores check (R03.1.4).
-            (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) => TExpr { ty: Ty::Int, ..e },
+            (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Int) => {
+                TExpr { ty: Ty::Int, ..e }
+            }
             (Ty::RangeOf(a), Ty::RangeOf(b)) if a == b => e,
-            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), Ty::RangeOf(r)) => {
+            (
+                Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..),
+                Ty::RangeTo(d, m, lo, k),
+            ) => {
+                let int = |i| TExpr {
+                    kind: TK::Int(i),
+                    ty: Ty::Int,
+                    span,
+                };
+                let (lo, k, name) = (
+                    *lo,
+                    *k,
+                    ast::Name {
+                        text: m.clone(),
+                        span,
+                    },
+                );
+                let Some(end) = self.domain_fn((**d).clone(), &name, None, span) else {
+                    let what = format!("`{}` has no `{}`", self.show(d), name.text);
+                    self.err(span, Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, what));
+                    return TExpr { ty: want_s, ..e };
+                };
+                let end = match k {
+                    0 => end,
+                    k => TExpr {
+                        kind: TK::Bin(BinOp::Add, Box::new(end), Box::new(int(k)), Overflow::Traps),
+                        ty: Ty::Int,
+                        span,
+                    },
+                };
+                let v = TExpr { ty: Ty::Int, ..e };
+                let v = self.checked_between(v, Some(int(lo)), Some(end), span);
+                TExpr { ty: want_s, ..v }
+            }
+            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::RangeOf(r)) => {
                 let end = |v: Option<VarRef>| {
                     v.map(|v| TExpr {
                         kind: TK::Var(v),
@@ -860,7 +912,7 @@ impl<'a> Cx<'a> {
                 TExpr { ty: want_s, ..v }
             }
             (Ty::Range(a, b), Ty::Range(lo, hi)) if lo <= a && b <= hi => TExpr { ty: want_s, ..e },
-            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), Ty::Range(lo, hi)) => {
+            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Range(lo, hi)) => {
                 let (lo, hi) = (*lo, *hi);
                 // A constant is checked here, not when the program runs (R03.1.10).
                 if let TK::Int(i) = e.kind {
@@ -1066,7 +1118,7 @@ impl<'a> Cx<'a> {
 pub(super) fn mentions(t: &Ty, i: usize) -> bool {
     match t {
         Ty::Param(j) => *j == i,
-        Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) | Ty::Mut(t) => mentions(t, i),
+        Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) | Ty::Mut(t) | Ty::RangeTo(t, ..) => mentions(t, i),
         Ty::Struct(_, ts, _) => ts.iter().any(|t| mentions(t, i)),
         Ty::Fn(ps, r, _) => ps.iter().any(|t| mentions(t, i)) || mentions(r, i),
         _ => false,
@@ -1086,7 +1138,7 @@ pub(super) fn made_param(fd: &decls::FnDecl) -> Option<usize> {
 pub(super) fn ground(t: &Ty) -> bool {
     match t {
         Ty::Var(_) | Ty::Error => false,
-        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => ground(e),
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::RangeTo(e, ..) => ground(e),
         Ty::Struct(_, ts, _) => ts.iter().all(ground),
         Ty::Fn(ps, r, _) => ps.iter().all(ground) && ground(r),
         _ => true,

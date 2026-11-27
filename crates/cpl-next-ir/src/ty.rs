@@ -24,6 +24,10 @@ pub enum Ty {
     /// A range written in a body with an end that is a run-time value: `1..=n`. Each one written
     /// is a type of its own; its ends are values held where it is written (`check::RangeInfo`).
     RangeOf(usize),
+    /// `lo..=D.m + k` in a declaration: a range whose end is a static getter of a domain type
+    /// give or take a constant (`dep: [V]0..=V.count`). A store checks it against `D.m` where
+    /// it is made, so it keeps the end a struct's arguments give it (R03.1.4).
+    RangeTo(Box<Ty>, String, i64, i64),
     Bool,
     /// An ASCII character, `0..=127`, one byte.
     Char,
@@ -137,6 +141,7 @@ impl Subst<'_> {
         match t {
             Ty::Param(i) => self.tys.get(*i).cloned().unwrap_or(Ty::Error),
             Ty::Raw(e) => Ty::Raw(Box::new(self.ty(e))),
+            Ty::RangeTo(d, m, lo, k) => Ty::RangeTo(Box::new(self.ty(d)), m.clone(), *lo, *k),
             Ty::Ref(e) => Ty::Ref(Box::new(self.ty(e))),
             Ty::Lent(e) => Ty::Lent(Box::new(self.ty(e))),
             Ty::Mut(e) => Ty::Mut(Box::new(self.ty(e))),
@@ -193,7 +198,9 @@ pub fn params_in(t: &Ty, out: &mut std::collections::BTreeSet<usize>) {
         Ty::Param(i) => {
             out.insert(*i);
         }
-        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::Mut(e) => params_in(e, out),
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => {
+            params_in(e, out)
+        }
         Ty::Struct(_, ts, _) => ts.iter().for_each(|t| params_in(t, out)),
         Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| params_in(t, out)),
         _ => {}

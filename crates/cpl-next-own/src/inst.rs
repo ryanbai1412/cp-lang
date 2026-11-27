@@ -1222,7 +1222,7 @@ impl Walk<'_> {
             match t {
                 Ty::Param(_) => true,
                 Ty::Struct(_, ts, _) => ts.iter().any(has),
-                Ty::Raw(t) | Ty::Ref(t) | Ty::Mut(t) => has(t),
+                Ty::Raw(t) | Ty::Ref(t) | Ty::Mut(t) | Ty::RangeTo(t, ..) => has(t),
                 _ => false,
             }
         }

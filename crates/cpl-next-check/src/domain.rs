@@ -374,6 +374,38 @@ impl Cx<'_> {
                 }
             }
             // The ends are values: they are worked out once, here, and the range gets a name.
+            // `0..=V.count`: its end is the domain's, so a field of that type holds it.
+            TypeKind::Range { lo, hi, inclusive }
+                if decls::static_range(lo, hi, *inclusive).is_none()
+                    && decls::count_end(lo, hi, *inclusive).is_some_and(|(_, d, ..)| {
+                        self.generics.iter().any(|g| g == d) || self.doms.contains_key(d)
+                    }) =>
+            {
+                let (lo, d, m, k) = decls::count_end(lo, hi, *inclusive).unwrap_or_default();
+                let mut errs = Vec::new();
+                let dt = ast::Type::named(d, t.span);
+                let dt = decls::body_type(
+                    self.d,
+                    self.module,
+                    &self.generics,
+                    &self.doms,
+                    &dt,
+                    &mut errs,
+                );
+                for e in errs {
+                    self.err(span, e);
+                }
+                let name = format!("$to{}", self.doms.len());
+                let ty = Ty::RangeTo(Box::new(dt), m.to_string(), lo, k);
+                self.doms.insert(name.clone(), ty);
+                t.kind = TypeKind::Named {
+                    name: ast::Name {
+                        text: name,
+                        span: t.span,
+                    },
+                    args: Vec::new(),
+                };
+            }
             TypeKind::Range { lo, hi, inclusive }
                 if decls::static_range(lo, hi, *inclusive).is_none() =>
             {

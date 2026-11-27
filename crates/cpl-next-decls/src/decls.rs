@@ -650,7 +650,7 @@ fn keys(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
                                 .any(|(_, f)| keys(d, f, domain, k, depth + 1)))
                 })
         }
-        Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) => go(e),
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => go(e),
         Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).any(go),
         _ => false,
     }
@@ -1489,6 +1489,40 @@ pub fn static_range(
         None => i64::MAX,
     };
     Some((lo, hi))
+}
+
+/// `lo..=D.m + k`: a range type with a constant start whose end is a static getter of a type
+/// named `D`, give or take a constant (`0..=V.count`, `1..V.count + 1`). Gives `lo`, `D`, `m`
+/// and `k`.
+pub fn count_end<'e>(
+    lo: &Option<Box<ast::Expr>>,
+    hi: &'e Option<Box<ast::Expr>>,
+    inclusive: bool,
+) -> Option<(i64, &'e str, &'e str, i64)> {
+    use ast::{BinOp, ExprKind};
+    fn end(e: &ast::Expr) -> Option<(&str, &str, i64)> {
+        match &e.kind {
+            ExprKind::Paren(x) => end(x),
+            ExprKind::Field { base, name } => match &base.kind {
+                ExprKind::Name(d) => Some((d.as_str(), name.text.as_str(), 0)),
+                _ => None,
+            },
+            ExprKind::Binary { op, lhs, rhs, .. } if matches!(op, BinOp::Add | BinOp::Sub) => {
+                let ((d, m, k), j) = (end(lhs)?, rhs.int_literal()?);
+                let j = if *op == BinOp::Sub {
+                    j.checked_neg()?
+                } else {
+                    j
+                };
+                Some((d, m, k.checked_add(j)?))
+            }
+            _ => None,
+        }
+    }
+    let lo = lo.as_deref()?.int_literal()?;
+    let (d, m, k) = end(hi.as_deref()?)?;
+    let k = if inclusive { k } else { k.checked_sub(1)? };
+    Some((lo, d, m, k))
 }
 
 /// The name a constant range's domain is kept under: none a program can write.

@@ -22,7 +22,7 @@ impl Cx<'_> {
             }
         }
         let v = match self.shallow(&v.ty) {
-            Ty::Range(..) | Ty::RangeOf(_) => self.coerce(v, &Ty::Int),
+            Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => self.coerce(v, &Ty::Int),
             _ => v,
         };
         let conv = self.d.convert_trait.and_then(|tr| {

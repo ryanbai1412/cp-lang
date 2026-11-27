@@ -1649,6 +1649,8 @@ next/n_convert_02_char_outside_ascii_traps.cp
 next/n_convert_03_enum_of_its_value.cp
 next/n_convert_04_enum_of_no_value_traps.cp
 next/n_convert_05_no_into_impl_is_a_mismatch.cp
+next/n_count_range_field.cp
+next/n_count_range_field_store_traps.cp
 next/n_ctx_01_uses_is_a_copy_per_value.cp
 next/n_default_01_names_type_params.cp
 next/n_domain_01_all_is_every_position.cp

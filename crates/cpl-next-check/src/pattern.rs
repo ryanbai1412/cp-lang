@@ -240,7 +240,7 @@ impl Cx<'_> {
             }
             PatternKind::Literal(e) => {
                 let t = match self.shallow(&v.ty) {
-                    Ty::Range(..) | Ty::RangeOf(_) => Ty::Int,
+                    Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => Ty::Int,
                     t @ (Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64) => t,
                     Ty::Error => return None,
                     // Any other literal, such as a string, matches what its type's `Eq` says
@@ -346,7 +346,7 @@ impl Cx<'_> {
                     };
                     if !matches!(
                         self.shallow(&v.ty),
-                        Ty::Int | Ty::Range(..) | Ty::RangeOf(_)
+                        Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)
                     ) {
                         self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
                         return None;
@@ -846,7 +846,7 @@ impl Cx<'_> {
 pub(super) fn holds_dom(t: &Ty, c: usize) -> bool {
     match t {
         Ty::Dom(i) => *i == c,
-        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => holds_dom(e, c),
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::RangeTo(e, ..) => holds_dom(e, c),
         Ty::Struct(_, ts, _) => ts.iter().any(|t| holds_dom(t, c)),
         Ty::Fn(ps, r, _) => ps.iter().any(|t| holds_dom(t, c)) || holds_dom(r, c),
         _ => false,
@@ -859,6 +859,7 @@ pub(super) fn retag(t: &Ty, from: usize, to: usize) -> Ty {
     match t {
         Ty::Dom(i) if *i == from => Ty::Dom(to),
         Ty::Raw(e) => Ty::Raw(Box::new(r(e))),
+        Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(r(e)), m.clone(), *lo, *k),
         Ty::Mut(e) => Ty::Mut(Box::new(r(e))),
         Ty::Ref(e) => Ty::Ref(Box::new(r(e))),
         Ty::Lent(e) => Ty::Lent(Box::new(r(e))),

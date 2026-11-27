@@ -340,6 +340,12 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         // `[D]T` is std's `@array` struct `Array<D, T>`.
         TypeKind::Range { lo, hi, inclusive } => match static_range(lo, hi, *inclusive) {
             Some((lo, hi)) => Ty::Range(lo, hi),
+            // `0..=V.count`: its end is the domain's, where a struct's arguments name it.
+            None if count_end(lo, hi, *inclusive).is_some_and(|(_, d, ..)| is_type_name(cx, d)) => {
+                let (lo, d, m, k) = count_end(lo, hi, *inclusive).unwrap_or_default();
+                let d = conv(cx, &ast::Type::named(d, t.span), errors);
+                Ty::RangeTo(Box::new(d), m.to_string(), lo, k)
+            }
             None => {
                 errors.push(Unbuilt::RangeTypeOutsideBody.into());
                 Ty::Error
@@ -620,4 +626,9 @@ pub(super) fn has_hole(t: &ast::Type) -> bool {
         TypeKind::Record(fs) => fs.iter().any(|(_, t)| has_hole(t)),
         _ => false,
     }
+}
+
+/// Whether `n` names a type where `cx` converts one: a generic or a declared name.
+fn is_type_name(cx: &TyCx, n: &str) -> bool {
+    cx.generics.iter().any(|g| g == n) || cx.names.contains_key(n)
 }

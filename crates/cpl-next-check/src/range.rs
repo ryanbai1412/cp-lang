@@ -71,7 +71,7 @@ impl Cx<'_> {
     }
     /// `D.count`, `D.nth(k)`, `D.at(x)` and `D.all`: the core's `Domain` declares them; each
     /// `@intrinsic` one is the domain operation it names (R04.2.8, R04.2.9).
-    fn domain_fn(
+    pub(super) fn domain_fn(
         &mut self,
         dty: Ty,
         name: &ast::Name,

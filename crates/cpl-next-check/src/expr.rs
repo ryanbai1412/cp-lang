@@ -848,7 +848,7 @@ impl<'a> Cx<'a> {
                 {
                     self.unify(&ty, &w);
                 }
-                _ if matches!(orig, Ty::Range(..) | Ty::RangeOf(_))
+                _ if matches!(orig, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..))
                     && matches!(fd.ret, Ty::Param(_)) =>
                 {
                     self.unify(&ty, &Ty::Int);
@@ -1122,7 +1122,7 @@ impl<'a> Cx<'a> {
         }
         let v = self.expr_as_typed(e, want);
         match self.shallow(&v.ty) {
-            have @ (Ty::Range(..) | Ty::RangeOf(_))
+            have @ (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..))
                 if want.map(|w| self.shallow(w)).as_ref() != Some(&have) =>
             {
                 TExpr { ty: Ty::Int, ..v }

@@ -13,6 +13,7 @@ pub fn plain_in(d: &Decls, t: &Ty, depth: usize, doms: &[usize]) -> bool {
         Ty::Int
         | Ty::Range(..)
         | Ty::RangeOf(_)
+        | Ty::RangeTo(..)
         | Ty::Bool
         | Ty::Char
         | Ty::U64
