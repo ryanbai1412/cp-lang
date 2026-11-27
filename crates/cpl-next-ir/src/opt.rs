@@ -67,7 +67,8 @@ fn scalar(t: &CTy) -> bool {
 }
 
 /// `Let(t, e)` and a next statement that only reads `t` once become that statement on `e`,
-/// evaluated where `t` was: `t` is a scalar named nowhere else.
+/// evaluated where `t` was: `t` is a scalar named nowhere else, and the place assigned is
+/// reached by fields alone, so finding it reads nothing `e` could change.
 fn forward(b: &mut Vec<Stmt<CTy>>, uses: &[usize], scalar: &[bool]) {
     let once = |e: &Expr<CTy>| match &e.kind {
         EK::Copy(Place::Local(t)) if uses[*t] == 2 && scalar[*t] => Some(*t),
@@ -84,22 +85,31 @@ fn forward(b: &mut Vec<Stmt<CTy>>, uses: &[usize], scalar: &[bool]) {
             Stmt::Region { body, .. } => forward(body, uses, scalar),
             _ => {}
         }
+        let fixed = match b.get(i + 1) {
+            Some(Stmt::Assign(p, _)) => by_fields(p),
+            _ => true,
+        };
         let (head, tail) = b.split_at_mut(i + 1);
         if let (
             Stmt::Let(t, v),
-            Some(
-                Stmt::Let(_, e)
-                | Stmt::Assign(Place::Local(_) | Place::Global(_), e)
-                | Stmt::Return(Some(e)),
-            ),
+            Some(Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Return(Some(e))),
         ) = (&mut head[i], tail.first_mut())
         {
-            if once(e) == Some(*t) {
+            if fixed && once(e) == Some(*t) {
                 std::mem::swap(v, e);
                 b.remove(i);
                 continue;
             }
         }
         i += 1;
+    }
+}
+
+/// Whether `p` is a local or global or a field of one, through lent slots at most.
+fn by_fields(p: &Place) -> bool {
+    match p {
+        Place::Local(_) | Place::Global(_) => true,
+        Place::Field(b, _) | Place::Through(b) => by_fields(b),
+        Place::Variant(..) | Place::Deref(_) | Place::Slot(..) => false,
     }
 }
