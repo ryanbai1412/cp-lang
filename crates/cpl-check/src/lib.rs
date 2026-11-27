@@ -37,10 +37,10 @@ mod std_files;
 mod ty;
 
 pub use builtins::{
-    builtin_member, builtin_members, char_literal, foreign_iter_call, foreign_member,
-    foreign_str_fn, is_member, list_end_help, needs_order, optional_member, prelude_names,
-    split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind, PreludeKind,
-    Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, ITERATOR_POSITION_HELP,
+    builtin_member, builtin_members, char_literal, domain_member_docs, foreign_iter_call,
+    foreign_member, foreign_str_fn, is_member, list_end_help, needs_order, optional_member,
+    prelude_names, split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind,
+    PreludeKind, Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, ITERATOR_POSITION_HELP,
     OPTIONAL_MEMBERS, OPTIONAL_UNWRAP_HELP, POS_MEMBERS, RANGE_MEMBERS,
 };
 pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
@@ -63,6 +63,7 @@ pub use prelude::{
     std_names, ty as prelude_type, type_arity, word_type, written_name, StdMethod,
     VALUE_NAMES as PRELUDE_VALUES,
 };
+pub use prelude::{cuts_member, is_cuts};
 pub use session::{open, Libraries, Revision, Session, SessionOptions};
 pub use ty::{human_bytes, Param, Ty};
 

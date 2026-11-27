@@ -191,21 +191,21 @@ fn expr_uses_domain(e: &ast::Expr, name: &str) -> bool {
     match &e.kind {
         ast::ExprKind::Field { base, name: m }
             if matches!(&base.kind, ast::ExprKind::Name(n) if n == name)
-                && matches!(
-                    m.text.as_str(),
-                    "count"
-                        | "len"
-                        | "all"
-                        | "first"
-                        | "last"
-                        | "start"
-                        | "end"
-                        | "cuts"
-                        | "mask"
-                        | "size"
-                        | "nth"
-                        | "at"
-                ) =>
+                && (m.text == cpl_check::cuts_member()
+                    || matches!(
+                        m.text.as_str(),
+                        "count"
+                            | "len"
+                            | "all"
+                            | "first"
+                            | "last"
+                            | "start"
+                            | "end"
+                            | "mask"
+                            | "size"
+                            | "nth"
+                            | "at"
+                    )) =>
         {
             true
         }

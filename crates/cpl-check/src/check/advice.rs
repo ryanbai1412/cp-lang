@@ -283,8 +283,7 @@ impl Checker<'_> {
             Ty::Named { name, .. } | Ty::TypeName(name) => self.has_impl(name, "Index"),
             _ => false,
         };
-        let core_only =
-            library_domain && super::library_domain::CORE_DOMAIN_ONLY.contains(&name.text.as_str());
+        let core_only = library_domain && super::library_domain::core_domain_only(&name.text);
         let said = if unwrap {
             msgs::check::NO_METHOD_ON.at(&[&"a", base_ty, &name.text])
         } else {
@@ -993,7 +992,8 @@ impl Checker<'_> {
                 msgs::check::REMOVED_SYNTAX_D_BOUNDS_WAS_RENAMED,
                 &[],
             ) {
-                diag.fix(habits::WRITE.say(&[&"cuts"]), name.span, "cuts");
+                let cuts = crate::prelude::cuts_member();
+                diag.fix(habits::WRITE.say(&[&cuts]), name.span, cuts);
             }
             return true;
         }

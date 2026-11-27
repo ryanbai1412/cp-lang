@@ -777,7 +777,7 @@ impl<'a> Checker<'a> {
                 )
             }
             Ty::Domain(_) => {
-                matches!(name, "len" | "first" | "last" | "rev" | "bounds" | "cuts")
+                matches!(name, "len" | "first" | "last" | "rev") || crate::prelude::is_cuts(name)
             }
             t if t.is_int() => matches!(name, "abs" | "ord" | "sqrt"),
             Ty::Float => matches!(name, "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"),
@@ -1007,7 +1007,8 @@ impl<'a> Checker<'a> {
             self.bool_count(call, &base_ty);
         }
         // R04.2.17: `V.cuts(k)` is the cut numbered `k`, not the range of cuts.
-        if let (Ty::Domain(d), "cuts" | "bounds", [arg]) = (&base_ty, name.text.as_str(), args) {
+        let cut_call = crate::prelude::is_cuts(&name.text);
+        if let (Ty::Domain(d), true, [arg]) = (&base_ty, cut_call, args) {
             if arg.name.is_none() {
                 let got = self.infer(&arg.value);
                 self.expect_fits(&got, &Ty::Int, &arg.value, &|c, got, _| {

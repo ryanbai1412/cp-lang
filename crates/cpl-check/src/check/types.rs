@@ -364,7 +364,9 @@ impl<'a> Checker<'a> {
             let member_of = crate::prelude::domain_member(member);
             return match head_ty {
                 // `D.cuts` over a generic domain: lowering knows which one.
-                Ty::Param(_) if matches!(member, "cuts" | "ranges") => Ty::Unknown,
+                Ty::Param(_) if member == "ranges" || member == crate::prelude::cuts_member() => {
+                    Ty::Unknown
+                }
                 // `D.subsets`, like `Letter.subsets` below: the struct std declares
                 // `@member(subsets)`, over `D`.
                 Ty::Param(_) if member_of.is_some() => {

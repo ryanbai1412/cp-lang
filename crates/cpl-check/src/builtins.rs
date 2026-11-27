@@ -441,12 +441,11 @@ pub fn optional_member(name: &str) -> bool {
 /// The members `member_ty` gives every domain (`V.first`), position
 /// (`v.next`) and range (`r.start`) without a declaration to read: the
 /// one list "did you mean" suggests from and completion offers.
-pub const DOMAIN_MEMBERS: &[(&str, &str)] = &[
+const DOMAIN_OWN: &[(&str, &str)] = &[
     ("count", "how many positions the domain has"),
     ("first", "the first position, or `None` when empty"),
     ("last", "the last position, or `None` when empty"),
     ("rev", "the positions in reverse order"),
-    ("cuts", "the gaps between and around positions"),
     ("at", "the position at a 0-based index, or `None` outside"),
     ("nth", "the position at a 0-based index"),
     ("wrap", "the position at an index taken modulo the size"),
@@ -457,6 +456,24 @@ pub const DOMAIN_MEMBERS: &[(&str, &str)] = &[
     ("partition", "the positions split by a predicate"),
     ("filter", "the positions a predicate holds on"),
 ];
+
+/// `DOMAIN_OWN` with the cuts member std declares (`V.cuts`), after `rev`.
+pub fn domain_member_docs() -> &'static [(&'static str, &'static str)] {
+    static ALL: std::sync::OnceLock<Vec<(&'static str, &'static str)>> = std::sync::OnceLock::new();
+    ALL.get_or_init(|| {
+        let mut all = DOMAIN_OWN.to_vec();
+        let at = all
+            .iter()
+            .position(|(m, _)| *m == "rev")
+            .map_or(all.len(), |i| i + 1);
+        let cuts = (
+            crate::prelude::cuts_member(),
+            "the gaps between and around positions",
+        );
+        all.insert(at, cuts);
+        all
+    })
+}
 pub const POS_MEMBERS: &[(&str, &str)] = &[
     ("ord", "the 0-based rank of the position"),
     ("idx", "the position as a raw 0-based index"),
@@ -534,7 +551,7 @@ mod tests {
         assert_eq!(d.help.as_deref(), Some("did you mean `next`?"));
         // Every listed member is one `member_ty` knows.
         for (owner, members) in [
-            ("V", crate::builtins::DOMAIN_MEMBERS),
+            ("V", crate::builtins::domain_member_docs()),
             ("v", crate::builtins::POS_MEMBERS),
         ] {
             for (m, _) in members.iter() {

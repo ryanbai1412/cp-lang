@@ -1742,7 +1742,7 @@ pub(crate) fn spec_member_typo(
         return closest(name, methods.iter().map(String::as_str));
     }
     let own_members: &[(&str, &str)] = match base {
-        Ty::Domain(_) => crate::builtins::DOMAIN_MEMBERS,
+        Ty::Domain(_) => crate::builtins::domain_member_docs(),
         Ty::Pos(_) => crate::builtins::POS_MEMBERS,
         _ => &[],
     };

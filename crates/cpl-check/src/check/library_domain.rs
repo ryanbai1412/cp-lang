@@ -7,9 +7,12 @@ use cpl_diag::msgs;
 use cpl_syntax::ast::{self, Expr, ExprKind, Name, Stmt, StmtKind};
 
 /// Members of an ordered core domain that a library domain does not derive.
-pub(super) const CORE_DOMAIN_ONLY: [&str; 9] = [
-    "next", "prev", "l", "r", "before", "after", "cuts", "at", "wrap",
-];
+const CORE_DOMAIN_ONLY: [&str; 8] = ["next", "prev", "l", "r", "before", "after", "at", "wrap"];
+
+/// Whether `name` is a member only an ordered core domain has, its cuts among them.
+pub(super) fn core_domain_only(name: &str) -> bool {
+    CORE_DOMAIN_ONLY.contains(&name) || name == crate::prelude::cuts_member()
+}
 
 impl Checker<'_> {
     /// What `for x in iter` binds `x` to: a type's values, or the elements of a value.
@@ -87,7 +90,7 @@ impl Checker<'_> {
         };
         if self.local(type_name).is_some()
             || !self.has_impl(type_name, "Index")
-            || CORE_DOMAIN_ONLY.contains(&name.text.as_str())
+            || core_domain_only(&name.text)
         {
             return None;
         }

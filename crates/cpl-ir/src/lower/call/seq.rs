@@ -516,7 +516,7 @@ impl<'a> Lowerer<'a> {
                 );
                 self.reversed_range(range, Ty::Pos(id), span)
             }
-            "bounds" | "cuts" => {
+            m if cpl_check::is_cuts(m) => {
                 let hi = self.int_add(len, 1);
                 self.mk(
                     ExprKind::Range {

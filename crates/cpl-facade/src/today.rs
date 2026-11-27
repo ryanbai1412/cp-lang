@@ -13,12 +13,12 @@ use crate::session::{self, Layer, Session};
 use crate::snapshot::Text;
 
 pub use cpl_check::{
-    arity_key, builtin_members, closest, human_bytes, import_edit, interval, is_list_form_hook,
-    loaded_std, needs_order, prelude_names, prelude_type, prelude_uses, split_builtin_params,
-    type_arity, Analysis, AnalyzedItem, BuiltinMember, CalleeKind, Decl, DeclKind, Facts, FsLoader,
-    HoverEntry, Import, Loader, MemberKind, Module, Overflow, Param, PreludeKind, RangeEnds,
-    Receiver, Representation, Stats, Symbol, Ty, TypedIndex, BUILTIN_MEMBERS, BUILTIN_TYPES,
-    DOMAIN_MEMBERS, OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
+    arity_key, builtin_members, closest, domain_member_docs, human_bytes, import_edit, interval,
+    is_list_form_hook, loaded_std, needs_order, prelude_names, prelude_type, prelude_uses,
+    split_builtin_params, type_arity, Analysis, AnalyzedItem, BuiltinMember, CalleeKind, Decl,
+    DeclKind, Facts, FsLoader, HoverEntry, Import, Loader, MemberKind, Module, Overflow, Param,
+    PreludeKind, RangeEnds, Receiver, Representation, Stats, Symbol, Ty, TypedIndex,
+    BUILTIN_MEMBERS, BUILTIN_TYPES, OPTIONAL_MEMBERS, POS_MEMBERS, RANGE_MEMBERS,
 };
 
 /// A run's recording and what is read from it.

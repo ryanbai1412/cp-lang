@@ -115,7 +115,7 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "range_literal",
         "on a fn: what builds the range `lo..hi by step`",
     ),
-    ("cuts", "on a struct: the cuts of a domain, `D.cuts`"),
+    (CUTS, "on a struct: the cuts of a domain, `D.cuts`"),
     (
         "positions",
         "on a trait: the trait a domain's positions implement",
@@ -152,3 +152,6 @@ pub fn is_known(name: &str) -> bool {
         || REMOVED.contains(&name)
         || DIRECTIVES.contains(&name)
 }
+
+/// The marker on the struct whose values are a domain's cuts (`D.cuts`).
+pub const CUTS: &str = "cuts";

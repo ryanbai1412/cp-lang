@@ -1171,9 +1171,10 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
             type_members(cursor, std, name, args, args.len(), true)
         }
-        Ty::TypeName(name) if is_domain(cursor.analysis, name) => {
-            builtin(cpl_facade::today::DOMAIN_MEMBERS, format!("domain {name}"))
-        }
+        Ty::TypeName(name) if is_domain(cursor.analysis, name) => builtin(
+            cpl_facade::today::domain_member_docs(),
+            format!("domain {name}"),
+        ),
         Ty::TypeName(name) => {
             let arity = written_arity(&cursor.analysis.text[..cursor.offset as usize]);
             // A module's second `Prefix` is keyed `Prefix'1` (R02.11.4).
@@ -1214,7 +1215,7 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             })
             .collect(),
         Ty::Domain(domain) => builtin(
-            cpl_facade::today::DOMAIN_MEMBERS,
+            cpl_facade::today::domain_member_docs(),
             format!("domain {domain}"),
         ),
         Ty::Pos(domain) => builtin(

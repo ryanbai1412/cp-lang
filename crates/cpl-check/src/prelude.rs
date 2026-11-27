@@ -601,6 +601,39 @@ pub fn domain_member(member: &str) -> Option<&'static str> {
         .map(|&(_, of)| of)
 }
 
+/// The member `D.cuts` is: the `@member` of the struct std marks as a domain's cuts.
+pub fn cuts_member() -> &'static str {
+    static FOUND: OnceLock<&'static str> = OnceLock::new();
+    FOUND.get_or_init(|| {
+        let mark = cpl_syntax::decorators::CUTS;
+        let mut cut = None;
+        for (_, text) in crate::modules::std_index() {
+            if cut.is_some() || !text.contains(&format!("@{mark}")) {
+                continue;
+            }
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in &item.stmts {
+                    if let ast::StmtKind::Struct(d) = &stmt.kind {
+                        if stmt.decorators.iter().any(|x| x.name.text == mark) {
+                            cut = Some(d.name.text.clone());
+                        }
+                    }
+                }
+            }
+        }
+        let cut = cut.unwrap_or_default();
+        domain_members()
+            .iter()
+            .find(|(_, of)| *of == cut)
+            .map_or("", |&(m, _)| m)
+    })
+}
+
+/// Whether `name` is `D.cuts`, or its removed spelling `D.bounds`.
+pub fn is_cuts(name: &str) -> bool {
+    name == "bounds" || name == cuts_member()
+}
+
 type AkaMap = crate::names::NameMap<Vec<(&'static str, &'static str)>>;
 
 /// Every std `@aka`: another language's name to the fns it stands for, each with its

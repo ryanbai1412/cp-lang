@@ -88,9 +88,9 @@ fn dot_completion_on_records_domains_and_positions() {
 /// The members offered on every domain and position are ones the checker types.
 #[test]
 fn builtin_domain_and_position_members_are_the_checkers() {
-    use cpl_facade::today::{DOMAIN_MEMBERS, POS_MEMBERS};
+    use cpl_facade::today::{domain_member_docs, POS_MEMBERS};
     let mut wrong = Vec::new();
-    for (members, receiver) in [(DOMAIN_MEMBERS, "V"), (POS_MEMBERS, "v")] {
+    for (members, receiver) in [(domain_member_docs(), "V"), (POS_MEMBERS, "v")] {
         for (name, _) in members {
             // Assigning to `Str`, which no member gives, makes the checker name the
             // member's type: one E0302, and nothing else, means it typed it.
