@@ -2838,7 +2838,8 @@ def std_trait_matrix(root: Path) -> list[str]:
 
 def std_types_shown_empty(root: Path) -> list[str]:
     """`pub struct`s in std with no `pub` field and no `impl Show`: a trace shows their
-    values as `{}`, since a std type's private fields never reach a user (Content)."""
+    values as `{}`, since a std type's private fields never reach a user (Content).
+    The `@optional` struct is not one: `?T` is deliberately not `Show` (R10.3.7)."""
     shows, domains, blanket, empty = set(), set(), False, []
     for rel in _git(root, "ls-files", "std/*.cp"):
         lines = (root / rel).read_text(encoding="utf-8").split("\n")
@@ -2847,6 +2848,12 @@ def std_types_shown_empty(root: Path) -> list[str]:
         blanket |= any(re.match(r"impl<D: Domain> Show for D:", l) for l in lines)
         for i, line in enumerate(lines):
             if not (m := STRUCT_RE.match(line)):
+                continue
+            marks, j = [], i - 1
+            while j >= 0 and lines[j].startswith("@"):
+                marks.append(lines[j].strip())
+                j -= 1
+            if "@optional" in marks:
                 continue
             header = re.search(r"\((.*)\)", line)
             fields = [FIELD_RE.match(a.strip()) for a in header.group(1).split(",")] if header else []
