@@ -292,7 +292,7 @@ impl Cx<'_> {
     /// What `s[i]` calls: the method of std's `@operator("[]")` trait (R12.4.5).
     fn index_read(&self) -> String {
         let tr = self.d.operators.iter().find(|(o, _)| o == "[]");
-        tr.and_then(|&(_, tr)| self.d.traits[tr.0].methods.keys().next().cloned())
+        tr.and_then(|&(_, tr)| self.d.operator_method(tr).map(|(n, _)| n.clone()))
             .unwrap_or_default()
     }
     /// The key and cell types of `rt`'s `Indexed` read.
@@ -367,7 +367,7 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<ast::Stmt> {
         let &(_, tr) = self.d.operators.iter().find(|(o, _)| o == "[]=")?;
-        let name = self.d.traits[tr.0].methods.keys().next()?.clone();
+        let name = self.d.operator_method(tr)?.0.clone();
         let seen = self.errors.len();
         let b = self.expr_as_typed(base, None);
         self.errors.truncate(seen);

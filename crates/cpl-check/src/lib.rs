@@ -60,8 +60,8 @@ pub use prelude::{
     arity_key, domain_member, domain_members, import_edit, is_method as is_std_method, labels_fit,
     method_is_foreign as std_method_is_foreign, method_key, method_module, methods as std_methods,
     names as prelude_uses, overload_key, overload_part, required_labels, std_family, std_module,
-    std_names, ty as prelude_type, type_arity, word_type, written_name, StdMethod,
-    VALUE_NAMES as PRELUDE_VALUES,
+    std_names, ty as prelude_type, type_arity, value_names as prelude_values, word_type,
+    written_name, StdMethod,
 };
 pub use prelude::{cuts_member, is_cuts};
 pub use session::{open, Libraries, Revision, Session, SessionOptions};

@@ -427,9 +427,16 @@ impl Decls {
     /// The fn a bare operator names: its core `@operator` trait's fn of that many operands.
     pub fn operator_fn(&self, text: &str, binary: bool) -> Option<FnId> {
         (self.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
-            let m = *self.traits[tr.0].methods.values().next()?;
+            let (_, m) = self.operator_method(*tr)?;
             (self.f(m).params.len() == usize::from(binary)).then_some(m)
         })
+    }
+    /// The fn an `@operator` trait's operator calls: its first declared, `lt` of `Ord`'s
+    /// `lt` and `cmp` (R06.4.12).
+    pub fn operator_method(&self, tr: TraitId) -> Option<(&String, FnId)> {
+        (self.traits[tr.0].methods.iter())
+            .min_by_key(|&(_, &m)| m)
+            .map(|(n, &m)| (n, m))
     }
     /// Each binary operator's fn, for `type_of(+)`.
     pub(crate) fn operator_fns(&self) -> Arc<Vec<(String, FnId)>> {
@@ -1191,7 +1198,13 @@ fn add_fn(
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
         let marker = matches!(
             x.name.text.as_str(),
-            "coerce" | "variant_check" | "pattern" | "str_literal" | "range_literal" | "interpolation" | "input"
+            "coerce"
+                | "variant_check"
+                | "pattern"
+                | "str_literal"
+                | "range_literal"
+                | "interpolation"
+                | "input"
         );
         if !elsewhere
             && !marker

@@ -689,7 +689,7 @@ impl<'a> Checker<'a> {
         let (first, rest) = args.split_first()?;
         if first.name.is_some()
             || first.mutable
-            || !crate::prelude::VALUE_NAMES.contains(&name.as_str())
+            || !crate::prelude::value_names().contains(&name.as_str())
             || self.local(name).is_some()
             || self.free_global(name).is_some()
         {

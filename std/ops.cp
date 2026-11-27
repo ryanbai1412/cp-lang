@@ -7,12 +7,14 @@ use std.algebra.{Ordering}
 
 /// `a == b` and `a != b` (R08.1.5). Tuples, records, structs and enums whose fields all have
 /// it get it field by field unless they write their own (R08.1.6).
+@operator("==")
 pub trait Eq:
     fn eq(self, other: Self) -> Bool
 
 /// `a < b`, and from it `>`, `<=` and `>=` (R08.1.5). An impl writes `lt` or `cmp`, and the
 /// other follows from it, given that `a == b` exactly when neither is less. Derived like `Eq`,
 /// lexicographic in declaration order (R08.1.6).
+@operator("<")
 pub trait Ord(Eq):
     fn lt(self, other: Self) -> Bool = match self.cmp(other):
         Less => true

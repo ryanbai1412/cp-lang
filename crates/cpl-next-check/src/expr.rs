@@ -85,7 +85,7 @@ impl<'a> Cx<'a> {
     /// trait's: `t` is a struct, or a type parameter bound by the trait.
     fn operator_trait(&self, text: &str, binary: bool, t: &Ty) -> Option<(TraitId, String, FnId)> {
         let found = (self.d.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
-            let (n, &m) = self.d.traits[tr.0].methods.iter().next()?;
+            let (n, m) = self.d.operator_method(*tr)?;
             (self.d.f(m).params.len() == usize::from(binary)).then(|| (*tr, n.clone(), m))
         })?;
         let applies = match self.shallow(t) {
@@ -103,7 +103,7 @@ impl<'a> Cx<'a> {
             return Self::error_node(span);
         }
         let found = (self.d.operators.iter().filter(|(o, _)| o == "in")).find_map(|(_, tr)| {
-            let (n, &m) = self.d.traits[tr.0].methods.iter().next()?;
+            let (n, m) = self.d.operator_method(*tr)?;
             Some((*tr, n.clone(), m))
         });
         let Some(found) = found else {
