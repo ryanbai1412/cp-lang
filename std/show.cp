@@ -156,11 +156,11 @@ impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, Pack(self._8, Pack(self._9, ())))))))))).write_all(mut out, sep, first, fmt)
 
-impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, J: ShowPart<M>, K: ShowPart<M>, L: ShowPart<M>, M: ShowPart<M>, M> ShowAll<M> for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
+impl<A: ShowPart<Q>, B: ShowPart<Q>, C: ShowPart<Q>, E: ShowPart<Q>, F: ShowPart<Q>, G: ShowPart<Q>, H: ShowPart<Q>, J: ShowPart<Q>, K: ShowPart<Q>, L: ShowPart<Q>, M: ShowPart<Q>, Q> ShowAll<Q> for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, Pack(self._8, Pack(self._9, Pack(self._10, ()))))))))))).write_all(mut out, sep, first, fmt)
 
-impl<A: ShowPart<M>, B: ShowPart<M>, C: ShowPart<M>, E: ShowPart<M>, F: ShowPart<M>, G: ShowPart<M>, H: ShowPart<M>, J: ShowPart<M>, K: ShowPart<M>, L: ShowPart<M>, M: ShowPart<M>, N: ShowPart<M>, M> ShowAll<M> for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
+impl<A: ShowPart<Q>, B: ShowPart<Q>, C: ShowPart<Q>, E: ShowPart<Q>, F: ShowPart<Q>, G: ShowPart<Q>, H: ShowPart<Q>, J: ShowPart<Q>, K: ShowPart<Q>, L: ShowPart<Q>, M: ShowPart<Q>, N: ShowPart<Q>, Q> ShowAll<Q> for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
     fn write_all(self, mut out: Str, sep: ?Str, first: Bool, fmt: Fmt) =
         Pack(self._0, Pack(self._1, Pack(self._2, Pack(self._3, Pack(self._4, Pack(self._5, Pack(self._6, Pack(self._7, Pack(self._8, Pack(self._9, Pack(self._10, Pack(self._11, ())))))))))))).write_all(mut out, sep, first, fmt)
 
