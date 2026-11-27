@@ -87,8 +87,9 @@ impl Ord for Frac:
   `Eq<X>` and `a == b` with `b` of another type needs an
   `impl Eq<B> for A` (no other mixed comparison type-checks: `1 == "a"`
   is E0606). std's one walk-order impl over `Seq` is how a view and a
-  list compare (R07.4.2). Compound assignment comes from the
-  operator. (R08.1.5)
+  list compare (R07.4.2). A `?T` compared with the `None` value is a
+  presence test and needs no `Eq` (R02.4.5). Compound assignment comes
+  from the operator. (R08.1.5)
 - **Derived impls are structural**: tuples, records, structs and enums
   get `Eq`, `Ord` (lexicographic in declaration order, variants in
   declaration order), `Hash`, `Show` and `Read` when every field has

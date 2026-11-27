@@ -859,6 +859,9 @@ impl<'a> Cx<'a> {
                 self.memory_peak(name, &v.ty, s.span);
                 // What is declared is the binding's type even when the value is not one.
                 let var = self.bind(name, declared.unwrap_or_else(|| v.ty.clone()));
+                if !*mutable && self.is_none_value(&v) {
+                    self.none_lets.insert(var);
+                }
                 if let Some(keys) = super::index::literal_cut(init) {
                     self.view_keys.insert(var, keys);
                 }

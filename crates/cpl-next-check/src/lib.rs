@@ -325,6 +325,8 @@ struct Cx<'a> {
     owned: HashMap<(VarRef, Vec<String>), usize>,
     /// A block's `@memo` fn's `f.clear`, by the fn's binding (R06.4.1).
     memo_clears: HashMap<VarRef, VarRef>,
+    /// The `let`s bound to the `None` value: comparing one with a `?T` tests presence (R02.4.5).
+    none_lets: HashSet<VarRef>,
     ranges: Vec<RangeInfo>,
     // per fn
     decl: Option<FnId>,
@@ -504,6 +506,7 @@ fn check_with(
         doms: d.top_doms.clone(),
         owned: HashMap::new(),
         memo_clears: HashMap::new(),
+        none_lets: HashSet::new(),
         ranges: Vec::new(),
         decl: None,
         generics: Vec::new(),

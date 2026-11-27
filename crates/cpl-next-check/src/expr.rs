@@ -1395,9 +1395,18 @@ impl<'a> Cx<'a> {
                         Msg::verdict(cpl_diag::codes::MIXED_COMPARISON_CHAIN, "a chain that goes both up and down; write the two comparisons with `and`"),
                     );
                 }
-                if let [(op, rhs)] = rest.as_slice() {
-                    if let Some(test) = self.none_compare(first, *op, rhs, span) {
-                        return test;
+                // `None == x`: the `None` takes its type from the other side.
+                if let [(op @ (CmpOp::Eq | CmpOp::Ne), rhs)] = rest.as_slice() {
+                    if matches!(super::index::unparen(first).kind, ExprKind::None) {
+                        let r = self.expr(rhs, None);
+                        let l = self.expr(first, Some(&r.ty));
+                        if self.is_error(&l.ty) || self.is_error(&r.ty) {
+                            return Self::error_node(span);
+                        }
+                        if let Some(test) = self.presence(*op, &l, &r, span) {
+                            return test;
+                        }
+                        return self.ordered(*op, l, r, span);
                     }
                 }
                 // `a <= b < c` is `a <= b and b < c` with `b` read once, and `c` not read
@@ -1448,6 +1457,12 @@ impl<'a> Cx<'a> {
                     if self.is_error(&prev.ty) || self.is_error(&r.ty) {
                         self.scopes.pop();
                         return Self::error_node(span);
+                    }
+                    if rest.len() == 1 {
+                        if let Some(test) = self.presence(*op, &prev, &r, span) {
+                            self.scopes.pop();
+                            return test;
+                        }
                     }
                     // An operand two links share is held, so it is read once.
                     let mut hold = Vec::new();

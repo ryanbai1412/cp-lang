@@ -1692,6 +1692,8 @@ next/n_enum_01_values_and_order.cp
 next/n_enum_02_level_tags_removed.cp
 next/n_enum_domain.cp
 next/n_eq_01_optional_fn_is_not_eq.cp
+next/n_eq_02_none_value_tests_presence.cp
+next/n_eq_03_var_none_is_not_presence.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp
 next/n_f64_03_precision_and_specs.cp

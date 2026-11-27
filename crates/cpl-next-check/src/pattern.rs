@@ -162,30 +162,19 @@ impl Cx<'_> {
             span,
         }
     }
-    /// `x == None` and `x != None` on an optional `x`: the pattern `None`'s test, so `T` needs no
-    /// `Eq` (R02.4.5). `None` when neither side alone is the literal `None`.
-    pub(super) fn none_compare(
-        &mut self,
-        a: &ast::Expr,
-        op: CmpOp,
-        b: &ast::Expr,
-        span: Span,
-    ) -> Option<TExpr> {
-        let none = |e: &ast::Expr| matches!(super::index::unparen(e).kind, ExprKind::None);
-        let x = match (none(a), none(b)) {
+    /// A `?T` compared with the `None` value: the pattern `None`'s test, so `T` needs no `Eq`
+    /// (R02.4.5). `None` when neither side alone is the `None` value.
+    pub(super) fn presence(&self, op: CmpOp, a: &TExpr, b: &TExpr, span: Span) -> Option<TExpr> {
+        if !matches!(op, CmpOp::Eq | CmpOp::Ne) {
+            return None;
+        }
+        let x = match (self.is_none_value(a), self.is_none_value(b)) {
             (false, true) => a,
             (true, false) => b,
             _ => return None,
         };
-        if !matches!(op, CmpOp::Eq | CmpOp::Ne) {
-            return None;
-        }
-        let v = self.expr(x, None);
-        if self.is_error(&v.ty) {
-            return Some(Self::error_node(span));
-        }
-        self.optional_of(&v.ty)?;
-        let test = Self::absent(v, span);
+        self.optional_of(&x.ty)?;
+        let test = Self::absent(x.clone(), span);
         Some(match op {
             CmpOp::Ne => TExpr {
                 kind: TK::Not(Box::new(test)),
@@ -194,6 +183,26 @@ impl Cx<'_> {
             },
             _ => test,
         })
+    }
+    /// Whether `e` is the `None` value: built as it, or a `let` bound to it.
+    pub(super) fn is_none_value(&self, e: &TExpr) -> bool {
+        match &e.kind {
+            TK::Struct(xs) => matches!(
+                xs.as_slice(),
+                [
+                    TExpr {
+                        kind: TK::Bool(false),
+                        ..
+                    },
+                    TExpr {
+                        kind: TK::Unset,
+                        ..
+                    }
+                ]
+            ),
+            TK::Var(v) => self.none_lets.contains(v),
+            _ => false,
+        }
     }
     /// `pat` against the place `v`: the test that holds when it matches, `None` when it always
     /// does. `binds` gets the names it binds, read once the test holds.
