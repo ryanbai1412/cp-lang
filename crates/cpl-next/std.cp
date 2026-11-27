@@ -10,6 +10,9 @@ pub use std.map.{Map, Set}
 use std.list.{List, Array, Str}
 /// The lists, arrays and strings every module names unimported (R02.3, R04.8).
 pub use std.list.{List, Array, Str, yes}
+use std.optional.{Optional}
+/// `?T` and `Some(v)` every module names unimported (R02.4).
+pub use std.optional.{Optional, some}
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key, check_range}
 
 /// Traps R0102 unless `ok`: a value its type doesn't have, as an `Int` converted to an enum that
@@ -35,12 +38,6 @@ fn write_array<D: Domain>(xs: [D]Int):
         if not first: write(" ")
         write(x)
         first = false
-
-// `?T`: `T` or `None`. `val` is read only when `some`.
-@optional
-pub struct Optional<T>:
-    some: Bool
-    val: T
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
 /// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `by`
@@ -104,10 +101,6 @@ fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
     assert step > 0, "a range's step is positive"
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step
     Range(lo, n, step)
-
-/// `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
-@pattern
-pub fn some<T>(v: T) -> ?T = v
 
 @tuple
 struct Tuple1<A>:
@@ -310,10 +303,6 @@ impl<D: Domain> Eq for D:
 impl<D: Domain + Eq> Ord for D:
     fn lt(a, b) = a.ord < b.ord
 
-/// Both empty, or both holding equal values; `?T` is not `Ord` (R02.4.5).
-impl<T: Eq> Eq for Optional<T>:
-    fn eq(a, b) = if not a.some: not b.some elif not b.some: false else: a.val == b.val
-
 /// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
 // A product domain walks row-major, the last factor fastest (R04.2.9); `P((x, y))` converts each part.
 impl<A: Domain, B: Domain> Domain for Tuple2<A, B>:
@@ -358,8 +347,6 @@ impl<D: Domain> Clone for D:
     fn clone(a) = a
 impl<D: Domain> Clone for Range<D>:
     fn clone(a) = Range(a.lo, a.n, a.by)
-impl<T: Clone> Clone for Optional<T>:
-    fn clone(a) = if a.some: Optional(true, a.val.clone()) else: None
 impl<A: Clone, B: Clone> Clone for Tuple2<A, B>:
     fn clone(a) = Tuple2(a._0.clone(), a._1.clone())
 impl<A: Clone, B: Clone, C: Clone> Clone for Tuple3<A, B, C>:
