@@ -604,13 +604,7 @@ impl<'a> Machine<'a> {
             }
             Intr::RandWord => V::U64(ops::rand_word(&mut self.rand)),
             Intr::Unset => V::Unit,
-            Intr::F64Len | Intr::F64Text => {
-                let t = ops::f64_text(self.float(&args[0], fp)?, self.int(&args[1], fp)?);
-                match op {
-                    Intr::F64Len => V::Int(t.len() as i64),
-                    _ => V::Raw(Rc::new(Store::Any(t.bytes().map(V::Char).collect()))),
-                }
-            }
+            Intr::F64Bits => V::U64(self.float(&args[0], fp)?.to_bits()),
             Intr::ReadInt => {
                 let t = self.input.token();
                 V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)

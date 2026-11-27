@@ -169,6 +169,31 @@ print(1e300.floor)\n";
     assert_eq!(fault(&raw), fault(&engine));
 }
 
+/// std's CP `Show` for `F64` writes what C's `%.*f` writes (`ops::f64_text`), on both
+/// engines: fractions, halves, values past `Int`, subnormals, zero and the infinity.
+#[test]
+fn f64_show_agrees_with_printf() {
+    let src = "var x = 0.0\nvar step = 1.0\nvar big = 1.0 / 3.0\nvar small = 2.0 / 3.0\n\
+for i in 0..120:\n    x = x * -1.37 + step\n    step = step * 0.71\n    big = big * 1024.0\n    \
+small = small * 0.0009765625\n    print(x, precision: i % 18)\n    print(big, precision: i % 4)\n    \
+print(small, precision: 100)\n";
+    let (mut x, mut step, mut big, mut small) = (0.0f64, 1.0f64, 1.0f64 / 3.0, 2.0f64 / 3.0);
+    let mut want = String::new();
+    for i in 0..120 {
+        x = x * -1.37 + step;
+        step *= 0.71;
+        big *= 1024.0;
+        small *= 0.0009765625;
+        for (v, d) in [(x, i % 18), (big, i % 4), (small, 100)] {
+            want.push_str(&cpl_next_ir::ops::f64_text(v, d));
+            want.push('\n');
+        }
+    }
+    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    assert_eq!(c.run(Form::Raw, "").output, want);
+    assert_eq!(c.run(Form::Engine, "").output, want);
+}
+
 /// A struct's derived `Eq` and `Ord` declare every parameter, so one named by more than a
 /// letter (`Elem`, std.tree's `Pre`) is no unknown type.
 #[test]

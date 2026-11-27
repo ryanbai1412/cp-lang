@@ -97,10 +97,8 @@ pub enum Intr {
     BitCeil,
     /// The `F64` nearest an `Int`.
     ToF64,
-    /// The length of an `F64` written with a count of decimals.
-    F64Len,
-    /// The characters of an `F64` written with a count of decimals.
-    F64Text,
+    /// An `F64`'s bits, as a `U64`: what std's `Show` writes it from.
+    F64Bits,
     /// An `F64` fn of one or two `F64`s: `sqrt`, `sin`, `atan2`, ...
     Float(FloatFn),
     /// An `F64` rounded to an `Int`; traps outside `Int`.
@@ -198,8 +196,7 @@ impl Intr {
             "u64_of" => Intr::ToU64,
             "int_of_u64" => Intr::FromU64,
             "f64_of" => Intr::ToF64,
-            "f64_len" => Intr::F64Len,
-            "f64_text" => Intr::F64Text,
+            "f64_bits" => Intr::F64Bits,
             "out" => Intr::Out,
             _ => return cpl_prim::Prim::from_id(name).map(Intr::of_prim),
         })

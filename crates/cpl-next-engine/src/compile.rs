@@ -250,13 +250,6 @@ pub(crate) enum Op {
         d: Reg,
         a: Reg,
     },
-    /// The length, or the characters, of an `F64` `a` written with `b` decimals.
-    F64Text {
-        d: Reg,
-        a: Reg,
-        b: Reg,
-        len: bool,
-    },
     ToF64 {
         d: Reg,
         a: Reg,
@@ -1224,12 +1217,12 @@ impl Fc<'_> {
                     _ => Op::CodeOf { d, a },
                 });
             }
-            Intr::F64Len | Intr::F64Text => {
-                let Some(&[a, b]) = self.operands(args).as_deref() else {
+            // A register holds an `F64` by its bits.
+            Intr::F64Bits => {
+                let Some(&[s]) = self.operands(args).as_deref() else {
                     return self.fail("a lent operand");
                 };
-                let len = op == Intr::F64Len;
-                self.ops.push(Op::F64Text { d, a, b, len });
+                self.ops.push(Op::Move { d, s, n: 1 });
             }
             Intr::Float(f) => {
                 let Some(rs) = self.operands(args) else {

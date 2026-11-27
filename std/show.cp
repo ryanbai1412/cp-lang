@@ -171,8 +171,121 @@ impl Show for U64:
             v -= d * p
             p = p / U64(10)
 
-fn f64_len(x: F64, digits: Int) -> Int = @intrinsic("f64_len")
-fn f64_text(x: F64, digits: Int) -> Raw<Char> = @intrinsic("f64_text")
+fn f64_bits(x: F64) -> U64 = @intrinsic("f64_bits")
+
+/// `x` with `d` decimals, as C's `%.*f` writes it: its exact binary value `m * 2^e`, times
+/// `10^d`, rounded half to even, in limbs of 30 bits (R10.3.4).
+fn write_f64(mut out: Str, x: F64, d: Int):
+    let b = f64_bits(x)
+    if b >> 63 == U64(1): out.push('-')
+    let top = Int((b >> 52) & U64(2047))
+    var m = Int(b & U64(4503599627370495))
+    if top == 2047:
+        out.append(if m == 0: "inf" else: "nan")
+        return
+    var e = -1074
+    if top > 0:
+        m += 4503599627370496
+        e = top - 1075
+    // Most values written are exact in `Int`: a whole part that fits, and room to take the
+    // fraction's decimals one at a time.
+    if e >= -59 and e <= 10:
+        write_f64_int(mut out, m, e, d)
+        return
+    var n = [m % 1073741824, m / 1073741824]
+    for i in 0..d / 9: limbs_times(mut n, 1000000000)
+    limbs_times(mut n, 10 ** (d % 9))
+    if e >= 0:
+        for i in 0..e / 29: limbs_times(mut n, 1 << 29)
+        limbs_times(mut n, 1 << (e % 29))
+    else: n = limbs_halved(n, -e)
+    var ds = limbs_digits(mut n)
+    while ds.len < d + 1: ds.push('0')
+    for i in 0..ds.len:
+        let j = ds.len - 1 - i
+        out.push(ds[j])
+        if j == d and d > 0: out.push('.')
+
+/// `m * 2^e` with `d` decimals, for `e` in `-59..=10`: the whole part, then the fraction a
+/// decimal at a time, rounded half to even.
+fn write_f64_int(mut out: Str, m: Int, e: Int, d: Int):
+    let s = if e < 0: -e else: 0
+    var whole = if e < 0: m >> s else: m << e
+    var f = if e < 0: m - (whole << s) else: 0
+    var ds = List.new()
+    for i in 0..d:
+        f *= 10
+        ds.push(f >> s)
+        f -= (f >> s) << s
+    let last = if d > 0: ds[d - 1] else: whole
+    if s > 0 and (f > 1 << (s - 1) or (f == 1 << (s - 1) and last % 2 == 1)):
+        var i = d - 1
+        while i >= 0 and ds[i] == 9:
+            ds[i] = 0
+            i -= 1
+        if i >= 0: ds[i] += 1
+        else: whole += 1
+    whole.write_to(mut out, None)
+    if d > 0: out.push('.')
+    for k in ds: out.push(Char(48 + k))
+
+/// `n *= k`, for `k` below `2^30`.
+fn limbs_times(mut n: List<Int>, k: Int):
+    var c = 0
+    for i in 0..n.len:
+        let v = n[i] * k + c
+        n[i] = v % 1073741824
+        c = v / 1073741824
+    if c > 0: n.push(c)
+
+/// `n / 2^s`, rounded half to even.
+fn limbs_halved(n: List<Int>, s: Int) -> List<Int>:
+    var q = List.new()
+    let w = s / 30
+    let r = s % 30
+    let p = 1 << r
+    for i in w..n.len:
+        let hi = if i + 1 < n.len: n[i + 1] % p else: 0
+        q.push(n[i] / p + hi * (1073741824 / p))
+    let half = limb_bit(n, s - 1)
+    var below = false
+    for i in 0..n.len:
+        if i < (s - 1) / 30: below = below or n[i] != 0
+        elif i == (s - 1) / 30: below = below or n[i] % (1 << ((s - 1) % 30)) != 0
+    let odd = q.len > 0 and q[0] % 2 == 1
+    if half and (below or odd):
+        var i = 0
+        var c = 1
+        while c > 0:
+            if i == q.len: q.push(0)
+            q[i] += 1
+            c = q[i] / 1073741824
+            q[i] = q[i] % 1073741824
+            i += 1
+    q
+
+/// Whether bit `i` of `n` is set.
+fn limb_bit(n: List<Int>, i: Int) -> Bool = i / 30 < n.len and n[i / 30] / (1 << (i % 30)) % 2 == 1
+
+/// `n`'s decimal digits, lowest first, without leading zeros; `n` is used up.
+fn limbs_digits(mut n: List<Int>) -> List<Char>:
+    var ds = List.new()
+    var left = true
+    while left:
+        var r = 0
+        var i = n.len - 1
+        left = false
+        while i >= 0:
+            let v = r * 1073741824 + n[i]
+            n[i] = v / 1000000000
+            r = v % 1000000000
+            left = left or n[i] != 0
+            i -= 1
+        for k in 0..9:
+            ds.push(Char(48 + r % 10))
+            r = r / 10
+    while ds.len > 1 and ds[ds.len - 1] == '0': ds.pop()
+    ds
 
 impl Show for F64:
     fn write_to(self, mut out: Str, sep: ?Str) = self.write_digits(mut out, sep, None)
@@ -181,8 +294,7 @@ impl Show for F64:
         var d = 10
         if let k = digits: d = k
         check_range(d in 0..=100)
-        let text = f64_text(self, d)
-        for i in 0..f64_len(self, d): out.push(raw_get(text, i))
+        write_f64(mut out, self, d)
 
 impl Show for Char:
     fn write_to(self, mut out: Str, sep: ?Str):

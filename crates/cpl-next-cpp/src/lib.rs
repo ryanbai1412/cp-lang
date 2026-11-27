@@ -100,12 +100,7 @@ static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     for (size_t i = 0; i < n; i++) r[i].code = (uint8_t)s[i];
     return r;
 }
-static inline int64_t cpl_f64_len(double x, int64_t d) { return snprintf(nullptr, 0, "%.*f", (int)d, x); }
-static inline cpl_raw<cpl_char> cpl_f64_text(double x, int64_t d) {
-    char s[512];
-    int n = snprintf(s, sizeof s, "%.*f", (int)d, x);
-    return cpl_raw_text(s, (size_t)n);
-}
+static inline uint64_t cpl_f64_bits(double x) { uint64_t b; memcpy(&b, &x, 8); return b; }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
     return r[cpl_read_cell(i, (int64_t)r.size())];
 }
@@ -178,8 +173,7 @@ template <class T> struct cpl_body {
 // A scalar as `ops::show` writes it in an event.
 static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
 static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
-static inline void cpl_ev(int64_t x) { fprintf(stderr, " %lld", (long long)x); }
-static inline void cpl_ev(uint64_t x) { fprintf(stderr, " %llu", (unsigned long long)x); }
+template <class T, std::enable_if_t<std::is_integral_v<T>, int> = 0> static inline void cpl_ev(T x) { fprintf(stderr, " %s", std::to_string(x).c_str()); }
 static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) { fwrite(r.data(), 1, (size_t)n, stdout); return {}; }
 "#;
 
@@ -632,8 +626,7 @@ impl Emit<'_> {
                 match op {
                     Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
                     Intr::ToF64 => format!("((double)({}))", a[0]),
-                    Intr::F64Len => format!("cpl_f64_len({}, {})", a[0], a[1]),
-                    Intr::F64Text => format!("cpl_f64_text({}, {})", a[0], a[1]),
+                    Intr::F64Bits => format!("cpl_f64_bits({})", a[0]),
                     Intr::Float(f) => format!("{}({})", f.cpp(), a.join(", ")),
                     Intr::ToInt(r) => format!("cpl_int_of_f64({}({}))", r.cpp(), a[0]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
@@ -1257,15 +1250,10 @@ mod tests {
         ];
         for x in floats {
             let b = x.to_bits();
-            for d in [0, 3, 10] {
-                case(
-                    format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); auto t = cpl_f64_text(x, {d}); printf(\"[\"); cpl_out(t, (int64_t)t.size()); printf(\" %lld]\\n\", (long long)cpl_f64_len(x, {d}));"),
-                    {
-                        let t = ops::f64_text(x, d);
-                        format!("[{t} {}]\n", t.len())
-                    },
-                );
-            }
+            case(
+                format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); printf(\"%llu\\n\", (unsigned long long)cpl_f64_bits(x));"),
+                format!("{b}\n"),
+            );
         }
         let mut shown = |v: ops::Scalar, cpp: &str| {
             let mut out = String::new();

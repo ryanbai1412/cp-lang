@@ -582,17 +582,6 @@ impl M<'_> {
                 Op::FNeg { d, a } => {
                     self.stack[r(d)] = ops::neg_float(f64::from_bits(self.stack[r(a)])).to_bits()
                 }
-                Op::F64Text { d, a, b, len } => {
-                    let x = f64::from_bits(self.stack[r(a)]);
-                    let t = ops::f64_text(x, self.stack[r(b)] as i64);
-                    self.stack[r(d)] = match len {
-                        true => t.len() as u64,
-                        false => {
-                            let words = t.bytes().map(u64::from).collect();
-                            u64::from(self.alloc(c.char_lay, t.len(), words))
-                        }
-                    };
-                }
                 Op::ToF64 { d, a } => {
                     self.stack[r(d)] = ops::f64_of_int(self.stack[r(a)] as i64).to_bits()
                 }

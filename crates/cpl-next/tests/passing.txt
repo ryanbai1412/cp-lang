@@ -1861,6 +1861,7 @@ next/n_show_04_structs_show_their_fields.cp
 next/n_show_05_an_enum_shows_its_variant_name.cp
 next/n_show_06_a_view_shows_its_elements.cp
 next/n_show_07_print_takes_many_values.cp
+next/n_show_f64_01_writes_what_printf_writes.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
 next/n_slice_03_open_ends.cp

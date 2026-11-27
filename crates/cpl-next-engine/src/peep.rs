@@ -500,7 +500,6 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         | Op::RandWord { d }
         | Op::RawEmpty { d, .. } => (vec![], vec![one(d)]),
         Op::PeekByte { d, k } => (vec![one(k)], vec![one(d)]),
-        Op::F64Text { d, a, b, .. } => (vec![one(a), one(b)], vec![one(d)]),
         Op::Enter { save, .. } => (vec![], vec![one(save)]),
         Op::Move { d, s, n } => (vec![(s, n)], vec![(d, n)]),
         Op::Int { d, a, b, .. }
@@ -612,7 +611,6 @@ fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
         Op::RawGet { r, i, .. } => vec![r, i],
         Op::Out { r, n, .. } => vec![r, n],
         Op::PeekByte { k, .. } => vec![k],
-        Op::F64Text { a, b, .. } => vec![a, b],
         Op::RawSet { i, x, elem, .. } => match one(*elem) {
             true => vec![i, x],
             false => vec![i],
