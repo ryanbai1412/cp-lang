@@ -573,3 +573,41 @@ fn types_told_apart_by_domains_share_a_representation() {
     assert_ne!(ss[0], ss[1]);
     assert_eq!(c.prog.rep(ss[0]), c.prog.rep(ss[1]), "{:?}", c.prog.shares);
 }
+
+/// A body an edit leaves alone checks to the same typed body, with the lambdas and set calls
+/// it makes keeping the ids the earlier check gave them (`check_after`). The edit keeps the
+/// program's length: a typed body's spans are still offsets in the file.
+#[test]
+fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
+    let std = Std::read();
+    let typed = |src: &str, prior: &check::Ids| {
+        let loaded = modules::load(&std, src, &Roots::std());
+        let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+        let values = consts::Evaluator::new(&d, &loaded, &main);
+        let t = check::check_after(&d, &main, &loaded, &values, &[], None, prior);
+        assert!(t.errors.is_empty(), "{:?}", t.errors);
+        let bodies: std::collections::HashMap<String, String> = (t.fns.iter())
+            .filter(|(id, _)| !d.is_library(d.f(**id).module))
+            .map(|(id, f)| (d.f(*id).name.clone(), format!("{:?}", (&f.body, &f.ret))))
+            .collect();
+        (bodies, t.ids)
+    };
+    let program = |b: &str| {
+        format!(
+            "fn twice(f: (Int) -> Int, x: Int) -> Int = f(f(x))\nfn a(n: Int) -> Int = twice((y) => y + n, 1)\nfn b(n: Int) -> Int:\n    let g = (y: Int) => y + 1\n{b}\nfn c(n: Int) -> Int = twice((y) => y * n, 2)\nprint(a(1), b(2), c(3))\n"
+        )
+    };
+    let (was, ids) = typed(
+        &program("    g(n) * 2 + 0 + 0 + 0 + 0 "),
+        &check::Ids::default(),
+    );
+    let (now, _) = typed(&program("    g(n) * twice((z) => z, 2)"), &ids);
+    for f in ["twice", "a", "c"] {
+        assert_eq!(was[f], now[f], "{f}");
+    }
+    assert_ne!(was["b"], now["b"]);
+    // Numbered afresh, the edit's new lambda and call move the others' ids.
+    let after = program("    g(n) * twice((z) => z, 2)");
+    let (fresh, _) = typed(&after, &check::Ids::default());
+    assert!(["twice", "a", "c"].iter().any(|f| was[*f] != fresh[*f]));
+}

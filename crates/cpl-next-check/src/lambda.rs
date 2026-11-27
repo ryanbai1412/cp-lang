@@ -19,9 +19,9 @@ impl Cx<'_> {
         len: usize,
     ) -> usize {
         let k = key.2 as usize;
-        let next = self.next[k].max(len);
-        let id = *self.ids.entry(key).or_insert(next);
-        self.next[k] = self.next[k].max(id + 1);
+        let next = self.ids.next[k].max(len);
+        let id = *self.ids.keyed.entry(key).or_insert(next);
+        self.ids.next[k] = self.ids.next[k].max(id + 1);
         id
     }
     /// A call passing sets: each set it passes also holds what the callee adds to it, which

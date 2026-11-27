@@ -229,6 +229,7 @@ pub struct TypedFn {
     /// What it yields or lends, with the sets its body gives a fn-typed result.
     pub region: Option<(bool, Ty)>,
 }
+#[derive(Clone)]
 pub struct LambdaInfo {
     pub params: Vec<Ty>,
     pub ret: Ty,
@@ -243,10 +244,12 @@ pub struct LambdaInfo {
     pub written: Vec<(String, Option<ast::Type>)>,
 }
 /// A range with run-time ends: the variables that hold them, each inclusive; `None` is an open end.
+#[derive(Clone)]
 struct RangeInfo {
     lo: Option<VarRef>,
     hi: Option<VarRef>,
 }
+#[derive(Clone)]
 pub struct DomInfo {
     pub name: String,
     /// The variable that holds its size.
@@ -283,6 +286,7 @@ pub struct Typed {
     pub deferred: HashMap<FnId, Vec<Msg>>,
     /// The library fns reached only through a trait: what is wrong in one is said if it runs.
     pub quiet: HashSet<FnId>,
+    pub ids: Ids,
 }
 
 enum SetVar {
@@ -304,12 +308,23 @@ enum Table {
     Added,
 }
 
-/// `t` with `x` at `i`, the id `Cx::id` gave it.
-fn put<T>(t: &mut Vec<T>, i: usize, x: T) {
-    match t.get_mut(i) {
-        Some(y) => *y = x,
-        None => t.push(x),
+/// `t` with `x` at `i`, the id `Cx::id` gave it. An id an earlier check gave and this one
+/// does not make holds a copy of `x`, which nothing names.
+fn put<T: Clone>(t: &mut Vec<T>, i: usize, x: T) {
+    if t.len() <= i {
+        t.resize(i + 1, x.clone());
     }
+    t[i] = x;
+}
+
+/// The ids a check gave what bodies make, kept for the check of an edited program
+/// (`check_after`): a body the edit leaves alone names its lambdas, domains, ranges, set calls
+/// and context copies as before.
+#[derive(Clone, Default)]
+pub struct Ids {
+    keyed: HashMap<(Option<FnId>, u32, Table, u32), usize>,
+    next: [usize; 4],
+    ctx: HashMap<(FnId, Vec<CtxSetting>), u32>,
 }
 
 struct Cx<'a> {
@@ -333,9 +348,8 @@ struct Cx<'a> {
     lambdas: Vec<LambdaInfo>,
     /// Each lambda's, local domain's and range's id, by the copy of the fn it sits in and its
     /// place among that copy's: a body checked alone names them as the whole program's does.
-    ids: HashMap<(Option<FnId>, u32, Table, u32), usize>,
+    ids: Ids,
     /// Per table, the next id and how many the fn copy being checked has made.
-    next: [usize; 4],
     made: [u32; 4],
     /// The context copy of the fn being checked; 0 is the fn itself.
     copy: u32,
@@ -431,7 +445,8 @@ struct Cx<'a> {
     filling: Vec<list::Filling>,
     /// Each copy of a `uses` fn made so far, by the fn and the context values it is checked
     /// under; and those still to check.
-    ctx_copies: HashMap<(FnId, Vec<CtxSetting>), u32>,
+    /// The context copies this check made, by `FnRef::ctx`.
+    ctx_made: HashSet<u32>,
     ctx_pending: Vec<(FnId, u32, Vec<CtxFrame>)>,
 }
 
@@ -473,14 +488,45 @@ pub fn check(
     roots: &[ModId],
     judge: Option<cpl_next_ir::build::Judge>,
 ) -> Typed {
+    check_after(d, main, src, consts, roots, judge, &Ids::default())
+}
+
+/// `check`, naming what bodies make as `prior` did where they make it again.
+pub fn check_after(
+    d: &Decls,
+    main: &[(ItemId, ast::Stmt)],
+    src: &crate::modules::Loaded,
+    consts: &dyn Consts,
+    roots: &[ModId],
+    judge: Option<cpl_next_ir::build::Judge>,
+    prior: &Ids,
+) -> Typed {
     let mut solved = HashMap::new();
     loop {
-        let (t, found) = check_with(d, main, src, consts, roots, judge.clone(), solved.clone());
+        let (t, found) = check_with(
+            d,
+            main,
+            src,
+            consts,
+            roots,
+            judge.clone(),
+            Earlier {
+                ret: solved.clone(),
+                ids: prior,
+            },
+        );
         if found.keys().all(|f| solved.contains_key(f)) {
             return t;
         }
         solved.extend(found);
     }
+}
+
+/// What earlier checks settled: each `_` result a body fixed (R02.9.3), and the ids of an
+/// earlier revision (`check_after`).
+struct Earlier<'p> {
+    ret: HashMap<FnId, Ty>,
+    ids: &'p Ids,
 }
 
 fn check_with(
@@ -490,7 +536,7 @@ fn check_with(
     consts: &dyn Consts,
     roots: &[ModId],
     judge: Option<cpl_next_ir::build::Judge>,
-    solved_ret: HashMap<FnId, Ty>,
+    earlier: Earlier,
 ) -> (Typed, HashMap<FnId, Ty>) {
     let mut cx = Cx {
         values: consts,
@@ -500,7 +546,7 @@ fn check_with(
         rhs_extent: None,
         frames: Vec::new(),
         filling: Vec::new(),
-        ctx_copies: HashMap::new(),
+        ctx_made: HashSet::new(),
         ctx_pending: Vec::new(),
         d,
         src,
@@ -513,8 +559,7 @@ fn check_with(
         judge,
         errors: Vec::new(),
         lambdas: Vec::new(),
-        ids: HashMap::new(),
-        next: [0; 4],
+        ids: earlier.ids.clone(),
         made: [0; 4],
         copy: 0,
         globals: Vec::new(),
@@ -549,7 +594,7 @@ fn check_with(
         obligations: Vec::new(),
         input_parts: Default::default(),
         ret: Ty::Unit,
-        solved_ret,
+        solved_ret: earlier.ret,
         found_ret: HashMap::new(),
         region: None,
         loops: 0,
@@ -885,6 +930,7 @@ fn check_with(
         errors: cx.errors,
         deferred,
         quiet: quiet_fns,
+        ids: cx.ids,
     };
     (typed, cx.found_ret)
 }
@@ -962,9 +1008,9 @@ impl<'a> Cx<'a> {
         let key: Vec<_> = (frames.iter())
             .map(|x| (x.ctx.0, x.field.clone(), konst(&x.value)))
             .collect();
-        let next = self.ctx_copies.len() as u32 + 1;
-        let k = *self.ctx_copies.entry((id, key)).or_insert(next);
-        if k == next {
+        let next = self.ids.ctx.len() as u32 + 1;
+        let k = *self.ids.ctx.entry((id, key)).or_insert(next);
+        if self.ctx_made.insert(k) {
             self.ctx_pending.push((id, k, frames));
         }
         k
