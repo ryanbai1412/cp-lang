@@ -1424,6 +1424,7 @@ next/n_impl_04_impls_overlap_only_at_equal_trait_args.cp
 next/n_impl_05_written_type_beats_blanket.cp
 next/n_impl_06_two_blankets_overlap.cp
 next/n_impl_07_shaped_header.cp
+next/n_in_01_membership_through_contains.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp

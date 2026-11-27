@@ -98,6 +98,29 @@ impl<'a> Cx<'a> {
         };
         applies.then_some(found)
     }
+    /// `x in s` as `s`'s core `@operator("in")` trait fn, `contains(x)` (R12.4.7).
+    fn membership(&mut self, op: CmpOp, x: TExpr, s: TExpr, span: Span) -> TExpr {
+        let found = (self.d.operators.iter().filter(|(o, _)| o == "in")).find_map(|(_, tr)| {
+            let (n, &m) = self.d.traits[tr.0].methods.iter().next()?;
+            Some((*tr, n.clone(), m))
+        });
+        let Some(found) = found else {
+            self.err(span, Unbuilt::Membership);
+            return Self::error_node(span);
+        };
+        let call = TExpr {
+            ty: Ty::Bool,
+            ..self.operator_call(found, s, Some(x), span)
+        };
+        match op {
+            CmpOp::NotIn => TExpr {
+                kind: TK::Not(Box::new(call)),
+                ty: Ty::Bool,
+                span,
+            },
+            _ => call,
+        }
+    }
     /// `a op b` or `op a` as the operator trait's fn of `a`'s type, which is also its result.
     fn operator_call(
         &mut self,
@@ -1278,12 +1301,19 @@ impl<'a> Cx<'a> {
                 let mut prev = self.expr(first, None);
                 let mut links: Vec<(Vec<TStmt>, TExpr)> = Vec::new();
                 for (k, (op, rhs)) in rest.iter().enumerate() {
-                    // `in` is not built: its operands are not one type, so they are not unified.
+                    // `in` stands alone (R01.5.3); its operands are not one type.
                     if matches!(op, CmpOp::In | CmpOp::NotIn) {
-                        self.expr(rhs, None);
-                        self.err(span, Unbuilt::Membership);
+                        let r = self.expr(rhs, None);
                         self.scopes.pop();
-                        return Self::error_node(span);
+                        if rest.len() > 1 {
+                            let text = cpl_diag::msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN_IN.say(&[]);
+                            self.err(
+                                span,
+                                Msg::verdict(cpl_diag::codes::MIXED_COMPARISON_CHAIN, text),
+                            );
+                            return Self::error_node(span);
+                        }
+                        return self.membership(*op, prev, r, span);
                     }
                     let r = self.expr(rhs, Some(&prev.ty));
                     let r = self.coerce(r, &prev.ty.clone());

@@ -347,6 +347,12 @@ pub trait BitOr<Rhs = Self>:
 pub trait BitAnd<Rhs = Self>:
     fn bitand(self, other: Rhs) -> Self
 
+/// `x in s`: whether `s` holds `x`, sub-linear; `x not in s` is its negation (R12.4.7). A
+/// linear search is `s.any(x)`.
+@operator("in")
+pub trait Contains<T>:
+    fn contains(self, x: T) -> Bool
+
 /// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
 @positions
 pub trait Domain:
@@ -696,6 +702,10 @@ impl<D: Domain> IndexGet<D, D> for Range<D>:
         x
 impl<D: Domain> Indexed<D, D> for Range<D>:
     @get fn keys(self) -> Range<D> = self
+impl<D: Domain> Contains<D> for Range<D>:
+    fn contains(self, x: D) -> Bool:
+        let d = x.ord - self.lo
+        self.n > 0 and d % self.by == 0 and 0 <= d / self.by and d / self.by < self.n
 /// `s[r]`: the view of `s` over the keys in `r`, made in O(1); traps R0101 unless `r` is a run of
 /// `s`'s keys (R07.4.6). An empty `r` is the empty view at its start.
 @index pub fn slice<S: Indexed<D, T>, D: Domain, T>(self: S, r: Range<D>) -> Slice<S>:

@@ -268,9 +268,6 @@ impl<T: Ord> Set<T>:
     pub fn set(mut self, x: T, on: Bool):
         if on: t.put(x, ()) else: t.drop(x)
 
-    pub fn contains(self, x: T) -> Bool:
-        t.find(x) >= 0
-
     pub fn first_ge(self, x: T) -> ?T:
         t.key_at(t.above(x, true))
 
@@ -292,6 +289,10 @@ impl<T: Ord> Set<T>:
     pub fn pop_last(mut self) -> ?T:
         let i = t.pop_edge(true)
         t.key_at(i)
+
+/// `x in s`.
+impl<T: Ord> Contains<T> for Set<T>:
+    fn contains(self, x: T) -> Bool = t.find(x) >= 0
 
 impl<T> Seq<T> for Set<T>:
     fn iter(self) -> yields T:
@@ -341,8 +342,6 @@ impl<K: Ord, V> Map<K, V>:
         let i = t.find(k)
         if i < 0: None else: Some(t.vals[i])
 
-    pub fn contains(self, k: K) -> Bool = t.find(k) >= 0
-
     /// Removes `k`; its value, or `None` when it was absent.
     pub fn remove(mut self, k: K) -> ?V:
         let v = self.get(k)
@@ -370,6 +369,10 @@ impl<K: Ord, V> Map<K, V>:
     pub fn pop_last(mut self) -> ?(K, V):
         let i = t.pop_edge(true)
         self.entry(i)
+
+/// `k in m`: whether `k` has a value.
+impl<K: Ord, V> Contains<K> for Map<K, V>:
+    fn contains(self, k: K) -> Bool = t.find(k) >= 0
 
 impl<K: Ord, V> IndexGet<K, V> for Map<K, V>:
     fn at(self, k: K) -> V:
