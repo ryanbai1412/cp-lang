@@ -47,8 +47,14 @@ fn real_main() {
         };
         return every_case(Duration::from_millis(ms), has("--trace"));
     }
+    if has("--std-modules") {
+        for (m, n) in cpl_next::std_unchecked(&Std::read()) {
+            println!("{m}\t{n}");
+        }
+        return;
+    }
     let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] | --all --within MS [--trace]");
+        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] | --all --within MS [--trace] | --std-modules");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {

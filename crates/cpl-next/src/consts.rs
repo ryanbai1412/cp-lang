@@ -183,7 +183,7 @@ impl<'a> Evaluator<'a> {
     /// Runs the program `stmts` on the engine: the values of the globals its last `lets`
     /// top-level `let`s bind.
     fn execute(&self, stmts: &[(ItemId, ast::Stmt)], lets: usize) -> Ran {
-        let t = check::check(self.d, stmts, self.loaded, self);
+        let t = check::check(self.d, stmts, self.loaded, self, &[]);
         // The program's own domains are declared by statements this run leaves out; one the
         // expression reads fails to lower.
         if (t.errors.iter()).any(|m| m.refusal != Some(Unbuilt::UndeclaredTopDomain)) {

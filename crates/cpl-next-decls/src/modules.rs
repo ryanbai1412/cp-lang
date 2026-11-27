@@ -176,6 +176,10 @@ impl Std {
     pub fn decls(&self) -> &crate::decls::Prepared {
         &self.decls
     }
+    /// Std's modules by name, the core not among them.
+    pub fn module_names(&self) -> impl Iterator<Item = &str> {
+        self.modules[1..].iter().map(|p| p.text.name.as_str())
+    }
 }
 
 pub struct Loaded {

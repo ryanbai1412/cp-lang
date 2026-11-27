@@ -412,11 +412,13 @@ pub enum ConstError {
     Failed(Box<Msg>),
 }
 
+/// `roots`: library modules whose every fn is checked as the program's are, reached or not.
 pub fn check(
     d: &Decls,
     main: &[(ItemId, ast::Stmt)],
     src: &crate::modules::Loaded,
     consts: &dyn Consts,
+    roots: &[ModId],
 ) -> Typed {
     let mut cx = Cx {
         values: consts,
@@ -619,8 +621,7 @@ pub fn check(
             let later = |im: &decls::ImplDecl| {
                 !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
             };
-            !d.is_library(f.module)
-                && f.module != decls::CORE
+            (roots.contains(&f.module) || !d.is_library(f.module) && f.module != decls::CORE)
                 && !matches!(f.owner, Some(Owner::Impl(i)) if later(&d.impls[i]))
         })
         .collect();

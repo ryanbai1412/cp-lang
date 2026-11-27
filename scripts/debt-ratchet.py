@@ -1297,6 +1297,15 @@ def next_masked(root: Path) -> list[str]:
     return [l.strip() for l in _lines(masked) if l.strip()] if masked.is_file() else []
 
 
+def next_std_unchecked(root: Path) -> list[str]:
+    """Std modules the new pipeline does not compile: checking every fn of the module, not
+    only those a program reaches, gives a diagnostic in it. `tests/std_modules.rs` keeps
+    `std-unchecked.tsv` equal to what it finds; it reaches 0 when std is a program (suite 4)."""
+    listed = root / NEXT_TESTS / "std-unchecked.tsv"
+    rows = [l.split("\t") for l in _lines(listed) if l.strip()] if listed.is_file() else []
+    return [f"{m}: {n.strip()} diagnostics" for m, n in rows if n.strip() != "0"]
+
+
 def next_core_privilege(root: Path) -> list[str]:
     """Checks in the new pipeline that give core's module a power no other library has
     (`is_library`): core is a library like any other, so 0 is when its types and traits live
@@ -3457,6 +3466,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
     "crates/cpl-next/tests/passing.txt": ("next_not_passing", "core", "every case listed: the landing that switches `cpl` to cpl-next deletes the list"),
+    "crates/cpl-next/tests/std-unchecked.tsv": ("next_std_unchecked", "core", "deleted: std_modules.rs fails on any std module that does not compile"),
     "crates/cpl-next/tests/wrong.tsv": ("next_wrong", "core", "deleted: programs.rs fails on any wrong case"),
     "crates/cpl-next/tests/masked.txt": ("next_masked", "core", "deleted: no refusal hides a verdict beside it"),
     "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
@@ -3687,6 +3697,7 @@ COUNTERS = {
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
+    "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "next_whole_program_inputs": ("public new-pipeline fns taking a whole-program value (Core)", next_whole_program_inputs, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),

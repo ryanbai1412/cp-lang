@@ -295,7 +295,7 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
     out.extend(diags(Stage::Decls, &d.errors));
     let values = consts::Evaluator::new(&d, &loaded, &main);
-    let mut t = check::check(&d, &main, &loaded, &values);
+    let mut t = check::check(&d, &main, &loaded, &values, &[]);
     out.extend(diags(Stage::Check, &t.errors));
     let g = lower::lower(&d, &t, &loaded);
     out.extend(diags(Stage::Lower, &g.errors));
@@ -312,6 +312,43 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         main,
         diags: out,
     }
+}
+
+/// Each std module and how many diagnostics it has when every one of its fns is checked, not
+/// only those a program reaches: std as a program (suite 4 of plan/end-state.toml).
+pub fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
+    (std.module_names())
+        .filter(|m| *m != "std.prelude")
+        .map(|m| {
+            let loaded = modules::load(std, &format!("use {m}\n"), &Roots::std());
+            let (d, main) =
+                decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+            let at = (d.module_names.iter())
+                .position(|n| n == m)
+                .map(decls::ModId);
+            let values = consts::Evaluator::new(&d, &loaded, &main);
+            let t = check::check(
+                &d,
+                &main,
+                &loaded,
+                &values,
+                &at.into_iter().collect::<Vec<_>>(),
+            );
+            let ds = (staged(Stage::Decls, &d.errors, &loaded, &[]).into_iter()).chain(staged(
+                Stage::Check,
+                &t.errors,
+                &loaded,
+                &[],
+            ));
+            let own = |d: &Diag| {
+                d.at.as_ref()
+                    .map(|a| a.file.as_str())
+                    .or(d.module.as_deref())
+                    == Some(m)
+            };
+            (m.to_string(), ds.filter(own).count())
+        })
+        .collect()
 }
 
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
