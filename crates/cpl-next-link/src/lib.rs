@@ -704,7 +704,7 @@ impl Link<'_> {
         let d = self.d;
         let by_impl = d.impls_of(tr).any(|im| {
             let mut binds = vec![None; im.generics.len()];
-            fits_head(im, &st, &mut binds)
+            self.fit_for(im, &st, &mut binds)
                 && (d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 && blanket_met(d, im, &binds)
@@ -749,7 +749,7 @@ impl Link<'_> {
         let mut found = None;
         for im in d.impls_of(*tr) {
             let mut binds = vec![None; im.generics.len()];
-            if !fits_head(im, &st, &mut binds)
+            if !self.fit_for(im, &st, &mut binds)
                 || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 || !blanket_met(d, im, &binds)
@@ -783,6 +783,37 @@ impl Link<'_> {
             )));
         }
         found
+    }
+    /// Whether `t` fits `im`'s head. A fn value's closures have the types an impl for a
+    /// fn type names (`impl<V, S> Next<V> for V -> S`), so its parameters bind to them.
+    fn fit_for(
+        &mut self,
+        im: &cpl_next_decls::decls::ImplDecl,
+        t: &CTy,
+        binds: &mut [Option<CTy>],
+    ) -> bool {
+        let p = &im.for_;
+        if !fits_head(im, t, binds) {
+            return false;
+        }
+        let (Ty::Fn(ps, r, _), CTy::Set(cs)) = (p, t) else {
+            return true;
+        };
+        let Some(k) = cs.first() else {
+            return true;
+        };
+        let f = &self.generic[&k.func];
+        let env = Env {
+            targs: &k.targs,
+            sets: &k.sets,
+        };
+        let have: Vec<CTy> = (f.params[f.n_captures..].iter())
+            .map(|(l, _)| unlent(self.ty(&f.locals[*l], &env)))
+            .collect();
+        let ret = unlent(self.ty(&f.ret, &env));
+        ps.len() == have.len()
+            && ps.iter().zip(&have).all(|(p, h)| fit_cty(p, h, binds))
+            && fit_cty(r, &ret, binds)
     }
     fn arg(&mut self, a: &Arg<Ty>, env: &Env) -> Arg<CTy> {
         match a {
