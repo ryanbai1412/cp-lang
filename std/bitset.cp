@@ -616,16 +616,6 @@ pub struct DynBitset:
     /// example: `DynBitset(10).is_empty and not DynBitset.full(1).is_empty`
     @get pub fn is_empty(self) -> Bool = _n == 0
 
-    /// Whether bit `i` is set.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when `i` is not in `0..cap`
-    /// example: `var d = DynBitset(10); d.add(3); d.contains(3) and not d.contains(4)`
-    /// example: `not DynBitset(10).contains(10)` (traps R0401)
-    pub fn contains(self, i: Int) -> Bool:
-        assert 0 <= i < _cap
-        (_w[i / 64] >> (i % 64)) & U64(1) == U64(1)
-
     /// Set bit `i` to `on` in place (W8 `IndexSet` backing `b[i] = on`).
     ///
     /// cost: \(O(1)\)
@@ -949,6 +939,17 @@ pub struct DynBitset:
             for _ in 0..cnt[w]: reach.shift_or(w)
         reach
 
+impl Contains<Int> for DynBitset:
+    /// Whether bit `i` is set.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not in `0..cap`
+    /// example: `var d = DynBitset(10); d.add(3); d.contains(3) and not d.contains(4)`
+    /// example: `not DynBitset(10).contains(10)` (traps R0401)
+    fn contains(self, i: Int) -> Bool:
+        assert 0 <= i < _cap
+        (_w[i / 64] >> (i % 64)) & U64(1) == U64(1)
+
 /// Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60
 /// bits). \(O(\mathit{bits})\) per op.
 pub struct XorTrie:
@@ -1057,13 +1058,6 @@ pub struct XorTrie:
         if c == 0: return false
         self.walk(x, -1, if c == 1: -1 else: 0)
         true
-
-    /// Whether `x` is present at least once.
-    ///
-    /// cost: \(O(\mathit{bits})\)
-    /// traps: never
-    /// example: `var t = XorTrie(3); t.add(5); t.contains(5) and not t.contains(4)`
-    pub fn contains(self, x: Int) -> Bool = self.count(x) > 0
 
     /// The multiplicity of `x` currently stored; zero when absent.
     ///
@@ -1218,6 +1212,14 @@ pub struct XorTrie:
         _c0[0] = -1
         _c1[0] = -1
         _cnt[0] = 0
+
+impl Contains<Int> for XorTrie:
+    /// Whether `x` is present at least once.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.contains(5) and not t.contains(4)`
+    fn contains(self, x: Int) -> Bool = self.count(x) > 0
 
 struct BitTrieNode:
     var cnt: Int

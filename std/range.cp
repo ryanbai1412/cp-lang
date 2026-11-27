@@ -319,12 +319,13 @@ pub struct RingRange<D>():
     @get pub fn keys(self) -> yields D:
         for k in 0..n: yield D.nth((at!.ord + k) % D.count)
 
+impl<D: Domain> Contains<D> for RingRange<D>:
     /// Whether position `i` is in the run, counting the wrap past the last position.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).contains(0) == true`
-    pub fn contains(self, i: D) -> Bool:
+    fn contains(self, i: D) -> Bool:
         if n == 0: return false
         (i.ord - at!.ord + D.count) % D.count < n
 

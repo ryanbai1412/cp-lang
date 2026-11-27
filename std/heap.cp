@@ -408,14 +408,6 @@ pub struct IndexedHeap<D, K: Ord>:
         var rest = self
         while let e = rest.pop(): yield e
 
-    /// Whether `v` is currently in the heap.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.contains(V(2)) and not h.contains(V(3))`
-    pub fn contains(self, v: D) -> Bool:
-        pos[v] >= 0
-
     /// Current priority of `v`, or `None` if absent.
     ///
     /// cost: \(O(1)\)
@@ -552,6 +544,15 @@ pub struct IndexedHeap<D, K: Ord>:
         let k = keys[v]!
         self.remove(v)
         Some((v, k))
+
+impl<D: Domain, K: Ord> Contains<D> for IndexedHeap<D, K>:
+    /// Whether `v` is currently in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.contains(V(2)) and not h.contains(V(3))`
+    fn contains(self, v: D) -> Bool:
+        pos[v] >= 0
 
 fn on_min_level(i: Int) -> Bool:
     bit_width(i + 1) % 2 == 1

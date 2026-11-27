@@ -228,15 +228,6 @@ pub struct SortedBag<K: Ord>:
         unchecked:
             return if s >= 0 and not (x < keys[s]): ws[s] else: 0
 
-    /// Whether at least one copy of `x` is in the bag.
-    ///
-    /// `x in b` calls this.
-    ///
-    /// cost: \(O(\log n)\) expected
-    /// traps: never
-    /// example: `SortedBag.of([2, 3]).contains(3) == true`
-    pub fn contains(self, x: K) -> Bool = self.count(x) > 0
-
     /// The smallest element, or `None` when empty. \(O(1)\), kept current by every update.
     ///
     /// cost: \(O(1)\)
@@ -1128,6 +1119,16 @@ pub struct SortedBag<K: Ord>:
         tail = o.tail
         o = mine
 
+impl<K: Ord> Contains<K> for SortedBag<K>:
+    /// Whether at least one copy of `x` is in the bag.
+    ///
+    /// `x in b` calls this.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: never
+    /// example: `SortedBag.of([2, 3]).contains(3) == true`
+    fn contains(self, x: K) -> Bool = self.count(x) > 0
+
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
 /// \(O(1)\) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`). Backed by `SortedBag<K>`.
 /// All single-key and range-summary operations are \(O(\log n)\) expected;
@@ -1209,15 +1210,6 @@ pub struct SortedSet<K: Ord>:
             let _ = self.add(x)
         else:
             let _ = self.remove(x)
-
-    /// Whether `x` is in the set.
-    ///
-    /// `x in s` calls this.
-    ///
-    /// cost: \(O(\log n)\) expected
-    /// traps: never
-    /// example: `SortedSet.of([1, 4]).contains(4) and not SortedSet.of([1, 4]).contains(2)`
-    pub fn contains(self, x: K) -> Bool = bag.contains(x)
 
     /// Smallest key in the set, or `None`. \(O(1)\), kept current by every update.
     ///
@@ -1417,6 +1409,16 @@ pub struct SortedSet<K: Ord>:
         for (k, _) in other.bag.entries(): let _ = bag.add_unique(k)
         other.bag.clear()
 
+impl<K: Ord> Contains<K> for SortedSet<K>:
+    /// Whether `x` is in the set.
+    ///
+    /// `x in s` calls this.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: never
+    /// example: `SortedSet.of([1, 4]).contains(4) and not SortedSet.of([1, 4]).contains(2)`
+    fn contains(self, x: K) -> Bool = bag.contains(x)
+
 /// Order-statistic ordered map from `K` to `V`, each value beside its key in the `SortedBag` B+tree (decision 579).
 /// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `first_true`/`last_true`, `split_at`, `join` are \(O(\log n)\).
 ///
@@ -1502,14 +1504,6 @@ pub struct SortedMap<K: Ord, V>:
     pub fn get(self, k: K) -> ?V:
         let s = ks.find(k)
         if s >= 0: self.val(s) else: None
-
-    /// Whether `k` is present.
-    ///
-    /// cost: \(O(\log n)\) expected
-    /// traps: never
-    /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.contains(1) and not m.contains(2)`
-    pub fn contains(self, k: K) -> Bool:
-        ks.find(k) >= 0
 
     /// Insert or overwrite `k -> v` (W8 `IndexSet` backing `m[k] = v`).
     ///
@@ -1824,6 +1818,15 @@ pub struct SortedMap<K: Ord, V>:
             while s >= 0:
                 yield self.val(s)
                 s = ks.step(s, false)
+
+impl<K: Ord, V> Contains<K> for SortedMap<K, V>:
+    /// Whether `k` is present.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: never
+    /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.contains(1) and not m.contains(2)`
+    fn contains(self, k: K) -> Bool:
+        ks.find(k) >= 0
 
 /// Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 /// Supports \(O(\log n)\) `add`, `remove`, `rank`, `nth`, `fold_lt`, `fold_le`, `fold_ge`, `fold_gt`, `fold_between`, and \(O(1)\) `all`.
@@ -2174,13 +2177,6 @@ pub struct AugSortedSet<K: Ord, T>:
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.remove(3) and not s.remove(3) and s.all == 0`
     pub fn remove(mut self, x: K) -> Bool = bag.remove(x)
 
-    /// Whether `x` is present.
-    ///
-    /// cost: \(O(\log n)\) expected
-    /// traps: never
-    /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.contains(3) and not s.contains(1)`
-    pub fn contains(self, x: K) -> Bool = bag.count(x) > 0
-
     /// Number of keys strictly less than `k`.
     ///
     /// cost: \(O(\log n)\) expected
@@ -2277,6 +2273,14 @@ pub struct AugSortedSet<K: Ord, T>:
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.each().collect() == [1, 3]`
     pub fn each(self) -> yields K:
         for x in bag.each(): yield x
+
+impl<K: Ord, T> Contains<K> for AugSortedSet<K, T>:
+    /// Whether `x` is present.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: never
+    /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.contains(3) and not s.contains(1)`
+    fn contains(self, x: K) -> Bool = bag.count(x) > 0
 
 /// Counts over an integer value range `r`, with \(O(1)\) point add and \(O(\sqrt{N})\) k-th
 /// order statistic: the value-range frequency table for Mo's algorithm.
