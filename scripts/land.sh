@@ -295,12 +295,23 @@ if [ -f scripts/conform_staged.py ]; then
         { echo "land: a conformance case that passes on main fails at the rebased tip (above); fix it and land again: uv run scripts/conform_staged.py --base origin/main --all" >&2; exit 1; }
 fi
 changed=$(git diff --name-only --diff-filter=ACMR "$main_base" HEAD)
-# A fast land changes no case list: nothing ran the suite that would justify the edit,
-# and every next_* ratchet counts the lists. The integrator lane regenerates them.
-if [ -n "$fast" ] && [ -z "${CPL_LAND_INTEGRATOR:-}" ] &&
-    printf '%s\n' "$changed" | grep -qE '^crates/cpl-next/tests/(passing\.txt|wrong\.tsv|masked\.txt|refused\.tsv)$'; then
-    echo "land: a fast land doesn't edit crates/cpl-next/tests' case lists; drop them from the commit (the integrator lane regenerates them with CPL_LAND_INTEGRATOR=1)" >&2
-    exit 1
+# A fast land changes a case list only by listing the cases it adds: nothing ran the suite
+# that would justify any other edit, and every next_* ratchet counts the lists. The
+# integrator lane regenerates them (CPL_LAND_INTEGRATOR=1).
+lists='crates/cpl-next/tests/passing.txt crates/cpl-next/tests/wrong.tsv crates/cpl-next/tests/masked.txt crates/cpl-next/tests/refused.tsv'
+if [ -n "$fast" ] && [ -z "${CPL_LAND_INTEGRATOR:-}" ]; then
+    added=$(git diff --name-only --diff-filter=A "$main_base" HEAD -- spec/conformance crates/cpl-next/tests/programs |
+        sed -n -e 's|^spec/conformance/||p' -e 's|^crates/cpl-next/tests/programs/|next/|p')
+    edits=$(git diff -U0 "$main_base" HEAD -- $lists | grep -E '^[-+]' | grep -vE '^(\+\+\+|---) ' || :)
+    foreign=$(printf '%s\n' "$edits" | sed '/^$/d' | while IFS= read -r l; do
+        id=${l#[-+]}; id=${id%%$'\t'*}
+        case $l in +*) printf '%s\n' "$added" | grep -qxF "$id" || echo "$l" ;; *) echo "$l" ;; esac
+    done)
+    if [ -n "$foreign" ]; then
+        echo "land: a fast land edits the case lists only to list the cases it adds; drop these lines (the integrator regenerates the lists):" >&2
+        printf '%s\n' "$foreign" | head -10 >&2
+        exit 1
+    fi
 fi
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook
