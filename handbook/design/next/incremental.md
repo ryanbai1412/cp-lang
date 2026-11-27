@@ -96,6 +96,54 @@ emission need the whole program. They are queries keyed by the `Job`
 the idle and build paths only. They never report an error the typing
 path did not (`representation.md`: whole-program steps do not reject).
 
+## After link, per instance
+
+Link stays one step per build, but it only joins answers kept per
+instance. An instance's key is its `InstKey` (contract 5) and the
+hash of its canonical IR. Every query below is cached under that key,
+so one edited body redoes only its own instances and the ones that
+took something from them.
+
+| Query | Reads | A change to it comes from |
+|---|---|---|
+| `owned(instance)` | the instance's raw IR, its callees' `Summaries` | its own body, or a callee's summary |
+| `optimized(instance)` | its canonical IR, and for each callee it inlined that callee's key and hash | its own body, or a body it inlined |
+| `bytecode(instance)` | `optimized(instance)` | the same as `optimized` |
+| `cpp_fn(instance)` | `optimized(instance)` | the same as `optimized` |
+| `program(Job)` | every instance's key, `owned` and `optimized` | any instance's key changing, or one added or gone |
+| `cpp(Job, Profile)` | every `cpp_fn` in instance order | any `cpp_fn` changing |
+
+- The optimizer records each callee it inlined, with that callee's
+  key and hash, the way rustc keeps a per-unit inlining record. The
+  record is part of `optimized`'s answer, and a hash that differs from
+  the callee's current one invalidates it. Today the optimizer works
+  within one fn, so the record is empty and the key is the instance's
+  own hash. The first inlining pass writes the record in the same
+  commit.
+- `owned(instance)` uses the same key. Ownership reads callees only
+  through their summaries, so a callee whose body changed but whose
+  summary did not leaves it valid.
+- The engine compiles one bytecode unit per fn and calls fns through a
+  function table indexed by instance. A changed fn's unit is swapped
+  into its slot and no other unit is compiled again.
+- C++ emission keeps each fn's text under the same key and joins them
+  into one file, as judges take one file. g++ builds that one file.
+- Link keeps its job key. It reads every instance's key and cached
+  answers and recomputes none of them.
+
+Test plan, part of the count gate:
+
+- Edit one body that nothing inlines. Exactly its instances get new
+  `owned`, `optimized`, `bytecode` and `cpp_fn` answers. Every other
+  instance's answers are the same values, by identity, as before.
+- Edit a body that another fn inlined. The edited instance and each
+  instance whose record names it are redone, and nothing else.
+- Edit a body without changing its summary. Its callers' `owned` is
+  kept.
+- After each edit, the engine's function table has new units only in
+  the redone slots, and the joined C++ differs from the previous one
+  only in the redone fns' text.
+
 ## Cancellation and threads
 
 An input change bumps the revision. A query running for an older
