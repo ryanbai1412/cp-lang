@@ -61,7 +61,11 @@ impl Cx<'_> {
     ) -> Option<TExpr> {
         let tr = self.d.domain_trait?;
         let &m = self.d.traits[tr.0].methods.get(&name.text)?;
-        let op = self.d.f(m).intrinsic.clone()?;
+        let fd = self.d.f(m);
+        if !super::member::takes(fd, call) || (call.is_none() && !fd.getter) {
+            return None;
+        }
+        let op = fd.intrinsic.clone()?;
         let args = match call {
             None => None,
             Some([a]) => {

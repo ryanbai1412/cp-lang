@@ -3,6 +3,12 @@
 use super::expr::block;
 use super::*;
 
+/// Whether a call with these arguments could be of `f`: `D.count(pred)` is not a call of the
+/// getter `Domain.count`, which takes none, so a member that takes them is looked for instead.
+pub(super) fn takes(f: &decls::FnDecl, call: Option<&[ast::Arg]>) -> bool {
+    call.is_none_or(|args| args.len() <= f.params.len())
+}
+
 impl<'a> Cx<'a> {
     pub(super) fn method_call(
         &mut self,
@@ -168,7 +174,8 @@ impl<'a> Cx<'a> {
         let i = self.generics.iter().position(|g| g == n)?;
         let (tr, m) = (self.bound_traits(i).into_iter()).find_map(|tr| {
             let m = *self.d.traits[tr.tr.0].methods.get(&name.text)?;
-            (self.d.f(m).self_mode == SelfMode::None).then_some((tr, m))
+            let fd = self.d.f(m);
+            (fd.self_mode == SelfMode::None && takes(fd, call)).then_some((tr, m))
         })?;
         self.reach(m);
         let fd = self.d.f(m);
