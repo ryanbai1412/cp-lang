@@ -207,6 +207,44 @@ impl<'a> Cx<'a> {
         })?;
         Some(self.static_call(Ty::Param(i), tr, m, name, call, span))
     }
+    /// `Trait.m(x, ..)`: the `m` of `x`'s impl of the trait named, as when two traits give `x`
+    /// an `m` (R08.1.4).
+    fn trait_call(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+        want: Option<&Ty>,
+    ) -> Option<TExpr> {
+        let (ExprKind::Name(n), Some([first, rest @ ..])) = (&base.kind, call) else {
+            return None;
+        };
+        if first.name.is_some() || self.lookup(n).is_some() {
+            return None;
+        }
+        let Some(decls::Named::Trait(tr)) = self.d.named(self.module, n) else {
+            return None;
+        };
+        let recv = self.expr(&first.value, None);
+        let rt = self.shallow(&recv.ty);
+        let tn = &self.d.traits[tr.0].name;
+        let Some(decls::Member::Method(m, ts, ss)) = self.d.impl_member(&rt, &name.text, Some(tn))
+        else {
+            if !self.is_error(&rt) {
+                let ty = self.show(&rt);
+                let text = format!("`{ty}` has no impl of `{tn}` with a `{}`", name.text);
+                self.err(span, Msg::verdict(cpl_diag::codes::MISSING_IMPL, text));
+            }
+            return Some(Self::error_node(span));
+        };
+        let f = self.fnref(m, ts, ss);
+        let recv = match first.mutable {
+            true => self.mut_recv(recv, span),
+            false => self.recv_arg(m, recv, span),
+        };
+        Some(self.call_method(f, recv, false, Some(rest), span, want))
+    }
     /// `Int.zero`, or `F.zero` in a default where `F` names the call's type: a self-less fn of a
     /// trait the named type implements. None for a name that is a value, a struct or no type.
     fn named_type_static(
@@ -521,6 +559,10 @@ impl<'a> Cx<'a> {
             self.no_targs(name, written_targs, span);
             return e;
         }
+        if let Some(e) = self.trait_call(base, name, call, span, want) {
+            self.no_targs(name, written_targs, span);
+            return e;
+        }
         // `Type.f(args)` or `Type<A>.f(args)`: a fn of the type with no receiver.
         let (ty_name, written) = match &base.kind {
             ExprKind::Name(n) => (Some(n), &[][..]),
@@ -752,6 +794,19 @@ impl<'a> Cx<'a> {
                 }
             }
             Some(decls::Member::Method(m, ts, ss)) => {
+                if let Some((a, b)) = self.d.tied_traits(&rt, &name.text) {
+                    let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
+                    let (shown, ty) = (self.text(base.span), self.show(&rt));
+                    let m = &name.text;
+                    let text = cpl_diag::msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
+                        .say(&[&shown, m, a, b, &ty, m]);
+                    self.err_help(
+                        name.span,
+                        Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, text),
+                        Some(format!("name the trait: `{a}.{m}({shown})`")),
+                    );
+                    return Self::error_node(span);
+                }
                 let fd = self.d.f(m);
                 let walked = walked && fd.region.is_some();
                 if call.is_none() && !fd.getter && !walked {

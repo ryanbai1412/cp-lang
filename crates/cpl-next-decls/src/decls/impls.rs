@@ -62,28 +62,9 @@ impl Decls {
             .map(|&k| &self.impls[k])
             .filter(|im| self.live(im));
         let ordered = (0..3).flat_map(|r| live.clone().filter(move |im| self.impl_rank(im) == r));
-        let found = ordered.into_iter().find_map(|im| {
-            let tr = &self.traits[im.trait_.tr.0];
-            if trait_name.is_some_and(|n| n != tr.name) {
-                return None;
-            }
-            if let Some(m) = im.methods.get(name).filter(|m| pick(self.f(**m))) {
-                let targs = self.fits_impl(im, recv)?;
-                return Some(Member::Method(*m, targs, sets.clone()));
-            }
-            let tm = *tr.methods.get(name)?;
-            if matches!(self.f(tm).body, FnBody::None) || !pick(self.f(tm)) {
-                return None;
-            }
-            let binds = self.fits_impl(im, recv)?;
-            let sub = Subst {
-                tys: &binds,
-                sets: &[],
-            };
-            let mut targs = vec![recv.clone()];
-            targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
-            Some(Member::Method(tm, targs, Vec::new()))
-        });
+        let found = ordered
+            .into_iter()
+            .find_map(|im| self.impl_gives(im, recv, name, trait_name, &pick, &sets));
         // A declared domain meets `Domain` with no impl: its members are the trait's defaults.
         found.or_else(|| {
             let tr = self.domain_trait.filter(|_| matches!(recv, Ty::Dom(_)))?;
@@ -94,6 +75,62 @@ impl Decls {
                 .filter(|_| trait_name.is_none_or(|n| n == tr.name))?;
             pick(self.f(tm)).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
         })
+    }
+    /// The member `name` impl `im` gives `recv`: its own fn, or its trait's default.
+    fn impl_gives(
+        &self,
+        im: &ImplDecl,
+        recv: &Ty,
+        name: &str,
+        trait_name: Option<&str>,
+        pick: &impl Fn(&FnDecl) -> bool,
+        sets: &[SetTy],
+    ) -> Option<Member> {
+        let tr = &self.traits[im.trait_.tr.0];
+        if trait_name.is_some_and(|n| n != tr.name) {
+            return None;
+        }
+        if let Some(m) = im.methods.get(name).filter(|m| pick(self.f(**m))) {
+            let targs = self.fits_impl(im, recv)?;
+            return Some(Member::Method(*m, targs, sets.to_vec()));
+        }
+        let tm = *tr.methods.get(name)?;
+        if matches!(self.f(tm).body, FnBody::None) || !pick(self.f(tm)) {
+            return None;
+        }
+        let binds = self.fits_impl(im, recv)?;
+        let sub = Subst {
+            tys: &binds,
+            sets: &[],
+        };
+        let mut targs = vec![recv.clone()];
+        targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
+        Some(Member::Method(tm, targs, Vec::new()))
+    }
+    /// Two traits whose impls give `recv` a method `name` at the most specific rank either
+    /// reaches: `recv.name()` alone is ambiguous between them (R08.1.4).
+    pub fn tied_traits(&self, recv: &Ty, name: &str) -> Option<(TraitId, TraitId)> {
+        let pick = |f: &FnDecl| f.self_mode != SelfMode::None;
+        let live: Vec<&ImplDecl> = (self.impls_by_member.get(name).into_iter().flatten())
+            .map(|&k| &self.impls[k])
+            .filter(|im| self.live(im))
+            .collect();
+        for r in 0..3 {
+            let mut traits: Vec<TraitId> = Vec::new();
+            for im in live.iter().filter(|im| self.impl_rank(im) == r) {
+                if !traits.contains(&im.trait_.tr)
+                    && self.impl_gives(im, recv, name, None, &pick, &[]).is_some()
+                {
+                    traits.push(im.trait_.tr);
+                }
+            }
+            match traits[..] {
+                [a, b, ..] => return Some((a, b)),
+                [_] => return None,
+                [] => {}
+            }
+        }
+        None
     }
     /// Whether every field of `s` has an impl of `tr`, as a derived impl needs (R08.1.6).
     pub(super) fn fields_have(&self, s: StructId, tr: TraitId) -> bool {

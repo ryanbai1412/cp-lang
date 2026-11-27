@@ -1879,6 +1879,8 @@ next/n_table_into_anon_range.cp
 next/n_targs_01_written.cp
 next/n_targs_02_field_takes_none.cp
 next/n_todo_01_todo_traps_where_reached.cp
+next/n_trait_call_01.cp
+next/n_trait_call_02_no_impl.cp
 next/n_trait_static_fn.cp
 next/n_trait_typed_param.cp
 next/n_trap_01_call_stack_names_inlined_calls.cp
