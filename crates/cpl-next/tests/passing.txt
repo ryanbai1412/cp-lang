@@ -1448,6 +1448,7 @@ next/n_domain_cuts_open_closed.cp
 next/n_domain_members.cp
 next/n_domain_ord.cp
 next/n_domain_product.cp
+next/n_domain_product3.cp
 next/n_domain_product_alias.cp
 next/n_domain_product_named.cp
 next/n_domain_product_range.cp
