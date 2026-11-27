@@ -1012,6 +1012,17 @@ fn add_fn(
     let f = desugared.as_ref().unwrap_or(f);
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
+    let rests = without_bounds(d, &names, f);
+    let with_rests;
+    let f = match rests.is_empty() {
+        true => f,
+        false => {
+            let mut g = f.clone();
+            g.bounds.extend(rests);
+            with_rests = g;
+            &with_rests
+        }
+    };
     let hidden = hidden_params(d, &names, &f.bounds, &mut generics);
     let doms = d.doms_in(m);
     let aliases = d.aliases.clone();
@@ -1032,6 +1043,7 @@ fn add_fn(
         records: &records,
         members: &members,
         generics: &generics,
+        outer: &generics,
         args: None,
         aliases: &aliases,
         expanding: Vec::new(),
@@ -1311,6 +1323,143 @@ pub fn static_range(
 /// `G: Next<V>` (R08.2.3); any other is `S.1`, which can't be written, fixed when the bound is met
 /// (R08.1.2). An associated type's default is the impl's to take, never the bound's.
 type Hidden = Vec<((String, usize), std::ops::Range<usize>)>;
+/// `R: (to:, ..without u, v)<X>` for each `(to: X, ..R without (u, v))` the signature writes,
+/// through its aliases, of a parameter `R` whose row bound has those fields: the record it names
+/// is then a parameter of the signature (R08.4.1).
+fn without_bounds(d: &Decls, names: &HashMap<String, Named>, f: &ast::FnDecl) -> Vec<ast::Bound> {
+    let mut out = Vec::new();
+    let sig = f.params.iter().filter_map(|p| p.ty.as_ref()).chain(&f.ret);
+    sig.for_each(|t| rest_bounds(d, names, f, t, &mut out));
+    out
+}
+
+fn rest_bounds(
+    d: &Decls,
+    names: &HashMap<String, Named>,
+    f: &ast::FnDecl,
+    t: &ast::Type,
+    out: &mut Vec<ast::Bound>,
+) {
+    let mut go = |t: &ast::Type| rest_bounds(d, names, f, t, out);
+    match &t.kind {
+        TypeKind::Named { name, args } => {
+            args.iter().for_each(&mut go);
+            let generic = f.generics.iter().any(|g| g.text == name.text);
+            if let (Some(Named::Alias(id)), false) = (names.get(&name.text), generic) {
+                let a = &d.aliases[id.0];
+                if a.generics.len() == args.len() {
+                    let sub = a.generics.iter().map(String::as_str).zip(args).collect();
+                    rest_bounds(d, &a.names, f, &subst(&a.ty, &sub), out);
+                }
+            }
+        }
+        TypeKind::RowWithout {
+            prefix,
+            base,
+            removed,
+        } => {
+            prefix.iter().for_each(|(_, t)| go(t));
+            go(base);
+            let TypeKind::Named { name: r, args } = &base.kind else {
+                return;
+            };
+            let row = (f.bounds.iter())
+                .filter(|b| b.name.text == r.text)
+                .flat_map(|b| &b.traits)
+                .find_map(|t| match &t.kind {
+                    TypeKind::Row(fs) => Some(fs),
+                    _ => None,
+                });
+            let fits = |row: &Vec<(ast::Name, ast::Type)>| {
+                (removed.iter()).all(|n| row.iter().any(|(f, _)| f.text == n.text))
+            };
+            if !args.is_empty() || !row.is_some_and(fits) {
+                return;
+            }
+            let form = (
+                prefix.iter().map(|(n, _)| n.text.clone()).collect(),
+                removed.iter().map(|n| n.text.clone()).collect(),
+            );
+            let tr = crate::records::without_name(&form);
+            let known = |b: &ast::Bound| {
+                b.name.text == r.text
+                    && matches!(&b.traits[..], [ast::Type { kind: TypeKind::Named { name, .. }, .. }] if name.text == tr)
+            };
+            if out.iter().any(known) {
+                return;
+            }
+            let kind = TypeKind::Named {
+                name: ast::Name {
+                    text: tr,
+                    span: t.span,
+                },
+                args: prefix.iter().map(|(_, t)| t.clone()).collect(),
+            };
+            out.push(ast::Bound {
+                name: r.clone(),
+                traits: vec![ast::Type { kind, span: t.span }],
+            });
+        }
+        TypeKind::Array { index, elem } => index.iter().chain([&**elem]).for_each(go),
+        TypeKind::OwnDomain { elem: x, .. }
+        | TypeKind::Optional(x)
+        | TypeKind::Mut(x)
+        | TypeKind::Yields(x) => go(x),
+        TypeKind::Tuple(ts) => ts.iter().for_each(go),
+        TypeKind::Record(fs) | TypeKind::Row(fs) => fs.iter().for_each(|(_, t)| go(t)),
+        TypeKind::Fn { params, ret } => params.iter().chain([&**ret]).for_each(go),
+        _ => {}
+    }
+}
+
+/// `t` with each bare name `sub` has replaced by its type: an alias's body at its arguments.
+fn subst(t: &ast::Type, sub: &HashMap<&str, &ast::Type>) -> ast::Type {
+    let s = |x: &ast::Type| subst(x, sub);
+    let b = |x: &ast::Type| Box::new(subst(x, sub));
+    let fs = |v: &[(ast::Name, ast::Type)]| -> Vec<(ast::Name, ast::Type)> {
+        v.iter().map(|(n, x)| (n.clone(), subst(x, sub))).collect()
+    };
+    let kind = match &t.kind {
+        TypeKind::Named { name, args } if args.is_empty() => match sub.get(name.text.as_str()) {
+            Some(x) => return (*x).clone(),
+            None => t.kind.clone(),
+        },
+        TypeKind::Named { name, args } => TypeKind::Named {
+            name: name.clone(),
+            args: args.iter().map(s).collect(),
+        },
+        TypeKind::Array { index, elem } => TypeKind::Array {
+            index: index.iter().map(s).collect(),
+            elem: b(elem),
+        },
+        TypeKind::OwnDomain { name, elem } => TypeKind::OwnDomain {
+            name: name.clone(),
+            elem: b(elem),
+        },
+        TypeKind::Optional(x) => TypeKind::Optional(b(x)),
+        TypeKind::Mut(x) => TypeKind::Mut(b(x)),
+        TypeKind::Yields(x) => TypeKind::Yields(b(x)),
+        TypeKind::Tuple(ts) => TypeKind::Tuple(ts.iter().map(s).collect()),
+        TypeKind::Record(v) => TypeKind::Record(fs(v)),
+        TypeKind::Row(v) => TypeKind::Row(fs(v)),
+        TypeKind::Fn { params, ret } => TypeKind::Fn {
+            params: params.iter().map(s).collect(),
+            ret: b(ret),
+        },
+        TypeKind::RowWithout {
+            prefix,
+            base,
+            removed,
+        } => TypeKind::RowWithout {
+            prefix: fs(prefix),
+            base: b(base),
+            removed: removed.clone(),
+        },
+        other => other.clone(),
+    };
+    ast::Type { kind, span: t.span }
+}
+
 fn hidden_params(
     d: &Decls,
     names: &HashMap<String, Named>,

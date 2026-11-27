@@ -19,6 +19,8 @@ pub struct Prepared {
     shapes: Vec<Vec<String>>,
     /// The row bounds std writes, sorted: each is a core trait (R08.4.1).
     rows: Vec<Vec<String>>,
+    /// The `without` forms std writes, sorted: each is a core trait too.
+    forms: Vec<crate::records::Form>,
     /// Each record shape std writes and the modules that write it.
     writers: HashMap<Vec<String>, Vec<ModId>>,
 }
@@ -137,10 +139,22 @@ fn layer(
     // Every record shape the program and its modules write is a core struct (R02.5.2).
     // A program's are those std does not write.
     let mut shapes = base.map_or_else(Vec::new, |b| b.shapes.clone());
-    let written = crate::records::shapes(&mods[from..], &crate::records::variadics(mods));
+    let mut written = crate::records::shapes(&mods[from..], &crate::records::variadics(mods));
+    let mut forms = base.map_or_else(Vec::new, |b| b.forms.clone());
+    let new_forms: Vec<crate::records::Form> = (crate::records::forms(&mods[from..]).into_iter())
+        .filter(|f| forms.binary_search(f).is_err())
+        .collect();
+    let old_forms = forms.clone();
+    forms.extend(new_forms.iter().cloned());
+    forms.sort();
+    // What a `without` makes of a record is a record too (R08.4.1).
+    let known: Vec<Vec<String>> = shapes.iter().chain(&written).cloned().collect();
+    written.extend(crate::records::derived(&forms, &known));
     let new_shapes: Vec<Vec<String>> = (written.iter())
         .filter(|s| shapes.binary_search(s).is_err())
         .cloned()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
         .collect();
     // A record is the program's when a module it loads writes it.
     for (shape, by) in base.iter().flat_map(|b| &b.writers) {
@@ -165,6 +179,7 @@ fn layer(
     .map(|(id, span)| {
         let mut stmts = crate::records::structs(&new_shapes, span);
         stmts.extend(crate::records::row_traits(&new_rows, span));
+        stmts.extend(crate::records::without_traits(&new_forms, span));
         vec![crate::modules::Item { id, stmts }]
     })
     .unwrap_or_default();
@@ -202,6 +217,14 @@ fn layer(
                         let old = [rows_of(&old_rows)];
                         made.extend(crate::synth::field_trait_impls(&old, &new_shapes));
                     }
+                    let without = (crate::records::without_impls(&new_forms, &shapes, at.span))
+                        .into_iter()
+                        .chain(crate::records::without_impls(
+                            &old_forms,
+                            &new_shapes,
+                            at.span,
+                        ));
+                    made.extend(without.map(|(n, imp)| (it.id.clone(), n, imp)));
                 }
             }
             if ours || !new_shapes.is_empty() {
@@ -596,6 +619,7 @@ fn layer(
                 records: &records,
                 members: &members,
                 generics: &generics,
+                outer: &generics,
                 args: None,
                 aliases: &aliases,
                 expanding: Vec::new(),
@@ -642,6 +666,7 @@ fn layer(
             records: &records,
             members: &members,
             generics: &generics,
+            outer: &generics,
             args: None,
             aliases: &aliases,
             expanding: Vec::new(),
@@ -717,6 +742,7 @@ fn layer(
                         records: &records,
                         members: &members,
                         generics: &generics,
+                        outer: &generics,
                         args: None,
                         aliases: &aliases,
                         expanding: Vec::new(),
@@ -847,6 +873,7 @@ fn layer(
                         records: &records,
                         members: &members,
                         generics: &tgen,
+                        outer: &tgen,
                         args: None,
                         aliases: &aliases,
                         expanding: Vec::new(),
@@ -956,6 +983,7 @@ fn layer(
                         records: &records,
                         members: &members,
                         generics: &generics,
+                        outer: &generics,
                         args: None,
                         aliases: &aliases,
                         expanding: Vec::new(),
@@ -1301,6 +1329,7 @@ fn layer(
         public,
         shapes,
         rows,
+        forms,
         writers: HashMap::new(),
     };
     (layer, main)

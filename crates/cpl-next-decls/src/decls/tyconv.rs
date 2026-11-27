@@ -31,6 +31,8 @@ pub(super) struct TyCx<'a> {
     pub(super) records: &'a HashMap<Vec<String>, StructId>,
     pub(super) members: &'a HashMap<String, StructId>,
     pub(super) generics: &'a [String],
+    /// The signature's own generics, where an alias's expansion names them by position.
+    pub(super) outer: &'a [String],
     /// What the generics stand for, when converting an alias's type.
     pub(super) args: Option<&'a [Ty]>,
     pub(super) aliases: &'a Layer<AliasDecl>,
@@ -91,6 +93,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         records: cx.records,
         members: cx.members,
         generics: &decl.generics,
+        outer: cx.outer,
         args: Some(&a),
         aliases: cx.aliases,
         expanding,
@@ -304,6 +307,18 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             let a = fs.iter().map(|(_, x)| conv(cx, x, errors)).collect();
             Ty::Struct(d, a, Vec::new())
         }
+        TypeKind::RowWithout {
+            prefix,
+            base,
+            removed,
+        } => {
+            let form = (
+                prefix.iter().map(|(n, _)| n.text.clone()).collect(),
+                removed.iter().map(|n| n.text.clone()).collect(),
+            );
+            let base = conv(cx, base, errors);
+            without(cx, &form, prefix, base, t.span, errors)
+        }
         // `?T` is std's `@optional` struct.
         TypeKind::Optional(inner) if cx.sugar.optional.is_some() => {
             let d = cx.sugar.optional.unwrap_or(StructId(0));
@@ -437,6 +452,7 @@ pub fn body_type(
             records: &d.records,
             members: &d.member_types,
             generics,
+            outer: generics,
             args: None,
             aliases: &d.aliases,
             expanding: Vec::new(),
@@ -447,4 +463,77 @@ pub fn body_type(
         t,
         errors,
     )
+}
+
+/// `(to: X, ..B without (u, v))`: of a record, the record of its other fields after the added
+/// ones; of a row-bound parameter `R`, the associated type its form's trait names, a parameter of
+/// the signature (R08.4.1).
+fn without(
+    cx: &mut TyCx,
+    form: &crate::records::Form,
+    prefix: &[(ast::Name, ast::Type)],
+    base: Ty,
+    span: cpl_diag::Span,
+    errors: &mut Vec<Msg>,
+) -> Ty {
+    let item = cx.item.clone();
+    let missing = |what: &str| {
+        let m = Msg::verdict(
+            cpl_diag::codes::UNKNOWN_FIELD,
+            format!("`without` drops a field {what} lacks (R08.4.4)"),
+        );
+        match &item {
+            Some(i) => Msg::at(i.at(span), m),
+            None => m,
+        }
+    };
+    match base {
+        Ty::Struct(s, args, _) => {
+            let Some(fs) = (cx.records.iter())
+                .find(|(_, id)| **id == s)
+                .map(|(fs, _)| fs.clone())
+            else {
+                errors.push(missing("a type that is not a record"));
+                return Ty::Error;
+            };
+            let Some(made) = crate::records::without_shape(form, &fs) else {
+                errors.push(missing("the record"));
+                return Ty::Error;
+            };
+            let Some(&id) = cx.records.get(&made) else {
+                errors.push(
+                    Unbuilt::Type {
+                        kind: "RowWithout".to_string(),
+                    }
+                    .into(),
+                );
+                return Ty::Error;
+            };
+            let a = (made.iter())
+                .map(|f| match prefix.iter().find(|(n, _)| n.text == *f) {
+                    Some((_, t)) => conv(cx, t, errors),
+                    None => fs
+                        .iter()
+                        .position(|x| x == f)
+                        .map_or(Ty::Error, |k| args[k].clone()),
+                })
+                .collect();
+            Ty::Struct(id, a, Vec::new())
+        }
+        Ty::Param(i) => {
+            let rest = format!("{}.{}", cx.outer[i], crate::records::without_member(form));
+            match cx.outer.iter().position(|g| *g == rest) {
+                Some(k) => Ty::Param(k),
+                None => {
+                    errors.push(missing("the row bound"));
+                    Ty::Error
+                }
+            }
+        }
+        Ty::Error => Ty::Error,
+        _ => {
+            errors.push(missing("a type that is not a record"));
+            Ty::Error
+        }
+    }
 }

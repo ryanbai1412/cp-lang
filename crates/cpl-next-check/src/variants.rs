@@ -139,6 +139,45 @@ impl Cx<'_> {
     /// `e with f: v` and `(..e, f: v)`: a copy of `e` with those fields replaced (R02.5.3). `e`
     /// is read once and the new values in the order written; each other field is read from `e`,
     /// so its heap fields move (R12.11.4).
+    /// `(to: x, ..r without (u, v))`: a call of the member of its form's trait that makes the
+    /// rest, met by each record with those fields (R08.4.1).
+    pub(super) fn without(
+        &mut self,
+        prefix: &[(ast::Name, ast::Expr)],
+        base: &ast::Expr,
+        removed: &[ast::Name],
+        want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        let form = (
+            prefix.iter().map(|(n, _)| n.text.clone()).collect(),
+            removed.iter().map(|n| n.text.clone()).collect(),
+        );
+        let name = ast::Name {
+            text: cpl_next_decls::records::without_member(&form),
+            span,
+        };
+        let callee = ast::Expr {
+            kind: ast::ExprKind::Field {
+                base: Box::new(base.clone()),
+                name,
+            },
+            span,
+        };
+        let args = (prefix.iter())
+            .map(|(_, e)| ast::Arg {
+                name: None,
+                mutable: false,
+                value: e.clone(),
+            })
+            .collect();
+        let kind = ast::ExprKind::Call {
+            callee: Box::new(callee),
+            args,
+        };
+        self.expr(&ast::Expr { kind, span }, want)
+    }
+
     pub(super) fn record_update(
         &mut self,
         base: &ast::Expr,

@@ -137,11 +137,277 @@ pub fn shapes(
     mods: &[crate::modules::Module],
     variadics: &HashMap<String, Vec<String>>,
 ) -> Vec<Vec<String>> {
-    let mut v = Shapes(BTreeSet::new(), variadics);
+    let mut v = Shapes(BTreeSet::new(), variadics, BTreeSet::new());
     for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
         stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
     }
     v.0.into_iter().collect()
+}
+
+/// A `without` form, `(to: _, e: _, ..R without (u, v))`: the fields it adds, then those it drops.
+pub type Form = (Vec<String>, Vec<String>);
+
+/// Every `without` form any module writes, in a type or a value.
+pub fn forms(mods: &[crate::modules::Module]) -> Vec<Form> {
+    let none = HashMap::new();
+    let mut v = Shapes(BTreeSet::new(), &none, BTreeSet::new());
+    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
+        stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
+    }
+    v.2.into_iter().collect()
+}
+
+/// The trait a form is, `(to:, e:, ..without u, v)`: met by each record with the fields it drops
+/// and none it adds (R08.4.1).
+pub fn without_name((prefix, removed): &Form) -> String {
+    let fs: Vec<String> = prefix.iter().map(|f| format!("{f}:, ")).collect();
+    format!("({}..without {})", fs.concat(), removed.join(", "))
+}
+
+/// The form's trait's associated type, the record it makes, and its member that makes it.
+pub fn without_member((prefix, removed): &Form) -> String {
+    format!("without({}; {})", prefix.join(", "), removed.join(", "))
+}
+
+/// The fields a form makes of a record with fields `fs`, its added ones first; none when the
+/// record lacks a dropped field or has an added one, or nothing is left.
+pub fn without_shape((prefix, removed): &Form, fs: &[String]) -> Option<Vec<String>> {
+    let rest: Vec<&String> = fs.iter().filter(|f| !removed.contains(f)).collect();
+    let fits = removed.iter().all(|r| fs.contains(r)) && !rest.iter().any(|f| prefix.contains(f));
+    let out: Vec<String> = prefix.iter().chain(rest).cloned().collect();
+    (fits && !out.is_empty()).then_some(out)
+}
+
+/// The shapes the forms make of `shapes` and of what they make, past `shapes`, sorted.
+pub fn derived(forms: &[Form], shapes: &[Vec<String>]) -> Vec<Vec<String>> {
+    let mut all: BTreeSet<Vec<String>> = shapes.iter().cloned().collect();
+    let mut made = BTreeSet::new();
+    let mut fresh: Vec<Vec<String>> = shapes.to_vec();
+    // A form drops fields it does not add back, so each round's shapes are smaller.
+    while !fresh.is_empty() {
+        let next: Vec<Vec<String>> = (fresh.iter())
+            .flat_map(|fs| forms.iter().filter_map(move |f| without_shape(f, fs)))
+            .filter(|s| all.insert(s.clone()))
+            .collect();
+        made.extend(next.iter().cloned());
+        fresh = next;
+    }
+    made.into_iter().collect()
+}
+
+fn gen_names(prefix: &str, n: usize) -> Vec<String> {
+    (0..n).map(|k| format!("{prefix}{k}")).collect()
+}
+
+fn plain_type(text: &str, span: Span) -> ast::Type {
+    ast::Type {
+        kind: TypeKind::Named {
+            name: ast::Name {
+                text: text.to_string(),
+                span,
+            },
+            args: Vec::new(),
+        },
+        span,
+    }
+}
+
+fn self_param(n: &str, ty: Option<ast::Type>, span: Span) -> ast::Param {
+    ast::Param {
+        mutable: false,
+        variadic: false,
+        lazy: false,
+        named_only: false,
+        label: None,
+        name: ast::Name {
+            text: n.to_string(),
+            span,
+        },
+        ty,
+        default: None,
+        span,
+    }
+}
+
+fn member_fn(
+    name: &str,
+    params: Vec<ast::Param>,
+    ret: ast::Type,
+    body: ast::FnBody,
+    span: Span,
+) -> ast::Stmt {
+    ast::Stmt {
+        kind: StmtKind::Fn(FnDecl {
+            name: ast::Name {
+                text: name.to_string(),
+                span,
+            },
+            generics: Vec::new(),
+            bounds: Vec::new(),
+            params,
+            ret: Some(ret),
+            lends: None,
+            uses: Vec::new(),
+            body,
+            sig_span: span,
+        }),
+        span,
+        decorators: Vec::new(),
+        public: true,
+    }
+}
+
+/// `pub trait (to:, e:, ..without u, v)<P0, P1>: type R; fn R(self, to: P0, e: P1) -> Self.R`
+/// for each form, `R` its `without_member`.
+pub fn without_traits(forms: &[Form], span: Span) -> Vec<ast::Stmt> {
+    let nm = |text: &str| ast::Name {
+        text: text.to_string(),
+        span,
+    };
+    (forms.iter())
+        .map(|form| {
+            let m = without_member(form);
+            let ps = gen_names("P", form.0.len());
+            let mut params = vec![self_param("self", None, span)];
+            params.extend(
+                (form.0.iter().zip(&ps))
+                    .map(|(f, p)| self_param(f, Some(plain_type(p, span)), span)),
+            );
+            let assoc = ast::Stmt {
+                kind: StmtKind::TypeAlias {
+                    name: nm(&m),
+                    generics: Vec::new(),
+                    ty: ast::Type {
+                        kind: TypeKind::Error,
+                        span,
+                    },
+                    bounds: Vec::new(),
+                },
+                span,
+                decorators: Vec::new(),
+                public: true,
+            };
+            let ret = plain_type(&format!("Self.{m}"), span);
+            let build = member_fn(&m, params, ret, ast::FnBody::None, span);
+            ast::Stmt {
+                kind: StmtKind::Trait {
+                    name: nm(&without_name(form)),
+                    generic_defaults: vec![None; ps.len()],
+                    generics: ps.iter().map(|p| nm(p)).collect(),
+                    supers: Vec::new(),
+                    body: ast::Block {
+                        stmts: vec![assoc, build],
+                        span,
+                    },
+                    alias: false,
+                    bounds: Vec::new(),
+                },
+                span,
+                decorators: vec![ast::Decorator {
+                    directive: false,
+                    name: nm(RECORD),
+                    args: Vec::new(),
+                    span,
+                }],
+                public: true,
+            }
+        })
+        .collect()
+}
+
+/// Per form and record shape it fits, its impl: `impl<P0, F0, F1> W<P0> for (u: F0, w: F1)`
+/// with `type R = (to: P0, w: F1)` and `fn R(self, to: P0) -> .. = (to: to, w: self.w)`.
+pub fn without_impls(
+    forms: &[Form],
+    shapes: &[Vec<String>],
+    span: Span,
+) -> Vec<(String, ast::Stmt)> {
+    let nm = |text: &str| ast::Name {
+        text: text.to_string(),
+        span,
+    };
+    let ex = |kind| ast::Expr { kind, span };
+    let mut out = Vec::new();
+    for form in forms {
+        let m = without_member(form);
+        let ps = gen_names("P", form.0.len());
+        for fs in shapes {
+            let Some(made) = without_shape(form, fs) else {
+                continue;
+            };
+            let fts = gen_names("F", fs.len());
+            let ty_of = |f: &String| match form.0.iter().position(|p| p == f) {
+                Some(k) => plain_type(&ps[k], span),
+                None => plain_type(&fts[fs.iter().position(|x| x == f).unwrap_or(0)], span),
+            };
+            let made_ty = ast::Type {
+                kind: TypeKind::Record(made.iter().map(|f| (nm(f), ty_of(f))).collect()),
+                span,
+            };
+            let value = |f: &String| match form.0.contains(f) {
+                true => ex(ExprKind::Name(f.clone())),
+                false => ex(ExprKind::Field {
+                    base: Box::new(ex(ExprKind::Name("self".to_string()))),
+                    name: nm(f),
+                }),
+            };
+            let body = ex(ExprKind::Record(
+                made.iter().map(|f| (nm(f), value(f))).collect(),
+            ));
+            let mut params = vec![self_param("self", None, span)];
+            params.extend(
+                (form.0.iter().zip(&ps))
+                    .map(|(f, p)| self_param(f, Some(plain_type(p, span)), span)),
+            );
+            let assoc = ast::Stmt {
+                kind: StmtKind::TypeAlias {
+                    name: nm(&m),
+                    generics: Vec::new(),
+                    ty: made_ty.clone(),
+                    bounds: Vec::new(),
+                },
+                span,
+                decorators: Vec::new(),
+                public: true,
+            };
+            let build = member_fn(&m, params, made_ty, ast::FnBody::Expr(body), span);
+            let kind = StmtKind::Impl {
+                trait_name: Some(ast::Type {
+                    kind: TypeKind::Named {
+                        name: nm(&without_name(form)),
+                        args: ps.iter().map(|p| plain_type(p, span)).collect(),
+                    },
+                    span,
+                }),
+                target: ast::Type {
+                    kind: TypeKind::Record(
+                        (fs.iter().zip(&fts))
+                            .map(|(f, t)| (nm(f), plain_type(t, span)))
+                            .collect(),
+                    ),
+                    span,
+                },
+                bounds: (ps.iter().chain(&fts))
+                    .map(|p| ast::Bound {
+                        name: nm(p),
+                        traits: Vec::new(),
+                    })
+                    .collect(),
+                body: ast::Block {
+                    stmts: vec![assoc, build],
+                    span,
+                },
+            };
+            let imp = ast::Stmt {
+                kind,
+                span,
+                decorators: Vec::new(),
+                public: false,
+            };
+            out.push((name(fs), imp));
+        }
+    }
+    out
 }
 
 /// `pub struct (lo:, hi:)<A, B>: pub lo: A, pub hi: B` for each shape.
@@ -195,7 +461,15 @@ pub fn structs(shapes: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
         .collect()
 }
 
-struct Shapes<'v>(BTreeSet<Vec<String>>, &'v HashMap<String, Vec<String>>);
+struct Shapes<'v>(
+    BTreeSet<Vec<String>>,
+    &'v HashMap<String, Vec<String>>,
+    BTreeSet<Form>,
+);
+
+fn texts(ns: &[ast::Name]) -> Vec<String> {
+    ns.iter().map(|n| n.text.clone()).collect()
+}
 
 impl Shapes<'_> {
     fn ty(&mut self, t: &ast::Type) {
@@ -206,6 +480,16 @@ impl Shapes<'_> {
                 fs.iter().for_each(|(_, t)| self.ty(t));
             }
             TypeKind::Row(fs) => fs.iter().for_each(|(_, t)| self.ty(t)),
+            TypeKind::RowWithout {
+                prefix,
+                base,
+                removed,
+            } => {
+                let added = prefix.iter().map(|(n, _)| n.text.clone()).collect();
+                self.2.insert((added, texts(removed)));
+                prefix.iter().for_each(|(_, t)| self.ty(t));
+                self.ty(base);
+            }
             TypeKind::Named { args: ts, .. } | TypeKind::Tuple(ts) => {
                 ts.iter().for_each(|t| self.ty(t))
             }
@@ -261,6 +545,12 @@ impl Visitor for Shapes<'_> {
                 if !named.is_empty() {
                     self.0.insert(named);
                 }
+            }
+            ExprKind::Without {
+                prefix, removed, ..
+            } => {
+                let added = prefix.iter().map(|(n, _)| n.text.clone()).collect();
+                self.2.insert((added, texts(removed)));
             }
             ExprKind::Generic { args, .. } => args.iter().for_each(|t| self.ty(t)),
             ExprKind::Table { domains, .. } => domains.iter().for_each(|t| self.ty(t)),

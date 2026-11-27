@@ -1913,6 +1913,11 @@ impl<'a> Cx<'a> {
                 }
             },
             ExprKind::With { base, updates } => self.record_update(base, updates, span),
+            ExprKind::Without {
+                prefix,
+                base,
+                removed,
+            } => self.without(prefix, base, removed, want, span),
             ExprKind::Try(x) => self.question(x, span),
             ExprKind::HasBound { param, bound } => self.has_bound(param, bound, span),
             other => self.unbuilt_expr(other, span),
