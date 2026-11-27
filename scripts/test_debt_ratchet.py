@@ -317,6 +317,35 @@ class DebtRatchetTest(unittest.TestCase):
                         '"crates/b/old.txt": ("c", "o", "deleted: a test fails instead"),\n')
             self.assertEqual(dr.stale_arch_paths(root), ["scripts/debt-ratchet.py:1 crates/a/src/gone.rs"])
 
+    def test_next_split_counts_runs_that_disagree(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, dr.NEXT_TESTS + "/wrong.tsv",
+                        "a.cp\tsplit\tC++: exit 1\nb.cp\twrong-reject\tsplit here\nc.cp\tsplit\tx\n")
+            self.assertEqual(dr.next_split(root), ["a.cp", "c.cp"])
+
+    def test_frozen_edits_flags_each_commit_adding_old_pipeline_lines(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            env = dr._git_env()
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, env=env, capture_output=True)
+            git("init", "-q")
+            self._write(root, "crates/cpl-check/src/a.rs", "fn a() {}\nfn b() {}\nfn c() {}\n")
+            git("add", "-A"); git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+            base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, env=env,
+                                  capture_output=True, text=True).stdout.strip()
+            # A net-negative fix: the line count falls, the freeze is still broken.
+            self._write(root, "crates/cpl-check/src/a.rs", "fn a() { fixed() }\n")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "check: fix a")
+            self._write(root, "crates/cpl-check/src/a.rs", "fn a() { fixed(); std() }\n")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam",
+                "check: read std's new marker\n\nFrozen-exception: old checker reads std/")
+            self._write(root, "crates/cpl-check/src/a.rs", "")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "check: delete a")
+            got = dr.frozen_edits(root, base)
+            self.assertEqual(len(got), 1)
+            self.assertIn("adds 1 lines to the frozen old pipeline", got[0])
+
     def test_std_fn_copies_count_as_duplicates(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

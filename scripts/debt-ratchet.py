@@ -1397,6 +1397,15 @@ def next_wrong_accepts(root: Path) -> list[str]:
             if l.count("\t") >= 1 and l.split("\t")[1] == "wrong-accept"] if wrong.is_file() else []
 
 
+def next_split(root: Path) -> list[str]:
+    """Cases whose three runs disagree (`split` in `wrong.tsv`): the interpreter, the engine and
+    the C++ program answer differently, the one verdict that falsifies "one source of semantics".
+    It is counted apart from `next_wrong` so a split is never filed as one more wrong reject."""
+    wrong = root / NEXT_TESTS / "wrong.tsv"
+    return [l.split("\t")[0] for l in _lines(wrong)
+            if l.count("\t") >= 1 and l.split("\t")[1] == "split"] if wrong.is_file() else []
+
+
 def next_core_checks(root: Path) -> list[str]:
     """Places where new-pipeline code asks whether a module is core (`== CORE`, `!= CORE`):
     core is an ordinary library, so nothing may treat it differently."""
@@ -3737,7 +3746,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "fast_unchecked",
+    "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
@@ -3875,6 +3884,7 @@ COUNTERS = {
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
+    "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
@@ -4257,6 +4267,27 @@ def unhidden_wrong(root: Path, ref: str) -> list[str]:
     return [c for c in next_wrong(root) if c in cases and c not in answered]
 
 
+FROZEN_EXCEPTION_RE = re.compile(r"^Frozen-exception:\s*\S", re.M)
+
+
+def frozen_edits(root: Path, base: str) -> list[str]:
+    """Commits in `base..HEAD` that add lines to the frozen old pipeline (migration rule 9: no
+    fixes, no features). `old_pipeline_lines` only sees the net, so a fix that deletes more than
+    it adds passes it; this sees each commit. One that must add a line (the old checker reading
+    a std change) names why in a `Frozen-exception:` trailer; a fix goes to a conformance case."""
+    paths = [f"crates/{c}" for c in OLD_PIPELINE_CRATES]
+    out = []
+    for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
+        if FROZEN_EXCEPTION_RE.search("\n".join(_git(root, "log", "-1", "--format=%B", sha))):
+            continue
+        rows = [l.split("\t") for l in _git(root, "show", "--numstat", "--format=", sha, "--", *paths)]
+        added = sum(int(r[0]) for r in rows if r[0].isdigit())
+        if added:
+            out.append(f"{sha[:9]}: adds {added} lines to the frozen old pipeline; send the fix to a "
+                       f"conformance case the new pipeline must pass, or name why in a `Frozen-exception:` trailer")
+    return out
+
+
 def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
                       upstream: dict | None = None) -> list[str]:
     """Baseline entries raised above `ref`'s.
@@ -4276,6 +4307,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
     moved = [f"{c}: wrong on {ref}, refused here: fix its verdict, or name it in decisions.md"
              for c in wrong_to_refused(root, ref)]
+    moved += frozen_edits(root, base)
     # Main lowering a number while this change gates isn't this change raising it:
     # only a number above the change's own base is (the rebase then takes main's).
     mine = json.loads("\n".join(_git(root, "show", f"{base}:scripts/debt-ratchet.json") or ["{}"]))

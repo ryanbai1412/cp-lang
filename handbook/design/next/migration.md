@@ -58,7 +58,11 @@ deleted for the VM and both remain. These rules are the guard.
    window is not extended.
 9. **Old code waiting for deletion is frozen**: no fixes, no
    features. A fix goes to a conformance case, which binds the new
-   code.
+   code. The gate checks each commit, not only the line count: a
+   commit that adds a line to the old crates fails unless a
+   `Frozen-exception:` trailer names why (the old checker reading a
+   std change is the one expected reason), `frozen_edits` in
+   `scripts/debt-ratchet.py`.
 10. **Prefer no window.** A stage that can change today's code in
     place does, so there is never a second copy.
 
