@@ -575,8 +575,9 @@ fn types_told_apart_by_domains_share_a_representation() {
 }
 
 /// A body an edit leaves alone checks to the same typed body, with the lambdas and set calls
-/// it makes keeping the ids the earlier check gave them (`check_after`). The edit keeps the
-/// program's length: a typed body's spans are still offsets in the file.
+/// it makes keeping the ids the earlier check gave them (`check_after`). This proves less
+/// than a cache needs: a typed body's spans are still offsets in the file, so the edit keeps
+/// the program's length. Once spans are item-relative, the edit should change b's length.
 #[test]
 fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
     let std = Std::read();
