@@ -3,5 +3,6 @@
 // An array and a list literal of the same cells compare as lists, also inside a record.
 domain V = 0..2
 let a: [V]Bool = [true, false]
+let first = yes(a == [true, false])
 let r = (n: 1, a: a)
-print(yes(a == [true, false]), yes(r == (n: 1, a: [true, false])), yes(r == (n: 1, a: [true, true])))
+print(first, yes(r == (n: 1, a: [true, false])), yes(r == (n: 1, a: [true, true])))

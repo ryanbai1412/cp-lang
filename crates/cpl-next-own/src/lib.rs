@@ -15,6 +15,7 @@ use cpl_next_ir::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
+mod inst;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 enum Root {
@@ -1569,3 +1570,5 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
         }
     }
 }
+
+pub use inst::check_instances;

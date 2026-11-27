@@ -365,7 +365,7 @@ impl<R: Domain, C: Domain, T> IndexGet<R, Row<R, C, T>> for GridRows<R, C, T>:
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows[R(1)].sum() == 3`
     /// order: column order
-    fn at(self, r: R) -> Row<R, C, T> = self.g[r]
+    fn at(self, r: R) -> lends Row<R, C, T> = self.g[r]
 
 impl<R: Domain, C: Domain, T> Indexed<R, Row<R, C, T>> for GridRows<R, C, T>:
     @get fn keys(self) -> Range<R> = R
@@ -402,7 +402,7 @@ impl<R: Domain, C: Domain, T> IndexGet<C, Slice<Col<R, C, T>>> for GridCols<R, C
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols[C(1)].sum() == 2`
     /// order: row order
-    fn at(self, c: C) -> Slice<Col<R, C, T>> = self.g[.., c]
+    fn at(self, c: C) -> lends Slice<Col<R, C, T>> = self.g[.., c]
 
 impl<R: Domain, C: Domain, T> Indexed<C, Slice<Col<R, C, T>>> for GridCols<R, C, T>:
     @get fn keys(self) -> Range<C> = C

@@ -356,6 +356,8 @@ pub struct Func<T> {
     pub locals: Vec<T>,
     /// What a message calls each local: its name in the source, empty for a temp.
     pub names: Vec<String>,
+    /// Which locals are `var`s: a `var` made from a place is its own copy (R05.3.1).
+    pub vars: Vec<bool>,
     pub body: Vec<Stmt<T>>,
     pub ret: T,
     /// Set for a generator (`false`) or a lender (`true`): what it hands to the caller's code.

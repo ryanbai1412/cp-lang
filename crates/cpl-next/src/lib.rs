@@ -286,7 +286,12 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
         .collect();
     prog.errors.extend(deferred);
     own::place_copies(&mut prog, &owned.copies);
-    let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
+    prog.errors.retain(|m| m.layer != Some(Stage::Own.name()));
+    let names: Vec<(String, bool)> = (f.t.globals.iter())
+        .map(|g| (g.name.clone(), g.mutable))
+        .collect();
+    let errors = own::check_instances(&f.d, &f.g.funcs, &prog, &names);
+    let diags = staged(Stage::Own, &errors, &f.loaded, &f.rejected);
     Some((prog, diags))
 }
 

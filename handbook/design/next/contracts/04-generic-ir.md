@@ -135,12 +135,16 @@ enum Tier { Proved, Checked, Promised, Trusted }
 
 - **Ownership runs after link** (2026-11-26 ruling, superseding "ownership
   finishes here" and decision 13). Lowering reads nothing of it: lends
-  come from signatures (`own::lends`) and passed places stay `Pass`.
+  come from signatures (`plain::lends`) and passed places stay `Pass`.
   Own reads link's closed sets and each instance's resolved impls, does
   no set fixpoint of its own, and hands nothing back to link. What it
   finds wrong in a fn reached only through a trait is said where an
-  instance of that fn runs. Today it still walks the typed tree, after
-  link; reading instances is the next step.
+  instance of that fn runs. Its diagnostics come from a walk of link's
+  instances (`own::check_instances`): link also makes an instance of
+  every uncalled closed fn, its result sets being what its body puts
+  there, so each one is checked once. A `var` made from an element
+  read is its own copy (R05.3.1). The typed-tree walk survives only for
+  `copies`, until own writes Copy/Move/Lend/Drop into the IR.
 - **`Witness(type, field)`** replaces "the size of this domain".
 - **`lend_begin` / `lend_end`** for a lend that lasts several
   statements. Regions stay for generators and lenders.

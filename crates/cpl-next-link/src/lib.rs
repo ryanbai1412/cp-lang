@@ -77,6 +77,21 @@ fn doms_of(t: &CTy, out: &mut Vec<usize>) {
     }
 }
 
+/// A fn with one instance: no type parameters, sets or context of its own or its owner's,
+/// and no closure in its signature.
+fn closed_fn(d: &Decls, f: FnId) -> bool {
+    let fd = d.f(f);
+    let owner_open =
+        matches!(&fd.self_ty, Some(Ty::Struct(_, ts, ss)) if !ts.is_empty() || !ss.is_empty());
+    fd.generics.is_empty()
+        && fd.n_sets == 0
+        && fd.uses.is_empty()
+        && fd.intrinsic.is_none()
+        && !owner_open
+        && !matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Trait(_)))
+}
+
+/// A closure in a signature takes its set from the calls that reach the fn.
 pub fn link(
     d: &Decls,
     typed: &Typed,
@@ -108,6 +123,29 @@ pub fn link(
         targs: vec![],
         sets: vec![],
     });
+    // Every closed fn of the program is an instance too, called or not, so ownership checks
+    // each one once; a backend emits only what main reaches.
+    let mut closed: Vec<FuncKey> = (generic.iter())
+        .filter(|(k, g)| g.line != 0 && matches!(k, FuncKey::Decl(f) if closed_fn(d, *f)))
+        .map(|(k, _)| k.clone())
+        .collect();
+    closed.sort();
+    // Uncalled, a fn's result sets are what its own body puts there.
+    for func in closed {
+        let FuncKey::Decl(f) = func else { continue };
+        let fd = d.f(f);
+        let sets = (0..fd.n_sets + fd.n_ret_sets)
+            .map(|i| match l.adds(f, i) {
+                Some(s) => l.set(&s, &none),
+                None => CSet::default(),
+            })
+            .collect();
+        l.intern(InstKey {
+            func,
+            targs: vec![],
+            sets,
+        });
+    }
     let mut insts: Vec<Func<CTy>> = Vec::new();
     let mut next = 0;
     let mut said = std::collections::HashSet::new();
@@ -212,6 +250,7 @@ impl Link<'_> {
             params: f.params.clone(),
             n_captures: f.n_captures,
             names: f.names.clone(),
+            vars: f.vars.clone(),
             locals,
             body: self.block(&f.body, env),
             ret: unlent(self.ty(&f.ret, env)),
@@ -460,6 +499,10 @@ impl Link<'_> {
             _ => Some(self.fnref(f, env)),
         }
     }
+    /// What `f`'s body adds to its set `slot`.
+    fn adds(&self, f: FnId, slot: usize) -> Option<SetTy> {
+        self.typed.param_adds.get(&(f, slot)).cloned()
+    }
     /// An impl's fn takes the sets its caller passes for its result after the impl's own.
     fn with_ret_sets(&self, k: &mut InstKey, ret: Vec<CSet>) {
         let FuncKey::Decl(g) = k.func else {
@@ -500,7 +543,7 @@ impl Link<'_> {
                             true => self.d.f(decl).n_sets + slot - base,
                             false => slot,
                         };
-                        if let Some(s) = self.typed.param_adds.get(&(decl, slot)).cloned() {
+                        if let Some(s) = self.adds(decl, slot) {
                             let inner = Env {
                                 targs: &k.targs,
                                 sets: &k.sets,

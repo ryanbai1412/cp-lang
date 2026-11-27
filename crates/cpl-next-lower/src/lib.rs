@@ -106,6 +106,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             params: vec![],
             n_captures: 0,
             names: lw.names(&[], true),
+            vars: lw.vars(&[], true),
             locals: std::mem::take(&mut lw.locals),
             body,
             ret: Ty::Unit,
@@ -183,6 +184,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 params,
                 n_captures: 0,
                 names: lw.names(&lw.tnames, true),
+                vars: lw.vars(&lw.var_locals, true),
                 locals: std::mem::take(&mut lw.locals),
                 body,
                 ret: tf.ret.clone(),
@@ -226,6 +228,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 params: (0..locals.len()).map(|l| (l, false)).collect(),
                 n_captures: 0,
                 names: fd.params.iter().map(|p| p.name.clone()).collect(),
+                vars: fd.params.iter().map(|p| p.mutable).collect(),
                 locals,
                 body: vec![Stmt::Return(Some(call))],
                 ret: fd.ret.clone(),
@@ -467,6 +470,22 @@ impl Lw<'_> {
             }
         }
         ns
+    }
+    /// Which locals of the fn being lowered are `var`s, as `names` finds their names.
+    fn vars(&self, own: &[bool], remap: bool) -> Vec<bool> {
+        let mut vs: Vec<bool> = (0..self.locals.len())
+            .map(|l| own.get(l).copied().unwrap_or(false))
+            .collect();
+        for (v, &l) in self.remap.iter().filter(|_| remap) {
+            let var = match v {
+                VarRef::Local(i) => self.var_locals.get(*i).copied(),
+                VarRef::Global(g) => self.typed.globals.get(*g).map(|g| g.mutable),
+            };
+            if let (Some(var), Some(slot)) = (var, vs.get_mut(l)) {
+                *slot = var;
+            }
+        }
+        vs
     }
     fn temp(&mut self, ty: Ty) -> usize {
         self.locals.push(ty);
@@ -1247,6 +1266,7 @@ impl Lw<'_> {
                     params: vec![],
                     n_captures: 0,
                     names: self.names(&[], false),
+                    vars: self.vars(&[], false),
                     locals: std::mem::replace(&mut self.locals, outer),
                     body: b,
                     ret: Ty::Unit,
@@ -1420,6 +1440,7 @@ impl Lw<'_> {
         }
         self.in_main = was_main;
         let names = self.names(&[], true);
+        let vars = self.vars(&[], true);
         let locals = std::mem::replace(&mut self.locals, outer_locals);
         self.remap = saved_remap;
         let (sites, lines) = self.swap_sites(outer_sites);
@@ -1429,6 +1450,7 @@ impl Lw<'_> {
             params: fparams,
             n_captures: caps.len(),
             names,
+            vars,
             locals,
             body: stmts,
             ret: info.ret.clone(),
