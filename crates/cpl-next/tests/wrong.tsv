@@ -440,9 +440,6 @@ next/a_own_10_lent_closure_stored_through_mut_param.cp	wrong-error	wanted E0603 
 next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:5: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: program:14:5: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: program:6:1: E0602: `a` is lent to `fill` for writing, and the call also reaches it another way
-next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:5: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
-next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: program:14:5: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
-next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: program:6:1: E0602: `a` is lent for writing, and the call also reaches it another way
 next/t04_selfcapture.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
 next/t05_recursive_closure.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
 next/t24_dual_reassign.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`

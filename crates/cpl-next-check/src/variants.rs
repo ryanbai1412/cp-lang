@@ -94,11 +94,15 @@ impl Cx<'_> {
     ) -> TExpr {
         // The expected type fixes what the fields cannot: `let r: (u: V, v: V) = (u: 0, v: 2)`.
         // Only the type arguments: the functions a field can hold are still added by the arguments.
+        // Where `?S` is wanted the literal is an `S` made present, so it takes `S`'s fields too.
+        let is_d = |cx: &Self, t: &Ty| matches!(cx.shallow(t), Ty::Struct(o, ..) if o == d);
+        let want = want.and_then(|w| match is_d(self, w) {
+            true => Some(w.clone()),
+            false => self.optional_of(w).filter(|t| is_d(self, t)),
+        });
         if let Some(w) = want {
-            if matches!(self.shallow(w), Ty::Struct(o, ..) if o == d) {
-                let open = (0..sets.len()).map(|_| self.new_set()).collect();
-                self.unify(&Ty::Struct(d, targs.clone(), open), w);
-            }
+            let open = (0..sets.len()).map(|_| self.new_set()).collect();
+            self.unify(&Ty::Struct(d, targs.clone(), open), &w);
         }
         let s = self.d.s(d);
         let sub = Subst {
