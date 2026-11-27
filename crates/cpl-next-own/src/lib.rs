@@ -9,7 +9,7 @@ use cpl_diag::{codes, Code, Span};
 use cpl_next_check::*;
 use cpl_next_decls::decls::{Decls, Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
-use cpl_next_decls::plain::{plain, plain_in};
+use cpl_next_decls::plain::{lends, plain_in};
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
@@ -134,35 +134,6 @@ pub struct Owned {
     /// What is wrong in a fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
     pub copies: BTreeSet<SourceId>,
-}
-
-/// The parameters a call to `f` lends to its result, receiver first, from its signature: the
-/// heap ones it declares `lends` (R05.6.1), else each whose type is a type parameter the result
-/// type holds, and, for a result whose type is a type parameter, each that holds it: the result
-/// may be a cell of it (R05.5.3).
-pub fn lends(d: &Decls, f: FnId) -> BTreeSet<usize> {
-    let fd = d.f(f);
-    let mut held = BTreeSet::new();
-    params_in(&fd.ret, &mut held);
-    let recv = (fd.self_mode != SelfMode::None).then_some(fd.self_ty.as_ref());
-    let tys: Vec<&Ty> = (recv.flatten().into_iter())
-        .chain(fd.params.iter().map(|p| &p.ty))
-        .collect();
-    (tys.iter().enumerate())
-        .filter(|(i, t)| match &fd.lends {
-            Some(ls) => ls.contains(i) && !plain(d, t, 0),
-            None => match (t, &fd.ret) {
-                (Ty::Param(k), _) => held.contains(k),
-                (_, Ty::Param(k)) => {
-                    let mut ps = BTreeSet::new();
-                    params_in(t, &mut ps);
-                    ps.contains(k)
-                }
-                _ => false,
-            },
-        })
-        .map(|(i, _)| i)
-        .collect()
 }
 
 pub fn check(d: &Decls, t: &Typed) -> Owned {

@@ -142,7 +142,6 @@
     "cpl-next-lower -> cpl-next-check",
     "cpl-next-lower -> cpl-next-decls",
     "cpl-next-lower -> cpl-next-ir",
-    "cpl-next-lower -> cpl-next-own",
     "cpl-next-lower -> cpl-syntax",
     "cpl-next-own -> cpl-diag",
     "cpl-next-own -> cpl-next-check",

@@ -134,7 +134,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             .collect();
         lw.var_locals = tf.locals.iter().map(|l| l.mutable).collect();
         lw.remap.clear();
-        let holds = cpl_next_own::lends(d, *id);
+        let holds = cpl_next_decls::plain::lends(d, *id);
         lw.lent = (lw.param_locals(*id).into_iter())
             .enumerate()
             .filter(|(i, _)| holds.contains(i))
@@ -299,7 +299,7 @@ impl Lw<'_> {
             return f.clone();
         };
         let ps = self.param_locals(f.decl);
-        let holds = cpl_next_own::lends(self.d, f.decl);
+        let holds = cpl_next_decls::plain::lends(self.d, f.decl);
         let mut targs = f.targs.clone();
         for (i, (&l, a)) in ps.iter().zip(args).enumerate() {
             let decl = &tf.locals[l].ty;

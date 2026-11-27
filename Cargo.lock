@@ -304,7 +304,6 @@ dependencies = [
  "cpl-next-check",
  "cpl-next-decls",
  "cpl-next-ir",
- "cpl-next-own",
  "cpl-syntax",
 ]
 
