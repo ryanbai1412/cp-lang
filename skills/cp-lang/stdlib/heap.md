@@ -10,14 +10,14 @@ In prelude (no `use` needed): `Heap`, `MaxHeap`, `MinHeap`, `Settle`.
 
 - `type MinHeap<T> = Heap<T>` — `Heap<T>()`: pops the smallest first.
 
-## `struct Heap<T>`
+## `struct Heap<T: Ord>`
 
 A priority queue on `<`.
 
 Fields: `lt: ?((T, T) -> Bool)`.
 
-- `fn new<K>(by: ?(T -> K) = None) -> Heap<T>` — \(O(1)\); Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
-- `fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>` — \(O(n)\); Build a `Heap<T>` from `xs` via Floyd heapify.
+- `fn new<K: Ord>(by: ?(T -> K) = None) -> Heap<T>` — \(O(1)\); Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
+- `fn of<K: Ord>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>` — \(O(n)\); Build a `Heap<T>` from `xs` via Floyd heapify.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
 - `fn each(self) -> yields T` — \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every element in pop order; `for x in h` uses this.
@@ -32,13 +32,13 @@ Fields: `lt: ?((T, T) -> Bool)`.
 - `fn push_all(mut self, items: Seq<T>)` — \(O(k \log n)\) for `k` items; Push all elements of `items`.
 - `fn drain(mut self) -> yields T` — \(O(\log n)\) per step; Pop and yield all elements in ascending order, leaving the heap empty.
 
-## `struct ErasableHeap<T>`
+## `struct ErasableHeap<T: Ord>`
 
 Min-heap supporting \(O(\log n)\) arbitrary-value `remove(x)` via a lazy deletion heap.
 
 Fields: `live: Heap<T>`, `dead: Heap<T>`.
 
-- `fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>` — \(O(1)\); Create an empty `ErasableHeap<T>`, optionally ordered by key extractor `by:` (W7).
+- `fn new<K: Ord>(by: ?(T -> K) = None) -> ErasableHeap<T>` — \(O(1)\); Create an empty `ErasableHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `@get fn len(self) -> Int` — \(O(1)\); Number of active elements in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no active elements remain.
 - `fn each(self) -> yields T` — \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every active element in pop order; `for x in h` uses this.
@@ -49,7 +49,7 @@ Fields: `live: Heap<T>`, `dead: Heap<T>`.
 - `fn peek(mut self) -> ?T` — \(O(\log n)\) amortized; Return the smallest active element, or `None` if empty.
 - `fn pop(mut self) -> ?T` — \(O(\log n)\) amortized; Remove and return the smallest active element, or `None` if empty.
 
-## `struct IndexedHeap<D, K>`
+## `struct IndexedHeap<D, K: Ord>`
 
 Domain-keyed min-heap over `D` supporting \(O(\log n)\) `set`, `decrease`, `increase`, `remove`, and `pop`, plus \(O(1)\) `contains`, `get`, and `peek`.
 
@@ -69,13 +69,13 @@ Fields: `heap: List<D>`, `pos: [D]Int`, `keys: [D]?K`.
 - `fn remove(mut self, v: D) -> ?K` — \(O(\log n)\); Remove `v` from the heap if present; returns its old key or `None`.
 - `fn pop(mut self) -> ?(D, K)` — \(O(\log n)\); Remove and return `(v, key)` with the smallest key, or `None` if empty.
 
-## `struct MinMaxHeap<T>`
+## `struct MinMaxHeap<T: Ord>`
 
 Double-ended priority queue (min-max heap).
 
 Fields: `lt: ?((T, T) -> Bool)`.
 
-- `fn new<K>(by: ?(T -> K) = None) -> MinMaxHeap<T>` — \(O(1)\); Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7).
+- `fn new<K: Ord>(by: ?(T -> K) = None) -> MinMaxHeap<T>` — \(O(1)\); Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of(xs: List<T>) -> MinMaxHeap<T>` — \(O(n)\); Build a `MinMaxHeap<T>` from `xs` in linear time.
 - `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Reserve backing storage for at least `cap` elements.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
@@ -89,11 +89,11 @@ Fields: `lt: ?((T, T) -> Bool)`.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements.
 - `fn take(mut self) -> MinMaxHeap<T>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 
-## `struct MeldHeap<T>`
+## `struct MeldHeap<T: Ord>`
 
 One meldable min-heap (a skew heap) that owns its nodes, with \(O(1)\) lazy offset `add_all` when `T: Add`.
 
-- `fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T>` — \(O(1)\); Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
+- `fn new<K: Ord>(by: ?(T -> K) = None) -> MeldHeap<T>` — \(O(1)\); Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of(xs: List<T>) -> MeldHeap<T>` — \(O(n)\); Build a `MeldHeap<T>` from `xs`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
@@ -117,11 +117,11 @@ One heap in a `MeldHeaps<T>` pool: a handle, so copying it is \(O(1)\).
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
 
-## `struct MeldHeaps<T>`
+## `struct MeldHeaps<T: Ord>`
 
 A pool of meldable min-heaps (skew heaps) that keep their nodes in one shared list.
 
-- `fn new<K>(by: ?(T -> K) = None) -> MeldHeaps<T>` — \(O(1)\); An empty pool, optionally ordered by key extractor `by:`.
+- `fn new<K: Ord>(by: ?(T -> K) = None) -> MeldHeaps<T>` — \(O(1)\); An empty pool, optionally ordered by key extractor `by:`.
 - `fn of(mut self, xs: List<T>) -> Meld<T>` — \(O(n)\); A new heap in the pool holding `xs`.
 - `fn reserve(mut self, nodes: Len)` — \(O(\mathit{nodes})\); Preallocate room for `nodes` heap nodes in total (one per element live at once, as a popped element's node is reused), so later pushes do not regrow the pool.; traps: when `nodes < 0` or `nodes >= 2^31`
 - `fn top(self, h: Meld<T>) -> ?T` — \(O(1)\); The smallest element of `h`, or `None` if it is empty.; traps: when `h` is a stale copy (see `Meld`)
@@ -132,7 +132,7 @@ A pool of meldable min-heaps (skew heaps) that keep their nodes in one shared li
 - `fn add_all(mut self, h: Meld<T>, delta: T) where T: Add` — \(O(1)\); Add `delta` lazily to every element of `h` (for additive types).; traps: when `h` is a stale copy (see `Meld`); overflow wraps in release, traps in debug
 - `fn drain(mut self, mut h: Meld<T>) -> List<T>` — \(O(n \log n)\); Pop all of `h` in ascending order, leaving it empty.; traps: when `h` is a stale copy (see `Meld`)
 
-## `struct MaxHeap<T>`
+## `struct MaxHeap<T: Ord>`
 
 `Heap<T>(by: desc)` under its own name: pops the largest first, with the same operations and costs as `Heap`; it holds each element as `desc(x)`.
 

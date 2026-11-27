@@ -10,7 +10,7 @@ In prelude (no `use` needed): `SortedBag`, `SortedMap`, `SortedRange`, `SortedSe
 
 Read-only handle to one key's slot in a `SortedBag<K>`, valid until the bag's next `add`, `remove` or `clear`, because a B+tree change may move keys between leaves (decision 579).
 
-## `struct SortedBag<K>`
+## `struct SortedBag<K: Ord>`
 
 An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat arrays: leaves of up to 32 keys with their multiplicities, linked for \(O(1)\) cursor steps, under inner nodes that keep each child's element count, with recycled node slots (decision 579).
 
@@ -62,7 +62,7 @@ An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat a
 - `fn absorb(mut self, mut other: SortedBag<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all elements of `other` into `self` (small-to-large, emptying `other`).
 - `fn sum(self) -> K` — \(O(n)\); Sum of all elements (for additive `K`).; traps: never (overflow wraps in release, traps in debug)
 
-## `struct SortedSet<K>`
+## `struct SortedSet<K: Ord>`
 
 An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`).
 
@@ -94,7 +94,7 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn join(mut self, other: SortedSet<K>)` — as `SortedBag.join`; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
 - `fn absorb(mut self, mut other: SortedSet<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all keys of `other` into `self` (small-to-large, emptying `other`).
 
-## `struct SortedMap<K, V>`
+## `struct SortedMap<K: Ord, V>`
 
 Order-statistic ordered map from `K` to `V`, each value beside its key in the `SortedBag` B+tree (decision 579).
 
@@ -131,7 +131,7 @@ Fields: `ks: SortedBag<K>`, `vals: List<V>`, `vfree: List<Int>`.
 - `@get fn keys(self) -> yields K` — \(O(1)\) to make, \(O(1)\) amortized per step; The map's keys, in ascending order.
 - `@get fn values(self) -> yields V` — \(O(1)\) to make, \(O(1)\) amortized per step; The map's values, in ascending order of their keys.
 
-## `struct AugSortedBag<K, T>`
+## `struct AugSortedBag<K: Ord, T>`
 
 Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 
@@ -157,7 +157,7 @@ Fields: `bag: SortedBag<K>`, `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 - `fn fold_between(self, lo: K, hi: K) -> T` — \(O(\log n)\) expected; Fold elements with key in `[lo, hi)`.
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Yield all elements in ascending order.
 
-## `struct AugSortedSet<K, T>`
+## `struct AugSortedSet<K: Ord, T>`
 
 Fields: `bag: AugSortedBag<K, T>`.
 
@@ -198,7 +198,7 @@ Fields: `lo: Int`, `hi: Int`, `sh: Int`, `total: Int`, `cnt: List<Int>`, `blk: L
 - `fn each(self) -> yields Int` — \(O(\sqrt{N} + \sqrt{N} \cdot b + \mathit{len})\) for `b` blocks holding a copy; Visit every stored copy, skipping empty blocks.
 - `fn clear(mut self)` — \(O(r.\mathit{len})\)
 
-## `struct SortedRange<K>`
+## `struct SortedRange<K: Ord>`
 
 The keys of a `SortedBag` or `SortedSet` inside a range, made by `range(r)`.
 

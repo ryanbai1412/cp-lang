@@ -196,13 +196,13 @@ Fields: `k: Int,`.
 - `fn prod<S: Seq<T>, T>(self: S) -> T` — \(O(n)\); Product of all elements of `self` (`T.one` when empty).; traps: never (overflow wraps in release, traps in debug)
 - `fn sum<S: Seq<T>, T, U: Zero + Add>(self: S, of: T -> U = x => x) -> U` — \(O(n)\); Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each element first (`xs.sum(of: x => x * x)`).; traps: never (overflow wraps in release, traps in debug)
 - `fn mean<S: Seq<T>, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64` — \(O(n)\); The average of `of` over the elements as `F64`; `None` when empty.
-- `fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
-- `fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The greatest element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
+- `fn min<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
+- `fn max<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The greatest element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
 - `fn minmax<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(T, T)` — \(O(n)\); The least and greatest elements by `by` in one pass, the first of each on ties; `None` when empty.
 - `fn count<S: Seq<T>, T>(self: S, p: T -> Bool = _ => true) -> Int` — \(O(n)\); How many elements satisfy `p` (every element without `p`).
 - `fn any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first match; Whether some element satisfies `p`; stops at the first.
 - `fn all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool` — \(O(n)\), stopping at the first failure; Whether every element satisfies `p`; stops at the first that doesn't.
-- `fn is_sorted<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Bool` — \(O(n)\); Whether `self` is non-decreasing (optionally under key `by:`).
+- `fn is_sorted<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> Bool` — \(O(n)\); Whether `self` is non-decreasing (optionally under key `by:`).
 - `fn filter<S: Seq<T>, T>(self: S, p: T -> Bool) -> Filtered<S, T>` — \(O(1)\) to make; \(O(n)\) calls of `p` per walk; A view of the elements satisfying `p`, in order.; traps: never (beyond what `p` traps on)
 - `fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U>` — \(O(1)\) to make; one call of `f` per element read; \(O(1)\) to make.; traps: never (beyond what `f` traps on)
 - `@get fn rev<S: Bidir>(self: S) -> Rev<S>` — \(O(1)\)
@@ -296,8 +296,8 @@ Fields: `k: Int,`.
 - `fn min_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)` — at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory; The value held by more than half the elements, with its count, or `None`.
 - `fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>` — \(O(n \log n)\), \(O(n)\) memory
-- `fn min_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
-- `fn max_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
+- `fn min_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
+- `fn max_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 - `fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
 - `fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(n)\) memory
 - `fn adjacent_diff<S: Seq<T>, T: Sub>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
@@ -325,8 +325,8 @@ Fields: `k: Int,`.
 - `fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>` — \(O(n \log n)\), \(O(n)\) memory
 - `fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>` — \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory
 - `fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D)` — \(O(n)\), \(O(n)\) memory
-- `fn argmax<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty.
-- `fn argmin<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
+- `fn argmax<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty.
+- `fn argmin<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 - `@get fn swap<A>(self: (A, A)) -> (A, A)` — \(O(1)\)
 - `fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>` — \(O(n)\); Pieces between separators: elements equal to `sep`, or where the predicate `sep` holds.
 - `fn maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions.; traps: never in release; debug traps when `ok` fails on a single element after a shrink

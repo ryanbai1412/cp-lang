@@ -10,8 +10,6 @@ In prelude (no `use` needed): `Bitset`.
 
 One bit per position of `D`, in `ceil(K / 64)` words.
 
-Fields: `n: Int`.
-
 - `fn new() -> Bitset<D>` — \(O(K / 64)\) time and space; The empty set, every word zero; the same set as `empty()`.
 - `fn empty() -> Bitset<D>` — \(O(K / 64)\) time and space; The empty set, matching `Subset<D>.empty` (a call here: it is \(O(K / 64)\)); the same as `new()`.
 - `fn full() -> Bitset<D>` — \(O(K / 64)\) time and space; The full set containing every position of `D`, matching `Subset<D>.full`.
@@ -39,9 +37,6 @@ Fields: `n: Int`.
 - `fn intersect(mut self, o: Bitset<D>)` — \(O(K / 64)\); Replace `self` with `self & o` in place, with no allocation.
 - `fn subtract(mut self, o: Bitset<D>)` — \(O(K / 64)\); Clear every bit set in `o` from `self` in place: `self - o`.
 - `fn symmetric(mut self, o: Bitset<D>)` — \(O(K / 64)\); Replace `self` with `self ^ o` in place.
-- `fn bitor(self, o: Bitset<D>) -> Bitset<D>` — \(O(K / 64)\) time and space; `a \| b`: a new set of the positions in either set.
-- `fn bitand(self, o: Bitset<D>) -> Bitset<D>` — \(O(K / 64)\) time and space; `a & b`: a new set of the positions in both sets.
-- `fn bitxor(self, o: Bitset<D>) -> Bitset<D>` — \(O(K / 64)\) time and space; `a ^ b`: a new set of the positions in exactly one of the sets.
 - `fn meets(self, o: Bitset<D>) -> Bool` — \(O(K / 64)\), less on an early hit; Do the two sets share a position?
 - `fn shifted(self, k: Int) -> Bitset<D>` — \(O(K / 64)\) time and space, for any `k`; A new set with every position `k` places up (down for a negative `k`); positions that leave `D` are dropped.
 - `fn shift_up(mut self, k: 0..)` — \(O(K / 64)\); Shift every position `k >= 0` places up in place; bits past `D` drop.; traps: when `k < 0`
