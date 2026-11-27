@@ -380,5 +380,6 @@
   "next_old_syntax_analyses": 116,
   "tool_old_syntax_uses": 2228,
   "next_check_set_facts": 11,
-  "next_snapshot_keyed_queries": 5
+  "next_snapshot_keyed_queries": 5,
+  "next_late_rejects": 90
 }

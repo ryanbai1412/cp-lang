@@ -1457,6 +1457,28 @@ def next_wrong_accepts(root: Path) -> list[str]:
     return _wrong_ids(root, "wrong-accept")
 
 
+# Codes link and own may still say on their own, the closed list beside decision 31
+# (`handbook/design/next/representation.md`): a fn value that would contain itself; E9999
+# is an internal error, counted by `next_wrong`, not a user code.
+NEXT_LATE_CODES_ALLOWED = {"E0319", "E9999"}
+NEXT_LATE_REJECT_RE = re.compile(r"^(link|own): .*?\b(E\d{4})\b")
+
+
+def next_late_rejects(root: Path) -> list[str]:
+    """Cases the spec accepts that the new pipeline rejects with a user error code from link or
+    from ownership after it (`wrong-reject` rows saying `link:` or `own:`). Whole-program steps
+    choose representations and do not reject (decision 31): a user error comes per unit, and a
+    feature not built yet is an `Unbuilt` refusal, never the contestant's error. Reaches 0."""
+    wrong = _wrong_rows_path(root)
+    out = []
+    for l in _lines(wrong) if wrong.is_file() else []:
+        cols = l.split("\t")
+        m = len(cols) >= 3 and cols[1] == "wrong-reject" and NEXT_LATE_REJECT_RE.match(cols[2])
+        if m and m.group(2) not in NEXT_LATE_CODES_ALLOWED:
+            out.append(f"{cols[0]}: {m.group(1)} {m.group(2)}")
+    return out
+
+
 def next_split(root: Path) -> list[str]:
     """Cases whose three runs disagree (`split` in `wrong.tsv`): the interpreter, the engine and
     the C++ program answer differently, the one verdict that falsifies "one source of semantics".
@@ -4369,6 +4391,7 @@ COUNTERS = {
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
     "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
+    "next_late_rejects": ("cases the spec accepts that link or own rejects with a user code: unbuilt features said as errors (Core)", next_late_rejects, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
     "next_ignored_settings": ("new-pipeline settings accepted and then ignored: an empty arm over source names (Core)", next_ignored_settings, True),
     "next_name_compares": ("new-pipeline comparisons of source text against a fixed identifier: names known by text (Core)", next_name_compares, True),
@@ -4812,7 +4835,7 @@ def unlaned(root: Path, base: str) -> list[str]:
 
 # Counters a programs run measures: a raise of one is the run's evidence, never a re-reading.
 RUN_MEASURED = ("next_wrong", "next_not_passing", "next_refused", "next_masked", "next_lowered",
-                "next_error_typed", "next_split", "next_wrong_accepts")
+                "next_error_typed", "next_split", "next_wrong_accepts", "next_late_rejects")
 RAISE_RE = re.compile(r"^Raise:\s*(\S+)\s*(.*)$", re.MULTILINE)
 FULL_RUN_RE = re.compile(r"\btarget/cpl-next/(?!only/)[\w.-]+")
 
