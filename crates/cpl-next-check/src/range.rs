@@ -343,6 +343,12 @@ impl Cx<'_> {
         let (args, d) = match (lo, hi) {
             (Some(lo), Some(hi)) => {
                 let first = self.expr(lo, Some(&Ty::Int));
+                let first = match self.whole_of(want) {
+                    Some(d @ Ty::Dom(_)) if step.is_none() && self.shallow(&first.ty) == Ty::Int => {
+                        self.coerce(first, &d)
+                    }
+                    _ => first,
+                };
                 return self.range_from(first, hi, inclusive, step, want, span);
             }
             _ => match self.open_ends(lo, hi, inclusive, step, want, span) {
