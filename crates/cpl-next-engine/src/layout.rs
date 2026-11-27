@@ -58,7 +58,7 @@ impl Layouts {
                 self.of.insert(CTy::Lent(t.clone()), l);
                 return l;
             }
-            CTy::Set(ms) => {
+            CTy::Fn(_, _, ms) => {
                 let ls: Vec<Lay> = ms
                     .iter()
                     .map(|k| self.of(p, &CTy::Clo(Box::new(k.clone()))))

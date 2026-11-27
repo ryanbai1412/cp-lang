@@ -1394,7 +1394,7 @@ impl Fc<'_> {
                 off(&mut root, &mut steps, at);
                 let part = match (&t, p) {
                     (CTy::Clo(k), _) => self.p.captures(k).get(*i).cloned(),
-                    (CTy::Set(ms), Place::Variant(..)) => {
+                    (CTy::Fn(_, _, ms), Place::Variant(..)) => {
                         ms.get(*i).map(|k| CTy::Clo(Box::new(k.clone())))
                     }
                     (_, Place::Variant(..)) => {

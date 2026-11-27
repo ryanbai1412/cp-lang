@@ -17,8 +17,9 @@ pub enum CTy {
     /// A slot that points at a heap value it does not own (`Ty::Lent`).
     Lent(Box<CTy>),
     Struct(StructId, Vec<CTy>, Vec<CSet>),
-    /// A function value: one of these closures. The order is the tag.
-    Set(CSet),
+    /// A function value: its parameter and result types as the checker gave them, and one of
+    /// these closures. The order is the tag.
+    Fn(Vec<CTy>, Box<CTy>, CSet),
     /// One closure: its captures.
     Clo(Box<InstKey>),
     /// A domain declared in a body. Its values are positions; its size is a run-time value.

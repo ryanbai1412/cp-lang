@@ -49,7 +49,7 @@ impl Shares<'_> {
             CTy::Raw(e) | CTy::Ref(e) | CTy::Lent(e) => vec![(**e).clone()],
             CTy::Struct(..) => self.p.parts(t),
             CTy::Clo(k) => self.p.captures(k),
-            CTy::Set(ms) => ms.iter().map(|k| CTy::Clo(Box::new(k.clone()))).collect(),
+            CTy::Fn(_, _, ms) => ms.iter().map(|k| CTy::Clo(Box::new(k.clone()))).collect(),
             _ => Vec::new(),
         };
         held.iter().for_each(|t| self.ty(t));

@@ -283,7 +283,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
                     .collect();
                 put_line!(s, "struct {n} {{ {} }};", fs.join(" "));
             }
-            CTy::Set(ms) => {
+            CTy::Fn(_, _, ms) => {
                 let mut body = String::from("int64_t tag;");
                 for (i, k) in ms.iter().enumerate() {
                     put!(body, " {} v{i};", e.names[&CTy::Clo(Box::new(k.clone()))]);
@@ -374,7 +374,7 @@ impl Emit<'_> {
             let parts: Vec<CTy> = match t {
                 CTy::Struct(..) => e.p.parts(t),
                 CTy::Clo(k) => e.p.captures(k),
-                CTy::Set(ms) => ms.iter().map(|k| CTy::Clo(Box::new(k.clone()))).collect(),
+                CTy::Fn(_, _, ms) => ms.iter().map(|k| CTy::Clo(Box::new(k.clone()))).collect(),
                 _ => return,
             };
             if !done.insert(t.clone()) {
@@ -493,7 +493,7 @@ impl Emit<'_> {
                 self.order.push(t.clone());
                 n
             }
-            CTy::Set(ms) => {
+            CTy::Fn(_, _, ms) => {
                 let n = format!("U{}", self.names.len());
                 self.names.insert(t.clone(), n.clone());
                 for k in ms {

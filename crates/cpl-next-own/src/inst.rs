@@ -87,7 +87,7 @@ impl Walk<'_> {
     pub fn callees(&self, t: &Target<CTy>, f: Option<&Expr<CTy>>) -> Vec<usize> {
         let mut cs = match (t, f.map(|e| &e.ty)) {
             (Target::Inst(i), _) => vec![*i],
-            (_, Some(CTy::Set(s))) => s
+            (_, Some(CTy::Fn(_, _, s))) => s
                 .iter()
                 .filter_map(|k| self.p.index.get(k).copied())
                 .collect(),
@@ -264,7 +264,7 @@ impl Walk<'_> {
     fn holds_lend(&self, t: &CTy) -> bool {
         fn go(w: &Walk, t: &CTy, depth: usize) -> bool {
             match t {
-                CTy::Lent(_) | CTy::Ref(_) | CTy::Set(_) | CTy::Clo(_) => true,
+                CTy::Lent(_) | CTy::Ref(_) | CTy::Fn(_, _, _) | CTy::Clo(_) => true,
                 CTy::Struct(..) if w.walks(t) => true,
                 CTy::Struct(..) => depth >= 8 || w.p.parts(t).iter().any(|f| go(w, f, depth + 1)),
                 CTy::Raw(t) => go(w, t, depth + 1),
@@ -277,14 +277,14 @@ impl Walk<'_> {
     fn captures_nothing(&self, t: &CTy) -> bool {
         match t {
             CTy::Clo(k) => self.p.captures(k).is_empty(),
-            CTy::Set(ms) => ms.iter().all(|k| self.p.captures(k).is_empty()),
+            CTy::Fn(_, _, ms) => ms.iter().all(|k| self.p.captures(k).is_empty()),
             _ => false,
         }
     }
     fn plain(&self, t: &CTy) -> bool {
         fn go(w: &Walk, t: &CTy, depth: usize) -> bool {
             match t {
-                CTy::Set(_) | CTy::Clo(_) => true,
+                CTy::Fn(_, _, _) | CTy::Clo(_) => true,
                 CTy::Struct(..) if depth < 8 => w.p.parts(t).iter().all(|f| go(w, f, depth + 1)),
                 _ => cpl_next_ir::prog::plain(&|s| w.p.parts(s), t, depth),
             }
@@ -465,7 +465,7 @@ impl Walk<'_> {
         };
         let e = &*e;
         // A plain value (an `Int` field read among them) holds nothing; fn values hold captures.
-        if self.plain(&e.ty) && !matches!(e.ty, CTy::Clo(_) | CTy::Set(_) | CTy::Struct(..))
+        if self.plain(&e.ty) && !matches!(e.ty, CTy::Clo(_) | CTy::Fn(_, _, _) | CTy::Struct(..))
             || self.captures_nothing(&e.ty)
         {
             return BTreeSet::new();
@@ -484,7 +484,7 @@ impl Walk<'_> {
                     // A plain value read out is a copy: it holds only what its binding was given.
                     // So is a field of a type parameter's type: each instance copies it (R05.2.2).
                     // A fn value read out of a borrowed binding still holds what it borrows.
-                    let fn_value = matches!(e.ty, CTy::Clo(_) | CTy::Set(_));
+                    let fn_value = matches!(e.ty, CTy::Clo(_) | CTy::Fn(_, _, _));
                     let copy = matches!(e.kind, EK::Copy(_))
                         && (self.plain(&e.ty) && !fn_value || self.generic_field(p));
                     if self.temp(q.root) || copy {
@@ -660,7 +660,7 @@ impl Walk<'_> {
                 let msg = format!("{n} is moved here while {bn}, which uses it, is still used");
                 // A fn value that captures it is E0607 (R05.10.2).
                 let code = match self.root_ty(b) {
-                    Some(CTy::Clo(_) | CTy::Set(_)) => codes::MOVED_WHILE_CAPTURED,
+                    Some(CTy::Clo(_) | CTy::Fn(_, _, _)) => codes::MOVED_WHILE_CAPTURED,
                     _ => codes::USED_WHILE_LENT,
                 };
                 self.pending.push((b, e.site, code, msg));
@@ -1682,7 +1682,7 @@ fn escape(d: &Decls, generic: &HashMap<FuncKey, Func<Ty>>, p: &Program) -> Vec<M
             CTy::Ref(_) => true,
             CTy::Raw(e) => holds_ref(p, e, seen, made),
             CTy::Struct(..) => p.parts(t).iter().any(|f| holds_ref(p, f, seen, made)),
-            CTy::Set(ms) => ms
+            CTy::Fn(_, _, ms) => ms
                 .iter()
                 .any(|k| holds_ref(p, &CTy::Clo(Box::new(k.clone())), seen, made)),
             CTy::Clo(k) if made(k) => p.captures(k).iter().any(|c| holds_ref(p, c, seen, made)),

@@ -73,7 +73,7 @@ fn doms_of(t: &CTy, out: &mut Vec<usize>) {
                 .flatten()
                 .for_each(|k| k.targs.iter().for_each(|t| doms_of(t, out)));
         }
-        CTy::Set(set) => set
+        CTy::Fn(_, _, set) => set
             .iter()
             .for_each(|k| k.targs.iter().for_each(|t| doms_of(t, out))),
         CTy::Clo(k) => k.targs.iter().for_each(|t| doms_of(t, out)),
@@ -167,8 +167,7 @@ pub fn link(
         let key = l.keys[next].clone();
         if let Some(f) = key.func.decl() {
             if said.insert(f) {
-                l.errors
-                    .extend(whole.deferred.get(&f).into_iter().flatten().cloned());
+                l.errors.extend(whole.deferred.get(&f).into_iter().flatten().cloned());
             }
         }
         // A fn used at a domain declared in its own body: inside that instance the type
@@ -380,7 +379,11 @@ impl Link<'_> {
                 }
                 out
             }
-            Ty::Fn(_, _, s) => CTy::Set(self.set(s, env)),
+            Ty::Fn(ps, r, s) => CTy::Fn(
+                ps.iter().map(|p| unlent(self.ty(p, env))).collect(),
+                Box::new(unlent(self.ty(r, env))),
+                self.set(s, env),
+            ),
             Ty::Clo(c) => {
                 let k = self.clo(c, env);
                 self.intern(k.clone());
@@ -713,7 +716,7 @@ impl Link<'_> {
         let d = self.d;
         let by_impl = d.impls_of(tr).any(|im| {
             let mut binds = vec![None; im.generics.len()];
-            self.fit_for(im, &st, &mut binds)
+            fits_head(d, im, &st, &mut binds)
                 && (d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 && blanket_met(d, im, &binds)
@@ -739,7 +742,7 @@ impl Link<'_> {
         // The impl's sets are its target's: a struct's, or a fn type's own set.
         let sets = match &st {
             CTy::Struct(_, _, ss) => ss.clone(),
-            CTy::Set(s) => vec![s.clone()],
+            CTy::Fn(_, _, s) => vec![s.clone()],
             _ => Vec::new(),
         };
         let d = self.d;
@@ -758,7 +761,7 @@ impl Link<'_> {
         let mut found = None;
         for im in d.impls_of(*tr) {
             let mut binds = vec![None; im.generics.len()];
-            if !self.fit_for(im, &st, &mut binds)
+            if !fits_head(d, im, &st, &mut binds)
                 || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 || !blanket_met(d, im, &binds)
@@ -792,37 +795,6 @@ impl Link<'_> {
             )));
         }
         found
-    }
-    /// Whether `t` fits `im`'s head. A fn value's closures have the types an impl for a
-    /// fn type names (`impl<V, S> Next<V> for V -> S`), so its parameters bind to them.
-    fn fit_for(
-        &mut self,
-        im: &cpl_next_decls::decls::ImplDecl,
-        t: &CTy,
-        binds: &mut [Option<CTy>],
-    ) -> bool {
-        let p = &im.for_;
-        if !fits_head(self.d, im, t, binds) {
-            return false;
-        }
-        let (Ty::Fn(ps, r, _), CTy::Set(cs)) = (p, t) else {
-            return true;
-        };
-        let Some(k) = cs.first() else {
-            return true;
-        };
-        let f = &self.generic[&k.func];
-        let env = Env {
-            targs: &k.targs,
-            sets: &k.sets,
-        };
-        let have: Vec<CTy> = (f.params[f.n_captures..].iter())
-            .map(|(l, _)| unlent(self.ty(&f.locals[*l], &env)))
-            .collect();
-        let ret = unlent(self.ty(&f.ret, &env));
-        ps.len() == have.len()
-            && ps.iter().zip(&have).all(|(p, h)| fit_cty(p, h, binds))
-            && fit_cty(r, &ret, binds)
     }
     fn arg(&mut self, a: &Arg<Ty>, env: &Env) -> Arg<CTy> {
         match a {
@@ -937,7 +909,7 @@ fn check_finite(p: &mut Program) {
                     visit(p, f, stack, bad);
                 }
             }
-            CTy::Set(ms) => {
+            CTy::Fn(_, _, ms) => {
                 for k in ms {
                     visit(p, &CTy::Clo(Box::new(k.clone())), stack, bad);
                 }
@@ -1076,7 +1048,7 @@ fn canon_block(
                 };
                 match &cty {
                     CTy::Clo(k) => out.push(walk(k, Place::Local(tmp))),
-                    CTy::Set(ms) => {
+                    CTy::Fn(_, _, ms) => {
                         let arms = (ms.iter().enumerate())
                             .map(|(i, k)| {
                                 vec![walk(k, Place::Variant(Box::new(Place::Local(tmp)), i))]
@@ -1166,7 +1138,7 @@ fn canon_store(
             };
             match &cty {
                 CTy::Clo(k) => out.push(store(call(k, Place::Local(tmp)))),
-                CTy::Set(ms) => {
+                CTy::Fn(_, _, ms) => {
                     let arms = ms
                         .iter()
                         .enumerate()
@@ -1194,7 +1166,7 @@ fn canon_store(
             if from == to {
                 return out.push(store(canon_expr(bad, *inner)));
             }
-            let (CTy::Set(a), CTy::Set(b)) = (&from, &to) else {
+            let (CTy::Fn(_, _, a), CTy::Fn(_, _, b)) = (&from, &to) else {
                 return;
             };
             locals.push(from.clone());
@@ -1244,7 +1216,7 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
         EK::Inject(x) => {
             let x = canon_expr(bad, *x);
             match (&x.ty, &ty) {
-                (CTy::Clo(k), CTy::Set(ms)) => {
+                (CTy::Clo(k), CTy::Fn(_, _, ms)) => {
                     let at = ms.iter().position(|m| m == &**k).unwrap_or_else(|| {
                         bad.push(
                             "internal: a function value is put in a set that lacks it".to_string(),
@@ -1788,9 +1760,12 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
         (Ty::Clo(c), CTy::Clo(k)) => {
             matches!(&**c, CloRef::Item(f) if k.func.decl() == Some(f.decl))
         }
-        // A fn value is its set of closures; the checker chose this impl by the fn type, and
-        // the trait's arguments fix the parameters the fn type names.
-        (Ty::Fn(..), CTy::Set(_)) => true,
+        // A fn value's own types, which the checker gave every closure in its set.
+        (Ty::Fn(ps, r, _), CTy::Fn(cps, cr, _)) => {
+            ps.len() == cps.len()
+                && ps.iter().zip(cps).all(|(p, c)| fit_cty(p, c, binds))
+                && fit_cty(r, cr, binds)
+        }
         // A lent slot reads as the value it points at.
         (_, CTy::Lent(t)) => fit_cty(p, t, binds),
         _ => false,
@@ -1807,7 +1782,7 @@ fn ret_sets_in(t: &Ty, c: &CTy, out: &mut [Option<CSet>]) {
         }
     };
     match (t, c) {
-        (Ty::Fn(_, _, s), CTy::Set(cs)) => put(s, cs),
+        (Ty::Fn(_, _, s), CTy::Fn(_, _, cs)) => put(s, cs),
         (Ty::Struct(_, ts, ss), CTy::Struct(_, cs, css)) => {
             ss.iter().zip(css).for_each(|(s, cs)| put(s, cs));
             for (t, c) in ts.iter().zip(cs) {
