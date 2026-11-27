@@ -1523,7 +1523,9 @@ next/n_library_module.cp
 next/n_list_01_shrink.cp
 next/n_list_02_move_within.cp
 next/n_list_03_let_receiver.cp
+next/n_lower_01_fn_ending_in_while_true.cp
 next/n_bound_01_an_unknown_bound_type_fixes_no_impl.cp
+next/n_list_add_01_joins_any_seq.cp
 next/n_load_01_a_method_of_an_unspelled_prelude_module.cp
 next/n_lower_01_fn_ending_in_while_true.cp
 next/n_map_01_map_literals.cp

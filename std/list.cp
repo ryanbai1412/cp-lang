@@ -3,7 +3,7 @@
 //!
 //! example: `var xs = [3, 1]; xs.push(2); xs[2] == 2 and xs.len == 3`
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key}
-use std.seq.{IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
+use std.seq.{Seq, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
 
 @list
 pub struct List<T>:
@@ -143,6 +143,15 @@ fn str_of(text: Raw<Char>, n: Int) -> Str:
 /// `s + t`: a new string, `s`'s characters then `t`'s (R02.3.3).
 impl Add for Str:
     fn add(self, other: Str) -> Str = str_concat(self, other)
+
+/// `xs + s`: a new list, `xs`'s elements then the ones `s` walks, of a list, a view or any other
+/// sequence (R02.3.3, R04a.2.3). \(O(|xs| + |s|)\).
+impl<T: Clone, S: Seq<T>> Add<S> for List<T>:
+    fn add(self, other: S) -> List<T>:
+        var out = List<T>()
+        for x in self: out.push(x.clone())
+        for x in other: out.push(x)
+        out
 
 fn str_concat(a: Str, b: Str) -> Str:
     var out = Str(List.new())
