@@ -59,7 +59,7 @@ impl Cx<'_> {
                     let given: Vec<Ty> = (ts.into_iter())
                         .map(|a| if a == Ty::Unit { self.new_ty() } else { a })
                         .collect();
-                    if let Some(m) = self.d.s(d).methods.get(&name.text).copied() {
+                    if let Some(m) = self.d.member(&self.d.s(d).methods, &name.text) {
                         let f = self.fnref(m, given, Vec::new());
                         let call = self.call_fn(f, None, args, span, want);
                         return Some(block(pre, call));
@@ -79,8 +79,9 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<TExpr> {
         let core = [self.d.roles().domain, self.d.roles().order];
-        let m = (core.iter().flatten()).find_map(|tr| self.d.t(*tr).methods.get(&name.text))?;
-        self.domain_fn_of(dty, *m, name, call, span)
+        let m = (core.iter().flatten())
+            .find_map(|tr| self.d.member(&self.d.t(*tr).methods, &name.text))?;
+        self.domain_fn_of(dty, m, name, call, span)
     }
     /// `D.m`, `m` being one of `Domain`'s or `Ordered`'s fns, which the program calls `name`.
     pub(super) fn domain_fn_of(
@@ -869,7 +870,7 @@ impl Cx<'_> {
             tr,
             args: Vec::new(),
         };
-        Some((r, n.clone(), m))
+        Some((r, self.d.text(*n).to_string(), m))
     }
     /// `v.ord` of a value whose type implements `Domain`, through the trait.
     fn ordinal(&mut self, v: TExpr, ord: &DomainFn) -> TExpr {

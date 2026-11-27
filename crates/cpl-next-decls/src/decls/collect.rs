@@ -459,7 +459,11 @@ fn layer(
                                 let m = operator_method(s);
                                 let method = |tr: &TraitId| match op_methods.get(tr) {
                                     Some(m) => Some(m.clone()),
-                                    None => d.traits[tr.0].methods.keys().next().cloned(),
+                                    None => d.traits[tr.0]
+                                        .methods
+                                        .keys()
+                                        .next()
+                                        .map(|n| d.text(*n).to_string()),
                                 };
                                 let taken =
                                     (d.operators.iter()).any(|(o, tr)| o == t && method(tr) == m);
@@ -850,9 +854,10 @@ fn layer(
                                     sig: None,
                                 },
                             );
-                            methods.insert(f.name.text.clone(), fid);
+                            methods.insert(d.syms.intern(&f.name.text), fid);
                         }
                     }
+                    let ctor = d.member(&methods, "new");
                     let sdecl = &mut d.structs[id.0];
                     sdecl.fields = fields;
                     sdecl.var_fields = sd.fields.iter().map(|f| f.mutable).collect();
@@ -864,7 +869,7 @@ fn layer(
                         .map(|f| item.at(Span::new(f.ty.span.start, f.ty.span.start)))
                         .collect();
                     sdecl.n_sets = n_sets;
-                    sdecl.ctor = methods.get("new").copied();
+                    sdecl.ctor = ctor;
                     sdecl.methods = methods;
                 }
                 (
@@ -961,7 +966,7 @@ fn layer(
                                 args: (1..tgen.len()).map(Ty::Param).collect(),
                             };
                             d.fns[fid.0].bounds.push((0, own));
-                            methods.insert(f.name.text.clone(), fid);
+                            methods.insert(d.syms.intern(&f.name.text), fid);
                         }
                     }
                     d.traits[id.0].methods = methods;
@@ -1204,10 +1209,12 @@ fn layer(
                         .collect();
                     let written = |n: &str| written(n) || valued.iter().any(|v| v == n);
                     if let Ty::Struct(sid, ..) = &for_ {
-                        let mut ms: Vec<(&String, &FnId)> =
-                            d.traits[tref.tr.0].methods.iter().collect();
-                        ms.sort();
-                        for (n, &tm) in ms {
+                        let mut ms: Vec<(Sym, FnId)> = (d.traits[tref.tr.0].methods.iter())
+                            .map(|(&n, &f)| (n, f))
+                            .collect();
+                        ms.sort_by_key(|&(n, _)| d.text(n));
+                        for (n, tm) in ms {
+                            let n = d.text(n);
                             let tf = d.f(tm);
                             if tf.getter
                                 && matches!(tf.body, ast::FnBody::None)
@@ -1221,20 +1228,26 @@ fn layer(
                     let mut methods = HashMap::new();
                     for m in body.stmts.iter().chain(&filled) {
                         if let StmtKind::Fn(f) = &m.kind {
-                            let sig = d.traits[tref.tr.0].methods.get(&f.name.text).map(|&tm| {
-                                let td = d.f(tm);
-                                let mut tys = vec![for_.clone()];
-                                tys.extend(tref.args.iter().cloned());
-                                let sub = Subst {
-                                    tys: &tys,
-                                    sets: &[],
-                                };
-                                TraitSig {
-                                    self_mode: td.self_mode,
-                                    params: td.params.iter().map(|p| sub.ty(&p.ty)).collect(),
-                                    ret: sub.ty(&td.ret),
-                                }
-                            });
+                            let sig =
+                                d.member(&d.traits[tref.tr.0].methods, &f.name.text)
+                                    .map(|tm| {
+                                        let td = d.f(tm);
+                                        let mut tys = vec![for_.clone()];
+                                        tys.extend(tref.args.iter().cloned());
+                                        let sub = Subst {
+                                            tys: &tys,
+                                            sets: &[],
+                                        };
+                                        TraitSig {
+                                            self_mode: td.self_mode,
+                                            params: td
+                                                .params
+                                                .iter()
+                                                .map(|p| sub.ty(&p.ty))
+                                                .collect(),
+                                            ret: sub.ty(&td.ret),
+                                        }
+                                    });
                             let fid = add_fn(
                                 &mut d,
                                 mid,
@@ -1251,7 +1264,7 @@ fn layer(
                             );
                             // The impl's parameters come first in each method's, with its bounds.
                             d.fns[fid.0].bounds.extend(fn_bounds.iter().cloned());
-                            methods.insert(f.name.text.clone(), fid);
+                            methods.insert(d.syms.intern(&f.name.text), fid);
                         }
                     }
                     let code = cpl_diag::codes::MISSING_IMPL;
@@ -1277,7 +1290,8 @@ fn layer(
                         && public[mi].contains(&f.name.text)
                         && d.f(fid).self_ty.is_some()
                     {
-                        d.methods.entry(f.name.text.clone()).or_default().push(fid);
+                        let n = d.syms.intern(&f.name.text);
+                        d.methods.entry(n).or_default().push(fid);
                     }
                     if let Some(Named::Fn(first)) = before {
                         // Free fns of one name whose required labels differ are overloads: the
@@ -1615,8 +1629,9 @@ fn impl_names<'a>(
             _ => continue,
         };
         let now = (d.traits[tref.tr.0].methods.iter())
-            .find(|(_, &tm)| d.f(tm).was.iter().any(|w| w == n));
-        if let Some((now, _)) = now {
+            .find(|(_, &tm)| d.f(tm).was.iter().any(|w| w == n))
+            .map(|(now, _)| d.text(*now));
+        if let Some(now) = now {
             let msg = format!("`impl {tname}` names this member `{now}`; `{n}` was its old name");
             d.misdeclared.push((item.at(span), code, msg));
         }

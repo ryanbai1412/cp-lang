@@ -432,7 +432,7 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         for tr in &self.bound_traits(p) {
-            let Some(m) = self.d.t(tr.tr).methods.get(name).copied() else {
+            let Some(m) = self.d.member(&self.d.t(tr.tr).methods, name) else {
                 continue;
             };
             // A lender is called only where its place is used (`for`, an assignment): elsewhere

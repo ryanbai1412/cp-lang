@@ -121,7 +121,11 @@ impl<'a> Cx<'a> {
         }
         // `for x in g.out(u)` through a bound on `g`'s type parameter; a bound's value
         // (`s.keys`) walks as the value it returns.
-        let yields = |tr: &TraitRef, m: &str| self.d.f(self.d.t(tr.tr).methods[m]).region.is_some();
+        let yields = |tr: &TraitRef, m: &str| {
+            self.d
+                .member(&self.d.t(tr.tr).methods, m)
+                .is_some_and(|m| self.d.f(m).region.is_some())
+        };
         call = match call.kind {
             TK::CallTrait {
                 tr,
@@ -187,7 +191,12 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) {
-        let m = self.d.t(tr.tr).methods[&method];
+        let Some(m) = self.d.member(&self.d.t(tr.tr).methods, &method) else {
+            return self.err(
+                span,
+                Msg::internal("a bound's walk names no fn of its trait"),
+            );
+        };
         let Some((false, elem)) = self.d.f(m).region.clone() else {
             return self.err(
                 span,
@@ -1656,6 +1665,7 @@ impl<'a> Cx<'a> {
         let fns = tr.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
         match (tr, fns.first()) {
             (Some(tr), Some(&(n, m))) => {
+                let n = self.d.text(n);
                 self.reach(m);
                 let tr = decls::TraitRef {
                     tr,
@@ -1666,7 +1676,7 @@ impl<'a> Cx<'a> {
                 let kind = TK::CallTrait {
                     ctx: self.trait_ctx(tr.tr, n),
                     tr,
-                    method: n.clone(),
+                    method: n.to_string(),
                     recv: None,
                     self_ty: Box::new(array.clone()),
                     targs: Box::new([]),

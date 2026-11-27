@@ -126,7 +126,7 @@ pub struct StructDecl {
     /// Where its declaration starts in the source: the spans of its defaults count from here.
     pub item: ItemId,
     pub n_sets: usize,
-    pub methods: HashMap<String, FnId>,
+    pub methods: HashMap<Sym, FnId>,
     /// Its `const NAME = init`s, read as `Dir4.up`: each a const of its module, set once.
     pub consts: HashMap<String, ConstId>,
     /// The fns of its impls over a shape of it (`impl Rev<[D]T>:`), each `self` that shape.
@@ -150,7 +150,7 @@ pub struct TraitDecl {
     pub alias: bool,
     /// Its supertraits, in its own type parameters (R08.1.1).
     pub supers: Vec<TraitRef>,
-    pub methods: HashMap<String, FnId>,
+    pub methods: HashMap<Sym, FnId>,
     /// What its library impls use that the slice does not build, said when one of its fns is reached.
     pub errors: Vec<Msg>,
     /// `trait Add<Rhs = Self>`: each parameter's default, in `Self` and the parameters before it.
@@ -266,7 +266,7 @@ pub struct ImplDecl {
     pub generics: Vec<String>,
     pub bounds: Vec<(usize, TraitRef)>,
     pub for_: Ty,
-    pub methods: HashMap<String, FnId>,
+    pub methods: HashMap<Sym, FnId>,
     /// Where it is written.
     pub at: SourceId,
     /// Where it says each of its trait's associated types, or `at` for a default.
@@ -430,7 +430,7 @@ pub struct Decls {
     pub misdeclared: Vec<(SourceId, cpl_diag::Code, String)>,
     /// Each library's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
-    pub methods: HashMap<String, Vec<FnId>>,
+    pub methods: HashMap<Sym, Vec<FnId>>,
     /// The free fns of one name in one module past its first, keyed by the first: each has its
     /// own required labels, and a call takes the one whose labels it gives (R06.1.6).
     pub overloads: HashMap<FnId, Vec<FnId>>,
@@ -487,7 +487,7 @@ pub struct Decls {
     /// Each trait's impls, and each member name's (its trait's or its own), in order.
     pub impls_by_trait: HashMap<TraitId, Vec<usize>>,
     pub impls_by_member: HashMap<Sym, Vec<usize>>,
-    /// Every member name an impl gives, as an id.
+    /// Every name a member of a struct, trait or impl has, as an id.
     pub syms: Syms,
     /// Each trait's live impls in the order a type takes them (`impls_of`), made once a
     /// program's impls are all known: a lookup walks them thousands of times.
@@ -538,19 +538,19 @@ impl Decls {
         (self.literals.iter()).find_map(|(o, tr)| (o == op).then_some(*tr))
     }
     /// A trait's fns in the order it declares them, the role each plays in a literal (R01.8.8).
-    pub fn trait_fns(&self, tr: TraitId) -> Vec<(&String, FnId)> {
+    pub fn trait_fns(&self, tr: TraitId) -> Vec<(Sym, FnId)> {
         let mut fns: Vec<_> = (self.traits[tr.0].methods.iter())
-            .map(|(n, &m)| (n, m))
+            .map(|(&n, &m)| (n, m))
             .collect();
         fns.sort_by_key(|&(_, m)| m);
         fns
     }
     /// The fn an `@operator` trait's operator calls: its first declared, `lt` of `Ord`'s
     /// `lt` and `cmp` (R06.4.12).
-    pub fn operator_method(&self, tr: TraitId) -> Option<(&String, FnId)> {
+    pub fn operator_method(&self, tr: TraitId) -> Option<(&str, FnId)> {
         (self.traits[tr.0].methods.iter())
             .min_by_key(|&(_, &m)| m)
-            .map(|(n, &m)| (n, m))
+            .map(|(n, &m)| (self.text(*n), m))
     }
     /// Each binary operator's fn, for `type_of(+)`.
     /// `Domain`'s getters by name, which a range type's end `D.m` names.
@@ -565,7 +565,7 @@ impl Decls {
                 let f = self.f(**f);
                 f.getter && f.self_ty.is_none() && f.ret == Ty::Int
             })
-            .map(|(n, f)| (n.clone(), *f))
+            .map(|(n, f)| (self.text(*n).to_string(), *f))
             .collect(),
         )
     }
@@ -581,7 +581,18 @@ impl Decls {
         let tr = &self.traits[self.roles.iteration?.0];
         (tr.methods.iter())
             .find(|(_, f)| self.f(**f).region.is_some())
-            .map(|(n, f)| (n.as_str(), *f))
+            .map(|(n, f)| (self.text(*n), *f))
+    }
+    /// The id of a name some declaration gave, or `None` when none did.
+    pub fn sym(&self, text: &str) -> Option<Sym> {
+        self.syms.get(text)
+    }
+    pub fn text(&self, s: Sym) -> &str {
+        self.syms.text(s)
+    }
+    /// The member `name` of a struct's, trait's or impl's members.
+    pub fn member(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
+        members.get(&self.sym(name)?).copied()
     }
     pub fn f(&self, d: FnId) -> &FnDecl {
         &self.fns[d.0]
@@ -692,12 +703,11 @@ impl Decls {
         self.impls_ranked = None;
         let k = self.impls.len();
         self.impls_by_trait.entry(im.trait_.tr).or_default().push(k);
-        let mut names: Vec<&String> = im.methods.keys().collect();
+        let mut names: Vec<Sym> = im.methods.keys().copied().collect();
         names.extend(self.traits[im.trait_.tr.0].methods.keys());
         names.sort();
         names.dedup();
         for n in names {
-            let n = self.syms.intern(n);
             self.impls_by_member.entry(n).or_default().push(k);
         }
         self.impls.push(im);
@@ -825,8 +835,8 @@ fn domain_params(d: &mut Decls, from: usize) {
     // One that names one of `Ordered`'s steps on it (`D.at(x)`) is ordered too (R04.2.31).
     struct DomUse<'a> {
         generics: &'a [String],
-        fns: Vec<&'a String>,
-        steps: Vec<&'a String>,
+        fns: Vec<&'a str>,
+        steps: Vec<&'a str>,
         found: Vec<usize>,
         ordered: Vec<usize>,
     }
@@ -872,8 +882,8 @@ fn domain_params(d: &mut Decls, from: usize) {
             let Some(i) = i else {
                 return;
             };
-            let step = self.steps.contains(&&name.text);
-            if (step || self.fns.contains(&&name.text)) && !self.found.contains(&i) {
+            let step = self.steps.contains(&name.text.as_str());
+            if (step || self.fns.contains(&name.text.as_str())) && !self.found.contains(&i) {
                 self.found.push(i);
             }
             if step && !self.ordered.contains(&i) {
@@ -881,9 +891,12 @@ fn domain_params(d: &mut Decls, from: usize) {
             }
         }
     }
-    let dom_fns: Vec<&String> = d.traits[domain.0].methods.keys().collect();
-    let steps: Vec<&String> = (d.roles.order.iter())
+    let dom_fns: Vec<&str> = (d.traits[domain.0].methods.keys())
+        .map(|n| d.text(*n))
+        .collect();
+    let steps: Vec<&str> = (d.roles.order.iter())
         .flat_map(|tr| d.traits[tr.0].methods.keys())
+        .map(|n| d.text(*n))
         .collect();
     let (used, ordered): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (d.fns.iter().skip(from))
         .map(|f| {

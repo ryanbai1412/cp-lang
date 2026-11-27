@@ -10,8 +10,8 @@ impl Decls {
                 let sub = Subst { tys: targs, sets };
                 return Some(Member::Field(i, sub.ty(&s.fields[i].1)));
             }
-            if let Some(m) = s.methods.get(name) {
-                return Some(Member::Method(*m, targs.clone(), sets.clone()));
+            if let Some(m) = self.member(&s.methods, name) {
+                return Some(Member::Method(m, targs.clone(), sets.clone()));
             }
         }
         self.impl_member(recv, name, None)
@@ -66,10 +66,7 @@ impl Decls {
         let mut core = (core.into_iter().flatten()).filter(|_| matches!(recv, Ty::Dom(_)));
         core.find_map(|id| {
             let tr = &self.traits[id.0];
-            let tm = *tr
-                .methods
-                .get(name)
-                .filter(|_| trait_.is_none_or(|t| t == id))?;
+            let tm = (self.member(&tr.methods, name)).filter(|_| trait_.is_none_or(|t| t == id))?;
             pick(self.f(tm)).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
         })
     }
@@ -130,11 +127,11 @@ impl Decls {
         if trait_.is_some_and(|t| t != im.trait_.tr) {
             return None;
         }
-        if let Some(m) = im.methods.get(name).filter(|m| pick(self.f(**m))) {
+        if let Some(m) = self.member(&im.methods, name).filter(|&m| pick(self.f(m))) {
             let targs = self.fits_impl(im, recv)?;
-            return Some(Member::Method(*m, targs, sets.to_vec()));
+            return Some(Member::Method(m, targs, sets.to_vec()));
         }
-        let tm = *tr.methods.get(name)?;
+        let tm = self.member(&tr.methods, name)?;
         if matches!(self.f(tm).body, FnBody::None) || !pick(self.f(tm)) {
             return None;
         }
@@ -278,7 +275,7 @@ impl Decls {
     /// The library method `name` whose `self` can be `recv`, from any std module whether the
     /// program loads it or not: a method call needs no import (R11.3.4).
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
-        (self.methods.get(name)?.iter().copied()).find(|f| self.self_fits(*f, recv))
+        (self.methods.get(&self.sym(name)?)?.iter().copied()).find(|f| self.self_fits(*f, recv))
     }
     /// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
     /// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).

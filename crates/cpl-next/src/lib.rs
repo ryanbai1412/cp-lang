@@ -618,7 +618,7 @@ impl<'s> Type<'s> {
             out.extend(
                 s.methods
                     .iter()
-                    .map(|(name, id)| (name.clone(), fn_item(*id))),
+                    .map(|(name, id)| (f.d.text(*name).to_string(), fn_item(*id))),
             );
         }
         for i in 0..f.d.impls.len() {
@@ -630,7 +630,7 @@ impl<'s> Type<'s> {
                 out.extend(
                     im.methods
                         .iter()
-                        .map(|(name, id)| (name.clone(), fn_item(*id))),
+                        .map(|(name, id)| (f.d.text(*name).to_string(), fn_item(*id))),
                 );
             }
         }

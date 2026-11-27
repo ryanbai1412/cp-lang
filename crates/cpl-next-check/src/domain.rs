@@ -93,7 +93,7 @@ impl Cx<'_> {
     fn count_of(&mut self, tr: TraitId, xs: TExpr, out: &mut Vec<TStmt>) -> Option<TExpr> {
         let (span, ty) = (xs.span, xs.ty.clone());
         let &(n, m) = self.d.trait_fns(tr).first()?;
-        let method = n.clone();
+        let method = self.d.text(n);
         // A variable is read where it is; any other value is held first, so it runs once.
         let recv = match xs.kind {
             TK::Var(_) => xs,
@@ -111,9 +111,9 @@ impl Cx<'_> {
         let r = decls::TraitRef { tr, args: vec![] };
         (self.obligations).push((ty.clone(), r.clone(), span, Origin::Bound));
         let kind = TK::CallTrait {
-            ctx: self.trait_ctx(r.tr, &method),
+            ctx: self.trait_ctx(r.tr, method),
             tr: r,
-            method,
+            method: method.to_string(),
             recv: Some(Box::new(TArg::Value(recv))),
             self_ty: Box::new(ty.clone()),
             targs: Box::new([]),
@@ -351,37 +351,39 @@ impl Cx<'_> {
             _ => Vec::new(),
         };
         // Each end is the bound's fn on `r`, held in a local that `Int(..)` reads (R04b.1.5).
-        let end = |cx: &mut Self, &(n, m): &(&String, FnId), out: &mut Vec<TStmt>| {
-            cx.reach(m);
-            let mut tys = vec![r_ty.clone()];
-            tys.extend(args.iter().cloned());
-            let ty = cx.trait_ret(m, tys);
-            let call = TK::CallTrait {
-                ctx: cx.trait_ctx(tr, n),
-                tr: decls::TraitRef {
+        let end =
+            |cx: &mut Self, &(n, m): &(cpl_next_decls::sym::Sym, FnId), out: &mut Vec<TStmt>| {
+                let n = cx.d.text(n);
+                cx.reach(m);
+                let mut tys = vec![r_ty.clone()];
+                tys.extend(args.iter().cloned());
+                let ty = cx.trait_ret(m, tys);
+                let call = TK::CallTrait {
+                    ctx: cx.trait_ctx(tr, n),
+                    tr: decls::TraitRef {
+                        tr,
+                        args: args.clone(),
+                    },
+                    method: n.to_string(),
+                    recv: Some(Box::new(TArg::Value(read.clone()))),
+                    self_ty: Box::new(r_ty.clone()),
+                    targs: Box::new([]),
+                    args: vec![],
+                };
+                let r = decls::TraitRef {
                     tr,
                     args: args.clone(),
-                },
-                method: n.clone(),
-                recv: Some(Box::new(TArg::Value(read.clone()))),
-                self_ty: Box::new(r_ty.clone()),
-                targs: Box::new([]),
-                args: vec![],
+                };
+                (cx.obligations).push((r_ty.clone(), r, span, Origin::Bound));
+                let c = cx.slot(ty.clone(), n);
+                let at = |kind| TExpr {
+                    kind,
+                    ty: ty.clone(),
+                    span,
+                };
+                out.push(TStmt::Let(c, at(call)));
+                cx.convert_value(Ty::Int, at(TK::Var(c)), span, Origin::Convert)
             };
-            let r = decls::TraitRef {
-                tr,
-                args: args.clone(),
-            };
-            (cx.obligations).push((r_ty.clone(), r, span, Origin::Bound));
-            let c = cx.slot(ty.clone(), n);
-            let at = |kind| TExpr {
-                kind,
-                ty: ty.clone(),
-                span,
-            };
-            out.push(TStmt::Let(c, at(call)));
-            cx.convert_value(Ty::Int, at(TK::Var(c)), span, Origin::Convert)
-        };
         let lo = end(self, lo, out);
         (lo, end(self, hi, out))
     }

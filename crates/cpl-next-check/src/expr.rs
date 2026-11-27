@@ -93,7 +93,7 @@ impl<'a> Cx<'a> {
     fn operator_trait(&self, text: &str, binary: bool, t: &Ty) -> Option<(TraitId, String, FnId)> {
         let found = (self.d.operators.iter().filter(|(o, _)| o == text)).find_map(|(_, tr)| {
             let (n, m) = self.d.operator_method(*tr)?;
-            (self.d.f(m).params.len() == usize::from(binary)).then(|| (*tr, n.clone(), m))
+            (self.d.f(m).params.len() == usize::from(binary)).then(|| (*tr, n.to_string(), m))
         })?;
         let applies = match self.shallow(t) {
             // An unbounded parameter's `+` is a missing bound, unless it is a position (R08.2.2).
@@ -125,7 +125,7 @@ impl<'a> Cx<'a> {
         }
         let found = (self.d.operators.iter().filter(|(o, _)| o == "in")).find_map(|(_, tr)| {
             let (n, m) = self.d.operator_method(*tr)?;
-            Some((*tr, n.clone(), m))
+            Some((*tr, n.to_string(), m))
         });
         let Some(found) = found else {
             self.err(span, Unbuilt::Membership);
@@ -692,8 +692,7 @@ impl<'a> Cx<'a> {
             .map(|&(_, tr)| tr)
             .collect();
         let named = (ops.iter().copied()).find(|&tr| self.d.seen(self.d.t(tr).module));
-        let Some((named, method)) =
-            named.and_then(|tr| Some((tr, self.d.operator_method(tr)?.0.clone())))
+        let Some((named, method)) = named.and_then(|tr| Some((tr, self.d.operator_method(tr)?.0)))
         else {
             let msg = format!(
                 "`{}` needs an `@operator(\"{token}\")` trait (R08.1.5)",
@@ -725,13 +724,13 @@ impl<'a> Cx<'a> {
                     })
                 });
             tr.map(|tr| {
-                if let Some(&m) = self.d.t(tr.tr).methods.get(method.as_str()) {
+                if let Some(m) = self.d.member(&self.d.t(tr.tr).methods, method) {
                     self.reach(m);
                 }
                 let arg = self.coerce(arg, &rt);
                 mk(
                     TK::CallTrait {
-                        ctx: self.trait_ctx(tr.tr, &method),
+                        ctx: self.trait_ctx(tr.tr, method),
                         tr: tr.clone(),
                         method: method.to_string(),
                         self_ty: Box::new(recv.ty.clone()),
@@ -743,7 +742,7 @@ impl<'a> Cx<'a> {
                 )
             })
         } else if let Some(decls::Member::Method(m, ts, ss)) =
-            self.d.impl_member(&rt, &method, Some(named))
+            self.d.impl_member(&rt, method, Some(named))
         {
             let f = self.fnref(m, ts, ss);
             let ty = self.ret_ty(&f);

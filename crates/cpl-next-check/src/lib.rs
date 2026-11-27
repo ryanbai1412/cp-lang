@@ -1077,8 +1077,8 @@ impl<'a> Cx<'a> {
     /// call, else the one checked under the values set (R09.1.3, R09.1.4).
     /// The copy a call of trait `tr`'s fn `method` makes.
     pub(crate) fn trait_ctx(&mut self, tr: TraitId, method: &str) -> u32 {
-        match self.d.t(tr).methods.get(method) {
-            Some(&m) => self.ctx_copy(m),
+        match self.d.member(&self.d.t(tr).methods, method) {
+            Some(m) => self.ctx_copy(m),
             None => 0,
         }
     }
@@ -1090,7 +1090,7 @@ impl<'a> Cx<'a> {
         let f = d.f(id);
         if let (Some(Owner::Trait(t)), true) = (f.owner, k != 0) {
             for (_, im) in d.trait_impls(t) {
-                if let Some(&m) = im.methods.get(&f.name) {
+                if let Some(m) = d.member(&im.methods, &f.name) {
                     let km = self.copy_under(m, &around);
                     if km != 0 {
                         self.ctx_impls.insert((k, m), km);
@@ -1162,7 +1162,7 @@ impl<'a> Cx<'a> {
         self.reached.push(id);
         if let Some(Owner::Trait(t)) = f.owner {
             for (_, im) in d.trait_impls(t) {
-                if let Some(&m) = im.methods.get(&f.name) {
+                if let Some(m) = d.member(&im.methods, &f.name) {
                     let made = matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record);
                     match d.is_library(im.module) || made {
                         true => self.through_trait.push(m),

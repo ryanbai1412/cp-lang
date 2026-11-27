@@ -101,7 +101,7 @@ impl Signatures for Decls {
     fn traits_with(&self, name: &str) -> Vec<TraitId> {
         (0..self.traits.len())
             .map(TraitId)
-            .filter(|tr| self.traits[tr.0].methods.contains_key(name))
+            .filter(|tr| self.member(&self.traits[tr.0].methods, name).is_some())
             .collect()
     }
     fn renamed(&self, name: &str) -> Vec<FnId> {
@@ -128,7 +128,7 @@ impl TypeTables for Decls {
     }
     fn getter(&self, m: &str) -> Option<FnId> {
         let tr = self.roles.domain?;
-        (self.traits[tr.0].methods.get(m).copied()).filter(|f| self.fns[f.0].getter)
+        (self.member(&self.traits[tr.0].methods, m)).filter(|f| self.fns[f.0].getter)
     }
     fn n_sets(&self, s: StructId) -> usize {
         self.struct_sets.get(&s).copied().unwrap_or(0)

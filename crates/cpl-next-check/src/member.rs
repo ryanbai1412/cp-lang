@@ -258,7 +258,7 @@ impl<'a> Cx<'a> {
     ) -> Result<Option<(decls::TraitRef, FnId)>, (TraitId, TraitId)> {
         let gives: Vec<(decls::TraitRef, FnId)> = (self.bound_traits(i).into_iter())
             .filter_map(|tr| {
-                let m = *self.d.t(tr.tr).methods.get(name)?;
+                let m = self.d.member(&self.d.t(tr.tr).methods, name)?;
                 pick(self.d.f(m)).then_some((tr, m))
             })
             .collect();
@@ -361,8 +361,8 @@ impl<'a> Cx<'a> {
             .map(|tr| self.d.t(tr))
             .filter(|tr| !tr.alias)
             .filter(|tr| {
-                (tr.methods.get(&name.text))
-                    .is_some_and(|m| self.d.f(*m).self_mode == SelfMode::None)
+                (self.d.member(&tr.methods, &name.text))
+                    .is_some_and(|m| self.d.f(m).self_mode == SelfMode::None)
             })
             .map(|tr| tr.name.as_str())
             .collect();
@@ -422,14 +422,14 @@ impl<'a> Cx<'a> {
     /// `D.find(p)` on a domain struct with no fn `find`: its walk of positions answers (R04.2.20).
     fn walks_for(&self, d: StructId, name: &str) -> bool {
         let s = self.d.s(d);
-        !s.methods.contains_key(name)
+        self.d.member(&s.methods, name).is_none()
             && s.generics.is_empty()
             && self.is_domain(&Ty::Struct(d, Vec::new(), Vec::new()))
     }
     /// `Pair<V>.count(p)`: a member a generic domain type lacks is its walk's, as `Two.count(p)`
     /// is for one with no type parameters (R04.2.27).
     fn walks_at(&mut self, d: StructId, written: &[ast::Type], name: &str, span: Span) -> bool {
-        if written.is_empty() || self.d.s(d).methods.contains_key(name) {
+        if written.is_empty() || self.d.member(&self.d.s(d).methods, name).is_some() {
             return false;
         }
         let mut pre = Vec::new();
@@ -449,7 +449,7 @@ impl<'a> Cx<'a> {
         let found: Vec<(TraitId, FnId)> = (self.d.traits_with(&name.text).into_iter())
             .filter_map(|tr| {
                 let td = self.d.t(tr);
-                let m = *td.methods.get(&name.text)?;
+                let m = self.d.member(&td.methods, &name.text)?;
                 let fd = self.d.f(m);
                 (fd.self_mode == SelfMode::None
                     && takes(fd, call)
@@ -511,7 +511,7 @@ impl<'a> Cx<'a> {
                 _ => None,
             })
             .filter_map(|tr| {
-                let m = *self.d.t(tr).methods.get(n)?;
+                let m = self.d.member(&self.d.t(tr).methods, n)?;
                 let fd = self.d.f(m);
                 (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
             })
@@ -843,7 +843,7 @@ impl<'a> Cx<'a> {
         }
         // `Subset<B>.empty`: a self-less `@get` fn of the type, read without `()`.
         let get = named.filter(|_| call.is_none()).is_some_and(|(_, d)| {
-            (self.d.s(d).methods.get(&name.text)).is_some_and(|&m| {
+            (self.d.member(&self.d.s(d).methods, &name.text)).is_some_and(|m| {
                 let f = self.d.f(m);
                 f.getter && f.self_mode == SelfMode::None
             })
@@ -853,7 +853,7 @@ impl<'a> Cx<'a> {
         if let (Some(n), Some(args)) = (ty_name, call) {
             if let Some((_, d)) = named.filter(|&(_, d)| !walks && !self.walks_for(d, &name.text)) {
                 let s = self.d.s(d);
-                let Some(m) = s.methods.get(&name.text).copied() else {
+                let Some(m) = self.d.member(&s.methods, &name.text) else {
                     self.err(
                         span,
                         Msg::verdict(
@@ -961,7 +961,13 @@ impl<'a> Cx<'a> {
                     };
                     self.obligations
                         .push((rt.clone(), r.clone(), span, Origin::Bound));
-                    let m = self.d.t(tr).methods[&name.text];
+                    let Some(m) = self.d.member(&self.d.t(tr).methods, &name.text) else {
+                        self.err(
+                            span,
+                            Msg::internal("an impl gives a member its trait lacks"),
+                        );
+                        return Self::error_node(span);
+                    };
                     let e = self.bound_trait_call(recv, &rt, (&r, m), name, call, span);
                     // The expected type may say the arguments: `let b: Bool = 5.cv()`.
                     if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {

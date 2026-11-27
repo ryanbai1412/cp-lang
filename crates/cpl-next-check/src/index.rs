@@ -297,7 +297,7 @@ impl Cx<'_> {
     /// What `s[i]` calls: the method of std's `@operator("[]")` trait (R12.4.5).
     fn index_read(&self) -> String {
         let tr = self.d.operators.iter().find(|(o, _)| o == "[]");
-        tr.and_then(|&(_, tr)| self.d.operator_method(tr).map(|(n, _)| n.clone()))
+        tr.and_then(|&(_, tr)| self.d.operator_method(tr).map(|(n, _)| n.to_string()))
             .unwrap_or_default()
     }
     /// The key and cell types of `rt`'s `Indexed` read.
@@ -321,7 +321,11 @@ impl Cx<'_> {
     pub(super) fn key_of(&mut self, s: &Ty) -> Option<Ty> {
         match self.shallow(s) {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
-                .find(|t| self.d.t(t.tr).methods.contains_key(&self.index_read()))
+                .find(|t| {
+                    self.d
+                        .member(&self.d.t(t.tr).methods, &self.index_read())
+                        .is_some()
+                })
                 .and_then(|t| t.args.first().cloned()),
             _ => self.read_sig(&self.recv_ty(s)).map(|(k, _)| k),
         }
@@ -368,18 +372,21 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<ast::Stmt> {
         let &(_, tr) = self.d.operators.iter().find(|(o, _)| o == "[]=")?;
-        let name = self.d.operator_method(tr)?.0.clone();
+        let name = self.d.operator_method(tr)?.0;
         let seen = self.errors.len();
         let b = self.expr_as_typed(base, None);
         self.errors.truncate(seen);
         let rt = self.shallow(&b.ty);
         let d = &self.d;
         let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
-        d.impl_member_by(&rt, &name, of_tr)?;
+        d.impl_member_by(&rt, name, of_tr)?;
         let callee = ast::Expr {
             kind: ExprKind::Field {
                 base: Box::new(base.clone()),
-                name: ast::Name { text: name, span },
+                name: ast::Name {
+                    text: name.to_string(),
+                    span,
+                },
             },
             span,
         };
@@ -469,7 +476,7 @@ impl Cx<'_> {
         let d = self.d;
         let bound = match rt {
             Ty::Param(p) => (self.bound_traits(p).into_iter()).find_map(|tr| {
-                let m = *d.t(tr.tr).methods.get(read)?;
+                let m = d.member(&d.t(tr.tr).methods, read)?;
                 lends(d.f(m)).then_some((tr, m))
             }),
             _ => None,

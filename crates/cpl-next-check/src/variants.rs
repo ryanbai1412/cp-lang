@@ -37,7 +37,7 @@ impl Cx<'_> {
         };
         let conv = self.d.roles().convert.and_then(|tr| {
             let (m, f) = self.d.t(tr).methods.iter().next()?;
-            Some((tr, m.clone(), *f))
+            Some((tr, self.d.text(*m).to_string(), *f))
         });
         let Some((tr, method, f)) = conv else {
             self.err(span, Unbuilt::ConversionWithoutConvert);

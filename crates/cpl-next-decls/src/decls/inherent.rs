@@ -66,11 +66,8 @@ pub(super) fn inherent_impl(
             sig: None,
         };
         let fid = add_fn(d, mid, item.clone(), m, &f, within);
-        if d.structs[t.0]
-            .methods
-            .insert(f.name.text.clone(), fid)
-            .is_some()
-        {
+        let n = d.syms.intern(&f.name.text);
+        if d.structs[t.0].methods.insert(n, fid).is_some() {
             d.misdeclared.push((
                 item.at(Span::new(m.span.start, m.span.start)),
                 cpl_diag::codes::OVERLOAD_BY_TYPE,

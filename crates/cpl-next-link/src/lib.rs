@@ -762,7 +762,7 @@ impl Link<'_> {
                 k.targs.extend(targs.iter().map(|t| self.targ(t, env)));
                 self.in_copy(
                     &mut k,
-                    self.d.traits[tr.0].methods.get(method).copied(),
+                    self.d.member(&self.d.traits[tr.0].methods, method),
                     *ctx,
                 );
                 if let Some(g) = k.func.decl() {
@@ -825,9 +825,9 @@ impl Link<'_> {
         // what an impl leaves to the default, and what a type meeting the trait without
         // an impl (a domain, for `Domain`) runs.
         let default = |trait_args: Vec<CTy>| {
-            (d.traits[tr.0].methods.get(method))
-                .filter(|&&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
-                .map(|&tm| InstKey {
+            (d.member(&d.traits[tr.0].methods, method))
+                .filter(|&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
+                .map(|tm| InstKey {
                     func: FuncKey::Decl(tm),
                     targs: std::iter::once(st.clone()).chain(trait_args).collect(),
                     sets: Vec::new(),
@@ -857,8 +857,8 @@ impl Link<'_> {
             rank = Some(d.impl_rank(im));
             self.bound_only(im, &mut binds);
             let binds: Vec<CTy> = binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
-            found = match im.methods.get(method) {
-                Some(&m) => Some(InstKey {
+            found = match self.d.member(&im.methods, method) {
+                Some(m) => Some(InstKey {
                     func: FuncKey::Decl(m),
                     targs: binds,
                     sets: sets.clone(),

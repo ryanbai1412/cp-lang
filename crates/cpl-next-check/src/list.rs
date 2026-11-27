@@ -34,7 +34,10 @@ impl Cx<'_> {
             );
             return None;
         };
-        let (new, push) = (new.to_string(), push.to_string());
+        let (new, push) = (
+            self.d.text(*new).to_string(),
+            self.d.text(*push).to_string(),
+        );
         self.reach(*nf);
         self.reach(*pf);
         let own = match want.map(|w| self.shallow(w)) {
