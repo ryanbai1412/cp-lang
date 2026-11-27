@@ -202,6 +202,24 @@ impl Cx<'_> {
                 }
             }
             Ty::Dom(i) if !self.domains[*i].name.is_empty() => named(self.domains[*i].name.clone()),
+            // So do a constant range's: `[0..3] i => ..`.
+            Ty::Range(lo, hi) => {
+                let int = |v: i64| {
+                    Some(Box::new(ast::Expr {
+                        kind: ExprKind::Int(i128::from(v)),
+                        span: dom.span,
+                    }))
+                };
+                ast::Expr {
+                    kind: ExprKind::Range {
+                        lo: int(*lo),
+                        hi: int(*hi),
+                        inclusive: true,
+                        step: None,
+                    },
+                    span: dom.span,
+                }
+            }
             // A type that implements `Domain` (`[V.cuts] c => ..`), or a parameter bound by it,
             // walks its positions too.
             Ty::Struct(..) | Ty::Param(_) if self.is_domain(&dty) || self.domain_param(&dty) => {
@@ -253,12 +271,13 @@ impl Cx<'_> {
     /// Whether an array over the anonymous range `from` converts to one over `to`: both are
     /// anonymous, and two written counts that differ stay a type mismatch (R04.8.10).
     fn converts(&self, from: &Ty, to: &Ty) -> bool {
-        let dom = |t: &Ty| match self.shallow(t) {
-            Ty::Dom(i) if self.domains[i].name.starts_with('$') => Some(&self.domains[i]),
+        let count = |t: &Ty| match self.shallow(t) {
+            Ty::Dom(i) if self.domains[i].name.starts_with('$') => Some(self.domains[i].count),
+            Ty::Range(lo, hi) => Some(Some(hi - lo + 1)),
             _ => None,
         };
-        match (dom(from), dom(to)) {
-            (Some(f), Some(t)) => !matches!((f.count, t.count), (Some(x), Some(y)) if x != y),
+        match (count(from), count(to)) {
+            (Some(f), Some(t)) => !matches!((f, t), (Some(x), Some(y)) if x != y),
             _ => false,
         }
     }
@@ -437,6 +456,15 @@ impl Cx<'_> {
                         if step.is_none() && self.shallow(&first.ty) == Ty::Int =>
                     {
                         self.coerce(first, &d)
+                    }
+                    // A range type's positions are its `Int`s: `u[1..3]` on `[0..4]T`.
+                    Some(d @ Ty::Range(..))
+                        if step.is_none() && self.shallow(&first.ty) == Ty::Int =>
+                    {
+                        let first = self.coerce(first, &d);
+                        let (args, d) =
+                            self.domain_range(first, hi, inclusive, want, Ends::Dom, span);
+                        return self.range_built(args, d, diagnosed, span);
                     }
                     _ => first,
                 };
@@ -714,7 +742,8 @@ impl Cx<'_> {
         let t = self.shallow(&lo.ty);
         let hi = self.expr(hi, Some(&t));
         // An exclusive literal end is a cut, so it may be the domain's end (R04.4.25).
-        let cut = !inclusive && matches!(t, Ty::Dom(_)) && matches!(hi.kind, TK::Int(_));
+        let cut =
+            !inclusive && matches!(t, Ty::Dom(_) | Ty::Range(..)) && matches!(hi.kind, TK::Int(_));
         let hi = match cut {
             true => self.cut_ordinal(t.clone(), hi),
             false => self.coerce(hi, &t),

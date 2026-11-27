@@ -366,33 +366,11 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 Ty::Error
             }
         },
-        // `[0..2]T`: an axis over a constant range is that range's own domain (R04.3.4).
-        TypeKind::Array { index, elem }
-            if index.iter().any(|ix| {
-                const_axis(ix).is_some_and(|(lo, hi)| cx.doms.contains_key(&anon_key(lo, hi)))
-            }) =>
-        {
-            let named = |ix: &ast::Type| match const_axis(ix) {
-                Some((lo, hi)) if cx.doms.contains_key(&anon_key(lo, hi)) => ast::Type {
-                    kind: TypeKind::Named {
-                        name: ast::Name {
-                            text: anon_key(lo, hi),
-                            span: ix.span,
-                        },
-                        args: Vec::new(),
-                    },
-                    span: ix.span,
-                },
-                _ => ix.clone(),
-            };
-            let kind = TypeKind::Array {
-                index: index.iter().map(named).collect(),
-                elem: elem.clone(),
-            };
-            conv(cx, &ast::Type { kind, span: t.span }, errors)
-        }
+        // `[0..2]T`: an axis over a constant range is keyed by that range type (R04.3.4).
         TypeKind::Array { index, .. }
-            if index.len() == 1 && matches!(index[0].kind, TypeKind::Range { .. }) =>
+            if index.len() == 1
+                && matches!(index[0].kind, TypeKind::Range { .. })
+                && const_axis(&index[0]).is_none() =>
         {
             errors.push(Unbuilt::RangeIndexedArray.into());
             Ty::Error
@@ -610,28 +588,6 @@ fn without(
             errors.push(missing("a type that is not a record"));
             Ty::Error
         }
-    }
-}
-
-/// Every constant range an array type in `t` is over.
-pub(super) fn const_axes(t: &ast::Type, out: &mut Vec<(i64, i64)>) {
-    let mut each = |ts: &mut dyn Iterator<Item = &ast::Type>| ts.for_each(|t| const_axes(t, out));
-    match &t.kind {
-        TypeKind::Array { index, elem } => {
-            each(&mut index.iter().chain([&**elem]));
-            out.extend(index.iter().filter_map(const_axis));
-        }
-        TypeKind::Named { args: ts, .. } | TypeKind::Tuple(ts) => each(&mut ts.iter()),
-        TypeKind::OwnDomain { elem: e, .. }
-        | TypeKind::Optional(e)
-        | TypeKind::Mut(e)
-        | TypeKind::Yields(e) => each(&mut [&**e].into_iter()),
-        TypeKind::Record(fs) | TypeKind::Row(fs) => each(&mut fs.iter().map(|(_, t)| t)),
-        TypeKind::RowWithout { prefix, base, .. } => {
-            each(&mut prefix.iter().map(|(_, t)| t).chain([&**base]))
-        }
-        TypeKind::Fn { params, ret } => each(&mut params.iter().chain([&**ret])),
-        _ => {}
     }
 }
 

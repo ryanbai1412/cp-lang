@@ -121,23 +121,6 @@ fn layer(
         own.push(HashMap::new());
         public.push(HashSet::new());
     }
-    let mut axes = Vec::new();
-    for s in mods[from..]
-        .iter()
-        .flat_map(|m| m.items.iter())
-        .flat_map(|it| &it.stmts)
-    {
-        stmt_axes(s, &mut axes);
-    }
-    for (lo, hi) in axes {
-        if !d.top_doms.contains_key(&anon_key(lo, hi)) {
-            let t = fresh_dom(&d);
-            if let Ty::Dom(i) = t {
-                d.anon_doms.push((i, lo, hi));
-            }
-            d.top_doms.insert(anon_key(lo, hi), t);
-        }
-    }
     let mut main = Vec::new();
     let mut memos: Vec<(usize, String)> = Vec::new();
     // Pass 1: names, so signatures can mention later declarations.
@@ -1465,40 +1448,6 @@ fn remake_views(
             }
         }
     }
-}
-
-/// A top-level domain's place among the declared ones.
-/// The constant ranges arrays are over in the types `s` declares.
-fn stmt_axes(s: &ast::Stmt, out: &mut Vec<(i64, i64)>) {
-    let mut types: Vec<&ast::Type> = Vec::new();
-    let mut inner: &[ast::Stmt] = &[];
-    match &s.kind {
-        StmtKind::Fn(f) => {
-            types.extend(f.params.iter().filter_map(|p| p.ty.as_ref()));
-            types.extend(f.ret.iter().chain(f.lends.as_ref().map(|l| &l.ty)));
-        }
-        StmtKind::Struct(sd) => {
-            types.extend(sd.fields.iter().map(|f| &f.ty));
-            inner = &sd.methods;
-        }
-        StmtKind::Enum(e) => {
-            types.extend(
-                e.variants
-                    .iter()
-                    .flat_map(|v| v.fields.iter().map(|(_, t)| t)),
-            );
-            inner = &e.methods;
-        }
-        StmtKind::TypeAlias { ty, .. } => types.push(ty),
-        StmtKind::Trait { body, .. } | StmtKind::Impl { body, .. } | StmtKind::Mod { body, .. } => {
-            inner = &body.stmts
-        }
-        _ => {}
-    }
-    types
-        .into_iter()
-        .for_each(|t| super::tyconv::const_axes(t, out));
-    inner.iter().for_each(|s| stmt_axes(s, out));
 }
 
 pub(super) fn fresh_dom(d: &Decls) -> Ty {

@@ -557,9 +557,11 @@ impl<'a> Cx<'a> {
     fn coerce_by(&mut self, decl: FnId, e: TExpr, want: &Ty) -> TExpr {
         let span = e.span;
         // A literal whose length differs from a constant count is wrong before it runs (R04.8.10).
-        if let (Some(n), Ty::Struct(_, ts, _)) = (self.literal_len(&e), want) {
+        if let (Some(n), Ty::Struct(a, ts, _)) = (self.literal_len(&e), want) {
+            let array = Some(*a) == self.d.sugar.array;
             let count = ts.iter().find_map(|t| match self.shallow(t) {
                 Ty::Dom(i) => self.domains[i].count,
+                Ty::Range(lo, hi) if array => Some(hi - lo + 1),
                 _ => None,
             });
             if let Some(c) = count.filter(|c| *c != n as i64) {
@@ -623,6 +625,11 @@ impl<'a> Cx<'a> {
         else {
             return false;
         };
+        // An array's key is its domain, never a cell: `[0..=3]T` does not narrow to `[0..=2]T`.
+        let keyed = Some(h) == self.d.sugar.array;
+        if keyed && (hs.first().map(|t| self.shallow(t)) != ws.first().map(|t| self.shallow(t))) {
+            return false;
+        }
         let cell = |a: &Ty, b: &Ty| match (self.shallow(a), self.shallow(b)) {
             (Ty::Int, Ty::Range(..)) => Some(true),
             (Ty::Range(a, b), Ty::Range(c, d)) => Some(a < c || b > d),

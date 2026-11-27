@@ -368,9 +368,6 @@ pub struct Decls {
     pub fresh_slots: Vec<(FnId, Vec<usize>)>,
     /// The fns whose result leaves a struct's parameter as `_`, `-> Rooted<V, _, _>` (R02.9.3).
     pub ret_holes: Vec<FnId>,
-    /// `[0..2]T` in a declaration: the domain of each constant range an array is over, one for
-    /// all that write it, as `(domain, lo, hi)` with `hi` inclusive (R04.3.4).
-    pub anon_doms: Vec<(usize, i64, i64)>,
     /// The names the program's top level binds with `let`.
     pub top_values: Arc<HashSet<String>>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
@@ -437,9 +434,7 @@ impl Decls {
     fn doms_in(&self, m: ModId) -> HashMap<String, Ty> {
         match m == self.program {
             true => self.top_doms.clone(),
-            false => (self.anon_doms.iter())
-                .map(|&(i, lo, hi)| (anon_key(lo, hi), Ty::Dom(i)))
-                .collect(),
+            false => HashMap::new(),
         }
     }
     /// What a declaration uses that the slice does not build: a library's is said when the program
@@ -1542,11 +1537,6 @@ pub fn count_end<'e>(
     let (d, m, k) = end(hi.as_deref()?)?;
     let k = if inclusive { k } else { k.checked_sub(1)? };
     Some((lo, d, m, k))
-}
-
-/// The name a constant range's domain is kept under: none a program can write.
-pub fn anon_key(lo: i64, hi: i64) -> String {
-    format!("${lo}..={hi}")
 }
 
 /// `lo..hi` with both ends constant, as an array's axis: its first and last integer.

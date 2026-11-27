@@ -1653,16 +1653,20 @@ impl<'a> Cx<'a> {
         let Ty::Struct(a, ts, _) = self.shallow(t) else {
             return;
         };
-        let (Some(Ty::Dom(i)), Some(elem)) = (ts.first().map(|d| self.shallow(d)), ts.get(1))
-        else {
+        let (Some(key), Some(elem)) = (ts.first().map(|d| self.shallow(d)), ts.get(1)) else {
             return;
+        };
+        let (lo, hi) = match key {
+            Ty::Dom(i) => self.domains[i].within,
+            Ty::Range(lo, hi) => (Some(lo), Some(hi)),
+            _ => return,
         };
         let width: u128 = match self.shallow(elem) {
             Ty::Int | Ty::U64 | Ty::Dom(_) => 8,
             Ty::Bool | Ty::Char => 1,
             _ => return,
         };
-        let (Some(lo), Some(hi)) = self.domains[i].within else {
+        let (Some(lo), Some(hi)) = (lo, hi) else {
             return;
         };
         let cells = u128::try_from(hi - lo + 1).unwrap_or(0);
@@ -1838,10 +1842,13 @@ impl<'a> Cx<'a> {
     /// that is never one is E0306 (R04.4.25).
     pub(super) fn cut_ordinal(&mut self, dty: Ty, i: TExpr) -> TExpr {
         let span = i.span;
-        if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
-            let (least, most) = self.domains[*d].within;
+        let within = match &dty {
+            Ty::Dom(d) => Some((self.domains[*d].within, self.domains[*d].name.clone())),
+            Ty::Range(lo, hi) => Some(((Some(*lo), Some(*hi)), self.show(&dty))),
+            _ => None,
+        };
+        if let (Some(((least, most), name)), TK::Int(k)) = (within, &i.kind) {
             if least.is_some_and(|l| *k < l) || most.is_some_and(|m| *k > m.saturating_add(1)) {
-                let name = self.domains[*d].name.clone();
                 self.err(
                     span,
                     Msg::verdict(

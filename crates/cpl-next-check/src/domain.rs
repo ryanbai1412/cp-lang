@@ -310,19 +310,8 @@ impl Cx<'_> {
             TypeKind::Array { index, elem } => {
                 **elem = self.name_ranges(elem, span, out);
                 for ix in index.iter_mut() {
-                    let key = decls::const_axis(ix).map(|(lo, hi)| decls::anon_key(lo, hi));
-                    if let Some(text) = key.filter(|k| self.d.top_doms.contains_key(k)) {
-                        let name = ast::Name {
-                            text,
-                            span: ix.span,
-                        };
-                        *ix = ast::Type {
-                            kind: TypeKind::Named {
-                                name,
-                                args: Vec::new(),
-                            },
-                            span: ix.span,
-                        };
+                    // A constant axis stays a range type: `[0..2]T` is `Array<0..=1, T>`.
+                    if decls::const_axis(ix).is_some() {
                         continue;
                     }
                     let zero = || ast::Expr {
