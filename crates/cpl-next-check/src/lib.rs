@@ -121,7 +121,7 @@ pub enum TK {
     /// The size of a domain type: `D.count`.
     DomLen(Ty),
     /// `D(i)`: an Int becomes a value of the domain, checked.
-    DomFrom(Ty, Box<TExpr>),
+    DomFrom(Ty, Box<TExpr>, CheckKind),
     /// `D.nth(k)`: the position `k` steps into `D`, checked; of a type that is not a domain, `k`.
     DomNth(Ty, Box<TExpr>),
     /// `x in D`: whether the integer `x` is a position of `D`.

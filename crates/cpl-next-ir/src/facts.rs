@@ -322,7 +322,10 @@ impl Pass<'_> {
                     kind, cond, site, ..
                 } => {
                     let goal = self.holds(cond, true);
-                    let removable = matches!(kind, CheckKind::Domain | CheckKind::RangeStore);
+                    let removable = matches!(
+                        kind,
+                        CheckKind::Domain | CheckKind::RangeStore | CheckKind::Key
+                    );
                     if removable && !goal.is_empty() && goal.iter().all(|g| k.proves(g)) {
                         let (kind, site) = (*kind, *site);
                         self.proved.push(Proved {

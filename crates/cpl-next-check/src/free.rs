@@ -63,7 +63,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::Neg(b)
         | TK::ToU64(b)
         | TK::DomOrd(b)
-        | TK::DomFrom(_, b)
+        | TK::DomFrom(_, b, _)
         | TK::DomNth(_, b)
         | TK::DomHas(_, b) => free_vars(b, used, bound),
         TK::Call { recv, args, .. } => {

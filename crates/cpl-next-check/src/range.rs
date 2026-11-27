@@ -291,7 +291,7 @@ impl Cx<'_> {
         let v = self.expr(x, Some(&Ty::Int));
         let v = self.coerce(v, &Ty::Int);
         TExpr {
-            kind: TK::DomFrom(dty.clone(), Box::new(v)),
+            kind: TK::DomFrom(dty.clone(), Box::new(v), CheckKind::Domain),
             ty: dty,
             span,
         }
@@ -563,7 +563,10 @@ impl Cx<'_> {
         let tmp = self.bind("$at", Ty::Int);
         let read = || mk(TK::Var(tmp), Ty::Int);
         let has = mk(TK::DomHas(d.clone(), Box::new(read())), Ty::Bool);
-        let pos = mk(TK::DomFrom(d.clone(), Box::new(read())), d.clone());
+        let pos = mk(
+            TK::DomFrom(d.clone(), Box::new(read()), CheckKind::Domain),
+            d.clone(),
+        );
         let yes = self.some(pos, opt.clone());
         let none = vec![mk(TK::Bool(false), Ty::Bool), mk(TK::Unset, d)];
         let no = mk(TK::Struct(none), opt.clone());

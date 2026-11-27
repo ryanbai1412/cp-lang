@@ -545,7 +545,7 @@ mod tests {
     /// `[0..n]` and `n - i` is in `1..=n`, but past the end of either it stays.
     #[test]
     fn facts_leave_out_only_the_checks_they_prove() {
-        use cpl_next_ir::ir::CheckKind::{Domain, RangeStore};
+        use cpl_next_ir::ir::CheckKind::{Key, RangeStore};
         let head = "let n: 1..=10 = read()\nvar walk: List<1..=n> = []\nvar nxt: [0..n]0..=n = 0\n";
         let at = |body: &str| proved(&format!("{head}{body}\n"));
         assert_eq!(
@@ -566,9 +566,9 @@ mod tests {
             [
                 (RangeStore, 3),
                 (RangeStore, 3),
-                (Domain, 4),
-                (Domain, 4),
-                (Domain, 4),
+                (Key, 4),
+                (Key, 4),
+                (Key, 4),
                 (RangeStore, 4),
                 (RangeStore, 4)
             ]
@@ -578,8 +578,8 @@ mod tests {
             [
                 (RangeStore, 3),
                 (RangeStore, 3),
-                (Domain, 4),
-                (Domain, 4),
+                (Key, 4),
+                (Key, 4),
                 (RangeStore, 4),
                 (RangeStore, 4)
             ]

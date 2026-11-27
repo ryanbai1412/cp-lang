@@ -104,35 +104,11 @@ impl Cx<'_> {
         }
     }
     pub(super) fn index_arg(&mut self, base: &Ty, i: TExpr) -> TExpr {
-        if let Some(k) = self.key_of(base).filter(|_| self.shallow(&i.ty) == Ty::Int) {
-            let dty = self.shallow(&k);
-            if matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
-                let span = i.span;
-                // A named domain's positions are never raw `Int`s; a literal converts into an
-                // array (R02.8.1, R04.8.8), never into a view of one (R07.4.5).
-                if let Ty::Dom(d) = &dty {
-                    let named = !self.domains[*d].name.starts_with('$');
-                    let array = matches!(self.shallow(base), Ty::Struct(a, ..) if Some(a) == self.array_id());
-                    let literal = matches!(i.kind, TK::Int(_) | TK::Neg(_));
-                    if named && !(array && literal) {
-                        let name = self.domains[*d].name.clone();
-                        let what = if array {
-                            format!("a `[{name}]` array")
-                        } else {
-                            format!("a view keyed by `{name}`")
-                        };
-                        self.err(
-                            span,
-                            Msg::verdict(
-                                cpl_diag::codes::WRONG_DOMAIN,
-                                format!("an `Int` indexes {what}: write `{name}(i)`"),
-                            ),
-                        );
-                    }
-                }
-                return self.position(dty, i);
-            }
-        }
+        let array = matches!(self.shallow(base), Ty::Struct(a, ..) if Some(a) == self.array_id());
+        let i = match self.key_of(base) {
+            Some(k) => self.fit_key(&k, array, i),
+            None => i,
+        };
         // A position of one domain never indexes an array over another (R04.3.1).
         if let Some(k) = self.key_of(base) {
             let (k, t) = (self.zonk(&k), self.zonk(&i.ty));
@@ -165,6 +141,60 @@ impl Cx<'_> {
             }
         }
         i
+    }
+    /// `i` fitted to the key `k`: an `Int` becomes a position of a domain key, by the rules
+    /// below, and a tuple written in place, as in `g[1, j]`, is fitted part by part to the
+    /// product's factors (R04.2.10).
+    fn fit_key(&mut self, k: &Ty, array: bool, mut i: TExpr) -> TExpr {
+        let dty = self.shallow(k);
+        if let (Ty::Struct(t, fs, _), Ty::Struct(u, _, sets)) = (&dty, self.shallow(&i.ty)) {
+            let tuple = u == *t && self.d.tuples.get(&fs.len()) == Some(t);
+            if let TK::Struct(ps) = &mut i.kind {
+                if tuple && ps.len() == fs.len() {
+                    let ps: Vec<TExpr> = (std::mem::take(ps).into_iter().zip(fs))
+                        .map(|(p, f)| self.fit_key(f, array, p))
+                        .collect();
+                    let ty = Ty::Struct(u, ps.iter().map(|p| p.ty.clone()).collect(), sets);
+                    return TExpr {
+                        kind: TK::Struct(ps),
+                        ty,
+                        span: i.span,
+                    };
+                }
+            }
+        }
+        if self.shallow(&i.ty) != Ty::Int || !matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
+            return i;
+        }
+        let span = i.span;
+        let literal = matches!(i.kind, TK::Int(_) | TK::Neg(_));
+        // A literal into a named domain is a position written as a number: outside it, that
+        // is the domain's trap (R04.4.25); any other `Int` is a key out of range (R0101).
+        let mut kind = CheckKind::Key;
+        // A named domain's positions are never raw `Int`s; a literal converts into an
+        // array (R02.8.1, R04.8.8), never into a view of one (R07.4.5).
+        if let Ty::Dom(d) = &dty {
+            let named = !self.domains[*d].name.starts_with('$');
+            if named && literal {
+                kind = CheckKind::Domain;
+            }
+            if named && !(array && literal) {
+                let name = self.domains[*d].name.clone();
+                let what = if array {
+                    format!("a `[{name}]` array")
+                } else {
+                    format!("a view keyed by `{name}`")
+                };
+                self.err(
+                    span,
+                    Msg::verdict(
+                        cpl_diag::codes::WRONG_DOMAIN,
+                        format!("an `Int` indexes {what}: write `{name}(i)`"),
+                    ),
+                );
+            }
+        }
+        self.position(dty, i, kind)
     }
     /// The `@index` fn `s[i]` calls: when `i` is a `Range` and `s` is not keyed by ranges (R07.4.17).
     pub(super) fn index_fn(&mut self, s: &Ty, i: &Ty) -> Option<FnId> {
@@ -523,8 +553,20 @@ impl Cx<'_> {
             ExprKind::Index { .. } => self.hoist_indices(unparen(base), out),
             _ => (**base).clone(),
         };
+        // A tuple written in place is fitted to a named array's key before it is held (R04.2.10).
+        let keyed = match &unparen(&base).kind {
+            ExprKind::Name(n) => self.lookup(n).map(|(_, t)| t),
+            _ => None,
+        };
         let indices = (indices.iter())
-            .map(|i| self.hoist(i, Some(&Ty::Int), "$idx", out))
+            .map(|i| match (&keyed, &unparen(i).kind) {
+                (Some(b), ExprKind::Tuple(_)) => {
+                    let v = self.expr(i, Some(&Ty::Int));
+                    let v = self.index_arg(b, v);
+                    self.hold(v, "$idx", i.span, out)
+                }
+                _ => self.hoist(i, Some(&Ty::Int), "$idx", out),
+            })
             .collect();
         ast::Expr {
             kind: ExprKind::Index {
@@ -554,12 +596,16 @@ impl Cx<'_> {
             return e.clone();
         }
         let v = self.expr(e, want);
+        self.hold(v, what, e.span, out)
+    }
+    /// `v` held in a new temporary, as a name for it.
+    fn hold(&mut self, v: TExpr, what: &str, span: Span, out: &mut Vec<TStmt>) -> ast::Expr {
         let name = format!("{what}{}", out.len());
         let t = self.bind(&name, v.ty.clone());
         out.push(TStmt::Let(t, v));
         ast::Expr {
             kind: ExprKind::Name(name),
-            span: e.span,
+            span,
         }
     }
     /// `s[lo..]`, `s[..hi]`, `s[..=hi]` and `s[..]`: the `@index` fn that takes the two ends, each

@@ -1596,6 +1596,16 @@ impl<'a> Cx<'a> {
         } else {
             CheckKind::RangeStore
         };
+        self.checked_as(v, (lo, hi), span, kind)
+    }
+    /// `v`, trapping as `kind` unless it lies within `lo..=hi`.
+    pub(super) fn checked_as(
+        &mut self,
+        v: TExpr,
+        (lo, hi): (Option<TExpr>, Option<TExpr>),
+        span: Span,
+        kind: CheckKind,
+    ) -> TExpr {
         self.scopes.push(HashMap::new());
         let tmp = self.bind("$ranged", Ty::Int);
         let var = TExpr {
@@ -1695,7 +1705,7 @@ impl<'a> Cx<'a> {
         }
     }
     /// `i` as a position of the domain `dty`; a literal that is never one is E0306 (R04.4.25).
-    pub(super) fn position(&mut self, dty: Ty, i: TExpr) -> TExpr {
+    pub(super) fn position(&mut self, dty: Ty, i: TExpr, kind: CheckKind) -> TExpr {
         let span = i.span;
         if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
             let (least, most) = self.domains[*d].within;
@@ -1711,7 +1721,7 @@ impl<'a> Cx<'a> {
             }
         }
         TExpr {
-            kind: TK::DomFrom(dty.clone(), Box::new(i)),
+            kind: TK::DomFrom(dty.clone(), Box::new(i), kind),
             ty: dty,
             span,
         }

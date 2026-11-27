@@ -985,7 +985,8 @@ impl Lw<'_> {
                 let sum = int(EK::Intr(Intr::Add, vec![Arg::Value(int(v.kind)), lo], 0));
                 self.spill(sum, out)
             }
-            TK::DomFrom(t, x) => {
+            TK::DomFrom(t, x, kind) => {
+                let kind = *kind;
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
                 let int = |kind| Expr {
@@ -1000,9 +1001,13 @@ impl Lw<'_> {
                 };
                 let check = |cond: Expr<Ty>, out: &mut Vec<Stmt<Ty>>| {
                     out.push(Stmt::Check {
-                        kind: CheckKind::Domain,
+                        kind,
                         cond,
-                        msg: "value outside the domain".into(),
+                        msg: match kind {
+                            CheckKind::Key => "key outside the array",
+                            _ => "value outside the domain",
+                        }
+                        .into(),
                         site,
                     })
                 };

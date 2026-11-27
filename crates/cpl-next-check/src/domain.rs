@@ -197,12 +197,12 @@ impl Cx<'_> {
         match &mut t.kind {
             TypeKind::Array { index, elem } => {
                 **elem = self.name_ranges(elem, span, out);
-                if index.len() == 1 {
+                for ix in index.iter_mut() {
                     let zero = || ast::Expr {
                         kind: ExprKind::Int(0),
                         span,
                     };
-                    let ends = match &index[0].kind {
+                    let ends = match &ix.kind {
                         TypeKind::Range {
                             lo: Some(lo),
                             hi: Some(hi),
@@ -237,15 +237,15 @@ impl Cx<'_> {
                         let (lo, end, within) = self.domain_ends(&lo, &hi, inclusive);
                         let name = format!("$range{}", self.domains.len());
                         self.declare_domain(&name, lo, end, within, span, out);
-                        index[0] = ast::Type {
+                        *ix = ast::Type {
                             kind: TypeKind::Named {
                                 name: ast::Name {
                                     text: name,
-                                    span: index[0].span,
+                                    span: ix.span,
                                 },
                                 args: Vec::new(),
                             },
-                            span: index[0].span,
+                            span: ix.span,
                         };
                     }
                 }

@@ -1161,7 +1161,7 @@ impl Cx<'_> {
             | TK::CodeOf(x)
             | TK::Neg(x)
             | TK::ToU64(x)
-            | TK::DomFrom(_, x)
+            | TK::DomFrom(_, x, _)
             | TK::DomNth(_, x)
             | TK::DomHas(_, x)
             | TK::DomOrd(x)

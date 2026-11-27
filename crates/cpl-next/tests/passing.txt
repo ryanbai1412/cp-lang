@@ -1400,6 +1400,7 @@ next/k24_ret_closure_var_copy.cp
 next/m01_case_return_in_loops.cp
 next/m02_until_eof_empty.cp
 next/n_alias_01_alias_builds_its_type.cp
+next/n_array_range_axes.cp
 next/n_assoc_02_bound_names_a_defaulted_assoc.cp
 next/n_assoc_type.cp
 next/n_assoc_type_bound_unmet.cp

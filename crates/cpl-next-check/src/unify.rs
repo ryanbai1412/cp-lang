@@ -576,7 +576,7 @@ impl<'a> Cx<'a> {
         match (&have, &want_s) {
             // An integer literal is that position of an integer domain (R04.2.18).
             (Ty::Int, Ty::Dom(_)) if matches!(e.kind, TK::Int(_) | TK::Neg(_)) => {
-                self.position(want_s.clone(), e)
+                self.position(want_s.clone(), e, CheckKind::Domain)
             }
             // An integer literal in a `U64` slot is that `U64`: its bits (R02.1).
             (Ty::Int, Ty::U64) if matches!(e.kind, TK::Int(_)) => TExpr {
