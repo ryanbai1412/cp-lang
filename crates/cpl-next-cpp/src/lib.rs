@@ -294,13 +294,12 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
     for (i, t) in p.globals.iter().enumerate() {
         put_line!(s, "static {} g{i}{{}};", e.names[t]);
     }
-    let by_ref: Vec<Vec<bool>> = funcs.iter().map(const_ref_params).collect();
     for (i, f) in funcs.iter().enumerate() {
-        put_line!(s, "{};", e.sig(i, f, &by_ref[i]));
+        put_line!(s, "{};", e.sig(i, f));
     }
     for (i, f) in funcs.iter().enumerate() {
         put_line!(s, "// {}", f.name);
-        put_line!(s, "{} {{", e.sig(i, f, &by_ref[i]));
+        put_line!(s, "{} {{", e.sig(i, f));
         for (l, t) in f.locals.iter().enumerate() {
             if !f.params.iter().any(|(p, _)| *p == l) {
                 put_line!(s, "    {} l{l}{{}};", e.names[t]);
@@ -335,87 +334,6 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         "int main() {{ pthread_attr_t a; pthread_t t; pthread_attr_init(&a); pthread_attr_setstacksize(&a, (size_t)1 << 30);\n    if (pthread_create(&t, &a, cpl_main, nullptr)) {{ cpl_main(nullptr); return 0; }}\n    pthread_join(t, nullptr); return 0; }}"
     );
     s
-}
-
-/// A parameter that is never written is passed by `const&`: passing a list does not copy it.
-fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
-    fn root(p: &Place) -> Option<usize> {
-        match p {
-            Place::Local(l) => Some(*l),
-            Place::Global(_) => None,
-            Place::Field(b, _)
-            | Place::Variant(b, _)
-            | Place::Deref(b)
-            | Place::Through(b)
-            | Place::Slot(b, _) => root(b),
-        }
-    }
-    fn expr(e: &Expr<CTy>, w: &mut Vec<usize>) {
-        match &e.kind {
-            EK::Intr(_, args, _) | EK::Call(_, args, _) => {
-                for a in args {
-                    match a {
-                        Arg::Lend(p) => w.extend(root(p)),
-                        Arg::View(_) => {}
-                        Arg::Value(v) => expr(v, w),
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    fn block(b: &[Stmt<CTy>], w: &mut Vec<usize>) {
-        for s in b {
-            match s {
-                Stmt::Let(l, e) => {
-                    w.push(*l);
-                    expr(e, w);
-                }
-                Stmt::Assign(p, e) => {
-                    w.extend(root(p));
-                    expr(e, w);
-                }
-                Stmt::Expr(e) => expr(e, w),
-                Stmt::If(_, a, b2) | Stmt::Loop(a, b2, _) => {
-                    block(a, w);
-                    block(b2, w);
-                }
-                Stmt::Switch(_, arms) => arms.iter().for_each(|a| block(a, w)),
-                Stmt::LendOut(p) => w.extend(root(p)),
-                Stmt::Region {
-                    args, var, body, ..
-                } => {
-                    w.push(*var);
-                    for a in args {
-                        if let Arg::Lend(p) = a {
-                            w.extend(root(p));
-                        }
-                    }
-                    block(body, w);
-                }
-                _ => {}
-            }
-        }
-    }
-    let mut written = Vec::new();
-    block(&f.body, &mut written);
-    f.params
-        .iter()
-        .map(|(l, lent)| {
-            !lent
-                && !written.contains(l)
-                && !matches!(
-                    f.locals[*l],
-                    CTy::Int
-                        | CTy::Bool
-                        | CTy::Char
-                        | CTy::U64
-                        | CTy::F64
-                        | CTy::Unit
-                        | CTy::Dom(_)
-                )
-        })
-        .collect()
 }
 
 impl Emit<'_> {
@@ -552,20 +470,16 @@ impl Emit<'_> {
         self.names.insert(t.clone(), n.clone());
         n
     }
-    /// Spec R1: a value with no heap part is copied when passed, so the callee never sees it change.
-    fn plain(&self, t: &CTy, depth: usize) -> bool {
-        cpl_next_ir::prog::plain(&|s| self.p.parts(s), t, depth)
-    }
-    fn sig(&self, i: usize, f: &Func<CTy>, by_ref: &[bool]) -> String {
+    fn sig(&self, i: usize, f: &Func<CTy>) -> String {
         let ps: Vec<String> = f
             .params
             .iter()
-            .zip(by_ref)
-            .map(|((l, lent), cref)| {
+            .enumerate()
+            .map(|(k, (l, lent))| {
                 let t = &self.names[&f.locals[*l]];
                 if *lent {
                     format!("{t}& l{l}")
-                } else if *cref && !self.plain(&f.locals[*l], 0) {
+                } else if f.views.get(k).copied().unwrap_or(false) {
                     format!("{t} const& l{l}")
                 } else {
                     format!("{t} l{l}")

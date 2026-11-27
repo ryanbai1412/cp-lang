@@ -397,11 +397,16 @@ pub struct Func<T> {
     pub params: Vec<(usize, bool)>,
     /// For a lambda: how many leading params are captures.
     pub n_captures: usize,
+    /// For a lambda: the fn it is written in, `None` at top level.
+    pub maker: Option<FnId>,
     pub locals: Vec<T>,
     /// What a message calls each local: its name in the source, empty for a temp.
     pub names: Vec<String>,
     /// Which locals are `var`s: a `var` made from a place is its own copy (R05.3.1).
     pub vars: Vec<bool>,
+    /// Per param, set by ownership: nothing writes it and it has a heap part, so the callee
+    /// reads it where the caller has it instead of taking a copy (R1).
+    pub views: Vec<bool>,
     pub body: Vec<Stmt<T>>,
     pub ret: T,
     /// Set for a generator (`false`) or a lender (`true`): what it hands to the caller's code.

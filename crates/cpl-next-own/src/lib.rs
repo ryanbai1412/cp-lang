@@ -5,7 +5,7 @@
 //! with the field path kept, so `p.a` and `p.b` do not overlap (R05.8.1). A call through a
 //! function value is the join of the closures its set can hold; a set that is a parameter
 //! of the fn stays symbolic in the summary and is filled in at each call.
-use cpl_next_ir::ir::{Arg, Expr, Place, Site, Stmt, EK};
+use cpl_next_ir::ir::{Arg, Expr, Func, Place, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
@@ -62,7 +62,7 @@ impl Fx {
 
 /// Settles each place passed to a call (`EK::Pass`) in the linked program: a copy taken in its
 /// turn where ownership found the call also writes it (R4), else a view from the call's start
-/// (R11) or a read.
+/// (R11) or a read. Then marks the params each instance reads in place (`Func::views`).
 pub fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
     for (i, f) in p.insts.iter_mut().enumerate() {
         Settle {
@@ -72,6 +72,78 @@ pub fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
         }
         .block(&mut f.body);
     }
+    let views: Vec<Vec<bool>> = p.insts.iter().map(|f| views(p, f)).collect();
+    for (f, v) in p.insts.iter_mut().zip(views) {
+        f.views = v;
+    }
+}
+/// Which params the callee reads where the caller has them: nothing writes one and it has a
+/// heap part, so passing it takes no copy (R1).
+fn views(p: &Program, f: &Func<CTy>) -> Vec<bool> {
+    fn root(p: &Place) -> Option<usize> {
+        match p {
+            Place::Local(l) => Some(*l),
+            Place::Global(_) => None,
+            Place::Field(b, _)
+            | Place::Variant(b, _)
+            | Place::Deref(b)
+            | Place::Through(b)
+            | Place::Slot(b, _) => root(b),
+        }
+    }
+    fn expr(e: &Expr<CTy>, w: &mut Vec<usize>) {
+        match &e.kind {
+            EK::Intr(_, args, _) | EK::Call(_, args, _) => {
+                for a in args {
+                    match a {
+                        Arg::Lend(p) => w.extend(root(p)),
+                        Arg::View(_) => {}
+                        Arg::Value(v) => expr(v, w),
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    fn block(b: &[Stmt<CTy>], w: &mut Vec<usize>) {
+        for s in b {
+            match s {
+                Stmt::Let(l, e) => {
+                    w.push(*l);
+                    expr(e, w);
+                }
+                Stmt::Assign(p, e) => {
+                    w.extend(root(p));
+                    expr(e, w);
+                }
+                Stmt::Expr(e) => expr(e, w),
+                Stmt::If(_, a, b2) | Stmt::Loop(a, b2, _) => {
+                    block(a, w);
+                    block(b2, w);
+                }
+                Stmt::Switch(_, arms) => arms.iter().for_each(|a| block(a, w)),
+                Stmt::LendOut(p) => w.extend(root(p)),
+                Stmt::Region {
+                    args, var, body, ..
+                } => {
+                    w.push(*var);
+                    for a in args {
+                        if let Arg::Lend(p) = a {
+                            w.extend(root(p));
+                        }
+                    }
+                    block(body, w);
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut written = Vec::new();
+    block(&f.body, &mut written);
+    let plain = |t: &CTy| cpl_next_ir::prog::plain(&|s| p.parts(s), t, 0);
+    (f.params.iter())
+        .map(|(l, lent)| !lent && !written.contains(l) && !plain(&f.locals[*l]))
+        .collect()
 }
 struct Settle<'a, C> {
     locals: &'a mut Vec<CTy>,

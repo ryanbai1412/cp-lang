@@ -145,7 +145,10 @@ enum Tier { Proved, Checked, Promised, Trusted }
   there, so each one is checked once. A `var` made from an element
   read is its own copy (R05.3.1). The same walk decides which `Pass`
   places are copies, keyed by instance and node, and `place_copies`
-  settles them; own reads nothing of the typed tree.
+  settles them; own reads nothing of the typed tree. It also marks the
+  params each instance reads where the caller has them (`Func::views`,
+  printed as `const&`), and says a closure that holds a `var` of its
+  maker escapes (`Func::maker` names the maker).
 - **`Witness(type, field)`** replaces "the size of this domain".
 - **`lend_begin` / `lend_end`** for a lend that lasts several
   statements. Regions stay for generators and lenders.

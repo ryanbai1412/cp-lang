@@ -501,6 +501,21 @@ mod tests {
         assert_eq!(called, seen(&format!("{g}print(g[R(1), C(2)])\n")));
     }
 
+    /// Ownership marks a heap param nothing writes as read where the caller has it; a plain
+    /// one is copied, and one the body writes is its own.
+    #[test]
+    fn a_param_nothing_writes_is_a_view() {
+        let src = "fn pick(xs: List<Int>, n: Int, ys: List<Int>) -> Int:\n    var zs = ys\n    zs.push(n)\n    xs[0] + zs.len\n\nprint(pick([1, 2], 3, [4]))\n";
+        let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+        let f = c
+            .prog
+            .insts
+            .iter()
+            .find(|f| f.name == "pick")
+            .expect("pick");
+        assert_eq!(f.views, [true, false, true]);
+    }
+
     /// A fn's sites are its own: one written above it leaves its sites and their places as
     /// they were.
     #[test]

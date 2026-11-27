@@ -114,6 +114,8 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             line: 0,
             sites,
             lines,
+            views: Vec::new(),
+            maker: None,
             shown: "top level".into(),
             fast: None,
         },
@@ -193,6 +195,8 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 line: lw.src.program_line(&fd.span),
                 sites,
                 lines,
+                views: Vec::new(),
+                maker: None,
                 shown: shown_name(d, fd),
                 fast: fd.fast.as_deref().map(|n| {
                     Intr::named(n).unwrap_or_else(|| {
@@ -245,6 +249,8 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 line: lw.src.program_line(&fd.span),
                 sites,
                 lines,
+                views: Vec::new(),
+                maker: None,
                 shown: shown_name(d, fd),
             },
         );
@@ -1347,6 +1353,8 @@ impl Lw<'_> {
                     line: 0,
                     sites,
                     lines,
+                    views: Vec::new(),
+                    maker: None,
                     shown: "case".into(),
                     fast: None,
                 });
@@ -1534,6 +1542,8 @@ impl Lw<'_> {
             line: self.line(body.span),
             sites,
             lines,
+            views: Vec::new(),
+            maker: info.owner,
             shown: "lambda".into(),
             fast: None,
         });
