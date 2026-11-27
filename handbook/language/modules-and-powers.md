@@ -148,6 +148,16 @@ print(b.v, b.at)
 identity the element type supplies; anything else is `Monoid(id, op)`.
 The same tree serves both: the operation is a value, not a new type.
 
+Some syntax does need a declaration: `?T` needs a type, `print` a trait and
+`for` a way to walk. Those needs are a small fixed set of **language
+roles** (option, show, print, write, iteration, todo, prelude, and the
+operator and literal markers), listed in `spec/core/11-modules-prelude.md` §11.6.
+std fills each with an ordinary declaration marked `@role(name)`, all in
+`std/prelude.cp`. Any library may write the marker, and a program has one
+filler per role. The compiler finds a role only through that table, never
+by a declaration's name, so a program's own `Optional` or `Show` is just a
+name.
+
 ### Powers
 
 A **power** is a mechanism that lets library code feel built in. Each one

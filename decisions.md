@@ -9487,4 +9487,9 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Why.** std writes it throughout (std.bag, std.dsu, std.math, std.poly, std.graph) and the old pipeline accepted it; cpl-next read the parts as `_0`, `_1` and reported E0203 beside unrelated refusals. Records are anonymous structs with ordered fields (R02.5.2), and a tuple value already fits a record of the same field types (decision 4132's positional-to-named fit), so the pattern follows the value.
 - **Reverse.** Restore the fresh-domain condition in `let_parts` and the tuple-only arm in `pattern.rs`, and rewrite std's positional destructurings as record patterns.
 
-## 651. (reserved, unknown)
+## 651. Std's remaining powers are language roles in one table (design, 2026-11-27)
+
+- **Call.** The syntax that needs a declaration (`?T` and its patterns, `Show`, `print`/`write`, `for`/`each`/`iter`, `todo()`, the prelude, and the R06.4.12 operator and literal markers) is a fixed set of roles in spec §11.6. A library fills a role with an ordinary `@role(name)` declaration, and std fills them all in `std/prelude.cp`. A program has one filler per role (E0202 for a second). The compiler reads a role ID from that table and never compares a declaration's name. This replaces the separate `@prelude` marker with `@role(prelude)`.
+- **Why.** The 11 AM blind audit found std's privilege had moved from type names to decorator names and name dispatch (`print`, `each`, `iter`, `Some`). One public table makes every remaining power something any library can hold, and makes it countable (`next_name_compares`).
+- **Reverse.** Drop §11.6 and restore per-name dispatch; std keeps the names it fills today.
+

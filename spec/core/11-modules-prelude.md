@@ -116,3 +116,45 @@ built-in list. Rules:
 the grader entry points), the library code it reaches, and the stamp.
 It drops tests, brutes, generators, checkers, interactors, samples,
 `debug(...)` calls and `@local` items.
+
+## 11.6 Language roles
+
+Some syntax needs a declaration to mean anything: `?T` needs a type and a
+`for` needs a way to walk. Each such need is a **role**. The language fixes
+the set of roles below. A library fills each role with an ordinary
+declaration marked `@role(name)`, and std fills them all, in one place, in
+`std/prelude.cp`. The compiler finds a role's declaration only through this
+table. A declaration's name never gives it a role, so an `Optional`, `Show`
+or `print` a program declares shadows that name and leaves the role alone.
+
+| Role | std's filler | The syntax that uses it |
+|---|---|---|
+| `option` | `Optional<T>`, with `Some` and `None` | `?T`, `x?`, `a ?? b`, the patterns `Some(p)` and `None`, and `x == None` |
+| `show` | `Show` | how `print`, `write` and `"{x}"` turn each value into text |
+| `print` | `print` | `print(...)`: shows its values and ends the line, reading `io`'s `sep` and `precision` |
+| `write` | `write` | `write(...)`: the same without the line end |
+| `iteration` | `Seq`, with `iter` and `each` | `for x in s`, `s.each(f)` and `s.iter()` |
+| `todo` | `todo` | `todo()`: an unfinished body that type-checks and traps |
+| `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |
+
+The operator and literal markers of R06.4.12 (`@operator("op")`,
+`@literal("[]")` and the rest) are the grammar's other roles. The
+decorators the language itself defines, such as `@operator`,
+`@on_unimplemented` and `@!multitest`, are part of this spec, not of any
+library, and mean the same in every module.
+
+Rules:
+
+- The roles are exactly those above and in R06.4.12. A role is filled only
+  by its marker: declaring a type, trait or fn with a filler's name gives
+  it no role and changes no syntax. (R11.6.1)
+- `@role(name)` may be written in any module, library or program. A second
+  filler of one role in one program is E0202, naming both. An unknown role
+  name is E0201.
+- A filler has the shape its role needs: `option` is a generic type with a
+  one-part constructor `Some` and an empty one `None`, `show` a trait with
+  one method, `iteration` a trait whose `iter` yields its elements, `print`,
+  `write` and `todo` fns, and `prelude` a module (`@role(prelude)` at its top). A filler
+  of the wrong shape is E0606 at the marker.
+- Syntax whose role has no filler in the program is E0201, naming the role
+  and the marker that fills it.
