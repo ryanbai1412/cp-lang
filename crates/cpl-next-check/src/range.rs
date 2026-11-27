@@ -163,21 +163,46 @@ impl Cx<'_> {
             Ty::Struct(a, ts, sets) => (a, ts[0].clone(), sets),
             _ => return self.refuse(span, Unbuilt::TableOverIndex),
         };
-        let name = match &dty {
-            Ty::Dom(i) if !self.domains[*i].name.is_empty() => self.domains[*i].name.clone(),
+        let named = |text: String| ast::Expr {
+            kind: ExprKind::Name(text),
+            span: dom.span,
+        };
+        let walk = match &dty {
+            // An anonymous range's cells take any `Int` (R04.3.4), so its keys walk as `Int`s.
+            Ty::Dom(i) if self.domains[*i].name.starts_with('$') => {
+                let d = &self.domains[*i].name;
+                let lo = named(format!("{d}$lo"));
+                let hi = ExprKind::Binary {
+                    op: ast::BinOp::Add,
+                    op_span: dom.span,
+                    lhs: Box::new(lo.clone()),
+                    rhs: Box::new(named(format!("{d}$len"))),
+                };
+                let hi = ast::Expr {
+                    kind: hi,
+                    span: dom.span,
+                };
+                let ends = ExprKind::Range {
+                    lo: Some(Box::new(lo)),
+                    hi: Some(Box::new(hi)),
+                    inclusive: false,
+                    step: None,
+                };
+                ast::Expr {
+                    kind: ends,
+                    span: dom.span,
+                }
+            }
+            Ty::Dom(i) if !self.domains[*i].name.is_empty() => named(self.domains[*i].name.clone()),
             // A type that implements `Domain` (`[V.cuts] c => ..`), or a parameter bound by it,
             // walks its positions too.
             Ty::Struct(..) | Ty::Param(_) if self.is_domain(&dty) || self.domain_param(&dty) => {
                 let all = self.domain_value(dty.clone(), dom.span);
                 let tmp = self.bind("$walk", all.ty.clone());
                 pre.push(TStmt::Let(tmp, all));
-                "$walk".to_string()
+                named("$walk".to_string())
             }
             _ => return self.refuse(span, Unbuilt::TableOverIndex),
-        };
-        let walk = ast::Expr {
-            kind: ExprKind::Name(name),
-            span: dom.span,
         };
         let comp = ast::Expr {
             kind: ExprKind::Comprehension {

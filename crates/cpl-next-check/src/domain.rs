@@ -14,6 +14,14 @@ impl Cx<'_> {
         // An end keeps the range type it was written with.
         let lo = self.expr_as_typed(lo, None);
         let hi = self.expr_as_typed(hi, None);
+        self.typed_ends(lo, hi, inclusive)
+    }
+    fn typed_ends(
+        &mut self,
+        lo: TExpr,
+        hi: TExpr,
+        inclusive: bool,
+    ) -> (TExpr, TExpr, (Option<i64>, Option<i64>)) {
         let ends = |e: &TExpr, ty: Ty| match (&e.kind, ty) {
             (TK::Int(k), _) => (Some(*k), Some(*k)),
             (_, Ty::Range(a, b)) => (Some(a), Some(b)),
@@ -186,6 +194,46 @@ impl Cx<'_> {
             span: e.span,
         }
     }
+    fn int_range(&mut self, t: &Ty) -> bool {
+        self.is_range(t)
+            && matches!(self.shallow(t), Ty::Struct(_, ts, _) if self.shallow(&ts[0]) == Ty::Int)
+    }
+    /// `[r]T` for a range `r` of `Int`s covers just `r`'s keys (R04b.1.5): the ends of its domain
+    /// are `r`'s, with `r` read once, in `out`.
+    fn key_run(&mut self, r: TExpr, out: &mut Vec<TStmt>) -> (TExpr, TExpr) {
+        let span = r.span;
+        let name = format!("$keys{}", self.domains.len());
+        let v = self.bind(&name, r.ty.clone());
+        out.push(TStmt::Let(v, r));
+        let end = |cx: &mut Self, which: &str| {
+            let cut = ast::Expr {
+                kind: ExprKind::Field {
+                    base: Box::new(ast::Expr {
+                        kind: ExprKind::Name(name.clone()),
+                        span,
+                    }),
+                    name: ast::Name {
+                        text: which.to_string(),
+                        span,
+                    },
+                },
+                span,
+            };
+            let int = ExprKind::Call {
+                callee: Box::new(ast::Expr {
+                    kind: ExprKind::Name("Int".to_string()),
+                    span,
+                }),
+                args: vec![ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value: cut,
+                }],
+            };
+            cx.expr(&ast::Expr { kind: int, span }, Some(&Ty::Int))
+        };
+        (end(self, "start"), end(self, "end"))
+    }
     /// `[lo..hi]T` and `[n]T` index by a range with no name: each gets a domain of its own, declared in `out`.
     pub(super) fn name_ranges(
         &mut self,
@@ -234,7 +282,13 @@ impl Cx<'_> {
                         _ => None,
                     };
                     if let Some((lo, hi, inclusive)) = ends {
-                        let (lo, end, within) = self.domain_ends(&lo, &hi, inclusive);
+                        let (lo, hi) =
+                            (self.expr_as_typed(&lo, None), self.expr_as_typed(&hi, None));
+                        let (lo, hi) = match (&lo.kind, inclusive) {
+                            (TK::Int(0), false) if self.int_range(&hi.ty) => self.key_run(hi, out),
+                            _ => (lo, hi),
+                        };
+                        let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
                         let name = format!("$range{}", self.domains.len());
                         self.declare_domain(&name, lo, end, within, span, out);
                         *ix = ast::Type {

@@ -157,7 +157,6 @@ core-04/spec-block-empty-domain-first.cp	wrong-reject	check: program:7:24: E0302
 core-04/spec-block-split-by-search.cp	wrong-reject	check: program:8:16: E0302: expected `Str`, found `Slice<Str>`
 core-04/struct-domain-from-fields-is-per-value.cp	wrong-reject	decls: E0204: unknown type `Idx`
 core-04/struct-domains-of-two-values-dont-mix.cp	wrong-error	wanted E0301 on line 9, got: decls: E0204: unknown type `Idx`
-core-04/table-over-view-keys-keeps-keys.cp	wrong-reject	check: program:5:10: E0302: expected `Int`, found `Range<Int>`
 core-04/unnamed-value-sizes-its-own-domain.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-04/value-domain-has-domain-members.cp	wrong-reject	check: program:7:7: E0203: `Wrap` has no member `Idx`
 core-04/z-function-of-slice-keyed-like-input-traps.cp	wrong-reject	check: std.strings:386:5: E0203: `List<Int>` has no member `rekey`
@@ -179,8 +178,6 @@ core-05/exercise-33-lends-result-loop-writes-source.cp	wrong-error	wanted E0602 
 core-05/exercise-35-lent-optional-kept.cp	no-cxx	g++ failed on 3ead789ba31c714d.cpp: | 3ead789ba31c714d.cpp: In lambda function: | 3ead789ba31c714d.cpp:491:29: error: could not convert ‘l22’ from ‘S11’ to ‘cpl_raw<long int>’ |   491 |             g16 = S13{true, l22};
 core-05/file-body-var-holds-lent.cp	wrong-reject	check: program:9:16: E0302: expected `Str`, found `Slice<Str>`
 core-05/if-let-of-a-fresh-optional-moves-its-payload.cp	wrong-reject	own: program:4:31: E0603: this returns a value that borrows `got`: `got` is gone when the fn returns
-core-05/int-element-outlives-a-write-to-its-place.cp	wrong-reject	check: program:8:7: E0302: expected `Int`, found `$range1`
-core-05/int-of-a-list-of-lists-is-not-lent.cp	wrong-reject	check: program:8:48: E0302: expected `Int`, found `$range0`
 core-05/lends-fn-returns-view.cp	wrong-reject	check: program:4:47: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-05/lends-mut-place.cp	wrong-reject	check: program:3:47: E0302: expected `()`, found `Int`
 core-05/lends-rest-of-block-returns.cp	wrong-reject	check: program:4:47: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
@@ -302,7 +299,6 @@ core-07/split-keeps-empty-pieces.cp	wrong-reject	check: std.seq:3913:23: E0302: 
 core-07/step-on-list.cp	wrong-reject	check: std.seq:2103:37: E0606: `S` does not implement `Indexed`
 core-07/suffix-and-all-but-one-folds-are-scans.cp	wrong-reject	check: program:7:7: E0606: `D` does not implement `Sub`
 core-07/sum-prod-identity.cp	wrong-reject	check: std.seq:33:15: E0606: `T` does not implement `Domain`
-core-07/table-over-keys.cp	wrong-reject	check: program:5:9: E0302: expected `Int`, found `Range<Int>`
 core-07/take-drop-clamped.cp	split	C++: exit Some(1):  ev set BAG_B 32
 core-07/take-on-a-draining-generator-leaves-the-rest.cp	wrong-reject	check: program:7:10: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/take-on-generator.cp	wrong-reject	check: program:5:7: E0606: `Gen<Int>` does not implement `Indexed`

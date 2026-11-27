@@ -512,6 +512,7 @@ core-04/slice-relative-index-by-int-is-wrong-domain.cp
 core-04/static-method-binds-domain-from-list.cp
 core-04/stored-cut-range-not-piece.cp
 core-04/table-one-cell-parameter.cp
+core-04/table-over-view-keys-keeps-keys.cp
 core-04/three-axis-table-one-name.cp
 core-04/three-d-str-cell-append-and-last-dim-trap.cp
 core-04/trap-in-a-small-fn-names-its-frame.cp
@@ -591,6 +592,8 @@ core-05/heap-row-lend-blocks-push.cp
 core-05/if-let-lent-optional-keeps-the-loan.cp
 core-05/int-element-goes-into-a-struct-field.cp
 core-05/int-element-outlives-a-pop-of-its-list.cp
+core-05/int-element-outlives-a-write-to-its-place.cp
+core-05/int-of-a-list-of-lists-is-not-lent.cp
 core-05/lambda-name-not-hoisted.cp
 core-05/lambda-return-is-local.cp
 core-05/lend-statement-returns-a-place.cp
@@ -825,6 +828,7 @@ core-07/step.cp
 core-07/str-count-takes-predicate.cp
 core-07/suffix-fold-is-not-a-name.cp
 core-07/swap-with-one-index-past-the-end-traps.cp
+core-07/table-over-keys.cp
 core-07/view-blocks-a-write-to-its-source.cp
 core-07/view-index-by-proven-key.cp
 core-07/view-is-not-a-list.cp
@@ -1471,6 +1475,7 @@ next/k24_ret_closure_var_copy.cp
 next/m01_case_return_in_loops.cp
 next/m02_until_eof_empty.cp
 next/n_alias_01_alias_builds_its_type.cp
+next/n_array_over_key_run.cp
 next/n_array_range_axes.cp
 next/n_assoc_02_bound_names_a_defaulted_assoc.cp
 next/n_assoc_type.cp
