@@ -2911,3 +2911,10 @@ next/n_opt_map_01_keeps_none.cp
 core-04/library-domain-walk-queries.cp
 std-seq/extremes-ties-last.cp
 diagnostics/definition-cycle.cp
+core-02/enum-field-runtime-domain.cp
+core-02/payload-free-variant-tags-read-and-print.cp
+core-02/token-set-is-an-enum.cp
+core-10/parse-enum-command.cp
+core-10/range-field-in-variant-reads-two-ends.cp
+core-10/read-array-of-tagged-commands.cp
+core-10/read-enum-by-tag.cp

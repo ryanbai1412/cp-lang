@@ -143,10 +143,12 @@ impl Decls {
         targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
         Some(Member::Method(tm, targs, Vec::new()))
     }
-    /// Whether every field of `s` has an impl of `tr`, as a derived impl needs (R08.1.6).
+    /// Whether every field of `s`, or of each of its variants, has an impl of `tr`, as a derived
+    /// impl needs (R08.1.6).
     pub(super) fn fields_have(&self, s: StructId, tr: TraitId) -> bool {
         let sd = self.s(s);
         (sd.fields.iter().zip(&sd.cached)).all(|((_, t), cached)| *cached || self.has_impl(t, tr))
+            && (sd.variants.iter()).all(|(_, v)| self.fields_have(*v, tr))
     }
     /// A trait made only of bodiless `@get` members, met by fields of those names (R12.11.3).
     pub(super) fn field_trait(&self, tr: TraitId) -> bool {

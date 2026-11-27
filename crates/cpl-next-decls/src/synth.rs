@@ -67,14 +67,6 @@ pub(crate) fn enum_structs(
         s.decorators.clone(),
     )];
     for (i, v) in e.variants.iter().enumerate() {
-        if v.tag.is_some() {
-            errors.push(
-                Unbuilt::TaggedVariant {
-                    name: v.name.text.clone(),
-                }
-                .into(),
-            );
-        }
         let value = match &v.value {
             None => Some(i as i64),
             Some(_) if !v.fields.is_empty() => None,
@@ -120,6 +112,9 @@ enum Derive<'a> {
     /// A core trait marked `@derive_fields`: each method is that method on the `@pack` of the
     /// fields.
     Fields(&'a str, &'a [ast::FnDecl]),
+    /// A `@derive` method making a `Self`, for an enum: the variant its first parameter's
+    /// `variant([tags])` picks, each field read by that parameter's `read<F>()` (R10.2.1).
+    Tags(&'a ast::FnDecl, &'a [ast::Variant]),
     /// The same for an enum: each method is that method on the variant's name (R10.3.5).
     Names(&'a [ast::FnDecl], &'a [ast::Variant]),
 }
@@ -152,10 +147,13 @@ pub(crate) fn module_derived(
                     methods: Vec::new(),
                 };
                 for (tr, how) in each {
-                    if let Derivable::Fields(_, fns) = how {
-                        let derived = derived_impl(s, &sd, Derive::Names(fns, &e.variants), tr);
-                        out.push((item.clone(), sd.name.text.clone(), derived));
-                    }
+                    let derive = match how {
+                        Derivable::Fields(_, fns) => Derive::Names(fns, &e.variants),
+                        Derivable::Each(m) if made(m) => Derive::Tags(m, &e.variants),
+                        Derivable::Each(_) => continue,
+                    };
+                    let derived = derived_impl(s, &sd, derive, tr);
+                    out.push((item.clone(), sd.name.text.clone(), derived));
                 }
             }
             let StmtKind::Struct(sd) = &s.kind else {
@@ -180,6 +178,23 @@ pub(crate) fn module_derived(
         }
     }
     out
+}
+
+/// The token a variant reads and prints as: its `@tag`'s literal, else its name (R02.7.2).
+fn token(v: &ast::Variant) -> String {
+    use ast::ExprKind;
+    match v.tag.as_ref().map(|t| &t.kind) {
+        Some(ExprKind::Str(pieces)) => (pieces.iter())
+            .map(|p| match p {
+                ast::StrPiece::Text(t) => t.clone(),
+                _ => String::new(),
+            })
+            .collect(),
+        Some(ExprKind::Char(c)) => c.to_string(),
+        Some(_) => (v.tag.as_ref().and_then(|t| t.int_literal()))
+            .map_or_else(|| v.name.text.clone(), |k| k.to_string()),
+        None => v.name.text.clone(),
+    }
 }
 
 /// A `@derive` method making a `Self` from its parameters, not from a `self`: its first one has a
@@ -243,7 +258,66 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
             args,
         })
     };
+    // `input.read<F>()`: a field of type `F` read by the method's first parameter.
+    let made_from = |m: &ast::FnDecl, t: &ast::Type| {
+        call(
+            ex(ExprKind::Generic {
+                base: Box::new(field(&m.params[0].name.text, &m.name.text)),
+                args: vec![t.clone()],
+            }),
+            Vec::new(),
+        )
+    };
     let body = match derive {
+        Derive::Tags(m, variants) => {
+            let tags = (variants.iter())
+                .map(|v| ex(ExprKind::Str(vec![ast::StrPiece::Text(token(v))])))
+                .collect();
+            let picked = call(
+                field(&m.params[0].name.text, "variant"),
+                vec![ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value: ex(ExprKind::List(tags)),
+                }],
+            );
+            let last = variants.len().saturating_sub(1);
+            ex(ExprKind::Match {
+                scrutinee: Box::new(picked),
+                arms: (variants.iter().enumerate())
+                    .map(|(i, v)| {
+                        let made = field(&sd.name.text, &v.name.text);
+                        let made = match v.fields.is_empty() {
+                            true => made,
+                            false => call(
+                                made,
+                                (v.fields.iter())
+                                    .map(|(_, t)| ast::Arg {
+                                        name: None,
+                                        mutable: false,
+                                        value: made_from(m, t),
+                                    })
+                                    .collect(),
+                            ),
+                        };
+                        let pat = match i == last {
+                            true => ast::PatternKind::Wildcard,
+                            false => {
+                                ast::PatternKind::Literal(Box::new(ex(ExprKind::Int(i as i128))))
+                            }
+                        };
+                        ast::Arm {
+                            pat: ast::Pattern { kind: pat, span },
+                            guard: None,
+                            body: ast::Block {
+                                stmts: vec![stmt(StmtKind::Expr(made))],
+                                span,
+                            },
+                        }
+                    })
+                    .collect(),
+            })
+        }
         Derive::Names(_, variants) => ex(ExprKind::Match {
             scrutinee: Box::new(ex(ExprKind::Name("a".to_string()))),
             arms: (variants.iter())
@@ -263,7 +337,7 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
                     guard: None,
                     body: ast::Block {
                         stmts: vec![stmt(StmtKind::Expr(ex(ExprKind::Str(vec![
-                            ast::StrPiece::Text(v.name.text.clone()),
+                            ast::StrPiece::Text(token(v)),
                         ]))))],
                         span,
                     },
@@ -286,15 +360,9 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
         Derive::Each(m) => {
             // `a.f.clone()`; or, where the method makes a `Self` from its first parameter, as
             // `Read`'s does from its `Input`, that parameter's own `read<F>()` at each field's type.
-            let value = |f: &ast::FieldDecl| match (made(m), &m.params[..]) {
-                (true, [from, ..]) => call(
-                    ex(ExprKind::Generic {
-                        base: Box::new(field(&from.name.text, &m.name.text)),
-                        args: vec![f.ty.clone()],
-                    }),
-                    Vec::new(),
-                ),
-                _ => call(field_of(field("a", &f.name.text), &m.name.text), Vec::new()),
+            let value = |f: &ast::FieldDecl| match made(m) {
+                true => made_from(m, &f.ty),
+                false => call(field_of(field("a", &f.name.text), &m.name.text), Vec::new()),
             };
             let args = (compared.iter())
                 .map(|f| ast::Arg {
@@ -328,6 +396,11 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
     for f in &compared {
         names_in(&f.ty, &mut mentioned);
     }
+    if let Derive::Tags(_, variants) = derive {
+        for (_, t) in variants.iter().flat_map(|v| &v.fields) {
+            names_in(t, &mut mentioned);
+        }
+    }
     let param = |n: &str| ast::Param {
         mutable: false,
         variadic: false,
@@ -351,7 +424,7 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
         sig_span: span,
     };
     let fns = match derive {
-        Derive::Each(m) if made(m) => {
+        Derive::Each(m) | Derive::Tags(m, _) if made(m) => {
             let params = (m.params.iter()).map(|p| ast::Param {
                 ty: None,
                 default: None,
@@ -360,7 +433,7 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
             });
             vec![f(&m.name.text, params.collect(), body)]
         }
-        Derive::Each(m) => vec![f(&m.name.text, vec![param("a")], body)],
+        Derive::Each(m) | Derive::Tags(m, _) => vec![f(&m.name.text, vec![param("a")], body)],
         Derive::Cmp(_, m) => vec![f(m, vec![param("a"), param("b")], body)],
         // Each method passes its other parameters on as they came.
         Derive::Fields(_, methods) | Derive::Names(methods, _) => (methods.iter())

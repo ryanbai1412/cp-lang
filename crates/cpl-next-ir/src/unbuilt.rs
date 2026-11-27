@@ -113,9 +113,6 @@ pub enum Unbuilt {
     DomainKind {
         kind: String,
     },
-    TaggedVariant {
-        name: String,
-    },
     VariantValue {
         name: String,
     },
@@ -222,7 +219,6 @@ impl fmt::Display for Unbuilt {
             FnWithoutBody => write!(f, "a fn with no body"),
             UndeclaredTopDomain => write!(f, "a top-level domain that is not declared"),
             DomainKind { kind } => write!(f, "a domain that is {kind}"),
-            TaggedVariant { name } => write!(f, "a tagged variant `{name}`"),
             VariantValue { name } => write!(f, "the value of variant `{name}`"),
             LibraryOverload { name } => write!(f, "a library with two fns named `{name}`"),
             MethodsOfOneName { name } => write!(f, "methods of one name in one module (`{name}`)"),

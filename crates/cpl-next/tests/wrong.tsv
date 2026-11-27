@@ -19,7 +19,6 @@ core-02/alias-walks-as-aliased-type.cp	wrong-reject	check: program:6:10: E0201: 
 core-02/coalesce-optional-default-keeps-some.cp	wrong-reject	check: program:7:62: E0806: nothing here says what `None` is an optional of; write the type
 core-02/counted-array-as-list.cp	wrong-reject	check: program:7:13: E0302: expected `List<Int>`, found `Array<$range0, Int>`
 core-02/counted-arrays-share-keys.cp	wrong-reject	check: program:8:33: E0301: a `$range0` indexes a `[$range1]` array: index it with a `$range1`
-core-02/enum-field-runtime-domain.cp	wrong-reject	check: program:8:9: E0606: `Cmd` does not implement `Read`
 core-02/fresh-type-block-escape.cp	wrong-accept	wanted E0313 on line 3, ran and printed: 1
 core-02/generic-bound-to-a-range-element-has-its-ends.cp	wrong-reject	check: program:6:34: E0606: `T` does not implement `Domain`
 core-02/implicit-type-param.cp	wrong-reject	decls: E0204: unknown type `T`
@@ -46,7 +45,6 @@ core-02/str-plus-int.cp	wrong-error	wanted E0309 on line 3, got: check: program:
 core-02/str-slices-concat.cp	wrong-reject	check: program:5:7: E0606: `Slice<Str>` does not implement `Add`
 core-02/struct-overloaded-by-arity-has-impls.cp	wrong-reject	check: program:9:1: E0202: a second impl of `Show` for one type (R08.1.2)
 core-02/struct-same-arity-is-duplicate.cp	wrong-error	wanted E0202 on line 5, got: check: program:6:7: E0203: `Pair<Int, Int>` has no member `a`
-core-02/token-set-is-an-enum.cp	wrong-reject	check: program:6:22: E0606: `D` does not implement `Read`
 core-02/unit-is-ordered.cp	wrong-reject	check: program:9:11: E0606: `()` has no `impl Eq`, which `==` needs (R08.1.5)
 core-03/annotation-widens-fresh-read.cp	wrong-reject	check: program:5:17: E0302: expected `Array<$range0, Int>`, found `Array<$range1, 0..=5>`
 core-03/fenwick-range-elements-widen.cp	wrong-reject	check: program:6:7: E0606: `1..=1000000000` does not implement `Add`
@@ -377,7 +375,6 @@ core-10/interpolated-hash-set-is-not-show.cp	wrong-error	wanted E0606 on line 6,
 core-10/map-reserve-keeps-entries.cp	wrong-reject	check: program:4:1: E0204: unknown type `HashMap`
 core-10/multitest-shape.cp	wrong-trap	trap: R0501: line 4: expected an integer in the input
 core-10/pair-domain-reads-a-triangle.cp	wrong-reject	check: program:6:9: E0606: `Pair<V>` does not implement `Domain`
-core-10/parse-enum-command.cp	wrong-reject	check: program:9:12: E0606: `Cmd` does not implement `Read`
 core-10/parse-generic-shapes.cp	wrong-reject	check: program:9:9: E0606: `P` does not implement `Read`
 core-10/parse-scalars-and-errors.cp	wrong-reject	check: program:4:49: E0606: `F64` does not implement `Read`
 core-10/print-forms-parity.cp	wrong-reject	own: program:11:7: E0608: `xs` was moved into another binding; use `.clone()` there to keep both

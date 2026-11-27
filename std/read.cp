@@ -55,6 +55,12 @@ fn stdin_holds(ok: Bool) = @intrinsic("input_check")
 fn stdin_left() -> Bool = @intrinsic("input_left")
 fn blank(c: Int) -> Bool = c == 32 or c in 9..=13
 
+/// The integer `s` is, when it is one.
+fn number(s: Str) -> ?Int:
+    var i = Input.of(s)
+    let v = i.int()
+    if i.held(): Some(v) else: None
+
 impl Input:
     /// Standard input, whose place the program's one byte source keeps.
     pub fn stdin(base: Int = 0, none: ?Int = None) -> Input = Input(None, 0, false, base, none)
@@ -66,6 +72,32 @@ impl Input:
     /// A `T` read from here, by its `Read` impl: what an impl reads its parts with.
     @input
     pub fn read<T: Read>(mut self) -> T = T.read(mut self)
+
+    /// The index in `tags` of the variant the next token names (R10.2.1): one `Char` when every
+    /// tag is one letter, so a column of them reads packed or spaced, else a whole token, which
+    /// names an integer tag when it is that integer (`01` names `1`). None named fails, giving 0.
+    pub fn variant(mut self, tags: List<Str>) -> Int:
+        var letters = true
+        for t in tags:
+            let c: Int = if t.len == 1: t[0].into() else: 0
+            letters = letters and (c in 65..=90 or c in 97..=122)
+        if letters:
+            self.skip_blank()
+            for i in 0..tags.len:
+                let c: Int = tags[i][0].into()
+                if self.peek(0) == c:
+                    self.byte()
+                    self.end_token()
+                    return i
+        else:
+            let t = self.read<Str>()
+            for i in 0..tags.len:
+                if t == tags[i]: return i
+                if let a = number(t):
+                    if let b = number(tags[i]):
+                        if a == b: return i
+        self.token(false)
+        0
 
     /// Whether every read held and no token is left.
     fn held(self) -> Bool = not self.failed and not self.left()

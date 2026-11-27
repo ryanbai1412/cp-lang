@@ -3,7 +3,6 @@ core-01/static-expression-type-argument.cp
 core-01/table-of-arrays-indexes-in-one-bracket.cp
 core-02/declared-new-hides-field-form.cp
 core-02/optional-min-max-skip-none-on-either-side.cp
-core-02/payload-free-variant-tags-read-and-print.cp
 core-02/rb1-q27-map-none.cp
 core-02/unwrap-array.cp
 core-04/a5-assign-into-range.cp
@@ -53,8 +52,6 @@ core-09/ln-of-a-negative-traps.cp
 core-09/ln-of-negative-trap.cp
 core-09/sqrt-negative-trap.cp
 core-10/parse-local-runtime-modulus.cp
-core-10/range-field-in-variant-reads-two-ends.cp
-core-10/read-array-of-tagged-commands.cp
 core-10/read-tag-and-product-parts-in-tuples-and-arrays.cp
 core-12/intrinsic-math-matches-on-both-engines.cp
 matrix/index/pair--fill.cp
