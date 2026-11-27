@@ -196,6 +196,11 @@ impl Cx<'_> {
             }
         }
         let b = self.place(base);
+        // A cell of a place that was diagnosed is the error: its index is not fitted to it.
+        if self.mentions_error(&b.ty) {
+            self.expr(idx, None);
+            return;
+        }
         let i = self.expr(idx, Some(&Ty::Int));
         let i = self.index_arg(&b.ty, i);
         let rt = self.shallow(&b.ty);

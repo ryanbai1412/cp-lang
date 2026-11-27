@@ -735,7 +735,8 @@ impl<'a> Cx<'a> {
             };
         }
         let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
-        if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none()) {
+        let unbuilt = held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none());
+        if unbuilt {
             self.err(
                 span,
                 format!(
@@ -749,8 +750,9 @@ impl<'a> Cx<'a> {
         let seen = self.errors.len();
         let (mut pre, args) = self.args(args, &formals, span);
         self.solve(false);
-        // A call its arguments do not fit was diagnosed there: its value is the error.
-        if self.errors.len() > seen {
+        // A call its arguments do not fit was diagnosed there, and one not built is refused:
+        // its value is the error.
+        if unbuilt || self.errors.len() > seen {
             return Self::error_node(span);
         }
         if fd.same_keys {
