@@ -5,6 +5,19 @@
 
 use std.rand.{Rng}
 use std.range.{ends}
+use std.seq.{each, Seq}
+
+impl<D, T> Seq<(range: Range<D>, val: T)> for IntervalMap<D, T>:
+    /// Every maximal run with its value.
+    ///
+    /// cost: \(O(1)\) per run
+    /// empty: `IntervalMap<0..0, Int>(0).each().map(p => p.val).collect() == []`
+    /// order: ascending positions
+    /// traps: never
+    /// example: `IntervalMap.from([1, 1, 2]).each().map(p => p.val).collect() == [1, 2]`
+    fn iter(self) -> yields (range: Range<D>, val: T):
+        for (lo, seg) in segs.items:
+            yield (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
 /// A total partition of domain `D` into maximal contiguous half-open runs,
 /// each carrying a value of type `T`.
@@ -156,17 +169,6 @@ pub struct IntervalMap<D, T>:
         self.assign(i.l..i.r, val, on_old: record)
         old!
 
-    /// Every maximal run with its value.
-    ///
-    /// cost: \(O(1)\) per run
-    /// empty: `IntervalMap<0..0, Int>(0).each().map(p => p.val).collect() == []`
-    /// order: ascending positions
-    /// traps: never
-    /// example: `IntervalMap.from([1, 1, 2]).each().map(p => p.val).collect() == [1, 2]`
-    pub fn each(self) -> yields (range: Range<D>, val: T):
-        for (lo, seg) in segs.items:
-            yield (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
-
     /// Give position `i` the value `val`; `assign_point` without the old value, and the
     /// write-through place for `m[i] = val`.
     ///
@@ -223,6 +225,17 @@ pub struct IntervalMap<D, T>:
             if ok(seg.val): return Some(D.nth(pos))
             pos = seg.hi
         None
+
+impl<D> Seq<Range<D>> for IntervalSet<D>:
+    /// Every maximal run.
+    ///
+    /// cost: \(O(1)\) per run
+    /// empty: `IntervalSet<0..10>().each().collect() == []`
+    /// order: ascending positions
+    /// traps: never
+    /// example: `var s = IntervalSet<0..10>(); s.add(6..7); s.add(1..3); s.each().collect() == [1..3, 6..7]`
+    fn iter(self) -> yields Range<D>:
+        for (l, h) in segs.items: yield D.nth(l).l..D.nth(h - 1).r
 
 /// Dynamic union of disjoint maximal half-open intervals over domain `D` (KACTL
 /// `IntervalContainer`). Maintains total `covered` length in \(O(1)\). \(O(\mathit{runs})\) space.
@@ -353,16 +366,6 @@ pub struct IntervalSet<D>:
     @get pub fn runs(self) -> Int:
         segs.len
 
-    /// Every maximal run.
-    ///
-    /// cost: \(O(1)\) per run
-    /// empty: `IntervalSet<0..10>().each().collect() == []`
-    /// order: ascending positions
-    /// traps: never
-    /// example: `var s = IntervalSet<0..10>(); s.add(6..7); s.add(1..3); s.each().collect() == [1..3, 6..7]`
-    pub fn each(self) -> yields Range<D>:
-        for (l, h) in segs.items: yield D.nth(l).l..D.nth(h - 1).r
-
 impl<D: Domain> Contains<D> for IntervalSet<D>:
     /// Whether position `i` is in the set.
     ///
@@ -373,6 +376,17 @@ impl<D: Domain> Contains<D> for IntervalSet<D>:
         let x = i.ord
         if let (_, h) = segs.last_le(x): return x < h
         false
+
+impl Seq<Range<Int>> for SparseIntervalSet:
+    /// Every maximal interval.
+    ///
+    /// cost: \(O(1)\) per interval
+    /// empty: `SparseIntervalSet().each().collect() == []`
+    /// order: ascending coordinates
+    /// traps: never
+    /// example: `var s = SparseIntervalSet(); s.add(10..12); s.add(0..3); s.each().collect() == [0..3, 10..12]`
+    fn iter(self) -> yields Range<Int>:
+        for (l, h) in segs.items: yield l..h
 
 /// Dynamic union of disjoint half-open integer intervals `[lo, hi)` over unbounded `Int`
 /// coordinates. \(O(\mathit{runs})\) space.
@@ -464,16 +478,6 @@ pub struct SparseIntervalSet:
     @get pub fn runs(self) -> Int:
         segs.len
 
-    /// Every maximal interval.
-    ///
-    /// cost: \(O(1)\) per interval
-    /// empty: `SparseIntervalSet().each().collect() == []`
-    /// order: ascending coordinates
-    /// traps: never
-    /// example: `var s = SparseIntervalSet(); s.add(10..12); s.add(0..3); s.each().collect() == [0..3, 10..12]`
-    pub fn each(self) -> yields Range<Int>:
-        for (l, h) in segs.items: yield l..h
-
 impl Contains<Int> for SparseIntervalSet:
     /// Whether the coordinate `x` is in the set.
     ///
@@ -547,6 +551,17 @@ fn interval_map_matches_dense_array():
             covered += rg.len
             for i in rg: assert ref_a[i] == cur_v
         assert covered == 25
+
+impl<T> Seq<(range: Range<Int>, val: T)> for SparseIntervalMap<T>:
+    /// Every maximal run with its value.
+    ///
+    /// cost: \(O(1)\) per run
+    /// empty: `SparseIntervalMap(3, 3, 0).each().map(p => p.val).collect() == []`
+    /// order: ascending coordinates
+    /// traps: never
+    /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.each().map(p => p.val).collect() == [0, 1, 0]`
+    fn iter(self) -> yields (range: Range<Int>, val: T):
+        for (s, seg) in segs.items: yield (range: s..seg.hi, val: seg.val)
 
 /// Interval partition map over unbounded `Int` coordinates `[lo, hi)` (ODT without coordinate compression).
 /// Maintains maximal constant runs; `assign` is \(O((1 + \mathit{removed}) \log \mathit{runs})\) amortized.
@@ -675,16 +690,6 @@ pub struct SparseIntervalMap<T>:
             let e = min(seg.hi, b)
             yield (range: pos..e, val: seg.val)
             pos = e
-
-    /// Every maximal run with its value.
-    ///
-    /// cost: \(O(1)\) per run
-    /// empty: `SparseIntervalMap(3, 3, 0).each().map(p => p.val).collect() == []`
-    /// order: ascending coordinates
-    /// traps: never
-    /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.each().map(p => p.val).collect() == [0, 1, 0]`
-    pub fn each(self) -> yields (range: Range<Int>, val: T):
-        for (s, seg) in segs.items: yield (range: s..seg.hi, val: seg.val)
 
     /// Every maximal run with its value, last first.
     ///

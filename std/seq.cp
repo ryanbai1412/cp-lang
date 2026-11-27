@@ -670,6 +670,15 @@ pub fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
         if let p = prev: yield (p, x)
         prev = Some(x)
 
+/// The sequence's elements from its start: `iter`, by the name the sequence types give it.
+///
+/// cost: what `iter` costs
+/// empty: `Heap<Int>().each().collect() == []`
+/// traps: never
+/// example: `Heap([3, 1, 2]).each().collect() == [1, 2, 3]`
+pub fn each<S: Seq<T>, T>(self: S) -> yields T:
+    for x in self.iter(): yield x
+
 /// Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`,
 /// `(20, 30)`. \(O(n^2)\) to walk; for adjacent pairs use `adjacent`.
 ///
@@ -4212,6 +4221,18 @@ impl Bidir<RingSlice<D, T>> for RingWindows<D, T>:
 impl Sized for RingWindows<D, T>:
     @get fn len(self) -> Int = D.count
 
+impl<D, T> Seq<D> for RingSlice<D, T>:
+    /// \(O(\mathit{len})\). Visit the window's positions in the source; read its elements as
+    /// `a[k]`. Same walk as `keys`.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `[1, 2, 3].ring.windows(0).all(w => w.each().collect() == [])`
+    /// order: ring order from `start`, wrapping past the last position
+    /// traps: never
+    /// example: `[1, 2, 3].ring.windows(2).last!.each().collect() == [2, 0]`
+    fn iter(self) -> yields D:
+        for k in rr.keys: yield k
+
 pub struct RingSlice<D, T>():
     rr: RingRange<D> = RingRange<D>()
 
@@ -4235,17 +4256,6 @@ pub struct RingSlice<D, T>():
     /// traps: never
     /// example: `not [1, 2, 3].ring.windows(2).first!.is_empty`
     @get pub fn is_empty(self) -> Bool = rr.len == 0
-
-    /// \(O(\mathit{len})\). Visit the window's positions in the source; read its elements as
-    /// `a[k]`. Same walk as `keys`.
-    ///
-    /// cost: \(O(\mathit{len})\)
-    /// empty: `[1, 2, 3].ring.windows(0).all(w => w.each().collect() == [])`
-    /// order: ring order from `start`, wrapping past the last position
-    /// traps: never
-    /// example: `[1, 2, 3].ring.windows(2).last!.each().collect() == [2, 0]`
-    pub fn each(self) -> yields D:
-        for k in rr.keys: yield k
 
     /// \(O(1)\). The first position.
     ///

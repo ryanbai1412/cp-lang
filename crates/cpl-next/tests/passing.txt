@@ -2358,6 +2358,7 @@ std-seq/sort-key-unpacks-its-element.cp
 std-seq/span-backwards-traps.cp
 std-seq/span-of-two-cuts-is-the-range-between.cp
 std-seq/split-on-separator-predicate.cp
+std-seq/std-containers-walk-through-seq.cp
 std-seq/sum-1.cp
 std-seq/sum-of-has-the-mapped-type.cp
 std-seq/take-last-k.cp

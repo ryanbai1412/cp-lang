@@ -4,7 +4,21 @@
 //! example: `domain B = 0..4; Subset<B>.empty.with(1).with(3).len == 2`
 
 use std.math.{popcount, ctz}
-use std.seq.{Seq}
+use std.seq.{each, Seq}
+
+impl<B> Seq<B> for Subset<B>:
+    /// What `for b in s` walks: the members, as `s.items`.
+    ///
+    /// cost: \(O(1)\) per member
+    /// empty: `domain B = 0..4; Subset<B>.empty.each().collect() == []`
+    /// order: increasing in `B`'s order (increasing bit index)
+    /// traps: never
+    /// example: `domain B = 0..4; [b for b in Subset<B>.single(B(3)).with(B(1))] == [B(1), B(3)]`
+    fn iter(self) -> yields B:
+        var m = bits
+        while m != U64(0):
+            yield B.nth(ctz(m))
+            m &= m - U64(1)
 
 /// A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for `B`'s `k`-th
 /// position). `B.subsets` is the domain of all `2^|B|` of them, so `[B.subsets]T` is a mask-DP
@@ -124,19 +138,6 @@ pub struct Subset<B>(var bits: U64):
     /// traps: never
     /// example: `domain B = 0..4; Subset<B>.single(B(3)).with(B(1)).items.collect() == [B(1), B(3)]`
     @get pub fn items(self) -> yields B:
-        var m = bits
-        while m != U64(0):
-            yield B.nth(ctz(m))
-            m &= m - U64(1)
-
-    /// What `for b in s` walks: the members, as `s.items`.
-    ///
-    /// cost: \(O(1)\) per member
-    /// empty: `domain B = 0..4; Subset<B>.empty.each().collect() == []`
-    /// order: increasing in `B`'s order (increasing bit index)
-    /// traps: never
-    /// example: `domain B = 0..4; [b for b in Subset<B>.single(B(3)).with(B(1))] == [B(1), B(3)]`
-    pub fn each(self) -> yields B:
         var m = bits
         while m != U64(0):
             yield B.nth(ctz(m))

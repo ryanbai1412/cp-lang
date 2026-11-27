@@ -2,9 +2,25 @@
 //!
 //! start: `Bitset`, `DynBitset`, `XorTrie`, `BitTrie`
 //! example: `domain D = 0..10; var b = Bitset<D>(); b.add(3); b.add(7); b.len == 2 and b.contains(7)`
-use std.seq.{Seq, take_all, sum}
+use std.seq.{each, Seq, take_all, sum}
 use std.math.{bit, popcount, bit_width, ctz}
 use std.range.{Len}
+
+impl<D> Seq<D> for Bitset<D>:
+    /// The positions in the set, in increasing order; `for v in b` walks the same sequence.
+    ///
+    /// cost: \(O(K / 64 + \mathit{len})\) to walk, \(O(1)\) per member amortized
+    /// empty: `domain D = 0..10; Bitset<D>().each().collect() == []`
+    /// order: increasing
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(8), D(1)]).each().collect() == [D(1), D(8)]`
+    fn iter(self) -> yields D:
+        for k in 0..w.len:
+            var x = w[k]
+            while x != 0:
+                let b = ctz(x)
+                yield D.nth(64 * k + b)
+                x &= ~word_bit(b)
 
 /// One bit per position of `D`, in `ceil(K / 64)` words.
 /// `Bitset<D>` is an explicit type you ask for; `[D]Bool` stays one byte
@@ -355,21 +371,6 @@ pub struct Bitset<D>:
         self.trim()
         self.forget_count()
 
-    /// The positions in the set, in increasing order; `for v in b` walks the same sequence.
-    ///
-    /// cost: \(O(K / 64 + \mathit{len})\) to walk, \(O(1)\) per member amortized
-    /// empty: `domain D = 0..10; Bitset<D>().each().collect() == []`
-    /// order: increasing
-    /// traps: never
-    /// example: `domain D = 0..10; Bitset<D>.of([D(8), D(1)]).each().collect() == [D(1), D(8)]`
-    pub fn each(self) -> yields D:
-        for k in 0..w.len:
-            var x = w[k]
-            while x != 0:
-                let b = ctz(x)
-                yield D.nth(64 * k + b)
-                x &= ~word_bit(b)
-
     /// The first position in the set at or after `i`, or `None`.
     ///
     /// cost: \(O(K / 64)\)
@@ -559,6 +560,22 @@ pub struct Bitset<D>:
         for k in full_words..w.len: w[k] = U64(0)
         if D.count % 64 != 0:
             w[full_words - 1] &= low(D.count % 64)
+
+impl Seq<Int> for DynBitset:
+    /// The set bit indices in ascending order; `for i in d` walks the same sequence.
+    ///
+    /// cost: \(O(\mathit{cap} / 64 + \mathit{len})\) to walk
+    /// empty: `DynBitset(10).each().collect() == []`
+    /// order: increasing
+    /// traps: never
+    /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each().collect() == [1, 8]`
+    fn iter(self) -> yields Int:
+        for k in 0.._w.len:
+            var x = _w[k]
+            while x != U64(0):
+                let b = ctz(x)
+                yield 64 * k + b
+                x &= ~word_bit(b)
 
 /// Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynamically without a domain.
 /// Single-bit ops are \(O(1)\); word-parallel ops are \(O(\mathit{cap} / 64)\).
@@ -883,21 +900,6 @@ pub struct DynBitset:
         self.trim()
         self.recount()
 
-    /// The set bit indices in ascending order; `for i in d` walks the same sequence.
-    ///
-    /// cost: \(O(\mathit{cap} / 64 + \mathit{len})\) to walk
-    /// empty: `DynBitset(10).each().collect() == []`
-    /// order: increasing
-    /// traps: never
-    /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each().collect() == [1, 8]`
-    pub fn each(self) -> yields Int:
-        for k in 0.._w.len:
-            var x = _w[k]
-            while x != U64(0):
-                let b = ctz(x)
-                yield 64 * k + b
-                x &= ~word_bit(b)
-
     /// The set bit indices in descending order.
     ///
     /// cost: \(O(\mathit{cap} / 64 + \mathit{len})\) to walk
@@ -949,6 +951,18 @@ impl Contains<Int> for DynBitset:
     fn contains(self, i: Int) -> Bool:
         assert 0 <= i < _cap
         (_w[i / 64] >> (i % 64)) & U64(1) == U64(1)
+
+impl Seq<Int> for XorTrie:
+    /// \(O(\mathit{bits})\) per element. Visit every stored value as it reads now, with the
+    /// `xor_all` mask applied, one per copy.
+    ///
+    /// cost: \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element
+    /// empty: `XorTrie(3).each().collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.add(1); t.add(5); t.xor_all(1); t.each().collect() == [0, 4, 4]`
+    fn iter(self) -> yields Int:
+        for k in 0.._cnt[0]: yield self.kth_xor(0, k)!
 
 /// Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60
 /// bits). \(O(\mathit{bits})\) per op.
@@ -1025,17 +1039,6 @@ pub struct XorTrie:
     /// traps: never
     /// example: `var t = XorTrie(3); t.add(5); t.remove(5); t.is_empty`
     @get pub fn is_empty(self) -> Bool = _cnt[0] == 0
-
-    /// \(O(\mathit{bits})\) per element. Visit every stored value as it reads now, with the
-    /// `xor_all` mask applied, one per copy.
-    ///
-    /// cost: \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element
-    /// empty: `XorTrie(3).each().collect() == []`
-    /// order: ascending value, each value repeated by its count
-    /// traps: never
-    /// example: `var t = XorTrie(3); t.add(5); t.add(1); t.add(5); t.xor_all(1); t.each().collect() == [0, 4, 4]`
-    pub fn each(self) -> yields Int:
-        for k in 0.._cnt[0]: yield self.kth_xor(0, k)!
 
     /// Insert one copy of `x`. `x` is stored as given, after any earlier `xor_all`: the mask applies
     /// only to elements already present.

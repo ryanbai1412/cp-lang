@@ -14,7 +14,7 @@
 //! `convexity_break`). A sliding-window optimum is `a.window_fold(k, op)` or `std.window.Window(op)`.
 use std.algebra.{Monoid, FromOp}
 use std.math.{bit}
-use std.seq.{collect, all, sum}
+use std.seq.{each, Seq, collect, all, sum}
 use std.range.{Len, first_true}
 
 /// \(O(1)\) per evaluation.
@@ -721,6 +721,31 @@ pub struct MonotoneHull<P: Ord>(pick: (Int, Int) -> Int = min):
         ptr = 0
         last = None
 
+impl Seq<Line> for LineContainer:
+    /// \(O(\mathit{len})\). Visit the kept lines; dominated lines are gone.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `LineContainer(max).each().collect() == []`
+    /// order: ascending slope
+    /// traps: never
+    /// example: `var c = LineContainer(min); c.add(Line(-1, 4)); c.add(Line(1, 0)); c.each().collect() == [Line(-1, 4), Line(1, 0)]`
+    fn iter(self) -> yields Line:
+        // In-order is ascending stored slope; `min` stores negated lines, so it walks back.
+        var order: List<Int> = []
+        var stack: List<Int> = []
+        var t = root
+        while t >= 0 or stack.len > 0:
+            while t >= 0:
+                stack.push(t)
+                t = ls[t]
+            let u = stack.pop()!
+            order.push(u)
+            t = rs[u]
+        let sg = self.sign()
+        for j in 0..order.len:
+            let u = if sg < 0: order[order.len - 1 - j] else: order[j]
+            yield Line(sg * ks[u], sg * ms[u])
+
 /// \(O(\log n)\) amortized per `add`, \(O(\log n)\) per `at`.
 /// The convex hull trick with lines in any order and queries at any `x`,
 /// no coordinate range needed (KACTL's line container). Use `LiChao` for
@@ -886,30 +911,6 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// traps: never
     /// example: `var c = LineContainer(max); let e = c.is_empty; c.add(Line(1, 0)); e and not c.is_empty`
     @get pub fn is_empty(self) -> Bool = count == 0
-
-    /// \(O(\mathit{len})\). Visit the kept lines; dominated lines are gone.
-    ///
-    /// cost: \(O(\mathit{len})\)
-    /// empty: `LineContainer(max).each().collect() == []`
-    /// order: ascending slope
-    /// traps: never
-    /// example: `var c = LineContainer(min); c.add(Line(-1, 4)); c.add(Line(1, 0)); c.each().collect() == [Line(-1, 4), Line(1, 0)]`
-    pub fn each(self) -> yields Line:
-        // In-order is ascending stored slope; `min` stores negated lines, so it walks back.
-        var order: List<Int> = []
-        var stack: List<Int> = []
-        var t = root
-        while t >= 0 or stack.len > 0:
-            while t >= 0:
-                stack.push(t)
-                t = ls[t]
-            let u = stack.pop()!
-            order.push(u)
-            t = rs[u]
-        let sg = self.sign()
-        for j in 0..order.len:
-            let u = if sg < 0: order[order.len - 1 - j] else: order[j]
-            yield Line(sg * ks[u], sg * ms[u])
 
 /// The length of the longest increasing subsequence ending at each position, compared by `by`;
 /// `strict: false` allows equal neighbours (non-decreasing). `xs.lis_ends().max()` is the LIS

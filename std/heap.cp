@@ -12,11 +12,16 @@
 use std.algebra.{Desc, desc}
 use std.math.{bit_width}
 use std.range.{Len}
-use std.seq.{Seq}
+use std.seq.{each, Seq}
 
 /// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
 /// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the
 /// smallest distance first and, among equals, the largest vertex.
+impl<T: Ord> Seq<T> for Heap<T>:
+    fn iter(self) -> yields T:
+        var rest = self
+        for x in rest.drain(): yield x
+
 pub struct Heap<T: Ord>:
     var xs: List<T>
     lt: ?((T, T) -> Bool)
@@ -87,10 +92,6 @@ pub struct Heap<T: Ord>:
     /// order: ascending key order, the order `pop` would return them; equal keys in no promised order
     /// traps: never
     /// example: `let h = Heap.of([3, 1, 2]); h.each().collect() == [1, 2, 3] and h.len == 3`
-    pub fn each(self) -> yields T:
-        var rest = self
-        for x in rest.drain(): yield x
-
     /// The smallest element, or `None` if the heap is empty.
     ///
     /// With `by: desc` the smallest key is the largest element.
@@ -248,6 +249,18 @@ pub struct Heap<T: Ord>:
     pub fn drain(mut self) -> yields T:
         while let x = self.pop(): yield x
 
+impl<T: Ord> Seq<T> for ErasableHeap<T>:
+    /// Visit every active element in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `ErasableHeap<Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop` would return them; removed copies are skipped
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(3); h.push(1); h.push(2); h.remove(2); h.each().collect() == [1, 3]`
+    fn iter(self) -> yields T:
+        var rest = self
+        while let x = rest.pop(): yield x
+
 /// Min-heap supporting \(O(\log n)\) arbitrary-value `remove(x)` via a lazy deletion heap.
 /// `push` and `remove` are \(O(\log n)\); `peek` and `pop` are \(O(\log n)\) amortized; `len`, `is_empty`,
 /// `clear`, and `take` are \(O(1)\).
@@ -280,17 +293,6 @@ pub struct ErasableHeap<T: Ord>:
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.remove(1); h.is_empty`
     @get pub fn is_empty(self) -> Bool:
         live.len == dead.len
-
-    /// Visit every active element in pop order; `for x in h` uses this.
-    ///
-    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
-    /// empty: `ErasableHeap<Int>().each().collect() == []`
-    /// order: ascending key order, the order `pop` would return them; removed copies are skipped
-    /// traps: never
-    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(3); h.push(1); h.push(2); h.remove(2); h.each().collect() == [1, 3]`
-    pub fn each(self) -> yields T:
-        var rest = self
-        while let x = rest.pop(): yield x
 
     /// Remove all elements from the heap.
     ///
@@ -363,6 +365,18 @@ pub struct ErasableHeap<T: Ord>:
         self.prune()
         live.pop()
 
+impl<D, K: Ord> Seq<(D, K)> for IndexedHeap<D, K>:
+    /// Visit every `(position, key)` entry in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(\lvert D \rvert + n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `domain V = 0..4; IndexedHeap<V, Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop` would return them; equal keys in no promised order
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.set(V(0), 9); h.each().collect() == [(V(2), 5), (V(0), 9)]`
+    fn iter(self) -> yields (D, K):
+        var rest = self
+        while let e = rest.pop(): yield e
+
 /// Domain-keyed min-heap over `D` supporting \(O(\log n)\) `set`, `decrease`, `increase`, `remove`,
 /// and `pop`, plus \(O(1)\) `contains`, `get`, and `peek`.
 ///
@@ -396,17 +410,6 @@ pub struct IndexedHeap<D, K: Ord>:
     /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.is_empty`
     @get pub fn is_empty(self) -> Bool:
         heap.len == 0
-
-    /// Visit every `(position, key)` entry in pop order; `for x in h` uses this.
-    ///
-    /// cost: \(O(\lvert D \rvert + n \log n)\) in total: it pops a copy, and `self` is unchanged
-    /// empty: `domain V = 0..4; IndexedHeap<V, Int>().each().collect() == []`
-    /// order: ascending key order, the order `pop` would return them; equal keys in no promised order
-    /// traps: never
-    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.set(V(0), 9); h.each().collect() == [(V(2), 5), (V(0), 9)]`
-    pub fn each(self) -> yields (D, K):
-        var rest = self
-        while let e = rest.pop(): yield e
 
     /// Current priority of `v`, or `None` if absent.
     ///
@@ -557,6 +560,18 @@ impl<D: Domain, K: Ord> Contains<D> for IndexedHeap<D, K>:
 fn on_min_level(i: Int) -> Bool:
     bit_width(i + 1) % 2 == 1
 
+impl<T: Ord> Seq<T> for MinMaxHeap<T>:
+    /// Visit every element from the smallest up; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `MinMaxHeap<Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop_first` would return them
+    /// traps: never
+    /// example: `let h = MinMaxHeap.of([2, 7, 4]); h.each().collect() == [2, 4, 7] and h.len == 3`
+    fn iter(self) -> yields T:
+        var rest = self
+        while let x = rest.pop_first(): yield x
+
 /// Double-ended priority queue (min-max heap).
 /// `first` and `last` are \(O(1)\); `push`, `pop_first`, and `pop_last` are \(O(\log n)\).
 pub struct MinMaxHeap<T: Ord>:
@@ -611,17 +626,6 @@ pub struct MinMaxHeap<T: Ord>:
     /// example: `MinMaxHeap.of([1]).is_empty == false`
     @get pub fn is_empty(self) -> Bool:
         _xs.len == 0
-
-    /// Visit every element from the smallest up; `for x in h` uses this.
-    ///
-    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
-    /// empty: `MinMaxHeap<Int>().each().collect() == []`
-    /// order: ascending key order, the order `pop_first` would return them
-    /// traps: never
-    /// example: `let h = MinMaxHeap.of([2, 7, 4]); h.each().collect() == [2, 4, 7] and h.len == 3`
-    pub fn each(self) -> yields T:
-        var rest = self
-        while let x = rest.pop_first(): yield x
 
     /// The smallest element, or `None` if empty.
     ///
@@ -767,6 +771,18 @@ pub struct MinMaxHeap<T: Ord>:
             if flip: self.swap(m, p)
             i = m
 
+impl<T: Ord> Seq<T> for MeldHeap<T>:
+    /// Visit every element in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `MeldHeap<Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop` would return them
+    /// traps: never
+    /// example: `let h = MeldHeap.of([3, 1, 2]); h.each().collect() == [1, 2, 3] and h.len == 3`
+    fn iter(self) -> yields T:
+        var rest = self
+        for x in rest.drain(): yield x
+
 /// One meldable min-heap (a skew heap) that owns its nodes, with \(O(1)\) lazy offset `add_all`
 /// when `T: Add`. `peek` / `top` is \(O(1)\); `push` and `pop` are \(O(\log n)\) amortized.
 /// `meld` copies the smaller heap's nodes; to meld many heaps (one per vertex or component) in
@@ -809,17 +825,6 @@ pub struct MeldHeap<T: Ord>:
     /// traps: never
     /// example: `MeldHeap.of([4]).is_empty == false`
     @get pub fn is_empty(self) -> Bool = _h.is_empty
-
-    /// Visit every element in pop order; `for x in h` uses this.
-    ///
-    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
-    /// empty: `MeldHeap<Int>().each().collect() == []`
-    /// order: ascending key order, the order `pop` would return them
-    /// traps: never
-    /// example: `let h = MeldHeap.of([3, 1, 2]); h.each().collect() == [1, 2, 3] and h.len == 3`
-    pub fn each(self) -> yields T:
-        var rest = self
-        for x in rest.drain(): yield x
 
     /// The smallest element, or `None` if empty.
     ///
@@ -1321,6 +1326,17 @@ fn heap_of_and_erasable_and_indexed_heaps():
 /// `Heap<T>()`: pops the smallest first.
 pub type MinHeap<T> = Heap<T>
 
+impl<T: Ord> Seq<T> for MaxHeap<T>:
+    /// Visit every element in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `MaxHeap<Int>().each().collect() == []`
+    /// order: largest first, the order `pop` would return them; equal elements in no promised order
+    /// traps: never
+    /// example: `let h = MaxHeap.of([1, 3, 2]); h.each().collect() == [3, 2, 1] and h.len == 3`
+    fn iter(self) -> yields T:
+        for d in self.h.each(): yield d.x
+
 /// `Heap<T>(by: desc)` under its own name: pops the largest first, with the same operations and
 /// costs as `Heap`; it holds each element as `desc(x)`. For a mixed order use `Heap` with `desc(x)` in the entry.
 pub struct MaxHeap<T: Ord>:
@@ -1354,16 +1370,6 @@ pub struct MaxHeap<T: Ord>:
     /// traps: never
     /// example: `MaxHeap.of([3]).is_empty == false`
     @get pub fn is_empty(self) -> Bool = self.h.is_empty
-
-    /// Visit every element in pop order; `for x in h` uses this.
-    ///
-    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
-    /// empty: `MaxHeap<Int>().each().collect() == []`
-    /// order: largest first, the order `pop` would return them; equal elements in no promised order
-    /// traps: never
-    /// example: `let h = MaxHeap.of([1, 3, 2]); h.each().collect() == [3, 2, 1] and h.len == 3`
-    pub fn each(self) -> yields T:
-        for d in self.h.each(): yield d.x
 
     /// The largest element, or `None` when empty.
     ///

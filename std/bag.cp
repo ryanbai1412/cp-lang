@@ -4,7 +4,7 @@
 //! example: `var s: SortedSet<Int> = SortedSet(); s.add(5); s.add(2); s.add(9); s.nth(1) == 5 and s.rank(9) == 2`
 
 use std.math.{ceil_sqrt}
-use std.seq.{Seq, Track, sum}
+use std.seq.{each, Seq, Track, sum}
 
 /// Read-only handle to one key's slot in a `SortedBag<K>`, valid until the bag's next `add`,
 /// `remove` or `clear`, because a B+tree change may move keys between leaves (decision 579).
@@ -17,6 +17,21 @@ const BAG_ADD = 1
 const BAG_REMOVE = 2
 const BAG_CLEAR = 3
 const BAG_OPS = ["none", "add", "remove", "clear"]
+
+impl<K: Ord> Seq<K> for SortedBag<K>:
+    /// Visit every element, duplicates included, in ascending order; `for x in b` uses this.
+    ///
+    /// cost: \(O(1)\) amortized per step
+    /// empty: `SortedBag<Int>().each().collect() == []`
+    /// order: ascending, each key `count` times
+    /// traps: never
+    /// example: `SortedBag.of([5, 2, 2]).each().collect() == [2, 2, 5]`
+    fn iter(self) -> yields K:
+        var s = self.edge(false)
+        unchecked:
+            while s >= 0:
+                for _ in 0..ws[s]: yield keys[s]
+                s = self.step(s, false)
 
 /// An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat arrays: leaves of
 /// up to 32 keys with their multiplicities, linked for \(O(1)\) cursor steps, under inner nodes
@@ -629,20 +644,6 @@ pub struct SortedBag<K: Ord>:
                 yield (key: keys[s], count: ws[s])
                 s = self.step(s, true)
 
-    /// Visit every element, duplicates included, in ascending order; `for x in b` uses this.
-    ///
-    /// cost: \(O(1)\) amortized per step
-    /// empty: `SortedBag<Int>().each().collect() == []`
-    /// order: ascending, each key `count` times
-    /// traps: never
-    /// example: `SortedBag.of([5, 2, 2]).each().collect() == [2, 2, 5]`
-    pub fn each(self) -> yields K:
-        var s = self.edge(false)
-        unchecked:
-            while s >= 0:
-                for _ in 0..ws[s]: yield keys[s]
-                s = self.step(s, false)
-
     /// Visit every element, duplicates included, in descending order.
     ///
     /// cost: \(O(1)\) amortized per step
@@ -1129,6 +1130,19 @@ impl<K: Ord> Contains<K> for SortedBag<K>:
     /// example: `SortedBag.of([2, 3]).contains(3) == true`
     fn contains(self, x: K) -> Bool = self.count(x) > 0
 
+impl<K: Ord> Seq<K> for SortedSet<K>:
+    /// Visit every key in ascending order.
+    ///
+    /// `for x in s` uses this.
+    ///
+    /// cost: \(O(1)\) amortized per step
+    /// empty: `SortedSet<Int>().each().collect() == []`
+    /// order: ascending
+    /// traps: never
+    /// example: `SortedSet.of([3, 1, 2]).each().collect() == [1, 2, 3]`
+    fn iter(self) -> yields K:
+        for (k, _) in bag.entries(): yield k
+
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
 /// \(O(1)\) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`). Backed by `SortedBag<K>`.
 /// All single-key and range-summary operations are \(O(\log n)\) expected;
@@ -1337,18 +1351,6 @@ pub struct SortedSet<K: Ord>:
 
     fn range_each_rev(self, lo: ?K, hi: ?K, hi_inc: Bool) -> yields K:
         for k in bag.range_each_rev(lo, hi, hi_inc): yield k
-
-    /// Visit every key in ascending order.
-    ///
-    /// `for x in s` uses this.
-    ///
-    /// cost: \(O(1)\) amortized per step
-    /// empty: `SortedSet<Int>().each().collect() == []`
-    /// order: ascending
-    /// traps: never
-    /// example: `SortedSet.of([3, 1, 2]).each().collect() == [1, 2, 3]`
-    pub fn each(self) -> yields K:
-        for (k, _) in bag.entries(): yield k
 
     /// Visit every key in descending order.
     ///
@@ -1828,6 +1830,18 @@ impl<K: Ord, V> Contains<K> for SortedMap<K, V>:
     fn contains(self, k: K) -> Bool:
         ks.find(k) >= 0
 
+impl<K: Ord, T> Seq<K> for AugSortedBag<K, T>:
+    /// Yield all elements in ascending order.
+    ///
+    /// cost: \(O(1)\) amortized per step
+    /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.each().collect() == []`
+    /// order: ascending, each key repeated by its count
+    /// traps: never
+    /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.each().collect() == [1, 3, 3]`
+    fn iter(self) -> yields K:
+        for (k, c) in bag.entries():
+            for _ in 0..c: yield k
+
 /// Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 /// Supports \(O(\log n)\) `add`, `remove`, `rank`, `nth`, `fold_lt`, `fold_le`, `fold_ge`, `fold_gt`, `fold_between`, and \(O(1)\) `all`.
 ///
@@ -2106,16 +2120,16 @@ pub struct AugSortedBag<K: Ord, T>:
                 h -= 1
             return self.fold_of(n, 0, bag.at(n, 0, lo, false), bag.at(n, 0, hi, false))
 
-    /// Yield all elements in ascending order.
+impl<K: Ord, T> Seq<K> for AugSortedSet<K, T>:
+    /// Yield all keys in ascending order.
     ///
     /// cost: \(O(1)\) amortized per step
-    /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.each().collect() == []`
-    /// order: ascending, each key repeated by its count
+    /// empty: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.each().collect() == []`
+    /// order: ascending
     /// traps: never
-    /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.each().collect() == [1, 3, 3]`
-    pub fn each(self) -> yields K:
-        for (k, c) in bag.entries():
-            for _ in 0..c: yield k
+    /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.each().collect() == [1, 3]`
+    fn iter(self) -> yields K:
+        for x in bag.each(): yield x
 
 pub struct AugSortedSet<K: Ord, T>:
     _len: Int
@@ -2264,16 +2278,6 @@ pub struct AugSortedSet<K: Ord, T>:
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(1); s.add(3); s.add(5); s.fold_between(1, 5) == 4 and s.fold_between(4, 2) == 0`
     pub fn fold_between(self, lo: K, hi: K) -> T = bag.fold_between(lo, hi)
 
-    /// Yield all keys in ascending order.
-    ///
-    /// cost: \(O(1)\) amortized per step
-    /// empty: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.each().collect() == []`
-    /// order: ascending
-    /// traps: never
-    /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.add(1); s.each().collect() == [1, 3]`
-    pub fn each(self) -> yields K:
-        for x in bag.each(): yield x
-
 impl<K: Ord, T> Contains<K> for AugSortedSet<K, T>:
     /// Whether `x` is present.
     ///
@@ -2281,6 +2285,20 @@ impl<K: Ord, T> Contains<K> for AugSortedSet<K, T>:
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.add(3); s.contains(3) and not s.contains(1)`
     fn contains(self, x: K) -> Bool = bag.count(x) > 0
+
+impl Seq<Int> for BucketCount:
+    /// Visit every stored copy, skipping empty blocks.
+    ///
+    /// cost: \(O(\sqrt{N} + \sqrt{N} \cdot b + \mathit{len})\) for `b` blocks holding a copy
+    /// empty: `BucketCount(0..10).each().collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var b = BucketCount(0..10); b.add(7, 2); b.add(3); b.each().collect() == [3, 7, 7]`
+    fn iter(self) -> yields Int:
+        for k in 0..blk.len:
+            if blk[k] == 0: continue
+            for i in k << sh..min((k + 1) << sh, cnt.len):
+                for _ in 0..cnt[i]: yield lo + i
 
 /// Counts over an integer value range `r`, with \(O(1)\) point add and \(O(\sqrt{N})\) k-th
 /// order statistic: the value-range frequency table for Mo's algorithm.
@@ -2392,19 +2410,6 @@ pub struct BucketCount:
     /// example: `var b = BucketCount(0..10); b.add(4); b.remove(4); b.is_empty`
     @get pub fn is_empty(self) -> Bool:
         total == 0
-
-    /// Visit every stored copy, skipping empty blocks.
-    ///
-    /// cost: \(O(\sqrt{N} + \sqrt{N} \cdot b + \mathit{len})\) for `b` blocks holding a copy
-    /// empty: `BucketCount(0..10).each().collect() == []`
-    /// order: ascending value, each value repeated by its count
-    /// traps: never
-    /// example: `var b = BucketCount(0..10); b.add(7, 2); b.add(3); b.each().collect() == [3, 7, 7]`
-    pub fn each(self) -> yields Int:
-        for k in 0..blk.len:
-            if blk[k] == 0: continue
-            for i in k << sh..min((k + 1) << sh, cnt.len):
-                for _ in 0..cnt[i]: yield lo + i
 
     /// \(O(r.\mathit{len})\). Reset all counts to zero.
     ///

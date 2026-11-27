@@ -10,8 +10,21 @@
 
 use std.interval.{IntervalMap}
 use std.range.{Len}
+use std.seq.{each, Seq}
 
 const MAX_GEN = 2_000_000_000
+
+impl<D> Seq<D> for Marks<D>:
+    /// Visit every marked position; `for v in m` uses this.
+    ///
+    /// cost: \(O(\lvert D \rvert)\): it scans the whole domain
+    /// empty: `Marks<0..5>().each().collect() == []`
+    /// order: ascending position in `D`
+    /// traps: never
+    /// example: `var m = Marks<0..5>(); m.add(3); m.add(1); m.each().collect() == [1, 3]`
+    fn iter(self) -> yields D:
+        for v in D:
+            if stamp[v] == gen: yield v
 
 /// A visited/mark set over a domain `D` with \(O(1)\) `add`, `remove`, `contains` (`v in m`),
 /// and \(O(1)\) `clear()`. Memory is one `[D]0..=2_000_000_000` array (4 bytes per element).
@@ -81,17 +94,6 @@ pub struct Marks<D>:
     /// example: `var m = Marks<0..5>(); m.add(0); m.remove(0); m.is_empty`
     @get pub fn is_empty(self) -> Bool:
         cnt == 0
-
-    /// Visit every marked position; `for v in m` uses this.
-    ///
-    /// cost: \(O(\lvert D \rvert)\): it scans the whole domain
-    /// empty: `Marks<0..5>().each().collect() == []`
-    /// order: ascending position in `D`
-    /// traps: never
-    /// example: `var m = Marks<0..5>(); m.add(3); m.add(1); m.each().collect() == [1, 3]`
-    pub fn each(self) -> yields D:
-        for v in D:
-            if stamp[v] == gen: yield v
 
 impl<D: Domain> Contains<D> for Marks<D>:
     /// Whether `v` is marked; also spelled `v in m`.
@@ -197,6 +199,17 @@ impl<D: Domain, T> Contains<D> for MarkMap<D, T>:
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 0); m.contains(2) and not m.contains(3)`
     fn contains(self, v: D) -> Bool = stamp[v] == gen
 
+impl<K> Seq<K> for Interner<K>:
+    /// Visit every interned key; `for k in t` uses this.
+    ///
+    /// cost: \(O(1)\) per step
+    /// empty: `Interner<Str>().each().collect() == []`
+    /// order: id order, `key(0)` first, so it never depends on hash order
+    /// traps: never
+    /// example: `var t = Interner<Str>(); t.id("b"); t.id("a"); t.id("b"); t.each().collect() == ["b", "a"]`
+    fn iter(self) -> yields K:
+        for k in keys: yield k
+
 /// Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 /// `id`, `get`, and `key` are \(O(1)\) expected; `len`, `is_empty`, `clear` are \(O(1)\).
 /// It prints its keys in id order, space-separated, so output never depends on hash order.
@@ -226,16 +239,6 @@ pub struct Interner<K>:
     /// example: `var t = Interner<Str>(); t.id("a"); t.clear(); t.is_empty`
     @get pub fn is_empty(self) -> Bool:
         keys.len == 0
-
-    /// Visit every interned key; `for k in t` uses this.
-    ///
-    /// cost: \(O(1)\) per step
-    /// empty: `Interner<Str>().each().collect() == []`
-    /// order: id order, `key(0)` first, so it never depends on hash order
-    /// traps: never
-    /// example: `var t = Interner<Str>(); t.id("b"); t.id("a"); t.id("b"); t.each().collect() == ["b", "a"]`
-    pub fn each(self) -> yields K:
-        for k in keys: yield k
 
     /// Forget every key, so the next new key gets id `0` again.
     ///
@@ -290,6 +293,18 @@ impl<K> Contains<K> for Interner<K>:
     /// example: `var t = Interner<Int>(); t.id(40); t.contains(40) and not t.contains(41)`
     fn contains(self, k: K) -> Bool:
         to_id.get(k) != None
+
+impl<D> Seq<D> for SparseSet<D>:
+    /// Every element, in dense order: insertion order, except that each `remove` moved the then-last
+    /// element into the removed one's slot.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `SparseSet<0..5>().each().collect() == []`
+    /// order: dense order (insertion order adjusted by removals, as above)
+    /// traps: never
+    /// example: `var s = SparseSet<0..5>(); s.add(2); s.add(0); s.add(4); s.each().collect() == [2, 0, 4]`
+    fn iter(self) -> yields D:
+        for i in 0.._len: yield dense[i]
 
 /// Briggs-Torczon sparse set over domain `D`.
 /// \(O(1)\) `add`, `remove`, `contains`, `clear` AND O(`len`) iteration over active elements.
@@ -359,17 +374,6 @@ pub struct SparseSet<D>:
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.clear(); s.is_empty and not s.contains(3)`
     pub fn clear(mut self):
         _len = 0
-
-    /// Every element, in dense order: insertion order, except that each `remove` moved the then-last
-    /// element into the removed one's slot.
-    ///
-    /// cost: \(O(\mathit{len})\)
-    /// empty: `SparseSet<0..5>().each().collect() == []`
-    /// order: dense order (insertion order adjusted by removals, as above)
-    /// traps: never
-    /// example: `var s = SparseSet<0..5>(); s.add(2); s.add(0); s.add(4); s.each().collect() == [2, 0, 4]`
-    pub fn each(self) -> yields D:
-        for i in 0.._len: yield dense[i]
 
 impl<D: Domain> Contains<D> for SparseSet<D>:
     /// Whether `v` is in the set.

@@ -14,7 +14,7 @@
 //!   up to `1e12`), and `convex_hull_3d` orientation tests <= `4.8e28` fit `I128`.
 
 use std.bag.{SortedMap, SortedSet}
-use std.seq.{collect, reversed, all, any}
+use std.seq.{each, Seq, collect, reversed, all, any}
 use std.hashmap.{Counter, push}
 use std.range.{Len, first_true, last_true}
 use std.math.{abs, atan2, cos, sin, sqrt}
@@ -2767,6 +2767,18 @@ pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -
 
 // ---- points draining out of rectangles
 
+impl Seq<Int> for PointSet:
+    /// \(O(n)\). Visit the index of every point still in the set.
+    ///
+    /// cost: \(O(n)\), `n` the number of points built
+    /// empty: `PointSet.of([]).each().collect() == []`
+    /// order: increasing index
+    /// traps: never
+    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)]); s.remove(1); s.each().collect() == [0, 2]`
+    fn iter(self) -> yields Int:
+        for i in 0..alive.len:
+            if alive[i]: yield i
+
 /// A fixed set of integer points, each named by its index in the list it was built from, where
 /// `drain(x, y)` removes and returns every point still in the half-open rectangle `x * y`.
 ///
@@ -2842,17 +2854,6 @@ pub struct PointSet:
     /// traps: never
     /// example: `var s = PointSet.of([Pt(1, 1)]); let e = s.is_empty; s.remove(0); s.is_empty and not e`
     @get pub fn is_empty(self) -> Bool = live == 0
-
-    /// \(O(n)\). Visit the index of every point still in the set.
-    ///
-    /// cost: \(O(n)\), `n` the number of points built
-    /// empty: `PointSet.of([]).each().collect() == []`
-    /// order: increasing index
-    /// traps: never
-    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)]); s.remove(1); s.each().collect() == [0, 2]`
-    pub fn each(self) -> yields Int:
-        for i in 0..alive.len:
-            if alive[i]: yield i
 
     /// Remove point `i`; `false` when it was already gone.
     ///

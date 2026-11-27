@@ -250,6 +250,7 @@ use std.seq.{
     deduped,
     distinct,
     drop_while,
+    each,
     equal_range,
     find,
     first_gt,

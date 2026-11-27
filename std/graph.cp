@@ -27,7 +27,7 @@ use std.math.{abs, gcd, popcount, ctz}
 use std.opt.{is_none_or}
 use std.rand.{Random, shuffle}
 use std.range.{Len}
-use std.seq.{collect, reverse, count, Seq, Indexed, Slice, all, any}
+use std.seq.{each, collect, reverse, count, Seq, Indexed, Slice, all, any}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by

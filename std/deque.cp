@@ -4,7 +4,7 @@
 //! example: `var q: Deque<Int> = Deque(); q.push(2); q.push_front(1); q.pop_front() == Some(1) and q.len == 1`
 
 use std.range.{Len}
-use std.seq.{Bidir, Seq}
+use std.seq.{each, Bidir, Seq}
 
 /// A queue with both ends open: `var q = Deque<Int>()`. `push` / `pop` work at the back,
 /// `push_front` / `pop_front` at the front, all amortized \(O(1)\); `q[i]` is the `i`-th element

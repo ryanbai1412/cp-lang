@@ -5,7 +5,7 @@
 //! example: `"banana".search("nan") == Some(2)`
 
 use std.math.{pow_mod, inv_mod}
-use std.seq.{collect, nth, find, Seq, Indexed, all}
+use std.seq.{each, collect, nth, find, Seq, Indexed, all}
 use std.sparse.{LinearRmq}
 use std.range.{Len, first_true, last_true}
 use std.io.{io}
@@ -1094,6 +1094,17 @@ fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
             if k > 0: k -= 1
     (sa, rank, lcp)
 
+impl<T: Ord> Seq<Int> for SuffixArray<T>:
+    /// \(O(n)\). Visit the suffix starts in rank order: `sa[0]`, `sa[1]`, ...
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `SuffixArray.new("").each().collect() == []`
+    /// order: increasing rank, so the suffixes in sorted order
+    /// traps: never
+    /// example: `SuffixArray.new("banana").each().collect() == [5, 3, 1, 0, 4, 2]`
+    fn iter(self) -> yields Int:
+        for i in sa: yield i
+
 /// Suffix array, inverse rank, adjacent LCP, and \(O(1)\) LCP/comparison queries. \(O(n)\) SA-IS +
 /// Kasai LCP + block RMQ.
 pub struct SuffixArray<T: Ord>:
@@ -1150,16 +1161,6 @@ pub struct SuffixArray<T: Ord>:
     /// traps: never
     /// example: `SuffixArray("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = sa.is_empty
-
-    /// \(O(n)\). Visit the suffix starts in rank order: `sa[0]`, `sa[1]`, ...
-    ///
-    /// cost: \(O(n)\)
-    /// empty: `SuffixArray.new("").each().collect() == []`
-    /// order: increasing rank, so the suffixes in sorted order
-    /// traps: never
-    /// example: `SuffixArray.new("banana").each().collect() == [5, 3, 1, 0, 4, 2]`
-    pub fn each(self) -> yields Int:
-        for i in sa: yield i
 
     /// The length of the longest common prefix of the suffixes starting at `i` and `j`. The
     /// empty suffix at `n` is allowed, and `lcp_between(i, i) == n - i`.

@@ -9,7 +9,7 @@ use std.algebra.{Action, Monoid}
 use std.marks.{Id}
 use std.math.{splitmix64, bit_width}
 use std.range.{Len, ends}
-use std.seq.{deduped, all}
+use std.seq.{each, Seq, deduped, all}
 
 /// An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte
 /// `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays
@@ -94,6 +94,17 @@ impl<S: Versioned<D, T>, D: Domain, T> Version<S>:
     /// example: `var p = PersistentArray(a: [1, 2, 3]); let v = p.set(p.base, 0, 9); v.within(p).each().collect() == [9, 2, 3]`
     pub fn within(self, store: S) -> lends VersionWithin<S, D, T> = VersionWithin(store, self)
 
+impl<S: Versioned<D, T>, D: Domain, T> Seq<T> for VersionWithin<S, D, T>:
+    /// Visit the value at every position.
+    ///
+    /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\)
+    /// empty: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).each().collect() == []`
+    /// order: ascending `D` order
+    /// traps: when `store` did not make this version
+    /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 1, 7); v.within(t).each().collect() == [1, 7, 3]`
+    fn iter(self) -> yields T:
+        for i in D: yield store.get(v, i)
+
 /// One version of a `Versioned` store read through it, from `v.within(store)`. It lends the store,
 /// so it lives no longer than it and copies nothing.
 pub struct VersionWithin<S: Versioned<D, T>, D: Domain, T>(store: S, v: Version<S>):
@@ -110,16 +121,6 @@ pub struct VersionWithin<S: Versioned<D, T>, D: Domain, T>(store: S, v: Version<
     /// traps: never
     /// example: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).is_empty`
     @get pub fn is_empty(self) -> Bool = D.count == 0
-
-    /// Visit the value at every position.
-    ///
-    /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\)
-    /// empty: `var p = PersistentArray<0..0, Int>(fill: 0); p.base.within(p).each().collect() == []`
-    /// order: ascending `D` order
-    /// traps: when `store` did not make this version
-    /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); let v = t.set(t.base, 1, 7); v.within(t).each().collect() == [1, 7, 3]`
-    pub fn each(self) -> yields T:
-        for i in D: yield store.get(v, i)
 
     /// Visit every position with its value.
     ///
@@ -890,6 +891,25 @@ pub struct PMultiset<D>:
         else: n._r = Some(ar.alloc(kid(ar, _r).step(mut ar, k, d, mid, hi)))
         n
 
+impl<D> Seq<D> for PMultisetWithin<D>:
+    /// Visit every element, one per copy, skipping empty subtrees.
+    ///
+    /// cost: \(O(\min(\mathit{len}, \lvert D \rvert) \log \lvert D \rvert + \mathit{len})\)
+    /// empty: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().within(ar).each().collect() == []`
+    /// order: ascending `D` order, each element repeated by its count
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7); s.within(ar).each().collect() == [2, 7, 7]`
+    fn iter(self) -> yields D:
+        var stack = [(node: set, lo: 0, hi: D.count)]
+        while let top = stack.pop():
+            if top.node._len == 0: continue
+            if top.hi - top.lo == 1:
+                for _ in 0..top.node._len: yield D.nth(top.lo)
+                continue
+            let mid = top.lo + (top.hi - top.lo) / 2
+            stack.push((node: kid(ar, top.node._r), lo: mid, hi: top.hi))
+            stack.push((node: kid(ar, top.node._l), lo: top.lo, hi: mid))
+
 /// A `PMultiset` read through its `PArena`, from `s.within(ar)`. It lends both, so it lives no
 /// longer than either and copies nothing.
 pub struct PMultisetWithin<D>(ar: PArena<PMultiset<D>>, set: PMultiset<D>):
@@ -906,24 +926,6 @@ pub struct PMultisetWithin<D>(ar: PArena<PMultiset<D>>, set: PMultiset<D>):
     /// traps: never
     /// example: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().within(ar).is_empty`
     @get pub fn is_empty(self) -> Bool = set.is_empty
-
-    /// Visit every element, one per copy, skipping empty subtrees.
-    ///
-    /// cost: \(O(\min(\mathit{len}, \lvert D \rvert) \log \lvert D \rvert + \mathit{len})\)
-    /// empty: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().within(ar).each().collect() == []`
-    /// order: ascending `D` order, each element repeated by its count
-    /// traps: never
-    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7); s.within(ar).each().collect() == [2, 7, 7]`
-    pub fn each(self) -> yields D:
-        var stack = [(node: set, lo: 0, hi: D.count)]
-        while let top = stack.pop():
-            if top.node._len == 0: continue
-            if top.hi - top.lo == 1:
-                for _ in 0..top.node._len: yield D.nth(top.lo)
-                continue
-            let mid = top.lo + (top.hi - top.lo) / 2
-            stack.push((node: kid(ar, top.node._r), lo: mid, hi: top.hi))
-            stack.push((node: kid(ar, top.node._l), lo: top.lo, hi: mid))
 
 impl<D> Eq for PMultiset<D>:
     fn eq(a, b) = a._len == b._len and a._hash == b._hash
