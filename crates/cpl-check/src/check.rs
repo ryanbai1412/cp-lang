@@ -1846,42 +1846,8 @@ pub(crate) fn suggest_rename(
     }
 }
 
-/// The candidate closest to `name`, if it is close enough to be a typo.
-pub fn closest<'c>(name: &str, mut candidates: impl Iterator<Item = &'c str>) -> Option<String> {
-    closest_of(name, &mut candidates)
-}
+pub use cpl_diag::closest;
 
-/// `closest`'s body, behind `dyn` so its two dozen callers share one copy.
-fn closest_of(name: &str, candidates: &mut dyn Iterator<Item = &str>) -> Option<String> {
-    let limit = match name.chars().count() {
-        0 | 1 => return None,
-        2..=4 => 1,
-        _ => 2,
-    };
-    // A value named like a type (`cnt` for `Int`) is a different name, not
-    // a slip, unless only the capital differs (`vec` for `Vec`).
-    let upper = |s: &str| s.chars().next().is_some_and(char::is_uppercase);
-    let head = |s: &str| s.chars().next().map(|c| c.to_ascii_lowercase());
-    let mut best: Option<(usize, bool, &str)> = None;
-    for c in candidates {
-        if c == name || (upper(c) != upper(name) && head(c) != head(name)) {
-            continue;
-        }
-        let mut d = edit_distance(name, c);
-        // `pri` is `print` stopped short, a closer match than `prim` is a typo.
-        if c.starts_with(name) && name.len() >= 3 && c.len() <= name.len() + 2 {
-            d = d.min(limit);
-        }
-        // A word stopped short (`sorte`) means the longer name.
-        let key = (d, !c.starts_with(name), c);
-        if d <= limit && best.is_none_or(|b| key < b) {
-            best = Some(key);
-        }
-    }
-    best.map(|(_, _, c)| c.to_string())
-}
-
-use cpl_diag::edit_distance;
 
 fn collect_expr_names(expr: &cpl_syntax::ast::Expr, out: &mut Vec<(String, Span)>) {
     use cpl_syntax::visit::{walk_expr, Visitor};
@@ -1924,7 +1890,7 @@ mod tests {
         assert_eq!(closest("answer", names.iter().copied()), None);
         assert_eq!(closest("m", names.iter().copied()), None);
         assert_eq!(closest("dits", names.iter().copied()), Some("dist".into()));
-        assert_eq!(edit_distance("kitten", "sitting"), 3);
+        assert_eq!(cpl_diag::edit_distance("kitten", "sitting"), 3);
     }
 
     #[test]

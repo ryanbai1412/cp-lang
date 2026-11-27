@@ -865,6 +865,12 @@ impl<'a> Cx<'a> {
             );
             if let Some(fix) = self.import_fix(n, span) {
                 msg.fixes.push(fix);
+            } else if let Some(near) = self.closest_name(n) {
+                msg.help = Some(format!("did you mean `{near}`?"));
+                msg.fixes.push(cpl_next_ir::msg::Fix {
+                    title: format!("change to `{near}`"),
+                    edits: vec![(self.item.at(span), near)],
+                });
             }
             self.err(span, msg);
         }
@@ -874,6 +880,16 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// The name in scope that `n`, unknown, is most likely a slip for.
+    fn closest_name(&self, n: &str) -> Option<String> {
+        let scoped = self.scopes.iter().flat_map(|s| s.keys());
+        let names = (self.d.views[self.module.0].keys())
+            .chain(self.global_names.keys())
+            .chain(scoped)
+            .filter(|name| !name.starts_with('$'));
+        cpl_diag::closest(n, names.map(String::as_str))
+    }
+
     /// The `use` line that brings in `n`, unknown at `span`, from the first std module that
     /// exports it as `pub`.
     fn import_fix(&self, n: &str, span: Span) -> Option<cpl_next_ir::msg::Fix> {

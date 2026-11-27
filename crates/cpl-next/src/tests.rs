@@ -1040,3 +1040,29 @@ fn an_unknown_std_name_offers_its_use_line() {
     fixed.replace_range(span.start as usize..span.end as usize, new);
     assert_eq!(fixed, "// mo\nuse std.mo.{mo_order}\nprint(mo_order(3))\n");
 }
+
+#[test]
+fn an_unknown_name_offers_the_closest_in_scope() {
+    use crate::facade::{Session, Snapshot};
+    let src = "let total = 1\nprint(totl)\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let diags = s.program().err().expect("refused");
+    let d = (diags.iter())
+        .find(
+            |d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::UNRESOLVED_NAME),
+        )
+        .unwrap_or_else(|| panic!("{diags:?}"));
+    assert_eq!(d.help.as_deref(), Some("did you mean `total`?"), "{d:?}");
+    let fix = d.fixes.first().expect("a fix");
+    let edits: Vec<_> = (fix.edits.iter())
+        .map(|(span, new)| (&src[span.start as usize..span.end as usize], new.as_str()))
+        .collect();
+    assert_eq!(
+        (fix.title.as_str(), edits),
+        ("change to `total`", vec![("totl", "total")])
+    );
+}

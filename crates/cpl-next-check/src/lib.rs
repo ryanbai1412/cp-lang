@@ -1036,11 +1036,11 @@ impl<'a> Cx<'a> {
         self.err_help(span, msg, None);
     }
     fn err_help(&mut self, span: Span, msg: impl Into<Msg>, help: Option<String>) {
-        let at = self.item.at(span);
-        self.errors.push(Msg {
-            help,
-            ..Msg::at(at, msg)
-        });
+        let mut msg = Msg::at(self.item.at(span), msg);
+        if help.is_some() {
+            msg.help = help;
+        }
+        self.errors.push(msg);
     }
     /// The source text `span` covers.
     fn text(&self, span: Span) -> &'a str {
