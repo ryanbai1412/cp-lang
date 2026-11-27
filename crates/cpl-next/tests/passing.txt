@@ -11,6 +11,7 @@ core-01/block-not-indented.cp
 core-01/bool-caret-names-ne.cp
 core-01/bool-ne-is-xor.cp
 core-01/bracket-layout.cp
+core-01/break-unknown-label-rejected.cp
 core-01/by-steps-an-inclusive-range.cp
 core-01/call-arguments.cp
 core-01/capitalized-pattern-is-a-variant.cp
@@ -53,6 +54,7 @@ core-01/for-filter-on-inner-clause.cp
 core-01/for-refutable-pattern.cp
 core-01/generator-arg-free-fold.cp
 core-01/generator-argument.cp
+core-01/generator-loop-control.cp
 core-01/generator-test-counts-trues.cp
 core-01/getter-no-parens.cp
 core-01/getter-parens.cp
@@ -73,6 +75,8 @@ core-01/int-power-is-exact.cp
 core-01/int-power-negative-traps.cp
 core-01/int-power-overflow-traps.cp
 core-01/interp.cp
+core-01/labelled-break-skips-inner-else.cp
+core-01/labelled-break.cp
 core-01/lambda-takes-tuple-fields.cp
 core-01/lazy-is-a-name.cp
 core-01/let-else-binding-not-in-else.cp
@@ -90,6 +94,7 @@ core-01/line-comment-runs-to-eol.cp
 core-01/lone-cr-in-comment-is-error.cp
 core-01/lone-cr-in-string-is-error.cp
 core-01/lone-cr-is-error.cp
+core-01/loop-else.cp
 core-01/lowercase-binds.cp
 core-01/lowercase-const.cp
 core-01/lowercase-none-is-a-name.cp
@@ -444,6 +449,7 @@ core-04/open-ended.cp
 core-04/open-from-cut-walks-cuts.cp
 core-04/open-range-from-position.cp
 core-04/open-to-cut-walks-cuts.cp
+core-04/option-lift-at-compare.cp
 core-04/optional-range-end-names-the-end.cp
 core-04/optional-record-literal-takes-domain-positions.cp
 core-04/piece-after-is-a-range.cp
@@ -708,6 +714,7 @@ core-06/fn-value-yes-in-map.cp
 core-06/free-fn-called-as-method.cp
 core-06/function-types.cp
 core-06/gen-rooted-old-shape-names-variant.cp
+core-06/generator-body-labels-else.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/generator-lend-ends-at-last-use.cp
 core-06/generator-lockstep-via-list.cp
@@ -842,6 +849,8 @@ core-07/view-walks.cp
 core-07/while-adapters.cp
 core-07/windows-chunks-keep-keys.cp
 core-07/with-prev.cp
+core-07/yielded-closure-collected-escapes.cp
+core-07/yielded-closure-in-struct-collected-escapes.cp
 core-07/yielded-closure-in-struct-field-writes-generator-local.cp
 core-07/yielded-closure-in-struct-writes-generator-local.cp
 core-07/yielded-closure-writes-generator-local.cp
@@ -1037,6 +1046,7 @@ core-10/token-read-skips-blank-lines.cp
 core-10/top-level-return.cp
 core-10/tuple-dependent-bound-in-block.cp
 core-10/tuple-reads-in-order.cp
+core-11/bit-builtins.cp
 core-11/common-local-name-not-prelude.cp
 core-11/compiler-stamp.cp
 core-11/constant-domain-hoists-counted.cp
@@ -1089,6 +1099,8 @@ core-12/filter-not-indexed.cp
 core-12/generator-not-bidir.cp
 core-12/generator-not-keyed.cp
 core-12/indexed-access.cp
+core-12/intrinsic-bit-ceil-traps-on-both-engines.cp
+core-12/intrinsic-bits-match-on-both-engines.cp
 core-12/intrinsic-in-user-module.cp
 core-12/intrinsic-runs-the-same-on-both-engines.cp
 core-12/lends-return.cp
@@ -1364,6 +1376,7 @@ next/a_gen_14_mutual_recursion.cp
 next/a_gen_15_fn_field_reassigned.cp
 next/a_gen_16_fn_var_three_members.cp
 next/a_gen_17_fn_reads_later_top_level_var.cp
+next/a_gen_19_for_else.cp
 next/a_gen_21_continue_in_plain_loop.cp
 next/a_io_02_nbsp_is_not_whitespace.cp
 next/a_io_04_minus_zero.cp
@@ -1394,6 +1407,7 @@ next/a_own_05_move_in_branch_then_use.cp
 next/a_own_06_move_in_loop.cp
 next/a_own_08_one_place_lent_mut_twice.cp
 next/a_own_09_struct_with_lent_closure_returned.cp
+next/a_own_10_lent_closure_stored_through_mut_param.cp
 next/a_own_11_push_while_walked.cp
 next/a_own_12_push_while_walked_via_closure.cp
 next/a_own_13_value_param_callee_writes_source.cp
@@ -1511,6 +1525,7 @@ next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_coerce_01_list_literal_is_its_positions.cp
 next/n_comp_01_comprehension_is_its_loop.cp
+next/n_compare_lifts_optional.cp
 next/n_const_01_value_worked_out_once.cp
 next/n_const_02_cycle_is_an_error.cp
 next/n_const_03_trap_is_a_compile_error.cp
@@ -1554,6 +1569,7 @@ next/n_engine_10_read_keeps_storage_shared.cp
 next/n_engine_11_nested_fn_writes_a_cell_of_a_captured_list.cp
 next/n_enum_01_values_and_order.cp
 next/n_enum_domain.cp
+next/n_eq_01_optional_fn_is_not_eq.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp
 next/n_f64_03_precision_and_specs.cp
@@ -1616,6 +1632,7 @@ next/n_list_02_move_within.cp
 next/n_list_03_let_receiver.cp
 next/n_list_add_01_joins_any_seq.cp
 next/n_load_01_a_method_of_an_unspelled_prelude_module.cp
+next/n_loop_01_labels_and_else.cp
 next/n_lower_01_fn_ending_in_while_true.cp
 next/n_map_01_map_literals.cp
 next/n_marker_01_a_second_cuts_struct_is_a_duplicate.cp
@@ -1838,6 +1855,7 @@ std-dsu/new.cp
 std-dsu/persistent-dsu-branches.cp
 std-dsu/rollback-array-nested-marks.cp
 std-dsu/rollback-array-undo-nothing.cp
+std-fenwick/fenwick-kth-zero-traps.cp
 std-flow/cancel-cycles-negative-cycle.cp
 std-flow/cancel-cycles-no-negative-cycle.cp
 std-flow/matroid-intersection-weight-is-a-plain-closure.cp
@@ -1972,6 +1990,7 @@ std-search/parallel_bsearch-1.cp
 std-search/parallel_bsearch-2.cp
 std-search/split-best-multi-group.cp
 std-search/split-best-orders-by-best.cp
+std-segtree/of-explicit-args-reject-wrong-fill.cp
 std-seq/a-bidir-struct-of-its-own-has-last.cp
 std-seq/adjacent-diff-short.cp
 std-seq/adjacent_diff-1.cp
@@ -2089,6 +2108,10 @@ std-strings/repeat-zero.cp
 std-subset/empty-braces-is-empty-subset.cp
 std-subset/items-walks-members.cp
 std-timetree/cdq-1.cp
+std-timetree/event-reads-back-value.cp
+std-timetree/offline-over-zero-steps.cp
+std-timetree/run-no-events.cp
+std-timetree/run-zero-queries.cp
 std-window/window-pop-checks-front.cp
 std-window/window-pop-empty-traps.cp
 std-window/window-pop-to-empty.cp
@@ -2267,7 +2290,3 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
-next/n_eq_01_optional_fn_is_not_eq.cp
-core-07/yielded-closure-collected-escapes.cp
-core-07/yielded-closure-in-struct-collected-escapes.cp
-next/a_own_10_lent_closure_stored_through_mut_param.cp

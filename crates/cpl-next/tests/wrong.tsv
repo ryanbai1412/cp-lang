@@ -43,7 +43,7 @@ core-02/rb1-q24-min-assign-into-none.cp	wrong-reject	check: program:6:20: E0606:
 core-02/read-str-of-alphabet-type-arg.cp	wrong-reject	check: program:5:9: E9999: 
 core-02/read-str-of-type-argument.cp	wrong-reject	check: program:5:9: E9999: 
 core-02/some-and-none-or.cp	wrong-reject	check: program:4:46: E0310: no parameter named `answers`
-core-02/some-is-a-fn-value.cp	wrong-reject	check: program:6:32: E0309: `+` on a position of `$range1` takes its integer first, as `Int(v)`
+core-02/some-is-a-fn-value.cp	wrong-reject	check: program:6:20: E0302: expected `Array<$range0, Int>`, found `Array<$range1, Int>`
 core-02/static-fn-is-a-fn-value.cp	wrong-reject	check: program:8:9: E0201: unknown name `P`
 core-02/str-from-slice-copies.cp	wrong-reject	check: program:4:13: E0302: expected `List<Char>`, found `Slice<Str>`
 core-02/str-len-and-charset-compose.cp	wrong-reject	check: program:4:1: E9999: 
@@ -76,7 +76,7 @@ core-04/a8-copy-counts-from-zero.cp	wrong-reject	check: program:4:13: E0302: exp
 core-04/a9-length-only.cp	wrong-reject	check: std.strings:476:45: E0203: `S` has no member `is_empty`
 core-04/an-inline-product-type-arg-is-a-domain-in-the-callee.cp	wrong-reject	check: program:11:56: E0606: `D` does not implement `Domain`
 core-04/array-ring-steps-wrap.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `ring`
-core-04/array-value-run-time-count-differs-traps.cp	wrong-reject	check: program:6:32: E0302: expected `Int`, found `$range1`
+core-04/array-value-run-time-count-differs-traps.cp	wrong-reject	check: program:6:20: E0302: expected `Array<$range0, Int>`, found `Array<$range1, Int>`
 core-04/b1-rekey-domain.cp	wrong-reject	check: program:5:9: E0203: `List<Int>` has no member `rekey`
 core-04/b1-rekey-length-mismatch.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
 core-04/b1-rekey-list.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
@@ -121,16 +121,16 @@ core-04/library-domain-sized-in-the-branch-taken.cp	wrong-reject	check: program:
 core-04/library-domain-sized-where-first-used.cp	wrong-reject	check: program:11:5: E0606: `Subset<Letter>` does not implement `Domain`
 core-04/library-domain-walk.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-type-into-int-and-f64.cp	wrong-reject	decls: E0204: unknown trait `Show`
+core-04/list-literal-sizes-a-generic-domain.cp	wrong-reject	check: std.beats:61:29: E0201: unknown name `Int`
 core-04/list-of-domain-array-loses-domain.cp	wrong-error	wanted E0301 on line 6, got: check: program:6:10: E0302: expected `Int`, found `V`
 core-04/literal-cut-param-outside.cp	wrong-error	wanted E0902 on line 5, got: check: program:5:13: E0302: expected `Cut<D>`, found `Int`
 core-04/literal-cut-param.cp	wrong-reject	check: program:7:12: E0302: expected `Cut<D>`, found `Int`
 core-04/literal-position-in-list.cp	wrong-reject	check: program:7:7: E0302: expected `List<Int>`, found `List<V>`
 core-04/literal-position.cp	wrong-reject	check: program:7:11: E0302: expected `Cut<V>`, found `Int`
-core-04/literal-range-table-int-keys.cp	wrong-reject	check: program:4:32: E0309: `*` on a position of `$range1` takes its integer first, as `Int(v)`
+core-04/literal-range-table-int-keys.cp	wrong-reject	check: program:4:20: E0302: expected `Array<$range0, Int>`, found `Array<$range1, Int>`
 core-04/literal-to-mod.cp	wrong-reject	check: program:4:1: E9999: 
 core-04/lyndon-starts-are-keys.cp	wrong-reject	check: std.strings:567:29: E0606: `T` has no `impl Ord`, which `<=` needs (R08.1.5)
 core-04/min-rotation-is-key.cp	wrong-reject	check: std.strings:598:20: E0606: `T` has no `impl Ord`, which `>` needs (R08.1.5)
-core-04/option-lift-at-compare.cp	wrong-reject	check: program:6:9: E0302: expected `V`, found `Optional<V>`
 core-04/pair-index-arity-mismatch.cp	wrong-error	wanted E0303 on line 5, got: check: program:5:1: E0606: `Pair<V>` does not implement `Domain`
 core-04/palindromes-longest-at-key.cp	wrong-reject	check: std.strings:831:17: E0203: `K` has no member `ord`
 core-04/piece-into-fold.cp	wrong-reject	check: program:6:7: E0606: `V` does not implement `Sub`
@@ -174,7 +174,7 @@ core-05/exercise-13-disjoint-slices-meet.cp	wrong-reject	check: program:11:11: E
 core-05/exercise-26-return-slice-without-lends.cp	wrong-error	wanted E0603 on line 4, got: check: program:4:39: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-05/exercise-27-lends-from-wrong-param.cp	wrong-error	wanted E0603 on line 3, got: check: program:3:61: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 core-05/exercise-33-lends-result-loop-writes-source.cp	wrong-error	wanted E0602 on line 10, got: decls: E0204: unknown type `Filter`
-core-05/exercise-35-lent-optional-kept.cp	no-cxx	g++ failed on 3ead789ba31c714d.cpp: | 3ead789ba31c714d.cpp: In lambda function: | 3ead789ba31c714d.cpp:491:29: error: could not convert ‘l22’ from ‘S11’ to ‘cpl_raw<long int>’ |   491 |             g16 = S13{true, l22};
+core-05/exercise-35-lent-optional-kept.cp	no-cxx	g++ failed on f6a5ac54e106cfea.cpp: | f6a5ac54e106cfea.cpp: In lambda function: | f6a5ac54e106cfea.cpp:494:29: error: could not convert ‘l22’ from ‘S11’ to ‘cpl_raw<long int>’ |   494 |             g16 = S13{true, l22};
 core-05/file-body-var-holds-lent.cp	wrong-reject	check: program:9:16: E0302: expected `Str`, found `Slice<Str>`
 core-05/if-let-of-a-fresh-optional-moves-its-payload.cp	wrong-reject	own: program:4:31: E0603: this returns a value that borrows `got`: `got` is gone when the fn returns
 core-05/lends-fn-returns-view.cp	wrong-reject	check: program:4:47: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
@@ -410,6 +410,9 @@ lib-ops-ranges/fenwick-range-is-fold.cp	wrong-reject	check: std.fenwick:60:19: E
 lib-ops-ranges/range-fenwick-no-act.cp	wrong-error	wanted E0705 on line 5, got: check: program:5:30: E0310: no parameter named `act`
 lints/getter-view-reads-without-parens.cp	wrong-reject	check: program:6:15: E0606: `Rebased<List<Int>>` does not implement `Keyed`
 lints/std-declares-idiom-lints.cp	wrong-accept	wanted prefix_totals_list on line 5, ran and printed: 8
+matrix/generic/segtree--explicit_static.cp	wrong-reject	check: std.segtree:530:40: E0606: `M` does not implement `FromOp`
+matrix/generic/segtree--inferred_static.cp	wrong-reject	check: std.segtree:530:40: E0606: `M` does not implement `FromOp`
+matrix/generic/segtree--partial_static.cp	wrong-reject	check: std.segtree:530:40: E0606: `M` does not implement `FromOp`
 matrix/index/pair--count.cp	wrong-reject	check: program:3:7: E0203: `Pair` has no `count`
 matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has no `filter`
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
@@ -467,7 +470,12 @@ std-bag/sorted-map-drain-len-counts.cp	wrong-reject	check: std.bag:1700:43: E030
 std-bag/sorted-set-split-absorb.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sortedset-absorb-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sortedset-take-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
+std-beats/beats-assign-div-mod-match-brute.cp	wrong-reject	check: std.beats:271:54: E0201: unknown name `Int`
+std-beats/beats-bodies-examples.cp	wrong-reject	check: std.beats:61:29: E0201: unknown name `Int`
+std-beats/beats-op-sets-match-brute.cp	wrong-reject	check: std.beats:271:54: E0201: unknown name `Int`
+std-beats/beats-second-extremes-start-midway.cp	wrong-reject	check: std.beats:271:54: E0201: unknown name `Int`
 std-beats/historic-beats-matches-brute.cp	wrong-reject	check: program:46:38: E0201: unknown name `Int`
+std-beats/queries-read-without-pushing.cp	wrong-reject	check: program:13:22: E0201: unknown name `rand`
 std-bitset/dyn-basic.cp	wrong-reject	check: std.bitset:680:9: E0405: field `DynBitset._cap` is fixed (not `var`) and cannot be assigned
 std-bitset/dyn-nav.cp	wrong-reject	check: std.bitset:761:21: E0302: expected `Int`, found `Cut<Int>`
 std-bitset/dyn-ops.cp	wrong-reject	check: std.bitset:571:9: E0405: field `DynBitset._n` is fixed (not `var`) and cannot be assigned
@@ -509,7 +517,10 @@ std-dsu/persistent-dsu-matches-replay.cp	wrong-reject	check: std.dsu:125:29: E02
 std-dsu/roots-groups.cp	wrong-reject	check: program:5:7: E0302: expected `List<Int>`, found `List<V>`
 std-dsu/size.cp	wrong-reject	check: std.dsu:125:29: E0201: unknown name `swap`
 std-dsu/unite.cp	wrong-reject	check: std.dsu:125:29: E0201: unknown name `swap`
+std-fenwick/fenwick-bodies.cp	wrong-reject	check: std.fenwick:318:19: E0606: `T` does not implement `Domain`
 std-fenwick/fenwick-empty-domain-sums-zero.cp	wrong-reject	check: std.fenwick:60:19: E0606: `T` does not implement `Domain`
+std-fenwick/fenwick-first-ge-whole-sum.cp	wrong-reject	check: std.fenwick:97:39: E0302: expected `T`, found `Int`
+std-fenwick/fenwick-kth-at-and-past-total.cp	wrong-reject	check: std.fenwick:117:34: E0203: `Cut<D>` has no member `left`
 std-fenwick/fenwick2d-range-type-arguments.cp	wrong-reject	check: program:10:14: E0302: expected `Range<0..=1>`, found `Range<Int>`
 std-fenwick/range-and-xor-fenwick-match-brute.cp	wrong-reject	check: std.fenwick:468:9: E0606: `T` does not implement `BitXor`
 std-flow/add-both-undirected.cp	wrong-reject	check: std.flow:124:9: E0405: field `FlowGraph.cut_from` is fixed (not `var`) and cannot be assigned
@@ -580,7 +591,7 @@ std-hashmap/counts-keys-tuples-chars-and-generators.cp	wrong-reject	check: progr
 std-hashmap/flatmap-absorb-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-absorb-2.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-clear-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
-std-hashmap/flatmap-contains-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
+std-hashmap/flatmap-contains-1.cp	wrong-reject	check: std.hashmap:265:41: E0606: `V` does not implement `Eq`
 std-hashmap/flatmap-get-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-get_or_insert-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
 std-hashmap/flatmap-len-1.cp	wrong-reject	own: std.hashmap:84:17: E0602: `self` is written here while `old_s`, which borrows it, is still used
@@ -615,6 +626,7 @@ std-interval/assign-point-returns-old.cp	wrong-reject	check: std.interval:116:24
 std-interval/interval-bodies.cp	wrong-reject	check: std.interval:254:17: E0405: field `IntervalSet.total` is fixed (not `var`) and cannot be assigned
 std-interval/sparse-interval-map-matches-array.cp	wrong-reject	check: program:7:67: E0302: expected `List<Int>`, found `List<Range<Int>>`
 std-journeys/dsu.cp	wrong-reject	check: program:12:7: E0302: expected `List<Int>`, found `List<List<0..=3>>`
+std-journeys/fenwick.cp	wrong-reject	check: program:7:16: E0302: expected `Cut<$range0>`, found `Cut<Int>`
 std-journeys/sorted-set.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 std-journeys/window.cp	wrong-reject	check: program:3:9: E0606: `a function` does not implement `Op`
 std-lazy/flip-op-folds-both-halves.cp	wrong-reject	check: std.lazy:36:17: E0606: `M` does not implement `FromOp`
@@ -627,7 +639,7 @@ std-lazy/lazy-treap-reverse-matches-brute.cp	wrong-reject	check: program:15:18: 
 std-lazy/lazy-treap-reverse-mirrors-rank-dependent-tags.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-lazy/lazy-treap-splice-back-empty.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
 std-lazy/lazytreap-bodies.cp	wrong-reject	check: std.lazy:798:22: E0302: expected `Int`, found `()`
-std-lazy/rope-matches-brute.cp	wrong-reject	own: program:7:15: E0608: `a0` was moved into another binding; use `.clone()` there to keep both
+std-lazy/rope-matches-brute.cp	wrong-reject	check: std.lazy:1090:29: E0606: `T` does not implement `Eq`
 std-marks/arena-double-free-traps.cp	wrong-reject	check: std.marks:458:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
 std-marks/arena-free-foreign-handle-traps.cp	wrong-reject	check: std.marks:458:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
 std-marks/arena-free-multitest.cp	wrong-reject	check: std.marks:458:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
@@ -659,12 +671,12 @@ std-matrix/max-plus-past-the-bound-traps-as-the-loop.cp	wrong-reject	check: std.
 std-matrix/max-plus-product-entries-change-after-a-product.cp	wrong-reject	check: std.matrix:37:9: E0606: `T` does not implement `Clone`
 std-matrix/min-plus-at-the-entry-bound.cp	wrong-reject	check: std.matrix:792:13: E0203: `S` has no member `add`
 std-matrix/min-plus-products-match-the-loop.cp	wrong-reject	check: std.matrix:37:9: E0606: `T` does not implement `Clone`
-std-matrix/mul-vec-wrong-length-traps.cp	wrong-reject	check: std.matrix:260:49: E0606: `T` does not implement `Domain`
-std-matrix/mul-vec-zero-columns.cp	wrong-reject	check: std.matrix:260:49: E0606: `T` does not implement `Domain`
+std-matrix/mul-vec-wrong-length-traps.cp	wrong-reject	check: std.matrix:259:20: E0606: `Ring<T>` does not implement `Eq`
+std-matrix/mul-vec-zero-columns.cp	wrong-reject	check: std.matrix:259:20: E0606: `Ring<T>` does not implement `Eq`
 std-matrix/product-identity-of-size.cp	wrong-reject	check: std.matrix:283:45: E0606: `Mat<T>` does not implement `Mul`
 std-matrix/rank-f64-tiny-pivot.cp	wrong-reject	check: std.matrix:349:24: E0606: `T` does not implement `Domain`
-std-matrix/solve-f64-singular-none.cp	wrong-reject	check: std.matrix:383:24: E0606: `T` does not implement `Domain`
-std-matrix/solve-f64-wrong-length-traps.cp	wrong-reject	check: std.matrix:383:24: E0606: `T` does not implement `Domain`
+std-matrix/solve-f64-singular-none.cp	wrong-reject	check: std.matrix:438:12: E0606: `T` does not implement `Eq`
+std-matrix/solve-f64-wrong-length-traps.cp	wrong-reject	check: std.matrix:438:12: E0606: `T` does not implement `Eq`
 std-matrix/sum-adds-under-its-semiring.cp	wrong-reject	check: program:11:44: E0806: nothing here says what `None` is an optional of; write the type
 std-matrix/transpose-of-a-row.cp	wrong-reject	check: std.matrix:233:42: E0606: `T` does not implement `Domain`
 std-mod/barrett-reduces-without-division.cp	wrong-reject	check: program:10:17: E0201: unknown name `rand`
@@ -678,7 +690,7 @@ std-pair/symmetric-fills-both-halves.cp	wrong-reject	check: program:7:1: E0606: 
 std-persistent/parena-handles-stay-valid.cp	wrong-reject	own: program:10:9: E0602: `a` is written here while `first`, which borrows it, is still used
 std-persistent/persistent-walks-match-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-persistent/reserve-keeps-versions.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
-std-persistent/versions-fresh-per-test-case.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
+std-persistent/versions-fresh-per-test-case.cp	wrong-reject	check: std.persistent:717:20: E0606: `T` does not implement `Eq`
 std-persistent/versions-live-in-the-value.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
 std-prefix/a-prefix-of-a-table-literal-reads-each-cell-once.cp	wrong-reject	check: program:9:20: E0302: expected `List<_>`, found `Array<Tuple2<R, C>, Int>`
 std-prefix/built-prefix-at-position-folds-through.cp	wrong-reject	check: program:6:16: E0302: expected `List<_>`, found `Array<D, Int>`
@@ -734,6 +746,9 @@ std-segtree/merge-seg-merge-and-prune.cp	wrong-reject	check: program:7:35: E0203
 std-segtree/merge-seg-singleton-dead.cp	wrong-reject	check: program:6:37: E0203: `K` has no member `idx`
 std-segtree/merge-segs-first-ge-is-read-only.cp	wrong-reject	check: program:13:19: E0201: unknown name `rand`
 std-segtree/merge-segs-share-nodes.cp	wrong-reject	check: program:13:14: E0201: unknown name `rand`
+std-segtree/merge-sort-tree-count-le-edges.cp	wrong-reject	check: program:4:42: E0902: `5` is never a position of `$range0`
+std-segtree/mergesorttree-bodies.cp	wrong-reject	check: std.segtree:1085:41: E0606: `T` does not implement `Eq`
+std-segtree/right-left-while-match-brute.cp	wrong-reject	check: std.segtree:331:24: E0606: `T` does not implement `Eq`
 std-segtree/segtree2d-matches-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-seq/adjacent-buckets-counting-sort-span.cp	wrong-reject	check: program:2:7: E0302: expected `List<Int>`, found `List<Tuple2<Int, Int>>`
 std-seq/all-some-unwraps-the-element.cp	wrong-reject	own: std.seq:2294:5: E0603: this returns a value that borrows `out`: `out` is gone when the fn returns
@@ -916,6 +931,9 @@ std-subset/folds-take-its-members.cp	wrong-reject	check: program:9:7: E0606: `Su
 std-subset/for-walks-members.cp	wrong-reject	check: program:7:7: E0302: expected `List<Int>`, found `List<B>`
 std-subset/generic-domain-subsets-are-std-subsets.cp	wrong-reject	check: program:13:15: E0606: `Subset<B>` does not implement `Domain`
 std-subset/subset-domain-too-large.cp	wrong-reject	check: program:7:7: E0201: unknown name `len`
+std-timetree/timetree-add-range-matches-add-interval.cp	wrong-reject	check: std.timetree:174:27: E0302: expected `Cut<Int>`, found `Int`
+std-timetree/timetree-walk-1.cp	wrong-reject	check: program:3:11: E0606: `TimeStep` does not implement `Eq`
+std-timetree/timetree-walk-matches-steps.cp	wrong-reject	check: program:10:25: E0606: `TimeStep` does not implement `Eq`
 std-window/sweep-empty-sits-at-its-cut.cp	wrong-reject	check: std.window:374:17: E0405: field `Sweep.hi` is fixed (not `var`) and cannot be assigned
 std-window/sweep-move-feeds-track.cp	wrong-reject	check: std.window:374:17: E0405: field `Sweep.hi` is fixed (not `var`) and cannot be assigned
 std-window/track-infers-element-from-sequence.cp	wrong-reject	check: program:4:12: E0203: `List<(w: Int)>` has no member `minimal`
@@ -944,7 +962,7 @@ traits/Indexed/Rebased--keys.cp	wrong-reject	check: program:4:10: E0203: `Rebase
 traits/Into/Pair--into.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 traits/Keyed/Prefix--items.cp	wrong-reject	check: std.seq:1530:18: E0606: `D` does not implement `Domain`
 traits/Keyed/Rebased--items.cp	wrong-reject	check: program:4:15: E0606: `Rebased<Slice<List<Int>>>` does not implement `Keyed`
-traits/Mul/Mat--mul.cp	wrong-reject	link: std.matrix:695:89: E0303: expected 2 arguments, found 3
+traits/Mul/Mat--mul.cp	wrong-reject	link: std.matrix:693:20: E0606: `Ring<T>` does not implement `Eq`
 traits/Mul/Poly--mul.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
 traits/Neg/Poly--neg.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
 traits/Next/Complement--out.cp	wrong-reject	check: program:4:21: E0302: expected `Array<V, List<V>>`, found `Array<V, List<Int>>`

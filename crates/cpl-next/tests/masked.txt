@@ -115,14 +115,12 @@ std-bag/range-view-at-the-edges.cp
 std-bag/reserve-keeps-contents.cp
 std-bag/sorted-map-neighbours.cp
 std-bag/sortedmap-matches-array.cp
-std-beats/queries-read-without-pushing.cp
 std-bitset/bit-trie.cp
 std-compress/wrapper-fn-fresh-domain.cp
 std-derive/structural-hash-comes-from-parts-and-impls.cp
 std-dp/ranges-key-first-everywhere.cp
 std-dp/ranges-table-and-literal-key.cp
 std-dsu/parity-components-and-groups.cp
-std-fenwick/fenwick-kth-zero-traps.cp
 std-flow/max-closure-fixed-domain-guard.cp
 std-geometry/closest-pair-on-list-literal.cp
 std-geometry/pt.cp
@@ -250,7 +248,6 @@ std-segtree/max-identity-is-range-alias-low-end.cp
 std-segtree/merge-trees-chained-match-brute.cp
 std-segtree/merge-trees-match-brute.cp
 std-segtree/new-apply-all-and-at.cp
-std-segtree/of-explicit-args-reject-wrong-fill.cp
 std-segtree/replaces-true-on-id-breaks-the-law.cp
 std-segtree/replacing-and-plain-actions-match-brute.cp
 std-segtree/tag-into-untagged-node-matches-brute.cp
@@ -263,12 +260,10 @@ std-seq/lis-and-cartesian-tree-match-brute.cp
 std-seq/merge-sorted-by-ties-take-self-first.cp
 std-seq/merge-sorted-yields-lazily-over-views.cp
 std-seq/nearest-smaller-same-and-perm-bodies.cp
-std-seq/outermost-keeps-the-longest-of-a-left-end.cp
 std-seq/permutations-lcs-radix-outermost.cp
 std-seq/reverse-and-join-are-std-bodies.cp
 std-seq/runs-linked-empty-and-single.cp
 std-seq/select-clip-cuts-nth-reverse.cp
-std-seq/seq-u12-sort-by-key-cost.cp
 std-seq/seq-u12-sort-by-key.cp
 std-seq/seq-u13-sort-order-and-ranks.cp
 std-seq/seq-u25-one-api-every-shape.cp
