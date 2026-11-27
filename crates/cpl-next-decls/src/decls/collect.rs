@@ -299,8 +299,21 @@ fn layer(
         if mi < from && synth[mi].is_empty() {
             continue;
         }
-        for crate::modules::Item { id: item, stmts } in m.items.iter() {
+        let heads = match mi >= from {
+            true => crate::items::items(m),
+            false => Vec::new(),
+        };
+        for (k, crate::modules::Item { id: item, stmts }) in m.items.iter().enumerate() {
             let made = synth[mi].iter().filter(|(i, _)| i == item).map(|(_, s)| s);
+            let memo = |s: &ast::Stmt| crate::synth::memo_table(s, &tables).is_some();
+            if let Some(h) = heads.get(k).filter(|_| !stmts.iter().any(memo)) {
+                public[mi].extend(h.exports().map(str::to_string));
+            }
+            for s in made.clone() {
+                if let (true, Some(name)) = (s.public, item_name(s)) {
+                    public[mi].insert(name.to_string());
+                }
+            }
             for s in stmts
                 .iter()
                 .filter(|_| mi >= from)
@@ -310,9 +323,6 @@ fn layer(
                 if let Some((f, t)) = crate::synth::memo_table(s, &tables).filter(|_| mi >= from) {
                     main.push((item.clone(), crate::synth::memo_var(f, f.sig_span, t)));
                     continue;
-                }
-                if let (true, Some(name)) = (s.public, item_name(s)) {
-                    public[mi].insert(name.to_string());
                 }
                 match &s.kind {
                     StmtKind::Struct(sd) => {

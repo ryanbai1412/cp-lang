@@ -609,6 +609,7 @@ fn cycle(edges: &[(String, String, Option<SourceId>)]) -> Option<(String, Option
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::items::Head;
 
     /// An item's path and the spans inside it are the same whatever is added above it; only
     /// where it starts moves.
@@ -634,5 +635,27 @@ mod tests {
             assert_eq!(x.stmts, y.stmts);
             assert_eq!(xs + 18, *ys);
         }
+    }
+
+    /// A module's items are the same answer after an edit inside a body or a line added above.
+    #[test]
+    fn a_body_edit_or_a_line_above_leaves_the_items_equal() {
+        let heads = |t: &str| {
+            let m = Module {
+                name: PROGRAM.into(),
+                items: Arc::new(parse(PROGRAM, t).items),
+                within: None,
+            };
+            crate::items::items(&m)
+        };
+        let src = "struct S\npub fn answer() -> Int:\n    let x = 2\n    x\nprint(answer())\n";
+        let a = heads(src);
+        assert_eq!(heads(&src.replace("2", "3")), a);
+        assert_eq!(heads(&format!("\n\n{src}")), a);
+        let exports: Vec<Vec<&str>> = a.iter().map(|h| h.exports().collect()).collect();
+        assert_eq!(exports, [vec![], vec!["answer"], vec![]]);
+        let two = heads("pub fn f() -> Int = 1\nfn g() -> Int = 2\n");
+        let all: Vec<&str> = two.iter().flat_map(Head::exports).collect();
+        assert_eq!(all, ["f"]);
     }
 }

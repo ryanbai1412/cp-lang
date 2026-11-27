@@ -6,6 +6,7 @@ use cpl_next_ir::ty;
 mod cycles;
 pub mod decls;
 pub mod diag;
+pub mod items;
 pub mod modules;
 pub mod plain;
 pub mod records;
