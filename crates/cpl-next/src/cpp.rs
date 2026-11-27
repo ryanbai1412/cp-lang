@@ -677,7 +677,7 @@ impl Emit<'_> {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            EK::Call(..) | EK::CallValue(..) => "/* not canonical */".to_string(),
+            EK::Call(..) | EK::CallValue(..) | EK::Pass(..) => "/* not canonical */".to_string(),
             EK::Intr(op, args, _) => {
                 let a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
                 let bin = |o: &str| format!("({} {o} {})", a[0], a[1]);

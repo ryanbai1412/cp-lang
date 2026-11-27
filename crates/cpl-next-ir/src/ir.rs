@@ -213,6 +213,9 @@ pub enum EK<T> {
     Bool(bool),
     Unit,
     Copy(Place),
+    /// Instance IR before ownership only: a heap place passed to a call (R4, R11). Ownership
+    /// makes it a copy taken here, or else a view from the call's start where `true`, or a read.
+    Pass(Place, bool, Site),
     /// A reference to a `var`, for a closure to capture. The closure is then lent.
     AddrOf(Place),
     /// A heap parameter stored in a struct the fn returns, which lends it (R05.5.3): the slot
@@ -364,7 +367,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
     }
     fn expr<T>(e: &mut Expr<T>, f: &mut impl FnMut(&mut Place)) {
         match &mut e.kind {
-            EK::Copy(p) | EK::AddrOf(p) | EK::Lent(p) | EK::Tag(p) => place(p, f),
+            EK::Copy(p) | EK::Pass(p, ..) | EK::AddrOf(p) | EK::Lent(p) | EK::Tag(p) => place(p, f),
             EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter_mut().for_each(|x| expr(x, f)),
             EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => expr(x, f),
             EK::Intr(_, xs, _) | EK::Call(_, xs, _) => args(xs, f),

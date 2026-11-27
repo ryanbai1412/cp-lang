@@ -585,6 +585,7 @@ impl Link<'_> {
             EK::Text(t) => EK::Text(t.clone()),
             EK::Unit => EK::Unit,
             EK::Copy(p) => EK::Copy(self.place(p)),
+            EK::Pass(p, view, s) => EK::Pass(self.place(p), *view, *s),
             // A plain value in a lent slot is just copied.
             EK::Lent(p) if matches!(ty, CTy::Lent(_)) => EK::Lent(self.place(p)),
             EK::Lent(p) => EK::Copy(self.place(p)),

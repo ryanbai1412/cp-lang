@@ -429,6 +429,7 @@ impl<'a> Machine<'a> {
             EK::DomLen(_) | EK::DomLo(_) => {
                 return broken("a domain value the link step did not resolve")
             }
+            EK::Pass(..) => return broken("a place passed before ownership decided how"),
             EK::Copy(p) | EK::Lent(p) => self.place(fp, p)?.clone(),
             EK::AddrOf(p) => match p {
                 Place::Local(l) => V::Ref(Some(fp), *l),

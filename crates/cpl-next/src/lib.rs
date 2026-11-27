@@ -156,6 +156,8 @@ struct Front {
     d: decls::Decls,
     t: check::Typed,
     g: lower::Generic,
+    /// Ownership's copies, which the linked program takes (`own::place_copies`).
+    copies: std::collections::BTreeSet<cpl_diag::Span>,
     main: Vec<(u32, cpl_syntax::ast::Stmt)>,
     diags: Vec<Diag>,
 }
@@ -199,7 +201,7 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
             let own = es.iter().map(|e| e.clone().prefixed(Stage::Own.name()));
             t.deferred.entry(*f).or_default().extend(own);
         }
-        let g = lower::lower(&d, &t, &owned, &loaded);
+        let g = lower::lower(&d, &t, &loaded);
         out.extend(diags(Stage::Lower, &g.errors));
         for (f, es) in &g.deferred {
             let low = es.iter().map(|e| e.clone().prefixed(Stage::Lower.name()));
@@ -210,6 +212,7 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
             d,
             t,
             g,
+            copies: owned.copies,
             main,
             diags: out,
         };
@@ -228,6 +231,7 @@ pub fn compile(
         d,
         t,
         g,
+        copies,
         diags,
         ..
     } = front(std, user_src, roots);
@@ -243,6 +247,7 @@ pub fn compile(
     if !prog.errors.is_empty() {
         return Err(link(&prog.errors));
     }
+    own::place_copies(&mut prog, &g.sites, &copies);
     if events {
         inst::add_events(&mut prog, &t, &d, loaded.program_start);
     }

@@ -8,6 +8,8 @@
 use crate::check::*;
 use crate::decls::{Decls, Owner, SelfMode};
 use crate::diag::Msg;
+use crate::inst::{CTy, Program};
+use crate::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
 use crate::plain::{plain, plain_in};
 use crate::ty::*;
 use cpl_diag::{codes, Code, Span};
@@ -113,7 +115,7 @@ struct Cx<'a> {
     /// The heap bindings a function value held by a binding uses, top-level ones included.
     caps: HashMap<Root, BTreeSet<Root>>,
     /// Where each argument that is copied in starts.
-    copies: BTreeSet<u32>,
+    copies: BTreeSet<Span>,
     /// For each fn, the arguments it stores where they outlive the call (receiver first), so
     /// an owned heap value passed there moves in (R05.2.2).
     keeps: HashMap<FnId, BTreeSet<usize>>,
@@ -123,14 +125,14 @@ struct Cx<'a> {
     kept: BTreeSet<Root>,
 }
 
-/// What ownership decides: the errors, and which by-value arguments are copies (the rest
-/// are views of their place).
+/// What ownership decides: the errors, and which passed places (`EK::Pass`) are copies, by
+/// their span in the loaded source (`place_copies`).
 #[derive(Default)]
 pub struct Owned {
     pub errors: Vec<Msg>,
     /// What is wrong in a fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
-    pub copies: BTreeSet<u32>,
+    pub copies: BTreeSet<Span>,
 }
 
 /// The parameters a call to `f` lends to its result, receiver first, from its signature: the
@@ -938,7 +940,10 @@ impl Cx<'_> {
                         // R4: the callee keeps the value it was called with, so a place the
                         // call also writes is copied in, not viewed.
                         if other.writes.iter().any(|w| overlap(w, &p)) {
-                            self.copies.insert(self.off + v.span.start);
+                            self.copies.insert(Span {
+                                start: self.off + v.span.start,
+                                end: self.off + v.span.end,
+                            });
                         } else {
                             held.insert(p);
                         }
@@ -1327,7 +1332,6 @@ impl Cx<'_> {
                                 .get(&r)
                                 .is_some_and(|s| s.iter().any(|p| p.root == root))
                             {
-                                self.copies.insert(self.off + v.span.start);
                                 parked.push((r, self.lent.remove(&r), self.frozen.remove(&r)));
                             }
                         }
@@ -1437,5 +1441,130 @@ fn result_span(e: &TExpr) -> Span {
     match &e.kind {
         TK::Block(_, Some(t)) => result_span(t),
         _ => e.span,
+    }
+}
+
+/// Settles each place passed to a call (`EK::Pass`) in the linked program: a copy taken in its
+/// turn where ownership found the call also writes it (R4), else a view from the call's start
+/// (R11) or a read. `sites` is where each site is in the loaded source.
+pub fn place_copies(p: &mut Program, sites: &[Span], copies: &BTreeSet<Span>) {
+    for f in &mut p.insts {
+        Settle {
+            locals: &mut f.locals,
+            copy: |s: Site| copies.contains(&sites[s as usize]),
+            saved: HashMap::new(),
+        }
+        .block(&mut f.body);
+    }
+}
+struct Settle<'a, C> {
+    locals: &'a mut Vec<CTy>,
+    copy: C,
+    /// A passed place saved before a later operand ran, by site: the temporary its copy is in.
+    saved: HashMap<Site, usize>,
+}
+impl<C: Fn(Site) -> bool> Settle<'_, C> {
+    fn block(&mut self, b: &mut Vec<Stmt<CTy>>) {
+        for mut st in std::mem::take(b) {
+            if let Stmt::Let(t, e) = &mut st {
+                if let EK::Pass(p, view, s) = &e.kind {
+                    if *view && !(self.copy)(*s) {
+                        continue;
+                    }
+                    if *view {
+                        self.saved.insert(*s, *t);
+                    }
+                    e.kind = EK::Copy(p.clone());
+                    b.push(st);
+                    continue;
+                }
+            }
+            let mut pre = Vec::new();
+            self.stmt(&mut st, &mut pre);
+            b.extend(pre);
+            b.push(st);
+        }
+    }
+    fn stmt(&mut self, st: &mut Stmt<CTy>, pre: &mut Vec<Stmt<CTy>>) {
+        match st {
+            Stmt::Let(_, e)
+            | Stmt::Assign(_, e)
+            | Stmt::Expr(e)
+            | Stmt::Return(Some(e))
+            | Stmt::Yield(e)
+            | Stmt::Fact(e)
+            | Stmt::Check { cond: e, .. } => self.expr(e, pre),
+            Stmt::If(c, a, b) => {
+                self.expr(c, pre);
+                self.block(a);
+                self.block(b);
+            }
+            Stmt::Loop(a, b) => {
+                self.block(a);
+                self.block(b);
+            }
+            Stmt::Switch(e, bs) => {
+                self.expr(e, pre);
+                bs.iter_mut().for_each(|b| self.block(b));
+            }
+            Stmt::Print(ps) => {
+                for x in ps {
+                    if let PrintPiece::Value(e, _) = x {
+                        self.expr(e, pre);
+                    }
+                }
+            }
+            Stmt::Event(_, xs) => xs.iter_mut().for_each(|x| self.expr(x, pre)),
+            Stmt::Region { args, body, .. } => {
+                self.args(args, pre);
+                self.block(body);
+            }
+            Stmt::Return(None) | Stmt::LendOut(_) | Stmt::Break | Stmt::Continue => {}
+        }
+    }
+    fn args(&mut self, xs: &mut [Arg<CTy>], pre: &mut Vec<Stmt<CTy>>) {
+        for a in xs {
+            let Arg::Value(v) = a else { continue };
+            match &v.kind {
+                EK::Pass(p, true, s) if !(self.copy)(*s) => *a = Arg::View(p.clone()),
+                EK::Pass(_, true, s) if self.saved.contains_key(s) => {
+                    v.kind = EK::Copy(Place::Local(self.saved[s]));
+                }
+                _ => self.expr(v, pre),
+            }
+        }
+    }
+    fn expr(&mut self, e: &mut Expr<CTy>, pre: &mut Vec<Stmt<CTy>>) {
+        if let EK::Pass(p, _, s) = &e.kind {
+            let p = p.clone();
+            e.kind = if (self.copy)(*s) {
+                let t = self.locals.len();
+                self.locals.push(e.ty.clone());
+                let ty = e.ty.clone();
+                pre.push(Stmt::Let(
+                    t,
+                    Expr {
+                        kind: EK::Copy(p),
+                        ty,
+                    },
+                ));
+                EK::Copy(Place::Local(t))
+            } else {
+                EK::Copy(p)
+            };
+            return;
+        }
+        match &mut e.kind {
+            EK::MakeStruct(xs) | EK::MakeClosure(xs) => {
+                xs.iter_mut().for_each(|x| self.expr(x, pre))
+            }
+            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => self.expr(x, pre),
+            EK::Intr(_, xs, _) | EK::Call(_, xs, _) => self.args(xs, pre),
+            EK::CallValue(c, xs, _) => {
+                self.expr(c, pre);
+                xs.iter_mut().for_each(|x| self.expr(x, pre));
+            }
+            _ => {}
+        }
     }
 }

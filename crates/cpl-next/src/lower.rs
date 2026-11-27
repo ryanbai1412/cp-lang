@@ -4,7 +4,6 @@ use crate::check::*;
 use crate::decls::{Decls, FnDecl, Owner, SelfMode};
 use crate::diag::Msg;
 use crate::ir::*;
-use crate::own::Owned;
 use crate::ty::*;
 use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, CmpOp};
@@ -27,7 +26,6 @@ pub struct Generic {
 struct Lw<'a> {
     d: &'a Decls,
     typed: &'a Typed,
-    owned: &'a Owned,
     /// The current fn's parameters its result holds (R05.5.3): a struct literal stores them lent.
     lent: Vec<usize>,
     /// The globals' types, a lent mark added where one is bound to a value that lends.
@@ -61,7 +59,7 @@ struct Lw<'a> {
     lines: Vec<u32>,
 }
 
-pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Loaded) -> Generic {
+pub fn lower(d: &Decls, typed: &Typed, src: &crate::modules::Loaded) -> Generic {
     let mut out = Generic {
         funcs: HashMap::new(),
         globals: Vec::new(),
@@ -74,7 +72,6 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
     let mut lw = Lw {
         d,
         typed,
-        owned,
         lent: Vec::new(),
         globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
         locals: Vec::new(),
@@ -252,8 +249,13 @@ impl Lw<'_> {
     /// into a value, whose type lowering does not track.
     fn arg_ty(&self, a: &Arg<Ty>) -> Option<Ty> {
         match a {
+            Arg::Value(Expr {
+                kind: EK::Pass(p, true, _),
+                ..
+            })
+            | Arg::View(p)
+            | Arg::Lend(p) => self.place_ty(p),
             Arg::Value(e) => Some(e.ty.clone()),
-            Arg::View(p) | Arg::Lend(p) => self.place_ty(p),
         }
     }
     /// The type of a place, a lent mark kept where a slot on its path holds one.
@@ -299,7 +301,7 @@ impl Lw<'_> {
             }
             match (decl, a) {
                 // A held argument that lives in a place is lent; a fresh one is moved in.
-                (Ty::Param(k), Arg::View(_) | Arg::Lend(_)) if holds.contains(&i) => {
+                (Ty::Param(k), a) if holds.contains(&i) && placed(a) => {
                     if let Some(t) = targs.get_mut(*k).filter(|t| !matches!(t, Ty::Lent(_))) {
                         *t = Ty::Lent(Box::new(t.clone()));
                     }
@@ -323,6 +325,7 @@ fn pure<T>(e: &Expr<T>) -> bool {
         | EK::Text(_)
         | EK::Unit
         | EK::Copy(_)
+        | EK::Pass(..)
         | EK::AddrOf(_)
         | EK::Lent(_)
         | EK::Tag(_)
@@ -336,6 +339,13 @@ fn pure<T>(e: &Expr<T>) -> bool {
             !i.checked() && args.iter().all(|a| matches!(a, Arg::Value(v) if pure(v)))
         }
         EK::Call(..) | EK::CallValue(..) => false,
+    }
+}
+/// An argument that stays in its place: lent, or passed where it is viewed unless copied.
+fn placed<T>(a: &Arg<T>) -> bool {
+    match a {
+        Arg::View(_) | Arg::Lend(_) => true,
+        Arg::Value(v) => matches!(v.kind, EK::Pass(_, true, _)),
     }
 }
 fn writes_nothing<T>(s: &Stmt<T>) -> bool {
@@ -419,18 +429,32 @@ impl Lw<'_> {
     /// Lowers operands left to right. If a later one needs statements, earlier
     /// non-constant ones are saved first, so they are read before those statements run.
     fn seq(&mut self, es: &[&TExpr], out: &mut Vec<Stmt<Ty>>) -> Vec<Expr<Ty>> {
+        self.seq_by(es, out, Self::expr)
+    }
+    /// `seq`, lowering each with `lower`.
+    fn seq_by(
+        &mut self,
+        es: &[&TExpr],
+        out: &mut Vec<Stmt<Ty>>,
+        lower: impl Fn(&mut Self, &TExpr, &mut Vec<Stmt<Ty>>) -> Expr<Ty>,
+    ) -> Vec<Expr<Ty>> {
         let mut done: Vec<Expr<Ty>> = Vec::new();
         for e in es {
             let before = out.len();
             let mut tail = Vec::new();
-            let v = self.expr(e, &mut tail);
+            let v = lower(self, e, &mut tail);
             let v = self.spill(v, &mut tail);
             // Statements that only compute (arithmetic, a check) cannot write what an
             // earlier operand reads, so that operand stays a read of its place and is
             // not copied. A call can, so the operand is saved.
             if !tail.iter().all(writes_nothing) {
                 for d in done.iter_mut() {
-                    if !constant(d) {
+                    // A place that may be viewed stays passed: ownership takes the saved
+                    // copy only where the call also writes the place.
+                    if let EK::Pass(_, true, _) = d.kind {
+                        let t = self.temp(d.ty.clone());
+                        out.push(Stmt::Let(t, d.clone()));
+                    } else if !constant(d) {
                         let t = self.temp(d.ty.clone());
                         let ty = d.ty.clone();
                         let old = std::mem::replace(
@@ -469,18 +493,6 @@ impl Lw<'_> {
             }
         }
     }
-    /// The copy ownership asked for at this argument is a statement of its own, so no later
-    /// stage can turn it back into a view of the place.
-    fn copied(&mut self, arg: &TExpr, x: &mut Expr<Ty>, out: &mut Vec<Stmt<Ty>>) {
-        if self.owned.copies.contains(&(self.off + arg.span.start)) {
-            let t = self.temp(x.ty.clone());
-            let copy = Expr {
-                kind: EK::Copy(Place::Local(t)),
-                ty: x.ty.clone(),
-            };
-            out.push(Stmt::Let(t, std::mem::replace(x, copy)));
-        }
-    }
     fn args(
         &mut self,
         recv: Option<&TArg>,
@@ -488,36 +500,42 @@ impl Lw<'_> {
         out: &mut Vec<Stmt<Ty>>,
     ) -> Vec<Arg<Ty>> {
         let all: Vec<&TArg> = recv.into_iter().chain(args.iter()).collect();
-        // R11: a heap argument that is a place is viewed where it is, from when the call
-        // starts, unless ownership found the call also writes it: then it is copied in its
-        // turn. A type parameter could be plain or heap and is passed as a value.
-        let viewed = |lw: &Self, v: &TExpr| {
-            matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Payload(..))
-                && !matches!(v.ty, Ty::Param(_))
-                && !crate::plain::plain(lw.d, &v.ty, 0)
-                && !lw.owned.copies.contains(&(lw.off + v.span.start))
-        };
-        let values: Vec<&TExpr> = all
-            .iter()
+        let values: Vec<&TExpr> = (all.iter())
             .filter_map(|a| match a {
-                TArg::Value(v) if !viewed(self, v) => Some(v),
-                _ => None,
+                TArg::Value(v) => Some(v),
+                TArg::Mut(_) => None,
             })
             .collect();
-        let mut vals = self.seq(&values, out).into_iter();
+        let mut vals = self.seq_by(&values, out, Self::operand).into_iter();
         let mut lowered = Vec::with_capacity(all.len());
         for a in all {
             match a {
-                TArg::Value(v) if viewed(self, v) => lowered.push(Arg::View(self.place(v, out))),
-                TArg::Value(v) => {
-                    let Some(mut x) = vals.next() else { continue };
-                    self.copied(v, &mut x, out);
+                TArg::Value(_) => {
+                    let Some(x) = vals.next() else { continue };
                     lowered.push(Arg::Value(x));
                 }
                 TArg::Mut(p) => lowered.push(Arg::Lend(self.place(p, out))),
             }
         }
         lowered
+    }
+    /// A by-value argument. A heap one that is a place is passed (`EK::Pass`): after link,
+    /// ownership makes it a view from when the call starts (R11), or a copy in its turn where
+    /// the call also writes it (R4). A type parameter could be plain or heap, so it is not viewed.
+    fn operand(&mut self, v: &TExpr, out: &mut Vec<Stmt<Ty>>) -> Expr<Ty> {
+        let generic = matches!(v.ty, Ty::Param(_));
+        let viewable = matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Payload(..));
+        if !(viewable || matches!(v.kind, TK::Slot(..)))
+            || !generic && crate::plain::plain(self.d, &v.ty, 0)
+        {
+            return self.expr(v, out);
+        }
+        let site = self.site(v.span);
+        let p = self.place(v, out);
+        Expr {
+            kind: EK::Pass(p, viewable && !generic, site),
+            ty: v.ty.clone(),
+        }
     }
     fn expr(&mut self, e: &TExpr, out: &mut Vec<Stmt<Ty>>) -> Expr<Ty> {
         let ty = e.ty.clone();
@@ -612,10 +630,7 @@ impl Lw<'_> {
             TK::CallValue { callee, args } => {
                 let mut all: Vec<&TExpr> = vec![callee];
                 all.extend(args.iter());
-                let mut vs = self.seq(&all, out);
-                for (v, t) in vs.iter_mut().zip(&all) {
-                    self.copied(t, v, out);
-                }
+                let mut vs = self.seq_by(&all, out, Self::operand);
                 let c = vs.remove(0);
                 let call = mk(EK::CallValue(Box::new(c), vs, site));
                 self.spill(call, out)
@@ -946,8 +961,7 @@ impl Lw<'_> {
                 }
             }
             TStmt::Assign(p, e) => {
-                let mut val = self.expr(e, out);
-                self.copied(e, &mut val, out);
+                let val = self.expr(e, out);
                 let val = self.spill(val, out);
                 let place = self.place(p, out);
                 out.push(Stmt::Assign(place, val));

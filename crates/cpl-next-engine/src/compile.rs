@@ -1061,6 +1061,7 @@ impl Fc<'_> {
             }
             EK::Call(..) => self.fail("an unresolved call reached the engine"),
             EK::CallValue(..) => self.fail("a call through a function value in canonical IR"),
+            EK::Pass(..) => self.fail("a place passed before ownership decided how"),
             EK::Intr(op, args, site) => self.intr(*op, args, self.line(*site), &e.ty, d),
         }
     }

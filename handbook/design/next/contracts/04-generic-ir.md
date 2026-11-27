@@ -141,6 +141,12 @@ enum Tier { Proved, Checked, Promised, Trusted }
   statements. Regions stay for generators and lenders.
 - **`AddrOf(var)` and `Deref`** for a closure's reference to a `var`.
   Built in the slice.
+- **A passed place is `Pass(place, viewable, site)`** in generic IR:
+  a heap place given to a call by value. Lowering does not decide its
+  mode; ownership's copies, by site, settle it on the linked program
+  before canonicalization (`own::place_copies`): a copy taken in its
+  turn where the call also writes the place (R4), else a view from the
+  call's start (R11) or a read. No later IR has a `Pass`.
 - **Value facts exist twice by design:** per generic unit (shown by
   hover and diagnostics, labelled generic) and per instance (shown by
   `explain`, used for the C++). A removed check names which run
