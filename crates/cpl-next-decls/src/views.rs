@@ -54,6 +54,8 @@ pub trait Signatures: TypeTables {
 /// `scope(ModId)`: what a name means in a module.
 pub trait Scope {
     fn named(&self, m: ModId, name: &str) -> Option<Named>;
+    /// Each name the module's scope gives and what it means, in no fixed order.
+    fn names(&self, m: ModId) -> Vec<(&str, Named)>;
 }
 
 /// `summary(ItemId)`: what a fn's body adds to its set parameters, read without checking it.
@@ -139,6 +141,12 @@ impl TypeTables for Decls {
 impl Scope for Decls {
     fn named(&self, m: ModId, name: &str) -> Option<Named> {
         self.views[m.0].get(name).copied()
+    }
+    fn names(&self, m: ModId) -> Vec<(&str, Named)> {
+        self.views[m.0]
+            .iter()
+            .map(|(n, x)| (n.as_str(), *x))
+            .collect()
     }
 }
 

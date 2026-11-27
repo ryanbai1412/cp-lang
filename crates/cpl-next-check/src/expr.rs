@@ -199,7 +199,7 @@ impl<'a> Cx<'a> {
     fn fold_form(&self, n: &str, args: &[ast::Arg]) -> bool {
         args.first()
             .is_some_and(|a| a.name.is_none() && a.value.is_generator())
-            && matches!(self.d.views[self.module.0].get(n), Some(decls::Named::Fn(f)) if self.d.f(*f).self_ty.is_none())
+            && matches!(self.d.named(self.module, n), Some(decls::Named::Fn(f)) if self.d.f(f).self_ty.is_none())
     }
     /// More parts than the widest tuple: the last part is a tuple of the rest, nested as far as
     /// needed.
@@ -883,11 +883,12 @@ impl<'a> Cx<'a> {
     /// The name in scope that `n`, unknown, is most likely a slip for.
     fn closest_name(&self, n: &str) -> Option<String> {
         let scoped = self.scopes.iter().flat_map(|s| s.keys());
-        let names = (self.d.views[self.module.0].keys())
-            .chain(self.global_names.keys())
-            .chain(scoped)
+        let module = self.d.names(self.module);
+        let names = (module.iter().map(|(name, _)| *name))
+            .chain(self.global_names.keys().map(String::as_str))
+            .chain(scoped.map(String::as_str))
             .filter(|name| !name.starts_with('$'));
-        cpl_diag::closest(n, names.map(String::as_str))
+        cpl_diag::closest(n, names)
     }
 
     /// The `use` line that brings in `n`, unknown at `span`, from the first std module that

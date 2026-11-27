@@ -437,7 +437,7 @@ impl Cx<'_> {
             return Some(t.clone());
         }
         // `type Cell = (Row, Col)` names the product domain too (R04.2.10).
-        if let Some(decls::Named::Alias(_)) = self.d.views[self.module.0].get(n) {
+        if let Some(decls::Named::Alias(_)) = self.d.named(self.module, n) {
             let written = ast::Type {
                 kind: ast::TypeKind::Named {
                     name: ast::Name {
@@ -461,7 +461,7 @@ impl Cx<'_> {
             return Some(t).filter(|t| self.is_domain(t));
         }
         // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).
-        if let Some(&decls::Named::Struct(s)) = self.d.views[self.module.0].get(n) {
+        if let Some(decls::Named::Struct(s)) = self.d.named(self.module, n) {
             let t = Ty::Struct(s, Vec::new(), Vec::new());
             if self.d.s(s).generics.is_empty() && self.is_domain(&t) {
                 return Some(t);

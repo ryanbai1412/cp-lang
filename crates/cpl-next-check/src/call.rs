@@ -13,7 +13,15 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
-        let named = self.d.views[self.module.0][n];
+        let Some(named) = self.d.named(self.module, n) else {
+            self.err(
+                span,
+                Msg::internal(format!(
+                    "`{n}` is called as declared, but its module's scope has no `{n}`"
+                )),
+            );
+            return Self::error_node(span);
+        };
         self.call_of(n, named, written, args, span, want)
     }
     /// A call of `named`, which the call writes as `n`.

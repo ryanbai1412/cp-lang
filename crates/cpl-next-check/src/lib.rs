@@ -5,7 +5,7 @@ use crate::ir::CheckKind;
 use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
-use cpl_next_decls::views::{Signatures, TypeTables};
+use cpl_next_decls::views::{Scope, Signatures, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, plain, records};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;

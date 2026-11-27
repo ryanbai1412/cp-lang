@@ -145,10 +145,10 @@ impl<'a> Cx<'a> {
         call: Option<&[ast::Arg]>,
     ) -> Option<String> {
         let args = call?;
-        let Some(decls::Named::Fn(f)) = self.d.views[self.module.0].get(&name.text) else {
+        let Some(decls::Named::Fn(f)) = self.d.named(self.module, &name.text) else {
             return None;
         };
-        if self.d.f(*f).self_ty.is_some() {
+        if self.d.f(f).self_ty.is_some() {
             return None;
         }
         let mut written = vec![self.text(base.span).to_string()];
@@ -197,9 +197,9 @@ impl<'a> Cx<'a> {
             return;
         };
         let m = &name.text;
-        let mine = match self.d.views[self.module.0].get(m) {
+        let mine = match self.d.named(self.module, m) {
             Some(decls::Named::Fn(f)) => {
-                let fd = self.d.f(*f);
+                let fd = self.d.f(f);
                 fd.module == self.module && matches!(&fd.self_ty, Some(Ty::Struct(t, ..)) if t == s)
             }
             _ => false,
@@ -506,9 +506,9 @@ impl<'a> Cx<'a> {
         if self.lookup(n).is_some() || self.d.named(self.module, n).is_some() {
             return None;
         }
-        let found = (self.d.views[self.module.0].values())
+        let found = (self.d.names(self.module).into_iter().map(|(_, x)| x))
             .filter_map(|x| match x {
-                decls::Named::Trait(tr) => Some(*tr),
+                decls::Named::Trait(tr) => Some(tr),
                 _ => None,
             })
             .filter_map(|tr| {
@@ -917,7 +917,7 @@ impl<'a> Cx<'a> {
         // name; walked by a `for`, it names the yielding method.
         let walked = call.is_none() && self.allow_region;
         let getter = (call.is_none() && !walked)
-            .then(|| self.d.views[self.module.0].get(&name.text).copied())
+            .then(|| self.d.named(self.module, &name.text))
             .flatten()
             .or_else(|| {
                 (call.is_none() && !walked)
@@ -992,7 +992,7 @@ impl<'a> Cx<'a> {
             None => (self.d.shaped_member(&rt, &name.text).map(decls::Named::Fn))
                 .or_else(|| {
                     // A free fn with no `self` in view does not hide the method a module declares.
-                    (self.d.views[self.module.0].get(&name.text).copied()).filter(
+                    (self.d.named(self.module, &name.text)).filter(
                         |n| !matches!(n, decls::Named::Fn(f) if self.d.f(*f).self_ty.is_none()),
                     )
                 })
