@@ -649,22 +649,38 @@ fn forward(
     pinned: &dyn Fn(Reg) -> bool,
 ) {
     let aimed = aimed(ops, tables);
+    let mut into = vec![Vec::new(); ops.len() + 1];
+    for (k, op) in ops.iter().enumerate() {
+        for t in targets(op, tables) {
+            if let Some(v) = into.get_mut(t as usize) {
+                v.push(k);
+            }
+        }
+    }
+    // A join every jump into comes from after `i` still holds what held since `i`.
+    let joins = |i: usize, j: usize| !aimed[j] || into[j].iter().all(|&k| i < k && k < j);
     for i in 0..ops.len() {
+        if let Op::Zero { d, n } = ops[i] {
+            if !pinned(d) {
+                unzero(ops, places, lays, i, d..d + n, &|j| joins(i, j));
+            }
+            continue;
+        }
         let Op::Move { d, s, n: 1 } = ops[i] else {
             continue;
         };
         if d == s || pinned(d) {
             continue;
         }
-        for j in i + 1..ops.len() {
-            if aimed[j] {
+        for (j, at) in ops.iter_mut().enumerate().skip(i + 1) {
+            if !joins(i, j) {
                 break;
             }
-            let Some((reads, writes)) = effect(&ops[j], places, lays) else {
+            let Some((reads, writes)) = effect(at, places, lays) else {
                 break;
             };
             if covers(&reads, d) {
-                let mut op = ops[j];
+                let mut op = *at;
                 for r in operands(&mut op, lays) {
                     if *r == d {
                         *r = s;
@@ -687,17 +703,48 @@ fn forward(
                     }
                 }
                 match effect(&op, places, lays) {
-                    Some((reads, _)) if !covers(&reads, d) => ops[j] = op,
+                    Some((reads, _)) if !covers(&reads, d) => *at = op,
                     _ => {
                         places.truncate(made);
                         break;
                     }
                 }
             }
-            let ends = matches!(ops[j], Op::Jump { .. } | Op::Switch { .. });
+            let ends = matches!(*at, Op::Jump { .. } | Op::Switch { .. });
             if ends || covers(&writes, d) || covers(&writes, s) {
                 break;
             }
+        }
+    }
+}
+
+/// A drop of registers still zero since `Zero` at `i` releases nothing: it becomes a `Zero`
+/// of them, which `unread` then removes with the first when nothing reads them.
+fn unzero(
+    ops: &mut [Op],
+    places: &[PlaceCode],
+    lays: &Layouts,
+    i: usize,
+    zero: std::ops::Range<Reg>,
+    joins: &dyn Fn(usize) -> bool,
+) {
+    for (j, op) in ops.iter_mut().enumerate().skip(i + 1) {
+        if !joins(j) {
+            break;
+        }
+        if let Op::Drop { s, lay } = *op {
+            let n = lays.size[lay as usize];
+            if zero.start <= s && s + n <= zero.end {
+                *op = Op::Zero { d: s, n };
+                continue;
+            }
+        }
+        let Some((_, writes)) = effect(op, places, lays) else {
+            break;
+        };
+        let ends = matches!(*op, Op::Jump { .. } | Op::Switch { .. });
+        if ends || zero.clone().any(|r| covers(&writes, r)) {
+            break;
         }
     }
 }
@@ -911,6 +958,63 @@ mod tests {
         let (not, keep) = run(&|_| true, Some(&[(0, 1)]));
         assert_eq!(not, "Not { d: 3, a: 2 } [Slot { i: 4, stride: 1 }]");
         assert!(keep.iter().all(|&k| k));
+    }
+
+    /// A move's readers past a join read its source when every jump into the join comes from
+    /// after the move; a join a later jump also reaches keeps reading the move.
+    #[test]
+    fn a_move_reaches_past_a_join_only_its_own_jumps_reach() {
+        let ops = |back: bool| {
+            vec![
+                Op::Move { d: 2, s: 1, n: 1 },
+                Op::JumpUnless { c: 5, t: 3 },
+                Op::Imm { d: 6, v: 1 },
+                Op::Not { d: 3, a: 2 },
+                Op::JumpIf { c: 5, t: 6 },
+                Op::Imm { d: 7, v: 0 },
+                Op::Not { d: 4, a: 2 },
+                if back {
+                    Op::Jump { t: 6 }
+                } else {
+                    Op::Imm { d: 8, v: 0 }
+                },
+                Op::Leave(crate::compile::Leave::Return),
+            ]
+        };
+        let lays = Layouts::default();
+        let run = |back| {
+            let mut ops = ops(back);
+            forward(&mut ops, &mut Vec::new(), &lays, &[], &|_| false);
+            format!("{:?} {:?}", ops[3], ops[6])
+        };
+        assert_eq!(run(false), "Not { d: 3, a: 1 } Not { d: 4, a: 1 }");
+        assert_eq!(run(true), "Not { d: 3, a: 1 } Not { d: 4, a: 2 }");
+    }
+
+    /// A drop of a register still zero on every way in becomes a zero, and both go when
+    /// nothing reads the register; a drop after the register is set again stays.
+    #[test]
+    fn a_drop_of_a_register_still_zero_goes() {
+        let mut ops = vec![
+            Op::Zero { d: 1, n: 1 },
+            Op::JumpUnless { c: 5, t: 3 },
+            Op::Imm { d: 6, v: 1 },
+            Op::Drop { s: 1, lay: 0 },
+            Op::Imm { d: 1, v: 9 },
+            Op::Drop { s: 1, lay: 0 },
+            Op::Leave(crate::compile::Leave::Return),
+        ];
+        let mut lays = Layouts::default();
+        lays.size.push(1);
+        lays.owns.push(true);
+        lays.flat.push(Some(vec![0]));
+        forward(&mut ops, &mut Vec::new(), &lays, &[], &|_| false);
+        assert_eq!(
+            format!("{:?} {:?}", ops[3], ops[5]),
+            "Zero { d: 1, n: 1 } Drop { s: 1, lay: 0 }"
+        );
+        let keep = unread(&ops, &[], &lays, &[], &|_| false, Some(&[(0, 1)]));
+        assert!(!keep[0] && !keep[3] && keep[5]);
     }
 
     /// Leaving a fn reads its result, its lent parameters and the locals it drops, not
