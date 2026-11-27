@@ -215,10 +215,22 @@ library or by this spec:
   an enum goes through), `@list`, `@str`, `@optional`, `@array` and `@map`
   (the structs `[a, b]`, `"s"`, `?T`, `[D]T` and `[k: v]` are, whatever a
   module names `List`, `Str`, `Optional`, `Array` or `Map`), `@str_literal` (the fn that builds a
-  string literal) and `@range_literal` (the fn that builds `lo..hi by k`).
+  string literal), `@range_literal` (the fn that builds `lo..hi by k`),
+  `@derive_fields` (a trait every struct gets through its fields, packed
+  as `@pack` pairs, unless it has its own impl: std's `Show`), `@pack` (the
+  head-and-tail struct those fields and a variadic pack walk through) and
+  `@interpolation` (the fn each piece of an interpolated string calls, with
+  its width, zero fill and digits).
   Core declares each with them, and any module may: a
   second declaration of one marker, or of one `@operator` with the same
   method, is E0202. (R06.4.12)
+- `@input` on a fn: a value it gives is input, so a range type it fills
+  is the input's contract, R0502 when broken, not a range store (std's
+  `read`, R10.2.2). `@fast(op)` on a fn with a body: the engines and C++ run
+  the IR operation `op` for a call, and the reference interpreter runs the
+  body, which is what `op` must agree with (std's `@fast(popcount)`). Any
+  module may use either, on any number of fns; an `op` the IR does not
+  declare is refused when the fn is lowered. (R06.4.12)
 - Documented where they act: `@bits` on a field and `@law` (chapter 5),
   `@on_unimplemented`, `@was(..)`, `@aka(..)` and `@stress(kind)` (chapter 12). Any
   other `@name` is E0107, naming the nearest decorator, so no later pass
