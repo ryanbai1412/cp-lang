@@ -2320,7 +2320,16 @@ class DebtRatchetTest(unittest.TestCase):
                 "use cpl_syntax::ast::Expr;\nuse cpl_next_syntax::ast;\nfn f() { cpl_syntax::parse_file(\"\"); }\n")
             self.assertEqual(dr.next_syntax_old_refs(root), [
                 "crates/cpl-next-check/Cargo.toml: dependencies cpl-syntax",
-                "crates/cpl-next-check/src/lib.rs:1", "crates/cpl-next-check/src/lib.rs:3"])
+                "crates/cpl-next-check/src/lib.rs:1:5 cpl_syntax", "crates/cpl-next-check/src/lib.rs:3:10 cpl_syntax"])
+            # A grouped import counts each use behind it; an alias counts as its name; a comment does not.
+            (root / "crates/cpl-next-check/src/lib.rs").write_text(
+                "use cpl_syntax::{\n    ast::{self, StmtKind as SK},\n    decorators::Mark,\n};\n"
+                "fn f(s: &ast::Stmt) -> bool {\n    // ast::Expr\n    matches!(s.kind, SK::Pass) && Mark::of(s)\n}\n")
+            self.assertEqual(dr.next_syntax_old_refs(root), [
+                "crates/cpl-next-check/Cargo.toml: dependencies cpl-syntax", "crates/cpl-next-check/src/lib.rs:1:5 cpl_syntax",
+                "crates/cpl-next-check/src/lib.rs:5:10 ast", "crates/cpl-next-check/src/lib.rs:7:22 SK",
+                "crates/cpl-next-check/src/lib.rs:7:35 Mark"])
+            self.assertEqual(dr.next_old_syntax_analyses(root), ["crates/cpl-next-check/src/lib.rs:7:35 Mark"])
 
     def test_lent_outside_own_and_asks_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

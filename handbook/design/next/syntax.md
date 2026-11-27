@@ -74,11 +74,28 @@ check and lower never desugar on their own.
 
 ## Error recovery
 
-Kept from today's parser, construct by construct: one error per
-statement, then resync at the line's end; a broken header's block is
-still parsed; brackets the lexer closed stay closed. Skipped tokens go
-in an `Error` node, an absent child is `Missing`. Each item is parsed
-alone, so an error never moves another item's boundaries.
+Designed for the tree, not copied from today's one error per statement
+and resync at the line's end. Each construct recovers inside itself
+with a recovery set, rust-analyzer style: the tokens that may follow it
+or close an enclosing construct.
+
+- **Expression:** a token that cannot start an operand becomes an
+  `Error` node holding it, or a zero-width `Missing` operand when it is
+  in the enclosing construct's set; the operator and the other operand
+  stay in the tree.
+- **Argument and bracket lists:** a broken element ends at the next `,`
+  or the closer; the elements after it parse as usual.
+- **Block:** a broken statement ends at its `Newline`; the block's
+  other statements, and a broken header's block, still parse.
+- **Pattern:** a broken pattern ends at `=>`, `:`, `,`, `|` or the
+  closer, so the arm's body still parses.
+- Brackets the lexer closed stay closed; an item is parsed alone, so an
+  error never moves another item's boundaries.
+
+One diagnostic per `Error` or `Missing`, at the first bad token, never
+a cascade. So a broken sub-expression leaves the rest of its statement
+in the tree, for completion and hover. Tests inject errors and check
+the surrounding nodes are kept, not only the other items.
 
 ## Ids and spans
 
@@ -101,10 +118,13 @@ replaces.
    conformance, std and test-program file round-trips byte for byte.
 2. The parser, building the tree; `cpl-syntax::parse_file` and
    `parse_item` become its lowering, and today's parser is deleted in
-   the same landing. Test: the lowering equals today's parse (trees and
-   diagnostics) on every file before the switch; after it,
-   `cpl-syntax`'s own parser tests keep running through the lowering.
-   With injected errors every unaffected item still parses the same.
+   the same landing. This edits frozen `cpl-syntax`: allowed because
+   it deletes the old parser and cuts lines, and the commit body says
+   so. Tests: the lowered AST equals today's parse on every file. Each
+   diagnostic that differs from today's is a row of a reviewed list
+   (case, old, new, why the new one is better), which can only shrink;
+   old quirks are not reproduced to empty it. With injected errors
+   every unaffected item, and the nodes around each error, still parse.
 3. The typed view, item ids and node indexes.
 4. Readers move one at a time, each deleting its `cpl_syntax` use:
    `cpl-next-decls` (modules, items, signatures), then
@@ -113,6 +133,17 @@ replaces.
    cpl-next source lines naming `cpl_syntax`; it only shrinks, to 0.
 5. At stage 8 the lints, formatter and editor read the tree, and the
    lowering and `cpl-syntax` are deleted with the old pipeline.
+
+Old code reused, and where it goes (migration rule 13):
+
+| Reused | Deleted in | Counter at 0 there |
+|---|---|---|
+| `cpl-syntax`'s parser, until the tree has one | step 2 | `old_parser_lines` |
+| The lexer's trivia-free token list and `comments`, which the old parser reads and `Lexed::lossless` refills | step 2: the lexer emits trivia itself | `old_parser_lines` |
+| `cpl-syntax`'s AST, as the lowering's output | stage 8, with the old pipeline | `next_syntax_old_refs` reaches 0 at step 4 |
+
+The layout lexer itself is not reused old code: indentation is the
+language, and the new crate owns it.
 
 ## Calls
 

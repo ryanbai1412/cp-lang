@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import bisect
 import difflib
 import fnmatch
 import functools
@@ -1697,12 +1698,77 @@ def next_layer_foreign_deps(root: Path) -> list[str]:
     return out
 
 
+OLD_SYNTAX_USE_RE = re.compile(r"\buse\s+(?:::)?cpl_syntax\b[^;]*;", re.S)
+OLD_SYNTAX_ANALYSES = ("decorators", "fall_through", "visit", "narrow", "const_int", "order", "planned")
+
+
+def _use_tree(text: str, path: tuple[str, ...]) -> list[tuple[str, tuple[str, ...]]]:
+    """The names a `use` tree brings in, each with the path it names: `ast::{self, Expr as E}`
+    under `cpl_syntax` is `ast` (cpl_syntax, ast) and `E` (cpl_syntax, ast, Expr)."""
+    text = text.strip()
+    if text.endswith("}") and "{" in text:
+        head, body = text[:text.index("{")], text[text.index("{") + 1:-1]
+        prefix = path + tuple(x for x in head.split("::") if x.strip())
+        parts, depth, cur = [], 0, ""
+        for c in body:
+            depth += (c == "{") - (c == "}")
+            if c == "," and depth == 0:
+                parts.append(cur)
+                cur = ""
+            else:
+                cur += c
+        parts.append(cur)
+        return [n for part in parts if part.strip() for n in _use_tree(part, prefix)]
+    name, _, alias = text.partition(" as ")
+    full = path + tuple(x.strip() for x in name.split("::") if x.strip())
+    if full[-1] == "self":
+        full = full[:-1]
+    if full[-1] == "*":
+        return []
+    return [(alias.strip() or full[-1], full)]
+
+
+def _old_syntax_uses(root: Path, files, only: tuple[str, ...] = ()) -> list[str]:
+    """Each use of the old syntax crate in `files`: every `cpl_syntax` token, and every use of a
+    name a `use cpl_syntax::..` brings in (a module, type, fn or alias), so a grouped import
+    counts each use behind it. `only` keeps the uses that reach those modules of it."""
+    out = []
+    for p in files:
+        text = p.read_text(encoding="utf-8")
+        code = re.sub(r"//[^\n]*", lambda m: " " * len(m.group(0)), text)
+        names, spans = {}, []
+        for m in OLD_SYNTAX_USE_RE.finditer(code):
+            spans.append((m.start(), m.end()))
+            tree = re.sub(r"\s+", " ", m.group(0)[m.group(0).index("cpl_syntax"):-1])
+            for name, full in _use_tree(tree, ()):
+                if name != "cpl_syntax":
+                    names[name] = full
+        if only:
+            names = {n: f for n, f in names.items() if len(f) > 1 and f[1] in only}
+        words = [re.escape(n) for n in names]
+        alts = ["cpl_syntax::(?:%s)\\b" % "|".join(only)] if only else ["cpl_syntax"]
+        pat = re.compile(r"\b(?:%s)" % "|".join(alts + ([r"(?:%s)\b" % "|".join(words)] if words else [])))
+        starts = [0] + [i + 1 for i, c in enumerate(code) if c == "\n"]
+        for m in pat.finditer(code):
+            if any(a <= m.start() < b for a, b in spans) and not m.group(0).startswith("cpl_syntax"):
+                continue
+            line = bisect.bisect_right(starts, m.start())
+            out.append(f"{_rel(root, p)}:{line}:{m.start() - starts[line - 1] + 1} {m.group(0)}")
+    return out
+
+
+def _next_old_syntax_files(root: Path):
+    return [p for d in sorted((root / "crates").glob("cpl-next*")) if d.name != "cpl-next-syntax"
+            for p in _rs_files(root, _rel(root, d))]
+
+
 def next_syntax_old_refs(root: Path) -> list[str]:
-    """Places where the new pipeline reads the old parser: a `cpl_syntax` source line in a
-    `cpl-next*` crate (tests included) and a `cpl-syntax` dependency in its manifest. Each
-    reader moves onto `cpl-next-syntax`'s lossless tree and deletes its old use
-    (handbook/design/next/syntax.md); at 0, `cpl-syntax` serves only the old pipeline it is
-    deleted with."""
+    """Each use of the old parser's crate in the new pipeline: every `cpl_syntax` token and
+    every use of a name imported from it (`ast::Expr`, `Expr` after `use cpl_syntax::ast::Expr`,
+    `visit::`, `Mark::`, an alias) in a `cpl-next*` crate, tests included, and each
+    `cpl-syntax` dependency in its manifest. Each reader moves onto `cpl-next-syntax`'s lossless
+    tree and deletes its old uses (handbook/design/next/syntax.md); at 0, `cpl-syntax` serves only
+    the old pipeline it is deleted with."""
     out = []
     for d in sorted((root / "crates").glob("cpl-next*")):
         toml = d / "Cargo.toml"
@@ -1710,9 +1776,26 @@ def next_syntax_old_refs(root: Path) -> list[str]:
             parsed = tomllib.loads(toml.read_text(encoding="utf-8"))
             out += [f"{_rel(root, toml)}: {kind} {dep}" for kind in TOOL_COMPILER_KINDS
                     for dep in sorted(parsed.get(kind, {})) if dep == "cpl-syntax"]
-        out += [f"{_rel(root, p)}:{i}" for p in _rs_files(root, _rel(root, d))
-                for i, line in enumerate(_lines(p), 1) if "cpl_syntax" in line]
-    return out
+    return out + _old_syntax_uses(root, _next_old_syntax_files(root))
+
+
+def next_old_syntax_analyses(root: Path) -> list[str]:
+    """Uses in the new pipeline of the semantic decisions that live in the old syntax crate:
+    its decorator set, fall-through analysis, mention and pattern-name walks, narrowing, constant
+    folding, ordering and planned features (OLD_SYNTAX_ANALYSES). Each moves into the layer that
+    owns it (the decorator set into the declarations' role table, fall-through onto the typed
+    tree), not into `cpl-next-syntax`; at 0 none of them dies with `cpl-syntax`."""
+    return _old_syntax_uses(root, _next_old_syntax_files(root), OLD_SYNTAX_ANALYSES)
+
+
+def tool_old_syntax_uses(root: Path) -> list[str]:
+    """Each use of the old syntax crate in a `tool` crate (architecture.md's crate rules):
+    lints, the formatter and the editor reading today's tree, which `tool_compiler_deps` leaves
+    out on purpose. They move onto the lossless tree in migration stage 8; every lint added on
+    the old tree before then is one more to port."""
+    tools = crate_rules(root).get("tool", [])
+    files = [p for t in tools if (root / "crates" / t).is_dir() for p in _rs_files(root, f"crates/{t}")]
+    return _old_syntax_uses(root, files)
 
 
 def wrong_to_refused(root: Path, ref: str) -> list[str]:
@@ -1961,6 +2044,15 @@ def old_pipeline_lines(root: Path) -> list[str]:
 
 
 OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
+
+
+def old_parser_lines(root: Path) -> list[str]:
+    """Code lines of `cpl-syntax`'s parser, which `cpl-next-syntax`'s parser replaces: its step 2
+    turns `parse_file` and `parse_item` into a lowering of the lossless tree and deletes these in the
+    same landing (handbook/design/next/syntax.md), so there is never a second parser."""
+    files = [root / "crates/cpl-syntax/src/parser.rs", *sorted((root / "crates/cpl-syntax/src/parser").glob("*.rs"))]
+    return [f"{_rel(root, p)}:{i}" for p in files if p.is_file()
+            for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
 
 
 STRING_KEYED_MAP_RE = re.compile(r"HashMap<\s*(?:String|&(?:'\w+\s+)?str|Box<str>|Arc<str>)\s*,")
@@ -4193,8 +4285,14 @@ COUNTERS = {
     "next_lent_outside_own": ("new-pipeline places after the checker, outside cpl-next-own, making a type lent (Core)", next_lent_outside_own, True),
     "next_asks_refused": ("conformance cases refused for a header the new harness does not judge (Core)", next_asks_refused, True),
     "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),
-    "next_syntax_old_refs": ("new-pipeline source lines and manifests reading the old parser `cpl_syntax` (Core; target 0)",
+    "old_parser_lines": ("code lines of the old parser `cpl-syntax/src/parser*`, deleted when the lossless tree's parser lands (Core; target 0)",
+                         old_parser_lines, True),
+    "next_syntax_old_refs": ("new-pipeline uses of the old parser's crate `cpl_syntax` and the names imported from it (Core; target 0)",
                              next_syntax_old_refs, True),
+    "next_old_syntax_analyses": ("new-pipeline uses of semantic decisions kept in `cpl_syntax` (decorators, fall_through, visit, ...) (Core; target 0)",
+                                 next_old_syntax_analyses, True),
+    "tool_old_syntax_uses": ("tool-crate uses of the old syntax crate `cpl_syntax`, ported onto the lossless tree at stage 8 (Core; target 0)",
+                             tool_old_syntax_uses, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "next_check_name_keys": ("checker keys built by formatting another name, not an id (Core)", next_check_name_keys, True),
