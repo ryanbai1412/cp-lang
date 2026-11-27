@@ -112,8 +112,8 @@ impl Decls {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
             return true;
         }
-        if Some(tr) == self.domain_trait {
-            return matches!(t, Ty::Dom(_));
+        if Some(tr) == self.domain_trait && matches!(t, Ty::Dom(_) | Ty::Int) {
+            return true;
         }
         (self.impls_of(tr)).any(|im| {
             self.impl_args(im, t)

@@ -112,8 +112,10 @@ impl Cx<'_> {
             }
             return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
         }
-        if Some(r.tr) == self.d.domain_trait {
-            return Some(matches!(t, Ty::Dom(_) | Ty::Error));
+        // Every domain meets `Domain`, and `Int`, its integers its positions (R04.2.18); any
+        // other type by an impl.
+        if Some(r.tr) == self.d.domain_trait && matches!(t, Ty::Dom(_) | Ty::Int) {
+            return Some(true);
         }
         match t {
             Ty::Error => Some(true),
@@ -177,12 +179,15 @@ impl Cx<'_> {
     }
     /// Whether type parameter `i` meets `tr` through a blanket impl whose bounds its own bounds
     /// meet: `impl<D: Domain> Eq for D` gives every `D: Domain` its `==`.
-    /// A domain parameter (`Decls::domain_params`) meets what `Domain` gives.
+    /// A domain parameter (`Decls::domain_params`) meets `Domain` and what `Domain` gives.
     pub(super) fn blanket(&self, i: usize, tr: TraitId) -> bool {
         let mut have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
         let dom = (self.decl).and_then(|f| self.d.domain_params.get(&f));
         if dom.is_some_and(|ds| ds.contains(&i)) {
             have.extend(self.d.domain_trait);
+        }
+        if have.contains(&tr) {
+            return true;
         }
         (self.d.impls.iter()).any(|im| {
             im.trait_.tr == tr

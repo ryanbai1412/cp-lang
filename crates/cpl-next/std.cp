@@ -61,7 +61,7 @@ struct List<T>:
         n = 0
 
 
-struct Array<D, T>:
+struct Array<D: Domain, T>:
     buf: Raw<T>
 
     @get fn len(self) -> Int:
@@ -77,7 +77,7 @@ struct Array<D, T>:
         for i in 0..D.count: yield raw_get(buf, i)
 
 /// Cell by cell, in walk order (R08.1.6).
-impl<D, T: Eq> Eq for Array<D, T>:
+impl<D: Domain, T: Eq> Eq for Array<D, T>:
     fn eq(a, b):
         for i in 0..D.count:
             if raw_get(a.buf, i) != raw_get(b.buf, i): return false
@@ -85,11 +85,11 @@ impl<D, T: Eq> Eq for Array<D, T>:
 
 /// A list where `[D]T` is wanted: one element per position, in walk order (R04.8.10).
 @coerce
-fn array_of_list<D, T>(xs: List<T>) -> [D]T:
+fn array_of_list<D: Domain, T>(xs: List<T>) -> [D]T:
     assert xs.len == D.count, "a list for `[D]T` has one element per position"
     Array(xs.buf)
 
-fn read_array<D>() -> [D]Int:
+fn read_array<D: Domain>() -> [D]Int:
     var a: [D]Int = 0
     for v in D: a[v] = read()
     a
@@ -101,7 +101,7 @@ fn write_list(xs: List<Int>):
         write(x)
         first = false
 
-fn write_array<D>(xs: [D]Int):
+fn write_array<D: Domain>(xs: [D]Int):
     var first = true
     for x in xs:
         if not first: write(" ")
@@ -168,7 +168,7 @@ struct Optional<T>:
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
 /// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `step`
 /// count in ordinals of `D`, which for `Int` are the integers themselves.
-struct Range<D>:
+struct Range<D: Domain>:
     lo: Int
     n: Int
     step: Int
@@ -207,7 +207,7 @@ struct Range<D>:
             write(D.nth(lo + i * step))
 
 /// `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
-fn range_of<D>(lo: Int, hi: Int, step: Int) -> Range<D>:
+fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
     assert step > 0, "a range's step is positive"
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step
     Range(lo, n, step)
@@ -329,7 +329,7 @@ impl Clone for Bool:
     fn clone(a) = a
 impl<D: Domain> Clone for D:
     fn clone(a) = a
-impl<D> Clone for Range<D>:
+impl<D: Domain> Clone for Range<D>:
     fn clone(a) = Range(a.lo, a.n, a.step)
 impl<T: Clone> Clone for Optional<T>:
     fn clone(a) = if a.some: Optional(true, a.val.clone()) else: None
@@ -342,7 +342,7 @@ impl<T: Clone> Clone for List<T>:
         out
 impl Clone for Str:
     fn clone(a) = Str(a.chars.clone())
-impl<D, T: Clone> Clone for Array<D, T>:
+impl<D: Domain, T: Clone> Clone for Array<D, T>:
     fn clone(a):
         if D.count == 0: return Array(raw_empty())
         var buf = raw_new(D.count, raw_get(a.buf, 0).clone())
@@ -419,28 +419,28 @@ impl IndexedMut<Int, Char> for Str:
     fn at(mut self, i: Int) -> lends mut Char:
         check_key(0 <= i and i < self.chars.n)
         lend mut self.chars.buf[i]
-impl<D, T> Keyed<D, T> for Array<D, T>:
+impl<D: Domain, T> Keyed<D, T> for Array<D, T>:
     fn items(self) -> yields (D, T):
         for i in 0..D.count: yield (D.nth(i), raw_get(self.buf, i))
-impl<D, T> Positional<T> for Array<D, T>:
+impl<D: Domain, T> Positional<T> for Array<D, T>:
     fn nth(self, k: Int) -> T = self.get(D.nth(k))
-impl<D, T> Indexed<D, T> for Array<D, T>:
+impl<D: Domain, T> Indexed<D, T> for Array<D, T>:
     fn at(self, i: D) -> T = self.get(i)
     @get fn keys(self) -> Range<D> = D
 /// A range is keyed by its own values, so `(2..5)[3] == 3`, and has no source to lend (R07.2.15).
-impl<D, T> IndexedMut<D, T> for Array<D, T>:
+impl<D: Domain, T> IndexedMut<D, T> for Array<D, T>:
     fn at(mut self, i: D) -> lends mut T:
         lend mut self.buf[i.ord]
-impl<D> Keyed<D, D> for Range<D>:
+impl<D: Domain> Keyed<D, D> for Range<D>:
     fn items(self) -> yields (D, D):
         for i in 0..self.n:
             let k = self.lo + i * self.step
             yield (D.nth(k), D.nth(k))
-impl<D> Positional<D> for Range<D>:
+impl<D: Domain> Positional<D> for Range<D>:
     fn nth(self, k: Int) -> D:
         check_key(0 <= k and k < self.n)
         D.nth(self.lo + k * self.step)
-impl<D> Indexed<D, D> for Range<D>:
+impl<D: Domain> Indexed<D, D> for Range<D>:
     fn at(self, x: D) -> D:
         let d = x.ord - self.lo
         check_key(self.n > 0 and d % self.step == 0 and 0 <= d / self.step and d / self.step < self.n)
@@ -448,36 +448,36 @@ impl<D> Indexed<D, D> for Range<D>:
     @get fn keys(self) -> Range<D> = self
 /// `s[r]`: the view of `s` over the keys in `r`, made in O(1); traps R0101 unless `r` is a run of
 /// `s`'s keys (R07.4.6). An empty `r` is the empty view at its start.
-@index fn slice<S: Indexed<D, T>, D, T>(self: S, r: Range<D>) -> Slice<S>:
+@index fn slice<S: Indexed<D, T>, D: Domain, T>(self: S, r: Range<D>) -> Slice<S>:
     let (i, ok) = run_in(self.keys, r)
     check_key(ok)
     Slice(self, i, i + r.n)
 /// `s[lo..]`, `s[..hi]`, `s[..=hi]` and `s[..]`: an end left out is that end of `s`'s keys; traps
 /// R0101 unless the ends are keys of `s` in order, or its end (R07.4.6).
-@index fn slice_ends<S: Indexed<D, T>, D, T>(self: S, lo: ?D, hi: ?D, through: Bool) -> Slice<S>:
+@index fn slice_ends<S: Indexed<D, T>, D: Domain, T>(self: S, lo: ?D, hi: ?D, through: Bool) -> Slice<S>:
     let (i, j, ok) = cut_ends(self.keys, lo, hi, through)
     check_key(ok)
     Slice(self, i, j)
 /// `r[a..b]` of a range is the sub-range `a..b`, itself a range: a range is keyed by its own
 /// values and has no source to view (R07.2.15). Traps R0001 unless `a..b` is a run of `r`'s keys.
-@index fn sub_range<D>(self: Range<D>, r: Range<D>) -> Range<D>:
+@index fn sub_range<D: Domain>(self: Range<D>, r: Range<D>) -> Range<D>:
     let (i, ok) = run_in(self, r)
     check_range(ok)
     Range(self.lo + i * self.step, r.n, self.step)
 /// `r[a..]`, `r[..b]`, `r[..=b]` and `r[..]` of a range: the sub-range between the ends, an end
 /// left out being `r`'s. Traps R0001 unless the ends are keys of `r` in order, or its end.
-@index fn sub_range_ends<D>(self: Range<D>, lo: ?D, hi: ?D, through: Bool) -> Range<D>:
+@index fn sub_range_ends<D: Domain>(self: Range<D>, lo: ?D, hi: ?D, through: Bool) -> Range<D>:
     let (i, j, ok) = cut_ends(self, lo, hi, through)
     check_range(ok)
     Range(self.lo + i * self.step, j - i, self.step)
 /// Where the run `r` starts in the keys `k`, and whether `r` is a run of them (R07.4.6).
-fn run_in<D>(k: Range<D>, r: Range<D>) -> (Int, Bool):
+fn run_in<D: Domain>(k: Range<D>, r: Range<D>) -> (Int, Bool):
     let d = r.lo - k.lo
     let i = d / k.step
     (i, 0 <= d and d % k.step == 0 and i + r.n <= k.n and (r.n <= 1 or r.step == k.step))
 /// The positions `i..j` in the keys `k` of the ends `lo` and `hi` (`hi` in when `through`), an end
 /// left out being `k`'s, and whether they are keys of `k` in order, or its end (R07.4.6).
-fn cut_ends<D>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int, Bool):
+fn cut_ends<D: Domain>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int, Bool):
     var ok = true
     var i = 0
     var j = k.n

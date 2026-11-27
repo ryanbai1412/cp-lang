@@ -1808,7 +1808,11 @@ pub fn drop_last<S: Indexed>(self: S, k: Len = 1) -> Slice<S> = piece(
 /// order: keeps the keys of `self`
 /// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].take(5).collect() == [1, 2, 3]`
-pub fn take<S: Indexed>(self: S, k: Len) -> Slice<S> = piece(self, 0, clamp_count(k, self.len))
+pub fn take<S: Indexed>(self: S, k: Len) -> Slice<S> = piece(
+    self,
+    0,
+    clamp_count(k, self.len),
+)
 
 /// \(O(1)\). The last `min(k, len)` elements, as a view (traps if `k < 0` or `k >= 2^31`).
 ///
@@ -1832,14 +1836,14 @@ pub fn take_last<S: Indexed>(self: S, k: Len) -> Slice<S> = piece(
 /// example: `[5, 6, 7][1..].nth(0) == 6`
 pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 
-impl<S: Indexed<K, T>, K, T> Seq<T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Seq<T> for Slice<S>:
     fn iter(self) -> yields T:
         for i in self.lo..self.hi: yield self.src.nth(i)
 
-impl<S: Indexed<K, T>, K, T> Sized for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Sized for Slice<S>:
     @get fn len(self) -> Int = self.hi - self.lo
 
-impl<S: Indexed<K, T>, K, T> Keyed<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Keyed<K, T> for Slice<S>:
     /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
     /// same elements without the keys.
     ///
@@ -1851,15 +1855,15 @@ impl<S: Indexed<K, T>, K, T> Keyed<K, T> for Slice<S>:
     fn items(self) -> yields (K, T):
         for i in self.lo..self.hi: yield (self.src.keys.nth(i), self.src.nth(i))
 
-impl<S: Indexed<K, T>, K, T> Bidir<T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Bidir<T> for Slice<S>:
     fn iter_rev(self) -> yields T:
         for i in (self.lo..self.hi).rev: yield self.src.nth(i)
 
-impl<S: Indexed<K, T>, K, T> Positional<T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Slice<S>:
     /// `(0..len)[k]` is `k`, read as a key so one outside the slice traps R0101 (R07.4.5).
     fn nth(self, k: Int) -> T = self.src.nth(self.lo + (0..self.len)[k])
 
-impl<S: Indexed<K, T>, K, T> Indexed<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
     /// `keys[i]` is `i`, checked: a key outside the slice traps R0101, never reading the source
     /// around it (R07.4.5).
     fn at(self, i: K) -> T = self.src.at(self.keys[i])
@@ -1892,25 +1896,25 @@ pub fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T> = self.collect
 pub struct Rebased<S>(pub src: S):
     domain Idx = 0..src.len
 
-impl<S: Indexed<K, T>, K, T> Seq<T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Seq<T> for Rebased<S>:
     fn iter(self) -> yields T:
         for x in self.src: yield x
 
 impl<S: Sized> Sized for Rebased<S>:
     @get fn len(self) -> Int = self.src.len
 
-impl<S: Indexed<K, T>, K, T> Keyed<Idx, T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Keyed<Idx, T> for Rebased<S>:
     fn items(self) -> yields (Idx, T):
         for i in Idx.all: yield (i, self.src.nth(i.ord))
 
-impl<S: Indexed<K, T>, K, T> Bidir<T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Bidir<T> for Rebased<S>:
     fn iter_rev(self) -> yields T:
         for x in self.src.rev: yield x
 
-impl<S: Indexed<K, T>, K, T> Positional<T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Rebased<S>:
     fn nth(self, k: Int) -> T = self.src.nth(k)
 
-impl<S: Indexed<K, T>, K, T> Indexed<Idx, T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Indexed<Idx, T> for Rebased<S>:
     fn at(self, i: Idx) -> T = self.src.nth(i.ord)
     @get fn keys(self) -> Range<Idx> = Idx.all
 
@@ -3795,7 +3799,7 @@ fn clamp_count(k: Int, n: Int) -> Int:
     assert k >= 0, "a count must not be negative"
     if k < n: k else: n
 
-fn piece<S: Indexed>(s: S, i: Int, j: Int) -> Slice<S>:
+fn piece<S: Indexed<D, T>, D: Domain, T>(s: S, i: Int, j: Int) -> Slice<S>:
     let n = s.len
     if i < j: return s[s.keys.nth(i)..=s.keys.nth(j - 1)]
     if i < n:

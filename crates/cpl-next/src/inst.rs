@@ -1382,8 +1382,8 @@ fn blanket_met(d: &Decls, im: &crate::decls::ImplDecl, binds: &[Option<CTy>]) ->
         || (im.bounds.iter()).all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
 }
 fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
-    if Some(tr) == d.domain_trait {
-        return matches!(t, CTy::Dom(_));
+    if Some(tr) == d.domain_trait && matches!(t, CTy::Dom(_) | CTy::Int) {
+        return true;
     }
     d.impls_of(tr).any(|im| {
         let mut b = vec![None; im.generics.len()];

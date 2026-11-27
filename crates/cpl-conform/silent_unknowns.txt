@@ -4,7 +4,7 @@
 887 cause:index
 241 cause:list
 3058 cause:member
-1390 cause:method-call
+1386 cause:method-call
 6988 cause:name
 1914 cause:operator
 257 cause:other
@@ -2003,7 +2003,7 @@
 75 std/range.cp
 29 std/search.cp
 400 std/segtree.cp
-805 std/seq.cp
+801 std/seq.cp
 34 std/slope.cp
 147 std/sparse.cp
 48 std/spec.cp
