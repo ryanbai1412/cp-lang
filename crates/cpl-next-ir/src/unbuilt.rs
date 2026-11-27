@@ -131,9 +131,6 @@ pub enum Unbuilt {
     LazyParam {
         name: String,
     },
-    UseWithoutNames {
-        module: String,
-    },
     UseOfOwn {
         name: String,
     },
@@ -236,7 +233,6 @@ impl fmt::Display for Unbuilt {
             MethodsOfOneName { name } => write!(f, "methods of one name in one module (`{name}`)"),
             OverloadByLabels => write!(f, "fns of one name told apart by their labels"),
             LazyParam { name } => write!(f, "a lazy parameter `{name}`"),
-            UseWithoutNames { module } => write!(f, "`use {module}` without names"),
             UseOfOwn { name } => write!(f, "`use` of `{name}`, which this file also declares"),
             UseMissing { module, name } => write!(f, "`{module}` has no pub `{name}` the slice declares"),
             Expression { kind } => write!(f, "expression {kind}"),

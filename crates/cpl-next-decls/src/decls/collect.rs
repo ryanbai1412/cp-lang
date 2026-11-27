@@ -1279,10 +1279,7 @@ fn remake_views(
         };
         let mut ambiguous = HashSet::new();
         let v = view(sc, mi, d.of_program(ModId(mi)), e, &mut ambiguous);
-        let exports = match d.within.get(mi).copied().flatten() {
-            Some(_) => Arc::new(export_map(sc, mi)),
-            None => Arc::default(),
-        };
+        let exports = Arc::new(export_map(sc, mi));
         d.exports
             .resize(d.exports.len().max(mi + 1), Arc::default());
         d.exports[mi] = exports;

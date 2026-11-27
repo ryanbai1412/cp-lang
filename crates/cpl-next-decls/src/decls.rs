@@ -255,7 +255,8 @@ pub enum Named {
     Const(ConstId),
     /// `context io:`: compile-time settings a `with` line sets (R09.1).
     Context(ContextId),
-    /// An inline `mod m:`, to the module it sits in: `m.f` names its `pub f` (R11.1.3).
+    /// An inline `mod m:` to the module it sits in, or a module a `use` names without names:
+    /// `m.f` names its `pub f` (R11.1.3, R11.2.1).
     Module(ModId),
 }
 /// What a method sits in.
@@ -296,7 +297,7 @@ pub struct Decls {
     pub module_names: Vec<String>,
     /// Per module, the module an inline `mod` of it sits in (R11.1.3).
     pub within: Vec<Option<ModId>>,
-    /// Per inline module, what each name it declares or exports means, and whether it is
+    /// Per module, what each name it declares or exports means, and whether it is
     /// `pub`: `m.f` outside it.
     pub exports: Vec<Arc<HashMap<String, (Named, bool)>>>,
     pub program: ModId,
@@ -750,7 +751,7 @@ fn outer_view(
             path,
             names: ns,
             glob,
-            ..
+            alias,
         } = &s.kind
         else {
             continue;
@@ -781,14 +782,16 @@ fn outer_view(
             }
             continue;
         }
+        // `use std.segtree` names the module: `segtree.SegTree` is its `pub SegTree` (R11.2.1).
         if ns.is_empty() {
-            if let Some(e) = errors.as_deref_mut() {
-                e.push(
-                    Unbuilt::UseWithoutNames {
-                        module: module.to_string(),
-                    }
-                    .into(),
-                );
+            let m = alias
+                .as_ref()
+                .map_or(module.rsplit('.').next().unwrap_or(""), |a| a.text.as_str());
+            v.insert(m.to_string(), Named::Module(ModId(t)));
+            for n in exports(sc, t) {
+                if let Some(x) = export(t, &n) {
+                    v.insert(format!("{m}.{n}"), x);
+                }
             }
             continue;
         }
