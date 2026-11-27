@@ -318,7 +318,7 @@ fn put<T: Clone>(t: &mut Vec<T>, i: usize, x: T) {
 }
 
 /// The ids a check gave what bodies make, kept for the check of an edited program
-/// (`check_after`): a body the edit leaves alone names its lambdas, domains, ranges, set calls
+/// (`check`'s `prior`): a body the edit leaves alone names its lambdas, domains, ranges, set calls
 /// and context copies as before.
 #[derive(Clone, Default)]
 pub struct Ids {
@@ -480,19 +480,9 @@ pub enum ConstError {
 /// `roots`: library modules whose every fn is checked as the program's are, reached or not.
 /// A result's `_` that is no domain is fixed by its fn's body (R02.9.3): a call checked before
 /// that body is checked again, with each such result as the bodies fixed it.
+/// What bodies make is named as `prior` named it where they make it again: an edit leaves
+/// the bodies it does not touch typed the same (`Ids::default()` for a first check).
 pub fn check(
-    d: &Decls,
-    main: &[(ItemId, ast::Stmt)],
-    src: &crate::modules::Loaded,
-    consts: &dyn Consts,
-    roots: &[ModId],
-    judge: Option<cpl_next_ir::build::Judge>,
-) -> Typed {
-    check_after(d, main, src, consts, roots, judge, &Ids::default())
-}
-
-/// `check`, naming what bodies make as `prior` did where they make it again.
-pub fn check_after(
     d: &Decls,
     main: &[(ItemId, ast::Stmt)],
     src: &crate::modules::Loaded,
@@ -523,7 +513,7 @@ pub fn check_after(
 }
 
 /// What earlier checks settled: each `_` result a body fixed (R02.9.3), and the ids of an
-/// earlier revision (`check_after`).
+/// earlier revision (`check`'s `prior`).
 struct Earlier<'p> {
     ret: HashMap<FnId, Ty>,
     ids: &'p Ids,

@@ -279,7 +279,15 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
     out.extend(diags(Stage::Decls, &d.errors));
     let values = consts::Evaluator::new(&d, &loaded, &main);
-    let t = check::check(&d, &main, &loaded, &values, &[], judge_of(loaded.program()));
+    let t = check::check(
+        &d,
+        &main,
+        &loaded,
+        &values,
+        &[],
+        judge_of(loaded.program()),
+        &check::Ids::default(),
+    );
     out.extend(diags(Stage::Check, &t.errors));
     let g = lower::lower(&d, &t, &loaded);
     out.extend(diags(Stage::Lower, &g.errors));
@@ -323,6 +331,7 @@ pub fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
                 &values,
                 &at.into_iter().collect::<Vec<_>>(),
                 judge_of(""),
+                &check::Ids::default(),
             );
             let ds = (staged(Stage::Decls, &d.errors, &loaded, &[]).into_iter()).chain(staged(
                 Stage::Check,
