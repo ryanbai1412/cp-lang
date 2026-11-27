@@ -12,7 +12,7 @@ How a value prints, and how an interpolated string formats it (R10.3).
 
 ## `struct Fmt`
 
-How `print` and interpolation write a value: `digits` decimals for an `F64` when given, and the `base` a counted domain's positions print in (R10.2.2, R10.3.2, R10.3.4).
+How `print` and interpolation write a value: `digits` decimals for an `F64` when given, the `base` a counted domain's positions print in, and the text of `print`'s `none:` for an absent element (R10.2.2, R10.3.1, R10.3.2, R10.3.4).
 
 ## `struct Pack<H, T>`
 
@@ -20,7 +20,21 @@ Values walked one at a time: the first, and a pack of the rest or `()`; a struct
 
 Fields: `head: H`, `tail: T`.
 
+## `struct Bare`
+
+`print` without `none:`: each value is `Show`, so a `?T` sequence is refused (R10.3.7).
+
+## `struct WithNone`
+
+`print(xs, none: d)`: a sequence of `?T` is a value too (R10.3.1).
+
+## `trait ShowPart<M>`
+
+One of the values `print` takes: any `Show`, and under `WithNone` a `?T` sequence.
+
 ## Functions
 
-- `fn print<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision: ?Int = None) uses io` — `print(x, y)`: the values joined by `sep`, then `end`; `precision: k` gives each `F64` `k` decimals (R10.3.1, R10.3.4).
-- `fn write<Ts: ShowAll>(..xs: Ts, sep: ?Str = None, precision: ?Int = None) uses io` — `print` without the line's end.
+- `fn print<Ts: ShowAll<Bare>>(..xs: Ts, sep: ?Str = None, end: Str = "\n", precision: ?Int = None) uses io` — `print(x, y)`: the values joined by `sep`, then `end`; `precision: k` gives each `F64` `k` decimals (R10.3.1, R10.3.4).
+- `fn print<Ts: ShowAll<WithNone>, N: Show>(..xs: Ts, sep: ?Str = None, end: Str = "\n", none: N, precision: ?Int = None) uses io` — `print(xs, none: d)`: each absent element of a `?T` sequence printed as `d` (R10.3.1).
+- `fn write<Ts: ShowAll<Bare>>(..xs: Ts, sep: ?Str = None, precision: ?Int = None) uses io` — `print` without the line's end.
+- `fn write<Ts: ShowAll<WithNone>, N: Show>(..xs: Ts, sep: ?Str = None, none: N, precision: ?Int = None) uses io` — `write(xs, none: d)`, as `print(xs, none: d)` without the line's end.

@@ -1848,7 +1848,6 @@ pub(crate) fn suggest_rename(
 
 pub use cpl_diag::closest;
 
-
 fn collect_expr_names(expr: &cpl_syntax::ast::Expr, out: &mut Vec<(String, Span)>) {
     use cpl_syntax::visit::{walk_expr, Visitor};
     struct NameCollector<'a>(&'a mut Vec<(String, Span)>);

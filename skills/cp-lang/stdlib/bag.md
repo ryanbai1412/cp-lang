@@ -52,7 +52,6 @@ An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat a
 - `fn prev_cursor(self, c: BagCursor) -> ?BagCursor` — \(O(1)\) amortized, \(O(\log n)\) worst case; Cursor to the next smaller distinct key, or `None`.; traps: never in release; debug traps when the node of `c` has been freed
 - `fn entries(self) -> yields (key: K, count: Int)` — \(O(1)\) amortized per step; Visit every distinct `(key, count)` in ascending order.
 - `fn entries_rev(self) -> yields (key: K, count: Int)` — \(O(1)\) amortized per step; Visit every distinct `(key, count)` in descending order.
-- `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in ascending order; `for x in b` uses this.
 - `fn each_rev(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in descending order.
 - `fn to_list(self) -> List<K>` — \(O(n)\); Every element in ascending order, repeated by multiplicity.
 - `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate leaf storage for at least `cap` distinct keys.
@@ -84,7 +83,6 @@ An ordered set of unique keys `K` with order statistics (`rank`, `nth`), \(O(1)\
 - `fn last_true(self, ok: K -> Bool) -> ?K` — \(O(\log n)\) expected calls of `ok`; Largest key `k` where monotone `ok(k)` holds (`true..true, false..false`), or `None`.; traps: never; an `ok` that is not true-then-false gives an unspecified answer
 - `fn drain(mut self; after: ?K = None, before: ?K = None, while ok: K -> Bool) -> List<K>` — \(O(k \log n)\) expected for `k` removed keys; Remove and return the maximal run of keys strictly after `after` (ascending), strictly before `before` (descending), or from the smallest key (ascending) while `ok(k)` holds.; traps: when both `after` and `before` are given
 - `fn range(self, r: Range<K>) -> lends SortedRange<K>` — \(O(1)\) to make; see `SortedRange` for each query; The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`, `last_lt` and `count_range` (decision 103).
-- `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every key in ascending order.
 - `fn each_rev(self) -> yields K` — \(O(1)\) amortized per step; Visit every key in descending order.
 - `fn to_list(self) -> List<K>` — \(O(n)\); Return all keys in ascending order as a `List<K>`.
 - `fn reserve(mut self, cap: Int)` — \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise; Preallocate leaf storage for at least `cap` keys.
@@ -152,7 +150,6 @@ Fields: `bag: SortedBag<K>`, `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 - `fn fold_gt(self, lo: K) -> T` — \(O(\log n)\) expected; Fold elements with key `> lo`.
 - `fn fold(self, keys: Range<K>) -> T` — \(O(\log n)\) expected; Fold the elements with key in `keys`, in ascending key order, one `leaf(k)` per copy; the one fold for any ordered range (`a..b`, `a..=b`, `..b`, `a..`), as `range(r)` is on `SortedBag` (decision 103).
 - `fn fold_between(self, lo: K, hi: K) -> T` — \(O(\log n)\) expected; Fold elements with key in `[lo, hi)`.
-- `fn each(self) -> yields K` — \(O(1)\) amortized per step; Yield all elements in ascending order.
 
 ## `struct AugSortedSet<K: Ord, T>`
 
@@ -175,7 +172,6 @@ Fields: `bag: AugSortedBag<K, T>`.
 - `fn fold_gt(self, lo: K) -> T` — \(O(\log n)\) expected; Fold keys `> lo`.
 - `fn fold(self, keys: Range<K>) -> T` — \(O(\log n)\) expected; Fold the keys in `keys`, in ascending order; the one fold for any ordered range (`a..b`, `a..=b`, `..b`, `a..`), so `s.fold(..b)` is a prefix sum when `op` is `+`.
 - `fn fold_between(self, lo: K, hi: K) -> T` — \(O(\log n)\) expected; Fold keys in `[lo, hi)`.
-- `fn each(self) -> yields K` — \(O(1)\) amortized per step; Yield all keys in ascending order.
 
 ## `struct BucketCount`
 
@@ -191,7 +187,6 @@ Fields: `lo: Int`, `hi: Int`, `sh: Int`, `cnt: List<Int>`, `blk: List<Int>`.
 - `fn kth(self, k: Int) -> Int` — \(O(\sqrt{N})\); traps: when `k` is not in `0..len`
 - `@get fn len(self) -> Int` — \(O(1)\); The total count of everything added, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
-- `fn each(self) -> yields Int` — \(O(\sqrt{N} + \sqrt{N} \cdot b + \mathit{len})\) for `b` blocks holding a copy; Visit every stored copy, skipping empty blocks.
 - `fn clear(mut self)` — \(O(r.\mathit{len})\)
 
 ## `struct SortedRange<K: Ord>`

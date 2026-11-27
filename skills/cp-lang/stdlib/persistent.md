@@ -31,7 +31,6 @@ One version of a `Versioned` store read through it, from `v.within(store)`.
 
 - `@get fn len(self) -> Int` — \(O(1)\); The number of positions, `D.count`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether `D` has no position.
-- `fn each(self) -> yields T` — \(O(\lvert D \rvert \log \lvert D \rvert)\); Visit the value at every position.; traps: when `store` did not make this version
 - `@get fn items(self) -> yields (D, T)` — \(O(\lvert D \rvert \log \lvert D \rvert)\); Visit every position with its value.; traps: when `store` did not make this version
 
 ## `struct PersistentSegTree<D, T: Sub>(m: Monoid<T>)`
@@ -108,7 +107,6 @@ A `PMultiset` read through its `PArena`, from `s.within(ar)`.
 
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements, counting copies.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the multiset has no element.
-- `fn each(self) -> yields D` — \(O(\min(\mathit{len}, \lvert D \rvert) \log \lvert D \rvert + \mathit{len})\); Visit every element, one per copy, skipping empty subtrees.
 
 ## Example
 

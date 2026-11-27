@@ -16,7 +16,6 @@ A visited/mark set over a domain `D` with \(O(1)\) `add`, `remove`, `contains` (
 - `fn clear(mut self)` — \(O(1)\) amortized; \(O(\lvert D \rvert)\) on the call that wraps the counter; Unmark everything by moving to a new generation, without touching the stamp array.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of marked positions.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no position is marked; `len == 0`.
-- `fn each(self) -> yields D` — \(O(\lvert D \rvert)\): it scans the whole domain; Visit every marked position; `for v in m` uses this.
 
 ## `struct MarkMap<D, T>`
 
@@ -42,7 +41,6 @@ Fields: `to_id: HashMap<K, Int>`, `keys: List<K>`.
 - `fn new() -> Interner<K>` — \(O(1)\); An empty interner.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of distinct keys interned so far; ids are exactly `0..len`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no key has been interned; `len == 0`.
-- `fn each(self) -> yields K` — \(O(1)\) per step; Visit every interned key; `for k in t` uses this.
 - `fn clear(mut self)` — \(O(1)\); Forget every key, so the next new key gets id `0` again.
 - `fn id(mut self, k: K) -> Int` — \(O(1)\) expected; The id of `k`.
 - `fn get(self, k: K) -> ?Int` — \(O(1)\) expected; The id of `k`, or `None` when `k` has not been interned; never adds a key.
@@ -61,7 +59,6 @@ Fields: `dense: List<D>`, `pos: [D]Int`.
 - `fn add(mut self, v: D) -> Bool` — \(O(1)\); Add `v` at the end of the dense order.; traps: when `v` is outside `D`
 - `fn remove(mut self, v: D) -> Bool` — \(O(1)\); Remove `v`, moving the last element of the dense order into its slot.; traps: when `v` is outside `D`
 - `fn clear(mut self)` — \(O(1)\); Remove every element by resetting the length; the sparse table is not touched.
-- `fn each(self) -> yields D` — \(O(\mathit{len})\); Every element, in dense order: insertion order, except that each `remove` moved the then-last element into the removed one's slot.
 
 ## `struct Id<T>(pub raw: 0..=2_000_000_000)`
 

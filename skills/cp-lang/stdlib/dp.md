@@ -56,7 +56,6 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 - `fn line_at(self, x: Int) -> ?Line` — \(O(\log n)\); The line attaining `at(x)`, or `None` when empty.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of lines kept (dominated lines are not counted).
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no line is kept.
-- `fn each(self) -> yields Line` — \(O(\mathit{len})\)
 
 ## `struct Step<S>(pub state: S, pub depth: Int, var pruned: Bool = false)`
 

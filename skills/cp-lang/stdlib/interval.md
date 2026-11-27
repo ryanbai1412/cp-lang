@@ -19,7 +19,6 @@ Fields: `segs: Map<Int, (hi: Int, val: T)>`.
 - `fn run_at(self, i: D) -> (range: Range<D>, val: T)` — \(O(\log \mathit{runs})\); The maximal run containing position `i` and its value.; traps: when `i` is outside `D`
 - `fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` — \(O((1 + \mathit{overwritten}) \log \mathit{runs})\) amortized; Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all runs stay maximal.; traps: when a non-empty `r` reaches outside `D`
 - `fn assign_point(mut self, i: D, val: T) -> T` — \(O(\log \mathit{runs})\); Give position `i` the value `val` and return the value it had.; traps: when `i` is outside `D`
-- `fn each(self) -> yields (range: Range<D>, val: T)` — \(O(1)\) per run; Every maximal run with its value.
 - `fn set(mut self, i: D, val: T)` — \(O(\log \mathit{runs})\); Give position `i` the value `val`; `assign_point` without the old value, and the write-through place for `m[i] = val`.; traps: when `i` is outside `D`
 - `fn range(self, r: Range<D>) -> yields (range: Range<D>, val: T)` — \(O(\log \mathit{runs} + k)\) for `k` pieces; Every run overlapping `r`, clipped to `r`, with its value.; traps: when a non-empty `r` reaches outside `D`
 - `fn each_rev(self) -> yields (range: Range<D>, val: T)` — \(O(1)\) per run; Every maximal run with its value, last first.
@@ -40,7 +39,6 @@ Fields: `segs: Map<Int, Int>`.
 - `fn next_gap(self, from: D) -> ?D` — \(O(\log \mathit{runs})\); The first position at or after `from` that is not in the set (a dynamic mex), or `None` when every position from `from` to the end of `D` is covered.; traps: when `from` is outside `D`
 - `@get fn covered(self) -> Int` — \(O(1)\); The number of positions in the set.
 - `@get fn runs(self) -> Int` — \(O(1)\); The number of maximal runs.
-- `fn each(self) -> yields Range<D>` — \(O(1)\) per run; Every maximal run.
 
 ## `struct SparseIntervalSet`
 
@@ -54,7 +52,6 @@ Fields: `segs: Map<Int, Int>`, `total: Int`.
 - `fn next_gap(self, x: Int) -> Int` — \(O(\log \mathit{runs})\); The least coordinate `>= x` that is not in the set; always exists, since the set is finite.
 - `@get fn covered(self) -> Int` — \(O(1)\); The total number of coordinates in the set.
 - `@get fn runs(self) -> Int` — \(O(1)\); The number of maximal intervals.
-- `fn each(self) -> yields Range<Int>` — \(O(1)\) per interval; Every maximal interval.
 
 ## `struct SparseIntervalMap<T>`
 
@@ -69,7 +66,6 @@ Fields: `lo: Int`, `segs: Map<Int, (hi: Int, val: T)>`.
 - `fn assign(mut self, r: Range<Int>, val: T, on_old: (Range<Int>, T) -> () = (_, _) => ())` — \(O((1 + \mathit{removed}) \log \mathit{runs})\) amortized; Give every coordinate of `r` the value `val`, then merge with equal neighbouring runs.; traps: when a non-empty `r` reaches outside `lo..hi`
 - `fn update(mut self, r: Range<Int>, f: T -> T)` — \(O((1 + \mathit{touched}) \log \mathit{runs})\); Replace the value `v` of every run overlapping `r`, clipped to `r`, with `f(v)`, then merge equal neighbours.; traps: when a non-empty `r` reaches outside `lo..hi`
 - `fn range(self, r: Range<Int>) -> yields (range: Range<Int>, val: T)` — \(O(\log \mathit{runs} + k)\) for `k` pieces; Every run overlapping `r`, clipped to `r`, with its value.; traps: when a non-empty `r` reaches outside `lo..hi`
-- `fn each(self) -> yields (range: Range<Int>, val: T)` — \(O(1)\) per run; Every maximal run with its value.
 - `fn each_rev(self) -> yields (range: Range<Int>, val: T)` — \(O(1)\) per run; Every maximal run with its value, last first.
 
 ## Example

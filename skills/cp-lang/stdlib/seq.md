@@ -4,7 +4,7 @@
 
 Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.   - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`). - Binary & unimodal search: moved to `std.search` (`ternary_max`/`ternary_min`, `Range<F64>.bsearch`/`peak`/`valley`, `parallel_bsearch`). - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`. - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`. - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`. - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`. - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`. - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`). - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-In prelude (no `use` needed): `Anchor`, `Bidir`, `Compressed`, `Indexed`, `Keyed`, `Perm`, `Positional`, `Rev`, `RingSlice`, `Seq`, `Sized`, `Slice`, `Stepped`, `Ties`, `Track`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `reverse`, `reversed`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `windows`, `zip`.
+In prelude (no `use` needed): `Anchor`, `Bidir`, `Compressed`, `Indexed`, `Keyed`, `Perm`, `Positional`, `Rev`, `RingSlice`, `Seq`, `Sized`, `Slice`, `Stepped`, `Ties`, `Track`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `each`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `reverse`, `reversed`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `windows`, `zip`.
 
 ## Types & Constants
 
@@ -219,7 +219,6 @@ Fields: `k: Int,`.
 - `@get fn range(self) -> RingRange<D>` — \(O(1)\)
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the window covers no position.
-- `fn each(self) -> yields D` — \(O(\mathit{len})\)
 - `@get fn start(self) -> D` — \(O(1)\)
 - `@get fn end(self) -> D` — \(O(1)\)
 - `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
@@ -257,6 +256,7 @@ Fields: `k: Int,`.
 - `fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per window; traps: when `k < 1`
 - `fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per chunk; traps: when `k < 1`
 - `@get fn adjacent<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives `(10, 20)` then `(20, 30)`.
+- `fn each<S: Seq<T>, T>(self: S) -> yields T` — what `iter` costs; The sequence's elements from its start: `iter`, by the name the sequence types give it.
 - `fn pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(n^2)\) to walk, \(O(1)\) per pair; Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`, `(20, 30)`.
 - `@get fn with_prev<S: Seq<T>, T>(self: S) -> yields (?T, T)` — \(O(1)\) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.

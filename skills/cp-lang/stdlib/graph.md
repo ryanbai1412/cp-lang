@@ -9,7 +9,7 @@ In prelude (no `use` needed): `Complement`, `Functional`, `Graph`, `Lit`, `Targe
 ## Types & Constants
 
 - `type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))` — The arc a build stores by default: the target, the edge id, and every field of the edge record except `u` and `v`.
-- `type Tree<V> = [0..V.len - 1](u: V, v: V)` — \(O(n)\) to read.
+- `type Tree<V> = [0..V.count - 1](u: V, v: V)` — \(O(n)\) to read.
 - `type SimpleGraph<V, E> = [E](u: V, v: V)` — \(O(m)\) to read.
 - `type ConnectedGraph<V, E> = [E](u: V, v: V)` — \(O(n + m)\) to read (connectivity is validated).
 - `type Dag<V, E> = [E](u: V, v: V)` — \(O(m)\) to read.

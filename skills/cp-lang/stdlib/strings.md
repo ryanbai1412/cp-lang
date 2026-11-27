@@ -41,7 +41,6 @@ Fields: `rank: List<Int>`, `rmq: LinearRmq<Int, Int>`, `dcum: List<Int>`, `src: 
 - `@get fn lcp(self) -> List<Int>` — \(O(1)\), lent; `lcp[r]`, the LCP of the suffixes of ranks `r` and `r + 1`, for `r` in `0..n - 1`; it is the array the LCP queries' RMQ is built over, not a copy.
 - `@get fn len(self) -> Int` — \(O(1)\); The length `n` of the sequence the suffix array was built over.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the suffix array was built over an empty sequence.
-- `fn each(self) -> yields Int` — \(O(n)\)
 - `fn lcp_between(self, i: Int, j: Int) -> Int` — \(O(1)\); The length of the longest common prefix of the suffixes starting at `i` and `j`.; traps: when `i` or `j` is outside `0..=self.len`
 - `fn rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>` — \(O(\lvert \mathit{pat} \rvert \log n)\); The ranks `lo..hi` of the suffixes that start with `pat`.
 - `fn find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int` — \(O(\lvert \mathit{pat} \rvert \log n + \mathit{occurrences})\); The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.

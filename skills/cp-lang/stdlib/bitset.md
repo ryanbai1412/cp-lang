@@ -41,7 +41,6 @@ One bit per position of `D`, in `ceil(K / 64)` words.
 - `fn shift_up(mut self, k: 0..)` — \(O(K / 64)\); Shift every position `k >= 0` places up in place; bits past `D` drop.; traps: when `k < 0`
 - `fn shift_or(mut self, k: 0..)` — \(O(K / 64)\); In-place `self \|= self << k` for `k >= 0`, with zero allocation: the knapsack step "every reachable sum, and every reachable sum plus `k`".; traps: when `k < 0`
 - `fn union_shifted(mut self, o: Bitset<D>, k: Int)` — \(O(K / 64)\); In place, `self \|= o.shifted(k)`: every position `i` of `o` adds `i + k` when it is in `D`, with no temporary set (`k < 0` shifts down).
-- `fn each(self) -> yields D` — \(O(K / 64 + \mathit{len})\) to walk, \(O(1)\) per member amortized; The positions in the set, in increasing order; `for v in b` walks the same sequence.
 - `fn next(self, i: D) -> ?D` — \(O(K / 64)\); The first position in the set at or after `i`, or `None`.
 - `fn prev(self, i: D) -> ?D` — \(O(K / 64)\); The last position in the set at or before `i`, or `None` (the mirror of `next`).
 - `fn count_below(self, i: D) -> Int` — \(O(K / 64)\); The number of positions in the set strictly before `i`.
@@ -83,7 +82,6 @@ Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynami
 - `fn shift_up(mut self, k: 0..)` — \(O(\mathit{cap} / 64)\); Shift all bits up by `k >= 0` in place (`i -> i + k`); bits reaching `cap` or beyond drop.; traps: when `k < 0`
 - `fn shift_down(mut self, k: 0..)` — \(O(\mathit{cap} / 64)\); Shift all bits down by `k >= 0` in place (`i -> i - k`); bits falling below 0 drop.; traps: when `k < 0`
 - `fn shift_or(mut self, k: 0..)` — \(O(\mathit{cap} / 64)\); In-place `self \|= (self << k)` for `k >= 0`, with zero allocation; bits reaching `cap` drop.; traps: when `k < 0`
-- `fn each(self) -> yields Int` — \(O(\mathit{cap} / 64 + \mathit{len})\) to walk; The set bit indices in ascending order; `for i in d` walks the same sequence.
 - `fn each_rev(self) -> yields Int` — \(O(\mathit{cap} / 64 + \mathit{len})\) to walk; The set bit indices in descending order.
 - `fn subset_sums(cap: Len, weights: List<Int>) -> DynBitset` — \(O(\mathit{cap} \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(\mathit{cap} / 64)\) space; All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some sub-multiset of `weights` sums to `s`.; traps: when `cap < 0` or `cap >= 2^31` or a weight is negative
 
@@ -95,7 +93,6 @@ Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (
 - `fn reserve(mut self, nodes: Len)` — \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise; Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the contents are unchanged.; traps: when `nodes < 0` or `nodes >= 2^31`
 - `@get fn len(self) -> Int` — \(O(1)\); The total number of stored integers, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when the trie holds no integers.
-- `fn each(self) -> yields Int` — \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element; \(O(\mathit{bits})\) per element.
 - `fn add(mut self, x: Int)` — \(O(\mathit{bits})\) time, up to `bits` new nodes; Insert one copy of `x`.; traps: when `x` is not in `0..2^bits`
 - `fn remove(mut self, x: Int) -> Bool` — \(O(\mathit{bits})\); Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
 - `fn count(self, x: Int) -> Int` — \(O(\mathit{bits})\); The multiplicity of `x` currently stored; zero when absent.

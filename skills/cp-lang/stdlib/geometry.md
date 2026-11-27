@@ -102,7 +102,6 @@ Fields: `xs: List<Int>`, `ys: List<Int>`, `ids: List<Int>`, `nxt: List<Int>`, `l
 - `fn of(pts: List<Pt>) -> PointSet` — \(O(n \log n)\) time and memory; Build the set holding every point of `pts`; point `i` is `pts[i]`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of points not yet removed or drained.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether every point has been removed or drained.
-- `fn each(self) -> yields Int` — \(O(n)\), `n` the number of points built; \(O(n)\).
 - `fn remove(mut self, i: Int) -> Bool` — \(O(1)\); later drains pass over it once per node it sits in; Remove point `i`; `false` when it was already gone.; traps: when `i` is not an index of the built list
 - `fn drain(mut self, x: Range<Int>, y: Range<Int>) -> List<Int>` — \(O(\log^2 n + k)\) amortized for `k` points returned; Remove and return every point still in the half-open rectangle `x * y`, by index.
 
