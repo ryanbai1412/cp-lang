@@ -233,6 +233,17 @@ impl ImplDecl {
     }
 }
 impl Decls {
+    /// The next domain `item` declares: the same id each time `item` is collected.
+    pub(crate) fn new_dom(&mut self, item: &ItemId) -> Ty {
+        let nth = self.dom_made.entry(item.clone()).or_default();
+        let key = (item.clone(), *nth);
+        *nth += 1;
+        let next = self.dom_ids.len();
+        Ty::Dom(*self.dom_ids.entry(key).or_insert(next))
+    }
+}
+
+impl Decls {
     /// Which impl a type takes when several fit: one for its written type (0) before one for
     /// every record with some fields (1), before any other blanket one (2) (R08.1.2, R08.4.5).
     pub fn impl_rank(&self, im: &ImplDecl) -> u8 {
@@ -412,6 +423,11 @@ pub struct Decls {
     /// The `domain C` a fn's result binds, `-> (domain C, [C]T)`: each is a domain of its own
     /// among `top_doms`, with the name the trace shows (R02.9.3).
     pub fresh_doms: Vec<(usize, String)>,
+    /// Each domain decls makes, keyed by the item that declares it and which of that item's
+    /// domains it is: its place here is its `Ty::Dom`, so a domain's id never reads the others.
+    pub dom_ids: HashMap<(ItemId, u32), usize>,
+    /// How many domains each item has made.
+    dom_made: HashMap<ItemId, u32>,
     /// The fns whose result's slots are `domain C`s, till those slots are made `Range<C>`s.
     pub fresh_slots: Vec<(FnId, Vec<usize>)>,
     /// The fns whose result leaves a struct's parameter as `_`, `-> Rooted<V, _, _>` (R02.9.3).
@@ -753,7 +769,8 @@ fn fill_holes(d: &mut Decls, f: FnId, t: &mut Ty, domain: TraitId) {
         if *a != Ty::Error {
             fill_holes(d, f, a, domain);
         } else if domain_param_of(d, *s, k, domain) {
-            let c = collect::fresh_dom(d);
+            let item = d.fns[f.0].item.clone();
+            let c = d.new_dom(&item);
             if let Ty::Dom(i) = c {
                 let name = format!("{}.{}", d.fns[f.0].name, d.structs[s.0].generics[k]);
                 d.fresh_doms.push((i, name));
@@ -1373,7 +1390,7 @@ fn add_fn(
     let mut ret_doms = doms.clone();
     let binders = fresh_binders(f.ret.as_ref());
     for (_, c) in &binders {
-        let t = collect::fresh_dom(d);
+        let t = d.new_dom(&item);
         if let Ty::Dom(i) = t {
             d.fresh_doms.push((i, format!("{}.{c}", f.name.text)));
         }

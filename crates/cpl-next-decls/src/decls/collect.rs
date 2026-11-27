@@ -604,10 +604,15 @@ fn layer(
     remake_views(&mut d, &sc, from, core_too, None);
     // A product's record is a core struct, so the program's domains are placed once the views are.
     if base.is_some() {
-        for s in mods[n - 1].items.iter().flat_map(|it| &it.stmts) {
-            if let StmtKind::Domain { name, def, .. } = &s.kind {
-                let t = product(&mut d, &name.text, def).unwrap_or_else(|| fresh_dom(&d));
-                d.top_doms.entry(name.text.clone()).or_insert(t);
+        for it in mods[n - 1].items.iter() {
+            for s in &it.stmts {
+                if let StmtKind::Domain { name, def, .. } = &s.kind {
+                    let t = product(&mut d, &it.id, &name.text, def);
+                    if !d.top_doms.contains_key(&name.text) {
+                        let t = t.unwrap_or_else(|| d.new_dom(&it.id));
+                        d.top_doms.insert(name.text.clone(), t);
+                    }
+                }
             }
         }
     }
@@ -1438,17 +1443,9 @@ fn remake_views(
     }
 }
 
-pub(super) fn fresh_dom(d: &Decls) -> Ty {
-    Ty::Dom(
-        (d.top_doms.values())
-            .filter(|t| matches!(t, Ty::Dom(_)))
-            .count(),
-    )
-}
-
 /// `domain P = (A, B)` or `(a: A, b: B)` over domains declared above it, or over ranges: the
 /// tuple or record of them (R04.2.10, R04.2.11). A range factor is a domain of its own, named `P.i`, which no program can write.
-fn product(d: &mut Decls, name: &str, def: &ast::Expr) -> Option<Ty> {
+fn product(d: &mut Decls, item: &ItemId, name: &str, def: &ast::Expr) -> Option<Ty> {
     let (product, xs): (StructId, Vec<&ast::Expr>) = match &def.kind {
         ast::ExprKind::Tuple(xs) => (*d.tuples.get(&xs.len())?, xs.iter().collect()),
         ast::ExprKind::Record(fs) => {
@@ -1471,7 +1468,7 @@ fn product(d: &mut Decls, name: &str, def: &ast::Expr) -> Option<Ty> {
         parts.push(match &x.kind {
             ast::ExprKind::Name(n) => d.top_doms[n].clone(),
             _ => {
-                let t = fresh_dom(d);
+                let t = d.new_dom(item);
                 d.top_doms.insert(factor_name(name, i), t.clone());
                 t
             }

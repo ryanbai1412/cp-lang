@@ -649,8 +649,7 @@ fn check_with(
         param_adds: HashMap::new(),
         added: Vec::new(),
         // A top-level domain's place is kept for it until its statement runs.
-        domains: (d.top_doms.values())
-            .filter(|t| matches!(t, Ty::Dom(_)))
+        domains: (0..d.dom_ids.len())
             .map(|_| DomInfo {
                 name: String::new(),
                 len: VarRef::Global(usize::MAX),
