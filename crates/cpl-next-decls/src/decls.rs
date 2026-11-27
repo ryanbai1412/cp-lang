@@ -15,7 +15,7 @@ mod impls;
 mod inherent;
 mod layer;
 mod tyconv;
-pub use collect::{collect, prepare, Prepared};
+pub use collect::{collect, factor_name, prepare, Prepared};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{body_type, prim_type};

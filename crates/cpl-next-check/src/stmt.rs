@@ -1099,7 +1099,8 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Assert(c, msg, s.span, CheckKind::Assert));
             }
             StmtKind::Domain { name, def } if matches!(def.kind, ExprKind::Tuple(_)) => {
-                let Some(p) = self.type_path(def) else {
+                let def = self.declare_factors(&name.text, def, s.span, out);
+                let Some(p) = self.type_path(&def) else {
                     return self.err(
                         def.span,
                         Msg::verdict(
@@ -1485,6 +1486,42 @@ impl<'a> Cx<'a> {
         self.doms
             .insert(name.to_string(), Ty::Dom(self.domains.len() - 1));
         self.domains.len() - 1
+    }
+    /// A product's range factor is a domain of its own, declared here; the product then names it.
+    fn declare_factors(
+        &mut self,
+        product: &str,
+        def: &ast::Expr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> ast::Expr {
+        let ExprKind::Tuple(xs) = &def.kind else {
+            return def.clone();
+        };
+        let mut parts = Vec::new();
+        for (i, x) in xs.iter().enumerate() {
+            let ExprKind::Range {
+                lo: Some(lo),
+                hi: Some(hi),
+                inclusive,
+                step: None,
+            } = &x.kind
+            else {
+                parts.push(x.clone());
+                continue;
+            };
+            let name = decls::factor_name(product, i);
+            let (lo, end, within) = self.domain_ends(lo, hi, *inclusive);
+            self.declare_domain(&name, lo, end, within, span, out);
+            parts.push(ast::Expr {
+                kind: ExprKind::Name(name),
+                span: x.span,
+            });
+        }
+        ast::Expr {
+            kind: ExprKind::Tuple(parts),
+            span: def.span,
+        }
     }
     pub(super) fn plus_one(e: &ast::Expr) -> ast::Expr {
         Self::and_one(e, BinOp::Add)

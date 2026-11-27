@@ -113,10 +113,7 @@ fn layer(
     if base.is_some() {
         for s in mods[n - 1].items.iter().flat_map(|it| &it.stmts) {
             if let StmtKind::Domain { name, def } = &s.kind {
-                let k = (d.top_doms.values())
-                    .filter(|t| matches!(t, Ty::Dom(_)))
-                    .count();
-                let t = product(&d, def).unwrap_or(Ty::Dom(k));
+                let t = product(&mut d, &name.text, def).unwrap_or_else(|| fresh_dom(&d));
                 d.top_doms.entry(name.text.clone()).or_insert(t);
             }
         }
@@ -1185,17 +1182,45 @@ fn remake_views(
     }
 }
 
-/// `domain P = (A, B)` over domains declared above it: the tuple of them (R04.2.11).
-fn product(d: &Decls, def: &ast::Expr) -> Option<Ty> {
+/// A top-level domain's place among the declared ones.
+fn fresh_dom(d: &Decls) -> Ty {
+    Ty::Dom(
+        (d.top_doms.values())
+            .filter(|t| matches!(t, Ty::Dom(_)))
+            .count(),
+    )
+}
+
+/// `domain P = (A, B)` over domains declared above it, or over ranges: the tuple of them
+/// (R04.2.11). A range factor is a domain of its own, named `P.i`, which no program can write.
+fn product(d: &mut Decls, name: &str, def: &ast::Expr) -> Option<Ty> {
     let ast::ExprKind::Tuple(xs) = &def.kind else {
         return None;
     };
     let &tuple = d.tuples.get(&xs.len())?;
-    let parts = (xs.iter())
-        .map(|x| match &x.kind {
-            ast::ExprKind::Name(n) => d.top_doms.get(n).cloned(),
-            _ => None,
-        })
-        .collect::<Option<Vec<_>>>()?;
+    let fits = |x: &ast::Expr| match &x.kind {
+        ast::ExprKind::Name(n) => d.top_doms.contains_key(n),
+        ast::ExprKind::Range { .. } => true,
+        _ => false,
+    };
+    if !xs.iter().all(fits) {
+        return None;
+    }
+    let mut parts = Vec::new();
+    for (i, x) in xs.iter().enumerate() {
+        parts.push(match &x.kind {
+            ast::ExprKind::Name(n) => d.top_doms[n].clone(),
+            _ => {
+                let t = fresh_dom(d);
+                d.top_doms.insert(factor_name(name, i), t.clone());
+                t
+            }
+        });
+    }
     Some(Ty::Struct(tuple, parts, Vec::new()))
+}
+
+/// The name of product `P`'s `i`th factor when it is written as a range.
+pub fn factor_name(product: &str, i: usize) -> String {
+    format!("{product}.{i}")
 }
