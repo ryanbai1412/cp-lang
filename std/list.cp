@@ -186,12 +186,6 @@ fn str_eq(a: Str, b: Str) -> Bool:
         if a.get(i) != b.get(i): return false
     true
 
-/// The answer word for `ok`: `answers:` when given, else `("YES", "NO")` (R10.3.3). std.io's
-/// `yes`, which also reads the `io` context, replaces it once its own check passes.
-pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str:
-    if let a = answers: return (if ok: a.0 else: a.1).clone()
-    if ok: "YES" else: "NO"
-
 /// The same length and equal values in order.
 impl<T: Eq> Eq for List<T>:
     fn eq(a, b):

@@ -20,9 +20,9 @@
 @lint(bool_ternary_print, from: "if ok:\n    print(\"YES\")\nelse:\n    print(\"NO\")", to: "print(yes(ok))")
 @lint(bool_ternary_print, from: "if ok: \"Yes\" else: \"No\"", to: "yes(ok)")
 @lint(bool_ternary_print, from: "if ok:\n    print(\"Yes\")\nelse:\n    print(\"No\")", to: "print(yes(ok))")
-pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str uses io = match answers:
-    Some((t, f)) => if ok: t else: f
-    None => if ok: io.answers.0 else: io.answers.1
+pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str uses io:
+    let words = if let a = answers: a else: io.answers
+    (if ok: words.0 else: words.1).clone()
 
 /// Interactive mode. Constructing one (`let wire = Wire()`) makes every read and the program's
 /// exit flush stdout first; a program that never builds one never flushes early. \(O(1)\).

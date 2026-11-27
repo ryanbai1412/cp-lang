@@ -20,7 +20,8 @@ pub use std.default.{Default}
 pub use std.map.{Map, Set}
 use std.list.{List, Array, Str}
 /// The lists, arrays and strings every module names unimported (R02.3, R04.8).
-pub use std.list.{List, Array, Str, yes}
+pub use std.list.{List, Array, Str}
+pub use std.io.{io, yes}
 use std.optional.{Optional}
 /// `?T` and `Some(v)` every module names unimported (R02.4).
 pub use std.optional.{Optional, Some}
