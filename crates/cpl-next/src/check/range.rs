@@ -61,8 +61,8 @@ impl Cx<'_> {
         }
         None
     }
-    /// `D.count`, `D.nth(k)` and `D.at(x)`: the core's `Domain` declares them, and each is the
-    /// domain operation its `@intrinsic` names (R04.2.8, R04.2.9).
+    /// `D.count`, `D.nth(k)`, `D.at(x)` and `D.all`: the core's `Domain` declares them; each
+    /// `@intrinsic` one is the domain operation it names (R04.2.8, R04.2.9).
     fn domain_fn(
         &mut self,
         dty: Ty,
@@ -76,7 +76,13 @@ impl Cx<'_> {
         if !super::member::takes(fd, call) || (call.is_none() && !fd.getter) {
             return None;
         }
-        let op = fd.intrinsic.clone()?;
+        let Some(op) = fd.intrinsic.clone() else {
+            let r = decls::TraitRef {
+                tr,
+                args: Vec::new(),
+            };
+            return Some(self.static_call(dty, r, m, name, call, span));
+        };
         let args = match call {
             None => None,
             Some([a]) => {

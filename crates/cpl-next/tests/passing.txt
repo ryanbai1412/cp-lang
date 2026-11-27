@@ -1180,6 +1180,7 @@ next/n_convert_02_char_outside_ascii_traps.cp
 next/n_convert_03_enum_of_its_value.cp
 next/n_convert_04_enum_of_no_value_traps.cp
 next/n_convert_05_no_into_impl_is_a_mismatch.cp
+next/n_domain_01_all_is_every_position.cp
 next/n_domain_09_literal_is_a_position.cp
 next/n_domain_count_pred.cp
 next/n_domain_cuts.cp

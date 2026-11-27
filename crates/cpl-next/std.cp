@@ -319,6 +319,8 @@ trait Neg:
 trait Domain:
     /// `D.count`: how many positions it has.
     @get fn count() -> Int = @intrinsic("dom_count")
+    /// `D.all`: every position, in walk order (R04.2.30). A value's `s.all(p)` is another member.
+    @get fn all() -> Range<Self> = range_of(0, Self.count, 1)
     /// `D.nth(k)`: the position `k` steps into its walk; traps past its end (R04.2.9).
     fn nth(k: Int) -> Self = @intrinsic("dom_nth")
     /// `D.at(x)`: the position with integer `x`, or `None` outside it (R04.2.8).

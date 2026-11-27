@@ -37,6 +37,7 @@ domain Letter = 'a'..='z'                 // so is a Char range: Letter(c), [Let
 |---|---|---|
 | `for v in V`, `V.rev` | positions in order or reverse order | \(O(1)\) per step (R04.2.1) |
 | `V.count` | number of positions | \(O(1)\) (R04.2.2) |
+| `V.all` | every position in walk order, as a `Range<V>`: a member of the domain type, apart from a sequence's `s.all(p)` | \(O(1)\) (R04.2.30) |
 | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its positions in walk order (product domains row-major), so every `Seq` method applies to it; `V.count` with no call is still the number of positions | as the `Seq` method (R04.2.20) |
 | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its whole range, `V.first!..=V.last!`, so `fn tally(ls: Range<Pos>)` takes `tally(Pos)` | \(O(1)\) (R04.2.21) |
 | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it isn't | \(O(1)\) (R04.2.3) |
