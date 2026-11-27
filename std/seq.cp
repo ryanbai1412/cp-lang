@@ -1542,11 +1542,15 @@ pub trait Positional<T>: Seq<T> + Sized:
     /// The element `k` steps into the walk, 0-based; traps unless `0 <= k < len`.
     fn nth(self, k: Int) -> T
 
+/// `s[k]` read: the element at key `k`. A `List`, an array and a `Map` have it; a `Map`'s keys
+/// are not positions, so it is not `Indexed` (R12.4.5).
+pub trait At<K, T>:
+    /// The element at key `k`; traps when `s` holds none there.
+    fn at(self, k: K) -> T
+
 /// A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
-pub trait Indexed<D, T>: Keyed<D, T> + Positional<T> + Bidir<T>:
+pub trait Indexed<D, T>: At<D, T> + Keyed<D, T> + Positional<T> + Bidir<T>:
     type Taken = Slice<Self>
-    /// The element at key `i`.
-    fn at(self, i: D) -> T
     /// The keys, in walk order.
     @get fn keys(self) -> Range<D>
 
@@ -1606,8 +1610,9 @@ impl Bidir<U> for Mapped<S: Bidir<T>, T, U>:
 impl Positional<U> for Mapped<S: Indexed<D, T>, T, U>:
     fn nth(self, k: Int) -> U = f(src.nth(k))
 
-impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
+impl At<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     fn at(self, i: D) -> U = f(src.at(i))
+impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. The view `zip(a, b)`: `a`'s elements paired with `b`'s by walk order, as many
@@ -1655,8 +1660,9 @@ impl Bidir<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
     fn iter_rev(self) -> yields (T, U):
         for k in (0..shorter(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
 
-impl Indexed<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
+impl At<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
     fn at(self, i: D) -> (T, U) = (first.at(i), second.nth(i.ord - first.keys.start.ord))
+impl Indexed<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
     @get fn keys(self) -> Range<D> = first.keys.take(shorter(first.len, second.len))
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
@@ -1759,8 +1765,9 @@ impl Positional<(D, T)> for Items<S: Indexed<D, T>>:
         let i = src.keys[k]
         (i, src.at(i))
 
-impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
+impl At<D, (D, T)> for Items<S: Indexed<D, T>>:
     fn at(self, i: D) -> (D, T) = (i, src.at(i))
+impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
     @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. `s[r]`: a lent view of `s` over the range `r`. Every slice keeps its
@@ -1880,10 +1887,11 @@ impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Slice<S>:
     /// `(0..len)[k]` is `k`, read as a key so one outside the slice traps R0101 (R07.4.5).
     fn nth(self, k: Int) -> T = self.src.nth(self.lo + (0..self.len)[k])
 
-impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> At<K, T> for Slice<S>:
     /// `keys[i]` is `i`, checked: a key outside the slice traps R0101, never reading the source
     /// around it (R07.4.5).
     fn at(self, i: K) -> T = self.src.at(self.keys[i])
+impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
     /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
     ///
     /// cost: \(O(1)\)
@@ -1931,8 +1939,9 @@ impl<S: Indexed<K, T>, K: Domain, T> Bidir<T> for Rebased<S>:
 impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Rebased<S>:
     fn nth(self, k: Int) -> T = self.src.nth(k)
 
-impl<S: Indexed<K, T>, K: Domain, T> Indexed<Idx, T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T> At<Idx, T> for Rebased<S>:
     fn at(self, i: Idx) -> T = self.src.nth(i.ord)
+impl<S: Indexed<K, T>, K: Domain, T> Indexed<Idx, T> for Rebased<S>:
     @get fn keys(self) -> Range<Idx> = Idx.all
 
 /// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks

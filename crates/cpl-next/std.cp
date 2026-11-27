@@ -1,7 +1,7 @@
 // The core traits: the language gives `==`, `<` and `+` their meaning through them
 // (R08.1.5), so they are declared here rather than in a std file; `Ordering` is std's.
 use std.algebra.{Ordering}
-use std.seq.{Keyed, Positional, Indexed, Slice, Seq, Sized}
+use std.seq.{At, Keyed, Positional, Indexed, Slice, Seq, Sized}
 
 fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")
 fn raw_new<T>(n: Int, fill: T) -> Raw<T> = @intrinsic("raw_new")
@@ -631,37 +631,65 @@ impl Into<F64> for F64:
 /// array, by its domain's positions (R12.4.5).
 impl<T> Positional<T> for List<T>:
     fn nth(self, k: Int) -> T = self.get(k)
-impl<T> Indexed<Int, T> for List<T>:
+impl<T> At<Int, T> for List<T>:
     fn at(self, i: Int) -> T = self.get(i)
+impl<T> Indexed<Int, T> for List<T>:
     @get fn keys(self) -> Range<Int> = 0..self.len
 impl Positional<Char> for Str:
     fn nth(self, k: Int) -> Char = self.get(k)
-impl Indexed<Int, Char> for Str:
+impl At<Int, Char> for Str:
     fn at(self, i: Int) -> Char = self.get(i)
+impl Indexed<Int, Char> for Str:
     @get fn keys(self) -> Range<Int> = 0..self.len
-/// `s[k]` as a place: a write through it lands in `s`, in place (R12.4.6).
-pub trait IndexedMut<K, T>: Indexed<K, T>:
+/// `s[k]` as a place: a write through it lands in `s`, in place (R12.4.6). A `Map`'s starts an
+/// absent key at the default of its values, so `m[k] += 1` counts (R07.12.9).
+pub trait IndexMut<K, T>: At<K, T>:
     fn at(mut self, k: K) -> lends mut T
-impl<T> IndexedMut<Int, T> for List<T>:
+/// An `Indexed` sequence whose cells are places: what `sort`, `reverse` and `swap` write
+/// (R12.4.6).
+pub trait IndexedMut<K, T>: Indexed<K, T> + IndexMut<K, T>
+/// `s[k] = v` as a write of `v` at `k`, not through a place: a `Map` inserts or replaces, and
+/// its values need no default (spec 12, W8).
+@operator("[]=")
+pub trait IndexSet<K, T>:
+    fn set(mut self, k: K, v: T)
+/// The value `T.default()` a `Map`'s absent key starts at under `m[k] op= v` (R07.12.9).
+pub trait Default:
+    fn default() -> Self
+impl Default for Int:
+    fn default() -> Int = 0
+impl Default for U64:
+    fn default() -> U64 = U64(0)
+impl Default for Bool:
+    fn default() -> Bool = false
+impl Default for Str:
+    fn default() -> Str = ""
+impl<T> Default for List<T>:
+    fn default() -> List<T> = []
+impl<T> IndexMut<Int, T> for List<T>:
     fn at(mut self, i: Int) -> lends mut T:
         check_key(0 <= i and i < self.n)
         lend mut self.buf[i]
-impl IndexedMut<Int, Char> for Str:
+impl<T> IndexedMut<Int, T> for List<T>
+impl IndexMut<Int, Char> for Str:
     fn at(mut self, i: Int) -> lends mut Char:
         check_key(0 <= i and i < self.chars.n)
         lend mut self.chars.buf[i]
+impl IndexedMut<Int, Char> for Str
 impl<D: Domain, T> Keyed<D, T> for Array<D, T>:
     fn items(self) -> yields (D, T):
         for i in 0..D.count: yield (D.nth(i), raw_get(self.buf, i))
 impl<D: Domain, T> Positional<T> for Array<D, T>:
     fn nth(self, k: Int) -> T = self.get(D.nth(k))
-impl<D: Domain, T> Indexed<D, T> for Array<D, T>:
+impl<D: Domain, T> At<D, T> for Array<D, T>:
     fn at(self, i: D) -> T = self.get(i)
+impl<D: Domain, T> Indexed<D, T> for Array<D, T>:
     @get fn keys(self) -> Range<D> = D
 /// A range is keyed by its own values, so `(2..5)[3] == 3`, and has no source to lend (R07.2.15).
-impl<D: Domain, T> IndexedMut<D, T> for Array<D, T>:
+impl<D: Domain, T> IndexMut<D, T> for Array<D, T>:
     fn at(mut self, i: D) -> lends mut T:
         lend mut self.buf[i.ord]
+impl<D: Domain, T> IndexedMut<D, T> for Array<D, T>
 impl<D: Domain> Keyed<D, D> for Range<D>:
     fn items(self) -> yields (D, D):
         for i in 0..self.n:
@@ -671,11 +699,12 @@ impl<D: Domain> Positional<D> for Range<D>:
     fn nth(self, k: Int) -> D:
         check_key(0 <= k and k < self.n)
         D.nth(self.lo + k * self.by)
-impl<D: Domain> Indexed<D, D> for Range<D>:
+impl<D: Domain> At<D, D> for Range<D>:
     fn at(self, x: D) -> D:
         let d = x.ord - self.lo
         check_key(self.n > 0 and d % self.by == 0 and 0 <= d / self.by and d / self.by < self.n)
         x
+impl<D: Domain> Indexed<D, D> for Range<D>:
     @get fn keys(self) -> Range<D> = self
 /// `s[r]`: the view of `s` over the keys in `r`, made in O(1); traps R0101 unless `r` is a run of
 /// `s`'s keys (R07.4.6). An empty `r` is the empty view at its start.

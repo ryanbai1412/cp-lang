@@ -910,7 +910,7 @@ traits/Eq/ByAngleFrom--eq.cp	wrong-reject	check: std.geometry: E0204: unknown ty
 traits/HasId/Comm--id.cp	wrong-reject	check: std.algebra:35:38: E0606: `T` does not implement `Domain`
 traits/Index/Pair--nth.cp	wrong-reject	check: program:3:9: E0203: `Pair` has no `nth`
 traits/Index/Subset--nth.cp	wrong-reject	check: program:4:7: E0203: `Subset` has no `nth`
-traits/Indexed/Rebased--at.cp	wrong-reject	check: program:4:10: E0203: `Rebased<Slice<List<Int>>>` has no member `keys`
+traits/IndexGet/Rebased--at.cp	wrong-reject	check: program:4:10: E0203: `Rebased<Slice<List<Int>>>` has no member `keys`
 traits/Indexed/Rebased--keys.cp	wrong-reject	check: program:4:10: E0203: `Rebased<Slice<List<Int>>>` has no member `keys`
 traits/Into/Pair--into.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 traits/Keyed/Prefix--items.cp	wrong-reject	check: std.seq:1530:18: E0606: `D` does not implement `Domain`

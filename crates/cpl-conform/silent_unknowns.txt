@@ -1922,10 +1922,10 @@
 4 spec/conformance/traits/BitOr/Subset--bitor.cp
 4 spec/conformance/traits/BitXor/Subset--bitxor.cp
 4 spec/conformance/traits/FastProduct/Mod--product.cp
-2 spec/conformance/traits/Indexed/Rebased--at.cp
+2 spec/conformance/traits/IndexGet/Rebased--at.cp
 1 spec/conformance/traits/Indexed/Rebased--keys.cp
 4 spec/conformance/traits/Indexed/Str--keys.cp
-1 spec/conformance/traits/Indexed/Zipped--at.cp
+1 spec/conformance/traits/IndexGet/Zipped--at.cp
 2 spec/conformance/traits/Indexed/Zipped--keys.cp
 1 spec/conformance/traits/Into/Subset--into.cp
 1 spec/conformance/traits/Keyed/Filtered--items.cp

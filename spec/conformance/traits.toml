@@ -61,6 +61,9 @@ type = "Array"
 trait = "Indexed"
 [[claim]]
 type = "Array"
+trait = "IndexGet"
+[[claim]]
+type = "Array"
 trait = "IndexedMut"
 [[claim]]
 type = "List"
@@ -79,6 +82,9 @@ type = "List"
 trait = "Indexed"
 [[claim]]
 type = "List"
+trait = "IndexGet"
+[[claim]]
+type = "List"
 trait = "IndexedMut"
 [[claim]]
 type = "Str"
@@ -97,6 +103,9 @@ type = "Str"
 trait = "Indexed"
 [[claim]]
 type = "Str"
+trait = "IndexGet"
+[[claim]]
+type = "Str"
 trait = "IndexedMut"
 [[claim]]
 type = "Range"
@@ -113,6 +122,9 @@ trait = "Bidir"
 [[claim]]
 type = "Range"
 trait = "Indexed"
+[[claim]]
+type = "Range"
+trait = "IndexGet"
 [[claim]]
 type = "Range"
 trait = "Contains"
@@ -966,7 +978,7 @@ for x in a.rev: print(x)
 """
 out = "20\\n10\\n0"
 
-[case."Indexed/Array/at"]
+[case."IndexGet/Array/at"]
 code = """
 domain V = 0..3
 var a = [V] v => Int(v) * 10
@@ -1033,7 +1045,7 @@ for x in xs.rev: print(x)
 """
 out = "2\\n1\\n3"
 
-[case."Indexed/List/at"]
+[case."IndexGet/List/at"]
 code = """
 var xs = [3, 1, 2]
 print(xs[1])
@@ -1083,7 +1095,7 @@ for ch in s.rev: print(ch)
 """
 out = "c\\nb\\na"
 
-[case."Indexed/Str/at"]
+[case."IndexGet/Str/at"]
 code = """
 var s = "abc"
 print(s[1])
@@ -1105,7 +1117,7 @@ print(s)
 """
 out = "xbc"
 
-[case."Indexed/Range/at"]
+[case."IndexGet/Range/at"]
 code = """
 let r = 2..5
 print(r[3])
@@ -2358,7 +2370,7 @@ for x in r.rev: print(x)
 """
 out = "5\n1\n4"
 
-[case."Indexed/Items/at"]
+[case."IndexGet/Items/at"]
 code = """
 let a = [3, 1, 4, 1, 5]
 print(a.items[2].1)
@@ -2372,7 +2384,7 @@ for k in a.items.keys: print(k)
 """
 out = "0\n1\n2\n3\n4"
 
-[case."Indexed/Mapped/at"]
+[case."IndexGet/Mapped/at"]
 code = """
 let a = [3, 1, 4, 1, 5]
 print(a.map(x => x * 2)[4])
@@ -2386,7 +2398,7 @@ for k in a.map(x => x * 2).keys: print(k)
 """
 out = "0\n1\n2\n3\n4"
 
-[case."Indexed/Rebased/at"]
+[case."IndexGet/Rebased/at"]
 code = """
 let a = [3, 1, 4, 1, 5]
 let r = a[2..].rebase
@@ -3045,7 +3057,7 @@ for x in a[2..].rev: print(x)
 """
 out = "5\n1\n4"
 
-[case."Indexed/Slice/at"]
+[case."IndexGet/Slice/at"]
 code = """
 let a = [3, 1, 4, 1, 5]
 let s = a[2..]
@@ -3279,7 +3291,7 @@ for (x, y) in zip([1, 2, 3], [4, 5]).rev: print(x, y)
 """
 out = "2 5\\n1 4"
 
-[case."Indexed/Zipped/at"]
+[case."IndexGet/Zipped/at"]
 code = """
 let a = [1, 2, 3, 4]
 let z = zip(a[1..], [7, 8, 9])
