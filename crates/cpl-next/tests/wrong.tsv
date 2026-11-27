@@ -432,7 +432,6 @@ matrix/index/product--step.cp	wrong-reject	check: program:5:20: E0606: `Tuple2<R
 matrix/index/subset--count.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `count`
 matrix/index/subset--filter.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `filter`
 matrix/index/subset--read.cp	wrong-reject	link: E9999: no impl provides `count` for this type
-next/a_clos_03_list_of_closures_sharing_var.cp	wrong-reject	link: E0603: `new` returns a function that uses a `var` of the fn that made it; the variable is gone by then
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `main` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`

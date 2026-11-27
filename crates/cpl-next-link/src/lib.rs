@@ -225,7 +225,7 @@ pub fn link(
     }
     if p.errors.is_empty() {
         check_finite(&mut p);
-        check_escape(&mut p);
+        check_escape(&mut p, d, typed);
     }
     p
 }
@@ -844,32 +844,64 @@ impl Link<'_> {
 }
 
 /// A closure that shares a `var` of the fn around it is lent: it cannot be returned (spec R05.10).
-/// Not checked here: storing one through a `mut` parameter.
-fn check_escape(p: &mut Program) {
-    fn holds_ref(p: &Program, t: &CTy, seen: &mut Vec<CTy>) -> bool {
+/// Nor can it be stored through a `mut` parameter.
+fn check_escape(p: &mut Program, d: &Decls, typed: &Typed) {
+    // `made` keeps the closures the returning fn itself makes: one passed in through a
+    // container's `new` or `at` captures what its maker's frame holds, which outlives them.
+    fn holds_ref(
+        p: &Program,
+        t: &CTy,
+        seen: &mut Vec<CTy>,
+        made: &dyn Fn(&InstKey) -> bool,
+    ) -> bool {
         if seen.contains(t) {
             return false;
         }
         seen.push(t.clone());
         match t {
             CTy::Ref(_) => true,
-            CTy::Raw(e) => holds_ref(p, e, seen),
-            CTy::Struct(..) => p.parts(t).iter().any(|f| holds_ref(p, f, seen)),
+            CTy::Raw(e) => holds_ref(p, e, seen, made),
+            CTy::Struct(..) => p.parts(t).iter().any(|f| holds_ref(p, f, seen, made)),
             CTy::Set(ms) => ms
                 .iter()
-                .any(|k| holds_ref(p, &CTy::Clo(Box::new(k.clone())), seen)),
-            CTy::Clo(k) => p.captures(k).iter().any(|c| holds_ref(p, c, seen)),
+                .any(|k| holds_ref(p, &CTy::Clo(Box::new(k.clone())), seen, made)),
+            CTy::Clo(k) if made(k) => p.captures(k).iter().any(|c| holds_ref(p, c, seen, made)),
             _ => false,
         }
     }
-    let bad: Vec<String> = p
-        .insts
-        .iter()
-        .filter(|f| holds_ref(p, &f.ret, &mut Vec::new()))
-        .map(|f| f.name.clone())
-        .collect();
-    for name in bad {
-        p.errors.push(Msg::verdict(cpl_diag::codes::LENT_ESCAPES, format!("`{name}` returns a function that uses a `var` of the fn that made it; the variable is gone by then")));
+    let mut bad = Vec::new();
+    for f in &p.insts {
+        let owner = match f.key {
+            FuncKey::Decl(g) | FuncKey::Ctx(g, _) => Some(g),
+            _ => None,
+        };
+        // A generator's frame ends with its walk, so a closure made in one outlives it anywhere.
+        let made = |k: &InstKey| match (owner, &k.func) {
+            (Some(g), FuncKey::Lambda(id)) => {
+                let o = typed.lambdas[id.0].owner;
+                o == Some(g) || o.is_some_and(|o| matches!(d.f(o).region, Some((false, _))))
+            }
+            (Some(_), _) => false,
+            (None, _) => true,
+        };
+        if holds_ref(p, &f.ret, &mut Vec::new(), &made) {
+            bad.push(format!("`{}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", f.name));
+        }
+        // What a `mut` parameter holds is the caller's, so a closure stored there outlives this fn too.
+        let stored = (f.params.iter().filter(|(_, m)| *m)).any(|(l, _)| {
+            let t = match &f.locals[*l] {
+                CTy::Ref(t) => t,
+                t => t,
+            };
+            owner.is_some() && holds_ref(p, t, &mut Vec::new(), &made)
+        });
+        if stored {
+            bad.push(format!("`{}` stores a function that uses one of its `var`s through a `mut` parameter; the variable is gone when it returns", f.name));
+        }
+    }
+    for m in bad {
+        p.errors
+            .push(Msg::verdict(cpl_diag::codes::LENT_ESCAPES, m));
     }
 }
 

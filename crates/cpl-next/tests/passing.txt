@@ -2213,3 +2213,4 @@ next/n_tuple_01_field_fn_called.cp
 next/n_bound_01_impl_args_keep_their_sets.cp
 next/n_list_01_literal_joins_its_fns.cp
 core-08/fn-items-still-coerce-to-their-fn-type.cp
+next/a_clos_03_list_of_closures_sharing_var.cp
