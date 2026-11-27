@@ -36,9 +36,9 @@ A 64-bit machine word whose bits `popcount` counts: an `Int` as its two's comple
 
 `Int`, `I128` or `F64`: has an `abs`.
 
-## `trait Real`
+## `trait Real: Into<F64>`
 
-`Int` or `F64`: has a `sqrt`.
+`Int` or `F64`: has a `sqrt`, through its `F64`.
 
 ## `enum Sign: Neg`
 

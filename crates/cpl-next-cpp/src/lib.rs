@@ -939,6 +939,18 @@ fn recursive_regions(funcs: &[Func<CTy>]) -> Vec<bool> {
 #[path = "../../cpl-cli/tests/support/cxx.rs"]
 mod cxx;
 
+/// `t` with every domain one: what tells C++ layouts apart, since a position is an `int64_t`.
+fn same_layout(t: &CTy) -> CTy {
+    match t {
+        CTy::Dom(_) => CTy::Dom(0),
+        CTy::Raw(e) => CTy::Raw(Box::new(same_layout(e))),
+        CTy::Ref(e) => CTy::Ref(Box::new(same_layout(e))),
+        CTy::Lent(e) => CTy::Lent(Box::new(same_layout(e))),
+        CTy::Struct(d, ts, ss) => CTy::Struct(*d, ts.iter().map(same_layout).collect(), ss.clone()),
+        other => other.clone(),
+    }
+}
+
 /// The C++ runtime's helpers against `ops`, row by row, on the edges of each operand's range.
 #[cfg(test)]
 mod tests {
@@ -960,7 +972,11 @@ mod tests {
         if e == 0 && m == 0 {
             return format!("{sign}0x0p+0");
         }
-        let (lead, e) = if e == 0 { (0, -1022) } else { (1, e as i64 - 1023) };
+        let (lead, e) = if e == 0 {
+            (0, -1022)
+        } else {
+            (1, e as i64 - 1023)
+        };
         let mut digits = format!("{m:013x}");
         while digits.ends_with('0') {
             digits.pop();
@@ -1152,9 +1168,17 @@ mod tests {
             } else {
                 c
             };
-            for r in [Rounding::Floor, Rounding::Ceil, Rounding::Round, Rounding::Trunc] {
+            for r in [
+                Rounding::Floor,
+                Rounding::Ceil,
+                Rounding::Round,
+                Rounding::Trunc,
+            ] {
                 case(
-                    format!("printf(\"%lld\\n\", (long long)cpl_to_int({}({lit})));", r.cpp()),
+                    format!(
+                        "printf(\"%lld\\n\", (long long)cpl_to_int({}({lit})));",
+                        r.cpp()
+                    ),
                     expect(ops::to_int(r, x)),
                 );
             }
@@ -1171,8 +1195,14 @@ mod tests {
                 FloatFn::Ln,
             ] {
                 case(
-                    format!("printf(\"%a\\n\", {}({lit}, 0.75));", f.cpp())
-                        .replace(", 0.75)", if matches!(f, FloatFn::Atan2 | FloatFn::Hypot) { ", 0.75)" } else { ")" }),
+                    format!("printf(\"%a\\n\", {}({lit}, 0.75));", f.cpp()).replace(
+                        ", 0.75)",
+                        if matches!(f, FloatFn::Atan2 | FloatFn::Hypot) {
+                            ", 0.75)"
+                        } else {
+                            ")"
+                        },
+                    ),
                     format!("{}\n", hex(ops::float_fn(f, x, 0.75))),
                 );
             }
@@ -1279,17 +1309,5 @@ mod tests {
             assert_eq!(g, w, "{c}");
         }
         assert_eq!(got.lines().count(), cases.len());
-    }
-}
-
-/// `t` with every domain one: what tells C++ layouts apart, since a position is an `int64_t`.
-fn same_layout(t: &CTy) -> CTy {
-    match t {
-        CTy::Dom(_) => CTy::Dom(0),
-        CTy::Raw(e) => CTy::Raw(Box::new(same_layout(e))),
-        CTy::Ref(e) => CTy::Ref(Box::new(same_layout(e))),
-        CTy::Lent(e) => CTy::Lent(Box::new(same_layout(e))),
-        CTy::Struct(d, ts, ss) => CTy::Struct(*d, ts.iter().map(same_layout).collect(), ss.clone()),
-        other => other.clone(),
     }
 }
