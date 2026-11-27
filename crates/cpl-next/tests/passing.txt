@@ -1466,6 +1466,7 @@ next/n_engine_08_trap_line_after_a_join.cp
 next/n_engine_09_trap_in_a_yielded_body.cp
 next/n_engine_10_read_keeps_storage_shared.cp
 next/n_enum_01_values_and_order.cp
+next/n_enum_domain.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp
 next/n_f64_03_precision_and_specs.cp

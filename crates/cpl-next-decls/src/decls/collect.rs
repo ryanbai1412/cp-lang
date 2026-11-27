@@ -154,6 +154,7 @@ fn layer(
     };
     let each = crate::synth::derive_each(all());
     let convert = crate::synth::convert_marked(all);
+    let positions = crate::records::positions(&mods[CORE.0].items);
     let derived: Vec<Vec<(ItemId, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             // Std's modules get only what a program's records add.
@@ -175,7 +176,11 @@ fn layer(
                 made.extend(crate::synth::field_trait_impls(&m.items, shapes));
             }
             if let Some(c) = convert.as_ref().filter(|_| ours) {
-                made.extend(crate::synth::enum_conversions(&m.items, c));
+                made.extend(crate::synth::enum_conversions(
+                    &m.items,
+                    c,
+                    positions.as_ref(),
+                ));
             }
             made
         })

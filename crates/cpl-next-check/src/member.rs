@@ -205,6 +205,13 @@ impl<'a> Cx<'a> {
     }
     /// `T.f(args)` on a type that is not a parameter, as `V.cuts.count`: a fn without `self` of
     /// a trait it implements.
+    /// `D.find(p)` on a domain struct with no fn `find`: its walk of positions answers (R04.2.20).
+    fn walks_for(&self, d: StructId, name: &str) -> bool {
+        let s = self.d.s(d);
+        !s.methods.contains_key(name)
+            && s.generics.is_empty()
+            && self.is_domain(&Ty::Struct(d, Vec::new(), Vec::new()))
+    }
     pub(super) fn type_static(
         &mut self,
         t: Ty,
@@ -398,7 +405,7 @@ impl<'a> Cx<'a> {
             }
         }
         if let (Some(n), Some(args)) = (ty_name, call) {
-            if let Some((_, d)) = named {
+            if let Some((_, d)) = named.filter(|&(_, d)| !self.walks_for(d, &name.text)) {
                 let s = self.d.s(d);
                 let Some(m) = s.methods.get(&name.text).copied() else {
                     self.err(

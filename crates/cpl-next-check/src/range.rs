@@ -321,6 +321,13 @@ impl Cx<'_> {
             let t = decls::body_type(self.d, self.module, gs, doms, &written, &mut Vec::new());
             return Some(t).filter(|t| self.is_domain(t));
         }
+        // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).
+        if let Some(&decls::Named::Struct(s)) = self.d.views[self.module.0].get(n) {
+            let t = Ty::Struct(s, Vec::new(), Vec::new());
+            if self.d.s(s).generics.is_empty() && self.is_domain(&t) {
+                return Some(t);
+            }
+        }
         if let Some(&Ty::Dom(i)) = self.doms.get(n) {
             if self.decl.is_none() && self.domains[i].name.is_empty() {
                 self.early.set(Some(i));

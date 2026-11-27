@@ -484,10 +484,12 @@ pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
 
 /// Per payload-free enum a module declares, `Int(e)` and `E(x)` (R02.7): `impl Into<Int> for E`,
 /// a `match` giving each variant's value, and `impl Into<E> for Int`, which checks `x` is a
-/// variant's value and gives that variant.
+/// variant's value and gives that variant. With core's `@positions` trait, the enum is also a
+/// domain whose positions are its variants in declaration order (R02.7, R04.2.22).
 pub(crate) fn enum_conversions(
     items: &[crate::modules::Item],
     (tr, method, check): &(String, String, String),
+    positions: Option<&crate::records::Positions>,
 ) -> Vec<(ItemId, String, ast::Stmt)> {
     use ast::{CmpOp, ExprKind};
     let mut out = Vec::new();
@@ -633,6 +635,118 @@ pub(crate) fn enum_conversions(
             );
             out.push((item.clone(), e.name.text.clone(), into_int));
             out.push((item.clone(), e.name.text.clone(), into_enum));
+            let Some(p) = positions else {
+                continue;
+            };
+            let n = e.variants.len() as i64;
+            let k = || ex(ExprKind::Name("k".to_string()));
+            let cmp = |a, op, b| {
+                ex(ExprKind::Compare {
+                    first: Box::new(a),
+                    rest: vec![(op, b)],
+                })
+            };
+            let in_range = ex(ExprKind::Binary {
+                op: ast::BinOp::And,
+                op_span: span,
+                lhs: Box::new(cmp(int(0), CmpOp::Le, k())),
+                rhs: Box::new(cmp(k(), CmpOp::Lt, int(n))),
+            });
+            let checked = ex(ExprKind::Call {
+                callee: Box::new(ex(ExprKind::Name(check.clone()))),
+                args: vec![ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value: in_range,
+                }],
+            });
+            let nth = match last {
+                0 => variant(&e.variants[0].name),
+                _ => ex(ExprKind::If {
+                    branches: (e.variants[..last].iter().enumerate())
+                        .map(|(i, v)| {
+                            let at = cmp(k(), CmpOp::Eq, int(i as i64));
+                            (ast::Cond::Expr(at), block(vec![variant(&v.name)]))
+                        })
+                        .collect(),
+                    otherwise: Some(block(vec![variant(&e.variants[last].name)])),
+                }),
+            };
+            let ords = (e.variants.iter().enumerate())
+                .map(|(i, v)| ast::Arm {
+                    pat: ast::Pattern {
+                        kind: ast::PatternKind::Variant {
+                            path: vec![v.name.clone()],
+                            args: Vec::new(),
+                        },
+                        span,
+                    },
+                    guard: None,
+                    body: block(vec![int(i as i64)]),
+                })
+                .collect();
+            let ord = ex(ExprKind::Match {
+                scrutinee: Box::new(this()),
+                arms: ords,
+            });
+            let param = |n: &str, ty| ast::Param {
+                mutable: false,
+                variadic: false,
+                lazy: false,
+                named_only: false,
+                label: None,
+                name: name(n),
+                ty,
+                default: None,
+                span,
+            };
+            let member = |getter: bool, n: &str, params, ret, body| ast::Stmt {
+                kind: StmtKind::Fn(ast::FnDecl {
+                    name: name(n),
+                    generics: Vec::new(),
+                    bounds: Vec::new(),
+                    params,
+                    ret: Some(ret),
+                    lends: None,
+                    uses: Vec::new(),
+                    body,
+                    sig_span: span,
+                }),
+                span,
+                decorators: (getter.then(|| ast::Decorator {
+                    directive: false,
+                    name: name(crate::decls::GETTER),
+                    args: Vec::new(),
+                    span,
+                }))
+                .into_iter()
+                .collect(),
+                public: false,
+            };
+            let body = vec![
+                member(true, &p.count, Vec::new(), int_ty(), FnBody::Expr(int(n))),
+                member(
+                    false,
+                    &p.nth,
+                    vec![param("k", Some(int_ty()))],
+                    enum_ty(),
+                    FnBody::Block(block(vec![checked, nth])),
+                ),
+                member(
+                    true,
+                    &p.ord,
+                    vec![param("self", None)],
+                    int_ty(),
+                    FnBody::Expr(ord),
+                ),
+            ];
+            let domain = stmt(StmtKind::Impl {
+                trait_name: Some(ty(&p.tr, Vec::new())),
+                target: enum_ty(),
+                bounds: Vec::new(),
+                body: ast::Block { stmts: body, span },
+            });
+            out.push((item.clone(), e.name.text.clone(), domain));
         }
     }
     out

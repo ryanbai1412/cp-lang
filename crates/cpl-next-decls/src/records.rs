@@ -183,19 +183,20 @@ impl Visitor for Shapes<'_> {
     }
 }
 
-/// A record of domains is the product domain over its fields, walked row-major with the last
-/// field fastest, as core's tuples are (R04.2.10): per shape, `impl<A: Domain, ..> Domain for
-/// (lo: A, ..)` giving the members core's `@positions` trait marks `dom_count`, `dom_nth` and
-/// `dom_ord`.
-pub fn domain_impls(
-    core: &[crate::modules::Item],
-    shapes: &[Vec<String>],
-    span: Span,
-) -> Vec<(String, ast::Stmt)> {
-    let positions = (core.iter().flat_map(|it| &it.stmts))
+/// Core's `@positions` trait and the names of its members marked `dom_count`, `dom_nth` and
+/// `dom_ord`: what a domain the compiler declares implements.
+pub struct Positions {
+    pub tr: String,
+    pub count: String,
+    pub nth: String,
+    pub ord: String,
+}
+
+pub fn positions(core: &[crate::modules::Item]) -> Option<Positions> {
+    let marked = (core.iter().flat_map(|it| &it.stmts))
         .find(|s| s.decorators.iter().any(|d| d.name.text == "positions"));
-    let Some(StmtKind::Trait { name: tr, body, .. }) = positions.map(|s| &s.kind) else {
-        return Vec::new();
+    let Some(StmtKind::Trait { name: tr, body, .. }) = marked.map(|s| &s.kind) else {
+        return None;
     };
     let member = |id: &str| {
         body.stmts.iter().find_map(|s| match &s.kind {
@@ -208,11 +209,33 @@ pub fn domain_impls(
             _ => None,
         })
     };
-    let (Some(count), Some(nth), Some(ord)) =
-        (member("dom_count"), member("dom_nth"), member("dom_ord"))
+    Some(Positions {
+        tr: tr.text.clone(),
+        count: member("dom_count")?,
+        nth: member("dom_nth")?,
+        ord: member("dom_ord")?,
+    })
+}
+
+/// A record of domains is the product domain over its fields, walked row-major with the last
+/// field fastest, as core's tuples are (R04.2.10): per shape, `impl<A: Domain, ..> Domain for
+/// (lo: A, ..)` giving the members core's `@positions` trait marks `dom_count`, `dom_nth` and
+/// `dom_ord`.
+pub fn domain_impls(
+    core: &[crate::modules::Item],
+    shapes: &[Vec<String>],
+    span: Span,
+) -> Vec<(String, ast::Stmt)> {
+    let Some(Positions {
+        tr,
+        count,
+        nth,
+        ord,
+    }) = positions(core)
     else {
         return Vec::new();
     };
+    let tr = ast::Name { text: tr, span };
     let nm = |text: &str| ast::Name {
         text: text.to_string(),
         span,
