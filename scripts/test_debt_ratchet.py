@@ -285,6 +285,14 @@ class DebtRatchetTest(unittest.TestCase):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text(text)
 
+    def test_link_reads_check_counts_the_linkers_typed_tree_reads(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-link/src/lib.rs",
+                        "use cpl_next_check::Typed;\nfn f(p: &Program) {}\nlet g = typed.globals;\n")
+            self.assertEqual(dr.link_reads_check(root),
+                             ["crates/cpl-next-link/src/lib.rs:1", "crates/cpl-next-link/src/lib.rs:3"])
+
     def test_crate_rules_come_from_architecture_md(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

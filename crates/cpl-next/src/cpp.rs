@@ -1,8 +1,8 @@
 //! Contract 7: the C++ emitter. A printer over canonical IR: one C++ shape per
 //! node kind, and no decision of its own.
-use crate::inst::{CTy, Program};
 use crate::ir::*;
 use crate::ops;
+use cpl_next_ir::prog::{CTy, Program};
 use std::collections::{HashMap, HashSet};
 
 /// Appends formatted text to a `String`.
@@ -520,7 +520,7 @@ impl Emit<'_> {
     }
     /// Spec R1: a value with no heap part is copied when passed, so the callee never sees it change.
     fn plain(&self, t: &CTy, depth: usize) -> bool {
-        crate::inst::plain(&|s| self.p.parts(s), t, depth)
+        cpl_next_ir::prog::plain(&|s| self.p.parts(s), t, depth)
     }
     fn sig(&self, i: usize, f: &Func<CTy>, by_ref: &[bool]) -> String {
         let ps: Vec<String> = f

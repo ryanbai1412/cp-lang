@@ -2698,6 +2698,22 @@ def timeout_passes(root: Path) -> list[str]:
     return sorted(arms + py)
 
 
+LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|VarRef|typed)\b")
+
+
+def link_reads_check(root: Path) -> list[str]:
+    """Lines of the linker (cpl-next-link) that read the checker's typed tree: the one edge in the
+    new pipeline that skips a layer (`cpl-next-link -> cpl-next-check`). Link should consume the
+    generic IR only, but `link`, `thread_values` and `add_events` still read `Typed`'s domains,
+    globals, lambdas, return sets and deferred errors, which the generic IR does not carry yet.
+    Lowering handing those facts on in `cpl-next-ir` takes this to 0 and the edge with it."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-next-link/src", tests=False):
+        rel = _rel(root, p)
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if LINK_READS_CHECK_RE.search(line)]
+    return out
+
+
 def trace_engine_refs(root: Path) -> list[str]:
     """`CPL_TRACE_ENGINE` mentions: the switch back to the tree-walker for traces."""
     return _grep_all(root, "CPL_TRACE_ENGINE")
@@ -3622,6 +3638,7 @@ COUNTERS = {
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
+    "link_reads_check": ("lines of the new pipeline's linker reading the typed tree, not the IR (Core)", link_reads_check, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),

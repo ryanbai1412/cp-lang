@@ -1,10 +1,10 @@
 //! Contract 5: generic IR -> instances. The link step: it decides which
 //! instances exist and what each function-value set holds, from the whole program.
-use crate::check::Typed;
-use crate::decls::Decls;
-use crate::diag::Msg;
-use crate::ir::*;
-use crate::ty::*;
+use cpl_next_check::Typed;
+use cpl_next_decls::decls::Decls;
+use cpl_next_decls::diag::Msg;
+use cpl_next_ir::ir::*;
+use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, plain, CSet, CTy, InstKey, Program};
@@ -415,7 +415,7 @@ impl Link<'_> {
             SetTy::RetOf(f, slot) => {
                 // A trait's fn returns what the impl's fn the type picks returns.
                 let k = match self.d.f(f.decl).owner {
-                    Some(crate::decls::Owner::Trait(tr)) => {
+                    Some(cpl_next_decls::decls::Owner::Trait(tr)) => {
                         let Some((st, args)) = f.targs.split_first() else {
                             return;
                         };
@@ -1089,7 +1089,7 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
 /// leading parameter for it; a closure captures it when it is made. Which
 /// functions need which is a whole-program question, so the link step answers it.
 fn thread_values(p: &mut Program, typed: &Typed) {
-    use crate::check::VarRef;
+    use cpl_next_check::VarRef;
     let n = p.insts.len();
     // Where an instance can read a domain's size without being handed it.
     // A domain carries two values, its size and the integer of its first position:
@@ -1481,7 +1481,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
 impl Link<'_> {
     /// Fixes each parameter of `im` only a bound names (`K` of `impl<S: Indexed<K, T>, K, T>`) to
     /// what the impl meeting that bound gives it, as the checker does (R08.1.2).
-    fn bound_only(&mut self, im: &crate::decls::ImplDecl, binds: &mut [Option<CTy>]) {
+    fn bound_only(&mut self, im: &cpl_next_decls::decls::ImplDecl, binds: &mut [Option<CTy>]) {
         let d = self.d;
         loop {
             let unbound = binds.iter().filter(|b| b.is_none()).count();
@@ -1519,7 +1519,7 @@ impl Link<'_> {
 
 /// Whether a blanket impl's bounds hold of the types it binds, as the checker asked
 /// (`Decls::fits_impl`); an impl for a written type is taken as found.
-fn blanket_met(d: &Decls, im: &crate::decls::ImplDecl, binds: &[Option<CTy>]) -> bool {
+fn blanket_met(d: &Decls, im: &cpl_next_decls::decls::ImplDecl, binds: &[Option<CTy>]) -> bool {
     !im.blanket()
         || (im.bounds.iter()).all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
 }
