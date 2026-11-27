@@ -489,6 +489,24 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// `have` and `want` are one container whose cells `want` narrows to a range of what `have`
+    /// holds: storing it unchecked would put an out-of-range value in a cell (R04.4.24).
+    fn narrows_cells(&self, have: &Ty, want: &Ty) -> bool {
+        let (Ty::Struct(h, hs, _), Ty::Struct(w, ws, _)) = (self.shallow(have), self.shallow(want))
+        else {
+            return false;
+        };
+        let cell = |a: &Ty, b: &Ty| match (self.shallow(a), self.shallow(b)) {
+            (Ty::Int, Ty::Range(..)) => Some(true),
+            (Ty::Range(a, b), Ty::Range(c, d)) => Some(a < c || b > d),
+            (a, b) => (a == b).then_some(false),
+        };
+        h == w
+            && hs.len() == ws.len()
+            && (hs.iter().zip(&ws).map(|(a, b)| cell(a, b)))
+                .try_fold(false, |any, c| Some(any || c?))
+                == Some(true)
+    }
     pub(super) fn coerce(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let (have, want_s) = (self.shallow(&e.ty), self.shallow(want));
         let span = e.span;
@@ -675,7 +693,11 @@ impl<'a> Cx<'a> {
             }
             _ => {
                 if !self.unify(&have, &want_s) {
-                    self.err(
+                    let help = self.narrows_cells(&have, &want_s).then(|| {
+                        let text = self.text(span);
+                        format!("check each element into the range: `[x for x in {text}]`")
+                    });
+                    self.err_help(
                         span,
                         format!(
                             "{}: expected `{}`, found `{}`",
@@ -683,6 +705,7 @@ impl<'a> Cx<'a> {
                             self.show(&want_s),
                             self.show(&have)
                         ),
+                        help,
                     );
                 }
                 e

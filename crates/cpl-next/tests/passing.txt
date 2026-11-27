@@ -691,6 +691,7 @@ next/a_check_13_param_needs_type.cp
 next/a_check_14_free_fn_as_method.cp
 next/a_check_15_aka_names_the_fn.cp
 next/a_check_16_was_names_the_fn.cp
+next/a_check_17_ranged_cells_help.cp
 next/a_clos_01_list_captured_by_reference.cp
 next/a_clos_02_let_list_capture.cp
 next/a_clos_04_struct_field_closure_shares_var.cp
