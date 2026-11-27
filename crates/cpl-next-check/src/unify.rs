@@ -626,6 +626,84 @@ impl<'a> Cx<'a> {
     fn is_tuple(&self, s: StructId) -> bool {
         self.d.tuples.values().any(|t| *t == s)
     }
+    /// A range type given for the type parameter fn `d` gives back is its `Int`, checked into
+    /// the range as it is stored (R03.1.4): a range type is never a type argument. One given
+    /// for an optional it gives back is `None` outside the range (R10.2.4). The range type the
+    /// call's value is held to, and whether that value is optional.
+    pub(super) fn ranged_targ(&self, d: FnId, given: &mut [Ty]) -> Option<(Ty, bool)> {
+        let fd = self.d.f(d);
+        let (i, opt) = (made_param(fd).map(|i| (i, false)))
+            .or_else(|| self.made_optional(fd).map(|i| (i, true)))?;
+        let t = self.shallow(given.get(i)?);
+        let w = self.int_parts(&t).filter(|w| *w != t)?;
+        given[i] = w;
+        Some((t, opt))
+    }
+    /// A call's value held to the range type `ranged_targ` gave.
+    pub(super) fn held_to(&mut self, v: TExpr, ranged: Option<(Ty, bool)>) -> TExpr {
+        match ranged {
+            Some((r, true)) => self.narrowed(v, &r),
+            Some((r, false)) => self.coerce(v, &r),
+            None => v,
+        }
+    }
+    /// The type parameter a fn gives back as an optional and takes in no parameter, as
+    /// `read<T>(from: s) -> ?T` does.
+    pub(super) fn made_optional(&self, fd: &decls::FnDecl) -> Option<usize> {
+        match self.optional_of(&fd.ret)? {
+            Ty::Param(i) if !fd.params.iter().any(|p| mentions(&p.ty, i)) => Some(i),
+            _ => None,
+        }
+    }
+    /// The optional `v`, of `want`'s `Int` parts, as an optional `want`: `None` too when a part
+    /// lies outside its range (R10.2.4).
+    pub(super) fn narrowed(&mut self, v: TExpr, want: &Ty) -> TExpr {
+        let span = v.span;
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let opt = self.optional_ty(want.clone());
+        let inner = self.optional_of(&v.ty).unwrap_or(Ty::Error);
+        let (hold, flag, val) = self.opened(v, inner);
+        let fits = self.within(&val, want);
+        let ok = Self::both(Some(flag.clone()), fits).unwrap_or(flag);
+        let held = self.coerce(val, want);
+        let yes = self.some(held, opt.clone());
+        let unset = vec![mk(TK::Bool(false), Ty::Bool), mk(TK::Unset, want.clone())];
+        let no = mk(TK::Struct(unset), opt.clone());
+        let pick = mk(
+            TK::If(Box::new(ok), Box::new(yes), Box::new(no)),
+            opt.clone(),
+        );
+        mk(TK::Block(hold, Some(Box::new(pick))), opt)
+    }
+    /// Whether `v`, of `want`'s `Int` parts, lies in each range in `want`; `None` when `want`
+    /// has none.
+    fn within(&mut self, v: &TExpr, want: &Ty) -> Option<TExpr> {
+        let span = v.span;
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let (lo, hi) = match self.shallow(want) {
+            Ty::Range(lo, hi) => (
+                Some(mk(TK::Int(lo), Ty::Int)),
+                Some(mk(TK::Int(hi), Ty::Int)),
+            ),
+            Ty::RangeOf(r) => {
+                let end = |e: Option<VarRef>| e.map(|e| mk(TK::Var(e), Ty::Int));
+                (end(self.ranges[r].lo), end(self.ranges[r].hi))
+            }
+            Ty::Struct(..) => {
+                let ((_, have), (_, wants)) = (self.field_tys(&v.ty)?, self.field_tys(want)?);
+                let mut all = None;
+                for (k, (h, w)) in have.into_iter().zip(wants).enumerate() {
+                    let part = mk(TK::Field(Box::new(v.clone()), k), h);
+                    let fits = self.within(&part, &w);
+                    all = Self::both(all, fits);
+                }
+                return all;
+            }
+            _ => return None,
+        };
+        let cmp = |op, end: TExpr| mk(TK::Cmp(op, Box::new(v.clone()), Box::new(end)), Ty::Bool);
+        Self::both(lo.map(|e| cmp(CmpOp::Ge, e)), hi.map(|e| cmp(CmpOp::Le, e)))
+    }
     /// A tuple held to `want` part by part, each part coerced as it is stored (R03.1.4).
     fn held_parts(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let span = e.span;

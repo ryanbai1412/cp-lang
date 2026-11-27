@@ -354,6 +354,9 @@ pub struct Decls {
     /// Each library's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
     pub methods: HashMap<String, Vec<FnId>>,
+    /// The free fns of one name in one module past its first, keyed by the first: each has its
+    /// own required labels, and a call takes the one whose labels it gives (R06.1.6).
+    pub overloads: HashMap<FnId, Vec<FnId>>,
     /// The program's top-level domains, which its declarations may name: each is the
     /// `Ty::Dom` of its place among them, filled when its statement runs (R02.9).
     pub top_doms: HashMap<String, Ty>,
@@ -481,6 +484,27 @@ impl Decls {
     }
     pub fn f(&self, d: FnId) -> &FnDecl {
         &self.fns[d.0]
+    }
+    /// Its required labels: those of the named-only parameters with no default, sorted.
+    pub fn required_labels(&self, d: FnId) -> Vec<&str> {
+        let mut ls: Vec<&str> = (self.f(d).params.iter())
+            .filter(|p| p.named_only && p.default.is_none())
+            .map(|p| p.label.as_str())
+            .collect();
+        ls.sort_unstable();
+        ls
+    }
+    /// The fn of `first`'s name a call giving the labels `given` takes: the one whose required
+    /// labels it gives and that has every label it gives (R06.1.6).
+    pub fn overload(&self, first: FnId, given: &[&str]) -> FnId {
+        let rest = self.overloads.get(&first).map_or(&[][..], Vec::as_slice);
+        let fits = |f: FnId| {
+            let has = |l: &&str| self.f(f).params.iter().any(|p| p.label == *l);
+            self.required_labels(f).iter().all(|l| given.contains(l)) && given.iter().all(has)
+        };
+        (std::iter::once(first).chain(rest.iter().copied()))
+            .find(|f| fits(*f))
+            .unwrap_or(first)
     }
     pub fn s(&self, d: StructId) -> &StructDecl {
         &self.structs[d.0]

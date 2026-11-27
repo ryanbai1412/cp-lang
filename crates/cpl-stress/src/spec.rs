@@ -841,11 +841,11 @@ impl InputSpec {
                         builder.domains.insert(name, (int(0), int(count - 1)));
                     }
                 }
-                StmtKind::Impl { .. } if builder.reads(stmt) => {
+                StmtKind::Impl { .. } if builder.reads(stmt) || builder.reads_input(stmt) => {
                     let Some((name, parts)) = builder.read_impl(stmt)? else {
                         return Err(builder.error(
                             stmt.span,
-                            "this impl reads more than `let name: Type = read()` lines in a `fn read()` of `impl Read`, so a generated input would leave its reads out; read one field per line, like `let r: Int = read()`".into(),
+                            "this impl reads more than `let name: Type = input.read()` lines in a `fn read(mut input: Input)` of `impl Read`, so a generated input would leave its reads out; read one field per line, like `let r: Int = input.read()`".into(),
                         ));
                     };
                     builder

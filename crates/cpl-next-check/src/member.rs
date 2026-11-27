@@ -705,7 +705,8 @@ impl<'a> Cx<'a> {
         };
         if let Some(decls::Named::Fn(fid)) = ext {
             if let Some(st) = self.d.f(fid).self_ty.clone() {
-                let ts = self.written_targs(fid, Vec::new(), written_targs, span);
+                let mut ts = self.written_targs(fid, Vec::new(), written_targs, span);
+                let ranged = self.ranged_targ(fid, &mut ts);
                 let f = self.fnref(fid, ts, Vec::new());
                 let sub = Subst {
                     tys: &f.targs,
@@ -733,7 +734,8 @@ impl<'a> Cx<'a> {
                     }
                     let getter = fd.getter && fd.params.is_empty();
                     let recv = self.recv_arg(fid, recv, span);
-                    return self.call_method(f, recv, getter, call, span, want);
+                    let v = self.call_method(f, recv, getter, call, span, want);
+                    return self.held_to(v, ranged);
                 }
             }
         }
@@ -763,10 +765,12 @@ impl<'a> Cx<'a> {
                     );
                 }
                 let getter = (fd.getter || walked) && fd.params.is_empty();
-                let ts = self.written_targs(m, ts, written_targs, span);
+                let mut ts = self.written_targs(m, ts, written_targs, span);
+                let ranged = self.ranged_targ(m, &mut ts);
                 let f = self.fnref(m, ts, ss);
                 let recv = self.recv_arg(m, recv, span);
-                self.call_method(f, recv, getter, call, span, want)
+                let v = self.call_method(f, recv, getter, call, span, want);
+                self.held_to(v, ranged)
             }
             None => {
                 if let Some((was, help)) = self.renamed(&rt, base, name, call) {

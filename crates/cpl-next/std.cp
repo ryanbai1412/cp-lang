@@ -33,7 +33,7 @@ pub use std.ranges.{Range, slice, slice_ends, sub_range, sub_range_ends}
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key, check_range}
 /// Printing, reading, the random stream and `swap`, which every module names unimported.
 pub use std.show.{Show, Pack, print, write}
-pub use std.read.{Read, read, read_line}
+pub use std.read.{Read, Input, read, read_line}
 pub use std.stream.{rand}
 pub use std.mem.{swap}
 

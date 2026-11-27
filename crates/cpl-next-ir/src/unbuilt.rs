@@ -125,7 +125,6 @@ pub enum Unbuilt {
     MethodsOfOneName {
         name: String,
     },
-    OverloadByLabels,
     LazyParam {
         name: String,
     },
@@ -227,7 +226,6 @@ impl fmt::Display for Unbuilt {
             VariantValue { name } => write!(f, "the value of variant `{name}`"),
             LibraryOverload { name } => write!(f, "a library with two fns named `{name}`"),
             MethodsOfOneName { name } => write!(f, "methods of one name in one module (`{name}`)"),
-            OverloadByLabels => write!(f, "fns of one name told apart by their labels"),
             LazyParam { name } => write!(f, "a lazy parameter `{name}`"),
             UseOfOwn { name } => write!(f, "`use` of `{name}`, which this file also declares"),
             UseMissing { module, name } => write!(f, "`{module}` has no pub `{name}` the slice declares"),

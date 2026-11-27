@@ -90,6 +90,8 @@ def case_text(c):
         head.append(f'// input: "{c["input"]}"')
     if "rule" in c:
         head.append(f"// rule: {c['rule']}")
+    if "engines" in c:
+        head.append(f"// engines: {c['engines']}")
     return "\n".join(head) + "\n" + c["code"].strip("\n") + "\n"
 
 

@@ -2150,6 +2150,7 @@ std-math/sieve-tables-at-zero.cp
 std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
 std-matrix/get-outside-columns-traps.cp
+std-models/input.cp
 std-models/map.cp
 std-models/memo-array.cp
 std-models/print-read.cp
@@ -2623,3 +2624,7 @@ widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
 next/n_fresh_domain_struct.cp
+next/n_overload_01_fns_told_apart_by_required_labels.cp
+next/n_read_from_01_a_string_is_its_whole_input.cp
+next/n_read_from_02_a_read_impl_reads_its_input.cp
+next/n_str_is_empty_is_std_code.cp

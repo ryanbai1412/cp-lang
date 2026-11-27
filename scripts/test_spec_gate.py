@@ -149,6 +149,11 @@ class GatesTest(unittest.TestCase):
             self.assertEqual(t.read("spec/conformance/traits/Shout/Dog--shout.cp"), '// expect: ok, output "woof"\nprint(Dog(1).shout())\n')
         with Tree({"std/a.cp": files["std/a.cp"], "spec/conformance/traits.toml": ""}):
             self.assertEqual([p.what for p in run("traits")], ["no case: Shout/Dog/shout (write one)"])
+        next_only = files["spec/conformance/traits.toml"] + 'engines = "next"\n'
+        with Tree({"std/a.cp": files["std/a.cp"], "spec/conformance/traits.toml": next_only}) as t:
+            self.assertEqual(run("traits", "--write"), [])
+            self.assertEqual(t.read("spec/conformance/traits/Shout/Dog--shout.cp"),
+                             '// expect: ok, output "woof"\n// engines: next\nprint(Dog(1).shout())\n')
 
     def test_prelude(self):
         files = {"std/prelude.cp": "use std.a.{f}\nuse std.b.{k}\n",

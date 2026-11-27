@@ -1269,6 +1269,19 @@ fn layer(
                         d.methods.entry(f.name.text.clone()).or_default().push(fid);
                     }
                     if let Some(Named::Fn(first)) = before {
+                        // Free fns of one name whose required labels differ are overloads: the
+                        // first stands for the name (R06.1.6).
+                        let free = d.f(first).self_ty.is_none() && d.f(fid).self_ty.is_none();
+                        let rest = d.overloads.get(&first).map_or(&[][..], Vec::as_slice);
+                        let clash = (std::iter::once(&first).chain(rest))
+                            .any(|o| d.required_labels(*o) == d.required_labels(fid));
+                        if free && !clash {
+                            own[mi].insert(f.name.text.clone(), Named::Fn(first));
+                            Arc::make_mut(&mut d.views[mi])
+                                .insert(f.name.text.clone(), Named::Fn(first));
+                            d.overloads.entry(first).or_default().push(fid);
+                            continue;
+                        }
                         if d.is_library(mid) {
                             let e = Unbuilt::LibraryOverload {
                                 name: f.name.text.clone(),
@@ -1287,17 +1300,8 @@ fn layer(
                             );
                             continue;
                         }
-                        // One name and one set of labels is one fn: nothing is chosen by
-                        // argument type (R02.11.3, R06.1.6).
-                        let labels = |f: FnId| -> Vec<&str> {
-                            let mut ls: Vec<&str> =
-                                d.f(f).labels.iter().map(String::as_str).collect();
-                            ls.sort_unstable();
-                            ls
-                        };
-                        if labels(first) != labels(fid) {
-                            d.errors.push(Unbuilt::OverloadByLabels.into());
-                        }
+                        // One name and one set of required labels is one fn: nothing is chosen
+                        // by argument type (R02.11.3, R06.1.6).
                         let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
                         d.misdeclared.push((
                             item.at(Span::new(s.span.start, s.span.start)),

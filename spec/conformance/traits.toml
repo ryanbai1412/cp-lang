@@ -3964,6 +3964,13 @@ print(r, "{r}")
 """
 out = "1 2 3 1 2 3"
 
+[case."Show/Input/show"]
+code = """
+print(Input.of(" 4 x"), Input.stdin(), "{Input.of("7")}")
+"""
+out = " 4 x at 0 stdin 7 at 0"
+engines = "next"
+
 [case."Show/Str/show"]
 code = """
 let s = "ab"

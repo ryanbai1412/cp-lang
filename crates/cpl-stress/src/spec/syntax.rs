@@ -856,6 +856,40 @@ pub(super) fn typed_read<'a>(
     Some((Cow::Borrowed(ty?), read_none(init)?))
 }
 
+/// `input.read()` or `input.read<T>()` in a `Read` impl taking `input`, as the
+/// `read()` or `read<T>()` it reads the same way as.
+pub(super) fn plain_read(expr: &Expr, input: &str) -> Option<Expr> {
+    let ExprKind::Call { callee, args } = &expr.kind else {
+        return None;
+    };
+    let named = |e: &Expr| match &e.kind {
+        ExprKind::Field { base, name } if name.text == "read" => {
+            matches!(&base.kind, ExprKind::Name(n) if n == input).then(|| Expr {
+                kind: ExprKind::Name("read".into()),
+                span: e.span,
+            })
+        }
+        _ => None,
+    };
+    let callee = match &callee.kind {
+        ExprKind::Generic { base, args } => Expr {
+            kind: ExprKind::Generic {
+                base: Box::new(named(base)?),
+                args: args.clone(),
+            },
+            span: callee.span,
+        },
+        _ => named(callee)?,
+    };
+    Some(Expr {
+        kind: ExprKind::Call {
+            callee: Box::new(callee),
+            args: args.clone(),
+        },
+        span: expr.span,
+    })
+}
+
 pub(super) fn is_read(expr: &Expr) -> bool {
     matches!(&expr.kind, ExprKind::Call { callee, args }
         if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read"))

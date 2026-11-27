@@ -173,7 +173,9 @@ reads a tag and then that variant's fields. A domain written with
 explicit ends (`1..=n`) reads and prints its positions as their
 integers. A counted domain (`[n]T`, `domain E = [m]`) is 0-based, and
 `with io(base: 1)` converts 1-based input to it at every read and back
-at every print:
+at every print. A type of your own reads by `impl Read`, whose `fn read(mut input:
+Input) -> Self` reads each part with `input.read()`, so one impl serves standard input and
+`read<T>(from: s)`:
 
 ```cp
 // input: "4\n2 3 9 1\n"

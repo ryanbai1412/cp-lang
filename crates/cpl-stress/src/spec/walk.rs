@@ -1396,6 +1396,29 @@ impl Builder<'_> {
         Ok(self.inline(expr, &mut shapes)?.then_some(shapes))
     }
 
+    /// True when `stmt` is an `impl` whose `fn read(mut input: Input)` reads
+    /// its `input`: `input.read()` somewhere in it.
+    pub(super) fn reads_input(&self, stmt: &Stmt) -> bool {
+        let StmtKind::Impl { body, .. } = &stmt.kind else {
+            return false;
+        };
+        body.stmts.iter().any(|item| match &item.kind {
+            StmtKind::Fn(decl) if decl.name.text == "read" => {
+                decl.params.first().is_some_and(|input| {
+                    let code = &self.src[span_range(item.span.shift(self.base))];
+                    let tokens = cpl_syntax::lex(code).tokens;
+                    let text = |at: usize| &code[span_range(tokens[at].span)];
+                    (2..tokens.len()).any(|at| {
+                        text(at - 2) == input.name.text
+                            && tokens[at - 1].kind == cpl_syntax::TokenKind::Dot
+                            && text(at) == "read"
+                    })
+                })
+            }
+            _ => false,
+        })
+    }
+
     pub(super) fn reads(&self, stmt: &Stmt) -> bool {
         self.reads_code(&self.src[span_range(stmt.span.shift(self.base))])
     }
@@ -1577,9 +1600,10 @@ impl Builder<'_> {
         shape
     }
 
-    /// `impl Read for Cell` reads a `Cell` as its `fn read()` does: one
-    /// field per `let name: Type = read()` line. `None` when it reads in
-    /// any other way.
+    /// `impl Read for Cell` reads a `Cell` as its `fn read(mut input: Input)`
+    /// does: one field per `let name: Type = input.read()` line (or
+    /// `read()`, in a `fn read()` of the old pipeline). `None` when it reads
+    /// in any other way.
     pub(super) fn read_impl(
         &mut self,
         stmt: &Stmt,
@@ -1606,12 +1630,15 @@ impl Builder<'_> {
             return Ok(None);
         }
         let read = body.stmts.iter().find_map(|stmt| match &stmt.kind {
-            StmtKind::Fn(decl) if decl.name.text == "read" && decl.params.is_empty() => Some(decl),
+            StmtKind::Fn(decl) if decl.name.text == "read" && decl.params.len() <= 1 => Some(decl),
             _ => None,
         });
         let Some(cpl_syntax::ast::FnBody::Block(block)) = read.map(|decl| &decl.body) else {
             return Ok(None);
         };
+        let input = read
+            .and_then(|decl| decl.params.first())
+            .map(|p| p.name.text.as_str());
         let mut parts = Vec::new();
         for line in &block.stmts {
             if let StmtKind::Let {
@@ -1620,6 +1647,9 @@ impl Builder<'_> {
                 ..
             } = &line.kind
             {
+                let init = &input
+                    .and_then(|input| plain_read(init, input))
+                    .unwrap_or_else(|| init.clone());
                 if let Some((ty, none)) = typed_read(ty.as_ref(), init) {
                     parts.push(self.shape_read(&ty, none, init)?);
                     continue;

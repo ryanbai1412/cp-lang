@@ -1535,6 +1535,33 @@ let d = read<V>(base: 1)
 }
 
 #[test]
+fn a_read_impl_over_its_input_reads_its_fields() {
+    let src = "struct Cell(r: Int, c: Int)
+impl Read for Cell:
+    fn read(mut input: Input) -> Cell:
+        let r: 1..=3 = input.read()
+        let c = input.read<7..=9>()
+        return Cell(r - 1, c - 1)
+let cell: Cell = read()
+";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let text = generate(&spec, &mut Rng::new(seed), Size::Small(5))
+            .unwrap()
+            .render();
+        let tokens: Vec<i128> = text
+            .split_whitespace()
+            .map(|t| t.parse().unwrap())
+            .collect();
+        assert_eq!(tokens.len(), 2, "{text}");
+        assert!(
+            (1..=3).contains(&tokens[0]) && (7..=9).contains(&tokens[1]),
+            "{text}"
+        );
+    }
+}
+
+#[test]
 fn read_impls_and_constant_compressed_domains_are_generated() {
     let src = "struct Cell(r: Int, c: Int)
 impl Read for Cell:
