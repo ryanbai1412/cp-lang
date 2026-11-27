@@ -97,7 +97,6 @@ core-04/grid-rows-written-through.cp	wrong-reject	check: program:10:14: E0302: t
 core-04/h-keyed-counts-from-zero.cp	wrong-reject	check: std.seq:2247:9: E0203: `S` has no `iter`
 core-04/h-step-keeps-source-keys.cp	wrong-reject	check: program:6:7: E0305: `Stepped<List<Int>, Int>` is not indexed: it has no `Indexed` impl
 core-04/h-step-skipped-key-traps.cp	wrong-reject	check: program:6:7: E0305: `Stepped<List<Int>, Int>` is not indexed: it has no `Indexed` impl
-core-04/inline-range-array-keys-start-at-its-first-key.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-04/int-array-slice-keeps-keys.cp	wrong-reject	check: std.seq:951:25: E0606: `K` has no `impl Eq`, which `==` needs (R08.1.5)
 core-04/int-range-generic-nth-is-the-int.cp	wrong-reject	check: program:7:12: E0302: expected `Int`, found `Cut<D>`
 core-04/keyed-counter-is-not-a-key.cp	wrong-error	wanted E0301 on line 6, got: check: std.seq:2247:9: E0203: `S` has no `iter`
@@ -252,7 +251,6 @@ core-07/generator-method-has-no-len.cp	wrong-error	wanted E0606 on line 5, got: 
 core-07/generator-with-helper-closures-stops-early.cp	wrong-reject	check: program:15:7: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/get-or-insert.cp	wrong-reject	check: std.seq:757:25: E0606: `K` does not implement `Ord`
 core-07/held-window-first-last.cp	wrong-reject	check: program:6:7: E0305: `Gen<Slice<List<Int>>>` is not indexed: it has no `Indexed` impl
-core-07/impl-bound-gives-element.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-07/in-place-verb-on-a-lent-view.cp	wrong-error	wanted E0602 on line 6, got: check: program:6:1: E0403: a `mut self` method needs a place
 core-07/in-place-verbs.cp	wrong-reject	check: program:9:1: E0203: `List<Int>` has no member `fill`
 core-07/indexed-param-takes-views.cp	wrong-reject	check: program:6:23: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
@@ -276,7 +274,6 @@ core-07/range-sum-closed-form-exact-near-limit.cp	timeout	the interpreter passed
 core-07/range-sum-closed-form-traps-on-overflow.cp	timeout	the interpreter passed 10 s
 core-07/range-sum-is-ranges-own.cp	timeout	the interpreter passed 10 s
 core-07/rev-and-filter-keys-walk.cp	wrong-reject	check: program:5:19: E0203: `Rev<List<Int>>` has no member `keys`
-core-07/rev-does-not-satisfy-indexed.cp	wrong-error	wanted E0606 on line 6, got: decls: E0204: unknown trait `Indexed`
 core-07/rev-drop-in-walk-order.cp	wrong-reject	check: program:6:24: E0606: `Rev<Slice<List<Int>>>` does not implement `Keyed`
 core-07/rev-drop-last-in-walk-order.cp	wrong-reject	check: program:6:24: E0606: `Rev<Slice<List<Int>>>` does not implement `Keyed`
 core-07/rev-is-a-nameable-view.cp	wrong-reject	check: std.seq:1710:40: E0606: `S` does not implement `Indexed`
@@ -334,7 +331,6 @@ core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	check: prog
 core-08/bare-op-takes-any-from-op-struct-impl.cp	wrong-reject	check: program:6:40: E0606: `T` does not implement `Domain`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
 core-08/bound-test-takes-trait-args.cp	wrong-reject	check: program:8:30: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
-core-08/chained-bounds-bind-struct-params.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/ctor-bound-binds-a-later-named-arg.cp	wrong-reject	check: program:8:24: E0606: `F` does not implement `Domain`
 core-08/defaulted-op-param-folds-by-its-impl.cp	wrong-reject	check: program:23:20: E0606: `a function` does not implement `FromOp`
 core-08/explicit-struct-arg-gives-a-bare-ops-bound-arg.cp	wrong-reject	check: program:18:9: E0606: `a function` does not implement `Op`
@@ -343,24 +339,19 @@ core-08/fn-called-as-a-method-of-its-own-type.cp	wrong-reject	check: program:6:4
 core-08/fn-type-impl-has-trait-default-methods.cp	wrong-reject	check: program:11:7: E0203: `a function` has no member `twice`
 core-08/generic-impl-head-binds-field-method-and-assoc-type.cp	wrong-reject	decls: E0204: unknown type `Self`
 core-08/if-bound-domain.cp	wrong-reject	decls: E0204: unknown type `HashMap`
-core-08/if-bound-seq-trait-in-generic.cp	wrong-reject	check: program:6:11: E0204: unknown trait `Indexed`
 core-08/impl-choosing-an-assoc-type-writes-its-default-fns.cp	wrong-error	wanted E0606 on line 10, got: check: program:7:39: E0302: expected `Self.Out`, found `Optional<T>`
 core-08/impl-fn-params-take-the-traits-types.cp	wrong-reject	check: program:23:24: E0203: `P` has no `both`
 core-08/impl-for-a-table-binds-its-params.cp	wrong-reject	check: program:15:5: E0606: `impl Nx` chooses a type for `Arc` with no `impl Tg` (R08.1.1)
-core-08/indexed-bound-types-the-body.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
-core-08/method-bound-binds-the-struct-param.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0606: `S` does not implement `Domain`
 core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 5, got: decls: E0204: unknown trait `Monoid`
 core-08/op-through-fn-param.cp	wrong-reject	check: program:5:46: E0302: this function does not fit `(Int, Int) -> Int`
-core-08/partial-struct-args-infer-the-rest.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/polymorphic-recursion-is-an-error.cp	wrong-error	wanted E0319 on line 8, got: link: E0319: instantiation does not end: `reserve` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 core-08/row-duplicate-field.cp	wrong-error	wanted E0202 on line 3, got: check: program:3:19: E0303: `a` is given twice
 core-08/row-not-on-struct.cp	wrong-error	wanted E0704 on line 5, got: check: program:5:7: E0606: `S` does not implement `(u:, ..)`
 core-08/self-default-getter-rejects-another-type.cp	wrong-error	wanted E0606 on line 9, got: check: program:6:30: E0302: expected `T`, found `Self`
-core-08/seq-supertraits-come-from-std.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/shared-bound-param-agrees.cp	wrong-reject	decls: E0204: unknown trait `Keyed`
 core-08/shared-bound-param-conflict-rejected.cp	wrong-error	wanted E0302 on line 9, got: decls: E0204: unknown trait `Keyed`
 core-08/struct-arg-reaches-new-bound-args.cp	wrong-reject	check: program:26:7: E0606: `a function` does not implement `Op`
@@ -411,7 +402,6 @@ core-11/member-private-method-outside-module.cp	wrong-accept	wanted E0207 on lin
 core-11/method-needs-no-import.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-11/removed-spelling.cp	wrong-error	wanted E0503 on line 4, got: check: program:4:7: E0203: `Range<V>` has no member `bounds`
 core-11/strings-table-in-prelude.cp	wrong-reject	check: std.strings:547:51: E0302: expected `3.hidden`, found `6.hidden`
-core-12/a-bound-reads-its-roles-off-the-trait.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-12/a-call-binds-what-a-bound-names.cp	wrong-reject	check: program:9:26: E0305: `Counter<Int, Int>` is not indexed: it has no `Indexed` impl
 core-12/builtin-number-from-int.cp	wrong-reject	check: program:6:69: E0201: unknown name `Int`
 core-12/contains-from-declared-method.cp	wrong-reject	check: program:8:11: E0606: `Evens` does not implement `Contains`
@@ -1070,7 +1060,6 @@ std-seq/bsearch-true-then-false-traps.cp	wrong-reject	check: program:4:7: E0203:
 std-seq/bsearch-wrong-way-on-a-domain-traps.cp	wrong-reject	check: std.seq:2676:14: E0806: the type of `m` is not known here; write `(m: T) => ...`
 std-seq/chain-1.cp	wrong-reject	check: std.seq:2347:14: E0201: unknown name `fields`
 std-seq/chain-head-runs-once.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-seq/chunks-on-generic-indexed.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 std-seq/compose-empty.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/contains-walks-any-seq-of-an-eq-element.cp	wrong-reject	check: program:19:11: E0606: `Everything` does not implement `Contains`
 std-seq/count-in-wrong-way-traps-checked.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `count_in`
@@ -1169,7 +1158,6 @@ std-seq/seq-u55-sorted-set-ops-methods.cp	wrong-reject	check: std.seq:2759:40: E
 std-seq/seq-u57-unzip.cp	wrong-reject	check: program:4:20: E0302: expected `Int`, found `Tuple2<Int, Char>`
 std-seq/seq-u58-edit-in-place.cp	wrong-reject	check: program:12:1: E0203: `List<Int>` has no member `resize`
 std-seq/set-union-intersect-subtract.cp	wrong-reject	check: std.seq:785:40: E0606: `T` does not implement `Ord`
-std-seq/sized-and-keyed-through-std-impls.cp	wrong-reject	decls: E0204: unknown trait `Keyed`
 std-seq/slice-keys-len-is-empty.cp	wrong-reject	check: program:12:18: E0203: `D` has no member `idx`
 std-seq/slice-runs-maximal-minimal.cp	wrong-reject	check: program:4:7: E0203: `()` has no `iter`
 std-seq/sort-body-takes-cmp-str-and-a-named-key.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`

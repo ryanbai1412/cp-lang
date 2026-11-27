@@ -2835,3 +2835,15 @@ std-dsu/parity-components-and-groups.cp
 std-dsu/parity.cp
 std-dsu/persistent-dsu-fresh-per-test-case.cp
 std-dsu/persistent-dsu-matches-replay.cp
+core-04/inline-range-array-keys-start-at-its-first-key.cp
+core-07/impl-bound-gives-element.cp
+core-07/rev-does-not-satisfy-indexed.cp
+core-08/chained-bounds-bind-struct-params.cp
+core-08/if-bound-seq-trait-in-generic.cp
+core-08/indexed-bound-types-the-body.cp
+core-08/method-bound-binds-the-struct-param.cp
+core-08/partial-struct-args-infer-the-rest.cp
+core-08/seq-supertraits-come-from-std.cp
+core-12/a-bound-reads-its-roles-off-the-trait.cp
+std-seq/chunks-on-generic-indexed.cp
+std-seq/sized-and-keyed-through-std-impls.cp
