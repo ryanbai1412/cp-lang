@@ -554,6 +554,18 @@ std-search/ternary_max-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has
 std-search/ternary_min-1.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_min-2.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-search/ternary_min-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-search/ternary_max-1.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-search/ternary_max-2.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-search/ternary_max-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-search/ternary_min-1.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-search/ternary_min-2.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-search/ternary_min-3.cp	wrong-reject	check: std.search:32:52: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
+std-search/ternary_max-1.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
+std-search/ternary_max-2.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
+std-search/ternary_max-3.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
+std-search/ternary_min-1.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
+std-search/ternary_min-2.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
+std-search/ternary_min-3.cp	wrong-reject	check: std.search:26:40: E0606: `I` does not implement `Domain`
 std-segtree/merge-seg-merge-and-prune.cp	wrong-reject	check: program:7:35: E0203: `K` has no member `idx`
 std-segtree/merge-seg-singleton-dead.cp	wrong-reject	check: program:6:37: E0203: `K` has no member `idx`
 std-seq/a-bidir-struct-of-its-own-has-last.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
@@ -699,3 +711,5 @@ traits/Show/Prefix--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` 
 traits/Show/RingRange--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 traits/Track/Window--pop.cp	wrong-reject	check: std.window:113:38: E0304: `M` cannot be called
 traits/Track/Window--push.cp	wrong-reject	check: std.window:113:38: E0304: `M` cannot be called
+core-07/prefix-scan-cuts.cp	wrong-reject	check: program:8:7: E0305: `Prefix<V, Int>` is not indexed: it has no `Indexed` impl
+std-prefix/rev-scan-all-reads-the-first-cut.cp	wrong-reject	check: program:5:59: E0203: `K` has no member `l`

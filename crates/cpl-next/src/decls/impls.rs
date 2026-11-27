@@ -136,6 +136,20 @@ impl Decls {
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
         (self.methods.get(name)?.iter().copied()).find(|f| self.self_fits(*f, recv))
     }
+    /// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
+    /// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).
+    pub fn shaped_member(&self, recv: &Ty, name: &str) -> Option<FnId> {
+        let Ty::Struct(s, ..) = recv else {
+            return None;
+        };
+        (self.s(*s).shaped.get(name)?.iter().copied()).find(|f| {
+            let f = self.f(*f);
+            let mut binds = vec![None; f.generics.len()];
+            f.self_ty
+                .as_ref()
+                .is_some_and(|st| fit(st, recv, &mut binds))
+        })
+    }
     /// Whether `recv` has the shape of `f`'s `self`: the same struct, or the same kind of type.
     pub fn self_fits(&self, f: FnId, recv: &Ty) -> bool {
         match (self.f(f).self_ty.as_ref(), recv) {
@@ -152,39 +166,6 @@ impl Decls {
     /// The impl's type arguments when it is for `t` and of the trait with arguments `trait_args`
     /// (`impl Into<Char> for Int` and not `impl Into<U64> for Int`); fewer are not checked.
     pub fn impl_args_for(&self, im: &ImplDecl, t: &Ty, trait_args: &[Ty]) -> Option<Vec<Ty>> {
-        // Two types that may yet be one: `Optional<Int>` and `Optional<_>`.
-        fn agree(a: &Ty, b: &Ty) -> bool {
-            match (a, b) {
-                (Ty::Var(_) | Ty::Error, _) | (_, Ty::Var(_) | Ty::Error) => true,
-                (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => agree(a, b),
-                (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
-                    d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| agree(x, y))
-                }
-                _ => a == b,
-            }
-        }
-        fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
-            match (p, t) {
-                // A parameter binds even to a type not known yet, so the method's own
-                // arguments follow it once it is.
-                (Ty::Param(i), _) => match &binds[*i] {
-                    Some(b) => agree(b, t),
-                    None if *t == Ty::Error => true,
-                    None => {
-                        binds[*i] = Some(t.clone());
-                        true
-                    }
-                },
-                (_, Ty::Var(_) | Ty::Error) => true,
-                (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds),
-                (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
-                    d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
-                }
-                (Ty::Range(..) | Ty::RangeOf(_), Ty::Int)
-                | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => true,
-                _ => p == t,
-            }
-        }
         let mut binds = vec![None; im.generics.len()];
         if !fit(&im.for_, t, &mut binds)
             || !(self.traits[im.trait_.tr.0].inputs(&im.trait_.args).iter())
@@ -286,5 +267,40 @@ pub(super) fn same_shape(a: &Ty, b: &Ty) -> bool {
             d1 == d2 && x.iter().zip(y).all(|(x, y)| same_shape(x, y))
         }
         _ => a == b,
+    }
+}
+
+// Two types that may yet be one: `Optional<Int>` and `Optional<_>`.
+fn agree(a: &Ty, b: &Ty) -> bool {
+    match (a, b) {
+        (Ty::Var(_) | Ty::Error, _) | (_, Ty::Var(_) | Ty::Error) => true,
+        (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => agree(a, b),
+        (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
+            d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| agree(x, y))
+        }
+        _ => a == b,
+    }
+}
+fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
+    match (p, t) {
+        // A parameter binds even to a type not known yet, so the method's own
+        // arguments follow it once it is.
+        (Ty::Param(i), _) => match &binds[*i] {
+            Some(b) => agree(b, t),
+            None if *t == Ty::Error => true,
+            None => {
+                binds[*i] = Some(t.clone());
+                true
+            }
+        },
+        (_, Ty::Var(_) | Ty::Error) => true,
+        (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds),
+        (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
+            d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
+        }
+        (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => {
+            true
+        }
+        _ => p == t,
     }
 }

@@ -104,6 +104,8 @@ pub struct StructDecl {
     pub item: u32,
     pub n_sets: usize,
     pub methods: HashMap<String, FnId>,
+    /// The fns of its impls over a shape of it (`impl Rev<[D]T>:`), each `self` that shape.
+    pub shaped: HashMap<String, Vec<FnId>>,
     /// Its static `new`, which `T(args)` calls outside its own body (R02.6.3).
     pub ctor: Option<FnId>,
     /// An enum's variants, each with the struct of its payload, named `Enum.Variant` (R02.7).
@@ -747,6 +749,7 @@ pub fn collect(
                             item: *item,
                             n_sets: 0,
                             methods: HashMap::new(),
+                            shaped: HashMap::new(),
                             ctor: None,
                             variants: Vec::new(),
                             errors: Vec::new(),
@@ -1494,7 +1497,7 @@ pub fn collect(
                     _,
                 ) => {
                     // Inherent methods live in their type's module only (R08.1.3).
-                    let TypeKind::Named { name, args } = &target.kind else {
+                    let TypeKind::Named { name, .. } = &target.kind else {
                         continue;
                     };
                     let Some(t) = struct_named(&d.views[mi], &name.text) else {
@@ -1508,7 +1511,7 @@ pub fn collect(
                         ));
                         continue;
                     }
-                    inherent_impl(&mut d, mid, item, t, args, bounds, body);
+                    inherent_impl(&mut d, mid, item, t, target, bounds, body);
                 }
                 _ => {}
             }

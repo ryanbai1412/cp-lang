@@ -10,10 +10,13 @@ pub(super) fn inherent_impl(
     mid: ModId,
     item: u32,
     t: StructId,
-    args: &[ast::Type],
+    target: &ast::Type,
     bounds: &[ast::Bound],
     body: &ast::Block,
 ) {
+    let TypeKind::Named { args, .. } = &target.kind else {
+        return;
+    };
     let names = &d.views[mid.0];
     let mut generics = Vec::new();
     for a in args {
@@ -22,19 +25,7 @@ pub(super) fn inherent_impl(
     let plain =
         (args.iter()).all(|a| matches!(&a.kind, TypeKind::Named { args, .. } if args.is_empty()));
     if !plain || generics.len() != args.len() || args.len() != d.s(t).generics.len() {
-        // The library's `impl Rev<[D]T>` waits on the same: lookup that matches a receiver
-        // against an impl's header, as a trait impl's is.
-        if d.is_library(mid) {
-            return;
-        }
-        d.errors.push(
-            format!(
-                "slice: an inherent impl of `{}` not over all its parameters",
-                d.s(t).name
-            )
-            .into(),
-        );
-        return;
+        return shaped_impl(d, mid, item, t, target, bounds, body);
     }
     // A parameter only its bounds name (`D` of `impl<S: Versioned<D, T>, D> Version<S>`) is
     // each fn's own, bound where the fn is called (R08.1.2).
@@ -84,5 +75,45 @@ pub(super) fn inherent_impl(
                 format!("`{}` is already a method of `{}`", f.name.text, d.s(t).name),
             ));
         }
+    }
+}
+
+/// `impl Rev<[D]T>:` adds each fn as one whose `self` is `Rev<[D]T>`, the header's parameters
+/// its own: the struct's method for a receiver of that shape (R08.1.3).
+fn shaped_impl(
+    d: &mut Decls,
+    mid: ModId,
+    item: u32,
+    t: StructId,
+    target: &ast::Type,
+    bounds: &[ast::Bound],
+    body: &ast::Block,
+) {
+    let mut generics = Vec::new();
+    unnamed(target, &d.views[mid.0], &mut generics);
+    for m in &body.stmts {
+        let StmtKind::Fn(f) = &m.kind else {
+            continue;
+        };
+        let mut f = f.clone();
+        f.bounds.splice(0..0, bounds.iter().cloned());
+        let own = generics.iter().map(|n| ast::Name {
+            text: n.clone(),
+            span: f.name.span,
+        });
+        f.generics.splice(0..0, own);
+        if let Some(p) = f.params.iter_mut().find(|p| p.name.text == "self") {
+            p.ty.get_or_insert_with(|| target.clone());
+        }
+        let within = Within {
+            owner: None,
+            generics: &[],
+            sets: 0,
+            self_ty: None,
+            sig: None,
+        };
+        let fid = add_fn(d, mid, item, m, &f, within);
+        let name = f.name.text.clone();
+        d.structs[t.0].shaped.entry(name).or_default().push(fid);
     }
 }
