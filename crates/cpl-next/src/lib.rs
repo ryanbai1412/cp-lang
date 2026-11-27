@@ -454,6 +454,37 @@ pub(crate) fn items(std: &Std, user_src: &str, roots: &Roots) -> HashMap<String,
         .collect()
 }
 
+/// The type of each expression the program's own text holds, by its span, as a diagnostic
+/// writes it.
+pub(crate) fn types(std: &Std, user_src: &str, roots: &Roots) -> Vec<(cpl_diag::Span, String)> {
+    use cpl_next_decls::views::Signatures;
+    let f = front(std, user_src, roots);
+    let mut out = Vec::new();
+    // A typed expression's span is from the start of the item it is in.
+    let mut add = |item: &ItemId, generics: &[String], e: &check::TExpr| {
+        let at = item.at(e.span);
+        let text = check::show_ty(&f.d, &f.t.domains, generics, &|t| t.clone(), &e.ty);
+        out.push((f.loaded.text_of(&at).span(&at), text));
+    };
+    let ours = |item: &ItemId| (*item.module == *modules::PROGRAM).then(|| item.clone());
+    // Each run of top-level statements follows the `Item` naming the item it is from.
+    let mut item = None;
+    for s in &f.t.main {
+        match (s, &item) {
+            (check::TStmt::Item(it), _) => item = ours(it),
+            (s, Some(it)) => s.each(&mut |e| add(it, &[], e)),
+            _ => {}
+        }
+    }
+    for (id, typed) in &f.t.fns {
+        let fd = Signatures::f(&f.d, *id);
+        if let Some(it) = ours(&fd.span.item) {
+            typed.body.each(&mut |e| add(&it, &fd.generics, e));
+        }
+    }
+    out
+}
+
 /// One unit of the program (contract 3): a fn it declares, or one of its top-level statements.
 #[derive(Debug)]
 pub struct Unit {

@@ -864,3 +864,20 @@ fn a_view_goes_only_to_a_viewed_param() {
         assert!(bad.is_empty(), "views given to owned params: {bad:?}");
     }
 }
+
+#[test]
+fn type_at_reads_the_typed_tree() {
+    use crate::facade::{Session, Snapshot};
+    let src = "fn twice(n: Int) -> Int:\n    n * 2\n\nlet b = 3 < 4\nlet c = twice(3)\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    assert!(s.program().is_ok());
+    let at = |text: &str| s.type_at(src.find(text).unwrap() as u32);
+    assert_eq!(at("n * 2"), Some("Int"));
+    assert_eq!(at("< 4"), Some("Bool"));
+    assert_eq!(at("twice(3)"), Some("Int"));
+    assert_eq!(s.type_at(src.len() as u32), None);
+}

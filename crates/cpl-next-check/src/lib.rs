@@ -39,6 +39,7 @@ mod recipe;
 mod stmt;
 mod targs;
 mod unify;
+pub use unify::show_ty;
 mod variants;
 mod zonk;
 
@@ -62,6 +63,80 @@ pub struct TExpr {
     pub ty: Ty,
     pub span: Span,
 }
+impl TExpr {
+    /// Calls `f` on this expression and then on each expression inside it, in source order.
+    pub fn each<'a>(&'a self, f: &mut dyn FnMut(&'a TExpr)) {
+        f(self);
+        let arg = |a: &'a TArg| match a {
+            TArg::Value(e) | TArg::Mut(e) => e,
+        };
+        match &self.kind {
+            TK::Int(_) | TK::Float(_) | TK::Bool(_) | TK::Unit | TK::Var(_) | TK::FnItem(_) => {}
+            TK::Itself(_) | TK::ReadInt | TK::DomLen(_) | TK::DomCounted(_) => {}
+            TK::HasBound(..) | TK::Text(_) | TK::Unset | TK::Error => {}
+            TK::Call { recv, args, .. } | TK::CallTrait { recv, args, .. } => {
+                (recv.iter().map(|r| arg(r)))
+                    .chain(args.iter().map(arg))
+                    .for_each(|e| e.each(f));
+            }
+            TK::CallValue { callee, args } => {
+                callee.each(f);
+                args.iter().for_each(|a| arg(a).each(f));
+            }
+            TK::Struct(es) => es.iter().for_each(|e| e.each(f)),
+            TK::Lambda { body, .. } => body.each(f),
+            TK::Field(e, _) | TK::Inject(e) | TK::Widen(e) | TK::Owned(e) | TK::Pack(e) => {
+                e.each(f)
+            }
+            TK::Elem(e) | TK::Not(e) | TK::Neg(e) | TK::ToU64(e) | TK::ToI128(e) => e.each(f),
+            TK::DomFrom(_, e, _) | TK::CutOrd(_, e) | TK::DomNth(_, e) | TK::DomHas(_, e) => {
+                e.each(f)
+            }
+            TK::DomOrd(e) | TK::CharOf(e) | TK::CodeOf(e) | TK::Ordinal(e) => e.each(f),
+            TK::Variant(_, e) | TK::Tag(e) | TK::Payload(e, _) => e.each(f),
+            TK::Slot(a, b) | TK::Bin(_, a, b, _) | TK::Cmp(_, a, b) => {
+                a.each(f);
+                b.each(f);
+            }
+            TK::If(c, t, e) => [c, t, e].iter().for_each(|x| x.each(f)),
+            TK::Block(stmts, tail) => {
+                stmts.iter().for_each(|s| s.each(f));
+                tail.iter().for_each(|e| e.each(f));
+            }
+        }
+    }
+}
+
+impl TStmt {
+    /// Calls `f` on each expression in this statement, in source order, as [`TExpr::each`].
+    pub fn each<'a>(&'a self, f: &mut dyn FnMut(&'a TExpr)) {
+        match self {
+            TStmt::Let(_, e) | TStmt::Expr(e) | TStmt::Yield(e) | TStmt::LendOut(e) => e.each(f),
+            TStmt::Assert(e, ..) => e.each(f),
+            TStmt::Assign(a, b) | TStmt::While(a, b) => {
+                a.each(f);
+                b.each(f);
+            }
+            TStmt::For(_, a, b, c) => [a, b, c].iter().for_each(|e| e.each(f)),
+            TStmt::Return(e) => e.iter().for_each(|e| e.each(f)),
+            TStmt::Break | TStmt::Continue | TStmt::Item(_) => {}
+            TStmt::Cases(e, stmts) => {
+                e.iter().for_each(|e| e.each(f));
+                stmts.iter().for_each(|s| s.each(f));
+            }
+            TStmt::Region {
+                recv, args, body, ..
+            } => {
+                for a in recv.iter().map(|r| &**r).chain(args) {
+                    let (TArg::Value(e) | TArg::Mut(e)) = a;
+                    e.each(f);
+                }
+                body.each(f);
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum TK {
     Int(i64),

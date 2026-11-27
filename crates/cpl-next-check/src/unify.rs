@@ -319,63 +319,13 @@ impl<'a> Cx<'a> {
         }
     }
     pub(super) fn show(&self, t: &Ty) -> String {
-        match self.shallow(t) {
-            Ty::Int => "Int".into(),
-            Ty::Range(lo, hi) => format!("{lo}..={hi}"),
-            Ty::RangeOf(_) => "a range with run-time ends".into(),
-            Ty::AnyRange(_) => "_..=_".into(),
-            Ty::RangeTo(d, m, lo, k) => {
-                let k = match k {
-                    0 => String::new(),
-                    k if k > 0 => format!(" + {k}"),
-                    k => format!(" - {}", -k),
-                };
-                lo.to_string() + &format!("..={}.{}{k}", self.show(&d), self.d.f(m).name)
-            }
-            Ty::Bool => "Bool".into(),
-            Ty::Char => "Char".into(),
-            Ty::U64 => "U64".into(),
-            Ty::I128 => "I128".into(),
-            Ty::F64 => "F64".into(),
-            Ty::Unit => "()".into(),
-            Ty::Raw(e) => format!("Raw<{}>", self.show(&e)),
-            Ty::Mut(e) => format!("mut {}", self.show(&e)),
-            Ty::Ref(e) => format!("&{}", self.show(&e)),
-            Ty::Lent(e) => self.show(&e),
-            Ty::Struct(d, ts, _) => {
-                let n = &self.d.s(d).name;
-                if self.d.s(d).record {
-                    let fields = self.d.s(d).fields.iter().zip(&ts);
-                    let fs: Vec<String> =
-                        (fields.map(|((f, _), t)| format!("{f}: {}", self.show(t)))).collect();
-                    return format!("({})", fs.join(", "));
-                }
-                if ts.is_empty() {
-                    n.clone()
-                } else {
-                    format!(
-                        "{n}<{}>",
-                        ts.iter()
-                            .map(|t| self.show(t))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                }
-            }
-            Ty::Fn(ps, r, _) => format!(
-                "({}) -> {}",
-                ps.iter()
-                    .map(|t| self.show(t))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-                self.show(&r)
-            ),
-            Ty::Clo(_) => "a function".into(),
-            Ty::Param(i) => self.generics.get(i).cloned().unwrap_or("?".into()),
-            Ty::Dom(d) => self.domains[d].name.clone(),
-            Ty::Var(_) => "_".into(),
-            Ty::Error => "<error>".into(),
-        }
+        show_ty(
+            self.d,
+            &self.domains,
+            &self.generics,
+            &|t| self.shallow(t),
+            t,
+        )
     }
     /// The signature of a closure, in the caller's terms.
     pub(super) fn clo_sig(&mut self, c: &CloRef) -> (Vec<Ty>, Ty) {
@@ -1197,5 +1147,68 @@ pub(super) fn ground(t: &Ty) -> bool {
         Ty::Struct(_, ts, _) => ts.iter().all(ground),
         Ty::Fn(ps, r, _) => ps.iter().all(ground) && ground(r),
         _ => true,
+    }
+}
+
+/// How a diagnostic writes `t`, once `resolve` has looked through what inference has solved:
+/// `domains` and `generics` name the domains and type parameters in scope.
+pub fn show_ty(
+    decls: &dyn cpl_next_decls::views::Signatures,
+    domains: &[DomInfo],
+    generics: &[String],
+    resolve: &dyn Fn(&Ty) -> Ty,
+    t: &Ty,
+) -> String {
+    let show = |t: &Ty| show_ty(decls, domains, generics, resolve, t);
+    match resolve(t) {
+        Ty::Int => "Int".into(),
+        Ty::Range(lo, hi) => format!("{lo}..={hi}"),
+        Ty::RangeOf(_) => "a range with run-time ends".into(),
+        Ty::AnyRange(_) => "_..=_".into(),
+        Ty::RangeTo(d, m, lo, k) => {
+            let k = match k {
+                0 => String::new(),
+                k if k > 0 => format!(" + {k}"),
+                k => format!(" - {}", -k),
+            };
+            lo.to_string() + &format!("..={}.{}{k}", show(&d), decls.f(m).name)
+        }
+        Ty::Bool => "Bool".into(),
+        Ty::Char => "Char".into(),
+        Ty::U64 => "U64".into(),
+        Ty::I128 => "I128".into(),
+        Ty::F64 => "F64".into(),
+        Ty::Unit => "()".into(),
+        Ty::Raw(e) => format!("Raw<{}>", show(&e)),
+        Ty::Mut(e) => format!("mut {}", show(&e)),
+        Ty::Ref(e) => format!("&{}", show(&e)),
+        Ty::Lent(e) => show(&e),
+        Ty::Struct(d, ts, _) => {
+            let n = &decls.s(d).name;
+            if decls.s(d).record {
+                let fields = decls.s(d).fields.iter().zip(&ts);
+                let fs: Vec<String> =
+                    (fields.map(|((f, _), t)| format!("{f}: {}", show(t)))).collect();
+                return format!("({})", fs.join(", "));
+            }
+            if ts.is_empty() {
+                n.clone()
+            } else {
+                format!(
+                    "{n}<{}>",
+                    ts.iter().map(&show).collect::<Vec<_>>().join(", ")
+                )
+            }
+        }
+        Ty::Fn(ps, r, _) => format!(
+            "({}) -> {}",
+            ps.iter().map(&show).collect::<Vec<_>>().join(", "),
+            show(&r)
+        ),
+        Ty::Clo(_) => "a function".into(),
+        Ty::Param(i) => generics.get(i).cloned().unwrap_or("?".into()),
+        Ty::Dom(d) => domains[d].name.clone(),
+        Ty::Var(_) => "_".into(),
+        Ty::Error => "<error>".into(),
     }
 }

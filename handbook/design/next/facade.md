@@ -94,7 +94,7 @@ so the lines leave `today` when their query is answered from cpl-next.
 
 | `today` items | Query | Reads |
 |---|---|---|
-| `Analysis`, `Facts`, `Ty`, `types_in` (lint rules, semantic tokens, rename) | `type_at(span)`, `types_in(span)` over an opaque facade `Type` | the typed tree |
+| `Analysis`, `Facts`, `Ty`, `types_in` (lint rules, semantic tokens, rename) | `type_at(at)`, built: the innermost expression's type as a diagnostic writes it (`show_ty`, the checker's one printer); `types_in(span)` and an opaque facade `Type` for lint's structural questions come next | the typed tree (`TExpr::each`) |
 | `reported` | `diagnostics(upto)` | as above |
 | `builtin_members`, `BUILTIN_MEMBERS`, `RANGE_MEMBERS`, `OPTIONAL_MEMBERS`, `POS_MEMBERS`, `domain_member_docs`, `split_builtin_params`, `is_list_form_hook`, `Receiver` | `members(type)` | Signatures: std's members are declarations, so no table is kept |
 | `arity_key`, `import_edit`, `prelude_uses`, `BUILTIN_TYPES` | `complete(at)` | Scope |

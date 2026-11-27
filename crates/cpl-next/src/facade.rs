@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
 use crate::{
-    compile, items, std_unchecked, units, Compiled, Diag, Form, Item, Outcome, Roots, Stage, Std,
-    Unit,
+    compile, items, std_unchecked, types, units, Compiled, Diag, Form, Item, Outcome, Roots, Stage,
+    Std, Unit,
 };
 
 /// The only input of every query: the program, the libraries it may use, and std.
@@ -133,6 +133,7 @@ pub struct Session {
     built: OnceLock<Result<Program, Vec<Diag>>>,
     units: OnceLock<(Vec<Unit>, Vec<Diag>)>,
     items: OnceLock<HashMap<String, Item>>,
+    types: OnceLock<Vec<(cpl_diag::Span, String)>>,
 }
 
 impl Session {
@@ -142,6 +143,7 @@ impl Session {
             built: OnceLock::new(),
             units: OnceLock::new(),
             items: OnceLock::new(),
+            types: OnceLock::new(),
         }
     }
 
@@ -192,6 +194,17 @@ impl Session {
     /// How the item named at byte `at` is declared: its declaration's first line.
     pub fn hover(&self, at: u32) -> Option<&str> {
         self.item_at(at).map(|i| i.head.as_str())
+    }
+
+    /// The type of the innermost expression of the program at byte `at`, as a diagnostic
+    /// writes it.
+    pub fn type_at(&self, at: u32) -> Option<&str> {
+        let h = &self.snapshot.0;
+        let types = (self.types).get_or_init(|| types(&h.std, &h.program, &h.roots));
+        (types.iter())
+            .filter(|(span, _)| span.start <= at && at < span.end)
+            .min_by_key(|(span, _)| span.end - span.start)
+            .map(|(_, ty)| ty.as_str())
     }
 
     /// Where the item named at byte `at` is declared.
