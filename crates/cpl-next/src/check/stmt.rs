@@ -494,6 +494,113 @@ impl<'a> Cx<'a> {
                 }
                 out.push(TStmt::Let(var, v));
             }
+            // `let v = x else: leave`: `v` names `x`'s payload after it, and the block runs when there is none (R01.6.2).
+            StmtKind::Let {
+                mutable,
+                pat:
+                    ast::Pattern {
+                        kind: PatternKind::Name(name),
+                        ..
+                    },
+                ty,
+                init: Some(init),
+                otherwise: Some(otherwise),
+                guard: None,
+            } => {
+                if !otherwise.leaves() {
+                    let code = cpl_diag::codes::ELSE_FALLS_THROUGH.0;
+                    self.err(s.span, format!("{code}: this `else` block can reach its end; end it with `return`, `break`, `continue` or a trap"));
+                }
+                let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
+                let want = declared.clone().map(|t| self.optional_ty(t));
+                let v = self.expr(init, want.as_ref());
+                let v = match &want {
+                    Some(w) => self.coerce(v, w),
+                    None => v,
+                };
+                let Some(inner) = self.optional_of(&v.ty) else {
+                    if self.shallow(&v.ty) != Ty::Error {
+                        let t = self.show(&v.ty);
+                        self.err(init.span, format!("slice: let-else on a `{t}`"));
+                    }
+                    return;
+                };
+                let (hold, flag, val) = self.opened(v, inner.clone());
+                out.extend(hold);
+                let none = self.block(otherwise, None);
+                let span = s.span;
+                let unit = TExpr {
+                    kind: TK::Unit,
+                    ty: Ty::Unit,
+                    span,
+                };
+                out.push(TStmt::Expr(TExpr {
+                    kind: TK::If(Box::new(flag), Box::new(unit), Box::new(none)),
+                    ty: Ty::Unit,
+                    span,
+                }));
+                let var = self.bind(name, inner);
+                match var {
+                    VarRef::Local(i) => {
+                        (self.locals[i].mutable, self.locals[i].fixed) = (*mutable, !*mutable)
+                    }
+                    VarRef::Global(i) => {
+                        (self.globals[i].mutable, self.globals[i].fixed) = (*mutable, !*mutable)
+                    }
+                }
+                out.push(TStmt::Let(var, val));
+            }
+            // `(a, b) = (b, a)`: the right side is built first, then each place takes its part (R01.6.4).
+            StmtKind::Assign {
+                target:
+                    ast::Expr {
+                        kind: ExprKind::Tuple(places),
+                        ..
+                    },
+                op: ast::AssignOp::Set,
+                value,
+            } => {
+                let tmp = format!("$parts{}", s.span.start);
+                let at = |kind, span| ast::Expr { kind, span };
+                let whole = ast::Stmt {
+                    kind: StmtKind::Let {
+                        mutable: false,
+                        pat: ast::Pattern {
+                            kind: PatternKind::Name(tmp.clone()),
+                            span: value.span,
+                        },
+                        ty: None,
+                        init: Some(value.clone()),
+                        otherwise: None,
+                        guard: None,
+                    },
+                    span: s.span,
+                    ..s.clone()
+                };
+                self.stmt(&whole, out);
+                for (k, place) in places.iter().enumerate() {
+                    let part = at(
+                        ExprKind::Field {
+                            base: Box::new(at(ExprKind::Name(tmp.clone()), place.span)),
+                            name: ast::Name {
+                                text: k.to_string(),
+                                span: place.span,
+                            },
+                        },
+                        place.span,
+                    );
+                    let one = ast::Stmt {
+                        kind: StmtKind::Assign {
+                            target: place.clone(),
+                            op: ast::AssignOp::Set,
+                            value: part,
+                        },
+                        span: place.span,
+                        ..s.clone()
+                    };
+                    self.stmt(&one, out);
+                }
+            }
             StmtKind::Assign { target, op, value } => {
                 // `a[i] = v` and `a[i] op= v`: the indices, then the value, are read once; then
                 // `a`'s `IndexedMut` lends the cell and the assignment runs while it is lent (R12.4.6).

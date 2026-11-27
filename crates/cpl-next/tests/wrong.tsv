@@ -4,7 +4,6 @@ core-01/argmax-names-the-position.cp	wrong-reject	check: program:5:13: E0201: un
 core-01/continuation-skips-blank-and-comment-lines.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 core-01/continuation-skips-comment-line.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 core-01/continuation.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-01/destructure-swaps-array-places.cp	wrong-reject	check: program:6:1: E0302: this is not a place that can be assigned or lent
 core-01/fill-runtime-sized-array.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-01/getter-no-parens.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-01/grammar-spellings-derive.cp	wrong-reject	check: program:9:10: E0201: unknown name `Dir`
@@ -267,7 +266,6 @@ core-07/zip-pairs-by-walk.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>
 core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:11: E0201: unknown name `Bool`
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	check: program:6:40: E0302: expected `Self.Fold`, found `Optional<T>`
-core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
 core-08/bound-element-pattern-binds-its-param.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/bound-trait-method-yields-the-impl-types.cp	wrong-reject	decls: E0204: unknown trait `Show`
@@ -427,7 +425,6 @@ matrix/optional/list_first--while_let_top.cp	wrong-reject	check: program:4:44: E
 next/a_clos_03_list_of_closures_sharing_var.cp	wrong-reject	link: E0603: `new` returns a function that uses a `var` of the fn that made it; the variable is gone by then
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_decl_06_bound_on_struct_param.cp	wrong-reject	check: program:12:28: E0203: `T` has no member `sz`
-next/a_gen_10_tuple_assignment_swap.cp	wrong-reject	check: program:6:1: E0302: this is not a place that can be assigned or lent
 next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `f1` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
 next/a_own_02_nested_closure_returned.cp	wrong-error	wanted E0603 on line 6, got: link: E0603: `make` returns a function that uses a `var` of the fn that made it; the variable is gone by then
@@ -529,13 +526,12 @@ std-marks/arena-new-1.cp	wrong-reject	check: std.marks:400:9: E0203: `List<T>` h
 std-marks/arena-reserve-1.cp	wrong-reject	check: std.marks:491:9: E0203: `List<T>` has no member `reserve`
 std-marks/arena-set-1.cp	wrong-reject	check: program:6:11: E0305: `Arena<Int>` is not indexed: it has no `Indexed` impl
 std-math/choose-out-of-range.cp	wrong-reject	check: std.math:133:17: E0201: unknown name `min`
-std-math/crt-all-empty-and-single.cp	wrong-reject	check: std.math:926:9: E0302: this is not a place that can be assigned or lent
-std-math/crt-all-zero-modulus-traps.cp	wrong-reject	check: std.math:926:9: E0302: this is not a place that can be assigned or lent
+std-math/crt-all-empty-and-single.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
+std-math/crt-all-zero-modulus-traps.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
 std-math/crt-incompatible.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
 std-math/digits-base.cp	wrong-reject	check: program:2:7: E0203: `Int` has no member `digits`
 std-math/ext-gcd-bezout.cp	wrong-reject	check: program:2:6: E0203: `(g: Int, x: Int, y: Int)` has no member `_0`
 std-math/floor-sum-zero-terms.cp	wrong-reject	check: std.math:1218:9: E0201: unknown name `swap`
-std-math/inv-mod-not-coprime.cp	wrong-reject	check: std.math:872:9: E0302: this is not a place that can be assigned or lent
 std-math/mul-mod-no-overflow.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
 std-math/pow-mod-huge-exponent.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
 std-math/sieve-multiplicative-at-zero.cp	wrong-reject	check: std.math:480:34: E0203: `Range<T>` has no member `one`
@@ -603,6 +599,8 @@ std-seq/is-sorted-edges.cp	wrong-reject	check: std.seq:199:26: E0606: `K` has no
 std-seq/last-of-an-empty-sequence-is-none.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/last-through-bidir-on-each-sequence.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/list-methods-that-build-lists-lend-nothing.cp	wrong-reject	own: program:7:1: E0602: `xs` is written here while `a`, which borrows it, is still used
+std-seq/majority-eq-call-bound.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
+std-seq/majority-none.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/max-min-follow-a-reversed-ord-on-ties.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/max-min-take-any-count.cp	wrong-reject	check: program:3:7: E0201: unknown name `max`
 std-seq/min-k-negative-traps.cp	wrong-reject	check: std.seq:2408:35: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
