@@ -526,6 +526,7 @@ core-07/zip-domain-mismatch.cp
 core-07/zip-takes-a-rev.cp
 core-08/assoc-default-names-trait-param.cp
 core-08/assoc-projects-through-a-domain-blanket-impl.cp
+core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
 core-08/associated-type-default-and-override.cp
 core-08/associated-type.cp
@@ -546,6 +547,7 @@ core-08/getter-impl-on-builtin-type.cp
 core-08/getter-trait-param-from-record-field.cp
 core-08/getter-trait-struct-opt-in.cp
 core-08/impl-choice-must-meet-the-associated-type-bound.cp
+core-08/impl-for-every-domain-beside-int.cp
 core-08/impl-missing-an-associated-type.cp
 core-08/impl-plus-shorthand.cp
 core-08/impls-choosing-two-types-for-one-type.cp
@@ -579,6 +581,7 @@ core-08/return-type-dispatch.cp
 core-08/static-fn-default-param-mismatch.cp
 core-08/static-fn-default-param.cp
 core-08/static-fn-explicit-args.cp
+core-08/struct-bound-only-params-bind-from-the-impl.cp
 core-08/supertrait-required.cp
 core-08/trait-alias-no-impl.cp
 core-08/trait-alias.cp
@@ -811,6 +814,7 @@ next/a_clos_07_generator_yields_closures.cp
 next/a_decl_01_default_param.cp
 next/a_decl_02_field_default.cp
 next/a_decl_03_inherent_impl.cp
+next/a_decl_06_bound_on_struct_param.cp
 next/a_decl_09_cache_field.cp
 next/a_decl_10_generic_default.cp
 next/a_dom_01_domain_values.cp
@@ -976,6 +980,7 @@ next/n_convert_02_char_outside_ascii_traps.cp
 next/n_convert_03_enum_of_its_value.cp
 next/n_convert_04_enum_of_no_value_traps.cp
 next/n_domain_09_literal_is_a_position.cp
+next/n_domain_trait_01.cp
 next/n_enum_01_values_and_order.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp

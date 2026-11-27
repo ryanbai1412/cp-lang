@@ -112,6 +112,8 @@ pub struct StructDecl {
     pub errors: Vec<Msg>,
     /// An enum's `Int` of each variant: its written value (`Neg = -1`), else its place from 0.
     pub values: Vec<i64>,
+    /// The traits its parameters are bounded by (`struct Range<D: Domain>`).
+    pub bounds: Vec<(usize, TraitId)>,
 }
 pub struct TraitDecl {
     pub name: String,
@@ -340,25 +342,27 @@ fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> 
     }
 }
 
-/// A type parameter that keys an array in a fn's signature, or in its owner's fields, is a domain
-/// parameter (`struct Dsu<V>: parent: [V]V`): its body may use what every domain has (R04.2). A
-/// caller is not held to `Domain`, since a list keyed by `Int` passes as `[Int]T`.
+/// A type parameter in a place whose struct bounds it by `Domain`, in a fn's signature or in its
+/// owner's fields, is a domain parameter (`struct Dsu<V>: parent: [V]V`, `Range<D>`): its body
+/// may use what every domain has (R04.2). So is one passed where a trait bound's parameter is
+/// one (`S: Indexed<D, T>`, whose `keys` is a `Range<D>`). A caller is not held to `Domain`,
+/// since a list keyed by `Int` passes as `[Int]T`.
 fn domain_params(d: &mut Decls) {
-    let Some(array) = d.core_struct("Array") else {
+    let Some(domain) = d.domain_trait else {
         return;
     };
     // Also through a struct whose own parameter in that place is a domain: `self: Dsu<V>`.
-    fn keys(d: &Decls, t: &Ty, array: StructId, i: usize, depth: usize) -> bool {
-        let go = |t: &Ty| depth < 8 && keys(d, t, array, i, depth + 1);
+    fn keys(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
+        let go = |t: &Ty| depth < 8 && keys(d, t, domain, i, depth + 1);
         match t {
             Ty::Struct(s, ts, _) => {
-                (*s == array && ts.first() == Some(&Ty::Param(i)))
-                    || ts.iter().any(go)
+                ts.iter().any(go)
                     || (ts.iter().enumerate()).any(|(k, a)| {
                         *a == Ty::Param(i)
-                            && depth < 8
-                            && (d.structs[s.0].fields.iter())
-                                .any(|(_, f)| keys(d, f, array, k, depth + 1))
+                            && (d.structs[s.0].bounds.contains(&(k, domain))
+                                || (depth < 8
+                                    && (d.structs[s.0].fields.iter())
+                                        .any(|(_, f)| keys(d, f, domain, k, depth + 1))))
                     })
             }
             Ty::Raw(e) | Ty::Ref(e) => go(e),
@@ -366,6 +370,43 @@ fn domain_params(d: &mut Decls) {
             _ => false,
         }
     }
+    // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`) is one (R04.4.30).
+    struct DomUse<'a> {
+        generics: &'a [String],
+        fns: Vec<&'a String>,
+        found: Vec<usize>,
+    }
+    impl cpl_syntax::visit::Visitor for DomUse<'_> {
+        fn expr(&mut self, e: &ast::Expr) {
+            let ast::ExprKind::Field { base, name } = &e.kind else {
+                return;
+            };
+            let ast::ExprKind::Name(n) = &base.kind else {
+                return;
+            };
+            let i = self.generics.iter().position(|g| g == n);
+            if let Some(i) = i.filter(|i| self.fns.contains(&&name.text) && !self.found.contains(i))
+            {
+                self.found.push(i);
+            }
+        }
+    }
+    let dom_fns: Vec<&String> = d.traits[domain.0].methods.keys().collect();
+    let used: Vec<Vec<usize>> = (d.fns.iter())
+        .map(|f| {
+            let mut v = DomUse {
+                generics: &f.generics,
+                fns: dom_fns.clone(),
+                found: Vec::new(),
+            };
+            match &f.body {
+                FnBody::Block(b) => cpl_syntax::visit::walk_block(b, &mut v),
+                FnBody::Expr(e) => cpl_syntax::visit::walk_expr(e, &mut v),
+                FnBody::None => {}
+            }
+            v.found
+        })
+        .collect();
     for k in 0..d.fns.len() {
         let f = &d.fns[k];
         let fields: &[(String, Ty)] = match f.owner {
@@ -378,13 +419,48 @@ fn domain_params(d: &mut Decls) {
                     .chain([&f.ret])
                     .chain(&f.self_ty)
                     .chain(fields.iter().map(|(_, t)| t))
-                    .any(|t| keys(d, t, array, i, 0))
+                    .any(|t| keys(d, t, domain, i, 0))
+                    || used[k].contains(&i)
             })
             .collect();
         if !added.is_empty() {
             d.domain_params.insert(FnId(k), added);
         }
     }
+    // Through bounds, until no trait's or fn's domain parameters grow.
+    loop {
+        let trait_dom = |d: &Decls, tr: TraitId, p: usize| {
+            (d.traits[tr.0].methods.values()).any(|m| {
+                d.domain_params
+                    .get(m)
+                    .is_some_and(|ds| ds.contains(&(p + 1)))
+            })
+        };
+        let mut grew = false;
+        for k in 0..d.fns.len() {
+            let more: Vec<usize> = (d.fns[k].bounds.iter())
+                .flat_map(|(_, r)| {
+                    (r.args.iter().enumerate()).filter_map(move |(p, a)| match a {
+                        Ty::Param(j) => Some((r.tr, p, *j)),
+                        _ => None,
+                    })
+                })
+                .filter(|&(tr, p, _)| trait_dom(d, tr, p))
+                .map(|(_, _, j)| j)
+                .collect();
+            let ds = d.domain_params.entry(FnId(k)).or_default();
+            for j in more {
+                if !ds.contains(&j) {
+                    ds.push(j);
+                    grew = true;
+                }
+            }
+        }
+        if !grew {
+            break;
+        }
+    }
+    d.domain_params.retain(|_, ds| !ds.is_empty());
 }
 
 /// The name a top-level item declares, if it declares one.
@@ -640,6 +716,7 @@ pub fn collect(
                             variants: Vec::new(),
                             errors: Vec::new(),
                             values: Vec::new(),
+                            bounds: Vec::new(),
                         });
                         pending.push((mid, *item, s, Some(Named::Struct(id))));
                     }
@@ -915,6 +992,19 @@ pub fn collect(
                         .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
                         .collect();
                     let n_sets = cx.next_set.unwrap_or(0);
+                    d.structs[id.0].bounds = (sd.bounds.iter())
+                        .filter_map(|b| Some((generics.iter().position(|g| *g == b.name.text)?, b)))
+                        .flat_map(|(i, b)| {
+                            b.traits.iter().filter_map(move |t| match &t.kind {
+                                TypeKind::Named { name, .. } => Some((i, name)),
+                                _ => None,
+                            })
+                        })
+                        .filter_map(|(i, name)| match d.views[mi].get(&name.text) {
+                            Some(Named::Trait(tr)) => Some((i, *tr)),
+                            _ => None,
+                        })
+                        .collect();
                     if d.is_library(mid) {
                         d.structs[id.0].errors.extend(errors);
                     } else {
@@ -923,12 +1013,15 @@ pub fn collect(
                     let mut methods = HashMap::new();
                     for m in &sd.methods {
                         if let StmtKind::Fn(f) = &m.kind {
+                            // The struct's bounds hold in each of its methods (`struct Range<D: Domain>`).
+                            let mut f = f.clone();
+                            f.bounds.splice(0..0, sd.bounds.iter().cloned());
                             let fid = add_fn(
                                 &mut d,
                                 mid,
                                 item,
                                 m,
-                                f,
+                                &f,
                                 Within {
                                     owner: Some(Owner::Struct(id)),
                                     generics: &generics,

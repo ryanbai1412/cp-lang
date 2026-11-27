@@ -112,9 +112,8 @@ impl Cx<'_> {
             }
             return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
         }
-        // Every domain meets `Domain`, and `Int`, its integers its positions (R04.2.18); any
-        // other type by an impl.
-        if Some(r.tr) == self.d.domain_trait && matches!(t, Ty::Dom(_) | Ty::Int) {
+        // Every domain meets `Domain`; any other type by an impl.
+        if Some(r.tr) == self.d.domain_trait && matches!(t, Ty::Dom(_)) {
             return Some(true);
         }
         match t {
@@ -207,6 +206,20 @@ impl Cx<'_> {
             .filter(|(pi, _)| *pi == i)
             .map(|(_, r)| r.clone())
             .collect();
+        let dom = self
+            .d
+            .domain_params
+            .get(&decl)
+            .is_some_and(|ds| ds.contains(&i));
+        if let Some(tr) = self.d.domain_trait.filter(|_| dom) {
+            let r = TraitRef {
+                tr,
+                args: Vec::new(),
+            };
+            if !traits.contains(&r) {
+                traits.push(r);
+            }
+        }
         let mut k = 0;
         while k < traits.len() {
             let r = traits[k].clone();

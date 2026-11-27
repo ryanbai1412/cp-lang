@@ -280,7 +280,6 @@ core-08/generic-for-walks-a-domain-value.cp	wrong-reject	own: program:12:5: E060
 core-08/generic-non-domain-add-needs-bound.cp	wrong-error	wanted E0606 on line 4, got: check: program:4:53: E0302: expected `Int`, found `T`
 core-08/getter-trait-param-through-seq-element.cp	wrong-reject	check: program:13:7: E0302: expected `List<Int>`, found `List<V>`
 core-08/impl-choosing-an-assoc-type-writes-its-default-fns.cp	wrong-error	wanted E0606 on line 10, got: check: program:7:39: E0302: expected `Self.Out`, found `Optional<T>`
-core-08/impl-for-every-domain-beside-int.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
@@ -294,7 +293,6 @@ core-08/self-default-getter-rejects-another-type.cp	wrong-error	wanted E0606 on 
 core-08/seq-supertraits-come-from-std.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/shared-bound-param-agrees.cp	wrong-reject	decls: E0204: unknown trait `Keyed`
 core-08/shared-bound-param-conflict-rejected.cp	wrong-error	wanted E0302 on line 9, got: decls: E0204: unknown trait `Keyed`
-core-08/struct-bound-only-params-bind-from-the-impl.cp	wrong-reject	check: program:13:31: E0203: `S` has no member `get`
 core-08/struct-bound-reaches-method.cp	wrong-reject	check: program:4:25: E0302: expected `Int`, found `T`
 core-08/too-many-type-arguments-are-an-error.cp	wrong-error	wanted E0303 on line 5, got: check: program:5:22: E0302: expected `Q<Int, Int>`, found `Q<Int>`
 core-08/trait-arg-only-impl-params-bind-at-the-call.cp	wrong-reject	check: program:9:25: E0203: `Range<T>` has no member `zero`
@@ -412,6 +410,7 @@ matrix/optional/list_first--while_let_top.cp	wrong-reject	check: program:4:44: E
 next/a_clos_03_list_of_closures_sharing_var.cp	wrong-reject	link: E0603: `new` returns a function that uses a `var` of the fn that made it; the variable is gone by then
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_decl_06_bound_on_struct_param.cp	wrong-reject	check: program:12:28: E0203: `T` has no member `sz`
+next/a_gen_10_tuple_assignment_swap.cp	wrong-reject	check: program:6:1: E0302: this is not a place that can be assigned or lent
 next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `f1` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
 next/a_own_02_nested_closure_returned.cp	wrong-error	wanted E0603 on line 6, got: link: E0603: `make` returns a function that uses a `var` of the fn that made it; the variable is gone by then
@@ -456,6 +455,7 @@ std-geometry/hull-tangents-point-inside-traps.cp	wrong-reject	check: E0204: std.
 std-geometry/hull-tangents-two-point-hull-traps.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/locate-convex-on-vertex-and-edge.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
+std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.geometry:347:53: E0203: `List<Pt>` has no member `pop`
 std-geometry/on-segment-degenerate.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/same-dir-zero-and-opposite.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/segments-meet-collinear.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`

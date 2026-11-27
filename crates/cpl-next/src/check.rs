@@ -505,7 +505,10 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
             },
         };
         let f = d.f(id);
-        if fns.contains_key(&id) || f.intrinsic.is_some() || matches!(f.body, FnBody::None) {
+        // A trait's fn whose body is an intrinsic is checked into that operation on `Self`.
+        let of_trait = matches!(f.owner, Some(Owner::Trait(_)));
+        let lowered_intrinsic = f.intrinsic.is_some() && !of_trait;
+        if fns.contains_key(&id) || lowered_intrinsic || matches!(f.body, FnBody::None) {
             continue;
         }
         if !quiet {
@@ -687,6 +690,25 @@ impl<'a> Cx<'a> {
         self.ret = map_slots(&f.ret, &|k| slots[&(id, k)].clone());
         let ret = self.ret.clone();
         let body = match &f.body {
+            // A trait's fn whose body is an operation on `Self`, as `Domain`'s are.
+            _ if f.intrinsic.is_some() => {
+                let span = Span::new(0, 0);
+                let arg = params.first().map(|&l| TExpr {
+                    kind: TK::Var(VarRef::Local(l)),
+                    ty: Ty::Int,
+                    span,
+                });
+                let op = f.intrinsic.clone().unwrap_or_default();
+                self.domain_op(Ty::Param(0), &op, arg, span)
+                    .unwrap_or_else(|| {
+                        self.err(span, format!("slice: intrinsic `{op}` of a trait"));
+                        TExpr {
+                            kind: TK::Error,
+                            ty: Ty::Error,
+                            span,
+                        }
+                    })
+            }
             FnBody::Block(b) => self.block(b, Some(&ret)),
             // A generator's one expression is the sequence it yields (R07.2.10).
             FnBody::Expr(e) if matches!(f.region, Some((false, _))) => {

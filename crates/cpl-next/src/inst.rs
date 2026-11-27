@@ -506,6 +506,18 @@ impl Link<'_> {
                     _ => Vec::new(),
                 };
                 let d = self.d;
+                // The trait's own fn, with `Self` and the trait's arguments for its parameters:
+                // what an impl leaves to the default, and what a type meeting the trait without
+                // an impl (a domain, for `Domain`) runs.
+                let default = |trait_args: Vec<CTy>| {
+                    (d.traits[tr.0].methods.get(method))
+                        .filter(|&&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
+                        .map(|&tm| InstKey {
+                            func: FuncKey::Decl(tm),
+                            targs: std::iter::once(st.clone()).chain(trait_args).collect(),
+                            sets: Vec::new(),
+                        })
+                };
                 let mut found = None;
                 for im in d.impls_of(*tr) {
                     let mut binds = vec![None; im.generics.len()];
@@ -525,25 +537,18 @@ impl Link<'_> {
                             targs: binds,
                             sets: sets.clone(),
                         }),
-                        // The impl leaves it to the trait's default, with `Self` and the trait's
-                        // arguments for its parameters.
-                        None => (d.traits[tr.0].methods.get(method))
-                            .filter(|&&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
-                            .map(|&tm| {
-                                let env = Env {
-                                    targs: &binds,
-                                    sets: &sets,
-                                };
-                                let mut targs = vec![st.clone()];
-                                targs.extend(im.trait_.args.iter().map(|t| self.ty(t, &env)));
-                                InstKey {
-                                    func: FuncKey::Decl(tm),
-                                    targs,
-                                    sets: Vec::new(),
-                                }
-                            }),
+                        None => {
+                            let env = Env {
+                                targs: &binds,
+                                sets: &sets,
+                            };
+                            default(im.trait_.args.iter().map(|t| self.ty(t, &env)).collect())
+                        }
                     };
                     break;
+                }
+                if found.is_none() && cty_meets(d, &st, *tr) {
+                    found = default(args.iter().map(|t| self.ty(t, env)).collect());
                 }
                 if found.is_none() {
                     self.errors
@@ -1415,7 +1420,7 @@ fn blanket_met(d: &Decls, im: &crate::decls::ImplDecl, binds: &[Option<CTy>]) ->
         || (im.bounds.iter()).all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
 }
 fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
-    if Some(tr) == d.domain_trait && matches!(t, CTy::Dom(_) | CTy::Int) {
+    if Some(tr) == d.domain_trait && matches!(t, CTy::Dom(_)) {
         return true;
     }
     d.impls_of(tr).any(|im| {

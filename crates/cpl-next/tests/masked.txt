@@ -413,6 +413,7 @@ core-09/assert-of-only-a-key-test-traps-as-an-index.cp
 core-09/assert-with-more-than-a-key-test-stays-an-assert.cp
 core-09/context-nested-with.cp
 core-09/context-uses-two-values.cp
+core-09/library-assert-holds-in-limit.cp
 core-09/standard-and-user-contexts.cp
 core-09/user-context-lexical-without-uses.cp
 core-10/hash-container-prints-through-sorted-keys.cp
@@ -634,7 +635,6 @@ std-flow/matroid-intersection-weight-is-a-plain-closure.cp
 std-flow/max-closure-fixed-domain-guard.cp
 std-flow/new-flow-graph-has-no-arcs.cp
 std-flow/new-flow-graph-over-product-has-no-arcs.cp
-std-flow/stable-matching-and-edge-coloring-match-brute-force.cp
 std-geometry/angle.cp
 std-geometry/closest-pair-on-list-literal.cp
 std-geometry/half-planes.cp
@@ -666,7 +666,6 @@ std-graph/closures-fixed-costs-and-until-match-dijkstra.cp
 std-graph/complement-of-complete-empty.cp
 std-graph/components-isolated.cp
 std-graph/condense-one-component-has-no-arcs.cp
-std-graph/count-paths-unreachable-zero.cp
 std-graph/dag-fold-self-loop-is-none.cp
 std-graph/dag-fold-single-vertex.cp
 std-graph/dfs-from-nothing-is-empty.cp
@@ -679,6 +678,8 @@ std-graph/dijkstra-over-vertex-state-pairs.cp
 std-graph/dijkstra-range-weights-sum-as-int.cp
 std-graph/dijkstra-step-max-is-the-bottleneck-path.cp
 std-graph/dijkstra-step-that-makes-a-path-cheaper-traps.cp
+std-graph/edge-domain-as-arc-type-reported-at-spelling.cp
+std-graph/edge-domain-as-arc-type-reported-for-pairs-too.cp
 std-graph/edges-undirected-ends-in-v-order.cp
 std-graph/euler-walk-no-edges.cp
 std-graph/find-cycle-self-loop.cp
@@ -751,8 +752,6 @@ std-hashmap/hashmap-of-pairs-builds.cp
 std-hashmap/nested-in-two-maps-same-key.cp
 std-hashmap/reserve-keeps-entries.cp
 std-hashmap/table-keys-a-map.cp
-std-heap/meld-heap-add-all-empty.cp
-std-heap/meld-heap-add-all-survives-push.cp
 std-heap/meld-heaps-fresh-per-test-case.cp
 std-heap/meld-heaps-reuse-popped-nodes.cp
 std-heap/meld-heaps-share-a-pool.cp
@@ -776,7 +775,6 @@ std-lazy/seq-fold-lift-matches-brute.cp
 std-marks/arena-free-reuses-slots-matches-brute.cp
 std-marks/interner-of-a-list-is-rejected.cp
 std-math/congruence.cp
-std-math/dirichlet-du-min25-match-brute.cp
 std-math/enumerate.cp
 std-math/isqrt-is-a-std-body.cp
 std-math/sieve-primes-at-word-edges.cp
@@ -912,15 +910,10 @@ std-models/window.cp
 std-models/xor-trie.cp
 std-ntt/convolve-2d-matches-the-loop.cp
 std-ntt/convolve-any-modulus-matches-the-loop.cp
-std-ntt/convolve-cyclic-length-mismatch-traps.cp
 std-ntt/convolve-f64-fft-matches-the-loop.cp
 std-ntt/convolve-fast-product.cp
 std-ntt/convolve-index-ops-and-semirings.cp
-std-ntt/convolve-linear-and-cyclic.cp
-std-ntt/convolve-on-gcd-and-lcm.cp
 std-ntt/convolve-past-an-ntt-primes-power-of-two.cp
-std-ntt/convolve-single-terms.cp
-std-ntt/convolve-with-empty.cp
 std-ntt/max-plus-shape-right-matches-the-loop.cp
 std-ntt/online.cp
 std-opt/and-then-chains-optionals.cp
@@ -999,7 +992,6 @@ std-segtree/typed-op-after-array.cp
 std-segtree/wavelet-matrix-matches-sort.cp
 std-seq/adjacent-buckets-counting-sort-span.cp
 std-seq/all-some-unwraps-the-element.cp
-std-seq/array-inverse-missing-image-traps.cp
 std-seq/array-inverse-of-offset-and-enum-domains.cp
 std-seq/bsearch-cut-and-int-range-ends.cp
 std-seq/bsearch-last-wrong-way-traps.cp

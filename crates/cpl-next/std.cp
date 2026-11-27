@@ -266,11 +266,40 @@ trait Neg:
 @positions
 trait Domain:
     /// `D.count`: how many positions it has.
-    fn count() -> Int = @intrinsic("dom_count")
+    @get fn count() -> Int = @intrinsic("dom_count")
     /// `D.nth(k)`: the position `k` steps into its walk; traps past its end (R04.2.9).
     fn nth(k: Int) -> Self = @intrinsic("dom_nth")
     /// `D.at(x)`: the position with integer `x`, or `None` outside it (R04.2.8).
     fn at(x: Int) -> ?Self = @intrinsic("dom_at")
+
+/// `Int` is a domain: its integers are its positions (R04.2.18).
+impl Domain for Int:
+    fn nth(k: Int) -> Int = k
+    fn at(x: Int) -> ?Int = x
+
+/// The numbers' own operators, so `T: Add` holds of them.
+impl Add for Int:
+    fn add(self, other: Int) -> Int = self + other
+impl Sub for Int:
+    fn sub(self, other: Int) -> Int = self - other
+impl Mul for Int:
+    fn mul(self, other: Int) -> Int = self * other
+impl Div for Int:
+    fn div(self, other: Int) -> Int = self / other
+impl Rem for Int:
+    fn rem(self, other: Int) -> Int = self % other
+impl Neg for Int:
+    fn neg(self) -> Int = -self
+impl Add for U64:
+    fn add(self, other: U64) -> U64 = self + other
+impl Sub for U64:
+    fn sub(self, other: U64) -> U64 = self - other
+impl Mul for U64:
+    fn mul(self, other: U64) -> U64 = self * other
+impl Div for U64:
+    fn div(self, other: U64) -> U64 = self / other
+impl Rem for U64:
+    fn rem(self, other: U64) -> U64 = self % other
 
 /// Positions of one domain compare in its walk order (R04.2).
 impl<D: Domain> Eq for D:

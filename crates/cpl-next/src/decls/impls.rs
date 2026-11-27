@@ -56,6 +56,8 @@ impl Decls {
             Ty::Struct(_, _, ss) => ss.clone(),
             _ => Vec::new(),
         };
+        // A value's member has a `self`: `Domain.at(x)` is not `Int`'s `at`.
+        let pick = |f: &FnDecl| f.self_mode != SelfMode::None && pick(f);
         let ordered = (self.impls.iter().filter(|im| !im.blanket()))
             .chain(self.impls.iter().filter(|im| im.blanket()));
         ordered.into_iter().find_map(|im| {
@@ -112,7 +114,7 @@ impl Decls {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
             return true;
         }
-        if Some(tr) == self.domain_trait && matches!(t, Ty::Dom(_) | Ty::Int) {
+        if Some(tr) == self.domain_trait && matches!(t, Ty::Dom(_)) {
             return true;
         }
         (self.impls_of(tr)).any(|im| {

@@ -14,7 +14,8 @@ impl Cx<'_> {
         want: Option<&Ty>,
     ) -> Option<TExpr> {
         if let ExprKind::Name(n) = &base.kind {
-            if let (Some(dty), true) = (self.domain_named(n), self.lookup(n).is_none()) {
+            if let (Some(dty @ Ty::Dom(_)), true) = (self.domain_named(n), self.lookup(n).is_none())
+            {
                 if let Some(e) = self.domain_fn(dty, name, call, span) {
                     return Some(e);
                 }
@@ -61,28 +62,37 @@ impl Cx<'_> {
         let tr = self.d.domain_trait?;
         let &m = self.d.traits[tr.0].methods.get(&name.text)?;
         let op = self.d.f(m).intrinsic.clone()?;
-        let mut int = |a: &ast::Arg| {
-            let x = self.expr(&a.value, Some(&Ty::Int));
-            self.coerce(x, &Ty::Int)
+        let args = match call {
+            None => None,
+            Some([a]) => {
+                let x = self.expr(&a.value, Some(&Ty::Int));
+                Some(self.coerce(x, &Ty::Int))
+            }
+            Some(_) => return None,
         };
-        Some(match (op.as_str(), call) {
+        self.domain_op(dty, &op, args, span)
+    }
+    /// The domain operation `op` of `D`, with its one `Int` argument if it takes one. The body
+    /// of each of `Domain`'s fns that a domain meets without an impl.
+    pub(super) fn domain_op(
+        &mut self,
+        dty: Ty,
+        op: &str,
+        arg: Option<TExpr>,
+        span: Span,
+    ) -> Option<TExpr> {
+        Some(match (op, arg) {
             ("dom_count", None) => TExpr {
                 kind: TK::DomLen(dty),
                 ty: Ty::Int,
                 span,
             },
-            ("dom_nth", Some([k])) => {
-                let k = int(k);
-                TExpr {
-                    kind: TK::DomNth(dty.clone(), Box::new(k)),
-                    ty: dty,
-                    span,
-                }
-            }
-            ("dom_at", Some([x])) => {
-                let x = int(x);
-                self.domain_at(dty, x, span)
-            }
+            ("dom_nth", Some(k)) => TExpr {
+                kind: TK::DomNth(dty.clone(), Box::new(k)),
+                ty: dty,
+                span,
+            },
+            ("dom_at", Some(x)) => self.domain_at(dty, x, span),
             _ => return None,
         })
     }

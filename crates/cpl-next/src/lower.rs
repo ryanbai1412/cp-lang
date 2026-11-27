@@ -523,7 +523,12 @@ impl Lw<'_> {
                 let fd = self.d.f(f.decl);
                 let a = self.args(recv.as_deref(), args, out);
                 let f = &self.lent_targs(f, &a);
-                let call = if let Some(n) = &fd.intrinsic {
+                // A trait's intrinsic fn was checked into a body (`Domain`'s), called as any fn.
+                let inline = fd
+                    .intrinsic
+                    .as_ref()
+                    .filter(|_| !self.typed.fns.contains_key(&f.decl));
+                let call = if let Some(n) = inline {
                     let op = Intr::named(n).unwrap_or_else(|| {
                         self.errors.push(format!("slice: intrinsic `{n}`").into());
                         Intr::RawGet
