@@ -1418,6 +1418,32 @@ def next_ownership_outside_own(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if (m := NEXT_OWN_DECIDERS_RE.match(l))]
 
 
+NEXT_OWNS_READ_RE = re.compile(r"\bowns\(|\.owns\[")
+# Code that turns IR into execution: where a read of "does this layout own" places a drop or retain.
+NEXT_PLACERS = ("crates/cpl-next-engine/src/compile.rs", "crates/cpl-next-cpp/src", "crates/cpl-next-interp/src",
+                "crates/cpl-next-lower/src", "crates/cpl-next-link/src")
+
+
+def next_backend_owns_reads(root: Path) -> list[str]:
+    """Reads of whether a layout owns (`lays.owns[..]`, `owns(ty)`) in code that turns IR into
+    execution: each one is a drop or retain placed by the backend rather than read from an
+    ownership node (contract 04). Running a `Drop`/`Copy` op (engine exec.rs), computing layouts
+    and the optimizer over placed ops are not placers. Counts reads, not fn names, so a rename
+    cannot pay it off. 0 is every drop and copy an IR node from cpl-next-own."""
+    out = []
+    for d in NEXT_PLACERS:
+        q = root / d
+        files = [q] if q.is_file() else _rs_files(root, d, tests=False) if q.is_dir() else []
+        for f in files:
+            for i, l in enumerate(_lines(f), 1):
+                t = l.lstrip()
+                if t.startswith("//") or re.match(r"(pub(\([^)]*\))?\s+)?fn\s+owns\(", t):
+                    continue
+                if NEXT_OWNS_READ_RE.search(l):
+                    out.append(f"{_rel(root, f)}:{i}")
+    return out
+
+
 FAST_TYPES = ("Int", "U64")
 
 
@@ -3791,6 +3817,7 @@ COUNTERS = {
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
+    "next_backend_owns_reads": ("new-pipeline backend reads of whether a layout owns, placing a drop or retain (Core)", next_backend_owns_reads, True),
     "fast_unchecked": ("std @fast fns whose op no test compares with their CP body (Core)", fast_unchecked, True),
     "next_lent_outside_own": ("new-pipeline places after the checker, outside cpl-next-own, making a type lent (Core)", next_lent_outside_own, True),
     "next_asks_refused": ("conformance cases refused for a header the new harness does not judge (Core)", next_asks_refused, True),

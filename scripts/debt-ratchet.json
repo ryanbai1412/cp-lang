@@ -323,6 +323,7 @@
   "next_ownership_outside_own": 3,
   "fast_unchecked": 0,
   "next_lent_outside_own": 4,
+  "next_backend_owns_reads": 7,
   "next_asks_refused": 18,
   "next_layer_foreign_deps": 1,
   "next_std_unchecked": 41,
