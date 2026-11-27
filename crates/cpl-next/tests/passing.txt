@@ -1828,6 +1828,7 @@ next/n_range_literal_cut_past.cp
 next/n_range_literal_positions.cp
 next/n_range_type_key.cp
 next/n_range_type_key_traps.cp
+next/n_ranged_receiver_01_a_method_is_its_receivers_own.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_read_02_read_line_takes_the_rest_of_the_line.cp
 next/n_read_03_read_is_an_ordinary_fn_over_read.cp

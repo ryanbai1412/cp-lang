@@ -677,7 +677,7 @@ impl<'a> Cx<'a> {
     /// `read<T>(from: s) -> ?T` does.
     pub(super) fn made_optional(&self, fd: &decls::FnDecl) -> Option<usize> {
         match self.optional_of(&fd.ret)? {
-            Ty::Param(i) if !fd.params.iter().any(|p| mentions(&p.ty, i)) => Some(i),
+            Ty::Param(i) if !takes(fd, i) => Some(i),
             _ => None,
         }
     }
@@ -1139,9 +1139,16 @@ pub(super) fn mentions(t: &Ty, i: usize) -> bool {
 /// so the fn builds the value rather than passing one through.
 pub(super) fn made_param(fd: &decls::FnDecl) -> Option<usize> {
     match fd.ret {
-        Ty::Param(i) if !fd.params.iter().any(|p| mentions(&p.ty, i)) => Some(i),
+        Ty::Param(i) if !takes(fd, i) => Some(i),
         _ => None,
     }
+}
+
+/// Whether fn `fd` takes type parameter `i` in a parameter or its receiver: then a call's `i`
+/// is what it is given, not made by the fn, so `List<0..=9>.pop()` is that list's own.
+fn takes(fd: &decls::FnDecl, i: usize) -> bool {
+    (fd.params.iter()).any(|p| mentions(&p.ty, i))
+        || fd.self_ty.as_ref().is_some_and(|s| mentions(s, i))
 }
 
 /// `t` has no variable or error left in it.
