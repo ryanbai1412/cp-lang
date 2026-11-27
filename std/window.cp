@@ -21,7 +21,7 @@ use std.seq.{Track, Indexed, collect}
 /// traps: when `k < 1`
 /// example: `[3, 1, 4, 1, 5].window_fold(2, max).collect() == [3, 4, 4, 5]`
 /// example: `[1, 2, 3].window_fold(2, +).collect() == [3, 5]`
-pub fn window_fold<S: Indexed, T, M>(self: S, k: 1.., op: M) -> yields T:
+pub fn window_fold<S: Indexed, T, M: Op<T>>(self: S, k: 1.., op: M) -> yields T:
     assert k >= 1, "a window holds at least one element"
     var w = Window<T, M>.new(op)
     for i in 0..self.len:
@@ -33,7 +33,7 @@ pub fn window_fold<S: Indexed, T, M>(self: S, k: 1.., op: M) -> yields T:
 /// `all` is `None` when empty for every op today. `SegTree` already folds an empty bounded
 /// `max`/`min` to `T.MIN`/`T.MAX` (decision 602); `Window` takes the same rule when `all` becomes
 /// `M.Fold`, and `Window(max.opt())` is the fold that stays `None` when empty.
-pub struct Window<T, M>(op: M):
+pub struct Window<T, M: Op<T>>(op: M):
     q: List<T>
     front: List<T>
     olds: List<T>
@@ -110,7 +110,7 @@ pub struct Window<T, M>(op: M):
     @get pub fn all(self) -> ?T:
         if front.len == 0: return back
         let f = front.last!
-        if let b = back: return Some(op(f, b))
+        if let b = back: return Some(op.op(f, b))
         Some(f)
 
     /// The number of elements in the window: pushes minus pops.
@@ -141,7 +141,7 @@ pub struct Window<T, M>(op: M):
 
     fn push_back(mut self, x: T):
         q.push(x)
-        if let b = back: back = Some(op(b, x))
+        if let b = back: back = Some(op.op(b, x))
         else: back = Some(x)
 
     fn flip(mut self):
@@ -150,7 +150,7 @@ pub struct Window<T, M>(op: M):
         front.push(acc)
         while k > 0:
             k -= 1
-            acc = op(q[k], acc)
+            acc = op.op(q[k], acc)
             front.push(acc)
         olds.clear()
         swap(mut olds, mut q)

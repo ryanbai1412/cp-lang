@@ -495,7 +495,7 @@ Laws: `Heap.of(xs)` pops elements in the exact order of `sorted(xs)`;
 ```cp
 // Existing: Deque<T> (add set(mut self, i: Int, x: T) and to_list(self) -> List<T>)
 // The queue monoid fold is std.window's `Window(op)` (sliding min/max, §8 of ops-ranges):
-struct Window<T, M>(op: M)         // O(1) amortized queue monoid fold, two stacks
+struct Window<T, M: Op<T>>(op: M)  // O(1) amortized queue monoid fold, two stacks
     fn new(op: M) -> Window<T, M>  // op is a Monoid or bare op
     @get fn len(self) -> Int       // O(1)
     fn push(mut self, x: T)        // O(1)
