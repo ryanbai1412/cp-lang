@@ -100,6 +100,9 @@ impl<'a> Cx<'a> {
     }
     /// `x in s` as `s`'s core `@operator("in")` trait fn, `contains(x)` (R12.4.7).
     fn membership(&mut self, x: TExpr, s: TExpr, span: Span) -> TExpr {
+        if self.is_error(&x.ty) || self.is_error(&s.ty) {
+            return Self::error_node(span);
+        }
         let found = (self.d.operators.iter().filter(|(o, _)| o == "in")).find_map(|(_, tr)| {
             let (n, &m) = self.d.traits[tr.0].methods.iter().next()?;
             Some((*tr, n.clone(), m))

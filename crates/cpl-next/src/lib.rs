@@ -618,11 +618,11 @@ mod tests {
         ] {
             assert!(verdict.contains(part), "{part} in {verdict}");
         }
-        let refusal = &json("let xs = [1]\nprint(3 in xs)\n")[0];
+        let refusal = &json("mod m:\n    pub fn f() -> Int = 1\nprint(m.f())\n")[0];
         for part in [
             r#""code":"E0501""#,
-            r#""refusal":"Membership""#,
-            r#""text":"check: program:2:7: slice: "#,
+            r#""refusal":"Statement""#,
+            r#""text":"check: program:1:1: slice: "#,
         ] {
             assert!(refusal.contains(part), "{part} in {refusal}");
         }
@@ -726,16 +726,13 @@ mod tests {
         assert_eq!(verdicts, Vec::<String>::new());
     }
 
-    /// `in`, not built, is that one refusal: its operands are not checked as one type.
+    /// `in` with an operand that is the error is the error, as `binary` is.
     #[test]
-    fn a_refused_in_says_nothing_of_its_operands() {
-        let ds: Vec<String> = (diags("let b = 3 in [1, 2]\n").iter())
+    fn in_beside_an_error_says_nothing_more() {
+        let ds: Vec<String> = (diags("let b = nope(3) in [1, 2]\nprint(b)\n").iter())
             .map(|d| d.to_string())
             .collect();
-        assert_eq!(
-            ds,
-            ["check: program:1:9: slice: comparison of this type is not supported"]
-        );
+        assert_eq!(ds, ["check: program:1:9: E0201: unknown name `nope`"]);
     }
 
     /// A lowered fn's locals keep their source names, so what reads the IR can name them.
