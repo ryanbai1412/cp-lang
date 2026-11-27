@@ -1049,6 +1049,7 @@ next/n_bound_02_for_walks_through_the_bound.cp
 next/n_cascade_01_member_of_an_error.cp
 next/n_cascade_02_method_of_an_error.cp
 next/n_cascade_03_type_built_from_an_error.cp
+next/n_cascade_04_index_by_an_error.cp
 next/n_cell_01_indexed_mut_bound.cp
 next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp

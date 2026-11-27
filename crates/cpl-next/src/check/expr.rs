@@ -1319,6 +1319,9 @@ impl<'a> Cx<'a> {
                     _ => None,
                 };
                 let i = self.expr(&indices[0], Some(want.as_ref().unwrap_or(&Ty::Int)));
+                if self.is_error(&i.ty) {
+                    return Self::error_node(span);
+                }
                 if let Some(f) = self.index_fn(&b.ty, &i.ty) {
                     self.index_call(f, b, i, span)
                 } else {
