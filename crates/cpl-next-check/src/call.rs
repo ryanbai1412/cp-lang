@@ -1,5 +1,5 @@
 //! A call of a name: a fn, a type's constructor, a conversion, or an alias of a type (R02.6.3).
-use super::expr::block;
+use super::expr::{block, pure, Formal};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
@@ -211,5 +211,337 @@ impl Cx<'_> {
             let ty = v.ty.clone();
             mk(TK::Block(pre, Some(Box::new(v))), ty)
         }
+    }
+    /// How a method takes its receiver: a `mut self` (or a cache it fills) needs a place.
+    /// A method call; a getter with nothing to pass is read like a field, so `()` after it calls
+    /// what it reads (R01.8.7, R02.6.6).
+    pub(super) fn call_method(
+        &mut self,
+        f: FnRef,
+        recv: TArg,
+        getter: bool,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+        want: Option<&Ty>,
+    ) -> TExpr {
+        match call {
+            Some(args) if getter => {
+                let v = self.call_fn(f, Some(recv), &[], span, None);
+                self.call_value(v, args, span)
+            }
+            _ => self.call_fn(f, Some(recv), call.unwrap_or(&[]), span, want),
+        }
+    }
+    /// The receiver of a method that changes it, lent `mut`: never a `let` binding (R05.4.2).
+    pub(super) fn mut_recv(&mut self, recv: TExpr, span: Span) -> TArg {
+        if let Some(name) = self.let_root(&recv) {
+            self.err(
+                span,
+                Msg::verdict(cpl_diag::codes::MUT_OF_IMMUTABLE, format!("`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`")),
+            );
+        }
+        TArg::Mut(recv)
+    }
+    pub(super) fn recv_arg(&mut self, m: FnId, recv: TExpr, span: Span) -> TArg {
+        let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
+        if self.d.f(m).self_mode == SelfMode::Mut {
+            if !place && !self.is_error(&recv.ty) {
+                self.err(
+                    span,
+                    Msg::verdict(
+                        cpl_diag::codes::MUT_OF_IMMUTABLE,
+                        "a `mut self` method needs a place",
+                    ),
+                );
+            }
+            self.mut_recv(recv, span)
+        } else if self.d.writes_cache(m) && place {
+            TArg::Mut(recv)
+        } else {
+            TArg::Value(recv)
+        }
+    }
+    /// `@same_keys`: arrays over two different domains are not paired by position (R04b.1.3).
+    fn same_keys(&mut self, args: &[TArg], span: Span) {
+        let mut first: Option<usize> = None;
+        for a in args {
+            let (TArg::Value(e) | TArg::Mut(e)) = a;
+            let Ty::Struct(d, ts, _) = self.shallow(&e.ty) else {
+                continue;
+            };
+            let index = if Some(d) == self.array_id() {
+                self.shallow(&ts[0])
+            } else {
+                Ty::Error
+            };
+            let Ty::Dom(i) = index else {
+                continue;
+            };
+            match first {
+                None => first = Some(i),
+                Some(f) if self.domains[f].name != self.domains[i].name || f != i => {
+                    let (a, b) = (self.domains[f].name.clone(), self.domains[i].name.clone());
+                    self.err(
+                        span,
+                        Msg::verdict(cpl_diag::codes::WRONG_DOMAIN, format!("an array over `{b}` is paired with one over `{a}`: their positions are unrelated")),
+                    );
+                    return;
+                }
+                Some(_) => {}
+            }
+        }
+    }
+    pub(super) fn call_fn(
+        &mut self,
+        f: FnRef,
+        recv: Option<TArg>,
+        args: &[ast::Arg],
+        span: Span,
+        want: Option<&Ty>,
+    ) -> TExpr {
+        let fd = self.d.f(f.decl);
+        // A call of a fn refused as declared is downstream of that refusal: it is the error.
+        if (fd.errors.iter()).any(|e| e.refusal.is_some()) {
+            return Self::error_node(span);
+        }
+        let sub = Subst {
+            tys: &f.targs,
+            sets: &f.sets,
+        };
+        // The expected type fixes type arguments the arguments cannot: `let xs: List<Int> = List.new()`.
+        let ty = self.ret_ty(&f);
+        if let Some(w) = want {
+            let orig = self.shallow(w);
+            // A slot of a range with ends known as the program runs, alone or a tuple's part,
+            // takes an `Int` and checks it as it is stored (R03.1.4); one with constant ends is
+            // the type argument (`ranged_targ`).
+            let made = super::unify::made_param(fd).is_some();
+            let w = (made && self.runtime_ranged(w))
+                .then(|| self.int_parts(w))
+                .flatten()
+                .unwrap_or_else(|| w.clone());
+            match self.shallow(&w) {
+                Ty::Struct(..) | Ty::Raw(_)
+                    if matches!(fd.ret, Ty::Struct(..) | Ty::Param(_) | Ty::Raw(_)) =>
+                {
+                    self.unify(&ty, &w);
+                }
+                Ty::Range(..) if made => {
+                    self.unify(&ty, &w);
+                }
+                _ if matches!(orig, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..))
+                    && matches!(fd.ret, Ty::Param(_)) =>
+                {
+                    self.unify(&ty, &Ty::Int);
+                }
+                _ => {}
+            }
+        }
+        let mut formals = self.formals(&sub, fd);
+        for p in &mut formals {
+            p.ty = self.fresh_sets(&p.ty);
+        }
+        // The core file stands in for std until std's own `List` and `Str` load (stage 4):
+        // a call std's signature takes but the stand-in's does not is not built, not an error.
+        let variadic = formals.iter().any(|f| f.variadic);
+        if fd.module == decls::CORE && args.len() > formals.len() && !variadic {
+            self.err(
+                span,
+                Unbuilt::CoreStandInArity {
+                    name: fd.name.clone(),
+                    given: args.len(),
+                    takes: formals.len(),
+                },
+            );
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
+        }
+        let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
+        let unbuilt = held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none());
+        if unbuilt {
+            self.err(
+                span,
+                Unbuilt::GeneratorAsValue {
+                    name: fd.name.clone(),
+                },
+            );
+        }
+        self.oblige(&f, span);
+        self.solve(false);
+        let seen = self.errors.len();
+        let (mut pre, args) = self.args(args, &formals, span);
+        // A call its arguments do not fit was diagnosed there, and one not built is refused:
+        // its value is the error, and the bounds its type arguments would have met are not asked.
+        if unbuilt || self.errors.len() > seen {
+            self.obligations.retain(|o| o.2 != span);
+            return Self::error_node(span);
+        }
+        self.solve(false);
+        if fd.same_keys {
+            self.same_keys(&args, span);
+        }
+        let recv = match recv {
+            Some(TArg::Value(r)) if !pre.is_empty() && !pure(&r) => {
+                let tmp = self.bind("$recv", r.ty.clone());
+                let read = TExpr {
+                    kind: TK::Var(tmp),
+                    ty: r.ty.clone(),
+                    span: r.span,
+                };
+                pre.insert(0, TStmt::Let(tmp, r));
+                Some(TArg::Value(read))
+            }
+            r => r,
+        };
+        let call = TExpr {
+            kind: TK::Call {
+                f,
+                recv: recv.map(Box::new),
+                args,
+            },
+            ty,
+            span,
+        };
+        if held && self.d.recipe.is_some() {
+            return self.recipe(pre, call);
+        }
+        block(pre, call)
+    }
+    /// `recv.name(args)` of a trait bound on the type parameter `recv` is.
+    pub(super) fn bound_call(
+        &mut self,
+        p: usize,
+        recv: TExpr,
+        name: &str,
+        args: Vec<TArg>,
+        span: Span,
+    ) -> TExpr {
+        for tr in &self.bound_traits(p) {
+            let Some(m) = self.d.traits[tr.tr.0].methods.get(name).copied() else {
+                continue;
+            };
+            // A lender is called only where its place is used (`for`, an assignment): elsewhere
+            // the bound's reading fn of that name is meant (`IndexedMut.at` vs `Indexed.at`).
+            if self.d.f(m).region.is_some() && !self.allow_region {
+                continue;
+            }
+            self.reach(m);
+            let mut tys = vec![recv.ty.clone()];
+            tys.extend(tr.args.iter().cloned());
+            let ret = self.trait_ret(m, tys);
+            return TExpr {
+                kind: TK::CallTrait {
+                    tr: tr.clone(),
+                    method: name.to_string(),
+                    self_ty: Box::new(recv.ty.clone()),
+                    targs: Box::default(),
+                    recv: Some(Box::new(TArg::Value(recv))),
+                    args,
+                },
+                ty: ret,
+                span,
+            };
+        }
+        let shown = self.show(&recv.ty);
+        self.err(
+            span,
+            Msg::verdict(
+                cpl_diag::codes::UNKNOWN_FIELD,
+                format!("`{shown}` has no `{name}`"),
+            ),
+        );
+        TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        }
+    }
+    pub(super) fn call_value(&mut self, callee: TExpr, args: &[ast::Arg], span: Span) -> TExpr {
+        let (ps, r) = match self.shallow(&callee.ty) {
+            Ty::Fn(ps, r, _) => (ps, *r),
+            Ty::Clo(c) => self.clo_sig(&c),
+            Ty::Error => {
+                return TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span,
+                };
+            }
+            t => {
+                self.err(
+                    span,
+                    Msg::verdict(
+                        cpl_diag::codes::NOT_CALLABLE,
+                        format!("`{}` cannot be called", self.show(&t)),
+                    ),
+                );
+                return TExpr {
+                    kind: TK::Error,
+                    ty: Ty::Error,
+                    span,
+                };
+            }
+        };
+        let sig = match self.shallow(&callee.ty) {
+            Ty::Clo(c) => match &*c {
+                CloRef::Lambda(id, ..) => self.lambdas[id.0].written.clone(),
+                CloRef::Item(_) => Vec::new(),
+            },
+            _ => Vec::new(),
+        };
+        // A fn item's value is the item: a call through it binds as a direct call does, its
+        // defaults and variadic tail included (R06.1.5).
+        let item = match self.shallow(&callee.ty) {
+            Ty::Clo(c) => match *c {
+                CloRef::Item(f) => Some(f),
+                CloRef::Lambda(..) => None,
+            },
+            _ => None,
+        };
+        let d = self.d;
+        let formals: Vec<Formal> = match &item {
+            Some(f) if (d.f(f.decl).params.iter()).any(|p| p.variadic || p.default.is_some()) => {
+                let sub = Subst {
+                    tys: &f.targs,
+                    sets: &f.sets,
+                };
+                self.formals(&sub, d.f(f.decl))
+            }
+            _ => (ps.into_iter().enumerate())
+                .map(|(k, ty)| {
+                    let (ty, mutable) = match ty {
+                        Ty::Mut(t) => (*t, true),
+                        t => (t, false),
+                    };
+                    Formal {
+                        label: "",
+                        name: sig.get(k).map_or("", |s| s.0.as_str()),
+                        written: sig.get(k).and_then(|s| s.1.as_ref()),
+                        ty,
+                        mutable,
+                        named_only: false,
+                        variadic: false,
+                        default: None,
+                    }
+                })
+                .collect(),
+        };
+        let seen = self.errors.len();
+        let (pre, args) = self.args(args, &formals, span);
+        if self.errors.len() > seen {
+            return Self::error_node(span);
+        }
+        let call = TExpr {
+            kind: TK::CallValue {
+                callee: Box::new(callee),
+                args,
+            },
+            ty: r,
+            span,
+        };
+        block(pre, call)
     }
 }
