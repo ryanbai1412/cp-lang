@@ -1189,20 +1189,31 @@ impl Walk<'_> {
                 let hit = |a: &BTreeSet<Pl>, b: &BTreeSet<Pl>| {
                     a.iter().find(|p| b.iter().any(|q| overlap(p, q))).cloned()
                 };
+                // A lender lends its cell once, for the body; a generator lends for every turn.
+                let (span, user) = match lend {
+                    true => ("while its cell is in use", "this"),
+                    false => ("for the whole loop", "the loop body"),
+                };
                 if let Some(p) = hit(&held, &inner.writes) {
                     let n = self.root_name(p.root);
+                    let at = match lend {
+                        true => self.first_use(body, p.root).unwrap_or(*body_site),
+                        false => *body_site,
+                    };
                     self.err(
-                        *body_site,
+                        at,
                         codes::USED_WHILE_LENT,
-                        format!(
-                            "{n} is lent to {who} for the whole loop, and the loop body writes it"
-                        ),
+                        format!("{n} is lent to {who} {span}, and {user} writes it"),
                     );
                 }
                 if let Some(p) = hit(&lent, &inner.writes).or_else(|| hit(&lent, &inner.reads)) {
                     let n = self.root_name(p.root);
                     let at = self.first_use(body, p.root).unwrap_or(*body_site);
-                    self.err(at, codes::USED_WHILE_LENT, format!("{n} is lent to {who} for writing for the whole loop, and the loop body uses it"));
+                    self.err(
+                        at,
+                        codes::USED_WHILE_LENT,
+                        format!("{n} is lent to {who} for writing {span}, and {user} uses it"),
+                    );
                 }
                 fx.add(&inner);
             }
