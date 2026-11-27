@@ -49,7 +49,11 @@ struct Ran {
     stderr: String,
 }
 
-fn run(mut cmd: Command, input: &[u8]) -> Ran {
+fn run(cmd: Command, input: &[u8]) -> Ran {
+    run_within(cmd, input, LIMIT)
+}
+
+fn run_within(mut cmd: Command, input: &[u8], limit: Duration) -> Ran {
     let mut child = cmd
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -68,7 +72,7 @@ fn run(mut cmd: Command, input: &[u8]) -> Ran {
     };
     let (out, err) = (read(Box::new(out)), read(Box::new(err)));
     let mut exit = cpl_wait::on_exit(child);
-    let status = match exit.within(LIMIT).expect("waiting works") {
+    let status = match exit.within(limit).expect("waiting works") {
         Some(s) => Some(s.code().unwrap_or(-1)),
         None => {
             let _ = exit.kill();
@@ -86,6 +90,141 @@ fn next(path: &Path, flags: &[&str], input: &[u8]) -> Ran {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl-next"));
     cmd.arg(path).args(flags);
     run(cmd, input)
+}
+
+/// A case's runs from one `cpl-next --all` process, which compiles it once and runs every
+/// form in turn, each within what [`LIMIT`] leaves after the compile, as a process of its own
+/// would. A run it did not finish (a crash, the limit) is run again alone, so sharing the
+/// compile never changes what a run gives.
+struct Forms<'a> {
+    dir: PathBuf,
+    path: &'a Path,
+    input: &'a [u8],
+    /// The `--all` process itself: what it printed when the compile rejected or refused.
+    compiled: Ran,
+}
+
+impl<'a> Forms<'a> {
+    fn new(path: &'a Path, input: &'a [u8]) -> Self {
+        static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
+            .join("forms")
+            .join(format!("{}-{n}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("the forms directory is made");
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl-next"));
+        cmd.arg(path)
+            .arg("--trace")
+            .arg("--all")
+            .arg(&dir)
+            .args(["--within", &LIMIT.as_millis().to_string()]);
+        // Three runs, each stopped by the process at the limit, and the C++.
+        let compiled = run_within(cmd, input, 4 * LIMIT);
+        Forms {
+            dir,
+            path,
+            input,
+            compiled,
+        }
+    }
+
+    fn read(&self, name: &str) -> Option<String> {
+        std::fs::read_to_string(self.dir.join(name)).ok()
+    }
+
+    fn form(&self, name: &str, flags: &[&str]) -> Ran {
+        let kept = |x: &str| self.read(&format!("{name}.{x}"));
+        match (kept("code"), kept("out"), kept("err")) {
+            (Some(code), Some(stdout), Some(stderr)) => Ran {
+                status: code.parse().ok(),
+                stdout,
+                stderr,
+            },
+            _ => next(self.path, flags, self.input),
+        }
+    }
+
+    /// The raw run, or the compile's diagnostics when it rejected or refused the case.
+    fn raw(&self) -> Ran {
+        match self.compiled.status {
+            Some(1 | 4) if self.read("raw.code").is_none() => Ran {
+                status: self.compiled.status,
+                stdout: self.compiled.stdout.clone(),
+                stderr: self.compiled.stderr.clone(),
+            },
+            _ => self.form("raw", &["--raw", "--trace"]),
+        }
+    }
+
+    fn cpp(&self) -> String {
+        match self.read("c++") {
+            Some(cpp) => cpp,
+            None => next(self.path, &["--cpp", "--trace"], b"").stdout,
+        }
+    }
+}
+
+impl Drop for Forms<'_> {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.dir);
+    }
+}
+
+/// FNV-1a, as the build cache keys by.
+fn fnv(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |h: u64, b| {
+        (h ^ u64::from(*b)).wrapping_mul(0x0000_0100_0000_01b3)
+    })
+}
+
+/// `bin` run on `input`, or the same run kept from before: the same binary bytes on the same
+/// input give the same run. Kept under `target/cpl-next/runs` by a hash of both, with the
+/// input itself, compared before a hit; written under a name of its own and renamed, so
+/// concurrent suites never read half a run. A run killed at the limit is not kept.
+fn run_kept(bin: &Path, input: &[u8]) -> Ran {
+    let runs = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/cpl-next/runs");
+    let binary = std::fs::read(bin).expect("the built binary is readable");
+    let kept = runs.join(format!("{:016x}-{:016x}", fnv(&binary), fnv(input)));
+    if let Some(ran) = std::fs::read(&kept).ok().and_then(|b| unkeep(&b, input)) {
+        return ran;
+    }
+    let ran = run(Command::new(bin), input);
+    if let Some(code) = ran.status {
+        let mut b = format!("{code} {} {}\n", input.len(), ran.stdout.len()).into_bytes();
+        b.extend_from_slice(input);
+        b.extend_from_slice(ran.stdout.as_bytes());
+        b.extend_from_slice(ran.stderr.as_bytes());
+        let tmp = runs.join(format!(
+            "{}.{}.{:?}",
+            kept.file_name().unwrap().to_str().unwrap(),
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = std::fs::create_dir_all(&runs)
+            .and_then(|()| std::fs::write(&tmp, &b))
+            .and_then(|()| std::fs::rename(&tmp, &kept));
+    }
+    ran
+}
+
+/// A kept run, if it was kept for this input.
+fn unkeep(b: &[u8], input: &[u8]) -> Option<Ran> {
+    let end = b.iter().position(|&c| c == b'\n')?;
+    let head = std::str::from_utf8(&b[..end]).ok()?;
+    let mut nums = head.split(' ');
+    let code = nums.next()?.parse().ok()?;
+    let (inl, outl): (usize, usize) = (nums.next()?.parse().ok()?, nums.next()?.parse().ok()?);
+    let rest = &b[end + 1..];
+    if rest.get(..inl)? != input {
+        return None;
+    }
+    let out = rest.get(inl..inl + outl)?;
+    let err = &rest[inl + outl..];
+    Some(Ran {
+        status: Some(code),
+        stdout: String::from_utf8(out.to_vec()).ok()?,
+        stderr: String::from_utf8(err.to_vec()).ok()?,
+    })
 }
 
 /// Header keys that ask for something this harness does not do yet (a judge profile, a command run before the tool, a copy count, text the output must or must not
@@ -224,11 +363,11 @@ fn beside_its_files(path: &Path, text: &str) -> Result<Option<PathBuf>, String> 
 /// The verdict on the `// expect:` line alone, and what the run that decided it printed.
 fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, String, String) {
     let input = header_input(text);
-    let flags: &[&str] = match ask {
-        Ask::Run => &["--raw", "--trace"],
-        Ask::Check => &["--check"],
+    let forms = (ask == Ask::Run).then(|| Forms::new(path, &input));
+    let raw = match &forms {
+        Some(forms) => forms.raw(),
+        None => next(path, &["--check"], &input),
     };
-    let raw = next(path, flags, &input);
     let first = |s: &str| s.lines().next().unwrap_or("").to_string();
     let done = |v: &'static str, d: String| (v, d, String::new());
     match raw.status {
@@ -282,7 +421,8 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
         Expect::Ok | Expect::Exit(0) if ask != Ask::Run => return pass(),
         _ => {}
     }
-    let canon = next(path, &["--trace"], &input);
+    let forms = forms.unwrap_or_else(|| Forms::new(path, &input));
+    let canon = forms.form("canonical", &["--trace"]);
     let same =
         |a: &Ran, b: &Ran| a.status == b.status && a.stdout == b.stdout && a.stderr == b.stderr;
     if !same(&raw, &canon) {
@@ -295,7 +435,7 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
             ),
         );
     }
-    let engine = next(path, &["--engine", "--trace"], &input);
+    let engine = forms.form("engine", &["--engine", "--trace"]);
     if !same(&canon, &engine) {
         return done(
             "split",
@@ -307,12 +447,12 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
             ),
         );
     }
-    let cpp = next(path, &["--cpp", "--trace"], b"");
-    let bin = match cxx::build(cpp.stdout.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat()) {
+    let cpp = forms.cpp();
+    let bin = match cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat()) {
         Ok((bin, _)) => bin,
         Err(e) => return done("no-cxx", e.lines().take(4).collect::<Vec<_>>().join(" | ")),
     };
-    let built = run(Command::new(bin), &input);
+    let built = run_kept(&bin, &input);
     if !same(&raw, &built) {
         return done(
             "split",
@@ -376,6 +516,39 @@ fn list(path: &Path) -> BTreeMap<String, String> {
             None => (l.to_string(), String::new()),
         })
         .collect()
+}
+
+/// A kept build or run is never returned for other bytes: changed C++ is built again, a
+/// kept C++ that differs from the one asked for is rebuilt, and a binary that changed under
+/// the same name is run again.
+#[test]
+fn a_kept_build_or_run_is_never_stale() {
+    let flags = ["-x", "c++"];
+    let say = |word: &str| {
+        format!(
+            "#include <cstdio>\nint main() {{ std::puts(\"{word}\"); }}\n// {}\n",
+            std::process::id()
+        )
+    };
+    let (one, two) = (say("one"), say("two"));
+    let built = |cpp: &str| cxx::build(cpp.as_bytes(), &flags).expect("g++ builds it").0;
+    let printed = |bin: &Path| run_kept(bin, b"").stdout;
+    let first = built(&one);
+    assert_eq!(printed(&first), "one\n");
+    let second = built(&two);
+    assert_ne!(first, second);
+    assert_eq!(printed(&second), "two\n");
+
+    std::fs::copy(&second, &first).unwrap();
+    assert_eq!(
+        printed(&first),
+        "two\n",
+        "a run kept for other binary bytes"
+    );
+
+    std::fs::write(first.with_extension("cpp"), &two).unwrap();
+    assert_eq!(built(&one), first);
+    assert_eq!(printed(&first), "one\n", "a build kept for other C++");
 }
 
 #[test]
