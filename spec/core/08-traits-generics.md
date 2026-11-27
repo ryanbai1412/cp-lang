@@ -81,7 +81,7 @@ impl Ord for Frac:
   To give a type its own cost, override the trait method instead
   (decision 486). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
-  `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,
+  `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `By`, `Ord`, `Eq`, `Hash`,
   `Show`, `Read`, `Unwrap`). `Eq<Rhs = Self>` and `Ord<Rhs = Self>` take
   the right side's type the way `Add` does, so `impl Eq for X` is
   `Eq<X>` and `a == b` with `b` of another type needs an

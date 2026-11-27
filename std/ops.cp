@@ -1,4 +1,4 @@
-//! The traits that give `==`, `<`, `+`, `-`, `*`, `/`, `%`, `-a`, `^`, `|`, `&` and `in` their
+//! The traits that give `==`, `<`, `+`, `-`, `*`, `/`, `%`, `-a`, `^`, `|`, `&`, `in` and `by` their
 //! meaning (R08.1.5), `T.zero` and `T.one`, and the numbers' own impls of them. Core re-exports
 //! them, so no module imports them.
 //!
@@ -56,6 +56,12 @@ pub trait BitAnd<Rhs = Self>:
 @operator("in")
 pub trait Contains<T>:
     fn contains(self, x: T) -> Bool
+
+/// `w by k`: every `k`-th value of a walk that is not a range literal, from its first, as a walk
+/// of the same type (R01.8.4); `(0..10).rev by 3` is `9, 6, 3, 0`.
+@operator("by")
+pub trait By<Rhs = Int>:
+    fn by(self, k: Rhs) -> Self
 
 /// The numbers' own operators, so `T: Add` holds of them.
 /// `T.zero`: the identity of `T`'s `+`, where a sum starts (R08.1.5).

@@ -109,6 +109,20 @@ impl<'a> Cx<'a> {
         };
         applies.then_some(found)
     }
+    /// `w by k` on a walk that is not a range literal: `w`'s `@operator("by")` trait fn, whose
+    /// result is a walk of `w`'s type (R01.8.4).
+    fn step_walk(&mut self, walk: &ast::Expr, step: &ast::Expr, span: Span) -> TExpr {
+        let w = self.expr_as_typed(walk, None);
+        if self.is_error(&w.ty) {
+            return Self::error_node(span);
+        }
+        let Some(found) = self.operator_trait("by", true, &w.ty) else {
+            self.err(span, Unbuilt::ByOnWalk);
+            return Self::error_node(span);
+        };
+        let k = self.expr(step, Some(&Ty::Int));
+        self.operator_call(found, w, Some(k), span)
+    }
     /// `x in s` as `s`'s core `@operator("in")` trait fn, `contains(x)` (R12.4.7).
     fn membership(&mut self, x: TExpr, s: TExpr, span: Span) -> TExpr {
         if self.is_error(&x.ty) || self.is_error(&s.ty) {
@@ -1605,10 +1619,7 @@ impl<'a> Cx<'a> {
                     inclusive,
                     step: None,
                 } => self.range_value(Some(lo), Some(hi), *inclusive, Some(step), want, span),
-                _ => {
-                    self.err(span, Unbuilt::ByOnWalk);
-                    mk(TK::Error, Ty::Error)
-                }
+                _ => self.step_walk(walk, step, span),
             },
             ExprKind::With { base, updates } => self.record_update(base, updates, span),
             ExprKind::Without {

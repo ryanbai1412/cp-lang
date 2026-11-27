@@ -5,6 +5,7 @@
 //! example: `let r = 2..8 by 3; r.len == 2 and r[5] == 5`
 use std.seq.{IndexGet, Keyed, Positional, Indexed, Slice}
 use std.raw.{check_key, check_range}
+use std.ops.{By}
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
 /// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `by`
@@ -62,6 +63,11 @@ pub fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
     assert step > 0, "a range's step is positive"
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step
     Range(lo, n, step)
+
+/// `r by k` is `r.step(k)`: every `k`-th value from its first, so `V by 2` and `r.rev by 3` are
+/// ranges again (R01.8.4).
+impl<D: Domain> By<Int> for Range<D>:
+    fn by(self, k: Int) -> Range<D> = self.step(k)
 
 impl<D: Domain> Clone for Range<D>:
     fn clone(a) = Range(a.lo, a.n, a.by)

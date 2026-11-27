@@ -360,7 +360,9 @@ match dir: L => -1, R => 1, U => 0, D => 0  // one-line match
 - **Record update** `e with f: v, g: w` and `(..e, f: v)` copy `e` with
   some fields replaced (decision 134, row types in chapter 8). (R01.8.3)
 - **Ranges** `a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..` (the full range
-  wherever a range is taken), steps `a..b by k`. A stepped range is a value like any range: it walks
+  wherever a range is taken), steps `a..b by k`. On any other walk, `w by k`
+  calls `w`'s `@operator("by")` trait fn, so `V by 2` and `(0..10).rev by 3`
+  step a domain and a reversed walk. A stepped range is a value like any range: it walks
   both ways (`(1..=n by 2).rev` starts from the last value it reaches) and
   its `len`, `first` and `last` are \(O(1)\). An open range's end is an
   `Int` or a domain value: `lo..` runs to `Int.MAX` or the end of `lo`'s
