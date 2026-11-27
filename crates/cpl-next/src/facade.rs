@@ -224,6 +224,23 @@ impl Session {
         out
     }
 
+    /// The names the program's scope gives items, that start with the identifier ending at
+    /// byte `at`, by name: what typing there could complete to.
+    pub fn complete(&self, at: u32) -> Vec<(&str, &Item)> {
+        let program = &self.snapshot.0.program;
+        let at = (at as usize).min(program.len());
+        let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+        let start = program[..at].rfind(|c| !word(c)).map_or(0, |i| i + 1);
+        let prefix = &program[start..at];
+        let items = (self.items).get_or_init(|| items(self.front()));
+        let mut out: Vec<(&str, &Item)> = (items.iter())
+            .filter(|(name, _)| name.starts_with(prefix))
+            .map(|(name, item)| (name.as_str(), item))
+            .collect();
+        out.sort_by_key(|(name, _)| *name);
+        out
+    }
+
     /// Where the item named at byte `at` is declared.
     pub fn definition(&self, at: u32) -> Option<&Item> {
         self.item_at(at)

@@ -81,7 +81,7 @@ signature above does not change when the view lands.
 | `diagnostics(Program)` | Summaries (calls checked against them) | `back` (own on linked instances) |
 | `program` | Generics, then link | `back` and canonicalize |
 | `hover`, `definition` | Scope, Signatures | `items` |
-| `complete` (next) | Scope, Signatures | not built |
+| `complete` | Scope | `items`: the scope's names a prefix starts; members after `.` come with `Type` |
 
 ### The editor queries lsp and lint still take from `today`
 

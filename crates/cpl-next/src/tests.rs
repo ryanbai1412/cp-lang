@@ -904,3 +904,32 @@ fn type_at_reads_the_typed_tree() {
         ("P".into(), 1, "struct P")
     );
 }
+
+#[test]
+fn complete_lists_the_scope_names_a_prefix_starts() {
+    use crate::facade::{Session, Snapshot};
+    let src =
+        "fn twice(n: Int) -> Int:\n    n * 2\n\nfn triple(n: Int) -> Int:\n    n * 3\n\nlet c = twi";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let names = |at: usize| -> Vec<String> {
+        s.complete(at as u32)
+            .iter()
+            .map(|(n, _)| n.to_string())
+            .collect()
+    };
+    assert_eq!(names(src.len()), ["twice"]);
+    let t = names(src.len() - 2);
+    assert!(
+        t.contains(&"triple".into())
+            && t.contains(&"twice".into())
+            && t.iter().all(|n| n.starts_with('t'))
+    );
+    let print = s.complete(src.find("fn twice").unwrap() as u32);
+    assert!(print
+        .iter()
+        .any(|(n, i)| *n == "print" && i.module == "std.show"));
+}
