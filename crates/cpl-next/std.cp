@@ -7,119 +7,15 @@ pub use std.seq.{IndexMut, IndexedMut, IndexSet}
 pub use std.default.{Default}
 /// The maps and sets every module names unimported (R07.2.4).
 pub use std.map.{Map, Set}
+use std.list.{List, Array, Str}
+/// The lists, arrays and strings every module names unimported (R02.3, R04.8).
+pub use std.list.{List, Array, Str, yes}
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key, check_range}
 
 /// Traps R0102 unless `ok`: a value its type doesn't have, as an `Int` converted to an enum that
 /// is no variant's value (R02.7), or to a cut past a domain's ends (R04.2.17).
 @variant_check
 pub fn check_value(ok: Bool) = @intrinsic("value_check")
-
-@list
-pub struct List<T>:
-    var buf: Raw<T>
-    var n: Int
-    var cap: Int
-
-    fn new() -> List<T>:
-        List(raw_empty(), 0, 0)
-
-    fn filled(n: Int, x: T) -> List<T>:
-        List(raw_new(n, x), n, n)
-
-    @get fn len(self) -> Int:
-        n
-
-    fn get(self, i: Int) -> T:
-        check_key(0 <= i and i < n)
-        raw_get(buf, i)
-
-    fn each(self) -> yields T:
-        for i in 0..n: yield raw_get(buf, i)
-
-    /// Room for `k` elements without another move of the ones held.
-    fn reserve(mut self, k: Int):
-        if k > cap:
-            var nb = raw_cap(k)
-            for i in 0..n: raw_set(mut nb, i, raw_take(mut buf, i))
-            buf = nb
-            cap = k
-
-    fn push(mut self, x: T):
-        if n == cap: self.reserve(if cap == 0: 4 else: cap * 2)
-        raw_set(mut buf, n, x)
-        n += 1
-
-    fn swap(mut self, i: Int, j: Int):
-        check_key(0 <= i and i < n and 0 <= j and j < n)
-        if i != j:
-            let x = raw_take(mut buf, i)
-            raw_set(mut buf, i, raw_take(mut buf, j))
-            raw_set(mut buf, j, x)
-
-    /// `x` at position `i`, the elements from `i` on one later.
-    fn insert(mut self, i: Int, x: T):
-        assert 0 <= i and i <= n, "insert: a position past the end"
-        self.push(x)
-        var k = n - 1
-        while k > i:
-            self.swap(k - 1, k)
-            k -= 1
-
-    /// The element at `i`, the ones after it one earlier.
-    fn remove(mut self, i: Int) -> T:
-        check_key(0 <= i and i < n)
-        for k in i..n - 1: self.swap(k, k + 1)
-        n -= 1
-        raw_take(mut buf, n)
-
-    fn extend(mut self, xs: List<T>):
-        self.reserve(n + xs.len)
-        for x in xs: self.push(x)
-
-    @get fn is_empty(self) -> Bool:
-        n == 0
-
-    fn pop(mut self) -> ?T:
-        if n == 0: return None
-        n -= 1
-        Some(raw_get(buf, n))
-
-    fn truncate(mut self, k: Int):
-        check_key(0 <= k)
-        if k < n: n = k
-
-    fn clear(mut self):
-        n = 0
-
-
-@array
-pub struct Array<D: Domain, T>:
-    buf: Raw<T>
-
-    @get fn len(self) -> Int:
-        D.count
-
-    fn filled(x: T) -> Array<D, T>:
-        Array(raw_new(D.count, x))
-
-    fn get(self, i: D) -> T:
-        raw_get(buf, i.ord)
-
-    fn each(self) -> yields T:
-        for i in 0..D.count: yield raw_get(buf, i)
-
-/// Cell by cell, in walk order (R08.1.6).
-impl<D: Domain, T: Eq> Eq for Array<D, T>:
-    fn eq(a, b):
-        for i in 0..D.count:
-            if raw_get(a.buf, i) != raw_get(b.buf, i): return false
-        true
-
-/// A list where `[D]T` is wanted: one element per position, in walk order (R04.8.10).
-@coerce
-fn array_of_list<D: Domain, T>(xs: List<T>) -> [D]T:
-    assert xs.len == D.count, "a list for `[D]T` has one element per position"
-    Array(xs.buf)
 
 fn read_array<D: Domain>() -> [D]Int:
     var a: [D]Int = 0
@@ -139,64 +35,6 @@ fn write_array<D: Domain>(xs: [D]Int):
         if not first: write(" ")
         write(x)
         first = false
-
-// A flat sequence of `Char` (R02.3).
-@str
-pub struct Str:
-    var chars: List<Char>
-
-    @get fn len(self) -> Int:
-        chars.len
-
-    fn get(self, i: Int) -> Char:
-        chars.get(i)
-
-    fn each(self) -> yields Char:
-        for c in chars: yield c
-
-    fn push(mut self, c: Char):
-        chars.push(c)
-
-    /// How `print` writes it: its characters.
-    fn write(self):
-        for c in chars: write(c)
-
-// A string literal: its characters and how many there are. The literal's storage is lent,
-// so the string gets its own.
-@str_literal
-fn str_of(text: Raw<Char>, n: Int) -> Str:
-    var chars = List<Char>.new()
-    for i in 0..n: chars.push(raw_get(text, i))
-    Str(chars)
-
-/// `s + t`: a new string, `s`'s characters then `t`'s (R02.3.3).
-impl Add for Str:
-    fn add(self, other: Str) -> Str = str_concat(self, other)
-
-fn str_concat(a: Str, b: Str) -> Str:
-    var out = Str(List.new())
-    for c in a: out.push(c)
-    for c in b: out.push(c)
-    out
-
-/// Strings compare character by character, a prefix first (R08.1.5).
-impl Eq for Str:
-    fn eq(a, b) = str_eq(a, b)
-impl Ord for Str:
-    fn lt(a, b):
-        let n = if a.len < b.len: a.len else: b.len
-        for i in 0..n:
-            if a.get(i) != b.get(i): return a.get(i) < b.get(i)
-        a.len < b.len
-
-fn str_eq(a: Str, b: Str) -> Bool:
-    if a.len != b.len: return false
-    for i in 0..a.len:
-        if a.get(i) != b.get(i): return false
-    true
-
-pub fn yes(b: Bool) -> Str:
-    if b: "YES" else: "NO"
 
 // `?T`: `T` or `None`. `val` is read only when `some`.
 @optional
@@ -476,21 +314,6 @@ impl<D: Domain + Eq> Ord for D:
 impl<T: Eq> Eq for Optional<T>:
     fn eq(a, b) = if not a.some: not b.some elif not b.some: false else: a.val == b.val
 
-/// The same length and equal values in order.
-impl<T: Eq> Eq for List<T>:
-    fn eq(a, b):
-        if a.n != b.n: return false
-        for i in 0..a.n:
-            if raw_get(a.buf, i) != raw_get(b.buf, i): return false
-        true
-/// Lists compare element by element, a prefix first (R08.1.5).
-impl<T: Ord> Ord for List<T>:
-    fn lt(a, b):
-        let n = if a.n < b.n: a.n else: b.n
-        for i in 0..n:
-            if raw_get(a.buf, i) != raw_get(b.buf, i): return raw_get(a.buf, i) < raw_get(b.buf, i)
-        a.n < b.n
-
 /// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
 // A product domain walks row-major, the last factor fastest (R04.2.9); `P((x, y))` converts each part.
 impl<A: Domain, B: Domain> Domain for Tuple2<A, B>:
@@ -537,21 +360,6 @@ impl<D: Domain> Clone for Range<D>:
     fn clone(a) = Range(a.lo, a.n, a.by)
 impl<T: Clone> Clone for Optional<T>:
     fn clone(a) = if a.some: Optional(true, a.val.clone()) else: None
-/// A new buffer holding a clone of each element.
-impl<T: Clone> Clone for List<T>:
-    fn clone(a):
-        if a.n == 0: return List.new()
-        var out = List.filled(a.n, raw_get(a.buf, 0).clone())
-        for i in 1..a.n: raw_set(mut out.buf, i, raw_get(a.buf, i).clone())
-        out
-impl Clone for Str:
-    fn clone(a) = Str(a.chars.clone())
-impl<D: Domain, T: Clone> Clone for Array<D, T>:
-    fn clone(a):
-        if D.count == 0: return Array(raw_empty())
-        var buf = raw_new(D.count, raw_get(a.buf, 0).clone())
-        for i in 1..D.count: raw_set(mut buf, i, raw_get(a.buf, i).clone())
-        Array(buf)
 impl<A: Clone, B: Clone> Clone for Tuple2<A, B>:
     fn clone(a) = Tuple2(a._0.clone(), a._1.clone())
 impl<A: Clone, B: Clone, C: Clone> Clone for Tuple3<A, B, C>:
@@ -638,44 +446,7 @@ impl Into<F64> for Int:
 impl Into<F64> for F64:
     fn into(self) -> F64 = self
 
-/// A list, a string and an array read in O(1) at any key, by position from 0 or, for an
-/// array, by its domain's positions (R12.4.5).
-impl<T> Positional<T> for List<T>:
-    fn nth(self, k: Int) -> T = self.get(k)
-impl<T> IndexGet<Int, T> for List<T>:
-    fn at(self, i: Int) -> T = self.get(i)
-impl<T> Indexed<Int, T> for List<T>:
-    @get fn keys(self) -> Range<Int> = 0..self.len
-impl Positional<Char> for Str:
-    fn nth(self, k: Int) -> Char = self.get(k)
-impl IndexGet<Int, Char> for Str:
-    fn at(self, i: Int) -> Char = self.get(i)
-impl Indexed<Int, Char> for Str:
-    @get fn keys(self) -> Range<Int> = 0..self.len
-impl<T> IndexMut<Int, T> for List<T>:
-    fn at(mut self, i: Int) -> lends mut T:
-        check_key(0 <= i and i < self.n)
-        lend mut self.buf[i]
-impl<T> IndexedMut<Int, T> for List<T>
-impl IndexMut<Int, Char> for Str:
-    fn at(mut self, i: Int) -> lends mut Char:
-        check_key(0 <= i and i < self.chars.n)
-        lend mut self.chars.buf[i]
-impl IndexedMut<Int, Char> for Str
-impl<D: Domain, T> Keyed<D, T> for Array<D, T>:
-    fn items(self) -> yields (D, T):
-        for i in 0..D.count: yield (D.nth(i), raw_get(self.buf, i))
-impl<D: Domain, T> Positional<T> for Array<D, T>:
-    fn nth(self, k: Int) -> T = self.get(D.nth(k))
-impl<D: Domain, T> IndexGet<D, T> for Array<D, T>:
-    fn at(self, i: D) -> T = self.get(i)
-impl<D: Domain, T> Indexed<D, T> for Array<D, T>:
-    @get fn keys(self) -> Range<D> = D
 /// A range is keyed by its own values, so `(2..5)[3] == 3`, and has no source to lend (R07.2.15).
-impl<D: Domain, T> IndexMut<D, T> for Array<D, T>:
-    fn at(mut self, i: D) -> lends mut T:
-        lend mut self.buf[i.ord]
-impl<D: Domain, T> IndexedMut<D, T> for Array<D, T>
 impl<D: Domain> Keyed<D, D> for Range<D>:
     fn items(self) -> yields (D, D):
         for i in 0..self.n:
