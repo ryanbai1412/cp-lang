@@ -877,6 +877,7 @@ fn layer(
                     {
                         unnamed(t, &names, &mut generics);
                     }
+                    let hidden = hidden_params(&d, &names, bounds, &mut generics);
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
@@ -951,9 +952,10 @@ fn layer(
                     let mut ibounds = Vec::new();
                     for b in bounds {
                         let i = generics.iter().position(|g| *g == b.name.text).unwrap_or(0);
-                        for t in &b.traits {
+                        for (j, t) in b.traits.iter().enumerate() {
                             if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
-                                ibounds.push((i, d.with_defaults(r, &Ty::Param(i))));
+                                let key = (b.name.text.clone(), j);
+                                bound_ref(&d, r, i, key, &hidden, &mut ibounds);
                             }
                         }
                     }

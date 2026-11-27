@@ -39,10 +39,13 @@ impl Cx<'_> {
                 let open = t.clone();
                 let t = self.zonk(&t);
                 if partial {
-                    let Some((k, targs)) = self.head_impl(&t, &r) else {
+                    let Some((k, _)) = self.head_impl(&t, &r) else {
                         self.obligations.push((t, r, span, why));
                         continue;
                     };
+                    // Its arguments are `open`'s own, not the zonked `t`'s: an open part of it
+                    // stays open, with its sets.
+                    let targs = vec![Ty::Error; self.d.impls[k].generics.len()];
                     if self.take_impl(k, targs, &r, span, Some(&open)) {
                         continue;
                     }

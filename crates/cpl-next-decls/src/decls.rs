@@ -927,37 +927,7 @@ fn add_fn(
     let f = desugared.as_ref().unwrap_or(f);
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
-    // A bound that leaves a trait's arguments out (`S: Indexed`) takes each as a parameter of
-    // its own, fixed when the bound is met at a call (R08.1.2). Its name `S.1` can't be written.
-    let mut hidden = Vec::new();
-    for b in &f.bounds {
-        for (j, t) in b.traits.iter().enumerate() {
-            let TypeKind::Named { name, args } = &t.kind else {
-                continue;
-            };
-            let Some(Named::Trait(tr)) = names.get(&name.text).copied() else {
-                continue;
-            };
-            let n = d.traits[tr.0].defaults.len();
-            // An associated type's default is the impl's to take, never the bound's.
-            let first_assoc = n - d.traits[tr.0].assoc.len();
-            if args.len() < n
-                && (args.len() >= first_assoc || d.traits[tr.0].defaults[args.len()].is_none())
-            {
-                let k = generics.len();
-                // An associated type the bound leaves out is named through the bounded
-                // parameter: `G.Arc` of `G: Next<V>` (R08.2.3).
-                let assoc = &d.traits[tr.0].assoc;
-                generics.extend(
-                    (args.len()..n).map(|p| match p.checked_sub(n - assoc.len()) {
-                        Some(a) => format!("{}.{}", b.name.text, assoc[a]),
-                        None => format!("{}.hidden", k + p - args.len()),
-                    }),
-                );
-                hidden.push(((b.name.text.clone(), j), k..generics.len()));
-            }
-        }
-    }
+    let hidden = hidden_params(d, &names, &f.bounds, &mut generics);
     let doms = d.doms_in(m);
     let aliases = d.aliases.clone();
     let sets = d.struct_sets.clone();
@@ -1100,29 +1070,8 @@ fn add_fn(
             continue;
         };
         for (j, t) in b.traits.iter().enumerate() {
-            if let Some(mut r) = trait_ref(&mut cx, t, &mut errors) {
-                let key = (b.name.text.clone(), j);
-                if let Some((_, ks)) = hidden.iter().find(|(h, _)| *h == key) {
-                    r.args.extend(ks.clone().map(Ty::Param));
-                }
-                let r = d.with_defaults(r, &Ty::Param(i));
-                // What the trait says of its associated types holds of the parameters naming them.
-                let mut tys = vec![Ty::Param(i)];
-                tys.extend(r.args.iter().cloned());
-                let sub = Subst {
-                    tys: &tys,
-                    sets: &[],
-                };
-                for (a, ab) in &d.traits[r.tr.0].assoc_bounds {
-                    if let Ty::Param(ai) = tys[*a] {
-                        let ab = TraitRef {
-                            tr: ab.tr,
-                            args: ab.args.iter().map(|t| sub.ty(t)).collect(),
-                        };
-                        bounds.push((ai, ab));
-                    }
-                }
-                bounds.push((i, r));
+            if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
+                bound_ref(d, r, i, (b.name.text.clone(), j), &hidden, &mut bounds);
             }
         }
     }
@@ -1270,4 +1219,77 @@ pub fn static_range(
         None => i64::MAX,
     };
     Some((lo, hi))
+}
+
+/// The parameters a bound that leaves its trait's arguments out takes for each, at `generics`'
+/// end, by bound and trait. An associated type is named through the bounded parameter: `G.Arc` of
+/// `G: Next<V>` (R08.2.3); any other is `S.1`, which can't be written, fixed when the bound is met
+/// (R08.1.2). An associated type's default is the impl's to take, never the bound's.
+type Hidden = Vec<((String, usize), std::ops::Range<usize>)>;
+fn hidden_params(
+    d: &Decls,
+    names: &HashMap<String, Named>,
+    bounds: &[ast::Bound],
+    generics: &mut Vec<String>,
+) -> Hidden {
+    let mut hidden = Vec::new();
+    for b in bounds {
+        for (j, t) in b.traits.iter().enumerate() {
+            let TypeKind::Named { name, args } = &t.kind else {
+                continue;
+            };
+            let Some(Named::Trait(tr)) = names.get(&name.text).copied() else {
+                continue;
+            };
+            let n = d.traits[tr.0].defaults.len();
+            let first_assoc = n - d.traits[tr.0].assoc.len();
+            if args.len() < n
+                && (args.len() >= first_assoc || d.traits[tr.0].defaults[args.len()].is_none())
+            {
+                let k = generics.len();
+                let assoc = &d.traits[tr.0].assoc;
+                generics.extend(
+                    (args.len()..n).map(|p| match p.checked_sub(n - assoc.len()) {
+                        Some(a) => format!("{}.{}", b.name.text, assoc[a]),
+                        None => format!("{}.hidden", k + p - args.len()),
+                    }),
+                );
+                hidden.push(((b.name.text.clone(), j), k..generics.len()));
+            }
+        }
+    }
+    hidden
+}
+
+/// Bound `r` of parameter `i`, the `key`th of its bound: its left-out arguments the parameters
+/// [`hidden_params`] gave them, then its defaults, pushed to `out` with what its trait says of
+/// its associated types, which holds of the parameters naming them.
+fn bound_ref(
+    d: &Decls,
+    mut r: TraitRef,
+    i: usize,
+    key: (String, usize),
+    hidden: &Hidden,
+    out: &mut Vec<(usize, TraitRef)>,
+) {
+    if let Some((_, ks)) = hidden.iter().find(|(h, _)| *h == key) {
+        r.args.extend(ks.clone().map(Ty::Param));
+    }
+    let r = d.with_defaults(r, &Ty::Param(i));
+    let mut tys = vec![Ty::Param(i)];
+    tys.extend(r.args.iter().cloned());
+    let sub = Subst {
+        tys: &tys,
+        sets: &[],
+    };
+    for (a, ab) in &d.traits[r.tr.0].assoc_bounds {
+        if let Ty::Param(ai) = tys[*a] {
+            let ab = TraitRef {
+                tr: ab.tr,
+                args: ab.args.iter().map(|t| sub.ty(t)).collect(),
+            };
+            out.push((ai, ab));
+        }
+    }
+    out.push((i, r));
 }

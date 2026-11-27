@@ -170,7 +170,7 @@ impl Show for Window<T, M>:
     fn show(w) = "{w.len} elements"
 
 /// `push(x)` and `pop(x)` are `Window`'s own `push(x)` and `pop(x)`.
-impl Track<T> for Window<T, M>:
+impl<T: Eq, M: Op<T>> Track<T> for Window<T, M>:
     fn push(mut self, x: T):
         self.push_back(x)
     fn pop(mut self, x: T):
