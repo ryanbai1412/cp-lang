@@ -666,6 +666,20 @@ mod tests {
         );
     }
 
+    /// A lowered fn's locals keep their source names, so what reads the IR can name them.
+    #[test]
+    fn a_lowered_local_keeps_its_name() {
+        let src = "fn f(xs: List<Int>) -> Int:\n    let total = xs[0] + xs[1]\n    total\nprint(f([1, 2]))\n";
+        let f = front(&Std::read(), src, &Roots::std());
+        assert!(f.diags.is_empty(), "{:?}", f.diags);
+        let g = (f.g.funcs.values())
+            .find(|g| g.name == "f" && g.line != 0)
+            .expect("f is lowered");
+        assert_eq!(g.names.len(), g.locals.len());
+        for n in ["xs", "total"] {
+            assert!(g.names.iter().any(|m| m == n), "{n} in {:?}", g.names);
+        }
+    }
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];

@@ -210,6 +210,7 @@ impl Link<'_> {
             name: f.name.clone(),
             params: f.params.clone(),
             n_captures: f.n_captures,
+            names: f.names.clone(),
             locals,
             body: self.block(&f.body, env),
             ret: unlent(self.ty(&f.ret, env)),

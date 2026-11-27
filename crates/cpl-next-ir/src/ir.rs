@@ -346,6 +346,8 @@ pub struct Func<T> {
     /// For a lambda: how many leading params are captures.
     pub n_captures: usize,
     pub locals: Vec<T>,
+    /// What a message calls each local: its name in the source, empty for a temp.
+    pub names: Vec<String>,
     pub body: Vec<Stmt<T>>,
     pub ret: T,
     /// Set for a generator (`false`) or a lender (`true`): what it hands to the caller's code.

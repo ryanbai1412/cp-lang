@@ -29,6 +29,8 @@ struct Lw<'a> {
     /// The globals' types, a lent mark added where one is bound to a value that lends.
     globals: Vec<Ty>,
     locals: Vec<Ty>,
+    /// The names of the current fn's own bindings, empty at top level.
+    tnames: Vec<String>,
     /// Which of the current fn's own bindings are `var`s.
     mut_locals: Vec<bool>,
     /// The `var`s among them: a closure writes these through its capture.
@@ -71,6 +73,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         lent: Vec::new(),
         globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
         locals: Vec::new(),
+        tnames: Vec::new(),
         mut_locals: Vec::new(),
         var_locals: Vec::new(),
         remap: HashMap::new(),
@@ -99,6 +102,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             name: "main".into(),
             params: vec![],
             n_captures: 0,
+            names: lw.names(&[], true),
             locals: std::mem::take(&mut lw.locals),
             body,
             ret: Ty::Unit,
@@ -126,6 +130,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         lw.made =
             matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Impl(k)) if d.impls[k].derived);
         lw.locals = tf.locals.iter().map(|l| l.ty.clone()).collect();
+        lw.tnames = tf.locals.iter().map(|l| l.name.clone()).collect();
         // R05.10.1: a closure shares `var`s, local heap values and heap parameters with the fn around it.
         lw.mut_locals = tf
             .locals
@@ -174,6 +179,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 name: fd.name.clone(),
                 params,
                 n_captures: 0,
+                names: lw.names(&lw.tnames, true),
                 locals: std::mem::take(&mut lw.locals),
                 body,
                 ret: tf.ret.clone(),
@@ -398,6 +404,23 @@ impl Lw<'_> {
             return 0;
         }
         self.src.program_line(&self.off.at(span))
+    }
+    /// What a message calls each local of the fn being lowered: `own` names its first ones, and
+    /// with `remap`, a local standing for a binding around it takes that binding's name.
+    fn names(&self, own: &[String], remap: bool) -> Vec<String> {
+        let mut ns: Vec<String> = (0..self.locals.len())
+            .map(|l| own.get(l).cloned().unwrap_or_default())
+            .collect();
+        for (v, &l) in self.remap.iter().filter(|_| remap) {
+            let name = match v {
+                VarRef::Local(i) => self.tnames.get(*i),
+                VarRef::Global(g) => self.typed.globals.get(*g).map(|g| &g.name),
+            };
+            if let (Some(n), Some(slot)) = (name, ns.get_mut(l)) {
+                n.clone_into(slot);
+            }
+        }
+        ns
     }
     fn temp(&mut self, ty: Ty) -> usize {
         self.locals.push(ty);
@@ -1122,6 +1145,7 @@ impl Lw<'_> {
                     name: "case".into(),
                     params: vec![],
                     n_captures: 0,
+                    names: self.names(&[], false),
                     locals: std::mem::replace(&mut self.locals, outer),
                     body: b,
                     ret: Ty::Unit,
@@ -1289,6 +1313,7 @@ impl Lw<'_> {
             self.effect(v, &mut stmts);
         }
         self.in_main = was_main;
+        let names = self.names(&[], true);
         let locals = std::mem::replace(&mut self.locals, outer_locals);
         self.remap = saved_remap;
         let (sites, lines) = self.swap_sites(outer_sites);
@@ -1297,6 +1322,7 @@ impl Lw<'_> {
             name: format!("lambda{}", id.0),
             params: fparams,
             n_captures: caps.len(),
+            names,
             locals,
             body: stmts,
             ret: info.ret.clone(),
