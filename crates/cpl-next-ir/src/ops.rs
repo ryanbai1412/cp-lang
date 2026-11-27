@@ -241,6 +241,18 @@ pub fn code_of(c: u8) -> i64 {
     i64::from(c)
 }
 
+/// Whitespace to a token read: space, `\t`, `\n`, `\v`, `\f` and `\r` (R10.2.8).
+pub fn is_space(c: u8) -> bool {
+    c == b' ' || (b'\t'..=b'\r').contains(&c)
+}
+
+/// The input's tokens, split at runs of whitespace (R10.2.8).
+pub fn tokens(input: &str) -> impl Iterator<Item = &str> {
+    input
+        .split(|c: char| u8::try_from(c).is_ok_and(is_space))
+        .filter(|t| !t.is_empty())
+}
+
 /// The `Int` an input token spells. A whole number past `Int` is out of the contract, not a
 /// bad token (R10.2.6); the end of the input is a bad token.
 pub fn read_int(t: Option<&str>) -> Result<i64, Fault> {
@@ -395,4 +407,15 @@ fn cpp_name(f: Fault) -> String {
         out.push(c.to_ascii_uppercase());
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_token_read_splits_at_ascii_whitespace_only() {
+        let got: Vec<&str> = tokens(" 1\t2\n\x0b3\x0c\r\n4\u{a0}5\u{85}6 ").collect();
+        assert_eq!(got, ["1", "2", "3", "4\u{a0}5\u{85}6"]);
+    }
 }

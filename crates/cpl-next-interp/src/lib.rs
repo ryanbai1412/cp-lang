@@ -84,8 +84,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
         frames: Vec::new(),
         out: String::new(),
         events: Vec::new(),
-        input: input
-            .split_whitespace()
+        input: ops::tokens(input)
             .map(String::from)
             .collect::<Vec<_>>()
             .into_iter(),

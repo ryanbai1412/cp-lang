@@ -30,6 +30,7 @@ const RUNTIME_HEAD: &str = r#"#include <cstdint>
 #include <unistd.h>
 #include <climits>
 #include <vector>
+#include <string>
 struct cpl_unit {};
 struct cpl_char { uint8_t code; };
 /// A Bool cell: `std::vector<bool>` packs bits, so its cells could not be lent as `bool&`.
@@ -112,26 +113,39 @@ template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, cons
     r[cpl_write_cell(i, (int64_t)r.size())] = x;
     return cpl_unit{};
 }
+static inline bool cpl_is_space(int c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 static inline bool cpl_input_left() {
     int c;
-    while ((c = getchar()) == ' ' || (c >= '\t' && c <= '\r')) {}
+    while ((c = getchar()) != EOF && cpl_is_space(c)) {}
     if (c == EOF) return false;
     ungetc(c, stdin);
     return true;
 }
-static inline int64_t cpl_read() {
-    char buf[32];
-    if (scanf("%31s", buf) != 1) cpl_fail(CPL_BAD_INT_TOKEN);
-    errno = 0;
-    char* end;
-    long long x = strtoll(buf, &end, 10);
-    if (*end || end == buf) cpl_fail(CPL_BAD_INT_TOKEN);
-    if (errno == ERANGE || x == LLONG_MIN) {
-        char msg[sizeof buf + 32];
-        snprintf(msg, sizeof msg, "`%s` does not fit in an `Int`", buf);
-        cpl_trap(cpl_faults[CPL_INT_PAST_INT][0], msg);
+// The `Int` token `t` spells, as `ops::read_int` reads it.
+static inline int64_t cpl_int_token(const std::string& t) {
+    size_t i = !t.empty() && (t[0] == '-' || t[0] == '+');
+    if (i == t.size()) cpl_fail(CPL_BAD_INT_TOKEN);
+    uint64_t v = 0;
+    bool past = false;
+    for (; i < t.size(); i++) {
+        if (t[i] < '0' || t[i] > '9') cpl_fail(CPL_BAD_INT_TOKEN);
+        uint64_t d = (uint64_t)(t[i] - '0');
+        if (past) continue;
+        if (v > (INT_LAST - d) / 10) past = true;
+        else v = v * 10 + d;
     }
-    return (int64_t)x;
+    if (past && t[0] == '+') cpl_fail(CPL_BAD_INT_TOKEN);
+    if (past) cpl_trap(cpl_faults[CPL_INT_PAST_INT][0], ("`" + t + "` does not fit in an `Int`").c_str());
+    return t[0] == '-' ? -(int64_t)v : (int64_t)v;
+}
+static inline int64_t cpl_read() {
+    int c;
+    while ((c = getchar()) != EOF && cpl_is_space(c)) {}
+    std::string t;
+    for (; c != EOF && !cpl_is_space(c); c = getchar()) t.push_back((char)c);
+    if (c != EOF) ungetc(c, stdin);
+    if (t.empty()) cpl_fail(CPL_BAD_INT_TOKEN);
+    return cpl_int_token(t);
 }
 // The caller's code handed to a generator or lender that calls itself: two words, not owning.
 // Used only there; elsewhere the callee is a template and the code is inlined.
@@ -1137,6 +1151,43 @@ mod tests {
                     expect(ops::check(op, ok).map(|_| 0)),
                 );
             }
+        }
+        let long = "9".repeat(40);
+        for t in [
+            "0",
+            "-0",
+            "+5",
+            "007",
+            "-",
+            "+",
+            "1-",
+            "--1",
+            "+-1",
+            "12a",
+            "9223372036854775807",
+            "9223372036854775808",
+            "-9223372036854775807",
+            "-9223372036854775808",
+            "+9223372036854775808",
+            &long,
+        ] {
+            let want = match ops::read_int(Some(t)) {
+                Ok(v) => format!("{v}\n"),
+                Err(f) => {
+                    let msg = cpl_next_ir::run::Trap::at_token(f, Some(t)).msg;
+                    format!("trap: {}: line 0: {msg}\n", f.code())
+                }
+            };
+            case(
+                format!("printf(\"%lld\\n\", (long long)cpl_int_token(std::string({t:?})));"),
+                want,
+            );
+        }
+        for c in 0..=u8::MAX {
+            case(
+                format!("printf(\"%d\\n\", (int)cpl_is_space({c}));"),
+                format!("{}\n", i32::from(ops::is_space(c))),
+            );
         }
         let mut cpp = runtime();
         cpp.push_str("#include <sys/wait.h>\nint main() {\n");
