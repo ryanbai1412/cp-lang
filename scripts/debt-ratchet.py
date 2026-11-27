@@ -1492,19 +1492,28 @@ def next_core_standin_lines(root: Path) -> list[str]:
     return [f"crates/cpl-next/std.cp:{i}" for i, l in enumerate(_lines(p), 1) if l.strip()] if p.is_file() else []
 
 
+NEXT_RAW_OPEN_RE = re.compile(r'\br(#*)"')
+# C++ kept in its own file and pulled in whole is hand-written runtime too.
+NEXT_INCLUDED_CPP_RE = re.compile(r'include_str!\(\s*"[^"]*\.(?:h|hpp|cpp|cc|inc)"')
+
+
 def next_cpp_runtime_lines(root: Path) -> list[str]:
     """Lines of C++ written by hand inside the new emitter (its raw-string runtime): each runtime
     operation is a CP std body or an `ops` table entry, so C++ cannot disagree with the engine."""
-    out, inside = [], False
+    out, inside, close = [], False, ""
     for p in _rs_files(root, *_next_srcs(root), tests=False):
         rel = _rel(root, p)
         for i, l in enumerate(_lines(p), 1):
-            opened = 'r#"' in l
-            if inside or opened:
+            # A raw string of any hash count (`r"`, `r#"`, `r##"`), not only `r#"` (shortcut audit).
+            m = None if inside else NEXT_RAW_OPEN_RE.search(l)
+            if inside or m:
                 if l.strip():
                     out.append(f"{rel}:{i}")
-                tail = l.split('r#"', 1)[1] if opened else l
-                inside = '"#' not in tail
+                if m:
+                    close = '"' + m.group(1)
+                inside = close not in (l[m.end():] if m else l)
+            if NEXT_INCLUDED_CPP_RE.search(l):
+                out.append(f"{rel}:{i}: include_str")
     return out
 
 
@@ -1577,7 +1586,13 @@ def next_core_checks(root: Path) -> list[str]:
     core is an ordinary library, so nothing may treat it differently."""
     return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
             for i, l in enumerate(_lines(p), 1)
-            if not l.lstrip().startswith("//") and re.search(r"[!=]= *CORE\b|\bCORE *[!=]=", l)]
+            if not l.lstrip().startswith("//") and NEXT_CORE_USE_RE.search(l) and not NEXT_CORE_DEF_RE.match(l)]
+
+
+# Any use of the core module's id, not just `== CORE`: `decls::CORE`, `CORE.0`,
+# `fn_named(CORE, ..)` and `matches!(m, CORE)` single it out the same way (shortcut audit).
+NEXT_CORE_USE_RE = re.compile(r"\bCORE\b")
+NEXT_CORE_DEF_RE = re.compile(r"\s*(?:pub(?:\([^)]*\))?\s+)?const\s+CORE\b")
 
 
 def next_ignored_settings(root: Path) -> list[str]:
@@ -1597,8 +1612,11 @@ def next_name_compares(root: Path) -> list[str]:
     name, decorator or variant instead of an id or a declared role; `next_std_names` only saw
     literals equal to std declarations (11:00 blind audit). Intrinsic ids and primitive type
     names count too until they are table data; the target is a role table std fills."""
-    pat = re.compile(r'(?:==|!=)\s*"[A-Za-z_]\w*"|^\s*(?:\|\s*)?"[A-Za-z_]\w*"\s*(?:\|.*)?=>'
-                     r'|matches!\([^)]*"[A-Za-z_]\w*"|\.eq\(\s*"[A-Za-z_]\w*"\s*\)')
+    # A match arm with a fixed name anywhere in its pattern (`Some("x") =>`, `("x", _) =>`),
+    # and a keyed lookup by one (`.get("x")`), are the same comparison (shortcut audit).
+    pat = re.compile(r'(?:==|!=)\s*"[A-Za-z_]\w*"|^\s*(?:\|\s*)?[^=|]*"[A-Za-z_]\w*"[^=]*(?:\|.*)?=>'
+                     r'|matches!\([^)]*"[A-Za-z_]\w*"|\.eq\(\s*"[A-Za-z_]\w*"\s*\)'
+                     r'|\.(?:get|get_mut|contains_key|remove|entry)\(\s*"[A-Za-z_]\w*"\s*\)')
     return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
             for i, l in enumerate(_lines(p), 1)
             if not l.lstrip().startswith("//") and pat.search(l)]
@@ -2126,6 +2144,8 @@ def ir_reinfer(root: Path) -> list[str]:
 
 NEXT_STD_DECL_RE = re.compile(r"^\s*(?:pub\s+)?(?:fn|struct|trait|enum|type)\s+([A-Za-z_]\w*)", re.M)
 RUST_STR_RE = re.compile(r'"([A-Za-z_]\w*)"')
+NEXT_STD_DECORATOR_RE = re.compile(r"^\s*@([A-Za-z_]\w*)", re.M)
+NEXT_STD_MODULE_RE = re.compile(r'"(std(?:\.[A-Za-z_]\w*)+)"')
 
 
 def _next_srcs(root: Path) -> list[str]:
@@ -2145,7 +2165,9 @@ def next_std_names(root: Path) -> list[str]:
     sources = [*([std] if std.is_file() else []), *sorted((root / "std").glob("**/*.cp"))]
     names = {"print", "write", "read"}
     for f in sources:
-        names |= set(NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")))
+        text = f.read_text(encoding="utf-8")
+        # Decorators std declares or uses (`@derive`) are its names as much as its decls.
+        names |= set(NEXT_STD_DECL_RE.findall(text)) | set(NEXT_STD_DECORATOR_RE.findall(text))
     # `cpl-prim` holds the `@intrinsic` ids the IR maps to its operations, so it is scanned too.
     files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), "crates/cpl-prim/src", tests=False)}
     out: list[str] = []
@@ -2159,6 +2181,8 @@ def next_std_names(root: Path) -> list[str]:
             if (arm := NEXT_LABEL_ARM_RE.match(line)) and hits == [arm.group(1).lower()]:
                 hits = []
             out += [f"{rel}:{i}: {n}" for n in hits]
+            # A std module by its dotted name (`"std.prelude"`).
+            out += [f"{rel}:{i}: {n}" for n in NEXT_STD_MODULE_RE.findall(line)]
             # A name matched by its start (`starts_with("Tuple")`) or built (`format!("Tuple{}")`).
             parts = ("".join(t) for t in NEXT_NAME_PART_RE.findall(line))
             out += [f"{rel}:{i}: {n}*" for n in parts if len(n) > 2 and n not in names and any(m.startswith(n) for m in names)]
