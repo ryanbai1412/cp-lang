@@ -535,6 +535,12 @@ pub fn named_in(source: &str) -> Option<&str> {
         .map(str::trim)
 }
 
+/// The built-in judge a file is for: the one it names, else `generic`. What a build reads
+/// when no project config or command line chooses.
+pub fn of(source: &str) -> Option<Profile> {
+    builtin(named_in(source).unwrap_or("generic"))
+}
+
 /// The judge a build of `path` (whose text is `source`) is for. `chosen`
 /// is the name given on the command line.
 pub fn resolve(path: &Path, source: &str, chosen: Option<&str>) -> Result<Profile, String> {

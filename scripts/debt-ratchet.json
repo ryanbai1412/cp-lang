@@ -336,7 +336,7 @@
   "next_check_name_keys": 0,
   "next_backend_owns_reads": 0,
   "next_asks_refused": 7,
-  "next_layer_foreign_deps": 4,
+  "next_layer_foreign_deps": 3,
   "next_std_unchecked": 40,
   "next_lowered": 2,
   "next_wrong_accepts_ids": [

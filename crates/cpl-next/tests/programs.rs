@@ -83,9 +83,19 @@ fn run_within(mut cmd: Command, input: &[u8], limit: Duration) -> Ran {
     }
 }
 
+/// The judge a case is built for, as `cpl-next --judge` takes it: the harness resolves it the
+/// way a build with no project config does, and the compiler only reads it.
+fn judge(path: &Path) -> Option<String> {
+    let p = cpl_judge::of(&std::fs::read_to_string(path).ok()?)?;
+    Some(format!("{}={}", p.name, p.memory_mb))
+}
+
 fn next(path: &Path, flags: &[&str], input: &[u8], limit: Duration) -> Ran {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl-next"));
     cmd.arg(path).args(flags);
+    if let Some(j) = judge(path) {
+        cmd.args(["--judge", &j]);
+    }
     run_within(cmd, input, limit)
 }
 
@@ -140,7 +150,8 @@ impl Worker {
     /// Whether it finished the case: its three runs stop themselves, a compile is given the
     /// rest of the four limits a process of its own had.
     fn finished(&mut self, path: &Path, dir: &Path) -> bool {
-        writeln!(self.ask, "{}\t{}", path.display(), dir.display()).is_ok()
+        let judge = judge(path).unwrap_or_default();
+        writeln!(self.ask, "{}\t{}\t{judge}", path.display(), dir.display()).is_ok()
             && self.done.recv_timeout(4 * LIMIT).is_ok_and(|l| l == "done")
     }
 }

@@ -60,17 +60,20 @@ fn real_main() {
             eprintln!("usage: cpl-next --all --within MS [--trace]");
             std::process::exit(2);
         };
-        return every_case(Duration::from_millis(ms), has("--trace"));
+        return every_case(Duration::from_millis(ms), has("--trace"), &args);
     }
     if has("--std-modules") {
-        let std = Snapshot::new(Arc::new(std_in_use()), Roots::std(), "");
+        let std = judged(
+            Snapshot::new(Arc::new(std_in_use()), Roots::std(), ""),
+            &args,
+        );
         for (m, n) in Session::open(std).std_unchecked() {
             println!("{m}\t{n}");
         }
         return;
     }
     let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] | --all --within MS [--trace] | --std-modules");
+        eprintln!("usage: cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] [--judge NAME=MB] | --all --within MS [--trace] | --std-modules");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {
@@ -80,7 +83,10 @@ fn real_main() {
             std::process::exit(2);
         }
     };
-    let mut snapshot = Snapshot::new(Arc::new(std_in_use()), roots(path), &src);
+    let mut snapshot = judged(
+        Snapshot::new(Arc::new(std_in_use()), roots(path), &src),
+        &args,
+    );
     if has("--trace") {
         snapshot = snapshot.traced();
     }
@@ -147,7 +153,10 @@ fn dump_ir(args: &[String]) {
         eprintln!("{path}: {e}");
         std::process::exit(2);
     });
-    let session = Session::open(Snapshot::new(Arc::new(std_in_use()), roots(path), &src));
+    let session = Session::open(judged(
+        Snapshot::new(Arc::new(std_in_use()), roots(path), &src),
+        args,
+    ));
     match session.ir(stage) {
         // A reader that stops early (`| head`) is not an error.
         Ok(text) => drop(std::io::stdout().write_all(text.as_bytes())),
@@ -176,12 +185,16 @@ fn code(v: Verdict) -> i32 {
 }
 
 /// `--all`: every case on stdin compiled against one read of std.
-fn every_case(limit: Duration, events: bool) {
-    let std = Snapshot::new(Arc::new(std_in_use()), Roots::std(), "");
+fn every_case(limit: Duration, events: bool, args: &[String]) {
+    let std = judged(
+        Snapshot::new(Arc::new(std_in_use()), Roots::std(), ""),
+        args,
+    );
     for line in std::io::stdin().lock().lines() {
         let Ok(line) = line else { break };
-        let Some((path, dir)) = line.split_once('\t') else {
-            eprintln!("cpl-next --all: `{line}` is not FILE<TAB>DIR");
+        let mut fields = line.split('\t');
+        let (Some(path), Some(dir), judge) = (fields.next(), fields.next(), fields.next()) else {
+            eprintln!("cpl-next --all: `{line}` is not FILE<TAB>DIR[<TAB>JUDGE=MB]");
             std::process::exit(2);
         };
         let started = std::time::Instant::now();
@@ -197,6 +210,9 @@ fn every_case(limit: Duration, events: bool) {
             }
         };
         let mut snapshot = std.with_program(&src).with_roots(roots(path));
+        if let Some((name, mb)) = judge.and_then(judge_given) {
+            snapshot = snapshot.with_judge(name, mb);
+        }
         if events {
             snapshot = snapshot.traced();
         }
@@ -280,6 +296,27 @@ fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input
     if cfg!(debug_assertions) {
         write("error-typed", &c.error_typed().join("\n"));
     }
+}
+
+/// `snapshot` built for the judge `--judge NAME=MB` names; the caller resolves it.
+fn judged(snapshot: Snapshot, args: &[String]) -> Snapshot {
+    let at = args.iter().position(|a| a == "--judge");
+    match at
+        .and_then(|i| args.get(i + 1))
+        .map(|j| (j, judge_given(j)))
+    {
+        Some((_, Some((name, mb)))) => snapshot.with_judge(name, mb),
+        Some((j, None)) => {
+            eprintln!("cpl-next: `--judge {j}` is not NAME=MB");
+            std::process::exit(2);
+        }
+        None => snapshot,
+    }
+}
+
+fn judge_given(j: &str) -> Option<(&str, u64)> {
+    let (name, mb) = j.split_once('=')?;
+    Some((name, mb.parse().ok()?))
 }
 
 /// The std this binary was built with, or the directory `CPL_NEXT_STD_DIR` names.

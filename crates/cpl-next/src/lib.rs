@@ -12,6 +12,7 @@ pub mod facade;
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
 use cpl_next_decls::{decls, diag, modules};
+use cpl_next_ir::build::Judge;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
@@ -297,7 +298,8 @@ fn back(f: &mut Front) -> Option<(inst::Program, Vec<Diag>)> {
     Some((prog, diags))
 }
 
-fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
+/// `judge` is the judge the snapshot is built for; it is the tool's to resolve (contract 0).
+fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>) -> Front {
     let loaded = modules::load(std, user_src, roots);
     // What the parser could not read is checked as error nodes; a later layer says nothing
     // on what the parser rejected, and every other unit is checked as if it were alone.
@@ -315,7 +317,7 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         &loaded,
         &values,
         &[],
-        judge_of(loaded.program()),
+        judge.cloned(),
         &check::Ids::default(),
     );
     out.extend(diags(Stage::Check, &t.errors));
@@ -332,18 +334,9 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     }
 }
 
-/// The judge a program names (`// judge:`, else `generic`), as the checker reads it.
-fn judge_of(program: &str) -> Option<cpl_next_ir::build::Judge> {
-    let p = cpl_judge::builtin(cpl_judge::named_in(program).unwrap_or("generic"))?;
-    Some(cpl_next_ir::build::Judge {
-        name: p.name,
-        memory_mb: p.memory_mb,
-    })
-}
-
 /// Each std module and how many diagnostics it has when every one of its fns is checked, not
 /// only those a program reaches: std as a program (suite 4 of plan/end-state.toml).
-pub(crate) fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
+pub(crate) fn std_unchecked(std: &Std, judge: Option<&Judge>) -> Vec<(String, usize)> {
     (std.module_names())
         .filter(|m| *m != "std.prelude")
         .map(|m| {
@@ -360,7 +353,7 @@ pub(crate) fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
                 &loaded,
                 &values,
                 &at.into_iter().collect::<Vec<_>>(),
-                judge_of(""),
+                judge.cloned(),
                 &check::Ids::default(),
             );
             let ds = (staged(Stage::Decls, &d.errors, &loaded, &[]).into_iter()).chain(staged(
@@ -386,8 +379,9 @@ pub(crate) fn compile(
     user_src: &str,
     roots: &Roots,
     events: bool,
+    judge: Option<&Judge>,
 ) -> Result<Compiled, Vec<Diag>> {
-    let mut f = front(std, user_src, roots);
+    let mut f = front(std, user_src, roots, judge);
     let Some((mut prog, own)) = back(&mut f) else {
         return Err(f.diags);
     };
@@ -668,8 +662,13 @@ pub struct Unit {
 
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
-pub(crate) fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
-    let mut f = front(std, user_src, roots);
+pub(crate) fn units(
+    std: &Std,
+    user_src: &str,
+    roots: &Roots,
+    judge: Option<&Judge>,
+) -> (Vec<Unit>, Vec<Diag>) {
+    let mut f = front(std, user_src, roots, judge);
     if let Some((_, own)) = back(&mut f) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);

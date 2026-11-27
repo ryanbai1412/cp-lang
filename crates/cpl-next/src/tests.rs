@@ -17,7 +17,7 @@ fn raw(c: &Compiled) -> Outcome {
 #[test]
 fn a_method_call_loads_no_module() {
     let seen = |src: &str| {
-        let f = front(&Std::read(), src, &Roots::std());
+        let f = front(&Std::read(), src, &Roots::std(), None);
         assert!(f.diags.is_empty(), "{:?}", f.diags);
         f.d.seen.clone()
     };
@@ -31,7 +31,7 @@ fn a_method_call_loads_no_module() {
 #[test]
 fn a_param_nothing_writes_is_a_view() {
     let src = "fn pick(xs: List<Int>, n: Int, ys: List<Int>) -> Int:\n    var zs = ys\n    zs.push(n)\n    xs[0] + zs.len\n\nprint(pick([1, 2], 3, [4]))\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     let f = c
         .prog
         .insts
@@ -47,7 +47,7 @@ fn a_param_nothing_writes_is_a_view() {
 #[test]
 fn ownership_places_every_release() {
     let src = "fn grow(xs: List<Int>) -> List<Int>:\n    var ys = xs.clone()\n    ys.push(1)\n    ys\n\nfn f(n: Int) -> Int:\n    var xs = [n]\n    xs = grow(xs)\n    grow(xs)\n    var g = [[n]]\n    g[0] = grow(xs)\n    xs.len + g[0].len\n\nprint(f(3))\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     let f = c.prog.insts.iter().find(|f| f.name == "f").expect("f");
     assert!(
         !f.drops.contains(&0),
@@ -109,7 +109,7 @@ fn the_engine_and_the_cpp_release_every_value_ownership_made() {
         "c++",
     ];
     for src in srcs {
-        let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+        let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
         let (run, held) = cpl_next_engine::run_held(&c.prog, &c.opt, "");
         assert!(run.trap.is_none(), "{src}");
         assert_eq!(held, 0, "{src}");
@@ -136,7 +136,7 @@ fn the_engine_and_the_cpp_release_every_value_ownership_made() {
             }
         }
     }
-    let mut c = compile(&Std::read(), srcs[0], &Roots::std(), false).expect("compiles");
+    let mut c = compile(&Std::read(), srcs[0], &Roots::std(), false, None).expect("compiles");
     (c.opt.iter_mut().filter(|f| f.name == "f")).for_each(|f| unplaced(&mut f.body));
     let (_, held) = cpl_next_engine::run_held(&c.prog, &c.opt, "");
     assert!(held > 0, "a missing release is seen");
@@ -149,7 +149,7 @@ fn a_fn_above_leaves_the_sites_of_those_below() {
     let below = "fn widget(xs: List<Int>) -> Int:\n    xs[0] + xs[1]\n\nprint(widget([1, 2]))\n";
     let above = format!("fn f() -> Int: 1\n\n{below}");
     let g = |src: &str| {
-        let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+        let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
         let insts = &c.prog.insts;
         let g = insts.iter().find(|f| f.name == "widget").expect("widget");
         // An instance is named by what it instantiates: a fn above adds instances before it.
@@ -171,14 +171,14 @@ fn a_fn_above_leaves_the_sites_of_those_below() {
 }
 
 fn diags(src: &str) -> Vec<Diag> {
-    compile(&Std::read(), src, &Roots::std(), false)
+    compile(&Std::read(), src, &Roots::std(), false, None)
         .err()
         .expect("rejected")
 }
 
 /// What compiling `src` gives: its diagnostics, or its C++ and what its run prints.
 fn outcome(std: &Std, src: &str) -> String {
-    match compile(std, src, &Roots::std(), true) {
+    match compile(std, src, &Roots::std(), true, None) {
         Ok(c) => {
             let o = raw(&c);
             let events: String = o.events.iter().map(|e| format!("{e}\n")).collect();
@@ -195,7 +195,7 @@ fn float_intrinsics_agree_across_engines() {
     let src = "print(sqrt(16), sin(0), cos(0.0), atan2(1, 1), hypot(3, 4), exp(0), ln(1.0))\n\
 print((-2.5).floor, (-2.5).ceil, (-2.5).round, (2.5).round, (-2.5).trunc)\n\
 print(1e300.floor)\n";
-    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), true, None).expect("compiles");
     let (raw, engine) = (raw(&c), c.run(""));
     let want = "4.0000000000 0.0000000000 1.0000000000 0.7853981634 5.0000000000 \
 1.0000000000 0.0000000000\n-3 -2 -3 3 -2\n";
@@ -226,7 +226,7 @@ print(small, precision: 100)\n";
             want.push('\n');
         }
     }
-    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), true, None).expect("compiles");
     assert_eq!(raw(&c).output, want);
     assert_eq!(c.run("").output, want);
 }
@@ -236,7 +236,7 @@ print(small, precision: 100)\n";
 #[test]
 fn derived_impls_declare_parameters_of_any_name() {
     let src = "struct Bx<Elem>:\n    x: Elem\nif Bx(x: 1) == Bx(x: 1) and Bx(x: 1) < Bx(x: 2):\n    print(1)\n";
-    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), true, None).expect("compiles");
     assert_eq!(raw(&c).output, "1\n");
     assert_eq!(c.run("").output, "1\n");
 }
@@ -261,7 +261,7 @@ fn programs_against_one_std_are_as_if_each_were_alone() {
 
 /// The checks optimized IR leaves out in the program's own code, by kind and line.
 fn proved(src: &str) -> Vec<(cpl_next_ir::ir::CheckKind, u32)> {
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     let main = c.prog.main;
     (c.proved().iter())
         .filter(|p| p.func == main)
@@ -387,7 +387,7 @@ fn a_library_second_marked_declaration_is_a_duplicate() {
     let lib = "@cuts\npub struct MyCut:\n    k: Int\npub fn one() -> Int = 1\n";
     std::fs::write(dir.join("kit/m.cp"), lib).unwrap();
     let src = "use kit.m.{one}\nprint(one())\n";
-    let got = compile(&Std::read(), src, &Roots::from(&dir), false);
+    let got = compile(&Std::read(), src, &Roots::from(&dir), false, None);
     std::fs::remove_dir_all(&dir).unwrap();
     let ds: Vec<String> = got
         .err()
@@ -412,7 +412,7 @@ fn a_build_reaching_an_untyped_library_body_reports_it() {
     std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
     let lib = "pub struct W:\n    v: Int\n\nimpl Show for W:\n    fn write_to(self, mut out: Str, sep: ?Str):\n        out.append(nope)\n";
     std::fs::write(dir.join("kit/m.cp"), lib).unwrap();
-    let run = |src: &str| compile(&Std::read(), src, &Roots::from(&dir), false);
+    let run = |src: &str| compile(&Std::read(), src, &Roots::from(&dir), false, None);
     let reached = run("use kit.m.{W}\nprint(W(1))\n");
     let unreached = run("use kit.m.{W}\nprint(W(1).v)\n");
     std::fs::remove_dir_all(&dir).unwrap();
@@ -553,7 +553,7 @@ fn in_beside_an_error_says_nothing_more() {
 fn a_lowered_local_keeps_its_name() {
     let src =
         "fn f(xs: List<Int>) -> Int:\n    let total = xs[0] + xs[1]\n    total\nprint(f([1, 2]))\n";
-    let f = front(&Std::read(), src, &Roots::std());
+    let f = front(&Std::read(), src, &Roots::std(), None);
     assert!(f.diags.is_empty(), "{:?}", f.diags);
     let g = (f.g.funcs.values())
         .find(|g| g.name == "f" && g.line != 0)
@@ -567,7 +567,7 @@ fn a_lowered_local_keeps_its_name() {
 #[test]
 fn a_lowered_expr_keeps_its_site() {
     let src = "fn f(xs: List<Int>) -> Int:\n    xs[0] + xs[1]\nprint(f([1, 2]))\n";
-    let f = front(&Std::read(), src, &Roots::std());
+    let f = front(&Std::read(), src, &Roots::std(), None);
     assert!(f.diags.is_empty(), "{:?}", f.diags);
     let g = (f.g.funcs.values())
         .find(|g| g.name == "f" && g.line != 0)
@@ -589,7 +589,7 @@ fn a_lowered_expr_keeps_its_site() {
 #[test]
 fn a_lowered_loop_keeps_its_body_site() {
     let src = "fn f(n: Int) -> Int:\n    var i = 0\n    while i < n:\n        i += 1\n    i\nprint(f(3))\n";
-    let f = front(&Std::read(), src, &Roots::std());
+    let f = front(&Std::read(), src, &Roots::std(), None);
     assert!(f.diags.is_empty(), "{:?}", f.diags);
     let g = (f.g.funcs.values())
         .find(|g| g.name == "f" && g.line != 0)
@@ -607,7 +607,7 @@ fn a_lowered_loop_keeps_its_body_site() {
 #[test]
 fn a_lowered_walk_keeps_its_body_site() {
     let src = "fn f(xs: List<Int>) -> Int:\n    var s = 0\n    for x in xs:\n        s += x\n    s\nprint(f([1, 2]))\n";
-    let f = front(&Std::read(), src, &Roots::std());
+    let f = front(&Std::read(), src, &Roots::std(), None);
     assert!(f.diags.is_empty(), "{:?}", f.diags);
     let g = (f.g.funcs.values())
         .find(|g| g.name == "f" && g.line != 0)
@@ -628,7 +628,7 @@ fn a_lowered_walk_keeps_its_body_site() {
 #[test]
 fn a_cell_of_a_type_parameter_is_written_through_its_bound() {
     let src = "fn w<S: IndexedMut<D, T>, D: Domain, T>(mut s: S, i: Int, x: T):\n    s[s.keys.nth(i)] = x\nvar q = [1, 2, 3]\nw(mut q, 1, 9)\nprint(q[1])\n";
-    let f = front(&Std::read(), src, &Roots::std());
+    let f = front(&Std::read(), src, &Roots::std(), None);
     assert!(f.diags.is_empty(), "{:?}", f.diags);
 }
 #[test]
@@ -650,7 +650,7 @@ let (r, s) = f(3)\n\
 var t = 0\n\
 for (a, b) in [f(1), f(2)]: t += a * b\n\
 print(r, s, t)\n";
-    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), true, None).expect("compiles");
     assert_eq!(raw(&c).output, "3 6 10\n");
     assert_eq!(c.run("").output, "3 6 10\n");
 }
@@ -664,7 +664,7 @@ fn weight<T: HasW>(x: T) -> Int = x.w\n\
 struct Road: w: Int, len: Int\n\
 impl HasW for Road\n\
 print(weight((w: 3, z: 1)), weight(Road(4, 9)))\n";
-    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), true, None).expect("compiles");
     assert_eq!(raw(&c).output, "3 4\n");
     assert_eq!(c.run("").output, "3 4\n");
 }
@@ -676,7 +676,7 @@ fn comparing_with_none_needs_no_eq() {
 let a: ?F = None\n\
 let b: ?F = Some(F(x => x + 1))\n\
 if a == None and b != None and not (None == b):\n    print(b!.f(1))\n";
-    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), true, None).expect("compiles");
     assert_eq!(raw(&c).output, "2\n");
     assert_eq!(c.run("").output, "2\n");
 }
@@ -689,7 +689,7 @@ if a == None and b != None and not (None == b):\n    print(b!.f(1))\n";
 fn a_ranged_int_shares_the_representation_of_an_int() {
     let src =
         "var x: 0..=10 = 5\nvar xs: List<0..=10> = List.new()\nxs.push(x)\nvar ys: List<Int> = List.new()\nys.push(x)\nprint(xs.get(0) + ys.get(0))\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     let list = |t: &CTy, ranged: bool| matches!(t, CTy::Struct(_, ts, _) if ts.len() == 1 && matches!(ts[0], CTy::Range(..)) == ranged && matches!(ts[0], CTy::Range(..) | CTy::Int));
     let all: Vec<&CTy> = (c.prog.insts.iter())
         .flat_map(|f| f.locals.iter().chain([&f.ret]))
@@ -708,7 +708,7 @@ fn a_ranged_int_shares_the_representation_of_an_int() {
 #[test]
 fn types_told_apart_by_domains_share_a_representation() {
     let src = "struct S<P>:\n    at: [P]Int\nfn a(k: Int) -> S<_>:\n    domain P = 0..k\n    S<P>([P] _ => 1)\nfn b(k: Int) -> S<_>:\n    domain Q = 0..k\n    S<Q>([Q] _ => 2)\nlet s = a(3)\nlet t = b(2)\nprint(s.at.len, t.at.len)\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     let doms =
         |t: &CTy| matches!(t, CTy::Struct(_, ts, _) if ts.iter().any(|t| matches!(t, CTy::Dom(_))));
     let ss: Vec<&CTy> = (c.prog.insts.iter())
@@ -804,7 +804,7 @@ fn a_body_adding_to_a_global_set_leaves_its_readers_typed_the_same() {
     assert!(top(&adds).is_some());
     assert_eq!(top(&adds), top(&reads));
     let printed = |src: &str| {
-        let c = compile(&std, src, &Roots::std(), true).expect("compiles");
+        let c = compile(&std, src, &Roots::std(), true, None).expect("compiles");
         (c.run("").output, raw(&c).output)
     };
     assert_eq!(printed(&adds), ("2 6\n".into(), "2 6\n".into()));
@@ -928,7 +928,7 @@ fn each_inst_call(b: &[Stmt<CTy>], f: &mut dyn FnMut(usize, &[cpl_next_ir::ir::A
 fn a_view_goes_only_to_a_viewed_param() {
     use cpl_next_ir::ir::Arg;
     let src = "struct P:\n    a: Int\n    b: Int = 2\nprint(P(a: 1).b, 3, 4)\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     for fs in [&c.prog.insts, &c.canon, &c.opt] {
         let mut bad = Vec::new();
         for f in fs.iter() {
@@ -950,7 +950,7 @@ fn a_view_goes_only_to_a_viewed_param() {
 fn a_default_lambda_in_a_generic_fn_has_the_callers_types() {
     let src =
         "fn f<T: Ord>(mut xs: List<T>):\n    xs.sort()\nvar a = [3, 1, 2]\nf(mut a)\nprint(a)\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     assert_eq!(c.error_typed(), Vec::<String>::new());
     assert_eq!(c.run("").output, "1 2 3\n");
 }
@@ -961,7 +961,7 @@ fn a_default_lambda_in_a_generic_fn_has_the_callers_types() {
 #[test]
 fn a_trait_argument_takes_the_marks_of_its_argument() {
     let src = "let small = [1, 2]\nlet large = [4, 3]\nprint(small + large.rev)\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let c = compile(&Std::read(), src, &Roots::std(), false, None).expect("compiles");
     let g = c.prog.globals.len();
     let bad = cpl_next_ir::verify::instances(&c.prog.insts, cpl_next_ir::verify::Stage::Raw, g);
     assert!(bad.is_empty(), "{bad:?}");
@@ -1180,4 +1180,19 @@ fn a_lends_without_its_arrow_offers_to_insert_it() {
         fixed.contains("fn get(xs: [V]Int, l: V) -> lends Int = xs[l]"),
         "{fixed}"
     );
+}
+
+#[test]
+fn the_memory_limit_is_the_judge_the_snapshot_is_built_for() {
+    use crate::facade::{Session, Snapshot};
+    let src =
+        "let n: 1..=1e9 = read()\ndomain V = 0..n\nlet a: [V]Int = [V].filled(0)\nprint(a[V(0)])\n";
+    let base = Snapshot::new(std::sync::Arc::new(Std::read()), Roots::std(), src);
+    let over = |s: Snapshot| {
+        (Session::open(s).units().1.iter())
+            .any(|d| cpl_json::to_string(&d.json()).contains("E0904"))
+    };
+    assert!(!over(base.clone()), "no judge, no memory limit");
+    assert!(over(base.with_judge("test", 256)));
+    assert!(!over(base.with_judge("test", 1 << 20)));
 }

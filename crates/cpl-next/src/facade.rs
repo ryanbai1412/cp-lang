@@ -2,6 +2,7 @@
 //! checks, builds and runs a program, over an immutable [`Snapshot`]. Each answer is computed
 //! once, on the first query that needs it, and never changes.
 
+use cpl_next_ir::build::Judge;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
@@ -21,6 +22,7 @@ struct Held {
     std: Arc<Std>,
     events: bool,
     bodies: bool,
+    judge: Option<Judge>,
 }
 
 impl Snapshot {
@@ -32,6 +34,7 @@ impl Snapshot {
             std,
             events: false,
             bodies: false,
+            judge: None,
         }))
     }
 
@@ -55,6 +58,16 @@ impl Snapshot {
         self.changed(|h| h.bodies = true)
     }
 
+    /// Built for the judge `name`, whose memory limit is `memory_mb`. The tool resolves which
+    /// judge that is (a `// judge:` line, a project config, a flag); the compiler only reads it.
+    pub fn with_judge(&self, name: &str, memory_mb: u64) -> Snapshot {
+        let judge = Judge {
+            name: name.into(),
+            memory_mb,
+        };
+        self.changed(|h| h.judge = Some(judge))
+    }
+
     pub fn program(&self) -> &str {
         &self.0.program
     }
@@ -67,6 +80,7 @@ impl Snapshot {
             std: h.std.clone(),
             events: h.events,
             bodies: h.bodies,
+            judge: h.judge.clone(),
         };
         change(&mut held);
         Snapshot(Arc::new(held))
@@ -157,7 +171,7 @@ impl Session {
     pub fn program(&self) -> Result<&Program, &[Diag]> {
         let built = self.built.get_or_init(|| {
             let h = &self.snapshot.0;
-            let mut c = compile(&h.std, &h.program, &h.roots, h.events)?;
+            let mut c = compile(&h.std, &h.program, &h.roots, h.events, h.judge.as_ref())?;
             if h.bodies {
                 c.without_fast();
             }
@@ -201,7 +215,7 @@ impl Session {
     pub fn units(&self) -> (&[Unit], &[Diag]) {
         let (units, diags) = self.units.get_or_init(|| {
             let h = &self.snapshot.0;
-            units(&h.std, &h.program, &h.roots)
+            units(&h.std, &h.program, &h.roots, h.judge.as_ref())
         });
         (units, diags)
     }
@@ -209,7 +223,7 @@ impl Session {
     /// The program's checked front half, which hover, definition and types read.
     fn front(&self) -> &Front {
         let h = &self.snapshot.0;
-        (self.front).get_or_init(|| crate::front(&h.std, &h.program, &h.roots))
+        (self.front).get_or_init(|| crate::front(&h.std, &h.program, &h.roots, h.judge.as_ref()))
     }
 
     /// The item the name at byte `at` of the program names, if it names one.
@@ -270,7 +284,8 @@ impl Session {
     /// Each std module and how many diagnostics checking every one of its fns gives, not only
     /// those a program reaches (suite 4).
     pub fn std_unchecked(&self) -> Vec<(String, usize)> {
-        std_unchecked(&self.snapshot.0.std)
+        let h = &self.snapshot.0;
+        std_unchecked(&h.std, h.judge.as_ref())
     }
 
     pub fn verdict(&self) -> Verdict {
