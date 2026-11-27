@@ -203,6 +203,37 @@ impl<'a> Cx<'a> {
         })?;
         Some(self.static_call(Ty::Param(i), tr, m, name, call, span))
     }
+    /// `Int.zero`, or `F.zero` in a default where `F` names the call's type: a self-less fn of a
+    /// trait the named type implements. None for a name that is a value, a struct or no type.
+    fn named_type_static(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> Option<TExpr> {
+        let ExprKind::Name(n) = &base.kind else {
+            return None;
+        };
+        if self.lookup(n).is_some() || self.d.named(self.module, n).is_some() {
+            return None;
+        }
+        let mut errs = Vec::new();
+        let t = ast::Type::named(n, base.span);
+        let t = decls::body_type(
+            self.d,
+            self.module,
+            &self.generics,
+            &self.doms,
+            &t,
+            &mut errs,
+        );
+        let t = self.shallow(&t);
+        if !errs.is_empty() || matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_)) {
+            return None;
+        }
+        self.type_static(t, name, call, span)
+    }
     /// `T.f(args)` on a type that is not a parameter, as `V.cuts.count`: a fn without `self` of
     /// a trait it implements.
     /// `D.find(p)` on a domain struct with no fn `find`: its walk of positions answers (R04.2.20).
@@ -486,6 +517,10 @@ impl<'a> Cx<'a> {
             return e;
         }
         if let Some(e) = self.bound_static(base, name, call, span) {
+            self.no_targs(name, written_targs, span);
+            return e;
+        }
+        if let Some(e) = self.named_type_static(base, name, call, span) {
             self.no_targs(name, written_targs, span);
             return e;
         }

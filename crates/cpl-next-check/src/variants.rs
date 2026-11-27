@@ -109,6 +109,7 @@ impl Cx<'_> {
             tys: &targs,
             sets: &sets,
         };
+        let named = super::expr::named_params(&s.generics, &sub);
         let formals: Vec<Formal> = (s.fields.iter().zip(&s.defaults))
             .map(|((n, t), e)| Formal {
                 label: n,
@@ -116,7 +117,9 @@ impl Cx<'_> {
                 mutable: false,
                 named_only: false,
                 variadic: false,
-                default: e.as_ref().map(|e| (e, s.module, s.item.clone())),
+                default: e
+                    .as_ref()
+                    .map(|e| (e, s.module, s.item.clone(), named.clone())),
             })
             .collect();
         let (pre, fields) = self.args(args, &formals, span);

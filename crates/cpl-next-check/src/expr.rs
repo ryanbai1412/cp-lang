@@ -379,7 +379,9 @@ impl<'a> Cx<'a> {
                 }),
                 Some(a) => a,
                 None => TArg::Value(match f.default {
-                    Some((e, m, ref item)) => self.default_arg(e, m, item.clone(), &f.ty),
+                    Some((e, m, ref item, ref named)) => {
+                        self.default_arg((e, m, item.clone()), named, &f.ty)
+                    }
                     None => TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,
@@ -432,22 +434,35 @@ impl<'a> Cx<'a> {
             TArg::Value(self.coerce(v, pty))
         }
     }
-    /// A default is read where its fn or struct is declared: none of the caller's names are seen.
-    fn default_arg(&mut self, e: &ast::Expr, m: ModId, item: ItemId, ty: &Ty) -> TExpr {
+    /// A default is read where its fn or struct is declared: none of the caller's names are seen,
+    /// and the declaration's type parameters name this call's types (`id: F = F.zero`).
+    fn default_arg(
+        &mut self,
+        (e, m, item): (&ast::Expr, ModId, ItemId),
+        named: &[(String, Ty)],
+        ty: &Ty,
+    ) -> TExpr {
         let module = std::mem::replace(&mut self.module, m);
         let item = std::mem::replace(&mut self.item, item);
         let scopes = std::mem::replace(&mut self.scopes, vec![HashMap::new()]);
         let self_local = self.self_local.take();
+        let generics = std::mem::take(&mut self.generics);
+        let mut doms = self.doms.clone();
+        doms.extend(named.iter().cloned());
+        let doms = std::mem::replace(&mut self.doms, doms);
         let v = self.expr(e, Some(ty));
         let v = self.coerce(v, ty);
         self.module = module;
         self.item = item;
         self.scopes = scopes;
         self.self_local = self_local;
+        self.generics = generics;
+        self.doms = doms;
         v
     }
     /// The parameters of a fn as a call binds them.
     pub(super) fn formals(&self, sub: &Subst, fd: &'a decls::FnDecl) -> Vec<Formal<'a>> {
+        let named = named_params(&fd.generics, sub);
         fd.params
             .iter()
             .map(|p| Formal {
@@ -456,7 +471,8 @@ impl<'a> Cx<'a> {
                 mutable: p.mutable,
                 named_only: p.named_only,
                 variadic: p.variadic,
-                default: p.default.as_ref().map(|e| (e, fd.module, fd.item.clone())),
+                default: (p.default.as_ref())
+                    .map(|e| (e, fd.module, fd.item.clone(), named.clone())),
             })
             .collect()
     }
@@ -1875,8 +1891,16 @@ pub(super) struct Formal<'d> {
     pub mutable: bool,
     pub named_only: bool,
     pub variadic: bool,
-    /// Its expression, read in the module and with spans from the item that declares it.
-    pub default: Option<(&'d ast::Expr, ModId, ItemId)>,
+    /// Its expression, read in the module and with spans from the item that declares it, and
+    /// the types the declaration's type parameters stand for at this call.
+    pub default: Option<(&'d ast::Expr, ModId, ItemId, Vec<(String, Ty)>)>,
+}
+
+/// Each type parameter's name and the type `sub` gives it.
+pub(super) fn named_params(generics: &[String], sub: &Subst) -> Vec<(String, Ty)> {
+    (generics.iter().enumerate())
+        .map(|(i, g)| (g.clone(), sub.ty(&Ty::Param(i))))
+        .collect()
 }
 
 /// Reading it has no effect, so when it runs does not matter.
