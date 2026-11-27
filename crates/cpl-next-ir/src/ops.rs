@@ -120,8 +120,26 @@ fn value(r: Option<i64>) -> Result<i64, Fault> {
     }
 }
 
+/// `Int` arithmetic where overflow checks are off: it wraps to 64 bits (R09.4.2).
+fn wrapping(op: Intr, a: i64, b: i64) -> Option<Result<i64, Fault>> {
+    Some(Ok(match op {
+        Intr::AddWrap => a.wrapping_add(b),
+        Intr::SubWrap => a.wrapping_sub(b),
+        Intr::MulWrap => a.wrapping_mul(b),
+        Intr::PowWrap if b < 0 => return Some(Err(Fault::NegativePower)),
+        Intr::PowWrap => word(Intr::Pow, a as u64, b as u64).ok()? as i64,
+        Intr::ShlWrap if !(0..64).contains(&b) => return Some(Err(Fault::ShiftOutside)),
+        Intr::ShlWrap if a < 0 => return Some(Err(Fault::ShlNegative)),
+        Intr::ShlWrap => ((a as u64) << b) as i64,
+        _ => return None,
+    }))
+}
+
 /// A binary operation on two `Int`s (R03.3).
 pub fn int(op: Intr, a: i64, b: i64) -> Result<i64, Fault> {
+    if let Some(r) = wrapping(op, a, b) {
+        return r;
+    }
     value(match op {
         Intr::Add => a.checked_add(b),
         Intr::Sub => a.checked_sub(b),
@@ -383,6 +401,11 @@ pub fn cpp(op: Intr, unsigned: bool) -> Option<Cpp> {
         (Intr::Shr, false) => Call("cpl_shr"),
         (Intr::BitAnd, false) => Call("cpl_band"),
         (Intr::BitXor, false) => Call("cpl_bxor"),
+        (Intr::AddWrap, _) => Call("cpl_add_wrap"),
+        (Intr::SubWrap, _) => Call("cpl_sub_wrap"),
+        (Intr::MulWrap, _) => Call("cpl_mul_wrap"),
+        (Intr::PowWrap, _) => Call("cpl_pow_wrap"),
+        (Intr::ShlWrap, _) => Call("cpl_shl_wrap"),
         // `a | b` of two values is never the lowest bit pattern.
         (Intr::BitOr, _) => Infix("|"),
         (Intr::Eq, _) => Infix("=="),

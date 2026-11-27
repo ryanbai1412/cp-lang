@@ -81,7 +81,7 @@ pub enum TK {
     Elem(Box<TExpr>),
     /// `buf[i]` on core's raw storage: cell `i`, a place a container's `IndexedMut` lends (R05.3.5).
     Slot(Box<TExpr>, Box<TExpr>),
-    Bin(BinOp, Box<TExpr>, Box<TExpr>),
+    Bin(BinOp, Box<TExpr>, Box<TExpr>, Overflow),
     Cmp(CmpOp, Box<TExpr>, Box<TExpr>),
     Not(Box<TExpr>),
     Neg(Box<TExpr>),
@@ -136,6 +136,14 @@ pub enum TArg {
 pub enum Callee {
     Fn(FnRef),
     Trait(TraitRef, String),
+}
+
+/// What `Int` arithmetic does past `Int`: trap, or wrap where `with checks(overflow: off)`
+/// covers it (R09.4.2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Overflow {
+    Traps,
+    Wraps,
 }
 
 #[derive(Clone, Debug)]
@@ -308,10 +316,13 @@ struct Cx<'a> {
     const_busy: Vec<bool>,
     /// The code that sets them, first reads first, above the program's.
     const_init: Vec<TStmt>,
+    /// Inside `with checks(overflow: off)`: `Int` arithmetic wraps.
+    wraps: bool,
 }
 
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded) -> Typed {
     let mut cx = Cx {
+        wraps: false,
         d,
         src,
         tys: Vec::new(),

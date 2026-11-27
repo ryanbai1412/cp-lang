@@ -179,8 +179,32 @@ impl<'a> Cx<'a> {
         let mut out = Vec::new();
         let mut value = None;
         let outer = self.group.len();
+        let wraps = self.wraps;
         self.declare_nested(&b.stmts);
         for (i, s) in b.stmts.iter().enumerate() {
+            // A bare `with` line sets a context for the rest of its block (R09.1.1).
+            if let StmtKind::With {
+                ctx,
+                args,
+                body: None,
+            } = &s.kind
+            {
+                if i > 0 {
+                    self.err(
+                        s.span,
+                        format!(
+                            "{}: a bare `with` line comes first in its block",
+                            cpl_diag::codes::WITH_NOT_FIRST.0
+                        ),
+                    );
+                    continue;
+                } else if ctx.text == "checks" {
+                    if let Some(w) = self.checks(args, s.span) {
+                        self.wraps = w;
+                    }
+                    continue;
+                }
+            }
             // A last expression that never gives a value is a statement, as `return` is.
             if i + 1 == b.stmts.len() {
                 if let StmtKind::Expr(e) = &s.kind {
@@ -198,6 +222,7 @@ impl<'a> Cx<'a> {
             }
             self.stmt(s, &mut out);
         }
+        self.wraps = wraps;
         self.captures_set(outer, &out);
         self.group.truncate(outer);
         self.scopes.pop();
@@ -1101,11 +1126,48 @@ impl<'a> Cx<'a> {
                 };
                 self.bind(name, t);
             }
+            StmtKind::With {
+                ctx,
+                args,
+                body: Some(body),
+            } if ctx.text == "checks" => {
+                if let Some(w) = self.checks(args, s.span) {
+                    let outer = std::mem::replace(&mut self.wraps, w);
+                    let b = self.block(body, None);
+                    self.wraps = outer;
+                    out.push(TStmt::Expr(b));
+                }
+            }
             other => self.err(
                 s.span,
                 format!("slice: statement {}", crate::kind_name(other)),
             ),
         }
+    }
+    /// Whether `Int` arithmetic wraps under `with checks(...)` (R09.4). A checked build already
+    /// runs every check, so `: on` changes nothing but `overflow: on` inside `overflow: off`.
+    fn checks(&mut self, args: &[ast::Arg], span: Span) -> Option<bool> {
+        let mut wraps = self.wraps;
+        for a in args {
+            let name = a.name.as_ref().map(|n| n.text.as_str());
+            let on = match &a.value.kind {
+                ExprKind::Name(v) if v == "on" => true,
+                ExprKind::Name(v) if v == "off" => false,
+                _ => {
+                    self.err(span, "slice: a `checks` value other than `on` or `off`");
+                    return None;
+                }
+            };
+            match name {
+                Some("overflow") => wraps = !on,
+                Some("ranges" | "bounds") if on => {}
+                _ => {
+                    self.err(span, "slice: this `with checks(...)` field");
+                    return None;
+                }
+            }
+        }
+        Some(wraps)
     }
     /// `read()` or `read<T>()`: the type argument if written, and the bare `read()` call.
     pub(super) fn read_call(e: &ast::Expr) -> Option<(Option<ast::Type>, ast::Expr)> {
@@ -1167,7 +1229,7 @@ impl<'a> Cx<'a> {
                 span,
             };
             TExpr {
-                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one)),
+                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one), Overflow::Traps),
                 ty: Ty::Int,
                 span,
             }
@@ -1239,7 +1301,12 @@ impl<'a> Cx<'a> {
             span,
         };
         let n = TExpr {
-            kind: TK::Bin(BinOp::Sub, Box::new(end), Box::new(var(first))),
+            kind: TK::Bin(
+                BinOp::Sub,
+                Box::new(end),
+                Box::new(var(first)),
+                Overflow::Traps,
+            ),
             ty: Ty::Int,
             span,
         };

@@ -120,6 +120,15 @@ static inline uint64_t cpl_upow(uint64_t a, uint64_t b) {
     }
     return r;
 }
+static inline int64_t cpl_add_wrap(int64_t a, int64_t b) { return (int64_t)((uint64_t)a + (uint64_t)b); }
+static inline int64_t cpl_sub_wrap(int64_t a, int64_t b) { return (int64_t)((uint64_t)a - (uint64_t)b); }
+static inline int64_t cpl_mul_wrap(int64_t a, int64_t b) { return (int64_t)((uint64_t)a * (uint64_t)b); }
+static inline int64_t cpl_pow_wrap(int64_t a, int64_t b) { if (b < 0) cpl_fail(CPL_NEGATIVE_POWER); return (int64_t)cpl_upow((uint64_t)a, (uint64_t)b); }
+static inline int64_t cpl_shl_wrap(int64_t a, int64_t b) {
+    if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE);
+    if (a < 0) cpl_fail(CPL_SHL_NEGATIVE);
+    return (int64_t)((uint64_t)a << b);
+}
 static inline uint64_t cpl_ushl(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a << b; }
 static inline uint64_t cpl_ushr(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a >> b; }
 static inline int64_t cpl_int_of_u64(uint64_t u) { if (u > (uint64_t)INT64_MAX) cpl_fail(CPL_U64_PAST_INT); return (int64_t)u; }
@@ -693,6 +702,11 @@ impl Emit<'_> {
                     | Intr::Pow
                     | Intr::Shl
                     | Intr::Shr
+                    | Intr::AddWrap
+                    | Intr::SubWrap
+                    | Intr::MulWrap
+                    | Intr::PowWrap
+                    | Intr::ShlWrap
                     | Intr::BitAnd
                     | Intr::BitOr
                     | Intr::BitXor
@@ -1068,6 +1082,29 @@ mod tests {
                 format!("cpl_raw<int64_t> r(3); cpl_set(r, INT64_C({a}), INT64_C(7)); printf(\"7\\n\");"),
                 expect(ops::cell(a, 3, true).map(|_| 7)),
             );
+        }
+        let wrapping = [
+            Intr::AddWrap,
+            Intr::SubWrap,
+            Intr::MulWrap,
+            Intr::PowWrap,
+            Intr::ShlWrap,
+        ];
+        for op in wrapping {
+            for a in ints {
+                for b in ints {
+                    let c = call(
+                        op,
+                        false,
+                        &format!("INT64_C({a})"),
+                        &format!("INT64_C({b})"),
+                    );
+                    case(
+                        format!("printf(\"%lld\\n\", (long long){c});"),
+                        expect(ops::int(op, a, b)),
+                    );
+                }
+            }
         }
         for op in ops {
             for a in ints {

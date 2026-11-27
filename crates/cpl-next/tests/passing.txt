@@ -645,6 +645,9 @@ core-09/checked-build-calls-user-fn-once.cp
 core-09/checked-index-trap.cp
 core-09/checked-valid-program-runs.cp
 core-09/checks-call-no-user-code.cp
+core-09/checks-off-block.cp
+core-09/checks-on-block-runs.cp
+core-09/checks-on-block.cp
 core-09/division-by-zero-trap.cp
 core-09/division-nonzero-ok.cp
 core-09/domain-conversion-in-range.cp
@@ -654,6 +657,7 @@ core-09/overflow-not-reached.cp
 core-09/overflow-trap.cp
 core-09/range-store-proved.cp
 core-09/range-store-trap.cp
+core-09/rb1-q40-with-must-come-first.cp
 core-09/trap-trace-source-names.cp
 core-09/trapped-check-that-holds.cp
 core-09/unchecked-is-statement.cp
@@ -1027,6 +1031,7 @@ next/n_bound_02_for_walks_through_the_bound.cp
 next/n_cell_01_indexed_mut_bound.cp
 next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp
+next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_const_hoists.cp
 next/n_convert_01_core_types_convert_by_impl.cp
@@ -1325,7 +1330,9 @@ widths/add-traps-2.cp
 widths/add-traps-3.cp
 widths/add-traps-4.cp
 widths/add-traps-5.cp
+widths/add-wraps-when-unchecked.cp
 widths/div-in-range.cp
+widths/div-wraps-when-unchecked.cp
 widths/mul-assign-traps-0.cp
 widths/mul-assign-traps-1.cp
 widths/mul-assign-traps-2.cp
@@ -1339,8 +1346,10 @@ widths/mul-traps-2.cp
 widths/mul-traps-3.cp
 widths/mul-traps-4.cp
 widths/mul-traps-5.cp
+widths/mul-wraps-when-unchecked.cp
 widths/neg-in-range.cp
 widths/rem-in-range.cp
+widths/rem-wraps-when-unchecked.cp
 widths/sub-assign-traps-0.cp
 widths/sub-assign-traps-1.cp
 widths/sub-assign-traps-2.cp
@@ -1354,3 +1363,4 @@ widths/sub-traps-2.cp
 widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
+widths/sub-wraps-when-unchecked.cp

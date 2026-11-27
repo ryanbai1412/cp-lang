@@ -59,8 +59,13 @@ impl<'a> Cx<'a> {
         if op == BinOp::Coalesce {
             self.err(span, "slice: unsupported operator");
         }
+        let overflow = if self.wraps && want == Ty::Int {
+            Overflow::Wraps
+        } else {
+            Overflow::Traps
+        };
         TExpr {
-            kind: TK::Bin(op, Box::new(l), Box::new(r)),
+            kind: TK::Bin(op, Box::new(l), Box::new(r), overflow),
             ty: want,
             span,
         }
@@ -1029,7 +1034,10 @@ impl<'a> Cx<'a> {
                     Ty::U64 => mk(TK::ToU64(Box::new(ones)), Ty::U64),
                     _ => ones,
                 };
-                mk(TK::Bin(BinOp::BitXor, Box::new(v), Box::new(ones)), t)
+                mk(
+                    TK::Bin(BinOp::BitXor, Box::new(v), Box::new(ones), Overflow::Traps),
+                    t,
+                )
             }
             ExprKind::Unary { op, expr } => {
                 let (want_t, kind): (Ty, fn(Box<TExpr>) -> TK) = match op {

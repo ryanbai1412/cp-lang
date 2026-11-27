@@ -212,7 +212,7 @@ impl Cx<'_> {
                 span,
             };
             hi = TExpr {
-                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one)),
+                kind: TK::Bin(BinOp::Add, Box::new(hi), Box::new(one), Overflow::Traps),
                 ty: Ty::Int,
                 span,
             };

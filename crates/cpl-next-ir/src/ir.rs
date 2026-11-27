@@ -60,8 +60,25 @@ pub enum Intr {
     ToF64,
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
     Unset,
+    /// `Int` arithmetic where overflow checks are off: it wraps to 64 bits (R09.4.2).
+    AddWrap,
+    SubWrap,
+    MulWrap,
+    PowWrap,
+    ShlWrap,
 }
 impl Intr {
+    /// The operation that wraps where this one traps on overflow; itself if it cannot overflow.
+    pub fn wrapping(self) -> Intr {
+        match self {
+            Intr::Add => Intr::AddWrap,
+            Intr::Sub => Intr::SubWrap,
+            Intr::Mul => Intr::MulWrap,
+            Intr::Pow => Intr::PowWrap,
+            Intr::Shl => Intr::ShlWrap,
+            other => other,
+        }
+    }
     /// The storage operation a std fn declared `= @intrinsic(name)` is (R12.14.1).
     pub fn named(name: &str) -> Option<Intr> {
         Some(match name {

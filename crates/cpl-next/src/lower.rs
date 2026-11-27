@@ -646,7 +646,7 @@ impl Lw<'_> {
                 let v = self.spill(v, out);
                 mk(EK::Widen(Box::new(v)))
             }
-            TK::Bin(op, l, r) if matches!(op, BinOp::And | BinOp::Or) => {
+            TK::Bin(op, l, r, _) if matches!(op, BinOp::And | BinOp::Or) => {
                 // Lazy: the right side runs only when the left does not decide.
                 let t = self.temp(Ty::Bool);
                 let lv = self.expr(l, out);
@@ -665,7 +665,7 @@ impl Lw<'_> {
                 }
                 c
             }
-            TK::Bin(op, l, r) => {
+            TK::Bin(op, l, r, overflow) => {
                 let vs = self.seq(&[l, r], out);
                 let i = match op {
                     BinOp::Add => Intr::Add,
@@ -683,6 +683,10 @@ impl Lw<'_> {
                         self.errors.push("slice: unsupported operator".into());
                         Intr::Add
                     }
+                };
+                let i = match overflow {
+                    Overflow::Wraps => i.wrapping(),
+                    Overflow::Traps => i,
                 };
                 let v = mk(EK::Intr(i, vs.into_iter().map(Arg::Value).collect(), site));
                 self.spill(v, out)
@@ -1389,7 +1393,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
                 bound.insert(VarRef::Global(*p));
             }
         }
-        TK::Bin(_, a, b) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
+        TK::Bin(_, a, b, _) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
             free_vars(a, used, bound);
             free_vars(b, used, bound);
         }

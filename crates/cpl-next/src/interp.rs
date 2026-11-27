@@ -500,7 +500,12 @@ impl<'a> Machine<'a> {
             | Intr::BitXor
             | Intr::Pow
             | Intr::Shl
-            | Intr::Shr => {
+            | Intr::Shr
+            | Intr::AddWrap
+            | Intr::SubWrap
+            | Intr::MulWrap
+            | Intr::PowWrap
+            | Intr::ShlWrap => {
                 if let (Arg::Value(x), Arg::Value(y)) = (&args[0], &args[1]) {
                     if x.ty == CTy::U64 {
                         let (a, b) = (self.expr(x, fp)?, self.expr(y, fp)?);

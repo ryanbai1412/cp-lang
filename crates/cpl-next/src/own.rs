@@ -1180,7 +1180,7 @@ impl Cx<'_> {
             | TK::Ordinal(x)
             | TK::Variant(_, x)
             | TK::Tag(x) => self.expr(x, fx),
-            TK::Bin(_, a, b) | TK::Cmp(_, a, b) => {
+            TK::Bin(_, a, b, _) | TK::Cmp(_, a, b) => {
                 self.expr(a, fx);
                 self.expr(b, fx);
             }

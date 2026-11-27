@@ -1074,6 +1074,11 @@ impl Fc<'_> {
             | Intr::Pow
             | Intr::Shl
             | Intr::Shr
+            | Intr::AddWrap
+            | Intr::SubWrap
+            | Intr::MulWrap
+            | Intr::PowWrap
+            | Intr::ShlWrap
             | Intr::Eq
             | Intr::Ne
             | Intr::Lt
