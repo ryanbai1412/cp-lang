@@ -457,20 +457,13 @@ const DOMAIN_OWN: &[(&str, &str)] = &[
     ("filter", "the positions a predicate holds on"),
 ];
 
-/// `DOMAIN_OWN` with the cuts member std declares (`V.cuts`), after `rev`.
+/// `DOMAIN_OWN` with the cuts member std declares (`V.cuts`), after `rev` (the 4th).
 pub fn domain_member_docs() -> &'static [(&'static str, &'static str)] {
     static ALL: std::sync::OnceLock<Vec<(&'static str, &'static str)>> = std::sync::OnceLock::new();
     ALL.get_or_init(|| {
         let mut all = DOMAIN_OWN.to_vec();
-        let at = all
-            .iter()
-            .position(|(m, _)| *m == "rev")
-            .map_or(all.len(), |i| i + 1);
-        let cuts = (
-            crate::prelude::cuts_member(),
-            "the gaps between and around positions",
-        );
-        all.insert(at, cuts);
+        let cuts = "the gaps between and around positions";
+        all.insert(4, (crate::prelude::cuts_member(), cuts));
         all
     })
 }

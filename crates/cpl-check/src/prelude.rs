@@ -607,25 +607,21 @@ pub fn cuts_member() -> &'static str {
     static FOUND: OnceLock<&'static str> = OnceLock::new();
     FOUND.get_or_init(|| {
         let mark = cpl_syntax::decorators::CUTS;
-        let mut cut = None;
-        for (_, text) in crate::modules::std_index() {
-            if cut.is_some() || !text.contains(&format!("@{mark}")) {
-                continue;
+        let marked = crate::modules::std_index()
+            .iter()
+            .filter(|(_, t)| t.contains(&format!("@{mark}")));
+        let mut stmts = marked
+            .flat_map(|(_, t)| cpl_syntax::parse_file(t).items)
+            .flat_map(|(_, i)| i.stmts);
+        let cut = stmts.find_map(|s| match s.kind {
+            ast::StmtKind::Struct(d) if s.decorators.iter().any(|x| x.name.text == mark) => {
+                Some(d.name.text)
             }
-            for (_, item) in cpl_syntax::parse_file(text).items {
-                for stmt in &item.stmts {
-                    if let ast::StmtKind::Struct(d) = &stmt.kind {
-                        if stmt.decorators.iter().any(|x| x.name.text == mark) {
-                            cut = Some(d.name.text.clone());
-                        }
-                    }
-                }
-            }
-        }
-        let cut = cut.unwrap_or_default();
+            _ => None,
+        });
         domain_members()
             .iter()
-            .find(|(_, of)| *of == cut)
+            .find(|(_, of)| Some(*of) == cut.as_deref())
             .map_or("", |&(m, _)| m)
     })
 }
