@@ -25,6 +25,8 @@ pub(super) struct TyCx<'a> {
     pub(super) item: Option<ItemId>,
     /// Each binary operator's fn, which `type_of(+)` names.
     pub(super) ops: Arc<Vec<(String, FnId)>>,
+    /// `Domain`'s getters, which a range type's end `D.m` names.
+    pub(super) getters: Arc<HashMap<String, FnId>>,
     /// How many set parameters each struct has, so a struct named in a type gets its own.
     pub(super) struct_sets: &'a HashMap<StructId, usize>,
     pub(super) struct_defaults: &'a HashMap<StructId, Vec<Option<Ty>>>,
@@ -91,6 +93,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         values: cx.values.clone(),
         item: None,
         ops: cx.ops.clone(),
+        getters: cx.getters.clone(),
         struct_sets: cx.struct_sets,
         struct_defaults: cx.struct_defaults,
         tuples: cx.tuples,
@@ -356,10 +359,13 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         }) {
             Some((lo, hi)) => Ty::Range(lo, hi),
             // `0..=V.count`: its end is the domain's, where a struct's arguments name it.
-            None if count_end(lo, hi, *inclusive).is_some_and(|(_, d, ..)| is_type_name(cx, d)) => {
+            None if count_end(lo, hi, *inclusive)
+                .is_some_and(|(_, d, m, _)| is_type_name(cx, d) && cx.getters.contains_key(m)) =>
+            {
                 let (lo, d, m, k) = count_end(lo, hi, *inclusive).unwrap_or_default();
+                let m = cx.getters[m];
                 let d = conv(cx, &ast::Type::named(d, t.span), errors);
-                Ty::RangeTo(Box::new(d), m.to_string(), lo, k)
+                Ty::RangeTo(Box::new(d), m, lo, k)
             }
             None => {
                 errors.push(Unbuilt::RangeTypeOutsideBody.into());
@@ -492,6 +498,7 @@ pub fn body_type(
             values: d.top_values.clone(),
             item: None,
             ops: d.operator_fns(),
+            getters: d.domain_getters(),
             struct_sets: &d.struct_sets,
             struct_defaults: &d.struct_defaults,
             tuples: &d.tuples,

@@ -473,6 +473,18 @@ impl Decls {
             .map(|(n, &m)| (n, m))
     }
     /// Each binary operator's fn, for `type_of(+)`.
+    /// `Domain`'s getters by name, which a range type's end `D.m` names.
+    pub fn domain_getters(&self) -> Arc<HashMap<String, FnId>> {
+        let Some(tr) = self.domain_trait else {
+            return Arc::default();
+        };
+        let ms = self.traits[tr.0].methods.iter();
+        Arc::new(
+            ms.filter(|(_, f)| self.f(**f).getter)
+                .map(|(n, f)| (n.clone(), *f))
+                .collect(),
+        )
+    }
     pub(crate) fn operator_fns(&self) -> Arc<Vec<(String, FnId)>> {
         Arc::new(
             (self.operators.iter())
@@ -1177,6 +1189,7 @@ fn add_fn(
         consts: &consts,
         values: d.top_values.clone(),
         ops: d.operator_fns(),
+        getters: d.domain_getters(),
         item: Some(item.clone()),
         struct_sets: &sets,
         struct_defaults: &defaults,

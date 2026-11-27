@@ -71,9 +71,7 @@ impl<'a> Cx<'a> {
                 )
             }
             Ty::Raw(e) => Ty::Raw(Box::new(self.fresh_sets(e))),
-            Ty::RangeTo(e, m, lo, k) => {
-                Ty::RangeTo(Box::new(self.fresh_sets(e)), m.clone(), *lo, *k)
-            }
+            Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(self.fresh_sets(e)), *m, *lo, *k),
             Ty::Mut(e) => Ty::Mut(Box::new(self.fresh_sets(e))),
             Ty::Struct(d, ts, ss) => {
                 let mut ss: Vec<SetTy> = ss
@@ -332,7 +330,7 @@ impl<'a> Cx<'a> {
                     k if k > 0 => format!(" + {k}"),
                     k => format!(" - {}", -k),
                 };
-                lo.to_string() + &format!("..={}.{m}{k}", self.show(&d))
+                lo.to_string() + &format!("..={}.{}{k}", self.show(&d), self.d.f(m).name)
             }
             Ty::Bool => "Bool".into(),
             Ty::Char => "Char".into(),
@@ -910,15 +908,12 @@ impl<'a> Cx<'a> {
                     ty: Ty::Int,
                     span,
                 };
-                let (lo, k, name) = (
-                    *lo,
-                    *k,
-                    ast::Name {
-                        text: m.clone(),
-                        span,
-                    },
-                );
-                let Some(end) = self.domain_fn((**d).clone(), &name, None, span) else {
+                let (lo, k, m) = (*lo, *k, *m);
+                let name = ast::Name {
+                    text: self.d.f(m).name.clone(),
+                    span,
+                };
+                let Some(end) = self.domain_fn_of((**d).clone(), m, &name, None, span) else {
                     let what = format!("`{}` has no `{}`", self.show(d), name.text);
                     self.err(span, Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, what));
                     return TExpr { ty: want_s, ..e };

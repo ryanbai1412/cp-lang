@@ -381,11 +381,13 @@ impl Cx<'_> {
             // `0..=V.count`: its end is the domain's, so a field of that type holds it.
             TypeKind::Range { lo, hi, inclusive }
                 if decls::static_range(lo, hi, *inclusive).is_none()
-                    && decls::count_end(lo, hi, *inclusive).is_some_and(|(_, d, ..)| {
-                        self.generics.iter().any(|g| g == d) || self.doms.contains_key(d)
+                    && decls::count_end(lo, hi, *inclusive).is_some_and(|(_, d, m, _)| {
+                        (self.generics.iter().any(|g| g == d) || self.doms.contains_key(d))
+                            && self.d.domain_getters().contains_key(m)
                     }) =>
             {
                 let (lo, d, m, k) = decls::count_end(lo, hi, *inclusive).unwrap_or_default();
+                let m = self.d.domain_getters()[m];
                 let mut errs = Vec::new();
                 let dt = ast::Type::named(d, t.span);
                 let dt = decls::body_type(
@@ -401,7 +403,7 @@ impl Cx<'_> {
                     self.err(span, e);
                 }
                 let name = format!("$to{}", self.doms.len());
-                let ty = Ty::RangeTo(Box::new(dt), m.to_string(), lo, k);
+                let ty = Ty::RangeTo(Box::new(dt), m, lo, k);
                 self.doms.insert(name.clone(), ty);
                 t.kind = TypeKind::Named {
                     name: ast::Name {

@@ -80,6 +80,18 @@ impl Cx<'_> {
     ) -> Option<TExpr> {
         let tr = self.d.domain_trait?;
         let &m = self.d.traits[tr.0].methods.get(&name.text)?;
+        self.domain_fn_of(dty, m, name, call, span)
+    }
+    /// `D.m`, `m` being one of `Domain`'s fns, which the program calls `name`.
+    pub(super) fn domain_fn_of(
+        &mut self,
+        dty: Ty,
+        m: FnId,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> Option<TExpr> {
+        let tr = self.d.domain_trait?;
         let fd = self.d.f(m);
         if !super::member::takes(fd, call) || (call.is_none() && !fd.getter) {
             return None;

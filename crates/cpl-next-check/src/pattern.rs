@@ -899,7 +899,7 @@ pub(super) fn retag(t: &Ty, from: usize, to: usize) -> Ty {
     match t {
         Ty::Dom(i) if *i == from => Ty::Dom(to),
         Ty::Raw(e) => Ty::Raw(Box::new(r(e))),
-        Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(r(e)), m.clone(), *lo, *k),
+        Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(r(e)), *m, *lo, *k),
         Ty::Mut(e) => Ty::Mut(Box::new(r(e))),
         Ty::Ref(e) => Ty::Ref(Box::new(r(e))),
         Ty::Lent(e) => Ty::Lent(Box::new(r(e))),

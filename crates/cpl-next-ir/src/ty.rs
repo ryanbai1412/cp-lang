@@ -27,10 +27,10 @@ pub enum Ty {
     /// `_..=_` as an impl's type: every range type and never `Int`. It binds the impl's
     /// parameter `i`, which its body names `Self`, to the range type it is for.
     AnyRange(usize),
-    /// `lo..=D.m + k` in a declaration: a range whose end is a static getter of a domain type
-    /// give or take a constant (`dep: [V]0..=V.count`). A store checks it against `D.m` where
+    /// `lo..=D.m + k` in a declaration: a range whose end is a static getter `m` of `Domain`, of
+    /// a domain type, give or take a constant (`dep: [V]0..=V.count`). A store checks it against `D.m` where
     /// it is made, so it keeps the end a struct's arguments give it (R03.1.4).
-    RangeTo(Box<Ty>, String, i64, i64),
+    RangeTo(Box<Ty>, FnId, i64, i64),
     Bool,
     /// An ASCII character, `0..=127`, one byte.
     Char,
@@ -146,7 +146,7 @@ impl Subst<'_> {
         match t {
             Ty::Param(i) => self.tys.get(*i).cloned().unwrap_or(Ty::Error),
             Ty::Raw(e) => Ty::Raw(Box::new(self.ty(e))),
-            Ty::RangeTo(d, m, lo, k) => Ty::RangeTo(Box::new(self.ty(d)), m.clone(), *lo, *k),
+            Ty::RangeTo(d, m, lo, k) => Ty::RangeTo(Box::new(self.ty(d)), *m, *lo, *k),
             Ty::Ref(e) => Ty::Ref(Box::new(self.ty(e))),
             Ty::Lent(e) => Ty::Lent(Box::new(self.ty(e))),
             Ty::Mut(e) => Ty::Mut(Box::new(self.ty(e))),
