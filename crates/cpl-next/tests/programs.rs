@@ -4,7 +4,8 @@
 //!
 //! A case that runs is run three ways on its `// input:`: the reference interpreter on the
 //! linked instances, the same on canonical IR, and the emitted C++ under ASan and UBSan.
-//! All three give the same stdout, exit status and events, within 10 seconds each.
+//! All three give the same stdout, exit status and events, within 10 seconds each, or the
+//! longer `// timeout:` a case's header gives.
 //!
 //! Each case ends one of three ways, and the two lists beside this file say which:
 //! - it passes: its id is in `tests/passing.txt`;
@@ -49,10 +50,6 @@ struct Ran {
     stderr: String,
 }
 
-fn run(cmd: Command, input: &[u8]) -> Ran {
-    run_within(cmd, input, LIMIT)
-}
-
 fn run_within(mut cmd: Command, input: &[u8], limit: Duration) -> Ran {
     let mut child = cmd
         .stdin(Stdio::piped())
@@ -86,20 +83,22 @@ fn run_within(mut cmd: Command, input: &[u8], limit: Duration) -> Ran {
     }
 }
 
-fn next(path: &Path, flags: &[&str], input: &[u8]) -> Ran {
+fn next(path: &Path, flags: &[&str], input: &[u8], limit: Duration) -> Ran {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl-next"));
     cmd.arg(path).args(flags);
-    run(cmd, input)
+    run_within(cmd, input, limit)
 }
 
 /// A case's runs from a `cpl-next --all` worker, which reads std once and compiles each case
 /// it is given against it, then runs every form in turn, each within what [`LIMIT`] leaves
 /// after the compile, as a process of its own would. A run it did not finish (a crash, the
 /// limit) ends the worker and is run again alone, so sharing never changes what a run gives.
+/// A case given a longer limit than the worker's runs alone.
 struct Forms<'a> {
     dir: PathBuf,
     path: &'a Path,
     input: &'a [u8],
+    limit: Duration,
     /// What the compile printed when it rejected or refused the case.
     compiled: Ran,
 }
@@ -163,7 +162,7 @@ thread_local! {
 }
 
 impl<'a> Forms<'a> {
-    fn new(path: &'a Path, input: &'a [u8]) -> Self {
+    fn new(path: &'a Path, input: &'a [u8], limit: Duration) -> Self {
         static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -171,12 +170,14 @@ impl<'a> Forms<'a> {
             .join(format!("{}-{n}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("the forms directory is made");
         std::fs::write(dir.join("in"), input).expect("the input is written");
-        WORKER.with_borrow_mut(|w| {
-            let finished = w.get_or_insert_with(Worker::new).finished(path, &dir);
-            if !finished {
-                *w = None;
-            }
-        });
+        if limit == LIMIT {
+            WORKER.with_borrow_mut(|w| {
+                let finished = w.get_or_insert_with(Worker::new).finished(path, &dir);
+                if !finished {
+                    *w = None;
+                }
+            });
+        }
         let read = |name: &str| std::fs::read_to_string(dir.join(name)).ok();
         if read("error-typed").is_some_and(|t| !t.is_empty()) {
             let text = std::fs::read(path).unwrap_or_default();
@@ -191,6 +192,7 @@ impl<'a> Forms<'a> {
             dir,
             path,
             input,
+            limit,
             compiled,
         }
     }
@@ -207,7 +209,7 @@ impl<'a> Forms<'a> {
                 stdout,
                 stderr,
             },
-            _ => next(self.path, flags, self.input),
+            _ => next(self.path, flags, self.input, self.limit),
         }
     }
 
@@ -226,7 +228,7 @@ impl<'a> Forms<'a> {
     fn cpp(&self) -> String {
         match self.read("c++") {
             Some(cpp) => cpp,
-            None => next(self.path, &["--cpp", "--trace"], b"").stdout,
+            None => next(self.path, &["--cpp", "--trace"], b"", self.limit).stdout,
         }
     }
 }
@@ -248,14 +250,14 @@ fn fnv(bytes: &[u8]) -> u64 {
 /// input give the same run. Kept under `target/cpl-next/runs` by a hash of both, with the
 /// input itself, compared before a hit; written under a name of its own and renamed, so
 /// concurrent suites never read half a run. A run killed at the limit is not kept.
-fn run_kept(bin: &Path, input: &[u8]) -> Ran {
+fn run_kept(bin: &Path, input: &[u8], limit: Duration) -> Ran {
     let runs = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/cpl-next/runs");
     let binary = std::fs::read(bin).expect("the built binary is readable");
     let kept = runs.join(format!("{:016x}-{:016x}", fnv(&binary), fnv(input)));
     if let Some(ran) = std::fs::read(&kept).ok().and_then(|b| unkeep(&b, input)) {
         return ran;
     }
-    let ran = run(Command::new(bin), input);
+    let ran = run_within(Command::new(bin), input, limit);
     if let Some(code) = ran.status {
         let mut b = format!("{code} {} {}\n", input.len(), ran.stdout.len()).into_bytes();
         b.extend_from_slice(input);
@@ -294,11 +296,14 @@ fn unkeep(b: &[u8], input: &[u8]) -> Option<Ran> {
     })
 }
 
-/// Header keys that ask for something this harness does not do yet (a judge profile, a command run before the tool, a copy count, text the output must or must not
-/// hold, more than the 10 seconds every run gets): a case with one counts as refused.
-/// Every other `// word:` line is a key the harness acts on (`expect`, `input`, `tool`,
-/// `output`) or a comment, so a note added to a header never changes what a case is.
-const ASKS: [&str; 4] = ["judge", "before", "copies", "timeout"];
+/// The limit each of a case's runs gets: [`LIMIT`], or its `// timeout: <secs>` when that is
+/// longer (a trap case that has to exhaust a budget first).
+fn limit_of(text: &str) -> Duration {
+    (header_values(text, "timeout:").iter())
+        .filter_map(|v| v.parse().ok())
+        .map(Duration::from_secs)
+        .fold(LIMIT, Duration::max)
+}
 
 /// What a case asks cpl-next for: a run, or only the checks.
 #[derive(Clone, Copy, PartialEq)]
@@ -316,7 +321,8 @@ fn ask(tool: Option<&str>) -> Result<Ask, String> {
     };
     let words: Vec<&str> = args.split_whitespace().filter(|w| *w != "{case}").collect();
     match words.as_slice() {
-        ["run"] => Ok(Ask::Run),
+        // A release run is the C++ build, which every run is compared with.
+        ["run"] | ["run", "--release"] => Ok(Ask::Run),
         ["check"] => Ok(Ask::Check),
         ["lint", ..] => Err("`cpl lint`: no lint query yet".into()),
         _ => Err(format!("`cpl {args}`: no facade query for it yet")),
@@ -376,8 +382,11 @@ fn verdict(path: &Path) -> (&'static str, String) {
         Err(e) => return ("bad-header", e),
     };
     let header = || text.lines().take_while(|l| l.starts_with("//"));
-    if let Some(key) = header().filter_map(header_key).find(|k| ASKS.contains(k)) {
-        return ("refused", format!("a `// {key}:` case"));
+    let limit = limit_of(&text);
+    // A `// before:` tool writes files only a later tool reads, so one cpl-next has is no step.
+    if let Some(e) = (header_values(&text, "before:").into_iter()).find_map(|b| ask(Some(b)).err())
+    {
+        return ("refused", format!("before: {e}"));
     }
     // Text a case asks to see is judged once the case otherwise passes; until then the
     // case stays refused, as the text may come from a report the pipeline lacks.
@@ -404,19 +413,25 @@ fn verdict(path: &Path) -> (&'static str, String) {
     let run_at = scratch
         .as_ref()
         .map_or(path.to_path_buf(), |d| d.join(path.file_name().unwrap()));
-    let (verdict, detail, printed) = judged(&run_at, &text, expect, ask);
+    let (verdict, detail, printed) = judged(&run_at, &text, expect, ask, limit);
     if let Some(d) = scratch {
         let _ = std::fs::remove_dir_all(d);
     }
     if let Some(key) = asks_text {
-        let refused = || ("refused", format!("a `// {key}:` case"));
         if verdict != "pass" {
-            return refused();
+            return ("refused", format!("a `// {key}:` case"));
         }
         let mut has = header_values(&text, "has:").into_iter().map(unquote);
         let mut lacks = header_values(&text, "lacks:").into_iter().map(unquote);
-        if !has.all(|w| printed.contains(&w)) || lacks.any(|n| printed.contains(&n)) {
-            return refused();
+        let missing: Vec<String> = has.by_ref().filter(|w| !printed.contains(w)).collect();
+        let extra: Vec<String> = lacks.by_ref().filter(|n| printed.contains(n)).collect();
+        let said = [("missing", missing), ("printed though lacked", extra)]
+            .into_iter()
+            .filter(|(_, ws)| !ws.is_empty())
+            .map(|(how, ws)| format!("{how} {ws:?}"))
+            .collect::<Vec<_>>();
+        if !said.is_empty() {
+            return ("wrong-output", said.join(", "));
         }
     }
     if verdict != "pass" {
@@ -427,6 +442,14 @@ fn verdict(path: &Path) -> (&'static str, String) {
         if printed != want {
             return ("wrong-output", format!("wanted {want:?}, got {printed:?}"));
         }
+    }
+    // A copy count is ownership's to report, per source site, and it reports none yet: a case
+    // that otherwise passes stays refused on it, and one that does not keeps its verdict.
+    if !header_values(&text, "copies:").is_empty() {
+        return (
+            "refused",
+            "a `// copies:` count: ownership reports none".into(),
+        );
     }
     ("pass", String::new())
 }
@@ -463,18 +486,29 @@ fn beside_its_files(path: &Path, text: &str) -> Result<Option<PathBuf>, String> 
 }
 
 /// The verdict on the `// expect:` line alone, and what the run that decided it printed.
-fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, String, String) {
+fn judged(
+    path: &Path,
+    text: &str,
+    expect: Expect,
+    ask: Ask,
+    limit: Duration,
+) -> (&'static str, String, String) {
     let input = header_input(text);
-    let forms = (ask == Ask::Run).then(|| Forms::new(path, &input));
+    let forms = (ask == Ask::Run).then(|| Forms::new(path, &input, limit));
     let raw = match &forms {
         Some(forms) => forms.raw(),
-        None => next(path, &["--check", "--json"], &input),
+        None => next(path, &["--check", "--json"], &input, limit),
     };
     let (raw, diags) = diagnosed(raw);
     let first = |s: &str| s.lines().next().unwrap_or("").to_string();
     let done = |v: &'static str, d: String| (v, d, String::new());
     match raw.status {
-        None => return done("timeout", "the interpreter passed 10 s".into()),
+        None => {
+            return done(
+                "timeout",
+                format!("the interpreter passed {} s", limit.as_secs()),
+            )
+        }
         // A refusal beside a coded verdict on the program hides that verdict: the case is
         // `masked`, refused for the lists but counted apart (tests/masked.txt).
         Some(4) if diags.iter().any(|d| on_the_program(d).is_some()) => {
@@ -536,7 +570,7 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
         Expect::Ok | Expect::Exit(0) if ask != Ask::Run => return pass(),
         _ => {}
     }
-    let forms = forms.unwrap_or_else(|| Forms::new(path, &input));
+    let forms = forms.unwrap_or_else(|| Forms::new(path, &input, limit));
     let canon = forms.form("canonical", &["--canonical", "--trace"]);
     let same =
         |a: &Ran, b: &Ran| a.status == b.status && a.stdout == b.stdout && a.stderr == b.stderr;
@@ -567,7 +601,7 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
         Ok((bin, _)) => bin,
         Err(e) => return done("no-cxx", e.lines().take(4).collect::<Vec<_>>().join(" | ")),
     };
-    let built = run_kept(&bin, &input);
+    let built = run_kept(&bin, &input, limit);
     // A trap's call stack comes from the engines' events; generated C++ keeps no frames.
     fn judged(r: &Ran) -> (Option<i32>, &str, Vec<&str>) {
         let lines = r.stderr.lines().filter(|l| !l.starts_with("call stack: "));
@@ -687,7 +721,7 @@ fn a_kept_build_or_run_is_never_stale() {
     };
     let (one, two) = (say("one"), say("two"));
     let built = |cpp: &str| cxx::build(cpp.as_bytes(), &flags).expect("g++ builds it").0;
-    let printed = |bin: &Path| run_kept(bin, b"").stdout;
+    let printed = |bin: &Path| run_kept(bin, b"", LIMIT).stdout;
     let first = built(&one);
     assert_eq!(printed(&first), "one\n");
     let second = built(&two);
@@ -796,6 +830,22 @@ fn every_case_is_where_the_lists_say() {
         list(&here.join("tests/passing.txt")),
         list(&here.join("tests/wrong.tsv")),
         list(&here.join("tests/masked.txt")),
+    );
+    // One run writes the lists, so a case is in one at most; an id in two is a hand edit or a
+    // merge, and the run would answer only one of them.
+    let twice: Vec<&str> = (listed_passing.keys())
+        .filter(|id| listed_wrong.contains_key(*id) || listed_masked.contains_key(*id))
+        .chain(
+            listed_wrong
+                .keys()
+                .filter(|id| listed_masked.contains_key(*id)),
+        )
+        .map(String::as_str)
+        .collect();
+    assert!(
+        twice.is_empty(),
+        "listed in two of passing.txt, wrong.tsv and masked.txt (copy target/cpl-next/ over them):\n{}",
+        twice.join("\n")
     );
     let mut off = Vec::new();
     let mut seen = Vec::new();
@@ -955,7 +1005,7 @@ fn fast_ops_agree_with_their_bodies() {
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("fast.cp");
     std::fs::write(&path, fast_program(&fns)).unwrap();
-    let body = next(&path, &[], b"");
+    let body = next(&path, &[], b"", LIMIT);
     assert_eq!(body.status, Some(0), "{}{}", body.stdout, body.stderr);
     let ints = fns.iter().filter(|f| f.at == "Int").count();
     let lines = body.stdout.lines().count();
@@ -974,13 +1024,13 @@ fn fast_ops_agree_with_their_bodies() {
         let flags = |f: &'static str| [&[f][..], bodies].concat();
         agree(
             &format!("engine {bodies:?}"),
-            next(&path, &flags("--engine"), b""),
+            next(&path, &flags("--engine"), b"", LIMIT),
         );
-        let cpp = next(&path, &flags("--cpp"), b"").stdout;
+        let cpp = next(&path, &flags("--cpp"), b"", LIMIT).stdout;
         let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
             .unwrap_or_else(|e| panic!("C++ {bodies:?}: {e}"))
             .0;
-        agree(&format!("C++ {bodies:?}"), run_kept(&bin, b""));
+        agree(&format!("C++ {bodies:?}"), run_kept(&bin, b"", LIMIT));
     }
 }
 
@@ -1007,14 +1057,14 @@ fn a_trap_names_its_line_without_trace() {
         std::fs::write(&path, format!("fn f(n: Int) -> Int:\n{body}print(f(0))\n")).unwrap();
         let line = body.lines().position(|l| l.contains("10 / n")).unwrap() + 2;
         let want = format!("trap: R0203: line {line}: division by zero");
-        let cpp = next(&path, &["--cpp"], b"").stdout;
+        let cpp = next(&path, &["--cpp"], b"", LIMIT).stdout;
         let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
             .unwrap_or_else(|e| panic!("{name}: {e}"))
             .0;
         for (what, ran) in [
-            ("reference", next(&path, &[], b"")),
-            ("engine", next(&path, &["--engine"], b"")),
-            ("C++", run_kept(&bin, b"")),
+            ("reference", next(&path, &[], b"", LIMIT)),
+            ("engine", next(&path, &["--engine"], b"", LIMIT)),
+            ("C++", run_kept(&bin, b"", LIMIT)),
         ] {
             assert_eq!(trap_line(&ran.stderr), want, "{name} on {what}");
         }

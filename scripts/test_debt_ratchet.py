@@ -2237,8 +2237,9 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
             self._write(root, "spec/conformance/a/slow.cp", "// expect: ok\n// timeout: 20\nfn main() {}\n")
             self._write(root, "spec/conformance/a/fine.cp", "// expect: ok\nfn main() {}\n// judge: no\n")
+            self._write(root, "spec/conformance/a/copy.cp", "// expect: ok\n// copies: 1\nfn main() {}\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
-            self.assertEqual(dr.next_asks_refused(root), ["spec/conformance/a/slow.cp"])
+            self.assertEqual(dr.next_asks_refused(root), ["spec/conformance/a/copy.cp"])
 
     def test_backend_owns_reads_count_every_engine_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

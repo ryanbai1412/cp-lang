@@ -1617,13 +1617,13 @@ def syntax_std_names(root: Path) -> list[str]:
             for n in RUST_STR_RE.findall(l) if n in names]
 
 
-NEXT_ASKS_RE = re.compile(r"^// (judge|before|copies|timeout):")
+NEXT_ASKS_RE = re.compile(r"^// (copies):")
 
 
 def next_asks_refused(root: Path) -> list[str]:
-    """Conformance cases the new pipeline's harness refuses for a header it does not act on
-    yet (`// judge:`, `before:`, `copies:`, `timeout:`; `ASKS` in tests/programs.rs): each is a
-    case whose verdict nobody measures. 0 is every header judged."""
+    """Conformance cases the new pipeline's harness can refuse for a header it does not act on
+    yet: `// copies:`, as ownership reports no copy count (tests/programs.rs; `judge:`,
+    `before:` and `timeout:` are judged). 0 is every header judged."""
     out = []
     for r in _git(root, "ls-files", "spec/conformance/*.cp", NEXT_TESTS + "/programs/*.cp"):
         lines = _lines(root / r) if (root / r).is_file() else []
