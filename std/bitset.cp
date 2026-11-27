@@ -89,13 +89,6 @@ pub struct Bitset<D>:
         for i in xs: b.add(i)
         b
 
-    /// Whether position `i` is set; `i in b` calls it.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `domain D = 0..10; let b = Bitset<D>.single(D(4)); b.contains(D(4)) and not b.contains(D(5))`
-    pub fn contains(self, i: D) -> Bool = ((w[i.ord / 64] >> (i.ord % 64)) & U64(1)) == U64(1)
-
     /// Set the bit at position `i`; returns `true` if `i` was not already set (matches `Set.add`).
     ///
     /// cost: \(O(1)\)
@@ -1414,6 +1407,14 @@ impl Show for BitTrie<W>:
 /// cost: \(O(K / 64)\) time and space
 /// traps: never
 /// example: `domain D = 0..10; (Bitset<D>.single(D(1)) | Bitset<D>.single(D(2))).len == 2`
+impl<D: Domain> Contains<D> for Bitset<D>:
+    /// Whether position `i` is set; `i in b` calls it.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..10; let b = Bitset<D>.single(D(4)); b.contains(D(4)) and not b.contains(D(5))`
+    fn contains(self, i: D) -> Bool = ((w[i.ord / 64] >> (i.ord % 64)) & U64(1)) == U64(1)
+
 impl BitOr for Bitset<D>:
     fn bitor(self, o: Bitset<D>) -> Bitset<D>:
         var out = Bitset<D>.new()

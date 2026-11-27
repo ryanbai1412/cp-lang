@@ -2132,12 +2132,13 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
     /// example: `[3, 1, 2, 4, 5].step(2).keys.len == 3`
     @get pub fn len(self) -> Int = if from >= n: 0 else: (n - from + k - 1) / k
 
+impl<K: Domain> Contains<K> for StepKeys:
     /// \(O(1)\). Whether the walk visits `i`: `i in s.keys`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[3, 1, 2, 4, 5].step(2).keys.contains(4)`
-    pub fn contains<K>(self, i: K) -> Bool:
+    fn contains(self, i: K) -> Bool:
         let o = i.ord - first - from
         0 <= o < n - from and o % k == 0
 
