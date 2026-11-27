@@ -584,7 +584,7 @@ example: `var m: Map<Str, Int> = Map(); m[\"b\"] = 2; m[\"a\"] = 1; m[\"b\"] += 
 
 /// The types the language itself declares, as one module: the rest of
 /// what every program has without a `use`, beside std's `prelude.cp`.
-/// Read from the compiler's catalog (`cpl_facade::today::BUILTIN_TYPES`), so the
+/// Read from the facade's `Std::builtins`, the compiler's catalog, so the
 /// docs list the members the checker accepts.
 pub fn builtins() -> Module {
     let item = |kind: Kind, name: &str, signature: String, doc: &str, members: Vec<Item>| {
@@ -603,21 +603,20 @@ pub fn builtins() -> Module {
             aliases: Vec::new(),
         }
     };
-    let items = cpl_facade::today::BUILTIN_TYPES
-        .iter()
+    let items = cpl_facade::Std
+        .builtins()
+        .into_iter()
         .map(|t| {
-            let members = t
-                .members
-                .into_iter()
-                .flat_map(cpl_facade::today::builtin_members)
-                .map(|m| {
-                    let (kind, signature) = match m.kind {
-                        cpl_facade::today::MemberKind::Get => (Kind::Field, m.signature()),
-                        cpl_facade::today::MemberKind::Method => {
-                            (Kind::Fn, format!("fn {}", m.signature()))
-                        }
-                    };
-                    item(kind, m.name, signature, m.doc, Vec::new())
+            let members = (t.members.into_iter())
+                .map(|m| match m.field {
+                    true => item(Kind::Field, m.name, m.signature, m.doc, Vec::new()),
+                    false => item(
+                        Kind::Fn,
+                        m.name,
+                        format!("fn {}", m.signature),
+                        m.doc,
+                        Vec::new(),
+                    ),
                 })
                 .collect();
             item(

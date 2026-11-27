@@ -27,7 +27,7 @@ pub use cpp::{
 pub use editor::{Definition, Hover, Typed};
 #[cfg(feature = "cpp")]
 pub use library::COMPONENTS;
-pub use library::{file_path, libraries, Std};
+pub use library::{file_path, libraries, Builtin, BuiltinMember, Std};
 pub use run::{
     run, run_checkpointed, run_for, run_to_end, run_traced, run_traced_within, run_within,
     Checkpoint, Checkpointed, Checkpoints, Choices, Limits, More, Outcome, Recording, Request,

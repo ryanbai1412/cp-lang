@@ -7,7 +7,49 @@ use crate::session::Session;
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Std;
 
+/// A type the language itself declares, as `cpl doc` shows it.
+#[derive(Clone, Debug)]
+pub struct Builtin {
+    pub name: &'static str,
+    /// How it is written in a type, `HashMap<K, V>`.
+    pub written: &'static str,
+    pub doc: &'static str,
+    pub members: Vec<BuiltinMember>,
+}
+
+/// One member of a [`Builtin`]: `len: Int` read like a field, or `swap(i: Int, j: Int)`
+/// called.
+#[derive(Clone, Debug)]
+pub struct BuiltinMember {
+    pub name: &'static str,
+    pub field: bool,
+    pub signature: String,
+    pub doc: &'static str,
+}
+
 impl Std {
+    /// Every type the language itself declares, in the order a reader meets them, with the
+    /// members the checker accepts on it.
+    pub fn builtins(self) -> Vec<Builtin> {
+        let member = |m: &cpl_check::BuiltinMember| BuiltinMember {
+            name: m.name,
+            field: m.kind == cpl_check::MemberKind::Get,
+            signature: m.signature(),
+            doc: m.doc,
+        };
+        (cpl_check::BUILTIN_TYPES.iter())
+            .map(|t| Builtin {
+                name: t.name,
+                written: t.written,
+                doc: t.doc,
+                members: (t.members.into_iter())
+                    .flat_map(cpl_check::builtin_members)
+                    .map(member)
+                    .collect(),
+            })
+            .collect()
+    }
+
     /// The text of `module`, the file as it is in `std/`. None for a
     /// module this build does not carry ([`Session::std_needs`]).
     pub fn text(self, module: &str) -> Option<&'static str> {
