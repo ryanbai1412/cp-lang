@@ -378,51 +378,89 @@ pub fn read_int(t: Option<&str>) -> Result<i64, Fault> {
 pub struct Input {
     bytes: Vec<u8>,
     at: usize,
+    /// Where more bytes come from as the program reads (contract 0's `Io::Stream`); `None`
+    /// once it ends.
+    more: Option<Box<dyn std::io::Read + Send>>,
 }
 impl Input {
     pub fn new(bytes: &[u8]) -> Input {
         Input {
             bytes: bytes.to_vec(),
             at: 0,
+            more: None,
         }
+    }
+    /// Input read from `more` as the program asks for it.
+    pub fn streamed(more: Box<dyn std::io::Read + Send>) -> Input {
+        Input {
+            bytes: Vec::new(),
+            at: 0,
+            more: Some(more),
+        }
+    }
+    /// Whether byte `i` is in the input, reading more until it is or the input ends.
+    fn has(&mut self, i: usize) -> bool {
+        while i >= self.bytes.len() {
+            let Some(more) = &mut self.more else {
+                return false;
+            };
+            let mut chunk = [0; 1 << 16];
+            match more.read(&mut chunk) {
+                Ok(0) => self.more = None,
+                Ok(n) => self.bytes.extend_from_slice(&chunk[..n]),
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(_) => self.more = None,
+            }
+        }
+        true
     }
     /// The next token, past any whitespace. When only spaces, tabs or `\r` follow it on its
     /// line, the line's end is taken too, so a `read_line()` after a line's last token reads the
     /// next line.
     pub fn token(&mut self) -> Option<String> {
-        let b = &self.bytes;
         let mut s = self.at;
-        while s < b.len() && is_space(b[s]) {
+        while self.has(s) && is_space(self.bytes[s]) {
             s += 1;
         }
         let mut e = s;
-        while e < b.len() && !is_space(b[e]) {
+        while self.has(e) && !is_space(self.bytes[e]) {
             e += 1;
         }
         let mut k = e;
-        while k < b.len() && matches!(b[k], b' ' | b'\t' | b'\r') {
+        while self.has(k) && matches!(self.bytes[k], b' ' | b'\t' | b'\r') {
             k += 1;
         }
-        self.at = match b.get(k) {
+        self.at = match self.has(k).then(|| self.bytes[k]) {
             None => k,
             Some(b'\n') => k + 1,
             Some(_) => e,
         };
-        (s < e).then(|| String::from_utf8_lossy(&b[s..e]).into_owned())
+        (s < e).then(|| String::from_utf8_lossy(&self.bytes[s..e]).into_owned())
     }
     /// Whether a token is left.
-    pub fn left(&self) -> bool {
-        self.bytes[self.at..].iter().any(|c| !is_space(*c))
+    pub fn left(&mut self) -> bool {
+        let mut i = self.at;
+        while self.has(i) {
+            if !is_space(self.bytes[i]) {
+                return true;
+            }
+            i += 1;
+        }
+        false
     }
     /// The byte `k` past the next one, or `-1` past the end; nothing is taken.
-    pub fn peek(&self, k: i64) -> i64 {
-        let at = usize::try_from(k).ok().and_then(|k| self.at.checked_add(k));
-        at.and_then(|i| self.bytes.get(i))
-            .map_or(-1, |c| i64::from(*c))
+    pub fn peek(&mut self, k: i64) -> i64 {
+        match usize::try_from(k).ok().and_then(|k| self.at.checked_add(k)) {
+            Some(i) if self.has(i) => i64::from(self.bytes[i]),
+            _ => -1,
+        }
     }
     /// The next byte, or `-1` at the end.
     pub fn byte(&mut self) -> i64 {
-        let c = self.bytes.get(self.at).map_or(-1, |c| i64::from(*c));
+        let c = match self.has(self.at) {
+            true => i64::from(self.bytes[self.at]),
+            false => -1,
+        };
         self.at += usize::from(c >= 0);
         c
     }

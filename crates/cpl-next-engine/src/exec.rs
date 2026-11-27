@@ -8,7 +8,7 @@ use cpl_next_ir::ir::{Func, Intr};
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::CTy;
 use cpl_next_ir::run::{call_stack, Outcome, Trap};
-use cpl_next_ir::run::{Limits, RunInput, Stack};
+use cpl_next_ir::run::{Io, Limits, RunInput, Stack};
 
 struct Obj {
     rc: u32,
@@ -98,7 +98,11 @@ fn broken<T>(rule: &'static str) -> R<T> {
     Err(Fault::Internal(rule).into())
 }
 
-fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&RunInput>, steps: u64) -> M<'a> {
+fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<RunInput>, steps: u64) -> M<'a> {
+    let closed = input.is_none();
+    let (io, limits) = input.map_or((Io::Fixed(Vec::new()), Limits::default()), |i| {
+        (i.io, i.limits)
+    });
     M {
         c,
         funcs,
@@ -115,26 +119,26 @@ fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&RunInput>, step
         frames: Vec::new(),
         out: String::new(),
         events: Vec::new(),
-        input: ops::Input::new(input.map_or(&[][..], RunInput::bytes)),
+        input: io.input(),
         rand: ops::RAND_SEED,
         at: 0,
         texts: vec![0; c.texts.len()],
         scratch: Vec::new(),
         steps,
-        room: (c.stack).with(input.map_or_else(Limits::default, |i| i.limits)),
-        closed: input.is_none(),
+        room: (c.stack).with(limits),
+        closed,
         read: false,
     }
 }
 
-pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &RunInput) -> Outcome {
+pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
     let (m, trap) = ran(c, funcs, input);
     m.outcome(trap)
 }
 
 /// Runs the program, then releases its globals and its kept text constants if it ended: what
 /// it did, and how many storage objects are still held. Ownership releases every value it makes, so that is 0.
-pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: &RunInput) -> (Outcome, usize) {
+pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: RunInput) -> (Outcome, usize) {
     let (mut m, trap) = ran(c, funcs, input);
     if trap.is_none() {
         for (&at, &lay) in c.global_at.iter().zip(&c.global_lays) {
@@ -147,7 +151,7 @@ pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: &RunInput) -> (Outc
     (m.outcome(trap), held)
 }
 
-fn ran<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: &RunInput) -> (M<'a>, Option<Trap>) {
+fn ran<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: RunInput) -> (M<'a>, Option<Trap>) {
     let mut m = start(c, funcs, Some(input), u64::MAX);
     let fp = c.globals as usize;
     let trap = m.run_fn(c.main, fp, None).err().map(|t| Trap {
@@ -899,11 +903,13 @@ impl M<'_> {
                     self.read = true;
                     return broken("a read with no input");
                 }
-                Op::InputLeft { d } => self.stack[r(d)] = u64::from(ops::Input::left(&self.input)),
+                Op::InputLeft { d } => {
+                    self.stack[r(d)] = u64::from(ops::Input::left(&mut self.input))
+                }
                 Op::ReadByte { d } => self.stack[r(d)] = ops::Input::byte(&mut self.input) as u64,
                 Op::PeekByte { d, k } => {
                     self.stack[r(d)] =
-                        ops::Input::peek(&self.input, self.stack[r(k)] as i64) as u64;
+                        ops::Input::peek(&mut self.input, self.stack[r(k)] as i64) as u64;
                 }
                 Op::RandWord { d } => self.stack[r(d)] = ops::rand_word(&mut self.rand),
                 Op::ReadInt { d } => {

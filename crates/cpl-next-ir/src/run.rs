@@ -2,7 +2,7 @@
 //! how it stopped (contract 7).
 use crate::ir::{Func, FuncKey};
 use crate::layout::Layouts;
-use crate::ops::Fault;
+use crate::ops::{Fault, Input};
 use crate::prog::Program;
 
 pub struct Trap {
@@ -29,6 +29,17 @@ pub struct RunInput {
 pub enum Io {
     /// All of it, given before the run.
     Fixed(Vec<u8>),
+    /// Read as the program reads: a terminal or a pipe.
+    Stream(Box<dyn std::io::Read + Send>),
+}
+impl Io {
+    /// The program's input, read as it asks.
+    pub fn input(self) -> Input {
+        match self {
+            Io::Fixed(b) => Input::new(&b),
+            Io::Stream(r) => Input::streamed(r),
+        }
+    }
 }
 /// The stack a run's calls take against `Limits::stack`, by one rule on every backend: a call
 /// takes its raw instance's frame words (`Layouts::frame_words`), whichever form runs, and
@@ -92,12 +103,6 @@ impl RunInput {
         RunInput {
             io: Io::Fixed(input.as_bytes().to_vec()),
             limits: Limits::default(),
-        }
-    }
-    /// The input's bytes.
-    pub fn bytes(&self) -> &[u8] {
-        match &self.io {
-            Io::Fixed(b) => b,
         }
     }
 }

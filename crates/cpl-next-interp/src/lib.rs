@@ -79,7 +79,7 @@ struct Machine<'a> {
 }
 type R<T> = Result<T, Trap>;
 
-pub fn run(p: &Program, funcs: &[Func<CTy>], input: &RunInput) -> Outcome {
+pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
     let mut m = Machine {
         p,
         funcs,
@@ -87,7 +87,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &RunInput) -> Outcome {
         frames: Vec::new(),
         out: String::new(),
         events: Vec::new(),
-        input: ops::Input::new(input.bytes()),
+        input: input.io.input(),
         rand: ops::RAND_SEED,
         at: 0,
         cur: 0,

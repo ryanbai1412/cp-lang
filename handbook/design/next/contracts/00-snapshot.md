@@ -23,6 +23,7 @@ enum Entry { Program,                              // the file's statements, top
              Call { f: DeclId, args: List<Value> } // one fn on given values: "try this part" in the editor, a unit test, a law sample
            }
 enum Io    { Fixed(Bytes),                         // ordinary problems
+             Stream(Reader),                       // read as the program reads: a terminal or a pipe
              Peer { program: Snapshot, input: Bytes }, // interactive and grader problems: a second program answers back
              Transcript(List<Turn>) }              // a recorded exchange, replayed
 struct Workspace { problems: Map<ProblemId, Problem>, shared: Manifest }

@@ -253,7 +253,7 @@ fn write(dir: &Path, name: &str, text: &str) {
 /// `--all`): the oracle the engine and the C++ are held to, never a run of its own.
 fn oracle(c: &cpl_next::facade::Program, form: Form, input: &str) -> cpl_next::Outcome {
     let (p, fs) = c.form(form);
-    cpl_next_interp::run(p, fs, &cpl_next_ir::run::RunInput::fixed(input))
+    cpl_next_interp::run(p, fs, cpl_next_ir::run::RunInput::fixed(input))
 }
 
 /// What a run writes to stderr: its events, then its trap.

@@ -729,7 +729,7 @@ impl Compiled {
         cpl_next_engine::run(
             &self.prog,
             &self.opt,
-            &cpl_next_engine::RunInput::fixed(input),
+            cpl_next_engine::RunInput::fixed(input),
         )
     }
 

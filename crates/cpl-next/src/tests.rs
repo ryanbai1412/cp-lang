@@ -9,7 +9,7 @@ mod cxx;
 /// The reference interpreter's run of `c`'s linked instances: the oracle the engine is held to.
 fn raw(c: &Compiled) -> Outcome {
     let (p, fs) = c.form(Form::Raw);
-    cpl_next_interp::run(p, fs, &cpl_next_ir::run::RunInput::fixed(""))
+    cpl_next_interp::run(p, fs, cpl_next_ir::run::RunInput::fixed(""))
 }
 
 /// A method found in a std module the program does not load is called without loading it
@@ -135,7 +135,7 @@ fn the_engine_and_the_cpp_release_every_value_ownership_made() {
         )
         .expect("compiles");
         let (run, held) =
-            cpl_next_engine::run_held(&c.prog, &c.opt, &cpl_next_engine::RunInput::fixed(""));
+            cpl_next_engine::run_held(&c.prog, &c.opt, cpl_next_engine::RunInput::fixed(""));
         assert!(run.trap.is_none(), "{src}");
         assert_eq!(held, 0, "{src}");
         let (bin, _) = cxx::build(c.cpp().as_bytes(), &flags).expect("g++ builds it");
@@ -172,7 +172,7 @@ fn the_engine_and_the_cpp_release_every_value_ownership_made() {
     .expect("compiles");
     (c.opt.iter_mut().filter(|f| f.name == "f")).for_each(|f| unplaced(&mut f.body));
     let (_, held) =
-        cpl_next_engine::run_held(&c.prog, &c.opt, &cpl_next_engine::RunInput::fixed(""));
+        cpl_next_engine::run_held(&c.prog, &c.opt, cpl_next_engine::RunInput::fixed(""));
     assert!(held > 0, "a missing release is seen");
 }
 
@@ -1436,12 +1436,12 @@ fn the_stack_runs_out_at_the_runs_limit() {
     .expect("compiles");
     let (p, fs) = c.form(Form::Raw);
     for (stack, out) in [(1 << 10, true), (64 << 10, false)] {
-        let input = RunInput {
+        let input = || RunInput {
             io: Io::Fixed(Vec::new()),
             limits: Limits { stack },
         };
-        let raw = cpl_next_interp::run(p, fs, &input);
-        let fast = cpl_next_engine::run(&c.prog, &c.opt, &input);
+        let raw = cpl_next_interp::run(p, fs, input());
+        let fast = cpl_next_engine::run(&c.prog, &c.opt, input());
         for o in [&raw, &fast] {
             assert_eq!(
                 o.trap.as_ref().map(|t| t.code()),
@@ -1450,5 +1450,58 @@ fn the_stack_runs_out_at_the_runs_limit() {
             );
             assert_eq!(o.output, if out { "" } else { "100\n" }, "{stack}");
         }
+    }
+}
+
+/// Input streamed as the program reads gives what the same bytes given whole give, on the
+/// reference interpreter and the engine.
+#[test]
+fn streamed_input_reads_as_fixed_input_does() {
+    use cpl_next_engine::{Io, Limits, RunInput};
+    struct Trickle(Vec<u8>, usize);
+    impl std::io::Read for Trickle {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let Some(&b) = self.0.get(self.1) else {
+                return Ok(0);
+            };
+            buf[0] = b;
+            self.1 += 1;
+            Ok(1)
+        }
+    }
+    let src = "let n: 1..=100 = read()\nlet xs: [n]Int = read()\nprint(n, xs)\n";
+    let text = b"3\n1 2  3\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let (p, fs) = c.form(Form::Raw);
+    let fixed = || RunInput {
+        io: Io::Fixed(text.to_vec()),
+        limits: Limits::default(),
+    };
+    let streamed = || RunInput {
+        io: Io::Stream(Box::new(Trickle(text.to_vec(), 0))),
+        limits: Limits::default(),
+    };
+    let want = cpl_next_interp::run(p, fs, fixed());
+    assert!(
+        want.trap.is_none() && !want.output.is_empty(),
+        "{}",
+        want.output
+    );
+    let runs = [
+        cpl_next_interp::run(p, fs, streamed()),
+        cpl_next_engine::run(&c.prog, &c.opt, streamed()),
+        cpl_next_engine::run(&c.prog, &c.opt, fixed()),
+    ];
+    for o in runs {
+        assert!(o.trap.is_none());
+        assert_eq!(o.output, want.output);
     }
 }
