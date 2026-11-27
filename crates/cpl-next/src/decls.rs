@@ -63,6 +63,10 @@ pub struct FnDecl {
     pub getter: bool,
     /// `@same_keys`: its arguments that are arrays over domains share one domain (R04b.1.3).
     pub same_keys: bool,
+    /// `@aka(..)`: names another language calls it; a call by one names this fn (R06.4.11).
+    pub aka: Vec<String>,
+    /// `@was(..)`: names it had before a release renamed it; a call by one is E0503.
+    pub was: Vec<String>,
     pub item: u32,
     /// Where it is written, in the joined source.
     pub span: Span,
@@ -1625,7 +1629,10 @@ fn add_fn(
         if !elsewhere
             && !core_only
             && x.name.text != GETTER
-            && !matches!(x.name.text.as_str(), "multitest" | "same_keys" | "index")
+            && !matches!(
+                x.name.text.as_str(),
+                "multitest" | "same_keys" | "index" | "aka" | "was"
+            )
         {
             let at = Span::new(item + x.span.start, item + x.span.end);
             errors.push(Msg::at(at, format!("slice: decorator `@{}`", x.name.text)));
@@ -1641,6 +1648,15 @@ fn add_fn(
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
     let getter = has(GETTER);
     let same_keys = has("same_keys");
+    let words = |n: &str| -> Vec<String> {
+        (s.decorators.iter().filter(|x| x.name.text == n))
+            .flat_map(|x| &x.args)
+            .filter_map(|a| match &a.value.kind {
+                cpl_syntax::ast::ExprKind::Name(w) => Some(w.clone()),
+                _ => None,
+            })
+            .collect()
+    };
     if has("index") {
         d.index_fns.push(FnId(d.fns.len()));
     }
@@ -1690,6 +1706,8 @@ fn add_fn(
         },
         getter,
         same_keys,
+        aka: words("aka"),
+        was: words("was"),
         item,
         span: Span::new(item + s.span.start, item + s.span.end),
         module: m,

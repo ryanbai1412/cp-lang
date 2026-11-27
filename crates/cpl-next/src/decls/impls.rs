@@ -122,13 +122,16 @@ impl Decls {
     }
     /// The library method `name` whose `self` can be `recv` (R11.3.4).
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
-        let fits = |f: &FnId| match (self.f(*f).self_ty.as_ref(), recv) {
+        (self.methods.get(name)?.iter().copied()).find(|f| self.self_fits(*f, recv))
+    }
+    /// Whether `recv` has the shape of `f`'s `self`: the same struct, or the same kind of type.
+    pub fn self_fits(&self, f: FnId, recv: &Ty) -> bool {
+        match (self.f(f).self_ty.as_ref(), recv) {
             (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
             (Some(Ty::Struct(a, ..)), Ty::Struct(b, ..)) => a == b,
             (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
             (None, _) => false,
-        };
-        self.methods.get(name)?.iter().copied().find(|f| fits(f))
+        }
     }
     /// The impl's type arguments when it is for `t`; a type not known yet fits any.
     pub fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {

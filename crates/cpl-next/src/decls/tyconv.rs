@@ -90,7 +90,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
 /// library item it changes nothing a run or a check of a program does (R06.4.11). A program's
 /// own is refused until the slice checks it.
 pub(super) fn read_elsewhere(name: &str) -> bool {
-    matches!(name, "lint" | "stress" | "aka" | "was" | "on_unimplemented")
+    matches!(name, "lint" | "stress" | "on_unimplemented")
 }
 
 /// `Seq<T>` written where a trait is wanted.

@@ -75,15 +75,25 @@ fn std_methods() -> &'static HashMap<String, Vec<String>> {
                     continue;
                 };
                 // A top-level fn only: one indented under a type is that type's, found with it.
-                let top = text.lines().filter_map(|l| {
-                    let l = if l.starts_with('@') {
-                        l.split_once(" pub fn ")?.1
-                    } else {
-                        l.strip_prefix("pub fn ")?
+                // The names on its `@aka(..)` and `@was(..)` lines find it too (R06.4.11).
+                let mut also: Vec<String> = Vec::new();
+                for l in text.lines() {
+                    if let Some(args) = ["@aka(", "@was("].iter().find_map(|d| l.strip_prefix(d)) {
+                        let args = args.split(')').next().unwrap_or("");
+                        also.extend(args.split(',').map(|a| a.trim().to_string()));
+                        continue;
+                    }
+                    let decl = match l.starts_with('@') {
+                        true => l.split_once(" pub fn ").map(|x| x.1),
+                        false => l.strip_prefix("pub fn "),
                     };
-                    Some(l)
-                });
-                for decl in top {
+                    let Some(decl) = decl else {
+                        if !l.starts_with('@') {
+                            also.clear();
+                        }
+                        continue;
+                    };
+                    let also = std::mem::take(&mut also);
                     let name_len = decl.len()
                         - decl
                             .trim_start_matches(|c: char| c.is_alphanumeric() || c == '_')
@@ -92,10 +102,9 @@ fn std_methods() -> &'static HashMap<String, Vec<String>> {
                     let first = decl[open + 1..].trim_start();
                     if name_len > 0 && (first.starts_with("self") || first.starts_with("mut self"))
                     {
-                        index
-                            .entry(decl[..name_len].to_string())
-                            .or_default()
-                            .push(format!("{module}.{stem}"));
+                        for n in std::iter::once(decl[..name_len].to_string()).chain(also) {
+                            index.entry(n).or_default().push(format!("{module}.{stem}"));
+                        }
                     }
                 }
             }

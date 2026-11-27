@@ -95,6 +95,33 @@ impl<'a> Cx<'a> {
             written.join(", ")
         ))
     }
+    /// `x.m(..)` where a fn the receiver has declares `@aka(m)` or `@was(m)`: the call it means.
+    /// The name `@was` gives back is said in an E0503 (R06.4.11).
+    fn renamed(
+        &self,
+        rt: &Ty,
+        base: &ast::Expr,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+    ) -> Option<(Option<String>, String)> {
+        let m = &name.text;
+        let f = (0..self.d.fns.len()).map(FnId).find_map(|id| {
+            let f = self.d.f(id);
+            ((f.aka.contains(m) || f.was.contains(m))
+                && (self.d.lookup_member(rt, &f.name).is_some() || self.d.self_fits(id, rt)))
+            .then_some(f)
+        })?;
+        let now = &f.name;
+        let mut written = format!("{}.{now}", self.text(base.span));
+        if let Some(args) = call {
+            let args: Vec<&str> = args.iter().map(|a| self.text(a.value.span)).collect();
+            written = format!("{written}({})", args.join(", "));
+        }
+        match f.was.contains(m) {
+            true => Some((Some(now.clone()), format!("write `{written}`"))),
+            false => Some((None, format!("`{m}` is spelled `{now}`: `{written}`"))),
+        }
+    }
     /// A fn this module declares with a `self` of the receiver's own type is never called when
     /// the type has a member of its name: the member is found first (R08.1.4).
     fn hidden_by_member(&mut self, rt: &Ty, base: &ast::Expr, name: &ast::Name) {
@@ -320,6 +347,25 @@ impl<'a> Cx<'a> {
             }
             None => {
                 self.missing.push(name.text.clone());
+                if let Some((was, help)) = self.renamed(&rt, base, name, call) {
+                    let (code, text) = match was {
+                        Some(now) => (
+                            cpl_diag::codes::REMOVED_SYNTAX.0,
+                            cpl_diag::msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0
+                                .say(&[&name.text, &now]),
+                        ),
+                        None => (
+                            cpl_diag::codes::UNKNOWN_FIELD.0,
+                            format!("`{}` has no member `{}`", self.show(&rt), name.text),
+                        ),
+                    };
+                    self.err_help(span, format!("{code}: {text}"), Some(help));
+                    return TExpr {
+                        kind: TK::Error,
+                        ty: Ty::Error,
+                        span,
+                    };
+                }
                 let help = self.free_fn_help(base, name, call);
                 self.err_help(
                     span,

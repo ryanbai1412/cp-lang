@@ -219,6 +219,7 @@ core-04/array-list-compare-record.cp
 core-04/array-value-declared-count-differs-rejected.cp
 core-04/b1-slice-in-keys-read.cp
 core-04/b1-slice-walk-by-nth-no-lint.cp
+core-04/bsearch-first-removed.cp
 core-04/c1-source-key-into-view.cp
 core-04/d1-literal-slice-index-lint.cp
 core-04/d1-literal-slice-index-traps.cp
@@ -393,6 +394,7 @@ core-05/view-held-then-source-moved.cp
 core-05/walk-body-cannot-touch-mut-source.cp
 core-05/walk-body-cannot-write-source.cp
 core-05/walk-body-reads-source.cp
+core-06/a-documented-decorator-is-accepted.cp
 core-06/an-unknown-decorator-is-rejected.cp
 core-06/captured-fn-param-holds-each-callers-closure.cp
 core-06/captured-moved-after-last-use.cp
@@ -587,6 +589,7 @@ core-11/pub-field-and-method.cp
 core-11/runtime-domain-reads-in-order.cp
 core-11/runtime-domain-use-before-definition.cp
 core-11/use-unknown-module.cp
+core-12/aka-on-a-user-fn-runs.cp
 core-12/body-attribute-unknown-is-an-error.cp
 core-12/clone-copies.cp
 core-12/closure-borrows-per-call.cp
@@ -683,6 +686,8 @@ next/a_check_11_bool_caret.cp
 next/a_check_12_bool_bar.cp
 next/a_check_13_param_needs_type.cp
 next/a_check_14_free_fn_as_method.cp
+next/a_check_15_aka_names_the_fn.cp
+next/a_check_16_was_names_the_fn.cp
 next/a_clos_01_list_captured_by_reference.cp
 next/a_clos_02_let_list_capture.cp
 next/a_clos_04_struct_field_closure_shares_var.cp
