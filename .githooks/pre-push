@@ -38,6 +38,11 @@ for path in sys.argv[1:]:
     fi
 fi
 
+# 2b. Formatting, which land.sh checks but a direct push skips (about 1 s).
+if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+    cargo fmt --all --check >/dev/null 2>&1 || fail "not formatted; run: cargo fmt --all"
+fi
+
 # 3. Cheap workspace build check (warm ~1-3s) so broken rebases never hit main.
 if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo check -q --workspace --all-targets || fail "cargo check --workspace --all-targets failed"

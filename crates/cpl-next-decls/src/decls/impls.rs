@@ -86,7 +86,10 @@ impl Decls {
     ) -> Vec<(TraitRef, Member)> {
         // A value's member has a `self`: `Domain.at(x)` is not `Int`'s `at`.
         let pick = |f: &FnDecl| f.self_mode != SelfMode::None && pick(f);
-        let named = self.syms.get(name).and_then(|n| self.impls_by_member.get(&n));
+        let named = self
+            .syms
+            .get(name)
+            .and_then(|n| self.impls_by_member.get(&n));
         let live = (named.into_iter().flatten())
             .map(|&k| &self.impls[k])
             .filter(|im| self.live(im));

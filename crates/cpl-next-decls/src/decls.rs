@@ -1,8 +1,8 @@
 //! Contract 2: syntax -> declarations. Answers "what does this name mean"
 //! without looking inside a body.
 pub use crate::cycles::{alias_cycle, field_holding_itself};
-use crate::sym::{Sym, Syms};
 use crate::diag::Msg;
+use crate::sym::{Sym, Syms};
 use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_ir::ids::{ItemId, SourceId};
