@@ -13,7 +13,3 @@ Import: `use std.list.{...}`.
 Fields: `buf: Raw<T>`.
 
 ## `struct Str`
-
-## Functions
-
-- `fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str` — The answer word for `ok`: `answers:` when given, else `("YES", "NO")` (R10.3.3).
