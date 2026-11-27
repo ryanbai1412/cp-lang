@@ -99,10 +99,6 @@ impl Finite for _..=_
 
 impl<D: Domain + Finite> Finite for Cut<D>
 
-/// A range type's ends are its first and last positions (R02.2.1).
-impl Bounded for _..=_:
-    @get fn MIN() -> Self = Self.nth(0)
-    @get fn MAX() -> Self = Self.nth(Self.count - 1)
 impl<A: Finite, B: Finite> Finite for (A, B)
 impl<A: Finite, B: Finite, C: Finite> Finite for (A, B, C)
 impl<A: Finite, B: Finite, C: Finite, E: Finite> Finite for (A, B, C, E)

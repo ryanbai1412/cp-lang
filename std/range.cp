@@ -38,9 +38,6 @@ pub fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>):
     let m = self.mid
     Some((self.l..m, m..self.r))
 
-/// The same positions in the same order, however they were written (R08.1.5).
-impl<D: Domain> Eq for Range<D>:
-    fn eq(a, b) = a.len == b.len and (a.len == 0 or a.first == b.first and (a.len == 1 or a.by == b.by))
 
 /// Every way to cut the range into two non-empty pieces, as `(left, right)` with
 /// `left.r == right.l`.

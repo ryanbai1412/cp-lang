@@ -152,3 +152,7 @@ impl<D: Show> Show for Range<D>:
             first = false
     fn gap(self, mut out: Str):
         out.push('\n')
+
+/// The same positions in the same order, however they were written (R08.1.5).
+impl<D: Domain> Eq for Range<D>:
+    fn eq(a, b) = a.len == b.len and (a.len == 0 or a.first == b.first and (a.len == 1 or a.by == b.by))

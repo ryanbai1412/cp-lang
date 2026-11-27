@@ -135,7 +135,7 @@ pub type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))
 /// `f(a)` (or `f(u, a)`), `.to` and `.e` passed through. Nothing is stored.
 pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W)
 
-impl Next<V> for Reweighted<V, E, A, W>:
+impl<V: Domain, E, A: Target<V>, W> Next<V> for Reweighted<V, E, A, W>:
     type Arc = (to: V, e: E, w: W)
 
     /// The arcs out of `u` as `(to:, e:, w: f(a))`.
@@ -499,7 +499,7 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
         let tarcs = src.map(i => reversed_arc(arcs[i], from[i])).collect()
         Graph<V, A>(start: tstart, arcs: tarcs)
 
-impl Next<V> for Graph<V, A>:
+impl<V: Domain, A: Target<V>> Next<V> for Graph<V, A>:
     type Arc = A
 
     /// The arcs out of `u`, lazily: the `Next` implementation.
@@ -2944,7 +2944,7 @@ trait ReachesUnvisited<V>:
     // O(|unvisited| + deg u). `mark` is scratch, all `None` at first, shared across calls.
     fn reach_unvisited(self, u: V, unvisited: List<V>, mut mark: [V]?V) -> (List<V>, List<V>)
 
-impl Next<V> for Complement<V, G>:
+impl<V: Domain, G> Next<V> for Complement<V, G>:
     type Arc = V
 
     /// Every `v != u` that `missing.out(u)` does not reach.
@@ -3986,7 +3986,7 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
 /// `gen<A>()` sent to its end, and an undirected edge's arc back is it
 /// turned around, so both carry the same fields. Up to `2 * V.count` edges,
 /// a random spanning tree among them when `connected`.
-impl<V, A> Random for Graph<V, A>:
+impl<V: Domain, A: Target<V>> Random for Graph<V, A>:
     fn gen(simple: Bool = false, connected: Bool = false, directed: Bool = false) -> Graph<V, A>:
         let n = V.count
         var label = V.collect()

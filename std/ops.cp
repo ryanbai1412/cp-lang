@@ -193,3 +193,8 @@ impl Eq for Bool:
     fn eq(a, b) = a == b
 impl Ord for Bool:
     fn lt(a, b) = not a and b
+
+/// A range type's ends are its first and last positions (R02.2.1).
+impl Bounded for _..=_:
+    @get fn MIN() -> Self = Self.nth(0)
+    @get fn MAX() -> Self = Self.nth(Self.count - 1)

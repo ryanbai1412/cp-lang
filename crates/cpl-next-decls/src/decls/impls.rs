@@ -410,7 +410,17 @@ pub(super) fn supertraits_unmet(
                 continue;
             };
             let met = match t {
-                Ty::Param(i) => im.bounds.iter().any(|(j, r)| j == i && r.tr == ab.tr),
+                // A parameter has it by its bound, or by a blanket impl its bounds meet.
+                Ty::Param(i) => {
+                    let has = |tr: TraitId| im.bounds.iter().any(|(j, r)| j == i && r.tr == tr);
+                    has(ab.tr)
+                        || (d.impls_of(ab.tr).into_iter()).any(|o| match d.imp(o).for_ {
+                            Ty::Param(k) => (d.imp(o).bounds.iter())
+                                .filter(|(j, _)| *j == k)
+                                .all(|(_, r)| has(r.tr)),
+                            _ => false,
+                        })
+                }
                 Ty::Error => true,
                 t => d.has_impl(t, ab.tr),
             };

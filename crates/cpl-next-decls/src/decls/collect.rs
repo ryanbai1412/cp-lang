@@ -1166,8 +1166,7 @@ fn layer(
                         Ty::Clo(c) => matches!(&**c, CloRef::Item(f) if d.f(f.decl).module == mid),
                         _ => false,
                     };
-                    if !d.is_library(mid)
-                        && d.traits[tref.tr.0].module != mid
+                    if d.traits[tref.tr.0].module != mid
                         && !local(&for_)
                         && !tref.args.iter().any(local)
                     {
@@ -1374,7 +1373,6 @@ fn layer(
     domain_params(&mut d, fns_from);
     fresh_results(&mut d);
     let unmet: Vec<_> = (d.impls.iter().skip(impls_from))
-        .filter(|im| !d.is_library(im.module))
         .flat_map(|im| supertraits_unmet(&d, im))
         .collect();
     d.misdeclared.extend(unmet);

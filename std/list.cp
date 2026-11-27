@@ -269,3 +269,10 @@ impl<D: Domain, T> IndexMut<D, T> for Array<D, T>:
     fn at(mut self, i: D) -> lends mut T:
         lend mut self.buf[i.ord]
 impl<D: Domain, T> IndexedMut<D, T> for Array<D, T>
+
+/// `List(s)`: a new list of `s`'s elements in walk order. \(O(n)\) (R07.8.1).
+impl<S: Seq<T>, T> Into<List<T>> for S:
+    fn into(self) -> List<T>:
+        var xs = List<T>()
+        for x in self: xs.push(x)
+        xs
