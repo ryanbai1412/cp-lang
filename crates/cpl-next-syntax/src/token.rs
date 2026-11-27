@@ -163,56 +163,26 @@ pub const LITERAL_WORDS: &[&str] = &["true", "false", "None"];
 /// What to write instead of a word that v2.1 reserved and v2.2 does not.
 /// The word itself is an ordinary name now.
 pub fn removed_keyword(text: &str) -> Option<&'static str> {
-    Some(match text {
-        "defer" => "undo by hand after the call: `cur.push(x); dfs(); cur.pop()`",
-        "assume" => "write `assert`, which is always checked",
-        "where" => "write the bound in the angle brackets: `fn f<T: Ord>(...)`",
-        "inline" => "drop it: closures and `lends` bodies are always inlined",
-        "lend" => "end the `lends` body with the place itself: `mut self.data[i]`",
-        "law" => "write `@law name(args) = condition`",
-        _ => return None,
-    })
+    crate::grammar::REMOVED_KEYWORDS
+        .iter()
+        .find(|(word, _)| *word == text)
+        .map(|(_, instead)| *instead)
 }
 
 impl TokenKind {
     pub fn keyword(text: &str) -> Option<TokenKind> {
-        use TokenKind::*;
-        Some(match text {
-            "let" => Let,
-            "var" => Var,
-            "fn" => Fn,
-            "struct" => Struct,
-            "enum" => Enum,
-            "domain" => Domain,
-            "type" => Type,
-            "const" => Const,
-            "trait" => Trait,
-            "impl" => Impl,
-            "use" => Use,
-            "pub" => Pub,
-            "if" => If,
-            "elif" => Elif,
-            "else" => Else,
-            "for" => For,
-            "while" => While,
-            "in" => In,
-            "match" => Match,
-            "return" => Return,
-            "break" => Break,
-            "continue" => Continue,
-            "and" => And,
-            "or" => Or,
-            "not" => Not,
-            "assert" => Assert,
-            "mut" => Mut,
-            "self" => SelfKw,
-            "true" => True,
-            "false" => False,
-            "lends" => Lends,
-            "yield" => Yield,
-            "unchecked" => Unchecked,
-            _ => return Option::None,
-        })
+        crate::grammar::KEYWORD_KINDS
+            .iter()
+            .find(|(word, _)| *word == text)
+            .map(|(_, kind)| *kind)
+    }
+
+    /// How a keyword is written: `Fn` is `fn`.
+    pub fn spelling(self) -> Option<&'static str> {
+        crate::grammar::KEYWORD_KINDS
+            .iter()
+            .find(|(_, kind)| *kind == self)
+            .map(|(word, _)| *word)
     }
 
     /// True for tokens that can only begin a statement or declaration, never

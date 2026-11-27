@@ -39,7 +39,8 @@ impl<'a> Lexer<'a> {
         let hides_closer = !self.openers.is_empty() && closes_open;
         let line = &self.src[self.src[..start].rfind('\n').map_or(0, |i| i + 1)..start];
         let words = |s: &'a str| s.split(|c: char| !c.is_alphanumeric() && c != '_');
-        let open_if = words(line).any(|w| w == "if") && !words(line).any(|w| w == "else");
+        let has = |kind| words(line).any(|w| TokenKind::keyword(w) == Some(kind));
+        let open_if = has(TokenKind::If) && !has(TokenKind::Else);
         let hides_else = open_if && (rest.contains(" else:") || rest.contains(" else :"));
         if !operand_before || !operand_after || !(hides_closer || hides_else) {
             return false;

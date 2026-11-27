@@ -1343,12 +1343,11 @@ impl<'a> Lexer<'a> {
     /// keyword, read as ours (`fn`, `use`) so the uses parse with no cascade.
     fn foreign_fn(&mut self, start: usize) -> Option<TokenKind> {
         let word = &self.src[start..self.pos];
-        let (ours, kind) = match word {
-            "def" | "func" | "function" => ("fn", TokenKind::Fn),
-            "import" => ("use", TokenKind::Use),
-            "switch" => ("match", TokenKind::Match),
-            _ => return None,
-        };
+        let kind = crate::grammar::FOREIGN_KEYWORDS
+            .iter()
+            .find(|(foreign, _)| *foreign == word)?
+            .1;
+        let ours = kind.spelling()?;
         let line = self.src[..start].rfind('\n').map_or(0, |i| i + 1);
         if !self.src[line..start].trim().is_empty() {
             return None;
@@ -1368,9 +1367,9 @@ impl<'a> Lexer<'a> {
             return None;
         }
         let span = Span::new(start as u32, self.pos as u32);
-        let msg = match ours {
-            "fn" => &cpl_diag::msgs::lexer::FOREIGN_FN,
-            "use" => &cpl_diag::msgs::lexer::FOREIGN_USE,
+        let msg = match kind {
+            TokenKind::Fn => &cpl_diag::msgs::lexer::FOREIGN_FN,
+            TokenKind::Use => &cpl_diag::msgs::lexer::FOREIGN_USE,
             _ => &cpl_diag::msgs::lexer::FOREIGN_MATCH,
         };
         self.out.diagnostics.push(

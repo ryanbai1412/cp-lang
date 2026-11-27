@@ -1829,11 +1829,9 @@ RUST_STR_RE = re.compile(r'"([A-Za-z_]\w*)"')
 
 
 def _next_srcs(root: Path) -> list[str]:
-    """The pipeline and the per-layer crates it is split into (`cpl-next-ir`, `cpl-next-engine`).
-    Not `cpl-next-syntax`: the lexer is where text becomes token kinds, so it knows keywords by
-    their spelling; SYNTAX_SRCS's counters cover it, as they cover `cpl-syntax`."""
-    return sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*")
-                  if (d / "src").is_dir() and d.name != "cpl-next-syntax")
+    """The pipeline and the per-layer crates it is split into (`cpl-next-syntax`, `cpl-next-ir`,
+    `cpl-next-engine`)."""
+    return sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*") if (d / "src").is_dir())
 
 
 def next_std_names(root: Path) -> list[str]:

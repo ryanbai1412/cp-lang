@@ -119,9 +119,10 @@ replaces.
 - `cpl-next-syntax` depends on `cpl-diag` only, for spans and the one
   diagnostic code table; it is not a compiler crate. Nor is it a path to
   switch, so `cpl-syntax` may depend on it (`tests/unshipped.rs` exempts
-  it), and the counters over the pipeline's code (`_next_srcs`) leave it
-  to the syntax counters (`SYNTAX_SRCS`), as they leave `cpl-syntax`: a
-  lexer knows keywords by their spelling.
+  it). Its code counts like any `cpl-next` crate's: every keyword and
+  foreign keyword is spelled once, as a row of `grammar.rs`'s tables, and
+  the lexer looks words up there, so no code compares text with a fixed
+  word.
 - Parse speed is an end-state number (`plan/end-state.toml`): the whole
   conformance suite's parse time, today's parser against the tree.
 - Trivia are sibling tokens, not leading and trailing lists on a token

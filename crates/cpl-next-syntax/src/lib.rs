@@ -11,6 +11,7 @@
 //! Nothing here depends on the compiler.
 
 mod file;
+pub mod grammar;
 mod items;
 mod lexer;
 pub mod literal;
