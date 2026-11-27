@@ -19,9 +19,9 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
 
-    /// The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its
-    /// identity: zero for `+`, `^`, `|` and `gcd`, one for `*`, all bits for `&`, and for `min` /
-    /// `max` the far end of `T` (`None` on a `?T`).
+    /// The monoid a structure was handed: what its [`FromOp`] impl gives. A `Monoid` is itself,
+    /// and a bare operator brings its identity: zero for `+`, `^`, `|` and `gcd`, one for `*`,
+    /// all bits for `&`.
     ///
     /// Any other fn has no known identity and needs `Monoid(id, op)`.
     ///
@@ -29,28 +29,8 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
     /// traps: never (an operator without a known identity is a compile-time error)
     /// example: `Monoid<Int>.of(+).id == 0`
     /// example: `Monoid<Int>.of(*).op(3, 4) == 12`
-    /// example: `Monoid<?Int>.of(min).id == None`
     @from_op
-    pub fn of<M>(m: M) -> Monoid<T>:
-        if same(m, +): return Monoid(T.zero, (a, b) => a + b, x => x)
-        if same(m, *): return Monoid(T.one, (a, b) => a * b, x => x)
-        if same(m, ^): return Monoid(T.zero, (a, b) => a ^ b, x => x)
-        if same(m, |): return Monoid(T.zero, (a, b) => a | b, x => x)
-        if same(m, &): return Monoid(T.zero - T.one, (a, b) => a & b, x => x)
-        if same(m, max): return Monoid(T.MIN, (a, b) => max(a, b), x => x)
-        if same(m, min): return Monoid(T.MAX, (a, b) => min(a, b), x => x)
-        if same(m, gcd): return Monoid(T.zero, (a, b) => gcd(a, b), x => x)
-        if same(m, or): return Monoid(false, (a, b) => a or b, x => x)
-        if same(m, and): return Monoid(true, (a, b) => a and b, x => x)
-        m.monoid()
-
-    /// A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a
-    /// bare operator. A type of your own with a `monoid()` method is accepted the same way.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `Monoid<Int>(0, (a, b) => a + b).monoid().op(2, 3) == 5`
-    pub fn monoid(self) -> Monoid<T> = self
+    pub fn of<M: FromOp<T>>(m: M) -> Monoid<T> = m.monoid()
 
     /// `x`, a fold of some elements, as the fold of the same elements read backwards: by `rev`,
     /// which `Monoid.of` gives every stock op (all commutative), `.commutative()` and a
@@ -74,12 +54,6 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
 pub struct Comm<T>(pub m: Monoid<T>):
     law comm(a: T, b: T) = m.op(a, b) == m.op(b, a)
 
-    /// The monoid underneath, for [`Monoid.of`].
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `Monoid<Int>(0, (a, b) => a + b).commutative().monoid().id == 0`
-    pub fn monoid(self) -> Monoid<T> = Monoid(m.id, m.op, x => x)
 
 impl<T> Op<T> for Comm<T>:
     type Fold = T
@@ -92,7 +66,71 @@ impl<T> HasId<T> for Comm<T>:
 
 impl<T> Commutative<T> for Comm<T>
 
-fn same<A, B>(a: A, b: B) -> Bool = a == b
+/// `T.ones`: every bit set, the identity of `T`'s `&`.
+pub trait Ones:
+    @get fn ones() -> Self
+impl Ones for Int:
+    @get fn ones() -> Int = -1
+impl Ones for U64:
+    @get fn ones() -> U64 = U64(0) - U64(1)
+
+/// What a structure handed an operation folds with: the operation's monoid. `+`, `*`, `^`,
+/// `|`, `&` and `gcd` bring theirs, a `Monoid` is its own, and a type of your own joins with an
+/// impl, so `SegTree(op, a)` takes any of them.
+pub trait FromOp<T>:
+    /// The monoid this operation folds with.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Monoid<Int>(0, (a, b) => a + b).monoid().op(2, 3) == 5`
+    /// example: `Monoid<Int>(0, (a, b) => a + b).commutative().monoid().id == 0`
+    fn monoid(self) -> Monoid<T>
+    /// Whether the operation is `+`, so an addition action scales a tag by the span it covers.
+    fn sums(self) -> Bool = false
+
+impl<T> FromOp<T> for Monoid<T>:
+    fn monoid(self) -> Monoid<T> = self
+
+impl<T> FromOp<T> for Comm<T>:
+    fn monoid(self) -> Monoid<T> = Monoid(m.id, m.op, x => x)
+
+impl<T: Add + Zero> FromOp<T> for type_of(+):
+    fn monoid(self) -> Monoid<T> = Monoid(T.zero, (a, b) => a + b, x => x)
+    fn sums(self) -> Bool = true
+
+impl<T: Mul + One> FromOp<T> for type_of(*):
+    fn monoid(self) -> Monoid<T> = Monoid(T.one, (a, b) => a * b, x => x)
+
+impl<T: BitXor + Zero> FromOp<T> for type_of(^):
+    fn monoid(self) -> Monoid<T> = Monoid(T.zero, (a, b) => a ^ b, x => x)
+
+impl<T: BitOr + Zero> FromOp<T> for type_of(|):
+    fn monoid(self) -> Monoid<T> = Monoid(T.zero, (a, b) => a | b, x => x)
+
+impl<T: BitAnd + Ones> FromOp<T> for type_of(&):
+    fn monoid(self) -> Monoid<T> = Monoid(T.ones, (a, b) => a & b, x => x)
+
+impl FromOp<Int> for type_of(gcd):
+    fn monoid(self) -> Monoid<Int> = Monoid(0, (a, b) => gcd(a, b), x => x)
+
+/// What a structure handed an invertible operation folds with: its group. `+` brings zero and
+/// negation, `^` zero and itself as inverse, and a `Group` is its own.
+pub trait GroupOp<T>:
+    /// The group this operation folds with.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Group<Int>(0, (a, b) => a + b, a => -a).group().inv(2) == -2`
+    fn group(self) -> Group<T>
+
+impl<T> GroupOp<T> for Group<T>:
+    fn group(self) -> Group<T> = self
+
+impl<T: Add + Sub + Zero> GroupOp<T> for type_of(+):
+    fn group(self) -> Group<T> = Group(T.zero, (a, b) => a + b, a => T.zero - a)
+
+impl<T: BitXor + Zero> GroupOp<T> for type_of(^):
+    fn group(self) -> Group<T> = Group(T.zero, (a, b) => a ^ b, a => a)
 
 fn unreversed<T>(x: T) -> T:
     assert false, "this fold is read backwards but its op has no `rev`: pass `rev:` to `Monoid`, use `.commutative()`, or implement `Reversible`"
@@ -151,7 +189,7 @@ pub struct Action<T, F>(
     /// traps: never (laws are not checked here; use `laws_hold`)
     /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).apply(2, 10, 3) == 16`
     /// example: `Action<Int, Int>(apply: (d, x, span) => x + d * span).compose(2, 5) == 7`
-    pub fn new<M>(
+    pub fn new<M: FromOp<T>>(
         id: F = F.zero,
         compose: (F, F) -> F = (+),
         apply: (F, T, Int) -> T,
@@ -180,7 +218,7 @@ pub struct Action<T, F>(
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Action<Int, Int>.of(add, +).apply(2, 10, 3) == 16`
-    pub fn of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F> = a.action(Monoid<T>.of(op), same(op, +))
+    pub fn of<A: Acts<T, F>, M: FromOp<T>>(a: A, op: M) -> Action<T, F> = a.action(op.monoid(), op.sums())
 
 /// What an `act:` argument is: a stock action or an `Action`, acting with tags `F` on values `T`.
 /// The impl fixes `F` from `T`, so `SegTree(+, a, act: assign)` has `?T` tags without naming them.
@@ -262,7 +300,7 @@ pub trait Reversible:
 /// example: `pow(3, 0, op: +) == 0`
 /// example: `pow(3, 5, op: +) == 15`
 /// example: `pow(Affine(2, 1), 3, op: Affine.monoid()).eval(0) == 7`
-pub fn pow<T, M>(x: T, k: 0..; op: M) -> T:
+pub fn pow<T, M: FromOp<T>>(x: T, k: 0..; op: M) -> T:
     assert k >= 0, "pow: a negative exponent"
     let m = Monoid<T>.of(op)
     var acc = m.id
@@ -487,10 +525,7 @@ pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T):
     /// traps: never (an operator without a known inverse is a compile-time error)
     /// example: `Group<Int>.of(+).inv(5) == -5`
     /// example: `Group<Int>.of(^).inv(5) == 5`
-    pub fn of<G>(g: G) -> Group<T>:
-        if same(g, +): return Group(T.zero, (a, b) => a + b, a => T.zero - a)
-        if same(g, ^): return Group(T.zero, (a, b) => a ^ b, a => a)
-        g
+    pub fn of<G: GroupOp<T>>(g: G) -> Group<T> = g.group()
 
 /// An `Action` whose `apply` ignores the span: `apply(f, val, span) == apply(f, val)`. Right
 /// for tags on idempotent folds such as `min`, `max`, `gcd`, where `n` changed leaves fold to
@@ -499,7 +534,7 @@ pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T):
 /// cost: \(O(1)\)
 /// traps: never
 /// example: `point_action(id: 0, compose: (a, b) => a + b, apply: (f, x) => x + f, over: max).apply(3, 10, 4) == 13`
-pub fn point_action<T, F, M>(
+pub fn point_action<T, F, M: FromOp<T>>(
     id: F,
     compose: (F, F) -> F,
     apply: (F, T) -> T,
@@ -621,8 +656,6 @@ fn bare_operators_bring_their_identity():
     assert Monoid<Int>.of(&).id == -1
     assert Monoid<Int>.of(max).id == Int.MIN and Monoid<Int>.of(min).id == Int.MAX
     assert Monoid<?Int>.of(max).id == None and Monoid<?Int>.of(min).id == None
-    assert Monoid<Bool>.of(or).id == false and Monoid<Bool>.of(and).id == true
-    assert Monoid<Bool>.of(and).op(true, false) == false and Monoid<Bool>.of(or).op(false, true)
     let xs = [-7, -1, 0, 2, 5, 9]
     assert laws_hold(Monoid<Int>.of(+), xs)
     assert laws_hold(Monoid<Int>.of(*), [-2, -1, 0, 1, 3])
@@ -840,9 +873,9 @@ pub struct Each<Ms>(ms: Ms):
         let ms = self.ms
         Monoid(T(identity_of(m) for m in fields(ms)), (a, b) => T(op_of(m, x, y) for (m, x, y) in fields(ms, a, b)))
 
-fn identity_of<M, F>(m: M) -> F = Monoid<F>.of(m).id
+fn identity_of<M: FromOp<F>, F>(m: M) -> F = Monoid<F>.of(m).id
 
-fn op_of<M, F>(m: M, x: F, y: F) -> F = Monoid<F>.of(m).op(x, y)
+fn op_of<M: FromOp<F>, F>(m: M, x: F, y: F) -> F = Monoid<F>.of(m).op(x, y)
 
 /// Marker type for the stock `add` action.
 pub struct AddAction
@@ -953,7 +986,6 @@ fn laws_hold_checks_every_kind_of_operation():
     assert laws_hold(Group<Int>.of(+), xs) and laws_hold(Group<Int>.of(^), xs)
     assert laws_hold(Larger(), xs)
     assert laws_hold(Action<Int, Int>.of(add, +), T: xs, F: xs)
-    assert same(2, 2) and not same(2, 3)
 
 @test
 fn stock_actions_compose_and_apply():

@@ -628,6 +628,7 @@ fn layer(
     // A derived impl waits for its fields' types' impls, and is never made if one lacks it.
     let mut queue = pending;
     let (mut round, mut stamped, mut made) = (0, d.fns.len(), (0, 0));
+    let mut fns_seen = false;
     loop {
         let mut wait = Vec::new();
         let before = queue.len();
@@ -637,6 +638,19 @@ fn layer(
                 d.fns[k].made = made;
             }
             (stamped, made) = (d.fns.len(), (round, pass(s, &id)));
+            // An impl head's `type_of(f)` may name a fn another module declares and this one
+            // imports, so the views take every fn before the first impl.
+            if !fns_seen && pass(s, &id) >= 2 {
+                fns_seen = true;
+                let sc = Scopes {
+                    own: &own,
+                    public: &public,
+                    names: &names,
+                    imports: &imports,
+                    prelude,
+                };
+                remake_views(&mut d, &sc, from, core_too, None);
+            }
             match (&s.kind, id) {
                 (StmtKind::Struct(sd), Some(Named::Struct(id))) => {
                     let generics: Vec<String> =

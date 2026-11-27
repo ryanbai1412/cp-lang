@@ -12,7 +12,7 @@
 //! `@memo`. Each optimization names the law it needs; `std.spec` checks it
 //! on small inputs (`monge_break`, `dnc_break`, `knuth_break`,
 //! `convexity_break`). A sliding-window optimum is `a.window_fold(k, op)` or `std.window.Window(op)`.
-use std.algebra.{Monoid}
+use std.algebra.{Monoid, FromOp}
 use std.math.{bit}
 use std.seq.{collect, all, sum}
 use std.range.{Len, first_true}
@@ -978,7 +978,7 @@ pub fn masks_of_size(bits: 0.., k: Int) -> yields Int:
 /// order: indexed by mask; within a mask, elements fold in increasing index
 /// traps: never
 /// example: `subset_folds([1, 2, 4], +) == [0, 1, 2, 3, 4, 5, 6, 7]`
-pub fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>:
+pub fn subset_folds<T, M: FromOp<T>>(xs: List<T>, op: M) -> List<T>:
     let m = Monoid<T>.of(op)
     let n = xs.len
     var out: List<T> = List.filled(1 << n, m.id)
