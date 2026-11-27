@@ -2,8 +2,7 @@
 //! with jumps to jumps and jumps to the next op. A jump goes straight to where its chain
 //! ends, `if !c goto next-but-one; goto t` becomes `if c goto t`, and ops nothing reaches
 //! and jumps to the next op go. Every target, table and mark is renumbered with them.
-//! A drop or retain of a value that owns nothing goes, and so does a line kept and put back
-//! around ops that can neither trap nor change the line. A register a one-word move set is
+//! A line kept and put back around ops that can neither trap nor change the line. A register a one-word move set is
 //! read from its source while neither changes, and an op that only sets registers nothing
 //! reads again goes.
 use crate::compile::{Code, Kind, Op, PlaceCode, Reg, Root, Step, INHERIT, LEAVE, SAVED};
@@ -34,7 +33,7 @@ pub(crate) fn tidy(c: &mut Code) {
     for b in 0..c.blocks.len() {
         let mut ops = std::mem::take(&mut c.blocks[b]);
         let mut lines = Vec::new();
-        let keep = quiet(&ops, &c.tables, &c.lays, &chained);
+        let keep = quiet(&ops, &c.tables, &chained);
         renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
         let fixed = fixed_lines(&ops, c, b, &outside);
         // A block whose lines are a table reads no chain register but those set outside it.
@@ -313,12 +312,11 @@ fn thread(ops: &mut [Op], tables: &mut [Vec<u32>]) {
     }
 }
 
-/// The ops worth running: not a drop or retain of a value that owns nothing, nor an
-/// `Enter`/`Restore` pair with only quiet ops between and no jump into them. A trap's line
+/// The ops worth running: not an `Enter`/`Restore` pair with only quiet ops between and no jump into them. A trap's line
 /// and call stack are read only when something traps, so a pair nothing in can trap at is
 /// never seen.
 /// `chained`: the saves a trap's call stack reads (`Code::chains`), kept where it can trap.
-fn quiet(ops: &[Op], tables: &[Vec<u32>], lays: &Layouts, chained: &[Reg]) -> Vec<bool> {
+fn quiet(ops: &[Op], tables: &[Vec<u32>], chained: &[Reg]) -> Vec<bool> {
     let mut keep = vec![true; ops.len()];
     let mut aimed = vec![false; ops.len() + 1];
     let mut edges = Vec::new();
@@ -328,11 +326,6 @@ fn quiet(ops: &[Op], tables: &[Vec<u32>], lays: &Layouts, chained: &[Reg]) -> Ve
                 *a = true;
                 edges.push((from, t as usize));
             }
-        }
-    }
-    for (i, op) in ops.iter().enumerate() {
-        if let Op::Drop { lay, .. } | Op::Retain { lay, .. } = *op {
-            keep[i] = lays.owns[lay as usize];
         }
     }
     // Innermost pairs first, so a pair around a quiet pair goes too. A pair goes when it
@@ -1270,7 +1263,6 @@ mod tests {
         ];
         let mut lays = Layouts::default();
         lays.size.push(1);
-        lays.owns.push(true);
         lays.flat.push(Some(vec![0]));
         forward(&mut ops, &mut Vec::new(), &lays, &[], &|_| false);
         assert_eq!(
@@ -1296,7 +1288,6 @@ mod tests {
         }];
         let mut lays = Layouts::default();
         lays.size.push(1);
-        lays.owns.push(true);
         lays.flat.push(Some(vec![0]));
         forward(&mut ops, &mut places, &lays, &[], &|_| false);
         assert_eq!(format!("{:?}", ops[2]), "Drop { s: 1, lay: 0 }");
@@ -1317,8 +1308,7 @@ mod tests {
         assert_eq!(kept(&[(0, 1), (3, 1)]), [true, true, true]);
     }
 
-    /// A kept line around moves goes; around a `Take`, which can trap, it stays, and a drop
-    /// of a word that owns nothing goes.
+    /// A kept line around moves goes; around a `Take`, which can trap, it stays.
     #[test]
     fn a_line_nothing_can_trap_at_is_not_kept() {
         let ops = vec![
@@ -1333,12 +1323,10 @@ mod tests {
             Op::Move { d: 1, s: 2, n: 1 },
             Op::Restore { save: 7 },
         ];
-        let mut lays = Layouts::default();
-        lays.owns.push(false);
-        let keep = quiet(&ops, &[], &lays, &[]);
+        let keep = quiet(&ops, &[], &[]);
         assert_eq!(
             keep,
-            [true, false, false, true, false, true, true, false, true, false]
+            [true, true, false, true, false, true, true, false, true, false]
         );
     }
 
@@ -1373,9 +1361,9 @@ mod tests {
             Op::Restore { save: 9 },
             Op::JumpIf { c: 1, t: 21 },
         ];
-        let keep = quiet(&ops, &[], &Layouts::default(), &[]);
+        let keep = quiet(&ops, &[], &[]);
         let kept: Vec<usize> = (0..ops.len()).filter(|&i| keep[i]).collect();
-        let chained = quiet(&ops, &[], &Layouts::default(), &[9]);
+        let chained = quiet(&ops, &[], &[9]);
         assert_eq!(chained.iter().filter(|&&k| k).count(), ops.len());
         assert_eq!(
             kept,

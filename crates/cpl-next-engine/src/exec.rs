@@ -196,9 +196,6 @@ impl M<'_> {
     /// Counts one more holder of each handle in the value at stack address `a`.
     fn retain(&mut self, lay: Lay, a: usize) {
         let c = self.c;
-        if !c.lays.owns[lay as usize] {
-            return;
-        }
         if let Some(at) = &c.lays.flat[lay as usize] {
             for &o in at {
                 let h = self.stack[a + o as usize];
@@ -216,7 +213,7 @@ impl M<'_> {
         self.scratch = hs;
     }
     fn retain_heap(&mut self, lay: Lay, h: u32, i: usize, times: usize) {
-        if !self.c.lays.owns[lay as usize] || times == 0 {
+        if times == 0 {
             return;
         }
         let mut hs = std::mem::take(&mut self.scratch);
@@ -231,9 +228,6 @@ impl M<'_> {
     /// Drops the value at `loc`: what it holds loses a holder, and an object with none is freed.
     fn release(&mut self, lay: Lay, loc: Loc) {
         let c = self.c;
-        if !c.lays.owns[lay as usize] {
-            return;
-        }
         if let Some(at) = &c.lays.flat[lay as usize] {
             for &o in at {
                 let h = self.word(loc.off(o as usize));
@@ -266,10 +260,18 @@ impl M<'_> {
             }
             let words = std::mem::take(&mut o.words);
             let (elem, len) = (o.elem, o.len);
-            if self.c.lays.owns[elem as usize] {
-                let stride = self.c.lays.size[elem as usize] as usize;
-                for i in 0..len {
-                    self.c.lays.handles(elem, &words[i * stride..], &mut hs);
+            let stride = self.c.lays.size[elem as usize] as usize;
+            match &self.c.lays.flat[elem as usize] {
+                Some(at) => {
+                    for &o in at {
+                        let hs_at = (0..len).map(|i| words[i * stride + o as usize]);
+                        hs.extend(hs_at.filter(|&x| x != 0).map(|x| x as u32));
+                    }
+                }
+                None => {
+                    for i in 0..len {
+                        self.c.lays.handles(elem, &words[i * stride..], &mut hs);
+                    }
                 }
             }
             self.free.push(h);
@@ -788,14 +790,12 @@ impl M<'_> {
                     } else {
                         cell.repeat(len)
                     };
-                    if c.lays.owns[elem as usize] {
-                        let mut hs = Vec::new();
-                        c.lays.handles(elem, cell, &mut hs);
-                        for h in &hs {
-                            self.heap[*h as usize].rc += len as u32;
-                        }
-                        self.dec(hs);
+                    let mut hs = Vec::new();
+                    c.lays.handles(elem, cell, &mut hs);
+                    for h in &hs {
+                        self.heap[*h as usize].rc += len as u32;
                     }
+                    self.dec(hs);
                     self.stack[r(d)] = u64::from(self.alloc(elem, len, words));
                 }
                 Op::RawGet {

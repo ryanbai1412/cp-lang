@@ -23,8 +23,6 @@ pub(crate) enum Shape {
 pub(crate) struct Layouts {
     pub shape: Vec<Shape>,
     pub size: Vec<u32>,
-    /// Whether a value holds a handle, so copying or dropping it touches counts.
-    pub owns: Vec<bool>,
     /// The offsets of the handles a value holds, when they are the same for every value (no
     /// union decides them).
     pub flat: Vec<Option<Vec<u32>>>,
@@ -42,8 +40,8 @@ impl Layouts {
             self.of.insert(t.clone(), l);
             return l;
         }
-        let (shape, size, owns) = match t {
-            CTy::Unit | CTy::Error => (Shape::Zero, 0, false),
+        let (shape, size) = match t {
+            CTy::Unit | CTy::Error => (Shape::Zero, 0),
             CTy::Int
             | CTy::Range(..)
             | CTy::Bool
@@ -51,8 +49,8 @@ impl Layouts {
             | CTy::U64
             | CTy::F64
             | CTy::Dom(_)
-            | CTy::Ref(_) => (Shape::Word, 1, false),
-            CTy::Raw(_) => (Shape::Handle, 1, true),
+            | CTy::Ref(_) => (Shape::Word, 1),
+            CTy::Raw(_) => (Shape::Handle, 1),
             CTy::Lent(t) => {
                 let l = self.of(p, t);
                 self.of.insert(CTy::Lent(t.clone()), l);
@@ -72,9 +70,14 @@ impl Layouts {
             CTy::Struct(..) => self.fields(p, &p.parts(t)),
             CTy::Clo(k) => self.fields(p, &p.captures(k)),
         };
-        self.push(t, shape, size, owns)
+        let l = self.push(t, shape, size);
+        debug_assert!(
+            p.stores(t) || self.flat[l as usize].as_deref() == Some(&[]),
+            "{t:?} holds a handle that `Program::stores` misses"
+        );
+        l
     }
-    fn push(&mut self, t: &CTy, shape: Shape, size: u32, owns: bool) -> Lay {
+    fn push(&mut self, t: &CTy, shape: Shape, size: u32) -> Lay {
         let l = self.shape.len() as Lay;
         let flat = match &shape {
             Shape::Zero | Shape::Word => Some(Vec::new()),
@@ -83,16 +86,19 @@ impl Layouts {
                 v.extend(self.flat[*f as usize].as_ref()?.iter().map(|o| at + o));
                 Some(v)
             }),
-            Shape::Union(_) => None,
+            // A union's handles depend on its member, unless no member holds one.
+            Shape::Union(ls) => ls
+                .iter()
+                .all(|m| self.flat[*m as usize].as_deref() == Some(&[]))
+                .then(Vec::new),
         };
         self.flat.push(flat);
         self.shape.push(shape);
         self.size.push(size);
-        self.owns.push(owns);
         self.of.insert(t.clone(), l);
         l
     }
-    fn fields(&mut self, p: &Program, ts: &[CTy]) -> (Shape, u32, bool) {
+    fn fields(&mut self, p: &Program, ts: &[CTy]) -> (Shape, u32) {
         let mut at = 0;
         let mut fs = Vec::with_capacity(ts.len());
         for t in ts {
@@ -100,13 +106,11 @@ impl Layouts {
             fs.push((at, l));
             at += self.size[l as usize];
         }
-        let owns = fs.iter().any(|(_, l)| self.owns[*l as usize]);
-        (Shape::Struct(fs), at, owns)
+        (Shape::Struct(fs), at)
     }
-    fn union(&mut self, ls: Vec<Lay>) -> (Shape, u32, bool) {
+    fn union(&mut self, ls: Vec<Lay>) -> (Shape, u32) {
         let size = 1 + ls.iter().map(|l| self.size[*l as usize]).max().unwrap_or(0);
-        let owns = ls.iter().any(|l| self.owns[*l as usize]);
-        (Shape::Union(ls), size, owns)
+        (Shape::Union(ls), size)
     }
     /// The word offset and layout of field `i` of a struct, or of member `i`'s payload.
     pub fn part(&self, l: Lay, i: usize) -> Option<(u32, Lay)> {
@@ -118,7 +122,9 @@ impl Layouts {
     }
     /// The handles a value of layout `l` in `words` holds.
     pub fn handles(&self, l: Lay, words: &[u64], out: &mut Vec<u32>) {
-        if !self.owns[l as usize] {
+        if let Some(at) = &self.flat[l as usize] {
+            let hs = at.iter().map(|o| words[*o as usize]).filter(|&h| h != 0);
+            out.extend(hs.map(|h| h as u32));
             return;
         }
         match &self.shape[l as usize] {

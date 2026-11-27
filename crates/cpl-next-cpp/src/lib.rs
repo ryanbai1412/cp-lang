@@ -869,8 +869,9 @@ impl Emit<'_> {
                 }
                 // A lender finishes its own code first; the caller leaves after it.
                 Stmt::LendOut(p) => put_line!(s, "{pad}cpl_code = body({});", self.place(p)),
-                // A C++ value releases what it holds when it is overwritten or goes out of scope.
-                Stmt::Drop(_) => {}
+                // Ownership's release runs here; a local in `Func::drops` is released when its
+                // scope ends, and a value moved out of it was left empty.
+                Stmt::Drop(p) => put_line!(s, "{pad}{} = {{}};", self.place(p)),
                 Stmt::Check {
                     kind,
                     cond,

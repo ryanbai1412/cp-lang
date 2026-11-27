@@ -53,13 +53,16 @@ struct JudgeProfile { compiler, flags, limits, kept_checks, size_limit, grader_w
   optimisation, never a second meaning.
 - Ownership places every release: `Func::drops` at frame exit and
   `Stmt::Drop` at a discarded value and an overwrite (cpl-next-own).
-  A backend runs each one and places none of its own. The engine's
-  optimizer removes a `Drop` or `Retain` only when running it would do
-  nothing: its layout holds no handle, or its registers are still zero
-  from a `Zero` on every path to it. The runtime's release skips both
-  cases, so removing them changes no backend's behaviour and needs no
-  shared stage. C++ values release themselves when overwritten or out
-  of scope, which is the same set of releases.
+  A backend runs each one and places none of its own. Which values hold
+  storage is decided once, by `Program::stores`: ownership places drops
+  by it and the engine counts a copy by it, and no backend keeps a bit
+  of its own. The engine's optimizer removes a `Drop` only when its
+  registers are still zero from a `Zero` on every path to it; releasing
+  a zero word does nothing, so removing it changes no backend's
+  behaviour and needs no shared stage. C++ runs each `Stmt::Drop` as a
+  reset of its place. At frame exit its locals' destructors release
+  exactly `Func::drops`: a C++ value owns its storage outright (a copy
+  is a deep copy), and a lent slot is a reference that owns nothing.
 - Sorting is one stable algorithm with a stated comparator call order.
   `F64` has one total order.
 - `HashMap` iterates in insertion order.

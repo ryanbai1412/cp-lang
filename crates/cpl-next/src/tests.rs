@@ -67,12 +67,42 @@ fn ownership_places_every_release() {
     }
     assert!(cells > 0, "{:#?}", f.body);
     for g in &c.prog.insts {
-        let heap = |e: &cpl_next_ir::ir::Expr<CTy>| {
-            !cpl_next_ir::prog::plain(&|s| c.prog.parts(s), &e.ty, 0)
-        };
+        let heap = |e: &cpl_next_ir::ir::Expr<CTy>| c.prog.stores(&e.ty);
         let discards = g.body.iter().any(|s| matches!(s, Stmt::Expr(e) if heap(e)));
         assert!(!discards, "{} discards a heap value", g.name);
     }
+}
+
+/// Which values hold storage is decided once (`Program::stores`): a ranged `Int` holds none,
+/// so ownership releases no such local, and the C++ runs each release ownership placed, where
+/// it placed it, rather than leaving releases to its own scopes.
+#[test]
+fn the_cpp_runs_each_release_ownership_placed() {
+    let src = "fn f(n: Int) -> Int:\n    var r: 0..=10 = 3\n    var xs = [n]\n    xs = [n, r]\n    [r]\n    xs.len\n\nprint(f(3))\n";
+    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let f = c.prog.insts.iter().find(|f| f.name == "f").expect("f");
+    let ranged = (f.locals.iter().enumerate()).filter(|(_, t)| matches!(t, CTy::Range(..)));
+    for (l, t) in ranged {
+        assert!(!f.drops.contains(&l), "local {l}: {t:?} holds nothing");
+    }
+    fn drops(b: &[Stmt<CTy>]) -> usize {
+        let inner = |s: &Stmt<CTy>| match s {
+            Stmt::Drop(_) => 1,
+            Stmt::If(_, a, b) | Stmt::Loop(a, b, _) => drops(a) + drops(b),
+            Stmt::Switch(_, arms) => arms.iter().map(|a| drops(a)).sum(),
+            Stmt::Region { body, .. } => drops(body),
+            _ => 0,
+        };
+        b.iter().map(inner).sum()
+    }
+    let placed: usize = c.opt.iter().map(|g| drops(&g.body)).sum();
+    let cpp = c.cpp();
+    let run = cpp
+        .lines()
+        .filter(|l| l.trim_end().ends_with(" = {};"))
+        .count();
+    assert!(placed >= 2, "the overwrite and the discard each release");
+    assert_eq!(run, placed, "{cpp}");
 }
 
 /// A fn's sites are its own: one written above it leaves its sites and their places as

@@ -3,15 +3,20 @@
 //! discarded value and the value an overwrite replaces.
 
 use cpl_next_ir::ir::{addressed, visit_places, Expr, Place, Stmt, EK};
-use cpl_next_ir::prog::{plain, CTy, Program};
+use cpl_next_ir::prog::{stores, CTy, InstKey, Program};
+use std::collections::HashMap;
 
 pub(crate) fn place(p: &mut Program) {
+    let caps: HashMap<InstKey, Vec<CTy>> = (p.index.iter())
+        .filter(|(_, &i)| i < p.insts.len())
+        .map(|(k, _)| (k.clone(), p.captures(k)))
+        .collect();
     let mut insts = std::mem::take(&mut p.insts);
     for f in &mut insts {
-        let plain = |t: &CTy| plain(&|s| p.parts(s), t, 0);
+        let stores = |t: &CTy| stores(&|s| p.parts(s), &|k| caps.get(k).cloned(), t, 0);
         let lent = |l: usize| f.params.iter().any(|&(x, lent)| x == l && lent);
         let owned: Vec<bool> = (f.locals.iter().enumerate())
-            .map(|(l, t)| !lent(l) && holds(&plain, t))
+            .map(|(l, t)| !lent(l) && holds(&stores, t))
             .collect();
         f.drops = (0..owned.len()).filter(|&l| owned[l]).collect();
         // A call may read or write a local whose address is taken, so the local's old value
@@ -22,7 +27,7 @@ pub(crate) fn place(p: &mut Program) {
         let mut body = std::mem::take(&mut f.body);
         Placer {
             locals: &mut f.locals,
-            plain: &plain,
+            stores: &stores,
             owned: &owned,
             calm: &calm,
         }
@@ -34,13 +39,13 @@ pub(crate) fn place(p: &mut Program) {
 
 /// Whether a value of type `t` may hold storage it must release; a lent slot points at a
 /// value another frame owns.
-fn holds(plain: &dyn Fn(&CTy) -> bool, t: &CTy) -> bool {
-    !matches!(t, CTy::Lent(_)) && !plain(t)
+fn holds(stores: &dyn Fn(&CTy) -> bool, t: &CTy) -> bool {
+    !matches!(t, CTy::Lent(_)) && stores(t)
 }
 
 struct Placer<'a> {
     locals: &'a mut Vec<CTy>,
-    plain: &'a dyn Fn(&CTy) -> bool,
+    stores: &'a dyn Fn(&CTy) -> bool,
     /// The locals the frame releases; a temporary made here is released where it is made.
     owned: &'a [bool],
     /// The owned locals nothing but the fn itself reads or writes.
@@ -64,7 +69,7 @@ impl Placer<'_> {
             _ => {}
         }
         match st {
-            Stmt::Expr(e) if holds(self.plain, &e.ty) => {
+            Stmt::Expr(e) if holds(self.stores, &e.ty) => {
                 let t = self.temp(&e.ty);
                 out.push(Stmt::Let(t, e));
                 out.push(Stmt::Drop(Place::Local(t)));
@@ -72,7 +77,7 @@ impl Placer<'_> {
             Stmt::Let(l, e) if self.owned.get(l) == Some(&true) => {
                 self.overwrite(Place::Local(l), e, true, out)
             }
-            Stmt::Assign(p, e) if holds(self.plain, &e.ty) => self.overwrite(p, e, false, out),
+            Stmt::Assign(p, e) if holds(self.stores, &e.ty) => self.overwrite(p, e, false, out),
             st => out.push(st),
         }
     }
@@ -160,7 +165,7 @@ mod tests {
         ];
         Placer {
             locals: &mut locals,
-            plain: &|t| matches!(t, CTy::Int),
+            stores: &|t| !matches!(t, CTy::Int),
             owned: &[true, true],
             calm: &[true, true],
         }

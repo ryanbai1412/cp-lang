@@ -979,8 +979,7 @@ impl Fc<'_> {
         }
         if let EK::Copy(p) = &e.kind {
             if let Some(r) = self.direct(p) {
-                let lay = self.lay(&e.ty);
-                self.ops.push(Op::Retain { s: r, lay });
+                self.retain(r, &e.ty);
                 return r;
             }
         }
@@ -988,6 +987,13 @@ impl Fc<'_> {
         let d = self.temp(n);
         self.expr(e, d);
         d
+    }
+    /// A copy of a value that holds storage counts one more holder of what it holds.
+    fn retain(&mut self, s: Reg, t: &CTy) {
+        if self.p.stores(t) {
+            let lay = self.lay(t);
+            self.ops.push(Op::Retain { s, lay });
+        }
     }
     /// Operands in order; one a later operand's call could write is copied first.
     fn operands(&mut self, args: &[Arg<CTy>]) -> Option<Vec<Reg>> {
@@ -1030,12 +1036,12 @@ impl Fc<'_> {
                         if n > 0 && s != d {
                             self.ops.push(Op::Move { d, s, n });
                         }
-                        self.ops.push(Op::Retain { s: d, lay });
+                        self.retain(d, &e.ty);
                     }
                     None => match self.global(p) {
                         Some(a) => {
                             self.ops.push(Op::GetG { d, a, n });
-                            self.ops.push(Op::Retain { s: d, lay });
+                            self.retain(d, &e.ty);
                         }
                         None => {
                             let p = self.place(p);
