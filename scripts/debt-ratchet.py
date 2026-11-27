@@ -1460,15 +1460,15 @@ def next_ownership_outside_own(root: Path) -> list[str]:
 
 NEXT_OWNS_READ_RE = re.compile(r"\bowns\(|\.owns\[")
 # Code that turns IR into execution: where a read of "does this layout own" places a drop or retain.
-NEXT_PLACERS = ("crates/cpl-next-engine/src/compile.rs", "crates/cpl-next-cpp/src", "crates/cpl-next-interp/src",
+NEXT_PLACERS = ("crates/cpl-next-engine/src", "crates/cpl-next-cpp/src", "crates/cpl-next-interp/src",
                 "crates/cpl-next-lower/src", "crates/cpl-next-link/src")
 
 
 def next_backend_owns_reads(root: Path) -> list[str]:
     """Reads of whether a layout owns (`lays.owns[..]`, `owns(ty)`) in code that turns IR into
     execution: each one is a drop or retain placed by the backend rather than read from an
-    ownership node (contract 04). Running a `Drop`/`Copy` op (engine exec.rs), computing layouts
-    and the optimizer over placed ops are not placers. Counts reads, not fn names, so a rename
+    ownership node (contract 04). The whole engine counts, its exec and peephole passes too: since
+    812e28ddd neither reads an owns bit. Counts reads, not fn names, so a rename
     cannot pay it off. 0 is every drop and copy an IR node from cpl-next-own."""
     out = []
     for d in NEXT_PLACERS:

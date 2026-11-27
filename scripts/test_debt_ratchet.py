@@ -2233,7 +2233,7 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.next_asks_refused(root), ["spec/conformance/a/slow.cp"])
 
-    def test_backend_owns_reads_count_placers_not_runners(self) -> None:
+    def test_backend_owns_reads_count_every_engine_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write(root, "crates/cpl-next-engine/src/compile.rs",
@@ -2242,7 +2242,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-next-cpp/src/emit.rs", "let o = owns(ty);\n")
             self.assertEqual(dr.next_backend_owns_reads(root), [
                 "crates/cpl-next-engine/src/compile.rs:2", "crates/cpl-next-engine/src/compile.rs:4",
-                "crates/cpl-next-cpp/src/emit.rs:1"])
+                "crates/cpl-next-engine/src/exec.rs:1", "crates/cpl-next-cpp/src/emit.rs:1"])
 
     def test_name_keys_and_structural_link_edge(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
