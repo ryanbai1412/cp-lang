@@ -231,8 +231,28 @@ impl Cx<'_> {
             Ty::Struct(_, ts, _) if ts.len() == 1 => ts[0].clone(),
             _ => Ty::Error,
         };
+        // Into an array over another anonymous range the cells convert as a list does, their
+        // count checked, since such an array takes any `Int` (R04.3.4).
+        let dty = match want.map(|w| self.shallow(w)) {
+            Some(Ty::Struct(a, ts, _)) if a == array && self.converts(&dty, &ts[0]) => {
+                ts[0].clone()
+            }
+            _ => dty,
+        };
         let cells = self.coerce(list, &Ty::Struct(array, vec![dty, elem], sets));
         block(pre, cells)
+    }
+    /// Whether an array over the anonymous range `from` converts to one over `to`: both are
+    /// anonymous, and two written counts that differ stay a type mismatch (R04.8.10).
+    fn converts(&self, from: &Ty, to: &Ty) -> bool {
+        let dom = |t: &Ty| match self.shallow(t) {
+            Ty::Dom(i) if self.domains[i].name.starts_with('$') => Some(&self.domains[i]),
+            _ => None,
+        };
+        match (dom(from), dom(to)) {
+            (Some(f), Some(t)) => !matches!((f.count, t.count), (Some(x), Some(y)) if x != y),
+            _ => false,
+        }
     }
     fn refuse(&mut self, span: Span, why: Unbuilt) -> TExpr {
         self.err(span, why);

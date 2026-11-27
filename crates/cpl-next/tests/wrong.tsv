@@ -76,7 +76,7 @@ core-04/a8-copy-counts-from-zero.cp	wrong-reject	check: program:4:13: E0302: exp
 core-04/a9-length-only.cp	wrong-reject	check: std.strings:476:45: E0203: `S` has no member `is_empty`
 core-04/an-inline-product-type-arg-is-a-domain-in-the-callee.cp	wrong-reject	check: program:11:56: E0606: `D` does not implement `Domain`
 core-04/array-ring-steps-wrap.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `ring`
-core-04/array-value-run-time-count-differs-traps.cp	wrong-reject	check: program:6:20: E0302: expected `Array<$range0, Int>`, found `Array<$range1, Int>`
+core-04/array-value-run-time-count-differs-traps.cp	wrong-trap	wanted R0001 on line 6, got: trap: R0401: line 6: a list for `[D]T` has one element per position
 core-04/b1-rekey-domain.cp	wrong-reject	check: program:5:9: E0203: `List<Int>` has no member `rekey`
 core-04/b1-rekey-length-mismatch.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
 core-04/b1-rekey-list.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
@@ -125,7 +125,6 @@ core-04/literal-cut-param-outside.cp	wrong-error	wanted E0902 on line 5, got: ch
 core-04/literal-cut-param.cp	wrong-reject	check: program:7:12: E0302: expected `Cut<D>`, found `Int`
 core-04/literal-position-in-list.cp	wrong-reject	check: program:7:7: E0302: expected `List<Int>`, found `List<V>`
 core-04/literal-position.cp	wrong-reject	check: program:7:11: E0302: expected `Cut<V>`, found `Int`
-core-04/literal-range-table-int-keys.cp	wrong-reject	check: program:4:20: E0302: expected `Array<$range0, Int>`, found `Array<$range1, Int>`
 core-04/literal-to-mod.cp	wrong-reject	check: program:4:1: E9999: 
 core-04/lyndon-starts-are-keys.cp	wrong-reject	check: std.strings:567:29: E0606: `T` has no `impl Ord`, which `<=` needs (R08.1.5)
 core-04/min-rotation-is-key.cp	wrong-reject	check: std.strings:598:20: E0606: `T` has no `impl Ord`, which `>` needs (R08.1.5)

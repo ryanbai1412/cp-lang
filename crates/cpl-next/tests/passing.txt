@@ -442,6 +442,7 @@ core-04/list-literal-short-for-named-domain-rejected.cp
 core-04/list-of-slice-old-key-traps.cp
 core-04/literal-outside-domain.cp
 core-04/literal-position-in-list-outside.cp
+core-04/literal-range-table-int-keys.cp
 core-04/literal-record-compare.cp
 core-04/named-product-domain-runs.cp
 core-04/nested-slice-below-view-start-traps.cp
@@ -1702,6 +1703,7 @@ next/n_static_01_generic_type_names_its_static_fns.cp
 next/n_struct_default_type_arg.cp
 next/n_table_01_one_cell_per_position.cp
 next/n_table_01_over_a_domain_parameter.cp
+next/n_table_into_anon_range.cp
 next/n_targs_01_written.cp
 next/n_targs_02_field_takes_none.cp
 next/n_todo_01_todo_traps_where_reached.cp

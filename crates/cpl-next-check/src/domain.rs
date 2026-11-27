@@ -36,7 +36,10 @@ impl Cx<'_> {
         };
         let lo = self.coerce(lo, &Ty::Int);
         let hi = self.coerce(hi, &Ty::Int);
-        let end = if inclusive {
+        let end = if let (true, TK::Int(k)) = (inclusive, &hi.kind) {
+            let k = k.checked_add(1).map_or(TK::Error, TK::Int);
+            TExpr { kind: k, ..hi }
+        } else if inclusive {
             let span = hi.span;
             let one = TExpr {
                 kind: TK::Int(1),
