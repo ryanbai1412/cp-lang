@@ -974,7 +974,6 @@ traits/Add/MaxCount--add.cp	wrong-reject	link: std.algebra:564:12: E0606: `T` ha
 traits/Add/MaxSubAt--add.cp	wrong-reject	link: std.algebra:420:51: E0302: expected `Range<Cut<D>>`, found `Range<D>`
 traits/Add/MinCount--add.cp	wrong-reject	link: std.algebra:528:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 traits/Add/Poly--add.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
-traits/Bidir/Array--iter_rev.cp	split	C++: exit Some(1):  AddressSanitizer:DEADLYSIGNAL
 traits/Bidir/Items--iter_rev.cp	wrong-reject	link: E9999: no impl provides `keys` for this type
 traits/Bidir/LinkedList--iter_rev.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
 traits/Bidir/Prefix--iter_rev.cp	wrong-reject	check: program:2:11: E0203: `List<Int>` has no member `scan`

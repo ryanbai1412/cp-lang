@@ -1508,7 +1508,7 @@ impl Seq<T> for [D]T:
 
 impl Bidir<T> for [D]T:
     fn iter_rev(self) -> yields T:
-        for x in self.rev: yield x
+        for v in D.rev: yield self[v]
 
 impl Sized for [D]T:
     @get fn len(self) -> Int = self.len

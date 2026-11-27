@@ -1810,6 +1810,7 @@ tools-fmt-lint/lint-never-blocks-run.cp
 traits/Add/MaxSub--add.cp
 traits/Add/Vec--add.cp
 traits/Add/Vec3--add.cp
+traits/Bidir/Array--iter_rev.cp
 traits/Bidir/Filtered--iter_rev.cp
 traits/Bidir/List--iter_rev.cp
 traits/Bidir/Mapped--iter_rev.cp
