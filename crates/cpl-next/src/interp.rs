@@ -317,13 +317,19 @@ impl<'a> Machine<'a> {
                     body,
                     site,
                 } => {
-                    let Target::Inst(f) = target else {
-                        return broken("an unresolved region call reached the interpreter");
+                    // A generator value's walk calls the closure it holds, captures first.
+                    let (f, mut vals) = match target {
+                        Target::Inst(f) => (*f, Vec::new()),
+                        Target::Value(c) => match self.expr(c, fp)? {
+                            V::Clo(f, caps) => (f, caps),
+                            _ => return broken("a walk of a non-function"),
+                        },
+                        _ => return broken("an unresolved region call reached the interpreter"),
                     };
-                    let vals = self.pass(args, fp)?;
+                    vals.extend(self.pass(args, fp)?);
                     let here = self.enter(*site);
                     let (_, back, exit) = self.call(
-                        *f,
+                        f,
                         vals,
                         Some(Region {
                             fp,

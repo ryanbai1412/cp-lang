@@ -84,6 +84,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "index",
         "on a fn: what `s[r]` calls when `r` is not a key of `s` (R07.4.17)",
     ),
+    (
+        "recipe",
+        "on a library struct: the value of a `-> yields T` call made outside a `for` (R07.6.2)",
+    ),
 ];
 
 /// Old spellings the parser or checker answers with their own E0503 fix.

@@ -369,9 +369,11 @@ impl Cx<'_> {
                             };
                             loc.mutable || !self.plain(&loc.ty, 0)
                         }
+                        // A generator value's arguments are its own, even the file's top-level ones.
                         VarRef::Global(g) => {
                             let loc = &self.t.globals[*g];
-                            !loc.top && (loc.mutable || !self.plain(&loc.ty, 0))
+                            let held = self.t.lambdas[id.0].yields.is_some();
+                            (held || !loc.top) && (loc.mutable || !self.plain(&loc.ty, 0))
                         }
                     };
                     let r = self.root(*v);
@@ -640,13 +642,15 @@ impl Cx<'_> {
         }
     }
     /// The binding `b` now holds `what`. Its heap borrows (not closure captures, R10) are frozen
-    /// while it is used.
+    /// while it is used; a generator value's arguments are its borrows.
     fn holds(&mut self, b: Root, e: &TExpr, what: &BTreeSet<Pl>) {
         if what.is_empty() {
             return;
         }
         self.lent.entry(b).or_default().extend(what.iter().cloned());
-        if !self.plain(&e.ty, 0) {
+        // A generator value holds what it walks, as a view does (R07.6.2).
+        let walks = matches!(e.ty, Ty::Struct(s, ..) if Some(s) == self.d.recipe);
+        if walks || !self.plain(&e.ty, 0) {
             self.frozen
                 .entry(b)
                 .or_default()
@@ -1375,10 +1379,15 @@ impl Cx<'_> {
                         self.trait_call(tr.tr, m, body.span, Some(r), args, fx)
                     }
                     (Callee::Trait(..), None) => Default::default(),
+                    (Callee::Value(c), _) => {
+                        self.expr(c, fx);
+                        (self.sources(c), BTreeSet::new())
+                    }
                 };
                 let who = match callee {
                     Callee::Fn(f) => self.d.f(f.decl).name.clone(),
                     Callee::Trait(_, m) => m.clone(),
+                    Callee::Value(_) => "the generator".to_string(),
                 };
                 // What the walked value lends is held as long as it is (R05.5.3).
                 for a in recv.into_iter().chain(args.iter()) {

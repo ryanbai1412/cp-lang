@@ -1116,6 +1116,10 @@ impl Lw<'_> {
                 self.effect(v, &mut b);
                 let target = match (callee, recv.as_deref()) {
                     (Callee::Fn(f), _) => Target::Fn(self.lent_targs(f, &a)),
+                    (Callee::Value(c), _) => {
+                        let v = self.expr(c, out);
+                        Target::Value(Box::new(v))
+                    }
                     (Callee::Trait(tr, method), r) => Target::Trait {
                         tr: tr.tr,
                         args: tr.args.clone(),
@@ -1235,7 +1239,7 @@ impl Lw<'_> {
             locals,
             body: stmts,
             ret: info.ret.clone(),
-            region: None,
+            region: info.yields.clone().map(|t| (false, t)),
             line: self.site(body.span),
             shown: "lambda".into(),
         });
@@ -1424,6 +1428,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
                         free_vars(e, used, bound)
                     }
                     TStmt::Region {
+                        callee,
                         recv,
                         args,
                         var,
@@ -1431,6 +1436,9 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
                         ..
                     } => {
                         bound.insert(*var);
+                        if let Callee::Value(c) = callee {
+                            free_vars(c, used, bound);
+                        }
                         if let Some(r) = recv {
                             arg(r, used, bound);
                         }

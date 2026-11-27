@@ -45,6 +45,7 @@ impl<'a> Cx<'a> {
                     Callee::Trait(tr, _) => {
                         tr.args = tr.args.iter().map(|a| self.zonk(a)).collect()
                     }
+                    Callee::Value(c) => self.zonk_expr(c),
                 }
                 if let Some(r) = recv {
                     self.zonk_arg(r);

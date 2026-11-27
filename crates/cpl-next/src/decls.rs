@@ -243,6 +243,9 @@ pub struct Decls {
     pub struct_defaults: HashMap<StructId, Vec<Option<Ty>>>,
     /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
     pub tuples: HashMap<usize, StructId>,
+    /// A library's `@recipe` struct: the value of a `-> yields T` call made outside a `for`
+    /// (R07.6.2). Its one field is the closure that walks the call.
+    pub recipe: Option<StructId>,
     pub aliases: Rc<Vec<AliasDecl>>,
     pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
@@ -736,6 +739,10 @@ pub fn collect(
                         own[mi].insert(sd.name.text.clone(), Named::Struct(id));
                         if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "tuple") {
                             d.tuples.insert(sd.fields.len(), id);
+                        }
+                        if d.is_library(mid) && s.decorators.iter().any(|x| x.name.text == "recipe")
+                        {
+                            d.recipe = Some(id);
                         }
                         d.structs.push(StructDecl {
                             name: sd.name.text.clone(),

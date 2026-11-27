@@ -177,6 +177,10 @@ library or by this spec:
 - `@same_keys` on a fn (std's `zip`): its arguments that are arrays over
   domains must share one domain, so arrays over two domains are a type
   error at the call (R04b.1.3).
+- `@recipe` on a struct (std's `Gen<T>`): the value of a `-> yields T`
+  call made outside a `for` head, holding the call's fn and evaluated
+  arguments in its one fn-typed field; a `for` over it runs that call
+  (R07.6.2).
 - `@index` on a fn (core's slicing of an `Indexed` by a `Range` of its
   keys): what `s[r]` calls when `r` is not a key of `s`, so `s[l..r]` is
   that fn's `Slice<S>` (R07.4.17).

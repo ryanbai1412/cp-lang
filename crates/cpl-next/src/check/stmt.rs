@@ -919,6 +919,9 @@ impl<'a> Cx<'a> {
                         matches!(iter.kind, ExprKind::Call { .. } | ExprKind::Field { .. });
                     let mut call = self.expr(iter, None);
                     self.allow_region = false;
+                    if let Some(walk) = self.recipe_walk(&call) {
+                        return self.value_walk(walk, call, name, body, out);
+                    }
                     // `for x in g.out(u)` through a bound on `g`'s type parameter.
                     call = match call.kind {
                         TK::CallTrait {

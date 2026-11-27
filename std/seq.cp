@@ -1422,6 +1422,16 @@ pub trait Seq<T>:
     @lint(index_only_loop, from: "for i in self.indices:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
     fn iter(self) -> yields T
 
+/// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
+/// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the
+/// results with `List(g)`.
+@recipe pub struct Gen<T>:
+    run: () -> ()
+
+impl Seq<T> for Gen<T>:
+    fn iter(self) -> yields T:
+        for x in self: yield x
+
 /// A `Seq` whose elements carry keys: `s.items` walks `(key, x)`, and keys survive `filter`
 /// (R07.3.2).
 pub trait Keyed<D, T>: Seq<T>:

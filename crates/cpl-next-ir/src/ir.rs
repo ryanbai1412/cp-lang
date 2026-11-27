@@ -258,6 +258,8 @@ pub enum Target<T> {
     },
     /// Instance IR: the instance to call.
     Inst(usize),
+    /// Generic IR: the closure a generator value holds (R07.6.2); its set picks the instance.
+    Value(Box<Expr<T>>),
 }
 #[derive(Clone, Debug)]
 pub enum PrintPiece<T> {

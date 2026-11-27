@@ -19,6 +19,7 @@ mod member;
 mod oblige;
 mod pattern;
 mod range;
+mod recipe;
 mod stmt;
 mod targs;
 mod unify;
@@ -145,6 +146,8 @@ pub enum TArg {
 pub enum Callee {
     Fn(FnRef),
     Trait(TraitRef, String),
+    /// A generator value's closure (R07.6.2).
+    Value(Box<TExpr>),
 }
 
 /// What `Int` arithmetic does past `Int`: trap, or wrap where `with checks(overflow: off)`
@@ -214,6 +217,8 @@ pub struct LambdaInfo {
     pub owner: Option<FnId>,
     /// A nested `fn`'s run of sibling `fn` statements, itself included; empty for a lambda.
     pub group: Vec<LambdaId>,
+    /// What it yields: the closure a generator value walks (R07.6.2).
+    pub yields: Option<Ty>,
 }
 /// A range with run-time ends: the variables that hold them, each inclusive; `None` is an open end.
 struct RangeInfo {
@@ -572,6 +577,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     for l in &mut lambdas {
         l.params = l.params.iter().map(|t| cx.zonk(t)).collect();
         l.ret = cx.zonk(&l.ret);
+        l.yields = l.yields.as_ref().map(|t| cx.zonk(t));
     }
     let ret_sets = cx
         .ret_sets

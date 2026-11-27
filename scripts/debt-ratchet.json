@@ -198,7 +198,7 @@
   "dream_unverified": 0,
   "measure_broken": 0,
   "mono_unguarded": 0,
-  "std_shadowed": 16,
+  "std_shadowed": 17,
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
@@ -281,5 +281,5 @@
   "next_std_names": 72,
   "old_pipeline_lines": 180117,
   "next_masked": 1227,
-  "next_refusal_kinds": 70
+  "next_refusal_kinds": 69
 }

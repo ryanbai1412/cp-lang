@@ -120,6 +120,7 @@ impl Cx<'_> {
                     ret: ret.clone(),
                     owner: self.decl,
                     group: Vec::new(),
+                    yields: None,
                 });
                 (LambdaId(self.lambdas.len() - 1), Vec::new())
             }
@@ -171,6 +172,7 @@ impl Cx<'_> {
             ret,
             owner: self.decl,
             group,
+            yields: None,
         };
         mk(
             TK::Lambda {
@@ -229,6 +231,7 @@ impl Cx<'_> {
                 ret,
                 owner: self.decl,
                 group: Vec::new(),
+                yields: None,
             });
             let at = s.map_or(0, |s| s.span.start);
             self.group.push((at, fd.name.text.clone(), id));

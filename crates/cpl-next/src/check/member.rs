@@ -335,7 +335,9 @@ impl<'a> Cx<'a> {
                     // Every impl's fn, or the trait's default, may be the one that runs.
                     self.reach(m);
                     let fd = self.d.f(m);
-                    if fd.region.is_some() && !std::mem::take(&mut self.allow_region) {
+                    let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
+                    if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none())
+                    {
                         let what = format!(
                             "slice: `{}` yields or lends, and is used other than in a `for` or as the target of an assignment",
                             fd.name
@@ -368,6 +370,9 @@ impl<'a> Cx<'a> {
                         ty: ret,
                         span,
                     };
+                    if held && self.d.recipe.is_some() {
+                        return self.recipe(pre, call);
+                    }
                     return block(pre, call);
                 }
             }

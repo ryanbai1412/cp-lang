@@ -666,7 +666,8 @@ impl<'a> Cx<'a> {
                 span,
             };
         }
-        if fd.region.is_some() && !std::mem::take(&mut self.allow_region) {
+        let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
+        if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none()) {
             self.err(
                 span,
                 format!(
@@ -704,6 +705,9 @@ impl<'a> Cx<'a> {
             ty,
             span,
         };
+        if held && self.d.recipe.is_some() {
+            return self.recipe(pre, call);
+        }
         block(pre, call)
     }
     /// `recv.name(args)` of a trait bound on the type parameter `recv` is.

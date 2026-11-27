@@ -464,9 +464,13 @@ impl Link<'_> {
                 } => {
                     let args = args.iter().map(|a| self.arg(a, env)).collect();
                     let body = self.block(body, env);
-                    match self.target(target, env) {
-                        Some(i) => Stmt::Region {
-                            target: Target::Inst(i),
+                    let target = match target {
+                        Target::Value(c) => Some(Target::Value(Box::new(self.expr(c, env)))),
+                        t => self.target(t, env).map(Target::Inst),
+                    };
+                    match target {
+                        Some(target) => Stmt::Region {
+                            target,
                             args,
                             var: *var,
                             lend: *lend,
@@ -558,6 +562,7 @@ impl Link<'_> {
                 found
             }
             Target::Inst(i) => Some(self.keys[*i].clone()),
+            Target::Value(_) => None,
         }
     }
     fn arg(&mut self, a: &Arg<Ty>, env: &Env) -> Arg<CTy> {
@@ -799,6 +804,53 @@ fn canon_block(
                     .collect(),
             )),
             Stmt::Yield(e) => out.push(Stmt::Yield(canon_expr(bad, e))),
+            // A walk of a generator value runs the closure it holds: the one of its set it is.
+            Stmt::Region {
+                target: Target::Value(c),
+                args,
+                var,
+                lend,
+                body,
+                site,
+            } => {
+                let cty = c.ty.clone();
+                locals.push(cty.clone());
+                let tmp = locals.len() - 1;
+                out.push(Stmt::Let(tmp, canon_expr(bad, *c)));
+                let body = canon_block(p, locals, bad, body);
+                let walk = |k: &InstKey, env: Place| {
+                    let mut all: Vec<Arg<CTy>> = (p.captures(k).into_iter().enumerate())
+                        .map(|(j, t)| Arg::Value(read(Place::Field(Box::new(env.clone()), j), t)))
+                        .collect();
+                    all.extend(args.iter().cloned());
+                    Stmt::Region {
+                        target: Target::Inst(p.index[k]),
+                        args: all,
+                        var,
+                        lend,
+                        body: body.clone(),
+                        site,
+                    }
+                };
+                match &cty {
+                    CTy::Clo(k) => out.push(walk(k, Place::Local(tmp))),
+                    CTy::Set(ms) => {
+                        let arms = (ms.iter().enumerate())
+                            .map(|(i, k)| {
+                                vec![walk(k, Place::Variant(Box::new(Place::Local(tmp)), i))]
+                            })
+                            .collect();
+                        out.push(Stmt::Switch(
+                            Expr {
+                                kind: EK::Tag(Place::Local(tmp)),
+                                ty: CTy::Int,
+                            },
+                            arms,
+                        ));
+                    }
+                    _ => bad.push("internal: a generator value walked without its closure".into()),
+                }
+            }
             Stmt::Region {
                 target,
                 args,
