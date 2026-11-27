@@ -705,9 +705,13 @@ impl<'a> Cx<'a> {
             // A trait's fn whose body is an operation on `Self`, as `Domain`'s are.
             _ if f.intrinsic.is_some() => {
                 let span = Span::new(0, 0);
-                let arg = params.first().map(|&l| TExpr {
+                let arg = match self.self_local {
+                    Some(l) => Some((l, Ty::Param(0))),
+                    None => params.first().map(|&l| (l, Ty::Int)),
+                };
+                let arg = arg.map(|(l, ty)| TExpr {
                     kind: TK::Var(VarRef::Local(l)),
-                    ty: Ty::Int,
+                    ty,
                     span,
                 });
                 let op = f.intrinsic.clone().unwrap_or_default();

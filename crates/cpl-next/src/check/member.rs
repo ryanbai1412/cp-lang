@@ -450,16 +450,6 @@ impl<'a> Cx<'a> {
                 let recv = self.recv_arg(m, recv, span);
                 self.call_method(f, recv, getter, call, span, want)
             }
-            None if name.text == "ord"
-                && call.is_none()
-                && matches!(rt, Ty::Dom(_) | Ty::Param(_)) =>
-            {
-                TExpr {
-                    kind: TK::Ordinal(Box::new(recv)),
-                    ty: Ty::Int,
-                    span,
-                }
-            }
             None => {
                 self.missing.push(name.text.clone());
                 if let Some((was, help)) = self.renamed(&rt, base, name, call) {

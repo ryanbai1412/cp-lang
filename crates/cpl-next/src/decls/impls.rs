@@ -60,7 +60,7 @@ impl Decls {
         let pick = |f: &FnDecl| f.self_mode != SelfMode::None && pick(f);
         let ordered = (self.impls.iter().filter(|im| !im.blanket()))
             .chain(self.impls.iter().filter(|im| im.blanket()));
-        ordered.into_iter().find_map(|im| {
+        let found = ordered.into_iter().find_map(|im| {
             let tr = &self.traits[im.trait_.tr.0];
             if trait_name.is_some_and(|n| n != tr.name) {
                 return None;
@@ -81,6 +81,16 @@ impl Decls {
             let mut targs = vec![recv.clone()];
             targs.extend(im.trait_.args.iter().map(|t| sub.ty(t)));
             Some(Member::Method(tm, targs, Vec::new()))
+        });
+        // A declared domain meets `Domain` with no impl: its members are the trait's defaults.
+        found.or_else(|| {
+            let tr = self.domain_trait.filter(|_| matches!(recv, Ty::Dom(_)))?;
+            let tr = &self.traits[tr.0];
+            let tm = *tr
+                .methods
+                .get(name)
+                .filter(|_| trait_name.is_none_or(|n| n == tr.name))?;
+            pick(self.f(tm)).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
         })
     }
     /// Whether every field of `s` has an impl of `tr`, as a derived impl needs (R08.1.6).

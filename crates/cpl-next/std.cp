@@ -272,11 +272,14 @@ trait Domain:
     fn nth(k: Int) -> Self = @intrinsic("dom_nth")
     /// `D.at(x)`: the position with integer `x`, or `None` outside it (R04.2.8).
     fn at(x: Int) -> ?Self = @intrinsic("dom_at")
+    /// `v.ord`: how many positions come before `v` in the walk (R04.2.15).
+    @get fn ord(self) -> Int = @intrinsic("dom_ord")
 
 /// `Int` is a domain: its integers are its positions (R04.2.18).
 impl Domain for Int:
     fn nth(k: Int) -> Int = k
     fn at(x: Int) -> ?Int = x
+    @get fn ord(self) -> Int = self
 
 /// The numbers' own operators, so `T: Add` holds of them.
 impl Add for Int:

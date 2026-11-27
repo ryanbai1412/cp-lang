@@ -433,6 +433,33 @@ fn domain_params(d: &mut Decls) {
             d.domain_params.insert(FnId(k), added);
         }
     }
+    // A struct's parameter that one of its methods treats as a domain is one in all of them.
+    let mut of_struct: HashMap<StructId, Vec<usize>> = HashMap::new();
+    for (f, ds) in &d.domain_params {
+        if let Some(Owner::Struct(s)) = d.fns[f.0].owner {
+            let n = d.structs[s.0].generics.len();
+            let js = of_struct.entry(s).or_default();
+            js.extend(
+                ds.iter()
+                    .filter(|&&j| j < n && !js.contains(&j))
+                    .collect::<Vec<_>>(),
+            );
+        }
+    }
+    for k in 0..d.fns.len() {
+        let Some(Owner::Struct(s)) = d.fns[k].owner else {
+            continue;
+        };
+        let Some(js) = of_struct.get(&s) else {
+            continue;
+        };
+        let ds = d.domain_params.entry(FnId(k)).or_default();
+        for &j in js {
+            if !ds.contains(&j) {
+                ds.push(j);
+            }
+        }
+    }
     // Through bounds, until no trait's or fn's domain parameters grow.
     loop {
         let trait_dom = |d: &Decls, tr: TraitId, p: usize| {

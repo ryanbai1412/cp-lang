@@ -97,6 +97,11 @@ impl Cx<'_> {
                 span,
             },
             ("dom_at", Some(x)) => self.domain_at(dty, x, span),
+            ("dom_ord", Some(v)) => TExpr {
+                kind: TK::Ordinal(Box::new(v)),
+                ty: Ty::Int,
+                span,
+            },
             _ => return None,
         })
     }
