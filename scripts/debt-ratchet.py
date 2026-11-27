@@ -1329,11 +1329,18 @@ NEXT_STD_DECL_RE = re.compile(r"^\s*(?:pub\s+)?(?:fn|struct|trait|enum|type)\s+(
 RUST_STR_RE = re.compile(r'"([A-Za-z_]\w*)"')
 
 
+def _next_srcs(root: Path) -> list[str]:
+    """The pipeline and the per-layer crates it is split into (`cpl-next-ir`, `cpl-next-engine`)."""
+    return sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*") if (d / "src").is_dir())
+
+
 def next_std_names(root: Path) -> list[str]:
     """Places where the new pipeline (cpl-next and its `cpl-next-*` crates) knows a library
     declaration by its name: a string literal in its compiler code equal to a name its std declares (`"List"`, `"get"`,
-    `"read"`). The design has no privileged std: the library says what a declaration is (a
-    marker or a trait), and the compiler reads that, so this reaches 0."""
+    `"read"`), and every use of a lookup that wraps one: a `const` holding such a name, or a fn of
+    at most NEXT_WRAPPER_LINES lines whose body names one (`list_struct()`, `is_str(t)`). The design
+    has no privileged std: the library says what a declaration is (a marker or a trait), and the
+    compiler reads that, so this reaches 0."""
     std = root / "crates/cpl-next/std.cp"
     if not std.is_file():
         return []
@@ -1341,19 +1348,71 @@ def next_std_names(root: Path) -> list[str]:
     names = {"print", "write", "read"}
     for f in sources:
         names |= set(NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")))
-    out = []
-    # The pipeline and the per-layer crates it is split into (`cpl-next-ir`, `cpl-next-engine`).
-    srcs = sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*") if (d / "src").is_dir())
-    for p in _rs_files(root, *srcs, tests=False):
+    files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), tests=False)}
+    out: list[str] = []
+    wrappers: dict[str, tuple[str, int]] = {}
+    for rel, lines in files.items():
+        for i, line in enumerate(lines, 1):
+            if line.lstrip().startswith("//"):
+                continue
+            hits = [n for n in RUST_STR_RE.findall(line) if n in names]
+            out += [f"{rel}:{i}: {n}" for n in hits]
+            # A name matched by its start (`starts_with("Tuple")`) or built (`format!("Tuple{}")`).
+            parts = ("".join(t) for t in NEXT_NAME_PART_RE.findall(line))
+            out += [f"{rel}:{i}: {n}*" for n in parts if len(n) > 2 and n not in names and any(m.startswith(n) for m in names)]
+            if hits:
+                const = NEXT_CONST_RE.match(line)
+                w = const.group(1) if const else _short_fn_around(lines, i)
+                if w:
+                    wrappers.setdefault(w, (rel, i))
+    for rel, lines in files.items():
+        for i, line in enumerate(lines, 1):
+            if line.lstrip().startswith("//"):
+                continue
+            for w, at in wrappers.items():
+                if at == (rel, i) or ((d := NEXT_FN_RE.match(line)) and d.group(2) == w):
+                    continue
+                use = rf"\b{w}\b" if w.isupper() else rf"\b{w}\("
+                out += [f"{rel}:{i}: {w}()"] * len(re.findall(use, line))
+    return out
+
+
+NEXT_WRAPPER_LINES = 8
+NEXT_FN_RE = re.compile(r"^(\s*)(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s+([a-z_]\w*)")
+NEXT_CONST_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:const|static)\s+([A-Z_][A-Z0-9_]*)\s*:")
+
+
+def _short_fn_around(lines: list[str], i: int) -> str | None:
+    """The fn line `i` (1-based) is in, when that fn is at most NEXT_WRAPPER_LINES lines long."""
+    for j in range(i - 1, -1, -1):
+        m = NEXT_FN_RE.match(lines[j])
+        if not m:
+            continue
+        close = m.group(1) + "}"
+        end = next((k for k in range(j, len(lines)) if lines[k] == close or (k == j and lines[k].rstrip().endswith("}"))), None)
+        if end is not None and end + 1 >= i and end - j + 1 <= NEXT_WRAPPER_LINES:
+            return m.group(2)
+        return None
+    return None
+
+
+NEXT_REFUSAL_RE = re.compile(r'"slice: ((?:[^"\\]|\\.)*)"')
+
+
+def next_refusal_kinds(root: Path) -> list[str]:
+    """The kinds of feature the new pipeline (cpl-next and its `cpl-next-*` crates) refuses: each
+    distinct `slice:` text in its code, a `{...}` hole read as one. A refusal says the spec has a
+    feature this pipeline has not built, so the list only shrinks; a new kind is a visible raise."""
+    kinds: dict[str, str] = {}
+    for p in _rs_files(root, *_next_srcs(root), tests=False):
         rel = _rel(root, p)
         for i, line in enumerate(_lines(p), 1):
             if line.lstrip().startswith("//"):
                 continue
-            out += [f"{rel}:{i}: {n}" for n in RUST_STR_RE.findall(line) if n in names]
-            # A name matched by its start (`starts_with("Tuple")`) or built (`format!("Tuple{}")`).
-            parts = ("".join(t) for t in NEXT_NAME_PART_RE.findall(line))
-            out += [f"{rel}:{i}: {n}*" for n in parts if len(n) > 2 and n not in names and any(m.startswith(n) for m in names)]
-    return out
+            for t in NEXT_REFUSAL_RE.findall(line):
+                if t.strip():
+                    kinds.setdefault(re.sub(r"\{[^}]*\}", "{}", t.strip()), f"{rel}:{i}")
+    return sorted(f"{at}: slice: {t}" for t, at in kinds.items())
 
 
 NEXT_NAME_PART_RE = re.compile(r'(?:starts_with|strip_prefix|ends_with|strip_suffix)\(\s*"([A-Za-z_]\w*)"|format!\(\s*"([A-Za-z_]\w*)\{')
@@ -3450,6 +3509,7 @@ COUNTERS = {
     "next_cases_removed": ("conformance cases or new-pipeline tests deleted with no line in "
                            "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
     "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
+    "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses with `slice:` (Core)", next_refusal_kinds, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
