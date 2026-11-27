@@ -1,5 +1,6 @@
-// expect: ok, output "4 YES YES YES NO\nYES NO YES NO\nNO YES"
-// `x in s` is `s`'s `Contains` impl: core's for a range, std's for a set or a map, a user's own.
+// expect: ok, output "4 YES YES YES NO\nYES NO YES NO\nNO YES\nNO YES YES"
+// `x in s` is `s`'s `Contains` impl: core's for a range, std's for a set or a map, a user's own;
+// `x in V` on a domain type asks whether integer `x` is one of its positions.
 use std.map.{Set, Map}
 domain V = 1..=6
 struct Evens(n: Int)
@@ -16,3 +17,4 @@ var m = Map<Int, Int>()
 m[5] = 1
 print(yes(3 in s), yes(4 in s), yes(5 in m), yes(s.contains(9)))
 print(yes(7 in Evens(4)), yes(6 in Evens(4)))
+print(yes(0 in V), yes(6 in V), yes(7 not in V))

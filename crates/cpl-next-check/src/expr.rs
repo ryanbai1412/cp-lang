@@ -99,7 +99,7 @@ impl<'a> Cx<'a> {
         applies.then_some(found)
     }
     /// `x in s` as `s`'s core `@operator("in")` trait fn, `contains(x)` (R12.4.7).
-    fn membership(&mut self, op: CmpOp, x: TExpr, s: TExpr, span: Span) -> TExpr {
+    fn membership(&mut self, x: TExpr, s: TExpr, span: Span) -> TExpr {
         let found = (self.d.operators.iter().filter(|(o, _)| o == "in")).find_map(|(_, tr)| {
             let (n, &m) = self.d.traits[tr.0].methods.iter().next()?;
             Some((*tr, n.clone(), m))
@@ -108,17 +108,9 @@ impl<'a> Cx<'a> {
             self.err(span, Unbuilt::Membership);
             return Self::error_node(span);
         };
-        let call = TExpr {
+        TExpr {
             ty: Ty::Bool,
             ..self.operator_call(found, s, Some(x), span)
-        };
-        match op {
-            CmpOp::NotIn => TExpr {
-                kind: TK::Not(Box::new(call)),
-                ty: Ty::Bool,
-                span,
-            },
-            _ => call,
         }
     }
     /// `a op b` or `op a` as the operator trait's fn of `a`'s type, which is also its result.
@@ -1303,7 +1295,11 @@ impl<'a> Cx<'a> {
                 for (k, (op, rhs)) in rest.iter().enumerate() {
                     // `in` stands alone (R01.5.3); its operands are not one type.
                     if matches!(op, CmpOp::In | CmpOp::NotIn) {
-                        let r = self.expr(rhs, None);
+                        // `x in V` on a domain named as a type: is integer `x` a position (R04.2.6).
+                        let r = match self.type_path(rhs) {
+                            Some(d @ Ty::Dom(_)) => Err(d),
+                            _ => Ok(self.expr(rhs, None)),
+                        };
                         self.scopes.pop();
                         if rest.len() > 1 {
                             let text = cpl_diag::msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN_IN.say(&[]);
@@ -1313,7 +1309,17 @@ impl<'a> Cx<'a> {
                             );
                             return Self::error_node(span);
                         }
-                        return self.membership(*op, prev, r, span);
+                        let found = match r {
+                            Ok(r) => self.membership(prev, r, span),
+                            Err(d) => {
+                                let x = self.coerce(prev, &Ty::Int);
+                                mk(TK::DomHas(d, Box::new(x)), Ty::Bool)
+                            }
+                        };
+                        return match op {
+                            CmpOp::NotIn => mk(TK::Not(Box::new(found)), Ty::Bool),
+                            _ => found,
+                        };
                     }
                     let r = self.expr(rhs, Some(&prev.ty));
                     let r = self.coerce(r, &prev.ty.clone());
