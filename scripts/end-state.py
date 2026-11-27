@@ -110,6 +110,12 @@ def render(suites, counts):
             group = s["group"]
             out += ["", f"## {group}", "", "| # | Suite | State | Numbers, now → target |", "|---|---|---|---|"]
         out.append(f"| {s['id']} | {cell(s['name'])} | {st} | {cell(numbers)} |")
+    left = sorted((n, v) for n, v in counts.items() if n.startswith("next_") and isinstance(v, int) and v > 0)
+    out += ["", "## New-pipeline debt left", "",
+            "Each gated `next_*` counter still above 0. The stage-5 switch lands only when this",
+            "list is empty (`handbook/design/next/migration.md` rule 14); "
+            "`debt-ratchet.py --zero --prefix next_` checks it.", ""]
+    out += ["| Counter | Now |", "|---|---|", *(f"| `{n}` | {v:,} |" for n, v in left)] if left else ["None."]
     out += ["", "## What each suite must be", ""]
     for s in suites:
         out += [f"### {s['id']}. {s['name']}", "",

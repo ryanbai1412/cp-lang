@@ -8,6 +8,14 @@ spec.loader.exec_module(end_state)
 
 
 class StateTest(unittest.TestCase):
+    def test_the_next_counters_still_above_zero_are_listed(self) -> None:
+        text = end_state.render([], {"next_wrong": 1431, "next_split": 0, "next_split_ids": ["a"], "other": 5})
+        left = text[text.index("## New-pipeline debt left"):]
+        self.assertIn("| `next_wrong` | 1,431 |", left)
+        self.assertNotIn("next_split", left)
+        self.assertNotIn("other", left)
+        self.assertIn("None.", end_state.render([], {"next_split": 0}))
+
     def test_done_needs_every_number_at_its_target(self) -> None:
         suite = {"numbers": [{"counter": "a", "target": 0}, {"counter": "b", "target": 0}]}
         self.assertEqual(end_state.state(suite, {"a": 0, "b": 0})[0], "done")

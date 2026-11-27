@@ -4955,6 +4955,9 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument("--list", metavar="NAME", help="Print the offenders behind one counter.")
     group.add_argument("--zero", action="store_true",
                        help="Fail while any gated counter is above 0: main's own debt, reported red.")
+    parser.add_argument("--prefix", default="", metavar="PREFIX",
+                        help="With --zero, only the counters named PREFIX...: `--zero --prefix next_` is the "
+                             "stage-5 switch's gate (handbook/design/next/migration.md rule 14).")
     parser.add_argument("--ratchet", type=Path, default=DEFAULT_RATCHET, help="Path to debt-ratchet.json.")
     parser.add_argument("--root", type=Path, default=ROOT, help="Repository root.")
     args = parser.parse_args(argv)
@@ -4971,6 +4974,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.zero:
         left, failed = {}, 0
         for n in ["rs_over_cap", *(n for n, (_, _, gated) in COUNTERS.items() if gated)]:
+            if not n.startswith(args.prefix):
+                continue
             try:
                 left[n] = len(offenders(n))
             except MeasureError as e:

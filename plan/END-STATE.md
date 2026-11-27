@@ -65,6 +65,42 @@ measured, by a mutation score or a matrix with no empty cell.
 | 24 | Suite strength | unmeasured | no number yet for: crates under a 90% mutation score |
 | 25 | Outsider test | unmeasured | no number yet for: journeys a cold reader cannot complete from the docs |
 
+## New-pipeline debt left
+
+Each gated `next_*` counter still above 0. The stage-5 switch lands only when this
+list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --zero --prefix next_` checks it.
+
+| Counter | Now |
+|---|---|
+| `next_asks_refused` | 7 |
+| `next_core_checks` | 6 |
+| `next_core_privilege` | 21 |
+| `next_core_standin_lines` | 43 |
+| `next_cpp_runtime_lines` | 147 |
+| `next_error_typed` | 39 |
+| `next_handoff_side_fields` | 8 |
+| `next_ignored_settings` | 6 |
+| `next_layer_foreign_deps` | 4 |
+| `next_library_gates` | 25 |
+| `next_lowered` | 2 |
+| `next_masked` | 165 |
+| `next_name_compares` | 74 |
+| `next_not_passing` | 2,481 |
+| `next_old_syntax_analyses` | 116 |
+| `next_ownership_outside_own` | 2 |
+| `next_reference_evaluator_lines` | 597 |
+| `next_refusal_kinds` | 62 |
+| `next_refused` | 731 |
+| `next_repr_second_defs` | 3 |
+| `next_split` | 7 |
+| `next_std_names` | 54 |
+| `next_std_unchecked` | 40 |
+| `next_syntax_old_refs` | 846 |
+| `next_weak_oracle_passes` | 7 |
+| `next_whole_program_inputs` | 6 |
+| `next_wrong` | 1,518 |
+| `next_wrong_accepts` | 20 |
+
 ## What each suite must be
 
 ### 1. Spec conformance

@@ -1086,6 +1086,19 @@ class DebtRatchetTest(unittest.TestCase):
                     mock.patch.object(dr, "rs_over_cap", lambda r, m: {}):
                 self.assertEqual(dr.main(["--zero", "--root", str(root)]), 0)
 
+    def test_zero_with_a_prefix_counts_only_the_counters_it_names(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._make_repo(root)
+            fake = {"next_a": ("a", lambda r: [], True), "next_b": ("b", lambda r: ["x"], True),
+                    "other": ("o", lambda r: ["y"], True)}
+            with mock.patch.dict(dr.COUNTERS, fake, clear=True), \
+                    mock.patch.object(dr, "rs_over_cap", lambda r, m: {"big.rs": 3000}):
+                self.assertEqual(dr.main(["--zero", "--prefix", "next_", "--root", str(root)]), 1)
+                dr.COUNTERS["next_b"] = ("b", lambda r: [], True)
+                self.assertEqual(dr.main(["--zero", "--prefix", "next_", "--root", str(root)]), 0)
+                self.assertEqual(dr.main(["--zero", "--root", str(root)]), 1)
+
     def test_retry_calls_and_poll_sleeps(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
