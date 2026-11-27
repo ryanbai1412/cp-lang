@@ -317,13 +317,6 @@ pub fn pow<T, M: FromOp<T>>(x: T, k: 0..; op: M) -> T:
 /// `s.scale(k)` scales every element by non-negative `k` in \(O(1)\).
 /// Implements `Reversible` (swapping `pre` and `suf`) for tree-path folds.
 pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub suf: Int):
-    /// The summary of no elements: the identity of `join`. It has no best subarray.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `MaxSub.zero.try_best == None`
-    const zero = MaxSub(false, 0, 0, 0, 0)
-
     /// The summary of the single element `v`: best, total, best prefix and best suffix are all `v`.
     ///
     /// cost: \(O(1)\)
@@ -399,6 +392,12 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// example: `MaxSub.monoid().id.try_best == None`
     pub fn monoid() -> Monoid<MaxSub> = Monoid(MaxSub.zero, (a, b) => MaxSub.join(a, b), x => x.rev())
 
+/// The summary of no elements: the identity of `join`. It has no best subarray.
+impl Zero for MaxSub:
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MaxSub.zero.try_best == None`
+    @get fn zero() -> MaxSub = MaxSub(false, 0, 0, 0, 0)
 impl Add for MaxSub:
     fn add(a, b) = MaxSub.join(a, b)
 
@@ -570,13 +569,13 @@ pub struct MinCount<T>(pub val: T, pub count: Int):
     /// example: `[MinCount.of(v) for v in [3, 1, 1]].fold(MinCount.monoid()).count == 2`
     pub fn monoid() -> Monoid<MinCount<T>> = Monoid(MinCount.zero, (a, b) => MinCount.join(a, b), x => x)
 
-    /// The empty fold, `+`'s identity: the far end of `T` (as `Monoid.of(min)`) with count 0.
-    ///
+
+/// The empty fold, `+`'s identity: the far end of `T` (as `Monoid.of(min)`) with count 0.
+impl<T: Ord> Zero for MinCount<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `MinCount<Int>.zero.count == 0`
-    @get pub fn zero() -> MinCount<T> = MinCount(Monoid<T>.of(min).id, 0)
-
+    @get fn zero() -> MinCount<T> = MinCount(Monoid<T>.of(min).id, 0)
 impl<T> Add for MinCount<T>:
     fn add(a, b) = MinCount.join(a, b)
 
@@ -606,13 +605,13 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
     /// example: `[MaxCount.of(v) for v in [3, 1, 3]].fold(MaxCount.monoid()).count == 2`
     pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(MaxCount.zero, (a, b) => MaxCount.join(a, b), x => x)
 
-    /// The empty fold, `+`'s identity: the low end of `T` (as `Monoid.of(max)`) with count 0.
-    ///
+
+/// The empty fold, `+`'s identity: the low end of `T` (as `Monoid.of(max)`) with count 0.
+impl<T: Ord> Zero for MaxCount<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `MaxCount<Int>.zero.count == 0`
-    @get pub fn zero() -> MaxCount<T> = MaxCount(Monoid<T>.of(max).id, 0)
-
+    @get fn zero() -> MaxCount<T> = MaxCount(Monoid<T>.of(max).id, 0)
 impl<T> Add for MaxCount<T>:
     fn add(a, b) = MaxCount.join(a, b)
 
@@ -872,6 +871,9 @@ pub struct Each<Ms>(ms: Ms):
     pub fn monoid<T>(self) -> Monoid<T>:
         let ms = self.ms
         Monoid(T(identity_of(m) for m in fields(ms)), (a, b) => T(op_of(m, x, y) for (m, x, y) in fields(ms, a, b)))
+
+impl<T, S> FromOp<T> for Each<S>:
+    fn monoid(self) -> Monoid<T> = self.monoid<T>()
 
 fn identity_of<M: FromOp<F>, F>(m: M) -> F = Monoid<F>.of(m).id
 

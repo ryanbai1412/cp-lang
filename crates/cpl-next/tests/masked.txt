@@ -380,3 +380,6 @@ traits/Show/MonotoneHull--show.cp
 traits/Show/Paths--show.cp
 traits/Track/Counter--pop.cp
 traits/Track/Counter--push.cp
+core-05/local-memo-fn-recursing-through-its-wrapper.cp
+core-08/type-of-user-fn-item-is-selective-at-a-bound-test.cp
+std-algebra/group-of-and-point-action.cp

@@ -106,7 +106,7 @@ pub struct Deque<T>:
         unchecked:
             for i in 0..n:
                 nb[i] = buf[(head + i) & m]
-        swap(mut buf, mut nb)
+        buf = nb
         head = 0
         mask = cap - 1
 

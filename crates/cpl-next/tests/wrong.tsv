@@ -231,8 +231,6 @@ core-05/runs-walk-lends-parent.cp	wrong-error	wanted E0602 on line 6, got: check
 core-05/slices-proved-apart.cp	wrong-reject	check: program:9:11: E0302: this is not a place that can be assigned or lent
 core-05/spec-block-clobber-while-lent.cp	wrong-accept	wanted E0602 on line 9, ran and printed: 0
 core-05/spec-block-swap-maybe-same.cp	wrong-error	wanted E0601 on line 9, got: check: program:9:1: E0201: unknown name `swap`
-core-05/std-container-move.cp	wrong-error	wanted E0608 on line 8, got: check: std.deque:109:9: E0201: unknown name `swap`
-core-05/std-deque-keeps-pushed-value.cp	wrong-error	wanted E0603 on line 6, got: check: std.deque:109:9: E0201: unknown name `swap`
 core-05/take-into-other-index-guard.cp	wrong-reject	check: program:8:14: E0303: expected 1 arguments, found 0
 core-05/take-into-other-index-loop.cp	wrong-reject	check: program:7:18: E0303: expected 1 arguments, found 0
 core-05/var-param-halves-move-into-the-recursion.cp	wrong-reject	own: std.seq:513:5: E0603: this returns a value that borrows `$tuple88`: `$tuple88` is gone when the fn returns
@@ -368,7 +366,6 @@ core-08/impl-choosing-an-assoc-type-writes-its-default-fns.cp	wrong-error	wanted
 core-08/impl-fn-params-take-the-traits-types.cp	wrong-reject	check: program:23:24: E0203: `P` has no `both`
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
-core-08/laws-not-assumed.cp	wrong-reject	check: std.algebra:35:38: E0606: `T` does not implement `Domain`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0606: `S` does not implement `Domain`
 core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 5, got: decls: E0204: unknown trait `Monoid`
@@ -509,10 +506,8 @@ std-algebra/max-sub-of-is-a-fn-value.cp	wrong-reject	check: program:5:13: E0201:
 std-algebra/op-fold-is-t-with-an-identity.cp	wrong-reject	check: std.algebra:775:40: E0302: expected `Self.Fold`, found `Optional<T>`
 std-algebra/opt-of-two-closures-in-one-file.cp	wrong-reject	check: program:8:15: E0203: `a function` has no member `opt`
 std-algebra/pow-folds-under-any-monoid.cp	wrong-reject	check: std.algebra:598:36: E0606: `T` does not implement `Add`
-std-algebra/pow-negative-exponent-traps.cp	wrong-error	wanted E0902 on line 4, got: check: std.algebra:35:38: E0606: `T` does not implement `Domain`
 std-algebra/ranged-int-folds-by-max-and-min.cp	wrong-reject	check: std.algebra:35:38: E0606: `T` does not implement `Domain`
 std-algebra/seq-fold-under-own-and-stock-ops.cp	wrong-reject	check: std.algebra:35:38: E0606: `T` does not implement `Domain`
-std-algebra/user-ord-fold-max-needs-ends.cp	wrong-error	wanted E0606 on line 10, got: check: program:9:17: E0302: this function does not fit `(Frac, Frac) -> Frac`
 std-algebra/user-ord-reduce-by-max-and-min.cp	wrong-reject	check: program:8:17: E0302: this function does not fit `(Frac, Frac) -> Frac`
 std-bag/aug-fold-takes-any-range.cp	wrong-reject	check: std.bag:2080:27: E0302: expected `K`, found `Cut<K>`
 std-bag/range-takes-open-bounds.cp	wrong-reject	check: std.bag:358:32: E0302: expected `K`, found `Cut<K>`
@@ -531,8 +526,6 @@ std-bitset/union-shifted-keeps-len-exact.cp	wrong-reject	check: program:7:37: E0
 std-bitset/with-without.cp	wrong-reject	check: program:4:7: E0302: expected `List<Int>`, found `List<D>`
 std-bitset/xor-trie.cp	wrong-reject	check: std.bitset:1220:9: E0405: field `XorTrie._mask` is fixed (not `var`) and cannot be assigned
 std-deque/linked-list-reverse-is-its-own.cp	wrong-reject	check: std.deque:521:10: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
-std-deque/pop-front-empty.cp	wrong-reject	own: std.deque:167:13: E0602: `self` is written here while `x`, which borrows it, is still used
-std-deque/sliding-window-max.cp	wrong-reject	check: std.deque:109:9: E0201: unknown name `swap`
 std-deque/splice-empty-lists.cp	wrong-reject	check: std.deque:494:13: E0201: unknown name `swap`
 std-deque/splice-moves-the-shorter-list.cp	wrong-reject	check: program:10:14: E0201: unknown name `rand`
 std-derive/gen-fields-draws-bool-fields.cp	wrong-reject	check: std.derive:69:48: E0201: unknown name `fields`
@@ -776,7 +769,6 @@ std-segtree/merge-seg-singleton-dead.cp	wrong-reject	check: program:6:37: E0203:
 std-segtree/merge-segs-first-ge-is-read-only.cp	wrong-reject	check: program:13:19: E0201: unknown name `rand`
 std-segtree/merge-segs-share-nodes.cp	wrong-reject	check: program:13:14: E0201: unknown name `rand`
 std-segtree/segtree2d-matches-brute.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
-std-seq/a-bidir-struct-of-its-own-has-last.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/adjacent-buckets-counting-sort-span.cp	wrong-reject	check: program:2:7: E0302: expected `List<Int>`, found `List<Tuple2<Int, Int>>`
 std-seq/adjacent-diff-short.cp	wrong-reject	own: std.seq:2605:21: E0608: `x` was moved into another binding; use `.clone()` there to keep both
 std-seq/adjacent_diff-1.cp	wrong-reject	own: std.seq:2605:21: E0608: `x` was moved into another binding; use `.clone()` there to keep both
@@ -793,11 +785,7 @@ std-seq/deduped-edges.cp	wrong-reject	check: std.seq:463:28: E0606: `T` has no `
 std-seq/drop-past-len-is-empty.cp	split	C++: exit Some(3):  ev set BAG_B 32
 std-seq/every-view-keeps-the-traits-it-wraps.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/keyed-by-answers-with-the-key.cp	wrong-reject	link: std.seq:2205:9: E0203: `S` has no `iter`
-std-seq/last-of-an-empty-sequence-is-none.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
-std-seq/last-through-bidir-on-each-sequence.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/list-methods-that-build-lists-lend-nothing.cp	wrong-reject	own: program:7:1: E0602: `xs` is written here while `a`, which borrows it, is still used
-std-seq/majority-eq-call-bound.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
-std-seq/majority-none.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/maximal-empty.cp	wrong-reject	check: program:4:7: E0203: `List<Int>` has no member `maximal`
 std-seq/maximal-window-sum.cp	wrong-reject	check: program:3:12: E0203: `List<Int>` has no member `maximal`
 std-seq/method-after-std-import.cp	wrong-reject	check: std.math:1662:9: E0201: unknown name `swap`
@@ -813,7 +801,6 @@ std-seq/perm-cycles-fixed-points.cp	wrong-reject	link: E0606: a type argument is
 std-seq/perm-cycles-rejects-non-permutation.cp	wrong-reject	check: program:5:7: E0302: expected `List<Int>`, found `List<List<Int>>`
 std-seq/perm-rank-rejects-non-permutation.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/perm-sign-rejects-non-permutation.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
-std-seq/pop-while-all.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/positional-rev-and-domain-zip.cp	wrong-reject	check: program:10:7: E0302: expected `List<Int>`, found `List<R>`
 std-seq/prelude-find-resolves-to-seq.cp	wrong-reject	check: std.strings:425:8: E0203: `P` has no member `is_empty`
 std-seq/present-unwraps-pieces.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
@@ -822,8 +809,6 @@ std-seq/rebase-runs-std-rebased.cp	wrong-reject	check: program:12:15: E0606: `Re
 std-seq/rebase-str-keys-from-zero.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<Str>>` has no member `keys`
 std-seq/rekey-a-stepped-view-copy-by-a-range.cp	wrong-reject	check: program:4:13: E0203: `List<_>` has no member `rekey`
 std-seq/rekey-takes-a-range-not-stepped-keys.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:27: E0203: `List<_>` has no member `rekey`
-std-seq/rfind-no-match.cp	wrong-reject	check: std.seq:288:14: E0302: expected `T`, found `2.hidden`
-std-seq/rfind-through-bidir-on-each-sequence.cp	wrong-reject	check: std.seq:288:14: E0302: expected `T`, found `2.hidden`
 std-seq/ring-one-item-next-prev.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 std-seq/ring-span-windows-cyclic-sum.cp	wrong-reject	check: program:4:9: E0303: `Prefix` takes 1 type arguments, found 2
 std-seq/ring-step-full-turn-is-identity.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
@@ -838,8 +823,6 @@ std-seq/search-at-the-ends-stays-total.cp	wrong-reject	check: program:3:7: E0203
 std-seq/select-empty-traps.cp	wrong-reject	check: std.seq:533:62: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/select-k-past-len-traps.cp	wrong-reject	check: std.seq:533:62: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/select-last-is-max.cp	wrong-reject	check: std.seq:533:62: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-seq/seq-u01-first-match-value.cp	wrong-reject	check: std.seq:288:14: E0302: expected `T`, found `2.hidden`
-std-seq/seq-u02-first-match-position.cp	wrong-reject	check: std.seq:288:14: E0302: expected `T`, found `2.hidden`
 std-seq/seq-u06-sorted-bounds.cp	wrong-reject	check: program:4:7: E0203: `List<Int>` has no member `first_ge`
 std-seq/seq-u07-range-fold-table.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `scan`
 std-seq/seq-u08-scan-over-slice.cp	wrong-reject	check: program:3:7: E0203: `Slice<List<Int>>` has no member `scan`
@@ -865,7 +848,6 @@ std-seq/seq-u50-combinations-subsets.cp	wrong-reject	check: std.seq:3042:35: E03
 std-seq/seq-u55-sorted-set-ops-methods.cp	wrong-reject	check: std.seq:2717:40: E0302: expected `7.hidden`, found `4.hidden`
 std-seq/seq-u57-unzip.cp	wrong-reject	check: program:4:20: E0302: expected `Int`, found `Tuple2<Int, Char>`
 std-seq/seq-u58-edit-in-place.cp	wrong-reject	check: program:12:1: E0203: `List<Int>` has no member `resize`
-std-seq/seq-u61-deque-ends.cp	wrong-reject	check: std.deque:109:9: E0201: unknown name `swap`
 std-seq/sized-and-keyed-through-std-impls.cp	wrong-reject	decls: E0204: unknown trait `Keyed`
 std-seq/slice-items-come-from-its-keyed-impl.cp	wrong-reject	check: program:5:7: E0302: expected `List<Int>`, found `List<Tuple2<Int, Int>>`
 std-seq/slice-keys-len-is-empty.cp	wrong-reject	check: program:12:18: E0203: `D` has no member `idx`
@@ -970,7 +952,6 @@ std-window/window-expire-by-place.cp	wrong-reject	check: std.seq:274:43: E0302: 
 std-window/window-expire-unkeyed-traps.cp	wrong-reject	check: std.window:89:13: E0405: field `Window.head` is fixed (not `var`) and cannot be assigned
 std-window/window-fold-picks-op-strategy.cp	wrong-reject	check: std.algebra:35:38: E0606: `T` does not implement `Domain`
 std-window/window-min-after-pop.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
-std-window/window-push-all.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-window/window-push-at-decreasing-traps.cp	wrong-reject	check: std.window:144:26: E0405: field `Window.back` is fixed (not `var`) and cannot be assigned
 traits/Add/MaxCount--add.cp	wrong-reject	link: std.algebra:564:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 traits/Add/MaxSubAt--add.cp	wrong-reject	link: std.algebra:420:51: E0302: expected `Range<Cut<D>>`, found `Range<D>`
@@ -1027,3 +1008,7 @@ traits/Track/Window--push.cp	wrong-reject	check: std.seq:274:43: E0302: expected
 traits/Undo/Dsu--mark.cp	wrong-reject	check: std.dsu:125:29: E0201: unknown name `swap`
 traits/Undo/Dsu--undo_to.cp	wrong-reject	check: std.dsu:125:29: E0201: unknown name `swap`
 traits/Versioned/PersistentSegTree--get.cp	wrong-reject	check: program:5:16: E0302: expected `PersistentSegTree<Int, Int>`, found `PersistentSegTree<Int, Int>`
+core-05/view-take-keeps-a-read-lend.cp	wrong-reject	check: std.seq:1705:50: E0606: `S` does not implement `Indexed`
+std-algebra/min-count-folds-with-plus.cp	wrong-reject	link: std.algebra:578:46: E0606: `a function` does not implement `FromOp`
+std-algebra/pow-negative-exponent-traps.cp	wrong-accept	wanted E0902 on line 4, ran and printed:
+std-seq/rev-piece-walks-backward.cp	wrong-reject	check: std.seq:1705:50: E0606: `S` does not implement `Indexed`

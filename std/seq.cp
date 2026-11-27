@@ -13,7 +13,7 @@
 //! - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`).
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-use std.algebra.{Monoid}
+use std.algebra.{Monoid, FromOp}
 use std.math.{abs, popcount, bit}
 use std.prefix.{Prefix}
 use std.range.{Len, RingRange, ends, first_true, last_true}
@@ -2409,7 +2409,7 @@ pub fn reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T:
 /// traps: never (an `op` without a known identity is a compile-time error)
 /// example: `[1, 2, 3].fold(+) == 6`
 /// example: `[3, 9, 6].fold(gcd) == 3`
-pub fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T:
+pub fn fold<S: Seq<T>, T, M: FromOp<T>>(self: S, op: M) -> T:
     let m = Monoid<T>.of(op)
     var acc = m.id
     for x in self: acc = m.op(acc, x)
