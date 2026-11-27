@@ -2049,6 +2049,24 @@ class DebtRatchetTest(unittest.TestCase):
                 "- `spec/conformance/core-01/a.cp`: the rule it tested is gone\n")
             self.assertEqual(dr.next_cases_removed(root, "base"), [])
 
+    def test_a_case_the_ref_gained_after_the_fork_is_not_counted_as_deleted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, env=dr._git_env(), capture_output=True)
+            git("init", "-q", "-b", "work")
+            (root / "x").write_text("x\n")
+            git("add", "-A")
+            git("commit", "-qm", "fork")
+            git("checkout", "-qb", "main")
+            case = root / "spec" / "conformance" / "core-01" / "a.cp"
+            case.parent.mkdir(parents=True)
+            case.write_text("// expect: ok\n")
+            git("add", "-A")
+            git("commit", "-qm", "main gains a case")
+            git("checkout", "-q", "work")
+            self.assertEqual(dr.next_cases_removed(root, "main"), [])
+
 
 if __name__ == "__main__":
     unittest.main()

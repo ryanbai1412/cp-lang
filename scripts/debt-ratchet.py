@@ -1270,8 +1270,10 @@ def next_cases_removed(root: Path, ref: str = "origin/main") -> list[str]:
     renamed away. Deleting a wrong case would lower `next_wrong` for free; one leaves only
     by a line in `spec/conformance/REMOVED.md` naming it and why."""
     pats = ["spec/conformance", NEXT_TESTS + "/programs"]
+    # From the fork point, so a case `ref` gained after it is not read as this tree deleting it.
+    base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
     gone = [l.split("\t")[1] for l in _git(root, "diff", "--name-status", "--diff-filter=DR", "--no-renames",
-                                           ref, "--", *pats) if l.endswith(".cp")]
+                                           base, "--", *pats) if l.endswith(".cp")]
     removed = root / "spec" / "conformance" / "REMOVED.md"
     named = removed.read_text(encoding="utf-8") if removed.is_file() else ""
     return [g for g in gone if f"`{g}`" not in named]
