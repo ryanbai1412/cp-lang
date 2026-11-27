@@ -129,8 +129,8 @@ struct Cx<'a> {
     /// R6: the variables a binding's value borrows (a closure borrows what it captures by reference).
     lent: HashMap<Root, BTreeSet<Pl>>,
     in_lambda: usize,
-    /// R2: bindings whose heap value was moved out and not assigned since.
-    moved: BTreeSet<Root>,
+    /// R2: heap places moved out and not assigned since: a binding, or a field path under one.
+    moved: BTreeSet<Pl>,
     /// Bindings that are themselves lends of a heap value: heap parameters and heap loop items.
     borrowed: BTreeSet<Root>,
     /// R7: for a binding that holds a heap borrow, the bindings that must not change while it is used.
@@ -679,8 +679,8 @@ impl Cx<'_> {
             self.pending.retain(|x| x.0 != p.root);
             self.err_at(at, code, msg);
         }
-        if self.moved.contains(&p.root) {
-            let n = self.root_name(p.root);
+        if let Some(m) = self.moved.iter().find(|m| overlap(m, p)).cloned() {
+            let n = self.name(&m);
             self.err(
                 span,
                 codes::USE_AFTER_MOVE,
@@ -688,16 +688,25 @@ impl Cx<'_> {
             );
         }
     }
-    /// R2: `let b = a` and `x = a` move a heap value out of a binding this block owns.
+    /// R2: `let b = a` and `x = a` move a heap value out of a binding this block owns. A
+    /// field read is a lend of it (R05.3.5), so `let b = a.xs` moves nothing.
     fn take(&mut self, e: &TExpr) {
-        if let TK::Var(v) = &e.kind {
-            let r = self.root(*v);
+        if let TK::Var(_) = e.kind {
+            self.take_path(e);
+        }
+    }
+    /// A move out of a binding or a field path under it: a struct built from `a.xs` (a record
+    /// update `(..a, k: 3)` among them, R12.11.4) takes the path, so `a.xs` and `a` as a whole
+    /// are gone, and `a`'s other fields stay.
+    fn take_path(&mut self, e: &TExpr) {
+        if let Some(p) = self.field_path(e) {
+            let r = p.root;
             if self.decl.contains_key(&r)
                 && !self.borrowed.contains(&r)
                 && !self.lent.contains_key(&r)
                 && !self.plain(&e.ty, 0)
             {
-                self.moved.insert(r);
+                self.moved.insert(p);
                 // R05.10.2: a captured variable can't be moved while the fn value is alive.
                 let n = self.root_name(r);
                 // A value that holds a lend of it is E0602, a fn value that captures it E0607.
@@ -726,15 +735,15 @@ impl Cx<'_> {
         }
     }
     /// A move inside a loop of a binding declared before it leaves nothing for the next turn.
-    fn moved_in_loop(&mut self, span: Span, at: u32, before: &BTreeSet<Root>) {
-        let gone: Vec<Root> = self
+    fn moved_in_loop(&mut self, span: Span, at: u32, before: &BTreeSet<Pl>) {
+        let gone: Vec<Pl> = self
             .moved
             .difference(before)
-            .copied()
-            .filter(|r| self.decl.get(r).is_some_and(|(_, o)| *o <= at))
+            .filter(|p| self.decl.get(&p.root).is_some_and(|(_, o)| *o <= at))
+            .cloned()
             .collect();
-        for r in gone {
-            let n = self.root_name(r);
+        for p in gone {
+            let n = self.name(&p);
             self.err(
                 span,
                 codes::USE_AFTER_MOVE,
@@ -746,6 +755,14 @@ impl Cx<'_> {
         match v {
             VarRef::Local(l) => Root::Local(l),
             VarRef::Global(g) => Root::Global(g),
+        }
+    }
+    /// A binding, or a field path under one: a place a value moves out of whole.
+    fn field_path(&self, e: &TExpr) -> Option<Pl> {
+        match &e.kind {
+            TK::Var(_) => self.place(e),
+            TK::Field(b, _) => self.field_path(b).and_then(|_| self.place(e)),
+            _ => None,
         }
     }
     fn place(&self, e: &TExpr) -> Option<Pl> {
@@ -1156,7 +1173,7 @@ impl Cx<'_> {
                     // R05.5.3: a type-parameter field holds a heap place by lending it; any other
                     // field keeps its argument, so an owned heap binding moves in (R05.5).
                     if !(generic.contains(&i) && self.place(x).is_some()) {
-                        self.take(x);
+                        self.take_path(x);
                     }
                 }
             }
@@ -1266,9 +1283,8 @@ impl Cx<'_> {
                 match self.place(target) {
                     Some(p) => {
                         self.take(e);
-                        if p.path.is_empty() {
-                            self.moved.remove(&p.root);
-                        }
+                        // Assigning a place refills it and every path under it.
+                        (self.moved).retain(|m| !(overlap(m, &p) && m.path.len() >= p.path.len()));
                         let what = self.sources(e);
                         self.wrote(target.span, &p);
                         self.store(target.span, p.root, what);
