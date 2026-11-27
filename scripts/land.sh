@@ -378,8 +378,8 @@ if [ -n "$(git diff --name-only "$main_base" HEAD -- 'std/*.cp')" ] && [ -x "$ne
     std_dir=$(mktemp -d)
     git archive "$main_base" std | tar -x -C "$std_dir"
     printf 'print(1)\n' > "$std_dir/one.cp"
-    if CPL_NEXT_STD_DIR="$std_dir/std" "$next_bin" --check "$std_dir/one.cp" >/dev/null 2>&1 &&
-        ! said=$(CPL_NEXT_STD_DIR=std "$next_bin" --check "$std_dir/one.cp" 2>&1); then
+    if "$next_bin" --std "$std_dir/std" --check "$std_dir/one.cp" >/dev/null 2>&1 &&
+        ! said=$("$next_bin" --std std --check "$std_dir/one.cp" 2>&1); then
         rm -rf "$std_dir"
         printf '%s\n' "$said" | head -5 >&2
         echo "land: cpl-next rejects the rebased std, which main's passes (above); fix std and land again" >&2

@@ -1,5 +1,5 @@
 //! Bakes `std/` into the binary as it was at build time, so a binary always checks against the
-//! std it was built with, never the working tree's later edits (`CPL_NEXT_STD_DIR` names another).
+//! std it was built with, never the working tree's later edits (`cpl-next --std DIR` names another).
 
 use std::path::{Path, PathBuf};
 

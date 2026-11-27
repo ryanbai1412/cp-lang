@@ -64,24 +64,28 @@ fn real_main() {
     }
     if has("--std-modules") {
         let std = judged(
-            Snapshot::new(Arc::new(std_in_use()), Roots::std(), ""),
+            Snapshot::new(Arc::new(std_in_use(&args)), Roots::std(), ""),
             &args,
         );
         // `--std-modules std.x` shows the diagnostics of the modules it begins; alone, each
         // module's count.
         let at = args.iter().position(|a| a == "--std-modules");
-        let only = at.and_then(|i| args.get(i + 1)).filter(|a| !a.starts_with("--"));
+        let only = at
+            .and_then(|i| args.get(i + 1))
+            .filter(|a| !a.starts_with("--"));
         for (m, ds) in Session::open(std).std_unchecked() {
             match only {
                 None => println!("{m}\t{}", ds.len()),
-                Some(o) if m.starts_with(o.as_str()) => ds.iter().for_each(|d| println!("{m}: {d}")),
+                Some(o) if m.starts_with(o.as_str()) => {
+                    ds.iter().for_each(|d| println!("{m}: {d}"))
+                }
                 Some(_) => {}
             }
         }
         return;
     }
-    let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] [--judge NAME=MB] | --all --within MS [--trace] | --std-modules [MODULE]");
+    let Some(path) = file(&args) else {
+        eprintln!("usage: cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] [--judge NAME=MB] [--std DIR] | --all --within MS [--trace] | --std-modules [MODULE]");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {
@@ -92,7 +96,7 @@ fn real_main() {
         }
     };
     let mut snapshot = judged(
-        Snapshot::new(Arc::new(std_in_use()), roots(path), &src),
+        Snapshot::new(Arc::new(std_in_use(&args)), roots(path), &src),
         &args,
     );
     if has("--trace") {
@@ -107,7 +111,7 @@ fn real_main() {
         Err(ds) => {
             for d in ds {
                 match has("--json") {
-                    true => println!("{}", cpl_json::to_string(&d.json())),
+                    true => println!("{}", d.json()),
                     false => println!("{d}"),
                 }
             }
@@ -151,18 +155,13 @@ fn dump_ir(args: &[String]) {
     else {
         usage()
     };
-    let named = |i: usize| at.is_some_and(|at| i == at + 1);
-    let Some((_, path)) =
-        (args.iter().enumerate()).find(|&(i, a)| !a.starts_with("--") && !named(i))
-    else {
-        usage()
-    };
+    let Some(path) = file(args) else { usage() };
     let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
         eprintln!("{path}: {e}");
         std::process::exit(2);
     });
     let session = Session::open(judged(
-        Snapshot::new(Arc::new(std_in_use()), roots(path), &src),
+        Snapshot::new(Arc::new(std_in_use(args)), roots(path), &src),
         args,
     ));
     match session.ir(stage) {
@@ -195,7 +194,7 @@ fn code(v: Verdict) -> i32 {
 /// `--all`: every case on stdin compiled against one read of std.
 fn every_case(limit: Duration, events: bool, args: &[String]) {
     let std = judged(
-        Snapshot::new(Arc::new(std_in_use()), Roots::std(), ""),
+        Snapshot::new(Arc::new(std_in_use(args)), Roots::std(), ""),
         args,
     );
     for line in std::io::stdin().lock().lines() {
@@ -228,9 +227,7 @@ fn every_case(limit: Duration, events: bool, args: &[String]) {
         match session.program() {
             Ok(c) => every_form(c, dir, limit.saturating_sub(started.elapsed()), &input),
             Err(ds) => {
-                let out: String = (ds.iter())
-                    .map(|d| cpl_json::to_string(&d.json()) + "\n")
-                    .collect();
+                let out: String = (ds.iter()).map(|d| d.json() + "\n").collect();
                 write(dir, "compiled.out", &out);
                 write(dir, "compiled.code", &code(session.verdict()).to_string());
             }
@@ -306,6 +303,15 @@ fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input
     }
 }
 
+/// The flags that take the next argument as their value.
+const VALUED: [&str; 4] = ["--std", "--judge", "--within", "--stage"];
+
+/// The one argument that is neither a flag nor a flag's value.
+fn file(args: &[String]) -> Option<&String> {
+    let value = |i: usize| i > 0 && VALUED.contains(&args[i - 1].as_str());
+    (args.iter().enumerate()).find_map(|(i, a)| (!a.starts_with("--") && !value(i)).then_some(a))
+}
+
 /// `snapshot` built for the judge `--judge NAME=MB` names; the caller resolves it.
 fn judged(snapshot: Snapshot, args: &[String]) -> Snapshot {
     let at = args.iter().position(|a| a == "--judge");
@@ -327,9 +333,11 @@ fn judge_given(j: &str) -> Option<(&str, u64)> {
     Some((name, mb.parse().ok()?))
 }
 
-/// The std this binary was built with, or the directory `CPL_NEXT_STD_DIR` names.
-fn std_in_use() -> Std {
-    cpl_env::NEXT_STD_DIR
-        .path()
-        .map_or_else(Std::read, |dir| Std::read_dir(&dir))
+/// The std this binary was built with, or the directory `--std DIR` names.
+fn std_in_use(args: &[String]) -> Std {
+    let at = args.iter().position(|a| a == "--std");
+    match at.and_then(|i| args.get(i + 1)) {
+        Some(dir) => Std::read_dir(Path::new(dir)),
+        None => Std::read(),
+    }
 }

@@ -18,6 +18,15 @@ fn position(offset: u32, lines: &LineIndex) -> Value {
     ])
 }
 
+/// [`diagnostic`] and a tool's own fields (`None` is null), as one line of JSON.
+pub fn line(d: &Diagnostic, lines: &LineIndex, own: &[(&str, Option<&str>)]) -> String {
+    let mut o = diagnostic(d, lines);
+    for (name, v) in own {
+        o.insert((*name).into(), v.map_or(Value::Null, text));
+    }
+    cpl_json::to_string(&Value::Object(o))
+}
+
 /// One diagnostic with everything the text rendering shows, as an object's fields so a tool
 /// can add its own.
 pub fn diagnostic(d: &Diagnostic, lines: &LineIndex) -> BTreeMap<String, Value> {

@@ -339,8 +339,7 @@ fn a_refused_fn_is_one_refusal() {
 /// A diagnostic is data: its code, its place in its file and, for a refusal, the feature.
 #[test]
 fn a_diagnostic_is_its_code_place_and_feature() {
-    let json =
-        |src: &str| (diags(src).iter().map(|d| cpl_json::to_string(&d.json()))).collect::<Vec<_>>();
+    let json = |src: &str| (diags(src).iter().map(|d| d.json())).collect::<Vec<_>>();
     let verdict = &json("print(1)\nlet x: Int = \"a\"\n")[0];
     for part in [
         r#""code":"E0302""#,
@@ -1188,10 +1187,8 @@ fn the_memory_limit_is_the_judge_the_snapshot_is_built_for() {
     let src =
         "let n: 1..=1e9 = read()\ndomain V = 0..n\nlet a: [V]Int = [V].filled(0)\nprint(a[V(0)])\n";
     let base = Snapshot::new(std::sync::Arc::new(Std::read()), Roots::std(), src);
-    let over = |s: Snapshot| {
-        (Session::open(s).units().1.iter())
-            .any(|d| cpl_json::to_string(&d.json()).contains("E0904"))
-    };
+    let over =
+        |s: Snapshot| (Session::open(s).units().1.iter()).any(|d| d.json().contains("E0904"));
     assert!(!over(base.clone()), "no judge, no memory limit");
     assert!(over(base.with_judge("test", 256)));
     assert!(!over(base.with_judge("test", 1 << 20)));

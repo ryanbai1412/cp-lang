@@ -77,9 +77,6 @@ macro_rules! vars {
 vars! {
     /// The `std/` directory to load in place of the built-in one; set empty for none.
     STD_DIR = "CPL_STD_DIR";
-    /// The `std/` directory cpl-next loads in place of the one baked into it at build time, so
-    /// a binary is checked against the std it was built with unless this names another.
-    NEXT_STD_DIR = "CPL_NEXT_STD_DIR";
     /// At build time: the commit stamped into `cpl --version` (default: git's HEAD).
     COMMIT = "CPL_COMMIT";
     /// At build time: the release channel stamped into `cpl --version` (default `dev`).

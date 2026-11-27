@@ -98,7 +98,7 @@ class LandTest(unittest.TestCase):
             f.write("target/\n")
         (lane / "target" / "debug").mkdir(parents=True)
         fake = lane / "target" / "debug" / "cpl-next"
-        fake.write_text('#!/bin/sh\n[ "$(cat "$CPL_NEXT_STD_DIR"/*.cp)" != "$(printf \'impl\\nimpl\')" ] || '
+        fake.write_text('#!/bin/sh\n[ "$(cat "$2"/*.cp)" != "$(printf \'impl\\nimpl\')" ] || '
                         '{ echo "check: E0202: a second impl"; exit 1; }\n')
         fake.chmod(0o755)
         (lane / "std").mkdir()

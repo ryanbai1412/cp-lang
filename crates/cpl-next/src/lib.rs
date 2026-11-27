@@ -95,28 +95,23 @@ impl Diag {
         }
     }
 
-    /// [`cpl_diag::json::diagnostic`], with the layer, the file, the module, the refused feature
-    /// and `text`, the line `Display` prints.
-    pub fn json(&self) -> cpl_json::Value {
+    /// [`cpl_diag::json::line`], with the layer, the file, the module, the refused feature and
+    /// `text`, the line `Display` prints.
+    pub fn json(&self) -> String {
         let lines = cpl_diag::LineIndex::new(self.src.as_deref().unwrap_or(""));
-        let mut o = cpl_diag::json::diagnostic(&self.diagnostic(), &lines);
         let refusal = match &self.kind {
-            Kind::Refusal(u) => cpl_json::Value::String(u.variant()),
-            Kind::Verdict(_) => cpl_json::Value::Null,
+            Kind::Refusal(u) => Some(u.variant()),
+            Kind::Verdict(_) => None,
         };
-        let text = |t: Option<String>| t.map_or(cpl_json::Value::Null, cpl_json::Value::String);
-        o.insert(
-            "stage".into(),
-            cpl_json::Value::String(self.stage.name().into()),
-        );
-        o.insert(
-            "file".into(),
-            text(self.at.as_ref().map(|a| a.file.clone())),
-        );
-        o.insert("module".into(), text(self.module.clone()));
-        o.insert("text".into(), text(Some(self.to_string())));
-        o.insert("refusal".into(), refusal);
-        cpl_json::Value::Object(o)
+        let (file, shown) = (self.at.as_ref().map(|a| a.file.as_str()), self.to_string());
+        let own = [
+            ("stage", Some(self.stage.name())),
+            ("file", file),
+            ("module", self.module.as_deref()),
+            ("text", Some(shown.as_str())),
+            ("refusal", refusal.as_deref()),
+        ];
+        cpl_diag::json::line(&self.diagnostic(), &lines, &own)
     }
 
     /// `m` placed in its file.
