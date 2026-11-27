@@ -448,12 +448,16 @@ impl<'a> Cx<'a> {
         while sets.len() < f.n_sets {
             sets.push(self.new_set());
         }
-        FnRef {
+        let r = FnRef {
             decl,
             targs,
             sets,
             ctx,
+        };
+        if !r.sets.is_empty() {
+            self.set_calls.push((r.clone(), self.decl));
         }
+        r
     }
     /// A call of the library fn `name` with arguments already typed.
     pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {

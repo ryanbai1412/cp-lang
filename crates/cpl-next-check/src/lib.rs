@@ -257,6 +257,10 @@ pub struct Typed {
     pub lambdas: Vec<LambdaInfo>,
     /// The set a fn returns, for fns whose result is a function value.
     pub ret_sets: HashMap<(FnId, usize), SetTy>,
+    /// The closures a fn's body adds to its i-th set parameter, a callee's adds included.
+    pub param_adds: HashMap<(FnId, usize), SetTy>,
+    /// Each call whose callee adds to a set argument, and that argument's slot.
+    pub call_adds: Vec<(FnRef, usize)>,
     pub errors: Vec<Msg>,
     /// The errors of each library fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
@@ -292,6 +296,9 @@ struct Cx<'a> {
     globals: Vec<Local>,
     global_names: HashMap<String, LocalId>,
     ret_sets: HashMap<(FnId, usize), SetTy>,
+    param_adds: HashMap<(FnId, usize), Vec<Member>>,
+    /// Every fn reference with set arguments, and the fn it sits in.
+    set_calls: Vec<(FnRef, Option<FnId>)>,
     domains: Vec<DomInfo>,
     doms: HashMap<String, Ty>,
     ranges: Vec<RangeInfo>,
@@ -384,6 +391,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         globals: Vec::new(),
         global_names: HashMap::new(),
         ret_sets: HashMap::new(),
+        param_adds: HashMap::new(),
+        set_calls: Vec::new(),
         // A top-level domain's place is kept for it until its statement runs.
         domains: (d.top_doms.values())
             .filter(|t| matches!(t, Ty::Dom(_)))
@@ -619,6 +628,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
             deferred.insert(id, errors);
         }
     }
+    let call_adds = cx.call_adds();
     // Zonk: every variable is replaced by what it was solved to.
     let mut main_z = std::mem::take(&mut cx.const_init);
     main_z.extend(main_out);
@@ -644,6 +654,19 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         l.ret = cx.zonk(&l.ret);
         l.yields = l.yields.as_ref().map(|t| cx.zonk(t));
     }
+    let call_adds = (call_adds.into_iter())
+        .map(|(f, k)| {
+            let f = FnRef {
+                targs: f.targs.iter().map(|t| cx.zonk(t)).collect(),
+                sets: f.sets.iter().map(|s| cx.zonk_set(s)).collect(),
+                ..f
+            };
+            (f, k)
+        })
+        .collect();
+    let param_adds = (cx.param_adds.clone().into_iter())
+        .map(|(k, ms)| (k, cx.zonk_set(&SetTy::Closed(ms))))
+        .collect();
     let ret_sets = cx
         .ret_sets
         .clone()
@@ -664,6 +687,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         main: main_z,
         lambdas,
         ret_sets,
+        param_adds,
+        call_adds,
         errors: cx.errors,
         missing: cx.missing,
         deferred,
@@ -755,6 +780,43 @@ impl<'a> Cx<'a> {
         k
     }
 
+    /// A call reaches a fn that adds closures to a set argument, so the set it passes gains
+    /// them: a set the caller owns takes them as a member, and a set parameter of the caller
+    /// passes them on to its own callers. Run to a fixpoint once every body is checked.
+    fn call_adds(&mut self) -> Vec<(FnRef, usize)> {
+        let mut out = Vec::new();
+        let mut done = HashSet::new();
+        let calls = std::mem::take(&mut self.set_calls);
+        loop {
+            let mut changed = false;
+            for (ci, (f, caller)) in calls.iter().enumerate() {
+                for (slot, s) in f.sets.iter().enumerate() {
+                    if !self.param_adds.contains_key(&(f.decl, slot)) || !done.insert((ci, slot)) {
+                        continue;
+                    }
+                    changed = true;
+                    let m = Member::Sub(SetTy::AddedAt(out.len()));
+                    out.push((f.clone(), slot));
+                    match self.shallow_set(s) {
+                        SetTy::Var(v) => {
+                            if let SetVar::Root(ms) = &mut self.sets[v] {
+                                ms.push(m);
+                            }
+                        }
+                        SetTy::Param(j) => {
+                            if let Some(g) = caller {
+                                self.param_adds.entry((*g, j)).or_default().push(m);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if !changed {
+                return out;
+            }
+        }
+    }
     pub(crate) fn reach(&mut self, id: FnId) {
         let d = self.d;
         let f = d.f(id);

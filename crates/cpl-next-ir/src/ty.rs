@@ -57,6 +57,9 @@ pub enum SetTy {
     Param(usize),
     /// "Whatever set f<..> returns": resolved per instance.
     RetOf(Box<FnRef>, usize),
+    /// "Whatever the fn a call reaches adds to its `slot`-th set argument": `call_adds[i]` is
+    /// that call and slot. Resolved per instance, as `RetOf` is.
+    AddedAt(usize),
     /// In a signature: the k-th function type of the result. Callers see `RetOf(f, k)`.
     RetSlot(usize),
     Closed(Vec<Member>),
@@ -129,6 +132,8 @@ impl Subst<'_> {
             SetTy::Param(i) => self.sets.get(*i).cloned().unwrap_or(SetTy::Closed(vec![])),
             SetTy::RetOf(f, k) => SetTy::RetOf(Box::new(self.fnref(f)), *k),
             SetTy::RetSlot(k) => SetTy::RetSlot(*k),
+            // Its call is resolved where it sits, under that fn's own parameters.
+            SetTy::AddedAt(c) => SetTy::AddedAt(*c),
             SetTy::Closed(ms) => SetTy::Closed(
                 ms.iter()
                     .map(|m| match m {

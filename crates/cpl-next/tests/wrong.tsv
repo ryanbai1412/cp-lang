@@ -431,6 +431,7 @@ next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, 
 next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: program:6:1: E0602: `a` is lent to `fill` for writing, and the call also reaches it another way
 next/t04_selfcapture.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
 next/t05_recursive_closure.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
+next/t16_add_to_param.cp	wrong-reject	own: program:6:5: E0603: this returns a value that borrows `fs`: `fs` is lent by the caller; return a `.clone()`
 next/t24_dual_reassign.cp	bad-header	`// expect: E0000` needs the line it points at to end with `// <- here`
 ownership/fn-named-assign-after.cp	wrong-reject	check: program:7:9: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/fn-named-assign-before.cp	wrong-error	wanted E0603 on line 7, got: check: program:7:9: E0302: expected `List<Int>`, found `Slice<List<Int>>`

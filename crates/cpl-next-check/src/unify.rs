@@ -635,6 +635,12 @@ impl<'a> Cx<'a> {
                             ms.push(Member::Clo((**c).clone()));
                         }
                     }
+                    SetTy::Param(i) => {
+                        if let Some(f) = self.decl {
+                            let m = Member::Clo((**c).clone());
+                            self.param_adds.entry((f, i)).or_default().push(m);
+                        }
+                    }
                     _ => self.err(span, Unbuilt::FnValueFixedSet),
                 }
                 TExpr {

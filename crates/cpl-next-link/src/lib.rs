@@ -27,6 +27,7 @@ struct Link<'a> {
     structs: HashMap<CTy, Vec<CTy>>,
     sums: HashMap<CTy, Vec<CTy>>,
     ret_busy: BTreeSet<(InstKey, usize)>,
+    add_busy: BTreeSet<usize>,
     named: HashMap<FuncKey, BTreeSet<usize>>,
     errors: Vec<Msg>,
     globals: Vec<CTy>,
@@ -91,6 +92,7 @@ pub fn link(
         structs: HashMap::new(),
         sums: HashMap::new(),
         ret_busy: BTreeSet::new(),
+        add_busy: BTreeSet::new(),
         named: HashMap::new(),
         errors: Vec::new(),
         globals: Vec::new(),
@@ -403,6 +405,17 @@ impl Link<'_> {
         }
         v
     }
+    /// The instance a call of `f` runs: for a trait's fn, the impl's fn the type picks.
+    fn callee_key(&mut self, f: &FnRef, env: &Env) -> Option<InstKey> {
+        match self.d.f(f.decl).owner {
+            Some(cpl_next_decls::decls::Owner::Trait(tr)) => {
+                let (st, args) = f.targs.split_first()?;
+                let method = self.d.f(f.decl).name.clone();
+                self.trait_key(&tr, args, &method, st, env)
+            }
+            _ => Some(self.fnref(f, env)),
+        }
+    }
     fn set_into(&mut self, s: &SetTy, env: &Env, out: &mut BTreeSet<InstKey>) {
         match s {
             SetTy::Param(i) => out.extend(env.sets.get(*i).cloned().unwrap_or_default()),
@@ -416,20 +429,29 @@ impl Link<'_> {
                     }
                 }
             }
-            SetTy::RetOf(f, slot) => {
-                // A trait's fn returns what the impl's fn the type picks returns.
-                let k = match self.d.f(f.decl).owner {
-                    Some(cpl_next_decls::decls::Owner::Trait(tr)) => {
-                        let Some((st, args)) = f.targs.split_first() else {
-                            return;
-                        };
-                        let method = self.d.f(f.decl).name.clone();
-                        match self.trait_key(&tr, args, &method, st, env) {
-                            Some(k) => k,
-                            None => return,
+            SetTy::AddedAt(c) => {
+                // A call met again inside its own arguments' sets adds nothing more.
+                if !self.add_busy.insert(*c) {
+                    return;
+                }
+                let (f, slot) = self.typed.call_adds[*c].clone();
+                if let Some(k) = self.callee_key(&f, env) {
+                    if let FuncKey::Decl(decl) = k.func {
+                        if let Some(s) = self.typed.param_adds.get(&(decl, slot)).cloned() {
+                            let inner = Env {
+                                targs: &k.targs,
+                                sets: &k.sets,
+                            };
+                            self.set_into(&s, &inner, out);
                         }
                     }
-                    _ => self.fnref(f, env),
+                }
+                self.add_busy.remove(c);
+            }
+            SetTy::RetOf(f, slot) => {
+                // A trait's fn returns what the impl's fn the type picks returns.
+                let Some(k) = self.callee_key(f, env) else {
+                    return;
                 };
                 let FuncKey::Decl(decl) = k.func else {
                     return;

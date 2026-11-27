@@ -685,6 +685,7 @@ core-08/blanket-impl.cp
 core-08/bound-only-params-bind-from-the-impl.cp
 core-08/bound-unmet.cp
 core-08/bounds-three-ways.cp
+core-08/call-gen-alias.cp
 core-08/concrete-extension-beats-std-generic.cp
 core-08/default-arg-binds-generic-before-bounds.cp
 core-08/default-method-override-once.cp
@@ -947,6 +948,7 @@ matrix/index/cuts--find.cp
 matrix/index/cuts--first.cp
 matrix/index/cuts--for.cp
 matrix/index/cuts--int.cp
+matrix/index/cuts--min_by.cp
 matrix/index/cuts--next.cp
 matrix/index/cuts--optional.cp
 matrix/index/cuts--prev.cp
@@ -965,6 +967,7 @@ matrix/index/plain--find.cp
 matrix/index/plain--first.cp
 matrix/index/plain--for.cp
 matrix/index/plain--int.cp
+matrix/index/plain--min_by.cp
 matrix/index/plain--next.cp
 matrix/index/plain--optional.cp
 matrix/index/plain--prev.cp
@@ -973,6 +976,7 @@ matrix/index/plain--read.cp
 matrix/index/plain--rev.cp
 matrix/index/plain--size.cp
 matrix/index/product--builder.cp
+matrix/index/product--min_by.cp
 matrix/index/product--rev.cp
 matrix/index/product--size.cp
 matrix/index/subset--int.cp
@@ -1082,6 +1086,7 @@ next/a_eq_01_list_and_optional.cp
 next/a_eq_02_tuples.cp
 next/a_eq_03_derived_structs.cp
 next/a_esc_01_closure_into_global.cp
+next/a_esc_02_closure_into_mut_param_field.cp
 next/a_esc_03_yielded_closure_kept.cp
 next/a_esc_04_closure_in_returned_tuple.cp
 next/a_esc_05_closure_via_second_closure.cp
@@ -1194,6 +1199,7 @@ next/d16_empty_domain_cast.cp
 next/d17_literal_never_a_position.cp
 next/k01_escape_global_list.cp
 next/k02_escape_global_var.cp
+next/k03_escape_mut_param.cp
 next/k04_escape_struct_ret.cp
 next/k05_escape_tuple_ret.cp
 next/k06_loop_var_fresh.cp
@@ -1217,6 +1223,7 @@ next/k23_ret_closure_param.cp
 next/k24_ret_closure_var_copy.cp
 next/m01_case_return_in_loops.cp
 next/m02_until_eof_empty.cp
+next/n_alias_01_alias_builds_its_type.cp
 next/n_assoc_02_bound_names_a_defaulted_assoc.cp
 next/n_assoc_type.cp
 next/n_assoc_type_bound_unmet.cp
@@ -1242,6 +1249,7 @@ next/n_cell_02_write_through_indexed_mut.cp
 next/n_cell_03_method_on_cell.cp
 next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
+next/n_comp_01_comprehension_is_its_loop.cp
 next/n_const_hoists.cp
 next/n_convert_01_core_types_convert_by_impl.cp
 next/n_convert_02_char_outside_ascii_traps.cp
@@ -1339,6 +1347,8 @@ next/n_record_01_records_are_core_structs.cp
 next/n_record_01_update_copies_with_replacements.cp
 next/n_record_02_field_traits.cp
 next/n_scope_01_param_shadows_domain.cp
+next/n_set_01_closure_added_through_mut_param.cp
+next/n_set_02_closure_stored_in_mut_param_field.cp
 next/n_set_ordered.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
@@ -1350,6 +1360,7 @@ next/n_slice_07_range_cut_is_a_sub_range.cp
 next/n_slice_08_range_cut_outside_traps.cp
 next/n_slice_09_lent_field_walks_its_source.cp
 next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
+next/n_static_01_generic_type_names_its_static_fns.cp
 next/n_struct_default_type_arg.cp
 next/n_table_01_one_cell_per_position.cp
 next/n_targs_01_written.cp
@@ -1710,10 +1721,3 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
-next/n_comp_01_comprehension_is_its_loop.cp
-next/n_alias_01_alias_builds_its_type.cp
-core-08/call-gen-alias.cp
-next/n_static_01_generic_type_names_its_static_fns.cp
-matrix/index/cuts--min_by.cp
-matrix/index/plain--min_by.cp
-matrix/index/product--min_by.cp

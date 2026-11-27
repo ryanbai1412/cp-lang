@@ -863,6 +863,18 @@ impl Cx<'_> {
                     out.add(&self.set_fx(&rs, depth + 1));
                 }
             }
+            SetTy::AddedAt(c) => {
+                if let Some((f, k)) = self.t.call_adds.get(*c) {
+                    if let Some(s) = self.t.param_adds.get(&(f.decl, *k)) {
+                        let s = Subst {
+                            tys: &f.targs,
+                            sets: &f.sets,
+                        }
+                        .set(s);
+                        out.add(&self.set_fx(&s, depth + 1));
+                    }
+                }
+            }
             SetTy::RetSlot(_) | SetTy::Var(_) => {}
         }
         out
