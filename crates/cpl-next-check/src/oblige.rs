@@ -99,7 +99,11 @@ impl Cx<'_> {
                             self.err_help(span, msg, Some(help));
                             continue;
                         }
-                        let said = &self.d.traits[r.tr.0].unimplemented;
+                        // Named at its root: `print(xs)` on a `List<?Int>` is `?Int` lacking
+                        // `Show`, not the pack of arguments lacking `ShowAll` (R10.3.7).
+                        let (root, rr) = self.d.unmet_root(&t, &r);
+                        let (shown, tr) = (self.show(&root), &self.d.traits[rr.tr.0].name);
+                        let said = &self.d.traits[rr.tr.0].unimplemented;
                         let code = said.code.unwrap_or(cpl_diag::codes::MISSING_IMPL);
                         let help = (said.help.as_ref()).map(|h| h.replace("{T}", &shown));
                         let msg =

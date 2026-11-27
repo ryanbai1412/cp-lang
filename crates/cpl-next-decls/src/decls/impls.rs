@@ -192,6 +192,68 @@ impl Decls {
     pub fn core_domain_trait(&self, tr: TraitId) -> bool {
         Some(tr) == self.domain_trait || Some(tr) == self.order_trait
     }
+    /// The bound at the root of `t` not meeting `r`: `Tuple1<List<?Int>>` misses `ShowAll`
+    /// because `?Int` misses `Show`. It goes down while one impl alone of the most specific
+    /// rank has the head `t` and its trait arguments, through the first of that impl's bounds
+    /// left unmet.
+    pub fn unmet_root(&self, t: &Ty, r: &TraitRef) -> (Ty, TraitRef) {
+        let (mut t, mut r) = (t.clone(), r.clone());
+        // An impl's bound names a part of its type, so each step is a smaller type; the cap
+        // only guards a blanket impl bounded by its own trait.
+        for _ in 0..32 {
+            let heads: Vec<(&ImplDecl, Vec<Ty>)> = (self.impls_of(r.tr))
+                .filter_map(|im| Some((im, self.impl_args_for(im, &t, &r.args)?)))
+                .collect();
+            let Some(best) = heads.iter().map(|(im, _)| self.impl_rank(im)).min() else {
+                break;
+            };
+            let mut heads = heads.into_iter().filter(|(im, _)| self.impl_rank(im) == best);
+            let (Some((im, targs)), None) = (heads.next(), heads.next()) else {
+                break;
+            };
+            let sub = Subst {
+                tys: &targs,
+                sets: &[],
+            };
+            let unmet = im.bounds.iter().find_map(|(i, b)| {
+                let a = targs.get(*i)?;
+                let b = TraitRef {
+                    tr: b.tr,
+                    args: b.args.iter().map(|x| sub.ty(x)).collect(),
+                };
+                (!self.meets(a, &b)).then(|| (a.clone(), b))
+            });
+            // A blanket impl stands for the trait only when it is the trait's one impl at these
+            // arguments (`impl<T: Show, M> ShowPart<M> for T`); one among many (a `Show` for
+            // every `Domain`) is not why `?Int` lacks `Show`.
+            let sole = || {
+                (self.impls_of(r.tr))
+                    .filter(|o| self.impl_args_for(o, &Ty::Error, &r.args).is_some())
+                    .count()
+                    == 1
+            };
+            let unmet = unmet.filter(|_| !im.blanket() || sole());
+            let Some(next) = unmet else {
+                break;
+            };
+            (t, r) = next;
+        }
+        (t, r)
+    }
+    /// Whether `t` has an impl of `r` with its trait arguments, its bounds met as `has_impl`
+    /// meets them.
+    fn meets(&self, t: &Ty, r: &TraitRef) -> bool {
+        if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
+            return true;
+        }
+        if self.core_domain_trait(r.tr) && matches!(t, Ty::Dom(_)) {
+            return true;
+        }
+        (self.impls_of(r.tr)).any(|im| {
+            self.impl_args_for(im, t, &r.args)
+                .is_some_and(|targs| self.bounds_met(im, &targs))
+        })
+    }
     /// Whether `t` has an impl of `tr`, its parameters taken to meet the impl's bounds.
     pub fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {

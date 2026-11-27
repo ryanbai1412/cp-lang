@@ -457,6 +457,20 @@ fn none_beside_an_error_says_nothing_more() {
     assert_eq!(ds, ["check: program:1:7: E0201: unknown name `nope`"]);
 }
 
+/// A missing impl is named at its root, in the spelling the program writes: `print(xs)` on a
+/// `List<?Int>` is `?Int` lacking `Show`, not the pack of arguments lacking `ShowAll` (R10.3.7).
+#[test]
+fn a_missing_impl_names_the_part_that_lacks_it() {
+    for (src, at) in [
+        ("let xs: List<?Int> = [None]\nprint(xs)\n", "2:1"),
+        ("let x: ?Int = None\nprint(1, x, sep: \",\")\n", "2:1"),
+        ("let xs: List<List<?Int>> = [[None]]\nprint(\"{xs}\")\n", "2:7"),
+    ] {
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert_eq!(ds, [format!("check: program:{at}: E0606: `?Int` does not implement `Show`")]);
+    }
+}
+
 /// A refused local item shadows the name outside (std.geometry's `Pt`): its uses are the error.
 #[test]
 fn a_refused_local_item_shadows_and_says_nothing_more() {

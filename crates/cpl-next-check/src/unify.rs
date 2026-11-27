@@ -1183,6 +1183,7 @@ pub fn show_ty(
         Ty::Mut(e) => format!("mut {}", show(&e)),
         Ty::Ref(e) => format!("&{}", show(&e)),
         Ty::Lent(e) => show(&e),
+        Ty::Struct(d, ts, _) if Some(d) == decls.roles().option => format!("?{}", show(&ts[0])),
         Ty::Struct(d, ts, _) => {
             let n = &decls.s(d).name;
             if decls.s(d).record {
