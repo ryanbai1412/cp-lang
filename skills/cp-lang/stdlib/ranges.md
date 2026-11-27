@@ -12,6 +12,19 @@ Import: `use std.ranges.{...}`.
 
 Fields: `lo: Int`, `n: Int`, `by: Int`.
 
+- `@get fn len(self) -> Int`
+- `@get fn start(self) -> Cut<D>` — The cut before its first value, of a range walked forwards by one (R04.3.1).
+- `@get fn end(self) -> Cut<D>` — The cut after its last value, of a range walked forwards by one (R04.3.1).
+- `@get fn is_empty(self) -> Bool` — Whether it holds no position (R04.4.12).
+- `@get fn first(self) -> ?D`
+- `@get fn last(self) -> ?D`
+- `@get fn rev(self) -> Range<D>` — The same values, last first.
+- `fn each(self) -> yields D`
+- `fn drop(self, k: Int = 1) -> Range<D>` — Without its first `k` values: a range again (R07.4.11).
+- `fn step(self, k: 1..) -> Range<D>` — Every `k`-th value, from the first: a range again, so `(3..m).step(2).sum()` is O(1).
+- `fn take(self, k: Int) -> Range<D>` — Its first `k` values: a range again (R07.4.11).
+- `fn write(self)` — How `print` writes it: its values, space-separated.
+
 ## Functions
 
 - `fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>` — `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
