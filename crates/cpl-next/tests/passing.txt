@@ -1785,3 +1785,4 @@ widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
 next/n_for_01_wildcard_and_repeat.cp
 next/n_range_02_open_and_stepped_walks.cp
+next/n_into_02_new_taking_nothing_with_no_conversion_rejects.cp

@@ -33,7 +33,9 @@ impl Cx<'_> {
             if let Some(t) = self.member_type(&dty, &name.text) {
                 return match call {
                     None => Some(self.domain_value(t, span)),
-                    Some([a]) if a.name.is_none() => Some(self.convert(t, &a.value, span)),
+                    Some([a]) if a.name.is_none() => {
+                        Some(self.convert(t, &a.value, span, Origin::Convert))
+                    }
                     Some(_) => None,
                 };
             }
@@ -275,7 +277,7 @@ impl Cx<'_> {
     /// converts by its `Into` impl.
     pub(super) fn domain_from(&mut self, dty: Ty, x: &ast::Expr, span: Span) -> TExpr {
         if let Ty::Struct(..) = dty {
-            return self.convert(dty, x, span);
+            return self.convert(dty, x, span, Origin::Convert);
         }
         let v = self.expr(x, Some(&Ty::Int));
         let v = self.coerce(v, &Ty::Int);

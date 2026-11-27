@@ -53,7 +53,7 @@ impl Cx<'_> {
                 }
                 Ty::Error => return mk(TK::Error, Ty::Error),
                 to if matches!(args, [a] if a.name.is_none()) && decls::prim_type(n).is_none() => {
-                    let v = self.convert(to, &args[0].value, span);
+                    let v = self.convert(to, &args[0].value, span, Origin::Convert);
                     return block(pre, v);
                 }
                 _ => {}
@@ -103,7 +103,12 @@ impl Cx<'_> {
                     targs.push(self.new_ty());
                 }
                 let sets = (0..m).map(|_| self.new_set()).collect();
-                self.convert(Ty::Struct(d, targs, sets), &args[0].value, span)
+                self.convert(
+                    Ty::Struct(d, targs, sets),
+                    &args[0].value,
+                    span,
+                    Origin::Construct,
+                )
             }
             // R02.6.3: outside its own body, `T(args)` calls `T`'s static `new` when it has one.
             (Some(new), _) => {
@@ -146,7 +151,12 @@ impl Cx<'_> {
                     && self.d.s(d).generics.is_empty()
                     && matches!(args, [a] if a.name.is_none()) =>
             {
-                self.convert(Ty::Struct(d, Vec::new(), Vec::new()), &args[0].value, span)
+                self.convert(
+                    Ty::Struct(d, Vec::new(), Vec::new()),
+                    &args[0].value,
+                    span,
+                    Origin::Convert,
+                )
             }
             (None, Named::Struct(d)) => {
                 let s = self.d.s(d);

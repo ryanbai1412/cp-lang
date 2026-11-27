@@ -1565,7 +1565,7 @@ impl<'a> Cx<'a> {
                         && decls::prim_type(n).is_some() =>
                 {
                     let to = decls::prim_type(n).unwrap_or(Ty::Error);
-                    self.convert(to, &args[0].value, span)
+                    self.convert(to, &args[0].value, span, Origin::Convert)
                 }
                 ExprKind::Name(n)
                     if self.lookup(n).is_none()

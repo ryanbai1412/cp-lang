@@ -42,6 +42,9 @@ enum Origin {
     Bound,
     /// `T(x)`: `x` is converted by its `@convert` impl (R04.2.28).
     Convert,
+    /// `T(x)` where `T`'s `new` takes nothing: without a conversion, `x` is one argument too
+    /// many (R02.6.3, R07.8.1).
+    Construct,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]

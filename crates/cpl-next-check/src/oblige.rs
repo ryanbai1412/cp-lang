@@ -60,6 +60,18 @@ impl Cx<'_> {
                             self.err(span, msg);
                             continue;
                         }
+                        if why == Origin::Construct {
+                            let to = self.show(&r.args[0]);
+                            let msg = Msg::verdict(
+                                cpl_diag::codes::WRONG_ARG_COUNT,
+                                "expected 0 arguments, found 1".to_string(),
+                            );
+                            let help = format!(
+                                "`{to}`'s `new` takes nothing, and `{shown}` has no `impl {tr}<{to}>` to convert it"
+                            );
+                            self.err_help(span, msg, Some(help));
+                            continue;
+                        }
                         if why == Origin::Convert {
                             let to = (r.args.iter().map(|a| self.show(a)))
                                 .collect::<Vec<_>>()
