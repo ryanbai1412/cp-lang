@@ -1905,6 +1905,48 @@ def next_facade_split(root: Path) -> list[str]:
     return out
 
 
+NEXT_RUN_CONTRACTS = ("00-snapshot.md", "07-execution.md", "08-events.md")
+
+
+def _members(text: str, kinds: str = "struct|enum") -> dict[str, set[str]]:
+    """Each `struct`/`enum` body's top-level member names: a field before `:`, or a bare
+    name before `,`, `{`, `(` or the end (an enum's variant, a field the contract leaves
+    untyped). Comments are dropped first."""
+    text = re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
+    out: dict[str, set[str]] = {}
+    for m in re.finditer(rf"\b(?:{kinds})\s+(\w+)(?:<[^>{{]*>)?\s*\{{", text):
+        depth, i, body = 1, m.end(), []
+        while i < len(text) and depth:
+            c = text[i]
+            depth += (c in "{(<[") - (c in "})>]")
+            body.append(c if depth == 1 else (" " if c not in "{(" else c))
+            i += 1
+        names = re.findall(r"(?:^|[,|{])\s*(?:pub(?:\([^)]*\))?\s+)?([A-Za-z_]\w*)\s*(?=[:,{(|]|$)",
+                           "".join(body[:-1]))
+        out.setdefault(m[1], set()).update(n for n in names if n not in ("pub",))
+    return out
+
+
+def next_run_api_unbuilt(root: Path) -> list[str]:
+    """Audit S10: each field or variant of a type in contracts 0, 7 and 8 (the run input,
+    limits, entry roots, I/O, outcome and events) with no member of that name in a
+    same-named cpl-next type. Hard zero at the switch."""
+    built: dict[str, set[str]] = {}
+    for rs in sorted((root / "crates").glob("cpl-next*/src/**/*.rs")):
+        for ty, ms in _members(rs.read_text(encoding="utf-8")).items():
+            built.setdefault(ty, set()).update(ms)
+    out = []
+    for doc in NEXT_RUN_CONTRACTS:
+        path = root / "handbook/design/next/contracts" / doc
+        if not path.is_file():
+            continue
+        code = "\n".join(re.findall(r"```rust\n(.*?)```", path.read_text(encoding="utf-8"), flags=re.S))
+        for ty, ms in sorted(_members(code).items()):
+            have = {m.lower() for m in built.get(ty, set())}
+            out += [f"{doc} {ty}.{m}" for m in sorted(ms) if m.lower() not in have]
+    return out
+
+
 def next_syntax_old_refs(root: Path) -> list[str]:
     """Each use of the old parser's crate in the new pipeline: every `cpl_syntax` token and
     every use of a name imported from it (`ast::Expr`, `Expr` after `use cpl_syntax::ast::Expr`,
@@ -4528,6 +4570,7 @@ COUNTERS = {
     "next_asks_refused": ("conformance cases refused for a header the new harness does not judge (Core)", next_asks_refused, True),
     "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),
     "next_facade_split": ("facade queries the two facades do not share, and second Session/Snapshot types (Core)", next_facade_split, True),
+    "next_run_api_unbuilt": ("contract 0/7/8 run and event members with no cpl-next counterpart (Core)", next_run_api_unbuilt, True),
     "old_parser_lines": ("code lines of the old parser `cpl-syntax/src/parser*`, deleted when the lossless tree's parser lands (Core; target 0)",
                          old_parser_lines, True),
     "next_syntax_old_refs": ("new-pipeline uses of the old parser's crate `cpl_syntax` and the names imported from it (Core; target 0)",

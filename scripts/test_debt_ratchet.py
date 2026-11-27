@@ -2367,6 +2367,17 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-check/src/lib.rs:7:35 Mark"])
             self.assertEqual(dr.next_old_syntax_analyses(root), ["crates/cpl-next-check/src/lib.rs:7:35 Mark"])
 
+    def test_next_run_api_unbuilt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "handbook/design/next/contracts/00-snapshot.md",
+                        "```rust\nstruct RunInput { entry: Entry, limits: Limits /* a, b */ }\n"
+                        "enum Entry { Program, // file\n Call { f: DeclId, args: List<Value> } }\n```\n")
+            self._write(root, "crates/cpl-next/src/run.rs",
+                        "pub struct RunInput {\n    pub limits: Limits,\n}\npub enum Entry {\n    Program,\n}\n")
+            self.assertEqual(dr.next_run_api_unbuilt(root),
+                             ["00-snapshot.md Entry.Call", "00-snapshot.md RunInput.entry"])
+
     def test_next_facade_split(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
