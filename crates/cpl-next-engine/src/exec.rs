@@ -771,43 +771,61 @@ fn byte(w: u64) -> R<u8> {
 
 #[cfg(test)]
 mod tests {
+    use crate::compile::Op;
+
     /// Ops that only move words, jump or reach the heap; every other op computes a value or
     /// decides a trap, and takes that from `ops`, so the engine never writes an operation the
     /// reference interpreter and the C++ read from there.
-    const PLUMBING: [&str; 30] = [
-        "GetG",
-        "PutG",
-        "Retain",
-        "Zero",
-        "Restore",
-        "Take",
-        "Put",
-        "Imm",
-        "Addr",
-        "Move",
-        "Load",
-        "Peek",
-        "Store",
-        "Drop",
-        "Text",
-        "At",
-        "Enter",
-        "Call",
-        "Region",
-        "Yield",
-        "LendOut",
-        "Jump",
-        "JumpUnless",
-        "JumpIf",
-        "Switch",
-        "Leave",
-        "Check",
-        "PrintText",
-        "RawEmpty",
-        "InputLeft",
-    ];
+    fn plumbing(op: &Op) -> bool {
+        matches!(
+            op,
+            Op::GetG { .. }
+                | Op::PutG { .. }
+                | Op::Retain { .. }
+                | Op::Zero { .. }
+                | Op::Restore { .. }
+                | Op::Take { .. }
+                | Op::Put { .. }
+                | Op::Imm { .. }
+                | Op::Addr { .. }
+                | Op::Move { .. }
+                | Op::Load { .. }
+                | Op::Peek { .. }
+                | Op::Store { .. }
+                | Op::Drop { .. }
+                | Op::Text { .. }
+                | Op::At { .. }
+                | Op::Enter { .. }
+                | Op::Call { .. }
+                | Op::Region { .. }
+                | Op::Yield { .. }
+                | Op::LendOut { .. }
+                | Op::Jump { .. }
+                | Op::JumpUnless { .. }
+                | Op::JumpIf { .. }
+                | Op::Switch { .. }
+                | Op::Leave { .. }
+                | Op::Check { .. }
+                | Op::PrintText { .. }
+                | Op::RawEmpty { .. }
+                | Op::InputLeft { .. }
+        )
+    }
     /// Not an operation: the IR broke its contract.
-    const FAIL: &str = "Fail";
+    fn not_an_op(op: &Op) -> bool {
+        matches!(op, Op::Fail { .. })
+    }
+    /// The variants a `matches!` of fn `f` in this file names.
+    fn named(f: &str) -> Vec<String> {
+        let src = include_str!("exec.rs");
+        let at = src.find(&format!("fn {f}(op: &Op)")).unwrap_or(0);
+        let body = &src[at..];
+        let body = &body[..body.find("\n    }\n").unwrap_or(body.len())];
+        body.split("Op::")
+            .skip(1)
+            .map(|v| v.chars().take_while(char::is_ascii_alphanumeric).collect())
+            .collect()
+    }
 
     fn variants() -> Vec<String> {
         let src = include_str!("compile.rs");
@@ -846,22 +864,19 @@ mod tests {
                     .push_str(l);
             }
         }
+        let _typed: [fn(&Op) -> bool; 2] = [plumbing, not_an_op];
+        let (plumbing, fail) = (named("plumbing"), named("not_an_op"));
+        assert_eq!((plumbing.len(), fail.len()), (30, 1), "read the matches");
         let variants = variants();
         assert!(variants.len() > 30, "found the Op enum: {variants:?}");
         for v in &variants {
-            if PLUMBING.contains(&v.as_str()) || v == FAIL {
+            if plumbing.contains(v) || fail.contains(v) {
                 continue;
             }
             let arm = arms.get(v).map_or("", String::as_str);
             assert!(
                 arm.contains("ops::"),
                 "Op::{v} computes without `ops`: {arm}"
-            );
-        }
-        for p in PLUMBING {
-            assert!(
-                variants.iter().any(|v| v == p),
-                "Op::{p} is listed but gone"
             );
         }
         for word in [
