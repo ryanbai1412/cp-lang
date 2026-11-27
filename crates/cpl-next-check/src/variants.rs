@@ -36,7 +36,7 @@ impl Cx<'_> {
             _ => v,
         };
         let conv = self.d.convert_trait.and_then(|tr| {
-            let (m, f) = self.d.traits[tr.0].methods.iter().next()?;
+            let (m, f) = self.d.t(tr).methods.iter().next()?;
             Some((tr, m.clone(), *f))
         });
         let Some((tr, method, f)) = conv else {

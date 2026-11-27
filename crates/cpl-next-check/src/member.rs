@@ -118,7 +118,7 @@ impl<'a> Cx<'a> {
                     return true;
                 }
                 if seen.insert(t.0) {
-                    todo.extend(self.d.traits[t.0].supers.iter().map(|s| s.tr));
+                    todo.extend(self.d.t(t).supers.iter().map(|s| s.tr));
                 }
             }
             false
@@ -128,11 +128,11 @@ impl<'a> Cx<'a> {
             t => !matches!(t, Ty::Var(_) | Ty::Error) && self.d.has_impl(t, tr),
         };
         let mut lacked = (0..self.d.traits.len()).map(TraitId).filter(|&tr| {
-            let t = &self.d.traits[tr.0];
+            let t = self.d.t(tr);
             t.methods.contains_key(name) && !has(tr) && t.supers.iter().any(|s| has(s.tr))
         });
         let tr = lacked.next().filter(|_| lacked.next().is_none())?;
-        let (tn, shown) = (&self.d.traits[tr.0].name, self.show(rt));
+        let (tn, shown) = (&self.d.t(tr).name, self.show(rt));
         Some(match rt {
             Ty::Param(_) => format!("`{name}` is `{tn}`'s: bound `{shown}: {tn}`"),
             _ => format!("`{name}` is `{tn}`'s, and `{shown}` does not implement `{tn}`"),
@@ -262,7 +262,7 @@ impl<'a> Cx<'a> {
     ) -> Result<Option<(decls::TraitRef, FnId)>, (TraitId, TraitId)> {
         let gives: Vec<(decls::TraitRef, FnId)> = (self.bound_traits(i).into_iter())
             .filter_map(|tr| {
-                let m = *self.d.traits[tr.tr.0].methods.get(name)?;
+                let m = *self.d.t(tr.tr).methods.get(name)?;
                 pick(self.d.f(m)).then_some((tr, m))
             })
             .collect();
@@ -304,7 +304,7 @@ impl<'a> Cx<'a> {
         args: &str,
         span: Span,
     ) -> TExpr {
-        let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
+        let (a, b) = (&self.d.t(a).name, &self.d.t(b).name);
         let (ty, m) = (self.show(ty), &name.text);
         let text = cpl_diag::msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
             .say(&[&shown, m, a, b, &ty, m]);
@@ -337,7 +337,7 @@ impl<'a> Cx<'a> {
         };
         let recv = self.expr(&first.value, None);
         let rt = self.shallow(&recv.ty);
-        let tn = &self.d.traits[tr.0].name;
+        let tn = &self.d.t(tr).name;
         let Some(decls::Member::Method(m, ts, ss)) = self.d.impl_member(&rt, &name.text, Some(tn))
         else {
             if !self.is_error(&rt) {
@@ -448,7 +448,7 @@ impl<'a> Cx<'a> {
     ) -> Option<TExpr> {
         let found: Vec<(TraitId, FnId)> = (0..self.d.traits.len())
             .filter_map(|k| {
-                let td = &self.d.traits[k];
+                let td = &self.d.t(TraitId(k));
                 let m = *td.methods.get(&name.text)?;
                 let fd = self.d.f(m);
                 let tr = TraitId(k);
@@ -477,7 +477,7 @@ impl<'a> Cx<'a> {
             [] => return None,
             [one] => one,
             [(a, _), (b, _), ..] => {
-                let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
+                let (a, b) = (&self.d.t(a).name, &self.d.t(b).name);
                 let msg = format!(
                     "`{}` has `{}` from `{a}` and from `{b}`: say which, as `{a}.{}` (R08.1.4)",
                     self.show(&t),
@@ -512,7 +512,7 @@ impl<'a> Cx<'a> {
                 _ => None,
             })
             .filter_map(|tr| {
-                let m = *self.d.traits[tr.0].methods.get(n)?;
+                let m = *self.d.t(tr).methods.get(n)?;
                 let fd = self.d.f(m);
                 (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
             })
@@ -962,7 +962,7 @@ impl<'a> Cx<'a> {
                     };
                     self.obligations
                         .push((rt.clone(), r.clone(), span, Origin::Bound));
-                    let m = self.d.traits[tr.0].methods[&name.text];
+                    let m = self.d.t(tr).methods[&name.text];
                     let e = self.bound_trait_call(recv, &rt, (&r, m), name, call, span);
                     // The expected type may say the arguments: `let b: Bool = 5.cv()`.
                     if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {

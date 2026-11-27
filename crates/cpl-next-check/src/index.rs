@@ -322,7 +322,7 @@ impl Cx<'_> {
         match self.shallow(s) {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
                 .find(|t| {
-                    self.d.traits[t.tr.0]
+                    self.d.t(t.tr)
                         .methods
                         .contains_key(&self.index_read())
                 })
@@ -378,7 +378,7 @@ impl Cx<'_> {
         self.errors.truncate(seen);
         let rt = self.shallow(&b.ty);
         let d = &self.d;
-        let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.impls[i].trait_.tr == tr);
+        let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
         d.impl_member_by(&rt, &name, of_tr)?;
         let callee = ast::Expr {
             kind: ExprKind::Field {
@@ -473,7 +473,7 @@ impl Cx<'_> {
         let d = self.d;
         let bound = match rt {
             Ty::Param(p) => (self.bound_traits(p).into_iter()).find_map(|tr| {
-                let m = *d.traits[tr.tr.0].methods.get(read)?;
+                let m = *d.t(tr.tr).methods.get(read)?;
                 lends(d.f(m)).then_some((tr, m))
             }),
             _ => None,

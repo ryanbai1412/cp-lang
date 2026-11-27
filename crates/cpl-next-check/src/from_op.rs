@@ -40,7 +40,7 @@ impl Cx<'_> {
         let args = (params.iter().zip(&fd.params))
             .map(|(&l, p)| TArg::Value(var(l, p.ty.clone())))
             .collect();
-        let n = self.d.traits[tr.0].defaults.len();
+        let n = self.d.t(tr).defaults.len();
         TExpr {
             kind: TK::CallTrait {
                 ctx: self.trait_ctx(tr, &fd.name),

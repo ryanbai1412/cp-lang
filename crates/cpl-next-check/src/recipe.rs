@@ -34,7 +34,7 @@ impl Cx<'_> {
                 args,
                 ..
             } => {
-                let m = self.d.traits[tr.tr.0].methods.get(&method).copied();
+                let m = self.d.t(tr.tr).methods.get(&method).copied();
                 let Some((false, elem)) = m.and_then(|m| self.d.f(m).region.clone()) else {
                     return TExpr {
                         kind: TK::Error,

@@ -122,7 +122,7 @@ impl<'a> Cx<'a> {
         // `for x in g.out(u)` through a bound on `g`'s type parameter; a bound's value
         // (`s.keys`) walks as the value it returns.
         let yields =
-            |tr: &TraitRef, m: &str| self.d.f(self.d.traits[tr.tr.0].methods[m]).region.is_some();
+            |tr: &TraitRef, m: &str| self.d.f(self.d.t(tr.tr).methods[m]).region.is_some();
         call = match call.kind {
             TK::CallTrait {
                 tr,
@@ -188,7 +188,7 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) {
-        let m = self.d.traits[tr.tr.0].methods[&method];
+        let m = self.d.t(tr.tr).methods[&method];
         let Some((false, elem)) = self.d.f(m).region.clone() else {
             return self.err(
                 span,

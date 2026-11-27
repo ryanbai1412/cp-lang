@@ -5,6 +5,7 @@ use crate::ir::CheckKind;
 use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
+use cpl_next_decls::views::{Signatures, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, plain, records};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -882,7 +883,7 @@ fn check_with(
                 !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
             };
             (roots.contains(&f.module) || !d.is_library(f.module) && f.module != decls::CORE)
-                && !matches!(f.owner, Some(Owner::Impl(i)) if later(&d.impls[i]))
+                && !matches!(f.owner, Some(Owner::Impl(i)) if later(d.imp(i)))
         })
         .collect();
     // In the order the collector made them, so a program over std checks as one collection would.
@@ -1060,7 +1061,7 @@ impl<'a> Cx<'a> {
     /// call, else the one checked under the values set (R09.1.3, R09.1.4).
     /// The copy a call of trait `tr`'s fn `method` makes.
     pub(crate) fn trait_ctx(&mut self, tr: TraitId, method: &str) -> u32 {
-        match self.d.traits[tr.0].methods.get(method) {
+        match self.d.t(tr).methods.get(method) {
             Some(&m) => self.ctx_copy(m),
             None => 0,
         }
@@ -1169,11 +1170,11 @@ impl<'a> Cx<'a> {
         }
         let tr = match f.owner {
             Some(Owner::Trait(t)) => Some(t),
-            Some(Owner::Impl(i)) => Some(d.impls[i].trait_.tr),
+            Some(Owner::Impl(i)) => Some(d.imp(i).trait_.tr),
             _ => None,
         };
         if let Some(t) = tr.filter(|t| self.reported.insert((3, t.0))) {
-            said.extend(d.traits[t.0].errors.iter().cloned());
+            said.extend(d.t(t).errors.iter().cloned());
         }
         if self.reported.insert((2, f.module.0)) {
             said.extend(d.module_errors[f.module.0].iter().cloned());

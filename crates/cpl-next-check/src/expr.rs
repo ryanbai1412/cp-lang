@@ -703,7 +703,7 @@ impl<'a> Cx<'a> {
         let rt = self.shallow(&recv.ty);
         let call = if let Ty::Param(i) = &rt {
             let tr = (self.bound_traits(*i).into_iter())
-                .find(|t| self.d.traits[t.tr.0].name == trait_name)
+                .find(|t| self.d.t(t.tr).name == trait_name)
                 .or_else(|| {
                     let tr = TraitId(
                         (self.d.traits.iter())
@@ -715,7 +715,7 @@ impl<'a> Cx<'a> {
                     })
                 });
             tr.map(|tr| {
-                if let Some(&m) = self.d.traits[tr.tr.0].methods.get(method) {
+                if let Some(&m) = self.d.t(tr.tr).methods.get(method) {
                     self.reach(m);
                 }
                 let arg = self.coerce(arg, &rt);
@@ -745,7 +745,7 @@ impl<'a> Cx<'a> {
             let param = fd.params.first().map_or(Ty::Error, |p| sub.ty(&p.ty));
             // The impl's own bounds hold too: `?T`'s `==` needs `T: Eq` (R08.1.5).
             if let Some(decls::Owner::Impl(k)) = fd.owner {
-                let im = &self.d.impls[k];
+                let im = self.d.imp(k);
                 if !im.bounds.is_empty() {
                     let tr = decls::TraitRef {
                         tr: im.trait_.tr,

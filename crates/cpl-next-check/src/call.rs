@@ -41,7 +41,7 @@ impl Cx<'_> {
         // `type Z = Mod<7>`: `Z(x)` is a call of the type the alias names, as `Mod<7>(x)` is.
         if let Named::Alias(id) = named {
             // A parameter not written is inferred, as a struct's is: `AliasBox(42)`.
-            let missing = (self.d.aliases[id.0].generics.len()).saturating_sub(written.len());
+            let missing = (self.d.alias(id).generics.len()).saturating_sub(written.len());
             let holes: Vec<String> = (0..missing).map(|k| format!("$alias{k}")).collect();
             let mut targs = written.to_vec();
             targs.extend(holes.iter().map(|h| ast::Type {
@@ -106,7 +106,7 @@ impl Cx<'_> {
             {
                 Some(decls::Owner::Struct(o)) => o == d,
                 Some(decls::Owner::Impl(i)) => {
-                    let im = &self.d.impls[i];
+                    let im = self.d.imp(i);
                     im.derived && matches!(im.for_, Ty::Struct(o, ..) if o == d)
                 }
                 _ => false,
@@ -423,7 +423,7 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         for tr in &self.bound_traits(p) {
-            let Some(m) = self.d.traits[tr.tr.0].methods.get(name).copied() else {
+            let Some(m) = self.d.t(tr.tr).methods.get(name).copied() else {
                 continue;
             };
             // A lender is called only where its place is used (`for`, an assignment): elsewhere

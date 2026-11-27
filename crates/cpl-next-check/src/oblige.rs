@@ -45,7 +45,7 @@ impl Cx<'_> {
                     };
                     // Its arguments are `open`'s own, not the zonked `t`'s: an open part of it
                     // stays open, with its sets.
-                    let targs = vec![Ty::Error; self.d.impls[k].generics.len()];
+                    let targs = vec![Ty::Error; self.d.imp(k).generics.len()];
                     if self.take_impl(k, targs, &r, span, Some(&open)) {
                         continue;
                     }
@@ -55,7 +55,7 @@ impl Cx<'_> {
                     Some(false) if self.mentions_error(&t) => self.poison(&r),
                     Some(false) => {
                         self.poison(&r);
-                        let tr = self.d.traits[r.tr.0].name.clone();
+                        let tr = self.d.t(r.tr).name.clone();
                         let shown = self.show(&t);
                         let record = matches!(&t, Ty::Struct(d, ..) if self.d.s(*d).record);
                         if record {
@@ -102,8 +102,8 @@ impl Cx<'_> {
                         // Named at its root: `print(xs)` on a `List<?Int>` is `?Int` lacking
                         // `Show`, not the pack of arguments lacking `ShowAll` (R10.3.7).
                         let (root, rr) = self.d.unmet_root(&t, &r);
-                        let (shown, tr) = (self.show(&root), &self.d.traits[rr.tr.0].name);
-                        let said = &self.d.traits[rr.tr.0].unimplemented;
+                        let (shown, tr) = (self.show(&root), &self.d.t(rr.tr).name);
+                        let said = &self.d.t(rr.tr).unimplemented;
                         let code = said.code.unwrap_or(cpl_diag::codes::MISSING_IMPL);
                         let help = (said.help.as_ref()).map(|h| h.replace("{T}", &shown));
                         let msg =
@@ -141,16 +141,16 @@ impl Cx<'_> {
     /// beats a blanket one (R08.1.2). `Int` has `Into<Char>` and `Into<U64>`: the trait's
     /// arguments, where known, choose among them.
     fn fitting(&self, t: &Ty, r: &TraitRef) -> Vec<(usize, Vec<Ty>)> {
-        let want: Vec<Ty> = (self.d.traits[r.tr.0].inputs(&r.args).iter())
+        let want: Vec<Ty> = (self.d.t(r.tr).inputs(&r.args).iter())
             .map(|a| self.zonk(a))
             .collect();
         let mut found: Vec<(usize, Vec<Ty>)> = (self.d.trait_impls(r.tr))
             .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
             .filter(|(k, _)| {
-                !self.d.impls[*k].blanket() || self.d.fits_impl(&self.d.impls[*k], t).is_some()
+                !self.d.imp(*k).blanket() || self.d.fits_impl(self.d.imp(*k), t).is_some()
             })
             .collect();
-        let rank = |k: &usize| self.d.impl_rank(&self.d.impls[*k]);
+        let rank = |k: &usize| self.d.impl_rank(self.d.imp(*k));
         if let Some(best) = found.iter().map(|(k, _)| rank(k)).min() {
             found.retain(|(k, _)| rank(k) == best);
         }
@@ -159,7 +159,7 @@ impl Cx<'_> {
     /// The bounds type parameter `i` states for `r`'s trait whose arguments fit `r`'s:
     /// `T: Cv<Int> + Cv<Bool>` meets `T: Cv<?U>` by both until `?U` is known.
     fn stated(&self, i: usize, r: &TraitRef) -> Vec<TraitRef> {
-        let tr = &self.d.traits[r.tr.0];
+        let tr = self.d.t(r.tr);
         (self.bound_traits(i).into_iter())
             .filter(|h| h.tr == r.tr)
             .filter(|h| {
@@ -168,7 +168,7 @@ impl Cx<'_> {
             .collect()
     }
     fn ambiguous(&mut self, t: &Ty, r: &TraitRef, n: usize, span: Span) {
-        let (tr, shown) = (self.d.traits[r.tr.0].name.clone(), self.show(t));
+        let (tr, shown) = (self.d.t(r.tr).name.clone(), self.show(t));
         let msg = Msg::verdict(
             cpl_diag::codes::AMBIGUOUS_METHOD,
             format!("`{shown}` has {n} impls of `{tr}` that fit here: write the trait's arguments"),
@@ -195,7 +195,7 @@ impl Cx<'_> {
         let [(k, r)] = found[..] else {
             return None;
         };
-        let im = &d.impls[k];
+        let im = d.imp(k);
         let Ty::Fn(ps, ret, _) = &im.for_ else {
             return None;
         };
@@ -260,7 +260,7 @@ impl Cx<'_> {
     }
     /// Whether `t` meets `r`, or `None` while `t` is not known. `open` is `t` before zonking.
     fn meet(&mut self, t: &Ty, open: &Ty, r: &TraitRef, span: Span) -> Option<bool> {
-        let tr = &self.d.traits[r.tr.0];
+        let tr = self.d.t(r.tr);
         if tr.alias {
             let sub = Subst {
                 tys: &r.args,
@@ -283,14 +283,14 @@ impl Cx<'_> {
         // A bound the fn states is met as stated; otherwise a parameter meets a trait through a
         // blanket impl whose bounds it meets (`impl<D: Domain> Eq for D`), like any other type.
         if let Ty::Param(i) = t {
-            let tr = &self.d.traits[r.tr.0];
+            let tr = self.d.t(r.tr);
             let mut have = self.bound_traits(*i).into_iter().filter(|h| h.tr == r.tr);
             let fitting = self.stated(*i, r);
             let Some(h) = fitting.first().cloned().or_else(|| have.next()) else {
                 let i = *i;
                 return Some(match self.param_impl(i, r) {
                     Some(k) => {
-                        let im = &self.d.impls[k];
+                        let im = self.d.imp(k);
                         let mut targs: Vec<Ty> =
                             im.generics.iter().map(|_| self.new_ty()).collect();
                         if let Ty::Param(p) = im.for_ {
@@ -318,7 +318,7 @@ impl Cx<'_> {
                 if found.len() > 1 {
                     // `want` is zonked, an open argument read as an error: the bound's own
                     // arguments say whether it is still open.
-                    let inputs = self.d.traits[r.tr.0].inputs(&r.args);
+                    let inputs = self.d.t(r.tr).inputs(&r.args);
                     if self.unknown(t) || inputs.iter().any(|a| self.unknown(a)) {
                         return None;
                     }
@@ -331,7 +331,7 @@ impl Cx<'_> {
                 // The impl's arguments are `open`'s own parts where it has them, so a fn set
                 // still filling (a call's result) stays the bound's set, not a copy of it now.
                 let live =
-                    (self.d.impl_args(&self.d.impls[k], &self.followed(open))).unwrap_or_default();
+                    (self.d.impl_args(self.d.imp(k), &self.followed(open))).unwrap_or_default();
                 for (a, l) in targs.iter_mut().zip(live) {
                     if l != Ty::Error {
                         *a = l;
@@ -355,7 +355,7 @@ impl Cx<'_> {
         let targs: Vec<Ty> = (targs.into_iter())
             .map(|a| if a == Ty::Error { self.new_ty() } else { a })
             .collect();
-        let im = &self.d.impls[k];
+        let im = self.d.imp(k);
         let sub = Subst {
             tys: &targs,
             sets: &[],
@@ -522,7 +522,7 @@ impl Cx<'_> {
         let mut k = 0;
         while k < traits.len() {
             let r = traits[k].clone();
-            for sup in &self.d.traits[r.tr.0].supers {
+            for sup in &self.d.t(r.tr).supers {
                 let sub = Subst {
                     tys: &r.args,
                     sets: &[],

@@ -80,7 +80,7 @@ impl Cx<'_> {
     ) -> Option<TExpr> {
         let core = [self.d.domain_trait, self.d.order_trait];
         let m =
-            (core.iter().flatten()).find_map(|tr| self.d.traits[tr.0].methods.get(&name.text))?;
+            (core.iter().flatten()).find_map(|tr| self.d.t(*tr).methods.get(&name.text))?;
         self.domain_fn_of(dty, *m, name, call, span)
     }
     /// `D.m`, `m` being one of `Domain`'s or `Ordered`'s fns, which the program calls `name`.
@@ -94,7 +94,7 @@ impl Cx<'_> {
     ) -> Option<TExpr> {
         let core = [self.d.domain_trait, self.d.order_trait];
         let tr = (core.into_iter().flatten())
-            .find(|tr| self.d.traits[tr.0].methods.values().any(|&f| f == m))?;
+            .find(|tr| self.d.t(*tr).methods.values().any(|&f| f == m))?;
         let fd = self.d.f(m);
         if !super::member::takes(fd, call) || (call.is_none() && !fd.getter) {
             return None;
@@ -872,7 +872,7 @@ impl Cx<'_> {
     /// The fn of core's `Domain` whose body is the intrinsic `op`.
     fn domain_method(&self, op: &str) -> Option<DomainFn> {
         let tr = self.d.domain_trait?;
-        let ms = &self.d.traits[tr.0].methods;
+        let ms = &self.d.t(tr).methods;
         let (n, &m) = ms
             .iter()
             .find(|(_, &m)| self.d.f(m).intrinsic.as_deref() == Some(op))?;
@@ -932,7 +932,7 @@ impl Cx<'_> {
         if matches!(self.shallow(&e.ty), Ty::Param(_)) {
             let d = self.d;
             let ord = (d.domain_trait.iter())
-                .flat_map(|tr| d.traits[tr.0].methods.values())
+                .flat_map(|tr| d.t(*tr).methods.values())
                 .find(|&&m| d.f(m).intrinsic.as_deref() == Some("dom_ord"));
             if let Some(&m) = ord {
                 self.reach(m);
