@@ -1,11 +1,11 @@
 //! Contract 4: typed tree -> generic IR. No inference, no solver, no lookup:
 //! everything it needs is on the typed tree.
-use crate::check::*;
-use crate::decls::{Decls, FnDecl, Owner, SelfMode};
-use crate::diag::Msg;
-use crate::ir::*;
-use crate::ty::*;
 use cpl_diag::Span;
+use cpl_next_check::*;
+use cpl_next_decls::decls::{Decls, FnDecl, Owner, SelfMode};
+use cpl_next_decls::diag::Msg;
+use cpl_next_ir::ir::*;
+use cpl_next_ir::ty::*;
 use cpl_syntax::ast::{BinOp, CmpOp};
 use std::collections::{BTreeSet, HashMap};
 
@@ -51,7 +51,7 @@ struct Lw<'a> {
     /// Where the item being lowered starts: spans are relative to it.
     off: u32,
     /// Where each line of the source starts, and how many of them are std.
-    src: &'a crate::modules::Loaded,
+    src: &'a cpl_next_decls::modules::Loaded,
     /// The fn being lowered is one the compiler wrote, a derived impl's: like std's, a check it
     /// makes fails at the line that called it.
     made: bool,
@@ -59,7 +59,7 @@ struct Lw<'a> {
     lines: Vec<u32>,
 }
 
-pub fn lower(d: &Decls, typed: &Typed, src: &crate::modules::Loaded) -> Generic {
+pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) -> Generic {
     let mut out = Generic {
         funcs: HashMap::new(),
         globals: Vec::new(),
@@ -124,17 +124,18 @@ pub fn lower(d: &Decls, typed: &Typed, src: &crate::modules::Loaded) -> Generic 
         let before = lw.errors.len();
         let fd = d.f(*id);
         lw.off = fd.item;
-        lw.made = matches!(fd.owner, Some(crate::decls::Owner::Impl(k)) if d.impls[k].derived);
+        lw.made =
+            matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Impl(k)) if d.impls[k].derived);
         lw.locals = tf.locals.iter().map(|l| l.ty.clone()).collect();
         // R05.10.1: a closure shares `var`s, local heap values and heap parameters with the fn around it.
         lw.mut_locals = tf
             .locals
             .iter()
-            .map(|l| l.mutable || !crate::plain::plain(d, &l.ty, 0))
+            .map(|l| l.mutable || !cpl_next_decls::plain::plain(d, &l.ty, 0))
             .collect();
         lw.var_locals = tf.locals.iter().map(|l| l.mutable).collect();
         lw.remap.clear();
-        let holds = crate::own::lends(d, *id);
+        let holds = cpl_next_own::lends(d, *id);
         lw.lent = (lw.param_locals(*id).into_iter())
             .enumerate()
             .filter(|(i, _)| holds.contains(i))
@@ -298,7 +299,7 @@ impl Lw<'_> {
             return f.clone();
         };
         let ps = self.param_locals(f.decl);
-        let holds = crate::own::lends(self.d, f.decl);
+        let holds = cpl_next_own::lends(self.d, f.decl);
         let mut targs = f.targs.clone();
         for (i, (&l, a)) in ps.iter().zip(args).enumerate() {
             let decl = &tf.locals[l].ty;
@@ -533,7 +534,7 @@ impl Lw<'_> {
         let generic = matches!(v.ty, Ty::Param(_));
         let viewable = matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Payload(..));
         if !(viewable || matches!(v.kind, TK::Slot(..)))
-            || !generic && crate::plain::plain(self.d, &v.ty, 0)
+            || !generic && cpl_next_decls::plain::plain(self.d, &v.ty, 0)
         {
             return self.expr(v, out);
         }
@@ -1310,7 +1311,7 @@ impl Lw<'_> {
         let is_var = |v: &VarRef| match v {
             VarRef::Local(i) => mut_locals.get(*i).copied().unwrap_or(false),
             VarRef::Global(g) => {
-                globals[*g].mutable || !crate::plain::plain(self.d, &globals[*g].ty, 0)
+                globals[*g].mutable || !cpl_next_decls::plain::plain(self.d, &globals[*g].ty, 0)
             }
         };
         let is_mut = |v: &VarRef| match v {

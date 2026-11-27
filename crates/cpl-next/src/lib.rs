@@ -7,14 +7,14 @@
 //! what it replaces.
 
 use cpl_next_check as check;
-use cpl_next_decls::{decls, diag, modules, plain};
+use cpl_next_decls::{decls, diag, modules};
 use cpl_next_ir::{ir, ops, ty};
 mod cpp;
 use diag::kind_of;
 pub use diag::Kind;
 mod inst;
 mod interp;
-mod lower;
+use cpl_next_lower as lower;
 use cpl_next_own as own;
 pub use modules::{Roots, Std};
 

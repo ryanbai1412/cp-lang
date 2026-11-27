@@ -20,6 +20,7 @@ cpl-next-ir = { path = "crates/cpl-next-ir" }
 cpl-next-decls = { path = "crates/cpl-next-decls" }
 cpl-next-check = { path = "crates/cpl-next-check" }
 cpl-next-own = { path = "crates/cpl-next-own" }
+cpl-next-lower = { path = "crates/cpl-next-lower" }
 cpl-next-engine = { path = "crates/cpl-next-engine" }
 cpl-syntax = { path = "crates/cpl-syntax" }
 cpl-check = { path = "crates/cpl-check" }
@@ -56,6 +57,12 @@ opt-level = 1
 [profile.dev.package.cpl-next-ir]
 opt-level = 1
 [profile.dev.package.cpl-next-decls]
+opt-level = 1
+[profile.dev.package.cpl-next-check]
+opt-level = 1
+[profile.dev.package.cpl-next-own]
+opt-level = 1
+[profile.dev.package.cpl-next-lower]
 opt-level = 1
 [profile.dev.package.cpl-next-engine]
 opt-level = 1
