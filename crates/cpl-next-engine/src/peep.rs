@@ -2,11 +2,16 @@
 //! with jumps to jumps and jumps to the next op. A jump goes straight to where its chain
 //! ends, `if !c goto next-but-one; goto t` becomes `if c goto t`, and ops nothing reaches
 //! and jumps to the next op go. Every target, table and mark is renumbered with them.
+//! A drop or retain of a value that owns nothing goes, and so does a line kept and put back
+//! around ops that can neither trap nor change the line.
 use crate::compile::{Code, Op, LEAVE};
+use crate::layout::Layouts;
 
 pub(crate) fn tidy(c: &mut Code) {
     for b in 0..c.blocks.len() {
         let mut ops = std::mem::take(&mut c.blocks[b]);
+        let keep = quiet(&ops, &c.tables, &c.lays);
+        renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep);
         loop {
             thread(&mut ops, &mut c.tables);
             let keep = kept(&ops, &c.tables);
@@ -82,6 +87,54 @@ fn thread(ops: &mut [Op], tables: &mut [Vec<u32>]) {
             _ => {}
         }
     }
+}
+
+/// The ops worth running: not a drop or retain of a value that owns nothing, nor an
+/// `Enter`/`Restore` pair with only quiet ops between and no jump into them. A trap's line
+/// and call stack are read only when something traps, so a pair nothing in can trap at is
+/// never seen.
+fn quiet(ops: &[Op], tables: &[Vec<u32>], lays: &Layouts) -> Vec<bool> {
+    let mut keep = vec![true; ops.len()];
+    let mut aimed = vec![false; ops.len() + 1];
+    for t in ops.iter().flat_map(|op| targets(op, tables)) {
+        if let Some(a) = aimed.get_mut(t as usize) {
+            *a = true;
+        }
+    }
+    for (i, op) in ops.iter().enumerate() {
+        if let Op::Drop { lay, .. } | Op::Retain { lay, .. } = *op {
+            keep[i] = lays.owns[lay as usize];
+        }
+    }
+    // Innermost pairs first, so a pair around a quiet pair goes too.
+    for i in (0..ops.len()).rev() {
+        let Op::Enter { save, .. } = ops[i] else {
+            continue;
+        };
+        let mut j = i + 1;
+        while j < ops.len() && !aimed[j] && (!keep[j] || still(&ops[j])) {
+            j += 1;
+        }
+        if j < ops.len() && !aimed[j] && matches!(ops[j], Op::Restore { save: s } if s == save) {
+            keep[i] = false;
+            keep[j] = false;
+        }
+    }
+    keep
+}
+
+/// An op that cannot trap or change the line a trap reports.
+fn still(op: &Op) -> bool {
+    matches!(
+        op,
+        Op::Imm { .. }
+            | Op::Addr { .. }
+            | Op::Move { .. }
+            | Op::Zero { .. }
+            | Op::GetG { .. }
+            | Op::PutG { .. }
+            | Op::Not { .. }
+    )
 }
 
 /// The ops something reaches from the start of the block, less the jumps to the op after.
@@ -182,5 +235,30 @@ mod tests {
             ]
         );
         assert_eq!(marks, [(0, 0), (1, 1)]);
+    }
+
+    /// A kept line around moves goes; around a `Take`, which can trap, it stays, and a drop
+    /// of a word that owns nothing goes.
+    #[test]
+    fn a_line_nothing_can_trap_at_is_not_kept() {
+        let ops = vec![
+            Op::Enter { line: 3, save: 9 },
+            Op::Drop { s: 1, lay: 0 },
+            Op::Enter { line: 0, save: 8 },
+            Op::Move { d: 1, s: 2, n: 1 },
+            Op::Restore { save: 8 },
+            Op::Take { d: 1, p: 0, n: 1 },
+            Op::Restore { save: 9 },
+            Op::Enter { line: 0, save: 7 },
+            Op::Move { d: 1, s: 2, n: 1 },
+            Op::Restore { save: 7 },
+        ];
+        let mut lays = Layouts::default();
+        lays.owns.push(false);
+        let keep = quiet(&ops, &[], &lays);
+        assert_eq!(
+            keep,
+            [true, false, false, true, false, true, true, false, true, false]
+        );
     }
 }
