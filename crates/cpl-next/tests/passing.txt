@@ -728,6 +728,17 @@ matrix/generic/user--partial_method.cp
 matrix/generic/user--partial_static.cp
 matrix/index/enum--construct.cp
 matrix/index/enum--int.cp
+matrix/index/plain--construct.cp
+matrix/index/plain--count.cp
+matrix/index/plain--filter.cp
+matrix/index/plain--find.cp
+matrix/index/plain--first.cp
+matrix/index/plain--for.cp
+matrix/index/plain--int.cp
+matrix/index/plain--optional.cp
+matrix/index/plain--print.cp
+matrix/index/plain--rev.cp
+matrix/index/plain--size.cp
 matrix/index/subset--int.cp
 matrix/optional/domain_at--default_fn.cp
 matrix/optional/domain_at--default_loop.cp
@@ -996,6 +1007,7 @@ next/n_own_10_param_value_is_not_a_borrow.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
+next/n_scope_01_param_shadows_domain.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
 next/n_slice_03_open_ends.cp

@@ -390,23 +390,12 @@ matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has 
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 matrix/index/pair--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 matrix/index/plain--builder.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-matrix/index/plain--construct.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
-matrix/index/plain--count.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--cuts_lr.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `l`
 matrix/index/plain--fill.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-matrix/index/plain--filter.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
-matrix/index/plain--find.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
-matrix/index/plain--first.cp	wrong-reject	check: core:180:36: E0302: expected `D`, found `D`
-matrix/index/plain--for.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
-matrix/index/plain--int.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--min_by.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 matrix/index/plain--next.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `next`
-matrix/index/plain--optional.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--prev.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `prev`
-matrix/index/plain--print.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-matrix/index/plain--rev.cp	wrong-reject	check: core:190:30: E0302: expected `D`, found `D`
-matrix/index/plain--size.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/subset--count.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `count`
 matrix/index/subset--filter.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `filter`
 matrix/index/subset--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`

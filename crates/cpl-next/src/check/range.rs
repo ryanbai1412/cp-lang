@@ -160,13 +160,17 @@ impl Cx<'_> {
     }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
+        // A fn's own type parameter is nearer than any domain declared outside it.
+        if let Some(p) = self.generics.iter().position(|g| g == n) {
+            return Some(Ty::Param(p));
+        }
         if let Some(&Ty::Dom(i)) = self.doms.get(n) {
             if self.decl.is_none() && self.domains[i].name.is_empty() {
                 self.early.set(Some(i));
             }
             return Some(Ty::Dom(i));
         }
-        self.generics.iter().position(|g| g == n).map(Ty::Param)
+        None
     }
     /// `lo..hi`, `lo..=hi` and `lo..hi by k` as a value: core's `Range` (R01.8.4).
     pub(super) fn range_value(
