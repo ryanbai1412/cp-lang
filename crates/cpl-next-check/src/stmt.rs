@@ -1414,6 +1414,11 @@ impl<'a> Cx<'a> {
                 };
                 if let Some(n) = decls::item_name(s).or(module) {
                     self.refused_names.insert(n.to_string());
+                    // It shadows what the name meant outside, as the item would: its uses are
+                    // the error, not another declaration's.
+                    if self.decl.is_some() {
+                        self.bind(n, Ty::Error);
+                    }
                 }
                 self.err(
                     s.span,

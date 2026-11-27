@@ -703,6 +703,18 @@ mod tests {
         assert_eq!(ds, ["check: program:1:7: E0201: unknown name `nope`"]);
     }
 
+    /// A refused local item shadows the name outside (std.geometry's `Pt`): its uses are the error.
+    #[test]
+    fn a_refused_local_item_shadows_and_says_nothing_more() {
+        let src = "use std.geometry.{Pt}\nfn f() -> Int:\n    struct Pt: v: Int, w: Int\n    let p = Pt(1, 4)\n    p.w\nprint(f())\n";
+        let ds = diags(src);
+        assert!(
+            ds.len() == 1 && ds[0].is_refusal(),
+            "{:?}",
+            ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
+        );
+    }
+
     /// A refused domain is the error: its uses give no verdict of their own.
     #[test]
     fn uses_of_a_refused_domain_say_nothing_more() {
