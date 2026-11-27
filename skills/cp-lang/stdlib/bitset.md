@@ -17,7 +17,6 @@ One bit per position of `D`, in `ceil(K / 64)` words.
 - `fn single(i: D) -> Bitset<D>` — \(O(K / 64)\) time and space; The singleton set `{i}`, matching `Subset<D>.single(i)`.
 - `fn from(a: [D]Bool) -> Bitset<D>` — \(O(K)\) time, \(O(K / 64)\) space; The set of positions where `a` is true.
 - `fn of(xs: List<D>) -> Bitset<D>` — \(O(K / 64 + \mathit{xs}.\mathit{len})\) time, \(O(K / 64)\) space; Build a bitset from a list or generator of positions `D`.
-- `fn contains(self, i: D) -> Bool` — \(O(1)\); Whether position `i` is set; `i in b` calls it.
 - `fn add(mut self, i: D) -> Bool` — \(O(1)\); Set the bit at position `i`; returns `true` if `i` was not already set (matches `Set.add`).
 - `fn remove(mut self, i: D) -> Bool` — \(O(1)\); Clear the bit at position `i`; returns `true` if `i` was set (matches `Set.remove`).
 - `fn toggle(mut self, i: D)` — \(O(1)\); Flip the bit at position `i`: set it if clear, clear it if set.

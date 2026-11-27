@@ -140,7 +140,6 @@ The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of 
 The keys a `step(k)` view visits, made by its `keys`: of the `n` source keys from position `first`, every `k`-th one from `from` on.
 
 - `@get fn len(self) -> Int` — \(O(1)\)
-- `fn contains<K>(self, i: K) -> Bool` — \(O(1)\)
 
 ## `struct Keys<S, I, T, K>(pub src: S, pub keys: I, by: ?(T -> K))`
 

@@ -14,7 +14,6 @@ A subset of a domain `B` of at most 64 members, stored as one word (bit `k` for 
 - `@get fn full() -> Subset<B>` — \(O(1)\); Every member of `B`: the word with its low `\|B\|` bits set.
 - `fn single(b: B) -> Subset<B>` — \(O(1)\); `{b}`: the subset whose only member is `b`.
 - `fn of<S: Seq<B>>(xs: S) -> Subset<B>` — \(O(n)\) for the `n` members `xs` yields; The subset of the members `xs` yields; one yielded twice is in it once.
-- `fn contains(self, b: B) -> Bool` — \(O(1)\); Whether `b` is a member; `b in s` calls it and `b not in s` negates it.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of members (a popcount).
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the subset has no members.
 - `fn with(self, b: B) -> Subset<B>` — \(O(1)\); `self` with `b` added.
