@@ -12,7 +12,7 @@ pub method, or a pub top-level std fn, that no case models: a fn is
 covered by its own `// model:` line, by a `// brute:` line, or by the model of the
 type its `self` is.
 
-  scripts/std-models.py [--list] [--max N] [--seeds K] [--ops N] [--cpl PATH] [case ...]
+  scripts/std-models.py [--list] [--max N] [--seeds K] [--ops N] [--cpl PATH] [--cpl-next PATH] [case ...]
 """
 import argparse
 import os
@@ -23,14 +23,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ROOT / "spec/conformance/std-models"
-MODEL = re.compile(r"^// model: (\w+)\s*$", re.M)
-BRUTE = re.compile(r"^// brute: (\w+)\s*$", re.M)
+MODEL = re.compile(r"^// model: (\w+)\s*$", re.MULTILINE)
+BRUTE = re.compile(r"^// brute: (\w+)\s*$", re.MULTILINE)
 FN = re.compile(r"^(?:@\w+ )*pub fn ([a-zA-Z]\w*)")
 SELF = re.compile(r"\s*\((?:mut )?self: ([A-Za-z]\w*)")
 TYPE = re.compile(r"^pub (?:struct|enum) ([A-Za-z]\w*)")
 IMPL = re.compile(r"^impl(?:<[^>]*>)? (?:[\w<>, ]+ for )?([A-Za-z]\w*)")
 METHOD = re.compile(r"^\s+(?:@\w+ )*pub fn \w+")
-ENGINES = {"interp": [], "native": ["--release"]}
+ENGINES = {"interp": ["run"], "native": ["run", "--release"]}
+NEXT_ENGINES = {"raw": ["--raw"], "engine": ["--engine"]}
+COMPARE = re.compile(r"^// compare: stdout\s*$", re.MULTILINE)
+ON_NEXT = re.compile(r"^// engines: next\s*$", re.MULTILINE)
 
 
 def std_types(texts):
@@ -108,25 +111,48 @@ def shrink(fails, n):
     return lo
 
 
-def run_case(cpl, path, engine, seed, ops):
-    r = subprocess.run([cpl, "run", *ENGINES[engine], str(path)], input=f"{seed} {ops}\n",
-                       capture_output=True, text=True, timeout=300,
-                       env={**os.environ, "CPL_STD_DIR": str(ROOT / "std")})
-    out = r.stdout.strip()
-    if r.returncode == 0 and out == "ok":
-        return None
+def run_once(cmd, path, flags, stdin):
+    if cmd[0].endswith("cpl-next"):
+        argv = [*cmd, str(path), *flags]
+    else:
+        argv = [*cmd, *flags, str(path)]
+    return subprocess.run(argv, input=stdin, capture_output=True, text=True, timeout=300,
+                          env={**os.environ, "CPL_STD_DIR": str(ROOT / "std")})
+
+
+def failure(r):
     err = [ln for ln in r.stderr.splitlines() if re.match(r"(error|trap)\b", ln)]
-    return err[:1] or (out or r.stderr.strip()).splitlines()[-1:]
+    return err[:1] or (r.stdout.strip() or r.stderr.strip()).splitlines()[-1:]
 
 
-def check(cpl, path, seeds, ops):
+def run_case(cmd, path, flags, seed, ops, compare=False):
+    """None when the case passes at `seed` over `ops` operations, else why it fails."""
+    if not compare:
+        r = run_once(cmd, path, flags, f"{seed} {ops}\n")
+        return None if r.returncode == 0 and r.stdout.strip() == "ok" else failure(r)
+    std, brute = (run_once(cmd, path, flags, f"{seed} {ops} {side}\n") for side in (0, 1))
+    for r in (std, brute):
+        if r.returncode:
+            return failure(r)
+    if std.stdout == brute.stdout:
+        return None
+    a, b = std.stdout.splitlines(), brute.stdout.splitlines()
+    i = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+    got = lambda xs: repr(xs[i]) if i < len(xs) else "nothing"
+    return [f"line {i + 1}: the std fn prints {got(a)}, the brute force {got(b)}"]
+
+
+def check(cpl, cpl_next, path, seeds, ops):
     rel = path.relative_to(ROOT)
-    for engine in ENGINES:
+    text = path.read_text(encoding="utf-8")
+    compare = bool(COMPARE.search(text))
+    cmd, engines = ([cpl_next], NEXT_ENGINES) if ON_NEXT.search(text) else ([cpl], ENGINES)
+    for engine, flags in engines.items():
         for seed in range(1, seeds + 1):
-            if run_case(cpl, path, engine, seed, ops) is None:
+            if run_case(cmd, path, flags, seed, ops, compare) is None:
                 continue
-            n = shrink(lambda k: run_case(cpl, path, engine, seed, k) is not None, ops)
-            why = run_case(cpl, path, engine, seed, n) or ["?"]
+            n = shrink(lambda k: run_case(cmd, path, flags, seed, k, compare) is not None, ops)
+            why = run_case(cmd, path, flags, seed, n, compare) or ["?"]
             yield f"{rel}: {engine} seed {seed} fails after {n} op(s): {why[0]}"
             break
 
@@ -147,6 +173,7 @@ def main():
     ap.add_argument("--seeds", type=int, default=20)
     ap.add_argument("--ops", type=int, default=300)
     ap.add_argument("--cpl", default=str(ROOT / "target/release/cpl"))
+    ap.add_argument("--cpl-next", default=str(ROOT / "target/release/cpl-next"))
     ap.add_argument("cases", nargs="*", type=Path)
     a = ap.parse_args()
     found = gaps(std_texts(), case_texts())
@@ -155,7 +182,7 @@ def main():
         print(f"std models: {len(found)} gap(s)")
         return 0
     paths = [p.resolve() for p in a.cases] or sorted(CASES.glob("*.cp"))
-    failed = [f for p in paths for f in check(a.cpl, p, a.seeds, a.ops)]
+    failed = [f for p in paths for f in check(a.cpl, a.cpl_next, p, a.seeds, a.ops)]
     print("\n".join(failed) if failed else "", end="\n" if failed else "")
     print(f"std models: {len(paths)} case(s), {len(failed)} failing, {len(found)} gap(s)")
     over = a.max is not None and len(found) > a.max

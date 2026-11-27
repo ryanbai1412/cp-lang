@@ -56,6 +56,27 @@ class StdModelsTest(unittest.TestCase):
         self.assertEqual(m.shrink(lambda n: n >= 17, 300), 17)
         self.assertEqual(m.shrink(lambda n: True, 300), 1)
 
+    def test_a_stdout_case_passes_when_both_sides_print_the_same(self):
+        runs = {}
+
+        def fake(cmd, path, flags, stdin):
+            side = stdin.split()[2]
+            out = runs[side]
+            return type("R", (), {"returncode": 0, "stdout": out, "stderr": ""})()
+
+        real, m.run_once = m.run_once, fake
+        try:
+            runs.update({"0": "1 2\nx\n", "1": "1 2\nx\n"})
+            self.assertIsNone(m.run_case(["cpl-next"], "c.cp", [], 1, 5, compare=True))
+            runs.update({"0": "1 2\nx y\n", "1": "1 2\nx\n"})
+            self.assertEqual(m.run_case(["cpl-next"], "c.cp", [], 1, 5, compare=True),
+                             ["line 2: the std fn prints 'x y', the brute force 'x'"])
+            runs.update({"0": "1\n", "1": "1\n2\n"})
+            self.assertEqual(m.run_case(["cpl-next"], "c.cp", [], 1, 5, compare=True),
+                             ["line 2: the std fn prints nothing, the brute force '2'"])
+        finally:
+            m.run_once = real
+
 
 if __name__ == "__main__":
     unittest.main()
