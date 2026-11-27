@@ -1739,6 +1739,8 @@ next/n_into_02_new_taking_nothing_with_no_conversion_rejects.cp
 next/n_intr_01_word_bit_counts.cp
 next/n_intr_02_abs_of_int_and_f64.cp
 next/n_intr_02_word_bodies_agree_with_their_ops.cp
+next/n_jagged_params.cp
+next/n_jagged_params_traps.cp
 next/n_judge_01_array_past_the_judges_memory.cp
 next/n_keep_01_min_max_assign.cp
 next/n_lambda_01_pattern_params.cp

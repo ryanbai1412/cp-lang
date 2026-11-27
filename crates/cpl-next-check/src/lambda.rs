@@ -240,6 +240,7 @@ impl Cx<'_> {
                 let t = decls::body_type(c.d, c.module, &c.generics, &c.doms, t, &mut Vec::new());
                 c.fresh_sets(&t)
             };
+            let fd = &*cpl_next_decls::jagged(fd);
             let params = (fd.params.iter())
                 .map(|p| p.ty.as_ref().map_or(Ty::Error, |t| quiet(self, t)))
                 .collect();
@@ -286,6 +287,7 @@ impl Cx<'_> {
             kind: PatternKind::Name(text.to_string()),
             span,
         };
+        let fd = &*cpl_next_decls::jagged(fd);
         let body = match &fd.body {
             FnBody::Block(b) => ast::Expr {
                 kind: ExprKind::Block(b.clone()),

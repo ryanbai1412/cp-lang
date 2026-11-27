@@ -962,6 +962,7 @@ fn memo_names(f: &ast::FnDecl) -> (String, String) {
 /// A `@memo` fn's table type `T<K, R>` and its making, `T<K, R>()`. `K` is the one parameter's
 /// type, else the tuple of them.
 fn memo_new(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> (ast::Type, ast::Expr) {
+    let f = &*jagged(f);
     let name = |text: &str| ast::Name {
         text: text.to_string(),
         span,
@@ -1180,4 +1181,107 @@ pub fn memo_block<'s>(
             }
             (out, at)
         })
+}
+
+/// `fn c(n: 0..=30, k: 0..=n)`: a range parameter whose ends name earlier parameters, so a
+/// `@memo(array)` table over it is jagged (R06.4.1). Its type is the range those ends reach over
+/// the earlier parameters' ranges, `0..=30`, and the body starts by binding it at its written
+/// range, which checks it there (R04.3.4).
+pub fn jagged(f: &ast::FnDecl) -> std::borrow::Cow<'_, ast::FnDecl> {
+    use ast::{BinOp, ExprKind};
+    fn reach(e: &ast::Expr, known: &HashMap<&str, (i64, i64)>) -> Option<(i64, i64)> {
+        match &e.kind {
+            ExprKind::Paren(x) => reach(x, known),
+            ExprKind::Name(n) => known.get(n.as_str()).copied(),
+            ExprKind::Binary { op, lhs, rhs, .. } if matches!(op, BinOp::Add | BinOp::Sub) => {
+                let ((a, b), k) = (reach(lhs, known)?, rhs.int_literal()?);
+                let k = if *op == BinOp::Sub {
+                    k.checked_neg()?
+                } else {
+                    k
+                };
+                Some((a.checked_add(k)?, b.checked_add(k)?))
+            }
+            _ => e.int_literal().map(|v| (v, v)),
+        }
+    }
+    let mut known = HashMap::new();
+    let (mut params, mut binds) = (f.params.clone(), Vec::new());
+    for p in &mut params {
+        let Some(TypeKind::Range { lo, hi, inclusive }) = p.ty.as_ref().map(|t| &t.kind) else {
+            continue;
+        };
+        if let Some(r) = crate::decls::static_range(lo, hi, *inclusive) {
+            known.insert(p.name.text.as_str(), r);
+            continue;
+        }
+        let ends = |e: &Option<Box<ast::Expr>>| e.as_deref().map(|e| reach(e, &known));
+        let (Some(Some((a, _))), Some(Some((_, b)))) = (ends(lo), ends(hi)) else {
+            continue;
+        };
+        let Some(b) = b.checked_sub(i64::from(!*inclusive)) else {
+            continue;
+        };
+        let span = p.name.span;
+        let int = |v: i64| {
+            Some(Box::new(ast::Expr {
+                kind: ExprKind::Int(i128::from(v)),
+                span,
+            }))
+        };
+        let written = p.ty.replace(ast::Type {
+            kind: TypeKind::Range {
+                lo: int(a),
+                hi: int(b),
+                inclusive: true,
+            },
+            span,
+        });
+        binds.push(ast::Stmt {
+            kind: StmtKind::Let {
+                mutable: false,
+                pat: ast::Pattern {
+                    kind: ast::PatternKind::Name(p.name.text.clone()),
+                    span,
+                },
+                ty: written,
+                init: Some(ast::Expr {
+                    kind: ExprKind::Name(p.name.text.clone()),
+                    span,
+                }),
+                otherwise: None,
+                guard: None,
+            },
+            span,
+            decorators: Vec::new(),
+            public: false,
+        });
+        known.insert(p.name.text.as_str(), (a, b));
+    }
+    if binds.is_empty() {
+        return std::borrow::Cow::Borrowed(f);
+    }
+    let body = match &f.body {
+        FnBody::Block(b) => ast::Block {
+            stmts: binds.into_iter().chain(b.stmts.iter().cloned()).collect(),
+            span: b.span,
+        },
+        FnBody::Expr(e) => ast::Block {
+            stmts: (binds.into_iter())
+                .chain([ast::Stmt {
+                    kind: StmtKind::Expr(e.clone()),
+                    span: e.span,
+                    decorators: Vec::new(),
+                    public: false,
+                }])
+                .collect(),
+            span: e.span,
+        },
+        FnBody::None => return std::borrow::Cow::Borrowed(f),
+    };
+    std::borrow::Cow::Owned(ast::FnDecl {
+        params,
+        body: FnBody::Block(body),
+        ..f.clone()
+    })
 }

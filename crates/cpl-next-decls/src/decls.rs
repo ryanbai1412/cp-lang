@@ -1141,6 +1141,8 @@ fn add_fn(
     f: &ast::FnDecl,
     within: Within,
 ) -> FnId {
+    let jag = crate::synth::jagged(f);
+    let f = &*jag;
     let Within {
         owner,
         generics: outer,
