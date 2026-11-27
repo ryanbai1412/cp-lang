@@ -200,11 +200,17 @@ impl<'a> Cx<'a> {
             return None;
         }
         let i = self.generics.iter().position(|g| g == n)?;
-        let (tr, m) = (self.bound_traits(i).into_iter()).find_map(|tr| {
+        let found = (self.bound_traits(i).into_iter()).find_map(|tr| {
             let m = *self.d.traits[tr.tr.0].methods.get(&name.text)?;
             let fd = self.d.f(m);
             (fd.self_mode == SelfMode::None && takes(fd, call)).then_some((tr, m))
-        })?;
+        });
+        let Some((tr, m)) = found else {
+            let bound_free = self.bound_traits(i).is_empty();
+            return bound_free
+                .then(|| self.unbound_static(n, name, span))
+                .flatten();
+        };
         Some(self.static_call(Ty::Param(i), tr, m, name, call, span))
     }
     /// `Trait.m(x, ..)`: the `m` of `x`'s impl of the trait named, as when two traits give `x`
@@ -244,6 +250,38 @@ impl<'a> Cx<'a> {
             false => self.recv_arg(m, recv, span),
         };
         Some(self.call_method(f, recv, false, Some(rest), span, want))
+    }
+    /// `T.MIN` where no bound of `T` gives `MIN` but a trait does: a body is checked against its
+    /// bounds alone (R08.2.2), so the error names the bound to write. None when no trait has a
+    /// self-less fn `name`.
+    fn unbound_static(&mut self, t: &str, name: &ast::Name, span: Span) -> Option<TExpr> {
+        let mut givers: Vec<&str> = (self.d.traits.iter())
+            .filter(|tr| !tr.alias)
+            .filter(|tr| {
+                (tr.methods.get(&name.text))
+                    .is_some_and(|m| self.d.f(*m).self_mode == SelfMode::None)
+            })
+            .map(|tr| tr.name.as_str())
+            .collect();
+        givers.sort_unstable();
+        givers.dedup();
+        let shown = givers
+            .iter()
+            .map(|g| format!("`{t}: {g}`"))
+            .collect::<Vec<_>>();
+        if shown.is_empty() {
+            return None;
+        }
+        let m = &name.text;
+        self.err_help(
+            span,
+            Msg::verdict(
+                cpl_diag::codes::MISSING_IMPL,
+                format!("`{t}.{m}` needs a bound on `{t}` that gives `{m}`, and `{t}` has none (R08.2.2)"),
+            ),
+            Some(format!("write {}", shown.join(" or "))),
+        );
+        Some(Self::error_node(span))
     }
     /// `Int.zero`, or `F.zero` in a default where `F` names the call's type: a self-less fn of a
     /// trait the named type implements. None for a name that is a value, a struct or no type.
