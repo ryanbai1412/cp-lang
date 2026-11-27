@@ -256,6 +256,7 @@ core-07/cyclic-pairs.cp	wrong-reject	check: program:3:7: E0203: `cyclic_pairs` i
 core-07/domain-map-sorted-is-list.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-07/domain-slice-past-its-keys-traps.cp	wrong-reject	check: program:7:15: E0302: expected `V`, found `Int`
 core-07/fold-from-folds-into-another-type.cp	wrong-reject	check: program:4:86: E0302: expected `List<Char>`, found `Char`
+core-07/fold-method-and-free-forms.cp	wrong-reject	check: program:5:62: E0606: `a function` does not implement `FromOp`
 core-07/fold-no-identity-is-optional.cp	wrong-error	wanted E0706 on line 4, got: check: program:4:21: E0806: the type of `x` is not known here; write `(x: T) => ...`
 core-07/fold-of-and-or-over-empty-uses-identity.cp	wrong-reject	check: program:5:33: E0302: this function does not fit `(Int, Int) -> Int`
 core-07/for-over-views-of-temporary.cp	wrong-reject	check: std.seq:951:25: E0606: `K` has no `impl Eq`, which `==` needs (R08.1.5)
@@ -347,6 +348,9 @@ core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:
 core-08/alias-where-binds-its-parameter-from-the-arc.cp	no-cxx	g++ failed on 8a4836b37a0ac20e.cpp: | 8a4836b37a0ac20e.cpp: In function ‘int64_t f9(const S14&, int64_t)’: | 8a4836b37a0ac20e.cpp:720:14: error: invalid initialization of reference of type ‘const S26&’ from expression of type ‘int64_t’ {aka ‘long int’} |   720 |     l5 = f21(l4);
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	check: program:6:40: E0302: expected `Self.Fold`, found `Optional<T>`
+core-08/bare-op-at-a-bound-takes-the-monoid-impl.cp	wrong-reject	check: program:15:14: E0606: `a function` does not implement `Op3`
+core-08/bare-op-at-a-generic-bound-waits-for-its-arg.cp	wrong-reject	check: program:16:14: E0606: `a function` does not implement `Op3`
+core-08/bare-op-binds-its-monoid-after-later-args.cp	wrong-reject	check: program:15:14: E0606: `a function` does not implement `Op3`
 core-08/bare-op-takes-any-from-op-struct-impl.cp	wrong-reject	check: program:6:40: E0606: `T` does not implement `Domain`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
 core-08/bound-test-takes-trait-args.cp	wrong-reject	check: program:8:30: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
@@ -534,6 +538,7 @@ std-algebra/a-group-with-a-one-sided-inverse-breaks-its-laws.cp	wrong-reject	che
 std-algebra/a-one-sided-identity-breaks-the-monoid-laws.cp	wrong-reject	check: program:5:8: E0201: unknown name `laws_hold`
 std-algebra/a-summary-type-is-not-a-fold-op.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:26: E0201: unknown name `MaxSub`
 std-algebra/affine.cp	wrong-reject	check: std.algebra:632:36: E0606: `T` does not implement `Add`
+std-algebra/char-folds-by-max-and-min.cp	wrong-reject	check: program:6:7: E0606: `a function` does not implement `FromOp`
 std-algebra/closure-op-keeps-std-self-fns.cp	wrong-reject	check: program:9:37: E0203: `a function` has no member `opt`
 std-algebra/counts.cp	wrong-reject	check: std.algebra:393:48: E0201: unknown name `MaxSub`
 std-algebra/each-fuses-ops-per-component.cp	wrong-reject	check: std.algebra: E0204: unknown type `Ms`
@@ -547,6 +552,8 @@ std-algebra/op-fold-is-t-with-an-identity.cp	wrong-reject	check: std.algebra:807
 std-algebra/opt-of-two-closures-in-one-file.cp	wrong-reject	check: program:8:15: E0203: `a function` has no member `opt`
 std-algebra/pow-folds-under-any-monoid.cp	wrong-reject	check: program:6:42: E0606: `a function` does not implement `FromOp`
 std-algebra/pow-negative-exponent-traps.cp	wrong-accept	wanted E0902 on line 4, ran and printed: 
+std-algebra/ranged-int-folds-by-max-and-min.cp	wrong-reject	check: program:5:7: E0606: `a function` does not implement `FromOp`
+std-algebra/seq-fold-under-own-and-stock-ops.cp	wrong-reject	check: program:8:55: E0606: `a function` does not implement `FromOp`
 std-algebra/user-ord-reduce-by-max-and-min.cp	wrong-reject	check: program:8:17: E0302: this function does not fit `(Frac, Frac) -> Frac`
 std-bag/add-many-negative-traps.cp	wrong-error	wanted E0902 on line 3, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-bag/add-many-zero.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
@@ -873,6 +880,7 @@ std-journeys/fenwick.cp	wrong-reject	check: program:7:16: E0302: expected `Cut<$
 std-journeys/hash-map.cp	wrong-reject	check: std.hashmap: E0204: unknown type `HashMap`
 std-journeys/sorted-bag.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
 std-journeys/sorted-set.cp	wrong-reject	check: std.bag:349:32: E0302: expected `K`, found `Cut<K>`
+std-journeys/window.cp	wrong-reject	check: program:3:9: E0606: `a function` does not implement `Op`
 std-lazy/flip-op-folds-both-halves.cp	wrong-reject	check: std.lazy:36:17: E0606: `M` does not implement `FromOp`
 std-lazy/flip-op-identity.cp	wrong-reject	check: std.lazy:36:17: E0606: `M` does not implement `FromOp`
 std-lazy/lazy-forest-split-past-len-traps.cp	wrong-reject	check: std.lazy:564:22: E0302: expected `Int`, found `()`
@@ -1339,7 +1347,11 @@ std-window/sweep-empty-sits-at-its-cut.cp	wrong-reject	check: std.window:374:17:
 std-window/sweep-move-feeds-track.cp	wrong-reject	check: std.window:374:17: E0405: field `Sweep.hi` is fixed (not `var`) and cannot be assigned
 std-window/track-infers-element-from-sequence.cp	wrong-reject	check: program:4:12: E0203: `List<(w: Int)>` has no member `minimal`
 std-window/undoing-passed-straight-to-minimal.cp	wrong-reject	check: program:7:13: E0203: `List<Tuple2<V, V>>` has no member `minimal`
+std-window/window-expire-by-place.cp	wrong-reject	check: program:4:9: E0606: `a function` does not implement `Op`
+std-window/window-expire-unkeyed-traps.cp	wrong-reject	check: program:2:9: E0606: `a function` does not implement `Op`
 std-window/window-fold-picks-op-strategy.cp	wrong-reject	check: program:4:7: E0606: `a function` does not implement `Op`
+std-window/window-min-after-pop.cp	wrong-reject	check: program:2:9: E0606: `a function` does not implement `Op`
+std-window/window-push-at-decreasing-traps.cp	wrong-reject	check: program:2:9: E0606: `a function` does not implement `Op`
 traits/Add/BigInt--add.cp	wrong-reject	own: std.math:1914:9: E0603: this returns a value that borrows `cs`: `cs` is gone when the fn returns
 traits/Add/Mat--add.cp	wrong-reject	link: std.matrix:677:9: E0303: expected 2 arguments, found 3
 traits/Add/MaxCount--add.cp	wrong-reject	link: std.algebra:598:12: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
