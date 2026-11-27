@@ -1851,6 +1851,15 @@ class DebtRatchetTest(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
             self.assertEqual(dr.std_names_outside_rt(root), ["any"])
 
+    def test_next_std_names_skips_a_variants_own_label(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/seq.cp", "pub fn check(self) -> Bool = true\npub fn link() = ()\n")
+            self._write(root, "crates/cpl-next/src/lib.rs",
+                        'Stage::Check => "check",\nStage::Own => "link",\nif name == "check" {}\n')
+            self.assertEqual(dr.next_std_names(root),
+                             ["crates/cpl-next/src/lib.rs:2: link", "crates/cpl-next/src/lib.rs:3: check"])
+
     def test_next_std_names_counts_without_the_core_stand_in(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

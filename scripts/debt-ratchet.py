@@ -1558,6 +1558,9 @@ def next_std_names(root: Path) -> list[str]:
             if line.lstrip().startswith("//"):
                 continue
             hits = [n for n in RUST_STR_RE.findall(line) if n in names]
+            # A display arm naming its own variant (`Stage::Check => "check"`) is the compiler's label.
+            if (arm := NEXT_LABEL_ARM_RE.match(line)) and hits == [arm.group(1).lower()]:
+                hits = []
             out += [f"{rel}:{i}: {n}" for n in hits]
             # A name matched by its start (`starts_with("Tuple")`) or built (`format!("Tuple{}")`).
             parts = ("".join(t) for t in NEXT_NAME_PART_RE.findall(line))
@@ -1580,6 +1583,7 @@ def next_std_names(root: Path) -> list[str]:
 
 
 NEXT_WRAPPER_LINES = 8
+NEXT_LABEL_ARM_RE = re.compile(r'^\s*[A-Z]\w*::([A-Z]\w*)\s*=>\s*"[a-z_]+",?\s*$')
 NEXT_FN_RE = re.compile(r"^(\s*)(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s+([a-z_]\w*)")
 NEXT_CONST_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:const|static)\s+([A-Z_][A-Z0-9_]*)\s*:")
 
@@ -3621,7 +3625,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "unreferenced_scripts", "explain_copy_mismatches", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
+    "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax", "domain_member_names",
