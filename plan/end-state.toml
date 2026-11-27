@@ -214,7 +214,9 @@ decides = "The editor stays right and fast while typing"
 size = "At least 10,000 generated edit sequences over corpus files"
 properties = "Incremental answer equals a fresh one; p95 within the latency budget at 5,000 lines; never crashes on broken code"
 level = "2"
-missing = "edit sequences whose incremental answer differs from a fresh one"
+numbers = [{ counter = "next_snapshot_keyed_queries", target = 0 }]
+changed = "2026-11-27: next_snapshot_keyed_queries counts the facade answers memoized per whole snapshot (shortcut audit S3), so the suite has a number until the edit harness exists"
+missing = "edit sequences whose incremental answer differs from a fresh one; units recomputed after a one-item edit beyond the edited unit (until that harness exists, next_snapshot_keyed_queries counts the facade answers memoized per whole snapshot)"
 
 [[suite]]
 id = 21

@@ -1336,28 +1336,21 @@ def next_core_privilege(root: Path) -> list[str]:
     return hits
 
 
-NEXT_WHOLE_PROGRAM_RE = re.compile(r"&(?:\w+::)*(?:Decls|Typed|Loaded)\b")
+NEXT_WHOLE_PROGRAM_RE = re.compile(r"&(?:'\w+\s+)?(?:mut\s+)?(?:\w+::)*(?:Decls|Typed|Loaded|Whole|Generic)\b")
 
 
 def next_whole_program_inputs(root: Path) -> list[str]:
-    """Public fns of the new pipeline that take a whole-program value (`&Decls`, `&Typed`,
-    `&Loaded`). The incremental core (handbook/design/next/incremental.md) calls every layer
-    per item over small views, so this shrinks to the whole-program steps: link, ownership
-    after link, canonical, optimized, C++."""
+    """Each place the new pipeline takes a whole-program value by reference: a fn parameter of
+    any visibility, a struct field, a closure parameter, anything typed `&Decls`, `&Typed`,
+    `&Loaded`, `&Whole` or `&Generic` (shortcut audit S2). The incremental core
+    (handbook/design/next/incremental.md) calls every layer per item over small views, so this
+    reaches 0: what is left today is the checker, lowering, ownership and link, until each takes
+    the views."""
     out = []
     for p in _rs_files(root, *_next_srcs(root), tests=False):
-        lines, rel = _lines(p), _rel(root, p)
-        for i, line in enumerate(lines):
-            if not re.match(r"\s*pub(?:\([^)]*\))?\s+fn\s", line):
-                continue
-            sig = []
-            for l in lines[i:i + 20]:
-                sig.append(l)
-                if "{" in l or l.rstrip().endswith(";"):
-                    break
-            params = "".join(sig).split("->")[0]
-            if NEXT_WHOLE_PROGRAM_RE.search(params):
-                out.append(f"{rel}:{i + 1}")
+        rel = _rel(root, p)
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1)
+                if not line.lstrip().startswith("//") and NEXT_WHOLE_PROGRAM_RE.search(line)]
     return out
 
 
@@ -3230,31 +3223,96 @@ def timeout_passes(root: Path) -> list[str]:
 
 
 # Lowering's own answers in the handoff: the IR, and the messages lowering itself makes.
-HANDOFF_OWN_FIELDS = {"funcs", "errors", "whole"}
+HANDOFF_OWN_FIELDS = {"funcs", "errors"}
+
+
+def _struct_fields(root: Path, srcs: list[str]) -> dict[str, list[tuple[str, str, str]]]:
+    """Each struct the crates under `srcs` define: its fields, `(name, type, where)`, a tuple
+    struct's as `0`, `1`.."""
+    out: dict[str, list[tuple[str, str, str]]] = {}
+    for p in _rs_files(root, *srcs, tests=False):
+        lines, rel = _lines(p), _rel(root, p)
+        for i, l in enumerate(lines):
+            m = re.match(r"\s*pub(?:\([^)]*\))?\s+struct\s+(\w+)(?:<[^>]*>)?\s*(\(|\{)", l)
+            if not m:
+                continue
+            name, fields = m.group(1), []
+            if m.group(2) == "(":
+                inner, parts, depth, cur = l[m.end():l.rfind(")")], [], 0, ""
+                for ch in inner:
+                    depth += ch in "<([" and 1 or ch in ">)]" and -1 or 0
+                    if ch == "," and depth == 0:
+                        parts.append(cur)
+                        cur = ""
+                    else:
+                        cur += ch
+                parts.append(cur)
+                fields = [(str(k), t.strip(), f"{rel}:{i + 1}") for k, t in enumerate(parts) if t.strip()]
+            else:
+                for k in range(i + 1, len(lines)):
+                    if lines[k].startswith("}"):
+                        break
+                    f = re.match(r"\s*(?:pub(?:\([^)]*\))?\s+)?(\w+):\s*(.+?),?$", lines[k])
+                    if f and not lines[k].lstrip().startswith("//"):
+                        fields.append((f.group(1), f.group(2), f"{rel}:{k + 1}"))
+            out[name] = fields
+    return out
 
 
 def next_handoff_side_fields(root: Path) -> list[str]:
-    """Fields of the lower -> link handoff (`cpl-next-lower`'s `Generic` and `cpl-next-ir`'s
-    `whole::Whole`) that carry the front end's tables beside the IR: domains, globals, set adds,
-    deferred messages. Each becomes a per-item answer link reads by id (`domain(ItemId)`,
-    `global(ItemId)`, `diagnostics(ItemId)`, handbook/design/next/incremental.md), so this
-    shrinks to 0. `whole` is counted by `Whole`'s own fields."""
-    out = []
-    for rel, name in (("crates/cpl-next-lower/src/lib.rs", "Generic"), ("crates/cpl-next-ir/src/whole.rs", "Whole")):
-        if not (root / rel).is_file():
-            continue
-        lines = _lines(root / rel)
-        start = next((i for i, l in enumerate(lines) if re.match(rf"pub struct {name}\b", l)), None)
-        if start is None:
-            out.append(f"{rel}: no `pub struct {name}` (the handoff moved; update this counter)")
-            continue
-        for i in range(start + 1, len(lines)):
-            if lines[i].startswith("}"):
-                break
-            m = re.match(r"\s*pub (\w+):", lines[i])
-            if m and m.group(1) not in HANDOFF_OWN_FIELDS:
-                out.append(f"{rel}:{i + 1}: {name}.{m.group(1)}")
+    """Every field that reaches link beside the IR (shortcut audit S18): each field of lowering's
+    `Generic` other than its fns and its own messages, where a field's type is a struct of
+    `cpl-next-ir` or `cpl-next-lower` each field of that, as far as it goes. A new side struct
+    is counted field by field, and a collection or tuple as one table. Each becomes a per-item
+    answer link reads by id (`domain(ItemId)`, `global(ItemId)`, `diagnostics(ItemId)`,
+    handbook/design/next/incremental.md), so this reaches 0."""
+    if not (root / "crates/cpl-next-lower/src/lib.rs").is_file():
+        return []
+    structs = _struct_fields(root, ["crates/cpl-next-ir/src", "crates/cpl-next-lower/src"])
+    if "Generic" not in structs:
+        return ["crates/cpl-next-lower/src/lib.rs: no `pub struct Generic` (the handoff moved; update this counter)"]
+    out, seen = [], set()
+
+    def walk(owner: str, field: str, ty: str, at: str) -> None:
+        # A field whose type is itself a struct of the handoff holds its fields; one holding
+        # values in a collection or tuple is one table.
+        whole = re.sub(r"^&(?:'\w+\s+)?(?:mut\s+)?", "", ty).split("::")[-1]
+        inner = [whole] if whole in structs and whole not in seen else []
+        if not inner:
+            out.append(f"{at}: {owner}.{field}")
+            return
+        for n in inner:
+            seen.add(n)
+            for f, t, w in structs[n]:
+                walk(n, f, t, w)
+
+    for f, t, w in structs["Generic"]:
+        if f not in HANDOFF_OWN_FIELDS:
+            walk("Generic", f, t, w)
     return out
+
+
+def next_check_set_facts(root: Path) -> list[str]:
+    """Sites in the checker that build a function-value set fact, `SetTy::Global` or
+    `SetTy::AddedAt` (shortcut audit S25): which closures a set holds is a link-time fact
+    (decision 35, "sets leave the type"), so this reaches 0 when sets leave the checker's types."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-next-check/src", tests=False):
+        rel = _rel(root, p)
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1)
+                if re.search(r"SetTy::(?:Global|AddedAt)\(", line) and not line.lstrip().startswith("//")]
+    return out
+
+
+def next_snapshot_keyed_queries(root: Path) -> list[str]:
+    """Facade answers memoized per whole `Snapshot` (shortcut audit S3): a `OnceLock` field of the
+    facade's per-snapshot state is recomputed in full by any edit. One query database keyed by
+    item path and input hash replaces them, so this reaches 0 (END-STATE #20)."""
+    p = root / "crates/cpl-next/src/facade.rs"
+    if not p.exists():
+        return []
+    rel = _rel(root, p)
+    return [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if re.match(r"\s*\w+:\s*OnceLock<", line)]
 
 
 LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|typed)\b")
@@ -4277,8 +4335,10 @@ COUNTERS = {
     "next_error_typed": ("programs cases linking an instance that holds an error type (Core)", next_error_typed, True),
     "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
-    "next_whole_program_inputs": ("public new-pipeline fns taking a whole-program value (Core)", next_whole_program_inputs, True),
-    "next_handoff_side_fields": ("front-end tables the lower -> link handoff carries beside the IR (Core)", next_handoff_side_fields, True),
+    "next_whole_program_inputs": ("new-pipeline params, fields and closures taking a whole-program value by reference (Core)", next_whole_program_inputs, True),
+    "next_handoff_side_fields": ("fields reaching link beside the IR, through any struct or tuple of the handoff (Core)", next_handoff_side_fields, True),
+    "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
+    "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),

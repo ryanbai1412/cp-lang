@@ -2284,9 +2284,12 @@ class DebtRatchetTest(unittest.TestCase):
                 "pub fn item(sigs: &dyn Signatures) -> Typed {}\n"
                 "fn private(d: &Decls) {}\n"
                 'const RT: &str = r#"int a;\n\nint b;"#;\n'
+                "struct Cx<'a> {\n    d: &'a Decls,\n}\n"
+                "// a comment naming &Whole\n"
+                "let f = |g: &mut cpl_next_lower::Generic| ();\n"
             )
             self.assertEqual(dr.next_whole_program_inputs(root),
-                             ["crates/cpl-next-check/src/lib.rs:1", "crates/cpl-next-check/src/lib.rs:2"])
+                             [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 4, 7, 12, 15)])
             self.assertEqual(len(dr.next_cpp_runtime_lines(root)), 2)
 
     def test_audit_counters_find_soundness_core_checks_ownership_and_foreign_deps(self) -> None:

@@ -53,7 +53,7 @@ measured, by a mutation score or a matrix with no empty cell.
 | 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 207 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
 | 18 | Events, trace and debugger | unmeasured | `trace_budget_gap` 141 → 0; no number yet for: corpus programs whose event streams differ between engines |
 | 19 | Lossless syntax | unmeasured | no number yet for: files the lossless tree does not print back byte for byte |
-| 20 | Editor under edits | unmeasured | no number yet for: edit sequences whose incremental answer differs from a fresh one |
+| 20 | Editor under edits | unmeasured | `next_snapshot_keyed_queries` 5 → 0; no number yet for: edit sequences whose incremental answer differs from a fresh one; units recomputed after a one-item edit beyond the edited unit (until that harness exists, next_snapshot_keyed_queries counts the facade answers memoized per whole snapshot) |
 
 ## E. The architecture holds and the plan finishes
 
@@ -73,12 +73,13 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | Counter | Now |
 |---|---|
 | `next_asks_refused` | 7 |
+| `next_check_set_facts` | 11 |
 | `next_core_checks` | 6 |
 | `next_core_privilege` | 21 |
 | `next_core_standin_lines` | 43 |
 | `next_cpp_runtime_lines` | 147 |
 | `next_error_typed` | 34 |
-| `next_handoff_side_fields` | 8 |
+| `next_handoff_side_fields` | 11 |
 | `next_ignored_settings` | 6 |
 | `next_layer_foreign_deps` | 4 |
 | `next_library_gates` | 25 |
@@ -92,12 +93,13 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_refusal_kinds` | 62 |
 | `next_refused` | 731 |
 | `next_repr_second_defs` | 3 |
+| `next_snapshot_keyed_queries` | 5 |
 | `next_split` | 7 |
 | `next_std_names` | 54 |
 | `next_std_unchecked` | 40 |
 | `next_syntax_old_refs` | 846 |
 | `next_weak_oracle_passes` | 7 |
-| `next_whole_program_inputs` | 6 |
+| `next_whole_program_inputs` | 60 |
 | `next_wrong` | 1,518 |
 | `next_wrong_accepts` | 20 |
 
@@ -245,6 +247,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 - Minimum size: At least 10,000 generated edit sequences over corpus files.
 - At the end state: Incremental answer equals a fresh one; p95 within the latency budget at 5,000 lines; never crashes on broken code.
 - Mechanism level (`handbook/process/quality.md`): 2.
+- Last changed: 2026-11-27: next_snapshot_keyed_queries counts the facade answers memoized per whole snapshot (shortcut audit S3), so the suite has a number until the edit harness exists.
 
 ### 21. Layer rules
 
