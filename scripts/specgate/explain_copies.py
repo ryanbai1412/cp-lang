@@ -204,6 +204,24 @@ def optional_copies(cpp, holders):
     return count
 
 
+def tuples_built(cpp):
+    """A tuple holding a container constructed from a place, `std::tuple<std::string, ll>(self)`:
+    a tuple's `clone` copies its parts."""
+    count = 0
+    for line in cpp.splitlines():
+        at = 0
+        while (at := line.find("std::tuple<", at)) >= 0:
+            at += len("std::tuple<")
+            if not (got := template_arg(line[at:])):
+                break
+            ty, rest = got
+            arg = rest[1:].split(")", 1)[0] if rest.startswith("(") else None
+            if arg is not None and rest[1 + len(arg):].startswith(")") and is_place(arg) \
+                    and any(a.startswith(CONTAINERS) for a in split_top(ty)):
+                count += 1
+    return count
+
+
 HEADER = re.compile(r"^(?=\S)(?!.*\]\()(?:template <[^>]*> )?(?:inline |static )*(.+?) \w+\(.*\{$")
 PART = re.compile(r"[A-Za-z_]\w*(?:\.\w+|\[[^\[\]]+\])*")
 LAMBDA_RET = re.compile(r"\)(?: mutable)? -> (.+?) \{$")
@@ -336,7 +354,8 @@ def deep_copies(cpp):
     """Mirrors container_copies in crates/cpl-codegen/src/cpp_counts.rs, plus
     copies spelled as a constructor call or `cpl::to_list`, tuples holding a
     container copied from places, a container assigned from a place, and
-    optionals of heap values copied from places, parts returned by value;
+    optionals of heap values copied from places, parts returned by value, a tuple holding a
+    container constructed from a place;
     a closure struct braced from a held name (`cpl_cl5{ew}` owns `ew`); a
     lambda's `auto&&` params keep the types they were passed;
     the runtime's own lines are skipped. The names a fn holds as containers
@@ -349,7 +368,7 @@ def deep_copies(cpp):
     fields = struct_fields(cpp)
     owners = holders | {n for n, fs in fields.items() if any(t.startswith(("std::array<", "cpl::Row<")) for t in fs.values())}
     heap = lambda ty: bool(ty) and (ty.startswith(CONTAINERS) or ty in holders)
-    count += optional_copies(program(cpp), holders) + returned_parts(program(cpp), holders)
+    count += optional_copies(program(cpp), holders) + returned_parts(program(cpp), holders) + tuples_built(program(cpp))
     arrays = set(ARRAY.findall(program(cpp)))
     held, types, scalars = set(), {}, set()
     for raw in program(cpp).splitlines():
