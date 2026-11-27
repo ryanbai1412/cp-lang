@@ -401,8 +401,8 @@ pub struct ParityDsu<V>:
     /// One entry per `unite` that changed something: the root it hung under another root,
     /// or (with `false`) the root of a set where it found a contradiction.
     pub log: List<(V, Bool)>
-    conflicts: 0..=2_000_000_000
-    parts: 0..=2_000_000_000
+    var conflicts: 0..=2_000_000_000
+    var parts: 0..=2_000_000_000
 
     /// A parity union-find over `V` with every position alone and nothing known.
     ///
@@ -549,8 +549,8 @@ pub struct PotentialDsu<V, W = Int>:
     up: [V]V
     sz: [V]1..=V.count
     pot: [V]W
-    parts: 0..=2_000_000_000
-    conflicts: 0..=2_000_000_000
+    var parts: 0..=2_000_000_000
+    var conflicts: 0..=2_000_000_000
     log: List<(V, Bool)>
 
     /// A potential union-find over `V` with every position alone at the identity potential.

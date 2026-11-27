@@ -2292,7 +2292,7 @@ pub struct BucketCount:
     lo: Int
     hi: Int
     sh: Int
-    total: Int
+    var total: Int
     cnt: List<Int>
     blk: List<Int>
 
