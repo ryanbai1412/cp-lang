@@ -667,10 +667,10 @@ fn memo_word(x: &ast::Decorator) -> Option<String> {
 
 /// The table a `@memo(word)` fn keeps: one some struct is marked with, for a fn whose
 /// parameters and result are written.
-pub(crate) fn memo_table<'a>(
-    s: &ast::Stmt,
+pub(crate) fn memo_table<'s, 'a>(
+    s: &'s ast::Stmt,
     tables: &'a HashMap<String, String>,
-) -> Option<&'a String> {
+) -> Option<(&'s ast::FnDecl, &'a String)> {
     let StmtKind::Fn(f) = &s.kind else {
         return None;
     };
@@ -678,7 +678,7 @@ pub(crate) fn memo_table<'a>(
     let plain = |p: &ast::Param| p.ty.is_some() && !p.mutable && !p.variadic && !p.lazy;
     let typed = f.ret.is_some() && !f.params.is_empty() && f.params.iter().all(plain);
     (typed && f.generics.is_empty() && f.lends.is_none()).then_some(())?;
-    tables.get(&memo_word(x)?)
+    Some((f, tables.get(&memo_word(x)?)?))
 }
 
 fn memo_names(f: &ast::FnDecl) -> (String, String) {
@@ -689,11 +689,7 @@ fn memo_names(f: &ast::FnDecl) -> (String, String) {
 /// A `@memo` fn's table, `var f.memo: T<K, R> = T<K, R>()`, a statement of the block that
 /// declares `f`, so the cache lives as long as it does (R06.4.1). `K` is the one parameter's
 /// type, else the tuple of them.
-pub(crate) fn memo_var(s: &ast::Stmt, table: &str) -> ast::Stmt {
-    let StmtKind::Fn(f) = &s.kind else {
-        unreachable!("memo_table found a fn")
-    };
-    let span = s.span;
+pub(crate) fn memo_var(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> ast::Stmt {
     let name = |text: &str| ast::Name {
         text: text.to_string(),
         span,
@@ -749,10 +745,7 @@ pub(crate) fn memo_var(s: &ast::Stmt, table: &str) -> ast::Stmt {
 /// A `@memo` fn as its body, `fn f.body(ps) -> R`, and `f` itself, which answers from the table
 /// when it has the key and else runs the body and keeps its result. The body's own calls of `f`
 /// go through the table.
-pub(crate) fn memo_fns(s: &ast::Stmt) -> [ast::Stmt; 2] {
-    let StmtKind::Fn(f) = &s.kind else {
-        unreachable!("memo_table found a fn")
-    };
+pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt) -> [ast::Stmt; 2] {
     let span = s.span;
     let ex = |kind| ast::Expr { kind, span };
     let var = |n: &str| ex(ast::ExprKind::Name(n.to_string()));
