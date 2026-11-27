@@ -121,10 +121,12 @@ impl Cx<'_> {
             // leaves open: more is no choice (R08.1.2).
             for (t, r, span, _) in std::mem::take(&mut self.obligations) {
                 let t = self.zonk(&t);
-                if matches!(t, Ty::Var(_) | Ty::Param(_) | Ty::Error) || self.mentions_error(&t) {
-                    continue;
-                }
-                let n = self.fitting(&t, &r).len();
+                let n = match t {
+                    Ty::Param(i) => self.stated(i, &r).len(),
+                    Ty::Var(_) | Ty::Error => continue,
+                    _ if self.mentions_error(&t) => continue,
+                    _ => self.fitting(&t, &r).len(),
+                };
                 if n > 1 {
                     self.ambiguous(&t, &r, n, span);
                 }
@@ -149,6 +151,17 @@ impl Cx<'_> {
             found.retain(|(k, _)| rank(k) == best);
         }
         found
+    }
+    /// The bounds type parameter `i` states for `r`'s trait whose arguments fit `r`'s:
+    /// `T: Cv<Int> + Cv<Bool>` meets `T: Cv<?U>` by both until `?U` is known.
+    fn stated(&self, i: usize, r: &TraitRef) -> Vec<TraitRef> {
+        let tr = &self.d.traits[r.tr.0];
+        (self.bound_traits(i).into_iter())
+            .filter(|h| h.tr == r.tr)
+            .filter(|h| {
+                (tr.inputs(&h.args).iter().zip(tr.inputs(&r.args))).all(|(a, b)| self.fits(a, b))
+            })
+            .collect()
     }
     fn ambiguous(&mut self, t: &Ty, r: &TraitRef, n: usize, span: Span) {
         let (tr, shown) = (self.d.traits[r.tr.0].name.clone(), self.show(t));
@@ -268,12 +281,7 @@ impl Cx<'_> {
         if let Ty::Param(i) = t {
             let tr = &self.d.traits[r.tr.0];
             let mut have = self.bound_traits(*i).into_iter().filter(|h| h.tr == r.tr);
-            let fitting: Vec<TraitRef> = (have.clone())
-                .filter(|h| {
-                    (tr.inputs(&h.args).iter().zip(tr.inputs(&r.args)))
-                        .all(|(a, b)| self.fits(a, b))
-                })
-                .collect();
+            let fitting = self.stated(*i, r);
             let Some(h) = fitting.first().cloned().or_else(|| have.next()) else {
                 let i = *i;
                 return Some(match self.param_impl(i, r) {
@@ -457,6 +465,11 @@ impl Cx<'_> {
         }
     }
     pub(super) fn bound_traits(&self, i: usize) -> Vec<TraitRef> {
+        self.bounds_of(i, true)
+    }
+    /// `bound_traits`, or with `implied` false only those written: a stated bound or an
+    /// `if T: Tr:`, not the `Domain` a domain parameter meets unwritten.
+    pub(super) fn bounds_of(&self, i: usize, implied: bool) -> Vec<TraitRef> {
         let Some(decl) = self.decl else {
             return Vec::new();
         };
@@ -464,11 +477,7 @@ impl Cx<'_> {
             .filter(|(pi, _)| *pi == i)
             .map(|(_, r)| r.clone())
             .collect();
-        let dom = self
-            .d
-            .domain_params
-            .get(&decl)
-            .is_some_and(|ds| ds.contains(&i));
+        let dom = implied && (self.d.domain_params.get(&decl)).is_some_and(|ds| ds.contains(&i));
         if let Some(tr) = self.d.domain_trait.filter(|_| dom) {
             let r = TraitRef {
                 tr,

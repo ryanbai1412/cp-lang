@@ -200,11 +200,11 @@ impl<'a> Cx<'a> {
             return None;
         }
         let i = self.generics.iter().position(|g| g == n)?;
-        let found = (self.bound_traits(i).into_iter()).find_map(|tr| {
-            let m = *self.d.traits[tr.tr.0].methods.get(&name.text)?;
-            let fd = self.d.f(m);
-            (fd.self_mode == SelfMode::None && takes(fd, call)).then_some((tr, m))
-        });
+        let pick = |fd: &decls::FnDecl| fd.self_mode == SelfMode::None && takes(fd, call);
+        let found = match self.bound_giving(i, &name.text, pick, span) {
+            Ok(found) => found,
+            Err(two) => return Some(self.two_traits_give(two, n, &Ty::Param(i), name, "", span)),
+        };
         let Some((tr, m)) = found else {
             let bound_free = self.bound_traits(i).is_empty();
             return bound_free
@@ -212,6 +212,72 @@ impl<'a> Cx<'a> {
                 .flatten();
         };
         Some(self.static_call(Ty::Param(i), tr, m, name, call, span))
+    }
+    /// The bound of type parameter `i` whose trait gives the fn `name` that `pick` takes:
+    /// two written traits are no choice (R08.1.4), and one trait at several arguments is left open
+    /// for the bound it pushes, `T: Tr<..>`, to fix.
+    fn bound_giving(
+        &mut self,
+        i: usize,
+        name: &str,
+        pick: impl Fn(&decls::FnDecl) -> bool,
+        span: Span,
+    ) -> Result<Option<(decls::TraitRef, FnId)>, (TraitId, TraitId)> {
+        let gives: Vec<(decls::TraitRef, FnId)> = (self.bound_traits(i).into_iter())
+            .filter_map(|tr| {
+                let m = *self.d.traits[tr.tr.0].methods.get(name)?;
+                pick(self.d.f(m)).then_some((tr, m))
+            })
+            .collect();
+        // A bound written beats the `Domain` a domain parameter meets unwritten.
+        let written = self.bounds_of(i, false);
+        let gives: Vec<(decls::TraitRef, FnId)> = match gives.iter().any(|g| written.contains(&g.0))
+        {
+            true => gives
+                .into_iter()
+                .filter(|g| written.contains(&g.0))
+                .collect(),
+            false => gives,
+        };
+        let Some((first, m)) = gives.first().cloned() else {
+            return Ok(None);
+        };
+        if let Some((other, _)) = gives.iter().find(|(r, _)| r.tr != first.tr) {
+            return Err((first.tr, other.tr));
+        }
+        if gives.len() == 1 {
+            return Ok(Some((first, m)));
+        }
+        let r = decls::TraitRef {
+            tr: first.tr,
+            args: first.args.iter().map(|_| self.new_ty()).collect(),
+        };
+        self.obligations
+            .push((Ty::Param(i), r.clone(), span, Origin::Bound));
+        Ok(Some((r, m)))
+    }
+    /// `shown.m`, which traits `a` and `b` both give `ty`: the call names its trait,
+    /// `a.m(args)` (R08.1.4).
+    fn two_traits_give(
+        &mut self,
+        (a, b): (TraitId, TraitId),
+        shown: &str,
+        ty: &Ty,
+        name: &ast::Name,
+        args: &str,
+        span: Span,
+    ) -> TExpr {
+        let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
+        let (ty, m) = (self.show(ty), &name.text);
+        let text = cpl_diag::msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
+            .say(&[&shown, m, a, b, &ty, m]);
+        let help = format!("name the trait: `{a}.{m}({args})`");
+        self.err_help(
+            name.span,
+            Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, text),
+            Some(help),
+        );
+        Self::error_node(span)
     }
     /// `Trait.m(x, ..)`: the `m` of `x`'s impl of the trait named, as when two traits give `x`
     /// an `m` (R08.1.4).
@@ -788,11 +854,19 @@ impl<'a> Cx<'a> {
             .filter(|g| matches!(g, decls::Named::Fn(f) if self.d.f(*f).getter));
         // A method of a bound on a type parameter.
         if let Ty::Param(i) = &rt {
-            for tr in &self.bound_traits(*i) {
-                let t = &self.d.traits[tr.tr.0];
-                let m = t.methods.get(&name.text).copied();
-                if let Some(m) = m.filter(|m| getter.is_none() || self.d.f(*m).getter) {
-                    return self.bound_trait_call(recv, &rt, (tr, m), name, call, span);
+            let pick = |fd: &decls::FnDecl| getter.is_none() || fd.getter;
+            match self.bound_giving(*i, &name.text, pick, span) {
+                Ok(Some((tr, m))) => {
+                    let e = self.bound_trait_call(recv, &rt, (&tr, m), name, call, span);
+                    if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {
+                        self.unify(&e.ty, w);
+                    }
+                    return e;
+                }
+                Ok(None) => {}
+                Err(two) => {
+                    let shown = self.text(base.span);
+                    return self.two_traits_give(two, shown, &rt, name, shown, span);
                 }
             }
         }
@@ -823,17 +897,8 @@ impl<'a> Cx<'a> {
                     return e;
                 }
                 [a, b, ..] => {
-                    let (a, b) = (&self.d.traits[a.0].name, &self.d.traits[b.0].name);
-                    let (shown, ty) = (self.text(base.span), self.show(&rt));
-                    let m = &name.text;
-                    let text = cpl_diag::msgs::check::AMBIGUOUS_METHOD_IS_AMBIGUOUS_BOTH_AND
-                        .say(&[&shown, m, a, b, &ty, m]);
-                    self.err_help(
-                        name.span,
-                        Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, text),
-                        Some(format!("name the trait: `{a}.{m}({shown})`")),
-                    );
-                    return Self::error_node(span);
+                    let shown = self.text(base.span);
+                    return self.two_traits_give((a, b), shown, &rt, name, shown, span);
                 }
                 _ => {}
             }
