@@ -24,6 +24,7 @@ pub use free::{free_vars, group_free};
 mod from_op;
 mod index;
 mod keep;
+mod labels;
 mod lambda;
 mod list;
 mod member;
@@ -327,6 +328,10 @@ struct Cx<'a> {
     /// How many loops enclose the statement being checked, and a marker for `For`'s two-step entry.
     loops: u32,
     in_for: bool,
+    /// The loops around this point that have a label or an `else:`, innermost last.
+    loop_frames: Vec<labels::Frame>,
+    /// The loop statement whose label and `else:` are being handled, by its start.
+    framed: Option<u32>,
     /// Set while checking the one call that may be a generator or a lender.
     allow_region: bool,
     /// Where a `min=` / `max=` checked as a statement puts its `Bool`, when it is a condition.
@@ -464,6 +469,8 @@ pub fn check(
         region: None,
         loops: 0,
         in_for: false,
+        loop_frames: Vec::new(),
+        framed: None,
         allow_region: false,
         kept: None,
         recur: None,

@@ -1064,6 +1064,9 @@ impl<'a> Cx<'a> {
                 let v = self.expr(e, None);
                 out.push(TStmt::Expr(v));
             }
+            StmtKind::For { .. } | StmtKind::While { .. } if self.framed != Some(s.span.start) => {
+                self.framed_loop(s, out)
+            }
             StmtKind::While {
                 cond,
                 body,
@@ -1325,7 +1328,7 @@ impl<'a> Cx<'a> {
                     ),
                 ),
             },
-            StmtKind::Break(None) => out.push(TStmt::Break),
+            StmtKind::Break(label) => self.break_to(label.as_ref(), s.span, out),
             StmtKind::Continue(None) => out.push(TStmt::Continue),
             StmtKind::Fn(fd) => self.nested_fn(fd, s, out),
             // `var a: T` with no value: the parser has said so, and `a` is still declared, so
