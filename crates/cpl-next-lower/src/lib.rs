@@ -987,7 +987,9 @@ impl Lw<'_> {
             TStmt::While(c, b) => {
                 let mut body = Vec::new();
                 let cv = self.expr(c, &mut body);
-                body.push(Stmt::If(cv, vec![], vec![Stmt::Break]));
+                if !matches!(cv.kind, EK::Bool(true)) {
+                    body.push(Stmt::If(cv, vec![], vec![Stmt::Break]));
+                }
                 let v = self.expr(b, &mut body);
                 self.effect(v, &mut body);
                 out.push(Stmt::Loop(body, vec![]));
@@ -1392,8 +1394,21 @@ fn ends(stmts: &[Stmt<Ty>]) -> bool {
         Some(Stmt::Check { cond, .. }) => matches!(cond.kind, EK::Bool(false)),
         Some(Stmt::If(_, a, b)) => ends(a) && ends(b),
         Some(Stmt::Switch(_, arms)) => !arms.is_empty() && arms.iter().all(|a| ends(a)),
+        // A loop nothing breaks out of, as `while true` is, only leaves by `return`.
+        Some(Stmt::Loop(body, step)) => !breaks(body) && !breaks(step),
         _ => false,
     }
+}
+
+/// Whether a `break` in `stmts` can leave the loop around them.
+fn breaks(stmts: &[Stmt<Ty>]) -> bool {
+    stmts.iter().any(|s| match s {
+        Stmt::Break => true,
+        Stmt::If(_, a, b) => breaks(a) || breaks(b),
+        Stmt::Switch(_, arms) => arms.iter().any(|a| breaks(a)),
+        Stmt::Region { body, .. } => breaks(body),
+        _ => false,
+    })
 }
 
 /// A fn's site tables before its first site: site 0, which has no place.
