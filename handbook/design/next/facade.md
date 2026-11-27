@@ -100,7 +100,7 @@ so the lines leave `today` when their query is answered from cpl-next.
 | `arity_key`, `import_edit`, `prelude_uses`, `BUILTIN_TYPES` | `complete(at)` | Scope |
 | `DeclKind`, `CalleeKind` | the kind on `Item` | Signatures |
 | `interval`, `RangeEnds`, `Overflow` | `bounds(span)` | the typed tree's range types |
-| `Representation`, `human_bytes` | `layout(at)` | the linked program's layout |
+| `Representation`, `human_bytes` | `layout(at)`, not built | the backend's layout table (below) |
 
 Lint asks the old `Ty` structural questions: a range's ends (`Range`), the
 domain a position is in (`Pos`), an `Optional`'s or `Array`'s parts, and a
@@ -125,6 +125,15 @@ impl Type<'_> {
 `implements` and `members` read the checker's own impl lookup through
 the Signatures view (`impl_args`, `has_impl`), so a tool never matches
 impls by hand.
+
+`layout(at)` waits on the backend. The old `represent` is the old
+checker's own model of storage, and nothing ties it to the C++ the judge
+runs. cpl-next-cpp decides no layout in one place today: a type's
+storage is whatever its emitted C++ struct is. The query is answered once
+cpl-next-cpp has a layout table, one fn deciding each instance's storage
+(width, where an optional keeps `None`, field offsets) that the emitter
+and the facade both read. A second Rust model of `sizeof` beside the
+emitter is not built.
 
 Ruling: there is no `is_array` or `is_optional`. A lint rule that today
 matches `Ty::Array` or `Ty::Optional` asks `implements` of the trait it
