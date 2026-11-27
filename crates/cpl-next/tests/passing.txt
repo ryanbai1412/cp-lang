@@ -130,6 +130,7 @@ core-01/top-level-return.cp
 core-01/trailing-comma.cp
 core-01/tuple-field-chain.cp
 core-01/type-args-capitalized.cp
+core-01/unchecked-block-runs.cp
 core-01/unchecked-not-expression.cp
 core-01/unclosed-paren.cp
 core-01/unindented-nested-header-one-error.cp
@@ -170,6 +171,7 @@ core-02/fixed-field.cp
 core-02/fresh-slot-recursion.cp
 core-02/fresh-type-block-int-escapes.cp
 core-02/fresh-type-same-itself.cp
+core-02/fresh-types-differ.cp
 core-02/function-values.cp
 core-02/generated-ctor-clone-keeps.cp
 core-02/generated-ctor-moves.cp
@@ -248,6 +250,7 @@ core-03/int-min-plus-one-not-none.cp
 core-03/int-min-plus-one-ok.cp
 core-03/int-range-len-overflow-traps.cp
 core-03/intermediate-overflow-traps.cp
+core-03/interp-std-method-import.cp
 core-03/joint-bound-checked-store.cp
 core-03/local-contract-checked-on-assign.cp
 core-03/locals-wide.cp
@@ -300,6 +303,8 @@ core-04/c1-source-key-into-view.cp
 core-04/c2-nested-slice.cp
 core-04/closed-cut-range-not-piece.cp
 core-04/collect-keeps-keys.cp
+core-04/cut-from-int-is-count.cp
+core-04/cut-indexes-positions.cp
 core-04/cut-int-any-base.cp
 core-04/cut-neighbours.cp
 core-04/cut-range-table.cp
@@ -323,6 +328,7 @@ core-04/dom-walk-rev.cp
 core-04/domain-count-predicate-is-bool.cp
 core-04/domain-drop-first.cp
 core-04/domain-is-its-range.cp
+core-04/domain-mixup.cp
 core-04/e1-list-param-rejects-slice.cp
 core-04/empty-array-literal-fits-empty-domain.cp
 core-04/empty-array-literal-short-rejected.cp
@@ -353,6 +359,7 @@ core-04/literal-record-compare.cp
 core-04/nested-slice-below-view-start-traps.cp
 core-04/nth-element-renamed.cp
 core-04/nth-past-end-traps.cp
+core-04/open-ended.cp
 core-04/pos-arith-not-position.cp
 core-04/pos-int-is-written-value.cp
 core-04/pos-prev-next.cp
@@ -360,6 +367,7 @@ core-04/position-ord-counts-from-zero.cp
 core-04/range-arg-is-domain-when-nth-used.cp
 core-04/range-bound-from-capped-lets.cp
 core-04/range-key-outside-traps.cp
+core-04/range-literal-with-exponent-is-a-value.cp
 core-04/range-nth-positional.cp
 core-04/range-param-argument-traps.cp
 core-04/range-param-method-argument-traps.cp
@@ -374,6 +382,8 @@ core-04/rb1-q12-literal-outside-domain.cp
 core-04/rb1-q13-literal-inside-min-count.cp
 core-04/rb1-q15-no-int-to-position.cp
 core-04/rb1-q17-cut-int-counts-before.cp
+core-04/rb1-q19-stored-cut-range-not-piece.cp
+core-04/rb1-q20-int-range-last-true.cp
 core-04/reversed-range-empty.cp
 core-04/runtime-domain-literal-between-traps.cp
 core-04/runtime-domain-literal-past-max.cp
@@ -442,6 +452,7 @@ core-05/heap-row-lend-blocks-push.cp
 core-05/if-let-lent-optional-keeps-the-loan.cp
 core-05/int-element-goes-into-a-struct-field.cp
 core-05/int-element-outlives-a-pop-of-its-list.cp
+core-05/lambda-name-not-hoisted.cp
 core-05/lambda-return-is-local.cp
 core-05/lends-named-source-only.cp
 core-05/lends-optional-projection.cp
@@ -607,6 +618,7 @@ core-07/range-has-no-source.cp
 core-07/range-indexed-not-view.cp
 core-07/range-slice-outside-traps.cp
 core-07/record-literal-compared-takes-other-side-type.cp
+core-07/rev-of-a-generator-needs-bidir.cp
 core-07/rev-of-slice-is-not-indexable.cp
 core-07/rev-traits-come-from-std-impls.cp
 core-07/sequence-names-are-std-types.cp
@@ -617,6 +629,7 @@ core-07/slice-out-of-keys-traps.cp
 core-07/slice-past-source-traps.cp
 core-07/slice-read-through-first-and-items.cp
 core-07/slice-view-then-write.cp
+core-07/step.cp
 core-07/str-count-takes-predicate.cp
 core-07/suffix-fold-is-not-a-name.cp
 core-07/swap-with-one-index-past-the-end-traps.cp
@@ -661,6 +674,7 @@ core-08/getter-impl-on-builtin-type.cp
 core-08/getter-trait-param-from-record-field.cp
 core-08/getter-trait-struct-opt-in.cp
 core-08/impl-choice-must-meet-the-associated-type-bound.cp
+core-08/impl-chooses-an-associated-type-per-kind.cp
 core-08/impl-for-every-domain-beside-int.cp
 core-08/impl-missing-an-associated-type.cp
 core-08/impl-plus-shorthand.cp
@@ -742,6 +756,7 @@ core-09/range-store-trap.cp
 core-09/rb1-q40-with-must-come-first.cp
 core-09/trap-trace-source-names.cp
 core-09/trapped-check-that-holds.cp
+core-09/unchecked-block.cp
 core-09/unchecked-is-statement.cp
 core-09/unwrap-none-trap.cp
 core-09/unwrap-some-ok.cp
@@ -871,6 +886,7 @@ lib-ops-ranges/bare-op-tuple.cp
 lints/by-twin.cp
 lints/dimension-suffixed-prefix.cp
 lints/pow-method.cp
+lints/removed-bound-query.cp
 matrix/generic/user--explicit_ctor.cp
 matrix/generic/user--explicit_method.cp
 matrix/generic/user--explicit_static.cp
@@ -1084,6 +1100,7 @@ next/a_own_18_moved_while_captured_in_lambda.cp
 next/a_own_19_generic_return_lends.cp
 next/a_own_20_get_of_heap_element_lends.cp
 next/a_own_21_get_of_plain_element_copies.cp
+next/a_own_22_list_param_result_is_owned.cp
 next/a_range_rt_01_store_above_end.cp
 next/a_range_rt_03_tuple_read_bounded_by_earlier.cp
 next/a_range_rt_04_tuple_read_at_bound.cp
@@ -1287,6 +1304,7 @@ next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
 next/n_u64_04_shift_by_64_traps.cp
 next/n_u64_literal.cp
+next/n_unchecked_wraps.cp
 next/n_use_two_imports_ambiguous.cp
 next/n_variant_01_bare_variant_names_from_context.cp
 next/o01_gen_local_walk_read.cp
@@ -1369,7 +1387,9 @@ std-deque/linked-list-of-a-list-is-rejected.cp
 std-derive/float-part-is-not-structural-hash.cp
 std-dp/monotone-minima-empty-shapes.cp
 std-dp/monotone-minima-ties-take-leftmost.cp
+std-dsu/dsu-empty-domain-no-roots.cp
 std-dsu/dsu-of-a-size-is-rejected.cp
+std-dsu/mark-undo-with-no-change.cp
 std-dsu/new.cp
 std-dsu/persistent-dsu-branches.cp
 std-geometry/area2-orientation.cp
@@ -1416,6 +1436,8 @@ std-range/len-param-past-2-31-traps-at-the-call.cp
 std-range/len-param-takes-a-len.cp
 std-search/dinkelbach-1.cp
 std-search/dinkelbach-2.cp
+std-search/first-last-true-monotone-shapes.cp
+std-search/first-true-call-count.cp
 std-search/last-true-was-bsearch-last.cp
 std-seq/all-1.cp
 std-seq/any-1.cp
@@ -1426,6 +1448,7 @@ std-seq/drop_while-1.cp
 std-seq/ends-of-empty-range.cp
 std-seq/filter_map-1.cp
 std-seq/first-of-seq-and-empty.cp
+std-seq/first_true-1.cp
 std-seq/flat_map-1.cp
 std-seq/flatten-and-fold-methods.cp
 std-seq/insert-at-len-appends.cp
@@ -1433,10 +1456,14 @@ std-seq/insert-into-empty.cp
 std-seq/insert-past-len-traps.cp
 std-seq/insert-remove-front-middle-end.cp
 std-seq/iterate-1.cp
+std-seq/last-true-false-then-true-traps.cp
+std-seq/last-true-never.cp
+std-seq/last_true-1.cp
 std-seq/map-of-a-list-is-indexed-through-its-source.cp
 std-seq/mean-empty-none.cp
 std-seq/present-1.cp
 std-seq/reduce-1.cp
+std-seq/seq-u05-monotone-transition.cp
 std-seq/seq-u15-zip-and-items.cp
 std-seq/seq-u20-first-some.cp
 std-seq/seq-u26-all-match-positions.cp
@@ -1445,6 +1472,7 @@ std-seq/seq-u36-fold-without-identity.cp
 std-seq/seq-u42-pieces-over-domain.cp
 std-seq/seq-u56-map-filter.cp
 std-seq/seq-u59-generators.cp
+std-seq/seq-u70-position-wrong-domain-rejected.cp
 std-seq/seq-u9-fold-seed.cp
 std-seq/sized-bound-met-by-std-impls-for-built-ins.cp
 std-seq/span-backwards-traps.cp
@@ -1466,7 +1494,6 @@ tools-fmt-lint/lint-never-blocks-run.cp
 traits/Add/Vec--add.cp
 traits/Add/Vec3--add.cp
 traits/Bidir/Filtered--iter_rev.cp
-traits/Bidir/Items--iter_rev.cp
 traits/Bidir/List--iter_rev.cp
 traits/Bidir/Mapped--iter_rev.cp
 traits/Bidir/Range--iter_rev.cp
