@@ -54,9 +54,9 @@ impl Cx<'_> {
                         (&whole[..], &[][..])
                     }
                     Some(fields) => {
-                        let code = cpl_diag::codes::WRONG_ARG_COUNT.0;
+                        let code = cpl_diag::codes::WRONG_ARG_COUNT;
                         let (k, n) = (params.len(), fields.len());
-                        self.err(span, format!("{code}: this lambda takes {k} parameters; the value it is passed has {n} parts"));
+                        self.err(span, Msg::verdict(code, format!("this lambda takes {k} parameters; the value it is passed has {n} parts")));
                         return mk(TK::Error, Ty::Error);
                     }
                     None => (params, param_tys),
@@ -94,10 +94,7 @@ impl Cx<'_> {
                 (None, None) => {
                     self.err(
                         span,
-                        format!(
-                            "{}: the type of `{shown}` is not known here; write `({shown}: T) => ...`",
-                            cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION.0
-                        ),
+                        Msg::verdict(cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION, format!("the type of `{shown}` is not known here; write `({shown}: T) => ...`")),
                     );
                     Ty::Error
                 }
@@ -202,7 +199,7 @@ impl Cx<'_> {
             &mut errs,
         );
         for e in errs {
-            self.err(span, e.text);
+            self.err(span, e);
         }
         self.fresh_sets(&t)
     }
@@ -362,9 +359,11 @@ impl Cx<'_> {
                 };
                 self.err(
                     span,
-                    format!(
-                        "{}: `{name}` uses `{what}`, which is not set yet where `{name}` is called",
-                        cpl_diag::codes::USED_BEFORE_SET.0
+                    Msg::verdict(
+                        cpl_diag::codes::USED_BEFORE_SET,
+                        format!(
+                            "`{name}` uses `{what}`, which is not set yet where `{name}` is called"
+                        ),
                     ),
                 );
             }

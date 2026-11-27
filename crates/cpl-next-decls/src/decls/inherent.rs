@@ -71,7 +71,7 @@ pub(super) fn inherent_impl(
         {
             d.misdeclared.push((
                 (item + m.span.start) as usize,
-                cpl_diag::codes::OVERLOAD_BY_TYPE.0,
+                cpl_diag::codes::OVERLOAD_BY_TYPE,
                 format!("`{}` is already a method of `{}`", f.name.text, d.s(t).name),
             ));
         }

@@ -97,9 +97,9 @@ impl<'a> Cx<'a> {
         let Some((false, elem)) = self.d.f(m).region.clone() else {
             return self.err(
                 span,
-                format!(
-                    "{}: this cannot be walked with `for`",
-                    cpl_diag::codes::TYPE_MISMATCH.0
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    "this cannot be walked with `for`",
                 ),
             );
         };
@@ -139,18 +139,18 @@ impl<'a> Cx<'a> {
             let shown = self.show(&recv.ty);
             return self.err(
                 span,
-                format!(
-                    "{}: `{shown}` has no `iter`",
-                    cpl_diag::codes::UNKNOWN_FIELD.0
+                Msg::verdict(
+                    cpl_diag::codes::UNKNOWN_FIELD,
+                    format!("`{shown}` has no `iter`"),
                 ),
             );
         };
         let Some((false, elem)) = self.d.f(m).region.clone() else {
             return self.err(
                 span,
-                format!(
-                    "{}: this cannot be walked with `for`",
-                    cpl_diag::codes::TYPE_MISMATCH.0
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    "this cannot be walked with `for`",
                 ),
             );
         };
@@ -194,9 +194,9 @@ impl<'a> Cx<'a> {
                 if i > 0 {
                     self.err(
                         s.span,
-                        format!(
-                            "{}: a bare `with` line comes first in its block",
-                            cpl_diag::codes::WITH_NOT_FIRST.0
+                        Msg::verdict(
+                            cpl_diag::codes::WITH_NOT_FIRST,
+                            "a bare `with` line comes first in its block",
                         ),
                     );
                     continue;
@@ -256,11 +256,11 @@ impl<'a> Cx<'a> {
         {
             return self.coerce(v, &Ty::Bool);
         }
-        let code = cpl_diag::codes::CONDITION_NOT_BOOL.0;
+        let code = cpl_diag::codes::CONDITION_NOT_BOOL;
         let shown = self.show(&t);
         self.err(
             v.span,
-            format!("{code}: this condition is a `{shown}`, not a `Bool`"),
+            Msg::verdict(code, format!("this condition is a `{shown}`, not a `Bool`")),
         );
         TExpr {
             kind: TK::Error,
@@ -380,8 +380,13 @@ impl<'a> Cx<'a> {
             if let Ty::Struct(d, ..) = self.shallow(&w.ty) {
                 let have = self.d.s(d).fields.len();
                 if crate::records::is_record(&self.d.s(d).name) && have != n {
-                    let code = cpl_diag::codes::TYPE_MISMATCH.0;
-                    let msg = format!("{code}: this names {n} of the record's {have} fields; write `..` for the rest");
+                    let code = cpl_diag::codes::TYPE_MISMATCH;
+                    let msg = Msg::verdict(
+                        code,
+                        format!(
+                            "this names {n} of the record's {have} fields; write `..` for the rest"
+                        ),
+                    );
                     self.err(pat.span, msg);
                 }
             }
@@ -427,16 +432,22 @@ impl<'a> Cx<'a> {
                         return self.stmt(&one, out);
                     }
                     PatternKind::Variant { path, args } if path.len() == 1 && args.is_empty() => {
-                        let code = cpl_diag::codes::VALUE_NAME_CASE.0;
+                        let code = cpl_diag::codes::VALUE_NAME_CASE;
                         let n = &path[0].text;
                         return self.err(
                             pat.span,
-                            format!("{code}: a value's name starts lowercase, not `{n}`"),
+                            Msg::verdict(
+                                code,
+                                format!("a value's name starts lowercase, not `{n}`"),
+                            ),
                         );
                     }
                     PatternKind::Literal(_) | PatternKind::Variant { .. } | PatternKind::Or(_) => {
-                        let code = cpl_diag::codes::EXPECTED_PATTERN.0;
-                        let msg = format!("{code}: this pattern may not match; give the `let` an `else` that leaves");
+                        let code = cpl_diag::codes::EXPECTED_PATTERN;
+                        let msg = Msg::verdict(
+                            code,
+                            "this pattern may not match; give the `let` an `else` that leaves",
+                        );
                         return self.err(s.span, msg);
                     }
                     _ => {}
@@ -589,8 +600,8 @@ impl<'a> Cx<'a> {
                 guard: None,
             } => {
                 if !otherwise.leaves() {
-                    let code = cpl_diag::codes::ELSE_FALLS_THROUGH.0;
-                    self.err(s.span, format!("{code}: this `else` block can reach its end; end it with `return`, `break`, `continue` or a trap"));
+                    let code = cpl_diag::codes::ELSE_FALLS_THROUGH;
+                    self.err(s.span, Msg::verdict(code, "this `else` block can reach its end; end it with `return`, `break`, `continue` or a trap"));
                 }
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
                 // `let p = x else: leave`: the block runs when `x` does not match `p`, whose names
@@ -770,9 +781,9 @@ impl<'a> Cx<'a> {
                     let Some((true, elem)) = self.d.f(f.decl).region.clone() else {
                         return self.err(
                             s.span,
-                            format!(
-                                "{}: this call does not lend a place, so it cannot be assigned",
-                                cpl_diag::codes::TYPE_MISMATCH.0
+                            Msg::verdict(
+                                cpl_diag::codes::TYPE_MISMATCH,
+                                "this call does not lend a place, so it cannot be assigned",
                             ),
                         );
                     };
@@ -821,14 +832,14 @@ impl<'a> Cx<'a> {
                             cache |= sd.cached.get(*i).copied().unwrap_or(false);
                             if !cache && !sd.var_fields.get(*i).copied().unwrap_or(true) {
                                 let (st, f) = (sd.name.clone(), sd.fields[*i].0.clone());
-                                self.err(target.span, format!("{}: field `{st}.{f}` is fixed (not `var`) and cannot be assigned", cpl_diag::codes::ASSIGN_FIXED_FIELD.0));
+                                self.err(target.span, Msg::verdict(cpl_diag::codes::ASSIGN_FIXED_FIELD, format!("field `{st}.{f}` is fixed (not `var`) and cannot be assigned")));
                             }
                         }
                     }
                     root = b;
                 }
                 if let Some(name) = self.let_root(&place).filter(|_| !cache) {
-                    self.err(target.span, format!("{}: `{name}` is bound by `let` and cannot be assigned; declare it with `var`", cpl_diag::codes::ASSIGN_TO_LET.0));
+                    self.err(target.span, Msg::verdict(cpl_diag::codes::ASSIGN_TO_LET, format!("`{name}` is bound by `let` and cannot be assigned; declare it with `var`")));
                 }
                 let v = match op {
                     AssignOp::Set => self.expr(value, Some(&place.ty)),
@@ -1004,9 +1015,9 @@ impl<'a> Cx<'a> {
                     let Some((false, elem)) = self.d.f(f.decl).region.clone() else {
                         return self.err(
                             s.span,
-                            format!(
-                                "{}: this cannot be walked with `for`",
-                                cpl_diag::codes::TYPE_MISMATCH.0
+                            Msg::verdict(
+                                cpl_diag::codes::TYPE_MISMATCH,
+                                "this cannot be walked with `for`",
                             ),
                         );
                     };
@@ -1084,9 +1095,9 @@ impl<'a> Cx<'a> {
                 let Some(p) = self.type_path(def) else {
                     return self.err(
                         def.span,
-                        format!(
-                            "{}: a product domain's parts are domains",
-                            cpl_diag::codes::TYPE_MISMATCH.0
+                        Msg::verdict(
+                            cpl_diag::codes::TYPE_MISMATCH,
+                            "a product domain's parts are domains",
                         ),
                     );
                 };
@@ -1121,9 +1132,9 @@ impl<'a> Cx<'a> {
                 }
                 _ => self.err(
                     s.span,
-                    format!(
-                        "{}: `yield` outside a fn that `yields`",
-                        cpl_diag::codes::TYPE_MISMATCH.0
+                    Msg::verdict(
+                        cpl_diag::codes::TYPE_MISMATCH,
+                        "`yield` outside a fn that `yields`",
                     ),
                 ),
             },
@@ -1131,9 +1142,9 @@ impl<'a> Cx<'a> {
                 // Every path through a lender reaches one `lend`; inside a loop it could run twice.
                 Some((true, _)) if self.loops > 0 => self.err(
                     s.span,
-                    format!(
-                        "{}: `lend` inside a loop: a lender lends one place once",
-                        cpl_diag::codes::BAD_PROJECTION.0
+                    Msg::verdict(
+                        cpl_diag::codes::BAD_PROJECTION,
+                        "`lend` inside a loop: a lender lends one place once",
                     ),
                 ),
                 Some((true, t)) => {
@@ -1141,11 +1152,13 @@ impl<'a> Cx<'a> {
                     if !self.unify(&p.ty, &t) {
                         self.err(
                             s.span,
-                            format!(
-                                "{}: expected `{}`, found `{}`",
-                                cpl_diag::codes::TYPE_MISMATCH.0,
-                                self.show(&t),
-                                self.show(&p.ty)
+                            Msg::verdict(
+                                cpl_diag::codes::TYPE_MISMATCH,
+                                format!(
+                                    "expected `{}`, found `{}`",
+                                    self.show(&t),
+                                    self.show(&p.ty)
+                                ),
                             ),
                         );
                     }
@@ -1160,9 +1173,9 @@ impl<'a> Cx<'a> {
                 }
                 _ => self.err(
                     s.span,
-                    format!(
-                        "{}: `lend` outside a fn that `lends`",
-                        cpl_diag::codes::BAD_PROJECTION.0
+                    Msg::verdict(
+                        cpl_diag::codes::BAD_PROJECTION,
+                        "`lend` outside a fn that `lends`",
                     ),
                 ),
             },
@@ -1386,11 +1399,7 @@ impl<'a> Cx<'a> {
             let (mb, judge) = (judge.memory_mb, judge.name.clone());
             self.err(
                 span,
-                format!(
-                    "{}: `{name}` takes {} MB at the input bounds, over the {mb} MB limit on {judge}",
-                    cpl_diag::codes::MEMORY_OVER_PROFILE.0,
-                    bytes >> 20
-                ),
+                Msg::verdict(cpl_diag::codes::MEMORY_OVER_PROFILE, format!("`{name}` takes {} MB at the input bounds, over the {mb} MB limit on {judge}", bytes >> 20)),
             );
         }
     }
@@ -1517,10 +1526,7 @@ impl<'a> Cx<'a> {
                             if decls::constant_int(lo).is_none() {
                                 self.err(
                                     span,
-                                    format!(
-                                        "{}: an array over a range that starts at a value: name it as a domain, `domain D = lo..hi`, then `[D]T`",
-                                        cpl_diag::codes::TYPE_MISMATCH.0
-                                    ),
+                                    Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, "an array over a range that starts at a value: name it as a domain, `domain D = lo..hi`, then `[D]T`"),
                                 );
                             }
                             Some(((**lo).clone(), (**hi).clone(), *inclusive))
@@ -1612,12 +1618,13 @@ impl<'a> Cx<'a> {
         for a in args {
             let field = a.name.as_ref().map(|n| n.text.clone()).unwrap_or_default();
             if !c.fields.iter().any(|x| x.name.text == field) {
-                let code = cpl_diag::codes::UNKNOWN_ARG_NAME.0;
-                let msg = format!("{code}: context `{}` has no field `{field}`", c.name);
+                let code = cpl_diag::codes::UNKNOWN_ARG_NAME;
+                let msg =
+                    Msg::verdict(code, format!("context `{}` has no field `{field}`", c.name));
                 self.err(a.value.span, msg);
             } else if !constant(&a.value) {
-                let code = cpl_diag::codes::CONTEXT_NOT_CONSTANT.0;
-                let msg = format!("{code}: `{}.{field}` is set to a constant", c.name);
+                let code = cpl_diag::codes::CONTEXT_NOT_CONSTANT;
+                let msg = Msg::verdict(code, format!("`{}.{field}` is set to a constant", c.name));
                 self.err(a.value.span, msg);
             } else {
                 fs.push(super::CtxFrame {
@@ -1648,7 +1655,7 @@ impl<'a> Cx<'a> {
         generics.extend(holes.iter().cloned());
         let t = decls::body_type(self.d, self.module, &generics, &self.doms, &t, &mut errs);
         for e in errs {
-            self.err(span, e.text);
+            self.err(span, e);
         }
         let t = self.fresh_sets(&t);
         if holes.is_empty() {
@@ -1784,9 +1791,9 @@ impl<'a> Cx<'a> {
                 let name = self.domains[*d].name.clone();
                 self.err(
                     span,
-                    format!(
-                        "{}: `{k}` is never a position of `{name}`",
-                        cpl_diag::codes::RANGE_STORE_CONST.0
+                    Msg::verdict(
+                        cpl_diag::codes::RANGE_STORE_CONST,
+                        format!("`{k}` is never a position of `{name}`"),
                     ),
                 );
             }
@@ -1819,9 +1826,11 @@ impl<'a> Cx<'a> {
                             let name = self.domains[*d].name.clone();
                             self.err(
                                 span,
-                                format!(
-                                    "{}: an `Int` indexes a `[{name}]` array: write `{name}(i)`",
-                                    cpl_diag::codes::WRONG_DOMAIN.0
+                                Msg::verdict(
+                                    cpl_diag::codes::WRONG_DOMAIN,
+                                    format!(
+                                        "an `Int` indexes a `[{name}]` array: write `{name}(i)`"
+                                    ),
                                 ),
                             );
                         }
@@ -1837,9 +1846,9 @@ impl<'a> Cx<'a> {
                 let (ks, ts) = (self.show(&k), self.show(&t));
                 self.err(
                     i.span,
-                    format!(
-                        "{}: a `{ts}` indexes a `[{ks}]` array: index it with a `{ks}`",
-                        cpl_diag::codes::WRONG_DOMAIN.0
+                    Msg::verdict(
+                        cpl_diag::codes::WRONG_DOMAIN,
+                        format!("a `{ts}` indexes a `[{ks}]` array: index it with a `{ks}`"),
                     ),
                 );
                 return TExpr {
@@ -1854,9 +1863,9 @@ impl<'a> Cx<'a> {
             if let TK::Int(k) = k.kind {
                 self.err(
                     i.span,
-                    format!(
-                        "{}: `-{k}` is never a key: keys do not wrap; count from `.len`",
-                        cpl_diag::codes::NEGATIVE_LITERAL_INDEX.0
+                    Msg::verdict(
+                        cpl_diag::codes::NEGATIVE_LITERAL_INDEX,
+                        format!("`-{k}` is never a key: keys do not wrap; count from `.len`"),
                     ),
                 );
             }
@@ -1886,9 +1895,9 @@ impl<'a> Cx<'a> {
         ) {
             self.err(
                 e.span,
-                format!(
-                    "{}: this is not a place that can be assigned or lent",
-                    cpl_diag::codes::TYPE_MISMATCH.0
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    "this is not a place that can be assigned or lent",
                 ),
             );
         }

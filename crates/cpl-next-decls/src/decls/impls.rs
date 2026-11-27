@@ -211,7 +211,7 @@ impl Decls {
 
 /// An impl of a trait for a type needs one of each of its supertraits for that type (R08.1.1).
 /// The library's are checked with it; here one the slice refuses would read as missing.
-pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(usize, &'static str, String)> {
+pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(usize, cpl_diag::Code, String)> {
     let mut out = Vec::new();
     for im in d
         .impls
@@ -228,7 +228,7 @@ pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(usize, &'static 
             if !met {
                 out.push((
                     im.at,
-                    cpl_diag::codes::MISSING_IMPL.0,
+                    cpl_diag::codes::MISSING_IMPL,
                     format!(
                         "`impl {}` needs an `impl {}` for the same type (R08.1.1)",
                         tr.name, d.traits[sup.tr.0].name
@@ -250,7 +250,7 @@ pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(usize, &'static 
                 let k = a - (tr.defaults.len() + 1 - tr.assoc.len());
                 out.push((
                     im.assoc_at.get(k).copied().unwrap_or(im.at),
-                    cpl_diag::codes::MISSING_IMPL.0,
+                    cpl_diag::codes::MISSING_IMPL,
                     format!(
                         "`impl {}` chooses a type for `{}` with no `impl {}` (R08.1.1)",
                         tr.name, tr.assoc[k], d.traits[ab.tr.0].name

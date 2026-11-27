@@ -476,9 +476,9 @@ impl<'a> Cx<'a> {
                 let w = self.show(want);
                 self.err(
                     span,
-                    format!(
-                        "{}: a list of {n} elements where `{w}` has {c} cells",
-                        cpl_diag::codes::TYPE_MISMATCH.0
+                    Msg::verdict(
+                        cpl_diag::codes::TYPE_MISMATCH,
+                        format!("a list of {n} elements where `{w}` has {c} cells"),
                     ),
                 );
             }
@@ -496,11 +496,9 @@ impl<'a> Cx<'a> {
         if !self.unify(&ty, want) {
             self.err(
                 span,
-                format!(
-                    "{}: expected `{}`, found `{}`",
-                    cpl_diag::codes::TYPE_MISMATCH.0,
-                    self.show(want),
-                    self.show(&ty)
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    format!("expected `{}`, found `{}`", self.show(want), self.show(&ty)),
                 ),
             );
         }
@@ -561,9 +559,9 @@ impl<'a> Cx<'a> {
                 if i as f64 as i128 != i128::from(i) {
                     self.err(
                         span,
-                        format!(
-                            "{}: `F64` cannot hold {i} exactly: write `F64({i})`",
-                            cpl_diag::codes::TYPE_MISMATCH.0
+                        Msg::verdict(
+                            cpl_diag::codes::TYPE_MISMATCH,
+                            format!("`F64` cannot hold {i} exactly: write `F64({i})`"),
                         ),
                     );
                 }
@@ -597,9 +595,9 @@ impl<'a> Cx<'a> {
                     if i < lo || i > hi {
                         self.err(
                             span,
-                            format!(
-                                "{}: {i} is outside `{lo}..={hi}`",
-                                cpl_diag::codes::RANGE_STORE_CONST.0
+                            Msg::verdict(
+                                cpl_diag::codes::RANGE_STORE_CONST,
+                                format!("{i} is outside `{lo}..={hi}`"),
                             ),
                         );
                     }
@@ -622,10 +620,9 @@ impl<'a> Cx<'a> {
                 if !ok {
                     self.err(
                         span,
-                        format!(
-                            "{}: this function does not fit `{}`",
-                            cpl_diag::codes::TYPE_MISMATCH.0,
-                            self.show(&want_s)
+                        Msg::verdict(
+                            cpl_diag::codes::TYPE_MISMATCH,
+                            format!("this function does not fit `{}`", self.show(&want_s)),
                         ),
                     );
                 }
@@ -656,11 +653,13 @@ impl<'a> Cx<'a> {
                 if !ok {
                     self.err(
                         span,
-                        format!(
-                            "{}: expected `{}`, found `{}`",
-                            cpl_diag::codes::TYPE_MISMATCH.0,
-                            self.show(&want_s),
-                            self.show(&have)
+                        Msg::verdict(
+                            cpl_diag::codes::TYPE_MISMATCH,
+                            format!(
+                                "expected `{}`, found `{}`",
+                                self.show(&want_s),
+                                self.show(&have)
+                            ),
                         ),
                     );
                 }
@@ -745,11 +744,13 @@ impl<'a> Cx<'a> {
                     });
                     self.err_help(
                         span,
-                        format!(
-                            "{}: expected `{}`, found `{}`",
-                            cpl_diag::codes::TYPE_MISMATCH.0,
-                            self.show(&want_s),
-                            self.show(&have)
+                        Msg::verdict(
+                            cpl_diag::codes::TYPE_MISMATCH,
+                            format!(
+                                "expected `{}`, found `{}`",
+                                self.show(&want_s),
+                                self.show(&have)
+                            ),
                         ),
                         help,
                     );

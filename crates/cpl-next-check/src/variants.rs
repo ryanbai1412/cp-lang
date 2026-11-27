@@ -151,11 +151,11 @@ impl Cx<'_> {
             return error;
         }
         let Some((s, tys)) = self.field_tys(&b.ty) else {
-            let code = cpl_diag::codes::TYPE_MISMATCH.0;
+            let code = cpl_diag::codes::TYPE_MISMATCH;
             let t = self.show(&b.ty);
             self.err(
                 span,
-                format!("{code}: `with` updates a struct, not a `{t}`"),
+                Msg::verdict(code, format!("`with` updates a struct, not a `{t}`")),
             );
             return error;
         };
@@ -165,9 +165,12 @@ impl Cx<'_> {
         let mut given: Vec<Option<TExpr>> = vec![None; names.len()];
         for (n, e) in updates {
             let Some(k) = names.iter().position(|m| *m == n.text) else {
-                let code = cpl_diag::codes::UNKNOWN_FIELD.0;
+                let code = cpl_diag::codes::UNKNOWN_FIELD;
                 let t = self.show(&ty);
-                self.err(n.span, format!("{code}: `{t}` has no field `{}`", n.text));
+                self.err(
+                    n.span,
+                    Msg::verdict(code, format!("`{t}` has no field `{}`", n.text)),
+                );
                 continue;
             };
             let v = self.expr(e, Some(&tys[k]));
@@ -180,8 +183,11 @@ impl Cx<'_> {
                 span,
             };
             if given[k].replace(v).is_some() {
-                let code = cpl_diag::codes::DUPLICATE_DEFINITION.0;
-                self.err(n.span, format!("{code}: field `{}` is given twice", n.text));
+                let code = cpl_diag::codes::DUPLICATE_DEFINITION;
+                self.err(
+                    n.span,
+                    Msg::verdict(code, format!("field `{}` is given twice", n.text)),
+                );
             }
         }
         let fields = (given.into_iter().zip(tys).enumerate())
@@ -314,9 +320,9 @@ impl Cx<'_> {
             {
                 self.err(
                     arm.pat.span,
-                    format!(
-                        "{}: this arm never runs: the arms before it match everything it does",
-                        cpl_diag::codes::UNREACHABLE_ARM.0
+                    Msg::verdict(
+                        cpl_diag::codes::UNREACHABLE_ARM,
+                        "this arm never runs: the arms before it match everything it does",
                     ),
                 );
             }
@@ -361,8 +367,8 @@ impl Cx<'_> {
         let mut tail = match missing {
             Some(w) => {
                 let w = self.show_space(&w[0], &xt);
-                let code = cpl_diag::codes::NON_EXHAUSTIVE_MATCH.0;
-                self.err(span, format!("{code}: `match` misses {w}"));
+                let code = cpl_diag::codes::NON_EXHAUSTIVE_MATCH;
+                self.err(span, Msg::verdict(code, format!("`match` misses {w}")));
                 mk(TK::Error, ty.clone())
             }
             // Every value is met, so the last arm needs no test when it has no guard.

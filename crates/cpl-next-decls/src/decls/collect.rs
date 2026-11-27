@@ -873,13 +873,10 @@ fn layer(
                     }
                     let Some(tref) = tref.filter(|_| errors.is_empty()) else {
                         if errors.is_empty() {
-                            errors.push(
-                                format!(
-                                    "{}: impl of an unknown trait",
-                                    cpl_diag::codes::UNKNOWN_TYPE.0
-                                )
-                                .into(),
-                            );
+                            errors.push(Msg::verdict(
+                                cpl_diag::codes::UNKNOWN_TYPE,
+                                "impl of an unknown trait",
+                            ));
                         }
                         d.module_or_program_errors(mid, errors);
                         continue;
@@ -910,7 +907,7 @@ fn layer(
                         }
                         d.misdeclared.push((
                             at,
-                            cpl_diag::codes::DUPLICATE_DEFINITION.0,
+                            cpl_diag::codes::DUPLICATE_DEFINITION,
                             format!("a second impl of `{tname}` for one type (R08.1.2)"),
                         ));
                         continue;
@@ -918,7 +915,7 @@ fn layer(
                     if d.traits[tref.tr.0].alias {
                         d.misdeclared.push((
                             at,
-                            cpl_diag::codes::UNSUPPORTED.0,
+                            cpl_diag::codes::UNSUPPORTED,
                             format!(
                                 "`{tname}` is a trait alias: impl each trait it names (R08.2.6)"
                             ),
@@ -940,7 +937,7 @@ fn layer(
                     {
                         d.misdeclared.push((
                             at,
-                            cpl_diag::codes::UNSUPPORTED.0,
+                            cpl_diag::codes::UNSUPPORTED,
                             format!("`{tname}` and the type are both declared elsewhere: an impl lives with one of them"),
                         ));
                         continue;
@@ -1011,7 +1008,7 @@ fn layer(
                             methods.insert(f.name.text.clone(), fid);
                         }
                     }
-                    let code = cpl_diag::codes::MISSING_IMPL.0;
+                    let code = cpl_diag::codes::MISSING_IMPL;
                     (d.misdeclared).extend(missing.into_iter().map(|m| (at, code, m)));
                     d.push_impl(ImplDecl {
                         trait_: tref,
@@ -1069,7 +1066,7 @@ fn layer(
                         let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
                         d.misdeclared.push((
                             (item + s.span.start) as usize,
-                            code.0,
+                            code,
                             format!("`{}` is already a fn; one name is one fn", f.name.text),
                         ));
                     }
@@ -1093,7 +1090,7 @@ fn layer(
                     if d.s(t).module != mid {
                         d.misdeclared.push((
                             (item + target.span.start) as usize,
-                            cpl_diag::codes::UNSUPPORTED.0,
+                            cpl_diag::codes::UNSUPPORTED,
                             format!("`{}` is declared in another module; its inherent methods live there", name.text),
                         ));
                         continue;

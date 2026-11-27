@@ -67,10 +67,9 @@ impl Cx<'_> {
         if given.len() > takes {
             self.err(
                 span,
-                format!(
-                    "{}: `{n}` takes {takes} type arguments, found {}",
-                    cpl_diag::codes::WRONG_ARG_COUNT.0,
-                    given.len()
+                Msg::verdict(
+                    cpl_diag::codes::WRONG_ARG_COUNT,
+                    format!("`{n}` takes {takes} type arguments, found {}", given.len()),
                 ),
             );
         }
@@ -165,9 +164,9 @@ impl Cx<'_> {
             _ => {
                 self.err(
                     span,
-                    format!(
-                        "{}: `{n}` cannot be called",
-                        cpl_diag::codes::NOT_CALLABLE.0
+                    Msg::verdict(
+                        cpl_diag::codes::NOT_CALLABLE,
+                        format!("`{n}` cannot be called"),
                     ),
                 );
                 mk(TK::Error, Ty::Error)

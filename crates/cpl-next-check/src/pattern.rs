@@ -141,9 +141,12 @@ impl Cx<'_> {
         if self.shallow(t) == Ty::Error {
             return;
         }
-        let code = cpl_diag::codes::TYPE_MISMATCH.0;
+        let code = cpl_diag::codes::TYPE_MISMATCH;
         let t = self.show(t);
-        self.err(span, format!("{code}: {what} cannot match a `{t}`"));
+        self.err(
+            span,
+            Msg::verdict(code, format!("{what} cannot match a `{t}`")),
+        );
     }
 
     /// `pat` against the place `v`: the test that holds when it matches, `None` when it always
@@ -237,19 +240,22 @@ impl Cx<'_> {
                 let names: Vec<String> =
                     self.d.s(s).fields.iter().map(|(n, _)| n.clone()).collect();
                 if !rest && fields.len() != names.len() {
-                    let code = cpl_diag::codes::TYPE_MISMATCH.0;
+                    let code = cpl_diag::codes::TYPE_MISMATCH;
                     let have = names.len();
                     let n = fields.len();
-                    self.err(span, format!("{code}: this names {n} of the record's {have} fields; write `..` for the rest"));
+                    self.err(span, Msg::verdict(code, format!("this names {n} of the record's {have} fields; write `..` for the rest")));
                 }
                 let mut at = Vec::new();
                 for (n, p) in fields {
                     match names.iter().position(|m| *m == n.text) {
                         Some(k) => at.push((p, k)),
                         None => {
-                            let code = cpl_diag::codes::UNKNOWN_FIELD.0;
+                            let code = cpl_diag::codes::UNKNOWN_FIELD;
                             let t = self.show(&v.ty);
-                            self.err(n.span, format!("{code}: `{t}` has no field `{}`", n.text));
+                            self.err(
+                                n.span,
+                                Msg::verdict(code, format!("`{t}` has no field `{}`", n.text)),
+                            );
                         }
                     }
                 }
@@ -263,10 +269,13 @@ impl Cx<'_> {
                         return None;
                     };
                     let [p] = &args[..] else {
-                        let code = cpl_diag::codes::WRONG_ARG_COUNT.0;
+                        let code = cpl_diag::codes::WRONG_ARG_COUNT;
                         self.err(
                             span,
-                            format!("{code}: `{head}(..)` takes 1 pattern, found {}", args.len()),
+                            Msg::verdict(
+                                code,
+                                format!("`{head}(..)` takes 1 pattern, found {}", args.len()),
+                            ),
                         );
                         return None;
                     };
@@ -278,10 +287,13 @@ impl Cx<'_> {
                 // `V(j)` is the pattern form of `V.at(x)`: an `Int` inside `V` (R04.2.14).
                 if let (1, Some(dty)) = (path.len(), self.domain_named(head)) {
                     let [p] = &args[..] else {
-                        let code = cpl_diag::codes::WRONG_ARG_COUNT.0;
+                        let code = cpl_diag::codes::WRONG_ARG_COUNT;
                         self.err(
                             span,
-                            format!("{code}: `{head}(..)` takes 1 pattern, found {}", args.len()),
+                            Msg::verdict(
+                                code,
+                                format!("`{head}(..)` takes 1 pattern, found {}", args.len()),
+                            ),
                         );
                         return None;
                     };
@@ -305,17 +317,19 @@ impl Cx<'_> {
                 };
                 let Some(i) = self.d.s(e).variants.iter().position(|(n, _)| n == head) else {
                     let en = self.d.s(e).name.clone();
-                    let code = cpl_diag::codes::UNKNOWN_FIELD.0;
-                    self.err(span, format!("{code}: `{en}` has no variant `{head}`"));
+                    let code = cpl_diag::codes::UNKNOWN_FIELD;
+                    self.err(
+                        span,
+                        Msg::verdict(code, format!("`{en}` has no variant `{head}`")),
+                    );
                     return None;
                 };
                 let (p, tys) = self.variant_tys(e, &targs, i);
                 if !args.is_empty() && args.len() != tys.len() {
-                    let code = cpl_diag::codes::WRONG_ARG_COUNT.0;
-                    let msg = format!(
-                        "{code}: `{head}` has {} fields, found {}",
-                        tys.len(),
-                        args.len()
+                    let code = cpl_diag::codes::WRONG_ARG_COUNT;
+                    let msg = Msg::verdict(
+                        code,
+                        format!("`{head}` has {} fields, found {}", tys.len(), args.len()),
                     );
                     self.err(span, msg);
                 }
@@ -416,10 +430,13 @@ impl Cx<'_> {
         for (t, b) in each.into_iter().rev() {
             let these = names(self, &b);
             if these.iter().map(|n| &n.0).ne(first.iter().map(|n| &n.0)) {
-                let code = cpl_diag::codes::TYPE_MISMATCH.0;
+                let code = cpl_diag::codes::TYPE_MISMATCH;
                 self.err(
                     span,
-                    format!("{code}: each alternative of a `|` pattern binds the same names"),
+                    Msg::verdict(
+                        code,
+                        "each alternative of a `|` pattern binds the same names",
+                    ),
                 );
             }
             // Each alternative binds the first's names.

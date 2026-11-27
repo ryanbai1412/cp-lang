@@ -285,7 +285,7 @@ impl Cx<'_> {
     }
     fn err_at(&mut self, at: Span, code: Code, msg: String) {
         if self.report {
-            let e = Msg::at(at, format!("{}: {msg}", code.0));
+            let e = Msg::at(at, Msg::verdict(code, msg));
             match self.cur.filter(|f| self.t.quiet.contains(f)) {
                 Some(f) => self.deferred.entry(f).or_default().push(e),
                 None => self.errors.push(e),

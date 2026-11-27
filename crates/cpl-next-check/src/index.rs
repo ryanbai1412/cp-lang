@@ -25,9 +25,9 @@ impl Cx<'_> {
                 let shown = self.show(&rt);
                 self.err(
                     span,
-                    format!(
-                        "{}: `{shown}` is not indexed: it has no `Indexed` impl",
-                        cpl_diag::codes::NOT_INDEXABLE.0
+                    Msg::verdict(
+                        cpl_diag::codes::NOT_INDEXABLE,
+                        format!("`{shown}` is not indexed: it has no `Indexed` impl"),
                     ),
                 );
                 return TExpr {
@@ -86,10 +86,7 @@ impl Cx<'_> {
         }
         self.err(
             key.span,
-            format!(
-                "{}: `[{v}]` reads key {v}, which is not one of the view's keys: write `.nth({v})` for its element {v}, or index the source for its key {v}",
-                cpl_diag::codes::NOT_INDEXABLE.0
-            ),
+            Msg::verdict(cpl_diag::codes::NOT_INDEXABLE, format!("`[{v}]` reads key {v}, which is not one of the view's keys: write `.nth({v})` for its element {v}, or index the source for its key {v}")),
         );
     }
     /// The `@index` fn `s[i]` calls: when `i` is a `Range` and `s` is not keyed by ranges (R07.4.17).
@@ -213,11 +210,10 @@ impl Cx<'_> {
                     Unbuilt::WriteParamCell.into()
                 } else {
                     let shown = self.show(&rt);
-                    format!(
-                        "{}: `{shown}` has no `IndexedMut` impl, so `[]` on it is not a place",
-                        cpl_diag::codes::NOT_INDEXABLE.0
+                    Msg::verdict(
+                        cpl_diag::codes::NOT_INDEXABLE,
+                        format!("`{shown}` has no `IndexedMut` impl, so `[]` on it is not a place"),
                     )
-                    .into()
                 };
                 self.err(span, why);
             }

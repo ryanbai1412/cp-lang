@@ -26,10 +26,9 @@ impl<'a> Cx<'a> {
         let Some(decls::Member::Method(m, ts, ss)) = self.d.lookup_member(&rt, name) else {
             self.err(
                 span,
-                format!(
-                    "{}: `{}` has no `{name}`",
-                    cpl_diag::codes::UNKNOWN_FIELD.0,
-                    self.show(&rt)
+                Msg::verdict(
+                    cpl_diag::codes::UNKNOWN_FIELD,
+                    format!("`{}` has no `{name}`", self.show(&rt)),
                 ),
             );
             return TExpr {
@@ -96,10 +95,13 @@ impl<'a> Cx<'a> {
     }
     /// A name two `use` lines import as different fns, neither more specific (R08.1.4).
     pub(super) fn two_imports(&mut self, n: &str, span: Span) {
-        let code = cpl_diag::codes::AMBIGUOUS_METHOD.0;
+        let code = cpl_diag::codes::AMBIGUOUS_METHOD;
         self.err_help(
             span,
-            format!("{code}: two `use` lines import `{n}`, and neither is more specific"),
+            Msg::verdict(
+                code,
+                format!("two `use` lines import `{n}`, and neither is more specific"),
+            ),
             Some(format!("keep one `use` of `{n}`, or call it by its module")),
         );
     }
@@ -175,10 +177,7 @@ impl<'a> Cx<'a> {
         let ty = &self.d.s(*s).name;
         self.err_help(
             name.span,
-            format!(
-                "{}: `{shown}.{m}` never calls the `fn {m}` that takes it: `{ty}.{m}` is the type's own member, and members are found before extension fns",
-                cpl_diag::codes::AMBIGUOUS_METHOD.0
-            ),
+            Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, format!("`{shown}.{m}` never calls the `fn {m}` that takes it: `{ty}.{m}` is the type's own member, and members are found before extension fns")),
             Some(format!("rename the fn, or call it as a plain fn: `{m}({shown})`")),
         );
     }
@@ -248,10 +247,9 @@ impl<'a> Cx<'a> {
         if call.is_none() && !fd.getter {
             self.err(
                 span,
-                format!(
-                    "{}: `{}` is a method: call it with `()`",
-                    cpl_diag::codes::UNKNOWN_FIELD.0,
-                    name.text
+                Msg::verdict(
+                    cpl_diag::codes::UNKNOWN_FIELD,
+                    format!("`{}` is a method: call it with `()`", name.text),
                 ),
             );
         }
@@ -291,10 +289,10 @@ impl<'a> Cx<'a> {
         };
         let c = &d.contexts[id.0];
         let Some(f) = c.fields.iter().find(|f| f.name.text == name.text) else {
-            let code = cpl_diag::codes::UNKNOWN_FIELD.0;
+            let code = cpl_diag::codes::UNKNOWN_FIELD;
             self.err(
                 span,
-                format!("{code}: context `{n}` has no field `{}`", name.text),
+                Msg::verdict(code, format!("context `{n}` has no field `{}`", name.text)),
             );
             return Some(TExpr {
                 kind: TK::Error,
@@ -371,10 +369,9 @@ impl<'a> Cx<'a> {
                 let Some(m) = s.methods.get(&name.text).copied() else {
                     self.err(
                         span,
-                        format!(
-                            "{}: `{n}` has no `{}`",
-                            cpl_diag::codes::UNKNOWN_FIELD.0,
-                            name.text
+                        Msg::verdict(
+                            cpl_diag::codes::UNKNOWN_FIELD,
+                            format!("`{n}` has no `{}`", name.text),
                         ),
                     );
                     return TExpr {
@@ -386,11 +383,13 @@ impl<'a> Cx<'a> {
                 if written.len() > s.generics.len() {
                     self.err(
                         span,
-                        format!(
-                            "{}: `{n}` takes {} type arguments, found {}",
-                            cpl_diag::codes::WRONG_ARG_COUNT.0,
-                            s.generics.len(),
-                            written.len()
+                        Msg::verdict(
+                            cpl_diag::codes::WRONG_ARG_COUNT,
+                            format!(
+                                "`{n}` takes {} type arguments, found {}",
+                                s.generics.len(),
+                                written.len()
+                            ),
                         ),
                     );
                 }
@@ -523,10 +522,9 @@ impl<'a> Cx<'a> {
                     if call.is_none() && !fd.getter {
                         self.err(
                             span,
-                            format!(
-                                "{}: `{}` is a method: call it with `()`",
-                                cpl_diag::codes::UNKNOWN_FIELD.0,
-                                name.text
+                            Msg::verdict(
+                                cpl_diag::codes::UNKNOWN_FIELD,
+                                format!("`{}` is a method: call it with `()`", name.text),
                             ),
                         );
                     }
@@ -555,10 +553,9 @@ impl<'a> Cx<'a> {
                 if call.is_none() && !fd.getter && !walked {
                     self.err(
                         span,
-                        format!(
-                            "{}: `{}` is a method: call it with `()`",
-                            cpl_diag::codes::UNKNOWN_FIELD.0,
-                            name.text
+                        Msg::verdict(
+                            cpl_diag::codes::UNKNOWN_FIELD,
+                            format!("`{}` is a method: call it with `()`", name.text),
                         ),
                     );
                 }
@@ -573,16 +570,16 @@ impl<'a> Cx<'a> {
                 if let Some((was, help)) = self.renamed(&rt, base, name, call) {
                     let (code, text) = match was {
                         Some(now) => (
-                            cpl_diag::codes::REMOVED_SYNTAX.0,
+                            cpl_diag::codes::REMOVED_SYNTAX,
                             cpl_diag::msgs::check::REMOVED_SYNTAX_IS_GONE_IN_0
                                 .say(&[&name.text, &now]),
                         ),
                         None => (
-                            cpl_diag::codes::UNKNOWN_FIELD.0,
+                            cpl_diag::codes::UNKNOWN_FIELD,
                             format!("`{}` has no member `{}`", self.show(&rt), name.text),
                         ),
                     };
-                    self.err_help(span, format!("{code}: {text}"), Some(help));
+                    self.err_help(span, Msg::verdict(code, text), Some(help));
                     return TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,
@@ -595,11 +592,9 @@ impl<'a> Cx<'a> {
                 let help = self.free_fn_help(base, name, call);
                 self.err_help(
                     span,
-                    format!(
-                        "{}: `{}` has no member `{}`",
-                        cpl_diag::codes::UNKNOWN_FIELD.0,
-                        self.show(&rt),
-                        name.text
+                    Msg::verdict(
+                        cpl_diag::codes::UNKNOWN_FIELD,
+                        format!("`{}` has no member `{}`", self.show(&rt), name.text),
                     ),
                     help,
                 );

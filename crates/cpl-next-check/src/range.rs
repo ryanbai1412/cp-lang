@@ -492,11 +492,16 @@ impl Cx<'_> {
         }
     }
     fn closed_cuts(&mut self, t: &Ty, span: Span) {
-        let code = cpl_diag::codes::TYPE_MISMATCH.0;
+        let code = cpl_diag::codes::TYPE_MISMATCH;
         let shown = self.show(t);
         self.err(
             span,
-            format!("{code}: a closed range of `{shown}` is no piece of positions: write `j..i` (R04.4.6)"),
+            Msg::verdict(
+                code,
+                format!(
+                    "a closed range of `{shown}` is no piece of positions: write `j..i` (R04.4.6)"
+                ),
+            ),
         );
     }
     /// `..c` or `c..` with `c` a cut of `d`: the piece of `d`'s positions before or after it

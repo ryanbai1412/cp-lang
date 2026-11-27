@@ -64,9 +64,9 @@ impl Cx<'_> {
                             let to = (r.args.iter().map(|a| self.show(a)))
                                 .collect::<Vec<_>>()
                                 .join(", ");
-                            let msg = format!(
-                                "{}: expected `{to}`, found `{shown}`",
-                                cpl_diag::codes::TYPE_MISMATCH.0
+                            let msg = Msg::verdict(
+                                cpl_diag::codes::TYPE_MISMATCH,
+                                format!("expected `{to}`, found `{shown}`"),
                             );
                             let help = format!(
                                 "`{shown}` converts to `{to}` only by its own impl: write `impl {tr}<{to}> for {shown}`"
@@ -76,9 +76,9 @@ impl Cx<'_> {
                         }
                         self.err(
                             span,
-                            format!(
-                                "{}: `{shown}` does not implement `{tr}`",
-                                cpl_diag::codes::MISSING_IMPL.0
+                            Msg::verdict(
+                                cpl_diag::codes::MISSING_IMPL,
+                                format!("`{shown}` does not implement `{tr}`"),
                             ),
                         );
                     }
@@ -248,11 +248,7 @@ impl Cx<'_> {
                         return None;
                     }
                     let (tr, shown) = (self.d.traits[r.tr.0].name.clone(), self.show(t));
-                    let msg = format!(
-                        "{}: `{shown}` has {} impls of `{tr}` that fit here: write the trait's arguments",
-                        cpl_diag::codes::AMBIGUOUS_METHOD.0,
-                        found.len()
-                    );
+                    let msg = Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, format!("`{shown}` has {} impls of `{tr}` that fit here: write the trait's arguments", found.len()));
                     self.err(span, msg);
                     return Some(true);
                 }

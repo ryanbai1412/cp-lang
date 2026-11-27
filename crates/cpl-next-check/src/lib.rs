@@ -446,19 +446,20 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     for (at, code, msg) in &d.misdeclared {
         let at = *at as u32;
         cx.errors
-            .push(Msg::at(Span::new(at, at), format!("{code}: {msg}")));
+            .push(Msg::at(Span::new(at, at), Msg::verdict(*code, msg.clone())));
     }
     for (i, s) in (d.structs.iter().enumerate()).filter(|(_, s)| d.seen(s.module)) {
         if let Some(f) = decls::field_holding_itself(d, StructId(i)) {
             let at = s.field_at[f] as u32;
             cx.errors.push(Msg::at(
                 Span::new(at, at),
-                format!(
-                    "{}: a `{}` would hold another `{}` inline, so it has no size; \
+                Msg::verdict(
+                    cpl_diag::codes::RECURSIVE_FIELD,
+                    format!(
+                        "a `{}` would hold another `{}` inline, so it has no size; \
                  keep the others in a list and hold an index",
-                    cpl_diag::codes::RECURSIVE_FIELD.0,
-                    s.name,
-                    s.name
+                        s.name, s.name
+                    ),
                 ),
             ));
         }
@@ -468,10 +469,12 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
             let at = a.at as u32;
             cx.errors.push(Msg::at(
                 Span::new(at, at),
-                format!(
-                    "{}: type alias `{}` is defined by itself, so it names no type",
-                    cpl_diag::codes::ALIAS_CYCLE.0,
-                    a.name
+                Msg::verdict(
+                    cpl_diag::codes::ALIAS_CYCLE,
+                    format!(
+                        "type alias `{}` is defined by itself, so it names no type",
+                        a.name
+                    ),
                 ),
             ));
         }
@@ -543,10 +546,10 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         };
         let bare_with = matches!(&s.kind, ast::StmtKind::With { body: None, .. });
         if bare_with && begun {
-            let code = cpl_diag::codes::WITH_NOT_FIRST.0;
+            let code = cpl_diag::codes::WITH_NOT_FIRST;
             cx.err(
                 s.span,
-                format!("{code}: a bare `with` line comes first in its block"),
+                Msg::verdict(code, "a bare `with` line comes first in its block"),
             );
             continue;
         }
@@ -560,9 +563,9 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
                 .unwrap_or_default();
             cx.err(
                 s.span,
-                format!(
-                    "{}: domain `{name}` is used above the line that declares it (R11.1.1)",
-                    cpl_diag::codes::USED_BEFORE_SET.0
+                Msg::verdict(
+                    cpl_diag::codes::USED_BEFORE_SET,
+                    format!("domain `{name}` is used above the line that declares it (R11.1.1)"),
                 ),
             );
         }
@@ -1067,8 +1070,11 @@ impl Cx<'_> {
         let d = self.d;
         let k = &d.consts[c.0];
         if self.const_busy[c.0] {
-            let code = cpl_diag::codes::DEFINITION_CYCLE.0;
-            let msg = format!("{code}: const `{}` is read by its own initializer", k.name);
+            let code = cpl_diag::codes::DEFINITION_CYCLE;
+            let msg = Msg::verdict(
+                code,
+                format!("const `{}` is read by its own initializer", k.name),
+            );
             self.err(span, msg);
             return None;
         }

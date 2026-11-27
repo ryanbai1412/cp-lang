@@ -113,10 +113,7 @@ pub fn link(
     let mut said = std::collections::HashSet::new();
     while next < l.keys.len() {
         if l.keys.len() > LIMIT {
-            l.errors.push(format!(
-                "{}: instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", cpl_diag::codes::GROWING_INSTANTIATION.0,
-                generic[&l.keys[next].func].name
-            ).into());
+            l.errors.push(Msg::verdict(cpl_diag::codes::GROWING_INSTANTIATION, format!("instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", generic[&l.keys[next].func].name)));
             break;
         }
         let key = l.keys[next].clone();
@@ -731,7 +728,7 @@ fn check_escape(p: &mut Program) {
         .map(|f| f.name.clone())
         .collect();
     for name in bad {
-        p.errors.push(format!("{}: `{name}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", cpl_diag::codes::LENT_ESCAPES.0).into());
+        p.errors.push(Msg::verdict(cpl_diag::codes::LENT_ESCAPES, format!("`{name}` returns a function that uses a `var` of the fn that made it; the variable is gone by then")));
     }
 }
 
@@ -1231,10 +1228,10 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         uses(&p.insts[i].body, &mut direct[i], &mut calls[i], p, &mut bad);
     }
     if bad {
-        p.errors.push(
-            format!("{}: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one", cpl_diag::codes::MISSING_IMPL.0)
-                .into(),
-        );
+        p.errors.push(Msg::verdict(
+            cpl_diag::codes::MISSING_IMPL,
+            "a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one",
+        ));
         return;
     }
     // What each instance must be handed: what it or anything it calls uses, less what it can read itself.

@@ -287,7 +287,7 @@ fn parse(text: &str) -> (Items, Unread) {
     let diags = (p.diagnostics.into_iter())
         .map(|d| Msg {
             help: d.help,
-            ..Msg::at(d.span, format!("{}: {}", d.code.0, d.message))
+            ..Msg::at(d.span, Msg::verdict(d.code, d.message))
         })
         .collect();
     (items, (diags, poisoned))
@@ -364,10 +364,7 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
         got.push(g);
     }
     if let Some(m) = cycle(&edges) {
-        errors.push(Msg::from(format!(
-            "{}: `{m}` is in an import cycle; two modules that need each other are one module (R11.2.2)",
-            cpl_diag::codes::UNRESOLVED_MODULE.0
-        )));
+        errors.push(Msg::verdict(cpl_diag::codes::UNRESOLVED_MODULE, format!("`{m}` is in an import cycle; two modules that need each other are one module (R11.2.2)")));
     }
     let mut texts: Vec<Text> = std.modules.iter().map(|p| p.text.clone()).collect();
     let mut modules: Vec<Module> = std.modules.iter().map(Parsed::module).collect();
@@ -400,12 +397,12 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
         modules.push(p.module());
         seen.push(true);
     }
-    let code = cpl_diag::codes::UNRESOLVED_MODULE.0;
+    let code = cpl_diag::codes::UNRESOLVED_MODULE;
     for (m, a) in missing {
-        let text = format!("{code}: no module `{m}`");
+        let text = Msg::verdict(code, format!("no module `{m}`"));
         errors.push(match a {
             Some(a) => Msg::at(Span::new(program_start + a, program_start + a), text),
-            None => Msg::from(text),
+            None => text,
         });
     }
     Loaded {

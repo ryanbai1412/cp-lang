@@ -1,7 +1,7 @@
 //! A diagnostic as a layer reports it: a span of the joined source (contract 1) and what it
 //! says, a refusal as its [`Unbuilt`] feature.
 use crate::unbuilt::Unbuilt;
-use cpl_diag::Span;
+use cpl_diag::{Code, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Msg {
@@ -13,7 +13,9 @@ pub struct Msg {
     pub layer: Option<&'static str>,
     /// The feature not built, when it is a refusal; `text` is then empty.
     pub refusal: Option<Unbuilt>,
-    /// A verdict, as `kind_of` reads it.
+    /// The rule a verdict says the program breaks; `INTERNAL` when the pipeline is at fault.
+    pub code: Code,
+    /// What a verdict says.
     pub text: String,
     /// What to write instead, when the layer knows.
     pub help: Option<String>,
@@ -44,6 +46,16 @@ impl Msg {
     }
 }
 
+impl Msg {
+    /// The program breaks the rule `code` names.
+    pub fn verdict(code: Code, text: impl Into<String>) -> Msg {
+        Msg {
+            code,
+            ..Msg::from(text.into())
+        }
+    }
+}
+
 impl From<String> for Msg {
     fn from(text: String) -> Msg {
         Msg {
@@ -51,6 +63,7 @@ impl From<String> for Msg {
             module: None,
             layer: None,
             refusal: None,
+            code: cpl_diag::codes::INTERNAL,
             text,
             help: None,
         }

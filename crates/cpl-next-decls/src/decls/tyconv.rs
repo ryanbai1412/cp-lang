@@ -59,15 +59,14 @@ pub(super) fn slot(cx: &mut TyCx) -> SetTy {
 pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
     let decl = &cx.aliases[id];
     if a.len() != decl.generics.len() {
-        errors.push(
+        errors.push(Msg::verdict(
+            cpl_diag::codes::WRONG_ARG_COUNT,
             format!(
-                "{}: `{n}` takes {} type arguments, found {}",
-                cpl_diag::codes::WRONG_ARG_COUNT.0,
+                "`{n}` takes {} type arguments, found {}",
                 decl.generics.len(),
                 a.len()
-            )
-            .into(),
-        );
+            ),
+        ));
         return Ty::Error;
     }
     // An alias defined by itself is E0323 where it is declared (`alias_cycle`).
@@ -113,14 +112,10 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> 
         return None;
     };
     let Some(Named::Trait(tr)) = cx.names.get(&name.text).copied() else {
-        errors.push(
-            format!(
-                "{}: unknown trait `{}`",
-                cpl_diag::codes::UNKNOWN_TYPE.0,
-                name.text
-            )
-            .into(),
-        );
+        errors.push(Msg::verdict(
+            cpl_diag::codes::UNKNOWN_TYPE,
+            format!("unknown trait `{}`", name.text),
+        ));
         return None;
     };
     let args = args.iter().map(|a| conv(cx, a, errors)).collect();
@@ -238,10 +233,10 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                         Ty::Struct(d, a, sets)
                     }
                     None => {
-                        errors.push(
-                            format!("{}: unknown type `{n}`", cpl_diag::codes::UNKNOWN_TYPE.0)
-                                .into(),
-                        );
+                        errors.push(Msg::verdict(
+                            cpl_diag::codes::UNKNOWN_TYPE,
+                            format!("unknown type `{n}`"),
+                        ));
                         Ty::Error
                     }
                 },
@@ -330,9 +325,9 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         }
         // `type_of(f)`: the fn item's own type, one for a generic fn (R08.1.10).
         TypeKind::ItemOf(e) => {
-            let at = |text: String| match cx.item {
+            let at = |text: Msg| match cx.item {
                 Some(i) => Msg::at(Span::new(i + e.span.start, i + e.span.end), text),
-                None => text.into(),
+                None => text,
             };
             let key = e.fn_item_key();
             match key.as_deref().map(|k| (k, cx.names.get(k))) {
@@ -345,8 +340,8 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 Some((k, None))
                     if matches!(e.kind, ast::ExprKind::Name(_)) && !cx.values.contains(k) =>
                 {
-                    let code = cpl_diag::codes::UNRESOLVED_NAME.0;
-                    errors.push(at(format!("{code}: unknown name `{k}`")));
+                    let code = cpl_diag::codes::UNRESOLVED_NAME;
+                    errors.push(at(Msg::verdict(code, format!("unknown name `{k}`"))));
                     Ty::Error
                 }
                 Some((k, None)) if !matches!(e.kind, ast::ExprKind::Name(_)) => {
@@ -358,18 +353,20 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                             ctx: 0,
                         }))),
                         None => {
-                            let code = cpl_diag::codes::NOT_A_FN_ITEM.0;
-                            errors.push(at(format!(
-                                "{code}: no `@operator` trait declares `{k}`, so it is no fn item"
+                            let code = cpl_diag::codes::NOT_A_FN_ITEM;
+                            errors.push(at(Msg::verdict(
+                                code,
+                                format!("no `@operator` trait declares `{k}`, so it is no fn item"),
                             )));
                             Ty::Error
                         }
                     }
                 }
                 _ => {
-                    let code = cpl_diag::codes::NOT_A_FN_ITEM.0;
-                    errors.push(at(format!(
-                        "{code}: `type_of` takes a `fn` declared by name, not this value"
+                    let code = cpl_diag::codes::NOT_A_FN_ITEM;
+                    errors.push(at(Msg::verdict(
+                        code,
+                        "`type_of` takes a `fn` declared by name, not this value",
                     )));
                     Ty::Error
                 }

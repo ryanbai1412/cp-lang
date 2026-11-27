@@ -100,7 +100,7 @@ impl Diag {
         });
         let kind = kind_of(m);
         let message = match &kind {
-            Kind::Verdict(c) => m.text.replacen(&format!("{}: ", c.0), "", 1),
+            Kind::Verdict(_) => m.text.clone(),
             Kind::Refusal(u) => u.to_string(),
         };
         Diag {

@@ -136,8 +136,8 @@ impl<'a> Cx<'a> {
             BinOp::BitAnd => "on `Bool`s, `&` is `and`".to_string(),
             _ => "on `Bool`s, `|` is `or`".to_string(),
         };
-        let code = cpl_diag::codes::BAD_OPERANDS.0;
-        self.err_help(span, format!("{code}: {text}"), Some(help));
+        let code = cpl_diag::codes::BAD_OPERANDS;
+        self.err_help(span, Msg::verdict(code, text), Some(help));
         TExpr {
             kind: TK::Error,
             ty: Ty::Error,
@@ -185,10 +185,12 @@ impl<'a> Cx<'a> {
             (false, false) => {
                 self.err(
                     at,
-                    format!(
-                        "{}: `..{}` takes positional or named arguments, not both",
-                        cpl_diag::codes::WRONG_ARG_COUNT.0,
-                        v.label
+                    Msg::verdict(
+                        cpl_diag::codes::WRONG_ARG_COUNT,
+                        format!(
+                            "`..{}` takes positional or named arguments, not both",
+                            v.label
+                        ),
                     ),
                 );
                 ExprKind::Tuple(tuple)
@@ -237,10 +239,9 @@ impl<'a> Cx<'a> {
                     if at.is_none() {
                         self.err(
                             a.value.span,
-                            format!(
-                                "{}: no parameter named `{}`",
-                                cpl_diag::codes::UNKNOWN_ARG_NAME.0,
-                                n.text
+                            Msg::verdict(
+                                cpl_diag::codes::UNKNOWN_ARG_NAME,
+                                format!("no parameter named `{}`", n.text),
                             ),
                         );
                     }
@@ -251,10 +252,9 @@ impl<'a> Cx<'a> {
                 Some(i) if slot[i].is_none() => slot[i] = Some(k),
                 Some(i) => self.err(
                     a.value.span,
-                    format!(
-                        "{}: `{}` is given twice",
-                        cpl_diag::codes::WRONG_ARG_COUNT.0,
-                        formals[i].label
+                    Msg::verdict(
+                        cpl_diag::codes::WRONG_ARG_COUNT,
+                        format!("`{}` is given twice", formals[i].label),
                     ),
                 ),
                 None => {}
@@ -264,11 +264,9 @@ impl<'a> Cx<'a> {
         if excess || (missing && args.iter().all(|a| a.name.is_none())) {
             self.err(
                 span,
-                format!(
-                    "{}: expected {} arguments, found {}",
-                    cpl_diag::codes::WRONG_ARG_COUNT.0,
-                    formals.len(),
-                    args.len()
+                Msg::verdict(
+                    cpl_diag::codes::WRONG_ARG_COUNT,
+                    format!("expected {} arguments, found {}", formals.len(), args.len()),
                 ),
             );
         } else if missing {
@@ -276,10 +274,9 @@ impl<'a> Cx<'a> {
                 if slot[i].is_none() && f.default.is_none() {
                     self.err(
                         span,
-                        format!(
-                            "{}: no argument for `{}`",
-                            cpl_diag::codes::WRONG_ARG_COUNT.0,
-                            f.label
+                        Msg::verdict(
+                            cpl_diag::codes::WRONG_ARG_COUNT,
+                            format!("no argument for `{}`", f.label),
                         ),
                     );
                 }
@@ -361,9 +358,9 @@ impl<'a> Cx<'a> {
             if !a.mutable && !matches!(a.value.kind, ExprKind::Mut(_)) {
                 self.err(
                     a.value.span,
-                    format!(
-                        "{}: a `mut` parameter is marked `mut` at the call",
-                        cpl_diag::codes::MISSING_MUT_AT_CALL.0
+                    Msg::verdict(
+                        cpl_diag::codes::MISSING_MUT_AT_CALL,
+                        "a `mut` parameter is marked `mut` at the call",
                     ),
                 );
             }
@@ -371,20 +368,19 @@ impl<'a> Cx<'a> {
             if let Some(name) = self.let_root(&p) {
                 self.err(
                     a.value.span,
-                    format!(
-                        "{}: `{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`",
-                        cpl_diag::codes::MUT_OF_IMMUTABLE.0
-                    ),
+                    Msg::verdict(cpl_diag::codes::MUT_OF_IMMUTABLE, format!("`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`")),
                 );
             }
             if !self.unify(&p.ty, pty) {
                 self.err(
                     a.value.span,
-                    format!(
-                        "{}: expected `{}`, found `{}`",
-                        cpl_diag::codes::TYPE_MISMATCH.0,
-                        self.show(pty),
-                        self.show(&p.ty)
+                    Msg::verdict(
+                        cpl_diag::codes::TYPE_MISMATCH,
+                        format!(
+                            "expected `{}`, found `{}`",
+                            self.show(pty),
+                            self.show(&p.ty)
+                        ),
                     ),
                 );
             }
@@ -524,10 +520,10 @@ impl<'a> Cx<'a> {
             }
             // `Bool` has no one way to be written: the word is the program's choice (R10.3.3).
             Ty::Bool => {
-                let code = cpl_diag::codes::MISSING_IMPL.0;
+                let code = cpl_diag::codes::MISSING_IMPL;
                 self.err(
                     span,
-                    format!("{code}: `Bool` is not `Show`: write `print(yes(b))`"),
+                    Msg::verdict(code, "`Bool` is not `Show`: write `print(yes(b))`"),
                 );
                 return;
             }
@@ -674,10 +670,12 @@ impl<'a> Cx<'a> {
             } else {
                 self.err(
                     span,
-                    format!(
-                        "{}: `{shown}` has no `impl {trait_name}`, which `{}` needs (R08.1.5)",
-                        cpl_diag::codes::MISSING_IMPL.0,
-                        op.text()
+                    Msg::verdict(
+                        cpl_diag::codes::MISSING_IMPL,
+                        format!(
+                            "`{shown}` has no `impl {trait_name}`, which `{}` needs (R08.1.5)",
+                            op.text()
+                        ),
                     ),
                 );
             }
@@ -715,10 +713,7 @@ impl<'a> Cx<'a> {
         if let Some(name) = self.let_root(&recv) {
             self.err(
                 span,
-                format!(
-                    "{}: `{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`",
-                    cpl_diag::codes::MUT_OF_IMMUTABLE.0
-                ),
+                Msg::verdict(cpl_diag::codes::MUT_OF_IMMUTABLE, format!("`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`")),
             );
         }
         TArg::Mut(recv)
@@ -729,9 +724,9 @@ impl<'a> Cx<'a> {
             if !place {
                 self.err(
                     span,
-                    format!(
-                        "{}: a `mut self` method needs a place",
-                        cpl_diag::codes::MUT_OF_IMMUTABLE.0
+                    Msg::verdict(
+                        cpl_diag::codes::MUT_OF_IMMUTABLE,
+                        "a `mut self` method needs a place",
                     ),
                 );
             }
@@ -764,10 +759,7 @@ impl<'a> Cx<'a> {
                     let (a, b) = (self.domains[f].name.clone(), self.domains[i].name.clone());
                     self.err(
                         span,
-                        format!(
-                            "{}: an array over `{b}` is paired with one over `{a}`: their positions are unrelated",
-                            cpl_diag::codes::WRONG_DOMAIN.0
-                        ),
+                        Msg::verdict(cpl_diag::codes::WRONG_DOMAIN, format!("an array over `{b}` is paired with one over `{a}`: their positions are unrelated")),
                     );
                     return;
                 }
@@ -907,9 +899,9 @@ impl<'a> Cx<'a> {
         let shown = self.show(&recv.ty);
         self.err(
             span,
-            format!(
-                "{}: `{shown}` has no `{name}`",
-                cpl_diag::codes::UNKNOWN_FIELD.0
+            Msg::verdict(
+                cpl_diag::codes::UNKNOWN_FIELD,
+                format!("`{shown}` has no `{name}`"),
             ),
         );
         TExpr {
@@ -932,10 +924,9 @@ impl<'a> Cx<'a> {
             t => {
                 self.err(
                     span,
-                    format!(
-                        "{}: `{}` cannot be called",
-                        cpl_diag::codes::NOT_CALLABLE.0,
-                        self.show(&t)
+                    Msg::verdict(
+                        cpl_diag::codes::NOT_CALLABLE,
+                        format!("`{}` cannot be called", self.show(&t)),
                     ),
                 );
                 return TExpr {
@@ -1060,7 +1051,10 @@ impl<'a> Cx<'a> {
         } else if !self.refused_names.contains(n) {
             self.err(
                 span,
-                format!("{}: unknown name `{n}`", cpl_diag::codes::UNRESOLVED_NAME.0),
+                Msg::verdict(
+                    cpl_diag::codes::UNRESOLVED_NAME,
+                    format!("unknown name `{n}`"),
+                ),
             );
         }
         TExpr {
@@ -1131,9 +1125,9 @@ impl<'a> Cx<'a> {
                     None => {
                         self.err(
                             span,
-                            format!(
-                                "{}: nothing here says what `None` is an optional of; write the type",
-                                cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION.0
+                            Msg::verdict(
+                                cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION,
+                                "nothing here says what `None` is an optional of; write the type",
                             ),
                         );
                         return mk(TK::Error, Ty::Error);
@@ -1262,10 +1256,7 @@ impl<'a> Cx<'a> {
                 if rest.iter().any(|(o, _)| up(o)) && rest.iter().any(|(o, _)| down(o)) {
                     self.err(
                         span,
-                        format!(
-                            "{}: a chain that goes both up and down; write the two comparisons with `and`",
-                            cpl_diag::codes::MIXED_COMPARISON_CHAIN.0
-                        ),
+                        Msg::verdict(cpl_diag::codes::MIXED_COMPARISON_CHAIN, "a chain that goes both up and down; write the two comparisons with `and`"),
                     );
                 }
                 // `a <= b < c` is `a <= b and b < c` with `b` read once, and `c` not read

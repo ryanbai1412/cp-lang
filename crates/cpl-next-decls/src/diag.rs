@@ -12,17 +12,12 @@ pub enum Kind {
     Refusal(Unbuilt),
 }
 
-/// A refusal is its feature; a verdict's text is `<code>: <text>`, and text without a code is
-/// the pipeline's bug: an internal error.
+/// A refusal is its feature; any other diagnostic is a verdict with its code.
 pub fn kind_of(m: &Msg) -> Kind {
-    if let Some(u) = &m.refusal {
-        return Kind::Refusal(u.clone());
+    match &m.refusal {
+        Some(u) => Kind::Refusal(u.clone()),
+        None => Kind::Verdict(m.code),
     }
-    let code = m
-        .text
-        .split_once(": ")
-        .and_then(|(c, _)| cpl_diag::lookup(c));
-    Kind::Verdict(code.map_or(cpl_diag::codes::INTERNAL, |i| i.code))
 }
 
 pub use cpl_next_ir::msg::Msg;

@@ -834,13 +834,10 @@ impl Lw<'_> {
                         Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Error
                     )
                 }) {
-                    self.errors.push(
-                        format!(
-                            "{}: this value cannot be printed",
-                            cpl_diag::codes::MISSING_IMPL.0
-                        )
-                        .into(),
-                    );
+                    self.errors.push(Msg::verdict(
+                        cpl_diag::codes::MISSING_IMPL,
+                        "this value cannot be printed",
+                    ));
                 }
                 let mut vs = self.seq(&vals, out).into_iter();
                 let pieces = ps

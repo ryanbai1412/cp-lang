@@ -287,7 +287,7 @@ pub struct Decls {
     pub aliases: Layer<AliasDecl>,
     pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
-    pub misdeclared: Vec<(usize, &'static str, String)>,
+    pub misdeclared: Vec<(usize, cpl_diag::Code, String)>,
     /// Each library's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
     pub methods: HashMap<String, Vec<FnId>>,
@@ -928,9 +928,9 @@ fn add_fn(
                 (None, None) => {
                     errors.push(Msg::at(
                         Span::new(item + p.name.span.start, item + p.name.span.end),
-                        format!(
-                            "{}: `self` of a free fn needs a type",
-                            cpl_diag::codes::UNKNOWN_TYPE.0
+                        Msg::verdict(
+                            cpl_diag::codes::UNKNOWN_TYPE,
+                            "`self` of a free fn needs a type",
                         ),
                     ));
                     None
@@ -945,10 +945,9 @@ fn add_fn(
             (None, None) => {
                 errors.push(Msg::at(
                     Span::new(item + p.name.span.start, item + p.name.span.end),
-                    format!(
-                        "{}: parameter `{}` needs a type",
-                        cpl_diag::codes::UNKNOWN_TYPE.0,
-                        p.name.text
+                    Msg::verdict(
+                        cpl_diag::codes::UNKNOWN_TYPE,
+                        format!("parameter `{}` needs a type", p.name.text),
                     ),
                 ));
                 Ty::Error
@@ -995,10 +994,9 @@ fn add_fn(
                     Some(i) => from.push(i),
                     None => errors.push(Msg::at(
                         Span::new(item + s.span.start, item + s.span.end),
-                        format!(
-                            "{}: `{}` is not a parameter",
-                            cpl_diag::codes::UNRESOLVED_NAME.0,
-                            s.text
+                        Msg::verdict(
+                            cpl_diag::codes::UNRESOLVED_NAME,
+                            format!("`{}` is not a parameter", s.text),
                         ),
                     )),
                 }
@@ -1115,7 +1113,7 @@ fn add_fn(
         if d.is_library(m) {
             errors.push(msg.into());
         } else {
-            let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS.0;
+            let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS;
             d.misdeclared
                 .push(((item + s.span.start) as usize, code, msg));
         }

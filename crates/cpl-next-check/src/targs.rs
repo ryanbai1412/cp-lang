@@ -41,9 +41,9 @@ impl Cx<'_> {
             }
             self.err(
                 span,
-                format!(
-                    "{}: `{n}` takes no type arguments",
-                    cpl_diag::codes::TYPE_MISMATCH.0
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    format!("`{n}` takes no type arguments"),
                 ),
             );
             return err;
@@ -99,10 +99,9 @@ impl Cx<'_> {
         if !written.is_empty() {
             self.err(
                 span,
-                format!(
-                    "{}: `{}` takes no type arguments",
-                    cpl_diag::codes::TYPE_MISMATCH.0,
-                    name.text
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    format!("`{}` takes no type arguments", name.text),
                 ),
             );
         }
@@ -120,10 +119,12 @@ impl Cx<'_> {
             let name = fd.name.clone();
             self.err(
                 span,
-                format!(
-                    "{}: `{name}` takes {takes} type arguments, found {}",
-                    cpl_diag::codes::WRONG_ARG_COUNT.0,
-                    written.len()
+                Msg::verdict(
+                    cpl_diag::codes::WRONG_ARG_COUNT,
+                    format!(
+                        "`{name}` takes {takes} type arguments, found {}",
+                        written.len()
+                    ),
                 ),
             );
             return ts;
