@@ -1081,6 +1081,15 @@ impl<'a> Cx<'a> {
             }
             // An expression that never gives a value is the body, not its result (R01.6.7).
             FnBody::Expr(e) if e.leaves() => self.block(&one_stmt(e), Some(&ret)),
+            // A `lends mut` fn's one expression is the place it lends (R05.6.3).
+            FnBody::Expr(e) if matches!(f.region, Some((true, _))) => {
+                let mut body = one_stmt(e);
+                body.stmts[0].kind = StmtKind::Lend {
+                    mutable: true,
+                    place: e.clone(),
+                };
+                self.block(&body, Some(&ret))
+            }
             // A `()` fn's one expression is a statement: its value is dropped, as it would be
             // last in a block (R06.1.1, R06.4.8).
             FnBody::Expr(e) if e.bare_try().is_none() && self.shallow(&ret) == Ty::Unit => {
