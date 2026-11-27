@@ -2895,3 +2895,4 @@ core-10/read-base-arg.cp
 core-10/read-optional-sentinel-at-end-traps.cp
 std-journeys/subset.cp
 std-models/subset.cp
+std-subset/folds-take-its-members.cp

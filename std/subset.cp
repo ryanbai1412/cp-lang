@@ -182,6 +182,15 @@ impl<B: Domain> Contains<B> for Subset<B>:
     /// example: `domain B = 0..4; let s = Subset<B>.single(B(1)); B(1) in s and B(2) not in s`
     fn contains(self, b: B) -> Bool = (bits >> b.ord) & U64(1) == U64(1)
 
+impl<B: Domain> Seq<B> for Subset<B>:
+    /// The members, as `each` yields them, so every fold over a `Seq` takes them.
+    ///
+    /// cost: \(O(1)\) per member
+    /// traps: never
+    /// example: `domain B = 0..4; Subset<B>.single(B(1)).with(B(3)).map(b => b.ord).sum() == 4`
+    fn iter(self) -> yields B:
+        for b in self.each(): yield b
+
 impl BitOr for Subset<B>:
     fn bitor(a, b) = Subset(a.bits | b.bits)
 

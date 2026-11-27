@@ -1242,7 +1242,6 @@ std-strings/z-and-prefix-function-keep-generic-keys.cp	wrong-reject	check: std.s
 std-strings/z-function-single-and-uniform.cp	wrong-reject	check: std.strings:386:5: E0203: `List<Int>` has no member `rekey`
 std-strings/z-prefix-matches-max-rotation.cp	wrong-reject	check: std.strings:625:20: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-subset/braces-are-not-a-subset.cp	wrong-error	wanted E0301 on line 4, got: check: program:4:1: E0606: `Subset<B>` does not implement `Domain`
-std-subset/folds-take-its-members.cp	wrong-reject	check: program:9:7: E0606: `Subset<V>` does not implement `Seq`
 std-subset/for-walks-members.cp	wrong-reject	check: program:8:7: E0201: unknown name `len`
 std-subset/generic-domain-subsets-are-std-subsets.cp	wrong-reject	check: program:13:15: E0606: `Subset<B>` does not implement `Domain`
 std-subset/subset-domain-too-large.cp	wrong-reject	check: program:7:7: E0201: unknown name `len`
