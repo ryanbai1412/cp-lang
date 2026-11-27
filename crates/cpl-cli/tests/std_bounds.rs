@@ -169,7 +169,7 @@ fn std_bounds_reject_calls_that_break_them() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("std_bounds");
     std::fs::create_dir_all(&dir).unwrap();
-    let mut files: Vec<_> = std::fs::read_dir(root.join("std"))
+    let mut files: Vec<_> = std::fs::read_dir(root.join("crates/cpl-check/frozen/std"))
         .expect("std/ exists")
         .map(|e| e.expect("readable entry").path())
         .filter(|p| p.extension().is_some_and(|x| x == "cp"))

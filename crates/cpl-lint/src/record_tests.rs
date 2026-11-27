@@ -290,7 +290,7 @@ impl Vocabulary {
     fn load() -> Vocabulary {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let mut std = Vec::new();
-        sources(&root.join("std"), "cp", &mut std);
+        sources(&root.join(crate::STD_DIR), "cp", &mut std);
         let mut rust = Vec::new();
         sources(&root.join("crates/cpl-check/src"), "rs", &mut rust);
         let builtin = rust
@@ -349,7 +349,9 @@ impl Vocabulary {
         }
         match receiver {
             Some("std") => {
-                let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+                let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../..")
+                    .join(crate::STD_DIR);
                 (!root.join(format!("{name}.cp")).exists()).then_some("no such std module")
             }
             Some(ty) if ty.starts_with(|c: char| c.is_ascii_uppercase()) && self.is_type(ty) => {

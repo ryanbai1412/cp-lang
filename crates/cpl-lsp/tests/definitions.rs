@@ -289,7 +289,7 @@ fn in_std(location: &Value) -> Option<(String, u32, u32, u32)> {
 
 /// Each std module's items, by the 1-based line `cpl doc` anchors them at.
 fn documented() -> BTreeMap<String, BTreeMap<u32, Vec<String>>> {
-    let modules = cpl_doc::cli::load(&[root().join("std")]).unwrap();
+    let modules = cpl_doc::cli::load(&[root().join("crates/cpl-check/frozen/std")]).unwrap();
     let items = |m: &cpl_doc::Module| {
         let mut lines: BTreeMap<u32, Vec<String>> = BTreeMap::new();
         for (_, item) in m.all_items() {
@@ -323,7 +323,7 @@ fn std_landings(asked: &[Asked], failures: &mut Vec<String>) -> usize {
                 continue;
             }
             let path = root()
-                .join("std")
+                .join("crates/cpl-check/frozen/std")
                 .join(format!("{}.cp", module.replace('.', "/")));
             let text = std::fs::read_to_string(&path).unwrap_or_default();
             let declared = text
@@ -367,7 +367,7 @@ fn every_conformance_case_resolves_its_names_and_std_lands_on_docs() {
 #[test]
 fn every_std_module_resolves_its_names() {
     let mut files = Vec::new();
-    cp_files(&root().join("std"), &mut files);
+    cp_files(&root().join("crates/cpl-check/frozen/std"), &mut files);
     files.sort();
     assert!(files.len() >= 30, "{} std modules", files.len());
     let asked = ask_parallel(&files);

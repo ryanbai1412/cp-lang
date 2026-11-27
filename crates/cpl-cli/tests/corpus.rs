@@ -104,7 +104,7 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         "window.cp",
     ];
     for file in SPEC_STD {
-        let path = root().join(format!("std/{file}"));
+        let path = root().join(format!("crates/cpl-check/frozen/std/{file}"));
         checked += 1;
         let out = check(&path);
         if out.code != 0 {

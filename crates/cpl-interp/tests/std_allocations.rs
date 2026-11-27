@@ -199,7 +199,7 @@ fn declared(line: &str) -> Option<String> {
 
 /// Every `file Type.fn` whose doc claims no allocation.
 fn claims() -> Vec<String> {
-    let std_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let std_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-check/frozen/std");
     let mut files: Vec<_> = std::fs::read_dir(&std_dir)
         .expect("std/ is next to the crates")
         .map(|e| e.expect("a std entry").path())

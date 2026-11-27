@@ -18,7 +18,7 @@ const CALLS: [&str; 5] = [
 ];
 
 fn programs() -> Vec<(String, String)> {
-    let std = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let std = Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-check/frozen/std");
     let mut out = Vec::new();
     let mut mods: Vec<_> = fs::read_dir(&std)
         .unwrap()

@@ -26,7 +26,7 @@ fn baseline(root: &Path) -> BTreeMap<String, usize> {
 fn std_errors_never_grow() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let allowed = baseline(&root);
-    let mut files: Vec<String> = std::fs::read_dir(root.join("std"))
+    let mut files: Vec<String> = std::fs::read_dir(root.join("crates/cpl-check/frozen/std"))
         .expect("std/ exists")
         .map(|entry| {
             entry
@@ -41,7 +41,7 @@ fn std_errors_never_grow() {
     files.sort();
     // std is checked as `std/<file>.cp`, the path its modules load as, so
     // the checks run in process from the repo root.
-    std::env::set_current_dir(&root).unwrap();
+    std::env::set_current_dir(root.join("crates/cpl-check/frozen")).unwrap();
     let counts = parallel::parallel(&files, |file| {
         let out = cpl_cli::run(&["check", file]);
         let errors = out
@@ -82,7 +82,7 @@ fn std_errors_never_grow() {
 #[test]
 fn std_own_tests_pass() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut files: Vec<String> = std::fs::read_dir(root.join("std"))
+    let mut files: Vec<String> = std::fs::read_dir(root.join("crates/cpl-check/frozen/std"))
         .expect("std/ exists")
         .map(|entry| entry.expect("readable entry").path())
         .filter(|path| path.extension().is_some_and(|x| x == "cp"))
@@ -116,7 +116,7 @@ fn std_own_tests_pass() {
                     {
                         let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
                             .args(["test", file])
-                            .current_dir(root)
+                            .current_dir(root.join("crates/cpl-check/frozen"))
                             .output()
                             .expect("cpl runs");
                         runs.push((file.clone(), out));

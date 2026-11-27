@@ -1,0 +1,4054 @@
+//! Graphs: one stored representation and the algorithms over "what comes after v".
+//!
+//! start: `Graph`, `bfs`, `dijkstra`, `peel`, `bridges`
+//! example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
+//!
+//! Vertices and edges are domains, so per-vertex data is `[V]T`, per-edge
+//! data is `[E]T`, and mixing the two does not type-check. An algorithm
+//! takes any `Next<V>`: a stored `Graph`, a `[V]List` of arcs, or any fn
+//! from a vertex to a `Seq` of arcs. An arc is anything with `.to`; what
+//! else it carries (`.w`, `.e`) decides which algorithms accept it:
+//!
+//!     bfs(g, from: [s])
+//!     dijkstra(g, from: [(s, 0)])                          # arcs carry w
+//!     dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])   # weights from a fn
+//!     bfs(p => p.adj4.filter(q => grid[q] != '#'), from: [start])
+//!     bridges(g)                                           # arcs carry e
+//!
+//! Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt.
+//! Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
+use std.range.{Len}
+use std.algebra.{Monoid, Semiring}
+use std.bitset.{Bitset}
+use std.deque.{Deque}
+use std.dsu.{Dsu}
+use std.heap.{Heap, MinHeap}
+use std.math.{abs, gcd, popcount, ctz}
+use std.opt.{is_none_or}
+use std.rand.{Random, shuffle}
+use std.range.{Len}
+use std.seq.{collect, reverse, count, Seq, Indexed, Slice, all, any}
+
+/// \(O(\deg u)\) per walk of `out(u)`.
+/// What every graph algorithm walks: the arcs out of `u`. Implemented by
+/// `Graph`, by any `[V]S` with `S: Seq` of arcs, and by any fn `V -> Seq`.
+pub trait Next<V>:
+    type Arc: Target<V>
+    /// The arcs out of `u`, lazily. Every graph algorithm reads the graph only through this.
+    ///
+    /// cost: \(O(1)\) per arc yielded
+    /// order: the implementation's arc order (input order for `Graph`, list order for `[V]List`)
+    /// traps: never
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[2, 1], [], []]; g.out(0).collect() == [2, 1]`
+    fn out(self, u: V) -> yields Self.Arc
+
+/// \(O(1)\). Where an arc leads. A plain vertex is its own target, and a record
+/// with a `to: V` field is one (a field is a `@get`).
+pub trait Target<V>:
+    /// The vertex an arc leads to. A plain vertex is its own target; a record's `to` field is
+    /// its target.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..3; V(2).to == 2`
+    /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.to == 1`
+    @get fn to(self) -> V = self
+
+impl<V: Domain> Target<V> for V:
+    @get fn to(self) -> V = self
+
+impl<V, R: (to: V, ..)> Target<V> for R:
+    @get fn to(self) -> V = self.to
+
+impl Target<Int> for Int:
+    @get fn to(self) -> Int = self
+
+impl<V: Domain, S: Seq<A>, A: Target<V>> Next<V> for [V]S:
+    type Arc = A
+    fn out(self, u: V) -> yields A:
+        for a in self[u]: yield a
+
+impl<V: Domain, S: Seq<A>, A: Target<V>> Next<V> for V -> S:
+    type Arc = A
+    fn out(self, u: V) -> yields A:
+        for a in self(u): yield a
+
+// A record arc with a `to` field; a plain vertex arc is not one.
+trait ToField<V>:
+    @get fn to(self) -> V
+
+// Arc `a` out of `u`, turned around: a record keeps its other fields, a plain vertex is `u`.
+fn reversed_arc<A, V>(a: A, u: V) -> A:
+    if A: ToField:
+        return (..a, to: u)
+    u
+
+// An arc into `v`: a record draws its other fields with `gen<A>()`, a plain vertex is `v`.
+fn drawn_arc<A, V>(v: V) -> A:
+    if A: ToField:
+        return (..gen<A>(), to: v)
+    v
+
+/// \(O(1)\). The weight of an arc: a record with a `w` field, or `.weighted(f)`.
+pub trait Weighted<W>:
+    /// The weight of an arc: its `w` field, or `f(a)` through `g.weighted(f)`.
+    ///
+    /// cost: \(O(1)\) plus the cost of `f` under `weighted`
+    /// traps: never
+    /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.w == 7`
+    @get fn w(self) -> W
+
+/// The length of arc `a` as every graph algorithm reads it: `a.w` for a [`Weighted`] arc, 1
+/// otherwise. `Rooted` takes `dist` and `depth`-like lengths from it.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); arc_len(a) == 7 and arc_len(V(2)) == 1`
+pub fn arc_len<A>(a: A) -> Int:
+    if A: Weighted:
+        return a.w
+    1
+
+/// \(O(1)\). The edge an arc belongs to; both arcs of an undirected edge share it.
+pub trait Edged<E>:
+    /// The edge an arc belongs to. Both arcs of an undirected edge carry the same `e`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; let g = Graph.undirected(es); g.out(0).collect()[0].e == g.out(1).collect()[0].e`
+    @get fn e(self) -> E
+
+/// A graph whose arcs carry weights: shortest paths, MST over arcs, DAG folds.
+pub trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>
+
+/// A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
+/// These skip the arc back along the same edge, not to the same vertex, so
+/// parallel edges are right.
+pub trait EdgedNext<V, E> = Next<V> where Self.Arc: Edged<E>
+
+/// The arc a build stores by default: the target, the edge id, and every
+/// field of the edge record except `u` and `v`. Every carried field must be
+/// plain; a heap field is a compile error that points at `keep:`.
+pub type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))
+
+/// \(O(1)\) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as
+/// `f(a)` (or `f(u, a)`), `.to` and `.e` passed through. Nothing is stored.
+pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W)
+
+impl Next<V> for Reweighted<V, E, A, W>:
+    type Arc = (to: V, e: E, w: W)
+
+    /// The arcs out of `u` as `(to:, e:, w: f(a))`.
+    ///
+    /// cost: \(O(1)\) per arc plus one call of `f`
+    /// order: the graph's arc order
+    /// traps: never
+    /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; Graph.directed(es).weighted(a => 5).out(0).collect() == [(to: V(1), e: E(0), w: 5)]`
+    fn out(self, u: V) -> yields (to: V, e: E, w: W):
+        for a in g.out(u):
+            yield (to: a.to, e: a.e, w: f(a))
+
+/// \(O(n)\) to read.
+/// The `V.len - 1` edges of a tree on `V`, one `u v` pair per line, as an input
+/// gives them. `cpl stress` makes and shrinks it as a tree.
+@stress(tree)
+pub type Tree<V> = [0..V.len - 1](u: V, v: V)
+
+/// \(O(m)\) to read.
+/// One edge on `V` for each value of `E`, `u v` per line, with no loop and no
+/// pair twice. `cpl stress` makes and shrinks it so.
+@stress(simple)
+pub type SimpleGraph<V, E> = [E](u: V, v: V)
+
+/// \(O(n + m)\) to read (connectivity is validated).
+/// A `SimpleGraph` in which every vertex reaches every other.
+@stress(connected)
+pub type ConnectedGraph<V, E> = [E](u: V, v: V)
+
+/// \(O(m)\) to read.
+/// One arc `u -> v` on `V` for each value of `E`, with no arc twice and no
+/// directed cycle. `cpl stress` makes and shrinks it so.
+@stress(dag)
+pub type Dag<V, E> = [E](u: V, v: V)
+
+/// \(O(n + m)\) to read (acyclicity is validated).
+/// One arc `u -> v` on `V` for each value of `E`, with no loop and no arc
+/// twice; `u v` and `v u` are two arcs. `cpl stress` makes and shrinks it so.
+@stress(digraph)
+pub type Digraph<V, E> = [E](u: V, v: V)
+
+/// A fixed graph in compressed sparse row form: n + 1 offsets and one arcs list, the arcs of each
+/// vertex contiguous and in input order. Immutable; a graph that grows is a `[V]List` of arcs,
+/// which is already a `Next`. \(O(n + m)\) memory and build.
+pub struct Graph<V: Domain, A: Target<V> = V>:
+    pub start: [V.cuts]Len
+    pub arcs: List<A>
+
+    /// A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
+    ///
+    /// The arcs out of each vertex keep the order of their edges in `edges` (a stable counting
+    /// sort), so DFS orders and first-found answers are deterministic. Each arc is
+    /// `EdgeArc<V, E, R>`, the edge record with `u`, `v` replaced by `to`, `e`, unless `keep`
+    /// maps it to something else; `keep` runs once per arc at build and what it returns is
+    /// stored.
+    ///
+    /// An empty `V` gives the empty graph.
+    ///
+    /// cost: \(O(n + m)\) time and memory, plus `m` calls of `keep`
+    /// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V) = []; let g = Graph.directed(es); g.deg(0) == 0 and g.deg(1) == 0`
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es, keep: a => (to: a.to)).out(0).collect() == [(to: 2), (to: 1)]`
+    @lint(manual_adjacency_list, holes: "R, n, m", from: "var adj: List<List<Int>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.directed(es, keep: arc => arc.to)")
+    @lint(manual_adjacency_list, holes: "R, d, m", from: "var adj: [d]List<Int> = []\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.directed(es, keep: arc => arc.to)")
+    @lint(manual_adjacency_list, holes: "R, W, n, m", from: "var adj: List<List<(Int, Int)>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y, c): (R, R, W) = read()\n    adj[x].push((y, c))", to: "domain V = R\nlet es: [0..m](u: V, v: V, w: W) = read()\nlet adj = Graph.directed(es, keep: arc => (arc.to, arc.w))")
+    @lint(manual_adjacency_list, holes: "R, W, d, m", from: "var adj: [d]List<(Int, Int)> = []\nfor _ in 0..m:\n    let (x, y, c): (R, R, W) = read()\n    adj[x].push((y, c))", to: "domain V = R\nlet es: [0..m](u: V, v: V, w: W) = read()\nlet adj = Graph.directed(es, keep: arc => (arc.to, arc.w))")
+    pub fn directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: S,
+        keep: EdgeArc<V,
+        E,
+        R> -> B = a => a,
+    ) -> Graph<V, B>:
+        var start: [V.cuts]Len = 0
+        for e in edges.keys: start[edges[e].u.ord] += 1
+        // counts become each vertex's end; placing arcs back to front lowers it to its start
+        for i in 1..start.len: start[i] += start[i - 1]
+        var arcs = List<B>()
+        if let e0 = edges.keys.first:
+            let f0 = edges[e0]
+            arcs = List.filled(start[V.count], keep((to: f0.v, e: e0, ..f0 without (u, v))))
+            for e in edges.keys.rev:
+                let r = edges[e]
+                start[r.u.ord] -= 1
+                arcs[start[r.u.ord]] = keep((to: r.v, e: e, ..r without (u, v)))
+        Graph<V, B>(start:, arcs:)
+
+    /// A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the
+    /// same `e`. A loop `u -> u` gives two arcs at `u`, so it counts twice in `deg`.
+    ///
+    /// The arcs out of each vertex come in the order of their edges in `edges`; a loop's two
+    /// arcs are adjacent. `keep` runs once per stored arc, so `2m` times.
+    ///
+    /// cost: \(O(n + m)\) time and memory, plus `2m` calls of `keep`
+    /// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V) = []; let g = Graph.undirected(es); g.deg(0) == 0 and g.deg(1) == 0`
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).out(1).collect() == [(to: 0, e: 0), (to: 2, e: 1)]`
+    /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
+    @lint(manual_adjacency_list, holes: "R, n, m", from: "var adj: List<List<Int>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
+    @lint(manual_adjacency_list, holes: "R, d, m", from: "var adj: [d]List<Int> = []\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
+    @lint(symmetric_write, from: "g[u].push(v)\ng[v].push(u)", to: "Graph.undirected(es)", holes: "g, u, v")
+    @lint(symmetric_write, from: "g[u].push((v, w))\ng[v].push((u, w))", to: "Graph.undirected(es)", holes: "g, u, v, w")
+    pub fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
+        edges: S,
+        keep: EdgeArc<V,
+        E,
+        R> -> B = a => a,
+    ) -> Graph<V, B>:
+        var start: [V.cuts]Len = 0
+        for e in edges.keys:
+            start[edges[e].u.ord] += 1
+            start[edges[e].v.ord] += 1
+        // counts become each vertex's end; placing arcs back to front lowers it to its start
+        for i in 1..start.len: start[i] += start[i - 1]
+        var arcs = List<B>()
+        if let e0 = edges.keys.first:
+            let f0 = edges[e0]
+            arcs = List.filled(start[V.count], keep((to: f0.v, e: e0, ..f0 without (u, v))))
+            for e in edges.keys.rev:
+                let r = edges[e]
+                start[r.v.ord] -= 1
+                arcs[start[r.v.ord]] = keep((to: r.u, e: e, ..r without (u, v)))
+                start[r.u.ord] -= 1
+                arcs[start[r.u.ord]] = keep((to: r.v, e: e, ..r without (u, v)))
+        Graph<V, B>(start:, arcs:)
+
+    /// A graph from `(from, arc)` pairs: `arc` is stored as one of `from`'s arcs. The base form
+    /// the other builders reduce to.
+    ///
+    /// cost: \(O(n + m)\)
+    /// empty: `domain V = 0..2; let g = Graph.of(List<(from: V, arc: V)>()); g.next(0).count() == 0 and g.next(1).count() == 0`
+    /// order: each vertex's arcs in the order the pairs come
+    /// traps: never
+    /// example: `domain V = 0..2; let g = Graph.of([(from: V(1), arc: V(0)), (from: V(0), arc: V(1)), (from: V(1), arc: V(1))]); g.next(1).collect() == [0, 1]`
+    pub fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>:
+        var start: [V.cuts]Len = 0
+        var pairs = List<(from: V, arc: A)>()
+        for p in arcs:
+            start[p.from.ord] += 1
+            pairs.push(p)
+        for i in 1..start.len: start[i] += start[i - 1]
+        var out = List<A>()
+        if pairs.len > 0:
+            out = List.filled(pairs.len, pairs[0].arc)
+            for j in (0..pairs.len).rev:
+                let p = pairs[j]
+                start[p.from.ord] -= 1
+                out[start[p.from.ord]] = p.arc
+        Graph<V, A>(start:, arcs: out)
+
+    /// `g[u]`: the arcs out of `u` as an `Indexed` view, without copying.
+    ///
+    /// The view is a slice of the graph's arc list, so like every slice it keeps its source's
+    /// keys: `start[u]..start[u + 1]`. Iterate it, or use `.first`, `.len` and `.to_list()`.
+    ///
+    /// cost: \(O(1)\)
+    /// order: the arcs in input order
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g[0].len == 2 and g[1].len == 0`
+    pub fn at(self, u: V) -> lends Slice<List<A>> = arcs[start[u.ord]..start[u.ord + 1]]
+
+    /// The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without
+    /// one. The diagonal holds the least loop weight, or `None`; `floyd_warshall` starts it at
+    /// zero itself.
+    ///
+    /// cost: \(O(n^2 + m)\) time, \(O(n^2)\) memory
+    /// ties: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 1, w: 3)]; Graph.directed(es).matrix()[0, 1] == Some(3)`
+    /// traps: never
+    /// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 1, w: 3), (u: 1, v: 0, w: 4)]; let d = Graph.directed(es).matrix(); d[0, 1] == Some(3) and d[1, 0] == Some(4) and d[0, 0] == None`
+    pub fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W>:
+        var d: [V, V]?W = None
+        for u in V:
+            for i in start[u.ord]..start[u.ord + 1]:
+                let a = arcs[i]
+                let v = a.to
+                let w = a.w
+                if let cur = d[u, v]:
+                    if w < cur: d[u, v] = Some(w)
+                else:
+                    d[u, v] = Some(w)
+        d
+
+    /// The number of arcs out of `u`. An undirected loop counts twice.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).deg(1) == 2`
+    pub fn deg(self, u: V) -> Int = start[u.ord + 1] - start[u.ord]
+
+    /// Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.
+    ///
+    /// cost: \(O(1)\) per vertex yielded
+    /// order: input order
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).next(0).collect() == [2, 1]`
+    pub fn next(self, u: V) -> yields V:
+        unchecked:
+            for i in start[u.ord]..start[u.ord + 1]:
+                yield arcs[i].to
+
+    /// The induced view on the vertices `keep` accepts: arcs from or to a rejected vertex are
+    /// skipped.
+    ///
+    /// `from` also skips the arcs leaving a vertex it rejects, so that vertex can be
+    /// reached but not left. Rejected vertices stay in `V` with no arcs. See the free `only`.
+    ///
+    /// cost: \(O(1)\) to make; `keep` and `from` run per arc walked
+    /// traps: never
+    /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).only(keep: v => v != 1).deg(0) == 1`
+    /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; let h = Graph.directed(es).only(from: v => v != 1); h.deg(0) == 2 and h.deg(1) == 0`
+    pub fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self> =
+        Only(self, keep, from)
+
+    /// The same graph with each arc's `.w` read as `f(a)`; `.to` and `.e` pass through, so it
+    /// is a `WeightedNext` and stays `Edged`. On a weighted graph it reweights. Nothing is
+    /// stored.
+    ///
+    /// cost: \(O(1)\) to make; `f` runs on every arc read
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; dijkstra(Graph.directed(es).weighted(a => 5), from: [(V(0), 0)])[2] == Some(10)`
+    pub fn weighted<E, W>(self, f: A -> W) -> Reweighted<V, E, A, W> where A: Edged<E> =
+        Reweighted(self, f)
+
+    /// True when some arc `u -> v` exists. A scan of `u`'s arcs, not a lookup.
+    ///
+    /// cost: \(O(\deg u)\)
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g.contains(0, 2) and not g.contains(2, 0)`
+    pub fn contains(self, u: V, v: V) -> Bool:
+        for i in start[u.ord]..start[u.ord + 1]:
+            if arcs[i].to == v: return true
+        false
+
+    /// The targets of every vertex as plain lists, `lists()[u] == next(u).collect()`: the shape
+    /// `std.flow` matchings take.
+    ///
+    /// cost: \(O(n + m)\)
+    /// order: keyed by `V`; each list in input order, repeats kept
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).lists()[0] == [2, 1]`
+    pub fn lists(self) -> [V]List<V>:
+        [V] u => [arcs[i].to for i in start[u.ord]..start[u.ord + 1]]
+
+    /// The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the
+    /// diagonal. A graph with unreachable pairs wants `bfs`.
+    ///
+    /// cost: \(O(n (n + m))\) time, \(O(n^2)\) memory
+    /// order: keyed by `(from, to)`
+    /// traps: when some vertex cannot reach another
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let h = Graph.undirected(es).hops(); h[0, 2] == 2 and h[1, 1] == 0`
+    pub fn hops(self) -> [V, V]Int:
+        var out: [V, V]Int = -1
+        for s in V:
+            out[s, s] = 0
+            var q = [s]
+            var head = 0
+            while head < q.len:
+                let u = q[head]
+                head += 1
+                let d = out[s, u] + 1
+                for i in start[u.ord]..start[u.ord + 1]:
+                    let v = arcs[i].to
+                    if out[s, v] < 0:
+                        out[s, v] = d
+                        q.push(v)
+            assert head == V.count, "hops: graph is not strongly connected"
+        out
+
+    /// Every edge once, as `Edge(e, u, v)`. A directed graph gives the ends as built; an
+    /// undirected one stores the same two arcs for `(u, v)` and `(v, u)`, so `u` is the end that
+    /// comes first in `V` (decision 248). Needs arcs that keep `e`.
+    ///
+    /// cost: \(O(n + m)\) for the whole walk, all of it before the first edge: it marks every edge
+    /// to yield each once, in `e` order
+    /// order: increasing `e`
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 1, v: 0), (u: 0, v: 2)]; Graph.undirected(es).edges().collect() == [Edge(0, 0, 1), Edge(1, 0, 2)] and Graph.directed(es).edges().collect() == [Edge(0, 1, 0), Edge(1, 0, 2)]`
+    pub fn edges<E>(self) -> yields Edge<V, E> where A: Edged<E>:
+        var seen: [E]Bool = false
+        var us: [E]?V = None
+        var vs: [E]?V = None
+        for u in V:
+            for i in start[u.ord]..start[u.ord + 1]:
+                let a = arcs[i]
+                let eid = a.e
+                if not seen[eid]:
+                    seen[eid] = true
+                    us[eid] = Some(u)
+                    vs[eid] = Some(a.to)
+        for e in E:
+            if seen[e]:
+                yield Edge(e, us[e]!, vs[e]!)
+
+    /// `peel(g, ready:, on_remove:)` as a method; see the free `peel`.
+    ///
+    /// cost: \(O(n + m)\) plus the calls of `ready` and `on_remove`
+    /// order: removal order
+    /// traps: never
+    /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).peel() == [0, 1, 2, 3]`
+    pub fn peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>:
+        var indeg: [V]Int = 0
+        var removed: [V]Bool = false
+        for u in V:
+            for i in start[u.ord]..start[u.ord + 1]:
+                indeg[arcs[i].to] += 1
+        var q = List<V>()
+        for u in V:
+            if let r = ready:
+                if r(u):
+                    removed[u] = true
+                    q.push(u)
+            else:
+                if indeg[u] == 0:
+                    removed[u] = true
+                    q.push(u)
+        var head = 0
+        while head < q.len:
+            let u = q[head]
+            head += 1
+            for i in start[u.ord]..start[u.ord + 1]:
+                let a = arcs[i]
+                let v = a.to
+                indeg[v] -= 1
+                if let cb = on_remove:
+                    cb(u, a)
+                if not removed[v]:
+                    if let r = ready:
+                        if r(v):
+                            removed[v] = true
+                            q.push(v)
+                    else:
+                        if indeg[v] == 0:
+                            removed[v] = true
+                            q.push(v)
+        q
+
+    /// Every arc `u -> a.to` reversed to `a.to -> u`, its other fields kept (`(..a, to: u)`).
+    ///
+    /// cost: \(O(n + m)\)
+    /// order: each vertex's new arcs by original source in vertex order, then input order
+    /// traps: never
+    /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).transpose().out(3).collect() == [(to: 1, e: 2), (to: 2, e: 3)]`
+    pub fn transpose(self) -> Graph<V, A>:
+        var tstart: [V.cuts]Len = 0
+        for a in arcs: tstart[a.to.ord] += 1
+        for i in 1..tstart.len: tstart[i] += tstart[i - 1]
+        var src: List<Int> = List.filled(arcs.len, 0)
+        var from: List<V> = []
+        for u in V:
+            for _ in start[u.ord]..start[u.ord + 1]: from.push(u)
+        for u in V.rev:
+            for i in (start[u.ord]..start[u.ord + 1]).rev:
+                tstart[arcs[i].to.ord] -= 1
+                src[tstart[arcs[i].to.ord]] = i
+        let tarcs = src.map(i => reversed_arc(arcs[i], from[i])).collect()
+        Graph<V, A>(start: tstart, arcs: tarcs)
+
+impl Next<V> for Graph<V, A>:
+    type Arc = A
+
+    /// The arcs out of `u`, lazily: the `Next` implementation.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per arc
+    /// order: input order
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
+    fn out(self, u: V) -> yields A:
+        unchecked:
+            for i in start[u.ord]..start[u.ord + 1]:
+                yield arcs[i]
+
+/// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
+/// vertices in removal order.
+///
+/// What stays is every vertex on a cycle or reachable from one, so the order covers all of `V`
+/// exactly when the graph is acyclic.
+///
+/// A FIFO queue starts with the vertices of in-degree zero in vertex order; removing `u`
+/// walks its arcs in order and appends each target whose in-degree drops to zero. With
+/// `ready`, a vertex is removable when `ready(v)` holds instead: the queue starts with the
+/// ready vertices in vertex order, and after removing `u` each arc `a` calls
+/// `on_remove(u, a)` and then appends `a.to` if it is ready and not yet queued. Each vertex
+/// is removed at most once. For a vertexless closure graph, pass the domain: `peel::<V>(u =>
+/// ...)`.
+///
+/// Ties go FIFO: the initial vertices in vertex order, later ones in the order their last arc is walked.
+///
+/// cost: \(O(n + m)\) plus the calls of `ready` and `on_remove`
+/// empty: `domain V = 0..0; let g: [V]List<V> = []; peel(g) == []`
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[3], [2], [], []]; peel(g) == [0, 1, 3, 2]`
+/// order: removal order
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; peel(g) == [0, 1, 2, 3]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], [1]]; peel(g) == [0]`
+pub fn peel<V, G: Next<V>>(
+    g: G,
+    ready: ?(V -> Bool) = None,
+    on_remove: ?((V, G.Arc) -> ()) = None,
+) -> List<V>:
+    var order = List<V>()
+    if let is_ready = ready:
+        var queued: [V]Bool = false
+        for v in V:
+            if is_ready(v):
+                queued[v] = true
+                order.push(v)
+        var i = 0
+        while i < order.len:
+            let u = order[i]
+            i += 1
+            for a in g.out(u):
+                if let f = on_remove: f(u, a)
+                let v = a.to
+                if not queued[v] and is_ready(v):
+                    queued[v] = true
+                    order.push(v)
+    else:
+        var indeg: [V]Int = 0
+        for u in V:
+            for a in g.out(u): indeg[a.to] += 1
+        for v in V:
+            if indeg[v] == 0: order.push(v)
+        var i = 0
+        while i < order.len:
+            let u = order[i]
+            i += 1
+            for a in g.out(u):
+                if let f = on_remove: f(u, a)
+                indeg[a.to] -= 1
+                if indeg[a.to] == 0: order.push(a.to)
+    order
+
+/// A topological order (every arc goes forward in it), or `None` if there is a directed
+/// cycle: a `peel` that removed every vertex. For a vertexless closure graph, pass the
+/// domain: `topo::<V>(u => ...)`.
+///
+/// Ties are those of `peel` (FIFO, in-degree-zero vertices in vertex order); `smallest_topo` gives the least order.
+///
+/// cost: \(O(n + m)\)
+/// empty: `domain V = 0..0; let g: [V]List<V> = []; topo(g) == Some([])`
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[3], [2], [], []]; topo(g) == Some([0, 1, 3, 2])`
+/// order: topological
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], [0]]; topo(g) == Some([1, 2, 0])`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], [0]]; topo(g) == None`
+pub fn topo<V>(g: Next<V>) -> ?List<V>:
+    var indeg: [V]Int = 0
+    for u in V:
+        for a in g.out(u): indeg[a.to] += 1
+    var order: List<V> = [v for v in V if indeg[v] == 0]
+    var i = 0
+    while i < order.len:
+        let u = order[i]
+        i += 1
+        for a in g.out(u):
+            indeg[a.to] -= 1
+            if indeg[a.to] == 0: order.push(a.to)
+    if order.len == V.count: order else: None
+
+/// The strongly connected components, as a fresh domain `C` and each vertex's component.
+/// `C` is a topological order of the condensation: every arc goes from a component to the
+/// same or a later one.
+///
+/// Computed by Tarjan's algorithm without recursion, roots in vertex order and arcs in arc
+/// order; components are numbered in reverse order of completion.
+///
+/// cost: \(O(n + m)\)
+/// ties: `domain V = 0..2; let g: [V]List<V> = [[], []]; let (domain C, comp) = scc(g); comp[0].ord == 1 and comp[1].ord == 0`
+/// order: `comp` is keyed by `V`
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0]]; let (domain C, comp) = scc(g); C.count == 2 and comp[0] == comp[1] and comp[2] < comp[0]`
+pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
+    // the arcs flat, u's at flat[ptr[u]..end[u]]: one list, not one per vertex
+    var flat: List<V> = []
+    var ptr: [V]Int = 0
+    var end: [V]Int = 0
+    for u in V:
+        ptr[u] = flat.len
+        for a in g.out(u): flat.push(a.to)
+        end[u] = flat.len
+    var idx: [V]?Int = None
+    var low: [V]Int = 0
+    var done: [V]Int = 0
+    var on: [V]Bool = false
+    var st: List<V> = []
+    var call: List<V> = []
+    var t = 0
+    var k = 0
+    for s in V:
+        if idx[s] != None: continue
+        idx[s] = t
+        low[s] = t
+        t += 1
+        st.push(s)
+        on[s] = true
+        call.push(s)
+        while call.len > 0:
+            let u = call.last!
+            if ptr[u] < end[u]:
+                let v = flat[ptr[u]]
+                ptr[u] += 1
+                if idx[v] == None:
+                    idx[v] = t
+                    low[v] = t
+                    t += 1
+                    st.push(v)
+                    on[v] = true
+                    call.push(v)
+                elif on[v]:
+                    low[u] min= idx[v]!
+            else:
+                call.pop()
+                if call.len > 0:
+                    let p = call.last!
+                    low[p] min= low[u]
+                if low[u] == idx[u]!:
+                    while true:
+                        let w = st.pop()!
+                        on[w] = false
+                        done[w] = k
+                        if w == u: break
+                    k += 1
+    domain C = 0..k
+    (C:, comp: [V] v => C(k - 1 - done[v]))
+
+/// `Graph.directed` on a plain list of `(u, v)` pairs: no edge domain, and each arc is the
+/// target vertex itself. A `Graph` in compressed sparse rows, as `Graph.directed` builds one.
+///
+/// cost: \(O(n + m)\) time; memory is `n + 1` offsets and one list of `m` arcs, no list per vertex
+/// empty: `domain V = 0..2; let g = directed_of_pairs(List<(V, V)>()); g.deg(0) == 0 and g.deg(1) == 0`
+/// order: each vertex's arcs in input order
+/// traps: never
+/// example: `domain V = 0..3; directed_of_pairs([(V(0), V(2)), (V(0), V(1))]).next(0).collect() == [2, 1]`
+pub fn directed_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>:
+    var start: [V.cuts]Len = 0
+    for (u, _) in edges: start[u.ord] += 1
+    for i in 1..start.len: start[i] += start[i - 1]
+    var arcs = List<V>()
+    if let (u0, _) = edges.first:
+        arcs = List.filled(edges.len, u0)
+        for (u, v) in edges.rev:
+            start[u.ord] -= 1
+            arcs[start[u.ord]] = v
+    Graph<V, V>(start:, arcs:)
+
+/// `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways,
+/// each arc the target vertex itself. A `Graph` in compressed sparse rows, as
+/// `Graph.undirected` builds one.
+///
+/// cost: \(O(n + m)\) time; memory is `n + 1` offsets and one list of `2m` arcs, no list per vertex
+/// empty: `domain V = 0..2; let g = undirected_of_pairs(List<(V, V)>()); g.deg(0) == 0 and g.deg(1) == 0`
+/// order: each vertex's arcs in the order of their pairs
+/// traps: never
+/// example: `domain V = 0..3; undirected_of_pairs([(V(0), V(1)), (V(1), V(2))]).next(1).collect() == [0, 2]`
+pub fn undirected_of_pairs<V: Domain>(edges: List<(V, V)>) -> Graph<V, V>:
+    var start: [V.cuts]Len = 0
+    for (u, v) in edges:
+        start[u.ord] += 1
+        start[v.ord] += 1
+    for i in 1..start.len: start[i] += start[i - 1]
+    var arcs = List<V>()
+    if let (u0, _) = edges.first:
+        arcs = List.filled(2 * edges.len, u0)
+        for (u, v) in edges.rev:
+            start[v.ord] -= 1
+            arcs[start[v.ord]] = u
+            start[u.ord] -= 1
+            arcs[start[u.ord]] = v
+    Graph<V, V>(start:, arcs:)
+
+/// The number of arcs out of `u` in an adjacency list, as `Graph.deg` is for a `Graph`.
+/// `Graph.undirected` over a plain range of edges (`[0..m](u: V, v: V)`) gives one.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.deg(0) == 2 and g.deg(2) == 0`
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; g.deg(1) == 0`
+pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
+
+/// Where `u`'s arcs lead in an adjacency list, as `Graph.next` is for a `Graph`: each entry's
+/// target, repeats kept.
+///
+/// cost: \(O(1)\) per vertex yielded
+/// order: list order
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[2, 1], [2], []]; g.next(0).collect() == [2, 1] and g.next(2).count() == 0`
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; g.next(1).count() == 0`
+pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
+    for a in self[u]: yield a.to
+
+/// The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
+///
+/// cost: \(O(n + m)\), a new adjacency list
+/// order: each list ascending by source vertex
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.transpose() == [[], [0], [0, 1]]`
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[0], [0]]; g.transpose()[1] == []`
+pub fn transpose<V>(self: [V]List<V>) -> [V]List<V>:
+    var t: [V]List<V> = []
+    for u in V:
+        for v in self[u]: t[v].push(u)
+    t
+
+/// The connected components of an undirected graph, as a fresh domain `C` and each vertex's
+/// component.
+///
+/// Components are numbered in order of their smallest vertex. Precisely: scanning `V` in
+/// order, each vertex not yet labelled gets the next number and labels everything it
+/// reaches through unlabelled vertices; on a directed graph that is what it computes.
+///
+/// cost: \(O(n + m)\)
+/// order: `C` by smallest vertex; `comp` keyed by `V`
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[2], [], [0], []]; let (domain C, comp) = components(g); C.count == 3 and comp[0] == comp[2] and Int(comp[3]) == 2`
+pub fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C):
+    var cid: [V]?Int = None
+    var k = 0
+    if G: ReachesUnvisited:
+        var unvisited = V.collect()
+        reverse(mut unvisited)
+        var mark: [V]?V = None
+        while let s = unvisited.pop():
+            cid[s] = k
+            var todo = [s]
+            while let u = todo.pop():
+                let (reached, rest) = g.reach_unvisited(u, unvisited, mut mark)
+                for v in reached: cid[v] = k
+                todo.extend(reached)
+                unvisited = rest
+            k += 1
+    else:
+        var q = Deque<V>()
+        for s in V:
+            if cid[s] != None: continue
+            cid[s] = k
+            q.push(s)
+            while let u = q.pop_front():
+                for a in g.out(u):
+                    let v = a.to
+                    if cid[v] == None:
+                        cid[v] = k
+                        q.push(v)
+            k += 1
+    domain C = 0..k
+    (C:, comp: [V] v => C(cid[v]!))
+
+/// The arcs between components: `out[comp[u]]` gets `(to: comp[a.to])` for every arc `a`
+/// of `u` that leaves its component. Arcs inside a component are dropped; repeats are kept.
+///
+/// cost: \(O(n + m)\)
+/// empty: `domain V = 0..0; domain C = 0..2; let g: [V]List<V> = []; let comp: [V]C = []; condense(g, comp) == [[], []]`
+/// order: keyed by `C`; each list by source vertex in vertex order, then arc order
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0, 1]]; let (domain C, comp) = scc(g); let h = condense(g, comp); h[comp[2]] == [(to: comp[0]), (to: comp[0])] and h[comp[0]] == []`
+pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>:
+    var out: [C]List<(to: C)> = []
+    for u in V:
+        let cu = comp[u]
+        for a in g.out(u):
+            let cv = comp[a.to]
+            if cu != cv: out[cu].push((to: cv))
+    out
+
+/// The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh domain `C`
+/// and each vertex's component.
+///
+/// Arcs carry `e`, so parallel edges are never bridges. Every edge between two components is a
+/// bridge, so `condense(g, comp)` is the bridge tree.
+///
+/// cost: \(O(n + m)\), iterative Tarjan low-link
+/// order: `C` by smallest vertex; `comp` keyed by `V`
+/// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 1)]; let (domain C, comp) = two_edge_components(Graph.undirected(es)); comp[1] == comp[2] and comp[0] != comp[1]`
+pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C):
+    let is_bridge = bridges(g)
+    var cid: [V]?Int = None
+    var k = 0
+    var q = Deque<V>()
+    for s in V:
+        if cid[s] != None: continue
+        cid[s] = k
+        q.push(s)
+        while let Some(u) = q.pop_front():
+            for a in g.out(u):
+                if is_bridge[a.e]: continue
+                let v = a.to
+                if cid[v] == None:
+                    cid[v] = k
+                    q.push(v)
+        k += 1
+    domain C = 0..k
+    (C:, comp: [V] v => C(cid[v]!))
+
+/// Which vertices are cut vertices: removing one (and its arcs) leaves more components than before.
+///
+/// Works per component, so disconnected graphs are fine; a root is a cut vertex exactly when it has
+/// two or more DFS children. Skips the arc's own edge, not its source vertex, so parallel edges are
+/// right.
+///
+/// cost: \(O(n + m)\), iterative
+/// order: keyed by `V`
+/// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
+/// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; cut_vertices(Graph.undirected(es)) == [false, true, false]`
+pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
+    var tin: [V]?Int = None
+    var low: [V]Int = 0
+    var is_cut: [V]Bool = false
+    var timer = 0
+    var stk_u = List<V>()
+    var stk_pe = List<?E>()
+    var stk_i = List<Int>()
+    var stk_ch = List<Int>()
+    var stk_nbrs = List<List<(to: V, e: E)>>()
+    for s in V:
+        if tin[s] != None: continue
+        tin[s] = timer
+        low[s] = timer
+        timer += 1
+        stk_u.push(s)
+        stk_pe.push(None)
+        stk_i.push(0)
+        stk_ch.push(0)
+        stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(s)])
+        while stk_u.len > 0:
+            let k = stk_u.len - 1
+            let u = stk_u[k]
+            let i = stk_i[k]
+            if i == stk_nbrs[k].len:
+                let ch = stk_ch[k]
+                let is_root = stk_u.len == 1
+                stk_u.pop()
+                stk_pe.pop()
+                stk_i.pop()
+                stk_ch.pop()
+                stk_nbrs.pop()
+                if is_root:
+                    if ch >= 2: is_cut[u] = true
+                else:
+                    let p = stk_u.last!
+                    low[p] min= low[u]
+                    if low[u] >= tin[p]! and stk_u.len > 1:
+                        is_cut[p] = true
+                continue
+            stk_i[k] = i + 1
+            let arc = stk_nbrs[k][i]
+            let v = arc.to
+            let eid = arc.e
+            if let Some(pe) = stk_pe[k]:
+                if eid == pe: continue
+            if let t = tin[v]:
+                low[u] min= t
+            else:
+                stk_ch[k] += 1
+                tin[v] = timer
+                low[v] = timer
+                timer += 1
+                stk_u.push(v)
+                stk_pe.push(Some(eid))
+                stk_i.push(0)
+                stk_ch.push(0)
+                stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(v)])
+    is_cut
+
+/// A 2-colouring of an undirected graph (no arc joins two vertices of one side), or `None`
+/// when an odd cycle exists.
+///
+/// A BFS from each uncoloured vertex in vertex order gives it `false` and alternates along
+/// arcs, so the smallest vertex of every component is `false`.
+///
+/// cost: \(O(n + m)\)
+/// order: keyed by `V`
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; two_color(g) == Some([false, true, false])`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0, 1]]; two_color(g) == None`
+pub fn two_color<V>(g: Next<V>) -> ?[V]Bool:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var side: [V]?Bool = None
+    for root in V:
+        if side[root] != None: continue
+        side[root] = false
+        var q = [root]
+        var i = 0
+        while i < q.len:
+            let u = q[i]
+            i += 1
+            for v in out[u]:
+                if side[v] == None:
+                    side[v] = not side[u]!
+                    q.push(v)
+                elif side[v] == side[u]:
+                    return None
+    [V] v => side[v]!
+
+@test
+fn complement_searches_match_the_explicit_complement():
+    domain V = 0..6
+    let missing: [V]List<V> = [[2, 3, 4], [2, 3, 4, 5], [0, 1, 3, 4, 5], [0, 1, 2], [0, 1, 2], [1, 2]]
+    let explicit = [V] u => [v for v in V if v != u and not missing[u].contains(v)]
+    let (domain C, comp) = components(complement(missing))
+    let (domain D, want) = components(explicit)
+    assert C.count == D.count
+    for u in V:
+        for v in V: assert (comp[u] == comp[v]) == (want[u] == want[v])
+        let got = reachable(complement(missing), from: [u]).collect().sorted()
+        assert got == reachable(explicit, from: [u]).collect().sorted()
+
+@test
+fn csr_keeps_edge_ids_and_order():
+    domain V = 1..=4
+    domain E = 1..=4
+    let edges = [E] e => [
+        (u: V(1), v: V(2)),
+        (u: V(1), v: V(3)),
+        (u: V(3), v: V(2)),
+        (u: V(4), v: V(1)),
+    ][e.ord]
+    let g = Graph.directed(edges)
+    assert [a.to.label for a in g.out(V(1))] == [2, 3]
+    assert [a.e.label for a in g.out(V(1))] == [1, 2]
+    assert g.deg(V(2)) == 0 and g.deg(V(4)) == 1
+    let t = g.transpose()
+    assert [a.to.label for a in t.out(V(2))] == [1, 3]
+    assert [a.e.label for a in t.out(V(2))] == [1, 3]
+    let u = Graph.undirected(edges)
+    assert [a.to.label for a in u.out(V(1))] == [2, 3, 4]
+    assert sum(u.deg(v) for v in V) == 8
+
+@test
+fn bfs_over_a_stored_graph_and_over_a_lambda():
+    domain V = 0..10
+    let next = [V] v => [
+        V.nth(x) for x in [v.ord + 1, v.ord * 2, v.ord - 3] if 0 <= x < 10
+    ]
+    let es = [(v, w) for v in V for w in next[v]]
+    let stored = bfs(Graph.directed(es), from: [V(1)])
+    let lambda = bfs<V>(v => next[v], from: [V(1)])
+    var dist: [V]?Int = None
+    dist[V(1)] = Some(0)
+    for _ in V:
+        for v in V:
+            if let d = dist[v]:
+                for w in next[v]:
+                    if dist[w] == None or d + 1 < dist[w]!: dist[w] = Some(d + 1)
+    for v in V: assert stored[v] == dist[v] and lambda[v] == dist[v]
+
+@test
+fn dijkstra_matches_brute_relaxation():
+    domain V = 0..6
+    domain E = 0..10
+    for _ in 0..30:
+        let es = [E] _ => (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 9))
+        let g = Graph.directed(es)
+        for s in V:
+            var d: [V]?Int = None
+            d[s] = Some(0)
+            for _ in V:
+                for e in E:
+                    let (u, v, w) = (es[e].u, es[e].v, es[e].w)
+                    if let du = d[u]:
+                        if d[v] == None or du + w < d[v]!: d[v] = Some(du + w)
+            let p = dijkstra(g, from: [(s, 0)])
+            for t in V: assert p[t] == d[t]
+            var b: [V]?Int = None
+            b[s] = Some(0)
+            for _ in V:
+                for e in E:
+                    let (u, v, w) = (es[e].u, es[e].v, es[e].w)
+                    if let bu = b[u]:
+                        if b[v] == None or max(bu, w) < b[v]!: b[v] = Some(max(bu, w))
+            let q = dijkstra(g, from: [(s, 0)], step: max)
+            for t in V: assert q[t] == b[t]
+
+@test
+fn topo_orders_a_dag_and_rejects_a_cycle():
+    domain V = 0..6
+    let out = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.ord]]
+    let order = topo<V>(v => out[v])!
+    var pos: [V]Int = 0
+    for (i, v) in [(i, order[i]) for i in 0..order.len]: pos[v] = i
+    for u in V:
+        for v in out[u]: assert pos[u] < pos[v]
+    assert topo<V>(v => [V.wrap(v.ord + 1)]) == None
+    let stuck = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [3], [0]][v.ord]]
+    assert topo<V>(v => stuck[v]) == None
+
+@test
+fn peel_leaves_what_a_cycle_reaches():
+    // 0 -> 1 -> 2 -> 3 -> 2 (a cycle) -> 4, and 5 -> 0
+    domain V = 0..6
+    let out = [V] v => [V(x) for x in [[1], [2], [3], [2, 4], [], [0]][v.ord]]
+    assert peel<V>(v => out[v]) == [V(5), V(0), V(1)]
+    let dag = [V] v => [V(x) for x in [[1, 2], [3], [3], [4], [], [0]][v.ord]]
+    assert peel<V>(v => dag[v]) == topo<V>(v => dag[v])!
+    domain E = 0..6
+    let edges = [E] e => [
+        (u: V(0), v: V(1)),
+        (u: V(1), v: V(2)),
+        (u: V(2), v: V(3)),
+        (u: V(3), v: V(2)),
+        (u: V(3), v: V(4)),
+        (u: V(5), v: V(0)),
+    ][e.ord]
+    assert peel(Graph.directed(edges)) == [V(5), V(0), V(1)]
+
+@test
+fn scc_agrees_with_reachability():
+    domain V = 0..8
+    for _ in 0..25:
+        let out = [V] v => [V.nth(rand(0, 7)) for _ in 0..rand(0, 2)]
+        var reach: [V, V]Bool = false
+        for s in V:
+            let d = bfs(v => out[v], from: [s])
+            for t in V: reach[s, t] = d[t] != None
+        let (C, comp) = scc<V>(v => out[v])
+        for a in V:
+            for b in V:
+                assert (comp[a] == comp[b]) == (reach[a, b] and reach[b, a])
+                if reach[a, b]: assert comp[a] <= comp[b]
+        let dag = condense(v => out[v], comp)
+        assert topo<C>(c => dag[c]) != None
+
+@test
+fn components_of_an_undirected_graph():
+    domain V = 0..8
+    for _ in 0..30:
+        var adj: [V]List<V> = [V] _ => []
+        var d = Dsu<V>()
+        for _ in 0..rand(0, 8):
+            let (u, v) = (V.nth(rand(0, 7)), V.nth(rand(0, 7)))
+            for (a, b) in [(u, v), (v, u)]: adj[a].push(b)
+            d.unite(u, v)
+        let (domain C, comp) = components(adj)
+        assert C.count == d.components
+        for a in V:
+            for b in V: assert (comp[a] == comp[b]) == d.same(a, b)
+
+fn random_edges<V, E>() -> [E](u: V, v: V):
+    [E] e => (u: V.nth(rand(0, V.count - 1)), v: V.nth(rand(0, V.count - 1)))
+
+/// Are `a` and `b` connected when edge `skip` and vertex `gone` are removed?
+fn linked<V, E>(edges: [E](u: V, v: V), a: V, b: V, skip: ?E, gone: ?V) -> Bool:
+    var d = Dsu<V>()
+    for e in E:
+        if e != skip and edges[e].u != gone and edges[e].v != gone: d.unite(edges[e].u, edges[e].v)
+    d.same(a, b)
+
+@test
+fn bridges_and_cut_vertices_match_removing_them():
+    domain V = 0..6
+    domain E = 0..7
+    for _ in 0..40:
+        let edges = random_edges<V, E>()
+        let g = Graph.undirected(edges)
+        let bridge = bridges(g)
+        let cut = cut_vertices(g)
+        for e in E:
+            assert bridge[e] == (not linked(edges, edges[e].u, edges[e].v, Some(e), None))
+        for v in V:
+            var splits = false
+            for a in V:
+                for b in V:
+                    if a != v and b != v and linked(edges, a, b, None, None) and not linked(
+                        edges,
+                        a,
+                        b,
+                        None,
+                        Some(v),
+                    ):
+                        splits = true
+            assert cut[v] == splits
+
+@test
+fn blocks_of_a_small_graph():
+    domain V = 0..6
+    domain E = 0..8
+    for _ in 0..40:
+        let edges = random_edges<V, E>()
+        let (domain B, block) = blocks(Graph.undirected(edges))
+        var same = Dsu<E>()
+        for e in E:
+            for f in E:
+                let (eu, ev, fu, fv) = (edges[e].u, edges[e].v, edges[f].u, edges[f].v)
+                if e == f or eu == ev or fu == fv: continue
+                for x in [eu, ev]:
+                    if x == fu or x == fv:
+                        let a = if x == eu: ev else: eu
+                        let b = if x == fu: fv else: fu
+                        if linked(edges, a, b, None, Some(x)): same.unite(e, f)
+        for e in E:
+            for f in E: assert (block[e] == block[f]) == same.same(e, f)
+        assert B.count == same.components
+
+@test
+fn two_color_finds_a_colouring_or_an_odd_cycle():
+    domain V = 0..7
+    for _ in 0..40:
+        var adj: [V]List<V> = [V] _ => []
+        var es: List<(V, V)> = []
+        for _ in 0..rand(0, 8):
+            let (u, v) = (V.nth(rand(0, 6)), V.nth(rand(0, 6)))
+            for (a, b) in [(u, v), (v, u)]: adj[a].push(b)
+            es.push((u, v))
+        let any = (0..128).any(m => es.all(e => ((m >> e.0.ord) & 1) != ((m >> e.1.ord) & 1)))
+        let got = two_color(adj)
+        assert (got != None) == any
+        if let side = got:
+            for (u, v) in es: assert side[u] != side[v]
+
+@test
+fn vertexless_closure_graphs_with_turbofish():
+    domain V = 0..6
+    // arcs u -> u + 1 and u -> u + 2, given only as a closure
+    let order = peel<V>(
+        u => [v for v in V if v.ord == u.ord + 1 or v.ord == u.ord + 2]
+    )
+    assert order == [V(0), V(1), V(2), V(3), V(4), V(5)]
+    assert peel<V>(u => [V.nth((u.ord + 1) % 6)]) == []
+
+@test
+fn a_plain_edge_list_needs_no_edge_domain():
+    domain V = 1..=4
+    let g = Graph.undirected([(V(1), V(2)), (V(2), V(3))])
+    assert [[v.ord for v in g[u]] for u in V] == [[1], [0, 2], [1], []]
+    let d = Graph.directed([(u: V(1), v: V(2), w: 5), (u: V(1), v: V(4), w: 7)])
+    assert [(a.to.ord, a.w) for a in d[V(1)]] == [(1, 5), (3, 7)]
+    assert d[V(2)].is_empty
+
+/// \(O(n)\) memory.
+/// What a search found: `p[v]` is the distance to `v` (`None` if unreachable),
+/// `back[v]` is `(from, via)`, the vertex before `v` on one shortest path and the
+/// arc or move that reached it (`None` at a source), and `order` the reached
+/// vertices in settling order, so every vertex comes after its `from` and
+/// distances never decrease. A search given `until: f` stops once it settles a vertex `v`
+/// with `f(v)`, the last of `order`: distances in `order` are exact, and any other vertex holds `None` or an upper
+/// bound. Cost: the witnesses take one slot per vertex and one write per improving
+/// relaxation, paid even when only `p[v]` is read.
+/// Storage is spelled like `@memo(array)` / `@memo(map)`: by default `dist` and `back`
+/// are dense tables over `V`, which must be a bounded type (a domain, range, enum or a
+/// tuple of them); `hashed: true` on the search makes them hash maps over the states
+/// reached, for state spaces like `Int` values or unbounded tuples. An unbounded `V`
+/// without it is a compile error that names `hashed: true`.
+pub struct Paths<V, W: Add, A>:
+    pub dist: [V]?W
+    pub back: [V]?(from: V, via: A)
+    order: List<V>
+
+    /// `p[v]`: the distance to `v`, or `None` if no source reaches it (or the search stopped
+    /// at `until` first).
+    ///
+    /// cost: \(O(1)\) dense, \(O(1)\) expected `hashed`
+    /// traps: never
+    /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)]); p[3] == Some(2) and p[0] == Some(0)`
+    pub fn get(self, v: V) -> ?W = dist[v]
+
+    /// The reached vertices with their distances, in settling order: `for (v, d) in bfs(g,
+    /// from: [s])`.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per item
+    /// order: settling order (the `order` list), so distances never decrease for `bfs`, `bfs01`, `dial`, `dijkstra` and `fixed_cost_paths`; for `bellman_ford` each vertex comes after its parent
+    /// traps: never
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; bfs(g, from: [V(0)]).iter().collect() == [(v: 0, d: 0), (v: 1, d: 1), (v: 2, d: 2)]`
+    pub fn iter(self) -> yields (v: V, d: W):
+        for v in order:
+            yield (v:, d: dist[v]!)
+
+    /// The arcs on some shortest path: for each reached `u`, the arcs `a` of `g.out(u)` with
+    /// `p[a.to] == p[u] + w(a)`, where `w(a)` is `a.w` for `Weighted` arcs and `1` otherwise.
+    /// Walking `order` over this DAG counts or lists shortest paths.
+    ///
+    /// cost: \(O(n + m)\)
+    /// order: keyed by `V`; each list in arc order; unreached vertices get `[]`
+    /// traps: never
+    /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let t = bfs(g, from: [V(0)]).tight(g); t[0] == [1, 2] and t[2] == [3] and t[3] == []`
+    pub fn tight<>(self, g: Next<V>) -> [V]List<A>:
+        var res: [V]List<A> = []
+        for u in V:
+            if let du = dist[u]:
+                for a in g.out(u):
+                    if let dv = dist[a.to]:
+                        if du + W.one == dv:
+                            res[u].push(a)
+        res
+
+    /// Does some source reach `v`? `p[v] != None`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [], []]; let p = bfs(g, from: [V(0)]); p.reached(1) and not p.reached(2)`
+    pub fn reached(self, v: V) -> Bool = dist[v] != None
+
+    /// The vertices of one shortest path from a source to `t`, both included, or `None` if
+    /// `t` is unreachable; `[t]` when `t` is a source. Built from the back pointers, each set
+    /// by the arc that first gave its vertex the final distance.
+    ///
+    /// cost: \(O(\text{path length})\)
+    /// ties: `domain V = 0..4; let g: [V]List<V> = [[2, 1], [3], [3], []]; bfs(g, from: [V(0)]).path(3) == Some([0, 2, 3])`
+    /// order: from the source to `t`
+    /// traps: never
+    /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).path(3) == Some([0, 1, 3])`
+    /// example: `domain V = 0..2; let g: [V]List<V> = [[], []]; let p = bfs(g, from: [V(0)]); p.path(0) == Some([0]) and p.path(1) == None`
+    pub fn path(self, t: V) -> ?List<V>:
+        if dist[t] == None: return None
+        var out = [t]
+        var at = t
+        while let b = back[at]:
+            out.push(b.from)
+            at = b.from
+        reverse(mut out)
+        out
+
+    /// The arcs of `path(t)`, in walking order: `[]` when `t` is a source, `None` if it is
+    /// unreachable.
+    ///
+    /// cost: \(O(\text{path length})\)
+    /// ties: `domain V = 0..4; let g: [V]List<V> = [[2, 1], [3], [3], []]; bfs(g, from: [V(0)]).arcs(3) == Some([2, 3])`
+    /// order: from the source to `t`
+    /// traps: never
+    /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)]).arcs(3) == Some([1, 3])`
+    pub fn arcs(self, t: V) -> ?List<A>:
+        if dist[t] == None: return None
+        var out = List<A>()
+        var at = t
+        while let b = back[at]:
+            out.push(b.via)
+            at = b.from
+        reverse(mut out)
+        out
+
+/// Fewest arcs from any vertex of `from` to each vertex, by breadth-first search.
+///
+/// The sources start at distance 0 in the order given (repeats ignored). A vertex is
+/// entered at distance `d` only when `enter(v, d)` holds, sources included, so "the cell
+/// must still be safe when you get there" is a filter, not a second search; a rejected
+/// vertex may still be entered later through another arc. `until: f` stops as soon as a vertex
+/// `v` with `f(v)` gets its distance (`until: v => v == t` for one target); vertices not
+/// reached by then read `None`. `hashed: true` keeps the
+/// tables in hash maps for unbounded `V`.
+///
+/// cost: \(O(n + m)\) dense; \(O(\mathit{reached} + \text{arcs scanned})\) expected `hashed`; one `until` call per reached vertex
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; let p = bfs(g, from: List<V>()); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[2, 1], [3], [3], []]; let p = bfs(g, from: [V(0)]); p.iter().collect() == [(v: 0, d: 0), (v: 2, d: 1), (v: 1, d: 1), (v: 3, d: 2)] and p.path(3) == Some([0, 2, 3])`
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)])[3] == Some(2)`
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; bfs(g, from: [V(0)], enter: (v, d) => v != 1).path(3) == Some([0, 2, 3])`
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let p = bfs(g, from: [V(0)], until: v => v == V(1)); p[1] == Some(1) and p[2] == None`
+/// example: `domain V = 0..5; let g: [V]List<V> = [[1], [2], [3], [4], []]; let p = bfs(g, from: [V(0)], until: v => v >= V(2)); p[2] == Some(2) and p[3] == None`
+@lint(queue_head_index, from: "while head < q.len:\n    let u = q[head]\n    head += 1\n    rest", to: "bfs(next, from: [s])", holes: "q, head, rest")
+@lint(queue_head_index, from: "while head < q.len:\n    let u = q[head]\n    let v = r[head]\n    head += 1\n    rest", to: "bfs(next, from: [s])", holes: "q, r, head, rest")
+pub fn bfs<V, G: Next<V>>(
+    g: G,
+    from: Seq<V>,
+    until: V -> Bool = v => false,
+    enter: (V, Int) -> Bool = (v, d) => true,
+    hashed: Bool = false,
+) -> Paths<V, Int, G.Arc>:
+    var dist: [V]?Int = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var order = List<V>()
+    var q = List<V>()
+    var head = 0
+    var stopped = false
+    for s in from:
+        if dist[s] == None and enter(s, 0):
+            dist[s] = Some(0)
+            q.push(s)
+            if until(s):
+                order.push(s)
+                stopped = true
+                break
+    while not stopped and head < q.len:
+        let u = q[head]
+        head += 1
+        order.push(u)
+        let nd = dist[u]! + 1
+        for a in g.out(u):
+            let v = a.to
+            if dist[v] == None and enter(v, nd):
+                dist[v] = Some(nd)
+                back[v] = Some((from: u, via: a))
+                q.push(v)
+                if until(v):
+                    order.push(v)
+                    stopped = true
+                    break
+    Paths(dist:, back:, order:)
+
+/// Shortest distances when every weight is 0 or 1, from every vertex of `from` at distance
+/// 0: a deque, with 0-arcs pushed to the front. `until: f` stops once a vertex `v` with `f(v)`
+/// is settled (popped with its final distance), one `until` call per settled vertex.
+///
+/// cost: \(O(n + m)\)
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: List<V>()); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 0), (u: 0, v: 2, w: 1), (u: 1, v: 2, w: 1)]; bfs01(Graph.directed(es), from: [V(0)]).path(2) == Some([0, 2])`
+/// traps: on an arc whose weight is not 0 or 1, when it is read
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 0), (u: 2, v: 1, w: 0)]; let p = bfs01(Graph.directed(es), from: [V(0)]); p[1] == Some(0) and p.path(1) == Some([0, 2, 1])`
+pub fn bfs01<V, G: WeightedNext<V, Int>>(
+    g: G,
+    from: Seq<V>,
+    until: V -> Bool = v => false,
+    hashed: Bool = false,
+) -> Paths<V, Int, G.Arc>:
+    var dist: [V]?Int = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var done: [V]Bool = false
+    var order = List<V>()
+    var dq = Deque<V>()
+    for s in from:
+        if dist[s] == None:
+            dist[s] = Some(0)
+            dq.push(s)
+    while let u = dq.pop_front():
+        if done[u]: continue
+        done[u] = true
+        order.push(u)
+        if until(u): break
+        let du = dist[u]!
+        for a in g.out(u):
+            let w = a.w
+            assert w == 0 or w == 1, "bfs01: edge weight must be 0 or 1"
+            let v = a.to
+            let nd = du + w
+            let better = if let dv = dist[v]: nd < dv else: true
+            if better:
+                dist[v] = Some(nd)
+                back[v] = Some((from: u, via: a))
+                if w == 0: dq.push_front(v)
+                else: dq.push(v)
+    Paths(dist:, back:, order:)
+
+/// Shortest distances from `(vertex, starting distance)` pairs (a vertex given twice keeps the
+/// smaller start). `step` is how a path's cost grows by one arc, anything `Monoid.of` accepts:
+/// `+` (the sum of weights) by default, `max` for the bottleneck path. A binary heap with lazy
+/// deletion; `until: f` stops once a vertex `v` with `f(v)` is settled, one `until` call per
+/// settled vertex.
+///
+/// cost: \(O((n + m) \log m)\)
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; let p = dijkstra(Graph.directed(es), from: List<(V, Int)>()); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 2), (u: 1, v: 2, w: 1)]; dijkstra(Graph.directed(es), from: [(V(0), 0)]).path(2) == Some([0, 2])`
+/// traps: when an arc makes a path cheaper (a negative weight under `+`), when it is read
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; let p = dijkstra(Graph.directed(es), from: [(V(0), 0)]); p[1] == Some(3) and p.path(1) == Some([0, 2, 1])`
+/// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; dijkstra(Graph.directed(es), from: [(V(0), 10)])[1] == Some(14)`
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; dijkstra(Graph.directed(es), from: [(V(0), 0)], step: max)[1] == Some(2)`
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d > dist[u]:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d > dist[u]!:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d != dist[u]:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "while let (d, u) = pq.pop():\n    if d != dist[u]!:\n        continue\n    rest", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist, rest")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d > dist[u]:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d > dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
+@lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
+pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
+    g: G,
+    from: Seq<(V, W)>,
+    step: M = (+),
+    until: V -> Bool = v => false,
+    hashed: Bool = false,
+) -> Paths<V, W, G.Arc>:
+    var dist: [V]?W = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var done: [V]Bool = false
+    var order = List<V>()
+    var h = MinHeap<(W, V)>()
+    let grow = Monoid<W>.of(step)
+    for (s, d0) in from:
+        let better = if let cur = dist[s]: d0 < cur else: true
+        if better:
+            dist[s] = Some(d0)
+            h.push((d0, s))
+    while let (du, u) = h.pop():
+        if done[u]: continue
+        done[u] = true
+        order.push(u)
+        if until(u): break
+        for a in g.out(u):
+            let v = a.to
+            let nd = grow.op(du, a.w)
+            assert not (nd < du), "dijkstra: an arc made a path cheaper"
+            let better = if let dv = dist[v]: nd < dv else: true
+            if better:
+                dist[v] = Some(nd)
+                back[v] = Some((from: u, via: a))
+                h.push((nd, v))
+    Paths(dist:, back:, order:)
+
+/// Shortest distances over a state space `S` whose moves have fixed non-negative costs,
+/// from every state of `from` at distance 0. `step(mv, s)` is where move `mv` leads from
+/// `s` (`None`: not allowed there), at cost `cost(mv)`.
+///
+/// A cursor per move into `order` replaces the heap: settled states come in non-decreasing
+/// distance, so each move's first settled state whose step is still unsettled is its
+/// cheapest candidate. `until: f` stops once a state `s` with `f(s)` is settled (one `until`
+/// call per settled state), and only settled states get a distance. The back pointer is `(from: s, via: mv)`.
+///
+/// cost: \(O(\lvert S \rvert \lvert \mathit{moves} \rvert)\) time, \(O(\lvert S \rvert)\) memory
+/// empty: `domain S = 0..3; let none = fixed_cost_paths(List<S>(), [1], cost: m => m, step: (m, s) => if Int(s) + m < 3: Some(S(Int(s) + m)) else: None); let still = fixed_cost_paths([S(0)], List<Int>(), cost: m => m, step: (m, s) => Some(s)); none[0] == None and still[0] == Some(0) and still[1] == None`
+/// ties: `domain S = 0..3; let p = fixed_cost_paths([S(0)], [10, 20], cost: m => 1, step: (m, s) => if s == S(0): Some(S(2)) else: None); p.arcs(2) == Some([10])`
+/// traps: on a negative cost
+/// example: `domain S = 0..5; let p = fixed_cost_paths([S(0)], [1, 2], cost: m => if m == 1: 1 else: 3, step: (m, s) => if Int(s) + m < 5: Some(S(Int(s) + m)) else: None); p[4] == Some(4) and p[2] == Some(2)`
+pub fn fixed_cost_paths<S, M, W: Add + Ord>(
+    from: List<S>,
+    moves: List<M>,
+    cost: M -> W,
+    step: (M, S) -> ?S,
+    until: S -> Bool = s => false,
+) -> Paths<S, W, M>:
+    let price = [cost(mv) for mv in moves]
+    for p in price: assert p >= W.zero
+    var dist: [S]?W = None
+    var back: [S]?(from: S, via: M) = None
+    var order = List<S>()
+    for s in from:
+        if dist[s] == None:
+            dist[s] = W.zero
+            order.push(s)
+            if until(s): return Paths(dist, back, order)
+    var at = List.filled(moves.len, 0)
+    while true:
+        var best: ?(d: W, j: Int, t: S) = None
+        for j in 0..moves.len:
+            while at[j] < order.len:
+                let s = order[at[j]]
+                if let t = step(moves[j], s) and dist[t] == None:
+                    let d = dist[s]! + price[j]
+                    if let b = best:
+                        if d < b.d: best = (d:, j:, t:)
+                    else:
+                        best = (d:, j:, t:)
+                    break
+                at[j] += 1
+        if best == None: break
+        let (d, j, t) = best!
+        dist[t] = d
+        back[t] = (from: order[at[j]], via: moves[j])
+        order.push(t)
+        at[j] += 1
+        if until(t): break
+    Paths(dist, back, order)
+
+/// Shortest distances with any weights, from `(vertex, starting distance)` pairs, or `None`
+/// when a source reaches a negative cycle (cycles no source reaches are ignored).
+///
+/// Rounds relax every arc of every reached vertex, vertices in vertex order and arcs in
+/// arc order, until a round changes nothing; a change in round `n` means a negative cycle.
+/// `order` lists each reached vertex after its parent.
+///
+/// cost: \(O(n m)\)
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; let p = bellman_ford(Graph.directed(es), from: List<(V, Int)>())!; p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 2, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 2, w: 1)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)])!.path(2) == Some([0, 2])`
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)])![1] == Some(2)`
+/// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; bellman_ford(Graph.directed(es), from: [(V(0), 0)]) == None`
+pub fn bellman_ford<V, W: Add + Ord, G: WeightedNext<V, W>>(
+    g: G,
+    from: Seq<(V, W)>,
+) -> ?Paths<V, W, G.Arc>:
+    var dist: [V]?W = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    for (s, d0) in from:
+        if dist[s] == None or d0 < dist[s]!:
+            dist[s] = Some(d0)
+            back[s] = None
+    for round in 0..V.count:
+        var changed = false
+        for u in V:
+            if let du = dist[u]:
+                for a in g.out(u):
+                    let nd = du + a.w
+                    if dist[a.to] == None or nd < dist[a.to]!:
+                        dist[a.to] = Some(nd)
+                        back[a.to] = Some((from: u, via: a))
+                        changed = true
+        if not changed: break
+        if round == V.count - 1: return None
+    var placed: [V]Bool = false
+    var order = List<V>()
+    for v in V:
+        if dist[v] == None or placed[v]: continue
+        var chain = List<V>()
+        var cur = v
+        while not placed[cur]:
+            chain.push(cur)
+            placed[cur] = true
+            if let b = back[cur]: cur = b.from
+            else: break
+        var k = chain.len
+        while k > 0:
+            k -= 1
+            order.push(chain[k])
+    Some(Paths(dist, back, order))
+
+/// All-pairs shortest distances, in place: `d[u, v]` starts as the direct weight (`None`:
+/// no edge, usually from `g.matrix()`) and ends as the distance. Returns `false` if there
+/// is a negative cycle, and `d` is then unspecified.
+///
+/// The diagonal starts at the semiring's one (0), so a vertex is at distance 0 from itself
+/// unless a cheaper cycle exists. `over:` swaps the path algebra: `Semiring(max, min)`
+/// gives widest (bottleneck) paths, `Semiring(min, max)` minimax paths, `Semiring(|, &)`
+/// transitive closure; `None` is the semiring's zero (no path).
+///
+/// cost: \(O(n^3)\) time, no extra memory
+/// traps: never
+/// example: `domain V = 0..3; var d: [V, V]?Int = None; d[0, 1] = Some(4); d[1, 2] = Some(1); d[0, 2] = Some(7); floyd_warshall(mut d) and d[0, 2] == Some(5) and d[2, 0] == None and d[1, 1] == Some(0)`
+/// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(1); d[1, 0] = Some(-3); not floyd_warshall(mut d)`
+pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> Bool:
+    let add = Monoid<W>.of(over.add)
+    let mul = Monoid<W>.of(over.mul)
+    let one = mul.id
+    if V.all(i => V.all(j => d[i, j] != None)):
+        // Total: every sum stays `Some`, so the loop runs on plain weights.
+        var w = [V, V] (i, j) => d[i, j]!
+        for v in V: w[v, v] = add.op(w[v, v], one)
+        for k in V:
+            for i in V:
+                let a = w[i, k]
+                for j in V: w[i, j] = add.op(w[i, j], mul.op(a, w[k, j]))
+        for i in V:
+            for j in V: d[i, j] = Some(w[i, j])
+        return V.all(v => add.op(w[v, v], one) == one)
+    for v in V:
+        if let cur = d[v, v]: d[v, v] = Some(add.op(cur, one))
+        else: d[v, v] = Some(one)
+    for k in V:
+        for i in V:
+            if let a = d[i, k]:
+                for j in V:
+                    if let b = d[k, j]:
+                        let cand = mul.op(a, b)
+                        if let cur = d[i, j]: d[i, j] = Some(add.op(cur, cand))
+                        else: d[i, j] = Some(cand)
+    for v in V:
+        if let dv = d[v, v]:
+            if add.op(dv, one) != one: return false
+    true
+
+/// The value form of `floyd_warshall`, as `sorted` is to `sort`: a new matrix closed under
+/// `over:`, or `None` on a negative cycle. A matrix is already closed when
+/// `d.closure(over: r) == Some(d)`.
+///
+/// cost: \(O(n^3)\) time, \(O(n^2)\) memory
+/// empty: `domain V = 0..0; let d: [V, V]?Int = None; d.closure() == Some(d)`
+/// traps: never
+/// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(2); let c = d.closure()!; c[0, 1] == Some(2) and c[0, 0] == Some(0) and c[1, 0] == None`
+pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W:
+    var d = self.clone()
+    if floyd_warshall(mut d, over:): Some(d) else: None
+
+/// One directed cycle, as its vertices in walking order (each is followed by the next, and
+/// the last by the first), or `None` if the graph is acyclic.
+///
+/// A DFS without recursion, roots in vertex order and arcs in arc order, stops at the first
+/// arc into a vertex still on the DFS path; the cycle is the path from that vertex on. A
+/// loop gives a one-vertex cycle.
+///
+/// cost: \(O(n + m)\)
+/// ties: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [0], [3], [2]]; find_cycle(g) == Some([0, 1])`
+/// order: walking order, starting at the vertex the closing arc enters
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1], [2], [3], [1]]; find_cycle(g) == Some([1, 2, 3])`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; find_cycle(g) == None`
+@lint(cycle_by_colors, from: "var color: List<Int> = [0 for _ in 0..=n]\nvar cyc = false\nfn dfs(u: Int):\n    color[u] = 1\n    for v in g[u]:\n        if color[v] == 1:\n            cyc = true\n        elif color[v] == 0:\n            dfs(v)\n    color[u] = 2\nfor u in 1..=n:\n    if color[u] == 0:\n        dfs(u)", to: "let cyc = find_cycle(g) != None", holes: "n")
+pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var state: [V]Int = 0  // 0 unseen, 1 on the dfs path, 2 finished
+    var path: List<(V, Int)> = []
+    for root in V:
+        if state[root] != 0: continue
+        state[root] = 1
+        path.push((root, 0))
+        while path.len > 0:
+            let (u, i) = path.last!
+            if i < out[u].len:
+                path[path.len - 1] = (u, i + 1)
+                let v = out[u][i]
+                if state[v] == 0:
+                    state[v] = 1
+                    path.push((v, 0))
+                elif state[v] == 1:
+                    var cyc: List<V> = []
+                    var on = false
+                    for (x, _) in path:
+                        if x == v: on = true
+                        if on: cyc.push(x)
+                    return cyc
+            else:
+                state[u] = 2
+                path.pop()
+    None
+
+/// Which edges are bridges: removing one disconnects its ends. Arcs carry `e` (a
+/// `Graph.undirected`), so a parallel edge is not mistaken for the way back and is never a
+/// bridge. A loop is never a bridge.
+///
+/// cost: \(O(n + m)\)
+/// order: keyed by `E`
+/// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 1)]; bridges(Graph.undirected(es)) == [true, false, false]`
+pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
+    var tin: [V]?Int = None
+    var low: [V]Int = 0
+    var is_bridge: [E]Bool = false
+    var timer = 0
+    var stk_u = List<V>()
+    var stk_pe = List<?E>()
+    var stk_i = List<Int>()
+    var stk_nbrs = List<List<(to: V, e: E)>>()
+    for s in V:
+        if tin[s] != None: continue
+        tin[s] = timer
+        low[s] = timer
+        timer += 1
+        stk_u.push(s)
+        stk_pe.push(None)
+        stk_i.push(0)
+        stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(s)])
+        while stk_u.len > 0:
+            let k = stk_u.len - 1
+            let u = stk_u[k]
+            let i = stk_i[k]
+            if i == stk_nbrs[k].len:
+                let pe = stk_pe[k]
+                stk_u.pop()
+                stk_pe.pop()
+                stk_i.pop()
+                stk_nbrs.pop()
+                if stk_u.len > 0:
+                    let p = stk_u.last!
+                    low[p] min= low[u]
+                    if low[u] > tin[p]!:
+                        if let Some(eid) = pe:
+                            is_bridge[eid] = true
+                continue
+            stk_i[k] = i + 1
+            let arc = stk_nbrs[k][i]
+            let v = arc.to
+            let eid = arc.e
+            if let Some(pe) = stk_pe[k]:
+                if eid == pe: continue
+            if let t = tin[v]:
+                low[u] min= t
+            else:
+                tin[v] = timer
+                low[v] = timer
+                timer += 1
+                stk_u.push(v)
+                stk_pe.push(Some(eid))
+                stk_i.push(0)
+                stk_nbrs.push([(to: a.to, e: a.e) for a in g.out(v)])
+    is_bridge
+
+/// \(O(m)\) memory.
+/// A walk: where it starts, then each arc taken (`to` is where the arc leads, `e` the
+/// edge it uses), the same arcs a `Graph` yields.
+pub struct Walk<V, E>:
+    pub start: V
+    pub arcs: List<(to: V, e: E)>
+
+    /// The vertices visited, `start` first, then each arc's `to`: `arcs.len + 1` of them.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per vertex
+    /// order: walking order
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2]`
+    @get pub fn vertices(self) -> yields V:
+        yield self.start
+        for a in self.arcs: yield a.to
+
+/// A walk that uses every edge exactly once (Hierholzer's algorithm), or `None` if there is
+/// None. `directed` says whether `(u, v)` may only be walked from `u` to `v`.
+///
+/// A closed walk starts at the smallest vertex with an edge; an open one at the vertex with
+/// an extra way out (directed) or the smaller odd vertex. The walk is the one Hierholzer's
+/// algorithm builds without recursion, taking each vertex's unused arcs in edge order
+/// (the arcs of `Graph.directed` / `Graph.undirected` on `edges`).
+///
+/// cost: \(O(n + m)\)
+/// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V) = []; euler_walk(es, directed: false)!.vertices.collect() == [0]`
+/// traps: when `edges` is empty and `V` is empty
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2, 0]`
+/// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 2, v: 1), (u: 1, v: 0)]; euler_walk(es, directed: false)!.vertices.collect() == [0, 1, 2]`
+/// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2)]; euler_walk(es, directed: true) == None`
+pub fn euler_walk<V, E>(edges: [E](u: V, v: V), directed: Bool) -> ?Walk<V, E>:
+    let g = if directed: Graph.directed(edges) else: Graph.undirected(edges)
+    var surplus: [V]Int = 0
+    for e in E:
+        surplus[edges[e].u] += 1
+        if directed: surplus[edges[e].v] -= 1
+        else: surplus[edges[e].v] += 1
+    var start: ?V = None
+    var opens = 0
+    for v in V:
+        let extra = if directed: surplus[v] else: surplus[v] % 2
+        if extra > 1 or extra < -1: return None
+        if extra == 1:
+            opens += 1
+            if start == None: start = v
+    if opens > (if directed: 1 else: 2): return None
+    if start == None: start = first(v for v in V if g.deg(v) > 0)
+    if start == None:
+        if V.count > 0: return Walk(V.first!, List<(to: V, e: E)>())
+        else: return None
+    let out = [V] v => g.out(v).collect()
+    var at: [V]Int = 0
+    var used: [E]Bool = false
+    var stack: List<(v: V, came: ?(to: V, e: E))> = [(v: start!, came: None)]
+    var arcs = List<(to: V, e: E)>()
+    while not stack.is_empty:
+        let v = stack.last!.v
+        while at[v] < out[v].len and used[out[v][at[v]].e]: at[v] += 1
+        if at[v] < out[v].len:
+            let a = out[v][at[v]]
+            used[a.e] = true
+            stack.push((v: a.to, came: a))
+        else:
+            if let a = stack.pop()!.came: arcs.push(a)
+    if arcs.len != E.count: return None
+    reverse(mut arcs)
+    Walk(start!, arcs)
+
+/// \(O(1)\).
+/// A variable or its negation: `Lit(x, true)` is "x holds".
+pub struct Lit<X>(pub x: X, pub value: Bool):
+    /// The opposite literal: `Lit(x, v).neg == Lit(x, not v)`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain X = 0..2; Lit(X(1), true).neg == Lit(X(1), false)`
+    @get pub fn neg(self) -> Lit<X> = Lit(self.x, not self.value)
+
+/// A conjunction of two-literal clauses over the variables `X`. Every clause is \(O(1)\)
+/// to add; `solve` is \(O(\lvert X \rvert + \mathit{clauses})\).
+pub struct TwoSat<X>:
+    /// Implications between literal nodes: node `2 * i` is "variable i is false",
+    /// `2 * i + 1` "is true"; variables past `X.count` are helpers of `at_most_one`.
+    pub imp: List<List<Int>>
+
+    /// An instance with no clauses over the variables of `X`; every assignment satisfies it.
+    ///
+    /// cost: \(O(\lvert X \rvert)\)
+    /// traps: never
+    /// example: `domain X = 0..2; TwoSat<X>().solve() != None`
+    pub fn new() -> TwoSat<X>:
+        TwoSat([[] for _ in 0..2 * X.count])
+
+    /// Adds the clause "at least one of `a`, `b` holds".
+    ///
+    /// cost: \(O(1)\) amortized
+    /// traps: never
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_or(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), false)); s.solve() == Some([false, true])`
+    pub fn add_or(mut self, a: Lit<X>, b: Lit<X>):
+        self.clause(lit_node(a), lit_node(b))
+
+    /// Adds the clause "`a` holds" (`add_or(a, a)`).
+    ///
+    /// cost: \(O(1)\) amortized
+    /// traps: never
+    /// example: `domain X = 0..1; var s = TwoSat<X>(); s.must(Lit(X(0), true)); s.must(Lit(X(0), false)); s.solve() == None`
+    pub fn must(mut self, a: Lit<X>):
+        self.add_or(a, a)
+
+    /// Adds "if `a` holds then `b` holds" (`add_or(a.neg, b)`).
+    ///
+    /// cost: \(O(1)\) amortized
+    /// traps: never
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, true])`
+    pub fn implies(mut self, a: Lit<X>, b: Lit<X>):
+        self.add_or(a.neg, b)
+
+    /// Adds "at most one of `lits` holds". One helper variable per literal ("some literal so
+    /// far holds") keeps it at \(O(k)\) clauses instead of \(O(k^2)\); helpers never appear in
+    /// `solve`'s result.
+    ///
+    /// cost: \(O(k)\) amortized
+    /// empty: `domain X = 0..1; var s = TwoSat<X>(); s.at_most_one([]); s.solve() != None`
+    /// traps: never
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.at_most_one([Lit(X(0), true), Lit(X(1), true)]); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
+    pub fn at_most_one(mut self, lits: List<Lit<X>>):
+        var prev: ?Int = None
+        for l in lits:
+            let x = lit_node(l)
+            let p = imp.len + 1
+            imp.push([])
+            imp.push([])
+            self.clause(x ^ 1, p)
+            if let q = prev:
+                self.clause(q ^ 1, p)
+                self.clause(q ^ 1, x ^ 1)
+            prev = p
+
+    /// Adds "exactly one of `a`, `b` holds" (two clauses).
+    ///
+    /// cost: \(O(1)\) amortized
+    /// traps: never
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_xor(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(0), true)); s.solve() == Some([true, false])`
+    pub fn add_xor(mut self, a: Lit<X>, b: Lit<X>):
+        self.add_or(a, b)
+        self.add_or(a.neg, b.neg)
+
+    /// Adds "`a` and `b` hold together or not at all" (two clauses).
+    ///
+    /// cost: \(O(1)\) amortized
+    /// traps: never
+    /// example: `domain X = 0..2; var s = TwoSat<X>(); s.add_eq(Lit(X(0), true), Lit(X(1), true)); s.must(Lit(X(1), false)); s.solve() == Some([false, false])`
+    pub fn add_eq(mut self, a: Lit<X>, b: Lit<X>):
+        self.add_or(a.neg, b)
+        self.add_or(a, b.neg)
+
+    /// An assignment satisfying every clause, or `None` if there is None.
+    ///
+    /// Runs `scc` on the implication graph (node `2i` is "variable `i` is false", `2i + 1` "is
+    /// true"; clause `a or b` adds `not a -> b` then `not b -> a`, in the order added). A
+    /// variable is true exactly when its true node's component comes after its false node's in
+    /// `scc`'s topological order, so the assignment is a function of the clauses and their order.
+    ///
+    /// cost: \(O(\lvert X \rvert + \mathit{clauses})\)
+    /// order: keyed by `X`
+    /// traps: never
+    /// example: `domain X = 0..1; var s = TwoSat<X>(); s.implies(Lit(X(0), true), Lit(X(0), false)); s.solve() == Some([false])`
+    pub fn solve(self) -> ?[X]Bool:
+        domain N = 0..imp.len
+        let (C, comp) = scc<N>(u => [N(v) for v in imp[u.ord]])
+        // components are in topological order: a literal is true when it comes after
+        // its negation
+        for i in 0..imp.len / 2:
+            if comp[N(2 * i)] == comp[N(2 * i + 1)]: return None
+        [X] x => comp[N(2 * x.ord + 1)] > comp[N(2 * x.ord)]
+
+    fn clause(mut self, a: Int, b: Int):
+        imp[a ^ 1].push(b)
+        imp[b ^ 1].push(a)
+
+fn lit_node<X>(l: Lit<X>) -> Int = 2 * l.x.ord + Int(l.value)
+
+@test
+fn paths_witness_their_distances():
+    domain V = 0..7
+    domain E = 0..12
+    for _ in 0..30:
+        let es = [E] _ => (u: V.nth(rand(0, 6)), v: V.nth(rand(0, 6)), w: rand(0, 9))
+        var light: [V, V]?Int = None
+        for e in E:
+            let (u, v, w) = (es[e].u, es[e].v, es[e].w)
+            if light[u, v] == None or w < light[u, v]!: light[u, v] = Some(w)
+        let g = Graph.directed(es)
+        let near = dijkstra(g, from: [(V(0), 0)])
+        let hops = bfs(g, from: [V(0)])
+        for t in V:
+            assert (near.path(t) == None) == (near[t] == None)
+            assert (hops.path(t) == None) == (hops[t] == None)
+            if let path = near.path(t):
+                assert path.first! == V(0) and path.last! == t
+                assert sum(light[path[i], path[i + 1]]! for i in 0..path.len - 1) == near[t]!
+            if let path = hops.path(t):
+                assert path.first! == V(0) and path.last! == t and path.len - 1 == hops[t]!
+                for i in 0..path.len - 1: assert light[path[i], path[i + 1]] != None
+
+@test
+fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
+    domain S = 0..20
+    let moves = [1, 3, -2, 5]
+    for _ in 0..30:
+        let price = [rand(0, 6) for _ in 0..4]
+        var es: List<(u: S, v: S, w: Int)> = []
+        for s in S:
+            for j in 0..4:
+                let t = s.ord + moves[j]
+                if 0 <= t < 20: es.push((u: s, v: S.nth(t), w: price[j]))
+        domain E = 0..es.len
+        let ea: [E](u: S, v: S, w: Int) = [E] e => es[e.ord]
+        let src = S.nth(rand(0, 19))
+        let want = dijkstra(Graph.directed(ea), from: [(src, 0)])
+        let got = fixed_cost_paths(
+            [src],
+            [0, 1, 2, 3],
+            cost: j => price[j],
+            step: (
+                j,
+                s,
+            ) => if s.ord + moves[j] >= 0 and s.ord + moves[j] < 20: Some(S.nth(s.ord + moves[j])) else: None,
+        )
+        for s in S: assert got[s] == want[s]
+
+@test
+fn until_stops_at_the_target_with_its_exact_distance():
+    domain V = 0..8
+    domain E = 0..14
+    fn closer_settled(full: [V]?Int, p: [V]?Int, t: V) -> Bool:
+        if p[t] != full[t]: return false
+        if let dt = full[t]:
+            for v in V:
+                if let dv = full[v]:
+                    if dv < dt and p[v] != full[v]: return false
+        true
+    for _ in 0..40:
+        let es = [E] _ => (u: V.nth(rand(0, 7)), v: V.nth(rand(0, 7)), w: rand(0, 1))
+        let g = Graph.directed(es)
+        let ws = [E] e => (u: es[e].u, v: es[e].v, w: es[e].w * rand(1, 5))
+        let h = Graph.directed(ws)
+        let plain: [V]List<V> = [V] u => [es[e].v for e in E if es[e].u == u]
+        let s = V.nth(rand(0, 7))
+        let (fb, f01, fd) = (
+            bfs(plain, from: [s]),
+            bfs01(g, from: [s]),
+            dijkstra(h, from: [(s, 0)]),
+        )
+        for t in V:
+            assert closer_settled([V] v => fb[v], [V] v => bfs(plain, from: [s], until: x => x == t)[v], t)
+            assert closer_settled([V] v => f01[v], [V] v => bfs01(g, from: [s], until: x => x == t)[v], t)
+            assert closer_settled(
+                [V] v => fd[v],
+                [V] v => dijkstra(h, from: [(s, 0)], until: x => x == t)[v],
+                t,
+            )
+            let fc = fixed_cost_paths(
+                [s],
+                E.collect(),
+                cost: e => ws[e].w,
+                step: (e, x) => if ws[e].u == x: Some(ws[e].v) else: None,
+                until: x => x == t,
+            )
+            assert closer_settled([V] v => fd[v], [V] v => fc[v], t)
+
+@test
+fn bellman_ford_matches_relaxation_and_finds_negative_cycles():
+    domain V = 0..5
+    domain E = 0..8
+    var (negative, fine) = (0, 0)
+    for _ in 0..60:
+        let es = [E] _ => (u: V.nth(rand(0, 4)), v: V.nth(rand(0, 4)), w: rand(-3, 9))
+        let g = Graph.directed(es)
+        for s in V:
+            var d: [V]?Int = None
+            d[s] = Some(0)
+            var moved = false
+            for _ in 0..V.count + 1:
+                moved = false
+                for e in E:
+                    let (u, v, w) = (es[e].u, es[e].v, es[e].w)
+                    if let du = d[u]:
+                        if d[v] == None or du + w < d[v]!:
+                            d[v] = Some(du + w)
+                            moved = true
+            let got = bellman_ford(g, from: [(s, 0)])
+            assert (got == None) == moved
+            if let p = got:
+                fine += 1
+                for t in V: assert p[t] == d[t]
+            else: negative += 1
+    assert negative > 0 and fine > 0
+
+@test
+fn find_cycle_exists_exactly_when_topo_fails():
+    domain V = 0..7
+    for _ in 0..60:
+        let out = [V] v => [V.nth(rand(0, 6)) for _ in 0..rand(0, 2) if rand(0, 2) > 0]
+        let cyc = find_cycle<V>(v => out[v])
+        assert (cyc == None) == (topo<V>(v => out[v]) != None)
+        if let c = cyc:
+            for i in 0..c.len: assert out[c[i]].contains(c[(i + 1) % c.len])
+            assert c.sorted().len == c.len
+
+@test
+fn bridges_are_the_edges_whose_removal_disconnects():
+    domain V = 0..6
+    domain E = 0..7
+    for _ in 0..40:
+        let edges = [E] e => (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)))
+        let bridge = bridges(Graph.undirected(edges))
+        for e in E:
+            let rest = [V] v => [x.v for f in E if f != e for x in [edges[f]] if x.u == v] + [
+                x.u for f in E if f != e for x in [edges[f]] if x.v == v
+            ]
+            let far = bfs<V>(v => rest[v], from: [edges[e].u])
+            assert bridge[e] == (not far.reached(edges[e].v))
+
+@test
+fn euler_walks_use_every_edge_once_and_exist_when_brute_force_finds_one():
+    domain V = 0..4
+    for _ in 0..200:
+        let directed = rand(0, 1) == 1
+        let k = rand(0, 6)
+        domain E = 0..k
+        let edges = [E] _ => (u: V.nth(rand(0, 3)), v: V.nth(rand(0, 3)))
+        let got = euler_walk(edges, directed:)
+        assert (got != None) == has_walk([(edges[e].u, edges[e].v) for e in E], directed)
+        if let w = got:
+            assert sorted([a.e for a in w.arcs]) == List(E)
+            var at = w.start
+            for a in w.arcs:
+                let x = edges[a.e]
+                assert (x.u == at and x.v == a.to) or (not directed and x.v == at and x.u == a.to)
+                at = a.to
+            assert w.vertices.collect().len == w.arcs.len + 1
+/// Does `walk` trace connected edges, starting at `start`?
+fn follows<V>(edges: List<(V, V)>, walk: List<Int>, directed: Bool, start: V) -> Bool:
+    var at = start
+    for i in walk:
+        let (u, v) = edges[i]
+        if u == at: at = v
+        elif not directed and v == at: at = u
+        else: return false
+    true
+
+fn has_walk<V>(edges: List<(V, V)>, directed: Bool) -> Bool:
+    if edges.is_empty: return true
+    for (u, v) in edges:
+        for s in (if directed: [u] else: [u, v]):
+            var used = List.filled(edges.len, false)
+            if extend(edges, directed, mut used, s, 0): return true
+    false
+
+fn extend<V>(edges: List<(V, V)>, directed: Bool, mut used: List<Bool>, at: V, done: Int) -> Bool:
+    if done == edges.len: return true
+    for i in 0..edges.len:
+        if used[i]: continue
+        let (u, v) = edges[i]
+        var to: ?V = None
+        if u == at: to = v
+        elif not directed and v == at: to = u
+        if let w = to:
+            used[i] = true
+            if extend(edges, directed, mut used, w, done + 1): return true
+            used[i] = false
+    false
+
+@test
+fn at_most_one_forbids_every_pair_and_allows_each_single():
+    domain X = 0..5
+    let lits = [Lit(X(i), i % 2 == 0) for i in 0..5]
+    for i in 0..5:
+        for j in 0..5:
+            var s = TwoSat<X>()
+            s.at_most_one(lits)
+            s.must(lits[i])
+            s.must(lits[j])
+            let got = s.solve()
+            assert (got == None) == (i != j)
+            if let a = got:
+                for k in 0..5: assert (a[X(k)] == lits[k].value) == (k == i)
+
+// ---- Spec surface without implementations yet ----------------------------
+
+/// A depth-first walk from each vertex of `from` in turn, yielding `Enter(v, via:)` when `v` is
+/// discovered, `Again(from, via)` for an arc into an already discovered vertex, and `Exit(v, via:)`
+/// when `v` is finished.
+///
+/// `via` is the arc that discovered `v`, `None` for a source; on `[V]List<V>` an arc is the vertex
+/// it reaches.
+///
+/// Arcs are taken in arc order and the walk descends at once (recursive order, run
+/// without recursion). Discovered vertices are shared across sources, so a source already
+/// discovered is skipped; pass `seen:` to share them with other walks (it is read and
+/// updated in place). `prune: f` skips the arcs of each vertex `v` with `f(v)`, asked right
+/// after `Enter(v)` (its `Exit` still comes); `break` and `return` end the walk. `Again` events give custom low-link.
+///
+/// cost: \(O(n + m)\) total, \(O(1)\) per step
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; dfs(g, from: List<V>()).count() == 0`
+/// order: `Enter` in preorder, `Exit` in postorder, `Again` when its arc is scanned, interleaved as the walk goes
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Exit(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(0, None)]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(1, Some(1)), Visit.Again(0, 2), Visit.Exit(0, None)]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; dfs(g, from: [V(0)], prune: v => v == V(1)).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Exit(1, Some(1)), Visit.Exit(0, None)]`
+pub fn dfs<V, G: Next<V>>(
+    g: G,
+    from: Seq<V>,
+    seen: ?mut [V]Bool = None,
+    prune: ?(V -> Bool) = None,
+) -> yields Visit<V, G.Arc>:
+    if let sn = seen:
+        for e in dfs_walk(g, from, mut sn, prune): yield e
+    else:
+        var vis: [V]Bool = false
+        for e in dfs_walk(g, from, mut vis, prune): yield e
+
+fn push_dfs_arcs<V, G: Next<V>>(g: G, v: V, prune: ?(V -> Bool), mut arcs: List<G.Arc>):
+    if let p = prune:
+        if p(v): return
+    for a in g.out(v): arcs.push(a)
+
+fn dfs_walk<V, G: Next<V>>(
+    g: G,
+    from: Seq<V>,
+    mut vis: [V]Bool,
+    prune: ?(V -> Bool),
+) -> yields Visit<V, G.Arc>:
+    let no_via: ?G.Arc = None
+    for s in from:
+        if vis[s]: continue
+        vis[s] = true
+        yield Visit.Enter(s, no_via)
+        // the stacked vertices' arcs in one list, not one list each: frame k's unwalked
+        // arcs are arcs[stk_i[k]..stk_end[k]], and frame k + 1's start at stk_end[k]
+        var arcs: List<G.Arc> = []
+        push_dfs_arcs(g, s, prune, mut arcs)
+        var stk_v = [s]
+        var stk_via: List<?G.Arc> = [no_via]
+        var stk_i = [0]
+        var stk_end = [arcs.len]
+        while stk_v.len > 0:
+            let top = stk_v.len - 1
+            let u = stk_v[top]
+            let i = stk_i[top]
+            if i < stk_end[top]:
+                stk_i[top] = i + 1
+                let a = arcs[i]
+                let v = a.to
+                if vis[v]:
+                    yield Visit.Again(u, a)
+                else:
+                    vis[v] = true
+                    yield Visit.Enter(v, Some(a))
+                    stk_v.push(v)
+                    stk_via.push(Some(a))
+                    stk_i.push(arcs.len)
+                    push_dfs_arcs(g, v, prune, mut arcs)
+                    stk_end.push(arcs.len)
+            else:
+                let via = stk_via[top]
+                let base = if top > 0: stk_end[top - 1] else: 0
+                while arcs.len > base: arcs.pop()
+                stk_v.pop()
+                stk_via.pop()
+                stk_i.pop()
+                stk_end.pop()
+                yield Visit.Exit(u, via)
+
+/// Every vertex reachable from `from`, each once, sources included. `reachable(g, from:
+/// [s]).count()`, `List(...)` or `.contains(v)` ask the usual questions; to avoid some
+/// arcs, pass `g` filtered (`v => g.next(v).filter(a => ok(a))`).
+///
+/// cost: \(O(n)\) for `seen`, then \(O(1)\) per reached vertex and per arc out of one
+/// empty: `domain V = 0..2; let g: [V]List<V> = [[1], []]; reachable(g, from: List<V>()).count() == 0`
+/// order: discovery order, the order of `dfs`'s `Enter` events; over a `Complement`, the
+///   order of its unvisited-set walk (each vertex's newly reached vertices together, ascending)
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; reachable(g, from: [V(0)]).collect() == [0, 1, 3, 2]`
+/// example: `domain V = 0..5; let g: [V]List<V> = [[1], [0, 2], [1], [], []]; reachable(complement(g), from: [V(0)]).collect() == [0, 2, 3, 4, 1]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], []]; reachable(g, from: [V(1), V(2)]).collect() == [1, 0, 2]`
+pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
+    var seen: [V]Bool = false
+    if G: ReachesUnvisited:
+        var unvisited = V.collect()
+        var mark: [V]?V = None
+        for s in from:
+            if seen[s]: continue
+            seen[s] = true
+            yield s
+            var todo = [s]
+            while let u = todo.pop():
+                let (reached, rest) = g.reach_unvisited(u, unvisited, mut mark)
+                unvisited = rest
+                for v in reached if not seen[v]:
+                    seen[v] = true
+                    yield v
+                    todo.push(v)
+        return
+    var stack: List<V> = []
+    for s in from:
+        stack.push(s)
+        while let u = stack.pop():
+            if seen[u]: continue
+            seen[u] = true
+            yield u
+            let base = stack.len
+            for a in g.out(u) if not seen[a.to]: stack.push(a.to)
+            var i = base
+            var j = stack.len - 1
+            while i < j:
+                let t = stack[i]
+                stack[i] = stack[j]
+                stack[j] = t
+                i += 1
+                j -= 1
+
+/// \(O(1)\): one event of `dfs`, the same shape as `Rooted.tour` yields: `via` is the arc that
+/// discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
+pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)
+
+/// Shortest distances for integer weights in `0..=max_w` with a bucket queue (Dial), from
+/// every vertex of `from` at distance 0. Same result shape as `dijkstra`; `until: f` stops
+/// once a vertex `v` with `f(v)` is settled, one `until` call per settled vertex.
+///
+/// `max_w + 1` buckets are reused cyclically, so memory is \(O(n + \mathit{max\_w})\) and the scan over
+/// distances is \(O(\mathit{d\_max})\), the largest distance reached (at most `(n - 1) * max_w`).
+///
+/// cost: \(O(n + m + \mathit{max\_w} + \mathit{d\_max})\)
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4)]; let p = dial(Graph.directed(es), from: List<V>(), max_w: 4); p[0] == None and p[1] == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 2), (u: 1, v: 2, w: 1)]; dial(Graph.directed(es), from: [V(0)], max_w: 2).path(2) == Some([0, 2])`
+/// traps: on a weight outside `0..=max_w`, when it is read
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 2)]; dial(Graph.directed(es), from: [V(0)], max_w: 5)[1] == Some(3)`
+pub fn dial<V, G: WeightedNext<V, Int>>(
+    g: G,
+    from: Seq<V>,
+    max_w: Int,
+    until: V -> Bool = v => false,
+) -> Paths<V, Int, G.Arc>:
+    assert max_w >= 0, "dial: max_w must be non-negative"
+    let nb = max_w + 1
+    var dist: [V]?Int = None
+    var back: [V]?(from: V, via: G.Arc) = None
+    var done: [V]Bool = false
+    var order = List<V>()
+    var buckets = [Deque<V>() for _ in 0..nb]
+    var in_q = 0
+    for s in from:
+        if dist[s] == None:
+            dist[s] = Some(0)
+            buckets[0].push(s)
+            in_q += 1
+    var cur = 0
+    while in_q > 0:
+        while buckets[cur % nb].is_empty: cur += 1
+        let u = buckets[cur % nb].pop_front()!
+        in_q -= 1
+        if done[u]: continue
+        done[u] = true
+        order.push(u)
+        if until(u): break
+        for a in g.out(u):
+            let w = a.w
+            assert 0 <= w <= max_w, "dial: edge weight outside 0..=max_w"
+            let nd = cur + w
+            if dist[a.to] == None or nd < dist[a.to]!:
+                dist[a.to] = Some(nd)
+                back[a.to] = Some((from: u, via: a))
+                buckets[nd % nb].push(a.to)
+                in_q += 1
+    Paths(dist, back, order)
+
+/// All-pairs shortest distances with negative arcs: one Bellman-Ford from a virtual source joined
+/// to every vertex, then a Dijkstra per vertex on the reweighted arcs.
+///
+/// `d[u, v]` is the distance, `None` when unreachable, `0` on the diagonal. `None` if any negative
+/// cycle exists, reachable or not.
+///
+/// cost: \(O(n m \log m)\)
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; let d = johnson(Graph.directed(es))!; d[0, 1] == Some(2) and d[1, 0] == None and d[1, 1] == Some(0)`
+/// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; johnson(Graph.directed(es)) == None`
+pub fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W:
+    var h: [V]W = W.zero
+    for round in 0..V.count:
+        var changed = false
+        for u in V:
+            for a in g.out(u):
+                let nd = h[u] + a.w
+                if nd < h[a.to]:
+                    h[a.to] = nd
+                    changed = true
+        if not changed: break
+        if round == V.count - 1: return None
+    var res: [V, V]?W = None
+    for s in V:
+        var dist: [V]?W = None
+        dist[s] = Some(W.zero)
+        var pq = Heap<(W, V)>()
+        pq.push((W.zero, s))
+        while let (d, u) = pq.pop():
+            if dist[u] != Some(d): continue
+            for a in g.out(u):
+                let nd = d + a.w + h[u] - h[a.to]
+                if dist[a.to] == None or nd < dist[a.to]!:
+                    dist[a.to] = Some(nd)
+                    pq.push((nd, a.to))
+        for v in V:
+            if let dv = dist[v]:
+                res[s, v] = Some(dv - h[s] + h[v])
+    Some(res)
+
+/// The lengths of the `k` shortest walks from any vertex of `from` to `to` (Eppstein).
+/// Walks may repeat vertices and arcs; the empty walk counts when `to` is a source. Fewer
+/// than `k` when fewer walks exist.
+///
+/// cost: \(O((n + m) \log n + k \log k)\)
+/// empty: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 7)]; let g = Graph.directed(es); k_shortest(g, from: List<V>(), to: V(1), k: 3) == [] and k_shortest(g, from: [V(0)], to: V(1), k: 0) == []`
+/// order: ascending, repeats kept
+/// traps: on a negative weight
+/// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 1)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [1, 3, 5]`
+/// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 7)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [7]`
+pub fn k_shortest<V, W: Add>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W>:
+    var ans = List<W>()
+    if k <= 0: return ans
+    var rev: [V]List<(V, W)> = []
+    for u in V:
+        for a in g.out(u):
+            assert a.w >= W.zero, "k_shortest: negative weight"
+            rev[a.to].push((u, a.w))
+    var h: [V]?W = None
+    h[to] = Some(W.zero)
+    var rpq = Heap<(W, V)>()
+    rpq.push((W.zero, to))
+    while let (d, u) = rpq.pop():
+        if h[u] != Some(d): continue
+        for (p, w) in rev[u]:
+            let nd = d + w
+            if h[p] == None or nd < h[p]!:
+                h[p] = Some(nd)
+                rpq.push((nd, p))
+    var pq = Heap<(W, W, V)>()
+    var seen_src: [V]Bool = false
+    for s in from:
+        if seen_src[s]: continue
+        seen_src[s] = true
+        if let hs = h[s]: pq.push((hs, W.zero, s))
+    var cnt: [V]Int = 0
+    while let (_, d, u) = pq.pop():
+        if cnt[u] >= k: continue
+        cnt[u] += 1
+        if u == to:
+            ans.push(d)
+            if ans.len == k: break
+        for a in g.out(u):
+            if let hv = h[a.to]:
+                let nd = d + a.w
+                pq.push((nd + hv, nd, a.to))
+    ans
+
+/// Some cycle of negative total weight, as its arcs in walking order, or `None`.
+///
+/// Bellman-Ford from every vertex at distance 0 (vertices in vertex order, arcs in arc
+/// order); the first vertex relaxed in round `n`, followed back `n` times, lands on a
+/// cycle, which is returned starting with the arc leaving that vertex.
+///
+/// cost: \(O(n m)\)
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: -1), (u: 1, v: 0, w: -1), (u: 2, v: 2, w: -1)]; [a.e for a in negative_cycle(Graph.directed(es))!] == [0, 1]`
+/// order: walking order
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 2, v: 0, w: 1), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; negative_cycle(Graph.directed(es))!.len == 2`
+/// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -1)]; negative_cycle(Graph.directed(es)) == None`
+pub fn negative_cycle<V, W: Add, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
+    var dist: [V]W = W.zero
+    var par: [V]?V = None
+    var par_arc: [V]?G.Arc = None
+    var last: ?V = None
+    for _ in 0..V.count:
+        last = None
+        for u in V:
+            for a in g.out(u):
+                let nd = dist[u] + a.w
+                if nd < dist[a.to]:
+                    dist[a.to] = nd
+                    par[a.to] = Some(u)
+                    par_arc[a.to] = Some(a)
+                    if last == None: last = Some(a.to)
+        if last == None: return None
+    var cur = last!
+    for _ in 0..V.count: cur = par[cur]!
+    let start = cur
+    var cyc = List<G.Arc>()
+    var v = start
+    while true:
+        cyc.push(par_arc[v]!)
+        v = par[v]!
+        if v == start: break
+    reverse(mut cyc)
+    Some(cyc)
+
+/// The least mean weight over all directed cycles, as `(sum, len)` of a cycle achieving it
+/// (Karp), or `None` on an acyclic graph. Among cycles of least mean the shortest is
+/// reported, so `(sum, len)` is unique.
+///
+/// cost: \(O(n m)\)
+/// ties: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 1), (u: 1, v: 1, w: 1)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 1, len: 1))`
+/// traps: never
+/// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3), (u: 1, v: 1, w: 5)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 4, len: 2))`
+/// example: `domain V = 0..2; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 0, w: 2), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: 3)]; min_mean_cycle(Graph.directed(es)) == Some((sum: 2, len: 1))`
+pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
+    let n = V.count
+    if n == 0: return None
+    var dp: List<[V]?Int> = []
+    let init: [V]?Int = Some(0)
+    dp.push(init)
+    for step in 1..=n:
+        var nxt: [V]?Int = None
+        for u in V:
+            if let du = dp[step - 1][u]:
+                for a in g.out(u):
+                    let nd = du + a.w
+                    if nxt[a.to] == None or nd < nxt[a.to]!:
+                        nxt[a.to] = Some(nd)
+        dp.push(nxt)
+    var best: ?(num: Int, den: Int) = None
+    for v in V:
+        if let dn = dp[n][v]:
+            var worst: ?(num: Int, den: Int) = None
+            for k in 0..n:
+                if let dk = dp[k][v]:
+                    let num = dn - dk
+                    let den = n - k
+                    if worst.is_none_or(w => I128(num) * I128(w.den) > I128(w.num) * I128(den)):
+                        worst = (num:, den:)
+            if let w = worst:
+                if best.is_none_or(b => I128(w.num) * I128(b.den) < I128(b.num) * I128(w.den)):
+                    best = w
+    let Some(b) = best else: return None
+    let g_val = gcd(abs(b.num), b.den)
+    let p = b.num / g_val
+    let q = b.den / g_val
+    // Under weights q w - p no cycle is negative and those of least mean are the zero ones:
+    // with shortest distances as potentials they are the cycles of tight arcs, and the
+    // shortest of them is the tight subgraph's girth.
+    var pot: [V]Int = 0
+    for _ in 0..n:
+        var changed = false
+        for u in V:
+            for a in g.out(u):
+                let nd = pot[u] + q * a.w - p
+                if nd < pot[a.to]:
+                    pot[a.to] = nd
+                    changed = true
+        if not changed: break
+    let tight = [V] u => [a.to for a in g.out(u) if pot[u] + q * a.w - p == pot[a.to]]
+    let len = girth(tight, directed: true)!
+    Some((sum: p * (len / q), len:))
+
+/// The length of a shortest cycle (the girth), or `None` if there is None.
+///
+/// With `directed: false` the graph is read as undirected (every arc has its reverse) and a cycle
+/// counts only if it uses at least three edges, so loops and an arc's way back are not cycles.
+///
+/// cost: \(O(n m)\), a BFS from every vertex
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], [0]]; girth(g, directed: true) == Some(3)`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; girth(g, directed: false) == None`
+pub fn girth<V>(g: Next<V>, directed: Bool) -> ?Int:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var best: ?Int = None
+    for s in V:
+        var dist: [V]?Int = None
+        var par: [V]?V = None
+        dist[s] = 0
+        var q = [s]
+        var i = 0
+        while i < q.len:
+            let u = q[i]
+            i += 1
+            for v in out[u]:
+                if dist[v] == None:
+                    dist[v] = dist[u]! + 1
+                    par[v] = u
+                    q.push(v)
+                elif directed:
+                    if v == s: best = Some(min(best ?? (dist[u]! + 1), dist[u]! + 1))
+                elif v != u and par[u] != Some(v):
+                    let len = dist[u]! + dist[v]! + 1
+                    best = Some(min(best ?? len, len))
+    best
+
+/// The lexicographically smallest topological order (vertex order), by a min-heap instead
+/// of `topo`'s queue; `None` if there is a cycle.
+///
+/// cost: \(O((n + m) \log n)\)
+/// order: topological, least first
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], []]; smallest_topo(g) == Some([1, 0, 2])`
+/// example: `domain V = 0..2; let g: [V]List<V> = [[1], [0]]; smallest_topo(g) == None`
+pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
+    var indeg: [V]Int = 0
+    for u in V:
+        for a in g.out(u): indeg[a.to] += 1
+    var ready = MinHeap<V>()
+    for v in V:
+        if indeg[v] == 0: ready.push(v)
+    var order: List<V> = []
+    while let u = ready.pop():
+        order.push(u)
+        for a in g.out(u):
+            indeg[a.to] -= 1
+            if indeg[a.to] == 0: ready.push(a.to)
+    if order.len == V.count: order else: None
+
+/// DP over a DAG in topological order.
+///
+/// Each vertex starts at `init(v)`; then, for `u` in `topo` order and each arc `a` of `u` in arc
+/// order, `val[a.to] = op(val[a.to], step(val[u], a))`. `op: max` gives longest paths, `op: +`
+/// counts. `None` on a cycle.
+///
+/// cost: \(O(n + m)\)
+/// order: keyed by `V`
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) == Some([0, 1, 1, 2])`
+/// example: `domain V = 0..2; let g: [V]List<V> = [[1], [0]]; dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) == None`
+pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, op: M) -> ?[V]T:
+    let ord = topo(g) ?? return None
+    let k = Monoid<T>.of(op)
+    var val = [V] v => init(v)
+    for u in ord:
+        for a in g.out(u):
+            val[a.to] = k.op(val[a.to], step(val[u], a))
+    Some(val)
+
+/// The number of paths from a vertex of `from` to every `v` of a DAG, in `T` (a modular
+/// type keeps it exact). A source has its empty path; a repeated source counts once.
+/// `None` if the graph has a cycle anywhere.
+///
+/// cost: \(O(n + m)\)
+/// empty: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; count_paths::<Int>(g, from: List<V>()) == Some([0, 0, 0])`
+/// order: keyed by `V`
+/// traps: on overflow of `T`, as its arithmetic does
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; count_paths::<Int>(g, from: [V(0)]) == Some([1, 1, 1, 2])`
+pub fn count_paths<T: Add, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
+    let ord = topo(g) ?? return None
+    var dp: [V]T = T.zero
+    for s in from: dp[s] = T.one
+    for u in ord:
+        for a in g.out(u): dp[a.to] += dp[u]
+    Some(dp)
+
+/// Reachability of every pair as bitset rows: `r[u].contains(v)` when some path of zero or
+/// more arcs leads from `u` to `v`, so every `u` reaches itself. Computed through the
+/// condensation in reverse topological order.
+///
+/// cost: \(O(n m / 64)\) time, \(O(n^2 / 64)\) memory
+/// order: keyed by `V`
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; let r = reach_sets(g); r[0].contains(2) and not r[2].contains(0) and r[1].contains(1)`
+pub fn reach_sets<V>(g: Next<V>) -> [V]Bitset<V>:
+    let (domain C, comp) = scc(g)
+    var creach = [C] _ => Bitset<V>.new()
+    for v in V: creach[comp[v]].add(v)
+    var cadj = [C] _ => List<C>()
+    for u in V:
+        let cu = comp[u]
+        for a in g.out(u):
+            let cv = comp[a.to]
+            if cu != cv: cadj[cu].push(cv)
+    for c in C.rev:
+        for d in cadj[c]:
+            creach[c] = creach[c].bitor(creach[d])
+    [V] v => creach[comp[v]]
+
+/// Offline incremental SCC: the arcs of `arcs` are added in order, and `t[e]` is the first
+/// index `i >= e` such that after adding arcs `0..=i` the ends of `e` share a strongly
+/// connected component, or `None` if they never do.
+///
+/// cost: \(O(m \log m)\), divide and conquer over time
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 1)]; scc_times(es) == [Some(2), Some(2), Some(2), Some(3)]`
+/// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; scc_times(es) == [None]`
+pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
+    let n = V.count
+    let m = E.count
+    var ans: [E]?Int = None
+    if m == 0: return ans
+
+    var par = (0..n).collect()
+    var sz = [1 for _ in 0..n]
+    var hist_u = List<Int>()
+    var hist_v = List<Int>()
+    var adj = [List<Int>() for _ in 0..n]
+    var tin: List<?Int> = List.filled(n, None)
+    var low = [0 for _ in 0..n]
+    var on_stk = [false for _ in 0..n]
+    var comp: List<?Int> = List.filled(n, None)
+    var used = List<Int>()
+    var tstk = List<Int>()
+
+    fn find(x: Int) -> Int:
+        var r = x
+        while par[r] != r:
+            r = par[r]
+        r
+
+    fn unite(a: Int, b: Int):
+        var ra = find(a)
+        var rb = find(b)
+        if ra == rb: return
+        if sz[ra] < sz[rb]:
+            let tmp = ra
+            ra = rb
+            rb = tmp
+        par[rb] = ra
+        sz[ra] += sz[rb]
+        hist_u.push(ra)
+        hist_v.push(rb)
+
+    fn rollback(snap: Int):
+        while hist_u.len > snap:
+            let ra = hist_u.pop()!
+            let rb = hist_v.pop()!
+            par[rb] = rb
+            sz[ra] -= sz[rb]
+
+    fn solve(l: Int, r: Int, es: List<E>):
+        if es.len == 0: return
+        if l == r:
+            for e in es:
+                let ei = e.ord
+                let t = if l > ei: l else: ei
+                ans[e] = Some(t)
+            return
+        let mid = (l + r) / 2
+        used.clear()
+        for e in es:
+            if e.ord <= mid:
+                let ru = find(arcs[e].u.ord)
+                let rv = find(arcs[e].v.ord)
+                if ru != rv:
+                    if adj[ru].len == 0 and not on_stk[ru]:
+                        on_stk[ru] = true
+                        used.push(ru)
+                    if adj[rv].len == 0 and not on_stk[rv]:
+                        on_stk[rv] = true
+                        used.push(rv)
+                    adj[ru].push(rv)
+        for u in used:
+            tin[u] = None
+            comp[u] = None
+            on_stk[u] = false
+        var timer = 0
+        var ccnt = 0
+        tstk.clear()
+        for start in used:
+            if tin[start] != None: continue
+            var dfs_u = [start]
+            var dfs_i = [0]
+            tin[start] = timer
+            low[start] = timer
+            timer += 1
+            on_stk[start] = true
+            tstk.push(start)
+            while dfs_u.len > 0:
+                let top = dfs_u.len - 1
+                let u = dfs_u[top]
+                let idx = dfs_i[top]
+                if idx < adj[u].len:
+                    dfs_i[top] = idx + 1
+                    let v = adj[u][idx]
+                    if tin[v] == None:
+                        tin[v] = timer
+                        low[v] = timer
+                        timer += 1
+                        on_stk[v] = true
+                        tstk.push(v)
+                        dfs_u.push(v)
+                        dfs_i.push(0)
+                    elif on_stk[v]:
+                        low[u] min= tin[v]!
+                else:
+                    if low[u] == tin[u]!:
+                        while true:
+                            let w = tstk.pop()!
+                            on_stk[w] = false
+                            comp[w] = ccnt
+                            if w == u: break
+                        ccnt += 1
+                    dfs_u.pop()
+                    dfs_i.pop()
+                    if dfs_u.len > 0:
+                        let p = dfs_u.last!
+                        low[p] min= low[u]
+        var left_es = List<E>()
+        var right_es = List<E>()
+        var to_merge_u = List<Int>()
+        var to_merge_v = List<Int>()
+        for e in es:
+            let ru = find(arcs[e].u.ord)
+            let rv = find(arcs[e].v.ord)
+            if ru == rv:
+                left_es.push(e)
+            elif e.ord <= mid and comp[ru] != None and comp[ru] == comp[rv]:
+                left_es.push(e)
+                to_merge_u.push(ru)
+                to_merge_v.push(rv)
+            else:
+                right_es.push(e)
+        for u in used:
+            adj[u].clear()
+            tin[u] = None
+            comp[u] = None
+        solve(l, mid, left_es)
+        let snap = hist_u.len
+        for i in 0..to_merge_u.len:
+            unite(to_merge_u[i], to_merge_v[i])
+        solve(mid + 1, r, right_es)
+        rollback(snap)
+
+    var all_es = List<E>()
+    for e in E:
+        if arcs[e].u == arcs[e].v:
+            ans[e] = Some(e.ord)
+        else:
+            all_es.push(e)
+    // Filter to edges whose endpoints are in the same SCC after all m arcs.
+    if all_es.len > 0:
+        for e in all_es:
+            let u = arcs[e].u.ord
+            let v = arcs[e].v.ord
+            adj[u].push(v)
+        var timer = 0
+        var ccnt = 0
+        for s in 0..n:
+            if tin[s] != None: continue
+            var dfs_u = [s]
+            var dfs_i = [0]
+            tin[s] = timer
+            low[s] = timer
+            timer += 1
+            on_stk[s] = true
+            tstk.push(s)
+            while dfs_u.len > 0:
+                let top = dfs_u.len - 1
+                let u = dfs_u[top]
+                let idx = dfs_i[top]
+                if idx < adj[u].len:
+                    dfs_i[top] = idx + 1
+                    let v = adj[u][idx]
+                    if tin[v] == None:
+                        tin[v] = timer
+                        low[v] = timer
+                        timer += 1
+                        on_stk[v] = true
+                        tstk.push(v)
+                        dfs_u.push(v)
+                        dfs_i.push(0)
+                    elif on_stk[v]:
+                        low[u] min= tin[v]!
+                else:
+                    if low[u] == tin[u]!:
+                        while true:
+                            let w = tstk.pop()!
+                            on_stk[w] = false
+                            comp[w] = ccnt
+                            if w == u: break
+                        ccnt += 1
+                    dfs_u.pop()
+                    dfs_i.pop()
+                    if dfs_u.len > 0:
+                        let p = dfs_u.last!
+                        low[p] min= low[u]
+        var active = List<E>()
+        for e in all_es:
+            if comp[arcs[e].u.ord] == comp[arcs[e].v.ord]:
+                active.push(e)
+        for u in 0..n:
+            adj[u].clear()
+            tin[u] = None
+            comp[u] = None
+            on_stk[u] = false
+        tstk.clear()
+        solve(0, m - 1, active)
+    ans
+
+/// The block-cut tree of an undirected simple graph: `B` numbers the blocks as the DFS (roots
+/// in vertex order, arcs in arc order) closes them, deepest first, as `blocks` does, and `links` joins each block to the cut vertices it contains.
+///
+/// cost: \(O(n + m)\)
+/// order: `links` by block, then the block's vertex order
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; let (domain B, links) = block_cut_tree(g); B.count == 2 and links == [(b: B(0), v: V(1)), (b: B(1), v: V(1))]`
+pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
+    var adj: [V]List<V> = []
+    for u in V:
+        for a in g.out(u):
+            adj[u].push(a.to)
+    var tin: [V]?Int = None
+    var low: [V]Int = 0
+    var is_cut: [V]Bool = false
+    var timer = 0
+    var vstk = List<V>()
+    var raw_blocks = List<List<V>>()
+    for root in V:
+        if tin[root] != None: continue
+        var root_children = 0
+        tin[root] = timer
+        low[root] = timer
+        timer += 1
+        var stk_u = [root]
+        var stk_i = [0]
+        var stk_p = [root]
+        while stk_u.len > 0:
+            let top = stk_u.len - 1
+            let u = stk_u[top]
+            let idx = stk_i[top]
+            let par = stk_p[top]
+            if idx < adj[u].len:
+                stk_i[top] = idx + 1
+                let v = adj[u][idx]
+                if v == u: continue
+                if tin[v] == None:
+                    if u == root: root_children += 1
+                    tin[v] = timer
+                    low[v] = timer
+                    timer += 1
+                    vstk.push(v)
+                    stk_u.push(v)
+                    stk_i.push(0)
+                    stk_p.push(u)
+                elif v != par:
+                    low[u] min= tin[v]!
+            else:
+                stk_u.pop()
+                stk_i.pop()
+                stk_p.pop()
+                if stk_u.len > 0:
+                    let p = stk_u.last!
+                    low[p] min= low[u]
+                    if low[u] >= tin[p]!:
+                        if p != root: is_cut[p] = true
+                        var blk = List<V>()
+                        while let w = vstk.pop():
+                            blk.push(w)
+                            if w == u: break
+                        blk.push(p)
+                        raw_blocks.push(blk)
+        if root_children >= 2:
+            is_cut[root] = true
+    domain B = 0..raw_blocks.len
+    var links = List<(b: B, v: V)>()
+    for bi in B:
+        for v in raw_blocks[bi.ord]:
+            if is_cut[v]:
+                links.push((b: bi, v:))
+    (B:, links:)
+
+/// The biconnected block of every edge: edges, not vertices, are partitioned, so a cut vertex lies
+/// in several blocks and parallel edges share one.
+///
+/// Blocks are numbered as the DFS (roots in vertex order, arcs in arc order) closes them; each loop
+/// is a block of its own, numbered after those in edge order.
+///
+/// cost: \(O(n + m)\)
+/// order: `block` keyed by `E`
+/// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
+/// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
+pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
+    var start: [V.cuts]Len = 0
+    var to = List<V>()
+    var eid = List<E>()
+    for u in V:
+        for a in g.out(u):
+            to.push(a.to)
+            eid.push(a.e)
+        start[u.r] = to.len
+    var next: [V]Int = [V] u => start[u.l]
+    var tin: [V]Int = -1
+    var low: [V]Int = 0
+    var up: [V]?E = None
+    var raw: [E]Int = -1
+    var path = List<V>()
+    var open = List<E>()
+    var timer = 0
+    var nblocks = 0
+    for root in V:
+        if tin[root] >= 0: continue
+        tin[root] = timer
+        low[root] = timer
+        timer += 1
+        path.push(root)
+        while let u = path.last:
+            let i = next[u]
+            if i < start[u.r]:
+                next[u] = i + 1
+                let v = to[i]
+                let e = eid[i]
+                if v == u or up[u] == Some(e): continue
+                if tin[v] < 0:
+                    open.push(e)
+                    up[v] = Some(e)
+                    tin[v] = timer
+                    low[v] = timer
+                    timer += 1
+                    path.push(v)
+                elif tin[v] < tin[u]:
+                    open.push(e)
+                    low[u] min= tin[v]
+            else:
+                path.pop()
+                if let p = path.last:
+                    low[p] min= low[u]
+                    if low[u] >= tin[p]:
+                        while let x = open.pop():
+                            raw[x] = nblocks
+                            if Some(x) == up[u]: break
+                        nblocks += 1
+    for e in E:
+        if raw[e] < 0:
+            raw[e] = nblocks
+            nblocks += 1
+    domain B = 0..nblocks
+    (B, [E] e => B.nth(raw[e]))
+
+/// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
+/// `missing.out(u)` does not reach. Its own `out(u)` is \(O(\lvert V \rvert)\), but
+/// `components` and `reachable` over a `Complement` run in \(O(\lvert V \rvert + m)\) by keeping
+/// the set of unvisited vertices and scanning only it, so the complement graph's components
+/// are the ordinary search: `components(complement(g))`. `bfs` and `dfs` still walk `out(u)`,
+/// \(O(\lvert V \rvert^2)\) in all.
+pub struct Complement<V, G>(missing: G)
+
+// A graph whose searches keep the unvisited vertices and ask the graph which of them `u`
+// reaches, instead of walking `out(u)`: `components` and `reachable` take this path.
+trait ReachesUnvisited<V>:
+    // `unvisited` split into the vertices `u` has an arc to and the rest, each in order, in
+    // O(|unvisited| + deg u). `mark` is scratch, all `None` at first, shared across calls.
+    fn reach_unvisited(self, u: V, unvisited: List<V>, mut mark: [V]?V) -> (List<V>, List<V>)
+
+impl Next<V> for Complement<V, G>:
+    type Arc = V
+
+    /// Every `v != u` that `missing.out(u)` does not reach.
+    ///
+    /// cost: \(O(\lvert V \rvert + \deg u)\)
+    /// order: ascending
+    /// traps: never
+    /// example: `domain V = 0..4; let g: [V]List<V> = [[1], [0], [], []]; complement(g).out(0).collect() == [2, 3]`
+    pub fn out(self, u: V) -> yields V:
+        var gone: [V]Bool = false
+        for a in missing.out(u): gone[a.to] = true
+        for v in V:
+            if v != u and not gone[v]: yield v
+
+// Each kept vertex but `u` is paid by an arc of `missing`, so a search is O(|V| + m).
+impl ReachesUnvisited<V> for Complement<V, G>:
+    fn reach_unvisited(self, u: V, unvisited: List<V>, mut mark: [V]?V) -> (List<V>, List<V>):
+        mark[u] = Some(u)
+        for a in self.missing.out(u): mark[a.to] = Some(u)
+        var reached: List<V> = []
+        var rest: List<V> = []
+        for v in unvisited:
+            if mark[v] == Some(u): rest.push(v)
+            else: reached.push(v)
+        (reached, rest)
+
+/// The `Complement` of `missing`, as a view; see there.
+///
+/// cost: \(O(1)\)
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1], [0], [], []]; let (domain C, comp) = components(complement(g)); C.count == 1`
+pub fn complement<V, G: Next<V>>(missing: G) -> Complement<V, G> = Complement(missing)
+
+/// An odd cycle witnessing that an undirected graph is not bipartite, or `None` when it is
+/// (exactly when `two_color` is `None`).
+///
+/// The BFS of `two_color` stops at the first arc `u -> v` joining two vertices of one side;
+/// the cycle runs from the BFS-tree LCA `x` of `u` and `v` down to `u`, then from `v` back
+/// up to the child of `x`. A loop gives `[u]`.
+///
+/// cost: \(O(n + m)\)
+/// order: walking order, starting at `x`
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0, 1]]; odd_cycle(g) == Some([0, 1, 2])`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0, 2], [1]]; odd_cycle(g) == None`
+pub fn odd_cycle<V>(g: Next<V>) -> ?List<V>:
+    let out = [V] v => [a.to for a in g.out(v)]
+    var side: [V]?Bool = None
+    var par: [V]?V = None
+    for root in V:
+        if side[root] != None: continue
+        side[root] = false
+        var q = [root]
+        var i = 0
+        while i < q.len:
+            let u = q[i]
+            i += 1
+            for v in out[u]:
+                if side[v] == None:
+                    side[v] = not side[u]!
+                    par[v] = u
+                    q.push(v)
+                elif side[v] == side[u]:
+                    if v == u: return [u]
+                    var down = [u]
+                    var up = [v]
+                    var (a, b) = (u, v)
+                    while par[a]! != par[b]!:
+                        a = par[a]!
+                        b = par[b]!
+                        down.push(a)
+                        up.push(b)
+                    var cyc = [par[a]!]
+                    var k = down.len
+                    while k > 0:
+                        k -= 1
+                        cyc.push(down[k])
+                    for x in up: cyc.push(x)
+                    return cyc
+    None
+
+/// The immediate dominator of every vertex reachable from `root` (Lengauer-Tarjan): the
+/// last vertex other than `v` that every path from `root` to `v` passes. `None` for `root`
+/// and unreachable vertices.
+///
+/// cost: \(O((n + m) \alpha)\)
+/// traps: never
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; dominators(g, root: V(0)) == [None, Some(0), Some(0), Some(0)]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; dominators(g, root: V(1)) == [None, None, Some(1)]`
+pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
+    let out = [V] u => [a.to for a in g.out(u)]
+    var dfn: [V]?Int = None
+    var ord = List<V>()
+    var par = List<Int>()
+    var stk_v = [root]
+    var stk_i = [0]
+    dfn[root] = 0
+    ord.push(root)
+    par.push(-1)
+    while stk_v.len > 0:
+        let top = stk_v.len - 1
+        let u = stk_v[top]
+        let i = stk_i[top]
+        if i < out[u].len:
+            stk_i[top] = i + 1
+            let v = out[u][i]
+            if dfn[v] == None:
+                dfn[v] = ord.len
+                ord.push(v)
+                par.push(dfn[u]!)
+                stk_v.push(v)
+                stk_i.push(0)
+        else:
+            stk_v.pop()
+            stk_i.pop()
+    let m = ord.len
+    var preds = [List<Int>() for _ in 0..m]
+    for i in 0..m:
+        let u = ord[i]
+        for v in out[u]:
+            if let j = dfn[v]: preds[j].push(i)
+    var sdom = (0..m).collect()
+    var idom = [0 for _ in 0..m]
+    var dsu = (0..m).collect()
+    var best = (0..m).collect()
+    var bucket = [List<Int>() for _ in 0..m]
+    var u_idx = m - 1
+    while u_idx >= 1:
+        for p in preds[u_idx]:
+            var path = [p]
+            var cur = p
+            while dsu[cur] != cur:
+                cur = dsu[cur]
+                path.push(cur)
+            var k = path.len - 2
+            while k >= 0:
+                let x = path[k]
+                let y = path[k + 1]
+                if sdom[best[y]] < sdom[best[x]]: best[x] = best[y]
+                dsu[x] = cur
+                k -= 1
+            let cand = sdom[best[p]]
+            sdom[u_idx] min= cand
+        bucket[sdom[u_idx]].push(u_idx)
+        let p = par[u_idx]
+        dsu[u_idx] = p
+        for w in bucket[p]:
+            var path = [w]
+            var cur = w
+            while dsu[cur] != cur:
+                cur = dsu[cur]
+                path.push(cur)
+            var k = path.len - 2
+            while k >= 0:
+                let x = path[k]
+                let y = path[k + 1]
+                if sdom[best[y]] < sdom[best[x]]: best[x] = best[y]
+                dsu[x] = cur
+                k -= 1
+            let b = best[w]
+            idom[w] = if sdom[b] == sdom[w]: p else: b
+        bucket[p].clear()
+        u_idx -= 1
+    for i in 1..m:
+        if idom[i] != sdom[i]: idom[i] = idom[idom[i]]
+    var res: [V]?V = None
+    for i in 1..m:
+        res[ord[i]] = Some(ord[idom[i]])
+    res
+
+/// Every triangle of an undirected simple graph once.
+///
+/// Each edge is oriented from lower to higher rank, rank being `(degree, vertex)`; for `u`
+/// in vertex order, each out-neighbour `v` of `u` in arc order and each out-neighbour `w`
+/// of `v` in arc order that is also one of `u`'s gives `(u, v, w)`, so the three come in
+/// increasing rank.
+///
+/// cost: \(O(m \sqrt m)\) total, \(O(1)\) per item
+/// order: by `u` in vertex order, then `v` and `w` in arc order
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0, 1]]; triangles(g).collect() == [(0, 1, 2)]`
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]; triangles(g).count() == 4`
+pub fn triangles<V: Ord>(g: Next<V>) -> yields (V, V, V):
+    let deg = [V] v => g.out(v).count()
+    let up = [V] u => [a.to for a in g.out(u) if (deg[u], u) < (deg[a.to], a.to)]
+    var mark: [V]?V = None
+    for u in V:
+        for v in up[u]: mark[v] = u
+        for v in up[u]:
+            for w in up[v]:
+                if mark[w] == Some(u): yield (u, v, w)
+
+fn clique_rec<V: Ord>(
+    adj: [V]Bitset<V>,
+    mut r: List<V>,
+    p: Bitset<V>,
+    x: Bitset<V>,
+    mut best: List<V>,
+):
+    if p.is_empty and x.is_empty:
+        var c = r.collect()
+        c.sort()
+        if c.len > best.len or (c.len == best.len and c < best): best = c
+        return
+    if r.len + p.count < best.len: return
+    let px = p.bitor(x)
+    var pivot = px.first()!
+    for u in px.each():
+        if p.bitand(adj[u]).count > p.bitand(adj[pivot]).count: pivot = u
+    var pp = p.bitand(adj[pivot].complement())
+    var xx = x.bitand(Bitset<V>.full())
+    var rest = p.bitand(Bitset<V>.full())
+    for v in pp.each():
+        r.push(v)
+        clique_rec(adj, mut r, rest.bitand(adj[v]), xx.bitand(adj[v]), mut best)
+        r.pop()
+        rest.remove(v)
+        xx.add(v)
+
+/// A maximum clique of the undirected graph given as bitset rows (Bron-Kerbosch with
+/// pivoting); `n` up to about 64 in contests.
+///
+/// cost: \(O(3^{n/3})\) worst case
+/// empty: `domain V = 0..0; let adj: [V]Bitset<V> = [V] _ => Bitset.empty(); max_clique(adj) == []`
+/// ties: `domain V = 0..4; let adj: [V]Bitset<V> = [Bitset.of([V(1)]), Bitset.of([V(0)]), Bitset.of([V(3)]), Bitset.of([V(2)])]; max_clique(adj) == [0, 1]`
+/// order: ascending
+/// traps: never
+/// example: `domain V = 0..4; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1), V(3)]), Bitset.of([V(2)])]; max_clique(adj) == [0, 1, 2]`
+pub fn max_clique<V: Ord>(adj: [V]Bitset<V>) -> List<V>:
+    var best = List<V>()
+    var r = List<V>()
+    clique_rec(adj, mut r, Bitset<V>.full(), Bitset<V>.empty(), mut best)
+    best
+
+/// The fewest colours such that no edge joins two vertices of one colour, by
+/// inclusion-exclusion over independent sets.
+///
+/// cost: \(O(2^n n)\)
+/// empty: `domain V = 0..0; let adj: [V]Bitset<V> = [V] _ => Bitset.empty(); chromatic_number(adj) == 0`
+/// traps: never
+/// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.of([V(1), V(2)]), Bitset.of([V(0), V(2)]), Bitset.of([V(0), V(1)])]; chromatic_number(adj) == 3`
+/// example: `domain V = 0..3; let adj: [V]Bitset<V> = [Bitset.empty(), Bitset.empty(), Bitset.empty()]; chromatic_number(adj) == 1`
+pub fn chromatic_number<V>(adj: [V]Bitset<V>) -> Int:
+    let n = V.count
+    if n == 0: return 0
+    assert n <= 30, "`chromatic_number` needs at most 30 vertices"
+    var nb = List.filled(n, 0)
+    for v in V:
+        for u in adj[v].each(): nb[v.ord] |= 1 << u.ord
+    var ind = List.filled(1 << n, 0)
+    ind[0] = 1
+    for s in 1..(1 << n):
+        let v = ctz(s)
+        ind[s] = ind[s & (s - 1)] + ind[s & (s - 1) & ~nb[v]]
+    let ps = [1_000_000_007, 998_244_353]
+    for k in 1..n:
+        for p in ps:
+            var sum = 0
+            for s in 0..(1 << n):
+                var t = 1
+                let b = ind[s] % p
+                for _ in 0..k: t = t * b % p
+                if (n - popcount(s)) % 2 == 1: sum = (sum - t) % p else: sum = (sum + t) % p
+            if sum != 0: return k
+    n
+
+/// The de Bruijn sequence over `0..k` of order `n`: a cyclic sequence of length `k^n` in
+/// which every length-`n` word appears once. Returns the lexicographically least one (the
+/// Lyndon words of length dividing `n`, in order).
+///
+/// cost: \(O(k^n)\)
+/// order: the cyclic sequence, cut so it starts with `n` zeros
+/// traps: when `k < 1` or `n < 1`
+/// example: `de_bruijn(2, 2) == [0, 0, 1, 1]`
+/// example: `de_bruijn(2, 3) == [0, 0, 0, 1, 0, 1, 1, 1]`
+/// example: `de_bruijn(3, 1) == [0, 1, 2]`
+pub fn de_bruijn(k: 1.., n: Int) -> List<Int>:
+    assert k >= 1 and n >= 1, "`de_bruijn` needs `k >= 1` and `n >= 1`"
+    var out = List<Int>()
+    var w = [-1]
+    while w.len > 0:
+        w[w.len - 1] += 1
+        let m = w.len
+        if n % m == 0:
+            for x in w: out.push(x)
+        while w.len < n: w.push(w[w.len - m])
+        while w.len > 0 and w.last! == k - 1: w.pop()
+    out
+
+/// A minimum spanning forest by Kruskal, as its total weight and the chosen edges. Edges
+/// are taken in `by:` order (`by` reads the edge record) with a stable sort, so `by: e => desc(e.w)` gives a maximum
+/// one; loops are never taken.
+///
+/// cost: \(O(m \log m)\)
+/// empty: `domain V = 0..2; domain E = 0..0; let es: [E](u: V, v: V, w: Int) = []; kruskal(es) == (total: 0, take: [])`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 2, w: 1), (u: 0, v: 1, w: 1), (u: 1, v: 2, w: 1)]; kruskal(es).take == [true, true, false]`
+/// order: `take` keyed by `E`
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es) == (total: 3, take: [true, true, false])`
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 2, w: 2), (u: 0, v: 2, w: 2)]; kruskal(es, by: e => desc(e.w)).take == [false, true, true]`
+pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(
+    edges: [E]R,
+    by: R -> K = e => e.w,
+) -> (total: W, take: [E]Bool):
+    var order = E.collect()
+    order.sort(by: e => by(edges[e]))
+    var dsu = Dsu<V>()
+    var total = W.zero
+    var take: [E]Bool = false
+    for e in order:
+        let r = edges[e]
+        if dsu.unite(r.u, r.v):
+            take[e] = true
+            total += r.w
+    (total:, take:)
+
+/// A minimum spanning tree of the dense graph `w` (Prim without a heap), rooted at
+/// `V.first`; `None` if it is disconnected. `w[u, v]` is read with `u` in the tree.
+///
+/// cost: \(O(n^2)\)
+/// empty: `domain V = 0..0; let w: [V, V]?Int = None; prim(w) == Some((total: 0, parent: []))`
+/// ties: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[0, 2] = Some(1); w[2, 0] = Some(1); w[1, 2] = Some(1); w[2, 1] = Some(1); prim(w) == Some((total: 2, parent: [None, Some(0), Some(0)]))`
+/// traps: never
+/// example: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[1, 2] = Some(2); w[2, 1] = Some(2); w[0, 2] = Some(5); w[2, 0] = Some(5); prim(w) == Some((total: 3, parent: [None, Some(0), Some(1)]))`
+pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
+    var parent: [V]?V = None
+    var best: [V]?W = None
+    var done: [V]Bool = false
+    var total = W.zero
+    if V.count == 0: return Some((total:, parent:))
+    var at = V.first!
+    for _ in 0..V.count:
+        done[at] = true
+        for v in V:
+            if done[v]: continue
+            if let c = w[at, v]:
+                if best[v] == None or c < best[v]!:
+                    best[v] = Some(c)
+                    parent[v] = Some(at)
+        var next: ?V = None
+        for v in V:
+            if done[v] or best[v] == None: continue
+            if next == None or best[v]! < best[next!]!: next = Some(v)
+        if next == None: break
+        at = next!
+        total = total + best[at]!
+    for v in V:
+        if not done[v]: return None
+    Some((total:, parent:))
+
+/// A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST, Manhattan
+/// MST).
+///
+/// Each round passes `comp`, the component label of every vertex (`0..c`, numbered by smallest
+/// vertex), and `cheapest(comp)` returns per label its lightest edge leaving it, or `None`. Every
+/// returned edge joining two different components is taken; rounds end when one component remains
+/// or no edge is taken.
+///
+/// cost: \(O(n \log n)\) plus the calls of `cheapest`: \(O(\log n)\) rounds, each \(O(n)\)
+/// empty: `domain V = 0..0; let r = boruvka<V, Int, Int>(comp => []); r.total == 0 and r.edges == []`
+/// traps: when `cheapest` returns a list whose length is not the number of components
+///
+/// ```cp
+/// domain V = 0..2
+/// let r = boruvka<V, Int, Int>(comp => [
+///     Some((u: V(0), v: V(1), w: 5)),
+///     Some((u: V(0), v: V(1), w: 5)),
+/// ])
+/// r.total == 5 and r.edges == [(u: 0, v: 1)]
+/// ```
+pub fn boruvka<V, C, W>(
+    cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>
+) -> (total: W, edges: List<(u: V, v: V)>):
+    var total = W.zero
+    var edges = List<(u: V, v: V)>()
+    if V.count <= 1: return (total:, edges:)
+    var dsu = Dsu<V>()
+    var num_comps = V.count
+    while num_comps > 1:
+        var comp_id: [V]Int = -1
+        var comp: [V]Int = 0
+        var next_c = 0
+        for v in V:
+            let r = dsu.find(v)
+            if comp_id[r] < 0:
+                comp_id[r] = next_c
+                next_c += 1
+            comp[v] = comp_id[r]
+        let chosen = cheapest(comp)
+        assert chosen.len == num_comps, "boruvka: cheapest returned wrong length"
+        var merged = false
+        for item in chosen:
+            if let e = item:
+                if dsu.unite(e.u, e.v):
+                    total += e.w
+                    edges.push((u: e.u, v: e.v))
+                    num_comps -= 1
+                    merged = true
+        if not merged: break
+    (total:, edges:)
+
+/// A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with leftist heaps):
+/// `parent[v]` is the edge entering `v`, `None` at `root`. `None` if some vertex is
+/// unreachable from `root`. Loops are ignored.
+///
+/// `total` is unique; when several arborescences reach it, which one `parent` describes is left open.
+///
+/// cost: \(O(m \log n)\)
+/// empty: `domain E = 0..0; domain V = 0..1; domain W = 0..2; let es: [E](u: V, v: V, w: Int) = []; let fs: [E](u: W, v: W, w: Int) = []; arborescence(es, root: V(0))!.total == 0 and arborescence(fs, root: W(0)) == None`
+/// ties: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 0, v: 2, w: 2), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0))!.total == 2`
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 1), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0)) == Some((total: 2, parent: [None, Some(2), Some(1)]))`
+/// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 1, v: 0, w: 1)]; arborescence(es, root: V(0)) == None`
+pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(
+    total: W,
+    parent: [V]?E,
+):
+    // Tarjan's form of Chu-Liu/Edmonds: from each vertex, walk back along the lightest arc
+    // entering its contracted component, contracting every cycle the walk closes by merging
+    // the cycle's heaps. The heaps are leftist with a lazy weight offset; the components are
+    // a rollback DSU, so the arcs a cycle replaced can be restored afterwards.
+    let n = V.count
+    var es = List<E>()
+    for e in E:
+        if edges[e].u != edges[e].v and edges[e].v != root: es.push(e)
+    let m = es.len
+    var h = ArbHeap<W>(
+        w: [edges[es[i]].w for i in 0..m],
+        lazy: [W.zero for _ in 0..m],
+        l: [-1 for _ in 0..m],
+        r: [-1 for _ in 0..m],
+        rank: [1 for _ in 0..m],
+    )
+    var heap = [-1 for _ in 0..n]
+    for i in 0..m:
+        let b = edges[es[i]].v.ord
+        heap[b] = arb_merge(mut h, heap[b], i)
+    var up = [-1 for _ in 0..n]
+    var size = [1 for _ in 0..n]
+    var joins = List<Int>()
+    var total = W.zero
+    var seen = [-1 for _ in 0..n]
+    seen[root.ord] = root.ord
+    var into = [-1 for _ in 0..n]
+    var cycle_arcs = List<Int>()
+    var cycles = List<(u: Int, joins: Int, lo: Int, hi: Int)>()
+    for s in 0..n:
+        var u = s
+        var q = List<Int>()
+        var path = List<Int>()
+        while seen[u] < 0:
+            if heap[u] < 0: return None
+            let top = heap[u]
+            arb_push(mut h, top)
+            let w = h.w[top]
+            if h.l[top] >= 0: h.lazy[h.l[top]] -= w
+            if h.r[top] >= 0: h.lazy[h.r[top]] -= w
+            heap[u] = arb_merge(mut h, h.l[top], h.r[top])
+            q.push(top)
+            path.push(u)
+            seen[u] = s
+            total += w
+            u = arb_find(up, edges[es[top]].u.ord)
+            if seen[u] == s:
+                var cyc = -1
+                let t = joins.len
+                let lo = cycle_arcs.len
+                var joined = true
+                while joined:
+                    let x = path.pop()!
+                    cycle_arcs.push(q.pop()!)
+                    cyc = arb_merge(mut h, cyc, heap[x])
+                    let (a, b) = (arb_find(up, u), arb_find(up, x))
+                    joined = a != b
+                    if joined:
+                        let (big, small) = if size[a] < size[b]: (b, a) else: (a, b)
+                        up[small] = big
+                        size[big] += size[small]
+                        joins.push(small)
+                u = arb_find(up, u)
+                heap[u] = cyc
+                seen[u] = -1
+                cycles.push((u:, joins: t, lo:, hi: cycle_arcs.len))
+        for i in q:
+            into[arb_find(up, edges[es[i]].v.ord)] = i
+    var c = cycles.len
+    while c > 0:
+        c -= 1
+        let cy = cycles[c]
+        while joins.len > cy.joins:
+            let small = joins.pop()!
+            size[up[small]] -= size[small]
+            up[small] = -1
+        let enter = into[cy.u]
+        for i in cy.lo..cy.hi:
+            into[arb_find(up, edges[es[cycle_arcs[i]]].v.ord)] = cycle_arcs[i]
+        into[arb_find(up, edges[es[enter]].v.ord)] = enter
+    var parent: [V]?E = None
+    for v in V:
+        if into[v.ord] >= 0: parent[v] = Some(es[into[v.ord]])
+    Some((total:, parent:))
+
+// The leftist min-heaps of `arborescence`: node `i` is arc `i`, keyed by `w[i]` plus the
+// pending offsets `lazy` on the path from its root.
+struct ArbHeap<W>:
+    var w: List<W>
+    var lazy: List<W>
+    var l: List<Int>
+    var r: List<Int>
+    var rank: List<Int>
+
+fn arb_push<W: Add + Sub>(mut h: ArbHeap<W>, a: Int):
+    let d = h.lazy[a]
+    h.w[a] += d
+    if h.l[a] >= 0: h.lazy[h.l[a]] += d
+    if h.r[a] >= 0: h.lazy[h.r[a]] += d
+    h.lazy[a] = W.zero
+
+fn arb_merge<W: Add + Sub>(mut h: ArbHeap<W>, a: Int, b: Int) -> Int:
+    if a < 0: return b
+    if b < 0: return a
+    arb_push(mut h, a)
+    arb_push(mut h, b)
+    let (x, y) = if h.w[b] < h.w[a]: (b, a) else: (a, b)
+    let merged = arb_merge(mut h, h.r[x], y)
+    h.r[x] = merged
+    let left = if h.l[x] >= 0: h.rank[h.l[x]] else: 0
+    if left < h.rank[h.r[x]]:
+        let t = h.l[x]
+        h.l[x] = h.r[x]
+        h.r[x] = t
+    h.rank[x] = (if h.r[x] >= 0: h.rank[h.r[x]] else: 0) + 1
+    x
+
+fn arb_find(up: List<Int>, x: Int) -> Int:
+    var y = x
+    while up[y] >= 0: y = up[y]
+    y
+
+@test
+fn arborescence_matches_trying_every_parent_choice():
+    domain V = 0..5
+    domain E = 0..10
+    for _ in 0..80:
+        let ar = random_edges<V, E>()
+        let es: [E](u: V, v: V, w: Int) = [E] e => (u: ar[e].u, v: ar[e].v, w: rand(-3, 9))
+        let root = V.nth(rand(0, V.count - 1))
+        let want = brute_arborescence(es, root)
+        if let r = arborescence(es, root:):
+            assert r.total == want!
+            assert r.parent[root] == None and rooted_at(es, r.parent, root)
+            var sum = 0
+            for v in V:
+                if v != root:
+                    assert es[r.parent[v]!].v == v
+                    sum += es[r.parent[v]!].w
+            assert sum == r.total
+        else:
+            assert want == None
+
+/// Does following `pick` from every vertex lead to `root`?
+fn rooted_at<V, E>(es: [E](u: V, v: V, w: Int), pick: [V]?E, root: V) -> Bool:
+    for v in V:
+        var x = v
+        var steps = 0
+        while x != root and steps <= V.count:
+            if let e = pick[x]:
+                x = es[e].u
+            else:
+                return false
+            steps += 1
+        if x != root: return false
+    true
+
+@test
+fn min_mean_cycle_matches_every_closed_walk():
+    domain V = 0..5
+    domain E = 0..9
+    for _ in 0..80:
+        let ar = random_edges<V, E>()
+        let es: [E](u: V, v: V, w: Int) = [E] e => (u: ar[e].u, v: ar[e].v, w: rand(-3, 9))
+        let g = Graph.directed(es)
+        // the least sum of a closed walk of exactly `len` arcs from each `s`, for len 1..=n
+        var best: ?(sum: Int, len: Int) = None
+        for len in 1..=V.count:
+            for s in V:
+                var cur: [V]?Int = None
+                cur[s] = Some(0)
+                for _ in 0..len:
+                    var nxt: [V]?Int = None
+                    for u in V:
+                        if let du = cur[u]:
+                            for a in g.out(u):
+                                if nxt[a.to] == None or du + a.w < nxt[a.to]!: nxt[a.to] = Some(du + a.w)
+                    cur = nxt
+                if let c = cur[s]:
+                    if best.is_none_or(b => c * b.len < b.sum * len): best = (sum: c, len:)
+        assert min_mean_cycle(g) == best
+
+/// The lightest arborescence by trying every choice of entering arc.
+fn brute_arborescence<V, E>(es: [E](u: V, v: V, w: Int), root: V) -> ?Int:
+    var best: ?Int = None
+    var pick: [V]?E = None
+    brute_pick(es, root, 0, mut pick, mut best)
+    best
+
+fn brute_pick<V, E>(es: [E](u: V, v: V, w: Int), root: V, i: Int, mut pick: [V]?E, mut best: ?Int):
+    if i == V.count:
+        if rooted_at(es, pick, root):
+            var w = 0
+            for v in V:
+                if v != root: w += es[pick[v]!].w
+            if best == None or w < best!: best = Some(w)
+        return
+    let v = V.nth(i)
+    if v == root:
+        brute_pick(es, root, i + 1, mut pick, mut best)
+        return
+    for e in E:
+        if es[e].v == v and es[e].u != v:
+            pick[v] = Some(e)
+            brute_pick(es, root, i + 1, mut pick, mut best)
+    pick[v] = None
+
+/// A spanning forest of an undirected graph as chosen edges: vertices in vertex order, each
+/// vertex's arcs in arc order, taking every arc that joins two trees (Kruskal order without
+/// weights, by a `Dsu`).
+///
+/// cost: \(O(n + m)\)
+/// order: keyed by `E`
+/// traps: never
+/// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0)]; spanning_forest(Graph.undirected(es)) == [true, false, true]`
+pub fn spanning_forest<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
+    var in_tree: [E]Bool = false
+    var dsu = Dsu<V>()
+    for u in V:
+        for a in g.out(u):
+            let v = a.to
+            if dsu.unite(u, v):
+                in_tree[a.e] = true
+    in_tree
+
+/// \(O(n)\) build: the functional graph `v -> next[v]` (every vertex one out-arc).
+pub struct Functional<V>:
+    pub next: [V]V
+    _root: List<Len>
+    _depth: List<Len>
+    _cyc: List<Len>
+    _pos: List<Len>
+    _ring: List<Len>
+    _cstart: List<Len>
+    _jump: List<Len>
+
+    /// The functional graph `v -> next[v]` (every vertex has one out-arc), with its cycles,
+    /// tails and one jump pointer per vertex (`O(n)` memory, `O(log n)` walks).
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `domain V = 0..0; let nx: [V]V = []; Functional(nx).next == []`
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
+    pub fn new(next: [V]V) -> Functional<V>:
+        let n = V.count
+        var root: List<Len> = List.filled(n, 0)
+        var depth: List<Len> = List.filled(n, 0)
+        var cyc: List<Len> = List.filled(n, 0)
+        var pos: List<Len> = List.filled(n, 0)
+        var ring: List<Len> = []
+        var cstart: List<Len> = [0]
+        var jump: List<Len> = List.filled(n, 0)
+        for i in 0..n: jump[i] = i
+        var state: List<0..3> = List.filled(n, 0)
+        for s in 0..n:
+            if state[s] != 0: continue
+            var path: List<Len> = []
+            var x = s
+            while state[x] == 0:
+                state[x] = 1
+                path.push(x)
+                x = next[V.nth(x)].ord
+            if state[x] == 1:
+                var y = x
+                while true:
+                    cyc[y] = cstart.len - 1
+                    pos[y] = ring.len - cstart.last!
+                    root[y] = y
+                    state[y] = 2
+                    ring.push(y)
+                    y = next[V.nth(y)].ord
+                    if y == x: break
+                cstart.push(ring.len)
+            var k = path.len
+            while k > 0:
+                k -= 1
+                let u = path[k]
+                if state[u] == 2 and root[u] == u: continue
+                let p = next[V.nth(u)].ord
+                root[u] = root[p]
+                depth[u] = depth[p] + 1
+                cyc[u] = cyc[p]
+                state[u] = 2
+                let j = jump[p]
+                jump[u] = if depth[p] - depth[j] == depth[j] - depth[jump[j]]: jump[j] else: p
+        Functional(next.clone(), root, depth, cyc, pos, ring, cstart, jump)
+
+    /// Does `v` lie on a cycle?
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.on_cycle(1) and not f.on_cycle(3)`
+    pub fn on_cycle(self, v: V) -> Bool = _depth[v.ord] == 0
+
+    /// The first cycle vertex reached from `v` (`v` itself on a cycle): the root of the
+    /// in-tree hanging off the cycle that holds `v`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.root_of(4) == 0 and f.root_of(1) == 1`
+    pub fn root_of(self, v: V) -> V = V.nth(_root[v.ord])
+
+    /// The steps from `v` to `root_of(v)`; `0` on a cycle.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.depth(4) == 2 and f.depth(0) == 0`
+    pub fn depth(self, v: V) -> Int = _depth[v.ord]
+
+    /// The length of the cycle `v` eventually reaches.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycle_len(4) == 3`
+    pub fn cycle_len(self, v: V) -> Int = _cstart[_cyc[v.ord] + 1] - _cstart[_cyc[v.ord]]
+
+    /// The vertex `k` steps after `v`, by jump pointers: `after(v, 0) == v`. Never `None`,
+    /// unlike `Rooted.ancestor`, since every vertex has an out-arc.
+    ///
+    /// cost: \(O(\log k)\)
+    /// traps: when `k < 0`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.after(4, 5) == 0 and f.after(4, 0) == 4`
+    pub fn after(self, v: V, k: 0..) -> V:
+        assert k >= 0, "`after` needs `k >= 0`"
+        let x = v.ord
+        if k < _depth[x]: return V.nth(self.lift(x, k))
+        let r = _root[x]
+        let base = _cstart[_cyc[r]]
+        let len = _cstart[_cyc[r] + 1] - base
+        V.nth(_ring[base + (_pos[r] + (k - _depth[x]) % len) % len])
+
+    /// The first vertex `u` on the walk from `v`, `v` included, with `pred(u)`, or `None` if
+    /// None appears. `pred` must be monotone along every walk (once true, true onward).
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.jump_while(4, u => f.on_cycle(u)) == Some(0)`
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.jump_while(0, u => u == 4) == None`
+    pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V:
+        if pred(v): return Some(v)
+        var x = v.ord
+        while _depth[x] > 0:
+            if not pred(V.nth(_jump[x])): x = _jump[x]
+            elif not pred(V.nth(next[V.nth(x)].ord)): x = next[V.nth(x)].ord
+            else: break
+        let c = V.nth(next[V.nth(x)].ord)
+        if pred(c): Some(c) else: None
+
+    /// The fewest steps from `a` to `b`, or `None` if the walk from `a` never reaches `b`;
+    /// `dist(a, a) == Some(0)`.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; let f = Functional(nx); f.dist(4, 1) == Some(3) and f.dist(2, 0) == Some(1) and f.dist(1, 4) == None`
+    pub fn dist(self, a: V, b: V) -> ?Int:
+        let x = a.ord
+        let y = b.ord
+        if _cyc[x] != _cyc[y]: return None
+        if _depth[y] == 0:
+            let len = _cstart[_cyc[y] + 1] - _cstart[_cyc[y]]
+            return Some(_depth[x] + (_pos[y] - _pos[_root[x]]) % len)
+        if _depth[x] < _depth[y]: return None
+        let d = _depth[x] - _depth[y]
+        if self.lift(x, d) == y: Some(d) else: None
+
+    fn lift(self, x: Int, k: Int) -> Int:
+        let t = _depth[x] - k
+        var y = x
+        while _depth[y] > t:
+            y = if _depth[_jump[y]] >= t: _jump[y] else: next[V.nth(y)].ord
+        y
+
+    /// Every cycle once, each in walk order from its smallest vertex.
+    ///
+    /// cost: \(O(n)\)
+    /// order: cycles by smallest vertex
+    /// traps: never
+    /// example: `domain V = 0..5; let nx: [V]V = [1, 2, 0, 0, 3]; Functional(nx).cycles() == [[0, 1, 2]]`
+    /// example: `domain V = 0..3; let nx: [V]V = [0, 2, 1]; Functional(nx).cycles() == [[0], [1, 2]]`
+    pub fn cycles(self) -> List<List<V>>:
+        var done = List.filled(_cstart.len - 1, false)
+        var out: List<List<V>> = []
+        for i in 0..V.count:
+            if _depth[i] != 0 or done[_cyc[i]]: continue
+            done[_cyc[i]] = true
+            var c: List<V> = List.filled(self.cycle_len(V.nth(i)), V.nth(i))
+            var y = i
+            for t in 0..c.len:
+                c[t] = V.nth(y)
+                y = next[V.nth(y)].ord
+            out.push(c)
+        out
+
+/// \(O(\log n)\) amortized per edge: 2-edge-connectivity under edge insertions.
+pub struct IncrementalBridges<V>:
+    pub bridges: Int
+    _par: List<?Int>
+    _cc: List<Int>
+    _cc_sz: List<Int>
+    _ecc: List<Int>
+    _vis: List<Int>
+    _iter: Int
+
+    fn _find_ecc(mut self, x: Int) -> Int:
+        var r = x
+        while _ecc[r] != r:
+            r = _ecc[r]
+        var cur = x
+        while cur != r:
+            let nxt = _ecc[cur]
+            _ecc[cur] = r
+            cur = nxt
+        r
+
+    fn _find_cc(mut self, x: Int) -> Int:
+        var r = self._find_ecc(x)
+        while _cc[r] != r:
+            r = self._find_ecc(_cc[r])
+        var cur = self._find_ecc(x)
+        while cur != r:
+            let nxt = self._find_ecc(_cc[cur])
+            _cc[cur] = r
+            cur = nxt
+        r
+
+    fn _make_root(mut self, x: Int):
+        var cur: ?Int = x
+        var prev: ?Int = None
+        var root = x
+        while let c = cur:
+            let up = _par[c]
+            _par[c] = prev
+            _cc[c] = x
+            prev = c
+            root = c
+            cur = if up == None: None else: self._find_ecc(up!)
+        _cc_sz[x] = _cc_sz[root]
+
+    /// No edges yet: every vertex alone.
+    ///
+    /// cost: \(O(n)\)
+    /// traps: never
+    /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); not b.same(V(0), V(1))`
+    pub fn new() -> IncrementalBridges<V>:
+        let n = V.count
+        IncrementalBridges<V>(
+            bridges: 0,
+            _par: List.filled(n, None),
+            _cc: (0..n).collect(),
+            _cc_sz: [1 for _ in 0..n],
+            _ecc: (0..n).collect(),
+            _vis: [0 for _ in 0..n],
+            _iter: 0,
+        )
+
+    /// Adds the undirected edge `u - v`. A loop changes nothing; a parallel edge makes its
+    /// ends two-edge-connected.
+    ///
+    /// cost: \(O(\log n)\) amortized
+    /// traps: never
+    /// example: `domain V = 0..2; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(0), V(1)); b.two_edge_same(V(0), V(1))`
+    pub fn add(mut self, u: V, v: V):
+        var a = self._find_ecc(u.ord)
+        var b = self._find_ecc(v.ord)
+        if a == b: return
+        var ca = self._find_cc(a)
+        var cb = self._find_cc(b)
+        if ca != cb:
+            bridges += 1
+            if _cc_sz[ca] > _cc_sz[cb]:
+                let ta = a
+                a = b
+                b = ta
+                let tca = ca
+                ca = cb
+                cb = tca
+            self._make_root(a)
+            _par[a] = b
+            _cc[a] = cb
+            _cc_sz[cb] += _cc_sz[a]
+        else:
+            _iter += 1
+            var pa = List<Int>()
+            var pb = List<Int>()
+            var x: ?Int = a
+            var y: ?Int = b
+            var lca: ?Int = None
+            while lca == None:
+                if let xv = x:
+                    let r = self._find_ecc(xv)
+                    pa.push(r)
+                    if _vis[r] == _iter:
+                        lca = r
+                        break
+                    _vis[r] = _iter
+                    x = _par[r]
+                if let yv = y:
+                    let r = self._find_ecc(yv)
+                    pb.push(r)
+                    if _vis[r] == _iter:
+                        lca = r
+                        break
+                    _vis[r] = _iter
+                    y = _par[r]
+            let top = lca!
+            for node in pa:
+                _ecc[node] = top
+                if node == top: break
+                bridges -= 1
+            for node in pb:
+                _ecc[node] = top
+                if node == top: break
+                bridges -= 1
+
+    /// Are `u` and `v` joined by two edge-disjoint paths? True for `u == v`.
+    ///
+    /// cost: \(O(\alpha)\)
+    /// traps: never
+    /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); let before = b.two_edge_same(V(0), V(2)); b.add(V(2), V(0)); not before and b.two_edge_same(V(0), V(2))`
+    pub fn two_edge_same(mut self, u: V, v: V) -> Bool =
+        self._find_ecc(u.ord) == self._find_ecc(v.ord)
+
+    /// Are `u` and `v` connected?
+    ///
+    /// cost: \(O(\alpha)\)
+    /// traps: never
+    /// example: `domain V = 0..3; var b = IncrementalBridges<V>(); b.add(V(0), V(1)); b.add(V(1), V(2)); b.same(V(0), V(2))`
+    pub fn same(mut self, u: V, v: V) -> Bool =
+        self._find_cc(u.ord) == self._find_cc(v.ord)
+
+/// \(O(1)\): one edge of a `Graph`: its id and its ends (as built for a directed graph, first in
+/// `V` order for an undirected one).
+pub struct Edge<V, E>(pub e: E, pub u: V, pub v: V)
+
+/// `directed_of_pairs` on named `(u, v)` arcs: neighbour lists indexed by vertex. Each arc goes
+/// `u -> v` only; an arc may carry more fields, and `arcs` may be any walk (a filter view too).
+///
+/// cost: \(O(n + m)\)
+/// empty: `domain V = 0..2; adjacency(List<(u: V, v: V)>()) == [[], []]`
+/// order: each vertex's arcs in input order
+/// traps: never
+/// example: `domain V = 0..3; adjacency([(u: V(0), v: V(2)), (u: V(0), v: V(1))])[0] == [2, 1]`
+pub fn adjacency<S: Seq<R>, R: (u: V, v: V, ..), V>(arcs: S) -> [V]List<V>:
+    var adj: [V]List<V> = []
+    for a in arcs: adj[a.u].push(a.v)
+    adj
+
+/// The graph restricted to the vertices `keep` accepts: arcs from or to a dropped vertex
+/// are skipped as `out` walks.
+///
+/// `from` drops only the arcs leaving a vertex it rejects, so
+/// the vertex can be reached but not left. A view; vertices keep their domain.
+///
+/// cost: \(O(1)\) to make; `keep` and `from` run per arc walked
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).out(0).collect() == [2]`
+/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; reachable(g.only(from: v => v != 1), from: [V(0)]).collect() == [0, 1, 2]`
+pub fn only<V, G: Next<V>>(
+    self: G,
+    keep: V -> Bool = v => true,
+    from: V -> Bool = v => true,
+) -> Only<V, G> =
+    Only(self, keep, from)
+
+/// `g.only(keep)`; see `only`. Implements every arc capability `G` has.
+pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
+    /// The arcs out of `u` the view keeps: None when `u` is dropped, else those whose `to` is
+    /// kept.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per arc of `g` walked
+    /// order: arc order of `g`
+    /// traps: never
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).out(0).collect() == [2]`
+    pub fn out(self, u: V) -> yields G.Arc:
+        if not keep(u) or not from(u): return
+        for a in g.out(u):
+            if keep(a.to): yield a
+
+    /// The number of arcs out of `u` the view keeps.
+    ///
+    /// cost: \(O(\deg u)\) in `g`
+    /// traps: never
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).deg(0) == 1`
+    pub fn deg(self, u: V) -> Int:
+        let k = sum(1 for _ in self.out(u))
+        k
+
+    /// The kept arcs reversed, built as a `Graph` (record arcs as `(..a, to: u)`, a plain
+    /// vertex arc as `u`).
+    ///
+    /// cost: \(O(n + m)\)
+    /// traps: never
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).transpose().next(2).collect() == [0]`
+    pub fn transpose(self) -> Graph<V, G.Arc>:
+        var indeg: [V]Int = 0
+        for u in V:
+            for a in self.out(u):
+                indeg[a.to] += 1
+        var tstart: [V.cuts]Len = 0
+        var acc = 0
+        for v in V:
+            tstart[v.ord] = acc
+            acc += indeg[v]
+        tstart[V.count] = acc
+        var cur: [V]Int = [V] v => tstart[v.ord]
+        var tarcs = List<G.Arc>()
+        if acc > 0:
+            var filled = false
+            for u in V:
+                for a in self.out(u):
+                    if not filled:
+                        for _ in 0..acc:
+                            tarcs.push(a)
+                        filled = true
+                    let v = a.to
+                    let pos = cur[v]
+                    cur[v] = pos + 1
+                    tarcs[pos] = reversed_arc(a, u)
+        Graph<V, G.Arc>(start: tstart, arcs: tarcs)
+
+/// `gen<Graph<V, A>>(simple:, connected:, directed:)`: each arc is a
+/// `gen<A>()` sent to its end, and an undirected edge's arc back is it
+/// turned around, so both carry the same fields. Up to `2 * V.count` edges,
+/// a random spanning tree among them when `connected`.
+impl<V, A> Random for Graph<V, A>:
+    fn gen(simple: Bool = false, connected: Bool = false, directed: Bool = false) -> Graph<V, A>:
+        let n = V.count
+        var label = V.collect()
+        shuffle(mut label)
+        var used: [V, V]Bool = false
+        var edges = List<(V, V)>()
+        if connected:
+            for i in 1..n:
+                let (u, v) = (label[rand(0, i - 1)], label[i])
+                edges.push((u, v))
+                used[u, v] = true
+                if not directed: used[v, u] = true
+        let most = if simple: (if directed: n * (n - 1) else: n * (n - 1) / 2) else: 2 * n
+        let m = rand(edges.len, max(edges.len, min(most, 2 * n)))
+        while edges.len < m:
+            let (u, v) = (label[rand(0, n - 1)], label[rand(0, n - 1)])
+            if simple and (u == v or used[u, v]): continue
+            edges.push((u, v))
+            used[u, v] = true
+            if not directed: used[v, u] = true
+        var pairs = List<(from: V, arc: A)>()
+        for (u, v) in edges:
+            let a = drawn_arc<A, V>(v)
+            pairs.push((from: u, arc: a))
+            if not directed: pairs.push((from: v, arc: reversed_arc(a, u)))
+        Graph.of(pairs)
+
+impl Show for Reweighted<V, E, A, W>:
+    /// Every arc as `u->v:w`, space-separated in vertex then arc order; `no arcs` for none.
+    ///
+    /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; "{Graph.directed(es).weighted(a => 5)}" == "0->1:5"`
+    fn show(r):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for a in r.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{a.to}:{a.w}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for Only<V: Domain, G: Next<V>>:
+    /// Every kept arc as `u->v`, space-separated in vertex then arc order; `no arcs` for none.
+    ///
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; "{g.only(keep: v => v != 1)}" == "0->2"`
+    fn show(o):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for a in o.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{a.to}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for Complement<V, G>:
+    /// Every arc of the complement as `u->v`, space-separated in vertex then arc order; `no arcs`
+    /// for none.
+    ///
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [0, 2], [0]]; "{complement(g)}" == "2->1"`
+    fn show(c):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for v in c.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{v}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for Paths<V, W, A>:
+    fn show(p):
+        var out = ""
+        for (v, d) in p.iter():
+            if not out.is_empty: out += ", "
+            out += "{v}={d}"
+        out

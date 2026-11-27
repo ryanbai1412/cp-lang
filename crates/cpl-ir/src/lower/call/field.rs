@@ -29,13 +29,15 @@ impl<'a> Lowerer<'a> {
         }
         if let ast::ExprKind::Field { name: bounds, .. } = &base.kind {
             // `V.cuts` is a domain, and a domain's `range` is all of it.
-            if cpl_check::is_cuts(&bounds.text) && matches!(name.text.as_str(), "range" | "all") {
+            if matches!(bounds.text.as_str(), "bounds" | "cuts")
+                && matches!(name.text.as_str(), "range" | "all")
+            {
                 let cuts = self.expr(base, None);
                 if matches!(cuts.kind, ExprKind::Range { .. }) {
                     return cuts;
                 }
             }
-            if cpl_check::is_cuts(&bounds.text)
+            if matches!(bounds.text.as_str(), "bounds" | "cuts")
                 && matches!(name.text.as_str(), "count" | "len" | "size")
             {
                 let cuts = self.expr(base, None);
@@ -47,7 +49,9 @@ impl<'a> Lowerer<'a> {
                     );
                 }
             }
-            if cpl_check::is_cuts(&bounds.text) && matches!(name.text.as_str(), "first" | "last") {
+            if matches!(bounds.text.as_str(), "bounds" | "cuts")
+                && matches!(name.text.as_str(), "first" | "last")
+            {
                 let cuts = self.expr(base, None);
                 if let (ExprKind::Range { lo, hi }, Ty::Range(cut)) = (&cuts.kind, &cuts.ty) {
                     let end = if name.text == "first" {

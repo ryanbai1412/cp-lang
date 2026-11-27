@@ -36,7 +36,7 @@ use cpl_syntax::ast::{self, Arg, BinOp, Block, CmpOp, Cond, Expr, ExprKind, Stmt
 use cpl_syntax::visit::{walk_block, walk_expr, walk_stmt, Visitor};
 
 /// Methods that store their arguments in the receiver.
-const STORES: &[&str] = &["push", "insert", "set", "add"];
+const STORES: &[&str] = &["push", "insert", "set", "set_at", "add"];
 
 /// `lhs op rhs` is known to hold here. `names` are the names it mentions:
 /// assigning any of them forgets it.

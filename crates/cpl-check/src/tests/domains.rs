@@ -17,7 +17,7 @@ fn a_name_in_no_scope_and_no_library_says_so_and_offers_the_closest_library_name
                 && n.chars().all(|c| c.is_ascii_lowercase())
                 && crate::check::closest(
                     &format!("{n}x"),
-                    crate::prelude::value_names().iter().copied(),
+                    crate::prelude::VALUE_NAMES.iter().copied(),
                 )
                 .is_none()
         })

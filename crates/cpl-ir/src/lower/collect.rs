@@ -249,15 +249,6 @@ impl<'a> Lowerer<'a> {
                 let source = decl;
                 let decl = self.with_implicit_generics(decl, m, None);
                 let grader = m == 0 && stmt.decorators.iter().any(|d| d.name.text == "grader");
-                let fast = (stmt.decorators.iter().filter(|d| d.name.text == "fast"))
-                    .flat_map(|d| &d.args)
-                    .find_map(|a| match &a.value.kind {
-                        ast::ExprKind::Name(op) => Prim::from_id(op),
-                        _ => None,
-                    });
-                if let Some(op) = fast {
-                    self.fast_fns.insert(std::ptr::from_ref(decl), op);
-                }
                 if grader && !decl.generics.is_empty() && !matches!(decl.body, ast::FnBody::None) {
                     // The grader calls one C++ fn over lists: an entry that
                     // binds each domain to its list's length and calls this.

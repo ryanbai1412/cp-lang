@@ -134,7 +134,7 @@ impl ResultCache {
     pub fn new(dir: Option<PathBuf>, repo: &Path) -> Self {
         let dir = dir.filter(|d| std::fs::create_dir_all(d).is_ok());
         let mut std_files = Vec::new();
-        files(&repo.join("std"), &mut std_files);
+        files(&repo.join("crates/cpl-check/frozen/std"), &mut std_files);
         std_files.sort();
         let memos = dir
             .as_ref()

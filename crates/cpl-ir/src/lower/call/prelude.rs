@@ -540,7 +540,7 @@ impl<'a> Lowerer<'a> {
                 ) || matches!(
                     &src.kind,
                     ast::ExprKind::Field { name, .. }
-                        if cpl_check::is_cuts(&name.text)
+                        if matches!(name.text.as_str(), "bounds" | "cuts")
                 ) || matches!(
                     &src.kind,
                     ast::ExprKind::Name(n)

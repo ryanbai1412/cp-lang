@@ -591,28 +591,13 @@ pub fn domain_members() -> &'static [(&'static str, &'static str)] {
     lazy(&FOUND, || struct_decorations("member"))
 }
 
-/// The struct whose domain `D.member` is, when std declares one. The cuts member is not
-/// one here: this checker types `D.cuts` as the range of the domain's cuts itself.
+/// The struct whose domain `D.member` is, when std declares one.
 #[inline(never)]
 pub fn domain_member(member: &str) -> Option<&'static str> {
     domain_members()
         .iter()
-        .find(|(m, _)| *m == member && *m != cuts_member())
+        .find(|(m, _)| *m == member)
         .map(|&(_, of)| of)
-}
-
-/// The member `D.cuts` is: the `@member` of the struct std marks as a domain's cuts.
-pub fn cuts_member() -> &'static str {
-    let cut = marked().cut;
-    domain_members()
-        .iter()
-        .find(|(_, of)| *of == cut)
-        .map_or("", |&(m, _)| m)
-}
-
-/// Whether `name` is `D.cuts`, or its removed spelling `D.bounds`.
-pub fn is_cuts(name: &str) -> bool {
-    name == "bounds" || name == cuts_member()
 }
 
 type AkaMap = crate::names::NameMap<Vec<(&'static str, &'static str)>>;
@@ -841,7 +826,7 @@ fn fn_of(arity: usize, param: Ty, ret: Ty) -> Ty {
 
 /// The type of a prelude value, or `None` if `name` is not one. Fns that
 /// are generic over what they are given are `Unknown`, which accepts any
-/// call. `value_names()` is the one list of them.
+/// call. `VALUE_NAMES` is the one list of them.
 pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
@@ -849,8 +834,8 @@ pub fn value(name: &str) -> Option<Ty> {
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `cpl-ir` lowers it.
         "ask" => Ty::Unknown,
-        _ if type_names().contains(&name) => Ty::TypeName(name.into()),
-        _ if value_names().contains(&name) => Ty::Unknown,
+        _ if TYPE_NAMES.contains(&name) => Ty::TypeName(name.into()),
+        _ if VALUE_NAMES.contains(&name) => Ty::Unknown,
         _ => return None,
     })
 }
@@ -970,19 +955,24 @@ fn lazy<T>(cell: &'static OnceLock<T>, init: fn() -> T) -> &'static T {
 
 /// A prelude trait: what `T: Ord` and `impl Add for V` may name.
 pub fn is_trait(name: &str) -> bool {
-    trait_names().contains(&name)
+    TRAIT_NAMES.contains(&name)
 }
 
 pub const TYPE_NAMES: &[&str] = &[
+    "List",
+    "Map",
     "Set",
     "Int",
     "I128",
     "U64",
     "Bool",
     "Char",
+    "Str",
     "F64",
     "Iter",
     "Opt",
+    "Range",
+    "Cut",
     "HashMap",
     "HashSet",
     "Interactor",
@@ -999,16 +989,31 @@ pub const TRAIT_NAMES: &[&str] = &[
     "IndexedMut",
     "Keyed",
     "Bidir",
+    "Contains",
+    "Ord",
+    "Eq",
     "Show",
+    "Into",
     "Read",
     "Gen",
     "Shrink",
+    "Add",
+    "Sub",
+    "Mul",
+    "Div",
+    "Neg",
+    "Rem",
     "Pow",
     "Zero",
     "One",
+    "Bounded",
     "Num",
     "Copy",
     "Bits",
+    "BitAnd",
+    "BitOr",
+    "BitXor",
+    "Domain",
 ];
 
 pub const VALUE_NAMES: &[&str] = &[
@@ -1034,6 +1039,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "swap",
     "copy",
     "rand",
+    "some",
     "laws_hold",
     "flush",
     "len",
@@ -1041,6 +1047,8 @@ pub const VALUE_NAMES: &[&str] = &[
     "prefix",
     "take",
     "columns",
+    "List",
+    "Map",
     "Set",
     "HashSet",
     "Int",
@@ -1048,87 +1056,13 @@ pub const VALUE_NAMES: &[&str] = &[
     "U64",
     "Bool",
     "Char",
+    "Str",
     "F64",
     "Iter",
     "Opt",
+    "Range",
+    "Cut",
 ];
-
-/// The names std's markers give the prelude, read off its declarations (R06.4.12): the
-/// structs `@list`, `@str`, `@map` and `@cuts` and the type `@range_literal` builds, as
-/// types and their constructors; the `@operator`, `@convert` and `@positions` traits; and
-/// the `@pattern` fn.
-#[derive(Default)]
-struct Marked {
-    /// The struct marked `@cuts`.
-    cut: &'static str,
-    types: Vec<&'static str>,
-    traits: Vec<&'static str>,
-    values: Vec<&'static str>,
-}
-
-impl Marked {
-    fn add_type(&mut self, name: &str) {
-        add(&mut self.types, name);
-        add(&mut self.values, name);
-    }
-}
-
-fn add(to: &mut Vec<&'static str>, name: &str) {
-    if !to.contains(&name) {
-        to.push(name.to_string().leak());
-    }
-}
-
-/// Every prelude type: `TYPE_NAMES`, then the ones std's markers give.
-pub fn type_names() -> &'static [&'static str] {
-    static ALL: OnceLock<Vec<&'static str>> = OnceLock::new();
-    ALL.get_or_init(|| [TYPE_NAMES, &marked().types].concat())
-}
-
-/// Every prelude trait: `TRAIT_NAMES`, then the ones std's markers give.
-pub fn trait_names() -> &'static [&'static str] {
-    static ALL: OnceLock<Vec<&'static str>> = OnceLock::new();
-    ALL.get_or_init(|| [TRAIT_NAMES, &marked().traits].concat())
-}
-
-/// Every prelude value: `VALUE_NAMES`, then the ones std's markers give.
-pub fn value_names() -> &'static [&'static str] {
-    static ALL: OnceLock<Vec<&'static str>> = OnceLock::new();
-    ALL.get_or_init(|| [VALUE_NAMES, &marked().values].concat())
-}
-
-fn marked() -> &'static Marked {
-    static FOUND: OnceLock<Marked> = OnceLock::new();
-    FOUND.get_or_init(|| {
-        const TYPES: &[&str] = &["list", "str", "map", cpl_syntax::decorators::CUTS];
-        const TRAITS: &[&str] = &["operator", "convert", "positions"];
-        let mut m = Marked::default();
-        let stmts = (crate::modules::std_index().iter())
-            .flat_map(|(_, t)| cpl_syntax::parse_file(t).items)
-            .flat_map(|(_, i)| i.stmts);
-        for s in stmts {
-            let has = |of: &[&str]| s.decorators.iter().any(|d| of.contains(&&*d.name.text));
-            match &s.kind {
-                ast::StmtKind::Struct(d) if has(TYPES) => {
-                    if has(&[cpl_syntax::decorators::CUTS]) {
-                        m.cut = d.name.text.clone().leak();
-                    }
-                    m.add_type(&d.name.text)
-                }
-                ast::StmtKind::Trait { name, .. } if has(TRAITS) => add(&mut m.traits, &name.text),
-                ast::StmtKind::Fn(f) if has(&["range_literal"]) => {
-                    if let Some(ast::TypeKind::Named { name, .. }) = f.ret.as_ref().map(|r| &r.kind)
-                    {
-                        m.add_type(&name.text);
-                    }
-                }
-                ast::StmtKind::Fn(f) if has(&["pattern"]) => add(&mut m.values, &f.name.text),
-                _ => {}
-            }
-        }
-        m
-    })
-}
 
 /// The standard library module that declares the public name `name`, for
 /// the hint on a name that was used without its `use`.
@@ -1183,7 +1117,7 @@ fn type_arity_in(std: Std, name: &str) -> Option<usize> {
     match name {
         "Map" | "HashMap" => return Some(2),
         "List" | "Set" | "HashSet" => return Some(1),
-        _ if type_names().contains(&name) => return Some(0),
+        _ if TYPE_NAMES.contains(&name) => return Some(0),
         _ => {}
     }
     std.iter().find_map(|(_, text)| {

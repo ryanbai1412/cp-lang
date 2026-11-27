@@ -256,7 +256,7 @@ impl<'a> Lowerer<'a> {
         }
         // Check qualified module type `mod_alias.Type` or `D.cuts` or `Rooted.Pre`.
         if let Some((prefix, rest)) = name.text.split_once('.') {
-            if rest == cpl_check::cuts_member() {
+            if rest == "cuts" {
                 if let Some(GenArg::Domain(d)) = self.gen_env.get(prefix).cloned() {
                     return Spec::Plain(Ty::Bound(d));
                 }

@@ -68,7 +68,7 @@ impl Visitor for Bare {
 
 #[test]
 fn a_seq_bound_names_the_element_its_fn_uses() {
-    let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("frozen/std");
     let mut files: Vec<PathBuf> = std::fs::read_dir(&std_dir)
         .expect("std exists")
         .filter_map(|e| e.ok().map(|e| e.path()))

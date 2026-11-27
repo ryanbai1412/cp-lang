@@ -364,9 +364,7 @@ impl<'a> Checker<'a> {
             let member_of = crate::prelude::domain_member(member);
             return match head_ty {
                 // `D.cuts` over a generic domain: lowering knows which one.
-                Ty::Param(_) if member == "ranges" || member == crate::prelude::cuts_member() => {
-                    Ty::Unknown
-                }
+                Ty::Param(_) if matches!(member, "cuts" | "ranges") => Ty::Unknown,
                 // `D.subsets`, like `Letter.subsets` below: the struct std declares
                 // `@member(subsets)`, over `D`.
                 Ty::Param(_) if member_of.is_some() => {
@@ -1478,14 +1476,17 @@ impl<'a> Checker<'a> {
         self.implements_trait_inner(ty, trait_name, &mut seen)
     }
 
-    /// `Zero` and `One` are met by the constants they name: every number has `zero` and `one`,
-    /// and a struct meets each with its own (`Mod<P>`'s `zero` and `one`).
+    /// `Zero`, `One` and `Bounded` are met by the constants they name: every number has `zero`
+    /// and `one`, numbers, `Char` and `Bool` have `MIN` and `MAX` (decision 580), and a struct
+    /// meets each with its own (`Mod<P>`'s `zero` and `one`).
     fn has_named_constants(&mut self, ty: &Ty, trait_name: &str) -> bool {
         let names: &[&str] = match trait_name {
             "Zero" => &["zero"],
-            _ => &["one"],
+            "One" => &["one"],
+            _ => &["MIN", "MAX"],
         };
         match ty {
+            Ty::Bool | Ty::Char => trait_name == "Bounded",
             Ty::Named { name, .. } => match self.type_def(name).as_deref() {
                 Some(Def::Struct { owned, .. }) => {
                     (names.iter()).all(|c| owned.iter().any(|(n, _)| n == c))
@@ -1552,7 +1553,7 @@ impl<'a> Checker<'a> {
             },
             "Add" => ty.is_numeric() || matches!(ty, Ty::Str),
             "Sub" | "Mul" | "Div" | "Rem" | "Pow" | "Neg" | "Num" => ty.is_numeric(),
-            "Zero" | "One" => self.has_named_constants(ty, trait_name),
+            "Zero" | "One" | "Bounded" => self.has_named_constants(ty, trait_name),
             "BitAnd" | "BitOr" | "BitXor" => ty.is_int(),
             "Index" => ty.is_int() || matches!(ty, Ty::Pos(_) | Ty::Char),
             "Domain" => match ty {

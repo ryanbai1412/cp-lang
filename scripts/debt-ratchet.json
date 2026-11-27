@@ -7,7 +7,7 @@
   "edition_refs": 0,
   "ir_builtin_names": 105,
   "ir_builtin_derived": 13,
-  "prelude_privilege": 32,
+  "prelude_privilege": 26,
   "backend_std_names": 8,
   "lint_std_names": 0,
   "lint_name_matchers": 0,
@@ -238,7 +238,7 @@
   "dream_unverified": 0,
   "measure_broken": 0,
   "mono_unguarded": 0,
-  "std_shadowed": 39,
+  "std_shadowed": 19,
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
@@ -292,7 +292,7 @@
   "width_tables": 7,
   "judge_tables": 0,
   "editor_logic_lines": 0,
-  "std_names_outside_rt": 109,
+  "std_names_outside_rt": 82,
   "corpus_fmt_dirty": 0,
   "trap_text_outside_registry": 0,
   "foreign_outside_modules": 0,
@@ -319,7 +319,7 @@
   "end_state_broken": 0,
   "next_cases_removed": 0,
   "next_std_names": 46,
-  "old_pipeline_lines": 179917,
+  "old_pipeline_lines": 213697,
   "next_masked": 129,
   "next_refusal_kinds": 60,
   "next_core_privilege": 16,
@@ -419,5 +419,6 @@
     "std-rand/shuffled-help-names-rng-shuffle.cp",
     "std-seq/sort-cmp-not-strict-weak-order-traps.cp",
     "tools-trace/trap-flushes-output-and-shows-locals.cp"
-  ]
+  ],
+  "frozen_std_drift": 0
 }

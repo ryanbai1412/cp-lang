@@ -255,6 +255,13 @@ def edition_refs(root: Path) -> list[str]:
             for i, line in enumerate(_lines(p), 1) if EDITION_RE.search(line)]
 
 
+def _old_std(root: Path) -> Path:
+    """The std the old crates read: the pinned copy once it is vendored, so a name added to
+    std/ for cpl-next is not one the old pipeline knows."""
+    frozen = root / FROZEN_STD
+    return frozen if frozen.is_dir() else root / "std"
+
+
 def ir_builtin_names(root: Path) -> list[str]:
     """Distinct names string-matched in lowering: stdlib privilege."""
     lower = root / "crates/cpl-ir/src/lower"
@@ -280,7 +287,7 @@ def prelude_privilege(root: Path) -> list[str]:
         if m:
             tables.update(re.findall(r'"(\w+)"', m.group(1)))
     public: set[str] = set()
-    for p in sorted((root / "std").glob("*.cp")):
+    for p in sorted((_old_std(root)).glob("*.cp")):
         public.update(re.findall(r"^\s*pub\s+(?:fn|struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
     return sorted(tables & public)
 
@@ -385,8 +392,9 @@ NAME_BAN_OUT_OF_SCOPE = ("crates/cpl-ir/src/checks.rs",)
 def std_names_outside_rt(root: Path) -> list[str]:
     """Public std names written as string literals in compiler source: the name-ban gate
     (architecture.md, decision 573). Only cpl-rt may name a primitive."""
-    names = {m.group(1) for rel in _git(root, "ls-files", "std/*.cp")
-             for line in _lines(root / rel) if (m := STD_PUB_NAME_RE.match(line))}
+    std = sorted(_old_std(root).glob("*.cp")) if (root / FROZEN_STD).is_dir() else [
+        root / rel for rel in _git(root, "ls-files", "std/*.cp")]
+    names = {m.group(1) for path in std for line in _lines(path) if (m := STD_PUB_NAME_RE.match(line))}
     hits: set[str] = set()
     for p in _rs_files(root, *(f"crates/{c}/src" for c in NAME_BAN_CRATES), tests=False):
         if "test" in p.name or _rel(root, p) in NAME_BAN_OUT_OF_SCOPE:
@@ -400,7 +408,7 @@ def std_names_outside_rt(root: Path) -> list[str]:
 def domain_member_names(root: Path) -> list[str]:
     """Domain members std declares with `@member(name)` written as string literals in
     compiler source: lowering and checking read them off std, not a name match."""
-    names = {m for p in sorted((root / "std").glob("*.cp"))
+    names = {m for p in sorted((_old_std(root)).glob("*.cp"))
              for m in re.findall(r"@member\((\w+)\)", p.read_text())}
     hits: list[str] = []
     for p in _rs_files(root, *(f"crates/{c}/src" for c in NAME_BAN_CRATES), tests=False):
@@ -2479,10 +2487,34 @@ def old_pipeline_lines(root: Path) -> list[str]:
         for p in _rs_files(root, f"crates/{crate}/src"):
             rel = _rel(root, p)
             out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
+    for p in sorted((root / FROZEN_STD).rglob("*.cp")):
+        rel = _rel(root, p)
+        out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
     return out
 
 
 OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
+# The std the old pipeline reads, a copy of std/ at c7ac8761d^ (migration rule 9): stage 5 deletes it.
+FROZEN_STD = "crates/cpl-check/frozen/std"
+# `git rev-parse c7ac8761d^:std`: the tree FROZEN_STD has to stay.
+FROZEN_STD_TREE = "1756ac17a51327060833500752f12401ec8db076"
+
+
+def frozen_std_drift(root: Path, tree: str = FROZEN_STD_TREE) -> list[str]:
+    """Files of the old pipeline's std that differ from std/ at the pin, staged or not:
+    the copy is read-only, so a std change can't reach the frozen pipeline."""
+    if not (root / FROZEN_STD).is_dir():
+        return []
+    index = _git(root, "write-tree")
+    out = [f"{l[3:]}: {l[:2].strip()}" for l in
+           _git(root, "status", "--porcelain", "--untracked-files=all", "--", FROZEN_STD) if l[1] != " "]
+    if index and _git(root, "rev-parse", f"{index[0]}:{FROZEN_STD}") != [tree]:
+        out += [f"{FROZEN_STD}/{l.split(chr(9))[-1]}: differs from the pin" for l in
+                _git(root, "diff-tree", "-r", "--name-only", "--format=", tree, f"{index[0]}:{FROZEN_STD}")
+                if l] or [f"{FROZEN_STD}: not the pinned tree {tree[:9]}"]
+    return out
+
+
 
 
 def old_parser_lines(root: Path) -> list[str]:
@@ -4063,7 +4095,7 @@ def std_shadowed(root: Path) -> list[str]:
     checked = set(re.findall(r'^\s*\(\s*"(\w+)"', known.read_text(encoding="utf-8"), re.M)) \
         if known.is_file() else set()
     out: set[str] = set()
-    for p in sorted((root / "std").glob("*.cp")):
+    for p in sorted((_old_std(root)).glob("*.cp")):
         for line in _lines(p):
             m = STD_ITEM_RE.match(line)
             if not m:
@@ -4673,7 +4705,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"frozen_std_drift", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
@@ -4803,6 +4835,7 @@ COUNTERS = {
                            "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
     "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
     "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses: `Unbuilt` variants (Core)", next_refusal_kinds, True),
+    "frozen_std_drift": ("files of the old pipeline's std that are not std/ at c7ac8761d^ (Core)", frozen_std_drift, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_refused": ("cases the new pipeline (cpl-next) refuses: on no list (Core)", next_refused, True),
@@ -5307,15 +5340,18 @@ def raise_evidence(root: Path, base: str, name: str) -> str | None:
 def frozen_edits(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that add lines to the frozen old pipeline (migration rule 9: no
     fixes, no features). `old_pipeline_lines` only sees the net, so a fix that deletes more than
-    it adds passes it; this sees each commit. No trailer excuses one: the only commit that may
-    add lines is one putting each old-crate file it touches back as it was at `FROZEN_PIN`,
-    which the old pipeline's pinned std reads. A fix goes to a conformance case."""
+    it adds passes it; this sees each commit. No trailer excuses one: the only commits that may
+    add lines put each old-crate file they touch back as it was at `FROZEN_PIN`, or vendor
+    `FROZEN_STD`, the pinned std the old pipeline reads. A fix goes to a conformance case."""
     paths = [f"crates/{c}" for c in OLD_PIPELINE_CRATES]
     def restores(sha: str) -> bool:
         touched = _git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", sha, "--", *paths)
         def blob(ref: str, f: str) -> str:
             return "\n".join(_git(root, "rev-parse", "-q", "--verify", f"{ref}:{f}"))
-        return bool(touched) and all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched)
+        # The commit that vendors FROZEN_STD is the pin itself: it puts the crates back at
+        # FROZEN_PIN, each fitted to the crates outside the freeze, and only one commit can.
+        pins = bool(blob(sha, FROZEN_STD)) and not blob(f"{sha}^", FROZEN_STD)
+        return bool(touched) and (pins or all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched))
     out = []
     for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
         # A shallow clone's oldest commit has no parent here, so `show` would count the whole
@@ -5330,12 +5366,37 @@ def frozen_edits(root: Path, base: str) -> list[str]:
     return out
 
 
+def measured_without_restore(root: Path, base: str, name: str) -> int | None:
+    """`name` measured on HEAD with the old crates as `base` had them, or None when the change
+    leaves them alone. The one change that may add to them puts them back at `FROZEN_PIN`
+    (`frozen_edits`), and brings the pin's debt back with it: a raise no larger than what this
+    measures away is that restore, which `old_pipeline_lines` counts and stage 5 deletes, not
+    new debt. A regression already on main stays above the raised baseline, still reported."""
+    paths = [f"crates/{c}" for c in OLD_PIPELINE_CRATES]
+    if name not in COUNTERS or not _git(root, "diff", "--name-only", base, "HEAD", "--", *paths):
+        return None
+    with tempfile.TemporaryDirectory() as d:
+        tree = Path(d) / "t"
+        run = lambda *a, at=tree: subprocess.run(["git", "-C", str(at), *a], check=True, capture_output=True,
+                                                env=_git_env())
+        run("worktree", "add", "-q", "--detach", str(tree), "HEAD", at=root)
+        try:
+            run("rm", "-rqf", "--ignore-unmatch", "--", *paths)
+            kept = [p for p in paths if _git(root, "ls-tree", "-d", "--name-only", base, p)]
+            if kept:
+                run("checkout", "-q", base, "--", *kept)
+            return _count(name, tree)
+        finally:
+            run("worktree", "remove", "--force", str(tree), at=root)
+
+
 def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
                       upstream: dict | None = None) -> list[str]:
     """Baseline entries raised above `ref`'s.
 
     A raise passes only when the same change rewrites the code that measures
-    that entry (a new definition of the count, re-measured), or when `ref`
+    that entry (a new definition of the count, re-measured), when putting the old crates back
+    at `FROZEN_PIN` adds all of it (`measured_without_restore`), or when `ref`
     itself measures at least the raised number (`upstream`): that restores a
     number lowered by hand, it admits no debt. `next_not_passing` may also rise by
     the number of conformance cases the change adds, and `next_wrong` only by the cases a
@@ -5359,7 +5420,9 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     raised = [(n, n) for n, v in baseline.items()
               if n in old and isinstance(v, int) and isinstance(old[n], int) and v > old[n]
               and not (isinstance(mine.get(n), int) and v <= mine[n])
-              and not (upstream and isinstance(upstream.get(n), int) and v <= upstream[n])]
+              and not (upstream and isinstance(upstream.get(n), int) and v <= upstream[n])
+              and not ((w := measured_without_restore(root, base, n)) is not None
+                       and v - old[n] <= _count(n, root) - w)]
     old_allow, mine_allow = old.get("rs_file_size_allowlist", {}), mine.get("rs_file_size_allowlist", {})
     raised += [(rel, "rs_file_size_allowlist") for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
                if cap > old_allow.get(rel, 0) and cap > mine_allow.get(rel, 0)]

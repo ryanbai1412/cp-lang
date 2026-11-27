@@ -187,7 +187,7 @@ fn std_mismatch(built: &Path, exe: Option<&Path>, cwd: Option<&Path>) -> Option<
         ));
     };
     let here = exe.and_then(checkout).or_else(|| cwd.and_then(checkout))?;
-    let here_std = here.join("std").canonicalize().ok()?;
+    let here_std = here.join(FROZEN_STD).canonicalize().ok()?;
     (built != here_std).then(|| {
         format!(
             "this dev `cpl` reads std from {}, but runs from the checkout at {}; {fix}",
@@ -197,10 +197,13 @@ fn std_mismatch(built: &Path, exe: Option<&Path>, cwd: Option<&Path>) -> Option<
     })
 }
 
+/// The std the old pipeline reads, pinned until stage 5 deletes it with this crate.
+pub(crate) const FROZEN_STD: &str = "crates/cpl-check/frozen/std";
+
 /// The cp-lang checkout `path` is in.
 fn checkout(path: &Path) -> Option<std::path::PathBuf> {
     path.ancestors()
-        .find(|d| d.join("std").is_dir() && d.join("crates/cpl-check/build.rs").is_file())
+        .find(|d| d.join(FROZEN_STD).is_dir() && d.join("crates/cpl-check/build.rs").is_file())
         .map(Path::to_path_buf)
 }
 
@@ -756,7 +759,7 @@ mod tests {
 
     /// Each module of `std/` as its file has it, by name.
     fn std_sources() -> Vec<(String, String)> {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("frozen/std");
         let mut modules = Vec::new();
         crate::std_files::collect(&dir, "", &mut modules);
         modules.sort();
@@ -995,12 +998,12 @@ mod tests {
 
 #[cfg(test)]
 mod dev_std_tests {
-    use super::std_mismatch;
+    use super::{std_mismatch, FROZEN_STD};
     use std::path::{Path, PathBuf};
 
     fn checkout(root: &Path, name: &str) -> PathBuf {
         let dir = root.join(name);
-        std::fs::create_dir_all(dir.join("std")).unwrap();
+        std::fs::create_dir_all(dir.join(FROZEN_STD)).unwrap();
         std::fs::create_dir_all(dir.join("crates/cpl-check")).unwrap();
         std::fs::write(dir.join("crates/cpl-check/build.rs"), "").unwrap();
         std::fs::create_dir_all(dir.join("target/debug")).unwrap();
@@ -1012,13 +1015,16 @@ mod dev_std_tests {
         let root = std::env::temp_dir().join(format!("cpl-dev-std-{}", std::process::id()));
         let (a, b) = (checkout(&root, "a"), checkout(&root, "b"));
         let exe = |c: &Path| c.join("target/debug/cpl");
-        assert_eq!(std_mismatch(&a.join("std"), Some(&exe(&a)), None), None);
-        let wrong = std_mismatch(&a.join("std"), Some(&exe(&b)), None).unwrap();
+        assert_eq!(
+            std_mismatch(&a.join(FROZEN_STD), Some(&exe(&a)), None),
+            None
+        );
+        let wrong = std_mismatch(&a.join(FROZEN_STD), Some(&exe(&b)), None).unwrap();
         assert!(wrong.contains("runs from the checkout at"), "{wrong}");
         let shared = root.join("shared/debug/cpl");
-        assert!(std_mismatch(&a.join("std"), Some(&shared), Some(&b)).is_some());
+        assert!(std_mismatch(&a.join(FROZEN_STD), Some(&shared), Some(&b)).is_some());
         assert_eq!(
-            std_mismatch(&a.join("std"), Some(&shared), Some(&root)),
+            std_mismatch(&a.join(FROZEN_STD), Some(&shared), Some(&root)),
             None
         );
         let gone = std_mismatch(&root.join("gone/std"), Some(&exe(&a)), None).unwrap();

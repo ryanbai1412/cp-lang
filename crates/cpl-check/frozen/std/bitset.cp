@@ -1,0 +1,1783 @@
+//! A dense set of positions of a domain, 64 per word.
+//!
+//! start: `Bitset`, `DynBitset`, `XorTrie`, `BitTrie`
+//! example: `domain D = 0..10; var b = Bitset<D>(); b.add(3); b.add(7); b.len == 2 and b.contains(7)`
+use std.seq.{Seq, take_all, sum}
+use std.math.{bit, popcount, bit_width, ctz}
+use std.range.{Len}
+
+/// One bit per position of `D`, in `ceil(K / 64)` words.
+/// `Bitset<D>` is an explicit type you ask for; `[D]Bool` stays one byte
+/// per element and never turns into this behind your back.
+/// Single-bit operations are \(O(1)\); whole-set operations are \(O(K / 64)\).
+pub struct Bitset<D>:
+    @bits w: List<U64>
+    // The member count, or -1 after a word-parallel op until `len` is asked for.
+    var n: Int
+
+    /// The empty set, every word zero; the same set as `empty()`.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>().len == 0`
+    pub fn new() -> Bitset<D>:
+        Bitset(List.filled((D.count + 63) / 64, U64(0)), 0)
+
+    /// The empty set, matching `Subset<D>.empty` (a call here: it is \(O(K / 64)\)); the same as `new()`.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.empty().is_empty`
+    pub fn empty() -> Bitset<D> = Bitset<D>.new()
+
+    /// The full set containing every position of `D`, matching `Subset<D>.full`. No bit past the last
+    /// position is ever set, so `len` is `D.count`.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.full().len == 10`
+    pub fn full() -> Bitset<D>:
+        var b = Bitset(List.filled((D.count + 63) / 64, ~U64(0)), D.count)
+        b.trim()
+        b
+
+    /// The neighbour sets of the undirected `edges`, matching `Graph.undirected`: `adj[u]` holds
+    /// `v` and `adj[v]` holds `u` for each edge. Edges may carry more fields (`(u: V, v: V, w: Int)`)
+    /// and may come through a filter view.
+    ///
+    /// cost: \(O(n K / 64 + m)\) time for \(n\) vertices and \(m\) edges
+    /// empty: `domain D = 0..3; Bitset<D>.undirected(List<(u: D, v: D)>())[D(0)].len == 0`
+    /// traps: never
+    /// example: `domain D = 0..3; let adj = Bitset<D>.undirected([(u: D(0), v: D(2)), (u: D(0), v: D(1))]); adj[D(0)].len == 2 and adj[D(2)].len == 1`
+    pub fn undirected<S: Seq<R>, R: (u: D, v: D, ..)>(edges: S) -> [D]Bitset<D>:
+        var adj: [D]Bitset<D> = [D] _ => Bitset<D>.new()
+        for e in edges:
+            adj[e.u].add(e.v)
+            adj[e.v].add(e.u)
+        adj
+
+    /// The singleton set `{i}`, matching `Subset<D>.single(i)`.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.single(D(4)).each().collect() == [D(4)]`
+    pub fn single(i: D) -> Bitset<D>:
+        var b = Bitset<D>.new()
+        b.add(i)
+        b
+
+    /// The set of positions where `a` is true.
+    ///
+    /// cost: \(O(K)\) time, \(O(K / 64)\) space
+    /// empty: `domain D = 0..10; Bitset<D>.from([D] v => false).len == 0`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.from([D] v => Int(v) % 4 == 0).each().collect() == [D(0), D(4), D(8)]`
+    pub fn from(a: [D]Bool) -> Bitset<D>:
+        var b = Bitset<D>.new()
+        for i in D:
+            if a[i]: b.add(i)
+        b
+
+    /// Build a bitset from a list or generator of positions `D`. Repeated positions are set once.
+    ///
+    /// cost: \(O(K / 64 + \mathit{xs}.\mathit{len})\) time, \(O(K / 64)\) space
+    /// empty: `domain D = 0..10; Bitset<D>.of([]).len == 0`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(3), D(1), D(3)]).each().collect() == [D(1), D(3)]`
+    pub fn of(xs: List<D>) -> Bitset<D>:
+        var b = Bitset<D>.new()
+        for i in xs: b.add(i)
+        b
+
+    /// Set the bit at position `i`; returns `true` if `i` was not already set (matches `Set.add`).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>(); let x = b.add(D(2)); let y = b.add(D(2)); x and not y and b.len == 1`
+    pub fn add(mut self, i: D) -> Bool:
+        if self.contains(i): return false
+        w[i.ord / 64] |= word_bit(i.ord % 64)
+        if n != -1: n += 1
+        true
+
+    /// Clear the bit at position `i`; returns `true` if `i` was set (matches `Set.remove`).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.single(D(2)); let x = b.remove(D(2)); let y = b.remove(D(2)); x and not y and b.is_empty`
+    pub fn remove(mut self, i: D) -> Bool:
+        if not self.contains(i): return false
+        w[i.ord / 64] &= ~word_bit(i.ord % 64)
+        if n != -1: n -= 1
+        true
+
+    /// Flip the bit at position `i`: set it if clear, clear it if set.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.single(D(2)); b.toggle(D(2)); b.toggle(D(5)); b.each().collect() == [D(5)]`
+    pub fn toggle(mut self, i: D):
+        if n != -1: n += if self.contains(i): -1 else: 1
+        w[i.ord / 64] ^= word_bit(i.ord % 64)
+
+    /// A copy of `self` with `i` added; `self` is unchanged.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.single(D(1)).with(D(3)).each().collect() == [D(1), D(3)]`
+    pub fn with(self, i: D) -> Bitset<D>:
+        var out = Bitset(w, n)
+        out.add(i)
+        out
+
+    /// A copy of `self` with `i` removed; `self` is unchanged. Removing a non-member copies.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.full().without(D(0)).len == 9`
+    pub fn without(self, i: D) -> Bitset<D>:
+        var out = Bitset(w, n)
+        out.remove(i)
+        out
+
+    /// A copy of `self` with `i` added if `on` or removed otherwise, matching `Subset<D>.set`.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.single(D(1)).set(D(1), false).is_empty`
+    /// example: `domain D = 0..10; Bitset<D>().set(D(7), true).each().collect() == [D(7)]`
+    pub fn set(self, i: D, on: Bool) -> Bitset<D>:
+        if on: self.with(i) else: self.without(i)
+
+    /// The complement of `self` within `D`, matching `Subset<D>.complement`; bits past the last position
+    /// stay clear.
+    ///
+    /// cost: \(O(K / 64)\) time and space
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).complement().len == 7`
+    pub fn complement(self) -> Bitset<D>:
+        var out = Bitset([~x for x in w], if n != -1: D.count - n else: -1)
+        out.trim()
+        out
+
+    /// Remove every position from the set.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.full(); b.clear(); b.is_empty`
+    pub fn clear(mut self):
+        for k in 0..w.len: w[k] = U64(0)
+        n = 0
+
+    /// True when some position in this set satisfies `pred`. Visits members in increasing order and stops
+    /// at the first that satisfies it.
+    ///
+    /// cost: \(O(K / 64 + \mathit{visited})\) words scanned and calls of `pred`
+    /// empty: `domain D = 0..10; not Bitset<D>().any(d => true)`
+    /// traps: never (beyond what `pred` traps on)
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).any(d => Int(d) > 5)`
+    /// example: `domain D = 0..10; not Bitset<D>().any(d => true)`
+    pub fn any(self, pred: D -> Bool) -> Bool = self.find(pred) != None
+    /// The number of positions in the set. Single-bit updates keep the count; a word-parallel op
+    /// (`union`, `shifted`, `|`, ...) drops it, and `len` then counts the words.
+    ///
+    /// cost: \(O(1)\) after single-bit updates, \(O(K / 64)\) after a word-parallel op
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).len == 3`
+    @get pub fn len(self) -> Int = if n != -1: n else: self.count_words()
+
+    /// The same number as `len`, under the name C++ gives it.
+    ///
+    /// cost: as `len`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count == 3`
+    @get pub fn count(self) -> Int = self.len
+
+    /// Whether the set has no members.
+    ///
+    /// cost: \(O(1)\) when `len` is, else \(O(K / 64)\) at worst, stopping at the first nonzero word
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>().is_empty and not Bitset<D>.full().is_empty`
+    @get pub fn is_empty(self) -> Bool:
+        if n != -1: return n == 0
+        for x in w:
+            if x != 0: return false
+        true
+
+    /// The smallest position in the set, or `None`.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// empty: `domain D = 0..10; Bitset<D>().first() == None`
+    /// ties: `domain D = 0..10; Bitset<D>.of([D(3), D(3)]).first() == Some(D(3))`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).first() == Some(D(1))`
+    pub fn first(self) -> ?D = self.find(_ => true)
+
+    /// The smallest position in the set satisfying `pred`, or `None`, as `seq.find`. Members are
+    /// visited in increasing order, so `pred` is called only up to the answer.
+    ///
+    /// cost: \(O(K / 64 + \mathit{visited})\)
+    /// empty: `domain D = 0..10; Bitset<D>().find(d => true) == None`
+    /// ties: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).find(d => Int(d) > 0) == Some(D(1))`
+    /// traps: never (beyond what `pred` traps on)
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).find(d => Int(d) > 2) == Some(D(3))`
+    pub fn find(self, pred: D -> Bool) -> ?D:
+        for k in 0..w.len:
+            var x = w[k]
+            while x != U64(0):
+                let b = ctz(x)
+                let v = D.nth(64 * k + b)
+                if pred(v): return v
+                x &= ~word_bit(b)
+        None
+
+    /// The largest position in the set satisfying `pred`, or `None`. Members are
+    /// visited in decreasing order.
+    ///
+    /// cost: \(O(K / 64 + \mathit{visited})\)
+    /// empty: `domain D = 0..10; Bitset<D>().rfind(d => true) == None`
+    /// ties: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).rfind(d => Int(d) < 9) == Some(D(8))`
+    /// traps: never (beyond what `pred` traps on)
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).rfind(d => Int(d) < 8) == Some(D(3))`
+    pub fn rfind(self, pred: D -> Bool) -> ?D:
+        for v in self.each_rev():
+            if pred(v): return v
+        None
+
+    /// Replace `self` with `self | o` in place, with no allocation.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.single(D(1)); b.union(Bitset<D>.single(D(2))); b.len == 2`
+    pub fn union(mut self, o: Bitset<D>):
+        for k in 0..w.len: w[k] |= o.w[k]
+        self.forget_count()
+
+    /// Replace `self` with `self & o` in place, with no allocation.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(2)]); b.intersect(Bitset<D>.single(D(2))); b.each().collect() == [D(2)]`
+    pub fn intersect(mut self, o: Bitset<D>):
+        for k in 0..w.len: w[k] &= o.w[k]
+        self.forget_count()
+
+    /// Clear every bit set in `o` from `self` in place: `self - o`.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(2)]); b.subtract(Bitset<D>.single(D(2))); b.each().collect() == [D(1)]`
+    pub fn subtract(mut self, o: Bitset<D>):
+        for k in 0..w.len: w[k] &= ~o.w[k]
+        self.forget_count()
+
+    /// Replace `self` with `self ^ o` in place.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(2)]); b.symmetric(Bitset<D>.of([D(2), D(3)])); b.each().collect() == [D(1), D(3)]`
+    pub fn symmetric(mut self, o: Bitset<D>):
+        for k in 0..w.len: w[k] ^= o.w[k]
+        self.forget_count()
+
+    /// Do the two sets share a position? Stops at the first shared word; `(a & b).len > 0` without
+    /// building `a & b`.
+    ///
+    /// cost: \(O(K / 64)\), less on an early hit
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(2)]).meets(Bitset<D>.of([D(2), D(3)]))`
+    /// example: `domain D = 0..10; not Bitset<D>.single(D(1)).meets(Bitset<D>.single(D(2)))`
+    pub fn meets(self, o: Bitset<D>) -> Bool:
+        for k in 0..w.len:
+            if (w[k] & o.w[k]) != 0: return true
+        false
+
+    /// A new set with every position `k` places up (down for a negative `k`); positions that leave `D`
+    /// are dropped. Position `v` moves to the position whose ordinal is `v`'s plus `k`.
+    ///
+    /// cost: \(O(K / 64)\) time and space, for any `k`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).shifted(2).each().collect() == [D(3), D(5)]`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).shifted(-2).each().collect() == [D(1), D(6)]`
+    pub fn shifted(self, k: Int) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        out.union(self)
+        out.shift_up(max(k, 0))
+        out.shift_down(max(-k, 0))
+        out
+
+    /// Shift every position `k >= 0` places up in place; bits past `D` drop.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: when `k < 0`
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.shift_up(1); b.each().collect() == [D(2), D(4), D(9)]`
+    pub fn shift_up(mut self, k: 0..):
+        assert k >= 0
+        if k == 0: return
+        let (words, bits) = (min(k / 64, w.len), k % 64)
+        for i in (words..w.len).rev:
+            var x = w[i - words] << bits
+            if bits > 0 and i > words: x |= w[i - words - 1] >> (64 - bits)
+            w[i] = x
+        for i in 0..words: w[i] = U64(0)
+        self.trim()
+        self.forget_count()
+
+    /// In-place `self |= self << k` for `k >= 0`, with zero allocation: the knapsack step "every
+    /// reachable sum, and every reachable sum plus `k`". Bits past `D` drop.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: when `k < 0`
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.shift_or(2); b.each().collect() == [D(1), D(3), D(5), D(8)]`
+    pub fn shift_or(mut self, k: 0..):
+        assert k >= 0
+        if k == 0: return
+        self.or_shifted(k)
+        self.trim()
+        self.forget_count()
+
+    /// In place, `self |= o.shifted(k)`: every position `i` of `o` adds `i + k` when it is in `D`,
+    /// with no temporary set (`k < 0` shifts down). One step of a bitset DP:
+    /// `next.union_shifted(cur, w)` for `next |= cur << w`.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.single(D(0)); b.union_shifted(Bitset<D>.of([D(1), D(8)]), 2); b.each().collect() == [D(0), D(3)]`
+    /// example: `domain D = 0..10; var b = Bitset<D>(); b.union_shifted(Bitset<D>.of([D(1), D(8)]), -1); b.each().collect() == [D(0), D(7)]`
+    pub fn union_shifted(mut self, o: Bitset<D>, k: Int):
+        let (words, bits) = (k / 64, k % 64)
+        let m = w.len
+        unchecked:
+            for i in 0..m:
+                let j = i - words
+                if 0 <= j < m: w[i] |= o.w[j] << bits
+                if bits > 0 and 0 < j <= m: w[i] |= o.w[j - 1] >> (64 - bits)
+        self.trim()
+        self.forget_count()
+
+    /// The positions in the set, in increasing order; `for v in b` walks the same sequence.
+    ///
+    /// cost: \(O(K / 64 + \mathit{len})\) to walk, \(O(1)\) per member amortized
+    /// empty: `domain D = 0..10; Bitset<D>().each().collect() == []`
+    /// order: increasing
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(8), D(1)]).each().collect() == [D(1), D(8)]`
+    pub fn each(self) -> yields D:
+        for k in 0..w.len:
+            var x = w[k]
+            while x != 0:
+                let b = ctz(x)
+                yield D.nth(64 * k + b)
+                x &= ~word_bit(b)
+
+    /// The first position in the set at or after `i`, or `None`.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// empty: `domain D = 0..10; Bitset<D>().next(D(0)) == None`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(3)) == Some(D(3))`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(4)) == Some(D(8))`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).next(D(9)) == None`
+    pub fn next(self, i: D) -> ?D:
+        var k = i.ord / 64
+        var x = w[k] & ~low(i.ord % 64)
+        while true:
+            if x != 0: return D.nth(64 * k + ctz(x))
+            k += 1
+            if k == w.len: return None
+            x = w[k]
+
+    /// The last position in the set at or before `i`, or `None` (the mirror of `next`).
+    ///
+    /// cost: \(O(K / 64)\)
+    /// empty: `domain D = 0..10; Bitset<D>().prev(D(9)) == None`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(3)) == Some(D(3))`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(2)) == Some(D(1))`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).prev(D(0)) == None`
+    pub fn prev(self, i: D) -> ?D:
+        let idx = i.ord
+        var k = idx / 64
+        var x = w[k] & low(idx % 64 + 1)
+        while true:
+            if x != 0: return D.nth(64 * k + msb(x))
+            if k == 0: return None
+            k -= 1
+            x = w[k]
+
+    /// The number of positions in the set strictly before `i`.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// empty: `domain D = 0..10; Bitset<D>().count_below(D(9)) == 0`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count_below(D(8)) == 2`
+    pub fn count_below(self, i: D) -> Int:
+        let idx = i.ord
+        let (words, bits) = (idx / 64, idx % 64)
+        var ans = sum(popcount(w[k]) for k in 0..words)
+        ans += popcount(w[words] & low(bits))
+        ans
+
+    /// All subset sums in `0..D.count` reachable from non-negative `weights`: the position with
+    /// ordinal `s` is set exactly when some sub-multiset of `weights` sums to `s`.
+    ///
+    /// The empty sub-multiset makes `0` reachable; sums of `D.count` or more are dropped. Groups
+    /// duplicate weights with binary carries so the work is \(O(K \sqrt{S} / 64)\).
+    ///
+    /// cost: \(O(K \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(K / 64)\) space
+    /// empty: `domain S = 0..=10; domain E = 0..0; Bitset<S>.subset_sums([]).each().map(s => Int(s)).collect() == [0] and Bitset<E>.subset_sums([]).len == 0`
+    /// traps: when a weight is negative
+    /// example: `domain S = 0..=10; Bitset<S>.subset_sums([3, 5, 5]).each().map(s => Int(s)).collect() == [0, 3, 5, 8, 10]`
+    /// example: `domain S = 0..=10; Bitset<S>.subset_sums([3, -1]).len == 0` (traps R0401)
+    pub fn subset_sums(weights: List<Int>) -> Bitset<D>:
+        var reach = Bitset<D>.new()
+        if D.count == 0: return reach
+        reach.add(D.nth(0))
+        var cnt = List.filled(D.count, 0)
+        for w in weights:
+            assert w >= 0
+            if w < D.count: cnt[w] += 1
+        for w in 1..D.count:
+            let carry = max(cnt[w] - 1, 0) / 2
+            cnt[w] -= 2 * carry
+            if 2 * w < D.count: cnt[2 * w] += carry
+            for _ in 0..cnt[w]: reach.or_shifted(w)
+        reach.trim()
+        reach.forget_count()
+        reach
+
+    /// Shift all bits down by `k >= 0` positions in place (`i -> i - k`); bits below `D` drop.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// traps: when `k < 0`
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.shift_down(1); b.each().collect() == [D(0), D(2), D(7)]`
+    pub fn shift_down(mut self, k: 0..):
+        assert k >= 0
+        if k == 0: return
+        let (words, bits) = (min(k / 64, w.len), k % 64)
+        for i in 0..w.len - words:
+            var x = w[i + words] >> bits
+            if bits > 0 and i + words + 1 < w.len: x |= w[i + words + 1] << (64 - bits)
+            w[i] = x
+        for i in w.len - words..w.len: w[i] = U64(0)
+        self.forget_count()
+
+    /// Count set bits in `r` (accepts cut ranges via decision 124).
+    ///
+    /// cost: \(O(r.\mathit{len} / 64 + 1)\)
+    /// empty: `domain D = 0..10; Bitset<D>.of([D(1), D(3)]).count_range(3..3) == 0`
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).count_range(1..8) == 2`
+    pub fn count_range(self, r: Range<D>) -> Int:
+        var c = 0
+        let (lo, hi) = (r.l.ord, r.r.ord)
+        for k in lo / 64..=(hi - 1) / 64: c += popcount(w[k] & span(k, lo, hi))
+        c
+
+    /// Set (or, with `on: false`, clear) every bit in `r` in place.
+    ///
+    /// cost: \(O(r.\mathit{len} / 64 + 1)\)
+    /// empty: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3)]); b.set_range(2..2); b.set_range(3..3, on: false); b.each().collect() == [D(1), D(3)]`
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(2..5); b.len == 5`
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.set_range(0..4, on: false); b.each().collect() == [D(8)]`
+    pub fn set_range(mut self, r: Range<D>, on: Bool = true):
+        let (lo, hi) = (r.l.ord, r.r.ord)
+        for k in lo / 64..=(hi - 1) / 64:
+            let m = span(k, lo, hi)
+            if n != -1: n -= popcount(w[k] & m)
+            if on: w[k] |= m else: w[k] &= ~m
+            if n != -1: n += popcount(w[k] & m)
+
+    /// Flip every bit in `r` in place.
+    ///
+    /// cost: \(O(r.\mathit{len} / 64 + 1)\)
+    /// empty: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3)]); b.flip_range(2..2); b.each().collect() == [D(1), D(3)]`
+    /// traps: never
+    /// example: `domain D = 0..10; var b = Bitset<D>.of([D(1), D(3), D(8)]); b.flip_range(0..4); b.each().collect() == [D(0), D(2), D(8)]`
+    pub fn flip_range(mut self, r: Range<D>):
+        let (lo, hi) = (r.l.ord, r.r.ord)
+        for k in lo / 64..=(hi - 1) / 64:
+            let m = span(k, lo, hi)
+            if n != -1: n -= popcount(w[k] & m)
+            w[k] ^= m
+            if n != -1: n += popcount(w[k] & m)
+
+    /// The `k`-th set position (0-based, in increasing order), or `None` if `k >= len`.
+    ///
+    /// cost: \(O(K / 64)\)
+    /// empty: `domain D = 0..10; Bitset<D>().nth(0) == None`
+    /// traps: when `k < 0`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).nth(2) == Some(D(8))`
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).nth(3) == None`
+    pub fn nth(self, k: 0..) -> ?D:
+        assert k >= 0
+        var left = k
+        for i in 0..w.len:
+            let c = popcount(w[i])
+            if left < c:
+                var x = w[i]
+                for _ in 0..left: x &= x - U64(1)
+                return D.nth(64 * i + ctz(x))
+            left -= c
+        None
+
+    /// The set positions in descending order.
+    ///
+    /// cost: \(O(K / 64 + \mathit{len})\) to walk
+    /// empty: `domain D = 0..10; Bitset<D>().each_rev().collect() == []`
+    /// order: decreasing
+    /// traps: never
+    /// example: `domain D = 0..10; Bitset<D>.of([D(1), D(3), D(8)]).each_rev().collect() == [D(8), D(3), D(1)]`
+    pub fn each_rev(self) -> yields D:
+        for k in (0..w.len).rev:
+            var x = w[k]
+            while x != U64(0):
+                let b = msb(x)
+                yield D.nth(64 * k + b)
+                x &= ~word_bit(b)
+
+    fn forget_count(mut self):
+        n = -1
+
+    fn count_words(self) -> Int = sum(popcount(x) for x in w)
+
+    // `w |= w << k` for k > 0, leaving bits past `D` and `n` for the caller to fix.
+    fn or_shifted(mut self, k: Int):
+        let (words, bits) = (k / 64, k % 64)
+        if words >= w.len: return
+        unchecked:
+            if bits == 0:
+                for i in (words..w.len).rev: w[i] |= w[i - words]
+            else:
+                for i in (words + 1..w.len).rev:
+                    w[i] |= (w[i - words] << bits) | (w[i - words - 1] >> (64 - bits))
+                w[words] |= w[0] << bits
+
+    fn trim(mut self):
+        let full_words = (D.count + 63) / 64
+        for k in full_words..w.len: w[k] = U64(0)
+        if D.count % 64 != 0:
+            w[full_words - 1] &= low(D.count % 64)
+
+/// Runtime-sized 64-bit word bitset over `0..cap` when the width is computed dynamically without a domain.
+/// Single-bit ops are \(O(1)\); word-parallel ops are \(O(\mathit{cap} / 64)\).
+pub struct DynBitset:
+    _w: List<U64>
+    _cap: Int
+    _n: Int
+
+    fn recount(mut self):
+        _n = 0
+        for x in _w: _n += popcount(x)
+
+    fn trim(mut self):
+        let full_words = _cap / 64
+        if _cap % 64 != 0: _w[full_words] &= low(_cap % 64)
+
+    /// Create an all-zero `DynBitset` of width `cap`: bits `0..cap`.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\) time and space
+    /// traps: when `cap < 0` or `cap >= 2^31`
+    /// example: `DynBitset(10).len == 0`
+    pub fn new(cap: Len) -> DynBitset:
+        assert cap >= 0
+        DynBitset(List.filled((cap + 63) / 64, U64(0)), cap, 0)
+
+    /// Create an all-one `DynBitset` of width `cap`; bits at or above `cap` stay clear.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\) time and space
+    /// traps: when `cap < 0` or `cap >= 2^31`
+    /// example: `DynBitset.full(10).len == 10`
+    pub fn full(cap: Len) -> DynBitset:
+        assert cap >= 0
+        var d = DynBitset(List.filled((cap + 63) / 64, ~U64(0)), cap, cap)
+        d.trim()
+        d
+
+    /// The bit capacity: valid indices are `0..cap`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `DynBitset(10).cap == 10`
+    @get pub fn cap(self) -> Int = _cap
+
+    /// The number of set bits, kept current by every update.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.len == 2`
+    @get pub fn len(self) -> Int = _n
+
+    /// Whether no bits are set, kept current by every update.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `DynBitset(10).is_empty and not DynBitset.full(1).is_empty`
+    @get pub fn is_empty(self) -> Bool = _n == 0
+
+    /// Set bit `i` to `on` in place (W8 `IndexSet` backing `b[i] = on`).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not in `0..cap`
+    /// example: `var d = DynBitset(10); d.set(4); d.set(5, true); d.set(4, false); d.each().collect() == [5]`
+    pub fn set(mut self, i: Int, on: Bool = true):
+        if on: self.add(i) else: self.remove(i)
+
+    /// Set bit `i` to 1; returns `true` if bit `i` was previously 0 (matches `Bitset.add`).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not in `0..cap`
+    /// example: `var d = DynBitset(10); let x = d.add(2); let y = d.add(2); x and not y`
+    pub fn add(mut self, i: Int) -> Bool:
+        if self.contains(i): return false
+        _w[i / 64] |= word_bit(i % 64)
+        _n += 1
+        true
+
+    /// Clear bit `i` to 0; returns `true` if bit `i` was previously 1 (matches `Bitset.remove`).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not in `0..cap`
+    /// example: `var d = DynBitset(10); d.add(2); let x = d.remove(2); let y = d.remove(2); x and not y and d.is_empty`
+    pub fn remove(mut self, i: Int) -> Bool:
+        if not self.contains(i): return false
+        _w[i / 64] &= ~word_bit(i % 64)
+        _n -= 1
+        true
+
+    /// Flip bit `i`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not in `0..cap`
+    /// example: `var d = DynBitset(10); d.toggle(6); d.toggle(6); d.toggle(7); d.each().collect() == [7]`
+    pub fn toggle(mut self, i: Int):
+        _n += if self.contains(i): -1 else: 1
+        _w[i / 64] ^= word_bit(i % 64)
+
+    /// Clear all bits; the capacity is unchanged.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: never
+    /// example: `var d = DynBitset.full(10); d.clear(); d.is_empty and d.cap == 10`
+    pub fn clear(mut self):
+        for k in 0.._w.len: _w[k] = U64(0)
+        _n = 0
+
+    /// Resize to `new_cap` bits, zero-filling any new high bits. Shrinking drops the bits at or above
+    /// `new_cap` (and `len` drops with them).
+    ///
+    /// cost: \(O(\mathit{new\_cap} / 64)\) time and space
+    /// traps: when `new_cap < 0` or `new_cap >= 2^31`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(8); d.resize(4); d.len == 1 and d.cap == 4`
+    /// example: `var d = DynBitset.full(2); d.resize(5); d.each().collect() == [0, 1]`
+    /// example: `var d = DynBitset(10); d.add(3); d.resize(0); d.len == 0 and d.cap == 0`
+    pub fn resize(mut self, new_cap: Len):
+        assert new_cap >= 0
+        let words = (new_cap + 63) / 64
+        while _w.len > words: _w.pop()
+        while _w.len < words: _w.push(U64(0))
+        _cap = new_cap
+        self.trim()
+        self.recount()
+
+    /// The smallest set bit index, or `None` if empty.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// empty: `DynBitset(10).first() == None`
+    /// ties: `var d = DynBitset(10); d.add(3); d.add(3); d.add(8); d.first() == Some(3)`
+    /// traps: never
+    /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.first() == Some(3)`
+    /// example: `DynBitset(10).first() == None`
+    pub fn first(self) -> ?Int = self.next(0)
+
+    /// The largest set bit index, or `None` if empty.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// empty: `DynBitset(10).last() == None`
+    /// ties: `var d = DynBitset(10); d.add(8); d.add(8); d.add(3); d.last() == Some(8)`
+    /// traps: never
+    /// example: `var d = DynBitset(10); d.add(8); d.add(3); d.last() == Some(8)`
+    pub fn last(self) -> ?Int:
+        if _cap == 0: return None
+        self.prev(_cap - 1)
+
+    /// The smallest set bit `>= i`, or `None`.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// empty: `DynBitset(10).next(0) == None`
+    /// traps: when `i` is not in `0..=cap`
+    /// example: `var d = DynBitset(10); d.add(3); d.add(8); d.next(3) == Some(3) and d.next(4) == Some(8) and d.next(9) == None`
+    pub fn next(self, i: Int) -> ?Int:
+        assert 0 <= i <= _cap
+        if i == _cap: return None
+        var k = i / 64
+        var x = _w[k] & ~low(i % 64)
+        while true:
+            if x != U64(0): return 64 * k + ctz(x)
+            k += 1
+            if k == _w.len: return None
+            x = _w[k]
+        None
+
+    /// The largest set bit `<= i`, or `None`; `i` itself counts, as in `Bitset.prev`.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// empty: `DynBitset(10).prev(9) == None`
+    /// traps: when `i` is not in `0..cap`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.prev(3) == Some(3) and d.prev(2) == Some(1) and d.prev(0) == None`
+    /// example: `DynBitset(10).prev(10) == None` (traps R0401)
+    pub fn prev(self, i: Int) -> ?Int:
+        assert 0 <= i < _cap
+        var k = i / 64
+        var x = _w[k] & low(i % 64 + 1)
+        while true:
+            if x != U64(0): return 64 * k + msb(x)
+            if k == 0: return None
+            k -= 1
+            x = _w[k]
+        None
+
+    /// The number of set bits strictly below `i`.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// empty: `DynBitset(10).count_below(10) == 0`
+    /// traps: when `i` is not in `0..=cap`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_below(8) == 2`
+    pub fn count_below(self, i: Int) -> Int:
+        assert 0 <= i <= _cap
+        self.count_range(0..i)
+
+    /// The number of set bits in `r`.
+    ///
+    /// cost: \(O(r.\mathit{len} / 64 + 1)\)
+    /// empty: `var d = DynBitset(10); d.add(3); d.count_range(3..3) == 0 and d.count_range(20..20) == 0`
+    /// traps: when `r` is non-empty and reaches outside `0..cap`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_range(1..8) == 2`
+    /// example: `DynBitset(10).count_range(2..11) == 0` (traps R0401)
+    pub fn count_range(self, r: Range<Int>) -> Int:
+        let (lo, hi) = (r.start, r.end)
+        if lo >= hi: return 0
+        assert 0 <= lo and hi <= _cap
+        let c = sum(popcount(_w[k] & span(k, lo, hi)) for k in lo / 64..=(hi - 1) / 64)
+        c
+
+    /// The `k`-th set bit index (0-based, in increasing order), or `None` if `k >= len`.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// empty: `DynBitset(10).nth(0) == None`
+    /// traps: when `k < 0`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.nth(1) == Some(3) and d.nth(3) == None`
+    pub fn nth(self, k: 0..) -> ?Int:
+        assert k >= 0
+        var left = k
+        for i in 0.._w.len:
+            let c = popcount(_w[i])
+            if left < c:
+                var x = _w[i]
+                for _ in 0..left: x &= x - U64(1)
+                return 64 * i + ctz(x)
+            left -= c
+        None
+
+    /// In-place bitwise OR (`self |= other`).
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: when `other.cap != self.cap`
+    /// example: `var a = DynBitset(4); a.add(0); var b = DynBitset(4); b.add(2); a.union(b); a.each().collect() == [0, 2]`
+    pub fn union(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] |= other._w[k]
+        self.recount()
+
+    /// In-place bitwise AND (`self &= other`).
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: when `other.cap != self.cap`
+    /// example: `var a = DynBitset.full(4); var b = DynBitset(4); b.add(2); a.intersect(b); a.each().collect() == [2]`
+    pub fn intersect(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] &= other._w[k]
+        self.recount()
+
+    /// In-place set difference (`self &= ~other`).
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: when `other.cap != self.cap`
+    /// example: `var a = DynBitset.full(4); var b = DynBitset(4); b.add(2); a.subtract(b); a.each().collect() == [0, 1, 3]`
+    pub fn subtract(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] &= ~other._w[k]
+        self.recount()
+
+    /// In-place bitwise XOR (`self ^= other`).
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: when `other.cap != self.cap`
+    /// example: `var a = DynBitset(4); a.add(1); a.add(2); var b = DynBitset(4); b.add(2); b.add(3); a.symmetric(b); a.each().collect() == [1, 3]`
+    pub fn symmetric(mut self, other: DynBitset):
+        assert other.cap == _cap
+        for k in 0.._w.len: _w[k] ^= other._w[k]
+        self.recount()
+
+    /// Whether `self` and `other` share a set bit; stops at the first shared word.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\), less on an early hit
+    /// traps: when `other.cap != self.cap`
+    /// example: `var a = DynBitset(4); a.add(1); var b = DynBitset.full(4); a.meets(b) and not a.meets(DynBitset(4))`
+    pub fn meets(self, other: DynBitset) -> Bool:
+        assert other.cap == _cap
+        for k in 0.._w.len:
+            if _w[k] & other._w[k] != U64(0): return true
+        false
+
+    /// Shift all bits up by `k >= 0` in place (`i -> i + k`); bits reaching `cap` or beyond drop.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: when `k < 0`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_up(2); d.each().collect() == [3, 5]`
+    pub fn shift_up(mut self, k: 0..):
+        assert k >= 0
+        let n = _w.len
+        let (words, bits) = (k / 64, k % 64)
+        for i in (0..n).rev:
+            var x = U64(0)
+            if i >= words:
+                x = _w[i - words] << bits
+                if bits > 0 and i > words: x |= _w[i - words - 1] >> (64 - bits)
+            _w[i] = x
+        self.trim()
+        self.recount()
+
+    /// Shift all bits down by `k >= 0` in place (`i -> i - k`); bits falling below 0 drop.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: when `k < 0`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_down(2); d.each().collect() == [1, 6]`
+    pub fn shift_down(mut self, k: 0..):
+        assert k >= 0
+        let n = _w.len
+        let (words, bits) = (k / 64, k % 64)
+        for i in 0..n:
+            var x = U64(0)
+            if i + words < n:
+                x = _w[i + words] >> bits
+                if bits > 0 and i + words + 1 < n: x |= _w[i + words + 1] << (64 - bits)
+            _w[i] = x
+        self.recount()
+
+    /// In-place `self |= (self << k)` for `k >= 0`, with zero allocation; bits reaching `cap` drop.
+    ///
+    /// cost: \(O(\mathit{cap} / 64)\)
+    /// traps: when `k < 0`
+    /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.shift_or(2); d.each().collect() == [1, 3, 5, 8]`
+    pub fn shift_or(mut self, k: 0..):
+        assert k >= 0
+        if k == 0: return
+        let n = _w.len
+        let (words, bits) = (k / 64, k % 64)
+        for i in (words..n).rev:
+            var x = _w[i - words] << bits
+            if bits > 0 and i > words: x |= _w[i - words - 1] >> (64 - bits)
+            _w[i] |= x
+        self.trim()
+        self.recount()
+
+    /// The set bit indices in ascending order; `for i in d` walks the same sequence.
+    ///
+    /// cost: \(O(\mathit{cap} / 64 + \mathit{len})\) to walk
+    /// empty: `DynBitset(10).each().collect() == []`
+    /// order: increasing
+    /// traps: never
+    /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each().collect() == [1, 8]`
+    pub fn each(self) -> yields Int:
+        for k in 0.._w.len:
+            var x = _w[k]
+            while x != U64(0):
+                let b = ctz(x)
+                yield 64 * k + b
+                x &= ~word_bit(b)
+
+    /// The set bit indices in descending order.
+    ///
+    /// cost: \(O(\mathit{cap} / 64 + \mathit{len})\) to walk
+    /// empty: `DynBitset(10).each_rev().collect() == []`
+    /// order: decreasing
+    /// traps: never
+    /// example: `var d = DynBitset(10); d.add(8); d.add(1); d.each_rev().collect() == [8, 1]`
+    pub fn each_rev(self) -> yields Int:
+        for k in (0.._w.len).rev:
+            var x = _w[k]
+            while x != U64(0):
+                let b = msb(x)
+                yield 64 * k + b
+                x &= ~word_bit(b)
+
+    /// All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some
+    /// sub-multiset of `weights` sums to `s`.
+    ///
+    /// The empty sub-multiset makes `0` reachable (when `cap > 0`); sums of `cap` or more drop.
+    /// Duplicate weights are grouped with binary carries, as in `Bitset.subset_sums`.
+    ///
+    /// cost: \(O(\mathit{cap} \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(\mathit{cap} / 64)\) space
+    /// empty: `DynBitset.subset_sums(5, []).each().collect() == [0] and DynBitset.subset_sums(0, []).each().collect() == []`
+    /// traps: when `cap < 0` or `cap >= 2^31` or a weight is negative
+    /// example: `DynBitset.subset_sums(11, [3, 5, 5]).each().collect() == [0, 3, 5, 8, 10]`
+    /// example: `DynBitset.subset_sums(11, [3, -1]).len == 0` (traps R0401)
+    pub fn subset_sums(cap: Len, weights: List<Int>) -> DynBitset:
+        var reach = DynBitset.new(cap)
+        if cap == 0: return reach
+        reach.add(0)
+        var cnt = List.filled(cap, 0)
+        for w in weights:
+            assert w >= 0
+            if w < cap: cnt[w] += 1
+        for w in 1..cap:
+            let carry = max(cnt[w] - 1, 0) / 2
+            cnt[w] -= 2 * carry
+            if 2 * w < cap: cnt[2 * w] += carry
+            for _ in 0..cnt[w]: reach.shift_or(w)
+        reach
+
+impl Contains<Int> for DynBitset:
+    /// Whether bit `i` is set.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not in `0..cap`
+    /// example: `var d = DynBitset(10); d.add(3); d.contains(3) and not d.contains(4)`
+    /// example: `not DynBitset(10).contains(10)` (traps R0401)
+    fn contains(self, i: Int) -> Bool:
+        assert 0 <= i < _cap
+        (_w[i / 64] >> (i % 64)) & U64(1) == U64(1)
+
+/// Dynamic binary bitwise XOR trie multiset over non-negative `bits`-bit integers (default 60
+/// bits). \(O(\mathit{bits})\) per op.
+pub struct XorTrie:
+    _bits: Int
+    _mask: Int
+    _c0: List<Int>
+    _c1: List<Int>
+    _cnt: List<Int>
+    _dist: List<Int>
+
+    fn child(self, node: Int, b: Int) -> Int = if b == 0: _c0[node] else: _c1[node]
+
+    fn leaf(self, x: Int) -> Int:
+        let z = x ^ _mask
+        var node = 0
+        for i in (0.._bits).rev:
+            node = self.child(node, (z >> i) & 1)
+            if node == -1: return -1
+        node
+
+    fn walk(mut self, x: Int, d: Int, dd: Int):
+        let z = x ^ _mask
+        var node = 0
+        _cnt[0] += d
+        for i in (0.._bits).rev:
+            let b = (z >> i) & 1
+            var c = self.child(node, b)
+            if c == -1:
+                c = _cnt.len
+                _c0.push(-1)
+                _c1.push(-1)
+                _cnt.push(0)
+                _dist.push(0)
+                if b == 0: _c0[node] = c else: _c1[node] = c
+            node = c
+            _cnt[node] += d
+            _dist[node] += dd
+
+    /// Create an empty `XorTrie` over `bits`-bit non-negative integers (default 60): values in
+    /// `0..2^bits`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `bits` is not in `1..=62`
+    /// example: `XorTrie(3).is_empty and XorTrie(1).is_empty and XorTrie(62).is_empty`
+    /// example: `XorTrie(0).is_empty` (traps R0401)
+    /// example: `XorTrie(63).is_empty` (traps R0401)
+    pub fn new(bits: Int = 60) -> XorTrie:
+        assert 1 <= bits <= 62
+        XorTrie(bits, 0, [-1], [-1], [0], [0])
+
+    /// Reserve pool capacity for at least `nodes` trie nodes, so later adds do not reallocate; the
+    /// contents are unchanged.
+    ///
+    /// cost: \(O(\mathit{nodes})\) when the pool grows, \(O(1)\) otherwise
+    /// traps: when `nodes < 0` or `nodes >= 2^31`
+    /// example: `var t = XorTrie(3); t.reserve(100); t.reserve(0); t.len == 0`
+    pub fn reserve(mut self, nodes: Len):
+        _c0.reserve(nodes)
+        _c1.reserve(nodes)
+        _cnt.reserve(nodes)
+        _dist.reserve(nodes)
+
+    /// The total number of stored integers, with multiplicity.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.len == 2`
+    @get pub fn len(self) -> Int = _cnt[0]
+
+    /// True when the trie holds no integers.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.remove(5); t.is_empty`
+    @get pub fn is_empty(self) -> Bool = _cnt[0] == 0
+
+    /// \(O(\mathit{bits})\) per element. Visit every stored value as it reads now, with the
+    /// `xor_all` mask applied, one per copy.
+    ///
+    /// cost: \(O(\mathit{len} \cdot \mathit{bits})\) to walk, \(O(\mathit{bits})\) per element
+    /// empty: `XorTrie(3).each().collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.add(1); t.add(5); t.xor_all(1); t.each().collect() == [0, 4, 4]`
+    pub fn each(self) -> yields Int:
+        for k in 0.._cnt[0]: yield self.kth_xor(0, k)!
+
+    /// Insert one copy of `x`. `x` is stored as given, after any earlier `xor_all`: the mask applies
+    /// only to elements already present.
+    ///
+    /// cost: \(O(\mathit{bits})\) time, up to `bits` new nodes
+    /// traps: when `x` is not in `0..2^bits`
+    /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.add(7); t.count(5) == 2`
+    /// example: `var t = XorTrie(3); t.add(8); t.len == 1` (traps R0401)
+    pub fn add(mut self, x: Int):
+        assert 0 <= x < 1 << _bits
+        self.walk(x, 1, if self.count(x) == 0: 1 else: 0)
+
+    /// Remove one copy of `x`; returns `false` if absent, leaving the trie unchanged.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); let x = t.remove(5); let y = t.remove(5); x and not y`
+    pub fn remove(mut self, x: Int) -> Bool:
+        let c = self.count(x)
+        if c == 0: return false
+        self.walk(x, -1, if c == 1: -1 else: 0)
+        true
+
+    /// The multiplicity of `x` currently stored; zero when absent.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.add(5); t.add(1); t.count(5) == 2 and t.count(2) == 0`
+    /// example: `var t = XorTrie(3); t.add(0); t.add(7); t.count(8) == 0 and t.count(-1) == 0`
+    pub fn count(self, x: Int) -> Int:
+        if x < 0 or x >= 1 << _bits: return 0
+        let node = self.leaf(x)
+        if node == -1: 0 else: _cnt[node]
+
+    /// Apply a lazy global XOR mask: every stored `y` becomes `y ^ mask`. Masks compose (`xor_all(a)`
+    /// then `xor_all(b)` is `xor_all(a ^ b)`).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `mask` is not in `0..2^bits`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.xor_all(1); t.contains(0) and t.contains(4) and not t.contains(1)`
+    /// example: `var t = XorTrie(3); t.xor_all(7); t.xor_all(8); t.is_empty` (traps R0401)
+    pub fn xor_all(mut self, mask: Int):
+        assert 0 <= mask < 1 << _bits
+        _mask ^= mask
+
+    /// The maximum value of `x ^ y` over stored `y`, or `None` if empty.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// empty: `XorTrie(3).max_xor(2) == None`
+    /// ties: `var t = XorTrie(3); t.add(5); t.add(5); t.max_xor(2) == Some(7)`
+    /// traps: when `x` is not in `0..2^bits`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.max_xor(2) == Some(7)`
+    /// example: `XorTrie(3).max_xor(8) == None` (traps R0401)
+    pub fn max_xor(self, x: Int) -> ?Int = self.extreme_xor(x, 1)
+
+    /// The minimum value of `x ^ y` over stored `y`, or `None` if empty.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// empty: `XorTrie(3).min_xor(2) == None`
+    /// ties: `var t = XorTrie(3); t.add(5); t.add(5); t.min_xor(5) == Some(0)`
+    /// traps: when `x` is not in `0..2^bits`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.min_xor(2) == Some(3)`
+    /// example: `XorTrie(3).min_xor(8) == None` (traps R0401)
+    pub fn min_xor(self, x: Int) -> ?Int = self.extreme_xor(x, 0)
+
+    /// The number of stored `y` (with multiplicity) with `(x ^ y) < limit`. A `limit <= 0` gives 0 and
+    /// a `limit >= 2^bits` gives `len`.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// traps: when `x` is not in `0..2^bits`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.count_xor_less(2, 5) == 2`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(7); t.count_xor_less(0, 0) == 0 and t.count_xor_less(0, -8) == 0 and t.count_xor_less(0, 8) == 2 and t.count_xor_less(0, 7) == 1`
+    /// example: `XorTrie(3).count_xor_less(8, 1) == 0` (traps R0401)
+    pub fn count_xor_less(self, x: Int, limit: Int) -> Int:
+        assert 0 <= x < 1 << _bits
+        let lim = min(max(limit, 0), 1 << _bits)
+        if lim == 1 << _bits: return _cnt[0]
+        let z = x ^ _mask
+        var node = 0
+        var out = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            if lim.bit(i):
+                let same = self.child(node, zb)
+                if same != -1: out += _cnt[same]
+                node = self.child(node, 1 - zb)
+            else:
+                node = self.child(node, zb)
+            if node == -1: return out
+        out
+
+    /// The `k`-th smallest value of `x ^ y` over stored `y` (0-based, with multiplicity), or `None` if
+    /// `k >= len`.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// empty: `XorTrie(3).kth_xor(2, 0) == None`
+    /// ties: `var t = XorTrie(3); t.add(5); t.add(5); t.kth_xor(2, 0) == Some(7) and t.kth_xor(2, 1) == Some(7)`
+    /// traps: when `k < 0` or `x` is not in `0..2^bits`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 1) == Some(4)`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 3) == None`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.kth_xor(0, 0) == Some(1) and t.kth_xor(7, 1) == Some(6)`
+    /// example: `XorTrie(3).kth_xor(8, 0) == None` (traps R0401)
+    pub fn kth_xor(self, x: Int, k: 0..) -> ?Int:
+        assert 0 <= x < 1 << _bits
+        if k >= _cnt[0]: return None
+        let z = x ^ _mask
+        var node = 0
+        var left = k
+        var res = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            let same = self.child(node, zb)
+            let c = if same != -1: _cnt[same] else: 0
+            if left < c:
+                node = same
+            else:
+                left -= c
+                res |= 1 << i
+                node = self.child(node, 1 - zb)
+        Some(res)
+
+    /// The smallest non-negative integer not present under XOR mask `x` (mex of `{y ^ x}`); `2^bits`
+    /// when every value is present.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// empty: `XorTrie(3).mex_xor() == 0 and XorTrie(3).mex_xor(5) == 0`
+    /// traps: when `x` is not in `0..2^bits`
+    /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.mex_xor() == 0 and t.mex_xor(1) == 1`
+    /// example: `XorTrie(3).mex_xor(8) == 0` (traps R0401)
+    pub fn mex_xor(self, x: Int = 0) -> Int:
+        assert 0 <= x < 1 << _bits
+        let z = x ^ _mask
+        var node = 0
+        var res = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            let same = self.child(node, zb)
+            if same != -1 and _dist[same] == 1 << i:
+                res |= 1 << i
+                node = self.child(node, 1 - zb)
+            else:
+                node = same
+            if node == -1: return res
+        res
+
+    fn extreme_xor(self, x: Int, want: Int) -> ?Int:
+        assert 0 <= x < 1 << _bits
+        if _cnt[0] == 0: return None
+        let z = x ^ _mask
+        var node = 0
+        var res = 0
+        for i in (0.._bits).rev:
+            let zb = (z >> i) & 1
+            let pref = self.child(node, zb ^ want)
+            if pref != -1 and _cnt[pref] > 0:
+                node = pref
+                res |= want << i
+            else:
+                node = self.child(node, zb ^ want ^ 1)
+                res |= (want ^ 1) << i
+        Some(res)
+
+    /// Remove all elements and the global mask, keeping `bits` and the reserved pool.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.clear(); t.is_empty and not t.contains(5)`
+    pub fn clear(mut self):
+        _mask = 0
+        _c0.truncate(1)
+        _c1.truncate(1)
+        _cnt.truncate(1)
+        _dist.truncate(1)
+        _c0[0] = -1
+        _c1[0] = -1
+        _cnt[0] = 0
+
+impl Contains<Int> for XorTrie:
+    /// Whether `x` is present at least once.
+    ///
+    /// cost: \(O(\mathit{bits})\)
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.contains(5) and not t.contains(4)`
+    fn contains(self, x: Int) -> Bool = self.count(x) > 0
+
+struct BitTrieNode:
+    var cnt: Int
+    kid: [0..2]?Int
+
+/// The node store shared by every `BitTrie<W>` built in it: one `List` of nodes, each a count
+/// and two optional children. Tries are root handles into it, so `absorb` links one trie's
+/// nodes under another's instead of copying them. Pass it to every trie call, as `PArena` is
+/// passed to `PMultiset`.
+pub struct BitTrieArena<W>:
+    nodes: List<BitTrieNode>
+
+    /// An empty arena with room for `cap` nodes before it reallocates. The room is allocated,
+    /// not filled: `add` touches each node's memory as it uses it.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `cap < 0` or `cap >= 2^31`
+    /// example: `BitTrieArena<3>.new(cap: 8).node_count == 0`
+    pub fn new(cap: Len = 0) -> BitTrieArena<W>:
+        var nodes: List<BitTrieNode> = []
+        nodes.reserve(cap)
+        BitTrieArena(nodes)
+
+    /// The number of nodes held, over every trie built in the arena.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); BitTrie<3>.of(mut ar, 5); ar.node_count == 4`
+    @get pub fn node_count(self) -> Int = nodes.len
+
+    fn alloc(mut self) -> Int:
+        nodes.push(BitTrieNode(0, [0..2] _ => None))
+        nodes.len - 1
+
+impl Show for BitTrieArena<W>:
+    fn show(v): "{v.node_count} nodes"
+
+/// A multiset of `W`-bit integers (values in `0..2^W`) as a binary trie with a count per node, read
+/// from the top bit down. Unlike `XorTrie`, two tries of one width merge: `absorb` adds another
+/// trie's counts into this one, so tries kept per group of indices (DSU, small-to-large over a
+/// tree, runs of equal keys) combine as the groups do. Layout: a root handle into a
+/// `BitTrieArena<W>`, which every call that reads or adds nodes takes. \(O(W)\) per op.
+pub struct BitTrie<W>:
+    var root: ?Int
+
+    /// An empty `BitTrie<W>`; it holds no node until the first `add`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `BitTrie<3>.new().is_empty`
+    pub fn new() -> BitTrie<W> = BitTrie(None)
+
+    /// The trie holding `x` once: one path of `W + 1` new nodes in `ar`.
+    ///
+    /// cost: \(O(W)\)
+    /// traps: when `x` is not in `0..2^W`
+    /// example: `var ar = BitTrieArena<3>(); BitTrie<3>.of(mut ar, 5).count(ar, 5) == 1`
+    pub fn of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>:
+        var t = BitTrie<W>.new()
+        t.add(mut ar, x)
+        t
+
+    /// The number of stored integers, with multiplicity.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 5); t.len(ar) == 2`
+    pub fn len(self, ar: BitTrieArena<W>) -> Int = if let r = root: ar.nodes[r].cnt else: 0
+
+    /// True when the trie holds no integers.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); BitTrie<3>.new().is_empty and not BitTrie<3>.of(mut ar, 0).is_empty`
+    @get pub fn is_empty(self) -> Bool = root == None
+
+    /// \(O(\mathit{nodes} + \mathit{len})\). Visit every stored value, one per copy.
+    ///
+    /// cost: \(O(\mathit{nodes} + \mathit{len})\)
+    /// empty: `BitTrie<3>.new().each(BitTrieArena<3>()).collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 1); t.add(mut ar, 5); t.each(ar).collect() == [1, 5, 5]`
+    pub fn each(self, ar: BitTrieArena<W>) -> yields Int:
+        guard let r = root else: return
+        // A node with copies and no child is a full-width leaf.
+        var stack = [(node: r, value: 0)]
+        while let top = stack.pop():
+            let n = ar.nodes[top.node]
+            if n.cnt == 0: continue
+            if n.kid[0] == None and n.kid[1] == None:
+                for _ in 0..n.cnt: yield top.value
+                continue
+            for side in [1, 0]:
+                if let c = n.kid[side]: stack.push((node: c, value: top.value * 2 + side))
+
+    /// Insert one copy of `x`.
+    ///
+    /// cost: \(O(W)\) time, up to `W + 1` new nodes in `ar`
+    /// traps: when `x` is not in `0..2^W`
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.new(); t.add(mut ar, 5); t.add(mut ar, 5); t.count(ar, 5) == 2`
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.new(); t.add(mut ar, 8); t.len(ar) == 1` (traps R0401)
+    pub fn add(mut self, mut ar: BitTrieArena<W>, x: Int):
+        assert 0 <= x < 1 << W
+        var t = if let r = root: r else: ar.alloc()
+        root = Some(t)
+        unchecked:
+            ar.nodes[t].cnt += 1
+            for b in (0..W).rev:
+                let side = (x >> b) & 1
+                if let c = ar.nodes[t].kid[side]:
+                    t = c
+                else:
+                    let c = ar.alloc()
+                    ar.nodes[t].kid[side] = c
+                    t = c
+                ar.nodes[t].cnt += 1
+
+    /// The multiplicity of `x`; zero when absent or out of range.
+    ///
+    /// cost: \(O(W)\)
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 1); t.count(ar, 5) == 1 and t.count(ar, 4) == 0`
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 0); t.add(mut ar, 7); t.count(ar, 8) == 0 and t.count(ar, -1) == 0`
+    pub fn count(self, ar: BitTrieArena<W>, x: Int) -> Int:
+        if x < 0 or x >= 1 << W: return 0
+        guard let r = root else: return 0
+        var t = r
+        for b in (0..W).rev:
+            guard let c = ar.nodes[t].kid[(x >> b) & 1] else: return 0
+            t = c
+        ar.nodes[t].cnt
+
+    /// The path of `x` from the top bit down: for each bit `b` from `W - 1` to 0, while some
+    /// stored `y` agrees with `x` on bits `b` and above, yields `b` and how many do. Stops at the
+    /// first bit where none does.
+    ///
+    /// `count` at `bit` is the number of `y` with `y >> bit == x >> bit`; those differing from
+    /// `x` first at `b` number the previous count minus this one (`len` above the top bit).
+    ///
+    /// cost: \(O(W)\) for the whole walk, \(O(1)\) per step
+    /// empty: `List(BitTrie<3>().walk(BitTrieArena<3>(), 5)) == []`
+    /// order: bits from `W - 1` down
+    /// traps: when `x` is not in `0..2^W`
+    /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 4); t.add(mut ar, 1); List(t.walk(ar, 5)) == [(bit: 2, count: 2), (bit: 1, count: 2), (bit: 0, count: 1)]`
+    /// example: `var ar = BitTrieArena<3>(); List(BitTrie<3>.of(mut ar, 0).walk(ar, 8)).len == 3` (traps R0401)
+    pub fn walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int):
+        assert 0 <= x < 1 << W
+        guard let r = root else: return
+        var t = r
+        for b in (0..W).rev:
+            unchecked:
+                guard let c = ar.nodes[t].kid[(x >> b) & 1] else: return
+                t = c
+                yield (bit: b, count: ar.nodes[t].cnt)
+
+    // Adds the subtree at `y` into the one at `x`: counts add where both have a node, and
+    // `y`'s child is linked in, not copied, wherever `x` has none.
+    fn link(mut ar: BitTrieArena<W>, x: Int, y: Int):
+        unchecked:
+            ar.nodes[x].cnt += ar.nodes[y].cnt
+            for side in 0..2 if let c = ar.nodes[y].kid[side]:
+                if let d = ar.nodes[x].kid[side]: BitTrie.link(mut ar, d, c)
+                else: ar.nodes[x].kid[side] = c
+
+    /// Add every integer of `other` into `self`, with multiplicity, leaving `other` empty.
+    /// `other`'s nodes become part of `self`; a copy of `other` made before is no longer valid.
+    ///
+    /// Only nodes both tries have are visited, and each visit retires one of `other`'s nodes,
+    /// so any sequence of absorbs costs \(O(N W)\) in total over `N` insertions.
+    ///
+    /// cost: \(O(\min(\mathit{nodes}(\mathit{self}), \mathit{nodes}(\mathit{other})))\), no node copied
+    /// empty: `var ar = BitTrieArena<3>(); var a = BitTrie<3>.of(mut ar, 5); var b = BitTrie<3>(); a.absorb(mut ar, mut b); a.count(ar, 5) == 1 and a.len(ar) == 1`
+    /// traps: never
+    /// example: `var ar = BitTrieArena<3>(); var a = BitTrie<3>.of(mut ar, 5); var b = BitTrie<3>.of(mut ar, 5); b.add(mut ar, 2); a.absorb(mut ar, mut b); a.count(ar, 5) == 2 and a.len(ar) == 3 and b.is_empty`
+    pub fn absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>):
+        if let y = other.root:
+            if let x = root: BitTrie.link(mut ar, x, y)
+            else: root = Some(y)
+        other.root = None
+
+impl Show for BitTrie<W>:
+    fn show(v): if let r = v.root: "root {r}" else: "empty"
+
+/// `a | b`: a new set of the positions in either set.
+///
+/// cost: \(O(K / 64)\) time and space
+/// traps: never
+/// example: `domain D = 0..10; (Bitset<D>.single(D(1)) | Bitset<D>.single(D(2))).len == 2`
+impl<D: Domain> Contains<D> for Bitset<D>:
+    /// Whether position `i` is set; `i in b` calls it.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..10; let b = Bitset<D>.single(D(4)); b.contains(D(4)) and not b.contains(D(5))`
+    fn contains(self, i: D) -> Bool = ((w[i.ord / 64] >> (i.ord % 64)) & U64(1)) == U64(1)
+
+impl BitOr for Bitset<D>:
+    fn bitor(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..self.w.len: out.w[k] = self.w[k] | o.w[k]
+        out.forget_count()
+        out
+
+/// `a & b`: a new set of the positions in both sets.
+///
+/// cost: \(O(K / 64)\) time and space
+/// traps: never
+/// example: `domain D = 0..10; (Bitset<D>.of([D(1), D(2)]) & Bitset<D>.of([D(2), D(3)])).each().collect() == [D(2)]`
+impl BitAnd for Bitset<D>:
+    fn bitand(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..self.w.len: out.w[k] = self.w[k] & o.w[k]
+        out.forget_count()
+        out
+
+/// `a ^ b`: a new set of the positions in exactly one of the sets.
+///
+/// cost: \(O(K / 64)\) time and space
+/// traps: never
+/// example: `domain D = 0..10; (Bitset<D>.of([D(1), D(2)]) ^ Bitset<D>.of([D(2), D(3)])).each().collect() == [D(1), D(3)]`
+impl BitXor for Bitset<D>:
+    fn bitxor(self, o: Bitset<D>) -> Bitset<D>:
+        var out = Bitset<D>.new()
+        for k in 0..self.w.len: out.w[k] = self.w[k] ^ o.w[k]
+        out.forget_count()
+        out
+
+/// `a - b`: the positions in `a` that are not in `b`.
+impl Sub for Bitset<D>:
+    fn sub(a, b):
+        var out = Bitset<D>.new()
+        for k in 0..a.w.len: out.w[k] = a.w[k] & ~b.w[k]
+        out.forget_count()
+        out
+
+/// Index of the highest set bit in non-zero `x` (0..64).
+fn msb(x: U64) -> Int = bit_width(x) - 1
+
+@test
+fn bit_tries_walk_ascending_and_show():
+    var x = XorTrie(3)
+    for v in [5, 1, 5, 6]: x.add(v)
+    assert x.each().collect() == [1, 5, 5, 6] and "{x}" == "1 5 5 6"
+    x.xor_all(3)
+    assert x.each().collect() == [2, 5, 6, 6]
+    var ar = BitTrieArena<3>()
+    var b = BitTrie<3>.new()
+    assert "{b}" == "empty"
+    for v in [5, 1, 5, 6, 0, 7]: b.add(mut ar, v)
+    assert b.each(ar).collect() == [0, 1, 5, 5, 6, 7] and "{b}" == "root 0" and "{ar}" == "{ar.node_count} nodes"
+
+@test
+fn every_set_shows_its_members_space_separated():
+    domain P = 0..70
+    var b = Bitset<P>()
+    var d = DynBitset(70)
+    assert "{b}" == "" and "{d}" == ""
+    for i in [3, 0, 65]:
+        let _ = b.add(P(i))
+        d.add(i)
+    assert "{b}" == "0 3 65" and "{d}" == "0 3 65"
+
+impl Show for Bitset<D>:
+    fn show(a):
+        var out = ""
+        for v in a.each():
+            if not out.is_empty: out += " "
+            out += "{v}"
+        out
+/// The word with only bit `k` set.
+fn word_bit(k: Int) -> U64 = U64(1) << k
+
+fn span(k: Int, lo: Int, hi: Int) -> U64 =
+    low(min(hi - 64 * k, 64)) & ~low(max(lo - 64 * k, 0))
+
+/// The word with its low `n` bits set, for `n` in 0..=64.
+fn low(n: Int) -> U64 = if n == 64: ~U64(0) else: (U64(1) << n) - U64(1)
+
+@test
+fn single_bits_across_word_borders():
+    domain P = 0..200
+    var b = Bitset<P>()
+    for i in [0, 1, 62, 63, 64, 127, 128, 199]: b.add(P(i))
+    assert b.len == 8 and b.count == 8
+    assert b.contains(P(63)) and b.contains(P(64)) and not b.contains(P(65))
+    b.remove(P(63))
+    b.toggle(P(65))
+    b.toggle(P(0))
+    assert [p.ord for p in b.each()] == [1, 62, 64, 65, 127, 128, 199]
+    assert b.next(P(2)) == P(62) and b.next(P(129)) == P(199) and b.next(P(64)) == P(64)
+    b.remove(P(199))
+    assert b.next(P(129)) == None
+
+@test
+fn set_algebra_matches_bool_arrays():
+    domain P = 0..150
+    let x = [P] p => rand(0, 2) == 0
+    let y = [P] p => rand(0, 2) == 0
+    let (bx, by) = (Bitset<P>.from(x), Bitset<P>.from(y))
+    var u = copy(bx)
+    u.union(by)
+    var n = copy(bx)
+    n.intersect(by)
+    var d = copy(bx)
+    d.subtract(by)
+    var s = copy(bx)
+    s.symmetric(by)
+    for p in P:
+        assert u.contains(p) == (x[p] or y[p])
+        assert n.contains(p) == (x[p] and y[p])
+        assert d.contains(p) == (x[p] and not y[p])
+        assert s.contains(p) == (x[p] != y[p])
+    assert bx.meets(by) != n.is_empty
+    assert bx.len == sum(1 for p in P if x[p])
+    assert (bx - by).len == d.len
+
+@test
+fn shifted_matches_moving_each_position():
+    domain P = 0..190
+    let x = [P] p => rand(0, 3) == 0
+    let b = Bitset<P>.from(x)
+    for k in [0, 1, 7, 63, 64, 65, 128, 189, 190, 400]:
+        let s = b.shifted(k)
+        for p in P:
+            let from = p.ord - k
+            assert s.contains(p) == (from >= 0 and x[P.nth(max(from, 0))])
+
+@test
+fn subset_sum_by_shifting():
+    domain S = 0..=100
+    var reach = Bitset<S>()
+    reach.add(S(0))
+    for wt in [7, 13, 29, 40]: reach.union(reach.shifted(wt))
+    assert reach.contains(S(20)) and reach.contains(S(89)) and reach.contains(S(49))
+    assert not reach.contains(S(1)) and not reach.contains(S(30))
+    assert reach.len == 16
+
+@test
+fn membership_and_a_signed_shift():
+    domain D = 0..130
+    var s = Bitset<D>()
+    for x in [0, 3, 64, 129]: s.add(D(x))
+    assert D(64) in s and D(65) not in s and s.len == 4
+    s.toggle(D(3))
+    s.toggle(D(5))
+    assert [i.ord for i in s.shifted(-3).each()] == [2, 61, 126]
+    assert [i.ord for i in s.shifted(2).each()] == [2, 7, 66]
+
+@test
+fn full_contains_every_position_and_nothing_past_end():
+    for sz in [1, 63, 64, 65, 130]:
+        domain D = 0..sz
+        let f = Bitset<D>.full()
+        assert f.len == sz
+        for x in D: assert x in f
+        assert (f & Bitset<D>.new()).is_empty
+
+@test
+fn nav_helpers_and_in_place_shifts():
+    domain P = 0..195
+    var b = Bitset<P>.new()
+    assert b.first() == None and b.rfind(_ => true) == None
+    for idx in [0, 63, 64, 127, 128, 194]: b.add(P(idx))
+    assert b.first() == Some(P(0)) and b.rfind(_ => true) == Some(P(194))
+    assert b.prev(P(0)) == Some(P(0))
+    assert b.prev(P(64)) == Some(P(64)) and b.prev(P(65)) == Some(P(64))
+    assert b.prev(P(126)) == Some(P(64)) and b.prev(P(127)) == Some(P(127))
+    assert b.prev(P(193)) == Some(P(128)) and b.prev(P(194)) == Some(P(194))
+    b.remove(P(0))
+    assert b.prev(P(0)) == None and b.prev(P(62)) == None
+    assert b.count_below(P(0)) == 0
+    assert b.count_below(P(64)) == 1
+    assert b.count_below(P(128)) == 3
+    assert b.count_below(P(194)) == 4
+    assert b.with(P(5)).contains(P(5)) and not b.contains(P(5))
+    assert not b.without(P(64)).contains(P(64)) and b.contains(P(64))
+    assert b.find(x => x.ord > 100) == Some(P(127))
+    assert b.find(x => x.ord > 200) == None
+    for k in [1, 7, 63, 64, 65, 128, 194, 300]:
+        let s = b.shifted(-k)
+        for p in P:
+            let src = p.ord + k
+            assert s.contains(p) == (src < 195 and b.contains(P(src)))
+    var u = Bitset<P>.new()
+    for idx in [0, 1, 63, 64, 129]: u.add(P(idx))
+    let expected_up = u.shifted(65)
+    u.shift_up(65)
+    for p in P: assert u.contains(p) == expected_up.contains(p)
+    var o = Bitset<P>.new()
+    o.add(P(0))
+    for w in [3, 64, 65, 17]:
+        let want = o | o.shifted(w)
+        o.shift_or(w)
+        for p in P: assert o.contains(p) == want.contains(p)
+    o.clear()
+    assert o.is_empty and o.first() == None
+
+@test
+fn subset_sums_matches_naive_with_duplicates():
+    domain S = 0..=150
+    let ws = [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 7, 7, 15, 40, 40, 200, 0]
+    let fast = Bitset<S>.subset_sums(ws)
+    var naive = Bitset<S>.new()
+    naive.add(S(0))
+    for w in ws:
+        if w > 0: naive.union(naive.shifted(w))
+    for s in S: assert fast.contains(s) == naive.contains(s)
+
+@test
+fn subset_parity_constructors_and_complement():
+    domain P = 0..70
+    let e = Bitset<P>.empty()
+    let f = Bitset<P>.full()
+    assert e.is_empty and f.len == 70
+    let s = Bitset<P>.single(P(64))
+    assert s.len == 1 and P(64) in s and s.first() == Some(P(64)) and s.rfind(_ => true) == Some(P(64))
+    let c = s.complement()
+    assert c.len == 69 and P(64) not in c and P(0) in c and P(69) in c
+    let s2 = s.with(P(3)).without(P(64))
+    assert s2.len == 1 and P(3) in s2 and P(64) not in s2
+    let evens = Bitset<P>.of([p for p in P if p.ord % 2 == 0])
+    assert evens.len == 35 and P(0) in evens and P(1) not in evens and P(68) in evens
+
+@test
+fn the_kept_count_follows_every_update():
+    domain P = 0..130
+    var b = Bitset<P>()
+    assert b.is_empty and b.len == 0
+    for i in [0, 5, 64, 129, 5]: let _ = b.add(P(i))
+    assert b.len == 4 and not b.is_empty
+    let _ = b.remove(P(5))
+    let _ = b.remove(P(6))
+    b.toggle(P(7))
+    b.toggle(P(0))
+    assert b.len == 3 and b.complement().len == 127
+    b.set_range(P(60)..P(70))
+    assert b.len == 12
+    b.set_range(P(0)..P(64), on: false)
+    assert b.len == 7
+    b.flip_range(P(68)..P(72))
+    assert b.len == 7 and b.count_range(P(64)..P(72)) == 6
+    var f = Bitset<P>.full()
+    let _ = f.remove(P(5))
+    let _ = f.add(P(5))
+    f.toggle(P(9))
+    assert f.len == 129
+    f.set_range(P(60)..P(70), on: false)
+    f.set_range(P(60)..P(70))
+    assert f.len == 129
+    var u = Bitset<P>.single(P(3))
+    u.union(Bitset<P>.single(P(4)))
+    assert u.len == 2 and u.complement().len == 128
+    u.set_range(P(1)..P(3))
+    assert u.len == 4
+    u.intersect(Bitset<P>())
+    assert u.is_empty
+    u.flip_range(P(0)..P(2))
+    u.toggle(P(9))
+    assert u.len == 3 and u.count_below(P(9)) == 2 and u.count_below(P(10)) == 3
+
+fn bit_at(xs: List<Bool>, i: Int) -> Bool = 0 <= i < xs.len and xs[min(max(i, 0), xs.len - 1)]
+
+fn every_shift_moves_each_position<D>(x: [D]Bool, y: [D]Bool, n: Int):
+    let xs = [x[p] for p in D]
+    for k in [-2 * n, -n - 1, -n, -n + 1, -129, -128, -65, -64, -63, -1, 0, 1, 63, 64, 65, 127, 128, 129, n - 1, n, n + 1, 2 * n]:
+        let s = Bitset<D>.from(x).shifted(k)
+        var u = Bitset<D>.from(y)
+        u.union_shifted(Bitset<D>.from(x), k)
+        var want = 0
+        var i = 0
+        for p in D:
+            let moved = bit_at(xs, i - k)
+            if moved: want += 1
+            assert s.contains(p) == moved and u.contains(p) == (y[p] or moved)
+            i += 1
+        assert s.len == want
+        if k >= 0:
+            var up = Bitset<D>.from(x)
+            up.shift_up(k)
+            var down = Bitset<D>.from(x)
+            down.shift_down(k)
+            var both = Bitset<D>.from(x)
+            both.shift_or(k)
+            var j = 0
+            for p in D:
+                assert up.contains(p) == bit_at(xs, j - k)
+                assert down.contains(p) == bit_at(xs, j + k)
+                assert both.contains(p) == (x[p] or bit_at(xs, j - k))
+                j += 1
+
+@test
+fn every_shift_matches_moving_each_position_across_full_and_partial_words():
+    domain F = 0..192
+    domain G = 0..190
+    domain T = 0..10
+    every_shift_moves_each_position([F] p => rand(0, 3) == 0 or p.ord % 64 == 0 or p.ord == 191, [F] p => rand(0, 4) == 0, 192)
+    every_shift_moves_each_position([G] p => rand(0, 3) == 0 or p.ord % 64 == 63 or p.ord == 189, [G] p => rand(0, 4) == 0, 190)
+    every_shift_moves_each_position([T] p => p.ord % 3 == 1, [T] p => p.ord == 9, 10)
+
+fn dyn_shifts_move_each_position(cap: Int):
+    var x = List.filled(cap, false)
+    for i in 0..cap: x[i] = rand(0, 3) == 0 or i % 64 == 0 or i == cap - 1
+    for k in [0, 1, 63, 64, 65, 127, 128, 129, cap - 1, cap, cap + 1, 2 * cap]:
+        var up = DynBitset(cap)
+        var down = DynBitset(cap)
+        var both = DynBitset(cap)
+        for i in 0..cap:
+            if x[i]:
+                up.add(i)
+                down.add(i)
+                both.add(i)
+        up.shift_up(k)
+        down.shift_down(k)
+        both.shift_or(k)
+        var want = 0
+        for i in 0..cap:
+            let from = i >= k and x[max(i - k, 0)]
+            if from: want += 1
+            assert up.contains(i) == from and both.contains(i) == (x[i] or from)
+            assert down.contains(i) == (i + k < cap and x[min(i + k, cap - 1)])
+        assert up.len == want
+
+@test
+fn dyn_shifts_match_moving_each_position_across_full_and_partial_words():
+    for cap in [10, 190, 192]: dyn_shifts_move_each_position(cap)
+
+fn naive_subset_sums(count: Int, ws: List<Int>) -> List<Bool>:
+    var reach = List.filled(count, false)
+    if count > 0: reach[0] = true
+    for w in ws:
+        for s in (w..count).rev:
+            if reach[s - w]: reach[s] = true
+    reach
+
+@test
+fn subset_sums_match_naive_for_sparse_multisets():
+    domain S = 0..=40
+    domain E = 0..40
+    for ws in [[5, 5, 5, 5, 5], [20, 20, 20], [3, 3, 3, 3, 3, 3, 3], [40, 41, 39, 1], [13, 13, 13, 13], [0, 0, 7], [6, 6], [11]]:
+        let (a, b) = (naive_subset_sums(41, ws), naive_subset_sums(40, ws))
+        let (fs, fe) = (Bitset<S>.subset_sums(ws), Bitset<E>.subset_sums(ws))
+        let (ds, de) = (DynBitset.subset_sums(41, ws), DynBitset.subset_sums(40, ws))
+        for s in S: assert fs.contains(s) == a[s.ord] and ds.contains(s.ord) == a[s.ord]
+        for e in E: assert fe.contains(e) == b[e.ord] and de.contains(e.ord) == b[e.ord]
+
+impl Show for DynBitset:
+    fn show(a):
+        var out = ""
+        for v in a.each():
+            if not out.is_empty: out += " "
+            out += "{v}"
+        out
+
+impl Show for XorTrie:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

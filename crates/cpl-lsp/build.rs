@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
-    let stdlib = manifest.join("../../std");
+    let stdlib = manifest.join("../cpl-check/frozen/std");
     println!("cargo:rerun-if-changed={}", stdlib.display());
     let mut names: Vec<String> = std::fs::read_dir(&stdlib)
         .map(|dir| {

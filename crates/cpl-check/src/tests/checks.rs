@@ -117,7 +117,7 @@ fn the_std_name_table_is_read_off_the_standard_library() {
 /// a span into a bundled module still points at the right line.
 #[test]
 fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("frozen/std");
     let modules = crate::modules::std_modules();
     assert!(modules.iter().any(|(name, _)| *name == "seq"));
     for (name, bundled) in modules {

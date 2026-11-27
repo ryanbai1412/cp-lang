@@ -303,6 +303,28 @@ class DebtRatchetTest(unittest.TestCase):
                         "fn c(d: Deferred) {}\n")
             self.assertEqual(dr.link_reads_check(root), [f"crates/cpl-next-link/src/lib.rs:{i}" for i in (1, 4, 6)])
 
+    def test_frozen_std_drift_is_any_change_to_the_pinned_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            env = dr._git_env()
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, env=env,
+                                            capture_output=True, text=True).stdout.strip()
+            git("init", "-q")
+            self.assertEqual(dr.frozen_std_drift(root, "0" * 40), [])
+            self._write(root, f"{dr.FROZEN_STD}/a.cp", "pub fn a() = 1\n")
+            self._write(root, f"{dr.FROZEN_STD}/b.cp", "pub fn b() = 2\n")
+            git("add", "-A")
+            pin = git("rev-parse", f"{git('write-tree')}:{dr.FROZEN_STD}")
+            self.assertEqual(dr.frozen_std_drift(root, pin), [])
+            self._write(root, f"{dr.FROZEN_STD}/a.cp", "pub fn a() = 3\n")
+            self.assertEqual(dr.frozen_std_drift(root, pin), [f"{dr.FROZEN_STD}/a.cp: AM"])
+            git("add", "-A")
+            self.assertEqual(dr.frozen_std_drift(root, pin), [f"{dr.FROZEN_STD}/a.cp: differs from the pin"])
+            self._write(root, f"{dr.FROZEN_STD}/a.cp", "pub fn a() = 1\n")
+            self._write(root, f"{dr.FROZEN_STD}/c.cp", "")
+            git("add", f"{dr.FROZEN_STD}/a.cp")
+            self.assertEqual(dr.frozen_std_drift(root, pin), [f"{dr.FROZEN_STD}/c.cp: ??"])
+
     def test_name_compares_count_each_form(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -432,11 +454,18 @@ class DebtRatchetTest(unittest.TestCase):
             # Putting the file back as it was at the pin adds lines and keeps the freeze.
             self._write(root, "crates/cpl-check/src/a.rs", "fn a() {}\nfn b() {}\nfn c() {}\n")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "revert(check): to the pin")
+            # Vendoring the pinned std may fit the crates to it, once.
+            self._write(root, dr.FROZEN_STD + "/seq.cp", "pub fn f() = 0\n")
+            self._write(root, "crates/cpl-check/src/a.rs", "fn a() {}\nfn b() {}\nfn c() {}\nfn pinned() {}\n")
+            git("add", "-A"); git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "check: pin std")
+            self._write(root, "crates/cpl-check/src/a.rs", "fn a() {}\nfn b() {}\nfn c() {}\nfn pinned() {}\nfn d() {}\n")
+            self._write(root, dr.FROZEN_STD + "/seq.cp", "pub fn f() = 0\npub fn g() = 0\n")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "check: after the pin")
             with mock.patch.object(dr, "FROZEN_PIN", base):
                 got = dr.frozen_edits(root, base)
             # No trailer excuses a commit, whoever signs it.
-            self.assertEqual(len(got), 3)
-            self.assertTrue(all("adds 1 lines to the frozen old pipeline" in g for g in got))
+            self.assertEqual(len(got), 4)
+            self.assertTrue(all("adds 1 lines to the frozen old pipeline" in g for g in got[1:]))
 
     def test_skipped_ratchet_flags_new_pipeline_commits_that_skip_it(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -624,6 +653,15 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/seq.cp", "pub fn sum(xs: List<Int>) -> Int = todo\nfn print() = todo\n")
             self._write(root, "std/bag.cp", "pub struct Counter {}\n")
             self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
+
+    def test_old_crate_counters_read_the_std_they_read(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "crates/cpl-check/src/prelude.rs", 'pub const VALUE_NAMES: &[&str] = &["sum", "fold"];\n')
+            self._write(root, "std/seq.cp", "pub fn sum(xs: List<Int>) -> Int = 0\npub fn fold() = 0\n")
+            self.assertEqual(dr.prelude_privilege(root), ["fold", "sum"])
+            self._write(root, dr.FROZEN_STD + "/seq.cp", "pub fn sum(xs: List<Int>) -> Int = 0\n")
+            self.assertEqual(dr.prelude_privilege(root), ["sum"])
 
     def test_domain_member_names(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2173,6 +2211,25 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "plan/domains/tech-debt/architecture/builtin-floor.md",
                         "| Storage | intrinsic | `len` `at` `nth` |\n| Derived | move | `sum` `find` |\n")
             self.assertEqual(dr.ir_builtin_derived(root), ["find", "sum"])
+
+    def test_a_raise_the_old_crates_restore_brings_is_measured_away(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
+                                            env=dr._git_env())
+            git("init", "-q")
+            self._write(root, "std/subset.cp", "@member(subsets)\npub struct Subset<B>(bits: U64):\n")
+            self._write(root, "crates/cpl-ir/src/a.rs", "fn a() {}\n")
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+            base = git("rev-parse", "HEAD").stdout.decode().strip()
+            self.assertIsNone(dr.measured_without_restore(root, base, "domain_member_names"))
+            self._write(root, "crates/cpl-ir/src/a.rs", 'fn a() {}\nif matches!(m, "subsets") {}\n')
+            self._write(root, "crates/cpl-ir/src/b.rs", 'if matches!(m, "subsets") {}\n')
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "restore")
+            self.assertEqual(len(dr.domain_member_names(root)), 2)
+            self.assertEqual(dr.measured_without_restore(root, base, "domain_member_names"), 0)
 
     def test_a_raised_baseline_fails_unless_its_measure_changed(self) -> None:
         with tempfile.TemporaryDirectory() as d:

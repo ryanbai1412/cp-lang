@@ -689,7 +689,7 @@ impl<'a> Checker<'a> {
         let (first, rest) = args.split_first()?;
         if first.name.is_some()
             || first.mutable
-            || !crate::prelude::value_names().contains(&name.as_str())
+            || !crate::prelude::VALUE_NAMES.contains(&name.as_str())
             || self.local(name).is_some()
             || self.free_global(name).is_some()
         {
@@ -779,7 +779,7 @@ impl<'a> Checker<'a> {
         let own_member = match &base_ty {
             Ty::Optional(_) => crate::builtins::optional_member(&name.text),
             Ty::Domain(_) => {
-                crate::builtins::is_member(crate::builtins::domain_member_docs(), &name.text)
+                crate::builtins::is_member(crate::builtins::DOMAIN_MEMBERS, &name.text)
             }
             Ty::Pos(_) => crate::builtins::is_member(crate::builtins::POS_MEMBERS, &name.text),
             _ => self.catalog_row(base, &name.text).is_some(),

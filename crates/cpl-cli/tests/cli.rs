@@ -1670,7 +1670,10 @@ fn a_std_module_copied_into_a_library_emits_the_same_cpp() {
     std::fs::create_dir_all(&lib_dir).unwrap();
     std::fs::write(root.join("cp.toml"), "[libs]\nmylib = \"mylib\"\n").unwrap();
     std::fs::write(lib_dir.join("lib.toml"), "name = \"mylib\"\n").unwrap();
-    let math = concat!(env!("CARGO_MANIFEST_DIR"), "/../../std/math.cp");
+    let math = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../cpl-check/frozen/std/math.cp"
+    );
     std::fs::copy(math, lib_dir.join("mymath.cp")).unwrap();
     let copied = root.join("copied.cp");
     std::fs::write(

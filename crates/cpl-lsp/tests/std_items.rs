@@ -705,7 +705,7 @@ fn report(name: &str, tally: &Tally, ceilings: &[(&str, usize)]) {
 #[test]
 fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let cases = lib_cases(&root.join("std"), "std");
+    let cases = lib_cases(&root.join("crates/cpl-check/frozen/std"), "std");
     let tally = run_all(&cases, STD_URI);
     report(
         "std",
@@ -922,7 +922,7 @@ fn personal_library(dir: &Path) -> (Vec<Case>, String) {
     let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir.join("mine")).unwrap();
     std::fs::write(dir.join("cp.toml"), "[libs]\nmine = \"mine\"\n").unwrap();
-    let modules: Vec<_> = std::fs::read_dir(root.join("std"))
+    let modules: Vec<_> = std::fs::read_dir(root.join("crates/cpl-check/frozen/std"))
         .unwrap()
         .map(|e| e.unwrap().path())
         .filter(|p| p.extension().is_some_and(|e| e == "cp"))
@@ -983,7 +983,7 @@ fn a_personal_library_gets_what_std_gets(k: usize) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let (cases, uri) = personal_library(&library_dir(&format!("personal-lib-{k}")));
     let cases = shards::mine(cases, |c| std_who(&c.who), k, SHARDS);
-    let std_cases = lib_cases(&root.join("std"), "std");
+    let std_cases = lib_cases(&root.join("crates/cpl-check/frozen/std"), "std");
     let std = run_all(
         &shards::mine(std_cases, |c| c.who.clone(), k, SHARDS),
         STD_URI,

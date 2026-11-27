@@ -544,7 +544,7 @@ impl<'a> Lowerer<'a> {
                 // A plain call of two values is the core binary `min`/`max`, and a
                 // free `count`/`all`/`any` of one generator tests each value it makes,
                 // even where std.seq's fold of that name is in scope (decision 53).
-                let getter = cpl_check::prelude_values().contains(&name.as_str())
+                let getter = cpl_check::PRELUDE_VALUES.contains(&name.as_str())
                     && self.get_sym(name).is_some_and(|s| self.is_getter(s));
                 if getter || super::names::core_over_std(name, args) && !self.declares(name) {
                     return self.prelude(name, args, hint, span);

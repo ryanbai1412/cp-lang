@@ -19,7 +19,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/std_files.rs");
     println!("cargo:rerun-if-changed=src/std_bundle.rs");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
-    let std = manifest.join("../../std");
+    let std = manifest.join("frozen/std");
     let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32");
     let dev = std::env::var("PROFILE").as_deref() == Ok("debug") && !wasm;
     let source = if dev {

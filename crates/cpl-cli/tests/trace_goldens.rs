@@ -523,7 +523,7 @@ fn a_large_array_is_drawn_by_a_window() {
 /// The private fields of each `pub struct` in `std/`: what a value of a
 /// std type is made of inside, which a trace must never show.
 fn std_private_fields() -> std::collections::BTreeMap<String, Vec<String>> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-check/frozen/std");
     let mut fields = std::collections::BTreeMap::new();
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();

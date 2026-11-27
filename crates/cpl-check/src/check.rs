@@ -531,7 +531,7 @@ impl<'a> Checker<'a> {
     /// `name` as a plain call: a `@get` fn is read as `.name` (R06.4.2), so it
     /// never shadows the prelude fn of its name, `swap(mut a, mut b)`.
     pub(crate) fn free_global(&mut self, name: &str) -> Option<Arc<Def>> {
-        let prelude = prelude::value_names().contains(&name);
+        let prelude = prelude::VALUE_NAMES.contains(&name);
         self.global(name)
             .filter(|d| !(prelude && matches!(&**d, Def::Fn { getter: true, .. })))
     }
@@ -1198,7 +1198,7 @@ impl<'a> Checker<'a> {
             return;
         }
         let mut candidates: Vec<String> = self.env.names();
-        candidates.extend(prelude::value_names().iter().map(|n| n.to_string()));
+        candidates.extend(prelude::VALUE_NAMES.iter().map(|n| n.to_string()));
         if value {
             for scope in self.scopes.iter() {
                 candidates.extend(scope.keys().cloned());
@@ -1245,7 +1245,7 @@ impl<'a> Checker<'a> {
         // likely a library type that doesn't exist yet than a typo.
         let near_builtin = !value
             && suggestion.as_deref().is_some_and(|s| {
-                prelude::type_names().contains(&s)
+                prelude::TYPE_NAMES.contains(&s)
                     || prelude::std_names().iter().any(|(n, _)| *n == s)
             });
         let mut free_twin = advice::free_by_twin(self.src, name, span).filter(|_| value);
@@ -1742,7 +1742,7 @@ pub(crate) fn spec_member_typo(
         return closest(name, methods.iter().map(String::as_str));
     }
     let own_members: &[(&str, &str)] = match base {
-        Ty::Domain(_) => crate::builtins::domain_member_docs(),
+        Ty::Domain(_) => crate::builtins::DOMAIN_MEMBERS,
         Ty::Pos(_) => crate::builtins::POS_MEMBERS,
         _ => &[],
     };

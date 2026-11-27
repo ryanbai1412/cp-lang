@@ -531,7 +531,9 @@ impl<'a> Lowerer<'a> {
             name: fname,
         } = &base.kind
         {
-            if cpl_check::is_cuts(&fname.text) && matches!(name.text.as_str(), "nth" | "at") {
+            if matches!(fname.text.as_str(), "bounds" | "cuts")
+                && matches!(name.text.as_str(), "nth" | "at")
+            {
                 let dom_id = if let Some(Sym::Domain(id)) = self.sym(dbase) {
                     Some(id)
                 } else if let ast::ExprKind::Name(n) = &dbase.kind {
@@ -758,8 +760,8 @@ impl<'a> Lowerer<'a> {
                 }
             }
             Some(Sym::Domain(id)) => match name.text.as_str() {
-                m if m == cpl_check::cuts_member() => {
-                    return match self.one_arg(m, args, &Ty::Int, span) {
+                "cuts" => {
+                    return match self.one_arg("cuts", args, &Ty::Int, span) {
                         Some(k) => self.domain_cut(id, k, true, span),
                         None => self.err_expr(span),
                     };

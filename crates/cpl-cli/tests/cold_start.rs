@@ -113,7 +113,7 @@ fn largest_ports(tested: bool) -> Vec<String> {
 
 /// A program that imports every module in `std/` and calls the prelude.
 fn every_std_module_program() -> String {
-    let mut modules: Vec<String> = std::fs::read_dir(root().join("std"))
+    let mut modules: Vec<String> = std::fs::read_dir(root().join("crates/cpl-check/frozen/std"))
         .unwrap()
         .flatten()
         .filter_map(|e| {

@@ -37,10 +37,10 @@ mod std_files;
 mod ty;
 
 pub use builtins::{
-    builtin_member, builtin_members, char_literal, domain_member_docs, foreign_iter_call,
-    foreign_member, foreign_str_fn, is_member, list_end_help, needs_order, optional_member,
-    prelude_names, split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind,
-    PreludeKind, Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, ITERATOR_POSITION_HELP,
+    builtin_member, builtin_members, char_literal, foreign_iter_call, foreign_member,
+    foreign_str_fn, is_member, list_end_help, needs_order, optional_member, prelude_names,
+    split_params as split_builtin_params, BuiltinMember, BuiltinType, MemberKind, PreludeKind,
+    Receiver, BUILTIN_MEMBERS, BUILTIN_TYPES, DOMAIN_MEMBERS, ITERATOR_POSITION_HELP,
     OPTIONAL_MEMBERS, OPTIONAL_UNWRAP_HELP, POS_MEMBERS, RANGE_MEMBERS,
 };
 pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
@@ -60,10 +60,9 @@ pub use prelude::{
     arity_key, domain_member, domain_members, import_edit, is_method as is_std_method, labels_fit,
     method_is_foreign as std_method_is_foreign, method_key, method_module, methods as std_methods,
     names as prelude_uses, overload_key, overload_part, required_labels, std_family, std_module,
-    std_names, ty as prelude_type, type_arity, value_names as prelude_values, word_type,
-    written_name, StdMethod,
+    std_names, ty as prelude_type, type_arity, word_type, written_name, StdMethod,
+    VALUE_NAMES as PRELUDE_VALUES,
 };
-pub use prelude::{cuts_member, is_cuts};
 pub use session::{open, Libraries, Revision, Session, SessionOptions};
 pub use ty::{human_bytes, Param, Ty};
 

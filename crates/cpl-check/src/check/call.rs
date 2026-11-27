@@ -735,7 +735,7 @@ impl<'a> Checker<'a> {
         if self.declares_field(&base_ty, &name.text) {
             return;
         }
-        if name.text == "swap_idx" && base_ty.is_indexed_mut() {
+        if matches!(name.text.as_str(), "set_at" | "swap_idx") && base_ty.is_indexed_mut() {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
             return;
         }
@@ -777,7 +777,7 @@ impl<'a> Checker<'a> {
                 )
             }
             Ty::Domain(_) => {
-                matches!(name, "len" | "first" | "last" | "rev") || crate::prelude::is_cuts(name)
+                matches!(name, "len" | "first" | "last" | "rev" | "bounds" | "cuts")
             }
             t if t.is_int() => matches!(name, "abs" | "ord" | "sqrt"),
             Ty::Float => matches!(name, "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"),
@@ -1007,8 +1007,7 @@ impl<'a> Checker<'a> {
             self.bool_count(call, &base_ty);
         }
         // R04.2.17: `V.cuts(k)` is the cut numbered `k`, not the range of cuts.
-        let cut_call = crate::prelude::is_cuts(&name.text);
-        if let (Ty::Domain(d), true, [arg]) = (&base_ty, cut_call, args) {
+        if let (Ty::Domain(d), "cuts" | "bounds", [arg]) = (&base_ty, name.text.as_str(), args) {
             if arg.name.is_none() {
                 let got = self.infer(&arg.value);
                 self.expect_fits(&got, &Ty::Int, &arg.value, &|c, got, _| {

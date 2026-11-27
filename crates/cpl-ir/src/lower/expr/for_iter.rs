@@ -554,7 +554,9 @@ impl<'a> Lowerer<'a> {
                 };
                 (iter, ty)
             }
-            ast::ExprKind::Field { base, name } if cpl_check::is_cuts(&name.text) => {
+            ast::ExprKind::Field { base, name }
+                if matches!(name.text.as_str(), "bounds" | "cuts") =>
+            {
                 let domain = match &base.kind {
                     ast::ExprKind::Name(n) if self.lookup(n).is_none() => {
                         self.resolve_domain_name(n)

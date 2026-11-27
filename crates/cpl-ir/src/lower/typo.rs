@@ -37,8 +37,8 @@ impl<'a> Lowerer<'a> {
             "end", "first", "halves", "is_empty", "last", "mid", "rev", "sorted", "start", "step",
         ];
         const DOMAIN_MEMBERS: &[&str] = &[
-            "after", "all", "any", "at", "before", "count", "first", "is_empty", "last", "len",
-            "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "sum",
+            "after", "all", "any", "at", "before", "count", "cuts", "first", "is_empty", "last",
+            "len", "mask", "max", "min", "nth", "rev", "size", "sort", "sorted", "sum",
         ];
         const SEQ_EXTRA: &[&str] = &["adjacent", "items", "reverse", "reversed"];
         const STR_EXTRA: &[&str] = &[

@@ -1,0 +1,1631 @@
+//! Binary heaps (round 5): `Heap<T>(by:)` pops the smallest key first and `Heap(by: desc)` the
+//! largest. One type per shape: `Heap`, `ErasableHeap`, `IndexedHeap`, `MeldHeap` (or many in one
+//! `MeldHeaps` pool), `MinMaxHeap`.
+//!
+//! start: `Heap`, `IndexedHeap`, `MinMaxHeap`, `MeldHeap`, `Settle`
+//! example: `var h: Heap<Int> = Heap(); h.push(3); h.push(1); h.pop() == Some(1)`
+//!
+//! Ties: no heap here is stable. Among elements with equal keys under `by:`, which one `peek`
+//! shows and `pop` returns is unspecified (but `peek` always shows the one `pop` returns next).
+//! Without `by:`, equal elements are indistinguishable, so this never shows. For a fixed order
+//! among equals, put the tie-breaker in the entry: `(d, v)`, or `(d, desc(v))`.
+use std.algebra.{Desc, desc}
+use std.math.{bit_width}
+use std.range.{Len}
+use std.seq.{Seq}
+
+/// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
+/// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the
+/// smallest distance first and, among equals, the largest vertex.
+pub struct Heap<T: Ord>:
+    var xs: List<T>
+    lt: ?((T, T) -> Bool)
+
+    /// Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
+    ///
+    /// With `by: f` the heap compares `f(x)`, and `f` is called on every comparison, so it
+    /// should be cheap (a field, `desc`). Without `by:` it compares the elements themselves.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: Heap<Int> = Heap(); h.push(3); h.push(1); h.pop() == Some(1)`
+    ///
+    /// ```cp
+    /// use std.algebra.{desc}
+    /// var h: Heap<Int> = Heap(by: desc)
+    /// h.push(1)
+    /// h.push(3)
+    /// h.pop() == Some(3)
+    /// ```
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> Heap<T>:
+        if let f = by: return Heap(xs: [], lt: Some((a, b) => f(a) < f(b)))
+        Heap(xs: [], lt: None)
+
+    /// Build a `Heap<T>` from `xs` via Floyd heapify.
+    ///
+    /// `by:` means what it means in `new`; without it pops come out in the order of
+    /// `xs.sorted()`, and `Heap.of(xs, by: desc)` is the \(O(n)\) max-heap (`MaxHeap.of`).
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `Heap<Int>.of([]).len == 0`
+    /// traps: never
+    /// example: `var h = Heap.of([3, 1, 2]); h.pop() == Some(1) and h.len == 2`
+    ///
+    /// ```cp
+    /// use std.algebra.{desc}
+    /// var h = Heap.of([3, 1, 2], by: desc)
+    /// h.pop() == Some(3)
+    /// ```
+    pub fn of<K: Ord>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>:
+        var h: Heap<T> = Heap.new(by:)
+        h.xs = xs
+        var i = h.xs.len / 2
+        while i > 0:
+            i -= 1
+            h.sift_down(i)
+        h
+
+    /// Number of elements currently in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Heap.of([3, 1]).len == 2`
+    @get pub fn len(self) -> Int:
+        self.xs.len
+    /// Whether the heap is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Heap.of([3]).is_empty == false`
+    @get pub fn is_empty(self) -> Bool:
+        self.xs.len == 0
+
+    /// Visit every element in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `Heap<Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop` would return them; equal keys in no promised order
+    /// traps: never
+    /// example: `let h = Heap.of([3, 1, 2]); h.each().collect() == [1, 2, 3] and h.len == 3`
+    pub fn each(self) -> yields T:
+        var rest = self
+        for x in rest.drain(): yield x
+
+    /// The smallest element, or `None` if the heap is empty.
+    ///
+    /// With `by: desc` the smallest key is the largest element.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `Heap<Int>().peek == None`
+    /// traps: never
+    /// example: `Heap.of([3, 1, 2]).peek == Some(1)`
+    @get pub fn peek(self) -> ?T:
+        if self.xs.len == 0: return None
+        Some(self.xs[0])
+
+    /// Remove all elements from the heap.
+    ///
+    /// The order `by:` is kept.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = Heap.of([1, 2]); h.clear(); h.pop() == None`
+    pub fn clear(mut self):
+        self.xs = []
+
+    /// Move the heap's contents out in \(O(1)\), leaving `self` empty.
+    ///
+    /// Both heaps keep the order `by:`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = Heap.of([2, 1]); let t = h.take(); h.is_empty and t.peek == Some(1)`
+    pub fn take(mut self) -> Heap<T>:
+        var out: List<T> = []
+        swap(mut out, mut self.xs)
+        Heap(xs: out, lt: self.lt)
+
+    fn less(self, a: T, b: T) -> Bool:
+        if let f = self.lt: return f(a, b)
+        a < b
+
+    // Moves a hole down instead of swapping: one write per level, as std::priority_queue.
+    fn sift_down(mut self, start: Int):
+        let n = self.xs.len
+        let x = self.xs[start]
+        var i = start
+        while 2 * i + 1 < n:
+            var c = 2 * i + 1
+            if c + 1 < n and self.less(self.xs[c + 1], self.xs[c]): c += 1
+            if not self.less(self.xs[c], x): break
+            self.xs[i] = self.xs[c]
+            i = c
+        self.xs[i] = x
+
+    /// Push `x` into the heap.
+    ///
+    /// cost: \(O(\log n)\), amortized over list growth
+    /// traps: never
+    /// example: `var h = Heap.of([5]); h.push(2); h.peek == Some(2)`
+    pub fn push(mut self, x: T):
+        var i = self.xs.len
+        self.xs.push(x)
+        while i > 0:
+            let p = (i - 1) / 2
+            if not self.less(x, self.xs[p]): break
+            self.xs[i] = self.xs[p]
+            i = p
+        self.xs[i] = x
+
+    /// Remove and return the smallest element, or `None` if the heap is empty.
+    ///
+    /// cost: \(O(\log n)\)
+    /// empty: `var h = Heap<Int>(); h.pop() == None`
+    /// traps: never
+    /// example: `var h = Heap.of([2, 1]); h.pop() == Some(1) and h.pop() == Some(2) and h.pop() == None`
+    @lint(while_not_empty_pop, from: "while not self.is_empty:\n    let x = self.pop()!\n    b", to: "while let x = self.pop():\n    b", holes: "x, b")
+    @lint(while_not_empty_pop, from: "while self.len > 0:\n    let x = self.pop()!\n    b", to: "while let x = self.pop():\n    b", holes: "x, b")
+    @lint(while_not_empty_pop, from: "while self.len != 0:\n    let x = self.pop()!\n    b", to: "while let x = self.pop():\n    b", holes: "x, b")
+    pub fn pop(mut self) -> ?T:
+        if self.xs.len == 0: return None
+        let top = self.xs[0]
+        let last = self.xs.pop()!
+        if self.xs.len > 0:
+            self.xs[0] = last
+            self.sift_down(0)
+        Some(top)
+
+    /// Reserve backing storage for at least `cap` elements.
+    ///
+    /// cost: \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise
+    /// traps: never
+    /// example: `var h = Heap.of([2]); h.reserve(100); h.peek == Some(2)`
+    pub fn reserve(mut self, cap: Int):
+        self.xs.reserve(cap)
+
+    /// Push `x` and pop the minimum in one sift.
+    ///
+    /// Returns `x` itself, leaving the heap unchanged, when the heap is empty or the key of
+    /// `x` is no greater than the top's; otherwise returns the old top and keeps `x`.
+    ///
+    /// cost: \(O(\log n)\); \(O(1)\) when `x` is returned
+    /// empty: `var h = Heap<Int>(); h.push_pop(4) == 4 and h.is_empty`
+    /// traps: never
+    /// example: `var h = Heap.of([2, 5]); h.push_pop(3) == 2 and h.peek == Some(3)`
+    /// example: `var h = Heap.of([2]); h.push_pop(1) == 1 and h.peek == Some(2)`
+    @lint(push_pop_pair, from: "self.push(x)\nlet y = self.pop()!", to: "let y = self.push_pop(x)")
+    pub fn push_pop(mut self, x: T) -> T:
+        if self.xs.len == 0 or not self.less(self.xs[0], x): return x
+        let top = self.xs[0]
+        self.xs[0] = x
+        self.sift_down(0)
+        top
+
+    /// Replace the minimum with `x` and return the old minimum (or `None` if empty).
+    ///
+    /// The old top is returned even when `x` is smaller than it. On an empty heap `x` is
+    /// pushed and the result is `None`.
+    ///
+    /// cost: \(O(\log n)\)
+    /// empty: `var h = Heap<Int>(); h.replace_top(4) == None and h.peek == Some(4)`
+    /// traps: never
+    /// example: `var h = Heap.of([2, 5]); h.replace_top(9) == Some(2) and h.peek == Some(5)`
+    /// example: `var h: Heap<Int> = Heap(); h.replace_top(4) == None and h.peek == Some(4)`
+    pub fn replace_top(mut self, x: T) -> ?T:
+        if self.xs.len == 0:
+            self.xs.push(x)
+            return None
+        let top = self.xs[0]
+        self.xs[0] = x
+        self.sift_down(0)
+        Some(top)
+
+    /// Push all elements of `items`.
+    ///
+    /// cost: \(O(k \log n)\) for `k` items
+    /// empty: `var h = Heap.of([4]); h.push_all([]); h.len == 1`
+    /// traps: never
+    /// example: `var h = Heap.of([4]); h.push_all([3, 1]); h.peek == Some(1) and h.len == 3`
+    pub fn push_all(mut self, items: Seq<T>):
+        for x in items: self.push(x)
+
+    /// Pop and yield all elements in ascending order, leaving the heap empty.
+    ///
+    /// Each step is one `pop`. A loop that stops early leaves the elements not yet yielded in
+    /// the heap.
+    ///
+    /// cost: \(O(\log n)\) per step
+    /// empty: `var h = Heap<Int>(); h.drain().collect() == []`
+    /// order: ascending key order, the order `pop` would return them
+    /// traps: never
+    /// example: `var h = Heap.of([3, 1, 2]); h.drain().collect() == [1, 2, 3] and h.is_empty`
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    print(self.pop()!, end: e)", to: "for x in self.drain().take(k):\n    print(x, end: e)", holes: "k, e")
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    print(self.pop()!)", to: "for x in self.drain().take(k):\n    print(x)", holes: "k")
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    s += self.pop()!", to: "for x in self.drain().take(k):\n    s += x", holes: "k, s")
+    @lint(manual_heap_drain, from: "for _ in 0..k:\n    s += -(self.pop()!)", to: "for x in self.drain().take(k):\n    s += -x", holes: "k, s")
+    @lint(manual_heap_drain, from: "sum(self.pop()! for _ in 0..k)", to: "sum(self.drain().take(k))", holes: "k")
+    @lint(manual_heap_drain, from: "sum(-(self.pop()!) for _ in 0..k)", to: "sum(-x for x in self.drain().take(k))", holes: "k")
+    pub fn drain(mut self) -> yields T:
+        while let x = self.pop(): yield x
+
+/// Min-heap supporting \(O(\log n)\) arbitrary-value `remove(x)` via a lazy deletion heap.
+/// `push` and `remove` are \(O(\log n)\); `peek` and `pop` are \(O(\log n)\) amortized; `len`, `is_empty`,
+/// `clear`, and `take` are \(O(1)\).
+pub struct ErasableHeap<T: Ord>:
+    live: Heap<T>
+    dead: Heap<T>
+
+    /// Create an empty `ErasableHeap<T>`, optionally ordered by key extractor `by:` (W7).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(2); h.push(1); h.remove(1); h.pop() == Some(2)`
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> ErasableHeap<T>:
+        ErasableHeap(Heap.new(by:), Heap.new(by:))
+
+    /// Number of active elements in the heap.
+    ///
+    /// Pushed elements minus removed ones, counting copies.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.push(1); h.remove(1); h.len == 1`
+    @get pub fn len(self) -> Int:
+        live.len - dead.len
+
+    /// Whether no active elements remain.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.remove(1); h.is_empty`
+    @get pub fn is_empty(self) -> Bool:
+        live.len == dead.len
+
+    /// Visit every active element in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `ErasableHeap<Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop` would return them; removed copies are skipped
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(3); h.push(1); h.push(2); h.remove(2); h.each().collect() == [1, 3]`
+    pub fn each(self) -> yields T:
+        var rest = self
+        while let x = rest.pop(): yield x
+
+    /// Remove all elements from the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.clear(); h.pop() == None`
+    pub fn clear(mut self):
+        live.clear()
+        dead.clear()
+
+    /// Move the heap's contents out in \(O(1)\), leaving `self` empty.
+    ///
+    /// Pending removals move with the contents.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); let t = h.take(); h.is_empty and t.len == 1`
+    pub fn take(mut self) -> ErasableHeap<T>:
+        let out = ErasableHeap(live.take(), dead.take())
+        out
+
+    fn prune(mut self):
+        while dead.len > 0 and live.len > 0:
+            let a = live.peek!
+            let b = dead.peek!
+            if live.less(b, a) or live.less(a, b): break
+            live.pop()
+            dead.pop()
+
+    /// Push `x` into the heap.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(4); h.peek() == Some(4)`
+    pub fn push(mut self, x: T):
+        live.push(x)
+
+    /// Schedule one copy of `x` for lazy removal (`x` must be present).
+    ///
+    /// One copy goes, even when several are present. The copy leaves at once as far as `len`,
+    /// `peek` and `pop` can see; its storage is freed when it would reach the top. Removing a
+    /// value that is not present corrupts the heap: checked builds trap when they find such a
+    /// value surfacing.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never in release; debug traps when `x` is found not to be present
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.push(1); h.push(3); h.remove(1); h.pop() == Some(1) and h.pop() == Some(3)`
+    pub fn remove(mut self, x: T):
+        dead.push(x)
+
+    /// Return the smallest active element, or `None` if empty.
+    ///
+    /// Takes `mut self` because it first discards removed values sitting on top.
+    ///
+    /// cost: \(O(\log n)\) amortized
+    /// empty: `var h = ErasableHeap<Int>(); h.peek() == None`
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(1); h.push(2); h.remove(1); h.peek() == Some(2)`
+    pub fn peek(mut self) -> ?T:
+        self.prune()
+        live.peek
+
+    /// Remove and return the smallest active element, or `None` if empty.
+    ///
+    /// cost: \(O(\log n)\) amortized
+    /// empty: `var h = ErasableHeap<Int>(); h.pop() == None`
+    /// traps: never
+    /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(5); h.push(2); h.pop() == Some(2) and h.len == 1`
+    pub fn pop(mut self) -> ?T:
+        self.prune()
+        live.pop()
+
+/// Domain-keyed min-heap over `D` supporting \(O(\log n)\) `set`, `decrease`, `increase`, `remove`,
+/// and `pop`, plus \(O(1)\) `contains`, `get`, and `peek`.
+///
+/// Each `v: D` is in the heap at most once, with one key `K`. Ties between equal keys go to the
+/// smaller `v` in `D`'s order, so the pop order is fully determined. Memory is \(O(\lvert D \rvert)\).
+pub struct IndexedHeap<D, K: Ord>:
+    heap: List<D>
+    pos: [D]Int
+    keys: [D]?K
+
+    /// Create an empty `IndexedHeap<D, K>`.
+    ///
+    /// cost: \(O(\lvert D \rvert)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.len == 0`
+    pub fn new() -> IndexedHeap<D, K>:
+        IndexedHeap([], [D] _ => -1, [D] _ => None)
+
+    /// Number of keys currently in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.set(V(1), 6); h.len == 1`
+    @get pub fn len(self) -> Int:
+        heap.len
+
+    /// Whether the heap is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.is_empty`
+    @get pub fn is_empty(self) -> Bool:
+        heap.len == 0
+
+    /// Visit every `(position, key)` entry in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(\lvert D \rvert + n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `domain V = 0..4; IndexedHeap<V, Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop` would return them; equal keys in no promised order
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.set(V(0), 9); h.each().collect() == [(V(2), 5), (V(0), 9)]`
+    pub fn each(self) -> yields (D, K):
+        var rest = self
+        while let e = rest.pop(): yield e
+
+    /// Current priority of `v`, or `None` if absent.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.get(V(2)) == Some(5) and h.get(V(0)) == None`
+    pub fn get(self, v: D) -> ?K:
+        keys[v]
+
+    /// Pair `(v, key)` with the smallest key, or `None` if empty.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `domain V = 0..4; IndexedHeap<V, Int>().peek == None`
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(3), 1); h.set(V(1), 1); h.peek == Some((V(1), 1))`
+    @get pub fn peek(self) -> ?(D, K):
+        if heap.len == 0: return None
+        let v = heap[0]
+        Some((v, keys[v]!))
+
+    /// Remove all entries from the heap.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.clear(); h.get(V(1)) == None`
+    pub fn clear(mut self):
+        for v in heap:
+            pos[v] = -1
+            keys[v] = None
+        heap.clear()
+
+    fn before(self, a: D, b: D) -> Bool:
+        let ka = keys[a]!
+        let kb = keys[b]!
+        ka < kb or (not (kb < ka) and a.ord < b.ord)
+
+    fn swap_at(mut self, i: Int, j: Int):
+        let a = heap[i]
+        let b = heap[j]
+        heap[i] = b
+        heap[j] = a
+        pos[b] = i
+        pos[a] = j
+
+    fn sift_up(mut self, start: Int):
+        var i = start
+        while i > 0:
+            let p = (i - 1) / 2
+            if not self.before(heap[i], heap[p]): break
+            self.swap_at(i, p)
+            i = p
+
+    fn sift_down(mut self, start: Int):
+        let n = heap.len
+        var i = start
+        while 2 * i + 1 < n:
+            var c = 2 * i + 1
+            if c + 1 < n and self.before(heap[c + 1], heap[c]): c += 1
+            if not self.before(heap[c], heap[i]): break
+            self.swap_at(i, c)
+            i = c
+
+    /// Insert `v` with key `k`, or update `v`'s key to `k`.
+    ///
+    /// The new key may be larger or smaller than the old one.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.set(V(1), 9); h.get(V(1)) == Some(9)`
+    pub fn set(mut self, v: D, k: K):
+        keys[v] = Some(k)
+        if pos[v] < 0:
+            pos[v] = heap.len
+            heap.push(v)
+            self.sift_up(heap.len - 1)
+        else:
+            self.sift_up(pos[v])
+            self.sift_down(pos[v])
+
+    /// Insert `v` with `k`, or lower its key to `k` if `k` is smaller. Returns `true` if updated.
+    ///
+    /// The relaxation step of Dijkstra. An equal key is not smaller: it returns `false`.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.decrease(V(1), 5) and not h.decrease(V(1), 5) and h.decrease(V(1), 3) and h.get(V(1)) == Some(3)`
+    pub fn decrease(mut self, v: D, k: K) -> Bool:
+        if let old = keys[v]:
+            if not (k < old): return false
+        self.set(v, k)
+        true
+
+    /// Insert `v` with `k`, or raise its key to `k` if `k` is larger. Returns `true` if updated.
+    ///
+    /// An equal key is not larger: it returns `false`.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.increase(V(1), 5) and not h.increase(V(1), 2) and h.get(V(1)) == Some(5)`
+    pub fn increase(mut self, v: D, k: K) -> Bool:
+        if let old = keys[v]:
+            if not (old < k): return false
+        self.set(v, k)
+        true
+
+    /// Remove `v` from the heap if present; returns its old key or `None`.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(1), 5); h.remove(V(1)) == Some(5) and h.remove(V(1)) == None`
+    pub fn remove(mut self, v: D) -> ?K:
+        let old = keys[v]
+        if old == None: return None
+        let i = pos[v]
+        let last = heap.len - 1
+        self.swap_at(i, last)
+        heap.pop()
+        pos[v] = -1
+        keys[v] = None
+        if i < heap.len:
+            self.sift_up(i)
+            self.sift_down(i)
+        old
+
+    /// Remove and return `(v, key)` with the smallest key, or `None` if empty.
+    ///
+    /// cost: \(O(\log n)\)
+    /// empty: `domain V = 0..4; var h = IndexedHeap<V, Int>(); h.pop() == None`
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.set(V(0), 7); h.pop() == Some((V(2), 5)) and h.len == 1`
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(3), 1); h.set(V(1), 1); h.pop() == Some((V(1), 1))`
+    pub fn pop(mut self) -> ?(D, K):
+        if heap.len == 0: return None
+        let v = heap[0]
+        let k = keys[v]!
+        self.remove(v)
+        Some((v, k))
+
+impl<D: Domain, K: Ord> Contains<D> for IndexedHeap<D, K>:
+    /// Whether `v` is currently in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain V = 0..4; var h: IndexedHeap<V, Int> = IndexedHeap(); h.set(V(2), 5); h.contains(V(2)) and not h.contains(V(3))`
+    fn contains(self, v: D) -> Bool:
+        pos[v] >= 0
+
+fn on_min_level(i: Int) -> Bool:
+    bit_width(i + 1) % 2 == 1
+
+/// Double-ended priority queue (min-max heap).
+/// `first` and `last` are \(O(1)\); `push`, `pop_first`, and `pop_last` are \(O(\log n)\).
+pub struct MinMaxHeap<T: Ord>:
+    _xs: List<T>
+    lt: ?((T, T) -> Bool)
+
+    /// Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: MinMaxHeap<Int> = MinMaxHeap(); h.push(2); h.push(7); h.first == Some(2) and h.last == Some(7)`
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> MinMaxHeap<T>:
+        if let f = by: return MinMaxHeap(_xs: [], lt: Some((a, b) => f(a) < f(b)))
+        MinMaxHeap(_xs: [], lt: None)
+
+    /// Build a `MinMaxHeap<T>` from `xs` in linear time.
+    ///
+    /// The heap orders the elements themselves (there is no `by:`).
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `MinMaxHeap<Int>.of([]).len == 0`
+    /// traps: never
+    /// example: `var h = MinMaxHeap.of([3, 1, 4, 1, 5]); h.pop_last() == Some(5) and h.pop_first() == Some(1) and h.first == Some(1)`
+    pub fn of(xs: List<T>) -> MinMaxHeap<T>:
+        var h = MinMaxHeap(_xs: xs, lt: None)
+        var i = xs.len / 2
+        while i > 0:
+            i -= 1
+            h.trickle_down(i)
+        h
+
+    /// Reserve backing storage for at least `cap` elements.
+    ///
+    /// cost: \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise
+    /// traps: never
+    /// example: `var h = MinMaxHeap.of([2]); h.reserve(100); h.first == Some(2)`
+    pub fn reserve(mut self, cap: Int):
+        _xs.reserve(cap)
+
+    /// Number of elements currently in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MinMaxHeap.of([1, 1]).len == 2`
+    @get pub fn len(self) -> Int:
+        _xs.len
+
+    /// Whether the heap is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MinMaxHeap.of([1]).is_empty == false`
+    @get pub fn is_empty(self) -> Bool:
+        _xs.len == 0
+
+    /// Visit every element from the smallest up; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `MinMaxHeap<Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop_first` would return them
+    /// traps: never
+    /// example: `let h = MinMaxHeap.of([2, 7, 4]); h.each().collect() == [2, 4, 7] and h.len == 3`
+    pub fn each(self) -> yields T:
+        var rest = self
+        while let x = rest.pop_first(): yield x
+
+    /// The smallest element, or `None` if empty.
+    ///
+    /// With one element, `first` and `last` are the same element.
+    ///
+    /// Among equal keys under `by:`, which one `first` shows is unspecified; `pop_first` returns that one.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `MinMaxHeap<Int>().first == None`
+    /// ties: `var h = MinMaxHeap<(Int, Char)>(by: p => p.0); h.push((1, 'a')); h.push((1, 'b')); let f = h.first; h.pop_first() == f`
+    /// traps: never
+    /// example: `MinMaxHeap.of([3, 1, 2]).first == Some(1)`
+    /// example: `MinMaxHeap.of([7]).first == Some(7)`
+    @get pub fn first(self) -> ?T:
+        if _xs.len == 0: return None
+        Some(_xs[0])
+
+    /// The largest element, or `None` if empty.
+    ///
+    /// Among equal keys under `by:`, which one `last` shows is unspecified; `pop_last` returns that one.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `MinMaxHeap<Int>().last == None`
+    /// ties: `var h = MinMaxHeap<(Int, Char)>(by: p => p.0); h.push((1, 'a')); h.push((1, 'b')); let l = h.last; h.pop_last() == l`
+    /// traps: never
+    /// example: `MinMaxHeap.of([3, 1, 2]).last == Some(3)`
+    /// example: `MinMaxHeap.of([7]).last == Some(7)`
+    @get pub fn last(self) -> ?T:
+        if _xs.len == 0: return None
+        Some(_xs[self.max_at()])
+
+    /// Insert `x`.
+    ///
+    /// cost: \(O(\log n)\), amortized over list growth
+    /// traps: never
+    /// example: `var h = MinMaxHeap.of([2, 5]); h.push(9); h.last == Some(9) and h.first == Some(2)`
+    pub fn push(mut self, x: T):
+        _xs.push(x)
+        let i = _xs.len - 1
+        if i == 0: return
+        let p = (i - 1) / 2
+        if on_min_level(i):
+            if self.less(_xs[p], _xs[i]):
+                self.swap(i, p)
+                self.bubble_up(p, false)
+            else: self.bubble_up(i, true)
+        else:
+            if self.less(_xs[i], _xs[p]):
+                self.swap(i, p)
+                self.bubble_up(p, true)
+            else: self.bubble_up(i, false)
+
+    /// Remove and return the smallest element, or `None` if empty.
+    ///
+    /// cost: \(O(\log n)\)
+    /// empty: `var h = MinMaxHeap<Int>(); h.pop_first() == None`
+    /// traps: never
+    /// example: `var h = MinMaxHeap.of([2, 5, 3]); h.pop_first() == Some(2) and h.first == Some(3)`
+    pub fn pop_first(mut self) -> ?T:
+        if _xs.len == 0: return None
+        let x = _xs[0]
+        self.remove_at(0)
+        Some(x)
+
+    /// Remove and return the largest element, or `None` if empty.
+    ///
+    /// cost: \(O(\log n)\)
+    /// empty: `var h = MinMaxHeap<Int>(); h.pop_last() == None`
+    /// traps: never
+    /// example: `var h = MinMaxHeap.of([2, 5, 3]); h.pop_last() == Some(5) and h.last == Some(3)`
+    pub fn pop_last(mut self) -> ?T:
+        if _xs.len == 0: return None
+        let i = self.max_at()
+        let x = _xs[i]
+        self.remove_at(i)
+        Some(x)
+
+    /// Remove all elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MinMaxHeap.of([2]); h.clear(); h.first == None`
+    pub fn clear(mut self):
+        _xs.clear()
+
+    /// Move contents out in \(O(1)\), leaving `self` empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MinMaxHeap.of([2]); let t = h.take(); h.is_empty and t.first == Some(2)`
+    pub fn take(mut self) -> MinMaxHeap<T>:
+        let out = MinMaxHeap(_xs:, lt:)
+        _xs = []
+        out
+
+    fn less(self, a: T, b: T) -> Bool:
+        if let f = lt: return f(a, b)
+        a < b
+
+    fn swap(mut self, i: Int, j: Int):
+        let t = _xs[i]
+        _xs[i] = _xs[j]
+        _xs[j] = t
+
+    fn max_at(self) -> Int:
+        if _xs.len <= 2: return _xs.len - 1
+        if self.less(_xs[1], _xs[2]): 2 else: 1
+
+    fn bubble_up(mut self, start: Int, min_side: Bool):
+        var i = start
+        while i > 2:
+            let g = ((i - 1) / 2 - 1) / 2
+            let better = if min_side: self.less(_xs[i], _xs[g]) else: self.less(_xs[g], _xs[i])
+            if not better: break
+            self.swap(i, g)
+            i = g
+
+    fn remove_at(mut self, i: Int):
+        let n = _xs.len - 1
+        _xs[i] = _xs[n]
+        _xs.pop()
+        if i < n: self.trickle_down(i)
+
+    fn trickle_down(mut self, start: Int):
+        let min_side = on_min_level(start)
+        let n = _xs.len
+        var i = start
+        while 2 * i + 1 < n:
+            var m = 2 * i + 1
+            for c in [2 * i + 2, 4 * i + 3, 4 * i + 4, 4 * i + 5, 4 * i + 6]:
+                if c < n:
+                    let better = if min_side: self.less(_xs[c], _xs[m]) else: self.less(
+                        _xs[m],
+                        _xs[c],
+                    )
+                    if better: m = c
+            let wins = if min_side: self.less(_xs[m], _xs[i]) else: self.less(_xs[i], _xs[m])
+            if not wins: break
+            self.swap(m, i)
+            if m <= 2 * i + 2: break
+            let p = (m - 1) / 2
+            let flip = if min_side: self.less(_xs[p], _xs[m]) else: self.less(_xs[m], _xs[p])
+            if flip: self.swap(m, p)
+            i = m
+
+/// One meldable min-heap (a skew heap) that owns its nodes, with \(O(1)\) lazy offset `add_all`
+/// when `T: Add`. `peek` / `top` is \(O(1)\); `push` and `pop` are \(O(\log n)\) amortized.
+/// `meld` copies the smaller heap's nodes; to meld many heaps (one per vertex or component) in
+/// \(O(\log n)\) with no copying, keep them in one `MeldHeaps` pool.
+pub struct MeldHeap<T: Ord>:
+    _pool: MeldHeaps<T> = MeldHeaps()
+    var _h: Meld<T> = Meld()
+
+    /// Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h: MeldHeap<Int> = MeldHeap(); h.push(3); h.push(1); h.pop() == Some(1)`
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> MeldHeap<T>:
+        MeldHeap(_pool: MeldHeaps.new(by:))
+
+    /// Build a `MeldHeap<T>` from `xs`.
+    ///
+    /// The heap orders the elements themselves (there is no `by:`).
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `MeldHeap<Int>.of([]).peek == None`
+    /// traps: never
+    /// example: `MeldHeap.of([4, 2, 3]).peek == Some(2)`
+    pub fn of(xs: List<T>) -> MeldHeap<T>:
+        var pool: MeldHeaps<T> = MeldHeaps()
+        let h = pool.of(xs)
+        MeldHeap(_pool: pool, _h: h)
+
+    /// Number of elements currently in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MeldHeap.of([4, 2]).len == 2`
+    @get pub fn len(self) -> Int = _h.len
+
+    /// Whether the heap is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MeldHeap.of([4]).is_empty == false`
+    @get pub fn is_empty(self) -> Bool = _h.is_empty
+
+    /// Visit every element in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `MeldHeap<Int>().each().collect() == []`
+    /// order: ascending key order, the order `pop` would return them
+    /// traps: never
+    /// example: `let h = MeldHeap.of([3, 1, 2]); h.each().collect() == [1, 2, 3] and h.len == 3`
+    pub fn each(self) -> yields T:
+        var rest = self
+        for x in rest.drain(): yield x
+
+    /// The smallest element, or `None` if empty.
+    ///
+    /// The value includes every `add_all` applied since it was pushed.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `MeldHeap<Int>().peek == None`
+    /// traps: never
+    /// example: `var h = MeldHeap.of([4, 2]); h.add_all(1); h.peek == Some(3)`
+    @get pub fn peek(self) -> ?T = _pool.top(_h)
+
+    /// The smallest element, or `None` if empty (alias for `peek`).
+    ///
+    /// Among equal keys under `by:`, which one it shows is unspecified, as for `peek`.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `MeldHeap<Int>().top == None`
+    /// ties: `var h = MeldHeap<(Int, Char)>(by: p => p.0); h.push((1, 'a')); h.push((1, 'b')); h.top == h.peek`
+    /// traps: never
+    /// see: `peek`
+    /// example: `MeldHeap.of([4, 2]).top == Some(2)`
+    @get pub fn top(self) -> ?T = self.peek
+
+    /// Push `x` into the heap.
+    ///
+    /// `x` is stored as given: earlier `add_all` offsets do not apply to it.
+    ///
+    /// cost: \(O(\log n)\) amortized
+    /// traps: never
+    /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.push(3); h.drain() == [3, 11, 15]`
+    pub fn push(mut self, x: T):
+        _pool.push(mut _h, x)
+
+    /// Push all elements of `items`.
+    ///
+    /// cost: \(O(k \log n)\) amortized for `k` items
+    /// empty: `var h = MeldHeap.of([4]); h.push_all([]); h.drain() == [4]`
+    /// traps: never
+    /// example: `var h = MeldHeap.of([4]); h.push_all([3, 1]); h.drain() == [1, 3, 4]`
+    pub fn push_all(mut self, items: Seq<T>):
+        for x in items: _pool.push(mut _h, x)
+
+    /// Remove and return the smallest element, or `None` if empty.
+    ///
+    /// cost: \(O(\log n)\) amortized
+    /// empty: `var h = MeldHeap<Int>(); h.pop() == None`
+    /// traps: never
+    /// example: `var h = MeldHeap.of([4, 2]); h.pop() == Some(2) and h.pop() == Some(4) and h.pop() == None`
+    pub fn pop(mut self) -> ?T:
+        _pool.pop(mut _h)
+
+    /// Meld `other` into `self` (consuming `other`).
+    ///
+    /// Every element keeps the value its own heap reported: pending `add_all` offsets apply only
+    /// to the elements they were added to. Each heap keeps its own nodes, so the smaller side's
+    /// nodes are copied into the larger: a node is copied only when its heap at least doubles.
+    ///
+    /// cost: \(O(k + \log n)\) amortized for the smaller heap's `k` nodes; melding `n` one-element heaps
+    /// together in any order is \(O(n \log n)\) in total
+    /// traps: never
+    /// example: `var a = MeldHeap.of([4, 2]); a.meld(MeldHeap.of([3, 1])); a.drain() == [1, 2, 3, 4]`
+    pub fn meld(mut self, other: MeldHeap<T>):
+        if other._h.is_empty: return
+        if other._h.len <= _h.len:
+            let h = _pool.adopt(other._pool, other._h)
+            _h = _pool.meld(_h, h)
+            return
+        var pool = other._pool
+        let h = pool.adopt(_pool, _h)
+        _h = pool.meld(other._h, h)
+        _pool = pool
+
+    /// Meld `other` into `self`, leaving `other` empty.
+    ///
+    /// `meld` for an `other` you keep using: small-to-large merging over a tree.
+    ///
+    /// cost: as `meld`: \(O(k + \log n)\) amortized for the smaller heap's `k` nodes
+    /// traps: never
+    /// example: `var a = MeldHeap.of([4]); var b = MeldHeap.of([1]); a.absorb(mut b); a.peek == Some(1) and b.is_empty`
+    pub fn absorb(mut self, mut other: MeldHeap<T>):
+        self.meld(other)
+        other.clear()
+
+    /// Add `delta` lazily to every element (for additive types).
+    ///
+    /// Only the elements in the heap now change; later pushes do not. Adding one value to
+    /// every element keeps their order; with `by:`, the key must keep that order too, or later
+    /// pops are unspecified.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `var h = MeldHeap<Int>(); h.add_all(5); h.pop() == None`
+    /// traps: never (overflow wraps in release, traps in debug)
+    /// example: `var h = MeldHeap.of([1, 5]); h.add_all(10); h.pop() == Some(11)`
+    pub fn add_all(mut self, delta: T) where T: Add:
+        _pool.add_all(_h, delta)
+
+    /// Remove all elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MeldHeap.of([1]); h.clear(); h.pop() == None`
+    pub fn clear(mut self):
+        _pool.reset()
+        _h = Meld()
+
+    /// Move contents out in \(O(1)\), leaving `self` empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MeldHeap.of([1]); let t = h.take(); h.is_empty and t.peek == Some(1)`
+    pub fn take(mut self) -> MeldHeap<T>:
+        var out = MeldHeap(_pool: _pool.emptied())
+        swap(mut out._pool, mut _pool)
+        swap(mut out._h, mut _h)
+        out
+
+    /// Pop and return all elements in ascending order, leaving `self` empty.
+    ///
+    /// cost: \(O(n \log n)\)
+    /// empty: `var h = MeldHeap<Int>(); h.drain() == []`
+    /// order: ascending key order, the order `pop` would return them; a new `List`, keyed from 0
+    /// traps: never
+    /// example: `var h = MeldHeap.of([3, 1, 2]); h.drain() == [1, 2, 3] and h.is_empty`
+    pub fn drain(mut self) -> List<T>:
+        _pool.drain(mut _h)
+
+// One skew-heap node, 4-byte links so a node of a word-sized key fits half a cache line: its key
+// with every offset above it applied, its children, and the stamp of the handle whose root it
+// is. The offset a node still owes its children lives in the pool's `_adds`. A popped node is
+// free: `l` links it to the next free node and its stamp is -1, so no handle matches it.
+struct MeldNode<T>:
+    var key: T
+    var l: -1..=2_147_483_647
+    var r: -1..=2_147_483_647
+    var stamp: -1..=2_147_483_647 = 0
+
+/// One heap in a `MeldHeaps<T>` pool: a handle, so copying it is \(O(1)\). `Meld<T>()` is the
+/// empty heap.
+///
+/// The pool relinks a heap's nodes in place, so a handle stands for its heap only until the heap
+/// changes: using a copy taken before a `push`, `pop` or `meld` traps.
+///
+/// not a container: a handle; `len` counts its heap's elements, which only the pool reads.
+pub struct Meld<T>:
+    var _root: Int = -1
+    var _len: Int = 0
+    var _stamp: Int = 0
+
+    /// Number of elements in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var p = MeldHeaps<Int>(); p.of([4, 2]).len == 2`
+    @get pub fn len(self) -> Int = _len
+
+    /// Whether the heap is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Meld<Int>().is_empty`
+    @get pub fn is_empty(self) -> Bool = _len == 0
+
+/// A pool of meldable min-heaps (skew heaps) that keep their nodes in one shared list.
+///
+/// Each heap is a `Meld<T>` handle. `meld` relinks nodes instead of copying them, so melding
+/// many heaps, one per vertex or component, costs no allocation beyond the nodes themselves.
+/// A popped element's node is reused by a later push, so the pool holds one node per element
+/// live at its peak, not one per element ever pushed.
+/// Use `MeldHeap` for a few heaps that own their nodes.
+pub struct MeldHeaps<T: Ord>:
+    _nodes: List<MeldNode<T>> = []
+    // Per-node pending offsets, parallel to `_nodes`; empty until the first `add_all`.
+    _adds: List<?T> = []
+    _stamps: Int = 0
+    // Head of the free nodes, linked through `l`; -1 when none is free.
+    _free: -1..=2_147_483_647 = -1
+    lt: ?((T, T) -> Bool) = None
+
+    /// An empty pool, optionally ordered by key extractor `by:`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var p = MeldHeaps<Int>.new(by: x => -x); var h = p.of([1, 3]); p.pop(mut h) == Some(3)`
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> MeldHeaps<T>:
+        if let f = by: return MeldHeaps(lt: Some((a, b) => f(a) < f(b)))
+        MeldHeaps()
+
+    /// A new heap in the pool holding `xs`.
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `var p = MeldHeaps<Int>(); let h = p.of([]); p.top(h) == None`
+    /// traps: never
+    /// example: `var p = MeldHeaps<Int>(); let h = p.of([4, 2, 3]); p.top(h) == Some(2)`
+    pub fn of(mut self, xs: List<T>) -> Meld<T>:
+        var q = [self.node(x) for x in xs]
+        var i = 0
+        while i + 1 < q.len:
+            q.push(self.merge(q[i], q[i + 1]))
+            i += 2
+        self.seal(if q.len > 0: q.last! else: -1, xs.len)
+
+    /// Preallocate room for `nodes` heap nodes in total (one per element live at once, as a
+    /// popped element's node is reused), so later pushes do not regrow the pool. Changes no heap
+    /// and no handle.
+    ///
+    /// cost: \(O(\mathit{nodes})\)
+    /// traps: when `nodes < 0` or `nodes >= 2^31`
+    /// example: `var p = MeldHeaps<Int>(); p.reserve(100); let h = p.of([3, 1]); p.top(h) == Some(1)`
+    pub fn reserve(mut self, nodes: Len):
+        assert nodes >= 0, "reserve requires nodes >= 0"
+        _nodes.reserve(nodes)
+        if _adds.len > 0: _adds.reserve(nodes)
+
+    /// The smallest element of `h`, or `None` if it is empty.
+    ///
+    /// Among equal smallest keys it is any one of them.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `var p = MeldHeaps<Int>(); let h = p.of([]); p.top(h) == None`
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([5]); p.add_all(h, 2); p.top(h) == Some(7)`
+    /// ties: `var p = MeldHeaps<(Int, Char)>.new(by: q => q.0); let h = p.of([(1, 'a'), (1, 'b')]); p.top(h)!.0 == 1`
+    pub fn top(self, h: Meld<T>) -> ?T:
+        self.check(h)
+        if h._root < 0: None else: Some(_nodes[h._root].key)
+
+    /// Push `x` into `h`.
+    ///
+    /// `x` is stored as given: earlier `add_all` offsets do not apply to it.
+    ///
+    /// cost: \(O(\log n)\) amortized
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = Meld<Int>(); p.push(mut h, 3); p.push(mut h, 1); p.top(h) == Some(1) and h.len == 2`
+    pub fn push(mut self, mut h: Meld<T>, x: T):
+        self.check(h)
+        let t = self.node(x)
+        h = self.seal(self.merge(h._root, t), h._len + 1)
+
+    /// Push every element of `items` into `h`.
+    ///
+    /// cost: \(O(k \log n)\) amortized for `k` items
+    /// empty: `var p = MeldHeaps<Int>(); var h = p.of([4]); p.push_all(mut h, []); p.drain(mut h) == [4]`
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([4]); p.push_all(mut h, [3, 1]); p.drain(mut h) == [1, 3, 4]`
+    pub fn push_all(mut self, mut h: Meld<T>, items: Seq<T>):
+        for x in items: self.push(mut h, x)
+
+    /// Remove and return the smallest element of `h`, or `None` if it is empty.
+    ///
+    /// cost: \(O(\log n)\) amortized
+    /// empty: `var p = MeldHeaps<Int>(); var h = p.of([]); p.pop(mut h) == None`
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([4, 2]); p.pop(mut h) == Some(2) and p.pop(mut h) == Some(4) and p.pop(mut h) == None`
+    pub fn pop(mut self, mut h: Meld<T>) -> ?T:
+        self.check(h)
+        if h._root < 0: return None
+        let t = h._root
+        self.push_down(t)
+        _nodes[t].stamp = -1
+        h = self.seal(self.merge(_nodes[t].l, _nodes[t].r), h._len - 1)
+        _nodes[t].l = _free
+        _free = t
+        Some(_nodes[t].key)
+
+    /// The heap holding `a` and `b`, as `MergeSegs.merge` is. Both are used up: their nodes now
+    /// belong to the result, and using `a` or `b` again traps.
+    ///
+    /// Every element keeps the value its own heap reported: pending `add_all` offsets apply only
+    /// to the elements they were added to.
+    ///
+    /// cost: \(O(\log n)\) amortized, no copying
+    /// traps: when `a` or `b` is a stale copy (see `Meld`), or both are the same heap
+    /// example: `var p = MeldHeaps<Int>(); let a = p.of([4, 2]); let b = p.of([3, 1]); var c = p.meld(a, b); p.drain(mut c) == [1, 2, 3, 4] and c.is_empty`
+    pub fn meld(mut self, a: Meld<T>, b: Meld<T>) -> Meld<T>:
+        self.check(a)
+        self.check(b)
+        assert a._root < 0 or a._root != b._root, "meld: `a` and `b` are the same heap"
+        if b._root >= 0: _nodes[b._root].stamp = -1
+        if a._root >= 0: _nodes[a._root].stamp = -1
+        self.seal(self.merge(a._root, b._root), a._len + b._len)
+
+    /// Add `delta` lazily to every element of `h` (for additive types).
+    ///
+    /// Only the elements in `h` now change; later pushes do not. With `by:`, the key must keep
+    /// its order under the shift, or later pops are unspecified.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `var p = MeldHeaps<Int>(); var h = p.of([]); p.add_all(h, 3); p.drain(mut h) == []`
+    /// traps: when `h` is a stale copy (see `Meld`); overflow wraps in release, traps in debug
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([1, 5]); p.add_all(h, 10); p.drain(mut h) == [11, 15]`
+    pub fn add_all(mut self, h: Meld<T>, delta: T) where T: Add:
+        self.check(h)
+        if h._root < 0: return
+        if _adds.len == 0: _adds = [None for _ in 0.._nodes.len]
+        _nodes[h._root].key += delta
+        _adds[h._root] = Some(plus(_adds[h._root], delta))
+
+    /// Pop all of `h` in ascending order, leaving it empty.
+    ///
+    /// cost: \(O(n \log n)\)
+    /// empty: `var p = MeldHeaps<Int>(); var h = p.of([]); p.drain(mut h) == []`
+    /// order: ascending, the order `pop` returns them; a new `List`, keyed from 0
+    /// traps: when `h` is a stale copy (see `Meld`)
+    /// example: `var p = MeldHeaps<Int>(); var h = p.of([3, 1, 2]); p.drain(mut h) == [1, 2, 3] and h.is_empty`
+    pub fn drain(mut self, mut h: Meld<T>) -> List<T>:
+        var out: List<T> = []
+        while let x = self.pop(mut h): out.push(x)
+        out
+
+    // Copy the nodes of `h`, a heap of pool `from`, into this pool, root first (preorder): the heap
+    // shape and pending offsets are kept, so the copy is a heap here. Each stacked node carries
+    // the new index of its parent and which side it hangs on, and links itself in when it lands.
+    // Costs \(O(\mathit{h.len})\).
+    fn adopt(mut self, from: MeldHeaps<T>, h: Meld<T>) -> Meld<T>:
+        from.check(h)
+        if h._root < 0: return Meld()
+        let base = _nodes.len
+        if from._adds.len > 0 and _adds.len == 0: _adds = [None for _ in 0..base]
+        var stack = [(h._root, -1, true)]
+        while let (s, up, left) = stack.pop():
+            let n = from._nodes[s]
+            let at = _nodes.len
+            if up >= 0:
+                if left: _nodes[up].l = at
+                else: _nodes[up].r = at
+            if n.r >= 0: stack.push((n.r, at, false))
+            if n.l >= 0: stack.push((n.l, at, true))
+            _nodes.push(n)
+            if _adds.len > 0: _adds.push(if from._adds.len > 0: from._adds[s] else: None)
+        self.seal(base, h._len)
+
+    // Drop every node; every earlier handle into the pool goes stale.
+    fn reset(mut self):
+        _nodes = []
+        _adds = []
+        _free = -1
+
+    // An empty pool ordered as this one is.
+    fn emptied(self) -> MeldHeaps<T> = MeldHeaps(lt:)
+
+    fn check(self, h: Meld<T>):
+        assert h._root < 0 or _nodes[h._root].stamp == h._stamp, "this `Meld` handle is a stale copy: its heap changed after the copy was taken"
+
+    fn seal(mut self, root: Int, len: Int) -> Meld<T>:
+        if root < 0: return Meld()
+        _stamps += 1
+        _nodes[root].stamp = _stamps
+        Meld(_root: root, _len: len, _stamp: _stamps)
+
+    fn less(self, a: T, b: T) -> Bool:
+        if let f = lt: return f(a, b)
+        a < b
+
+    fn node(mut self, x: T) -> Int:
+        if _free >= 0:
+            let t = _free
+            _free = _nodes[t].l
+            _nodes[t] = MeldNode(x, -1, -1)
+            return t
+        _nodes.push(MeldNode(x, -1, -1))
+        if _adds.len > 0: _adds.push(None)
+        _nodes.len - 1
+
+    fn push_down(mut self, t: Int):
+        if T: Add:
+            if _adds.len == 0: return
+            if let d = _adds[t]:
+                for c in [_nodes[t].l, _nodes[t].r]:
+                    if c >= 0:
+                        _nodes[c].key += d
+                        _adds[c] = Some(plus(_adds[c], d))
+                _adds[t] = None
+
+    // Top-down skew merge, iterative so a long right spine cannot overflow the stack: walk down the
+    // smaller root of each pair, swapping its children, and hang the rest on its new left child.
+    fn merge(mut self, a: Int, b: Int) -> Int:
+        if a < 0: return b
+        if b < 0: return a
+        let (root, rest) = if self.less(_nodes[b].key, _nodes[a].key): (b, a) else: (a, b)
+        var (x, y) = (root, rest)
+        while true:
+            self.push_down(x)
+            let c = _nodes[x].r
+            _nodes[x].r = _nodes[x].l
+            if c < 0:
+                _nodes[x].l = y
+                break
+            let (z, w) = if self.less(_nodes[y].key, _nodes[c].key): (y, c) else: (c, y)
+            _nodes[x].l = z
+            x = z
+            y = w
+        root
+
+fn plus<T: Add>(a: ?T, d: T) -> T:
+    if let x = a: return x + d
+    d
+
+@test
+fn pops_in_sorted_order():
+    var h = MinHeap<Int>()
+    var g = MaxHeap<Int>()
+    var xs = [rand(-50, 50) for _ in 0..40]
+    for x in xs:
+        h.push(x)
+        g.push(x)
+    assert h.len == 40 and g.len == 40
+    xs.sort()
+    for i in 0..40:
+        assert h.peek == xs[i] and h.pop() == xs[i]
+        assert g.peek == xs[39 - i] and g.pop() == xs[39 - i]
+    assert h.pop() == None and h.is_empty and h.peek == None
+    assert g.pop() == None and g.is_empty and g.peek == None
+
+@test
+fn desc_gives_a_mixed_order():
+    var h = MinHeap<(Int, Desc<Str>)>()
+    for (d, name) in [(2, "b"), (1, "a"), (2, "z"), (1, "m")]: h.push((d, desc(name)))
+    var out: List<Str> = []
+    while let (d, name) = h.pop(): out.push(name.x)
+    assert out == ["m", "a", "z", "b"]
+
+@test
+fn clear_empties_the_heap():
+    var h = MaxHeap<Int>()
+    for x in [3, 1, 4]: h.push(x)
+    h.clear()
+    assert h.is_empty and h.len == 0
+    h.push(7)
+    assert h.pop() == 7
+
+@test
+fn take_and_small_into_large_swap():
+    var a = MinHeap<Int>()
+    var b = MinHeap<Int>()
+    for x in [9, 2]: a.push(x)
+    for x in [5, 1, 8, 3, 7]: b.push(x)
+    if a.len < b.len: swap(mut a, mut b)
+    while let x = b.pop(): a.push(x)
+    assert b.is_empty and a.len == 7
+    var moved = a.take()
+    assert a.is_empty and moved.len == 7
+    var got: List<Int> = []
+    while let x = moved.pop(): got.push(x)
+    assert got == [1, 2, 3, 5, 7, 8, 9]
+    var hi = MaxHeap<Int>()
+    for x in [4, 1, 9, 6, 2]: hi.push(x)
+    var hi_moved = hi.take()
+    assert hi.is_empty and hi_moved.pop() == 9 and hi_moved.pop() == 6
+
+@test
+fn heap_of_and_erasable_and_indexed_heaps():
+    let xs = [(i * 37 + 11) % 101 - 50 for i in 0..35]
+    var sorted_xs = copy(xs)
+    sorted_xs.sort()
+    var hmin: MinHeap<Int> = Heap.of(xs)
+    var hmax: MaxHeap<Int> = MaxHeap.of(xs)
+    for i in 0..xs.len:
+        assert hmin.pop() == sorted_xs[i]
+        assert hmax.pop() == sorted_xs[xs.len - 1 - i]
+
+    var emin = ErasableHeap<Int>()
+    var emax = ErasableHeap<Desc<Int>>()
+    for x in [5, 1, 9, 1, 7, 3]:
+        emin.push(x)
+        emax.push(desc(x))
+    emin.remove(1)
+    emin.remove(7)
+    emax.remove(desc(9))
+    emax.remove(desc(1))
+    assert emin.len == 4 and emin.peek() == 1 and emin.pop() == 1 and emin.pop() == 3
+    assert emax.len == 4 and emax.peek() == desc(7) and emax.pop() == desc(7) and emax.pop() == desc(5)
+    emin.clear()
+    assert emin.is_empty and emin.peek() == None and emin.pop() == None
+
+    domain V = 0..8
+    var ih = IndexedHeap<V, Int>()
+    assert ih.is_empty and ih.peek == None
+    assert ih.decrease(V(2), 10)
+    assert not ih.decrease(V(2), 15)
+    assert ih.decrease(V(2), 4)
+    ih.set(V(5), 2)
+    ih.set(V(1), 7)
+    assert ih.len == 3 and ih.contains(V(5)) and ih.get(V(2)) == 4
+    assert ih.peek == (V(5), 2)
+    assert ih.pop() == (V(5), 2)
+    assert not ih.contains(V(5)) and ih.get(V(5)) == None
+    assert ih.increase(V(2), 9) and ih.get(V(2)) == 9
+    assert ih.remove(V(1)) == 7 and ih.remove(V(1)) == None
+    assert ih.pop() == (V(2), 9) and ih.is_empty
+
+    var xh = IndexedHeap<V, Desc<Int>>()
+    xh.set(V(0), desc(3))
+    assert xh.decrease(V(0), desc(8))
+    assert not xh.decrease(V(0), desc(5))
+    xh.set(V(3), desc(12))
+    assert xh.peek == (V(3), desc(12)) and xh.pop() == (V(3), desc(12))
+    assert xh.pop() == (V(0), desc(8)) and xh.is_empty
+
+/// `Heap<T>()`: pops the smallest first.
+pub type MinHeap<T> = Heap<T>
+
+/// `Heap<T>(by: desc)` under its own name: pops the largest first, with the same operations and
+/// costs as `Heap`; it holds each element as `desc(x)`. For a mixed order use `Heap` with `desc(x)` in the entry.
+pub struct MaxHeap<T: Ord>:
+    h: Heap<Desc<T>>
+
+    /// An empty `MaxHeap<T>`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MaxHeap<Int>(); h.push(1); h.push(3); h.pop() == Some(3)`
+    pub fn new() -> MaxHeap<T> = MaxHeap(h: Heap<Desc<T>>())
+
+    /// Build a `MaxHeap<T>` from `xs` via Floyd heapify.
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `MaxHeap<Int>.of([]).len == 0`
+    /// traps: never
+    /// example: `var h = MaxHeap.of([3, 1, 2]); h.pop() == Some(3) and h.len == 2`
+    pub fn of(xs: List<T>) -> MaxHeap<T> = MaxHeap(h: Heap<Desc<T>>.of([desc(x) for x in xs]))
+
+    /// Number of elements currently in the heap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MaxHeap.of([3, 1]).len == 2`
+    @get pub fn len(self) -> Int = self.h.len
+
+    /// Whether the heap is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MaxHeap.of([3]).is_empty == false`
+    @get pub fn is_empty(self) -> Bool = self.h.is_empty
+
+    /// Visit every element in pop order; `for x in h` uses this.
+    ///
+    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
+    /// empty: `MaxHeap<Int>().each().collect() == []`
+    /// order: largest first, the order `pop` would return them; equal elements in no promised order
+    /// traps: never
+    /// example: `let h = MaxHeap.of([1, 3, 2]); h.each().collect() == [3, 2, 1] and h.len == 3`
+    pub fn each(self) -> yields T:
+        for d in self.h.each(): yield d.x
+
+    /// The largest element, or `None` when empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `MaxHeap.of([3, 9, 2]).peek == Some(9)`
+    @get pub fn peek(self) -> ?T:
+        if let d = self.h.peek: return Some(d.x)
+        None
+
+    /// Remove every element.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2]); h.clear(); h.is_empty`
+    pub fn clear(mut self):
+        self.h.clear()
+
+    /// Move the contents out, leaving this heap empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2, 7]); let t = h.take(); h.is_empty and t.peek == Some(7)`
+    pub fn take(mut self) -> MaxHeap<T> = MaxHeap(h: self.h.take())
+
+    /// Add `x`.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2]); h.push(5); h.peek == Some(5)`
+    pub fn push(mut self, x: T):
+        self.h.push(desc(x))
+
+    /// Remove and return the largest element, or `None` when empty.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([4, 9]); h.pop() == Some(9) and h.pop() == Some(4) and h.pop() == None`
+    pub fn pop(mut self) -> ?T:
+        if let d = self.h.pop(): return Some(d.x)
+        None
+
+    /// Make room for `cap` elements in total.
+    ///
+    /// cost: \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise
+    /// traps: never
+    /// example: `var h = MaxHeap.of([2]); h.reserve(100); h.peek == Some(2)`
+    pub fn reserve(mut self, cap: Int):
+        self.h.reserve(cap)
+
+    /// Push `x`, then pop and return the largest element.
+    ///
+    /// cost: \(O(\log n)\); \(O(1)\) when `x` is returned
+    /// traps: never
+    /// example: `var h = MaxHeap.of([4]); h.push_pop(7) == 7 and h.peek == Some(4)`
+    pub fn push_pop(mut self, x: T) -> T = self.h.push_pop(desc(x)).x
+
+    /// Pop the largest element, then push `x`; returns the popped one, or `None`
+    /// (and only pushes) when empty.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: never
+    /// example: `var h = MaxHeap.of([4]); h.replace_top(1) == Some(4) and h.peek == Some(1)`
+    /// example: `var h = MaxHeap<Int>(); h.replace_top(4) == None and h.peek == Some(4)`
+    pub fn replace_top(mut self, x: T) -> ?T:
+        if let d = self.h.replace_top(desc(x)): return Some(d.x)
+        None
+
+    /// Push every element of `items`.
+    ///
+    /// cost: \(O(n + k \log(n + k))\)
+    /// empty: `var h = MaxHeap.of([2]); h.push_all([]); h.len == 1 and h.peek == Some(2)`
+    /// traps: never
+    /// example: `var h = MaxHeap<Int>(); h.push_all([3, 8]); h.peek == Some(8)`
+    pub fn push_all(mut self, items: Seq<T>):
+        self.h.push_all([desc(x) for x in items])
+
+    /// Pop and yield every element, largest first, leaving the heap empty.
+    ///
+    /// Each step is one `pop`. A loop that stops early leaves the elements not yet yielded in
+    /// the heap.
+    ///
+    /// cost: \(O(\log n)\) per step
+    /// empty: `var h = MaxHeap<Int>(); h.drain().collect() == []`
+    /// order: largest first; equal elements in no promised order
+    /// traps: never
+    /// example: `var h = MaxHeap.of([1, 3, 2]); h.drain().collect() == [3, 2, 1]`
+    pub fn drain(mut self) -> yields T:
+        while let d = self.h.pop(): yield d.x
+
+/// A keyed frontier where each key pops exactly once. `offer(k, p)` keeps the best priority seen
+/// for a key that has not popped yet and is ignored after it has; `pop` returns the best key
+/// and settles it. The shape of Dijkstra, Prim and "settle answers from the largest down",
+/// without a side array of done flags or a lazy-deletion `continue`. \(O(\log n)\) per offer and pop.
+///
+/// `best` picks the better of two priorities and must return one of its arguments, like `min`
+/// and `max`; with any other function the popped priorities are unspecified. Keys are hashed.
+pub struct Settle<K, P>(best: (P, P) -> P = min):
+    cur: HashMap<K, P> = HashMap()
+    done: HashMap<K, Bool> = HashMap()
+    q: List<(P, K)> = []
+
+    fn better(self, a: Int, b: Int) -> Bool:
+        let (x, y) = (q[a].0, q[b].0)
+        x != y and best(x, y) == x
+
+    fn sift_up(mut self, i0: Int):
+        var i = i0
+        while i > 0 and self.better(i, (i - 1) / 2):
+            q.swap(i, (i - 1) / 2)
+            i = (i - 1) / 2
+
+    fn sift_down(mut self):
+        var i = 0
+        while true:
+            var c = 2 * i + 1
+            if c >= q.len: return
+            if c + 1 < q.len and self.better(c + 1, c): c += 1
+            if not self.better(c, i): return
+            q.swap(i, c)
+            i = c
+
+    /// Offer priority `p` for key `k`: an unsettled key keeps `best(old, p)` (or `p` when it
+    /// had None); a settled key ignores the offer.
+    ///
+    /// cost: \(O(\log n)\) amortized, `n` the offers so far
+    /// traps: never
+    /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('a', 2); s.offer('a', 4); s.get('a') == Some(2)`
+    pub fn offer(mut self, k: K, p: P):
+        if done.get(k) != None: return
+        if let old = cur.get(k):
+            let b = best(old, p)
+            if b == old: return
+            cur[k] = b
+        else:
+            cur[k] = p
+        q.push((cur[k], k))
+        self.sift_up(q.len - 1)
+    /// Settle and return the unsettled key whose priority is best, with that priority, or
+    /// `None` when every offered key has settled.
+    ///
+    /// Among keys with equal priorities, which one it settles is unspecified, as in `Heap`.
+    ///
+    /// cost: \(O(\log n)\) amortized, `n` the offers so far
+    /// empty: `var s: Settle<Char, Int> = Settle(); s.pop() == None`
+    /// ties: `var s: Settle<Char, Int> = Settle(); s.offer('a', 3); s.offer('b', 3); s.pop()!.1 == 3`
+    /// traps: never
+    /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('b', 3); s.pop() == Some(('b', 3)) and s.settled('b')`
+    /// example: `var s: Settle<Char, Int> = Settle(); s.offer('b', 3); s.pop(); s.offer('b', 1); s.pop() == None`
+    /// example: `var s: Settle<Char, Int> = Settle(best: max); s.offer('a', 5); s.offer('b', 3); s.pop() == Some(('a', 5))`
+    pub fn pop(mut self) -> ?(K, P):
+        while q.len > 0:
+            let (p, k) = q[0]
+            q.swap(0, q.len - 1)
+            let _ = q.pop()
+            self.sift_down()
+            if done.get(k) == None and cur.get(k) == Some(p):
+                done[k] = true
+                return Some((k, p))
+        None
+    /// Whether `k` has popped.
+    ///
+    /// cost: \(O(1)\) expected
+    /// traps: never
+    /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 1); not s.settled('a') and s.pop() == Some(('a', 1)) and s.settled('a')`
+    pub fn settled(self, k: K) -> Bool = done.get(k) != None
+    /// The best priority offered for `k` so far (for a settled key, the one it popped with),
+    /// or `None` if `k` was never offered.
+    ///
+    /// cost: \(O(1)\) expected
+    /// traps: never
+    /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 4); s.get('a') == Some(4) and s.get('b') == None`
+    pub fn get(self, k: K) -> ?P = cur.get(k)
+
+@test
+fn heaps_walk_in_pop_order_and_show():
+    var h = Heap.of([5, 1, 4, 1])
+    assert h.each().collect() == [1, 1, 4, 5] and h.len == 4 and "{h}" == "1 1 4 5"
+    var g = MaxHeap.of([5, 1, 4])
+    assert g.each().collect() == [5, 4, 1] and "{g}" == "5 4 1" and g.len == 3
+    var e: ErasableHeap<Int> = ErasableHeap()
+    for x in [6, 2, 9, 2]: e.push(x)
+    e.remove(2)
+    assert e.each().collect() == [2, 6, 9] and "{e}" == "2 6 9" and e.len == 3
+    domain V = 0..5
+    var ih: IndexedHeap<V, Int> = IndexedHeap()
+    ih.set(V(3), 4)
+    ih.set(V(1), 2)
+    assert ih.each().collect() == [(V(1), 2), (V(3), 4)] and "{ih}" == "1=2, 3=4" and ih.len == 2
+    let mm = MinMaxHeap.of([8, 3, 5])
+    assert mm.each().collect() == [3, 5, 8] and "{mm}" == "3 5 8"
+    let md = MeldHeap.of([8, 3, 5])
+    assert md.each().collect() == [3, 5, 8] and "{md}" == "3 5 8" and md.len == 3
+    let empty: Heap<Int> = Heap()
+    assert empty.each().collect().is_empty and "{empty}" == ""
+
+impl Show for Heap<T>:
+    fn show(h):
+        var out = ""
+        var rest = h
+        for x in rest.drain():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for ErasableHeap<T>:
+    fn show(h):
+        var out = ""
+        for x in h.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for IndexedHeap<D, K>:
+    fn show(h):
+        var out = ""
+        for (v, k) in h.each():
+            if not out.is_empty: out += ", "
+            out += "{v}={k}"
+        out
+
+impl Show for MinMaxHeap<T>:
+    fn show(h):
+        var out = ""
+        for x in h.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for MeldHeap<T>:
+    fn show(h):
+        var out = ""
+        for x in h.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for MaxHeap<T>:
+    fn show(h):
+        var out = ""
+        for x in h.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Settle<K, P>:
+    /// How many keys are settled and how many are still open, as `s settled, o open`.
+    ///
+    /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('b', 3); s.pop(); "{s}" == "1 settled, 1 open"`
+    fn show(s) = "{s.done.len} settled, {s.cur.len - s.done.len} open"
+
+impl Show for Meld<T>:
+    /// How many values the heap holds, as `n elements` (`1 element`); its values live in the `MeldHeaps` pool.
+    ///
+    /// example: `var p = MeldHeaps<Int>(); "{p.of([4, 2, 9])}" == "3 elements"`
+    fn show(h):
+        if h.len == 1: return "1 element"
+        "{h.len} elements"
+
+impl Show for MeldHeaps<T>:
+    /// How many nodes the pool has allocated across all its heaps, as `n nodes`.
+    ///
+    /// example: `var p = MeldHeaps<Int>(); p.of([4, 2]); p.of([1]); "{p}" == "3 nodes"`
+    fn show(p) = "{p._nodes.len} nodes"
+

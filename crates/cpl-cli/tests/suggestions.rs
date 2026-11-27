@@ -114,7 +114,7 @@ fn cases() -> Vec<(String, String)> {
         cases.push((info.code.0.to_string(), info.trigger.to_string()));
     }
     let mut names = std::collections::BTreeSet::new();
-    for e in fs::read_dir(root.join("../../std")).unwrap() {
+    for e in fs::read_dir(root.join("../cpl-check/frozen/std")).unwrap() {
         let p = e.unwrap().path();
         if p.extension().is_none_or(|e| e != "cp") {
             continue;

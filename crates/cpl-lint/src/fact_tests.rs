@@ -791,7 +791,7 @@ fn a_session_proves_once_what_each_entry_point_proves_alone() {
     assert_eq!(session.domains(), crate::domain_sizes(src));
     let config = crate::Config::default();
     let std = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std/strings.cp"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-check/frozen/std/strings.cp"),
     )
     .unwrap();
     for text in [src, std.as_str()] {

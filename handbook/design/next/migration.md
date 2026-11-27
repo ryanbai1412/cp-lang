@@ -66,7 +66,13 @@ deleted for the VM and both remain. These rules are the guard.
    commit that adds a line to the old crates fails, `frozen_edits` in
    `scripts/debt-ratchet.py`, and no trailer excuses it. The one
    commit that may is one putting each old-crate file it touches back
-   as it was at `c7ac8761d^`, the std the old pipeline is pinned to.
+   as it was at `c7ac8761d^`, the commit the old pipeline's std is
+   pinned to. The old pipeline reads its own std,
+   `crates/cpl-check/frozen/std/`: a copy of `std/` at `c7ac8761d^`,
+   counted in `old_pipeline_lines` and held byte-identical to that
+   commit by `frozen_std_drift`, so a std change never reaches the
+   old code. Nothing in cpl-next reads it; stage 5 deletes it with
+   the old crates.
 10. **Prefer no window.** A stage that can change today's code in
     place does, so there is never a second copy.
 11. **A designed component is built in its full shape before anything

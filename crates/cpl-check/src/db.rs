@@ -684,9 +684,8 @@ impl Database {
                 }
             }
             // `B.subsets` uses the `Subset` std declares as `@member(subsets)`.
-            // `D.cuts` this checker types itself, so it needs no `Cut`.
             for &(member, of) in crate::prelude::domain_members() {
-                if member != crate::prelude::cuts_member() && dot_ident_tokens.contains(member) {
+                if dot_ident_tokens.contains(member) {
                     ident_tokens.insert(of);
                 }
             }
@@ -715,7 +714,7 @@ impl Database {
                 // `count(..)` the language has itself is not the library's
                 // `s.count(c)` either.
                 let own = declared.contains(name.text.as_str())
-                    || (method && crate::prelude::value_names().contains(&name.text.as_str()));
+                    || (method && crate::prelude::VALUE_NAMES.contains(&name.text.as_str()));
                 if own && !method {
                     continue;
                 }
@@ -1567,7 +1566,7 @@ impl Database {
             .filter(|(_, m)| names.contains(m.text.as_str()));
         for (module, method) in listed {
             let name = method.text.as_str();
-            let own = crate::prelude::value_names().contains(&name);
+            let own = crate::prelude::VALUE_NAMES.contains(&name);
             let key = scoping::import_key(&scope, module, name, true, own);
             if scope.imports.contains_key(&key) || scope.chosen.contains(name) {
                 continue;

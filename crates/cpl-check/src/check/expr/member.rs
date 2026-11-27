@@ -174,7 +174,7 @@ impl<'a> Checker<'a> {
             name: bounds,
         } = &base.kind
         {
-            if crate::prelude::is_cuts(&bounds.text)
+            if matches!(bounds.text.as_str(), "bounds" | "cuts")
                 && matches!(name.text.as_str(), "first" | "last")
             {
                 if let Ty::Domain(d) = self.infer(inner) {
@@ -448,6 +448,31 @@ impl<'a> Checker<'a> {
                             lazy: false,
                         }],
                         ret: Box::new(ret),
+                    };
+                }
+                "set_at" if base_ty.is_indexed_mut() => {
+                    return Ty::Fn {
+                        params: vec![
+                            crate::Param {
+                                name: "i".into(),
+                                ty: Ty::Int,
+                                mutable: false,
+                                has_default: false,
+                                named_only: false,
+                                variadic: false,
+                                lazy: false,
+                            },
+                            crate::Param {
+                                name: "x".into(),
+                                ty: elem,
+                                mutable: false,
+                                has_default: false,
+                                named_only: false,
+                                variadic: false,
+                                lazy: false,
+                            },
+                        ],
+                        ret: Box::new(Ty::Unit),
                     };
                 }
                 "swap_idx" if base_ty.is_indexed_mut() => {
@@ -867,10 +892,7 @@ impl<'a> Checker<'a> {
                         },
                     ),
                     "wrap" | "nth" => int_fn(Ty::Pos(domain.clone())),
-                    m if crate::prelude::is_cuts(m) => range_ty(Ty::Pos(format!(
-                        "{domain}.{}",
-                        crate::prelude::cuts_member()
-                    ))),
+                    "bounds" | "cuts" => range_ty(Ty::Pos(format!("{domain}.cuts"))),
                     "Cut" => {
                         self.planned(name.span, &cpl_syntax::planned::CUT_DOMAIN);
                         Ty::Error
@@ -958,9 +980,8 @@ impl<'a> Checker<'a> {
                         "all" | "rev" => {
                             return range_ty(elem);
                         }
-                        m if crate::prelude::is_cuts(m) => {
-                            let cuts = crate::prelude::cuts_member();
-                            return range_ty(Ty::Pos(format!("{type_name}.{cuts}")));
+                        "bounds" | "cuts" => {
+                            return range_ty(Ty::Pos(format!("{type_name}.cuts")));
                         }
                         // R04.2.20: a domain is the `Seq` of its positions.
                         _ if matches!(

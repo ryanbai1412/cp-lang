@@ -148,9 +148,10 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
         "`Subset` is a std name"
     );
     // Only what `std/prelude.cp` lists.
-    let prelude =
-        std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std/prelude.cp"))
-            .unwrap();
+    let prelude = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-check/frozen/std/prelude.cp"),
+    )
+    .unwrap();
     let listed: std::collections::HashSet<&str> = prelude
         .split(|c: char| !(c.is_alphanumeric() || c == '_'))
         .collect();
@@ -256,7 +257,7 @@ fn ordered_container_method_parity_and_range_len_guard() {
 
     // `SortedSet` and `SortedBag` in `std/bag.cp` must expose the ordered API surface.
     let bag_src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std/bag.cp"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-check/frozen/std/bag.cp"),
     )
     .unwrap();
     for required in ["fn first_true(", "fn last_true(", "fn drain(", "fn range("] {
@@ -339,7 +340,7 @@ fn ordered_container_method_parity_and_range_len_guard() {
 /// gets a help naming the in-place call; that call must run as written.
 #[test]
 fn every_in_place_help_names_a_call_that_runs() {
-    let std_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let std_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-check/frozen/std");
     let mut stems: Vec<String> = BUILTIN_MEMBERS
         .iter()
         .filter(|m| m.receiver == Receiver::List && m.mutates && m.params.is_empty())

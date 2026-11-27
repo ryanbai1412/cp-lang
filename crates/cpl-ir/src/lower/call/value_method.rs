@@ -119,6 +119,36 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            (ty, "set_at") if let Some(elem) = ty.seq_elem().filter(|_| ty.is_indexed_mut()) => {
+                let ty_owned = ty.clone();
+                match self.positional_any(method, args, 2, span) {
+                    Some(exprs) => {
+                        let at = self.expr(exprs[0], Some(&Ty::Int));
+                        let at = self.coerce(at, &Ty::Int, exprs[0].span);
+                        let val = self.expr_as(exprs[1], &elem);
+                        let val_span = exprs[1].span;
+                        self.do_expr(Some(&Ty::Unit), span, |lw, out| {
+                            let place = lw.place(base);
+                            let val = match lw
+                                .place_range(&place)
+                                .and_then(|r| r.elem().and_then(|e| e.scalar()).cloned())
+                            {
+                                Some(b) => lw.check_range(val, &b, val_span),
+                                None => val,
+                            };
+                            let indices = lw.vouched(&ty_owned, vec![at]);
+                            let cell = Place {
+                                kind: PlaceKind::Index(Box::new(place), indices),
+                                ty: elem,
+                                span: lw.span(span),
+                            };
+                            out.push(Stmt::Assign(cell, AssignOp::Set, val));
+                            out.push_give(lw.mk(ExprKind::Unit, Ty::Unit, span));
+                        })
+                    }
+                    None => self.err_expr(span),
+                }
+            }
             (ty, "swap_idx") if ty.is_indexed_mut() => {
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {

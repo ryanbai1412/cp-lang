@@ -777,9 +777,6 @@ struct Lowerer<'a> {
     preamble_stmts: Vec<Stmt>,
     /// The top-level fns marked `@memo`.
     memo_fns: HashSet<FnId>,
-    /// A fn marked `@fast(op)`: a call of it is that primitive, its CP body
-    /// only checked.
-    fast_fns: HashMap<*const ast::FnDecl, Prim>,
     /// Each `@grader fn` over its own domains (`p: [C]Int`), with the
     /// entry the judge's grader calls in its place, over lists.
     grader_wrappers: Vec<(&'a ast::FnDecl, &'a ast::FnDecl)>,
@@ -821,9 +818,6 @@ struct Lowerer<'a> {
     /// The type wanted of the generic call being lowered, which fills a
     /// type parameter only its return type names: `let x: Int = gen(r)`.
     call_hint: (Option<Ty>, Option<lambda_infer::WantBound>),
-    /// Lowering the `@from_op` call a bare op was lifted into: its op binds `M` itself and is
-    /// not lifted again, or `Monoid.of(+)` would lift into `Monoid.of(Monoid.of(+))` forever.
-    lifting_op: bool,
     /// The range ends of the owner struct's parameters for the generic method
     /// call being lowered: `Monoid<T>.of(max)` with `T` a `1..=9` sees `T.MIN == 1`.
     owner_ranges: Vec<(String, GenArg)>,
@@ -942,7 +936,6 @@ impl<'a> Lowerer<'a> {
             quiet_sigs: HashSet::new(),
             preamble_stmts: Vec::new(),
             memo_fns: HashSet::new(),
-            fast_fns: HashMap::new(),
             grader_wrappers: Vec::new(),
             memo_count: 0,
             memo_fast: None,
@@ -984,7 +977,6 @@ impl<'a> Lowerer<'a> {
             outer_cxs: OuterCxs::default(),
             gen_env: HashMap::new(),
             call_hint: (None, None),
-            lifting_op: false,
             owner_ranges: Vec::new(),
             want_written: None,
             self_struct: None,

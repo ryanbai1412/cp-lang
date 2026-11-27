@@ -4,7 +4,7 @@ use cpl_check::Session;
 
 #[test]
 fn no_spec_std_module_imports_itself_back() {
-    let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("frozen/std");
     let std_dir = std_dir.canonicalize().expect("std exists");
     let mut files: Vec<PathBuf> = std::fs::read_dir(&std_dir)
         .unwrap()
