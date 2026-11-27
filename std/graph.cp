@@ -27,7 +27,7 @@ use std.math.{abs, gcd, popcount, ctz}
 use std.opt.{is_none_or}
 use std.rand.{Random, shuffle}
 use std.range.{Len}
-use std.seq.{each, collect, reverse, count, Seq, Indexed, Slice, all, any}
+use std.seq.{each, collect, reverse, count, Seq, IndexGet, Indexed, Slice, all, any}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by
@@ -1271,6 +1271,10 @@ pub struct Paths<V, W: Add, A>:
             at = b.from
         reverse(mut out)
         out
+
+impl<V, W: Add, A> IndexGet<V, ?W> for Paths<V, W, A>:
+    /// `p[v]` is `v`'s distance, `None` when the search never reached it.
+    fn at(self, v: V) -> ?W = dist[v]
 
 /// Fewest arcs from any vertex of `from` to each vertex, by breadth-first search.
 ///
