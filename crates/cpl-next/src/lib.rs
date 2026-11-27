@@ -271,7 +271,7 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
-    let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals, f.g.lines.clone());
+    let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals);
     let owned = own::check(&f.d, &f.t);
     let mut said = std::collections::HashSet::new();
     let reached = (prog.insts.iter()).filter_map(|i| match i.key {
@@ -282,7 +282,7 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
         .map(|e| e.clone().from_layer(Stage::Own.name()))
         .collect();
     prog.errors.extend(deferred);
-    own::place_copies(&mut prog, &f.g.sites, &owned.copies);
+    own::place_copies(&mut prog, &owned.copies);
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags))
 }
@@ -453,6 +453,35 @@ mod tests {
     use super::*;
     use modules::PROGRAM;
 
+    /// A fn's sites are its own: one written above it leaves its sites and their places as
+    /// they were.
+    #[test]
+    fn a_fn_above_leaves_the_sites_of_those_below() {
+        let below =
+            "fn widget(xs: List<Int>) -> Int:\n    xs[0] + xs[1]\n\nprint(widget([1, 2]))\n";
+        let above = format!("fn f() -> Int: 1\n\n{below}");
+        let g = |src: &str| {
+            let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+            let g = c
+                .prog
+                .insts
+                .iter()
+                .find(|f| f.name == "widget")
+                .expect("widget");
+            (format!("{:?}", g.body), g.sites.clone(), g.lines.clone())
+        };
+        let ((body, sites, lines), (body2, sites2, lines2)) = (g(below), g(&above));
+        assert!(sites.len() > 1);
+        assert_eq!((body, sites), (body2, sites2));
+        assert_eq!(
+            lines
+                .iter()
+                .map(|l| l + 2 * (*l != 0) as u32)
+                .collect::<Vec<_>>(),
+            lines2
+        );
+    }
+
     fn diags(src: &str) -> Vec<Diag> {
         compile(&Std::read(), src, &Roots::std(), false)
             .err()
@@ -495,7 +524,7 @@ mod tests {
         let main = c.prog.main;
         (c.proved().iter())
             .filter(|p| p.func == main)
-            .map(|p| (p.kind, c.prog.lines[p.site as usize]))
+            .map(|p| (p.kind, c.prog.insts[p.func].lines[p.site as usize]))
             .collect()
     }
 

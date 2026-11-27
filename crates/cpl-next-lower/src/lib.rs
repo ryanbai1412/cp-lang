@@ -19,10 +19,6 @@ pub struct Generic {
     pub deferred: HashMap<FnId, Vec<Msg>>,
     /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
     pub untyped: Vec<SourceId>,
-    /// Where in the loaded modules' text each site (`ir::Site`) is; site 0 has no place.
-    pub sites: Vec<SourceId>,
-    /// The line of the user's file each site is on; 0 inside std and derived impls.
-    pub lines: Vec<u32>,
 }
 
 struct Lw<'a> {
@@ -68,8 +64,6 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         errors: Vec::new(),
         deferred: HashMap::new(),
         untyped: Vec::new(),
-        sites: Vec::new(),
-        lines: Vec::new(),
     };
     let mut lw = Lw {
         d,
@@ -90,13 +84,14 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         off: ItemId::file(cpl_next_decls::modules::PROGRAM.into()),
         src,
         made: false,
-        sites: vec![ItemId::file(cpl_next_decls::modules::PROGRAM.into()).at(Span::default())],
-        lines: vec![0],
+        sites: fresh_sites().0,
+        lines: fresh_sites().1,
     };
     let mut body = Vec::new();
     for s in &typed.main {
         lw.stmt(s, &mut body);
     }
+    let (sites, lines) = lw.take_sites();
     out.funcs.insert(
         FuncKey::Main,
         Func {
@@ -109,6 +104,8 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             ret: Ty::Unit,
             region: None,
             line: 0,
+            sites,
+            lines,
             shown: "top level".into(),
         },
     );
@@ -169,6 +166,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             let es = lw.errors.split_off(before);
             out.deferred.entry(*id).or_default().extend(es);
         }
+        let (sites, lines) = lw.take_sites();
         out.funcs.insert(
             key.clone(),
             Func {
@@ -181,6 +179,8 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 ret: tf.ret.clone(),
                 region: tf.region.clone(),
                 line: lw.src.program_line(&fd.span),
+                sites,
+                lines,
                 shown: shown_name(d, fd),
             },
         );
@@ -190,8 +190,6 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
     }
     out.errors = lw.errors;
     out.untyped = lw.untyped;
-    out.sites = lw.sites;
-    out.lines = lw.lines;
     out.globals = lw.globals;
     out
 }
@@ -381,6 +379,14 @@ fn constant<T>(e: &Expr<T>) -> bool {
 impl Lw<'_> {
     /// A new site for the node at `span`, or 0 where the node has no line of the user's file.
     /// A new site for the node at `span`.
+    /// The site tables of the fn being lowered, which start again for the next.
+    fn take_sites(&mut self) -> (Vec<SourceId>, Vec<u32>) {
+        self.swap_sites(fresh_sites())
+    }
+    fn swap_sites(&mut self, to: (Vec<SourceId>, Vec<u32>)) -> (Vec<SourceId>, Vec<u32>) {
+        let lines = std::mem::replace(&mut self.lines, to.1);
+        (std::mem::replace(&mut self.sites, to.0), lines)
+    }
     fn site(&mut self, span: Span) -> Site {
         let at = self.off.at(span);
         self.lines.push(self.line(span));
@@ -1106,8 +1112,10 @@ impl Lw<'_> {
                     }
                 }
                 let (outer, off) = (std::mem::take(&mut self.locals), self.off.clone());
+                let outer_sites = self.take_sites();
                 let mut b = Vec::new();
                 body.iter().for_each(|s| self.stmt(s, &mut b));
+                let (sites, lines) = self.swap_sites(outer_sites);
                 self.case = Some(Func {
                     key: FuncKey::Case,
                     name: "case".into(),
@@ -1118,6 +1126,8 @@ impl Lw<'_> {
                     ret: Ty::Unit,
                     region: None,
                     line: 0,
+                    sites,
+                    lines,
                     shown: "case".into(),
                 });
                 self.off = off;
@@ -1214,6 +1224,7 @@ impl Lw<'_> {
         );
         // The lambda's body is lowered with its own local table: captures first, then parameters.
         let outer_locals = std::mem::take(&mut self.locals);
+        let outer_sites = self.take_sites();
         let mut fparams = Vec::new();
         let mut remap = HashMap::new();
         for (key, _, ty, _) in &caps {
@@ -1279,6 +1290,7 @@ impl Lw<'_> {
         self.in_main = was_main;
         let locals = std::mem::replace(&mut self.locals, outer_locals);
         self.remap = saved_remap;
+        let (sites, lines) = self.swap_sites(outer_sites);
         self.lambdas.push(Func {
             key: FuncKey::Lambda(id),
             name: format!("lambda{}", id.0),
@@ -1289,6 +1301,8 @@ impl Lw<'_> {
             ret: info.ret.clone(),
             region: info.yields.clone().map(|t| (false, t)),
             line: self.line(body.span),
+            sites,
+            lines,
             shown: "lambda".into(),
         });
         Self::capture_args(caps)
@@ -1381,4 +1395,10 @@ fn ends(stmts: &[Stmt<Ty>]) -> bool {
         Some(Stmt::Switch(_, arms)) => !arms.is_empty() && arms.iter().all(|a| ends(a)),
         _ => false,
     }
+}
+
+/// A fn's site tables before its first site: site 0, which has no place.
+fn fresh_sites() -> (Vec<SourceId>, Vec<u32>) {
+    let nowhere = ItemId::file(cpl_next_decls::modules::PROGRAM.into()).at(Span::default());
+    (vec![nowhere], vec![0])
 }

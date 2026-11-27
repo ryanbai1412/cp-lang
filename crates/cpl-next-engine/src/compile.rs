@@ -1128,7 +1128,7 @@ impl Fc<'_> {
     }
     /// The line of the user's file `site` is on; 0 for none.
     fn line(&self, site: Site) -> u32 {
-        self.p.lines[site as usize]
+        self.f.lines[site as usize]
     }
     fn call(&mut self, f: usize, args: &[Arg<CTy>], line: u32, d: Reg, save: Option<Reg>) -> u32 {
         let mut codes = Vec::with_capacity(args.len());

@@ -171,8 +171,8 @@ impl Intr {
 }
 
 /// A node of the user's file that an operation that can trap, a call or a region stands for:
-/// an index into the program's site table (`lower::Generic::sites`, `Program::lines`). Site 0
-/// is code with no place in the user's file (std, derived impls). A trap is reported at the
+/// an index into its fn's site tables (`Func::sites`, `Func::lines`), so a node is its fn and
+/// a local index. Site 0 is code with no place in the user's file (std, derived impls). A trap is reported at the
 /// innermost site with a place that is running, so a check std makes fails at the line that
 /// called std. Every instance of a generic fn keeps its sites.
 pub type Site = u32;
@@ -348,6 +348,10 @@ pub struct Func<T> {
     pub region: Option<(bool, T)>,
     /// Where it is written: its line in the user's file, 0 inside std (`Site`).
     pub line: u32,
+    /// Where each of its sites (`Site`) is, and the line of the user's file it is on (0 for
+    /// site 0 and inside std).
+    pub sites: Vec<crate::ids::SourceId>,
+    pub lines: Vec<u32>,
     /// What a trap's call stack calls it: `f`, `Box.at`, `top level`.
     pub shown: String,
 }

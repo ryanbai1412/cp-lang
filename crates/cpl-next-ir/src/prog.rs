@@ -42,8 +42,6 @@ pub struct Program {
     /// An enum's payload struct per variant: its value is one of them, with a tag saying which.
     pub sums: HashMap<CTy, Vec<CTy>>,
     pub errors: Vec<Msg>,
-    /// The line of the user's file each site (`ir::Site`) is on; 0 for site 0.
-    pub lines: Vec<u32>,
 }
 impl Program {
     /// What a value of `t` holds: a struct's fields, or an enum's payloads.

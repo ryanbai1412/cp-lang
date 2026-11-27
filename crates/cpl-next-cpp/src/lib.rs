@@ -199,6 +199,8 @@ struct Emit<'a> {
     recursive: Vec<bool>,
     names: HashMap<CTy, String>,
     order: Vec<CTy>,
+    /// The lines of the fn being printed (`Func::lines`).
+    lines: std::cell::Cell<&'a [u32]>,
 }
 
 pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
@@ -208,6 +210,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         recursive: recursive_regions(funcs),
         names: HashMap::new(),
         order: Vec::new(),
+        lines: std::cell::Cell::new(&[]),
     };
     for f in funcs {
         for t in &f.locals {
@@ -296,6 +299,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         } else {
             put_line!(s, "    {} cpl_ret{{}};", e.names[&f.ret]);
         }
+        e.lines.set(&f.lines);
         e.block(&f.body, 1, &mut s, &mut label, ctx);
         if f.region.is_some() {
             put_line!(s, "    return cpl_code;");
@@ -398,7 +402,7 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
 
 impl Emit<'_> {
     fn line(&self, site: Site) -> u32 {
-        self.p.lines[site as usize]
+        self.lines.get()[site as usize]
     }
     /// Definition order for C++: a type comes after every type it holds by value. Storage
     /// (`cpl_raw<T>`) and references need only T's declaration, which is what lets a

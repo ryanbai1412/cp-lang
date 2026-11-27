@@ -1464,9 +1464,10 @@ fn result_span(e: &TExpr) -> Span {
 
 /// Settles each place passed to a call (`EK::Pass`) in the linked program: a copy taken in its
 /// turn where ownership found the call also writes it (R4), else a view from the call's start
-/// (R11) or a read. `sites` is where each site is in the loaded source.
-pub fn place_copies(p: &mut Program, sites: &[SourceId], copies: &BTreeSet<SourceId>) {
+/// (R11) or a read.
+pub fn place_copies(p: &mut Program, copies: &BTreeSet<SourceId>) {
     for f in &mut p.insts {
+        let sites = &f.sites;
         Settle {
             locals: &mut f.locals,
             copy: |s: Site| copies.contains(&sites[s as usize]),
