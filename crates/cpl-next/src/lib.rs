@@ -475,13 +475,14 @@ mod tests {
         let above = format!("fn f() -> Int: 1\n\n{below}");
         let g = |src: &str| {
             let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
-            let g = c
-                .prog
-                .insts
-                .iter()
-                .find(|f| f.name == "widget")
-                .expect("widget");
-            (format!("{:?}", g.body), g.sites.clone(), g.lines.clone())
+            let insts = &c.prog.insts;
+            let g = insts.iter().find(|f| f.name == "widget").expect("widget");
+            // An instance is named by what it instantiates: a fn above adds instances before it.
+            let body = (insts.iter().enumerate().rev())
+                .fold(format!("{:?}", g.body), |b, (k, f)| {
+                    b.replace(&format!("Inst({k})"), &format!("Inst({})", f.name))
+                });
+            (body, g.sites.clone(), g.lines.clone())
         };
         let ((body, sites, lines), (body2, sites2, lines2)) = (g(below), g(&above));
         assert!(sites.len() > 1);
@@ -750,16 +751,13 @@ mod tests {
         assert_eq!(lent, ["check: program:2:13: E0201: unknown name `nope`"]);
     }
 
-    /// A refused bound test leaves the branch it narrows unchecked: it relies on the bound.
+    /// A bound test that fails to check leaves the branch it narrows unchecked: it relies on
+    /// the bound.
     #[test]
-    fn a_refused_bound_test_says_nothing_of_its_branch() {
-        let src = "trait Ch:\n    fn ch(self) -> Int\nfn f<M>(m: M) -> Int:\n    if M: Ch:\n        return m.ch()\n    0\nprint(f(3))\n";
-        let ds = diags(src);
-        assert!(
-            ds.iter().all(Diag::is_refusal),
-            "{:?}",
-            ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
-        );
+    fn a_bound_test_in_error_says_nothing_of_its_branch() {
+        let src = "trait Ch:\n    fn ch(self) -> Int\nfn f<M>(m: M) -> Int:\n    if M: Nope:\n        return m.ch()\n    0\nprint(f(3))\n";
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert_eq!(ds, ["check: program:4:11: E0204: unknown trait `Nope`"]);
     }
 
     /// `in` with an operand that is the error is the error, as `binary` is.
