@@ -890,7 +890,6 @@ std-models/seq-reverse.cp
 std-models/seq-sorted.cp
 std-models/seq-stack.cp
 std-models/seq-views.cp
-std-models/shuffle.cp
 std-models/slope.cp
 std-models/sortedmap.cp
 std-models/sortedset.cp
@@ -1078,7 +1077,6 @@ std-seq/seq-u54-merge-sorted.cp
 std-seq/seq-u56-map-filter.cp
 std-seq/seq-u57-unzip.cp
 std-seq/seq-u59-generators.cp
-std-seq/set-union-intersect-subtract.cp
 std-seq/shift-positions-and-cuts.cp
 std-seq/slice-items-come-from-its-keyed-impl.cp
 std-seq/slice-keys-len-is-empty.cp

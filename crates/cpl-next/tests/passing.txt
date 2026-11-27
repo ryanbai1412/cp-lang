@@ -1021,6 +1021,7 @@ next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
 next/n_scope_01_param_shadows_domain.cp
+next/n_set_ordered.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
 next/n_slice_03_open_ends.cp

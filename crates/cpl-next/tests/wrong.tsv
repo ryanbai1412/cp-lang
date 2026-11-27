@@ -48,7 +48,7 @@ core-02/str-plus-int.cp	wrong-error	wanted E0309 on line 3, got: check: program:
 core-02/struct-same-arity-is-duplicate.cp	wrong-error	wanted E0202 on line 5, got: check: program:6:7: E0203: `Pair<Int, Int>` has no member `a`
 core-02/type-alias-walks-as-its-type.cp	wrong-reject	check: program:7:10: E0201: unknown name `G`
 core-02/unit-is-ordered.cp	wrong-reject	check: program:9:11: E0606: `()` has no `impl Eq`, which `==` needs (R08.1.5)
-core-02/variant-named-like-prelude-type.cp	wrong-reject	check: program:8:11: E0201: unknown name `Set`
+core-02/variant-named-like-prelude-type.cp	wrong-reject	check: program:8:15: E0302: expected `OrdTree<_, ()>`, found `Int`
 core-03/a-list-or-handle-of-itself-is-fine.cp	wrong-reject	check: std.persistent:32:9: E0203: `List<T>` has no member `reserve`
 core-03/byte-slot-is-range.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-03/i128-holds-past-int.cp	wrong-reject	check: program:3:1: E0204: unknown type `I128`
@@ -225,7 +225,7 @@ core-07/combine-by-walk-order.cp	wrong-reject	check: program:4:20: E0302: expect
 core-07/filter-walks.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-07/first-last-pred.cp	wrong-reject	check: std.seq:288:14: E0302: expected `T`, found `2.hidden`
 core-07/fold-from-folds-into-another-type.cp	wrong-reject	check: program:4:86: E0302: expected `List<Char>`, found `Char`
-core-07/for-walks-every-sequence.cp	wrong-reject	check: program:9:10: E0201: unknown name `Set`
+core-07/for-walks-every-sequence.cp	wrong-reject	check: program:9:14: E0302: expected `OrdTree<_, ()>`, found `List<Int>`
 core-07/generic-mut-int-keyed-array-stays-array.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 core-07/heap-by-desc-lambda.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 core-07/indexed-param-takes-views.cp	wrong-reject	check: program:6:23: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
@@ -247,7 +247,7 @@ core-07/rev-traits-come-from-std-impls.cp	wrong-reject	check: std.seq:45:15: E02
 core-07/reversed-view-passed-as-array-is-read-in-its-order.cp	wrong-reject	check: program:8:13: E0302: expected `Array<P, Int>`, found `Rev<Array<P, Int>>`
 core-07/rotate-needs-var.cp	wrong-error	wanted E0401 on line 5, got: check: std.seq:811:12: E0203: `Range<Int>` has no member `is_empty`
 core-07/rotate.cp	wrong-reject	check: std.seq:840:13: E0606: `S` does not implement `Domain`
-core-07/set-key-after-removal-equals-a-built-set.cp	wrong-reject	check: program:5:1: E0204: unknown type `Set`
+core-07/set-key-after-removal-equals-a-built-set.cp	wrong-reject	check: program:5:21: E0302: expected `OrdTree<Q, ()>`, found `List<Q>`
 core-07/slice-max-in-a-let-is-optional.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 core-07/slice-view-then-write.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-07/sorted-checks.cp	wrong-reject	check: std.seq:2720:43: E0302: expected `4.hidden`, found `T`
