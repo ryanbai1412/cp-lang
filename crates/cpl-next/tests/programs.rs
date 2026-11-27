@@ -399,8 +399,8 @@ fn verdict(path: &Path) -> (&'static str, String) {
     {
         return ("refused", format!("before: {e}"));
     }
-    // Text a case asks to see is judged once the case otherwise passes; until then the
-    // case stays refused, as the text may come from a report the pipeline lacks.
+    // Text a case asks to see is judged once the case otherwise passes; a case that doesn't
+    // keeps its verdict, so a wrong-accept or wrong-reject stays wrong (shortcut audit S14).
     let asks_text = header()
         .filter_map(header_key)
         .find(|k| ["has", "lacks"].contains(k));
@@ -435,9 +435,9 @@ fn verdict(path: &Path) -> (&'static str, String) {
     if let Some(d) = scratch {
         let _ = std::fs::remove_dir_all(d);
     }
-    if let Some(key) = asks_text {
+    if asks_text.is_some() {
         if verdict != "pass" {
-            return ("refused", format!("a `// {key}:` case"));
+            return (verdict, detail);
         }
         let mut has = header_values(&text, "has:").into_iter().map(unquote);
         let mut lacks = header_values(&text, "lacks:").into_iter().map(unquote);

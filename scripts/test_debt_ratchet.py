@@ -1086,6 +1086,17 @@ class DebtRatchetTest(unittest.TestCase):
                     mock.patch.object(dr, "rs_over_cap", lambda r, m: {}):
                 self.assertEqual(dr.main(["--zero", "--root", str(root)]), 0)
 
+    def test_a_harness_refusal_site_is_counted_where_the_pipeline_s_is_not(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            t = root / dr.NEXT_TESTS
+            t.mkdir(parents=True)
+            (t / "programs.rs").write_text(
+                'return ("refused", "a lint".into());\n'
+                'Unbuilt(e) => (if x { "refused" } else { "wrong" }, e),\n'
+            )
+            self.assertEqual(dr.next_harness_refusals(root), [f"{dr.NEXT_TESTS}/programs.rs:1"])
+
     def test_zero_with_a_prefix_counts_only_the_counters_it_names(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

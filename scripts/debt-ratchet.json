@@ -315,8 +315,8 @@
   "next_masked": 165,
   "next_refusal_kinds": 62,
   "next_core_privilege": 21,
-  "next_whole_program_inputs": 60,
-  "next_handoff_side_fields": 11,
+  "next_whole_program_inputs": 6,
+  "next_handoff_side_fields": 8,
   "next_reference_evaluator_lines": 597,
   "next_oracle_callers": 0,
   "next_layout_outside_table": 0,
@@ -385,5 +385,6 @@
   "tool_old_syntax_uses": 2228,
   "next_check_set_facts": 11,
   "next_snapshot_keyed_queries": 5,
-  "next_late_rejects": 90
+  "next_late_rejects": 90,
+  "next_harness_refusals": 4
 }

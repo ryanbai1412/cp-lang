@@ -1370,6 +1370,20 @@ def next_reference_evaluator_lines(root: Path) -> list[str]:
             for l in _next_file_lines(root, _rel(root, f))]
 
 
+# A verdict comes from the pipeline, never from the harness (shortcut audit S14).
+HARNESS_REFUSAL_RE = re.compile(r'\("refused",')
+
+
+def next_harness_refusals(root: Path) -> list[str]:
+    """Sites in the new pipeline's programs harness that answer `refused` themselves, for a
+    header or exit code the harness does not judge, rather than from the pipeline's `Unbuilt`.
+    0 is every refusal the pipeline's own."""
+    rel = NEXT_TESTS + "/programs.rs"
+    if not (root / rel).is_file():
+        return []
+    return [f"{rel}:{i}" for i, l in enumerate(_lines(root / rel), 1) if HARNESS_REFUSAL_RE.search(l)]
+
+
 # The tests' own harness binary: `--raw`, `--canonical` and `--all` run the oracle for them.
 NEXT_ORACLE_HOST = "crates/cpl-next/src/main.rs"
 
@@ -4547,6 +4561,7 @@ COUNTERS = {
     "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
     "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
+    "next_harness_refusals": ("sites in the new harness that answer refused themselves instead of the pipeline (Core; target 0)", next_harness_refusals, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
     "next_standin_notes": ("new-pipeline lines saying the code beside them stands in for a designed component (Core)", next_standin_notes, True),
