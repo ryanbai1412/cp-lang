@@ -285,18 +285,8 @@ core-07/view-not-in-var.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` 
 core-07/view-walks.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
 core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: exit Some(101): 
-<<<<<<< HEAD
-core-07/yielded-closure-writes-generator-local.cp	wrong-reject	check: program:8:15: E0302: expected `Tuple2<Int, () -> ()>`, found `Tuple2<Int, a function>`
 core-07/zip-pairs-by-walk.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:11: E0201: unknown name `Bool`
-||||||| parent of 211ae6d65 (check(next): literal domain positions, Domain eq, record fields lend)
-core-07/yielded-closure-writes-generator-local.cp	wrong-reject	check: line 8: E0302: expected `Tuple2<Int, () -> ()>`, found `Tuple2<Int, a function>`
-core-07/zip-pairs-by-walk.cp	wrong-reject	check: std line 497: E0203: `Range<U>` has no member `zero`
-core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: line 16: E0201: unknown name `Bool`
-=======
-core-07/zip-pairs-by-walk.cp	wrong-reject	check: std line 497: E0203: `Range<U>` has no member `zero`
-core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: line 16: E0201: unknown name `Bool`
->>>>>>> 211ae6d65 (check(next): literal domain positions, Domain eq, record fields lend)
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
 core-08/assoc-default-names-trait-param.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
