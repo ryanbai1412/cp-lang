@@ -740,6 +740,7 @@ impl<'a> Cx<'a> {
         call: Option<&[ast::Arg]>,
         span: Span,
         want: Option<&Ty>,
+        written_targs: &[Ty],
     ) -> TExpr {
         if let Some(e) = self.domain_member(base, name, call, span, want) {
             return e;
@@ -856,7 +857,8 @@ impl<'a> Cx<'a> {
         };
         if let Some(decls::Named::Fn(fid)) = ext {
             if let Some(st) = self.d.f(fid).self_ty.clone() {
-                let f = self.fnref(fid, Vec::new(), Vec::new());
+                let ts = self.written_targs(fid, Vec::new(), written_targs, span);
+                let f = self.fnref(fid, ts, Vec::new());
                 let sub = Subst {
                     tys: &f.targs,
                     sets: &f.sets,
@@ -906,6 +908,7 @@ impl<'a> Cx<'a> {
                     );
                 }
                 let getter = fd.getter && fd.params.is_empty();
+                let ts = self.written_targs(m, ts, written_targs, span);
                 let f = self.fnref(m, ts, ss);
                 let recv = self.recv_arg(m, recv, span);
                 self.call_method(f, recv, getter, call, span, want)
@@ -1298,7 +1301,7 @@ impl<'a> Cx<'a> {
                     text: format!("_{}", name.text),
                     span: name.span,
                 };
-                self.member(base, &name, None, span, want)
+                self.member(base, &name, None, span, want, &[])
             }
             ExprKind::Tuple(xs) if self.d.tuples.contains_key(&xs.len()) => {
                 let d = self.d.tuples[&xs.len()];
@@ -1333,7 +1336,7 @@ impl<'a> Cx<'a> {
                 };
                 self.expr(&ast::Expr { kind: call, span }, want)
             }
-            ExprKind::Field { base, name } => self.member(base, name, None, span, want),
+            ExprKind::Field { base, name } => self.member(base, name, None, span, want, &[]),
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let b = self.expr(base, None);
                 if let Ty::Raw(t) = self.shallow(&b.ty) {
@@ -1367,7 +1370,14 @@ impl<'a> Cx<'a> {
                 }
             }
             ExprKind::Call { callee, args } => match &callee.kind {
-                ExprKind::Field { base, name } => self.member(base, name, Some(args), span, want),
+                ExprKind::Field { base, name } => {
+                    self.member(base, name, Some(args), span, want, &[])
+                }
+                ExprKind::Generic { base, args: targs }
+                    if matches!(base.kind, ExprKind::Field { .. }) =>
+                {
+                    self.generic_method(base, targs, args, span, want)
+                }
                 // `write` is `print` without the line end; the slice uses it to write `print` for containers in the library.
                 ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
                     if args.iter().any(|a| a.name.is_some()) {
@@ -1569,6 +1579,7 @@ impl<'a> Cx<'a> {
                 body,
                 ..
             } => self.lambda(params, param_tys, ret_ty.as_ref(), body, want, span),
+            ExprKind::Generic { base, args } => self.generic_value(base, args, span),
             ExprKind::List(xs) => {
                 // `[a, b]` is `List.new()` and a `push` per element.
                 let Some(list) = self.list_struct(span) else {

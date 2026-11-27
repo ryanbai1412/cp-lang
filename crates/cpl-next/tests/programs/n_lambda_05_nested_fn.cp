@@ -1,4 +1,4 @@
-// expect: ok, output "24 17 13 true 15 12"
+// expect: ok, output "24 17 13 YES 15 12"
 // rule: R05.10.5, R06.2.1
 // A nested `fn` is a fn value with captures; the fns of one run may call each other.
 fn outer() -> Int:
@@ -27,4 +27,4 @@ fn bump(x: Int) -> Int:
     fn inc(y: Int) -> Int = y + x
     twice(inc, 0)
 let (a, b) = walk(5, 5)
-print(outer(), a, b, parity(10), tally([1, 2, 6]), bump(6))
+print(outer(), a, b, yes(parity(10)), tally([1, 2, 6]), bump(6))

@@ -1,0 +1,107 @@
+//! Type arguments written on an expression: `id::<Int>`, `s.parse<Int>()` (R08.2.5).
+use super::expr::block;
+use super::*;
+
+impl Cx<'_> {
+    /// `f<A>` named as a value: the closure that calls `f` with `A`, as `f` alone is.
+    pub(super) fn generic_value(
+        &mut self,
+        base: &ast::Expr,
+        targs: &[ast::Type],
+        span: Span,
+    ) -> TExpr {
+        let err = TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        };
+        let ExprKind::Name(n) = &base.kind else {
+            self.err(span, "slice: expression Generic");
+            return err;
+        };
+        let fd = (self.lookup(n).is_none())
+            .then(|| self.d.fn_named(self.module, n))
+            .flatten();
+        let Some(d) = fd.filter(|d| !self.d.f(*d).generics.is_empty()) else {
+            if fd.is_none() && self.lookup(n).is_none() {
+                let what = match self.d.struct_named(self.module, n) {
+                    Some(_) => "slice: a type with type arguments used as a value",
+                    None => "slice: expression Generic",
+                };
+                self.err(span, what);
+                return err;
+            }
+            self.err(
+                span,
+                format!(
+                    "{}: `{n}` takes no type arguments",
+                    cpl_diag::codes::TYPE_MISMATCH.0
+                ),
+            );
+            return err;
+        };
+        let mut pre = Vec::new();
+        let given: Vec<Ty> = (targs.iter())
+            .map(|t| self.body_ty(t, span, &mut pre))
+            .collect();
+        let given = self.written_targs(d, Vec::new(), &given, span);
+        let f = self.fnref(d, given, Vec::new());
+        let v = TExpr {
+            kind: TK::FnItem(f.clone()),
+            ty: Ty::Clo(Box::new(CloRef::Item(f))),
+            span,
+        };
+        block(pre, v)
+    }
+
+    /// `recv.m<A>(args)`: the written arguments are `m`'s own, after its owner's.
+    pub(super) fn generic_method(
+        &mut self,
+        callee: &ast::Expr,
+        targs: &[ast::Type],
+        args: &[ast::Arg],
+        span: Span,
+        want: Option<&Ty>,
+    ) -> TExpr {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            self.err(span, "slice: expression Generic");
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
+        };
+        let mut pre = Vec::new();
+        let given: Vec<Ty> = (targs.iter())
+            .map(|t| self.body_ty(t, span, &mut pre))
+            .collect();
+        let v = self.member(base, name, Some(args), span, want, &given);
+        block(pre, v)
+    }
+
+    /// The type arguments of `m` with the written ones after those already fixed (`ts`).
+    pub(super) fn written_targs(
+        &mut self,
+        m: FnId,
+        mut ts: Vec<Ty>,
+        written: &[Ty],
+        span: Span,
+    ) -> Vec<Ty> {
+        let fd = self.d.f(m);
+        let takes = fd.generics.len().saturating_sub(ts.len());
+        if written.len() > takes {
+            let name = fd.name.clone();
+            self.err(
+                span,
+                format!(
+                    "{}: `{name}` takes {takes} type arguments, found {}",
+                    cpl_diag::codes::WRONG_ARG_COUNT.0,
+                    written.len()
+                ),
+            );
+            return ts;
+        }
+        ts.extend(written.iter().cloned());
+        ts
+    }
+}

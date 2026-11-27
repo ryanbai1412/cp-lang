@@ -18,6 +18,7 @@ mod lambda;
 mod oblige;
 mod range;
 mod stmt;
+mod targs;
 mod unify;
 mod variants;
 mod zonk;

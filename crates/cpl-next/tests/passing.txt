@@ -464,6 +464,7 @@ core-08/derive-needs-fields.cp
 core-08/duplicate-impl.cp
 core-08/field-trait-struct-opt-in.cp
 core-08/generic-body-cannot-assume-an-associated-type.cp
+core-08/generic-method-call.cp
 core-08/generic-over-seq-capability.cp
 core-08/getter-impl-on-builtin-type.cp
 core-08/getter-trait-param-from-record-field.cp
@@ -495,6 +496,7 @@ core-08/trait-default-method.cp
 core-08/trait-default-overridden-through-generic.cp
 core-08/trait-message-bound-holds.cp
 core-08/trait-message.cp
+core-08/type-arguments-on-a-value-are-rejected.cp
 core-08/while-const.cp
 core-09/allow-attribute-removed.cp
 core-09/assert-after-64k-of-output-prints-it-first.cp
@@ -829,6 +831,7 @@ next/n_slice_07_range_cut_is_a_sub_range.cp
 next/n_slice_08_range_cut_outside_traps.cp
 next/n_slice_09_lent_field_walks_its_source.cp
 next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
+next/n_targs_01_written.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
