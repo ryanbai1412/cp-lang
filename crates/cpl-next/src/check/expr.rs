@@ -446,7 +446,7 @@ impl<'a> Cx<'a> {
     /// `a < b`, `a == b` and the rest on a type that is not a number: its `Ord` or `Eq` fn, from
     /// the bound on a type parameter or the type's impl (R08.1.5). `a > b` is `b < a`, `a <= b` is
     /// `not b < a`, and `a != b` is `not a == b`; operands are still read left to right.
-    fn op_call(&mut self, op: CmpOp, a: TExpr, b: TExpr, span: Span) -> TExpr {
+    pub(super) fn op_call(&mut self, op: CmpOp, a: TExpr, b: TExpr, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let Some((trait_name, method)) = op.trait_method() else {
             return mk(TK::Error, Ty::Error);

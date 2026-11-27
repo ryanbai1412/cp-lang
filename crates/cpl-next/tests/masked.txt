@@ -107,7 +107,6 @@ core-04/library-domain-sized-after-read.cp
 core-04/library-domain-sized-per-generic-fn.cp
 core-04/library-domain-sized-per-instance.cp
 core-04/library-domain-walk-queries.cp
-core-04/library-domain-walk-visits-each.cp
 core-04/list-of-domain-array-loses-domain.cp
 core-04/literal-to-mod.cp
 core-04/open-to-cut-walks-cuts.cp
@@ -355,7 +354,6 @@ core-08/if-bound-struct-needs-impl.cp
 core-08/impl-chooses-an-associated-type-per-kind.cp
 core-08/impl-domain-d-beside-f64.cp
 core-08/impl-fn-params-take-the-traits-types.cp
-core-08/impl-for-a-row-record.cp
 core-08/impl-for-a-table-binds-its-params.cp
 core-08/impl-op-trait-beside-variant.cp
 core-08/impl-shapes-for-a-graph.cp
@@ -676,7 +674,6 @@ std-graph/matrix-closure-no-arcs.cp
 std-graph/next-lambda-explicit-domain.cp
 std-graph/only-keep-none.cp
 std-graph/only-out-over-record-arc-type.cp
-std-graph/only-out-through-next-impl.cp
 std-graph/overview-small-program.cp
 std-graph/paths-index.cp
 std-graph/peel-self-loop-removes-nothing.cp
@@ -1193,8 +1190,6 @@ traits/Mul/Vec3--mul.cp
 traits/Neg/Vec--neg.cp
 traits/Neg/Vec3--neg.cp
 traits/Next/Complement--out.cp
-traits/Next/Graph--out.cp
-traits/Next/Reweighted--out.cp
 traits/Pow/Mat--pow.cp
 traits/Random/Bool--gen.cp
 traits/Random/Graph--gen.cp
@@ -1214,7 +1209,6 @@ traits/Show/LiChao--show.cp
 traits/Show/LineContainer--show.cp
 traits/Show/MonotoneHull--show.cp
 traits/Show/Paths--show.cp
-traits/Show/Reweighted--show.cp
 traits/Show/RingSlice--show.cp
 traits/Show/SegTree--show.cp
 traits/Show/SparseTable--show.cp

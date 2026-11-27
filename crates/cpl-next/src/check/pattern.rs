@@ -183,15 +183,18 @@ impl Cx<'_> {
                 let flag = mk(TK::Field(Box::new(v.clone()), 0), Ty::Bool);
                 Some(mk(TK::Not(Box::new(flag)), Ty::Bool))
             }
-            PatternKind::Literal(e) if matches!(e.kind, ExprKind::Str(_)) => {
-                self.err(span, "slice: a string pattern");
-                None
-            }
             PatternKind::Literal(e) => {
                 let t = match self.shallow(&v.ty) {
                     Ty::Range(..) | Ty::RangeOf(_) => Ty::Int,
                     t @ (Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64) => t,
                     Ty::Error => return None,
+                    // Any other literal, such as a string, matches what its type's `Eq` says
+                    // is equal (R01.7).
+                    t @ Ty::Struct(..) => {
+                        let lit = self.expr(e, Some(&t));
+                        let lit = self.coerce(lit, &t);
+                        return Some(self.op_call(CmpOp::Eq, v.clone(), lit, span));
+                    }
                     t => {
                         let t = self.show(&t);
                         self.err(span, format!("slice: a literal pattern on a `{t}`"));

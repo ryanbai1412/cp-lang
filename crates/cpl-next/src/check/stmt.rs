@@ -1573,7 +1573,13 @@ impl<'a> Cx<'a> {
                 let v = self.read_as(&Ty::Int, span);
                 self.coerce(v, &want)
             }
-            Ty::Int | Ty::Var(_) | Ty::Error => {
+            // A type already reported reads nothing, so nothing downstream reports it again.
+            Ty::Error => TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            },
+            Ty::Int | Ty::Var(_) => {
                 self.unify(t, &Ty::Int);
                 TExpr {
                     kind: TK::ReadInt,
