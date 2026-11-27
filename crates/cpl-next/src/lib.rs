@@ -150,6 +150,9 @@ pub enum Form {
 pub struct Compiled {
     prog: inst::Program,
     canon: Vec<ir::Func<inst::CTy>>,
+    /// What the fast engine and the C++ run: canonical IR less the checks the facts prove.
+    opt: Vec<ir::Func<inst::CTy>>,
+    proved: Vec<cpl_next_ir::facts::Proved>,
 }
 
 /// Every layer through lowering, each run whatever an earlier one found (contracts 1-3).
@@ -245,7 +248,13 @@ pub fn compile(
         inst::add_events(&mut prog, &t, &d, loaded.program_start);
     }
     let canon = inst::canonicalize(&prog).map_err(|es| link(&es))?;
-    Ok(Compiled { prog, canon })
+    let (opt, proved) = cpl_next_ir::facts::optimize(&canon, prog.main);
+    Ok(Compiled {
+        prog,
+        canon,
+        opt,
+        proved,
+    })
 }
 
 /// One unit of the program (contract 3): a fn it declares, or one of its top-level statements.
@@ -315,12 +324,17 @@ impl Compiled {
         match form {
             Form::Raw => interp::run(&self.prog, &self.prog.insts, input),
             Form::Canonical => interp::run(&self.prog, &self.canon, input),
-            Form::Engine => cpl_next_engine::run(&self.prog, &self.canon, input),
+            Form::Engine => cpl_next_engine::run(&self.prog, &self.opt, input),
         }
     }
 
     pub fn cpp(&self) -> String {
-        cpp::emit(&self.prog, &self.canon)
+        cpp::emit(&self.prog, &self.opt)
+    }
+
+    /// The checks optimized IR leaves out, each with the facts' reason being its site.
+    pub fn proved(&self) -> &[cpl_next_ir::facts::Proved] {
+        &self.proved
     }
 }
 
@@ -372,6 +386,61 @@ mod tests {
         for (p, got) in programs.iter().zip(&shared) {
             assert_eq!(got, &outcome(&Std::read(), p), "{p}");
         }
+    }
+
+    /// The checks optimized IR leaves out in the program's own code, by kind and line.
+    fn proved(src: &str) -> Vec<(cpl_next_ir::ir::CheckKind, u32)> {
+        let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+        let main = c.prog.main;
+        (c.proved().iter())
+            .filter(|p| p.func == main)
+            .map(|p| (p.kind, p.site))
+            .collect()
+    }
+
+    /// A check is left out only where a fact proves it: `i` from `0..n` is a position of
+    /// `[0..n]` and `n - i` is in `1..=n`, but past the end of either it stays.
+    #[test]
+    fn facts_leave_out_only_the_checks_they_prove() {
+        use cpl_next_ir::ir::CheckKind::{Domain, RangeStore};
+        let head = "let n: 1..=10 = read()\nvar walk: List<1..=n> = []\nvar nxt: [0..n]0..=n = 0\n";
+        let at = |body: &str| proved(&format!("{head}{body}\n"));
+        assert_eq!(
+            at("for i in 0..n: walk.push(n - i)"),
+            [
+                (RangeStore, 3),
+                (RangeStore, 3),
+                (RangeStore, 4),
+                (RangeStore, 4)
+            ]
+        );
+        assert_eq!(
+            at("for i in 0..=n: walk.push(n - i)"),
+            [(RangeStore, 3), (RangeStore, 3), (RangeStore, 4)]
+        );
+        assert_eq!(
+            at("for i in 0..n: nxt[i] = i + 1"),
+            [
+                (RangeStore, 3),
+                (RangeStore, 3),
+                (Domain, 4),
+                (Domain, 4),
+                (Domain, 4),
+                (RangeStore, 4),
+                (RangeStore, 4)
+            ]
+        );
+        assert_eq!(
+            at("for i in 0..n: nxt[i + 1] = i"),
+            [
+                (RangeStore, 3),
+                (RangeStore, 3),
+                (Domain, 4),
+                (Domain, 4),
+                (RangeStore, 4),
+                (RangeStore, 4)
+            ]
+        );
     }
 
     /// A diagnostic's span is in the user's file, past the modules placed before it.

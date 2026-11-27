@@ -545,6 +545,8 @@ impl Fc<'_> {
     fn stmt(&mut self, s: &Stmt<CTy>) {
         match s {
             Stmt::Let(l, e) => self.assign(&Place::Local(*l), e),
+            // Optimized IR has none; a fact is for the facts, and the reference interpreter's.
+            Stmt::Fact(_) => {}
             Stmt::Assign(p, e) => self.assign(p, e),
             Stmt::Expr(e) => {
                 let n = self.size(&e.ty);
@@ -785,7 +787,7 @@ fn writes(b: &[Stmt<CTy>], l: usize) -> bool {
     b.iter().any(|s| match s {
         Stmt::Let(x, e) => *x == l || writes_in(e, l),
         Stmt::Assign(p, e) => root(p) == Some(l) || writes_in(e, l),
-        Stmt::Expr(e) | Stmt::Yield(e) => writes_in(e, l),
+        Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) => writes_in(e, l),
         Stmt::Return(e) => e.as_ref().is_some_and(|e| writes_in(e, l)),
         Stmt::If(c, a, b) => writes_in(c, l) || writes(a, l) || writes(b, l),
         Stmt::Loop(a, b) => writes(a, l) || writes(b, l),
@@ -1288,6 +1290,7 @@ fn cost(b: &[Stmt<CTy>]) -> usize {
         .map(|s| {
             1 + match s {
                 Stmt::Let(_, x) | Stmt::Assign(_, x) | Stmt::Expr(x) => e(x),
+                Stmt::Fact(_) => 0,
                 Stmt::Return(x) => x.as_ref().map_or(0, e),
                 Stmt::If(c, a, b) => e(c) + cost(a) + cost(b),
                 Stmt::Loop(a, b) => cost(a) + cost(b),

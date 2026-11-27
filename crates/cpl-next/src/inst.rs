@@ -418,6 +418,7 @@ impl Link<'_> {
                 Stmt::Let(l, e) => Stmt::Let(*l, self.expr(e, env)),
                 Stmt::Assign(p, e) => Stmt::Assign(p.clone(), self.expr(e, env)),
                 Stmt::Expr(e) => Stmt::Expr(self.expr(e, env)),
+                Stmt::Fact(e) => Stmt::Fact(self.expr(e, env)),
                 Stmt::If(c, a, b) => {
                     Stmt::If(self.expr(c, env), self.block(a, env), self.block(b, env))
                 }

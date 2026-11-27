@@ -467,6 +467,8 @@ impl Emit<'_> {
                     expr(self, x)
                 }
                 Stmt::Return(x) => x.iter().for_each(|x| expr(self, x)),
+                // Optimized IR, which this prints, has none.
+                Stmt::Fact(_) => {}
                 Stmt::Check { cond, .. } => expr(self, cond),
                 Stmt::If(c, a, b) => {
                     expr(self, c);
@@ -745,6 +747,7 @@ impl Emit<'_> {
                 Stmt::Let(l, e) => put_line!(s, "{pad}l{l} = {};", self.expr(e)),
                 Stmt::Assign(p, e) => put_line!(s, "{pad}{} = {};", self.place(p), self.expr(e)),
                 Stmt::Expr(e) => put_line!(s, "{pad}(void)({});", self.expr(e)),
+                Stmt::Fact(_) => {}
                 Stmt::If(c, a, b2) => {
                     put_line!(s, "{pad}if ({}) {{", self.expr(c));
                     self.block(a, depth + 1, s, label, ctx);

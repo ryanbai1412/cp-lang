@@ -252,6 +252,11 @@ impl<'a> Machine<'a> {
                 Stmt::Expr(e) => {
                     self.expr(e, fp)?;
                 }
+                Stmt::Fact(c) => {
+                    if !matches!(self.expr(c, fp)?, V::Bool(true)) {
+                        return broken("a fact lowering states is false");
+                    }
+                }
                 Stmt::If(c, a, b2) => {
                     let V::Bool(c) = self.expr(c, fp)? else {
                         return broken("if on a non-Bool");

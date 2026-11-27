@@ -929,7 +929,19 @@ impl Lw<'_> {
                 // `for i in lo..hi`: both ends are evaluated once, before the loop.
                 let lov = self.expr(lo, out);
                 let var = self.bind(*v);
-                out.push(Stmt::Assign(var.clone(), lov));
+                // The start, kept for the fact that the variable is at or after it.
+                let start = match lov.kind {
+                    EK::Int(_) => lov,
+                    _ => {
+                        let l = self.temp(Ty::Int);
+                        out.push(Stmt::Let(l, lov));
+                        Expr {
+                            kind: EK::Copy(Place::Local(l)),
+                            ty: Ty::Int,
+                        }
+                    }
+                };
+                out.push(Stmt::Assign(var.clone(), start.clone()));
                 let hiv = self.expr(hi, out);
                 let h = self.temp(Ty::Int);
                 out.push(Stmt::Let(h, hiv));
@@ -948,7 +960,18 @@ impl Lw<'_> {
                     ),
                     ty: Ty::Bool,
                 };
-                let mut body = vec![Stmt::If(cond, vec![], vec![Stmt::Break])];
+                let at_start = Expr {
+                    kind: EK::Intr(
+                        Intr::Le,
+                        vec![Arg::Value(start), Arg::Value(read(var.clone()))],
+                        0,
+                    ),
+                    ty: Ty::Bool,
+                };
+                let mut body = vec![
+                    Stmt::If(cond, vec![], vec![Stmt::Break]),
+                    Stmt::Fact(at_start),
+                ];
                 let bv = self.expr(b, &mut body);
                 self.effect(bv, &mut body);
                 // The step cannot overflow: the variable is below `hi`.

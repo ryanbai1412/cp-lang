@@ -270,6 +270,9 @@ pub enum Stmt<T> {
     LendOut(Place),
     /// A point a trace reports: a label and the values to show. Placed on instance IR, on request only.
     Event(String, Vec<Expr<T>>),
+    /// A condition that holds here, which lowering states for the facts (a `for` variable at
+    /// or after its start). No backend runs it; the reference interpreter checks it.
+    Fact(Expr<T>),
 }
 
 #[derive(Clone, Debug)]
