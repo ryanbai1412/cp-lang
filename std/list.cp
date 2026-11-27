@@ -78,6 +78,19 @@ pub struct List<T>:
     fn clear(mut self):
         n = 0
 
+    /// `k` elements: the first ones kept, any new ones `x` (seq/U58).
+    fn resize(mut self, k: Int, x: T):
+        check_key(0 <= k)
+        self.reserve(k)
+        while n < k: self.push(x)
+        self.truncate(k)
+
+    /// Every element `x` (seq/U58).
+    fn fill(mut self, x: T):
+        for i in 0..n:
+            raw_take(mut buf, i)
+            raw_set(mut buf, i, x)
+
 @array
 pub struct Array<D: Domain, T>:
     buf: Raw<T>
