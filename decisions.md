@@ -9461,3 +9461,9 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 643. (reserved, compiler)
 
 ## 644. (reserved, compiler)
+
+## 645. `traits/Show/Only--show.cp` is refused, not wrong (compiler, 2026-11-26)
+
+- **Call.** `traits/Show/Only--show` moves from wrong-reject to refused. It was wrong-reject only because std's line-scanning method index missed `only`, whose signature spans several lines; the index now comes from std's parsed declarations (f10dc16da), the method is found, and the case stops at a real refusal: printing an `Only<...>` is not built yet.
+- **Why.** The old "no member" verdict was a bug in the index, not the case's answer; the refusal names what is actually missing.
+- **Reverse.** None needed: the case passes once printing a generator wrapper is built.
