@@ -653,8 +653,10 @@ fn layer(
             let tuples = d.tuples.clone();
             let (sugar, records) = (d.sugar, d.records.clone());
             let members = d.member_types.clone();
+            let consts = d.consts.clone();
             let mut cx = TyCx {
                 names: &names,
+                consts: &consts,
                 values: d.top_values.clone(),
                 ops: d.operator_fns(),
                 item: None,
@@ -700,8 +702,10 @@ fn layer(
         let (tuples, defaults) = (d.tuples.clone(), d.struct_defaults.clone());
         let (sugar, records) = (d.sugar, d.records.clone());
         let members = d.member_types.clone();
+        let consts = d.consts.clone();
         let mut cx = TyCx {
             names: &names,
+            consts: &consts,
             values: d.top_values.clone(),
             ops: d.operator_fns(),
             item: None,
@@ -776,8 +780,10 @@ fn layer(
                     let tuples = d.tuples.clone();
                     let (sugar, records) = (d.sugar, d.records.clone());
                     let members = d.member_types.clone();
+                    let consts = d.consts.clone();
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
+                        consts: &consts,
                         values: d.top_values.clone(),
                         ops: d.operator_fns(),
                         item: None,
@@ -907,8 +913,10 @@ fn layer(
                     let (sugar, records) = (d.sugar, d.records.clone());
                     let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
+                    let consts = d.consts.clone();
                     let mut cx = TyCx {
                         names: &names,
+                        consts: &consts,
                         values: d.top_values.clone(),
                         ops: d.operator_fns(),
                         item: None,
@@ -1024,8 +1032,10 @@ fn layer(
                     let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
+                    let consts = d.consts.clone();
                     let mut cx = TyCx {
                         names: &names,
+                        consts: &consts,
                         values: d.top_values.clone(),
                         ops: d.operator_fns(),
                         item: Some(item.clone()),

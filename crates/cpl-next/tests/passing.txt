@@ -1647,6 +1647,8 @@ next/n_const_03_trap_is_a_compile_error.cp
 next/n_const_04_step_budget.cp
 next/n_const_hoists.cp
 next/n_const_range_decl.cp
+next/n_const_range_end.cp
+next/n_const_range_end_traps.cp
 next/n_convert_01_core_types_convert_by_impl.cp
 next/n_convert_02_char_outside_ascii_traps.cp
 next/n_convert_03_enum_of_its_value.cp

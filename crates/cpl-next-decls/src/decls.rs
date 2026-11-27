@@ -1172,8 +1172,10 @@ fn add_fn(
     let tuples = d.tuples.clone();
     let (sugar, records) = (d.sugar, d.records.clone());
     let members = d.member_types.clone();
+    let consts = d.consts.clone();
     let mut cx = TyCx {
         names: &names,
+        consts: &consts,
         values: d.top_values.clone(),
         ops: d.operator_fns(),
         item: Some(item.clone()),
@@ -1480,13 +1482,23 @@ pub fn static_range(
     hi: &Option<Box<ast::Expr>>,
     inclusive: bool,
 ) -> Option<(i64, i64)> {
+    static_range_by(lo, hi, inclusive, ast::Expr::int_literal)
+}
+
+/// [`static_range`] with each end's integer worked out by `end`.
+pub fn static_range_by(
+    lo: &Option<Box<ast::Expr>>,
+    hi: &Option<Box<ast::Expr>>,
+    inclusive: bool,
+    end: impl Fn(&ast::Expr) -> Option<i64>,
+) -> Option<(i64, i64)> {
     let lo = match lo {
-        Some(e) => e.int_literal()?,
+        Some(e) => end(e)?,
         None => i64::MIN + 1,
     };
     let hi = match hi {
-        Some(e) if inclusive => e.int_literal()?,
-        Some(e) => e.int_literal()?.checked_sub(1)?,
+        Some(e) if inclusive => end(e)?,
+        Some(e) => end(e)?.checked_sub(1)?,
         None => i64::MAX,
     };
     Some((lo, hi))

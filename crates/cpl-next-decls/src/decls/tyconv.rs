@@ -17,6 +17,8 @@ pub(super) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>)
 
 pub(super) struct TyCx<'a> {
     pub(super) names: &'a HashMap<String, Named>,
+    /// Every `const`, so a range type's end may name one whose value is a literal.
+    pub(super) consts: &'a Layer<LibConst>,
     /// What the program's top level binds with `let`: values, not items, to `type_of`.
     pub(super) values: Arc<HashSet<String>>,
     /// Where the item being converted starts in the source, when known: its spans count from it.
@@ -83,6 +85,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
     let none = HashMap::new();
     let mut inner = TyCx {
         names: &decl.names,
+        consts: cx.consts,
         values: cx.values.clone(),
         item: None,
         ops: cx.ops.clone(),
@@ -338,7 +341,16 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             Ty::Struct(d, vec![conv(cx, inner, errors)], Vec::new())
         }
         // `[D]T` is std's `@array` struct `Array<D, T>`.
-        TypeKind::Range { lo, hi, inclusive } => match static_range(lo, hi, *inclusive) {
+        // `0..=CAP` with `const CAP = 2_000_000_000`: a const written as a literal is that literal.
+        TypeKind::Range { lo, hi, inclusive } => match static_range_by(lo, hi, *inclusive, |e| {
+            match &e.kind {
+                ast::ExprKind::Name(n) => match cx.names.get(n.as_str()) {
+                    Some(Named::Const(c)) => cx.consts[c.0].init.int_literal(),
+                    _ => None,
+                },
+                _ => e.int_literal(),
+            }
+        }) {
             Some((lo, hi)) => Ty::Range(lo, hi),
             // `0..=V.count`: its end is the domain's, where a struct's arguments name it.
             None if count_end(lo, hi, *inclusive).is_some_and(|(_, d, ..)| is_type_name(cx, d)) => {
@@ -494,6 +506,7 @@ pub fn body_type(
     conv(
         &mut TyCx {
             names: &d.views[m.0],
+            consts: &d.consts,
             values: d.top_values.clone(),
             item: None,
             ops: d.operator_fns(),
