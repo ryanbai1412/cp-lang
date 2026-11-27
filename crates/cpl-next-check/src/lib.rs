@@ -20,6 +20,7 @@ pub use free::{free_vars, group_free};
 mod from_op;
 mod index;
 mod lambda;
+mod list;
 mod member;
 mod oblige;
 mod pattern;
@@ -344,6 +345,8 @@ struct Cx<'a> {
     wraps: bool,
     /// The fields `with` lines set around the code being checked, innermost last (R09.1.2).
     frames: Vec<CtxFrame>,
+    /// The lists comprehensions being checked fill, innermost last.
+    filling: Vec<list::Filling>,
     /// Each copy of a `uses` fn made so far, by the fn and the context values it is checked
     /// under; and those still to check.
     ctx_copies: HashMap<(FnId, String), u32>,
@@ -362,6 +365,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     let mut cx = Cx {
         wraps: false,
         frames: Vec::new(),
+        filling: Vec::new(),
         ctx_copies: HashMap::new(),
         ctx_pending: Vec::new(),
         d,
