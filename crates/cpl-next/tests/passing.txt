@@ -899,6 +899,8 @@ core-07/view-index-by-proven-key.cp
 core-07/view-is-not-a-list.cp
 core-07/view-key-outside-keys-traps.cp
 core-07/view-not-in-var.cp
+core-07/view-of-a-temporary-copied-is-owned.cp
+core-07/view-of-a-temporary-used-in-its-statement.cp
 core-07/view-sees-source-mutation-rejected.cp
 core-07/view-walks.cp
 core-07/while-adapters.cp
@@ -1189,6 +1191,7 @@ core-11/own-let-max-shadows-binary-builtin.cp
 core-11/own-max-shadows-prelude.cp
 core-11/prelude-exclusions.cp
 core-11/prelude-exports-signature-types.cp
+core-11/prelude-has-divisors-and-bit-len.cp
 core-11/prelude-without-use.cp
 core-11/pub-field-and-method.cp
 core-11/runtime-domain-reads-in-order.cp
@@ -1992,6 +1995,8 @@ std-algebra/minmax-is-a-std-fn.cp
 std-algebra/reversing-a-fold-with-no-rev-traps.cp
 std-algebra/unit-literal-is-unit.cp
 std-algebra/user-ord-fold-max-needs-ends.cp
+std-bag/sorted-bag-add-many-zero.cp
+std-bag/sorted-bag-duplicates.cp
 std-bag/sorted-bag-of-a-list-is-rejected.cp
 std-bag/sorted-map-of-pairs-is-rejected.cp
 std-bag/sorted-map-pop-drain.cp
@@ -1999,6 +2004,20 @@ std-bag/sorted-set-of-a-list-is-rejected.cp
 std-bag/sorted-set-pop-empty.cp
 std-bag/sorted-set-pop-ends.cp
 std-bag/sorted-set-rank-nth.cp
+std-bag/sortedbag-distinct-1.cp
+std-bag/sortedbag-first-1.cp
+std-bag/sortedbag-first_true-1.cp
+std-bag/sortedbag-first_true-2.cp
+std-bag/sortedbag-is_empty-1.cp
+std-bag/sortedbag-last-1.cp
+std-bag/sortedbag-last_true-1.cp
+std-bag/sortedbag-last_true-2.cp
+std-bag/sortedbag-len-1.cp
+std-bag/sortedbag-of-matches-adding-one-by-one.cp
+std-bag/sortedbag-pop_first-1.cp
+std-bag/sortedbag-pop_last-1.cp
+std-bag/sortedbag-take_first-1.cp
+std-bag/sortedbag-take_first-2.cp
 std-bag/sortedset-first-1.cp
 std-bag/sortedset-first_true-1.cp
 std-bag/sortedset-is_empty-1.cp
@@ -2176,6 +2195,9 @@ std-math/choose2-negative-is-zero.cp
 std-math/choose2-overflow-traps.cp
 std-math/choose2-zero-and-overflow-free.cp
 std-math/digits-base.cp
+std-math/divisors-as-a-method.cp
+std-math/divisors-from-factors-negative-exponent-traps.cp
+std-math/divisors-square.cp
 std-math/divmod-floor-signs.cp
 std-math/floor-sum-zero-terms.cp
 std-math/fractions.cp
@@ -2327,6 +2349,9 @@ std-seq/seq-u9-fold-seed.cp
 std-seq/sized-bound-met-by-std-impls-for-built-ins.cp
 std-seq/slice-items-come-from-its-keyed-impl.cp
 std-seq/slice-max-optional.cp
+std-seq/sort-body-takes-cmp-str-and-a-named-key.cp
+std-seq/sort-by-key-types-its-lambda.cp
+std-seq/sort-key-unpacks-its-element.cp
 std-seq/span-backwards-traps.cp
 std-seq/span-of-two-cuts-is-the-range-between.cp
 std-seq/split-on-separator-predicate.cp

@@ -795,74 +795,110 @@ fn hover_and_definition_read_the_scope_and_signatures() {
     assert!(print.head.starts_with("pub fn print<"), "{}", print.head);
 }
 
+/// Calls `f` with each call to an instance in `b`: the callee and its arguments.
+fn each_inst_call(b: &[Stmt<CTy>], f: &mut dyn FnMut(usize, &[cpl_next_ir::ir::Arg<CTy>])) {
+    use cpl_next_ir::ir::{Arg, Expr, Target, EK};
+    fn expr(e: &Expr<CTy>, f: &mut dyn FnMut(usize, &[Arg<CTy>])) {
+        let args = |xs: &[Arg<CTy>], f: &mut dyn FnMut(usize, &[Arg<CTy>])| {
+            for a in xs {
+                if let Arg::Value(x) = a {
+                    expr(x, f)
+                }
+            }
+        };
+        match &e.kind {
+            EK::Call(t, xs, _) => {
+                if let Target::Inst(g) = t {
+                    f(*g, xs)
+                }
+                args(xs, f)
+            }
+            EK::Intr(_, xs, _) => args(xs, f),
+            EK::CallValue(g, xs, _) => {
+                expr(g, f);
+                args(xs, f)
+            }
+            EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().for_each(|x| expr(x, f)),
+            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => expr(x, f),
+            _ => {}
+        }
+    }
+    for s in b {
+        match s {
+            Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) | Stmt::Yield(e) => expr(e, f),
+            Stmt::Fact(e) | Stmt::Check { cond: e, .. } | Stmt::Return(Some(e)) => expr(e, f),
+            Stmt::If(c, x, y) => {
+                expr(c, f);
+                each_inst_call(x, f);
+                each_inst_call(y, f);
+            }
+            Stmt::Loop(x, y, _) => {
+                each_inst_call(x, f);
+                each_inst_call(y, f);
+            }
+            Stmt::Switch(c, arms) => {
+                expr(c, f);
+                arms.iter().for_each(|a| each_inst_call(a, f));
+            }
+            Stmt::Region {
+                args, body, target, ..
+            } => {
+                if let cpl_next_ir::ir::Target::Inst(g) = target {
+                    f(*g, args)
+                }
+                each_inst_call(body, f)
+            }
+            Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(x, f)),
+            _ => {}
+        }
+    }
+}
+
 /// An `Arg::View` goes only to a param its callee views (contract 07): a place viewed at the
 /// call but given to a param the callee owns is copied in. `print` of several values recurses
 /// through `Pack.write_all`, whose `self` a viewed `Pack.write_to` owns no longer.
 #[test]
 fn a_view_goes_only_to_a_viewed_param() {
-    use cpl_next_ir::ir::{Arg, Expr, Func, Target, EK};
-    fn expr(fs: &[Func<CTy>], e: &Expr<CTy>, bad: &mut Vec<String>) {
-        let args = |xs: &[Arg<CTy>], bad: &mut Vec<String>| {
-            xs.iter().for_each(|a| {
-                if let Arg::Value(x) = a {
-                    expr(fs, x, bad)
-                }
-            })
-        };
-        match &e.kind {
-            EK::Call(Target::Inst(g), xs, _) => {
-                for (k, a) in xs.iter().enumerate() {
-                    if matches!(a, Arg::View(_)) && fs[*g].views.get(k) != Some(&true) {
-                        bad.push(format!("{} param {k}", fs[*g].name));
-                    }
-                }
-                args(xs, bad)
-            }
-            EK::Call(_, xs, _) | EK::Intr(_, xs, _) => args(xs, bad),
-            EK::CallValue(g, xs, _) => {
-                expr(fs, g, bad);
-                args(xs, bad)
-            }
-            EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().for_each(|x| expr(fs, x, bad)),
-            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => expr(fs, x, bad),
-            _ => {}
-        }
-    }
-    fn block(fs: &[Func<CTy>], b: &[Stmt<CTy>], bad: &mut Vec<String>) {
-        for s in b {
-            match s {
-                Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) | Stmt::Yield(e) => {
-                    expr(fs, e, bad)
-                }
-                Stmt::Fact(e) | Stmt::Check { cond: e, .. } | Stmt::Return(Some(e)) => {
-                    expr(fs, e, bad)
-                }
-                Stmt::If(c, x, y) => {
-                    expr(fs, c, bad);
-                    block(fs, x, bad);
-                    block(fs, y, bad);
-                }
-                Stmt::Loop(x, y, _) => {
-                    block(fs, x, bad);
-                    block(fs, y, bad);
-                }
-                Stmt::Switch(c, arms) => {
-                    expr(fs, c, bad);
-                    arms.iter().for_each(|a| block(fs, a, bad));
-                }
-                Stmt::Region { body, .. } => block(fs, body, bad),
-                Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(fs, x, bad)),
-                _ => {}
-            }
-        }
-    }
+    use cpl_next_ir::ir::Arg;
     let src = "struct P:\n    a: Int\n    b: Int = 2\nprint(P(a: 1).b, 3, 4)\n";
     let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
     for fs in [&c.prog.insts, &c.canon, &c.opt] {
         let mut bad = Vec::new();
-        fs.iter().for_each(|f| block(fs, &f.body, &mut bad));
+        for f in fs.iter() {
+            each_inst_call(&f.body, &mut |g, xs| {
+                for (k, a) in xs.iter().enumerate() {
+                    if matches!(a, Arg::View(_)) && fs[g].views.get(k) != Some(&true) {
+                        bad.push(format!("{} param {k}", fs[g].name));
+                    }
+                }
+            });
+        }
         assert!(bad.is_empty(), "views given to owned params: {bad:?}");
     }
+}
+
+/// A default lambda read in a generic caller is an instance per the caller's type arguments
+/// (`by: T -> K = x => x` of `sort`), not one of an error type that sorts nothing.
+#[test]
+fn a_default_lambda_in_a_generic_fn_has_the_callers_types() {
+    let src =
+        "fn f<T: Ord>(mut xs: List<T>):\n    xs.sort()\nvar a = [3, 1, 2]\nf(mut a)\nprint(a)\n";
+    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    assert_eq!(c.error_typed(), Vec::<String>::new());
+    assert_eq!(c.run("").output, "1 2 3\n");
+}
+
+/// An operator's trait argument takes the marks of the argument that fills it, so `small +
+/// large.rev` calls the `Add<Rev<lent List>>` instance; the verifier names an argument whose
+/// type is not its param's.
+#[test]
+fn a_trait_argument_takes_the_marks_of_its_argument() {
+    let src = "let small = [1, 2]\nlet large = [4, 3]\nprint(small + large.rev)\n";
+    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+    let g = c.prog.globals.len();
+    let bad = cpl_next_ir::verify::instances(&c.prog.insts, cpl_next_ir::verify::Stage::Raw, g);
+    assert!(bad.is_empty(), "{bad:?}");
+    assert_eq!(c.run("").output, "1 2 3 4\n");
 }
 
 #[test]

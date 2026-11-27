@@ -95,13 +95,24 @@ impl StageTy for CTy {
 /// its locals, globals, instances and sites exist, a local is set before it is read (a drop
 /// of a local releases what it holds, if anything), `break` is in a loop or a region's body,
 /// and each stage's own promises above.
-pub fn check<T: StageTy>(
+pub fn check<T: StageTy + PartialEq + std::fmt::Debug>(
     f: &Func<T>,
     stage: Stage,
     callees: &[Callee],
     globals: usize,
 ) -> Vec<String> {
     walk(f, stage, callees, globals).out
+}
+
+/// `all` on a program's instances, which also checks that each argument a call gives has the
+/// type of the param it fills (a lend aside), so an instance picked for the wrong marks
+/// (`Add<S>` given a `Rev<lent List>`) fails here rather than in a backend.
+pub fn instances(fs: &[Func<CTy>], stage: Stage, globals: usize) -> Vec<Msg> {
+    let callees = callees(fs);
+    (fs.iter())
+        .flat_map(|f| walk_in(f, stage, &callees, globals, fs).out)
+        .map(|e| Msg::internal(format!("{stage:?} IR: {e}")))
+        .collect()
 }
 
 /// The instances holding an error type, by name. The checker should have refused or resolved
@@ -115,7 +126,7 @@ pub fn error_typed(fs: &[Func<CTy>], callees: &[Callee], globals: usize) -> Vec<
 }
 
 /// `check` on each fn, as internal messages.
-pub fn all<'a, T: StageTy + 'a>(
+pub fn all<'a, T: StageTy + PartialEq + std::fmt::Debug + 'a>(
     fs: impl IntoIterator<Item = &'a Func<T>>,
     stage: Stage,
     callees: &[Callee],
@@ -152,17 +163,29 @@ pub fn accounted(
     out
 }
 
-fn walk<'a, T: StageTy>(
+fn walk<'a, T: StageTy + PartialEq + std::fmt::Debug>(
     f: &'a Func<T>,
     stage: Stage,
     callees: &'a [Callee],
     globals: usize,
+) -> V<'a, T> {
+    walk_in(f, stage, callees, globals, &[])
+}
+
+/// `walk`, with the instances `insts` its calls name when their params are to be checked.
+fn walk_in<'a, T: StageTy + PartialEq + std::fmt::Debug>(
+    f: &'a Func<T>,
+    stage: Stage,
+    callees: &'a [Callee],
+    globals: usize,
+    insts: &'a [Func<T>],
 ) -> V<'a, T> {
     let mut v = V {
         f,
         stage,
         callees,
         globals,
+        insts,
         set: vec![false; f.locals.len()],
         loops: 0,
         out: Vec::new(),
@@ -179,6 +202,7 @@ struct V<'a, T> {
     stage: Stage,
     callees: &'a [Callee],
     globals: usize,
+    insts: &'a [Func<T>],
     set: Vec<bool>,
     loops: usize,
     out: Vec<String>,
@@ -186,7 +210,7 @@ struct V<'a, T> {
     error_typed: bool,
 }
 
-impl<T: StageTy> V<'_, T> {
+impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
     fn bad(&mut self, what: String) {
         self.out.push(format!("{}: {what}", self.f.shown));
     }
@@ -383,6 +407,9 @@ impl<T: StageTy> V<'_, T> {
                 self.target(t);
                 self.viewed(t, xs);
                 self.args(xs, "a call's argument");
+                if let Target::Inst(i) = t {
+                    self.params(*i, xs);
+                }
             }
             EK::CallValue(g, xs, s) => {
                 if self.stage >= Stage::Canonical {
@@ -420,6 +447,24 @@ impl<T: StageTy> V<'_, T> {
                     "a view given to param {j} of {}, which owns it",
                     c.shown
                 ));
+            }
+        }
+    }
+
+    /// Each argument of a call of instance `i` that is a value or a viewed local has the type
+    /// of the param it fills.
+    fn params(&mut self, i: usize, xs: &[Arg<T>]) {
+        let Some(g) = self.insts.get(i) else {
+            return;
+        };
+        for (k, (a, &(p, _))) in xs.iter().zip(&g.params).enumerate() {
+            let given = match a {
+                Arg::Value(e) => &e.ty,
+                Arg::View(Place::Local(l)) if *l < self.f.locals.len() => &self.f.locals[*l],
+                _ => continue,
+            };
+            if g.locals.get(p).is_some_and(|t| t != given) {
+                self.bad(format!("{}'s param {k} given a {given:?}", g.shown));
             }
         }
     }

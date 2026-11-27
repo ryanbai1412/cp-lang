@@ -379,10 +379,10 @@ pub(crate) fn compile(
     let canon = inst::canonicalize(&mut prog).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
     if cfg!(debug_assertions) {
-        use cpl_next_ir::verify::{accounted, all, callees, Stage};
+        use cpl_next_ir::verify::{accounted, instances, Stage};
         let g = prog.globals.len();
-        let mut bad = all(&canon, Stage::Canonical, &callees(&canon), g);
-        bad.extend(all(&opt, Stage::Optimized, &callees(&opt), g));
+        let mut bad = instances(&canon, Stage::Canonical, g);
+        bad.extend(instances(&opt, Stage::Optimized, g));
         bad.extend(
             (canon.iter().zip(&opt).enumerate())
                 .flat_map(|(i, (c, o))| accounted(i, c, o, &proved))

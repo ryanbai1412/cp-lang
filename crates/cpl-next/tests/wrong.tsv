@@ -318,10 +318,8 @@ core-07/tally-is-counter.cp	wrong-reject	check: program:5:7: E0305: `Counter<Int
 core-07/tally-missing-key-is-zero.cp	wrong-reject	check: program:5:7: E0305: `Counter<Int, Int>` is not indexed: it has no `Indexed` impl
 core-07/tally.cp	wrong-reject	check: program:3:7: E0305: `Counter<Int, Int>` is not indexed: it has no `Indexed` impl
 core-07/view-has-no-push.cp	wrong-error	wanted E0401 on line 4, got: check: program:4:1: E0203: `Rev<List<Int>>` has no member `push`
-core-07/view-of-a-temporary-copied-is-owned.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-core-07/view-of-a-temporary-in-a-var.cp	wrong-error	wanted E0603 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
-core-07/view-of-a-temporary-outlives-it.cp	wrong-error	wanted E0603 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
-core-07/view-of-a-temporary-used-in-its-statement.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
+core-07/view-of-a-temporary-in-a-var.cp	wrong-accept	wanted E0603 on line 4, ran and printed: 1
+core-07/view-of-a-temporary-outlives-it.cp	wrong-accept	wanted E0603 on line 4, ran and printed: 1
 core-07/view-of-temporary-lives-as-long-as-the-view.cp	wrong-reject	check: program:5:17: E0606: `Gen<Slice<List<Int>>>` does not implement `Keyed`
 core-07/views-pass-where-a-seq-is-written.cp	wrong-reject	link: std.seq:2120:47: E0606: `S` does not implement `Domain`
 core-07/zip-domain-stops-at-shorter-list-and-rev.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not implement `Indexed`
@@ -468,10 +466,10 @@ ownership/fn-param-assign-after.cp	wrong-reject	check: program:6:9: E0302: expec
 ownership/fn-param-out.cp	wrong-error	wanted E0603 on line 5, got: check: program:5:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/fn-param-push-after.cp	wrong-reject	check: program:6:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/fn-temp-assign-after.cp	wrong-error	wanted E0603 on line 6, got: check: program:6:9: E0302: expected `List<Int>`, found `Slice<List<Int>>`
-ownership/fn-temp-let.cp	wrong-error	wanted E0603 on line 5, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
+ownership/fn-temp-let.cp	wrong-accept	wanted E0603 on line 5, ran and printed: 3
 ownership/fn-temp-out.cp	wrong-error	wanted E0603 on line 5, got: check: program:5:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/fn-temp-push-after.cp	wrong-error	wanted E0603 on line 6, got: check: program:6:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
-ownership/fn-temp-var.cp	wrong-error	wanted E0603 on line 5, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
+ownership/fn-temp-var.cp	wrong-accept	wanted E0603 on line 5, ran and printed: 3
 ownership/top-named-assign-after.cp	wrong-reject	check: program:6:5: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/top-named-assign-before.cp	wrong-error	wanted E0603 on line 6, got: check: program:6:5: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/top-named-push-after.cp	wrong-reject	check: program:6:9: E0302: expected `List<Int>`, found `Slice<List<Int>>`
@@ -522,30 +520,14 @@ std-bag/range-views-in-sequence.cp	wrong-reject	check: std.bag:349:32: E0302: ex
 std-bag/remove-all-missing-is-zero.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-bag/reserve-keeps-contents.cp	wrong-reject	check: program:13:1: E0305: `SortedMap<Int, Str>` has no `IndexedMut` impl, so `[]` on it is not a place
 std-bag/set-and-map-range-are-the-std-sorted-range.cp	wrong-reject	check: program:7:27: E0203: `Set<Int>` has no member `range`
-std-bag/sorted-bag-add-many-negative-traps.cp	wrong-error	wanted E0902 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sorted-bag-add-many-zero.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sorted-bag-duplicates.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
+std-bag/sorted-bag-add-many-negative-traps.cp	wrong-accept	wanted E0902 on line 4, ran and printed: 
 std-bag/sorted-bag-prints-and-walks-its-elements.cp	wrong-reject	link: std.bag:2897:18: E0606: `K` does not implement `Ord`
 std-bag/sorted-bag-split-at.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sorted-map-drain-builds-pairs.cp	wrong-reject	check: std.bag:1700:43: E0302: expected `Tuple2<K, V>`, found `()`
 std-bag/sorted-map-drain-len-counts.cp	wrong-reject	check: std.bag:1700:43: E0302: expected `Tuple2<K, V>`, found `()`
 std-bag/sorted-set-split-absorb.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sortedbag-absorb-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
-std-bag/sortedbag-distinct-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-first-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-first_true-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-first_true-2.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-is_empty-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-last-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-last_true-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-last_true-2.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-len-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-of-matches-adding-one-by-one.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
-std-bag/sortedbag-pop_first-1.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-bag/sortedbag-pop_last-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sortedbag-sum-1.cp	wrong-reject	check: std.bag:760:17: E0203: `Range<K>` has no member `zero`
-std-bag/sortedbag-take_first-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
-std-bag/sortedbag-take_first-2.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-bag/sortedmap-matches-array.cp	wrong-reject	check: std.rand:75:21: E0201: unknown name `I128`
 std-bag/sortedset-absorb-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
 std-bag/sortedset-take-1.cp	wrong-reject	check: std.bag:669:14: E0203: `(key: K, count: Int)` has no member `_0`
@@ -858,7 +840,6 @@ std-math/congruence.cp	wrong-reject	check: program:3:50: E0302: expected `(x0: I
 std-math/crt-all-empty-and-single.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-math/crt-all-zero-modulus-traps.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
 std-math/crt-incompatible.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`
-std-math/divisors-from-factors-negative-exponent-traps.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-math/enumerate.cp	wrong-reject	check: program:3:48: E0302: expected `(q: Int, lo: Int, hi: Int)`, found `Tuple3<Int, Int, Int>`
 std-math/ext-gcd-bezout.cp	wrong-reject	check: program:2:6: E0203: `(g: Int, x: Int, y: Int)` has no member `_0`
 std-math/factor-prime-power.cp	wrong-reject	check: std.math:849:51: E0302: this is not a place that can be assigned or lent
@@ -1160,14 +1141,11 @@ std-seq/seq-u58-edit-in-place.cp	wrong-reject	check: program:12:1: E0203: `List<
 std-seq/set-union-intersect-subtract.cp	wrong-reject	check: std.seq:785:40: E0606: `T` does not implement `Ord`
 std-seq/slice-keys-len-is-empty.cp	wrong-reject	check: program:12:18: E0203: `D` has no member `idx`
 std-seq/slice-runs-maximal-minimal.cp	wrong-reject	check: program:4:7: E0203: `()` has no `iter`
-std-seq/sort-body-takes-cmp-str-and-a-named-key.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-seq/sort-by-and-cmp-together.cp	wrong-error	wanted E0309 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
+std-seq/sort-by-and-cmp-together.cp	wrong-accept	wanted E0309 on line 4, ran and printed: 1 2 3
 std-seq/sort-by-desc-runs-std-desc.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-seq/sort-by-key-types-its-lambda.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/sort-cmp-needs-no-ord.cp	wrong-reject	check: program:5:62: E0606: `T` does not implement `Ord`
-std-seq/sort-cmp-not-strict-weak-order-traps.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
+std-seq/sort-cmp-not-strict-weak-order-traps.cp	wrong-output	wanted R0001 on line 4, ran to the end
 std-seq/sort-cmp-orders-by-a-comparator.cp	wrong-reject	check: program:13:1: E0201: unknown name `sort`
-std-seq/sort-key-unpacks-its-element.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/sort-sorted-last.cp	wrong-reject	check: program:15:1: E0201: unknown name `sort`
 std-seq/span-rejects-cuts-of-two-domains.cp	wrong-error	wanted E0301 on line 5, got: check: program:5:20: E0302: expected `Cut<I>`, found `Cut<J>`
 std-seq/split-on-a-value.cp	wrong-reject	check: program:6:31: E0302: expected `List<Char>`, found `Slice<Str>`

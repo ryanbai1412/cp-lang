@@ -232,3 +232,28 @@ fn raw_ir_refuses_a_view_given_to_an_owned_param() {
     let copied = call(Arg::Value(e(EK::Copy(Place::Local(0)), CTy::Int)));
     assert_eq!(check(&copied, Stage::Raw, &[owns], 0), Vec::<String>::new());
 }
+
+/// A call gives each param a value of the param's type: an instance picked for other marks is
+/// refused before a backend runs it.
+#[test]
+fn instances_refuse_an_argument_not_of_its_params_type() {
+    let mut callee = kept(CTy::Int);
+    callee.params = vec![(0, false)];
+    callee.views = vec![false];
+    let call = |t: CTy| {
+        let arg = Arg::Value(e(EK::Int(1), t));
+        let body = vec![Stmt::Expr(e(
+            EK::Call(Target::Inst(0), vec![arg], 0),
+            CTy::Int,
+        ))];
+        func(vec![], body, CTy::Unit)
+    };
+    let ok = instances(&[callee.clone(), call(CTy::Int)], Stage::Raw, 0);
+    assert!(
+        ok.is_empty(),
+        "{:?}",
+        ok.iter().map(|m| &m.text).collect::<Vec<_>>()
+    );
+    let lent = CTy::Lent(Box::new(CTy::Int));
+    assert_eq!(instances(&[callee, call(lent)], Stage::Raw, 0).len(), 1);
+}

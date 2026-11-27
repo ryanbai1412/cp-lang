@@ -512,7 +512,10 @@ impl<'a> Cx<'a> {
         let item = std::mem::replace(&mut self.item, item);
         let scopes = std::mem::replace(&mut self.scopes, vec![HashMap::new()]);
         let self_local = self.self_local.take();
-        let generics = std::mem::take(&mut self.generics);
+        // The caller's type parameters stay unnamed but still number a lambda's: `by: T -> K =
+        // x => x` read in a generic fn is an instance per the caller's type arguments.
+        let unnamed = vec![String::new(); self.generics.len()];
+        let generics = std::mem::replace(&mut self.generics, unnamed);
         let mut doms = self.doms.clone();
         doms.extend(named.iter().cloned());
         let doms = std::mem::replace(&mut self.doms, doms);

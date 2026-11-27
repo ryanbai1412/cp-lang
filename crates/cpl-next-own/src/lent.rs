@@ -194,10 +194,24 @@ impl Lw<'_> {
     fn target(&mut self, fr: &mut Fr, target: &mut Target<Ty>, args: &[Arg<Ty>]) {
         match target {
             Target::Fn(f) => self.lent_targs(fr, f, args),
-            Target::Trait { self_ty, .. } => {
+            Target::Trait {
+                self_ty,
+                args: tr_args,
+                ..
+            } => {
                 if let Some(t) = args.first().and_then(|a| self.arg_ty(fr, a)) {
                     if t != *self_ty && strip_lent(&t) == *self_ty {
                         *self_ty = t;
+                    }
+                }
+                // A trait argument an argument fills (`Add<S>`'s `S`) takes that argument's
+                // marks, as a fn's type argument does: the impl is picked for the type given.
+                let given: Vec<Ty> = (args.iter().skip(1))
+                    .filter_map(|a| self.arg_ty(fr, a))
+                    .collect();
+                for t in tr_args.iter_mut() {
+                    if let Some(g) = given.iter().find(|g| *g != t && strip_lent(g) == *t) {
+                        *t = g.clone();
                     }
                 }
             }
