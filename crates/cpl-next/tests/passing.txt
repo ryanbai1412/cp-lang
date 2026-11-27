@@ -1959,3 +1959,4 @@ widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
 next/n_grid_views.cp
 next/n_range_literal_positions.cp
+next/n_range_eq.cp
