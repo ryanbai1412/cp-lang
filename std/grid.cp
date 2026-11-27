@@ -227,7 +227,7 @@ pub fn step<R, C, D: Dir>(self: (R, C), d: D) -> ?(R, C):
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(2)).ray(Dir4.up).collect() == []`
 pub fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C):
     var p = step(self, d)
-    while p != None:
+    while p.is_some:
         yield p!
         p = step(p!, d)
 
@@ -245,7 +245,7 @@ pub fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C):
 @get pub fn adj4<R, C>(self: (R, C)) -> yields (R, C):
     for d in Dir4.all():
         let q = step(self, d)
-        if q != None: yield q!
+        if q.is_some: yield q!
 
 /// The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in
 /// `Dir8.all()`, skipping steps that leave the grid.
@@ -259,7 +259,7 @@ pub fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C):
 @get pub fn adj8<R, C>(self: (R, C)) -> yields (R, C):
     for d in Dir8.all():
         let q = step(self, d)
-        if q != None: yield q!
+        if q.is_some: yield q!
 
 /// A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every
 /// cell. The result is owned, not a view.

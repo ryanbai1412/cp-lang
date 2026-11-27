@@ -1164,7 +1164,7 @@ pub fn covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>:
 pub fn first_some<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> ?U:
     for x in self:
         let y = f(x)
-        if y != None: return y
+        if y.is_some: return y
     None
 
 /// The first element satisfying `p`, `None` if None does; stops there. `(1..=m).find(ok)` is the

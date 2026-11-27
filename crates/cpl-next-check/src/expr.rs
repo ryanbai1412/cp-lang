@@ -724,6 +724,17 @@ impl<'a> Cx<'a> {
                 sets: &f.sets,
             };
             let param = fd.params.first().map_or(Ty::Error, |p| sub.ty(&p.ty));
+            // The impl's own bounds hold too: `?T`'s `==` needs `T: Eq` (R08.1.5).
+            if let Some(decls::Owner::Impl(k)) = fd.owner {
+                let im = &self.d.impls[k];
+                if !im.bounds.is_empty() {
+                    let tr = decls::TraitRef {
+                        tr: im.trait_.tr,
+                        args: im.trait_.args.iter().map(|a| sub.ty(a)).collect(),
+                    };
+                    (self.obligations).push((recv.ty.clone(), tr, span, Origin::Bound));
+                }
+            }
             let arg = self.coerce(arg, &param);
             let recv = self.recv_arg(m, recv, span);
             Some(mk(
