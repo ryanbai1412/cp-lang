@@ -28,6 +28,7 @@ CRATE_RULES = """
 | back end (reads the IR) | `cpl-ir`, `cpl-interp`, `cpl-codegen` |
 | consumer | `cpl-lint`, `cpl-lsp`, `cpl-cli`, `cpl-stress`, `cpl-codegen`, `cpl-wasm` |
 | forbidden edge | `cpl-codegen -> cpl-check`, `cpl-lint -> cpl-prover` |
+| layer order (bottom first) | `cpl-a`, `cpl-b + cpl-c`, `cpl-d` |
 """
 
 
@@ -291,6 +292,10 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "handbook/design/architecture.md", CRATE_RULES)
             self.assertEqual(dr.crate_rules(root)["back end"], ["cpl-ir", "cpl-interp", "cpl-codegen"])
             self.assertIn(("cpl-lint", "cpl-prover"), dr.forbidden_edges(root))
+            layered = {e for e in dr.forbidden_edges(root) if e[0].startswith("cpl-") and len(e[0]) == 5}
+            self.assertEqual(layered, {("cpl-a", "cpl-b"), ("cpl-a", "cpl-c"), ("cpl-a", "cpl-d"),
+                                       ("cpl-b", "cpl-c"), ("cpl-c", "cpl-b"), ("cpl-b", "cpl-d"),
+                                       ("cpl-c", "cpl-d")})
             self._write(root, "handbook/design/architecture.md", "# no rules\n")
             with self.assertRaises(SystemExit):
                 dr.crate_rules(root)

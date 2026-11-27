@@ -35,6 +35,9 @@ impl<T> Layer<T> {
     pub fn len(&self) -> usize {
         self.base.len() + self.added.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     pub fn push(&mut self, t: T)
     where
         T: Clone,

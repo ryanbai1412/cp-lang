@@ -88,7 +88,17 @@ def crate_rules(root: Path) -> dict[str, list[str]]:
 
 
 def forbidden_edges(root: Path) -> set[tuple[str, str]]:
-    return {tuple(e.split(" -> ", 1)) for e in crate_rules(root).get("forbidden edge", []) if " -> " in e}
+    rules = crate_rules(root)
+    named = {tuple(e.split(" -> ", 1)) for e in rules.get("forbidden edge", []) if " -> " in e}
+    return named | layer_order_edges(rules.get("layer order", []))
+
+
+def layer_order_edges(layers: list[str]) -> set[tuple[str, str]]:
+    """`layer order` lists crates from the bottom up: a crate reads only the crates before it.
+    `a + b` are siblings, which read neither each other nor anything after them."""
+    ranks = [layer.split(" + ") for layer in layers]
+    return {(a, b) for i, here in enumerate(ranks) for a in here
+            for above in ranks[i:] for b in above if a != b}
 
 
 DUP_MIN_LINES = 6

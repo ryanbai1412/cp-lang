@@ -6,23 +6,17 @@
 //! until it accepts every program, and the landing that switches `cpl` to it deletes
 //! what it replaces.
 
+use cpl_next_decls::{decls, diag, kind_name, modules, plain, records};
 use cpl_next_ir::{ir, ops, ty};
 mod check;
 mod cpp;
-mod cycles;
-mod decls;
-mod diag;
 use diag::kind_of;
 pub use diag::Kind;
 mod inst;
 mod interp;
 mod lower;
-mod modules;
 pub use modules::{Roots, Std};
 mod own;
-mod plain;
-mod records;
-mod synth;
 
 pub use interp::{Outcome, Trap};
 
@@ -344,15 +338,6 @@ impl Compiled {
     pub fn proved(&self) -> &[cpl_next_ir::facts::Proved] {
         &self.proved
     }
-}
-
-/// The name of a syntax node's kind, for saying which one is not implemented.
-pub(crate) fn kind_name(kind: &impl std::fmt::Debug) -> String {
-    let text = format!("{kind:?}");
-    let end = text
-        .find(|c: char| !c.is_alphanumeric())
-        .unwrap_or(text.len());
-    text[..end].to_string()
 }
 
 #[cfg(test)]

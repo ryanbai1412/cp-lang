@@ -559,7 +559,7 @@ fn domain_params(d: &mut Decls, from: usize) {
 }
 
 /// The name a top-level item declares, if it declares one.
-pub(crate) fn item_name(s: &ast::Stmt) -> Option<&str> {
+pub fn item_name(s: &ast::Stmt) -> Option<&str> {
     match &s.kind {
         StmtKind::Context { name, .. } => Some(&name.text),
         StmtKind::Struct(sd) => Some(&sd.name.text),

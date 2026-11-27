@@ -14,7 +14,7 @@ pub enum Kind {
 
 /// A stage's message is `[<module>: ][own: ]<code or slice or internal>: <text>`.
 /// Anything else is a message without a code, which is the pipeline's bug: an internal error.
-pub(crate) fn kind_of(e: &str) -> Kind {
+pub fn kind_of(e: &str) -> Kind {
     for part in e.split_inclusive(": ") {
         if part == "slice: " {
             return Kind::Refusal;
@@ -30,4 +30,4 @@ pub(crate) fn kind_of(e: &str) -> Kind {
     Kind::Verdict(cpl_diag::codes::INTERNAL)
 }
 
-pub(crate) use cpl_next_ir::msg::Msg;
+pub use cpl_next_ir::msg::Msg;

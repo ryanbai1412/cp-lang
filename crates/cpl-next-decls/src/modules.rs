@@ -105,7 +105,7 @@ pub struct Std {
 
 impl Std {
     pub fn read() -> Std {
-        const CORE_TEXT: &str = include_str!("../std.cp");
+        const CORE_TEXT: &str = include_str!("../../cpl-next/std.cp");
         let mut files = Vec::new();
         let mut dirs = vec![(std_root(), "std".to_string())];
         while let Some((dir, module)) = dirs.pop() {
@@ -164,7 +164,7 @@ impl Std {
             end,
         }
     }
-    pub(crate) fn decls(&self) -> &crate::decls::Prepared {
+    pub fn decls(&self) -> &crate::decls::Prepared {
         &self.decls
     }
 }
