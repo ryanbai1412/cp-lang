@@ -198,19 +198,24 @@ impl<'a> Evaluator<'a> {
         let Some(gs) = gs.get(gs.len().wrapping_sub(lets)..) else {
             return Ran::Open;
         };
-        let low = lower::lower(self.d, &t, self.loaded);
+        let mut low = lower::lower(self.d, &t, self.loaded);
         if !low.errors.is_empty() {
             return Ran::Open;
         }
-        let mut prog = inst::link(self.d, &low.whole, &low.funcs, &low.globals, &low.adds);
         let names: Vec<(String, bool)> = (t.globals.iter())
             .map(|g| (g.name.clone(), g.mutable))
             .collect();
-        let owned = own::check(self.d, &low.funcs, &prog, &names);
+        let (prog, owned) = own::link(
+            self.d,
+            &low.whole,
+            &mut low.funcs,
+            &mut low.globals,
+            &low.adds,
+            &names,
+        );
         if !owned.errors.is_empty() {
             return Ran::Open;
         }
-        own::place_copies(&mut prog, &owned.copies);
         let Ok(canon) = inst::canonicalize(&prog) else {
             return Ran::Open;
         };

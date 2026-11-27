@@ -1478,13 +1478,23 @@ def next_lent_outside_own(root: Path) -> list[str]:
     (contract 04); lowering, linking and the engines only read it. Function names miss this
     (lowering's `lent_targs`), so the constructor is what is counted."""
     dirs = [f"crates/{c}/src" for c in NEXT_AFTER_OWN if (root / "crates" / c / "src").is_dir()]
-    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *dirs, tests=False)
-            for i, l in enumerate(_lines(p), 1) if NEXT_MAKES_LENT_RE.search(l) and not l.lstrip().startswith("//")]
+    out = []
+    for p in _rs_files(root, *dirs, tests=False):
+        ls = _lines(p)
+        for i, l in enumerate(ls, 1):
+            if not NEXT_MAKES_LENT_RE.search(l) or l.lstrip().startswith("//"):
+                continue
+            # An arm of a `match` on a type it matched lent (`Ty::Lent(e) => match f(e) {`).
+            if any(NEXT_LENT_MATCH_RE.search(b) for b in ls[max(0, i - 5):i - 1]):
+                continue
+            out.append(f"{_rel(root, p)}:{i}")
+    return out
 
 
 # `Ty::Lent(Box::new(..))` built from a type not already lent: a match arm that rebuilds a lent
 # type it matched (`Lent(e) => Lent(Box::new(f(e)))`) keeps a decision, it does not make one.
 NEXT_MAKES_LENT_RE = re.compile(r"^(?!.*(?:Lent|Ref)\([^)]*\)\)?\s*=>.*Ty::(?:Lent|Ref)\(Box::new).*Ty::(?:Lent|Ref)\(Box::new")
+NEXT_LENT_MATCH_RE = re.compile(r"\bTy::(?:Lent|Ref)\(\w+\)\s*=>\s*match\b")
 
 
 NEXT_WEAK_EXPECT_RE = re.compile(r"^// expect: (exit 1|ok)\s*$")

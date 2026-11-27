@@ -246,16 +246,22 @@ fn staged(
 
 /// Link, then ownership on the linked instances (contract 4), where the program checked clean:
 /// the program, its copies settled, and ownership's diagnostics.
-fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
+fn back(f: &mut Front) -> Option<(inst::Program, Vec<Diag>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
-    let mut prog = inst::link(&f.d, &f.g.whole, &f.g.funcs, &f.g.globals, &f.g.adds);
     let names: Vec<(String, bool)> = (f.t.globals.iter())
         .map(|g| (g.name.clone(), g.mutable))
         .collect();
-    let owned = own::check(&f.d, &f.g.funcs, &prog, &names);
-    own::place_copies(&mut prog, &owned.copies);
+    let g = &mut f.g;
+    let (prog, owned) = own::link(
+        &f.d,
+        &g.whole,
+        &mut g.funcs,
+        &mut g.globals,
+        &g.adds,
+        &names,
+    );
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags))
 }
@@ -342,7 +348,7 @@ pub fn compile(
     events: bool,
 ) -> Result<Compiled, Vec<Diag>> {
     let mut f = front(std, user_src, roots);
-    let Some((mut prog, own)) = back(&f) else {
+    let Some((mut prog, own)) = back(&mut f) else {
         return Err(f.diags);
     };
     f.diags.extend(own);
@@ -390,7 +396,7 @@ pub struct Unit {
 /// program that need not compile.
 pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
     let mut f = front(std, user_src, roots);
-    if let Some((_, own)) = back(&f) {
+    if let Some((_, own)) = back(&mut f) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);
     }

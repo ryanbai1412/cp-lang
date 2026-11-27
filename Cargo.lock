@@ -314,6 +314,7 @@ dependencies = [
  "cpl-diag",
  "cpl-next-decls",
  "cpl-next-ir",
+ "cpl-next-link",
 ]
 
 [[package]]

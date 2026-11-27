@@ -1,16 +1,20 @@
 //! Ownership: what each instance link made reads, writes and holds, and which passed places
-//! are copies (spec chapter 5, R7, R9, R10, R12).
+//! are copies (spec chapter 5, R7, R9, R10, R12). Before link, `lent` decides which values are
+//! lent rather than moved, since link keys an instance by those marks; lowering makes none.
 //!
 //! A fn's summary names the places it touches: top-level bindings and its own parameters,
 //! with the field path kept, so `p.a` and `p.b` do not overlap (R05.8.1). A call through a
 //! function value is the join of the closures its set can hold; a set that is a parameter
 //! of the fn stays symbolic in the summary and is filled in at each call.
-use cpl_next_ir::ir::{sets, Arg, Expr, Func, Place, Site, Stmt, EK};
+use cpl_next_decls::decls::Decls;
+use cpl_next_ir::ir::{sets, Arg, Expr, Func, FuncKey, Place, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
+use cpl_next_ir::whole::Whole;
 use std::collections::{BTreeSet, HashMap};
 mod drops;
 mod inst;
+mod lent;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 enum Root {
@@ -65,7 +69,7 @@ impl Fx {
 /// turn where ownership found the call also writes it (R4), else a view from the call's start
 /// (R11) or a read. Then marks the params each instance reads in place (`Func::views`), and
 /// places every release (`Func::drops`, `Stmt::Drop`).
-pub fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
+fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
     for (i, f) in p.insts.iter_mut().enumerate() {
         Settle {
             locals: &mut f.locals,
@@ -198,4 +202,54 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
     }
 }
 
-pub use inst::{check, Owned};
+pub use inst::Owned;
+
+/// Ownership around link (contract 4): marks what the generic fns lend (`lent`), links them,
+/// checks the linked instances and settles their passed places. `globals` names each
+/// top-level binding and whether it is a `var`.
+pub fn link(
+    d: &Decls,
+    whole: &Whole,
+    funcs: &mut HashMap<FuncKey, Func<Ty>>,
+    tys: &mut [Ty],
+    adds: &SetAdds,
+    globals: &[(String, bool)],
+) -> (Program, Owned) {
+    let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
+    lent::mark(d, funcs, tys, &mutable);
+    let mut prog = cpl_next_link::link(d, whole, funcs, tys, adds);
+    let owned = inst::check(d, funcs, &prog, globals);
+    place_copies(&mut prog, &owned.copies);
+    (prog, owned)
+}
+
+/// The parameters a call to `f` lends to its result, receiver first, from its signature: the
+/// heap ones it declares `lends` (R05.6.1), else each whose type is a type parameter the result
+/// type holds, and, for a result whose type is a type parameter, each that holds it: the result
+/// may be a cell of it (R05.5.3).
+fn lends(d: &Decls, f: FnId) -> BTreeSet<usize> {
+    use cpl_next_decls::decls::SelfMode;
+    use cpl_next_ir::ty::params_in;
+    let fd = d.f(f);
+    let mut held = BTreeSet::new();
+    params_in(&fd.ret, &mut held);
+    let recv = (fd.self_mode != SelfMode::None).then_some(fd.self_ty.as_ref());
+    let tys: Vec<&Ty> = (recv.flatten().into_iter())
+        .chain(fd.params.iter().map(|p| &p.ty))
+        .collect();
+    (tys.iter().enumerate())
+        .filter(|(i, t)| match &fd.lends {
+            Some(ls) => ls.contains(i) && !cpl_next_decls::plain::plain(d, t, 0),
+            None => match (t, &fd.ret) {
+                (Ty::Param(k), _) => held.contains(k),
+                (_, Ty::Param(k)) => {
+                    let mut ps = BTreeSet::new();
+                    params_in(t, &mut ps);
+                    ps.contains(k)
+                }
+                _ => false,
+            },
+        })
+        .map(|(i, _)| i)
+        .collect()
+}

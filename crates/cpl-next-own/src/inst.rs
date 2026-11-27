@@ -3,11 +3,11 @@
 //! of its parameters and of globals (`Fx`), and which parameters it keeps. A call names its
 //! instance (`Target::Inst`), and a call through a fn value calls each closure of its set, so
 //! nothing here widens a set or folds a trait's impls.
+use crate::lends;
 use crate::{overlap, Fx, Pl, Root, Step};
 use cpl_diag::{codes, Code};
 use cpl_next_decls::decls::Decls;
 use cpl_next_decls::diag::Msg;
-use cpl_next_decls::plain::lends;
 use cpl_next_ir::ir::{Arg, Expr, Place, Stmt, Target, EK};
 use cpl_next_ir::ir::{Func, FuncKey, Site};
 use cpl_next_ir::prog::{CTy, InstKey, Program};
@@ -1586,7 +1586,7 @@ pub struct Owned {
 
 /// Ownership on the instances link made, before their passed places settle (and, for `@cache`,
 /// on generic IR).
-pub fn check(
+pub(crate) fn check(
     d: &Decls,
     generic: &HashMap<FuncKey, Func<Ty>>,
     p: &Program,
