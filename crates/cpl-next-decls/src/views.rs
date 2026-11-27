@@ -18,8 +18,12 @@ pub trait Signatures {
     fn alias(&self, id: AliasId) -> &AliasDecl;
     /// Impl `i`, an index into the program's impls.
     fn imp(&self, i: usize) -> &ImplDecl;
-    /// The impls of `tr`, by index (`impls(TraitId)`).
+    /// The impls of `tr` a lookup may find, by index, in order (`impls(TraitId)`).
     fn impls_of(&self, tr: TraitId) -> Vec<usize>;
+    /// The impl's type arguments when it is for `t`.
+    fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>>;
+    /// Whether `t` has an impl of `tr`.
+    fn has_impl(&self, t: &Ty, tr: TraitId) -> bool;
 }
 
 /// `scope(ModId)`: what a name means in a module.
@@ -55,7 +59,13 @@ impl Signatures for Decls {
         &self.impls[i]
     }
     fn impls_of(&self, tr: TraitId) -> Vec<usize> {
-        self.impls_by_trait.get(&tr).cloned().unwrap_or_default()
+        self.trait_impls(tr).map(|(k, _)| k).collect()
+    }
+    fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
+        Decls::impl_args(self, im, t)
+    }
+    fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
+        Decls::has_impl(self, t, tr)
     }
 }
 

@@ -1441,7 +1441,10 @@ fn layer(
     d.errors.extend(errors);
     domain_params(&mut d, fns_from);
     fresh_results(&mut d);
-    let unmet = supertraits_unmet(&d, impls_from);
+    let unmet: Vec<_> = (d.impls.iter().skip(impls_from))
+        .filter(|im| !d.is_library(im.module))
+        .flat_map(|im| supertraits_unmet(&d, im))
+        .collect();
     d.misdeclared.extend(unmet);
     // A program's lookups go through only the impls it sees.
     let live: Vec<bool> = d.impls.iter().map(|im| d.live(im)).collect();

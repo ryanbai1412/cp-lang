@@ -1,5 +1,6 @@
 //! Which impl a type has of a trait, and which member a receiver reaches through one.
 use super::*;
+use crate::views::Signatures;
 
 impl Decls {
     pub fn lookup_member(&self, recv: &Ty, name: &str) -> Option<Member> {
@@ -278,23 +279,20 @@ impl Decls {
 
 /// An impl of a trait for a type needs one of each of its supertraits for that type (R08.1.1).
 /// The library's are checked with it; here one the slice refuses would read as missing.
-pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(SourceId, cpl_diag::Code, String)> {
+pub(super) fn supertraits_unmet(
+    d: &dyn Signatures,
+    im: &ImplDecl,
+) -> Vec<(SourceId, cpl_diag::Code, String)> {
     let mut out = Vec::new();
-    for im in d
-        .impls
-        .iter()
-        .skip(from)
-        .filter(|im| !d.is_library(im.module))
     {
-        let tr = &d.traits[im.trait_.tr.0];
+        let tr = d.t(im.trait_.tr);
         for sup in &tr.supers {
             let met = match &im.for_ {
                 Ty::Param(i) => im.bounds.iter().any(|(j, r)| j == i && r.tr == sup.tr),
                 // Every range type meets the same impls.
-                Ty::AnyRange(_) => {
-                    (d.trait_impls(sup.tr)).any(|(_, o)| d.impl_args(o, &Ty::Range(0, 0)).is_some())
-                }
-                t => (d.trait_impls(sup.tr)).any(|(_, o)| d.impl_args(o, t).is_some()),
+                Ty::AnyRange(_) => (d.impls_of(sup.tr).into_iter())
+                    .any(|o| d.impl_args(d.imp(o), &Ty::Range(0, 0)).is_some()),
+                t => (d.impls_of(sup.tr).into_iter()).any(|o| d.impl_args(d.imp(o), t).is_some()),
             };
             if !met {
                 out.push((
@@ -302,7 +300,8 @@ pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(SourceId, cpl_di
                     cpl_diag::codes::MISSING_IMPL,
                     format!(
                         "`impl {}` needs an `impl {}` for the same type (R08.1.1)",
-                        tr.name, d.traits[sup.tr.0].name
+                        tr.name,
+                        d.t(sup.tr).name
                     ),
                 ));
             }
@@ -324,7 +323,9 @@ pub(super) fn supertraits_unmet(d: &Decls, from: usize) -> Vec<(SourceId, cpl_di
                     cpl_diag::codes::MISSING_IMPL,
                     format!(
                         "`impl {}` chooses a type for `{}` with no `impl {}` (R08.1.1)",
-                        tr.name, tr.assoc[k], d.traits[ab.tr.0].name
+                        tr.name,
+                        tr.assoc[k],
+                        d.t(ab.tr).name
                     ),
                 ));
             }
