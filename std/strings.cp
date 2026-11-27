@@ -280,7 +280,7 @@ pub fn split_whitespace(self: Str) -> List<Str>:
 /// example: `", ".join(["a", "b", "c"]) == "a, b, c"`
 /// example: `" ".join([1, 2, 3]) == "1 2 3"`
 /// example: `"-".join(["x"]) == "x"`
-pub fn join<S: Seq>(self: Str, parts: S) -> Str:
+pub fn join<S: Seq<T>, T: Show>(self: Str, parts: S) -> Str:
     var out = ""
     var first = true
     for x in parts:

@@ -2,7 +2,6 @@
 
 use super::*;
 use cpl_next_ir::ids::ItemId;
-use cpl_next_ir::ops::Fmt;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::FmtKind;
 
@@ -175,7 +174,20 @@ impl<'a> Cx<'a> {
             .is_some_and(|a| a.name.is_none() && a.value.is_generator())
             && matches!(self.d.views[self.module.0].get(n), Some(decls::Named::Fn(f)) if self.d.f(*f).self_ty.is_none())
     }
-    /// The arguments past the others gathered into the one a last `..xs` parameter takes: a
+    /// More parts than the widest tuple: the last part is a tuple of the rest, nested as far as
+    /// needed.
+    fn nest_parts(&self, mut xs: Vec<ast::Expr>) -> ExprKind {
+        let wide = self.d.tuples.keys().max().copied().unwrap_or(0);
+        if wide < 2 || xs.len() <= wide {
+            return ExprKind::Tuple(xs);
+        }
+        let rest = xs.split_off(wide - 1);
+        let span = Span::new(rest[0].span.start, rest[rest.len() - 1].span.end);
+        let kind = self.nest_parts(rest);
+        xs.push(ast::Expr { kind, span });
+        ExprKind::Tuple(xs)
+    }
+    /// The arguments past the others gathered into the one `..xs` parameter takes: a
     /// tuple when positional, a record when named, in written order (R06.1.5, decision 324).
     fn pack_variadic(
         &mut self,
@@ -183,8 +195,10 @@ impl<'a> Cx<'a> {
         formals: &[Formal<'a>],
         span: Span,
     ) -> Option<Vec<ast::Arg>> {
-        let (v, fixed) = formals.split_last().filter(|(v, _)| v.variadic)?;
-        let mut positional = fixed.iter().filter(|f| !f.named_only).count();
+        let at = formals.iter().position(|f| f.variadic)?;
+        let v = &formals[at];
+        let fixed: Vec<&Formal> = formals.iter().filter(|f| !f.variadic).collect();
+        let mut positional = formals[..at].iter().filter(|f| !f.named_only).count();
         let (mut out, mut tuple, mut record) = (Vec::new(), Vec::new(), Vec::new());
         for a in args {
             match &a.name {
@@ -202,7 +216,7 @@ impl<'a> Cx<'a> {
             .reduce(|a, b| Span::new(a.start, b.end))
             .unwrap_or(span);
         let kind = match (tuple.is_empty(), record.is_empty()) {
-            (_, true) => ExprKind::Tuple(tuple),
+            (_, true) => self.nest_parts(tuple),
             (true, false) => ExprKind::Record(record),
             (false, false) => {
                 self.err(
@@ -358,6 +372,11 @@ impl<'a> Cx<'a> {
         let mut out = Vec::with_capacity(formals.len());
         for (i, f) in formals.iter().enumerate() {
             out.push(match slot[i].and_then(|k| typed[k].take()) {
+                Some(TArg::Value(v)) if f.variadic => TArg::Value(TExpr {
+                    ty: v.ty.clone(),
+                    span: v.span,
+                    kind: TK::Pack(Box::new(v)),
+                }),
                 Some(a) => a,
                 None => TArg::Value(match f.default {
                     Some((e, m, ref item)) => self.default_arg(e, m, item.clone(), &f.ty),
@@ -482,11 +501,6 @@ impl<'a> Cx<'a> {
         }
         r
     }
-    /// A call of the library fn `name` with arguments already typed.
-    pub(super) fn lib_call(&mut self, name: &str, args: Vec<TExpr>, span: Span) -> TExpr {
-        let decl = self.d.core_fn(name);
-        self.marked_call(decl, name, args, span)
-    }
     /// A call of std's fn marked `@marker`, with arguments already typed.
     pub(super) fn marked_call(
         &mut self,
@@ -525,87 +539,6 @@ impl<'a> Cx<'a> {
             ty,
             span,
         }
-    }
-    /// One value of a `print`: a plain one joins `pieces`, one the library writes
-    /// (R10.3.2) becomes a call of its writer after what was gathered so far.
-    fn show_value(&mut self, v: TExpr, fmt: Fmt, stmts: &mut Vec<TStmt>, pieces: &mut Vec<Piece>) {
-        let span = v.span;
-        let t = self.shallow(&v.ty);
-        // A value built from an error (`?<error>`) was diagnosed where the error is.
-        if t != Ty::Error && self.mentions_error(&t) {
-            return pieces.push(Piece::Value(Self::error_node(span), fmt));
-        }
-        let number = matches!(
-            t,
-            Ty::Int | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Param(_) | Ty::Error
-        );
-        if fmt != Fmt::default() && !number
-            || fmt.digits.is_some() && !matches!(t, Ty::F64 | Ty::Error)
-        {
-            self.err(span, Unbuilt::FormatSpec { ty: self.show(&t) });
-            return;
-        }
-        let writer = match t {
-            // A position prints as its integer (R04.2.15).
-            Ty::Dom(_) | Ty::Param(_) => {
-                let ord = TExpr {
-                    kind: TK::DomOrd(Box::new(v)),
-                    ty: Ty::Int,
-                    span,
-                };
-                pieces.push(Piece::Value(ord, fmt));
-                return;
-            }
-            // `Bool` has no one way to be written: the word is the program's choice (R10.3.3).
-            Ty::Bool => {
-                let code = cpl_diag::codes::MISSING_IMPL;
-                self.err(
-                    span,
-                    Msg::verdict(code, "`Bool` is not `Show`: write `print(yes(b))`"),
-                );
-                return;
-            }
-            Ty::Int | Ty::Char | Ty::U64 | Ty::F64 | Ty::Error => {
-                pieces.push(Piece::Value(v, fmt));
-                return;
-            }
-            // A type that says how it is written (`fn write(self)`) is written by it.
-            t @ Ty::Struct(..)
-                if let Some(decls::Member::Method(m, ts, ss)) =
-                    self.d.lookup_member(&t, "write") =>
-            {
-                if !pieces.is_empty() {
-                    stmts.push(TStmt::Expr(TExpr {
-                        kind: TK::Print(std::mem::take(pieces)),
-                        ty: Ty::Unit,
-                        span,
-                    }));
-                }
-                let call = self.call_member(v, (m, ts, ss), vec![], span, false);
-                stmts.push(TStmt::Expr(call));
-                return;
-            }
-            Ty::Struct(d, ..) => [self.d.sugar.list, self.d.sugar.array]
-                .into_iter()
-                .zip(["write_list", "write_array"])
-                .find(|(ty, _)| Some(d) == *ty)
-                .map(|(_, f)| f),
-            _ => None,
-        };
-        let Some(writer) = writer else {
-            let t = self.show(&v.ty);
-            self.err(span, Unbuilt::Printing { ty: t });
-            return;
-        };
-        if !pieces.is_empty() {
-            stmts.push(TStmt::Expr(TExpr {
-                kind: TK::Print(std::mem::take(pieces)),
-                ty: Ty::Unit,
-                span,
-            }));
-        }
-        let call = self.lib_call(writer, vec![v], span);
-        stmts.push(TStmt::Expr(call));
     }
     /// One `if` branch: its condition, its block checked against `want`, and whether it leaves.
     fn if_arm(
@@ -879,10 +812,24 @@ impl<'a> Cx<'a> {
         // The expected type fixes type arguments the arguments cannot: `let xs: List<Int> = List.new()`.
         let ty = self.ret_ty(&f);
         if let Some(w) = want {
-            if matches!(self.shallow(w), Ty::Struct(..) | Ty::Raw(_))
-                && matches!(fd.ret, Ty::Struct(..) | Ty::Param(_) | Ty::Raw(_))
-            {
-                self.unify(&ty, w);
+            let orig = self.shallow(w);
+            // A range slot, alone or a tuple's part, takes an `Int` and checks it as it is stored
+            // (R03.1.4): a range type is never a type argument.
+            let w = super::unify::made_param(fd)
+                .and_then(|_| self.int_parts(w))
+                .unwrap_or_else(|| w.clone());
+            match self.shallow(&w) {
+                Ty::Struct(..) | Ty::Raw(_)
+                    if matches!(fd.ret, Ty::Struct(..) | Ty::Param(_) | Ty::Raw(_)) =>
+                {
+                    self.unify(&ty, &w);
+                }
+                _ if matches!(orig, Ty::Range(..) | Ty::RangeOf(_))
+                    && matches!(fd.ret, Ty::Param(_)) =>
+                {
+                    self.unify(&ty, &Ty::Int);
+                }
+                _ => {}
             }
         }
         let mut formals = self.formals(&sub, fd);
@@ -891,7 +838,7 @@ impl<'a> Cx<'a> {
         }
         // The core file stands in for std until std's own `List` and `Str` load (stage 4):
         // a call std's signature takes but the stand-in's does not is not built, not an error.
-        let variadic = formals.last().is_some_and(|f| f.variadic);
+        let variadic = formals.iter().any(|f| f.variadic);
         if fd.module == decls::CORE && args.len() > formals.len() && !variadic {
             self.err(
                 span,
@@ -1204,6 +1151,78 @@ impl<'a> Cx<'a> {
                 let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
                 self.marked_call(self.d.sugar.str_literal, "str_literal", vec![raw, n], span)
             }
+            // `"a{x}b"` appends each piece in turn through core's `@interpolation` fn (R10.3.2).
+            ExprKind::Str(ps) if let Some(put) = self.d.interpolate => {
+                let lit = |ps| ast::Expr {
+                    kind: ExprKind::Str(ps),
+                    span,
+                };
+                let empty = self.expr(&lit(Vec::new()), None);
+                let ty = empty.ty.clone();
+                let buf = self.bind("$str", ty.clone());
+                match buf {
+                    VarRef::Local(l) => self.locals[l].mutable = true,
+                    VarRef::Global(g) => self.globals[g].mutable = true,
+                }
+                let read = mk(TK::Var(buf), ty.clone());
+                let mut stmts = vec![TStmt::Let(buf, empty)];
+                for p in ps {
+                    let (v, width, zero, digits) = match p {
+                        StrPiece::Text(t) => {
+                            let v = self.expr(&lit(vec![StrPiece::Text(t.clone())]), None);
+                            (v, 0, false, None)
+                        }
+                        StrPiece::Expr(x) => (self.expr(x, None), 0, false, None),
+                        StrPiece::Spec(x, spec) => {
+                            let digits = match spec.kind {
+                                FmtKind::Dec => None,
+                                FmtKind::Fixed(d) => Some(d),
+                                FmtKind::Hex | FmtKind::Bin => {
+                                    self.err(span, Unbuilt::HexFormat);
+                                    continue;
+                                }
+                            };
+                            (self.expr(x, None), spec.width, spec.zero, digits)
+                        }
+                    };
+                    let f = self.fnref(put, Vec::new(), Vec::new());
+                    let formals = self.formals(
+                        &Subst {
+                            tys: &f.targs,
+                            sets: &f.sets,
+                        },
+                        self.d.f(put),
+                    );
+                    self.unify(&formals[0].ty, &ty);
+                    self.unify(&formals[1].ty, &v.ty);
+                    self.oblige(&f, span);
+                    // The layout a spec gives: its width, its zero fill and its decimals.
+                    let digits = match digits {
+                        Some(d) => ExprKind::Int(i128::from(d)),
+                        None => ExprKind::None,
+                    };
+                    let lay = [
+                        ExprKind::Int(i128::from(width)),
+                        ExprKind::Bool(zero),
+                        digits,
+                    ];
+                    let mut args = vec![TArg::Mut(read.clone()), TArg::Value(v)];
+                    for (k, kind) in lay.into_iter().enumerate() {
+                        let Some(want) = formals.get(2 + k).map(|p| p.ty.clone()) else {
+                            break;
+                        };
+                        let x = self.expr(&ast::Expr { kind, span }, Some(&want));
+                        args.push(TArg::Value(self.coerce(x, &want)));
+                    }
+                    let call = TK::Call {
+                        f,
+                        recv: None,
+                        args,
+                    };
+                    stmts.push(TStmt::Expr(mk(call, Ty::Unit)));
+                }
+                mk(TK::Block(stmts, Some(Box::new(read))), ty)
+            }
             ExprKind::Char(c) if c.is_ascii() => {
                 let code = mk(TK::Int(i64::from(*c as u8)), Ty::Int);
                 mk(TK::CharOf(Box::new(code)), Ty::Char)
@@ -1291,7 +1310,10 @@ impl<'a> Cx<'a> {
                 Some((e, i)) => self.variant(e, i, Vec::new(), &[], span),
                 None => match self.filled(n, want, span) {
                     Some(e) => e,
-                    None => self.name(n, span),
+                    None => match self.defaulted_fn_value(n, e, want) {
+                        Some(v) => v,
+                        None => self.name(n, span),
+                    },
                 },
             },
             ExprKind::SelfValue => self.self_expr(span).unwrap_or(mk(TK::Error, Ty::Error)),
@@ -1538,122 +1560,6 @@ impl<'a> Cx<'a> {
                 {
                     self.generic_method(base, targs, args, span, want)
                 }
-                // `write` is `print` without the line end; the slice uses it to write `print` for containers in the library.
-                ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
-                    // `print` reads `io` where it is written; a call's argument beats it (R09.1.2).
-                    let d = self.d;
-                    let io = match d.named(self.module, "io") {
-                        Some(decls::Named::Context(id)) => Some(id),
-                        _ => None,
-                    };
-                    let io_set = |cx: &Self, f: &str| {
-                        (cx.frames.iter().rev())
-                            .find(|x| Some(x.ctx) == io && x.field == f)
-                            .map(|x| x.value.kind.clone())
-                    };
-                    let text = |k: Option<ExprKind>| match k {
-                        Some(ExprKind::Str(ps)) => match &ps[..] {
-                            [] => Some(String::new()),
-                            [StrPiece::Text(t)] => Some(t.clone()),
-                            _ => None,
-                        },
-                        _ => None,
-                    };
-                    let mut sep = text(io_set(self, "sep")).unwrap_or_else(|| " ".into());
-                    // `precision: k` sets the digits of each `F64` it prints (R10.3.4).
-                    let mut precision = match io_set(self, "precision") {
-                        Some(ExprKind::Int(k)) => u32::try_from(k).ok(),
-                        _ => None,
-                    };
-                    for a in args.iter().filter(|a| a.name.is_some()) {
-                        match (a.name.as_ref().map(|n| n.text.as_str()), &a.value.kind) {
-                            (Some("precision"), ExprKind::Int(k)) if u32::try_from(*k).is_ok() => {
-                                precision = u32::try_from(*k).ok()
-                            }
-                            (Some("sep"), k) if text(Some(k.clone())).is_some() => {
-                                sep = text(Some(k.clone())).unwrap_or_default()
-                            }
-                            _ => {
-                                self.err(span, Unbuilt::PrintNamedArgs);
-                                return TExpr {
-                                    kind: TK::Error,
-                                    ty: Ty::Error,
-                                    span,
-                                };
-                            }
-                        }
-                    }
-                    let fmt_of = |cx: &Self, v: &TExpr| match cx.shallow(&v.ty) {
-                        Ty::F64 => Fmt {
-                            digits: precision,
-                            ..Fmt::default()
-                        },
-                        Ty::Int | Ty::U64 | Ty::Char | Ty::Dom(_) | Ty::Param(_) | Ty::Error => {
-                            Fmt::default()
-                        }
-                        // The library writes it, and is not told the precision.
-                        _ if precision.is_some() => Fmt {
-                            digits: precision,
-                            ..Fmt::default()
-                        },
-                        _ => Fmt::default(),
-                    };
-                    let args: Vec<_> = args.iter().filter(|a| a.name.is_none()).collect();
-                    // Text and plain values gather into one `Print`; a value the library
-                    // writes ends the one before it and is a call of its writer.
-                    let mut stmts = Vec::new();
-                    let mut pieces = Vec::new();
-                    for (k, a) in args.iter().enumerate() {
-                        if k > 0 {
-                            pieces.push(Piece::Text(sep.clone()));
-                        }
-                        match &a.value.kind {
-                            ExprKind::Str(ps) => {
-                                for p in ps {
-                                    match p {
-                                        StrPiece::Text(t) => pieces.push(Piece::Text(t.clone())),
-                                        StrPiece::Expr(x) => {
-                                            let v = self.expr(x, None);
-                                            let fmt = fmt_of(self, &v);
-                                            self.show_value(v, fmt, &mut stmts, &mut pieces);
-                                        }
-                                        StrPiece::Spec(x, spec) => {
-                                            let digits = match spec.kind {
-                                                FmtKind::Dec => None,
-                                                FmtKind::Fixed(d) => Some(d),
-                                                FmtKind::Hex | FmtKind::Bin => {
-                                                    self.err(span, Unbuilt::HexFormat);
-                                                    continue;
-                                                }
-                                            };
-                                            let fmt = Fmt {
-                                                width: spec.width,
-                                                zero: spec.zero,
-                                                digits,
-                                            };
-                                            let v = self.expr(x, None);
-                                            self.show_value(v, fmt, &mut stmts, &mut pieces);
-                                        }
-                                    }
-                                }
-                            }
-                            _ => {
-                                let v = self.expr(&a.value, None);
-                                let fmt = fmt_of(self, &v);
-                                self.show_value(v, fmt, &mut stmts, &mut pieces);
-                            }
-                        }
-                    }
-                    if n == "print" {
-                        pieces.push(Piece::Text("\n".into()));
-                    }
-                    let last = mk(TK::Print(pieces), Ty::Unit);
-                    if stmts.is_empty() {
-                        last
-                    } else {
-                        mk(TK::Block(stmts, Some(Box::new(last))), Ty::Unit)
-                    }
-                }
                 // `Int(c)`, `Char(k)`, `U64(x)`: a core type has no constructor, so this converts.
                 ExprKind::Name(n)
                     if args.len() == 1
@@ -1672,29 +1578,6 @@ impl<'a> Cx<'a> {
                 {
                     let dty = self.domain_named(n).unwrap_or(Ty::Error);
                     self.domain_from(dty, &args[0].value, span)
-                }
-                ExprKind::Name(n) if n == "read" && self.lookup(n).is_none() => match want {
-                    Some(w) => self.read_as(&w.clone(), span),
-                    None => mk(TK::ReadInt, Ty::Int),
-                },
-                ExprKind::Generic { base, args: targs }
-                    if targs.len() == 1
-                        && matches!(&base.kind, ExprKind::Name(n) if n == "read" && self.lookup(n).is_none()) =>
-                {
-                    if !args.is_empty() {
-                        let kind = "Generic".into();
-                        self.err(span, Unbuilt::Expression { kind });
-                        return Self::error_node(span);
-                    }
-                    let mut pre = Vec::new();
-                    let t = self.body_ty(&targs[0], span, &mut pre);
-                    let v = self.read_as(&t, span);
-                    if pre.is_empty() {
-                        v
-                    } else {
-                        let ty = v.ty.clone();
-                        mk(TK::Block(pre, Some(Box::new(v))), ty)
-                    }
                 }
                 ExprKind::Name(n) if self.bare_variant(n, want).is_some() => {
                     match self.bare_variant(n, want) {
@@ -1723,6 +1606,10 @@ impl<'a> Cx<'a> {
                         span,
                     };
                     self.expr(&call, want)
+                }
+                ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
+                    let args = self.io_args(args);
+                    self.call_named(n, &[], &args, span, want)
                 }
                 ExprKind::Name(n) if self.declared(n) => self.call_named(n, &[], args, span, want),
                 // `Box<Int>(5)`, `List<Int>()`: the written type arguments come first.
@@ -1937,11 +1824,36 @@ impl<'a> Cx<'a> {
     }
 
     /// A name the program declares, not a local or a field of `self`.
-    fn declared(&self, n: &str) -> bool {
+    pub(super) fn declared(&self, n: &str) -> bool {
         self.lookup(n).is_none()
             && self.itself(n, Span::new(0, 0)).is_none()
             && self.self_field(n).is_none()
             && self.d.named(self.module, n).is_some()
+    }
+
+    /// A call of a declared fn or struct, with the type arguments written at the call.
+    /// `print`'s `sep:` and `precision:` from the innermost `with io` where it is written, unless
+    /// the call names them (R09.1.2, R10.3.4).
+    fn io_args(&self, args: &[ast::Arg]) -> Vec<ast::Arg> {
+        let mut out = args.to_vec();
+        let Some(Named::Context(io)) = self.d.named(self.module, "io") else {
+            return out;
+        };
+        for field in ["sep", "precision"] {
+            let named = |a: &ast::Arg| a.name.as_ref().is_some_and(|n| n.text == field);
+            let set = (self.frames.iter().rev()).find(|x| x.ctx == io && x.field == field);
+            if let (false, Some(x)) = (args.iter().any(named), set) {
+                out.push(ast::Arg {
+                    name: Some(ast::Name {
+                        text: field.into(),
+                        span: x.value.span,
+                    }),
+                    mutable: false,
+                    value: x.value.clone(),
+                });
+            }
+        }
+        out
     }
 }
 

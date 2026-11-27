@@ -115,6 +115,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             sites,
             lines,
             shown: "top level".into(),
+            fast: None,
         },
     );
     if let Some(c) = lw.case.take() {
@@ -193,6 +194,13 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 sites,
                 lines,
                 shown: shown_name(d, fd),
+                fast: fd.fast.as_deref().map(|n| {
+                    Intr::named(n).unwrap_or_else(|| {
+                        let name = n.to_string();
+                        lw.errors.push(Unbuilt::Intrinsic { name }.into());
+                        Intr::RawGet
+                    })
+                }),
             },
         );
     }
@@ -233,6 +241,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 body: vec![Stmt::Return(Some(call))],
                 ret: fd.ret.clone(),
                 region: None,
+                fast: None,
                 line: lw.src.program_line(&fd.span),
                 sites,
                 lines,
@@ -400,7 +409,9 @@ fn pure<T>(e: &Expr<T>) -> bool {
         // Widening is a branch once sets are known, so it is a statement of its own.
         EK::Widen(_) => false,
         EK::Intr(i, args, _) => {
-            !i.checked() && args.iter().all(|a| matches!(a, Arg::Value(v) if pure(v)))
+            !i.checked()
+                && !i.effectful()
+                && args.iter().all(|a| matches!(a, Arg::Value(v) if pure(v)))
         }
         EK::Call(..) | EK::CallValue(..) => false,
     }
@@ -416,8 +427,7 @@ fn writes_nothing<T>(s: &Stmt<T>) -> bool {
     fn quiet<T>(e: &Expr<T>) -> bool {
         match &e.kind {
             EK::Intr(i, args, _) => {
-                !matches!(i, Intr::RawSet | Intr::RawTake | Intr::ReadInt)
-                    && args.iter().all(|a| matches!(a, Arg::Value(v) if quiet(v)))
+                !i.effectful() && args.iter().all(|a| matches!(a, Arg::Value(v) if quiet(v)))
             }
             _ => pure(e),
         }
@@ -642,6 +652,74 @@ impl Lw<'_> {
             ty: v.ty.clone(),
         }
     }
+    /// A struct built from `fs`; `pack` when it is a variadic argument's (`TK::Pack`).
+    fn make_struct(
+        &mut self,
+        e: &TExpr,
+        fs: &[TExpr],
+        pack: bool,
+        out: &mut Vec<Stmt<Ty>>,
+    ) -> Expr<Ty> {
+        let site = self.site(e.span);
+        // A held parameter is stored as a pointer to its place, never copied first.
+        // A packed `..xs` part read from a place is lent for the call too.
+        let held: Vec<bool> = (fs.iter())
+            .map(|f| match f.kind {
+                TK::Var(VarRef::Local(l)) => pack || self.lent.contains(&l),
+                _ => pack && is_place(f),
+            })
+            .collect();
+        let rest: Vec<&TExpr> = (fs.iter().zip(&held))
+            .filter(|(_, h)| !**h)
+            .map(|(f, _)| f)
+            .collect();
+        let mut rest = self.seq(&rest, out).into_iter();
+        let mut xs = Vec::new();
+        for (f, h) in fs.iter().zip(held) {
+            match (h, rest.next()) {
+                (false, Some(x)) => xs.push(x),
+                (_, x) => {
+                    rest = x.into_iter().chain(rest).collect::<Vec<_>>().into_iter();
+                    let p = self.place(f, out);
+                    let ty = match &f.ty {
+                        Ty::Lent(_) => f.ty.clone(),
+                        t if pack => Ty::Lent(Box::new(t.clone())),
+                        t => t.clone(),
+                    };
+                    xs.push(Expr {
+                        site,
+                        kind: EK::Lent(p),
+                        ty,
+                    });
+                }
+            }
+        }
+        // A field filled lent makes the struct's type argument for it lent too.
+        let ty = match &e.ty {
+            Ty::Struct(d, ts, ss) => {
+                let mut ts = ts.clone();
+                for (x, (_, f)) in xs.iter_mut().zip(&self.d.s(*d).fields) {
+                    let t = match &x.kind {
+                        EK::Copy(p) => self.place_ty(p),
+                        _ => None,
+                    };
+                    // A lent place stays lent: the slot points where the place points.
+                    if let (EK::Copy(p), Some(lent @ Ty::Lent(_))) = (&x.kind, &t) {
+                        x.kind = EK::Lent(p.clone());
+                        x.ty = lent.clone();
+                    }
+                    rebind(f, t.as_ref().unwrap_or(&x.ty), &mut ts);
+                }
+                Ty::Struct(*d, ts, ss.clone())
+            }
+            t => t.clone(),
+        };
+        Expr {
+            kind: EK::MakeStruct(xs),
+            ty,
+            site,
+        }
+    }
     fn expr(&mut self, e: &TExpr, out: &mut Vec<Stmt<Ty>>) -> Expr<Ty> {
         let ty = e.ty.clone();
         let site = self.site(e.span);
@@ -750,33 +828,11 @@ impl Lw<'_> {
                 let call = mk(EK::CallValue(Box::new(c), vs, site));
                 self.spill(call, out)
             }
-            TK::Struct(fs) => {
-                // A held parameter is stored as a pointer to its place, never copied first.
-                let held: Vec<bool> = (fs.iter())
-                    .map(|f| matches!(f.kind, TK::Var(VarRef::Local(l)) if self.lent.contains(&l)))
-                    .collect();
-                let rest: Vec<&TExpr> = (fs.iter().zip(&held))
-                    .filter(|(_, h)| !**h)
-                    .map(|(f, _)| f)
-                    .collect();
-                let mut rest = self.seq(&rest, out).into_iter();
-                let mut xs = Vec::new();
-                for (f, h) in fs.iter().zip(held) {
-                    match (h, rest.next()) {
-                        (false, Some(x)) => xs.push(x),
-                        (_, x) => {
-                            rest = x.into_iter().chain(rest).collect::<Vec<_>>().into_iter();
-                            let p = self.place(f, out);
-                            xs.push(Expr {
-                                site,
-                                kind: EK::Lent(p),
-                                ty: f.ty.clone(),
-                            });
-                        }
-                    }
-                }
-                mk(EK::MakeStruct(xs))
-            }
+            TK::Struct(fs) => self.make_struct(e, fs, false, out),
+            TK::Pack(x) => match &x.kind {
+                TK::Struct(fs) => self.make_struct(x, fs, true, out),
+                _ => self.expr(x, out),
+            },
             TK::FnItem(f) => {
                 let intrinsic = self.d.f(f.decl).intrinsic.is_some();
                 if intrinsic
@@ -810,6 +866,7 @@ impl Lw<'_> {
                 mk(EK::Inject(Box::new(v)))
             }
             TK::Elem(x) => self.expr(x, out),
+            TK::Owned(x) => self.operand(x, out),
             TK::Widen(x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
@@ -928,40 +985,6 @@ impl Lw<'_> {
                     None => mk(EK::Unit),
                 }
             }
-            TK::Print(ps) => {
-                let vals: Vec<&TExpr> = ps
-                    .iter()
-                    .filter_map(|p| {
-                        if let Piece::Value(v, _) = p {
-                            Some(v)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                // Checked here and not in the checker: a variable's type may be settled only at the end of the file.
-                if vals.iter().any(|v| {
-                    !matches!(
-                        v.ty,
-                        Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Error
-                    )
-                }) {
-                    self.errors.push(Msg::verdict(
-                        cpl_diag::codes::MISSING_IMPL,
-                        "this value cannot be printed",
-                    ));
-                }
-                let mut vs = self.seq(&vals, out).into_iter();
-                let pieces = ps
-                    .iter()
-                    .filter_map(|p| match p {
-                        Piece::Text(t) => Some(PrintPiece::Text(t.clone())),
-                        Piece::Value(_, f) => vs.next().map(|v| PrintPiece::Value(v, *f)),
-                    })
-                    .collect();
-                out.push(Stmt::Print(pieces));
-                mk(EK::Unit)
-            }
             TK::DomLen(t) => mk(EK::DomLen(t.clone())),
             TK::HasBound(t, r) => mk(EK::HasBound(t.clone(), r.tr, r.args.clone())),
             TK::Ordinal(x) => {
@@ -983,6 +1006,21 @@ impl Lw<'_> {
                 if matches!(x.ty, Ty::Int | Ty::Error) {
                     return int(v.kind);
                 }
+                // A parameter may be a domain that is a struct, as `Cut<D>`: its `ord` says it.
+                let v = match (&x.ty, self.d.domain_trait) {
+                    (Ty::Param(_), Some(tr)) => {
+                        let ord = Target::Trait {
+                            tr,
+                            args: Vec::new(),
+                            method: "ord".to_string(),
+                            self_ty: x.ty.clone(),
+                            ret: Ty::Int,
+                            targs: Vec::new(),
+                        };
+                        int(EK::Call(ord, vec![Arg::Value(v)], site))
+                    }
+                    _ => v,
+                };
                 let lo = Arg::Value(int(EK::DomLo(x.ty.clone())));
                 let sum = int(EK::Intr(Intr::Add, vec![Arg::Value(int(v.kind)), lo], 0));
                 self.spill(sum, out)
@@ -1310,6 +1348,7 @@ impl Lw<'_> {
                     sites,
                     lines,
                     shown: "case".into(),
+                    fast: None,
                 });
                 self.off = off;
             }
@@ -1496,6 +1535,7 @@ impl Lw<'_> {
             sites,
             lines,
             shown: "lambda".into(),
+            fast: None,
         });
         Self::capture_args(caps)
     }
@@ -1607,4 +1647,13 @@ fn breaks(stmts: &[Stmt<Ty>]) -> bool {
 fn fresh_sites() -> (Vec<SourceId>, Vec<u32>) {
     let nowhere = ItemId::file(cpl_next_decls::modules::PROGRAM.into()).at(Span::default());
     (vec![nowhere], vec![0])
+}
+
+/// Whether `e` names a place: a variable, or a field of one.
+fn is_place(e: &TExpr) -> bool {
+    match &e.kind {
+        TK::Var(_) => true,
+        TK::Field(b, _) => is_place(b),
+        _ => false,
+    }
 }

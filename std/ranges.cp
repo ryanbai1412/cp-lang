@@ -56,12 +56,6 @@ pub struct Range<D: Domain>:
         assert k >= 0, "take: a negative count"
         Range(lo, if k < n: k else: n, by)
 
-    /// How `print` writes it: its values, space-separated.
-    pub fn write(self):
-        for i in 0..n:
-            if i > 0: write(" ")
-            write(D.nth(lo + i * by))
-
 /// `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
 @range_literal
 pub fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
@@ -137,3 +131,16 @@ fn cut_ends<D: Domain>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int,
         ok = ok and 0 <= d and d % k.by == 0
         j = d / k.by + (if through: 1 else: 0)
     (i, j, ok and i <= j and j <= k.n)
+
+/// A range prints its values, one gap apart (R10.3).
+impl<D: Show> Show for Range<D>:
+    fn write_to(self, mut out: Str, sep: ?Str):
+        var first = true
+        for x in self:
+            if not first:
+                if let s = sep: out.append(s)
+                else: x.gap(mut out)
+            x.write_to(mut out, None)
+            first = false
+    fn gap(self, mut out: Str):
+        out.push('\n')

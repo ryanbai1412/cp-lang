@@ -56,6 +56,8 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::Variant(_, b)
         | TK::Inject(b)
         | TK::Widen(b)
+        | TK::Owned(b)
+        | TK::Pack(b)
         | TK::Elem(b)
         | TK::Not(b)
         | TK::CharOf(b)
@@ -146,11 +148,6 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
                 free_vars(v, used, bound);
             }
         }
-        TK::Print(ps) => ps.iter().for_each(|p| {
-            if let Piece::Value(v, _) = p {
-                free_vars(v, used, bound)
-            }
-        }),
         _ => {}
     }
 }

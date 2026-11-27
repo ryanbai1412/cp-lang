@@ -114,8 +114,7 @@ fn traps(op: &Op) -> bool {
                 | Op::JumpUnless { .. }
                 | Op::Switch { .. }
                 | Op::Leave(_)
-                | Op::Print { .. }
-                | Op::PrintText { .. }
+                | Op::Out { .. }
                 | Op::Event { .. }
                 | Op::Text { .. }
                 | Op::InputLeft { .. }
@@ -493,7 +492,11 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         | Op::Text { d, .. }
         | Op::InputLeft { d }
         | Op::ReadInt { d }
+        | Op::ReadByte { d }
+        | Op::RandWord { d }
         | Op::RawEmpty { d, .. } => (vec![], vec![one(d)]),
+        Op::PeekByte { d, k } => (vec![one(k)], vec![one(d)]),
+        Op::F64Text { d, a, b, .. } => (vec![one(a), one(b)], vec![one(d)]),
         Op::Enter { save, .. } => (vec![], vec![one(save)]),
         Op::Move { d, s, n } => (vec![(s, n)], vec![(d, n)]),
         Op::Int { d, a, b, .. }
@@ -515,14 +518,14 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         Op::Zero { d, n } | Op::GetG { d, n, .. } => (vec![], vec![(d, n)]),
         Op::PutG { s, n, .. } => (vec![(s, n)], vec![]),
         Op::Retain { s, lay } | Op::Drop { s, lay } => (vec![(s, size(lay))], vec![]),
-        Op::Print { s: c, .. }
-        | Op::Check { c, .. }
+        Op::Out { r, n, .. } => (vec![one(r), one(n)], vec![]),
+        Op::Check { c, .. }
         | Op::Guard { c, .. }
         | Op::JumpUnless { c, .. }
         | Op::JumpIf { c, .. }
         | Op::Switch { c, .. }
         | Op::Restore { save: c } => (vec![one(c)], vec![]),
-        Op::At { .. } | Op::Jump { .. } | Op::PrintText { .. } => (vec![], vec![]),
+        Op::At { .. } | Op::Jump { .. } => (vec![], vec![]),
         Op::RawNew { d, n, fill, elem } => (vec![one(n), (fill, size(elem))], vec![one(d)]),
         Op::RawGet { d, r, i, elem, .. } => (vec![one(r), one(i)], vec![(d, size(elem))]),
         Op::RawSet { p, i, x, elem } => {
@@ -596,13 +599,15 @@ fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
         | Op::CharOf { a, .. }
         | Op::CodeOf { a, .. }
         | Op::RawCap { n: a, .. }
-        | Op::Print { s: a, .. }
         | Op::Check { c: a, .. }
         | Op::Guard { c: a, .. }
         | Op::JumpUnless { c: a, .. }
         | Op::JumpIf { c: a, .. } => vec![a],
         Op::Move { s, n: 1, .. } | Op::PutG { s, n: 1, .. } | Op::Put { s, n: 1, .. } => vec![s],
         Op::RawGet { r, i, .. } => vec![r, i],
+        Op::Out { r, n, .. } => vec![r, n],
+        Op::PeekByte { k, .. } => vec![k],
+        Op::F64Text { a, b, .. } => vec![a, b],
         Op::RawSet { i, x, elem, .. } => match one(*elem) {
             true => vec![i, x],
             false => vec![i],

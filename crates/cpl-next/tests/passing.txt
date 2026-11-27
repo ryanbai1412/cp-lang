@@ -261,6 +261,7 @@ core-02/record-structural.cp
 core-02/record-update.cp
 core-02/return-moves-last-use-locals.cp
 core-02/runtime-range-bound.cp
+core-02/some-and-none-or.cp
 core-02/spec-block-enums.cp
 core-02/static-fn-binds-struct-type-params.cp
 core-02/str-index-assign.cp
@@ -710,6 +711,7 @@ core-06/fn-hoists.cp
 core-06/fn-param-needs-type.cp
 core-06/fn-type-arity-mismatch.cp
 core-06/fn-value-fills-defaulted-trailing.cp
+core-06/fn-value-fills-defaults.cp
 core-06/fn-value-fills-named-only-default.cp
 core-06/fn-value-fills-two-defaults.cp
 core-06/fn-value-required-trailing-mismatch.cp
@@ -1499,6 +1501,7 @@ next/m02_until_eof_empty.cp
 next/n_alias_01_alias_builds_its_type.cp
 next/n_array_over_key_run.cp
 next/n_array_range_axes.cp
+next/n_assign_01_a_tuple_writes_its_places_after_reading_all.cp
 next/n_assoc_02_bound_names_a_defaulted_assoc.cp
 next/n_assoc_type.cp
 next/n_assoc_type_bound_unmet.cp
@@ -1582,6 +1585,7 @@ next/n_f64_03_precision_and_specs.cp
 next/n_facts_01_proved_checks_keep_results.cp
 next/n_facts_02_unproved_n_minus_i_traps.cp
 next/n_facts_03_unproved_index_traps.cp
+next/n_fn_value_01_defaulted_params_are_left_out.cp
 next/n_fnval_01_defaults_fill.cp
 next/n_for_01_wildcard_and_repeat.cp
 next/n_fromop_01_bare_op_at_a_bound.cp
@@ -1616,6 +1620,8 @@ next/n_into_01_list_of_a_seq_converts.cp
 next/n_into_02_new_taking_nothing_with_no_conversion_rejects.cp
 next/n_intr_01_word_bit_counts.cp
 next/n_intr_02_abs_of_int_and_f64.cp
+next/n_intr_02_word_bodies_agree_with_their_ops.cp
+next/n_judge_01_array_past_the_judges_memory.cp
 next/n_keep_01_min_max_assign.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
@@ -1672,6 +1678,7 @@ next/n_pattern_02_domain_patterns_test_membership.cp
 next/n_pattern_03_string_literal_patterns.cp
 next/n_position_arith.cp
 next/n_q_01_question_extent.cp
+next/n_rand_01_rand_draws_one_stream_on_every_engine.cp
 next/n_range_01_step_is_its_own_member.cp
 next/n_range_02_open_and_stepped_walks.cp
 next/n_range_03_domain_value_ends.cp
@@ -1681,6 +1688,11 @@ next/n_range_literal_cut_end.cp
 next/n_range_literal_cut_past.cp
 next/n_range_literal_positions.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
+next/n_read_02_read_line_takes_the_rest_of_the_line.cp
+next/n_read_03_read_is_an_ordinary_fn_over_read.cp
+next/n_read_04_str_and_char_read_tokens.cp
+next/n_read_05_str_read_at_the_end_traps.cp
+next/n_read_06_parts_held_to_their_ranges.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_01_update_copies_with_replacements.cp
 next/n_record_02_field_traits.cp
@@ -1694,6 +1706,13 @@ next/n_set_02_closure_stored_in_mut_param_field.cp
 next/n_set_03_call_result_set_takes_more.cp
 next/n_set_04_two_param_sets_made_one.cp
 next/n_set_ordered.cp
+next/n_show_01_print_is_an_ordinary_fn_over_show.cp
+next/n_show_02_a_type_shows_by_its_impl.cp
+next/n_show_03_bool_is_not_show.cp
+next/n_show_04_structs_show_their_fields.cp
+next/n_show_05_an_enum_shows_its_variant_name.cp
+next/n_show_06_a_view_shows_its_elements.cp
+next/n_show_07_print_takes_many_values.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
 next/n_slice_03_open_ends.cp
@@ -1734,6 +1753,7 @@ next/n_variadic_03_min_max_of_values.cp
 next/n_variadic_04_min_max_need_one_type.cp
 next/n_variadic_05_generator_is_the_method_fold.cp
 next/n_variant_01_bare_variant_names_from_context.cp
+next/n_yes_01_yes_takes_answer_words.cp
 next/o01_gen_local_walk_read.cp
 next/o02_gen_global_walk_other_write.cp
 next/o03_gen_reads_global_scalar_body_writes.cp

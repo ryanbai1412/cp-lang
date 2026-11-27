@@ -89,6 +89,19 @@ impl Cx<'_> {
         if let Named::Struct(d) = named {
             given = self.d.with_defaults_of(d, given);
         }
+        // A range type given for the parameter a fn gives back is its `Int`, checked into the
+        // range as it is stored (R03.1.4): a range type is never a type argument.
+        let mut ranged = None;
+        if let Named::Fn(d) = named {
+            if let Some(i) = super::unify::made_param(self.d.f(d)) {
+                if let Some(t) = given.get(i).map(|t| self.shallow(t)) {
+                    if let Some(w) = self.int_parts(&t).filter(|w| *w != t) {
+                        given[i] = w;
+                        ranged = Some((i, t));
+                    }
+                }
+            }
+        }
         let ctor = match named {
             Named::Struct(d) => self.d.s(d).ctor.filter(|_| !match self
                 .decl
@@ -193,6 +206,10 @@ impl Cx<'_> {
                 );
                 mk(TK::Error, Ty::Error)
             }
+        };
+        let v = match ranged {
+            Some((_, r)) => self.coerce(v, &r),
+            None => v,
         };
         if pre.is_empty() {
             v

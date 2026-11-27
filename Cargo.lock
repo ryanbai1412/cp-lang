@@ -222,6 +222,7 @@ dependencies = [
  "cpl-diag",
  "cpl-env",
  "cpl-json",
+ "cpl-judge",
  "cpl-next-check",
  "cpl-next-cpp",
  "cpl-next-decls",
@@ -240,7 +241,6 @@ name = "cpl-next-check"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
- "cpl-judge",
  "cpl-next-decls",
  "cpl-next-ir",
  "cpl-syntax",

@@ -1,11 +1,12 @@
 //! Small readers of statement and expression shapes shared by the loop rules.
 
+use crate::std_fn;
 use crate::walk::unparen;
 use cpl_syntax::ast::*;
 
 /// `read()`, the core read with no arguments.
 pub(crate) fn is_read(e: &Expr) -> bool {
-    matches!(&unparen(e).kind, ExprKind::Call { callee, args } if args.is_empty() && name(callee) == Some("read"))
+    matches!(&unparen(e).kind, ExprKind::Call { callee, args } if args.is_empty() && name(callee) == Some(std_fn::READ))
 }
 
 pub(crate) fn name(e: &Expr) -> Option<&str> {

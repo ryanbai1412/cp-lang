@@ -158,10 +158,12 @@ rows! {
     /// Cell `i` of storage with `len` cells, for a read and for a write.
     read_cell(i: i64, len: i64) -> usize [(i < 0) | (i >= len) => ReadOutside] cell;
     write_cell(i: i64, len: i64) -> usize [(i < 0) | (i >= len) => WriteOutside] cell;
-    // The checks std makes (`key_check`, `range_check`): each passes when its operand is true.
+    // The checks std makes (`key_check`, `range_check`, `token_check`, `input_check`): each passes when its operand is true.
     check_key(ok: bool) -> Unit [!ok => KeyOutside] pass;
     check_range(ok: bool) -> Unit [!ok => RangeCut] pass;
     check_variant(ok: bool) -> Unit [!ok => NoVariant] pass;
+    check_token(ok: bool) -> Unit [!ok => NoToken] pass;
+    check_input(ok: bool) -> Unit [!ok => InputOutside] pass;
 }
 
 fn cpp_fn(s: &mut String, name: &str, params: &[(&str, &str)], ret: &str, body: &str) {

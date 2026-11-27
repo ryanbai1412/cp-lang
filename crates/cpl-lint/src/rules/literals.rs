@@ -2,7 +2,7 @@
 //! facts that must agree but are kept apart (L0506).
 
 use crate::walk::Visitor;
-use crate::{File, Finding, REPEATED_LITERAL};
+use crate::{std_fn, File, Finding, REPEATED_LITERAL};
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
 use cpl_syntax::ast::*;
@@ -49,7 +49,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             } = &stmt.kind
             {
                 if let ExprKind::Call { callee, .. } = &init.kind {
-                    if matches!(&callee.kind, ExprKind::Name(n) if n == "read") {
+                    if matches!(&callee.kind, ExprKind::Name(n) if n == std_fn::READ) {
                         self.input_types.push(ty.span.shift(self.base));
                     }
                 }
@@ -57,7 +57,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         }
         fn expr(&mut self, expr: &Expr) {
             if let ExprKind::Generic { base, args } = &expr.kind {
-                if matches!(&base.kind, ExprKind::Name(n) if n == "read") {
+                if matches!(&base.kind, ExprKind::Name(n) if n == std_fn::READ) {
                     let types = args.iter().map(|t| t.span.shift(self.base));
                     self.input_types.extend(types);
                 }

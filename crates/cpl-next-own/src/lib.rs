@@ -5,7 +5,7 @@
 //! with the field path kept, so `p.a` and `p.b` do not overlap (R05.8.1). A call through a
 //! function value is the join of the closures its set can hold; a set that is a parameter
 //! of the fn stays symbolic in the summary and is filled in at each call.
-use cpl_next_ir::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
+use cpl_next_ir::ir::{Arg, Expr, Place, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
@@ -122,13 +122,6 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
             Stmt::Switch(e, bs) => {
                 self.expr(e, pre);
                 bs.iter_mut().for_each(|b| self.block(b));
-            }
-            Stmt::Print(ps) => {
-                for x in ps {
-                    if let PrintPiece::Value(e, _) = x {
-                        self.expr(e, pre);
-                    }
-                }
             }
             Stmt::Event(_, xs) => xs.iter_mut().for_each(|x| self.expr(x, pre)),
             Stmt::Region { args, body, .. } => {

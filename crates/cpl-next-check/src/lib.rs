@@ -105,6 +105,11 @@ pub enum TK {
     Inject(Box<TExpr>),
     /// A function value flows into a slot whose set is larger.
     Widen(Box<TExpr>),
+    /// A value read into a temporary of its own: a heap place is copied, not lent (R01.6.4).
+    Owned(Box<TExpr>),
+    /// A variadic `..xs` argument's tuple or record: like any argument, each place it packs
+    /// is lent for the call, not moved in.
+    Pack(Box<TExpr>),
     /// `s[i]`: the element its `Indexed.at` call reads, in place in `s` (R05.3.5).
     Elem(Box<TExpr>),
     /// `buf[i]` on core's raw storage: cell `i`, a place a container's `IndexedMut` lends (R05.3.5).
@@ -117,7 +122,6 @@ pub enum TK {
     ToU64(Box<TExpr>),
     If(Box<TExpr>, Box<TExpr>, Box<TExpr>),
     Block(Vec<TStmt>, Option<Box<TExpr>>),
-    Print(Vec<Piece>),
     ReadInt,
     /// The size of a domain type: `D.count`.
     DomLen(Ty),
@@ -150,11 +154,6 @@ pub enum TK {
     /// The payload of variant `i` of an enum place, which must be that variant.
     Payload(Box<TExpr>, usize),
     Error,
-}
-#[derive(Clone, Debug)]
-pub enum Piece {
-    Text(String),
-    Value(TExpr, cpl_next_ir::ops::Fmt),
 }
 #[derive(Clone, Debug)]
 pub enum TArg {
@@ -301,8 +300,8 @@ struct Cx<'a> {
     early: std::cell::Cell<Option<usize>>,
     /// The keys of a `let w = s[lo..hi]` with literal ends, which prove a literal `w[k]` (R07.4.5).
     view_keys: HashMap<VarRef, (i128, i128)>,
-    /// The judge the program names (`// judge:`, else `generic`), for its memory limit (R03.1.9).
-    judge: Option<cpl_judge::Profile>,
+    /// The judge the build is for, for its memory limit (R03.1.9).
+    judge: Option<cpl_next_ir::build::Judge>,
     errors: Vec<Msg>,
     lambdas: Vec<LambdaInfo>,
     globals: Vec<Local>,
@@ -324,6 +323,8 @@ struct Cx<'a> {
     self_local: Option<LocalId>,
     /// Bounds calls must meet, with where: a type, the trait it must implement, and why.
     obligations: Vec<(Ty, decls::TraitRef, Span, Origin)>,
+    /// Temporaries holding an input value whose parts are held to their types one by one.
+    input_parts: std::collections::HashSet<VarRef>,
     ret: Ty,
     /// What the fn being checked yields or lends.
     region: Option<(bool, Ty)>,
@@ -421,6 +422,7 @@ pub fn check(
     src: &crate::modules::Loaded,
     consts: &dyn Consts,
     roots: &[ModId],
+    judge: Option<cpl_next_ir::build::Judge>,
 ) -> Typed {
     let mut cx = Cx {
         values: consts,
@@ -440,7 +442,7 @@ pub fn check(
         cyclic: Default::default(),
         early: Default::default(),
         view_keys: HashMap::new(),
-        judge: cpl_judge::builtin(cpl_judge::named_in(src.program()).unwrap_or("generic")),
+        judge,
         errors: Vec::new(),
         lambdas: Vec::new(),
         globals: Vec::new(),
@@ -469,6 +471,7 @@ pub fn check(
         scopes: vec![HashMap::new()],
         self_local: None,
         obligations: Vec::new(),
+        input_parts: Default::default(),
         ret: Ty::Unit,
         region: None,
         loops: 0,

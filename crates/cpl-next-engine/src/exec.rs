@@ -78,7 +78,8 @@ struct M<'a> {
     frames: Vec<Frame>,
     out: String,
     events: Vec<String>,
-    input: std::vec::IntoIter<String>,
+    input: ops::Input,
+    rand: u64,
     at: u32,
     texts: Vec<u32>,
     scratch: Vec<u32>,
@@ -112,10 +113,8 @@ fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&str>, steps: u6
         frames: Vec::new(),
         out: String::new(),
         events: Vec::new(),
-        input: ops::tokens(input.unwrap_or(""))
-            .map(String::from)
-            .collect::<Vec<_>>()
-            .into_iter(),
+        input: ops::Input::new(input.unwrap_or("")),
+        rand: ops::RAND_SEED,
         at: 0,
         texts: vec![0; c.texts.len()],
         scratch: Vec::new(),
@@ -586,6 +585,17 @@ impl M<'_> {
                 Op::FNeg { d, a } => {
                     self.stack[r(d)] = ops::neg_float(f64::from_bits(self.stack[r(a)])).to_bits()
                 }
+                Op::F64Text { d, a, b, len } => {
+                    let x = f64::from_bits(self.stack[r(a)]);
+                    let t = ops::f64_text(x, self.stack[r(b)] as i64);
+                    self.stack[r(d)] = match len {
+                        true => t.len() as u64,
+                        false => {
+                            let words = t.bytes().map(u64::from).collect();
+                            u64::from(self.alloc(c.char_lay, t.len(), words))
+                        }
+                    };
+                }
                 Op::ToF64 { d, a } => {
                     self.stack[r(d)] = ops::f64_of_int(self.stack[r(a)] as i64).to_bits()
                 }
@@ -731,12 +741,21 @@ impl M<'_> {
                     }
                 }
                 Op::Guard { op, c: x } => ops::check(op, self.stack[r(x)] != 0)?,
-                Op::Print { s, kind, fmt } => {
-                    if let Some(v) = scalar(self.stack[r(s)], kind) {
-                        ops::show_fmt(v, fmt, &mut self.out);
+                Op::Out { r: s, n, owned } => {
+                    let h = self.stack[r(s)] as u32;
+                    if h == 0 {
+                        return broken("output of non-storage");
+                    }
+                    let n = usize::try_from(self.stack[r(n)] as i64).unwrap_or(0);
+                    let stride = self.size(self.heap[h as usize].elem).max(1);
+                    let o = &self.heap[h as usize];
+                    for &w in o.words.iter().step_by(stride).take(n.min(o.len)) {
+                        self.out.push(char::from(byte(w)?));
+                    }
+                    if owned {
+                        self.dec(vec![h]);
                     }
                 }
-                Op::PrintText { t } => self.out.push_str(&c.texts[t as usize]),
                 Op::Event { e } => {
                     let ev = &c.events[e as usize];
                     let mut line = format!("ev {}", ev.label);
@@ -822,15 +841,19 @@ impl M<'_> {
                     let words = vec![0; len * self.size(elem)];
                     self.stack[r(d)] = u64::from(self.alloc(elem, len, words));
                 }
-                Op::InputLeft { .. } | Op::ReadInt { .. } if self.closed => {
+                Op::InputLeft { .. } | Op::ReadInt { .. } | Op::ReadByte { .. } if self.closed => {
                     self.read = true;
                     return broken("a read with no input");
                 }
-                Op::InputLeft { d } => {
-                    self.stack[r(d)] = u64::from(!self.input.as_slice().is_empty())
+                Op::InputLeft { d } => self.stack[r(d)] = u64::from(ops::Input::left(&self.input)),
+                Op::ReadByte { d } => self.stack[r(d)] = ops::Input::byte(&mut self.input) as u64,
+                Op::PeekByte { d, k } => {
+                    self.stack[r(d)] =
+                        ops::Input::peek(&self.input, self.stack[r(k)] as i64) as u64;
                 }
+                Op::RandWord { d } => self.stack[r(d)] = ops::rand_word(&mut self.rand),
                 Op::ReadInt { d } => {
-                    let t = self.input.next();
+                    let t = ops::Input::token(&mut self.input);
                     let v =
                         ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?;
                     self.stack[r(d)] = v as u64;
@@ -925,7 +948,7 @@ mod tests {
                 | Op::Switch { .. }
                 | Op::Leave { .. }
                 | Op::Check { .. }
-                | Op::PrintText { .. }
+                | Op::Out { .. }
                 | Op::RawEmpty { .. }
                 | Op::InputLeft { .. }
         )

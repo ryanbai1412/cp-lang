@@ -463,7 +463,7 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
         }
         ExprKind::Call { callee, args } => {
             if matches!(callee.kind, ExprKind::Name(_))
-                && (bounds.is_std(base, expr, "print") || bounds.is_std(base, expr, std_fn::ASK))
+                && (bounds.is_std(base, expr, std_fn::PRINT) || bounds.is_std(base, expr, std_fn::ASK))
             {
                 for arg in args {
                     if let ExprKind::Name(name) = &arg.value.kind {

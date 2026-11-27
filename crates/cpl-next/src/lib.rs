@@ -295,7 +295,7 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
     out.extend(diags(Stage::Decls, &d.errors));
     let values = consts::Evaluator::new(&d, &loaded, &main);
-    let mut t = check::check(&d, &main, &loaded, &values, &[]);
+    let mut t = check::check(&d, &main, &loaded, &values, &[], judge_of(loaded.program()));
     out.extend(diags(Stage::Check, &t.errors));
     let g = lower::lower(&d, &t, &loaded);
     out.extend(diags(Stage::Lower, &g.errors));
@@ -312,6 +312,15 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         main,
         diags: out,
     }
+}
+
+/// The judge a program names (`// judge:`, else `generic`), as the checker reads it.
+fn judge_of(program: &str) -> Option<cpl_next_ir::build::Judge> {
+    let p = cpl_judge::builtin(cpl_judge::named_in(program).unwrap_or("generic"))?;
+    Some(cpl_next_ir::build::Judge {
+        name: p.name,
+        memory_mb: p.memory_mb,
+    })
 }
 
 /// Each std module and how many diagnostics it has when every one of its fns is checked, not
@@ -333,6 +342,7 @@ pub fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
                 &loaded,
                 &values,
                 &at.into_iter().collect::<Vec<_>>(),
+                judge_of(""),
             );
             let ds = (staged(Stage::Decls, &d.errors, &loaded, &[]).into_iter()).chain(staged(
                 Stage::Check,

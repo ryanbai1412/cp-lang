@@ -576,6 +576,62 @@ impl<'a> Cx<'a> {
                 .try_fold(false, |any, c| Some(any || c?))
                 == Some(true)
     }
+    /// `t` with each range type in it, alone or a tuple's part, widened to its `Int`; `None` when
+    /// one is a type argument of anything else. A range type is never a type argument: its value
+    /// is an `Int`, checked into the range as it is stored (R03.1.4).
+    pub(super) fn int_parts(&self, t: &Ty) -> Option<Ty> {
+        match self.shallow(t) {
+            Ty::Range(..) | Ty::RangeOf(_) => Some(Ty::Int),
+            Ty::Struct(s, ts, sets) => {
+                let parts = (ts.iter().map(|t| self.int_parts(t))).collect::<Option<Vec<Ty>>>()?;
+                (parts == ts || self.is_tuple(s)).then_some(Ty::Struct(s, parts, sets))
+            }
+            t => Some(t),
+        }
+    }
+    fn is_tuple(&self, s: StructId) -> bool {
+        self.d.tuples.values().any(|t| *t == s)
+    }
+    /// A tuple held to `want` part by part, each part coerced as it is stored (R03.1.4).
+    fn held_parts(&mut self, e: TExpr, want: &Ty) -> TExpr {
+        let span = e.span;
+        let (Some((_, have)), Some((_, wants))) = (self.field_tys(&e.ty), self.field_tys(want))
+        else {
+            return e;
+        };
+        let input = self.is_input(&e);
+        let ety = e.ty.clone();
+        self.scopes.push(HashMap::new());
+        let tmp = self.bind("$parts", ety.clone());
+        if input {
+            self.input_parts.insert(tmp);
+        }
+        let mut parts = Vec::new();
+        for (i, (h, w)) in have.into_iter().zip(&wants).enumerate() {
+            let var = TExpr {
+                kind: TK::Var(tmp),
+                ty: ety.clone(),
+                span,
+            };
+            let part = TExpr {
+                kind: TK::Field(Box::new(var), i),
+                ty: h,
+                span,
+            };
+            parts.push(self.coerce(part, w));
+        }
+        self.scopes.pop();
+        let whole = TExpr {
+            kind: TK::Struct(parts),
+            ty: want.clone(),
+            span,
+        };
+        TExpr {
+            kind: TK::Block(vec![TStmt::Let(tmp, e)], Some(Box::new(whole))),
+            ty: want.clone(),
+            span,
+        }
+    }
     pub(super) fn coerce(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let (have, want_s) = (self.shallow(&e.ty), self.shallow(want));
         let span = e.span;
@@ -616,6 +672,15 @@ impl<'a> Cx<'a> {
                     ty: Ty::F64,
                     span,
                 }
+            }
+            // A tuple's parts are held to their types one by one (R03.1.4).
+            (Ty::Struct(a, hs, _), Ty::Struct(b, ws, _))
+                if a == b
+                    && hs != ws
+                    && self.is_tuple(*a)
+                    && self.int_parts(&want_s).is_some_and(|w| w != want_s) =>
+            {
+                self.held_parts(e, &want_s)
             }
             // Loads widen, stores check (R03.1.4).
             (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) => TExpr { ty: Ty::Int, ..e },
@@ -833,5 +898,25 @@ impl<'a> Cx<'a> {
             }
             other => other,
         }
+    }
+}
+
+/// Whether `t` names type parameter `i`.
+pub(super) fn mentions(t: &Ty, i: usize) -> bool {
+    match t {
+        Ty::Param(j) => *j == i,
+        Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) => mentions(t, i),
+        Ty::Struct(_, ts, _) => ts.iter().any(|t| mentions(t, i)),
+        Ty::Fn(ps, r, _) => ps.iter().any(|t| mentions(t, i)) || mentions(r, i),
+        _ => false,
+    }
+}
+
+/// The type parameter a fn makes its result of: its result is one, and no parameter takes it,
+/// so the fn builds the value rather than passing one through.
+pub(super) fn made_param(fd: &decls::FnDecl) -> Option<usize> {
+    match fd.ret {
+        Ty::Param(i) if !fd.params.iter().any(|p| mentions(&p.ty, i)) => Some(i),
+        _ => None,
     }
 }

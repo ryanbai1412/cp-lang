@@ -64,8 +64,8 @@ impl<'a> Cx<'a> {
                 });
             }
         }
-        // A field of `self` is nearer than a top-level binding.
-        if self.self_field(name).is_some() {
+        // A field of `self` is nearer than a top-level binding, and only the program sees its own.
+        if self.self_field(name).is_some() || self.module != self.d.program {
             return None;
         }
         self.global_names
@@ -725,7 +725,8 @@ impl<'a> Cx<'a> {
                 }
                 if let PatternKind::Tuple(ps) = &pat.kind {
                     // `let (a, b): (T, U) = read()` reads each part in order. Tuples as values are not in the slice.
-                    let (tys, call) = match (ty.as_ref().map(|t| &t.kind), Self::read_call(init)) {
+                    let (tys, call) = match (ty.as_ref().map(|t| &t.kind), self.per_part_call(init))
+                    {
                         (Some(TypeKind::Tuple(ts)), Some((None, call))) if ts.len() == ps.len() => {
                             (ts.clone(), call)
                         }
@@ -951,6 +952,35 @@ impl<'a> Cx<'a> {
             } => {
                 let tmp = format!("$parts{}", s.span.start);
                 let at = |kind, span| ast::Expr { kind, span };
+                // A written tuple: each part is read into a copy of its own before any place is
+                // written, so no part borrows a place the writes change.
+                if let ExprKind::Tuple(parts) = &value.kind {
+                    if parts.len() == places.len() {
+                        let mut temps = Vec::new();
+                        for (k, part) in parts.iter().enumerate() {
+                            let name = format!("{tmp}_{k}");
+                            let v = self.expr(part, None);
+                            let (ty, span) = (v.ty.clone(), v.span);
+                            let var = self.bind(&name, ty.clone());
+                            let kind = TK::Owned(Box::new(v));
+                            out.push(TStmt::Let(var, TExpr { kind, ty, span }));
+                            temps.push(name);
+                        }
+                        for (place, name) in places.iter().zip(temps) {
+                            let one = ast::Stmt {
+                                kind: StmtKind::Assign {
+                                    target: place.clone(),
+                                    op: ast::AssignOp::Set,
+                                    value: at(ExprKind::Name(name), place.span),
+                                },
+                                span: place.span,
+                                ..s.clone()
+                            };
+                            self.stmt(&one, out);
+                        }
+                        return;
+                    }
+                }
                 let whole = ast::Stmt {
                     kind: StmtKind::Let {
                         mutable: false,
@@ -1558,32 +1588,36 @@ impl<'a> Cx<'a> {
         }
         Some(wraps)
     }
-    /// `read()` or `read<T>()`: the type argument if written, and the bare `read()` call.
-    pub(super) fn read_call(e: &ast::Expr) -> Option<(Option<ast::Type>, ast::Expr)> {
+    /// `f()` or `f<T>()` for a fn that takes nothing and gives its one type parameter, as
+    /// `read`: the type argument if written, and the call without it. Bound to a tuple pattern
+    /// with a tuple type it is called once per part, so a later part's type may name an earlier
+    /// part (R10.2.3).
+    pub(super) fn per_part_call(&self, e: &ast::Expr) -> Option<(Option<ast::Type>, ast::Expr)> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return None;
         };
-        if !args.is_empty() {
-            return None;
-        }
-        match &callee.kind {
-            ExprKind::Name(n) if n == "read" => Some((None, e.clone())),
-            ExprKind::Generic { base, args: targs }
-                if targs.len() == 1 && matches!(&base.kind, ExprKind::Name(n) if n == "read") =>
-            {
-                Some((
-                    Some(targs[0].clone()),
-                    ast::Expr {
-                        kind: ExprKind::Call {
-                            callee: base.clone(),
-                            args: Vec::new(),
-                        },
-                        span: e.span,
-                    },
-                ))
+        let (base, targ) = match &callee.kind {
+            ExprKind::Generic { base, args: targs } if targs.len() == 1 => {
+                (&**base, Some(targs[0].clone()))
             }
-            _ => None,
-        }
+            _ => (&**callee, None),
+        };
+        let ExprKind::Name(n) = &base.kind else {
+            return None;
+        };
+        let f = self
+            .d
+            .fn_named(self.module, n)
+            .filter(|_| self.declared(n))?;
+        let fd = self.d.f(f);
+        let shape = args.is_empty() && fd.params.is_empty() && fd.generics.len() == 1;
+        (shape && fd.ret == Ty::Param(0)).then(|| {
+            let kind = ExprKind::Call {
+                callee: Box::new(base.clone()),
+                args: Vec::new(),
+            };
+            (targ, ast::Expr { kind, span: e.span })
+        })
     }
     /// A domain's size is a hidden variable next to its declaration.
     pub(super) fn array_id(&self) -> Option<StructId> {
@@ -1685,6 +1719,14 @@ impl<'a> Cx<'a> {
         }
         .ty(&t)
     }
+    /// Whether `v` is input: a value an `@input` fn gives, or a part of one (R10.2.2).
+    pub(super) fn is_input(&self, v: &TExpr) -> bool {
+        match &v.kind {
+            TK::Call { f, .. } => self.d.input_fns.contains(&f.decl),
+            TK::Field(b, _) => matches!(&b.kind, TK::Var(t) if self.input_parts.contains(t)),
+            _ => false,
+        }
+    }
     /// `v`, after a check that it is between the two ends, each inclusive.
     pub(super) fn checked_between(
         &mut self,
@@ -1693,7 +1735,7 @@ impl<'a> Cx<'a> {
         hi: Option<TExpr>,
         span: Span,
     ) -> TExpr {
-        let kind = if matches!(v.kind, TK::ReadInt) {
+        let kind = if self.is_input(&v) {
             CheckKind::ReadRange
         } else {
             CheckKind::RangeStore
@@ -1736,74 +1778,6 @@ impl<'a> Cx<'a> {
             kind: TK::Block(stmts, Some(Box::new(var))),
             ty: Ty::Int,
             span,
-        }
-    }
-    /// `read()` at a known type.
-    pub(super) fn read_as(&mut self, t: &Ty, span: Span) -> TExpr {
-        match self.shallow(t) {
-            Ty::Struct(d, ts, _)
-                if Some(d) == self.array_id()
-                    && self.shallow(&ts[1]) == Ty::Int
-                    && self.d.core_fn("read_array").is_some() =>
-            {
-                let Some(read_array) = self.d.core_fn("read_array") else {
-                    return TExpr {
-                        kind: TK::Error,
-                        ty: Ty::Error,
-                        span,
-                    };
-                };
-                let f = self.fnref(read_array, vec![ts[0].clone()], Vec::new());
-                let ty = self.ret_ty(&f);
-                TExpr {
-                    kind: TK::Call {
-                        f,
-                        recv: None,
-                        args: vec![],
-                    },
-                    ty,
-                    span,
-                }
-            }
-            want @ (Ty::Range(..) | Ty::RangeOf(_)) => {
-                let v = self.read_as(&Ty::Int, span);
-                self.coerce(v, &want)
-            }
-            // A type already reported reads nothing, so nothing downstream reports it again.
-            Ty::Error => TExpr {
-                kind: TK::Error,
-                ty: Ty::Error,
-                span,
-            },
-            Ty::Int | Ty::Var(_) => {
-                self.unify(t, &Ty::Int);
-                TExpr {
-                    kind: TK::ReadInt,
-                    ty: Ty::Int,
-                    span,
-                }
-            }
-            Ty::Struct(d, ts, sets) if self.d.tuples.get(&ts.len()) == Some(&d) => {
-                let parts = ts.iter().map(|p| self.read_as(p, span)).collect();
-                TExpr {
-                    kind: TK::Struct(parts),
-                    ty: Ty::Struct(d, ts, sets),
-                    span,
-                }
-            }
-            other => {
-                self.err(
-                    span,
-                    Unbuilt::Read {
-                        ty: self.show(&other),
-                    },
-                );
-                TExpr {
-                    kind: TK::Error,
-                    ty: Ty::Error,
-                    span,
-                }
-            }
         }
     }
     /// `i` as a position of the domain `dty`; a literal that is never one is E0306 (R04.4.25).

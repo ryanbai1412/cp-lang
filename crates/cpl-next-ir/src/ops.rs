@@ -25,6 +25,8 @@ pub enum Fault {
     NoVariant,
     RangeCut,
     BadIntToken,
+    NoToken,
+    InputOutside,
     IntPastInt,
     StackExhausted,
     /// A `Check` statement: its code comes from its kind, its message from the IR.
@@ -34,7 +36,7 @@ pub enum Fault {
 }
 
 /// The faults an operation raises by itself, in the order of the C++ runtime's trap table.
-pub const FAULTS: [Fault; 17] = [
+pub const FAULTS: [Fault; 19] = [
     Fault::Overflow,
     Fault::U64PastInt,
     Fault::CharPastAscii,
@@ -50,6 +52,8 @@ pub const FAULTS: [Fault; 17] = [
     Fault::NoVariant,
     Fault::RangeCut,
     Fault::BadIntToken,
+    Fault::NoToken,
+    Fault::InputOutside,
     Fault::IntPastInt,
     Fault::StackExhausted,
 ];
@@ -77,8 +81,8 @@ impl Fault {
                 codes::INDEX_OUT_OF_RANGE
             }
             Fault::NoVariant => codes::DOMAIN_CAST,
-            Fault::BadIntToken => codes::BAD_INPUT_TOKEN,
-            Fault::IntPastInt => codes::INPUT_OUT_OF_CONTRACT,
+            Fault::BadIntToken | Fault::NoToken => codes::BAD_INPUT_TOKEN,
+            Fault::IntPastInt | Fault::InputOutside => codes::INPUT_OUT_OF_CONTRACT,
             Fault::StackExhausted => codes::STACK_EXHAUSTED,
             Fault::Check(k) => k.code(),
             Fault::Internal(_) => return INTERNAL,
@@ -103,6 +107,8 @@ impl Fault {
             Fault::NoVariant => "no variant has this value",
             Fault::RangeCut => "a cut of a range outside it",
             Fault::BadIntToken => "expected an integer in the input",
+            Fault::NoToken => "expected a token in the input",
+            Fault::InputOutside => "a value in the input is outside its contract",
             Fault::IntPastInt => "a whole number in the input does not fit in an `Int`",
             Fault::StackExhausted => "the stack ran out",
             Fault::Check(_) => "a check failed",
@@ -273,6 +279,61 @@ pub fn read_int(t: Option<&str>) -> Result<i64, Fault> {
     }
 }
 
+/// The program's input, read in one piece; token reads and line reads take from it in turn
+/// (R10.2.3). The C++ runtime's `cpl_read` and `cpl_read_byte` keep the same rules.
+pub struct Input {
+    bytes: Vec<u8>,
+    at: usize,
+}
+impl Input {
+    pub fn new(text: &str) -> Input {
+        Input {
+            bytes: text.as_bytes().to_vec(),
+            at: 0,
+        }
+    }
+    /// The next token, past any whitespace. When only spaces, tabs or `\r` follow it on its
+    /// line, the line's end is taken too, so a `read_line()` after a line's last token reads the
+    /// next line.
+    pub fn token(&mut self) -> Option<String> {
+        let b = &self.bytes;
+        let mut s = self.at;
+        while s < b.len() && is_space(b[s]) {
+            s += 1;
+        }
+        let mut e = s;
+        while e < b.len() && !is_space(b[e]) {
+            e += 1;
+        }
+        let mut k = e;
+        while k < b.len() && matches!(b[k], b' ' | b'\t' | b'\r') {
+            k += 1;
+        }
+        self.at = match b.get(k) {
+            None => k,
+            Some(b'\n') => k + 1,
+            Some(_) => e,
+        };
+        (s < e).then(|| String::from_utf8_lossy(&b[s..e]).into_owned())
+    }
+    /// Whether a token is left.
+    pub fn left(&self) -> bool {
+        self.bytes[self.at..].iter().any(|c| !is_space(*c))
+    }
+    /// The byte `k` past the next one, or `-1` past the end; nothing is taken.
+    pub fn peek(&self, k: i64) -> i64 {
+        let at = usize::try_from(k).ok().and_then(|k| self.at.checked_add(k));
+        at.and_then(|i| self.bytes.get(i))
+            .map_or(-1, |c| i64::from(*c))
+    }
+    /// The next byte, or `-1` at the end.
+    pub fn byte(&mut self) -> i64 {
+        let c = self.bytes.get(self.at).map_or(-1, |c| i64::from(*c));
+        self.at += usize::from(c >= 0);
+        c
+    }
+}
+
 /// A value `print` writes and an event shows as text.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Scalar {
@@ -283,50 +344,27 @@ pub enum Scalar {
     Bool(bool),
     Char(u8),
 }
-/// `v` as `print` writes it.
+/// `v` as an event shows it.
 pub fn show(v: Scalar, out: &mut String) {
-    show_fmt(v, Fmt::default(), out)
-}
-
-/// How `print` lays out a number: `"{x:6}"`, `"{x:04}"`, `"{x:.9}"` or `precision:` (R10.3.2).
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub struct Fmt {
-    /// The least width, filled on the left.
-    pub width: u32,
-    /// Filled with zeros after the sign, not spaces.
-    pub zero: bool,
-    /// Digits after an `F64`'s point.
-    pub digits: Option<u32>,
-}
-
-/// `v` as text, laid out by `f`.
-pub fn show_fmt(v: Scalar, f: Fmt, out: &mut String) {
     use std::fmt::Write;
-    let w = f.width as usize;
     let _ = match v {
-        Scalar::Int(i) if f.zero => write!(out, "{i:0w$}"),
-        Scalar::Int(i) => write!(out, "{i:w$}"),
-        Scalar::U64(u) if f.zero => write!(out, "{u:0w$}"),
-        Scalar::U64(u) => write!(out, "{u:w$}"),
-        // Ten decimals unless a precision is given (R10.3.4).
-        // Not a number and the infinities are spelled as C's printf spells them, and padded
-        // with spaces only, so a C++ build prints what the engine prints.
-        Scalar::F64(b) if !f64::from_bits(b).is_finite() => {
-            let x = f64::from_bits(b);
-            let sign = if x.is_sign_negative() { "-" } else { "" };
-            let name = if x.is_nan() { "nan" } else { "inf" };
-            write!(out, "{:>w$}", format!("{sign}{name}"))
-        }
-        Scalar::F64(b) => {
-            let (x, d) = (f64::from_bits(b), f.digits.unwrap_or(10) as usize);
-            match f.zero {
-                true => write!(out, "{x:0w$.d$}"),
-                false => write!(out, "{x:w$.d$}"),
-            }
-        }
+        Scalar::Int(i) => write!(out, "{i}"),
+        Scalar::U64(u) => write!(out, "{u}"),
+        Scalar::F64(b) => write!(out, "{}", f64_text(f64::from_bits(b), 10)),
         Scalar::Bool(b) => write!(out, "{b}"),
         Scalar::Char(c) => write!(out, "{}", char::from(c)),
     };
+}
+
+/// `x` with `digits` decimals, as C's `%.*f` writes it (R10.3.4): not a number and the
+/// infinities too, so a C++ build prints what the engine prints.
+pub fn f64_text(x: f64, digits: i64) -> String {
+    if !x.is_finite() {
+        let sign = if x.is_sign_negative() { "-" } else { "" };
+        return format!("{sign}{}", if x.is_nan() { "nan" } else { "inf" });
+    }
+    let d = usize::try_from(digits).unwrap_or(0);
+    format!("{x:.d$}")
 }
 
 /// Cell `i` of storage of `len` cells, for a read or a write.
@@ -345,6 +383,8 @@ pub fn check(op: Intr, ok: bool) -> Result<(), Fault> {
         Intr::CheckKey => rules::check_key(ok),
         Intr::CheckRange => rules::check_range(ok),
         Intr::CheckVariant => rules::check_variant(ok),
+        Intr::CheckToken => rules::check_token(ok),
+        Intr::CheckInput => rules::check_input(ok),
         _ => Err(Fault::Internal("not a check")),
     }
 }
@@ -395,6 +435,34 @@ pub fn cpp(op: Intr, unsigned: bool) -> Option<Cpp> {
         (Intr::Ge, _) => Infix(">="),
         _ => return None,
     })
+}
+
+/// The state the program's one random stream starts from, so every engine draws the same words.
+pub const RAND_SEED: u64 = 0x9e37_79b9_7f4a_7c15;
+const RAND_STEP: u64 = 0x9e37_79b9_7f4a_7c15;
+const RAND_MIX: [u64; 2] = [0xbf58_476d_1ce4_e5b9, 0x94d0_49bb_1331_11eb];
+
+/// The next word of a random stream: one splitmix64 step.
+pub fn rand_word(state: &mut u64) -> u64 {
+    *state = state.wrapping_add(RAND_STEP);
+    let z = (*state ^ (*state >> 30)).wrapping_mul(RAND_MIX[0]);
+    let z = (z ^ (z >> 27)).wrapping_mul(RAND_MIX[1]);
+    z ^ (z >> 31)
+}
+
+/// `rand_word` in the C++ runtime, from the same constants.
+pub fn cpp_rand() -> String {
+    format!(
+        "static uint64_t cpl_rand_state = {RAND_SEED:#x}ULL;
+static inline uint64_t cpl_rand_word() {{
+    uint64_t z = cpl_rand_state += {RAND_STEP:#x}ULL;
+    z = (z ^ (z >> 30)) * {:#x}ULL;
+    z = (z ^ (z >> 27)) * {:#x}ULL;
+    return z ^ (z >> 31);
+}}
+",
+        RAND_MIX[0], RAND_MIX[1]
+    )
 }
 
 /// The C++ runtime's trap table, one `{code, message}` row per entry of `FAULTS`, and a

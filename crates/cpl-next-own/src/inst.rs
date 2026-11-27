@@ -9,7 +9,7 @@ use cpl_next_decls::decls::Decls;
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::plain::lends;
 use cpl_next_ir::ir::{Arg, Expr, Place, Stmt, Target, EK};
-use cpl_next_ir::ir::{Func, FuncKey, PrintPiece, Site};
+use cpl_next_ir::ir::{Func, FuncKey, Site};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::Ty;
 use std::borrow::Cow;
@@ -336,12 +336,6 @@ impl Walk<'_> {
                 Stmt::Region { site, .. } | Stmt::Check { site, .. } | Stmt::Loop(.., site) => {
                     *site
                 }
-                Stmt::Print(ps) => (ps.iter())
-                    .find_map(|p| match p {
-                        PrintPiece::Value(v, _) => Some(v.site),
-                        PrintPiece::Text(_) => None,
-                    })
-                    .unwrap_or(0),
                 _ => 0,
             };
             (site != 0).then_some(site)
@@ -1217,11 +1211,6 @@ impl Walk<'_> {
                 }
                 fx.add(&inner);
             }
-            Stmt::Print(ps) => ps.iter().for_each(|p| {
-                if let PrintPiece::Value(v, _) = p {
-                    self.reads(v, fx)
-                }
-            }),
             Stmt::Event(_, xs) => xs.iter().for_each(|x| self.reads(x, fx)),
             Stmt::Break | Stmt::Continue | Stmt::LendOut(_) => {}
         }
@@ -1502,11 +1491,6 @@ fn calls_in<'b, T>(b: &'b [Stmt<T>], f: &mut Calls<'b, T>) {
                 args(xs, f);
                 calls_in(body, f);
             }
-            Stmt::Print(ps) => ps.iter().for_each(|p| {
-                if let cpl_next_ir::ir::PrintPiece::Value(v, _) = p {
-                    expr(v, f)
-                }
-            }),
             Stmt::Event(_, xs) => xs.iter().for_each(|x| expr(x, f)),
             Stmt::Break | Stmt::Continue | Stmt::LendOut(_) => {}
         }

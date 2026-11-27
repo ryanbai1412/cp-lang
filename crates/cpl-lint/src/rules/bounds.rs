@@ -996,7 +996,7 @@ pub(crate) fn keeps_len(method: &str) -> bool {
     use cpl_facade::today::{builtin_members, Receiver};
     // The catalog only says whether a method mutates; these only move or
     // overwrite elements.
-    const IN_PLACE: [&str; 4] = [std_fn::SORT, std_fn::REVERSE, "swap", "fill"];
+    const IN_PLACE: [&str; 4] = [std_fn::SORT, std_fn::REVERSE, std_fn::SWAP, "fill"];
     let mut members = [Receiver::List, Receiver::Str]
         .into_iter()
         .flat_map(builtin_members)
@@ -1048,7 +1048,7 @@ pub(crate) fn read_type(init: &Expr) -> Option<&Type> {
         return None;
     };
     match (&base.kind, tys.as_slice()) {
-        (ExprKind::Name(n), [ty]) if n == "read" && args.is_empty() => Some(ty),
+        (ExprKind::Name(n), [ty]) if n == std_fn::READ && args.is_empty() => Some(ty),
         _ => None,
     }
 }

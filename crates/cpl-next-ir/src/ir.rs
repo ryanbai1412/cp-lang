@@ -65,6 +65,18 @@ pub enum Intr {
     ReadInt,
     /// Whether the input has another token.
     InputLeft,
+    /// The input's next byte, or `-1` at its end (`ops::Input::byte`).
+    ReadByte,
+    /// The input's byte `k` past the next, taking nothing (`ops::Input::peek`).
+    PeekByte,
+    /// A check a token read makes: traps R0501 unless a token is there (R10.2.6).
+    CheckToken,
+    /// A check a read makes of its input: traps R0502 unless it holds (R10.2.2).
+    CheckInput,
+    /// Writes the first `n` characters of storage to the output.
+    Out,
+    /// The next word of the program's one random stream (`ops::rand_word`).
+    RandWord,
     /// The character with a code; traps R0201 outside `0..=127`.
     CharOf,
     /// A character's code.
@@ -85,6 +97,10 @@ pub enum Intr {
     BitCeil,
     /// The `F64` nearest an `Int`.
     ToF64,
+    /// The length of an `F64` written with a count of decimals.
+    F64Len,
+    /// The characters of an `F64` written with a count of decimals.
+    F64Text,
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
     Unset,
     /// `Int` arithmetic where overflow checks are off: it wraps to 64 bits (R09.4.2).
@@ -119,6 +135,13 @@ impl Intr {
             "range_check" => Intr::CheckRange,
             "value_check" => Intr::CheckVariant,
             "char_of" => Intr::CharOf,
+            "rand_word" => Intr::RandWord,
+            "read_byte" => Intr::ReadByte,
+            "read_int" => Intr::ReadInt,
+            "input_peek" => Intr::PeekByte,
+            "token_check" => Intr::CheckToken,
+            "input_check" => Intr::CheckInput,
+            "input_left" => Intr::InputLeft,
             "code_of" => Intr::CodeOf,
             "u64_of" => Intr::ToU64,
             "int_of_u64" => Intr::FromU64,
@@ -129,6 +152,9 @@ impl Intr {
             "bit_width" => Intr::BitWidth,
             "bit_ceil" => Intr::BitCeil,
             "f64_of" => Intr::ToF64,
+            "f64_len" => Intr::F64Len,
+            "f64_text" => Intr::F64Text,
+            "out" => Intr::Out,
             _ => return None,
         })
     }
@@ -147,6 +173,19 @@ impl Intr {
         }
     }
     /// Whether this operation can trap. One that can is a statement of its own.
+    /// Whether it reads or writes state outside its operands, so it is never dropped or moved.
+    pub fn effectful(self) -> bool {
+        matches!(
+            self,
+            Intr::RawSet
+                | Intr::RawTake
+                | Intr::ReadInt
+                | Intr::ReadByte
+                | Intr::PeekByte
+                | Intr::Out
+                | Intr::RandWord
+        )
+    }
     pub fn checked(self) -> bool {
         use Intr::*;
         matches!(
@@ -169,6 +208,8 @@ impl Intr {
                 | CheckKey
                 | CheckRange
                 | CheckVariant
+                | CheckToken
+                | CheckInput
                 | RawNew
                 | ReadInt
                 | FromU64
@@ -309,11 +350,6 @@ pub enum Target<T> {
     Value(Box<Expr<T>>),
 }
 #[derive(Clone, Debug)]
-pub enum PrintPiece<T> {
-    Text(String),
-    Value(Expr<T>, crate::ops::Fmt),
-}
-#[derive(Clone, Debug)]
 pub enum Stmt<T> {
     Let(usize, Expr<T>),
     Assign(Place, Expr<T>),
@@ -331,7 +367,6 @@ pub enum Stmt<T> {
         msg: String,
         site: Site,
     },
-    Print(Vec<PrintPiece<T>>),
     /// A call to a generator or a lender. `body` is the caller's code the callee runs
     /// at its `Yield` or `LendOut`, in the caller's frame, with `var` bound.
     /// Leaving `body` early: a generator stops there; a lender runs the rest of itself first.
@@ -379,6 +414,9 @@ pub struct Func<T> {
     pub lines: Vec<u32>,
     /// What a trap's call stack calls it: `f`, `Box.at`, `top level`.
     pub shown: String,
+    /// The operation the engines and C++ run in place of a call (`@fast(op)` on a fn with
+    /// a body); the reference interpreter runs the body.
+    pub fast: Option<Intr>,
 }
 
 /// Calls `f` on every place a block names, outermost first: read, written, lent, viewed or
@@ -464,11 +502,6 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
                 expr(c, f);
                 arms.iter_mut().for_each(|a| visit_places(a, f));
             }
-            Stmt::Print(ps) => ps.iter_mut().for_each(|p| {
-                if let PrintPiece::Value(v, _) = p {
-                    expr(v, f)
-                }
-            }),
             Stmt::Region {
                 args: xs,
                 var,

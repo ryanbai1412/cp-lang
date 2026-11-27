@@ -1,7 +1,8 @@
 """Check that every trait method of every claimer has a conformance case.
 
 Traits come from `pub trait` bodies in std/*.cp and from the core traits
-listed in spec/conformance/traits.toml. Claims come from `impl Trait for
+listed in spec/conformance/traits.toml; a std trait listed there with some
+of its methods needs cases for those only (the rest are hooks with defaults). Claims come from `impl Trait for
 Type:` lines in std/*.cp and from the core claimers in traits.toml.
 Each (type, trait, method) needs a `[case]` in traits.toml, which becomes
 spec/conformance/traits/<trait>/<type>--<method>.cp. The gate fails when
@@ -70,7 +71,7 @@ def triples(data):
     traits = std_traits()
     out, problems = set(), []
     for t, v in data.get("trait", {}).items():
-        if t in traits:
+        if t in traits and not set(v["methods"]) < set(traits[t]):
             problems.append(f"traits.toml: trait {t} is declared in std; drop it here")
         traits[t] = v["methods"]
     claims = std_claims() | {(c["type"], c["trait"]) for c in data.get("claim", [])}

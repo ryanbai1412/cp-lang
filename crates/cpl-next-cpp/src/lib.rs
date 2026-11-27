@@ -88,8 +88,8 @@ static void cpl_guard_stack() {
 
 /// The runtime's storage and input, after the rows `ops::cpp_runtime` writes.
 fn runtime() -> String {
-    let (table, rows) = (ops::cpp_trap_table(), ops::cpp_runtime());
-    format!("{RUNTIME_HEAD}{table}{RUNTIME}{rows}{RUNTIME_STORAGE}")
+    let (table, rows, rand) = (ops::cpp_trap_table(), ops::cpp_runtime(), ops::cpp_rand());
+    format!("{RUNTIME_HEAD}{table}{rand}{RUNTIME}{rows}{RUNTIME_STORAGE}")
 }
 
 const RUNTIME_STORAGE: &str = r#"template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
@@ -99,6 +99,12 @@ static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     cpl_raw<cpl_char> r(n);
     for (size_t i = 0; i < n; i++) r[i].code = (uint8_t)s[i];
     return r;
+}
+static inline int64_t cpl_f64_len(double x, int64_t d) { return snprintf(nullptr, 0, "%.*f", (int)d, x); }
+static inline cpl_raw<cpl_char> cpl_f64_text(double x, int64_t d) {
+    char s[512];
+    int n = snprintf(s, sizeof s, "%.*f", (int)d, x);
+    return cpl_raw_text(s, (size_t)n);
 }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
     return r[cpl_read_cell(i, (int64_t)r.size())];
@@ -114,12 +120,30 @@ template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, cons
     return cpl_unit{};
 }
 static inline bool cpl_is_space(int c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
+// The input, read in one piece; `ops::Input` keeps the same rules.
+static std::vector<unsigned char> cpl_in;
+static size_t cpl_in_at = 0;
+static bool cpl_in_loaded = false;
+static inline void cpl_in_load() {
+    if (cpl_in_loaded) return;
+    cpl_in_loaded = true;
+    unsigned char buf[1 << 16];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof buf, stdin)) > 0) cpl_in.insert(cpl_in.end(), buf, buf + n);
+}
 static inline bool cpl_input_left() {
-    int c;
-    while ((c = getchar()) != EOF && cpl_is_space(c)) {}
-    if (c == EOF) return false;
-    ungetc(c, stdin);
-    return true;
+    cpl_in_load();
+    for (size_t i = cpl_in_at; i < cpl_in.size(); i++)
+        if (!cpl_is_space(cpl_in[i])) return true;
+    return false;
+}
+static inline int64_t cpl_peek_byte(int64_t k) {
+    cpl_in_load();
+    return k >= 0 && (size_t)k < cpl_in.size() - cpl_in_at ? (int64_t)cpl_in[cpl_in_at + (size_t)k] : -1;
+}
+static inline int64_t cpl_read_byte() {
+    cpl_in_load();
+    return cpl_in_at < cpl_in.size() ? (int64_t)cpl_in[cpl_in_at++] : -1;
 }
 // The `Int` token `t` spells, as `ops::read_int` reads it.
 static inline int64_t cpl_int_token(const std::string& t) {
@@ -139,13 +163,16 @@ static inline int64_t cpl_int_token(const std::string& t) {
     return t[0] == '-' ? -(int64_t)v : (int64_t)v;
 }
 static inline int64_t cpl_read() {
-    int c;
-    while ((c = getchar()) != EOF && cpl_is_space(c)) {}
-    std::string t;
-    for (; c != EOF && !cpl_is_space(c); c = getchar()) t.push_back((char)c);
-    if (c != EOF) ungetc(c, stdin);
-    if (t.empty()) cpl_fail(CPL_BAD_INT_TOKEN);
-    return cpl_int_token(t);
+    cpl_in_load();
+    size_t n = cpl_in.size(), s = cpl_in_at;
+    while (s < n && cpl_is_space(cpl_in[s])) s++;
+    size_t e = s;
+    while (e < n && !cpl_is_space(cpl_in[e])) e++;
+    size_t k = e;
+    while (k < n && (cpl_in[k] == ' ' || cpl_in[k] == '\t' || cpl_in[k] == '\r')) k++;
+    cpl_in_at = k == n ? n : cpl_in[k] == '\n' ? k + 1 : e;
+    if (s == e) cpl_fail(CPL_BAD_INT_TOKEN);
+    return cpl_int_token(std::string((const char*)&cpl_in[s], e - s));
 }
 // The caller's code handed to a generator or lender that calls itself: two words, not owning.
 // Used only there; elsewhere the callee is a template and the code is inlined.
@@ -155,24 +182,15 @@ template <class T> struct cpl_body {
     template <class L> cpl_body(L& l) : env(&l), fn([](void* e, T x) -> int { return (*static_cast<L*>(e))(static_cast<T>(x)); }) {}
     int operator()(T x) const { return fn(env, static_cast<T>(x)); }
 };
-// A scalar as `ops::show_fmt` writes it; `print` writes to stdout and an event to stderr.
-static inline void cpl_put(FILE* f, cpl_char c, int, bool, int) { fputc((char)c.code, f); }
-static inline void cpl_put(FILE* f, bool b, int, bool, int) { fputs(b ? "true" : "false", f); }
-static inline void cpl_put(FILE* f, int64_t x, int w, bool z, int) { fprintf(f, z ? "%0*lld" : "%*lld", w, (long long)x); }
-static inline void cpl_put(FILE* f, uint64_t x, int w, bool z, int) { fprintf(f, z ? "%0*llu" : "%*llu", w, (unsigned long long)x); }
-static inline void cpl_put(FILE* f, double x, int w, bool z, int d) { fprintf(f, z ? "%0*.*f" : "%*.*f", w, d, x); }
-static inline void cpl_out(cpl_char c) { cpl_put(stdout, c, 0, false, 10); }
-static inline void cpl_out(bool b) { cpl_put(stdout, b, 0, false, 10); }
-static inline void cpl_out(int64_t x) { cpl_put(stdout, x, 0, false, 10); }
-static inline void cpl_out(uint64_t x) { cpl_put(stdout, x, 0, false, 10); }
-static inline void cpl_out(double x) { cpl_put(stdout, x, 0, false, 10); }
-static inline void cpl_outf(int64_t x, int w, bool z, int d) { cpl_put(stdout, x, w, z, d); }
-static inline void cpl_outf(uint64_t x, int w, bool z, int d) { cpl_put(stdout, x, w, z, d); }
-static inline void cpl_outf(double x, int w, bool z, int d) { cpl_put(stdout, x, w, z, d); }
-static inline void cpl_ev(cpl_char c) { fputc(' ', stderr); cpl_put(stderr, c, 0, false, 10); }
-static inline void cpl_ev(bool b) { fputc(' ', stderr); cpl_put(stderr, b, 0, false, 10); }
-static inline void cpl_ev(int64_t x) { fputc(' ', stderr); cpl_put(stderr, x, 0, false, 10); }
-static inline void cpl_ev(uint64_t x) { fputc(' ', stderr); cpl_put(stderr, x, 0, false, 10); }
+// A scalar as `ops::show` writes it in an event.
+static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
+static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
+static inline void cpl_ev(int64_t x) { fprintf(stderr, " %lld", (long long)x); }
+static inline void cpl_ev(uint64_t x) { fprintf(stderr, " %llu", (unsigned long long)x); }
+static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) {
+    for (int64_t i = 0; i < n; i++) putchar((char)r[(size_t)i].code);
+    return cpl_unit{};
+}
 "#;
 
 /// What `break`, `continue` and `return` mean at a point in the output.
@@ -476,11 +494,6 @@ impl Emit<'_> {
                     expr(self, c);
                     arms.iter().for_each(|a| self.name_built(a));
                 }
-                Stmt::Print(ps) => ps.iter().for_each(|p| {
-                    if let PrintPiece::Value(x, _) = p {
-                        expr(self, x)
-                    }
-                }),
                 Stmt::Region { args, body, .. } => {
                     args.iter().for_each(|a| {
                         if let Arg::Value(y) = a {
@@ -626,11 +639,28 @@ impl Emit<'_> {
             EK::Lent(p) => format!("(&{})", self.place(p)),
             EK::AddrOf(p) => format!("(&{})", self.place(p)),
             EK::Tag(p) => format!("{}.tag", self.place(p)),
+            EK::MakeStruct(xs) if self.p.structs.contains_key(&e.ty) => {
+                // A lent slot filled from a lent place gets the pointer, not what it points at.
+                let fs = &self.p.structs[&e.ty];
+                let xs: Vec<String> = (xs.iter().zip(fs))
+                    .map(|(x, f)| match (&x.kind, f) {
+                        (EK::Copy(Place::Deref(q) | Place::Through(q)), CTy::Lent(_)) => self.place(q),
+                        _ => self.expr(x),
+                    })
+                    .collect();
+                format!("{}{{{}}}", self.names[&e.ty], xs.join(", "))
+            }
             EK::MakeStruct(xs) | EK::MakeClosure(xs) => {
                 format!("{}{{{}}}", self.names[&e.ty], list(xs))
             }
             EK::MakeUnion(i, x) => format!("{}::m{i}({})", self.names[&e.ty], self.expr(x)),
             EK::Inject(x) | EK::Widen(x) => self.expr(x),
+            EK::Call(Target::Inst(f), args, site) if let Some(op) = self.funcs[*f].fast => self
+                .expr(&Expr {
+                    kind: EK::Intr(op, args.clone(), *site),
+                    ty: e.ty.clone(),
+                    site: e.site,
+                }),
             EK::Call(Target::Inst(f), args, _) => format!(
                 "f{f}({})",
                 args.iter()
@@ -663,6 +693,8 @@ impl Emit<'_> {
                 match op {
                     Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
                     Intr::ToF64 => format!("((double)({}))", a[0]),
+                    Intr::F64Len => format!("cpl_f64_len({}, {})", a[0], a[1]),
+                    Intr::F64Text => format!("cpl_f64_text({}, {})", a[0], a[1]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
                     Intr::Popcount => format!("cpl_popcount((uint64_t)({}))", a[0]),
                     Intr::Ctz => format!("cpl_ctz((uint64_t)({}))", a[0]),
@@ -686,6 +718,12 @@ impl Emit<'_> {
                     Intr::CheckRange => format!("cpl_check_range({})", a[0]),
                     Intr::ReadInt => "cpl_read()".to_string(),
                     Intr::InputLeft => "cpl_input_left()".to_string(),
+                    Intr::ReadByte => "cpl_read_byte()".to_string(),
+                    Intr::PeekByte => format!("cpl_peek_byte({})", a[0]),
+                    Intr::CheckToken => format!("cpl_check_token({})", a[0]),
+                    Intr::CheckInput => format!("cpl_check_input({})", a[0]),
+                    Intr::RandWord => "cpl_rand_word()".to_string(),
+                    Intr::Out => format!("cpl_out({}, {})", a[0], a[1]),
                     Intr::Unset => format!("{}{{}}", self.names[&e.ty]),
                     // `ops::cpp` spells these, for operands of every kind.
                     Intr::Add
@@ -896,29 +934,6 @@ impl Emit<'_> {
                     },
                     kind.code().0
                 ),
-                Stmt::Print(ps) => {
-                    for p in ps {
-                        match p {
-                            PrintPiece::Text(t) => put_line!(
-                                s,
-                                "{pad}fwrite({}, 1, {}, stdout);",
-                                c_string(t),
-                                t.len()
-                            ),
-                            PrintPiece::Value(v, f) if *f == ops::Fmt::default() => {
-                                put_line!(s, "{pad}cpl_out({});", self.expr(v))
-                            }
-                            PrintPiece::Value(v, f) => put_line!(
-                                s,
-                                "{pad}cpl_outf({}, {}, {}, {});",
-                                self.expr(v),
-                                f.width,
-                                f.zero,
-                                f.digits.map_or(10, i64::from)
-                            ),
-                        }
-                    }
-                }
             }
             if around.is_some() {
                 put_line!(s, "{pad}cpl_at = cpl_was; }}");
@@ -980,23 +995,6 @@ fn recursive_regions(funcs: &[Func<CTy>]) -> Vec<bool> {
             false
         })
         .collect()
-}
-
-/// A C string literal for these bytes: every byte that is not plain printable ASCII is a
-/// three-digit octal escape, so the literal means the same bytes whatever follows it.
-fn c_string(t: &str) -> String {
-    let mut o = String::from("\"");
-    for b in t.bytes() {
-        match b {
-            b'"' => o.push_str("\\\""),
-            b'\\' => o.push_str("\\\\"),
-            b'?' => o.push_str("\\?"),
-            0x20..=0x7e => o.push(b as char),
-            _ => o.push_str(&format!("\\{b:03o}")),
-        }
-    }
-    o.push('"');
-    o
 }
 
 #[cfg(test)]
@@ -1159,6 +1157,8 @@ mod tests {
             (Intr::CheckKey, "cpl_check_key"),
             (Intr::CheckRange, "cpl_check_range"),
             (Intr::CheckVariant, "cpl_check_variant"),
+            (Intr::CheckToken, "cpl_check_token"),
+            (Intr::CheckInput, "cpl_check_input"),
         ] {
             for ok in [true, false] {
                 case(
@@ -1216,64 +1216,24 @@ mod tests {
             f64::NAN,
             -f64::NAN,
         ];
-        let fmts = [
-            (0, false, None),
-            (8, false, None),
-            (8, true, None),
-            (12, true, Some(3)),
-            (0, false, Some(0)),
-        ];
-        for (width, zero, digits) in fmts {
-            let f = ops::Fmt {
-                width,
-                zero,
-                digits,
-            };
-            let shown = |v: ops::Scalar| {
-                let mut out = String::new();
-                ops::show_fmt(v, f, &mut out);
-                format!("[{out}]\n")
-            };
-            let (w, z, d) = (width, zero, digits.unwrap_or(10));
-            for a in ints {
-                case(
-                    format!(
-                        "printf(\"[\"); cpl_outf(INT64_C({a}), {w}, {z}, {d}); printf(\"]\\n\");"
-                    ),
-                    shown(ops::Scalar::Int(a)),
-                );
-            }
-            for a in words {
-                case(
-                    format!(
-                        "printf(\"[\"); cpl_outf(UINT64_C({a}), {w}, {z}, {d}); printf(\"]\\n\");"
-                    ),
-                    shown(ops::Scalar::U64(a)),
-                );
-            }
-            for x in floats {
-                let b = x.to_bits();
-                case(
-                    format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); printf(\"[\"); cpl_outf(x, {w}, {z}, {d}); printf(\"]\\n\");"),
-                    shown(ops::Scalar::F64(b)),
-                );
-            }
-        }
         for x in floats {
             let b = x.to_bits();
-            let mut out = String::new();
-            ops::show(ops::Scalar::F64(b), &mut out);
-            case(
-                format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); printf(\"[\"); cpl_out(x); printf(\"]\\n\");"),
-                format!("[{out}]\n"),
-            );
+            for d in [0, 3, 10] {
+                case(
+                    format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); auto t = cpl_f64_text(x, {d}); printf(\"[\"); cpl_out(t, (int64_t)t.size()); printf(\" %lld]\\n\", (long long)cpl_f64_len(x, {d}));"),
+                    {
+                        let t = ops::f64_text(x, d);
+                        format!("[{t} {}]\n", t.len())
+                    },
+                );
+            }
         }
         let mut shown = |v: ops::Scalar, cpp: &str| {
             let mut out = String::new();
             ops::show(v, &mut out);
             case(
-                format!("printf(\"[\"); cpl_out({cpp}); fflush(stdout); cpl_ev({cpp}); fflush(stderr); printf(\"]\\n\");"),
-                format!("[{out} {out}]\n"),
+                format!("printf(\"[\"); fflush(stdout); cpl_ev({cpp}); fflush(stderr); printf(\"]\\n\");"),
+                format!("[ {out}]\n"),
             );
         };
         for b in [false, true] {

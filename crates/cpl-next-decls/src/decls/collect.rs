@@ -188,7 +188,7 @@ fn layer(
             .flat_map(|m| m.items.iter())
             .flat_map(|it| &it.stmts)
     };
-    let each = crate::synth::derive_each(all());
+    let each = crate::synth::derive_each(all);
     let convert = crate::synth::convert_marked(all);
     let positions = crate::records::positions(all());
     let derived: Vec<Vec<(ItemId, String, ast::Stmt)>> = (mods.iter().enumerate())

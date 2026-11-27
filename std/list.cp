@@ -128,9 +128,8 @@ pub struct Str:
     fn push(mut self, c: Char):
         chars.push(c)
 
-    /// How `print` writes it: its characters.
-    fn write(self):
-        for c in chars: write(c)
+    fn append(mut self, s: Str):
+        for c in s.chars: chars.push(c)
 
 // A string literal: its characters and how many there are. The literal's storage is lent,
 // so the string gets its own.
@@ -175,10 +174,11 @@ fn str_eq(a: Str, b: Str) -> Bool:
         if a.get(i) != b.get(i): return false
     true
 
-/// `"YES"` or `"NO"`. std.io's `yes` (with `answers:` and the `io` context) replaces it once
-/// its own check passes.
-pub fn yes(b: Bool) -> Str:
-    if b: "YES" else: "NO"
+/// The answer word for `ok`: `answers:` when given, else `("YES", "NO")` (R10.3.3). std.io's
+/// `yes`, which also reads the `io` context, replaces it once its own check passes.
+pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str:
+    if let a = answers: return (if ok: a.0 else: a.1).clone()
+    if ok: "YES" else: "NO"
 
 /// The same length and equal values in order.
 impl<T: Eq> Eq for List<T>:

@@ -1,4 +1,4 @@
-//! Tuples `(a, b)`, as `Tuple1` to `Tuple4`: compared field by field, cloned deeply, and a
+//! Tuples `(a, b)`, as `Tuple1` to `Tuple12`: compared field by field, cloned deeply, and a
 //! product domain when every part is a domain. Core re-exports them, so no module imports them.
 //!
 //! example: `(1, 2) < (1, 3) and (2, "a").clone() == (2, "a")`
@@ -24,6 +24,98 @@ pub struct Tuple4<A, B, C, E>:
     _1: B
     _2: C
     _3: E
+
+@tuple
+pub struct Tuple5<A, B, C, E, F>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+
+@tuple
+pub struct Tuple6<A, B, C, E, F, G>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+    _5: G
+
+@tuple
+pub struct Tuple7<A, B, C, E, F, G, H>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+    _5: G
+    _6: H
+
+@tuple
+pub struct Tuple8<A, B, C, E, F, G, H, J>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+    _5: G
+    _6: H
+    _7: J
+
+@tuple
+pub struct Tuple9<A, B, C, E, F, G, H, J, K>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+    _5: G
+    _6: H
+    _7: J
+    _8: K
+
+@tuple
+pub struct Tuple10<A, B, C, E, F, G, H, J, K, L>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+    _5: G
+    _6: H
+    _7: J
+    _8: K
+    _9: L
+
+@tuple
+pub struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+    _5: G
+    _6: H
+    _7: J
+    _8: K
+    _9: L
+    _10: M
+
+@tuple
+pub struct Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
+    _0: A
+    _1: B
+    _2: C
+    _3: E
+    _4: F
+    _5: G
+    _6: H
+    _7: J
+    _8: K
+    _9: L
+    _10: M
+    _11: N
 
 /// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
 // A product domain walks row-major, the last factor fastest (R04.2.9); `P((x, y))` converts each part,
@@ -94,3 +186,61 @@ impl<T: Ord> Alike<T> for Tuple3<T, T, T>:
 impl<T: Ord> Alike<T> for Tuple4<T, T, T, T>:
     fn max_with(self, m: T) -> T = max(m, self._0, self._1, self._2, self._3)
     fn min_with(self, m: T) -> T = min(m, self._0, self._1, self._2, self._3)
+
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq> Eq for Tuple5<A, B, C, E, F>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord> Ord for Tuple5<A, B, C, E, F>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4))))
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq, G: Eq> Eq for Tuple6<A, B, C, E, F, G>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4 and a._5 == b._5
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord, G: Ord> Ord for Tuple6<A, B, C, E, F, G>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4 or a._4 == b._4 and (a._5 < b._5)))))
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq, G: Eq, H: Eq> Eq for Tuple7<A, B, C, E, F, G, H>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4 and a._5 == b._5 and a._6 == b._6
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord, G: Ord, H: Ord> Ord for Tuple7<A, B, C, E, F, G, H>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4 or a._4 == b._4 and (a._5 < b._5 or a._5 == b._5 and (a._6 < b._6))))))
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq, G: Eq, H: Eq, J: Eq> Eq for Tuple8<A, B, C, E, F, G, H, J>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4 and a._5 == b._5 and a._6 == b._6 and a._7 == b._7
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord, G: Ord, H: Ord, J: Ord> Ord for Tuple8<A, B, C, E, F, G, H, J>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4 or a._4 == b._4 and (a._5 < b._5 or a._5 == b._5 and (a._6 < b._6 or a._6 == b._6 and (a._7 < b._7)))))))
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq, G: Eq, H: Eq, J: Eq, K: Eq> Eq for Tuple9<A, B, C, E, F, G, H, J, K>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4 and a._5 == b._5 and a._6 == b._6 and a._7 == b._7 and a._8 == b._8
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord, G: Ord, H: Ord, J: Ord, K: Ord> Ord for Tuple9<A, B, C, E, F, G, H, J, K>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4 or a._4 == b._4 and (a._5 < b._5 or a._5 == b._5 and (a._6 < b._6 or a._6 == b._6 and (a._7 < b._7 or a._7 == b._7 and (a._8 < b._8))))))))
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq, G: Eq, H: Eq, J: Eq, K: Eq, L: Eq> Eq for Tuple10<A, B, C, E, F, G, H, J, K, L>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4 and a._5 == b._5 and a._6 == b._6 and a._7 == b._7 and a._8 == b._8 and a._9 == b._9
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord, G: Ord, H: Ord, J: Ord, K: Ord, L: Ord> Ord for Tuple10<A, B, C, E, F, G, H, J, K, L>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4 or a._4 == b._4 and (a._5 < b._5 or a._5 == b._5 and (a._6 < b._6 or a._6 == b._6 and (a._7 < b._7 or a._7 == b._7 and (a._8 < b._8 or a._8 == b._8 and (a._9 < b._9)))))))))
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq, G: Eq, H: Eq, J: Eq, K: Eq, L: Eq, M: Eq> Eq for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4 and a._5 == b._5 and a._6 == b._6 and a._7 == b._7 and a._8 == b._8 and a._9 == b._9 and a._10 == b._10
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord, G: Ord, H: Ord, J: Ord, K: Ord, L: Ord, M: Ord> Ord for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4 or a._4 == b._4 and (a._5 < b._5 or a._5 == b._5 and (a._6 < b._6 or a._6 == b._6 and (a._7 < b._7 or a._7 == b._7 and (a._8 < b._8 or a._8 == b._8 and (a._9 < b._9 or a._9 == b._9 and (a._10 < b._10))))))))))
+impl<A: Eq, B: Eq, C: Eq, E: Eq, F: Eq, G: Eq, H: Eq, J: Eq, K: Eq, L: Eq, M: Eq, N: Eq> Eq for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
+    fn eq(a, b) = a._0 == b._0 and a._1 == b._1 and a._2 == b._2 and a._3 == b._3 and a._4 == b._4 and a._5 == b._5 and a._6 == b._6 and a._7 == b._7 and a._8 == b._8 and a._9 == b._9 and a._10 == b._10 and a._11 == b._11
+impl<A: Ord, B: Ord, C: Ord, E: Ord, F: Ord, G: Ord, H: Ord, J: Ord, K: Ord, L: Ord, M: Ord, N: Ord> Ord for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
+    fn lt(a, b) =
+        a._0 < b._0 or a._0 == b._0 and (a._1 < b._1 or a._1 == b._1 and (a._2 < b._2 or a._2 == b._2 and (a._3 < b._3 or a._3 == b._3 and (a._4 < b._4 or a._4 == b._4 and (a._5 < b._5 or a._5 == b._5 and (a._6 < b._6 or a._6 == b._6 and (a._7 < b._7 or a._7 == b._7 and (a._8 < b._8 or a._8 == b._8 and (a._9 < b._9 or a._9 == b._9 and (a._10 < b._10 or a._10 == b._10 and (a._11 < b._11)))))))))))
+
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone> Clone for Tuple5<A, B, C, E, F>:
+    fn clone(a) = Tuple5(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone, G: Clone> Clone for Tuple6<A, B, C, E, F, G>:
+    fn clone(a) = Tuple6(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone(), a._5.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone, G: Clone, H: Clone> Clone for Tuple7<A, B, C, E, F, G, H>:
+    fn clone(a) = Tuple7(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone(), a._5.clone(), a._6.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone, G: Clone, H: Clone, J: Clone> Clone for Tuple8<A, B, C, E, F, G, H, J>:
+    fn clone(a) = Tuple8(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone(), a._5.clone(), a._6.clone(), a._7.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone, G: Clone, H: Clone, J: Clone, K: Clone> Clone for Tuple9<A, B, C, E, F, G, H, J, K>:
+    fn clone(a) = Tuple9(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone(), a._5.clone(), a._6.clone(), a._7.clone(), a._8.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone, G: Clone, H: Clone, J: Clone, K: Clone, L: Clone> Clone for Tuple10<A, B, C, E, F, G, H, J, K, L>:
+    fn clone(a) = Tuple10(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone(), a._5.clone(), a._6.clone(), a._7.clone(), a._8.clone(), a._9.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone, G: Clone, H: Clone, J: Clone, K: Clone, L: Clone, M: Clone> Clone for Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
+    fn clone(a) = Tuple11(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone(), a._5.clone(), a._6.clone(), a._7.clone(), a._8.clone(), a._9.clone(), a._10.clone())
+impl<A: Clone, B: Clone, C: Clone, E: Clone, F: Clone, G: Clone, H: Clone, J: Clone, K: Clone, L: Clone, M: Clone, N: Clone> Clone for Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
+    fn clone(a) = Tuple12(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone(), a._4.clone(), a._5.clone(), a._6.clone(), a._7.clone(), a._8.clone(), a._9.clone(), a._10.clone(), a._11.clone())

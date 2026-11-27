@@ -85,10 +85,23 @@ pub(crate) fn enum_structs(
     (out, errors, values)
 }
 
-enum Derive {
-    Cmp(ast::CmpOp),
+enum Derive<'a> {
+    Cmp(ast::CmpOp, &'a str),
     /// A core trait marked `@derive`: its one method builds a struct from that method on each field.
-    Each,
+    Each(&'a str),
+    /// A core trait marked `@derive_fields`: each method is that method on the `@pack` of the
+    /// fields.
+    Fields(&'a str, &'a [ast::FnDecl]),
+    /// The same for an enum: each method is that method on the variant's name (R10.3.5).
+    Names(&'a [ast::FnDecl], &'a [ast::Variant]),
+}
+
+/// A core trait every struct gets from its fields, and how.
+pub(crate) enum Derivable {
+    /// `@derive`, with its one method.
+    Each(String),
+    /// `@derive_fields`, with core's `@pack` struct and the trait's methods.
+    Fields(String, Vec<ast::FnDecl>),
 }
 
 /// Per struct a module declares, the impls it gets structurally (R08.1.6), made after every written
@@ -96,11 +109,27 @@ enum Derive {
 /// `Clone` cloning each field (R05.2.2).
 pub(crate) fn module_derived(
     items: &[crate::modules::Item],
-    each: &[(String, String)],
+    each: &[(String, Derivable)],
 ) -> Vec<(ItemId, String, ast::Stmt)> {
     let mut out = Vec::new();
     for crate::modules::Item { id: item, stmts } in items {
         for s in stmts {
+            if let StmtKind::Enum(e) = &s.kind {
+                let sd = ast::StructDecl {
+                    name: e.name.clone(),
+                    generics: e.generics.clone(),
+                    generic_defaults: vec![None; e.generics.len()],
+                    bounds: Vec::new(),
+                    fields: Vec::new(),
+                    methods: Vec::new(),
+                };
+                for (tr, how) in each {
+                    if let Derivable::Fields(_, fns) = how {
+                        let derived = derived_impl(s, &sd, Derive::Names(fns, &e.variants), tr);
+                        out.push((item.clone(), sd.name.text.clone(), derived));
+                    }
+                }
+            }
             let StmtKind::Struct(sd) = &s.kind else {
                 continue;
             };
@@ -109,11 +138,15 @@ pub(crate) fn module_derived(
                 let Some((tr, method)) = op.trait_method() else {
                     continue;
                 };
-                let derived = derived_impl(s, sd, Derive::Cmp(op), tr, method);
+                let derived = derived_impl(s, sd, Derive::Cmp(op, method), tr);
                 out.push((item.clone(), sd.name.text.clone(), derived));
             }
-            for (tr, method) in each {
-                let derived = derived_impl(s, sd, Derive::Each, tr, method);
+            for (tr, how) in each {
+                let derive = match how {
+                    Derivable::Each(m) => Derive::Each(m),
+                    Derivable::Fields(pack, fns) => Derive::Fields(pack, fns),
+                };
+                let derived = derived_impl(s, sd, derive, tr);
                 out.push((item.clone(), sd.name.text.clone(), derived));
             }
         }
@@ -122,15 +155,9 @@ pub(crate) fn module_derived(
 }
 
 /// `impl<T: Eq> Eq for S<T>: fn eq(a, b) = a.x == b.x and ..`, `Ord`'s `lt` over the fields in
-/// order, or `fn clone(a) = S(x: a.x.clone(), ..)`, bounding the parameters the fields mention and
-/// written at the struct.
-fn derived_impl(
-    s: &ast::Stmt,
-    sd: &ast::StructDecl,
-    derive: Derive,
-    tr: &str,
-    method: &str,
-) -> ast::Stmt {
+/// order, `fn clone(a) = S(x: a.x.clone(), ..)`, or `fn show(a) = Pack(a.x, Pack(a.y, ())).show()`,
+/// bounding the parameters the fields mention and written at the struct.
+fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -> ast::Stmt {
     use ast::{BinOp, CmpOp, ExprKind};
     let span = s.span;
     let name = |text: &str| ast::Name {
@@ -166,11 +193,62 @@ fn derived_impl(
         })
     };
     // A `@cache` field is not part of the value it compares (R05.10.13); a clone copies it too.
-    let clone = matches!(derive, Derive::Each);
+    let clone = matches!(derive, Derive::Each(_));
     let compared: Vec<&ast::FieldDecl> = sd.fields.iter().filter(|f| clone || !f.cached).collect();
     let fields: Vec<&str> = compared.iter().map(|f| f.name.text.as_str()).collect();
+    let stmt = |kind| ast::Stmt {
+        kind,
+        span,
+        decorators: Vec::new(),
+        public: false,
+    };
+    let call = |callee, args| {
+        ex(ExprKind::Call {
+            callee: Box::new(callee),
+            args,
+        })
+    };
     let body = match derive {
-        Derive::Each => {
+        Derive::Names(_, variants) => ex(ExprKind::Match {
+            scrutinee: Box::new(ex(ExprKind::Name("a".to_string()))),
+            arms: (variants.iter())
+                .map(|v| ast::Arm {
+                    pat: ast::Pattern {
+                        kind: ast::PatternKind::Variant {
+                            path: vec![sd.name.clone(), v.name.clone()],
+                            args: (v.fields.iter())
+                                .map(|_| ast::Pattern {
+                                    kind: ast::PatternKind::Wildcard,
+                                    span,
+                                })
+                                .collect(),
+                        },
+                        span,
+                    },
+                    guard: None,
+                    body: ast::Block {
+                        stmts: vec![stmt(StmtKind::Expr(ex(ExprKind::Str(vec![
+                            ast::StrPiece::Text(v.name.text.clone()),
+                        ]))))],
+                        span,
+                    },
+                })
+                .collect(),
+        }),
+        Derive::Fields(pack, _) => {
+            (fields.iter().rev()).fold(ex(ExprKind::Tuple(Vec::new())), |rest, f| {
+                let arg = |value| ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value,
+                };
+                call(
+                    ex(ExprKind::Name(pack.to_string())),
+                    vec![arg(field("a", f)), arg(rest)],
+                )
+            })
+        }
+        Derive::Each(method) => {
             let args = (fields.iter())
                 .map(|f| ast::Arg {
                     name: Some(name(f)),
@@ -189,10 +267,10 @@ fn derived_impl(
                 args,
             })
         }
-        Derive::Cmp(CmpOp::Eq) => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
+        Derive::Cmp(CmpOp::Eq, _) => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
             .reduce(|a, b| bin(BinOp::And, a, b))
             .unwrap_or_else(|| ex(ExprKind::Bool(true))),
-        Derive::Cmp(_) => (fields.iter().rev())
+        Derive::Cmp(..) => (fields.iter().rev())
             .fold(None, |rest, f| {
                 Some(match rest {
                     None => cmp(CmpOp::Lt, f),
@@ -220,25 +298,44 @@ fn derived_impl(
         default: None,
         span,
     };
-    let f = ast::FnDecl {
+    let f = |method: &str, params, body| ast::FnDecl {
         name: name(method),
         generics: Vec::new(),
         bounds: Vec::new(),
-        params: match derive {
-            Derive::Each => vec![param("a")],
-            Derive::Cmp(_) => vec![param("a"), param("b")],
-        },
+        params,
         ret: None,
         lends: None,
         uses: Vec::new(),
         body: FnBody::Expr(body),
         sig_span: span,
     };
-    let stmt = |kind| ast::Stmt {
-        kind,
-        span,
-        decorators: Vec::new(),
-        public: false,
+    let fns = match derive {
+        Derive::Each(m) => vec![f(m, vec![param("a")], body)],
+        Derive::Cmp(_, m) => vec![f(m, vec![param("a"), param("b")], body)],
+        // Each method passes its other parameters on as they came.
+        Derive::Fields(_, methods) | Derive::Names(methods, _) => (methods.iter())
+            .map(|m| {
+                let rest = m.params.iter().skip(1);
+                let args = (rest.clone())
+                    .map(|p| ast::Arg {
+                        name: None,
+                        mutable: p.mutable,
+                        value: ex(ExprKind::Name(p.name.text.clone())),
+                    })
+                    .collect();
+                let callee = ex(ExprKind::Field {
+                    base: Box::new(body.clone()),
+                    name: name(&m.name.text),
+                });
+                let params = std::iter::once(param("a")).chain(rest.map(|p| ast::Param {
+                    ty: None,
+                    default: None,
+                    span,
+                    ..p.clone()
+                }));
+                f(&m.name.text, params.collect(), call(callee, args))
+            })
+            .collect(),
     };
     stmt(StmtKind::Impl {
         trait_name: Some(ty(tr, Vec::new())),
@@ -257,26 +354,40 @@ fn derived_impl(
             })
             .collect(),
         body: ast::Block {
-            stmts: vec![stmt(StmtKind::Fn(f))],
+            stmts: fns.into_iter().map(|f| stmt(StmtKind::Fn(f))).collect(),
             span,
         },
     })
 }
 
-/// The traits marked `@derive`, with their one method: every struct whose fields all have
-/// one gets it field by field (R08.1.6).
-pub(crate) fn derive_each<'a>(stmts: impl Iterator<Item = &'a ast::Stmt>) -> Vec<(String, String)> {
-    let marked = stmts.filter(|s| s.decorators.iter().any(|d| d.name.text == "derive"));
-    marked
-        .filter_map(|s| match &s.kind {
-            StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
-                [ast::Stmt {
-                    kind: StmtKind::Fn(f),
-                    ..
-                }] => Some((name.text.clone(), f.name.text.clone())),
+/// The traits marked `@derive`, with their one method, and those marked `@derive_fields`,
+/// with their methods and the `@pack` struct: every struct whose fields all have one gets it field by
+/// field (R08.1.6).
+pub(crate) fn derive_each<'a, I: Iterator<Item = &'a ast::Stmt>>(
+    stmts: impl Fn() -> I,
+) -> Vec<(String, Derivable)> {
+    let marked = |s: &ast::Stmt, m: &str| s.decorators.iter().any(|d| d.name.text == m);
+    let pack = stmts().find_map(|s| match &s.kind {
+        StmtKind::Struct(sd) if marked(s, "pack") => Some(sd.name.text.clone()),
+        _ => None,
+    });
+    stmts()
+        .filter_map(|s| {
+            let StmtKind::Trait { name, body, .. } = &s.kind else {
+                return None;
+            };
+            let fns = body.stmts.iter().filter_map(|m| match &m.kind {
+                StmtKind::Fn(f) => Some(f.clone()),
                 _ => None,
-            },
-            _ => None,
+            });
+            let how = match (&body.stmts[..], &pack) {
+                ([_], _) if marked(s, "derive") => Derivable::Each(fns.clone().next()?.name.text),
+                (_, Some(p)) if marked(s, "derive_fields") => {
+                    Derivable::Fields(p.clone(), fns.collect())
+                }
+                _ => return None,
+            };
+            Some((name.text.clone(), how))
         })
         .collect()
 }

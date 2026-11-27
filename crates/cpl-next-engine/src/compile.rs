@@ -182,13 +182,10 @@ pub(crate) enum Op {
         op: Intr,
         c: Reg,
     },
-    Print {
-        s: Reg,
-        kind: Kind,
-        fmt: cpl_next_ir::ops::Fmt,
-    },
-    PrintText {
-        t: u32,
+    Out {
+        r: Reg,
+        n: Reg,
+        owned: bool,
     },
     Event {
         e: u32,
@@ -235,6 +232,16 @@ pub(crate) enum Op {
     ReadInt {
         d: Reg,
     },
+    ReadByte {
+        d: Reg,
+    },
+    PeekByte {
+        d: Reg,
+        k: Reg,
+    },
+    RandWord {
+        d: Reg,
+    },
     ToU64 {
         d: Reg,
         a: Reg,
@@ -248,6 +255,13 @@ pub(crate) enum Op {
     FromU64 {
         d: Reg,
         a: Reg,
+    },
+    /// The length, or the characters, of an `F64` `a` written with `b` decimals.
+    F64Text {
+        d: Reg,
+        a: Reg,
+        b: Reg,
+        len: bool,
     },
     ToF64 {
         d: Reg,
@@ -764,25 +778,6 @@ impl Fc<'_> {
                     msg: m,
                 });
             }
-            Stmt::Print(ps) => {
-                for piece in ps {
-                    match piece {
-                        PrintPiece::Text(t) => {
-                            let t = self.text(t);
-                            self.ops.push(Op::PrintText { t });
-                        }
-                        PrintPiece::Value(v, fmt) => {
-                            let kind = kind(&v.ty);
-                            if kind == Kind::Other {
-                                self.fail("print of a value of another kind");
-                                continue;
-                            }
-                            let s = self.operand(v);
-                            self.ops.push(Op::Print { s, kind, fmt: *fmt });
-                        }
-                    }
-                }
-            }
             Stmt::Event(label, vals) => {
                 let mut regs = Vec::with_capacity(vals.len());
                 for v in vals {
@@ -918,9 +913,6 @@ fn touches(b: &[Stmt<CTy>], l: usize, all: bool) -> bool {
         Stmt::Loop(a, b, _) => touches(a, l, all) || touches(b, l, all),
         Stmt::Switch(c, arms) => touches_in(c, l, all) || arms.iter().any(|a| touches(a, l, all)),
         Stmt::Check { cond, .. } => touches_in(cond, l, all),
-        Stmt::Print(ps) => ps
-            .iter()
-            .any(|p| matches!(p, PrintPiece::Value(v, _) if touches_in(v, l, all))),
         Stmt::Event(_, vs) => vs.iter().any(|v| touches_in(v, l, all)),
         Stmt::Region { args, body, .. } => lends_in(args, l, all) || touches(body, l, all),
         Stmt::LendOut(p) => at(p),
@@ -1131,6 +1123,9 @@ impl Fc<'_> {
                 self.fail("a domain value the link step did not resolve")
             }
             EK::HasBound(..) => self.fail("a bound test the link step did not decide"),
+            EK::Call(Target::Inst(f), args, site) if let Some(op) = self.funcs[*f].fast => {
+                self.intr(op, args, self.line(*site), &e.ty, d)
+            }
             EK::Call(Target::Inst(f), args, site) if self.inlinable(*f) => {
                 self.inline(*f, args, self.line(*site), d, None)
             }
@@ -1273,7 +1268,18 @@ impl Fc<'_> {
                     _ => Op::CodeOf { d, a },
                 });
             }
-            Intr::CheckRange | Intr::CheckKey | Intr::CheckVariant => {
+            Intr::F64Len | Intr::F64Text => {
+                let Some(&[a, b]) = self.operands(args).as_deref() else {
+                    return self.fail("a lent operand");
+                };
+                let len = op == Intr::F64Len;
+                self.ops.push(Op::F64Text { d, a, b, len });
+            }
+            Intr::CheckRange
+            | Intr::CheckKey
+            | Intr::CheckVariant
+            | Intr::CheckToken
+            | Intr::CheckInput => {
                 let Some(&[c]) = self.operands(args).as_deref() else {
                     return self.fail("a lent operand");
                 };
@@ -1299,6 +1305,26 @@ impl Fc<'_> {
                     fill: f,
                     elem,
                 });
+            }
+            Intr::Out => {
+                let (Some(r), Some(Arg::Value(n))) = (args.first(), args.get(1)) else {
+                    return self.fail("output without storage and a count");
+                };
+                let t = self.temp(1);
+                let owned = match r {
+                    Arg::Value(r) => {
+                        self.expr(r, t);
+                        true
+                    }
+                    Arg::View(p) => {
+                        let p = self.place(p);
+                        self.ops.push(Op::Peek { d: t, p });
+                        false
+                    }
+                    Arg::Lend(_) => return self.fail("lent storage in an output"),
+                };
+                let n = self.operand(n);
+                self.ops.push(Op::Out { r: t, n, owned });
             }
             Intr::RawGet => {
                 let (Some(r), Some(Arg::Value(i)), Some(elem)) =
@@ -1363,6 +1389,14 @@ impl Fc<'_> {
             },
             Intr::InputLeft => self.ops.push(Op::InputLeft { d }),
             Intr::ReadInt => self.ops.push(Op::ReadInt { d }),
+            Intr::ReadByte => self.ops.push(Op::ReadByte { d }),
+            Intr::PeekByte => {
+                let Some(&[k]) = self.operands(args).as_deref() else {
+                    return self.fail("a lent operand");
+                };
+                self.ops.push(Op::PeekByte { d, k });
+            }
+            Intr::RandWord => self.ops.push(Op::RandWord { d }),
             // A value never read still holds no handle, so copying or dropping its holder is sound.
             Intr::Unset => {
                 if self.owns(ty) {
@@ -1514,7 +1548,6 @@ fn cost(b: &[Stmt<CTy>]) -> usize {
                 Stmt::Loop(a, b, _) => cost(a) + cost(b),
                 Stmt::Switch(c, arms) => e(c) + arms.iter().map(|a| cost(a)).sum::<usize>(),
                 Stmt::Check { cond, .. } => e(cond),
-                Stmt::Print(ps) => ps.len(),
                 Stmt::Event(_, vs) => vs.iter().map(e).sum(),
                 Stmt::Region { .. } | Stmt::Yield(_) => INLINE_COST,
                 Stmt::LendOut(_) => 0,

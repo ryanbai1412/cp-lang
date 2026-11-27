@@ -4478,44 +4478,54 @@ fn views_and_trackers_walk_and_show():
     let r = [1, 2, 3].ring.span(2, 2)
     assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
 
-impl Show for Rev<S>:
+impl<S: Bidir<T>, T: Show> Show for Rev<S>:
     fn show(v):
         var out = ""
+        var first = true
         for x in v:
-            if not out.is_empty: out += " "
+            if not first: out += " "
             out += "{x}"
+            first = false
         out
 
-impl Show for Filtered<S, T>:
+impl Show for Filtered<S: Seq<T>, T: Show>:
     fn show(v):
         var out = ""
+        var first = true
         for x in v:
-            if not out.is_empty: out += " "
+            if not first: out += " "
             out += "{x}"
+            first = false
         out
 
-impl Show for Mapped<S, T, U>:
+impl Show for Mapped<S: Seq<T>, T, U: Show>:
     fn show(v):
         var out = ""
+        var first = true
         for x in v:
-            if not out.is_empty: out += " "
+            if not first: out += " "
             out += "{x}"
+            first = false
         out
 
-impl Show for Rebased<S>:
+impl<S: Indexed<K, T>, K: Domain, T: Show> Show for Rebased<S>:
     fn show(v):
         var out = ""
+        var first = true
         for x in v.src:
-            if not out.is_empty: out += " "
+            if not first: out += " "
             out += "{x}"
+            first = false
         out
 
-impl Show for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T: Show> Show for Slice<S>:
     fn show(v):
         var out = ""
+        var first = true
         for (_, x) in v.items:
-            if not out.is_empty: out += " "
+            if not first: out += " "
             out += "{x}"
+            first = false
         out
 
 impl Show for Row<R, C, T>:
@@ -4553,12 +4563,14 @@ impl Bidir<T> for Stepped<S, T>:
             j -= 1
             yield self.nth(j)
 
-impl Show for Stepped<S, T>:
+impl Show for Stepped<S, T: Show>:
     fn show(v):
         var out = ""
+        var first = true
         for x in v.each():
-            if not out.is_empty: out += " "
+            if not first: out += " "
             out += "{x}"
+            first = false
         out
 
 impl Show for Compressed<D, T>:

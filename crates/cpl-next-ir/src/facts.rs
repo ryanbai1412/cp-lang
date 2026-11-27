@@ -197,11 +197,6 @@ impl Writes {
                     self.expr(c);
                     arms.iter().for_each(|a| self.block(a));
                 }
-                Stmt::Print(ps) => ps.iter().for_each(|p| {
-                    if let PrintPiece::Value(v, _) = p {
-                        self.expr(v)
-                    }
-                }),
                 Stmt::Region {
                     args, var, body, ..
                 } => {
@@ -497,11 +492,6 @@ fn escaped(funcs: &[Func<CTy>]) -> HashSet<(Option<usize>, usize)> {
                     ex(c, f, out);
                     arms.iter().for_each(|a| st(a, f, out));
                 }
-                Stmt::Print(ps) => ps.iter().for_each(|p| {
-                    if let PrintPiece::Value(v, _) = p {
-                        ex(v, f, out)
-                    }
-                }),
                 Stmt::Region { args, body, .. } => {
                     args.iter().for_each(|a| {
                         if let Arg::Value(v) = a {

@@ -23,8 +23,8 @@ methods = ["bitxor"]
 methods = ["lt"]
 [trait.Show]
 methods = ["show"]
-[trait.Read]
-methods = ["read"]
+[trait.Into]
+methods = ["into"]
 [trait.Index]
 methods = ["ord", "nth"]
 
@@ -2151,6 +2151,26 @@ print(d.within(ar))
 out = "0 2 2"
 
 
+[case."Dir/Dir4/delta"]
+code = """
+use std.grid.{Dir, Dir4}
+fn step_of<D: Dir>(d: D) -> Int:
+    let (r, c) = d.delta
+    r * 10 + c
+print(step_of(Dir4.up), step_of(Dir4.right))
+"""
+out = "-10 1"
+
+[case."Dir/Dir8/delta"]
+code = """
+use std.grid.{Dir, Dir8}
+fn step_of<D: Dir>(d: D) -> Int:
+    let (r, c) = d.delta
+    r * 10 + c
+print(step_of(Dir8.all()[1]), step_of(Dir8.all()[4]))
+"""
+out = "-9 10"
+
 [case."Show/Dir4/show"]
 code = """
 use std.grid.{Dir4}
@@ -3610,3 +3630,386 @@ domain P = 0..4
 print(Cut<P>.wrap(-1).ord, Cut<P>.wrap(7).ord)
 """
 out = "4 2"
+
+# The tuples past four parts and the `@pack` pair, whose impls live in std/tuple.cp,
+# std/show.cp and std/read.cp.
+[case."Show/Tuple1/show"]
+code = """
+use std.tuple.{Tuple1}
+let t = Tuple1(7)
+print(t, "{t}")
+"""
+out = "7 7"
+
+[case."Show/Tuple2/show"]
+code = """
+let t = (1, 2)
+print(t, "{t}")
+"""
+out = "1 2 1 2"
+
+[case."Show/Tuple3/show"]
+code = """
+let t = (1, 2, 3)
+print(t, "{t}")
+"""
+out = "1 2 3 1 2 3"
+
+[case."Show/Tuple4/show"]
+code = """
+let t = (1, 2, 3, 4)
+print(t, "{t}")
+"""
+out = "1 2 3 4 1 2 3 4"
+
+[case."Show/Tuple5/show"]
+code = """
+let t = (1, 2, 3, 4, 5)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 1 2 3 4 5"
+
+[case."Show/Tuple6/show"]
+code = """
+let t = (1, 2, 3, 4, 5, 6)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 6 1 2 3 4 5 6"
+
+[case."Show/Tuple7/show"]
+code = """
+let t = (1, 2, 3, 4, 5, 6, 7)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 6 7 1 2 3 4 5 6 7"
+
+[case."Show/Tuple8/show"]
+code = """
+let t = (1, 2, 3, 4, 5, 6, 7, 8)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8"
+
+[case."Show/Tuple9/show"]
+code = """
+let t = (1, 2, 3, 4, 5, 6, 7, 8, 9)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 6 7 8 9 1 2 3 4 5 6 7 8 9"
+
+[case."Show/Tuple10/show"]
+code = """
+let t = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 6 7 8 9 10 1 2 3 4 5 6 7 8 9 10"
+
+[case."Show/Tuple11/show"]
+code = """
+let t = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 6 7 8 9 10 11 1 2 3 4 5 6 7 8 9 10 11"
+
+[case."Show/Tuple12/show"]
+code = """
+let t = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+print(t, "{t}")
+"""
+out = "1 2 3 4 5 6 7 8 9 10 11 12 1 2 3 4 5 6 7 8 9 10 11 12"
+
+[case."Eq/Tuple5/eq"]
+code = """
+let a = (1, 2, 3, 4, 5)
+let b = (1, 2, 3, 4, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple5/lt"]
+code = """
+let a = (1, 2, 3, 4, 5)
+let b = (1, 2, 3, 4, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple5/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 x 2 3 4 5"
+
+[case."Eq/Tuple6/eq"]
+code = """
+let a = (1, 2, 3, 4, 5, 6)
+let b = (1, 2, 3, 4, 5, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple6/lt"]
+code = """
+let a = (1, 2, 3, 4, 5, 6)
+let b = (1, 2, 3, 4, 5, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple6/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5, 6)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 6 x 2 3 4 5 6"
+
+[case."Eq/Tuple7/eq"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7)
+let b = (1, 2, 3, 4, 5, 6, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple7/lt"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7)
+let b = (1, 2, 3, 4, 5, 6, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple7/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5, 6, 7)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 6 7 x 2 3 4 5 6 7"
+
+[case."Eq/Tuple8/eq"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8)
+let b = (1, 2, 3, 4, 5, 6, 7, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple8/lt"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8)
+let b = (1, 2, 3, 4, 5, 6, 7, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple8/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5, 6, 7, 8)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 6 7 8 x 2 3 4 5 6 7 8"
+
+[case."Eq/Tuple9/eq"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple9/lt"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple9/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5, 6, 7, 8, 9)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 6 7 8 9 x 2 3 4 5 6 7 8 9"
+
+[case."Eq/Tuple10/eq"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple10/lt"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple10/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5, 6, 7, 8, 9, 10)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 6 7 8 9 10 x 2 3 4 5 6 7 8 9 10"
+
+[case."Eq/Tuple11/eq"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple11/lt"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple11/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 6 7 8 9 10 11 x 2 3 4 5 6 7 8 9 10 11"
+
+[case."Eq/Tuple12/eq"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0)
+print(yes(a == a), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Ord/Tuple12/lt"]
+code = """
+let a = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+let b = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0)
+print(yes(b < a), yes(a < b))
+"""
+out = "YES NO"
+
+[case."Clone/Tuple12/clone"]
+code = """
+let a = ("x", 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+let b = a.clone()
+print(a, b)
+"""
+out = "x 2 3 4 5 6 7 8 9 10 11 12 x 2 3 4 5 6 7 8 9 10 11 12"
+
+[case."Read/Tuple2/read"]
+code = """
+let t = read<(Int, Int)>()
+print(t)
+"""
+out = "7 8"
+input = "7 8"
+
+[case."Read/Tuple3/read"]
+code = """
+let t = read<(Int, Int, Int)>()
+print(t)
+"""
+out = "7 8 9"
+input = "7 8 9"
+
+[case."Read/Tuple4/read"]
+code = """
+let t = read<(Int, Int, Int, Int)>()
+print(t)
+"""
+out = "7 8 9 10"
+input = "7 8 9 10"
+
+[case."Show/Pack/show"]
+code = """
+use std.show.{Pack}
+print(Pack(1, Pack("a", ())), "{Pack(2, ())}")
+"""
+out = "1 a 2"
+
+# The core types whose Show and Read impls live in std/show.cp and std/read.cp.
+[case."Show/List/show"]
+code = """
+let xs = [1, 2, 3]
+print(xs, "{xs}")
+"""
+out = "1 2 3 1 2 3"
+
+[case."Show/Array/show"]
+code = """
+let a = read<[3]Int>()
+print(a, "{a}")
+"""
+out = "4 5 6 4 5 6"
+input = "4 5 6\\n"
+
+[case."Show/Range/show"]
+code = """
+let r = 1..4
+print(r, "{r}")
+"""
+out = "1 2 3 1 2 3"
+
+[case."Show/Str/show"]
+code = """
+let s = "ab"
+print(s, "{s}")
+"""
+out = "ab ab"
+
+[case."Read/List/read"]
+code = """
+let xs = read<List<Int>>()
+print(xs)
+"""
+out = "1 2 3"
+input = "3\\n1 2 3\\n"
+
+[case."Read/Array/read"]
+code = """
+let a = read<[3]Int>()
+print(a)
+"""
+out = "4 5 6"
+input = "4 5 6\\n"
+
+[case."Read/Optional/read"]
+code = """
+let x = read<?Int>()
+let y = read<?Int>()
+let a = if let v = x: v else: 0
+let b = if let v = y: v else: -1
+print(a, b)
+"""
+out = "5 -1"
+input = "5\\n"
+
+[case."Read/Range/read"]
+code = """
+let r = read<Range<Int>>()
+print(r)
+"""
+out = "2 3 4"
+input = "2 4\\n"
+
+[case."Read/Str/read"]
+code = """
+let s = read<Str>()
+print(s)
+"""
+out = "hi"
+input = "hi there\\n"

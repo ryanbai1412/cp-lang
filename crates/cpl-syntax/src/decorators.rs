@@ -89,6 +89,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "on a fn: what `s[r]` calls when `r` is not a key of `s` (R07.4.17)",
     ),
     (
+        "fast",
+        "`@fast(op)` on a fn with a body: the operation the engines and C++ run for a call",
+    ),
+    (
         "recipe",
         "on a library struct: the value of a `-> yields T` call made outside a `for` (R07.6.2)",
     ),
@@ -138,6 +142,13 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "variant_check",
         "on a fn: the check an `Int` converted to an enum goes through",
     ),
+    (
+        "derive_fields",
+        "on a trait: every struct gets it through its fields packed as the `@pack` struct",
+    ),
+    ("pack", "on a struct: the head-and-tail pair `@derive_fields` packs fields into"),
+    ("interpolation", "on a fn: what each piece of an interpolated string calls"),
+    ("input", "on a fn: a value it gives is input, so a range it fills is a contract"),
 ];
 
 /// Old spellings the parser or checker answers with their own E0503 fix.

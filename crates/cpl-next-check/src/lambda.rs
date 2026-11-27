@@ -432,6 +432,53 @@ impl Cx<'_> {
         })
     }
 
+    /// A fn item named where a fn of fewer parameters is wanted, each one it leaves out defaulted:
+    /// `(a, ..) => f(a, ..)`, so a call through the value fills the rest from their defaults (R06.1.5).
+    pub(super) fn defaulted_fn_value(
+        &mut self,
+        n: &str,
+        callee: &ast::Expr,
+        want: Option<&Ty>,
+    ) -> Option<TExpr> {
+        let Ty::Fn(ps, ..) = self.shallow(want?) else {
+            return None;
+        };
+        let d = self
+            .d
+            .fn_named(self.module, n)
+            .filter(|_| self.declared(n))?;
+        let fd = self.d.f(d);
+        let rest = fd.params.get(ps.len()..).filter(|r| !r.is_empty())?;
+        if !rest.iter().all(|p| p.default.is_some() && !p.variadic)
+            || fd.params[..ps.len()].iter().any(|p| p.variadic)
+        {
+            return None;
+        }
+        let span = callee.span;
+        let names: Vec<String> = (0..ps.len()).map(|i| format!("$arg{i}")).collect();
+        let pat = |n: &String| ast::Pattern {
+            kind: PatternKind::Name(n.clone()),
+            span,
+        };
+        let arg = |n: &String| ast::Arg {
+            name: None,
+            mutable: false,
+            value: ast::Expr {
+                kind: ExprKind::Name(n.clone()),
+                span,
+            },
+        };
+        let body = ast::Expr {
+            kind: ExprKind::Call {
+                callee: Box::new(callee.clone()),
+                args: names.iter().map(arg).collect(),
+            },
+            span,
+        };
+        let params: Vec<ast::Pattern> = names.iter().map(pat).collect();
+        Some(self.lambda(&params, &vec![None; ps.len()], None, &body, want, span))
+    }
+
     /// The fields a lambda's parameters take apart when it is passed as a fn of one value of
     /// this type: a tuple's positions or a record's fields, in order (R06.1.4).
     fn parts(&mut self, t: &Ty) -> Option<Vec<String>> {

@@ -1,0 +1,4 @@
+// expect: ok, output "7 8 9 10"
+// input: "7 8 9 10"
+let t = read<(Int, Int, Int, Int)>()
+print(t)

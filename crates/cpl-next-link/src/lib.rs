@@ -259,6 +259,7 @@ impl Link<'_> {
             sites: f.sites.clone(),
             lines: f.lines.clone(),
             shown: f.shown.clone(),
+            fast: f.fast,
         }
     }
     /// `p` read through each lent slot on its path.
@@ -601,14 +602,6 @@ impl Link<'_> {
                     msg: msg.clone(),
                     site: *site,
                 },
-                Stmt::Print(ps) => Stmt::Print(
-                    ps.iter()
-                        .map(|p| match p {
-                            PrintPiece::Text(t) => PrintPiece::Text(t.clone()),
-                            PrintPiece::Value(v, f) => PrintPiece::Value(self.expr(v, env), *f),
-                        })
-                        .collect(),
-                ),
                 Stmt::Yield(e) => Stmt::Yield(self.expr(e, env)),
                 Stmt::LendOut(p) => Stmt::LendOut(p.clone()),
                 Stmt::Event(l, vs) => {
@@ -961,10 +954,6 @@ fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
             .or_else(|| site_of(y, hit)),
         Stmt::Loop(x, y, _) => site_of(x, hit).or_else(|| site_of(y, hit)),
         Stmt::Switch(c, arms) => ex(c, hit).or_else(|| arms.iter().find_map(|a| site_of(a, hit))),
-        Stmt::Print(ps) => ps.iter().find_map(|p| match p {
-            PrintPiece::Value(v, _) => ex(v, hit),
-            _ => None,
-        }),
         Stmt::Region { args: xs, body, .. } => (xs.iter())
             .find_map(|a| match a {
                 Arg::Value(v) => ex(v, hit),
@@ -1113,14 +1102,6 @@ fn canon_block(
                 msg,
                 site,
             }),
-            Stmt::Print(ps) => out.push(Stmt::Print(
-                ps.into_iter()
-                    .map(|x| match x {
-                        PrintPiece::Value(v, f) => PrintPiece::Value(canon_expr(bad, v), f),
-                        t => t,
-                    })
-                    .collect(),
-            )),
             Stmt::Yield(e) => out.push(Stmt::Yield(canon_expr(bad, e))),
             // A walk of a generator value runs the closure it holds: the one of its set it is.
             Stmt::Region {
@@ -1456,11 +1437,6 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                     ex(c, doms, calls, p, bad);
                     arms.iter().for_each(|a| uses(a, doms, calls, p, bad));
                 }
-                Stmt::Print(ps) => ps.iter().for_each(|x| {
-                    if let PrintPiece::Value(v, _) = x {
-                        ex(v, doms, calls, p, bad)
-                    }
-                }),
                 Stmt::Yield(e) => ex(e, doms, calls, p, bad),
                 Stmt::Region {
                     target, args, body, ..
@@ -1621,11 +1597,6 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                         self.ex(c);
                         arms.iter_mut().for_each(|a| self.block(a));
                     }
-                    Stmt::Print(ps) => ps.iter_mut().for_each(|x| {
-                        if let PrintPiece::Value(v, _) = x {
-                            self.ex(v)
-                        }
-                    }),
                     Stmt::Yield(e) => self.ex(e),
                     Stmt::Region {
                         target, args, body, ..

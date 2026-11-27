@@ -66,6 +66,9 @@ pub struct FnDecl {
     pub body: FnBody,
     /// The name in `= @intrinsic(name)`, when that is its body.
     pub intrinsic: Option<String>,
+    /// `@fast(op)` on a fn with a CP body: the operation the engines and C++ run in place
+    /// of a call to it; the reference interpreter runs the body.
+    pub fast: Option<String>,
     pub getter: bool,
     /// `uses io, opt`: contexts its caller's values flow into (R09.1.3).
     pub uses: Vec<String>,
@@ -373,6 +376,11 @@ pub struct Decls {
     /// Core's `@pattern` fns: `f(p)` as a pattern matches the optional `f` makes when it is
     /// present and its value matches `p` (R01.7.1).
     pub pattern_fns: Vec<FnId>,
+    /// Core's `@input` fns: a value they give is input, so a range slot it fills is the
+    /// input's contract (R10.2.2).
+    pub input_fns: Vec<FnId>,
+    /// Core's `@interpolation` fn: `put(mut out, x)` appends each piece of an interpolated string.
+    pub interpolate: Option<FnId>,
     /// The `@index` fns, in declaration order.
     pub index_fns: Vec<FnId>,
     /// Per module, whether the program loads it: std's others are declared but out of sight.
@@ -1183,14 +1191,14 @@ fn add_fn(
         let elsewhere = d.is_library(m) && read_elsewhere(&x.name.text);
         let marker = matches!(
             x.name.text.as_str(),
-            "coerce" | "variant_check" | "pattern" | "str_literal" | "range_literal"
+            "coerce" | "variant_check" | "pattern" | "str_literal" | "range_literal" | "interpolation" | "input"
         );
         if !elsewhere
             && !marker
             && x.name.text != GETTER
             && !matches!(
                 x.name.text.as_str(),
-                "multitest" | "same_keys" | "index" | "aka" | "was" | "from_op"
+                "multitest" | "same_keys" | "index" | "aka" | "was" | "from_op" | "fast"
             )
         {
             let at = item.at(x.span);
@@ -1245,6 +1253,12 @@ fn add_fn(
             collect::once(slot, id, collect::again(&item, s, n), &mut d.errors);
         }
     }
+    if has("input") {
+        d.input_fns.push(FnId(d.fns.len()));
+    }
+    if has("interpolation") {
+        d.interpolate = Some(FnId(d.fns.len()));
+    }
     if getter && params.iter().any(|p| p.default.is_none()) {
         let msg = format!(
             "getter `{}` is read like a field, so each parameter but `self` needs a default",
@@ -1288,6 +1302,7 @@ fn add_fn(
             },
             _ => None,
         },
+        fast: words("fast").into_iter().next(),
         getter,
         same_keys,
         aka: words("aka"),

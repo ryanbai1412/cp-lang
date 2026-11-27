@@ -2839,10 +2839,12 @@ def std_trait_matrix(root: Path) -> list[str]:
 def std_types_shown_empty(root: Path) -> list[str]:
     """`pub struct`s in std with no `pub` field and no `impl Show`: a trace shows their
     values as `{}`, since a std type's private fields never reach a user (Content)."""
-    shows, empty = set(), []
+    shows, domains, blanket, empty = set(), set(), False, []
     for rel in _git(root, "ls-files", "std/*.cp"):
         lines = (root / rel).read_text(encoding="utf-8").split("\n")
-        shows |= {m.group(1) for l in lines if (m := re.match(r"impl Show for (\w+)", l))}
+        shows |= {m.group(1) for l in lines if (m := re.match(r"impl(?:<.*>)? Show for (\w+)", l))}
+        domains |= {m.group(1) for l in lines if (m := re.match(r"impl(?:<.*>)? Domain for (\w+)", l))}
+        blanket |= any(re.match(r"impl<D: Domain> Show for D:", l) for l in lines)
         for i, line in enumerate(lines):
             if not (m := STRUCT_RE.match(line)):
                 continue
@@ -2856,6 +2858,7 @@ def std_types_shown_empty(root: Path) -> list[str]:
             fields = [f for f in fields if f]
             if fields and not any(f.group(1) for f in fields):
                 empty.append((m.group(1), f"{rel}:{i + 1}"))
+    shows |= domains if blanket else set()
     return [at for name, at in empty if name not in shows]
 
 

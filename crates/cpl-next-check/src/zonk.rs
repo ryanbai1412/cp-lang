@@ -64,6 +64,8 @@ impl<'a> Cx<'a> {
             | TK::Variant(_, b)
             | TK::Inject(b)
             | TK::Widen(b)
+            | TK::Owned(b)
+            | TK::Pack(b)
             | TK::Elem(b)
             | TK::Not(b)
             | TK::CharOf(b)
@@ -128,11 +130,6 @@ impl<'a> Cx<'a> {
                     self.zonk_expr(v)
                 }
             }
-            TK::Print(ps) => ps.iter_mut().for_each(|p| {
-                if let Piece::Value(v, _) = p {
-                    self.zonk_expr(v)
-                }
-            }),
             TK::Int(_)
             | TK::Float(_)
             | TK::Bool(_)

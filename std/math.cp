@@ -524,25 +524,48 @@ impl Word for U64:
 /// example: `popcount(7) == 3`
 /// example: `popcount(-1) == 64`
 /// example: `popcount(U64(11)) == 3`
-pub fn popcount<W: Word>(x: W) -> Int = @intrinsic("popcount")
+@fast(popcount)
+pub fn popcount<W: Word>(x: W) -> Int:
+    var w = x.word()
+    var n = 0
+    while w != U64(0):
+        w = w & (w - U64(1))
+        n += 1
+    n
 
 /// The 0 bits below the lowest 1 bit of `x`'s 64-bit word; `ctz(0) == 64`.
 ///
 /// cost: \(O(1)\)
 /// example: `ctz(8) == 3`
-pub fn ctz<W: Word>(x: W) -> Int = @intrinsic("ctz")
+@fast(ctz)
+pub fn ctz<W: Word>(x: W) -> Int:
+    var w = x.word()
+    if w == U64(0): return 64
+    var n = 0
+    while w & U64(1) == U64(0):
+        w >>= 1
+        n += 1
+    n
 
 /// The 0 bits above the highest 1 bit of `x`'s 64-bit word; `clz(0) == 64`.
 ///
 /// cost: \(O(1)\)
 /// example: `clz(1) == 63`
-pub fn clz<W: Word>(x: W) -> Int = @intrinsic("clz")
+@fast(clz)
+pub fn clz<W: Word>(x: W) -> Int = 64 - bit_width(x)
 
 /// The bits needed to write `x`'s 64-bit word, `64 - clz(x)`.
 ///
 /// cost: \(O(1)\)
 /// example: `bit_width(5) == 3`
-pub fn bit_width<W: Word>(x: W) -> Int = @intrinsic("bit_width")
+@fast(bit_width)
+pub fn bit_width<W: Word>(x: W) -> Int:
+    var w = x.word()
+    var n = 0
+    while w != U64(0):
+        w >>= 1
+        n += 1
+    n
 
 /// The smallest power of two that is at least `x`, `1` for `x <= 1`.
 ///

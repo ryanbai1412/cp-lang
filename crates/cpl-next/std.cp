@@ -31,30 +31,16 @@ use std.ranges.{Range, range_of}
 /// `lo..hi` and the `[]` of a run of keys (R01.8.4, R07.4.6).
 pub use std.ranges.{Range, slice, slice_ends, sub_range, sub_range_ends}
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key, check_range}
+/// Printing, reading, the random stream and `swap`, which every module names unimported.
+pub use std.show.{Show, Pack, print, write}
+pub use std.read.{Read, read, read_line}
+pub use std.stream.{rand}
+pub use std.mem.{swap}
 
 /// Traps R0102 unless `ok`: a value its type doesn't have, as an `Int` converted to an enum that
 /// is no variant's value (R02.7), or to a cut past a domain's ends (R04.2.17).
 @variant_check
 pub fn check_value(ok: Bool) = @intrinsic("value_check")
-
-fn read_array<D: Domain>() -> [D]Int:
-    var a: [D]Int = 0
-    for v in D: a[v] = read()
-    a
-
-fn write_list(xs: List<Int>):
-    var first = true
-    for x in xs:
-        if not first: write(" ")
-        write(x)
-        first = false
-
-fn write_array<D: Domain>(xs: [D]Int):
-    var first = true
-    for x in xs:
-        if not first: write(" ")
-        write(x)
-        first = false
 
 /// The largest of two or more values, the first of equal ones (R11.3.3).
 pub fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.max_with(if b > a: b else: a)

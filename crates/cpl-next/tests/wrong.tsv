@@ -200,6 +200,8 @@ core-05/rotate-into-walked-row.cp	wrong-error	wanted E0602 on line 6, got: check
 core-05/runs-walk-lends-parent.cp	wrong-error	wanted E0602 on line 6, got: check: std.seq:942:36: E0302: expected `T`, found `4.hidden`
 core-05/slices-proved-apart.cp	wrong-reject	check: program:9:11: E0302: this is not a place that can be assigned or lent
 core-05/spec-block-swap-maybe-same.cp	wrong-error	wanted E0601 on line 9, got: check: program:9:1: E0201: unknown name `swap`
+core-05/std-container-move.cp	wrong-error	wanted E0608 on line 8, got: check: std.deque:109:9: E0201: unknown name `swap`
+core-05/std-deque-keeps-pushed-value.cp	wrong-accept	wanted E0603 on line 6, ran and printed: 1
 core-05/take-into-other-index-guard.cp	wrong-reject	check: program:8:14: E0303: expected 1 arguments, found 0
 core-05/take-into-other-index-loop.cp	wrong-reject	check: program:7:18: E0303: expected 1 arguments, found 0
 core-05/view-assigned-into-typed-var.cp	wrong-reject	check: program:7:5: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
@@ -414,6 +416,18 @@ matrix/index/pair--count.cp	wrong-reject	check: program:3:7: E0203: `Pair` has n
 matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has no `filter`
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 matrix/index/pair--read.cp	wrong-reject	link: E9999: no impl provides `count` for this type
+matrix/index/product--construct.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--count.cp	wrong-reject	check: program:5:27: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--cuts_lr.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--fill.cp	wrong-reject	check: program:6:5: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--filter.cp	wrong-reject	check: program:5:28: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--find.cp	wrong-reject	check: program:5:30: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--first.cp	wrong-reject	check: program:5:25: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--for.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
+matrix/index/product--next.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--optional.cp	wrong-reject	check: program:6:15: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--prev.cp	wrong-reject	check: program:5:13: E0302: expected `Int`, found `Tuple2<Int, Int>`
+matrix/index/product--read.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 matrix/index/product--step.cp	wrong-reject	check: program:5:20: E0606: `Tuple2<R, C>` does not implement `Indexed`
 matrix/index/subset--count.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `count`
 matrix/index/subset--filter.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `filter`
@@ -421,6 +435,7 @@ matrix/index/subset--read.cp	wrong-reject	link: E9999: no impl provides `count` 
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `main` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
+next/n_swap_01_swap_is_an_ordinary_fn.cp	wrong-reject	own: std.mem:7:6: E0602: `a` is written here while `$parts40_1`, which borrows it, is still used
 next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:5: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: program:14:5: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: program:6:1: E0602: `a` is lent for writing, and the call also reaches it another way
@@ -947,7 +962,10 @@ traits/Add/Poly--add.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not
 traits/Bidir/Items--iter_rev.cp	wrong-reject	link: E9999: no impl provides `keys` for this type
 traits/Bidir/LinkedList--iter_rev.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
 traits/Bidir/Prefix--iter_rev.cp	wrong-reject	check: program:2:11: E0203: `List<Int>` has no member `scan`
-traits/Bidir/Stepped--iter_rev.cp	wrong-reject	check: std.seq:2103:37: E0606: `S` does not implement `Indexed`
+traits/Bidir/Stepped--iter_rev.cp	wrong-reject	check: std.seq:1993:37: E0606: `S` does not implement `Indexed`
+traits/BitAnd/Bitset--bitand.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
+traits/BitOr/Bitset--bitor.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
+traits/BitXor/Bitset--bitxor.cp	wrong-reject	check: std.bitset:550:35: E0201: unknown name `sum`
 traits/Div/Poly--div.cp	wrong-reject	check: std.poly:867:66: E0606: `T` does not implement `Domain`
 traits/Eq/ByAngle--eq.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
 traits/Eq/ByAngleFrom--eq.cp	wrong-reject	check: std.geometry: E0204: unknown type `I128`
