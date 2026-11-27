@@ -1111,6 +1111,7 @@ next/n_method_01_range_self_takes_an_int.cp
 next/n_method_02_range_self_checks_the_receiver.cp
 next/n_nested_02_capture_unset_at_call.cp
 next/n_nested_03_hoisted_call.cp
+next/n_op_01_operator_traits.cp
 next/n_operator_trait.cp
 next/n_opt_01_entry_globals_become_locals.cp
 next/n_optional_01_is_some_reads_like_a_field.cp
