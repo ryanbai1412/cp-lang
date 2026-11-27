@@ -315,11 +315,11 @@
   "next_core_privilege": 23,
   "next_whole_program_inputs": 12,
   "next_reference_evaluator_lines": 659,
-  "next_core_standin_lines": 829,
+  "next_core_standin_lines": 644,
   "next_cpp_runtime_lines": 152,
   "link_reads_check": 26,
   "next_wrong_accepts": 18,
-  "next_core_checks": 13,
+  "next_core_checks": 6,
   "next_ownership_outside_own": 6,
   "next_layer_foreign_deps": 1
 }
