@@ -145,7 +145,11 @@ impl<'a> Cx<'a> {
             .then_some(f)
         })?;
         let now = &f.name;
-        let mut written = format!("{}.{now}", self.text(base.span));
+        // The call as written with the member's name replaced: `x.m(a)` reads `x.now(a)`.
+        let mut written = self
+            .text(Span::new(base.span.start, name.span.start))
+            .to_owned()
+            + now;
         if let Some(args) = call {
             let args: Vec<&str> = args.iter().map(|a| self.text(a.value.span)).collect();
             written = format!("{written}({})", args.join(", "));

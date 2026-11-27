@@ -327,7 +327,7 @@
   "next_lent_outside_own": 0,
   "next_weak_oracle_passes": 8,
   "syntax_std_names": 33,
-  "next_check_name_keys": 1,
+  "next_check_name_keys": 0,
   "next_backend_owns_reads": 0,
   "next_asks_refused": 18,
   "next_layer_foreign_deps": 1,
