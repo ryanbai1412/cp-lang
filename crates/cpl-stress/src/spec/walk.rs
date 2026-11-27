@@ -1600,10 +1600,10 @@ impl Builder<'_> {
         shape
     }
 
-    /// `impl Read for Cell` reads a `Cell` as its `fn read(mut input: Input)`
-    /// does: one field per `let name: Type = input.read()` line (or
-    /// `read()`, in a `fn read()` of the old pipeline). `None` when it reads
-    /// in any other way.
+    /// An impl's `fn read(mut input: Input)` for `Cell` (what `read<Cell>()`
+    /// calls through `T.read(..)`) reads a `Cell` one field per
+    /// `let name: Type = input.read()` line (or `read()`, in a `fn read()` of
+    /// the old pipeline). `None` when it reads in any other way.
     pub(super) fn read_impl(
         &mut self,
         stmt: &Stmt,
@@ -1617,16 +1617,12 @@ impl Builder<'_> {
         else {
             return Ok(None);
         };
-        let (
-            TypeKind::Named {
-                name: trait_name, ..
-            },
-            TypeKind::Named { name: target, args },
-        ) = (&trait_name.kind, &target.kind)
+        let (TypeKind::Named { .. }, TypeKind::Named { name: target, args }) =
+            (&trait_name.kind, &target.kind)
         else {
             return Ok(None);
         };
-        if trait_name.text != "Read" || !args.is_empty() {
+        if !args.is_empty() {
             return Ok(None);
         }
         let read = body.stmts.iter().find_map(|stmt| match &stmt.kind {
