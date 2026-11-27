@@ -51,7 +51,7 @@ fn a_fn_keeping_its_contract_passes_every_stage() {
         Stage::Optimized,
     ] {
         assert_eq!(
-            check(&kept(CTy::Int), s, &[false], 0),
+            check(&kept(CTy::Int), s, &[Callee::default()], 0),
             Vec::<String>::new(),
             "{s:?}"
         );
@@ -68,7 +68,7 @@ fn every_stage_refuses_a_local_read_before_it_is_set() {
         Stage::Canonical,
         Stage::Optimized,
     ] {
-        assert!(!check(&f, s, &[false], 0).is_empty(), "{s:?}");
+        assert!(!check(&f, s, &[Callee::default()], 0).is_empty(), "{s:?}");
     }
     let mut g = kept(Ty::Int);
     g.body.remove(0);
@@ -92,7 +92,11 @@ fn nothing_after_an_untyped_trap_is_read_before_it_is_set() {
 #[test]
 fn an_instance_holding_an_error_type_is_named() {
     let bad = kept(CTy::Lent(Box::new(CTy::Error)));
-    let named = error_typed(&[kept(CTy::Int), bad], &[false, false], 0);
+    let named = error_typed(
+        &[kept(CTy::Int), bad],
+        &[Callee::default(), Callee::default()],
+        0,
+    );
     assert_eq!(named, vec!["t".to_string()]);
 }
 
@@ -114,13 +118,13 @@ fn instances_refuse_a_call_that_names_no_instance() {
         0,
         Stmt::Expr(e(EK::Call(Target::Case, vec![], 0), CTy::Unit)),
     );
-    assert!(!check(&f, Stage::Instances, &[false], 0).is_empty());
+    assert!(!check(&f, Stage::Instances, &[Callee::default()], 0).is_empty());
     let mut f = kept(CTy::Int);
     f.body.insert(
         0,
         Stmt::Expr(e(EK::Call(Target::Inst(3), vec![], 0), CTy::Unit)),
     );
-    assert!(!check(&f, Stage::Instances, &[false], 0).is_empty());
+    assert!(!check(&f, Stage::Instances, &[Callee::default()], 0).is_empty());
 }
 
 #[test]
@@ -131,10 +135,10 @@ fn raw_ir_refuses_a_passed_place_left_unsettled() {
         Stmt::Expr(e(EK::Pass(Place::Local(0), true, 0), CTy::Int)),
     );
     assert_eq!(
-        check(&f, Stage::Instances, &[false], 0),
+        check(&f, Stage::Instances, &[Callee::default()], 0),
         Vec::<String>::new()
     );
-    assert!(!check(&f, Stage::Raw, &[false], 0).is_empty());
+    assert!(!check(&f, Stage::Raw, &[Callee::default()], 0).is_empty());
 }
 
 #[test]
@@ -144,10 +148,18 @@ fn a_call_inside_an_expression_is_refused_but_an_operator() {
     f.body
         .insert(0, Stmt::Let(0, e(EK::MakeStruct(vec![call]), CTy::Int)));
     for s in [Stage::Instances, Stage::Raw, Stage::Canonical] {
-        assert!(!check(&f, s, &[false], 0).is_empty(), "{s:?}");
+        assert!(!check(&f, s, &[Callee::default()], 0).is_empty(), "{s:?}");
     }
     assert_eq!(
-        check(&f, Stage::Canonical, &[true], 0),
+        check(
+            &f,
+            Stage::Canonical,
+            &[Callee {
+                fast: true,
+                ..Callee::default()
+            }],
+            0
+        ),
         Vec::<String>::new(),
         "an operator"
     );
@@ -173,4 +185,21 @@ fn optimized_ir_refuses_a_check_left_out_with_no_proof() {
         site: 0,
     };
     assert_eq!(accounted(0, &canon, &opt, &[proof]), Vec::<String>::new());
+}
+
+/// After ownership a lent or viewed param is the caller's: its frame never releases it.
+#[test]
+fn raw_ir_refuses_a_frame_releasing_a_param_it_views() {
+    let mut f = kept(CTy::Int);
+    f.params = vec![(0, false)];
+    f.views = vec![true];
+    f.drops = vec![0];
+    assert!(!check(&f, Stage::Raw, &[Callee::default()], 0).is_empty());
+    f.views = vec![false];
+    assert_eq!(
+        check(&f, Stage::Raw, &[Callee::default()], 0),
+        Vec::<String>::new()
+    );
+    f.params = vec![(0, true)];
+    assert!(!check(&f, Stage::Raw, &[Callee::default()], 0).is_empty());
 }

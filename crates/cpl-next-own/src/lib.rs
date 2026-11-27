@@ -215,7 +215,7 @@ pub fn link(
     adds: &SetAdds,
     globals: &[(String, bool)],
 ) -> (Program, Owned) {
-    use cpl_next_ir::verify::{all, Stage};
+    use cpl_next_ir::verify::{all, callees, Stage};
     let debug = cfg!(debug_assertions);
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     let generic = if debug {
@@ -226,7 +226,7 @@ pub fn link(
     lent::mark(d, funcs, tys, &mutable);
     let mut prog = cpl_next_link::link(d, whole, deferred, funcs, tys, adds, &lent_slot);
     if debug {
-        let fast: Vec<bool> = prog.insts.iter().map(|f| f.fast.is_some()).collect();
+        let fast = callees(&prog.insts);
         prog.errors.extend(generic);
         prog.errors.extend(all(
             &prog.insts,
@@ -238,7 +238,7 @@ pub fn link(
     let owned = inst::check(d, funcs, &prog, globals);
     place_copies(&mut prog, &owned.copies);
     if debug {
-        let fast: Vec<bool> = prog.insts.iter().map(|f| f.fast.is_some()).collect();
+        let fast = callees(&prog.insts);
         prog.errors
             .extend(all(&prog.insts, Stage::Raw, &fast, prog.globals.len()));
     }

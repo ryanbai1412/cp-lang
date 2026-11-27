@@ -378,11 +378,10 @@ pub(crate) fn compile(
     let canon = inst::canonicalize(&mut prog).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
     if cfg!(debug_assertions) {
-        use cpl_next_ir::verify::{accounted, all, Stage};
+        use cpl_next_ir::verify::{accounted, all, callees, Stage};
         let g = prog.globals.len();
-        let fast = |fs: &[ir::Func<_>]| fs.iter().map(|f| f.fast.is_some()).collect::<Vec<_>>();
-        let mut bad = all(&canon, Stage::Canonical, &fast(&canon), g);
-        bad.extend(all(&opt, Stage::Optimized, &fast(&opt), g));
+        let mut bad = all(&canon, Stage::Canonical, &callees(&canon), g);
+        bad.extend(all(&opt, Stage::Optimized, &callees(&opt), g));
         bad.extend(
             (canon.iter().zip(&opt).enumerate())
                 .flat_map(|(i, (c, o))| accounted(i, c, o, &proved))
@@ -466,8 +465,8 @@ pub(crate) fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec
 impl Compiled {
     /// The instances holding an error type (`cpl_next_ir::verify::error_typed`).
     pub fn error_typed(&self) -> Vec<String> {
-        let fast: Vec<bool> = self.prog.insts.iter().map(|f| f.fast.is_some()).collect();
-        cpl_next_ir::verify::error_typed(&self.prog.insts, &fast, self.prog.globals.len())
+        let callees = cpl_next_ir::verify::callees(&self.prog.insts);
+        cpl_next_ir::verify::error_typed(&self.prog.insts, &callees, self.prog.globals.len())
     }
 
     /// Runs on the engine, the one evaluator, on the calling thread.

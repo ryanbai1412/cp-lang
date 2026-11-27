@@ -8,6 +8,25 @@ use crate::msg::Msg;
 use crate::prog::CTy;
 use crate::ty::{SetTy, Ty};
 
+/// What a call site may assume of the instance it calls: whether it is an operator
+/// (`Func::fast`).
+#[derive(Clone, Debug, Default)]
+pub struct Callee {
+    pub fast: bool,
+    /// What a message calls it (`Func::shown`).
+    pub shown: String,
+}
+
+/// Each instance of `fs` as a callee.
+pub fn callees<T>(fs: &[Func<T>]) -> Vec<Callee> {
+    (fs.iter())
+        .map(|f| Callee {
+            fast: f.fast.is_some(),
+            shown: f.shown.clone(),
+        })
+        .collect()
+}
+
 /// The stage a fn's IR is in, in the order they run.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Stage {
@@ -69,21 +88,26 @@ impl StageTy for CTy {
     }
 }
 
-/// What `f` breaks of `stage`'s contract, where `fast` says, per instance of the program,
-/// whether a call to it is an operator (`Func::fast`), and the program has `globals` globals:
+/// What `f` breaks of `stage`'s contract, where `callees` are the program's instances as a
+/// call sees them, and the program has `globals` globals:
 /// its locals, globals, instances and sites exist, a local is set before it is read (a drop
 /// of a local releases what it holds, if anything), `break` is in a loop or a region's body,
 /// and each stage's own promises above.
-pub fn check<T: StageTy>(f: &Func<T>, stage: Stage, fast: &[bool], globals: usize) -> Vec<String> {
-    walk(f, stage, fast, globals).out
+pub fn check<T: StageTy>(
+    f: &Func<T>,
+    stage: Stage,
+    callees: &[Callee],
+    globals: usize,
+) -> Vec<String> {
+    walk(f, stage, callees, globals).out
 }
 
 /// The instances holding an error type, by name. The checker should have refused or resolved
 /// each; until it does, the programs test keeps them in a list that only shrinks
 /// (`tests/error-typed.txt`), rather than the verifier refusing a program that runs.
-pub fn error_typed(fs: &[Func<CTy>], fast: &[bool], globals: usize) -> Vec<String> {
+pub fn error_typed(fs: &[Func<CTy>], callees: &[Callee], globals: usize) -> Vec<String> {
     (fs.iter())
-        .filter(|f| walk(f, Stage::Raw, fast, globals).error_typed)
+        .filter(|f| walk(f, Stage::Raw, callees, globals).error_typed)
         .map(|f| f.shown.clone())
         .collect()
 }
@@ -92,11 +116,11 @@ pub fn error_typed(fs: &[Func<CTy>], fast: &[bool], globals: usize) -> Vec<Strin
 pub fn all<'a, T: StageTy + 'a>(
     fs: impl IntoIterator<Item = &'a Func<T>>,
     stage: Stage,
-    fast: &[bool],
+    callees: &[Callee],
     globals: usize,
 ) -> Vec<Msg> {
     (fs.into_iter())
-        .flat_map(|f| check(f, stage, fast, globals))
+        .flat_map(|f| check(f, stage, callees, globals))
         .map(|e| Msg::internal(format!("{stage:?} IR: {e}")))
         .collect()
 }
@@ -129,13 +153,13 @@ pub fn accounted(
 fn walk<'a, T: StageTy>(
     f: &'a Func<T>,
     stage: Stage,
-    fast: &'a [bool],
+    callees: &'a [Callee],
     globals: usize,
 ) -> V<'a, T> {
     let mut v = V {
         f,
         stage,
-        fast,
+        callees,
         globals,
         set: vec![false; f.locals.len()],
         loops: 0,
@@ -151,7 +175,7 @@ fn walk<'a, T: StageTy>(
 struct V<'a, T> {
     f: &'a Func<T>,
     stage: Stage,
-    fast: &'a [bool],
+    callees: &'a [Callee],
     globals: usize,
     set: Vec<bool>,
     loops: usize,
@@ -206,6 +230,12 @@ impl<T: StageTy> V<'_, T> {
         }
         for &l in &f.drops {
             self.local(l);
+            let param = f.params.iter().position(|&(p, _)| p == l);
+            if param.is_some_and(|k| f.params[k].1 || f.views.get(k) == Some(&true)) {
+                self.bad(format!(
+                    "local {l}, a lent or viewed param, released by its frame"
+                ));
+            }
         }
         if self.stage < Stage::Raw && (!f.drops.is_empty() || f.views.contains(&true)) {
             self.bad("a drop or view chosen before ownership".into());
@@ -341,7 +371,8 @@ impl<T: StageTy> V<'_, T> {
                 self.args(xs, &format!("{op:?}'s argument"));
             }
             EK::Call(t, xs, s) => {
-                let op = matches!(t, Target::Inst(i) if self.fast.get(*i) == Some(&true));
+                let op =
+                    matches!(t, Target::Inst(i) if self.callees.get(*i).is_some_and(|c| c.fast));
                 if pure && !inside.is_empty() && !op {
                     self.bad(format!("a call inside {inside}"));
                 }
@@ -379,8 +410,8 @@ impl<T: StageTy> V<'_, T> {
                 self.bad("a call that names no instance".into())
             }
             Target::Inst(_) if !linked => self.bad("an instance called before link".into()),
-            Target::Inst(i) if *i >= self.fast.len() => {
-                self.bad(format!("instance {i} of {}", self.fast.len()))
+            Target::Inst(i) if *i >= self.callees.len() => {
+                self.bad(format!("instance {i} of {}", self.callees.len()))
             }
             Target::Value(e) => {
                 if self.stage >= Stage::Canonical {
