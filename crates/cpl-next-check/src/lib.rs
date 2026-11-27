@@ -358,7 +358,6 @@ struct Cx<'a> {
     /// Library fns reached only as a trait's impl, or from one: what they use that the slice
     /// does not build refuses only a program whose instances run them.
     through_trait: Vec<FnId>,
-    /// Members asked for that nothing loaded declares.
     /// Each library `const`'s global, once its initializer is checked.
     consts: Vec<Option<LocalId>>,
     const_busy: Vec<bool>,
@@ -602,8 +601,8 @@ pub fn check(
         cx.scopes.pop();
         main_out.push(TStmt::Cases(count, body));
     }
-    // The core's and the program's fns are all checked; a library's only once a reference
-    // reaches them, so what a module declares and the program never uses refuses nothing.
+    // The program's fns are all checked; a library's, core's too, only once a reference reaches
+    // them, so what a module declares and the program never uses refuses nothing.
     // A record's impls are made, not written: one is checked once a reference reaches it.
     let mut fns = HashMap::new();
     let mut todo: Vec<FnId> = (0..d.fns.len())
@@ -614,6 +613,7 @@ pub fn check(
                 !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
             };
             !d.is_library(f.module)
+                && f.module != decls::CORE
                 && !matches!(f.owner, Some(Owner::Impl(i)) if later(&d.impls[i]))
         })
         .collect();
