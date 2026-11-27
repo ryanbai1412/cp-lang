@@ -616,12 +616,20 @@ impl<'a> Cx<'a> {
         let narrows =
             matches!(c, ast::Cond::Expr(e) if matches!(e.kind, ExprKind::HasBound { .. }));
         let c = self.cond(c);
-        // A bound test, not built, is refused: the branch it narrows is downstream of it.
+        // The branch a bound test guards sees the bound (R08.2.9).
+        let n = self.assumed.len();
+        if let TK::HasBound(t, r) = &c.kind {
+            if let Ty::Param(i) = self.shallow(t) {
+                self.assumed.push((i, r.clone()));
+            }
+        }
+        // A bound test that failed to check is the error: the branch it narrows is downstream of it.
         let b2 = if narrows && self.is_error(&c.ty) {
             Self::error_node(c.span)
         } else {
             self.block(b, want)
         };
+        self.assumed.truncate(n);
         self.scopes.pop();
         (c, b2, b.leaves())
     }
@@ -1858,6 +1866,7 @@ impl<'a> Cx<'a> {
             },
             ExprKind::With { base, updates } => self.record_update(base, updates, span),
             ExprKind::Try(x) => self.question(x, span),
+            ExprKind::HasBound { param, bound } => self.has_bound(param, bound, span),
             other => self.unbuilt_expr(other, span),
         }
     }

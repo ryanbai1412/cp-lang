@@ -1082,6 +1082,7 @@ impl Cx<'_> {
             | TK::Text(_)
             | TK::ReadInt
             | TK::DomLen(_)
+            | TK::HasBound(..)
             | TK::FnItem(_)
             | TK::Itself(_)
             | TK::Error => {}

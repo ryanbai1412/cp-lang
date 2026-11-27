@@ -368,6 +368,48 @@ impl Cx<'_> {
         })
     }
     /// The traits the fn being checked bounds its type parameter `i` by, with their supertraits (R08.1.1).
+    /// `if T: Tr<A>:`: a test of `T` against the bound, which each instance decides (R08.2.9).
+    pub(super) fn has_bound(&mut self, param: &ast::Name, bound: &ast::Type, span: Span) -> TExpr {
+        let error = TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        };
+        let mut pre = Vec::new();
+        let tested = ast::Type {
+            kind: ast::TypeKind::Named {
+                name: param.clone(),
+                args: Vec::new(),
+            },
+            span: param.span,
+        };
+        let t = self.body_ty(&tested, span, &mut pre);
+        let ast::TypeKind::Named { name, args } = &bound.kind else {
+            self.err(span, Unbuilt::BoundNotNamed);
+            return error;
+        };
+        let Some(decls::Named::Trait(tr)) = self.d.named(self.module, &name.text) else {
+            let code = cpl_diag::codes::UNKNOWN_TYPE;
+            self.err(
+                bound.span,
+                Msg::verdict(code, format!("unknown trait `{}`", name.text)),
+            );
+            return error;
+        };
+        let args = args
+            .iter()
+            .map(|a| self.body_ty(a, span, &mut pre))
+            .collect();
+        let r = self.d.with_defaults(TraitRef { tr, args }, &t);
+        if t == Ty::Error {
+            return error;
+        }
+        TExpr {
+            kind: TK::HasBound(t, r),
+            ty: Ty::Bool,
+            span,
+        }
+    }
     pub(super) fn bound_traits(&self, i: usize) -> Vec<TraitRef> {
         let Some(decl) = self.decl else {
             return Vec::new();
@@ -388,6 +430,11 @@ impl Cx<'_> {
             };
             if !traits.contains(&r) {
                 traits.push(r);
+            }
+        }
+        for (j, r) in &self.assumed {
+            if *j == i && !traits.contains(r) {
+                traits.push(r.clone());
             }
         }
         let mut k = 0;

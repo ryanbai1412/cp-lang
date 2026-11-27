@@ -126,6 +126,8 @@ pub enum TK {
     DomNth(Ty, Box<TExpr>),
     /// `x in D`: whether the integer `x` is a position of `D`.
     DomHas(Ty, Box<TExpr>),
+    /// `if T: Tr<A>:`: whether `T` meets the bound, decided per instance (R08.2.9).
+    HasBound(Ty, TraitRef),
     /// `Int(v)`: the integer of a position, 1 for the first of `1..=n`.
     DomOrd(Box<TExpr>),
     /// The characters of a string literal, as `Raw<Char>`.
@@ -366,6 +368,8 @@ struct Cx<'a> {
     wraps: bool,
     /// The `?` extents being checked, innermost last, and the statement right-hand side that is one.
     tries: Vec<question::Extent>,
+    /// The bounds an `if T: Tr:` branch around this point has tested, of `T`'s parameter.
+    assumed: Vec<(usize, TraitRef)>,
     rhs_extent: Option<Span>,
     /// The fields `with` lines set around the code being checked, innermost last (R09.1.2).
     frames: Vec<CtxFrame>,
@@ -414,6 +418,7 @@ pub fn check(
         values: consts,
         wraps: false,
         tries: Vec::new(),
+        assumed: Vec::new(),
         rhs_extent: None,
         frames: Vec::new(),
         filling: Vec::new(),

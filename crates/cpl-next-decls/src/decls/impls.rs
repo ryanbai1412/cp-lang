@@ -16,7 +16,7 @@ impl Decls {
         self.impl_member(recv, name, None)
     }
     /// `r` with each parameter it leaves out given its default, for `self_ty` as `Self` (R08.1.1).
-    pub(super) fn with_defaults(&self, mut r: TraitRef, self_ty: &Ty) -> TraitRef {
+    pub fn with_defaults(&self, mut r: TraitRef, self_ty: &Ty) -> TraitRef {
         let defaults = &self.traits[r.tr.0].defaults;
         while let Some(Some(t)) = defaults.get(r.args.len()) {
             let mut tys = vec![self_ty.clone()];

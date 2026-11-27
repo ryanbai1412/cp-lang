@@ -621,6 +621,7 @@ impl Emit<'_> {
             }
             EK::Unit => "cpl_unit{}".to_string(),
             EK::DomLen(_) | EK::DomLo(_) => "/* unresolved domain value */".to_string(),
+            EK::HasBound(..) => "/* undecided bound test */".to_string(),
             EK::Copy(p) => self.place(p),
             EK::Lent(p) => format!("(&{})", self.place(p)),
             EK::AddrOf(p) => format!("(&{})", self.place(p)),

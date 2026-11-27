@@ -1130,6 +1130,7 @@ impl Fc<'_> {
             EK::DomLen(_) | EK::DomLo(_) => {
                 self.fail("a domain value the link step did not resolve")
             }
+            EK::HasBound(..) => self.fail("a bound test the link step did not decide"),
             EK::Call(Target::Inst(f), args, site) if self.inlinable(*f) => {
                 self.inline(*f, args, self.line(*site), d, None)
             }

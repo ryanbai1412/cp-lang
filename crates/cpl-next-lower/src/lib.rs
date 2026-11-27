@@ -393,7 +393,8 @@ fn pure<T>(e: &Expr<T>) -> bool {
         | EK::Lent(_)
         | EK::Tag(_)
         | EK::DomLen(_)
-        | EK::DomLo(_) => true,
+        | EK::DomLo(_)
+        | EK::HasBound(..) => true,
         EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().all(pure),
         EK::Inject(x) | EK::MakeUnion(_, x) => pure(x),
         // Widening is a branch once sets are known, so it is a statement of its own.
@@ -962,6 +963,7 @@ impl Lw<'_> {
                 mk(EK::Unit)
             }
             TK::DomLen(t) => mk(EK::DomLen(t.clone())),
+            TK::HasBound(t, r) => mk(EK::HasBound(t.clone(), r.tr, r.args.clone())),
             TK::Ordinal(x) => {
                 let v = self.expr(x, out);
                 Expr {

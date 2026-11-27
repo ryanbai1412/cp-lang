@@ -267,6 +267,9 @@ pub enum EK<T> {
     DomLen(T),
     /// The integer of a domain type's first position. Resolved like `DomLen`.
     DomLo(T),
+    /// Generic IR only: whether a type meets a trait at its arguments (`if T: Tr<A>:`). The
+    /// link step makes it a `Bool` and keeps only the branch it takes (R08.2.9).
+    HasBound(T, TraitId, Vec<T>),
     Intr(Intr, Vec<Arg<T>>, Site),
     Call(Target<T>, Vec<Arg<T>>, Site),
     CallValue(Box<Expr<T>>, Vec<Expr<T>>, Site),
@@ -427,7 +430,8 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
             | EK::Unit
             | EK::Text(_)
             | EK::DomLen(_)
-            | EK::DomLo(_) => {}
+            | EK::DomLo(_)
+            | EK::HasBound(..) => {}
         }
     }
     for s in b {

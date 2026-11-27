@@ -565,9 +565,23 @@ impl Link<'_> {
                 Stmt::Assign(p, e) => Stmt::Assign(p.clone(), self.expr(e, env)),
                 Stmt::Expr(e) => Stmt::Expr(self.expr(e, env)),
                 Stmt::Fact(e) => Stmt::Fact(self.expr(e, env)),
-                Stmt::If(c, a, b) => {
-                    Stmt::If(self.expr(c, env), self.block(a, env), self.block(b, env))
-                }
+                // A bound test is decided here; the branch it does not take is never linked,
+                // so it may call what only the bound gives (R08.2.9).
+                Stmt::If(c, a, b) => match &c.kind {
+                    EK::HasBound(t, tr, args) => {
+                        let v = self.has_bound(t, *tr, args, env);
+                        let cond = Expr {
+                            kind: EK::Bool(v),
+                            ty: self.ty(&c.ty, env),
+                            site: c.site,
+                        };
+                        match v {
+                            true => Stmt::If(cond, self.block(a, env), Vec::new()),
+                            false => Stmt::If(cond, Vec::new(), self.block(b, env)),
+                        }
+                    }
+                    _ => Stmt::If(self.expr(c, env), self.block(a, env), self.block(b, env)),
+                },
                 Stmt::Loop(a, b, s) => Stmt::Loop(self.block(a, env), self.block(b, env), *s),
                 Stmt::Switch(c, arms) => Stmt::Switch(
                     self.expr(c, env),
@@ -670,6 +684,23 @@ impl Link<'_> {
         }
     }
     /// The impl's fn a method of a bound runs, now the type is known.
+    /// Whether `t` meets trait `tr` at `args` in this instance: an impl fits it, or the type
+    /// meets the trait without one (a domain, for `Domain`).
+    fn has_bound(&mut self, t: &Ty, tr: TraitId, args: &[Ty], env: &Env) -> bool {
+        let st = unlent(self.ty(t, env));
+        let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
+            .map(|a| self.ty(a, env))
+            .collect();
+        let d = self.d;
+        let by_impl = d.impls_of(tr).any(|im| {
+            let mut binds = vec![None; im.generics.len()];
+            fit_cty(&im.for_, &st, &mut binds)
+                && (d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
+                    .all(|(p, w)| fit_cty(p, w, &mut binds))
+                && blanket_met(d, im, &binds)
+        });
+        by_impl || (want.is_empty() && cty_meets(d, &st, tr))
+    }
     fn trait_key(
         &mut self,
         tr: &TraitId,
@@ -768,6 +799,7 @@ impl Link<'_> {
             EK::Tag(p) => EK::Tag(self.place(p)),
             EK::DomLen(t) => EK::DomLen(self.ty(t, env)),
             EK::DomLo(t) => EK::DomLo(self.ty(t, env)),
+            EK::HasBound(t, tr, args) => EK::Bool(self.has_bound(t, *tr, args, env)),
             EK::MakeStruct(xs) => EK::MakeStruct(xs.iter().map(|x| self.expr(x, env)).collect()),
             EK::MakeClosure(xs) => EK::MakeClosure(xs.iter().map(|x| self.expr(x, env)).collect()),
             EK::Inject(x) => EK::Inject(Box::new(self.expr(x, env))),
