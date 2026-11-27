@@ -213,8 +213,13 @@ impl<'a> Cx<'a> {
     pub(super) fn unify(&mut self, a: &Ty, b: &Ty) -> bool {
         let (a, b) = (self.shallow(a), self.shallow(b));
         match (&a, &b) {
-            (Ty::Error, _) | (_, Ty::Error) => true,
             (Ty::Var(x), Ty::Var(y)) if x == y => true,
+            // An unknown solved by the error node is that error: what it reaches says nothing more.
+            (Ty::Var(x), Ty::Error) | (Ty::Error, Ty::Var(x)) => {
+                self.tys[*x] = Some(Ty::Error);
+                true
+            }
+            (Ty::Error, _) | (_, Ty::Error) => true,
             // A variable is never solved to a type holding itself: no type is infinite.
             (Ty::Var(x), _) => {
                 let ok = !self.occurs(*x, &b);

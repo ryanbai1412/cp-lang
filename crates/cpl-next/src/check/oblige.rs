@@ -24,17 +24,20 @@ impl Cx<'_> {
     pub(super) fn solve(&mut self, last: bool) {
         loop {
             let pending = std::mem::take(&mut self.obligations);
-            let before = pending.len();
+            // A bound met by an impl may leave the impl's own bounds: they count as progress too.
+            let (before, mut waiting) = (pending.len(), 0);
             for (t, r, span, why) in pending {
                 if self.unknown(&t) {
                     self.obligations.push((t, r, span, why));
+                    waiting += 1;
                     continue;
                 }
                 let t = self.zonk(&t);
                 match self.meet(&t, &r, span) {
                     Some(true) => {}
-                    Some(false) if self.mentions_error(&t) => {}
+                    Some(false) if self.mentions_error(&t) => self.poison(&r),
                     Some(false) => {
+                        self.poison(&r);
                         let tr = self.d.traits[r.tr.0].name.clone();
                         let shown = self.show(&t);
                         let record = matches!(&t, Ty::Struct(d, ..) if crate::records::is_record(&self.d.s(*d).name));
@@ -65,10 +68,13 @@ impl Cx<'_> {
                             ),
                         );
                     }
-                    None => self.obligations.push((t, r, span, why)),
+                    None => {
+                        self.obligations.push((t, r, span, why));
+                        waiting += 1;
+                    }
                 }
             }
-            if self.obligations.len() >= before {
+            if waiting == before {
                 break;
             }
         }
@@ -87,6 +93,19 @@ impl Cx<'_> {
     /// Whether `t` is built from an error node's type: a verdict on it is downstream of that error.
     pub(super) fn mentions_error(&self, t: &Ty) -> bool {
         self.holds(t, &|t| *t == Ty::Error)
+    }
+    /// A bound that failed solves none of its arguments: what they leave unknown is the error
+    /// node's type, so nothing reached through them is diagnosed again.
+    fn poison(&mut self, r: &TraitRef) {
+        let open = std::cell::RefCell::new(Vec::new());
+        for a in &r.args {
+            self.holds(a, &|t| {
+                matches!(t, Ty::Var(x) if { open.borrow_mut().push(*x); true }) && false
+            });
+        }
+        for x in open.into_inner() {
+            self.tys[x] = Some(Ty::Error);
+        }
     }
     fn holds(&self, t: &Ty, leaf: &dyn Fn(&Ty) -> bool) -> bool {
         match self.shallow(t) {
