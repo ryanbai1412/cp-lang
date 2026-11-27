@@ -24,6 +24,8 @@ pub struct Generic {
 struct Lw<'a> {
     d: &'a Decls,
     typed: &'a Typed,
+    /// The `@intrinsic` fns used as values: each is made a fn whose body is its operation.
+    intrinsic_values: Vec<FnId>,
     /// The current fn's parameters its result holds (R05.5.3): a struct literal stores them lent.
     lent: Vec<usize>,
     /// The globals' types, a lent mark added where one is bound to a value that lends.
@@ -70,6 +72,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
     let mut lw = Lw {
         d,
         typed,
+        intrinsic_values: Vec::new(),
         lent: Vec::new(),
         globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
         locals: Vec::new(),
@@ -184,6 +187,49 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 body,
                 ret: tf.ret.clone(),
                 region: tf.region.clone(),
+                line: lw.src.program_line(&fd.span),
+                sites,
+                lines,
+                shown: shown_name(d, fd),
+            },
+        );
+    }
+    for id in std::mem::take(&mut lw.intrinsic_values) {
+        let fd = d.f(id);
+        let name = fd.intrinsic.clone().unwrap_or_default();
+        let Some(op) = Intr::named(&name) else {
+            lw.errors.push(Unbuilt::Intrinsic { name }.into());
+            continue;
+        };
+        let locals: Vec<Ty> = fd.params.iter().map(|p| p.ty.clone()).collect();
+        let args = (locals.iter().enumerate())
+            .map(|(l, ty)| {
+                Arg::Value(Expr {
+                    kind: EK::Copy(Place::Local(l)),
+                    ty: ty.clone(),
+                    site: 0,
+                })
+            })
+            .collect();
+        let call = Expr {
+            kind: EK::Intr(op, args, 0),
+            ty: fd.ret.clone(),
+            site: 0,
+        };
+        let (sites, lines) = fresh_sites();
+        let key = FuncKey::Decl(id);
+        out.funcs.insert(
+            key.clone(),
+            Func {
+                key,
+                name: fd.name.clone(),
+                params: (0..locals.len()).map(|l| (l, false)).collect(),
+                n_captures: 0,
+                names: fd.params.iter().map(|p| p.name.clone()).collect(),
+                locals,
+                body: vec![Stmt::Return(Some(call))],
+                ret: fd.ret.clone(),
+                region: None,
                 line: lw.src.program_line(&fd.span),
                 sites,
                 lines,
@@ -709,7 +755,16 @@ impl Lw<'_> {
                 }
                 mk(EK::MakeStruct(xs))
             }
-            TK::FnItem(_) => mk(EK::MakeClosure(vec![])),
+            TK::FnItem(f) => {
+                let intrinsic = self.d.f(f.decl).intrinsic.is_some();
+                if intrinsic
+                    && !self.typed.fns.contains_key(&f.decl)
+                    && !self.intrinsic_values.contains(&f.decl)
+                {
+                    self.intrinsic_values.push(f.decl);
+                }
+                mk(EK::MakeClosure(vec![]))
+            }
             TK::Itself(id) => match self.selves.last() {
                 Some((group, caps)) if group.contains(id) => mk(EK::MakeClosure(caps.clone())),
                 // A nested fn used above its statement: made here from what its group reads, all

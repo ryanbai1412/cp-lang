@@ -438,7 +438,6 @@ core-12/impl-head-bound-names-the-element.cp	wrong-reject	decls: E0204: unknown 
 core-12/impl-head-bound-that-fails-gives-nothing.cp	wrong-error	wanted E0203 on line 9, got: check: program:9:7: E0606: `Int` does not implement `Seq`
 core-12/intrinsic-abs-of-i128-min-traps.cp	wrong-reject	check: program:6:1: E0204: unknown type `I128`
 core-12/intrinsic-popcount-counts-a-subset.cp	wrong-reject	check: program:8:7: E0201: unknown name `T`
-core-12/intrinsic-runs-the-same-on-both-engines.cp	crash	the interpreter exited 101: 
 core-12/intrinsic-wrong-signature.cp	wrong-accept	wanted E0210 on line 4, ran and printed: 
 core-12/keyed-argmax.cp	wrong-reject	link: std.seq:2205:9: E0203: `S` has no `iter`
 core-12/record-update-moves.cp	wrong-accept	wanted E0608 on line 5, ran and printed: 1

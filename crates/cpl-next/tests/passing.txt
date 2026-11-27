@@ -970,6 +970,7 @@ core-12/filter-not-indexed.cp
 core-12/generator-not-keyed.cp
 core-12/indexed-access.cp
 core-12/intrinsic-in-user-module.cp
+core-12/intrinsic-runs-the-same-on-both-engines.cp
 core-12/lends-return.cp
 core-12/lent-param-escapes.cp
 core-12/move-into-struct.cp
