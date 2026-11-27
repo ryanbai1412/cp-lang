@@ -1667,7 +1667,7 @@ impl<'a> Cx<'a> {
     }
     /// An `Int` used to index an array is checked against the array's domain. The proof that removes the check is the facts layer's.
     /// A declared domain, or a type that implements core's `Domain`.
-    fn is_domain(&self, t: &Ty) -> bool {
+    pub(super) fn is_domain(&self, t: &Ty) -> bool {
         match t {
             Ty::Dom(_) => true,
             Ty::Struct(..) => (self.d.domain_trait).is_some_and(|tr| self.d.has_impl(t, tr)),

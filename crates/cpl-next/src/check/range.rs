@@ -150,6 +150,13 @@ impl Cx<'_> {
         };
         let name = match &dty {
             Ty::Dom(i) if !self.domains[*i].name.is_empty() => self.domains[*i].name.clone(),
+            // A type that implements `Domain` (`[V.cuts] c => ..`) walks its positions too.
+            Ty::Struct(..) if self.is_domain(&dty) => {
+                let all = self.domain_value(dty.clone(), dom.span);
+                let tmp = self.bind("$walk", all.ty.clone());
+                pre.push(TStmt::Let(tmp, all));
+                "$walk".to_string()
+            }
             _ => return self.refuse(span, "slice: a table over this index"),
         };
         let walk = ast::Expr {
