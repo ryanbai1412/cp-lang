@@ -401,7 +401,7 @@ impl Runner {
                         StressError(format!(
                             "the `@gen` fn of {} failed on seed {seed} at line {}: {}",
                             vm.name,
-                            vm.lines.line_of(trap.span.start) + 1,
+                            vm.lines.line_of(trap.span().start) + 1,
                             trap.into_message()
                         ))
                     },

@@ -80,7 +80,47 @@ impl From<cpl_interp::trace::TraceConfig> for TraceConfig {
         }
     }
 }
-pub use cpl_interp::{Choices, More, Trap};
+pub use cpl_interp::{Choices, More};
+
+/// A program that failed while running.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Trap(cpl_interp::Trap);
+
+impl From<cpl_interp::Trap> for Trap {
+    fn from(t: cpl_interp::Trap) -> Trap {
+        Trap(t)
+    }
+}
+
+impl Trap {
+    /// Its catalogued `R` code (`spec/diagnostics.md`).
+    pub fn code(&self) -> cpl_diag::Code {
+        self.0.code()
+    }
+
+    pub fn message(&self) -> &str {
+        self.0.message()
+    }
+
+    pub fn into_message(self) -> String {
+        self.0.into_message()
+    }
+
+    /// The expression or statement that failed.
+    pub fn span(&self) -> cpl_diag::Span {
+        self.0.span
+    }
+
+    /// The 1-based test case it failed in, under `@!multitest`.
+    pub fn case(&self) -> Option<u64> {
+        self.0.case
+    }
+
+    /// The trap as a diagnostic of the file at `path`, with its call stack.
+    pub fn to_diagnostic(&self, path: &str, lines: &cpl_diag::LineIndex) -> cpl_diag::Diagnostic {
+        self.0.to_diagnostic(path, lines)
+    }
+}
 
 /// How much stack a program's calls may take before the run is stopped. There is no limit on
 /// how deep calls nest: only on the stack they fill.
@@ -223,7 +263,7 @@ pub struct Checkpointed {
 impl From<cpl_interp::Observed> for Outcome {
     fn from(observed: cpl_interp::Observed) -> Outcome {
         Outcome {
-            trap: observed.trap,
+            trap: observed.trap.map(Trap),
             debug: observed.debug,
             recording: observed.recording,
             profile: observed.profile,
@@ -295,7 +335,7 @@ pub fn run_within(
     output: &mut (dyn Write + Send),
     limits: Limits,
 ) -> Result<(), Trap> {
-    cpl_interp::run_with_on_this_thread(&program.ir, input.0, output, limits.into())
+    cpl_interp::run_with_on_this_thread(&program.ir, input.0, output, limits.into()).map_err(Trap)
 }
 
 /// [`run`] recording what `trace` asks for, if anything.
@@ -361,5 +401,5 @@ pub fn run_for(
     input: &[u8],
     limit: std::time::Duration,
 ) -> Option<(Vec<u8>, Result<(), Trap>)> {
-    cpl_interp::run_for(&program.ir, input, limit)
+    cpl_interp::run_for(&program.ir, input, limit).map(|(out, end)| (out, end.map_err(Trap)))
 }

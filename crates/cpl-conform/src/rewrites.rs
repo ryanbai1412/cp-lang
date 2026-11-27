@@ -102,7 +102,9 @@ pub fn run_one(db: &mut Session, prob: &CorpusProblem, how: &str) -> CaseOutcome
             Err(detail) => return outcome("error", format!("{name}, after `cpl {how}`: {detail}")),
         };
         if let (Some(trap), None) = (&run.trap, &original.trap) {
-            let rendered = runner::render_trap(&path, &after, trap);
+            let lines = cpl_diag::LineIndex::new(&after);
+            let rendered =
+                cpl_diag::render(&trap.to_diagnostic(&path, &lines), &path, &after, &lines);
             let first = runner::first_line_trimmed(&rendered, 160);
             return outcome("trap", format!("{name}, after `cpl {how}`: {first}"));
         }

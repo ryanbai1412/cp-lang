@@ -71,7 +71,7 @@ pub fn trap_locals(
         stop,
     );
     (observed.trap?.message() == trap.message()).then_some(())?;
-    let at = source.get(trap.span.start as usize..trap.span.end as usize);
+    let at = source.get(trap.span().start as usize..trap.span().end as usize);
     cpl_facade::today::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 

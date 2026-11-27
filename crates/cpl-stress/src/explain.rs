@@ -114,7 +114,7 @@ pub fn trap_report_in(
         1,
     );
     let at = text
-        .get(trap.span.start as usize..trap.span.end as usize)
+        .get(trap.span().start as usize..trap.span().end as usize)
         .unwrap_or("");
     let locals = match (tail.trap, tail.recording) {
         (Some(again), Some(recording)) if again.message() == trap.message() => {

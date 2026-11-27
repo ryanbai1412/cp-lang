@@ -770,7 +770,7 @@ fn trap_locals(
     let config = cpl_facade::today::trace::trap_config(source);
     let observed = observe(program, input, &mut Vec::new(), stack, config);
     (observed.trap?.message() == trap.message()).then_some(())?;
-    let at = source.get(trap.span.start as usize..trap.span.end as usize);
+    let at = source.get(trap.span().start as usize..trap.span().end as usize);
     cpl_facade::today::trace::trap_locals(&observed.recording?, source, at.unwrap_or(""))
 }
 
