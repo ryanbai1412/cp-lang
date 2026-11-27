@@ -39,6 +39,27 @@ struct Env<'e> {
 
 const LIMIT: usize = 400;
 
+/// The type parameters of `s` that a field of it, or of one of its variants, holds.
+fn held_params(d: &Decls, s: StructId) -> BTreeSet<usize> {
+    let sd = d.s(s);
+    let mut out = BTreeSet::new();
+    let payloads = sd.variants.iter().flat_map(|(_, p)| &d.s(*p).fields);
+    (sd.fields.iter().chain(payloads)).for_each(|(_, t)| params_in(t, &mut out));
+    out
+}
+
+fn params_in(t: &Ty, out: &mut BTreeSet<usize>) {
+    match t {
+        Ty::Param(i) => {
+            out.insert(*i);
+        }
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => params_in(e, out),
+        Ty::Struct(_, ts, _) => ts.iter().for_each(|t| params_in(t, out)),
+        Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| params_in(t, out)),
+        _ => {}
+    }
+}
+
 fn doms_of(t: &CTy, out: &mut Vec<usize>) {
     match t {
         CTy::Dom(d) => out.push(*d),
@@ -255,7 +276,15 @@ impl Link<'_> {
             Ty::Param(i) => env.targs.get(*i).cloned().unwrap_or(CTy::Error),
             Ty::Dom(d) => CTy::Dom(*d),
             Ty::Struct(d, ts, ss) => {
-                let ts: Vec<CTy> = ts.iter().map(|t| self.ty(t, env)).collect();
+                // A lend changes a struct only through a field that holds it: `Version<S>`
+                // keeps no `S`, so `Version<lent Arr>` is `Version<Arr>`.
+                let held = held_params(self.d, *d);
+                let ts: Vec<CTy> = (ts.iter().enumerate())
+                    .map(|(i, t)| match self.ty(t, env) {
+                        t if held.contains(&i) => t,
+                        t => unlent(t),
+                    })
+                    .collect();
                 let ss: Vec<CSet> = ss.iter().map(|s| self.set(s, env)).collect();
                 let out = CTy::Struct(*d, ts.clone(), ss.clone());
                 if !self.structs.contains_key(&out) {

@@ -266,7 +266,6 @@ core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: 
 core-07/zip-pairs-by-walk.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:11: E0201: unknown name `Bool`
 core-08/ambiguous-method.cp	wrong-accept	wanted E0701 on line 12, ran and printed: 1
-core-08/assoc-default-names-trait-param.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/assoc-projects-through-a-domain-blanket-impl.cp	wrong-reject	check: program:18:35: E0203: `Range<D>` has no member `pick`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
@@ -275,7 +274,6 @@ core-08/bound-only-params-bind-from-the-impl.cp	no-cxx	g++ failed: could not con
 core-08/bound-trait-method-yields-the-impl-types.cp	wrong-reject	decls: E0204: unknown trait `Show`
 core-08/bounds-three-ways.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/ctor-bound-binds-a-later-named-arg.cp	wrong-reject	check: program:8:24: E0203: `Range<F>` has no member `zero`
-core-08/default-arg-binds-generic-before-bounds.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/domain-kind-param.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/fn-called-as-a-method-of-its-own-type.cp	wrong-reject	check: program:6:43: E0203: `List<Int>` has no member `first_gt`
 core-08/fn-items-still-coerce-to-their-fn-type.cp	wrong-reject	check: program:10:15: E0302: expected `a function`, found `a function`
@@ -463,7 +461,6 @@ ownership/top-named-var.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` 
 std-algebra/a-group-with-a-one-sided-identity-breaks-its-laws.cp	wrong-reject	check: program:10:8: E0201: unknown name `laws_hold`
 std-algebra/a-group-with-a-one-sided-inverse-breaks-its-laws.cp	wrong-reject	check: program:10:8: E0201: unknown name `laws_hold`
 std-algebra/a-one-sided-identity-breaks-the-monoid-laws.cp	wrong-reject	check: program:5:8: E0201: unknown name `laws_hold`
-std-algebra/op-fold-is-t-with-an-identity.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 std-algebra/user-ord-reduce-by-max-and-min.cp	wrong-reject	check: program:8:17: E0201: unknown name `max`
 std-bitset/folds-take-its-positions.cp	wrong-reject	check: program:7:12: E0606: `Bitset<S>` does not implement `Seq`
 std-bitset/xor-trie.cp	wrong-reject	check: std.bitset:1253:9: E0405: field `XorTrie._mask` is fixed (not `var`) and cannot be assigned
@@ -477,6 +474,7 @@ std-geometry/hull-tangents-point-inside-traps.cp	wrong-reject	check: E0204: std.
 std-geometry/hull-tangents-two-point-hull-traps.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/locate-convex-on-vertex-and-edge.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
+std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.geometry:347:53: E0203: `List<Pt>` has no member `pop`
 std-geometry/on-segment-degenerate.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/same-dir-zero-and-opposite.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/segments-meet-collinear.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`

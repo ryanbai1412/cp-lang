@@ -1510,7 +1510,11 @@ fn add_fn(
                 continue;
             };
             let n = d.traits[tr.0].defaults.len();
-            if args.len() < n && d.traits[tr.0].defaults[args.len()].is_none() {
+            // An associated type's default is the impl's to take, never the bound's.
+            let first_assoc = n - d.traits[tr.0].assoc.len();
+            if args.len() < n
+                && (args.len() >= first_assoc || d.traits[tr.0].defaults[args.len()].is_none())
+            {
                 let k = generics.len();
                 // An associated type the bound leaves out is named through the bounded
                 // parameter: `G.Arc` of `G: Next<V>` (R08.2.3).

@@ -513,12 +513,15 @@ core-07/view-walks.cp
 core-07/with-prev.cp
 core-07/zip-domain-mismatch.cp
 core-07/zip-takes-a-rev.cp
+core-08/assoc-default-names-trait-param.cp
 core-08/assoc-type-bound-and-alias-where.cp
 core-08/associated-type-default-and-override.cp
 core-08/associated-type.cp
 core-08/blanket-impl.cp
+core-08/bound-only-params-bind-from-the-impl.cp
 core-08/bound-unmet.cp
 core-08/concrete-extension-beats-std-generic.cp
+core-08/default-arg-binds-generic-before-bounds.cp
 core-08/default-method-override-once.cp
 core-08/derive-needs-fields.cp
 core-08/duplicate-impl.cp
@@ -912,6 +915,7 @@ next/k23_ret_closure_param.cp
 next/k24_ret_closure_var_copy.cp
 next/m01_case_return_in_loops.cp
 next/m02_until_eof_empty.cp
+next/n_assoc_02_bound_names_a_defaulted_assoc.cp
 next/n_assoc_type.cp
 next/n_assoc_type_bound_unmet.cp
 next/n_assoc_type_missing.cp
@@ -945,6 +949,7 @@ next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
 next/n_inherent_impl.cp
+next/n_inst_lent_arg_of_a_phantom_param.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
