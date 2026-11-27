@@ -214,12 +214,11 @@ impl<'a> Machine<'a> {
     fn pass(&mut self, args: &'a [Arg<CTy>], fp: usize) -> R<Vec<V>> {
         let mut vals = Vec::with_capacity(args.len());
         for a in args {
+            // Nothing writes a viewed place during the call, so its value is what the callee
+            // would see through the view.
             vals.push(match a {
-                Arg::Value(v) => self.expr(v, fp)?,
-                // Nothing writes a viewed place during the call, so its value is what the
-                // callee would see through the view.
-                Arg::View(p) => self.place(fp, p)?.clone(),
                 Arg::Lend(_) => V::Unit,
+                a => self.arg(a, fp)?,
             });
         }
         for (i, a) in args.iter().enumerate() {
@@ -397,22 +396,30 @@ impl<'a> Machine<'a> {
         self.hand_back(args, fp, back)?;
         Ok(ret)
     }
+    /// An operand's value: a value, or a viewed place's.
+    fn arg(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<V> {
+        match a {
+            Arg::Value(e) => self.expr(e, fp),
+            Arg::View(p) => Ok(self.place(fp, p)?.clone()),
+            Arg::Lend(_) => broken("lent operand"),
+        }
+    }
     fn float(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<f64> {
-        let Arg::Value(e) = a else {
-            return broken("lent F64");
-        };
-        match self.expr(e, fp)? {
+        match self.arg(a, fp)? {
             V::F64(x) => Ok(x),
             _ => broken("an F64 operand of another kind"),
         }
     }
     fn int(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<i64> {
-        let Arg::Value(e) = a else {
-            return broken("lent Int");
-        };
-        match self.expr(e, fp)? {
+        match self.arg(a, fp)? {
             V::Int(i) => Ok(i),
             _ => broken("an Int operand of another kind"),
+        }
+    }
+    fn bool(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<bool> {
+        match self.arg(a, fp)? {
+            V::Bool(b) => Ok(b),
+            _ => broken("a Bool operand of another kind"),
         }
     }
     fn expr(&mut self, e: &'a Expr<CTy>, fp: usize) -> R<V> {
@@ -516,9 +523,7 @@ impl<'a> Machine<'a> {
                         return u64_op(op, a, b);
                     }
                     if x.ty == CTy::F64 {
-                        let (V::F64(a), V::F64(b)) = (self.expr(x, fp)?, self.expr(y, fp)?) else {
-                            return broken("an F64 operand of another kind");
-                        };
+                        let (a, b) = (self.float(&args[0], fp)?, self.float(&args[1], fp)?);
                         return Ok(V::F64(ops::float(op, a, b)?));
                     }
                 }
@@ -526,24 +531,19 @@ impl<'a> Machine<'a> {
                 V::Int(ops::int(op, a, b)?)
             }
             Intr::Neg => match &args[0] {
-                Arg::Value(x) if x.ty == CTy::F64 => match self.expr(x, fp)? {
-                    V::F64(a) => V::F64(ops::neg_float(a)),
-                    _ => return broken("an F64 operand of another kind"),
-                },
+                Arg::Value(x) if x.ty == CTy::F64 => {
+                    V::F64(ops::neg_float(self.float(&args[0], fp)?))
+                }
                 _ => V::Int(ops::neg(self.int(&args[0], fp)?)?),
             },
             Intr::Abs => match &args[0] {
-                Arg::Value(x) if x.ty == CTy::F64 => match self.expr(x, fp)? {
-                    V::F64(a) => V::F64(ops::abs_f64(a)),
-                    _ => return broken("an F64 operand of another kind"),
-                },
+                Arg::Value(x) if x.ty == CTy::F64 => {
+                    V::F64(ops::abs_f64(self.float(&args[0], fp)?))
+                }
                 _ => V::Int(ops::abs(self.int(&args[0], fp)?)?),
             },
             Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below => {
-                let (Arg::Value(a), Arg::Value(b)) = (&args[0], &args[1]) else {
-                    return broken("lent operand");
-                };
-                let (a, b) = (self.expr(a, fp)?, self.expr(b, fp)?);
+                let (a, b) = (self.arg(&args[0], fp)?, self.arg(&args[1], fp)?);
                 if let (V::F64(a), V::F64(b)) = (&a, &b) {
                     return Ok(V::Bool(ops::compare_float(op, *a, *b)?));
                 }
@@ -555,22 +555,11 @@ impl<'a> Machine<'a> {
                 };
                 V::Bool(ops::compare(op, a, b)?)
             }
-            Intr::Not => {
-                let Arg::Value(a) = &args[0] else {
-                    return broken("lent operand");
-                };
-                let V::Bool(b) = self.expr(a, fp)? else {
-                    return broken("not of a non-Bool");
-                };
-                V::Bool(ops::not(b))
-            }
+            Intr::Not => V::Bool(ops::not(self.bool(&args[0], fp)?)),
             Intr::RawEmpty => V::Raw(Rc::new(Store::Any(Vec::new()))),
             Intr::RawNew => {
                 let n = self.int(&args[0], fp)?;
-                let Arg::Value(fill) = &args[1] else {
-                    return broken("lent fill");
-                };
-                let fill = self.expr(fill, fp)?;
+                let fill = self.arg(&args[1], fp)?;
                 let n = ops::storage_size(n)?;
                 V::Raw(Rc::new(match fill {
                     V::Int(x) => Store::Ints(vec![x; n]),
@@ -598,12 +587,7 @@ impl<'a> Machine<'a> {
                 }
             }
             Intr::RawGet => {
-                let r = match &args[0] {
-                    Arg::Value(r) => self.expr(r, fp)?,
-                    Arg::View(p) => self.place(fp, p)?.clone(),
-                    Arg::Lend(_) => return broken("lent storage in a read"),
-                };
-                let V::Raw(r) = r else {
+                let V::Raw(r) = self.arg(&args[0], fp)? else {
                     return broken("read of non-storage");
                 };
                 let i = self.int(&args[1], fp)?;
@@ -613,13 +597,8 @@ impl<'a> Machine<'a> {
                 }
             }
             Intr::Out => {
-                let r = match &args[0] {
-                    Arg::Value(r) => self.expr(r, fp)?,
-                    Arg::View(p) => self.place(fp, p)?.clone(),
-                    Arg::Lend(_) => return broken("lent storage in an output"),
-                };
                 let n = self.int(&args[1], fp)?;
-                let V::Raw(r) = r else {
+                let V::Raw(r) = self.arg(&args[0], fp)? else {
                     return broken("output of non-storage");
                 };
                 let Store::Any(cs) = &*r else {
@@ -635,10 +614,7 @@ impl<'a> Machine<'a> {
             }
             Intr::RawSet => {
                 let i = self.int(&args[1], fp)?;
-                let Arg::Value(x) = &args[2] else {
-                    return broken("lent element");
-                };
-                let x = self.expr(x, fp)?;
+                let x = self.arg(&args[2], fp)?;
                 let Arg::Lend(p) = &args[0] else {
                     return broken("storage written without a lend");
                 };
@@ -662,13 +638,7 @@ impl<'a> Machine<'a> {
             | Intr::CheckVariant
             | Intr::CheckToken
             | Intr::CheckInput => {
-                let Arg::Value(a) = &args[0] else {
-                    return broken("lent operand");
-                };
-                let V::Bool(ok) = self.expr(a, fp)? else {
-                    return broken("a check of a non-Bool");
-                };
-                ops::check(op, ok)?;
+                ops::check(op, self.bool(&args[0], fp)?)?;
                 V::Unit
             }
             Intr::InputLeft => V::Bool(self.input.left()),
@@ -691,10 +661,7 @@ impl<'a> Machine<'a> {
             }
             Intr::ToInt(r) => V::Int(ops::to_int(r, self.float(&args[0], fp)?)?),
             Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth | Intr::BitCeil => {
-                let Arg::Value(a) = &args[0] else {
-                    return broken("lent operand");
-                };
-                let w = match self.expr(a, fp)? {
+                let w = match self.arg(&args[0], fp)? {
                     V::U64(u) => u,
                     V::Int(i) => ops::u64_of_int(i),
                     _ => return broken("a word of another kind"),
@@ -702,37 +669,23 @@ impl<'a> Machine<'a> {
                 V::Int(ops::bit_count(op, w)?)
             }
             Intr::F64Len | Intr::F64Text => {
-                let Arg::Value(a) = &args[0] else {
-                    return broken("lent operand");
-                };
-                let V::F64(x) = self.expr(a, fp)? else {
-                    return broken("an F64 operand of another kind");
-                };
-                let t = ops::f64_text(x, self.int(&args[1], fp)?);
+                let t = ops::f64_text(self.float(&args[0], fp)?, self.int(&args[1], fp)?);
                 match op {
                     Intr::F64Len => V::Int(t.len() as i64),
                     _ => V::Raw(Rc::new(Store::Any(t.bytes().map(V::Char).collect()))),
                 }
             }
             Intr::FromU64 => {
-                let Arg::Value(a) = &args[0] else {
-                    return broken("lent operand");
-                };
-                let V::U64(u) = self.expr(a, fp)? else {
+                let V::U64(u) = self.arg(&args[0], fp)? else {
                     return broken("a U64 operand of another kind");
                 };
                 V::Int(ops::int_of_u64(u)?)
             }
             Intr::CharOf => V::Char(ops::char_of(self.int(&args[0], fp)?)?),
-            Intr::CodeOf => {
-                let Arg::Value(c) = &args[0] else {
-                    return broken("lent Char");
-                };
-                match self.expr(c, fp)? {
-                    V::Char(c) => V::Int(ops::code_of(c)),
-                    _ => return broken("the code of a non-Char"),
-                }
-            }
+            Intr::CodeOf => match self.arg(&args[0], fp)? {
+                V::Char(c) => V::Int(ops::code_of(c)),
+                _ => return broken("the code of a non-Char"),
+            },
             Intr::ReadInt => {
                 let t = self.input.token();
                 V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)
