@@ -670,7 +670,7 @@ pub struct Diff<R, C, T: Add + Sub>:
 /// cursor through `D` in `order` in \(O(1)\) per position. \(O(\lvert D \rvert)\) space.
 pub struct SweepAdd<D, T: Add + Sub>:
     d: [D.cuts]T
-    cur: T
+    var cur: T
     pub rev: Bool
 
     /// Create an all-zero online sweep accumulator in `order` (`Forward` or `Reverse`), with no

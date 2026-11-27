@@ -21,7 +21,7 @@ fn falling() -> LazyTreap<Int, Slide> = LazyTreap<Int, Slide>(
 /// A concave function on the integers `lo..=hi`: its value at `lo` and its slopes in falling order.
 /// Law: every operation keeps it concave. \(O(\log n)\) expected per slope update, for n slopes;
 /// reading a value walks the slopes.
-pub struct Concave(start: Int, base: Int):
+pub struct Concave(var start: Int, var base: Int):
     slopes: LazyTreap<Int, Slide>
 
     /// The function defined on the single point `d`, with `f(d) = 0`.

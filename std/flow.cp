@@ -32,7 +32,7 @@ pub struct FlowGraph<V>:
     to: List<V>
     left: List<Int>
     cap0: List<Int>
-    cut_from: ?V
+    var cut_from: ?V
 
     /// An empty flow network over the vertices `V`.
     ///
@@ -1890,7 +1890,7 @@ pub struct Matching<L, R>:
     adj: [L]List<R>
     pub mate: [L]?R
     pub back: [R]?L
-    pub size: Len
+    pub var size: Len
 
     /// An online bipartite matching between `L` and `R` with no edges and nothing matched.
     ///

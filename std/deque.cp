@@ -331,9 +331,9 @@ pub struct Deque<T>:
 
 /// Doubly-linked list supporting \(O(1)\) end pushes/pops and splicing (`splice_back`, `splice_front`) that moves only the shorter list.
 pub struct LinkedList<T>:
-    _len: Int
-    head: Int
-    tail: Int
+    var _len: Int
+    var head: Int
+    var tail: Int
     nx: List<Int>
     pv: List<Int>
     val: List<T>

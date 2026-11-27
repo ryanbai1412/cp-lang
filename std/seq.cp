@@ -3057,7 +3057,7 @@ pub fn permutations<S: Indexed<D, T>, D: Domain, T>(self: S, k: ?Int = None) -> 
             used[next - 1] = false
 
 /// \(O(1)\). Steerable item yielded by `subsequences` (decision 126, W6).
-pub struct SubseqStep<T>(pub items: List<T>, pruned: Bool = false):
+pub struct SubseqStep<T>(pub items: List<T>, var pruned: Bool = false):
     /// \(O(1)\). Skip extending this prefix in the `subsequences` search tree.
     ///
     /// cost: \(O(1)\)

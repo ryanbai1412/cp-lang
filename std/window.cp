@@ -258,7 +258,7 @@ pub struct Undoing<S: Undo, T>(pub state: S, add: (mut S, T) -> ()):
     items: List<T> = []
     is_b: List<Bool> = []
     marks: List<Mark> = []
-    a_cnt: Int = 0
+    var a_cnt: Int = 0
 
     fn push_entry(mut self, x: T, b: Bool):
         marks.push(state.mark())
@@ -341,7 +341,7 @@ pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = U
 /// expands before shrinking. \(O(\lvert \mathit{change} \rvert)\) pushes and pops per move.
 pub struct Sweep<D, S>(pub state: S):
     lo: Int
-    hi: Int
+    var hi: Int
 
     /// A sweep over `state`, starting empty (or at `start`). Empty means the range is empty at the
     /// first cut of `D`; with `start`, each position of `start` is pushed in increasing order.

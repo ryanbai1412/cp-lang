@@ -560,7 +560,7 @@ fn on_min_level(i: Int) -> Bool:
 /// Double-ended priority queue (min-max heap).
 /// `first` and `last` are \(O(1)\); `push`, `pop_first`, and `pop_last` are \(O(\log n)\).
 pub struct MinMaxHeap<T: Ord>:
-    _xs: List<T>
+    var _xs: List<T>
     lt: ?((T, T) -> Bool)
 
     /// Create an empty `MinMaxHeap<T>`, optionally ordered by key extractor `by:` (W7).
@@ -993,9 +993,9 @@ pub struct MeldHeaps<T: Ord>:
     _nodes: List<MeldNode<T>> = []
     // Per-node pending offsets, parallel to `_nodes`; empty until the first `add_all`.
     _adds: List<?T> = []
-    _stamps: Int = 0
+    var _stamps: Int = 0
     // Head of the free nodes, linked through `l`; -1 when none is free.
-    _free: -1..=2_147_483_647 = -1
+    var _free: -1..=2_147_483_647 = -1
     lt: ?((T, T) -> Bool) = None
 
     /// An empty pool, optionally ordered by key extractor `by:`.

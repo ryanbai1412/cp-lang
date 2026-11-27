@@ -18,7 +18,7 @@ const MAX_GEN = 2_000_000_000
 pub struct Marks<D>:
     stamp: [D]0..=2_000_000_000
     var gen: Int
-    cnt: Int
+    var cnt: Int
 
     /// An empty mark set over `D`, with its stamp array allocated once.
     ///
@@ -107,7 +107,7 @@ pub struct MarkMap<D, T>:
     vals: [D]T
     default_val: T
     gen: Int
-    cnt: Int
+    var cnt: Int
 
     /// An empty map over `D`. `default_val` fills the value array and is never returned: an absent
     /// key reads as `None`.
@@ -294,7 +294,7 @@ impl<K> Contains<K> for Interner<K>:
 /// Briggs-Torczon sparse set over domain `D`.
 /// \(O(1)\) `add`, `remove`, `contains`, `clear` AND O(`len`) iteration over active elements.
 pub struct SparseSet<D>:
-    _len: Int
+    var _len: Int
     dense: List<D>
     pos: [D]Int
 
@@ -392,7 +392,7 @@ pub struct Arena<T>:
     // Freed slots, reused last-freed first.
     _free: List<0..=2_000_000_000> = []
     // Whether each slot is freed; empty until the first `free`.
-    _dead: List<Bool> = []
+    var _dead: List<Bool> = []
 
     /// An empty arena with room for `cap` nodes before it reallocates.
     ///

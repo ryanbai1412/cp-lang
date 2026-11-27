@@ -30,7 +30,7 @@ pub fn shuffle<S: IndexedMut>(mut a: S):
 
 /// A seeded random source, for a run you can replay: `Rng.new(seed)` gives the same stream each
 /// time, and `int`, `float`, `chance`, `pick`, `shuffle`, `perm` and `sample` draw from it.
-pub struct Rng(s: U64):
+pub struct Rng(var s: U64):
     /// A deterministic stream of random bits seeded by `seed`.
     ///
     /// The state is `U64(seed)` (two's complement for negative seeds) and each `next()` is one

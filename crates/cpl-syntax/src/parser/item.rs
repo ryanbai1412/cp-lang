@@ -553,6 +553,7 @@ impl<'a> Parser<'a> {
         if header {
             fields = self.comma_list(T::RParen, "the struct's fields", |p| {
                 let public = p.eat(T::Pub);
+                let mutable = p.eat(T::Var);
                 let name = p.expect_name("a field name");
                 p.expect_token(T::Colon, "`:` and the field's type");
                 let ty = p.ty();
@@ -561,7 +562,7 @@ impl<'a> Parser<'a> {
                     name,
                     ty,
                     default,
-                    mutable: false,
+                    mutable,
                     cached: false,
                     bits: false,
                     public,

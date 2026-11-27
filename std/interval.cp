@@ -228,7 +228,7 @@ pub struct IntervalMap<D, T>:
 /// `IntervalContainer`). Maintains total `covered` length in \(O(1)\). \(O(\mathit{runs})\) space.
 pub struct IntervalSet<D>:
     segs: Map<Int, Int>
-    total: Int
+    var total: Int
 
     /// An empty set of positions of `D`.
     ///

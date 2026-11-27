@@ -1014,7 +1014,7 @@ pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>:
             i -= 1
 
 /// One state reached by `backtrack`.
-pub struct Step<S>(pub state: S, pub depth: Int, pruned: Bool = false):
+pub struct Step<S>(pub state: S, pub depth: Int, var pruned: Bool = false):
     /// Skip every state below this one: `backtrack` does not call `next` on it. Has effect only on
     /// the step just yielded, before the `for` body continues.
     ///

@@ -3745,7 +3745,7 @@ pub struct Functional<V>:
 
 /// \(O(\log n)\) amortized per edge: 2-edge-connectivity under edge insertions.
 pub struct IncrementalBridges<V>:
-    pub bridges: Int
+    pub var bridges: Int
     _par: List<?Int>
     _cc: List<Int>
     _cc_sz: List<Int>

@@ -498,7 +498,7 @@ pub struct HistoricBeatsSegTree<D>:
     mn2: List<Int> = []
     mnc: List<Int> = []
     tg: List<Int> = []
-    ver: Int = 0
+    var ver: Int = 0
 
     /// A Beats tree that also tracks history, holding `a`, or `fill` everywhere, or zeros.
     ///

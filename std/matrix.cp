@@ -24,7 +24,7 @@ const WIEDEMANN_TRIES = 32
 pub struct Mat<T>:
     pub rows: Len
     pub cols: Len
-    cells: List<T>
+    var cells: List<T>
     ring: ?Ring<T> = None
     /// Under a [`TropicalProduct`] ring, the entries a product left in a std-owned sentinel form,
     /// then the largest `|entry|`; `cells` is then `[]` until an entry is set; empty otherwise.
@@ -921,7 +921,7 @@ impl TropicalProduct for Int:
 /// Every operation is \(O(W)\) where W <= 63 (`merge` is \(O(W \cdot \mathit{rank})\)).
 pub struct XorBasis:
     basis: List<Int>
-    size: Len
+    var size: Len
 
     /// An empty basis of rank 0, whose span is `{0}`.
     ///

@@ -503,7 +503,7 @@ pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 pub struct OnlineHull:
     up: HullChain
     lo: HullChain
-    pub area: Int
+    pub var area: Int
 
     /// An empty online convex hull.
     ///
@@ -2784,7 +2784,7 @@ pub struct PointSet:
     hi: List<Int>
     size: Len
     alive: List<Bool>
-    live: Int
+    var live: Int
 
     /// Build the set holding every point of `pts`; point `i` is `pts[i]`.
     ///

@@ -564,8 +564,8 @@ pub struct Bitset<D>:
 /// Single-bit ops are \(O(1)\); word-parallel ops are \(O(\mathit{cap} / 64)\).
 pub struct DynBitset:
     _w: List<U64>
-    _cap: Int
-    _n: Int
+    var _cap: Int
+    var _n: Int
 
     fn recount(mut self):
         _n = 0
@@ -954,7 +954,7 @@ impl Contains<Int> for DynBitset:
 /// bits). \(O(\mathit{bits})\) per op.
 pub struct XorTrie:
     _bits: Int
-    _mask: Int
+    var _mask: Int
     _c0: List<Int>
     _c1: List<Int>
     _cnt: List<Int>
