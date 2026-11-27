@@ -1,7 +1,5 @@
 core-01/collection-literals.cp
 core-01/compound-assign-key-evaluated-once.cp
-core-01/comprehension-if-let-binds-later-clauses.cp
-core-01/comprehension-several-for-clauses.cp
 core-01/generator-arg-free-fold.cp
 core-01/let-else-generic-std-return.cp
 core-01/local-items.cp
@@ -27,11 +25,8 @@ core-03/spec-block-widths.cp
 core-04/a5-assign-into-range.cp
 core-04/a6-in-place-verbs.cp
 core-04/a7-consume-front.cp
-core-04/array-axes-plain-ranges.cp
 core-04/b1-rekey-generic-table.cp
 core-04/bare-dotdot-in-index.cp
-core-04/char-domain-word-read-outside-traps.cp
-core-04/char-domain-word-read.cp
 core-04/char-list-argument-is-str.cp
 core-04/declared-tuple-of-ranges-builds-pieces.cp
 core-04/domain-subsets-array-and-loop.cp
@@ -41,7 +36,6 @@ core-04/f2-sub-rectangle.cp
 core-04/grid-col-view-keys-are-rows.cp
 core-04/grid-cols-of-one-row.cp
 core-04/grid-row-binding-is-a-view.cp
-core-04/grid-row-view-keys-are-columns.cp
 core-04/grid-row-written-writes-the-grid.cp
 core-04/grid-rows-cols-views.cp
 core-04/int-array-slice-keeps-keys.cp
@@ -52,7 +46,6 @@ core-04/library-domain-sized-per-instance.cp
 core-04/library-domain-walk-queries.cp
 core-04/pair-symmetric.cp
 core-04/piece-into-fold.cp
-core-04/product-alias-binds-generic-domain.cp
 core-04/product-cell-keeps-its-ord-in-a-generic-body.cp
 core-04/product-domain-grid-reads-and-indexes.cp
 core-04/range-factor-product-domain.cp
@@ -100,7 +93,6 @@ core-07/a-list-joins-a-struct-view-of-its-element.cp
 core-07/and-or-operator-values-over-bools.cp
 core-07/bsearch-on-a-coalesced-map-value-is-the-list-one.cp
 core-07/cut-after-and-before-follow-walk-order.cp
-core-07/cut-keyed-table-keys-are-cuts.cp
 core-07/fold-of-and-or-over-empty-uses-identity.cp
 core-07/forwarding-generator-stops-early.cp
 core-07/generator-with-helper-closures-stops-early.cp
@@ -151,8 +143,6 @@ core-08/alias-where-binds-its-parameter-from-the-arc.cp
 core-08/bound-test-takes-trait-args.cp
 core-08/chained-bounds-bind-struct-params.cp
 core-08/concrete-self-beats-bounded-generic.cp
-core-08/const-param-arithmetic.cp
-core-08/const-param.cp
 core-08/defaulted-op-param-folds-by-its-impl.cp
 core-08/extension-concrete-receiver-beats-generic-one.cp
 core-08/field-trait.cp
@@ -209,11 +199,9 @@ core-12/a-call-binds-what-a-bound-names.cp
 core-12/a-call-bound-result-is-checked.cp
 core-12/generator-not-bidir.cp
 core-12/generic-indexed-walks-with-nth.cp
-core-12/impl-head-bound-names-the-element.cp
 core-12/index-set-calls-set.cp
 core-12/intrinsic-abs-of-i128-min-traps.cp
 core-12/intrinsic-math-matches-on-both-engines.cp
-core-12/intrinsic-popcount-counts-a-subset.cp
 core-12/row-bound-reads-named-field.cp
 core-12/sort-generator.cp
 core-13/recursive-fn-cold-tail-sorts-by-key.cp
@@ -221,8 +209,6 @@ matrix/index/compress--prev.cp
 matrix/index/pair--fill.cp
 matrix/index/pair--find.cp
 matrix/index/pair--min_by.cp
-matrix/index/product--memo.cp
-matrix/index/product--print.cp
 matrix/index/subset--fill.cp
 matrix/index/subset--find.cp
 matrix/index/subset--min_by.cp
@@ -262,8 +248,6 @@ std-bag/sortedmap-matches-array.cp
 std-beats/historic-beats-matches-brute.cp
 std-beats/queries-read-without-pushing.cp
 std-bitset/bit-trie.cp
-std-bitset/union-shifted-keeps-len-exact.cp
-std-bitset/with-without.cp
 std-compress/wrapper-fn-fresh-domain.cp
 std-derive/structural-hash-comes-from-parts-and-impls.cp
 std-dp/dp-bodies.cp
@@ -354,7 +338,6 @@ std-heap/meld-heaps-fresh-per-test-case.cp
 std-heap/meld-heaps-reuse-popped-nodes.cp
 std-heap/meld-heaps-share-a-pool.cp
 std-heap/meld-heaps-skew-spine-stays-iterative.cp
-std-heap/min-heap-empty-pop.cp
 std-heap/settle-matches-brute.cp
 std-interval/sparse-interval-map-matches-array.cp
 std-journeys/hash-map.cp
@@ -380,10 +363,8 @@ std-matrix/sparse-wiedemann-and-simplex-match-dense.cp
 std-matrix/sum-adds-under-its-semiring.cp
 std-mod/arith.cp
 std-mod/log-inv-all.cp
-std-mod/mod-inv-all-empty.cp
 std-models/algebra.cp
 std-models/augbag.cp
-std-models/bag.cp
 std-models/centroids.cp
 std-models/counter.cp
 std-models/dp-opt.cp
@@ -550,11 +531,8 @@ std-strings/find-all-domain-keys.cp
 std-strings/split.cp
 std-strings/suffix-array.cp
 std-strings/trie-nodes-size-a-per-node-table.cp
-std-subset/empty-braces-is-empty-subset.cp
 std-subset/empty-subset-is-named.cp
 std-subset/enum-subsets-is-a-domain.cp
-std-subset/for-walks-members.cp
-std-subset/generic-domain-subsets-are-std-subsets.cp
 std-subset/of-takes-any-seq-of-members.cp
 std-subset/subsets-is-the-member-std-declares.cp
 std-tree/arcs-keep-edge-fields.cp
@@ -602,8 +580,6 @@ traits/Show/LineContainer--show.cp
 traits/Show/MonotoneHull--show.cp
 traits/Show/Only--show.cp
 traits/Show/Paths--show.cp
-traits/Show/SparseTable--show.cp
-traits/Show/SparseTable2D--show.cp
 traits/Show/SweepAdd--show.cp
 traits/Sub/Mat--sub.cp
 traits/Track/Counter--pop.cp
