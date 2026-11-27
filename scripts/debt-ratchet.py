@@ -1675,8 +1675,10 @@ def wrong_to_refused(root: Path, ref: str) -> list[str]:
 def regressed_named(root: Path, ref: str) -> set[str]:
     """Case ids a list-regeneration commit since `ref` names in a `Regressed: <case> <sha>`
     trailer, with `sha` already on `ref`: a run that finds a regression records it, so the
-    lists never hold one back. A commit touching anything but the lists names nothing."""
+    lists never hold one back. A commit touching anything but the lists (and plan/END-STATE.md,
+    which `scripts/end-state.py` writes from them) names nothing."""
     lists = {f"{NEXT_TESTS}/{n}" for n in ("passing.txt", "wrong.tsv", "masked.txt", "lowered.txt", "std-unchecked.tsv")}
+    lists.add("plan/END-STATE.md")
     base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
     given = []
     for sha in _git(root, "rev-list", f"{base}..HEAD"):

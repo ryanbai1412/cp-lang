@@ -2377,6 +2377,8 @@ class DebtRatchetTest(unittest.TestCase):
             git("commit", "-qm", "factory: lists and more", "-m", f"Regressed: core-01/ok {cause}")
             self.assertEqual(len(dr.set_swaps(root, "base")), 4)
             (tests / "masked.txt").write_text("core-01/rej.cp\n")
+            (root / "plan").mkdir()
+            (root / "plan/END-STATE.md").write_text("written from the lists\n")
             git("add", "-A")
             git("commit", "-qm", "factory: regenerate", "-m",
                 f"Regressed: core-01/eq.cp {cause}\nRegressed: core-01/acc.cp {cause}\nRegressed: core-01/rej.cp 0123456789ab")
