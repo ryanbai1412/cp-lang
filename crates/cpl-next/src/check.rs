@@ -13,6 +13,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 mod expr;
+mod free;
+pub use free::{free_vars, group_free};
 mod index;
 mod lambda;
 mod member;

@@ -53,7 +53,9 @@ impl Cx<'_> {
             kind => return block(pre, TExpr { kind, ..call }),
         };
         let mut hold = |c: &mut Self, a: TArg| match a {
-            TArg::Value(v) if !matches!(v.kind, TK::Var(_)) || crate::own::plain(c.d, &v.ty, 0) => {
+            TArg::Value(v)
+                if !matches!(v.kind, TK::Var(_)) || crate::plain::plain(c.d, &v.ty, 0) =>
+            {
                 let ty = v.ty.clone();
                 let t = c.bind("$arg", ty.clone());
                 pre.push(TStmt::Let(t, v));

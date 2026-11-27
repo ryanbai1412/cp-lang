@@ -336,7 +336,7 @@ impl Cx<'_> {
                 continue;
             };
             let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
-            crate::lower::free_vars(body, &mut used, &mut bound);
+            free_vars(body, &mut used, &mut bound);
             let own = |v: &VarRef| matches!(v, VarRef::Local(l) | VarRef::Global(l) if params.contains(l));
             let free = used.difference(&bound).filter(|v| !own(v)).copied();
             caps.insert(*id, free.collect());

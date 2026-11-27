@@ -8,6 +8,7 @@
 use crate::check::*;
 use crate::decls::{Decls, Owner, SelfMode};
 use crate::diag::Msg;
+use crate::plain::{plain, plain_in};
 use crate::ty::*;
 use cpl_diag::{codes, Code, Span};
 use std::collections::{BTreeSet, HashMap};
@@ -77,42 +78,12 @@ struct Reach {
     keeps: BTreeSet<usize>,
 }
 
-/// R1: no part of the value lives on the heap, so using it is a copy.
-pub fn plain(d: &Decls, t: &Ty, depth: usize) -> bool {
-    plain_in(d, t, depth, &[])
-}
-/// Whether `t` is copied, not moved, where the type parameters `doms` are domains (R04.2).
-fn plain_in(d: &Decls, t: &Ty, depth: usize, doms: &[usize]) -> bool {
-    match t {
-        Ty::Param(i) => doms.contains(i),
-        Ty::Int
-        | Ty::Range(..)
-        | Ty::RangeOf(_)
-        | Ty::Bool
-        | Ty::Char
-        | Ty::U64
-        | Ty::F64
-        | Ty::Unit
-        | Ty::Dom(_)
-        | Ty::Fn(..)
-        | Ty::Clo(_) => true,
-        Ty::Struct(id, targs, sets) if depth < 8 => {
-            let s = Subst { tys: targs, sets };
-            d.s(*id)
-                .fields
-                .iter()
-                .all(|(_, ft)| plain_in(d, &s.ty(ft), depth + 1, doms))
-        }
-        _ => false,
-    }
-}
-
 struct Cx<'a> {
     d: &'a Decls,
     t: &'a Typed,
     fns: HashMap<FnId, Fx>,
     lams: HashMap<LambdaId, Fx>,
-    /// What each nested fn reads from around it, its group's together (`lower::group_free`).
+    /// What each nested fn reads from around it, its group's together (`check::group_free`).
     group_free: HashMap<LambdaId, BTreeSet<VarRef>>,
     /// The fn being walked; `None` for the file body.
     cur: Option<FnId>,
@@ -351,7 +322,7 @@ impl Cx<'_> {
         match &e.kind {
             TK::Lambda { id, params, body } => {
                 let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
-                crate::lower::free_vars(body, &mut used, &mut bound);
+                free_vars(body, &mut used, &mut bound);
                 used.extend(self.group_free.get(id).into_iter().flatten().copied());
                 for v in used.difference(&bound) {
                     let by_ref = match v {
@@ -1207,7 +1178,7 @@ impl Cx<'_> {
             TK::Block(ss, tail) => {
                 self.next += 1;
                 self.scopes.push(self.next);
-                let groups = crate::lower::group_free(&self.t.lambdas, ss);
+                let groups = group_free(&self.t.lambdas, ss);
                 self.group_free.extend(groups.clone());
                 ss.iter().for_each(|s| self.stmt(s, fx));
                 // Calling one fn of a group may run any of them.
@@ -1251,7 +1222,7 @@ impl Cx<'_> {
                 }
                 if let TK::Lambda { body, .. } = &inner.kind {
                     let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
-                    crate::lower::free_vars(body, &mut used, &mut bound);
+                    free_vars(body, &mut used, &mut bound);
                     let roots: BTreeSet<Root> =
                         used.difference(&bound).map(|u| self.root(*u)).collect();
                     // What a captured view lends stays lent while the closure lives (R05.7.1);
