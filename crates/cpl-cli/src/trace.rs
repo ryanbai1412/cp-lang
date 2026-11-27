@@ -152,7 +152,7 @@ pub fn run_report(
 ) -> String {
     let mut out = cpl_json::write_with(|w| {
         w.object().key("values").array();
-        for live in &recording.lives {
+        for live in recording.lives() {
             w.object().key("line").int(live.line);
             w.key("name")
                 .str(&live.name)

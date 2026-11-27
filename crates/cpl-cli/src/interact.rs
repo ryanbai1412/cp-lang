@@ -304,10 +304,11 @@ pub fn last_read(
         &mut std::io::sink(),
         Some(config),
     );
-    let assigned = observed.recording?.assigned;
+    let recording = observed.recording?;
+    let assigned = recording.assigned();
     let mut before = 0;
     let mut last = None;
-    for a in &assigned {
+    for a in assigned {
         if a.read > before {
             last = Some((before, a));
             before = a.read;

@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::session::{Checks, Program, Session};
 
+pub use crate::trace::Recording;
 pub use cpl_interp::profile::Profile as RunProfile;
-pub use cpl_interp::trace::Recording;
 
 /// How a run is recorded.
 #[derive(Clone, Debug, Default)]
@@ -265,7 +265,7 @@ impl From<cpl_interp::Observed> for Outcome {
         Outcome {
             trap: observed.trap.map(Trap),
             debug: observed.debug,
-            recording: observed.recording,
+            recording: observed.recording.map(Recording),
             profile: observed.profile,
         }
     }

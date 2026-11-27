@@ -370,7 +370,7 @@ impl Session {
                         }
                     } else if reference == 2 {
                         for (var_idx, val_json) in &step.values {
-                            let var = &self.recording.vars[*var_idx];
+                            let var = &self.recording.vars()[*var_idx];
                             if var.id == "stdout" {
                                 continue;
                             }
@@ -585,9 +585,9 @@ impl Session {
                 // goes on past its recording; a cut run's last step stopped
                 // partway, so it is not kept. Runs compare over what both
                 // keep, unless the shorter one ended there: that is a change.
-                let open = |run: &Recording, cut: bool| cut || run.truncated;
+                let open = |run: &Recording, cut: bool| cut || run.truncated();
                 let kept =
-                    |run: &Recording, cut: bool| run.len() - usize::from(cut && !run.truncated);
+                    |run: &Recording, cut: bool| run.len() - usize::from(cut && !run.truncated());
                 let (was, now) = (
                     kept(&before, was_stopped),
                     kept(&self.recording, self.stopped),
@@ -611,7 +611,7 @@ impl Session {
                     // Past the first window, what was on screen is compared too.
                     self.change = self.change.take().or_else(|| {
                         let n = seen.len().min(self.recording.len());
-                        let change = match seen.truncated && self.recording.truncated {
+                        let change = match seen.truncated() && self.recording.truncated() {
                             true => first_change_in(&seen, 0..n, &self.recording, 0..n),
                             false => first_change(&seen, &self.recording),
                         };
@@ -672,19 +672,19 @@ impl Session {
                     Some(name) => {
                         let named = |c: &&cpl_facade::today::trace::Call| &c.name == name;
                         let open = recorded
-                            .calls
+                            .calls()
                             .iter()
                             .filter(named)
                             .filter(|c| c.entry <= step && step < c.exit)
                             .max_by_key(|c| c.depth);
                         let done = || {
                             recorded
-                                .calls
+                                .calls()
                                 .iter()
                                 .filter(named)
                                 .rfind(|c| c.exit <= step)
                         };
-                        let first = || recorded.calls.iter().find(named);
+                        let first = || recorded.calls().iter().find(named);
                         open.or_else(done)
                             .or_else(first)
                             .cloned()
@@ -799,7 +799,7 @@ impl Session {
             [cpl_facade::OUT_OF_TIME.text(), cpl_facade::CANCELLED.text()].contains(&t.message())
         });
         self.stopped = !ended;
-        self.pager = (self.recording.truncated && ended).then(|| {
+        self.pager = (self.recording.truncated() && ended).then(|| {
             Replay::start(
                 compiled.program.clone(),
                 self.input.clone(),
@@ -868,7 +868,7 @@ impl Session {
 
     /// Whether step `i` of `recording` is the run's last.
     fn is_last(&self, i: usize) -> bool {
-        i + 1 == self.recording.len() && !(self.recording.truncated && self.pager.is_some())
+        i + 1 == self.recording.len() && !(self.recording.truncated() && self.pager.is_some())
     }
 
     /// Whether step `i` of `recording` is where the run trapped.
@@ -893,7 +893,7 @@ impl Session {
         };
         match pager.window(config).recording {
             Some(rec) if !rec.is_empty() => {
-                (self.base, self.recording) = (rec.skipped, rec);
+                (self.base, self.recording) = (rec.skipped(), rec);
                 true
             }
             _ => false,
@@ -903,7 +903,7 @@ impl Session {
     /// Moves on to the steps after `recording`, standing at the first.
     fn page_forward(&mut self) -> bool {
         let from = self.base + self.recording.len();
-        let turned = self.recording.truncated && self.load(from, self.page());
+        let turned = self.recording.truncated() && self.load(from, self.page());
         if turned {
             self.cursor = 0;
         }
@@ -929,7 +929,7 @@ impl Session {
             from_step: Some(usize::MAX),
             ..self.config.clone()
         });
-        let Some(steps) = counted.recording.map(|rec| rec.skipped) else {
+        let Some(steps) = counted.recording.map(|rec| rec.skipped()) else {
             return false;
         };
         let turned = self.load(steps.saturating_sub(self.page()), self.page());
@@ -960,7 +960,7 @@ impl Session {
             .values
             .iter()
             .rev()
-            .map(|(i, _)| &self.recording.vars[*i])
+            .map(|(i, _)| &self.recording.vars()[*i])
             .find(|var| !local && var.name == expr)
             .map_or_else(String::new, |var| var.ty.clone());
         Some((shown(&valued.json), ty))
@@ -980,7 +980,7 @@ impl Session {
             .ok_or("nothing is recorded here")?;
         let mut names = BTreeMap::new();
         for (index, value) in &step.values {
-            let var = &self.recording.vars[*index];
+            let var = &self.recording.vars()[*index];
             let labels = var
                 .extra
                 .iter()

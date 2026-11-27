@@ -1453,7 +1453,7 @@ fn observe_file(
         }
         let view = run_view::view(
             run_view::sample_name(args.sample, args.input),
-            &recording.lives,
+            recording.lives(),
             panel,
             diagnostic
                 .as_ref()

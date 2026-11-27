@@ -148,7 +148,10 @@ fn run_one(compiled: &Compiled, name: &str, input: &[u8], expected: Option<Strin
         expected,
         differs,
         trap: observed.trap,
-        lives: observed.recording.map(|r| r.lives).unwrap_or_default(),
+        lives: observed
+            .recording
+            .map(|r| r.lives().to_vec())
+            .unwrap_or_default(),
     }
 }
 

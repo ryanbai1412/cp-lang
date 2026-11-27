@@ -31,7 +31,45 @@ pub mod trace {
     pub fn trap_config(source: &str) -> TraceConfig {
         cpl_interp::trace::trap_config(source).into()
     }
-    pub use crate::{Divergence, Stage};
+    pub use crate::{Divergence, Recording, Stage};
+
+    /// The trace document of a run, beside its brute's when there is one.
+    pub fn document(
+        title: &str,
+        description: &str,
+        file: &str,
+        source: &str,
+        fast: (&str, &Recording),
+        slow: Option<(&str, &Recording)>,
+    ) -> String {
+        let slow = slow.map(|(name, r)| (name, &r.0));
+        cpl_interp::trace::document(title, description, file, source, (fast.0, &fast.1 .0), slow)
+    }
+
+    /// The first step where `after` differs from `before`.
+    pub fn first_change(before: &Recording, after: &Recording) -> Option<Change> {
+        cpl_interp::trace::first_change(&before.0, &after.0)
+    }
+
+    /// [`first_change`] within the steps `old` of `before` and `new` of `after`.
+    pub fn first_change_in(
+        before: &Recording,
+        old: std::ops::Range<usize>,
+        after: &Recording,
+        new: std::ops::Range<usize>,
+    ) -> Option<Change> {
+        cpl_interp::trace::first_change_in(&before.0, old, &after.0, new)
+    }
+
+    /// Each variable `step` names, with its value.
+    pub fn named_values(rec: &Recording, step: &Step) -> std::collections::HashMap<String, String> {
+        cpl_interp::trace::named_values(&rec.0, step)
+    }
+
+    /// The locals where a trap stopped the run, as `cpl run` names them.
+    pub fn trap_locals(recording: &Recording, source: &str, at: &str) -> Option<String> {
+        cpl_interp::trace::trap_locals(&recording.0, source, at)
+    }
     pub use cpl_interp::trace::*;
 
     /// Where a solution and its brute first part ways on one input.
@@ -40,22 +78,22 @@ pub mod trace {
         fast: &Recording,
         slow: &Recording,
     ) -> Option<Divergence> {
-        cpl_interp::trace::explain_divergence(source, fast, slow).map(Into::into)
+        cpl_interp::trace::explain_divergence(source, &fast.0, &slow.0).map(Into::into)
     }
 
     /// Where a solution that never finishes goes round.
     pub fn stuck_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
-        cpl_interp::trace::stuck_divergence(source, fast).map(Into::into)
+        cpl_interp::trace::stuck_divergence(source, &fast.0).map(Into::into)
     }
 
     /// The solution's last answer, when it is the line that differs.
     pub fn answered_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
-        cpl_interp::trace::answered_divergence(source, fast).map(Into::into)
+        cpl_interp::trace::answered_divergence(source, &fast.0).map(Into::into)
     }
 
     /// The stages a solution and its brute both name, side by side.
     pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
-        cpl_interp::trace::stages(fast, slow)
+        cpl_interp::trace::stages(&fast.0, &slow.0)
             .into_iter()
             .map(Into::into)
             .collect()
@@ -152,7 +190,12 @@ pub mod trace {
 
 /// One call of a recorded run, run again with its fn edited.
 pub mod replay {
-    pub use cpl_interp::replay::{call_at, Effect, Replay};
+    pub use cpl_interp::replay::{Effect, Replay};
+
+    /// The call running at `step`, `frame` calls out from the innermost.
+    pub fn call_at(recorded: &Recording, step: usize, frame: usize) -> Result<Call, String> {
+        cpl_interp::replay::call_at(&recorded.0, step, frame)
+    }
 
     use crate::{Limits, Program, Recording, Stop, TraceConfig};
     use cpl_interp::trace::Call;
@@ -169,7 +212,7 @@ pub mod replay {
     impl<'a> Rerun<'a> {
         fn today(&self) -> cpl_interp::replay::Rerun<'a> {
             cpl_interp::replay::Rerun {
-                recorded: self.recorded,
+                recorded: &self.recorded.0,
                 original: &self.original.ir,
                 edited: &self.edited.ir,
                 input: self.input,

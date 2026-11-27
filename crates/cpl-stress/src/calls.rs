@@ -21,10 +21,10 @@ pub fn first_call_divergence(
             .position(|line| line.trim_start().starts_with(&head)))
         .map_or(0, |at| at as u32 + 1)
     };
-    let wrong: Vec<_> = (fast.calls.iter().enumerate())
+    let wrong: Vec<_> = (fast.calls().iter().enumerate())
         .filter_map(|(at, ours)| {
             let (_, alt) = alts.iter().find(|(part, _)| *part == ours.name)?;
-            let theirs = (slow.calls.iter())
+            let theirs = (slow.calls().iter())
                 .find(|call| call.name == ours.name && call.args == ours.args)?;
             match (&ours.returned, &theirs.returned) {
                 (Some(a), Some(b)) if a != b => Some((at, ours, alt, a, b)),
@@ -34,10 +34,13 @@ pub fn first_call_divergence(
         .collect();
     // The calls made inside a call follow it, deeper than it: they end
     // where a call no deeper starts.
-    let mut ends = vec![fast.calls.len(); fast.calls.len()];
+    let mut ends = vec![fast.calls().len(); fast.calls().len()];
     let mut open: Vec<usize> = Vec::new();
-    for (at, call) in fast.calls.iter().enumerate() {
-        while let Some(&o) = open.last().filter(|&&o| fast.calls[o].depth >= call.depth) {
+    for (at, call) in fast.calls().iter().enumerate() {
+        while let Some(&o) = open
+            .last()
+            .filter(|&&o| fast.calls()[o].depth >= call.depth)
+        {
             ends[o] = at;
             open.pop();
         }
@@ -47,7 +50,7 @@ pub fn first_call_divergence(
         let next_wrong = wrong.get(k + 1).map_or(usize::MAX, |(other, ..)| *other);
         (next_wrong >= ends[entry.0]).then_some(entry)
     })?;
-    let nested: Vec<_> = (fast.calls[at + 1..ends[at]].iter())
+    let nested: Vec<_> = (fast.calls()[at + 1..ends[at]].iter())
         .map(|call| call.entry..call.exit)
         .collect();
     let mut inside: Vec<(u32, String)> = Vec::new();
@@ -93,7 +96,7 @@ fn leaked(
     rec: &Recording,
     call: &cpl_facade::today::trace::Call,
 ) -> Vec<(u32, String)> {
-    let Some(first) = (rec.calls.iter()).find(|c| c.name == call.name && c.ordinal == 1) else {
+    let Some(first) = (rec.calls().iter()).find(|c| c.name == call.name && c.ordinal == 1) else {
         return Vec::new();
     };
     if call.ordinal == 1 {
@@ -109,7 +112,7 @@ fn leaked(
     };
     let mut out = Vec::new();
     for (var, value) in &now.values {
-        let name = &rec.vars[*var].name;
+        let name = &rec.vars()[*var].name;
         let before = then.values.iter().find(|(v, _)| v == var).map(|(_, v)| v);
         let declared = (lines.iter()).position(|line| {
             line.strip_prefix("var ")
