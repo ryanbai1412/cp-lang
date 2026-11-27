@@ -68,6 +68,12 @@ default-filter = 'not (kind(test) & (package(cpl-cli) | package(cpl-lsp) | packa
 [profile.gate]
 slow-timeout = { period = "60s", terminate-after = 5 }
 
+# Every case of cpl-next's programs runs in one test, over 6 min alone on
+# this machine: the ratchet part's run (scripts/ci.py) has the job's 25 min.
+[[profile.gate.overrides]]
+filter = 'binary_id(cpl-next::programs) & test(=every_case_is_where_the_lists_say)'
+slow-timeout = { period = "60s", terminate-after = 20 }
+
 # scripts/test-times.py --write: every test's time, for the tools lane's
 # tests-over-30-s record (research/perf/tools-test-times.json).
 [profile.times]
