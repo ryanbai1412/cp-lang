@@ -595,6 +595,37 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
     }
 }
 
+/// A misplaced case's `cpl-finding` row: its id and what is wrong, without the diagnostic,
+/// whose wording a land may change without moving the case.
+fn finding(misplaced: &str) -> String {
+    let (id, rest) = misplaced.split_once(": ").unwrap_or((misplaced, ""));
+    let kind = rest.split([':', '(']).next().unwrap_or(rest).trim();
+    format!("cpl-finding: every_case_is_where_the_lists_say {id} {kind} +1")
+}
+
+#[test]
+fn a_misplaced_case_is_one_row_named_by_id_and_kind() {
+    for (line, row) in [
+        (
+            "core-01/a.cp: passed, now wrong: wanted ok, got E0302",
+            "core-01/a.cp passed, now wrong",
+        ),
+        (
+            "core-01/a.cp: refused beside a coded verdict on the program (check: E0606)",
+            "core-01/a.cp refused beside a coded verdict on the program",
+        ),
+        (
+            "m/b.cp: passes: add it to tests/passing.txt",
+            "m/b.cp passes",
+        ),
+    ] {
+        assert_eq!(
+            finding(line),
+            format!("cpl-finding: every_case_is_where_the_lists_say {row} +1")
+        );
+    }
+}
+
 /// A list's cases by id; an id listed twice (a union merge of two lands) is an error.
 fn list(path: &Path) -> BTreeMap<String, String> {
     let mut cases = BTreeMap::new();
@@ -777,6 +808,9 @@ fn every_case_is_where_the_lists_say() {
     }
     println!("refused, by cause (all in target/cpl-next/queue.txt):");
     queue.lines().take(10).for_each(|l| println!("  {l}"));
+    // One row per misplaced case, so a land onto a main whose lists are already stale is
+    // refused for the rows it adds, not let through as "red at the base too" (new_reds.py).
+    off.iter().for_each(|l| println!("{}", finding(l)));
     assert!(
         off.is_empty(),
         "{} of {} cases are not where the lists say (what was found is in {}):\n{}",
