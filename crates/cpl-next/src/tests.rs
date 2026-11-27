@@ -457,3 +457,15 @@ fn syntax_error_is_placed_in_the_program() {
     );
     assert!(d.code().is_some(), "{d}");
 }
+
+/// `x == None` tests presence, as the pattern `None` does, so `T` needs no `Eq` (R02.4.5).
+#[test]
+fn comparing_with_none_needs_no_eq() {
+    let src = "struct F(f: Int -> Int)\n\
+let a: ?F = None\n\
+let b: ?F = Some(F(x => x + 1))\n\
+if a == None and b != None and not (None == b):\n    print(b!.f(1))\n";
+    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    assert_eq!(c.run(Form::Raw, "").output, "2\n");
+    assert_eq!(c.run(Form::Engine, "").output, "2\n");
+}

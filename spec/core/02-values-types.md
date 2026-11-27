@@ -101,7 +101,8 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   language rule (`impl<T: Add> Add for ?T`). (R02.4.4)
 - **Ordering does not lift**: `?T` is not `Ord`, so `dp[j] + c < best`
   with an optional left side is an error, never a silent `false`. `==` is
-  structural (`None == None`). (R02.4.5)
+  structural (`None == None`). `x == None` and `x != None` test presence,
+  as the pattern `None` does, so they need no `Eq` on `T`. (R02.4.5)
 - `min`, `max`, `min=` and `max=` treat `None` as the identity: a `None`
   target takes the right side, a `None` right side changes nothing. With
   lifted arithmetic this is "skip unreachable states": (R02.4.6)

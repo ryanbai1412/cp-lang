@@ -1381,6 +1381,11 @@ impl<'a> Cx<'a> {
                         Msg::verdict(cpl_diag::codes::MIXED_COMPARISON_CHAIN, "a chain that goes both up and down; write the two comparisons with `and`"),
                     );
                 }
+                if let [(op, rhs)] = rest.as_slice() {
+                    if let Some(test) = self.none_compare(first, *op, rhs, span) {
+                        return test;
+                    }
+                }
                 // `a <= b < c` is `a <= b and b < c` with `b` read once, and `c` not read
                 // when the first link is false (R01.5.3).
                 self.scopes.push(HashMap::new());

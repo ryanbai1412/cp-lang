@@ -149,6 +149,52 @@ impl Cx<'_> {
         );
     }
 
+    /// `v` holds no value: the pattern `None`'s test, on the optional's flag.
+    fn absent(v: TExpr, span: Span) -> TExpr {
+        let flag = TExpr {
+            kind: TK::Field(Box::new(v), 0),
+            ty: Ty::Bool,
+            span,
+        };
+        TExpr {
+            kind: TK::Not(Box::new(flag)),
+            ty: Ty::Bool,
+            span,
+        }
+    }
+    /// `x == None` and `x != None` on an optional `x`: the pattern `None`'s test, so `T` needs no
+    /// `Eq` (R02.4.5). `None` when neither side alone is the literal `None`.
+    pub(super) fn none_compare(
+        &mut self,
+        a: &ast::Expr,
+        op: CmpOp,
+        b: &ast::Expr,
+        span: Span,
+    ) -> Option<TExpr> {
+        let none = |e: &ast::Expr| matches!(super::index::unparen(e).kind, ExprKind::None);
+        let x = match (none(a), none(b)) {
+            (false, true) => a,
+            (true, false) => b,
+            _ => return None,
+        };
+        if !matches!(op, CmpOp::Eq | CmpOp::Ne) {
+            return None;
+        }
+        let v = self.expr(x, None);
+        if self.is_error(&v.ty) {
+            return Some(Self::error_node(span));
+        }
+        self.optional_of(&v.ty)?;
+        let test = Self::absent(v, span);
+        Some(match op {
+            CmpOp::Ne => TExpr {
+                kind: TK::Not(Box::new(test)),
+                ty: Ty::Bool,
+                span,
+            },
+            _ => test,
+        })
+    }
     /// `pat` against the place `v`: the test that holds when it matches, `None` when it always
     /// does. `binds` gets the names it binds, read once the test holds.
     pub(super) fn refute(
@@ -190,8 +236,7 @@ impl Cx<'_> {
                     self.mismatch(span, "`None`", &v.ty);
                     return None;
                 }
-                let flag = mk(TK::Field(Box::new(v.clone()), 0), Ty::Bool);
-                Some(mk(TK::Not(Box::new(flag)), Ty::Bool))
+                Some(Self::absent(v.clone(), span))
             }
             PatternKind::Literal(e) => {
                 let t = match self.shallow(&v.ty) {
