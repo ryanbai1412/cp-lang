@@ -1484,7 +1484,38 @@ def next_lent_outside_own(root: Path) -> list[str]:
 
 # `Ty::Lent(Box::new(..))` built from a type not already lent: a match arm that rebuilds a lent
 # type it matched (`Lent(e) => Lent(Box::new(f(e)))`) keeps a decision, it does not make one.
-NEXT_MAKES_LENT_RE = re.compile(r"^(?!.*Lent\([^)]*\)\)?\s*=>.*Ty::Lent\(Box::new).*Ty::Lent\(Box::new")
+NEXT_MAKES_LENT_RE = re.compile(r"^(?!.*(?:Lent|Ref)\([^)]*\)\)?\s*=>.*Ty::(?:Lent|Ref)\(Box::new).*Ty::(?:Lent|Ref)\(Box::new")
+
+
+NEXT_WEAK_EXPECT_RE = re.compile(r"^// expect: (exit 1|ok)\s*$")
+
+
+def next_weak_oracle_passes(root: Path) -> list[str]:
+    """Passing cases whose oracle does not pin the behaviour: `// expect: exit 1` (any rejection
+    passes) or `// expect: ok` with no `// output:` (it only has to run). Each should name the
+    code and line it rejects with, or the output it prints."""
+    out = []
+    listed = root / NEXT_TESTS / "passing.txt"
+    for c in _lines(listed) if listed.is_file() else []:
+        c = c.strip()
+        f = root / (NEXT_TESTS + "/programs/" + c.removeprefix("next/") if c.startswith("next/") else "spec/conformance/" + c)
+        head = list(itertools.takewhile(lambda l: l.startswith("//"), _lines(f))) if f.is_file() else []
+        weak = [m.group(1) for l in head if (m := NEXT_WEAK_EXPECT_RE.match(l))]
+        if "exit 1" in weak or ("ok" in weak and not any(l.startswith("// output:") for l in head)):
+            out.append(c)
+    return out
+
+
+def syntax_std_names(root: Path) -> list[str]:
+    """String literals in the parser (`cpl-syntax`) equal to a type std declares: the parser
+    turning `Bounds` into `Cut` knows the library by name below every layer `next_std_names` scans."""
+    names = set()
+    for f in sorted((root / "std").glob("**/*.cp")):
+        names |= {n for n in NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")) if n[:1].isupper()}
+    return [f"{_rel(root, p)}:{i}: {n}" for p in _rs_files(root, "crates/cpl-syntax/src", tests=False)
+            if not p.name.endswith("_tests.rs")
+            for i, l in enumerate(_lines(p), 1) if not l.lstrip().startswith("//")
+            for n in RUST_STR_RE.findall(l) if n in names]
 
 
 NEXT_ASKS_RE = re.compile(r"^// (judge|before|copies|timeout):")
@@ -3817,6 +3848,8 @@ COUNTERS = {
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
+    "next_weak_oracle_passes": ("new-pipeline passing cases whose oracle is exit 1 or ok without output (Core)", next_weak_oracle_passes, True),
+    "syntax_std_names": ("string literals in cpl-syntax naming a std type (Core)", syntax_std_names, True),
     "next_backend_owns_reads": ("new-pipeline backend reads of whether a layout owns, placing a drop or retain (Core)", next_backend_owns_reads, True),
     "fast_unchecked": ("std @fast fns whose op no test compares with their CP body (Core)", fast_unchecked, True),
     "next_lent_outside_own": ("new-pipeline places after the checker, outside cpl-next-own, making a type lent (Core)", next_lent_outside_own, True),
