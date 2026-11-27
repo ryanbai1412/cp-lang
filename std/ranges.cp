@@ -6,6 +6,7 @@
 use std.seq.{IndexGet, Keyed, Positional, Indexed, Slice}
 use std.raw.{check_key, check_range}
 use std.ops.{By}
+use std.show.{Fmt}
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
 /// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `by`
@@ -140,13 +141,14 @@ fn cut_ends<D: Domain>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int,
 
 /// A range prints its values, one gap apart (R10.3).
 impl<D: Show> Show for Range<D>:
-    fn write_to(self, mut out: Str, sep: ?Str):
+    fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0))
+    fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         var first = true
         for x in self:
             if not first:
                 if let s = sep: out.append(s)
                 else: x.gap(mut out)
-            x.write_to(mut out, None)
+            x.write_fmt(mut out, None, fmt)
             first = false
     fn gap(self, mut out: Str):
         out.push('\n')

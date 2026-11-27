@@ -1096,6 +1096,7 @@ core-10/no-graph-read.cp
 core-10/optional-show-fallback.cp
 core-10/print-a-view.cp
 core-10/print-count-prefixed-row.cp
+core-10/print-counted-domain-in-base.cp
 core-10/print-empty-seq.cp
 core-10/print-f64-default-ten-decimals.cp
 core-10/print-f64-precision-arg.cp
