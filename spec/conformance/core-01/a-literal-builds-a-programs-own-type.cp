@@ -1,6 +1,8 @@
 // expect: ok, output "12 3 3\n14 4 0"
 // rule: 01.8.8
 // A list literal and a comprehension build any type with a `ListLiteral` impl, not just `List`.
+use std.literal.{ListLiteral}
+
 struct Bag:
     var total: Int
     var n: Int

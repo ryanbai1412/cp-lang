@@ -1,4 +1,5 @@
 // expect: ok, output "7 3"
+use std.literal.{Filled}
 fn mk<A: Filled<Int>>() -> A = A.filled(7)
 domain P = 0..3
 let a: [P]Int = mk()

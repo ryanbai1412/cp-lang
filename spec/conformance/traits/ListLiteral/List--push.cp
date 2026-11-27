@@ -1,4 +1,5 @@
 // expect: ok, output "2 5"
+use std.literal.{ListLiteral}
 fn mk<A: ListLiteral<Int>>() -> A:
     var a = A.with_room(0)
     a.push(4)
