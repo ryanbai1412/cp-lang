@@ -155,6 +155,7 @@ impl<'a> Cx<'a> {
                     let given: Vec<Ty> = (written.iter())
                         .map(|t| self.body_ty(t, span, &mut pre))
                         .collect();
+                    let given = self.d.with_defaults_of(e, given);
                     let v = self.variant(e, i, given, call.unwrap_or(&[]), span);
                     return block(pre, v);
                 }
@@ -196,6 +197,7 @@ impl<'a> Cx<'a> {
                 let given: Vec<Ty> = (written.iter().take(s.generics.len()))
                     .map(|t| self.body_ty(t, span, &mut pre))
                     .collect();
+                let given = self.d.with_defaults_of(d, given);
                 let f = self.fnref(m, given, Vec::new());
                 let call = self.call_fn(f, None, args, span, want);
                 return block(pre, call);

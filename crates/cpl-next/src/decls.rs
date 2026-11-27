@@ -10,7 +10,13 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 mod impls;
+mod inherent;
+mod tyconv;
 use impls::{overlap, supertraits_unmet};
+use inherent::inherent_impl;
+use tyconv::*;
+pub use tyconv::{body_type, prim_type};
+pub(crate) use tyconv::{unnamed, GETTER};
 
 /// A module: the core, a library file or the program.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
@@ -199,6 +205,8 @@ pub struct Decls {
     /// Why each `Named::Refused` library item is not built.
     pub refused: Vec<String>,
     pub struct_sets: HashMap<StructId, usize>,
+    /// `struct SegTree<D, T, F = Int>`: each struct's default type arguments, in its parameters.
+    pub struct_defaults: HashMap<StructId, Vec<Option<Ty>>>,
     /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
     pub tuples: HashMap<usize, StructId>,
     pub aliases: Rc<Vec<AliasDecl>>,
@@ -232,6 +240,14 @@ pub enum Member {
 }
 
 impl Decls {
+    /// `Tagged<Str>` written in a body: its arguments, the defaults filling those left off.
+    pub fn with_defaults_of(&self, d: StructId, mut given: Vec<Ty>) -> Vec<Ty> {
+        if given.is_empty() {
+            return given;
+        }
+        fill_defaults(self.struct_defaults.get(&d), &mut given);
+        given
+    }
     /// The domains a declaration in module `m` may name.
     fn doms_in(&self, m: ModId) -> HashMap<String, Ty> {
         match m == self.program {
@@ -297,84 +313,6 @@ fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> 
     }
 }
 
-struct TyCx<'a> {
-    names: &'a HashMap<String, Named>,
-    /// How many set parameters each struct has, so a struct named in a type gets its own.
-    struct_sets: &'a HashMap<StructId, usize>,
-    tuples: &'a HashMap<usize, StructId>,
-    generics: &'a [String],
-    /// What the generics stand for, when converting an alias's type.
-    args: Option<&'a [Ty]>,
-    aliases: &'a [AliasDecl],
-    /// The aliases being expanded, to report one that names itself.
-    expanding: Vec<usize>,
-    /// The types a body declares by name: its domains, and its ranges with run-time ends.
-    doms: &'a HashMap<String, Ty>,
-    /// When converting a result type: the next result slot.
-    ret_slots: Option<usize>,
-    /// Next implicit set parameter; `None` where a fn type may not appear bare.
-    next_set: Option<usize>,
-}
-
-/// The set for one function type written here: a parameter of the signature, a result slot, or a
-/// placeholder the checker replaces in a body.
-fn slot(cx: &mut TyCx) -> SetTy {
-    match (&mut cx.next_set, &mut cx.ret_slots) {
-        (Some(n), _) => {
-            *n += 1;
-            SetTy::Param(*n - 1)
-        }
-        (None, Some(k)) => {
-            *k += 1;
-            SetTy::RetSlot(*k - 1)
-        }
-        (None, None) => SetTy::Var(usize::MAX),
-    }
-}
-fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
-    let decl = &cx.aliases[id];
-    if a.len() != decl.generics.len() {
-        errors.push(
-            format!(
-                "{}: `{n}` takes {} type arguments, found {}",
-                cpl_diag::codes::WRONG_ARG_COUNT.0,
-                decl.generics.len(),
-                a.len()
-            )
-            .into(),
-        );
-        return Ty::Error;
-    }
-    // An alias defined by itself is E0323 where it is declared (`alias_cycle`).
-    if cx.expanding.contains(&id) {
-        return Ty::Error;
-    }
-    let mut expanding = cx.expanding.clone();
-    expanding.push(id);
-    let mut inner = TyCx {
-        names: &decl.names,
-        struct_sets: cx.struct_sets,
-        tuples: cx.tuples,
-        generics: &decl.generics,
-        args: Some(&a),
-        aliases: cx.aliases,
-        expanding,
-        doms: &HashMap::new(),
-        ret_slots: cx.ret_slots,
-        next_set: cx.next_set,
-    };
-    let t = conv(&mut inner, &decl.ty, errors);
-    (cx.ret_slots, cx.next_set) = (inner.ret_slots, inner.next_set);
-    t
-}
-/// Whether some type fits both impl headers.
-/// A decorator another tool reads (`cpl lint`, `cpl stress`, a diagnostic's suggestions): on a
-/// library item it changes nothing a run or a check of a program does (R06.4.11). A program's
-/// own is refused until the slice checks it.
-fn read_elsewhere(name: &str) -> bool {
-    matches!(name, "lint" | "stress" | "aka" | "was" | "on_unimplemented")
-}
-
 /// A type parameter that keys an array in a fn's signature, or in its owner's fields, is a domain
 /// parameter (`struct Dsu<V>: parent: [V]V`): its body may use what every domain has (R04.2). A
 /// caller is not held to `Domain`, since a list keyed by `Int` passes as `[Int]T`.
@@ -420,230 +358,6 @@ fn domain_params(d: &mut Decls) {
             d.domain_params.insert(FnId(k), added);
         }
     }
-}
-
-/// `Seq<T>` written where a trait is wanted.
-fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Option<TraitRef> {
-    let TypeKind::Named { name, args } = &t.kind else {
-        errors.push("slice: a bound that is not a named trait".into());
-        return None;
-    };
-    let Some(Named::Trait(tr)) = cx.names.get(&name.text).copied() else {
-        errors.push(
-            format!(
-                "{}: unknown trait `{}`",
-                cpl_diag::codes::UNKNOWN_TYPE.0,
-                name.text
-            )
-            .into(),
-        );
-        return None;
-    };
-    let args = args.iter().map(|a| conv(cx, a, errors)).collect();
-    Some(TraitRef { tr, args })
-}
-
-/// The single capitals in an impl header that name nothing: its undeclared type parameters (R02.10.3).
-/// `@get`: a member read like a field (R02.6.6).
-pub(crate) const GETTER: &str = "get";
-
-pub(crate) fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
-    if let TypeKind::Named { name, args } = &t.kind {
-        let n = name.text.as_str();
-        let capital = n.len() == 1 && n.chars().all(|c| c.is_ascii_uppercase());
-        if args.is_empty() && capital && !names.contains_key(n) && !out.iter().any(|g| g == n) {
-            out.push(n.to_string());
-        }
-        args.iter().for_each(|a| unnamed(a, names, out));
-        return;
-    }
-    match &t.kind {
-        TypeKind::Optional(e) | TypeKind::Mut(e) | TypeKind::Yields(e) => unnamed(e, names, out),
-        TypeKind::Tuple(ts) => ts.iter().for_each(|e| unnamed(e, names, out)),
-        TypeKind::Array { index, elem } => index
-            .iter()
-            .chain([&**elem])
-            .for_each(|e| unnamed(e, names, out)),
-        TypeKind::Fn { params, ret } => params
-            .iter()
-            .chain([&**ret])
-            .for_each(|e| unnamed(e, names, out)),
-        _ => {}
-    }
-}
-
-/// A type written among `Self, A, B..` re-read among `A, B..`.
-fn shift_down(t: &Ty) -> Ty {
-    let tys: Vec<Ty> = std::iter::once(Ty::Error)
-        .chain((0..64).map(Ty::Param))
-        .collect();
-    Subst {
-        tys: &tys,
-        sets: &[],
-    }
-    .ty(t)
-}
-
-/// A core type written by its name.
-pub fn prim_type(n: &str) -> Option<Ty> {
-    Some(match n {
-        "Int" => Ty::Int,
-        "Bool" => Ty::Bool,
-        "Char" => Ty::Char,
-        "U64" => Ty::U64,
-        _ => return None,
-    })
-}
-
-fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
-    match &t.kind {
-        TypeKind::Named { name, args } => {
-            let n = name.text.as_str();
-            let mut a: Vec<Ty> = args.iter().map(|x| conv(cx, x, errors)).collect();
-            if let Some(i) = cx.generics.iter().position(|g| g == n) {
-                return match cx.args {
-                    Some(args) => args[i].clone(),
-                    None => Ty::Param(i),
-                };
-            }
-            if let Some(Named::Alias(id)) = cx.names.get(n) {
-                return alias(cx, id.0, n, a, errors);
-            }
-            if let Some(t) = cx.doms.get(n) {
-                return t.clone();
-            }
-            if let Some(t) = prim_type(n) {
-                return t;
-            }
-            match n {
-                "Str" if struct_named(cx.names, "Str").is_none() => {
-                    errors.push("internal: `Str` needs the library's `Str`".into());
-                    Ty::Error
-                }
-                "Raw" if a.len() == 1 => Ty::Raw(Box::new(a.remove(0))),
-                _ => match struct_named(cx.names, n) {
-                    // Set arguments of a struct named in a signature are fresh parameters.
-                    Some(d) => {
-                        let k = cx.struct_sets.get(&d).copied().unwrap_or(0);
-                        let sets = (0..k).map(|_| slot(cx)).collect();
-                        Ty::Struct(d, a, sets)
-                    }
-                    None => {
-                        errors.push(
-                            format!("{}: unknown type `{n}`", cpl_diag::codes::UNKNOWN_TYPE.0)
-                                .into(),
-                        );
-                        Ty::Error
-                    }
-                },
-            }
-        }
-        TypeKind::Tuple(ts) if ts.is_empty() => Ty::Unit,
-        // `(A, B)` is core's `@tuple` struct with two fields.
-        TypeKind::Tuple(ts) if cx.tuples.contains_key(&ts.len()) => {
-            let d = cx.tuples[&ts.len()];
-            let a = ts.iter().map(|x| conv(cx, x, errors)).collect();
-            let k = cx.struct_sets.get(&d).copied().unwrap_or(0);
-            let sets = (0..k).map(|_| slot(cx)).collect();
-            Ty::Struct(d, a, sets)
-        }
-        // `(lo: A, hi: B)` is the core record struct `(lo:, hi:)<A, B>` (R02.5.2).
-        TypeKind::Record(fs)
-            if struct_named(cx.names, &crate::records::name(&field_names(fs))).is_some() =>
-        {
-            let named = ast::Type {
-                kind: TypeKind::Named {
-                    name: ast::Name {
-                        text: crate::records::name(&field_names(fs)),
-                        span: t.span,
-                    },
-                    args: fs.iter().map(|(_, t)| t.clone()).collect(),
-                },
-                span: t.span,
-            };
-            conv(cx, &named, errors)
-        }
-        // `?T` is the library's `Optional<T>`.
-        TypeKind::Optional(inner) if struct_named(cx.names, "Optional").is_some() => {
-            let named = ast::Type {
-                kind: TypeKind::Named {
-                    name: ast::Name {
-                        text: "Optional".to_string(),
-                        span: t.span,
-                    },
-                    args: vec![(**inner).clone()],
-                },
-                span: t.span,
-            };
-            conv(cx, &named, errors)
-        }
-        // `[D]T` is the library's `Array<D, T>`.
-        TypeKind::Range { lo, hi, inclusive } => match static_range(lo, hi, *inclusive) {
-            Some((lo, hi)) => Ty::Range(lo, hi),
-            None => {
-                errors.push(
-                    "slice: a range type whose ends are not constants, outside a body".into(),
-                );
-                Ty::Error
-            }
-        },
-        TypeKind::Array { index, .. }
-            if index.len() == 1 && matches!(index[0].kind, TypeKind::Range { .. }) =>
-        {
-            errors.push("slice: an array indexed by a range outside a `let` or `read`".into());
-            Ty::Error
-        }
-        TypeKind::Array { index, elem } if index.len() == 1 => {
-            let i = conv(cx, &index[0], errors);
-            let e = conv(cx, elem, errors);
-            match struct_named(cx.names, "Array") {
-                Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
-                None => {
-                    errors.push("internal: `[D]T` needs the library's `Array`".into());
-                    Ty::Error
-                }
-            }
-        }
-        TypeKind::Fn { params, ret } => {
-            let ps = params.iter().map(|x| conv(cx, x, errors)).collect();
-            let r = conv(cx, ret, errors);
-            let set = slot(cx);
-            Ty::Fn(ps, Box::new(r), set)
-        }
-        // The parser has said what is wrong with it.
-        TypeKind::Error => Ty::Error,
-        other => {
-            errors.push(format!("slice: type {}", crate::kind_name(other)).into());
-            Ty::Error
-        }
-    }
-}
-
-/// Converts a type written in a body: fn types get a placeholder set the checker replaces.
-pub fn body_type(
-    d: &Decls,
-    m: ModId,
-    generics: &[String],
-    doms: &HashMap<String, Ty>,
-    t: &ast::Type,
-    errors: &mut Vec<Msg>,
-) -> Ty {
-    conv(
-        &mut TyCx {
-            names: &d.views[m.0],
-            struct_sets: &d.struct_sets,
-            tuples: &d.tuples,
-            generics,
-            args: None,
-            aliases: &d.aliases,
-            expanding: Vec::new(),
-            doms,
-            ret_slots: None,
-            next_set: None,
-        },
-        t,
-        errors,
-    )
 }
 
 /// The name a top-level item declares, if it declares one.
@@ -1043,10 +757,12 @@ pub fn collect(
             let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
             let doms = d.doms_in(*mid);
             let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
+            let defaults = d.struct_defaults.clone();
             let tuples = d.tuples.clone();
             let mut cx = TyCx {
                 names: &names,
                 struct_sets: &sets,
+                struct_defaults: &defaults,
                 tuples: &tuples,
                 generics: &generics,
                 args: None,
@@ -1069,6 +785,42 @@ pub fn collect(
             break;
         }
     }
+    // Then their default type arguments, which name its earlier parameters and any struct.
+    for (mid, _, s, id) in &pending {
+        let (StmtKind::Struct(sd), Some(Named::Struct(id))) = (&s.kind, id) else {
+            continue;
+        };
+        if sd.generic_defaults.iter().all(Option::is_none) {
+            continue;
+        }
+        let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
+        let doms = d.doms_in(*mid);
+        let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
+        let (tuples, defaults) = (d.tuples.clone(), d.struct_defaults.clone());
+        let mut cx = TyCx {
+            names: &names,
+            struct_sets: &sets,
+            struct_defaults: &defaults,
+            tuples: &tuples,
+            generics: &generics,
+            args: None,
+            aliases: &aliases,
+            expanding: Vec::new(),
+            doms: &doms,
+            ret_slots: None,
+            next_set: None,
+        };
+        let mut errors = Vec::new();
+        let tys = (sd.generic_defaults.iter())
+            .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
+            .collect();
+        d.struct_defaults.insert(*id, tys);
+        if d.is_library(*mid) {
+            d.structs[id.0].errors.extend(errors);
+        } else {
+            d.errors.extend(errors);
+        }
+    }
     // Traits first, for the defaults every use of one reads; impls last, for their trait's fns.
     pending.sort_by_key(|(_, _, s, id)| match s.kind {
         StmtKind::Trait { .. } => 0,
@@ -1089,10 +841,12 @@ pub fn collect(
                         sd.generics.iter().map(|g| g.text.clone()).collect();
                     let doms = d.doms_in(ModId(mi));
                     let sets = d.struct_sets.clone();
+                    let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
                         struct_sets: &sets,
+                        struct_defaults: &defaults,
                         tuples: &tuples,
                         generics: &generics,
                         args: None,
@@ -1108,11 +862,6 @@ pub fn collect(
                         .iter()
                         .map(|f| (f.name.text.clone(), conv(&mut cx, &f.ty, &mut errors)))
                         .collect();
-                    if sd.generic_defaults.iter().any(Option::is_some) {
-                        errors.push(
-                            format!("slice: a default type argument of `{}`", sd.name.text).into(),
-                        );
-                    }
                     let n_sets = cx.next_set.unwrap_or(0);
                     if d.is_library(mid) {
                         d.structs[id.0].errors.extend(errors);
@@ -1181,11 +930,13 @@ pub fn collect(
                     let mut errors = Vec::new();
                     let names = d.views[mi].clone();
                     let sets = d.struct_sets.clone();
+                    let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut cx = TyCx {
                         names: &names,
                         struct_sets: &sets,
+                        struct_defaults: &defaults,
                         tuples: &tuples,
                         generics: &tgen,
                         args: None,
@@ -1278,12 +1029,14 @@ pub fn collect(
                         unnamed(t, &names, &mut generics);
                     }
                     let sets = d.struct_sets.clone();
+                    let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
                     let mut cx = TyCx {
                         names: &names,
                         struct_sets: &sets,
+                        struct_defaults: &defaults,
                         tuples: &tuples,
                         generics: &generics,
                         args: None,
@@ -1557,23 +1310,27 @@ pub fn collect(
                     StmtKind::Impl {
                         trait_name: None,
                         target,
-                        ..
+                        bounds,
+                        body,
                     },
                     _,
                 ) => {
                     // Inherent methods live in their type's module only (R08.1.3).
-                    let TypeKind::Named { name, .. } = &target.kind else {
+                    let TypeKind::Named { name, args } = &target.kind else {
                         continue;
                     };
-                    if let Some(t) = struct_named(&d.views[mi], &name.text) {
-                        if d.s(t).module != mid {
-                            d.misdeclared.push((
-                                (item + target.span.start) as usize,
-                                cpl_diag::codes::UNSUPPORTED.0,
-                                format!("`{}` is declared in another module; its inherent methods live there", name.text),
-                            ));
-                        }
+                    let Some(t) = struct_named(&d.views[mi], &name.text) else {
+                        continue;
+                    };
+                    if d.s(t).module != mid {
+                        d.misdeclared.push((
+                            (item + target.span.start) as usize,
+                            cpl_diag::codes::UNSUPPORTED.0,
+                            format!("`{}` is declared in another module; its inherent methods live there", name.text),
+                        ));
+                        continue;
                     }
+                    inherent_impl(&mut d, mid, item, t, args, bounds, body);
                 }
                 _ => {}
             }
@@ -1684,10 +1441,12 @@ fn add_fn(
     let doms = d.doms_in(m);
     let aliases = d.aliases.clone();
     let sets = d.struct_sets.clone();
+    let defaults = d.struct_defaults.clone();
     let tuples = d.tuples.clone();
     let mut cx = TyCx {
         names: &names,
         struct_sets: &sets,
+        struct_defaults: &defaults,
         tuples: &tuples,
         generics: &generics,
         args: None,

@@ -1525,6 +1525,9 @@ impl<'a> Cx<'a> {
         let mut given = given;
         given.truncate(takes);
         let named = self.d.views[self.module.0][n];
+        if let Named::Struct(d) = named {
+            given = self.d.with_defaults_of(d, given);
+        }
         let ctor = match named {
             Named::Struct(d) => self.d.s(d).ctor.filter(|_| !match self
                 .decl

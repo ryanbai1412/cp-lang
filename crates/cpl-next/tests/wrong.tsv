@@ -25,7 +25,6 @@ core-02/char-is-ordered.cp	wrong-reject	check: program:4:7: E0201: unknown name 
 core-02/coalesce-optional-default-keeps-some.cp	wrong-reject	check: program:7:62: E0806: nothing here says what `None` is an optional of; write the type
 core-02/counted-array-as-list.cp	wrong-reject	check: program:7:13: E0302: expected `List<Int>`, found `Array<$range0, Int>`
 core-02/counted-arrays-share-keys.cp	wrong-reject	check: program:8:33: E0302: expected `$range1`, found `$range0`
-core-02/enum-method-is-variant.cp	wrong-reject	check: program:8:9: E0201: unknown name `Ask`
 core-02/expected-type-and-unit-forms-are-typed.cp	wrong-reject	check: program:9:9: E0201: unknown name `rand`
 core-02/f64-to-int-bare-rejected.cp	wrong-error	wanted E0302 on line 3, got: check: program:3:11: E0201: unknown name `F64`
 core-02/fresh-type-block-escape.cp	wrong-accept	wanted E0313 on line 3, ran and printed: 1
@@ -46,7 +45,6 @@ core-02/rb1-q35-enum-domain-fill.cp	wrong-reject	link: E0606: a type argument is
 core-02/record-pattern-shorthand.cp	wrong-reject	check: program:5:30: E0302: expected `Array<$range1, (u: V, v: V)>`, found `Array<$range1, (u: Int, v: Int)>`
 core-02/return-moves-last-use-locals.cp	wrong-reject	own: std.seq:511:21: E0603: a function that uses `x` is stored in `yes`, which outlives `x`
 core-02/some-is-a-fn-value.cp	wrong-reject	check: program:6:36: E0302: expected `Int`, found `$range1`
-core-02/spec-block-enums.cp	wrong-reject	check: program:9:11: E0201: unknown name `Ask`
 core-02/static-fn-is-a-fn-value.cp	wrong-reject	check: program:8:9: E0201: unknown name `P`
 core-02/str-from-slice-copies.cp	wrong-reject	check: program:4:13: E0302: expected `List<Char>`, found `Slice<Str>`
 core-02/str-plus-int.cp	wrong-error	wanted E0309 on line 3, got: check: program:3:9: E0302: expected `Int`, found `Str`
@@ -292,8 +290,10 @@ core-08/assoc-default-names-trait-param.cp	wrong-reject	decls: E0204: unknown ty
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
 core-08/bound-element-pattern-binds-its-param.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
+core-08/bound-only-params-bind-from-the-impl.cp	wrong-reject	own: program:15:13: E0608: `i` is moved inside a loop, so the next turn would use it after the move
 core-08/bound-trait-method-yields-the-impl-types.cp	wrong-reject	decls: E0204: unknown trait `Show`
 core-08/bounds-three-ways.cp	wrong-reject	decls: E0204: unknown type `Seq`
+core-08/ctor-bound-binds-a-later-named-arg.cp	wrong-reject	check: program:8:24: E0203: `Range<F>` has no member `zero`
 core-08/default-arg-binds-generic-before-bounds.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/domain-kind-param.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/fn-called-as-a-method-of-its-own-type.cp	wrong-reject	check: program:6:43: E0203: `List<Int>` has no member `first_gt`
@@ -309,15 +309,12 @@ core-08/getter-trait-param-through-seq-element.cp	wrong-reject	check: program:13
 core-08/impl-choosing-an-assoc-type-writes-its-default-fns.cp	wrong-error	wanted E0606 on line 10, got: check: program:7:39: E0302: expected `Self.Out`, found `Optional<T>`
 core-08/impl-fn-params-take-the-traits-types.cp	wrong-reject	check: program:23:24: E0203: `P` has no `both`
 core-08/impl-for-every-domain-beside-int.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
-core-08/inherent-methods.cp	wrong-reject	check: program:8:19: E0203: `P` has no member `inc`
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
 core-08/law-declared.cp	wrong-reject	check: program:5:5: E0302: expected `(name: Str, sizes: (List<Int>) -> List<Int>, holds: (List<Int>, List<Int>) -> Bool)`, found `(name: Str, sizes: a function, holds: a function)`
 core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
 core-08/lazy-method-sig.cp	wrong-reject	decls: E0204: unknown type `Extra`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
-core-08/list-built-struct-keeps-its-domain-through-a-bound.cp	wrong-reject	check: program:15:7: E0304: `Optional<_>` cannot be called
 core-08/match-stored-shape-only.cp	wrong-reject	check: program:8:12: E0201: unknown name `Circle`
-core-08/method-generic-bound-unmet.cp	wrong-error	wanted E0606 on line 11, got: check: program:11:7: E0203: `S` has no member `apply`
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0203: `S` has no member `len`
 core-08/no-implicit-conversion.cp	wrong-error	wanted E0302 on line 5, got: decls: E0204: unknown type `F64`
 core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 5, got: decls: E0204: unknown type `F64`
@@ -332,8 +329,11 @@ core-08/self-default-getter-rejects-another-type.cp	wrong-error	wanted E0606 on 
 core-08/seq-supertraits-come-from-std.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/shared-bound-param-agrees.cp	wrong-reject	decls: E0204: unknown trait `Keyed`
 core-08/shared-bound-param-conflict-rejected.cp	wrong-error	wanted E0302 on line 9, got: decls: E0204: unknown trait `Keyed`
+core-08/struct-bound-assoc-type-reaches-methods.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
+core-08/struct-bound-only-params-bind-from-the-impl.cp	wrong-reject	check: program:18:15: E0606: `()` does not implement `Keyed`
 core-08/struct-bound-reaches-method.cp	wrong-reject	check: program:4:25: E0302: expected `Int`, found `T`
 core-08/too-many-type-arguments-are-an-error.cp	wrong-error	wanted E0303 on line 5, got: check: program:5:22: E0302: expected `Q<Int, Int>`, found `Q<Int>`
+core-08/trait-arg-only-impl-params-bind-at-the-call.cp	wrong-reject	check: program:9:25: E0203: `Range<T>` has no member `zero`
 core-08/trait-default-calls-trait-fn.cp	wrong-reject	check: program:6:33: E0201: unknown name `op`
 core-08/trait-default-fn-sees-params-and-assoc-default.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/trait-default-sees-its-assoc-default-inside-a-type.cp	wrong-reject	check: program:8:16: E0806: nothing here says what `None` is an optional of; write the type
@@ -465,7 +465,6 @@ matrix/optional/list_first--while_let_fn.cp	wrong-reject	check: program:5:48: E0
 matrix/optional/list_first--while_let_loop.cp	wrong-reject	check: program:5:48: E0806: nothing here says what `None` is an optional of; write the type
 matrix/optional/list_first--while_let_top.cp	wrong-reject	check: program:4:44: E0806: nothing here says what `None` is an optional of; write the type
 next/a_clos_03_list_of_closures_sharing_var.cp	wrong-reject	link: E0603: `new` returns a function that uses a `var` of the fn that made it; the variable is gone by then
-next/a_decl_03_inherent_impl.cp	wrong-reject	check: program:8:7: E0203: `P` has no member `twice`
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_decl_06_bound_on_struct_param.cp	wrong-reject	check: program:12:28: E0203: `T` has no member `sz`
 next/a_esc_04_closure_in_returned_tuple.cp	wrong-error	wanted E0603 on line 7, got: check: program:7:5: E0302: expected `Tuple2<Int, () -> Int>`, found `Tuple2<Int, a function>`
@@ -822,7 +821,6 @@ traits/Show/Only--show.cp	wrong-reject	check: program:3:21: E0302: expected `Arr
 traits/Show/Prefix--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `scan`
 traits/Show/RingRange--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `ring`
 traits/Show/Subset--show.cp	wrong-reject	check: program:3:7: E0302: expected `Int`, found `Subset<V>`
-traits/Show/VersionWithin--show.cp	wrong-reject	check: program:6:9: E0203: `Version<PersistentArray<P, Int>>` has no member `within`
 traits/Sub/BigInt--sub.cp	wrong-reject	check: program:3:7: E0302: expected `Int`, found `BigInt`
 traits/Sub/Bitset--sub.cp	wrong-reject	check: program:4:9: E0302: expected `Int`, found `Bitset<D>`
 traits/Sub/Mat--sub.cp	wrong-reject	check: program:4:9: E0302: expected `Int`, found `Mat<Int>`
@@ -831,4 +829,3 @@ traits/Sub/Pt--sub.cp	wrong-reject	check: program:3:7: E0302: expected `Int`, fo
 traits/Sub/Pt3--sub.cp	wrong-reject	check: program:3:7: E0302: expected `Int`, found `Pt3`
 traits/Track/Window--pop.cp	wrong-reject	check: std.window:113:38: E0304: `M` cannot be called
 traits/Track/Window--push.cp	wrong-reject	check: std.window:113:38: E0304: `M` cannot be called
-traits/Versioned/PersistentArray--get.cp	wrong-reject	check: program:6:7: E0203: `Version<PersistentArray<P, Int>>` has no member `within`

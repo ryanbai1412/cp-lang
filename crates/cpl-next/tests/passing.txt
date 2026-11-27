@@ -482,10 +482,15 @@ core-08/impl-missing-an-associated-type.cp
 core-08/impl-plus-shorthand.cp
 core-08/impls-choosing-two-types-for-one-type.cp
 core-08/inherent-before-trait.cp
+core-08/inherent-methods.cp
 core-08/inherent-on-builtin-type.cp
 core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
 core-08/law-declared.cp
 core-08/law-must-be-bool.cp
+core-08/method-bound-met.cp
+core-08/method-generic-bound-unmet.cp
+core-08/method-impl-bound-unmet.cp
+core-08/method-where-bound-unmet.cp
 core-08/monomorphized.cp
 core-08/named-struct-takes-no-default-without-an-impl.cp
 core-08/no-dyn.cp
@@ -496,6 +501,8 @@ core-08/no-record-subtyping.cp
 core-08/one-generic-fn-at-four-types.cp
 core-08/record-exact-fields.cp
 core-08/recursion-at-the-same-type-is-fine.cp
+core-08/static-fn-default-param-mismatch.cp
+core-08/static-fn-default-param.cp
 core-08/static-fn-explicit-args.cp
 core-08/supertrait-required.cp
 core-08/trait-alias-no-impl.cp
@@ -506,6 +513,7 @@ core-08/trait-default-overridden-through-generic.cp
 core-08/trait-message-bound-holds.cp
 core-08/trait-message.cp
 core-08/type-arguments-on-a-value-are-rejected.cp
+core-08/type-param-default.cp
 core-08/while-const.cp
 core-09/allow-attribute-removed.cp
 core-09/assert-after-64k-of-output-prints-it-first.cp
@@ -619,6 +627,15 @@ diagnostics/unknown-type.cp
 lib-ops-ranges/bare-op-tuple.cp
 lints/by-twin.cp
 lints/pow-method.cp
+matrix/generic/user--explicit_ctor.cp
+matrix/generic/user--explicit_method.cp
+matrix/generic/user--explicit_static.cp
+matrix/generic/user--inferred_ctor.cp
+matrix/generic/user--inferred_method.cp
+matrix/generic/user--inferred_static.cp
+matrix/generic/user--partial_ctor.cp
+matrix/generic/user--partial_method.cp
+matrix/generic/user--partial_static.cp
 matrix/index/enum--construct.cp
 matrix/index/enum--int.cp
 matrix/index/subset--int.cp
@@ -667,7 +684,9 @@ next/a_clos_05_let_lambda_recursion.cp
 next/a_clos_06_closure_calls_closure.cp
 next/a_decl_01_default_param.cp
 next/a_decl_02_field_default.cp
+next/a_decl_03_inherent_impl.cp
 next/a_decl_09_cache_field.cp
+next/a_decl_10_generic_default.cp
 next/a_dom_01_domain_values.cp
 next/a_dom_02_top_level_in_signatures.cp
 next/a_dom_03_at.cp
@@ -834,6 +853,7 @@ next/n_impl_04_impls_overlap_only_at_equal_trait_args.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
 next/n_index_03_list_key_outside_traps.cp
+next/n_inherent_impl.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
@@ -854,6 +874,7 @@ next/n_slice_07_range_cut_is_a_sub_range.cp
 next/n_slice_08_range_cut_outside_traps.cp
 next/n_slice_09_lent_field_walks_its_source.cp
 next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
+next/n_struct_default_type_arg.cp
 next/n_table_01_one_cell_per_position.cp
 next/n_targs_01_written.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
