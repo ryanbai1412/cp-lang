@@ -4,6 +4,7 @@
 use crate::layout::{Lay, Layouts};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::prog::{CTy, Program};
+use cpl_next_ir::run::{Limits, Stack};
 
 /// A word offset in the running frame.
 pub(crate) type Reg = u32;
@@ -424,6 +425,8 @@ pub(crate) struct Code {
     pub tables: Vec<Vec<u32>>,
     pub lays: Layouts,
     pub globals: u32,
+    /// What each run's calls take of its stack (`run::Stack`).
+    pub stack: Stack,
     /// Where each global's words start.
     pub global_at: Vec<u32>,
     /// Each global's layout.
@@ -451,6 +454,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
         tables: Vec::new(),
         lays: Layouts::default(),
         globals: 0,
+        stack: Stack::default(),
         main: p.main as u32,
         char_lay: 0,
     };
@@ -463,6 +467,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
         c.global_lays.push(l);
     }
     c.global_at = global_at.clone();
+    c.stack = Stack::new(p, Limits::default());
     // Every fn's frame shape first: a call needs its callee's.
     let mut offs = Vec::with_capacity(funcs.len());
     for f in funcs {

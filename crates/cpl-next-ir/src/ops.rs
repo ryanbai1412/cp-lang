@@ -380,9 +380,9 @@ pub struct Input {
     at: usize,
 }
 impl Input {
-    pub fn new(text: &str) -> Input {
+    pub fn new(bytes: &[u8]) -> Input {
         Input {
-            bytes: text.as_bytes().to_vec(),
+            bytes: bytes.to_vec(),
             at: 0,
         }
     }

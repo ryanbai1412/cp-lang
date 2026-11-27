@@ -4,7 +4,7 @@
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::{CTy, Program};
-use cpl_next_ir::run::call_stack;
+use cpl_next_ir::run::{call_stack, RunInput, Stack};
 pub use cpl_next_ir::run::{Outcome, Trap};
 use std::rc::Rc;
 
@@ -75,10 +75,11 @@ struct Machine<'a> {
     at: u32,
     /// The frame whose code is running: a region body runs in its caller's.
     cur: usize,
+    stack: Stack,
 }
 type R<T> = Result<T, Trap>;
 
-pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
+pub fn run(p: &Program, funcs: &[Func<CTy>], input: &RunInput) -> Outcome {
     let mut m = Machine {
         p,
         funcs,
@@ -86,10 +87,11 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
         frames: Vec::new(),
         out: String::new(),
         events: Vec::new(),
-        input: ops::Input::new(input),
+        input: ops::Input::new(input.bytes()),
         rand: ops::RAND_SEED,
         at: 0,
         cur: 0,
+        stack: Stack::new(p, input.limits),
     };
     let trap = m.call(p.main, Vec::new(), None).err().map(|t| Trap {
         line: m.at,
@@ -136,10 +138,8 @@ impl<'a> Machine<'a> {
         for ((l, _), a) in func.params.iter().zip(args) {
             locals[*l] = a;
         }
-        // Spec 9.6: no depth counting in the language; this stands for the 1 GB stack running out.
-        if self.frames.len() >= 4_000_000 {
-            return trap(Fault::StackExhausted);
-        }
+        // Spec 9.6: no depth counting in the language; the stack runs out at the run's limit.
+        self.stack.enter(f, self.frames.len())?;
         let parent = (!self.frames.is_empty()).then_some(self.cur);
         self.frames.push(Frame {
             locals,

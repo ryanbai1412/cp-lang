@@ -9,7 +9,7 @@ mod cxx;
 /// The reference interpreter's run of `c`'s linked instances: the oracle the engine is held to.
 fn raw(c: &Compiled) -> Outcome {
     let (p, fs) = c.form(Form::Raw);
-    cpl_next_interp::run(p, fs, "")
+    cpl_next_interp::run(p, fs, &cpl_next_ir::run::RunInput::fixed(""))
 }
 
 /// A method found in a std module the program does not load is called without loading it
@@ -134,7 +134,8 @@ fn the_engine_and_the_cpp_release_every_value_ownership_made() {
             Checks::CHECKED,
         )
         .expect("compiles");
-        let (run, held) = cpl_next_engine::run_held(&c.prog, &c.opt, "");
+        let (run, held) =
+            cpl_next_engine::run_held(&c.prog, &c.opt, &cpl_next_engine::RunInput::fixed(""));
         assert!(run.trap.is_none(), "{src}");
         assert_eq!(held, 0, "{src}");
         let (bin, _) = cxx::build(c.cpp().as_bytes(), &flags).expect("g++ builds it");
@@ -170,7 +171,8 @@ fn the_engine_and_the_cpp_release_every_value_ownership_made() {
     )
     .expect("compiles");
     (c.opt.iter_mut().filter(|f| f.name == "f")).for_each(|f| unplaced(&mut f.body));
-    let (_, held) = cpl_next_engine::run_held(&c.prog, &c.opt, "");
+    let (_, held) =
+        cpl_next_engine::run_held(&c.prog, &c.opt, &cpl_next_engine::RunInput::fixed(""));
     assert!(held > 0, "a missing release is seen");
 }
 
@@ -1415,4 +1417,38 @@ with checks(asserts: on):\n    assert z == 1, \"kept\"\nprint(2)\n";
         o.trap.map(|t| t.fault),
         Some(cpl_next_ir::ops::Fault::DivisionByZero)
     );
+}
+
+/// The stack runs out at the run's limit (contract 0's `Limits`), on the reference interpreter
+/// and the engine alike.
+#[test]
+fn the_stack_runs_out_at_the_runs_limit() {
+    use cpl_next_engine::{Io, Limits, RunInput};
+    let src = "fn f(k: Int) -> Int = if k == 0: 0 else: 1 + f(k - 1)\nprint(f(100))\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let (p, fs) = c.form(Form::Raw);
+    for (stack, out) in [(1 << 10, true), (64 << 10, false)] {
+        let input = RunInput {
+            io: Io::Fixed(Vec::new()),
+            limits: Limits { stack },
+        };
+        let raw = cpl_next_interp::run(p, fs, &input);
+        let fast = cpl_next_engine::run(&c.prog, &c.opt, &input);
+        for o in [&raw, &fast] {
+            assert_eq!(
+                o.trap.as_ref().map(|t| t.code()),
+                out.then_some("R0601"),
+                "{stack}"
+            );
+            assert_eq!(o.output, if out { "" } else { "100\n" }, "{stack}");
+        }
+    }
 }

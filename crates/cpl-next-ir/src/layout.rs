@@ -1,5 +1,6 @@
 //! How a value of each type lies in words. A type's layout is a number; `Layouts` gives its
 //! size, its shape and whether it holds storage handles, which copying and dropping count.
+use crate::ir::Func;
 use crate::prog::{CTy, Program};
 use std::collections::HashMap;
 
@@ -32,6 +33,26 @@ pub struct Layouts {
 }
 
 impl Layouts {
+    /// The words the globals take on the stack, below every frame.
+    pub fn globals_words(&mut self, p: &Program) -> u64 {
+        (p.globals.iter())
+            .map(|t| {
+                let l = self.of(p, t);
+                u64::from(self.size[l as usize])
+            })
+            .sum()
+    }
+    /// The words a call of `f` takes on the stack: its return value, then each local, as the
+    /// engine lays its frame out.
+    pub fn frame_words(&mut self, p: &Program, f: &Func<CTy>) -> u64 {
+        let ret = self.of(p, &f.ret);
+        let mut n = u64::from(self.size[ret as usize]);
+        for t in &f.locals {
+            let l = self.of(p, t);
+            n += u64::from(self.size[l as usize]);
+        }
+        n
+    }
     pub fn of(&mut self, p: &Program, t: &CTy) -> Lay {
         if let Some(&l) = self.of.get(t) {
             return l;

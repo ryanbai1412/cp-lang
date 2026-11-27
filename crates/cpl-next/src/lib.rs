@@ -726,7 +726,11 @@ impl Compiled {
 
     /// Runs on the engine, the one evaluator, on the calling thread.
     pub fn run(&self, input: &str) -> Outcome {
-        cpl_next_engine::run(&self.prog, &self.opt, input)
+        cpl_next_engine::run(
+            &self.prog,
+            &self.opt,
+            &cpl_next_engine::RunInput::fixed(input),
+        )
     }
 
     /// The program and fns the reference interpreter runs in `form`; only a test runs it.

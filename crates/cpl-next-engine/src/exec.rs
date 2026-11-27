@@ -8,6 +8,7 @@ use cpl_next_ir::ir::{Func, Intr};
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::CTy;
 use cpl_next_ir::run::{call_stack, Outcome, Trap};
+use cpl_next_ir::run::{Limits, RunInput, Stack};
 
 struct Obj {
     rc: u32,
@@ -85,6 +86,7 @@ struct M<'a> {
     scratch: Vec<u32>,
     /// Steps left: each fn entered and each jump taken back is one.
     steps: u64,
+    room: Stack,
     /// No input: a read stops the run, its value being decided at run time.
     closed: bool,
     /// Whether a run with no input tried to read.
@@ -96,7 +98,7 @@ fn broken<T>(rule: &'static str) -> R<T> {
     Err(Fault::Internal(rule).into())
 }
 
-fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&str>, steps: u64) -> M<'a> {
+fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&RunInput>, steps: u64) -> M<'a> {
     M {
         c,
         funcs,
@@ -113,25 +115,26 @@ fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&str>, steps: u6
         frames: Vec::new(),
         out: String::new(),
         events: Vec::new(),
-        input: ops::Input::new(input.unwrap_or("")),
+        input: ops::Input::new(input.map_or(&[][..], RunInput::bytes)),
         rand: ops::RAND_SEED,
         at: 0,
         texts: vec![0; c.texts.len()],
         scratch: Vec::new(),
         steps,
+        room: (c.stack).with(input.map_or_else(Limits::default, |i| i.limits)),
         closed: input.is_none(),
         read: false,
     }
 }
 
-pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
+pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &RunInput) -> Outcome {
     let (m, trap) = ran(c, funcs, input);
     m.outcome(trap)
 }
 
 /// Runs the program, then releases its globals and its kept text constants if it ended: what
 /// it did, and how many storage objects are still held. Ownership releases every value it makes, so that is 0.
-pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: &str) -> (Outcome, usize) {
+pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: &RunInput) -> (Outcome, usize) {
     let (mut m, trap) = ran(c, funcs, input);
     if trap.is_none() {
         for (&at, &lay) in c.global_at.iter().zip(&c.global_lays) {
@@ -144,7 +147,7 @@ pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: &str) -> (Outcome, 
     (m.outcome(trap), held)
 }
 
-fn ran<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: &str) -> (M<'a>, Option<Trap>) {
+fn ran<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: &RunInput) -> (M<'a>, Option<Trap>) {
     let mut m = start(c, funcs, Some(input), u64::MAX);
     let fp = c.globals as usize;
     let trap = m.run_fn(c.main, fp, None).err().map(|t| Trap {
@@ -408,11 +411,9 @@ impl M<'_> {
     fn run_fn(&mut self, f: u32, fp: usize, region: Option<RegionAt>) -> R<Option<Flow>> {
         self.step()?;
         let fc = &self.c.funcs[f as usize];
-        // Spec 9.6: no depth counting in the language; this stands for the 1 GB stack running out.
-        if self.frames.len() >= 4_000_000 {
-            return Err(Fault::StackExhausted.into());
-        }
+        // Spec 9.6: no depth counting in the language; the stack runs out at the run's limit.
         let end = fp + fc.frame as usize;
+        self.room.enter(f as usize, self.frames.len())?;
         if self.stack.len() < end {
             self.stack.resize(end.max(self.stack.len() * 2), 0);
         }

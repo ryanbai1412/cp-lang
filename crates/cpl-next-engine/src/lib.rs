@@ -11,10 +11,10 @@ mod peep;
 
 use cpl_next_ir::ir::Func;
 use cpl_next_ir::prog::{CTy, Program};
-pub use cpl_next_ir::run::{Outcome, Trap};
+pub use cpl_next_ir::run::{Io, Limits, Outcome, RunInput, Trap};
 
-/// Runs canonical IR on `input`.
-pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
+/// Runs canonical IR on `input`, under its limits.
+pub fn run(p: &Program, funcs: &[Func<CTy>], input: &RunInput) -> Outcome {
     let code = compile::compile(p, funcs);
     exec::run(&code, funcs, input)
 }
@@ -22,7 +22,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
 /// Runs canonical IR on `input`, then releases its globals if it ended: what it did, and how
 /// many storage objects are still held, which is 0 when the drops ownership placed (contract
 /// 07) release every value it made.
-pub fn run_held(p: &Program, funcs: &[Func<CTy>], input: &str) -> (Outcome, usize) {
+pub fn run_held(p: &Program, funcs: &[Func<CTy>], input: &RunInput) -> (Outcome, usize) {
     let code = compile::compile(p, funcs);
     exec::run_held(&code, funcs, input)
 }
