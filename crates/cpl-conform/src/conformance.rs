@@ -26,6 +26,27 @@ struct Ran {
     trap_rendered: String,
 }
 
+/// cpl-next's `--json` diagnostics as `cpl check` renders them, `error[CODE]: message` then
+/// `--> file:L:C`, so one reader finds a case's code and line on either pipeline.
+fn next_rendered(json_lines: &str) -> String {
+    let mut out = String::new();
+    for line in json_lines.lines() {
+        let d = cpl_json::parse(line).ok();
+        let field = |k: &str| d.as_ref()?.get(k);
+        let (Some(code), Some(msg)) = (field("code"), field("message")) else {
+            out.push_str(line);
+            out.push('\n');
+            continue;
+        };
+        let file = field("file").and_then(|f| f.as_str()).unwrap_or("program");
+        let at = |k: &str| field("start")?.get(k)?.as_i64();
+        let (l, c) = (at("line").unwrap_or(0), at("col").unwrap_or(0));
+        let (code, msg) = (code.as_str().unwrap_or(""), msg.as_str().unwrap_or(""));
+        out.push_str(&format!("error[{code}]: {msg}\n  --> {file}:{l}:{c}\n"));
+    }
+    out
+}
+
 impl Backend<'_> {
     fn check(&mut self, path: &str, text: &str) -> (String, bool) {
         match self {
@@ -34,8 +55,8 @@ impl Backend<'_> {
                 Ok((code, out, err)) => (out + &err, code != 0),
                 Err(e) => (format!("error[cli]: {e}"), true),
             },
-            Backend::Next(next) => match cli(next, &[path, "--check"], &[]) {
-                Ok((code, out, err)) => (out + &err, code != 0),
+            Backend::Next(next) => match cli(next, &[path, "--check", "--json"], &[]) {
+                Ok((code, out, err)) => (next_rendered(&out) + &err, code != 0),
                 Err(e) => (format!("error[cpl-next]: {e}"), true),
             },
         }
@@ -1086,6 +1107,14 @@ fn extract_rule_defs(line: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn next_diagnostics_render_with_their_code_and_line() {
+        let json = r#"{"code":"E0501","file":"program","message":"m","start":{"col":5,"line":7}}"#;
+        let d = super::next_rendered(&format!("{json}\nplain\n"));
+        assert_eq!(d, "error[E0501]: m\n  --> program:7:5\nplain\n");
+        assert_eq!(super::diag_line(&d, "E0501"), Some(7));
+    }
+
     #[test]
     fn an_engines_next_header_runs_the_case_on_cpl_next() {
         assert!(super::on_next(
