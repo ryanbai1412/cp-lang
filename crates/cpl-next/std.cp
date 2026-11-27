@@ -201,12 +201,12 @@ struct Optional<T>:
     val: T
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
-/// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `step`
+/// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `by`
 /// count in ordinals of `D`, which for `Int` are the integers themselves.
 struct Range<D: Domain>:
     lo: Int
     n: Int
-    step: Int
+    by: Int
 
     @get fn len(self) -> Int:
         n
@@ -225,31 +225,36 @@ struct Range<D: Domain>:
         if n == 0: None else: Some(D.nth(lo))
 
     @get fn last(self) -> ?D:
-        if n == 0: None else: Some(D.nth(lo + (n - 1) * step))
+        if n == 0: None else: Some(D.nth(lo + (n - 1) * by))
 
     /// The same values, last first.
     @get fn rev(self) -> Range<D>:
-        Range(lo + (n - 1) * step, n, -step)
+        Range(lo + (n - 1) * by, n, -by)
 
     fn each(self) -> yields D:
-        for i in 0..n: yield D.nth(lo + i * step)
+        for i in 0..n: yield D.nth(lo + i * by)
 
     /// Without its first `k` values: a range again (R07.4.11).
     fn drop(self, k: Int = 1) -> Range<D>:
         assert k >= 0, "drop: a negative count"
         let c = if k < n: k else: n
-        Range(lo + c * step, n - c, step)
+        Range(lo + c * by, n - c, by)
+
+    /// Every `k`-th value, from the first: a range again, so `(3..m).step(2).sum()` is O(1).
+    fn step(self, k: 1..) -> Range<D>:
+        assert k >= 1, "step(k) requires k >= 1"
+        Range(lo, (n + k - 1) / k, by * k)
 
     /// Its first `k` values: a range again (R07.4.11).
     fn take(self, k: Int) -> Range<D>:
         assert k >= 0, "take: a negative count"
-        Range(lo, if k < n: k else: n, step)
+        Range(lo, if k < n: k else: n, by)
 
     /// How `print` writes it: its values, space-separated.
     fn write(self):
         for i in 0..n:
             if i > 0: write(" ")
-            write(D.nth(lo + i * step))
+            write(D.nth(lo + i * by))
 
 /// `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
 fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
@@ -480,7 +485,7 @@ impl Clone for Bool:
 impl<D: Domain> Clone for D:
     fn clone(a) = a
 impl<D: Domain> Clone for Range<D>:
-    fn clone(a) = Range(a.lo, a.n, a.step)
+    fn clone(a) = Range(a.lo, a.n, a.by)
 impl<T: Clone> Clone for Optional<T>:
     fn clone(a) = if a.some: Optional(true, a.val.clone()) else: None
 /// A new buffer holding a clone of each element.
@@ -594,16 +599,16 @@ impl<D: Domain, T> IndexedMut<D, T> for Array<D, T>:
 impl<D: Domain> Keyed<D, D> for Range<D>:
     fn items(self) -> yields (D, D):
         for i in 0..self.n:
-            let k = self.lo + i * self.step
+            let k = self.lo + i * self.by
             yield (D.nth(k), D.nth(k))
 impl<D: Domain> Positional<D> for Range<D>:
     fn nth(self, k: Int) -> D:
         check_key(0 <= k and k < self.n)
-        D.nth(self.lo + k * self.step)
+        D.nth(self.lo + k * self.by)
 impl<D: Domain> Indexed<D, D> for Range<D>:
     fn at(self, x: D) -> D:
         let d = x.ord - self.lo
-        check_key(self.n > 0 and d % self.step == 0 and 0 <= d / self.step and d / self.step < self.n)
+        check_key(self.n > 0 and d % self.by == 0 and 0 <= d / self.by and d / self.by < self.n)
         x
     @get fn keys(self) -> Range<D> = self
 /// `s[r]`: the view of `s` over the keys in `r`, made in O(1); traps R0101 unless `r` is a run of
@@ -623,18 +628,18 @@ impl<D: Domain> Indexed<D, D> for Range<D>:
 @index fn sub_range<D: Domain>(self: Range<D>, r: Range<D>) -> Range<D>:
     let (i, ok) = run_in(self, r)
     check_range(ok)
-    Range(self.lo + i * self.step, r.n, self.step)
+    Range(self.lo + i * self.by, r.n, self.by)
 /// `r[a..]`, `r[..b]`, `r[..=b]` and `r[..]` of a range: the sub-range between the ends, an end
 /// left out being `r`'s. Traps R0001 unless the ends are keys of `r` in order, or its end.
 @index fn sub_range_ends<D: Domain>(self: Range<D>, lo: ?D, hi: ?D, through: Bool) -> Range<D>:
     let (i, j, ok) = cut_ends(self, lo, hi, through)
     check_range(ok)
-    Range(self.lo + i * self.step, j - i, self.step)
+    Range(self.lo + i * self.by, j - i, self.by)
 /// Where the run `r` starts in the keys `k`, and whether `r` is a run of them (R07.4.6).
 fn run_in<D: Domain>(k: Range<D>, r: Range<D>) -> (Int, Bool):
     let d = r.lo - k.lo
-    let i = d / k.step
-    (i, 0 <= d and d % k.step == 0 and i + r.n <= k.n and (r.n <= 1 or r.step == k.step))
+    let i = d / k.by
+    (i, 0 <= d and d % k.by == 0 and i + r.n <= k.n and (r.n <= 1 or r.by == k.by))
 /// The positions `i..j` in the keys `k` of the ends `lo` and `hi` (`hi` in when `through`), an end
 /// left out being `k`'s, and whether they are keys of `k` in order, or its end (R07.4.6).
 fn cut_ends<D: Domain>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int, Bool):
@@ -643,12 +648,12 @@ fn cut_ends<D: Domain>(k: Range<D>, lo: ?D, hi: ?D, through: Bool) -> (Int, Int,
     var j = k.n
     if let x = lo:
         let d = x.ord - k.lo
-        ok = 0 <= d and d % k.step == 0
-        i = d / k.step
+        ok = 0 <= d and d % k.by == 0
+        i = d / k.by
     if let y = hi:
         let d = y.ord - k.lo
-        ok = ok and 0 <= d and d % k.step == 0
-        j = d / k.step + (if through: 1 else: 0)
+        ok = ok and 0 <= d and d % k.by == 0
+        j = d / k.by + (if through: 1 else: 0)
     (i, j, ok and i <= j and j <= k.n)
 
 /// The balanced search tree under `Set` and `Map`: an AVL tree whose nodes are slots of its
