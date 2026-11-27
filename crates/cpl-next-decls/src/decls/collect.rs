@@ -245,6 +245,28 @@ fn layer(
                         {
                             Arc::make_mut(&mut d.member_types).insert(m.to_string(), id);
                         }
+                        let mut consts = HashMap::new();
+                        for m in &sd.methods {
+                            if let StmtKind::Const {
+                                name,
+                                generics,
+                                ty,
+                                init: Some(init),
+                                ..
+                            } = &m.kind
+                            {
+                                if generics.is_empty() {
+                                    consts.insert(name.text.clone(), ConstId(d.consts.len()));
+                                    d.consts.push(LibConst {
+                                        module: mid,
+                                        name: format!("{}.{}", sd.name.text, name.text),
+                                        item: item.clone(),
+                                        ty: ty.clone(),
+                                        init: init.clone(),
+                                    });
+                                }
+                            }
+                        }
                         d.structs.push(StructDecl {
                             name: sd.name.text.clone(),
                             generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
@@ -257,6 +279,7 @@ fn layer(
                             item: item.clone(),
                             n_sets: 0,
                             methods: HashMap::new(),
+                            consts,
                             shaped: HashMap::new(),
                             ctor: None,
                             variants: Vec::new(),

@@ -934,7 +934,6 @@ traits/Seq/LinkedList--iter.cp	wrong-reject	check: std.deque:432:13: E0405: fiel
 traits/Seq/Prefix--iter.cp	wrong-reject	check: program:2:11: E0203: `List<Int>` has no member `scan`
 traits/Seq/SortedRange--iter.cp	wrong-reject	check: std.bag:358:32: E0302: expected `K`, found `Cut<K>`
 traits/Seq/Stepped--iter.cp	wrong-reject	check: std.seq:2000:37: E0606: `S` does not implement `Indexed`
-traits/Show/Dir4--show.cp	wrong-reject	check: program:3:7: E0201: unknown name `Dir4`
 traits/Show/LiChao--show.cp	wrong-reject	check: program:3:16: E0302: this function does not fit `(_, _) -> _`
 traits/Show/Only--show.cp	wrong-reject	check: program:3:21: E0302: expected `Array<V, List<V>>`, found `Array<V, List<Int>>`
 traits/Show/Prefix--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `scan`

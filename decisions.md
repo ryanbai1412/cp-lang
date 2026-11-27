@@ -9474,3 +9474,9 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Why.** R11.3.3 had them as core builtins with no stub; a library could not declare its own `max` the same way.
 - **Cases.** `std-window/window-min-after-pop.cp` moves from wrong-reject to refused: it was wrong only because `min` as a value was unknown. Its `Window(min)` now resolves, and the case stops at the unbuilt lowering of the `abs` intrinsic. `max(1, 2, "x")` says `Tuple1<Str>` does not implement `Alike` (E0606), which names the tuple rather than the value that does not fit.
 - **Reverse.** Delete `max`, `min` and `Alike` from core and the `fold_form` arm in check.
+
+## 647. `traits/Show/Dir4--show.cp` is refused, not wrong (compiler, 2026-11-26)
+
+- **Call.** `traits/Show/Dir4--show` moves from wrong-reject to refused. It was wrong-reject only because a struct's `const` member (`Dir4.left`) was unknown as `Dir4`; struct consts are now read through the type's name, and the case stops at a real refusal: printing a `Dir4` through its `Show` impl is not built yet in cpl-next.
+- **Why.** The old "unknown name `Dir4`" verdict was a missing feature, not the case's answer; the refusal names what is actually missing.
+- **Reverse.** None needed: the case passes once printing a `Show` type is built.

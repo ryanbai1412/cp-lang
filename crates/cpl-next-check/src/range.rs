@@ -684,3 +684,51 @@ impl Cx<'_> {
 }
 /// A fn of core's `Domain`: the trait, the fn's name in it, and the fn.
 type DomainFn = (decls::TraitRef, String, FnId);
+
+impl Cx<'_> {
+    /// A position of a domain: of a declared one, or of a type parameter used as one.
+    pub(super) fn is_position(&self, t: &Ty) -> bool {
+        match self.shallow(t) {
+            Ty::Dom(_) => true,
+            Ty::Param(i) => {
+                (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.domain_trait)
+            }
+            _ => false,
+        }
+    }
+    /// `v + k`, `v - k` and `v - w` on positions are the `Int` arithmetic of their integers; any
+    /// other operator takes `Int(v)` first (R04.3.3). Not a position's operator: `l` and `r` back.
+    pub(super) fn position_arith(
+        &mut self,
+        op: BinOp,
+        l: TExpr,
+        r: TExpr,
+        span: Span,
+    ) -> Result<TExpr, Box<(TExpr, TExpr)>> {
+        let (lp, rp) = (self.is_position(&l.ty), self.is_position(&r.ty));
+        if !(lp || rp) || matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce) {
+            return Err(Box::new((l, r)));
+        }
+        let int = |e: TExpr| TExpr {
+            span: e.span,
+            kind: TK::DomOrd(Box::new(e)),
+            ty: Ty::Int,
+        };
+        let same = rp && self.shallow(&l.ty) == self.shallow(&r.ty);
+        match op {
+            BinOp::Add | BinOp::Sub if lp && (!rp || op == BinOp::Sub && same) => {
+                let r = if rp { int(r) } else { r };
+                Ok(self.binary(op, int(l), r, span))
+            }
+            BinOp::Add | BinOp::Sub if lp && rp => Err(Box::new((l, r))),
+            _ => {
+                let v = if lp { &l } else { &r };
+                let name = self.show(&v.ty);
+                let text =
+                    cpl_diag::msgs::check::BAD_OPERANDS_ON_A_POSITION.say(&[&op.text(), &name]);
+                self.err(span, Msg::verdict(cpl_diag::codes::BAD_OPERANDS, text));
+                Ok(Self::error_node(span))
+            }
+        }
+    }
+}

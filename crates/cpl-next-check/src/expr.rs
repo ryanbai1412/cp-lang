@@ -51,6 +51,10 @@ impl<'a> Cx<'a> {
         {
             return self.operator_call(found, l, Some(r), span);
         }
+        let (l, r) = match self.position_arith(op, l, r, span) {
+            Ok(e) => return e,
+            Err(lr) => *lr,
+        };
         let operand = [&l.ty, &r.ty]
             .into_iter()
             .find(|t| self.declares_operators(t));
@@ -91,7 +95,10 @@ impl<'a> Cx<'a> {
             (self.d.f(m).params.len() == usize::from(binary)).then(|| (*tr, n.clone(), m))
         })?;
         let applies = match self.shallow(t) {
-            Ty::Param(p) => self.bound_traits(p).iter().any(|b| b.tr == found.0),
+            // An unbounded parameter's `+` is a missing bound, unless it is a position (R08.2.2).
+            Ty::Param(p) => {
+                self.bound_traits(p).iter().any(|b| b.tr == found.0) || !self.is_position(t)
+            }
             t => self.declares_operators(&t),
         };
         applies.then_some(found)
@@ -997,18 +1004,7 @@ impl<'a> Cx<'a> {
             }
         }
         if let Some(decls::Named::Const(c)) = self.d.named(self.module, n) {
-            return match self.library_const(c, span) {
-                Some((v, ty)) => TExpr {
-                    kind: TK::Var(v),
-                    ty,
-                    span,
-                },
-                None => TExpr {
-                    kind: TK::Error,
-                    ty: Ty::Error,
-                    span,
-                },
-            };
+            return self.const_read(c, span);
         }
         if let Some(d) = self.d.fn_named(self.module, n) {
             let f = self.fnref(d, Vec::new(), Vec::new());

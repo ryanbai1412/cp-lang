@@ -142,6 +142,17 @@ pub struct Dir8(k: Int):
     /// example: `Dir8.all()[3].delta == (1, 1)`
     @get pub fn delta(self) -> (Int, Int) = (DR[k], DC[k])
 
+/// A direction a cell steps in, `Dir4` or `Dir8`: what `step` and `ray` take.
+pub trait Dir:
+    /// The change in (row, column) of one step.
+    @get fn delta(self) -> (Int, Int)
+
+impl Dir for Dir4:
+    @get fn delta(self) -> (Int, Int) = self.delta
+
+impl Dir for Dir8:
+    @get fn delta(self) -> (Int, Int) = self.delta
+
 /// The cell one row up from `self` (towards row 0), or `None` on the top row. A getter, like
 /// `r.prev`: `if let q = p.up and black[q]: ...`.
 ///
@@ -198,7 +209,7 @@ pub struct Dir8(k: Int):
 @lint(dx_dy_arrays, from: "let dx = [0, 1, 0, -1]\nlet dy = [1, 0, -1, 0]", to: "for dir in Dir4.all():\n    let next = (r, c).step(dir)")
 @lint(grid_neighbour_step, from: "if r > 0:\n    g[r, c] += g[r - 1, c]", to: "if let (pr, pc) = (r, c).step(Dir4.up):\n    g[r, c] += g[pr, pc]", holes: "r, c, g")
 @lint(grid_neighbour_step, from: "if c > 0:\n    g[r, c] += g[r, c - 1]", to: "if let (pr, pc) = (r, c).step(Dir4.left):\n    g[r, c] += g[pr, pc]", holes: "r, c, g")
-pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
+pub fn step<R, C, D: Dir>(self: (R, C), d: D) -> ?(R, C):
     let (dr, dc) = d.delta
     let r = R.at(self.0 + dr)
     let c = C.at(self.1 + dc)
@@ -214,7 +225,7 @@ pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
 /// example: `domain R = 0..4; domain C = 0..4; (R(1), C(2)).ray(Dir4.down).collect() == [(R(2), C(2)), (R(3), C(2))]`
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(0)).ray(Dir8.all()[3]).collect() == [(R(1), C(1)), (R(2), C(2)), (R(3), C(3))]`
 /// example: `domain R = 0..4; domain C = 0..4; (R(0), C(2)).ray(Dir4.up).collect() == []`
-pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
+pub fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C):
     var p = step(self, d)
     while p != None:
         yield p!

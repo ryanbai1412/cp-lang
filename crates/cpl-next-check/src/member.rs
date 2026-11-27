@@ -359,11 +359,18 @@ impl<'a> Cx<'a> {
                 }
             }
         }
+        let named = ty_name
+            .filter(|n| self.lookup(n).is_none())
+            .and_then(|n| Some((n, self.d.struct_named(self.module, n)?)));
+        // `Dir4.up`: a struct's const.
+        if let (Some((_, d)), None) = (named, call) {
+            if let Some(&c) = self.d.s(d).consts.get(&name.text) {
+                self.no_targs(name, written_targs, span);
+                return self.const_read(c, span);
+            }
+        }
         if let (Some(n), Some(args)) = (ty_name, call) {
-            if let (Some(d), true) = (
-                self.d.struct_named(self.module, n),
-                self.lookup(n).is_none(),
-            ) {
+            if let Some((_, d)) = named {
                 let s = self.d.s(d);
                 let Some(m) = s.methods.get(&name.text).copied() else {
                     self.err(

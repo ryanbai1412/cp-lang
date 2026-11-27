@@ -1054,6 +1054,17 @@ fn yield_each(e: &ast::Expr) -> ast::Block {
 }
 
 impl Cx<'_> {
+    /// A read of a library `const`, or of a struct's (`Dir4.up`).
+    fn const_read(&mut self, c: decls::ConstId, span: Span) -> TExpr {
+        match self.library_const(c, span) {
+            Some((v, ty)) => TExpr {
+                kind: TK::Var(v),
+                ty,
+                span,
+            },
+            None => Self::error_node(span),
+        }
+    }
     /// A library `const`'s global, checked once, when a read first reaches it: it is set at
     /// program start, above the program's code, after the consts its initializer reads (R01.6.1).
     fn library_const(&mut self, c: decls::ConstId, span: Span) -> Option<(VarRef, Ty)> {

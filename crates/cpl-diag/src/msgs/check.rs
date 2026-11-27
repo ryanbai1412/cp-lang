@@ -112,6 +112,7 @@ super::msgs! {
     BAD_OPERANDS_STEPPED_SLICE = BAD_OPERANDS, "a slice is a contiguous view of `{}`, so its range takes no `by` step";
     BAD_OPERANDS_CAN_T_COMBINE_AN = BAD_OPERANDS, "`{}` can't combine an `I128` and a `U64`";
     BAD_OPERANDS_CAN_T_COMBINE_AND = BAD_OPERANDS, "`{}` can't combine {} and {}";
+    BAD_OPERANDS_ON_A_POSITION = BAD_OPERANDS, "`{}` on a position of `{}` takes its integer first, as `Int(v)`";
     WRONG_DOMAIN_RANGE_BETWEEN_AND = WRONG_DOMAIN, "range between {} and {}";
     MISSING_IMPL_DOES_NOT_IMPLEMENT = MISSING_IMPL, "`{}` does not implement `{}`";
     WRONG_DOMAIN_IS_AND_IS_POSITIONS = WRONG_DOMAIN, "`{}` is {} and `{}` is {}; positions of different domains can't be compared";
