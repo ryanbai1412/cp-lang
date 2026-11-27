@@ -24,6 +24,11 @@ impl Cx<'_> {
                 _ => w,
             }
         });
+        // Given to a type parameter a trait bounds, the lambda is the fn type an impl of it targets.
+        let expected = match expected {
+            Some(Ty::Var(v)) => self.fn_impl_for(v, params.len()).or(Some(Ty::Var(v))),
+            e => e,
+        };
         // Given to a type parameter nothing else fixes, unwritten parameters are `Int`s, as a
         // literal is (R08.2.11).
         let open = matches!(&expected, Some(Ty::Var(v)) if !self.obliged(*v));

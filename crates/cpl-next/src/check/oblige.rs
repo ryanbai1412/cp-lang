@@ -82,6 +82,44 @@ impl Cx<'_> {
             self.obligations.clear();
         }
     }
+    /// The fn type a lambda of `arity` parameters given for `v` is: the one impl of a trait
+    /// bounding `v` that targets a fn type of that arity (`impl<T> Op<T> for (T, T) -> T`), its
+    /// parameters fixed by the bound's arguments. `v` becomes that fn type, so the lambda passes
+    /// as a value of it.
+    pub(super) fn fn_impl_for(&mut self, v: usize, arity: usize) -> Option<Ty> {
+        let d = self.d;
+        let bounds: Vec<TraitRef> = (self.obligations.iter())
+            .filter(|(t, ..)| self.shallow(t) == Ty::Var(v))
+            .map(|(_, r, ..)| r.clone())
+            .collect();
+        let found: Vec<(usize, &TraitRef)> = (bounds.iter())
+            .flat_map(|r| {
+                (d.trait_impls(r.tr))
+                    .filter(|(_, im)| matches!(&im.for_, Ty::Fn(ps, ..) if ps.len() == arity))
+                    .map(move |(k, _)| (k, r))
+            })
+            .collect();
+        let [(k, r)] = found[..] else {
+            return None;
+        };
+        let im = &d.impls[k];
+        let Ty::Fn(ps, ret, _) = &im.for_ else {
+            return None;
+        };
+        let targs: Vec<Ty> = im.generics.iter().map(|_| self.new_ty()).collect();
+        let sub = Subst {
+            tys: &targs,
+            sets: &[],
+        };
+        let f = Ty::Fn(
+            ps.iter().map(|p| sub.ty(p)).collect(),
+            Box::new(sub.ty(ret)),
+            self.new_set(),
+        );
+        let args: Vec<Ty> = im.trait_.args.iter().map(|a| sub.ty(a)).collect();
+        let fits = args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b));
+        (fits && self.unify(&Ty::Var(v), &f)).then_some(f)
+    }
     /// Whether a pending bound is on the inference variable `v`: it, not a default, fixes `v`.
     pub(super) fn obliged(&self, v: usize) -> bool {
         (self.obligations.iter()).any(|(t, ..)| self.shallow(t) == Ty::Var(v))

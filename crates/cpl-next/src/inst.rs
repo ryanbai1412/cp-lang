@@ -508,8 +508,10 @@ impl Link<'_> {
                 let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
                     .map(|a| self.ty(a, env))
                     .collect();
+                // The impl's sets are its target's: a struct's, or a fn type's own set.
                 let sets = match &st {
                     CTy::Struct(_, _, ss) => ss.clone(),
+                    CTy::Set(s) => vec![s.clone()],
                     _ => Vec::new(),
                 };
                 let d = self.d;
@@ -1506,6 +1508,9 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
         (Ty::Clo(c), CTy::Clo(k)) => {
             matches!(&**c, CloRef::Item(f) if k.func == FuncKey::Decl(f.decl))
         }
+        // A fn value is its set of closures; the checker chose this impl by the fn type, and
+        // the trait's arguments fix the parameters the fn type names.
+        (Ty::Fn(..), CTy::Set(_)) => true,
         // A lent slot reads as the value it points at.
         (_, CTy::Lent(t)) => fit_cty(p, t, binds),
         _ => false,

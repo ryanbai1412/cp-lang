@@ -1216,6 +1216,7 @@ next/n_inst_lent_arg_of_a_phantom_param.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
+next/n_lambda_04_bound_picks_the_fn_impl.cp
 next/n_lambda_04_context_fixes_params.cp
 next/n_lambda_04_recursive.cp
 next/n_lambda_05_nested_fn.cp

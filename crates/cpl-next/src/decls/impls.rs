@@ -316,6 +316,12 @@ fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
             true
         }
         (Ty::Clo(x), Ty::Clo(y)) => same_item(x, y),
+        // A fn type is a type like any other: `impl<T> Op<T> for (T, T) -> T` fits any set.
+        (Ty::Fn(pa, ra, _), Ty::Fn(pb, rb, _)) => {
+            pa.len() == pb.len()
+                && pa.iter().zip(pb).all(|(x, y)| fit(x, y, binds))
+                && fit(ra, rb, binds)
+        }
         _ => p == t,
     }
 }
