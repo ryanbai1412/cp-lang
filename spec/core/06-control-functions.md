@@ -178,7 +178,8 @@ library or by this spec:
   `@memo(word)` fn keeps, `T<K, R>` for key `K` (the one parameter's type,
   else the tuple of them) and result `R`, built by `T<K, R>()`. `@memo`
   reads it with `get(k) -> ?R` and keeps a result with `set(k, r)`; its
-  bounds on `K` are the key's (R06.4.1).
+  bounds on `K` are the key's (R06.4.1). `f.clear()` empties
+  it by building a fresh `T<K, R>()`.
 - `@same_keys` on a fn (std's `zip`): its arguments that are arrays over
   domains must share one domain, so arrays over two domains are a type
   error at the call (R04b.1.3).

@@ -686,10 +686,9 @@ fn memo_names(f: &ast::FnDecl) -> (String, String) {
     (format!("{n}.memo"), format!("{n}.body"))
 }
 
-/// A `@memo` fn's table, `var f.memo: T<K, R> = T<K, R>()`, a statement of the block that
-/// declares `f`, so the cache lives as long as it does (R06.4.1). `K` is the one parameter's
+/// A `@memo` fn's table type `T<K, R>` and its making, `T<K, R>()`. `K` is the one parameter's
 /// type, else the tuple of them.
-pub(crate) fn memo_var(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> ast::Stmt {
+fn memo_new(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> (ast::Type, ast::Expr) {
     let name = |text: &str| ast::Name {
         text: text.to_string(),
         span,
@@ -702,13 +701,11 @@ pub(crate) fn memo_var(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> as
             span,
         },
     };
-    let args = vec![
-        key,
-        f.ret.clone().unwrap_or(ast::Type {
-            kind: TypeKind::Error,
-            span,
-        }),
-    ];
+    let error = ast::Type {
+        kind: TypeKind::Error,
+        span,
+    };
+    let args = vec![key, f.ret.clone().unwrap_or(error)];
     let t = ast::Type {
         kind: TypeKind::Named {
             name: name(table),
@@ -724,6 +721,13 @@ pub(crate) fn memo_var(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> as
         })),
         args: Vec::new(),
     });
+    (t, make)
+}
+
+/// A `@memo` fn's table, `var f.memo: T<K, R> = T<K, R>()`, a statement of the block that
+/// declares `f`, so the cache lives as long as it does (R06.4.1).
+pub(crate) fn memo_var(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> ast::Stmt {
+    let (t, make) = memo_new(f, span, table);
     ast::Stmt {
         kind: StmtKind::Let {
             mutable: true,
@@ -742,10 +746,10 @@ pub(crate) fn memo_var(f: &ast::FnDecl, span: cpl_diag::Span, table: &str) -> as
     }
 }
 
-/// A `@memo` fn as its body, `fn f.body(ps) -> R`, and `f` itself, which answers from the table
-/// when it has the key and else runs the body and keeps its result. The body's own calls of `f`
-/// go through the table.
-pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt) -> [ast::Stmt; 2] {
+/// A `@memo` fn as its body, `fn f.body(ps) -> R`, `f` itself, which answers from the table when
+/// it has the key and else runs the body and keeps its result, and `f.clear()`, which empties the
+/// table. The body's own calls of `f` go through the table.
+pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt, table: &str) -> [ast::Stmt; 3] {
     let span = s.span;
     let ex = |kind| ast::Expr { kind, span };
     let var = |n: &str| ex(ast::ExprKind::Name(n.to_string()));
@@ -830,6 +834,27 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt) -> [ast::Stmt; 2] {
         },
         ..f.clone()
     };
+    let (_, make) = memo_new(f, span, table);
+    let clear = ast::FnDecl {
+        name: ast::Name {
+            text: format!("{}.clear", f.name.text),
+            span: f.name.span,
+        },
+        generics: Vec::new(),
+        bounds: Vec::new(),
+        params: Vec::new(),
+        ret: None,
+        lends: None,
+        body: FnBody::Block(ast::Block {
+            stmts: vec![stmt(StmtKind::Assign {
+                target: var(&memo_names(f).0),
+                op: ast::AssignOp::Set,
+                value: make,
+            })],
+            span,
+        }),
+        ..f.clone()
+    };
     let others = (s.decorators.iter())
         .filter(|x| x.name.text != "memo")
         .cloned()
@@ -845,6 +870,12 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt) -> [ast::Stmt; 2] {
             span,
             decorators: others,
             public: s.public,
+        },
+        // Its own span start too: one past the name's, which `f.body`'s has.
+        ast::Stmt {
+            span: cpl_diag::Span::new(f.name.span.start + 1, f.name.span.end),
+            public: s.public,
+            ..stmt(StmtKind::Fn(clear))
         },
     ]
 }
@@ -869,7 +900,7 @@ pub fn memo_block<'s>(
                     Some((f, t)) => {
                         at.push((out.len(), f));
                         out.push(memo_var(f, s.span, t));
-                        out.extend(memo_fns(f, s));
+                        out.extend(memo_fns(f, s, t));
                     }
                     None => out.push(s.clone()),
                 }

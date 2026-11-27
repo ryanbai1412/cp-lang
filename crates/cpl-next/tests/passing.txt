@@ -1414,6 +1414,7 @@ next/n_member_01_getter_first.cp
 next/n_memo_01_a_marked_table_caches_a_fn.cp
 next/n_memo_02_nested_memo_fn_per_block.cp
 next/n_memo_03_captured_var_written_while_cached.cp
+next/n_memo_04_clear_empties_the_cache.cp
 next/n_method_01_range_self_takes_an_int.cp
 next/n_method_02_range_self_checks_the_receiver.cp
 next/n_nested_02_capture_unset_at_call.cp
@@ -1434,6 +1435,7 @@ next/n_pattern_03_string_literal_patterns.cp
 next/n_position_arith.cp
 next/n_range_01_step_is_its_own_member.cp
 next/n_range_02_open_and_stepped_walks.cp
+next/n_range_03_domain_value_ends.cp
 next/n_range_is_empty.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp

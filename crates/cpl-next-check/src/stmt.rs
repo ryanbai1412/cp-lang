@@ -330,7 +330,7 @@ impl<'a> Cx<'a> {
         self.declare_nested(stmts);
         for (i, s) in stmts.iter().enumerate() {
             if let Some((_, f)) = memos.iter().find(|(at, _)| *at == i) {
-                self.memo_writes(f, &stmts[i + 3..]);
+                self.memo_writes(f, &stmts[i + 4..]);
             }
             // A bare `with` line sets a context for the rest of its block (R09.1.1).
             if let StmtKind::With {

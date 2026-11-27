@@ -324,6 +324,29 @@ impl<'a> Cx<'a> {
             self.no_targs(name, written_targs, span);
             return e;
         }
+        // `f.clear()` of a `@memo` fn: the fn written beside it as `f.clear` (R06.4.1).
+        if let (ExprKind::Name(n), Some(args)) = (&base.kind, call) {
+            let joined = format!("{n}.{}", name.text);
+            if self.lookup(&joined).is_some()
+                || matches!(
+                    self.d.named(self.module, &joined),
+                    Some(decls::Named::Fn(_))
+                )
+            {
+                let callee = ast::Expr {
+                    kind: ExprKind::Name(joined),
+                    span,
+                };
+                let e = ast::Expr {
+                    kind: ExprKind::Call {
+                        callee: Box::new(callee),
+                        args: args.to_vec(),
+                    },
+                    span,
+                };
+                return self.expr(&e, want);
+            }
+        }
         if let Some(e) = self.domain_member(base, name, call, span, want) {
             self.no_targs(name, written_targs, span);
             return e;

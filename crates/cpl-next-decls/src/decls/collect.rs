@@ -193,8 +193,8 @@ fn layer(
             }
             for crate::modules::Item { id: item, stmts } in m.items.iter().filter(|_| mi >= from) {
                 for s in stmts {
-                    if let Some((f, _)) = crate::synth::memo_table(s, &tables) {
-                        let fns = crate::synth::memo_fns(f, s);
+                    if let Some((f, t)) = crate::synth::memo_table(s, &tables) {
+                        let fns = crate::synth::memo_fns(f, s, t);
                         out.extend(fns.into_iter().map(|x| (item.clone(), x)));
                     }
                     if let StmtKind::Enum(e) = &s.kind {
