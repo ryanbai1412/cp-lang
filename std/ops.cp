@@ -72,6 +72,21 @@ impl One for Int:
     @get fn one() -> Int = 1
 impl One for U64:
     @get fn one() -> U64 = U64(1)
+/// `T.MIN`, `T.MAX`: the least and greatest values of `T`, so `max` and `min` over it have an
+/// identity (R02.2.1, decision 580).
+pub trait Bounded:
+    @get fn MIN() -> Self
+    @get fn MAX() -> Self
+/// `Int.MIN` is one above `-2^63`, which is `?Int`'s `None` (R02.1).
+impl Bounded for Int:
+    @get fn MIN() -> Int = -9223372036854775807
+    @get fn MAX() -> Int = 9223372036854775807
+impl Bounded for Char:
+    @get fn MIN() -> Char = Char(0)
+    @get fn MAX() -> Char = Char(127)
+impl Bounded for Bool:
+    @get fn MIN() -> Bool = false
+    @get fn MAX() -> Bool = true
 
 impl Add for Int:
     fn add(self, other: Int) -> Int = self + other

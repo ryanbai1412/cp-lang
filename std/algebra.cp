@@ -113,6 +113,12 @@ impl<T: BitAnd + Ones> FromOp<T> for type_of(&):
 impl FromOp<Int> for type_of(gcd):
     fn monoid(self) -> Monoid<Int> = Monoid(0, (a, b) => gcd(a, b), x => x)
 
+impl<T: Ord + Bounded> FromOp<T> for type_of(max):
+    fn monoid(self) -> Monoid<T> = Monoid(T.MIN, (a, b) => max(a, b), x => x)
+
+impl<T: Ord + Bounded> FromOp<T> for type_of(min):
+    fn monoid(self) -> Monoid<T> = Monoid(T.MAX, (a, b) => min(a, b), x => x)
+
 /// What a structure handed an invertible operation folds with: its group. `+` brings zero and
 /// negation, `^` zero and itself as inverse, and a `Group` is its own.
 pub trait GroupOp<T>:

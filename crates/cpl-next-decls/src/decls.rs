@@ -260,7 +260,8 @@ pub struct ImplDecl {
     pub derived: bool,
     /// A std-derived impl a program's written one replaces (R08.1.6): no lookup finds it.
     pub replaced: bool,
-    /// `impl .. for _..=_`: for every range type, never `Int` itself; `for_` is `Int`.
+    /// `impl .. for _..=_`: for every range type, never `Int` itself; `for_` is a parameter of
+    /// its own, so `Self` in its body is the range type.
     pub ranges_only: bool,
 }
 /// What a top-level name declares.

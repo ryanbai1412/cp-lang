@@ -824,6 +824,7 @@ core-07/first-last-pred.cp
 core-07/flatten.cp
 core-07/fold-a-generator.cp
 core-07/fold-identity-or-optional.cp
+core-07/fold-method-and-free-forms.cp
 core-07/fold-with-init.cp
 core-07/generator-expression-body-for.cp
 core-07/generator-expression-body.cp
@@ -921,6 +922,9 @@ core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
 core-08/associated-type-default-and-override.cp
 core-08/associated-type.cp
+core-08/bare-op-at-a-bound-takes-the-monoid-impl.cp
+core-08/bare-op-at-a-generic-bound-waits-for-its-arg.cp
+core-08/bare-op-binds-its-monoid-after-later-args.cp
 core-08/blanket-impl.cp
 core-08/bound-element-pattern-binds-its-param.cp
 core-08/bound-only-params-bind-from-the-impl.cp
@@ -1619,6 +1623,8 @@ next/n_bound_01_if_bound_per_instance.cp
 next/n_bound_01_impl_args_keep_their_sets.cp
 next/n_bound_02_for_walks_through_the_bound.cp
 next/n_bound_03_open_struct_meets_a_bound_later.cp
+next/n_bounded_01_ends_of_ints_ranges_chars_bools.cp
+next/n_bounded_02_max_min_fold_by_their_ends.cp
 next/n_cascade_01_member_of_an_error.cp
 next/n_cascade_02_method_of_an_error.cp
 next/n_cascade_03_type_built_from_an_error.cp
@@ -1949,9 +1955,13 @@ ownership/fn-param-let.cp
 ownership/fn-param-var.cp
 ownership/top-named-let.cp
 ownership/top-named-var.cp
+std-algebra/char-folds-by-max-and-min.cp
 std-algebra/cmp-ordering.cp
+std-algebra/group-of-and-point-action.cp
 std-algebra/minmax-is-a-std-fn.cp
+std-algebra/ranged-int-folds-by-max-and-min.cp
 std-algebra/reversing-a-fold-with-no-rev-traps.cp
+std-algebra/seq-fold-under-own-and-stock-ops.cp
 std-algebra/unit-literal-is-unit.cp
 std-algebra/user-ord-fold-max-needs-ends.cp
 std-bag/sorted-bag-of-a-list-is-rejected.cp
@@ -2121,6 +2131,7 @@ std-interval/sparseintervalset-next_gap-2.cp
 std-io/read-all-empty.cp
 std-io/read-all-is-a-std-body.cp
 std-io/read-all-until-sentinel.cp
+std-journeys/window.cp
 std-marks/arena-alloc-1.cp
 std-marks/arena-clear-1.cp
 std-marks/arena-get-1.cp
@@ -2326,10 +2337,14 @@ std-timetree/event-reads-back-value.cp
 std-timetree/offline-over-zero-steps.cp
 std-timetree/run-no-events.cp
 std-timetree/run-zero-queries.cp
+std-window/window-expire-by-place.cp
+std-window/window-expire-unkeyed-traps.cp
+std-window/window-min-after-pop.cp
 std-window/window-pop-checks-front.cp
 std-window/window-pop-empty-traps.cp
 std-window/window-pop-to-empty.cp
 std-window/window-push-all.cp
+std-window/window-push-at-decreasing-traps.cp
 tools-cli/exit-0-no-errors.cp
 tools-cli/exit-1-on-errors.cp
 tools-cli/exit-3-trap.cp

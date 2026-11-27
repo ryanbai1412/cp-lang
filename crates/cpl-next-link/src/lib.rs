@@ -702,7 +702,7 @@ impl Link<'_> {
     fn has_bound(&mut self, t: &Ty, tr: TraitId, args: &[Ty], env: &Env) -> bool {
         let st = unlent(self.targ(t, env));
         let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
-            .map(|a| self.ty(a, env))
+            .map(|a| self.targ(a, env))
             .collect();
         let d = self.d;
         let by_impl = d.impls_of(tr).any(|im| {
@@ -728,7 +728,7 @@ impl Link<'_> {
             return None;
         }
         let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
-            .map(|a| self.ty(a, env))
+            .map(|a| self.targ(a, env))
             .collect();
         // The impl's sets are its target's: a struct's, or a fn type's own set.
         let sets = match &st {
@@ -796,7 +796,7 @@ impl Link<'_> {
         binds: &mut [Option<CTy>],
     ) -> bool {
         let p = &im.for_;
-        if !fits_head(im, t, binds) {
+        if !fits_head(self.d, im, t, binds) {
             return false;
         }
         let (Ty::Fn(ps, r, _), CTy::Set(cs)) = (p, t) else {
@@ -1734,13 +1734,23 @@ fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
     }
     d.impls_of(tr).any(|im| {
         let mut b = vec![None; im.generics.len()];
-        fits_head(im, t, &mut b)
+        fits_head(d, im, t, &mut b)
             && (im.bounds.iter()).all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, a, r.tr)))
     })
 }
-/// Whether an impl is for `t`: one for `_..=_` is for every range type but not `Int`.
-fn fits_head(im: &cpl_next_decls::decls::ImplDecl, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
-    !(im.ranges_only && *t == CTy::Int) && fit_cty(&im.for_, t, binds)
+/// Whether an impl is for `t`, as `Decls::head_fits` says of a range type and `Int`.
+fn fits_head(
+    d: &Decls,
+    im: &cpl_next_decls::decls::ImplDecl,
+    t: &CTy,
+    binds: &mut [Option<CTy>],
+) -> bool {
+    let head = match t {
+        CTy::Int => Ty::Int,
+        CTy::Range(lo, hi) => Ty::Range(*lo, *hi),
+        _ => Ty::Unit,
+    };
+    d.head_fits(im, &head) && fit_cty(&im.for_, t, binds)
 }
 fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
     match (p, t) {

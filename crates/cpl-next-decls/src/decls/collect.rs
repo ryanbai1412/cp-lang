@@ -1010,6 +1010,13 @@ fn layer(
                         unnamed(t, &names, &mut generics);
                     }
                     let hidden = hidden_params(&d, &names, bounds, &mut generics);
+                    // `_..=_`: a parameter of the impl's own that only a range type meets, which
+                    // its body names `Self`.
+                    let ranges_only = any_range(target);
+                    let range_param = ranges_only.then(|| {
+                        generics.push("Self".to_string());
+                        generics.len() - 1
+                    });
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
@@ -1037,11 +1044,9 @@ fn layer(
                         ret_slots: None,
                         next_set: Some(0),
                     };
-                    let ranges_only = any_range(target);
-                    let for_ = if ranges_only {
-                        Ty::Int
-                    } else {
-                        conv(&mut cx, target, &mut errors)
+                    let for_ = match range_param {
+                        Some(i) => Ty::Param(i),
+                        None => conv(&mut cx, target, &mut errors),
                     };
                     let tref =
                         trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
@@ -1135,6 +1140,7 @@ fn layer(
                     let clashes = |d: &Decls, im: &ImplDecl| {
                         im.trait_.tr == tref.tr
                             && overlap(&im.for_, &for_)
+                            && im.ranges_only == ranges_only
                             && d.impl_rank(im) == rank
                             && (d.traits[tref.tr.0].inputs(&im.trait_.args).iter())
                                 .zip(d.traits[tref.tr.0].inputs(&tref.args))

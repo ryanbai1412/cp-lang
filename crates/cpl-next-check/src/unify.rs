@@ -646,20 +646,29 @@ impl<'a> Cx<'a> {
     /// the range as it is stored (R03.1.4): a range type is never a type argument. One given
     /// for an optional it gives back is `None` outside the range (R10.2.4). The range type the
     /// call's value is held to, and whether that value is optional.
-    pub(super) fn ranged_targ(&self, d: FnId, given: &mut [Ty]) -> Option<(Ty, bool)> {
+    pub(super) fn ranged_targ(&self, d: FnId, given: &mut [Ty]) -> Option<(usize, Ty, bool)> {
         let fd = self.d.f(d);
         let (i, opt) = (made_param(fd).map(|i| (i, false)))
             .or_else(|| self.made_optional(fd).map(|i| (i, true)))?;
         let t = self.shallow(given.get(i)?);
         let w = self.int_parts(&t).filter(|w| *w != t)?;
         given[i] = w;
-        Some((t, opt))
+        Some((i, t, opt))
     }
-    /// A call's value held to the range type `ranged_targ` gave.
-    pub(super) fn held_to(&mut self, v: TExpr, ranged: Option<(Ty, bool)>) -> TExpr {
+    /// A call's value held to the range type `ranged_targ` gave. A fn that gives back its range
+    /// `T` keeps the range as its instance's argument, so `T.MIN` in it is the range's.
+    pub(super) fn held_to(&mut self, v: TExpr, ranged: Option<(usize, Ty, bool)>) -> TExpr {
         match ranged {
-            Some((r, true)) => self.narrowed(v, &r),
-            Some((r, false)) => self.coerce(v, &r),
+            Some((_, r, true)) => self.narrowed(v, &r),
+            Some((i, r, false)) => {
+                let mut v = v;
+                if let TK::Call { f, .. } = &mut v.kind {
+                    if let Some(t) = f.targs.get_mut(i) {
+                        *t = r.clone();
+                    }
+                }
+                self.coerce(v, &r)
+            }
             None => v,
         }
     }

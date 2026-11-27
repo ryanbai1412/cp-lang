@@ -164,6 +164,19 @@ impl Decls {
             (None, _) => false,
         }
     }
+    /// An impl for `_..=_` is for every range type and never `Int`; one for `Int` is for a range
+    /// type only when its trait has none for `_..=_`.
+    pub fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool {
+        if im.ranges_only {
+            return matches!(t, Ty::Range(..) | Ty::RangeOf(_) | Ty::Var(_) | Ty::Error);
+        }
+        match t {
+            Ty::Range(..) | Ty::RangeOf(_) if im.for_ == Ty::Int => {
+                !self.impls_of(im.trait_.tr).any(|o| o.ranges_only)
+            }
+            _ => true,
+        }
+    }
     /// The impl's type arguments when it is for `t`; a type not known yet fits any.
     pub fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
         self.impl_args_for(im, t, &[])
@@ -172,7 +185,7 @@ impl Decls {
     /// (`impl Into<Char> for Int` and not `impl Into<U64> for Int`); fewer are not checked.
     pub fn impl_args_for(&self, im: &ImplDecl, t: &Ty, trait_args: &[Ty]) -> Option<Vec<Ty>> {
         let mut binds = vec![None; im.generics.len()];
-        if im.ranges_only && matches!(t, Ty::Int) {
+        if !self.head_fits(im, t) {
             return None;
         }
         if !fit(&im.for_, t, &mut binds)
