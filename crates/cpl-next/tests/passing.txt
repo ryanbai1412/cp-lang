@@ -439,6 +439,7 @@ core-04/open-ended.cp
 core-04/open-from-cut-walks-cuts.cp
 core-04/open-range-from-position.cp
 core-04/open-to-cut-walks-cuts.cp
+core-04/option-lift-at-compare.cp
 core-04/optional-range-end-names-the-end.cp
 core-04/optional-record-literal-takes-domain-positions.cp
 core-04/piece-after-is-a-range.cp
@@ -1484,6 +1485,7 @@ next/n_checks_01_overflow_off_wraps_in_its_block.cp
 next/n_clone_01_clone_is_an_ordinary_trait.cp
 next/n_coerce_01_list_literal_is_its_positions.cp
 next/n_comp_01_comprehension_is_its_loop.cp
+next/n_compare_lifts_optional.cp
 next/n_const_01_value_worked_out_once.cp
 next/n_const_02_cycle_is_an_error.cp
 next/n_const_03_trap_is_a_compile_error.cp

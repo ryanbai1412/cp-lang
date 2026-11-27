@@ -135,7 +135,6 @@ core-04/literal-range-table-int-keys.cp	wrong-reject	check: program:4:32: E0309:
 core-04/literal-to-mod.cp	wrong-reject	check: program:4:1: E9999: 
 core-04/lyndon-starts-are-keys.cp	wrong-reject	check: std.strings:567:29: E0606: `T` has no `impl Ord`, which `<=` needs (R08.1.5)
 core-04/min-rotation-is-key.cp	wrong-reject	check: std.strings:598:20: E0606: `T` has no `impl Ord`, which `>` needs (R08.1.5)
-core-04/option-lift-at-compare.cp	wrong-reject	check: program:6:9: E0302: expected `V`, found `Optional<V>`
 core-04/optional-record-literal-takes-domain-positions.cp	wrong-reject	check: program:5:26: E0302: expected `(k: V, n: Int)`, found `(k: Int, n: Int)`
 core-04/pair-index-arity-mismatch.cp	wrong-error	wanted E0303 on line 5, got: check: program:5:1: E0606: `Pair<V>` does not implement `Domain`
 core-04/palindromes-longest-at-key.cp	wrong-reject	check: std.strings:831:17: E0203: `K` has no member `ord`

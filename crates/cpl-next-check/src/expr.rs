@@ -1383,7 +1383,15 @@ impl<'a> Cx<'a> {
                         };
                     }
                     let r = self.expr(rhs, Some(&prev.ty));
-                    let r = self.coerce(r, &prev.ty.clone());
+                    // Either operand fixes the type: `u != from` with `from: ?V` lifts `u` (R04.4.23).
+                    let lift =
+                        self.optional_of(&prev.ty).is_none() && self.optional_of(&r.ty).is_some();
+                    let r = if lift {
+                        prev = self.coerce(prev, &r.ty.clone());
+                        r
+                    } else {
+                        self.coerce(r, &prev.ty.clone())
+                    };
                     // A comparison with an operand that is the error is the error, as `binary` is.
                     if self.is_error(&prev.ty) || self.is_error(&r.ty) {
                         self.scopes.pop();
