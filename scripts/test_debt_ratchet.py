@@ -2060,6 +2060,32 @@ class DebtRatchetTest(unittest.TestCase):
                              ["crates/cpl-next-check/src/lib.rs:1", "crates/cpl-next-check/src/lib.rs:2"])
             self.assertEqual(len(dr.next_cpp_runtime_lines(root)), 2)
 
+    def test_audit_counters_find_soundness_core_checks_ownership_and_foreign_deps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tests = root / dr.NEXT_TESTS
+            tests.mkdir(parents=True)
+            (tests / "wrong.tsv").write_text("a.cp\twrong-accept\twanted E0410\nb.cp\twrong-reject\tE0201\n")
+            self.assertEqual(dr.next_wrong_accepts(root), ["a.cp"])
+            own = root / "crates/cpl-next-own/src"
+            own.mkdir(parents=True)
+            (own / "lib.rs").write_text("pub fn lends(f: Fn) {}\n")
+            ir = root / "crates/cpl-next-ir/src"
+            ir.mkdir(parents=True)
+            (ir / "lib.rs").write_text("pub fn lends(self) {}\n")
+            eng = root / "crates/cpl-next-engine/src"
+            eng.mkdir(parents=True)
+            (eng / "lib.rs").write_text("fn lend_outs(b: &[Stmt]) {}\nfn drop_at() {}\nfn add() {}\n"
+                                        "if m == CORE {}\n// m != CORE\nif CORE != m {}\n")
+            self.assertEqual(dr.next_ownership_outside_own(root),
+                             ["crates/cpl-next-engine/src/lib.rs:1 lend_outs", "crates/cpl-next-engine/src/lib.rs:2 drop_at"])
+            self.assertEqual(dr.next_core_checks(root),
+                             ["crates/cpl-next-engine/src/lib.rs:4", "crates/cpl-next-engine/src/lib.rs:6"])
+            (root / "crates/cpl-next-check").mkdir(parents=True)
+            (root / "crates/cpl-next-check/Cargo.toml").write_text(
+                '[dependencies]\ncpl-syntax.workspace = true\ncpl-judge.workspace = true\ncpl-next-ir.workspace = true\n')
+            self.assertEqual(dr.next_layer_foreign_deps(root), ["cpl-next-check -> cpl-judge"])
+
     def test_wrong_may_rise_by_the_cases_a_refusal_hid(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

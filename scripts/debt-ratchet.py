@@ -1371,6 +1371,55 @@ def next_cpp_runtime_lines(root: Path) -> list[str]:
     return out
 
 
+def next_wrong_accepts(root: Path) -> list[str]:
+    """Cases the new pipeline accepts that their header says it must reject: a soundness hole,
+    worse for a contestant than a wrong reject, so it gets its own floor beside `next_wrong`."""
+    wrong = root / NEXT_TESTS / "wrong.tsv"
+    return [l.split("\t")[0] for l in _lines(wrong)
+            if l.count("\t") >= 1 and l.split("\t")[1] == "wrong-accept"] if wrong.is_file() else []
+
+
+def next_core_checks(root: Path) -> list[str]:
+    """Places where new-pipeline code asks whether a module is core (`== CORE`, `!= CORE`):
+    core is an ordinary library, so nothing may treat it differently."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            for i, l in enumerate(_lines(p), 1)
+            if not l.lstrip().startswith("//") and re.search(r"[!=]= *CORE\b|\bCORE *[!=]=", l)]
+
+
+NEXT_OWN_DECIDERS_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))? )?fn (\w*(?:lend|drop)\w*)")
+
+
+def next_ownership_outside_own(root: Path) -> list[str]:
+    """Fns outside `cpl-next-own` that work out a lend or a drop: ownership is decided once, in
+    the ownership pass, as IR nodes every later layer only reads (contract 04). The IR crate
+    may declare what an intrinsic lends; everything else is a second decision."""
+    skip = ("crates/cpl-next-own/", "crates/cpl-next-ir/")
+    return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            if not _rel(root, p).startswith(skip)
+            for i, l in enumerate(_lines(p), 1) if (m := NEXT_OWN_DECIDERS_RE.match(l))]
+
+
+NEXT_LAYER_CRATES = ("cpl-next-ir", "cpl-next-decls", "cpl-next-check", "cpl-next-own", "cpl-next-lower",
+                     "cpl-next-link")
+NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config")
+
+
+def next_layer_foreign_deps(root: Path) -> list[str]:
+    """Dependencies of a compiler layer crate on a crate that is neither a layer nor the
+    syntax, diagnostics and config it is built on: a tool or build fact (a judge profile, JSON)
+    decided inside the compiler instead of arriving as an input."""
+    out = []
+    for c in NEXT_LAYER_CRATES:
+        toml = root / "crates" / c / "Cargo.toml"
+        if not toml.is_file():
+            continue
+        deps = tomllib.loads(toml.read_text(encoding="utf-8")).get("dependencies", {})
+        out += [f"{c} -> {d}" for d in sorted(deps) if not d.startswith("cpl-next-") and d.startswith("cpl-")
+                and d not in NEXT_LAYER_MAY_USE]
+    return out
+
+
 def wrong_to_refused(root: Path, ref: str) -> list[str]:
     """Cases `ref` lists wrong that this tree lists neither wrong nor passing: a wrong verdict
     turned into a refusal, which lowers `next_wrong` without fixing the case. Each is refused
@@ -3645,6 +3694,10 @@ COUNTERS = {
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
+    "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
+    "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
+    "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
+    "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "link_reads_check": ("lines of the new pipeline's linker reading the typed tree, not the IR (Core)", link_reads_check, True),
