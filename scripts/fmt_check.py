@@ -120,6 +120,19 @@ def compare(cpl, scratch, path, original, base=ROOT):
     return None
 
 
+def timed_out(verdict):
+    return bool(verdict) and ("can't be checked" in verdict or "times out" in verdict)
+
+
+def judged(paths, judge, jobs):
+    """Each path's verdict; a timeout beside `jobs` others gets one more try alone."""
+    with cf.ThreadPoolExecutor(jobs) as pool:
+        verdicts = dict(zip(paths, pool.map(judge, paths)))
+    for p in [p for p, v in verdicts.items() if timed_out(v)]:
+        verdicts[p] = judge(p)
+    return verdicts
+
+
 SNIPPET = re.compile(r"^```cp(?:[ \t][^\n]*)?\n(.*?)^```", re.S | re.M)
 
 
@@ -181,8 +194,7 @@ def main():
                 changed.append(path)
             if again != formatted[path]:
                 unstable.append(path)
-        with cf.ThreadPoolExecutor(args.jobs) as pool:
-            verdicts = dict(zip(changed, pool.map(lambda p: compare(cpl, once, p, originals[p], base), changed)))
+        verdicts = judged(changed, lambda p: compare(cpl, once, p, originals[p], base), args.jobs)
     altered = {p: v for p, v in verdicts.items() if v}
     print(f"fmt-check: {len(files)} {'snippets' if args.snippets else 'files'}, {len(changed)} changed by cpl fmt, "
           f"{len(unstable)} not idempotent, {len(altered)} change meaning, {len(bugs)} formatter bugs")

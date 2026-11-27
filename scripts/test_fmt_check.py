@@ -44,6 +44,18 @@ class SupportTest(unittest.TestCase):
 
 
 class SnippetTest(unittest.TestCase):
+    def test_a_timeout_gets_one_more_try_alone(self):
+        tries = {}
+
+        def judge(p):
+            tries[p] = tries.get(p, 0) + 1
+            if p == "slow.cp" and tries[p] == 1:
+                return "cpl run passes 20 s on the original, so formatting can't be checked"
+            return "cpl run output differs" if p == "bad.cp" else None
+        verdicts = fmt_check.judged(["ok.cp", "slow.cp", "bad.cp"], judge, 3)
+        self.assertEqual(verdicts, {"ok.cp": None, "slow.cp": None, "bad.cp": "cpl run output differs"})
+        self.assertEqual(tries, {"ok.cp": 1, "slow.cp": 2, "bad.cp": 1})
+
     def test_takes_each_cp_block_with_or_without_attributes(self):
         doc = "# t\n```cp\nprint(1)\n```\n```cpp\nint x;\n```\n```cp run input=\"5\"\nprint(2)\n```\n"
         self.assertEqual(
