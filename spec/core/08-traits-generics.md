@@ -251,7 +251,10 @@ let a2 = (..a, to: u)  // record update
   existing value. (R08.4.4)
 - `impl<V, R: (to: V, ..)> Tg<V> for R` is an impl for every record with
   those fields: a record meeting a blanket impl of the same trait too takes
-  this one, and two such impls of one trait overlap, E0202. (R08.4.5)
+  this one, and two such impls of one trait overlap, E0202. `impl Tr for _..=_`
+  is an impl for every range type, whose body names it `Self`: a range type
+  takes it before an impl for `Int`, so `(1..=3).at(9)` is `None` and
+  `read<List<1..=3>>()` reads each item as `1..=3`. (R08.4.5)
 
 ## 8.5 What is deliberately missing
 

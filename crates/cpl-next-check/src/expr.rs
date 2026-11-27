@@ -870,15 +870,21 @@ impl<'a> Cx<'a> {
         let ty = self.ret_ty(&f);
         if let Some(w) = want {
             let orig = self.shallow(w);
-            // A range slot, alone or a tuple's part, takes an `Int` and checks it as it is stored
-            // (R03.1.4): a range type is never a type argument.
-            let w = super::unify::made_param(fd)
-                .and_then(|_| self.int_parts(w))
+            // A slot of a range with ends known as the program runs, alone or a tuple's part,
+            // takes an `Int` and checks it as it is stored (R03.1.4); one with constant ends is
+            // the type argument (`ranged_targ`).
+            let made = super::unify::made_param(fd).is_some();
+            let w = (made && self.runtime_ranged(w))
+                .then(|| self.int_parts(w))
+                .flatten()
                 .unwrap_or_else(|| w.clone());
             match self.shallow(&w) {
                 Ty::Struct(..) | Ty::Raw(_)
                     if matches!(fd.ret, Ty::Struct(..) | Ty::Param(_) | Ty::Raw(_)) =>
                 {
+                    self.unify(&ty, &w);
+                }
+                Ty::Range(..) if made => {
                     self.unify(&ty, &w);
                 }
                 _ if matches!(orig, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..))

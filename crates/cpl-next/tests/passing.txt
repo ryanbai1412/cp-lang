@@ -1132,6 +1132,9 @@ core-10/read-optional-trailing-field.cp
 core-10/read-past-end-traps.cp
 core-10/read-range-arithmetic-lower-bound.cp
 core-10/read-range-contract-traps.cp
+core-10/read-range-in-array.cp
+core-10/read-range-in-list.cp
+core-10/read-range-in-record.cp
 core-10/read-range.cp
 core-10/read-str-token.cp
 core-10/read-tuple-bound-by-earlier-part-traps.cp

@@ -650,18 +650,31 @@ impl<'a> Cx<'a> {
     fn is_tuple(&self, s: StructId) -> bool {
         self.d.tuples.values().any(|t| *t == s)
     }
-    /// A range type given for the type parameter fn `d` gives back is its `Int`, checked into
-    /// the range as it is stored (R03.1.4): a range type is never a type argument. One given
-    /// for an optional it gives back is `None` outside the range (R10.2.4). The range type the
-    /// call's value is held to, and whether that value is optional.
+    /// A range type with ends known only as the program runs, given for the type parameter fn
+    /// `d` gives back, is its `Int`, checked into the range as it is stored (R03.1.4): no
+    /// instance is its own. One given for an optional it gives back is `None` outside the range
+    /// (R10.2.4). A range with constant ends is a type argument like any type, so `read<1..=3>`
+    /// runs the range type's own `Read`. The range type the call's value is held to, and
+    /// whether that value is optional.
     pub(super) fn ranged_targ(&self, d: FnId, given: &mut [Ty]) -> Option<(usize, Ty, bool)> {
         let fd = self.d.f(d);
         let (i, opt) = (made_param(fd).map(|i| (i, false)))
             .or_else(|| self.made_optional(fd).map(|i| (i, true)))?;
         let t = self.shallow(given.get(i)?);
+        if !self.runtime_ranged(&t) {
+            return None;
+        }
         let w = self.int_parts(&t).filter(|w| *w != t)?;
         given[i] = w;
         Some((i, t, opt))
+    }
+    /// Whether `t` has a range part whose ends are known only as the program runs.
+    pub(super) fn runtime_ranged(&self, t: &Ty) -> bool {
+        match self.shallow(t) {
+            Ty::RangeOf(_) => true,
+            Ty::Struct(_, ts, _) => ts.iter().any(|t| self.runtime_ranged(t)),
+            _ => false,
+        }
     }
     /// A call's value held to the range type `ranged_targ` gave. A fn that gives back its range
     /// `T` keeps the range as its instance's argument, so `T.MIN` in it is the range's.

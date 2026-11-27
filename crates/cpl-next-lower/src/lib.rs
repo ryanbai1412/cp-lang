@@ -1053,19 +1053,44 @@ impl Lw<'_> {
         }
     }
     fn stmt(&mut self, s: &TStmt, out: &mut Vec<Stmt<Ty>>) {
+        /// A value of `lo..=hi` stored at `p` is in it, however it was made (R03.1.4).
+        fn held(ty: &Ty, p: Place, out: &mut Vec<Stmt<Ty>>) {
+            let &Ty::Range(lo, hi) = ty else { return };
+            let x = || Expr {
+                site: 0,
+                kind: EK::Copy(p.clone()),
+                ty: Ty::Int,
+            };
+            let int = |v| Expr {
+                site: 0,
+                kind: EK::Int(v),
+                ty: Ty::Int,
+            };
+            for (a, b) in [(int(lo), x()), (x(), int(hi))] {
+                let le = EK::Intr(Intr::Le, vec![Arg::Value(a), Arg::Value(b)], 0);
+                out.push(Stmt::Fact(Expr {
+                    site: 0,
+                    kind: le,
+                    ty: Ty::Bool,
+                }));
+            }
+        }
         match s {
             TStmt::Let(v, e) => {
                 let val = self.expr(e, out);
-                match self.bind(*v) {
+                let place = self.bind(*v);
+                match place.clone() {
                     Place::Local(l) => out.push(Stmt::Let(l, val)),
                     p => out.push(Stmt::Assign(p, val)),
                 }
+                held(&e.ty, place, out);
             }
             TStmt::Assign(p, e) => {
                 let val = self.expr(e, out);
                 let val = self.spill(val, out);
                 let place = self.place(p, out);
-                out.push(Stmt::Assign(place, val));
+                out.push(Stmt::Assign(place.clone(), val));
+                held(&e.ty, place, out);
             }
             TStmt::Expr(e) => {
                 let v = self.expr(e, out);

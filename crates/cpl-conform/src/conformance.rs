@@ -600,10 +600,10 @@ fn run_tool_case(case: &ConformanceCase, text: &str, args: &str, expect: Expect)
     }
 }
 
-/// Whether a rendered diagnostic points at `line` (`file:LINE:COL`); a bare
-/// `:LINE` would also match a column.
+/// Whether a rendered diagnostic points at `line` (`file:LINE:COL`, or cpl-next's
+/// `trap: CODE: line LINE: ..`); a bare `:LINE` would also match a column.
 fn rendered_at(rendered: &str, line: usize) -> bool {
-    rendered.contains(&format!(":{line}:"))
+    rendered.contains(&format!(":{line}:")) || rendered.contains(&format!(" line {line}:"))
 }
 
 /// The marker that ends the line a `// expect: CODE` diagnostic or trap
@@ -1159,6 +1159,9 @@ mod tests {
         let rendered = "error[R0202]: overflow\n  --> a.cp:6:7\n";
         assert!(rendered_at(rendered, 6));
         assert!(!rendered_at(rendered, 7));
+        let next = "trap: R0502: line 11: a value in the input is outside its contract\ncall stack: P.read (line 4)\n";
+        assert!(rendered_at(next, 11));
+        assert!(!rendered_at(next, 4));
     }
 
     #[test]

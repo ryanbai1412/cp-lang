@@ -47,6 +47,9 @@ impl Domain for Int:
     @get fn next(self, k: Int = 1) -> ?Int = Some(self + k)
     @get fn prev(self, k: Int = 1) -> ?Int = Some(self - k)
 
+/// A range type is a domain of its own positions, not `Int`'s: `(1..=3).at(9)` is `None`.
+impl Domain for _..=_
+
 /// A type with finitely many values, so a dense table over it has an end (R06.4.1): a range with
 /// constant ends, a cut of one, or a tuple of them. `Int` is not one.
 @on_unimplemented(code: E0311, "a dense table needs finitely many keys, and `{T}` has no end")

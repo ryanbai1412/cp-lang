@@ -144,6 +144,15 @@ impl Input:
 impl Read for Int:
     fn read(mut input: Input) -> Int = input.int()
 
+/// A range type's value is held to the range as the input's contract (R10.2.2), wherever the
+/// read is: outside it a read from standard input traps R0502 and one from a string fails, so
+/// `List<1..=3>` reads each item as `1..=3` does.
+impl Read for _..=_:
+    fn read(mut input: Input) -> Self:
+        if let v = Self.at(input.int()): return v
+        input.holds(false)
+        Self.nth(0)
+
 /// `Str` reads one token (R10.2.1).
 impl Read for Str:
     fn read(mut input: Input) -> Str:
