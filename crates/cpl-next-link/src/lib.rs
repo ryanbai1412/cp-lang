@@ -870,7 +870,7 @@ fn check_escape(p: &mut Program, d: &Decls, typed: &Typed) {
         }
     }
     let mut bad = Vec::new();
-    for f in &p.insts {
+    for (me, f) in p.insts.iter().enumerate() {
         let owner = match f.key {
             FuncKey::Decl(g) | FuncKey::Ctx(g, _) => Some(g),
             _ => None,
@@ -884,8 +884,26 @@ fn check_escape(p: &mut Program, d: &Decls, typed: &Typed) {
             (Some(_), _) => false,
             (None, _) => true,
         };
+        // Said where the fn makes the closure, or else where it is called.
+        let at = |bad: &mut Vec<Msg>, m: String| {
+            let made_here = |e: &Expr<CTy>| {
+                matches!((&e.kind, &e.ty), (EK::MakeClosure(_), CTy::Clo(k))
+                    if made(k) && p.captures(k).iter().any(|c| matches!(c, CTy::Ref(_))))
+            };
+            let calls_me =
+                |e: &Expr<CTy>| matches!(&e.kind, EK::Call(Target::Inst(j), ..) if *j == me);
+            let site = (site_of(&f.body, &made_here).and_then(|i| f.sites.get(i))).or_else(|| {
+                (p.insts.iter())
+                    .find_map(|g| site_of(&g.body, &calls_me).and_then(|i| g.sites.get(i)))
+            });
+            let m = Msg::verdict(cpl_diag::codes::LENT_ESCAPES, m);
+            bad.push(match site {
+                Some(s) => Msg::at(s.clone(), m),
+                None => m,
+            });
+        };
         if holds_ref(p, &f.ret, &mut Vec::new(), &made) {
-            bad.push(format!("`{}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", f.name));
+            at(&mut bad, format!("`{}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", f.name));
         }
         // What a `mut` parameter holds is the caller's, so a closure stored there outlives this fn too.
         let stored = (f.params.iter().filter(|(_, m)| *m)).any(|(l, _)| {
@@ -896,13 +914,66 @@ fn check_escape(p: &mut Program, d: &Decls, typed: &Typed) {
             owner.is_some() && holds_ref(p, t, &mut Vec::new(), &made)
         });
         if stored {
-            bad.push(format!("`{}` stores a function that uses one of its `var`s through a `mut` parameter; the variable is gone when it returns", f.name));
+            at(&mut bad, format!("`{}` stores a function that uses one of its `var`s through a `mut` parameter; the variable is gone when it returns", f.name));
         }
     }
-    for m in bad {
-        p.errors
-            .push(Msg::verdict(cpl_diag::codes::LENT_ESCAPES, m));
+    p.errors.extend(bad);
+}
+
+/// The site of the first expression of `b` that `hit` takes, outermost first.
+fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
+    fn ex(e: &Expr<CTy>, hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
+        if hit(e) {
+            return Some(e.site as usize);
+        }
+        let args = |xs: &[Arg<CTy>]| {
+            xs.iter().find_map(|a| match a {
+                Arg::Value(v) => ex(v, hit),
+                Arg::View(_) | Arg::Lend(_) => None,
+            })
+        };
+        match &e.kind {
+            EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().find_map(|x| ex(x, hit)),
+            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => ex(x, hit),
+            EK::Intr(_, xs, _) | EK::Call(_, xs, _) => args(xs),
+            EK::CallValue(g, xs, _) => ex(g, hit).or_else(|| xs.iter().find_map(|x| ex(x, hit))),
+            EK::Copy(_)
+            | EK::Pass(..)
+            | EK::AddrOf(_)
+            | EK::Lent(_)
+            | EK::Tag(_)
+            | EK::Int(_)
+            | EK::F64(_)
+            | EK::Bool(_)
+            | EK::Unit
+            | EK::Text(_)
+            | EK::DomLen(_)
+            | EK::DomLo(_)
+            | EK::HasBound(..) => None,
+        }
     }
+    b.iter().find_map(|s| match s {
+        Stmt::Let(_, e) | Stmt::Assign(_, e) => ex(e, hit),
+        Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) | Stmt::Check { cond: e, .. } => ex(e, hit),
+        Stmt::Return(e) => e.as_ref().and_then(|e| ex(e, hit)),
+        Stmt::If(c, x, y) => ex(c, hit)
+            .or_else(|| site_of(x, hit))
+            .or_else(|| site_of(y, hit)),
+        Stmt::Loop(x, y, _) => site_of(x, hit).or_else(|| site_of(y, hit)),
+        Stmt::Switch(c, arms) => ex(c, hit).or_else(|| arms.iter().find_map(|a| site_of(a, hit))),
+        Stmt::Print(ps) => ps.iter().find_map(|p| match p {
+            PrintPiece::Value(v, _) => ex(v, hit),
+            _ => None,
+        }),
+        Stmt::Region { args: xs, body, .. } => (xs.iter())
+            .find_map(|a| match a {
+                Arg::Value(v) => ex(v, hit),
+                Arg::View(_) | Arg::Lend(_) => None,
+            })
+            .or_else(|| site_of(body, hit)),
+        Stmt::Event(_, xs) => xs.iter().find_map(|x| ex(x, hit)),
+        Stmt::LendOut(_) | Stmt::Break | Stmt::Continue => None,
+    })
 }
 
 /// A value must have a finite size. A closure that captures a function value

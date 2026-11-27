@@ -306,8 +306,6 @@ core-07/take-on-infinite-generator-is-lazy.cp	wrong-reject	check: program:15:7: 
 core-07/take-through-map-and-filter-is-lazy.cp	wrong-reject	check: program:12:7: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/view-has-no-push.cp	wrong-error	wanted E0401 on line 4, got: check: program:4:1: E0203: `Rev<List<Int>>` has no member `push`
 core-07/views-pass-where-a-seq-is-written.cp	wrong-reject	link: std.seq:2079:47: E0606: `S` does not implement `Domain`
-core-07/yielded-closure-collected-escapes.cp	wrong-error	wanted E0603 on line 8, got: link: E0603: `into` returns a function that uses a `var` of the fn that made it; the variable is gone by then
-core-07/yielded-closure-in-struct-collected-escapes.cp	wrong-error	wanted E0603 on line 9, got: link: E0603: `into` returns a function that uses a `var` of the fn that made it; the variable is gone by then
 core-07/zip-domain-stops-at-shorter-list-and-rev.cp	wrong-reject	check: std.seq:2103:37: E0606: `S` does not implement `Indexed`
 core-08/a-callee-generic-is-not-the-receivers-of-the-same-name.cp	wrong-reject	check: program:12:7: E0302: expected `List<Int>`, found `Mapped<W<Int, Int>, Int, List<Int>>`
 core-08/a-type-name-answers-its-static-trait-fns.cp	wrong-reject	check: program:16:11: E0201: unknown name `Bool`
@@ -426,7 +424,6 @@ matrix/index/subset--read.cp	wrong-reject	link: E9999: no impl provides `count` 
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `main` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
-next/a_own_10_lent_closure_stored_through_mut_param.cp	wrong-error	wanted E0603 on line 8, got: link: E0603: `fill` stores a function that uses one of its `var`s through a `mut` parameter; the variable is gone when it returns
 next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:5: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: program:14:5: E0602: `s` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: program:6:1: E0602: `a` is lent for writing, and the call also reaches it another way
