@@ -450,9 +450,10 @@ impl Lw<'_> {
             return e;
         }
         let t = self.temp(e.ty.clone());
-        let ty = e.ty.clone();
+        let (ty, site) = (e.ty.clone(), e.site);
         out.push(Stmt::Let(t, e));
         Expr {
+            site,
             kind: EK::Copy(Place::Local(t)),
             ty,
         }
@@ -496,6 +497,7 @@ impl Lw<'_> {
                         let old = std::mem::replace(
                             d,
                             Expr {
+                                site: 0,
                                 kind: EK::Copy(Place::Local(t)),
                                 ty,
                             },
@@ -569,17 +571,19 @@ impl Lw<'_> {
         let site = self.site(v.span);
         let p = self.place(v, out);
         Expr {
+            site: 0,
             kind: EK::Pass(p, viewable && !generic, site),
             ty: v.ty.clone(),
         }
     }
     fn expr(&mut self, e: &TExpr, out: &mut Vec<Stmt<Ty>>) -> Expr<Ty> {
         let ty = e.ty.clone();
+        let site = self.site(e.span);
         let mk = |kind| Expr {
             kind,
             ty: ty.clone(),
+            site,
         };
-        let site = self.site(e.span);
         match &e.kind {
             TK::Int(i) => mk(EK::Int(*i)),
             TK::Float(b) => mk(EK::F64(*b)),
@@ -638,6 +642,7 @@ impl Lw<'_> {
                         t => t,
                     };
                     Expr {
+                        site,
                         kind: EK::Call(Target::Fn(f.clone()), a, site),
                         ty,
                     }
@@ -694,6 +699,7 @@ impl Lw<'_> {
                             rest = x.into_iter().chain(rest).collect::<Vec<_>>().into_iter();
                             let p = self.place(f, out);
                             xs.push(Expr {
+                                site,
                                 kind: EK::Lent(p),
                                 ty: f.ty.clone(),
                             });
@@ -740,6 +746,7 @@ impl Lw<'_> {
                 let rv = self.expr(r, &mut rs);
                 rs.push(Stmt::Assign(Place::Local(t), rv));
                 let c = Expr {
+                    site,
                     kind: EK::Copy(Place::Local(t)),
                     ty: Ty::Bool,
                 };
@@ -881,6 +888,7 @@ impl Lw<'_> {
             TK::Ordinal(x) => {
                 let v = self.expr(x, out);
                 Expr {
+                    site,
                     kind: v.kind,
                     ty: Ty::Int,
                 }
@@ -888,7 +896,11 @@ impl Lw<'_> {
             // A position is held as its ordinal; its integer is that plus the domain's start.
             TK::DomOrd(x) => {
                 let v = self.expr(x, out);
-                let int = |kind| Expr { kind, ty: Ty::Int };
+                let int = |kind| Expr {
+                    site,
+                    kind,
+                    ty: Ty::Int,
+                };
                 if matches!(x.ty, Ty::Int | Ty::Error) {
                     return int(v.kind);
                 }
@@ -899,8 +911,13 @@ impl Lw<'_> {
             TK::DomFrom(t, x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
-                let int = |kind| Expr { kind, ty: Ty::Int };
+                let int = |kind| Expr {
+                    site,
+                    kind,
+                    ty: Ty::Int,
+                };
                 let op = |op, a: Expr<Ty>, b: Expr<Ty>, ty: Ty| Expr {
+                    site,
                     kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)], 0),
                     ty,
                 };
@@ -923,13 +940,22 @@ impl Lw<'_> {
                 check(op(Intr::Le, v.clone(), last, Ty::Bool), out);
                 let ord = op(Intr::Sub, v, lo, Ty::Int);
                 let ord = self.spill(ord, out);
-                Expr { kind: ord.kind, ty }
+                Expr {
+                    site,
+                    kind: ord.kind,
+                    ty,
+                }
             }
             TK::DomHas(t, x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
-                let int = |kind| Expr { kind, ty: Ty::Int };
+                let int = |kind| Expr {
+                    site,
+                    kind,
+                    ty: Ty::Int,
+                };
                 let op = |op, a: Expr<Ty>, b: Expr<Ty>, ty: Ty| Expr {
+                    site,
                     kind: EK::Intr(op, vec![Arg::Value(a), Arg::Value(b)], 0),
                     ty,
                 };
@@ -943,6 +969,7 @@ impl Lw<'_> {
                 let ord = op(Intr::Sub, v, lo, Ty::Int);
                 let within = op(Intr::Below, ord, len, Ty::Bool);
                 let read = Expr {
+                    site,
                     kind: EK::Copy(Place::Local(has)),
                     ty: Ty::Bool,
                 };
@@ -954,10 +981,12 @@ impl Lw<'_> {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
                 let len = Expr {
+                    site,
                     kind: EK::DomLen(t.clone()),
                     ty: Ty::Int,
                 };
                 let cond = Expr {
+                    site,
                     kind: EK::Intr(Intr::Below, vec![Arg::Value(v.clone()), Arg::Value(len)], 0),
                     ty: Ty::Bool,
                 };
@@ -967,7 +996,11 @@ impl Lw<'_> {
                     msg: "a position past the domain's end".into(),
                     site,
                 });
-                Expr { kind: v.kind, ty }
+                Expr {
+                    site,
+                    kind: v.kind,
+                    ty,
+                }
             }
             TK::ReadInt => {
                 let v = mk(EK::Intr(Intr::ReadInt, vec![], site));
@@ -1028,6 +1061,7 @@ impl Lw<'_> {
                         let l = self.temp(Ty::Int);
                         out.push(Stmt::Let(l, lov));
                         Expr {
+                            site: 0,
                             kind: EK::Copy(Place::Local(l)),
                             ty: Ty::Int,
                         }
@@ -1038,10 +1072,12 @@ impl Lw<'_> {
                 let h = self.temp(Ty::Int);
                 out.push(Stmt::Let(h, hiv));
                 let read = |p: Place| Expr {
+                    site: 0,
                     kind: EK::Copy(p),
                     ty: Ty::Int,
                 };
                 let cond = Expr {
+                    site: 0,
                     kind: EK::Intr(
                         Intr::Lt,
                         vec![
@@ -1053,6 +1089,7 @@ impl Lw<'_> {
                     ty: Ty::Bool,
                 };
                 let at_start = Expr {
+                    site: 0,
                     kind: EK::Intr(
                         Intr::Le,
                         vec![Arg::Value(start), Arg::Value(read(var.clone()))],
@@ -1068,11 +1105,13 @@ impl Lw<'_> {
                 self.effect(bv, &mut body);
                 // The step cannot overflow: the variable is below `hi`.
                 let step = Expr {
+                    site: 0,
                     kind: EK::Intr(
                         Intr::Add,
                         vec![
                             Arg::Value(read(var.clone())),
                             Arg::Value(Expr {
+                                site: 0,
                                 kind: EK::Int(1),
                                 ty: Ty::Int,
                             }),
@@ -1103,7 +1142,7 @@ impl Lw<'_> {
             TStmt::Break => out.push(Stmt::Break),
             TStmt::Item(off) => self.off = off.clone(),
             TStmt::Cases(count, body) => {
-                let mk = |kind, ty| Expr { kind, ty };
+                let mk = |kind, ty| Expr { site: 0, kind, ty };
                 let call = Stmt::Expr(mk(EK::Call(Target::Case, vec![], 0), Ty::Unit));
                 match count {
                     // The count is read once; the cases left are counted down.
@@ -1291,6 +1330,7 @@ impl Lw<'_> {
         }
         let itself = (caps.iter())
             .map(|(key, _, ty, _)| Expr {
+                site: 0,
                 kind: EK::Copy(Place::Local(remap[key])),
                 ty: ty.clone(),
             })
@@ -1384,6 +1424,7 @@ impl Lw<'_> {
     fn capture_args(caps: Vec<(VarRef, Place, Ty, bool)>) -> Vec<Expr<Ty>> {
         caps.into_iter()
             .map(|(_, p, ty, addr)| Expr {
+                site: 0,
                 kind: match (addr, &ty) {
                     (true, Ty::Lent(_)) => EK::Lent(p),
                     (true, _) => EK::AddrOf(p),

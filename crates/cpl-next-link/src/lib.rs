@@ -646,6 +646,7 @@ impl Link<'_> {
         }
     }
     fn expr(&mut self, e: &Expr<Ty>, env: &Env) -> Expr<CTy> {
+        let site = e.site;
         let ty = self.ty(&e.ty, env);
         let kind = match &e.kind {
             EK::Int(i) => EK::Int(*i),
@@ -700,7 +701,7 @@ impl Link<'_> {
                 }
             }
         };
-        Expr { kind, ty }
+        Expr { site, kind, ty }
     }
 }
 
@@ -819,6 +820,7 @@ pub fn canonicalize(p: &Program) -> Result<Vec<Func<CTy>>, Vec<Msg>> {
 
 fn read(p: Place, ty: CTy) -> Expr<CTy> {
     Expr {
+        site: 0,
         kind: EK::Copy(p),
         ty,
     }
@@ -916,6 +918,7 @@ fn canon_block(
                             .collect();
                         out.push(Stmt::Switch(
                             Expr {
+                                site: 0,
                                 kind: EK::Tag(Place::Local(tmp)),
                                 ty: CTy::Int,
                             },
@@ -983,6 +986,7 @@ fn canon_store(
                     .collect();
                 all.extend(args.iter().cloned().map(Arg::Value));
                 Expr {
+                    site: 0,
                     kind: EK::Call(Target::Inst(p.index[k]), all, at),
                     ty: e.ty.clone(),
                 }
@@ -1002,6 +1006,7 @@ fn canon_store(
                         .collect();
                     out.push(Stmt::Switch(
                         Expr {
+                            site: 0,
                             kind: EK::Tag(Place::Local(tmp)),
                             ty: CTy::Int,
                         },
@@ -1040,6 +1045,7 @@ fn canon_store(
                     vec![Stmt::Assign(
                         dst.clone(),
                         Expr {
+                            site: 0,
                             kind: EK::MakeUnion(j, Box::new(payload)),
                             ty: to.clone(),
                         },
@@ -1048,6 +1054,7 @@ fn canon_store(
                 .collect();
             out.push(Stmt::Switch(
                 Expr {
+                    site: 0,
                     kind: EK::Tag(Place::Local(tmp)),
                     ty: CTy::Int,
                 },
@@ -1058,6 +1065,7 @@ fn canon_store(
     }
 }
 fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
+    let site = e.site;
     let ty = e.ty.clone();
     let kind = match e.kind {
         EK::Inject(x) => {
@@ -1106,7 +1114,7 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
         ),
         k => k,
     };
-    Expr { kind, ty }
+    Expr { site, kind, ty }
 }
 
 /// Run-time values that types carry (the size of a domain) are passed here.
@@ -1293,7 +1301,11 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                 self.no_source.set(true);
                 EK::Int(0)
             });
-            Expr { kind, ty: CTy::Int }
+            Expr {
+                site: 0,
+                kind,
+                ty: CTy::Int,
+            }
         }
         fn handed(&self, j: usize) -> Vec<Expr<CTy>> {
             self.hidden[j].iter().map(|(d, _)| self.size(*d)).collect()
@@ -1441,6 +1453,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                         out.push(Stmt::Event(
                             format!("set {name}"),
                             vec![Expr {
+                                site: 0,
                                 kind: EK::Copy(Place::Global(g)),
                                 ty,
                             }],
@@ -1492,6 +1505,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                 .iter()
                 .filter(|(l, _)| shown(&f.locals[*l]))
                 .map(|(l, _)| Expr {
+                    site: 0,
                     kind: EK::Copy(Place::Local(*l)),
                     ty: f.locals[*l].clone(),
                 })

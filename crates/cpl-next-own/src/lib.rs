@@ -1536,6 +1536,7 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
                 pre.push(Stmt::Let(
                     t,
                     Expr {
+                        site: 0,
                         kind: EK::Copy(p),
                         ty,
                     },

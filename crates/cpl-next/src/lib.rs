@@ -680,6 +680,28 @@ mod tests {
             assert!(g.names.iter().any(|m| m == n), "{n} in {:?}", g.names);
         }
     }
+    /// A lowered expression keeps the node it came from, so what reads the IR can place it.
+    #[test]
+    fn a_lowered_expr_keeps_its_site() {
+        let src = "fn f(xs: List<Int>) -> Int:\n    xs[0] + xs[1]\nprint(f([1, 2]))\n";
+        let f = front(&Std::read(), src, &Roots::std());
+        assert!(f.diags.is_empty(), "{:?}", f.diags);
+        let g = (f.g.funcs.values())
+            .find(|g| g.name == "f" && g.line != 0)
+            .expect("f is lowered");
+        let ret = (g.body.iter())
+            .find_map(|s| match s {
+                ir::Stmt::Return(Some(e)) => Some(e),
+                _ => None,
+            })
+            .expect("f returns");
+        let at = &g.sites[ret.site as usize];
+        assert_ne!(ret.site, 0);
+        assert_eq!(
+            (at.item.name.as_ref(), at.span.end - at.span.start),
+            ("f", "xs[0] + xs[1]".len() as u32)
+        );
+    }
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];

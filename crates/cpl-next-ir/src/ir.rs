@@ -231,6 +231,8 @@ pub enum Place {
 pub struct Expr<T> {
     pub kind: EK<T>,
     pub ty: T,
+    /// The node it was lowered from, 0 for one the compiler made.
+    pub site: Site,
 }
 #[derive(Clone, Debug)]
 pub enum EK<T> {
