@@ -292,6 +292,24 @@ enum SetVar {
 /// One context a copy of a fn is made for: the context, its field, and the value's text.
 type CtxSetting = (usize, String, String);
 
+/// The tables a body adds to, whose ids it names in its types.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Table {
+    Lambda,
+    Domain,
+    Range,
+    /// What a call's callee adds to one of its set arguments (`SetTy::AddedAt`).
+    Added,
+}
+
+/// `t` with `x` at `i`, the id `Cx::id` gave it.
+fn put<T>(t: &mut Vec<T>, i: usize, x: T) {
+    match t.get_mut(i) {
+        Some(y) => *y = x,
+        None => t.push(x),
+    }
+}
+
 struct Cx<'a> {
     d: &'a Decls,
     /// What a constant expression's value is, worked out by the driver's evaluator.
@@ -311,11 +329,21 @@ struct Cx<'a> {
     judge: Option<cpl_next_ir::build::Judge>,
     errors: Vec<Msg>,
     lambdas: Vec<LambdaInfo>,
+    /// Each lambda's, local domain's and range's id, by the copy of the fn it sits in and its
+    /// place among that copy's: a body checked alone names them as the whole program's does.
+    ids: HashMap<(Option<FnId>, u32, Table, u32), usize>,
+    /// Per table, the next id and how many the fn copy being checked has made.
+    next: [usize; 4],
+    made: [u32; 4],
+    /// The context copy of the fn being checked; 0 is the fn itself.
+    copy: u32,
     globals: Vec<Local>,
     global_names: HashMap<String, LocalId>,
     param_adds: HashMap<(FnId, usize), Vec<Member>>,
     /// Every fn reference with set arguments, and the fn it sits in.
-    set_calls: Vec<(FnRef, Option<FnId>)>,
+    /// Each call passing sets, with its caller, the caller's copy and where its sets' entries
+    /// of `Table::Added` start.
+    set_calls: Vec<(FnRef, Option<FnId>, u32, u32)>,
     /// Two set parameters of a fn its body made one set: each call passes one set for both.
     set_alias: Vec<(FnId, usize, usize)>,
     domains: Vec<DomInfo>,
@@ -487,6 +515,10 @@ fn check_with(
         judge,
         errors: Vec::new(),
         lambdas: Vec::new(),
+        ids: HashMap::new(),
+        next: [0; 4],
+        made: [0; 4],
+        copy: 0,
         globals: Vec::new(),
         global_names: HashMap::new(),
         param_adds: HashMap::new(),
@@ -751,7 +783,9 @@ fn check_with(
     loop {
         todo.append(&mut cx.reached);
         if let Some((id, k, frames)) = cx.ctx_pending.pop() {
+            cx.copy = k;
             let tf = cx.check_fn(id, frames);
+            cx.copy = 0;
             ctx_fns.push((k, id, tf));
             continue;
         }
@@ -948,7 +982,7 @@ impl<'a> Cx<'a> {
         while seen < self.set_alias.len() {
             let (g, i, j) = self.set_alias[seen];
             seen += 1;
-            for (f, caller) in calls.iter().filter(|(f, _)| f.decl == g) {
+            for (f, caller, ..) in calls.iter().filter(|(f, ..)| f.decl == g) {
                 if let (Some(a), Some(b)) = (f.sets.get(i).cloned(), f.sets.get(j).cloned()) {
                     let was = std::mem::replace(&mut self.decl, *caller);
                     self.unify_set(&a, &b);
@@ -958,7 +992,7 @@ impl<'a> Cx<'a> {
         }
         loop {
             let mut changed = false;
-            for (ci, (f, caller)) in calls.iter().enumerate() {
+            for (ci, (f, caller, copy, base)) in calls.iter().enumerate() {
                 let fd = self.d.f(f.decl);
                 // A trait's fn's impls are known per instance: each may add to the result.
                 let by_impl = matches!(fd.owner, Some(Owner::Trait(_)));
@@ -969,8 +1003,10 @@ impl<'a> Cx<'a> {
                         continue;
                     }
                     changed = true;
-                    let m = Member::Sub(SetTy::AddedAt(out.len()));
-                    out.push((f.clone(), slot));
+                    let key = (*caller, *copy, Table::Added, base + slot as u32);
+                    let at = self.id_at(key, out.len());
+                    let m = Member::Sub(SetTy::AddedAt(at));
+                    put(&mut out, at, (f.clone(), slot));
                     match self.shallow_set(s) {
                         SetTy::Var(v) => {
                             if let SetVar::Root(ms) = &mut self.sets[v] {
@@ -1037,6 +1073,7 @@ impl<'a> Cx<'a> {
         let d = self.d;
         let f = d.f(id);
         self.decl = Some(id);
+        self.made = [0; 4];
         self.module = f.module;
         let top_doms = self.doms.clone();
         let top_owned = self.owned.clone();

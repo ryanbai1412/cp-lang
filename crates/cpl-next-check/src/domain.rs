@@ -88,8 +88,9 @@ impl Cx<'_> {
                 i
             }
             _ => {
-                self.domains.push(info);
-                self.domains.len() - 1
+                let i = self.id(super::Table::Domain, self.domains.len());
+                super::put(&mut self.domains, i, info);
+                i
             }
         };
         self.doms.insert(name.to_string(), Ty::Dom(i));
@@ -441,9 +442,9 @@ impl Cx<'_> {
                 };
                 let lo = end(self, lo, false);
                 let hi = end(self, hi, !*inclusive);
-                self.ranges.push(RangeInfo { lo, hi });
-                self.doms
-                    .insert(name.clone(), Ty::RangeOf(self.ranges.len() - 1));
+                let i = self.id(super::Table::Range, self.ranges.len());
+                super::put(&mut self.ranges, i, RangeInfo { lo, hi });
+                self.doms.insert(name.clone(), Ty::RangeOf(i));
                 t.kind = TypeKind::Named {
                     name: ast::Name {
                         text: name,

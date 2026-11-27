@@ -426,7 +426,7 @@ impl<'a> Cx<'a> {
             ctx: 0,
         };
         if fd.n_ret_sets > 0 {
-            self.set_calls.push((f.clone(), self.decl));
+            self.set_call(&f);
         }
         let ret = self.decl_ret(m);
         self.result_of(&f, &ret)

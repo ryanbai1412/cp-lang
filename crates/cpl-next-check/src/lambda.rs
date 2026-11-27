@@ -5,6 +5,37 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::BTreeSet;
 
 impl Cx<'_> {
+    /// The id of the next entry of `t`, which holds `len`: the one the whole program's check
+    /// gives it, whatever else is checked.
+    pub(super) fn id(&mut self, t: super::Table, len: usize) -> usize {
+        let key = (self.decl, self.copy, t, self.made[t as usize]);
+        self.made[t as usize] += 1;
+        self.id_at(key, len)
+    }
+    /// The id `key` names in its table, which holds `len`.
+    pub(super) fn id_at(
+        &mut self,
+        key: (Option<FnId>, u32, super::Table, u32),
+        len: usize,
+    ) -> usize {
+        let k = key.2 as usize;
+        let next = self.next[k].max(len);
+        let id = *self.ids.entry(key).or_insert(next);
+        self.next[k] = self.next[k].max(id + 1);
+        id
+    }
+    /// Records a call passing sets, and reserves an entry of `Table::Added` for each.
+    pub(super) fn set_call(&mut self, f: &FnRef) {
+        let k = super::Table::Added as usize;
+        let base = self.made[k];
+        self.made[k] += f.sets.len() as u32;
+        self.set_calls.push((f.clone(), self.decl, self.copy, base));
+    }
+    pub(super) fn new_lambda(&mut self, info: LambdaInfo) -> LambdaId {
+        let id = self.id(super::Table::Lambda, self.lambdas.len());
+        super::put(&mut self.lambdas, id, info);
+        LambdaId(id)
+    }
     pub(super) fn lambda(
         &mut self,
         (params, param_tys, param_mut): (&[ast::Pattern], &[Option<ast::Type>], &[bool]),
@@ -125,7 +156,7 @@ impl Cx<'_> {
         let (id, group) = match pre {
             Some(id) => (id, self.lambdas[id.0].group.clone()),
             None => {
-                self.lambdas.push(LambdaInfo {
+                let id = self.new_lambda(LambdaInfo {
                     params: ptys.clone(),
                     ret: ret.clone(),
                     owner: self.decl,
@@ -133,7 +164,7 @@ impl Cx<'_> {
                     yields: None,
                     written: Vec::new(),
                 });
-                (LambdaId(self.lambdas.len() - 1), Vec::new())
+                (id, Vec::new())
             }
         };
         let outer_selves = self.selves.len();
@@ -266,8 +297,7 @@ impl Cx<'_> {
                 .map(|p| p.ty.as_ref().map_or(Ty::Error, |t| quiet(self, t)))
                 .collect();
             let ret = fd.ret.as_ref().map_or(Ty::Unit, |t| quiet(self, t));
-            let id = LambdaId(self.lambdas.len());
-            self.lambdas.push(LambdaInfo {
+            let id = self.new_lambda(LambdaInfo {
                 params,
                 ret,
                 owner: self.decl,

@@ -554,7 +554,7 @@ impl<'a> Cx<'a> {
             ctx,
         };
         if !r.sets.is_empty() {
-            self.set_calls.push((r.clone(), self.decl));
+            self.set_call(&r);
         }
         r
     }

@@ -91,7 +91,7 @@ impl Cx<'_> {
             lend: false,
             body: unit(TK::Block(vec![TStmt::Yield(item)], None)),
         };
-        self.lambdas.push(LambdaInfo {
+        let id = self.new_lambda(LambdaInfo {
             params: Vec::new(),
             ret: Ty::Unit,
             owner: self.decl,
@@ -99,7 +99,6 @@ impl Cx<'_> {
             yields: Some(elem.clone()),
             written: Vec::new(),
         });
-        let id = LambdaId(self.lambdas.len() - 1);
         let lambda = TExpr {
             kind: TK::Lambda {
                 id,
@@ -140,7 +139,7 @@ impl Cx<'_> {
                 span,
             };
         }
-        self.lambdas.push(LambdaInfo {
+        let id = self.new_lambda(LambdaInfo {
             params: ps.clone(),
             ret: Ty::Unit,
             owner: self.decl,
@@ -148,7 +147,6 @@ impl Cx<'_> {
             yields: None,
             written: Vec::new(),
         });
-        let id = LambdaId(self.lambdas.len() - 1);
         self.scopes.push(HashMap::new());
         let mut ids = Vec::new();
         let mut args = Vec::new();
