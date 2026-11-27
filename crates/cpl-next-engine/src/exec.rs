@@ -324,13 +324,16 @@ impl M<'_> {
         Ok(n)
     }
     /// Where place `p` is, each storage on the way made this holder's own: it will be written.
+    #[inline(always)]
     fn loc(&mut self, fp: usize, p: u32) -> R<Loc> {
         self.place(fp, p, true)
     }
     /// Where place `p` is, to be read: storage shared with another holder stays shared.
+    #[inline(always)]
     fn look(&mut self, fp: usize, p: u32) -> R<Loc> {
         self.place(fp, p, false)
     }
+    #[inline(always)]
     fn place(&mut self, fp: usize, p: u32, own: bool) -> R<Loc> {
         let pc = &self.c.places[p as usize];
         let mut loc = match pc.root {
