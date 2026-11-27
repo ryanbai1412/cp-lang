@@ -1437,6 +1437,7 @@ next/n_scope_01_param_shadows_domain.cp
 next/n_set_01_closure_added_through_mut_param.cp
 next/n_set_02_closure_stored_in_mut_param_field.cp
 next/n_set_03_call_result_set_takes_more.cp
+next/n_set_04_two_param_sets_made_one.cp
 next/n_set_ordered.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp
@@ -1751,6 +1752,9 @@ traits/IndexGet/Mapped--at.cp
 traits/IndexGet/Range--at.cp
 traits/IndexGet/Slice--at.cp
 traits/IndexGet/Str--at.cp
+traits/IndexMut/Array--at.cp
+traits/IndexMut/List--at.cp
+traits/IndexMut/Str--at.cp
 traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp
 traits/IndexSet/Map--set.cp
@@ -1762,9 +1766,6 @@ traits/Indexed/Range--keys.cp
 traits/Indexed/Slice--keys.cp
 traits/Indexed/Str--keys.cp
 traits/Indexed/Zipped--keys.cp
-traits/IndexMut/Array--at.cp
-traits/IndexMut/List--at.cp
-traits/IndexMut/Str--at.cp
 traits/Into/Subset--into.cp
 traits/Keyed/Array--items.cp
 traits/Keyed/Filtered--items.cp

@@ -198,6 +198,14 @@ impl<'a> Cx<'a> {
                 }
                 true
             }
+            // Two of the fn's own set parameters made one: its callers pass one set for both.
+            (SetTy::Param(i), SetTy::Param(j)) if i != j => match self.decl {
+                Some(g) => {
+                    self.set_alias.push((g, i, j));
+                    true
+                }
+                None => false,
+            },
             (a, b) => a == b,
         }
     }

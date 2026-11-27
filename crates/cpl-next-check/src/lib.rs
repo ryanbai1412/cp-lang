@@ -298,6 +298,8 @@ struct Cx<'a> {
     param_adds: HashMap<(FnId, usize), Vec<Member>>,
     /// Every fn reference with set arguments, and the fn it sits in.
     set_calls: Vec<(FnRef, Option<FnId>)>,
+    /// Two set parameters of a fn its body made one set: each call passes one set for both.
+    set_alias: Vec<(FnId, usize, usize)>,
     domains: Vec<DomInfo>,
     doms: HashMap<String, Ty>,
     ranges: Vec<RangeInfo>,
@@ -390,6 +392,7 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
         global_names: HashMap::new(),
         param_adds: HashMap::new(),
         set_calls: Vec::new(),
+        set_alias: Vec::new(),
         // A top-level domain's place is kept for it until its statement runs.
         domains: (d.top_doms.values())
             .filter(|t| matches!(t, Ty::Dom(_)))
@@ -772,6 +775,18 @@ impl<'a> Cx<'a> {
         let mut out = Vec::new();
         let mut done = HashSet::new();
         let calls = std::mem::take(&mut self.set_calls);
+        let mut seen = 0;
+        while seen < self.set_alias.len() {
+            let (g, i, j) = self.set_alias[seen];
+            seen += 1;
+            for (f, caller) in calls.iter().filter(|(f, _)| f.decl == g) {
+                if let (Some(a), Some(b)) = (f.sets.get(i).cloned(), f.sets.get(j).cloned()) {
+                    let was = std::mem::replace(&mut self.decl, *caller);
+                    self.unify_set(&a, &b);
+                    self.decl = was;
+                }
+            }
+        }
         loop {
             let mut changed = false;
             for (ci, (f, caller)) in calls.iter().enumerate() {
