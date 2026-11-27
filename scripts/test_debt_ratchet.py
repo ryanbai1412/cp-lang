@@ -1086,6 +1086,28 @@ class DebtRatchetTest(unittest.TestCase):
                     mock.patch.object(dr, "rs_over_cap", lambda r, m: {}):
                 self.assertEqual(dr.main(["--zero", "--root", str(root)]), 0)
 
+    def test_the_evadable_counters_see_the_spellings_the_audit_found(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "crates/cpl-next/src"
+            src.mkdir(parents=True)
+            (root / "std").mkdir()
+            (root / "std/prelude.cp").write_text("@derive\nstruct List {}\n")
+            (src / "lib.rs").write_text(
+                'Some("x") => 1,\n("dom_at", Some(k)) => 2,\nm.get("new");\nn.get(k);\n'
+                'pub const CORE: ModId = ModId(0);\nif m == decls::CORE {}\nCORE.0;\n'
+                'const H: &str = r"int f();\nint g();";\nconst I: &str = include_str!("rt.hpp");\n'
+                'let m = "std.prelude";\nmarked(s, "derive");\n'
+            )
+            rel = "crates/cpl-next/src/lib.rs"
+            self.assertEqual(dr.next_name_compares(root), [f"{rel}:{i}" for i in (1, 2, 3)])
+            self.assertEqual(dr.next_core_checks(root), [f"{rel}:{i}" for i in (6, 7)])
+            self.assertEqual(dr.next_cpp_runtime_lines(root),
+                             [f"{rel}:8", f"{rel}:9", f"{rel}:10: include_str"])
+            names = dr.next_std_names(root)
+            self.assertIn(f"{rel}:11: std.prelude", names)
+            self.assertIn(f"{rel}:12: derive", names)
+
     def test_a_harness_refusal_site_is_counted_where_the_pipeline_s_is_not(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -2333,10 +2355,10 @@ class DebtRatchetTest(unittest.TestCase):
             (ir / "lib.rs").write_text("pub fn lends(self) {}\n")
             eng = root / "crates/cpl-next-engine/src"
             eng.mkdir(parents=True)
-            (eng / "lib.rs").write_text("fn lend_outs(b: &[Stmt]) {}\nfn drop_at() {}\nfn add() {}\n"
+            (eng / "lib.rs").write_text("let s = Stmt::Drop(v);\nStmt::Drop(x) => {}\nf.drops.push(v);\n"
                                         "if m == CORE {}\n// m != CORE\nif CORE != m {}\n")
             self.assertEqual(dr.next_ownership_outside_own(root),
-                             ["crates/cpl-next-engine/src/lib.rs:1 lend_outs", "crates/cpl-next-engine/src/lib.rs:2 drop_at"])
+                             ["crates/cpl-next-engine/src/lib.rs:1 Stmt::Drop", "crates/cpl-next-engine/src/lib.rs:3 Func field"])
             (root / "std").mkdir(exist_ok=True)
             (root / "std/bits.cp").write_text(
                 "impl Word for Int:\n    fn word(self) -> U64 = U64(0)\n"
