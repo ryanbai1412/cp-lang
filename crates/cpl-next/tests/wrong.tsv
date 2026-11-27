@@ -495,7 +495,7 @@ std-math/choose-out-of-range.cp	wrong-reject	check: std.math:133:17: E0201: unkn
 std-math/crt-all-empty-and-single.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
 std-math/crt-all-zero-modulus-traps.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
 std-math/crt-incompatible.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
-std-math/digits-base.cp	wrong-reject	check: program:2:7: E0203: `Int` has no member `digits`
+std-math/digits-base.cp	wrong-reject	own: std.math:706:5: E0603: this returns a value that borrows `$tuple228`: `$tuple228` is gone when the fn returns
 std-math/ext-gcd-bezout.cp	wrong-reject	check: program:2:6: E0203: `(g: Int, x: Int, y: Int)` has no member `_0`
 std-math/floor-sum-zero-terms.cp	wrong-reject	check: std.math:1218:9: E0201: unknown name `swap`
 std-math/mul-mod-no-overflow.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
@@ -583,7 +583,7 @@ std-seq/prev-permutation-at-first.cp	wrong-reject	check: std.seq:904:27: E0606: 
 std-seq/rebase-str-keys-from-zero.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<Str>>` has no member `keys`
 std-seq/rfind-no-match.cp	wrong-reject	check: std.seq:288:14: E0302: expected `T`, found `2.hidden`
 std-seq/rfind-through-bidir-on-each-sequence.cp	wrong-reject	check: std.seq:288:14: E0302: expected `T`, found `2.hidden`
-std-seq/rotate-left-euclidean.cp	wrong-reject	check: std.seq:811:12: E0203: `Range<Int>` has no member `is_empty`
+std-seq/rotate-left-euclidean.cp	wrong-reject	check: std.seq:432:9: E0203: `S` has no member `swap_idx`
 std-seq/rotated-left-past-length.cp	wrong-reject	check: std.seq:840:13: E0606: `S` does not implement `Domain`
 std-seq/select-empty-traps.cp	wrong-reject	check: std.seq:533:62: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/select-k-past-len-traps.cp	wrong-reject	check: std.seq:533:62: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)

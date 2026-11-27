@@ -448,7 +448,14 @@ impl<'a> Cx<'a> {
                 };
                 let st = sub.ty(&st);
                 let st = self.fresh_sets(&st);
-                if self.unify(&recv.ty, &st) {
+                // `self: 0..` takes an integer as a parameter of that type does: checked in.
+                let scalar = matches!(self.shallow(&st), Ty::Range(..) | Ty::RangeOf(_))
+                    && matches!(
+                        self.shallow(&recv.ty),
+                        Ty::Int | Ty::Range(..) | Ty::RangeOf(_)
+                    );
+                if scalar || self.unify(&recv.ty, &st) {
+                    let recv = if scalar { self.coerce(recv, &st) } else { recv };
                     let fd = self.d.f(fid);
                     if call.is_none() && !fd.getter {
                         self.err(

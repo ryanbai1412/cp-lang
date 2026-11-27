@@ -172,7 +172,6 @@ core-05/exercise-13-disjoint-slices-meet.cp
 core-05/exercise-14-write-while-mut-place-lent.cp
 core-05/exercise-20-segtree-lent-from-ws.cp
 core-05/exercise-22-call-writes-lent-source.cp
-core-05/exercise-25-owned-generators-in-list.cp
 core-05/exercise-30-nested-fn-writes-var.cp
 core-05/exercise-35-lent-optional-kept.cp
 core-05/fn-field-call-changes-nothing.cp
@@ -306,7 +305,6 @@ core-07/slice-reads-as-its-source.cp
 core-07/sort-a-mut-slice.cp
 core-07/sorted-has-no-desc-flag.cp
 core-07/sorted-on-a-generator.cp
-core-07/spec-block-divisors-break.cp
 core-07/split-keeps-empty-pieces.cp
 core-07/step.cp
 core-07/str-from-char-seq.cp
@@ -746,7 +744,6 @@ std-marks/arena-free-reuses-slots-matches-brute.cp
 std-marks/interner-of-a-list-is-rejected.cp
 std-math/congruence.cp
 std-math/enumerate.cp
-std-math/isqrt-is-a-std-body.cp
 std-math/sieve-primes-at-word-edges.cp
 std-matrix/bigger.cp
 std-matrix/max-plus-at-the-entry-bound.cp

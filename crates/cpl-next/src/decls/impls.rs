@@ -150,11 +150,14 @@ impl Decls {
                 .is_some_and(|st| fit(st, recv, &mut binds))
         })
     }
-    /// Whether `recv` has the shape of `f`'s `self`: the same struct, or the same kind of type.
+    /// Whether `recv` has the shape of `f`'s `self`: a struct whose arguments fit it, or the same kind of type.
     pub fn self_fits(&self, f: FnId, recv: &Ty) -> bool {
-        match (self.f(f).self_ty.as_ref(), recv) {
+        let f = self.f(f);
+        match (f.self_ty.as_ref(), recv) {
             (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
-            (Some(Ty::Struct(a, ..)), Ty::Struct(b, ..)) => a == b,
+            (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
+            // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
+            (Some(Ty::Range(..) | Ty::RangeOf(_)), Ty::Int) => true,
             (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
             (None, _) => false,
         }
