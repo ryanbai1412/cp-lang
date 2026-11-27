@@ -1036,6 +1036,8 @@ next/n_convert_04_enum_of_no_value_traps.cp
 next/n_domain_09_literal_is_a_position.cp
 next/n_domain_count_pred.cp
 next/n_domain_trait_01.cp
+next/n_engine_01_inlined_lender_runs_body_in_place.cp
+next/n_engine_02_trap_in_inlined_lender_body.cp
 next/n_enum_01_values_and_order.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp

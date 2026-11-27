@@ -438,6 +438,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
             inlining: vec![i],
             chain: 0,
             marks: vec![(0, 0)],
+            lending: None,
         };
         fc.block(&f.body);
         let (ops, max) = (std::mem::take(&mut fc.ops), fc.max);
@@ -479,6 +480,19 @@ struct Fc<'a> {
     /// The chain of inlined calls being compiled (`Code::chains`), and where `ops` enters each.
     chain: u32,
     marks: Vec<(u32, u32)>,
+    /// In an inlined lender: the caller's region body, which its `lend` runs in place.
+    lending: Option<Lending<'a>>,
+}
+
+/// A region body an inlined lender runs where it lends: the caller's context to compile it in.
+struct Lending<'a> {
+    var: Reg,
+    body: Vec<Stmt<CTy>>,
+    off: Vec<Reg>,
+    f: &'a Func<CTy>,
+    chain: u32,
+    /// The lending of the caller, when it is itself an inlined lender.
+    outer: Option<Box<Lending<'a>>>,
 }
 
 impl Fc<'_> {
@@ -702,6 +716,11 @@ impl Fc<'_> {
                     self.fail("an unresolved region call reached the engine");
                     return;
                 };
+                if *lend && self.lender_inlinable(*f, body) {
+                    let var = self.off[*var];
+                    self.inline(*f, args, *site, 0, Some((var, body.clone())));
+                    return;
+                }
                 let c = self.call(*f, args, *site, 0, None);
                 let block = self.region_body(body);
                 let at = self.ops.len();
@@ -725,6 +744,7 @@ impl Fc<'_> {
                 let lay = self.lay(&e.ty);
                 self.ops.push(Op::Yield { s, lay });
             }
+            Stmt::LendOut(p) if self.lending.is_some() => self.lend_in_place(p),
             Stmt::LendOut(p) => {
                 let ty = self.place_ty(p);
                 let lay = self.lay(&ty);
@@ -982,7 +1002,7 @@ impl Fc<'_> {
                 self.fail("a domain value the link step did not resolve")
             }
             EK::Call(Target::Inst(f), args, site) if self.inlinable(*f) => {
-                self.inline(*f, args, *site, d)
+                self.inline(*f, args, *site, d, None)
             }
             EK::Call(Target::Inst(f), args, site) => {
                 // The call's line runs while its arguments are evaluated, as in the reference
@@ -1298,7 +1318,8 @@ fn cost(b: &[Stmt<CTy>]) -> usize {
                 Stmt::Check { cond, .. } => e(cond),
                 Stmt::Print(ps) => ps.len(),
                 Stmt::Event(_, vs) => vs.iter().map(e).sum(),
-                Stmt::Region { .. } | Stmt::Yield(_) | Stmt::LendOut(_) => INLINE_COST,
+                Stmt::Region { .. } | Stmt::Yield(_) => INLINE_COST,
+                Stmt::LendOut(_) => 0,
                 Stmt::Break | Stmt::Continue => 0,
             }
         })
@@ -1315,9 +1336,78 @@ impl<'a> Fc<'a> {
             && self.inlining.len() < 4
             && cost(&g.body) < INLINE_COST
     }
+    /// A lender inlined with the region body its caller hands it: one `lend`, which no flow
+    /// of the body leaves.
+    fn lender_inlinable(&self, f: usize, body: &[Stmt<CTy>]) -> bool {
+        let g = &self.funcs[f];
+        matches!(g.region, Some((true, _)))
+            && f != self.c.main as usize
+            && !self.inlining.contains(&f)
+            && self.inlining.len() < 4
+            && cost(&g.body) < INLINE_COST
+            && lend_outs(&g.body) == 1
+            && !leaves(body, 0)
+    }
+    /// An inlined lender's `lend`: the place moves to the region's variable, the caller's body
+    /// runs in the caller's context, and the variable moves back, as `Op::LendOut` does.
+    fn lend_in_place(&mut self, p: &Place) {
+        let Some(mut l) = self.lending.take() else {
+            return;
+        };
+        let ty = self.place_ty(p);
+        let (n, lay) = (self.size(&ty), self.lay(&ty));
+        let at = self.place(p);
+        self.ops.push(Op::Drop { s: l.var, lay });
+        self.ops.push(Op::Take { d: l.var, p: at, n });
+        let save = self.temp(1);
+        self.ops.push(Op::Enter { site: 0, save });
+        let off = std::mem::replace(&mut self.off, std::mem::take(&mut l.off));
+        let f = std::mem::replace(&mut self.f, l.f);
+        let chain = std::mem::replace(&mut self.chain, l.chain);
+        let loops = std::mem::take(&mut self.loops);
+        let exits = self.exits.take();
+        self.lending = l.outer.take().map(|b| *b);
+        self.marks.push((self.ops.len() as u32, self.chain));
+        let body = std::mem::take(&mut l.body);
+        self.block(&body);
+        self.marks.push((self.ops.len() as u32, chain));
+        l.outer = self.lending.take().map(Box::new);
+        l.off = std::mem::replace(&mut self.off, off);
+        self.f = f;
+        self.chain = chain;
+        self.loops = loops;
+        self.exits = exits;
+        self.ops.push(Op::Restore { save });
+        self.ops.push(Op::Put { p: at, s: l.var, n });
+        self.ops.push(Op::Zero { d: l.var, n });
+        self.lending = Some(l);
+    }
     /// A call compiled into the caller: the callee's locals are registers of this frame, its
-    /// `return` a jump to the end, and its lines, events and drops those of the call.
-    fn inline(&mut self, f: usize, args: &[Arg<CTy>], site: Site, d: Reg) {
+    /// `return` a jump to the end, and its lines, events and drops those of the call. A
+    /// lender gets the region body it lends to (`lend_in_place`).
+    fn inline(
+        &mut self,
+        f: usize,
+        args: &[Arg<CTy>],
+        site: Site,
+        d: Reg,
+        lend: Option<(Reg, Vec<Stmt<CTy>>)>,
+    ) {
+        let lent_to = self.lending.take();
+        let (lending, lent_to) = match lend {
+            Some((var, body)) => (
+                Some(Lending {
+                    var,
+                    body,
+                    off: self.off.clone(),
+                    f: self.f,
+                    chain: self.chain,
+                    outer: lent_to.map(Box::new),
+                }),
+                None,
+            ),
+            None => (None, lent_to),
+        };
         let save = self.temp(1);
         self.ops.push(Op::Enter { site, save });
         let funcs: &'a [Func<CTy>] = self.funcs;
@@ -1392,7 +1482,9 @@ impl<'a> Fc<'a> {
         self.c.chains.push(chain);
         self.marks.push((self.ops.len() as u32, self.chain));
         self.inlining.push(f);
+        self.lending = lending;
         self.block(&g.body);
+        let lending = self.lending.take();
         self.inlining.pop();
         self.chain = outer;
         self.marks.push((self.ops.len() as u32, outer));
@@ -1412,5 +1504,32 @@ impl<'a> Fc<'a> {
             self.ops.push(Op::Put { p, s, n });
         }
         self.ops.push(Op::Restore { save });
+        self.lending = lending.and_then(|l| l.outer).map(|b| *b).or(lent_to);
     }
+}
+
+/// How many `lend`s a lender's body runs at most once each; one in a nested region counts
+/// as many.
+fn lend_outs(b: &[Stmt<CTy>]) -> usize {
+    b.iter()
+        .map(|s| match s {
+            Stmt::LendOut(_) => 1,
+            Stmt::If(_, x, y) | Stmt::Loop(x, y) => lend_outs(x) + lend_outs(y),
+            Stmt::Switch(_, arms) => arms.iter().map(|a| lend_outs(a)).sum(),
+            Stmt::Region { body, .. } if lend_outs(body) > 0 => 2,
+            _ => 0,
+        })
+        .sum()
+}
+/// Whether a flow of `b` leaves it: a `return`, or a `break` or `continue` of no loop in it.
+fn leaves(b: &[Stmt<CTy>], depth: usize) -> bool {
+    b.iter().any(|s| match s {
+        Stmt::Return(_) => true,
+        Stmt::Break | Stmt::Continue => depth == 0,
+        Stmt::If(_, x, y) => leaves(x, depth) || leaves(y, depth),
+        Stmt::Loop(x, y) => leaves(x, depth + 1) || leaves(y, depth + 1),
+        Stmt::Switch(_, arms) => arms.iter().any(|a| leaves(a, depth)),
+        Stmt::Region { body, .. } => leaves(body, depth),
+        _ => false,
+    })
 }
