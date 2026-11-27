@@ -414,7 +414,12 @@ impl Cx<'_> {
                 let all = recv.as_deref().into_iter().chain(args.iter());
                 for (i, a) in all.enumerate() {
                     let (TArg::Value(v) | TArg::Mut(v)) = a;
-                    if !lends.contains(&i) || self.plain(&v.ty, 0) {
+                    // A value of a type parameter that nothing lent is a copy in each instance.
+                    let owned = matches!(v.ty, Ty::Param(_))
+                        && (self.place(v)).is_some_and(|p| {
+                            !self.borrowed.contains(&p.root) && !self.params.contains(&p.root)
+                        });
+                    if !lends.contains(&i) || self.plain(&v.ty, 0) || owned {
                         continue;
                     }
                     match self.place(v) {
@@ -1324,7 +1329,8 @@ impl Cx<'_> {
                         .map(|l| l.ty.clone()),
                     VarRef::Global(g) => self.t.globals.get(*g).map(|l| l.ty.clone()),
                 };
-                if item_ty.is_some_and(|t| !self.plain(&t, 0)) {
+                // An item of a type parameter is not a borrow: each instance copies it if it must.
+                if item_ty.is_some_and(|t| !matches!(t, Ty::Param(_)) && !self.plain(&t, 0)) {
                     self.borrowed.insert(item);
                 }
                 self.regions.push((held.clone(), lent.clone()));
