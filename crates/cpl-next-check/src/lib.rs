@@ -274,8 +274,10 @@ pub struct Typed {
     pub lambdas: Vec<LambdaInfo>,
     /// The closures a fn's body adds to its i-th set parameter, a callee's adds included.
     pub param_adds: HashMap<(FnId, usize), SetTy>,
-    /// Each call whose callee adds to a set argument, and that argument's slot.
+    /// Each call passing a set argument, and that argument's slot (`SetTy::AddedAt`).
     pub call_adds: Vec<(FnRef, usize)>,
+    /// Whether each of `call_adds`' callees may add to that slot.
+    pub call_live: Vec<bool>,
     pub errors: Vec<Msg>,
     /// The errors of each library fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
@@ -340,12 +342,8 @@ struct Cx<'a> {
     globals: Vec<Local>,
     global_names: HashMap<String, LocalId>,
     param_adds: HashMap<(FnId, usize), Vec<Member>>,
-    /// Every fn reference with set arguments, and the fn it sits in.
-    /// Each call passing sets, with its caller, the caller's copy and where its sets' entries
-    /// of `Table::Added` start.
-    set_calls: Vec<(FnRef, Option<FnId>, u32, u32)>,
-    /// Two set parameters of a fn its body made one set: each call passes one set for both.
-    set_alias: Vec<(FnId, usize, usize)>,
+    /// `SetTy::AddedAt(i)`'s call and the slot of the set it passes there.
+    added: Vec<(FnRef, usize)>,
     domains: Vec<DomInfo>,
     /// A body domain and the result's `domain C` it was returned as, which it then stands for;
     /// or a result's `domain C` and the domain its caller bound it to (R02.9.3).
@@ -522,8 +520,7 @@ fn check_with(
         globals: Vec::new(),
         global_names: HashMap::new(),
         param_adds: HashMap::new(),
-        set_calls: Vec::new(),
-        set_alias: Vec::new(),
+        added: Vec::new(),
         // A top-level domain's place is kept for it until its statement runs.
         domains: (d.top_doms.values())
             .filter(|t| matches!(t, Ty::Dom(_)))
@@ -822,7 +819,8 @@ fn check_with(
             deferred.insert(id, errors);
         }
     }
-    let call_adds = cx.call_adds();
+    let call_live = cx.adds_live();
+    let call_adds = std::mem::take(&mut cx.added);
     // Zonk: every variable is replaced by what it was solved to.
     let mut main_z = std::mem::take(&mut cx.const_init);
     main_z.extend(main_out);
@@ -883,6 +881,7 @@ fn check_with(
         lambdas,
         param_adds,
         call_adds,
+        call_live,
         errors: cx.errors,
         deferred,
         quiet: quiet_fns,
@@ -974,57 +973,27 @@ impl<'a> Cx<'a> {
     /// A call reaches a fn that adds closures to a set argument, so the set it passes gains
     /// them: a set the caller owns takes them as a member, and a set parameter of the caller
     /// passes them on to its own callers. Run to a fixpoint once every body is checked.
-    fn call_adds(&mut self) -> Vec<(FnRef, usize)> {
-        let mut out = Vec::new();
-        let mut done = HashSet::new();
-        let calls = std::mem::take(&mut self.set_calls);
-        let mut seen = 0;
-        while seen < self.set_alias.len() {
-            let (g, i, j) = self.set_alias[seen];
-            seen += 1;
-            for (f, caller, ..) in calls.iter().filter(|(f, ..)| f.decl == g) {
-                if let (Some(a), Some(b)) = (f.sets.get(i).cloned(), f.sets.get(j).cloned()) {
-                    let was = std::mem::replace(&mut self.decl, *caller);
-                    self.unify_set(&a, &b);
-                    self.decl = was;
-                }
-            }
-        }
+    /// Which calls' callees may add to the set they are passed there, read from the summaries
+    /// alone (`param_adds`): no body is checked again.
+    fn adds_live(&self) -> Vec<bool> {
+        let callee_adds = |live: &[bool], (f, slot): &(FnRef, usize)| {
+            let fd = self.d.f(f.decl);
+            let by_impl = matches!(fd.owner, Some(Owner::Trait(_))) && *slot >= fd.n_sets;
+            by_impl
+                || (self.param_adds.get(&(f.decl, *slot))).is_some_and(|ms| {
+                    ms.iter().any(|m| match m {
+                        Member::Sub(SetTy::AddedAt(c)) => live[*c],
+                        _ => true,
+                    })
+                })
+        };
+        let mut live = vec![false; self.added.len()];
         loop {
-            let mut changed = false;
-            for (ci, (f, caller, copy, base)) in calls.iter().enumerate() {
-                let fd = self.d.f(f.decl);
-                // A trait's fn's impls are known per instance: each may add to the result.
-                let by_impl = matches!(fd.owner, Some(Owner::Trait(_)));
-                for (slot, s) in f.sets.iter().enumerate() {
-                    let adds = (by_impl && slot >= fd.n_sets)
-                        || self.param_adds.contains_key(&(f.decl, slot));
-                    if !adds || !done.insert((ci, slot)) {
-                        continue;
-                    }
-                    changed = true;
-                    let key = (*caller, *copy, Table::Added, base + slot as u32);
-                    let at = self.id_at(key, out.len());
-                    let m = Member::Sub(SetTy::AddedAt(at));
-                    put(&mut out, at, (f.clone(), slot));
-                    match self.shallow_set(s) {
-                        SetTy::Var(v) => {
-                            if let SetVar::Root(ms) = &mut self.sets[v] {
-                                ms.push(m);
-                            }
-                        }
-                        SetTy::Param(j) => {
-                            if let Some(g) = caller {
-                                self.param_adds.entry((*g, j)).or_default().push(m);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
+            let next: Vec<bool> = self.added.iter().map(|c| callee_adds(&live, c)).collect();
+            if next == live {
+                return live;
             }
-            if !changed {
-                return out;
-            }
+            live = next;
         }
     }
     pub(crate) fn reach(&mut self, id: FnId) {

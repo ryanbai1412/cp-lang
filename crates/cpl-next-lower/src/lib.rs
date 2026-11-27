@@ -75,6 +75,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         adds: cpl_next_ir::ty::SetAdds {
             params: typed.param_adds.clone(),
             calls: typed.call_adds.clone(),
+            live: typed.call_live.clone(),
         },
         whole: whole(d, typed),
         deferred: Default::default(),

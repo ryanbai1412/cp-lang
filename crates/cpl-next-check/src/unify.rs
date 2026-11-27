@@ -237,10 +237,17 @@ impl<'a> Cx<'a> {
                 }
                 true
             }
-            // Two of the fn's own set parameters made one: its callers pass one set for both.
+            // Two of the fn's own set parameters made one: each holds what its caller passes
+            // for the other.
             (SetTy::Param(i), SetTy::Param(j)) if i != j => match self.decl {
                 Some(g) => {
-                    self.set_alias.push((g, i, j));
+                    let adds = &mut self.param_adds;
+                    adds.entry((g, i))
+                        .or_default()
+                        .push(Member::Sub(SetTy::Param(j)));
+                    adds.entry((g, j))
+                        .or_default()
+                        .push(Member::Sub(SetTy::Param(i)));
                     true
                 }
                 None => false,

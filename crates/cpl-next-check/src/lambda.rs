@@ -24,12 +24,27 @@ impl Cx<'_> {
         self.next[k] = self.next[k].max(id + 1);
         id
     }
-    /// Records a call passing sets, and reserves an entry of `Table::Added` for each.
+    /// A call passing sets: each set it passes also holds what the callee adds to it, which
+    /// the callee's summary (`param_adds`) says and link reads per instance.
     pub(super) fn set_call(&mut self, f: &FnRef) {
-        let k = super::Table::Added as usize;
-        let base = self.made[k];
-        self.made[k] += f.sets.len() as u32;
-        self.set_calls.push((f.clone(), self.decl, self.copy, base));
+        for (slot, s) in f.sets.iter().enumerate() {
+            let at = self.id(super::Table::Added, self.added.len());
+            put(&mut self.added, at, (f.clone(), slot));
+            let m = Member::Sub(SetTy::AddedAt(at));
+            match self.shallow_set(s) {
+                SetTy::Var(v) => {
+                    if let super::SetVar::Root(ms) = &mut self.sets[v] {
+                        ms.push(m);
+                    }
+                }
+                SetTy::Param(j) => {
+                    if let Some(g) = self.decl {
+                        self.param_adds.entry((g, j)).or_default().push(m);
+                    }
+                }
+                _ => {}
+            }
+        }
     }
     pub(super) fn new_lambda(&mut self, info: LambdaInfo) -> LambdaId {
         let id = self.id(super::Table::Lambda, self.lambdas.len());

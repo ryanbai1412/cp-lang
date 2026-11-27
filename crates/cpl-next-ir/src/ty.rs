@@ -82,6 +82,8 @@ pub struct SetAdds {
     pub params: std::collections::HashMap<(FnId, usize), SetTy>,
     /// `AddedAt(i)`'s call and slot.
     pub calls: Vec<(FnRef, usize)>,
+    /// Whether `AddedAt(i)`'s callee may add anything there; one that cannot adds nothing.
+    pub live: Vec<bool>,
 }
 
 /// As derived, but a set parameter prints as `SetParam(i)`, apart from a type's `Param(i)`, so

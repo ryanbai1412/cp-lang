@@ -559,6 +559,7 @@ impl Link<'_> {
                     }
                 }
             }
+            SetTy::AddedAt(c) if !self.adds.live.get(*c).copied().unwrap_or(true) => {}
             SetTy::AddedAt(c) => {
                 // A call met again inside its own arguments' sets adds nothing more.
                 if !self.add_busy.insert(*c) {
