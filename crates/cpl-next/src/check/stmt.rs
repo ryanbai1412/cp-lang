@@ -488,7 +488,8 @@ impl<'a> Cx<'a> {
                     return self.err(s.span, "slice: unsupported pattern");
                 };
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
-                // A literal is never an array, so where one is declared it is the fill: its cell's type.
+                // A literal is never an array, so where one is declared it is the fill: its cell's
+                // type, as a range of cuts filling `[V]Range<V>` is a piece (R04.4.4).
                 let literal = matches!(
                     init.kind,
                     ExprKind::Int(_)
@@ -497,6 +498,7 @@ impl<'a> Cx<'a> {
                         | ExprKind::Char(_)
                         | ExprKind::Bool(_)
                         | ExprKind::None
+                        | ExprKind::Range { .. }
                 );
                 let cell = match (&declared, self.array_id()) {
                     (Some(Ty::Struct(d, ts, _)), Some(arr)) if literal && *d == arr => {
@@ -707,10 +709,15 @@ impl<'a> Cx<'a> {
                 if let ExprKind::Index { indices, .. } = &target.kind {
                     if indices.len() == 1 {
                         let target = self.hoist_indices(target, out);
-                        let value = self.hoist(value, None, "$rhs", out);
                         let ExprKind::Index { base, indices } = &target.kind else {
                             return;
                         };
+                        // The cell's type, so `out[v] = j..i` of cuts is a piece (R04.4.4).
+                        let cell = match &super::index::unparen(base).kind {
+                            ExprKind::Name(n) => self.lookup(n).and_then(|(_, t)| self.cell_of(&t)),
+                            _ => None,
+                        };
+                        let value = self.hoist(value, cell.as_ref(), "$rhs", out);
                         let (op, span) = (*op, s.span);
                         self.through_cell(
                             (base, &indices[0]),

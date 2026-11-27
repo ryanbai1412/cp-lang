@@ -1053,6 +1053,8 @@ next/n_convert_04_enum_of_no_value_traps.cp
 next/n_convert_05_no_into_impl_is_a_mismatch.cp
 next/n_domain_09_literal_is_a_position.cp
 next/n_domain_count_pred.cp
+next/n_domain_cuts.cp
+next/n_domain_cuts_closed.cp
 next/n_domain_ord.cp
 next/n_domain_trait_01.cp
 next/n_engine_01_inlined_lender_runs_body_in_place.cp

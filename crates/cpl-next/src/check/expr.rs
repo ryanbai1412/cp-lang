@@ -1253,7 +1253,11 @@ impl<'a> Cx<'a> {
                         return self.open_slice(b, ends, span);
                     }
                 }
-                let i = self.expr(&indices[0], Some(&Ty::Int));
+                let want = match &super::index::unparen(&indices[0]).kind {
+                    ExprKind::Range { .. } => (self.key_of(&b.ty)).and_then(|k| self.range_over(k)),
+                    _ => None,
+                };
+                let i = self.expr(&indices[0], Some(want.as_ref().unwrap_or(&Ty::Int)));
                 if let Some(f) = self.index_fn(&b.ty, &i.ty) {
                     self.index_call(f, b, i, span)
                 } else {
@@ -1675,14 +1679,14 @@ impl<'a> Cx<'a> {
                 hi: Some(hi),
                 inclusive,
                 step,
-            } => self.range_value(lo, hi, *inclusive, step.as_deref(), span),
+            } => self.range_value(lo, hi, *inclusive, step.as_deref(), want, span),
             ExprKind::By { walk, step } => match &walk.kind {
                 ExprKind::Range {
                     lo: Some(lo),
                     hi: Some(hi),
                     inclusive,
                     step: None,
-                } => self.range_value(lo, hi, *inclusive, Some(step), span),
+                } => self.range_value(lo, hi, *inclusive, Some(step), want, span),
                 _ => {
                     self.err(span, "slice: `by` on a walk that is not a range");
                     mk(TK::Error, Ty::Error)

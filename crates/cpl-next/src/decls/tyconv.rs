@@ -19,6 +19,7 @@ pub(super) struct TyCx<'a> {
     pub(super) struct_sets: &'a HashMap<StructId, usize>,
     pub(super) struct_defaults: &'a HashMap<StructId, Vec<Option<Ty>>>,
     pub(super) tuples: &'a HashMap<usize, StructId>,
+    pub(super) members: &'a HashMap<String, StructId>,
     pub(super) generics: &'a [String],
     /// What the generics stand for, when converting an alias's type.
     pub(super) args: Option<&'a [Ty]>,
@@ -73,6 +74,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         struct_sets: cx.struct_sets,
         struct_defaults: cx.struct_defaults,
         tuples: cx.tuples,
+        members: cx.members,
         generics: &decl.generics,
         args: Some(&a),
         aliases: cx.aliases,
@@ -172,6 +174,29 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         TypeKind::Named { name, args } => {
             let n = name.text.as_str();
             let mut a: Vec<Ty> = args.iter().map(|x| conv(cx, x, errors)).collect();
+            // `D.m`: the `@member(m)` struct at `D`, as `D.cuts` is `Cut<D>`.
+            if let Some((base, m)) = n.rsplit_once('.') {
+                if let Some(&id) = cx.members.get(m) {
+                    let named = TypeKind::Named {
+                        name: ast::Name {
+                            text: base.to_string(),
+                            span: name.span,
+                        },
+                        args: Vec::new(),
+                    };
+                    let base = conv(
+                        cx,
+                        &ast::Type {
+                            kind: named,
+                            span: t.span,
+                        },
+                        errors,
+                    );
+                    let k = cx.struct_sets.get(&id).copied().unwrap_or(0);
+                    let sets = (0..k).map(|_| slot(cx)).collect();
+                    return Ty::Struct(id, vec![base], sets);
+                }
+            }
             if let Some(i) = cx.generics.iter().position(|g| g == n) {
                 return match cx.args {
                     Some(args) => args[i].clone(),
@@ -307,6 +332,7 @@ pub fn body_type(
             struct_sets: &d.struct_sets,
             struct_defaults: &d.struct_defaults,
             tuples: &d.tuples,
+            members: &d.member_types,
             generics,
             args: None,
             aliases: &d.aliases,

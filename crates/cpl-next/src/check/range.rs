@@ -13,12 +13,23 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> Option<TExpr> {
-        if let ExprKind::Name(n) = &base.kind {
-            if let (Some(dty @ Ty::Dom(_)), true) = (self.domain_named(n), self.lookup(n).is_none())
-            {
-                if let Some(e) = self.domain_fn(dty, name, call, span) {
-                    return Some(e);
-                }
+        if let Some(dty) = self.type_path(base) {
+            let found = match &dty {
+                Ty::Dom(_) => self.domain_fn(dty.clone(), name, call, span),
+                Ty::Struct(..) => self.type_static(dty.clone(), name, call, span),
+                _ => None,
+            };
+            if found.is_some() {
+                return found;
+            }
+            // `D.m` for a `@member(m)` struct, named as a value: the domain of them; `D.m(x)`
+            // converts `x` to one (R04.2.5, R04.2.17).
+            if let Some(t) = self.member_type(&dty, &name.text) {
+                return match call {
+                    None => Some(self.domain_value(t, span)),
+                    Some([a]) if a.name.is_none() => Some(self.convert(t, &a.value, span)),
+                    Some(_) => None,
+                };
             }
         }
         // `[e].f(args)`: a fn of the array type `[e]_` with no receiver, as in `[V].filled(0)`.
@@ -177,6 +188,23 @@ impl Cx<'_> {
             span,
         }
     }
+    /// A type named in an expression: a domain, a type parameter, or `D.m` for a `@member(m)`
+    /// struct, as `V.cuts` is `Cut<V>`.
+    fn type_path(&self, e: &ast::Expr) -> Option<Ty> {
+        match &e.kind {
+            ExprKind::Name(n) if self.lookup(n).is_none() => self.domain_named(n),
+            ExprKind::Field { base, name } => {
+                let b = self.type_path(base)?;
+                self.member_type(&b, &name.text)
+            }
+            _ => None,
+        }
+    }
+    /// `D.m`: the `@member(m)` struct at `D` (R06).
+    fn member_type(&self, d: &Ty, m: &str) -> Option<Ty> {
+        let &id = self.d.member_types.get(m)?;
+        (self.d.s(id).n_sets == 0).then(|| Ty::Struct(id, vec![d.clone()], Vec::new()))
+    }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
         // A fn's own type parameter is nearer than any domain declared outside it.
@@ -198,10 +226,42 @@ impl Cx<'_> {
         hi: &ast::Expr,
         inclusive: bool,
         step: Option<&ast::Expr>,
+        want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
+        let first = self.expr(lo, Some(&Ty::Int));
+        let (args, d) = match self.ord_ends(&first.ty, step) {
+            Some(ord) => self.domain_range(first, hi, inclusive, want, ord, span),
+            None => (self.int_ends(first, lo, hi, inclusive, step, span), Ty::Int),
+        };
+        self.range_of(args, d, span)
+    }
+    /// `Domain`'s `ord`, when a range's ends are values of a type that implements it.
+    fn ord_ends(&self, t: &Ty, step: Option<&ast::Expr>) -> Option<DomainFn> {
+        let t @ Ty::Struct(..) = self.shallow(t) else {
+            return None;
+        };
+        let tr = self.d.domain_trait?;
+        (step.is_none() && self.d.has_impl(&t, tr))
+            .then(|| self.domain_method("dom_ord"))
+            .flatten()
+    }
+    /// The `lo, hi, step` integers of an `Int` range.
+    fn int_ends(
+        &mut self,
+        first: TExpr,
+        lo: &ast::Expr,
+        hi: &ast::Expr,
+        inclusive: bool,
+        step: Option<&ast::Expr>,
+        span: Span,
+    ) -> Vec<TExpr> {
+        let mut first = Some(first);
         let mut end = |e: &ast::Expr| {
-            let v = self.expr(e, Some(&Ty::Int));
+            let v = match first.take() {
+                Some(v) => v,
+                None => self.expr(e, Some(&Ty::Int)),
+            };
             if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
                 let t = self.show(&v.ty);
                 self.err(e.span, format!("slice: a range value with `{t}` ends"));
@@ -230,7 +290,7 @@ impl Cx<'_> {
                 span,
             },
         };
-        self.range_of(vec![lo, hi, step], Ty::Int, span)
+        vec![lo, hi, step]
     }
     /// Core's `range_of(lo, hi, step)` over positions of `d`.
     fn range_of(&mut self, args: Vec<TExpr>, d: Ty, span: Span) -> TExpr {
@@ -268,7 +328,103 @@ impl Cx<'_> {
             ty: Ty::Int,
             span,
         };
-        let args = vec![int(TK::Int(0)), int(TK::DomLen(d.clone())), int(TK::Int(1))];
+        let len = match (&d, self.domain_method("dom_count")) {
+            (Ty::Struct(..), Some(count)) => self.domain_count(d.clone(), count, span),
+            _ => int(TK::DomLen(d.clone())),
+        };
+        let args = vec![int(TK::Int(0)), len, int(TK::Int(1))];
         self.range_of(args, d.clone(), span)
     }
+    /// `j..i` with ends of a type that implements `Domain`, as cuts: the range of them, or, for
+    /// a half-open range of cuts where a `Range<D>` is wanted, the piece of `D`'s positions
+    /// between them (R04.4.1, R04.4.4).
+    fn domain_range(
+        &mut self,
+        lo: TExpr,
+        hi: &ast::Expr,
+        inclusive: bool,
+        want: Option<&Ty>,
+        ord: DomainFn,
+        span: Span,
+    ) -> (Vec<TExpr>, Ty) {
+        let t = self.shallow(&lo.ty);
+        let hi = self.expr(hi, Some(&t));
+        let hi = self.coerce(hi, &t);
+        let piece = match (want.map(|w| self.shallow(w)), &t) {
+            (Some(Ty::Struct(_, a, _)), Ty::Struct(c, of, _))
+                if Some(*c) == self.d.cut_struct
+                    && a.len() == 1
+                    && of.first().is_some_and(|d| *d == self.shallow(&a[0])) =>
+            {
+                Some(a[0].clone())
+            }
+            _ => None,
+        };
+        if piece.is_some() && inclusive {
+            let code = cpl_diag::codes::TYPE_MISMATCH.0;
+            let shown = self.show(&t);
+            self.err(
+                span,
+                format!("{code}: a closed range of `{shown}` is no piece of positions: write `j..i` (R04.4.6)"),
+            );
+        }
+        let lo = self.ordinal(lo, &ord);
+        let mut hi = self.ordinal(hi, &ord);
+        let int = |kind| TExpr {
+            kind,
+            ty: Ty::Int,
+            span,
+        };
+        if inclusive {
+            hi = int(TK::Bin(
+                BinOp::Add,
+                Box::new(hi),
+                Box::new(int(TK::Int(1))),
+                Overflow::Traps,
+            ));
+        }
+        (vec![lo, hi, int(TK::Int(1))], piece.unwrap_or(t))
+    }
+    /// The fn of core's `Domain` whose body is the intrinsic `op`.
+    fn domain_method(&self, op: &str) -> Option<DomainFn> {
+        let tr = self.d.domain_trait?;
+        let ms = &self.d.traits[tr.0].methods;
+        let (n, &m) = ms
+            .iter()
+            .find(|(_, &m)| self.d.f(m).intrinsic.as_deref() == Some(op))?;
+        let r = decls::TraitRef {
+            tr,
+            args: Vec::new(),
+        };
+        Some((r, n.clone(), m))
+    }
+    /// `v.ord` of a value whose type implements `Domain`, through the trait.
+    fn ordinal(&mut self, v: TExpr, ord: &DomainFn) -> TExpr {
+        let span = v.span;
+        let (r, method, m) = ord.clone();
+        self.reach(m);
+        self.obligations
+            .push((v.ty.clone(), r.clone(), span, Origin::Bound));
+        TExpr {
+            kind: TK::CallTrait {
+                tr: r,
+                method,
+                self_ty: Box::new(v.ty.clone()),
+                recv: Some(Box::new(TArg::Value(v))),
+                args: Vec::new(),
+            },
+            ty: Ty::Int,
+            span,
+        }
+    }
+    /// `D.count` of a type that implements `Domain`: its impl's, through the trait.
+    fn domain_count(&mut self, d: Ty, count: DomainFn, span: Span) -> TExpr {
+        let (r, n, m) = count;
+        self.obligations
+            .push((d.clone(), r.clone(), span, Origin::Bound));
+        let name = ast::Name { text: n, span };
+        self.static_call(d, r, m, &name, None, span)
+    }
 }
+/// A fn of core's `Domain`: the trait, the fn's name in it, and the fn.
+type DomainFn = (decls::TraitRef, String, FnId);

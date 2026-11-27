@@ -95,28 +95,53 @@ impl Cx<'_> {
         if !self.is_range(i) {
             return None;
         }
-        let key = match self.shallow(s) {
-            Ty::Param(p) => (self.bound_traits(p).into_iter())
-                .find(|t| self.d.traits[t.tr.0].methods.contains_key(INDEX_READ))
-                .and_then(|t| t.args.first().cloned()),
-            rt => match self
-                .d
-                .impl_member_by(&rt, INDEX_READ, |f| f.region.is_none())
-            {
-                Some(decls::Member::Method(m, ts, _)) => Some(
-                    Subst {
-                        tys: &ts,
-                        sets: &[],
-                    }
-                    .ty(&self.d.f(m).params[0].ty),
-                ),
-                _ => None,
-            },
-        };
-        if key.is_some_and(|k| self.is_range(&k)) {
+        if self.key_of(s).is_some_and(|k| self.is_range(&k)) {
             return None;
         }
         self.index_fn_for(s, 1)
+    }
+    /// The range type over `k` that the `@index` fns take, where a literal range indexes a
+    /// source keyed by `k`, so a range of cuts there is the piece between them (R04.4.4).
+    pub(super) fn range_over(&self, k: Ty) -> Option<Ty> {
+        let d = self.d;
+        (d.index_fns.iter()).find_map(|f| match d.f(*f).params.first().map(|p| &p.ty) {
+            Some(Ty::Struct(r, ..)) => Some(Ty::Struct(*r, vec![k.clone()], Vec::new())),
+            _ => None,
+        })
+    }
+    /// The type of the cell `s[k]` reads, through `Indexed`.
+    pub(super) fn cell_of(&mut self, s: &Ty) -> Option<Ty> {
+        let rt = self.shallow(s);
+        match self.read_sig(&rt)?.1 {
+            Ty::Ref(t) => Some(*t),
+            t => Some(t),
+        }
+    }
+    /// The key and cell types of `rt`'s `Indexed` read.
+    fn read_sig(&self, rt: &Ty) -> Option<(Ty, Ty)> {
+        match self
+            .d
+            .impl_member_by(rt, INDEX_READ, |f| f.region.is_none())
+        {
+            Some(decls::Member::Method(m, ts, _)) => {
+                let sub = Subst {
+                    tys: &ts,
+                    sets: &[],
+                };
+                let f = self.d.f(m);
+                Some((sub.ty(&f.params[0].ty), sub.ty(&f.ret)))
+            }
+            _ => None,
+        }
+    }
+    /// The key type `s[k]` reads at, through `Indexed`.
+    pub(super) fn key_of(&mut self, s: &Ty) -> Option<Ty> {
+        match self.shallow(s) {
+            Ty::Param(p) => (self.bound_traits(p).into_iter())
+                .find(|t| self.d.traits[t.tr.0].methods.contains_key(INDEX_READ))
+                .and_then(|t| t.args.first().cloned()),
+            rt => self.read_sig(&rt).map(|(k, _)| k),
+        }
     }
     /// The `@index` fn taking `arity` arguments that `s[..]` calls: one declared for `s`'s own
     /// type, as a range's sub-range is (R07.2.15), before the one for any indexed `S` (R07.4.6).

@@ -188,6 +188,46 @@ impl<'a> Cx<'a> {
             let fd = self.d.f(m);
             (fd.self_mode == SelfMode::None && takes(fd, call)).then_some((tr, m))
         })?;
+        Some(self.static_call(Ty::Param(i), tr, m, name, call, span))
+    }
+    /// `T.f(args)` on a type that is not a parameter, as `V.cuts.count`: a fn without `self` of
+    /// a trait it implements.
+    pub(super) fn type_static(
+        &mut self,
+        t: Ty,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> Option<TExpr> {
+        let (tr, m) = (0..self.d.traits.len()).find_map(|k| {
+            let td = &self.d.traits[k];
+            let m = *td.methods.get(&name.text)?;
+            let fd = self.d.f(m);
+            let tr = TraitId(k);
+            (fd.self_mode == SelfMode::None
+                && takes(fd, call)
+                && td.defaults.is_empty()
+                && self.d.has_impl(&t, tr))
+            .then_some((tr, m))
+        })?;
+        let r = decls::TraitRef {
+            tr,
+            args: Vec::new(),
+        };
+        self.obligations
+            .push((t.clone(), r.clone(), span, Origin::Bound));
+        Some(self.static_call(t, r, m, name, call, span))
+    }
+    /// A call of trait `tr`'s fn `m` without `self`, its impl chosen by `self_ty`.
+    pub(super) fn static_call(
+        &mut self,
+        self_ty: Ty,
+        tr: decls::TraitRef,
+        m: FnId,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+    ) -> TExpr {
         self.reach(m);
         let fd = self.d.f(m);
         if call.is_none() && !fd.getter {
@@ -200,7 +240,7 @@ impl<'a> Cx<'a> {
                 ),
             );
         }
-        let mut tys = vec![Ty::Param(i)];
+        let mut tys = vec![self_ty.clone()];
         tys.extend(tr.args.iter().cloned());
         let sub = Subst {
             tys: &tys,
@@ -214,13 +254,13 @@ impl<'a> Cx<'a> {
                 tr,
                 method: name.text.clone(),
                 recv: None,
-                self_ty: Box::new(Ty::Param(i)),
+                self_ty: Box::new(self_ty),
                 args,
             },
             ty: ret,
             span,
         };
-        Some(block(pre, call))
+        block(pre, call)
     }
     pub(super) fn member(
         &mut self,

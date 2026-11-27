@@ -246,6 +246,11 @@ pub struct Decls {
     /// A library's `@recipe` struct: the value of a `-> yields T` call made outside a `for`
     /// (R07.6.2). Its one field is the closure that walks the call.
     pub recipe: Option<StructId>,
+    /// Core's `@member(m)` structs by `m`: `D.m` is the struct at `D` (R06).
+    pub member_types: HashMap<String, StructId>,
+    /// The struct core marks `@cuts`: a half-open literal range of its values, where a
+    /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
+    pub cut_struct: Option<StructId>,
     pub aliases: Rc<Vec<AliasDecl>>,
     pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
@@ -744,6 +749,15 @@ pub fn collect(
                         {
                             d.recipe = Some(id);
                         }
+                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "cuts") {
+                            d.cut_struct = Some(id);
+                        }
+                        let member = s.decorators.iter().find(|x| x.name.text == "member");
+                        if let Some(ast::ExprKind::Name(m)) =
+                            member.and_then(|x| x.args.first()).map(|a| &a.value.kind)
+                        {
+                            d.member_types.insert(m.to_string(), id);
+                        }
                         d.structs.push(StructDecl {
                             name: sd.name.text.clone(),
                             generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
@@ -936,11 +950,13 @@ pub fn collect(
             let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
             let defaults = d.struct_defaults.clone();
             let tuples = d.tuples.clone();
+            let members = d.member_types.clone();
             let mut cx = TyCx {
                 names: &names,
                 struct_sets: &sets,
                 struct_defaults: &defaults,
                 tuples: &tuples,
+                members: &members,
                 generics: &generics,
                 args: None,
                 aliases: &aliases,
@@ -974,11 +990,13 @@ pub fn collect(
         let doms = d.doms_in(*mid);
         let (names, sets) = (d.views[mid.0].clone(), d.struct_sets.clone());
         let (tuples, defaults) = (d.tuples.clone(), d.struct_defaults.clone());
+        let members = d.member_types.clone();
         let mut cx = TyCx {
             names: &names,
             struct_sets: &sets,
             struct_defaults: &defaults,
             tuples: &tuples,
+            members: &members,
             generics: &generics,
             args: None,
             aliases: &aliases,
@@ -1020,11 +1038,13 @@ pub fn collect(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
+                    let members = d.member_types.clone();
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
+                        members: &members,
                         generics: &generics,
                         args: None,
                         aliases: &aliases,
@@ -1125,12 +1145,14 @@ pub fn collect(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
+                    let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut cx = TyCx {
                         names: &names,
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
+                        members: &members,
                         generics: &tgen,
                         args: None,
                         aliases: &aliases,
@@ -1224,6 +1246,7 @@ pub fn collect(
                     let sets = d.struct_sets.clone();
                     let defaults = d.struct_defaults.clone();
                     let tuples = d.tuples.clone();
+                    let members = d.member_types.clone();
                     let doms = d.doms_in(ModId(mi));
                     let mut errors = Vec::new();
                     let mut cx = TyCx {
@@ -1231,6 +1254,7 @@ pub fn collect(
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
+                        members: &members,
                         generics: &generics,
                         args: None,
                         aliases: &aliases,
@@ -1678,11 +1702,13 @@ fn add_fn(
     let sets = d.struct_sets.clone();
     let defaults = d.struct_defaults.clone();
     let tuples = d.tuples.clone();
+    let members = d.member_types.clone();
     let mut cx = TyCx {
         names: &names,
         struct_sets: &sets,
         struct_defaults: &defaults,
         tuples: &tuples,
+        members: &members,
         generics: &generics,
         args: None,
         aliases: &aliases,

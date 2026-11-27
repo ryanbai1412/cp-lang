@@ -9,9 +9,10 @@ fn raw_get<T>(r: Raw<T>, i: Int) -> T = @intrinsic("raw_get")
 /// Traps R0101 unless `ok`: a read at a key the sequence doesn't have (R07.2.17).
 fn check_key(ok: Bool) = @intrinsic("key_check")
 fn check_range(ok: Bool) = @intrinsic("range_check")
-/// Traps R0102 unless `ok`: an `Int` converted to an enum that is no variant's value (R02.7).
+/// Traps R0102 unless `ok`: a value its type doesn't have, as an `Int` converted to an enum that
+/// is no variant's value (R02.7), or to a cut past a domain's ends (R04.2.17).
 @variant_check
-fn check_variant(ok: Bool) = @intrinsic("value_check")
+fn check_value(ok: Bool) = @intrinsic("value_check")
 fn raw_set<T>(mut r: Raw<T>, i: Int, x: T) = @intrinsic("raw_set")
 /// Moves cell `i` out of `r`, leaving it unset until `raw_set` fills it.
 fn raw_take<T>(mut r: Raw<T>, i: Int) -> T = @intrinsic("move_out")
@@ -210,6 +211,12 @@ struct Range<D: Domain>:
     @get fn len(self) -> Int:
         n
 
+    /// The cut before its first value, of a range walked forwards by one (R04.3.1).
+    @get fn start(self) -> Cut<D> = Cut(lo)
+
+    /// The cut after its last value, of a range walked forwards by one (R04.3.1).
+    @get fn end(self) -> Cut<D> = Cut(lo + n)
+
     @get fn first(self) -> ?D:
         if n == 0: None else: Some(D.nth(lo))
 
@@ -308,12 +315,66 @@ trait Domain:
     fn at(x: Int) -> ?Self = @intrinsic("dom_at")
     /// `v.ord`: how many positions come before `v` in the walk (R04.2.15).
     @get fn ord(self) -> Int = @intrinsic("dom_ord")
+    /// `v.next(k)`: the position `k` after `v` in the walk, or `None` past its end (R04.3.1).
+    @get fn next(self, k: Int = 1) -> ?Self:
+        let o = self.ord + k
+        if 0 <= o and o < Self.count: Some(Self.nth(o)) else: None
+    /// `v.prev(k)`: the position `k` before `v` in the walk, or `None` past its start (R04.3.1).
+    @get fn prev(self, k: Int = 1) -> ?Self:
+        let o = self.ord - k
+        if 0 <= o and o < Self.count: Some(Self.nth(o)) else: None
+    /// `v.l`: the cut just before `v` (R04.3.1).
+    @get fn l(self) -> Cut<Self> = Cut(self.ord)
+    /// `v.r`: the cut just after `v` (R04.3.1).
+    @get fn r(self) -> Cut<Self> = Cut(self.ord + 1)
 
 /// `Int` is a domain: its integers are its positions (R04.2.18).
 impl Domain for Int:
     fn nth(k: Int) -> Int = k
     fn at(x: Int) -> ?Int = x
     @get fn ord(self) -> Int = self
+    @get fn next(self, k: Int = 1) -> ?Int = Some(self + k)
+    @get fn prev(self, k: Int = 1) -> ?Int = Some(self - k)
+
+/// A cut of `D`: the place between two neighbouring positions, or at either end, with `k`
+/// positions before it. `D.cuts` names its type and, as a value, the domain of them (R04.2.5).
+@member(cuts)
+@cuts
+struct Cut<D: Domain>:
+    k: Int
+
+    /// A cut prints as its integer (R04.2.16).
+    fn write(self):
+        write(k)
+
+    /// `c.l`: the position just before `c`, or `None` at the start (R04.3.2).
+    @get fn l(self) -> ?D:
+        if k == 0: None else: Some(D.nth(k - 1))
+
+    /// `c.r`: the position just after `c`, or `None` at the end (R04.3.2).
+    @get fn r(self) -> ?D:
+        if k == D.count: None else: Some(D.nth(k))
+
+/// A domain's cuts are a domain, one more than its positions, walked in order; a cut's integer
+/// is how many positions come before it, whatever the base (R04.2.5, R04.2.16, R04.2.17).
+impl<D: Domain> Domain for Cut<D>:
+    @get fn count() -> Int = D.count + 1
+    fn nth(k: Int) -> Cut<D>:
+        check_value(0 <= k and k <= D.count)
+        Cut(k)
+    fn at(x: Int) -> ?Cut<D> = if 0 <= x and x <= D.count: Some(Cut(x)) else: None
+    @get fn ord(self) -> Int = k
+
+/// `D.cuts(k)`: the cut with `k` positions before it; traps R0102 past the ends (R04.2.17).
+impl<D: Domain> Into<Cut<D>> for Int:
+    fn into(self) -> Cut<D>:
+        check_value(0 <= self and self <= D.count)
+        Cut(self)
+
+/// `Int(c)`: how many positions come before `c` (R04.2.16).
+impl<D: Domain> Into<Int> for Cut<D>:
+    fn into(self) -> Int = k
+
 
 /// The numbers' own operators, so `T: Add` holds of them.
 impl Add for Int:
