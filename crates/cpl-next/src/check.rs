@@ -670,6 +670,10 @@ impl<'a> Cx<'a> {
         let ret = self.ret.clone();
         let body = match &f.body {
             FnBody::Block(b) => self.block(b, Some(&ret)),
+            // A generator's one expression is the sequence it yields (R07.2.10).
+            FnBody::Expr(e) if matches!(f.region, Some((false, _))) => {
+                self.block(&yield_each(e), Some(&ret))
+            }
             FnBody::Expr(e) => {
                 let v = self.expr(e, Some(&ret));
                 self.coerce(v, &ret)
@@ -732,5 +736,40 @@ fn constant_domain(e: &cpl_syntax::ast::Expr, consts: &std::collections::HashSet
         } => end(lo) && end(hi),
         ExprKind::List(xs) => matches!(&xs[..], [x] if constant(x, consts)),
         _ => false,
+    }
+}
+
+/// `for x in e: yield x`, the body of a generator written as one expression.
+fn yield_each(e: &ast::Expr) -> ast::Block {
+    let stmt = |kind| ast::Stmt {
+        kind,
+        span: e.span,
+        decorators: Vec::new(),
+        public: false,
+    };
+    let item = "$item".to_string();
+    let each = stmt(StmtKind::Yield {
+        value: ast::Expr {
+            kind: ExprKind::Name(item.clone()),
+            span: e.span,
+        },
+        from: false,
+    });
+    let walk = stmt(StmtKind::For {
+        label: None,
+        pat: ast::Pattern {
+            kind: PatternKind::Name(item),
+            span: e.span,
+        },
+        iter: e.clone(),
+        body: ast::Block {
+            stmts: vec![each],
+            span: e.span,
+        },
+        else_body: None,
+    });
+    ast::Block {
+        stmts: vec![walk],
+        span: e.span,
     }
 }

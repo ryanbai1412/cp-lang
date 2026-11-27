@@ -234,7 +234,7 @@ core-07/first-last-pred.cp	wrong-reject	check: std.seq:288:14: E0302: expected `
 core-07/fold-from-folds-into-another-type.cp	wrong-reject	check: program:4:86: E0302: expected `List<Char>`, found `Char`
 core-07/for-walks-every-sequence.cp	wrong-reject	check: program:9:10: E0201: unknown name `Set`
 core-07/generic-mut-int-keyed-array-stays-array.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
-core-07/heap-by-desc-lambda.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
+core-07/heap-by-desc-lambda.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 core-07/indexed-param-takes-views.cp	wrong-reject	check: program:6:23: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
 core-07/keys-in-keys-out.cp	wrong-reject	check: std.strings:83:29: E0302: expected `Int`, found `Str`
 core-07/list-scan-indexed-by-count.cp	wrong-reject	check: program:4:11: E0203: `List<Int>` has no member `scan`
@@ -276,7 +276,7 @@ core-08/assoc-default-names-trait-param.cp	wrong-reject	decls: E0204: unknown ty
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
 core-08/bound-element-pattern-binds-its-param.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-08/bound-only-params-bind-from-the-impl.cp	no-cxx	g++ failed on /home/ubuntu/.cache/cpl/cxx/tests/8da93184ea13918f.1734669.ThreadId10.cpp: | /home/ubuntu/.cache/cpl/cxx/tests/8da93184ea13918f.1734669.ThreadId10.cpp: In function ‘cpl_unit f0()’: | /home/ubuntu/.cache/cpl/cxx/tests/8da93184ea13918f.1734669.ThreadId10.cpp:282:13: error: could not convert ‘g6’ from ‘S11’ to ‘S8’ |   282 |     l7 = f4(g6, g5);
+core-08/bound-only-params-bind-from-the-impl.cp	no-cxx	g++ failed on /home/ubuntu/.cache/cpl/cxx/tests/8da93184ea13918f.1928562.ThreadId6.cpp: | /home/ubuntu/.cache/cpl/cxx/tests/8da93184ea13918f.1928562.ThreadId6.cpp: In function ‘cpl_unit f0()’: | /home/ubuntu/.cache/cpl/cxx/tests/8da93184ea13918f.1928562.ThreadId6.cpp:282:13: error: could not convert ‘g6’ from ‘S11’ to ‘S8’ |   282 |     l7 = f4(g6, g5);
 core-08/bound-trait-method-yields-the-impl-types.cp	wrong-reject	decls: E0204: unknown trait `Show`
 core-08/bounds-three-ways.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-08/ctor-bound-binds-a-later-named-arg.cp	wrong-reject	check: program:8:24: E0203: `Range<F>` has no member `zero`
@@ -405,23 +405,23 @@ matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has 
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 matrix/index/pair--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 matrix/index/plain--builder.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-matrix/index/plain--construct.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
-matrix/index/plain--count.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
+matrix/index/plain--construct.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
+matrix/index/plain--count.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--cuts_lr.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `l`
 matrix/index/plain--fill.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-matrix/index/plain--filter.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
-matrix/index/plain--find.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
-matrix/index/plain--first.cp	wrong-reject	check: core:165:36: E0302: expected `D`, found `D`
-matrix/index/plain--for.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
-matrix/index/plain--int.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
+matrix/index/plain--filter.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
+matrix/index/plain--find.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
+matrix/index/plain--first.cp	wrong-reject	check: core:180:36: E0302: expected `D`, found `D`
+matrix/index/plain--for.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
+matrix/index/plain--int.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--min_by.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 matrix/index/plain--next.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `next`
-matrix/index/plain--optional.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
+matrix/index/plain--optional.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--prev.cp	wrong-reject	check: program:3:11: E0203: `D` has no member `prev`
-matrix/index/plain--print.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
+matrix/index/plain--print.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/plain--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-matrix/index/plain--rev.cp	wrong-reject	check: core:175:30: E0302: expected `D`, found `D`
-matrix/index/plain--size.cp	wrong-reject	check: core:79:19: E0302: expected `D`, found `D`
+matrix/index/plain--rev.cp	wrong-reject	check: core:190:30: E0302: expected `D`, found `D`
+matrix/index/plain--size.cp	wrong-reject	check: core:94:19: E0302: expected `D`, found `D`
 matrix/index/subset--count.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `count`
 matrix/index/subset--filter.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `filter`
 matrix/index/subset--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
@@ -491,7 +491,7 @@ std-geometry/arg-equal-for-the-same-direction.cp	wrong-reject	check: E0204: std.
 std-geometry/hull-tangents-point-inside-traps.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/hull-tangents-two-point-hull-traps.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/locate-convex-on-vertex-and-edge.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
-std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.geometry:347:53: E0203: `List<Pt>` has no member `pop`
+std-geometry/lower-hull-duplicates.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-geometry/minkowski-sum-empty-traps.cp	wrong-reject	check: std.geometry:771:17: E0302: expected `Int`, found `Pt`
 std-geometry/minkowski-sum-of-two-points.cp	wrong-reject	check: std.geometry:771:17: E0302: expected `Int`, found `Pt`
 std-geometry/minkowski-upper-empty-traps.cp	wrong-reject	check: std.geometry:826:16: E0302: expected `Int`, found `Pt`
@@ -500,8 +500,8 @@ std-geometry/on-segment-degenerate.cp	wrong-reject	check: E0204: std.geometry: u
 std-geometry/same-dir-zero-and-opposite.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/segments-meet-collinear.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/turn-collinear-and-backtrack.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
-std-geometry/upper-hull-empty-and-single.cp	wrong-reject	check: std.geometry:369:53: E0203: `List<Pt>` has no member `pop`
-std-geometry/upper-hull-unsorted-traps.cp	wrong-reject	check: std.geometry:369:53: E0203: `List<Pt>` has no member `pop`
+std-geometry/upper-hull-empty-and-single.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
+std-geometry/upper-hull-unsorted-traps.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-graph/functional.cp	wrong-reject	check: program:8:28: E0302: expected `List<Int>`, found `List<V>`
 std-graph/incremental-bridges.cp	wrong-reject	check: std.graph:3834:13: E0405: field `IncrementalBridges._iter` is fixed (not `var`) and cannot be assigned
 std-graph/out-on-a-table-of-lists-reads-the-list.cp	wrong-reject	check: program:8:7: E0203: `Array<V, List<V>>` has no member `out`
@@ -513,24 +513,24 @@ std-grid/dir8.cp	wrong-reject	check: program:2:43: E0302: expected `Mapped<List<
 std-hashmap/hashmap-of-a-list-is-rejected.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:9: E0201: unknown name `HashMap`
 std-hashmap/hashmap-of-an-int-is-rejected.cp	wrong-error	wanted E0302 on line 3, got: check: program:3:1: E0204: unknown type `HashMap`
 std-hashmap/hashset-of-a-list-holds-its-elements.cp	wrong-reject	check: program:4:7: E0201: unknown name `HashSet`
-std-heap/drain-break-keeps-the-rest.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
-std-heap/erasableheap-clear-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
+std-heap/drain-break-keeps-the-rest.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-heap/erasableheap-clear-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/erasableheap-is_empty-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/erasableheap-len-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
-std-heap/erasableheap-new-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
-std-heap/erasableheap-peek-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
-std-heap/erasableheap-pop-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
-std-heap/erasableheap-push-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
-std-heap/erasableheap-remove-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
+std-heap/erasableheap-new-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-heap/erasableheap-peek-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-heap/erasableheap-pop-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-heap/erasableheap-push-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-heap/erasableheap-remove-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/erasableheap-take-1.cp	wrong-reject	check: std.heap:125:9: E0201: unknown name `swap`
-std-heap/heap-clear-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
+std-heap/heap-clear-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/heap-is_empty-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/heap-len-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
-std-heap/heap-new-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
-std-heap/heap-of-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
+std-heap/heap-new-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-heap/heap-of-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/heap-peek-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
-std-heap/heap-pop-1.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
-std-heap/heap-pop-empty-unwrap-traps.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
+std-heap/heap-pop-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
+std-heap/heap-pop-empty-unwrap-traps.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/heap-push-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/heap-push-pop-on-empty.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/heap-push_all-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
@@ -541,17 +541,17 @@ std-heap/heap-replace_top-1.cp	wrong-reject	check: std.heap:130:9: E0606: `T` ha
 std-heap/heap-replace_top-2.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-heap/heap-reserve-1.cp	wrong-reject	check: std.heap:184:9: E0203: `List<T>` has no member `reserve`
 std-heap/heap-take-1.cp	wrong-reject	check: std.heap:125:9: E0201: unknown name `swap`
-std-heap/max-heap-ties.cp	wrong-reject	check: std.heap:172:20: E0203: `List<T>` has no member `pop`
+std-heap/max-heap-ties.cp	wrong-reject	check: std.heap:130:9: E0606: `T` has no `impl Ord`, which `<` needs (R08.1.5)
 std-journeys/window.cp	wrong-reject	check: program:3:16: E0201: unknown name `min`
-std-marks/arena-alloc-1.cp	wrong-reject	check: std.marks:437:20: E0203: `List<0..=2000000000>` has no member `pop`
-std-marks/arena-clear-1.cp	wrong-reject	check: std.marks:437:20: E0203: `List<0..=2000000000>` has no member `pop`
+std-marks/arena-alloc-1.cp	wrong-reject	check: std.marks:400:9: E0203: `List<T>` has no member `reserve`
+std-marks/arena-clear-1.cp	wrong-reject	check: std.marks:400:9: E0203: `List<T>` has no member `reserve`
 std-marks/arena-double-free-traps.cp	wrong-reject	check: std.marks:454:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
 std-marks/arena-free-foreign-handle-traps.cp	wrong-reject	check: std.marks:454:28: E0405: field `Arena._dead` is fixed (not `var`) and cannot be assigned
-std-marks/arena-get-1.cp	wrong-reject	check: std.marks:437:20: E0203: `List<0..=2000000000>` has no member `pop`
-std-marks/arena-is_empty-1.cp	wrong-reject	check: std.marks:500:9: E0203: `List<T>` has no member `clear`
-std-marks/arena-len-1.cp	wrong-reject	check: std.marks:437:20: E0203: `List<0..=2000000000>` has no member `pop`
+std-marks/arena-get-1.cp	wrong-reject	check: std.marks:400:9: E0203: `List<T>` has no member `reserve`
+std-marks/arena-is_empty-1.cp	wrong-reject	check: std.marks:400:9: E0203: `List<T>` has no member `reserve`
+std-marks/arena-len-1.cp	wrong-reject	check: std.marks:400:9: E0203: `List<T>` has no member `reserve`
 std-marks/arena-new-1.cp	wrong-reject	check: std.marks:400:9: E0203: `List<T>` has no member `reserve`
-std-marks/arena-reserve-1.cp	wrong-reject	check: std.marks:437:20: E0203: `List<0..=2000000000>` has no member `pop`
+std-marks/arena-reserve-1.cp	wrong-reject	check: std.marks:491:9: E0203: `List<T>` has no member `reserve`
 std-marks/arena-set-1.cp	wrong-reject	check: program:6:11: E0305: `Arena<Int>` is not indexed: it has no `Indexed` impl
 std-math/choose-out-of-range.cp	wrong-reject	check: std.math:133:17: E0201: unknown name `min`
 std-math/crt-all-empty-and-single.cp	wrong-reject	check: std.math:926:9: E0302: this is not a place that can be assigned or lent
@@ -618,7 +618,7 @@ std-seq/bsearch-last-wrong-way-traps.cp	wrong-reject	check: program:3:7: E0606: 
 std-seq/bsearch-true-then-false-traps.cp	wrong-reject	check: program:4:7: E0203: `List<Int>` has no member `bsearch`
 std-seq/count-in-wrong-way-traps-checked.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `count_in`
 std-seq/cycle-on-list-literal.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `cycle`
-std-seq/deduped-edges.cp	wrong-reject	check: std.seq:463:12: E0203: `List<T>` has no member `is_empty`
+std-seq/deduped-edges.cp	wrong-reject	check: std.seq:463:28: E0606: `T` has no `impl Eq`, which `!=` needs (R08.1.5)
 std-seq/ends-of-empty-range.cp	wrong-reject	check: E0204: std.range: unknown type `Cut`
 std-seq/extremes-ties-default-and-all-equal.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/insert-at-len-appends.cp	wrong-reject	check: program:4:1: E0203: `List<Int>` has no member `insert`
@@ -641,7 +641,7 @@ std-seq/partition-empty-and-all-kept.cp	wrong-reject	own: std.seq:513:5: E0603: 
 std-seq/perm-cycles-fixed-points.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
 std-seq/perm-cycles-rejects-non-permutation.cp	wrong-reject	check: program:5:7: E0302: expected `List<Int>`, found `List<List<Int>>`
 std-seq/perm-sign-rejects-non-permutation.cp	wrong-reject	link: E0606: a type argument is used as a domain (`D.count`, `D(i)`, `for v in D`) but is not one
-std-seq/pop-while-all.cp	wrong-reject	check: std.seq:1392:53: E0203: `List<T>` has no member `pop`
+std-seq/pop-while-all.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/positional-rev-and-domain-zip.cp	wrong-reject	check: program:10:7: E0302: expected `List<Int>`, found `List<R>`
 std-seq/prev-permutation-at-first.cp	wrong-reject	check: std.seq:904:27: E0606: `2.hidden` has no `impl Ord`, which `<` needs (R08.1.5)
 std-seq/rebase-str-keys-from-zero.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<Str>>` has no member `keys`
