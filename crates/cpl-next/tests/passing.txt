@@ -425,6 +425,7 @@ core-05/exercise-03-plain-record-copies.cp
 core-05/exercise-05-mut-of-let.cp
 core-05/exercise-08-push-while-row-lent.cp
 core-05/exercise-09-loop-item-kept-past-iteration.cp
+core-05/exercise-15-args-before-target.cp
 core-05/exercise-17-closure-borrows-per-call.cp
 core-05/exercise-18-closure-of-local-not-returned.cp
 core-05/exercise-19-closure-of-plain-returned.cp
@@ -1204,6 +1205,7 @@ next/n_convert_02_char_outside_ascii_traps.cp
 next/n_convert_03_enum_of_its_value.cp
 next/n_convert_04_enum_of_no_value_traps.cp
 next/n_convert_05_no_into_impl_is_a_mismatch.cp
+next/n_ctx_01_uses_is_a_copy_per_value.cp
 next/n_domain_01_all_is_every_position.cp
 next/n_domain_09_literal_is_a_position.cp
 next/n_domain_count_pred.cp
@@ -1248,6 +1250,7 @@ next/n_index_03_list_key_outside_traps.cp
 next/n_index_wrong_domain.cp
 next/n_inherent_impl.cp
 next/n_inst_lent_arg_of_a_phantom_param.cp
+next/n_into_01_list_of_a_seq_converts.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
@@ -1322,6 +1325,7 @@ next/n_variadic_01_positional_and_named.cp
 next/n_variadic_02_mixed_args.cp
 next/n_variadic_03_min_max_of_values.cp
 next/n_variadic_04_min_max_need_one_type.cp
+next/n_variadic_05_generator_is_the_method_fold.cp
 next/n_variant_01_bare_variant_names_from_context.cp
 next/o01_gen_local_walk_read.cp
 next/o02_gen_global_walk_other_write.cp
@@ -1636,6 +1640,3 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
-next/n_ctx_01_uses_is_a_copy_per_value.cp
-next/n_into_01_list_of_a_seq_converts.cp
-core-05/exercise-15-args-before-target.cp

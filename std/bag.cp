@@ -31,7 +31,7 @@ const BAG_OPS = ["none", "add", "remove", "clear"]
 ///
 /// Elements are ordered by `K`'s `<`; copies of one key are equal and indistinguishable, so
 /// no method here has a tie to break between them. `n` in every cost is `len`.
-pub struct SortedBag<K>:
+pub struct SortedBag<K: Ord>:
     var keys: List<K>
     var ws: List<Int>
     // Per node: fill, next leaf, previous leaf, and its block in `kids` (or -1).
@@ -1133,7 +1133,7 @@ pub struct SortedBag<K>:
 /// All single-key and range-summary operations are \(O(\log n)\) expected;
 /// `range(r)` is \(O(1)\); range iteration is \(O(\log n + k)\);
 /// `len`, `is_empty`, `clear`, `take` are \(O(1)\); `each`, `each_rev`, and `to_list` are \(O(n)\).
-pub struct SortedSet<K>:
+pub struct SortedSet<K: Ord>:
     var bag: SortedBag<K>
 
     /// Create an empty `SortedSet<K>`.
@@ -1422,7 +1422,7 @@ pub struct SortedSet<K>:
 ///
 /// Entries are ordered by key; keys are distinct, so no lookup has a tie to break. Every
 /// entry-returning method gives `(key, val)`.
-pub struct SortedMap<K, V>:
+pub struct SortedMap<K: Ord, V>:
     ks: SortedBag<K>
     vals: List<V>
     vfree: List<Int>
@@ -1830,7 +1830,7 @@ pub struct SortedMap<K, V>:
 ///
 /// Every fold combines `leaf(k)` over the chosen elements in ascending key order, one `leaf(k)`
 /// per copy, starting from `id`; `op` need not be commutative. An empty selection folds to `id`.
-pub struct AugSortedBag<K, T>:
+pub struct AugSortedBag<K: Ord, T>:
     bag: SortedBag<K>
     op: (T, T) -> T
     id: T
@@ -2114,7 +2114,7 @@ pub struct AugSortedBag<K, T>:
         for (k, c) in bag.entries():
             for _ in 0..c: yield k
 
-pub struct AugSortedSet<K, T>:
+pub struct AugSortedSet<K: Ord, T>:
     _len: Int
     bag: AugSortedBag<K, T>
 
@@ -2801,7 +2801,7 @@ fn sorted_map_btree_set_remove_and_walk_against_a_table():
 /// the bounds and lends the container, and allocates nothing. `for x in s.range(r)` iterates
 /// `each()`. Copies of one key in a `SortedBag` are all inside or all outside, so nothing here
 /// has a tie to break. `n` is the container's `len`, `k` the number of keys visited.
-pub struct SortedRange<K>:
+pub struct SortedRange<K: Ord>:
     bag: SortedBag<K>
     lo: ?K
     hi: ?K

@@ -17,7 +17,7 @@ use std.seq.{Seq}
 /// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
 /// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the
 /// smallest distance first and, among equals, the largest vertex.
-pub struct Heap<T>:
+pub struct Heap<T: Ord>:
     var xs: List<T>
     lt: ?((T, T) -> Bool)
 
@@ -37,7 +37,7 @@ pub struct Heap<T>:
     /// h.push(3)
     /// h.pop() == Some(3)
     /// ```
-    pub fn new<K>(by: ?(T -> K) = None) -> Heap<T>:
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> Heap<T>:
         if let f = by: return Heap(xs: [], lt: Some((a, b) => f(a) < f(b)))
         Heap(xs: [], lt: None)
 
@@ -56,7 +56,7 @@ pub struct Heap<T>:
     /// var h = Heap.of([3, 1, 2], by: desc)
     /// h.pop() == Some(3)
     /// ```
-    pub fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>:
+    pub fn of<K: Ord>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>:
         var h: Heap<T> = Heap.new(by:)
         h.xs = xs
         var i = h.xs.len / 2
@@ -251,7 +251,7 @@ pub struct Heap<T>:
 /// Min-heap supporting \(O(\log n)\) arbitrary-value `remove(x)` via a lazy deletion heap.
 /// `push` and `remove` are \(O(\log n)\); `peek` and `pop` are \(O(\log n)\) amortized; `len`, `is_empty`,
 /// `clear`, and `take` are \(O(1)\).
-pub struct ErasableHeap<T>:
+pub struct ErasableHeap<T: Ord>:
     live: Heap<T>
     dead: Heap<T>
 
@@ -260,7 +260,7 @@ pub struct ErasableHeap<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var h: ErasableHeap<Int> = ErasableHeap(); h.push(2); h.push(1); h.remove(1); h.pop() == Some(2)`
-    pub fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>:
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> ErasableHeap<T>:
         ErasableHeap(Heap.new(by:), Heap.new(by:))
 
     /// Number of active elements in the heap.
@@ -368,7 +368,7 @@ pub struct ErasableHeap<T>:
 ///
 /// Each `v: D` is in the heap at most once, with one key `K`. Ties between equal keys go to the
 /// smaller `v` in `D`'s order, so the pop order is fully determined. Memory is \(O(\lvert D \rvert)\).
-pub struct IndexedHeap<D, K>:
+pub struct IndexedHeap<D, K: Ord>:
     heap: List<D>
     pos: [D]Int
     keys: [D]?K
@@ -558,7 +558,7 @@ fn on_min_level(i: Int) -> Bool:
 
 /// Double-ended priority queue (min-max heap).
 /// `first` and `last` are \(O(1)\); `push`, `pop_first`, and `pop_last` are \(O(\log n)\).
-pub struct MinMaxHeap<T>:
+pub struct MinMaxHeap<T: Ord>:
     _xs: List<T>
     lt: ?((T, T) -> Bool)
 
@@ -567,7 +567,7 @@ pub struct MinMaxHeap<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var h: MinMaxHeap<Int> = MinMaxHeap(); h.push(2); h.push(7); h.first == Some(2) and h.last == Some(7)`
-    pub fn new<K>(by: ?(T -> K) = None) -> MinMaxHeap<T>:
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> MinMaxHeap<T>:
         if let f = by: return MinMaxHeap(_xs: [], lt: Some((a, b) => f(a) < f(b)))
         MinMaxHeap(_xs: [], lt: None)
 
@@ -770,7 +770,7 @@ pub struct MinMaxHeap<T>:
 /// when `T: Add`. `peek` / `top` is \(O(1)\); `push` and `pop` are \(O(\log n)\) amortized.
 /// `meld` copies the smaller heap's nodes; to meld many heaps (one per vertex or component) in
 /// \(O(\log n)\) with no copying, keep them in one `MeldHeaps` pool.
-pub struct MeldHeap<T>:
+pub struct MeldHeap<T: Ord>:
     _pool: MeldHeaps<T> = MeldHeaps()
     var _h: Meld<T> = Meld()
 
@@ -779,7 +779,7 @@ pub struct MeldHeap<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var h: MeldHeap<Int> = MeldHeap(); h.push(3); h.push(1); h.pop() == Some(1)`
-    pub fn new<K>(by: ?(T -> K) = None) -> MeldHeap<T>:
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> MeldHeap<T>:
         MeldHeap(_pool: MeldHeaps.new(by:))
 
     /// Build a `MeldHeap<T>` from `xs`.
@@ -988,7 +988,7 @@ pub struct Meld<T>:
 /// A popped element's node is reused by a later push, so the pool holds one node per element
 /// live at its peak, not one per element ever pushed.
 /// Use `MeldHeap` for a few heaps that own their nodes.
-pub struct MeldHeaps<T>:
+pub struct MeldHeaps<T: Ord>:
     _nodes: List<MeldNode<T>> = []
     // Per-node pending offsets, parallel to `_nodes`; empty until the first `add_all`.
     _adds: List<?T> = []
@@ -1002,7 +1002,7 @@ pub struct MeldHeaps<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var p = MeldHeaps<Int>.new(by: x => -x); var h = p.of([1, 3]); p.pop(mut h) == Some(3)`
-    pub fn new<K>(by: ?(T -> K) = None) -> MeldHeaps<T>:
+    pub fn new<K: Ord>(by: ?(T -> K) = None) -> MeldHeaps<T>:
         if let f = by: return MeldHeaps(lt: Some((a, b) => f(a) < f(b)))
         MeldHeaps()
 
@@ -1322,7 +1322,7 @@ pub type MinHeap<T> = Heap<T>
 
 /// `Heap<T>(by: desc)` under its own name: pops the largest first, with the same operations and
 /// costs as `Heap`; it holds each element as `desc(x)`. For a mixed order use `Heap` with `desc(x)` in the entry.
-pub struct MaxHeap<T>:
+pub struct MaxHeap<T: Ord>:
     h: Heap<Desc<T>>
 
     /// An empty `MaxHeap<T>`.

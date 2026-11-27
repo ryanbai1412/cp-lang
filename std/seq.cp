@@ -91,7 +91,7 @@ pub enum Ties = First | Last
 @lint(sort_for_extreme, from: "self.sorted().first!", to: "self.min()!")
 @lint(sort_for_extreme, from: "self.sorted(by: by)[0]", to: "self.min(by: by)!")
 @lint(sort_for_extreme, from: "self.sorted(by: by).first!", to: "self.min(by: by)!")
-pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+pub fn min<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
@@ -121,7 +121,7 @@ pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.Firs
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y > x:\n        x = y", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
 @lint(sort_for_extreme, from: "self.sorted().last!", to: "self.max()!")
 @lint(sort_for_extreme, from: "self.sorted(by: by).last!", to: "self.max(by: by, ties: Ties.Last)!")
-pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+pub fn max<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
@@ -192,7 +192,7 @@ pub fn all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
 /// empty: `let a: List<Int> = []; a.is_sorted() == true`
 /// traps: never
 /// example: `[1, 1, 2].is_sorted() == true`
-pub fn is_sorted<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Bool:
+pub fn is_sorted<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> Bool:
     var prev: ?K = None
     for x in self:
         let k = by(x)
@@ -2421,7 +2421,7 @@ pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Ma
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
-pub fn min_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
+pub fn min_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
     keep_k(self, k, by, (p, q) => p.0 < q.0 or (p.0 == q.0 and p.1 < q.1))
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` largest elements under `by:` (unordered; ties to earlier index).
@@ -2432,7 +2432,7 @@ pub fn min_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
-pub fn max_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
+pub fn max_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
     keep_k(self, k, by, (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
 
 // the `k` first under `first` of `(key, index, element)`, in a buffer that never passes `2k`
@@ -3511,7 +3511,7 @@ fn cyclic_pairs_close_the_ring():
 /// traps: never
 /// example: `[3, 9, 2, 9].argmax() == Some(1)`
 /// example: `[3, 9, 2, 9].argmax(ties: Ties.Last) == Some(3)`
-pub fn argmax<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+pub fn argmax<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
     let last = ties == Ties.Last
     var best: ?D = None
     var high: ?K = None
@@ -3530,7 +3530,7 @@ pub fn argmax<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties 
 /// traps: never
 /// example: `[3, 1, 1].argmin() == Some(1)`
 /// example: `[3, 1, 1].argmin(ties: Ties.Last) == Some(2)`
-pub fn argmin<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+pub fn argmin<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
     let last = ties == Ties.Last
     var best: ?D = None
     var low: ?K = None
