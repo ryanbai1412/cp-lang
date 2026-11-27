@@ -108,17 +108,22 @@ named type's arguments. The facade's `Type` answers them without naming a
 std type, since `List`, `Array` and `Optional` are ordinary declarations:
 
 ```rust
-fn types_in(&self, span: Span) -> Vec<(Span, Type)>
-struct Type(..)                          // opaque, read off the typed tree
-impl Type {
-    fn text(&self) -> &str               // as a diagnostic writes it (show_ty)
-    fn range(&self) -> Option<(Option<i64>, Option<i64>)> // an integer range's ends
-    fn domain(&self) -> Option<&Item>    // a position's domain
-    fn decl(&self) -> Option<&Item>      // the struct or enum it is an instance of
-    fn args(&self) -> &[Type]            // that declaration's type arguments
-    fn implements(&self, tr: &Item) -> bool // through Signatures::impls_of
+fn type_at(&self, at: u32) -> Option<Type<'_>>
+fn types_in(&self, span: Span) -> Vec<(Span, Type<'_>)> // outermost first
+struct Type<'s>(..)                      // opaque, borrows the session's typed tree
+impl Type<'_> {
+    fn text(&self) -> String             // as a diagnostic writes it (show_ty)
+    fn range(&self) -> Option<(Option<i64>, Option<i64>)> // an integer's ends
+    fn domain(&self) -> Option<&str>     // a position's domain, by name
+    fn decl(&self) -> Option<Item>       // the struct or enum it is an instance of
+    fn args(&self) -> Vec<Type<'_>>      // that declaration's type arguments
+    fn implements(&self, tr: &Item) -> bool // not built: needs the checker's impl lookup as a view
 }
 ```
+
+`implements` waits for the checker's impl lookup to be a view: matching
+`Signatures::impls_of` by hand would skip blanket impls' bounds, a second
+trait solver.
 
 Ruling: there is no `is_array` or `is_optional`. A lint rule that today
 matches `Ty::Array` or `Ty::Optional` asks `implements` of the trait it

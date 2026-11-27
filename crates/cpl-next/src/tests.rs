@@ -875,9 +875,32 @@ fn type_at_reads_the_typed_tree() {
         src,
     ));
     assert!(s.program().is_ok());
-    let at = |text: &str| s.type_at(src.find(text).unwrap() as u32);
-    assert_eq!(at("n * 2"), Some("Int"));
-    assert_eq!(at("< 4"), Some("Bool"));
-    assert_eq!(at("twice(3)"), Some("Int"));
-    assert_eq!(s.type_at(src.len() as u32), None);
+    let at = |text: &str| s.type_at(src.find(text).unwrap() as u32).map(|t| t.text());
+    assert_eq!(at("n * 2").as_deref(), Some("Int"));
+    assert_eq!(at("< 4").as_deref(), Some("Bool"));
+    assert_eq!(at("twice(3)").as_deref(), Some("Int"));
+    assert!(s.type_at(src.len() as u32).is_none());
+    let int = s.type_at(src.find("twice(3)").unwrap() as u32).unwrap();
+    assert_eq!(
+        (int.range(), int.decl(), int.args().len()),
+        (Some((None, None)), None, 0)
+    );
+    let whole = cpl_diag::Span::new(0, src.len() as u32);
+    let outermost: Vec<String> = (s.types_in(whole).iter())
+        .filter(|(span, _)| src[span.start as usize..].starts_with("3 < 4"))
+        .map(|(_, t)| t.text())
+        .collect();
+    assert_eq!(outermost, ["Bool", "Int"]);
+    let src = "struct P:\n    a: Int\nlet p = P(a: 1)\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let p = s.type_at(src.find("P(a").unwrap() as u32).unwrap();
+    let decl = p.decl().unwrap();
+    assert_eq!(
+        (p.text(), decl.line, decl.head.as_str()),
+        ("P".into(), 1, "struct P")
+    );
 }

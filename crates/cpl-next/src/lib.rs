@@ -216,7 +216,7 @@ pub(crate) struct Compiled {
 }
 
 /// Every layer through lowering, each run whatever an earlier one found (contracts 1-3).
-struct Front {
+pub(crate) struct Front {
     loaded: modules::Loaded,
     /// What the parser could not read; a later layer says nothing there.
     rejected: Vec<SourceId>,
@@ -415,17 +415,39 @@ pub struct Item {
     pub head: String,
 }
 
+/// The item whose declaration starts at `at`.
+fn item_of(f: &Front, at: &SourceId) -> Item {
+    let text = f.loaded.text_of(at);
+    let span = text.span(at);
+    let (line, col) = text.line_col(span.start);
+    let from = (span.start + 1 - col) as usize;
+    let head = (text.text[from..].lines())
+        .find(|l| !l.trim_start().starts_with('@'))
+        .unwrap_or("")
+        .trim_end()
+        .trim_end_matches(':')
+        .to_string();
+    Item {
+        module: text.name.clone(),
+        span,
+        line,
+        head,
+    }
+}
+
+fn item_start(item: &ItemId) -> SourceId {
+    item.at(cpl_diag::Span::new(0, 0))
+}
+
 /// Each name the program's module scope gives an item with a declaration, and that item.
-pub(crate) fn items(std: &Std, user_src: &str, roots: &Roots) -> HashMap<String, Item> {
+pub(crate) fn items(f: &Front) -> HashMap<String, Item> {
     use cpl_next_decls::views::{Scope, Signatures};
-    let f = front(std, user_src, roots);
-    let start = |item: &ItemId| item.at(cpl_diag::Span::new(0, 0));
     let declared = |named: decls::Named| -> Option<SourceId> {
         Some(match named {
             decls::Named::Fn(id) => f.d.f(id).span.clone(),
-            decls::Named::Struct(id) => start(&f.d.s(id).item),
+            decls::Named::Struct(id) => item_start(&f.d.s(id).item),
             decls::Named::Alias(id) => f.d.alias(id).at.clone(),
-            decls::Named::Const(id) => start(&f.d.consts[id.0].item),
+            decls::Named::Const(id) => item_start(&f.d.consts[id.0].item),
             _ => return None,
         })
     };
@@ -433,38 +455,31 @@ pub(crate) fn items(std: &Std, user_src: &str, roots: &Roots) -> HashMap<String,
     (f.d.views[program.0].keys())
         .filter_map(|name| {
             let at = declared(Scope::named(&f.d, program, name)?)?;
-            let text = f.loaded.text_of(&at);
-            let span = text.span(&at);
-            let (line, col) = text.line_col(span.start);
-            let from = (span.start + 1 - col) as usize;
-            let head = (text.text[from..].lines())
-                .find(|l| !l.trim_start().starts_with('@'))
-                .unwrap_or("")
-                .trim_end()
-                .trim_end_matches(':')
-                .to_string();
-            let item = Item {
-                module: text.name.clone(),
-                span,
-                line,
-                head,
-            };
-            Some((name.clone(), item))
+            Some((name.clone(), item_of(f, &at)))
         })
         .collect()
 }
 
-/// The type of each expression the program's own text holds, by its span, as a diagnostic
-/// writes it.
-pub(crate) fn types(std: &Std, user_src: &str, roots: &Roots) -> Vec<(cpl_diag::Span, String)> {
+/// An expression of the program's own text, by its span, and its type.
+pub(crate) struct TypedAt {
+    pub(crate) span: cpl_diag::Span,
+    ty: ty::Ty,
+    /// The type parameters in scope where it is.
+    generics: Vec<String>,
+}
+
+/// Each expression the program's own text holds.
+pub(crate) fn types(f: &Front) -> Vec<TypedAt> {
     use cpl_next_decls::views::Signatures;
-    let f = front(std, user_src, roots);
     let mut out = Vec::new();
     // A typed expression's span is from the start of the item it is in.
     let mut add = |item: &ItemId, generics: &[String], e: &check::TExpr| {
         let at = item.at(e.span);
-        let text = check::show_ty(&f.d, &f.t.domains, generics, &|t| t.clone(), &e.ty);
-        out.push((f.loaded.text_of(&at).span(&at), text));
+        out.push(TypedAt {
+            span: f.loaded.text_of(&at).span(&at),
+            ty: e.ty.clone(),
+            generics: generics.to_vec(),
+        });
     };
     let ours = |item: &ItemId| (*item.module == *modules::PROGRAM).then(|| item.clone());
     // Each run of top-level statements follows the `Item` naming the item it is from.
@@ -483,6 +498,79 @@ pub(crate) fn types(std: &Std, user_src: &str, roots: &Roots) -> Vec<(cpl_diag::
         }
     }
     out
+}
+
+/// The type of an expression, as tools read it (contract 9): it names no std type, since
+/// std's types are ordinary declarations a tool reaches through [`Type::decl`].
+#[derive(Clone, Copy)]
+pub struct Type<'s> {
+    front: &'s Front,
+    ty: &'s ty::Ty,
+    generics: &'s [String],
+}
+
+impl<'s> Type<'s> {
+    pub(crate) fn new(front: &'s Front, at: &'s TypedAt) -> Type<'s> {
+        Type {
+            front,
+            ty: &at.ty,
+            generics: &at.generics,
+        }
+    }
+
+    /// What it is past a lend, which a value's type does not show.
+    fn shown(&self) -> &'s ty::Ty {
+        let mut ty = self.ty;
+        while let ty::Ty::Lent(inner) = ty {
+            ty = inner;
+        }
+        ty
+    }
+
+    /// As a diagnostic writes it.
+    pub fn text(&self) -> String {
+        let f = self.front;
+        check::show_ty(&f.d, &f.t.domains, self.generics, &|t| t.clone(), self.ty)
+    }
+
+    /// An integer's ends, `None` where it has none the checker knows.
+    pub fn range(&self) -> Option<(Option<i64>, Option<i64>)> {
+        match self.shown() {
+            ty::Ty::Range(lo, hi) => Some((Some(*lo), Some(*hi))),
+            ty::Ty::Int | ty::Ty::RangeOf(_) | ty::Ty::AnyRange(_) | ty::Ty::RangeTo(..) => {
+                Some((None, None))
+            }
+            _ => None,
+        }
+    }
+
+    /// The domain it is a position of, by name.
+    pub fn domain(&self) -> Option<&'s str> {
+        match self.shown() {
+            ty::Ty::Dom(d) => (self.front.t.domains.get(*d)).map(|d| d.name.as_str()),
+            _ => None,
+        }
+    }
+
+    /// The struct or enum it is an instance of.
+    pub fn decl(&self) -> Option<Item> {
+        use cpl_next_decls::views::Signatures;
+        match self.shown() {
+            ty::Ty::Struct(id, ..) => {
+                let s = Signatures::s(&self.front.d, *id);
+                Some(item_of(self.front, &item_start(&s.item)))
+            }
+            _ => None,
+        }
+    }
+
+    /// That declaration's type arguments.
+    pub fn args(&self) -> Vec<Type<'s>> {
+        match self.shown() {
+            ty::Ty::Struct(_, args, _) => (args.iter()).map(|ty| Type { ty, ..*self }).collect(),
+            _ => Vec::new(),
+        }
+    }
 }
 
 /// One unit of the program (contract 3): a fn it declares, or one of its top-level statements.

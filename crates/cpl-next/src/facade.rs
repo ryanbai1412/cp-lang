@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
 use crate::{
-    compile, items, std_unchecked, types, units, Compiled, Diag, Form, Item, Outcome, Roots, Stage,
-    Std, Unit,
+    compile, items, std_unchecked, types, units, Compiled, Diag, Form, Front, Item, Outcome, Roots,
+    Stage, Std, Type, TypedAt, Unit,
 };
 
 /// The only input of every query: the program, the libraries it may use, and std.
@@ -132,8 +132,9 @@ pub struct Session {
     snapshot: Snapshot,
     built: OnceLock<Result<Program, Vec<Diag>>>,
     units: OnceLock<(Vec<Unit>, Vec<Diag>)>,
+    front: OnceLock<Front>,
     items: OnceLock<HashMap<String, Item>>,
-    types: OnceLock<Vec<(cpl_diag::Span, String)>>,
+    types: OnceLock<Vec<TypedAt>>,
 }
 
 impl Session {
@@ -142,6 +143,7 @@ impl Session {
             snapshot,
             built: OnceLock::new(),
             units: OnceLock::new(),
+            front: OnceLock::new(),
             items: OnceLock::new(),
             types: OnceLock::new(),
         }
@@ -183,12 +185,16 @@ impl Session {
         (units, diags)
     }
 
+    /// The program's checked front half, which hover, definition and types read.
+    fn front(&self) -> &Front {
+        let h = &self.snapshot.0;
+        (self.front).get_or_init(|| crate::front(&h.std, &h.program, &h.roots))
+    }
+
     /// The item the name at byte `at` of the program names, if it names one.
     fn item_at(&self, at: u32) -> Option<&Item> {
-        let h = &self.snapshot.0;
-        let name = word_at(&h.program, at as usize)?;
-        let items = (self.items).get_or_init(|| items(&h.std, &h.program, &h.roots));
-        items.get(name)
+        let name = word_at(&self.snapshot.0.program, at as usize)?;
+        (self.items).get_or_init(|| items(self.front())).get(name)
     }
 
     /// How the item named at byte `at` is declared: its declaration's first line.
@@ -196,15 +202,26 @@ impl Session {
         self.item_at(at).map(|i| i.head.as_str())
     }
 
-    /// The type of the innermost expression of the program at byte `at`, as a diagnostic
-    /// writes it.
-    pub fn type_at(&self, at: u32) -> Option<&str> {
-        let h = &self.snapshot.0;
-        let types = (self.types).get_or_init(|| types(&h.std, &h.program, &h.roots));
-        (types.iter())
-            .filter(|(span, _)| span.start <= at && at < span.end)
-            .min_by_key(|(span, _)| span.end - span.start)
-            .map(|(_, ty)| ty.as_str())
+    fn typed(&self) -> &[TypedAt] {
+        (self.types).get_or_init(|| types(self.front()))
+    }
+
+    /// The type of the innermost expression of the program at byte `at`.
+    pub fn type_at(&self, at: u32) -> Option<Type<'_>> {
+        (self.typed().iter())
+            .filter(|e| e.span.start <= at && at < e.span.end)
+            .min_by_key(|e| e.span.end - e.span.start)
+            .map(|e| Type::new(self.front(), e))
+    }
+
+    /// Each expression of the program inside `within`, outermost first, and its type.
+    pub fn types_in(&self, within: cpl_diag::Span) -> Vec<(cpl_diag::Span, Type<'_>)> {
+        let mut out: Vec<_> = (self.typed().iter())
+            .filter(|e| within.start <= e.span.start && e.span.end <= within.end)
+            .map(|e| (e.span, Type::new(self.front(), e)))
+            .collect();
+        out.sort_by_key(|(span, _)| (span.start, std::cmp::Reverse(span.end)));
+        out
     }
 
     /// Where the item named at byte `at` is declared.
