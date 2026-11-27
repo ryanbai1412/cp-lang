@@ -183,6 +183,9 @@ static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
 static inline void cpl_out(int64_t x) { printf("%lld", (long long)x); }
 static inline void cpl_out(uint64_t x) { printf("%llu", (unsigned long long)x); }
 static inline void cpl_out(double x) { printf("%.10f", x); }
+static inline void cpl_outf(int64_t x, int w, bool z, int) { printf(z ? "%0*lld" : "%*lld", w, (long long)x); }
+static inline void cpl_outf(uint64_t x, int w, bool z, int) { printf(z ? "%0*llu" : "%*llu", w, (unsigned long long)x); }
+static inline void cpl_outf(double x, int w, bool z, int d) { printf(z ? "%0*.*f" : "%*.*f", w, d, x); }
 static inline void cpl_out(bool b) { fputs(b ? "true" : "false", stdout); }
 "#;
 
@@ -479,7 +482,7 @@ impl Emit<'_> {
                     arms.iter().for_each(|a| self.name_built(a));
                 }
                 Stmt::Print(ps) => ps.iter().for_each(|p| {
-                    if let PrintPiece::Value(x) = p {
+                    if let PrintPiece::Value(x, _) = p {
                         expr(self, x)
                     }
                 }),
@@ -891,7 +894,17 @@ impl Emit<'_> {
                                 c_string(t),
                                 t.len()
                             ),
-                            PrintPiece::Value(v) => put_line!(s, "{pad}cpl_out({});", self.expr(v)),
+                            PrintPiece::Value(v, f) if *f == ops::Fmt::default() => {
+                                put_line!(s, "{pad}cpl_out({});", self.expr(v))
+                            }
+                            PrintPiece::Value(v, f) => put_line!(
+                                s,
+                                "{pad}cpl_outf({}, {}, {}, {});",
+                                self.expr(v),
+                                f.width,
+                                f.zero,
+                                f.digits.map_or(10, i64::from)
+                            ),
                         }
                     }
                 }

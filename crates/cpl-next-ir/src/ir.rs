@@ -234,7 +234,7 @@ pub enum Target<T> {
 #[derive(Clone, Debug)]
 pub enum PrintPiece<T> {
     Text(String),
-    Value(Expr<T>),
+    Value(Expr<T>, crate::ops::Fmt),
 }
 #[derive(Clone, Debug)]
 pub enum Stmt<T> {

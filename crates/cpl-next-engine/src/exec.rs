@@ -620,9 +620,9 @@ impl M<'_> {
                     }
                 }
                 Op::Guard { op, c: x } => ops::check(op, self.stack[r(x)] != 0)?,
-                Op::Print { s, kind } => {
+                Op::Print { s, kind, fmt } => {
                     if let Some(v) = scalar(self.stack[r(s)], kind) {
-                        ops::show(v, &mut self.out);
+                        ops::show_fmt(v, fmt, &mut self.out);
                     }
                 }
                 Op::PrintText { t } => self.out.push_str(&c.texts[t as usize]),

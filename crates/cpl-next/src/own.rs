@@ -1210,7 +1210,7 @@ impl Cx<'_> {
             }
             TK::Print(ps) => {
                 for p in ps {
-                    if let Piece::Value(v) = p {
+                    if let Piece::Value(v, _) = p {
                         self.expr(v, fx)
                     }
                 }

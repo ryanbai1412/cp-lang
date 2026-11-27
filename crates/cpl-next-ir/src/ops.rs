@@ -279,12 +279,37 @@ pub enum Scalar {
 }
 /// `v` as `print` writes it.
 pub fn show(v: Scalar, out: &mut String) {
+    show_fmt(v, Fmt::default(), out)
+}
+
+/// How `print` lays out a number: `"{x:6}"`, `"{x:04}"`, `"{x:.9}"` or `precision:` (R10.3.2).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct Fmt {
+    /// The least width, filled on the left.
+    pub width: u32,
+    /// Filled with zeros after the sign, not spaces.
+    pub zero: bool,
+    /// Digits after an `F64`'s point.
+    pub digits: Option<u32>,
+}
+
+/// `v` as text, laid out by `f`.
+pub fn show_fmt(v: Scalar, f: Fmt, out: &mut String) {
     use std::fmt::Write;
+    let w = f.width as usize;
     let _ = match v {
-        Scalar::Int(i) => write!(out, "{i}"),
-        Scalar::U64(u) => write!(out, "{u}"),
+        Scalar::Int(i) if f.zero => write!(out, "{i:0w$}"),
+        Scalar::Int(i) => write!(out, "{i:w$}"),
+        Scalar::U64(u) if f.zero => write!(out, "{u:0w$}"),
+        Scalar::U64(u) => write!(out, "{u:w$}"),
         // Ten decimals unless a precision is given (R10.3.4).
-        Scalar::F64(b) => write!(out, "{:.10}", f64::from_bits(b)),
+        Scalar::F64(b) => {
+            let (x, d) = (f64::from_bits(b), f.digits.unwrap_or(10) as usize);
+            match f.zero {
+                true => write!(out, "{x:0w$.d$}"),
+                false => write!(out, "{x:w$.d$}"),
+            }
+        }
         Scalar::Bool(b) => write!(out, "{b}"),
         Scalar::Char(c) => write!(out, "{}", char::from(c)),
     };

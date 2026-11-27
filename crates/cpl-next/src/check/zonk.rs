@@ -120,7 +120,7 @@ impl<'a> Cx<'a> {
                 }
             }
             TK::Print(ps) => ps.iter_mut().for_each(|p| {
-                if let Piece::Value(v) = p {
+                if let Piece::Value(v, _) = p {
                     self.zonk_expr(v)
                 }
             }),

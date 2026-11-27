@@ -1,6 +1,8 @@
 //! Expressions: operators, calls, members, names.
 
 use super::*;
+use cpl_next_ir::ops::Fmt;
+use cpl_syntax::ast::FmtKind;
 
 impl<'a> Cx<'a> {
     /// The core `List`, which literals, comprehensions and tables build. It is found by name;
@@ -358,16 +360,28 @@ impl<'a> Cx<'a> {
     }
     /// One value of a `print`: a plain one joins `pieces`, one the library writes
     /// (R10.3.2) becomes a call of its writer after what was gathered so far.
-    fn show_value(&mut self, v: TExpr, stmts: &mut Vec<TStmt>, pieces: &mut Vec<Piece>) {
+    fn show_value(&mut self, v: TExpr, fmt: Fmt, stmts: &mut Vec<TStmt>, pieces: &mut Vec<Piece>) {
         let span = v.span;
-        let writer = match self.shallow(&v.ty) {
+        let t = self.shallow(&v.ty);
+        let number = matches!(
+            t,
+            Ty::Int | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Param(_) | Ty::Error
+        );
+        if fmt != Fmt::default() && !number
+            || fmt.digits.is_some() && !matches!(t, Ty::F64 | Ty::Error)
+        {
+            self.err(span, format!("slice: a format spec on `{}`", self.show(&t)));
+            return;
+        }
+        let writer = match t {
             // A position prints as its integer (R04.2.15).
             Ty::Dom(_) | Ty::Param(_) => {
-                pieces.push(Piece::Value(TExpr {
+                let ord = TExpr {
                     kind: TK::DomOrd(Box::new(v)),
                     ty: Ty::Int,
                     span,
-                }));
+                };
+                pieces.push(Piece::Value(ord, fmt));
                 return;
             }
             // `Bool` has no one way to be written: the word is the program's choice (R10.3.3).
@@ -380,7 +394,7 @@ impl<'a> Cx<'a> {
                 return;
             }
             Ty::Int | Ty::Char | Ty::U64 | Ty::F64 | Ty::Error => {
-                pieces.push(Piece::Value(v));
+                pieces.push(Piece::Value(v, fmt));
                 return;
             }
             // A type that says how it is written (`fn write(self)`) is written by it.
@@ -1199,14 +1213,39 @@ impl<'a> Cx<'a> {
                 }
                 // `write` is `print` without the line end; the slice uses it to write `print` for containers in the library.
                 ExprKind::Name(n) if (n == "print" || n == "write") && self.lookup(n).is_none() => {
-                    if args.iter().any(|a| a.name.is_some()) {
-                        self.err(span, "slice: named arguments to `print`");
-                        return TExpr {
-                            kind: TK::Error,
-                            ty: Ty::Error,
-                            span,
-                        };
+                    // `precision: k` sets the digits of each `F64` it prints (R10.3.4).
+                    let mut precision = None;
+                    for a in args.iter().filter(|a| a.name.is_some()) {
+                        match (a.name.as_ref().map(|n| n.text.as_str()), &a.value.kind) {
+                            (Some("precision"), ExprKind::Int(k)) if u32::try_from(*k).is_ok() => {
+                                precision = u32::try_from(*k).ok()
+                            }
+                            _ => {
+                                self.err(span, "slice: named arguments to `print`");
+                                return TExpr {
+                                    kind: TK::Error,
+                                    ty: Ty::Error,
+                                    span,
+                                };
+                            }
+                        }
                     }
+                    let fmt_of = |cx: &Self, v: &TExpr| match cx.shallow(&v.ty) {
+                        Ty::F64 => Fmt {
+                            digits: precision,
+                            ..Fmt::default()
+                        },
+                        Ty::Int | Ty::U64 | Ty::Char | Ty::Dom(_) | Ty::Param(_) | Ty::Error => {
+                            Fmt::default()
+                        }
+                        // The library writes it, and is not told the precision.
+                        _ if precision.is_some() => Fmt {
+                            digits: precision,
+                            ..Fmt::default()
+                        },
+                        _ => Fmt::default(),
+                    };
+                    let args: Vec<_> = args.iter().filter(|a| a.name.is_none()).collect();
                     // Text and plain values gather into one `Print`; a value the library
                     // writes ends the one before it and is a call of its writer.
                     let mut stmts = Vec::new();
@@ -1222,17 +1261,36 @@ impl<'a> Cx<'a> {
                                         StrPiece::Text(t) => pieces.push(Piece::Text(t.clone())),
                                         StrPiece::Expr(x) => {
                                             let v = self.expr(x, None);
-                                            self.show_value(v, &mut stmts, &mut pieces);
+                                            let fmt = fmt_of(self, &v);
+                                            self.show_value(v, fmt, &mut stmts, &mut pieces);
                                         }
-                                        StrPiece::Spec(..) => {
-                                            self.err(span, "slice: no format specs")
+                                        StrPiece::Spec(x, spec) => {
+                                            let digits = match spec.kind {
+                                                FmtKind::Dec => None,
+                                                FmtKind::Fixed(d) => Some(d),
+                                                FmtKind::Hex | FmtKind::Bin => {
+                                                    self.err(
+                                                        span,
+                                                        "slice: a hex or binary format spec",
+                                                    );
+                                                    continue;
+                                                }
+                                            };
+                                            let fmt = Fmt {
+                                                width: spec.width,
+                                                zero: spec.zero,
+                                                digits,
+                                            };
+                                            let v = self.expr(x, None);
+                                            self.show_value(v, fmt, &mut stmts, &mut pieces);
                                         }
                                     }
                                 }
                             }
                             _ => {
                                 let v = self.expr(&a.value, None);
-                                self.show_value(v, &mut stmts, &mut pieces);
+                                let fmt = fmt_of(self, &v);
+                                self.show_value(v, fmt, &mut stmts, &mut pieces);
                             }
                         }
                     }

@@ -382,8 +382,8 @@ impl<'a> Machine<'a> {
                     for p in ps {
                         match p {
                             PrintPiece::Text(t) => self.out.push_str(t),
-                            PrintPiece::Value(v) => match scalar(&self.expr(v, fp)?) {
-                                Some(s) => ops::show(s, &mut self.out),
+                            PrintPiece::Value(v, f) => match scalar(&self.expr(v, fp)?) {
+                                Some(s) => ops::show_fmt(s, *f, &mut self.out),
                                 None => return broken("print of a value of another kind"),
                             },
                         }

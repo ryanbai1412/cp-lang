@@ -747,7 +747,7 @@ impl Lw<'_> {
                 let vals: Vec<&TExpr> = ps
                     .iter()
                     .filter_map(|p| {
-                        if let Piece::Value(v) = p {
+                        if let Piece::Value(v, _) = p {
                             Some(v)
                         } else {
                             None
@@ -774,7 +774,7 @@ impl Lw<'_> {
                     .iter()
                     .filter_map(|p| match p {
                         Piece::Text(t) => Some(PrintPiece::Text(t.clone())),
-                        Piece::Value(_) => vs.next().map(PrintPiece::Value),
+                        Piece::Value(_, f) => vs.next().map(|v| PrintPiece::Value(v, *f)),
                     })
                     .collect();
                 out.push(Stmt::Print(pieces));
@@ -1407,7 +1407,7 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
             }
         }
         TK::Print(ps) => ps.iter().for_each(|p| {
-            if let Piece::Value(v) = p {
+            if let Piece::Value(v, _) = p {
                 free_vars(v, used, bound)
             }
         }),

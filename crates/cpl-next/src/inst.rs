@@ -444,7 +444,7 @@ impl Link<'_> {
                     ps.iter()
                         .map(|p| match p {
                             PrintPiece::Text(t) => PrintPiece::Text(t.clone()),
-                            PrintPiece::Value(v) => PrintPiece::Value(self.expr(v, env)),
+                            PrintPiece::Value(v, f) => PrintPiece::Value(self.expr(v, env), *f),
                         })
                         .collect(),
                 ),
@@ -787,7 +787,7 @@ fn canon_block(
             Stmt::Print(ps) => out.push(Stmt::Print(
                 ps.into_iter()
                     .map(|x| match x {
-                        PrintPiece::Value(v) => PrintPiece::Value(canon_expr(bad, v)),
+                        PrintPiece::Value(v, f) => PrintPiece::Value(canon_expr(bad, v), f),
                         t => t,
                     })
                     .collect(),
@@ -1069,7 +1069,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                     arms.iter().for_each(|a| uses(a, doms, calls, p, bad));
                 }
                 Stmt::Print(ps) => ps.iter().for_each(|x| {
-                    if let PrintPiece::Value(v) = x {
+                    if let PrintPiece::Value(v, _) = x {
                         ex(v, doms, calls, p, bad)
                     }
                 }),
@@ -1229,7 +1229,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
                         arms.iter_mut().for_each(|a| self.block(a));
                     }
                     Stmt::Print(ps) => ps.iter_mut().for_each(|x| {
-                        if let PrintPiece::Value(v) = x {
+                        if let PrintPiece::Value(v, _) = x {
                             self.ex(v)
                         }
                     }),

@@ -121,7 +121,7 @@ pub enum TK {
 #[derive(Clone, Debug)]
 pub enum Piece {
     Text(String),
-    Value(TExpr),
+    Value(TExpr, cpl_next_ir::ops::Fmt),
 }
 #[derive(Clone, Debug)]
 pub enum TArg {

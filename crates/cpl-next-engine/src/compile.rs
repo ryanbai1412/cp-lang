@@ -177,6 +177,7 @@ pub(crate) enum Op {
     Print {
         s: Reg,
         kind: Kind,
+        fmt: cpl_next_ir::ops::Fmt,
     },
     PrintText {
         t: u32,
@@ -659,14 +660,14 @@ impl Fc<'_> {
                             let t = self.text(t);
                             self.ops.push(Op::PrintText { t });
                         }
-                        PrintPiece::Value(v) => {
+                        PrintPiece::Value(v, fmt) => {
                             let kind = kind(&v.ty);
                             if kind == Kind::Other {
                                 self.fail("print of a value of another kind");
                                 continue;
                             }
                             let s = self.operand(v);
-                            self.ops.push(Op::Print { s, kind });
+                            self.ops.push(Op::Print { s, kind, fmt: *fmt });
                         }
                     }
                 }
@@ -792,7 +793,7 @@ fn writes(b: &[Stmt<CTy>], l: usize) -> bool {
         Stmt::Check { cond, .. } => writes_in(cond, l),
         Stmt::Print(ps) => ps
             .iter()
-            .any(|p| matches!(p, PrintPiece::Value(v) if writes_in(v, l))),
+            .any(|p| matches!(p, PrintPiece::Value(v, _) if writes_in(v, l))),
         Stmt::Event(_, vs) => vs.iter().any(|v| writes_in(v, l)),
         Stmt::Region { args, body, .. } => lends(args, l) || writes(body, l),
         Stmt::LendOut(p) => root(p) == Some(l),
