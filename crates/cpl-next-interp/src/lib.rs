@@ -404,6 +404,16 @@ impl<'a> Machine<'a> {
             Arg::Lend(_) => broken("lent operand"),
         }
     }
+    /// The storage a lent operand names, to take from or write.
+    fn lent_raw(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<&mut Rc<Store>> {
+        match a {
+            Arg::Lend(p) => match self.place(fp, p)? {
+                V::Raw(r) => Ok(r),
+                _ => broken("a lent operand that is not storage"),
+            },
+            _ => broken("storage written without a lend"),
+        }
+    }
     fn float(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<f64> {
         match self.arg(a, fp)? {
             V::F64(x) => Ok(x),
@@ -530,18 +540,16 @@ impl<'a> Machine<'a> {
                 let (a, b) = (self.int(&args[0], fp)?, self.int(&args[1], fp)?);
                 V::Int(ops::int(op, a, b)?)
             }
-            Intr::Neg => match &args[0] {
-                Arg::Value(x) if x.ty == CTy::F64 => {
-                    V::F64(ops::neg_float(self.float(&args[0], fp)?))
-                }
-                _ => V::Int(ops::neg(self.int(&args[0], fp)?)?),
-            },
-            Intr::Abs => match &args[0] {
-                Arg::Value(x) if x.ty == CTy::F64 => {
-                    V::F64(ops::abs_f64(self.float(&args[0], fp)?))
-                }
-                _ => V::Int(ops::abs(self.int(&args[0], fp)?)?),
-            },
+            Intr::Neg | Intr::Abs if matches!(&args[0], Arg::Value(x) if x.ty == CTy::F64) => {
+                let x = self.float(&args[0], fp)?;
+                V::F64(if op == Intr::Neg {
+                    ops::neg_float(x)
+                } else {
+                    ops::abs_f64(x)
+                })
+            }
+            Intr::Neg => V::Int(ops::neg(self.int(&args[0], fp)?)?),
+            Intr::Abs => V::Int(ops::abs(self.int(&args[0], fp)?)?),
             Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below => {
                 let (a, b) = (self.arg(&args[0], fp)?, self.arg(&args[1], fp)?);
                 if let (V::F64(a), V::F64(b)) = (&a, &b) {
@@ -572,13 +580,7 @@ impl<'a> Machine<'a> {
             }
             Intr::RawTake => {
                 let i = self.int(&args[1], fp)?;
-                let Arg::Lend(p) = &args[0] else {
-                    return broken("storage moved from without a lend");
-                };
-                let V::Raw(r) = self.place(fp, p)? else {
-                    return broken("move from non-storage");
-                };
-                match Rc::make_mut(r) {
+                match Rc::make_mut(self.lent_raw(&args[0], fp)?) {
                     Store::Ints(xs) => V::Int(xs[ops::cell(i, xs.len(), false)?]),
                     Store::Any(xs) => {
                         let i = ops::cell(i, xs.len(), false)?;
@@ -615,12 +617,7 @@ impl<'a> Machine<'a> {
             Intr::RawSet => {
                 let i = self.int(&args[1], fp)?;
                 let x = self.arg(&args[2], fp)?;
-                let Arg::Lend(p) = &args[0] else {
-                    return broken("storage written without a lend");
-                };
-                let V::Raw(r) = self.place(fp, p)? else {
-                    return broken("write to non-storage");
-                };
+                let r = self.lent_raw(&args[0], fp)?;
                 let len = match &**r {
                     Store::Ints(xs) => xs.len(),
                     Store::Any(xs) => xs.len(),
