@@ -146,11 +146,6 @@ struct Cx<'a> {
     /// For each fn, the arguments it stores where they outlive the call (receiver first), so
     /// an owned heap value passed there moves in (R05.2.2).
     keeps: HashMap<FnId, BTreeSet<usize>>,
-    /// Per fn, the arguments its result holds, receiver first: a call lends them to the result
-    /// while it lives (R05.5.3).
-    lends: HashMap<FnId, BTreeSet<usize>>,
-    /// The parameters of the fn being walked that its result holds.
-    returned: BTreeSet<Root>,
     /// The fn being walked's receiver and parameters, in call order.
     params: Vec<Root>,
     /// Those of them it stores where they outlive the call.
@@ -165,8 +160,35 @@ pub struct Owned {
     /// What is wrong in a fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
     pub copies: BTreeSet<u32>,
-    /// Per fn, the parameters its result holds, receiver first (R05.5.3): the result lends them.
-    pub lends: HashMap<FnId, BTreeSet<usize>>,
+}
+
+/// The parameters a call to `f` lends to its result, receiver first, from its signature: the
+/// heap ones it declares `lends` (R05.6.1), else each whose type is a type parameter the result
+/// type holds, and, for a result whose type is a type parameter, each that holds it: the result
+/// may be a cell of it (R05.5.3).
+pub fn lends(d: &Decls, f: FnId) -> BTreeSet<usize> {
+    let fd = d.f(f);
+    let mut held = BTreeSet::new();
+    crate::inst::params_in(&fd.ret, &mut held);
+    let recv = (fd.self_mode != SelfMode::None).then_some(fd.self_ty.as_ref());
+    let tys: Vec<&Ty> = (recv.flatten().into_iter())
+        .chain(fd.params.iter().map(|p| &p.ty))
+        .collect();
+    (tys.iter().enumerate())
+        .filter(|(i, t)| match &fd.lends {
+            Some(ls) => ls.contains(i) && !plain(d, t, 0),
+            None => match (t, &fd.ret) {
+                (Ty::Param(k), _) => held.contains(k),
+                (_, Ty::Param(k)) => {
+                    let mut ps = BTreeSet::new();
+                    crate::inst::params_in(t, &mut ps);
+                    ps.contains(k)
+                }
+                _ => false,
+            },
+        })
+        .map(|(i, _)| i)
+        .collect()
 }
 
 pub fn check(d: &Decls, t: &Typed) -> Owned {
@@ -194,29 +216,15 @@ pub fn check(d: &Decls, t: &Typed) -> Owned {
         caps: HashMap::new(),
         copies: BTreeSet::new(),
         keeps: HashMap::new(),
-        lends: HashMap::new(),
-        returned: BTreeSet::new(),
         params: Vec::new(),
         kept: BTreeSet::new(),
     };
     let mut ids: Vec<FnId> = t.fns.keys().copied().collect();
     ids.sort();
     for round in 0..40 {
-        let before = (
-            cx.fns.clone(),
-            cx.lams.clone(),
-            cx.keeps.clone(),
-            cx.lends.clone(),
-        );
+        let before = (cx.fns.clone(), cx.lams.clone(), cx.keeps.clone());
         cx.pass(&ids);
-        if before
-            == (
-                cx.fns.clone(),
-                cx.lams.clone(),
-                cx.keeps.clone(),
-                cx.lends.clone(),
-            )
-        {
+        if before == (cx.fns.clone(), cx.lams.clone(), cx.keeps.clone()) {
             break;
         }
         assert!(round < 39, "effect summaries did not settle");
@@ -229,7 +237,6 @@ pub fn check(d: &Decls, t: &Typed) -> Owned {
         errors: cx.errors,
         deferred: cx.deferred,
         copies: cx.copies,
-        lends: cx.lends,
     }
 }
 
@@ -247,7 +254,6 @@ impl Cx<'_> {
             self.pending.clear();
             self.caps.clear();
             self.kept.clear();
-            self.returned.clear();
             self.params = (self.d.f(id).self_mode != SelfMode::None)
                 .then_some(tf.self_local)
                 .flatten()
@@ -279,14 +285,6 @@ impl Cx<'_> {
                 .filter(|i| self.kept.contains(&self.params[*i]))
                 .collect();
             self.keeps.insert(id, kept);
-            let declared = self.d.f(id).lends.clone();
-            let lends = (0..self.params.len())
-                .filter(|i| match &declared {
-                    Some(ls) => ls.contains(i) && self.borrowed.contains(&self.params[*i]),
-                    None => self.returned.contains(&self.params[*i]),
-                })
-                .collect();
-            self.lends.insert(id, lends);
         }
         self.cur = None;
         self.params.clear();
@@ -511,20 +509,16 @@ impl Cx<'_> {
             );
         }
         let mut out = roots(out);
-        // A type-parameter parameter the result holds is the caller's to lend (R05.5.3).
-        let held: Vec<Root> = (out.iter())
-            .filter(|r| self.params.contains(r) && self.generic(**r))
-            .copied()
-            .collect();
-        for r in held {
-            out.remove(&r);
-            self.returned.insert(r);
-        }
-        // A fn declared `lends` returns what borrows the sources it names (R05.6.1).
+        // A type-parameter value the result holds of a parameter is not a borrow here: each
+        // instance copies what it keeps of a lent one (`inst::check_escape`).
+        out.retain(|r| !(self.params.contains(r) && self.generic(*r)));
+        // The result borrows what the signature lends it (R05.5.3), or what a fn declared
+        // `lends` names (R05.6.1).
         let declared = self.cur.and_then(|f| self.d.f(f).lends.clone());
-        for i in declared.iter().flatten() {
-            if let Some(r) = self.params.get(*i).filter(|r| out.remove(r)) {
-                self.returned.insert(*r);
+        let lent = self.cur.map(|f| lends(self.d, f)).unwrap_or_default();
+        for (i, r) in self.params.iter().enumerate() {
+            if lent.contains(&i) || declared.as_ref().is_some_and(|ls| ls.contains(&i)) {
+                out.remove(r);
             }
         }
         if let Some(r) = out.iter().next() {
@@ -635,10 +629,7 @@ impl Cx<'_> {
             Some(n) => crate::ir::Intr::named(n)
                 .map(|i| i.lends().iter().copied().collect())
                 .unwrap_or_default(),
-            None => match &self.d.f(f).lends {
-                Some(ls) => ls.iter().copied().collect(),
-                None => self.lends.get(&f).cloned().unwrap_or_default(),
-            },
+            None => lends(self.d, f),
         }
     }
     /// The binding `b` now holds `what`. Its heap borrows (not closure captures, R10) are frozen

@@ -48,7 +48,7 @@ fn held_params(d: &Decls, s: StructId) -> BTreeSet<usize> {
     out
 }
 
-fn params_in(t: &Ty, out: &mut BTreeSet<usize>) {
+pub(crate) fn params_in(t: &Ty, out: &mut BTreeSet<usize>) {
     match t {
         Ty::Param(i) => {
             out.insert(*i);

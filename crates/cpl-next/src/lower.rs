@@ -126,10 +126,10 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
             .collect();
         lw.var_locals = tf.locals.iter().map(|l| l.mutable).collect();
         lw.remap.clear();
-        let holds = owned.lends.get(id);
+        let holds = crate::own::lends(d, *id);
         lw.lent = (lw.param_locals(*id).into_iter())
             .enumerate()
-            .filter(|(i, _)| holds.is_some_and(|h| h.contains(i)))
+            .filter(|(i, _)| holds.contains(i))
             .map(|(_, l)| l)
             .collect();
         let mut params = Vec::new();
@@ -284,7 +284,7 @@ impl Lw<'_> {
             return f.clone();
         };
         let ps = self.param_locals(f.decl);
-        let holds = self.owned.lends.get(&f.decl);
+        let holds = crate::own::lends(self.d, f.decl);
         let mut targs = f.targs.clone();
         for (i, (&l, a)) in ps.iter().zip(args).enumerate() {
             let decl = &tf.locals[l].ty;
@@ -293,9 +293,7 @@ impl Lw<'_> {
             }
             match (decl, a) {
                 // A held argument that lives in a place is lent; a fresh one is moved in.
-                (Ty::Param(k), Arg::View(_) | Arg::Lend(_))
-                    if holds.is_some_and(|h| h.contains(&i)) =>
-                {
+                (Ty::Param(k), Arg::View(_) | Arg::Lend(_)) if holds.contains(&i) => {
                     if let Some(t) = targs.get_mut(*k).filter(|t| !matches!(t, Ty::Lent(_))) {
                         *t = Ty::Lent(Box::new(t.clone()));
                     }
