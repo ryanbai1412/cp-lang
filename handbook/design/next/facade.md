@@ -102,6 +102,29 @@ so the lines leave `today` when their query is answered from cpl-next.
 | `interval`, `RangeEnds`, `Overflow` | `bounds(span)` | the typed tree's range types |
 | `Representation`, `human_bytes` | `layout(at)` | the linked program's layout |
 
+Lint asks the old `Ty` structural questions: a range's ends (`Range`), the
+domain a position is in (`Pos`), an `Optional`'s or `Array`'s parts, and a
+named type's arguments. The facade's `Type` answers them without naming a
+std type, since `List`, `Array` and `Optional` are ordinary declarations:
+
+```rust
+fn types_in(&self, span: Span) -> Vec<(Span, Type)>
+struct Type(..)                          // opaque, read off the typed tree
+impl Type {
+    fn text(&self) -> &str               // as a diagnostic writes it (show_ty)
+    fn range(&self) -> Option<(Option<i64>, Option<i64>)> // an integer range's ends
+    fn domain(&self) -> Option<&Item>    // a position's domain
+    fn decl(&self) -> Option<&Item>      // the struct or enum it is an instance of
+    fn args(&self) -> &[Type]            // that declaration's type arguments
+    fn implements(&self, tr: &Item) -> bool // through Signatures::impls_of
+}
+```
+
+Ruling: there is no `is_array` or `is_optional`. A lint rule that today
+matches `Ty::Array` or `Ty::Optional` asks `implements` of the trait it
+relies on (`Index`, `Seq`), or compares `decl` with the std `Item` it was
+given by `definition`, so the rule reads std the way a user's code would.
+
 ## Trace and replay
 
 `cpl-facade` used to hand tools the old interpreter's step log through
