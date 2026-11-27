@@ -28,6 +28,10 @@ One of the eight directions, clockwise from up: the four of `Dir4` and the diago
 - `@get fn back(self) -> Dir8` — \(O(1)\); The opposite direction, four eighths round: its delta is the negated delta.
 - `@get fn delta(self) -> (Int, Int)` — \(O(1)\); The change in (row, column) of one step; each part is `-1`, `0` or `1`.
 
+## `trait Dir`
+
+A direction a cell steps in, `Dir4` or `Dir8`: what `step` and `ray` take.
+
 ## `struct GridRows<R, C, T>(g: [R, C]T)`
 
 The rows of a grid, made by `g.rows`; lends the grid.
@@ -52,8 +56,8 @@ The columns of a grid, made by `g.cols`; lends the grid.
 - `@get fn down<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row down from `self`, or `None` on the bottom row.
 - `@get fn left<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column left of `self`, or `None` in the first column.
 - `@get fn right<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column right of `self`, or `None` in the last column.
-- `fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C)` — \(O(1)\); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
-- `fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
+- `fn step<R, C, D: Dir>(self: (R, C), d: D) -> ?(R, C)` — \(O(1)\); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
+- `fn ray<R, C, D: Dir>(self: (R, C), d: D) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
 - `@get fn adj4<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
 - `@get fn adj8<R, C>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to eight cells sharing a side or a corner with `self`: `self.step(d)` for each `d` in `Dir8.all()`, skipping steps that leave the grid.
 - `fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A new grid with rows and columns exchanged: `g.transposed()[c, r] == g[r, c]` for every cell.

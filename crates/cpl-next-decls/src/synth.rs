@@ -641,15 +641,18 @@ pub(crate) fn enum_conversions(
 /// The structs marked `@memo_table(word)`, by word: the table a `@memo(word)` fn keeps. Any
 /// module may declare one (R06.4.1).
 pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, String> {
-    (mods.iter().flat_map(|m| m.items.iter()).flat_map(|it| &it.stmts))
-        .filter_map(|s| match &s.kind {
-            StmtKind::Struct(sd) => (s.decorators.iter())
-                .find(|x| x.name.text == "memo_table")
-                .and_then(memo_word)
-                .map(|w| (w, sd.name.text.clone())),
-            _ => None,
-        })
-        .collect()
+    (mods
+        .iter()
+        .flat_map(|m| m.items.iter())
+        .flat_map(|it| &it.stmts))
+    .filter_map(|s| match &s.kind {
+        StmtKind::Struct(sd) => (s.decorators.iter())
+            .find(|x| x.name.text == "memo_table")
+            .and_then(memo_word)
+            .map(|w| (w, sd.name.text.clone())),
+        _ => None,
+    })
+    .collect()
 }
 
 fn memo_word(x: &ast::Decorator) -> Option<String> {
