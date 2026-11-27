@@ -1183,6 +1183,14 @@ class DebtRatchetTest(unittest.TestCase):
                          "add zero counters to the one HARD_ZERO frozenset, never rebind it")
         self.assertIsInstance(dr.HARD_ZERO, frozenset)
 
+    def test_mains_paid_debt_is_mains_unless_this_change_adds_more(self) -> None:
+        n = "lint_name_matchers"
+        self.assertIn(n, dr.HARD_ZERO)
+        self.assertEqual(dr.mains_paid_debt({n: 3}, {n: 3}), {n})
+        self.assertEqual(dr.mains_paid_debt({n: 4}, {n: 3}), set())
+        self.assertEqual(dr.mains_paid_debt({n: 1}, {}), set())
+        self.assertIn(n, dr.upstream_counters({n: 1}, {n: 0}, []))
+
     def test_every_zero_baseline_is_hard_zero(self) -> None:
         baseline = json.loads(dr.DEFAULT_RATCHET.read_text(encoding="utf-8"))
         gated = {n for n, (_, _, g) in dr.COUNTERS.items() if g}

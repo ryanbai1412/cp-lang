@@ -4111,7 +4111,16 @@ def upstream_counters(actual: dict, baseline: dict, bumps: list[str]) -> set[str
     passes only if main measures it; 0e6b20d67's 1 -> 61 was refused unmeasured)."""
     over = {n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and n in actual
             and n not in HARD_ZERO and n not in HARD_FLOOR and int(actual[n]) > int(baseline[n])}
-    return over | ({b.partition(":")[0] for b in bumps} & set(COUNTERS))
+    paid = {n for n in HARD_ZERO | set(HARD_FLOOR) if int(actual.get(n, 0)) > HARD_FLOOR.get(n, 0)}
+    return over | paid | ({b.partition(":")[0] for b in bumps} & set(COUNTERS))
+
+
+def mains_paid_debt(actual: dict, upstream: dict) -> set[str]:
+    """Hard-zero (and hard-floor) counters over their limit here by no more than main already
+    measures: main's red, which its owner fixes and CI on main still fails, not this change's.
+    A change that adds one more fails, so a red main never makes every land skip the gate."""
+    return {n for n in HARD_ZERO | set(HARD_FLOOR)
+            if HARD_FLOOR.get(n, 0) < int(actual.get(n, 0)) <= int(upstream.get(n, -1))}
 
 
 def unhidden_wrong(root: Path, ref: str) -> list[str]:
@@ -4391,6 +4400,8 @@ def main(argv: list[str] | None = None) -> int:
             upstream, errors = None, []
         if upstream is not None:
             mine = evaluate(actual, inherited_baseline(baseline, upstream))[0]
+            labels = tuple(f"{COUNTERS[n][0]}: " for n in mains_paid_debt(actual, upstream))
+            mine = [e for e in mine if not e.startswith(labels)] if labels else mine
             warnings += [f"already on main, not from this change (infra fixes it): {e}"
                          for e in errors if e not in mine]
             errors = mine
