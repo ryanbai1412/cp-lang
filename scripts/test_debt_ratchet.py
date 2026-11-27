@@ -293,6 +293,13 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.link_reads_check(root),
                              ["crates/cpl-next-link/src/lib.rs:1", "crates/cpl-next-link/src/lib.rs:3"])
 
+    def test_name_compares_count_each_form(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-check/src/lib.rs",
+                        'if n == "todo" {}\n// n == "x"\n"Some" => 1,\n| "a" | "b" => 2,\nmatches!(k, Name(n) if n == "on")\nif s.eq("print") {}\nlet m = "text";\nif a == b {}\n')
+            self.assertEqual(dr.next_name_compares(root), [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 3, 4, 5, 6)])
+
     def test_library_gates_count_each_call_and_its_wrapper(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
