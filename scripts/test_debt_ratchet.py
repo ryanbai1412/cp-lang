@@ -440,6 +440,56 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(got), 2)
             self.assertTrue(all("skips the ratchet" in g for g in got))
 
+    def _repo(self, root: Path):
+        env = dr._git_env()
+        git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, env=env, capture_output=True)
+        commit = lambda m: git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", m)
+        head = lambda: subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, env=env, check=True,
+                                      capture_output=True, text=True).stdout.strip()
+        git("init", "-q")
+        return git, commit, head
+
+    def test_unlaned_flags_new_pipeline_and_std_commits_with_no_lane(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git, commit, head = self._repo(root)
+            self._write(root, "crates/cpl-next-check/src/a.rs", "fn a() {}\n")
+            self._write(root, "std/a.cp", "fn a() = 1\n")
+            self._write(root, "docs/a.md", "a\n")
+            git("add", "-A"); commit("base")
+            base = head()
+            self._write(root, "crates/cpl-next-check/src/a.rs", "fn a() { b() }\n")
+            commit("check(next): b\n\nDomain: compiler")
+            self._write(root, "std/a.cp", "fn a() = 2\n")
+            commit("stdlib: a is 2\n\nDomain: stdlib")
+            self._write(root, "std/a.cp", "fn a() = 3\n")
+            commit("stdlib: a is 3\n\nDomain: stdlib\nLane: B")
+            self._write(root, "docs/a.md", "b\n")
+            commit("docs: b\n\nDomain: docs")
+            got = dr.unlaned(root, base)
+            self.assertEqual(len(got), 2, got)
+            self.assertTrue(all("no `Lane:` trailer" in g for g in got))
+
+    def test_a_run_measured_raise_names_a_full_run_and_its_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git, commit, head = self._repo(root)
+            self._write(root, "a.txt", "a\n")
+            git("add", "-A"); commit("base")
+            base = head()
+            self._write(root, "a.txt", "b\n")
+            commit("check(next): b\n\nRaise: next_error_typed 10 -> 116: read only next/, "
+                   "CPL_NEXT_ONLY=next/ run target/cpl-next/only/error-typed.txt at " + base)
+            self.assertIsNotNone(dr.raise_evidence(root, base, "next_error_typed"))
+            self._write(root, "a.txt", "c\n")
+            commit("check(next): c\n\nRaise: next_error_typed 10 -> 116: the first count read next/")
+            self.assertIsNotNone(dr.raise_evidence(root, base, "next_error_typed"))
+            self._write(root, "a.txt", "d\n")
+            commit("check(next): d\n\nRaise: next_error_typed 10 -> 116: full run "
+                   "target/cpl-next/error-typed.txt at " + base[:9])
+            self.assertIsNone(dr.raise_evidence(root, base, "next_error_typed"))
+            self.assertIsNotNone(dr.raise_evidence(root, base, "next_split"))
+
     def test_std_fn_copies_count_as_duplicates(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -2353,7 +2403,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 11}, ref="base")), 1)
             base = subprocess.run(["git", "rev-parse", "base"], cwd=root, env=dr._git_env(),
                                   capture_output=True, text=True).stdout.strip()
-            git("commit", "-qam", f"factory(next): lists\n\nRegressed: core-01/hid.cp {base}")
+            git("commit", "-qam", f"factory(next): lists\n\nRegressed: core-01/hid.cp {base}\nLane: G")
             self.assertEqual(dr.unexplained_bumps(root, {"next_wrong": 11}, ref="base"), [])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 12}, ref="base")), 1)
 
@@ -2382,7 +2432,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(dr.unexplained_bumps(root, hid, ref="base")), 2)
             base = subprocess.run(["git", "rev-parse", "base"], cwd=root, env=dr._git_env(),
                                   capture_output=True, text=True).stdout.strip()
-            git("commit", "-qam", f"factory(next): lists\n\nRegressed: core-01/hid.cp {base}")
+            git("commit", "-qam", f"factory(next): lists\n\nRegressed: core-01/hid.cp {base}\nLane: G")
             self.assertEqual(dr.unexplained_bumps(root, hid, ref="base"), [])
             (tests / "passing.txt").write_text("")
             (tests / "wrong.tsv").write_text("".join(f"core-01/{c}.cp\tsplit\n" for c in ["passed", "wrong"]))

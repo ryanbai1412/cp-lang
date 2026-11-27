@@ -4536,6 +4536,47 @@ def skipped_ratchet(root: Path, base: str) -> list[str]:
             if SKIPPED_RATCHET_RE.search("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
 
 
+def unlaned(root: Path, base: str) -> list[str]:
+    """Commits in `base..HEAD` that touch the new pipeline (`crates/cpl-next*`) or `std/` with no
+    `Lane:` trailer. commit-msg adds or demands one, but a hook is skipped where it is not
+    installed (4feef68b5, 88ef1dda8 and 1bb42dbcd landed with none), so a regression traced to
+    one reached no owner without a search."""
+    paths = [str(p.relative_to(root)) for p in sorted((root / "crates").glob("cpl-next*"))]
+    paths += ["std"] if (root / "std").is_dir() else []
+    if not paths:
+        return []
+    return [f"{sha[:9]}: touches the new pipeline or std with no `Lane:` trailer; add the lane "
+            f"that lands it (`git commit --amend`, or set CPL_LANE)"
+            for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths)
+            if not any(l.strip() for l in _git(root, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", sha))]
+
+
+# Counters a programs run measures: a raise of one is the run's evidence, never a re-reading.
+RUN_MEASURED = ("next_wrong", "next_not_passing", "next_refused", "next_masked", "next_lowered",
+                "next_error_typed", "next_split", "next_wrong_accepts")
+RAISE_RE = re.compile(r"^Raise:\s*(\S+)\s*(.*)$", re.MULTILINE)
+FULL_RUN_RE = re.compile(r"\btarget/cpl-next/(?!only/)[\w.-]+")
+
+
+def raise_evidence(root: Path, base: str, name: str) -> str | None:
+    """None when a `Raise: <name>` line in `base..HEAD` names a full programs run's list
+    (`target/cpl-next/<list>`) and the commit that run measured; else what is missing. A
+    `CPL_NEXT_ONLY` run (`target/cpl-next/only/`) counts only the cases it ran: 152149266 set
+    next_error_typed to 10 from next/ alone, and the full run measured 116 (031f4aad9)."""
+    why = [m.group(2) for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD")
+           for m in RAISE_RE.finditer("\n".join(_git(root, "log", "-1", "--format=%B", sha)))
+           if m.group(1).rstrip(":") == name]
+    def full_run(w: str) -> bool:
+        if "CPL_NEXT_ONLY" in w or "target/cpl-next/only" in w or not FULL_RUN_RE.search(w):
+            return False
+        return any(_git(root, "rev-parse", "-q", "--verify", f"{s}^{{commit}}")
+                   for s in re.findall(r"\b[0-9a-f]{7,40}\b", w))
+    if any(full_run(w) for w in why):
+        return None
+    return (f"{name} is measured by a programs run: raise it only with `Raise: {name} <old> -> <new>: "
+            f"<why>, full run target/cpl-next/<list> at <sha>`, never from a CPL_NEXT_ONLY run")
+
+
 def frozen_edits(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that add lines to the frozen old pipeline (migration rule 9: no
     fixes, no features). `old_pipeline_lines` only sees the net, so a fix that deletes more than
@@ -4579,6 +4620,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
              for c in wrong_to_refused(root, ref)]
     moved += frozen_edits(root, base)
     moved += skipped_ratchet(root, base)
+    moved += unlaned(root, base)
     moved += set_swaps(root, ref)
     # Main lowering a number while this change gates isn't this change raising it:
     # only a number above the change's own base is (the rebase then takes main's).
@@ -4614,10 +4656,12 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
         return moved + [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
     if not raised:
         return moved
+    stale = "remove the new debt instead (only a change to the code that measures it may re-measure it)"
     return moved + [f"{n}: baseline raised above {ref} ({old.get(n, old_allow.get(n))} -> "
-            f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); remove the new debt "
-            f"instead (only a change to the code that measures it may re-measure it)"
-            for n, key in raised if not remeasured(root, base, key)]
+            f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); {need}"
+            for n, key in raised
+            for need in [raise_evidence(root, base, n) if n in RUN_MEASURED
+                         else None if remeasured(root, base, key) else stale] if need]
 
 
 def hand_lowered(root: Path, baseline: dict, actual: dict, ref: str = "origin/main") -> list[str]:
