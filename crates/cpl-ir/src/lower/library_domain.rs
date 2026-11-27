@@ -342,7 +342,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let span = base.span;
-        let arg = Self::named_ty(n, span);
+        let arg = ast::Type::named(n, span);
         Some(ast::Expr {
             kind: ast::ExprKind::Generic {
                 base: Box::new(ast::Expr {
@@ -361,19 +361,6 @@ impl<'a> Lowerer<'a> {
             return self.enums[eid].variants.iter().all(|(_, f)| f.is_empty());
         }
         self.index_struct(name).is_some()
-    }
-
-    fn named_ty(text: &str, span: Span) -> ast::Type {
-        ast::Type {
-            kind: ast::TypeKind::Named {
-                name: ast::Name {
-                    text: text.to_string(),
-                    span,
-                },
-                args: Vec::new(),
-            },
-            span,
-        }
     }
 
     /// The type `Subset<name>`, which `name.subsets` spells.
@@ -404,7 +391,7 @@ impl<'a> Lowerer<'a> {
                     text: of.to_string(),
                     span,
                 },
-                args: vec![Self::named_ty(name, span)],
+                args: vec![ast::Type::named(name, span)],
             },
             span,
         }

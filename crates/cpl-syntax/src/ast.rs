@@ -984,6 +984,20 @@ pub struct Type {
 }
 
 impl Type {
+    /// The type a bare name spells, with no type arguments.
+    pub fn named(text: &str, span: Span) -> Type {
+        Type {
+            kind: TypeKind::Named {
+                name: Name {
+                    text: text.to_string(),
+                    span,
+                },
+                args: Vec::new(),
+            },
+            span,
+        }
+    }
+
     /// The index type an expression in `[e].filled(x)` stands for, read as
     /// `[e]T` reads it: a capitalized name is a type (`[V]`), a field off one
     /// is a value of it (`[V.cuts]`), anything else is counted, `0..e`

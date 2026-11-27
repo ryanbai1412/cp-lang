@@ -199,19 +199,6 @@ fn gen_names(prefix: &str, n: usize) -> Vec<String> {
     (0..n).map(|k| format!("{prefix}{k}")).collect()
 }
 
-fn plain_type(text: &str, span: Span) -> ast::Type {
-    ast::Type {
-        kind: TypeKind::Named {
-            name: ast::Name {
-                text: text.to_string(),
-                span,
-            },
-            args: Vec::new(),
-        },
-        span,
-    }
-}
-
 fn self_param(n: &str, ty: Option<ast::Type>, span: Span) -> ast::Param {
     ast::Param {
         mutable: false,
@@ -271,7 +258,7 @@ pub fn without_traits(forms: &[Form], span: Span) -> Vec<ast::Stmt> {
             let mut params = vec![self_param("self", None, span)];
             params.extend(
                 (form.0.iter().zip(&ps))
-                    .map(|(f, p)| self_param(f, Some(plain_type(p, span)), span)),
+                    .map(|(f, p)| self_param(f, Some(ast::Type::named(p, span)), span)),
             );
             let assoc = ast::Stmt {
                 kind: StmtKind::TypeAlias {
@@ -287,7 +274,7 @@ pub fn without_traits(forms: &[Form], span: Span) -> Vec<ast::Stmt> {
                 decorators: Vec::new(),
                 public: true,
             };
-            let ret = plain_type(&format!("Self.{m}"), span);
+            let ret = ast::Type::named(&format!("Self.{m}"), span);
             let build = member_fn(&m, params, ret, ast::FnBody::None, span);
             ast::Stmt {
                 kind: StmtKind::Trait {
@@ -337,8 +324,8 @@ pub fn without_impls(
             };
             let fts = gen_names("F", fs.len());
             let ty_of = |f: &String| match form.0.iter().position(|p| p == f) {
-                Some(k) => plain_type(&ps[k], span),
-                None => plain_type(&fts[fs.iter().position(|x| x == f).unwrap_or(0)], span),
+                Some(k) => ast::Type::named(&ps[k], span),
+                None => ast::Type::named(&fts[fs.iter().position(|x| x == f).unwrap_or(0)], span),
             };
             let made_ty = ast::Type {
                 kind: TypeKind::Record(made.iter().map(|f| (nm(f), ty_of(f))).collect()),
@@ -357,7 +344,7 @@ pub fn without_impls(
             let mut params = vec![self_param("self", None, span)];
             params.extend(
                 (form.0.iter().zip(&ps))
-                    .map(|(f, p)| self_param(f, Some(plain_type(p, span)), span)),
+                    .map(|(f, p)| self_param(f, Some(ast::Type::named(p, span)), span)),
             );
             let assoc = ast::Stmt {
                 kind: StmtKind::TypeAlias {
@@ -375,14 +362,14 @@ pub fn without_impls(
                 trait_name: Some(ast::Type {
                     kind: TypeKind::Named {
                         name: nm(&without_name(form)),
-                        args: ps.iter().map(|p| plain_type(p, span)).collect(),
+                        args: ps.iter().map(|p| ast::Type::named(p, span)).collect(),
                     },
                     span,
                 }),
                 target: ast::Type {
                     kind: TypeKind::Record(
                         (fs.iter().zip(&fts))
-                            .map(|(f, t)| (nm(f), plain_type(t, span)))
+                            .map(|(f, t)| (nm(f), ast::Type::named(t, span)))
                             .collect(),
                     ),
                     span,
