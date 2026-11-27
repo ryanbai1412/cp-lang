@@ -310,7 +310,14 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
             }
             Stmt::Expr(e) => self.expr(e, ""),
             Stmt::Yield(e) | Stmt::Fact(e) => self.expr(e, "a yield or fact"),
-            Stmt::Return(e) => e.iter().for_each(|e| self.expr(e, "a return")),
+            Stmt::Return(e) => {
+                if let Some(e) = e {
+                    self.expr(e, "a return");
+                    if !self.insts.is_empty() && e.ty != self.f.ret {
+                        self.bad(format!("a return of {:?}, not the result", e.ty));
+                    }
+                }
+            }
             Stmt::If(c, a, b) => {
                 self.expr(c, "an if's condition");
                 self.block(a);
@@ -422,6 +429,7 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
                 self.args(xs, "a call's argument");
                 if let Target::Inst(i) = t {
                     self.params(*i, xs);
+                    self.result(*i, &e.ty);
                 }
             }
             EK::CallValue(g, xs, s) => {
@@ -479,6 +487,17 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
             if g.locals.get(p).is_some_and(|t| t != given) {
                 self.bad(format!("{}'s param {k} given a {given:?}", g.shown));
             }
+        }
+    }
+
+    /// A call of instance `i` has the type its result is made with, lent marks included: a
+    /// caller that took a lent view for its own storage would release what it never held.
+    fn result(&mut self, i: usize, got: &T) {
+        if let Some(g) = self.insts.get(i).filter(|g| g.ret != *got) {
+            self.bad(format!(
+                "a call of {} typed {got:?}, not its result",
+                g.shown
+            ));
         }
     }
 

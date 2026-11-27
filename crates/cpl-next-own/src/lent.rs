@@ -35,27 +35,24 @@ pub(crate) fn mark(
         .cloned()
         .collect();
     keys.sort();
+    let mut copies: HashMap<FnId, Vec<FuncKey>> = HashMap::new();
+    for k in &keys {
+        if let Some(id) = k.decl() {
+            copies.entry(id).or_default().push(k.clone());
+        }
+    }
     let mut w = Lw {
         d,
         sigs,
+        copies,
         funcs,
         globals,
         mutable,
         done: BTreeSet::new(),
+        marked: BTreeSet::new(),
     };
     for k in keys {
-        let held = match &k {
-            FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
-                let holds = lends(d, *id);
-                let f = &w.funcs[&k];
-                (f.params.iter().enumerate())
-                    .filter(|(i, _)| holds.contains(i))
-                    .map(|(_, (l, _))| *l)
-                    .collect()
-            }
-            _ => Vec::new(),
-        };
-        w.func(&k, held);
+        w.decl_func(&k);
     }
     // A lambda no fn makes (nothing reaches it) is still marked on its own.
     let mut rest: Vec<FuncKey> = (w.funcs.keys())
@@ -72,10 +69,14 @@ struct Lw<'a> {
     d: &'a Decls,
     /// Each fn's declared parameter types, receiver first, and its result type.
     sigs: HashMap<FnId, (Vec<Ty>, Ty)>,
+    /// Each declared fn's copies: its body, and one per set of context values.
+    copies: HashMap<FnId, Vec<FuncKey>>,
     funcs: &'a mut HashMap<FuncKey, Func<Ty>>,
     globals: &'a mut [Ty],
     mutable: &'a [bool],
     done: BTreeSet<LambdaId>,
+    /// The declared fns marked or being marked.
+    marked: BTreeSet<FuncKey>,
 }
 
 /// One fn being marked: its locals and the parameters its result holds.
@@ -89,6 +90,36 @@ struct Fr {
 }
 
 impl Lw<'_> {
+    /// Marks a declared fn once, and then its result type in the signature its callers read:
+    /// a result that holds a place it lends is lent there (R05.6.1), whatever its type says.
+    fn decl_func(&mut self, k: &FuncKey) {
+        if !self.marked.insert(k.clone()) {
+            return;
+        }
+        let held = match k {
+            FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
+                let holds = lends(self.d, *id);
+                let Some(f) = self.funcs.get(k) else { return };
+                (f.params.iter().enumerate())
+                    .filter(|(i, _)| holds.contains(i))
+                    .map(|(_, (l, _))| *l)
+                    .collect()
+            }
+            _ => Vec::new(),
+        };
+        self.func(k, held);
+        if let (Some(id), Some(f)) = (k.decl(), self.funcs.get(k)) {
+            if let Some((_, ret)) = self.sigs.get_mut(&id) {
+                *ret = mark_lent(ret, &f.ret);
+            }
+        }
+    }
+    /// Marks the fn a call names before the call reads its result type.
+    fn callee(&mut self, id: FnId) {
+        for k in self.copies.get(&id).cloned().unwrap_or_default() {
+            self.decl_func(&k);
+        }
+    }
     fn func(&mut self, k: &FuncKey, held: Vec<usize>) {
         if let FuncKey::Lambda(id) = k {
             if !self.done.insert(*id) {
@@ -117,6 +148,14 @@ impl Lw<'_> {
         };
         self.block(&mut fr, &mut f.body);
         f.locals = fr.locals;
+        // The result takes the marks of each value returned: a view of a held param is lent.
+        let mut ret = f.ret.clone();
+        returns(&f.body, &mut |t| {
+            if strip_lent(t) == strip_lent(&ret) {
+                ret = mark_lent(&ret, t).unlent().clone();
+            }
+        });
+        f.ret = ret;
         self.funcs.insert(k.clone(), f);
     }
     fn block(&mut self, fr: &mut Fr, b: &mut [Stmt<Ty>]) {
@@ -276,6 +315,7 @@ impl Lw<'_> {
                 self.args(fr, target, args);
                 self.target(fr, target, args);
                 if let Target::Fn(f) = target {
+                    self.callee(f.decl);
                     if let Some((_, ret)) = self.sigs.get(&f.decl) {
                         let ret = Subst {
                             tys: &f.targs,
@@ -523,6 +563,22 @@ fn rebind(decl: &Ty, arg: &Ty, targs: &mut [Ty]) {
 }
 
 /// Calls `f` with each call in `b`, its target and arguments.
+/// Calls `f` with the type of each value `b` returns.
+fn returns(b: &[Stmt<Ty>], f: &mut impl FnMut(&Ty)) {
+    for s in b {
+        match s {
+            Stmt::Return(Some(e)) => f(&e.ty),
+            Stmt::If(_, a, b) | Stmt::Loop(a, b, _) => {
+                returns(a, f);
+                returns(b, f);
+            }
+            Stmt::Switch(_, arms) => arms.iter().for_each(|a| returns(a, f)),
+            Stmt::Region { body, .. } => returns(body, f),
+            _ => {}
+        }
+    }
+}
+
 fn each_call(b: &[Stmt<Ty>], f: &mut impl FnMut(&Target<Ty>, &[Arg<Ty>])) {
     fn ex(e: &Expr<Ty>, f: &mut impl FnMut(&Target<Ty>, &[Arg<Ty>])) {
         match &e.kind {

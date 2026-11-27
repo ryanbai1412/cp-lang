@@ -257,3 +257,25 @@ fn instances_refuse_an_argument_not_of_its_params_type() {
     let lent = CTy::Lent(Box::new(CTy::Int));
     assert_eq!(instances(&[callee, call(lent)], Stage::Raw, 0).len(), 1);
 }
+
+#[test]
+fn instances_refuse_a_call_or_return_not_of_the_result_type() {
+    let lent = CTy::Lent(Box::new(CTy::Int));
+    let call = |t: CTy| {
+        let body = vec![Stmt::Expr(e(EK::Call(Target::Inst(0), vec![], 0), t))];
+        func(vec![], body, CTy::Unit)
+    };
+    let ok = instances(&[kept(CTy::Int), call(CTy::Int)], Stage::Raw, 0);
+    assert!(
+        ok.is_empty(),
+        "{:?}",
+        ok.iter().map(|m| &m.text).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        instances(&[kept(CTy::Int), call(lent.clone())], Stage::Raw, 0).len(),
+        1
+    );
+    let mut wrong = kept(CTy::Int);
+    wrong.ret = lent;
+    assert_eq!(instances(&[wrong], Stage::Raw, 0).len(), 1);
+}
