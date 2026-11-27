@@ -295,6 +295,13 @@ if [ -f scripts/conform_staged.py ]; then
         { echo "land: a conformance case that passes on main fails at the rebased tip (above); fix it and land again: uv run scripts/conform_staged.py --base origin/main --all" >&2; exit 1; }
 fi
 changed=$(git diff --name-only --diff-filter=ACMR "$main_base" HEAD)
+# A fast land changes no case list: nothing ran the suite that would justify the edit,
+# and every next_* ratchet counts the lists. The integrator lane regenerates them.
+if [ -n "$fast" ] && [ -z "${CPL_LAND_INTEGRATOR:-}" ] &&
+    printf '%s\n' "$changed" | grep -qE '^crates/cpl-next/tests/(passing\.txt|wrong\.tsv|masked\.txt|refused\.tsv)$'; then
+    echo "land: a fast land doesn't edit crates/cpl-next/tests' case lists; drop them from the commit (the integrator lane regenerates them with CPL_LAND_INTEGRATOR=1)" >&2
+    exit 1
+fi
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook
 # was cut before its wasm check and grew cpl_lsp 544 B gz past its budget. Held to
