@@ -210,6 +210,7 @@ pub use inst::Owned;
 pub fn link(
     d: &Decls,
     whole: &Whole,
+    deferred: &cpl_next_ir::msg::Deferred,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
     tys: &mut [Ty],
     adds: &SetAdds,
@@ -217,7 +218,7 @@ pub fn link(
 ) -> (Program, Owned) {
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     lent::mark(d, funcs, tys, &mutable);
-    let mut prog = cpl_next_link::link(d, whole, funcs, tys, adds, &lent_slot);
+    let mut prog = cpl_next_link::link(d, whole, deferred, funcs, tys, adds, &lent_slot);
     let owned = inst::check(d, funcs, &prog, globals);
     place_copies(&mut prog, &owned.copies);
     (prog, owned)

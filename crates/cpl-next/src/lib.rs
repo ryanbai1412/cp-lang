@@ -257,6 +257,7 @@ fn back(f: &mut Front) -> Option<(inst::Program, Vec<Diag>)> {
     let (prog, owned) = own::link(
         &f.d,
         &g.whole,
+        &g.deferred,
         &mut g.funcs,
         &mut g.globals,
         &g.adds,

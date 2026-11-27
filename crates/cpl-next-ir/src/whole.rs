@@ -52,9 +52,6 @@ pub struct Whole {
     pub domains: Vec<Dom>,
     /// By `GlobalId`.
     pub globals: Vec<Global>,
-    /// The diagnostics of each library fn reached only through a trait, each naming the layer
-    /// that found it: link says them if an instance runs the fn.
-    pub deferred: HashMap<FnId, Vec<Msg>>,
     /// The fns written in the user's program: where event points report entering and leaving.
     pub program_fns: HashSet<FnId>,
 }

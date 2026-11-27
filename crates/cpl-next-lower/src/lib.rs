@@ -20,6 +20,7 @@ pub struct Generic {
     pub adds: cpl_next_ir::ty::SetAdds,
     /// What link reads of the program beyond its fns.
     pub whole: cpl_next_ir::whole::Whole,
+    pub deferred: cpl_next_ir::msg::Deferred,
 }
 
 struct Lw<'a> {
@@ -76,7 +77,11 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             calls: typed.call_adds.clone(),
         },
         whole: whole(d, typed),
+        deferred: Default::default(),
     };
+    for (f, msgs) in &typed.deferred {
+        out.deferred.add(*f, msgs.iter().cloned());
+    }
     let mut lw = Lw {
         d,
         typed,
@@ -184,7 +189,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             let es = es
                 .into_iter()
                 .map(|e| e.from_layer(cpl_next_ir::msg::Stage::Lower.name()));
-            out.whole.deferred.entry(*id).or_default().extend(es);
+            out.deferred.add(*id, es);
         }
         let (sites, lines) = lw.take_sites();
         out.funcs.insert(
@@ -291,7 +296,6 @@ fn whole(d: &Decls, typed: &Typed) -> cpl_next_ir::whole::Whole {
                 top: g.top,
             })
             .collect(),
-        deferred: typed.deferred.clone(),
         program_fns: (0..d.fns.len())
             .map(FnId)
             .filter(|f| d.of_program(d.f(*f).module))

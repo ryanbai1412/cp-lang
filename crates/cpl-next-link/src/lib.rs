@@ -102,6 +102,7 @@ pub type Lend = dyn Fn(CTy, &dyn Fn(&CTy) -> Vec<CTy>) -> CTy;
 pub fn link(
     d: &Decls,
     whole: &Whole,
+    deferred: &cpl_next_ir::msg::Deferred,
     generic: &HashMap<FuncKey, Func<Ty>>,
     globals: &[Ty],
     adds: &SetAdds,
@@ -167,7 +168,7 @@ pub fn link(
         let key = l.keys[next].clone();
         if let Some(f) = key.func.decl() {
             if said.insert(f) {
-                l.errors.extend(whole.deferred.get(&f).into_iter().flatten().cloned());
+                l.errors.extend(deferred.of(f).iter().cloned());
             }
         }
         // A fn used at a domain declared in its own body: inside that instance the type

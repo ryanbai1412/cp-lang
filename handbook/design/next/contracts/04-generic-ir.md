@@ -60,7 +60,7 @@ enum Tier { Proved, Checked, Promised, Trusted }
 
 ### The program as a whole (slice)
 
-Beside its fns, lowering hands link two whole-program tables, both in
+Beside its fns, lowering hands link two whole-program tables and the diagnostics it holds back, both in
 `cpl-next-ir`, so link reads no typed tree (`link_reads_check` is 0, and
 no crate past lowering depends on `cpl-next-check`):
 
@@ -69,14 +69,19 @@ struct SetAdds { params: Map<(FnId, Slot), SetTy>, calls: List<(FnRef, Slot)> } 
 struct Whole {
     domains: List<Dom>,        // by DomId, what a `Ty::Dom` names: its size and start variables, its fn
     globals: List<Global>,     // by GlobalId, what a `Place::Global` names: name, top-level or in a block
-    deferred: Map<FnId, List<Msg>>,  // a library fn reached only through a trait: said if an instance runs it
     program_fns: Set<FnId>,    // the user's fns: where event points report entering and leaving
 }
 enum DomValue { Len(DomId), Lo(DomId) }   // a run-time value a domain carries, threaded by link
 ```
 
-Each deferred diagnostic names the layer that found it (checker or
-lowering); the driver merges nothing by hand.
+```rust
+struct Deferred(Map<FnId, List<Msg>>)  // in msg.rs: a library fn reached only through a trait, said if an instance runs it
+```
+
+`Deferred` is diagnostics, not a program fact, so it is not part of
+`Whole`. Each deferred diagnostic names the layer that found it (checker
+or lowering); link says those of each fn it makes an instance of, and the
+driver merges nothing by hand.
 
 ## Producer guarantees
 

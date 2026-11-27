@@ -118,3 +118,17 @@ impl Stage {
         }
     }
 }
+
+/// The diagnostics of each library fn reached only through a trait, each naming the layer that
+/// found it: link says them if an instance runs the fn.
+#[derive(Clone, Debug, Default)]
+pub struct Deferred(std::collections::HashMap<crate::ty::FnId, Vec<Msg>>);
+
+impl Deferred {
+    pub fn add(&mut self, f: crate::ty::FnId, msgs: impl IntoIterator<Item = Msg>) {
+        self.0.entry(f).or_default().extend(msgs);
+    }
+    pub fn of(&self, f: crate::ty::FnId) -> &[Msg] {
+        self.0.get(&f).map_or(&[], Vec::as_slice)
+    }
+}
