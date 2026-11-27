@@ -1712,6 +1712,26 @@ impl<'a> Cx<'a> {
                         }
                     }
                 }
+                ExprKind::Generic { base, args: targs }
+                    if targs.len() == 1 && self.returned_by(base).is_some() =>
+                {
+                    let mut pre = Vec::new();
+                    let t = self.body_ty(&targs[0], span, &mut pre);
+                    match self.returned_by(base) {
+                        Some((n, f)) => block(pre, self.call_by_return(t, f, &n, args, span)),
+                        None => Self::error_node(span),
+                    }
+                }
+                ExprKind::Name(_)
+                    if want.is_some_and(|w| !matches!(self.shallow(w), Ty::Var(_)))
+                        && self.returned_by(callee).is_some() =>
+                {
+                    let t = want.cloned().unwrap_or(Ty::Error);
+                    match self.returned_by(callee) {
+                        Some((n, f)) => self.call_by_return(t, f, &n, args, span),
+                        None => Self::error_node(span),
+                    }
+                }
                 _ => {
                     let c = self.expr(callee, None);
                     self.call_value(c, args, span)

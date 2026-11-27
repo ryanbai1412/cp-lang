@@ -238,6 +238,53 @@ impl<'a> Cx<'a> {
             .push((t.clone(), r.clone(), span, Origin::Bound));
         Some(self.static_call(t, r, m, name, call, span))
     }
+    /// `gen` named where no fn or value is: the self-less fn of that name a trait in view
+    /// declares returning `Self`, which a written type argument or the expected type picks the
+    /// impl of (R08.2.8).
+    pub(super) fn returned_by(&self, callee: &ast::Expr) -> Option<(String, (TraitId, FnId))> {
+        let ExprKind::Name(n) = &callee.kind else {
+            return None;
+        };
+        if self.lookup(n).is_some() || self.d.named(self.module, n).is_some() {
+            return None;
+        }
+        let found = (self.d.views[self.module.0].values())
+            .filter_map(|x| match x {
+                decls::Named::Trait(tr) => Some(*tr),
+                _ => None,
+            })
+            .filter_map(|tr| {
+                let m = *self.d.traits[tr.0].methods.get(n)?;
+                let fd = self.d.f(m);
+                (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
+            })
+            .min_by_key(|(tr, _)| tr.0)?;
+        Some((n.clone(), found))
+    }
+    /// `gen<T>(args)`: `T.gen(args)`, through `T`'s impl of the trait that declares it.
+    pub(super) fn call_by_return(
+        &mut self,
+        t: Ty,
+        (tr, m): (TraitId, FnId),
+        n: &str,
+        args: &[ast::Arg],
+        span: Span,
+    ) -> TExpr {
+        let r = self.d.with_defaults(
+            decls::TraitRef {
+                tr,
+                args: Vec::new(),
+            },
+            &t,
+        );
+        self.obligations
+            .push((t.clone(), r.clone(), span, Origin::Bound));
+        let name = ast::Name {
+            text: n.to_string(),
+            span,
+        };
+        self.static_call(t, r, m, &name, Some(args), span)
+    }
     /// A call of trait `tr`'s fn `m` without `self`, its impl chosen by `self_ty`.
     pub(super) fn static_call(
         &mut self,
