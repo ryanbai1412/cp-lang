@@ -473,6 +473,17 @@ impl<'a> Cx<'a> {
                     }
                     return;
                 }
+                // `let _ = e` runs `e` for its effects and drops its value.
+                if let PatternKind::Wildcard = pat.kind {
+                    let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
+                    let v = self.expr(init, declared.as_ref());
+                    let v = match &declared {
+                        Some(t) => self.coerce(v, t),
+                        None => v,
+                    };
+                    out.push(TStmt::Expr(v));
+                    return;
+                }
                 let PatternKind::Name(name) = &pat.kind else {
                     return self.err(s.span, "slice: unsupported pattern");
                 };

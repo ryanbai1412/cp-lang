@@ -697,6 +697,7 @@ core-10/read-bad-token-traps.cp
 core-10/read-empty-input-traps.cp
 core-10/read-good-token.cp
 core-10/read-int-too-big-traps.cp
+core-10/read-into-underscore-skips.cp
 core-10/read-negative-into-range.cp
 core-10/read-past-end-traps.cp
 core-10/read-range-arithmetic-lower-bound.cp
@@ -1088,6 +1089,7 @@ next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
 next/n_lends_01_result_lent_until_last_use.cp
 next/n_lends_02_write_before_last_use.cp
+next/n_let_02_underscore_runs_and_drops.cp
 next/n_let_else_01_binds_after_and_leaves.cp
 next/n_library_const.cp
 next/n_library_module.cp
