@@ -2434,6 +2434,19 @@ walk([3, 1, 4].rev)
 """
 out = "4\n1\n3"
 
+[case."Seq/Gen/iter"]
+code = """
+fn evens(n: Int) -> yields Int:
+    for i in 0..n:
+        if i % 2 == 0: yield i
+fn walk<S: Seq<Int>>(s: S):
+    for x in s: print(x)
+let g = evens(5)
+walk(g)
+walk(g)
+"""
+out = "0\n2\n4\n0\n2\n4"
+
 [case."Bidir/Rev/iter_rev"]
 code = """
 fn back<S: Bidir<Int>>(s: S):
