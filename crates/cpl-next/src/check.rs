@@ -15,6 +15,7 @@ use std::collections::HashSet;
 mod expr;
 mod index;
 mod lambda;
+mod member;
 mod oblige;
 mod range;
 mod stmt;
@@ -232,6 +233,8 @@ enum SetVar {
 
 struct Cx<'a> {
     d: &'a Decls,
+    /// The joined source the spans index, offset by `item_off`.
+    src: &'a str,
     tys: Vec<Option<Ty>>,
     sets: Vec<SetVar>,
     /// Set variables being written out, to catch a set that contains itself.
@@ -294,6 +297,7 @@ struct Cx<'a> {
 pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
     let mut cx = Cx {
         d,
+        src,
         tys: Vec::new(),
         sets: Vec::new(),
         zonking: Default::default(),
@@ -557,8 +561,19 @@ impl<'a> Cx<'a> {
         }
     }
     fn err(&mut self, span: Span, msg: impl Into<String>) {
+        self.err_help(span, msg, None);
+    }
+    fn err_help(&mut self, span: Span, msg: impl Into<String>, help: Option<String>) {
         let at = Span::new(self.item_off + span.start, self.item_off + span.end);
-        self.errors.push(Msg::at(at, msg));
+        self.errors.push(Msg {
+            help,
+            ..Msg::at(at, msg)
+        });
+    }
+    /// The source text `span` covers.
+    fn text(&self, span: Span) -> &'a str {
+        let at = (self.item_off + span.start) as usize..(self.item_off + span.end) as usize;
+        self.src.get(at).unwrap_or("")
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.

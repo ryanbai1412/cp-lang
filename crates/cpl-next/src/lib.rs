@@ -70,6 +70,8 @@ pub struct Diag {
     pub at: Option<At>,
     /// The text without a verdict's code.
     pub message: String,
+    /// What to write instead, when the layer knows.
+    pub help: Option<String>,
 }
 
 impl Diag {
@@ -109,6 +111,7 @@ impl Diag {
             kind,
             at,
             message,
+            help: m.help.clone(),
         }
     }
 }
@@ -118,7 +121,8 @@ fn overlaps(a: cpl_diag::Span, b: cpl_diag::Span) -> bool {
     a.start < b.end.max(b.start + 1) && b.start < a.end.max(a.start + 1)
 }
 
-/// The one printer of a diagnostic: `check: program:3:5: E0301: text`.
+/// The one printer of a diagnostic: `check: program:3:5: E0301: text`, and its help on the
+/// next line.
 impl std::fmt::Display for Diag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: ", self.stage.name())?;
@@ -128,7 +132,11 @@ impl std::fmt::Display for Diag {
         if let Some(c) = self.code() {
             write!(f, "{c}: ")?;
         }
-        f.write_str(&self.message)
+        f.write_str(&self.message)?;
+        match &self.help {
+            Some(h) => write!(f, "\n  = help: {h}"),
+            None => Ok(()),
+        }
     }
 }
 

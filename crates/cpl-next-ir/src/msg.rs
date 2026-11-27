@@ -7,6 +7,8 @@ pub struct Msg {
     pub at: Option<Span>,
     /// As `kind_of` reads it.
     pub text: String,
+    /// What to write instead, when the layer knows.
+    pub help: Option<String>,
 }
 
 impl Msg {
@@ -14,6 +16,7 @@ impl Msg {
         Msg {
             at: Some(at),
             text: text.into(),
+            help: None,
         }
     }
     /// A library's message with no place yet names the module it is from.
@@ -21,22 +24,26 @@ impl Msg {
         match self.at {
             Some(_) => self,
             None => Msg {
-                at: None,
                 text: format!("{module}: {}", self.text),
+                ..self
             },
         }
     }
     pub fn prefixed(self, prefix: &str) -> Msg {
         Msg {
-            at: self.at,
             text: format!("{prefix}: {}", self.text),
+            ..self
         }
     }
 }
 
 impl From<String> for Msg {
     fn from(text: String) -> Msg {
-        Msg { at: None, text }
+        Msg {
+            at: None,
+            text,
+            help: None,
+        }
     }
 }
 

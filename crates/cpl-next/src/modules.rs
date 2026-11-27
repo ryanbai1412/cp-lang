@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 type Items = Vec<(u32, Vec<Stmt>)>;
 /// Each syntax error with its code and where it is, and the spans the parser could not read.
-type Unread = (Vec<(Span, String)>, Vec<Span>);
+type Unread = (Vec<Msg>, Vec<Span>);
 
 pub struct Module {
     pub name: String,
@@ -144,7 +144,10 @@ fn parse(text: &str) -> (Items, Unread) {
         items.push((o, it.stmts));
     }
     let diags = (p.diagnostics.into_iter())
-        .map(|d| (d.span, format!("{}: {}", d.code.0, d.message)))
+        .map(|d| Msg {
+            help: d.help,
+            ..Msg::at(d.span, format!("{}: {}", d.code.0, d.message))
+        })
         .collect();
     (items, (diags, poisoned))
 }
@@ -235,12 +238,18 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
     }
     let program_start = add(PROGRAM, user, program);
     let at = |base: u32, s: Span| Span::new(base + s.start, base + s.end);
+    let placed = |base: u32| {
+        move |m: Msg| Msg {
+            at: m.at.map(|a| at(base, a)),
+            ..m
+        }
+    };
     let mut poisoned = Vec::new();
     for (lib, (diags, p)) in lib_diags {
-        errors.extend((diags.into_iter()).map(|(a, d)| Msg::at(at(lib_starts[lib], a), d)));
+        errors.extend(diags.into_iter().map(placed(lib_starts[lib])));
         poisoned.extend(p.into_iter().map(|s| at(lib_starts[lib], s)));
     }
-    errors.extend((program_diags.into_iter()).map(|(a, d)| Msg::at(at(program_start, a), d)));
+    errors.extend(program_diags.into_iter().map(placed(program_start)));
     poisoned.extend(program_poisoned.into_iter().map(|s| at(program_start, s)));
     let code = cpl_diag::codes::UNRESOLVED_MODULE.0;
     for (m, a) in missing {
