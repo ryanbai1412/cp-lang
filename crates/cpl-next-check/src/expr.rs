@@ -1503,7 +1503,16 @@ impl<'a> Cx<'a> {
                 };
                 self.expr(&ast::Expr { kind: call, span }, want)
             }
-            ExprKind::Field { base, name } => self.member(base, name, None, span, want, &[]),
+            ExprKind::Field { base, name } => match self.owned_domain(base, name) {
+                Some(n) => self.expr(
+                    &ast::Expr {
+                        kind: ExprKind::Name(n),
+                        span,
+                    },
+                    want,
+                ),
+                None => self.member(base, name, None, span, want, &[]),
+            },
             ExprKind::Index { indices, .. } if indices.len() > 1 => match super::index::packed(e) {
                 Some(one) => self.expr(&one, want),
                 None => Self::error_node(span),

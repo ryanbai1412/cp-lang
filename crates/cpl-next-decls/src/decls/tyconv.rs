@@ -457,6 +457,8 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         // The parser has said what is wrong with it.
         TypeKind::Error => Ty::Error,
         TypeKind::DomainBinder(n) => cx.doms.get(&n.text).cloned().unwrap_or(Ty::Error),
+        // A result's `_`, filled in once its struct's domain parameters are known (R02.9.3).
+        TypeKind::Value(_) if cx.ret_slots.is_some() && is_hole(t) => Ty::Error,
         other => {
             errors.push(
                 Unbuilt::Type {
@@ -596,5 +598,21 @@ pub(super) fn const_axes(t: &ast::Type, out: &mut Vec<(i64, i64)>) {
         }
         TypeKind::Fn { params, ret } => each(&mut params.iter().chain([&**ret])),
         _ => {}
+    }
+}
+
+/// `_` as a type argument, `Rooted<V, _>`.
+fn is_hole(t: &ast::Type) -> bool {
+    matches!(&t.kind, TypeKind::Value(e) if matches!(&e.kind, ast::ExprKind::Name(n) if n == "_"))
+}
+
+/// `t` leaves some struct's parameter as `_`, directly or in an optional.
+pub(super) fn has_hole(t: &ast::Type) -> bool {
+    match &t.kind {
+        TypeKind::Named { args, .. } => args.iter().any(|a| is_hole(a) || has_hole(a)),
+        TypeKind::Optional(e) => has_hole(e),
+        TypeKind::Tuple(ts) => ts.iter().any(has_hole),
+        TypeKind::Record(fs) => fs.iter().any(|(_, t)| has_hole(t)),
+        _ => false,
     }
 }

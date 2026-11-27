@@ -325,6 +325,10 @@ struct Cx<'a> {
     /// Temporaries holding an input value whose parts are held to their types one by one.
     input_parts: std::collections::HashSet<VarRef>,
     ret: Ty,
+    /// The results whose `_`s an earlier check of their bodies fixed (R02.9.3), and the ones
+    /// this check fixes.
+    solved_ret: HashMap<FnId, Ty>,
+    found_ret: HashMap<FnId, Ty>,
     /// What the fn being checked yields or lends.
     region: Option<(bool, Ty)>,
     /// How many loops enclose the statement being checked, and a marker for `For`'s two-step entry.
@@ -415,6 +419,8 @@ pub enum ConstError {
 }
 
 /// `roots`: library modules whose every fn is checked as the program's are, reached or not.
+/// A result's `_` that is no domain is fixed by its fn's body (R02.9.3): a call checked before
+/// that body is checked again, with each such result as the bodies fixed it.
 pub fn check(
     d: &Decls,
     main: &[(ItemId, ast::Stmt)],
@@ -423,6 +429,25 @@ pub fn check(
     roots: &[ModId],
     judge: Option<cpl_next_ir::build::Judge>,
 ) -> Typed {
+    let mut solved = HashMap::new();
+    loop {
+        let (t, found) = check_with(d, main, src, consts, roots, judge.clone(), solved.clone());
+        if found.keys().all(|f| solved.contains_key(f)) {
+            return t;
+        }
+        solved.extend(found);
+    }
+}
+
+fn check_with(
+    d: &Decls,
+    main: &[(ItemId, ast::Stmt)],
+    src: &crate::modules::Loaded,
+    consts: &dyn Consts,
+    roots: &[ModId],
+    judge: Option<cpl_next_ir::build::Judge>,
+    solved_ret: HashMap<FnId, Ty>,
+) -> (Typed, HashMap<FnId, Ty>) {
     let mut cx = Cx {
         values: consts,
         wraps: false,
@@ -473,6 +498,8 @@ pub fn check(
         obligations: Vec::new(),
         input_parts: Default::default(),
         ret: Ty::Unit,
+        solved_ret,
+        found_ret: HashMap::new(),
         region: None,
         loops: 0,
         in_for: false,
@@ -789,7 +816,7 @@ pub fn check(
     if cx.cyclic.get() {
         cx.errors.push(Msg::internal("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name"));
     }
-    Typed {
+    let typed = Typed {
         domains: std::mem::take(&mut cx.domains),
         fns,
         ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),
@@ -801,7 +828,8 @@ pub fn check(
         errors: cx.errors,
         deferred,
         quiet: quiet_fns,
-    }
+    };
+    (typed, cx.found_ret)
 }
 
 impl<'a> Cx<'a> {
@@ -1007,7 +1035,10 @@ impl<'a> Cx<'a> {
         }
         let n = f.n_sets;
         self.region = (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| SetTy::Param(n + k))));
-        self.ret = map_slots(&f.ret, &|k| SetTy::Param(n + k));
+        let ret = self.decl_ret(id);
+        let holes = d.ret_holes.contains(&id) && !unify::ground(&ret);
+        let ret = if holes { self.open_holes(&ret) } else { ret };
+        self.ret = map_slots(&ret, &|k| SetTy::Param(n + k));
         let ret = self.ret.clone();
         // A fn refused as declared (a decorator the slice lacks) is that refusal: its body,
         // written for the meaning the slice does not build, is not checked.
@@ -1072,6 +1103,12 @@ impl<'a> Cx<'a> {
             },
         };
         self.solve(true);
+        if holes {
+            let fixed = self.zonk(&ret);
+            if unify::ground(&fixed) {
+                self.found_ret.insert(id, fixed);
+            }
+        }
         self.frames = frames;
         let out = TypedFn {
             self_local: self.self_local,

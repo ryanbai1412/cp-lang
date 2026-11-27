@@ -360,6 +360,8 @@ pub struct Decls {
     pub fresh_doms: Vec<(usize, String)>,
     /// The fns whose result's slots are `domain C`s, till those slots are made `Range<C>`s.
     pub fresh_slots: Vec<(FnId, Vec<usize>)>,
+    /// The fns whose result leaves a struct's parameter as `_`, `-> Rooted<V, _, _>` (R02.9.3).
+    pub ret_holes: Vec<FnId>,
     /// `[0..2]T` in a declaration: the domain of each constant range an array is over, one for
     /// all that write it, as `(domain, lo, hi)` with `hi` inclusive (R04.3.4).
     pub anon_doms: Vec<(usize, i64, i64)>,
@@ -567,6 +569,14 @@ fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> 
 
 /// A result's `domain C` slot holds the fresh domain's positions, a `Range<C>` (R02.9.3).
 fn fresh_results(d: &mut Decls) {
+    // `-> Rooted<V, _, _>`: a `_` in a domain's place is a domain of its own, as a `domain C` is.
+    if let Some(domain) = d.domain_trait {
+        for f in d.ret_holes.clone() {
+            let mut ret = std::mem::replace(&mut d.fns[f.0].ret, Ty::Error);
+            fill_holes(d, f, &mut ret, domain);
+            d.fns[f.0].ret = ret;
+        }
+    }
     let range = (d.sugar.range_literal).and_then(|r| match &d.fns[r.0].ret {
         Ty::Struct(r, ..) => Some(*r),
         _ => None,
@@ -585,6 +595,72 @@ fn fresh_results(d: &mut Decls) {
     }
 }
 
+/// `t` keys by parameter `i`, also through a struct whose own parameter in that place is a
+/// domain: `self: Dsu<V>`.
+fn keys(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
+    let go = |t: &Ty| depth < 8 && keys(d, t, domain, i, depth + 1);
+    match t {
+        Ty::Struct(s, ts, _) => {
+            ts.iter().any(go)
+                || (ts.iter().enumerate()).any(|(k, a)| {
+                    (d.structs[s.0].bounds.contains(&(k, domain))
+                        && domain_at(d, a, domain, i, depth))
+                        || (*a == Ty::Param(i)
+                            && depth < 8
+                            && (d.structs[s.0].fields.iter())
+                                .any(|(_, f)| keys(d, f, domain, k, depth + 1)))
+                })
+        }
+        Ty::Raw(e) | Ty::Ref(e) => go(e),
+        Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).any(go),
+        _ => false,
+    }
+}
+/// `P` in a domain's place is one, and so is a part of it that `P`'s `Domain` impl bounds by
+/// `Domain`: `V` in `[(V, V)]T` (R04.2.11).
+fn domain_at(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
+    let Ty::Struct(s, ts, _) = t else {
+        return *t == Ty::Param(i);
+    };
+    depth < 8
+        && (d.impls.iter()).any(|m| {
+            let Ty::Struct(f, ps, _) = &m.for_ else {
+                return false;
+            };
+            m.trait_.tr == domain && f == s && (ps.iter().zip(ts)).any(|(p, a)| {
+                matches!(p, Ty::Param(j) if m.bounds.iter().any(|(b, r)| b == j && r.tr == domain))
+                    && domain_at(d, a, domain, i, depth + 1)
+            })
+        })
+}
+
+/// `s`'s parameter `k` is a domain: a field keys by it, as `at: [Pre]V` does, or it is bounded so.
+fn domain_param_of(d: &Decls, s: StructId, k: usize, domain: TraitId) -> bool {
+    d.structs[s.0].bounds.contains(&(k, domain))
+        || (d.structs[s.0].fields.iter()).any(|(_, f)| keys(d, f, domain, k, 0))
+}
+
+/// The `_`s of `t`, a result, in its structs' domain parameters, each made a fresh domain.
+fn fill_holes(d: &mut Decls, f: FnId, t: &mut Ty, domain: TraitId) {
+    let Ty::Struct(s, ts, _) = t else {
+        return;
+    };
+    for (k, a) in ts.iter_mut().enumerate() {
+        if *a != Ty::Error {
+            fill_holes(d, f, a, domain);
+        } else if domain_param_of(d, *s, k, domain) {
+            let c = collect::fresh_dom(d);
+            if let Ty::Dom(i) = c {
+                let name = format!("{}.{}", d.fns[f.0].name, d.structs[s.0].generics[k]);
+                d.fresh_doms.push((i, name));
+            }
+            d.top_doms
+                .insert(format!("${}", d.fresh_doms.len()), c.clone());
+            *a = c;
+        }
+    }
+}
+
 /// A type parameter in a place whose struct bounds it by `Domain`, in a fn's signature or in its
 /// owner's fields, is a domain parameter (`struct Dsu<V>: parent: [V]V`, `Range<D>`): its body
 /// may use what every domain has (R04.2). So is one passed where a trait bound's parameter is
@@ -594,43 +670,6 @@ fn domain_params(d: &mut Decls, from: usize) {
     let Some(domain) = d.domain_trait else {
         return;
     };
-    // Also through a struct whose own parameter in that place is a domain: `self: Dsu<V>`.
-    fn keys(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
-        let go = |t: &Ty| depth < 8 && keys(d, t, domain, i, depth + 1);
-        match t {
-            Ty::Struct(s, ts, _) => {
-                ts.iter().any(go)
-                    || (ts.iter().enumerate()).any(|(k, a)| {
-                        (d.structs[s.0].bounds.contains(&(k, domain))
-                            && domain_at(d, a, domain, i, depth))
-                            || (*a == Ty::Param(i)
-                                && depth < 8
-                                && (d.structs[s.0].fields.iter())
-                                    .any(|(_, f)| keys(d, f, domain, k, depth + 1)))
-                    })
-            }
-            Ty::Raw(e) | Ty::Ref(e) => go(e),
-            Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).any(go),
-            _ => false,
-        }
-    }
-    // `P` in a domain's place is one, and so is a part of it that `P`'s `Domain` impl bounds by
-    // `Domain`: `V` in `[(V, V)]T` (R04.2.11).
-    fn domain_at(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
-        let Ty::Struct(s, ts, _) = t else {
-            return *t == Ty::Param(i);
-        };
-        depth < 8
-            && (d.impls.iter()).any(|m| {
-                let Ty::Struct(f, ps, _) = &m.for_ else {
-                    return false;
-                };
-                m.trait_.tr == domain && f == s && (ps.iter().zip(ts)).any(|(p, a)| {
-                matches!(p, Ty::Param(j) if m.bounds.iter().any(|(b, r)| b == j && r.tr == domain))
-                    && domain_at(d, a, domain, i, depth + 1)
-            })
-            })
-    }
     // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`) is one (R04.4.30).
     struct DomUse<'a> {
         generics: &'a [String],
@@ -1348,6 +1387,9 @@ fn add_fn(
     if !binders.is_empty() {
         let slots = binders.iter().map(|b| b.0).collect();
         d.fresh_slots.push((FnId(d.fns.len()), slots));
+    }
+    if f.ret.as_ref().is_some_and(tyconv::has_hole) {
+        d.ret_holes.push(FnId(d.fns.len()));
     }
     d.fns.push(FnDecl {
         made: (0, 0),

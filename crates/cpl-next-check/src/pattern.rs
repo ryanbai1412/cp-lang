@@ -481,6 +481,10 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) -> Option<(usize, usize)> {
         let c = self.fresh_slot_of(t)?;
+        Some((c, self.fresh_from(name, c, span, out)))
+    }
+    /// A domain of its own named `name`, its ends read from the fresh `C`'s slot.
+    fn fresh_from(&mut self, name: &str, c: usize, span: Span, out: &mut Vec<TStmt>) -> usize {
         let (lo, len) = (self.domains[c].lo, self.domains[c].len);
         let var = |r| TExpr {
             kind: TK::Var(r),
@@ -497,8 +501,69 @@ impl Cx<'_> {
             ty: Ty::Int,
             span,
         };
-        let i = self.declare_domain(name, var(lo), end, (None, None), span, out);
-        Some((c, i))
+        self.declare_domain(name, var(lo), end, (None, None), span, out)
+    }
+    /// The fresh domains `t`'s struct holds as its own parameters, each with that parameter's
+    /// name: `Pre` of a `Rooted.new` result.
+    pub(super) fn fresh_args(&mut self, t: &Ty) -> Vec<(usize, String)> {
+        let t = self.zonk(t);
+        let mut out = Vec::new();
+        self.fresh_in(&t, "", &mut out);
+        // A `domain C` binder's domain is bound by its pattern, not owned here.
+        let binders: Vec<usize> = match &t {
+            Ty::Struct(s, ts, _) if self.d.s(*s).record => {
+                ts.iter().filter_map(|a| self.fresh_slot_of(a)).collect()
+            }
+            _ => Vec::new(),
+        };
+        out.retain(|(c, _)| !binders.contains(c));
+        out
+    }
+    /// A record's are named through its fields: `s.P` of `(s: S<V, _>, k: Int)`.
+    fn fresh_in(&self, t: &Ty, path: &str, out: &mut Vec<(usize, String)>) {
+        let Ty::Struct(s, ts, _) = t else {
+            return;
+        };
+        let sd = self.d.s(*s);
+        for (k, a) in ts.iter().enumerate() {
+            match self.shallow(a) {
+                Ty::Dom(c) if !sd.record && self.d.fresh_doms.iter().any(|f| f.0 == c) => {
+                    out.push((c, format!("{path}{}", sd.generics[k])));
+                }
+                a if sd.record => {
+                    let field = sd.fields.get(k).map_or(String::new(), |f| f.0.clone());
+                    self.fresh_in(&a, &format!("{path}{field}."), out);
+                }
+                _ => {}
+            }
+        }
+    }
+    /// `t.Pre`: the domain `t` owns as its result's fresh `Pre`, if `t` is such a binding.
+    pub(super) fn owned_domain(&self, base: &ast::Expr, name: &ast::Name) -> Option<String> {
+        let ExprKind::Name(b) = &base.kind else {
+            return None;
+        };
+        let n = format!("{b}.{}", name.text);
+        matches!(self.doms.get(&n), Some(Ty::Dom(_))).then_some(n)
+    }
+    /// `let t = Rooted.new(..)`: each fresh domain of the result is one of `t`'s own, `t.Pre`,
+    /// so two trees' positions never mix (R02.9.1).
+    pub(super) fn own_fresh(
+        &mut self,
+        name: &str,
+        var: VarRef,
+        fresh: Vec<(usize, String)>,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) {
+        for (c, p) in fresh {
+            let i = self.fresh_from(&format!("{name}.{p}"), c, span, out);
+            let slot = match var {
+                VarRef::Local(k) => &mut self.locals[k].ty,
+                VarRef::Global(k) => &mut self.globals[k].ty,
+            };
+            *slot = retag(slot, c, i);
+        }
     }
     /// The result's `domain C` whose positions `t` is.
     pub(super) fn fresh_slot_of(&self, t: &Ty) -> Option<usize> {
@@ -727,6 +792,17 @@ impl Cx<'_> {
             }
             _ => "_".into(),
         }
+    }
+}
+
+/// `t` names the domain `c` somewhere.
+pub(super) fn holds_dom(t: &Ty, c: usize) -> bool {
+    match t {
+        Ty::Dom(i) => *i == c,
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => holds_dom(e, c),
+        Ty::Struct(_, ts, _) => ts.iter().any(|t| holds_dom(t, c)),
+        Ty::Fn(ps, r, _) => ps.iter().any(|t| holds_dom(t, c)) || holds_dom(r, c),
+        _ => false,
     }
 }
 

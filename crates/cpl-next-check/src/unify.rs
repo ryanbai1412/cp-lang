@@ -4,6 +4,21 @@ use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
 impl<'a> Cx<'a> {
+    /// What `f` returns, with the `_`s its body fixed (R02.9.3).
+    pub(super) fn decl_ret(&self, f: FnId) -> Ty {
+        (self.solved_ret.get(&f).cloned()).unwrap_or_else(|| self.d.f(f).ret.clone())
+    }
+    /// `t` with each `_` a variable its body solves.
+    pub(super) fn open_holes(&mut self, t: &Ty) -> Ty {
+        match t {
+            Ty::Error => self.new_ty(),
+            Ty::Struct(s, ts, ss) => {
+                let ts = ts.iter().map(|t| self.open_holes(t)).collect();
+                Ty::Struct(*s, ts, ss.clone())
+            }
+            _ => t.clone(),
+        }
+    }
     pub(super) fn new_ty(&mut self) -> Ty {
         self.tys.push(None);
         Ty::Var(self.tys.len() - 1)
@@ -356,7 +371,7 @@ impl<'a> Cx<'a> {
     }
     /// The result type of a call: its function types hold the sets the call passes for them.
     pub(super) fn ret_ty(&mut self, f: &FnRef) -> Ty {
-        let ret = self.d.f(f.decl).ret.clone();
+        let ret = self.decl_ret(f.decl);
         self.result_of(f, &ret)
     }
     /// `t`, a type in `f`'s result (what it returns or yields), as one call of `f` gives it: its
@@ -387,7 +402,7 @@ impl<'a> Cx<'a> {
         if fd.n_ret_sets > 0 {
             self.set_calls.push((f.clone(), self.decl));
         }
-        let ret = fd.ret.clone();
+        let ret = self.decl_ret(m);
         self.result_of(&f, &ret)
     }
     /// `T` when `t` is `?T`.
@@ -640,41 +655,57 @@ impl<'a> Cx<'a> {
             span,
         }
     }
-    /// `J` where a result's `domain C` is wanted, both as `Range`s of their positions.
-    fn fresh_slot(&self, have: &Ty, want: &Ty) -> Option<(usize, usize)> {
-        let r = self.range_struct()?;
-        let dom = |t: &Ty| match t {
-            Ty::Struct(s, ts, _) if *s == r && ts.len() == 1 => match self.shallow(&ts[0]) {
-                Ty::Dom(i) => Some(i),
-                _ => None,
-            },
-            _ => None,
+    /// `J` where a result's fresh `C` is wanted, each in the same place of one struct: `Range<J>`
+    /// for a `domain C` slot, `Rooted<V, J, A>` for a `Rooted<V, _, A>`.
+    fn fresh_pairs(&self, have: &Ty, want: &Ty) -> Vec<(usize, usize)> {
+        let (Ty::Struct(s1, a, _), Ty::Struct(s2, b, _)) = (have, want) else {
+            return Vec::new();
         };
-        let (j, c) = (dom(have)?, dom(want)?);
-        (j != c && self.d.fresh_doms.iter().any(|f| f.0 == c)).then_some((j, c))
+        if s1 != s2 {
+            return Vec::new();
+        }
+        (a.iter().zip(b))
+            .filter_map(|(x, y)| match (self.shallow(x), self.shallow(y)) {
+                (Ty::Dom(j), Ty::Dom(c))
+                    if j != c
+                        && self.d.fresh_doms.iter().any(|f| f.0 == c)
+                        && crate::pattern::holds_dom(&self.ret, c) =>
+                {
+                    Some((j, c))
+                }
+                _ => None,
+            })
+            .collect()
     }
-    /// Returning `J` as the result's `domain C`: `C` takes `J`'s ends, and in this body `J`
+    /// Returning `J` as the result's fresh `C`: `C` takes `J`'s ends, and in this body `J`
     /// stands for `C`, so `[J]T` is the result's `[C]T` (R02.9.3).
-    fn return_fresh(&mut self, j: usize, c: usize, e: TExpr, want: Ty) -> TExpr {
-        self.fresh_eq.push((j, c));
+    fn return_fresh(&mut self, pairs: Vec<(usize, usize)>, e: TExpr, want: Ty) -> TExpr {
         let span = e.span;
         let var = |r| TExpr {
             kind: TK::Var(r),
             ty: Ty::Int,
             span,
         };
-        let (from, to) = (&self.domains[j], &self.domains[c]);
-        let pre = vec![
-            TStmt::Assign(var(to.lo), var(from.lo)),
-            TStmt::Assign(var(to.len), var(from.len)),
-        ];
+        // The value first: a call's result sets `J`'s ends as it returns.
+        let (mut pre, e) = self.held(e);
+        for (j, c) in pairs {
+            self.fresh_eq.push((j, c));
+            let (from, to) = (&self.domains[j], &self.domains[c]);
+            pre.push(TStmt::Assign(var(to.lo), var(from.lo)));
+            pre.push(TStmt::Assign(var(to.len), var(from.len)));
+        }
         crate::expr::block(pre, TExpr { ty: want, ..e })
     }
     pub(super) fn coerce(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let (have, want_s) = (self.shallow(&e.ty), self.shallow(want));
         let span = e.span;
-        if let Some((j, c)) = self.fresh_slot(&have, &want_s) {
-            return self.return_fresh(j, c, e, want_s);
+        let pairs = self.fresh_pairs(&have, &want_s);
+        // The rest of the result is the value's: `A` of `Rooted<V, _, _>` is what the body made.
+        let as_fresh = (pairs.iter()).fold(self.zonk(&have), |t, &(j, c)| {
+            crate::pattern::retag(&t, j, c)
+        });
+        if !pairs.is_empty() && self.unify(&as_fresh, &want_s) {
+            return self.return_fresh(pairs, e, want_s);
         }
         // `T` converts to `?T` (R02.4.2).
         if let Some(inner) = self.optional_of(&want_s) {
@@ -959,5 +990,16 @@ pub(super) fn made_param(fd: &decls::FnDecl) -> Option<usize> {
     match fd.ret {
         Ty::Param(i) if !fd.params.iter().any(|p| mentions(&p.ty, i)) => Some(i),
         _ => None,
+    }
+}
+
+/// `t` has no variable or error left in it.
+pub(super) fn ground(t: &Ty) -> bool {
+    match t {
+        Ty::Var(_) | Ty::Error => false,
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) => ground(e),
+        Ty::Struct(_, ts, _) => ts.iter().all(ground),
+        Ty::Fn(ps, r, _) => ps.iter().all(ground) && ground(r),
+        _ => true,
     }
 }

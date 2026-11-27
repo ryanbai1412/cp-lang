@@ -636,11 +636,12 @@ impl<'a> Cx<'a> {
                 }
             }
         }
-        // A result that names a fresh domain is a record read by place: `let (domain C, comp)`.
+        // A result that names a fresh domain is a record read by place: `let (domain C, comp)`,
+        // `let (tree, used) = kruskal(..)` of `-> (tree: Rooted<V, _, _>, used: [E]Bool)`.
+        let owned = (self.doms.keys()).any(|k| k.starts_with(&format!("{tmp}.")));
+        let fresh = |t: &Ty| self.fresh_slot_of(t).is_some();
         let fields = match self.lookup(&tmp).map(|(_, t)| self.shallow(&t)) {
-            Some(Ty::Struct(d, ts, _))
-                if self.d.s(d).record && ts.iter().any(|t| self.fresh_slot_of(t).is_some()) =>
-            {
+            Some(Ty::Struct(d, ts, _)) if self.d.s(d).record && (owned || ts.iter().any(fresh)) => {
                 (self.d.s(d).fields.iter())
                     .map(|(n, _)| n.clone())
                     .collect()
@@ -653,6 +654,16 @@ impl<'a> Cx<'a> {
                 .unwrap_or(field);
             if matches!(p.kind, PatternKind::Wildcard) {
                 continue;
+            }
+            // `tree.Pre` names the domain the whole value owns as `$tuple.tree.Pre`.
+            if let PatternKind::Name(n) = &p.kind {
+                let from = format!("{tmp}.{field}.");
+                let named: Vec<_> = (self.doms.iter())
+                    .filter_map(|(k, t)| {
+                        Some((format!("{n}.{}", k.strip_prefix(&from)?), t.clone()))
+                    })
+                    .collect();
+                self.doms.extend(named);
             }
             let at = |kind| ast::Expr { kind, span: p.span };
             let part = at(ExprKind::Field {
@@ -909,7 +920,9 @@ impl<'a> Cx<'a> {
                         (self.globals[i].mutable, self.globals[i].fixed) = (*mutable, !*mutable)
                     }
                 }
+                let fresh = self.fresh_args(&v.ty);
                 out.push(TStmt::Let(var, v));
+                self.own_fresh(name, var, fresh, s.span, out);
             }
             // `let v = x else: leave`: `v` names `x`'s payload after it, and the block runs when there is none (R01.6.2).
             StmtKind::Let {
