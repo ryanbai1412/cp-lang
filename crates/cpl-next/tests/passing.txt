@@ -1199,6 +1199,7 @@ matrix/index/product--filter.cp
 matrix/index/product--find.cp
 matrix/index/product--first.cp
 matrix/index/product--for.cp
+matrix/index/product--int.cp
 matrix/index/product--min_by.cp
 matrix/index/product--next.cp
 matrix/index/product--optional.cp
@@ -1506,6 +1507,7 @@ next/n_domain_ord.cp
 next/n_domain_product.cp
 next/n_domain_product3.cp
 next/n_domain_product_alias.cp
+next/n_domain_product_int.cp
 next/n_domain_product_named.cp
 next/n_domain_product_range.cp
 next/n_domain_product_read.cp

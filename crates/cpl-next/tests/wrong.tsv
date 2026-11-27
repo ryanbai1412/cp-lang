@@ -427,7 +427,6 @@ matrix/index/pair--count.cp	wrong-reject	check: program:3:7: E0203: `Pair` has n
 matrix/index/pair--filter.cp	wrong-reject	check: program:3:7: E0203: `Pair` has no `filter`
 matrix/index/pair--int.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
 matrix/index/pair--read.cp	wrong-reject	link: E9999: no impl provides `count` for this type
-matrix/index/product--int.cp	wrong-reject	check: program:5:7: E0302: expected `Int`, found `Tuple2<R, C>`
 matrix/index/product--step.cp	wrong-reject	check: program:5:20: E0606: `Tuple2<R, C>` does not implement `Indexed`
 matrix/index/subset--count.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `count`
 matrix/index/subset--filter.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `filter`
