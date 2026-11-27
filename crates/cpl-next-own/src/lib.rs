@@ -14,7 +14,7 @@ use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 enum Root {
@@ -136,7 +136,8 @@ pub struct Owned {
     pub copies: BTreeSet<SourceId>,
 }
 
-pub fn check(d: &Decls, t: &Typed) -> Owned {
+/// A fn reached only through a trait is walked only if an instance of `prog` runs it.
+pub fn check(d: &Decls, t: &Typed, prog: &Program) -> Owned {
     let mut cx = Cx {
         d,
         t,
@@ -164,7 +165,10 @@ pub fn check(d: &Decls, t: &Typed) -> Owned {
         params: Vec::new(),
         kept: BTreeSet::new(),
     };
-    let mut ids: Vec<FnId> = t.fns.keys().copied().collect();
+    let runs: HashSet<FnId> = prog.insts.iter().filter_map(|i| i.key.decl()).collect();
+    let mut ids: Vec<FnId> = (t.fns.keys().copied())
+        .filter(|id| !t.quiet.contains(id) || runs.contains(id))
+        .collect();
     ids.sort();
     for round in 0..40 {
         let before = (cx.fns.clone(), cx.lams.clone(), cx.keeps.clone());

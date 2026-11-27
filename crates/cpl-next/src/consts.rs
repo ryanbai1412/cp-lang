@@ -203,7 +203,7 @@ impl<'a> Evaluator<'a> {
             return Ran::Open;
         }
         let mut prog = inst::link(self.d, &t, &low.funcs, &low.globals);
-        let owned = own::check(self.d, &t);
+        let owned = own::check(self.d, &t, &prog);
         if !owned.errors.is_empty() {
             return Ran::Open;
         }

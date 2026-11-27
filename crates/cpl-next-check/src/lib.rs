@@ -586,13 +586,17 @@ pub fn check(
     }
     // The core's and the program's fns are all checked; a library's only once a reference
     // reaches them, so what a module declares and the program never uses refuses nothing.
+    // A record's impls are made, not written: one is checked once a reference reaches it.
     let mut fns = HashMap::new();
     let mut todo: Vec<FnId> = (0..d.fns.len())
         .map(FnId)
         .filter(|id| {
             let f = d.f(*id);
+            let later = |im: &decls::ImplDecl| {
+                !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
+            };
             !d.is_library(f.module)
-                && !matches!(f.owner, Some(Owner::Impl(i)) if !d.live(&d.impls[i]))
+                && !matches!(f.owner, Some(Owner::Impl(i)) if later(&d.impls[i]))
         })
         .collect();
     // In the order the collector made them, so a program over std checks as one collection would.
@@ -849,7 +853,8 @@ impl<'a> Cx<'a> {
         if let Some(Owner::Trait(t)) = f.owner {
             for (_, im) in d.trait_impls(t) {
                 if let Some(&m) = im.methods.get(&f.name) {
-                    match d.is_library(im.module) {
+                    let made = matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record);
+                    match d.is_library(im.module) || made {
                         true => self.through_trait.push(m),
                         false => self.reached.push(m),
                     }

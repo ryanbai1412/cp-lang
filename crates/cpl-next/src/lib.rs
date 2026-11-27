@@ -275,7 +275,7 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
         return None;
     }
     let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals);
-    let owned = own::check(&f.d, &f.t);
+    let owned = own::check(&f.d, &f.t, &prog);
     let mut said = std::collections::HashSet::new();
     let reached = (prog.insts.iter()).filter_map(|i| match i.key {
         ir::FuncKey::Decl(id) if said.insert(id) => owned.deferred.get(&id),

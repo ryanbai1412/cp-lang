@@ -1,9 +1,10 @@
 //! Contract 1: snapshot -> modules. Finds the modules a program needs. Each keeps its own text,
 //! and each of its items has a path (`ItemId`), so a place is an item and a span inside it.
 //!
-//! A module is loaded only when a name from it can be meant: one the program's `use` lines
-//! name, a prelude name the program's text mentions (R11.3), or one a loaded module's own
-//! `use` lines name. Libraries get no prelude (R11.3.1).
+//! A module is loaded when a name from it can be meant: one the program's `use` lines name,
+//! one the prelude names (R11.3), or one a loaded module's own `use` lines name. A method
+//! resolves on its receiver's type, wherever the program spells it (R11.3.4). Libraries get
+//! no prelude (R11.3.1).
 use crate::diag::Msg;
 use cpl_diag::Span;
 use cpl_next_ir::ids::{ItemId, SourceId};
@@ -343,15 +344,9 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
     let mut queue: VecDeque<(String, Option<SourceId>)> = uses(&program.items)
         .map(|(m, _, at)| (m, Some(at)))
         .collect();
-    // Only a prelude name the text spells can be referred to, so the other modules need not load.
-    let mentioned: HashSet<&str> = user
-        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .collect();
-    let mut from_prelude: Vec<&String> = (prelude.iter())
-        .filter(|(n, _)| mentioned.contains(n.as_str()))
-        .map(|(_, m)| m)
-        .collect();
+    let mut from_prelude: Vec<&String> = prelude.values().collect();
     from_prelude.sort();
+    from_prelude.dedup();
     queue.extend(from_prelude.into_iter().map(|m| (m.clone(), None)));
     let is_std = |m: &str| m.split_once('.').is_some_and(|(lib, _)| lib == "std");
     let exists = |m: &str| match is_std(m) {
