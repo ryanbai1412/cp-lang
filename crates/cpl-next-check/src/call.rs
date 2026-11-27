@@ -1,6 +1,7 @@
 //! A call of a name: a fn, a type's constructor, a conversion, or an alias of a type (R02.6.3).
 use super::expr::block;
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 impl Cx<'_> {
     /// A call of a declared fn or struct, with the type arguments written at the call.
@@ -157,10 +158,8 @@ impl Cx<'_> {
                 self.construct(d, targs, sets, args, span, want)
             }
             (None, Named::Alias(_)) => {
-                self.err(
-                    span,
-                    format!("slice: building a value by calling the alias `{n}`"),
-                );
+                let name = n.to_string();
+                self.err(span, Unbuilt::AliasCall { name });
                 mk(TK::Error, Ty::Error)
             }
             _ => {

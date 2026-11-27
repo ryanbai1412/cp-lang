@@ -2,6 +2,7 @@
 //! struct derives from its fields.
 use crate::decls::{constant_int, unnamed, GETTER};
 use crate::diag::Msg;
+use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::HashMap;
 
@@ -38,7 +39,12 @@ pub(crate) fn enum_structs(
     )];
     for (i, v) in e.variants.iter().enumerate() {
         if v.tag.is_some() {
-            errors.push(format!("slice: a tagged variant `{}`", v.name.text).into());
+            errors.push(
+                Unbuilt::TaggedVariant {
+                    name: v.name.text.clone(),
+                }
+                .into(),
+            );
         }
         let value = match &v.value {
             None => Some(i as i64),
@@ -46,7 +52,12 @@ pub(crate) fn enum_structs(
             Some(x) => constant_int(x),
         };
         if value.is_none() {
-            errors.push(format!("slice: the value of variant `{}`", v.name.text).into());
+            errors.push(
+                Unbuilt::VariantValue {
+                    name: v.name.text.clone(),
+                }
+                .into(),
+            );
         }
         values.push(value.unwrap_or(i as i64));
         let fields = (v.fields.iter().enumerate())

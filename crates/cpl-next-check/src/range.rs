@@ -1,6 +1,7 @@
 //! Ranges and domains as values (R01.8.4, R04.2).
 use super::expr::block;
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 impl Cx<'_> {
     /// A fn of a domain named as a type (`D.nth(k)`), or of an array type written `[e]`, as
@@ -146,7 +147,7 @@ impl Cx<'_> {
         };
         let (array, dty, sets) = match self.body_ty(&shape, span, &mut pre) {
             Ty::Struct(a, ts, sets) => (a, ts[0].clone(), sets),
-            _ => return self.refuse(span, "slice: a table over this index"),
+            _ => return self.refuse(span, Unbuilt::TableOverIndex),
         };
         let name = match &dty {
             Ty::Dom(i) if !self.domains[*i].name.is_empty() => self.domains[*i].name.clone(),
@@ -157,7 +158,7 @@ impl Cx<'_> {
                 pre.push(TStmt::Let(tmp, all));
                 "$walk".to_string()
             }
-            _ => return self.refuse(span, "slice: a table over this index"),
+            _ => return self.refuse(span, Unbuilt::TableOverIndex),
         };
         let walk = ast::Expr {
             kind: ExprKind::Name(name),
@@ -193,7 +194,7 @@ impl Cx<'_> {
         let cells = self.coerce(list, &Ty::Struct(array, vec![dty, elem], sets));
         block(pre, cells)
     }
-    fn refuse(&mut self, span: Span, why: &str) -> TExpr {
+    fn refuse(&mut self, span: Span, why: Unbuilt) -> TExpr {
         self.err(span, why);
         TExpr {
             kind: TK::Error,
@@ -323,7 +324,7 @@ impl Cx<'_> {
             };
             if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
                 let t = self.show(&v.ty);
-                self.err(e.span, format!("slice: a range value with `{t}` ends"));
+                self.err(e.span, Unbuilt::RangeOfEnds { ty: t });
                 return Self::error_node(e.span);
             }
             self.coerce(v, &Ty::Int)

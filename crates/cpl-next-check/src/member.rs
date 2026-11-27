@@ -2,6 +2,7 @@
 //! extension fn (R08.1.4).
 use super::expr::block;
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 /// Whether a call with these arguments could be of `f`: `D.count(pred)` is not a call of the
 /// getter `Domain.count`, which takes none, so a member that takes them is looked for instead.
@@ -436,10 +437,9 @@ impl<'a> Cx<'a> {
                     let held = fd.region.is_some() && !std::mem::take(&mut self.allow_region);
                     if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.recipe.is_none())
                     {
-                        let what = format!(
-                            "slice: `{}` yields or lends, and is used other than in a `for` or as the target of an assignment",
-                            fd.name
-                        );
+                        let what = Unbuilt::GeneratorAsValue {
+                            name: fd.name.clone(),
+                        };
                         self.err(span, what);
                     }
                     let fd = self.d.f(m);

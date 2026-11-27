@@ -1,6 +1,7 @@
 //! Types as written turned into types: names looked up in a module's view, aliases expanded,
 //! a struct's left-off arguments filled from its defaults, and a set for each fn type.
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 /// Type arguments written but left off the end take their defaults, which may name the
 /// arguments before them (R08.2.5).
@@ -108,7 +109,7 @@ pub(super) fn read_elsewhere(name: &str) -> bool {
 /// `Seq<T>` written where a trait is wanted.
 pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Option<TraitRef> {
     let TypeKind::Named { name, args } = &t.kind else {
-        errors.push("slice: a bound that is not a named trait".into());
+        errors.push(Unbuilt::BoundNotNamed.into());
         return None;
     };
     let Some(Named::Trait(tr)) = cx.names.get(&name.text).copied() else {
@@ -289,16 +290,14 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         TypeKind::Range { lo, hi, inclusive } => match static_range(lo, hi, *inclusive) {
             Some((lo, hi)) => Ty::Range(lo, hi),
             None => {
-                errors.push(
-                    "slice: a range type whose ends are not constants, outside a body".into(),
-                );
+                errors.push(Unbuilt::RangeTypeOutsideBody.into());
                 Ty::Error
             }
         },
         TypeKind::Array { index, .. }
             if index.len() == 1 && matches!(index[0].kind, TypeKind::Range { .. }) =>
         {
-            errors.push("slice: an array indexed by a range outside a `let` or `read`".into());
+            errors.push(Unbuilt::RangeIndexedArray.into());
             Ty::Error
         }
         // `[R, C]T` is `[(R, C)]T`: one array keyed by the product domain (R04.2.11).
@@ -379,7 +378,12 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         // The parser has said what is wrong with it.
         TypeKind::Error => Ty::Error,
         other => {
-            errors.push(format!("slice: type {}", crate::kind_name(other)).into());
+            errors.push(
+                Unbuilt::Type {
+                    kind: crate::kind_name(other),
+                }
+                .into(),
+            );
             Ty::Error
         }
     }

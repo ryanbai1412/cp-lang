@@ -1,6 +1,7 @@
 //! Trait bounds a call must meet (R08.1.2): each is met by the caller's own bounds or by one
 //! impl, and meeting it fixes the trait's arguments, so `sorted<S: Seq<T>, T>` learns `T`.
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 use decls::TraitRef;
 
 impl Cx<'_> {
@@ -55,7 +56,7 @@ impl Cx<'_> {
                         let shown = self.show(&t);
                         let record = matches!(&t, Ty::Struct(d, ..) if crate::records::is_record(&self.d.s(*d).name));
                         if record {
-                            let msg = format!("slice: `{shown}` meeting `{tr}` by its fields");
+                            let msg = Unbuilt::FieldwiseTrait { ty: shown, tr };
                             self.err(span, msg);
                             continue;
                         }

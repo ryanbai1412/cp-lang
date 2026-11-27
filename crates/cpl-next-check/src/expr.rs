@@ -2,6 +2,7 @@
 
 use super::*;
 use cpl_next_ir::ops::Fmt;
+use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::FmtKind;
 
 impl<'a> Cx<'a> {
@@ -35,7 +36,7 @@ impl<'a> Cx<'a> {
             _ => Ty::Int,
         };
         if float && !matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div) {
-            self.err(span, "slice: this operator on `F64`");
+            self.err(span, Unbuilt::FloatOperator);
         }
         let bits = matches!(op, BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor);
         if bits && [&l.ty, &r.ty].iter().any(|t| self.shallow(t) == Ty::Bool) {
@@ -54,10 +55,7 @@ impl<'a> Cx<'a> {
             .find(|t| self.declares_operators(t));
         if let Some(t) = operand.filter(|_| !logic) {
             let t = self.show(t);
-            self.err(
-                span,
-                format!("slice: an operator on `{t}` (its operator trait)"),
-            );
+            self.err(span, Unbuilt::OperatorTrait { ty: t });
             return TExpr {
                 kind: TK::Error,
                 ty: Ty::Error,
@@ -67,7 +65,7 @@ impl<'a> Cx<'a> {
         let l = self.coerce(l, &want);
         let r = self.coerce(r, if shift { &Ty::Int } else { &want });
         if op == BinOp::Coalesce {
-            self.err(span, "slice: unsupported operator");
+            self.err(span, Unbuilt::Operator);
         }
         let overflow = if self.wraps && want == Ty::Int {
             Overflow::Wraps
@@ -506,7 +504,7 @@ impl<'a> Cx<'a> {
         if fmt != Fmt::default() && !number
             || fmt.digits.is_some() && !matches!(t, Ty::F64 | Ty::Error)
         {
-            self.err(span, format!("slice: a format spec on `{}`", self.show(&t)));
+            self.err(span, Unbuilt::FormatSpec { ty: self.show(&t) });
             return;
         }
         let writer = match t {
@@ -558,7 +556,7 @@ impl<'a> Cx<'a> {
         };
         let Some(writer) = writer else {
             let t = self.show(&v.ty);
-            self.err(span, format!("slice: printing a `{t}`"));
+            self.err(span, Unbuilt::Printing { ty: t });
             return;
         };
         if !pieces.is_empty() {
@@ -662,7 +660,13 @@ impl<'a> Cx<'a> {
             let shown = self.show(&rt);
             if matches!(rt, Ty::Struct(id, ..) if !self.d.s(id).variants.is_empty()) {
                 // Its variants may give it a structural impl (R08.1.6).
-                self.err(span, format!("slice: derived `{trait_name}` for `{shown}`"));
+                self.err(
+                    span,
+                    Unbuilt::Derived {
+                        tr: trait_name.to_string(),
+                        ty: shown,
+                    },
+                );
             } else {
                 self.err(
                     span,
@@ -799,12 +803,11 @@ impl<'a> Cx<'a> {
         if fd.module == decls::CORE && args.len() > formals.len() && !variadic {
             self.err(
                 span,
-                format!(
-                    "slice: `{}` with {} arguments (the core stand-in takes {})",
-                    fd.name,
-                    args.len(),
-                    formals.len()
-                ),
+                Unbuilt::CoreStandInArity {
+                    name: fd.name.clone(),
+                    given: args.len(),
+                    takes: formals.len(),
+                },
             );
             return TExpr {
                 kind: TK::Error,
@@ -817,10 +820,9 @@ impl<'a> Cx<'a> {
         if unbuilt {
             self.err(
                 span,
-                format!(
-                    "slice: `{}` yields or lends, and is used other than in a `for` or as the target of an assignment",
-                    fd.name
-                ),
+                Unbuilt::GeneratorAsValue {
+                    name: fd.name.clone(),
+                },
             );
         }
         self.oblige(&f, span);
@@ -954,10 +956,7 @@ impl<'a> Cx<'a> {
             .iter()
             .any(|a| a.mutable || matches!(a.value.kind, ExprKind::Mut(_)))
         {
-            self.err(
-                span,
-                "slice: a `mut` argument to a function value is not built yet",
-            );
+            self.err(span, Unbuilt::MutArgToFnValue);
         }
         let seen = self.errors.len();
         let (pre, args) = self.args(args, &formals, span);
@@ -1091,7 +1090,12 @@ impl<'a> Cx<'a> {
                 None => match text.parse::<f64>() {
                     Ok(x) => mk(TK::Float(x.to_bits()), Ty::F64),
                     Err(_) => {
-                        self.err(span, format!("slice: the float literal `{text}`"));
+                        self.err(
+                            span,
+                            Unbuilt::FloatLiteral {
+                                text: text.to_string(),
+                            },
+                        );
                         mk(TK::Error, Ty::Error)
                     }
                 },
@@ -1106,7 +1110,7 @@ impl<'a> Cx<'a> {
                     })
                     .collect();
                 if !text.is_ascii() {
-                    self.err(span, "slice: a string with a character outside ASCII");
+                    self.err(span, Unbuilt::NonAsciiString);
                 }
                 let n = mk(TK::Int(text.len() as i64), Ty::Int);
                 let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
@@ -1140,7 +1144,7 @@ impl<'a> Cx<'a> {
                 let Some(inner) = self.optional_of(&v.ty) else {
                     if self.shallow(&v.ty) != Ty::Error {
                         let t = self.show(&v.ty);
-                        self.err(span, format!("slice: `!` on a `{t}`"));
+                        self.err(span, Unbuilt::Unwrap { ty: t });
                     }
                     return mk(TK::Error, Ty::Error);
                 };
@@ -1167,7 +1171,7 @@ impl<'a> Cx<'a> {
                 let Some(inner) = self.optional_of(&l.ty) else {
                     if self.shallow(&l.ty) != Ty::Error {
                         let t = self.show(&l.ty);
-                        self.err(span, format!("slice: `??` on a `{t}`"));
+                        self.err(span, Unbuilt::Coalesce { ty: t });
                     }
                     return mk(TK::Error, Ty::Error);
                 };
@@ -1220,7 +1224,7 @@ impl<'a> Cx<'a> {
                     UnOp::Not => (Ty::Bool, TK::Not),
                     UnOp::Neg => (Ty::Int, TK::Neg),
                     _ => {
-                        self.err(span, "slice: unsupported operator");
+                        self.err(span, Unbuilt::Operator);
                         (Ty::Int, TK::Neg)
                     }
                 };
@@ -1235,10 +1239,7 @@ impl<'a> Cx<'a> {
                     Ty::F64 if *op == UnOp::Neg => Ty::F64,
                     t if *op == UnOp::Neg && self.declares_operators(&t) => {
                         let t = self.show(&t);
-                        self.err(
-                            span,
-                            format!("slice: an operator on `{t}` (its operator trait)"),
-                        );
+                        self.err(span, Unbuilt::OperatorTrait { ty: t });
                         return mk(TK::Error, Ty::Error);
                     }
                     _ => want_t,
@@ -1272,7 +1273,7 @@ impl<'a> Cx<'a> {
                     // `in` is not built: its operands are not one type, so they are not unified.
                     if matches!(op, CmpOp::In | CmpOp::NotIn) {
                         self.expr(rhs, None);
-                        self.err(span, "slice: comparison of this type is not supported");
+                        self.err(span, Unbuilt::Membership);
                         self.scopes.pop();
                         return Self::error_node(span);
                     }
@@ -1479,7 +1480,7 @@ impl<'a> Cx<'a> {
                                 sep = text(Some(k.clone())).unwrap_or_default()
                             }
                             _ => {
-                                self.err(span, "slice: named arguments to `print`");
+                                self.err(span, Unbuilt::PrintNamedArgs);
                                 return TExpr {
                                     kind: TK::Error,
                                     ty: Ty::Error,
@@ -1527,10 +1528,7 @@ impl<'a> Cx<'a> {
                                                 FmtKind::Dec => None,
                                                 FmtKind::Fixed(d) => Some(d),
                                                 FmtKind::Hex | FmtKind::Bin => {
-                                                    self.err(
-                                                        span,
-                                                        "slice: a hex or binary format spec",
-                                                    );
+                                                    self.err(span, Unbuilt::HexFormat);
                                                     continue;
                                                 }
                                             };
@@ -1770,7 +1768,7 @@ impl<'a> Cx<'a> {
                     step: None,
                 } => self.range_value(lo, hi, *inclusive, Some(step), want, span),
                 _ => {
-                    self.err(span, "slice: `by` on a walk that is not a range");
+                    self.err(span, Unbuilt::ByOnWalk);
                     mk(TK::Error, Ty::Error)
                 }
             },
@@ -1778,7 +1776,9 @@ impl<'a> Cx<'a> {
             other => {
                 self.err(
                     span,
-                    format!("slice: expression {}", crate::kind_name(other)),
+                    Unbuilt::Expression {
+                        kind: crate::kind_name(other),
+                    },
                 );
                 mk(TK::Error, Ty::Error)
             }

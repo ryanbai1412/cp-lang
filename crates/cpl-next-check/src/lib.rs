@@ -6,6 +6,7 @@ use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
 use cpl_next_decls::{diag, kind_name, modules, plain, records};
+use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::{ir, ty};
 use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
@@ -515,7 +516,12 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         }
         for x in &s.decorators {
             if !(x.directive && x.name.text == "multitest") {
-                cx.err(s.span, format!("slice: decorator `@{}`", x.name.text));
+                cx.err(
+                    s.span,
+                    Unbuilt::Decorator {
+                        name: x.name.text.clone(),
+                    },
+                );
             }
         }
         // A hoisted item ran above; `@!multitest` on it still divides the file here.
@@ -645,8 +651,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         .map(|(k, v)| (k, cx.zonk_set(&v)))
         .collect();
     if cx.domains.iter().any(|d| d.name.is_empty()) {
-        cx.errors
-            .push("slice: a top-level domain that is not declared".into());
+        cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
     }
     if cx.cyclic.get() {
         cx.errors.push("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name".into());
@@ -683,10 +688,7 @@ impl<'a> Cx<'a> {
                 false
             }
             _ => {
-                self.err(
-                    s.span,
-                    "slice: an argument of `@!multitest` other than `until_eof`",
-                );
+                self.err(s.span, Unbuilt::MultitestArg);
                 true
             }
         }
@@ -703,10 +705,10 @@ impl<'a> Cx<'a> {
     fn is_error(&self, t: &Ty) -> bool {
         self.shallow(t) == Ty::Error
     }
-    fn err(&mut self, span: Span, msg: impl Into<String>) {
+    fn err(&mut self, span: Span, msg: impl Into<Msg>) {
         self.err_help(span, msg, None);
     }
-    fn err_help(&mut self, span: Span, msg: impl Into<String>, help: Option<String>) {
+    fn err_help(&mut self, span: Span, msg: impl Into<Msg>, help: Option<String>) {
         let at = Span::new(self.item_off + span.start, self.item_off + span.end);
         self.errors.push(Msg {
             help,
@@ -824,9 +826,7 @@ impl<'a> Cx<'a> {
         let ret = self.ret.clone();
         // A library fn refused as declared (a decorator the slice lacks) is that refusal: its
         // body, written for the meaning the slice does not build, is not checked.
-        let refused = d.is_library(f.module)
-            && (f.errors.iter())
-                .any(|e| crate::diag::kind_of(&e.text) == crate::diag::Kind::Refusal);
+        let refused = d.is_library(f.module) && (f.errors.iter()).any(|e| e.refusal.is_some());
         let body = match &f.body {
             _ if refused => Self::error_node(Span::new(0, 0)),
             // A trait's fn whose body is an operation on `Self`, as `Domain`'s are.
@@ -844,7 +844,7 @@ impl<'a> Cx<'a> {
                 let op = f.intrinsic.clone().unwrap_or_default();
                 self.domain_op(Ty::Param(0), &op, arg, span)
                     .unwrap_or_else(|| {
-                        self.err(span, format!("slice: intrinsic `{op}` of a trait"));
+                        self.err(span, Unbuilt::TraitIntrinsic { op: op.to_string() });
                         TExpr {
                             kind: TK::Error,
                             ty: Ty::Error,
@@ -874,7 +874,7 @@ impl<'a> Cx<'a> {
                 Some(Owner::Trait(tr)) => self.trait_dispatch(id, tr, &params),
                 _ => {
                     let span = Span::new(0, 0);
-                    self.err(span, "slice: a fn with no body");
+                    self.err(span, Unbuilt::FnWithoutBody);
                     TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,

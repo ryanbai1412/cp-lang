@@ -6,6 +6,7 @@ use cpl_next_decls::decls::{Decls, FnDecl, Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{BinOp, CmpOp};
 use std::collections::{BTreeSet, HashMap};
 
@@ -586,7 +587,12 @@ impl Lw<'_> {
                     .filter(|_| !self.typed.fns.contains_key(&f.decl));
                 let call = if let Some(n) = inline {
                     let op = Intr::named(n).unwrap_or_else(|| {
-                        self.errors.push(format!("slice: intrinsic `{n}`").into());
+                        self.errors.push(
+                            Unbuilt::Intrinsic {
+                                name: n.to_string(),
+                            }
+                            .into(),
+                        );
                         Intr::RawGet
                     });
                     mk(EK::Intr(op, a, site))
@@ -680,7 +686,7 @@ impl Lw<'_> {
                     mk(EK::MakeClosure(Self::capture_args(caps)))
                 }
                 _ => {
-                    (self.errors).push("slice: a lambda that names the lambda around it".into());
+                    (self.errors).push(Unbuilt::LambdaNamesOuter.into());
                     mk(EK::MakeClosure(vec![]))
                 }
             },
@@ -732,7 +738,7 @@ impl Lw<'_> {
                     BinOp::Shl => Intr::Shl,
                     BinOp::Shr => Intr::Shr,
                     _ => {
-                        self.errors.push("slice: unsupported operator".into());
+                        self.errors.push(Unbuilt::Operator.into());
                         Intr::Add
                     }
                 };
@@ -1235,9 +1241,7 @@ impl Lw<'_> {
             let ty = match b {
                 VarRef::Local(i) => match inner_base.as_ref().map(|ls| ls.get(*i).cloned()) {
                     Some(None) => {
-                        self.errors.push(
-                            "slice: a lambda that makes a lambda with its own parameters".into(),
-                        );
+                        self.errors.push(Unbuilt::LambdaMakesLambda.into());
                         Ty::Error
                     }
                     Some(Some(t)) => t,
@@ -1246,9 +1250,7 @@ impl Lw<'_> {
                 VarRef::Global(i) => match self.typed.globals.get(*i) {
                     Some(g) => g.ty.clone(),
                     None => {
-                        self.errors.push(
-                            "slice: a lambda that makes a lambda with its own parameters".into(),
-                        );
+                        self.errors.push(Unbuilt::LambdaMakesLambda.into());
                         Ty::Error
                     }
                 },

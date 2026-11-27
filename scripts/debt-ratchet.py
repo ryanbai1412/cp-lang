@@ -1498,23 +1498,32 @@ def _short_fn_around(lines: list[str], i: int) -> str | None:
     return None
 
 
+NEXT_UNBUILT = "crates/cpl-next-ir/src/unbuilt.rs"
 NEXT_REFUSAL_RE = re.compile(r'"slice: ((?:[^"\\]|\\.)*)"')
 
 
 def next_refusal_kinds(root: Path) -> list[str]:
-    """The kinds of feature the new pipeline (cpl-next and its `cpl-next-*` crates) refuses: each
-    distinct `slice:` text in its code, a `{...}` hole read as one. A refusal says the spec has a
-    feature this pipeline has not built, so the list only shrinks; a new kind is a visible raise."""
-    kinds: dict[str, str] = {}
+    """The kinds of feature the new pipeline (cpl-next and its `cpl-next-*` crates) refuses: the
+    variants of `Unbuilt`, and any refusal still written as `slice:` text. A refusal says the spec
+    has a feature this pipeline has not built, so the list only shrinks; a new kind is a visible raise."""
+    out = []
+    enum = root / NEXT_UNBUILT
+    if enum.is_file():
+        inside = False
+        for i, line in enumerate(_lines(enum), 1):
+            if line.startswith("pub enum Unbuilt"):
+                inside = True
+            elif inside and line.startswith("}"):
+                break
+            elif inside and (m := re.match(r"    ([A-Z]\w*)\b", line)):
+                out.append(f"{NEXT_UNBUILT}:{i}: {m.group(1)}")
     for p in _rs_files(root, *_next_srcs(root), tests=False):
         rel = _rel(root, p)
         for i, line in enumerate(_lines(p), 1):
             if line.lstrip().startswith("//"):
                 continue
-            for t in NEXT_REFUSAL_RE.findall(line):
-                if t.strip():
-                    kinds.setdefault(re.sub(r"\{[^}]*\}", "{}", t.strip()), f"{rel}:{i}")
-    return sorted(f"{at}: slice: {t}" for t, at in kinds.items())
+            out += [f"{rel}:{i}: slice: {t.strip()}" for t in NEXT_REFUSAL_RE.findall(line) if t.strip()]
+    return sorted(out)
 
 
 NEXT_NAME_PART_RE = re.compile(r'(?:starts_with|strip_prefix|ends_with|strip_suffix)\(\s*"([A-Za-z_]\w*)"|format!\(\s*"([A-Za-z_]\w*)\{')
@@ -3627,7 +3636,7 @@ COUNTERS = {
     "next_cases_removed": ("conformance cases or new-pipeline tests deleted with no line in "
                            "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
     "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
-    "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses with `slice:` (Core)", next_refusal_kinds, True),
+    "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses: `Unbuilt` variants (Core)", next_refusal_kinds, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),

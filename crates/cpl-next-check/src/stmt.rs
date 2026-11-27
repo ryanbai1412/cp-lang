@@ -1,6 +1,7 @@
 //! Statements, scopes, domains, ranges and reads.
 
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 impl<'a> Cx<'a> {
     /// The innermost scope.
@@ -283,7 +284,7 @@ impl<'a> Cx<'a> {
                 if inner.is_none() && matches!(pat.kind, PatternKind::Name(_)) {
                     if self.shallow(&v.ty) != Ty::Error {
                         let t = self.show(&v.ty);
-                        self.err(span, format!("slice: `if let` on a `{t}`"));
+                        self.err(span, Unbuilt::IfLet { ty: t });
                     }
                     return TExpr {
                         kind: TK::Error,
@@ -338,7 +339,7 @@ impl<'a> Cx<'a> {
             }
             Cond::Expr(e) => self.bool_cond(e),
             _ => {
-                self.errors.push("slice: unsupported condition".into());
+                self.errors.push(Unbuilt::Condition.into());
                 TExpr {
                     kind: TK::Error,
                     ty: Ty::Bool,
@@ -490,7 +491,7 @@ impl<'a> Cx<'a> {
                     return;
                 }
                 let PatternKind::Name(name) = &pat.kind else {
-                    self.err(s.span, "slice: unsupported pattern");
+                    self.err(s.span, Unbuilt::LetPattern);
                     return self.bind_unknown(pat, false, out);
                 };
                 let declared = ty.as_ref().map(|t| self.body_ty(t, s.span, out));
@@ -629,7 +630,7 @@ impl<'a> Cx<'a> {
                 let Some(inner) = self.optional_of(&v.ty) else {
                     if self.shallow(&v.ty) != Ty::Error {
                         let t = self.show(&v.ty);
-                        self.err(init.span, format!("slice: let-else on a `{t}`"));
+                        self.err(init.span, Unbuilt::LetElse { ty: t });
                     }
                     return;
                 };
@@ -791,7 +792,7 @@ impl<'a> Cx<'a> {
                     let v = match op {
                         AssignOp::Set => v,
                         AssignOp::Binary(b) => self.binary(*b, lent.clone(), v, target.span),
-                        _ => return self.err(s.span, "slice: unsupported assignment"),
+                        _ => return self.err(s.span, Unbuilt::Assignment),
                     };
                     let v = self.coerce(v, &elem);
                     self.scopes.pop();
@@ -835,7 +836,7 @@ impl<'a> Cx<'a> {
                         let v = self.expr(value, Some(&place.ty));
                         self.binary(*b, place.clone(), v, target.span)
                     }
-                    _ => return self.err(s.span, "slice: unsupported assignment"),
+                    _ => return self.err(s.span, Unbuilt::Assignment),
                 };
                 let v = self.coerce(v, &place.ty);
                 out.push(TStmt::Assign(place, v));
@@ -1034,7 +1035,7 @@ impl<'a> Cx<'a> {
                     },
                 ) = (&pat.kind, &iter.kind)
                 else {
-                    return self.err(s.span, "slice: `for` takes `name in lo..hi`");
+                    return self.err(s.span, Unbuilt::ForForm);
                 };
                 // `lo..=hi` is `lo..hi+1` here, so it fails at the largest Int where the language does not.
                 let hi1;
@@ -1101,7 +1102,9 @@ impl<'a> Cx<'a> {
                 else {
                     self.err(
                         s.span,
-                        format!("slice: a domain that is {}", crate::kind_name(&def.kind)),
+                        Unbuilt::DomainKind {
+                            kind: crate::kind_name(&def.kind),
+                        },
                     );
                     self.doms.insert(name.text.clone(), Ty::Error);
                     self.refused_names.insert(name.text.clone());
@@ -1251,7 +1254,9 @@ impl<'a> Cx<'a> {
                 }
                 self.err(
                     s.span,
-                    format!("slice: statement {}", crate::kind_name(other)),
+                    Unbuilt::Statement {
+                        kind: crate::kind_name(other),
+                    },
                 )
             }
         }
@@ -1266,7 +1271,7 @@ impl<'a> Cx<'a> {
                 ExprKind::Name(v) if v == "on" => true,
                 ExprKind::Name(v) if v == "off" => false,
                 _ => {
-                    self.err(span, "slice: a `checks` value other than `on` or `off`");
+                    self.err(span, Unbuilt::ChecksValue);
                     return None;
                 }
             };
@@ -1274,7 +1279,7 @@ impl<'a> Cx<'a> {
                 Some("overflow") => wraps = !on,
                 Some("ranges" | "bounds") if on => {}
                 _ => {
-                    self.err(span, "slice: this `with checks(...)` field");
+                    self.err(span, Unbuilt::ChecksField);
                     return None;
                 }
             }
@@ -1756,7 +1761,12 @@ impl<'a> Cx<'a> {
                 }
             }
             other => {
-                self.err(span, format!("slice: `read` of `{}`", self.show(&other)));
+                self.err(
+                    span,
+                    Unbuilt::Read {
+                        ty: self.show(&other),
+                    },
+                );
                 TExpr {
                     kind: TK::Error,
                     ty: Ty::Error,

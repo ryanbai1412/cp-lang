@@ -5,6 +5,7 @@ use cpl_next_decls::decls::Decls;
 use cpl_next_decls::diag::Msg;
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::{BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, plain, CSet, CTy, InstKey, Program};
@@ -137,10 +138,13 @@ pub fn link(
             .iter()
             .find(|d| owner.is_some() && typed.domains[**d].owner == owner)
         {
-            l.errors.push(format!(
-                "slice: `{}` is called with its own domain `{}` as a type argument, so each call would need a new copy of it; declare the domain outside, or pass its values as `Int`",
-                generic[&key.func].name, typed.domains[*d].name
-            ).into());
+            l.errors.push(
+                Unbuilt::DomainTypeArg {
+                    func: generic[&key.func].name.clone(),
+                    domain: typed.domains[*d].name.clone(),
+                }
+                .into(),
+            );
             break;
         }
         let f = &generic[&key.func];

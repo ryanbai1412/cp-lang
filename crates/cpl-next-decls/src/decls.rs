@@ -4,6 +4,7 @@ pub use crate::cycles::{alias_cycle, field_holding_itself};
 use crate::diag::Msg;
 use crate::ty::*;
 use cpl_diag::Span;
+use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -267,7 +268,7 @@ pub struct Decls {
     /// Per library module, what it uses outside its fns that the slice does not build.
     pub module_errors: Vec<Vec<Msg>>,
     /// Why each `Named::Refused` library item is not built.
-    pub refused: Vec<String>,
+    pub refused: Vec<Unbuilt>,
     pub consts: Layer<LibConst>,
     pub contexts: Layer<ContextDecl>,
     pub struct_sets: Arc<HashMap<StructId, usize>>,
@@ -721,7 +722,12 @@ fn outer_view(
         }
         if ns.is_empty() {
             if let Some(e) = errors.as_deref_mut() {
-                e.push(format!("slice: `use {module}` without names").into());
+                e.push(
+                    Unbuilt::UseWithoutNames {
+                        module: module.to_string(),
+                    }
+                    .into(),
+                );
             }
             continue;
         }
@@ -730,10 +736,9 @@ fn outer_view(
                 Some(_) if own[mi].contains_key(&n.text) => {
                     if let Some(e) = errors.as_deref_mut() {
                         e.push(
-                            format!(
-                                "slice: `use` of `{}`, which this file also declares",
-                                n.text
-                            )
+                            Unbuilt::UseOfOwn {
+                                name: n.text.clone(),
+                            }
                             .into(),
                         );
                     }
@@ -752,10 +757,10 @@ fn outer_view(
                 None => {
                     if let Some(e) = errors.as_deref_mut() {
                         e.push(
-                            format!(
-                                "slice: `{module}` has no pub `{}` the slice declares",
-                                n.text
-                            )
+                            Unbuilt::UseMissing {
+                                module: module.to_string(),
+                                name: n.text.clone(),
+                            }
                             .into(),
                         );
                     }
@@ -950,7 +955,12 @@ fn add_fn(
             }
         };
         if p.lazy {
-            errors.push(format!("slice: a variadic or lazy parameter `{}`", p.name.text).into());
+            errors.push(
+                Unbuilt::LazyParam {
+                    name: p.name.text.clone(),
+                }
+                .into(),
+            );
         }
         params.push(Param {
             name: p.name.text.clone(),
@@ -1057,7 +1067,12 @@ fn add_fn(
             )
         {
             let at = Span::new(item + x.span.start, item + x.span.end);
-            errors.push(Msg::at(at, format!("slice: decorator `@{}`", x.name.text)));
+            errors.push(Msg::at(
+                at,
+                Unbuilt::Decorator {
+                    name: x.name.text.clone(),
+                },
+            ));
         }
     }
     let mut errors = if d.is_library(m) {

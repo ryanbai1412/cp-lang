@@ -3,6 +3,7 @@ use super::impls::{overlap, same_shape, supertraits_unmet};
 use super::inherent::inherent_impl;
 use super::*;
 use crate::synth::{enum_structs, module_derived};
+use cpl_next_ir::unbuilt::Unbuilt;
 
 /// Std's declarations, collected once and never written after: the core's and every std
 /// module's. A program's declarations are a layer over them.
@@ -317,7 +318,12 @@ fn layer(
                             .filter(|x| !(library && read_elsewhere(&x.name.text)))
                         {
                             let at = Span::new(*item + x.span.start, *item + x.span.end);
-                            let e = Msg::at(at, format!("slice: decorator `@{}`", x.name.text));
+                            let e = Msg::at(
+                                at,
+                                Unbuilt::Decorator {
+                                    name: x.name.text.clone(),
+                                },
+                            );
                             match d.is_library(mid) {
                                 true => d.module_errors[mi].push(e),
                                 false => d.errors.push(e),
@@ -359,7 +365,9 @@ fn layer(
                         });
                     }
                     other if d.is_library(mid) => {
-                        let e = format!("slice: library item {}", crate::kind_name(other));
+                        let e = Unbuilt::LibraryItem {
+                            kind: crate::kind_name(other),
+                        };
                         match item_name(s) {
                             Some(n) => {
                                 own[mi].insert(n.to_string(), Named::Refused(d.refused.len()));
@@ -1030,8 +1038,9 @@ fn layer(
                     }
                     if let Some(Named::Fn(first)) = before {
                         if d.is_library(mid) {
-                            let e =
-                                format!("slice: a library with two fns named `{}`", f.name.text);
+                            let e = Unbuilt::LibraryOverload {
+                                name: f.name.text.clone(),
+                            };
                             d.fns[fid.0].errors.push(e.into());
                             continue;
                         }
@@ -1039,10 +1048,9 @@ fn layer(
                         // both (R08.1.4); that test isn't built.
                         if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {
                             d.errors.push(
-                                format!(
-                                    "slice: methods of one name in one module (`{}`)",
-                                    f.name.text
-                                )
+                                Unbuilt::MethodsOfOneName {
+                                    name: f.name.text.clone(),
+                                }
                                 .into(),
                             );
                             continue;
@@ -1056,8 +1064,7 @@ fn layer(
                             ls
                         };
                         if labels(first) != labels(fid) {
-                            d.errors
-                                .push("slice: fns of one name told apart by their labels".into());
+                            d.errors.push(Unbuilt::OverloadByLabels.into());
                         }
                         let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
                         d.misdeclared.push((

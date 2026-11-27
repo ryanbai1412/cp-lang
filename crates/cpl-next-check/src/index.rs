@@ -1,6 +1,7 @@
 //! Index syntax: `s[k]` reads through `Indexed`, `s[r]` calls the `@index` fn that cuts a view
 //! (R07.4.5, R07.4.17).
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::HashMap;
 
 /// What runs while a cell is lent: given the cell's name, it adds its statements.
@@ -208,14 +209,15 @@ impl Cx<'_> {
         let Some(decls::Member::Method(m, ts, ss)) = self.d.impl_member_by(&rt, INDEX_READ, lends)
         else {
             if !matches!(rt, Ty::Error) {
-                let why = if matches!(rt, Ty::Param(_)) {
-                    "slice: writing a cell of a type parameter".to_string()
+                let why: Msg = if matches!(rt, Ty::Param(_)) {
+                    Unbuilt::WriteParamCell.into()
                 } else {
                     let shown = self.show(&rt);
                     format!(
                         "{}: `{shown}` has no `IndexedMut` impl, so `[]` on it is not a place",
                         cpl_diag::codes::NOT_INDEXABLE.0
                     )
+                    .into()
                 };
                 self.err(span, why);
             }
@@ -397,10 +399,7 @@ impl Cx<'_> {
             }
         }
         let Some(f) = self.index_fn_for(&s.ty, 3) else {
-            self.err(
-                span,
-                "slice: a slice with an end left out needs core's `@index` fn of the ends",
-            );
+            self.err(span, Unbuilt::SliceOpenEnd);
             return TExpr {
                 kind: TK::Error,
                 ty: Ty::Error,

@@ -1,6 +1,7 @@
 //! Lambdas: pattern parameters, unpacking a tuple or record argument, generators of tests (R06.1).
 use super::expr::block;
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::BTreeSet;
 
 impl Cx<'_> {
@@ -80,7 +81,7 @@ impl Cx<'_> {
                     (&tmp, "_")
                 }
                 _ => {
-                    self.err(span, "slice: unsupported lambda parameter");
+                    self.err(span, Unbuilt::LambdaParam);
                     continue;
                 }
             };
@@ -247,7 +248,12 @@ impl Cx<'_> {
     /// `fn f(x: T) -> R: body` in a block is `let f = (x: T) -> R => body` (R05.10).
     pub(super) fn nested_fn(&mut self, fd: &ast::FnDecl, s: &ast::Stmt, out: &mut Vec<TStmt>) {
         if let Some(what) = nested_gap(fd, s) {
-            self.err(s.span, format!("slice: a nested fn with {what}"));
+            self.err(
+                s.span,
+                Unbuilt::NestedFn {
+                    what: what.to_string(),
+                },
+            );
             self.bind(&fd.name.text, Ty::Error);
             return;
         }

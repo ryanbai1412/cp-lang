@@ -16,6 +16,7 @@ use cpl_next_lower as lower;
 use cpl_next_own as own;
 use diag::kind_of;
 pub use diag::Kind;
+pub use diag::Unbuilt;
 pub use modules::{Roots, Std};
 
 pub use interp::{Outcome, Trap};
@@ -63,7 +64,11 @@ pub struct Diag {
     pub kind: Kind,
     /// `None`: the layer that reported it does not know where yet.
     pub at: Option<At>,
-    /// The text without a verdict's code.
+    /// The library module it is from, when it has no place.
+    pub module: Option<String>,
+    /// The layer that found it, when `stage` reports it for another.
+    pub layer: Option<&'static str>,
+    /// The text without a verdict's code, or the refused feature.
     pub message: String,
     /// What to write instead, when the layer knows.
     pub help: Option<String>,
@@ -74,11 +79,11 @@ impl Diag {
     pub fn code(&self) -> Option<&'static str> {
         match self.kind {
             Kind::Verdict(c) => Some(c.0),
-            Kind::Refusal => None,
+            Kind::Refusal(_) => None,
         }
     }
     pub fn is_refusal(&self) -> bool {
-        self.kind == Kind::Refusal
+        matches!(self.kind, Kind::Refusal(_))
     }
 
     /// `m` placed in its file.
@@ -93,15 +98,17 @@ impl Diag {
                 col,
             }
         });
-        let kind = kind_of(&m.text);
-        let message = match kind {
+        let kind = kind_of(m);
+        let message = match &kind {
             Kind::Verdict(c) => m.text.replacen(&format!("{}: ", c.0), "", 1),
-            Kind::Refusal => m.text.clone(),
+            Kind::Refusal(u) => u.to_string(),
         };
         Diag {
             stage,
             kind,
             at,
+            module: m.module.clone(),
+            layer: m.layer,
             message,
             help: m.help.clone(),
         }
@@ -121,8 +128,12 @@ impl std::fmt::Display for Diag {
         if let Some(a) = &self.at {
             write!(f, "{}:{}:{}: ", a.file, a.line, a.col)?;
         }
-        if let Some(c) = self.code() {
-            write!(f, "{c}: ")?;
+        for part in [self.module.as_deref(), self.layer].into_iter().flatten() {
+            write!(f, "{part}: ")?;
+        }
+        match &self.kind {
+            Kind::Verdict(c) => write!(f, "{}: ", c.0)?,
+            Kind::Refusal(_) => f.write_str("slice: ")?,
         }
         f.write_str(&self.message)?;
         match &self.help {
@@ -192,7 +203,7 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
         _ => None,
     });
     let deferred: Vec<diag::Msg> = (reached.flatten())
-        .map(|e| e.clone().prefixed(Stage::Own.name()))
+        .map(|e| e.clone().from_layer(Stage::Own.name()))
         .collect();
     prog.errors.extend(deferred);
     own::place_copies(&mut prog, &f.g.sites, &owned.copies);
@@ -225,7 +236,7 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         let g = lower::lower(&d, &t, &loaded);
         out.extend(diags(Stage::Lower, &g.errors));
         for (f, es) in &g.deferred {
-            let low = es.iter().map(|e| e.clone().prefixed(Stage::Lower.name()));
+            let low = es.iter().map(|e| e.clone().from_layer(Stage::Lower.name()));
             t.deferred.entry(*f).or_default().extend(low);
         }
         return Front {

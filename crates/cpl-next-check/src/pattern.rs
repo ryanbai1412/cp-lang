@@ -1,6 +1,7 @@
 //! Patterns: the test a value meets and the names it binds (R01.7), and whether a list of them
 //! covers a type (R02.7.4).
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 /// A pattern as far as covering goes: what it matches of a value's shape.
 #[derive(Clone, Debug)]
@@ -158,7 +159,7 @@ impl Cx<'_> {
         let mk = |kind, ty| TExpr { kind, ty, span };
         if let t @ (Ty::Error | Ty::Var(_)) = self.shallow(&v.ty) {
             if matches!(t, Ty::Var(_)) {
-                self.err(span, "slice: a pattern on a value of a type not known yet");
+                self.err(span, Unbuilt::PatternOnUnknownType);
             }
             self.bind_unknown(pat, mutable, binds);
             return None;
@@ -203,7 +204,7 @@ impl Cx<'_> {
                     }
                     t => {
                         let t = self.show(&t);
-                        self.err(span, format!("slice: a literal pattern on a `{t}`"));
+                        self.err(span, Unbuilt::LiteralPattern { ty: t });
                         return None;
                     }
                 };
@@ -327,7 +328,7 @@ impl Cx<'_> {
             }
             PatternKind::Or(alts) => self.alternatives(alts, v, mutable, binds),
             PatternKind::Domain(_) => {
-                self.err(span, "slice: a `domain` pattern");
+                self.err(span, Unbuilt::DomainPattern);
                 None
             }
         }

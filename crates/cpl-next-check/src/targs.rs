@@ -1,6 +1,7 @@
 //! Type arguments written on an expression: `id::<Int>`, `s.parse<Int>()` (R08.2.5).
 use super::expr::block;
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 impl Cx<'_> {
     /// `f<A>` named as a value: the closure that calls `f` with `A`, as `f` alone is.
@@ -16,7 +17,12 @@ impl Cx<'_> {
             span,
         };
         let ExprKind::Name(n) = &base.kind else {
-            self.err(span, "slice: expression Generic");
+            self.err(
+                span,
+                Unbuilt::Expression {
+                    kind: "Generic".into(),
+                },
+            );
             return err;
         };
         let fd = (self.lookup(n).is_none())
@@ -25,8 +31,10 @@ impl Cx<'_> {
         let Some(d) = fd.filter(|d| !self.d.f(*d).generics.is_empty()) else {
             if fd.is_none() && self.lookup(n).is_none() {
                 let what = match self.d.struct_named(self.module, n) {
-                    Some(_) => "slice: a type with type arguments used as a value",
-                    None => "slice: expression Generic",
+                    Some(_) => Unbuilt::TypeArgsValue,
+                    None => Unbuilt::Expression {
+                        kind: "Generic".into(),
+                    },
                 };
                 self.err(span, what);
                 return err;
@@ -64,7 +72,12 @@ impl Cx<'_> {
         want: Option<&Ty>,
     ) -> TExpr {
         let ExprKind::Field { base, name } = &callee.kind else {
-            self.err(span, "slice: expression Generic");
+            self.err(
+                span,
+                Unbuilt::Expression {
+                    kind: "Generic".into(),
+                },
+            );
             return TExpr {
                 kind: TK::Error,
                 ty: Ty::Error,

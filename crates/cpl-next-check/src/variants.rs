@@ -1,6 +1,7 @@
 //! Structs and enums as values: building them, their variants, and `match` (R02.6, R02.7).
 use super::expr::{block, Formal};
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 impl Cx<'_> {
     /// `T(x)` for a core type or a payload-free enum `T`: `x`'s impl of core's `@convert` trait at
@@ -29,7 +30,7 @@ impl Cx<'_> {
             Some((tr, m.clone(), *f))
         });
         let Some((tr, method, f)) = conv else {
-            self.err(span, "slice: a conversion without core's `@convert` trait");
+            self.err(span, Unbuilt::ConversionWithoutConvert);
             return mk(TK::Error, Ty::Error);
         };
         self.reach(f);
@@ -216,7 +217,7 @@ impl Cx<'_> {
         targs.extend((0..fresh).map(|_| self.new_ty()));
         let p = s.variants[i].1;
         if self.d.s(p).n_sets > 0 {
-            self.err(span, "slice: a function value in a variant's payload");
+            self.err(span, Unbuilt::FnValueInVariant);
         }
         let payload = self.construct(p, targs.clone(), Vec::new(), args, span, None);
         TExpr {

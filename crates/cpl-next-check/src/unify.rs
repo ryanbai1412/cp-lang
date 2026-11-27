@@ -1,6 +1,7 @@
 //! Type and function-set variables: unification, coercion, display.
 
 use super::*;
+use cpl_next_ir::unbuilt::Unbuilt;
 
 impl<'a> Cx<'a> {
     pub(super) fn new_ty(&mut self) -> Ty {
@@ -634,7 +635,7 @@ impl<'a> Cx<'a> {
                             ms.push(Member::Clo((**c).clone()));
                         }
                     }
-                    _ => self.err(span, "slice: this function value came from a parameter or a call, so the functions it can hold are fixed there; a new one cannot be added here"),
+                    _ => self.err(span, Unbuilt::FnValueFixedSet),
                 }
                 TExpr {
                     kind: TK::Inject(Box::new(e)),
@@ -679,10 +680,7 @@ impl<'a> Cx<'a> {
                         e
                     }
                     _ => {
-                        self.err(
-                            span,
-                            "slice: these two function values have different fixed sets",
-                        );
+                        self.err(span, Unbuilt::FnValueSetsDiffer);
                         e
                     }
                 }
