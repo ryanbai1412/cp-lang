@@ -269,6 +269,7 @@ pub(super) fn same_shape(a: &Ty, b: &Ty) -> bool {
         (Ty::Struct(d1, x, _), Ty::Struct(d2, y, _)) => {
             d1 == d2 && x.iter().zip(y).all(|(x, y)| same_shape(x, y))
         }
+        (Ty::Clo(x), Ty::Clo(y)) => same_item(x, y),
         _ => a == b,
     }
 }
@@ -281,6 +282,7 @@ fn agree(a: &Ty, b: &Ty) -> bool {
         (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
             d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| agree(x, y))
         }
+        (Ty::Clo(x), Ty::Clo(y)) => same_item(x, y),
         _ => a == b,
     }
 }
@@ -304,6 +306,14 @@ fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
         (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => {
             true
         }
+        (Ty::Clo(x), Ty::Clo(y)) => same_item(x, y),
         _ => p == t,
+    }
+}
+/// One fn item, whatever its instance: a generic fn has one `type_of` (R08.1.10).
+fn same_item(a: &CloRef, b: &CloRef) -> bool {
+    match (a, b) {
+        (CloRef::Item(x), CloRef::Item(y)) => x.decl == y.decl,
+        _ => a == b,
     }
 }

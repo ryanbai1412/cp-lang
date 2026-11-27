@@ -261,6 +261,8 @@ pub struct Decls {
     /// The program's top-level domains, which its declarations may name: each is the
     /// `Ty::Dom` of its place among them, filled when its statement runs (R02.9).
     pub top_doms: HashMap<String, Ty>,
+    /// The names the program's top level binds with `let`.
+    pub top_values: Rc<HashSet<String>>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
     pub domain_trait: Option<TraitId>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
@@ -676,6 +678,17 @@ pub fn collect(
             d.top_doms.entry(name.text.clone()).or_insert(Ty::Dom(k));
         }
     }
+    d.top_values = Rc::new(
+        (mods[n - 1].items.iter().flat_map(|(_, stmts)| stmts))
+            .filter_map(|s| match &s.kind {
+                StmtKind::Let { pat, .. } => match &pat.kind {
+                    ast::PatternKind::Name(x) => Some(x.clone()),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect(),
+    );
     let mut own: Vec<HashMap<String, Named>> = vec![HashMap::new(); n];
     let mut public: Vec<HashSet<String>> = vec![HashSet::new(); n];
     let mut main = Vec::new();
@@ -964,6 +977,8 @@ pub fn collect(
             let members = d.member_types.clone();
             let mut cx = TyCx {
                 names: &names,
+                values: d.top_values.clone(),
+                item: None,
                 struct_sets: &sets,
                 struct_defaults: &defaults,
                 tuples: &tuples,
@@ -1004,6 +1019,8 @@ pub fn collect(
         let members = d.member_types.clone();
         let mut cx = TyCx {
             names: &names,
+            values: d.top_values.clone(),
+            item: None,
             struct_sets: &sets,
             struct_defaults: &defaults,
             tuples: &tuples,
@@ -1052,6 +1069,8 @@ pub fn collect(
                     let members = d.member_types.clone();
                     let mut cx = TyCx {
                         names: &d.views[mi].clone(),
+                        values: d.top_values.clone(),
+                        item: None,
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
@@ -1160,6 +1179,8 @@ pub fn collect(
                     let doms = d.doms_in(ModId(mi));
                     let mut cx = TyCx {
                         names: &names,
+                        values: d.top_values.clone(),
+                        item: None,
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
@@ -1262,6 +1283,8 @@ pub fn collect(
                     let mut errors = Vec::new();
                     let mut cx = TyCx {
                         names: &names,
+                        values: d.top_values.clone(),
+                        item: Some(item),
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
@@ -1392,8 +1415,13 @@ pub fn collect(
                         continue;
                     }
                     // An impl lives with its trait, its type or a type among the trait's arguments
-                    // (`impl Into<E> for Int`), so it is never an orphan (R08.5.2).
-                    let local = |t: &Ty| matches!(t, Ty::Struct(sd, ..) if d.s(*sd).module == mid);
+                    // (`impl Into<E> for Int`), or with its fn for `type_of(f)` (R08.1.11), so it
+                    // is never an orphan (R08.5.2).
+                    let local = |t: &Ty| match t {
+                        Ty::Struct(sd, ..) => d.s(*sd).module == mid,
+                        Ty::Clo(c) => matches!(&**c, CloRef::Item(f) if d.f(f.decl).module == mid),
+                        _ => false,
+                    };
                     if !d.is_library(mid)
                         && d.traits[tref.tr.0].module != mid
                         && !local(&for_)
@@ -1716,6 +1744,8 @@ fn add_fn(
     let members = d.member_types.clone();
     let mut cx = TyCx {
         names: &names,
+        values: d.top_values.clone(),
+        item: Some(item),
         struct_sets: &sets,
         struct_defaults: &defaults,
         tuples: &tuples,

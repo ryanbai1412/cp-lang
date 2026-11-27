@@ -15,6 +15,10 @@ pub(super) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>)
 
 pub(super) struct TyCx<'a> {
     pub(super) names: &'a HashMap<String, Named>,
+    /// What the program's top level binds with `let`: values, not items, to `type_of`.
+    pub(super) values: Rc<HashSet<String>>,
+    /// Where the item being converted starts in the source, when known: its spans count from it.
+    pub(super) item: Option<u32>,
     /// How many set parameters each struct has, so a struct named in a type gets its own.
     pub(super) struct_sets: &'a HashMap<StructId, usize>,
     pub(super) struct_defaults: &'a HashMap<StructId, Vec<Option<Ty>>>,
@@ -71,6 +75,8 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
     expanding.push(id);
     let mut inner = TyCx {
         names: &decl.names,
+        values: cx.values.clone(),
+        item: None,
         struct_sets: cx.struct_sets,
         struct_defaults: cx.struct_defaults,
         tuples: cx.tuples,
@@ -308,6 +314,39 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             let set = slot(cx);
             Ty::Fn(ps, Box::new(r), set)
         }
+        // `type_of(f)`: the fn item's own type, one for a generic fn (R08.1.10).
+        TypeKind::ItemOf(e) => {
+            let at = |text: String| match cx.item {
+                Some(i) => Msg::at(Span::new(i + e.span.start, i + e.span.end), text),
+                None => text.into(),
+            };
+            let key = e.fn_item_key();
+            match key.as_deref().map(|k| (k, cx.names.get(k))) {
+                Some((_, Some(Named::Fn(f)))) => Ty::Clo(Box::new(CloRef::Item(FnRef {
+                    decl: *f,
+                    targs: Vec::new(),
+                    sets: Vec::new(),
+                }))),
+                Some((k, None))
+                    if matches!(e.kind, ast::ExprKind::Name(_)) && !cx.values.contains(k) =>
+                {
+                    let code = cpl_diag::codes::UNRESOLVED_NAME.0;
+                    errors.push(at(format!("{code}: unknown name `{k}`")));
+                    Ty::Error
+                }
+                Some((_, None)) if !matches!(e.kind, ast::ExprKind::Name(_)) => {
+                    errors.push(at("slice: type ItemOf".to_string()));
+                    Ty::Error
+                }
+                _ => {
+                    let code = cpl_diag::codes::NOT_A_FN_ITEM.0;
+                    errors.push(at(format!(
+                        "{code}: `type_of` takes a `fn` declared by name, not this value"
+                    )));
+                    Ty::Error
+                }
+            }
+        }
         // The parser has said what is wrong with it.
         TypeKind::Error => Ty::Error,
         other => {
@@ -329,6 +368,8 @@ pub fn body_type(
     conv(
         &mut TyCx {
             names: &d.views[m.0],
+            values: d.top_values.clone(),
+            item: None,
             struct_sets: &d.struct_sets,
             struct_defaults: &d.struct_defaults,
             tuples: &d.tuples,

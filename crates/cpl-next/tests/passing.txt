@@ -573,6 +573,7 @@ core-07/yielded-closure-in-struct-writes-generator-local.cp
 core-07/yielded-closure-writes-generator-local.cp
 core-07/zip-domain-mismatch.cp
 core-07/zip-takes-a-rev.cp
+core-08/a-fn-item-passes-for-its-own-type-of.cp
 core-08/assoc-default-names-trait-param.cp
 core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
@@ -588,6 +589,7 @@ core-08/derive-needs-fields.cp
 core-08/duplicate-impl.cp
 core-08/explicit-conversion.cp
 core-08/field-trait-struct-opt-in.cp
+core-08/fn-item-type-takes-its-own-impl.cp
 core-08/generic-body-cannot-assume-an-associated-type.cp
 core-08/generic-method-call.cp
 core-08/generic-over-seq-capability.cp
@@ -644,7 +646,9 @@ core-08/trait-message.cp
 core-08/trait-typed-param-checks-its-bound.cp
 core-08/trait-typed-param-of-a-local-trait.cp
 core-08/trait-typed-param-reads-its-assoc-type-bound.cp
+core-08/two-impls-of-a-trait-for-one-fn-item-are-rejected.cp
 core-08/type-arguments-on-a-value-are-rejected.cp
+core-08/type-of-local-fn-takes-a-std-trait-impl.cp
 core-08/type-param-default.cp
 core-08/while-const.cp
 core-09/allow-attribute-removed.cp
@@ -777,6 +781,8 @@ diagnostics/tuple-has-no-struct-method.cp
 diagnostics/tuple-is-not-a-struct.cp
 diagnostics/tuple-unknown-member.cp
 diagnostics/two-expressions.cp
+diagnostics/type-of-a-closure-is-not-a-fn-item.cp
+diagnostics/type-of-an-unknown-name.cp
 diagnostics/unknown-type.cp
 lib-ops-ranges/bare-op-tuple.cp
 lints/by-twin.cp
@@ -1136,6 +1142,7 @@ next/n_trait_static_fn.cp
 next/n_trait_typed_param.cp
 next/n_trap_01_call_stack_names_inlined_calls.cp
 next/n_trap_02_call_stack_in_a_loop_body.cp
+next/n_typeof_01_fn_item_impls.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp

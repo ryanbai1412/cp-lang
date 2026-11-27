@@ -1503,6 +1503,9 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
         (Ty::Struct(d1, a, _), CTy::Struct(d2, b, _)) => {
             d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds))
         }
+        (Ty::Clo(c), CTy::Clo(k)) => {
+            matches!(&**c, CloRef::Item(f) if k.func == FuncKey::Decl(f.decl))
+        }
         // A lent slot reads as the value it points at.
         (_, CTy::Lent(t)) => fit_cty(p, t, binds),
         _ => false,
