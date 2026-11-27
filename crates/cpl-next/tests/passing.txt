@@ -1005,7 +1005,6 @@ matrix/index/plain--read.cp
 matrix/index/plain--rev.cp
 matrix/index/plain--size.cp
 matrix/index/product--builder.cp
-matrix/index/product--min_by.cp
 matrix/index/product--construct.cp
 matrix/index/product--count.cp
 matrix/index/product--cuts_lr.cp
@@ -1326,6 +1325,7 @@ next/n_f64_03_precision_and_specs.cp
 next/n_facts_01_proved_checks_keep_results.cp
 next/n_facts_02_unproved_n_minus_i_traps.cp
 next/n_facts_03_unproved_index_traps.cp
+next/n_for_01_wildcard_and_repeat.cp
 next/n_fromop_01_bare_op_at_a_bound.cp
 next/n_fromop_02_closure_takes_fn_type_impl.cp
 next/n_gen_01_stored_walked_twice.cp
@@ -1348,6 +1348,7 @@ next/n_inherent_impl.cp
 next/n_inst_lent_arg_of_a_phantom_param.cp
 next/n_into_01_list_of_a_seq_converts.cp
 next/n_intr_01_word_bit_counts.cp
+next/n_intr_02_abs_of_int_and_f64.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
@@ -1375,6 +1376,7 @@ next/n_op_02_bit_operator_traits_and_one.cp
 next/n_operator_trait.cp
 next/n_opt_01_entry_globals_become_locals.cp
 next/n_optional_01_is_some_reads_like_a_field.cp
+next/n_own_01_type_param_field_is_a_copy.cp
 next/n_own_06_struct_field_takes_the_path.cp
 next/n_own_07_field_moves_are_per_path.cp
 next/n_own_10_param_value_is_not_a_borrow.cp
@@ -1538,6 +1540,7 @@ std-marks/arena-is_empty-1.cp
 std-marks/arena-len-1.cp
 std-marks/arena-new-1.cp
 std-marks/arena-reserve-1.cp
+std-math/best-rational.cp
 std-math/bit-len-edges.cp
 std-math/bit-past-63-repeats-the-sign.cp
 std-math/ceil-div-signs.cp
@@ -1548,6 +1551,8 @@ std-math/choose2-zero-and-overflow-free.cp
 std-math/divmod-floor-signs.cp
 std-math/fractions.cp
 std-math/inv-mod-not-coprime.cp
+std-math/lcm-zero-and-sign.cp
+std-math/ratio.cp
 std-math/sieve-factor-one-and-prime.cp
 std-math/sieve-phi-mobius-edges.cp
 std-math/sieve-small-bounds.cp
@@ -1777,11 +1782,3 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
-next/n_comp_01_comprehension_is_its_loop.cp
-next/n_alias_01_alias_builds_its_type.cp
-core-08/call-gen-alias.cp
-next/n_static_01_generic_type_names_its_static_fns.cp
-matrix/index/cuts--min_by.cp
-matrix/index/plain--min_by.cp
-matrix/index/product--min_by.cp
-next/n_for_01_wildcard_and_repeat.cp
