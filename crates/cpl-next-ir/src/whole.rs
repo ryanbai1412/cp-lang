@@ -1,8 +1,7 @@
 //! What link reads of the program as a whole beyond its fns and their set adds (`SetAdds`), which lowering hands on from
 //! the checker so link reads no typed tree.
-use crate::msg::Msg;
 use crate::ty::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum VarRef {
