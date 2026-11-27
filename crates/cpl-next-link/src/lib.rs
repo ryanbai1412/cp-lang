@@ -32,6 +32,8 @@ struct Link<'a> {
     structs: HashMap<CTy, Vec<CTy>>,
     sums: HashMap<CTy, Vec<CTy>>,
     add_busy: BTreeSet<usize>,
+    /// The globals' sets being read, so one met inside itself adds nothing more.
+    global_busy: BTreeSet<(usize, usize)>,
     /// The lambdas whose named sets are being read, so one met inside itself keeps all.
     named_busy: std::collections::HashSet<FuncKey>,
     named: HashMap<FuncKey, BTreeSet<usize>>,
@@ -151,6 +153,7 @@ pub fn link(
         structs: HashMap::new(),
         sums: HashMap::new(),
         add_busy: BTreeSet::new(),
+        global_busy: BTreeSet::new(),
         named_busy: std::collections::HashSet::new(),
         named: HashMap::new(),
         errors: Vec::new(),
@@ -637,6 +640,20 @@ impl Link<'_> {
                     }
                 }
                 self.add_busy.remove(c);
+            }
+            // A global is the top level's: what the program puts in it names no fn's parameters.
+            SetTy::Global(g, k) => {
+                if !self.global_busy.insert((*g, *k)) {
+                    return;
+                }
+                if let Some(s) = self.adds.globals.get(&(*g, *k)).cloned() {
+                    let top = Env {
+                        targs: &[],
+                        sets: &[],
+                    };
+                    self.set_into(&s, &top, out);
+                }
+                self.global_busy.remove(&(*g, *k));
             }
             SetTy::RetSlot(_) => {}
             SetTy::Var(_) => {}

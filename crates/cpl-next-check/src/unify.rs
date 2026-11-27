@@ -230,9 +230,25 @@ impl<'a> Cx<'a> {
                     if let SetVar::Root(ms) = was {
                         self.param_adds.entry((g, j)).or_default().extend(ms);
                     }
+                } else if let SetTy::Global(g, k) = other {
+                    // A global's own set: the variable's members are what the program puts in it.
+                    let was = std::mem::replace(&mut self.sets[x], SetVar::Bound(other));
+                    if let SetVar::Root(ms) = was {
+                        self.global_adds.entry((g, k)).or_default().extend(ms);
+                    }
                 } else if let SetVar::Root(ms) = &mut self.sets[x] {
                     ms.push(Member::Sub(other));
                 }
+                true
+            }
+            (SetTy::Global(g, k), SetTy::Global(h, j)) if (g, k) != (h, j) => {
+                let adds = &mut self.global_adds;
+                adds.entry((g, k))
+                    .or_default()
+                    .push(Member::Sub(SetTy::Global(h, j)));
+                adds.entry((h, j))
+                    .or_default()
+                    .push(Member::Sub(SetTy::Global(g, k)));
                 true
             }
             // Two of the fn's own set parameters made one: each holds what its caller passes
@@ -961,6 +977,10 @@ impl<'a> Cx<'a> {
                             self.param_adds.entry((f, i)).or_default().push(m);
                         }
                     }
+                    SetTy::Global(g, k) => {
+                        let m = Member::Clo((**c).clone());
+                        self.global_adds.entry((g, k)).or_default().push(m);
+                    }
                     _ => self.err(
                         span,
                         Msg::internal("a function value is put in a set no fn or call owns"),
@@ -1010,6 +1030,16 @@ impl<'a> Cx<'a> {
                         self.unify_set(&a, &b);
                         e
                     }
+                    // Into a global's own set: the program puts `a` in it.
+                    (_, SetTy::Global(g, k)) => {
+                        let m = Member::Sub(a.clone());
+                        self.global_adds.entry((*g, *k)).or_default().push(m);
+                        TExpr {
+                            kind: TK::Widen(Box::new(e)),
+                            ty: want_s,
+                            span,
+                        }
+                    }
                     // Into the fn's own set parameter, which each call passes: the fn adds `a`.
                     (_, SetTy::Param(j)) if self.decl.is_some() => {
                         let g = self.decl.unwrap_or(FnId(0));
@@ -1034,7 +1064,7 @@ impl<'a> Cx<'a> {
                         let (a, b) = (self.shallow_set(a), self.shallow_set(b));
                         a != b
                             && (self.joining || !matches!(a, SetTy::Var(_)))
-                            && matches!(b, SetTy::Var(_) | SetTy::Param(_))
+                            && matches!(b, SetTy::Var(_) | SetTy::Param(_) | SetTy::Global(..))
                     }) =>
             {
                 for (x, y) in t1.iter().zip(t2) {

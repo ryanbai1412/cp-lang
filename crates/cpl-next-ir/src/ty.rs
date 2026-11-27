@@ -73,6 +73,9 @@ pub enum SetTy {
     /// In a signature: the k-th function type of the result. A call passes its set for it after
     /// the fn's own, so the body sees `Param(n_sets + k)`.
     RetSlot(usize),
+    /// The `k`-th fn-value set in global `g`'s type, the top level's own: what a body puts in it
+    /// is `SetAdds::globals`, so checking one body changes no other body's types. Closed at link.
+    Global(usize, usize),
     Closed(Vec<Member>),
 }
 
@@ -86,6 +89,8 @@ pub struct SetAdds {
     pub calls: Vec<(FnRef, usize)>,
     /// Whether `AddedAt(i)`'s callee may add anything there; one that cannot adds nothing.
     pub live: Vec<bool>,
+    /// What the program puts in `Global(g, k)`.
+    pub globals: std::collections::HashMap<(usize, usize), SetTy>,
 }
 
 /// As derived, but a set parameter prints as `SetParam(i)`, apart from a type's `Param(i)`, so
@@ -97,6 +102,7 @@ impl std::fmt::Debug for SetTy {
             SetTy::Param(i) => f.debug_tuple("SetParam").field(i).finish(),
             SetTy::AddedAt(c) => f.debug_tuple("AddedAt").field(c).finish(),
             SetTy::RetSlot(k) => f.debug_tuple("RetSlot").field(k).finish(),
+            SetTy::Global(g, k) => f.debug_tuple("Global").field(g).field(k).finish(),
             SetTy::Closed(ms) => f.debug_tuple("Closed").field(ms).finish(),
         }
     }
@@ -172,6 +178,8 @@ impl Subst<'_> {
             SetTy::RetSlot(k) => SetTy::RetSlot(*k),
             // Its call is resolved where it sits, under that fn's own parameters.
             SetTy::AddedAt(c) => SetTy::AddedAt(*c),
+            // The top level's own, the same under any fn's parameters.
+            SetTy::Global(g, k) => SetTy::Global(*g, *k),
             SetTy::Closed(ms) => SetTy::Closed(
                 ms.iter()
                     .map(|m| match m {

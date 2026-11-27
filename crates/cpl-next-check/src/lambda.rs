@@ -42,8 +42,47 @@ impl Cx<'_> {
                         self.param_adds.entry((g, j)).or_default().push(m);
                     }
                 }
+                SetTy::Global(g, k) => self.global_adds.entry((g, k)).or_default().push(m),
                 _ => {}
             }
+        }
+    }
+    /// Each global's fn-value sets, made that global's own (`SetTy::Global`) once the top level
+    /// is checked: a body checked later adds to one in `global_adds`, so it changes no other
+    /// body's types and each body is typed once it is checked.
+    pub(super) fn own_global_sets(&mut self) {
+        for g in 0..self.globals.len() {
+            let mut sets = Vec::new();
+            self.sets_in(&self.globals[g].ty.clone(), &mut sets);
+            for (k, s) in sets.into_iter().enumerate() {
+                if let SetTy::Var(r) = self.shallow_set(&s) {
+                    let was = std::mem::replace(
+                        &mut self.sets[r],
+                        super::SetVar::Bound(SetTy::Global(g, k)),
+                    );
+                    if let super::SetVar::Root(ms) = was {
+                        self.global_adds.entry((g, k)).or_default().extend(ms);
+                    }
+                }
+            }
+        }
+    }
+    /// The fn-value sets of `t`, in order.
+    fn sets_in(&self, t: &Ty, out: &mut Vec<SetTy>) {
+        match self.shallow(t) {
+            Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => {
+                self.sets_in(&e, out)
+            }
+            Ty::Struct(_, ts, ss) => {
+                ts.iter().for_each(|t| self.sets_in(t, out));
+                out.extend(ss);
+            }
+            Ty::Fn(ps, r, s) => {
+                ps.iter().for_each(|t| self.sets_in(t, out));
+                self.sets_in(&r, out);
+                out.push(s);
+            }
+            _ => {}
         }
     }
     pub(super) fn new_lambda(&mut self, info: LambdaInfo) -> LambdaId {

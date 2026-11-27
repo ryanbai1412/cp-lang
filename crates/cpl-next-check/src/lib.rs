@@ -365,6 +365,8 @@ pub struct Typed {
     pub lambdas: Vec<LambdaInfo>,
     /// The closures a fn's body adds to its i-th set parameter, a callee's adds included.
     pub param_adds: HashMap<(FnId, usize), SetTy>,
+    /// What the program puts in each global's set, `SetTy::Global(g, k)`.
+    pub global_adds: HashMap<(usize, usize), SetTy>,
     /// Each call passing a set argument, and that argument's slot (`SetTy::AddedAt`).
     pub call_adds: Vec<(FnRef, usize)>,
     /// Whether each of `call_adds`' callees may add to that slot.
@@ -444,6 +446,8 @@ struct Cx<'a> {
     globals: Vec<Local>,
     global_names: HashMap<String, LocalId>,
     param_adds: HashMap<(FnId, usize), Vec<Member>>,
+    /// What the top level and each body put in a global's set (`SetTy::Global`).
+    global_adds: HashMap<(usize, usize), Vec<Member>>,
     /// `SetTy::AddedAt(i)`'s call and the slot of the set it passes there.
     added: Vec<(FnRef, usize)>,
     domains: Vec<DomInfo>,
@@ -647,6 +651,7 @@ fn check_with(
         globals: Vec::new(),
         global_names: HashMap::new(),
         param_adds: HashMap::new(),
+        global_adds: HashMap::new(),
         added: Vec::new(),
         // A top-level domain's place is kept for it until its statement runs.
         domains: (0..d.dom_ids.len())
@@ -864,6 +869,7 @@ fn check_with(
         cx.scopes.pop();
         main_out.push(TStmt::Cases(count, body));
     }
+    cx.own_global_sets();
     // The program's fns are all checked; a library's, core's too, only once a reference reaches
     // them, so what a module declares and the program never uses refuses nothing.
     // A record's impls are made, not written: one is checked once a reference reaches it.
@@ -936,12 +942,7 @@ fn check_with(
     }
     ctx_fns.sort_by_key(|c| c.0);
     for tf in fns.values_mut().chain(ctx_fns.iter_mut().map(|c| &mut c.2)) {
-        cx.zonk_expr(&mut tf.body);
-        for l in &mut tf.locals {
-            l.ty = cx.zonk(&l.ty);
-        }
-        tf.ret = cx.zonk(&tf.ret);
-        tf.region = (tf.region.take()).map(|(l, t)| (l, cx.zonk(&t)));
+        cx.zonk_fn(tf);
     }
     let mut globals = std::mem::take(&mut cx.globals);
     for g in &mut globals {
@@ -973,6 +974,15 @@ fn check_with(
             (k, cx.zonk_set(&v))
         })
         .collect();
+    let global_adds = (cx.global_adds.clone().into_iter())
+        .map(|(k, ms)| {
+            let v = cx.new_set();
+            if let SetTy::Var(i) = v {
+                cx.sets[i] = SetVar::Root(ms);
+            }
+            (k, cx.zonk_set(&v))
+        })
+        .collect();
     if cx.domains.iter().any(|d| d.name.is_empty()) {
         cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
     }
@@ -988,6 +998,7 @@ fn check_with(
         main: main_z,
         lambdas,
         param_adds,
+        global_adds,
         call_adds,
         call_live,
         errors: cx.errors,
@@ -1191,6 +1202,15 @@ impl<'a> Cx<'a> {
         true
     }
 
+    /// `tf` with every variable replaced by what it was solved to.
+    fn zonk_fn(&mut self, tf: &mut TypedFn) {
+        self.zonk_expr(&mut tf.body);
+        for l in &mut tf.locals {
+            l.ty = self.zonk(&l.ty);
+        }
+        tf.ret = self.zonk(&tf.ret);
+        tf.region = (tf.region.take()).map(|(l, t)| (l, self.zonk(&t)));
+    }
     fn check_fn(&mut self, id: FnId, frames: Vec<CtxFrame>) -> TypedFn {
         let lends_last =
             |b: &ast::Block| matches!(b.stmts.last().map(|s| &s.kind), Some(StmtKind::Lend { .. }));

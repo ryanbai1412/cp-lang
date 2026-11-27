@@ -758,6 +758,40 @@ fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
         .any(|f| was[*f] != fresh[*f]));
 }
 
+/// A body that puts a function in a global's set leaves a body that reads the global typed the
+/// same, whichever is checked first: the global's set is its own (`SetTy::Global`), and link
+/// closes it from what the program puts in it.
+#[test]
+fn a_body_adding_to_a_global_set_leaves_its_readers_typed_the_same() {
+    let std = Std::read();
+    let program = |bump: &str| {
+        format!(
+            "var h = (x: Int) => x\nfn top(n: Int) -> Int = h(n)\n\nfn bump(a: Int, b: Int) -> Int:\n{bump}    max(a, b)\n\nlet g = (a: Int, b: Int) => bump(a, b)\nprint(g(1, 2), top(5))\n"
+        )
+    };
+    let top = |src: &str| {
+        let loaded = modules::load(&std, src, &Roots::std());
+        let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+        let values = consts::Evaluator::new(&d, &loaded, &main);
+        let t = check::check(&d, &main, &loaded, &values, &[], None, &check::Ids::default());
+        let ours = |m: &&cpl_next_decls::diag::Msg| m.at.as_ref().is_some_and(|a| &*a.item.module == modules::PROGRAM);
+        let ours: Vec<_> = t.errors.iter().filter(ours).collect();
+        assert!(ours.is_empty(), "{ours:?}");
+        (t.fns.iter())
+            .find(|(id, _)| d.f(**id).name == "top")
+            .map(|(_, f)| format!("{:?}", (&f.body, &f.ret)))
+    };
+    let (adds, reads) = (program("    h = (x: Int) => x + 1\n"), program(""));
+    assert!(top(&adds).is_some());
+    assert_eq!(top(&adds), top(&reads));
+    let printed = |src: &str| {
+        let c = compile(&std, src, &Roots::std(), true).expect("compiles");
+        (c.run("").output, raw(&c).output)
+    };
+    assert_eq!(printed(&adds), ("2 6\n".into(), "2 6\n".into()));
+    assert_eq!(printed(&reads), ("2 5\n".into(), "2 5\n".into()));
+}
+
 /// A session answers from its snapshot alone: a changed program is a new snapshot sharing std,
 /// and the old session's answers stay what they were.
 #[test]
