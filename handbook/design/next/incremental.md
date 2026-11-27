@@ -34,7 +34,7 @@ query   body(ItemId)                -> TypedBody + diagnostics contract 3, reads
 query   summary(ItemId)             -> Summary                 lends and effects, from the signature only
 query   generic(ItemId)             -> GenericFn               contract 4
 query   instance(ItemId, TypeArgs)  -> InstanceFn              contract 5
-query   program(Job)                -> Program                 link, ownership after link, canonical, optimized
+query   program(Job)                -> Program                 own's lend marks, link, own's checks, canonical, optimized
 query   cpp(Job, Profile)           -> CppFile
 query   spans(ItemId)               -> SpanTable               local node index -> place in the file
 ```
@@ -90,7 +90,7 @@ refusal or an error type is local to the body that produced it.
 
 ## Whole-program steps
 
-Linking, ownership after link, canonicalization, optimization and C++
+Ownership's lend marks before link and its checks after (contract 4), linking, canonicalization, optimization and C++
 emission need the whole program. They are queries keyed by the `Job`
 (contract 9's round 5), and they read per-item answers. They are on
 the idle and build paths only. They never report an error the typing
@@ -141,8 +141,8 @@ database is the only place that knows what depends on what.
    whole program becomes a loop the database runs.
 4. The database crate, wiring 1 to 3 as queries; the facade's typing
    path reads it. The count gate starts here.
-5. `generic`, `instance` and `program` as queries; ownership after link
-   reads per-item summaries.
+5. `generic`, `instance` and `program` as queries; ownership, on both sides
+   of link, reads per-item summaries.
 
 Steps 1 to 3 each land on their own and make the batch pipeline
 cleaner even before the database exists.

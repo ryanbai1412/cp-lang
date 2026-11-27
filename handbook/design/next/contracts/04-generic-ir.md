@@ -166,7 +166,7 @@ driver merges nothing by hand.
 
 ## Round 5 (2026-11-25, not yet reviewed)
 
-- **Ownership runs after link** (2026-11-26 ruling, superseding "ownership
+- **Ownership runs on both sides of link** (2026-11-26 ruling, superseding "ownership
   finishes here" and decision 13). Lowering reads nothing of it: lends
   come from signatures (`plain::lends`) and passed places stay `Pass`.
   Own reads link's closed sets and each instance's resolved impls and
