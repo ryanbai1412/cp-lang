@@ -372,7 +372,6 @@ core-08/self-default-getter-rejects-another-type.cp	wrong-error	wanted E0606 on 
 core-08/seq-supertraits-come-from-std.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-08/shared-bound-param-agrees.cp	wrong-reject	decls: E0204: unknown trait `Keyed`
 core-08/shared-bound-param-conflict-rejected.cp	wrong-error	wanted E0302 on line 9, got: decls: E0204: unknown trait `Keyed`
-core-08/static-ctor-at-a-generic-bound-takes-the-monoid-impl.cp	wrong-reject	check: program:14:72: E0302: expected `List<M.Fold>`, found `Mapped<List<E>, E, M.Fold>`
 core-08/struct-bound-assoc-type-reaches-methods.cp	wrong-reject	check: program:11:16: E0606: `a function` does not implement `Op`
 core-08/too-many-type-arguments-are-an-error.cp	wrong-error	wanted E0303 on line 5, got: check: program:5:22: E0302: expected `Q<Int, Int>`, found `Q<Int>`
 core-08/trait-arg-only-impl-params-bind-at-the-call.cp	wrong-reject	check: program:9:25: E0606: `T` does not implement `Domain`

@@ -2104,3 +2104,4 @@ next/n_impl_08_bound_leaves_its_assoc_type_out.cp
 std-seq/present-unwraps-pieces.cp
 next/n_unimpl_01_trait_names_its_code_and_help.cp
 next/n_impl_09_spelled_out_params_of_any_length.cp
+core-08/static-ctor-at-a-generic-bound-takes-the-monoid-impl.cp
