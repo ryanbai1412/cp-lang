@@ -188,9 +188,41 @@ fn replay(rerun: Rerun, config: TraceConfig) -> Replay           // contract 9's
   into the tool that uses it.
 
 What stage 5's engine must supply for this query: a step per
-statement with its line, its call depth and frames (`Enter`/`Exit`),
+statement with its site, its call depth and frames (`Enter`/`Exit`),
 the values each one bound or wrote (`Bind`/`Write`), and the visit
-count per line inside a call (`At.nth`).
+count per site inside a call (`At.nth`).
+
+### Sites are statement lineage, not lines
+
+An event names its statement by lineage (contract 8: identity is which
+statement replaced which, not a content hash), and never by a line
+string or a line number:
+
+```rust
+struct StmtId { item: ItemId, stmt: u32 }   // ItemId: module, name, nth (contract 1)
+struct At { call: CallPath, site: StmtId, nth: u32 }
+fn source_of(&self, site: StmtId) -> Option<Source>  // Session: module, span, line, now
+struct Source { module: String, span: Span, line: u32 }
+```
+
+- `ItemId` is already stable across edits of other items. `stmt` numbers
+  a statement inside its item in source order when the item is first
+  parsed, and an edit keeps the number of each statement it did not
+  replace, so a breakpoint and a recording outlive an edit elsewhere.
+- Every layer carries the `StmtId` it was given: lowering, inlining and
+  optimization keep the original's id on what they make from it (an
+  inlined call's statements keep the callee's ids under the caller's
+  `CallPath`), and a statement the compiler makes with no source of its
+  own takes the id of the statement it was made for. No event has a
+  site no source statement answers.
+- Only the facade turns a site into text: `Session::source_of` reads
+  the snapshot, so a viewer, the debugger and replay ask the facade
+  where an event is, and the answer follows the snapshot, not the run.
+  `Recording::line`, `Place.line` and `Change.line` become reads of
+  `source_of` at stage 5. Until then they are the interpreter's lines,
+  behind the same accessors, so no tool changes when they switch.
+- `Place` becomes `{ site: StmtId, visit }`, and `find` aligns by it,
+  which is contract 8's `align` by `At`.
 
 ## Must never
 
