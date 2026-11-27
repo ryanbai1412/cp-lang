@@ -2093,6 +2093,20 @@ class DebtRatchetTest(unittest.TestCase):
                 '[dependencies]\ncpl-syntax.workspace = true\ncpl-judge.workspace = true\ncpl-next-ir.workspace = true\n')
             self.assertEqual(dr.next_layer_foreign_deps(root), ["cpl-next-check -> cpl-judge"])
 
+    def test_lent_outside_own_and_asks_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for c, body in [("cpl-next-lower", "let t = Ty::Lent(Box::new(t));\n// Ty::Lent(Box::new(x))\n"
+                                               "(_, Ty::Lent(s)) => Ty::Lent(Box::new(f(s))),\nTy::Lent(t) => t,\n"),
+                            ("cpl-next-own", "Ty::Lent(Box::new(t))\n"), ("cpl-next-check", "Ty::Lent(Box::new(t))\n")]:
+                self._write(root, f"crates/{c}/src/lib.rs", body)
+            self.assertEqual(dr.next_lent_outside_own(root), ["crates/cpl-next-lower/src/lib.rs:1"])
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "spec/conformance/a/slow.cp", "// expect: ok\n// timeout: 20\nfn main() {}\n")
+            self._write(root, "spec/conformance/a/fine.cp", "// expect: ok\nfn main() {}\n// judge: no\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.next_asks_refused(root), ["spec/conformance/a/slow.cp"])
+
     def test_wrong_may_rise_by_the_cases_a_refusal_hid(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2141,7 +2155,9 @@ class DebtRatchetTest(unittest.TestCase):
             (tests / "wrong.tsv").write_text("core-01/kept.cp\twrong-reject\n")
             self.assertEqual(dr.wrong_to_refused(root, "base"), ["core-01/hidden.cp"])
             self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 1}, ref="base")), 1)
-            (root / "decisions.md").write_text("`core-01/hidden.cp` refuses: its feature is cut.\n")
+            (root / "decisions.md").write_text("Notes: `core-01/hidden.cp`.\n")
+            self.assertEqual(len(dr.unexplained_bumps(root, {"next_wrong": 1}, ref="base")), 1)
+            (root / "decisions.md").write_text("## 7. Cut a feature\n\n`core-01/hidden.cp` refuses: its feature is cut.\n")
             self.assertEqual(dr.unexplained_bumps(root, {"next_wrong": 1}, ref="base"), [])
 
     def test_a_deleted_case_counts_until_removed_md_names_it(self) -> None:

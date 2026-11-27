@@ -35,6 +35,7 @@ import fnmatch
 import functools
 import glob
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -1417,6 +1418,39 @@ def next_ownership_outside_own(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if (m := NEXT_OWN_DECIDERS_RE.match(l))]
 
 
+NEXT_AFTER_OWN = ("cpl-next-lower", "cpl-next-link", "cpl-next-cpp", "cpl-next-engine", "cpl-next-interp")
+
+
+def next_lent_outside_own(root: Path) -> list[str]:
+    """Places a layer other than the checker or `cpl-next-own` makes a type lent (`Ty::Lent(Box::new(..))`):
+    whether a value is lent or moved is an ownership decision, made once in the ownership pass
+    (contract 04); lowering, linking and the engines only read it. Function names miss this
+    (lowering's `lent_targs`), so the constructor is what is counted."""
+    dirs = [f"crates/{c}/src" for c in NEXT_AFTER_OWN if (root / "crates" / c / "src").is_dir()]
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *dirs, tests=False)
+            for i, l in enumerate(_lines(p), 1) if NEXT_MAKES_LENT_RE.search(l) and not l.lstrip().startswith("//")]
+
+
+# `Ty::Lent(Box::new(..))` built from a type not already lent: a match arm that rebuilds a lent
+# type it matched (`Lent(e) => Lent(Box::new(f(e)))`) keeps a decision, it does not make one.
+NEXT_MAKES_LENT_RE = re.compile(r"^(?!.*Lent\([^)]*\)\)?\s*=>.*Ty::Lent\(Box::new).*Ty::Lent\(Box::new")
+
+
+NEXT_ASKS_RE = re.compile(r"^// (judge|before|copies|timeout):")
+
+
+def next_asks_refused(root: Path) -> list[str]:
+    """Conformance cases the new pipeline's harness refuses for a header it does not act on
+    yet (`// judge:`, `before:`, `copies:`, `timeout:`; `ASKS` in tests/programs.rs): each is a
+    case whose verdict nobody measures. 0 is every header judged."""
+    out = []
+    for r in _git(root, "ls-files", "spec/conformance/*.cp", NEXT_TESTS + "/programs/*.cp"):
+        lines = _lines(root / r) if (root / r).is_file() else []
+        if any(NEXT_ASKS_RE.match(l) for l in itertools.takewhile(lambda l: l.startswith("//"), lines)):
+            out.append(r)
+    return out
+
+
 NEXT_LAYER_CRATES = ("cpl-next-ir", "cpl-next-decls", "cpl-next-check", "cpl-next-lower", "cpl-next-link",
                      "cpl-next-own")
 NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config")
@@ -1440,7 +1474,7 @@ def next_layer_foreign_deps(root: Path) -> list[str]:
 def wrong_to_refused(root: Path, ref: str) -> list[str]:
     """Cases `ref` lists wrong that this tree lists neither wrong nor passing: a wrong verdict
     turned into a refusal, which lowers `next_wrong` without fixing the case. Each is refused
-    unless decisions.md names it (`case`), saying why the refusal is the honest verdict."""
+    unless a numbered decisions.md decision names it (`case`), saying why the refusal is the honest verdict."""
     def ids(where: str, name: str) -> set[str]:
         lines = _git(root, "show", f"{where}:{NEXT_TESTS}/{name}") if where else \
             _lines(root / NEXT_TESTS / name) if (root / NEXT_TESTS / name).is_file() else []
@@ -1451,7 +1485,9 @@ def wrong_to_refused(root: Path, ref: str) -> list[str]:
     now = ids("", "wrong.tsv") | ids("", "passing.txt")
     cases = {str(p.relative_to(root / "spec" / "conformance")) for p in (root / "spec" / "conformance").rglob("*.cp")}
     cases |= {"next/" + p.name for p in (root / NEXT_TESTS / "programs").glob("*.cp")}
-    named = (root / "decisions.md").read_text(encoding="utf-8") if (root / "decisions.md").is_file() else ""
+    text = (root / "decisions.md").read_text(encoding="utf-8") if (root / "decisions.md").is_file() else ""
+    # Only a numbered decision (`## N.`) names a case: a mention anywhere else is not a ruling.
+    named = "".join(re.split(r"(?m)^(?=## \d+\.)", text)[1:]) if re.search(r"(?m)^## \d+\.", text) else ""
     return sorted(c for c in was_wrong - now if c in cases and f"`{c}`" not in named)
 
 
@@ -3586,7 +3622,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "unreferenced_scripts", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
+    "unreferenced_scripts", "explain_copy_mismatches", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax", "domain_member_names",
@@ -3726,6 +3762,8 @@ COUNTERS = {
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
+    "next_lent_outside_own": ("new-pipeline places after the checker, outside cpl-next-own, making a type lent (Core)", next_lent_outside_own, True),
+    "next_asks_refused": ("conformance cases refused for a header the new harness does not judge (Core)", next_asks_refused, True),
     "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
