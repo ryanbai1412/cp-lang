@@ -14,14 +14,14 @@ fn check_range(ok: Bool) = @intrinsic("range_check")
 /// Traps R0102 unless `ok`: a value its type doesn't have, as an `Int` converted to an enum that
 /// is no variant's value (R02.7), or to a cut past a domain's ends (R04.2.17).
 @variant_check
-fn check_value(ok: Bool) = @intrinsic("value_check")
+pub fn check_value(ok: Bool) = @intrinsic("value_check")
 fn raw_set<T>(mut r: Raw<T>, i: Int, x: T) = @intrinsic("raw_set")
 /// Moves cell `i` out of `r`, leaving it unset until `raw_set` fills it.
 fn raw_take<T>(mut r: Raw<T>, i: Int) -> T = @intrinsic("move_out")
 /// Storage of `n` unset cells; each is filled by `raw_set` before it is read.
 fn raw_cap<T>(n: Int) -> Raw<T> = @intrinsic("unset_cells")
 
-struct List<T>:
+pub struct List<T>:
     var buf: Raw<T>
     var n: Int
     var cap: Int
@@ -98,7 +98,7 @@ struct List<T>:
         n = 0
 
 
-struct Array<D: Domain, T>:
+pub struct Array<D: Domain, T>:
     buf: Raw<T>
 
     @get fn len(self) -> Int:
@@ -146,7 +146,7 @@ fn write_array<D: Domain>(xs: [D]Int):
         first = false
 
 // A flat sequence of `Char` (R02.3).
-struct Str:
+pub struct Str:
     var chars: List<Char>
 
     @get fn len(self) -> Int:
@@ -194,18 +194,18 @@ fn str_eq(a: Str, b: Str) -> Bool:
         if a.get(i) != b.get(i): return false
     true
 
-fn yes(b: Bool) -> Str:
+pub fn yes(b: Bool) -> Str:
     if b: "YES" else: "NO"
 
 // `?T`: `T` or `None`. `val` is read only when `some`.
-struct Optional<T>:
+pub struct Optional<T>:
     some: Bool
     val: T
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
 /// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `by`
 /// count in ordinals of `D`, which for `Int` are the integers themselves.
-struct Range<D: Domain>:
+pub struct Range<D: Domain>:
     lo: Int
     n: Int
     by: Int
@@ -266,7 +266,7 @@ fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
 
 /// `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
 @pattern
-fn some<T>(v: T) -> ?T = v
+pub fn some<T>(v: T) -> ?T = v
 
 @tuple
 struct Tuple1<A>:
@@ -292,13 +292,13 @@ struct Tuple4<A, B, C, E>:
 
 /// `a == b` and `a != b` (R08.1.5). Tuples, records, structs and enums whose fields all have
 /// it get it field by field unless they write their own (R08.1.6).
-trait Eq:
+pub trait Eq:
     fn eq(self, other: Self) -> Bool
 
 /// `a < b`, and from it `>`, `<=` and `>=` (R08.1.5). An impl writes `lt` or `cmp`, and the
 /// other follows from it, given that `a == b` exactly when neither is less. Derived like `Eq`,
 /// lexicographic in declaration order (R08.1.6).
-trait Ord(Eq):
+pub trait Ord(Eq):
     fn lt(self, other: Self) -> Bool = match self.cmp(other):
         Less => true
         _ => false
@@ -307,36 +307,36 @@ trait Ord(Eq):
 
 /// `a + b` on a type that is not a number (R08.1.5); `-`, `*`, `/`, `%` and `-a` likewise.
 @operator("+")
-trait Add<Rhs = Self>:
+pub trait Add<Rhs = Self>:
     fn add(self, other: Rhs) -> Self
 @operator("-")
-trait Sub<Rhs = Self>:
+pub trait Sub<Rhs = Self>:
     fn sub(self, other: Rhs) -> Self
 @operator("*")
-trait Mul<Rhs = Self>:
+pub trait Mul<Rhs = Self>:
     fn mul(self, other: Rhs) -> Self
 @operator("/")
-trait Div<Rhs = Self>:
+pub trait Div<Rhs = Self>:
     fn div(self, other: Rhs) -> Self
 @operator("%")
-trait Rem<Rhs = Self>:
+pub trait Rem<Rhs = Self>:
     fn rem(self, other: Rhs) -> Self
 @operator("-")
-trait Neg:
+pub trait Neg:
     fn neg(self) -> Self
 @operator("^")
-trait BitXor<Rhs = Self>:
+pub trait BitXor<Rhs = Self>:
     fn bitxor(self, other: Rhs) -> Self
 @operator("|")
-trait BitOr<Rhs = Self>:
+pub trait BitOr<Rhs = Self>:
     fn bitor(self, other: Rhs) -> Self
 @operator("&")
-trait BitAnd<Rhs = Self>:
+pub trait BitAnd<Rhs = Self>:
     fn bitand(self, other: Rhs) -> Self
 
 /// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
 @positions
-trait Domain:
+pub trait Domain:
     /// `D.count`: how many positions it has.
     @get fn count() -> Int = @intrinsic("dom_count")
     /// `D.all`: every position, in walk order (R04.2.30). A value's `s.all(p)` is another member.
@@ -370,7 +370,7 @@ impl Domain for Int:
 /// positions before it. `D.cuts` names its type and, as a value, the domain of them (R04.2.5).
 @member(cuts)
 @cuts
-struct Cut<D: Domain>:
+pub struct Cut<D: Domain>:
     k: Int
 
     /// A cut prints as its integer (R04.2.16).
@@ -408,14 +408,14 @@ impl<D: Domain> Into<Int> for Cut<D>:
 
 /// The numbers' own operators, so `T: Add` holds of them.
 /// `T.zero`: the identity of `T`'s `+`, where a sum starts (R08.1.5).
-trait Zero:
+pub trait Zero:
     @get fn zero() -> Self
 impl Zero for Int:
     @get fn zero() -> Int = 0
 impl Zero for U64:
     @get fn zero() -> U64 = U64(0)
 /// `T.one`: the identity of `T`'s `*`, where a product starts.
-trait One:
+pub trait One:
     @get fn one() -> Self
 impl One for Int:
     @get fn one() -> Int = 1
@@ -509,7 +509,7 @@ impl<A: Ord, B: Ord, C: Ord, E: Ord> Ord for Tuple4<A, B, C, E>:
 /// `x.clone()`: the explicit deep copy, O(size) (R05.2.2). Tuples, records and structs whose
 /// fields all have it get it field by field unless they write their own (R08.1.6).
 @derive
-trait Clone:
+pub trait Clone:
     fn clone(self) -> Self
 
 impl Clone for Int:
@@ -551,13 +551,13 @@ impl<A: Clone, B: Clone, C: Clone, E: Clone> Clone for Tuple4<A, B, C, E>:
     fn clone(a) = Tuple4(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone())
 
 /// The largest of two or more values, the first of equal ones (R11.3.3).
-fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.max_with(if b > a: b else: a)
+pub fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.max_with(if b > a: b else: a)
 
 /// The smallest of two or more values, the first of equal ones (R11.3.3).
-fn min<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.min_with(if b < a: b else: a)
+pub fn min<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.min_with(if b < a: b else: a)
 
 /// A tuple whose fields are all `T`: what `max` and `min` take past their first two values.
-trait Alike<T>:
+pub trait Alike<T>:
     /// The largest of `m` and the fields, the first of equal ones.
     fn max_with(self, m: T) -> T
     /// The smallest of `m` and the fields, the first of equal ones.
@@ -603,7 +603,7 @@ impl Ord for Bool:
 
 /// `T(x)` for a core type `T`: `x` as a `T`, by `x`'s impl (R04.2.28).
 @convert
-trait Into<T>:
+pub trait Into<T>:
     fn into(self) -> T
 
 /// A character's code, and the character with a code, which traps R0201 outside `0..=127`.
@@ -710,25 +710,25 @@ impl<D: Domain> Indexed<D, D> for Range<D>:
     @get fn keys(self) -> Range<D> = self
 /// `s[r]`: the view of `s` over the keys in `r`, made in O(1); traps R0101 unless `r` is a run of
 /// `s`'s keys (R07.4.6). An empty `r` is the empty view at its start.
-@index fn slice<S: Indexed<D, T>, D: Domain, T>(self: S, r: Range<D>) -> Slice<S>:
+@index pub fn slice<S: Indexed<D, T>, D: Domain, T>(self: S, r: Range<D>) -> Slice<S>:
     let (i, ok) = run_in(self.keys, r)
     check_key(ok)
     Slice(self, i, i + r.n)
 /// `s[lo..]`, `s[..hi]`, `s[..=hi]` and `s[..]`: an end left out is that end of `s`'s keys; traps
 /// R0101 unless the ends are keys of `s` in order, or its end (R07.4.6).
-@index fn slice_ends<S: Indexed<D, T>, D: Domain, T>(self: S, lo: ?D, hi: ?D, through: Bool) -> Slice<S>:
+@index pub fn slice_ends<S: Indexed<D, T>, D: Domain, T>(self: S, lo: ?D, hi: ?D, through: Bool) -> Slice<S>:
     let (i, j, ok) = cut_ends(self.keys, lo, hi, through)
     check_key(ok)
     Slice(self, i, j)
 /// `r[a..b]` of a range is the sub-range `a..b`, itself a range: a range is keyed by its own
 /// values and has no source to view (R07.2.15). Traps R0001 unless `a..b` is a run of `r`'s keys.
-@index fn sub_range<D: Domain>(self: Range<D>, r: Range<D>) -> Range<D>:
+@index pub fn sub_range<D: Domain>(self: Range<D>, r: Range<D>) -> Range<D>:
     let (i, ok) = run_in(self, r)
     check_range(ok)
     Range(self.lo + i * self.by, r.n, self.by)
 /// `r[a..]`, `r[..b]`, `r[..=b]` and `r[..]` of a range: the sub-range between the ends, an end
 /// left out being `r`'s. Traps R0001 unless the ends are keys of `r` in order, or its end.
-@index fn sub_range_ends<D: Domain>(self: Range<D>, lo: ?D, hi: ?D, through: Bool) -> Range<D>:
+@index pub fn sub_range_ends<D: Domain>(self: Range<D>, lo: ?D, hi: ?D, through: Bool) -> Range<D>:
     let (i, j, ok) = cut_ends(self, lo, hi, through)
     check_range(ok)
     Range(self.lo + i * self.by, j - i, self.by)

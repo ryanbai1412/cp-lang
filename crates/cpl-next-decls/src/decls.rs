@@ -670,11 +670,7 @@ fn outer_view(
         prelude,
     } = *sc;
     let index = |m: &str| names.iter().position(|n| n == m);
-    let export = |t: usize, n: &str| {
-        (t == CORE.0 || public[t].contains(n))
-            .then(|| own[t].get(n).copied())
-            .flatten()
-    };
+    let export = |t: usize, n: &str| exported(sc, t, n);
     // The core holds the slice's own forms of some std names; a prelude name never hides one.
     let mut v = HashMap::new();
     if program {
@@ -684,13 +680,16 @@ fn outer_view(
             }
         }
     }
-    v.extend(own[CORE.0].iter().map(|(n, x)| (n.clone(), *x)));
+    // Every other module uses what the core exports, as if by `use core.*`.
+    if mi != CORE.0 {
+        for n in exports(sc, CORE.0) {
+            if let Some(x) = export(CORE.0, &n) {
+                v.insert(n, x);
+            }
+        }
+    }
     let mut imported: HashMap<String, Named> = HashMap::new();
-    // A core `pub use` names its items in every module, as core's own declarations are; the
-    // module's own imports come after it.
-    let reexported = |(m, s): &&(ModId, &ast::Stmt)| m.0 == CORE.0 && s.public && mi != CORE.0;
-    let mine = |(m, _): &&(ModId, &ast::Stmt)| m.0 == mi;
-    for (_, s) in (imports.iter().filter(reexported)).chain(imports.iter().filter(mine)) {
+    for (_, s) in imports.iter().filter(|(m, _)| m.0 == mi) {
         let StmtKind::Use {
             path,
             names: ns,
@@ -775,6 +774,43 @@ fn outer_view(
         }
     }
     v
+}
+
+/// The names module `t` exports: its `pub` declarations and what its `pub use` lines name.
+fn exports(sc: &Scopes, t: usize) -> Vec<String> {
+    let mut out: Vec<String> = sc.public[t].iter().cloned().collect();
+    for (_, s) in sc.imports.iter().filter(|(m, s)| m.0 == t && s.public) {
+        if let StmtKind::Use { names, .. } = &s.kind {
+            out.extend(names.iter().map(|n| n.text.clone()));
+        }
+    }
+    out
+}
+
+/// What `n` means to a module that imports it from module `t`: a `pub` declaration of `t`'s,
+/// or what a `pub use` line of `t`'s names it, followed to the module that declares it.
+fn exported(sc: &Scopes, t: usize, n: &str) -> Option<Named> {
+    let mut seen = HashSet::new();
+    let mut t = t;
+    loop {
+        if sc.public[t].contains(n) {
+            return sc.own[t].get(n).copied();
+        }
+        if !seen.insert(t) {
+            return None;
+        }
+        t = sc.imports.iter().filter(|(m, s)| m.0 == t && s.public).find_map(|(_, s)| {
+            let StmtKind::Use {
+                path, names, glob, ..
+            } = &s.kind
+            else {
+                return None;
+            };
+            let module = path.iter().map(|p| p.text.as_str()).collect::<Vec<_>>().join(".");
+            let named = *glob || names.iter().any(|x| x.text == n);
+            named.then(|| sc.names.iter().position(|m| *m == module)).flatten()
+        })?;
+    }
 }
 
 /// The item a method sits in: its type parameters and set parameters come first.

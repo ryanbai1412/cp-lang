@@ -4,6 +4,9 @@
 //! example: `var m = Map<Str, Int>(); m["a"] += 2; m["a"] == 2`
 use std.seq.{IndexGet, Seq, Sized}
 
+/// A missing key traps (R07.12.9).
+fn check_key(ok: Bool) = @intrinsic("key_check")
+
 /// The balanced search tree under `Set` and `Map`: an AVL tree whose nodes are slots of its
 /// lists, so a removed node's slot is reused. Keys are in `<` order, each once.
 struct OrdTree<K, V>:
