@@ -1424,16 +1424,8 @@ impl Fc<'_> {
                 let lay = self.lay(&t);
                 let at = self.c.lays.part(lay, *i).map_or(0, |(at, _)| at);
                 off(&mut root, &mut steps, at);
-                let part = match (&t, p) {
-                    (CTy::Clo(k), _) => self.p.captures(k).get(*i).cloned(),
-                    (CTy::Fn(_, _, ms), Place::Variant(..)) => {
-                        ms.get(*i).map(|k| CTy::Clo(Box::new(k.clone())))
-                    }
-                    (_, Place::Variant(..)) => {
-                        self.p.sums.get(&t).and_then(|ps| ps.get(*i).cloned())
-                    }
-                    _ => self.p.parts(&t).get(*i).cloned(),
-                };
+                let part =
+                    (self.c.lays.part(lay, *i)).map(|(_, l)| self.c.lays.ty[l as usize].clone());
                 (root, steps, part.unwrap_or(CTy::Error))
             }
             Place::Deref(b) => {

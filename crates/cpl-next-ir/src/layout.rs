@@ -26,6 +26,8 @@ pub struct Layouts {
     /// The offsets of the handles a value holds, when they are the same for every value (no
     /// union decides them).
     pub flat: Vec<Option<Vec<u32>>>,
+    /// The type each layout was made for: what a backend names it by.
+    pub ty: Vec<CTy>,
     of: HashMap<CTy, Lay>,
 }
 
@@ -103,6 +105,7 @@ impl Layouts {
         self.flat.push(flat);
         self.shape.push(shape);
         self.size.push(size);
+        self.ty.push(t.clone());
         self.of.insert(t.clone(), l);
         l
     }
@@ -119,6 +122,10 @@ impl Layouts {
     fn union(&mut self, ls: Vec<Lay>) -> (Shape, u32) {
         let size = 1 + ls.iter().map(|l| self.size[*l as usize]).max().unwrap_or(0);
         (Shape::Union(ls), size)
+    }
+    /// The layout made for `t`, if one was.
+    pub fn get(&self, t: &CTy) -> Option<Lay> {
+        self.of.get(t).copied()
     }
     /// The word offset and layout of field `i` of a struct, or of member `i`'s payload.
     pub fn part(&self, l: Lay, i: usize) -> Option<(u32, Lay)> {

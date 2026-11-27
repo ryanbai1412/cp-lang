@@ -1,6 +1,7 @@
 //! Contract 7: the C++ emitter. A printer over canonical IR: one C++ shape per
 //! node kind, and no decision of its own.
 use cpl_next_ir::ir::*;
+use cpl_next_ir::layout::{Layouts, Shape};
 use cpl_next_ir::ops;
 use cpl_next_ir::prog::{CTy, Program};
 use std::collections::{HashMap, HashSet};
@@ -201,6 +202,8 @@ struct Emit<'a> {
     recursive: Vec<bool>,
     names: HashMap<CTy, String>,
     order: Vec<CTy>,
+    /// The IR's layout table: field order, members and where the tag is.
+    lays: Layouts,
     /// The lines of the fn being printed (`Func::lines`).
     lines: std::cell::Cell<&'a [u32]>,
 }
@@ -212,6 +215,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         recursive: recursive_regions(funcs),
         names: HashMap::new(),
         order: Vec::new(),
+        lays: Layouts::default(),
         lines: std::cell::Cell::new(&[]),
     };
     for f in funcs {
@@ -232,49 +236,38 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
     for t in &e.order {
         put_line!(s, "struct {};", e.names[t]);
     }
+    // Fields and members in the order, and the tag where, the IR's layout table puts them.
+    let mut lays = std::mem::take(&mut e.lays);
     for t in e.order.clone() {
+        if !matches!(t, CTy::Struct(..) | CTy::Clo(_) | CTy::Fn(..)) {
+            continue;
+        }
         let n = e.names[&t].clone();
-        match &t {
-            CTy::Struct(..) if p.sums.contains_key(&t) => {
+        let l = lays.of(p, &t) as usize;
+        let part = |m: u32| e.names[&lays.ty[m as usize]].clone();
+        match &lays.shape[l] {
+            Shape::Union(ms) => {
+                let ms: Vec<String> = ms.iter().map(|m| part(*m)).collect();
                 let mut body = String::from("int64_t tag;");
-                for (i, k) in p.sums[&t].iter().enumerate() {
-                    put!(body, " {} v{i};", e.names[k]);
+                for (i, m) in ms.iter().enumerate() {
+                    put!(body, " {m} v{i};");
                 }
-                for (i, k) in p.sums[&t].iter().enumerate() {
-                    put!(body, " static {n} m{i}(const {}& x) {{ {n} u{{}}; u.tag = {i}; u.v{i} = x; return u; }}", e.names[k]);
+                for (i, m) in ms.iter().enumerate() {
+                    put!(body, " static {n} m{i}(const {m}& x) {{ {n} u{{}}; u.tag = {i}; u.v{i} = x; return u; }}");
                 }
                 put_line!(s, "struct {n} {{ {body} }};");
             }
-            CTy::Struct(..) => {
-                let fs: Vec<String> = p.structs[&t]
-                    .iter()
-                    .enumerate()
-                    .map(|(i, f)| format!("{} f{i};", e.names[f]))
+            Shape::Struct(fs) => {
+                let fs: Vec<String> = (fs.iter().enumerate())
+                    .map(|(i, (_, f))| format!("{} f{i};", part(*f)))
                     .collect();
                 put_line!(s, "struct {n} {{ {} }};", fs.join(" "));
             }
-            CTy::Clo(k) => {
-                let fs: Vec<String> = p
-                    .captures(k)
-                    .iter()
-                    .enumerate()
-                    .map(|(i, f)| format!("{} f{i};", e.names[f]))
-                    .collect();
-                put_line!(s, "struct {n} {{ {} }};", fs.join(" "));
-            }
-            CTy::Fn(_, _, ms) => {
-                let mut body = String::from("int64_t tag;");
-                for (i, k) in ms.iter().enumerate() {
-                    put!(body, " {} v{i};", e.names[&CTy::Clo(Box::new(k.clone()))]);
-                }
-                for (i, k) in ms.iter().enumerate() {
-                    put!(body, " static {n} m{i}(const {}& x) {{ {n} u{{}}; u.tag = {i}; u.v{i} = x; return u; }}", e.names[&CTy::Clo(Box::new(k.clone()))]);
-                }
-                put_line!(s, "struct {n} {{ {body} }};");
-            }
-            _ => {}
+            // A struct, closure or fn value laid out as a word or nothing has no parts.
+            Shape::Zero | Shape::Word | Shape::Handle => put_line!(s, "struct {n} {{ }};"),
         }
     }
+    e.lays = lays;
     for (i, t) in p.globals.iter().enumerate() {
         put_line!(s, "static {} g{i}{{}};", e.names[t]);
     }
@@ -543,6 +536,18 @@ impl Emit<'_> {
             Arg::View(p) | Arg::Lend(p) => self.place(p),
         }
     }
+    /// A struct's field types, in the layout table's order (not a closure's or a union's).
+    fn fields(&self, t: &CTy) -> Option<Vec<CTy>> {
+        let l = (self.lays.get(t)).filter(|_| matches!(t, CTy::Struct(..)))?;
+        match &self.lays.shape[l as usize] {
+            Shape::Struct(fs) => Some(
+                fs.iter()
+                    .map(|(_, f)| self.lays.ty[*f as usize].clone())
+                    .collect(),
+            ),
+            _ => None,
+        }
+    }
     fn expr(&self, e: &Expr<CTy>) -> String {
         let list = |xs: &[Expr<CTy>]| {
             xs.iter()
@@ -573,10 +578,10 @@ impl Emit<'_> {
             EK::Lent(p) => format!("(&{})", self.place(p)),
             EK::AddrOf(p) => format!("(&{})", self.place(p)),
             EK::Tag(p) => format!("{}.tag", self.place(p)),
-            EK::MakeStruct(xs) if self.p.structs.contains_key(&e.ty) => {
+            EK::MakeStruct(xs) if self.fields(&e.ty).is_some() => {
                 // A lent slot filled from a lent place gets the pointer, not what it points at.
-                let fs = &self.p.structs[&e.ty];
-                let xs: Vec<String> = (xs.iter().zip(fs))
+                let fs = self.fields(&e.ty).unwrap_or_default();
+                let xs: Vec<String> = (xs.iter().zip(&fs))
                     .map(|(x, f)| match (&x.kind, f) {
                         (EK::Copy(Place::Deref(q) | Place::Through(q)), CTy::Lent(_)) => {
                             self.place(q)

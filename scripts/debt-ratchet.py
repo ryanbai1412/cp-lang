@@ -1414,6 +1414,26 @@ def next_repr_second_defs(root: Path) -> list[str]:
                 out.append(f"{rel}:{i}")
     return out
 
+NEXT_LAYOUT_READERS = ("crates/cpl-next-cpp/src/", "crates/cpl-next-engine/src/")
+
+
+def next_layout_outside_table(root: Path) -> list[str]:
+    """Lines in a new-pipeline backend (the engine, the C++ emitter) that read a struct's fields
+    or a union's members straight from `Program::structs`/`Program::sums`: the field order, the
+    members and where the tag goes come from the IR's one layout table
+    (`cpl_next_ir::layout::Layouts`), so the two backends cannot lay a value out differently."""
+    pat = re.compile(r"\.(structs|sums)\b")
+    out = []
+    for f in _rs_files(root, tests=False):
+        rel = _rel(root, f)
+        if not rel.startswith(NEXT_LAYOUT_READERS):
+            continue
+        for i, l in enumerate(_lines(f), 1):
+            if pat.search(l.split("//")[0]):
+                out.append(f"{rel}:{i}")
+    return out
+
+
 def next_core_standin_lines(root: Path) -> list[str]:
     """Lines of `crates/cpl-next/std.cp`, the private stand-in for core: std loads like any
     library through the module loader, so this reaches 0 when core lives in std/."""
@@ -4015,7 +4035,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"next_oracle_callers", 
+HARD_ZERO = frozenset({"next_oracle_callers", "next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
@@ -4156,6 +4176,7 @@ COUNTERS = {
     "next_handoff_side_fields": ("front-end tables the lower -> link handoff carries beside the IR (Core)", next_handoff_side_fields, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
+    "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
     "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
