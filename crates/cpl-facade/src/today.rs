@@ -31,7 +31,35 @@ pub mod trace {
     pub fn trap_config(source: &str) -> TraceConfig {
         cpl_interp::trace::trap_config(source).into()
     }
+    pub use crate::{Divergence, Stage};
     pub use cpl_interp::trace::*;
+
+    /// Where a solution and its brute first part ways on one input.
+    pub fn explain_divergence(
+        source: &str,
+        fast: &Recording,
+        slow: &Recording,
+    ) -> Option<Divergence> {
+        cpl_interp::trace::explain_divergence(source, fast, slow).map(Into::into)
+    }
+
+    /// Where a solution that never finishes goes round.
+    pub fn stuck_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
+        cpl_interp::trace::stuck_divergence(source, fast).map(Into::into)
+    }
+
+    /// The solution's last answer, when it is the line that differs.
+    pub fn answered_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
+        cpl_interp::trace::answered_divergence(source, fast).map(Into::into)
+    }
+
+    /// The stages a solution and its brute both name, side by side.
+    pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
+        cpl_interp::trace::stages(fast, slow)
+            .into_iter()
+            .map(Into::into)
+            .collect()
+    }
 
     use crate::{Outcome, Program, RunInput, Stop};
 

@@ -4,7 +4,7 @@
 use crate::case::{Ruling, Transcript};
 use crate::cli::Stage;
 use crate::run::{Report, StressError};
-use cpl_facade::today::trace::Divergence;
+use cpl_facade::Divergence;
 use cpl_json::{obj, Value};
 use std::collections::BTreeMap;
 

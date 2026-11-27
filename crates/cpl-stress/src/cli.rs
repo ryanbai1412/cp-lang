@@ -70,7 +70,7 @@ pub struct Traced {
     /// The two traces as one self-contained page.
     pub html: String,
     /// With `--explain`, the first value the two give a variable differently.
-    pub divergence: Option<cpl_facade::today::trace::Divergence>,
+    pub divergence: Option<cpl_facade::Divergence>,
 }
 
 /// Renders a retraced failing case as one self-contained page, from the
@@ -356,7 +356,7 @@ use cpl_diag::Shown;
 /// `1st`, `2nd`, `3rd`, `11th`.
 /// Where the solution and its alt part ways, as `cpl stress` and
 /// `cpl locate` print it.
-pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_facade::today::trace::Divergence) {
+pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_facade::Divergence) {
     let ordinal = ordinal(d.nth);
     if let (true, Some((line, held))) = (d.stuck, &d.fast) {
         let _ = writeln!(
@@ -409,7 +409,7 @@ pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_facade::today::trace::Di
 
 /// The headline of a divergence: `` first wrong call: `tri(k: 1)`, the 1st
 /// call of `tri` ``.
-pub(crate) fn divergence_title(d: &cpl_facade::today::trace::Divergence) -> String {
+pub(crate) fn divergence_title(d: &cpl_facade::Divergence) -> String {
     let ordinal = ordinal(d.nth);
     match d.name.split_once('(').filter(|_| d.call) {
         Some((f, _)) => format!(

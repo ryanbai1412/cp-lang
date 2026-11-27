@@ -18,6 +18,7 @@ mod run;
 mod session;
 mod snapshot;
 pub mod today;
+mod trace;
 
 pub use cpl_diag::{Diagnostic, Severity};
 #[cfg(feature = "cpp")]
@@ -38,3 +39,4 @@ pub use session::{
     JUDGE_DECORATORS,
 };
 pub use snapshot::{FileId, Snapshot, Text, World};
+pub use trace::{Divergence, Stage};

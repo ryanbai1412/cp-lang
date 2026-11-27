@@ -6,7 +6,7 @@
 use crate::cli::divergence_title;
 use crate::report::StressResult;
 use cpl_diag::view::{code_block, Diagnostic, Kind, Line, Status, View};
-use cpl_facade::today::trace::Divergence;
+use cpl_facade::Divergence;
 
 pub fn view(result: &StressResult, panel: String) -> View {
     let report = &result.report;
@@ -187,7 +187,7 @@ mod tests {
     use crate::cli::Stage;
     use crate::judge::Verdict;
     use crate::run::{Failure, Report};
-    use cpl_facade::today::trace::Divergence;
+    use cpl_facade::Divergence;
 
     fn failing(stages: &[(&str, u32, &str, &str)], expected: &str) -> StressResult {
         let failure = Failure {

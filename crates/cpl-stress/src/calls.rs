@@ -2,7 +2,8 @@
 //! part that returns something else than its alt on the same arguments.
 //! `cpl stress` and the browser's in-process stress both explain with it.
 
-use cpl_facade::today::trace::{mentions, named_values, Divergence, Recording};
+use cpl_facade::today::trace::{mentions, named_values, Recording};
+use cpl_facade::Divergence;
 
 /// With `@alt(f)` fns swapped in, the call of a part `f` that first
 /// returns something else than its alt does on the same arguments, with
