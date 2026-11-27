@@ -51,11 +51,7 @@ enum Origin {
     Construct,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
-pub enum VarRef {
-    Local(LocalId),
-    Global(LocalId),
-}
+pub use cpl_next_ir::whole::VarRef;
 
 #[derive(Clone, Debug)]
 pub struct TExpr {

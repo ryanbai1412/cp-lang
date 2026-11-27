@@ -291,7 +291,6 @@ name = "cpl-next-link"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
- "cpl-next-check",
  "cpl-next-decls",
  "cpl-next-ir",
  "cpl-syntax",

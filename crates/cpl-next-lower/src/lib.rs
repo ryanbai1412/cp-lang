@@ -20,6 +20,8 @@ pub struct Generic {
     /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
     pub untyped: Vec<SourceId>,
     pub adds: cpl_next_ir::ty::SetAdds,
+    /// What link reads of the program beyond its fns.
+    pub whole: cpl_next_ir::whole::Whole,
 }
 
 struct Lw<'a> {
@@ -73,6 +75,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             params: typed.param_adds.clone(),
             calls: typed.call_adds.clone(),
         },
+        whole: whole(typed),
     };
     let mut lw = Lw {
         d,
@@ -267,6 +270,27 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
     out.untyped = lw.untyped;
     out.globals = lw.globals;
     out
+}
+
+fn whole(typed: &Typed) -> cpl_next_ir::whole::Whole {
+    use cpl_next_ir::whole::{Dom, Global, Whole};
+    Whole {
+        domains: (typed.domains.iter())
+            .map(|d| Dom {
+                name: d.name.clone(),
+                len: d.len,
+                lo: d.lo,
+                owner: d.owner,
+            })
+            .collect(),
+        globals: (typed.globals.iter())
+            .map(|g| Global {
+                name: g.name.clone(),
+                top: g.top,
+            })
+            .collect(),
+        deferred: typed.deferred.clone(),
+    }
 }
 
 /// `t` with the lent marks `shape` (the same type, maybe written otherwise) has.

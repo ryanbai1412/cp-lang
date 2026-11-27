@@ -1,11 +1,11 @@
 //! Contract 5: generic IR -> instances. The link step: it decides which
 //! instances exist and what each function-value set holds, from the whole program.
-use cpl_next_check::Typed;
 use cpl_next_decls::decls::Decls;
 use cpl_next_decls::diag::Msg;
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_ir::whole::Whole;
 use std::collections::{BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, plain, CSet, CTy, InstKey, Program};
@@ -94,7 +94,7 @@ fn closed_fn(d: &Decls, f: FnId) -> bool {
 /// A closure in a signature takes its set from the calls that reach the fn.
 pub fn link(
     d: &Decls,
-    typed: &Typed,
+    whole: &Whole,
     generic: &HashMap<FuncKey, Func<Ty>>,
     globals: &[Ty],
     adds: &SetAdds,
@@ -159,7 +159,7 @@ pub fn link(
         if let Some(f) = key.func.decl() {
             if said.insert(f) {
                 l.errors
-                    .extend(typed.deferred.get(&f).into_iter().flatten().cloned());
+                    .extend(whole.deferred.get(&f).into_iter().flatten().cloned());
             }
         }
         // A fn used at a domain declared in its own body: inside that instance the type
@@ -167,19 +167,19 @@ pub fn link(
         // has to be keyed by its binding for this to run; until then it is refused.
         let owner = match &key.func {
             FuncKey::Decl(f) | FuncKey::Ctx(f, _) => Some(*f),
-            FuncKey::Lambda(id) => typed.lambdas[id.0].owner,
+            FuncKey::Lambda(_) => generic[&key.func].maker,
             FuncKey::Main | FuncKey::Case => None,
         };
         let mut doms = Vec::new();
         key.targs.iter().for_each(|t| doms_of(t, &mut doms));
         if let Some(d) = doms
             .iter()
-            .find(|d| owner.is_some() && typed.domains[**d].owner == owner)
+            .find(|d| owner.is_some() && whole.domains[**d].owner == owner)
         {
             l.errors.push(
                 Unbuilt::DomainTypeArg {
                     func: generic[&key.func].name.clone(),
-                    domain: typed.domains[*d].name.clone(),
+                    domain: whole.domains[*d].name.clone(),
                 }
                 .into(),
             );
@@ -222,7 +222,7 @@ pub fn link(
         errors: l.errors,
     };
     if p.errors.is_empty() {
-        thread_values(&mut p, typed);
+        thread_values(&mut p, whole);
     }
     if p.errors.is_empty() {
         check_finite(&mut p);
@@ -1221,14 +1221,14 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
 /// A function that needs the size of a domain it did not declare gets a hidden
 /// leading parameter for it; a closure captures it when it is made. Which
 /// functions need which is a whole-program question, so the link step answers it.
-fn thread_values(p: &mut Program, typed: &Typed) {
-    use cpl_next_check::VarRef;
+fn thread_values(p: &mut Program, whole: &Whole) {
+    use cpl_next_ir::whole::VarRef;
     let n = p.insts.len();
     // Where an instance can read a domain's size without being handed it.
     // A domain carries two values, its size and the integer of its first position:
     // value `2 * d` is the size of domain `d` and `2 * d + 1` its start.
     let own = |f: &Func<CTy>, v: usize| -> Option<Place> {
-        let info = &typed.domains[v / 2];
+        let info = &whole.domains[v / 2];
         let var = if v.is_multiple_of(2) {
             info.len
         } else {
@@ -1237,7 +1237,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         match (var, &f.key, info.owner) {
             (VarRef::Global(g), FuncKey::Main | FuncKey::Case, None) => Some(Place::Global(g)),
             // A top-level domain of the file is one shared variable. One inside a block is not: a loop makes a new one.
-            (VarRef::Global(g), _, None) if typed.globals.get(g).is_some_and(|x| x.top) => {
+            (VarRef::Global(g), _, None) if whole.globals.get(g).is_some_and(|x| x.top) => {
                 Some(Place::Global(g))
             }
             (VarRef::Local(l), FuncKey::Decl(k), Some(o)) if *k == o => Some(Place::Local(l)),
@@ -1493,7 +1493,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
         }
     }
     for i in 0..n {
-        let own_places = (0..2 * typed.domains.len())
+        let own_places = (0..2 * whole.domains.len())
             .map(|d| own(&p.insts[i], d))
             .collect();
         let rw = Rw {
@@ -1517,11 +1517,11 @@ fn thread_values(p: &mut Program, typed: &Typed) {
 /// Contract 8: event points, placed on instance IR after the link step, only when asked for.
 /// They are not in generic IR and are not uses for ownership. Reported here: entering and
 /// leaving a fn of the user's file, and each write to one of its top-level bindings.
-pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
+pub fn add_events(p: &mut Program, whole: &Whole, d: &Decls) {
     fn shown(t: &CTy) -> bool {
         matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Dom(_))
     }
-    fn block(b: Vec<Stmt<CTy>>, exit: Option<&str>, typed: &Typed) -> Vec<Stmt<CTy>> {
+    fn block(b: Vec<Stmt<CTy>>, exit: Option<&str>, whole: &Whole) -> Vec<Stmt<CTy>> {
         let mut out = Vec::new();
         for s in b {
             match s {
@@ -1536,8 +1536,8 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                 }
                 Stmt::Assign(Place::Global(g), e) => {
                     let (top, name, ty) = (
-                        typed.globals[g].top,
-                        typed.globals[g].name.clone(),
+                        whole.globals[g].top,
+                        whole.globals[g].name.clone(),
                         e.ty.clone(),
                     );
                     out.push(Stmt::Assign(Place::Global(g), e));
@@ -1553,14 +1553,14 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                     }
                 }
                 Stmt::If(c, a, b2) => {
-                    out.push(Stmt::If(c, block(a, exit, typed), block(b2, exit, typed)))
+                    out.push(Stmt::If(c, block(a, exit, whole), block(b2, exit, whole)))
                 }
                 Stmt::Loop(a, b2, s) => {
-                    out.push(Stmt::Loop(block(a, exit, typed), block(b2, exit, typed), s))
+                    out.push(Stmt::Loop(block(a, exit, whole), block(b2, exit, whole), s))
                 }
                 Stmt::Switch(c, arms) => out.push(Stmt::Switch(
                     c,
-                    arms.into_iter().map(|a| block(a, exit, typed)).collect(),
+                    arms.into_iter().map(|a| block(a, exit, whole)).collect(),
                 )),
                 Stmt::Region {
                     target,
@@ -1575,7 +1575,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
                     args,
                     var,
                     lend,
-                    body: block(body, exit, typed),
+                    body: block(body, exit, whole),
                     site,
                     body_site,
                 }),
@@ -1593,7 +1593,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
         };
         let body = std::mem::take(&mut f.body);
         let name = f.name.clone();
-        let mut body = block(body, if user_fn { Some(&name) } else { None }, typed);
+        let mut body = block(body, if user_fn { Some(&name) } else { None }, whole);
         if user_fn {
             let args = f.params[f.n_captures..]
                 .iter()

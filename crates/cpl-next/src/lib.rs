@@ -273,7 +273,7 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
-    let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals, &f.g.adds);
+    let mut prog = inst::link(&f.d, &f.g.whole, &f.g.funcs, &f.g.globals, &f.g.adds);
     let names: Vec<(String, bool)> = (f.t.globals.iter())
         .map(|g| (g.name.clone(), g.mutable))
         .collect();
@@ -295,13 +295,13 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
     out.extend(diags(Stage::Decls, &d.errors));
     let values = consts::Evaluator::new(&d, &loaded, &main);
-    let mut t = check::check(&d, &main, &loaded, &values, &[], judge_of(loaded.program()));
+    let t = check::check(&d, &main, &loaded, &values, &[], judge_of(loaded.program()));
     out.extend(diags(Stage::Check, &t.errors));
-    let g = lower::lower(&d, &t, &loaded);
+    let mut g = lower::lower(&d, &t, &loaded);
     out.extend(diags(Stage::Lower, &g.errors));
     for (f, es) in &g.deferred {
         let low = es.iter().map(|e| e.clone().from_layer(Stage::Lower.name()));
-        t.deferred.entry(*f).or_default().extend(low);
+        g.whole.deferred.entry(*f).or_default().extend(low);
     }
     Front {
         loaded,
@@ -386,7 +386,7 @@ pub fn compile(
         return Err(link(&prog.errors));
     }
     if events {
-        inst::add_events(&mut prog, &f.t, &f.d);
+        inst::add_events(&mut prog, &f.g.whole, &f.d);
     }
     let canon = inst::canonicalize(&prog).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);

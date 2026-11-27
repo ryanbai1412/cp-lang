@@ -2807,15 +2807,14 @@ def timeout_passes(root: Path) -> list[str]:
     return sorted(arms + py)
 
 
-LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|VarRef|typed)\b")
+LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|typed)\b")
 
 
 def link_reads_check(root: Path) -> list[str]:
     """Lines of the linker (cpl-next-link) that read the checker's typed tree: the one edge in the
     new pipeline that skips a layer (`cpl-next-link -> cpl-next-check`). Link should consume the
-    generic IR only, but `link`, `thread_values` and `add_events` still read `Typed`'s domains,
-    globals, lambdas, return sets and deferred errors, which the generic IR does not carry yet.
-    Lowering handing those facts on in `cpl-next-ir` takes this to 0 and the edge with it."""
+    generic IR only: lowering hands the program-wide facts it needs on as `cpl-next-ir`'s
+    `whole::Whole`, so this stays 0 and the edge stays gone."""
     out = []
     for p in _rs_files(root, "crates/cpl-next-link/src", tests=False):
         rel = _rel(root, p)
