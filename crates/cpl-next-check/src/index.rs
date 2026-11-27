@@ -316,7 +316,11 @@ impl Cx<'_> {
     pub(super) fn key_of(&mut self, s: &Ty) -> Option<Ty> {
         match self.shallow(s) {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
-                .find(|t| self.d.traits[t.tr.0].methods.contains_key(&self.index_read()))
+                .find(|t| {
+                    self.d.traits[t.tr.0]
+                        .methods
+                        .contains_key(&self.index_read())
+                })
                 .and_then(|t| t.args.first().cloned()),
             _ => self.read_sig(&self.recv_ty(s)).map(|(k, _)| k),
         }
@@ -730,7 +734,6 @@ impl Cx<'_> {
         }
     }
 }
-
 
 pub(super) fn unparen(mut e: &ast::Expr) -> &ast::Expr {
     while let ExprKind::Paren(inner) = &e.kind {

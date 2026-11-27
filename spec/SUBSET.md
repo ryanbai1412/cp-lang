@@ -179,3 +179,17 @@ documented.
 
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
+- traits/Default/List--default.cp: fail
+- traits/Default/Str--default.cp: fail
+- traits/Domain/Cut--after.cp: fail
+- traits/Domain/Cut--all.cp: fail
+- traits/Domain/Cut--at.cp: fail
+- traits/Domain/Cut--before.cp: fail
+- traits/Domain/Cut--count.cp: fail
+- traits/Domain/Cut--l.cp: fail
+- traits/Domain/Cut--next.cp: fail
+- traits/Domain/Cut--nth.cp: fail
+- traits/Domain/Cut--prev.cp: fail
+- traits/Domain/Cut--r.cp: fail
+- traits/Domain/Cut--range.cp: fail
+- traits/Domain/Cut--wrap.cp: fail

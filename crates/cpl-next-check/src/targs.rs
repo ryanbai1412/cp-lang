@@ -29,7 +29,10 @@ impl Cx<'_> {
             .then(|| self.d.fn_named(self.module, n))
             .flatten();
         let Some(d) = fd.filter(|d| !self.d.f(*d).generics.is_empty()) else {
-            if fd.is_none() && self.lookup(n).is_none() && self.d.struct_named(self.module, n).is_some() {
+            if fd.is_none()
+                && self.lookup(n).is_none()
+                && self.d.struct_named(self.module, n).is_some()
+            {
                 self.err(span, Unbuilt::TypeArgsValue);
                 return err;
             }
