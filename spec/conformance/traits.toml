@@ -4013,3 +4013,46 @@ print(s)
 """
 out = "hi"
 input = "hi there\\n"
+
+[case."Filled/Array/filled"]
+code = """
+fn mk<A: Filled<Int>>() -> A = A.filled(7)
+domain P = 0..3
+let a: [P]Int = mk()
+print(a[P(1)], a.len)
+"""
+out = "7 3"
+
+[case."ListLiteral/List/with_room"]
+code = """
+fn mk<A: ListLiteral<Int>>() -> A = A.with_room(3)
+let xs: List<Int> = mk()
+print(xs.len)
+"""
+out = "0"
+
+[case."ListLiteral/List/push"]
+code = """
+fn mk<A: ListLiteral<Int>>() -> A:
+    var a = A.with_room(0)
+    a.push(4)
+    a.push(5)
+    a
+let xs: List<Int> = mk()
+print(xs.len, xs[1])
+"""
+out = "2 5"
+
+[case."RangeEnds/Range/start"]
+code = """
+fn lo<R: RangeEnds<Int>>(r: R) -> Int = r.start().ord
+print(lo(2..5))
+"""
+out = "2"
+
+[case."RangeEnds/Range/end"]
+code = """
+fn hi<R: RangeEnds<Int>>(r: R) -> Int = r.end().ord
+print(hi(2..5))
+"""
+out = "5"

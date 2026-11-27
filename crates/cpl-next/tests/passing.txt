@@ -2387,6 +2387,7 @@ traits/Eq/Tuple6--eq.cp
 traits/Eq/Tuple7--eq.cp
 traits/Eq/Tuple8--eq.cp
 traits/Eq/Tuple9--eq.cp
+traits/Filled/Array--filled.cp
 traits/HasId/Comm--id.cp
 traits/Hashable/HashVal--hash_token.cp
 traits/IndexGet/Array--at.cp
@@ -2425,6 +2426,8 @@ traits/Keyed/Range--items.cp
 traits/Keyed/Slice--items.cp
 traits/Keyed/Str--items.cp
 traits/Keyed/Zipped--items.cp
+traits/ListLiteral/List--push.cp
+traits/ListLiteral/List--with_room.cp
 traits/Matroid/ColorMatroid--can_add.cp
 traits/Matroid/ColorMatroid--can_swap.cp
 traits/Matroid/ColorMatroid--rebuild.cp
@@ -2475,6 +2478,8 @@ traits/Positional/Rebased--nth.cp
 traits/Positional/Slice--nth.cp
 traits/Positional/Str--nth.cp
 traits/Positional/Zipped--nth.cp
+traits/RangeEnds/Range--end.cp
+traits/RangeEnds/Range--start.cp
 traits/Read/Tuple2--read.cp
 traits/Read/Tuple3--read.cp
 traits/Read/Tuple4--read.cp
