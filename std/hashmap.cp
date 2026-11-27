@@ -15,13 +15,13 @@ use std.seq.{Seq, Track}
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
 /// `get`, `contains`, `set`, `remove`, and `get_or_insert` are \(O(1)\) expected.
 pub struct FlatMap<V>:
-    ks: List<Int>
-    vs: List<V>
-    state: List<Int>
+    var ks: List<Int>
+    var vs: List<V>
+    var state: List<Int>
     default_val: V
     salt: U64
-    live: Int
-    used: Int
+    var live: Int
+    var used: Int
 
     /// [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`).
     ///

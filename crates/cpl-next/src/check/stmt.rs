@@ -1159,6 +1159,14 @@ impl<'a> Cx<'a> {
                     out.push(TStmt::Expr(b));
                 }
             }
+            // `unchecked:` turns every check off in its block (R09.4.3); overflow is the one whose
+            // result it defines: `Int` arithmetic wraps.
+            StmtKind::Unchecked(body) => {
+                let outer = std::mem::replace(&mut self.wraps, true);
+                let b = self.block(body, None);
+                self.wraps = outer;
+                out.push(TStmt::Expr(b));
+            }
             other => {
                 if let Some(n) = crate::decls::item_name(s) {
                     self.refused_names.insert(n.to_string());
