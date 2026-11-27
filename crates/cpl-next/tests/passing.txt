@@ -1770,6 +1770,8 @@ next/n_list_02_move_within.cp
 next/n_list_03_let_receiver.cp
 next/n_list_add_01_joins_any_seq.cp
 next/n_literal_position_by_bound.cp
+next/n_literal_position_by_bound_order.cp
+next/n_literal_position_by_bound_order_bad.cp
 next/n_load_01_a_method_of_an_unspelled_prelude_module.cp
 next/n_loop_01_labels_and_else.cp
 next/n_lower_01_fn_ending_in_while_true.cp
