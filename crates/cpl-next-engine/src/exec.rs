@@ -599,6 +599,17 @@ impl M<'_> {
                 Op::ToF64 { d, a } => {
                     self.stack[r(d)] = ops::f64_of_int(self.stack[r(a)] as i64).to_bits()
                 }
+                Op::FloatFn { f, d, a, b } => {
+                    let (x, y) = (
+                        f64::from_bits(self.stack[r(a)]),
+                        f64::from_bits(self.stack[r(b)]),
+                    );
+                    self.stack[r(d)] = ops::float_fn(f, x, y).to_bits()
+                }
+                Op::ToInt { round, d, a } => {
+                    let x = f64::from_bits(self.stack[r(a)]);
+                    self.stack[r(d)] = ops::to_int(round, x)? as u64
+                }
                 Op::Neg { d, a } => self.stack[r(d)] = ops::neg(self.stack[r(a)] as i64)? as u64,
                 Op::Abs { d, a } => self.stack[r(d)] = ops::abs(self.stack[r(a)] as i64)? as u64,
                 Op::FAbs { d, a } => {

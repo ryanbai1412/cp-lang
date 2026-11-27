@@ -581,8 +581,8 @@ impl Signed for Int
 impl Signed for I128
 impl Signed for F64
 
-/// `Int` or `F64`: has a `sqrt`.
-pub trait Real
+/// `Int` or `F64`: has a `sqrt`, through its `F64`.
+pub trait Real: Into<F64>
 
 impl Real for Int
 impl Real for F64
@@ -634,19 +634,25 @@ fn sqrt_of(x: F64) -> F64 = @intrinsic("sqrt")
 ///
 /// cost: \(O(1)\)
 /// example: `sin(0.0) == 0.0`
-pub fn sin<N: Real>(x: N) -> F64 = @intrinsic("sin")
+pub fn sin<N: Real>(x: N) -> F64 = sin_of(F64(x))
+
+fn sin_of(x: F64) -> F64 = @intrinsic("sin")
 
 /// The cosine of `x` radians.
 ///
 /// cost: \(O(1)\)
 /// example: `cos(0.0) == 1.0`
-pub fn cos<N: Real>(x: N) -> F64 = @intrinsic("cos")
+pub fn cos<N: Real>(x: N) -> F64 = cos_of(F64(x))
+
+fn cos_of(x: F64) -> F64 = @intrinsic("cos")
 
 /// The tangent of `x` radians.
 ///
 /// cost: \(O(1)\)
 /// example: `tan(0.0) == 0.0`
-pub fn tan<N: Real>(x: N) -> F64 = @intrinsic("tan")
+pub fn tan<N: Real>(x: N) -> F64 = tan_of(F64(x))
+
+fn tan_of(x: F64) -> F64 = @intrinsic("tan")
 
 /// The angle in `-pi/2..=pi/2` radians whose sine is `x`.
 ///
@@ -676,19 +682,25 @@ fn acos_of(x: F64) -> F64 = @intrinsic("acos")
 ///
 /// cost: \(O(1)\)
 /// example: `atan2(0.0, 1.0) == 0.0`
-pub fn atan2<A: Real, B: Real>(y: A, x: B) -> F64 = @intrinsic("atan2")
+pub fn atan2<A: Real, B: Real>(y: A, x: B) -> F64 = atan2_of(F64(y), F64(x))
+
+fn atan2_of(y: F64, x: F64) -> F64 = @intrinsic("atan2")
 
 /// The length of `(x, y)`, with no overflow in the squares.
 ///
 /// cost: \(O(1)\)
 /// example: `hypot(3, 4) == 5.0`
-pub fn hypot<A: Real, B: Real>(x: A, y: B) -> F64 = @intrinsic("hypot")
+pub fn hypot<A: Real, B: Real>(x: A, y: B) -> F64 = hypot_of(F64(x), F64(y))
+
+fn hypot_of(x: F64, y: F64) -> F64 = @intrinsic("hypot")
 
 /// `e` to the power `x`.
 ///
 /// cost: \(O(1)\)
 /// example: `exp(0.0) == 1.0`
-pub fn exp<N: Real>(x: N) -> F64 = @intrinsic("exp")
+pub fn exp<N: Real>(x: N) -> F64 = exp_of(F64(x))
+
+fn exp_of(x: F64) -> F64 = @intrinsic("exp")
 
 /// The natural logarithm of `x`.
 ///

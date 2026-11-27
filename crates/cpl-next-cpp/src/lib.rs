@@ -21,6 +21,7 @@ macro_rules! put_line {
 
 /// The runtime up to `cpl_trap`.
 const RUNTIME_HEAD: &str = r#"#include <cstdint>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cerrno>
@@ -57,6 +58,10 @@ static int cpl_at = 0;
 
 /// The rest of the runtime, after the trap table `ops::cpp_trap_table` writes.
 const RUNTIME: &str = r#"[[noreturn]] static void cpl_fail(int f) { cpl_trap(cpl_faults[f][0], cpl_faults[f][1]); }
+static inline int64_t cpl_to_int(double y) {
+    if (std::isnan(y) || std::fabs(y) >= 9223372036854775808.0) cpl_fail(CPL_F64_PAST_INT);
+    return (int64_t)y;
+}
 static char cpl_altstack[1 << 16];
 static void cpl_segv(int) {
     // Only `write` is safe here, so the line is printed by hand.
@@ -626,6 +631,8 @@ impl Emit<'_> {
                     Intr::ToF64 => format!("((double)({}))", a[0]),
                     Intr::F64Len => format!("cpl_f64_len({}, {})", a[0], a[1]),
                     Intr::F64Text => format!("cpl_f64_text({}, {})", a[0], a[1]),
+                    Intr::Float(f) => format!("{}({})", f.cpp(), a.join(", ")),
+                    Intr::ToInt(r) => format!("cpl_to_int({}({}))", r.cpp(), a[0]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
                     Intr::Popcount => format!("cpl_popcount((uint64_t)({}))", a[0]),
                     Intr::Ctz => format!("cpl_ctz((uint64_t)({}))", a[0]),
@@ -939,6 +946,29 @@ mod tests {
     use cpl_next_ir::ops::Fault;
     use std::fmt::Display;
 
+    /// An `F64` as C's `%a` prints it, so a result compares bit for bit.
+    fn hex(x: f64) -> String {
+        if x.is_nan() {
+            return if x.is_sign_negative() { "-nan" } else { "nan" }.to_string();
+        }
+        if x.is_infinite() {
+            return if x < 0.0 { "-inf" } else { "inf" }.to_string();
+        }
+        let sign = if x.is_sign_negative() { "-" } else { "" };
+        let bits = x.to_bits();
+        let (e, m) = ((bits >> 52) & 0x7ff, bits & ((1 << 52) - 1));
+        if e == 0 && m == 0 {
+            return format!("{sign}0x0p+0");
+        }
+        let (lead, e) = if e == 0 { (0, -1022) } else { (1, e as i64 - 1023) };
+        let mut digits = format!("{m:013x}");
+        while digits.ends_with('0') {
+            digits.pop();
+        }
+        let dot = if digits.is_empty() { "" } else { "." };
+        format!("{sign}0x{lead}{dot}{digits}p{e:+}")
+    }
+
     fn expect<T: Display>(r: Result<T, Fault>) -> String {
         match r {
             Ok(v) => format!("{v}\n"),
@@ -1095,6 +1125,55 @@ mod tests {
                 case(
                     format!("{f}({ok}); printf(\"0\\n\");"),
                     expect(ops::check(op, ok).map(|_| 0)),
+                );
+            }
+        }
+        let floats = [
+            -1e300,
+            -9223372036854775808.0,
+            -2.5,
+            -1.0,
+            -0.5,
+            0.0,
+            0.5,
+            1.5,
+            2.0,
+            9223372036854774784.0,
+            9223372036854775808.0,
+            f64::NAN,
+            f64::INFINITY,
+        ];
+        for x in floats {
+            let c = format!("{:?}", f64::from_bits(x.to_bits()));
+            let lit = if x.is_nan() {
+                "NAN".to_string()
+            } else if x.is_infinite() {
+                "INFINITY".to_string()
+            } else {
+                c
+            };
+            for r in [Rounding::Floor, Rounding::Ceil, Rounding::Round, Rounding::Trunc] {
+                case(
+                    format!("printf(\"%lld\\n\", (long long)cpl_to_int({}({lit})));", r.cpp()),
+                    expect(ops::to_int(r, x)),
+                );
+            }
+            for f in [
+                FloatFn::Sqrt,
+                FloatFn::Sin,
+                FloatFn::Cos,
+                FloatFn::Tan,
+                FloatFn::Asin,
+                FloatFn::Acos,
+                FloatFn::Atan2,
+                FloatFn::Hypot,
+                FloatFn::Exp,
+                FloatFn::Ln,
+            ] {
+                case(
+                    format!("printf(\"%a\\n\", {}({lit}, 0.75));", f.cpp())
+                        .replace(", 0.75)", if matches!(f, FloatFn::Atan2 | FloatFn::Hypot) { ", 0.75)" } else { ")" }),
+                    format!("{}\n", hex(ops::float_fn(f, x, 0.75))),
                 );
             }
         }

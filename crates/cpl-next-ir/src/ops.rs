@@ -1,7 +1,7 @@
 //! The meaning of every operation the IR names: what it computes and how it fails. The
 //! reference interpreter and the engines call these functions, and the C++ emitter takes
 //! its helper names and its trap table from here, so no operation is written twice.
-use crate::ir::{CheckKind, Intr};
+use crate::ir::{CheckKind, FloatFn, Intr, Rounding};
 use cpl_diag::{codes, Code};
 
 mod rules;
@@ -29,6 +29,7 @@ pub enum Fault {
     InputOutside,
     IntPastInt,
     StackExhausted,
+    F64PastInt,
     /// A `Check` statement: its code comes from its kind, its message from the IR.
     Check(CheckKind),
     /// The IR broke a rule the layers before the backend keep. Never the program's fault.
@@ -36,7 +37,7 @@ pub enum Fault {
 }
 
 /// The faults an operation raises by itself, in the order of the C++ runtime's trap table.
-pub const FAULTS: [Fault; 19] = [
+pub const FAULTS: [Fault; 20] = [
     Fault::Overflow,
     Fault::U64PastInt,
     Fault::CharPastAscii,
@@ -56,6 +57,7 @@ pub const FAULTS: [Fault; 19] = [
     Fault::InputOutside,
     Fault::IntPastInt,
     Fault::StackExhausted,
+    Fault::F64PastInt,
 ];
 
 /// The largest storage one `raw_new` may make: a stand-in for the run's memory limit
@@ -68,7 +70,7 @@ pub const INTERNAL: &str = "internal";
 impl Fault {
     pub fn code(self) -> &'static str {
         let c: Code = match self {
-            Fault::Overflow | Fault::U64PastInt => codes::OVERFLOW,
+            Fault::Overflow | Fault::U64PastInt | Fault::F64PastInt => codes::OVERFLOW,
             Fault::CharPastAscii => codes::RANGE_STORE,
             Fault::DivisionByZero => codes::DIVISION_BY_ZERO,
             Fault::NegativePower
@@ -111,6 +113,7 @@ impl Fault {
             Fault::InputOutside => "a value in the input is outside its contract",
             Fault::IntPastInt => "a whole number in the input does not fit in an `Int`",
             Fault::StackExhausted => "the stack ran out",
+            Fault::F64PastInt => "the `F64` rounds to a value that does not fit in an `Int`",
             Fault::Check(_) => "a check failed",
             Fault::Internal(rule) => rule,
         }
@@ -197,6 +200,36 @@ pub fn float(op: Intr, a: f64, b: f64) -> Result<f64, Fault> {
         Intr::Div => a / b,
         _ => return Err(Fault::Internal("not an F64 operation")),
     })
+}
+
+/// `sqrt`, `sin`, `atan2` and the rest: `b` is read only by the fns of two operands.
+pub fn float_fn(f: FloatFn, a: f64, b: f64) -> f64 {
+    match f {
+        FloatFn::Sqrt => a.sqrt(),
+        FloatFn::Sin => a.sin(),
+        FloatFn::Cos => a.cos(),
+        FloatFn::Tan => a.tan(),
+        FloatFn::Asin => a.asin(),
+        FloatFn::Acos => a.acos(),
+        FloatFn::Atan2 => a.atan2(b),
+        FloatFn::Hypot => a.hypot(b),
+        FloatFn::Exp => a.exp(),
+        FloatFn::Ln => a.ln(),
+    }
+}
+
+/// An `F64` rounded to an `Int`; NaN and anything past `Int` trap.
+pub fn to_int(r: Rounding, x: f64) -> Result<i64, Fault> {
+    let y = match r {
+        Rounding::Floor => x.floor(),
+        Rounding::Ceil => x.ceil(),
+        Rounding::Round => x.round(),
+        Rounding::Trunc => x.trunc(),
+    };
+    if y.is_nan() || y.abs() >= 9223372036854775808.0 {
+        return Err(Fault::F64PastInt);
+    }
+    Ok(y as i64)
 }
 
 /// `-a` on an `F64`.

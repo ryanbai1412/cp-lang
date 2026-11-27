@@ -101,6 +101,10 @@ pub enum Intr {
     F64Len,
     /// The characters of an `F64` written with a count of decimals.
     F64Text,
+    /// An `F64` fn of one or two `F64`s: `sqrt`, `sin`, `atan2`, ...
+    Float(FloatFn),
+    /// An `F64` rounded to an `Int`; traps outside `Int`.
+    ToInt(Rounding),
     /// A slot with no value yet, of the type it is given. Never read before it is stored to.
     Unset,
     /// `Int` arithmetic where overflow checks are off: it wraps to 64 bits (R09.4.2).
@@ -109,6 +113,54 @@ pub enum Intr {
     MulWrap,
     PowWrap,
     ShlWrap,
+}
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FloatFn {
+    Sqrt,
+    Sin,
+    Cos,
+    Tan,
+    Asin,
+    Acos,
+    Atan2,
+    Hypot,
+    Exp,
+    Ln,
+}
+impl FloatFn {
+    /// The `<cmath>` fn both engines call: the interpreter's `f64` methods are the same libm.
+    pub fn cpp(self) -> &'static str {
+        match self {
+            FloatFn::Sqrt => "std::sqrt",
+            FloatFn::Sin => "std::sin",
+            FloatFn::Cos => "std::cos",
+            FloatFn::Tan => "std::tan",
+            FloatFn::Asin => "std::asin",
+            FloatFn::Acos => "std::acos",
+            FloatFn::Atan2 => "std::atan2",
+            FloatFn::Hypot => "std::hypot",
+            FloatFn::Exp => "std::exp",
+            FloatFn::Ln => "std::log",
+        }
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Rounding {
+    Floor,
+    Ceil,
+    /// Halves away from zero.
+    Round,
+    Trunc,
+}
+impl Rounding {
+    pub fn cpp(self) -> &'static str {
+        match self {
+            Rounding::Floor => "std::floor",
+            Rounding::Ceil => "std::ceil",
+            Rounding::Round => "std::round",
+            Rounding::Trunc => "std::trunc",
+        }
+    }
 }
 impl Intr {
     /// The operation that wraps where this one traps on overflow; itself if it cannot overflow.
@@ -145,18 +197,38 @@ impl Intr {
             "code_of" => Intr::CodeOf,
             "u64_of" => Intr::ToU64,
             "int_of_u64" => Intr::FromU64,
-            "abs" => Intr::Abs,
-            "popcount" => Intr::Popcount,
-            "ctz" => Intr::Ctz,
-            "clz" => Intr::Clz,
-            "bit_width" => Intr::BitWidth,
-            "bit_ceil" => Intr::BitCeil,
             "f64_of" => Intr::ToF64,
             "f64_len" => Intr::F64Len,
             "f64_text" => Intr::F64Text,
             "out" => Intr::Out,
-            _ => return None,
+            _ => return cpl_rt::Prim::from_id(name).map(Intr::of_prim),
         })
+    }
+    /// The operation of a primitive of `cpl-rt`'s one intrinsics table.
+    fn of_prim(p: cpl_rt::Prim) -> Intr {
+        use cpl_rt::Prim as P;
+        match p {
+            P::Popcount => Intr::Popcount,
+            P::Abs => Intr::Abs,
+            P::Ctz => Intr::Ctz,
+            P::Clz => Intr::Clz,
+            P::BitWidth => Intr::BitWidth,
+            P::BitCeil => Intr::BitCeil,
+            P::Sqrt => Intr::Float(FloatFn::Sqrt),
+            P::Sin => Intr::Float(FloatFn::Sin),
+            P::Cos => Intr::Float(FloatFn::Cos),
+            P::Tan => Intr::Float(FloatFn::Tan),
+            P::Asin => Intr::Float(FloatFn::Asin),
+            P::Acos => Intr::Float(FloatFn::Acos),
+            P::Atan2 => Intr::Float(FloatFn::Atan2),
+            P::Hypot => Intr::Float(FloatFn::Hypot),
+            P::Exp => Intr::Float(FloatFn::Exp),
+            P::Ln => Intr::Float(FloatFn::Ln),
+            P::Floor => Intr::ToInt(Rounding::Floor),
+            P::Ceil => Intr::ToInt(Rounding::Ceil),
+            P::Round => Intr::ToInt(Rounding::Round),
+            P::Trunc => Intr::ToInt(Rounding::Trunc),
+        }
     }
     /// The arguments it stores, so a caller's owned heap value passed there moves in (R05.2.2).
     pub fn keeps(self) -> &'static [usize] {

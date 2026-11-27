@@ -283,6 +283,7 @@ name = "cpl-next-ir"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
+ "cpl-rt",
 ]
 
 [[package]]

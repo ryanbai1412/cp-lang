@@ -564,6 +564,24 @@ mod tests {
         }
     }
 
+    /// std.math's float fns and roundings run alike in the interpreter and the engine, and a
+    /// rounding past `Int` traps in both.
+    #[test]
+    fn float_intrinsics_agree_across_engines() {
+        let src = "print(sqrt(16), sin(0), cos(0.0), atan2(1, 1), hypot(3, 4), exp(0), ln(1.0))\n\
+print((-2.5).floor, (-2.5).ceil, (-2.5).round, (2.5).round, (-2.5).trunc)\n\
+print(1e300.floor)\n";
+        let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+        let (raw, engine) = (c.run(Form::Raw, ""), c.run(Form::Engine, ""));
+        let want = "4.0000000000 0.0000000000 1.0000000000 0.7853981634 5.0000000000 \
+1.0000000000 0.0000000000\n-3 -2 -3 3 -2\n";
+        assert_eq!(raw.output, want);
+        assert_eq!(engine.output, want);
+        let fault = |o: &Outcome| o.trap.as_ref().map(|t| t.fault);
+        assert_eq!(fault(&raw), Some(cpl_next_ir::ops::Fault::F64PastInt));
+        assert_eq!(fault(&raw), fault(&engine));
+    }
+
     /// Std read once is a value no program changes: programs compiled one after another
     /// against it each get what they get against a std of their own.
     #[test]
@@ -674,10 +692,10 @@ mod tests {
         ] {
             assert!(verdict.contains(part), "{part} in {verdict}");
         }
-        let refusal = &json("let s = \"1\"\nprint(read<Int>(from: s))\n")[0];
+        let refusal = &json("let x = 1.5\nprint(x % 2.0)\n")[0];
         for part in [
             r#""code":"E0501""#,
-            r#""refusal":"Expression""#,
+            r#""refusal":"FloatOperator""#,
             r#""text":"check: program:2:7: slice: "#,
         ] {
             assert!(refusal.contains(part), "{part} in {refusal}");
@@ -734,9 +752,9 @@ mod tests {
         assert_eq!(ds, ["check: program:1:13: E0201: unknown name `nope`"]);
     }
 
-    /// A `while let` over a refused `read` leaves its name the error.
+    /// A `let` of a refused value leaves its name the error, so its uses say nothing more.
     #[test]
-    fn a_refused_read_leaves_its_name_the_error() {
+    fn a_refused_value_leaves_its_name_the_error() {
         let only_refusals = |src: &str| {
             let ds = diags(src);
             assert!(
@@ -745,9 +763,7 @@ mod tests {
                 ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
             );
         };
-        only_refusals(
-            "var xs = List<Int>()\nwhile let x = read<?Int>():\n    xs.push(x)\nprint(xs.len)\n",
-        );
+        only_refusals("struct P<T>:\n    a: T\nlet v = P<Int>\nlet q = v + 1\nprint(q.nope)\n");
     }
 
     /// `None` beside an operand that is the error is the error, and so is the comparison.
@@ -800,7 +816,7 @@ mod tests {
                 ds.iter().map(|d| d.to_string()).collect::<Vec<_>>()
             );
         };
-        only_refusals("let s = \"1\"\nlet p = read<Int>(from: s)\np += 10\nprint(p)\n");
+        only_refusals("struct P<T>:\n    a: T\nvar p = P<Int>\np += 10\nprint(p)\n");
         let lent: Vec<String> = (diags("var b = [3, 1, 2]\nreverse(mut nope(b))\nprint(b[0])\n"))
             .iter()
             .map(|d| d.to_string())

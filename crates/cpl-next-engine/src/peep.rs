@@ -502,6 +502,7 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         Op::Int { d, a, b, .. }
         | Op::Word { d, a, b, .. }
         | Op::Float { d, a, b, .. }
+        | Op::FloatFn { d, a, b, .. }
         | Op::Cmp { d, a, b, .. } => (vec![one(a), one(b)], vec![one(d)]),
         Op::Neg { d, a }
         | Op::Abs { d, a }
@@ -510,6 +511,7 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         | Op::BitCount { d, a, .. }
         | Op::FromU64 { d, a }
         | Op::ToF64 { d, a }
+        | Op::ToInt { d, a, .. }
         | Op::FNeg { d, a }
         | Op::FAbs { d, a }
         | Op::CharOf { d, a }
@@ -585,7 +587,10 @@ fn pure(op: &Op) -> bool {
 fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
     let one = |l: Lay| lays.size[l as usize] == 1;
     match op {
-        Op::Int { a, b, .. } | Op::Word { a, b, .. } | Op::Float { a, b, .. } => vec![a, b],
+        Op::Int { a, b, .. }
+        | Op::Word { a, b, .. }
+        | Op::Float { a, b, .. }
+        | Op::FloatFn { a, b, .. } => vec![a, b],
         Op::Cmp { a, b, .. } => vec![a, b],
         Op::Neg { a, .. }
         | Op::Abs { a, .. }
@@ -594,6 +599,7 @@ fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
         | Op::BitCount { a, .. }
         | Op::FromU64 { a, .. }
         | Op::ToF64 { a, .. }
+        | Op::ToInt { a, .. }
         | Op::FNeg { a, .. }
         | Op::FAbs { a, .. }
         | Op::CharOf { a, .. }

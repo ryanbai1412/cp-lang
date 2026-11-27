@@ -267,6 +267,18 @@ pub(crate) enum Op {
         d: Reg,
         a: Reg,
     },
+    /// `sqrt`, `atan2`, ..: `b` is `a` for a fn of one operand.
+    FloatFn {
+        f: FloatFn,
+        d: Reg,
+        a: Reg,
+        b: Reg,
+    },
+    ToInt {
+        round: Rounding,
+        d: Reg,
+        a: Reg,
+    },
     FNeg {
         d: Reg,
         a: Reg,
@@ -1274,6 +1286,19 @@ impl Fc<'_> {
                 };
                 let len = op == Intr::F64Len;
                 self.ops.push(Op::F64Text { d, a, b, len });
+            }
+            Intr::Float(f) => {
+                let Some(rs) = self.operands(args) else {
+                    return self.fail("a lent operand");
+                };
+                let (a, b) = (rs[0], *rs.get(1).unwrap_or(&rs[0]));
+                self.ops.push(Op::FloatFn { f, d, a, b });
+            }
+            Intr::ToInt(round) => {
+                let Some(&[a]) = self.operands(args).as_deref() else {
+                    return self.fail("a lent operand");
+                };
+                self.ops.push(Op::ToInt { round, d, a });
             }
             Intr::CheckRange
             | Intr::CheckKey

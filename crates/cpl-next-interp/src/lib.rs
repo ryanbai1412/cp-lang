@@ -398,6 +398,15 @@ impl<'a> Machine<'a> {
         self.hand_back(args, fp, back)?;
         Ok(ret)
     }
+    fn float(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<f64> {
+        let Arg::Value(e) = a else {
+            return broken("lent F64");
+        };
+        match self.expr(e, fp)? {
+            V::F64(x) => Ok(x),
+            _ => broken("an F64 operand of another kind"),
+        }
+    }
     fn int(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<i64> {
         let Arg::Value(e) = a else {
             return broken("lent Int");
@@ -674,6 +683,15 @@ impl<'a> Machine<'a> {
             Intr::Unset => V::Unit,
             Intr::ToU64 => V::U64(ops::u64_of_int(self.int(&args[0], fp)?)),
             Intr::ToF64 => V::F64(ops::f64_of_int(self.int(&args[0], fp)?)),
+            Intr::Float(f) => {
+                let a = self.float(&args[0], fp)?;
+                let b = match args.get(1) {
+                    Some(b) => self.float(b, fp)?,
+                    None => 0.0,
+                };
+                V::F64(ops::float_fn(f, a, b))
+            }
+            Intr::ToInt(r) => V::Int(ops::to_int(r, self.float(&args[0], fp)?)?),
             Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth | Intr::BitCeil => {
                 let Arg::Value(a) = &args[0] else {
                     return broken("lent operand");
