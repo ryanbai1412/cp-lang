@@ -56,12 +56,22 @@ pub enum SetTy {
     /// The i-th implicit set parameter of the enclosing fn or struct.
     Param(usize),
     /// "Whatever the fn a call reaches adds to its `slot`-th set argument": `call_adds[i]` is
-    /// that call and slot, a fn's result slots after its own sets. Resolved per instance.
+    /// that call and slot (`SetAdds`), a fn's result slots after its own sets. Resolved per instance.
     AddedAt(usize),
     /// In a signature: the k-th function type of the result. A call passes its set for it after
     /// the fn's own, so the body sees `Param(n_sets + k)`.
     RetSlot(usize),
     Closed(Vec<Member>),
+}
+
+/// The closures each fn's body adds to its set parameters, and each call (`AddedAt`) that
+/// takes what its callee adds: lowering hands them from the checker to link.
+#[derive(Clone, Debug, Default)]
+pub struct SetAdds {
+    /// What `f`'s body adds to its `slot`-th set.
+    pub params: std::collections::HashMap<(FnId, usize), SetTy>,
+    /// `AddedAt(i)`'s call and slot.
+    pub calls: Vec<(FnRef, usize)>,
 }
 
 /// As derived, but a set parameter prints as `SetParam(i)`, apart from a type's `Param(i)`, so

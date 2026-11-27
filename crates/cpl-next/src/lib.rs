@@ -273,7 +273,7 @@ fn back(f: &Front) -> Option<(inst::Program, Vec<Diag>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
-    let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals);
+    let mut prog = inst::link(&f.d, &f.t, &f.g.funcs, &f.g.globals, &f.g.adds);
     let names: Vec<(String, bool)> = (f.t.globals.iter())
         .map(|g| (g.name.clone(), g.mutable))
         .collect();

@@ -202,7 +202,7 @@ impl<'a> Evaluator<'a> {
         if !low.errors.is_empty() {
             return Ran::Open;
         }
-        let mut prog = inst::link(self.d, &t, &low.funcs, &low.globals);
+        let mut prog = inst::link(self.d, &t, &low.funcs, &low.globals, &low.adds);
         let names: Vec<(String, bool)> = (t.globals.iter())
             .map(|g| (g.name.clone(), g.mutable))
             .collect();

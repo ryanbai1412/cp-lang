@@ -20,8 +20,8 @@ fn unlent(t: CTy) -> CTy {
 
 struct Link<'a> {
     d: &'a Decls,
-    typed: &'a Typed,
     generic: &'a HashMap<FuncKey, Func<Ty>>,
+    adds: &'a SetAdds,
     keys: Vec<InstKey>,
     index: HashMap<InstKey, usize>,
     structs: HashMap<CTy, Vec<CTy>>,
@@ -97,11 +97,12 @@ pub fn link(
     typed: &Typed,
     generic: &HashMap<FuncKey, Func<Ty>>,
     globals: &[Ty],
+    adds: &SetAdds,
 ) -> Program {
     let mut l = Link {
         d,
-        typed,
         generic,
+        adds,
         keys: Vec::new(),
         index: HashMap::new(),
         structs: HashMap::new(),
@@ -503,7 +504,7 @@ impl Link<'_> {
     }
     /// What `f`'s body adds to its set `slot`.
     fn adds(&self, f: FnId, slot: usize) -> Option<SetTy> {
-        self.typed.param_adds.get(&(f, slot)).cloned()
+        self.adds.params.get(&(f, slot)).cloned()
     }
     /// An impl's fn takes the sets its caller passes for its result after the impl's own.
     fn with_ret_sets(&self, k: &mut InstKey, ret: Vec<CSet>) {
@@ -536,7 +537,7 @@ impl Link<'_> {
                 if !self.add_busy.insert(*c) {
                     return;
                 }
-                let (f, slot) = self.typed.call_adds[*c].clone();
+                let (f, slot) = self.adds.calls[*c].clone();
                 if let Some(k) = self.callee_key(&f, env) {
                     if let FuncKey::Decl(decl) = k.func {
                         // A trait's result slot is the impl's, after the impl's own sets.

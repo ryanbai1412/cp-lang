@@ -19,6 +19,7 @@ pub struct Generic {
     pub deferred: HashMap<FnId, Vec<Msg>>,
     /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
     pub untyped: Vec<SourceId>,
+    pub adds: cpl_next_ir::ty::SetAdds,
 }
 
 struct Lw<'a> {
@@ -68,6 +69,10 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         errors: Vec::new(),
         deferred: HashMap::new(),
         untyped: Vec::new(),
+        adds: cpl_next_ir::ty::SetAdds {
+            params: typed.param_adds.clone(),
+            calls: typed.call_adds.clone(),
+        },
     };
     let mut lw = Lw {
         d,
