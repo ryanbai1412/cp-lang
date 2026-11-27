@@ -1,6 +1,7 @@
 //! Expressions: operators, calls, members, names.
 
 use super::*;
+use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ops::Fmt;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::FmtKind;
@@ -338,7 +339,7 @@ impl<'a> Cx<'a> {
             out.push(match slot[i].and_then(|k| typed[k].take()) {
                 Some(a) => a,
                 None => TArg::Value(match f.default {
-                    Some((e, m, item)) => self.default_arg(e, m, item, &f.ty),
+                    Some((e, m, ref item)) => self.default_arg(e, m, item.clone(), &f.ty),
                     None => TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,
@@ -392,15 +393,15 @@ impl<'a> Cx<'a> {
         }
     }
     /// A default is read where its fn or struct is declared: none of the caller's names are seen.
-    fn default_arg(&mut self, e: &ast::Expr, m: ModId, item: u32, ty: &Ty) -> TExpr {
+    fn default_arg(&mut self, e: &ast::Expr, m: ModId, item: ItemId, ty: &Ty) -> TExpr {
         let module = std::mem::replace(&mut self.module, m);
-        let item_off = std::mem::replace(&mut self.item_off, item);
+        let item = std::mem::replace(&mut self.item, item);
         let scopes = std::mem::replace(&mut self.scopes, vec![HashMap::new()]);
         let self_local = self.self_local.take();
         let v = self.expr(e, Some(ty));
         let v = self.coerce(v, ty);
         self.module = module;
-        self.item_off = item_off;
+        self.item = item;
         self.scopes = scopes;
         self.self_local = self_local;
         v
@@ -415,7 +416,7 @@ impl<'a> Cx<'a> {
                 mutable: p.mutable,
                 named_only: p.named_only,
                 variadic: p.variadic,
-                default: p.default.as_ref().map(|e| (e, fd.module, fd.item)),
+                default: p.default.as_ref().map(|e| (e, fd.module, fd.item.clone())),
             })
             .collect()
     }
@@ -1804,7 +1805,7 @@ pub(super) struct Formal<'d> {
     pub named_only: bool,
     pub variadic: bool,
     /// Its expression, read in the module and with spans from the item that declares it.
-    pub default: Option<(&'d ast::Expr, ModId, u32)>,
+    pub default: Option<(&'d ast::Expr, ModId, ItemId)>,
 }
 
 /// Reading it has no effect, so when it runs does not matter.

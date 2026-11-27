@@ -4,6 +4,7 @@ use cpl_diag::Span;
 use cpl_next_check::*;
 use cpl_next_decls::decls::{Decls, FnDecl, Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -17,9 +18,9 @@ pub struct Generic {
     /// What is wrong in a library fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
     /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
-    pub untyped: Vec<Span>,
+    pub untyped: Vec<SourceId>,
     /// Where in the loaded modules' text each site (`ir::Site`) is; site 0 has no place.
-    pub sites: Vec<Span>,
+    pub sites: Vec<SourceId>,
     /// The line of the user's file each site is on; 0 inside std and derived impls.
     pub lines: Vec<u32>,
 }
@@ -45,18 +46,18 @@ struct Lw<'a> {
     /// What each nested fn of the blocks being lowered reads from around it, its group's together.
     group_free: HashMap<LambdaId, BTreeSet<VarRef>>,
     errors: Vec<Msg>,
-    untyped: Vec<Span>,
+    untyped: Vec<SourceId>,
     in_main: bool,
     /// The code of one test case, once main's `Cases` is lowered.
     case: Option<Func<Ty>>,
     /// Where the item being lowered starts: spans are relative to it.
-    off: u32,
+    off: ItemId,
     /// Where each line of the source starts, and how many of them are std.
     src: &'a cpl_next_decls::modules::Loaded,
     /// The fn being lowered is one the compiler wrote, a derived impl's: like std's, a check it
     /// makes fails at the line that called it.
     made: bool,
-    sites: Vec<Span>,
+    sites: Vec<SourceId>,
     lines: Vec<u32>,
 }
 
@@ -86,10 +87,10 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         untyped: Vec::new(),
         in_main: true,
         case: None,
-        off: 0,
+        off: ItemId::file(cpl_next_decls::modules::PROGRAM.into()),
         src,
         made: false,
-        sites: vec![Span::default()],
+        sites: vec![ItemId::file(cpl_next_decls::modules::PROGRAM.into()).at(Span::default())],
         lines: vec![0],
     };
     let mut body = Vec::new();
@@ -124,7 +125,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
     for (key, id, tf) in all {
         let before = lw.errors.len();
         let fd = d.f(*id);
-        lw.off = fd.item;
+        lw.off = fd.item.clone();
         lw.made =
             matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Impl(k)) if d.impls[k].derived);
         lw.locals = tf.locals.iter().map(|l| l.ty.clone()).collect();
@@ -179,7 +180,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 body,
                 ret: tf.ret.clone(),
                 region: tf.region.clone(),
-                line: lw.src.program_line(fd.span.start),
+                line: lw.src.program_line(&fd.span),
                 shown: shown_name(d, fd),
             },
         );
@@ -381,10 +382,7 @@ impl Lw<'_> {
     /// A new site for the node at `span`, or 0 where the node has no line of the user's file.
     /// A new site for the node at `span`.
     fn site(&mut self, span: Span) -> Site {
-        let at = Span {
-            start: self.off + span.start,
-            end: self.off + span.end,
-        };
+        let at = self.off.at(span);
         self.lines.push(self.line(span));
         self.sites.push(at);
         (self.sites.len() - 1) as Site
@@ -393,7 +391,7 @@ impl Lw<'_> {
         if self.made {
             return 0;
         }
-        self.src.program_line(self.off + span.start)
+        self.src.program_line(&self.off.at(span))
     }
     fn temp(&mut self, ty: Ty) -> usize {
         self.locals.push(ty);
@@ -559,7 +557,7 @@ impl Lw<'_> {
             TK::Bool(b) => mk(EK::Bool(*b)),
             TK::Unit => mk(EK::Unit),
             TK::Error => {
-                (self.untyped).push(Span::new(self.off + e.span.start, self.off + e.span.end));
+                (self.untyped).push(self.off.at(e.span));
                 mk(EK::Unit)
             }
             TK::Text(t) => mk(EK::Text(t.clone())),
@@ -1073,7 +1071,7 @@ impl Lw<'_> {
                 });
             }
             TStmt::Break => out.push(Stmt::Break),
-            TStmt::Item(off) => self.off = *off,
+            TStmt::Item(off) => self.off = off.clone(),
             TStmt::Cases(count, body) => {
                 let mk = |kind, ty| Expr { kind, ty };
                 let call = Stmt::Expr(mk(EK::Call(Target::Case, vec![], 0), Ty::Unit));
@@ -1107,7 +1105,7 @@ impl Lw<'_> {
                         ));
                     }
                 }
-                let (outer, off) = (std::mem::take(&mut self.locals), self.off);
+                let (outer, off) = (std::mem::take(&mut self.locals), self.off.clone());
                 let mut b = Vec::new();
                 body.iter().for_each(|s| self.stmt(s, &mut b));
                 self.case = Some(Func {

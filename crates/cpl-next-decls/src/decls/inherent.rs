@@ -1,6 +1,8 @@
 //! Inherent impls: `impl T:` blocks, whose fns are methods of `T` (R08.1.3).
 use super::{add_fn, unnamed, Decls, ModId, Owner, StructId, Within};
 use crate::ty::*;
+use cpl_diag::Span;
+use cpl_next_ir::ids::ItemId;
 use cpl_syntax::ast::{self, StmtKind, TypeKind};
 
 /// `impl<F: Tag> S<F>:` adds its fns to `S`'s methods, its parameters standing for `S`'s and
@@ -8,7 +10,7 @@ use cpl_syntax::ast::{self, StmtKind, TypeKind};
 pub(super) fn inherent_impl(
     d: &mut Decls,
     mid: ModId,
-    item: u32,
+    item: ItemId,
     t: StructId,
     target: &ast::Type,
     bounds: &[ast::Bound],
@@ -63,14 +65,14 @@ pub(super) fn inherent_impl(
             self_ty: Some(self_ty.clone()),
             sig: None,
         };
-        let fid = add_fn(d, mid, item, m, &f, within);
+        let fid = add_fn(d, mid, item.clone(), m, &f, within);
         if d.structs[t.0]
             .methods
             .insert(f.name.text.clone(), fid)
             .is_some()
         {
             d.misdeclared.push((
-                (item + m.span.start) as usize,
+                item.at(Span::new(m.span.start, m.span.start)),
                 cpl_diag::codes::OVERLOAD_BY_TYPE,
                 format!("`{}` is already a method of `{}`", f.name.text, d.s(t).name),
             ));
@@ -83,7 +85,7 @@ pub(super) fn inherent_impl(
 fn shaped_impl(
     d: &mut Decls,
     mid: ModId,
-    item: u32,
+    item: ItemId,
     t: StructId,
     target: &ast::Type,
     bounds: &[ast::Bound],
@@ -112,7 +114,7 @@ fn shaped_impl(
             self_ty: None,
             sig: None,
         };
-        let fid = add_fn(d, mid, item, m, &f, within);
+        let fid = add_fn(d, mid, item.clone(), m, &f, within);
         let name = f.name.text.clone();
         d.structs[t.0].shaped.entry(name).or_default().push(fid);
     }

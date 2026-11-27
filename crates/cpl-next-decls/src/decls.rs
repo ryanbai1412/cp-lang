@@ -4,6 +4,7 @@ pub use crate::cycles::{alias_cycle, field_holding_itself};
 use crate::diag::Msg;
 use crate::ty::*;
 use cpl_diag::Span;
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::{HashMap, HashSet};
@@ -74,9 +75,9 @@ pub struct FnDecl {
     pub aka: Vec<String>,
     /// `@was(..)`: names it had before a release renamed it; a call by one is E0503.
     pub was: Vec<String>,
-    pub item: u32,
-    /// Where it is written, in the offset space the loaded modules are placed in.
-    pub span: Span,
+    pub item: ItemId,
+    /// Where it is written.
+    pub span: SourceId,
     pub module: ModId,
     /// When the collector made it: the round, then the pass (traits, fns and types, impls,
     /// derived impls). Std's and a program's together are checked in this order.
@@ -108,12 +109,12 @@ pub struct StructDecl {
     /// Per field: `@cache`, so a read-only method may write it (R05.10.10).
     pub cached: Vec<bool>,
     /// Per field: where its type is written, as an offset into the source.
-    pub field_at: Vec<usize>,
+    pub field_at: Vec<SourceId>,
     /// Per field: the value a constructor that leaves it out stores, read in `module` (R02.6.1).
     pub defaults: Vec<Option<ast::Expr>>,
     pub module: ModId,
     /// Where its declaration starts in the source: the spans of its defaults count from here.
-    pub item: u32,
+    pub item: ItemId,
     pub n_sets: usize,
     pub methods: HashMap<String, FnId>,
     /// The fns of its impls over a shape of it (`impl Rev<[D]T>:`), each `self` that shape.
@@ -169,7 +170,7 @@ pub struct ConstId(pub usize);
 pub struct LibConst {
     pub module: ModId,
     pub name: String,
-    pub item: u32,
+    pub item: ItemId,
     pub ty: Option<ast::Type>,
     pub init: ast::Expr,
 }
@@ -193,8 +194,8 @@ pub struct AliasId(pub usize);
 pub struct AliasDecl {
     pub name: String,
     pub module: ModId,
-    /// Where it is declared, as an offset into the source.
-    pub at: usize,
+    /// Where it is declared.
+    pub at: SourceId,
     pub generics: Vec<String>,
     pub ty: ast::Type,
     pub names: HashMap<String, Named>,
@@ -218,9 +219,9 @@ pub struct ImplDecl {
     pub for_: Ty,
     pub methods: HashMap<String, FnId>,
     /// Where it is written.
-    pub at: usize,
+    pub at: SourceId,
     /// Where it says each of its trait's associated types, or `at` for a default.
-    pub assoc_at: Vec<usize>,
+    pub assoc_at: Vec<SourceId>,
     pub module: ModId,
     /// Made from the fields (R08.1.6): its `S(..)` is the generated constructor, never a `new`.
     pub derived: bool,
@@ -287,7 +288,7 @@ pub struct Decls {
     pub aliases: Layer<AliasDecl>,
     pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
-    pub misdeclared: Vec<(usize, cpl_diag::Code, String)>,
+    pub misdeclared: Vec<(SourceId, cpl_diag::Code, String)>,
     /// Each library's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
     pub methods: HashMap<String, Vec<FnId>>,
@@ -836,7 +837,7 @@ fn trait_typed(
 fn add_fn(
     d: &mut Decls,
     m: ModId,
-    item: u32,
+    item: ItemId,
     s: &ast::Stmt,
     f: &ast::FnDecl,
     within: Within,
@@ -894,7 +895,7 @@ fn add_fn(
         names: &names,
         values: d.top_values.clone(),
         ops: d.operator_fns(),
-        item: Some(item),
+        item: Some(item.clone()),
         struct_sets: &sets,
         struct_defaults: &defaults,
         tuples: &tuples,
@@ -927,7 +928,7 @@ fn add_fn(
                 (None, Some(t)) => Some(conv(&mut cx, t, &mut errors)),
                 (None, None) => {
                     errors.push(Msg::at(
-                        Span::new(item + p.name.span.start, item + p.name.span.end),
+                        item.at(p.name.span),
                         Msg::verdict(
                             cpl_diag::codes::UNKNOWN_TYPE,
                             "`self` of a free fn needs a type",
@@ -944,7 +945,7 @@ fn add_fn(
             (None, Some(t)) => t,
             (None, None) => {
                 errors.push(Msg::at(
-                    Span::new(item + p.name.span.start, item + p.name.span.end),
+                    item.at(p.name.span),
                     Msg::verdict(
                         cpl_diag::codes::UNKNOWN_TYPE,
                         format!("parameter `{}` needs a type", p.name.text),
@@ -993,7 +994,7 @@ fn add_fn(
                 match names.iter().position(|n| *n == s.text) {
                     Some(i) => from.push(i),
                     None => errors.push(Msg::at(
-                        Span::new(item + s.span.start, item + s.span.end),
+                        item.at(s.span),
                         Msg::verdict(
                             cpl_diag::codes::UNRESOLVED_NAME,
                             format!("`{}` is not a parameter", s.text),
@@ -1064,7 +1065,7 @@ fn add_fn(
                 "multitest" | "same_keys" | "index" | "aka" | "was" | "from_op"
             )
         {
-            let at = Span::new(item + x.span.start, item + x.span.end);
+            let at = item.at(x.span);
             errors.push(Msg::at(
                 at,
                 Unbuilt::Decorator {
@@ -1115,7 +1116,7 @@ fn add_fn(
         } else {
             let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS;
             d.misdeclared
-                .push(((item + s.span.start) as usize, code, msg));
+                .push((item.at(Span::new(s.span.start, s.span.start)), code, msg));
         }
     }
     d.fns.push(FnDecl {
@@ -1152,8 +1153,8 @@ fn add_fn(
         same_keys,
         aka: words("aka"),
         was: words("was"),
+        span: item.at(s.span),
         item,
-        span: Span::new(item + s.span.start, item + s.span.end),
         module: m,
         errors,
     });

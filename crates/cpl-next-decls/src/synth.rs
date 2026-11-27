@@ -2,6 +2,7 @@
 //! struct derives from its fields.
 use crate::decls::{constant_int, unnamed, GETTER};
 use crate::diag::Msg;
+use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::HashMap;
@@ -94,11 +95,11 @@ enum Derive {
 /// impl and only where none is: `Eq` field by field, `Ord` lexicographic in declaration order, and
 /// `Clone` cloning each field (R05.2.2).
 pub(crate) fn module_derived(
-    items: &[(u32, Vec<ast::Stmt>)],
+    items: &[crate::modules::Item],
     each: &[(String, String)],
-) -> Vec<(u32, String, ast::Stmt)> {
+) -> Vec<(ItemId, String, ast::Stmt)> {
     let mut out = Vec::new();
-    for (item, stmts) in items {
+    for crate::modules::Item { id: item, stmts } in items {
         for s in stmts {
             let StmtKind::Struct(sd) = &s.kind else {
                 continue;
@@ -109,11 +110,11 @@ pub(crate) fn module_derived(
                     continue;
                 };
                 let derived = derived_impl(s, sd, Derive::Cmp(op), tr, method);
-                out.push((*item, sd.name.text.clone(), derived));
+                out.push((item.clone(), sd.name.text.clone(), derived));
             }
             for (tr, method) in each {
                 let derived = derived_impl(s, sd, Derive::Each, tr, method);
-                out.push((*item, sd.name.text.clone(), derived));
+                out.push((item.clone(), sd.name.text.clone(), derived));
             }
         }
     }
@@ -264,8 +265,8 @@ fn derived_impl(
 
 /// The core traits marked `@derive`, with their one method: every struct whose fields all have
 /// one gets it field by field (R08.1.6).
-pub(crate) fn derive_each(core: &[(u32, Vec<ast::Stmt>)]) -> Vec<(String, String)> {
-    let stmts = core.iter().flat_map(|(_, ss)| ss);
+pub(crate) fn derive_each(core: &[crate::modules::Item]) -> Vec<(String, String)> {
+    let stmts = core.iter().flat_map(|it| &it.stmts);
     let marked = stmts.filter(|s| s.decorators.iter().any(|d| d.name.text == "derive"));
     marked
         .filter_map(|s| match &s.kind {
@@ -331,13 +332,13 @@ pub(crate) fn field_getter(field: &str, at: &ast::Stmt) -> ast::Stmt {
 /// a bodiless impl of it, written with the trait: `impl<V, A> Target<V> for (to: V, w: A)`, its
 /// members then met by the fields (R12.11.3). A written impl replaces it.
 pub(crate) fn field_trait_impls(
-    items: &[(u32, Vec<ast::Stmt>)],
+    items: &[crate::modules::Item],
     shapes: &[Vec<String>],
-) -> Vec<(u32, String, ast::Stmt)> {
+) -> Vec<(ItemId, String, ast::Stmt)> {
     let mut out = Vec::new();
     for (item, s) in items
         .iter()
-        .flat_map(|(i, ss)| ss.iter().map(move |s| (i, s)))
+        .flat_map(|it| it.stmts.iter().map(move |s| (&it.id, s)))
     {
         let StmtKind::Trait {
             name,
@@ -440,7 +441,7 @@ pub(crate) fn field_trait_impls(
                 decorators: Vec::new(),
                 public: false,
             };
-            out.push((*item, crate::records::name(fs), imp));
+            out.push((item.clone(), crate::records::name(fs), imp));
         }
     }
     out
@@ -461,8 +462,8 @@ fn plain(t: &ast::Type) -> bool {
 
 /// Core's `@convert` trait with its one method, and the fn core marks `@variant_check`: what a
 /// payload-free enum's conversions are written with.
-pub(crate) fn convert_marked(core: &[(u32, Vec<ast::Stmt>)]) -> Option<(String, String, String)> {
-    let stmts = || core.iter().flat_map(|(_, ss)| ss);
+pub(crate) fn convert_marked(core: &[crate::modules::Item]) -> Option<(String, String, String)> {
+    let stmts = || core.iter().flat_map(|it| &it.stmts);
     let marked = |s: &ast::Stmt, n: &str| s.decorators.iter().any(|d| d.name.text == n);
     let (tr, method) = (stmts().filter(|s| marked(s, "convert"))).find_map(|s| match &s.kind {
         StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
@@ -485,12 +486,12 @@ pub(crate) fn convert_marked(core: &[(u32, Vec<ast::Stmt>)]) -> Option<(String, 
 /// a `match` giving each variant's value, and `impl Into<E> for Int`, which checks `x` is a
 /// variant's value and gives that variant.
 pub(crate) fn enum_conversions(
-    items: &[(u32, Vec<ast::Stmt>)],
+    items: &[crate::modules::Item],
     (tr, method, check): &(String, String, String),
-) -> Vec<(u32, String, ast::Stmt)> {
+) -> Vec<(ItemId, String, ast::Stmt)> {
     use ast::{CmpOp, ExprKind};
     let mut out = Vec::new();
-    for (item, stmts) in items {
+    for crate::modules::Item { id: item, stmts } in items {
         for s in stmts {
             let StmtKind::Enum(e) = &s.kind else {
                 continue;
@@ -630,8 +631,8 @@ pub(crate) fn enum_conversions(
                 int_ty(),
                 FnBody::Block(block(vec![checked, pick])),
             );
-            out.push((*item, e.name.text.clone(), into_int));
-            out.push((*item, e.name.text.clone(), into_enum));
+            out.push((item.clone(), e.name.text.clone(), into_int));
+            out.push((item.clone(), e.name.text.clone(), into_enum));
         }
     }
     out

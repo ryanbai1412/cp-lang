@@ -3,6 +3,7 @@ use super::impls::{overlap, same_shape, supertraits_unmet};
 use super::inherent::inherent_impl;
 use super::*;
 use crate::synth::{enum_structs, module_derived};
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
 
 /// Std's declarations, collected once and never written after: the core's and every std
@@ -75,7 +76,7 @@ pub fn collect(
     mods: &[crate::modules::Module],
     seen: &[bool],
     prelude: &HashMap<String, String>,
-) -> (Decls, Vec<(u32, ast::Stmt)>) {
+) -> (Decls, Vec<(ItemId, ast::Stmt)>) {
     let (layer, main) = layer(Some(std), mods, seen, prelude);
     (layer.d, main)
 }
@@ -86,7 +87,7 @@ fn layer(
     mods: &[crate::modules::Module],
     seen: &[bool],
     prelude: &HashMap<String, String>,
-) -> (Prepared, Vec<(u32, ast::Stmt)>) {
+) -> (Prepared, Vec<(ItemId, ast::Stmt)>) {
     let from = base.map_or(0, |b| b.d.module_names.len());
     let mut d = base.map_or_else(Decls::default, |b| b.d.clone());
     let (fns_from, impls_from, aliases_from) = (d.fns.len(), d.impls.len(), d.aliases.len());
@@ -110,7 +111,7 @@ fn layer(
         d.member_types = Arc::new(kept.map(|(m, s)| (m.clone(), *s)).collect());
     }
     if base.is_some() {
-        for s in mods[n - 1].items.iter().flat_map(|(_, stmts)| stmts) {
+        for s in mods[n - 1].items.iter().flat_map(|it| &it.stmts) {
             if let StmtKind::Domain { name, def } = &s.kind {
                 let k = (d.top_doms.values())
                     .filter(|t| matches!(t, Ty::Dom(_)))
@@ -120,7 +121,7 @@ fn layer(
             }
         }
         d.top_values = Arc::new(
-            (mods[n - 1].items.iter().flat_map(|(_, stmts)| stmts))
+            (mods[n - 1].items.iter().flat_map(|it| &it.stmts))
                 .filter_map(|s| match &s.kind {
                     StmtKind::Let { pat, .. } => match &pat.kind {
                         ast::PatternKind::Name(x) => Some(x.clone()),
@@ -141,17 +142,17 @@ fn layer(
     }
     let mut main = Vec::new();
     // Pass 1: names, so signatures can mention later declarations.
-    let mut pending: Vec<(ModId, u32, &ast::Stmt, Option<Named>)> = Vec::new();
+    let mut pending: Vec<(ModId, ItemId, &ast::Stmt, Option<Named>)> = Vec::new();
     // The core's `use` lines, for its view made again over a program's records.
     let mut imports: Vec<(ModId, &ast::Stmt)> = match from {
         0 => Vec::new(),
         _ => (mods[CORE.0].items.iter())
-            .flat_map(|(_, ss)| ss)
+            .flat_map(|it| &it.stmts)
             .filter(|s| matches!(s.kind, StmtKind::Use { .. }))
             .map(|s| (CORE, s))
             .collect(),
     };
-    let mut aliases: Vec<(ModId, usize, String, Vec<String>, ast::Type)> = Vec::new();
+    let mut aliases: Vec<(ModId, SourceId, String, Vec<String>, ast::Type)> = Vec::new();
     let mut enums: Vec<(usize, String, Vec<String>, Vec<i64>)> = Vec::new();
     // Every record shape the program and its modules write is a core struct (R02.5.2).
     // A program's are those std does not write.
@@ -172,13 +173,16 @@ fn layer(
     shapes.extend(new_shapes.iter().cloned());
     shapes.sort();
     let core_first = mods[CORE.0].items.first();
-    let records: Vec<(u32, Vec<ast::Stmt>)> = (core_first
-        .and_then(|(i, ss)| Some((*i, ss.first()?.span))))
-    .map(|(i, span)| vec![(i, crate::records::structs(&new_shapes, span))])
+    let records: Vec<crate::modules::Item> = (core_first
+        .and_then(|it| Some((it.id.clone(), it.stmts.first()?.span))))
+    .map(|(id, span)| {
+        let stmts = crate::records::structs(&new_shapes, span);
+        vec![crate::modules::Item { id, stmts }]
+    })
     .unwrap_or_default();
     let each = crate::synth::derive_each(&mods[CORE.0].items);
     let convert = crate::synth::convert_marked(&mods[CORE.0].items);
-    let derived: Vec<Vec<(u32, String, ast::Stmt)>> = (mods.iter().enumerate())
+    let derived: Vec<Vec<(ItemId, String, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             // Std's modules get only what a program's records add.
             let ours = mi >= from;
@@ -197,13 +201,16 @@ fn layer(
             made
         })
         .collect();
-    let synth: Vec<Vec<(u32, ast::Stmt)>> = (mods.iter().enumerate())
+    let synth: Vec<Vec<(ItemId, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             let mut out = Vec::new();
             if mi == CORE.0 {
-                out.extend((records.iter()).flat_map(|(i, ss)| ss.iter().map(|s| (*i, s.clone()))));
+                out.extend(
+                    (records.iter())
+                        .flat_map(|it| it.stmts.iter().map(|s| (it.id.clone(), s.clone()))),
+                );
             }
-            for (item, stmts) in m.items.iter().filter(|_| mi >= from) {
+            for crate::modules::Item { id: item, stmts } in m.items.iter().filter(|_| mi >= from) {
                 for s in stmts {
                     if let StmtKind::Enum(e) = &s.kind {
                         let (structs, errors, values) = enum_structs(s, e);
@@ -213,7 +220,7 @@ fn layer(
                         }
                         let vs = e.variants.iter().map(|v| v.name.text.clone()).collect();
                         enums.push((mi, e.name.text.clone(), vs, values));
-                        out.extend(structs.into_iter().map(|x| (*item, x)));
+                        out.extend(structs.into_iter().map(|x| (item.clone(), x)));
                     }
                 }
             }
@@ -225,7 +232,7 @@ fn layer(
         if mi < from && synth[mi].is_empty() {
             continue;
         }
-        for (item, stmts) in m.items.iter() {
+        for crate::modules::Item { id: item, stmts } in m.items.iter() {
             let made = synth[mi].iter().filter(|(i, _)| i == item).map(|(_, s)| s);
             for s in stmts
                 .iter()
@@ -265,7 +272,7 @@ fn layer(
                             field_at: Vec::new(),
                             defaults: Vec::new(),
                             module: mid,
-                            item: *item,
+                            item: item.clone(),
                             n_sets: 0,
                             methods: HashMap::new(),
                             shaped: HashMap::new(),
@@ -275,7 +282,7 @@ fn layer(
                             values: Vec::new(),
                             bounds: Vec::new(),
                         });
-                        pending.push((mid, *item, s, Some(Named::Struct(id))));
+                        pending.push((mid, item.clone(), s, Some(Named::Struct(id))));
                     }
                     StmtKind::Trait { name, alias, .. } => {
                         let id = TraitId(d.traits.len());
@@ -305,7 +312,7 @@ fn layer(
                             assoc: Vec::new(),
                             assoc_bounds: Vec::new(),
                         });
-                        pending.push((mid, *item, s, Some(Named::Trait(id))));
+                        pending.push((mid, item.clone(), s, Some(Named::Trait(id))));
                     }
                     StmtKind::TypeAlias {
                         name,
@@ -317,7 +324,7 @@ fn layer(
                         for x in (s.decorators.iter())
                             .filter(|x| !(library && read_elsewhere(&x.name.text)))
                         {
-                            let at = Span::new(*item + x.span.start, *item + x.span.end);
+                            let at = item.at(x.span);
                             let e = Msg::at(
                                 at,
                                 Unbuilt::Decorator {
@@ -334,10 +341,12 @@ fn layer(
                             Named::Alias(AliasId(aliases_from + aliases.len())),
                         );
                         let generics = generics.iter().map(|g| g.text.clone()).collect();
-                        let at = (*item + s.span.start) as usize;
+                        let at = item.at(Span::new(s.span.start, s.span.start));
                         aliases.push((mid, at, name.text.clone(), generics, ty.clone()));
                     }
-                    StmtKind::Fn(_) | StmtKind::Impl { .. } => pending.push((mid, *item, s, None)),
+                    StmtKind::Fn(_) | StmtKind::Impl { .. } => {
+                        pending.push((mid, item.clone(), s, None))
+                    }
                     StmtKind::Const {
                         name,
                         generics,
@@ -349,7 +358,7 @@ fn layer(
                         d.consts.push(LibConst {
                             module: mid,
                             name: name.text.clone(),
-                            item: *item,
+                            item: item.clone(),
                             ty: ty.clone(),
                             init: init.clone(),
                         });
@@ -376,7 +385,7 @@ fn layer(
                             None => d.module_errors[mi].push(e.into()),
                         }
                     }
-                    _ => main.push((*item, s.clone())),
+                    _ => main.push((item.clone(), s.clone())),
                 }
             }
         }
@@ -401,7 +410,7 @@ fn layer(
                 false => mi,
             };
             if let Some(Named::Struct(id)) = own[owner].get(name).copied() {
-                pending.push((ModId(mi), *item, s, Some(Named::Struct(id))));
+                pending.push((ModId(mi), item.clone(), s, Some(Named::Struct(id))));
             }
         }
     }
@@ -623,7 +632,7 @@ fn layer(
                             let fid = add_fn(
                                 &mut d,
                                 mid,
-                                item,
+                                item.clone(),
                                 m,
                                 &f,
                                 Within {
@@ -649,7 +658,7 @@ fn layer(
                     sdecl.field_at = sd
                         .fields
                         .iter()
-                        .map(|f| (item + f.ty.span.start) as usize)
+                        .map(|f| item.at(Span::new(f.ty.span.start, f.ty.span.start)))
                         .collect();
                     sdecl.n_sets = n_sets;
                     sdecl.ctor = methods.get("new").copied();
@@ -739,7 +748,7 @@ fn layer(
                             let fid = add_fn(
                                 &mut d,
                                 mid,
-                                item,
+                                item.clone(),
                                 m,
                                 f,
                                 Within {
@@ -792,7 +801,7 @@ fn layer(
                         names: &names,
                         values: d.top_values.clone(),
                         ops: d.operator_fns(),
-                        item: Some(item),
+                        item: Some(item.clone()),
                         struct_sets: &sets,
                         struct_defaults: &defaults,
                         tuples: &tuples,
@@ -819,11 +828,11 @@ fn layer(
                             for (k, a) in assoc.iter().enumerate() {
                                 let ty = body.stmts.iter().find_map(|m| match &m.kind {
                                     StmtKind::TypeAlias { name, ty, .. } if name.text == *a => {
-                                        Some((ty, (item + m.span.start) as usize))
+                                        Some((ty, item.at(Span::new(m.span.start, m.span.start))))
                                     }
                                     _ => None,
                                 });
-                                assoc_at.push(ty.map_or((item + s.span.start) as usize, |t| t.1));
+                                assoc_at.push(ty.as_ref().map_or(item.at(Span::new(s.span.start, s.span.start)), |t| t.1.clone()));
                                 let ty = ty.map(|t| t.0);
                                 let default = d.traits[r.tr.0].defaults[n + k].clone();
                                 match (ty, default) {
@@ -889,7 +898,7 @@ fn layer(
                             continue;
                         }
                     }
-                    let at = (item + s.span.start) as usize;
+                    let at = item.at(Span::new(s.span.start, s.span.start));
                     let tname = d.traits[tref.tr.0].name.clone();
                     let clashes = |d: &Decls, im: &ImplDecl| {
                         im.trait_.tr == tref.tr
@@ -994,7 +1003,7 @@ fn layer(
                             let fid = add_fn(
                                 &mut d,
                                 mid,
-                                item,
+                                item.clone(),
                                 m,
                                 f,
                                 Within {
@@ -1011,7 +1020,7 @@ fn layer(
                         }
                     }
                     let code = cpl_diag::codes::MISSING_IMPL;
-                    (d.misdeclared).extend(missing.into_iter().map(|m| (at, code, m)));
+                    (d.misdeclared).extend(missing.into_iter().map(|m| (at.clone(), code, m)));
                     d.push_impl(ImplDecl {
                         trait_: tref,
                         generics,
@@ -1026,7 +1035,7 @@ fn layer(
                     });
                 }
                 (StmtKind::Fn(f), _) => {
-                    let fid = add_fn(&mut d, mid, item, s, f, FREE);
+                    let fid = add_fn(&mut d, mid, item.clone(), s, f, FREE);
                     let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
                     Arc::make_mut(&mut d.views[mi]).insert(f.name.text.clone(), Named::Fn(fid));
                     if d.is_library(mid)
@@ -1067,7 +1076,7 @@ fn layer(
                         }
                         let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
                         d.misdeclared.push((
-                            (item + s.span.start) as usize,
+                            item.at(Span::new(s.span.start, s.span.start)),
                             code,
                             format!("`{}` is already a fn; one name is one fn", f.name.text),
                         ));
@@ -1091,7 +1100,7 @@ fn layer(
                     };
                     if d.s(t).module != mid {
                         d.misdeclared.push((
-                            (item + target.span.start) as usize,
+                            item.at(Span::new(target.span.start, target.span.start)),
                             cpl_diag::codes::UNSUPPORTED,
                             format!("`{}` is declared in another module; its inherent methods live there", name.text),
                         ));

@@ -1412,7 +1412,7 @@ fn thread_values(p: &mut Program, typed: &Typed) {
 /// Contract 8: event points, placed on instance IR after the link step, only when asked for.
 /// They are not in generic IR and are not uses for ownership. Reported here: entering and
 /// leaving a fn of the user's file, and each write to one of its top-level bindings.
-pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
+pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
     fn shown(t: &CTy) -> bool {
         matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Dom(_))
     }
@@ -1479,7 +1479,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls, user_from: u32) {
     for f in &mut p.insts {
         let user_fn = match &f.key {
             FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
-                d.f(*id).item >= user_from && f.region.is_none()
+                d.f(*id).module == d.program && f.region.is_none()
             }
             _ => false,
         };

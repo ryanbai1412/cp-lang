@@ -10,6 +10,7 @@ use cpl_next_check as check;
 use cpl_next_cpp as cpp;
 use cpl_next_decls::{decls, diag, modules};
 use cpl_next_interp as interp;
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
 use cpl_next_lower as lower;
@@ -88,12 +89,12 @@ impl Diag {
 
     /// `m` placed in its file.
     fn new(stage: Stage, m: &diag::Msg, loaded: &modules::Loaded) -> Diag {
-        let at = m.at.map(|span| {
-            let module = loaded.text_at(span.start);
+        let at = m.at.as_ref().map(|at| {
+            let (module, span) = (loaded.text_of(at), loaded.text_of(at).span(at));
             let (line, col) = module.line_col(span.start);
             At {
                 file: module.name.clone(),
-                span: cpl_diag::Span::new(span.start - module.start, span.end - module.start),
+                span,
                 line,
                 col,
             }
@@ -118,6 +119,11 @@ impl Diag {
 /// Whether two spans share a byte; an empty span is the byte it is at.
 fn overlaps(a: cpl_diag::Span, b: cpl_diag::Span) -> bool {
     a.start < b.end.max(b.start + 1) && b.start < a.end.max(a.start + 1)
+}
+
+/// Whether two places share a byte of one item.
+fn overlaps_in(a: &SourceId, b: &SourceId) -> bool {
+    a.item == b.item && overlaps(a.span, b.span)
 }
 
 /// The one printer of a diagnostic: `check: program:3:5: E0301: text`, and its help on the
@@ -166,11 +172,11 @@ pub struct Compiled {
 struct Front {
     loaded: modules::Loaded,
     /// What the parser could not read; a later layer says nothing there.
-    rejected: Vec<cpl_diag::Span>,
+    rejected: Vec<SourceId>,
     d: decls::Decls,
     t: check::Typed,
     g: lower::Generic,
-    main: Vec<(u32, cpl_syntax::ast::Stmt)>,
+    main: Vec<(ItemId, cpl_syntax::ast::Stmt)>,
     diags: Vec<Diag>,
 }
 
@@ -179,9 +185,11 @@ fn staged(
     stage: Stage,
     es: &[diag::Msg],
     loaded: &modules::Loaded,
-    rejected: &[cpl_diag::Span],
+    rejected: &[SourceId],
 ) -> Vec<Diag> {
-    let unread = |m: &&diag::Msg| (m.at).is_some_and(|a| rejected.iter().any(|p| overlaps(*p, a)));
+    let unread = |m: &&diag::Msg| {
+        (m.at.as_ref()).is_some_and(|a| rejected.iter().any(|p| overlaps_in(p, a)))
+    };
     (es.iter())
         .filter(|m| stage == Stage::Syntax || !unread(m))
         .map(|e| Diag::new(stage, e, loaded))
@@ -219,8 +227,8 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
         let loaded = modules::load(std, user_src, roots, &wanted);
         // What the parser could not read is checked as error nodes; a later layer says nothing
         // on what the parser rejected, and every other unit is checked as if it were alone.
-        let rejected: Vec<cpl_diag::Span> = (loaded.poisoned.iter().copied())
-            .chain(loaded.errors.iter().filter_map(|m| m.at))
+        let rejected: Vec<SourceId> = (loaded.poisoned.iter().cloned())
+            .chain(loaded.errors.iter().filter_map(|m| m.at.clone()))
             .collect();
         let diags = |stage, es: &[diag::Msg]| staged(stage, es, &loaded, &rejected);
         let mut out = diags(Stage::Syntax, &loaded.errors);
@@ -276,7 +284,7 @@ pub fn compile(
         return Err(link(&prog.errors));
     }
     if events {
-        inst::add_events(&mut prog, &f.t, &f.d, f.loaded.program_start);
+        inst::add_events(&mut prog, &f.t, &f.d);
     }
     let canon = inst::canonicalize(&prog).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
@@ -311,7 +319,6 @@ pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>)
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);
     }
-    let start = f.loaded.program_start;
     let fns = (0..f.d.fns.len()).map(ty::FnId).filter(|id| {
         let fd = f.d.f(*id);
         // A derived impl's methods are made, not written: they are the struct's.
@@ -324,15 +331,15 @@ pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>)
     let fns = fns.map(|id| {
         let fd = f.d.f(id);
         let lowered = f.g.funcs.contains_key(&ir::FuncKey::Decl(id));
-        (Some(fd.name.clone()), fd.span, lowered)
+        (Some(fd.name.clone()), fd.span.clone(), lowered)
     });
     let statements = (f.main.iter()).map(|(off, s)| {
-        let span = cpl_diag::Span::new(off + s.span.start, off + s.span.end);
+        let span = off.at(s.span);
         (None, span, f.g.funcs.contains_key(&ir::FuncKey::Main))
     });
     let units = (fns.chain(statements))
         .map(|(name, span, lowered)| {
-            let local = cpl_diag::Span::new(span.start - start, span.end - start);
+            let local = f.loaded.text_of(&span).span(&span);
             let diags = (f.diags.iter())
                 .filter(|d| {
                     (d.at.as_ref())
@@ -344,7 +351,7 @@ pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>)
                 name,
                 span: local,
                 diags,
-                untyped: f.g.untyped.iter().filter(|u| overlaps(**u, span)).count(),
+                untyped: f.g.untyped.iter().filter(|u| overlaps_in(u, &span)).count(),
                 lowered,
             }
         })

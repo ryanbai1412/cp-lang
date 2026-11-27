@@ -1,12 +1,13 @@
-//! A diagnostic as a layer reports it: a span of the joined source (contract 1) and what it
+//! A diagnostic as a layer reports it: a place inside an item (contract 1) and what it
 //! says, a refusal as its [`Unbuilt`] feature.
+use crate::ids::SourceId;
 use crate::unbuilt::Unbuilt;
-use cpl_diag::{Code, Span};
+use cpl_diag::Code;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Msg {
     /// `None`: the layer does not know where yet.
-    pub at: Option<Span>,
+    pub at: Option<SourceId>,
     /// The library module it is from, when it has no place yet.
     pub module: Option<String>,
     /// The layer that found it, when another layer reports it.
@@ -22,7 +23,7 @@ pub struct Msg {
 }
 
 impl Msg {
-    pub fn at(at: Span, m: impl Into<Msg>) -> Msg {
+    pub fn at(at: SourceId, m: impl Into<Msg>) -> Msg {
         Msg {
             at: Some(at),
             ..m.into()

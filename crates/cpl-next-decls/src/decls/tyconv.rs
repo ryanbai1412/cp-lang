@@ -1,6 +1,7 @@
 //! Types as written turned into types: names looked up in a module's view, aliases expanded,
 //! a struct's left-off arguments filled from its defaults, and a set for each fn type.
 use super::*;
+use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 
 /// Type arguments written but left off the end take their defaults, which may name the
@@ -19,7 +20,7 @@ pub(super) struct TyCx<'a> {
     /// What the program's top level binds with `let`: values, not items, to `type_of`.
     pub(super) values: Arc<HashSet<String>>,
     /// Where the item being converted starts in the source, when known: its spans count from it.
-    pub(super) item: Option<u32>,
+    pub(super) item: Option<ItemId>,
     /// Each binary operator's fn, which `type_of(+)` names.
     pub(super) ops: Arc<Vec<(String, FnId)>>,
     /// How many set parameters each struct has, so a struct named in a type gets its own.
@@ -325,8 +326,9 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         }
         // `type_of(f)`: the fn item's own type, one for a generic fn (R08.1.10).
         TypeKind::ItemOf(e) => {
-            let at = |text: Msg| match cx.item {
-                Some(i) => Msg::at(Span::new(i + e.span.start, i + e.span.end), text),
+            let item = cx.item.clone();
+            let at = |text: Msg| match &item {
+                Some(i) => Msg::at(i.at(e.span), text),
                 None => text,
             };
             let key = e.fn_item_key();

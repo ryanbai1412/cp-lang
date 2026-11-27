@@ -20,7 +20,7 @@ pub fn is_record(name: &str) -> bool {
 /// arguments of a call by any other names are the record `xs` is (R06.1.5).
 pub fn variadics(mods: &[crate::modules::Module]) -> HashMap<String, Vec<String>> {
     let mut out: HashMap<String, Vec<String>> = HashMap::new();
-    for (_, stmts) in mods.iter().flat_map(|m| m.items.iter()) {
+    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
         for s in stmts {
             let StmtKind::Fn(f) = &s.kind else {
                 continue;
@@ -46,7 +46,7 @@ pub fn shapes(
     variadics: &HashMap<String, Vec<String>>,
 ) -> Vec<Vec<String>> {
     let mut v = Shapes(BTreeSet::new(), variadics);
-    for (_, stmts) in mods.iter().flat_map(|m| m.items.iter()) {
+    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
         stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
     }
     v.0.into_iter().collect()

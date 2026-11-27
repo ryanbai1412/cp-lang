@@ -112,7 +112,7 @@ impl Cx<'_> {
                 mutable: false,
                 named_only: false,
                 variadic: false,
-                default: e.as_ref().map(|e| (e, s.module, s.item)),
+                default: e.as_ref().map(|e| (e, s.module, s.item.clone())),
             })
             .collect();
         let (pre, fields) = self.args(args, &formals, span);

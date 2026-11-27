@@ -1,60 +1,68 @@
 //! Contract 1: snapshot -> modules. Finds the modules a program needs. Each keeps its own text,
-//! placed in one offset space so a span says both the module and the place in it.
+//! and each of its items has a path (`ItemId`), so a place is an item and a span inside it.
 //!
 //! A module is loaded only when a name from it can be meant: one the program's `use` lines
 //! name, a prelude name the program's text mentions (R11.3), or one a loaded module's own
 //! `use` lines name. Libraries get no prelude (R11.3.1).
 use crate::diag::Msg;
 use cpl_diag::Span;
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_syntax::ast::{Stmt, StmtKind};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-type Items = Vec<(u32, Vec<Stmt>)>;
-/// Each syntax error with its code and where it is, and the spans the parser could not read.
-type Unread = (Vec<Msg>, Vec<Span>);
+/// An item as the parser split it: its path and its statements, whose spans count from the
+/// item's start.
+pub struct Item {
+    pub id: ItemId,
+    pub stmts: Vec<Stmt>,
+}
+
+type Items = Vec<Item>;
+/// Each syntax error with its code and where it is, and the places the parser could not read.
+type Unread = (Vec<Msg>, Vec<SourceId>);
 
 pub struct Module {
     pub name: String,
     pub items: Arc<Items>,
 }
 
-/// A module's text at its place in the offset space.
+/// A module's text, and where each of its items starts in it.
 #[derive(Clone)]
 pub struct Text {
     pub name: String,
-    pub start: u32,
     pub text: Arc<str>,
     /// Where each of its lines starts in `text`.
     lines: Arc<[u32]>,
+    starts: Arc<HashMap<ItemId, u32>>,
 }
 
 impl Text {
-    fn new(name: &str, start: u32, text: Arc<str>) -> Text {
+    fn new(name: &str, text: Arc<str>, starts: HashMap<ItemId, u32>) -> Text {
         let lines = std::iter::once(0)
             .chain(text.match_indices('\n').map(|(i, _)| i as u32 + 1))
             .collect();
         Text {
             name: name.to_string(),
-            start,
             text,
             lines,
+            starts: Arc::new(starts),
         }
-    }
-    /// The places it holds: its text and the end just past it.
-    fn holds(&self, pos: u32) -> bool {
-        self.start <= pos && pos <= self.start + self.text.len() as u32
     }
     /// The 1-based line and column of `pos`.
     pub fn line_col(&self, pos: u32) -> (u32, u32) {
-        let local = pos - self.start;
-        let line = self.lines.partition_point(|s| *s <= local);
-        (line as u32, local - self.lines[line - 1] + 1)
+        let line = self.lines.partition_point(|s| *s <= pos);
+        (line as u32, pos - self.lines[line - 1] + 1)
+    }
+    /// `at`'s span in this text.
+    pub fn span(&self, at: &SourceId) -> Span {
+        let start = self.starts.get(&at.item).copied().unwrap_or(0);
+        Span::new(start + at.span.start, start + at.span.end)
     }
 }
 
-/// A module read and parsed, its items and syntax errors placed at its start.
+/// A module read and parsed.
 struct Parsed {
     text: Text,
     items: Arc<Items>,
@@ -68,24 +76,12 @@ impl Parsed {
             items: self.items.clone(),
         }
     }
-    fn new(name: &str, start: u32, text: Arc<str>) -> Parsed {
-        let (items, unread) = parse(&text);
-        Parsed::placed(name, start, text, items, unread)
-    }
-    /// `items` and `unread`, read from `text` alone, placed at `start`.
-    fn placed(name: &str, start: u32, text: Arc<str>, items: Items, unread: Unread) -> Parsed {
-        let at = |s: Span| Span::new(start + s.start, start + s.end);
-        let (diags, poisoned) = unread;
-        let diags = (diags.into_iter())
-            .map(|m| Msg {
-                at: m.at.map(at),
-                ..m
-            })
-            .collect();
+    fn new(name: &str, text: Arc<str>) -> Parsed {
+        let (items, starts, unread) = parse(name, &text);
         Parsed {
-            text: Text::new(name, start, text),
-            items: Arc::new(items.into_iter().map(|(o, ss)| (o + start, ss)).collect()),
-            unread: (diags, poisoned.into_iter().map(at).collect()),
+            text: Text::new(name, text, starts),
+            items: Arc::new(items),
+            unread,
         }
     }
 }
@@ -100,7 +96,6 @@ pub struct Std {
     decls: crate::decls::Prepared,
     /// Each prelude name and the module it is from.
     prelude: HashMap<String, String>,
-    end: u32,
 }
 
 impl Std {
@@ -124,19 +119,11 @@ impl Std {
             }
         }
         files.sort();
-        let mut placed = vec![(CORE.to_string(), 0, CORE_TEXT.to_string())];
-        let mut end = CORE_TEXT.len() as u32 + 1;
-        for (name, text) in files {
-            let len = text.len() as u32;
-            placed.push((name, end, text));
-            end += len + 1;
-        }
+        let placed = std::iter::once((CORE.to_string(), CORE_TEXT.to_string())).chain(files);
         // Each module is read alone, so they are parsed side by side.
         let modules: Vec<Parsed> = std::thread::scope(|scope| {
-            let parsing: Vec<_> = (placed.into_iter())
-                .map(|(name, start, text)| {
-                    scope.spawn(move || Parsed::new(&name, start, text.into()))
-                })
+            let parsing: Vec<_> = placed
+                .map(|(name, text)| scope.spawn(move || Parsed::new(&name, text.into())))
                 .collect();
             (parsing.into_iter())
                 .map(|p| p.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))
@@ -161,7 +148,6 @@ impl Std {
             index,
             decls,
             prelude,
-            end,
         }
     }
     pub fn decls(&self) -> &crate::decls::Prepared {
@@ -176,35 +162,40 @@ pub struct Loaded {
     pub modules: Vec<Module>,
     /// Per module, whether the program loads it.
     pub seen: Vec<bool>,
-    /// Where the program's text starts: it is placed after every other module.
-    pub program_start: u32,
     /// Each prelude name and the module it is from.
     pub prelude: HashMap<String, String>,
     pub errors: Vec<Msg>,
     /// What the parser could not read: no later layer reports inside these (contract 3).
-    pub poisoned: Vec<Span>,
+    pub poisoned: Vec<SourceId>,
+    /// Each module's place in `texts`.
+    index: HashMap<String, usize>,
 }
 
 impl Loaded {
-    /// The module `pos` is in.
-    pub fn text_at(&self, pos: u32) -> &Text {
-        (self.texts.iter().find(|t| t.holds(pos))).unwrap_or(&self.texts[0])
+    /// The text of the module `at` is in.
+    pub fn text_of(&self, at: &SourceId) -> &Text {
+        let i = self.index.get(&*at.item.module).copied();
+        &self.texts[i.unwrap_or(0)]
     }
-    /// The source text `span` covers.
-    pub fn text(&self, span: Span) -> &str {
-        let t = self.text_at(span.start);
-        let at = (span.start - t.start) as usize..(span.end.max(t.start) - t.start) as usize;
-        t.text.get(at).unwrap_or("")
+    /// The source text `at` covers.
+    pub fn text(&self, at: &SourceId) -> &str {
+        let (t, s) = (self.text_of(at), self.text_of(at).span(at));
+        t.text
+            .get(s.start as usize..s.end.max(s.start) as usize)
+            .unwrap_or("")
     }
     /// The program's text.
     pub fn program(&self) -> &str {
-        &self.text_at(self.program_start).text
+        &self.texts[self.index[PROGRAM]].text
     }
-    /// The program's 1-based line `pos` is on; 0 outside the program.
-    pub fn program_line(&self, pos: u32) -> u32 {
-        let t = self.text_at(pos);
-        match t.start == self.program_start {
-            true => t.line_col(pos).0,
+    /// The program's 1-based line `at` is on; 0 outside the program.
+    pub fn program_line(&self, at: &SourceId) -> u32 {
+        match &*at.item.module == PROGRAM {
+            true => {
+                (self.text_of(at))
+                    .line_col(self.text_of(at).span(at).start)
+                    .0
+            }
             false => 0,
         }
     }
@@ -257,40 +248,87 @@ impl Roots {
 }
 
 /// Each `use` line's module, the line, and where it is written.
-fn uses(items: &[(u32, Vec<Stmt>)]) -> impl Iterator<Item = (String, &Stmt, u32)> {
+fn uses(items: &[Item]) -> impl Iterator<Item = (String, &Stmt, SourceId)> {
     items
         .iter()
-        .flat_map(|(o, ss)| ss.iter().map(move |s| (*o, s)))
-        .filter_map(|(o, s)| match &s.kind {
+        .flat_map(|it| it.stmts.iter().map(move |s| (&it.id, s)))
+        .filter_map(|(id, s)| match &s.kind {
             StmtKind::Use { path, .. } => Some((
                 path.iter()
                     .map(|n| n.text.as_str())
                     .collect::<Vec<_>>()
                     .join("."),
                 s,
-                o + s.span.start,
+                SourceId {
+                    item: id.clone(),
+                    span: s.span,
+                },
             )),
             _ => None,
         })
 }
 
-/// The items, each syntax error with its code and where it is in `text`, and the spans of
-/// `text` the parser could not read.
-fn parse(text: &str) -> (Items, Unread) {
+/// The items of module `module`, where each starts in `text`, each syntax error with its code
+/// and where it is, and the places the parser could not read.
+fn parse(module: &str, text: &str) -> (Items, HashMap<ItemId, u32>, Unread) {
     let p = cpl_syntax::parse_file(text);
-    let mut poisoned = Vec::new();
-    let mut items = Vec::new();
+    let module: Arc<str> = module.into();
+    let mut nth: HashMap<String, u32> = HashMap::new();
+    let (mut items, mut starts, mut poisoned) = (Vec::new(), Vec::new(), Vec::new());
     for (o, it) in p.items {
-        poisoned.extend((it.poisoned.iter()).map(|s| Span::new(o + s.start, o + s.end)));
-        items.push((o, it.stmts));
+        let name = path_name(text, o, &it.stmts);
+        let n = nth.entry(name.clone()).or_default();
+        let id = ItemId {
+            module: module.clone(),
+            name: name.into(),
+            nth: *n,
+        };
+        *n += 1;
+        poisoned.extend((it.poisoned.iter()).map(|s| SourceId {
+            item: id.clone(),
+            span: *s,
+        }));
+        starts.push((id.clone(), o));
+        items.push(Item {
+            id,
+            stmts: it.stmts,
+        });
     }
+    let file = ItemId::file(module);
+    // A file's place, as the item it falls in.
+    let within = |span: Span| match starts.iter().rev().find(|(_, o)| *o <= span.start) {
+        Some((id, o)) => SourceId {
+            item: id.clone(),
+            span: Span::new(span.start - o, span.end - o),
+        },
+        None => SourceId {
+            item: file.clone(),
+            span,
+        },
+    };
     let diags = (p.diagnostics.into_iter())
         .map(|d| Msg {
             help: d.help,
-            ..Msg::at(d.span, Msg::verdict(d.code, d.message))
+            ..Msg::at(within(d.span), Msg::verdict(d.code, d.message))
         })
         .collect();
-    (items, (diags, poisoned))
+    (items, starts.into_iter().collect(), (diags, poisoned))
+}
+
+/// The name in an item's path: what it declares, an impl's head as written, or nothing for a
+/// top-level statement.
+fn path_name(text: &str, start: u32, stmts: &[Stmt]) -> String {
+    let head = |s: &Stmt| {
+        let line = text.get((start + s.span.start) as usize..).unwrap_or("");
+        let line = line.lines().next().unwrap_or("").trim_end();
+        line.strip_suffix(':').unwrap_or(line).to_string()
+    };
+    (stmts.iter())
+        .find_map(|s| match &s.kind {
+            StmtKind::Impl { .. } => Some(head(s)),
+            _ => crate::decls::item_name(s).map(str::to_string),
+        })
+        .unwrap_or_default()
 }
 
 /// `wanted`: std modules a check of the program found it needs (see `Std::declaring`).
@@ -301,10 +339,11 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
     }
     let mut errors = Vec::new();
     let prelude = std.prelude.clone();
-    let (program, program_unread) = parse(user);
+    let program = Parsed::new(PROGRAM, user.into());
     // A module and, for the program's own `use` lines, where it is named.
-    let mut queue: VecDeque<(String, Option<u32>)> =
-        uses(&program).map(|(m, _, at)| (m, Some(at))).collect();
+    let mut queue: VecDeque<(String, Option<SourceId>)> = uses(&program.items)
+        .map(|(m, _, at)| (m, Some(at)))
+        .collect();
     // Only a prelude name the text spells can be referred to, so the other modules need not load.
     let mentioned: HashSet<&str> = user
         .split(|c: char| !(c.is_alphanumeric() || c == '_'))
@@ -316,13 +355,6 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
     from_prelude.sort();
     queue.extend(from_prelude.into_iter().map(|m| (m.clone(), None)));
     queue.extend(wanted.iter().map(|m| (m.clone(), None)));
-    // A library's modules and the program are placed after std, the program last.
-    let mut next = std.end;
-    let mut place = |name: &str, text: Arc<str>, items: Items, unread: Unread| {
-        let start = next;
-        next += text.len() as u32 + 1;
-        Parsed::placed(name, start, text, items, unread)
-    };
     let is_std = |m: &str| m.split_once('.').is_some_and(|(lib, _)| lib == "std");
     let exists = |m: &str| match is_std(m) {
         true => std.index.contains_key(m),
@@ -331,7 +363,7 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
     let mut got: Vec<Got> = Vec::new();
     let mut seen = HashSet::new();
     let mut edges: Vec<(String, String)> = Vec::new();
-    let mut missing: Vec<(String, Option<u32>)> = Vec::new();
+    let mut missing: Vec<(String, Option<SourceId>)> = Vec::new();
     // The core's traits name std types (`Ord`'s `cmp` returns `std.algebra`'s `Ordering`).
     queue.extend(uses(&std.modules[0].items).map(|(to, _, _)| (to, None)));
     while let Some((m, at)) = queue.pop_front() {
@@ -340,10 +372,7 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
         }
         let g = match is_std(&m) {
             true => std.index.get(&m).copied().map(Got::Std),
-            false => (roots.source(&m)).map(|text| {
-                let (items, unread) = parse(&text);
-                Got::Lib(place(&m, text.into(), items, unread))
-            }),
+            false => (roots.source(&m)).map(|text| Got::Lib(Parsed::new(&m, text.into()))),
         };
         let Some(g) = g else {
             // `use std.rand.Rng` is an item of `std.rand`.
@@ -373,7 +402,7 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
     let mut poisoned = Vec::new();
     let mut unread = |p: &Parsed, errors: &mut Vec<Msg>| {
         errors.extend(p.unread.0.iter().cloned());
-        poisoned.extend(p.unread.1.iter().copied());
+        poisoned.extend(p.unread.1.iter().cloned());
     };
     let mut libs = Vec::new();
     for g in got {
@@ -388,8 +417,6 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
             }
         }
     }
-    let program = place(PROGRAM, user.into(), program, program_unread);
-    let program_start = program.text.start;
     unread(&program, &mut errors);
     libs.push(program);
     for p in libs {
@@ -401,15 +428,17 @@ pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
     for (m, a) in missing {
         let text = Msg::verdict(code, format!("no module `{m}`"));
         errors.push(match a {
-            Some(a) => Msg::at(Span::new(program_start + a, program_start + a), text),
+            Some(a) => Msg::at(a, text),
             None => text,
         });
     }
     Loaded {
-        texts,
         modules,
+        index: (texts.iter().enumerate())
+            .map(|(i, t)| (t.name.clone(), i))
+            .collect(),
+        texts,
         seen,
-        program_start,
         prelude,
         errors,
         poisoned,
@@ -446,4 +475,35 @@ fn cycle(edges: &[(String, String)]) -> Option<String> {
     let mut starts: Vec<&str> = out.keys().copied().collect();
     starts.sort_unstable();
     starts.into_iter().find_map(|m| visit(m, &out, &mut state))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An item's path and the spans inside it are the same whatever is added above it; only
+    /// where it starts moves.
+    #[test]
+    fn an_item_above_leaves_the_path_and_spans_of_those_below() {
+        let below = "struct S\nimpl Show for S:\n    fn show(self) -> Str: \"s\"\n\nfn g() -> Int:\n    let x = 2\n    x\n";
+        let above = format!("fn f() -> Int: 1\n\n{below}");
+        let items = |t: &str| {
+            let (items, starts, _) = parse(PROGRAM, t);
+            (items.into_iter())
+                .filter(|i| &*i.id.name != "f")
+                .map(|i| {
+                    let at = starts[&i.id];
+                    (i, at)
+                })
+                .collect::<Vec<_>>()
+        };
+        let (a, b) = (items(below), items(&above));
+        assert_eq!(a.len(), 3);
+        assert_eq!(&*a[1].0.id.name, "impl Show for S");
+        for ((x, xs), (y, ys)) in a.iter().zip(&b) {
+            assert_eq!(x.id, y.id);
+            assert_eq!(x.stmts, y.stmts);
+            assert_eq!(xs + 18, *ys);
+        }
+    }
 }

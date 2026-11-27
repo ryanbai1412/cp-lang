@@ -6,6 +6,7 @@ use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
 use cpl_next_decls::{diag, kind_name, modules, plain, records};
+use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::{ir, ty};
 use cpl_syntax::ast::{
@@ -182,7 +183,7 @@ pub enum TStmt {
     Cases(Option<TExpr>, Vec<TStmt>),
     /// Top-level code only: the statements after this one, to the end of the block, are from
     /// the item that starts at this offset in the source. Their spans are relative to it.
-    Item(u32),
+    Item(ItemId),
     /// In a generator: hand a value to the caller's loop body.
     Yield(TExpr),
     /// In a lender: hand a place to the caller's code; the rest of the fn runs after it.
@@ -278,7 +279,7 @@ enum SetVar {
 
 struct Cx<'a> {
     d: &'a Decls,
-    /// The loaded modules the spans index, offset by `item_off`.
+    /// The loaded modules the spans index, offset by `item`.
     src: &'a crate::modules::Loaded,
     tys: Vec<Option<Ty>>,
     sets: Vec<SetVar>,
@@ -334,7 +335,7 @@ struct Cx<'a> {
     refused_names: std::collections::HashSet<String>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
     joining: bool,
-    item_off: u32,
+    item: ItemId,
     /// The module whose names the code being checked sees.
     module: ModId,
     /// Fns a reference reached, to be checked; and the library places already reported.
@@ -370,7 +371,7 @@ struct CtxFrame {
     value: ast::Expr,
 }
 
-pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded) -> Typed {
+pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Loaded) -> Typed {
     let mut cx = Cx {
         wraps: false,
         frames: Vec::new(),
@@ -426,7 +427,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         refused_names: Default::default(),
         nested: None,
         joining: false,
-        item_off: 0,
+        item: ItemId::file(crate::modules::PROGRAM.into()),
         module: d.program,
         reached: Vec::new(),
         through_trait: Vec::new(),
@@ -444,15 +445,13 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         }
     }
     for (at, code, msg) in &d.misdeclared {
-        let at = *at as u32;
         cx.errors
-            .push(Msg::at(Span::new(at, at), Msg::verdict(*code, msg.clone())));
+            .push(Msg::at(at.clone(), Msg::verdict(*code, msg.clone())));
     }
     for (i, s) in (d.structs.iter().enumerate()).filter(|(_, s)| d.seen(s.module)) {
         if let Some(f) = decls::field_holding_itself(d, StructId(i)) {
-            let at = s.field_at[f] as u32;
             cx.errors.push(Msg::at(
-                Span::new(at, at),
+                s.field_at[f].clone(),
                 Msg::verdict(
                     cpl_diag::codes::RECURSIVE_FIELD,
                     format!(
@@ -466,9 +465,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
     }
     for (i, a) in d.aliases.iter().enumerate() {
         if a.module == d.program && decls::alias_cycle(d, decls::AliasId(i)) {
-            let at = a.at as u32;
             cx.errors.push(Msg::at(
-                Span::new(at, at),
+                a.at.clone(),
                 Msg::verdict(
                     cpl_diag::codes::ALIAS_CYCLE,
                     format!(
@@ -503,21 +501,21 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
         _ => false,
     };
     for (off, s) in main.iter().filter(|(_, s)| hoists(s)) {
-        cx.item_off = *off;
-        main_out.push(TStmt::Item(*off));
+        cx.item = off.clone();
+        main_out.push(TStmt::Item(off.clone()));
         cx.stmt(s, &mut main_out);
     }
     // A bare `with` line comes before the program's first statement (R09.1.1).
     let mut begun = false;
     for (off, s) in main {
-        cx.item_off = *off;
+        cx.item = off.clone();
         // `@!multitest`: the count is read once and everything below runs once per case.
         if cases.is_none()
             && s.decorators
                 .iter()
                 .any(|d| d.directive && d.name.text == "multitest")
         {
-            main_out.push(TStmt::Item(*off));
+            main_out.push(TStmt::Item(off.clone()));
             let count = cx.case_count(s).then_some(TExpr {
                 kind: TK::ReadInt,
                 ty: Ty::Int,
@@ -554,7 +552,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded)
             continue;
         }
         begun |= !bare_with;
-        into.push(TStmt::Item(*off));
+        into.push(TStmt::Item(off.clone()));
         cx.stmt(s, into);
         if let Some(i) = cx.early.take() {
             let name = (d.top_doms.iter())
@@ -737,7 +735,7 @@ impl<'a> Cx<'a> {
         self.err_help(span, msg, None);
     }
     fn err_help(&mut self, span: Span, msg: impl Into<Msg>, help: Option<String>) {
-        let at = Span::new(self.item_off + span.start, self.item_off + span.end);
+        let at = self.item.at(span);
         self.errors.push(Msg {
             help,
             ..Msg::at(at, msg)
@@ -745,10 +743,7 @@ impl<'a> Cx<'a> {
     }
     /// The source text `span` covers.
     fn text(&self, span: Span) -> &'a str {
-        (self.src).text(Span::new(
-            self.item_off + span.start,
-            self.item_off + span.end,
-        ))
+        (self.src).text(&self.item.at(span))
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.
@@ -871,7 +866,7 @@ impl<'a> Cx<'a> {
         self.n_sets = f.n_sets;
         self.locals = Vec::new();
         self.scopes = vec![HashMap::new()];
-        self.item_off = f.item;
+        self.item = f.item.clone();
         self.self_local = None;
         // A top-level fn reads the contexts it was written in, and a `uses` fn its caller's
         // (R09.1.3): `frames` are the values this copy of it is checked under.
@@ -1100,10 +1095,10 @@ impl Cx<'_> {
             ),
             (std::mem::take(&mut self.ahead), self.nested.take()),
             std::mem::take(&mut self.joining),
-            std::mem::replace(&mut self.item_off, k.item),
+            std::mem::replace(&mut self.item, k.item.clone()),
             std::mem::replace(&mut self.module, k.module),
         );
-        let mut out = vec![TStmt::Item(k.item)];
+        let mut out = vec![TStmt::Item(k.item.clone())];
         let want = (k.ty.as_ref()).map(|t| self.body_ty(t, k.init.span, &mut out));
         let mut e = self.expr(&k.init, want.as_ref());
         if let Some(t) = &want {
@@ -1119,7 +1114,7 @@ impl Cx<'_> {
         (self.self_local, self.ret, self.region) = (body.5, body.6, body.7);
         ((self.loops, self.in_for), (self.allow_region, self.recur)) = (body.8, body.9);
         ((self.selves, self.group), (self.ahead, self.nested)) = (body.10, body.11);
-        (self.joining, self.item_off, self.module) = (body.12, body.13, body.14);
+        (self.joining, self.item, self.module) = (body.12, body.13, body.14);
         self.globals.push(Local {
             name: k.name.clone(),
             ty: e.ty.clone(),

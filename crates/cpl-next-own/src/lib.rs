@@ -10,6 +10,7 @@ use cpl_next_check::*;
 use cpl_next_decls::decls::{Decls, Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::plain::{plain, plain_in};
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::ir::{Arg, Expr, Place, PrintPiece, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
@@ -89,7 +90,7 @@ struct Cx<'a> {
     group_free: HashMap<LambdaId, BTreeSet<VarRef>>,
     /// The fn being walked; `None` for the file body.
     cur: Option<FnId>,
-    off: u32,
+    off: ItemId,
     /// Enclosing loops over a generator or lender: what each holds for reading and for writing.
     regions: Vec<(BTreeSet<Pl>, BTreeSet<Pl>)>,
     report: bool,
@@ -111,11 +112,11 @@ struct Cx<'a> {
     /// A write or move that is an error if the binding is used afterwards.
     /// Errors that hold only if a binding is used again: the binding, where in the file the
     /// error is, and the error.
-    pending: Vec<(Root, Span, Code, String)>,
+    pending: Vec<(Root, SourceId, Code, String)>,
     /// The heap bindings a function value held by a binding uses, top-level ones included.
     caps: HashMap<Root, BTreeSet<Root>>,
     /// Where each argument that is copied in starts.
-    copies: BTreeSet<Span>,
+    copies: BTreeSet<SourceId>,
     /// For each fn, the arguments it stores where they outlive the call (receiver first), so
     /// an owned heap value passed there moves in (R05.2.2).
     keeps: HashMap<FnId, BTreeSet<usize>>,
@@ -132,7 +133,7 @@ pub struct Owned {
     pub errors: Vec<Msg>,
     /// What is wrong in a fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
-    pub copies: BTreeSet<Span>,
+    pub copies: BTreeSet<SourceId>,
 }
 
 /// The parameters a call to `f` lends to its result, receiver first, from its signature: the
@@ -172,7 +173,7 @@ pub fn check(d: &Decls, t: &Typed) -> Owned {
         lams: HashMap::new(),
         group_free: HashMap::new(),
         cur: None,
-        off: 0,
+        off: ItemId::file(cpl_next_decls::modules::PROGRAM.into()),
         regions: vec![],
         report: false,
         errors: vec![],
@@ -218,7 +219,7 @@ impl Cx<'_> {
         for &id in ids {
             let tf = &self.t.fns[&id];
             self.cur = Some(id);
-            self.off = self.d.f(id).item;
+            self.off = self.d.f(id).item.clone();
             let mut fx = Fx::default();
             self.decl.clear();
             self.lent.clear();
@@ -277,13 +278,13 @@ impl Cx<'_> {
     }
     /// Where a span is in the file. Spans are relative to the item they are in, so this is
     /// asked while that item is the one being walked.
-    fn at(&self, span: Span) -> Span {
-        Span::new(self.off + span.start, self.off + span.end)
+    fn at(&self, span: Span) -> SourceId {
+        self.off.at(span)
     }
     fn err(&mut self, span: Span, code: Code, msg: String) {
         self.err_at(self.at(span), code, msg)
     }
-    fn err_at(&mut self, at: Span, code: Code, msg: String) {
+    fn err_at(&mut self, at: SourceId, code: Code, msg: String) {
         if self.report {
             let e = Msg::at(at, Msg::verdict(code, msg));
             match self.cur.filter(|f| self.t.quiet.contains(f)) {
@@ -959,10 +960,7 @@ impl Cx<'_> {
                         // R4: the callee keeps the value it was called with, so a place the
                         // call also writes is copied in, not viewed.
                         if other.writes.iter().any(|w| overlap(w, &p)) {
-                            self.copies.insert(Span {
-                                start: self.off + v.span.start,
-                                end: self.off + v.span.end,
-                            });
+                            self.copies.insert(self.off.at(v.span));
                         } else {
                             held.insert(p);
                         }
@@ -1297,7 +1295,7 @@ impl Cx<'_> {
                 self.moved_in_loop(b.span, at, &before);
             }
             TStmt::Return(None) | TStmt::Break | TStmt::Continue => {}
-            TStmt::Item(off) => self.off = *off,
+            TStmt::Item(off) => self.off = off.clone(),
             // A loop: what one case moves out of the code above it is gone for the next.
             TStmt::Cases(count, body) => {
                 if let Some(c) = count {
@@ -1467,7 +1465,7 @@ fn result_span(e: &TExpr) -> Span {
 /// Settles each place passed to a call (`EK::Pass`) in the linked program: a copy taken in its
 /// turn where ownership found the call also writes it (R4), else a view from the call's start
 /// (R11) or a read. `sites` is where each site is in the loaded source.
-pub fn place_copies(p: &mut Program, sites: &[Span], copies: &BTreeSet<Span>) {
+pub fn place_copies(p: &mut Program, sites: &[SourceId], copies: &BTreeSet<SourceId>) {
     for f in &mut p.insts {
         Settle {
             locals: &mut f.locals,
