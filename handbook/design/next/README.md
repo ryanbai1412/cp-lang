@@ -9,6 +9,9 @@ is what three audit rounds found: the layers were right, but each
 mechanism was designed alone, and nothing said exactly what one layer
 hands the next. A contract doc says that, as data shapes.
 
+Before building anything here, read `building.md`: the rules every change
+follows so no shortcut needs cleaning up later.
+
 ## The layers
 
 ```
