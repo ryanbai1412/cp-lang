@@ -355,6 +355,11 @@ pub struct Decls {
     /// The program's top-level domains, which its declarations may name: each is the
     /// `Ty::Dom` of its place among them, filled when its statement runs (R02.9).
     pub top_doms: HashMap<String, Ty>,
+    /// The `domain C` a fn's result binds, `-> (domain C, [C]T)`: each is a domain of its own
+    /// among `top_doms`, with the name the trace shows (R02.9.3).
+    pub fresh_doms: Vec<(usize, String)>,
+    /// The fns whose result's slots are `domain C`s, till those slots are made `Range<C>`s.
+    pub fresh_slots: Vec<(FnId, Vec<usize>)>,
     /// The names the program's top level binds with `let`.
     pub top_values: Arc<HashSet<String>>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
@@ -535,6 +540,26 @@ fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> 
     match names.get(name) {
         Some(Named::Struct(s)) => Some(*s),
         _ => None,
+    }
+}
+
+/// A result's `domain C` slot holds the fresh domain's positions, a `Range<C>` (R02.9.3).
+fn fresh_results(d: &mut Decls) {
+    let range = (d.sugar.range_literal).and_then(|r| match &d.fns[r.0].ret {
+        Ty::Struct(r, ..) => Some(*r),
+        _ => None,
+    });
+    let Some(range) = range else {
+        return;
+    };
+    for (f, slots) in std::mem::take(&mut d.fresh_slots) {
+        if let Ty::Struct(_, args, _) = &mut d.fns[f.0].ret {
+            for k in slots {
+                if let Some(a) = args.get_mut(k) {
+                    *a = Ty::Struct(range, vec![a.clone()], Vec::new());
+                }
+            }
+        }
     }
 }
 
@@ -1134,6 +1159,19 @@ fn add_fn(
     // A fn type in a result is "whatever this fn returns": filled in after the body is checked.
     cx.next_set = None;
     cx.ret_slots = Some(0);
+    // `-> (domain C, [C]T)`: each `domain C` is a domain of its own, which the result names.
+    let mut ret_doms = doms.clone();
+    let binders = fresh_binders(f.ret.as_ref());
+    for (_, c) in &binders {
+        let t = collect::fresh_dom(d);
+        if let Ty::Dom(i) = t {
+            d.fresh_doms.push((i, format!("{}.{c}", f.name.text)));
+        }
+        d.top_doms
+            .insert(format!("${}", d.fresh_doms.len()), t.clone());
+        ret_doms.insert(c.clone(), t);
+    }
+    cx.doms = &ret_doms;
     let mut region = None;
     let mut lends = None;
     let ret = match (&f.ret, &f.lends) {
@@ -1284,6 +1322,10 @@ fn add_fn(
             d.misdeclared
                 .push((item.at(Span::new(s.span.start, s.span.start)), code, msg));
         }
+    }
+    if !binders.is_empty() {
+        let slots = binders.iter().map(|b| b.0).collect();
+        d.fresh_slots.push((FnId(d.fns.len()), slots));
     }
     d.fns.push(FnDecl {
         made: (0, 0),
@@ -1554,4 +1596,22 @@ fn bound_ref(
         }
     }
     out.push((i, r));
+}
+
+/// The `domain C` slots of a result `(domain C, [C]T)` or `(domain C, comp: [V]C)`: each one's
+/// place and name.
+fn fresh_binders(ret: Option<&ast::Type>) -> Vec<(usize, String)> {
+    match ret.map(|t| &t.kind) {
+        Some(TypeKind::Record(fs)) => (fs.iter().enumerate())
+            .filter(|(_, (_, t))| t.kind == TypeKind::NewDomain)
+            .map(|(k, (n, _))| (k, n.text.clone()))
+            .collect(),
+        Some(TypeKind::Tuple(ts)) => (ts.iter().enumerate())
+            .filter_map(|(k, t)| match &t.kind {
+                TypeKind::DomainBinder(n) => Some((k, n.text.clone())),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
 }

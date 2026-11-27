@@ -341,6 +341,8 @@ impl Cx<'_> {
                 Self::both(Some(tag_is(v, i)), rest)
             }
             PatternKind::Or(alts) => self.alternatives(alts, v, mutable, binds),
+            // `domain I` binds a result's `domain C` to a domain of its own, its ends read from
+            // `C`'s slot as the call returns (R02.9.3).
             PatternKind::Domain(_) => {
                 self.err(span, Unbuilt::DomainPattern);
                 None
@@ -469,6 +471,46 @@ impl Cx<'_> {
     }
 
     /// What `pat` covers of a value of type `t`.
+    /// `domain I` over the positions `t` of a result's `domain C`: `I` is a domain of its own,
+    /// its ends read from `C`'s slot as the call returns (R02.9.3). `C` and `I`, if `t` is one.
+    pub(super) fn bind_fresh(
+        &mut self,
+        name: &str,
+        t: &Ty,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> Option<(usize, usize)> {
+        let c = self.fresh_slot_of(t)?;
+        let (lo, len) = (self.domains[c].lo, self.domains[c].len);
+        let var = |r| TExpr {
+            kind: TK::Var(r),
+            ty: Ty::Int,
+            span,
+        };
+        let end = TExpr {
+            kind: TK::Bin(
+                BinOp::Add,
+                Box::new(var(lo)),
+                Box::new(var(len)),
+                Overflow::Traps,
+            ),
+            ty: Ty::Int,
+            span,
+        };
+        let i = self.declare_domain(name, var(lo), end, (None, None), span, out);
+        Some((c, i))
+    }
+    /// The result's `domain C` whose positions `t` is.
+    pub(super) fn fresh_slot_of(&self, t: &Ty) -> Option<usize> {
+        let r = self.range_struct()?;
+        match self.shallow(t) {
+            Ty::Struct(s, ts, _) if s == r && ts.len() == 1 => match self.shallow(&ts[0]) {
+                Ty::Dom(c) if self.d.fresh_doms.iter().any(|f| f.0 == c) => Some(c),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
     pub(super) fn space(&self, pat: &ast::Pattern, t: &Ty) -> Space {
         match &pat.kind {
             PatternKind::Wildcard | PatternKind::Error | PatternKind::Domain(_) => Space::Any,
@@ -685,5 +727,19 @@ impl Cx<'_> {
             }
             _ => "_".into(),
         }
+    }
+}
+
+/// `t` with domain `from` named `to`: what a caller's `domain I` makes of a result's `[C]T`.
+pub(super) fn retag(t: &Ty, from: usize, to: usize) -> Ty {
+    let r = |t: &Ty| retag(t, from, to);
+    match t {
+        Ty::Dom(i) if *i == from => Ty::Dom(to),
+        Ty::Raw(e) => Ty::Raw(Box::new(r(e))),
+        Ty::Ref(e) => Ty::Ref(Box::new(r(e))),
+        Ty::Lent(e) => Ty::Lent(Box::new(r(e))),
+        Ty::Struct(d, ts, ss) => Ty::Struct(*d, ts.iter().map(r).collect(), ss.clone()),
+        Ty::Fn(ps, ret, s) => Ty::Fn(ps.iter().map(r).collect(), Box::new(r(ret)), s.clone()),
+        other => other.clone(),
     }
 }

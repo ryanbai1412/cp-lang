@@ -304,7 +304,13 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         // `(lo: A, hi: B)` is the record struct of those field names (R02.5.2).
         TypeKind::Record(fs) if cx.records.contains_key(&field_names(fs)) => {
             let d = cx.records[&field_names(fs)];
-            let a = fs.iter().map(|(_, x)| conv(cx, x, errors)).collect();
+            // `domain C` in a result is the fresh domain the fn names `C` (R02.9.3).
+            let a = (fs.iter())
+                .map(|(n, x)| match x.kind {
+                    TypeKind::NewDomain => cx.doms.get(&n.text).cloned().unwrap_or(Ty::Error),
+                    _ => conv(cx, x, errors),
+                })
+                .collect();
             Ty::Struct(d, a, Vec::new())
         }
         TypeKind::RowWithout {
@@ -418,6 +424,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         }
         // The parser has said what is wrong with it.
         TypeKind::Error => Ty::Error,
+        TypeKind::DomainBinder(n) => cx.doms.get(&n.text).cloned().unwrap_or(Ty::Error),
         other => {
             errors.push(
                 Unbuilt::Type {

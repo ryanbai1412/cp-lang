@@ -312,6 +312,9 @@ struct Cx<'a> {
     /// Two set parameters of a fn its body made one set: each call passes one set for both.
     set_alias: Vec<(FnId, usize, usize)>,
     domains: Vec<DomInfo>,
+    /// A body domain and the result's `domain C` it was returned as, which it then stands for;
+    /// or a result's `domain C` and the domain its caller bound it to (R02.9.3).
+    fresh_eq: Vec<(usize, usize)>,
     doms: HashMap<String, Ty>,
     ranges: Vec<RangeInfo>,
     // per fn
@@ -462,6 +465,7 @@ pub fn check(
                 count: None,
             })
             .collect(),
+        fresh_eq: Vec::new(),
         doms: d.top_doms.clone(),
         ranges: Vec::new(),
         decl: None,
@@ -497,6 +501,28 @@ pub fn check(
         const_busy: vec![false; d.consts.len()],
         const_init: Vec::new(),
     };
+    // A result's `domain C` keeps its ends in one static slot per declaration site (R02.9.4).
+    for (i, name) in &d.fresh_doms {
+        let slot = |cx: &mut Cx, end: &str| {
+            cx.globals.push(Local {
+                name: format!("{name}${end}"),
+                ty: Ty::Int,
+                top: true,
+                mutable: true,
+                fixed: false,
+            });
+            VarRef::Global(cx.globals.len() - 1)
+        };
+        let (lo, len) = (slot(&mut cx, "lo"), slot(&mut cx, "len"));
+        cx.domains[*i] = DomInfo {
+            name: name.clone(),
+            len,
+            lo,
+            within: (None, None),
+            owner: None,
+            count: None,
+        };
+    }
     for (at, code, msg) in &d.misdeclared {
         cx.errors
             .push(Msg::at(at.clone(), Msg::verdict(*code, msg.clone())));

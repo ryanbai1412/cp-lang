@@ -1314,6 +1314,7 @@ fn layer(
     remake_views(&mut d, &sc, from, core_too, Some(&mut errors));
     d.errors.extend(errors);
     domain_params(&mut d, fns_from);
+    fresh_results(&mut d);
     let unmet = supertraits_unmet(&d, impls_from);
     d.misdeclared.extend(unmet);
     // A program's lookups go through only the impls it sees.
@@ -1373,7 +1374,7 @@ fn remake_views(
 }
 
 /// A top-level domain's place among the declared ones.
-fn fresh_dom(d: &Decls) -> Ty {
+pub(super) fn fresh_dom(d: &Decls) -> Ty {
     Ty::Dom(
         (d.top_doms.values())
             .filter(|t| matches!(t, Ty::Dom(_)))

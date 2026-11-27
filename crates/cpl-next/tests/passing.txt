@@ -2343,3 +2343,7 @@ widths/sub-traps-3.cp
 widths/sub-traps-4.cp
 widths/sub-traps-5.cp
 widths/sub-wraps-when-unchecked.cp
+core-02/existential-return.cp
+core-04/with-domain.cp
+next/n_fresh_domain_record.cp
+next/n_fresh_domain_result.cp

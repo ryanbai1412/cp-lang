@@ -636,7 +636,21 @@ impl<'a> Cx<'a> {
                 }
             }
         }
+        // A result that names a fresh domain is a record read by place: `let (domain C, comp)`.
+        let fields = match self.lookup(&tmp).map(|(_, t)| self.shallow(&t)) {
+            Some(Ty::Struct(d, ts, _))
+                if self.d.s(d).record && ts.iter().any(|t| self.fresh_slot_of(t).is_some()) =>
+            {
+                (self.d.s(d).fields.iter())
+                    .map(|(n, _)| n.clone())
+                    .collect()
+            }
+            _ => Vec::new(),
+        };
         for (field, p) in parts {
+            let field = (field.parse::<usize>().ok())
+                .and_then(|k| fields.get(k).cloned())
+                .unwrap_or(field);
             if matches!(p.kind, PatternKind::Wildcard) {
                 continue;
             }
@@ -648,6 +662,23 @@ impl<'a> Cx<'a> {
                     span: p.span,
                 },
             });
+            // `domain I` names the result's `domain C` afresh: the rest of the value is over `I`.
+            if let PatternKind::Domain(name) = &p.kind {
+                let v = self.expr(&part, None);
+                match self.bind_fresh(&name.text, &v.ty, p.span, out) {
+                    Some((c, i)) => {
+                        if let Some((VarRef::Local(k) | VarRef::Global(k), t)) = self.lookup(&tmp) {
+                            let t = crate::pattern::retag(&self.zonk(&t), c, i);
+                            match self.decl.is_none() {
+                                true => self.globals[k].ty = t,
+                                false => self.locals[k].ty = t,
+                            }
+                        }
+                    }
+                    None => self.err(p.span, Unbuilt::DomainPattern),
+                }
+                continue;
+            }
             let mut one = s.clone();
             if let StmtKind::Let { pat, ty, init, .. } = &mut one.kind {
                 *pat = p;

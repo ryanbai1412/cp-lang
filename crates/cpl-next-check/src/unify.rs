@@ -263,6 +263,14 @@ impl<'a> Cx<'a> {
                 }
                 ok
             }
+            (Ty::Dom(x), Ty::Dom(y))
+                if self
+                    .fresh_eq
+                    .iter()
+                    .any(|&p| p == (*x, *y) || p == (*y, *x)) =>
+            {
+                true
+            }
             (Ty::Raw(x), Ty::Raw(y)) => self.unify(x, y),
             (Ty::Struct(d1, t1, s1), Ty::Struct(d2, t2, s2)) => {
                 d1 == d2
@@ -632,9 +640,42 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// `J` where a result's `domain C` is wanted, both as `Range`s of their positions.
+    fn fresh_slot(&self, have: &Ty, want: &Ty) -> Option<(usize, usize)> {
+        let r = self.range_struct()?;
+        let dom = |t: &Ty| match t {
+            Ty::Struct(s, ts, _) if *s == r && ts.len() == 1 => match self.shallow(&ts[0]) {
+                Ty::Dom(i) => Some(i),
+                _ => None,
+            },
+            _ => None,
+        };
+        let (j, c) = (dom(have)?, dom(want)?);
+        (j != c && self.d.fresh_doms.iter().any(|f| f.0 == c)).then_some((j, c))
+    }
+    /// Returning `J` as the result's `domain C`: `C` takes `J`'s ends, and in this body `J`
+    /// stands for `C`, so `[J]T` is the result's `[C]T` (R02.9.3).
+    fn return_fresh(&mut self, j: usize, c: usize, e: TExpr, want: Ty) -> TExpr {
+        self.fresh_eq.push((j, c));
+        let span = e.span;
+        let var = |r| TExpr {
+            kind: TK::Var(r),
+            ty: Ty::Int,
+            span,
+        };
+        let (from, to) = (&self.domains[j], &self.domains[c]);
+        let pre = vec![
+            TStmt::Assign(var(to.lo), var(from.lo)),
+            TStmt::Assign(var(to.len), var(from.len)),
+        ];
+        crate::expr::block(pre, TExpr { ty: want, ..e })
+    }
     pub(super) fn coerce(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let (have, want_s) = (self.shallow(&e.ty), self.shallow(want));
         let span = e.span;
+        if let Some((j, c)) = self.fresh_slot(&have, &want_s) {
+            return self.return_fresh(j, c, e, want_s);
+        }
         // `T` converts to `?T` (R02.4.2).
         if let Some(inner) = self.optional_of(&want_s) {
             if self.optional_of(&have).is_none() && !matches!(have, Ty::Var(_) | Ty::Error) {

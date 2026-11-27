@@ -48,7 +48,7 @@ impl Cx<'_> {
         matches!(self.shallow(t), Ty::Struct(s, ..) if Some(s) == self.range_struct())
     }
     /// The `Range` struct: the key of the `@index` fn that cuts any indexed `S` (R07.4.17).
-    fn range_struct(&self) -> Option<StructId> {
+    pub(super) fn range_struct(&self) -> Option<StructId> {
         let d = self.d;
         (d.index_fns.iter()).find_map(|f| match (&d.f(*f).self_ty, &d.f(*f).params[..]) {
             (Some(Ty::Param(_)), [p]) => match p.ty {
