@@ -303,7 +303,9 @@ impl<T> Sized for Set<T>:
 
 /// An ordered map: each key once, in `<` order, with its value; \(O(\log n)\) to read, write
 /// and remove one. `m[k]` traps when `k` is absent (`m.get(k)` is the `?V`), `m[k] = v` inserts
-/// or replaces, and `m[k] op= v` starts an absent key at `V.default()` (R07.12.9).
+/// or replaces, and `m[k] op= v` starts an absent key at `V.default()` (R07.12.9). A map
+/// literal `[k: v]` builds one (R01.4.5).
+@map
 pub struct Map<K, V>:
     var t: OrdTree<K, V> = OrdTree()
 

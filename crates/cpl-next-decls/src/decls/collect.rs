@@ -254,6 +254,7 @@ fn layer(
                             ("list", &mut d.sugar.list),
                             ("str", &mut d.sugar.str),
                             ("optional", &mut d.sugar.optional),
+                            ("map", &mut d.sugar.map),
                             ("array", &mut d.sugar.array),
                         ] {
                             if marked(s, n) {

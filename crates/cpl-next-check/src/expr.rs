@@ -1717,6 +1717,7 @@ impl<'a> Cx<'a> {
             },
             ExprKind::Generic { base, args } => self.generic_value(base, args, span),
             ExprKind::List(xs) => self.list_literal(xs, want, span),
+            ExprKind::Map(entries) => self.map_literal(entries, want, span),
             ExprKind::Comprehension { body, clauses } => {
                 self.comprehension(body, clauses, want, span)
             }

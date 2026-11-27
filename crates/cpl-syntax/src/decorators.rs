@@ -102,6 +102,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
     ),
     ("str", "on a struct: the struct a string literal is"),
     ("optional", "on a struct: the struct `?T` is"),
+    (
+        "map",
+        "on a struct: the struct a map literal `[k: v]` builds",
+    ),
     ("array", "on a struct: the struct `[D]T` is"),
     (
         "str_literal",

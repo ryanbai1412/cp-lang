@@ -1,4 +1,4 @@
-//! Lists a program writes: literals and comprehensions (R01.8.1).
+//! Lists a program writes, literals and comprehensions (R01.8.1), and map literals (R01.4.5).
 use super::*;
 
 /// A list being filled: the local holding it, its element type and its `push`.
@@ -177,4 +177,81 @@ fn comprehension_loop(body: &ast::Expr, clauses: &[ast::Clause], span: Span) -> 
         });
     }
     inner
+}
+
+impl Cx<'_> {
+    /// `[k: v, ..]`: a new map, of the struct `want` names when it has a `new()` and else of the
+    /// `@map` one, and each entry written through its `IndexSet` (R01.4.5).
+    pub(super) fn map_literal(
+        &mut self,
+        entries: &[(ast::Expr, ast::Expr)],
+        want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        // A struct a map literal can start empty: a `new()`, or a default for every field.
+        let empty = |d: StructId| {
+            let sd = self.d.s(d);
+            match sd.ctor {
+                Some(c) => self.d.f(c).params.is_empty(),
+                None => sd.defaults.iter().all(Option::is_some),
+            }
+        };
+        let (sid, targs, sets) = match want.map(|w| self.shallow(w)) {
+            Some(Ty::Struct(d, ts, ss)) if empty(d) => (d, ts, ss),
+            _ => match self.d.sugar.map.filter(|&d| empty(d)) {
+                Some(d) => {
+                    let sd = self.d.s(d);
+                    let (n, m) = (sd.generics.len(), sd.n_sets);
+                    let targs = (0..n).map(|_| self.new_ty()).collect();
+                    (d, targs, (0..m).map(|_| self.new_set()).collect())
+                }
+                None => {
+                    self.err(span, Msg::internal("no `@map` struct starts empty"));
+                    return Self::error_node(span);
+                }
+            },
+        };
+        let ty = Ty::Struct(sid, targs.clone(), sets.clone());
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let new = match self.d.s(sid).ctor {
+            Some(c) => {
+                let f = self.fnref(c, targs, sets);
+                mk(
+                    TK::Call {
+                        f,
+                        recv: None,
+                        args: vec![],
+                    },
+                    ty.clone(),
+                )
+            }
+            None => self.construct(sid, targs, sets, &[], span, None),
+        };
+        self.scopes.push(HashMap::new());
+        let name = "$map";
+        let var = self.bind(name, ty.clone());
+        match var {
+            VarRef::Local(l) => self.locals[l].mutable = true,
+            VarRef::Global(g) => self.globals[g].mutable = true,
+        }
+        let mut stmts = vec![TStmt::Let(var, new)];
+        let map = ast::Expr {
+            kind: ExprKind::Name(name.to_string()),
+            span,
+        };
+        for (k, v) in entries {
+            let Some(set) = self.index_set(&map, k, v, span) else {
+                let t = self.show(&ty);
+                let text = format!("a map literal builds a `{t}`, which has no `[]=` write");
+                self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text));
+                break;
+            };
+            self.stmt(&set, &mut stmts);
+        }
+        self.scopes.pop();
+        mk(
+            TK::Block(stmts, Some(Box::new(mk(TK::Var(var), ty.clone())))),
+            ty,
+        )
+    }
 }

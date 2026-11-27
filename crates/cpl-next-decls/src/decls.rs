@@ -264,6 +264,7 @@ pub struct Sugar {
     pub list: Option<StructId>,
     pub str: Option<StructId>,
     pub optional: Option<StructId>,
+    pub map: Option<StructId>,
     pub array: Option<StructId>,
     pub str_literal: Option<FnId>,
     pub range_literal: Option<FnId>,
