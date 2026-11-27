@@ -174,6 +174,7 @@ fn layer(
             made
         })
         .collect();
+    let tables = crate::synth::memo_tables(mods);
     let synth: Vec<Vec<(ItemId, ast::Stmt)>> = (mods.iter().enumerate())
         .map(|(mi, m)| {
             let mut out = Vec::new();
@@ -185,6 +186,10 @@ fn layer(
             }
             for crate::modules::Item { id: item, stmts } in m.items.iter().filter(|_| mi >= from) {
                 for s in stmts {
+                    if crate::synth::memo_table(s, &tables).is_some() {
+                        let fns = crate::synth::memo_fns(s);
+                        out.extend(fns.into_iter().map(|x| (item.clone(), x)));
+                    }
                     if let StmtKind::Enum(e) = &s.kind {
                         let (structs, errors, values) = enum_structs(s, e);
                         match ModId(mi) == d.program {
@@ -213,6 +218,10 @@ fn layer(
                 .filter(|s| !matches!(s.kind, StmtKind::Enum(_)))
                 .chain(made)
             {
+                if let Some(t) = crate::synth::memo_table(s, &tables).filter(|_| mi >= from) {
+                    main.push((item.clone(), crate::synth::memo_var(s, t)));
+                    continue;
+                }
                 if let (true, Some(name)) = (s.public, item_name(s)) {
                     public[mi].insert(name.to_string());
                 }

@@ -637,3 +637,214 @@ pub(crate) fn enum_conversions(
     }
     out
 }
+
+/// The structs marked `@memo_table(word)`, by word: the table a `@memo(word)` fn keeps. Any
+/// module may declare one (R06.4.1).
+pub(crate) fn memo_tables(mods: &[crate::modules::Module]) -> HashMap<String, String> {
+    (mods.iter().flat_map(|m| m.items.iter()).flat_map(|it| &it.stmts))
+        .filter_map(|s| match &s.kind {
+            StmtKind::Struct(sd) => (s.decorators.iter())
+                .find(|x| x.name.text == "memo_table")
+                .and_then(memo_word)
+                .map(|w| (w, sd.name.text.clone())),
+            _ => None,
+        })
+        .collect()
+}
+
+fn memo_word(x: &ast::Decorator) -> Option<String> {
+    match &x.args[..] {
+        [a] => match &a.value.kind {
+            ast::ExprKind::Name(w) => Some(w.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// The table a `@memo(word)` fn keeps: one some struct is marked with, for a fn whose
+/// parameters and result are written.
+pub(crate) fn memo_table<'a>(
+    s: &ast::Stmt,
+    tables: &'a HashMap<String, String>,
+) -> Option<&'a String> {
+    let StmtKind::Fn(f) = &s.kind else {
+        return None;
+    };
+    let x = s.decorators.iter().find(|x| x.name.text == "memo")?;
+    let plain = |p: &ast::Param| p.ty.is_some() && !p.mutable && !p.variadic && !p.lazy;
+    let typed = f.ret.is_some() && !f.params.is_empty() && f.params.iter().all(plain);
+    (typed && f.generics.is_empty() && f.lends.is_none()).then_some(())?;
+    tables.get(&memo_word(x)?)
+}
+
+fn memo_names(f: &ast::FnDecl) -> (String, String) {
+    let n = &f.name.text;
+    (format!("{n}.memo"), format!("{n}.body"))
+}
+
+/// A `@memo` fn's table, `var f.memo: T<K, R> = T<K, R>()`, a statement of the block that
+/// declares `f`, so the cache lives as long as it does (R06.4.1). `K` is the one parameter's
+/// type, else the tuple of them.
+pub(crate) fn memo_var(s: &ast::Stmt, table: &str) -> ast::Stmt {
+    let StmtKind::Fn(f) = &s.kind else {
+        unreachable!("memo_table found a fn")
+    };
+    let span = s.span;
+    let name = |text: &str| ast::Name {
+        text: text.to_string(),
+        span,
+    };
+    let tys: Vec<ast::Type> = f.params.iter().filter_map(|p| p.ty.clone()).collect();
+    let key = match &tys[..] {
+        [t] => t.clone(),
+        _ => ast::Type {
+            kind: TypeKind::Tuple(tys),
+            span,
+        },
+    };
+    let args = vec![
+        key,
+        f.ret.clone().unwrap_or(ast::Type {
+            kind: TypeKind::Error,
+            span,
+        }),
+    ];
+    let t = ast::Type {
+        kind: TypeKind::Named {
+            name: name(table),
+            args: args.clone(),
+        },
+        span,
+    };
+    let ex = |kind| ast::Expr { kind, span };
+    let make = ex(ast::ExprKind::Call {
+        callee: Box::new(ex(ast::ExprKind::Generic {
+            base: Box::new(ex(ast::ExprKind::Name(table.to_string()))),
+            args,
+        })),
+        args: Vec::new(),
+    });
+    ast::Stmt {
+        kind: StmtKind::Let {
+            mutable: true,
+            pat: ast::Pattern {
+                kind: ast::PatternKind::Name(memo_names(f).0),
+                span,
+            },
+            ty: Some(t),
+            init: Some(make),
+            otherwise: None,
+            guard: None,
+        },
+        span,
+        decorators: Vec::new(),
+        public: false,
+    }
+}
+
+/// A `@memo` fn as its body, `fn f.body(ps) -> R`, and `f` itself, which answers from the table
+/// when it has the key and else runs the body and keeps its result. The body's own calls of `f`
+/// go through the table.
+pub(crate) fn memo_fns(s: &ast::Stmt) -> [ast::Stmt; 2] {
+    let StmtKind::Fn(f) = &s.kind else {
+        unreachable!("memo_table found a fn")
+    };
+    let span = s.span;
+    let ex = |kind| ast::Expr { kind, span };
+    let var = |n: &str| ex(ast::ExprKind::Name(n.to_string()));
+    let arg = |value| ast::Arg {
+        name: None,
+        mutable: false,
+        value,
+    };
+    let stmt = |kind| ast::Stmt {
+        kind,
+        span,
+        decorators: Vec::new(),
+        public: false,
+    };
+    let pat = |n: &str| ast::Pattern {
+        kind: ast::PatternKind::Name(n.to_string()),
+        span,
+    };
+    let call = |callee, args| {
+        ex(ast::ExprKind::Call {
+            callee: Box::new(callee),
+            args,
+        })
+    };
+    let method = |m: &str| {
+        ex(ast::ExprKind::Field {
+            base: Box::new(var(&memo_names(f).0)),
+            name: ast::Name {
+                text: m.to_string(),
+                span,
+            },
+        })
+    };
+    let (_, body_name) = memo_names(f);
+    let ps: Vec<&str> = f.params.iter().map(|p| p.name.text.as_str()).collect();
+    let key = || match &ps[..] {
+        [p] => var(p),
+        _ => ex(ast::ExprKind::Tuple(ps.iter().map(|p| var(p)).collect())),
+    };
+    let (hit, got) = ("memo.hit", "memo.got");
+    let look = ast::ExprKind::If {
+        branches: vec![(
+            ast::Cond::Let {
+                pat: pat(hit),
+                value: call(method("get"), vec![arg(key())]),
+                and: None,
+            },
+            ast::Block {
+                stmts: vec![stmt(StmtKind::Return(Some(var(hit))))],
+                span,
+            },
+        )],
+        otherwise: None,
+    };
+    let run = call(var(&body_name), ps.iter().map(|p| arg(var(p))).collect());
+    let wrapper = ast::FnDecl {
+        body: FnBody::Block(ast::Block {
+            stmts: vec![
+                stmt(StmtKind::Expr(ex(look))),
+                stmt(StmtKind::Let {
+                    mutable: false,
+                    pat: pat(got),
+                    ty: None,
+                    init: Some(run),
+                    otherwise: None,
+                    guard: None,
+                }),
+                stmt(StmtKind::Expr(call(
+                    method("set"),
+                    vec![arg(key()), arg(var(got))],
+                ))),
+                stmt(StmtKind::Expr(var(got))),
+            ],
+            span,
+        }),
+        ..f.clone()
+    };
+    let body = ast::FnDecl {
+        name: ast::Name {
+            text: body_name,
+            span: f.name.span,
+        },
+        ..f.clone()
+    };
+    let others = (s.decorators.iter())
+        .filter(|x| x.name.text != "memo")
+        .cloned()
+        .collect();
+    [
+        stmt(StmtKind::Fn(body)),
+        ast::Stmt {
+            kind: StmtKind::Fn(wrapper),
+            span,
+            decorators: others,
+            public: s.public,
+        },
+    ]
+}

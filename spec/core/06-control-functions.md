@@ -174,6 +174,11 @@ library or by this spec:
 - `@from_op` on a struct's static fn (std's `Monoid.of`): a bare operator
   (`+`, `max`) passed where that struct is wanted, or for a bound the struct
   has an impl of, becomes a call of the fn (R08.1.9).
+- `@memo_table(word)` on a struct (std's `HashMap`): the table a
+  `@memo(word)` fn keeps, `T<K, R>` for key `K` (the one parameter's type,
+  else the tuple of them) and result `R`, built by `T<K, R>()`. `@memo`
+  reads it with `get(k) -> ?R` and keeps a result with `set(k, r)`; its
+  bounds on `K` are the key's (R06.4.1).
 - `@same_keys` on a fn (std's `zip`): its arguments that are arrays over
   domains must share one domain, so arrays over two domains are a type
   error at the call (R04b.1.3).

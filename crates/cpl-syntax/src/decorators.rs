@@ -45,6 +45,10 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "on a struct's static fn: a bare op passed where the struct is wanted goes through it",
     ),
     (
+        "memo_table",
+        "`@memo_table(word)` on a struct: the table a `@memo(word)` fn keeps",
+    ),
+    (
         "structural",
         "on a trait: a tuple, record, optional, array or struct has it when each part does",
     ),
