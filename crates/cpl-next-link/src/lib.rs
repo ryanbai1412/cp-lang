@@ -1232,20 +1232,9 @@ fn canon_store(
                     a => a,
                 })
                 .collect();
-            let pure_args = (args.iter()).all(|a| !matches!(a, Arg::Value(e) if !pure(e)));
-            // Ownership ran before this, so nothing here may count a value it does not release:
-            // a closure read from a place its arguments cannot write is called through that
-            // place, and any other is set in a temporary released after the call.
-            let (env, tmp) = match *callee {
-                Expr {
-                    kind: EK::Copy(q), ..
-                } if pure_args => (q, None),
-                c => {
-                    locals.push(cty.clone());
-                    let tmp = locals.len() - 1;
-                    out.push(Stmt::Let(tmp, canon_expr(bad, c)));
-                    (Place::Local(tmp), Some(tmp))
-                }
+            // Ownership reads the callee from a place no operand writes (`drops::place`).
+            let EK::Copy(env) = callee.kind else {
+                return bad.push("a call through a fn value not read from a place".into());
             };
             // A capture the body views is given as a view of the closure's field, as ownership
             // gives one to a viewed param; any other is the callee's copy, which it releases.
@@ -1293,9 +1282,6 @@ fn canon_store(
                     ));
                 }
                 _ => {}
-            }
-            if let Some(t) = tmp {
-                out.push(Stmt::Drop(Place::Local(t)));
             }
         }
         EK::Widen(inner) => {

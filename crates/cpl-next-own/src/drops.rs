@@ -168,7 +168,8 @@ impl Placer<'_> {
             }
             EK::Intr(_, xs, _) => self.args(&[], xs, out),
             EK::CallValue(g, xs, _) => {
-                self.expr(g, out);
+                let spill = spills(g, xs);
+                self.item(g, spill, false, out);
                 self.args(&[], xs, out)
             }
             EK::MakeStruct(xs) | EK::MakeClosure(xs) => self.fields(xs, out),
@@ -254,6 +255,7 @@ impl Placer<'_> {
                 let views = self.callee(t);
                 (xs.iter().enumerate()).any(|(k, a)| self.arg_needs(&views, k, a))
             }
+            EK::CallValue(g, xs, _) if spills(g, xs) => true,
             EK::Intr(_, xs, _) | EK::CallValue(_, xs, _) => {
                 (xs.iter().enumerate()).any(|(k, a)| self.arg_needs(&[], k, a))
             }
@@ -262,6 +264,12 @@ impl Placer<'_> {
             _ => false,
         }
     }
+}
+
+/// A call through a fn value reads the value from a place its operands cannot write, so it is
+/// set in a held local unless it is a read of a place and every operand is pure.
+fn spills(g: &Expr<CTy>, xs: &[Arg<CTy>]) -> bool {
+    !matches!(g.kind, EK::Copy(_)) || (xs.iter()).any(|a| matches!(a, Arg::Value(x) if !pure(x)))
 }
 
 /// Whether `e` names local `l` in any place it reads, writes or lends.
@@ -339,5 +347,44 @@ mod tests {
         ];
         assert_eq!(got, want);
         assert_eq!(locals.len(), 5);
+    }
+
+    /// A call through a fn value made by an expression reads it from a held local the frame
+    /// releases; one read from a place, with pure operands, is called through that place.
+    #[test]
+    fn a_fn_value_is_called_from_a_place() {
+        let heap = CTy::Raw(Box::new(CTy::Int));
+        let call = |g: Expr<CTy>| {
+            Stmt::Expr(Expr {
+                kind: EK::CallValue(Box::new(g), vec![Arg::Value(copy(0))], 0),
+                ty: CTy::Int,
+                site: 0,
+            })
+        };
+        let made = Expr {
+            kind: EK::MakeClosure(vec![copy(0)]),
+            ty: heap.clone(),
+            site: 0,
+        };
+        let mut locals = vec![heap.clone(), heap];
+        let mut body = vec![call(copy(1)), call(made)];
+        let mut placer = Placer {
+            locals: &mut locals,
+            stores: &|t| !matches!(t, CTy::Int),
+            params: &[],
+            owned: vec![true, true],
+            calm: vec![true, true],
+        };
+        placer.block(&mut body);
+        assert_eq!(placer.owned, [true, true, true]);
+        let callee = |s: &Stmt<CTy>| match s {
+            Stmt::Expr(Expr {
+                kind: EK::CallValue(g, ..),
+                ..
+            }) => shape(&Stmt::Expr((**g).clone())),
+            s => shape(s),
+        };
+        let got: Vec<String> = body.iter().map(callee).collect();
+        assert_eq!(got, ["1", "drop 2", "2 = ?", "2"]);
     }
 }
