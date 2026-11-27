@@ -264,6 +264,7 @@ use std.seq.{
     is_subsequence,
     iterate,
     last_lt,
+    len,
     lis,
     next_permutation,
     select,

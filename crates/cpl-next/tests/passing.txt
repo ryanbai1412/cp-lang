@@ -2898,3 +2898,6 @@ core-10/read-optional-sentinel-at-end-traps.cp
 std-journeys/subset.cp
 std-models/subset.cp
 std-subset/folds-take-its-members.cp
+next/n_free_len_01_any_sized.cp
+std-subset/for-walks-members.cp
+std-subset/subset-domain-too-large.cp

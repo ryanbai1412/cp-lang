@@ -1470,6 +1470,14 @@ pub trait Sized:
     /// The element count.
     @get fn len(self) -> Int
 
+/// The element count of any `Sized` value, as a call: `len(xs)` is `xs.len`.
+///
+/// cost: what `s.len` costs, \(O(1)\) for every core sequence
+/// empty: `let a: List<Int> = []; len(a) == 0`
+/// traps: never
+/// example: `len([b for b in [1, 2, 3] if b > 1]) == 2`
+pub fn len<S: Sized>(s: S) -> Int = s.len
+
 /// A `Seq` that can also walk from its end, which is what `.rev` needs.
 pub trait Bidir<T>: Seq<T>:
     /// Walks the sequence from its end.
