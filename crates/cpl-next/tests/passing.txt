@@ -194,6 +194,7 @@ core-03/none-test-reads-niche.cp
 core-03/one-payload-enum.cp
 core-03/overflow-traps.cp
 core-03/proofs-cross-no-calls.cp
+core-03/range-field-niche.cp
 core-03/range-local-below-start-traps.cp
 core-03/range-local-inclusive-end-fits.cp
 core-03/range-local-past-end-traps.cp
@@ -209,6 +210,7 @@ core-03/read-rejects-spare.cp
 core-03/spare-value-overflow.cp
 core-03/store-in-range-fits.cp
 core-03/structs-holding-each-other-is-an-error.cp
+core-03/tag-byte-enum.cp
 core-04/a4-zip-offsets.cp
 core-04/an-array-over-an-anonymous-range-takes-int.cp
 core-04/anon-range-array.cp
@@ -609,6 +611,7 @@ core-12/word-on-a-user-item-runs.cp
 core-13/big-runtime-array.cp
 core-13/closure-captures-by-reference.cp
 core-13/deep-recursion.cp
+core-13/flagged-optional.cp
 core-13/fresh-slot-reentry.cp
 core-13/growable-buffers.cp
 core-13/mutually-recursive-generators-break.cp
@@ -897,6 +900,7 @@ next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
 next/n_u64_04_shift_by_64_traps.cp
+next/n_u64_literal.cp
 next/o01_gen_local_walk_read.cp
 next/o02_gen_global_walk_other_write.cp
 next/o03_gen_reads_global_scalar_body_writes.cp
@@ -974,6 +978,8 @@ std-geometry/area2-orientation.cp
 std-geometry/free-dot-and-cross-are-public.cp
 std-graph/out-on-a-table-of-non-lists-has-no-method.cp
 std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
+std-hashmap/flatmap-is_empty-1.cp
+std-hashmap/flatmap-new-1.cp
 std-heap/heap-of-a-list-is-rejected.cp
 std-heap/meld-heap-of-a-list-is-rejected.cp
 std-heap/min-max-heap-of-a-list-is-rejected.cp
@@ -984,6 +990,7 @@ std-math/choose2-overflow-traps.cp
 std-math/choose2-zero-and-overflow-free.cp
 std-math/divmod-floor-signs.cp
 std-math/sign-pow2.cp
+std-math/splitmix64-at-zero.cp
 std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp

@@ -507,6 +507,12 @@ impl<'a> Cx<'a> {
             (Ty::Int, Ty::Dom(_)) if matches!(e.kind, TK::Int(_) | TK::Neg(_)) => {
                 self.position(want_s.clone(), e)
             }
+            // An integer literal in a `U64` slot is that `U64`: its bits (R02.1).
+            (Ty::Int, Ty::U64) if matches!(e.kind, TK::Int(_)) => TExpr {
+                kind: TK::ToU64(Box::new(e)),
+                ty: Ty::U64,
+                span,
+            },
             // Loads widen, stores check (R03.1.4).
             (Ty::Range(..) | Ty::RangeOf(_), Ty::Int) => TExpr { ty: Ty::Int, ..e },
             (Ty::RangeOf(a), Ty::RangeOf(b)) if a == b => e,

@@ -61,13 +61,13 @@ core-03/narrow-sum-past-32-bits.cp	wrong-reject	check: program:3:21: E0302: expe
 core-03/narrow-sum-past-u32-same-answer.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range0, 0..=4000000000>`, found `Array<$range1, Int>`
 core-03/no-u8.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E0204: unknown type `U8`
 core-03/no-user-niche-trait.cp	wrong-error	wanted E0204 on line 4, got: decls: E0204: unknown trait `Niche`
-core-03/range-field-niche.cp	wrong-reject	check: program:5:7: E0302: expected `U64`, found `Int`
 core-03/range-store-traps.cp	wrong-reject	check: program:3:19: E0302: expected `Array<$range0, 0..=9>`, found `Array<$range1, Int>`
 core-03/range-value-is-int-in-arithmetic.cp	wrong-reject	check: program:6:7: E0201: unknown name `max`
 core-03/rb1-q32-no-u8.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E0204: unknown type `U8`
 core-03/str-plus-eq-char-if.cp	wrong-reject	check: program:6:48: E0302: expected `Str`, found `Char`
 core-03/tag-byte-enum.cp	wrong-reject	check: program:7:13: E0302: expected `U64`, found `Int`
 core-03/window-plus-over-ranged-is-int.cp	wrong-reject	check: std.window:113:38: E0304: `M` cannot be called
+core-03/window-plus-over-ranged-is-int.cp	wrong-reject	check: program:4:30: E0302: expected `Array<$range0, 0..=1000000000>`, found `Array<$range0, Int>`
 core-04/a-part-or-a-built-value-returned.cp	wrong-reject	check: program:9:9: E0302: expected `Int`, found `List<Int>`
 core-04/a1-walk-fold.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-04/a11-rebase-reads-from-zero.cp	wrong-reject	check: program:5:7: E0305: `Rebased<Slice<List<Int>>>` is not indexed: it has no `Indexed` impl
@@ -367,7 +367,6 @@ core-12/view-blocks-write.cp	wrong-error	wanted E0602 on line 5, got: check: std
 core-12/view-ends-before-write.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-13/cut-holds-count.cp	wrong-reject	check: program:4:11: E0203: `V` has no member `r`
 core-13/enum-payloads.cp	wrong-reject	check: program:9:12: E0201: unknown name `Rect`
-core-13/flagged-optional.cp	wrong-reject	check: program:4:20: E0302: expected `U64`, found `Int`
 core-13/recursive-fn-cold-branch-own-frame.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-13/view-chain.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-13/wide-scalars.cp	wrong-reject	check: program:3:1: E0204: unknown type `I128`
@@ -528,8 +527,6 @@ std-grid/cell-neighbour-getters.cp	wrong-reject	check: program:10:95: E0606: `Tu
 std-grid/dir4-up-down-deltas.cp	wrong-reject	check: program:2:9: E0201: unknown name `Dir4`
 std-grid/dir4.cp	wrong-reject	check: std.grid:90:46: E0201: unknown name `DR`
 std-grid/dir8.cp	wrong-reject	check: program:2:43: E0302: expected `Mapped<List<Dir8>, Dir8, Tuple2<Int, Int>>`, found `List<Tuple2<Int, Int>>`
-std-hashmap/flatmap-is_empty-1.cp	wrong-reject	check: std.math:776:22: E0302: expected `U64`, found `Int`
-std-hashmap/flatmap-new-1.cp	wrong-reject	check: std.math:776:22: E0302: expected `U64`, found `Int`
 std-hashmap/hashmap-of-a-list-is-rejected.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:9: E0201: unknown name `HashMap`
 std-hashmap/hashmap-of-an-int-is-rejected.cp	wrong-error	wanted E0302 on line 3, got: check: program:3:1: E0204: unknown type `HashMap`
 std-hashmap/hashset-of-a-list-holds-its-elements.cp	wrong-reject	check: program:4:7: E0201: unknown name `HashSet`
@@ -585,7 +582,6 @@ std-math/mul-mod-no-overflow.cp	wrong-reject	check: std.math:940:15: E0201: unkn
 std-math/pow-mod-huge-exponent.cp	wrong-reject	check: std.math:940:15: E0201: unknown name `I128`
 std-math/sieve-multiplicative-at-zero.cp	wrong-reject	check: std.math:480:34: E0203: `Range<T>` has no member `one`
 std-math/sieve-multiplicative-negative-traps.cp	wrong-error	wanted E0902 on line 2, got: check: std.math:480:34: E0203: `Range<T>` has no member `one`
-std-math/splitmix64-at-zero.cp	wrong-reject	check: program:2:22: E0302: expected `U64`, found `Int`
 std-math/to-str.cp	wrong-reject	check: std.math:727:9: E0302: expected `List<Char>`, found `Rev<List<Char>>`
 std-mod/barrett.cp	wrong-reject	check: std.mod:417:22: E0201: unknown name `I128`
 std-pair/new-at-other.cp	wrong-reject	check: std.pair:22:16: E0606: `V` has no `impl Eq`, which `!=` needs (R08.1.5)
