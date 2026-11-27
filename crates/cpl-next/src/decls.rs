@@ -226,6 +226,9 @@ pub struct Decls {
     /// Per module, what each name means there: the core's names, then the prelude's (the
     /// program only, R11.3.1), then its own and what its `use` lines import (R11.2.3).
     pub views: Vec<HashMap<String, Named>>,
+    /// Per module, the names two of its `use` lines import as different items: a use of one
+    /// is ambiguous (R08.1.4).
+    pub ambiguous: Vec<HashSet<String>>,
     pub module_names: Vec<String>,
     pub program: ModId,
     /// Per library module, what it uses outside its fns that the slice does not build.
@@ -495,8 +498,9 @@ fn view(
     mi: usize,
     program: bool,
     errors: Option<&mut Vec<Msg>>,
+    ambiguous: &mut HashSet<String>,
 ) -> HashMap<String, Named> {
-    let mut v = outer_view(sc, mi, program, errors);
+    let mut v = outer_view(sc, mi, program, errors, Some(ambiguous));
     v.extend(sc.own[mi].iter().map(|(n, x)| (n.clone(), *x)));
     v
 }
@@ -507,6 +511,7 @@ fn outer_view(
     mi: usize,
     program: bool,
     mut errors: Option<&mut Vec<Msg>>,
+    mut ambiguous: Option<&mut HashSet<String>>,
 ) -> HashMap<String, Named> {
     let Scopes {
         own,
@@ -590,9 +595,9 @@ fn outer_view(
                 }
                 // Two imports of one name stay ambiguous where it is used (R08.1.4).
                 Some(x) if imported.get(&n.text).is_some_and(|y| *y != x) => {
-                    if let Some(e) = errors.as_deref_mut() {
-                        let text = format!("slice: two `use` lines import `{}`", n.text);
-                        e.push(text.into());
+                    v.remove(&n.text);
+                    if let Some(a) = ambiguous.as_deref_mut() {
+                        a.insert(n.text.clone());
                     }
                 }
                 Some(x) => {
@@ -828,6 +833,7 @@ pub fn collect(
     }
     let program = d.program.0;
     let names = d.module_names.clone();
+    let mut ambiguous = vec![HashSet::new(); n];
     d.views = (0..n)
         .map(|mi| {
             view(
@@ -841,9 +847,11 @@ pub fn collect(
                 mi,
                 mi == program,
                 None,
+                &mut ambiguous[mi],
             )
         })
         .collect();
+    d.ambiguous = ambiguous;
     d.aliases = Rc::new(
         aliases
             .into_iter()
@@ -855,7 +863,7 @@ pub fn collect(
                     imports: &imports,
                     prelude,
                 };
-                let mut v = outer_view(&sc, m.0, m.0 == program, None);
+                let mut v = outer_view(&sc, m.0, m.0 == program, None, None);
                 let outside = v.get(&name).copied();
                 v.extend(own[m.0].iter().map(|(n, x)| (n.clone(), *x)));
                 if let Some(x) = outside {
@@ -1484,6 +1492,7 @@ pub fn collect(
         queue = wait;
     }
     let mut errors = Vec::new();
+    let mut ambiguous = vec![HashSet::new(); n];
     d.views = (0..n)
         .map(|mi| {
             let e = if d.is_library(ModId(mi)) {
@@ -1502,9 +1511,11 @@ pub fn collect(
                 mi,
                 mi == program,
                 e,
+                &mut ambiguous[mi],
             )
         })
         .collect();
+    d.ambiguous = ambiguous;
     d.errors.extend(errors);
     domain_params(&mut d);
     let unmet = supertraits_unmet(&d);

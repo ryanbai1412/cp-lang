@@ -590,6 +590,7 @@ core-08/impl-for-every-domain-beside-int.cp
 core-08/impl-missing-an-associated-type.cp
 core-08/impl-plus-shorthand.cp
 core-08/impls-choosing-two-types-for-one-type.cp
+core-08/imported-fns-of-equal-specificity-ambiguous.cp
 core-08/importer-of-a-hidden-fn-calls-the-member.cp
 core-08/inherent-before-trait.cp
 core-08/inherent-methods.cp
@@ -1110,6 +1111,7 @@ next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
 next/n_u64_04_shift_by_64_traps.cp
 next/n_u64_literal.cp
+next/n_use_two_imports_ambiguous.cp
 next/n_variant_01_bare_variant_names_from_context.cp
 next/o01_gen_local_walk_read.cp
 next/o02_gen_global_walk_other_write.cp

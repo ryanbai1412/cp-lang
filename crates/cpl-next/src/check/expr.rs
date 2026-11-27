@@ -880,10 +880,14 @@ impl<'a> Cx<'a> {
                 span,
             };
         }
-        self.err(
-            span,
-            format!("{}: unknown name `{n}`", cpl_diag::codes::UNRESOLVED_NAME.0),
-        );
+        if self.d.ambiguous[self.module.0].contains(n) {
+            self.two_imports(n, span);
+        } else {
+            self.err(
+                span,
+                format!("{}: unknown name `{n}`", cpl_diag::codes::UNRESOLVED_NAME.0),
+            );
+        }
         TExpr {
             kind: TK::Error,
             ty: Ty::Error,

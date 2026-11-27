@@ -78,6 +78,15 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+    /// A name two `use` lines import as different fns, neither more specific (R08.1.4).
+    pub(super) fn two_imports(&mut self, n: &str, span: Span) {
+        let code = cpl_diag::codes::AMBIGUOUS_METHOD.0;
+        self.err_help(
+            span,
+            format!("{code}: two `use` lines import `{n}`, and neither is more specific"),
+            Some(format!("keep one `use` of `{n}`, or call it by its module")),
+        );
+    }
     /// `x.f(a)` where `f` is a fn without `self` in scope: the call it means is `f(x, a)`
     /// (R06.1.2).
     fn free_fn_help(
@@ -360,6 +369,16 @@ impl<'a> Cx<'a> {
                     return block(pre, call);
                 }
             }
+        }
+        if self.d.ambiguous[self.module.0].contains(&name.text)
+            && self.d.lookup_member(&rt, &name.text).is_none()
+        {
+            self.two_imports(&name.text, name.span);
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
         }
         // A free fn whose `self` the receiver fits extends it; members are found first (R08.1.4).
         let ext = match self.d.lookup_member(&rt, &name.text) {
