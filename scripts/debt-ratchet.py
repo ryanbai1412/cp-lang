@@ -1863,6 +1863,48 @@ def _next_old_syntax_files(root: Path):
             for p in _rs_files(root, _rel(root, d))]
 
 
+FACADE_TYPES = ("Session", "Snapshot")
+
+
+def _facade_queries(files: list[Path]) -> set[str]:
+    """Each `pub fn` signature in an `impl Session`/`impl Snapshot` block, whitespace folded."""
+    out = set()
+    for f in files:
+        ty, sig = None, None
+        for line in f.read_text(encoding="utf-8").splitlines():
+            if m := re.match(r"impl (\w+) \{", line):
+                ty = m[1] if m[1] in FACADE_TYPES else None
+            elif line == "}":
+                ty = None
+            elif ty and sig is None and line.startswith("    pub fn "):
+                sig = ""
+            if ty and sig is not None:
+                sig += " " + line
+                if line.endswith("{") or line.lstrip().startswith("where"):
+                    out.add(f"{ty}::" + re.sub(r"\s+", " ", sig.split(" where")[0].rstrip("{")).strip())
+                    sig = None
+    return out
+
+
+def next_facade_split(root: Path) -> list[str]:
+    """Contract 9 has one API (audit S9): each `Session`/`Snapshot` query of cpl-facade or of
+    cpl-next's facade with no identical signature on the other, and each second `pub struct
+    Session` or `Snapshot` outside cpl-facade. Hard zero at the switch, when cpl-next's
+    facade is cpl-facade's implementation."""
+    old = _facade_queries(sorted((root / "crates/cpl-facade/src").glob("*.rs")))
+    new_file = root / "crates/cpl-next/src/facade.rs"
+    new = _facade_queries([new_file] if new_file.is_file() else [])
+    out = [f"cpl-facade {q}" for q in sorted(old - new)] + [f"cpl-next {q}" for q in sorted(new - old)]
+    for rs in sorted((root / "crates").glob("*/src/**/*.rs")):
+        rel = rs.relative_to(root).as_posix()
+        if rel.startswith("crates/cpl-facade/"):
+            continue
+        for n, line in enumerate(rs.read_text(encoding="utf-8").splitlines(), 1):
+            if re.match(r"pub struct (Session|Snapshot)\b", line):
+                out.append(f"{rel}:{n}")
+    return out
+
+
 def next_syntax_old_refs(root: Path) -> list[str]:
     """Each use of the old parser's crate in the new pipeline: every `cpl_syntax` token and
     every use of a name imported from it (`ast::Expr`, `Expr` after `use cpl_syntax::ast::Expr`,
@@ -4485,6 +4527,7 @@ COUNTERS = {
     "next_lent_outside_own": ("new-pipeline places after the checker, outside cpl-next-own, making a type lent (Core)", next_lent_outside_own, True),
     "next_asks_refused": ("conformance cases refused for a header the new harness does not judge (Core)", next_asks_refused, True),
     "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),
+    "next_facade_split": ("facade queries the two facades do not share, and second Session/Snapshot types (Core)", next_facade_split, True),
     "old_parser_lines": ("code lines of the old parser `cpl-syntax/src/parser*`, deleted when the lossless tree's parser lands (Core; target 0)",
                          old_parser_lines, True),
     "next_syntax_old_refs": ("new-pipeline uses of the old parser's crate `cpl_syntax` and the names imported from it (Core; target 0)",

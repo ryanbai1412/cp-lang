@@ -2367,6 +2367,18 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-check/src/lib.rs:7:35 Mark"])
             self.assertEqual(dr.next_old_syntax_analyses(root), ["crates/cpl-next-check/src/lib.rs:7:35 Mark"])
 
+    def test_next_facade_split(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "crates/cpl-facade/src/session.rs",
+                        "impl Session {\n    pub fn a(&self) -> u32 {\n    pub fn b(&self) {\n}\n")
+            self._write(root, "crates/cpl-next/src/facade.rs",
+                        "impl Session {\n    pub fn a(&self) -> u32 {\n    pub fn c(\n        &self,\n"
+                        "    ) -> u8 {\n}\npub struct Snapshot(u8);\n")
+            self.assertEqual(dr.next_facade_split(root), [
+                "cpl-facade Session::pub fn b(&self)", "cpl-next Session::pub fn c( &self, ) -> u8",
+                "crates/cpl-next/src/facade.rs:7"])
+
     def test_lent_outside_own_and_asks_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
