@@ -54,6 +54,8 @@ pub trait Signatures: TypeTables {
     /// The traits that declare a method `name`, by id (`traits(name)`, indexed from the
     /// signatures).
     fn traits_with(&self, name: &str) -> Vec<TraitId>;
+    /// The fns that `@aka` or `@was` give `name`, by id.
+    fn renamed(&self, name: &str) -> Vec<FnId>;
 }
 
 /// `scope(ModId)`: what a name means in a module.
@@ -100,6 +102,13 @@ impl Signatures for Decls {
         (0..self.traits.len())
             .map(TraitId)
             .filter(|tr| self.traits[tr.0].methods.contains_key(name))
+            .collect()
+    }
+    fn renamed(&self, name: &str) -> Vec<FnId> {
+        let named = |f: &FnDecl| f.aka.iter().chain(&f.was).any(|n| n == name);
+        (0..self.fns.len())
+            .map(FnId)
+            .filter(|f| named(&self.fns[f.0]))
             .collect()
     }
 }

@@ -167,11 +167,9 @@ impl<'a> Cx<'a> {
         call: Option<&[ast::Arg]>,
     ) -> Option<(Option<String>, String)> {
         let m = &name.text;
-        let f = (0..self.d.fns.len()).map(FnId).find_map(|id| {
+        let f = self.d.renamed(m).into_iter().find_map(|id| {
             let f = self.d.f(id);
-            ((f.aka.contains(m) || f.was.contains(m))
-                && (self.d.lookup_member(rt, &f.name).is_some() || self.d.self_fits(id, rt)))
-            .then_some(f)
+            (self.d.lookup_member(rt, &f.name).is_some() || self.d.self_fits(id, rt)).then_some(f)
         })?;
         let now = &f.name;
         // The call as written with the member's name replaced: `x.m(a)` reads `x.now(a)`.
