@@ -44,6 +44,7 @@ impl Cx<'_> {
                 tr: r,
                 method,
                 self_ty: Box::new(v.ty.clone()),
+                targs: Box::default(),
                 recv: Some(Box::new(TArg::Value(v))),
                 args: Vec::new(),
             },

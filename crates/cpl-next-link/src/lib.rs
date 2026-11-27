@@ -606,9 +606,11 @@ impl Link<'_> {
                 args,
                 method,
                 self_ty,
+                targs,
                 ret,
             } => {
                 let mut k = self.trait_key(tr, args, method, self_ty, env)?;
+                k.targs.extend(targs.iter().map(|t| self.ty(t, env)));
                 if let FuncKey::Decl(g) = k.func {
                     let mut out = vec![None; self.d.f(g).n_ret_sets];
                     let c = self.ty(ret, env);

@@ -83,6 +83,8 @@ pub enum TK {
         method: String,
         recv: Option<Box<TArg>>,
         self_ty: Box<Ty>,
+        /// The fn's own type arguments, after `Self` and the trait's (`S` of `fn mask<S>`).
+        targs: Box<[Ty]>,
         args: Vec<TArg>,
     },
     CallValue {

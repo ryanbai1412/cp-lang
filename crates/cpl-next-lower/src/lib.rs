@@ -700,6 +700,7 @@ impl Lw<'_> {
                 method,
                 recv,
                 self_ty,
+                targs,
                 args,
             } => {
                 let a = self.args(recv.as_deref(), args, out);
@@ -713,6 +714,7 @@ impl Lw<'_> {
                         args: tr.args.clone(),
                         method: method.clone(),
                         self_ty,
+                        targs: targs.to_vec(),
                         ret: e.ty.clone(),
                     },
                     a,
@@ -1312,6 +1314,7 @@ impl Lw<'_> {
                         args: tr.args.clone(),
                         method: method.clone(),
                         self_ty: r.map_or(Ty::Error, |r| self.self_ty(r, &a)),
+                        targs: Vec::new(),
                         ret: Ty::Unit,
                     },
                 };

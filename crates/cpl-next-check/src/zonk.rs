@@ -88,11 +88,13 @@ impl<'a> Cx<'a> {
                 tr,
                 recv,
                 self_ty,
+                targs,
                 args,
                 ..
             } => {
                 tr.args = tr.args.iter().map(|a| self.zonk(a)).collect();
                 **self_ty = self.zonk(self_ty);
+                *targs = targs.iter().map(|a| self.zonk(a)).collect();
                 if let Some(r) = recv {
                     self.zonk_arg(r);
                 }

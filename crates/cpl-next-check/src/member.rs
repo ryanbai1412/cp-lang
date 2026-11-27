@@ -254,6 +254,10 @@ impl<'a> Cx<'a> {
         }
         let mut tys = vec![self_ty.clone()];
         tys.extend(tr.args.iter().cloned());
+        let outer = tys.len();
+        while tys.len() < fd.generics.len() {
+            tys.push(self.new_ty());
+        }
         let sub = Subst {
             tys: &tys,
             sets: &[],
@@ -267,6 +271,7 @@ impl<'a> Cx<'a> {
                 method: name.text.clone(),
                 recv: None,
                 self_ty: Box::new(self_ty),
+                targs: tys[outer..].into(),
                 args,
             },
             ty: ret,
@@ -473,6 +478,10 @@ impl<'a> Cx<'a> {
                     let fd = self.d.f(m);
                     let mut tys = vec![rt.clone()];
                     tys.extend(tr.args.iter().cloned());
+                    let outer = tys.len();
+                    while tys.len() < fd.generics.len() {
+                        tys.push(self.new_ty());
+                    }
                     let sub = Subst {
                         tys: &tys,
                         sets: &[],
@@ -491,6 +500,7 @@ impl<'a> Cx<'a> {
                             method: name.text.clone(),
                             recv: Some(Box::new(recv)),
                             self_ty: Box::new(rt.clone()),
+                            targs: tys[outer..].into(),
                             args,
                         },
                         ty: ret,

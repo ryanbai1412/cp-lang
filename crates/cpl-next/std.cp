@@ -189,6 +189,11 @@ pub trait Domain:
     fn at(x: Int) -> ?Self = @intrinsic("dom_at")
     /// `D.wrap(k)`: the position `k` steps into its walk, Euclidean mod `D.count` (R04.2.13).
     fn wrap(k: Int) -> Self = Self.nth((k % Self.count + Self.count) % Self.count)
+    /// `D.mask(xs)`: a `[D]Bool` marking the positions `xs` yields (R04.2.1).
+    fn mask<S: Seq<Self>>(xs: S) -> [Self]Bool:
+        var m: [Self]Bool = false
+        for v in xs: m[v] = true
+        m
     /// `v.ord`: how many positions come before `v` in the walk (R04.2.15).
     @get fn ord(self) -> Int = @intrinsic("dom_ord")
     /// `v.next(k)`: the position `k` after `v` in the walk, or `None` past its end (R04.3.1).
