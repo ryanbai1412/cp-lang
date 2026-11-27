@@ -50,7 +50,8 @@ fn real_main() {
         return every_case(Duration::from_millis(ms), has("--trace"));
     }
     if has("--std-modules") {
-        for (m, n) in cpl_next::std_unchecked(&Std::read()) {
+        let std = Snapshot::new(Arc::new(Std::read()), Roots::std(), "");
+        for (m, n) in Session::open(std).std_unchecked() {
             println!("{m}\t{n}");
         }
         return;

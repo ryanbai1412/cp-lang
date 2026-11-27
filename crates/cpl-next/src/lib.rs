@@ -209,7 +209,7 @@ pub enum Form {
     Engine,
 }
 
-pub struct Compiled {
+pub(crate) struct Compiled {
     prog: inst::Program,
     canon: Vec<ir::Func<inst::CTy>>,
     /// What the fast engine and the C++ run: canonical IR less the checks the facts prove.
@@ -314,7 +314,7 @@ fn judge_of(program: &str) -> Option<cpl_next_ir::build::Judge> {
 
 /// Each std module and how many diagnostics it has when every one of its fns is checked, not
 /// only those a program reaches: std as a program (suite 4 of plan/end-state.toml).
-pub fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
+pub(crate) fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
     (std.module_names())
         .filter(|m| *m != "std.prelude")
         .map(|m| {
@@ -352,7 +352,7 @@ pub fn std_unchecked(std: &Std) -> Vec<(String, usize)> {
 }
 
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
-pub fn compile(
+pub(crate) fn compile(
     std: &Std,
     user_src: &str,
     roots: &Roots,
@@ -405,7 +405,7 @@ pub struct Unit {
 
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
-pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
+pub(crate) fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
     let mut f = front(std, user_src, roots);
     if let Some((_, own)) = back(&mut f) {
         f.diags.extend(own);

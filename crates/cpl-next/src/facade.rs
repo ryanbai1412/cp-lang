@@ -4,7 +4,9 @@
 
 use std::sync::{Arc, OnceLock};
 
-use crate::{compile, units, Compiled, Diag, Form, Outcome, Roots, Stage, Std, Unit};
+use crate::{
+    compile, std_unchecked, units, Compiled, Diag, Form, Outcome, Roots, Stage, Std, Unit,
+};
 
 /// The only input of every query: the program, the libraries it may use, and std.
 /// Cheap to clone; equal snapshots give equal answers.
@@ -112,7 +114,7 @@ impl Program {
 pub struct Session {
     snapshot: Snapshot,
     built: OnceLock<Result<Program, Vec<Diag>>>,
-    units: OnceLock<Vec<Unit>>,
+    units: OnceLock<(Vec<Unit>, Vec<Diag>)>,
 }
 
 impl Session {
@@ -150,13 +152,20 @@ impl Session {
             .collect()
     }
 
-    /// Each fn the program declares and each of its statements, with its diagnostics: the
-    /// editor's view of a program that need not compile.
-    pub fn units(&self) -> &[Unit] {
-        self.units.get_or_init(|| {
+    /// Each fn the program declares and each of its statements, with its diagnostics, and
+    /// every diagnostic of the program: the editor's view of a program that need not compile.
+    pub fn units(&self) -> (&[Unit], &[Diag]) {
+        let (units, diags) = self.units.get_or_init(|| {
             let h = &self.snapshot.0;
-            units(&h.std, &h.program, &h.roots).0
-        })
+            units(&h.std, &h.program, &h.roots)
+        });
+        (units, diags)
+    }
+
+    /// Each std module and how many diagnostics checking every one of its fns gives, not only
+    /// those a program reaches (suite 4).
+    pub fn std_unchecked(&self) -> Vec<(String, usize)> {
+        std_unchecked(&self.snapshot.0.std)
     }
 
     pub fn verdict(&self) -> Verdict {

@@ -40,7 +40,8 @@ impl Session {
     fn snapshot(&self) -> &Snapshot
     // typing path
     fn diagnostics(&self, upto: Layer) -> List<&Diag>    // Layer::Typed | Layer::Program
-    fn units(&self) -> &[Unit]                           // the editor's view: each fn or statement
+    fn units(&self) -> (&[Unit], &[Diag])                // the editor's view: each fn or statement
+    fn std_unchecked(&self) -> List<(Module, usize)>     // every std fn checked (suite 4)
     // build and run
     fn program(&self) -> Result<&Program, &[Diag]>
     fn verdict(&self) -> Verdict                         // Accepted | Rejected | Refused: the exit rule

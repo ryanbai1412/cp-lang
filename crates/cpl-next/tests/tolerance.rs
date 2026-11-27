@@ -1,7 +1,9 @@
 //! Contract 3, "total": an error in one unit stops nothing else. Each file in `tolerance/` has
 //! errors injected into the units whose first line says `// injected`; every other unit must
 //! type, lower and say nothing, and every diagnostic must be in an injected unit.
+use cpl_next::facade::{Session, Snapshot};
 use std::path::Path;
+use std::sync::Arc;
 
 #[test]
 fn every_unit_an_error_does_not_reach_types_and_lowers() {
@@ -12,11 +14,13 @@ fn every_unit_an_error_does_not_reach_types_and_lowers() {
         .collect();
     files.sort();
     assert!(!files.is_empty());
+    let std = Snapshot::new(Arc::new(cpl_next::Std::read()), cpl_next::Roots::std(), "");
     let mut bad = Vec::new();
     for path in &files {
         let src = std::fs::read_to_string(path).unwrap();
         let name = path.file_name().unwrap().to_string_lossy();
-        let (units, diags) = cpl_next::units(&cpl_next::Std::read(), &src, &cpl_next::Roots::std());
+        let session = Session::open(std.with_program(&src));
+        let (units, diags) = session.units();
         let first_line = |at: u32| {
             let from = src[..at as usize].rfind('\n').map_or(0, |i| i + 1);
             src[from..].lines().next().unwrap_or("")
@@ -32,7 +36,7 @@ fn every_unit_an_error_does_not_reach_types_and_lowers() {
         if diags.is_empty() {
             bad.push(format!("{name}: no diagnostics"));
         }
-        for u in &units {
+        for u in units {
             let line = src[..u.span.start as usize].matches('\n').count() + 1;
             if injected(u) {
                 if u.diags.is_empty() {
@@ -47,7 +51,7 @@ fn every_unit_an_error_does_not_reach_types_and_lowers() {
                 ));
             }
         }
-        for d in &diags {
+        for d in diags {
             let inside = (d.at.as_ref()).is_some_and(|a| {
                 (units.iter()).any(|u| {
                     injected(u)
