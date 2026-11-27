@@ -745,8 +745,13 @@ impl<'a> Cx<'a> {
         }
         self.oblige(&f, span);
         self.solve(false);
+        let seen = self.errors.len();
         let (mut pre, args) = self.args(args, &formals, span);
         self.solve(false);
+        // A call its arguments do not fit was diagnosed there: its value is the error.
+        if self.errors.len() > seen {
+            return Self::error_node(span);
+        }
         if fd.same_keys {
             self.same_keys(&args, span);
         }
@@ -875,7 +880,11 @@ impl<'a> Cx<'a> {
                 "slice: a `mut` argument to a function value is not built yet",
             );
         }
+        let seen = self.errors.len();
         let (pre, args) = self.args(args, &formals, span);
+        if self.errors.len() > seen {
+            return Self::error_node(span);
+        }
         let args = args
             .into_iter()
             .map(|a| match a {
