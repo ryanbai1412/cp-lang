@@ -1190,15 +1190,19 @@ impl<'a> Cx<'a> {
                 let mut prev = self.expr(first, None);
                 let mut links: Vec<(Vec<TStmt>, TExpr)> = Vec::new();
                 for (k, (op, rhs)) in rest.iter().enumerate() {
+                    // `in` is not built: its operands are not one type, so they are not unified.
+                    if matches!(op, CmpOp::In | CmpOp::NotIn) {
+                        self.expr(rhs, None);
+                        self.err(span, "slice: comparison of this type is not supported");
+                        self.scopes.pop();
+                        return Self::error_node(span);
+                    }
                     let r = self.expr(rhs, Some(&prev.ty));
                     let r = self.coerce(r, &prev.ty.clone());
                     let primitive = matches!(
                         self.shallow(&prev.ty),
                         Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64 | Ty::Dom(_) | Ty::Error
                     );
-                    if matches!(op, CmpOp::In | CmpOp::NotIn) {
-                        self.err(span, "slice: comparison of this type is not supported");
-                    }
                     // An operand two links share is held, so it is read once.
                     let mut hold = Vec::new();
                     let r = if k + 1 < rest.len() {

@@ -472,6 +472,18 @@ mod tests {
         assert_eq!(verdicts, Vec::<String>::new());
     }
 
+    /// `in`, not built, is that one refusal: its operands are not checked as one type.
+    #[test]
+    fn a_refused_in_says_nothing_of_its_operands() {
+        let ds: Vec<String> = (diags("let b = 3 in [1, 2]\n").iter())
+            .map(|d| d.to_string())
+            .collect();
+        assert_eq!(
+            ds,
+            ["check: program:1:9: slice: comparison of this type is not supported"]
+        );
+    }
+
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];
