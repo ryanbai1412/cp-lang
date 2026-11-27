@@ -4,6 +4,9 @@
 use crate::ir::{CheckKind, Intr};
 use cpl_diag::{codes, Code};
 
+mod rules;
+pub use rules::{char_of, cpp as cpp_runtime, int_of_u64, neg, storage_size};
+
 /// Every way a run can fail, one row each, with the code it carries and its message.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Fault {
@@ -120,84 +123,44 @@ fn value(r: Option<i64>) -> Result<i64, Fault> {
     }
 }
 
-/// `Int` arithmetic where overflow checks are off: it wraps to 64 bits (R09.4.2).
-fn wrapping(op: Intr, a: i64, b: i64) -> Option<Result<i64, Fault>> {
-    Some(Ok(match op {
-        Intr::AddWrap => a.wrapping_add(b),
-        Intr::SubWrap => a.wrapping_sub(b),
-        Intr::MulWrap => a.wrapping_mul(b),
-        Intr::PowWrap if b < 0 => return Some(Err(Fault::NegativePower)),
-        Intr::PowWrap => word(Intr::Pow, a as u64, b as u64).ok()? as i64,
-        Intr::ShlWrap if !(0..64).contains(&b) => return Some(Err(Fault::ShiftOutside)),
-        Intr::ShlWrap if a < 0 => return Some(Err(Fault::ShlNegative)),
-        Intr::ShlWrap => ((a as u64) << b) as i64,
-        _ => return None,
-    }))
-}
-
 /// A binary operation on two `Int`s (R03.3).
 pub fn int(op: Intr, a: i64, b: i64) -> Result<i64, Fault> {
-    if let Some(r) = wrapping(op, a, b) {
-        return r;
+    use rules as r;
+    match op {
+        Intr::Add => r::add(a, b),
+        Intr::Sub => r::sub(a, b),
+        Intr::Mul => r::mul(a, b),
+        Intr::Div => r::div(a, b),
+        Intr::Rem => r::rem(a, b),
+        Intr::Pow => r::pow(a, b),
+        Intr::Shl => r::shl(a, b),
+        Intr::Shr => r::shr(a, b),
+        Intr::BitAnd => r::band(a, b),
+        // `a | b` of two values is never the lowest bit pattern.
+        Intr::BitOr => Ok(a | b),
+        Intr::BitXor => r::bxor(a, b),
+        Intr::AddWrap => r::add_wrap(a, b),
+        Intr::SubWrap => r::sub_wrap(a, b),
+        Intr::MulWrap => r::mul_wrap(a, b),
+        Intr::PowWrap => r::pow_wrap(a, b),
+        Intr::ShlWrap => r::shl_wrap(a, b),
+        _ => Err(Fault::Internal("not an Int operation")),
     }
-    value(match op {
-        Intr::Add => a.checked_add(b),
-        Intr::Sub => a.checked_sub(b),
-        Intr::Mul => a.checked_mul(b),
-        Intr::Div | Intr::Rem if b == 0 => return Err(Fault::DivisionByZero),
-        Intr::Div => a.checked_div_euclid(b),
-        Intr::Rem => a.checked_rem_euclid(b),
-        Intr::Pow if b < 0 => return Err(Fault::NegativePower),
-        // Past `u32` only 0, 1 and -1 have a power that is a value.
-        Intr::Pow => match u32::try_from(b) {
-            Ok(e) => a.checked_pow(e),
-            Err(_) => match a {
-                0 | 1 => Some(a),
-                -1 => Some(if b % 2 == 0 { 1 } else { -1 }),
-                _ => None,
-            },
-        },
-        Intr::Shl | Intr::Shr if !(0..64).contains(&b) => return Err(Fault::ShiftOutside),
-        Intr::Shl if a < 0 => return Err(Fault::ShlNegative),
-        Intr::Shl => Some(a << b).filter(|s| *s >= 0 && s >> b == a),
-        Intr::Shr => Some(a >> b),
-        Intr::BitAnd => Some(a & b),
-        Intr::BitOr => Some(a | b),
-        Intr::BitXor => Some(a ^ b),
-        _ => return Err(Fault::Internal("not an Int operation")),
-    })
-}
-
-pub fn neg(a: i64) -> Result<i64, Fault> {
-    value(a.checked_neg())
 }
 
 /// A binary operation on `U64`s: it wraps; division by zero and a shift outside 0..64 trap
 /// (R03.4.1). A shift's amount is an `Int`, passed as its bits.
 pub fn word(op: Intr, a: u64, b: u64) -> Result<u64, Fault> {
-    if matches!(op, Intr::Shl | Intr::Shr) && !(0..64).contains(&(b as i64)) {
-        return Err(Fault::ShiftOutside);
-    }
+    use rules as r;
     Ok(match op {
         Intr::Add => a.wrapping_add(b),
         Intr::Sub => a.wrapping_sub(b),
         Intr::Mul => a.wrapping_mul(b),
-        Intr::Div | Intr::Rem if b == 0 => return Err(Fault::DivisionByZero),
-        Intr::Div => a / b,
-        Intr::Rem => a % b,
-        Intr::Pow => {
-            let (mut r, mut x, mut e) = (1u64, a, b);
-            while e > 0 {
-                if e & 1 == 1 {
-                    r = r.wrapping_mul(x);
-                }
-                x = x.wrapping_mul(x);
-                e >>= 1;
-            }
-            r
-        }
-        Intr::Shl => a << b,
-        Intr::Shr => a >> b,
+        Intr::Div => return r::udiv(a, b),
+        Intr::Rem => return r::urem(a, b),
+        Intr::Pow => return r::upow(a, b),
+        Intr::Shl => return r::ushl(a, b as i64),
+        Intr::Shr => return r::ushr(a, b as i64),
         Intr::BitAnd => a & b,
         Intr::BitOr => a | b,
         Intr::BitXor => a ^ b,
@@ -253,23 +216,20 @@ pub fn compare_float(op: Intr, a: f64, b: f64) -> Result<bool, Fault> {
     })
 }
 
-pub fn int_of_u64(u: u64) -> Result<i64, Fault> {
-    i64::try_from(u).map_err(|_| Fault::U64PastInt)
-}
-
 /// An `Int`'s bits as a `U64`.
 pub fn u64_of_int(i: i64) -> u64 {
     i as u64
 }
 
 /// `popcount`, `ctz`, `clz` or `bit_width` of a 64-bit word.
-pub fn bit_count(op: Intr, w: u64) -> i64 {
-    i64::from(match op {
-        Intr::Popcount => w.count_ones(),
-        Intr::Ctz => w.trailing_zeros(),
-        Intr::Clz => w.leading_zeros(),
-        _ => 64 - w.leading_zeros(),
-    })
+pub fn bit_count(op: Intr, w: u64) -> Result<i64, Fault> {
+    match op {
+        Intr::Popcount => rules::popcount(w),
+        Intr::Ctz => rules::ctz(w),
+        Intr::Clz => rules::clz(w),
+        Intr::BitWidth => rules::bit_width(w),
+        _ => Err(Fault::Internal("not a bit count")),
+    }
 }
 
 pub fn not(b: bool) -> bool {
@@ -343,23 +303,6 @@ pub fn show_fmt(v: Scalar, f: Fmt, out: &mut String) {
     };
 }
 
-/// The character with code `x`, an ASCII one.
-pub fn char_of(x: i64) -> Result<u8, Fault> {
-    u8::try_from(x)
-        .ok()
-        .filter(|c| *c <= 127)
-        .ok_or(Fault::CharPastAscii)
-}
-
-/// The number of cells `raw_new(n, _)` makes.
-pub fn storage_size(n: i64) -> Result<usize, Fault> {
-    match n {
-        n if n < 0 => Err(Fault::NegativeSize),
-        n if n > MAX_STORAGE => Err(Fault::PastMemoryLimit),
-        n => Ok(n as usize),
-    }
-}
-
 /// Cell `i` of storage of `len` cells, for a read or a write.
 pub fn cell(i: i64, len: usize, write: bool) -> Result<usize, Fault> {
     match usize::try_from(i) {
@@ -371,11 +314,10 @@ pub fn cell(i: i64, len: usize, write: bool) -> Result<usize, Fault> {
 
 /// A check std makes (`key_check`, `range_check`): passes when its operand is true.
 pub fn check(op: Intr, ok: bool) -> Result<(), Fault> {
-    match (op, ok) {
-        (_, true) => Ok(()),
-        (Intr::CheckKey, false) => Err(Fault::KeyOutside),
-        (Intr::CheckRange, false) => Err(Fault::RangeCut),
-        (Intr::CheckVariant, false) => Err(Fault::NoVariant),
+    match op {
+        Intr::CheckKey => rules::check_key(ok),
+        Intr::CheckRange => rules::check_range(ok),
+        Intr::CheckVariant => rules::check_variant(ok),
         _ => Err(Fault::Internal("not a check")),
     }
 }

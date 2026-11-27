@@ -83,83 +83,22 @@ static void cpl_guard_stack() {
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = cpl_segv; sa.sa_flags = SA_ONSTACK;
     sigaction(SIGSEGV, &sa, nullptr); sigaction(SIGBUS, &sa, nullptr);
 }
-static inline int64_t cpl_add(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
-static inline int64_t cpl_sub(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
-static inline int64_t cpl_mul(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
-static inline int64_t cpl_neg(int64_t a) { if (a == INT64_MIN) cpl_fail(CPL_OVERFLOW); return -a; }
-static inline int64_t cpl_div(int64_t a, int64_t b) {
-    if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO);
-    if (a == INT64_MIN && b == -1) cpl_fail(CPL_OVERFLOW);
-    int64_t q = a / b, r = a % b;
-    if (r < 0) q += b > 0 ? -1 : 1;
-    return q;
+"#;
+
+/// The runtime's storage and input, after the rows `ops::cpp_runtime` writes.
+fn runtime() -> String {
+    let (table, rows) = (ops::cpp_trap_table(), ops::cpp_runtime());
+    format!("{RUNTIME_HEAD}{table}{RUNTIME}{rows}{RUNTIME_STORAGE}")
 }
-static inline int64_t cpl_rem(int64_t a, int64_t b) {
-    if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO);
-    if (a == INT64_MIN && b == -1) cpl_fail(CPL_OVERFLOW);
-    int64_t r = a % b;
-    if (r < 0) r += b > 0 ? b : -b;
-    return r;
-}
-static inline int64_t cpl_pow(int64_t a, int64_t b) {
-    if (b < 0) cpl_fail(CPL_NEGATIVE_POWER);
-    int64_t r = 1;
-    for (; b > 0; b >>= 1) {
-        if (b & 1) r = cpl_mul(r, a);
-        if (b > 1) a = cpl_mul(a, a);
-    }
-    return r;
-}
-static inline int64_t cpl_shl(int64_t a, int64_t b) {
-    if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE);
-    if (a < 0) cpl_fail(CPL_SHL_NEGATIVE);
-    if (a > (INT64_MAX >> b)) cpl_fail(CPL_OVERFLOW);
-    return a << b;
-}
-static inline int64_t cpl_shr(int64_t a, int64_t b) {
-    if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE);
-    return a >> b;
-}
-static inline int64_t cpl_band(int64_t a, int64_t b) { int64_t r = a & b; if (r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
-static inline int64_t cpl_bxor(int64_t a, int64_t b) { int64_t r = a ^ b; if (r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r; }
-static inline uint64_t cpl_udiv(uint64_t a, uint64_t b) { if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO); return a / b; }
-static inline uint64_t cpl_urem(uint64_t a, uint64_t b) { if (b == 0) cpl_fail(CPL_DIVISION_BY_ZERO); return a % b; }
-static inline uint64_t cpl_upow(uint64_t a, uint64_t b) {
-    uint64_t r = 1;
-    for (; b > 0; b >>= 1) {
-        if (b & 1) r *= a;
-        a *= a;
-    }
-    return r;
-}
-static inline int64_t cpl_add_wrap(int64_t a, int64_t b) { return (int64_t)((uint64_t)a + (uint64_t)b); }
-static inline int64_t cpl_sub_wrap(int64_t a, int64_t b) { return (int64_t)((uint64_t)a - (uint64_t)b); }
-static inline int64_t cpl_mul_wrap(int64_t a, int64_t b) { return (int64_t)((uint64_t)a * (uint64_t)b); }
-static inline int64_t cpl_pow_wrap(int64_t a, int64_t b) { if (b < 0) cpl_fail(CPL_NEGATIVE_POWER); return (int64_t)cpl_upow((uint64_t)a, (uint64_t)b); }
-static inline int64_t cpl_shl_wrap(int64_t a, int64_t b) {
-    if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE);
-    if (a < 0) cpl_fail(CPL_SHL_NEGATIVE);
-    return (int64_t)((uint64_t)a << b);
-}
-static inline uint64_t cpl_ushl(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a << b; }
-static inline uint64_t cpl_ushr(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a >> b; }
-static inline int64_t cpl_ctz(uint64_t u) { return u ? __builtin_ctzll(u) : 64; }
-static inline int64_t cpl_clz(uint64_t u) { return u ? __builtin_clzll(u) : 64; }
-static inline int64_t cpl_int_of_u64(uint64_t u) { if (u > (uint64_t)INT64_MAX) cpl_fail(CPL_U64_PAST_INT); return (int64_t)u; }
-static inline cpl_char cpl_char_of(int64_t x) { if (x < 0 || x > 127) cpl_fail(CPL_CHAR_PAST_ASCII); return cpl_char{(uint8_t)x}; }
-template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
-    if (n < 0) cpl_fail(CPL_NEGATIVE_SIZE);
-    if (n > (int64_t(1) << 28)) cpl_fail(CPL_PAST_MEMORY_LIMIT);
-    return cpl_raw<T>((size_t)n, fill);
+
+const RUNTIME_STORAGE: &str = r#"template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
+    return cpl_raw<T>(cpl_storage_size(n), fill);
 }
 static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     cpl_raw<cpl_char> r(n);
     for (size_t i = 0; i < n; i++) r[i].code = (uint8_t)s[i];
     return r;
 }
-static inline cpl_unit cpl_check_key(bool ok) { if (!ok) cpl_fail(CPL_KEY_OUTSIDE); return {}; }
-static inline cpl_unit cpl_check_variant(bool ok) { if (!ok) cpl_fail(CPL_NO_VARIANT); return {}; }
-static inline cpl_unit cpl_check_range(bool ok) { if (!ok) cpl_fail(CPL_RANGE_CUT); return {}; }
 template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
     if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_READ_OUTSIDE);
     return r[(size_t)i];
@@ -169,9 +108,7 @@ template <class T> static inline T cpl_take(cpl_raw<T>& r, int64_t i) {
     return std::move(r[(size_t)i]);
 }
 template <class R> static inline R cpl_raw_cap(int64_t n) {
-    if (n < 0) cpl_fail(CPL_NEGATIVE_SIZE);
-    if (n > (int64_t(1) << 28)) cpl_fail(CPL_PAST_MEMORY_LIMIT);
-    return R((size_t)n);
+    return R(cpl_storage_size(n));
 }
 template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, const T& x) {
     if (i < 0 || (size_t)i >= r.size()) cpl_fail(CPL_WRITE_OUTSIDE);
@@ -269,7 +206,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         e.name(t);
     }
     e.order = e.by_value_order();
-    let mut s = format!("{RUNTIME_HEAD}{}{RUNTIME}", ops::cpp_trap_table());
+    let mut s = runtime();
     for t in &e.order {
         put_line!(s, "struct {};", e.names[t]);
     }
@@ -704,12 +641,10 @@ impl Emit<'_> {
                     Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
                     Intr::ToF64 => format!("((double)({}))", a[0]),
                     Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
-                    Intr::Popcount => {
-                        format!("((int64_t)__builtin_popcountll((uint64_t)({})))", a[0])
-                    }
+                    Intr::Popcount => format!("cpl_popcount((uint64_t)({}))", a[0]),
                     Intr::Ctz => format!("cpl_ctz((uint64_t)({}))", a[0]),
                     Intr::Clz => format!("cpl_clz((uint64_t)({}))", a[0]),
-                    Intr::BitWidth => format!("(64 - cpl_clz((uint64_t)({})))", a[0]),
+                    Intr::BitWidth => format!("cpl_bit_width((uint64_t)({}))", a[0]),
                     Intr::Neg => format!("cpl_neg({})", a[0]),
                     Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
                     Intr::Not => format!("(!{})", a[0]),
@@ -1182,6 +1117,17 @@ mod tests {
                 format!("printf(\"%lld\\n\", (long long)cpl_int_of_u64(UINT64_C({a})));"),
                 expect(ops::int_of_u64(a)),
             );
+            for (op, f) in [
+                (Intr::Popcount, "cpl_popcount"),
+                (Intr::Ctz, "cpl_ctz"),
+                (Intr::Clz, "cpl_clz"),
+                (Intr::BitWidth, "cpl_bit_width"),
+            ] {
+                case(
+                    format!("printf(\"%lld\\n\", (long long){f}(UINT64_C({a})));"),
+                    expect(ops::bit_count(op, a)),
+                );
+            }
         }
         for (op, f) in [
             (Intr::CheckKey, "cpl_check_key"),
@@ -1195,7 +1141,7 @@ mod tests {
                 );
             }
         }
-        let mut cpp = format!("{RUNTIME_HEAD}{}{RUNTIME}", ops::cpp_trap_table());
+        let mut cpp = runtime();
         cpp.push_str("#include <sys/wait.h>\nint main() {\n");
         for c in &cases {
             put_line!(

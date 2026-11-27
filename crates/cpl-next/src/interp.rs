@@ -656,7 +656,7 @@ impl<'a> Machine<'a> {
                     V::Int(i) => ops::u64_of_int(i),
                     _ => return broken("a word of another kind"),
                 };
-                V::Int(ops::bit_count(op, w))
+                V::Int(ops::bit_count(op, w)?)
             }
             Intr::FromU64 => {
                 let Arg::Value(a) = &args[0] else {

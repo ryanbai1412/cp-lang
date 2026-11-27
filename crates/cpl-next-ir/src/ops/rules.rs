@@ -1,0 +1,188 @@
+//! The operations an engine and the C++ runtime both run, row by row. A row's guards (a
+//! condition and the fault it raises) are written once, in Rust that the C++ emitter prints
+//! as C++. Its kernel, what it computes once the guards pass, is written once per language,
+//! side by side, and `cpp::tests::runtime_agrees_with_ops` runs the two against each other.
+use super::{cpp_name, value, Fault, MAX_STORAGE};
+use std::fmt::Write;
+
+/// `Int`'s largest value, as a `U64`.
+pub const INT_LAST: u64 = i64::MAX as u64;
+type Unit = ();
+
+macro_rules! kernels {
+    ($( $name:ident($($p:ident: $t:ident),*) -> $r:ident $body:block $cpp:literal )*) => {
+        mod kernel {
+            use super::*;
+            $( #[inline(always)] pub(super) fn $name($($p: $t),*) -> Result<$r, Fault> $body )*
+        }
+        fn kernels_cpp(s: &mut String) {
+            $( cpp_fn(s, concat!("k_", stringify!($name)), &[$((stringify!($p), stringify!($t))),*],
+                stringify!($r), $cpp); )*
+        }
+    };
+}
+
+macro_rules! rows {
+    ($( $(#[$m:meta])* $name:ident($($p:ident: $t:ident),*) -> $r:ident
+        [$($c:expr => $f:ident),*] $k:ident; )*) => {
+        $(
+            $(#[$m])*
+            #[inline(always)]
+            pub fn $name($($p: $t),*) -> Result<$r, Fault> {
+                $( if $c { return Err(Fault::$f); } )*
+                kernel::$k($($p),*)
+            }
+        )*
+        fn rows_cpp(s: &mut String) {
+            $( {
+                let mut body = String::new();
+                $( let _ = write!(body, "if ({}) cpl_fail(CPL_{}); ", stringify!($c), cpp_name(Fault::$f)); )*
+                let _ = write!(body, "return cpl_k_{}({});", stringify!($k), [$(stringify!($p)),*].join(", "));
+                cpp_fn(s, stringify!($name), &[$((stringify!($p), stringify!($t))),*], stringify!($r), &body);
+            } )*
+        }
+    };
+}
+
+kernels! {
+    add(a: i64, b: i64) -> i64 { value(a.checked_add(b)) }
+        "int64_t r; if (__builtin_add_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r;"
+    sub(a: i64, b: i64) -> i64 { value(a.checked_sub(b)) }
+        "int64_t r; if (__builtin_sub_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r;"
+    mul(a: i64, b: i64) -> i64 { value(a.checked_mul(b)) }
+        "int64_t r; if (__builtin_mul_overflow(a, b, &r) || r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r;"
+    neg(a: i64) -> i64 { value(a.checked_neg()) }
+        "if (a == INT64_MIN) cpl_fail(CPL_OVERFLOW); return -a;"
+    div(a: i64, b: i64) -> i64 { value(a.checked_div_euclid(b)) }
+        "if (a == INT64_MIN && b == -1) cpl_fail(CPL_OVERFLOW); int64_t q = a / b, r = a % b; if (r < 0) q += b > 0 ? -1 : 1; return q;"
+    rem(a: i64, b: i64) -> i64 { value(a.checked_rem_euclid(b)) }
+        "if (a == INT64_MIN && b == -1) cpl_fail(CPL_OVERFLOW); int64_t r = a % b; if (r < 0) r += b > 0 ? b : -b; return r;"
+    pow(a: i64, b: i64) -> i64 {
+        // Past `u32` only 0, 1 and -1 have a power that is a value.
+        value(match u32::try_from(b) {
+            Ok(e) => a.checked_pow(e),
+            Err(_) => match a {
+                0 | 1 => Some(a),
+                -1 => Some(if b % 2 == 0 { 1 } else { -1 }),
+                _ => None,
+            },
+        })
+    }
+        "int64_t r = 1; for (; b > 0; b >>= 1) { if (b & 1) r = cpl_k_mul(r, a); if (b > 1) a = cpl_k_mul(a, a); } return r;"
+    shl(a: i64, b: i64) -> i64 { value(Some(a << b).filter(|s| *s >= 0 && s >> b == a)) }
+        "if (a > (INT64_MAX >> b)) cpl_fail(CPL_OVERFLOW); return a << b;"
+    shr(a: i64, b: i64) -> i64 { Ok(a >> b) } "return a >> b;"
+    band(a: i64, b: i64) -> i64 { value(Some(a & b)) }
+        "int64_t r = a & b; if (r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r;"
+    bxor(a: i64, b: i64) -> i64 { value(Some(a ^ b)) }
+        "int64_t r = a ^ b; if (r == INT64_MIN) cpl_fail(CPL_OVERFLOW); return r;"
+    udiv(a: u64, b: u64) -> u64 { Ok(a / b) } "return a / b;"
+    urem(a: u64, b: u64) -> u64 { Ok(a % b) } "return a % b;"
+    upow(a: u64, b: u64) -> u64 {
+        let (mut r, mut x, mut e) = (1u64, a, b);
+        while e > 0 {
+            if e & 1 == 1 {
+                r = r.wrapping_mul(x);
+            }
+            x = x.wrapping_mul(x);
+            e >>= 1;
+        }
+        Ok(r)
+    }
+        "uint64_t r = 1; for (; b > 0; b >>= 1) { if (b & 1) r *= a; a *= a; } return r;"
+    ushl(a: u64, b: i64) -> u64 { Ok(a << b) } "return a << b;"
+    ushr(a: u64, b: i64) -> u64 { Ok(a >> b) } "return a >> b;"
+    add_wrap(a: i64, b: i64) -> i64 { Ok(a.wrapping_add(b)) } "return (int64_t)((uint64_t)a + (uint64_t)b);"
+    sub_wrap(a: i64, b: i64) -> i64 { Ok(a.wrapping_sub(b)) } "return (int64_t)((uint64_t)a - (uint64_t)b);"
+    mul_wrap(a: i64, b: i64) -> i64 { Ok(a.wrapping_mul(b)) } "return (int64_t)((uint64_t)a * (uint64_t)b);"
+    pow_wrap(a: i64, b: i64) -> i64 { upow(a as u64, b as u64).map(|w| w as i64) }
+        "return (int64_t)cpl_k_upow((uint64_t)a, (uint64_t)b);"
+    shl_wrap(a: i64, b: i64) -> i64 { Ok(((a as u64) << b) as i64) } "return (int64_t)((uint64_t)a << b);"
+    popcount(u: u64) -> i64 { Ok(i64::from(u.count_ones())) } "return __builtin_popcountll(u);"
+    ctz(u: u64) -> i64 { Ok(i64::from(u.trailing_zeros())) } "return u ? __builtin_ctzll(u) : 64;"
+    clz(u: u64) -> i64 { Ok(i64::from(u.leading_zeros())) } "return u ? __builtin_clzll(u) : 64;"
+    bit_width(u: u64) -> i64 { clz(u).map(|z| 64 - z) } "return 64 - cpl_k_clz(u);"
+    int_of(u: u64) -> i64 { Ok(u as i64) } "return (int64_t)u;"
+    char_of(x: i64) -> u8 { Ok(x as u8) } "return cpl_char{(uint8_t)x};"
+    size(n: i64) -> usize { Ok(n as usize) } "return (size_t)n;"
+    pass(ok: bool) -> Unit { let _ = ok; Ok(()) } "return {};"
+}
+
+rows! {
+    add(a: i64, b: i64) -> i64 [] add;
+    sub(a: i64, b: i64) -> i64 [] sub;
+    mul(a: i64, b: i64) -> i64 [] mul;
+    /// `-a` on an `Int`.
+    neg(a: i64) -> i64 [] neg;
+    div(a: i64, b: i64) -> i64 [b == 0 => DivisionByZero] div;
+    rem(a: i64, b: i64) -> i64 [b == 0 => DivisionByZero] rem;
+    pow(a: i64, b: i64) -> i64 [b < 0 => NegativePower] pow;
+    shl(a: i64, b: i64) -> i64 [(b >> 6) != 0 => ShiftOutside, a < 0 => ShlNegative] shl;
+    shr(a: i64, b: i64) -> i64 [(b >> 6) != 0 => ShiftOutside] shr;
+    band(a: i64, b: i64) -> i64 [] band;
+    bxor(a: i64, b: i64) -> i64 [] bxor;
+    udiv(a: u64, b: u64) -> u64 [b == 0 => DivisionByZero] udiv;
+    urem(a: u64, b: u64) -> u64 [b == 0 => DivisionByZero] urem;
+    upow(a: u64, b: u64) -> u64 [] upow;
+    // A shift's amount is an `Int`, in 0..64 exactly when its bits past the sixth are zero,
+    // and an ASCII code is one in 0..128.
+    ushl(a: u64, b: i64) -> u64 [(b >> 6) != 0 => ShiftOutside] ushl;
+    ushr(a: u64, b: i64) -> u64 [(b >> 6) != 0 => ShiftOutside] ushr;
+    // `Int` arithmetic where overflow checks are off: it wraps to 64 bits (R09.4.2).
+    add_wrap(a: i64, b: i64) -> i64 [] add_wrap;
+    sub_wrap(a: i64, b: i64) -> i64 [] sub_wrap;
+    mul_wrap(a: i64, b: i64) -> i64 [] mul_wrap;
+    pow_wrap(a: i64, b: i64) -> i64 [b < 0 => NegativePower] pow_wrap;
+    shl_wrap(a: i64, b: i64) -> i64 [(b >> 6) != 0 => ShiftOutside, a < 0 => ShlNegative] shl_wrap;
+    popcount(u: u64) -> i64 [] popcount;
+    ctz(u: u64) -> i64 [] ctz;
+    clz(u: u64) -> i64 [] clz;
+    bit_width(u: u64) -> i64 [] bit_width;
+    /// A `U64` as an `Int`.
+    int_of_u64(u: u64) -> i64 [u > INT_LAST => U64PastInt] int_of;
+    /// The character with code `x`, an ASCII one.
+    char_of(x: i64) -> u8 [(x >> 7) != 0 => CharPastAscii] char_of;
+    /// The number of cells `raw_new(n, _)` makes.
+    storage_size(n: i64) -> usize [n < 0 => NegativeSize, n > MAX_STORAGE => PastMemoryLimit] size;
+    // The checks std makes (`key_check`, `range_check`): each passes when its operand is true.
+    check_key(ok: bool) -> Unit [!ok => KeyOutside] pass;
+    check_range(ok: bool) -> Unit [!ok => RangeCut] pass;
+    check_variant(ok: bool) -> Unit [!ok => NoVariant] pass;
+}
+
+fn cpp_fn(s: &mut String, name: &str, params: &[(&str, &str)], ret: &str, body: &str) {
+    let ps: Vec<String> = params
+        .iter()
+        .map(|(p, t)| format!("{} {p}", cty(t)))
+        .collect();
+    let _ = writeln!(
+        s,
+        "static inline {} cpl_{name}({}) {{ {body} }}",
+        cty(ret),
+        ps.join(", ")
+    );
+}
+
+/// The C++ type of a row's Rust type.
+fn cty(t: &str) -> &'static str {
+    match t {
+        "i64" => "int64_t",
+        "u64" => "uint64_t",
+        "u8" => "cpl_char",
+        "usize" => "size_t",
+        "bool" => "bool",
+        "Unit" => "cpl_unit",
+        _ => "void",
+    }
+}
+
+/// Every row as a C++ helper (`cpl_div`), after its kernel (`cpl_k_div`).
+pub fn cpp() -> String {
+    let mut s = format!(
+        "static const uint64_t INT_LAST = {INT_LAST}ULL;\n\
+         static const int64_t MAX_STORAGE = {MAX_STORAGE};\n"
+    );
+    kernels_cpp(&mut s);
+    rows_cpp(&mut s);
+    s
+}
