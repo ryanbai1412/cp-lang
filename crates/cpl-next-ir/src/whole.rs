@@ -2,12 +2,29 @@
 //! the checker so link reads no typed tree.
 use crate::msg::Msg;
 use crate::ty::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum VarRef {
     Local(LocalId),
     Global(LocalId),
+}
+
+/// A domain's place in `Whole::domains`: what a `Ty::Dom` names.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub struct DomId(pub usize);
+
+/// A global's place in `Whole::globals`: what a `Place::Global` names.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub struct GlobalId(pub usize);
+
+/// One of the two run-time values a domain carries.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum DomValue {
+    /// Its size.
+    Len(DomId),
+    /// The integer of its first position.
+    Lo(DomId),
 }
 
 /// A domain: the variables that hold its size and the integer of its first position.
@@ -28,10 +45,36 @@ pub struct Global {
     pub top: bool,
 }
 
+/// The facts of the program as a whole that link reads beside its fns (contract 4).
 #[derive(Clone, Debug, Default)]
 pub struct Whole {
+    /// By `DomId`.
     pub domains: Vec<Dom>,
+    /// By `GlobalId`.
     pub globals: Vec<Global>,
-    /// The errors of each library fn reached only through a trait, said if an instance runs it.
+    /// The diagnostics of each library fn reached only through a trait, each naming the layer
+    /// that found it: link says them if an instance runs the fn.
     pub deferred: HashMap<FnId, Vec<Msg>>,
+    /// The fns written in the user's program: where event points report entering and leaving.
+    pub program_fns: HashSet<FnId>,
+}
+
+impl Whole {
+    pub fn dom(&self, d: DomId) -> &Dom {
+        &self.domains[d.0]
+    }
+    pub fn global(&self, g: GlobalId) -> Option<&Global> {
+        self.globals.get(g.0)
+    }
+    /// Every run-time value of every domain.
+    pub fn dom_values(&self) -> impl Iterator<Item = DomValue> {
+        (0..self.domains.len()).flat_map(|d| [DomValue::Len(DomId(d)), DomValue::Lo(DomId(d))])
+    }
+    /// The variable that holds `v`, and the fn its domain is declared in.
+    pub fn dom_var(&self, v: DomValue) -> (VarRef, Option<FnId>) {
+        match v {
+            DomValue::Len(d) => (self.dom(d).len, self.dom(d).owner),
+            DomValue::Lo(d) => (self.dom(d).lo, self.dom(d).owner),
+        }
+    }
 }

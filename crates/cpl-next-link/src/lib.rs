@@ -5,8 +5,8 @@ use cpl_next_decls::diag::Msg;
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_next_ir::whole::Whole;
-use std::collections::{BTreeSet, HashMap};
+use cpl_next_ir::whole::{DomId, DomValue, Whole};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, plain, CSet, CTy, InstKey, Program};
 
@@ -174,12 +174,12 @@ pub fn link(
         key.targs.iter().for_each(|t| doms_of(t, &mut doms));
         if let Some(d) = doms
             .iter()
-            .find(|d| owner.is_some() && whole.domains[**d].owner == owner)
+            .find(|d| owner.is_some() && whole.dom(DomId(**d)).owner == owner)
         {
             l.errors.push(
                 Unbuilt::DomainTypeArg {
                     func: generic[&key.func].name.clone(),
-                    domain: whole.domains[*d].name.clone(),
+                    domain: whole.dom(DomId(*d)).name.clone(),
                 }
                 .into(),
             );
@@ -1251,22 +1251,15 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
 /// leading parameter for it; a closure captures it when it is made. Which
 /// functions need which is a whole-program question, so the link step answers it.
 fn thread_values(p: &mut Program, whole: &Whole) {
-    use cpl_next_ir::whole::VarRef;
+    use cpl_next_ir::whole::{GlobalId, VarRef};
     let n = p.insts.len();
-    // Where an instance can read a domain's size without being handed it.
-    // A domain carries two values, its size and the integer of its first position:
-    // value `2 * d` is the size of domain `d` and `2 * d + 1` its start.
-    let own = |f: &Func<CTy>, v: usize| -> Option<Place> {
-        let info = &whole.domains[v / 2];
-        let var = if v.is_multiple_of(2) {
-            info.len
-        } else {
-            info.lo
-        };
-        match (var, &f.key, info.owner) {
+    // Where an instance can read a domain's value without being handed it.
+    let own = |f: &Func<CTy>, v: DomValue| -> Option<Place> {
+        let (var, owner) = whole.dom_var(v);
+        match (var, &f.key, owner) {
             (VarRef::Global(g), FuncKey::Main | FuncKey::Case, None) => Some(Place::Global(g)),
             // A top-level domain of the file is one shared variable. One inside a block is not: a loop makes a new one.
-            (VarRef::Global(g), _, None) if whole.globals.get(g).is_some_and(|x| x.top) => {
+            (VarRef::Global(g), _, None) if whole.global(GlobalId(g)).is_some_and(|x| x.top) => {
                 Some(Place::Global(g))
             }
             (VarRef::Local(l), FuncKey::Decl(k), Some(o)) if *k == o => Some(Place::Local(l)),
@@ -1275,24 +1268,24 @@ fn thread_values(p: &mut Program, whole: &Whole) {
     };
     fn uses(
         b: &[Stmt<CTy>],
-        doms: &mut BTreeSet<usize>,
+        doms: &mut BTreeSet<DomValue>,
         calls: &mut BTreeSet<usize>,
         p: &Program,
         bad: &mut bool,
     ) {
         fn ex(
             e: &Expr<CTy>,
-            doms: &mut BTreeSet<usize>,
+            doms: &mut BTreeSet<DomValue>,
             calls: &mut BTreeSet<usize>,
             p: &Program,
             bad: &mut bool,
         ) {
             match &e.kind {
                 EK::DomLen(CTy::Dom(d)) => {
-                    doms.insert(2 * *d);
+                    doms.insert(DomValue::Len(DomId(*d)));
                 }
                 EK::DomLo(CTy::Dom(d)) => {
-                    doms.insert(2 * *d + 1);
+                    doms.insert(DomValue::Lo(DomId(*d)));
                 }
                 EK::DomLen(_) => *bad = true,
                 EK::MakeStruct(xs) => xs.iter().for_each(|x| ex(x, doms, calls, p, bad)),
@@ -1375,11 +1368,11 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         return;
     }
     // What each instance must be handed: what it or anything it calls uses, less what it can read itself.
-    let mut needs: Vec<BTreeSet<usize>> = vec![BTreeSet::new(); n];
+    let mut needs: Vec<BTreeSet<DomValue>> = vec![BTreeSet::new(); n];
     loop {
         let mut changed = false;
         for i in 0..n {
-            let mut want: BTreeSet<usize> = direct[i].clone();
+            let mut want: BTreeSet<DomValue> = direct[i].clone();
             for j in &calls[i] {
                 want.extend(needs[*j].iter().copied());
             }
@@ -1400,7 +1393,7 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         return;
     }
     // Hidden parameters come first, and count as captures: a closure holds them.
-    let mut hidden: Vec<Vec<(usize, usize)>> = Vec::new();
+    let mut hidden: Vec<Vec<(DomValue, usize)>> = Vec::new();
     for i in 0..n {
         let f = &mut p.insts[i];
         let mut hs = Vec::new();
@@ -1414,18 +1407,18 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         hidden.push(hs);
     }
     struct Rw<'a> {
-        hidden: &'a [Vec<(usize, usize)>],
+        hidden: &'a [Vec<(DomValue, usize)>],
         index: &'a HashMap<InstKey, usize>,
         me: usize,
-        own: Vec<Option<Place>>,
+        own: BTreeMap<DomValue, Option<Place>>,
         /// Set when a size is asked for and neither handed in nor declared here.
         no_source: std::cell::Cell<bool>,
     }
     impl Rw<'_> {
-        fn size(&self, d: usize) -> Expr<CTy> {
+        fn size(&self, d: DomValue) -> Expr<CTy> {
             let place = match self.hidden[self.me].iter().find(|(x, _)| *x == d) {
                 Some((_, l)) => Some(Place::Local(*l)),
-                None => self.own[d].clone(),
+                None => self.own.get(&d).cloned().flatten(),
             };
             let kind = place.map(EK::Copy).unwrap_or_else(|| {
                 self.no_source.set(true);
@@ -1443,8 +1436,8 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         fn ex(&self, e: &mut Expr<CTy>) {
             let ty = e.ty.clone();
             match &mut e.kind {
-                EK::DomLen(CTy::Dom(d)) => *e = self.size(2 * *d),
-                EK::DomLo(CTy::Dom(d)) => *e = self.size(2 * *d + 1),
+                EK::DomLen(CTy::Dom(d)) => *e = self.size(DomValue::Len(DomId(*d))),
+                EK::DomLo(CTy::Dom(d)) => *e = self.size(DomValue::Lo(DomId(*d))),
                 // A type that is not a domain is its own integers.
                 EK::DomLo(_) => e.kind = EK::Int(0),
                 EK::MakeStruct(xs) => xs.iter_mut().for_each(|x| self.ex(x)),
@@ -1530,8 +1523,8 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         }
     }
     for i in 0..n {
-        let own_places = (0..2 * whole.domains.len())
-            .map(|d| own(&p.insts[i], d))
+        let own_places = (whole.dom_values())
+            .map(|v| (v, own(&p.insts[i], v)))
             .collect();
         let rw = Rw {
             hidden: &hidden,
@@ -1554,7 +1547,7 @@ fn thread_values(p: &mut Program, whole: &Whole) {
 /// Contract 8: event points, placed on instance IR after the link step, only when asked for.
 /// They are not in generic IR and are not uses for ownership. Reported here: entering and
 /// leaving a fn of the user's file, and each write to one of its top-level bindings.
-pub fn add_events(p: &mut Program, whole: &Whole, d: &Decls) {
+pub fn add_events(p: &mut Program, whole: &Whole) {
     fn shown(t: &CTy) -> bool {
         matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Dom(_))
     }
@@ -1572,9 +1565,10 @@ pub fn add_events(p: &mut Program, whole: &Whole, d: &Decls) {
                     out.push(Stmt::Return(e));
                 }
                 Stmt::Assign(Place::Global(g), e) => {
+                    let global = whole.global(cpl_next_ir::whole::GlobalId(g));
                     let (top, name, ty) = (
-                        whole.globals[g].top,
-                        whole.globals[g].name.clone(),
+                        global.is_some_and(|x| x.top),
+                        global.map(|x| x.name.clone()).unwrap_or_default(),
                         e.ty.clone(),
                     );
                     out.push(Stmt::Assign(Place::Global(g), e));
@@ -1624,7 +1618,7 @@ pub fn add_events(p: &mut Program, whole: &Whole, d: &Decls) {
     for f in &mut p.insts {
         let user_fn = match &f.key {
             FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
-                d.of_program(d.f(*id).module) && f.region.is_none()
+                whole.program_fns.contains(id) && f.region.is_none()
             }
             _ => false,
         };

@@ -15,8 +15,6 @@ pub struct Generic {
     pub funcs: HashMap<FuncKey, Func<Ty>>,
     pub globals: Vec<Ty>,
     pub errors: Vec<Msg>,
-    /// What is wrong in a library fn reached only through a trait, said if an instance runs it.
-    pub deferred: HashMap<FnId, Vec<Msg>>,
     /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
     pub untyped: Vec<SourceId>,
     pub adds: cpl_next_ir::ty::SetAdds,
@@ -72,13 +70,12 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         funcs: HashMap::new(),
         globals: Vec::new(),
         errors: Vec::new(),
-        deferred: HashMap::new(),
         untyped: Vec::new(),
         adds: cpl_next_ir::ty::SetAdds {
             params: typed.param_adds.clone(),
             calls: typed.call_adds.clone(),
         },
-        whole: whole(typed),
+        whole: whole(d, typed),
     };
     let mut lw = Lw {
         d,
@@ -189,7 +186,10 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         }
         if typed.quiet.contains(id) && lw.errors.len() > before {
             let es = lw.errors.split_off(before);
-            out.deferred.entry(*id).or_default().extend(es);
+            let es = es
+                .into_iter()
+                .map(|e| e.from_layer(cpl_next_ir::msg::Stage::Lower.name()));
+            out.whole.deferred.entry(*id).or_default().extend(es);
         }
         let (sites, lines) = lw.take_sites();
         out.funcs.insert(
@@ -277,7 +277,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
     out
 }
 
-fn whole(typed: &Typed) -> cpl_next_ir::whole::Whole {
+fn whole(d: &Decls, typed: &Typed) -> cpl_next_ir::whole::Whole {
     use cpl_next_ir::whole::{Dom, Global, Whole};
     Whole {
         domains: (typed.domains.iter())
@@ -295,6 +295,10 @@ fn whole(typed: &Typed) -> cpl_next_ir::whole::Whole {
             })
             .collect(),
         deferred: typed.deferred.clone(),
+        program_fns: (0..d.fns.len())
+            .map(FnId)
+            .filter(|f| d.of_program(d.f(*f).module))
+            .collect(),
     }
 }
 

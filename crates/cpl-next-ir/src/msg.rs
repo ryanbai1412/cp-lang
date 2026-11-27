@@ -93,3 +93,28 @@ impl From<Unbuilt> for Msg {
         }
     }
 }
+
+/// Which layer reported a diagnostic.
+/// In pipeline order: a program's diagnostics are listed layer by layer.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub enum Stage {
+    Syntax,
+    Decls,
+    Check,
+    Own,
+    Lower,
+    Link,
+}
+
+impl Stage {
+    pub fn name(self) -> &'static str {
+        match self {
+            Stage::Syntax => "syntax",
+            Stage::Decls => "decls",
+            Stage::Check => "check",
+            Stage::Own => "own",
+            Stage::Lower => "lower",
+            Stage::Link => "link",
+        }
+    }
+}

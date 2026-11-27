@@ -24,30 +24,7 @@ pub use modules::{Roots, Std};
 
 pub use interp::{Outcome, Trap};
 
-/// Which layer reported a diagnostic.
-/// In pipeline order: a program's diagnostics are listed layer by layer.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum Stage {
-    Syntax,
-    Decls,
-    Check,
-    Own,
-    Lower,
-    Link,
-}
-
-impl Stage {
-    pub fn name(self) -> &'static str {
-        match self {
-            Stage::Syntax => "syntax",
-            Stage::Decls => "decls",
-            Stage::Check => "check",
-            Stage::Own => "own",
-            Stage::Lower => "lower",
-            Stage::Link => "link",
-        }
-    }
-}
+pub use cpl_next_ir::msg::Stage;
 
 /// Where a diagnostic is: a file of the program and a span of its text.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -297,12 +274,8 @@ fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     let values = consts::Evaluator::new(&d, &loaded, &main);
     let t = check::check(&d, &main, &loaded, &values, &[], judge_of(loaded.program()));
     out.extend(diags(Stage::Check, &t.errors));
-    let mut g = lower::lower(&d, &t, &loaded);
+    let g = lower::lower(&d, &t, &loaded);
     out.extend(diags(Stage::Lower, &g.errors));
-    for (f, es) in &g.deferred {
-        let low = es.iter().map(|e| e.clone().from_layer(Stage::Lower.name()));
-        g.whole.deferred.entry(*f).or_default().extend(low);
-    }
     Front {
         loaded,
         rejected,
@@ -386,7 +359,7 @@ pub fn compile(
         return Err(link(&prog.errors));
     }
     if events {
-        inst::add_events(&mut prog, &f.g.whole, &f.d);
+        inst::add_events(&mut prog, &f.g.whole);
     }
     let canon = inst::canonicalize(&prog).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
