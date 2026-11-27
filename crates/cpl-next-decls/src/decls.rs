@@ -19,7 +19,7 @@ pub use collect::{collect, factor_name, prepare, Prepared};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{body_type, prim_type};
-pub(crate) use tyconv::{unnamed, GETTER};
+pub(crate) use tyconv::{names_in, unnamed, GETTER};
 
 /// A module: the core, a library file or the program.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]

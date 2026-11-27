@@ -582,6 +582,16 @@ print(1e300.floor)\n";
         assert_eq!(fault(&raw), fault(&engine));
     }
 
+    /// A struct's derived `Eq` and `Ord` declare every parameter, so one named by more than a
+    /// letter (`Elem`, std.tree's `Pre`) is no unknown type.
+    #[test]
+    fn derived_impls_declare_parameters_of_any_name() {
+        let src = "struct Bx<Elem>:\n    x: Elem\nif Bx(x: 1) == Bx(x: 1) and Bx(x: 1) < Bx(x: 2):\n    print(1)\n";
+        let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+        assert_eq!(c.run(Form::Raw, "").output, "1\n");
+        assert_eq!(c.run(Form::Engine, "").output, "1\n");
+    }
+
     /// Std read once is a value no program changes: programs compiled one after another
     /// against it each get what they get against a std of their own.
     #[test]

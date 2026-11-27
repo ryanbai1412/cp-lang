@@ -1,6 +1,6 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
-use crate::decls::{unnamed, GETTER};
+use crate::decls::{names_in, unnamed, GETTER};
 use crate::diag::Msg;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -285,7 +285,7 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
     };
     let mut mentioned = Vec::new();
     for f in &compared {
-        unnamed(&f.ty, &HashMap::new(), &mut mentioned);
+        names_in(&f.ty, &mut mentioned);
     }
     let param = |n: &str| ast::Param {
         mutable: false,
@@ -346,11 +346,15 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
                 .map(|g| ty(&g.text, Vec::new()))
                 .collect(),
         ),
+        // Every parameter is declared, so a name longer than a letter is one too; those the
+        // fields compare are bounded by the trait.
         bounds: (sd.generics.iter())
-            .filter(|g| mentioned.contains(&g.text))
             .map(|g| ast::Bound {
                 name: g.clone(),
-                traits: vec![ty(tr, Vec::new())],
+                traits: (mentioned.contains(&g.text))
+                    .then(|| ty(tr, Vec::new()))
+                    .into_iter()
+                    .collect(),
             })
             .collect(),
         body: ast::Block {

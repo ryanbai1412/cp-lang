@@ -181,26 +181,35 @@ pub(super) fn input_bound(t: &ast::Type, values: &HashSet<String>) -> Option<(St
 }
 
 pub(crate) fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
-    if let TypeKind::Named { name, args } = &t.kind {
-        let n = name.text.as_str();
+    let mut all = Vec::new();
+    names_in(t, &mut all);
+    for n in all {
         let capital = n.len() == 1 && n.chars().all(|c| c.is_ascii_uppercase());
-        if args.is_empty() && capital && !names.contains_key(n) && !out.iter().any(|g| g == n) {
-            out.push(n.to_string());
+        if capital && !names.contains_key(&n) && !out.contains(&n) {
+            out.push(n);
         }
-        args.iter().for_each(|a| unnamed(a, names, out));
-        return;
     }
+}
+
+/// Every bare name (no type arguments) a type writes, in order.
+pub(crate) fn names_in(t: &ast::Type, out: &mut Vec<String>) {
     match &t.kind {
-        TypeKind::Optional(e) | TypeKind::Mut(e) | TypeKind::Yields(e) => unnamed(e, names, out),
-        TypeKind::Tuple(ts) => ts.iter().for_each(|e| unnamed(e, names, out)),
+        TypeKind::Named { name, args } => {
+            if args.is_empty() {
+                out.push(name.text.clone());
+            }
+            args.iter().for_each(|a| names_in(a, out));
+        }
+        TypeKind::Optional(e) | TypeKind::Mut(e) | TypeKind::Yields(e) => names_in(e, out),
+        TypeKind::Tuple(ts) => ts.iter().for_each(|e| names_in(e, out)),
         TypeKind::Array { index, elem } => index
             .iter()
             .chain([&**elem])
-            .for_each(|e| unnamed(e, names, out)),
+            .for_each(|e| names_in(e, out)),
         TypeKind::Fn { params, ret } => params
             .iter()
             .chain([&**ret])
-            .for_each(|e| unnamed(e, names, out)),
+            .for_each(|e| names_in(e, out)),
         _ => {}
     }
 }
