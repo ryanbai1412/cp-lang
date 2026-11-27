@@ -657,9 +657,15 @@ mod tests {
         let src = "use kit.m.{one}\nprint(one())\n";
         let got = compile(&Std::read(), src, &Roots::from(&dir), false);
         std::fs::remove_dir_all(&dir).unwrap();
-        let ds: Vec<String> = got.err().expect("rejected").iter().map(|d| d.to_string()).collect();
+        let ds: Vec<String> = got
+            .err()
+            .expect("rejected")
+            .iter()
+            .map(|d| d.to_string())
+            .collect();
         assert!(
-            ds.iter().any(|d| d.contains("E0202: a second declaration marked `@cuts`")),
+            ds.iter()
+                .any(|d| d.contains("E0202: a second declaration marked `@cuts`")),
             "{ds:?}"
         );
     }

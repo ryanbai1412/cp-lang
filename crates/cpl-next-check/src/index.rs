@@ -219,9 +219,7 @@ impl Cx<'_> {
         self.errors.truncate(seen);
         let rt = self.shallow(&b.ty);
         let d = &self.d;
-        let of_tr = |f: &decls::FnDecl| {
-            matches!(f.owner, Some(decls::Owner::Impl(i)) if d.impls[i].trait_.tr == tr)
-        };
+        let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.impls[i].trait_.tr == tr);
         d.impl_member_by(&rt, &name, of_tr)?;
         let callee = ast::Expr {
             kind: ExprKind::Field {
