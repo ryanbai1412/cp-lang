@@ -321,23 +321,116 @@ impl Cx<'_> {
     /// `lo..hi`, `lo..=hi` and `lo..hi by k` as a value: core's `Range` (R01.8.4).
     pub(super) fn range_value(
         &mut self,
-        lo: &ast::Expr,
-        hi: &ast::Expr,
+        lo: Option<&ast::Expr>,
+        hi: Option<&ast::Expr>,
         inclusive: bool,
         step: Option<&ast::Expr>,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
         let diagnosed = self.errors.len();
-        let first = self.expr(lo, Some(&Ty::Int));
-        let (args, d) = match self.ord_ends(&first.ty, step) {
-            Some(ord) => self.domain_range(first, hi, inclusive, want, ord, span),
-            None => (self.int_ends(first, lo, hi, inclusive, step, span), Ty::Int),
+        let (args, d) = match (lo, hi) {
+            (Some(lo), Some(hi)) => {
+                let first = self.expr(lo, Some(&Ty::Int));
+                match self.ord_ends(&first.ty, step) {
+                    Some(ord) => self.domain_range(first, hi, inclusive, want, ord, span),
+                    None => (self.int_ends(first, lo, hi, inclusive, step, span), Ty::Int),
+                }
+            }
+            _ => match self.open_ends(lo, hi, inclusive, step, want, span) {
+                Ok(ends) => ends,
+                Err(e) => return *e,
+            },
         };
         if self.errors.len() > diagnosed {
             return Self::error_node(span);
         }
         self.range_of(args, d, span)
+    }
+    /// `lo..` or `..hi`: the open end runs to `Int.MAX` or the end of the given end's domain, or
+    /// starts at 0 or the domain's first value (R01.8.4, R04.4.8, R04.4.10).
+    fn open_ends(
+        &mut self,
+        lo: Option<&ast::Expr>,
+        hi: Option<&ast::Expr>,
+        inclusive: bool,
+        step: Option<&ast::Expr>,
+        want: Option<&Ty>,
+        span: Span,
+    ) -> Result<(Vec<TExpr>, Ty), Box<TExpr>> {
+        let diagnosed = self.errors.len();
+        let from = lo.is_some();
+        let Some(given) = lo.or(hi) else {
+            return Err(Box::new(Self::error_node(span)));
+        };
+        let v = self.expr(given, Some(&Ty::Int));
+        if self.errors.len() > diagnosed {
+            return Err(Box::new(Self::error_node(span)));
+        }
+        let t = self.shallow(&v.ty);
+        let int = |kind| TExpr {
+            kind,
+            ty: Ty::Int,
+            span,
+        };
+        let past = |e: TExpr| {
+            let one = Box::new(int(TK::Int(1)));
+            int(TK::Bin(BinOp::Add, Box::new(e), one, Overflow::Traps))
+        };
+        let ord = self.ord_ends(&t, None);
+        if ord.is_some() || matches!(t, Ty::Dom(_)) {
+            if step.is_some() {
+                self.err(span, Unbuilt::ByOnWalk);
+                return Err(Box::new(Self::error_node(span)));
+            }
+            let cuts = self.cut_domain(&t);
+            let piece = match want.map(|w| self.shallow(w)) {
+                Some(Ty::Struct(_, a, _)) if a.len() == 1 => {
+                    cuts.clone().filter(|d| self.shallow(&a[0]) == *d)
+                }
+                _ => None,
+            };
+            if let Some(d) = piece {
+                let (l, h) = if from {
+                    (Some(v), None)
+                } else {
+                    (None, Some(v))
+                };
+                return Err(Box::new(
+                    (self.cut_piece(l, h, inclusive, d, span)).unwrap_or(Self::error_node(span)),
+                ));
+            }
+            let at = match &ord {
+                Some(ord) => self.ordinal(v, ord),
+                None => int(TK::Ordinal(Box::new(v))),
+            };
+            let (l, h) = match (from, cuts) {
+                (true, Some(d)) => (at, past(self.domain_len(d, span))),
+                (true, None) => (at, self.domain_len(t.clone(), span)),
+                (false, _) => (int(TK::Int(0)), if inclusive { past(at) } else { at }),
+            };
+            return Ok((vec![l, h, int(TK::Int(1))], t));
+        }
+        if !matches!(t, Ty::Int | Ty::Range(..)) {
+            let shown = self.show(&t);
+            let code = cpl_diag::codes::TYPE_MISMATCH;
+            let msg = format!("an open range's end is an `Int` or a domain value, not `{shown}`");
+            self.err(given.span, Msg::verdict(code, msg));
+            return Err(Box::new(Self::error_node(span)));
+        }
+        let v = self.coerce(v, &Ty::Int);
+        let (l, h) = match from {
+            true => (v, int(TK::Int(i64::MAX))),
+            false => (int(TK::Int(0)), if inclusive { past(v) } else { v }),
+        };
+        let step = match step {
+            Some(k) => {
+                let k = self.expr(k, Some(&Ty::Int));
+                self.coerce(k, &Ty::Int)
+            }
+            None => int(TK::Int(1)),
+        };
+        Ok((vec![l, h, step], Ty::Int))
     }
     /// `Domain`'s `ord`, when a range's ends are values of a type that implements it.
     fn ord_ends(&self, t: &Ty, step: Option<&ast::Expr>) -> Option<DomainFn> {

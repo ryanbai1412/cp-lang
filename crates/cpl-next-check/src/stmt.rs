@@ -970,9 +970,16 @@ impl<'a> Cx<'a> {
                     }
                     return self.stmt(&one, out);
                 }
-                if let (PatternKind::Name(name), false) =
-                    (&pat.kind, matches!(iter.kind, ExprKind::Range { .. }))
-                {
+                let closed = matches!(
+                    iter.kind,
+                    ExprKind::Range {
+                        lo: Some(_),
+                        hi: Some(_),
+                        step: None,
+                        ..
+                    }
+                );
+                if let (PatternKind::Name(name), false) = (&pat.kind, closed) {
                     // `for x in gen(args)` or `xs.getter`, or `for x in xs` through the type's own `each`.
                     self.allow_region =
                         matches!(iter.kind, ExprKind::Call { .. } | ExprKind::Field { .. });

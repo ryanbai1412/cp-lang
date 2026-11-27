@@ -1751,18 +1751,21 @@ impl<'a> Cx<'a> {
             }
             ExprKind::Match { scrutinee, arms } => self.match_(scrutinee, arms, want, span),
             ExprKind::Range {
-                lo: Some(lo),
-                hi: Some(hi),
+                lo,
+                hi,
                 inclusive,
                 step,
-            } => self.range_value(lo, hi, *inclusive, step.as_deref(), want, span),
+            } if lo.is_some() || hi.is_some() => {
+                let (lo, hi) = (lo.as_deref(), hi.as_deref());
+                self.range_value(lo, hi, *inclusive, step.as_deref(), want, span)
+            }
             ExprKind::By { walk, step } => match &walk.kind {
                 ExprKind::Range {
                     lo: Some(lo),
                     hi: Some(hi),
                     inclusive,
                     step: None,
-                } => self.range_value(lo, hi, *inclusive, Some(step), want, span),
+                } => self.range_value(Some(lo), Some(hi), *inclusive, Some(step), want, span),
                 _ => {
                     self.err(span, Unbuilt::ByOnWalk);
                     mk(TK::Error, Ty::Error)
