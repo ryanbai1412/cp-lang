@@ -164,7 +164,7 @@ impl Cx<'_> {
             }
         }
         if self.shallow(&i.ty) != Ty::Int
-            || !matches!(dty, Ty::Dom(_) | Ty::Param(_) | Ty::Range(..))
+            || !matches!(dty, Ty::Dom(_) | Ty::Param(_) | Ty::Range(..) | Ty::RangeTo(..))
         {
             return i;
         }

@@ -445,7 +445,9 @@ impl Emit<'_> {
             return n;
         }
         let n = match t {
-            CTy::Int | CTy::Range(..) | CTy::Dom(_) | CTy::Error => "int64_t".to_string(),
+            CTy::Int | CTy::Range(..) | CTy::RangeTo(..) | CTy::Dom(_) | CTy::Error => {
+                "int64_t".to_string()
+            }
             CTy::Bool => "bool".to_string(),
             CTy::Char => "cpl_char".to_string(),
             CTy::U64 => "uint64_t".to_string(),

@@ -44,6 +44,7 @@ impl Layouts {
             CTy::Unit | CTy::Error => (Shape::Zero, 0),
             CTy::Int
             | CTy::Range(..)
+            | CTy::RangeTo(..)
             | CTy::Bool
             | CTy::Char
             | CTy::U64

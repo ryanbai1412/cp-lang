@@ -152,7 +152,7 @@ impl Next<V> for Reweighted<V, E, A, W>:
 /// The `V.len - 1` edges of a tree on `V`, one `u v` pair per line, as an input
 /// gives them. `cpl stress` makes and shrinks it as a tree.
 @stress(tree)
-pub type Tree<V> = [0..V.len - 1](u: V, v: V)
+pub type Tree<V> = [0..V.count - 1](u: V, v: V)
 
 /// \(O(m)\) to read.
 /// One edge on `V` for each value of `E`, `u v` per line, with no loop and no

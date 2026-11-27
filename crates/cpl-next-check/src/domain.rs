@@ -390,6 +390,20 @@ impl Cx<'_> {
         let lo = end(self, lo, out);
         (lo, end(self, hi, out))
     }
+    /// `lo..D.m + k` with a constant `lo`, `D` a domain in view and `m` its getter: a range type
+    /// ending at the domain's count.
+    fn count_ended(
+        &self,
+        lo: &Option<Box<ast::Expr>>,
+        hi: &Option<Box<ast::Expr>>,
+        inclusive: bool,
+    ) -> bool {
+        decls::static_range(lo, hi, inclusive).is_none()
+            && decls::count_end(lo, hi, inclusive).is_some_and(|(_, d, m, _)| {
+                (self.generics.iter().any(|g| g == d) || self.doms.contains_key(d))
+                    && self.d.domain_getters().contains_key(m)
+            })
+    }
     /// `[lo..hi]T` and `[n]T` index by a range with no name: each gets a domain of its own, declared in `out`.
     pub(super) fn name_ranges(
         &mut self,
@@ -405,6 +419,13 @@ impl Cx<'_> {
                     // A constant axis stays a range type: `[0..2]T` is `Array<0..=1, T>`.
                     if decls::const_axis(ix).is_some() {
                         continue;
+                    }
+                    // So does one ending at a domain's count: `[0..V.count - 1]T` (R04.3.4).
+                    if let TypeKind::Range { lo, hi, inclusive } = &ix.kind {
+                        if self.count_ended(lo, hi, *inclusive) {
+                            *ix = self.name_ranges(ix, span, out);
+                            continue;
+                        }
                     }
                     let zero = || ast::Expr {
                         kind: ExprKind::Int(0),
@@ -471,13 +492,7 @@ impl Cx<'_> {
             }
             // The ends are values: they are worked out once, here, and the range gets a name.
             // `0..=V.count`: its end is the domain's, so a field of that type holds it.
-            TypeKind::Range { lo, hi, inclusive }
-                if decls::static_range(lo, hi, *inclusive).is_none()
-                    && decls::count_end(lo, hi, *inclusive).is_some_and(|(_, d, m, _)| {
-                        (self.generics.iter().any(|g| g == d) || self.doms.contains_key(d))
-                            && self.d.domain_getters().contains_key(m)
-                    }) =>
-            {
+            TypeKind::Range { lo, hi, inclusive } if self.count_ended(lo, hi, *inclusive) => {
                 let (lo, d, m, k) = decls::count_end(lo, hi, *inclusive).unwrap_or_default();
                 let m = self.d.domain_getters()[m];
                 let dt = ast::Type::named(d, t.span);

@@ -554,9 +554,13 @@ impl Decls {
         };
         let ms = self.traits[tr.0].methods.iter();
         Arc::new(
-            ms.filter(|(_, f)| self.f(**f).getter)
-                .map(|(n, f)| (n.clone(), *f))
-                .collect(),
+            // A range type ends at a count: a static getter giving an `Int`.
+            ms.filter(|(_, f)| {
+                let f = self.f(**f);
+                f.getter && f.self_ty.is_none() && f.ret == Ty::Int
+            })
+            .map(|(n, f)| (n.clone(), *f))
+            .collect(),
         )
     }
     pub(crate) fn operator_fns(&self) -> Arc<Vec<(String, FnId)>> {

@@ -326,6 +326,7 @@ impl Link<'_> {
     fn targ(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
             Ty::Range(lo, hi) => CTy::Range(*lo, *hi),
+            Ty::RangeTo(d, _, lo, k) => CTy::RangeTo(Box::new(self.targ(d, env)), *lo, *k),
             Ty::Param(i) => env.targs.get(*i).cloned().unwrap_or(CTy::Error),
             t => self.ty(t, env),
         }
@@ -348,7 +349,7 @@ impl Link<'_> {
                 t => (self.lent)(t, &|s| self.parts(s)),
             },
             Ty::Param(i) | Ty::AnyRange(i) => match env.targs.get(*i) {
-                Some(CTy::Range(..)) => CTy::Int,
+                Some(CTy::Range(..) | CTy::RangeTo(..)) => CTy::Int,
                 t => t.cloned().unwrap_or(CTy::Error),
             },
             Ty::Dom(d) => CTy::Dom(*d),
@@ -856,14 +857,27 @@ impl Link<'_> {
             // A range with constant ends is the domain of its integers (R04.2.18).
             EK::DomLen(t) => match self.targ(t, env) {
                 CTy::Range(lo, hi) => EK::Int((hi - lo + 1).max(0)),
+                CTy::RangeTo(d, lo, k) => {
+                    let int = |kind| Expr {
+                        kind,
+                        ty: CTy::Int,
+                        site: 0,
+                    };
+                    let of = match *d {
+                        CTy::Range(a, b) => EK::Int((b - a + 1).max(0)),
+                        d => EK::DomLen(d),
+                    };
+                    let more = int(EK::Int(k - lo + 1));
+                    EK::Intr(Intr::Add, vec![Arg::Value(int(of)), Arg::Value(more)], 0)
+                }
                 t => EK::DomLen(t),
             },
             EK::DomLo(t) => match self.targ(t, env) {
-                CTy::Range(lo, _) => EK::Int(lo),
+                CTy::Range(lo, _) | CTy::RangeTo(_, lo, _) => EK::Int(lo),
                 t => EK::DomLo(t),
             },
             EK::DomHeld(t) => match self.targ(t, env) {
-                CTy::Range(lo, _) => EK::Int(lo),
+                CTy::Range(lo, _) | CTy::RangeTo(_, lo, _) => EK::Int(lo),
                 _ => EK::Int(0),
             },
             EK::DomCounted(t) => EK::Bool(match self.targ(t, env) {
@@ -1818,6 +1832,8 @@ fn fits_head(
     let head = match t {
         CTy::Int => Ty::Int,
         CTy::Range(lo, hi) => Ty::Range(*lo, *hi),
+        // Only its kind matters to `head_fits`: a range's.
+        CTy::RangeTo(_, lo, _) => Ty::Range(*lo, *lo),
         _ => Ty::Unit,
     };
     d.head_fits(im, &head) && fit_cty(&im.for_, t, binds)
@@ -1830,16 +1846,17 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
                 b == t
                     || [b, t]
                         .iter()
-                        .all(|x| matches!(x, CTy::Int | CTy::Range(..)))
+                        .all(|x| matches!(x, CTy::Int | CTy::Range(..) | CTy::RangeTo(..)))
             }
             None => {
                 binds[*i] = Some(t.clone());
                 true
             }
         },
-        (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), CTy::Int | CTy::Range(..)) => {
-            true
-        }
+        (
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..),
+            CTy::Int | CTy::Range(..) | CTy::RangeTo(..),
+        ) => true,
         (Ty::Bool, CTy::Bool)
         | (Ty::Char, CTy::Char)
         | (Ty::U64, CTy::U64)
@@ -1859,7 +1876,7 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
                 && ps.iter().zip(cps).all(|(p, c)| fit_cty(p, c, binds))
                 && fit_cty(r, cr, binds)
         }
-        (Ty::AnyRange(i), CTy::Range(..)) => fit_cty(&Ty::Param(*i), t, binds),
+        (Ty::AnyRange(i), CTy::Range(..) | CTy::RangeTo(..)) => fit_cty(&Ty::Param(*i), t, binds),
         // A lent slot reads as the value it points at.
         (_, CTy::Lent(t)) => fit_cty(p, t, binds),
         _ => false,

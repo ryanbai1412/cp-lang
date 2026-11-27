@@ -222,6 +222,21 @@ impl Cx<'_> {
                 }
             }
             Ty::Dom(i) if !self.domains[*i].name.is_empty() => named(self.domains[*i].name.clone()),
+            // And one ending at a domain's count: `[0..V.count - 1] i => ..` walks its written ends.
+            Ty::RangeTo(..) if matches!(dom.kind, TypeKind::Range { .. }) => {
+                let TypeKind::Range { lo, hi, inclusive } = &dom.kind else {
+                    unreachable!()
+                };
+                ast::Expr {
+                    kind: ExprKind::Range {
+                        lo: lo.clone(),
+                        hi: hi.clone(),
+                        inclusive: *inclusive,
+                        step: None,
+                    },
+                    span: dom.span,
+                }
+            }
             // So do a constant range's: `[0..3] i => ..`.
             Ty::Range(lo, hi) => {
                 let int = |v: i64| {

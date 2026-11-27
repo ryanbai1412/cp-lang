@@ -28,6 +28,9 @@ pub enum CTy {
     /// `lo..=hi` as a type argument: `MemoArray<0..=90, V>` is an instance of its own, whose
     /// `K.count` is 91. A value of it is an `Int`.
     Range(i64, i64),
+    /// `lo..=D.count + k` as a type argument: `Tree<V>`'s `[0..V.count - 1]` axis. Its count is
+    /// `D`'s plus `k - lo + 1`; a value of it is an `Int`.
+    RangeTo(Box<CTy>, i64, i64),
     Error,
 }
 pub type CSet = Vec<InstKey>;
@@ -135,7 +138,8 @@ pub fn holds(
         | CTy::F64
         | CTy::Unit
         | CTy::Dom(_)
-        | CTy::Range(..) => Holds::Nothing,
+        | CTy::Range(..)
+        | CTy::RangeTo(..) => Holds::Nothing,
         CTy::Ref(_) | CTy::Lent(_) | CTy::Error => Holds::Address,
         CTy::Struct(..) => most(&parts(t)),
         CTy::Clo(k) => clo(k),

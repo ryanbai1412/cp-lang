@@ -42,7 +42,7 @@ impl Shares<'_> {
         let first = self.first.entry(erased(t)).or_insert_with(|| t.clone());
         // A bare domain or range type keeps its own identity: its size or bounds are read
         // through it.
-        if first != t && !matches!(t, CTy::Dom(_) | CTy::Range(..)) {
+        if first != t && !matches!(t, CTy::Dom(_) | CTy::Range(..) | CTy::RangeTo(..)) {
             self.out.insert(t.clone(), first.clone());
         }
         let held = match t {
@@ -113,7 +113,7 @@ impl Shares<'_> {
 fn erased(t: &CTy) -> CTy {
     match t {
         CTy::Dom(_) => CTy::Dom(0),
-        CTy::Range(..) => CTy::Int,
+        CTy::Range(..) | CTy::RangeTo(..) => CTy::Int,
         CTy::Raw(e) => CTy::Raw(Box::new(erased(e))),
         CTy::Ref(e) => CTy::Ref(Box::new(erased(e))),
         CTy::Lent(e) => CTy::Lent(Box::new(erased(e))),

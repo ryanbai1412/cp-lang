@@ -358,7 +358,8 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
         TypeKind::Array { index, .. }
             if index.len() == 1
                 && matches!(index[0].kind, TypeKind::Range { .. })
-                && const_axis(&index[0]).is_none() =>
+                && const_axis(&index[0]).is_none()
+                && !count_axis(cx, &index[0]) =>
         {
             errors.push(Unbuilt::RangeIndexedArray.into());
             Ty::Error
@@ -570,6 +571,15 @@ impl TypeTables for Tables {
     fn roles(&self) -> Roles {
         self.roles
     }
+}
+
+/// `[0..V.count - 1]T`: an axis ending at a domain's count, keyed by that range type (R04.3.4).
+fn count_axis(cx: &TyCx, t: &ast::Type) -> bool {
+    let TypeKind::Range { lo, hi, inclusive } = &t.kind else {
+        return false;
+    };
+    count_end(lo, hi, *inclusive)
+        .is_some_and(|(_, d, m, _)| is_type_name(cx, d) && cx.env.getter(m).is_some())
 }
 
 /// No binding is in scope where decls reads a type.
