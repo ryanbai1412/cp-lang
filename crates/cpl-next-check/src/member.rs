@@ -225,6 +225,7 @@ impl<'a> Cx<'a> {
             self.module,
             &self.generics,
             &self.doms,
+            &|n: &str| self.owned_named(n),
             &t,
             &mut errs,
         );
@@ -489,28 +490,24 @@ impl<'a> Cx<'a> {
             self.no_targs(name, written_targs, span);
             return e;
         }
-        // `f.clear()` of a `@memo` fn: the fn written beside it as `f.clear` (R06.4.1).
-        if let (ExprKind::Name(n), Some(args)) = (&base.kind, call) {
-            let joined = format!("{n}.{}", name.text);
-            if self.lookup(&joined).is_some()
-                || matches!(
-                    self.d.named(self.module, &joined),
-                    Some(decls::Named::Fn(_))
-                )
-            {
-                let callee = ast::Expr {
-                    kind: ExprKind::Name(joined),
-                    span,
-                };
-                let e = ast::Expr {
-                    kind: ExprKind::Call {
-                        callee: Box::new(callee),
-                        args: args.to_vec(),
-                    },
-                    span,
-                };
-                return self.expr(&e, want);
-            }
+        // `f.clear()` of a `@memo` fn: the fn declared beside it as its clear (R06.4.1).
+        let clear = match (&base.kind, call) {
+            (ExprKind::Name(n), Some(args)) => self.memo_clear(n, &name.text).map(|c| (c, args)),
+            _ => None,
+        };
+        if let Some((clear, args)) = clear {
+            let callee = ast::Expr {
+                kind: ExprKind::Name(clear),
+                span,
+            };
+            let e = ast::Expr {
+                kind: ExprKind::Call {
+                    callee: Box::new(callee),
+                    args: args.to_vec(),
+                },
+                span,
+            };
+            return self.expr(&e, want);
         }
         if let Some(e) = self.domain_member(base, name, call, span, want) {
             self.no_targs(name, written_targs, span);
@@ -813,5 +810,23 @@ impl<'a> Cx<'a> {
                 }
             }
         }
+    }
+
+    /// The name `@memo` fn `f`'s clear is bound under, found through `f`'s binding (R06.4.1).
+    /// The clear `@memo` gave `f`, when `member` is the name its expansion gave it.
+    fn memo_clear(&self, f: &str, member: &str) -> Option<String> {
+        let clear = match self.lookup(f) {
+            Some((v, _)) => match *self.memo_clears.get(&v)? {
+                VarRef::Local(k) => self.locals[k].name.clone(),
+                VarRef::Global(k) => self.globals[k].name.clone(),
+            },
+            None => {
+                let Some(decls::Named::Fn(w)) = self.d.named(self.module, f) else {
+                    return None;
+                };
+                self.d.f(*self.d.memo_clears.get(&w)?).name.clone()
+            }
+        };
+        (clear.rsplit_once('.').map(|(_, m)| m) == Some(member)).then_some(clear)
     }
 }

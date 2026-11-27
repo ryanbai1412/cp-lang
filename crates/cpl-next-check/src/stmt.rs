@@ -1,5 +1,6 @@
 //! Statements, scopes, ranges and reads.
 
+use super::place::{place_binding, place_held, InPlace};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
@@ -51,6 +52,27 @@ impl<'a> Cx<'a> {
             VarRef::Global(id)
         } else {
             VarRef::Local(self.add_local(name, ty))
+        }
+    }
+    /// A slot the checker made and holds by its id: no name in scope reaches it. `role` is
+    /// only what a trace shows; storage with no name is a temporary to ownership.
+    pub(super) fn slot(&mut self, ty: Ty, role: &str) -> VarRef {
+        let local = Local {
+            name: role.to_string(),
+            ty,
+            top: self.decl.is_none() && self.scopes.len() == 1,
+            mutable: false,
+            fixed: false,
+        };
+        match self.decl {
+            None => {
+                self.globals.push(local);
+                VarRef::Global(self.globals.len() - 1)
+            }
+            Some(_) => {
+                self.locals.push(local);
+                VarRef::Local(self.locals.len() - 1)
+            }
         }
     }
     pub(super) fn lookup(&self, name: &str) -> Option<(VarRef, Ty)> {
@@ -239,82 +261,6 @@ impl<'a> Cx<'a> {
             body,
         });
     }
-    /// E0311: a `@memo` fn's cache keeps results computed from what it captured, so nothing
-    /// may write a captured `var` while the cache lives, to the end of its block (R06.4.1).
-    fn memo_writes(&mut self, f: &ast::FnDecl, rest: &[ast::Stmt]) {
-        use cpl_syntax::visit::{walk_block, walk_expr, walk_stmt, Visitor};
-        struct Names(Vec<String>);
-        impl Visitor for Names {
-            fn expr(&mut self, e: &ast::Expr) {
-                if let ExprKind::Name(n) = &e.kind {
-                    self.0.push(n.clone());
-                }
-            }
-        }
-        fn root(e: &ast::Expr) -> Option<&str> {
-            match &e.kind {
-                ExprKind::Name(n) => Some(n),
-                ExprKind::Field { base, .. } | ExprKind::Index { base, .. } => root(base),
-                ExprKind::Paren(x) => root(x),
-                _ => None,
-            }
-        }
-        struct Writes<'a> {
-            names: &'a std::collections::HashSet<String>,
-            at: Vec<(Span, String)>,
-        }
-        impl Writes<'_> {
-            fn note(&mut self, e: &ast::Expr) {
-                if let Some(n) = root(e).filter(|n| self.names.contains(*n)) {
-                    self.at.push((e.span, n.to_string()));
-                }
-            }
-        }
-        impl Visitor for Writes<'_> {
-            fn stmt(&mut self, s: &ast::Stmt) {
-                if let StmtKind::Assign { target, .. } = &s.kind {
-                    self.note(target);
-                }
-            }
-            fn expr(&mut self, e: &ast::Expr) {
-                if let ExprKind::Call { args, .. } = &e.kind {
-                    for a in args.iter().filter(|a| a.mutable) {
-                        self.note(&a.value);
-                    }
-                }
-            }
-        }
-        let mut names = Names(Vec::new());
-        match &f.body {
-            FnBody::Block(b) => walk_block(b, &mut names),
-            FnBody::Expr(e) => walk_expr(e, &mut names),
-            FnBody::None => {}
-        }
-        let params: Vec<&str> = f.params.iter().map(|p| p.name.text.as_str()).collect();
-        let captured: std::collections::HashSet<String> = (names.0.into_iter())
-            .filter(|n| !params.contains(&n.as_str()))
-            .filter(|n| match self.lookup(n) {
-                Some((VarRef::Local(l), _)) => self.locals[l].mutable,
-                Some((VarRef::Global(g), _)) => self.globals[g].mutable,
-                None => false,
-            })
-            .collect();
-        if captured.is_empty() {
-            return;
-        }
-        let mut w = Writes {
-            names: &captured,
-            at: Vec::new(),
-        };
-        rest.iter().for_each(|s| walk_stmt(s, &mut w));
-        for (span, n) in w.at {
-            let text = format!(
-                "`{n}` is written while the cache of `@memo` fn `{}`, which reads it, lives",
-                f.name.text
-            );
-            self.err(span, Msg::verdict(cpl_diag::codes::BAD_MEMO, text));
-        }
-    }
     pub(super) fn block(&mut self, b: &ast::Block, want: Option<&Ty>) -> TExpr {
         self.scopes.push(HashMap::new());
         let mut out = Vec::new();
@@ -332,6 +278,16 @@ impl<'a> Cx<'a> {
         for (i, s) in stmts.iter().enumerate() {
             if i < placed {
                 continue;
+            }
+            // A memo's stmts are its table, its body, `f`, then `f.clear`, each bound by now.
+            if let Some(&(at, _)) = memos.iter().find(|(at, _)| at + 4 == i) {
+                let bound = |s: &ast::Stmt| match &s.kind {
+                    StmtKind::Fn(f) => self.lookup(&f.name.text).map(|(v, _)| v),
+                    _ => None,
+                };
+                if let (Some(f), Some(clear)) = (bound(&stmts[at + 2]), bound(&stmts[at + 3])) {
+                    self.memo_clears.insert(f, clear);
+                }
             }
             if let Some((_, f)) = memos.iter().find(|(at, _)| *at == i) {
                 self.memo_writes(f, &stmts[i + 4..]);
@@ -651,16 +607,10 @@ impl<'a> Cx<'a> {
             if matches!(p.kind, PatternKind::Wildcard) {
                 continue;
             }
-            // `tree.Pre` names the domain the whole value owns as `$tuple.tree.Pre`.
-            if let PatternKind::Name(n) = &p.kind {
-                let from = format!("{tmp}.{field}.");
-                let named: Vec<_> = (self.doms.iter())
-                    .filter_map(|(k, t)| {
-                        Some((format!("{n}.{}", k.strip_prefix(&from)?), t.clone()))
-                    })
-                    .collect();
-                self.doms.extend(named);
-            }
+            let named = match &p.kind {
+                PatternKind::Name(n) => Some((n.clone(), field.clone())),
+                _ => None,
+            };
             let at = |kind| ast::Expr { kind, span: p.span };
             let part = at(ExprKind::Field {
                 base: Box::new(at(ExprKind::Name(tmp.clone()))),
@@ -693,6 +643,10 @@ impl<'a> Cx<'a> {
                 *init = Some(part);
             }
             self.stmt(&one, out);
+            // `tree.Pre` is the domain the whole value owns as its `tree.Pre`.
+            if let Some((n, field)) = named {
+                self.hand_down(&tmp, &field, &n);
+            }
         }
     }
     pub(super) fn stmt(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
@@ -1765,7 +1719,15 @@ impl<'a> Cx<'a> {
         let mut errs = Vec::new();
         let mut generics = self.generics.clone();
         generics.extend(holes.iter().cloned());
-        let t = decls::body_type(self.d, self.module, &generics, &self.doms, &t, &mut errs);
+        let t = decls::body_type(
+            self.d,
+            self.module,
+            &generics,
+            &self.doms,
+            &|n: &str| self.owned_named(n),
+            &t,
+            &mut errs,
+        );
         for e in errs {
             self.err(span, e);
         }
@@ -1891,97 +1853,5 @@ impl<'a> Cx<'a> {
             ty: Ty::Int,
             span,
         }
-    }
-    /// An expression that names storage: a variable, or a field of one.
-    /// The name of the `let` a place lies in, if it lies in one.
-    pub(super) fn let_root(&self, place: &TExpr) -> Option<String> {
-        let mut root = place;
-        while let TK::Field(b, _) = &root.kind {
-            root = b;
-        }
-        let TK::Var(v) = &root.kind else { return None };
-        let (fixed, name) = match v {
-            VarRef::Local(i) => (self.locals[*i].fixed, &self.locals[*i].name),
-            VarRef::Global(i) => (self.globals[*i].fixed, &self.globals[*i].name),
-        };
-        (fixed && !name.starts_with('$')).then(|| name.clone())
-    }
-
-    /// `lend mut place` in a lender of `t`s: `place` is what its caller's body runs on.
-    fn lend_out(&mut self, place: &ast::Expr, t: &Ty, span: Span, out: &mut Vec<TStmt>) {
-        let p = self.place(place);
-        if !self.unify(&p.ty, t) {
-            self.err(
-                span,
-                Msg::verdict(
-                    cpl_diag::codes::TYPE_MISMATCH,
-                    format!("expected `{}`, found `{}`", self.show(t), self.show(&p.ty)),
-                ),
-            );
-        }
-        out.push(TStmt::LendOut(p));
-    }
-
-    pub(super) fn place(&mut self, e: &ast::Expr) -> TExpr {
-        let v = self.expr_as_typed(e, None);
-        if !matches!(
-            v.kind,
-            TK::Var(_) | TK::Field(..) | TK::Slot(..) | TK::Error
-        ) {
-            self.err(
-                e.span,
-                Msg::verdict(
-                    cpl_diag::codes::TYPE_MISMATCH,
-                    "this is not a place that can be assigned or lent",
-                ),
-            );
-        }
-        v
-    }
-}
-
-/// `let p = mut a[i]`: the name and the indexed place it names.
-/// What runs inside a place binding's lend.
-pub(super) type InPlace<'a> = Box<dyn FnOnce(&mut Cx<'_>, &mut Vec<TStmt>) + 'a>;
-
-pub(super) fn place_binding(s: &ast::Stmt) -> Option<(String, &ast::Expr)> {
-    let StmtKind::Let {
-        pat,
-        ty: None,
-        init: Some(init),
-        mutable: false,
-        otherwise: None,
-        ..
-    } = &s.kind
-    else {
-        return None;
-    };
-    let (PatternKind::Name(n), ExprKind::Mut(place)) = (&pat.kind, &init.kind) else {
-        return None;
-    };
-    let place = super::index::unparen(place);
-    matches!(&place.kind, ExprKind::Index { indices, .. } if indices.len() == 1)
-        .then(|| (n.clone(), place))
-}
-
-/// How many of `rest` hold the place `p` names: through the last one that mentions `p`, or a
-/// name one of those binds, so every name bound inside the lend is seen only inside it.
-pub(super) fn place_held(p: &str, rest: &[ast::Stmt]) -> usize {
-    let mut names = vec![p.to_string()];
-    let mut held = 0;
-    loop {
-        let seen: Vec<&str> = names.iter().map(String::as_str).collect();
-        let upto = (rest.iter())
-            .rposition(|s| cpl_syntax::visit::stmt_mentions_any(s, &seen))
-            .map_or(0, |k| k + 1);
-        if upto == held {
-            return held;
-        }
-        for s in &rest[held..upto] {
-            if let StmtKind::Let { pat, .. } = &s.kind {
-                cpl_syntax::visit::pattern_names(pat, &mut names);
-            }
-        }
-        held = upto;
     }
 }

@@ -392,7 +392,15 @@ impl Cx<'_> {
                 span: Span::default(),
             };
             let (gs, doms) = (&self.generics, &self.doms);
-            let t = decls::body_type(self.d, self.module, gs, doms, &written, &mut Vec::new());
+            let t = decls::body_type(
+                self.d,
+                self.module,
+                gs,
+                doms,
+                &|n: &str| self.owned_named(n),
+                &written,
+                &mut Vec::new(),
+            );
             return Some(t).filter(|t| self.is_domain(t));
         }
         // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).

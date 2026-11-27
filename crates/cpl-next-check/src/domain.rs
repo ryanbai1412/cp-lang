@@ -81,15 +81,39 @@ impl Cx<'_> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) -> usize {
+        let info = self.domain_info(name, lo, end, within, span, out);
+        let i = match (self.decl, self.d.top_doms.get(name)) {
+            (None, Some(&Ty::Dom(i))) if self.domains[i].name.is_empty() => {
+                self.domains[i] = info;
+                i
+            }
+            _ => {
+                self.domains.push(info);
+                self.domains.len() - 1
+            }
+        };
+        self.doms.insert(name.to_string(), Ty::Dom(i));
+        i
+    }
+    /// A domain's slots, set from its ends; `name` is what a message and the trace call it.
+    pub(super) fn domain_info(
+        &mut self,
+        name: &str,
+        lo: TExpr,
+        end: TExpr,
+        within: (Option<i64>, Option<i64>),
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> DomInfo {
         let count = match (&lo.kind, &end.kind) {
             (TK::Int(a), TK::Int(b)) => Some((b - a).max(0)),
             _ => None,
         };
-        let first = self.bind(&format!("{name}$lo"), Ty::Int);
+        let first = self.slot(Ty::Int, "$lo");
         out.push(TStmt::Let(first, lo));
-        let len = self.bind(&format!("{name}$len"), Ty::Int);
+        let len = self.slot(Ty::Int, "$len");
         // Spec 4: a range whose start is past its end is empty, never a trap.
-        let tmp = self.bind(&format!("{name}$n"), Ty::Int);
+        let tmp = self.slot(Ty::Int, "$n");
         let var = |r| TExpr {
             kind: TK::Var(r),
             ty: Ty::Int,
@@ -128,7 +152,7 @@ impl Cx<'_> {
                 Box::new(v(TK::Var(tmp))),
             )),
         ));
-        let info = DomInfo {
+        DomInfo {
             name: name.to_string(),
             len,
             lo: first,
@@ -136,18 +160,7 @@ impl Cx<'_> {
             owner: self.decl,
             count,
             chars: false,
-        };
-        if let (None, Some(&Ty::Dom(i))) = (self.decl, self.d.top_doms.get(name)) {
-            if self.domains[i].name.is_empty() {
-                self.domains[i] = info;
-                self.doms.insert(name.to_string(), Ty::Dom(i));
-                return i;
-            }
         }
-        self.domains.push(info);
-        self.doms
-            .insert(name.to_string(), Ty::Dom(self.domains.len() - 1));
-        self.domains.len() - 1
     }
     /// A product's range factor is a domain of its own, declared here; the product then names it.
     pub(super) fn declare_factors(
@@ -256,7 +269,6 @@ impl Cx<'_> {
             let mut tys = vec![r_ty.clone()];
             tys.extend(args.iter().cloned());
             let ty = cx.trait_ret(m, tys);
-            let local = format!("{name}.{n}");
             let call = TK::CallTrait {
                 tr: decls::TraitRef {
                     tr,
@@ -273,30 +285,14 @@ impl Cx<'_> {
                 args: args.clone(),
             };
             (cx.obligations).push((r_ty.clone(), r, span, Origin::Bound));
-            let c = cx.bind(&local, ty.clone());
-            out.push(TStmt::Let(
-                c,
-                TExpr {
-                    kind: call,
-                    ty,
-                    span,
-                },
-            ));
-            let name = |n: &str| {
-                Box::new(ast::Expr {
-                    kind: ExprKind::Name(n.to_string()),
-                    span,
-                })
+            let c = cx.slot(ty.clone(), n);
+            let at = |kind| TExpr {
+                kind,
+                ty: ty.clone(),
+                span,
             };
-            let int = ExprKind::Call {
-                callee: name("Int"),
-                args: vec![ast::Arg {
-                    name: None,
-                    mutable: false,
-                    value: *name(&local),
-                }],
-            };
-            cx.expr(&ast::Expr { kind: int, span }, Some(&Ty::Int))
+            out.push(TStmt::Let(c, at(call)));
+            cx.convert_value(Ty::Int, at(TK::Var(c)), span, Origin::Convert)
         };
         let lo = end(self, lo, out);
         (lo, end(self, hi, out))
@@ -407,6 +403,7 @@ impl Cx<'_> {
                     self.module,
                     &self.generics,
                     &self.doms,
+                    &|n: &str| self.owned_named(n),
                     &dt,
                     &mut errs,
                 );
@@ -428,23 +425,22 @@ impl Cx<'_> {
                 if decls::static_range(lo, hi, *inclusive).is_none() =>
             {
                 let name = format!("$ends{}", self.ranges.len());
-                let mut end =
-                    |cx: &mut Self, e: &Option<Box<ast::Expr>>, which: &str, open: bool| {
-                        e.as_ref().map(|b| {
-                            let b = if open {
-                                Self::minus_one(b)
-                            } else {
-                                (**b).clone()
-                            };
-                            let b = cx.expr(&b, Some(&Ty::Int));
-                            let b = cx.coerce(b, &Ty::Int);
-                            let v = cx.bind(&format!("{name}${which}"), Ty::Int);
-                            out.push(TStmt::Let(v, b));
-                            v
-                        })
-                    };
-                let lo = end(self, lo, "lo", false);
-                let hi = end(self, hi, "hi", !*inclusive);
+                let mut end = |cx: &mut Self, e: &Option<Box<ast::Expr>>, open: bool| {
+                    e.as_ref().map(|b| {
+                        let b = if open {
+                            Self::minus_one(b)
+                        } else {
+                            (**b).clone()
+                        };
+                        let b = cx.expr(&b, Some(&Ty::Int));
+                        let b = cx.coerce(b, &Ty::Int);
+                        let v = cx.slot(Ty::Int, "$end");
+                        out.push(TStmt::Let(v, b));
+                        v
+                    })
+                };
+                let lo = end(self, lo, false);
+                let hi = end(self, hi, !*inclusive);
                 self.ranges.push(RangeInfo { lo, hi });
                 self.doms
                     .insert(name.clone(), Ty::RangeOf(self.ranges.len() - 1));

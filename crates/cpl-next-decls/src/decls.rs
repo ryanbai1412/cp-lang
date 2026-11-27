@@ -391,6 +391,8 @@ pub struct Decls {
     pub memo_tables: HashMap<String, String>,
     /// Each `@memo_table(word)` struct's module and name there, by word.
     pub memo_homes: HashMap<String, (usize, String)>,
+    /// Each `@memo` fn's `f.clear`, by the fn (R06.4.1).
+    pub memo_clears: HashMap<FnId, FnId>,
     /// Static fns marked `@from_op`: what a bare operator becomes where their struct is wanted (R08.1.9).
     pub from_op: Vec<FnId>,
     /// Core's `@pattern` fns: `f(p)` as a pattern matches the optional `f` makes when it is
@@ -1190,6 +1192,7 @@ fn add_fn(
         aliases: &aliases,
         expanding: Vec::new(),
         doms: &doms,
+        scoped: &tyconv::unscoped,
         ret_slots: None,
         next_set: Some(outer_sets),
     };

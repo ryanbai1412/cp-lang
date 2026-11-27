@@ -42,6 +42,8 @@ pub(super) struct TyCx<'a> {
     pub(super) expanding: Vec<usize>,
     /// The types a body declares by name: its domains, and its ranges with run-time ends.
     pub(super) doms: &'a HashMap<String, Ty>,
+    /// `t.Pre`: a domain a binding in scope owns, found through that binding, not by spelling.
+    pub(super) scoped: &'a dyn Fn(&str) -> Option<Ty>,
     /// When converting a result type: the next result slot.
     pub(super) ret_slots: Option<usize>,
     /// Next implicit set parameter; `None` where a fn type may not appear bare.
@@ -101,6 +103,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         aliases: cx.aliases,
         expanding,
         doms: if decl.program { cx.doms } else { &none },
+        scoped: if decl.program { cx.scoped } else { &unscoped },
         ret_slots: cx.ret_slots,
         next_set: cx.next_set,
     };
@@ -276,8 +279,8 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             if let Some(Named::Alias(id)) = cx.names.get(n) {
                 return alias(cx, id.0, n, a, errors);
             }
-            if let Some(t) = cx.doms.get(n) {
-                return t.clone();
+            if let Some(t) = cx.doms.get(n).cloned().or_else(|| (cx.scoped)(n)) {
+                return t;
             }
             if let Some(t) = prim_type(n) {
                 return t;
@@ -500,6 +503,7 @@ pub fn body_type(
     m: ModId,
     generics: &[String],
     doms: &HashMap<String, Ty>,
+    scoped: &dyn Fn(&str) -> Option<Ty>,
     t: &ast::Type,
     errors: &mut Vec<Msg>,
 ) -> Ty {
@@ -522,12 +526,18 @@ pub fn body_type(
             aliases: &d.aliases,
             expanding: Vec::new(),
             doms,
+            scoped,
             ret_slots: None,
             next_set: None,
         },
         t,
         errors,
     )
+}
+
+/// No binding is in scope where decls reads a type.
+pub(super) fn unscoped(_: &str) -> Option<Ty> {
+    None
 }
 
 /// `(to: X, ..B without (u, v))`: of a record, the record of its other fields after the added

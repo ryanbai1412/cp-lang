@@ -7,8 +7,12 @@ impl Cx<'_> {
     /// `T(x)` for a core type or a payload-free enum `T`: `x`'s impl of core's `@convert` trait at
     /// `T` (R04.2.28, R02.7); a position's `Int` is its integer.
     pub(super) fn convert(&mut self, to: Ty, x: &ast::Expr, span: Span, why: Origin) -> TExpr {
-        let mk = |kind, ty| TExpr { kind, ty, span };
         let v = self.expr(x, None);
+        self.convert_value(to, v, span, why)
+    }
+    /// `T(v)` of a value already checked.
+    pub(super) fn convert_value(&mut self, to: Ty, v: TExpr, span: Span, why: Origin) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
         if to == Ty::Int {
             // Until `Domain` is a trait type parameters meet by bounds, a parameter is a domain.
             let bounded = match self.shallow(&v.ty) {

@@ -1111,7 +1111,7 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt, table: &str) -> [ast::Stm
     let (_, make) = memo_new(f, span, table);
     let clear = ast::FnDecl {
         name: ast::Name {
-            text: format!("{}.clear", f.name.text),
+            text: memo_clear_name(&f.name.text),
             span: f.name.span,
         },
         generics: Vec::new(),
@@ -1157,6 +1157,10 @@ pub(crate) fn memo_fns(f: &ast::FnDecl, s: &ast::Stmt, table: &str) -> [ast::Stm
 /// A block's statements with its `@memo` fns written out, and where each fn's table now sits.
 pub type MemoBlock<'s> = (Vec<ast::Stmt>, Vec<(usize, &'s ast::FnDecl)>);
 
+/// The name `@memo` fn `f`'s clear is declared under, written `f.clear()` (R06.4.1).
+pub fn memo_clear_name(f: &str) -> String {
+    format!("{f}.clear")
+}
 /// A block's statements with each `@memo` fn written out as its table, a `var` of the block, and
 /// its fns, with where each table's `var` now sits and the fn it is for; `None` when it has none
 /// (R06.4.1).

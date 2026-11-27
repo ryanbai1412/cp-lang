@@ -139,6 +139,7 @@ fn layer(
         }
     }
     let mut main = Vec::new();
+    let mut memos: Vec<(usize, String)> = Vec::new();
     // Pass 1: names, so signatures can mention later declarations.
     let mut pending: Vec<(ModId, ItemId, &ast::Stmt, Option<Named>)> = Vec::new();
     let mut op_methods: HashMap<TraitId, String> = HashMap::new();
@@ -321,6 +322,7 @@ fn layer(
                 .chain(made)
             {
                 if let Some((f, t)) = crate::synth::memo_table(s, &tables).filter(|_| mi >= from) {
+                    memos.push((mi, f.name.text.clone()));
                     main.push((item.clone(), crate::synth::memo_var(f, f.sig_span, t)));
                     continue;
                 }
@@ -672,6 +674,7 @@ fn layer(
                 aliases: &aliases,
                 expanding: Vec::new(),
                 doms: &doms,
+                scoped: &tyconv::unscoped,
                 ret_slots: None,
                 next_set: Some(0),
             };
@@ -721,6 +724,7 @@ fn layer(
             aliases: &aliases,
             expanding: Vec::new(),
             doms: &doms,
+            scoped: &tyconv::unscoped,
             ret_slots: None,
             next_set: None,
         };
@@ -799,6 +803,7 @@ fn layer(
                         aliases: &aliases,
                         expanding: Vec::new(),
                         doms: &doms,
+                        scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: Some(0),
                     };
@@ -932,6 +937,7 @@ fn layer(
                         aliases: &aliases,
                         expanding: Vec::new(),
                         doms: &doms,
+                        scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: None,
                     };
@@ -1051,6 +1057,7 @@ fn layer(
                         aliases: &aliases,
                         expanding: Vec::new(),
                         doms: &doms,
+                        scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: Some(0),
                     };
@@ -1396,6 +1403,13 @@ fn layer(
     if base.is_some() {
         for ks in (d.impls_by_trait.values_mut()).chain(d.impls_by_member.values_mut()) {
             ks.retain(|k| live[*k]);
+        }
+    }
+    // `f.clear()` of a `@memo` fn reaches its clear through the fn, not by a spelling (R06.4.1).
+    for (mi, f) in memos {
+        let clear = crate::synth::memo_clear_name(&f);
+        if let (Some(Named::Fn(w)), Some(Named::Fn(c))) = (own[mi].get(&f), own[mi].get(&clear)) {
+            d.memo_clears.insert(*w, *c);
         }
     }
     let layer = Prepared {

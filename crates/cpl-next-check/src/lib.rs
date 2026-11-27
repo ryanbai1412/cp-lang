@@ -28,8 +28,10 @@ mod labels;
 mod lambda;
 mod list;
 mod member;
+mod memo;
 mod oblige;
 mod pattern;
+mod place;
 mod question;
 mod range;
 mod recipe;
@@ -284,6 +286,9 @@ enum SetVar {
     Bound(SetTy),
 }
 
+/// One context a copy of a fn is made for: the context, its field, and the value's text.
+type CtxSetting = (usize, String, String);
+
 struct Cx<'a> {
     d: &'a Decls,
     /// What a constant expression's value is, worked out by the driver's evaluator.
@@ -315,6 +320,11 @@ struct Cx<'a> {
     /// or a result's `domain C` and the domain its caller bound it to (R02.9.3).
     fresh_eq: Vec<(usize, usize)>,
     doms: HashMap<String, Ty>,
+    /// The domains a binding owns, by the binding and the path to each in its value: `t`'s
+    /// `Pre`, or `r`'s `tree.Pre` (R02.9.1).
+    owned: HashMap<(VarRef, Vec<String>), usize>,
+    /// A block's `@memo` fn's `f.clear`, by the fn's binding (R06.4.1).
+    memo_clears: HashMap<VarRef, VarRef>,
     ranges: Vec<RangeInfo>,
     // per fn
     decl: Option<FnId>,
@@ -390,7 +400,7 @@ struct Cx<'a> {
     filling: Vec<list::Filling>,
     /// Each copy of a `uses` fn made so far, by the fn and the context values it is checked
     /// under; and those still to check.
-    ctx_copies: HashMap<(FnId, String), u32>,
+    ctx_copies: HashMap<(FnId, Vec<CtxSetting>), u32>,
     ctx_pending: Vec<(FnId, u32, Vec<CtxFrame>)>,
 }
 
@@ -492,6 +502,8 @@ fn check_with(
             .collect(),
         fresh_eq: Vec::new(),
         doms: d.top_doms.clone(),
+        owned: HashMap::new(),
+        memo_clears: HashMap::new(),
         ranges: Vec::new(),
         decl: None,
         generics: Vec::new(),
@@ -529,9 +541,9 @@ fn check_with(
         const_init: Vec::new(),
     };
     // A result's `domain C` keeps its ends in one static slot per declaration site (R02.9.4).
-    let slot = |cx: &mut Cx, name: &str, end: &str| {
+    let slot = |cx: &mut Cx, role: &str| {
         cx.globals.push(Local {
-            name: format!("{name}${end}"),
+            name: role.to_string(),
             ty: Ty::Int,
             top: true,
             mutable: true,
@@ -540,7 +552,7 @@ fn check_with(
         VarRef::Global(cx.globals.len() - 1)
     };
     for (i, name) in &d.fresh_doms {
-        let (lo, len) = (slot(&mut cx, name, "lo"), slot(&mut cx, name, "len"));
+        let (lo, len) = (slot(&mut cx, "$lo"), slot(&mut cx, "$len"));
         cx.domains[*i] = DomInfo {
             name: name.clone(),
             len,
@@ -554,7 +566,7 @@ fn check_with(
     // `[0..2]T` in a declaration: the range's domain is set before the program runs.
     for &(i, first, last) in &d.anon_doms {
         let name = decls::anon_key(first, last);
-        let (lo, len) = (slot(&mut cx, &name, "lo"), slot(&mut cx, &name, "len"));
+        let (lo, len) = (slot(&mut cx, "$lo"), slot(&mut cx, "$len"));
         let count = last - first + 1;
         for (r, k) in [(lo, first), (len, count)] {
             let int = |kind| TExpr {
@@ -678,13 +690,13 @@ fn check_with(
         }
         begun |= !bare_with;
         into.push(TStmt::Item(off.clone()));
-        if let Some((p, _)) = stmt::place_binding(s) {
+        if let Some((p, _)) = place::place_binding(s) {
             let items: Vec<(ItemId, ast::Stmt)> = (main[k..].iter().zip(&lifted[k..]))
                 .filter(|(_, l)| l.is_none())
                 .map(|((off, s), _)| (off.clone(), s.clone()))
                 .collect();
             let stmts: Vec<ast::Stmt> = items[1..].iter().map(|(_, s)| s.clone()).collect();
-            let held = stmt::place_held(&p, &stmts);
+            let held = place::place_held(&p, &stmts);
             placed = held;
             into.pop();
             cx.items_placed(&items[..=held], into);
@@ -908,8 +920,8 @@ impl<'a> Cx<'a> {
             return 0;
         }
         frames.sort_by(|a, b| (a.ctx, &a.field).cmp(&(b.ctx, &b.field)));
-        let key: String = (frames.iter())
-            .map(|x| format!("{}.{}={};", x.ctx.0, x.field, konst(&x.value)))
+        let key: Vec<_> = (frames.iter())
+            .map(|x| (x.ctx.0, x.field.clone(), konst(&x.value)))
             .collect();
         let next = self.ctx_copies.len() as u32 + 1;
         let k = *self.ctx_copies.entry((id, key)).or_insert(next);
@@ -1021,6 +1033,8 @@ impl<'a> Cx<'a> {
         self.decl = Some(id);
         self.module = f.module;
         let top_doms = self.doms.clone();
+        let top_owned = self.owned.clone();
+        let top_clears = self.memo_clears.clone();
         self.generics = f.generics.clone();
         // A fn's result slots are set parameters after its own: each call passes its sets.
         self.n_sets = f.n_sets + f.n_ret_sets;
@@ -1142,6 +1156,8 @@ impl<'a> Cx<'a> {
         self.module = d.program;
         self.region = None;
         self.doms = top_doms;
+        self.owned = top_owned;
+        self.memo_clears = top_clears;
         self.generics = Vec::new();
         self.n_sets = 0;
         self.self_local = None;

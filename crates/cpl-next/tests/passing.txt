@@ -1704,6 +1704,8 @@ next/n_fn_value_01_defaulted_params_are_left_out.cp
 next/n_fnval_01_defaults_fill.cp
 next/n_fnval_02_mut_params.cp
 next/n_for_01_wildcard_and_repeat.cp
+next/n_fresh_domain_owned_mix.cp
+next/n_fresh_domain_owned_type.cp
 next/n_fresh_domain_record.cp
 next/n_fresh_domain_result.cp
 next/n_fromop_01_bare_op_at_a_bound.cp
@@ -1786,6 +1788,7 @@ next/n_memo_03_captured_var_written_while_cached.cp
 next/n_memo_04_clear_empties_the_cache.cp
 next/n_memo_05_bare_memo_is_an_error.cp
 next/n_memo_06_array_table_per_range_type.cp
+next/n_memo_07_block_clear_through_the_fn.cp
 next/n_method_01_range_self_takes_an_int.cp
 next/n_method_02_range_self_checks_the_receiver.cp
 next/n_mod_01_inline_modules.cp

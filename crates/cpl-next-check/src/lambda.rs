@@ -211,6 +211,7 @@ impl Cx<'_> {
             self.module,
             &self.generics,
             &self.doms,
+            &|n: &str| self.owned_named(n),
             t,
             &mut errs,
         );
@@ -237,7 +238,15 @@ impl Cx<'_> {
             };
             // Its types are reported once, where its lambda is made.
             let quiet = |c: &mut Self, t: &ast::Type| {
-                let t = decls::body_type(c.d, c.module, &c.generics, &c.doms, t, &mut Vec::new());
+                let t = decls::body_type(
+                    c.d,
+                    c.module,
+                    &c.generics,
+                    &c.doms,
+                    &|n: &str| c.owned_named(n),
+                    t,
+                    &mut Vec::new(),
+                );
                 c.fresh_sets(&t)
             };
             let fd = &*cpl_next_decls::jagged(fd);
