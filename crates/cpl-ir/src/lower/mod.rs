@@ -821,6 +821,9 @@ struct Lowerer<'a> {
     /// The type wanted of the generic call being lowered, which fills a
     /// type parameter only its return type names: `let x: Int = gen(r)`.
     call_hint: (Option<Ty>, Option<lambda_infer::WantBound>),
+    /// Lowering the `@from_op` call a bare op was lifted into: its op binds `M` itself and is
+    /// not lifted again, or `Monoid.of(+)` would lift into `Monoid.of(Monoid.of(+))` forever.
+    lifting_op: bool,
     /// The range ends of the owner struct's parameters for the generic method
     /// call being lowered: `Monoid<T>.of(max)` with `T` a `1..=9` sees `T.MIN == 1`.
     owner_ranges: Vec<(String, GenArg)>,
@@ -981,6 +984,7 @@ impl<'a> Lowerer<'a> {
             outer_cxs: OuterCxs::default(),
             gen_env: HashMap::new(),
             call_hint: (None, None),
+            lifting_op: false,
             owner_ranges: Vec::new(),
             want_written: None,
             self_struct: None,

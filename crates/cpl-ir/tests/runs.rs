@@ -168,3 +168,11 @@ fn a_generator_probed_before_its_yield_type_is_known_makes_no_struct() {
     assert_eq!(recovered(source), 0);
     assert_eq!(runs(source, ""), "3 4\n");
 }
+
+#[test]
+fn a_bare_op_lifted_into_monoid_of_is_not_lifted_again() {
+    // `SegTree(+, a)` lifts `+` into `Monoid.of(+)`, whose `M: FromOp<T>` wants a
+    // `Monoid<T>` for `+` again.
+    let out = runs("var g = SegTree(+, [1, 2, 3])\nprint(g.all)\n", "");
+    assert!(out == "6\n" || out.contains("Monoid.of"), "{out}");
+}

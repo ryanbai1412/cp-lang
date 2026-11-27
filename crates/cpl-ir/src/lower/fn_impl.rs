@@ -126,6 +126,9 @@ impl<'a> Lowerer<'a> {
         tpl: (ModId, u32),
         inferred: &GenEnv,
     ) -> Option<Ty> {
+        if self.lifting_op {
+            return None;
+        }
         let lifts = self.op_lift_structs();
         let is_monoid = |t: &ast::Type| matches!(&t.kind, ast::TypeKind::Named { name, .. } if lifts.contains(&name.text));
         let ty = self.bound_impl_shape(bounds, param, tpl, inferred, &is_monoid, false)?;
@@ -170,6 +173,9 @@ impl<'a> Lowerer<'a> {
     /// A bare operator `Monoid.of` takes, passed where a `Monoid<T>` is
     /// wanted: `Monoid<T>.of(op)`.
     pub(super) fn monoid_of_bare_op(&mut self, want: &Ty, arg: &ast::Arg) -> Option<Expr> {
+        if self.lifting_op {
+            return None;
+        }
         self.monoid_bare_op(&arg.value)?;
         let of = self.monoid_struct(want)?;
         let span = arg.value.span;
@@ -177,7 +183,10 @@ impl<'a> Lowerer<'a> {
             name: None,
             ..arg.clone()
         };
-        Some(self.call_gen_fn(of, Vec::new(), None, &[arg], span))
+        let outer = std::mem::replace(&mut self.lifting_op, true);
+        let call = self.call_gen_fn(of, Vec::new(), None, &[arg], span);
+        self.lifting_op = outer;
+        Some(call)
     }
 
     /// The type an impl of `param`'s bound whose target `fits` is for, its
