@@ -43,8 +43,11 @@ fn real_main() {
             for d in &ds {
                 println!("{d}");
             }
-            // 1: the program is rejected. 4: refused, which says nothing about the program.
-            std::process::exit(if ds.iter().any(cpl_next::Diag::is_refusal) {
+            // 1: the program is rejected. 4: refused, which says nothing about the program. A
+            // syntax error rejects it whatever a later layer refused.
+            let syntax = |d: &cpl_next::Diag| d.stage == cpl_next::Stage::Syntax && !d.is_refusal();
+            let refused = ds.iter().any(cpl_next::Diag::is_refusal);
+            std::process::exit(if refused && !ds.iter().any(syntax) {
                 4
             } else {
                 1

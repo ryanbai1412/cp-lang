@@ -10,6 +10,8 @@ use cpl_syntax::ast::{Stmt, StmtKind};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 type Items = Vec<(u32, Vec<Stmt>)>;
+/// Each syntax error with its code and where it is, and the spans the parser could not read.
+type Unread = (Vec<(Span, String)>, Vec<Span>);
 
 pub struct Module {
     pub name: String,
@@ -27,6 +29,8 @@ pub struct Loaded {
     /// Each prelude name and the module it is from.
     pub prelude: HashMap<String, String>,
     pub errors: Vec<Msg>,
+    /// What the parser could not read: no later layer reports inside these (contract 3).
+    pub poisoned: Vec<Span>,
 }
 
 pub const CORE: &str = "core";
@@ -129,20 +133,26 @@ fn uses(items: &[(u32, Vec<Stmt>)]) -> impl Iterator<Item = (String, &Stmt, u32)
         })
 }
 
-/// The items, and each syntax error with its code and where it starts in `text`.
-fn parse(text: &str) -> (Items, Vec<(Span, String)>) {
+/// The items, each syntax error with its code and where it is in `text`, and the spans of
+/// `text` the parser could not read.
+fn parse(text: &str) -> (Items, Unread) {
     let p = cpl_syntax::parse_file(text);
-    let items = p.items.into_iter().map(|(o, it)| (o, it.stmts)).collect();
+    let mut poisoned = Vec::new();
+    let mut items = Vec::new();
+    for (o, it) in p.items {
+        poisoned.extend((it.poisoned.iter()).map(|s| Span::new(o + s.start, o + s.end)));
+        items.push((o, it.stmts));
+    }
     let diags = (p.diagnostics.into_iter())
         .map(|d| (d.span, format!("{}: {}", d.code.0, d.message)))
         .collect();
-    (items, diags)
+    (items, (diags, poisoned))
 }
 
 /// `wanted`: std modules a check of the program found it needs (see `declaring`).
 pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
     let mut errors = Vec::new();
-    let (program, program_diags) = parse(user);
+    let (program, (program_diags, program_poisoned)) = parse(user);
     let mut prelude = HashMap::new();
     if let Some(text) = std_source("std.prelude") {
         let (items, _) = parse(&text);
@@ -172,7 +182,7 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
     let mut seen = HashSet::new();
     let mut edges: Vec<(String, String)> = Vec::new();
     let mut missing: Vec<(String, Option<u32>)> = Vec::new();
-    let mut lib_diags: Vec<(usize, Vec<(Span, String)>)> = Vec::new();
+    let mut lib_diags: Vec<(usize, Unread)> = Vec::new();
     // The core's traits name std types (`Ord`'s `cmp` returns `std.algebra`'s `Ordering`).
     let (core_items, _) = parse(core);
     queue.extend(uses(&core_items).map(|(to, _, _)| (to, None)));
@@ -190,8 +200,8 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
             }
             continue;
         };
-        let (items, diags) = parse(&text);
-        lib_diags.push((libs.len(), diags));
+        let (items, unread) = parse(&text);
+        lib_diags.push((libs.len(), unread));
         for (to, _, _) in uses(&items) {
             edges.push((m.clone(), to.clone()));
             queue.push_back((to, None));
@@ -225,10 +235,13 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
     }
     let program_start = add(PROGRAM, user, program);
     let at = |base: u32, s: Span| Span::new(base + s.start, base + s.end);
-    for (lib, diags) in lib_diags {
+    let mut poisoned = Vec::new();
+    for (lib, (diags, p)) in lib_diags {
         errors.extend((diags.into_iter()).map(|(a, d)| Msg::at(at(lib_starts[lib], a), d)));
+        poisoned.extend(p.into_iter().map(|s| at(lib_starts[lib], s)));
     }
     errors.extend((program_diags.into_iter()).map(|(a, d)| Msg::at(at(program_start, a), d)));
+    poisoned.extend(program_poisoned.into_iter().map(|s| at(program_start, s)));
     let code = cpl_diag::codes::UNRESOLVED_MODULE.0;
     for (m, a) in missing {
         let text = format!("{code}: no module `{m}`");
@@ -243,6 +256,7 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
         program_start,
         prelude,
         errors,
+        poisoned,
     }
 }
 

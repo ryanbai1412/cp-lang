@@ -138,10 +138,12 @@ core-02/local-range-type-runtime-bound.cp
 core-02/long-str-literal-is-shared-and-copied-on-write.cp
 core-02/move-into-ctor-receiver-then-use.cp
 core-02/move-into-ctor-receiver.cp
+core-02/no-boxed-fn-type.cp
 core-02/no-overload.cp
 core-02/none-names-a-param-and-a-field.cp
 core-02/optional-compare-coalesced.cp
 core-02/optional-eq-structural.cp
+core-02/optional-not-implicit-down.cp
 core-02/owned-lent-same-type.cp
 core-02/pascal-variant-pattern.cp
 core-02/plain-copies.cp
@@ -169,6 +171,7 @@ core-02/unit-field-given-to-a-fn-value.cp
 core-02/unit-field-of-a-nested-generic-is-stored-nowhere.cp
 core-02/var-field-assign.cp
 core-03/a-struct-never-holds-itself.cp
+core-03/const-range-store.cp
 core-03/domain-width-roundtrip.cp
 core-03/filled-from-constant-widens.cp
 core-03/floor-div-zero.cp
@@ -934,7 +937,6 @@ std-strings/char-tests-run-std-bodies.cp
 std-strings/chars.cp
 std-strings/hash-token-is-a-std-impl-per-type.cp
 std-strings/repeat-zero.cp
-std-subset/empty-braces-is-empty-subset.cp
 std-timetree/cdq-1.cp
 tools-cli/exit-0-no-errors.cp
 tools-cli/exit-1-on-errors.cp

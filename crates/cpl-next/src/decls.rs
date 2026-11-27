@@ -4,6 +4,7 @@ pub use crate::cycles::{alias_cycle, field_holding_itself};
 use crate::diag::Msg;
 use crate::synth::{enum_structs, module_derived};
 use crate::ty::*;
+use cpl_diag::Span;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -57,6 +58,8 @@ pub struct FnDecl {
     /// `@same_keys`: its arguments that are arrays over domains share one domain (R04b.1.3).
     pub same_keys: bool,
     pub item: u32,
+    /// Where it is written, in the joined source.
+    pub span: Span,
     pub module: ModId,
     /// What its signature uses that the slice does not build, said only when a call reaches it.
     pub errors: Vec<Msg>,
@@ -546,6 +549,8 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             let set = slot(cx);
             Ty::Fn(ps, Box::new(r), set)
         }
+        // The parser has said what is wrong with it.
+        TypeKind::Error => Ty::Error,
         other => {
             errors.push(format!("slice: type {}", crate::kind_name(other)).into());
             Ty::Error
@@ -852,10 +857,11 @@ pub fn collect(
                         for x in (s.decorators.iter())
                             .filter(|x| !(library && read_elsewhere(&x.name.text)))
                         {
-                            let e = format!("slice: decorator `@{}`", x.name.text);
+                            let at = Span::new(*item + x.span.start, *item + x.span.end);
+                            let e = Msg::at(at, format!("slice: decorator `@{}`", x.name.text));
                             match d.is_library(mid) {
-                                true => d.module_errors[mi].push(e.into()),
-                                false => d.errors.push(e.into()),
+                                true => d.module_errors[mi].push(e),
+                                false => d.errors.push(e),
                             }
                         }
                         own[mi].insert(name.text.clone(), Named::Alias(AliasId(aliases.len())));
@@ -1743,7 +1749,8 @@ fn add_fn(
             && x.name.text != GETTER
             && !matches!(x.name.text.as_str(), "multitest" | "same_keys" | "index")
         {
-            errors.push(format!("slice: decorator `@{}`", x.name.text).into());
+            let at = Span::new(item + x.span.start, item + x.span.end);
+            errors.push(Msg::at(at, format!("slice: decorator `@{}`", x.name.text)));
         }
     }
     let mut errors = if d.is_library(m) {
@@ -1806,6 +1813,7 @@ fn add_fn(
         getter,
         same_keys,
         item,
+        span: Span::new(item + s.span.start, item + s.span.end),
         module: m,
         errors,
     });

@@ -57,7 +57,6 @@ core-02/unit-is-ordered.cp	wrong-reject	check: program:9:11: E0606: `()` has no 
 core-02/variant-named-like-prelude-type.cp	wrong-reject	check: program:8:11: E0201: unknown name `Set`
 core-03/a-list-or-handle-of-itself-is-fine.cp	wrong-reject	check: std.persistent:32:9: E0203: `List<T>` has no member `reserve`
 core-03/byte-slot-is-range.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range0, 0..=255>`, found `Array<$range0, Int>`
-core-03/const-range-store.cp	wrong-error	wanted E0902 on line 4, got: check: program:3:19: E0302: expected `Array<$range0, 0..=9>`, found `Array<$range1, Int>`
 core-03/i128-holds-past-int.cp	wrong-reject	check: program:3:1: E0204: unknown type `I128`
 core-03/narrow-arith-same-answer.cp	wrong-reject	check: program:3:21: E0302: expected `Array<$range0, 0..=1000000000>`, found `Array<$range1, Int>`
 core-03/narrow-array-no-wide-lint.cp	wrong-reject	check: program:3:27: E0302: expected `Array<$range0, 0..=1000000000>`, found `Array<$range1, Int>`
@@ -409,6 +408,7 @@ matrix/index/cuts--min_by.cp	wrong-reject	check: program:3:11: E0203: `Range<V>`
 matrix/index/cuts--optional.cp	wrong-reject	check: program:3:1: E0204: unknown type `V.cuts`
 matrix/index/cuts--prev.cp	wrong-reject	check: program:3:11: E0203: `Range<V>` has no member `cuts`
 matrix/index/cuts--print.cp	wrong-reject	check: program:3:7: E0203: `Range<V>` has no member `cuts`
+matrix/index/cuts--read.cp	wrong-reject	check: program:4:1: E0204: unknown type `V.cuts`
 matrix/index/cuts--rev.cp	wrong-reject	check: program:4:10: E0203: `Range<V>` has no member `cuts`
 matrix/index/cuts--size.cp	wrong-reject	check: program:3:7: E0203: `Range<V>` has no member `cuts`
 matrix/index/enum--count.cp	wrong-reject	check: program:3:7: E0203: `D` has no `count`
@@ -623,7 +623,6 @@ std-prefix/cut-table-by-signature-int-index-is-an-error.cp	wrong-error	wanted E0
 std-prefix/filling-read-past-the-written-cells-traps.cp	wrong-reject	check: program:5:9: E0303: `Prefix` takes 1 type arguments, found 2
 std-prefix/filling-reads-at-the-first-cut-and-after-a-negative.cp	wrong-reject	check: program:5:9: E0303: `Prefix` takes 1 type arguments, found 2
 std-prefix/filling-reads-like-a-built-prefix.cp	wrong-reject	check: program:5:9: E0303: `Prefix` takes 1 type arguments, found 2
-std-prefix/filling-types-come-with-prefix.cp	wrong-reject	check: program:3:1: E0204: unknown type `FillPrefix`
 std-prefix/first-ge-at-total.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `scan`
 std-prefix/first-ge-negative-element-traps.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `scan`
 std-prefix/own-fill-order-is-not-replaced.cp	wrong-reject	check: std.prefix:518:40: E0203: `Range<T>` has no member `zero`

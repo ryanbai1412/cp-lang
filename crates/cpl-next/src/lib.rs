@@ -113,6 +113,11 @@ impl Diag {
     }
 }
 
+/// Whether two spans share a byte; an empty span is the byte it is at.
+fn overlaps(a: cpl_diag::Span, b: cpl_diag::Span) -> bool {
+    a.start < b.end.max(b.start + 1) && b.start < a.end.max(a.start + 1)
+}
+
 /// The one printer of a diagnostic: `check: program:3:5: E0301: text`.
 impl std::fmt::Display for Diag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -141,8 +146,17 @@ pub struct Compiled {
     canon: Vec<ir::Func<inst::CTy>>,
 }
 
-/// `events` adds the semantic events to the program, for both the interpreter and the C++.
-pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
+/// Every layer through lowering, each run whatever an earlier one found (contracts 1-3).
+struct Front {
+    loaded: modules::Loaded,
+    d: decls::Decls,
+    t: check::Typed,
+    g: lower::Generic,
+    main: Vec<(u32, cpl_syntax::ast::Stmt)>,
+    diags: Vec<Diag>,
+}
+
+fn front(user_src: &str) -> Front {
     // A method the program calls that no loaded module declares loads the std modules that
     // do, and the program is read again (R11.3.4); each round loads at least one more module.
     let mut wanted: Vec<String> = Vec::new();
@@ -150,15 +164,22 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
         let loaded = modules::load(STD, user_src, &wanted);
         let src = &loaded.src;
         let std_lines = src[..loaded.program_start as usize].matches('\n').count();
+        // What the parser could not read is checked as error nodes; a later layer says nothing
+        // on what the parser rejected, and every other unit is checked as if it were alone.
+        let rejected: Vec<cpl_diag::Span> = (loaded.poisoned.iter().copied())
+            .chain(loaded.errors.iter().filter_map(|m| m.at))
+            .collect();
+        let unread =
+            |m: &&diag::Msg| (m.at).is_some_and(|a| rejected.iter().any(|p| overlaps(*p, a)));
         let diags = |stage, es: &[diag::Msg]| -> Vec<Diag> {
-            es.iter().map(|e| Diag::new(stage, e, &loaded)).collect()
+            (es.iter())
+                .filter(|m| stage == Stage::Syntax || !unread(m))
+                .map(|e| Diag::new(stage, e, &loaded))
+                .collect()
         };
-        // A program the grammar does not derive is rejected there; what was parsed is not checked.
-        if !loaded.errors.is_empty() {
-            return Err(diags(Stage::Syntax, &loaded.errors));
-        }
+        let mut out = diags(Stage::Syntax, &loaded.errors);
         let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
-        let mut out = diags(Stage::Decls, &d.errors);
+        out.extend(diags(Stage::Decls, &d.errors));
         let mut t = check::check(&d, &main, src);
         let more = modules::declaring(&t.missing, &loaded.modules);
         if !more.is_empty() {
@@ -166,7 +187,7 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
             continue;
         }
         out.extend(diags(Stage::Check, &t.errors));
-        let owned = if t.errors.is_empty() && d.errors.is_empty() {
+        let owned = if loaded.errors.is_empty() && t.errors.is_empty() && d.errors.is_empty() {
             own::check(&d, &t)
         } else {
             own::Owned::default()
@@ -178,19 +199,104 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
         }
         let g = lower::lower(&d, &t, &owned, src, std_lines as u32);
         out.extend(diags(Stage::Lower, &g.errors));
-        if !out.is_empty() {
-            return Err(out);
-        }
-        let mut prog = inst::link(&d, &t, &g.funcs, &g.globals);
-        if !prog.errors.is_empty() {
-            return Err(diags(Stage::Link, &prog.errors));
-        }
-        if events {
-            inst::add_events(&mut prog, &t, &d, loaded.program_start);
-        }
-        let canon = inst::canonicalize(&prog).map_err(|es| diags(Stage::Link, &es))?;
-        return Ok(Compiled { prog, canon });
+        return Front {
+            loaded,
+            d,
+            t,
+            g,
+            main,
+            diags: out,
+        };
     }
+}
+
+/// `events` adds the semantic events to the program, for both the interpreter and the C++.
+pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
+    let Front {
+        loaded,
+        d,
+        t,
+        g,
+        diags,
+        ..
+    } = front(user_src);
+    if !diags.is_empty() {
+        return Err(diags);
+    }
+    let link = |es: &[diag::Msg]| -> Vec<Diag> {
+        (es.iter())
+            .map(|e| Diag::new(Stage::Link, e, &loaded))
+            .collect()
+    };
+    let mut prog = inst::link(&d, &t, &g.funcs, &g.globals);
+    if !prog.errors.is_empty() {
+        return Err(link(&prog.errors));
+    }
+    if events {
+        inst::add_events(&mut prog, &t, &d, loaded.program_start);
+    }
+    let canon = inst::canonicalize(&prog).map_err(|es| link(&es))?;
+    Ok(Compiled { prog, canon })
+}
+
+/// One unit of the program (contract 3): a fn it declares, or one of its top-level statements.
+#[derive(Debug)]
+pub struct Unit {
+    /// The fn's name; `None` for a statement.
+    pub name: Option<String>,
+    /// Where it is in the program's text.
+    pub span: cpl_diag::Span,
+    /// The diagnostics placed in it.
+    pub diags: Vec<Diag>,
+    /// How many of its expressions the checker could not type (error nodes).
+    pub untyped: usize,
+    /// Whether lowering made its code: a fn's own function, a statement's part of `main`.
+    pub lowered: bool,
+}
+
+/// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
+/// program that need not compile.
+pub fn units(user_src: &str) -> (Vec<Unit>, Vec<Diag>) {
+    let f = front(user_src);
+    let start = f.loaded.program_start;
+    let fns = (0..f.d.fns.len()).map(ty::FnId).filter(|id| {
+        let fd = f.d.f(*id);
+        // A derived impl's methods are made, not written: they are the struct's.
+        let derived = matches!(fd.owner, Some(decls::Owner::Impl(i)) if f.d.impls[i].derived);
+        fd.module == f.d.program
+            && !derived
+            && fd.intrinsic.is_none()
+            && !matches!(fd.body, cpl_syntax::ast::FnBody::None)
+    });
+    let fns = fns.map(|id| {
+        let fd = f.d.f(id);
+        let lowered = f.g.funcs.contains_key(&ir::FuncKey::Decl(id));
+        (Some(fd.name.clone()), fd.span, lowered)
+    });
+    let statements = (f.main.iter()).map(|(off, s)| {
+        let span = cpl_diag::Span::new(off + s.span.start, off + s.span.end);
+        (None, span, f.g.funcs.contains_key(&ir::FuncKey::Main))
+    });
+    let units = (fns.chain(statements))
+        .map(|(name, span, lowered)| {
+            let local = cpl_diag::Span::new(span.start - start, span.end - start);
+            let diags = (f.diags.iter())
+                .filter(|d| {
+                    (d.at.as_ref())
+                        .is_some_and(|a| a.file == modules::PROGRAM && overlaps(a.span, local))
+                })
+                .cloned()
+                .collect();
+            Unit {
+                name,
+                span: local,
+                diags,
+                untyped: f.g.untyped.iter().filter(|u| overlaps(**u, span)).count(),
+                lowered,
+            }
+        })
+        .collect();
+    (units, f.diags)
 }
 
 impl Compiled {

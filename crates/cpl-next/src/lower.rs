@@ -6,6 +6,7 @@ use crate::diag::Msg;
 use crate::ir::*;
 use crate::own::Owned;
 use crate::ty::*;
+use cpl_diag::Span;
 use cpl_syntax::ast::{BinOp, CmpOp};
 use std::collections::{BTreeSet, HashMap};
 
@@ -13,6 +14,8 @@ pub struct Generic {
     pub funcs: HashMap<FuncKey, Func<Ty>>,
     pub globals: Vec<Ty>,
     pub errors: Vec<Msg>,
+    /// Each expression the checker could not type (an error node), in the joined source.
+    pub untyped: Vec<Span>,
 }
 
 struct Lw<'a> {
@@ -37,6 +40,7 @@ struct Lw<'a> {
     /// What each nested fn of the blocks being lowered reads from around it, its group's together.
     group_free: HashMap<LambdaId, BTreeSet<VarRef>>,
     errors: Vec<Msg>,
+    untyped: Vec<Span>,
     in_main: bool,
     /// The code of one test case, once main's `Cases` is lowered.
     case: Option<Func<Ty>>,
@@ -52,6 +56,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         funcs: HashMap::new(),
         globals: Vec::new(),
         errors: Vec::new(),
+        untyped: Vec::new(),
     };
     let mut lw = Lw {
         d,
@@ -67,6 +72,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         selves: Vec::new(),
         group_free: HashMap::new(),
         errors: Vec::new(),
+        untyped: Vec::new(),
         in_main: true,
         case: None,
         off: 0,
@@ -155,6 +161,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         out.funcs.insert(f.key.clone(), f);
     }
     out.errors = lw.errors;
+    out.untyped = lw.untyped;
     out.globals = lw.globals;
     out
 }
@@ -488,7 +495,11 @@ impl Lw<'_> {
         match &e.kind {
             TK::Int(i) => mk(EK::Int(*i)),
             TK::Bool(b) => mk(EK::Bool(*b)),
-            TK::Unit | TK::Error => mk(EK::Unit),
+            TK::Unit => mk(EK::Unit),
+            TK::Error => {
+                (self.untyped).push(Span::new(self.off + e.span.start, self.off + e.span.end));
+                mk(EK::Unit)
+            }
             TK::Text(t) => mk(EK::Text(t.clone())),
             TK::Unset => mk(EK::Intr(Intr::Unset, vec![], 0)),
             TK::Var(_) | TK::Field(..) | TK::Payload(..) | TK::Slot(..) => {

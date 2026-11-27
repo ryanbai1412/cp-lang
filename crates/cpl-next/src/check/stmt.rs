@@ -437,7 +437,8 @@ impl<'a> Cx<'a> {
                     None => v,
                 };
                 self.memory_peak(name, &v.ty, s.span);
-                let var = self.bind(name, v.ty.clone());
+                // What is declared is the binding's type even when the value is not one.
+                let var = self.bind(name, declared.unwrap_or_else(|| v.ty.clone()));
                 if let Some(keys) = super::index::literal_cut(init) {
                     self.view_keys.insert(var, keys);
                 }
@@ -825,6 +826,24 @@ impl<'a> Cx<'a> {
             StmtKind::Break(None) => out.push(TStmt::Break),
             StmtKind::Continue(None) => out.push(TStmt::Continue),
             StmtKind::Fn(fd) => self.nested_fn(fd, s, out),
+            // `var a: T` with no value: the parser has said so, and `a` is still declared, so
+            // what names it below is checked as if the value were there.
+            StmtKind::Let {
+                pat:
+                    ast::Pattern {
+                        kind: PatternKind::Name(name),
+                        ..
+                    },
+                ty,
+                init: None,
+                ..
+            } => {
+                let t = match ty {
+                    Some(t) => self.body_ty(t, s.span, out),
+                    None => Ty::Error,
+                };
+                self.bind(name, t);
+            }
             other => self.err(
                 s.span,
                 format!("slice: statement {}", crate::kind_name(other)),
