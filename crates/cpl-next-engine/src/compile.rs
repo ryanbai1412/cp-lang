@@ -298,6 +298,12 @@ pub(crate) enum Op {
     },
 }
 
+#[derive(Clone, Copy)]
+enum Spot {
+    Reg(Reg),
+    Global(u32),
+    Place(u32),
+}
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Root {
     Local(Reg),
@@ -1343,6 +1349,30 @@ impl Fc<'_> {
             _ => None,
         }
     }
+    /// Where a lent place's words are: registers, a global's words, or a place to resolve.
+    fn spot(&mut self, p: &Place) -> Spot {
+        match self.walk(p) {
+            (Root::Local(r), steps, _) if steps.is_empty() => Spot::Reg(r),
+            (Root::Global(a), steps, _) if steps.is_empty() => Spot::Global(a),
+            _ => Spot::Place(self.place(p)),
+        }
+    }
+    fn take(&mut self, d: Reg, at: Spot, n: u32) {
+        match at {
+            Spot::Reg(s) if n > 0 && s != d => self.ops.push(Op::Move { d, s, n }),
+            Spot::Reg(_) => {}
+            Spot::Global(a) => self.ops.push(Op::GetG { d, a, n }),
+            Spot::Place(p) => self.ops.push(Op::Take { d, p, n }),
+        }
+    }
+    fn put(&mut self, at: Spot, s: Reg, n: u32) {
+        match at {
+            Spot::Reg(d) if n > 0 && s != d => self.ops.push(Op::Move { d, s, n }),
+            Spot::Reg(_) => {}
+            Spot::Global(a) => self.ops.push(Op::PutG { a, s, n }),
+            Spot::Place(p) => self.ops.push(Op::Put { p, s, n }),
+        }
+    }
     /// The stack address of a place no step reaches from a global.
     fn global(&mut self, p: &Place) -> Option<u32> {
         match self.walk(p) {
@@ -1429,9 +1459,9 @@ impl<'a> Fc<'a> {
         };
         let ty = self.place_ty(p);
         let (n, lay) = (self.size(&ty), self.lay(&ty));
-        let at = self.place(p);
+        let at = self.spot(p);
         self.ops.push(Op::Drop { s: l.var, lay });
-        self.ops.push(Op::Take { d: l.var, p: at, n });
+        self.take(l.var, at, n);
         let save = self.temp(1);
         self.ops.push(Op::Enter { line: 0, save });
         let off = std::mem::replace(&mut self.off, std::mem::take(&mut l.off));
@@ -1451,7 +1481,7 @@ impl<'a> Fc<'a> {
         self.loops = loops;
         self.exits = exits;
         self.ops.push(Op::Restore { save });
-        self.ops.push(Op::Put { p: at, s: l.var, n });
+        self.put(at, l.var, n);
         self.ops.push(Op::Zero { d: l.var, n });
         self.lending = Some(l);
     }
@@ -1566,8 +1596,8 @@ impl<'a> Fc<'a> {
         for (p, to) in lends {
             let ty = self.place_ty(p);
             let n = self.size(&ty);
-            let p = self.place(p);
-            self.ops.push(Op::Take { d: to, p, n });
+            let p = self.spot(p);
+            self.take(to, p, n);
             back.push((p, to, n));
         }
         let off = std::mem::replace(&mut self.off, off);
@@ -1601,7 +1631,7 @@ impl<'a> Fc<'a> {
             self.ops.push(Op::Drop { s, lay });
         }
         for (p, s, n) in back {
-            self.ops.push(Op::Put { p, s, n });
+            self.put(p, s, n);
         }
         self.ops.push(Op::Restore { save });
         self.lending = lending.and_then(|l| l.outer).map(|b| *b).or(lent_to);
