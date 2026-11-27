@@ -104,6 +104,20 @@ impl Cx<'_> {
                 })
         })
     }
+    /// A fn item given for `v` with no impl of a bound on `v` for its own type is the fn type
+    /// an impl of one targets, as a lambda is (`fn_impl_for`), and coerces to it (R08.1.10).
+    fn item_as_fn_impl(&mut self, e: &TExpr, want: &Ty) {
+        let (TK::FnItem(_), Ty::Var(v), Ty::Clo(c)) =
+            (&e.kind, self.shallow(want), self.shallow(&e.ty))
+        else {
+            return;
+        };
+        if (self.bounds_on(v).iter()).any(|tr| self.has_impl(&e.ty, *tr)) {
+            return;
+        }
+        let arity = self.clo_sig(&c).0.len();
+        self.fn_impl_for(v, arity);
+    }
     /// `e` as the `@from_op` fn's call when `want` asks for one (R08.1.9); otherwise `e`.
     pub(super) fn lift_item(&mut self, e: TExpr, want: &Ty) -> TExpr {
         let m = match (&e.kind, self.shallow(want)) {
@@ -112,6 +126,7 @@ impl Cx<'_> {
             _ => None,
         };
         let Some(m) = m else {
+            self.item_as_fn_impl(&e, want);
             return e;
         };
         let span = e.span;

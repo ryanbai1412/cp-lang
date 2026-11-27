@@ -2636,3 +2636,4 @@ next/n_overload_01_fns_told_apart_by_required_labels.cp
 next/n_read_from_01_a_string_is_its_whole_input.cp
 next/n_read_from_02_a_read_impl_reads_its_input.cp
 next/n_str_is_empty_is_std_code.cp
+next/n_impl_05_fn_item_meets_a_fn_types_impl.cp
