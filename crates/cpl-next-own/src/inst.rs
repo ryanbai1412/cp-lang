@@ -959,8 +959,9 @@ impl Walk<'_> {
     }
     fn stmt(&mut self, s: &Stmt<CTy>, fx: &mut Fx) {
         match s {
-            // A passed place saved before a later operand runs: a copy, or nothing if viewed.
-            Stmt::Let(_, e) if matches!(e.kind, EK::Pass(_, true, _)) => self.reads(e, fx),
+            // A passed place saved before a later operand runs, or a tuple's part read before
+            // its places are written: a copy, or nothing if viewed. It borrows nothing.
+            Stmt::Let(_, e) if matches!(e.kind, EK::Pass(..)) => self.reads(e, fx),
             Stmt::Let(l, e) => {
                 self.reads(e, fx);
                 // A temp the lowering made holds the place it was read from; it moves nothing.

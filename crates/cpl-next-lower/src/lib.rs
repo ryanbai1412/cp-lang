@@ -737,7 +737,20 @@ impl Lw<'_> {
                 mk(EK::Inject(Box::new(v)))
             }
             TK::Elem(x) => self.expr(x, out),
-            TK::Owned(x) => self.operand(x, out),
+            // A part of a written tuple, read before any place is written (R01.6.4): a copy
+            // taken here, never a view, since the writes that follow change its place.
+            TK::Owned(x) => match self.operand(x, out) {
+                Expr {
+                    kind: EK::Pass(p, true, s),
+                    site,
+                    ty,
+                } => Expr {
+                    kind: EK::Pass(p, false, s),
+                    site,
+                    ty,
+                },
+                v => v,
+            },
             TK::Widen(x) => {
                 let v = self.expr(x, out);
                 let v = self.spill(v, out);
