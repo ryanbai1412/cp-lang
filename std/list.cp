@@ -3,6 +3,7 @@
 //!
 //! example: `var xs = [3, 1]; xs.push(2); xs[2] == 2 and xs.len == 3`
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key}
+use std.literal.{ListLiteral, Filled}
 use std.seq.{Seq, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
 
 @list
@@ -34,11 +35,6 @@ pub struct List<T>:
             for i in 0..n: raw_set(mut nb, i, raw_take(mut buf, i))
             buf = nb
             cap = k
-
-    fn push(mut self, x: T):
-        if n == cap: self.reserve(if cap == 0: 4 else: cap * 2)
-        raw_set(mut buf, n, x)
-        n += 1
 
     fn swap(mut self, i: Int, j: Int):
         check_key(0 <= i and i < n and 0 <= j and j < n)
@@ -210,6 +206,21 @@ impl<D: Domain, T: Clone> Clone for Array<D, T>:
         var buf = raw_new(D.count, raw_get(a.buf, 0).clone())
         for i in 1..D.count: raw_set(mut buf, i, raw_get(a.buf, i).clone())
         Array(buf)
+
+impl<T> ListLiteral<T> for List<T>:
+    fn with_room(k: Int) -> List<T>:
+        var xs = List.new()
+        xs.reserve(k)
+        xs
+
+    fn push(mut self, x: T):
+        if n == cap: self.reserve(if cap == 0: 4 else: cap * 2)
+        raw_set(mut buf, n, x)
+        n += 1
+
+impl<D: Domain, T> Filled<T> for Array<D, T>:
+    fn filled(x: T) -> Array<D, T>:
+        [D].filled(x)
 
 /// A list, a string and an array read in O(1) at any key, by position from 0 or, for an
 /// array, by its domain's positions (R12.4.5).

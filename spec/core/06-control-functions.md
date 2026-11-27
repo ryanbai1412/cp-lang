@@ -205,6 +205,10 @@ library or by this spec:
   trait `T(x)` calls), `@operator("op")` (the trait an operator calls,
   through its first declared fn: `"=="` is `Eq`'s `eq`, `"<"` is `Ord`'s
   `lt`, `"[]"` is the read `s[k]` calls and `"[]="` the write `s[k] = v`),
+  `@literal("[]")` and `@literal("[;]")` (the traits a list literal and an
+  array fill build through, by their fns in declared order, R01.8.8),
+  `@range_bounds` (the trait whose first and second fns give the cuts
+  `[r]T` covers, R04b.1.5),
   `@derive` (a trait every struct whose fields all have it gets field by
   field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
   over its type calls), `@variant_check` (the check an `Int` converted to

@@ -87,3 +87,13 @@ impl<D: Domain> Into<Cut<D>> for Int:
 /// `Int(c)`: how many positions come before `c` (R04.2.16).
 impl<D: Domain> Into<Int> for Cut<D>:
     fn into(self) -> Int = k
+
+/// A run's ends as cuts: `[r]T` covers the keys from `r.start` to `r.end` (R04b.1.5).
+@range_bounds
+pub trait RangeEnds<D: Domain>:
+    fn start(self) -> Cut<D>
+    fn end(self) -> Cut<D>
+
+impl<D: Domain> RangeEnds<D> for Range<D>:
+    fn start(self) -> Cut<D> = self.start
+    fn end(self) -> Cut<D> = self.end

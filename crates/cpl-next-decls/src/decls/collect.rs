@@ -408,6 +408,21 @@ fn layer(
                                 &mut d.errors,
                             );
                         }
+                        if marked(s, "range_bounds") {
+                            let e = again(item, s, "range_bounds");
+                            once(&mut d.bounds_trait, id, e, &mut d.errors);
+                        }
+                        let lit = s.decorators.iter().find(|x| x.name.text == "literal");
+                        if let Some(ast::ExprKind::Str(text)) =
+                            lit.and_then(|x| x.args.first()).map(|a| &a.value.kind)
+                        {
+                            if let [ast::StrPiece::Text(t)] = text.as_slice() {
+                                match d.literals.iter().any(|(o, _)| o == t) {
+                                    true => d.errors.push(again(item, s, "literal")),
+                                    false => d.literals.push((t.clone(), id)),
+                                }
+                            }
+                        }
                         let op = s.decorators.iter().find(|x| x.name.text == "operator");
                         if let Some(ast::ExprKind::Str(text)) =
                             op.and_then(|x| x.args.first()).map(|a| &a.value.kind)

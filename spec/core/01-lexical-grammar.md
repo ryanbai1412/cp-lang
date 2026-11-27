@@ -378,6 +378,13 @@ match dir: L => -1, R => 1, U => 0, D => 0  // one-line match
   falls back lazily; `x!` unwraps or traps with the source location. (R01.8.6)
 - Members without parentheses are \(O(1)\) (`xs.len`, `t.parent[v]`);
   anything that does work has parentheses (`g.transpose()`), decision 140. (R01.8.7)
+- A list literal and a comprehension are sugar for the trait std marks
+  `@literal("[]")` (`ListLiteral<T>`): `[a, b]` is its first fn,
+  `with_room(2)`, then its second, `push`, of each element in order. The
+  value is of the type expected when that type implements the trait, and
+  else a `List`, so a program's own type gets the literal by implementing
+  it. `var a: [D]T = x` is the first fn of the `@literal("[;]")` trait
+  (`Filled<T>`), `Array`'s impl filling every cell with `x`. (R01.8.8)
 
 ## 1.9 Items
 

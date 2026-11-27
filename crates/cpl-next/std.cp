@@ -9,9 +9,9 @@ pub use std.clone.{Clone}
 use std.convert.{Into}
 /// `T(x)` (R04.2.28).
 pub use std.convert.{Into}
-use std.domains.{Domain, Cut}
+use std.domains.{Domain, Cut, RangeEnds}
 /// Domains and their cuts (R04.2).
-pub use std.domains.{Domain, Cut}
+pub use std.domains.{Domain, Cut, RangeEnds}
 use std.seq.{IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed, Slice, Seq, Sized}
 /// The indexed writes and defaults every module names unimported (R12.4.6, R07.12.9).
 pub use std.seq.{IndexMut, IndexedMut, IndexSet}
@@ -21,6 +21,7 @@ pub use std.map.{Map, Set}
 use std.list.{List, Array, Str}
 /// The lists, arrays and strings every module names unimported (R02.3, R04.8).
 pub use std.list.{List, Array, Str, yes}
+pub use std.literal.{ListLiteral, Filled}
 use std.optional.{Optional}
 /// `?T` and `Some(v)` every module names unimported (R02.4).
 pub use std.optional.{Optional, some}

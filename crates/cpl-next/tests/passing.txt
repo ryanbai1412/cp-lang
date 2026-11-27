@@ -1,3 +1,4 @@
+core-01/a-literal-builds-a-programs-own-type.cp
 core-01/a-walk-inside-a-comprehension-runs-each-turn.cp
 core-01/an-arm-of-a-whole-value-leaves.cp
 core-01/and-or-short-circuit.cp

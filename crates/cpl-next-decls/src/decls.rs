@@ -370,8 +370,13 @@ pub struct Decls {
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
     pub operators: Vec<(String, TraitId)>,
+    /// `@literal("[]")` and `@literal("[;]")`: the trait a list literal and an array fill build
+    /// through (R01.8.8).
+    pub literals: Vec<(String, TraitId)>,
     /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
     pub convert_trait: Option<TraitId>,
+    /// `@range_bounds`: the trait whose fns give a range's first and past-the-end cuts (R04b.1.5).
+    pub bounds_trait: Option<TraitId>,
     /// Per fn, the type parameters that key an array it names: domain parameters (R04.2).
     pub domain_params: HashMap<FnId, Vec<usize>>,
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
@@ -440,6 +445,18 @@ impl Decls {
             let (_, m) = self.operator_method(*tr)?;
             (self.f(m).params.len() == usize::from(binary)).then_some(m)
         })
+    }
+    /// The trait `@literal(op)` marks: `"[]"` a list literal builds through, `"[;]"` an array fill.
+    pub fn literal_trait(&self, op: &str) -> Option<TraitId> {
+        (self.literals.iter()).find_map(|(o, tr)| (o == op).then_some(*tr))
+    }
+    /// A trait's fns in the order it declares them, the role each plays in a literal (R01.8.8).
+    pub fn trait_fns(&self, tr: TraitId) -> Vec<(&String, FnId)> {
+        let mut fns: Vec<_> = (self.traits[tr.0].methods.iter())
+            .map(|(n, &m)| (n, m))
+            .collect();
+        fns.sort_by_key(|&(_, m)| m);
+        fns
     }
     /// The fn an `@operator` trait's operator calls: its first declared, `lt` of `Ord`'s
     /// `lt` and `cmp` (R06.4.12).

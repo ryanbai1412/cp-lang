@@ -4,6 +4,8 @@
     "conformance": {
       "cases": {
         "core-01/a-leave-inside-an-operand-is-rejected.cp": "pass",
+        "core-01/a-literal-builds-a-programs-own-type.cp": "fail",
+        "core-01/a-walk-inside-a-comprehension-runs-each-turn.cp": "pass",
         "core-01/an-arm-of-a-whole-value-leaves.cp": "pass",
         "core-01/and-or-short-circuit.cp": "pass",
         "core-01/and-skips-the-check-on-its-right.cp": "pass",
@@ -4327,11 +4329,11 @@
         }
       ],
       "counts": {
-        "fail": 16,
-        "pass": 4296
+        "fail": 17,
+        "pass": 4297
       },
-      "passed": 4296,
-      "total": 4312
+      "passed": 4297,
+      "total": 4314
     },
     "corpus": {
       "cases": {

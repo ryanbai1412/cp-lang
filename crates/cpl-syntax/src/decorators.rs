@@ -130,6 +130,14 @@ pub const DECORATORS: &[(&str, &str)] = &[
         "`@operator(\"op\")` on a trait: the trait an operator calls",
     ),
     (
+        "literal",
+        "`@literal(\"[]\")` on a trait: the trait a list literal builds through; `\"[;]\"` an array fill",
+    ),
+    (
+        "range_bounds",
+        "on a trait: the trait whose fns give a range's ends",
+    ),
+    (
         "derive",
         "on a trait: every struct whose fields all have it gets it field by field",
     ),

@@ -206,36 +206,82 @@ impl Cx<'_> {
     fn key_run(&mut self, r: TExpr, out: &mut Vec<TStmt>) -> (TExpr, TExpr) {
         let span = r.span;
         let name = format!("$keys{}", self.domains.len());
-        let v = self.bind(&name, r.ty.clone());
+        let r_ty = r.ty.clone();
+        let v = self.bind(&name, r_ty.clone());
         out.push(TStmt::Let(v, r));
-        let end = |cx: &mut Self, which: &str| {
-            let cut = ast::Expr {
-                kind: ExprKind::Field {
-                    base: Box::new(ast::Expr {
-                        kind: ExprKind::Name(name.clone()),
-                        span,
-                    }),
-                    name: ast::Name {
-                        text: which.to_string(),
-                        span,
-                    },
-                },
+        let read = TExpr {
+            kind: TK::Var(v),
+            ty: r_ty.clone(),
+            span,
+        };
+        let bounds = self.d.bounds_trait;
+        let fns = bounds.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
+        let (Some(tr), [lo, hi, ..]) = (bounds, &fns[..]) else {
+            self.err(
+                span,
+                Msg::internal("no trait marked `@range_bounds` with two fns"),
+            );
+            let e = || TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
                 span,
             };
-            let int = ExprKind::Call {
-                callee: Box::new(ast::Expr {
-                    kind: ExprKind::Name("Int".to_string()),
+            return (e(), e());
+        };
+        let args = match self.shallow(&r_ty) {
+            Ty::Struct(_, ts, _) => ts,
+            _ => Vec::new(),
+        };
+        // Each end is the bound's fn on `r`, held in a local that `Int(..)` reads (R04b.1.5).
+        let end = |cx: &mut Self, &(n, m): &(&String, FnId), out: &mut Vec<TStmt>| {
+            cx.reach(m);
+            let mut tys = vec![r_ty.clone()];
+            tys.extend(args.iter().cloned());
+            let ty = cx.trait_ret(m, tys);
+            let local = format!("{name}.{n}");
+            let call = TK::CallTrait {
+                tr: decls::TraitRef {
+                    tr,
+                    args: args.clone(),
+                },
+                method: n.clone(),
+                recv: Some(Box::new(TArg::Value(read.clone()))),
+                self_ty: Box::new(r_ty.clone()),
+                targs: Box::new([]),
+                args: vec![],
+            };
+            let r = decls::TraitRef {
+                tr,
+                args: args.clone(),
+            };
+            (cx.obligations).push((r_ty.clone(), r, span, Origin::Bound));
+            let c = cx.bind(&local, ty.clone());
+            out.push(TStmt::Let(
+                c,
+                TExpr {
+                    kind: call,
+                    ty,
                     span,
-                }),
+                },
+            ));
+            let name = |n: &str| {
+                Box::new(ast::Expr {
+                    kind: ExprKind::Name(n.to_string()),
+                    span,
+                })
+            };
+            let int = ExprKind::Call {
+                callee: name("Int"),
                 args: vec![ast::Arg {
                     name: None,
                     mutable: false,
-                    value: cut,
+                    value: *name(&local),
                 }],
             };
             cx.expr(&ast::Expr { kind: int, span }, Some(&Ty::Int))
         };
-        (end(self, "start"), end(self, "end"))
+        let lo = end(self, lo, out);
+        (lo, end(self, hi, out))
     }
     /// `[lo..hi]T` and `[n]T` index by a range with no name: each gets a domain of its own, declared in `out`.
     pub(super) fn name_ranges(

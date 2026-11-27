@@ -189,7 +189,10 @@ costs time.
 
 `List(s)` is a conversion, so it takes exactly one sequence and copies
 it; a list of given values is the literal `[a, b]`, and a list holding
-one list is `[xs]` (decision 348; R07.3.2):
+one list is `[xs]` (decision 348; R07.3.2). A literal is not a List
+privilege: it is sugar for std's `ListLiteral` trait (`with_room`, then a
+`push` per element), so `let b: Bag = [3, 4]` builds a program's own `Bag`
+once `Bag` implements it (R01.8.8):
 
 ```cp
 let xs = [1, 2, 3]

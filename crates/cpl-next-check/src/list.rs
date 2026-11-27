@@ -2,20 +2,52 @@
 use super::*;
 use crate::index::unparen;
 
-/// A list being filled: the local holding it, its element type and its `push`.
+/// A list being filled: the local holding it, its element type, and the `@literal("[]")`
+/// trait and fn it is pushed onto through.
 #[derive(Clone)]
 pub(super) struct Filling {
     read: TExpr,
     elem: Ty,
-    push: FnId,
+    tr: decls::TraitRef,
+    push: String,
 }
 
 impl Cx<'_> {
-    /// A new empty list in local `name`, `List.new()`, of the element type `want` gives. A
-    /// literal's local is `$list`, which says its length is the pushes that follow.
-    fn new_list(&mut self, name: &str, want: Option<&Ty>, span: Span) -> Option<(Filling, TStmt)> {
+    /// A new empty list in local `name`, the `@literal("[]")` trait's first fn with room for
+    /// `room`, of the type `want` names when it has that trait and else a `List` of the element
+    /// type it gives (R01.8.8). A literal's local is `$list`, which says its length is the
+    /// pushes that follow.
+    fn new_list(
+        &mut self,
+        name: &str,
+        room: usize,
+        want: Option<&Ty>,
+        span: Span,
+    ) -> Option<(Filling, TStmt)> {
         let list = self.list_struct(span)?;
-        let ls = self.d.s(list);
+        let tr = self.d.literal_trait("[]");
+        let fns = tr.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
+        let (Some(tr), [(new, nf), (push, pf), ..]) = (tr, &fns[..]) else {
+            self.err(
+                span,
+                Msg::internal("no trait marked `@literal(\"[]\")` with two fns"),
+            );
+            return None;
+        };
+        let (new, push) = (new.to_string(), push.to_string());
+        self.reach(*nf);
+        self.reach(*pf);
+        let own = match want.map(|w| self.shallow(w)) {
+            Some(t @ Ty::Struct(s, ..))
+                if s != list
+                    && Some(s) != self.array_id()
+                    && (self.d.trait_impls(tr))
+                        .any(|(_, im)| matches!(&im.for_, Ty::Struct(f, ..) if *f == s)) =>
+            {
+                Some(t)
+            }
+            _ => None,
+        };
         let elem = match want.map(|w| self.shallow(w)) {
             Some(Ty::Struct(d, ts, _)) if d == list => ts[0].clone(),
             // A literal where `[K]T` is expected becomes one, so its elements are `T`s; when `T`
@@ -28,23 +60,30 @@ impl Cx<'_> {
             }
             _ => self.new_ty(),
         };
-        let lty = Ty::Struct(list, vec![elem.clone()], Vec::new());
-        let Some(ctor) = ls.ctor else {
-            self.err(span, Msg::internal("`List` declares no `new`"));
-            return None;
+        let elem = if own.is_some() { self.new_ty() } else { elem };
+        let lty = own.unwrap_or_else(|| Ty::Struct(list, vec![elem.clone()], Vec::new()));
+        let tr = decls::TraitRef {
+            tr,
+            args: vec![elem.clone()],
         };
-        let new = self.fnref(ctor, vec![elem.clone()], Vec::new());
-        let push = ls.methods["push"];
+        (self.obligations).push((lty.clone(), tr.clone(), span, Origin::Bound));
         let tmp = self.bind(name, lty.clone());
         let read = TExpr {
             kind: TK::Var(tmp),
             ty: lty.clone(),
             span,
         };
-        let call = TK::Call {
-            f: new,
+        let call = TK::CallTrait {
+            tr: tr.clone(),
+            method: new,
             recv: None,
-            args: vec![],
+            self_ty: Box::new(lty.clone()),
+            targs: Box::new([]),
+            args: vec![TArg::Value(TExpr {
+                kind: TK::Int(room as i64),
+                ty: Ty::Int,
+                span,
+            })],
         };
         let init = TStmt::Let(
             tmp,
@@ -54,7 +93,15 @@ impl Cx<'_> {
                 span,
             },
         );
-        Some((Filling { read, elem, push }, init))
+        Some((
+            Filling {
+                read,
+                elem,
+                tr,
+                push,
+            },
+            init,
+        ))
     }
 
     /// `x` pushed onto the list being filled.
@@ -66,11 +113,13 @@ impl Cx<'_> {
             self.unify(&l.elem, &j);
         }
         let v = self.coerce(v, &l.elem);
-        let f = self.fnref(l.push, vec![l.elem.clone()], Vec::new());
         TExpr {
-            kind: TK::Call {
-                f,
+            kind: TK::CallTrait {
+                tr: l.tr.clone(),
+                method: l.push.clone(),
                 recv: Some(Box::new(TArg::Mut(l.read.clone()))),
+                self_ty: Box::new(l.read.ty.clone()),
+                targs: Box::new([]),
                 args: vec![TArg::Value(v)],
             },
             ty: Ty::Unit,
@@ -78,7 +127,7 @@ impl Cx<'_> {
         }
     }
 
-    /// `[a, b]`: `List.new()` and a `push` per element.
+    /// `[a, b]`: `with_room(2)` and a `push` per element (R01.8.8).
     pub(super) fn list_literal(
         &mut self,
         xs: &[ast::Expr],
@@ -88,7 +137,7 @@ impl Cx<'_> {
         let cells = self.cells_wanted(xs, want);
         let want = cells.as_ref().or(want);
         self.scopes.push(HashMap::new());
-        let e = match self.new_list("$list", want, span) {
+        let e = match self.new_list("$list", xs.len(), want, span) {
             Some((l, init)) => {
                 let mut stmts = vec![init];
                 for x in xs {
@@ -150,7 +199,7 @@ impl Cx<'_> {
             };
         }
         self.scopes.push(HashMap::new());
-        let e = match self.new_list("$comp", want, span) {
+        let e = match self.new_list("$comp", 0, want, span) {
             Some((l, init)) => {
                 let mut stmts = vec![init];
                 self.filling.push(l);
