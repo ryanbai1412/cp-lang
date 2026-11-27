@@ -2602,7 +2602,7 @@ def trace_engine_refs(root: Path) -> list[str]:
 
 
 STRUCT_RE = re.compile(r"pub struct (\w+)")
-FIELD_RE = re.compile(r"(?:@\w+ )*(?:var )?(pub )?(\w+): ")
+FIELD_RE = re.compile(r"(?:@\w+ )*(?:var )?(pub )?(?:var )?(\w+): ")
 
 
 EDGE_LABEL_RE = re.compile(r"^\s*/// (empty|ties): (.*)$")

@@ -217,6 +217,10 @@ struct Range<D: Domain>:
     /// The cut after its last value, of a range walked forwards by one (R04.3.1).
     @get fn end(self) -> Cut<D> = Cut(lo + n)
 
+    /// Whether it holds no position (R04.4.12).
+    @get fn is_empty(self) -> Bool:
+        n == 0
+
     @get fn first(self) -> ?D:
         if n == 0: None else: Some(D.nth(lo))
 
