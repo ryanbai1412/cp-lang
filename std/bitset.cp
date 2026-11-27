@@ -1523,13 +1523,13 @@ fn set_algebra_matches_bool_arrays():
     let x = [P] p => rand(0, 2) == 0
     let y = [P] p => rand(0, 2) == 0
     let (bx, by) = (Bitset<P>.from(x), Bitset<P>.from(y))
-    var u = copy(bx)
+    var u = bx.clone()
     u.union(by)
-    var n = copy(bx)
+    var n = bx.clone()
     n.intersect(by)
-    var d = copy(bx)
+    var d = bx.clone()
     d.subtract(by)
-    var s = copy(bx)
+    var s = bx.clone()
     s.symmetric(by)
     for p in P:
         assert u.contains(p) == (x[p] or y[p])

@@ -1132,7 +1132,7 @@ pub struct MatPow<T>:
         var pw = List<Mat<T>>()
         var k = 1
         while k <= max_exp:
-            pw.push(if pw.len == 0: copy(a) else: pw.last! * pw.last!)
+            pw.push(if pw.len == 0: a.clone() else: pw.last! * pw.last!)
             k *= 2
         MatPow(a.rows, pw)
 

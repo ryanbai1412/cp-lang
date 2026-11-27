@@ -386,8 +386,8 @@ pub fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
 /// example: `convex_hull([Pt(2, 2), Pt(1, 1), Pt(0, 0)]) == [Pt(0, 0), Pt(2, 2)]`
 /// example: `convex_hull([Pt(5, 5), Pt(5, 5)]) == [Pt(5, 5)]`
 pub fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
-    if pts.len <= 1: return copy(pts)
-    var s = copy(pts)
+    if pts.len <= 1: return pts.clone()
+    var s = pts.clone()
     s.sort()
     var uniq: List<Pt> = []
     for p in s:
@@ -1307,7 +1307,7 @@ pub fn closest_pair2(pts: List<Pt>) -> Int:
     ord.sort()
     for i in 1..ord.len:
         if ord[i].x == ord[i - 1].x and ord[i].y == ord[i - 1].y: return 0
-    var buf = copy(ord)
+    var buf = ord.clone()
     cp_solve(mut ord, mut buf, 0, ord.len).dist2
 
 /// The closest pair of distinct positions `a` before `b` in key order, with their squared
@@ -1336,7 +1336,7 @@ pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
             let pair = (ord[i - 1].id, ord[i].id)
             if dup == None or pair < dup!: dup = pair
     if let (a, b) = dup: return (ids[a], ids[b], 0)
-    var buf = copy(ord)
+    var buf = ord.clone()
     let res = cp_solve(mut ord, mut buf, 0, ord.len)
     (ids[res.a], ids[res.b], res.dist2)
 
@@ -2300,7 +2300,7 @@ pub fn half_plane_intersect(
     bound: ?F64 = None,
     eps: F64 = 1e-9,
 ) -> List<Vec>:
-    var all = copy(planes)
+    var all = planes.clone()
     if bound != None:
         let b = bound!
         all.push(HalfPlane.through(Vec(-b, -b), Vec(b, -b)))
@@ -2428,7 +2428,7 @@ pub fn min_enclosing_circle(pts: List<Vec>, eps: F64 = 1e-9) -> Circle:
     let n = pts.len
     if n == 0: return Circle(Vec(0.0, 0.0), 0.0)
     if n == 1: return Circle(pts[0], 0.0)
-    var ps = copy(pts)
+    var ps = pts.clone()
     var rng = 123456789
     for i in (1..n).rev:
         rng = lcg(rng)
@@ -3139,7 +3139,7 @@ fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> Li
     let walk = planar_walk_sorted(ps, edges)
     let nf = walk.faces.len
     var outer = List.filled(nf, false)
-    var probes = copy(queries)
+    var probes = queries.clone()
     var probed: List<Int> = []
     for f in 0..nf:
         let cyc = walk.faces[f]
@@ -3661,7 +3661,7 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
         let az = abs(nz)
         let axis = if az >= ax and az >= ay: 2 else: if ax >= ay: 0 else: 1
         let pos = if axis == 0: nx > I128(0) else: if axis == 1: ny > I128(0) else: nz > I128(0)
-        var vs = copy(members[k])
+        var vs = members[k].clone()
         vs.sort()
         var uniq: List<Int> = []
         for v in vs:
@@ -3682,7 +3682,7 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
     out
 
 fn hull2_strict(vs: List<Int>, proj: (Int) -> Pt) -> List<Int>:
-    var order = copy(vs)
+    var order = vs.clone()
     order.sort(by: v => (proj(v).x, proj(v).y))
     var h: List<Int> = []
     for pass in 0..2:
@@ -4050,8 +4050,8 @@ fn minkowski_sum_and_upper_match_brute():
         assert area2(got) == area2(brute)
         assert convex_hull(got) == brute
         // upper hull Minkowski sum
-        var sa = copy(a)
-        var sb = copy(b)
+        var sa = a.clone()
+        var sb = b.clone()
         sa.sort()
         sb.sort()
         let ua = upper_hull(sa)

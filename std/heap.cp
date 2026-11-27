@@ -1277,7 +1277,7 @@ fn take_and_small_into_large_swap():
 @test
 fn heap_of_and_erasable_and_indexed_heaps():
     let xs = [(i * 37 + 11) % 101 - 50 for i in 0..35]
-    var sorted_xs = copy(xs)
+    var sorted_xs = xs.clone()
     sorted_xs.sort()
     var hmin: MinHeap<Int> = Heap.of(xs)
     var hmax: MaxHeap<Int> = MaxHeap.of(xs)

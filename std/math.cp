@@ -759,7 +759,7 @@ pub fn to_str(self: Int, base: Int = 10) -> Str:
         cs.push(if d < 10: Char(48 + d) else: Char(87 + d))
         x = if x < 0 and r != 0: x / base + 1 else: x / base
     if self < 0: cs.push('-')
-    Str(cs.rev)
+    Str(List(cs.rev))
 
 /// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
 /// `-s` flips it and `max(s, Sign.Zero)` clamps it.
@@ -1923,7 +1923,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
                 v /= 10
                 k += 1
         if self.neg: cs.push('-')
-        Str(cs.rev)
+        Str(List(cs.rev))
 
     /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|`, as for `Int`.
     ///
@@ -1946,7 +1946,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
     /// cost: \(O(n)\)
     /// traps: never
     /// example: `BigInt.from_int(-5).abs() == BigInt.from_int(5)`
-    pub fn abs(self) -> BigInt = BigInt(neg: false, limbs: self.limbs)
+    pub fn abs(self) -> BigInt = BigInt(neg: false, limbs: self.limbs.clone())
 
     /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0)` is 0.
     ///
@@ -2045,14 +2045,14 @@ fn big_mul_mag(a: List<Int>, b: List<Int>) -> List<Int>:
     out
 
 fn big_divmod_mag(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
-    if a.len < b.len: return ([], copy(a))
+    if a.len < b.len: return ([], a.clone())
     // Quotient limbs sit at 0..=a.len - b.len only; the remainder starts as the limbs above them.
     let top = a.len - b.len + 1
     var q = List.filled(top, 0)
     var r = [a[k] for k in top..a.len]
     while not r.is_empty and r.last! == 0: r.pop()
     for i in (0..top).rev:
-        let shifted = [a[i]] + copy(r)
+        let shifted = [a[i]] + r.clone()
         r = shifted
         while not r.is_empty and r.last! == 0: r.pop()
         let lo = (1..=BIG_BASE - 1).last_true(guess => big_cmp_mag(big_mul_mag(b, [guess]), r) <= 0) ?? 0
