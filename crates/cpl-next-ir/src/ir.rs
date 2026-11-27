@@ -46,7 +46,7 @@ pub enum Intr {
     ReadInt,
     /// Whether the input has another token.
     InputLeft,
-    /// The character with a code the checker has shown is in `0..=127`.
+    /// The character with a code; traps R0201 outside `0..=127`.
     CharOf,
     /// A character's code.
     CodeOf,
@@ -67,6 +67,10 @@ impl Intr {
             "raw_set" => Intr::RawSet,
             "key_check" => Intr::CheckKey,
             "range_check" => Intr::CheckRange,
+            "char_of" => Intr::CharOf,
+            "code_of" => Intr::CodeOf,
+            "u64_of" => Intr::ToU64,
+            "int_of_u64" => Intr::FromU64,
             _ => return None,
         })
     }
@@ -106,6 +110,7 @@ impl Intr {
                 | RawNew
                 | ReadInt
                 | FromU64
+                | CharOf
         )
     }
 }

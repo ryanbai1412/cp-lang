@@ -125,7 +125,7 @@ impl Cx<'_> {
                     .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
                     .collect();
                 if found.len() > 1 {
-                    if want.iter().any(|a| self.unknown(a)) {
+                    if self.unknown(t) || want.iter().any(|a| self.unknown(a)) {
                         return None;
                     }
                     let (tr, shown) = (self.d.traits[r.tr.0].name.clone(), self.show(t));

@@ -3,6 +3,81 @@ use super::expr::{block, Formal};
 use super::*;
 
 impl Cx<'_> {
+    /// `T(x)` for a core type `T`: `x`'s impl of core's `@convert` trait at `T` (R04.2.28); a
+    /// plain enum's `Int` is its value, and a position's its integer.
+    pub(super) fn convert(&mut self, to: Ty, x: &ast::Expr, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let v = self.expr(x, None);
+        if to == Ty::Int {
+            if let Some(id) = self.plain_enum(&v.ty) {
+                return self.enum_value(id, v);
+            }
+            // Until `Domain` is a trait type parameters meet by bounds, a parameter is a domain.
+            let bounded = match self.shallow(&v.ty) {
+                Ty::Param(i) => {
+                    (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.convert_trait)
+                }
+                _ => false,
+            };
+            if !bounded && matches!(self.shallow(&v.ty), Ty::Dom(_) | Ty::Param(_)) {
+                return mk(TK::DomOrd(Box::new(v)), Ty::Int);
+            }
+        }
+        let v = match self.shallow(&v.ty) {
+            Ty::Range(..) | Ty::RangeOf(_) => self.coerce(v, &Ty::Int),
+            _ => v,
+        };
+        let conv = self.d.convert_trait.and_then(|tr| {
+            let (m, f) = self.d.traits[tr.0].methods.iter().next()?;
+            Some((tr, m.clone(), *f))
+        });
+        let Some((tr, method, f)) = conv else {
+            self.err(span, "slice: a conversion without core's `@convert` trait");
+            return mk(TK::Error, Ty::Error);
+        };
+        self.reach(f);
+        let r = decls::TraitRef {
+            tr,
+            args: vec![to.clone()],
+        };
+        self.obligations.push((v.ty.clone(), r.clone(), span));
+        mk(
+            TK::CallTrait {
+                tr: r,
+                method,
+                recv: Box::new(TArg::Value(v)),
+                args: Vec::new(),
+            },
+            to,
+        )
+    }
+    /// A plain enum's value: its variant's written value, else its place from 0 (R02.7.3).
+    fn enum_value(&mut self, id: StructId, v: TExpr) -> TExpr {
+        let span = v.span;
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let values = self.d.s(id).values.clone();
+        let tag = self.enum_tag(v);
+        if (values.iter().enumerate()).all(|(i, x)| *x == i as i64) {
+            return tag;
+        }
+        let t = self.bind("$variant", Ty::Int);
+        let read = || mk(TK::Var(t), Ty::Int);
+        let last = values.last().copied().unwrap_or(0);
+        let mut pick = mk(TK::Int(last), Ty::Int);
+        for (i, x) in values.iter().enumerate().rev().skip(1) {
+            let k = mk(TK::Int(i as i64), Ty::Int);
+            let is = mk(TK::Cmp(CmpOp::Eq, Box::new(read()), Box::new(k)), Ty::Bool);
+            let then = mk(TK::Int(*x), Ty::Int);
+            pick = mk(
+                TK::If(Box::new(is), Box::new(then), Box::new(pick)),
+                Ty::Int,
+            );
+        }
+        mk(
+            TK::Block(vec![TStmt::Let(t, tag)], Some(Box::new(pick))),
+            Ty::Int,
+        )
+    }
     /// An enum whose variants carry nothing: a value is which variant it is.
     pub(super) fn plain_enum(&self, t: &Ty) -> Option<StructId> {
         match self.shallow(t) {

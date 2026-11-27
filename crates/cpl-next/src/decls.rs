@@ -213,6 +213,8 @@ pub struct Decls {
     pub top_doms: HashMap<String, Ty>,
     /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
     pub domain_trait: Option<TraitId>,
+    /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
+    pub convert_trait: Option<TraitId>,
     /// Core's `@coerce` fns: each converts a value of its parameter's type where its result's
     /// type is wanted (R04.8.10).
     pub coercions: Vec<FnId>,
@@ -433,6 +435,17 @@ fn shift_down(t: &Ty) -> Ty {
     .ty(t)
 }
 
+/// A core type written by its name.
+pub fn prim_type(n: &str) -> Option<Ty> {
+    Some(match n {
+        "Int" => Ty::Int,
+        "Bool" => Ty::Bool,
+        "Char" => Ty::Char,
+        "U64" => Ty::U64,
+        _ => return None,
+    })
+}
+
 fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
     match &t.kind {
         TypeKind::Named { name, args } => {
@@ -450,11 +463,10 @@ fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             if let Some(t) = cx.doms.get(n) {
                 return t.clone();
             }
+            if let Some(t) = prim_type(n) {
+                return t;
+            }
             match n {
-                "Int" => Ty::Int,
-                "Bool" => Ty::Bool,
-                "Char" => Ty::Char,
-                "U64" => Ty::U64,
                 "Str" if struct_named(cx.names, "Str").is_none() => {
                     errors.push("internal: `Str` needs the library's `Str`".into());
                     Ty::Error
@@ -832,6 +844,9 @@ pub fn collect(
                         let id = TraitId(d.traits.len());
                         if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "positions") {
                             d.domain_trait = Some(id);
+                        }
+                        if mi == CORE.0 && s.decorators.iter().any(|x| x.name.text == "convert") {
+                            d.convert_trait = Some(id);
                         }
                         own[mi].insert(name.text.clone(), Named::Trait(id));
                         d.traits.push(TraitDecl {

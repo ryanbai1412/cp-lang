@@ -449,7 +449,10 @@ impl Link<'_> {
     }
     /// The instance a call reaches. A method of a bound is resolved here, now that the type is known.
     fn target(&mut self, t: &Target<Ty>, env: &Env) -> Option<usize> {
-        let key = match t {
+        self.key(t, env).map(|k| self.intern(k))
+    }
+    fn key(&mut self, t: &Target<Ty>, env: &Env) -> Option<InstKey> {
+        match t {
             Target::Fn(f) => Some(self.fnref(f, env)),
             Target::Case => Some(InstKey {
                 func: FuncKey::Case,
@@ -517,8 +520,7 @@ impl Link<'_> {
                 found
             }
             Target::Inst(i) => Some(self.keys[*i].clone()),
-        };
-        key.map(|k| self.intern(k))
+        }
     }
     fn arg(&mut self, a: &Arg<Ty>, env: &Env) -> Arg<CTy> {
         match a {
@@ -564,9 +566,19 @@ impl Link<'_> {
             ),
             EK::Call(t, args, at) => {
                 let args: Vec<Arg<CTy>> = args.iter().map(|a| self.arg(a, env)).collect();
-                match self.target(t, env) {
-                    Some(i) => EK::Call(Target::Inst(i), args, *at),
-                    None => EK::Unit,
+                // A method an impl gives as an intrinsic is that operation.
+                let key = self.key(t, env);
+                let intr = match &key {
+                    Some(InstKey {
+                        func: FuncKey::Decl(f),
+                        ..
+                    }) => self.d.f(*f).intrinsic.as_deref().and_then(Intr::named),
+                    _ => None,
+                };
+                match (intr, key) {
+                    (Some(op), _) => EK::Intr(op, args, *at),
+                    (None, Some(k)) => EK::Call(Target::Inst(self.intern(k)), args, *at),
+                    (None, None) => EK::Unit,
                 }
             }
         };

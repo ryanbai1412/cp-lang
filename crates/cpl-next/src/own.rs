@@ -1083,7 +1083,6 @@ impl Cx<'_> {
             | TK::CodeOf(x)
             | TK::Neg(x)
             | TK::ToU64(x)
-            | TK::FromU64(x)
             | TK::DomFrom(_, x)
             | TK::DomNth(_, x)
             | TK::DomHas(_, x)

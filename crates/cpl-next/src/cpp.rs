@@ -123,6 +123,7 @@ static inline uint64_t cpl_upow(uint64_t a, uint64_t b) {
 static inline uint64_t cpl_ushl(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a << b; }
 static inline uint64_t cpl_ushr(uint64_t a, int64_t b) { if (b < 0 || b >= 64) cpl_fail(CPL_SHIFT_OUTSIDE); return a >> b; }
 static inline int64_t cpl_int_of_u64(uint64_t u) { if (u > (uint64_t)INT64_MAX) cpl_fail(CPL_U64_PAST_INT); return (int64_t)u; }
+static inline cpl_char cpl_char_of(int64_t x) { if (x < 0 || x > 127) cpl_fail(CPL_CHAR_PAST_ASCII); return cpl_char{(uint8_t)x}; }
 template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
     if (n < 0) cpl_fail(CPL_NEGATIVE_SIZE);
     if (n > (int64_t(1) << 28)) cpl_fail(CPL_PAST_MEMORY_LIMIT);
@@ -574,7 +575,7 @@ impl Emit<'_> {
                     Intr::Neg => format!("cpl_neg({})", a[0]),
                     Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
                     Intr::Not => format!("(!{})", a[0]),
-                    Intr::CharOf => format!("cpl_char{{(uint8_t)({})}}", a[0]),
+                    Intr::CharOf => format!("cpl_char_of({})", a[0]),
                     Intr::CodeOf => format!("((int64_t)({}).code)", a[0]),
                     Intr::RawEmpty => format!("{}{{}}", self.names[&e.ty]),
                     Intr::RawNew => format!("cpl_raw_new({}, {})", a[0], a[1]),

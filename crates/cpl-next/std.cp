@@ -355,6 +355,29 @@ impl Eq for Bool:
 impl Ord for Bool:
     fn lt(a, b) = not a and b
 
+/// `T(x)` for a core type `T`: `x` as a `T`, by `x`'s impl (R04.2.28).
+@convert
+trait Into<T>:
+    fn into(self) -> T
+
+/// A character's code, and the character with a code, which traps R0201 outside `0..=127`.
+impl Into<Int> for Char:
+    fn into(self) -> Int = @intrinsic("code_of")
+impl Into<Char> for Int:
+    fn into(self) -> Char = @intrinsic("char_of")
+/// An `Int`'s two's-complement bits, and a `U64` as an `Int`, which traps past `Int` (R03.4.1).
+impl Into<U64> for Int:
+    fn into(self) -> U64 = @intrinsic("u64_of")
+impl Into<Int> for U64:
+    fn into(self) -> Int = @intrinsic("int_of_u64")
+impl Into<Int> for Int:
+    fn into(self) -> Int = self
+/// `true` is 1 and `false` 0 (R02.2.1).
+impl Into<Int> for Bool:
+    fn into(self) -> Int = if self: 1 else: 0
+impl Into<U64> for U64:
+    fn into(self) -> U64 = self
+
 /// A list, a string and an array read in O(1) at any key, by position from 0 or, for an
 /// array, by its domain's positions (R12.4.5).
 impl<T> Positional<T> for List<T>:

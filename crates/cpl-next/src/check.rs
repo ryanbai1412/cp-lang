@@ -80,8 +80,6 @@ pub enum TK {
     Neg(Box<TExpr>),
     /// `U64(x)`: an `Int`'s two's-complement bits.
     ToU64(Box<TExpr>),
-    /// `Int(u)` of a `U64`: traps past `Int`.
-    FromU64(Box<TExpr>),
     If(Box<TExpr>, Box<TExpr>, Box<TExpr>),
     Block(Vec<TStmt>, Option<Box<TExpr>>),
     Print(Vec<Piece>),

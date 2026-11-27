@@ -1427,105 +1427,16 @@ impl<'a> Cx<'a> {
                         mk(TK::Block(stmts, Some(Box::new(last))), Ty::Unit)
                     }
                 }
-                ExprKind::Name(n) if n == "Char" && args.len() == 1 => {
-                    let v = self.expr(&args[0].value, Some(&Ty::Int));
-                    let v = self.coerce(v, &Ty::Int);
-                    self.scopes.push(HashMap::new());
-                    let tmp = self.bind("$code", Ty::Int);
-                    self.scopes.pop();
-                    let read = mk(TK::Var(tmp), Ty::Int);
-                    let lo = mk(
-                        TK::Cmp(
-                            CmpOp::Le,
-                            Box::new(mk(TK::Int(0), Ty::Int)),
-                            Box::new(read.clone()),
-                        ),
-                        Ty::Bool,
-                    );
-                    let hi = mk(
-                        TK::Cmp(
-                            CmpOp::Le,
-                            Box::new(read.clone()),
-                            Box::new(mk(TK::Int(127), Ty::Int)),
-                        ),
-                        Ty::Bool,
-                    );
-                    let ok = mk(TK::Bin(BinOp::And, Box::new(lo), Box::new(hi)), Ty::Bool);
-                    let check = TStmt::Assert(
-                        ok,
-                        "a `Char` is 0..=127".to_string(),
-                        span,
-                        CheckKind::RangeStore,
-                    );
-                    mk(
-                        TK::Block(
-                            vec![TStmt::Let(tmp, v), check],
-                            Some(Box::new(mk(TK::CharOf(Box::new(read)), Ty::Char))),
-                        ),
-                        Ty::Char,
-                    )
-                }
-                ExprKind::Name(n) if n == "U64" && args.len() == 1 && self.lookup(n).is_none() => {
-                    let v = self.expr(&args[0].value, Some(&Ty::Int));
-                    if self.shallow(&v.ty) == Ty::U64 {
-                        return v;
-                    }
-                    let v = self.coerce(v, &Ty::Int);
-                    mk(TK::ToU64(Box::new(v)), Ty::U64)
-                }
-                ExprKind::Name(n) if n == "Int" && args.len() == 1 => {
-                    let v = self.expr(&args[0].value, None);
-                    if self.shallow(&v.ty) == Ty::Char {
-                        return mk(TK::CodeOf(Box::new(v)), Ty::Int);
-                    }
-                    if self.shallow(&v.ty) == Ty::U64 {
-                        return mk(TK::FromU64(Box::new(v)), Ty::Int);
-                    }
-                    // A variant's written value, else its place from 0.
-                    if let Some(id) = self.plain_enum(&v.ty) {
-                        let values = self.d.s(id).values.clone();
-                        let tag = self.enum_tag(v);
-                        if (values.iter().enumerate()).all(|(i, x)| *x == i as i64) {
-                            return tag;
-                        }
-                        let t = self.bind("$variant", Ty::Int);
-                        let read = || mk(TK::Var(t), Ty::Int);
-                        let last = values.last().copied().unwrap_or(0);
-                        let mut pick = mk(TK::Int(last), Ty::Int);
-                        for (i, x) in values.iter().enumerate().rev().skip(1) {
-                            let is = TK::Cmp(
-                                CmpOp::Eq,
-                                Box::new(read()),
-                                Box::new(mk(TK::Int(i as i64), Ty::Int)),
-                            );
-                            pick = mk(
-                                TK::If(
-                                    Box::new(mk(is, Ty::Bool)),
-                                    Box::new(mk(TK::Int(*x), Ty::Int)),
-                                    Box::new(pick),
-                                ),
-                                Ty::Int,
-                            );
-                        }
-                        return mk(
-                            TK::Block(vec![TStmt::Let(t, tag)], Some(Box::new(pick))),
-                            Ty::Int,
-                        );
-                    }
-                    if !matches!(
-                        self.shallow(&v.ty),
-                        Ty::Dom(_) | Ty::Param(_) | Ty::Int | Ty::Error
-                    ) {
-                        self.err(
-                            span,
-                            format!(
-                                "{}: `{}` has no position",
-                                cpl_diag::codes::TYPE_MISMATCH.0,
-                                self.show(&v.ty)
-                            ),
-                        );
-                    }
-                    mk(TK::DomOrd(Box::new(v)), Ty::Int)
+                // `Int(c)`, `Char(k)`, `U64(x)`: a core type has no constructor, so this converts.
+                ExprKind::Name(n)
+                    if args.len() == 1
+                        && args[0].name.is_none()
+                        && self.lookup(n).is_none()
+                        && !self.declared(n)
+                        && decls::prim_type(n).is_some() =>
+                {
+                    let to = decls::prim_type(n).unwrap_or(Ty::Error);
+                    self.convert(to, &args[0].value, span)
                 }
                 ExprKind::Name(n)
                     if self.lookup(n).is_none()

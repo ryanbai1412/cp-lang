@@ -9,6 +9,7 @@ use cpl_diag::{codes, Code};
 pub enum Fault {
     Overflow,
     U64PastInt,
+    CharPastAscii,
     DivisionByZero,
     NegativePower,
     ShiftOutside,
@@ -28,9 +29,10 @@ pub enum Fault {
 }
 
 /// The faults an operation raises by itself, in the order of the C++ runtime's trap table.
-pub const FAULTS: [Fault; 14] = [
+pub const FAULTS: [Fault; 15] = [
     Fault::Overflow,
     Fault::U64PastInt,
+    Fault::CharPastAscii,
     Fault::DivisionByZero,
     Fault::NegativePower,
     Fault::ShiftOutside,
@@ -56,6 +58,7 @@ impl Fault {
     pub fn code(self) -> &'static str {
         let c: Code = match self {
             Fault::Overflow | Fault::U64PastInt => codes::OVERFLOW,
+            Fault::CharPastAscii => codes::RANGE_STORE,
             Fault::DivisionByZero => codes::DIVISION_BY_ZERO,
             Fault::NegativePower
             | Fault::ShiftOutside
@@ -78,6 +81,7 @@ impl Fault {
         match self {
             Fault::Overflow => "integer overflow",
             Fault::U64PastInt => "the value does not fit in an Int",
+            Fault::CharPastAscii => "a `Char` is 0..=127",
             Fault::DivisionByZero => "division by zero",
             Fault::NegativePower => "a negative power",
             Fault::ShiftOutside => "a shift outside 0..64",
@@ -191,6 +195,14 @@ pub fn compare(op: Intr, a: i128, b: i128) -> Result<bool, Fault> {
 
 pub fn int_of_u64(u: u64) -> Result<i64, Fault> {
     i64::try_from(u).map_err(|_| Fault::U64PastInt)
+}
+
+/// The character with code `x`, an ASCII one.
+pub fn char_of(x: i64) -> Result<u8, Fault> {
+    u8::try_from(x)
+        .ok()
+        .filter(|c| *c <= 127)
+        .ok_or(Fault::CharPastAscii)
 }
 
 /// The number of cells `raw_new(n, _)` makes.

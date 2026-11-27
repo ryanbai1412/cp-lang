@@ -608,7 +608,7 @@ impl<'a> Machine<'a> {
                 };
                 V::Int(ops::int_of_u64(u)?)
             }
-            Intr::CharOf => V::Char(self.int(&args[0], fp)? as u8),
+            Intr::CharOf => V::Char(ops::char_of(self.int(&args[0], fp)?)?),
             Intr::CodeOf => {
                 let Arg::Value(c) = &args[0] else {
                     return broken("lent Char");

@@ -120,8 +120,6 @@ core-04/h-step-skipped-key-traps.cp	wrong-reject	check: program:6:7: E0305: `Ste
 core-04/half-open-cut-range-piece.cp	wrong-reject	check: program:5:9: E0203: `Range<V>` has no member `cuts`
 core-04/inline-range-array-keys-start-at-its-first-key.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-04/int-range-generic-nth-is-the-int.cp	wrong-reject	check: E0204: std.range: unknown type `Cut`
-core-04/into-int-generic-bound.cp	wrong-reject	decls: E0204: unknown trait `Into`
-core-04/into-int-reads-current-fields.cp	wrong-reject	decls: E0204: unknown trait `Into`
 core-04/library-domain-cxx-names-apart.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-domain-generic.cp	wrong-reject	decls: E0204: unknown trait `Index`
 core-04/library-domain-nth-out-of-range.cp	wrong-reject	decls: E0204: unknown trait `Index`
@@ -449,7 +447,6 @@ matrix/index/plain--rev.cp	wrong-reject	check: core:172:30: E0302: expected `D`,
 matrix/index/plain--size.cp	wrong-reject	check: core:76:19: E0302: expected `D`, found `D`
 matrix/index/subset--count.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `count`
 matrix/index/subset--filter.cp	wrong-reject	check: program:3:7: E0203: `Subset` has no `filter`
-matrix/index/subset--int.cp	wrong-reject	check: program:3:7: E0302: `Subset<B>` has no position
 matrix/index/subset--read.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 matrix/optional/domain_at--while_let_fn.cp	wrong-reject	check: program:5:47: E0806: nothing here says what `None` is an optional of; write the type
 matrix/optional/domain_at--while_let_loop.cp	wrong-reject	check: program:5:47: E0806: nothing here says what `None` is an optional of; write the type

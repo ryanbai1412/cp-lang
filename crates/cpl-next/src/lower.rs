@@ -689,11 +689,6 @@ impl Lw<'_> {
                 let v = self.expr(x, out);
                 mk(EK::Intr(Intr::ToU64, vec![Arg::Value(v)], site))
             }
-            TK::FromU64(x) => {
-                let v = self.expr(x, out);
-                let v = mk(EK::Intr(Intr::FromU64, vec![Arg::Value(v)], site));
-                self.spill(v, out)
-            }
             TK::Not(x) => {
                 let v = self.expr(x, out);
                 mk(EK::Intr(Intr::Not, vec![Arg::Value(v)], site))
@@ -1302,7 +1297,6 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
         | TK::CodeOf(b)
         | TK::Neg(b)
         | TK::ToU64(b)
-        | TK::FromU64(b)
         | TK::DomOrd(b)
         | TK::DomFrom(_, b)
         | TK::DomNth(_, b)
