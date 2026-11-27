@@ -227,6 +227,42 @@ pub(crate) enum Op {
     Fail {
         rule: &'static str,
     },
+    /// `n` words of the globals at stack address `a`, read and written.
+    GetG {
+        d: Reg,
+        a: u32,
+        n: u32,
+    },
+    PutG {
+        a: u32,
+        s: Reg,
+        n: u32,
+    },
+    /// The value in `s` gains a holder.
+    Retain {
+        s: Reg,
+        lay: Lay,
+    },
+    /// Words an inlined fn's owned locals start as.
+    Zero {
+        d: Reg,
+        n: u32,
+    },
+    /// An inlined call is over: its line is the caller's again.
+    Restore {
+        save: Reg,
+    },
+    /// A lent place's words move to an inlined fn's parameter, and back with `Put`.
+    Take {
+        d: Reg,
+        p: u32,
+        n: u32,
+    },
+    Put {
+        p: u32,
+        s: Reg,
+        n: u32,
+    },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -274,6 +310,8 @@ pub(crate) struct FnCode {
     /// Each parameter's register and size.
     pub params: Vec<(Reg, u32)>,
     pub lent: Vec<bool>,
+    /// The words of its locals and result, before temporaries.
+    pub locals: u32,
     /// What the frame owns when the fn ends: its locals but the lent parameters.
     pub drops: Vec<(Reg, Lay)>,
 }
@@ -348,6 +386,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
                 })
                 .collect(),
             lent: f.params.iter().map(|(_, lent)| *lent).collect(),
+            locals: at,
             drops,
         });
         offs.push(off);
@@ -358,12 +397,17 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
             c: &mut c,
             p,
             f,
-            off: &offs[i],
+            funcs,
+            offs: &offs,
+            off: offs[i].clone(),
             global_at: &global_at,
             top,
             max: top,
             ops: Vec::new(),
             loops: Vec::new(),
+            ret: 0,
+            exits: None,
+            inlining: vec![i],
         };
         fc.block(&f.body);
         let (ops, max) = (std::mem::take(&mut fc.ops), fc.max);
@@ -385,12 +429,20 @@ struct Fc<'a> {
     c: &'a mut Code,
     p: &'a Program,
     f: &'a Func<CTy>,
-    off: &'a [Reg],
+    funcs: &'a [Func<CTy>],
+    offs: &'a [Vec<Reg>],
+    off: Vec<Reg>,
     global_at: &'a [u32],
     top: Reg,
     max: Reg,
     ops: Vec<Op>,
     loops: Vec<Ctx>,
+    /// Where `return` puts its value: the result words, or an inlined call's destination.
+    ret: Reg,
+    /// In an inlined fn: the jumps a flow out of it takes to its end.
+    exits: Option<Vec<usize>>,
+    /// The fns being compiled, the outermost first: none is inlined into itself.
+    inlining: Vec<usize>,
 }
 
 impl Fc<'_> {
@@ -442,6 +494,11 @@ impl Fc<'_> {
             (Some(Ctx::Loop { brk, .. }), Leave::Break) => brk.push(at),
             (Some(Ctx::Loop { cont, .. }), Leave::Continue) => cont.push(at),
             (Some(Ctx::Step { end }), _) => end.push(at),
+            _ if self.exits.is_some() => {
+                if let Some(exits) = &mut self.exits {
+                    exits.push(at);
+                }
+            }
             _ => {
                 self.ops.push(Op::Leave(how));
                 return;
@@ -535,7 +592,11 @@ impl Fc<'_> {
                     let d = self.temp(n);
                     self.expr(e, d);
                     if n > 0 {
-                        self.ops.push(Op::Move { d: 0, s: d, n });
+                        self.ops.push(Op::Move {
+                            d: self.ret,
+                            s: d,
+                            n,
+                        });
                     }
                 }
                 self.leave(Leave::Return);
@@ -679,6 +740,57 @@ impl Fc<'_> {
 }
 
 /// Whether evaluating `e` can run a call, which may write a local through a reference.
+/// Whether `b` writes local `l` or lets anything else write it: assigns it or a part, lends
+/// it, takes its address or lends it out.
+fn writes(b: &[Stmt<CTy>], l: usize) -> bool {
+    b.iter().any(|s| match s {
+        Stmt::Let(x, e) => *x == l || writes_in(e, l),
+        Stmt::Assign(p, e) => root(p) == Some(l) || writes_in(e, l),
+        Stmt::Expr(e) | Stmt::Yield(e) => writes_in(e, l),
+        Stmt::Return(e) => e.as_ref().is_some_and(|e| writes_in(e, l)),
+        Stmt::If(c, a, b) => writes_in(c, l) || writes(a, l) || writes(b, l),
+        Stmt::Loop(a, b) => writes(a, l) || writes(b, l),
+        Stmt::Switch(c, arms) => writes_in(c, l) || arms.iter().any(|a| writes(a, l)),
+        Stmt::Check { cond, .. } => writes_in(cond, l),
+        Stmt::Print(ps) => ps
+            .iter()
+            .any(|p| matches!(p, PrintPiece::Value(v) if writes_in(v, l))),
+        Stmt::Event(_, vs) => vs.iter().any(|v| writes_in(v, l)),
+        Stmt::Region { args, body, .. } => lends(args, l) || writes(body, l),
+        Stmt::LendOut(p) => root(p) == Some(l),
+        Stmt::Break | Stmt::Continue => false,
+    })
+}
+fn writes_in(e: &Expr<CTy>, l: usize) -> bool {
+    match &e.kind {
+        EK::AddrOf(p) | EK::Lent(p) => root(p) == Some(l),
+        EK::Intr(_, args, _) | EK::Call(_, args, _) => lends(args, l),
+        EK::CallValue(f, xs, _) => writes_in(f, l) || xs.iter().any(|x| writes_in(x, l)),
+        EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().any(|x| writes_in(x, l)),
+        EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => writes_in(x, l),
+        _ => false,
+    }
+}
+fn lends(args: &[Arg<CTy>], l: usize) -> bool {
+    args.iter().any(|a| match a {
+        Arg::Value(v) => writes_in(v, l),
+        Arg::Lend(p) => root(p) == Some(l),
+        Arg::View(_) => false,
+    })
+}
+/// The local a place is part of.
+fn root(p: &Place) -> Option<usize> {
+    match p {
+        Place::Local(l) => Some(*l),
+        Place::Global(_) => None,
+        Place::Field(b, _)
+        | Place::Variant(b, _)
+        | Place::Deref(b)
+        | Place::Through(b)
+        | Place::Slot(b, _) => root(b),
+    }
+}
+
 fn calls(e: &Expr<CTy>) -> bool {
     match &e.kind {
         EK::Call(..) | EK::CallValue(..) => true,
@@ -695,12 +807,11 @@ impl Fc<'_> {
         let (n, owns, lay) = (self.size(&ty), self.owns(&ty), self.lay(&ty));
         // A value with no storage goes straight into a local when the op writing it reads
         // everything it needs first.
-        if let (Place::Local(l), false) = (p, owns) {
+        if let (Some(d), false) = (self.direct(p), owns) {
             let direct = matches!(
                 e.kind,
                 EK::Int(_) | EK::Bool(_) | EK::Unit | EK::Copy(_) | EK::Intr(..) | EK::Call(..)
             );
-            let d = self.off[*l];
             if direct {
                 self.expr(e, d);
             } else {
@@ -714,14 +825,21 @@ impl Fc<'_> {
         }
         let s = self.temp(n);
         self.expr(e, s);
-        let p = self.place(p);
-        self.ops.push(Op::Store { p, s, lay });
+        match self.global(p) {
+            Some(a) if !owns => self.ops.push(Op::PutG { a, s, n }),
+            _ => {
+                let p = self.place(p);
+                self.ops.push(Op::Store { p, s, lay });
+            }
+        }
     }
     /// The register holding `e`'s value: a local's own when reading it copies nothing.
     fn operand(&mut self, e: &Expr<CTy>) -> Reg {
-        if let EK::Copy(Place::Local(l)) = &e.kind {
+        if let EK::Copy(p) = &e.kind {
             if !self.owns(&e.ty) {
-                return self.off[*l];
+                if let Some(r) = self.direct(p) {
+                    return r;
+                }
             }
         }
         let n = self.size(&e.ty);
@@ -740,7 +858,7 @@ impl Fc<'_> {
                 .iter()
                 .any(|a| matches!(a, Arg::Value(v) if calls(v)));
             let r = self.operand(v);
-            if later && matches!(v.kind, EK::Copy(Place::Local(_))) {
+            if later && matches!(v.kind, EK::Copy(_)) {
                 let d = self.temp(1);
                 self.ops.push(Op::Move { d, s: r, n: 1 });
                 regs.push(d);
@@ -764,20 +882,27 @@ impl Fc<'_> {
             }
             EK::Copy(p) | EK::Lent(p) => {
                 let (n, owns, lay) = (self.size(&e.ty), self.owns(&e.ty), self.lay(&e.ty));
-                match p {
-                    Place::Local(l) if !owns => {
-                        if n > 0 && self.off[*l] != d {
-                            self.ops.push(Op::Move {
-                                d,
-                                s: self.off[*l],
-                                n,
-                            });
+                match self.direct(p) {
+                    Some(s) => {
+                        if n > 0 && s != d {
+                            self.ops.push(Op::Move { d, s, n });
+                        }
+                        if owns {
+                            self.ops.push(Op::Retain { s: d, lay });
                         }
                     }
-                    _ => {
-                        let p = self.place(p);
-                        self.ops.push(Op::Load { d, p, lay });
-                    }
+                    None => match self.global(p) {
+                        Some(a) => {
+                            self.ops.push(Op::GetG { d, a, n });
+                            if owns {
+                                self.ops.push(Op::Retain { s: d, lay });
+                            }
+                        }
+                        None => {
+                            let p = self.place(p);
+                            self.ops.push(Op::Load { d, p, lay });
+                        }
+                    },
                 }
             }
             EK::AddrOf(Place::Local(l)) => self.ops.push(Op::Addr { d, s: self.off[*l] }),
@@ -807,6 +932,9 @@ impl Fc<'_> {
             EK::Inject(x) | EK::Widen(x) => self.expr(x, d),
             EK::DomLen(_) | EK::DomLo(_) => {
                 self.fail("a domain value the link step did not resolve")
+            }
+            EK::Call(Target::Inst(f), args, site) if self.inlinable(*f) => {
+                self.inline(*f, args, *site, d)
             }
             EK::Call(Target::Inst(f), args, site) => {
                 // The call's line runs while its arguments are evaluated, as in the reference
@@ -1056,6 +1184,20 @@ impl Fc<'_> {
             }
         }
     }
+    /// The register a place is when no step reaches it: a local or a part of one.
+    fn direct(&mut self, p: &Place) -> Option<Reg> {
+        match self.walk(p) {
+            (Root::Local(r), steps, _) if steps.is_empty() => Some(r),
+            _ => None,
+        }
+    }
+    /// The stack address of a place no step reaches from a global.
+    fn global(&mut self, p: &Place) -> Option<u32> {
+        match self.walk(p) {
+            (Root::Global(a), steps, _) if steps.is_empty() => Some(a),
+            _ => None,
+        }
+    }
     fn place_ty(&mut self, p: &Place) -> CTy {
         self.walk(p).2
     }
@@ -1064,5 +1206,143 @@ impl Fc<'_> {
         let i = self.c.places.len() as u32;
         self.c.places.push(PlaceCode { root, steps });
         i
+    }
+}
+
+/// How much code a fn body is, to bound what inlining copies; a fn that hands code to its
+/// caller's region is never inlined.
+fn cost(b: &[Stmt<CTy>]) -> usize {
+    fn e(x: &Expr<CTy>) -> usize {
+        1 + match &x.kind {
+            EK::Intr(_, args, _) | EK::Call(_, args, _) => args
+                .iter()
+                .map(|a| match a {
+                    Arg::Value(v) => e(v),
+                    _ => 1,
+                })
+                .sum(),
+            EK::CallValue(f, args, _) => e(f) + args.iter().map(e).sum::<usize>(),
+            EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().map(e).sum(),
+            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => e(x),
+            _ => 0,
+        }
+    }
+    b.iter()
+        .map(|s| {
+            1 + match s {
+                Stmt::Let(_, x) | Stmt::Assign(_, x) | Stmt::Expr(x) => e(x),
+                Stmt::Return(x) => x.as_ref().map_or(0, e),
+                Stmt::If(c, a, b) => e(c) + cost(a) + cost(b),
+                Stmt::Loop(a, b) => cost(a) + cost(b),
+                Stmt::Switch(c, arms) => e(c) + arms.iter().map(|a| cost(a)).sum::<usize>(),
+                Stmt::Check { cond, .. } => e(cond),
+                Stmt::Print(ps) => ps.len(),
+                Stmt::Event(_, vs) => vs.iter().map(e).sum(),
+                Stmt::Region { .. } | Stmt::Yield(_) | Stmt::LendOut(_) => INLINE_COST,
+                Stmt::Break | Stmt::Continue => 0,
+            }
+        })
+        .sum()
+}
+const INLINE_COST: usize = 40;
+
+impl<'a> Fc<'a> {
+    fn inlinable(&self, f: usize) -> bool {
+        let g = &self.funcs[f];
+        g.region.is_none()
+            && f != self.c.main as usize
+            && !self.inlining.contains(&f)
+            && self.inlining.len() < 4
+            && cost(&g.body) < INLINE_COST
+    }
+    /// A call compiled into the caller: the callee's locals are registers of this frame, its
+    /// `return` a jump to the end, and its lines, events and drops those of the call.
+    fn inline(&mut self, f: usize, args: &[Arg<CTy>], site: Site, d: Reg) {
+        let save = self.temp(1);
+        self.ops.push(Op::Enter { site, save });
+        let funcs: &'a [Func<CTy>] = self.funcs;
+        let g = &funcs[f];
+        let base = self.temp(self.c.funcs[f].locals);
+        let off: Vec<Reg> = self.offs[f].iter().map(|o| base + o).collect();
+        let drops: Vec<(Reg, Lay)> = self.c.funcs[f]
+            .drops
+            .iter()
+            .map(|&(at, l)| (base + at, l))
+            .collect();
+        // A viewed place stays as it is while the call runs (`Arg::View`), so a parameter the
+        // body never writes reads it in place: no holder to gain and drop.
+        let read_only: Vec<Reg> = g
+            .params
+            .iter()
+            .zip(args)
+            .filter(|((l, _), a)| matches!(a, Arg::View(_)) && !writes(&g.body, *l))
+            .map(|((l, _), _)| off[*l])
+            .collect();
+        let drops: Vec<(Reg, Lay)> = drops
+            .into_iter()
+            .filter(|(at, _)| !read_only.contains(at))
+            .collect();
+        for &(at, lay) in &drops {
+            let n = self.c.lays.size[lay as usize];
+            self.ops.push(Op::Zero { d: at, n });
+        }
+        let mut lends = Vec::new();
+        for (&(l, _), a) in g.params.iter().zip(args) {
+            let to = off[l];
+            match a {
+                Arg::Value(v) => self.expr(v, to),
+                Arg::View(p) if read_only.contains(&to) => {
+                    let ty = self.place_ty(p);
+                    let n = self.size(&ty);
+                    match self.direct(p) {
+                        Some(s) if n > 0 => self.ops.push(Op::Move { d: to, s, n }),
+                        Some(_) => {}
+                        None => {
+                            let p = self.place(p);
+                            self.ops.push(Op::Take { d: to, p, n });
+                        }
+                    }
+                }
+                Arg::View(p) => {
+                    let ty = self.place_ty(p);
+                    let lay = self.lay(&ty);
+                    let p = self.place(p);
+                    self.ops.push(Op::Load { d: to, p, lay });
+                }
+                Arg::Lend(p) => lends.push((p, to)),
+            }
+        }
+        let mut back = Vec::with_capacity(lends.len());
+        for (p, to) in lends {
+            let ty = self.place_ty(p);
+            let n = self.size(&ty);
+            let p = self.place(p);
+            self.ops.push(Op::Take { d: to, p, n });
+            back.push((p, to, n));
+        }
+        let off = std::mem::replace(&mut self.off, off);
+        let caller = std::mem::replace(&mut self.f, g);
+        let ret = std::mem::replace(&mut self.ret, d);
+        let exits = self.exits.replace(Vec::new());
+        let loops = std::mem::take(&mut self.loops);
+        self.inlining.push(f);
+        self.block(&g.body);
+        self.inlining.pop();
+        self.loops = loops;
+        let mine = std::mem::replace(&mut self.exits, exits);
+        self.ret = ret;
+        self.f = caller;
+        self.off = off;
+        let end = self.here();
+        for j in mine.unwrap_or_default() {
+            self.patch(j, end);
+        }
+        for (s, lay) in drops {
+            self.ops.push(Op::Drop { s, lay });
+        }
+        for (p, s, n) in back {
+            self.ops.push(Op::Put { p, s, n });
+        }
+        self.ops.push(Op::Restore { save });
     }
 }

@@ -119,7 +119,17 @@ impl M<'_> {
     }
     /// Counts one more holder of each handle in the value at stack address `a`.
     fn retain(&mut self, lay: Lay, a: usize) {
-        if !self.c.lays.owns[lay as usize] {
+        let c = self.c;
+        if !c.lays.owns[lay as usize] {
+            return;
+        }
+        if let Some(at) = &c.lays.flat[lay as usize] {
+            for &o in at {
+                let h = self.stack[a + o as usize];
+                if h != 0 {
+                    self.heap[h as usize].rc += 1;
+                }
+            }
             return;
         }
         let mut hs = std::mem::take(&mut self.scratch);
@@ -144,7 +154,26 @@ impl M<'_> {
     }
     /// Drops the value at `loc`: what it holds loses a holder, and an object with none is freed.
     fn release(&mut self, lay: Lay, loc: Loc) {
-        if !self.c.lays.owns[lay as usize] {
+        let c = self.c;
+        if !c.lays.owns[lay as usize] {
+            return;
+        }
+        if let Some(at) = &c.lays.flat[lay as usize] {
+            for &o in at {
+                let h = self.word(match loc {
+                    Loc::Stack(a) => Loc::Stack(a + o as usize),
+                    Loc::Heap(h, i) => Loc::Heap(h, i + o as usize),
+                });
+                if h == 0 {
+                    continue;
+                }
+                let obj = &mut self.heap[h as usize];
+                if obj.rc > 1 {
+                    obj.rc -= 1;
+                } else {
+                    self.dec(vec![h as u32]);
+                }
+            }
             return;
         }
         let mut hs = Vec::new();
@@ -187,10 +216,18 @@ impl M<'_> {
             Loc::Heap(h, i) => self.heap[h as usize].words[i] = v,
         }
     }
+    /// Copies `n` stack words at `s` to `d`.
+    fn copy(&mut self, s: usize, d: usize, n: usize) {
+        if n == 1 {
+            self.stack[d] = self.stack[s];
+        } else {
+            self.stack.copy_within(s..s + n, d);
+        }
+    }
     /// Copies `n` words at `loc` to stack address `a`.
     fn read(&mut self, loc: Loc, a: usize, n: usize) {
         match loc {
-            Loc::Stack(s) => self.stack.copy_within(s..s + n, a),
+            Loc::Stack(s) => self.copy(s, a, n),
             Loc::Heap(h, i) => {
                 self.stack[a..a + n].copy_from_slice(&self.heap[h as usize].words[i..i + n])
             }
@@ -199,7 +236,7 @@ impl M<'_> {
     /// Copies `n` words at stack address `a` to `loc`.
     fn write(&mut self, loc: Loc, a: usize, n: usize) {
         match loc {
-            Loc::Stack(d) => self.stack.copy_within(a..a + n, d),
+            Loc::Stack(d) => self.copy(a, d, n),
             Loc::Heap(h, i) => {
                 self.heap[h as usize].words[i..i + n].copy_from_slice(&self.stack[a..a + n])
             }
@@ -299,7 +336,11 @@ impl M<'_> {
         if self.stack.len() < end {
             self.stack.resize(end.max(self.stack.len() * 2), 0);
         }
-        self.stack[top..end].fill(0);
+        for &(at, lay) in &fc.drops {
+            let a = top + at as usize;
+            let n = self.size(lay);
+            self.stack[a..a + n].fill(0);
+        }
         for (a, &(at, n)) in cc.args.iter().zip(&fc.params) {
             let to = top + at as usize;
             match *a {
@@ -347,7 +388,7 @@ impl M<'_> {
             match op {
                 Op::Imm { d, v } => self.stack[r(d)] = v,
                 Op::Addr { d, s } => self.stack[r(d)] = r(s) as u64,
-                Op::Move { d, s, n } => self.stack.copy_within(r(s)..r(s) + n as usize, r(d)),
+                Op::Move { d, s, n } => self.copy(r(s), r(d), n as usize),
                 Op::Load { d, p, lay } => {
                     let loc = self.loc(fp, p)?;
                     self.read(loc, r(d), self.size(lay));
@@ -586,6 +627,23 @@ impl M<'_> {
                     self.stack[r(d)] = ops::code_of(byte(self.stack[r(a)])?) as u64
                 }
                 Op::Fail { rule } => return broken(rule),
+                Op::GetG { d, a, n } => {
+                    self.copy(a as usize, r(d), n as usize);
+                }
+                Op::PutG { a, s, n } => {
+                    self.copy(r(s), a as usize, n as usize);
+                }
+                Op::Retain { s, lay } => self.retain(lay, r(s)),
+                Op::Zero { d, n } => self.stack[r(d)..r(d) + n as usize].fill(0),
+                Op::Restore { save } => self.at = self.stack[r(save)] as Site,
+                Op::Take { d, p, n } => {
+                    let loc = self.loc(fp, p)?;
+                    self.read(loc, r(d), n as usize);
+                }
+                Op::Put { p, s, n } => {
+                    let loc = self.loc(fp, p)?;
+                    self.write(loc, r(s), n as usize);
+                }
             }
         }
         Ok(Flow::Normal)
@@ -612,7 +670,14 @@ mod tests {
     /// Ops that only move words, jump or reach the heap; every other op computes a value or
     /// decides a trap, and takes that from `ops`, so the engine never writes an operation the
     /// reference interpreter and the C++ read from there.
-    const PLUMBING: [&str; 22] = [
+    const PLUMBING: [&str; 29] = [
+        "GetG",
+        "PutG",
+        "Retain",
+        "Zero",
+        "Restore",
+        "Take",
+        "Put",
         "Imm",
         "Addr",
         "Move",

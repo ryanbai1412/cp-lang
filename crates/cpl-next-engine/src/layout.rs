@@ -25,6 +25,9 @@ pub(crate) struct Layouts {
     pub size: Vec<u32>,
     /// Whether a value holds a handle, so copying or dropping it touches counts.
     pub owns: Vec<bool>,
+    /// The offsets of the handles a value holds, when they are the same for every value (no
+    /// union decides them).
+    pub flat: Vec<Option<Vec<u32>>>,
     of: HashMap<CTy, Lay>,
 }
 
@@ -62,6 +65,16 @@ impl Layouts {
     }
     fn push(&mut self, t: &CTy, shape: Shape, size: u32, owns: bool) -> Lay {
         let l = self.shape.len() as Lay;
+        let flat = match &shape {
+            Shape::Zero | Shape::Word => Some(Vec::new()),
+            Shape::Handle => Some(vec![0]),
+            Shape::Struct(fs) => fs.iter().try_fold(Vec::new(), |mut v, (at, f)| {
+                v.extend(self.flat[*f as usize].as_ref()?.iter().map(|o| at + o));
+                Some(v)
+            }),
+            Shape::Union(_) => None,
+        };
+        self.flat.push(flat);
         self.shape.push(shape);
         self.size.push(size);
         self.owns.push(owns);
