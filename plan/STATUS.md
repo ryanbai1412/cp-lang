@@ -338,7 +338,7 @@ Process costing more than 10% of a change is skipped with a trailer
 | 2026-11-27 | none | 3 |
 | 2026-11-27 | factory | 1 |
 | 2026-11-27 | core | 13 |
-| 2026-11-27 | compiler | 10 |
+| 2026-11-27 | compiler | 13 |
 | 2026-11-27 | Core | 7 |
 | 2026-11-24 | tools | 7 |
 | 2026-11-24 | stress | 1 |
