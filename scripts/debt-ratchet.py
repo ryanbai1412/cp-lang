@@ -1279,6 +1279,14 @@ def next_cases_removed(root: Path, ref: str = "origin/main") -> list[str]:
     return [g for g in gone if f"`{g}`" not in named]
 
 
+def next_masked(root: Path) -> list[str]:
+    """Cases the new pipeline refuses although it also gave a coded verdict on the program:
+    the refusal hides whether that verdict is right. `tests/programs.rs` keeps `masked.txt`
+    equal to what it finds; it reaches 0 as refused constructs stop hiding verdicts beside them."""
+    masked = root / NEXT_TESTS / "masked.txt"
+    return [l.strip() for l in _lines(masked) if l.strip()] if masked.is_file() else []
+
+
 def next_not_passing(root: Path) -> list[str]:
     """Cases the new pipeline does not pass yet: wrong ones and the ones it refuses (says it
     does not implement). 0 is the day `cpl` switches to it and what it replaces is deleted.
@@ -3217,6 +3225,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
     "crates/cpl-next/tests/passing.txt": ("next_not_passing", "core", "every case listed: the landing that switches `cpl` to cpl-next deletes the list"),
     "crates/cpl-next/tests/wrong.tsv": ("next_wrong", "core", "deleted: programs.rs fails on any wrong case"),
+    "crates/cpl-next/tests/masked.txt": ("next_masked", "core", "deleted: no refusal hides a verdict beside it"),
     "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
     "scripts/std-lint-baseline.txt": ("std_lint_findings", "stdlib", "deleted: std-lint-ratchet.py fails on any hit"),
@@ -3443,6 +3452,7 @@ COUNTERS = {
     "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
+    "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),

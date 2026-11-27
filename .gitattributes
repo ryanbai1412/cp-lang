@@ -10,3 +10,4 @@ plan/domains/*/worklog.md merge=union
 # both sides' lines, and the programs test then says if any line is wrong.
 crates/cpl-next/tests/passing.txt merge=union
 crates/cpl-next/tests/wrong.tsv merge=union
+crates/cpl-next/tests/masked.txt merge=union

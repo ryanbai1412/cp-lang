@@ -331,6 +331,11 @@ fn line_and_code(diag: &str) -> Option<(usize, &str)> {
     Some((line.parse().ok()?, rest.split(':').next()?))
 }
 
+/// `E0302` and the like: a code, not a refusal's `slice`.
+fn coded(word: &str) -> bool {
+    word.len() == 5 && word.starts_with('E') && word[1..].bytes().all(|b| b.is_ascii_digit())
+}
+
 /// `program:3:5:` gives `program`.
 fn place_file(word: &str) -> Option<&str> {
     let (file, pos) = word.strip_suffix(':')?.split_once(':')?;
@@ -338,7 +343,8 @@ fn place_file(word: &str) -> Option<&str> {
         .then_some(file)
 }
 
-/// How one case fared: `pass`, `refused`, or the word `wrong.tsv` uses, and the detail.
+/// How one case fared: `pass`, `refused`, `masked` (refused beside a coded verdict), or the word
+/// `wrong.tsv` uses, and the detail.
 /// A case that passes on its `// expect:` passes only if what the deciding run printed is
 /// its `// output:`, when it gives one.
 fn verdict(path: &Path) -> (&'static str, String) {
@@ -446,6 +452,16 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
     let done = |v: &'static str, d: String| (v, d, String::new());
     match raw.status {
         None => return done("timeout", "the interpreter passed 10 s".into()),
+        // A refusal beside a coded verdict on the program hides that verdict: the case is
+        // `masked`, refused for the lists but counted apart (tests/masked.txt).
+        Some(4)
+            if raw
+                .stdout
+                .lines()
+                .any(|d| line_and_code(d).is_some_and(|(_, c)| coded(c))) =>
+        {
+            return done("masked", first(&raw.stdout))
+        }
         Some(4) => return done("refused", first(&raw.stdout)),
         Some(0 | 1 | 3) => {}
         Some(n) => {
@@ -658,9 +674,14 @@ fn every_case_is_where_the_lists_say() {
     let verdicts = parallel::parallel(&cases, |(_, p)| verdict(p));
 
     let (mut passing, mut wrong, mut refused) = (String::new(), String::new(), String::new());
+    let mut masked = String::new();
     for ((id, _), (verdict, detail)) in cases.iter().zip(&verdicts) {
         match *verdict {
             "pass" => passing += &format!("{id}\n"),
+            "masked" => {
+                masked += &format!("{id}\n");
+                refused += &format!("{id}\t{detail}\n");
+            }
             "refused" => refused += &format!("{id}\t{detail}\n"),
             how => wrong += &format!("{id}\t{how}\t{detail}\n"),
         }
@@ -676,19 +697,36 @@ fn every_case_is_where_the_lists_say() {
         ("passing.txt", &passing),
         ("wrong.tsv", &wrong),
         ("refused.tsv", &refused),
+        ("masked.txt", &masked),
         ("queue.txt", &queue),
     ] {
         std::fs::write(found.join(name), text).unwrap();
     }
 
-    let (listed_passing, listed_wrong) = (
+    let (listed_passing, listed_wrong, listed_masked) = (
         list(&here.join("tests/passing.txt")),
         list(&here.join("tests/wrong.tsv")),
+        list(&here.join("tests/masked.txt")),
     );
     let mut off = Vec::new();
     let mut seen = Vec::new();
+    let mut freed = 0;
     for ((id, _), (verdict, detail)) in cases.iter().zip(&verdicts) {
         seen.push(id.as_str());
+        match (listed_masked.contains_key(id), *verdict == "masked") {
+            (false, true) => off.push(format!(
+                "{id}: refused beside a coded verdict on the program ({detail}): add it to tests/masked.txt"
+            )),
+            // A case leaving the list only lowers what it counts, so it need not stop a landing
+            // that raced the change which freed it; target/cpl-next/masked.txt is the exact list.
+            (true, false) => freed += 1,
+            _ => {}
+        }
+        let verdict = &if *verdict == "masked" {
+            "refused"
+        } else {
+            *verdict
+        };
         let listed = if listed_passing.contains_key(id) {
             Some("pass")
         } else {
@@ -712,18 +750,23 @@ fn every_case_is_where_the_lists_say() {
     for id in listed_passing
         .keys()
         .chain(listed_wrong.keys())
+        .chain(listed_masked.keys())
         .filter(|id| only.is_none() && !seen.contains(&id.as_str()))
     {
         off.push(format!("{id}: listed, but there is no such case"));
     }
     let count = |s: &str| s.lines().count();
     println!(
-        "cpl-next: {} cases: {} pass, {} wrong, {} refused",
+        "cpl-next: {} cases: {} pass, {} wrong, {} refused ({} of them beside a coded verdict)",
         cases.len(),
         count(&passing),
         count(&wrong),
-        count(&refused)
+        count(&refused),
+        count(&masked)
     );
+    if freed > 0 {
+        println!("{freed} cases in tests/masked.txt no longer hide a verdict: copy target/cpl-next/masked.txt over it");
+    }
     println!("refused, by cause (all in target/cpl-next/queue.txt):");
     queue.lines().take(10).for_each(|l| println!("  {l}"));
     assert!(
