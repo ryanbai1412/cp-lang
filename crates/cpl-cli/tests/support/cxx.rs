@@ -82,10 +82,10 @@ pub fn build(cpp: &[u8], flags: &[&str]) -> Result<(PathBuf, String), String> {
     let warnings = String::from_utf8_lossy(&compiled.stderr).into_owned();
     if !compiled.status.success() {
         let _ = std::fs::remove_file(&tmp_binary);
-        return Err(format!(
-            "g++ failed on {}:\n{warnings}",
-            tmp_source.display()
-        ));
+        // Named by key, not by the temporary path, so the message is the same
+        // on every machine and every run.
+        let named = warnings.replace(&*tmp_source.to_string_lossy(), &format!("{key}.cpp"));
+        return Err(format!("g++ failed on {key}.cpp:\n{named}"));
     }
     let tmp_said = cache.join(format!("{unique}.stderr"));
     std::fs::write(&tmp_said, &warnings).map_err(|e| e.to_string())?;

@@ -681,6 +681,18 @@ fn a_kept_build_or_run_is_never_stale() {
     assert_eq!(printed(&first), "one\n", "a build kept for other C++");
 }
 
+/// A failed build says the same on every run and machine: it names the C++ by its key,
+/// not by the temporary file, whose path holds the home directory and a thread id.
+#[test]
+fn a_failed_build_names_no_temporary_file() {
+    let cpp = format!("int main() {{ return x; }}\n// {}\n", std::process::id());
+    let said = || cxx::build(cpp.as_bytes(), &["-x", "c++"]).unwrap_err();
+    let first = said();
+    assert_eq!(first, said());
+    let home = std::env::var("HOME").unwrap_or_default();
+    assert!(!home.is_empty() && !first.contains(&home), "{first}");
+}
+
 #[test]
 fn every_case_is_where_the_lists_say() {
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
