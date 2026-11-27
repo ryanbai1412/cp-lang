@@ -267,7 +267,9 @@ impl Cx<'_> {
             PatternKind::Tuple(ps) => {
                 let tuple = self.d.tuples.get(&ps.len()).copied();
                 match self.field_tys(&v.ty) {
-                    Some((s, tys)) if Some(s) == tuple => {
+                    Some((s, tys))
+                        if Some(s) == tuple || (tys.len() == ps.len() && self.d.s(s).record) =>
+                    {
                         self.pat_parts(ps.iter().zip(0..), v, &tys, mutable, binds)
                     }
                     _ => {

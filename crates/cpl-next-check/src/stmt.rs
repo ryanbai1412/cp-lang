@@ -636,16 +636,12 @@ impl<'a> Cx<'a> {
                 }
             }
         }
-        // A result that names a fresh domain is a record read by place: `let (domain C, comp)`,
-        // `let (tree, used) = kruskal(..)` of `-> (tree: Rooted<V, _, _>, used: [E]Bool)`.
-        let owned = (self.doms.keys()).any(|k| k.starts_with(&format!("{tmp}.")));
-        let fresh = |t: &Ty| self.fresh_slot_of(t).is_some();
+        // A tuple pattern reads a record's fields in order (R02.5.5): `let (tree, used) =
+        // kruskal(..)` of `-> (tree: Rooted<V, _, _>, used: [E]Bool)`.
         let fields = match self.lookup(&tmp).map(|(_, t)| self.shallow(&t)) {
-            Some(Ty::Struct(d, ts, _)) if self.d.s(d).record && (owned || ts.iter().any(fresh)) => {
-                (self.d.s(d).fields.iter())
-                    .map(|(n, _)| n.clone())
-                    .collect()
-            }
+            Some(Ty::Struct(d, ..)) if self.d.s(d).record => (self.d.s(d).fields.iter())
+                .map(|(n, _)| n.clone())
+                .collect(),
             _ => Vec::new(),
         };
         for (field, p) in parts {

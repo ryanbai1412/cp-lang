@@ -503,6 +503,19 @@ fn syntax_error_is_placed_in_the_program() {
     assert!(d.code().is_some(), "{d}");
 }
 
+/// A tuple pattern reads a record's fields in order (R02.5.5).
+#[test]
+fn a_tuple_pattern_reads_a_record() {
+    let src = "fn f(x: Int) -> (root: Int, size: Int) = (root: x, size: x * 2)\n\
+let (r, s) = f(3)\n\
+var t = 0\n\
+for (a, b) in [f(1), f(2)]: t += a * b\n\
+print(r, s, t)\n";
+    let c = compile(&Std::read(), src, &Roots::std(), true).expect("compiles");
+    assert_eq!(c.run(Form::Raw, "").output, "3 6 10\n");
+    assert_eq!(c.run(Form::Engine, "").output, "3 6 10\n");
+}
+
 /// `x == None` tests presence, as the pattern `None` does, so `T` needs no `Eq` (R02.4.5).
 #[test]
 fn comparing_with_none_needs_no_eq() {
