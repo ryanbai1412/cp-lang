@@ -21,6 +21,8 @@ fn unlent(t: CTy) -> CTy {
 }
 
 struct Link<'a> {
+    /// The type of a slot a value of a type is lent in: ownership's rule (`cpl_next_own`).
+    lent: &'a Lend,
     d: &'a Decls,
     generic: &'a HashMap<FuncKey, Func<Ty>>,
     adds: &'a SetAdds,
@@ -93,6 +95,9 @@ fn closed_fn(d: &Decls, f: FnId) -> bool {
         && !matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Trait(_)))
 }
 
+/// Given a type and how to read its parts, the type of a slot a value of it is lent in.
+pub type Lend = dyn Fn(CTy, &dyn Fn(&CTy) -> Vec<CTy>) -> CTy;
+
 /// A closure in a signature takes its set from the calls that reach the fn.
 pub fn link(
     d: &Decls,
@@ -100,9 +105,11 @@ pub fn link(
     generic: &HashMap<FuncKey, Func<Ty>>,
     globals: &[Ty],
     adds: &SetAdds,
+    lent: &Lend,
 ) -> Program {
     let mut l = Link {
         d,
+        lent,
         generic,
         adds,
         keys: Vec::new(),
@@ -335,8 +342,7 @@ impl Link<'_> {
             Ty::Mut(e) => self.ty(e, env),
             Ty::Lent(e) => match self.ty(e, env) {
                 CTy::Lent(t) => CTy::Lent(t),
-                t if plain(&|s| self.parts(s), &t, 0) => t,
-                t => CTy::Lent(Box::new(t)),
+                t => (self.lent)(t, &|s| self.parts(s)),
             },
             Ty::Param(i) => match env.targs.get(*i) {
                 Some(CTy::Range(..)) => CTy::Int,
@@ -836,7 +842,7 @@ impl Link<'_> {
             EK::Unit => EK::Unit,
             EK::Copy(p) => EK::Copy(self.place(p)),
             EK::Pass(p, view, s) => EK::Pass(self.place(p), *view, *s),
-            // A plain value in a lent slot is just copied.
+            // A value in a slot that isn't lent is copied (`Link::lent`).
             EK::Lent(p) if matches!(ty, CTy::Lent(_)) => EK::Lent(self.place(p)),
             EK::Lent(p) => EK::Copy(self.place(p)),
             EK::AddrOf(p) => EK::AddrOf(p.clone()),

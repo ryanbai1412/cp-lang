@@ -417,11 +417,8 @@ impl Lw<'_> {
     }
     fn var(&mut self, v: VarRef) -> Place {
         if let Some(l) = self.remap.get(&v) {
-            if self.by_addr.contains(l) || matches!(self.locals[*l], Ty::Ref(_)) {
+            if self.by_addr.contains(l) {
                 return Place::Deref(Box::new(Place::Local(*l)));
-            }
-            if let Ty::Lent(_) = self.locals[*l] {
-                return Place::Through(Box::new(Place::Local(*l)));
             }
             return Place::Local(*l);
         }
@@ -1438,18 +1435,17 @@ impl Lw<'_> {
         // What the lambda reads from the fn around it: locals not bound inside it.
         // A binding inside a block is captured by value when the closure is made, at top level too:
         // a loop makes a new one each time round. Only the file's own top-level bindings are shared.
-        // A `var` is shared with the closure (spec R05.10.1): the capture is a reference to it.
-        let (mut_locals, globals) = (&self.mut_locals, &self.typed.globals);
+        // A `var` and a top-level binding are shared with the closure (spec R05.10.1): the capture
+        // holds its address, and ownership decides whether that is a lend, a reference or a copy.
+        let mut_locals = &self.mut_locals;
         let is_var = |v: &VarRef| match v {
             VarRef::Local(i) => mut_locals.get(*i).copied().unwrap_or(false),
-            VarRef::Global(g) => {
-                globals[*g].mutable || !cpl_next_decls::plain::plain(self.d, &globals[*g].ty, 0)
-            }
+            VarRef::Global(_) => true,
         };
         let by_ref = |v: &VarRef, p: Place, ty: Ty| -> (VarRef, Place, Ty, Cap) {
             let cap = if matches!(p, Place::Local(l) if self.by_addr.contains(&l)) {
                 Cap::Ptr
-            } else if !matches!(ty, Ty::Lent(_)) && is_var(v) {
+            } else if is_var(v) {
                 // Ownership decides how it holds it: lent where nothing can reassign it, else
                 // by reference (`cpl_next_own::lent`).
                 Cap::Addr

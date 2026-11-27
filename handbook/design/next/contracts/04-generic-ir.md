@@ -156,8 +156,14 @@ lowering); the driver merges nothing by hand.
 - **Ownership runs after link** (2026-11-26 ruling, superseding "ownership
   finishes here" and decision 13). Lowering reads nothing of it: lends
   come from signatures (`plain::lends`) and passed places stay `Pass`.
-  Own reads link's closed sets and each instance's resolved impls, does
-  no set fixpoint of its own, and hands nothing back to link. What it
+  Own reads link's closed sets and each instance's resolved impls and
+  does no set fixpoint of its own. It runs on both sides of link
+  (2026-11-27): `own::lent` marks on generic IR which values are lent
+  rather than moved, because whether an argument lends is chosen at its
+  call (one in a place lends, a fresh one is moved), not by the
+  signature alone, and link keys an instance by those marks. Own also
+  gives link the rule for a slot a value is lent in (a plain value
+  lent is copied). Everything else is decided after link. What it
   finds wrong in a fn reached only through a trait is said where an
   instance of that fn runs. Its diagnostics come from a walk of link's
   instances (`own::check`): link also makes an instance of

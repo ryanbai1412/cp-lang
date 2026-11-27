@@ -217,10 +217,19 @@ pub fn link(
 ) -> (Program, Owned) {
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     lent::mark(d, funcs, tys, &mutable);
-    let mut prog = cpl_next_link::link(d, whole, funcs, tys, adds);
+    let mut prog = cpl_next_link::link(d, whole, funcs, tys, adds, &lent_slot);
     let owned = inst::check(d, funcs, &prog, globals);
     place_copies(&mut prog, &owned.copies);
     (prog, owned)
+}
+
+/// The type of the slot a value of `t` is lent in, in an instance: a plain value lent is copied,
+/// as nothing it holds can be kept past the lend.
+fn lent_slot(t: CTy, parts: &dyn Fn(&CTy) -> Vec<CTy>) -> CTy {
+    match cpl_next_ir::prog::plain(parts, &t, 0) {
+        true => t,
+        false => CTy::Lent(Box::new(t)),
+    }
 }
 
 /// The parameters a call to `f` lends to its result, receiver first, from its signature: the

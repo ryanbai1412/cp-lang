@@ -1490,13 +1490,20 @@ def next_lent_outside_own(root: Path) -> list[str]:
     """Places a layer other than the checker or `cpl-next-own` makes a type lent (`Ty::Lent(Box::new(..))`):
     whether a value is lent or moved is an ownership decision, made once in the ownership pass
     (contract 04); lowering, linking and the engines only read it. Function names miss this
-    (lowering's `lent_targs`), so the constructor is what is counted."""
+    (lowering's `lent_targs`), so the constructor is what is counted. Lowering runs before
+    ownership marks anything, so any test there of a lent or reference type counts too."""
     dirs = [f"crates/{c}/src" for c in NEXT_AFTER_OWN if (root / "crates" / c / "src").is_dir()]
     out = []
     for p in _rs_files(root, *dirs, tests=False):
         ls = _lines(p)
+        lower = "cpl-next-lower" in p.parts
         for i, l in enumerate(ls, 1):
-            if not NEXT_MAKES_LENT_RE.search(l) or l.lstrip().startswith("//"):
+            if l.lstrip().startswith("//"):
+                continue
+            if lower and NEXT_LENT_TY_RE.search(l):
+                out.append(f"{_rel(root, p)}:{i}")
+                continue
+            if not NEXT_MAKES_LENT_RE.search(l):
                 continue
             # An arm of a `match` on a type it matched lent (`Ty::Lent(e) => match f(e) {`).
             if any(NEXT_LENT_MATCH_RE.search(b) for b in ls[max(0, i - 5):i - 1]):
@@ -1508,6 +1515,7 @@ def next_lent_outside_own(root: Path) -> list[str]:
 # `Ty::Lent(Box::new(..))` built from a type not already lent: a match arm that rebuilds a lent
 # type it matched (`Lent(e) => Lent(Box::new(f(e)))`) keeps a decision, it does not make one.
 NEXT_MAKES_LENT_RE = re.compile(r"^(?!.*(?:Lent|Ref)\([^)]*\)\)?\s*=>.*Ty::(?:Lent|Ref)\(Box::new).*Ty::(?:Lent|Ref)\(Box::new")
+NEXT_LENT_TY_RE = re.compile(r"\bTy::(?:Lent|Ref)\b")
 NEXT_LENT_MATCH_RE = re.compile(r"\bTy::(?:Lent|Ref)\(\w+\)\s*=>\s*match\b")
 
 
