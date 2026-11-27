@@ -68,7 +68,7 @@ pub struct FnDecl {
     /// `@was(..)`: names it had before a release renamed it; a call by one is E0503.
     pub was: Vec<String>,
     pub item: u32,
-    /// Where it is written, in the joined source.
+    /// Where it is written, in the offset space the loaded modules are placed in.
     pub span: Span,
     pub module: ModId,
     /// What its signature uses that the slice does not build, said only when a call reaches it.
@@ -572,7 +572,7 @@ pub fn collect(
             if mi == CORE.0 {
                 out.extend((records.iter()).flat_map(|(i, ss)| ss.iter().map(|s| (*i, s.clone()))));
             }
-            for (item, stmts) in &m.items {
+            for (item, stmts) in m.items.iter() {
                 for s in stmts {
                     if let StmtKind::Enum(e) = &s.kind {
                         let (structs, errors, values) = enum_structs(s, e);
@@ -591,7 +591,7 @@ pub fn collect(
         .collect();
     for (mi, m) in mods.iter().enumerate() {
         let mid = ModId(mi);
-        for (item, stmts) in &m.items {
+        for (item, stmts) in m.items.iter() {
             let made = synth[mi].iter().filter(|(i, _)| i == item).map(|(_, s)| s);
             for s in stmts
                 .iter()

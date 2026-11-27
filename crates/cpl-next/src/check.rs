@@ -233,8 +233,8 @@ enum SetVar {
 
 struct Cx<'a> {
     d: &'a Decls,
-    /// The joined source the spans index, offset by `item_off`.
-    src: &'a str,
+    /// The loaded modules the spans index, offset by `item_off`.
+    src: &'a crate::modules::Loaded,
     tys: Vec<Option<Ty>>,
     sets: Vec<SetVar>,
     /// Set variables being written out, to catch a set that contains itself.
@@ -297,7 +297,7 @@ struct Cx<'a> {
     missing: Vec<String>,
 }
 
-pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
+pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &crate::modules::Loaded) -> Typed {
     let mut cx = Cx {
         d,
         src,
@@ -307,7 +307,7 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         cyclic: Default::default(),
         early: Default::default(),
         view_keys: HashMap::new(),
-        judge: cpl_judge::builtin(cpl_judge::named_in(src).unwrap_or("generic")),
+        judge: cpl_judge::builtin(cpl_judge::named_in(src.program()).unwrap_or("generic")),
         errors: Vec::new(),
         lambdas: Vec::new(),
         globals: Vec::new(),
@@ -596,8 +596,10 @@ impl<'a> Cx<'a> {
     }
     /// The source text `span` covers.
     fn text(&self, span: Span) -> &'a str {
-        let at = (self.item_off + span.start) as usize..(self.item_off + span.end) as usize;
-        self.src.get(at).unwrap_or("")
+        (self.src).text(Span::new(
+            self.item_off + span.start,
+            self.item_off + span.end,
+        ))
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.

@@ -1,10 +1,15 @@
 //! `cpl-next FILE [--raw|--engine] [--cpp] [--check] [--trace]`: run FILE on stdin, print its C++, or
-//! only compile it. `--all DIR --within MS` compiles once and writes, for each of `raw`,
-//! `canonical` and `engine`, the run's `.out`, `.err` and then `.code` into DIR, and `c++` last;
-//! a run that passes MS (less the compile) ends the process, leaving it and the rest unwritten.
-//! Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when it is refused.
+//! only compile it. Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when
+//! it is refused.
+//!
+//! `cpl-next --all --within MS [--trace]` reads std once and then, for each `FILE<TAB>DIR` line
+//! on stdin, compiles FILE against it and runs it on `DIR/in`. It writes into DIR the rejected
+//! compile's `compiled.out` and then `compiled.code`, or, for each of `raw`, `canonical` and
+//! `engine`, the run's `.out`, `.err` and then `.code`, and `c++` last; then it prints `done`.
+//! A run that passes MS (less its compile) ends the process, leaving it and the rest unwritten.
 //! For the crate's tests and for measuring; not a shipped command.
-use cpl_next::{compile, Form, Roots};
+use cpl_next::{compile, Diag, Form, Roots, Std};
+use std::io::{BufRead, Write};
 use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
@@ -29,23 +34,21 @@ fn main() {
 }
 
 fn real_main() {
-    let started = std::time::Instant::now();
     let args: Vec<String> = std::env::args().skip(1).collect();
     let has = |f: &str| args.iter().any(|a| a == f);
     let value = |f: &str| {
         let at = args.iter().position(|a| a == f)?;
         args.get(at + 1)
     };
-    let all = value("--all").zip(value("--within").and_then(|ms| ms.parse().ok()));
-    let values: Vec<&String> = [value("--all"), value("--within")]
-        .into_iter()
-        .flatten()
-        .collect();
-    let Some(path) = args
-        .iter()
-        .find(|a| !a.starts_with("--") && !values.iter().any(|v| std::ptr::eq(*v, *a)))
-    else {
-        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--trace] [--all DIR --within MS]");
+    if has("--all") {
+        let Some(ms) = value("--within").and_then(|ms| ms.parse().ok()) else {
+            eprintln!("usage: cpl-next --all --within MS [--trace]");
+            std::process::exit(2);
+        };
+        return every_case(Duration::from_millis(ms), has("--trace"));
+    }
+    let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
+        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--trace] | --all --within MS [--trace]");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {
@@ -55,23 +58,13 @@ fn real_main() {
             std::process::exit(2);
         }
     };
-    let dir = (Path::new(path).parent()).filter(|d| !d.as_os_str().is_empty());
-    let roots = Roots::from(dir.unwrap_or(Path::new(".")));
-    let c = match compile(&src, &roots, has("--trace")) {
+    let c = match compile(&Std::read(), &src, &roots(path), has("--trace")) {
         Ok(c) => c,
         Err(ds) => {
             for d in &ds {
                 println!("{d}");
             }
-            // 1: the program is rejected. 4: refused, which says nothing about the program. A
-            // syntax error rejects it whatever a later layer refused.
-            let syntax = |d: &cpl_next::Diag| d.stage == cpl_next::Stage::Syntax && !d.is_refusal();
-            let refused = ds.iter().any(cpl_next::Diag::is_refusal);
-            std::process::exit(if refused && !ds.iter().any(syntax) {
-                4
-            } else {
-                1
-            });
+            std::process::exit(rejected(&ds));
         }
     };
     if has("--check") {
@@ -85,11 +78,6 @@ fn real_main() {
     if let Err(e) = std::io::Read::read_to_string(&mut std::io::stdin(), &mut input) {
         eprintln!("cpl-next: stdin: {e}");
         std::process::exit(2);
-    }
-    if let Some((dir, ms)) = all {
-        let budget = std::time::Duration::from_millis(ms).saturating_sub(started.elapsed());
-        every_form(&c, Path::new(dir), budget, &input);
-        return;
     }
     let o = c.run(
         if has("--raw") {
@@ -105,6 +93,68 @@ fn real_main() {
     eprint!("{}", said(&o));
     if o.trap.is_some() {
         std::process::exit(3);
+    }
+}
+
+/// Where FILE's libraries are: the `cp.toml` at or above its folder says.
+fn roots(path: &str) -> Roots {
+    let dir = (Path::new(path).parent()).filter(|d| !d.as_os_str().is_empty());
+    Roots::from(dir.unwrap_or(Path::new(".")))
+}
+
+/// 1: the program is rejected. 4: refused, which says nothing about the program. A syntax
+/// error rejects it whatever a later layer refused.
+fn rejected(ds: &[Diag]) -> i32 {
+    let syntax = |d: &Diag| d.stage == cpl_next::Stage::Syntax && !d.is_refusal();
+    match ds.iter().any(Diag::is_refusal) && !ds.iter().any(syntax) {
+        true => 4,
+        false => 1,
+    }
+}
+
+/// `--all`: every case on stdin compiled against one read of std.
+fn every_case(limit: Duration, events: bool) {
+    let std = Std::read();
+    for line in std::io::stdin().lock().lines() {
+        let Ok(line) = line else { break };
+        let Some((path, dir)) = line.split_once('\t') else {
+            eprintln!("cpl-next --all: `{line}` is not FILE<TAB>DIR");
+            std::process::exit(2);
+        };
+        let started = std::time::Instant::now();
+        let dir = Path::new(dir);
+        let (src, input) = match (
+            std::fs::read_to_string(path),
+            std::fs::read_to_string(dir.join("in")),
+        ) {
+            (Ok(src), Ok(input)) => (src, input),
+            (Err(e), _) | (_, Err(e)) => {
+                eprintln!("cpl-next --all: {line}: {e}");
+                std::process::exit(2);
+            }
+        };
+        match compile(&std, &src, &roots(path), events) {
+            Ok(c) => every_form(&c, dir, limit.saturating_sub(started.elapsed()), &input),
+            Err(ds) => {
+                let out: String = ds.iter().map(|d| format!("{d}\n")).collect();
+                write(dir, "compiled.out", &out);
+                write(dir, "compiled.code", &rejected(&ds).to_string());
+            }
+        }
+        let mut stdout = std::io::stdout().lock();
+        if writeln!(stdout, "done")
+            .and_then(|()| stdout.flush())
+            .is_err()
+        {
+            return;
+        }
+    }
+}
+
+fn write(dir: &Path, name: &str, text: &str) {
+    if let Err(e) = std::fs::write(dir.join(name), text) {
+        eprintln!("cpl-next: {}: {e}", dir.display());
+        std::process::exit(2);
     }
 }
 
@@ -128,12 +178,7 @@ fn every_form(c: &cpl_next::Compiled, dir: &Path, budget: Duration, input: &str)
             Err(RecvTimeoutError::Disconnected) => return,
         }
     });
-    let write = |name: &str, text: &str| {
-        if let Err(e) = std::fs::write(dir.join(name), text) {
-            eprintln!("cpl-next: {}: {e}", dir.display());
-            std::process::exit(2);
-        }
-    };
+    let write = |name: &str, text: &str| write(dir, name, text);
     for (name, form) in [
         ("raw", Form::Raw),
         ("canonical", Form::Canonical),

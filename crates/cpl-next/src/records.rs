@@ -19,7 +19,7 @@ pub fn is_record(name: &str) -> bool {
 /// Every record shape any module writes, as a type or a literal.
 pub fn shapes(mods: &[crate::modules::Module]) -> Vec<Vec<String>> {
     let mut v = Shapes(BTreeSet::new());
-    for (_, stmts) in mods.iter().flat_map(|m| &m.items) {
+    for (_, stmts) in mods.iter().flat_map(|m| m.items.iter()) {
         stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
     }
     v.0.into_iter().collect()

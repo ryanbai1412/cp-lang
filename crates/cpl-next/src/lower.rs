@@ -14,7 +14,7 @@ pub struct Generic {
     pub funcs: HashMap<FuncKey, Func<Ty>>,
     pub globals: Vec<Ty>,
     pub errors: Vec<Msg>,
-    /// Each expression the checker could not type (an error node), in the joined source.
+    /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
     pub untyped: Vec<Span>,
 }
 
@@ -47,14 +47,13 @@ struct Lw<'a> {
     /// Where the item being lowered starts: spans are relative to it.
     off: u32,
     /// Where each line of the source starts, and how many of them are std.
-    line_starts: Vec<u32>,
-    std_lines: u32,
+    src: &'a crate::modules::Loaded,
     /// The fn being lowered is one the compiler wrote, a derived impl's: like std's, a check it
     /// makes fails at the line that called it.
     made: bool,
 }
 
-pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32) -> Generic {
+pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Loaded) -> Generic {
     let mut out = Generic {
         funcs: HashMap::new(),
         globals: Vec::new(),
@@ -79,10 +78,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         in_main: true,
         case: None,
         off: 0,
-        line_starts: std::iter::once(0)
-            .chain(src.match_indices('\n').map(|(i, _)| i as u32 + 1))
-            .collect(),
-        std_lines,
+        src,
         made: false,
     };
     let mut body = Vec::new();
@@ -345,10 +341,7 @@ impl Lw<'_> {
         if self.made {
             return 0;
         }
-        let line = self
-            .line_starts
-            .partition_point(|s| *s <= self.off + span.start) as u32;
-        line.saturating_sub(self.std_lines)
+        self.src.program_line(self.off + span.start)
     }
     fn temp(&mut self, ty: Ty) -> usize {
         self.locals.push(ty);

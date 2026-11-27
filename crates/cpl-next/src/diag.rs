@@ -1,4 +1,4 @@
-//! A diagnostic as a layer reports it: a span of the joined source (contract 1) and its
+//! A diagnostic as a layer reports it: a span of the offset space every loaded module is placed in (contract 1) and its
 //! text, and which diagnostics are verdicts on the program and which are refusals. What this
 //! file calls a verdict is what `next_wrong` counts against a case that expects acceptance.
 

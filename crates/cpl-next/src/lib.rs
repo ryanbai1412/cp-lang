@@ -18,14 +18,12 @@ mod inst;
 mod interp;
 mod lower;
 mod modules;
-pub use modules::Roots;
+pub use modules::{Roots, Std};
 mod own;
 mod records;
 mod synth;
 
 pub use interp::{Outcome, Trap};
-
-const STD: &str = include_str!("../std.cp");
 
 /// Which layer reported a diagnostic.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -90,16 +88,13 @@ impl Diag {
     /// `m` placed in its file.
     fn new(stage: Stage, m: &diag::Msg, loaded: &modules::Loaded) -> Diag {
         let at = m.at.map(|span| {
-            // The core starts the joined source, at 0.
-            let i = (loaded.modules.partition_point(|md| md.start <= span.start)).max(1);
-            let module = &loaded.modules[i - 1];
-            let before = &loaded.src[module.start as usize..span.start as usize];
-            let line_start = before.rfind('\n').map_or(0, |i| i + 1);
+            let module = loaded.text_at(span.start);
+            let (line, col) = module.line_col(span.start);
             At {
                 file: module.name.clone(),
                 span: cpl_diag::Span::new(span.start - module.start, span.end - module.start),
-                line: before.matches('\n').count() as u32 + 1,
-                col: (before.len() - line_start) as u32 + 1,
+                line,
+                col,
             }
         });
         let kind = kind_of(&m.text);
@@ -167,14 +162,12 @@ struct Front {
     diags: Vec<Diag>,
 }
 
-fn front(user_src: &str, roots: &Roots) -> Front {
+fn front(std: &Std, user_src: &str, roots: &Roots) -> Front {
     // A method the program calls that no loaded module declares loads the std modules that
     // do, and the program is read again (R11.3.4); each round loads at least one more module.
     let mut wanted: Vec<String> = Vec::new();
     loop {
-        let loaded = modules::load(STD, user_src, roots, &wanted);
-        let src = &loaded.src;
-        let std_lines = src[..loaded.program_start as usize].matches('\n').count();
+        let loaded = modules::load(std, user_src, roots, &wanted);
         // What the parser could not read is checked as error nodes; a later layer says nothing
         // on what the parser rejected, and every other unit is checked as if it were alone.
         let rejected: Vec<cpl_diag::Span> = (loaded.poisoned.iter().copied())
@@ -191,8 +184,8 @@ fn front(user_src: &str, roots: &Roots) -> Front {
         let mut out = diags(Stage::Syntax, &loaded.errors);
         let (d, main) = decls::collect(&loaded.modules, &loaded.prelude);
         out.extend(diags(Stage::Decls, &d.errors));
-        let mut t = check::check(&d, &main, src);
-        let more = modules::declaring(&t.missing, &loaded.modules);
+        let mut t = check::check(&d, &main, &loaded);
+        let more = std.declaring(&t.missing, &loaded.modules);
         if !more.is_empty() {
             wanted.extend(more);
             continue;
@@ -208,7 +201,7 @@ fn front(user_src: &str, roots: &Roots) -> Front {
             let own = es.iter().map(|e| e.clone().prefixed(Stage::Own.name()));
             t.deferred.entry(*f).or_default().extend(own);
         }
-        let g = lower::lower(&d, &t, &owned, src, std_lines as u32);
+        let g = lower::lower(&d, &t, &owned, &loaded);
         out.extend(diags(Stage::Lower, &g.errors));
         return Front {
             loaded,
@@ -222,7 +215,12 @@ fn front(user_src: &str, roots: &Roots) -> Front {
 }
 
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
-pub fn compile(user_src: &str, roots: &Roots, events: bool) -> Result<Compiled, Vec<Diag>> {
+pub fn compile(
+    std: &Std,
+    user_src: &str,
+    roots: &Roots,
+    events: bool,
+) -> Result<Compiled, Vec<Diag>> {
     let Front {
         loaded,
         d,
@@ -230,7 +228,7 @@ pub fn compile(user_src: &str, roots: &Roots, events: bool) -> Result<Compiled, 
         g,
         diags,
         ..
-    } = front(user_src, roots);
+    } = front(std, user_src, roots);
     if !diags.is_empty() {
         return Err(diags);
     }
@@ -267,8 +265,8 @@ pub struct Unit {
 
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
-pub fn units(user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
-    let f = front(user_src, roots);
+pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
+    let f = front(std, user_src, roots);
     let start = f.loaded.program_start;
     let fns = (0..f.d.fns.len()).map(ty::FnId).filter(|id| {
         let fd = f.d.f(*id);
@@ -341,10 +339,42 @@ mod tests {
     use modules::PROGRAM;
 
     fn diags(src: &str) -> Vec<Diag> {
-        compile(src, &Roots::std(), false).err().expect("rejected")
+        compile(&Std::read(), src, &Roots::std(), false)
+            .err()
+            .expect("rejected")
     }
 
-    /// A diagnostic's span is in the user's file, past the library text joined before it.
+    /// What compiling `src` gives: its diagnostics, or its C++ and what its run prints.
+    fn outcome(std: &Std, src: &str) -> String {
+        match compile(std, src, &Roots::std(), true) {
+            Ok(c) => {
+                let o = c.run(Form::Raw, "");
+                let events: String = o.events.iter().map(|e| format!("{e}\n")).collect();
+                format!("{}\n{}{events}{}", c.cpp(), o.output, o.trap.is_some())
+            }
+            Err(ds) => ds.iter().map(|d| format!("{d}\n")).collect(),
+        }
+    }
+
+    /// Std read once is a value no program changes: programs compiled one after another
+    /// against it each get what they get against a std of their own.
+    #[test]
+    fn programs_against_one_std_are_as_if_each_were_alone() {
+        let programs = [
+            include_str!("../tests/programs/n_bound_02_for_walks_through_the_bound.cp"),
+            include_str!("../tests/programs/a_check_08_wrong_arg_count.cp"),
+            include_str!("../tests/programs/n_assoc_type.cp"),
+            "let xs = [3, 1, 2]\nprint(xs.sorted())\n",
+            "let a = 1\nlet = 2\n",
+        ];
+        let std = Std::read();
+        let shared: Vec<String> = programs.iter().map(|p| outcome(&std, p)).collect();
+        for (p, got) in programs.iter().zip(&shared) {
+            assert_eq!(got, &outcome(&Std::read(), p), "{p}");
+        }
+    }
+
+    /// A diagnostic's span is in the user's file, past the modules placed before it.
     #[test]
     fn diagnostic_is_placed_in_the_program() {
         let src = "let a = 1\nlet b = 2\nprint(a +  zz)\n";

@@ -92,16 +92,69 @@ fn next(path: &Path, flags: &[&str], input: &[u8]) -> Ran {
     run(cmd, input)
 }
 
-/// A case's runs from one `cpl-next --all` process, which compiles it once and runs every
-/// form in turn, each within what [`LIMIT`] leaves after the compile, as a process of its own
-/// would. A run it did not finish (a crash, the limit) is run again alone, so sharing the
-/// compile never changes what a run gives.
+/// A case's runs from a `cpl-next --all` worker, which reads std once and compiles each case
+/// it is given against it, then runs every form in turn, each within what [`LIMIT`] leaves
+/// after the compile, as a process of its own would. A run it did not finish (a crash, the
+/// limit) ends the worker and is run again alone, so sharing never changes what a run gives.
 struct Forms<'a> {
     dir: PathBuf,
     path: &'a Path,
     input: &'a [u8],
-    /// The `--all` process itself: what it printed when the compile rejected or refused.
+    /// What the compile printed when it rejected or refused the case.
     compiled: Ran,
+}
+
+/// A `cpl-next --all` process and its `done` lines.
+struct Worker {
+    child: std::process::Child,
+    ask: std::process::ChildStdin,
+    done: std::sync::mpsc::Receiver<String>,
+}
+
+impl Worker {
+    fn new() -> Worker {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_cpl-next"))
+            .args([
+                "--trace",
+                "--all",
+                "--within",
+                &LIMIT.as_millis().to_string(),
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("cpl-next starts");
+        let ask = child.stdin.take().unwrap();
+        let out = std::io::BufReader::new(child.stdout.take().unwrap());
+        let (said, done) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            for line in std::io::BufRead::lines(out).map_while(Result::ok) {
+                if said.send(line).is_err() {
+                    break;
+                }
+            }
+        });
+        Worker { child, ask, done }
+    }
+
+    /// Whether it finished the case: its three runs stop themselves, a compile is given the
+    /// rest of the four limits a process of its own had.
+    fn finished(&mut self, path: &Path, dir: &Path) -> bool {
+        writeln!(self.ask, "{}\t{}", path.display(), dir.display()).is_ok()
+            && self.done.recv_timeout(4 * LIMIT).is_ok_and(|l| l == "done")
+    }
+}
+
+impl Drop for Worker {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+thread_local! {
+    static WORKER: std::cell::RefCell<Option<Worker>> = const { std::cell::RefCell::new(None) };
 }
 
 impl<'a> Forms<'a> {
@@ -112,14 +165,19 @@ impl<'a> Forms<'a> {
             .join("forms")
             .join(format!("{}-{n}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("the forms directory is made");
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl-next"));
-        cmd.arg(path)
-            .arg("--trace")
-            .arg("--all")
-            .arg(&dir)
-            .args(["--within", &LIMIT.as_millis().to_string()]);
-        // Three runs, each stopped by the process at the limit, and the C++.
-        let compiled = run_within(cmd, input, 4 * LIMIT);
+        std::fs::write(dir.join("in"), input).expect("the input is written");
+        WORKER.with_borrow_mut(|w| {
+            let finished = w.get_or_insert_with(Worker::new).finished(path, &dir);
+            if !finished {
+                *w = None;
+            }
+        });
+        let read = |name: &str| std::fs::read_to_string(dir.join(name)).ok();
+        let compiled = Ran {
+            status: read("compiled.code").and_then(|c| c.parse().ok()),
+            stdout: read("compiled.out").unwrap_or_default(),
+            stderr: String::new(),
+        };
         Forms {
             dir,
             path,

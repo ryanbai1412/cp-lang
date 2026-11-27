@@ -1,5 +1,5 @@
-//! Contract 1: snapshot -> modules. Finds the files a program needs and joins them into one
-//! source, so every later layer reports a place as an offset into it.
+//! Contract 1: snapshot -> modules. Finds the modules a program needs. Each keeps its own text,
+//! placed in one offset space so a span says both the module and the place in it.
 //!
 //! A module is loaded only when a name from it can be meant: one the program's `use` lines
 //! name, a prelude name the program's text mentions (R11.3), or one a loaded module's own
@@ -9,6 +9,7 @@ use cpl_diag::Span;
 use cpl_syntax::ast::{Stmt, StmtKind};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 
 type Items = Vec<(u32, Vec<Stmt>)>;
 /// Each syntax error with its code and where it is, and the spans the parser could not read.
@@ -16,47 +17,92 @@ type Unread = (Vec<Msg>, Vec<Span>);
 
 pub struct Module {
     pub name: String,
-    /// Where its text starts in the joined source.
+    /// Where its text starts in the offset space.
     pub start: u32,
-    pub items: Vec<(u32, Vec<Stmt>)>,
+    pub items: Arc<Items>,
 }
 
-pub struct Loaded {
-    pub src: String,
-    /// The core first and the program last.
-    pub modules: Vec<Module>,
-    /// Where the program's text starts in `src`.
-    pub program_start: u32,
+/// A module's text at its place in the offset space.
+#[derive(Clone)]
+pub struct Text {
+    pub name: String,
+    pub start: u32,
+    pub text: Arc<str>,
+    /// Where each of its lines starts in `text`.
+    lines: Arc<[u32]>,
+}
+
+impl Text {
+    fn new(name: &str, start: u32, text: Arc<str>) -> Text {
+        let lines = std::iter::once(0)
+            .chain(text.match_indices('\n').map(|(i, _)| i as u32 + 1))
+            .collect();
+        Text {
+            name: name.to_string(),
+            start,
+            text,
+            lines,
+        }
+    }
+    /// The places it holds: its text and the end just past it.
+    fn holds(&self, pos: u32) -> bool {
+        self.start <= pos && pos <= self.start + self.text.len() as u32
+    }
+    /// The 1-based line and column of `pos`.
+    pub fn line_col(&self, pos: u32) -> (u32, u32) {
+        let local = pos - self.start;
+        let line = self.lines.partition_point(|s| *s <= local);
+        (line as u32, local - self.lines[line - 1] + 1)
+    }
+}
+
+/// A module read and parsed, its items and syntax errors placed at its start.
+struct Parsed {
+    text: Text,
+    items: Arc<Items>,
+    unread: Unread,
+}
+
+impl Parsed {
+    fn new(name: &str, start: u32, text: Arc<str>) -> Parsed {
+        let (items, unread) = parse(&text);
+        Parsed::placed(name, start, text, items, unread)
+    }
+    /// `items` and `unread`, read from `text` alone, placed at `start`.
+    fn placed(name: &str, start: u32, text: Arc<str>, items: Items, unread: Unread) -> Parsed {
+        let at = |s: Span| Span::new(start + s.start, start + s.end);
+        let (diags, poisoned) = unread;
+        let diags = (diags.into_iter())
+            .map(|m| Msg {
+                at: m.at.map(at),
+                ..m
+            })
+            .collect();
+        Parsed {
+            text: Text::new(name, start, text),
+            items: Arc::new(items.into_iter().map(|(o, ss)| (o + start, ss)).collect()),
+            unread: (diags, poisoned.into_iter().map(at).collect()),
+        }
+    }
+}
+
+/// Std, read once and never written after: the core and every std module, each at a place no
+/// program moves, parsed when a program first loads it. Every program loads its std modules
+/// from one `Std`, and its own modules after `Std::end`.
+pub struct Std {
+    core: Parsed,
+    modules: HashMap<String, (u32, Arc<str>, OnceLock<Parsed>)>,
+    /// Each free method std declares and the modules that declare it (see `declaring`).
+    methods: HashMap<String, Vec<String>>,
     /// Each prelude name and the module it is from.
-    pub prelude: HashMap<String, String>,
-    pub errors: Vec<Msg>,
-    /// What the parser could not read: no later layer reports inside these (contract 3).
-    pub poisoned: Vec<Span>,
+    prelude: HashMap<String, String>,
+    end: u32,
 }
 
-pub const CORE: &str = "core";
-pub const PROGRAM: &str = "program";
-
-/// The std modules not yet loaded that declare a method `names` calls and found nowhere: a
-/// method call needs no import (R11.3.4), so a check that finds none asks for these.
-pub fn declaring(names: &[String], loaded: &[Module]) -> Vec<String> {
-    let index = std_methods();
-    let mut out: Vec<String> = (names.iter())
-        .flat_map(|n| index.get(n).into_iter().flatten())
-        .filter(|m| !loaded.iter().any(|l| &l.name == *m))
-        .cloned()
-        .collect();
-    out.sort();
-    out.dedup();
-    out
-}
-
-/// Every free method std declares, by name: `pub fn sorted<S: Seq<T>, ..>(self: S, ..)` in
-/// `std.seq` is `sorted`. Std is pinned, so this is read once.
-fn std_methods() -> &'static HashMap<String, Vec<String>> {
-    static INDEX: std::sync::OnceLock<HashMap<String, Vec<String>>> = std::sync::OnceLock::new();
-    INDEX.get_or_init(|| {
-        let mut index: HashMap<String, Vec<String>> = HashMap::new();
+impl Std {
+    pub fn read() -> Std {
+        const CORE_TEXT: &str = include_str!("../std.cp");
+        let mut files = Vec::new();
         let mut dirs = vec![(std_root(), "std".to_string())];
         while let Some((dir, module)) = dirs.pop() {
             for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
@@ -66,55 +112,144 @@ fn std_methods() -> &'static HashMap<String, Vec<String>> {
                     .map_or(String::new(), |s| s.to_string_lossy().into_owned());
                 if path.is_dir() {
                     dirs.push((path, format!("{module}.{stem}")));
-                    continue;
-                }
-                if path.extension().is_none_or(|e| e != "cp") {
-                    continue;
-                }
-                let Ok(text) = std::fs::read_to_string(&path) else {
-                    continue;
-                };
-                // A top-level fn only: one indented under a type is that type's, found with it.
-                // The names on its `@aka(..)` and `@was(..)` lines find it too (R06.4.11).
-                let mut also: Vec<String> = Vec::new();
-                for l in text.lines() {
-                    if let Some(args) = ["@aka(", "@was("].iter().find_map(|d| l.strip_prefix(d)) {
-                        let args = args.split(')').next().unwrap_or("");
-                        also.extend(args.split(',').map(|a| a.trim().to_string()));
-                        continue;
-                    }
-                    let decl = match l.starts_with('@') {
-                        true => l.split_once(" pub fn ").map(|x| x.1),
-                        false => l.strip_prefix("pub fn "),
-                    };
-                    let Some(decl) = decl else {
-                        if !l.starts_with('@') {
-                            also.clear();
-                        }
-                        continue;
-                    };
-                    let also = std::mem::take(&mut also);
-                    let name_len = decl.len()
-                        - decl
-                            .trim_start_matches(|c: char| c.is_alphanumeric() || c == '_')
-                            .len();
-                    let Some(open) = decl.find('(') else { continue };
-                    let first = decl[open + 1..].trim_start();
-                    if name_len > 0 && (first.starts_with("self") || first.starts_with("mut self"))
-                    {
-                        for n in std::iter::once(decl[..name_len].to_string()).chain(also) {
-                            index.entry(n).or_default().push(format!("{module}.{stem}"));
-                        }
+                } else if path.extension().is_some_and(|e| e == "cp") {
+                    if let Ok(text) = std::fs::read_to_string(&path) {
+                        files.push((format!("{module}.{stem}"), text));
                     }
                 }
             }
         }
-        index
-    })
+        files.sort();
+        let core = Parsed::new(CORE, 0, CORE_TEXT.into());
+        let mut end = CORE_TEXT.len() as u32 + 1;
+        let mut methods: HashMap<String, Vec<String>> = HashMap::new();
+        let mut modules = HashMap::new();
+        for (name, text) in files {
+            for m in free_methods(&text) {
+                methods.entry(m).or_default().push(name.clone());
+            }
+            let len = text.len() as u32;
+            modules.insert(name, (end, text.into(), OnceLock::new()));
+            end += len + 1;
+        }
+        let mut std = Std {
+            core,
+            modules,
+            methods,
+            prelude: HashMap::new(),
+            end,
+        };
+        if let Some(p) = std.module("std.prelude") {
+            let mut prelude = HashMap::new();
+            for (module, s, _) in uses(&p.items) {
+                if let StmtKind::Use { names, .. } = &s.kind {
+                    for n in names {
+                        prelude.insert(n.text.clone(), module.clone());
+                    }
+                }
+            }
+            std.prelude = prelude;
+        }
+        std
+    }
+    fn module(&self, name: &str) -> Option<&Parsed> {
+        let (start, text, parsed) = self.modules.get(name)?;
+        Some(parsed.get_or_init(|| Parsed::new(name, *start, text.clone())))
+    }
+    /// The std modules not yet loaded that declare a method `names` calls and found nowhere: a
+    /// method call needs no import (R11.3.4), so a check that finds none asks for these.
+    pub fn declaring(&self, names: &[String], loaded: &[Module]) -> Vec<String> {
+        let mut out: Vec<String> = (names.iter())
+            .flat_map(|n| self.methods.get(n).into_iter().flatten())
+            .filter(|m| !loaded.iter().any(|l| &l.name == *m))
+            .cloned()
+            .collect();
+        out.sort();
+        out.dedup();
+        out
+    }
 }
 
-/// Where each library's modules are: `std`, the pinned stdlib, then the roots the nearest
-/// `cp.toml` at or above the program names under `[libs]` (R11.2.1).
+/// Every free method `text` declares at its top level: `pub fn sorted<S: Seq<T>, ..>(self: S,
+/// ..)` is `sorted`, and so are the names on its `@aka(..)` and `@was(..)` lines (R06.4.11).
+/// One indented under a type is that type's, found with it.
+fn free_methods(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut also: Vec<String> = Vec::new();
+    for l in text.lines() {
+        if let Some(args) = ["@aka(", "@was("].iter().find_map(|d| l.strip_prefix(d)) {
+            let args = args.split(')').next().unwrap_or("");
+            also.extend(args.split(',').map(|a| a.trim().to_string()));
+            continue;
+        }
+        let decl = match l.starts_with('@') {
+            true => l.split_once(" pub fn ").map(|x| x.1),
+            false => l.strip_prefix("pub fn "),
+        };
+        let Some(decl) = decl else {
+            if !l.starts_with('@') {
+                also.clear();
+            }
+            continue;
+        };
+        let also = std::mem::take(&mut also);
+        let name_len = decl.len()
+            - decl
+                .trim_start_matches(|c: char| c.is_alphanumeric() || c == '_')
+                .len();
+        let Some(open) = decl.find('(') else { continue };
+        let first = decl[open + 1..].trim_start();
+        if name_len > 0 && (first.starts_with("self") || first.starts_with("mut self")) {
+            out.extend(std::iter::once(decl[..name_len].to_string()).chain(also));
+        }
+    }
+    out
+}
+
+pub struct Loaded {
+    /// Each module's text, in the order of `modules`.
+    pub texts: Vec<Text>,
+    /// The core first and the program last.
+    pub modules: Vec<Module>,
+    /// Where the program's text starts: it is placed after every other module.
+    pub program_start: u32,
+    /// Each prelude name and the module it is from.
+    pub prelude: HashMap<String, String>,
+    pub errors: Vec<Msg>,
+    /// What the parser could not read: no later layer reports inside these (contract 3).
+    pub poisoned: Vec<Span>,
+}
+
+impl Loaded {
+    /// The module `pos` is in.
+    pub fn text_at(&self, pos: u32) -> &Text {
+        (self.texts.iter().find(|t| t.holds(pos))).unwrap_or(&self.texts[0])
+    }
+    /// The source text `span` covers.
+    pub fn text(&self, span: Span) -> &str {
+        let t = self.text_at(span.start);
+        let at = (span.start - t.start) as usize..(span.end.max(t.start) - t.start) as usize;
+        t.text.get(at).unwrap_or("")
+    }
+    /// The program's text.
+    pub fn program(&self) -> &str {
+        &self.text_at(self.program_start).text
+    }
+    /// The program's 1-based line `pos` is on; 0 outside the program.
+    pub fn program_line(&self, pos: u32) -> u32 {
+        let t = self.text_at(pos);
+        match t.start == self.program_start {
+            true => t.line_col(pos).0,
+            false => 0,
+        }
+    }
+}
+
+pub const CORE: &str = "core";
+pub const PROGRAM: &str = "program";
+
+/// Where each library's modules are: the roots the nearest `cp.toml` at or above the program
+/// names under `[libs]` (R11.2.1). `std` is the pinned stdlib, read into a `Std`.
 pub struct Roots(Vec<(String, PathBuf)>);
 
 fn std_root() -> PathBuf {
@@ -122,9 +257,9 @@ fn std_root() -> PathBuf {
 }
 
 impl Roots {
-    /// The pinned stdlib alone.
+    /// No library but std.
     pub fn std() -> Roots {
-        Roots(vec![("std".to_string(), std_root())])
+        Roots(Vec::new())
     }
     /// `std` and the libraries a `cp.toml` at or above `dir` names; a nearer one wins a name.
     pub fn from(dir: &Path) -> Roots {
@@ -138,7 +273,7 @@ impl Roots {
                 };
                 let path = value.strip_prefix('"').and_then(|v| v.split('"').next());
                 if let Some(path) = path {
-                    if !roots.iter().any(|(n, _)| n == name) {
+                    if name != "std" && !roots.iter().any(|(n, _)| n == name) {
                         roots.push((name.to_string(), at.join(path)));
                     }
                 }
@@ -193,21 +328,15 @@ fn parse(text: &str) -> (Items, Unread) {
     (items, (diags, poisoned))
 }
 
-/// `wanted`: std modules a check of the program found it needs (see `declaring`).
-pub fn load(core: &str, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
-    let mut errors = Vec::new();
-    let (program, (program_diags, program_poisoned)) = parse(user);
-    let mut prelude = HashMap::new();
-    if let Some(text) = roots.source("std.prelude") {
-        let (items, _) = parse(&text);
-        for (module, s, _) in uses(&items) {
-            if let StmtKind::Use { names, .. } = &s.kind {
-                for n in names {
-                    prelude.insert(n.text.clone(), module.clone());
-                }
-            }
-        }
+/// `wanted`: std modules a check of the program found it needs (see `Std::declaring`).
+pub fn load(std: &Std, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
+    enum Got<'a> {
+        Std(&'a Parsed),
+        Lib(Parsed),
     }
+    let mut errors = Vec::new();
+    let prelude = std.prelude.clone();
+    let (program, program_unread) = parse(user);
     // A module and, for the program's own `use` lines, where it is named.
     let mut queue: VecDeque<(String, Option<u32>)> =
         uses(&program).map(|(m, _, at)| (m, Some(at))).collect();
@@ -222,35 +351,52 @@ pub fn load(core: &str, user: &str, roots: &Roots, wanted: &[String]) -> Loaded 
     from_prelude.sort();
     queue.extend(from_prelude.into_iter().map(|m| (m.clone(), None)));
     queue.extend(wanted.iter().map(|m| (m.clone(), None)));
-    let mut libs: Vec<(String, String, Items)> = Vec::new();
+    // A library's modules and the program are placed after std, the program last.
+    let mut next = std.end;
+    let mut place = |name: &str, text: Arc<str>, items: Items, unread: Unread| {
+        let start = next;
+        next += text.len() as u32 + 1;
+        Parsed::placed(name, start, text, items, unread)
+    };
+    let is_std = |m: &str| m.split_once('.').is_some_and(|(lib, _)| lib == "std");
+    let exists = |m: &str| match is_std(m) {
+        true => std.modules.contains_key(m),
+        false => roots.source(m).is_some(),
+    };
+    let mut got: Vec<Got> = Vec::new();
     let mut seen = HashSet::new();
     let mut edges: Vec<(String, String)> = Vec::new();
     let mut missing: Vec<(String, Option<u32>)> = Vec::new();
-    let mut lib_diags: Vec<(usize, Unread)> = Vec::new();
     // The core's traits name std types (`Ord`'s `cmp` returns `std.algebra`'s `Ordering`).
-    let (core_items, _) = parse(core);
-    queue.extend(uses(&core_items).map(|(to, _, _)| (to, None)));
+    queue.extend(uses(&std.core.items).map(|(to, _, _)| (to, None)));
     while let Some((m, at)) = queue.pop_front() {
         if !seen.insert(m.clone()) {
             continue;
         }
-        let Some(text) = roots.source(&m) else {
+        let g = match is_std(&m) {
+            true => std.module(&m).map(Got::Std),
+            false => (roots.source(&m)).map(|text| {
+                let (items, unread) = parse(&text);
+                Got::Lib(place(&m, text.into(), items, unread))
+            }),
+        };
+        let Some(g) = g else {
             // `use std.rand.Rng` is an item of `std.rand`.
             match m.rsplit_once('.') {
-                Some((module, _)) if roots.source(module).is_some() => {
-                    queue.push_back((module.to_string(), at))
-                }
+                Some((module, _)) if exists(module) => queue.push_back((module.to_string(), at)),
                 _ => missing.push((m, at)),
             }
             continue;
         };
-        let (items, unread) = parse(&text);
-        lib_diags.push((libs.len(), unread));
-        for (to, _, _) in uses(&items) {
+        let items = match &g {
+            Got::Std(p) => &p.items,
+            Got::Lib(p) => &p.items,
+        };
+        for (to, _, _) in uses(items) {
             edges.push((m.clone(), to.clone()));
             queue.push_back((to, None));
         }
-        libs.push((m, text, items));
+        got.push(g);
     }
     if let Some(m) = cycle(&edges) {
         errors.push(Msg::from(format!(
@@ -258,50 +404,42 @@ pub fn load(core: &str, user: &str, roots: &Roots, wanted: &[String]) -> Loaded 
             cpl_diag::codes::UNRESOLVED_MODULE.0
         )));
     }
-    let mut src = String::new();
-    let mut modules = Vec::new();
-    let mut add = |name: &str, text: &str, items: Vec<(u32, Vec<Stmt>)>| {
-        let base = src.len() as u32;
-        src.push_str(text);
-        src.push('\n');
-        let items = items.into_iter().map(|(o, ss)| (o + base, ss)).collect();
-        modules.push(Module {
-            name: name.to_string(),
-            start: base,
-            items,
-        });
-        base
-    };
-    add(CORE, core, core_items);
-    let mut lib_starts = Vec::new();
-    for (name, text, items) in libs {
-        lib_starts.push(add(&name, &text, items));
-    }
-    let program_start = add(PROGRAM, user, program);
-    let at = |base: u32, s: Span| Span::new(base + s.start, base + s.end);
-    let placed = |base: u32| {
-        move |m: Msg| Msg {
-            at: m.at.map(|a| at(base, a)),
-            ..m
-        }
-    };
+    let mut texts = vec![std.core.text.clone()];
+    let mut modules = vec![Module {
+        name: CORE.to_string(),
+        start: 0,
+        items: std.core.items.clone(),
+    }];
     let mut poisoned = Vec::new();
-    for (lib, (diags, p)) in lib_diags {
-        errors.extend(diags.into_iter().map(placed(lib_starts[lib])));
-        poisoned.extend(p.into_iter().map(|s| at(lib_starts[lib], s)));
+    let mut add = |p: &Parsed, errors: &mut Vec<Msg>| {
+        texts.push(p.text.clone());
+        modules.push(Module {
+            name: p.text.name.clone(),
+            start: p.text.start,
+            items: p.items.clone(),
+        });
+        errors.extend(p.unread.0.iter().cloned());
+        poisoned.extend(p.unread.1.iter().copied());
+    };
+    for g in got {
+        match g {
+            Got::Std(p) => add(p, &mut errors),
+            Got::Lib(p) => add(&p, &mut errors),
+        }
     }
-    errors.extend(program_diags.into_iter().map(placed(program_start)));
-    poisoned.extend(program_poisoned.into_iter().map(|s| at(program_start, s)));
+    let program = place(PROGRAM, user.into(), program, program_unread);
+    let program_start = program.text.start;
+    add(&program, &mut errors);
     let code = cpl_diag::codes::UNRESOLVED_MODULE.0;
     for (m, a) in missing {
         let text = format!("{code}: no module `{m}`");
         errors.push(match a {
-            Some(a) => Msg::at(at(program_start, Span::new(a, a)), text),
+            Some(a) => Msg::at(Span::new(program_start + a, program_start + a), text),
             None => Msg::from(text),
         });
     }
     Loaded {
-        src,
+        texts,
         modules,
         program_start,
         prelude,
