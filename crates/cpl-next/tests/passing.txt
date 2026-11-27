@@ -48,10 +48,12 @@ core-01/for-refutable-pattern.cp
 core-01/generator-test-counts-trues.cp
 core-01/getter-no-parens.cp
 core-01/getter-parens.cp
+core-01/grid-index-comma.cp
 core-01/guarded-arm-not-exhaustive.cp
 core-01/hash-comment.cp
 core-01/header-binders.cp
 core-01/if-elif-inline-expression.cp
+core-01/if-is-else-empty-takes-branch-type.cp
 core-01/if-let-chain-repeats-let-for-a-tuple.cp
 core-01/if-let-else-on-failed-condition.cp
 core-01/if-let-tuple-of-optionals.cp
@@ -141,6 +143,7 @@ core-01/user-none-variant.cp
 core-01/var-in-pattern.cp
 core-01/var-needs-initializer.cp
 core-01/while-let-tuple-pattern.cp
+core-01/while-test-checks-each-round.cp
 core-01/while-true-break-in-the-middle.cp
 core-02/alias-cycle-is-an-error.cp
 core-02/alias-inside-its-own-type-is-an-error.cp
@@ -150,6 +153,7 @@ core-02/array-builders.cp
 core-02/array-needs-initializer.cp
 core-02/at-is-optional-position.cp
 core-02/bare-variant-needs-expected-enum.cp
+core-02/char-is-ordered.cp
 core-02/char-of-non-ascii-traps-every-build.cp
 core-02/char-of-non-ascii-traps.cp
 core-02/condition-is-bool.cp
@@ -188,6 +192,7 @@ core-02/let-destructures-unwrapped-tuple.cp
 core-02/let-keeps-range-fits.cp
 core-02/lifted-sum-is-optional.cp
 core-02/lifted-sum-not-int.cp
+core-02/list-of-str-is-chars.cp
 core-02/list-slice-keys.cp
 core-02/local-range-type-runtime-bound.cp
 core-02/long-str-literal-is-shared-and-copied-on-write.cp
@@ -272,6 +277,7 @@ core-03/range-local-inclusive-end-fits.cp
 core-03/range-local-past-end-traps.cp
 core-03/range-param-edge-fits.cp
 core-03/range-proof-within-fn.cp
+core-03/range-value-is-int-in-arithmetic.cp
 core-03/ranged-return-const.cp
 core-03/ranged-return-stmt-traps.cp
 core-03/ranged-return-traps.cp
@@ -329,6 +335,7 @@ core-04/domain-count-predicate-is-bool.cp
 core-04/domain-drop-first.cp
 core-04/domain-is-its-range.cp
 core-04/domain-mixup.cp
+core-04/e1-list-copy-fix.cp
 core-04/e1-list-param-rejects-slice.cp
 core-04/empty-array-literal-fits-empty-domain.cp
 core-04/empty-array-literal-short-rejected.cp
@@ -338,6 +345,8 @@ core-04/first-is-optional.cp
 core-04/from-ord-after-a-checked-one-still-traps.cp
 core-04/g3-widen-keeps-indices.cp
 core-04/generic-key-callback-indexes-source.cp
+core-04/grid-rows-is-a-getter.cp
+core-04/grid-rows-view-lends-the-grid.cp
 core-04/h-filter-has-no-keys.cp
 core-04/h-map-keeps-keys.cp
 core-04/half-open-cut-range-piece.cp
@@ -353,6 +362,7 @@ core-04/list-literal-cell-outside-param-range-traps.cp
 core-04/list-literal-for-narrow-param.cp
 core-04/list-literal-of-element-type-fills.cp
 core-04/list-literal-short-for-named-domain-rejected.cp
+core-04/list-of-slice-old-key-traps.cp
 core-04/literal-outside-domain.cp
 core-04/literal-position-in-list-outside.cp
 core-04/literal-record-compare.cp
@@ -364,6 +374,8 @@ core-04/pos-arith-not-position.cp
 core-04/pos-int-is-written-value.cp
 core-04/pos-prev-next.cp
 core-04/position-ord-counts-from-zero.cp
+core-04/product-domain-array-is-the-parts-array.cp
+core-04/product-index-tuple-and-parts-same-type.cp
 core-04/range-arg-is-domain-when-nth-used.cp
 core-04/range-bound-from-capped-lets.cp
 core-04/range-key-outside-traps.cp
@@ -392,6 +404,7 @@ core-04/scalar-fill.cp
 core-04/slice-key-outside-view-traps.cp
 core-04/stored-cut-range-not-piece.cp
 core-04/trap-in-a-small-fn-names-its-frame.cp
+core-04/tuple-of-domains-indexes-pair-table.cp
 core-04/zip-keyed-by-first.cp
 core-04/zip-pairs-domains-rejected.cp
 core-05/a-closure-in-an-optional-the-callee-only-calls-borrows-its-list.cp
@@ -438,6 +451,7 @@ core-05/field-read-in-a-loop-is-not-moved.cp
 core-05/filter-map-walk-lends-parent.cp
 core-05/filter-result-lends-its-source.cp
 core-05/fn-field-call-changes-nothing.cp
+core-05/fn-returning-a-copied-list-struct-is-owned.cp
 core-05/fn-stores-lent-in-top-level-var.cp
 core-05/generator-holds-lent-arg.cp
 core-05/generator-lend-ends-at-last-use.cp
@@ -474,6 +488,7 @@ core-05/local-var-captured-by-reference.cp
 core-05/loop-item-clone-kept.cp
 core-05/loop-item-cloned-kept.cp
 core-05/loop-item-not-kept.cp
+core-05/method-returning-a-copied-list-struct-is-owned.cp
 core-05/move-in-loop-second-iteration.cp
 core-05/move-in-one-branch-then-read.cp
 core-05/move-is-per-body.cp
@@ -513,6 +528,7 @@ core-05/spec-block-plain-copy.cp
 core-05/spec-block-push-while-walked.cp
 core-05/spec-block-return-lent-param.cp
 core-05/static-constructor-keeping-param-rejects.cp
+core-05/static-constructor-result-is-owned.cp
 core-05/store-clone-in-top-level-var.cp
 core-05/store-clone-into-mut-param.cp
 core-05/store-in-top-level-var.cp
@@ -553,6 +569,7 @@ core-06/free-fn-called-as-method.cp
 core-06/function-types.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/generator-lend-ends-at-last-use.cp
+core-06/generator-lockstep-via-list.cp
 core-06/generator-no-zip.cp
 core-06/generator-value-is-recipe.cp
 core-06/generic-free-method.cp
@@ -591,9 +608,12 @@ core-06/unknown-arg-name.cp
 core-06/value-elif-chain-of-closures-calls-the-picked-one.cp
 core-06/value-if-joins-different-closures.cp
 core-06/variadic-named-args-make-record.cp
+core-06/yields-fn-loop-list-and-break.cp
+core-07/a-struct-view-at-a-bound-walks-its-own-element.cp
 core-07/adapters-and-chains.cp
 core-07/adjacent.cp
 core-07/array-equals-list.cp
+core-07/collect-keeps-keys.cp
 core-07/collect-old-key-traps.cp
 core-07/computed-negative-key-traps.cp
 core-07/count-any-all.cp
@@ -608,14 +628,18 @@ core-07/flatten.cp
 core-07/generator-expression-body-for.cp
 core-07/generator-expression-body.cp
 core-07/generator-has-no-next.cp
+core-07/grid-of-u64-by-comprehension.cp
 core-07/indexed-builtins.cp
 core-07/items-keep-keys.cp
 core-07/iterate.cp
 core-07/keys-survive-filter.cp
+core-07/list-literal-of-range-is-one-element.cp
+core-07/list-of-view-is-fresh.cp
 core-07/list-param-takes-only-list.cp
 core-07/map-calls-per-read.cp
 core-07/negative-literal-index-is-an-error.cp
 core-07/negative-literal-str-index-is-an-error.cp
+core-07/pairs.cp
 core-07/product-second-argument-is-indexed.cp
 core-07/range-has-no-source.cp
 core-07/range-indexed-not-view.cp
@@ -651,6 +675,7 @@ core-07/zip-domain-mismatch.cp
 core-07/zip-pairs-by-walk.cp
 core-07/zip-takes-a-rev.cp
 core-08/a-fn-item-passes-for-its-own-type-of.cp
+core-08/a-tuple-meets-no-constant-trait.cp
 core-08/assoc-default-names-trait-param.cp
 core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
@@ -659,6 +684,7 @@ core-08/associated-type.cp
 core-08/blanket-impl.cp
 core-08/bound-only-params-bind-from-the-impl.cp
 core-08/bound-unmet.cp
+core-08/bounds-three-ways.cp
 core-08/concrete-extension-beats-std-generic.cp
 core-08/default-arg-binds-generic-before-bounds.cp
 core-08/default-method-override-once.cp
@@ -747,6 +773,12 @@ core-09/checks-call-no-user-code.cp
 core-09/checks-off-block.cp
 core-09/checks-on-block-runs.cp
 core-09/checks-on-block.cp
+core-09/context-constant-value.cp
+core-09/context-lexical-and-uses.cp
+core-09/context-nested-with.cp
+core-09/context-precedence.cp
+core-09/context-uses-inferred-for-lambda.cp
+core-09/context-uses-two-values.cp
 core-09/division-by-zero-trap.cp
 core-09/division-nonzero-ok.cp
 core-09/domain-conversion-in-range.cp
@@ -763,11 +795,15 @@ core-09/unchecked-block.cp
 core-09/unchecked-is-statement.cp
 core-09/unwrap-none-trap.cp
 core-09/unwrap-some-ok.cp
+core-09/user-context-lexical-without-uses.cp
+core-09/uses-not-inferred-top-level.cp
+core-09/with-not-first.cp
 core-10/array-read-short-input.cp
 core-10/array-short-input.cp
 core-10/bad-token-trap.cp
 core-10/bool-not-print.cp
 core-10/bool-var-not-print.cp
+core-10/float-precision.cp
 core-10/interpolation-width.cp
 core-10/interpolation.cp
 core-10/multitest-count-past-input-traps.cp
@@ -832,6 +868,7 @@ core-12/clone-copies.cp
 core-12/closure-borrows-per-call.cp
 core-12/field-trait-get.cp
 core-12/filter-not-indexed.cp
+core-12/generator-not-keyed.cp
 core-12/indexed-access.cp
 core-12/lends-return.cp
 core-12/lent-param-escapes.cp
@@ -901,6 +938,7 @@ matrix/generic/user--inferred_static.cp
 matrix/generic/user--partial_ctor.cp
 matrix/generic/user--partial_method.cp
 matrix/generic/user--partial_static.cp
+matrix/index/cuts--builder.cp
 matrix/index/cuts--construct.cp
 matrix/index/cuts--count.cp
 matrix/index/cuts--fill.cp
@@ -934,6 +972,9 @@ matrix/index/plain--print.cp
 matrix/index/plain--read.cp
 matrix/index/plain--rev.cp
 matrix/index/plain--size.cp
+matrix/index/product--builder.cp
+matrix/index/product--rev.cp
+matrix/index/product--size.cp
 matrix/index/subset--int.cp
 matrix/optional/domain_at--default_fn.cp
 matrix/optional/domain_at--default_loop.cp
@@ -1106,6 +1147,8 @@ next/a_own_19_generic_return_lends.cp
 next/a_own_20_get_of_heap_element_lends.cp
 next/a_own_21_get_of_plain_element_copies.cp
 next/a_own_22_list_param_result_is_owned.cp
+next/a_own_23_cell_write_of_a_view_of_the_container.cp
+next/a_own_24_copy_in_its_turn.cp
 next/a_range_rt_01_store_above_end.cp
 next/a_range_rt_03_tuple_read_bounded_by_earlier.cp
 next/a_range_rt_04_tuple_read_at_bound.cp
@@ -1223,6 +1266,8 @@ next/n_engine_02_trap_in_inlined_lender_body.cp
 next/n_engine_03_inlined_param_reads_caller_local.cp
 next/n_engine_04_inlined_return_into_caller_local.cp
 next/n_engine_05_global_lent_to_inlined_method.cp
+next/n_engine_06_field_assign_from_forwarded_temp.cp
+next/n_engine_07_loop_constant_in_region_body.cp
 next/n_enum_01_values_and_order.cp
 next/n_f64_01_arith_compare_print.cp
 next/n_f64_02_inexact_literal_rejected.cp
@@ -1253,6 +1298,7 @@ next/n_inst_lent_arg_of_a_phantom_param.cp
 next/n_into_01_list_of_a_seq_converts.cp
 next/n_into_01_list_of_a_seq_converts.cp
 next/n_intr_01_word_bit_counts.cp
+next/n_into_01_list_of_a_seq_converts.cp
 next/n_lambda_01_pattern_params.cp
 next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
@@ -1399,9 +1445,6 @@ ownership/top-named-var.cp
 std-algebra/cmp-ordering.cp
 std-algebra/reversing-a-fold-with-no-rev-traps.cp
 std-algebra/unit-literal-is-unit.cp
-std-bag/sorted-bag-of-a-list-is-rejected.cp
-std-bag/sorted-map-of-pairs-is-rejected.cp
-std-bag/sorted-set-of-a-list-is-rejected.cp
 std-bitset/a-domain-is-no-bitset.cp
 std-bitset/and-of-disjoint-is-empty.cp
 std-bitset/bitor-bitand-bitxor-empty.cp
@@ -1434,6 +1477,7 @@ std-grid/dir4.cp
 std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
 std-hashmap/flatmap-is_empty-1.cp
 std-hashmap/flatmap-new-1.cp
+std-hashmap/list-of-an-int-is-rejected.cp
 std-heap/heap-of-a-list-is-rejected.cp
 std-heap/meld-heap-of-a-list-is-rejected.cp
 std-heap/min-max-heap-of-a-list-is-rejected.cp
@@ -1447,6 +1491,7 @@ std-marks/arena-reserve-1.cp
 std-math/bit-len-edges.cp
 std-math/bit-past-63-repeats-the-sign.cp
 std-math/ceil-div-signs.cp
+std-math/choose-out-of-range.cp
 std-math/choose2-negative-is-zero.cp
 std-math/choose2-overflow-traps.cp
 std-math/choose2-zero-and-overflow-free.cp
@@ -1497,6 +1542,7 @@ std-seq/last_true-1.cp
 std-seq/map-of-a-list-is-indexed-through-its-source.cp
 std-seq/max-min-take-any-count.cp
 std-seq/mean-empty-none.cp
+std-seq/pairs-all-and-count-default.cp
 std-seq/present-1.cp
 std-seq/reduce-1.cp
 std-seq/seq-u05-monotone-transition.cp
@@ -1508,6 +1554,7 @@ std-seq/seq-u36-fold-without-identity.cp
 std-seq/seq-u42-pieces-over-domain.cp
 std-seq/seq-u56-map-filter.cp
 std-seq/seq-u59-generators.cp
+std-seq/seq-u65-construct.cp
 std-seq/seq-u70-position-wrong-domain-rejected.cp
 std-seq/seq-u9-fold-seed.cp
 std-seq/sized-bound-met-by-std-impls-for-built-ins.cp
@@ -1527,6 +1574,7 @@ tools-cli/exit-0-no-errors.cp
 tools-cli/exit-1-on-errors.cp
 tools-cli/exit-3-trap.cp
 tools-fmt-lint/lint-never-blocks-run.cp
+traits/Add/MaxSub--add.cp
 traits/Add/Vec--add.cp
 traits/Add/Vec3--add.cp
 traits/Bidir/Filtered--iter_rev.cp
@@ -1565,6 +1613,7 @@ traits/Indexed/Zipped--keys.cp
 traits/IndexedMut/Array--at.cp
 traits/IndexedMut/List--at.cp
 traits/IndexedMut/Str--at.cp
+traits/Into/Subset--into.cp
 traits/Keyed/Array--items.cp
 traits/Keyed/Filtered--items.cp
 traits/Keyed/Items--items.cp
@@ -1582,9 +1631,13 @@ traits/Neg/Vec3--neg.cp
 traits/Op/Group--folds.cp
 traits/Op/Group--lift.cp
 traits/Op/Group--op.cp
+traits/Op/Semigroup--folds.cp
+traits/Op/Semigroup--lift.cp
+traits/Op/Semigroup--op.cp
 traits/Positional/Mapped--nth.cp
 traits/Positional/Rebased--nth.cp
 traits/Positional/Slice--nth.cp
+traits/Reversible/MaxSub--rev.cp
 traits/Seq/Array--iter.cp
 traits/Seq/Domain--iter.cp
 traits/Seq/Filtered--iter.cp
