@@ -33,6 +33,15 @@ pub enum CTy {
     RangeTo(Box<CTy>, i64, i64),
     Error,
 }
+impl CTy {
+    /// The value a slot of this type holds: a lent mark applies to slots, not values.
+    pub fn unlent(&self) -> &CTy {
+        match self {
+            CTy::Lent(t) => t,
+            t => t,
+        }
+    }
+}
 pub type CSet = Vec<InstKey>;
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct InstKey {

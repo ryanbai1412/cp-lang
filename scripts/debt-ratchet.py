@@ -1394,6 +1394,26 @@ def next_oracle_callers(root: Path) -> list[str]:
     return out
 
 
+
+NEXT_REPR_HOME = ("crates/cpl-next-ir/src/prog.rs", "crates/cpl-next-ir/src/ty.rs")
+
+
+def next_repr_second_defs(root: Path) -> list[str]:
+    """Definitions of a value-representation predicate (`unlent`, `plain`, `plain_in`, `stores`)
+    outside the IR's one classifier (`Program::holds` and its readers, `CTy::unlent`,
+    `Ty::unlent`), in the new pipeline's non-test code: every pass and backend reads the one
+    answer (1 PM audit). Counts definitions by name, so a wrapper with the same name counts."""
+    pat = re.compile(r"^\s*(pub(\([a-z]+\))? )?fn (unlent|plain|plain_in|stores)\b")
+    out = []
+    for f in _rs_files(root, tests=False):
+        rel = _rel(root, f)
+        if not rel.startswith("crates/cpl-next") or rel in NEXT_REPR_HOME:
+            continue
+        for i, l in enumerate(_lines(f), 1):
+            if pat.match(l):
+                out.append(f"{rel}:{i}")
+    return out
+
 def next_core_standin_lines(root: Path) -> list[str]:
     """Lines of `crates/cpl-next/std.cp`, the private stand-in for core: std loads like any
     library through the module loader, so this reaches 0 when core lives in std/."""
@@ -4116,6 +4136,7 @@ COUNTERS = {
     "next_handoff_side_fields": ("front-end tables the lower -> link handoff carries beside the IR (Core)", next_handoff_side_fields, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
+    "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
     "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),

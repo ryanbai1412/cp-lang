@@ -251,7 +251,7 @@ impl Lw<'_> {
                     e.ty = match (&e.ty, t) {
                         (Ty::Ref(_), t @ Ty::Lent(_)) if whole => t,
                         (_, t) if whole => mark_lent(&e.ty, &t),
-                        (_, t) => unlent(mark_lent(&e.ty, &t)),
+                        (_, t) => mark_lent(&e.ty, &t).unlent().clone(),
                     };
                 }
             }
@@ -283,7 +283,7 @@ impl Lw<'_> {
                         }
                         .ty(ret);
                         // A result held directly is its own storage, not a lent slot.
-                        e.ty = unlent(mark_lent(&e.ty, &ret));
+                        e.ty = mark_lent(&e.ty, &ret).unlent().clone();
                     }
                 }
             }
@@ -432,7 +432,7 @@ impl Lw<'_> {
             Place::Local(l) => fr.locals.get(*l).cloned(),
             Place::Global(g) => self.globals.get(*g).cloned(),
             Place::Field(b, i) => {
-                let Ty::Struct(d, ts, ss) = unlent(self.place_ty(fr, b)?) else {
+                let Ty::Struct(d, ts, ss) = self.place_ty(fr, b)?.unlent().clone() else {
                     return None;
                 };
                 let s = self.d.s(d);
@@ -474,13 +474,6 @@ fn placed<T>(a: &Arg<T>) -> bool {
     match a {
         Arg::View(_) | Arg::Lend(_) => true,
         Arg::Value(v) => matches!(v.kind, EK::Pass(_, true, _)),
-    }
-}
-
-fn unlent(t: Ty) -> Ty {
-    match t {
-        Ty::Lent(t) => *t,
-        t => t,
     }
 }
 

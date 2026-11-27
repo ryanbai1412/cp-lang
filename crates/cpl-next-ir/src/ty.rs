@@ -61,6 +61,15 @@ pub enum Ty {
     Var(usize),
     Error,
 }
+impl Ty {
+    /// The value a slot of this type holds: a lent mark applies to slots, not values.
+    pub fn unlent(&self) -> &Ty {
+        match self {
+            Ty::Lent(t) => t,
+            t => t,
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SetTy {

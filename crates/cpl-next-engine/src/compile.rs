@@ -35,12 +35,6 @@ fn kind(t: &CTy) -> Kind {
         _ => Kind::Other,
     }
 }
-fn unlent(t: &CTy) -> &CTy {
-    match t {
-        CTy::Lent(t) => t,
-        t => t,
-    }
-}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Leave {
@@ -1158,11 +1152,11 @@ impl Fc<'_> {
             self.ops.push(Op::At { line });
         }
         let first_ty = match args.first() {
-            Some(Arg::Value(v)) => unlent(&v.ty).clone(),
-            Some(Arg::View(p) | Arg::Lend(p)) => unlent(&self.place_ty(p)).clone(),
+            Some(Arg::Value(v)) => v.ty.unlent().clone(),
+            Some(Arg::View(p) | Arg::Lend(p)) => self.place_ty(p).unlent().clone(),
             None => CTy::Unit,
         };
-        let elem = |fc: &mut Self, t: &CTy| match unlent(t) {
+        let elem = |fc: &mut Self, t: &CTy| match t.unlent() {
             CTy::Raw(e) => Some(fc.lay(e)),
             _ => None,
         };
@@ -1426,7 +1420,7 @@ impl Fc<'_> {
             ),
             Place::Field(b, i) | Place::Variant(b, i) => {
                 let (mut root, mut steps, t) = self.walk(b);
-                let t = unlent(&t).clone();
+                let t = t.unlent().clone();
                 let lay = self.lay(&t);
                 let at = self.c.lays.part(lay, *i).map_or(0, |(at, _)| at);
                 off(&mut root, &mut steps, at);
@@ -1445,7 +1439,7 @@ impl Fc<'_> {
             Place::Deref(b) => {
                 let (root, mut steps, t) = self.walk(b);
                 steps.push(Step::Deref);
-                let t = match unlent(&t) {
+                let t = match t.unlent() {
                     CTy::Ref(t) => (**t).clone(),
                     _ => CTy::Error,
                 };
@@ -1453,11 +1447,11 @@ impl Fc<'_> {
             }
             Place::Through(b) => {
                 let (root, steps, t) = self.walk(b);
-                (root, steps, unlent(&t).clone())
+                (root, steps, t.unlent().clone())
             }
             Place::Slot(b, l) => {
                 let (root, mut steps, t) = self.walk(b);
-                let t = match unlent(&t) {
+                let t = match t.unlent() {
                     CTy::Raw(e) => (**e).clone(),
                     _ => CTy::Error,
                 };

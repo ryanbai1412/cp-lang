@@ -12,14 +12,6 @@ pub use cpl_next_ir::prog::{parts, CSet, CTy, InstKey, Program};
 
 mod share;
 
-/// A value held directly, not in a slot, is its own storage: a lent mark applies to slots.
-fn unlent(t: CTy) -> CTy {
-    match t {
-        CTy::Lent(t) => *t,
-        t => t,
-    }
-}
-
 struct Link<'a> {
     /// The type of a slot a value of a type is lent in: ownership's rule (`cpl_next_own`).
     lent: &'a Lend,
@@ -164,7 +156,10 @@ pub fn link(
         targs: &[],
         sets: &[],
     };
-    l.globals = globals.iter().map(|t| unlent(l.ty(t, &none))).collect();
+    l.globals = globals
+        .iter()
+        .map(|t| l.ty(t, &none).unlent().clone())
+        .collect();
     let main = l.intern(InstKey {
         func: FuncKey::Main,
         targs: vec![],
@@ -292,7 +287,7 @@ impl Link<'_> {
         let locals: Vec<CTy> = (f.locals.iter().enumerate())
             .map(|(i, t)| match self.ty(t, env) {
                 t if lent_caps.contains(&i) => t,
-                t => unlent(t),
+                t => t.unlent().clone(),
             })
             .collect();
         self.frame = locals.clone();
@@ -305,7 +300,7 @@ impl Link<'_> {
             vars: f.vars.clone(),
             locals,
             body: self.block(&f.body, env),
-            ret: unlent(self.ty(&f.ret, env)),
+            ret: self.ty(&f.ret, env).unlent().clone(),
             region: f.region.as_ref().map(|(lend, t)| (*lend, self.ty(t, env))),
             line: f.line,
             sites: f.sites.clone(),
@@ -400,7 +395,7 @@ impl Link<'_> {
                 let ts: Vec<CTy> = (ts.iter().enumerate())
                     .map(|(i, t)| match self.targ(t, env) {
                         t if held.contains(&i) => t,
-                        t => unlent(t),
+                        t => t.unlent().clone(),
                     })
                     .collect();
                 let ss: Vec<CSet> = ss.iter().map(|s| self.set(s, env)).collect();
@@ -425,8 +420,10 @@ impl Link<'_> {
                 out
             }
             Ty::Fn(ps, r, s) => CTy::Fn(
-                ps.iter().map(|p| unlent(self.ty(p, env))).collect(),
-                Box::new(unlent(self.ty(r, env))),
+                ps.iter()
+                    .map(|p| self.ty(p, env).unlent().clone())
+                    .collect(),
+                Box::new(self.ty(r, env).unlent().clone()),
                 self.set(s, env),
             ),
             Ty::Clo(c) => {
@@ -787,7 +784,7 @@ impl Link<'_> {
     /// Whether `t` meets trait `tr` at `args` in this instance: an impl fits it, or the type
     /// meets the trait without one (a domain, for `Domain`).
     fn has_bound(&mut self, t: &Ty, tr: TraitId, args: &[Ty], env: &Env) -> bool {
-        let st = unlent(self.targ(t, env));
+        let st = self.targ(t, env).unlent().clone();
         let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
             .map(|a| self.targ(a, env))
             .collect();
@@ -809,7 +806,7 @@ impl Link<'_> {
         self_ty: &Ty,
         env: &Env,
     ) -> Option<InstKey> {
-        let st = unlent(self.targ(self_ty, env));
+        let st = self.targ(self_ty, env).unlent().clone();
         // `Self` of a trait's fn as an item nothing calls (`+` as a value): nothing runs it.
         if st == CTy::Error {
             return None;

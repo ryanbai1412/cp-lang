@@ -578,7 +578,7 @@ pub(crate) fn field_trait_impls(
                         && m.decorators.iter().any(|d| d.name.text == GETTER) =>
                 {
                     (f.ret.as_ref())
-                        .filter(|t| plain(t))
+                        .filter(|t| writable(t))
                         .map(|t| (f.name.text.as_str(), t))
                 }
                 _ => None,
@@ -663,14 +663,14 @@ pub(crate) fn field_trait_impls(
 }
 
 /// A field type an impl can write as it is: no `Self`, no associated type.
-fn plain(t: &ast::Type) -> bool {
+fn writable(t: &ast::Type) -> bool {
     match &t.kind {
         TypeKind::Named { name, args } => {
-            !name.text.starts_with("Self") && !name.text.contains('.') && args.iter().all(plain)
+            !name.text.starts_with("Self") && !name.text.contains('.') && args.iter().all(writable)
         }
-        TypeKind::Optional(e) => plain(e),
-        TypeKind::Tuple(ts) => ts.iter().all(plain),
-        TypeKind::Array { index, elem } => index.iter().chain([&**elem]).all(plain),
+        TypeKind::Optional(e) => writable(e),
+        TypeKind::Tuple(ts) => ts.iter().all(writable),
+        TypeKind::Array { index, elem } => index.iter().chain([&**elem]).all(writable),
         _ => false,
     }
 }

@@ -1609,7 +1609,7 @@ pub(crate) fn check(
 ) -> Owned {
     let mut owned = run(d, generic, p, globals);
     owned.errors.extend(cache_calls(d, generic));
-    owned.errors.extend(unlent(p));
+    owned.errors.extend(lenders_lend(p));
     if p.errors.is_empty() {
         owned.errors.extend(escape(d, generic, p));
     }
@@ -1618,7 +1618,7 @@ pub(crate) fn check(
 
 /// A lender lends one place on every path through it: its one expression, or a `lend mut`
 /// (R05.6.3). A path that leaves without one would lose the caller's write.
-fn unlent(p: &Program) -> Vec<Msg> {
+fn lenders_lend(p: &Program) -> Vec<Msg> {
     /// Whether a path through `b` reaches its end, and whether one leaves the fn, unlent.
     fn gap(b: &[Stmt<CTy>]) -> (bool, bool) {
         let (mut on, mut left) = (true, false);
