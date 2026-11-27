@@ -422,29 +422,43 @@ impl Cx<'_> {
         let i = self.index_arg(&b.ty, i);
         let rt = self.shallow(&b.ty);
         let lends = |f: &decls::FnDecl| matches!(f.region, Some((true, _)));
-        let Some(decls::Member::Method(m, ts, ss)) = self.d.impl_member_by(&rt, INDEX_READ, lends)
-        else {
-            if !matches!(rt, Ty::Error) {
-                let why: Msg = if matches!(rt, Ty::Param(_)) {
-                    Unbuilt::WriteParamCell.into()
-                } else {
+        // A type parameter's cell is lent by the method of its bound; anything else's by its impl.
+        let read = INDEX_READ;
+        let d = self.d;
+        let bound = match rt {
+            Ty::Param(p) => (self.bound_traits(p).into_iter()).find_map(|tr| {
+                let m = *d.traits[tr.tr.0].methods.get(read)?;
+                lends(d.f(m)).then_some((tr, m))
+            }),
+            _ => None,
+        };
+        let (callee, decl, tys, sets) = if let Some((tr, m)) = bound {
+            self.reach(m);
+            let mut tys = vec![b.ty.clone()];
+            tys.extend(tr.args.iter().cloned());
+            (Callee::Trait(tr, read.to_string()), m, tys, Vec::new())
+        } else {
+            let Some(decls::Member::Method(m, ts, ss)) = d.impl_member_by(&rt, read, lends) else {
+                if !matches!(rt, Ty::Error) {
                     let shown = self.show(&rt);
-                    Msg::verdict(
+                    let why = Msg::verdict(
                         cpl_diag::codes::NOT_INDEXABLE,
                         format!("`{shown}` has no `IndexedMut` impl, so `[]` on it is not a place"),
-                    )
-                };
-                self.err(span, why);
-            }
-            return;
+                    );
+                    self.err(span, why);
+                }
+                return;
+            };
+            let f = self.fnref(m, ts, ss);
+            self.oblige(&f, span);
+            self.solve(false);
+            let (decl, tys, sets) = (f.decl, f.targs.clone(), f.sets.clone());
+            (Callee::Fn(f), decl, tys, sets)
         };
-        let f = self.fnref(m, ts, ss);
-        self.oblige(&f, span);
-        self.solve(false);
-        let fd = self.d.f(f.decl);
+        let fd = d.f(decl);
         let sub = Subst {
-            tys: &f.targs,
-            sets: &f.sets,
+            tys: &tys,
+            sets: &sets,
         };
         let i = self.coerce(i, &sub.ty(&fd.params[0].ty));
         let elem = sub.ty(&fd.region.as_ref().map_or(Ty::Error, |(_, t)| t.clone()));
@@ -465,7 +479,7 @@ impl Cx<'_> {
         );
         self.scopes.pop();
         out.push(TStmt::Region {
-            callee: Callee::Fn(f),
+            callee,
             recv: Some(Box::new(TArg::Mut(b))),
             args: vec![TArg::Value(i)],
             var,

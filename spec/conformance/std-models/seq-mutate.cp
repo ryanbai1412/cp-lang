@@ -11,6 +11,7 @@
 // model: subtract
 // model: next_permutation
 // model: prev_permutation
+// model: swap_idx
 use std.rand.{Rng}
 
 fn lex_less(a: List<Int>, b: List<Int>) -> Bool:
@@ -30,7 +31,7 @@ var s: Set<Int> = Set()
 var sb = [false for _ in 0..8]
 var bad = ""
 for op in 0..n:
-    let k = rng.int(0, 13 - 1)
+    let k = rng.int(0, 14 - 1)
     let x = rng.int(0, 10 - 1) - 3
     var why = ""
     if k == 0 and a.len < 12:
@@ -120,6 +121,11 @@ for op in 0..n:
         let moved = if fwd: p.next_permutation() else: p.prev_permutation()
         let want = best ?? (if fwd: before.sorted() else: before.sorted().rev.collect())
         if moved != (best != None) or p != want: why = "{if fwd: "next" else: "prev"}_permutation {before}"
+    elif k == 13 and a.len > 0:
+        let (i, j) = (rng.int(0, a.len - 1), rng.int(0, a.len - 1))
+        let want = [if t == i: a[j] elif t == j: a[i] else: a[t] for t in 0..a.len]
+        a.swap_idx(i, j)
+        if a != want: why = "swap_idx {i} {j}"
     if why == "":
         for key in 0..8:
             if m.get(key) != (if mb[key] == -1: None else: Some(mb[key])): why = "map at {key}"

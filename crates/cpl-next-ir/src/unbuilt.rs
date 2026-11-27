@@ -30,7 +30,6 @@ pub enum Unbuilt {
     RangeOfEnds {
         ty: String,
     },
-    WriteParamCell,
     SliceOpenEnd,
     ByOnWalk,
     RangeTypeOutsideBody,
@@ -183,7 +182,6 @@ impl fmt::Display for Unbuilt {
             LambdaMakesLambda => write!(f, "a lambda that makes a lambda with its own parameters"),
             TableOverIndex => write!(f, "a table over this index"),
             RangeOfEnds { ty } => write!(f, "a range value with `{ty}` ends"),
-            WriteParamCell => write!(f, "writing a cell of a type parameter"),
             SliceOpenEnd => write!(f, "a slice with an end left out needs core's `@index` fn of the ends"),
             ByOnWalk => write!(f, "`by` on a walk that is not a range"),
             RangeTypeOutsideBody => write!(f, "a range type whose ends are not constants, outside a body"),

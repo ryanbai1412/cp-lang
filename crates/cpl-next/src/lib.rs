@@ -868,6 +868,14 @@ mod tests {
         assert!(body != 0 && body != site);
         assert_eq!(g.sites[body as usize].item.name.as_ref(), "f");
     }
+    /// A cell of a type parameter is written through its `IndexedMut` bound, and the key's
+    /// domain comes through the bound's supertraits.
+    #[test]
+    fn a_cell_of_a_type_parameter_is_written_through_its_bound() {
+        let src = "fn w<S: IndexedMut<D, T>, D: Domain, T>(mut s: S, i: Int, x: T):\n    s[s.keys.nth(i)] = x\nvar q = [1, 2, 3]\nw(mut q, 1, 9)\nprint(q[1])\n";
+        let f = front(&Std::read(), src, &Roots::std());
+        assert!(f.diags.is_empty(), "{:?}", f.diags);
+    }
     #[test]
     fn syntax_error_is_placed_in_the_program() {
         let d = &diags("let a = 1\nlet = 2\n")[0];

@@ -289,11 +289,11 @@ pub fn rfind<S: Bidir<T>, T>(self: S, p: T -> Bool) -> ?T:
     None
 
 // `sort(cmp:)`'s body, apart so that no key type is solved for it: `T` needs no `Ord`.
-fn sort_cmp<S: IndexedMut, T>(mut self: S, before: (T, T) -> Bool):
+fn sort_cmp<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, before: (T, T) -> Bool):
     let n = self.len
     let ks = self.keys
     var a: List<T> = [self[k] for k in ks]
-    var b = a.clone()
+    var b: List<T> = [self[k] for k in ks]
     let in_a = merge_passes(mut a, mut b, n, before)
     var t = 0
     for k in ks:
@@ -314,7 +314,7 @@ fn sort_cmp<S: IndexedMut, T>(mut self: S, before: (T, T) -> Bool):
 /// example: `var a = [(3, 1), (1, 2), (2, 2)]; a.sort(cmp: (p, q) => p.0 * q.1 < q.0 * p.1); a == [(1, 2), (2, 2), (3, 1)]`
 /// example: `var a = [2, 1]; a.sort(cmp: (x, y) => x <= y); a == [1, 2]` (traps R0001)
 /// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0309)
-pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
+pub fn sort<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
     if let before = cmp: return sort_cmp(mut self, before)
     // One buffer: each key with its position, heap-sorted in place (ties go by
     // position, so the order is stable), then the elements moved by its cycles.
@@ -522,7 +522,7 @@ pub fn partition<S: Seq<T>, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
 /// ties: `var a = [2, 1, 2, 1]; a.select(2); a.nth(2) == 2`
 /// traps: when `k` is not in `0..self.len`
 /// example: `var a = [5, 1, 4, 2]; a.select(1); a.nth(1) == 2`
-pub fn select<S: IndexedMut, T, K>(
+pub fn select<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(
     mut self: S,
     k: Int,
     by: T -> K = x => x,
@@ -559,7 +559,7 @@ pub fn select<S: IndexedMut, T, K>(
         elif k >= i: lo = i
         else: return
 
-fn heap_select<S: IndexedMut, T>(mut self: S, lo: Int, hi: Int, k: Int, less: (T, T) -> Bool):
+fn heap_select<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, lo: Int, hi: Int, k: Int, less: (T, T) -> Bool):
     let m = hi - lo
     var start = m / 2 - 1
     while start >= 0:
@@ -573,7 +573,7 @@ fn heap_select<S: IndexedMut, T>(mut self: S, lo: Int, hi: Int, k: Int, less: (T
     if end >= 0:
         self.swap_idx(lo, lo + end)
 
-fn sift_down<S: IndexedMut, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T, T) -> Bool):
+fn sift_down<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T, T) -> Bool):
     var i = from
     while true:
         var c = 2 * i + 1
@@ -873,7 +873,7 @@ pub fn rotated_right<S: Seq<T>, T>(self: S, k: Int) -> List<T>:
 /// ties: `var a = [1, 2, 1]; a.next_permutation() and a == [2, 1, 1]`
 /// traps: never
 /// example: `var a = [1, 2, 3]; a.next_permutation() and a == [1, 3, 2]`
-pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
+pub fn next_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> Bool:
     var i = self.len - 2
     while i >= 0 and not (self.nth(i) < self.nth(i + 1)): i -= 1
     if i < 0:
@@ -899,7 +899,7 @@ pub fn next_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// ties: `var a = [2, 1, 1]; a.prev_permutation() and a == [1, 2, 1]`
 /// traps: never
 /// example: `var a = [1, 3, 2]; a.prev_permutation() and a == [1, 2, 3]`
-pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
+pub fn prev_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> Bool:
     var i = self.len - 2
     while i >= 0 and not (self.nth(i + 1) < self.nth(i)): i -= 1
     if i < 0:
@@ -929,7 +929,7 @@ pub fn prev_permutation<S: IndexedMut>(mut self: S) -> Bool:
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [2, 3]`
-pub fn runs<S: Indexed, T, K>(
+pub fn runs<S: Indexed<D, T>, D: Domain, T, K>(
     self: S,
     by: T -> K = x => x,
     link: ?((T, T) -> Bool) = None,
@@ -1355,6 +1355,20 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
     self[i] = self[j]
     self[j] = t
 
+/// Swap positions `i` and `j` of any `IndexedMut`, counted from 0, in place; a no-op when
+/// `i == j`.
+///
+/// cost: \(O(1)\)
+/// traps: when `i` or `j` is not in `0..self.len`
+/// example: `var a = [1, 2, 3]; a.swap_idx(0, 2); a == [3, 2, 1]`
+/// empty: `var a: List<Int> = []; a.swap_idx(0, 0); a == []` (traps R0101)
+pub fn swap_idx<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, i: Int, j: Int):
+    let (a, b) = (self.keys.nth(i), self.keys.nth(j))
+    if i == j: return
+    let t = self[a]
+    self[a] = self[b]
+    self[b] = t
+
 /// `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of
 /// `[if i < a.len: a[i] else: Z(0) for i in 0..size]`. Works on any `Indexed` sequence. \(O(n)\).
 ///
@@ -1363,7 +1377,7 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 /// order: a new `List`, keyed from 0
 /// traps: when `n < 0` or `n >= 2^31`
 /// example: `[1, 2, 3].resized(5, 0) == [1, 2, 3, 0, 0]`
-pub fn resized<S: Indexed, T>(self: S, n: Len, fill: T) -> List<T> = [
+pub fn resized<S: Indexed<D, T>, D: Domain, T>(self: S, n: Len, fill: T) -> List<T> = [
     if i < self.len: self.nth(i) else: fill for i in 0..n
 ]
 
@@ -1871,7 +1885,7 @@ pub fn take_last<S: Indexed>(self: S, k: Len) -> Slice<S> = piece(
 /// empty: `let a: List<Int> = []; a.nth(0) == 0` (traps R0101)
 /// traps: when `k` is not in `0..self.len`
 /// example: `[5, 6, 7][1..].nth(0) == 6`
-pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
+pub fn nth<S: Indexed<D, T>, D: Domain, T>(self: S, k: Int) -> T = self.at(self.keys.nth(k))
 
 impl<S: Indexed<K, T>, K: Domain, T> Seq<T> for Slice<S>:
     fn iter(self) -> yields T:
@@ -2388,7 +2402,7 @@ pub fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yie
 /// order: left to right
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks_padded(2, 0).collect() == [[1, 2], [3, 0]]`
-pub fn chunks_padded<S: Indexed, T>(self: S, k: 1.., pad: T) -> yields List<T>:
+pub fn chunks_padded<S: Indexed<D, T>, D: Domain, T>(self: S, k: 1.., pad: T) -> yields List<T>:
     assert k >= 1
     var i = 0
     while i < self.len:
@@ -2588,7 +2602,7 @@ fn keep_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K, first: ((K, Int, T), (K,
 /// order: kept elements in `0..mid`, the rest after, each side in unspecified order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.partition_in_place(x => x % 2 == 0) == 2`
-pub fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int:
+pub fn partition_in_place<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, keep: T -> Bool) -> Int:
     var mid = 0
     for i in 0..self.len:
         if keep(self.nth(i)):
@@ -2603,7 +2617,7 @@ pub fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int
 /// order: kept elements in `0..mid`, the rest after, each side in input order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.stable_partition_in_place(x => x % 2 == 0); a == [2, 4, 1, 3]`
-pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int:
+pub fn stable_partition_in_place<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, keep: T -> Bool) -> Int:
     var yes: List<T> = []
     var no: List<T> = []
     for i in 0..self.len:
@@ -2755,7 +2769,7 @@ pub fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
 /// order: non-decreasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `kway_merge([[1, 4], [2], [3]]) == [1, 2, 3, 4]`
-pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
+pub fn kway_merge<S: Indexed<D, T>, D: Domain, T>(lists: List<S>) -> List<T>:
     if lists.len == 0: return []
     var parts: List<List<T>> = [l.collect() for l in lists]
     while parts.len > 1:
@@ -2775,7 +2789,7 @@ pub fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>:
 /// ties: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.radix_sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
 /// traps: never
 /// example: `var a = [3, -1, 2]; a.radix_sort(); a == [-1, 2, 3]`
-pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
+pub fn radix_sort<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, by: T -> Int = x => x):
     let n = self.len
     if n <= 1: return
     var cur: List<(Int, T)> = [(by(self.nth(i)), self.nth(i)) for i in 0..n]
@@ -2814,7 +2828,7 @@ pub fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x):
 /// empty: `domain K = 0..2; var a: List<(k: K, s: Str)> = []; a.counting_sort(by: p => p.k); a == []`
 /// ties: `domain K = 0..2; var a = [(k: K(1), s: "b"), (k: K(1), s: "a")]; a.counting_sort(by: p => p.k); [p.s for p in a] == ["b", "a"]`
 /// traps: never
-pub fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K):
+pub fn counting_sort<S: IndexedMut<D, T>, D: Domain, T, K>(mut self: S, by: T -> K):
     let n = self.len
     var start: [K]Int = 0
     for i in 0..n: start[by(self.nth(i))] += 1
@@ -2986,7 +3000,7 @@ pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
 /// order: lexicographic by position
 /// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].combinations(2).collect() == [[1, 2], [1, 3], [2, 3]]`
-pub fn combinations<S: Indexed, T>(self: S, k: Len) -> yields List<T>:
+pub fn combinations<S: Indexed<D, T>, D: Domain, T>(self: S, k: Len) -> yields List<T>:
     let n = self.len
     if k > n: return
     var idx = (0..k).collect()
@@ -3018,7 +3032,7 @@ pub fn index_pairs<D>(self: Range<D>) -> yields (D, D):
 /// order: lexicographic by position
 /// traps: when `k` is not in `0..=self.len`
 /// example: `[1, 2].permutations().collect() == [[1, 2], [2, 1]]`
-pub fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T>:
+pub fn permutations<S: Indexed<D, T>, D: Domain, T>(self: S, k: ?Int = None) -> yields List<T>:
     let n = self.len
     let m = k ?? n
     let _ = [0 for _ in 0..n + 1][m]
@@ -3062,7 +3076,7 @@ pub struct SubseqStep<T>(pub items: List<T>, pruned: Bool = false):
 @lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    let s = sum(self[i] for i in 0..n if (mask >> i) & 1 == 1)\n    body", advice: "self.subsequences()", holes: "n, body")
 @lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    var s = 0\n    for i in 0..n:\n        if mask.bit(i):\n            s += self[i]\n    body", advice: "self.subsequences()", holes: "n, body")
 @lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    var s = 0\n    for i in 0..n:\n        if (mask >> i) & 1 == 1:\n            s += self[i]\n    body", advice: "self.subsequences()", holes: "n, body")
-pub fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>:
+pub fn subsequences<S: Indexed<D, T>, D: Domain, T>(self: S) -> yields SubseqStep<T>:
     let n = self.len
     var pick: List<Int> = []
     while true:
@@ -3933,7 +3947,7 @@ impl Sep<Int> for Int:
 /// example: `[p.len for p in [1, 0, 0, 2].split(0)] == [1, 0, 1]`
 /// example: `[Str(p) for p in "a,b,,c".split(',')] == ["a", "b", "", "c"]`
 /// example: `"".split(',').count() == 1`
-pub fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>:
+pub fn split<S: Indexed<D, T>, D: Domain, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>:
     var i = 0
     for j in 0..self.len:
         if sep.is_sep(self.nth(j)):

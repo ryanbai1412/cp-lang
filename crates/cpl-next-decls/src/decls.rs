@@ -638,13 +638,20 @@ fn domain_params(d: &mut Decls, from: usize) {
     }
     // Through bounds, until no trait's or fn's domain parameters grow.
     loop {
-        let trait_dom = |d: &Decls, tr: TraitId, p: usize| {
-            (d.traits[tr.0].methods.values()).any(|m| {
-                d.domain_params
-                    .get(m)
-                    .is_some_and(|ds| ds.contains(&(p + 1)))
-            })
-        };
+        // A trait's parameter is a domain when one of its methods uses it as one, or when it is
+        // passed to a supertrait's domain parameter. A supertrait's args are in the trait's own
+        // parameters, without `Self`: `IndexedMut<K, T>: Indexed<K, T>`.
+        fn trait_dom(d: &Decls, tr: TraitId, p: usize, depth: usize) -> bool {
+            let t = &d.traits[tr.0];
+            (t.methods.values())
+                .any(|m| (d.domain_params.get(m)).is_some_and(|ds| ds.contains(&(p + 1))))
+                || (depth < 8
+                    && (t.supers.iter()).any(|sup| {
+                        (sup.args.iter().enumerate()).any(|(q, a)| {
+                            *a == Ty::Param(p) && trait_dom(d, sup.tr, q, depth + 1)
+                        })
+                    }))
+        }
         let mut grew = false;
         for k in 0..d.fns.len() {
             let more: Vec<usize> = (d.fns[k].bounds.iter())
@@ -654,7 +661,7 @@ fn domain_params(d: &mut Decls, from: usize) {
                         _ => None,
                     })
                 })
-                .filter(|&(tr, p, _)| trait_dom(d, tr, p))
+                .filter(|&(tr, p, _)| trait_dom(d, tr, p, 0))
                 .map(|(_, _, j)| j)
                 .collect();
             let ds = d.domain_params.entry(FnId(k)).or_default();
