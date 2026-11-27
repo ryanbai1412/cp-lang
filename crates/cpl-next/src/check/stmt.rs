@@ -607,6 +607,27 @@ impl<'a> Cx<'a> {
                 let v = self.coerce(v, &place.ty);
                 out.push(TStmt::Assign(place, v));
             }
+            // A `const` of the program is a `let` its initializer fixes (R01.6.1).
+            StmtKind::Const {
+                name,
+                generics,
+                ty,
+                init: Some(init),
+                ..
+            } if generics.is_empty() => {
+                let kind = StmtKind::Let {
+                    mutable: false,
+                    pat: ast::Pattern {
+                        kind: PatternKind::Name(name.text.clone()),
+                        span: name.span,
+                    },
+                    ty: ty.clone(),
+                    init: Some(init.clone()),
+                    otherwise: None,
+                    guard: None,
+                };
+                self.stmt(&ast::Stmt { kind, ..s.clone() }, out)
+            }
             StmtKind::Expr(e) => {
                 if self.cell_method(e, out) {
                     return;

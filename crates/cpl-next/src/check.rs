@@ -389,17 +389,33 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
     }
     let mut main_out = Vec::new();
     let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
-    // A domain with constant ends hoists; one read at run time runs where it is written (R11.1.1).
-    let hoists = |s: &cpl_syntax::ast::Stmt| matches!(&s.kind, cpl_syntax::ast::StmtKind::Domain { def, .. } if constant_range(def));
+    // A domain with constant ends hoists, with the `const`s they read; one read at run time runs
+    // where it is written (R11.1.1).
+    let mut consts = std::collections::HashSet::new();
+    for (_, s) in main {
+        if let cpl_syntax::ast::StmtKind::Const {
+            name,
+            generics,
+            init: Some(init),
+            ..
+        } = &s.kind
+        {
+            if generics.is_empty() && constant(init, &consts) {
+                consts.insert(name.text.clone());
+            }
+        }
+    }
+    let hoists = |s: &cpl_syntax::ast::Stmt| match &s.kind {
+        cpl_syntax::ast::StmtKind::Domain { def, .. } => constant_domain(def, &consts),
+        cpl_syntax::ast::StmtKind::Const { name, .. } => consts.contains(&name.text),
+        _ => false,
+    };
     for (off, s) in main.iter().filter(|(_, s)| hoists(s)) {
         cx.item_off = *off;
         main_out.push(TStmt::Item(*off));
         cx.stmt(s, &mut main_out);
     }
     for (off, s) in main {
-        if hoists(s) {
-            continue;
-        }
         cx.item_off = *off;
         // `@!multitest`: the count is read once and everything below runs once per case.
         if cases.is_none()
@@ -420,6 +436,10 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
             if !(x.directive && x.name.text == "multitest") {
                 cx.err(s.span, format!("slice: decorator `@{}`", x.name.text));
             }
+        }
+        // A hoisted item ran above; `@!multitest` on it still divides the file here.
+        if hoists(s) {
+            continue;
         }
         let into = match &mut cases {
             Some((_, body)) => body,
@@ -679,10 +699,32 @@ impl<'a> Cx<'a> {
 }
 
 /// `lo..hi` or `lo..=hi` with integer literal ends.
-fn constant_range(e: &cpl_syntax::ast::Expr) -> bool {
+/// A literal, a `const` named in `consts`, or `+ - *` of them.
+fn constant(e: &cpl_syntax::ast::Expr, consts: &std::collections::HashSet<String>) -> bool {
+    use cpl_syntax::ast::{BinOp, ExprKind};
+    match &e.kind {
+        ExprKind::Int(_) => true,
+        ExprKind::Name(n) => consts.contains(n),
+        ExprKind::Paren(x) => constant(x, consts),
+        ExprKind::Binary { op, lhs, rhs, .. } => {
+            matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul)
+                && constant(lhs, consts)
+                && constant(rhs, consts)
+        }
+        _ => false,
+    }
+}
+
+/// `lo..hi` or `[n]` with constant ends.
+fn constant_domain(e: &cpl_syntax::ast::Expr, consts: &std::collections::HashSet<String>) -> bool {
     use cpl_syntax::ast::ExprKind;
-    let lit = |e: &Option<Box<cpl_syntax::ast::Expr>>| {
-        matches!(e.as_deref().map(|e| &e.kind), Some(ExprKind::Int(_)))
-    };
-    matches!(&e.kind, ExprKind::Range { lo, hi, step: None, .. } if lit(lo) && lit(hi))
+    let end =
+        |e: &Option<Box<cpl_syntax::ast::Expr>>| e.as_deref().is_some_and(|e| constant(e, consts));
+    match &e.kind {
+        ExprKind::Range {
+            lo, hi, step: None, ..
+        } => end(lo) && end(hi),
+        ExprKind::List(xs) => matches!(&xs[..], [x] if constant(x, consts)),
+        _ => false,
+    }
 }
