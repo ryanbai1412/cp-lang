@@ -1847,10 +1847,13 @@ impl<'a> Cx<'a> {
     /// `i` as a position of the domain `dty`; a literal that is never one is E0306 (R04.4.25).
     pub(super) fn position(&mut self, dty: Ty, i: TExpr, kind: CheckKind) -> TExpr {
         let span = i.span;
-        if let (Ty::Dom(d), TK::Int(k)) = (&dty, &i.kind) {
-            let (least, most) = self.domains[*d].within;
+        let within = match &dty {
+            Ty::Dom(d) => Some((self.domains[*d].within, self.domains[*d].name.clone())),
+            Ty::Range(lo, hi) => Some(((Some(*lo), Some(*hi)), self.show(&dty))),
+            _ => None,
+        };
+        if let (Some(((least, most), name)), TK::Int(k)) = (within, &i.kind) {
             if least.is_some_and(|l| *k < l) || most.is_some_and(|m| *k > m) {
-                let name = self.domains[*d].name.clone();
                 self.err(
                     span,
                     Msg::verdict(

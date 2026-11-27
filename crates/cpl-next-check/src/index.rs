@@ -163,7 +163,9 @@ impl Cx<'_> {
                 }
             }
         }
-        if self.shallow(&i.ty) != Ty::Int || !matches!(dty, Ty::Dom(_) | Ty::Param(_)) {
+        if self.shallow(&i.ty) != Ty::Int
+            || !matches!(dty, Ty::Dom(_) | Ty::Param(_) | Ty::Range(..))
+        {
             return i;
         }
         let span = i.span;
