@@ -425,6 +425,7 @@ fn outer_view(
         }
     }
     v.extend(own[CORE.0].iter().map(|(n, x)| (n.clone(), *x)));
+    let mut imported: HashMap<String, Named> = HashMap::new();
     for (m, s) in imports.iter().filter(|(m, _)| m.0 == mi) {
         let _ = m;
         let StmtKind::Use {
@@ -481,8 +482,16 @@ fn outer_view(
                         );
                     }
                 }
+                // Two imports of one name stay ambiguous where it is used (R08.1.4).
+                Some(x) if imported.get(&n.text).is_some_and(|y| *y != x) => {
+                    if let Some(e) = errors.as_deref_mut() {
+                        let text = format!("slice: two `use` lines import `{}`", n.text);
+                        e.push(text.into());
+                    }
+                }
                 Some(x) => {
                     v.insert(n.text.clone(), x);
+                    imported.insert(n.text.clone(), x);
                 }
                 None => {
                     if let Some(e) = errors.as_deref_mut() {

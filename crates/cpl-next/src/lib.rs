@@ -18,6 +18,7 @@ mod inst;
 mod interp;
 mod lower;
 mod modules;
+pub use modules::Roots;
 mod own;
 mod records;
 mod synth;
@@ -166,12 +167,12 @@ struct Front {
     diags: Vec<Diag>,
 }
 
-fn front(user_src: &str) -> Front {
+fn front(user_src: &str, roots: &Roots) -> Front {
     // A method the program calls that no loaded module declares loads the std modules that
     // do, and the program is read again (R11.3.4); each round loads at least one more module.
     let mut wanted: Vec<String> = Vec::new();
     loop {
-        let loaded = modules::load(STD, user_src, &wanted);
+        let loaded = modules::load(STD, user_src, roots, &wanted);
         let src = &loaded.src;
         let std_lines = src[..loaded.program_start as usize].matches('\n').count();
         // What the parser could not read is checked as error nodes; a later layer says nothing
@@ -221,7 +222,7 @@ fn front(user_src: &str) -> Front {
 }
 
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
-pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
+pub fn compile(user_src: &str, roots: &Roots, events: bool) -> Result<Compiled, Vec<Diag>> {
     let Front {
         loaded,
         d,
@@ -229,7 +230,7 @@ pub fn compile(user_src: &str, events: bool) -> Result<Compiled, Vec<Diag>> {
         g,
         diags,
         ..
-    } = front(user_src);
+    } = front(user_src, roots);
     if !diags.is_empty() {
         return Err(diags);
     }
@@ -266,8 +267,8 @@ pub struct Unit {
 
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
-pub fn units(user_src: &str) -> (Vec<Unit>, Vec<Diag>) {
-    let f = front(user_src);
+pub fn units(user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>) {
+    let f = front(user_src, roots);
     let start = f.loaded.program_start;
     let fns = (0..f.d.fns.len()).map(ty::FnId).filter(|id| {
         let fd = f.d.f(*id);
@@ -340,7 +341,7 @@ mod tests {
     use modules::PROGRAM;
 
     fn diags(src: &str) -> Vec<Diag> {
-        compile(src, false).err().expect("rejected")
+        compile(src, &Roots::std(), false).err().expect("rejected")
     }
 
     /// A diagnostic's span is in the user's file, past the library text joined before it.

@@ -218,6 +218,7 @@ dependencies = [
 name = "cpl-next"
 version = "0.3.0"
 dependencies = [
+ "cpl-config",
  "cpl-conform",
  "cpl-diag",
  "cpl-env",

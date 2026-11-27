@@ -7,6 +7,7 @@ publish.workspace = true
 
 [dependencies]
 cpl-syntax.workspace = true
+cpl-config.workspace = true
 cpl-diag.workspace = true
 cpl-judge.workspace = true
 cpl-next-ir.workspace = true

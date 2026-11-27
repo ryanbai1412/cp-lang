@@ -499,6 +499,7 @@ core-08/no-inheritance.cp
 core-08/no-macros.cp
 core-08/no-record-subtyping.cp
 core-08/one-generic-fn-at-four-types.cp
+core-08/own-module-fn-beats-equal-imported.cp
 core-08/record-exact-fields.cp
 core-08/recursion-at-the-same-type-is-fine.cp
 core-08/static-fn-default-param-mismatch.cp
@@ -861,6 +862,7 @@ next/n_lambda_04_context_fixes_params.cp
 next/n_lambda_04_recursive.cp
 next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
+next/n_library_module.cp
 next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp

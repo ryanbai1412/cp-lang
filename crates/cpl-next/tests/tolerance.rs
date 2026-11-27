@@ -16,7 +16,7 @@ fn every_unit_an_error_does_not_reach_types_and_lowers() {
     for path in &files {
         let src = std::fs::read_to_string(path).unwrap();
         let name = path.file_name().unwrap().to_string_lossy();
-        let (units, diags) = cpl_next::units(&src);
+        let (units, diags) = cpl_next::units(&src, &cpl_next::Roots::std());
         let first_line = |at: u32| {
             let from = src[..at as usize].rfind('\n').map_or(0, |i| i + 1);
             src[from..].lines().next().unwrap_or("")

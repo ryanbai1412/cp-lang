@@ -88,14 +88,11 @@ fn next(path: &Path, flags: &[&str], input: &[u8]) -> Ran {
     run(cmd, input)
 }
 
-/// Header keys that ask for something this harness does not do yet (a second file, a judge
-/// profile, a command run before the tool, a copy count, text the output must or must not
+/// Header keys that ask for something this harness does not do yet (a judge profile, a command run before the tool, a copy count, text the output must or must not
 /// hold, more than the 10 seconds every run gets): a case with one counts as refused.
 /// Every other `// word:` line is a key the harness acts on (`expect`, `input`, `tool`,
 /// `output`) or a comment, so a note added to a header never changes what a case is.
-const ASKS: [&str; 7] = [
-    "file", "judge", "before", "copies", "has", "lacks", "timeout",
-];
+const ASKS: [&str; 6] = ["judge", "before", "copies", "has", "lacks", "timeout"];
 
 /// What a case asks cpl-next for: a run, or only the checks.
 #[derive(Clone, Copy, PartialEq)]
@@ -170,7 +167,17 @@ fn verdict(path: &Path) -> (&'static str, String) {
     if matches!(&expect, Expect::Diag { code, .. } if code.starts_with('L')) {
         return ("refused", "a lint".into());
     }
-    let (verdict, detail, printed) = judged(path, &text, expect, ask);
+    let scratch = match beside_its_files(path, &text) {
+        Ok(s) => s,
+        Err(e) => return ("bad-header", e),
+    };
+    let run_at = scratch
+        .as_ref()
+        .map_or(path.to_path_buf(), |d| d.join(path.file_name().unwrap()));
+    let (verdict, detail, printed) = judged(&run_at, &text, expect, ask);
+    if let Some(d) = scratch {
+        let _ = std::fs::remove_dir_all(d);
+    }
     if verdict != "pass" {
         return (verdict, detail);
     }
@@ -181,6 +188,37 @@ fn verdict(path: &Path) -> (&'static str, String) {
         }
     }
     ("pass", String::new())
+}
+
+/// A case with `// file: PATH "TEXT"` lines runs from a scratch folder holding a copy of it
+/// and those files, which its `cp.toml` and library modules are read from.
+fn beside_its_files(path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+    let files = header_values(text, "file:");
+    if files.is_empty() {
+        return Ok(None);
+    }
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let name: String = (path.components().rev().take(2))
+        .map(|c| c.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("-");
+    let dir = here.join("../../target/cpl-next/scratch").join(name);
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::fs::write(dir.join(path.file_name().unwrap()), text).map_err(|e| e.to_string())?;
+    for spec in files {
+        let (rel, body) = (spec.split_once(char::is_whitespace))
+            .ok_or("`// file:` needs a path and a quoted body")?;
+        if rel.starts_with('/') || rel.split('/').any(|p| p == "..") {
+            return Err(format!(
+                "`// file: {rel}` must stay inside the scratch folder"
+            ));
+        }
+        let at = dir.join(rel);
+        std::fs::create_dir_all(at.parent().unwrap()).map_err(|e| e.to_string())?;
+        std::fs::write(&at, unquote(body.trim())).map_err(|e| e.to_string())?;
+    }
+    Ok(Some(dir))
 }
 
 /// The verdict on the `// expect:` line alone, and what the run that decided it printed.

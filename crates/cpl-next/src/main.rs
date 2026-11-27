@@ -2,7 +2,8 @@
 //! only compile it.
 //! Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when it is refused.
 //! For the crate's tests and for measuring; not a shipped command.
-use cpl_next::{compile, Form};
+use cpl_next::{compile, Form, Roots};
+use std::path::Path;
 
 /// Spec 9.6: the program runs on a thread with a 1 GB stack. The interpreter's frames are
 /// larger than the compiled program's, so it gets more, to never be the first to run out.
@@ -37,7 +38,9 @@ fn real_main() {
             std::process::exit(2);
         }
     };
-    let c = match compile(&src, has("--trace")) {
+    let dir = (Path::new(path).parent()).filter(|d| !d.as_os_str().is_empty());
+    let roots = Roots::from(dir.unwrap_or(Path::new(".")));
+    let c = match compile(&src, &roots, has("--trace")) {
         Ok(c) => c,
         Err(ds) => {
             for d in &ds {

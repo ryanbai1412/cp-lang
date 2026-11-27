@@ -8,6 +8,7 @@ use crate::diag::Msg;
 use cpl_diag::Span;
 use cpl_syntax::ast::{Stmt, StmtKind};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::path::{Path, PathBuf};
 
 type Items = Vec<(u32, Vec<Stmt>)>;
 /// Each syntax error with its code and where it is, and the spans the parser could not read.
@@ -55,9 +56,8 @@ pub fn declaring(names: &[String], loaded: &[Module]) -> Vec<String> {
 fn std_methods() -> &'static HashMap<String, Vec<String>> {
     static INDEX: std::sync::OnceLock<HashMap<String, Vec<String>>> = std::sync::OnceLock::new();
     INDEX.get_or_init(|| {
-        let root = format!("{}/../../std", env!("CARGO_MANIFEST_DIR"));
         let mut index: HashMap<String, Vec<String>> = HashMap::new();
-        let mut dirs = vec![(std::path::PathBuf::from(root), "std".to_string())];
+        let mut dirs = vec![(std_root(), "std".to_string())];
         while let Some((dir, module)) = dirs.pop() {
             for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
                 let path = entry.path();
@@ -104,15 +104,47 @@ fn std_methods() -> &'static HashMap<String, Vec<String>> {
     })
 }
 
-/// The pinned standard library's text of module `name` (`std.graph` is `std/graph.cp`).
-fn std_source(name: &str) -> Option<String> {
-    let rest = name.strip_prefix("std.")?;
-    let path = format!(
-        "{}/../../std/{}.cp",
-        env!("CARGO_MANIFEST_DIR"),
-        rest.replace('.', "/")
-    );
-    std::fs::read_to_string(path).ok()
+/// Where each library's modules are: `std`, the pinned stdlib, then the roots the nearest
+/// `cp.toml` at or above the program names under `[libs]` (R11.2.1).
+pub struct Roots(Vec<(String, PathBuf)>);
+
+fn std_root() -> PathBuf {
+    PathBuf::from(format!("{}/../../std", env!("CARGO_MANIFEST_DIR")))
+}
+
+impl Roots {
+    /// The pinned stdlib alone.
+    pub fn std() -> Roots {
+        Roots(vec![("std".to_string(), std_root())])
+    }
+    /// `std` and the libraries a `cp.toml` at or above `dir` names; a nearer one wins a name.
+    pub fn from(dir: &Path) -> Roots {
+        let Roots(mut roots) = Roots::std();
+        let dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+        let read = &mut |f: &Path| std::fs::read_to_string(f).ok();
+        cpl_config::find_map(&dir, read, |at, config| {
+            for line in cpl_config::table(config, "libs") {
+                let Some((name, value)) = line.pair else {
+                    continue;
+                };
+                let path = value.strip_prefix('"').and_then(|v| v.split('"').next());
+                if let Some(path) = path {
+                    if !roots.iter().any(|(n, _)| n == name) {
+                        roots.push((name.to_string(), at.join(path)));
+                    }
+                }
+            }
+            None::<()>
+        });
+        Roots(roots)
+    }
+    /// The text of module `name`: `std.graph` is `graph.cp` in std's root, `kit.m` is `m.cp`
+    /// in the root `[libs]` calls `kit`.
+    fn source(&self, name: &str) -> Option<String> {
+        let (lib, rest) = name.split_once('.')?;
+        let (_, root) = self.0.iter().find(|(n, _)| n == lib)?;
+        std::fs::read_to_string(root.join(format!("{}.cp", rest.replace('.', "/")))).ok()
+    }
 }
 
 /// Each `use` line's module, the line, and where it is written.
@@ -153,11 +185,11 @@ fn parse(text: &str) -> (Items, Unread) {
 }
 
 /// `wanted`: std modules a check of the program found it needs (see `declaring`).
-pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
+pub fn load(core: &str, user: &str, roots: &Roots, wanted: &[String]) -> Loaded {
     let mut errors = Vec::new();
     let (program, (program_diags, program_poisoned)) = parse(user);
     let mut prelude = HashMap::new();
-    if let Some(text) = std_source("std.prelude") {
+    if let Some(text) = roots.source("std.prelude") {
         let (items, _) = parse(&text);
         for (module, s, _) in uses(&items) {
             if let StmtKind::Use { names, .. } = &s.kind {
@@ -193,10 +225,10 @@ pub fn load(core: &str, user: &str, wanted: &[String]) -> Loaded {
         if !seen.insert(m.clone()) {
             continue;
         }
-        let Some(text) = std_source(&m) else {
+        let Some(text) = roots.source(&m) else {
             // `use std.rand.Rng` is an item of `std.rand`.
             match m.rsplit_once('.') {
-                Some((module, _)) if std_source(module).is_some() => {
+                Some((module, _)) if roots.source(module).is_some() => {
                     queue.push_back((module.to_string(), at))
                 }
                 _ => missing.push((m, at)),
