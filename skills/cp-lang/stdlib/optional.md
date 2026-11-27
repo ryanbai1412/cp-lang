@@ -10,6 +10,8 @@ Import: `use std.optional.{...}`.
 
 Fields: `some: Bool`, `val: T`.
 
+- `fn map<U>(self, f: T -> U) -> ?U` — one call of `f` when present; `f` of the value, kept `?`: `None` stays `None` (R02.4.1).
+
 ## Functions
 
 - `fn Some<T>(v: T) -> ?T` — `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
