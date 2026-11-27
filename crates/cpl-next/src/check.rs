@@ -187,6 +187,8 @@ pub struct LambdaInfo {
     pub ret: Ty,
     /// The fn it sits in; `None` for a top-level statement.
     pub owner: Option<FnId>,
+    /// A nested `fn`'s run of sibling `fn` statements, itself included; empty for a lambda.
+    pub group: Vec<LambdaId>,
 }
 /// A range with run-time ends: the variables that hold them, each inclusive; `None` is an open end.
 struct RangeInfo {
@@ -271,6 +273,10 @@ struct Cx<'a> {
     /// their own name, with the scope their parameters live in.
     recur: Option<String>,
     selves: Vec<(String, LambdaId, usize)>,
+    /// The nested `fn`s of the blocks being checked, by the offset of their statement; and the
+    /// one whose lambda is being made.
+    group: Vec<(u32, String, LambdaId)>,
+    nested: Option<LambdaId>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
     joining: bool,
     item_off: u32,
@@ -328,6 +334,8 @@ pub fn check(d: &Decls, main: &[(u32, ast::Stmt)], src: &str) -> Typed {
         allow_region: false,
         recur: None,
         selves: Vec::new(),
+        group: Vec::new(),
+        nested: None,
         joining: false,
         item_off: 0,
         module: d.program,

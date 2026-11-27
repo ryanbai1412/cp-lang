@@ -137,6 +137,8 @@ impl<'a> Cx<'a> {
         self.scopes.push(HashMap::new());
         let mut out = Vec::new();
         let mut value = None;
+        let outer = self.group.len();
+        self.declare_nested(&b.stmts);
         for (i, s) in b.stmts.iter().enumerate() {
             if i + 1 == b.stmts.len() {
                 if let StmtKind::Expr(e) = &s.kind {
@@ -150,6 +152,7 @@ impl<'a> Cx<'a> {
             }
             self.stmt(s, &mut out);
         }
+        self.group.truncate(outer);
         self.scopes.pop();
         let ty = value
             .as_ref()
@@ -821,6 +824,7 @@ impl<'a> Cx<'a> {
             },
             StmtKind::Break(None) => out.push(TStmt::Break),
             StmtKind::Continue(None) => out.push(TStmt::Continue),
+            StmtKind::Fn(fd) => self.nested_fn(fd, s, out),
             other => self.err(
                 s.span,
                 format!("slice: statement {}", crate::kind_name(other)),

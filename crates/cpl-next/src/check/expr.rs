@@ -1034,6 +1034,17 @@ impl<'a> Cx<'a> {
         if let Some(d) = self.domain_named(n) {
             return self.domain_value(d, span);
         }
+        if (self.group.iter()).any(|g| g.1 == n && g.0 > span.start) {
+            self.err(
+                span,
+                "slice: a nested fn named above its statement (R06.1.7)",
+            );
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
+        }
         self.err(
             span,
             format!("{}: unknown name `{n}`", cpl_diag::codes::UNRESOLVED_NAME.0),

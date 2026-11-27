@@ -165,6 +165,7 @@ impl Cx<'_> {
             span,
         };
         let mut ty = want.cloned();
+        let was_joining = self.joining;
         let mut cases: Vec<Option<TExpr>> = vec![None; variants.len()];
         let mut default: Option<TExpr> = None;
         for arm in arms {
@@ -258,9 +259,16 @@ impl Cx<'_> {
             let body = match &ty {
                 Some(t) if self.shallow(t) != Ty::Unit => self.coerce(body, t),
                 Some(_) => body,
+                // With no expected type, the arms meet in a type of their own, as an `if`'s do.
                 None => {
-                    ty = Some(body.ty.clone());
-                    body
+                    let j = self.join_ty(&body.ty.clone());
+                    self.joining = true;
+                    ty = Some(j.clone());
+                    if self.shallow(&j) != Ty::Unit {
+                        self.coerce(body, &j)
+                    } else {
+                        body
+                    }
                 }
             };
             let bt = body.ty.clone();
@@ -271,6 +279,7 @@ impl Cx<'_> {
                 None => default = default.or(Some(body)),
             }
         }
+        self.joining = was_joining;
         let ty = ty.unwrap_or(Ty::Unit);
         let missing: Vec<&str> = (variants.iter().zip(&cases))
             .filter(|(_, c)| c.is_none())

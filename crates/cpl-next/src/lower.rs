@@ -32,7 +32,10 @@ struct Lw<'a> {
     remap: HashMap<VarRef, usize>,
     lambdas: Vec<Func<Ty>>,
     /// The lambdas being lowered, each with its own value as its body makes it: its captures.
-    selves: Vec<(LambdaId, Vec<Expr<Ty>>)>,
+    /// A nested fn's siblings are in its group and share its captures.
+    selves: Vec<(Vec<LambdaId>, Vec<Expr<Ty>>)>,
+    /// What each nested fn of the blocks being lowered reads from around it, its group's together.
+    group_free: HashMap<LambdaId, BTreeSet<VarRef>>,
     errors: Vec<Msg>,
     in_main: bool,
     /// The code of one test case, once main's `Cases` is lowered.
@@ -62,6 +65,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &str, std_lines: u32)
         remap: HashMap::new(),
         lambdas: Vec::new(),
         selves: Vec::new(),
+        group_free: HashMap::new(),
         errors: Vec::new(),
         in_main: true,
         case: None,
@@ -589,7 +593,7 @@ impl Lw<'_> {
             }
             TK::FnItem(_) => mk(EK::MakeClosure(vec![])),
             TK::Itself(id) => match self.selves.last() {
-                Some((me, caps)) if me == id => mk(EK::MakeClosure(caps.clone())),
+                Some((group, caps)) if group.contains(id) => mk(EK::MakeClosure(caps.clone())),
                 _ => {
                     (self.errors).push("slice: a lambda that names the lambda around it".into());
                     mk(EK::MakeClosure(vec![]))
@@ -708,6 +712,7 @@ impl Lw<'_> {
                 }
             }
             TK::Block(ss, v) => {
+                self.group_free.extend(group_free(&self.typed.lambdas, ss));
                 for s in ss {
                     self.stmt(s, out);
                 }
@@ -1072,6 +1077,7 @@ impl Lw<'_> {
         let mut used = BTreeSet::new();
         let mut bound: BTreeSet<VarRef> = BTreeSet::new();
         free_vars(body, &mut used, &mut bound);
+        used.extend(self.group_free.get(&id).into_iter().flatten().copied());
         let saved_remap = self.remap.clone();
         let param_refs: Vec<VarRef> = params
             .iter()
@@ -1178,7 +1184,12 @@ impl Lw<'_> {
                 ty: ty.clone(),
             })
             .collect();
-        self.selves.push((id, itself));
+        let group = if info.group.is_empty() {
+            vec![id]
+        } else {
+            info.group.clone()
+        };
+        self.selves.push((group, itself));
         self.remap = remap;
         let was_main = self.in_main;
         let mut stmts = Vec::new();
@@ -1215,6 +1226,49 @@ impl Lw<'_> {
             })
             .collect()
     }
+}
+
+/// What each nested fn a block binds reads from around it, together with what its siblings do:
+/// a sibling's value is rebuilt from the same captures (R05.10.5).
+pub fn group_free(
+    lambdas: &[crate::check::LambdaInfo],
+    ss: &[TStmt],
+) -> HashMap<LambdaId, BTreeSet<VarRef>> {
+    let mut own = HashMap::new();
+    for s in ss {
+        if let TStmt::Let(
+            _,
+            TExpr {
+                kind: TK::Lambda { id, params, body },
+                ..
+            },
+        ) = s
+        {
+            if lambdas[id.0].group.is_empty() {
+                continue;
+            }
+            let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
+            free_vars(body, &mut used, &mut bound);
+            for p in params {
+                bound.insert(VarRef::Local(*p));
+                bound.insert(VarRef::Global(*p));
+            }
+            own.insert(
+                *id,
+                used.difference(&bound).copied().collect::<BTreeSet<_>>(),
+            );
+        }
+    }
+    (own.keys())
+        .map(|id| {
+            let all = (lambdas[id.0].group.iter())
+                .filter_map(|s| own.get(s))
+                .flatten()
+                .copied()
+                .collect();
+            (*id, all)
+        })
+        .collect()
 }
 
 pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<VarRef>) {

@@ -14,6 +14,7 @@ impl Cx<'_> {
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let me = self.recur.take();
+        let pre = self.nested.take();
         // A lambda passed where `?(A -> R)` is wanted is that fn, made `Some` by the coercion (R02.4.2).
         let expected = want.map(|w| {
             let w = self.shallow(w);
@@ -109,14 +110,28 @@ impl Cx<'_> {
         };
         self.ret = ret.clone();
         // The body sees its own signature, so a lambda bound by `let` can call itself (R06.2.3).
-        let id = LambdaId(self.lambdas.len());
-        self.lambdas.push(LambdaInfo {
-            params: ptys.clone(),
-            ret: ret.clone(),
-            owner: self.decl,
-        });
+        // A nested `fn` was made before its block was checked; it also sees its siblings.
+        let (id, group) = match pre {
+            Some(id) => (id, self.lambdas[id.0].group.clone()),
+            None => {
+                self.lambdas.push(LambdaInfo {
+                    params: ptys.clone(),
+                    ret: ret.clone(),
+                    owner: self.decl,
+                    group: Vec::new(),
+                });
+                (LambdaId(self.lambdas.len() - 1), Vec::new())
+            }
+        };
+        let outer_selves = self.selves.len();
+        let depth = self.scopes.len();
         if let Some(name) = me {
-            self.selves.push((name, id, self.scopes.len()));
+            self.selves.push((name, id, depth));
+        }
+        for (_, name, sib) in &self.group {
+            if *sib != id && group.contains(sib) {
+                self.selves.push((name.clone(), *sib, depth));
+            }
         }
         let mut pre = Vec::new();
         for (tmp, pat) in opens {
@@ -138,17 +153,23 @@ impl Cx<'_> {
             };
             self.stmt(&open, &mut pre);
         }
+        // A body that ends in `return` has no value of its own to give the result.
         let b = self.expr(body, Some(&ret));
-        let b = block(pre, self.coerce(b, &ret));
+        let b = match &b.kind {
+            TK::Block(ss, None) if matches!(ss.last(), Some(TStmt::Return(_))) => b,
+            _ => self.coerce(b, &ret),
+        };
+        let b = block(pre, b);
         self.ret = saved_ret;
         self.region = saved_region;
         self.loops = saved_loops;
         self.scopes.pop();
-        self.selves.retain(|s| s.1 != id);
+        self.selves.truncate(outer_selves);
         self.lambdas[id.0] = LambdaInfo {
             params: ptys,
             ret,
             owner: self.decl,
+            group,
         };
         mk(
             TK::Lambda {
@@ -175,6 +196,99 @@ impl Cx<'_> {
             self.err(span, e.text);
         }
         self.fresh_sets(&t)
+    }
+
+    /// A block's runs of `fn` statements: each fn is a lambda its `let` binds, made before the
+    /// block is checked so the fns of one run can call each other (R05.10.5).
+    pub(super) fn declare_nested(&mut self, stmts: &[ast::Stmt]) {
+        let mut run: Vec<LambdaId> = Vec::new();
+        for s in stmts.iter().map(Some).chain([None]) {
+            let fd = match s.map(|s| (&s.kind, s)) {
+                Some((StmtKind::Fn(fd), s)) if nested_gap(fd, s).is_none() => fd,
+                _ => {
+                    for id in &run {
+                        self.lambdas[id.0].group = run.clone();
+                    }
+                    run.clear();
+                    continue;
+                }
+            };
+            // Its types are reported once, where its lambda is made.
+            let quiet = |c: &mut Self, t: &ast::Type| {
+                let t = decls::body_type(c.d, c.module, &c.generics, &c.doms, t, &mut Vec::new());
+                c.fresh_sets(&t)
+            };
+            let params = (fd.params.iter())
+                .map(|p| p.ty.as_ref().map_or(Ty::Error, |t| quiet(self, t)))
+                .collect();
+            let ret = fd.ret.as_ref().map_or(Ty::Unit, |t| quiet(self, t));
+            let id = LambdaId(self.lambdas.len());
+            self.lambdas.push(LambdaInfo {
+                params,
+                ret,
+                owner: self.decl,
+                group: Vec::new(),
+            });
+            let at = s.map_or(0, |s| s.span.start);
+            self.group.push((at, fd.name.text.clone(), id));
+            run.push(id);
+        }
+    }
+
+    /// `fn f(x: T) -> R: body` in a block is `let f = (x: T) -> R => body` (R05.10).
+    pub(super) fn nested_fn(&mut self, fd: &ast::FnDecl, s: &ast::Stmt, out: &mut Vec<TStmt>) {
+        if let Some(what) = nested_gap(fd, s) {
+            self.err(s.span, format!("slice: a nested fn with {what}"));
+            self.bind(&fd.name.text, Ty::Error);
+            return;
+        }
+        let Some(&(_, _, id)) = self.group.iter().rev().find(|g| g.0 == s.span.start) else {
+            return;
+        };
+        let name = |text: &str, span| ast::Pattern {
+            kind: PatternKind::Name(text.to_string()),
+            span,
+        };
+        let body = match &fd.body {
+            FnBody::Block(b) => ast::Expr {
+                kind: ExprKind::Block(b.clone()),
+                span: b.span,
+            },
+            FnBody::Expr(e) => e.clone(),
+            FnBody::None => return,
+        };
+        let unit = ast::Type {
+            kind: TypeKind::Tuple(Vec::new()),
+            span: fd.sig_span,
+        };
+        let lambda = ast::Expr {
+            kind: ExprKind::Lambda {
+                params: (fd.params.iter())
+                    .map(|p| name(&p.name.text, p.span))
+                    .collect(),
+                param_tys: fd.params.iter().map(|p| p.ty.clone()).collect(),
+                param_mut: Vec::new(),
+                ret_ty: Some(fd.ret.clone().unwrap_or(unit)),
+                body: Box::new(body),
+            },
+            span: s.span,
+        };
+        let bind = ast::Stmt {
+            kind: StmtKind::Let {
+                mutable: false,
+                pat: name(&fd.name.text, fd.name.span),
+                ty: None,
+                init: Some(lambda),
+                otherwise: None,
+                guard: None,
+            },
+            span: s.span,
+            decorators: Vec::new(),
+            public: false,
+        };
+        self.nested = Some(id);
+        self.stmt(&bind, out);
+        self.nested = None;
     }
 
     fn lambda_ty(&self, id: LambdaId) -> Ty {
@@ -238,4 +352,32 @@ pub(super) fn tests_form(fd: &decls::FnDecl, args: &[ast::Arg]) -> Option<Vec<as
         arg(c.iter.clone()),
         arg(ast::Expr { kind: lambda, span }),
     ])
+}
+
+/// What a nested `fn` has that a lambda cannot carry yet.
+fn nested_gap(fd: &ast::FnDecl, s: &ast::Stmt) -> Option<&'static str> {
+    let odd = |p: &ast::Param| p.variadic || p.lazy || p.named_only || p.label.is_some();
+    Some(if !s.decorators.is_empty() {
+        "a decorator"
+    } else if !fd.generics.is_empty() || !fd.bounds.is_empty() {
+        "type parameters"
+    } else if fd.lends.is_some()
+        || matches!(fd.ret.as_ref().map(|t| &t.kind), Some(TypeKind::Yields(_)))
+    {
+        "a `yields` or `lends` result"
+    } else if !fd.uses.is_empty() {
+        "`uses`"
+    } else if fd.params.iter().any(|p| p.mutable) {
+        "a `mut` parameter"
+    } else if fd
+        .params
+        .iter()
+        .any(|p| odd(p) || p.ty.is_none() || p.default.is_some())
+    {
+        "a parameter a lambda cannot take"
+    } else if matches!(fd.body, FnBody::None) {
+        "no body"
+    } else {
+        return None;
+    })
 }

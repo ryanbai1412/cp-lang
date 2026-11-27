@@ -329,6 +329,7 @@ core-05/let-binds-once.cp
 core-05/let-bound-element-blocks-its-write.cp
 core-05/let-bound-element-lends-only-it.cp
 core-05/let-cannot-assign.cp
+core-05/local-fns-calling-each-other-capture-their-fn.cp
 core-05/local-var-captured-by-reference.cp
 core-05/loop-item-clone-kept.cp
 core-05/loop-item-cloned-kept.cp
@@ -342,6 +343,7 @@ core-05/mut-param-assigned-whole-replaces-caller.cp
 core-05/mut-param-needs-mut-at-call.cp
 core-05/mut-param-returned-as-a-copy-keeps-the-callers-value.cp
 core-05/mut-param-with-mut-at-call.cp
+core-05/nested-and-lambda-recursion.cp
 core-05/nested-field-let-then-parent-read.cp
 core-05/own-swap-is-not-the-mutator.cp
 core-05/param-unchanged-by-a-callee-writing-its-source.cp
@@ -422,6 +424,7 @@ core-06/shared-var-carries-across-cases.cp
 core-06/sibling-closures-reassign-and-read-a-captured-var.cp
 core-06/two-closures-share-var.cp
 core-06/unknown-arg-name.cp
+core-06/value-if-joins-different-closures.cp
 core-07/array-equals-list.cp
 core-07/computed-negative-key-traps.cp
 core-07/count-any-all.cp
@@ -809,6 +812,8 @@ next/n_lambda_02_generator_of_tests.cp
 next/n_lambda_03_optional_fn_param.cp
 next/n_lambda_04_context_fixes_params.cp
 next/n_lambda_04_recursive.cp
+next/n_lambda_05_nested_fn.cp
+next/n_lambda_06_match_joins_fns.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
 next/n_slice_01_range_gives_view.cp

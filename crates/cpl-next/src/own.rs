@@ -103,6 +103,8 @@ struct Cx<'a> {
     t: &'a Typed,
     fns: HashMap<FnId, Fx>,
     lams: HashMap<LambdaId, Fx>,
+    /// What each nested fn reads from around it, its group's together (`lower::group_free`).
+    group_free: HashMap<LambdaId, BTreeSet<VarRef>>,
     /// The fn being walked; `None` for the file body.
     cur: Option<FnId>,
     off: u32,
@@ -164,6 +166,7 @@ pub fn check(d: &Decls, t: &Typed) -> Owned {
         t,
         fns: HashMap::new(),
         lams: HashMap::new(),
+        group_free: HashMap::new(),
         cur: None,
         off: 0,
         regions: vec![],
@@ -335,9 +338,10 @@ impl Cx<'_> {
             return out;
         }
         match &e.kind {
-            TK::Lambda { params, body, .. } => {
+            TK::Lambda { id, params, body } => {
                 let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
                 crate::lower::free_vars(body, &mut used, &mut bound);
+                used.extend(self.group_free.get(id).into_iter().flatten().copied());
                 for v in used.difference(&bound) {
                     let by_ref = match v {
                         VarRef::Local(l) if params.contains(l) && self.cur.is_some() => continue,
@@ -1102,7 +1106,17 @@ impl Cx<'_> {
             TK::Block(ss, tail) => {
                 self.next += 1;
                 self.scopes.push(self.next);
+                let groups = crate::lower::group_free(&self.t.lambdas, ss);
+                self.group_free.extend(groups.clone());
                 ss.iter().for_each(|s| self.stmt(s, fx));
+                // Calling one fn of a group may run any of them.
+                for id in groups.keys() {
+                    let mut all = Fx::default();
+                    for s in &self.t.lambdas[id.0].group {
+                        all.add(self.lams.get(s).unwrap_or(&Fx::default()));
+                    }
+                    self.lams.insert(*id, all);
+                }
                 if let Some(t) = tail {
                     self.expr(t, fx)
                 }
