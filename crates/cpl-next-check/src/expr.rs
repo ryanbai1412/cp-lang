@@ -1293,8 +1293,30 @@ impl<'a> Cx<'a> {
                 None => Self::error_node(span),
             },
             ExprKind::Index { base, indices } if indices.len() == 1 => {
+                let again = self.indexed_again.take();
+                let point = |e: &ast::Expr| {
+                    !matches!(super::index::unparen(e).kind, ExprKind::Range { .. })
+                };
+                if point(&indices[0])
+                    && matches!(&super::index::unparen(base).kind,
+                        ExprKind::Index { indices: first, .. } if first.iter().all(point))
+                {
+                    self.indexed_again = Some((span, indices[0].span));
+                }
                 let b = self.expr(base, None);
+                self.indexed_again = None;
                 if self.is_error(&b.ty) {
+                    return Self::error_node(span);
+                }
+                // A point of a table's point is `g[r, c]`, never `g[r][c]` (R01.8.5).
+                if let Some((whole, j)) =
+                    again.filter(|_| point(&indices[0]) && self.is_table(&b.ty))
+                {
+                    let text = cpl_diag::msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3
+                        .say(&[&self.text(span), &self.text(j)]);
+                    let help = "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`";
+                    let code = cpl_diag::codes::REMOVED_SYNTAX;
+                    self.err_help(whole, Msg::verdict(code, text), Some(help.to_string()));
                     return Self::error_node(span);
                 }
                 if let Ty::Raw(t) = self.shallow(&b.ty) {

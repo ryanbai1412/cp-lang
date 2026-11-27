@@ -401,6 +401,8 @@ struct Cx<'a> {
     framed: Option<u32>,
     /// Set while checking the one call that may be a generator or a lender.
     allow_region: bool,
+    /// Set while checking `a[i]` of `a[i][j]`: the whole index's span and `j`'s (R01.8.5).
+    indexed_again: Option<(Span, Span)>,
     /// Where a `min=` / `max=` checked as a statement puts its `Bool`, when it is a condition.
     kept: Option<VarRef>,
     /// The name a `let` binds the lambda being checked to; and the lambdas whose bodies see
@@ -595,6 +597,7 @@ fn check_with(
         loop_frames: Vec::new(),
         framed: None,
         allow_region: false,
+        indexed_again: None,
         kept: None,
         recur: None,
         selves: Vec::new(),

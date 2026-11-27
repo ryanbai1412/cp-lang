@@ -400,6 +400,34 @@ impl Cx<'_> {
             public: false,
         })
     }
+    /// `t[i][j] = v` with `t` a table is E0503: its cell is `t[i, j]` (R01.8.5).
+    fn table_point_again(
+        &mut self,
+        t: &ast::Expr,
+        i: &ast::Expr,
+        j: &ast::Expr,
+        span: Span,
+    ) -> bool {
+        let point = |e: &ast::Expr| !matches!(unparen(e).kind, ExprKind::Range { .. });
+        if !point(i) || !point(j) {
+            return false;
+        }
+        let (seen, owed) = (self.errors.len(), self.obligations.len());
+        let probe = self.expr(t, None);
+        self.errors.truncate(seen);
+        self.obligations.truncate(owed);
+        if !self.is_table(&probe.ty) {
+            return false;
+        }
+        let first = format!("{}[{}]", self.text(t.span), self.text(i.span));
+        let text = cpl_diag::msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3
+            .say(&[&first, &self.text(j.span)]);
+        let help = "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`";
+        let code = cpl_diag::codes::REMOVED_SYNTAX;
+        self.err_help(span, Msg::verdict(code, text), Some(help.to_string()));
+        self.expr(j, None);
+        true
+    }
     /// Runs `inner` while `base[idx]` is lent as a place, through the `at` of `base`'s
     /// `IndexedMut` that lends one (R12.4.6). `inner` gets the lent cell as a name; `g[i][j]`
     /// lends `g[i]` first, then its cell `j` inside that.
@@ -412,6 +440,9 @@ impl Cx<'_> {
     ) {
         if let ExprKind::Index { base: b2, indices } = &unparen(base).kind {
             if indices.len() == 1 {
+                if self.table_point_again(b2, &indices[0], idx, span) {
+                    return;
+                }
                 let i2 = indices[0].clone();
                 let idx = idx.clone();
                 return self.through_cell(

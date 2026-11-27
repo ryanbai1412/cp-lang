@@ -656,6 +656,15 @@ impl<'a> Cx<'a> {
     fn is_tuple(&self, s: StructId) -> bool {
         self.d.tuples.values().any(|t| *t == s)
     }
+    /// Whether `t` is an array keyed by more than one axis, `[I, J]T` (R01.8.2).
+    pub(super) fn is_table(&self, t: &Ty) -> bool {
+        match self.shallow(t) {
+            Ty::Struct(a, args, _) if Some(a) == self.d.sugar.array => {
+                matches!(args.first().map(|k| self.shallow(k)), Some(Ty::Struct(k, ..)) if self.is_tuple(k))
+            }
+            _ => false,
+        }
+    }
     /// A range type with ends known only as the program runs, given for the type parameter fn
     /// `d` gives back, is its `Int`, checked into the range as it is stored (R03.1.4): no
     /// instance is its own. One given for an optional it gives back is `None` outside the range
