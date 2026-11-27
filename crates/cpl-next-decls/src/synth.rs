@@ -122,7 +122,7 @@ enum Derive<'a> {
 /// A core trait every struct gets from its fields, and how.
 pub(crate) enum Derivable {
     /// `@derive`, with its one method.
-    Each(ast::FnDecl),
+    Each(Box<ast::FnDecl>),
     /// `@derive_fields`, with core's `@pack` struct and the trait's methods.
     Fields(String, Vec<ast::FnDecl>),
 }
@@ -508,7 +508,9 @@ pub(crate) fn derive_each<'a, I: Iterator<Item = &'a ast::Stmt>>(
                 _ => None,
             });
             let how = match (&body.stmts[..], &pack) {
-                ([_], _) if marked(s, Mark::Derive) => Derivable::Each(fns.clone().next()?),
+                ([_], _) if marked(s, Mark::Derive) => {
+                    Derivable::Each(Box::new(fns.clone().next()?))
+                }
                 (_, Some(p)) if marked(s, Mark::DeriveFields) => {
                     Derivable::Fields(p.clone(), fns.collect())
                 }

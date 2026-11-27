@@ -689,17 +689,6 @@ fn cpp_name(f: Fault) -> String {
     out
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_token_read_splits_at_ascii_whitespace_only() {
-        let got: Vec<&str> = tokens(" 1\t2\n\x0b3\x0c\r\n4\u{a0}5\u{85}6 ").collect();
-        assert_eq!(got, ["1", "2", "3", "4\u{a0}5\u{85}6"]);
-    }
-}
-
 /// Every intrinsic id a std fn's `= @intrinsic(id)` may name, with the operation it is: the one
 /// table of them (R12.14.1). The primitives' ids are `cpl-prim`'s, which the old runtime shares.
 pub const INTRINSICS: &[(&str, Intr)] = &[
@@ -752,3 +741,14 @@ pub const INTRINSICS: &[(&str, Intr)] = &[
     (Prim::Round.id(), Intr::ToInt(Rounding::Round)),
     (Prim::Trunc.id(), Intr::ToInt(Rounding::Trunc)),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_token_read_splits_at_ascii_whitespace_only() {
+        let got: Vec<&str> = tokens(" 1\t2\n\x0b3\x0c\r\n4\u{a0}5\u{85}6 ").collect();
+        assert_eq!(got, ["1", "2", "3", "4\u{a0}5\u{85}6"]);
+    }
+}
