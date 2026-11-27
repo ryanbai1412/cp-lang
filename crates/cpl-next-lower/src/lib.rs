@@ -34,6 +34,9 @@ struct Lw<'a> {
     /// The globals' types, a lent mark added where one is bound to a value that lends.
     globals: Vec<Ty>,
     locals: Vec<Ty>,
+    /// The current fn's own bindings' types by the checker's numbers, as lowering refines them.
+    /// A lambda's body binds these numbers too, even inside another lambda with a table of its own.
+    fn_locals: Vec<Ty>,
     /// The names of the current fn's own bindings, empty at top level.
     tnames: Vec<String>,
     /// Which of the current fn's own bindings are `var`s.
@@ -84,6 +87,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         lent: Vec::new(),
         globals: typed.globals.iter().map(|g| g.ty.clone()).collect(),
         locals: Vec::new(),
+        fn_locals: Vec::new(),
         tnames: Vec::new(),
         mut_locals: Vec::new(),
         var_locals: Vec::new(),
@@ -145,6 +149,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         lw.made =
             matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Impl(k)) if d.impls[k].derived);
         lw.locals = tf.locals.iter().map(|l| l.ty.clone()).collect();
+        lw.fn_locals = lw.locals.clone();
         lw.tnames = tf.locals.iter().map(|l| l.name.clone()).collect();
         // R05.10.1: a closure shares `var`s, local heap values and heap parameters with the fn around it.
         lw.mut_locals = tf
@@ -1201,6 +1206,9 @@ impl Lw<'_> {
                     Place::Local(l) => {
                         if val.ty != self.locals[l] && strip_lent(&val.ty) == self.locals[l] {
                             self.locals[l] = val.ty.clone();
+                            if self.selves.is_empty() {
+                                self.fn_locals[l] = val.ty.clone();
+                            }
                         }
                         out.push(Stmt::Let(l, val))
                     }
@@ -1504,7 +1512,7 @@ impl Lw<'_> {
         let inner_base = if self.in_main {
             None
         } else {
-            Some(outer_locals.clone())
+            Some(self.fn_locals.clone())
         };
         for b in &bound {
             let ty = match b {
