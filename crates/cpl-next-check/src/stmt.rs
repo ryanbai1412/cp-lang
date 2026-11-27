@@ -1405,6 +1405,9 @@ impl<'a> Cx<'a> {
                     step: None,
                 } = &def.kind
                 else {
+                    if self.counted_domain(&name.text, def, s.span, out) {
+                        return;
+                    }
                     self.err(
                         s.span,
                         Unbuilt::DomainKind {

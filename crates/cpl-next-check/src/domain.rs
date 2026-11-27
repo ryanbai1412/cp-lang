@@ -32,6 +32,69 @@ impl Cx<'_> {
         let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
         (lo, end, within, chars)
     }
+    /// `domain V = e` where `e` is not a range: an `Int` count is `0..e`, and a type with no
+    /// positions to count is E0302 (R04.2.29). False for a form that is not built yet.
+    pub(super) fn counted_domain(
+        &mut self,
+        name: &str,
+        def: &ast::Expr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> bool {
+        let (diagnosed, owed) = (self.errors.len(), self.obligations.len());
+        let v = self.expr_as_typed(def, None);
+        let t = self.shallow(&v.ty);
+        // A form this checker cannot build yet (`read(1..=100)`, `V + K`) leaves no trace.
+        let unbuilt = |cx: &mut Self| {
+            cx.errors.truncate(diagnosed);
+            cx.obligations.truncate(owed);
+            false
+        };
+        if self.errors.len() > diagnosed {
+            return unbuilt(self);
+        }
+        let scalar = |t: &Ty| matches!(t, Ty::F64 | Ty::Bool | Ty::Char | Ty::U64 | Ty::Unit);
+        let positionless = match &t {
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => {
+                let zero = TExpr {
+                    kind: TK::Int(0),
+                    ty: Ty::Int,
+                    span: def.span,
+                };
+                let (lo, end, within) = self.typed_ends(zero, v, false);
+                self.declare_domain(name, lo, end, within, span, out);
+                return true;
+            }
+            Ty::Error => true,
+            t if scalar(t) => true,
+            // A struct of scalars holds no sequence whose elements could be positions.
+            Ty::Struct(s, args, _) if args.is_empty() => {
+                let fields = &self.d.s(*s).fields;
+                !fields.is_empty()
+                    && fields
+                        .iter()
+                        .all(|(_, f)| matches!(f, Ty::Int) || scalar(f))
+            }
+            _ => false,
+        };
+        if !positionless {
+            return unbuilt(self);
+        }
+        if t != Ty::Error {
+            let what = format!(
+                "a domain is a count, a range of `Int`s, a sequence's positions or another \
+                 domain, not `{}`",
+                self.show(&t)
+            );
+            self.err(def.span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
+        }
+        // A top-level domain decls set aside is declared here, though it has no positions.
+        if let Some(&Ty::Dom(i)) = self.doms.get(name) {
+            self.domains[i].name = name.to_string();
+        }
+        self.doms.insert(name.to_string(), Ty::Error);
+        true
+    }
     fn typed_ends(
         &mut self,
         lo: TExpr,
