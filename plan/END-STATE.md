@@ -22,8 +22,8 @@ measured, by a mutation score or a matrix with no empty cell.
 | 1 | Spec conformance | unmeasured | `next_not_passing` 2,476 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
 | 2 | Feature-by-context matrix | unmeasured | no number yet for: cells of the feature-by-context matrix with no case |
 | 3 | Corpus | unmeasured | no number yet for: corpus programs not accepted on every engine |
-| 4 | Std as a program | measured | `ir_builtin_names` 105 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 41 → 0 |
-| 5 | Checker totality | measured | `silent_unknowns` 18,176 → 0, `ir_reinfer` 12 → 0, `next_lowered` 6 → 0 |
+| 4 | Std as a program | measured | `ir_builtin_names` 105 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 40 → 0 |
+| 5 | Checker totality | measured | `silent_unknowns` 18,176 → 0, `ir_reinfer` 12 → 0, `next_lowered` 2 → 0 |
 | 6 | Ownership soundness | unmeasured | no number yet for: ownership cases wrong in either direction, written and generated |
 
 ## B. Every way of running a program agrees
@@ -50,7 +50,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 274 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
+| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 207 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
 | 18 | Events, trace and debugger | unmeasured | `trace_budget_gap` 141 → 0; no number yet for: corpus programs whose event streams differ between engines |
 | 19 | Lossless syntax | unmeasured | no number yet for: files the lossless tree does not print back byte for byte |
 | 20 | Editor under edits | unmeasured | no number yet for: edit sequences whose incremental answer differs from a fresh one |
