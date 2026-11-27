@@ -36,18 +36,14 @@ A direction a cell steps in, `Dir4` or `Dir8`: what `step` and `ray` take.
 
 The rows of a grid, made by `g.rows`; lends the grid.
 
-- `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
-- `fn at(self, r: R) -> Row<R, C, T>` — \(O(1)\)
 - `fn each(self) -> yields Row<R, C, T>` — \(O(1)\) per row; The rows in `R` order.
 
 ## `struct GridCols<R, C, T>(g: [R, C]T)`
 
 The columns of a grid, made by `g.cols`; lends the grid.
 
-- `@get fn len(self) -> Int` — \(O(1)\)
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
-- `fn at(self, c: C) -> Slice<Col<R, C, T>>` — \(O(1)\)
 - `fn each(self) -> yields Slice<Col<R, C, T>>` — \(O(1)\) per column; The columns in `C` order.
 
 ## Functions

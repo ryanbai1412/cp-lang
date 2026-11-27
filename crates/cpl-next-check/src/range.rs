@@ -344,7 +344,9 @@ impl Cx<'_> {
             (Some(lo), Some(hi)) => {
                 let first = self.expr(lo, Some(&Ty::Int));
                 let first = match self.whole_of(want) {
-                    Some(d @ Ty::Dom(_)) if step.is_none() && self.shallow(&first.ty) == Ty::Int => {
+                    Some(d @ Ty::Dom(_))
+                        if step.is_none() && self.shallow(&first.ty) == Ty::Int =>
+                    {
                         self.coerce(first, &d)
                     }
                     _ => first,
