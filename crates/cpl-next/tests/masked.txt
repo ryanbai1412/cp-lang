@@ -1,11 +1,8 @@
 core-01/compound-assign-key-evaluated-once.cp
-core-01/local-items.cp
-core-01/rejected-spellings-replacements-run.cp
 core-01/table-of-arrays-indexes-in-one-bracket.cp
 core-02/named-struct-needs-impl.cp
 core-02/named-struct-with-impl.cp
 core-02/optional-min-max-skip-none-on-either-side.cp
-core-02/rb1-q24-min-assign-into-none.cp
 core-02/rb1-q27-map-none.cp
 core-02/str-slices-concat.cp
 core-02/struct-overloaded-by-arity-has-impls.cp
@@ -13,7 +10,6 @@ core-02/unwrap-array.cp
 core-03/generic-fn-reads-a-narrow-array-at-its-width.cp
 core-03/range-type-param-conversion-traps.cp
 core-03/range-type-param-converts.cp
-core-03/spec-block-widths.cp
 core-04/a5-assign-into-range.cp
 core-04/a6-in-place-verbs.cp
 core-04/b1-rekey-generic-table.cp
@@ -41,7 +37,7 @@ core-05/call-through-a-user-lends-mut-index.cp
 core-05/exercise-14-write-while-mut-place-lent.cp
 core-05/exercise-20-segtree-lent-from-ws.cp
 core-05/lends-mut-slice-is-a-mut-place.cp
-core-05/map-entry-set-under-a-user-ord-or-cached-key.cp
+core-05/local-memo-fn-recursing-through-its-wrapper.cp
 core-05/mut-place-binding.cp
 core-05/mut-place-excludes-reads.cp
 core-05/mut-self-method-on-temporary-rejected.cp
@@ -59,17 +55,14 @@ core-06/get-fn-never-takes-a-plain-call.cp
 core-06/overloads-by-label-set-a-key-of-arity-one-stays-a-key.cp
 core-06/overloads-by-label-set-labels-fitting-none-are-an-error.cp
 core-06/overloads-by-label-set-pick-the-fitting-fn.cp
-core-07/bsearch-on-a-coalesced-map-value-is-the-list-one.cp
 core-07/generic-slice-generator-receiver-binds-source.cp
 core-07/in-place-needs-var.cp
 core-07/in-place-verb-on-a-lent-view.cp
 core-07/in-place-verbs.cp
-core-07/key-found-then-stored-through-a-path.cp
 core-07/mut-alias-of-map-key-finds-it-once.cp
 core-07/rev-keeps-keys.cp
 core-07/rev-view-is-not-indexable.cp
 core-07/run-items-literal-index-not-a-key.cp
-core-07/sized.cp
 core-07/slice-list-str-domain.cp
 core-07/sort-a-mut-slice.cp
 core-07/sorted-has-no-desc-flag.cp
@@ -102,6 +95,7 @@ core-08/self-default-getter-met-by-its-type.cp
 core-08/static-fn-struct-generic-from-lambda-body.cp
 core-08/struct-arg-reaches-new-bound-args.cp
 core-08/tuple-and-record-take-a-shape-met-traits-defaults.cp
+core-08/type-of-user-fn-item-is-selective-at-a-bound-test.cp
 core-09/context-not-constant.cp
 core-09/library-assert-holds-in-limit.cp
 core-10/a-read-array-walked-once-reads-in-order.cp
@@ -112,9 +106,7 @@ core-11/two-meaning-module-is-qualified.cp
 core-12/a-bound-reads-its-roles-off-the-trait.cp
 core-12/a-call-binds-what-a-bound-names.cp
 core-12/a-call-bound-result-is-checked.cp
-core-12/generator-not-bidir.cp
 core-12/generic-indexed-walks-with-nth.cp
-core-12/index-set-calls-set.cp
 core-12/intrinsic-math-matches-on-both-engines.cp
 core-12/sort-generator.cp
 core-13/recursive-fn-cold-tail-sorts-by-key.cp
@@ -132,6 +124,7 @@ ownership/top-temp-push-after.cp
 std-algebra/a-tuple-or-record-is-not-its-own-reverse.cp
 std-algebra/each-named-components.cp
 std-algebra/each-positional-components.cp
+std-algebra/group-of-and-point-action.cp
 std-algebra/opt-lifts-any-op-to-a-monoid.cp
 std-bag/aug-sorted-bag-set-match-brute.cp
 std-bag/bucket-count-blocks-match-brute.cp
@@ -139,7 +132,6 @@ std-bag/range-view-at-the-edges.cp
 std-bag/reserve-keeps-contents.cp
 std-bag/sorted-map-neighbours.cp
 std-bag/sortedmap-matches-array.cp
-std-beats/historic-beats-matches-brute.cp
 std-beats/queries-read-without-pushing.cp
 std-bitset/bit-trie.cp
 std-compress/wrapper-fn-fresh-domain.cp
@@ -263,7 +255,6 @@ std-models/seq-reverse.cp
 std-models/seq-sorted.cp
 std-models/seq-stack.cp
 std-models/seq-views.cp
-std-models/slope.cp
 std-models/sortedset.cp
 std-models/sparse-interval.cp
 std-models/sparse.cp
@@ -308,13 +299,10 @@ std-seq/lis-and-cartesian-tree-match-brute.cp
 std-seq/merge-sorted-by-ties-take-self-first.cp
 std-seq/merge-sorted-yields-lazily-over-views.cp
 std-seq/nearest-smaller-same-and-perm-bodies.cp
-std-seq/online-lis-mono-stack-rollback.cp
 std-seq/outermost-keeps-the-longest-of-a-left-end.cp
 std-seq/perm-inverse-list-domain.cp
 std-seq/perm-rank-partition-and-inverse.cp
 std-seq/permutations-lcs-radix-outermost.cp
-std-seq/rekey-length-mismatch-traps.cp
-std-seq/rekey-std-body-over-declared-domain.cp
 std-seq/reverse-and-join-are-std-bodies.cp
 std-seq/runs-linked-empty-and-single.cp
 std-seq/select-clip-cuts-nth-reverse.cp
@@ -323,7 +311,6 @@ std-seq/seq-u12-sort-by-key.cp
 std-seq/seq-u13-sort-order-and-ranks.cp
 std-seq/seq-u25-one-api-every-shape.cp
 std-seq/seq-u41-frequency-counts.cp
-std-seq/seq-u46-user-ord.cp
 std-seq/seq-u47-sort-slice.cp
 std-seq/seq-u54-merge-sorted.cp
 std-seq/sort-body-takes-cmp-str-and-a-named-key.cp
@@ -340,10 +327,8 @@ std-strings/char-alphabet-domain.cp
 std-strings/domain-keyed-string-through-nth-users.cp
 std-strings/eertree-ends.cp
 std-strings/find-all-domain-keys.cp
-std-strings/suffix-array.cp
 std-strings/trie-nodes-size-a-per-node-table.cp
 std-subset/empty-subset-is-named.cp
-std-subset/enum-subsets-is-a-domain.cp
 std-subset/of-takes-any-seq-of-members.cp
 std-subset/subsets-is-the-member-std-declares.cp
 std-tree/centroids-doc-tree.cp
@@ -380,6 +365,3 @@ traits/Show/MonotoneHull--show.cp
 traits/Show/Paths--show.cp
 traits/Track/Counter--pop.cp
 traits/Track/Counter--push.cp
-core-05/local-memo-fn-recursing-through-its-wrapper.cp
-core-08/type-of-user-fn-item-is-selective-at-a-bound-test.cp
-std-algebra/group-of-and-point-action.cp
