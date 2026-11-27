@@ -720,7 +720,8 @@ impl<'a> Cx<'a> {
                 }
             }
             _ => {
-                if !self.unify(&have, &want_s) {
+                let downstream = self.mentions_error(&have) || self.mentions_error(&want_s);
+                if !self.unify(&have, &want_s) && !downstream {
                     let help = self.narrows_cells(&have, &want_s).then(|| {
                         let text = self.text(span);
                         format!("check each element into the range: `[x for x in {text}]`")

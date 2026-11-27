@@ -229,11 +229,15 @@ impl Cx<'_> {
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
+        let diagnosed = self.errors.len();
         let first = self.expr(lo, Some(&Ty::Int));
         let (args, d) = match self.ord_ends(&first.ty, step) {
             Some(ord) => self.domain_range(first, hi, inclusive, want, ord, span),
             None => (self.int_ends(first, lo, hi, inclusive, step, span), Ty::Int),
         };
+        if self.errors.len() > diagnosed {
+            return Self::error_node(span);
+        }
         self.range_of(args, d, span)
     }
     /// `Domain`'s `ord`, when a range's ends are values of a type that implements it.

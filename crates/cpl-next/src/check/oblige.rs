@@ -33,6 +33,7 @@ impl Cx<'_> {
                 let t = self.zonk(&t);
                 match self.meet(&t, &r, span) {
                     Some(true) => {}
+                    Some(false) if self.mentions_error(&t) => {}
                     Some(false) => {
                         let tr = self.d.traits[r.tr.0].name.clone();
                         let shown = self.show(&t);
@@ -81,11 +82,18 @@ impl Cx<'_> {
     }
     /// Whether some part of `t` is still an inference variable.
     fn unknown(&self, t: &Ty) -> bool {
+        self.holds(t, &|t| matches!(t, Ty::Var(_)))
+    }
+    /// Whether `t` is built from an error node's type: a verdict on it is downstream of that error.
+    pub(super) fn mentions_error(&self, t: &Ty) -> bool {
+        self.holds(t, &|t| *t == Ty::Error)
+    }
+    fn holds(&self, t: &Ty, leaf: &dyn Fn(&Ty) -> bool) -> bool {
         match self.shallow(t) {
-            Ty::Var(_) => true,
-            Ty::Raw(e) | Ty::Ref(e) => self.unknown(&e),
-            Ty::Struct(_, ts, _) => ts.iter().any(|t| self.unknown(t)),
-            Ty::Fn(ps, r, _) => ps.iter().any(|t| self.unknown(t)) || self.unknown(&r),
+            t if leaf(&t) => true,
+            Ty::Raw(e) | Ty::Ref(e) => self.holds(&e, leaf),
+            Ty::Struct(_, ts, _) => ts.iter().any(|t| self.holds(t, leaf)),
+            Ty::Fn(ps, r, _) => ps.iter().any(|t| self.holds(t, leaf)) || self.holds(&r, leaf),
             _ => false,
         }
     }

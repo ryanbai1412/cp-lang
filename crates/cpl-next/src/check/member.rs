@@ -533,6 +533,9 @@ impl<'a> Cx<'a> {
                         span,
                     };
                 }
+                if self.mentions_error(&rt) {
+                    return Self::error_node(span);
+                }
                 let help = self.free_fn_help(base, name, call);
                 self.err_help(
                     span,
