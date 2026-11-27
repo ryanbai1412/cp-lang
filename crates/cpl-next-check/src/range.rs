@@ -130,6 +130,13 @@ impl Cx<'_> {
             _ => return None,
         })
     }
+    /// Whether `t` is a type parameter bound by `Domain`.
+    fn domain_param(&self, t: &Ty) -> bool {
+        let Ty::Param(i) = t else {
+            return false;
+        };
+        (self.bound_traits(*i).iter()).any(|r| Some(r.tr) == self.d.domain_trait)
+    }
     /// `[D] k => e`: one cell per position of `D` in its walk order, which is the list
     /// `[e for k in D]` where a `[D]T` is wanted (R02.8.2).
     pub(super) fn table(
@@ -158,8 +165,9 @@ impl Cx<'_> {
         };
         let name = match &dty {
             Ty::Dom(i) if !self.domains[*i].name.is_empty() => self.domains[*i].name.clone(),
-            // A type that implements `Domain` (`[V.cuts] c => ..`) walks its positions too.
-            Ty::Struct(..) if self.is_domain(&dty) => {
+            // A type that implements `Domain` (`[V.cuts] c => ..`), or a parameter bound by it,
+            // walks its positions too.
+            Ty::Struct(..) | Ty::Param(_) if self.is_domain(&dty) || self.domain_param(&dty) => {
                 let all = self.domain_value(dty.clone(), dom.span);
                 let tmp = self.bind("$walk", all.ty.clone());
                 pre.push(TStmt::Let(tmp, all));
