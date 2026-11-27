@@ -2,7 +2,7 @@
 
 # std.optional
 
-`?T`, the struct `Optional<T>`: a `T` or `None` (R02.4). Core re-exports it and `some`, so no module imports them.
+`?T`, the struct `Optional<T>`: a `T` or `None` (R02.4). Core re-exports it and `Some`, so no module imports them.
 
 Import: `use std.optional.{...}`.
 
@@ -12,4 +12,4 @@ Fields: `some: Bool`, `val: T`.
 
 ## Functions
 
-- `fn some<T>(v: T) -> ?T` — `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
+- `fn Some<T>(v: T) -> ?T` — `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
