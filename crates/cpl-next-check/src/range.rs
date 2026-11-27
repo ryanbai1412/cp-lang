@@ -227,6 +227,15 @@ impl Cx<'_> {
                     .collect::<Option<Vec<_>>>()?;
                 Some(Ty::Struct(tuple, parts, Vec::new())).filter(|t| self.is_domain(t))
             }
+            // So is a record of them, its factors named (R04.2.10).
+            ExprKind::Record(fs) => {
+                let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
+                let record = self.d.core_struct(&crate::records::name(&names))?;
+                let parts = (fs.iter())
+                    .map(|(_, x)| self.type_path(x))
+                    .collect::<Option<Vec<_>>>()?;
+                Some(Ty::Struct(record, parts, Vec::new())).filter(|t| self.is_domain(t))
+            }
             _ => None,
         }
     }

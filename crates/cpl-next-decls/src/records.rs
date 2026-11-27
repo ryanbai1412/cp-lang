@@ -178,3 +178,163 @@ impl Visitor for Shapes<'_> {
         }
     }
 }
+
+/// A record of domains is the product domain over its fields, walked row-major with the last
+/// field fastest, as core's tuples are (R04.2.10): per shape, `impl<A: Domain, ..> Domain for
+/// (lo: A, ..)` giving the members core's `@positions` trait marks `dom_count`, `dom_nth` and
+/// `dom_ord`.
+pub fn domain_impls(
+    core: &[crate::modules::Item],
+    shapes: &[Vec<String>],
+    span: Span,
+) -> Vec<(String, ast::Stmt)> {
+    let positions = (core.iter().flat_map(|it| &it.stmts))
+        .find(|s| s.decorators.iter().any(|d| d.name.text == "positions"));
+    let Some(StmtKind::Trait { name: tr, body, .. }) = positions.map(|s| &s.kind) else {
+        return Vec::new();
+    };
+    let member = |id: &str| {
+        body.stmts.iter().find_map(|s| match &s.kind {
+            StmtKind::Fn(f) => match &f.body {
+                ast::FnBody::Expr(e) if matches!(&e.kind, ExprKind::Intrinsic(i) if i == id) => {
+                    Some(f.name.text.clone())
+                }
+                _ => None,
+            },
+            _ => None,
+        })
+    };
+    let (Some(count), Some(nth), Some(ord)) =
+        (member("dom_count"), member("dom_nth"), member("dom_ord"))
+    else {
+        return Vec::new();
+    };
+    let nm = |text: &str| ast::Name {
+        text: text.to_string(),
+        span,
+    };
+    let named = |text: &str| ast::Type {
+        kind: TypeKind::Named {
+            name: nm(text),
+            args: Vec::new(),
+        },
+        span,
+    };
+    let ex = |kind| ast::Expr { kind, span };
+    let field = |base: ast::Expr, f: &str| {
+        ex(ExprKind::Field {
+            base: Box::new(base),
+            name: nm(f),
+        })
+    };
+    let bin = |op, lhs, rhs| {
+        ex(ExprKind::Binary {
+            op,
+            op_span: span,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        })
+    };
+    let size = |g: &str| field(ex(ExprKind::Name(g.to_string())), &count);
+    let param = |n: &str, ty: Option<ast::Type>| ast::Param {
+        mutable: false,
+        variadic: false,
+        lazy: false,
+        named_only: false,
+        label: None,
+        name: nm(n),
+        ty,
+        default: None,
+        span,
+    };
+    let get = || ast::Decorator {
+        directive: false,
+        name: nm(crate::decls::GETTER),
+        args: Vec::new(),
+        span,
+    };
+    let method = |getter: bool, name: &str, params, ret, body| ast::Stmt {
+        kind: StmtKind::Fn(FnDecl {
+            name: nm(name),
+            generics: Vec::new(),
+            bounds: Vec::new(),
+            params,
+            ret: Some(ret),
+            lends: None,
+            uses: Vec::new(),
+            body: ast::FnBody::Expr(body),
+            sig_span: span,
+        }),
+        span,
+        decorators: if getter { vec![get()] } else { Vec::new() },
+        public: false,
+    };
+    let mut out = Vec::new();
+    for fs in shapes.iter().filter(|fs| !fs.is_empty() && fs.len() <= 26) {
+        let gs: Vec<String> = (b'A'..)
+            .take(fs.len())
+            .map(|c| (c as char).to_string())
+            .collect();
+        let record = ast::Type {
+            kind: TypeKind::Record(fs.iter().zip(&gs).map(|(f, g)| (nm(f), named(g))).collect()),
+            span,
+        };
+        let total = (gs.iter().map(|g| size(g))).reduce(|a, b| bin(ast::BinOp::Mul, a, b));
+        // Field `i` is `k / (the sizes after it) % its size`.
+        let parts = (fs.iter().enumerate()).map(|(i, f)| {
+            let after =
+                (gs[i + 1..].iter().map(|g| size(g))).reduce(|a, b| bin(ast::BinOp::Mul, a, b));
+            let k = ex(ExprKind::Name("k".to_string()));
+            let k = after.map_or(k.clone(), |a| bin(ast::BinOp::Div, k, a));
+            let k = if i == 0 {
+                k
+            } else {
+                bin(ast::BinOp::Rem, k, size(&gs[i]))
+            };
+            let at = ex(ExprKind::Call {
+                callee: Box::new(field(ex(ExprKind::Name(gs[i].clone())), &nth)),
+                args: vec![ast::Arg {
+                    name: None,
+                    mutable: false,
+                    value: k,
+                }],
+            });
+            (nm(f), at)
+        });
+        let parts = ex(ExprKind::Record(parts.collect()));
+        let ord_of = |f: &str| field(field(ex(ExprKind::Name("self".to_string())), f), &ord);
+        let rank = (fs.iter().zip(&gs).skip(1)).fold(ord_of(&fs[0]), |o, (f, g)| {
+            bin(ast::BinOp::Add, bin(ast::BinOp::Mul, o, size(g)), ord_of(f))
+        });
+        let Some(total) = total else { continue };
+        let body = vec![
+            method(true, &count, Vec::new(), named("Int"), total),
+            method(
+                false,
+                &nth,
+                vec![param("k", Some(named("Int")))],
+                record.clone(),
+                parts,
+            ),
+            method(true, &ord, vec![param("self", None)], named("Int"), rank),
+        ];
+        let imp = ast::Stmt {
+            kind: StmtKind::Impl {
+                trait_name: Some(named(&tr.text)),
+                target: record,
+                bounds: (gs.iter())
+                    .map(|g| ast::Bound {
+                        name: nm(g),
+                        traits: vec![named(&tr.text)],
+                    })
+                    .collect(),
+                body: ast::Block { stmts: body, span },
+            },
+            span,
+            decorators: Vec::new(),
+            public: false,
+        };
+        out.push((name(fs), imp));
+    }
+    out
+}

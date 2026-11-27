@@ -1105,7 +1105,9 @@ impl<'a> Cx<'a> {
                 };
                 out.push(TStmt::Assert(c, msg, s.span, CheckKind::Assert));
             }
-            StmtKind::Domain { name, def } if matches!(def.kind, ExprKind::Tuple(_)) => {
+            StmtKind::Domain { name, def }
+                if matches!(def.kind, ExprKind::Tuple(_) | ExprKind::Record(_)) =>
+            {
                 let def = self.declare_factors(&name.text, def, s.span, out);
                 let Some(p) = self.type_path(&def) else {
                     return self.err(
@@ -1502,11 +1504,13 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) -> ast::Expr {
-        let ExprKind::Tuple(xs) = &def.kind else {
-            return def.clone();
+        let xs: Vec<&ast::Expr> = match &def.kind {
+            ExprKind::Tuple(xs) => xs.iter().collect(),
+            ExprKind::Record(fs) => fs.iter().map(|(_, x)| x).collect(),
+            _ => return def.clone(),
         };
         let mut parts = Vec::new();
-        for (i, x) in xs.iter().enumerate() {
+        for (i, &x) in xs.iter().enumerate() {
             let ExprKind::Range {
                 lo: Some(lo),
                 hi: Some(hi),
@@ -1525,8 +1529,14 @@ impl<'a> Cx<'a> {
                 span: x.span,
             });
         }
+        let kind = match &def.kind {
+            ExprKind::Record(fs) => {
+                ExprKind::Record(fs.iter().map(|(n, _)| n.clone()).zip(parts).collect())
+            }
+            _ => ExprKind::Tuple(parts),
+        };
         ast::Expr {
-            kind: ExprKind::Tuple(parts),
+            kind,
             span: def.span,
         }
     }

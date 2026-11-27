@@ -111,12 +111,6 @@ fn layer(
         d.member_types = Arc::new(kept.map(|(m, s)| (m.clone(), *s)).collect());
     }
     if base.is_some() {
-        for s in mods[n - 1].items.iter().flat_map(|it| &it.stmts) {
-            if let StmtKind::Domain { name, def } = &s.kind {
-                let t = product(&mut d, &name.text, def).unwrap_or_else(|| fresh_dom(&d));
-                d.top_doms.entry(name.text.clone()).or_insert(t);
-            }
-        }
         d.top_values = Arc::new(
             (mods[n - 1].items.iter().flat_map(|it| &it.stmts))
                 .filter_map(|s| match &s.kind {
@@ -188,6 +182,13 @@ fn layer(
                 (false, true) => module_derived(&m.items, &each),
                 (false, false) => Vec::new(),
             };
+            if let (true, Some(it)) = (mi == CORE.0, records.first()) {
+                if let Some(at) = it.stmts.first() {
+                    let impls =
+                        crate::records::domain_impls(&mods[CORE.0].items, &new_shapes, at.span);
+                    made.extend(impls.into_iter().map(|(n, imp)| (it.id.clone(), n, imp)));
+                }
+            }
             if ours || !new_shapes.is_empty() {
                 let shapes = if ours { &shapes } else { &new_shapes };
                 made.extend(crate::synth::field_trait_impls(&m.items, shapes));
@@ -428,6 +429,15 @@ fn layer(
         prelude,
     };
     remake_views(&mut d, &sc, from, core_too, None);
+    // A product's record is a core struct, so the program's domains are placed once the views are.
+    if base.is_some() {
+        for s in mods[n - 1].items.iter().flat_map(|it| &it.stmts) {
+            if let StmtKind::Domain { name, def } = &s.kind {
+                let t = product(&mut d, &name.text, def).unwrap_or_else(|| fresh_dom(&d));
+                d.top_doms.entry(name.text.clone()).or_insert(t);
+            }
+        }
+    }
     let made: Vec<AliasDecl> = aliases
         .into_iter()
         .map(|(m, at, name, generics, ty)| {
@@ -1191,19 +1201,24 @@ fn fresh_dom(d: &Decls) -> Ty {
     )
 }
 
-/// `domain P = (A, B)` over domains declared above it, or over ranges: the tuple of them
-/// (R04.2.11). A range factor is a domain of its own, named `P.i`, which no program can write.
+/// `domain P = (A, B)` or `(a: A, b: B)` over domains declared above it, or over ranges: the
+/// tuple or record of them (R04.2.10, R04.2.11). A range factor is a domain of its own, named `P.i`, which no program can write.
 fn product(d: &mut Decls, name: &str, def: &ast::Expr) -> Option<Ty> {
-    let ast::ExprKind::Tuple(xs) = &def.kind else {
-        return None;
+    let (product, xs): (StructId, Vec<&ast::Expr>) = match &def.kind {
+        ast::ExprKind::Tuple(xs) => (*d.tuples.get(&xs.len())?, xs.iter().collect()),
+        ast::ExprKind::Record(fs) => {
+            let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
+            let record = d.struct_named(CORE, &crate::records::name(&names))?;
+            (record, fs.iter().map(|(_, x)| x).collect())
+        }
+        _ => return None,
     };
-    let &tuple = d.tuples.get(&xs.len())?;
     let fits = |x: &ast::Expr| match &x.kind {
         ast::ExprKind::Name(n) => d.top_doms.contains_key(n),
         ast::ExprKind::Range { .. } => true,
         _ => false,
     };
-    if !xs.iter().all(fits) {
+    if !xs.iter().all(|x| fits(x)) {
         return None;
     }
     let mut parts = Vec::new();
@@ -1217,7 +1232,7 @@ fn product(d: &mut Decls, name: &str, def: &ast::Expr) -> Option<Ty> {
             }
         });
     }
-    Some(Ty::Struct(tuple, parts, Vec::new()))
+    Some(Ty::Struct(product, parts, Vec::new()))
 }
 
 /// The name of product `P`'s `i`th factor when it is written as a range.
