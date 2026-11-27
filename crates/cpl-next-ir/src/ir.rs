@@ -147,9 +147,11 @@ impl Intr {
     }
 }
 
-/// Where an operation that can trap, or a call, is written: its line in the user's
-/// file, or 0 inside std. A trap is reported at the innermost such line that is
-/// running, so a check std makes fails at the line that called std.
+/// A node of the user's file that an operation that can trap, a call or a region stands for:
+/// an index into the program's site table (`lower::Generic::sites`, `Program::lines`). Site 0
+/// is code with no place in the user's file (std, derived impls). A trap is reported at the
+/// innermost site with a place that is running, so a check std makes fails at the line that
+/// called std. Every instance of a generic fn keeps its sites.
 pub type Site = u32;
 
 /// What a `Check` statement checks, which decides the code its trap carries.

@@ -16,6 +16,8 @@ pub struct Generic {
     pub errors: Vec<Msg>,
     /// Each expression the checker could not type (an error node), in the offset space of the loaded modules.
     pub untyped: Vec<Span>,
+    /// Where in the loaded modules' text each site (`ir::Site`) is; site 0 has no place.
+    pub sites: Vec<Span>,
 }
 
 struct Lw<'a> {
@@ -51,6 +53,7 @@ struct Lw<'a> {
     /// The fn being lowered is one the compiler wrote, a derived impl's: like std's, a check it
     /// makes fails at the line that called it.
     made: bool,
+    sites: Vec<Span>,
 }
 
 pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Loaded) -> Generic {
@@ -59,6 +62,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
         globals: Vec::new(),
         errors: Vec::new(),
         untyped: Vec::new(),
+        sites: Vec::new(),
     };
     let mut lw = Lw {
         d,
@@ -80,6 +84,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
         off: 0,
         src,
         made: false,
+        sites: vec![Span::default()],
     };
     let mut body = Vec::new();
     for s in &typed.main {
@@ -166,6 +171,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
     }
     out.errors = lw.errors;
     out.untyped = lw.untyped;
+    out.sites = lw.sites;
     out.globals = lw.globals;
     out
 }
@@ -341,7 +347,19 @@ fn constant<T>(e: &Expr<T>) -> bool {
 }
 
 impl Lw<'_> {
-    fn site(&self, span: cpl_diag::Span) -> Site {
+    /// A new site for the node at `span`, or 0 where the node has no line of the user's file.
+    fn site(&mut self, span: Span) -> Site {
+        if self.line(span) == 0 {
+            return 0;
+        }
+        let at = Span {
+            start: self.off + span.start,
+            end: self.off + span.end,
+        };
+        self.sites.push(at);
+        (self.sites.len() - 1) as Site
+    }
+    fn line(&self, span: Span) -> u32 {
         if self.made {
             return 0;
         }
@@ -1240,7 +1258,7 @@ impl Lw<'_> {
             body: stmts,
             ret: info.ret.clone(),
             region: info.yields.clone().map(|t| (false, t)),
-            line: self.site(body.span),
+            line: self.line(body.span),
             shown: "lambda".into(),
         });
         Self::capture_args(caps)

@@ -83,6 +83,7 @@ pub fn link(
     typed: &Typed,
     generic: &HashMap<FuncKey, Func<Ty>>,
     globals: &[Ty],
+    lines: Vec<u32>,
 ) -> Program {
     let mut l = Link {
         d,
@@ -175,6 +176,7 @@ pub fn link(
         structs: l.structs,
         sums: l.sums,
         errors: l.errors,
+        lines,
     };
     if p.errors.is_empty() {
         thread_values(&mut p, typed);

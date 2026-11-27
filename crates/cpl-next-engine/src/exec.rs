@@ -4,7 +4,6 @@
 use crate::compile::*;
 use crate::layout::Lay;
 use cpl_next_ir::ir::Func;
-use cpl_next_ir::ir::Site;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::CTy;
 use cpl_next_ir::run::{call_stack, Outcome, Trap};
@@ -37,7 +36,7 @@ struct Frame {
     /// Its fn, the frame that called it and the line of the call: a trap's call stack.
     f: u32,
     parent: Option<usize>,
-    line: Site,
+    line: u32,
     end: usize,
     region: Option<RegionAt>,
     pending: Option<Flow>,
@@ -64,7 +63,7 @@ struct M<'a> {
     out: String,
     events: Vec<String>,
     input: std::vec::IntoIter<String>,
-    at: Site,
+    at: u32,
     texts: Vec<u32>,
     scratch: Vec<u32>,
 }
@@ -409,7 +408,7 @@ impl M<'_> {
                     .map_or(&[][..], |m| &self.c.chains[m.1 as usize]);
                 for &(g, save) in chain.iter().rev() {
                     calls.push((g as usize, line));
-                    line = self.stack[fr.fp + save as usize] as Site;
+                    line = self.stack[fr.fp + save as usize] as u32;
                 }
             }
             calls.push((fr.f as usize, line));
@@ -417,9 +416,9 @@ impl M<'_> {
         }
         call_stack(self.funcs, calls)
     }
-    fn enter(&mut self, site: Site) -> Site {
-        if site != 0 {
-            self.at = site;
+    fn enter(&mut self, line: u32) -> u32 {
+        if line != 0 {
+            self.at = line;
         }
         self.at
     }
@@ -512,12 +511,12 @@ impl M<'_> {
                     };
                     self.stack[r(d)] = u64::from(ops::compare(op, x, y)?);
                 }
-                Op::At { site } => self.at = site,
-                Op::Enter { site, save } => self.stack[r(save)] = u64::from(self.enter(site)),
+                Op::At { line } => self.at = line,
+                Op::Enter { line, save } => self.stack[r(save)] = u64::from(self.enter(line)),
                 Op::Call { c: k } => {
                     self.call(k, fr, None)?;
                     if let Some(save) = c.calls[k as usize].save {
-                        self.at = self.stack[r(save)] as Site;
+                        self.at = self.stack[r(save)] as u32;
                     }
                 }
                 Op::Region {
@@ -527,7 +526,7 @@ impl M<'_> {
                     lend,
                     jumps,
                 } => {
-                    let here = self.enter(c.calls[k as usize].site);
+                    let here = self.enter(c.calls[k as usize].line);
                     let exit = self.call(k, fr, Some(RegionAt { fr, body, var }))?;
                     self.at = here;
                     let to = match exit {
@@ -608,11 +607,11 @@ impl M<'_> {
                 Op::Check {
                     c: x,
                     kind,
-                    site,
+                    line,
                     msg,
                 } => {
                     if self.stack[r(x)] == 0 {
-                        self.enter(site);
+                        self.enter(line);
                         return Err(Trap {
                             msg: c.msgs[msg as usize].clone(),
                             ..Fault::Check(kind).into()
@@ -739,7 +738,7 @@ impl M<'_> {
                 }
                 Op::Retain { s, lay } => self.retain(lay, r(s)),
                 Op::Zero { d, n } => self.stack[r(d)..r(d) + n as usize].fill(0),
-                Op::Restore { save } => self.at = self.stack[r(save)] as Site,
+                Op::Restore { save } => self.at = self.stack[r(save)] as u32,
                 Op::Take { d, p, n } => {
                     let loc = self.loc(fp, p)?;
                     self.read(loc, r(d), n as usize);

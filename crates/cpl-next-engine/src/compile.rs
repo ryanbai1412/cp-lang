@@ -123,11 +123,11 @@ pub(crate) enum Op {
         kind: Kind,
     },
     At {
-        site: Site,
+        line: u32,
     },
     /// A call's line starts running: `save` keeps the line to go back to after it.
     Enter {
-        site: Site,
+        line: u32,
         save: Reg,
     },
     Call {
@@ -167,7 +167,7 @@ pub(crate) enum Op {
     Check {
         c: Reg,
         kind: CheckKind,
-        site: Site,
+        line: u32,
         msg: u32,
     },
     Guard {
@@ -330,7 +330,7 @@ pub(crate) enum ArgCode {
 #[derive(Clone, Debug)]
 pub(crate) struct CallCode {
     pub f: u32,
-    pub site: Site,
+    pub line: u32,
     pub args: Vec<ArgCode>,
     pub d: Reg,
     /// Where `Op::Enter` kept the line to go back to; a region call enters at the op.
@@ -691,7 +691,7 @@ impl Fc<'_> {
                 self.ops.push(Op::Check {
                     c,
                     kind: *kind,
-                    site: *site,
+                    line: self.line(*site),
                     msg: m,
                 });
             }
@@ -744,10 +744,10 @@ impl Fc<'_> {
                 };
                 if *lend && self.lender_inlinable(*f, body) {
                     let var = self.off[*var];
-                    self.inline(*f, args, *site, 0, Some((var, body.clone())));
+                    self.inline(*f, args, self.line(*site), 0, Some((var, body.clone())));
                     return;
                 }
-                let c = self.call(*f, args, *site, 0, None);
+                let c = self.call(*f, args, self.line(*site), 0, None);
                 let block = self.region_body(body);
                 let at = self.ops.len();
                 self.ops.push(Op::Region {
@@ -1042,22 +1042,27 @@ impl Fc<'_> {
                 self.fail("a domain value the link step did not resolve")
             }
             EK::Call(Target::Inst(f), args, site) if self.inlinable(*f) => {
-                self.inline(*f, args, *site, d, None)
+                self.inline(*f, args, self.line(*site), d, None)
             }
             EK::Call(Target::Inst(f), args, site) => {
                 // The call's line runs while its arguments are evaluated, as in the reference
                 // interpreter, and is the line again after the call.
                 let save = self.temp(1);
-                self.ops.push(Op::Enter { site: *site, save });
-                let c = self.call(*f, args, *site, d, Some(save));
+                let line = self.line(*site);
+                self.ops.push(Op::Enter { line, save });
+                let c = self.call(*f, args, line, d, Some(save));
                 self.ops.push(Op::Call { c });
             }
             EK::Call(..) => self.fail("an unresolved call reached the engine"),
             EK::CallValue(..) => self.fail("a call through a function value in canonical IR"),
-            EK::Intr(op, args, site) => self.intr(*op, args, *site, &e.ty, d),
+            EK::Intr(op, args, site) => self.intr(*op, args, self.line(*site), &e.ty, d),
         }
     }
-    fn call(&mut self, f: usize, args: &[Arg<CTy>], site: Site, d: Reg, save: Option<Reg>) -> u32 {
+    /// The line of the user's file `site` is on; 0 for none.
+    fn line(&self, site: Site) -> u32 {
+        self.p.lines[site as usize]
+    }
+    fn call(&mut self, f: usize, args: &[Arg<CTy>], line: u32, d: Reg, save: Option<Reg>) -> u32 {
         let mut codes = Vec::with_capacity(args.len());
         for a in args {
             codes.push(match a {
@@ -1082,16 +1087,16 @@ impl Fc<'_> {
         let c = self.c.calls.len() as u32;
         self.c.calls.push(CallCode {
             f: f as u32,
-            site,
+            line,
             args: codes,
             d,
             save,
         });
         c
     }
-    fn intr(&mut self, op: Intr, args: &[Arg<CTy>], site: Site, ty: &CTy, d: Reg) {
-        if op.checked() && site != 0 {
-            self.ops.push(Op::At { site });
+    fn intr(&mut self, op: Intr, args: &[Arg<CTy>], line: u32, ty: &CTy, d: Reg) {
+        if op.checked() && line != 0 {
+            self.ops.push(Op::At { line });
         }
         let first_ty = match args.first() {
             Some(Arg::Value(v)) => unlent(&v.ty).clone(),
@@ -1428,7 +1433,7 @@ impl<'a> Fc<'a> {
         self.ops.push(Op::Drop { s: l.var, lay });
         self.ops.push(Op::Take { d: l.var, p: at, n });
         let save = self.temp(1);
-        self.ops.push(Op::Enter { site: 0, save });
+        self.ops.push(Op::Enter { line: 0, save });
         let off = std::mem::replace(&mut self.off, std::mem::take(&mut l.off));
         let f = std::mem::replace(&mut self.f, l.f);
         let chain = std::mem::replace(&mut self.chain, l.chain);
@@ -1457,7 +1462,7 @@ impl<'a> Fc<'a> {
         &mut self,
         f: usize,
         args: &[Arg<CTy>],
-        site: Site,
+        line: u32,
         d: Reg,
         lend: Option<(Reg, Vec<Stmt<CTy>>)>,
     ) {
@@ -1477,7 +1482,7 @@ impl<'a> Fc<'a> {
             None => (None, lent_to),
         };
         let save = self.temp(1);
-        self.ops.push(Op::Enter { site, save });
+        self.ops.push(Op::Enter { line, save });
         let funcs: &'a [Func<CTy>] = self.funcs;
         let g = &funcs[f];
         let base = self.temp(self.c.funcs[f].locals);

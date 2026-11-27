@@ -55,7 +55,7 @@ struct Frame<'a> {
     /// Its fn, the frame that called it and the line of the call: a trap's call stack.
     f: usize,
     parent: Option<usize>,
-    line: Site,
+    line: u32,
     region: Option<Region<'a>>,
     /// A lender whose region left early finishes its own code first, then leaves this way.
     pending: Option<Flow>,
@@ -69,8 +69,8 @@ struct Machine<'a> {
     out: String,
     pub events: Vec<String>,
     input: std::vec::IntoIter<String>,
-    /// The innermost line of the user's file that is running (`ir::Site`).
-    at: Site,
+    /// The innermost line of the user's file that is running.
+    at: u32,
     /// The frame whose code is running: a region body runs in its caller's.
     cur: usize,
 }
@@ -488,9 +488,9 @@ impl<'a> Machine<'a> {
         })
     }
     /// A line of the user's file starts running; inside std (`site` 0) the line stays the caller's.
-    fn enter(&mut self, site: Site) -> Site {
+    fn enter(&mut self, site: Site) -> u32 {
         if site != 0 {
-            self.at = site;
+            self.at = self.p.lines[site as usize];
         }
         self.at
     }

@@ -1,6 +1,6 @@
 //! What a run of a program comes to, the same for every engine: its output, its events and
 //! how it stopped (contract 7).
-use crate::ir::{Func, FuncKey, Site};
+use crate::ir::{Func, FuncKey};
 use crate::ops::Fault;
 
 pub struct Trap {
@@ -53,7 +53,7 @@ impl From<Fault> for Trap {
 /// innermost and the 8 outermost are named.
 pub fn call_stack<T>(
     funcs: &[Func<T>],
-    calls: impl IntoIterator<Item = (usize, Site)>,
+    calls: impl IntoIterator<Item = (usize, u32)>,
 ) -> Vec<String> {
     let shown: Vec<String> = calls
         .into_iter()

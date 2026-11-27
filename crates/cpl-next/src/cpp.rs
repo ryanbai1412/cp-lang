@@ -441,6 +441,9 @@ fn const_ref_params(f: &Func<CTy>) -> Vec<bool> {
 }
 
 impl Emit<'_> {
+    fn line(&self, site: Site) -> u32 {
+        self.p.lines[site as usize]
+    }
     /// Definition order for C++: a type comes after every type it holds by value. Storage
     /// (`cpl_raw<T>`) and references need only T's declaration, which is what lets a
     /// function value reach itself through a list.
@@ -765,7 +768,7 @@ impl Emit<'_> {
             let around = match st {
                 Stmt::Let(_, e) | Stmt::Assign(_, e) | Stmt::Expr(e) => match &e.kind {
                     EK::Intr(op, _, site) if op.checked() && *site != 0 => {
-                        put_line!(s, "{pad}cpl_at = {site};");
+                        put_line!(s, "{pad}cpl_at = {};", self.line(*site));
                         None
                     }
                     EK::Call(_, _, site) => Some(*site),
@@ -777,7 +780,11 @@ impl Emit<'_> {
             };
             match around {
                 Some(0) => put_line!(s, "{pad}{{ int cpl_was = cpl_at;"),
-                Some(site) => put_line!(s, "{pad}{{ const int cpl_was = cpl_at = {site};"),
+                Some(site) => put_line!(
+                    s,
+                    "{pad}{{ const int cpl_was = cpl_at = {};",
+                    self.line(site)
+                ),
                 None => {}
             }
             match st {
@@ -919,7 +926,7 @@ impl Emit<'_> {
                     "{pad}if (!{}) {{ {}cpl_trap({:?}, {msg:?}); }}",
                     self.expr(cond),
                     if *site != 0 {
-                        format!("cpl_at = {site}; ")
+                        format!("cpl_at = {}; ", self.line(*site))
                     } else {
                         String::new()
                     },

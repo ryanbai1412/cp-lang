@@ -240,7 +240,10 @@ pub fn compile(
             .map(|e| Diag::new(Stage::Link, e, &loaded))
             .collect()
     };
-    let mut prog = inst::link(&d, &t, &g.funcs, &g.globals);
+    let lines = (g.sites.iter())
+        .map(|s| loaded.program_line(s.start))
+        .collect();
+    let mut prog = inst::link(&d, &t, &g.funcs, &g.globals, lines);
     if !prog.errors.is_empty() {
         return Err(link(&prog.errors));
     }
@@ -394,7 +397,7 @@ mod tests {
         let main = c.prog.main;
         (c.proved().iter())
             .filter(|p| p.func == main)
-            .map(|p| (p.kind, p.site))
+            .map(|p| (p.kind, c.prog.lines[p.site as usize]))
             .collect()
     }
 
