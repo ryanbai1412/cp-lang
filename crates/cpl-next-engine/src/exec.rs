@@ -125,6 +125,26 @@ fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<&str>, steps: u6
 }
 
 pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
+    let (m, trap) = ran(c, funcs, input);
+    m.outcome(trap)
+}
+
+/// Runs the program, then releases its globals and its kept text constants if it ended: what
+/// it did, and how many storage objects are still held. Ownership releases every value it makes, so that is 0.
+pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: &str) -> (Outcome, usize) {
+    let (mut m, trap) = ran(c, funcs, input);
+    if trap.is_none() {
+        for (&at, &lay) in c.global_at.iter().zip(&c.global_lays) {
+            m.release(lay, Loc::stack(at as usize));
+        }
+        let texts: Vec<u32> = m.texts.iter().copied().filter(|&h| h != 0).collect();
+        m.dec(texts);
+    }
+    let held = m.heap.len() - 1 - m.free.len();
+    (m.outcome(trap), held)
+}
+
+fn ran<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: &str) -> (M<'a>, Option<Trap>) {
     let mut m = start(c, funcs, Some(input), u64::MAX);
     let fp = c.globals as usize;
     let trap = m.run_fn(c.main, fp, None).err().map(|t| Trap {
@@ -132,11 +152,7 @@ pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
         stack: m.call_stack(),
         ..t
     });
-    Outcome {
-        events: m.events,
-        output: m.out,
-        trap,
-    }
+    (m, trap)
 }
 
 /// Runs the program with no input for at most `steps` steps: the words global `g` holds when
@@ -167,6 +183,13 @@ pub(crate) fn eval(
 }
 
 impl M<'_> {
+    fn outcome(self, trap: Option<Trap>) -> Outcome {
+        Outcome {
+            events: self.events,
+            output: self.out,
+            trap,
+        }
+    }
     /// One step of the budget.
     fn step(&mut self) -> R<()> {
         if self.steps == 0 {

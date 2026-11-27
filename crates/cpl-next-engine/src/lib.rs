@@ -19,6 +19,14 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
     exec::run(&code, funcs, input)
 }
 
+/// Runs canonical IR on `input`, then releases its globals if it ended: what it did, and how
+/// many storage objects are still held, which is 0 when the drops ownership placed (contract
+/// 07) release every value it made.
+pub fn run_held(p: &Program, funcs: &[Func<CTy>], input: &str) -> (Outcome, usize) {
+    let code = compile::compile(p, funcs);
+    exec::run_held(&code, funcs, input)
+}
+
 /// How running a program for a value stopped short of it.
 pub enum Stop {
     Trap(Trap),

@@ -3,6 +3,9 @@ use cpl_next_ir::ir::{Place, Stmt};
 use cpl_next_ir::prog::CTy;
 use modules::PROGRAM;
 
+#[path = "../../cpl-cli/tests/support/cxx.rs"]
+mod cxx;
+
 /// The reference interpreter's run of `c`'s linked instances: the oracle the engine is held to.
 fn raw(c: &Compiled) -> Outcome {
     let (p, fs) = c.form(Form::Raw);
@@ -79,36 +82,61 @@ fn ownership_places_every_release() {
     }
 }
 
-/// Which values hold storage is decided once (`Program::stores`): a ranged `Int` holds none,
-/// so ownership releases no such local, and the C++ runs each release ownership placed, where
-/// it placed it, rather than leaving releases to its own scopes.
+/// The engine and the C++ release, at run time, every value ownership made, each at the drops
+/// it placed (contract 07): an overwrite, a discard, a temporary given to a view, a global
+/// with storage, and a frame left by `return` from a loop. The engine ends holding nothing, and
+/// the C++ under AddressSanitizer leaks nothing, frees nothing twice and reads nothing freed.
+/// Without the drops own placed in a body the engine holds storage: the count sees a missing one.
 #[test]
-fn the_cpp_runs_each_release_ownership_placed() {
-    let src = "fn f(n: Int) -> Int:\n    var r: 0..=10 = 3\n    var xs = [n]\n    xs = [n, r]\n    [r]\n    xs.len\n\nprint(f(3))\n";
-    let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
-    let f = c.prog.insts.iter().find(|f| f.name == "f").expect("f");
-    let ranged = (f.locals.iter().enumerate()).filter(|(_, t)| matches!(t, CTy::Range(..)));
-    for (l, t) in ranged {
-        assert!(!f.drops.contains(&l), "local {l}: {t:?} holds nothing");
+fn the_engine_and_the_cpp_release_every_value_ownership_made() {
+    let srcs = [
+        "fn f(n: Int) -> Int:\n    var r: 0..=10 = 3\n    var xs = [n]\n    xs = [n, r]\n    [r]\n    xs.len\n\nprint(f(3))\n",
+        "fn made(n: Int) -> List<Int> = [k for k in 0..n]\nfn total(n: Int, xs: List<Int>) -> Int = n + xs.len\nlet ys = made(2)\nprint(total(1, made(3)), total(ys.len, ys))\n",
+        "var g = [1, 2, 3]\nfn go() -> Int = g.len + 1\nprint(go())\n",
+        "fn first(n: Int) -> Int:\n    for i in 0..n:\n        let xs = [i, i]\n        if i == 3:\n            return xs.len + i\n    0\nprint(first(10))\n",
+    ];
+    let flags = [
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-sanitize-recover=undefined",
+        "-w",
+        "-x",
+        "c++",
+    ];
+    for src in srcs {
+        let c = compile(&Std::read(), src, &Roots::std(), false).expect("compiles");
+        let (run, held) = cpl_next_engine::run_held(&c.prog, &c.opt, "");
+        assert!(run.trap.is_none(), "{src}");
+        assert_eq!(held, 0, "{src}");
+        let (bin, _) = cxx::build(c.cpp().as_bytes(), &flags).expect("g++ builds it");
+        let ran = std::process::Command::new(bin)
+            .env("ASAN_OPTIONS", "detect_leaks=1")
+            .output()
+            .expect("runs");
+        let err = String::from_utf8_lossy(&ran.stderr);
+        assert!(ran.status.success() && err.is_empty(), "{src}{err}");
+        assert_eq!(String::from_utf8_lossy(&ran.stdout), run.output, "{src}");
     }
-    fn drops(b: &[Stmt<CTy>]) -> usize {
-        let inner = |s: &Stmt<CTy>| match s {
-            Stmt::Drop(_) => 1,
-            Stmt::If(_, a, b) | Stmt::Loop(a, b, _) => drops(a) + drops(b),
-            Stmt::Switch(_, arms) => arms.iter().map(|a| drops(a)).sum(),
-            Stmt::Region { body, .. } => drops(body),
-            _ => 0,
-        };
-        b.iter().map(inner).sum()
+    fn unplaced(b: &mut Vec<Stmt<CTy>>) {
+        b.retain(|s| !matches!(s, Stmt::Drop(_)));
+        for s in b {
+            match s {
+                Stmt::If(_, a, b) | Stmt::Loop(a, b, _) => {
+                    unplaced(a);
+                    unplaced(b);
+                }
+                Stmt::Switch(_, arms) => arms.iter_mut().for_each(unplaced),
+                Stmt::Region { body, .. } => unplaced(body),
+                _ => {}
+            }
+        }
     }
-    let placed: usize = c.opt.iter().map(|g| drops(&g.body)).sum();
-    let cpp = c.cpp();
-    let run = cpp
-        .lines()
-        .filter(|l| l.trim_end().ends_with(" = {};"))
-        .count();
-    assert!(placed >= 2, "the overwrite and the discard each release");
-    assert_eq!(run, placed, "{cpp}");
+    let mut c = compile(&Std::read(), srcs[0], &Roots::std(), false).expect("compiles");
+    (c.opt.iter_mut().filter(|f| f.name == "f")).for_each(|f| unplaced(&mut f.body));
+    let (_, held) = cpl_next_engine::run_held(&c.prog, &c.opt, "");
+    assert!(held > 0, "a missing release is seen");
 }
 
 /// A fn's sites are its own: one written above it leaves its sites and their places as

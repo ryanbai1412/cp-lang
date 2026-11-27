@@ -30,11 +30,12 @@ pub fn optimize(
     (out, proved)
 }
 
-/// A global no fn but the entry names is a local of the entry: the entry runs once, so its
-/// frame holds it as long as the program, and it starts zero as a global does.
+/// A scalar global no fn but the entry names is a local of the entry: the entry runs once, so
+/// its frame holds it as long as the program, and it starts zero as a global does. A global
+/// with storage stays one, as ownership places no release for it in the entry's frame.
 fn localize(funcs: &mut [Func<CTy>], globals: &[CTy], main: usize) {
     let mut local: Vec<Option<usize>> = globals.iter().map(|_| None).collect();
-    let mut named = vec![false; globals.len()];
+    let mut named: Vec<bool> = globals.iter().map(|t| !scalar(t)).collect();
     for (i, f) in funcs.iter_mut().enumerate() {
         if i != main {
             visit_places(&mut f.body, &mut |p| {
