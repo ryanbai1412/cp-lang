@@ -753,6 +753,11 @@ fn every_case_is_where_the_lists_say() {
             how => wrong += &format!("{id}\t{how}\t{detail}\n"),
         }
     }
+    // Errors only lowering finds: the checker passed what lowering then refuses (suite 5).
+    let lowered: String = (cases.iter().zip(&verdicts))
+        .filter(|(_, (_, detail))| detail.starts_with("lower:"))
+        .map(|((id, _), _)| format!("{id}\n"))
+        .collect();
     let found = root.join(if only.is_some() {
         "target/cpl-next/only"
     } else {
@@ -765,6 +770,7 @@ fn every_case_is_where_the_lists_say() {
         ("wrong.tsv", &wrong),
         ("refused.tsv", &refused),
         ("masked.txt", &masked),
+        ("lowered.txt", &lowered),
         ("queue.txt", &queue),
     ] {
         std::fs::write(found.join(name), text).unwrap();
@@ -814,6 +820,15 @@ fn every_case_is_where_the_lists_say() {
             (None, got) => off.push(format!("{id}: {got}: {detail}")),
         }
     }
+    let listed_lowered = list(&here.join("tests/lowered.txt"));
+    for id in lowered
+        .lines()
+        .filter(|id| !listed_lowered.contains_key(*id))
+    {
+        off.push(format!(
+            "{id}: an error only lowering finds: add it to tests/lowered.txt"
+        ));
+    }
     for id in listed_passing
         .keys()
         .chain(listed_wrong.keys())
@@ -831,6 +846,12 @@ fn every_case_is_where_the_lists_say() {
         count(&refused),
         count(&masked)
     );
+    if listed_lowered
+        .keys()
+        .any(|id| only.is_none() && !lowered.lines().any(|l| l == id))
+    {
+        println!("cases in tests/lowered.txt are caught before lowering now: copy target/cpl-next/lowered.txt over it");
+    }
     if freed > 0 {
         println!("{freed} cases in tests/masked.txt no longer hide a verdict: copy target/cpl-next/masked.txt over it");
     }

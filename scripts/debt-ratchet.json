@@ -303,7 +303,7 @@
   "domain_member_names": 0,
   "next_wrong": 998,
   "next_not_passing": 2672,
-  "end_state_unmeasured": 24,
+  "end_state_unmeasured": 23,
   "facade_today_uses": 274,
   "tool_compiler_deps": 0,
   "end_state_broken": 0,
@@ -322,5 +322,6 @@
   "next_core_checks": 6,
   "next_ownership_outside_own": 6,
   "next_layer_foreign_deps": 1,
-  "next_std_unchecked": 40
+  "next_std_unchecked": 40,
+  "next_lowered": 6
 }
