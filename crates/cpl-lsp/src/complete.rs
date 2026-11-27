@@ -1157,6 +1157,37 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
     out
 }
 
+/// The type std's `@range_literal` fn returns: what `a..b` builds, whose members
+/// the checker of today gives as `RANGE_MEMBERS`.
+fn range_type() -> Option<&'static str> {
+    use cpl_syntax::ast::{StmtKind, TypeKind};
+    static FOUND: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    let found = FOUND.get_or_init(|| {
+        let std = cpl_facade::Std;
+        let marked = std
+            .outlines()
+            .iter()
+            .filter(|(_, o)| o.contains("@range_literal"));
+        let texts = marked.filter_map(|(m, _)| std.text(m));
+        texts
+            .flat_map(|t| cpl_syntax::parse_file(t).items)
+            .find_map(|(_, item)| {
+                item.stmts.into_iter().find_map(|s| match s.kind {
+                    StmtKind::Fn(f)
+                        if s.decorators.iter().any(|d| d.name.text == "range_literal") =>
+                    {
+                        match f.ret?.kind {
+                            TypeKind::Named { name, .. } => Some(name.text),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                })
+            })
+    });
+    found.as_deref()
+}
+
 fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {
     let builtin = |members: &[(&str, &str)], ty: String| {
         members
@@ -1165,7 +1196,7 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             .collect()
     };
     match ty {
-        _ if cpl_facade::today::is_range(ty) => {
+        Ty::Named { name, .. } if Some(name.as_str()) == range_type() => {
             builtin(cpl_facade::today::RANGE_MEMBERS, ty.to_string())
         }
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {
