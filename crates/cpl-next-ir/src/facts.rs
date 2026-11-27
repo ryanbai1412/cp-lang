@@ -3,8 +3,8 @@
 //! what the program already decided: an assignment of a linear value, a check or branch
 //! condition that held, a `Fact` lowering states (a `for` variable is at or after its start),
 //! and the join of an `if`'s arms. A place written loses every fact naming it; a loop or
-//! region drops, on entry, the facts on what it writes. `optimize` turns canonical IR into
-//! optimized IR: it drops a domain or range check only when the facts prove its condition,
+//! region drops, on entry, the facts on what it writes. `prove` is the step of optimized IR
+//! (`opt`) that reads them: it drops a domain or range check only when the facts prove its condition,
 //! records each drop, and drops the `Fact`s, which no backend runs.
 use crate::ir::*;
 use crate::prog::CTy;
@@ -519,9 +519,9 @@ fn escaped(funcs: &[Func<CTy>]) -> HashSet<(Option<usize>, usize)> {
     out
 }
 
-/// Canonical IR to optimized IR: the checks the facts prove, left out and listed. `main` is
-/// the entry, which nothing calls.
-pub fn optimize(funcs: &[Func<CTy>], main: usize) -> (Vec<Func<CTy>>, Vec<Proved>) {
+/// Canonical IR less the checks the facts prove, and those checks. `main` is the entry,
+/// which nothing calls.
+pub fn prove(funcs: &[Func<CTy>], main: usize) -> (Vec<Func<CTy>>, Vec<Proved>) {
     let escaped = escaped(funcs);
     let mut w = Writes::default();
     for (i, f) in funcs.iter().enumerate() {

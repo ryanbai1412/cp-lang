@@ -248,7 +248,7 @@ pub fn compile(
         inst::add_events(&mut prog, &t, &d, loaded.program_start);
     }
     let canon = inst::canonicalize(&prog).map_err(|es| link(&es))?;
-    let (opt, proved) = cpl_next_ir::facts::optimize(&canon, prog.main);
+    let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
     Ok(Compiled {
         prog,
         canon,

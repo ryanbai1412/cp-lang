@@ -296,3 +296,121 @@ pub struct Func<T> {
     /// What a trap's call stack calls it: `f`, `Box.at`, `top level`.
     pub shown: String,
 }
+
+/// Calls `f` on every place a block names, outermost first: read, written, lent, viewed or
+/// addressed. A `let`'s local and a region's variable come as `Place::Local`, and a local
+/// `f` leaves them is their new one.
+pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
+    fn local(l: &mut usize, f: &mut impl FnMut(&mut Place)) {
+        let mut p = Place::Local(*l);
+        f(&mut p);
+        if let Place::Local(x) = p {
+            *l = x;
+        }
+    }
+    /// A place, then the locals its slots index by.
+    fn place(p: &mut Place, f: &mut impl FnMut(&mut Place)) {
+        f(p);
+        let mut at = p;
+        loop {
+            at = match at {
+                Place::Slot(b, i) => {
+                    local(i, f);
+                    b
+                }
+                Place::Field(b, _) | Place::Variant(b, _) | Place::Deref(b) | Place::Through(b) => {
+                    b
+                }
+                Place::Local(_) | Place::Global(_) => break,
+            };
+        }
+    }
+    fn args<T>(xs: &mut [Arg<T>], f: &mut impl FnMut(&mut Place)) {
+        for a in xs {
+            match a {
+                Arg::Value(v) => expr(v, f),
+                Arg::View(p) | Arg::Lend(p) => place(p, f),
+            }
+        }
+    }
+    fn expr<T>(e: &mut Expr<T>, f: &mut impl FnMut(&mut Place)) {
+        match &mut e.kind {
+            EK::Copy(p) | EK::AddrOf(p) | EK::Lent(p) | EK::Tag(p) => place(p, f),
+            EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter_mut().for_each(|x| expr(x, f)),
+            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => expr(x, f),
+            EK::Intr(_, xs, _) | EK::Call(_, xs, _) => args(xs, f),
+            EK::CallValue(g, xs, _) => {
+                expr(g, f);
+                xs.iter_mut().for_each(|x| expr(x, f));
+            }
+            EK::Int(_)
+            | EK::F64(_)
+            | EK::Bool(_)
+            | EK::Unit
+            | EK::Text(_)
+            | EK::DomLen(_)
+            | EK::DomLo(_) => {}
+        }
+    }
+    for s in b {
+        match s {
+            Stmt::Let(l, e) => {
+                local(l, f);
+                expr(e, f);
+            }
+            Stmt::Assign(p, e) => {
+                place(p, f);
+                expr(e, f);
+            }
+            Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) | Stmt::Check { cond: e, .. } => {
+                expr(e, f)
+            }
+            Stmt::Return(e) => e.iter_mut().for_each(|e| expr(e, f)),
+            Stmt::If(c, x, y) => {
+                expr(c, f);
+                visit_places(x, f);
+                visit_places(y, f);
+            }
+            Stmt::Loop(x, y) => {
+                visit_places(x, f);
+                visit_places(y, f);
+            }
+            Stmt::Switch(c, arms) => {
+                expr(c, f);
+                arms.iter_mut().for_each(|a| visit_places(a, f));
+            }
+            Stmt::Print(ps) => ps.iter_mut().for_each(|p| {
+                if let PrintPiece::Value(v, _) = p {
+                    expr(v, f)
+                }
+            }),
+            Stmt::Region {
+                args: xs,
+                var,
+                body,
+                ..
+            } => {
+                args(xs, f);
+                local(var, f);
+                visit_places(body, f);
+            }
+            Stmt::LendOut(p) => place(p, f),
+            Stmt::Event(_, xs) => xs.iter_mut().for_each(|x| expr(x, f)),
+            Stmt::Break | Stmt::Continue => {}
+        }
+    }
+}
+
+impl Place {
+    /// The variable a place is part of.
+    pub fn root_mut(&mut self) -> &mut Place {
+        match self {
+            Place::Field(b, _)
+            | Place::Variant(b, _)
+            | Place::Deref(b)
+            | Place::Slot(b, _)
+            | Place::Through(b) => b.root_mut(),
+            p => p,
+        }
+    }
+}
