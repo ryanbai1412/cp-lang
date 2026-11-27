@@ -135,27 +135,12 @@ class LandTest(unittest.TestCase):
         self.assertEqual(landed, git(ours, "show", f"origin/main:{RATCHET}"))
         self.assertEqual(git(ours, "status", "--porcelain"), "")
 
-    def test_two_lands_adding_cases_to_the_lists_keep_both(self):
-        # The new pipeline's case lists take every lane's lines on a rebase (.gitattributes).
-        lists = "crates/cpl-next/tests/passing.txt"
-        rules = [l for l in (HERE.parent / ".gitattributes").read_text().splitlines() if l.startswith("crates/cpl-next/")]
-        self.assertTrue(rules)
-        seed = self.clone("seed2")
-        (seed / "scripts" / "wasm-warm.sh").unlink()  # no crate here has a wasm budget
-        (seed / ".gitattributes").write_text("\n".join(rules) + "\n")
-        (seed / lists).parent.mkdir(parents=True)
-        (seed / lists).write_text("a\nm\nz\n")
-        self.commit(seed, "lists")
-        git(seed, "push", "-q", "origin", "HEAD:main")
-        theirs, ours = self.clone("theirs"), self.clone("ours")
-        (theirs / lists).write_text("a\nb\nm\nz\n")
-        self.commit(theirs, "theirs")
-        git(theirs, "push", "-q", "origin", "HEAD:main")
-        (ours / lists).write_text("a\nc\nm\nz\n")
-        self.commit(ours, "ours")
-        r = self.land(ours)
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(sorted(git(ours, "show", f"origin/main:{lists}").split()), ["a", "b", "c", "m", "z"])
+    def test_the_case_lists_do_not_merge_by_union(self):
+        # merge=union wrote duplicate ids into passing.txt (bdd60b6e5): a list
+        # conflict stops the land, and the lists are regenerated from a run.
+        rules = [l for l in (HERE.parent / ".gitattributes").read_text().splitlines()
+                 if l.startswith("crates/cpl-next/") and "merge=union" in l]
+        self.assertEqual(rules, [])
 
     def test_a_conflict_in_a_hand_written_case_stops_instead_of_taking_mains(self):
         case = "spec/conformance/core-01/x.cp"
