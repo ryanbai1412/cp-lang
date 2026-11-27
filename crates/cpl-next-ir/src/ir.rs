@@ -280,5 +280,8 @@ pub struct Func<T> {
     pub ret: T,
     /// Set for a generator (`false`) or a lender (`true`): what it hands to the caller's code.
     pub region: Option<(bool, T)>,
+    /// Where it is written: its line in the user's file, 0 inside std (`Site`).
     pub line: u32,
+    /// What a trap's call stack calls it: `f`, `Box.at`, `top level`.
+    pub shown: String,
 }

@@ -4,6 +4,7 @@
 use crate::inst::{CTy, Program};
 use crate::ir::*;
 use crate::ops::{self, Fault};
+use cpl_next_ir::run::call_stack;
 pub use cpl_next_ir::run::{Outcome, Trap};
 use std::rc::Rc;
 
@@ -50,6 +51,10 @@ struct Region<'a> {
 }
 struct Frame<'a> {
     locals: Vec<V>,
+    /// Its fn, the frame that called it and the line of the call: a trap's call stack.
+    f: usize,
+    parent: Option<usize>,
+    line: Site,
     region: Option<Region<'a>>,
     /// A lender whose region left early finishes its own code first, then leaves this way.
     pending: Option<Flow>,
@@ -65,6 +70,8 @@ struct Machine<'a> {
     input: std::vec::IntoIter<String>,
     /// The innermost line of the user's file that is running (`ir::Site`).
     at: Site,
+    /// The frame whose code is running: a region body runs in its caller's.
+    cur: usize,
 }
 type R<T> = Result<T, Trap>;
 
@@ -82,11 +89,13 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
             .collect::<Vec<_>>()
             .into_iter(),
         at: 0,
+        cur: 0,
     };
-    let trap = m
-        .call(p.main, Vec::new(), None)
-        .err()
-        .map(|t| Trap { line: m.at, ..t });
+    let trap = m.call(p.main, Vec::new(), None).err().map(|t| Trap {
+        line: m.at,
+        stack: m.call_stack(),
+        ..t
+    });
     Outcome {
         events: m.events,
         output: m.out,
@@ -105,6 +114,16 @@ fn broken<T>(rule: &'static str) -> R<T> {
 }
 
 impl<'a> Machine<'a> {
+    /// The calls a trap left, innermost first: each frame's fn and the line running in it.
+    fn call_stack(&self) -> Vec<String> {
+        let mut calls = Vec::new();
+        let (mut k, mut line) = (Some(self.cur), self.at);
+        while let Some(fr) = k.and_then(|i| self.frames.get(i)) {
+            calls.push((fr.f, line));
+            (k, line) = (fr.parent, fr.line);
+        }
+        call_stack(self.funcs, calls)
+    }
     /// Runs a fn. Returns its result, what its lent parameters hold now, and how a region body left, if it did.
     fn call(
         &mut self,
@@ -121,16 +140,22 @@ impl<'a> Machine<'a> {
         if self.frames.len() >= 4_000_000 {
             return trap(Fault::StackExhausted);
         }
+        let parent = (!self.frames.is_empty()).then_some(self.cur);
         self.frames.push(Frame {
             locals,
+            f,
+            parent,
+            line: self.at,
             region,
             pending: None,
         });
         let fp = self.frames.len() - 1;
+        self.cur = fp;
         let flow = self.block(&func.body, fp)?;
         let Some(mut frame) = self.frames.pop() else {
             return broken("a call returned with no frame");
         };
+        self.cur = frame.parent.unwrap_or(0);
         let (ret, exit) = match flow {
             Flow::Return(v) => (v, frame.pending.take()),
             Flow::Exit(f) => (V::Unit, Some(*f)),
@@ -273,9 +298,8 @@ impl<'a> Machine<'a> {
                     if !ok {
                         self.enter(*site);
                         return Err(Trap {
-                            fault: Fault::Check(*kind),
-                            line: 0,
                             msg: msg.clone(),
+                            ..Fault::Check(*kind).into()
                         });
                     }
                 }
@@ -316,9 +340,10 @@ impl<'a> Machine<'a> {
                         return broken("yield with no caller code");
                     };
                     self.frames[r.fp].locals[r.var] = v;
-                    let here = self.at;
+                    let (here, was) = (self.at, self.cur);
+                    self.cur = r.fp;
                     let flow = self.block(r.body, r.fp)?;
-                    self.at = here;
+                    (self.at, self.cur) = (here, was);
                     match flow {
                         Flow::Normal | Flow::Continue => {}
                         other => return Ok(Flow::Exit(Box::new(other))),
@@ -330,9 +355,10 @@ impl<'a> Machine<'a> {
                     };
                     let v = std::mem::take(self.place(fp, p)?);
                     self.frames[r.fp].locals[r.var] = v;
-                    let here = self.at;
+                    let (here, was) = (self.at, self.cur);
+                    self.cur = r.fp;
                     let flow = self.block(r.body, r.fp)?;
-                    self.at = here;
+                    (self.at, self.cur) = (here, was);
                     let v = std::mem::take(&mut self.frames[r.fp].locals[r.var]);
                     *self.place(fp, p)? = v;
                     // The rest of the lender still runs; the caller leaves after it.

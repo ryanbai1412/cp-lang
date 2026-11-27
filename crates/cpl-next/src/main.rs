@@ -163,6 +163,9 @@ fn said(o: &cpl_next::Outcome) -> String {
     let mut s: String = o.events.iter().map(|e| format!("{e}\n")).collect();
     if let Some(t) = &o.trap {
         s += &format!("trap: {}: line {}: {}\n", t.code(), t.line, t.msg);
+        if t.stack.len() > 1 {
+            s += &format!("call stack: {}\n", t.stack.join(" <- "));
+        }
     }
     s
 }

@@ -321,6 +321,11 @@ pub(crate) struct EventCode {
 }
 
 pub(crate) struct Code {
+    /// The inlined calls an op runs in, outermost first: the fn and the register holding the
+    /// line it was called from. Chain 0 is none.
+    pub chains: Vec<Vec<(u32, Reg)>>,
+    /// Per block: from which op on each chain holds, in order.
+    pub marks: Vec<Vec<(u32, u32)>>,
     pub blocks: Vec<Vec<Op>>,
     pub funcs: Vec<FnCode>,
     pub places: Vec<PlaceCode>,
@@ -338,6 +343,8 @@ pub(crate) struct Code {
 
 pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
     let mut c = Code {
+        chains: vec![Vec::new()],
+        marks: Vec::new(),
         blocks: Vec::new(),
         funcs: Vec::new(),
         places: Vec::new(),
@@ -408,12 +415,16 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
             ret: 0,
             exits: None,
             inlining: vec![i],
+            chain: 0,
+            marks: vec![(0, 0)],
         };
         fc.block(&f.body);
         let (ops, max) = (std::mem::take(&mut fc.ops), fc.max);
+        let marks = std::mem::take(&mut fc.marks);
         c.funcs[i].frame = max;
         c.funcs[i].block = c.blocks.len() as u32;
         c.blocks.push(ops);
+        c.marks.push(marks);
     }
     c
 }
@@ -443,6 +454,9 @@ struct Fc<'a> {
     exits: Option<Vec<usize>>,
     /// The fns being compiled, the outermost first: none is inlined into itself.
     inlining: Vec<usize>,
+    /// The chain of inlined calls being compiled (`Code::chains`), and where `ops` enters each.
+    chain: u32,
+    marks: Vec<(u32, u32)>,
 }
 
 impl Fc<'_> {
@@ -724,12 +738,15 @@ impl Fc<'_> {
     /// A region body: a block of its own, run in this frame. Its end is a normal end.
     fn region_body(&mut self, body: &[Stmt<CTy>]) -> u32 {
         let ops = std::mem::take(&mut self.ops);
+        let marks = std::mem::replace(&mut self.marks, vec![(0, self.chain)]);
         let loops = std::mem::take(&mut self.loops);
         self.block(body);
         let body_ops = std::mem::replace(&mut self.ops, ops);
+        let body_marks = std::mem::replace(&mut self.marks, marks);
         self.loops = loops;
         let b = self.c.blocks.len() as u32;
         self.c.blocks.push(body_ops);
+        self.c.marks.push(body_marks);
         b
     }
     fn text(&mut self, t: &str) -> u32 {
@@ -1325,9 +1342,17 @@ impl<'a> Fc<'a> {
         let ret = std::mem::replace(&mut self.ret, d);
         let exits = self.exits.replace(Vec::new());
         let loops = std::mem::take(&mut self.loops);
+        let outer = self.chain;
+        let mut chain = self.c.chains[outer as usize].clone();
+        chain.push((f as u32, save));
+        self.chain = self.c.chains.len() as u32;
+        self.c.chains.push(chain);
+        self.marks.push((self.ops.len() as u32, self.chain));
         self.inlining.push(f);
         self.block(&g.body);
         self.inlining.pop();
+        self.chain = outer;
+        self.marks.push((self.ops.len() as u32, outer));
         self.loops = loops;
         let mine = std::mem::replace(&mut self.exits, exits);
         self.ret = ret;

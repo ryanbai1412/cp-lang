@@ -1,7 +1,7 @@
 //! Contract 4: typed tree -> generic IR. No inference, no solver, no lookup:
 //! everything it needs is on the typed tree.
 use crate::check::*;
-use crate::decls::{Decls, SelfMode};
+use crate::decls::{Decls, FnDecl, Owner, SelfMode};
 use crate::diag::Msg;
 use crate::ir::*;
 use crate::own::Owned;
@@ -97,6 +97,7 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
             ret: Ty::Unit,
             region: None,
             line: 0,
+            shown: "top level".into(),
         },
     );
     if let Some(c) = lw.case.take() {
@@ -154,7 +155,8 @@ pub fn lower(d: &Decls, typed: &Typed, owned: &Owned, src: &crate::modules::Load
                 body,
                 ret: tf.ret.clone(),
                 region: fd.region.clone(),
-                line: 0,
+                line: lw.src.program_line(fd.span.start),
+                shown: shown_name(d, fd),
             },
         );
     }
@@ -1011,6 +1013,7 @@ impl Lw<'_> {
                     ret: Ty::Unit,
                     region: None,
                     line: 0,
+                    shown: "case".into(),
                 });
                 self.off = off;
             }
@@ -1220,7 +1223,8 @@ impl Lw<'_> {
             body: stmts,
             ret: info.ret.clone(),
             region: None,
-            line: 0,
+            line: self.site(body.span),
+            shown: "lambda".into(),
         });
         caps.into_iter()
             .map(|(_, p, ty, addr)| Expr {
@@ -1381,5 +1385,22 @@ pub fn free_vars(e: &TExpr, used: &mut BTreeSet<VarRef>, bound: &mut BTreeSet<Va
             }
         }),
         _ => {}
+    }
+}
+
+/// What a trap's call stack calls a declared fn: its name after its owner's, `Box.at`.
+fn shown_name(d: &Decls, fd: &FnDecl) -> String {
+    let owner = match &fd.owner {
+        Some(Owner::Struct(s)) => Some(&d.structs[s.0].name),
+        Some(Owner::Trait(t)) => Some(&d.traits[t.0].name),
+        Some(Owner::Impl(i)) => match &d.impls[*i].for_ {
+            Ty::Struct(s, ..) => Some(&d.structs[s.0].name),
+            _ => None,
+        },
+        None => None,
+    };
+    match owner {
+        Some(o) => format!("{o}.{}", fd.name),
+        None => fd.name.clone(),
     }
 }

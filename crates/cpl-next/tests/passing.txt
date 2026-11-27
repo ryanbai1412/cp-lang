@@ -6,6 +6,7 @@ core-01/binder-after-comma-needs-let.cp
 core-01/bitand-binds-looser-than-eq.cp
 core-01/block-if-is-an-expression.cp
 core-01/block-not-indented.cp
+core-01/bool-caret-names-ne.cp
 core-01/bool-ne-is-xor.cp
 core-01/bracket-layout.cp
 core-01/call-arguments.cp
@@ -31,6 +32,8 @@ core-01/division-negative-divisor.cp
 core-01/doc-comment.cp
 core-01/elif-chain-picks-first.cp
 core-01/elif-let-takes-coalesce.cp
+core-01/else-if-names-elif.cp
+core-01/floor-div-before-inline-else.cp
 core-01/floor-div.cp
 core-01/floor-division-by-zero-traps.cp
 core-01/for-filter-on-inner-clause.cp
@@ -91,6 +94,7 @@ core-01/tuple-field-chain.cp
 core-01/type-args-capitalized.cp
 core-01/unchecked-not-expression.cp
 core-01/unclosed-paren.cp
+core-01/unindented-nested-header-one-error.cp
 core-01/unterminated-string.cp
 core-01/unwrap-none-traps.cp
 core-01/user-none-variant.cp
@@ -148,6 +152,7 @@ core-02/none-names-a-param-and-a-field.cp
 core-02/optional-compare-coalesced.cp
 core-02/optional-eq-structural.cp
 core-02/optional-not-implicit-down.cp
+core-02/optional-unknown-member.cp
 core-02/owned-lent-same-type.cp
 core-02/pascal-variant-pattern.cp
 core-02/plain-copies.cp
@@ -283,6 +288,8 @@ core-04/range-param-method-argument-traps.cp
 core-04/range-param-method-later-argument-unchecked.cp
 core-04/range-param-narrowing.cp
 core-04/range-type-widens.cp
+core-04/ranged-cells-take-no-wider-list-by-assign.cp
+core-04/ranged-cells-take-no-wider-list-by-return.cp
 core-04/rb1-q11-first-is-optional.cp
 core-04/rb1-q12-literal-outside-domain.cp
 core-04/rb1-q13-literal-inside-min-count.cp
@@ -294,6 +301,7 @@ core-04/scalar-fill-wrong-type.cp
 core-04/scalar-fill.cp
 core-04/slice-key-outside-view-traps.cp
 core-04/stored-cut-range-not-piece.cp
+core-04/trap-in-a-small-fn-names-its-frame.cp
 core-04/zip-keyed-by-first.cp
 core-04/zip-pairs-domains-rejected.cp
 core-05/a-closure-in-an-optional-the-callee-only-calls-borrows-its-list.cp
@@ -408,9 +416,13 @@ core-05/walk-body-cannot-touch-mut-source.cp
 core-05/walk-body-cannot-write-source.cp
 core-05/walk-body-reads-source.cp
 core-06/a-documented-decorator-is-accepted.cp
+core-06/alt-main-is-removed.cp
 core-06/an-unknown-decorator-is-rejected.cp
+core-06/brute-fn-is-removed.cp
+core-06/brute-main-is-removed.cp
 core-06/captured-fn-param-holds-each-callers-closure.cp
 core-06/captured-moved-after-last-use.cp
+core-06/checker-is-removed.cp
 core-06/closure-mutates-iterated-var.cp
 core-06/closure-reads-capture-at-call.cp
 core-06/closures-share-captures-across-calls-and-nesting.cp
@@ -418,8 +430,10 @@ core-06/fed-loop-fn-value-writes-the-walked-global.cp
 core-06/fn-captures-earlier-top-level-let.cp
 core-06/fn-forms.cp
 core-06/fn-hoists.cp
+core-06/fn-param-needs-type.cp
 core-06/fn-type-arity-mismatch.cp
 core-06/fn-value-yes-in-map.cp
+core-06/free-fn-called-as-method.cp
 core-06/function-types.cp
 core-06/generator-closure-writes-its-local-across-yields.cp
 core-06/generic-free-method.cp
@@ -507,6 +521,7 @@ core-08/impl-choice-must-meet-the-associated-type-bound.cp
 core-08/impl-missing-an-associated-type.cp
 core-08/impl-plus-shorthand.cp
 core-08/impls-choosing-two-types-for-one-type.cp
+core-08/importer-of-a-hidden-fn-calls-the-member.cp
 core-08/inherent-before-trait.cp
 core-08/inherent-methods.cp
 core-08/inherent-on-builtin-type.cp
@@ -514,6 +529,7 @@ core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
 core-08/law-declared.cp
 core-08/law-must-be-bool.cp
 core-08/lazy-method-sig.cp
+core-08/member-hides-the-modules-own-fn.cp
 core-08/method-bound-met.cp
 core-08/method-generic-bound-unmet.cp
 core-08/method-impl-bound-unmet.cp
@@ -563,6 +579,7 @@ core-09/overflow-not-reached.cp
 core-09/overflow-trap.cp
 core-09/range-store-proved.cp
 core-09/range-store-trap.cp
+core-09/trap-trace-source-names.cp
 core-09/trapped-check-that-holds.cp
 core-09/unchecked-is-statement.cp
 core-09/unwrap-none-trap.cp
@@ -581,10 +598,12 @@ core-10/no-graph-read.cp
 core-10/optional-show-fallback.cp
 core-10/print-count-prefixed-row.cp
 core-10/print-empty-seq.cp
+core-10/ragged-read-names-pair-domain.cp
 core-10/rb1-q39-bool-not-print.cp
 core-10/read-bad-token-traps.cp
 core-10/read-empty-input-traps.cp
 core-10/read-good-token.cp
+core-10/read-int-too-big-traps.cp
 core-10/read-negative-into-range.cp
 core-10/read-past-end-traps.cp
 core-10/read-range-arithmetic-lower-bound.cp
@@ -614,6 +633,8 @@ core-11/runtime-domain-reads-in-order.cp
 core-11/runtime-domain-use-before-definition.cp
 core-11/use-unknown-module.cp
 core-12/aka-on-a-user-fn-runs.cp
+core-12/aka-strip-names-trim.cp
+core-12/aka-upper-names-to-upper.cp
 core-12/body-attribute-unknown-is-an-error.cp
 core-12/clone-copies.cp
 core-12/closure-borrows-per-call.cp
@@ -652,7 +673,9 @@ diagnostics/foreign-or-or.cp
 diagnostics/missing-name.cp
 diagnostics/missing-pattern.cp
 diagnostics/missing-type.cp
+diagnostics/partition-point-names-a-users-bsearch.cp
 diagnostics/planned-domain-list.cp
+diagnostics/str-chain-method-names-free-chain.cp
 diagnostics/tuple-has-no-struct-method.cp
 diagnostics/tuple-is-not-a-struct.cp
 diagnostics/tuple-unknown-member.cp
@@ -932,6 +955,8 @@ next/n_table_01_one_cell_per_position.cp
 next/n_targs_01_written.cp
 next/n_targs_02_field_takes_none.cp
 next/n_trait_typed_param.cp
+next/n_trap_01_call_stack_names_inlined_calls.cp
+next/n_trap_02_call_stack_in_a_loop_body.cp
 next/n_u64_01_wraps_and_compares_unsigned.cp
 next/n_u64_02_int_of_a_large_u64_traps.cp
 next/n_u64_03_division_by_zero_traps.cp
@@ -1014,6 +1039,7 @@ std-dsu/dsu-of-a-size-is-rejected.cp
 std-dsu/new.cp
 std-geometry/area2-orientation.cp
 std-geometry/free-dot-and-cross-are-public.cp
+std-geometry/pt-dot-method-is-the-free-fn.cp
 std-graph/out-on-a-table-of-non-lists-has-no-method.cp
 std-hashmap/counter-is-a-std-struct-a-user-may-shadow.cp
 std-hashmap/flatmap-is_empty-1.cp
@@ -1030,9 +1056,11 @@ std-math/divmod-floor-signs.cp
 std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
 std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
+std-prefix/list-shape-prefix-was-cut.cp
 std-range/len-param-past-2-31-is-a-compile-error.cp
 std-range/len-param-past-2-31-traps-at-the-call.cp
 std-range/len-param-takes-a-len.cp
+std-search/last-true-was-bsearch-last.cp
 std-seq/all-1.cp
 std-seq/any-1.cp
 std-seq/collect-1.cp

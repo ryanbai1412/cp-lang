@@ -289,7 +289,7 @@ fn unkeep(b: &[u8], input: &[u8]) -> Option<Ran> {
 /// hold, more than the 10 seconds every run gets): a case with one counts as refused.
 /// Every other `// word:` line is a key the harness acts on (`expect`, `input`, `tool`,
 /// `output`) or a comment, so a note added to a header never changes what a case is.
-const ASKS: [&str; 6] = ["judge", "before", "copies", "has", "lacks", "timeout"];
+const ASKS: [&str; 4] = ["judge", "before", "copies", "timeout"];
 
 /// What a case asks cpl-next for: a run, or only the checks.
 #[derive(Clone, Copy, PartialEq)]
@@ -347,10 +347,15 @@ fn verdict(path: &Path) -> (&'static str, String) {
         Ok(e) => e,
         Err(e) => return ("bad-header", e),
     };
-    let header = text.lines().take_while(|l| l.starts_with("//"));
-    if let Some(key) = header.filter_map(header_key).find(|k| ASKS.contains(k)) {
+    let header = || text.lines().take_while(|l| l.starts_with("//"));
+    if let Some(key) = header().filter_map(header_key).find(|k| ASKS.contains(k)) {
         return ("refused", format!("a `// {key}:` case"));
     }
+    // Text a case asks to see is judged once the case otherwise passes; until then the
+    // case stays refused, as the text may come from a report the pipeline lacks.
+    let asks_text = header()
+        .filter_map(header_key)
+        .find(|k| ["has", "lacks"].contains(k));
     let ask = match ask(header_values(&text, "tool:").first().copied()) {
         Ok(a) => a,
         Err(e) => return ("refused", e),
@@ -374,6 +379,17 @@ fn verdict(path: &Path) -> (&'static str, String) {
     let (verdict, detail, printed) = judged(&run_at, &text, expect, ask);
     if let Some(d) = scratch {
         let _ = std::fs::remove_dir_all(d);
+    }
+    if let Some(key) = asks_text {
+        let refused = || ("refused", format!("a `// {key}:` case"));
+        if verdict != "pass" {
+            return refused();
+        }
+        let mut has = header_values(&text, "has:").into_iter().map(unquote);
+        let mut lacks = header_values(&text, "lacks:").into_iter().map(unquote);
+        if !has.all(|w| printed.contains(&w)) || lacks.any(|n| printed.contains(&n)) {
+            return refused();
+        }
     }
     if verdict != "pass" {
         return (verdict, detail);
@@ -511,7 +527,12 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
         Err(e) => return done("no-cxx", e.lines().take(4).collect::<Vec<_>>().join(" | ")),
     };
     let built = run_kept(&bin, &input);
-    if !same(&raw, &built) {
+    // A trap's call stack comes from the engines' events; generated C++ keeps no frames.
+    fn judged(r: &Ran) -> (Option<i32>, &str, Vec<&str>) {
+        let lines = r.stderr.lines().filter(|l| !l.starts_with("call stack: "));
+        (r.status, &r.stdout, lines.collect())
+    }
+    if judged(&raw) != judged(&built) {
         return done(
             "split",
             format!(
@@ -527,12 +548,8 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
         Expect::Ok | Expect::Exit(0) if !trapped => pass(),
         Expect::OkOutput(want) if !trapped && raw.stdout.trim_end_matches('\n') == want => pass(),
         Expect::Exit(3) if trapped => pass(),
-        Expect::Ok | Expect::Exit(0) => {
-            done("wrong-trap", first(raw.stderr.lines().last().unwrap_or("")))
-        }
-        Expect::OkOutput(_) if trapped => {
-            done("wrong-trap", first(raw.stderr.lines().last().unwrap_or("")))
-        }
+        Expect::Ok | Expect::Exit(0) => done("wrong-trap", first(trap_line(&raw.stderr))),
+        Expect::OkOutput(_) if trapped => done("wrong-trap", first(trap_line(&raw.stderr))),
         Expect::OkOutput(want) => done(
             "wrong-output",
             format!("wanted {want:?}, got {:?}", raw.stdout),
@@ -546,7 +563,7 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
                     "wrong-trap",
                     format!(
                         "wanted {code} on line {line}, got: {}",
-                        raw.stderr.lines().last().unwrap_or("")
+                        trap_line(&raw.stderr)
                     ),
                 )
             }
@@ -747,4 +764,12 @@ fn queue(refused: &str) -> String {
     let mut by: Vec<(String, usize)> = by.into_iter().collect();
     by.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     by.iter().map(|(c, n)| format!("{n:5} {c}\n")).collect()
+}
+
+/// The line saying how a run trapped: `trap: CODE: line N: message`.
+fn trap_line(stderr: &str) -> &str {
+    stderr
+        .lines()
+        .find(|l| l.starts_with("trap: "))
+        .unwrap_or("")
 }

@@ -3,9 +3,11 @@
 //! interpreter's rules step for step.
 use crate::compile::*;
 use crate::layout::Lay;
+use cpl_next_ir::ir::Func;
 use cpl_next_ir::ir::Site;
 use cpl_next_ir::ops::{self, Fault};
-use cpl_next_ir::run::{Outcome, Trap};
+use cpl_next_ir::prog::CTy;
+use cpl_next_ir::run::{call_stack, Outcome, Trap};
 
 struct Obj {
     rc: u32,
@@ -32,6 +34,10 @@ struct RegionAt {
 }
 struct Frame {
     fp: usize,
+    /// Its fn, the frame that called it and the line of the call: a trap's call stack.
+    f: u32,
+    parent: Option<usize>,
+    line: Site,
     end: usize,
     region: Option<RegionAt>,
     pending: Option<Flow>,
@@ -44,6 +50,11 @@ enum Loc {
 }
 
 struct M<'a> {
+    funcs: &'a [Func<CTy>],
+    /// The frame whose code is running: a region body runs in its caller's.
+    cur: usize,
+    /// Each block run a trap left, innermost first: the block, its op and the frame.
+    trail: Vec<(u32, usize, usize)>,
     c: &'a Code,
     stack: Vec<u64>,
     /// Object 0 is no object: a handle of 0 has none yet.
@@ -63,9 +74,12 @@ fn broken<T>(rule: &'static str) -> R<T> {
     Err(Fault::Internal(rule).into())
 }
 
-pub(crate) fn run(c: &Code, input: &str) -> Outcome {
+pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: &str) -> Outcome {
     let mut m = M {
         c,
+        funcs,
+        cur: 0,
+        trail: Vec::new(),
         stack: vec![0; c.globals as usize],
         heap: vec![Obj {
             rc: 0,
@@ -87,10 +101,11 @@ pub(crate) fn run(c: &Code, input: &str) -> Outcome {
         scratch: Vec::new(),
     };
     let fp = c.globals as usize;
-    let trap = m
-        .run_fn(c.main, fp, None)
-        .err()
-        .map(|t| Trap { line: m.at, ..t });
+    let trap = m.run_fn(c.main, fp, None).err().map(|t| Trap {
+        line: m.at,
+        stack: m.call_stack(),
+        ..t
+    });
     Outcome {
         events: m.events,
         output: m.out,
@@ -305,17 +320,23 @@ impl M<'_> {
         if self.stack.len() < end {
             self.stack.resize(end.max(self.stack.len() * 2), 0);
         }
+        let parent = (!self.frames.is_empty()).then_some(self.cur);
         self.frames.push(Frame {
             fp,
+            f,
+            parent,
+            line: self.at,
             end,
             region,
             pending: None,
         });
         let fr = self.frames.len() - 1;
+        self.cur = fr;
         let flow = self.exec(fc.block, fr)?;
         let Some(frame) = self.frames.pop() else {
             return broken("a call returned with no frame");
         };
+        self.cur = frame.parent.unwrap_or(0);
         for &(at, lay) in &fc.drops {
             self.release(lay, Loc::Stack(fp + at as usize));
         }
@@ -370,6 +391,32 @@ impl M<'_> {
         }
         Ok(exit)
     }
+    /// The calls a trap left, innermost first: each frame's fn, and each call inlined into
+    /// it, from the chain of the op it stopped at, with the line running in it.
+    fn call_stack(&self) -> Vec<String> {
+        let mut calls = Vec::new();
+        let (mut k, mut line, mut pos) = (Some(self.cur), self.at, 0);
+        while let Some(fr) = k.and_then(|i| self.frames.get(i)) {
+            if let Some(i) = self.trail[pos..].iter().position(|t| Some(t.2) == k) {
+                let (b, pc, _) = self.trail[pos + i];
+                pos += i + 1;
+                let marks = &self.c.marks[b as usize];
+                let at = marks
+                    .partition_point(|m| m.0 as usize <= pc)
+                    .saturating_sub(1);
+                let chain = marks
+                    .get(at)
+                    .map_or(&[][..], |m| &self.c.chains[m.1 as usize]);
+                for &(g, save) in chain.iter().rev() {
+                    calls.push((g as usize, line));
+                    line = self.stack[fr.fp + save as usize] as Site;
+                }
+            }
+            calls.push((fr.f as usize, line));
+            (k, line) = (fr.parent, fr.line);
+        }
+        call_stack(self.funcs, calls)
+    }
     fn enter(&mut self, site: Site) -> Site {
         if site != 0 {
             self.at = site;
@@ -378,12 +425,20 @@ impl M<'_> {
     }
 
     fn exec(&mut self, b: u32, fr: usize) -> R<Flow> {
+        let mut pc = 0;
+        let flow = self.run_block(b, fr, &mut pc);
+        if flow.is_err() {
+            self.trail.push((b, pc.saturating_sub(1), fr));
+        }
+        flow
+    }
+    #[inline(always)]
+    fn run_block(&mut self, b: u32, fr: usize, pc: &mut usize) -> R<Flow> {
         let c = self.c;
         let ops = &c.blocks[b as usize];
         let fp = self.frames[fr].fp;
-        let mut pc = 0;
-        while let Some(&op) = ops.get(pc) {
-            pc += 1;
+        while let Some(&op) = ops.get(*pc) {
+            *pc += 1;
             let r = |x: Reg| fp + x as usize;
             match op {
                 Op::Imm { d, v } => self.stack[r(d)] = v,
@@ -461,7 +516,7 @@ impl M<'_> {
                     if to == LEAVE {
                         return Ok(exit.unwrap_or(Flow::Normal));
                     }
-                    pc = to as usize;
+                    *pc = to as usize;
                 }
                 Op::Yield { s, lay } => {
                     let Some(rg) = self.frames[fr].region else {
@@ -471,9 +526,10 @@ impl M<'_> {
                     self.release(lay, Loc::Stack(v));
                     let n = self.size(lay);
                     self.stack.copy_within(r(s)..r(s) + n, v);
-                    let here = self.at;
+                    let (here, was) = (self.at, self.cur);
+                    self.cur = rg.fr;
                     let flow = self.exec(rg.body, rg.fr)?;
-                    self.at = here;
+                    (self.at, self.cur) = (here, was);
                     match flow {
                         Flow::Normal | Flow::Continue => {}
                         other => return Ok(Flow::Exit(Box::new(other))),
@@ -487,9 +543,10 @@ impl M<'_> {
                     let loc = self.loc(fp, p)?;
                     self.release(lay, Loc::Stack(v));
                     self.read(loc, v, n);
-                    let here = self.at;
+                    let (here, was) = (self.at, self.cur);
+                    self.cur = rg.fr;
                     let flow = self.exec(rg.body, rg.fr)?;
-                    self.at = here;
+                    (self.at, self.cur) = (here, was);
                     let loc = self.loc(fp, p)?;
                     self.write(loc, v, n);
                     self.stack[v..v + n].fill(0);
@@ -498,15 +555,15 @@ impl M<'_> {
                         self.frames[fr].pending = Some(flow);
                     }
                 }
-                Op::Jump { t } => pc = t as usize,
+                Op::Jump { t } => *pc = t as usize,
                 Op::JumpUnless { c: x, t } => {
                     if self.stack[r(x)] == 0 {
-                        pc = t as usize;
+                        *pc = t as usize;
                     }
                 }
                 Op::Switch { c: x, table } => {
                     match c.tables[table as usize].get(self.stack[r(x)] as usize) {
-                        Some(&t) => pc = t as usize,
+                        Some(&t) => *pc = t as usize,
                         None => return broken("a switch on a tag past its arms"),
                     }
                 }
@@ -526,9 +583,8 @@ impl M<'_> {
                     if self.stack[r(x)] == 0 {
                         self.enter(site);
                         return Err(Trap {
-                            fault: Fault::Check(kind),
-                            line: 0,
                             msg: c.msgs[msg as usize].clone(),
+                            ..Fault::Check(kind).into()
                         });
                     }
                 }

@@ -38,6 +38,7 @@ means evidence is still missing.
 | 22 | Every engine bounds-checks storage always, also in `unchecked:`. | working | under 5% in the engine prototype |
 | 23 | The playground's size cap is reset once from a measurement. | Ryan | |
 | 24 | Language changes keep landing during the migration. | working | about 400 language commits a day |
+| 45 | A trap's call stack and locals come from the event stream: the reference interpreter and the engine report them, generated C++ keeps no frames (zero cost on the judge) and prints only the trap line. The harness compares that line across all engines and the stack against the reference interpreter. | coordinator, 2026-11-26 | `trap-in-a-small-fn-names-its-frame`, `trap-trace-source-names` |
 
 ## Architecture
 

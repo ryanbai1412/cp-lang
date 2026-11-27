@@ -15,5 +15,5 @@ pub use cpl_next_ir::run::Outcome;
 /// Runs canonical IR on `input`.
 pub fn run(p: &Program, funcs: &[Func<CTy>], input: &str) -> Outcome {
     let code = compile::compile(p, funcs);
-    exec::run(&code, input)
+    exec::run(&code, funcs, input)
 }

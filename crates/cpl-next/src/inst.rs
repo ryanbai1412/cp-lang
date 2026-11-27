@@ -189,6 +189,7 @@ impl Link<'_> {
             ret: unlent(self.ty(&f.ret, env)),
             region: f.region.as_ref().map(|(lend, t)| (*lend, self.ty(t, env))),
             line: f.line,
+            shown: f.shown.clone(),
         }
     }
     /// `p` read through each lent slot on its path.
