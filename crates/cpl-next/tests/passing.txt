@@ -885,6 +885,7 @@ core-08/own-module-fn-beats-equal-imported.cp
 core-08/record-exact-fields.cp
 core-08/recursion-at-the-same-type-is-fine.cp
 core-08/return-type-dispatch.cp
+core-08/static-ctor-at-a-generic-bound-takes-the-monoid-impl.cp
 core-08/static-fn-default-param-mismatch.cp
 core-08/static-fn-default-param.cp
 core-08/static-fn-explicit-args.cp
@@ -1410,6 +1411,7 @@ next/n_bits_03_shl_past_int_traps.cp
 next/n_bits_04_and_to_the_lowest_pattern_traps.cp
 next/n_bound_01_bare_bound_learns_arguments.cp
 next/n_bound_02_for_walks_through_the_bound.cp
+next/n_bound_03_open_struct_meets_a_bound_later.cp
 next/n_cascade_01_member_of_an_error.cp
 next/n_cascade_02_method_of_an_error.cp
 next/n_cascade_03_type_built_from_an_error.cp
@@ -1466,6 +1468,7 @@ next/n_engine_07_loop_constant_in_region_body.cp
 next/n_engine_08_trap_line_after_a_join.cp
 next/n_engine_09_trap_in_a_yielded_body.cp
 next/n_engine_10_read_keeps_storage_shared.cp
+next/n_engine_11_nested_fn_writes_a_cell_of_a_captured_list.cp
 next/n_enum_01_values_and_order.cp
 next/n_enum_domain.cp
 next/n_f64_01_arith_compare_print.cp
@@ -1493,6 +1496,8 @@ next/n_impl_04_impls_overlap_only_at_equal_trait_args.cp
 next/n_impl_05_written_type_beats_blanket.cp
 next/n_impl_06_two_blankets_overlap.cp
 next/n_impl_07_shaped_header.cp
+next/n_impl_08_bound_leaves_its_assoc_type_out.cp
+next/n_impl_09_spelled_out_params_of_any_length.cp
 next/n_in_01_membership_through_contains.cp
 next/n_index_01_through_indexed.cp
 next/n_index_02_range_keyed_by_values.cp
@@ -1598,6 +1603,7 @@ next/n_u64_03_division_by_zero_traps.cp
 next/n_u64_04_shift_by_64_traps.cp
 next/n_u64_literal.cp
 next/n_unchecked_wraps.cp
+next/n_unimpl_01_trait_names_its_code_and_help.cp
 next/n_use_two_imports_ambiguous.cp
 next/n_variadic_01_positional_and_named.cp
 next/n_variadic_02_mixed_args.cp
@@ -1874,6 +1880,7 @@ std-seq/pairs-method-view-lends-its-source.cp
 std-seq/pairs-view-lends-its-source.cp
 std-seq/pop-while-all.cp
 std-seq/present-1.cp
+std-seq/present-unwraps-pieces.cp
 std-seq/range-mid-is-a-cut.cp
 std-seq/reduce-1.cp
 std-seq/rev-getter-view-lends-its-source.cp

@@ -1304,17 +1304,19 @@ impl Lw<'_> {
                 };
                 let a = self.args(recv.as_deref(), args, out);
                 // The bound variable is always a local of this fn: for a lend it stands for the callee's place.
-                let ty = match var {
-                    VarRef::Local(l) if !self.in_main && !self.remap.contains_key(var) => {
-                        self.locals[*l].clone()
-                    }
-                    VarRef::Local(l) => self.locals.get(*l).cloned().unwrap_or(Ty::Error),
-                    VarRef::Global(g) => self.globals[*g].clone(),
+                // Inside a lambda it is already one of the lambda's own locals, numbered there.
+                let remapped = self.remap.get(var).copied();
+                let ty = match (var, remapped) {
+                    (_, Some(r)) => self.locals[r].clone(),
+                    (VarRef::Local(l), None) if !self.in_main => self.locals[*l].clone(),
+                    (VarRef::Local(l), None) => self.locals.get(*l).cloned().unwrap_or(Ty::Error),
+                    (VarRef::Global(g), None) => self.globals[*g].clone(),
                 };
-                let l = match var {
-                    VarRef::Local(l) if !self.in_main && !self.remap.contains_key(var) => *l,
+                let l = match (var, remapped) {
+                    (_, Some(r)) => r,
+                    (VarRef::Local(l), None) if !self.in_main => *l,
                     _ => {
-                        let l = self.temp(ty);
+                        let l = self.temp(ty.clone());
                         self.remap.insert(*var, l);
                         l
                     }
