@@ -17,6 +17,8 @@ pub struct Prepared {
     public: Layer<HashSet<String>>,
     /// The record shapes std writes, sorted.
     shapes: Vec<Vec<String>>,
+    /// The row bounds std writes, sorted: each is a core trait (R08.4.1).
+    rows: Vec<Vec<String>>,
     /// Each record shape std writes and the modules that write it.
     writers: HashMap<Vec<String>, Vec<ModId>>,
 }
@@ -150,11 +152,19 @@ fn layer(
     }
     shapes.extend(new_shapes.iter().cloned());
     shapes.sort();
+    let mut rows = base.map_or_else(Vec::new, |b| b.rows.clone());
+    let new_rows: Vec<Vec<String>> = (crate::records::rows(&mods[from..]).into_iter())
+        .filter(|r| rows.binary_search(r).is_err())
+        .collect();
+    let old_rows = rows.clone();
+    rows.extend(new_rows.iter().cloned());
+    rows.sort();
     let core_first = mods[CORE.0].items.first();
     let records: Vec<crate::modules::Item> = (core_first
         .and_then(|it| Some((it.id.clone(), it.stmts.first()?.span))))
     .map(|(id, span)| {
-        let stmts = crate::records::structs(&new_shapes, span);
+        let mut stmts = crate::records::structs(&new_shapes, span);
+        stmts.extend(crate::records::row_traits(&new_rows, span));
         vec![crate::modules::Item { id, stmts }]
     })
     .unwrap_or_default();
@@ -179,6 +189,19 @@ fn layer(
                 if let Some(at) = it.stmts.first() {
                     let impls = crate::records::domain_impls(all(), &new_shapes, at.span);
                     made.extend(impls.into_iter().map(|(n, imp)| (it.id.clone(), n, imp)));
+                    // Each new row over every shape, and std's rows over the new shapes.
+                    let rows_of = |rs: &[Vec<String>]| crate::modules::Item {
+                        id: it.id.clone(),
+                        stmts: crate::records::row_traits(rs, at.span),
+                    };
+                    made.extend(crate::synth::field_trait_impls(
+                        &[rows_of(&new_rows)],
+                        &shapes,
+                    ));
+                    if !new_shapes.is_empty() {
+                        let old = [rows_of(&old_rows)];
+                        made.extend(crate::synth::field_trait_impls(&old, &new_shapes));
+                    }
                 }
             }
             if ours || !new_shapes.is_empty() {
@@ -378,6 +401,7 @@ fn layer(
                             assoc: Vec::new(),
                             assoc_bounds: Vec::new(),
                             unimplemented: unimplemented(item, s, &mut d.errors),
+                            row: marked(s, crate::records::RECORD),
                         });
                         pending.push((mid, item.clone(), s, Some(Named::Trait(id))));
                     }
@@ -1026,9 +1050,13 @@ fn layer(
                     }
                     let at = item.at(Span::new(s.span.start, s.span.start));
                     let tname = d.traits[tref.tr.0].name.clone();
+                    // An impl for every record with some fields is not a blanket one: a record
+                    // takes it over a blanket impl it also meets (R08.4.5).
+                    let rank = d.rank_of(&for_, &ibounds);
                     let clashes = |d: &Decls, im: &ImplDecl| {
                         im.trait_.tr == tref.tr
                             && overlap(&im.for_, &for_)
+                            && d.impl_rank(im) == rank
                             && (d.traits[tref.tr.0].inputs(&im.trait_.args).iter())
                                 .zip(d.traits[tref.tr.0].inputs(&tref.args))
                                 .all(|(x, y)| same_shape(x, y))
@@ -1105,7 +1133,7 @@ fn layer(
                                 && !written(n)
                                 && d.s(*sid).fields.iter().any(|(f, _)| f == n)
                             {
-                                filled.push(crate::synth::field_getter(n, s));
+                                filled.push(crate::synth::field_getter(n, s.span));
                             }
                         }
                     }
@@ -1272,6 +1300,7 @@ fn layer(
         own,
         public,
         shapes,
+        rows,
         writers: HashMap::new(),
     };
     (layer, main)

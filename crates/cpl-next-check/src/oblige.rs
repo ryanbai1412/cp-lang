@@ -264,8 +264,9 @@ impl Cx<'_> {
                     })
                     .collect();
                 // An impl for a written type beats a blanket one (R08.1.2).
-                if found.iter().any(|(k, _)| !self.d.impls[*k].blanket()) {
-                    found.retain(|(k, _)| !self.d.impls[*k].blanket());
+                let rank = |k: &usize| self.d.impl_rank(&self.d.impls[*k]);
+                if let Some(best) = found.iter().map(|(k, _)| rank(k)).min() {
+                    found.retain(|(k, _)| rank(k) == best);
                 }
                 if found.len() > 1 {
                     if self.unknown(t) || want.iter().any(|a| self.unknown(a)) {

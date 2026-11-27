@@ -61,8 +61,7 @@ impl Decls {
         let live = (self.impls_by_member.get(name).into_iter().flatten())
             .map(|&k| &self.impls[k])
             .filter(|im| self.live(im));
-        let ordered =
-            (live.clone().filter(|im| !im.blanket())).chain(live.filter(|im| im.blanket()));
+        let ordered = (0..3).flat_map(|r| live.clone().filter(move |im| self.impl_rank(im) == r));
         let found = ordered.into_iter().find_map(|im| {
             let tr = &self.traits[im.trait_.tr.0];
             if trait_name.is_some_and(|n| n != tr.name) {
@@ -107,12 +106,11 @@ impl Decls {
         let bodiless = |m: &FnId| self.f(*m).getter && matches!(self.f(*m).body, ast::FnBody::None);
         !t.alias && !t.methods.is_empty() && t.methods.values().all(bodiless)
     }
-    /// The impls of `tr`, those for a written type before blanket ones (R08.1.2).
+    /// The impls of `tr`, in the order a type takes them (`impl_rank`).
     pub fn impls_of(&self, tr: TraitId) -> impl Iterator<Item = &ImplDecl> {
-        let of = move |b: bool| {
-            (self.trait_impls(tr).map(|(_, im)| im)).filter(move |im| im.blanket() == b)
-        };
-        of(false).chain(of(true))
+        (0..3).flat_map(move |r| {
+            (self.trait_impls(tr).map(|(_, im)| im)).filter(move |im| self.impl_rank(im) == r)
+        })
     }
     /// The impl's type arguments for `t`; a blanket impl only where `t` meets its bounds.
     pub fn fits_impl(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {

@@ -12,6 +12,99 @@ pub fn name<S: AsRef<str>>(fields: &[S]) -> String {
     format!("({})", fs.join(", "))
 }
 
+/// The trait a row bound `R: (u: V, w: W, ..)` is: `(u:, w:, ..)`, met by every record with
+/// those fields (R08.4.1).
+pub fn row_name<S: AsRef<str>>(fields: &[S]) -> String {
+    let fs: Vec<String> = fields
+        .iter()
+        .map(|f| format!("{}:, ", f.as_ref()))
+        .collect();
+    format!("({}..)", fs.concat())
+}
+
+/// Every row bound any module writes, by its field names.
+pub fn rows(mods: &[crate::modules::Module]) -> Vec<Vec<String>> {
+    let mut v = Rows(BTreeSet::new());
+    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
+        stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
+    }
+    v.0.into_iter().collect()
+}
+
+struct Rows(BTreeSet<Vec<String>>);
+
+impl Visitor for Rows {
+    fn stmt(&mut self, s: &ast::Stmt) {
+        let bounds = match &s.kind {
+            StmtKind::Fn(f) => &f.bounds,
+            StmtKind::Struct(sd) => &sd.bounds,
+            StmtKind::Impl { bounds, .. } | StmtKind::Trait { bounds, .. } => bounds,
+            _ => return,
+        };
+        for t in bounds.iter().flat_map(|b| &b.traits) {
+            if let TypeKind::Row(fs) = &t.kind {
+                self.0
+                    .insert(fs.iter().map(|(n, _)| n.text.clone()).collect());
+            }
+        }
+    }
+}
+
+/// `pub trait (u:, w:, ..)<A, B>: @get fn u(self) -> A; @get fn w(self) -> B` for each row: a
+/// trait of `@get` members only, so each record shape with those fields meets it by its fields.
+pub fn row_traits(rows: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
+    let nm = |text: String| ast::Name { text, span };
+    (rows.iter())
+        .filter(|fs| fs.len() <= 26)
+        .map(|fs| {
+            let generics: Vec<ast::Name> = (b'A'..)
+                .take(fs.len())
+                .map(|c| nm((c as char).to_string()))
+                .collect();
+            let getters = (fs.iter().zip(&generics)).map(|(f, g)| {
+                let mut get = crate::synth::field_getter(f, span);
+                if let StmtKind::Fn(fd) = &mut get.kind {
+                    fd.body = ast::FnBody::None;
+                    fd.ret = Some(ast::Type {
+                        kind: TypeKind::Named {
+                            name: g.clone(),
+                            args: Vec::new(),
+                        },
+                        span,
+                    });
+                }
+                get.public = true;
+                get
+            });
+            ast::Stmt {
+                kind: StmtKind::Trait {
+                    name: nm(row_name(fs)),
+                    generic_defaults: vec![None; fs.len()],
+                    generics: generics.clone(),
+                    supers: Vec::new(),
+                    body: ast::Block {
+                        stmts: getters.collect(),
+                        span,
+                    },
+                    alias: false,
+                    bounds: Vec::new(),
+                },
+                span,
+                decorators: vec![ast::Decorator {
+                    directive: false,
+                    name: ast::Name {
+                        text: RECORD.to_string(),
+                        span,
+                    },
+                    args: Vec::new(),
+                    span,
+                }],
+                public: true,
+            }
+        })
+        .collect()
+}
+
 /// The mark a record's synthesized struct carries, which no source can write (E0107).
 pub const RECORD: &str = "record";
 

@@ -154,6 +154,8 @@ pub struct TraitDecl {
     pub assoc_bounds: Vec<(usize, TraitRef)>,
     /// What a type lacking its impl is told (R08.1.8).
     pub unimplemented: Unimplemented,
+    /// A row bound's trait, `(to:, ..)`: met by every record with those fields (R08.4.1).
+    pub row: bool,
 }
 /// `@on_unimplemented(code: E0311, "...{T}...")` on a trait: the code a missing impl reports in
 /// place of E0606, and the help it adds, `{T}` the type shown (R08.1.8).
@@ -222,6 +224,21 @@ impl ImplDecl {
     /// more specific and is chosen over it (R08.1.2).
     pub fn blanket(&self) -> bool {
         matches!(self.for_, Ty::Param(_))
+    }
+}
+impl Decls {
+    /// Which impl a type takes when several fit: one for its written type (0) before one for
+    /// every record with some fields (1), before any other blanket one (2) (R08.1.2, R08.4.5).
+    pub fn impl_rank(&self, im: &ImplDecl) -> u8 {
+        self.rank_of(&im.for_, &im.bounds)
+    }
+    /// `impl_rank` of an impl for `for_` with `bounds`.
+    pub fn rank_of(&self, for_: &Ty, bounds: &[(usize, TraitRef)]) -> u8 {
+        let Ty::Param(i) = *for_ else { return 0 };
+        match (bounds.iter()).any(|(k, b)| *k == i && self.traits[b.tr.0].row) {
+            true => 1,
+            false => 2,
+        }
     }
 }
 #[derive(Clone)]

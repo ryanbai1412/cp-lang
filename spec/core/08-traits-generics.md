@@ -248,6 +248,9 @@ let a2 = (..a, to: u)  // record update
   rows not inferred across statements, no rows on named structs, field
   access through a row is \(O(1)\), and rows never change layout of an
   existing value. (R08.4.4)
+- `impl<V, R: (to: V, ..)> Tg<V> for R` is an impl for every record with
+  those fields: a record meeting a blanket impl of the same trait too takes
+  this one, and two such impls of one trait overlap, E0202. (R08.4.5)
 
 ## 8.5 What is deliberately missing
 

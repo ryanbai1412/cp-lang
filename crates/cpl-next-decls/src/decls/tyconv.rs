@@ -112,6 +112,17 @@ pub(super) fn read_elsewhere(name: &str) -> bool {
 
 /// `Seq<T>` written where a trait is wanted.
 pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Option<TraitRef> {
+    // `(u: V, w: W, ..)`: the core trait of that row, over the field types (R08.4.1).
+    if let TypeKind::Row(fs) = &t.kind {
+        let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
+        let Some(Named::Trait(tr)) = cx.names.get(&crate::records::row_name(&names)).copied()
+        else {
+            errors.push(Unbuilt::BoundNotNamed.into());
+            return None;
+        };
+        let args = fs.iter().map(|(_, a)| conv(cx, a, errors)).collect();
+        return Some(TraitRef { tr, args });
+    }
     let TypeKind::Named { name, args } = &t.kind else {
         errors.push(Unbuilt::BoundNotNamed.into());
         return None;

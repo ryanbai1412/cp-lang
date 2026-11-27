@@ -283,8 +283,7 @@ pub(crate) fn derive_each<'a>(stmts: impl Iterator<Item = &'a ast::Stmt>) -> Vec
 
 /// `@get fn name(self) = self.name`: how a struct meets a bodiless `@get` member its impl leaves
 /// out (R12.11.3).
-pub(crate) fn field_getter(field: &str, at: &ast::Stmt) -> ast::Stmt {
-    let span = at.span;
+pub(crate) fn field_getter(field: &str, span: cpl_diag::Span) -> ast::Stmt {
     let name = |text: &str| ast::Name {
         text: text.to_string(),
         span,
