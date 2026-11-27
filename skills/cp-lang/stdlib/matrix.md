@@ -10,8 +10,6 @@ In prelude (no `use` needed): `Mat`.
 
 A dense `rows x cols` matrix stored flat in row-major order.
 
-Fields: `cells: List<T>`.
-
 - `@get fn data(self) -> List<T>` — The entries, row by row, as a new list: `get(r, c)` is `data[r * cols + c]`.
 - `fn new<R, C, S>(a: [R, C]T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
 - `fn of(rows: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read as nested lists.; traps: when the rows differ in length
@@ -46,7 +44,7 @@ A number type whose `Mat` products under `Semiring(max, +)` and `Semiring(min, +
 
 Linear basis over GF(2) for non-negative 63-bit integers (`0 <= x < 2^63`).
 
-Fields: `basis: List<Int>`, `size: Len`.
+Fields: `basis: List<Int>`.
 
 - `fn new() -> XorBasis` — \(O(W)\); An empty basis of rank 0, whose span is `{0}`.
 - `@get fn rank(self) -> Int` — \(O(1)\); The number of linearly independent vectors in the basis: the span has `2^rank` elements.

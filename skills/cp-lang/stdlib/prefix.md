@@ -109,7 +109,7 @@ Fields: `d: [R.cuts, C.cuts]T`.
 
 Online sweep-line difference accumulator: schedule future range adds in \(O(1)\) and advance a cursor through `D` in `order` in \(O(1)\) per position.
 
-Fields: `d: [D.cuts]T`, `cur: T`.
+Fields: `d: [D.cuts]T`.
 
 - `fn new(order: FillOrder = FillOrder.Forward) -> SweepAdd<D, T>` — \(O(\lvert D \rvert)\) time and space; Create an all-zero online sweep accumulator in `order` (`Forward` or `Reverse`), with no position advanced yet.
 - `fn add(mut self, r: Range<D>, x: T)` — \(O(1)\); Schedule `+x` across `r`, which must start at or ahead of the current sweep cursor: no position of `r` may have been advanced past already.; traps: when `r` is non-empty and holds a position already advanced to

@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Random`, `shuffle`.
 
 A type `gen<T>(..)` draws: `gen<T>(args)` is `T.gen(args)`, so a user type with `impl Random` is drawn like a std one, and an impl may take named options (R06.4.3).
 
-## `struct Rng(s: U64)`
+## `struct Rng(var s: U64)`
 
 A seeded random source, for a run you can replay: `Rng.new(seed)` gives the same stream each time, and `int`, `float`, `chance`, `pick`, `shuffle`, `perm` and `sample` draw from it.
 

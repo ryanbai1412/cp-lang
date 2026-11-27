@@ -16,7 +16,7 @@ A handle to one arc of a `FlowGraph`.
 
 A flow network over the vertices `V`, solved with Dinic's algorithm (`max_flow`) or push-relabel (`push_relabel`).
 
-Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>`, `cut_from: ?V`.
+Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>`.
 
 - `fn new() -> FlowGraph<V>` — \(O(n)\) for n = `V.count`; An empty flow network over the vertices `V`.
 - `fn add(mut self, u: V, v: V, cap: ?Int) -> Arc` — \(O(1)\) amortized; two arcs of memory; Adds an arc `u -> v` with capacity `cap`, and its reverse `v -> u` with capacity 0, and returns the forward arc.; traps: when `cap` is negative

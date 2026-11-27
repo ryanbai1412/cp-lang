@@ -6,7 +6,7 @@ Integer-indexed concave and convex functions as sorted slopes (slope trick).   `
 
 Import: `use std.slope.{...}`.
 
-## `struct Concave(start: Int, base: Int)`
+## `struct Concave(var start: Int, var base: Int)`
 
 A concave function on the integers `lo..=hi`: its value at `lo` and its slopes in falling order.
 

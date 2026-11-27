@@ -49,3 +49,12 @@ The numbers' own operators, so `T: Add` holds of them.
 ## `trait Bounded`
 
 `T.MIN`, `T.MAX`: the least and greatest values of `T`, so `max` and `min` over it have an identity (R02.2.1, decision 580).
+
+## `trait Alike<T>`
+
+A tuple whose fields are all `T`: what `max` and `min` take past their first two values.
+
+## Functions
+
+- `fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T` — The largest of two or more values, the first of equal ones (R11.3.3).
+- `fn min<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T` — The smallest of two or more values, the first of equal ones (R11.3.3).

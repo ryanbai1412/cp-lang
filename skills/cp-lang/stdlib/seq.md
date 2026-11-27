@@ -151,7 +151,7 @@ The keys a `step(k)` view visits, made by its `keys`: of the `n` source keys fro
 
 The view `keyed` returns.
 
-## `struct SubseqStep<T>(pub items: List<T>, pruned: Bool = false)`
+## `struct SubseqStep<T>(pub items: List<T>, var pruned: Bool = false)`
 
 \(O(1)\).
 

@@ -97,7 +97,7 @@ Fields: `up: HullChain`, `lo: HullChain`.
 
 A fixed set of integer points, each named by its index in the list it was built from, where `drain(x, y)` removes and returns every point still in the half-open rectangle `x * y`.
 
-Fields: `xs: List<Int>`, `ys: List<Int>`, `ids: List<Int>`, `nxt: List<Int>`, `lo: List<Int>`, `hi: List<Int>`, `size: Len`, `alive: List<Bool>`, `live: Int`.
+Fields: `xs: List<Int>`, `ys: List<Int>`, `ids: List<Int>`, `nxt: List<Int>`, `lo: List<Int>`, `hi: List<Int>`, `size: Len`, `alive: List<Bool>`.
 
 - `fn of(pts: List<Pt>) -> PointSet` — \(O(n \log n)\) time and memory; Build the set holding every point of `pts`; point `i` is `pts[i]`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of points not yet removed or drained.

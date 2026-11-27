@@ -10,8 +10,6 @@ In prelude (no `use` needed): `Marks`.
 
 A visited/mark set over a domain `D` with \(O(1)\) `add`, `remove`, `contains` (`v in m`), and \(O(1)\) `clear()`.
 
-Fields: `cnt: Int`.
-
 - `fn new() -> Marks<D>` — \(O(\lvert D \rvert)\); An empty mark set over `D`, with its stamp array allocated once.
 - `fn add(mut self, v: D) -> Bool` — \(O(1)\); Mark `v`.; traps: when `v` is outside `D`
 - `fn remove(mut self, v: D) -> Bool` — \(O(1)\); Unmark `v`.; traps: when `v` is outside `D`
@@ -24,7 +22,7 @@ Fields: `cnt: Int`.
 
 Epoch-stamped map over domain `D` with \(O(1)\) `get`, `set`, `contains`, `remove`, and `clear()`.
 
-Fields: `vals: [D]T`, `default_val: T`, `gen: Int`, `cnt: Int`.
+Fields: `vals: [D]T`, `default_val: T`, `gen: Int`.
 
 - `fn new(default_val: T) -> MarkMap<D, T>` — \(O(\lvert D \rvert)\); An empty map over `D`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of keys present.

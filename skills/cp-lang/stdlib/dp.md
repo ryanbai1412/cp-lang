@@ -58,7 +58,7 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no line is kept.
 - `fn each(self) -> yields Line` — \(O(\mathit{len})\)
 
-## `struct Step<S>(pub state: S, pub depth: Int, pruned: Bool = false)`
+## `struct Step<S>(pub state: S, pub depth: Int, var pruned: Bool = false)`
 
 One state reached by `backtrack`.
 

@@ -38,7 +38,7 @@ A queue with both ends open: `var q = Deque<Int>()`.
 
 Doubly-linked list supporting \(O(1)\) end pushes/pops and splicing (`splice_back`, `splice_front`) that moves only the shorter list.
 
-Fields: `head: Int`, `tail: Int`, `nx: List<Int>`, `pv: List<Int>`, `val: List<T>`, `flip: Bool`.
+Fields: `nx: List<Int>`, `pv: List<Int>`, `val: List<T>`, `flip: Bool`.
 
 - `fn new() -> LinkedList<T>` — \(O(1)\); Create an empty `LinkedList<T>`.
 - `fn of(x: T) -> LinkedList<T>` — \(O(1)\); Create a singleton `LinkedList<T>` containing `x`.

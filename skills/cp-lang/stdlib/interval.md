@@ -29,7 +29,7 @@ Fields: `segs: Map<Int, (hi: Int, val: T)>`.
 
 Dynamic union of disjoint maximal half-open intervals over domain `D` (KACTL `IntervalContainer`).
 
-Fields: `segs: Map<Int, Int>`, `total: Int`.
+Fields: `segs: Map<Int, Int>`.
 
 - `fn new() -> IntervalSet<D>` — \(O(1)\); An empty set of positions of `D`.
 - `fn add(mut self, r: Range<D>)` — \(O((1 + \mathit{merged}) \log \mathit{runs})\) amortized; Add every position of `r`, merging runs that overlap or touch it into one maximal run.; traps: when a non-empty `r` reaches outside `D`

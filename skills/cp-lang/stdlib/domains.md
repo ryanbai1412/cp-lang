@@ -30,3 +30,7 @@ Fields: `k: Int`.
 ## `trait RangeEnds<D: Domain>`
 
 A run's ends as cuts: `[r]T` covers the keys from `r.start` to `r.end` (R04b.1.5).
+
+## Functions
+
+- `fn check_value(ok: Bool)`
