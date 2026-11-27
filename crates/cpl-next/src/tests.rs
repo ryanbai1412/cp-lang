@@ -903,6 +903,12 @@ fn type_at_reads_the_typed_tree() {
         (p.text(), decl.line, decl.head.as_str()),
         ("P".into(), 1, "struct P")
     );
+    let members: Vec<String> = p.members().into_iter().map(|(n, _)| n).collect();
+    assert!(
+        members.contains(&"a".into()) && members.contains(&"eq".into()),
+        "{members:?}"
+    );
+    assert!(p.implements("Eq") && !p.implements("NoSuchTrait"));
 }
 
 #[test]

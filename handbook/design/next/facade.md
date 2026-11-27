@@ -81,7 +81,7 @@ signature above does not change when the view lands.
 | `diagnostics(Program)` | Summaries (calls checked against them) | `back` (own on linked instances) |
 | `program` | Generics, then link | `back` and canonicalize |
 | `hover`, `definition` | Scope, Signatures | `items` |
-| `complete` | Scope | `items`: the scope's names a prefix starts; members after `.` come with `Type` |
+| `complete` | Scope | `items`: the scope's names a prefix starts; after a `.`, `Type::members` |
 
 ### The editor queries lsp and lint still take from `today`
 
@@ -117,13 +117,14 @@ impl Type<'_> {
     fn domain(&self) -> Option<&str>     // a position's domain, by name
     fn decl(&self) -> Option<Item>       // the struct or enum it is an instance of
     fn args(&self) -> Vec<Type<'_>>      // that declaration's type arguments
-    fn implements(&self, tr: &Item) -> bool // not built: needs the checker's impl lookup as a view
+    fn implements(&self, name: &str) -> bool // the trait the program's scope names; Signatures::has_impl
+    fn members(&self) -> Vec<(String, Item)> // fields, own fns, and each found impl's fns
 }
 ```
 
-`implements` waits for the checker's impl lookup to be a view: matching
-`Signatures::impls_of` by hand would skip blanket impls' bounds, a second
-trait solver.
+`implements` and `members` read the checker's own impl lookup through
+the Signatures view (`impl_args`, `has_impl`), so a tool never matches
+impls by hand.
 
 Ruling: there is no `is_array` or `is_optional`. A lint rule that today
 matches `Ty::Array` or `Ty::Optional` asks `implements` of the trait it

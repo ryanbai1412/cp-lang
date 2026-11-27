@@ -564,6 +564,53 @@ impl<'s> Type<'s> {
         }
     }
 
+    /// Whether it implements the trait the program's scope names `name`, as the checker's
+    /// impl lookup answers (the Signatures view).
+    pub fn implements(&self, name: &str) -> bool {
+        use cpl_next_decls::views::{Scope, Signatures};
+        let d = &self.front.d;
+        match Scope::named(d, d.program, name) {
+            Some(decls::Named::Trait(tr)) => Signatures::has_impl(d, self.shown(), tr),
+            _ => false,
+        }
+    }
+
+    /// What a `.` after a value of this type can name: its fields, its own fns, and the fns of
+    /// each impl the checker's lookup finds for it, by name.
+    pub fn members(&self) -> Vec<(String, Item)> {
+        use cpl_next_decls::views::Signatures;
+        let (f, ty) = (self.front, self.shown());
+        let mut out = Vec::new();
+        let fn_item = |id| item_of(f, &Signatures::f(&f.d, id).span);
+        if let ty::Ty::Struct(id, ..) = ty {
+            let s = Signatures::s(&f.d, *id);
+            for ((name, _), at) in s.fields.iter().zip(&s.field_at) {
+                out.push((name.clone(), item_of(f, at)));
+            }
+            out.extend(
+                s.methods
+                    .iter()
+                    .map(|(name, id)| (name.clone(), fn_item(*id))),
+            );
+        }
+        for i in 0..f.d.impls.len() {
+            let im = Signatures::imp(&f.d, i);
+            if !im.replaced
+                && Signatures::impl_args(&f.d, im, ty).is_some()
+                && Signatures::has_impl(&f.d, ty, im.trait_.tr)
+            {
+                out.extend(
+                    im.methods
+                        .iter()
+                        .map(|(name, id)| (name.clone(), fn_item(*id))),
+                );
+            }
+        }
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out.dedup_by(|a, b| a.0 == b.0);
+        out
+    }
+
     /// That declaration's type arguments.
     pub fn args(&self) -> Vec<Type<'s>> {
         match self.shown() {
