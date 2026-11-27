@@ -283,7 +283,7 @@ name = "cpl-next-ir"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
- "cpl-rt",
+ "cpl-prim",
 ]
 
 [[package]]
@@ -318,12 +318,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-prim"
+version = "0.3.0"
+
+[[package]]
 name = "cpl-prover"
 version = "0.3.0"
 
 [[package]]
 name = "cpl-rt"
 version = "0.3.0"
+dependencies = [
+ "cpl-prim",
+]
 
 [[package]]
 name = "cpl-stress"

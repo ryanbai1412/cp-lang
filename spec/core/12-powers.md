@@ -355,6 +355,11 @@ implementation and C++ snippet. Like `@cpp`, any library may write it.
 5. The table grows only by a decision entry; `cpl explain` lists each
    intrinsic a program uses. (R12.14.5)
 
+The table's primitives are the public set of primitive operations, by id
+(`cpl-prim` holds them): `popcount`, `abs`, `sqrt`, `floor`, `ceil`, `round`,
+`trunc`, `ctz`, `clz`, `bit_width`, `bit_ceil`, `acos`, `asin`, `atan2`,
+`cos`, `sin`, `tan`, `hypot`, `exp`, `ln`.
+
 ## W15. Precomputation (P15)
 
 A top-level `let` is computed once before the first test (`let C =

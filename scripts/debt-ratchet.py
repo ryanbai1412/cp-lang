@@ -1690,7 +1690,8 @@ def next_std_names(root: Path) -> list[str]:
     names = {"print", "write", "read"}
     for f in sources:
         names |= set(NEXT_STD_DECL_RE.findall(f.read_text(encoding="utf-8")))
-    files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), tests=False)}
+    # `cpl-prim` holds the `@intrinsic` ids the IR maps to its operations, so it is scanned too.
+    files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), "crates/cpl-prim/src", tests=False)}
     out: list[str] = []
     wrappers: dict[str, tuple[str, int]] = {}
     for rel, lines in files.items():

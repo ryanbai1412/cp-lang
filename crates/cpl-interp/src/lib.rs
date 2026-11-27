@@ -53,7 +53,7 @@ use cpl_ir::{
     FnId, Iter, LoopId, Mutation, Place, PlaceKind, Program, SortBy, Spec, Stmt, Ty, UnOp,
 };
 use cpl_ir::{Prim, Scalar};
-use cpl_rt::Fault;
+use cpl_rt::{Fault, Row as _};
 use input::Input;
 pub use input::More;
 use observe::Observer;

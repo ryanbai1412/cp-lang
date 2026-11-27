@@ -201,12 +201,12 @@ impl Intr {
             "f64_len" => Intr::F64Len,
             "f64_text" => Intr::F64Text,
             "out" => Intr::Out,
-            _ => return cpl_rt::Prim::from_id(name).map(Intr::of_prim),
+            _ => return cpl_prim::Prim::from_id(name).map(Intr::of_prim),
         })
     }
-    /// The operation of a primitive of `cpl-rt`'s one intrinsics table.
-    fn of_prim(p: cpl_rt::Prim) -> Intr {
-        use cpl_rt::Prim as P;
+    /// The operation of a primitive of `cpl-prim`'s one table.
+    fn of_prim(p: cpl_prim::Prim) -> Intr {
+        use cpl_prim::Prim as P;
         match p {
             P::Popcount => Intr::Popcount,
             P::Abs => Intr::Abs,

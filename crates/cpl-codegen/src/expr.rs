@@ -1221,11 +1221,11 @@ impl<'p> Emitter<'p> {
                     _ => "Int",
                 };
                 self.sequence(&operands, &e.ty, |this, codes| {
-                    if let Some(need) = p.form(ty).need {
+                    if let Some(need) = cpl_rt::Row::form(*p, ty).need {
                         this.need(need);
                     }
                     let texts: Vec<String> = codes.into_iter().map(|c| c.text).collect();
-                    Code::new(p.cpp(ty, &texts), crate::emit::UNARY)
+                    Code::new(cpl_rt::Row::cpp(*p, ty, &texts), crate::emit::UNARY)
                 })
             }
             ExprKind::Builtin(op, args) => {

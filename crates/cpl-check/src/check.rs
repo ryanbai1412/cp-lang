@@ -803,7 +803,7 @@ impl<'a> Checker<'a> {
         at: Span,
         ret: &Ty,
     ) {
-        let Some(p) = cpl_rt::Prim::from_id(name) else {
+        let Some(p) = cpl_rt::Prim::from_id(name).map(cpl_rt::sig) else {
             self.report(
                 at,
                 msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE,
@@ -819,16 +819,16 @@ impl<'a> Checker<'a> {
             }
             _ => want.split('|').any(|w| w == ty.to_string()),
         };
-        let params_fit = f.params.len() == p.params().len()
-            && (f.params.iter().zip(p.params())).all(|(param, want)| {
+        let params_fit = f.params.len() == p.0.len()
+            && (f.params.iter().zip(p.0)).all(|(param, want)| {
                 self.local(&param.name.text)
                     .is_some_and(|l| fits(&l.ty, want))
             });
-        if !params_fit || !fits(ret, p.result()) {
+        if !params_fit || !fits(ret, p.1) {
             self.report(
                 at,
                 msgs::check::UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT,
-                &[&name, &p.params().join(", "), &p.result(), &f.name.text],
+                &[&name, &p.0.join(", "), &p.1, &f.name.text],
             );
         }
     }

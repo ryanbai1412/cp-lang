@@ -5,30 +5,7 @@
 
 pub mod cpp;
 
-/// One primitive of the table. Its index in [`Prim::ALL`] is its stable number.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
-pub enum Prim {
-    Popcount,
-    Abs,
-    Sqrt,
-    Floor,
-    Ceil,
-    Round,
-    Trunc,
-    Ctz,
-    Clz,
-    BitWidth,
-    BitCeil,
-    Acos,
-    Asin,
-    Atan2,
-    Cos,
-    Sin,
-    Tan,
-    Hypot,
-    Exp,
-    Ln,
-}
+pub use cpl_prim::Prim;
 
 /// A scalar the interpreter hands to, and gets back from, a primitive.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -94,68 +71,21 @@ const fn cpp(ty: &'static str, code: &'static str, need: Option<&'static str>) -
 
 const TO_INT: &str = "narrow";
 
-impl Prim {
-    /// The table: each primitive, at its stable number.
-    pub const ALL: [Prim; 20] = [
-        Prim::Popcount,
-        Prim::Abs,
-        Prim::Sqrt,
-        Prim::Floor,
-        Prim::Ceil,
-        Prim::Round,
-        Prim::Trunc,
-        Prim::Ctz,
-        Prim::Clz,
-        Prim::BitWidth,
-        Prim::BitCeil,
-        Prim::Acos,
-        Prim::Asin,
-        Prim::Atan2,
-        Prim::Cos,
-        Prim::Sin,
-        Prim::Tan,
-        Prim::Hypot,
-        Prim::Exp,
-        Prim::Ln,
-    ];
+/// What each primitive takes, costs, computes and emits; one row of the table per [`Prim`].
+pub trait Row {
+    fn params(self) -> &'static [&'static str];
+    fn result(self) -> &'static str;
+    fn cost(self) -> &'static str;
+    fn explain(self) -> &'static str;
+    fn forms(self) -> &'static [Cpp];
+    fn run(self, a: Scalar) -> Ran;
+    fn form(self, ty: &str) -> &'static Cpp;
+    fn cpp(self, ty: &str, args: &[String]) -> String;
+}
 
-    /// Each primitive's name, as `@intrinsic("...")` writes it.
-    pub const IDS: [&'static str; 20] = [
-        "popcount",
-        "abs",
-        "sqrt",
-        "floor",
-        "ceil",
-        "round",
-        "trunc",
-        "ctz",
-        "clz",
-        "bit_width",
-        "bit_ceil",
-        "acos",
-        "asin",
-        "atan2",
-        "cos",
-        "sin",
-        "tan",
-        "hypot",
-        "exp",
-        "ln",
-    ];
-
-    /// The primitive `@intrinsic(id)` names.
-    pub fn from_id(id: &str) -> Option<Prim> {
-        let at = Prim::IDS.iter().position(|i| *i == id)?;
-        Prim::ALL.get(at).copied()
-    }
-
-    /// The name `@intrinsic("...")` writes.
-    pub fn id(self) -> &'static str {
-        Prim::IDS[self as usize]
-    }
-
+impl Row for Prim {
     /// The parameter types, `|` between the types one accepts.
-    pub fn params(self) -> &'static [&'static str] {
+    fn params(self) -> &'static [&'static str] {
         const REAL: &[&str] = &["Int|F64"];
         const REALS: &[&str] = &["Int|F64", "Int|F64"];
         const PARAMS: [&[&str]; 20] = [
@@ -184,7 +114,7 @@ impl Prim {
     }
 
     /// The result type, `|` between the types it may be.
-    pub fn result(self) -> &'static str {
+    fn result(self) -> &'static str {
         const RESULTS: [&str; 20] = [
             "Int",
             "Int|I128|F64",
@@ -211,12 +141,12 @@ impl Prim {
     }
 
     /// The cost as `cpl explain` and docs show it (R09 form).
-    pub fn cost(self) -> &'static str {
+    fn cost(self) -> &'static str {
         "\\(O(1)\\)"
     }
 
     /// What `cpl explain` and the trace say the primitive does.
-    pub fn explain(self) -> &'static str {
+    fn explain(self) -> &'static str {
         match self {
             Prim::Popcount => "the number of 1 bits, one `popcnt`",
             Prim::Abs => "the absolute value; an integer traps where it has none",
@@ -244,7 +174,7 @@ impl Prim {
     }
 
     /// The C++ forms, by first argument type; the last is for any type (`*`).
-    pub fn forms(self) -> &'static [Cpp] {
+    fn forms(self) -> &'static [Cpp] {
         match self {
             Prim::Popcount => {
                 const F: &[Cpp] = &[cpp("*", "(ll)__builtin_popcountll((uint64_t)($0))", None)];
@@ -340,7 +270,7 @@ impl Prim {
     /// float row (`sqrt`, `sin`, `atan2`, ..) gives its argument as the `F64`
     /// it reads as: the interpreter applies the fn, C++ calls `std::` itself,
     /// and the row's domain is its library's to check.
-    pub fn run(self, a: Scalar) -> Ran {
+    fn run(self, a: Scalar) -> Ran {
         let w = a.bits();
         let x = a.f64();
         let n = match self {
@@ -379,7 +309,7 @@ impl Prim {
     }
 
     /// The C++ form for a first argument of type `ty`.
-    pub fn form(self, ty: &str) -> &'static Cpp {
+    fn form(self, ty: &str) -> &'static Cpp {
         let forms = self.forms();
         (forms.iter())
             .find(|c| c.ty == "*" || c.ty.split('|').any(|t| t == ty))
@@ -387,7 +317,7 @@ impl Prim {
     }
 
     /// The C++ of a call whose first argument is a `ty`, given each argument's C++.
-    pub fn cpp(self, ty: &str, args: &[String]) -> String {
+    fn cpp(self, ty: &str, args: &[String]) -> String {
         let mut out = String::new();
         let mut rest = self.form(ty).code;
         while let Some(at) = rest.find('$') {
@@ -403,6 +333,11 @@ impl Prim {
         out.push_str(rest);
         out
     }
+}
+
+/// A primitive's parameter types and result type, the signature its `@intrinsic` fn must have.
+pub fn sig(p: Prim) -> (&'static [&'static str], &'static str) {
+    (p.params(), p.result())
 }
 
 #[cfg(test)]
