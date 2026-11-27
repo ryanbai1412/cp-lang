@@ -1,10 +1,10 @@
-//! `cpl-next FILE [--raw|--engine] [--cpp] [--check] [--trace]`: run FILE on stdin, print its C++, or
-//! only compile it. Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when
+//! `cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace]`: run FILE on stdin, print
+//! its C++, or only compile it; `--json` prints a rejection's diagnostics as JSON lines. Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when
 //! it is refused.
 //!
 //! `cpl-next --all --within MS [--trace]` reads std once and then, for each `FILE<TAB>DIR` line
 //! on stdin, compiles FILE against it and runs it on `DIR/in`. It writes into DIR the rejected
-//! compile's `compiled.out` and then `compiled.code`, or, for each of `raw`, `canonical` and
+//! compile's `compiled.out` (its diagnostics as `--json` prints them) and then `compiled.code`, or, for each of `raw`, `canonical` and
 //! `engine`, the run's `.out`, `.err` and then `.code`, and `c++` last; then it prints `done`.
 //! A run that passes MS (less its compile) ends the process, leaving it and the rest unwritten.
 //! For the crate's tests and for measuring; not a shipped command.
@@ -139,7 +139,9 @@ fn every_case(limit: Duration, events: bool) {
         match compile(&std, &src, &roots(path), events) {
             Ok(c) => every_form(&c, dir, limit.saturating_sub(started.elapsed()), &input),
             Err(ds) => {
-                let out: String = ds.iter().map(|d| format!("{d}\n")).collect();
+                let out: String = (ds.iter())
+                    .map(|d| cpl_json::to_string(&d.json()) + "\n")
+                    .collect();
                 write(dir, "compiled.out", &out);
                 write(dir, "compiled.code", &rejected(&ds).to_string());
             }

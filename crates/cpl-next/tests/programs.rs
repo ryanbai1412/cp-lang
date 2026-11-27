@@ -210,7 +210,7 @@ impl<'a> Forms<'a> {
                 stdout: self.compiled.stdout.clone(),
                 stderr: self.compiled.stderr.clone(),
             },
-            _ => self.form("raw", &["--raw", "--trace"]),
+            _ => self.form("raw", &["--raw", "--trace", "--json"]),
         }
     }
 
@@ -322,18 +322,31 @@ fn header_key(line: &str) -> Option<&str> {
         .then_some(key)
 }
 
-/// `stage: program:N:C: E0123: text` gives `(N, "E0123")`: the line of the span's start in
-/// the case's file, and the code.
-fn line_and_code(diag: &str) -> Option<(usize, &str)> {
-    let rest = diag.split_once(": program:")?.1;
-    let (line, rest) = rest.split_once(':')?;
-    let rest = rest.split_once(": ")?.1;
-    Some((line.parse().ok()?, rest.split(':').next()?))
+/// A verdict on the case's own file, from `cpl-next --json`: the line its span starts on and
+/// its code. A refusal, or a place in a library, is `None`.
+fn on_the_program(diag: &cpl_json::Value) -> Option<(usize, &str)> {
+    let field = |k: &str| diag.get(k);
+    (field("file")?.as_str()? == "program" && field("refusal")?.is_null()).then_some(())?;
+    let line = field("start")?.get("line")?.as_u64()? as usize;
+    Some((line, field("code")?.as_str()?))
 }
 
-/// `E0302` and the like: a code, not a refusal's `slice`.
-fn coded(word: &str) -> bool {
-    word.len() == 5 && word.starts_with('E') && word[1..].bytes().all(|b| b.is_ascii_digit())
+/// A rejection's `--json` lines, and `ran` with what they say in place of them.
+fn diagnosed(ran: Ran) -> (Ran, Vec<cpl_json::Value>) {
+    if !matches!(ran.status, Some(1 | 4)) {
+        return (ran, Vec::new());
+    }
+    let diags: Vec<_> = (ran.stdout.lines())
+        .map(|l| cpl_json::parse(l).unwrap_or_else(|e| panic!("`{l}` is not a diagnostic: {e}")))
+        .collect();
+    let text = |d: &cpl_json::Value| {
+        d.get("text")
+            .and_then(|t| t.as_str())
+            .unwrap_or("")
+            .to_string()
+    };
+    let stdout = diags.iter().map(|d| text(d) + "\n").collect();
+    (Ran { stdout, ..ran }, diags)
 }
 
 /// `program:3:5:` gives `program`.
@@ -446,20 +459,16 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
     let forms = (ask == Ask::Run).then(|| Forms::new(path, &input));
     let raw = match &forms {
         Some(forms) => forms.raw(),
-        None => next(path, &["--check"], &input),
+        None => next(path, &["--check", "--json"], &input),
     };
+    let (raw, diags) = diagnosed(raw);
     let first = |s: &str| s.lines().next().unwrap_or("").to_string();
     let done = |v: &'static str, d: String| (v, d, String::new());
     match raw.status {
         None => return done("timeout", "the interpreter passed 10 s".into()),
         // A refusal beside a coded verdict on the program hides that verdict: the case is
         // `masked`, refused for the lists but counted apart (tests/masked.txt).
-        Some(4)
-            if raw
-                .stdout
-                .lines()
-                .any(|d| line_and_code(d).is_some_and(|(_, c)| coded(c))) =>
-        {
+        Some(4) if diags.iter().any(|d| on_the_program(d).is_some()) => {
             return done("masked", first(&raw.stdout))
         }
         Some(4) => return done("refused", first(&raw.stdout)),
@@ -476,10 +485,9 @@ fn judged(path: &Path, text: &str, expect: Expect, ask: Ask) -> (&'static str, S
     if raw.status == Some(1) {
         return match &expect {
             Expect::Diag { code, line }
-                if raw
-                    .stdout
-                    .lines()
-                    .any(|d| line_and_code(d) == Some((*line, code.as_str()))) =>
+                if diags
+                    .iter()
+                    .any(|d| on_the_program(d) == Some((*line, code.as_str()))) =>
             {
                 pass()
             }

@@ -110,7 +110,8 @@ impl Diag {
         }
     }
 
-    /// [`cpl_diag::json::diagnostic`], with the layer, the file and the refused feature.
+    /// [`cpl_diag::json::diagnostic`], with the layer, the file, the module, the refused feature
+    /// and `text`, the line `Display` prints.
     pub fn json(&self) -> cpl_json::Value {
         let lines = cpl_diag::LineIndex::new(self.src.as_deref().unwrap_or(""));
         let mut v = cpl_diag::json::diagnostic(&self.diagnostic(), &lines);
@@ -118,11 +119,7 @@ impl Diag {
             Kind::Refusal(u) => cpl_json::Value::String(u.variant()),
             Kind::Verdict(_) => cpl_json::Value::Null,
         };
-        let file = self
-            .at
-            .as_ref()
-            .map(|a| a.file.clone())
-            .or(self.module.clone());
+        let text = |t: Option<String>| t.map_or(cpl_json::Value::Null, cpl_json::Value::String);
         let o = v.as_object_mut().expect("a diagnostic is an object");
         o.insert(
             "stage".into(),
@@ -130,8 +127,10 @@ impl Diag {
         );
         o.insert(
             "file".into(),
-            file.map_or(cpl_json::Value::Null, cpl_json::Value::String),
+            text(self.at.as_ref().map(|a| a.file.clone())),
         );
+        o.insert("module".into(), text(self.module.clone()));
+        o.insert("text".into(), text(Some(self.to_string())));
         o.insert("refusal".into(), refusal);
         v
     }
@@ -600,6 +599,48 @@ mod tests {
             .map(|d| d.to_string())
             .collect();
         assert_eq!(ds, ["check: std.algebra:33:5: slice: decorator `@from_op`"]);
+    }
+
+    /// A diagnostic is data: its code, its place in its file and, for a refusal, the feature.
+    #[test]
+    fn a_diagnostic_is_its_code_place_and_feature() {
+        let json = |src: &str| {
+            (diags(src).iter().map(|d| cpl_json::to_string(&d.json()))).collect::<Vec<_>>()
+        };
+        let verdict = &json("print(1)\nlet x: Int = \"a\"\n")[0];
+        for part in [
+            r#""code":"E0302""#,
+            r#""file":"program""#,
+            r#""line":2"#,
+            r#""refusal":null"#,
+        ] {
+            assert!(verdict.contains(part), "{part} in {verdict}");
+        }
+        let refusal = &json("let xs = [1]\nprint(3 in xs)\n")[0];
+        for part in [
+            r#""code":"E0501""#,
+            r#""refusal":"Membership""#,
+            r#""text":"check: program:2:7: slice: "#,
+        ] {
+            assert!(refusal.contains(part), "{part} in {refusal}");
+        }
+    }
+
+    /// A refusal under a written type, on a `let` or a lambda's parameter, prints its feature
+    /// text: a refusal re-reported by its text alone was an empty E9999 (core-01/mod-pow).
+    #[test]
+    fn a_refusal_prints_its_feature_text() {
+        let src = "type Z = Mod<1000000007>\nlet x: Z = 3\nlet f = (y: Z) => y\nprint(x)\n";
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert!(ds.iter().all(|d| !d.contains("E9999")), "{ds:?}");
+        let typed = |line: u32| format!("check: program:{line}:");
+        for line in [2, 3] {
+            let at = ds.iter().find(|d| d.starts_with(&typed(line)));
+            assert!(
+                at.is_some_and(|d| d.contains("slice: type Value")),
+                "line {line}: {ds:?}"
+            );
+        }
     }
 
     /// A refused domain is the error: its uses give no verdict of their own.
