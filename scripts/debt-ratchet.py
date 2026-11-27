@@ -2158,6 +2158,11 @@ def _next_srcs(root: Path) -> list[str]:
     return sorted(_rel(root, d / "src") for d in (root / "crates").glob("cpl-next*") if (d / "src").is_dir())
 
 
+# The grammar's one spelling table: keywords and contextual words (`by`, `max`) are spelled
+# there and nowhere else, so it alone is not a name the compiler knows a std declaration by.
+NEXT_GRAMMAR_TABLE = "crates/cpl-next-syntax/src/grammar.rs"
+
+
 def next_std_names(root: Path) -> list[str]:
     """Places where the new pipeline (cpl-next and its `cpl-next-*` crates) knows a library
     declaration by its name: a string literal in its compiler code equal to a name its std declares (`"List"`, `"get"`,
@@ -2173,7 +2178,8 @@ def next_std_names(root: Path) -> list[str]:
         # Decorators std declares or uses (`@derive`) are its names as much as its decls.
         names |= set(NEXT_STD_DECL_RE.findall(text)) | set(NEXT_STD_DECORATOR_RE.findall(text))
     # `cpl-prim` holds the `@intrinsic` ids the IR maps to its operations, so it is scanned too.
-    files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), "crates/cpl-prim/src", tests=False)}
+    files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), "crates/cpl-prim/src", tests=False)
+             if _rel(root, p) != NEXT_GRAMMAR_TABLE}
     out: list[str] = []
     wrappers: dict[str, tuple[str, int]] = {}
     for rel, lines in files.items():

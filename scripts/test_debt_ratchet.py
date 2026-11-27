@@ -2120,6 +2120,14 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-next-check/src/expr.rs", 'if name == "all" {}\n')
             self.assertTrue(dr.next_std_names(root))
 
+    def test_next_std_names_exempts_only_the_grammar_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/seq.cp", "pub fn max(a: Int) -> Int = a\n")
+            self._write(root, dr.NEXT_GRAMMAR_TABLE, '("max", Contextual::Max),\n')
+            self._write(root, "crates/cpl-next-syntax/src/parser.rs", 'if text == "max" {}\n')
+            self.assertEqual(dr.next_std_names(root), ["crates/cpl-next-syntax/src/parser.rs:1: max"])
+
     def test_ir_builtin_names_reads_tuple_arms(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
