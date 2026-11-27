@@ -149,12 +149,78 @@ impl<'a> Cx<'a> {
     /// The arguments of a call bound to its parameters: positional ones in order, named ones by
     /// label, the rest from their defaults (R06.1.5). In parameter order; what must run first to
     /// keep the written left-to-right order (R05.11) is in the first part.
+    /// `n(x for x in xs, ..)` where `n` is a free fn with no `self`.
+    fn fold_form(&self, n: &str, args: &[ast::Arg]) -> bool {
+        args.first()
+            .is_some_and(|a| a.name.is_none() && a.value.is_generator())
+            && matches!(self.d.views[self.module.0].get(n), Some(decls::Named::Fn(f)) if self.d.f(*f).self_ty.is_none())
+    }
+    /// The arguments past the others gathered into the one a last `..xs` parameter takes: a
+    /// tuple when positional, a record when named, in written order (R06.1.5, decision 324).
+    fn pack_variadic(
+        &mut self,
+        args: &[ast::Arg],
+        formals: &[Formal<'a>],
+        span: Span,
+    ) -> Option<Vec<ast::Arg>> {
+        let (v, fixed) = formals.split_last().filter(|(v, _)| v.variadic)?;
+        let mut positional = fixed.iter().filter(|f| !f.named_only).count();
+        let (mut out, mut tuple, mut record) = (Vec::new(), Vec::new(), Vec::new());
+        for a in args {
+            match &a.name {
+                None if positional > 0 => {
+                    positional -= 1;
+                    out.push(a.clone());
+                }
+                None => tuple.push(a.value.clone()),
+                Some(n) if fixed.iter().any(|f| f.label == n.text) => out.push(a.clone()),
+                Some(n) => record.push((n.clone(), a.value.clone())),
+            }
+        }
+        let at = (tuple.iter().chain(record.iter().map(|(_, x)| x)))
+            .map(|x| x.span)
+            .reduce(|a, b| Span::new(a.start, b.end))
+            .unwrap_or(span);
+        let kind = match (tuple.is_empty(), record.is_empty()) {
+            (_, true) => ExprKind::Tuple(tuple),
+            (true, false) => ExprKind::Record(record),
+            (false, false) => {
+                self.err(
+                    at,
+                    format!(
+                        "{}: `..{}` takes positional or named arguments, not both",
+                        cpl_diag::codes::WRONG_ARG_COUNT.0,
+                        v.label
+                    ),
+                );
+                ExprKind::Tuple(tuple)
+            }
+        };
+        out.push(ast::Arg {
+            name: Some(ast::Name {
+                text: v.label.to_string(),
+                span: at,
+            }),
+            mutable: false,
+            value: ast::Expr { kind, span: at },
+        });
+        Some(out)
+    }
     pub(super) fn args(
         &mut self,
         args: &[ast::Arg],
         formals: &[Formal<'a>],
         span: Span,
     ) -> (Vec<TStmt>, Vec<TArg>) {
+        let packed;
+        let args = match self.pack_variadic(args, formals, span) {
+            Some(p) => {
+                packed = p;
+                &packed[..]
+            }
+            None => args,
+        };
+        let seen = self.errors.len();
         let mut slot: Vec<Option<usize>> = vec![None; formals.len()];
         let mut next = 0;
         let mut excess = false;
@@ -220,6 +286,10 @@ impl<'a> Cx<'a> {
                     );
                 }
             }
+        }
+        // Arguments that do not fit the parameters make the call the error: its bounds are not asked.
+        if self.errors.len() > seen {
+            self.obligations.retain(|o| o.2 != span);
         }
         // A lambda with unwritten parameter types is checked after the other arguments, whose
         // types and bounds may fix the ones it takes (R06.1.2).
@@ -350,6 +420,7 @@ impl<'a> Cx<'a> {
                 ty: sub.ty(&p.ty),
                 mutable: p.mutable,
                 named_only: p.named_only,
+                variadic: p.variadic,
                 default: p.default.as_ref().map(|e| (e, fd.module, fd.item)),
             })
             .collect()
@@ -724,7 +795,8 @@ impl<'a> Cx<'a> {
         }
         // The core file stands in for std until std's own `List` and `Str` load (stage 4):
         // a call std's signature takes but the stand-in's does not is not built, not an error.
-        if fd.module == decls::CORE && args.len() > formals.len() {
+        let variadic = formals.last().is_some_and(|f| f.variadic);
+        if fd.module == decls::CORE && args.len() > formals.len() && !variadic {
             self.err(
                 span,
                 format!(
@@ -755,12 +827,13 @@ impl<'a> Cx<'a> {
         self.solve(false);
         let seen = self.errors.len();
         let (mut pre, args) = self.args(args, &formals, span);
-        self.solve(false);
         // A call its arguments do not fit was diagnosed there, and one not built is refused:
-        // its value is the error.
+        // its value is the error, and the bounds its type arguments would have met are not asked.
         if unbuilt || self.errors.len() > seen {
+            self.obligations.retain(|o| o.2 != span);
             return Self::error_node(span);
         }
+        self.solve(false);
         if fd.same_keys {
             self.same_keys(&args, span);
         }
@@ -873,6 +946,7 @@ impl<'a> Cx<'a> {
                 ty,
                 mutable: false,
                 named_only: false,
+                variadic: false,
                 default: None,
             })
             .collect();
@@ -1534,6 +1608,28 @@ impl<'a> Cx<'a> {
                         None => self.call_named(n, &[], args, span, want),
                     }
                 }
+                // A generator argument to a fn that takes no sequence is the method fold of that
+                // sequence: `max(f(x) for x in xs)` is `(f(x) for x in xs).max()` (R01.10.1).
+                ExprKind::Name(n) if self.declared(n) && self.fold_form(n, args) => {
+                    let recv = ast::Expr {
+                        kind: ExprKind::Field {
+                            base: Box::new(args[0].value.clone()),
+                            name: ast::Name {
+                                text: n.clone(),
+                                span: callee.span,
+                            },
+                        },
+                        span,
+                    };
+                    let call = ast::Expr {
+                        kind: ExprKind::Call {
+                            callee: Box::new(recv),
+                            args: args[1..].to_vec(),
+                        },
+                        span,
+                    };
+                    self.expr(&call, want)
+                }
                 ExprKind::Name(n) if self.declared(n) => self.call_named(n, &[], args, span, want),
                 // `Box<Int>(5)`, `List<Int>()`: the written type arguments come first.
                 ExprKind::Generic { base, args: targs } if matches!(&base.kind, ExprKind::Name(n) if self.declared(n)) => {
@@ -2005,6 +2101,7 @@ pub(super) struct Formal<'d> {
     pub ty: Ty,
     pub mutable: bool,
     pub named_only: bool,
+    pub variadic: bool,
     /// Its expression, read in the module and with spans from the item that declares it.
     pub default: Option<(&'d ast::Expr, ModId, u32)>,
 }

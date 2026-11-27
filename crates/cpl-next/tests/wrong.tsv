@@ -188,6 +188,8 @@ core-05/std-container-move.cp	wrong-error	wanted E0608 on line 8, got: check: st
 core-05/std-deque-keeps-pushed-value.cp	wrong-error	wanted E0603 on line 6, got: check: std.deque:109:9: E0201: unknown name `swap`
 core-05/var-param-halves-move-into-the-recursion.cp	wrong-reject	own: std.seq:513:5: E0603: this returns a value that borrows `$tuple88`: `$tuple88` is gone when the fn returns
 core-05/view-assigned-into-typed-var.cp	wrong-reject	check: program:7:5: E0302: expected `Array<V, Int>`, found `Slice<Array<V, Int>>`
+core-06/fn-value-fills-defaulted-trailing.cp	wrong-reject	check: program:4:21: E0302: this function does not fit `(Int) -> _`
+core-06/fn-value-fills-named-only-default.cp	wrong-reject	check: program:4:21: E0302: this function does not fit `(Int) -> _`
 core-06/fn-value-fills-two-defaults.cp	wrong-reject	check: program:5:13: E0302: this function does not fit `(Int) -> Int`
 core-06/gen-takes-its-type-from-where-it-goes.cp	wrong-reject	check: program:14:16: E0201: unknown name `gen`
 core-06/gen-with-no-type-to-take-is-an-error.cp	wrong-error	wanted E0501 on line 4, got: check: program:4:7: E0201: unknown name `gen`
@@ -311,9 +313,8 @@ core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed:
 core-10/show-bound-generic.cp	wrong-reject	decls: E0204: unknown trait `Show`
 core-10/test-position-lent-mut-above-multitest.cp	wrong-reject	check: std.rand:119:34: E0203: `S` has no member `swap_idx`
 core-10/test-position-stored-above-multitest.cp	wrong-accept	wanted E0805 on line 8, ran and printed: 1
-core-11/min-is-the-binary-builtin.cp	wrong-error	wanted E0303 on line 3, got: check: program:3:7: E0201: unknown name `min`
+core-11/binary-min-beside-imported-seq-min.cp	wrong-reject	check: program:5:7: E0606: `Int` does not implement `Seq`
 core-11/min-max-beside-seq-min.cp	wrong-reject	check: program:3:7: E0201: unknown name `min`
-core-11/min-max-three-values.cp	wrong-reject	check: program:3:7: E0201: unknown name `min`
 core-11/own-let-max-shadows-binary-builtin.cp	wrong-reject	check: std.seq:129:16: E0606: `K` has no `impl Ord`, which `>` needs (R08.1.5)
 core-11/own-max-shadows-prelude.cp	wrong-reject	check: program:7:7: E0203: `List<Int>` has no member `max`
 core-11/prelude-exclusions.cp	wrong-reject	check: program:11:7: E0201: unknown name `min`
@@ -397,7 +398,6 @@ std-deque/splice-empty-lists.cp	wrong-reject	check: std.deque:494:13: E0201: unk
 std-deque/splice-moves-the-shorter-list.cp	wrong-reject	check: program:10:14: E0201: unknown name `rand`
 std-derive/hash-fields-derives-a-structs-hash.cp	wrong-reject	check: E0204: std.derive: unknown type `I128`
 std-dp/aliens-convex-exact-count.cp	wrong-reject	check: std.dp:314:17: E0302: expected `L`, found `Int`
-std-dp/dnc-layer-empty-and-unreachable.cp	wrong-reject	check: std.dp:241:28: E0201: unknown name `min`
 std-dp/interval-ranges-deque-game.cp	wrong-reject	check: program:8:1: E0204: unknown type `I.ranges`
 std-dp/interval-ranges-empty-traps.cp	wrong-reject	check: program:3:1: E0204: unknown type `V.ranges`
 std-dp/monge-path-online-next.cp	wrong-reject	check: std.dp:457:18: E0203: `Range<K>` has no member `zero`
@@ -583,7 +583,6 @@ std-seq/list-methods-that-build-lists-lend-nothing.cp	wrong-reject	own: program:
 std-seq/majority-eq-call-bound.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/majority-none.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`
 std-seq/max-min-follow-a-reversed-ord-on-ties.cp	wrong-reject	check: std.seq:99:16: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
-std-seq/max-min-take-any-count.cp	wrong-reject	check: program:3:7: E0201: unknown name `max`
 std-seq/maximal-empty.cp	wrong-reject	check: program:4:7: E0203: `List<Int>` has no member `maximal`
 std-seq/method-after-std-import.cp	wrong-reject	check: std.math:1662:9: E0201: unknown name `swap`
 std-seq/min-k-negative-traps.cp	wrong-reject	check: std.seq:2418:35: E0606: `K` has no `impl Ord`, which `<` needs (R08.1.5)
@@ -707,7 +706,6 @@ std-subset/subset-domain-too-large.cp	wrong-reject	check: program:7:7: E0201: un
 std-window/track-infers-element-from-sequence.cp	wrong-reject	check: program:4:12: E0203: `List<(w: Int)>` has no member `minimal`
 std-window/window-expire-by-place.cp	wrong-reject	check: program:4:16: E0201: unknown name `max`
 std-window/window-expire-unkeyed-traps.cp	wrong-reject	check: program:2:16: E0201: unknown name `min`
-std-window/window-min-after-pop.cp	wrong-reject	check: program:2:16: E0201: unknown name `min`
 std-window/window-pop-checks-front.cp	wrong-reject	check: std.window:166:16: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
 std-window/window-pop-empty-traps.cp	wrong-reject	check: std.window:166:16: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
 std-window/window-pop-to-empty.cp	wrong-reject	check: std.seq:274:43: E0302: expected `T`, found `2.hidden`

@@ -267,6 +267,10 @@ fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
 fn some<T>(v: T) -> ?T = v
 
 @tuple
+struct Tuple1<A>:
+    _0: A
+
+@tuple
 struct Tuple2<A, B>:
     _0: A
     _1: B
@@ -543,6 +547,34 @@ impl<A: Clone, B: Clone, C: Clone> Clone for Tuple3<A, B, C>:
     fn clone(a) = Tuple3(a._0.clone(), a._1.clone(), a._2.clone())
 impl<A: Clone, B: Clone, C: Clone, E: Clone> Clone for Tuple4<A, B, C, E>:
     fn clone(a) = Tuple4(a._0.clone(), a._1.clone(), a._2.clone(), a._3.clone())
+
+/// The largest of two or more values, the first of equal ones (R11.3.3).
+fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.max_with(if b > a: b else: a)
+
+/// The smallest of two or more values, the first of equal ones (R11.3.3).
+fn min<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T = more.min_with(if b < a: b else: a)
+
+/// A tuple whose fields are all `T`: what `max` and `min` take past their first two values.
+trait Alike<T>:
+    /// The largest of `m` and the fields, the first of equal ones.
+    fn max_with(self, m: T) -> T
+    /// The smallest of `m` and the fields, the first of equal ones.
+    fn min_with(self, m: T) -> T
+impl<T: Ord> Alike<T> for ():
+    fn max_with(self, m: T) -> T = m
+    fn min_with(self, m: T) -> T = m
+impl<T: Ord> Alike<T> for Tuple1<T>:
+    fn max_with(self, m: T) -> T = max(m, self._0)
+    fn min_with(self, m: T) -> T = min(m, self._0)
+impl<T: Ord> Alike<T> for Tuple2<T, T>:
+    fn max_with(self, m: T) -> T = max(m, self._0, self._1)
+    fn min_with(self, m: T) -> T = min(m, self._0, self._1)
+impl<T: Ord> Alike<T> for Tuple3<T, T, T>:
+    fn max_with(self, m: T) -> T = max(m, self._0, self._1, self._2)
+    fn min_with(self, m: T) -> T = min(m, self._0, self._1, self._2)
+impl<T: Ord> Alike<T> for Tuple4<T, T, T, T>:
+    fn max_with(self, m: T) -> T = max(m, self._0, self._1, self._2, self._3)
+    fn min_with(self, m: T) -> T = min(m, self._0, self._1, self._2, self._3)
 
 /// Numbers, characters (by code) and booleans (`false < true`) compare as the machine does.
 impl Eq for Int:

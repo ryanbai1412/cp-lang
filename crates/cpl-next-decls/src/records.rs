@@ -4,7 +4,7 @@
 use cpl_diag::Span;
 use cpl_syntax::ast::{self, ExprKind, FnDecl, StmtKind, TypeKind};
 use cpl_syntax::visit::{self, Visitor};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 /// The struct a record with these fields is: `(lo:, hi:)`.
 pub fn name<S: AsRef<str>>(fields: &[S]) -> String {
@@ -16,9 +16,36 @@ pub fn is_record(name: &str) -> bool {
     name.starts_with('(')
 }
 
-/// Every record shape any module writes, as a type or a literal.
-pub fn shapes(mods: &[crate::modules::Module]) -> Vec<Vec<String>> {
-    let mut v = Shapes(BTreeSet::new());
+/// Each fn with a last `..xs` parameter, by name, with the labels of its other parameters: the
+/// arguments of a call by any other names are the record `xs` is (R06.1.5).
+pub fn variadics(mods: &[crate::modules::Module]) -> HashMap<String, Vec<String>> {
+    let mut out: HashMap<String, Vec<String>> = HashMap::new();
+    for (_, stmts) in mods.iter().flat_map(|m| m.items.iter()) {
+        for s in stmts {
+            let StmtKind::Fn(f) = &s.kind else {
+                continue;
+            };
+            if f.params.last().is_some_and(|p| p.variadic) {
+                let labels = f
+                    .params
+                    .iter()
+                    .map(|p| &p.label.as_ref().unwrap_or(&p.name).text);
+                out.entry(f.name.text.clone())
+                    .or_default()
+                    .extend(labels.cloned());
+            }
+        }
+    }
+    out
+}
+
+/// Every record shape any module writes, as a type, a literal or the named arguments of a
+/// call to a fn in `variadics`.
+pub fn shapes(
+    mods: &[crate::modules::Module],
+    variadics: &HashMap<String, Vec<String>>,
+) -> Vec<Vec<String>> {
+    let mut v = Shapes(BTreeSet::new(), variadics);
     for (_, stmts) in mods.iter().flat_map(|m| m.items.iter()) {
         stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
     }
@@ -71,9 +98,9 @@ pub fn structs(shapes: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
         .collect()
 }
 
-struct Shapes(BTreeSet<Vec<String>>);
+struct Shapes<'v>(BTreeSet<Vec<String>>, &'v HashMap<String, Vec<String>>);
 
-impl Shapes {
+impl Shapes<'_> {
     fn ty(&mut self, t: &ast::Type) {
         match &t.kind {
             TypeKind::Record(fs) => {
@@ -105,7 +132,7 @@ impl Shapes {
     }
 }
 
-impl Visitor for Shapes {
+impl Visitor for Shapes<'_> {
     fn stmt(&mut self, s: &ast::Stmt) {
         match &s.kind {
             StmtKind::Let { ty: Some(t), .. } | StmtKind::Const { ty: Some(t), .. } => self.ty(t),
@@ -121,6 +148,22 @@ impl Visitor for Shapes {
             ExprKind::Record(fs) => {
                 self.0
                     .insert(fs.iter().map(|(n, _)| n.text.clone()).collect());
+            }
+            ExprKind::Call { callee, args } => {
+                let ExprKind::Name(n) = &callee.kind else {
+                    return;
+                };
+                let Some(fixed) = self.1.get(n) else {
+                    return;
+                };
+                let named: Vec<String> = (args.iter())
+                    .filter_map(|a| a.name.as_ref().map(|n| &n.text))
+                    .filter(|n| !fixed.contains(n))
+                    .cloned()
+                    .collect();
+                if !named.is_empty() {
+                    self.0.insert(named);
+                }
             }
             ExprKind::Generic { args, .. } => args.iter().for_each(|t| self.ty(t)),
             ExprKind::Table { domains, .. } => domains.iter().for_each(|t| self.ty(t)),

@@ -546,6 +546,7 @@ core-06/fn-forms.cp
 core-06/fn-hoists.cp
 core-06/fn-param-needs-type.cp
 core-06/fn-type-arity-mismatch.cp
+core-06/fn-value-required-trailing-mismatch.cp
 core-06/fn-value-yes-in-map.cp
 core-06/free-fn-called-as-method.cp
 core-06/function-types.cp
@@ -588,6 +589,7 @@ core-06/two-closures-share-var.cp
 core-06/unknown-arg-name.cp
 core-06/value-elif-chain-of-closures-calls-the-picked-one.cp
 core-06/value-if-joins-different-closures.cp
+core-06/variadic-named-args-make-record.cp
 core-07/adapters-and-chains.cp
 core-07/adjacent.cp
 core-07/array-equals-list.cp
@@ -814,6 +816,8 @@ core-11/local-shadows-prelude.cp
 core-11/member-single-file-needs-no-pub.cp
 core-11/method-named-like-builtin.cp
 core-11/method-of-non-prelude-fn.cp
+core-11/min-is-the-binary-builtin.cp
+core-11/min-max-three-values.cp
 core-11/own-fn-max-shadows-binary-builtin.cp
 core-11/pub-field-and-method.cp
 core-11/runtime-domain-reads-in-order.cp
@@ -1314,6 +1318,10 @@ next/n_u64_04_shift_by_64_traps.cp
 next/n_u64_literal.cp
 next/n_unchecked_wraps.cp
 next/n_use_two_imports_ambiguous.cp
+next/n_variadic_01_positional_and_named.cp
+next/n_variadic_02_mixed_args.cp
+next/n_variadic_03_min_max_of_values.cp
+next/n_variadic_04_min_max_need_one_type.cp
 next/n_variant_01_bare_variant_names_from_context.cp
 next/o01_gen_local_walk_read.cp
 next/o02_gen_global_walk_other_write.cp
@@ -1393,6 +1401,7 @@ std-bitset/bitset-of-an-int-is-rejected.cp
 std-deque/deque-of-a-list-is-rejected.cp
 std-deque/linked-list-of-a-list-is-rejected.cp
 std-derive/float-part-is-not-structural-hash.cp
+std-dp/dnc-layer-empty-and-unreachable.cp
 std-dp/monotone-minima-empty-shapes.cp
 std-dp/monotone-minima-ties-take-leftmost.cp
 std-dsu/dsu-empty-domain-no-roots.cp
@@ -1468,6 +1477,7 @@ std-seq/last-true-false-then-true-traps.cp
 std-seq/last-true-never.cp
 std-seq/last_true-1.cp
 std-seq/map-of-a-list-is-indexed-through-its-source.cp
+std-seq/max-min-take-any-count.cp
 std-seq/mean-empty-none.cp
 std-seq/present-1.cp
 std-seq/reduce-1.cp

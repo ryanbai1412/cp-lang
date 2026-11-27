@@ -36,8 +36,9 @@ impl Prepared {
 /// Std's declarations: `mods` are the core and std's modules.
 pub fn prepare(mods: &[crate::modules::Module]) -> Prepared {
     let (mut std, _) = layer(None, mods, &[], &HashMap::new());
+    let variadics = crate::records::variadics(mods);
     for mi in 0..mods.len() {
-        for shape in crate::records::shapes(&mods[mi..=mi]) {
+        for shape in crate::records::shapes(&mods[mi..=mi], &variadics) {
             std.writers.entry(shape).or_default().push(ModId(mi));
         }
     }
@@ -154,7 +155,7 @@ fn layer(
     // Every record shape the program and its modules write is a core struct (R02.5.2).
     // A program's are those std does not write.
     let mut shapes = base.map_or_else(Vec::new, |b| b.shapes.clone());
-    let written = crate::records::shapes(&mods[from..]);
+    let written = crate::records::shapes(&mods[from..], &crate::records::variadics(mods));
     let new_shapes: Vec<Vec<String>> = (written.iter())
         .filter(|s| shapes.binary_search(s).is_err())
         .cloned()

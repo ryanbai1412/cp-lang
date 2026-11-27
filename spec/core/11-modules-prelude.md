@@ -81,10 +81,10 @@ built-in list. Rules:
   local (`n`, `a`, `g`, `dp`, `ans`, `cnt`, `left`, `best`) is never a
   prelude name; the library spells it otherwise. And a name with two
   plausible meanings across chapters gets one chapter's meaning and the
-  others are qualified (`min` and `max` stay the builtins over two or more
-  values, like `abs`, `popcount`, `ctz`, `bit_width` and `bit_ceil`: core
-  builtins with no stub; the folds of one sequence
-  are methods). (R11.3.3)
+  others are qualified (`min` and `max` stay the core fns over two or more
+  values, ordinary declarations with a variadic `..more` past the first two
+  (R06.1.5), as `abs`, `popcount`, `ctz`, `bit_width` and `bit_ceil` stay
+  core builtins; the folds of one sequence are methods). (R11.3.3)
 - A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and
   `p.adj4` find the method on the receiver's type wherever the type
   came from. Only free names need the prelude or a `use`. (R11.3.4)

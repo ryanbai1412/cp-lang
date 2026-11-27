@@ -92,6 +92,8 @@ pub struct Param {
     pub mutable: bool,
     /// After `;`: passed by name only.
     pub named_only: bool,
+    /// `..xs: Ts`: the arguments past the others, as a tuple, or a record when named (R06.1.5).
+    pub variadic: bool,
     /// Read in the fn's module when a call leaves the parameter out (R06.1.5).
     pub default: Option<ast::Expr>,
 }
@@ -927,7 +929,7 @@ fn add_fn(
                 Ty::Error
             }
         };
-        if p.variadic || p.lazy {
+        if p.lazy {
             errors.push(format!("slice: a variadic or lazy parameter `{}`", p.name.text).into());
         }
         params.push(Param {
@@ -936,6 +938,7 @@ fn add_fn(
             ty,
             mutable: p.mutable,
             named_only: p.named_only,
+            variadic: p.variadic,
             default: p.default.clone(),
         });
     }

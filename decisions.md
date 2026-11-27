@@ -9467,3 +9467,10 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `traits/Show/Only--show` moves from wrong-reject to refused. It was wrong-reject only because std's line-scanning method index missed `only`, whose signature spans several lines; the index now comes from std's parsed declarations (f10dc16da), the method is found, and the case stops at a real refusal: printing an `Only<...>` is not built yet.
 - **Why.** The old "no member" verdict was a bug in the index, not the case's answer; the refusal names what is actually missing.
 - **Reverse.** None needed: the case passes once printing a generator wrapper is built.
+
+## 646. `min` and `max` are ordinary variadic core fns; a generator argument is the method fold (compiler, 2026-11-26)
+
+- **Call.** `..xs: Ts` is built in cpl-next: a call's arguments past the others are one tuple when positional and one record when named (R06.1.5, decision 324). Core declares `fn max<T: Ord, Ts: Alike<T>>(a: T, b: T, ..more: Ts) -> T` and `min` the same, where `Alike<T>` is a core trait over tuples whose fields are all `T` (`()` and `Tuple1` to `Tuple4`). `n(e for x in xs, ..)` where `n` is a free fn with no `self` is the method fold `(e for x in xs).n(..)` (R01.10.1). No compiler code names `min` or `max`. A free fn with no `self` in view no longer hides a method of the same name.
+- **Why.** R11.3.3 had them as core builtins with no stub; a library could not declare its own `max` the same way.
+- **Cases.** `std-window/window-min-after-pop.cp` moves from wrong-reject to refused: it was wrong only because `min` as a value was unknown. Its `Window(min)` now resolves, and the case stops at the unbuilt lowering of the `abs` intrinsic. `max(1, 2, "x")` says `Tuple1<Str>` does not implement `Alike` (E0606), which names the tuple rather than the value that does not fit.
+- **Reverse.** Delete `max`, `min` and `Alike` from core and the `fold_form` arm in check.
