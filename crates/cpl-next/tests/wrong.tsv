@@ -172,7 +172,6 @@ core-05/cache-no-lend-escapes.cp	wrong-error	wanted E0604 on line 12, got: check
 core-05/call-effect-through-fn.cp	wrong-error	wanted E0602 on line 7, got: check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-05/call-mut-element-and-read-maybe-same.cp	wrong-error	wanted E0601 on line 8, got: check: program:8:16: E0302: this is not a place that can be assigned or lent
 core-05/call-mut-element-and-read-proven-apart.cp	wrong-reject	check: program:10:20: E0302: this is not a place that can be assigned or lent
-core-05/disjoint-fields.cp	wrong-reject	check: program:6:51: E0203: `List<Int>` has no member `pop`
 core-05/elements-maybe-same.cp	wrong-error	wanted E0601 on line 4, got: check: program:4:5: E0201: unknown name `swap`
 core-05/elements-proved-apart.cp	wrong-reject	check: program:4:16: E0201: unknown name `swap`
 core-05/exercise-04-var-from-lent-param.cp	wrong-error	wanted E0608 on line 4, got: check: program:5:5: E0203: `List<Int>` has no member `extend`
@@ -188,7 +187,6 @@ core-05/file-body-var-holds-lent.cp	wrong-reject	check: program:9:16: E0302: exp
 core-05/fn-field-call-changes-nothing.cp	wrong-reject	check: program:15:21: E0302: expected `Int`, found `M`
 core-05/fn-var-binding-a-global-is-a-move.cp	wrong-accept	wanted E0608 on line 6, ran and printed: 
 core-05/global-read-by-another-fn-after-the-copy.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-05/int-element-outlives-a-pop-of-its-list.cp	wrong-reject	check: program:12:1: E0203: `List<Int>` has no member `pop`
 core-05/int-element-outlives-a-write-to-its-place.cp	wrong-reject	check: program:8:7: E0302: expected `Int`, found `$range1`
 core-05/lends-mut-place.cp	wrong-reject	check: program:3:47: E0302: expected `()`, found `Int`
 core-05/lent-generator-blocks-overlapping-write.cp	wrong-error	wanted E0602 on line 8, got: decls: E0204: unknown type `Seq`
@@ -208,7 +206,6 @@ core-05/rb1-q03-write-while-lent.cp	wrong-error	wanted E0602 on line 6, got: che
 core-05/read-through-a-user-get-beside-at.cp	wrong-reject	check: program:15:1: E0305: `Pool` is not indexed: it has no `Indexed` impl
 core-05/read-through-a-user-get-is-its-result.cp	wrong-error	wanted E0606 on line 8, got: check: program:8:7: E0305: `Sparse<Int>` is not indexed: it has no `Indexed` impl
 core-05/rotate-into-walked-row.cp	wrong-error	wanted E0602 on line 6, got: check: program:6:19: E0403: a `mut self` method needs a place
-core-05/same-field-mut-twice.cp	wrong-error	wanted E0601 on line 8, got: check: program:6:51: E0203: `List<Int>` has no member `pop`
 core-05/slices-proved-apart.cp	wrong-reject	check: program:8:9: E0203: `V` has no member `l`
 core-05/spec-block-swap-maybe-same.cp	wrong-error	wanted E0601 on line 9, got: check: program:9:1: E0201: unknown name `swap`
 core-05/var-mutates.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
@@ -498,9 +495,7 @@ std-bitset/set-ops.cp	wrong-reject	check: program:5:8: E0302: expected `Int`, fo
 std-bitset/xor-trie.cp	wrong-reject	check: std.bitset:1253:9: E0405: field `XorTrie._mask` is fixed (not `var`) and cannot be assigned
 std-bitset/xor-with-self-is-empty.cp	wrong-reject	check: program:4:8: E0302: expected `Int`, found `Bitset<D>`
 std-dp/aliens-convex-exact-count.cp	wrong-reject	check: program:8:11: E0606: `Int` does not implement `Add`
-std-dp/monotone-minima-empty-shapes.cp	wrong-reject	check: std.dp:202:19: E0203: `List<Tuple4<Int, Int, Int, Int>>` has no member `pop`
-std-dp/monotone-minima-negative-traps.cp	wrong-error	wanted E0902 on line 2, got: check: std.dp:202:19: E0203: `List<Tuple4<Int, Int, Int, Int>>` has no member `pop`
-std-dp/monotone-minima-ties-take-leftmost.cp	wrong-reject	check: std.dp:202:19: E0203: `List<Tuple4<Int, Int, Int, Int>>` has no member `pop`
+std-dp/monotone-minima-negative-traps.cp	wrong-accept	wanted E0902 on line 2, ran and printed: 
 std-fenwick/fenwick-empty-domain-sums-zero.cp	wrong-reject	check: program:5:21: E0203: `all` is a method: call it with `()`
 std-fenwick/fenwick2d-range-type-arguments.cp	wrong-reject	check: program:10:14: E0302: expected `Range<0..=1>`, found `Range<Int>`
 std-geometry/area2-128-empty-and-huge.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`

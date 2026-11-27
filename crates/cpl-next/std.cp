@@ -45,6 +45,21 @@ struct List<T>:
         raw_set(mut buf, n, x)
         n += 1
 
+    @get fn is_empty(self) -> Bool:
+        n == 0
+
+    fn pop(mut self) -> ?T:
+        if n == 0: return None
+        n -= 1
+        Some(raw_get(buf, n))
+
+    fn truncate(mut self, k: Int):
+        check_key(0 <= k)
+        if k < n: n = k
+
+    fn clear(mut self):
+        n = 0
+
 
 struct Array<D, T>:
     buf: Raw<T>
