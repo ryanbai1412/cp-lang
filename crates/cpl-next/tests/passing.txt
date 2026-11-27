@@ -1222,6 +1222,8 @@ next/n_f64_03_precision_and_specs.cp
 next/n_facts_01_proved_checks_keep_results.cp
 next/n_facts_02_unproved_n_minus_i_traps.cp
 next/n_facts_03_unproved_index_traps.cp
+next/n_fromop_01_bare_op_at_a_bound.cp
+next/n_fromop_02_closure_takes_fn_type_impl.cp
 next/n_gen_01_stored_walked_twice.cp
 next/n_gen_02_lent_then_mutated.cp
 next/n_gen_04_recursive_break.cp
@@ -1269,6 +1271,7 @@ next/n_optional_01_is_some_reads_like_a_field.cp
 next/n_own_06_struct_field_takes_the_path.cp
 next/n_own_07_field_moves_are_per_path.cp
 next/n_own_10_param_value_is_not_a_borrow.cp
+next/n_own_11_field_into_struct_moves.cp
 next/n_pattern_01_refutable_patterns_test_and_bind.cp
 next/n_pattern_02_domain_patterns_test_membership.cp
 next/n_pattern_03_string_literal_patterns.cp
