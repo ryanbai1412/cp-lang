@@ -50,7 +50,7 @@ impl Cx<'_> {
                         continue;
                     }
                 }
-                match self.meet(&t, &r, span) {
+                match self.meet(&t, &open, &r, span) {
                     Some(true) => {}
                     Some(false) if self.mentions_error(&t) => self.poison(&r),
                     Some(false) => {
@@ -192,8 +192,8 @@ impl Cx<'_> {
             _ => false,
         }
     }
-    /// Whether `t` meets `r`, or `None` while `t` is not known.
-    fn meet(&mut self, t: &Ty, r: &TraitRef, span: Span) -> Option<bool> {
+    /// Whether `t` meets `r`, or `None` while `t` is not known. `open` is `t` before zonking.
+    fn meet(&mut self, t: &Ty, open: &Ty, r: &TraitRef, span: Span) -> Option<bool> {
         let tr = &self.d.traits[r.tr.0];
         if tr.alias {
             let sub = Subst {
@@ -276,9 +276,18 @@ impl Cx<'_> {
                     self.err(span, msg);
                     return Some(true);
                 }
-                let Some((k, targs)) = found.into_iter().next() else {
+                let Some((k, mut targs)) = found.into_iter().next() else {
                     return Some(false);
                 };
+                // The impl's arguments are `open`'s own parts where it has them, so a fn set
+                // still filling (a call's result) stays the bound's set, not a copy of it now.
+                let live =
+                    (self.d.impl_args(&self.d.impls[k], &self.followed(open))).unwrap_or_default();
+                for (a, l) in targs.iter_mut().zip(live) {
+                    if l != Ty::Error {
+                        *a = l;
+                    }
+                }
                 Some(self.take_impl(k, targs, r, span, None))
             }
         }

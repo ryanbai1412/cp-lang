@@ -2153,3 +2153,9 @@ std-seq/adjacent_diff-1.cp
 std-seq/partition-empty-and-all-kept.cp
 core-08/inherent-outside-module.cp
 next/n_link_01_call_nothing_runs_keeps_its_type.cp
+next/a_own_02_nested_closure_returned.cp
+next/a_own_15_lambda_returns_borrowing_closure.cp
+next/n_mod_01_inline_modules.cp
+next/n_use_01_a_module_named_without_names.cp
+next/n_tuple_01_field_fn_called.cp
+next/n_bound_01_impl_args_keep_their_sets.cp

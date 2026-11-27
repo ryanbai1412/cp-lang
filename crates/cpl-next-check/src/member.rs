@@ -394,6 +394,15 @@ impl<'a> Cx<'a> {
         want: Option<&Ty>,
         written_targs: &[Ty],
     ) -> TExpr {
+        // A tuple's `.1` is its field `_1`, read or called (R02.5).
+        let digit = ast::Name {
+            text: format!("_{}", name.text),
+            span: name.span,
+        };
+        let name = match name.text.starts_with(|c: char| c.is_ascii_digit()) {
+            true => &digit,
+            false => name,
+        };
         if let Some(e) = self.ctx_read(base, name, span) {
             self.no_targs(name, written_targs, span);
             return e;

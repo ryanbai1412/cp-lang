@@ -1425,15 +1425,6 @@ impl<'a> Cx<'a> {
                 }
                 acc.unwrap_or(prev)
             }
-            ExprKind::Field { base, name }
-                if name.text.starts_with(|c: char| c.is_ascii_digit()) =>
-            {
-                let name = ast::Name {
-                    text: format!("_{}", name.text),
-                    span: name.span,
-                };
-                self.member(base, &name, None, span, want, &[])
-            }
             ExprKind::Tuple(xs) if self.d.tuples.contains_key(&xs.len()) => {
                 // `(R, C)` named as a value is the product domain's whole range (R04.2.11).
                 if let Some(p) = self.type_path(e) {

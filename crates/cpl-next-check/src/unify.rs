@@ -93,6 +93,22 @@ impl<'a> Cx<'a> {
             other => other,
         }
     }
+    /// `t` with its solved variables followed, its unknown ones and its sets left as they are.
+    pub(super) fn followed(&self, t: &Ty) -> Ty {
+        match self.shallow(t) {
+            Ty::Raw(e) => Ty::Raw(Box::new(self.followed(&e))),
+            Ty::Ref(e) => Ty::Ref(Box::new(self.followed(&e))),
+            Ty::Struct(d, ts, ss) => {
+                Ty::Struct(d, ts.iter().map(|t| self.followed(t)).collect(), ss)
+            }
+            Ty::Fn(ps, r, s) => Ty::Fn(
+                ps.iter().map(|t| self.followed(t)).collect(),
+                Box::new(self.followed(&r)),
+                s,
+            ),
+            other => other,
+        }
+    }
     pub(super) fn zonk_fnref(&self, f: &FnRef) -> FnRef {
         f.map(|t| self.zonk(t), |s| self.zonk_set(s))
     }

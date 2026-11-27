@@ -462,9 +462,7 @@ next/a_clos_03_list_of_closures_sharing_var.cp	wrong-reject	link: E0603: `new` r
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
 next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `f1` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
-next/a_own_02_nested_closure_returned.cp	wrong-error	wanted E0603 on line 6, got: link: E0603: `make` returns a function that uses a `var` of the fn that made it; the variable is gone by then
 next/a_own_10_lent_closure_stored_through_mut_param.cp	wrong-error	wanted E0603 on line 8, got: link: E0603: `new` returns a function that uses a `var` of the fn that made it; the variable is gone by then
-next/a_own_15_lambda_returns_borrowing_closure.cp	wrong-error	wanted E0603 on line 8, got: link: E0603: `lambda0` returns a function that uses a `var` of the fn that made it; the variable is gone by then
 next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:5: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o22_lender_body_writes_lender_self.cp	wrong-error	wanted E0604 on line 14, got: own: program:14:5: E0602: `s[1]` is lent to `at` for writing for the whole loop, and the loop body uses it
 next/o27_mut_global_callee_reads_same.cp	wrong-error	wanted E0601 on line 6, got: own: program:6:1: E0602: `a` is lent to `fill` for writing, and the call also reaches it another way
