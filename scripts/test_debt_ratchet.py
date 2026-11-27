@@ -2159,6 +2159,18 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-engine/src/compile.rs:2", "crates/cpl-next-engine/src/compile.rs:4",
                 "crates/cpl-next-cpp/src/emit.rs:1"])
 
+    def test_name_keys_and_structural_link_edge(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "crates/cpl-next-check/src/domain.rs",
+                        'let a = self.bind(&format!("{name}$lo"), Ty::Int);\n'
+                        'let b = format!("{b}.{}", f);\nlet t = format!("$tuple{}", s);\n')
+            self.assertEqual(dr.next_check_name_keys(root), ["crates/cpl-next-check/src/domain.rs:1",
+                                                             "crates/cpl-next-check/src/domain.rs:2"])
+            self._write(root, "crates/cpl-next-link/Cargo.toml", "[dependencies]\ncpl-next-check.workspace = true\n")
+            self._write(root, "crates/cpl-next-lower/Cargo.toml", "[dependencies]\ncpl-next-check.workspace = true\n")
+            self.assertEqual(dr.link_reads_check(root), ["crates/cpl-next-link/Cargo.toml:2"])
+
     def test_weak_oracles_and_syntax_std_names(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

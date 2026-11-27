@@ -1,6 +1,6 @@
 [package]
 name = "cpl-next-own"
-description = "The new pipeline's ownership check: what each fn reads, writes and holds, decided on the typed tree before lowering. Reachable from cpl-next only."
+description = "The new pipeline's ownership check: what each fn reads, writes and holds, decided once over the linked instances, after link. Reachable from cpl-next only."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true

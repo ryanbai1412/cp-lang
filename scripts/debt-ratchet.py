@@ -2905,7 +2905,27 @@ def link_reads_check(root: Path) -> list[str]:
     for p in _rs_files(root, "crates/cpl-next-link/src", tests=False):
         rel = _rel(root, p)
         out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if LINK_READS_CHECK_RE.search(line)]
+    # The structural half: no crate past lowering may depend on the checker at all, whatever names it uses.
+    for c in AFTER_LOWER_CRATES:
+        toml = root / "crates" / c / "Cargo.toml"
+        if toml.is_file():
+            out += [f"{_rel(root, toml)}:{i}" for i, line in enumerate(_lines(toml), 1)
+                    if re.match(r"\s*cpl-next-check\b", line)]
     return out
+
+
+AFTER_LOWER_CRATES = ("cpl-next-own", "cpl-next-link", "cpl-next-cpp", "cpl-next-interp", "cpl-next-engine")
+# A scope key built from another name (`{d}$lo`, `{b}.{field}`): meaning carried in a string.
+NEXT_NAME_KEY_RE = re.compile(r'format!\("\{[a-z_]\w*\}[.$]')
+
+
+def next_check_name_keys(root: Path) -> list[str]:
+    """Checker lines that build a binding or lookup key by formatting another name (`{d}$lo`,
+    `{b}.{field}`): a domain's slots or a scoped member found by spelling, not by an id bound in
+    scope, so a rename, shadow or nesting bug becomes a wrong domain. 0 is every such slot an id."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-next-check/src", tests=False)
+            if not p.name.endswith("_tests.rs")
+            for i, l in enumerate(_lines(p), 1) if not l.lstrip().startswith("//") and NEXT_NAME_KEY_RE.search(l)]
 
 
 def trace_engine_refs(root: Path) -> list[str]:
@@ -3857,6 +3877,7 @@ COUNTERS = {
     "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
+    "next_check_name_keys": ("checker keys built by formatting another name, not an id (Core)", next_check_name_keys, True),
     "link_reads_check": ("lines of the new pipeline's linker reading the typed tree, not the IR (Core)", link_reads_check, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
