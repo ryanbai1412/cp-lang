@@ -301,6 +301,8 @@ pub struct Local {
     pub mutable: bool,
     /// Bound by `let`: it cannot be assigned.
     pub fixed: bool,
+    /// The `let` that bound it, which a fix writes `var` over.
+    pub let_at: Option<cpl_next_ir::ids::SourceId>,
 }
 pub struct TypedFn {
     pub self_local: Option<LocalId>,
@@ -710,6 +712,7 @@ fn check_with(
             top: true,
             mutable: true,
             fixed: false,
+            let_at: None,
         });
         VarRef::Global(cx.globals.len() - 1)
     };
@@ -1536,6 +1539,7 @@ impl Cx<'_> {
             top: true,
             mutable: false,
             fixed: true,
+            let_at: None,
         });
         let g = self.globals.len() - 1;
         out.push(TStmt::Let(VarRef::Global(g), e));

@@ -475,10 +475,8 @@ impl<'a> Cx<'a> {
             }
             let p = self.place(inner);
             if let Some(name) = self.let_root(&p) {
-                self.err(
-                    a.value.span,
-                    Msg::verdict(cpl_diag::codes::MUT_OF_IMMUTABLE, format!("`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`")),
-                );
+                let msg = Msg::verdict(cpl_diag::codes::MUT_OF_IMMUTABLE, format!("`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`"));
+                self.err(a.value.span, self.with_var_fix(&p, &name, msg));
             }
             if !self.unify(&p.ty, pty) {
                 self.err(

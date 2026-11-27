@@ -235,10 +235,13 @@ impl Cx<'_> {
     /// The receiver of a method that changes it, lent `mut`: never a `let` binding (R05.4.2).
     pub(super) fn mut_recv(&mut self, recv: TExpr, span: Span) -> TArg {
         if let Some(name) = self.let_root(&recv) {
-            self.err(
-                span,
-                Msg::verdict(cpl_diag::codes::MUT_OF_IMMUTABLE, format!("`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`")),
+            let msg = Msg::verdict(
+                cpl_diag::codes::MUT_OF_IMMUTABLE,
+                format!(
+                    "`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`"
+                ),
             );
+            self.err(span, self.with_var_fix(&recv, &name, msg));
         }
         TArg::Mut(recv)
     }

@@ -33,15 +33,11 @@ impl Cx<'_> {
             root = b;
         }
         if let Some(name) = self.let_root(&place).filter(|_| !cache) {
-            self.err(
-                target.span,
-                Msg::verdict(
-                    cpl_diag::codes::ASSIGN_TO_LET,
-                    format!(
-                        "`{name}` is bound by `let` and cannot be assigned; declare it with `var`"
-                    ),
-                ),
+            let msg = Msg::verdict(
+                cpl_diag::codes::ASSIGN_TO_LET,
+                format!("`{name}` is bound by `let` and cannot be assigned; declare it with `var`"),
             );
+            self.err(target.span, self.with_var_fix(&place, &name, msg));
         }
         place
     }

@@ -36,14 +36,15 @@ impl Cx<'_> {
             (a, b) => a.or(b),
         }
     }
-    /// A new name for `ty`, fixed unless it is a `var`.
-    fn bind_as(&mut self, name: &str, ty: Ty, mutable: bool) -> VarRef {
+    /// A new name for `ty` the pattern at `at` binds, fixed unless it is a `var`.
+    fn bind_as(&mut self, name: &str, ty: Ty, mutable: bool, at: Span) -> VarRef {
         let var = self.bind(name, ty);
+        let let_at = (!mutable).then(|| self.let_keyword(at)).flatten();
         let l = match var {
             VarRef::Local(i) => &mut self.locals[i],
             VarRef::Global(i) => &mut self.globals[i],
         };
-        (l.mutable, l.fixed) = (mutable, !mutable);
+        (l.mutable, l.fixed, l.let_at) = (mutable, !mutable, let_at);
         var
     }
     fn var_name(&self, v: VarRef) -> &str {
@@ -107,7 +108,7 @@ impl Cx<'_> {
         let span = pat.span;
         match &pat.kind {
             PatternKind::Name(n) => {
-                let l = self.bind_as(n, Ty::Error, mutable);
+                let l = self.bind_as(n, Ty::Error, mutable, span);
                 let e = TExpr {
                     kind: TK::Error,
                     ty: Ty::Error,
@@ -235,7 +236,7 @@ impl Cx<'_> {
                         return Some(tag_is(v, i));
                     }
                 }
-                let l = self.bind_as(n, v.ty.clone(), mutable);
+                let l = self.bind_as(n, v.ty.clone(), mutable, pat.span);
                 binds.push(TStmt::Let(l, v.clone()));
                 None
             }

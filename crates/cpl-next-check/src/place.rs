@@ -5,6 +5,49 @@ use super::*;
 impl Cx<'_> {
     /// An expression that names storage: a variable, or a field of one.
     /// The name of the `let` a place lies in, if it lies in one.
+    /// The `let` keyword on the line of `near`, at or before it: where a `let` binding at
+    /// `near` was written.
+    pub(super) fn let_keyword(&self, near: Span) -> Option<cpl_next_ir::ids::SourceId> {
+        let at = self.item.at(near);
+        let text = self.src.text_of(&at);
+        let abs = text.span(&at);
+        let end = (abs.start as usize + 3).min(text.text.len());
+        let head = text.text.get(..end)?;
+        let line = head.rfind('\n').map_or(0, |i| i + 1);
+        let found = line + head[line..].rfind("let")?;
+        let word = |c: Option<char>| c.is_none_or(|c| !c.is_alphanumeric() && c != '_');
+        let bounded =
+            word(head[..found].chars().last()) && word(text.text[found + 3..].chars().next());
+        let rel = (near.start + found as u32).checked_sub(abs.start)?;
+        bounded.then(|| self.item.at(Span::new(rel, rel + 3)))
+    }
+
+    /// The `let` that bound the root of `place`, when a `let` did.
+    pub(super) fn let_root_at(&self, place: &TExpr) -> Option<cpl_next_ir::ids::SourceId> {
+        let mut root = place;
+        while let TK::Field(b, _) = &root.kind {
+            root = b;
+        }
+        let TK::Var(v) = &root.kind else { return None };
+        match v {
+            VarRef::Local(i) => self.locals[*i].let_at.clone(),
+            VarRef::Global(i) => self.globals[*i].let_at.clone(),
+        }
+    }
+
+    /// `msg` about writing the `let` binding `name` that is the root of `place`, pointing at
+    /// the `let` and offering to write `var` there.
+    pub(super) fn with_var_fix(&self, place: &TExpr, name: &str, mut msg: Msg) -> Msg {
+        if let Some(at) = self.let_root_at(place) {
+            msg.labels.push((at.clone(), "declared here".into()));
+            msg.fixes.push(cpl_next_ir::msg::Fix {
+                title: format!("declare `{name}` with `var`"),
+                edits: vec![(at, "var".into())],
+            });
+        }
+        msg
+    }
+
     pub(super) fn let_root(&self, place: &TExpr) -> Option<String> {
         let mut root = place;
         while let TK::Field(b, _) = &root.kind {

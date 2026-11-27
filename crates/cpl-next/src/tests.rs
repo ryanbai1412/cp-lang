@@ -975,3 +975,25 @@ fn complete_lists_the_scope_names_a_prefix_starts() {
         .iter()
         .any(|(n, i)| *n == "print" && i.module == "std.show"));
 }
+
+#[test]
+fn assigning_a_let_offers_var() {
+    use crate::facade::{Session, Snapshot};
+    let src = "let total = 1\nfn bump() -> Int:\n    total = 2\n    total\nprint(bump())\n";
+    let s = Session::open(Snapshot::new(
+        std::sync::Arc::new(Std::read()),
+        Roots::std(),
+        src,
+    ));
+    let diags = s.program().err().expect("refused");
+    let d = (diags.iter())
+        .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::ASSIGN_TO_LET))
+        .expect("E0405");
+    let fix = d.fixes.first().expect("a fix");
+    assert_eq!(fix.title, "declare `total` with `var`");
+    let edits: Vec<_> = (fix.edits.iter())
+        .map(|(span, new)| (&src[span.start as usize..span.end as usize], new.as_str()))
+        .collect();
+    assert_eq!(edits, [("let", "var")]);
+    assert_eq!(d.labels.len(), 1);
+}

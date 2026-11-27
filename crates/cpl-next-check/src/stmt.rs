@@ -20,6 +20,7 @@ impl<'a> Cx<'a> {
             top: false,
             mutable: false,
             fixed: false,
+            let_at: None,
         });
         let id = self.locals.len() - 1;
         self.scope().insert(name.to_string(), id);
@@ -34,6 +35,7 @@ impl<'a> Cx<'a> {
                 top: true,
                 mutable: false,
                 fixed: false,
+                let_at: None,
             });
             self.global_names
                 .insert(name.to_string(), self.globals.len() - 1);
@@ -46,6 +48,7 @@ impl<'a> Cx<'a> {
                 top: false,
                 mutable: false,
                 fixed: false,
+                let_at: None,
             });
             let id = self.globals.len() - 1;
             self.scope().insert(name.to_string(), id);
@@ -63,6 +66,7 @@ impl<'a> Cx<'a> {
             top: self.decl.is_none() && self.scopes.len() == 1,
             mutable: false,
             fixed: false,
+            let_at: None,
         };
         match self.decl {
             None => {
@@ -871,12 +875,15 @@ impl<'a> Cx<'a> {
                 if let Some(keys) = super::index::literal_cut(init) {
                     self.view_keys.insert(var, keys);
                 }
+                let let_at = (!*mutable).then(|| self.let_keyword(s.span)).flatten();
                 match var {
                     VarRef::Local(i) => {
-                        (self.locals[i].mutable, self.locals[i].fixed) = (*mutable, !*mutable)
+                        (self.locals[i].mutable, self.locals[i].fixed) = (*mutable, !*mutable);
+                        self.locals[i].let_at = let_at;
                     }
                     VarRef::Global(i) => {
-                        (self.globals[i].mutable, self.globals[i].fixed) = (*mutable, !*mutable)
+                        (self.globals[i].mutable, self.globals[i].fixed) = (*mutable, !*mutable);
+                        self.globals[i].let_at = let_at;
                     }
                 }
                 let fresh = self.fresh_args(&v.ty);
