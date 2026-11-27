@@ -475,12 +475,12 @@ fn lower_bound(a: List<Int>, x: Int) -> Int:
     lo
 
 pub struct SparseFenwick2D<T: Add + Sub>:
-    n: Len
+    var n: Len
     pts: List<(Int, Int)>
-    xs: List<Int>
-    ys: List<List<Int>>
-    ft: List<List<T>>
-    built: Bool
+    var xs: List<Int>
+    var ys: List<List<Int>>
+    var ft: List<List<T>>
+    var built: Bool
 
     /// An empty offline 2-D Fenwick builder. Use it in two phases: register every point that will
     /// ever be updated with `add_point`, call `build` once, then use `add` and `sum`.

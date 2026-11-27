@@ -788,7 +788,7 @@ impl<T: Ord> Seq<T> for MeldHeap<T>:
 /// `meld` copies the smaller heap's nodes; to meld many heaps (one per vertex or component) in
 /// \(O(\log n)\) with no copying, keep them in one `MeldHeaps` pool.
 pub struct MeldHeap<T: Ord>:
-    _pool: MeldHeaps<T> = MeldHeaps()
+    var _pool: MeldHeaps<T> = MeldHeaps()
     var _h: Meld<T> = Meld()
 
     /// Create an empty `MeldHeap<T>`, optionally ordered by key extractor `by:` (W7).
@@ -995,9 +995,9 @@ pub struct Meld<T>:
 /// live at its peak, not one per element ever pushed.
 /// Use `MeldHeap` for a few heaps that own their nodes.
 pub struct MeldHeaps<T: Ord>:
-    _nodes: List<MeldNode<T>> = []
+    var _nodes: List<MeldNode<T>> = []
     // Per-node pending offsets, parallel to `_nodes`; empty until the first `add_all`.
-    _adds: List<?T> = []
+    var _adds: List<?T> = []
     var _stamps: Int = 0
     // Head of the free nodes, linked through `l`; -1 when none is free.
     var _free: -1..=2_147_483_647 = -1

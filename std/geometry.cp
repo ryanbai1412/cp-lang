@@ -658,7 +658,7 @@ pub struct OnlineHull:
 /// is the upper chain of the points mirrored in `y`.
 struct HullChain:
     at: SortedMap<Int, HullLink>
-    cross: I128
+    var cross: I128
 
     fn new() -> HullChain = HullChain(SortedMap(), I128(0))
 

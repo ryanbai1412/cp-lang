@@ -2064,7 +2064,7 @@ pub struct SuffixAutomaton<A>:
     max_len: List<Count>
     first_end: List<Slot>
     prefix: List<Count>
-    pub last: Count
+    pub var last: Count
     letters: List<?A>
 
     /// An empty suffix automaton over the alphabet domain `A`: only the root state `0`. Call it
@@ -2462,13 +2462,13 @@ pub struct PalindromicTree<A>:
     ser_link: List<Count>
     cnt: List<Count>
     chars: List<A>
-    last: Count
+    var last: Count
     front: List<A>
-    first: Count
+    var first: Count
     undo: List<Count>
     made: List<Count>
     firsts: List<Count>
-    barrier: Int
+    var barrier: Int
 
     /// An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the
     /// even root `1`. Call it as `PalindromicTree<A>()`.
@@ -2759,9 +2759,9 @@ pub struct PalindromicTree<A>:
 /// Dynamic trie over alphabet domain `A`. \(O(\lvert \mathit{word} \rvert)\) per lookup, \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\) per `add`; flat `|A|`-stride table.
 pub struct Trie<A>:
     alpha: Count
-    next: List<Slot>
-    ends: List<Count>
-    pass: List<Count>
+    var next: List<Slot>
+    var ends: List<Count>
+    var pass: List<Count>
 
     /// An empty trie over the alphabet domain `A`: one root node `0`, no words. Call it as
     /// `Trie<A>()`. Nodes are numbered in creation order.
@@ -3230,7 +3230,7 @@ pub struct AhoCorasick<A>:
 /// not a container: an automaton; `len` counts patterns, which are walked by `step`.
 pub struct DynamicAhoCorasick<A>:
     alpha: Count
-    pub n: Len
+    pub var n: Len
     stored: Trie<A>
     added: AcBuckets<A>
     removed: AcBuckets<A>

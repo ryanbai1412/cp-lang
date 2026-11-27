@@ -67,13 +67,21 @@ fn real_main() {
             Snapshot::new(Arc::new(std_in_use()), Roots::std(), ""),
             &args,
         );
-        for (m, n) in Session::open(std).std_unchecked() {
-            println!("{m}\t{n}");
+        // `--std-modules std.x` shows the diagnostics of the modules it begins; alone, each
+        // module's count.
+        let at = args.iter().position(|a| a == "--std-modules");
+        let only = at.and_then(|i| args.get(i + 1)).filter(|a| !a.starts_with("--"));
+        for (m, ds) in Session::open(std).std_unchecked() {
+            match only {
+                None => println!("{m}\t{}", ds.len()),
+                Some(o) if m.starts_with(o.as_str()) => ds.iter().for_each(|d| println!("{m}: {d}")),
+                Some(_) => {}
+            }
         }
         return;
     }
     let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] [--judge NAME=MB] | --all --within MS [--trace] | --std-modules");
+        eprintln!("usage: cpl-next FILE [--raw|--canonical|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] [--judge NAME=MB] | --all --within MS [--trace] | --std-modules [MODULE]");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {

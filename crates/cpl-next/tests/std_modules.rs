@@ -13,7 +13,7 @@ fn std_unchecked_is_what_checking_every_std_fn_finds() {
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
     let std = Snapshot::new(Arc::new(cpl_next::Std::read()), cpl_next::Roots::std(), "");
     let found: String = (Session::open(std).std_unchecked().into_iter())
-        .map(|(m, n)| format!("{m}\t{n}\n"))
+        .map(|(m, ds)| format!("{m}\t{}\n", ds.len()))
         .collect();
     let out = here.join("../../target/cpl-next");
     std::fs::create_dir_all(&out).unwrap();

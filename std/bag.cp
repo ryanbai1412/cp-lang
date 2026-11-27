@@ -1427,9 +1427,9 @@ impl<K: Ord> Contains<K> for SortedSet<K>:
 /// Entries are ordered by key; keys are distinct, so no lookup has a tie to break. Every
 /// entry-returning method gives `(key, val)`.
 pub struct SortedMap<K: Ord, V>:
-    ks: SortedBag<K>
-    vals: List<V>
-    vfree: List<Int>
+    var ks: SortedBag<K>
+    var vals: List<V>
+    var vfree: List<Int>
 
     fn val(self, s: Int) -> V = vals[ks.vid(s)]
 

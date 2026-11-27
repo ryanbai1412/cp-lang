@@ -392,7 +392,7 @@ impl Seq<Range<Int>> for SparseIntervalSet:
 /// coordinates. \(O(\mathit{runs})\) space.
 pub struct SparseIntervalSet:
     segs: Map<Int, Int>
-    total: Int
+    var total: Int
 
     /// An empty set of `Int` coordinates, unbounded in both directions.
     ///

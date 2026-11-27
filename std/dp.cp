@@ -35,10 +35,10 @@ pub struct Line(pub k: Int, pub m: Int):
 /// \(O(\mathit{lines})\) cells, allocated as lines arrive. \(O(\log n)\) per `at`, \(O(\log n)\)
 /// per whole-line `add`, \(O(\log^2 n)\) on a range.
 pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
-    lines: List<?L>
+    var lines: List<?L>
     // a cell's children; 0 means no cell, since the root is no cell's child
-    left: List<Int>
-    right: List<Int>
+    var left: List<Int>
+    var right: List<Int>
 
     /// An empty envelope over the integer coordinates `over`, keeping at each `x` the value `pick`
     /// prefers (`min` for the lower envelope, `max` for the upper). No cell is allocated until a line
@@ -414,14 +414,14 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     // Online LARSCH: row r is node r + 1, column c is node c. Level l keeps a
     // stack of surviving columns for rows 2^(l+1) - 1 apart, and `bat[l]` is
     // the stack slot the best column for level l's next odd row starts at.
-    vals: List<K> = []
-    reached: Int = 0
-    top: Int = -1
-    sv: List<List<K>> = []
-    sc: List<List<Int>> = []
-    bv: List<K> = []
-    bc: List<Int> = []
-    bat: List<Int> = []
+    var vals: List<K> = []
+    var reached: Int = 0
+    var top: Int = -1
+    var sv: List<List<K>> = []
+    var sc: List<List<Int>> = []
+    var bv: List<K> = []
+    var bc: List<Int> = []
+    var bat: List<Int> = []
 
     fn w(self, j: Int, i: Int) -> K = cost(nodes[j], nodes[i])
 
@@ -607,8 +607,8 @@ pub struct MonotoneHull<P: Ord>(pick: (Int, Int) -> Int = min):
     ks: List<Int> = []
     ms: List<Int> = []
     tags: List<P> = []
-    ptr: Int = 0
-    pub last: ?Int = None
+    var ptr: Int = 0
+    pub var last: ?Int = None
 
     fn sign(self) -> Int = if pick(0, 1) == 0: 1 else: -1
 
@@ -759,9 +759,9 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     pri: List<Int> = []
     ls: List<Int> = []
     rs: List<Int> = []
-    root: Int = -1
-    seed: Int = 1
-    pub count: Int = 0
+    var root: Int = -1
+    var seed: Int = 1
+    pub var count: Int = 0
 
     fn sign(self) -> Int = if pick(0, 1) == 0: -1 else: 1
 

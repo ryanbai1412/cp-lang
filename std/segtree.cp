@@ -45,9 +45,9 @@ impl Positions for Int:
 /// instead, making nodes on first touch: every call is \(O(\log(hi - lo))\) and makes at most
 /// \(2 \log_2(hi - lo)\) nodes, so memory grows with the positions touched, not with `hi - lo`.
 pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
-    t: List<T>
-    lz: List<F>
-    has_lz: List<Bool>
+    var t: List<T>
+    var lz: List<F>
+    var has_lz: List<Bool>
     size: Len
     log: Int
     act: ?Action<T, F>
@@ -56,10 +56,10 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     var dual: Bool = false
     // The `over:` layout: node 0 stands for every untouched node, node 1 is the root over
     // `0..size`, and `lc`/`rc` hold each node's children, made on first touch.
-    lc: List<Int> = []
-    rc: List<Int> = []
-    blank: List<T> = []
-    part: List<T> = []
+    var lc: List<Int> = []
+    var rc: List<Int> = []
+    var blank: List<T> = []
+    var part: List<T> = []
     base: Int = 0
     n: Len = 0
 

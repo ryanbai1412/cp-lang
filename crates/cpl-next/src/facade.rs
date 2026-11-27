@@ -281,9 +281,9 @@ impl Session {
         self.item_at(at)
     }
 
-    /// Each std module and how many diagnostics checking every one of its fns gives, not only
-    /// those a program reaches (suite 4).
-    pub fn std_unchecked(&self) -> Vec<(String, usize)> {
+    /// Each std module and the diagnostics checking every one of its fns gives, not only those
+    /// a program reaches (suite 4).
+    pub fn std_unchecked(&self) -> Vec<(String, Vec<Diag>)> {
         let h = &self.snapshot.0;
         std_unchecked(&h.std, h.judge.as_ref())
     }

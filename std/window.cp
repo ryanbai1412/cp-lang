@@ -340,7 +340,7 @@ pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = U
 /// A movable range over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
 /// expands before shrinking. \(O(\lvert \mathit{change} \rvert)\) pushes and pops per move.
 pub struct Sweep<D, S>(pub state: S):
-    lo: Int
+    var lo: Int
     var hi: Int
 
     /// A sweep over `state`, starting empty (or at `start`). Empty means the range is empty at the

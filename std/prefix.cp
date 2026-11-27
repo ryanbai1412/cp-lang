@@ -51,7 +51,7 @@ pub enum FillOrder = Forward | Reverse
 pub struct FillPrefix<D, T: Add + Sub>:
     p: [D.cuts]T
     pub rev: Bool
-    pub next: Int
+    pub var next: Int
 
     /// Write the next cell in fill order (`D.first..=D.last` for `Forward`, reverse for `Reverse`).
     ///
@@ -338,7 +338,7 @@ pub struct Prefix<D, T: Add + Sub>:
 pub struct FillPrefix<R, C, T: Add + Sub>:
     p: [R.cuts, C.cuts]T
     pub rev: Bool
-    pub next: Int
+    pub var next: Int
 
     /// Write the next cell in row-major fill order (top-left to bottom-right for `Forward`,
     /// bottom-right to top-left for `Reverse`).
@@ -462,7 +462,7 @@ pub struct Prefix<R, C, T: Add + Sub>:
 pub struct FillPrefix<T: Add + Sub>:
     p: List<T>
     pub rev: Bool
-    pub next: Int
+    pub var next: Int
 
     /// Write index `i` in fill order (`0..n` for `Forward`, `(0..n).rev` for `Reverse`).
     ///

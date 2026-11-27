@@ -334,10 +334,10 @@ pub struct LinkedList<T>:
     var _len: Int
     var head: Int
     var tail: Int
-    nx: List<Int>
-    pv: List<Int>
-    val: List<T>
-    flip: Bool
+    var nx: List<Int>
+    var pv: List<Int>
+    var val: List<T>
+    var flip: Bool
 
     fn fwd(self, i: Int) -> Int = if flip: pv[i] else: nx[i]
 

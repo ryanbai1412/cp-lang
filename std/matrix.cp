@@ -28,7 +28,7 @@ pub struct Mat<T>:
     ring: ?Ring<T> = None
     /// Under a [`TropicalProduct`] ring, the entries a product left in a std-owned sentinel form,
     /// then the largest `|entry|`; `cells` is then `[]` until an entry is set; empty otherwise.
-    raw: List<Int> = []
+    var raw: List<Int> = []
 
     /// The entries, row by row, as a new list: `get(r, c)` is `data[r * cols + c]`.
     /// \(O(\mathit{rows} \cdot \mathit{cols})\); `get` reads one entry in \(O(1)\).

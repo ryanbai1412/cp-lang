@@ -3763,7 +3763,7 @@ pub struct IncrementalBridges<V>:
     _cc_sz: List<Int>
     _ecc: List<Int>
     _vis: List<Int>
-    _iter: Int
+    var _iter: Int
 
     fn _find_ecc(mut self, x: Int) -> Int:
         var r = x

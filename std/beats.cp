@@ -35,11 +35,11 @@ pub struct BeatsSegTree<D>:
     n: Len
     // The second extremes and their counts, kept once `beats` is set by the first `chmin` or
     // `chmax`; empty before.
-    beats: Bool = false
-    mx2: List<Int> = []
-    mx_c: List<Int> = []
-    mn2: List<Int> = []
-    mn_c: List<Int> = []
+    var beats: Bool = false
+    var mx2: List<Int> = []
+    var mx_c: List<Int> = []
+    var mn2: List<Int> = []
+    var mn_c: List<Int> = []
 
     /// A Segment Tree Beats over `D` holding the values of `a`, or `fill` at every position, or
     /// zero everywhere when neither is given. Every node keeps the sum, minimum and maximum and a

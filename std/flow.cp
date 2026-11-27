@@ -977,7 +977,7 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
 struct Blossom:
     n: Len
     m: Int
-    nx: Int
+    var nx: Int
     eu: List<Int>
     ev: List<Int>
     ew: List<Int>
@@ -989,10 +989,10 @@ struct Blossom:
     from: List<Int>
     side: List<Int>
     vis: List<Int>
-    stamp: Int
+    var stamp: Int
     flower: List<List<Int>>
-    queue: List<Int>
-    at: Int
+    var queue: List<Int>
+    var at: Int
 
     fn delta(self, k: Int) -> Int:
         unchecked:

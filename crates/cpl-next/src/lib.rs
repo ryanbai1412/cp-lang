@@ -334,9 +334,9 @@ fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>) -> Fro
     }
 }
 
-/// Each std module and how many diagnostics it has when every one of its fns is checked, not
+/// Each std module and the diagnostics it has when every one of its fns is checked, not
 /// only those a program reaches: std as a program (suite 4 of plan/end-state.toml).
-pub(crate) fn std_unchecked(std: &Std, judge: Option<&Judge>) -> Vec<(String, usize)> {
+pub(crate) fn std_unchecked(std: &Std, judge: Option<&Judge>) -> Vec<(String, Vec<Diag>)> {
     (std.module_names())
         .filter(|m| *m != "std.prelude")
         .map(|m| {
@@ -368,7 +368,7 @@ pub(crate) fn std_unchecked(std: &Std, judge: Option<&Judge>) -> Vec<(String, us
                     .or(d.module.as_deref())
                     == Some(m)
             };
-            (m.to_string(), ds.filter(own).count())
+            (m.to_string(), ds.filter(own).collect())
         })
         .collect()
 }

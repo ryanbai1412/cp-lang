@@ -108,7 +108,7 @@ pub struct MarkMap<D, T>:
     stamp: [D]0..=2_000_000_000
     vals: [D]T
     default_val: T
-    gen: Int
+    var gen: Int
     var cnt: Int
 
     /// An empty map over `D`. `default_val` fills the value array and is never returned: an absent
@@ -215,7 +215,7 @@ impl<K> Seq<K> for Interner<K>:
 /// It prints its keys in id order, space-separated, so output never depends on hash order.
 pub struct Interner<K>:
     to_id: HashMap<K, Int>
-    keys: List<K>
+    var keys: List<K>
 
     /// An empty interner.
     ///
