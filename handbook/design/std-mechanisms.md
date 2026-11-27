@@ -56,6 +56,15 @@ Intrinsics, functions with no CP Lang body, are a fixed public list (bit
 operations, float math, `read`, `print`, `flush`, `rand`, `clock`). They are
 documented like any std fn and a user library calls them the same way.
 
+A std fn with a CP Lang body may also carry `@fast(op)`: the engines and the
+C++ run that one operation in place of the body. The body is what the fn
+means and the op is only a faster way to compute it, so the op must give what
+the body gives on every input. `fast_ops_agree_with_their_bodies` holds them
+together: it calls every `@fast` fn on the edge words and on seeded random
+ones, and runs the body on the reference interpreter and the op and the body
+on the engine and the C++, on every runner. A `@fast` fn it cannot call is
+counted by `fast_unchecked`, which stays at 0.
+
 ## Where the compiler still knows a std name
 
 Each one is logged as debt and counted by

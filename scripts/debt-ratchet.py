@@ -1418,6 +1418,31 @@ def next_ownership_outside_own(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if (m := NEXT_OWN_DECIDERS_RE.match(l))]
 
 
+FAST_TYPES = ("Int", "U64")
+
+
+def fast_unchecked(root: Path) -> list[str]:
+    """`@fast` fns of std that `fast_ops_agree_with_their_bodies` (crates/cpl-next/tests/
+    programs.rs) cannot call, by its rule: one parameter of type `Int`, `U64` or a `W: Word`
+    whose every `impl Word` type is one of those. A fn means its CP body; its op is only a
+    faster way to compute it, so an op nothing compares with its body may differ from it."""
+    files = sorted((root / "std").rglob("*.cp"))
+    srcs = [(p, _lines(p)) for p in files]
+    words = [m.group(1) for _, ls in srcs for l in ls if (m := re.match(r"impl Word for (\w+):$", l))]
+    out = []
+    for p, ls in srcs:
+        for i, l in enumerate(ls):
+            if not l.startswith("@fast("):
+                continue
+            sig = next((x[len("pub fn "):] for x in ls[i:] if x.startswith("pub fn ")), None)
+            m = sig and re.match(r"(\w+)(?:<(\w+): Word>)?\(\w+: (\w+)\)", sig)
+            at = [] if not m else words if m.group(3) == m.group(2) else [m.group(3)]
+            if not at or any(t not in FAST_TYPES for t in at):
+                name = re.match(r"\w*", sig).group(0) if sig else "no fn"
+                out.append(f"{_rel(root, p)}:{i + 1} {name}")
+    return out
+
+
 NEXT_AFTER_OWN = ("cpl-next-lower", "cpl-next-link", "cpl-next-cpp", "cpl-next-engine", "cpl-next-interp")
 
 
@@ -3625,6 +3650,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
+    "fast_unchecked",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "reviews_uncapped", "lint_std_names", "cpl_env_reads", "dead_code_allows",
@@ -3765,6 +3791,7 @@ COUNTERS = {
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
+    "fast_unchecked": ("std @fast fns whose op no test compares with their CP body (Core)", fast_unchecked, True),
     "next_lent_outside_own": ("new-pipeline places after the checker, outside cpl-next-own, making a type lent (Core)", next_lent_outside_own, True),
     "next_asks_refused": ("conformance cases refused for a header the new harness does not judge (Core)", next_asks_refused, True),
     "next_layer_foreign_deps": ("compiler layer crates depending on a tool or build crate (Core)", next_layer_foreign_deps, True),

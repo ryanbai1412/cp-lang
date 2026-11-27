@@ -476,6 +476,18 @@ impl Compiled {
         cpp::emit(&self.prog, &self.opt)
     }
 
+    /// Every `@fast` fn runs its CP body instead of its op, which is what the fn means; the
+    /// op is only a faster way to compute it, and `fast_ops_agree_with_their_bodies` holds
+    /// the two together.
+    pub fn without_fast(&mut self) {
+        for f in (self.prog.insts.iter_mut())
+            .chain(&mut self.canon)
+            .chain(&mut self.opt)
+        {
+            f.fast = None;
+        }
+    }
+
     /// The checks optimized IR leaves out, each with the facts' reason being its site.
     pub fn proved(&self) -> &[cpl_next_ir::facts::Proved] {
         &self.proved

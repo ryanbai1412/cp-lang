@@ -321,6 +321,7 @@
   "next_wrong_accepts": 20,
   "next_core_checks": 6,
   "next_ownership_outside_own": 3,
+  "fast_unchecked": 0,
   "next_lent_outside_own": 4,
   "next_asks_refused": 18,
   "next_layer_foreign_deps": 1,

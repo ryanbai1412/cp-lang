@@ -494,7 +494,9 @@ pub struct Func<T> {
     /// What a trap's call stack calls it: `f`, `Box.at`, `top level`.
     pub shown: String,
     /// The operation the engines and C++ run in place of a call (`@fast(op)` on a fn with
-    /// a body); the reference interpreter runs the body.
+    /// a body); the reference interpreter runs the body. The body is what the fn means: the
+    /// op only computes it faster, and `fast_ops_agree_with_their_bodies` checks the two
+    /// equal on every runner.
     pub fast: Option<Intr>,
 }
 

@@ -47,6 +47,7 @@ Factory owns it.
 | Std names in the compiler | Only the intrinsics table (decision 266) may name a std item | Core | `ir_builtin_names`, `ir_builtin_derived`, `backend_std_names`, `lint_std_names`, `prelude_privilege` |
 | Std metrics | Each `plan/domains/*/measure.py` has a self-test that fails on a `0 of 0` reading | Content | `measure_broken`, `scripts/test_stdlib_measure.py` |
 | Std bodies | Every pub std item runs its CP Lang body; the compiler never bypasses it | Content | `std_shadowed` (std pub names the compiler also matches by string, intrinsics excluded) |
+| `@fast` ops | A `@fast(op)` fn means its CP body; the op is an optimisation every runner checks equal to the body on edge and random words | Core | `fast_unchecked` (`@fast` fns `fast_ops_agree_with_their_bodies` cannot call) |
 | Running programs | The VM, also built to wasm; no interpreter fallback path; compile-time growth is refused (E0319) | Core | `vm_fallbacks`, `tree_walker`, `mono_unguarded` |
 | Crate dependencies | The layer map in `design/architecture.md` | Factory | `layer_violations`, `crate_edges` |
 | Tool data on the site | `web/` reads tool output; nothing is copied in by hand | Factory | `web_hand_copied` (string arrays in `web/` that copy std names, keywords or codes), `site_rederived` |

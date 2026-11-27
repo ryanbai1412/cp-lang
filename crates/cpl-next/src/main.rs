@@ -1,5 +1,5 @@
-//! `cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace]`: run FILE on stdin, print
-//! its C++, or only compile it; `--json` prints a rejection's diagnostics as JSON lines. Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when
+//! `cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] [--bodies]`: run FILE on
+//! stdin, print its C++, or only compile it; `--bodies` runs each `@fast` fn's body, not its op; `--json` prints a rejection's diagnostics as JSON lines. Exits 0 after a run, 3 after a trap, 1 when the program is rejected, 4 when
 //! it is refused.
 //!
 //! `cpl-next --all --within MS [--trace]` reads std once and then, for each `FILE<TAB>DIR` line
@@ -54,7 +54,7 @@ fn real_main() {
         return;
     }
     let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] | --all --within MS [--trace] | --std-modules");
+        eprintln!("usage: cpl-next FILE [--raw|--engine] [--cpp] [--check] [--json] [--trace] [--bodies] | --all --within MS [--trace] | --std-modules");
         std::process::exit(2);
     };
     let src = match std::fs::read_to_string(path) {
@@ -64,7 +64,7 @@ fn real_main() {
             std::process::exit(2);
         }
     };
-    let c = match compile(&Std::read(), &src, &roots(path), has("--trace")) {
+    let mut c = match compile(&Std::read(), &src, &roots(path), has("--trace")) {
         Ok(c) => c,
         Err(ds) => {
             for d in &ds {
@@ -78,6 +78,9 @@ fn real_main() {
     };
     if has("--check") {
         return;
+    }
+    if has("--bodies") {
+        c.without_fast();
     }
     if has("--cpp") {
         print!("{}", c.cpp());

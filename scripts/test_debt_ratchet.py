@@ -2103,6 +2103,16 @@ class DebtRatchetTest(unittest.TestCase):
                                         "if m == CORE {}\n// m != CORE\nif CORE != m {}\n")
             self.assertEqual(dr.next_ownership_outside_own(root),
                              ["crates/cpl-next-engine/src/lib.rs:1 lend_outs", "crates/cpl-next-engine/src/lib.rs:2 drop_at"])
+            (root / "std").mkdir(exist_ok=True)
+            (root / "std/bits.cp").write_text(
+                "impl Word for Int:\n    fn word(self) -> U64 = U64(0)\n"
+                "@fast(popcount)\n/// doc\npub fn ones<W: Word>(x: W) -> Int = 0\n"
+                "@fast(ctz)\npub fn low(x: U64) -> Int = 0\n"
+                "@fast(clz)\npub fn two(x: Int, y: Int) -> Int = 0\n"
+                "@fast(bit_width)\npub fn wide(x: F64) -> Int = 0\n")
+            self.assertEqual(dr.fast_unchecked(root), ["std/bits.cp:8 two", "std/bits.cp:10 wide"])
+            (root / "std/bits.cp").write_text("impl Word for Bits:\n@fast(popcount)\npub fn ones<W: Word>(x: W) -> Int = 0\n")
+            self.assertEqual(dr.fast_unchecked(root), ["std/bits.cp:2 ones"])
             self.assertEqual(dr.next_core_checks(root),
                              ["crates/cpl-next-engine/src/lib.rs:4", "crates/cpl-next-engine/src/lib.rs:6"])
             (root / "crates/cpl-next-check").mkdir(parents=True)

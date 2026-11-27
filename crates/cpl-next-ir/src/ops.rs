@@ -1,6 +1,10 @@
 //! The meaning of every operation the IR names: what it computes and how it fails. The
 //! reference interpreter and the engines call these functions, and the C++ emitter takes
 //! its helper names and its trap table from here, so no operation is written twice.
+//!
+//! An operation a std fn names with `@fast(op)` is only a faster way to compute that fn's CP
+//! body, which is what the fn means: `fast_ops_agree_with_their_bodies` runs both on every
+//! runner and they must agree.
 use crate::ir::{CheckKind, FloatFn, Intr, Rounding};
 use cpl_diag::{codes, Code};
 

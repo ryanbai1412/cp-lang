@@ -907,3 +907,183 @@ fn trap_line(stderr: &str) -> &str {
         .find(|l| l.starts_with("trap: "))
         .unwrap_or("")
 }
+
+/// Every `@fast` fn in std means its CP body; its op is only a faster way to compute it. So
+/// each is called on the edge words and on seeded random ones, and the reference interpreter
+/// (the body), the engine and the C++ (the op), and the engine and the C++ under `--bodies`
+/// all print the same. A `@fast` fn this cannot call is a finding: `fast_unchecked` in the
+/// debt ratchet counts them by the same rule.
+#[test]
+fn fast_ops_agree_with_their_bodies() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let (fns, uncovered) = fast_fns(&here.join("../../std"));
+    for u in &uncovered {
+        println!("cpl-finding: fast_ops_agree_with_their_bodies {u} +1");
+    }
+    assert!(
+        uncovered.is_empty(),
+        "@fast fns no input reaches: {uncovered:?}"
+    );
+    assert!(!fns.is_empty(), "std has no @fast fn: the scan is broken");
+    let dir = here.join("../../target/cpl-next/scratch/fast-ops");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("fast.cp");
+    std::fs::write(&path, fast_program(&fns)).unwrap();
+    let body = next(&path, &[], b"");
+    assert_eq!(body.status, Some(0), "{}{}", body.stdout, body.stderr);
+    let ints = fns.iter().filter(|f| f.at == "Int").count();
+    let lines = body.stdout.lines().count();
+    assert_eq!(lines, fns.len() * FAST_WORDS - ints, "one line per call");
+    let agree = |what: &str, ran: Ran| {
+        assert!(
+            ran.status == Some(0) && ran.stdout == body.stdout,
+            "{what}: exit {:?}, first line apart: {:?}",
+            ran.status,
+            (ran.stdout.lines().zip(body.stdout.lines()))
+                .enumerate()
+                .find(|(_, (a, b))| a != b)
+        );
+    };
+    for bodies in [&[][..], &["--bodies"]] {
+        let flags = |f: &'static str| [&[f][..], bodies].concat();
+        agree(
+            &format!("engine {bodies:?}"),
+            next(&path, &flags("--engine"), b""),
+        );
+        let cpp = next(&path, &flags("--cpp"), b"").stdout;
+        let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
+            .unwrap_or_else(|e| panic!("C++ {bodies:?}: {e}"))
+            .0;
+        agree(&format!("C++ {bodies:?}"), run_kept(&bin, b""));
+    }
+}
+
+/// How many words each `@fast` fn is called on: the edge words, then seeded random ones.
+const FAST_WORDS: usize = 256;
+
+/// The words a `@fast` fn is called on: 0, every power of two and its neighbours, the
+/// all-ones word, then random words from a fixed seed.
+fn fast_words() -> Vec<u64> {
+    let mut w = vec![0, u64::MAX];
+    for k in 0..64 {
+        let p = 1u64 << k;
+        w.extend([p, p - 1, p.wrapping_add(1)]);
+    }
+    w.sort_unstable();
+    w.dedup();
+    let mut s = 0x9e37_79b9_7f4a_7c15u64;
+    while w.len() < FAST_WORDS {
+        s = s.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = s;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        w.push(z ^ (z >> 31));
+    }
+    w
+}
+
+/// A `@fast` fn of std: its module, its name and the type it is called at.
+struct FastFn {
+    module: String,
+    name: String,
+    at: &'static str,
+}
+
+/// The types a `@fast` fn's word can be written in: an `Int` as its two's complement.
+const FAST_TYPES: [&str; 2] = ["Int", "U64"];
+
+/// Every `@fast` fn under `std`, once per type it is called at, and the ones no input
+/// reaches (`path:line name`): a fn of one parameter whose type is `Int`, `U64` or a `W:
+/// Word` is called at each; anything else is not.
+fn fast_fns(std_dir: &Path) -> (Vec<FastFn>, Vec<String>) {
+    let mut files = Vec::new();
+    let mut todo = vec![std_dir.to_path_buf()];
+    while let Some(d) = todo.pop() {
+        for e in std::fs::read_dir(&d).unwrap().flatten() {
+            let p = e.path();
+            match p.extension() {
+                _ if p.is_dir() => todo.push(p),
+                Some(x) if x == "cp" => files.push(p),
+                _ => {}
+            }
+        }
+    }
+    files.sort();
+    let src: Vec<(PathBuf, String)> = (files.into_iter())
+        .map(|p| (std::fs::read_to_string(&p).unwrap(), p))
+        .map(|(s, p)| (p, s))
+        .collect();
+    let words: Vec<&str> = (src.iter())
+        .flat_map(|(_, s)| s.lines())
+        .filter_map(|l| l.strip_prefix("impl Word for ")?.strip_suffix(':'))
+        .collect();
+    let (mut fns, mut uncovered) = (Vec::new(), Vec::new());
+    for (p, s) in &src {
+        let rel = p.strip_prefix(std_dir).unwrap().with_extension("");
+        let module = format!("std.{}", rel.to_string_lossy().replace('/', "."));
+        let lines: Vec<&str> = s.lines().collect();
+        for (i, l) in lines.iter().enumerate() {
+            if !l.starts_with("@fast(") {
+                continue;
+            }
+            let Some(sig) = lines[i..].iter().find_map(|l| l.strip_prefix("pub fn ")) else {
+                uncovered.push(format!("{}:{} no fn", p.display(), i + 1));
+                continue;
+            };
+            let name = sig.split(['<', '(']).next().unwrap_or(sig).to_string();
+            let generic = (sig.split_once('<').filter(|(n, _)| !n.contains('(')))
+                .and_then(|(_, g)| g.split_once('>'))
+                .and_then(|(g, _)| g.strip_suffix(": Word"));
+            let param = (sig.split_once('(').and_then(|(_, r)| r.split_once(')')))
+                .and_then(|(ps, _)| ps.split_once(": "))
+                .map(|(_, t)| t)
+                .filter(|t| !t.contains(','));
+            let at: Vec<&str> = match param {
+                Some(t) if Some(t) == generic => words.clone(),
+                Some(t) => vec![t],
+                None => vec![],
+            };
+            let known: Vec<&'static str> = (at.iter())
+                .filter_map(|t| FAST_TYPES.iter().find(|k| *k == t).copied())
+                .collect();
+            if at.is_empty() || known.len() < at.len() {
+                uncovered.push(format!("{}:{} {name}", p.display(), i + 1));
+                continue;
+            }
+            for at in known {
+                fns.push(FastFn {
+                    module: module.clone(),
+                    name: name.clone(),
+                    at,
+                });
+            }
+        }
+    }
+    (fns, uncovered)
+}
+
+/// A program that calls each `@fast` fn on every [`fast_words`] word and prints the results.
+fn fast_program(fns: &[FastFn]) -> String {
+    let words = fast_words();
+    let int = |w: u64| (w as i64).to_string();
+    let u64 = |w: u64| format!("(U64({}) << 32) | U64({})", w >> 32, w & 0xffff_ffff);
+    // `Int` has no value for the word `1 << 63`, which is `?Int`'s `None` (decision 49).
+    let list = |f: &dyn Fn(u64) -> String, int: bool| {
+        let xs: Vec<String> = (words.iter())
+            .filter(|&&w| !int || w != 1 << 63)
+            .map(|&w| f(w))
+            .collect();
+        format!("[{}]", xs.join(", "))
+    };
+    let mut p = String::new();
+    for f in fns {
+        p += &format!("use {}.{{{}}}\n", f.module, f.name);
+    }
+    p += &format!("let ints = {}\n", list(&int, true));
+    p += &format!("let words = {}\n", list(&u64, false));
+    for f in fns {
+        let xs = if f.at == "Int" { "ints" } else { "words" };
+        p += &format!("for x in {xs}: print({}(x))\n", f.name);
+    }
+    p
+}

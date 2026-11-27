@@ -48,6 +48,9 @@ struct JudgeProfile { compiler, flags, limits, kept_checks, size_limit, grader_w
   parsing one algorithm, `sin`/`exp`/`pow` one CP Lang body. The
   emitted C++ turns off fused multiply-add; a profile with fast-math
   is rejected.
+- A `@fast(op)` fn means its CP Lang body. A backend that runs the op
+  in its place gives what the body gives on every input; the op is an
+  optimisation, never a second meaning.
 - Sorting is one stable algorithm with a stated comparator call order.
   `F64` has one total order.
 - `HashMap` iterates in insertion order.
@@ -74,6 +77,10 @@ struct JudgeProfile { compiler, flags, limits, kept_checks, size_limit, grader_w
   checked vs release.
 - Intrinsic-level: model vs engine vs C++ on generated arguments,
   including stateful sequences for storage.
+- `@fast`: `fast_ops_agree_with_their_bodies` calls every `@fast` fn on
+  edge and seeded random words; the reference interpreter (body), the
+  engine and the C++ with the op, and both with `--bodies` agree.
+  `fast_unchecked` counts the `@fast` fns it cannot call (0).
 - Benchmarks with gates: interpreter 8x of C++ on desktop and 12x in
   the browser, machine code 5x, emitted C++ p50 1.1x.
 
