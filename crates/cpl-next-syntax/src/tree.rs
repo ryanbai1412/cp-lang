@@ -146,6 +146,14 @@ impl GreenBuilder {
         self.parents.push((kind, checkpoint.0));
     }
 
+    /// Gives the node finished last another kind: a construct whose kind
+    /// is known only once it is read, as `(a)` against `(a,)`.
+    pub(crate) fn relabel_last(&mut self, kind: NodeKind) {
+        if let Some(GreenElement::Node(node)) = self.children.last_mut() {
+            *node = GreenNode::new(kind, node.children().to_vec());
+        }
+    }
+
     /// The finished root: the one node left when every start has finished.
     pub fn finish(mut self) -> GreenNode {
         debug_assert!(self.parents.is_empty() && self.children.len() == 1);

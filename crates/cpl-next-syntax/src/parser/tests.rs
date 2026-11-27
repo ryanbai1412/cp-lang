@@ -1,0 +1,170 @@
+use crate::file::NodeKind;
+use crate::lexer::lex;
+use crate::ops::{levels, Level};
+use crate::parse_expr;
+use crate::tree::{SyntaxElement, SyntaxNode};
+
+/// The tree as `Kind(child child)`, tokens by text, trivia left out.
+fn shape(node: &SyntaxNode) -> String {
+    let parts: Vec<String> = node
+        .children_with_tokens()
+        .filter_map(|e| match e {
+            SyntaxElement::Node(n) => Some(shape(&n)),
+            SyntaxElement::Token(t) if !t.kind().is_trivia() && !t.text().is_empty() => {
+                Some(t.text().to_string())
+            }
+            SyntaxElement::Token(_) => None,
+        })
+        .collect();
+    format!("{:?}({})", node.kind(), parts.join(" "))
+}
+
+fn expr(src: &str) -> (String, usize) {
+    let file = parse_expr(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    let e = file.root.children().next().unwrap();
+    (shape(&e), file.diagnostics.len())
+}
+
+#[test]
+fn precedence_follows_the_table() {
+    let cases = [
+        ("-x ** 2", "PrefixExpr(- BinExpr(NameRef(x) ** Literal(2)))"),
+        ("not a == b", "PrefixExpr(not CompareExpr(NameRef(a) == NameRef(b)))"),
+        ("s & (s << 1) == 0", "CompareExpr(BinExpr(NameRef(s) & ParenExpr(( BinExpr(NameRef(s) << Literal(1)) ))) == Literal(0))"),
+        ("a ?? b ?? c", "BinExpr(NameRef(a) ?? BinExpr(NameRef(b) ?? NameRef(c)))"),
+        ("a - b - c", "BinExpr(BinExpr(NameRef(a) - NameRef(b)) - NameRef(c))"),
+        ("2 ** 3 ** 2", "BinExpr(Literal(2) ** BinExpr(Literal(3) ** Literal(2)))"),
+        ("2 ** -k", "BinExpr(Literal(2) ** PrefixExpr(- NameRef(k)))"),
+        ("0 <= i < n", "CompareExpr(Literal(0) <= NameRef(i) < NameRef(n))"),
+        ("x not in s", "CompareExpr(NameRef(x) not in NameRef(s))"),
+        ("a or b and c", "BinExpr(NameRef(a) or BinExpr(NameRef(b) and NameRef(c)))"),
+        ("0..n by 2", "RangeExpr(Literal(0) .. NameRef(n) by Literal(2))"),
+        ("..=n", "RangeExpr(..= NameRef(n))"),
+        ("a + b is Some(v)", "BinExpr(NameRef(a) + IsExpr(NameRef(b) is PathPat(Some PatArgs(( PathPat(v) )))))"),
+        ("f(x, by: 2)[i].y!?", "TryExpr(UnwrapExpr(FieldExpr(IndexExpr(CallExpr(NameRef(f) ArgList(( Arg(NameRef(x)) , Arg(by : Literal(2)) ))) IndexList([ NameRef(i) ])) . y) !) ?)"),
+        ("best max= x + 1", "KeepExpr(NameRef(best) max = BinExpr(NameRef(x) + Literal(1)))"),
+        ("(a, b) => a + b", "LambdaExpr(ParamList(( PathPat(a) , PathPat(b) )) => BinExpr(NameRef(a) + NameRef(b)))"),
+        ("(a,)", "TupleExpr(( NameRef(a) , ))"),
+    ];
+    for (src, want) in cases {
+        assert_eq!(expr(src), (want.to_string(), 0), "{src}");
+    }
+}
+
+#[test]
+fn a_broken_operand_keeps_the_rest_of_the_expression() {
+    // The missing operand is a zero-width node; the call, its other
+    // arguments and the operator after it stay in the tree.
+    let (tree, errors) = expr("f(a +, b) * 2");
+    assert_eq!(errors, 1, "{tree}");
+    assert_eq!(
+        tree,
+        "BinExpr(CallExpr(NameRef(f) ArgList(( Arg(BinExpr(NameRef(a) + Missing())) , Arg(NameRef(b)) ))) * Literal(2))"
+    );
+    // A token that cannot start an operand is skipped into an `Error` node.
+    let (tree, errors) = expr("[1, ., 3]");
+    assert_eq!(
+        (tree.as_str(), errors),
+        ("ListExpr([ Literal(1) , Error(.) , Literal(3) ])", 1)
+    );
+    // A broken pattern ends at the closer; the call around it survives.
+    let (tree, errors) = expr("g(x is , y)");
+    assert_eq!(errors, 1, "{tree}");
+    assert!(tree.contains("Arg(NameRef(y))"), "{tree}");
+    // The lexer closes an unclosed bracket with a zero-width `)` and one
+    // error; the list reads as closed.
+    let (tree, errors) = expr("h(1, 2");
+    assert_eq!(
+        (tree.as_str(), errors),
+        (
+            "CallExpr(NameRef(h) ArgList(( Arg(Literal(1)) , Arg(Literal(2))))",
+            1
+        )
+    );
+}
+
+#[test]
+fn trivia_sit_between_nodes() {
+    let file = parse_expr("a  // c\n  + b");
+    let bin = file.root.children().next().unwrap();
+    assert_eq!(bin.kind(), NodeKind::BinExpr);
+    for child in bin.children() {
+        let text = child.text();
+        assert_eq!(
+            text.trim(),
+            text,
+            "a node starts and ends at a token: {text:?}"
+        );
+    }
+}
+
+/// The spec's §1.5 list is the operator table: each line's operators sit
+/// at one level, and the levels fall line by line.
+#[test]
+fn the_table_is_the_specs_precedence_list() {
+    let spec = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../spec/core/01-lexical-grammar.md"
+    ))
+    .unwrap();
+    let section = &spec[spec.find("## 1.5").unwrap()..spec.find("## 1.6").unwrap()];
+    let mut last: Option<Level> = None;
+    let mut lines = 0;
+    for line in section.lines() {
+        let Some((n, rest)) = line.split_once(". ") else {
+            continue;
+        };
+        if n.parse::<u32>().is_err() {
+            continue;
+        }
+        // The operators are the backticked words before any aside.
+        let ops: Vec<&str> = rest
+            .split(" (")
+            .next()
+            .unwrap()
+            .split('`')
+            .skip(1)
+            .step_by(2)
+            .collect();
+        let sets: Vec<Vec<Level>> = ops
+            .iter()
+            .filter_map(|op| {
+                let lexed = lex(op);
+                let kinds: Vec<_> = lexed
+                    .tokens
+                    .iter()
+                    .map(|t| t.kind)
+                    .filter(|k| {
+                        !matches!(
+                            k,
+                            crate::TokenKind::Newline
+                                | crate::TokenKind::Indent
+                                | crate::TokenKind::Dedent
+                                | crate::TokenKind::Eof
+                        )
+                    })
+                    .collect();
+                (kinds.len() == 1)
+                    .then(|| levels(kinds[0]))
+                    .filter(|l| !l.is_empty())
+            })
+            .collect();
+        let Some(first) = sets.first() else { continue };
+        // Each line's operators share a level below the line above's: `-`
+        // is `Add` and `Unary`, and its line picks which.
+        let below = |l: &Level| last.is_none_or(|prev| *l < prev);
+        let level = first
+            .iter()
+            .copied()
+            .filter(|l| below(l) && sets.iter().all(|s| s.contains(l)))
+            .max();
+        lines += 1;
+        let Some(level) = level else {
+            panic!("line {n}: no level below the line above shared by {sets:?}")
+        };
+        let levels = [level];
+        last = Some(levels[0]);
+    }
+    assert!(lines >= 13, "read {lines} operator lines");
+}

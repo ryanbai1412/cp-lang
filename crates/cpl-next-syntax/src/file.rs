@@ -16,6 +16,62 @@ pub enum NodeKind {
     Item,
     /// Bytes the parser skipped. Already reported.
     Error,
+    /// A required child that was not written: zero width, already reported.
+    Missing,
+    /// A number, string, raw string or char, `true` or `false`.
+    Literal,
+    /// A name used as a value: `x`, `self`.
+    NameRef,
+    /// `(e)`.
+    ParenExpr,
+    /// `()`, `(a, b)`, `(a,)`.
+    TupleExpr,
+    /// `[a, b]`.
+    ListExpr,
+    /// `-x`, `not x`, `~x`.
+    PrefixExpr,
+    /// `a + b`, with the operator from `ops::BINARY`.
+    BinExpr,
+    /// `a < b <= c`: one comparison chain.
+    CompareExpr,
+    /// `lo..hi`, `..=hi`, `lo..`, `lo..hi by s`.
+    RangeExpr,
+    /// `f(args)`.
+    CallExpr,
+    /// `(a, name: b)` after a callee.
+    ArgList,
+    /// One argument: `e`, `name: e`, `mut e`.
+    Arg,
+    /// `a[i, j]`.
+    IndexExpr,
+    /// `[i, j]` after an indexed value.
+    IndexList,
+    /// `a.f`, `t.0`.
+    FieldExpr,
+    /// `x?`.
+    TryExpr,
+    /// `x!`.
+    UnwrapExpr,
+    /// `x is P`.
+    IsExpr,
+    /// `best max= x`.
+    KeepExpr,
+    /// `x => e`, `(a, b) => e`.
+    LambdaExpr,
+    /// A lambda's parameters: one pattern, or `(p, q: T)`.
+    ParamList,
+    /// `_`.
+    WildcardPat,
+    /// `x`, `None`, `Some(v)`, `Color.Red`, `E::V(a)`.
+    PathPat,
+    /// `(p, q)` after a variant path.
+    PatArgs,
+    /// `(p, q)`.
+    TuplePat,
+    /// `1`, `-1`, `"s"`.
+    LiteralPat,
+    /// `p | q`.
+    OrPat,
 }
 
 /// One file's syntax.

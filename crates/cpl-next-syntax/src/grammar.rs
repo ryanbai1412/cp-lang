@@ -73,3 +73,29 @@ pub const FOREIGN_KEYWORDS: &[(&str, TokenKind)] = &[
     ("import", Use),
     ("switch", Match),
 ];
+
+/// A word that is an ordinary name except in one place, where the parser
+/// reads it as grammar: `lo..hi by 2`, `x is Some(v)`, `best max= x`, `_`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Contextual {
+    By,
+    Is,
+    Max,
+    Min,
+    /// `_`, the pattern that binds nothing.
+    Wildcard,
+}
+
+/// Each contextual word and how it is spelled.
+pub const CONTEXTUAL: &[(&str, Contextual)] = &[
+    ("by", Contextual::By),
+    ("is", Contextual::Is),
+    ("max", Contextual::Max),
+    ("min", Contextual::Min),
+    ("_", Contextual::Wildcard),
+];
+
+/// The contextual word `text` spells, if any.
+pub fn contextual(text: &str) -> Option<Contextual> {
+    CONTEXTUAL.iter().find(|(w, _)| *w == text).map(|(_, c)| *c)
+}

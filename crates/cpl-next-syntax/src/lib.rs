@@ -15,12 +15,15 @@ pub mod grammar;
 mod items;
 mod lexer;
 pub mod literal;
+pub mod ops;
+mod parser;
 mod token;
 pub mod tree;
 
 pub use file::{parse, NodeKind, SyntaxFile};
 pub use items::{split_items, ItemRange};
 pub use lexer::{lex, Lexed};
+pub use parser::parse_expr;
 pub use token::{removed_keyword, Token, TokenKind, KEYWORDS, LITERAL_WORDS};
 pub use tree::{GreenNode, GreenToken, SyntaxElement, SyntaxNode, SyntaxToken};
 
