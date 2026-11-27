@@ -212,9 +212,9 @@ library or by this spec:
   `@derive` (a trait every struct whose fields all have it gets field by
   field), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
   over its type calls), `@variant_check` (the check an `Int` converted to
-  an enum goes through), `@list`, `@str`, `@optional` and `@array` (the
-  structs `[a, b]`, `"s"`, `?T` and `[D]T` are, whatever a module names
-  `List`, `Str`, `Optional` or `Array`), `@str_literal` (the fn that builds a
+  an enum goes through), `@list`, `@str`, `@optional`, `@array` and `@map`
+  (the structs `[a, b]`, `"s"`, `?T`, `[D]T` and `[k: v]` are, whatever a
+  module names `List`, `Str`, `Optional`, `Array` or `Map`), `@str_literal` (the fn that builds a
   string literal) and `@range_literal` (the fn that builds `lo..hi by k`).
   Core declares each with them, and any module may: a
   second declaration of one marker, or of one `@operator` with the same
