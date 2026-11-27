@@ -293,6 +293,14 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.link_reads_check(root),
                              ["crates/cpl-next-link/src/lib.rs:1", "crates/cpl-next-link/src/lib.rs:3"])
 
+    def test_library_gates_count_each_call_and_its_wrapper(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-decls/src/lib.rs",
+                        "fn items_only(m: M) -> bool { m.is_library() }\n// is_library\nif items_only(m) {}\nlet x = 1;\n")
+            self.assertEqual(dr.next_library_gates(root), ["crates/cpl-next-decls/src/lib.rs:1",
+                                                           "crates/cpl-next-decls/src/lib.rs:3"])
+
     def test_crate_deps_see_renamed_and_table_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

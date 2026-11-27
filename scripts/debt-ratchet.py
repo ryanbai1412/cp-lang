@@ -1435,6 +1435,16 @@ def next_core_checks(root: Path) -> list[str]:
             if not l.lstrip().startswith("//") and re.search(r"[!=]= *CORE\b|\bCORE *[!=]=", l)]
 
 
+def next_library_gates(root: Path) -> list[str]:
+    """Places new-pipeline code asks whether a module is a library (`is_library`), or wraps that
+    question (`items_only`): a decorator or rule only std may use is std privilege under a new
+    name (09:00 blind audit). Each call counts, so renaming the gate or hiding it in a helper keeps
+    the count; it drops only as callers go."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            for i, l in enumerate(_lines(p), 1)
+            if not l.lstrip().startswith("//") and re.search(r"\b(?:is_library|items_only)\b", l)]
+
+
 NEXT_OWN_DECIDERS_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))? )?fn (\w*(?:lend|drop)\w*)")
 
 
@@ -3965,6 +3975,7 @@ COUNTERS = {
     "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
     "next_core_checks": ("new-pipeline checks of whether a module is core (Core)", next_core_checks, True),
+    "next_library_gates": ("new-pipeline checks of whether a module is a library: std-only rules (Core)", next_library_gates, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
     "next_weak_oracle_passes": ("new-pipeline passing cases whose oracle is exit 1 or ok without output (Core)", next_weak_oracle_passes, True),
     "syntax_std_names": ("string literals in cpl-syntax naming a std type (Core)", syntax_std_names, True),

@@ -363,5 +363,6 @@
     "std-seq/drop-past-len-is-empty.cp",
     "std-seq/seq-u44-take-drop-while.cp",
     "std-seq/zip-rev-shorter-later-arg.cp"
-  ]
+  ],
+  "next_library_gates": 25
 }
