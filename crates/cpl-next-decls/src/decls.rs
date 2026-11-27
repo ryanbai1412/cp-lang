@@ -152,6 +152,15 @@ pub struct TraitDecl {
     pub assoc: Vec<String>,
     /// The traits each associated type has, in `Self` and the trait's parameters.
     pub assoc_bounds: Vec<(usize, TraitRef)>,
+    /// What a type lacking its impl is told (R08.1.8).
+    pub unimplemented: Unimplemented,
+}
+/// `@on_unimplemented(code: E0311, "...{T}...")` on a trait: the code a missing impl reports in
+/// place of E0606, and the help it adds, `{T}` the type shown (R08.1.8).
+#[derive(Clone, Default)]
+pub struct Unimplemented {
+    pub code: Option<cpl_diag::Code>,
+    pub help: Option<String>,
 }
 
 impl TraitDecl {

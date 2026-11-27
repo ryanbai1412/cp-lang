@@ -99,13 +99,12 @@ impl Cx<'_> {
                             self.err_help(span, msg, Some(help));
                             continue;
                         }
-                        self.err(
-                            span,
-                            Msg::verdict(
-                                cpl_diag::codes::MISSING_IMPL,
-                                format!("`{shown}` does not implement `{tr}`"),
-                            ),
-                        );
+                        let said = &self.d.traits[r.tr.0].unimplemented;
+                        let code = said.code.unwrap_or(cpl_diag::codes::MISSING_IMPL);
+                        let help = (said.help.as_ref()).map(|h| h.replace("{T}", &shown));
+                        let msg =
+                            Msg::verdict(code, format!("`{shown}` does not implement `{tr}`"));
+                        self.err_help(span, msg, help);
                     }
                     None => {
                         self.obligations.push((t, r, span, why));

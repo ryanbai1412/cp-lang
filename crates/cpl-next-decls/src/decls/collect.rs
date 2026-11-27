@@ -367,6 +367,7 @@ fn layer(
                             defaults: Vec::new(),
                             assoc: Vec::new(),
                             assoc_bounds: Vec::new(),
+                            unimplemented: unimplemented(item, s, &mut d.errors),
                         });
                         pending.push((mid, item.clone(), s, Some(Named::Trait(id))));
                     }
@@ -1357,4 +1358,41 @@ fn operator_method(s: &ast::Stmt) -> Option<String> {
         }),
         _ => None,
     }
+}
+
+/// A trait's `@on_unimplemented(code: C, "help")`, each part optional (R08.1.8).
+fn unimplemented(item: &ItemId, s: &ast::Stmt, errors: &mut Vec<Msg>) -> Unimplemented {
+    let mut out = Unimplemented::default();
+    let Some(x) = s
+        .decorators
+        .iter()
+        .find(|x| x.name.text == "on_unimplemented")
+    else {
+        return out;
+    };
+    for a in &x.args {
+        match (a.name.as_ref().map(|n| n.text.as_str()), &a.value.kind) {
+            (None, ast::ExprKind::Str(pieces)) => {
+                let text = (pieces.iter()).map(|p| match p {
+                    ast::StrPiece::Text(t) => t.clone(),
+                    ast::StrPiece::Expr(e) | ast::StrPiece::Spec(e, _) => match &e.kind {
+                        ast::ExprKind::Name(n) => format!("{{{n}}}"),
+                        _ => String::new(),
+                    },
+                });
+                out.help = Some(text.collect());
+            }
+            (Some("code"), ast::ExprKind::Name(c)) if cpl_diag::registry::lookup(c).is_some() => {
+                out.code = cpl_diag::registry::lookup(c).map(|i| i.code);
+            }
+            _ => errors.push(Msg::at(
+                item.at(a.value.span),
+                Msg::verdict(
+                    cpl_diag::codes::UNRESOLVED_NAME,
+                    "`@on_unimplemented` takes a message and `code:` a diagnostic code",
+                ),
+            )),
+        }
+    }
+    out
 }

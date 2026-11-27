@@ -107,7 +107,10 @@ impl Ord for Frac:
   Trait` and a default method's receiver (decision 361). (R08.1.7)
 - Library-authored diagnostics: a trait may attach a message to "not
   implemented" and to each law, so `SegTree(f, a)` with a non-associative
-  `f` says what to write. (R08.1.8)
+  `f` says what to write. `@on_unimplemented(code: E0311, "...{T}...")`
+  on a trait gives a missing impl that code in place of E0606 and the
+  message as its help, `{T}` the type shown; each part is optional.
+  (R08.1.8)
 - **An impl chooses each associated type** its trait declares, with
   `type Name = T` in its body, and impls of one trait for different kinds
   of type may choose differently: `impl<T> Op<T> for Monoid<T>` chooses
