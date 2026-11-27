@@ -409,7 +409,7 @@ impl Builder<'_> {
                 Ok(Shape::Words(words.into()))
             }
             // `Range<T>` reads its two ends `l r` of `T`, `l <= r`.
-            TypeKind::Named { name, args } if name.text == "Range" && args.len() == 1 => {
+            TypeKind::Named { name, args } if args.len() == 1 && is_range(&name.text) => {
                 let Shape::Int { lo, hi } = self.shape(&args[0])? else {
                     return Err(unsupported(self));
                 };
@@ -1974,6 +1974,17 @@ pub(super) fn std_decl(module: &str, name: &str) -> Option<(&'static str, u32, &
 }
 
 /// A std module's text and its parse, parsed once per thread.
+/// Whether `name` is std's range type: what its module's `@range_literal` fn returns.
+fn is_range(name: &str) -> bool {
+    let Some((_, parsed)) = cpl_facade::Std.module_of(name).and_then(std_file) else {
+        return false;
+    };
+    (parsed.items.iter().flat_map(|(_, item)| &item.stmts)).any(|s| {
+        s.decorators.iter().any(|d| d.name.text == "range_literal")
+            && matches!(&s.kind, StmtKind::Fn(f) if matches!(&f.ret, Some(Type { kind: TypeKind::Named { name: n, .. }, .. }) if n.text == name))
+    })
+}
+
 pub(super) fn std_file(module: &str) -> Option<(&'static str, &'static cpl_syntax::ParsedFile)> {
     thread_local! {
         static PARSED: std::cell::RefCell<HashMap<String, &'static cpl_syntax::ParsedFile>> =

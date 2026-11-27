@@ -1165,7 +1165,7 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             .collect()
     };
     match ty {
-        Ty::Named { name, .. } if name == "Range" => {
+        _ if cpl_facade::today::is_range(ty) => {
             builtin(cpl_facade::today::RANGE_MEMBERS, ty.to_string())
         }
         Ty::Named { name, args } if builtin_receiver(ty).is_none() => {

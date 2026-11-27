@@ -1,5 +1,6 @@
 // expect: ok, output "ok"
 // input: "1 300\n"
+// model: Range
 // model: range_of
 // model: slice
 // model: slice_ends

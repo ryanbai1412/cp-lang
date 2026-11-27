@@ -14,50 +14,50 @@ pub struct Range<D: Domain>:
     n: Int
     by: Int
 
-    @get fn len(self) -> Int:
+    @get pub fn len(self) -> Int:
         n
 
     /// The cut before its first value, of a range walked forwards by one (R04.3.1).
-    @get fn start(self) -> Cut<D> = Cut(lo)
+    @get pub fn start(self) -> Cut<D> = Cut(lo)
 
     /// The cut after its last value, of a range walked forwards by one (R04.3.1).
-    @get fn end(self) -> Cut<D> = Cut(lo + n)
+    @get pub fn end(self) -> Cut<D> = Cut(lo + n)
 
     /// Whether it holds no position (R04.4.12).
-    @get fn is_empty(self) -> Bool:
+    @get pub fn is_empty(self) -> Bool:
         n == 0
 
-    @get fn first(self) -> ?D:
+    @get pub fn first(self) -> ?D:
         if n == 0: None else: Some(D.nth(lo))
 
-    @get fn last(self) -> ?D:
+    @get pub fn last(self) -> ?D:
         if n == 0: None else: Some(D.nth(lo + (n - 1) * by))
 
     /// The same values, last first.
-    @get fn rev(self) -> Range<D>:
+    @get pub fn rev(self) -> Range<D>:
         Range(lo + (n - 1) * by, n, -by)
 
-    fn each(self) -> yields D:
+    pub fn each(self) -> yields D:
         for i in 0..n: yield D.nth(lo + i * by)
 
     /// Without its first `k` values: a range again (R07.4.11).
-    fn drop(self, k: Int = 1) -> Range<D>:
+    pub fn drop(self, k: Int = 1) -> Range<D>:
         assert k >= 0, "drop: a negative count"
         let c = if k < n: k else: n
         Range(lo + c * by, n - c, by)
 
     /// Every `k`-th value, from the first: a range again, so `(3..m).step(2).sum()` is O(1).
-    fn step(self, k: 1..) -> Range<D>:
+    pub fn step(self, k: 1..) -> Range<D>:
         assert k >= 1, "step(k) requires k >= 1"
         Range(lo, (n + k - 1) / k, by * k)
 
     /// Its first `k` values: a range again (R07.4.11).
-    fn take(self, k: Int) -> Range<D>:
+    pub fn take(self, k: Int) -> Range<D>:
         assert k >= 0, "take: a negative count"
         Range(lo, if k < n: k else: n, by)
 
     /// How `print` writes it: its values, space-separated.
-    fn write(self):
+    pub fn write(self):
         for i in 0..n:
             if i > 0: write(" ")
             write(D.nth(lo + i * by))

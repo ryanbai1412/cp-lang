@@ -237,3 +237,9 @@ impl Session {
 
 /// The bytes a file's globals hold, and each one's when it is known.
 pub type Storage = (u128, Vec<(String, Option<u64>)>);
+
+/// Whether the checker of today types `ty` as its built-in range, whose members are
+/// `RANGE_MEMBERS`: a tool asks here rather than matching the type's name itself.
+pub fn is_range(ty: &Ty) -> bool {
+    matches!(ty, Ty::Named { name, .. } if name == "Range")
+}
