@@ -169,8 +169,9 @@ impl Cx<'_> {
         if !matches!(op, CmpOp::Eq | CmpOp::Ne) {
             return None;
         }
+        // `n == None` with `n` a `let` of the None value tests `n`, as any `?T` would be.
         let x = match (self.is_none_value(a), self.is_none_value(b)) {
-            (false, true) => a,
+            (_, true) => a,
             (true, false) => b,
             _ => return None,
         };
