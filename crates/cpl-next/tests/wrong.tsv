@@ -261,7 +261,7 @@ core-07/range-folds-are-ranges-own.cp	wrong-reject	check: std.seq:129:16: E0606:
 core-07/range-indexed-not-view.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-07/range-sum-closed-form-exact-near-limit.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-07/rev-does-not-satisfy-indexed.cp	wrong-error	wanted E0606 on line 6, got: decls: E0204: unknown trait `Indexed`
-core-07/rev-iter-is-walked-not-called.cp	wrong-error	wanted E0203 on line 6, got: check: std.seq:1706:9: E0203: `()` has no `iter`
+core-07/rev-iter-is-walked-not-called.cp	wrong-accept	wanted E0203 on line 6, ran and printed: 4
 core-07/rev-traits-come-from-std-impls.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-07/reversed-view-passed-as-array-is-read-in-its-order.cp	wrong-reject	check: program:8:13: E0302: expected `Array<P, Int>`, found `Rev<Array<P, Int>>`
 core-07/rotate-needs-var.cp	wrong-error	wanted E0401 on line 5, got: check: std.seq:811:12: E0203: `Range<Int>` has no member `is_empty`
@@ -280,7 +280,6 @@ core-07/table-over-keys.cp	wrong-reject	check: program:5:9: E0302: expected `Int
 core-07/view-blocks-a-write-to-its-source.cp	wrong-error	wanted E0602 on line 6, got: check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
 core-07/view-has-no-push.cp	wrong-error	wanted E0401 on line 4, got: check: program:4:1: E0203: `Rev<List<Int>>` has no member `push`
 core-07/view-not-in-var.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-07/view-walks.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
 core-07/yielded-closure-in-struct-field-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-07/yielded-closure-in-struct-writes-generator-local.cp	split	canonical IR: exit Some(101): 
 core-07/zip-pairs-by-walk.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
@@ -290,7 +289,7 @@ core-08/assoc-default-names-trait-param.cp	wrong-reject	decls: E0204: unknown ty
 core-08/assoc-names-an-impl-param-from-the-trait-arg.cp	wrong-reject	decls: E0204: unknown type `M.Fold`
 core-08/bodyless-domain-impl-takes-the-trait-default.cp	wrong-reject	check: program:5:31: E0302: expected `V`, found `Self`
 core-08/bound-element-pattern-binds-its-param.cp	wrong-reject	check: std.seq:45:15: E0203: `Range<U>` has no member `zero`
-core-08/bound-only-params-bind-from-the-impl.cp	wrong-reject	own: program:15:13: E0608: `i` is moved inside a loop, so the next turn would use it after the move
+core-08/bound-only-params-bind-from-the-impl.cp	no-cxx	g++ failed: could not convert from one C++ struct for `Version<Arr<E>>` to another
 core-08/bound-trait-method-yields-the-impl-types.cp	wrong-reject	decls: E0204: unknown trait `Show`
 core-08/bounds-three-ways.cp	wrong-reject	decls: E0204: unknown type `Seq`
 core-08/ctor-bound-binds-a-later-named-arg.cp	wrong-reject	check: program:8:24: E0203: `Range<F>` has no member `zero`
@@ -531,16 +530,10 @@ std-geometry/segments-meet-collinear.cp	wrong-reject	check: E0204: std.geometry:
 std-geometry/turn-collinear-and-backtrack.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
 std-geometry/upper-hull-empty-and-single.cp	wrong-reject	check: std.geometry:369:53: E0203: `List<Pt>` has no member `pop`
 std-geometry/upper-hull-unsorted-traps.cp	wrong-reject	check: std.geometry:369:53: E0203: `List<Pt>` has no member `pop`
-std-graph/bfs-multi-source.cp	wrong-reject	check: E0204: std.graph: unknown type `Seq`
-std-graph/bfs-path-to-source.cp	wrong-reject	check: E0204: std.graph: unknown type `Seq`
-std-graph/bfs-unreachable.cp	wrong-reject	check: E0204: std.graph: unknown type `Seq`
 std-graph/functional.cp	wrong-reject	check: program:8:28: E0302: expected `List<Int>`, found `List<V>`
 std-graph/incremental-bridges.cp	wrong-reject	check: std.graph:3834:13: E0405: field `IncrementalBridges._iter` is fixed (not `var`) and cannot be assigned
 std-graph/next-lambda-explicit-domain.cp	wrong-reject	check: program:10:15: E0806: the type of `u` is not known here; write `(u: T) => ...`
 std-graph/out-on-a-table-of-lists-reads-the-list.cp	wrong-reject	check: program:8:7: E0203: `Array<V, List<V>>` has no member `out`
-std-graph/paths-tight.cp	wrong-reject	check: std.graph:1215:30: E0302: expected `V`, found `V`
-std-graph/peel-empty-domain.cp	wrong-reject	check: std.graph:558:28: E0302: expected `V`, found `V`
-std-graph/peel-self-loop-removes-nothing.cp	wrong-reject	check: program:3:21: E0302: expected `Array<V, List<V>>`, found `Array<V, List<Int>>`
 std-grid/cell-neighbour-getters.cp	wrong-reject	check: program:10:95: E0606: `Tuple2<R, C>` does not implement `Indexed`
 std-grid/dir4-up-down-deltas.cp	wrong-reject	check: program:2:9: E0201: unknown name `Dir4`
 std-grid/dir4.cp	wrong-reject	check: std.grid:90:46: E0201: unknown name `DR`
@@ -772,17 +765,9 @@ traits/Add/MinCount--add.cp	wrong-reject	check: program:3:9: E0302: expected `In
 traits/Add/Poly--add.cp	wrong-reject	check: program:3:9: E0302: expected `Int`, found `Poly<Int>`
 traits/Add/Pt--add.cp	wrong-reject	check: program:3:7: E0302: expected `Int`, found `Pt`
 traits/Add/Pt3--add.cp	wrong-reject	check: program:3:7: E0302: expected `Int`, found `Pt3`
-traits/Bidir/Array--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/Filtered--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
+traits/Bidir/Array--iter_rev.cp	split	C++: exit Some(1):  AddressSanitizer:DEADLYSIGNAL
 traits/Bidir/LinkedList--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/List--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/Mapped--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/Rebased--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/Rev--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/Slice--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
 traits/Bidir/Stepped--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/Str--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
-traits/Bidir/Zipped--iter_rev.cp	wrong-reject	check: std.seq:1706:9: E0203: `()` has no `iter`
 traits/Div/BigInt--div.cp	wrong-reject	check: program:3:7: E0302: expected `Int`, found `BigInt`
 traits/Div/Poly--div.cp	wrong-reject	check: program:3:9: E0302: expected `Int`, found `Poly<Int>`
 traits/Eq/ByAngle--eq.cp	wrong-reject	check: E0204: std.geometry: unknown type `I128`
@@ -814,7 +799,6 @@ traits/Pow/Mat--pow.cp	wrong-reject	check: program:4:9: E0302: expected `Int`, f
 traits/Residue/Mod--modulus.cp	wrong-reject	check: program:4:7: E0201: unknown name `Z`
 traits/Reversible/MaxSub--rev.cp	wrong-reject	check: program:3:9: E0302: expected `Int`, found `MaxSub`
 traits/Seq/LinkedList--iter.cp	wrong-reject	check: std.deque:432:13: E0405: field `LinkedList.head` is fixed (not `var`) and cannot be assigned
-traits/Seq/Rev--iter.cp	wrong-reject	link: std.seq:1706:9: E0203: `()` has no `iter`
 traits/Seq/Stepped--iter.cp	wrong-reject	check: std.seq:1979:37: E0606: `S` does not implement `Indexed`
 traits/Show/Only--show.cp	wrong-reject	check: program:3:21: E0302: expected `Array<V, List<V>>`, found `Array<V, List<Int>>`
 traits/Show/Prefix--show.cp	wrong-reject	check: program:2:7: E0203: `List<Int>` has no member `scan`

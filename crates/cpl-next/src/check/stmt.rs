@@ -82,6 +82,47 @@ impl<'a> Cx<'a> {
 
     /// `for x in s` with `s` of a type parameter: its bound's `iter` walks it, and each
     /// instance picks the impl (R07.1.1).
+    /// `for x in g.out(u)` with `out` a generator of a bound on `g`'s type parameter: the
+    /// impl each instance picks runs the body.
+    fn trait_walk(
+        &mut self,
+        (tr, method, recv, args): (TraitRef, String, Box<TArg>, Vec<TArg>),
+        name: &str,
+        body: &ast::Block,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) {
+        let m = self.d.traits[tr.tr.0].methods[&method];
+        let Some((false, elem)) = self.d.f(m).region.clone() else {
+            return self.err(
+                span,
+                format!(
+                    "{}: this cannot be walked with `for`",
+                    cpl_diag::codes::TYPE_MISMATCH.0
+                ),
+            );
+        };
+        let (TArg::Value(r) | TArg::Mut(r)) = recv.as_ref();
+        let mut tys = vec![r.ty.clone()];
+        tys.extend(tr.args.iter().cloned());
+        let elem = Subst {
+            tys: &tys,
+            sets: &[],
+        }
+        .ty(&elem);
+        self.scopes.push(HashMap::new());
+        let var = self.bind(name, elem);
+        let body = self.block(body, None);
+        self.scopes.pop();
+        out.push(TStmt::Region {
+            callee: Callee::Trait(tr, method),
+            recv: Some(recv),
+            args,
+            var,
+            lend: false,
+            body,
+        });
+    }
     fn bound_walk(
         &mut self,
         p: usize,
@@ -659,6 +700,24 @@ impl<'a> Cx<'a> {
                     self.allow_region = matches!(iter.kind, ExprKind::Call { .. });
                     let mut call = self.expr(iter, None);
                     self.allow_region = false;
+                    // `for x in g.out(u)` through a bound on `g`'s type parameter.
+                    call = match call.kind {
+                        TK::CallTrait {
+                            tr,
+                            method,
+                            recv,
+                            args,
+                        } => {
+                            return self.trait_walk(
+                                (tr, method, recv, args),
+                                name,
+                                body,
+                                s.span,
+                                out,
+                            )
+                        }
+                        kind => TExpr { kind, ..call },
+                    };
                     if !matches!(&call.kind, TK::Call { f, .. } if self.d.f(f.decl).region.is_some())
                     {
                         // A type without its own `each` walks through its `Seq` impl (R07.1.1).

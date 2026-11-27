@@ -460,6 +460,7 @@ core-07/str-count-takes-predicate.cp
 core-07/view-is-not-a-list.cp
 core-07/view-key-outside-keys-traps.cp
 core-07/view-sees-source-mutation-rejected.cp
+core-07/view-walks.cp
 core-07/zip-domain-mismatch.cp
 core-08/assoc-type-bound-and-alias-where.cp
 core-08/associated-type-default-and-override.cp
@@ -852,6 +853,7 @@ next/n_convert_03_enum_of_its_value.cp
 next/n_convert_04_enum_of_no_value_traps.cp
 next/n_domain_09_literal_is_a_position.cp
 next/n_enum_01_values_and_order.cp
+next/n_generator_through_bound.cp
 next/n_impl_01_inherent_outside_its_module.cp
 next/n_impl_03_trait_args_pick_the_impl.cp
 next/n_impl_04_impls_overlap_only_at_equal_trait_args.cp
@@ -997,7 +999,15 @@ tools-cli/exit-0-no-errors.cp
 tools-cli/exit-1-on-errors.cp
 tools-cli/exit-3-trap.cp
 tools-fmt-lint/lint-never-blocks-run.cp
+traits/Bidir/Filtered--iter_rev.cp
+traits/Bidir/List--iter_rev.cp
+traits/Bidir/Mapped--iter_rev.cp
 traits/Bidir/Range--iter_rev.cp
+traits/Bidir/Rebased--iter_rev.cp
+traits/Bidir/Rev--iter_rev.cp
+traits/Bidir/Slice--iter_rev.cp
+traits/Bidir/Str--iter_rev.cp
+traits/Bidir/Zipped--iter_rev.cp
 traits/Hashable/HashVal--hash_token.cp
 traits/IndexOp/Disjoint--at.cp
 traits/IndexOp/Disjoint--len.cp
@@ -1030,6 +1040,7 @@ traits/Seq/List--iter.cp
 traits/Seq/Mapped--iter.cp
 traits/Seq/Range--iter.cp
 traits/Seq/Rebased--iter.cp
+traits/Seq/Rev--iter.cp
 traits/Seq/Slice--iter.cp
 traits/Seq/Str--iter.cp
 traits/Seq/Zipped--iter.cp
