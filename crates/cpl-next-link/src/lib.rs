@@ -1564,7 +1564,7 @@ pub fn add_events(p: &mut Program, typed: &Typed, d: &Decls) {
     for f in &mut p.insts {
         let user_fn = match &f.key {
             FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
-                d.f(*id).module == d.program && f.region.is_none()
+                d.of_program(d.f(*id).module) && f.region.is_none()
             }
             _ => false,
         };

@@ -323,6 +323,68 @@ impl<'a> Cx<'a> {
         Some(self.coerce(v, &ty))
     }
 
+    /// `m.f` of an inline `mod m:`: what `m` declares `pub` as `f` (R11.1.3, R11.1.2).
+    fn module_member(
+        &mut self,
+        base: &ast::Expr,
+        name: &ast::Name,
+        call: Option<&[ast::Arg]>,
+        span: Span,
+        want: Option<&Ty>,
+    ) -> Option<TExpr> {
+        let ExprKind::Name(m) = &base.kind else {
+            return None;
+        };
+        let d = self.d;
+        let Some(decls::Named::Module(t)) = (self.lookup(m).is_none())
+            .then(|| d.named(self.module, m))
+            .flatten()
+        else {
+            return None;
+        };
+        let error = TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        };
+        let x = match d.exports[t.0].get(&name.text) {
+            Some((x, true)) => *x,
+            Some((_, false)) => {
+                let code = cpl_diag::codes::PRIVATE_NAME;
+                let text = format!("`{}` is private to module `{m}`", name.text);
+                let help = format!("mark `{}` `pub` in `mod {m}`", name.text);
+                self.err_help(span, Msg::verdict(code, text), Some(help));
+                return Some(error);
+            }
+            None => {
+                let code = cpl_diag::codes::UNRESOLVED_NAME;
+                let text = format!("module `{m}` has no `{}`", name.text);
+                self.err(span, Msg::verdict(code, text));
+                return Some(error);
+            }
+        };
+        if let Some(args) = call {
+            return Some(self.call_of(&name.text, x, &[], args, span, want));
+        }
+        match x {
+            decls::Named::Const(c) => Some(self.const_read(c, span)),
+            decls::Named::Fn(f) => {
+                let f = self.fnref(f, Vec::new(), Vec::new());
+                Some(TExpr {
+                    kind: TK::FnItem(f.clone()),
+                    ty: Ty::Clo(Box::new(CloRef::Item(f))),
+                    span,
+                })
+            }
+            _ => {
+                let code = cpl_diag::codes::UNRESOLVED_NAME;
+                let text = format!("`{m}.{}` is not a value", name.text);
+                self.err(span, Msg::verdict(code, text));
+                Some(error)
+            }
+        }
+    }
+
     pub(super) fn member(
         &mut self,
         base: &ast::Expr,
@@ -333,6 +395,10 @@ impl<'a> Cx<'a> {
         written_targs: &[Ty],
     ) -> TExpr {
         if let Some(e) = self.ctx_read(base, name, span) {
+            self.no_targs(name, written_targs, span);
+            return e;
+        }
+        if let Some(e) = self.module_member(base, name, call, span, want) {
             self.no_targs(name, written_targs, span);
             return e;
         }

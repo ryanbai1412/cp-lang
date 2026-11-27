@@ -13,13 +13,25 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
+        let named = self.d.views[self.module.0][n];
+        self.call_of(n, named, written, args, span, want)
+    }
+    /// A call of `named`, which the call writes as `n`.
+    pub(super) fn call_of(
+        &mut self,
+        n: &str,
+        mut named: Named,
+        written: &[ast::Type],
+        args: &[ast::Arg],
+        span: Span,
+        want: Option<&Ty>,
+    ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let mut pre = Vec::new();
         let mut given: Vec<Ty> = written
             .iter()
             .map(|t| self.body_ty(t, span, &mut pre))
             .collect();
-        let mut named = self.d.views[self.module.0][n];
         // `type Z = Mod<7>`: `Z(x)` is a call of the type the alias names, as `Mod<7>(x)` is.
         if let Named::Alias(id) = named {
             // A parameter not written is inferred, as a struct's is: `AliasBox(42)`.

@@ -1407,6 +1407,8 @@ impl<'a> Cx<'a> {
                 self.wraps = outer;
                 out.push(TStmt::Expr(b));
             }
+            // The loader made an inline `mod`'s items a module of their own (R11.1.3).
+            StmtKind::Mod { body, .. } if body.stmts.is_empty() => {}
             other => {
                 let module = match other {
                     StmtKind::Mod { name, .. } => Some(name.text.as_str()),

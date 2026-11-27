@@ -27,6 +27,8 @@ type Unread = (Vec<Msg>, Vec<SourceId>);
 pub struct Module {
     pub name: String,
     pub items: Arc<Items>,
+    /// The module an inline `mod name:` sits in (R11.1.3).
+    pub within: Option<String>,
 }
 
 /// A module's text, and where each of its items starts in it.
@@ -68,6 +70,8 @@ struct Parsed {
     text: Text,
     items: Arc<Items>,
     unread: Unread,
+    /// Each inline `mod`'s module and the module it sits in, inner ones first.
+    inline: Vec<(String, String, Arc<Items>)>,
 }
 
 impl Parsed {
@@ -75,14 +79,32 @@ impl Parsed {
         Module {
             name: self.text.name.clone(),
             items: self.items.clone(),
+            within: None,
         }
     }
+    /// Its inline modules, then itself: each with the file's text, under its own name.
+    fn modules(&self) -> impl Iterator<Item = (Text, Module)> + '_ {
+        let inline = self.inline.iter().map(|(name, within, items)| {
+            let text = Text {
+                name: name.clone(),
+                ..self.text.clone()
+            };
+            let m = Module {
+                name: name.clone(),
+                items: items.clone(),
+                within: Some(within.clone()),
+            };
+            (text, m)
+        });
+        inline.chain(std::iter::once((self.text.clone(), self.module())))
+    }
     fn new(name: &str, text: Arc<str>) -> Parsed {
-        let (items, starts, unread) = parse(name, &text);
+        let (items, starts, unread, inline) = parse(name, &text);
         Parsed {
             text: Text::new(name, text, starts),
             items: Arc::new(items),
             unread,
+            inline,
         }
     }
 }
@@ -271,29 +293,77 @@ fn uses(items: &[Item]) -> impl Iterator<Item = (String, &Stmt, SourceId)> {
 
 /// The items of module `module`, where each starts in `text`, each syntax error with its code
 /// and where it is, and the places the parser could not read.
-fn parse(module: &str, text: &str) -> (Items, HashMap<ItemId, u32>, Unread) {
+#[allow(clippy::type_complexity)]
+fn parse(
+    module: &str,
+    text: &str,
+) -> (
+    Items,
+    HashMap<ItemId, u32>,
+    Unread,
+    Vec<(String, String, Arc<Items>)>,
+) {
     let p = cpl_syntax::parse_file(text);
+    let file_name = module;
     let module: Arc<str> = module.into();
     let mut nth: HashMap<String, u32> = HashMap::new();
     let (mut items, mut starts, mut poisoned) = (Vec::new(), Vec::new(), Vec::new());
+    let mut inline = Vec::new();
     for (o, it) in p.items {
-        let name = path_name(text, o, &it.stmts);
-        let n = nth.entry(name.clone()).or_default();
-        let id = ItemId {
-            module: module.clone(),
-            name: name.into(),
-            nth: *n,
+        let mut stmts = it.stmts;
+        let mut id_of = |name: String| {
+            let n = nth.entry(name.clone()).or_default();
+            let id = ItemId {
+                module: module.clone(),
+                name: name.into(),
+                nth: *n,
+            };
+            *n += 1;
+            starts.push((id.clone(), o));
+            id
         };
-        *n += 1;
+        // An inline `mod m:` is a module of its own (R11.1.3). Its items keep the file's
+        // places, so each is an item of the file whose path starts with the module's.
+        let mut open: Vec<(String, Vec<Stmt>, Option<(String, String)>)> =
+            vec![(file_name.to_string(), std::mem::take(&mut stmts), None)];
+        let mut top = Vec::new();
+        while let Some((at, body, path)) = open.pop() {
+            let mut own = Vec::new();
+            for mut s in body {
+                if let StmtKind::Mod { name, body } = &mut s.kind {
+                    let inner = match at == PROGRAM {
+                        true => name.text.clone(),
+                        false => format!("{at}.{}", name.text),
+                    };
+                    let path = (path.as_ref())
+                        .map_or(name.text.clone(), |(p, _)| format!("{p}.{}", name.text));
+                    open.push((
+                        inner,
+                        std::mem::take(&mut body.stmts),
+                        Some((path, at.clone())),
+                    ));
+                }
+                match &path {
+                    None => top.push(s),
+                    Some((p, _)) => {
+                        let name = path_name(text, o, std::slice::from_ref(&s));
+                        own.push(Item {
+                            id: id_of(format!("{p}.{name}")),
+                            stmts: vec![s],
+                        });
+                    }
+                }
+            }
+            if let Some((_, within)) = path {
+                inline.push((at, within, Arc::new(own)));
+            }
+        }
+        let id = id_of(path_name(text, o, &top));
         poisoned.extend((it.poisoned.iter()).map(|s| SourceId {
             item: id.clone(),
             span: *s,
         }));
-        starts.push((id.clone(), o));
-        items.push(Item {
-            id,
-            stmts: it.stmts,
-        });
+        items.push(Item { id, stmts: top });
     }
     let file = ItemId::file(module);
     // A file's place, as the item it falls in.
@@ -313,7 +383,12 @@ fn parse(module: &str, text: &str) -> (Items, HashMap<ItemId, u32>, Unread) {
             ..Msg::at(within(d.span), Msg::verdict(d.code, d.message))
         })
         .collect();
-    (items, starts.into_iter().collect(), (diags, poisoned))
+    (
+        items,
+        starts.into_iter().collect(),
+        (diags, poisoned),
+        inline,
+    )
 }
 
 /// The name in an item's path: what it declares, an impl's head as written, or nothing for a
@@ -344,6 +419,26 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
     let mut queue: VecDeque<(String, Option<SourceId>)> = uses(&program.items)
         .map(|(m, _, at)| (m, Some(at)))
         .collect();
+    let mut seen = HashSet::new();
+    // A module and another its `use` lines name, and where.
+    let mut edges: Vec<(String, String, Option<SourceId>)> = Vec::new();
+    // An inline module is loaded with its file; what it names is loaded as the file's is.
+    let inline =
+        |p: &Parsed, queue: &mut VecDeque<_>, edges: &mut Vec<_>, seen: &mut HashSet<String>| {
+            seen.extend(p.inline.iter().map(|(m, _, _)| m.clone()));
+            for (m, _, items) in &p.inline {
+                for (to, _, at) in uses(items) {
+                    // `use a.f` names an item of the inline module `a`.
+                    let module = match to.rsplit_once('.') {
+                        Some((a, _)) if !seen.contains(&to) && seen.contains(a) => a.to_string(),
+                        _ => to.clone(),
+                    };
+                    edges.push((m.clone(), module, Some(at.clone())));
+                    queue.push_back((to, Some(at)));
+                }
+            }
+        };
+    inline(&program, &mut queue, &mut edges, &mut seen);
     let mut from_prelude: Vec<&String> = prelude.values().collect();
     from_prelude.sort();
     from_prelude.dedup();
@@ -354,8 +449,6 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
         false => roots.source(m).is_some(),
     };
     let mut got: Vec<Got> = Vec::new();
-    let mut seen = HashSet::new();
-    let mut edges: Vec<(String, String)> = Vec::new();
     let mut missing: Vec<(String, Option<SourceId>)> = Vec::new();
     // The core's traits name std types (`Ord`'s `cmp` returns `std.algebra`'s `Ordering`).
     queue.extend(uses(&std.modules[0].items).map(|(to, _, _)| (to, None)));
@@ -370,7 +463,9 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
         let Some(g) = g else {
             // `use std.rand.Rng` is an item of `std.rand`.
             match m.rsplit_once('.') {
-                Some((module, _)) if exists(module) => queue.push_back((module.to_string(), at)),
+                Some((module, _)) if exists(module) || seen.contains(module) => {
+                    queue.push_back((module.to_string(), at))
+                }
                 _ => missing.push((m, at)),
             }
             continue;
@@ -379,14 +474,21 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
             Got::Std(i) => &std.modules[*i].items,
             Got::Lib(p) => &p.items,
         };
-        for (to, _, _) in uses(items) {
-            edges.push((m.clone(), to.clone()));
+        for (to, _, at) in uses(items) {
+            edges.push((m.clone(), to.clone(), Some(at)));
             queue.push_back((to, None));
+        }
+        if let Got::Lib(p) = &g {
+            inline(p, &mut queue, &mut edges, &mut seen);
         }
         got.push(g);
     }
-    if let Some(m) = cycle(&edges) {
-        errors.push(Msg::verdict(cpl_diag::codes::UNRESOLVED_MODULE, format!("`{m}` is in an import cycle; two modules that need each other are one module (R11.2.2)")));
+    if let Some((m, at)) = cycle(&edges) {
+        let text = Msg::verdict(cpl_diag::codes::UNRESOLVED_MODULE, format!("`{m}` is in an import cycle; two modules that need each other are one module (R11.2.2)"));
+        errors.push(match at {
+            Some(at) => Msg::at(at.clone(), text),
+            None => text,
+        });
     }
     let mut texts: Vec<Text> = std.modules.iter().map(|p| p.text.clone()).collect();
     let mut modules: Vec<Module> = std.modules.iter().map(Parsed::module).collect();
@@ -413,9 +515,11 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
     unread(&program, &mut errors);
     libs.push(program);
     for p in libs {
-        texts.push(p.text.clone());
-        modules.push(p.module());
-        seen.push(true);
+        for (t, m) in p.modules() {
+            texts.push(t);
+            modules.push(m);
+            seen.push(true);
+        }
     }
     let code = cpl_diag::codes::UNRESOLVED_MODULE;
     for (m, a) in missing {
@@ -438,36 +542,45 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
     }
 }
 
-/// A module on a cycle of `use` edges, if there is one.
-fn cycle(edges: &[(String, String)]) -> Option<String> {
-    let mut out: HashMap<&str, Vec<&str>> = HashMap::new();
-    for (a, b) in edges {
-        out.entry(a).or_default().push(b);
+/// A module on a cycle of `use` edges, if there is one, and where it names the next.
+fn cycle(edges: &[(String, String, Option<SourceId>)]) -> Option<(String, Option<&SourceId>)> {
+    let mut out: HashMap<&str, Vec<(&str, Option<&SourceId>)>> = HashMap::new();
+    for (a, b, at) in edges {
+        out.entry(a).or_default().push((b, at.as_ref()));
     }
     // 0 unvisited, 1 on the path, 2 done.
-    let mut state: HashMap<&str, u8> = HashMap::new();
+    type Out<'a> = HashMap<&'a str, Vec<(&'a str, Option<&'a SourceId>)>>;
     fn visit<'a>(
         m: &'a str,
-        out: &HashMap<&'a str, Vec<&'a str>>,
+        out: &Out<'a>,
         state: &mut HashMap<&'a str, u8>,
-    ) -> Option<String> {
+        path: &mut Vec<(&'a str, Option<&'a SourceId>)>,
+    ) -> Option<(String, Option<&'a SourceId>)> {
         match state.get(m) {
-            Some(1) => return Some(m.to_string()),
+            Some(1) => {
+                let i = path.iter().position(|(p, _)| *p == m)?;
+                return Some((m.to_string(), path[i].1));
+            }
             Some(2) => return None,
             _ => {}
         }
         state.insert(m, 1);
-        for &n in out.get(m).into_iter().flatten() {
-            if let Some(c) = visit(n, out, state) {
+        for &(n, at) in out.get(m).into_iter().flatten() {
+            path.push((m, at));
+            if let Some(c) = visit(n, out, state, path) {
                 return Some(c);
             }
+            path.pop();
         }
         state.insert(m, 2);
         None
     }
+    let mut state: HashMap<&str, u8> = HashMap::new();
     let mut starts: Vec<&str> = out.keys().copied().collect();
     starts.sort_unstable();
-    starts.into_iter().find_map(|m| visit(m, &out, &mut state))
+    starts
+        .into_iter()
+        .find_map(|m| visit(m, &out, &mut state, &mut Vec::new()))
 }
 
 #[cfg(test)]
@@ -481,7 +594,7 @@ mod tests {
         let below = "struct S\nimpl Show for S:\n    fn show(self) -> Str: \"s\"\n\nfn g() -> Int:\n    let x = 2\n    x\n";
         let above = format!("fn f() -> Int: 1\n\n{below}");
         let items = |t: &str| {
-            let (items, starts, _) = parse(PROGRAM, t);
+            let (items, starts, _, _) = parse(PROGRAM, t);
             (items.into_iter())
                 .filter(|i| &*i.id.name != "f")
                 .map(|i| {

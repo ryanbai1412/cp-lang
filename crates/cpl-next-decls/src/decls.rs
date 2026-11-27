@@ -255,6 +255,8 @@ pub enum Named {
     Const(ConstId),
     /// `context io:`: compile-time settings a `with` line sets (R09.1).
     Context(ContextId),
+    /// An inline `mod m:`, to the module it sits in: `m.f` names its `pub f` (R11.1.3).
+    Module(ModId),
 }
 /// What a method sits in.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -292,6 +294,11 @@ pub struct Decls {
     /// is ambiguous (R08.1.4).
     pub ambiguous: Vec<HashSet<String>>,
     pub module_names: Vec<String>,
+    /// Per module, the module an inline `mod` of it sits in (R11.1.3).
+    pub within: Vec<Option<ModId>>,
+    /// Per inline module, what each name it declares or exports means, and whether it is
+    /// `pub`: `m.f` outside it.
+    pub exports: Vec<Arc<HashMap<String, (Named, bool)>>>,
     pub program: ModId,
     /// Per library module, what it uses outside its fns that the slice does not build.
     pub module_errors: Vec<Vec<Msg>>,
@@ -437,7 +444,23 @@ impl Decls {
     }
     /// A library declaration's place is not the program's: its module's name.
     pub fn is_library(&self, m: ModId) -> bool {
-        m != CORE && m != self.program
+        m != CORE && !self.of_program(m)
+    }
+    /// Whether `m` holds only items: a library, or an inline `mod` (R11.1.2, R11.1.3).
+    pub fn items_only(&self, m: ModId) -> bool {
+        self.is_library(m) || self.within.get(m.0).copied().flatten().is_some()
+    }
+    /// Whether `m` is the program or an inline module inside it.
+    pub fn of_program(&self, mut m: ModId) -> bool {
+        loop {
+            if m == self.program {
+                return true;
+            }
+            match self.within.get(m.0).copied().flatten() {
+                Some(w) => m = w,
+                None => return false,
+            }
+        }
     }
     /// Whether the program loads module `m`.
     pub fn seen(&self, m: ModId) -> bool {
@@ -671,6 +694,7 @@ struct Scopes<'a> {
     names: &'a [String],
     imports: &'a [(ModId, &'a ast::Stmt)],
     prelude: &'a HashMap<String, String>,
+    within: &'a [Option<ModId>],
 }
 
 fn view(
@@ -699,6 +723,7 @@ fn outer_view(
         names,
         imports,
         prelude,
+        within,
     } = *sc;
     let index = |m: &str| names.iter().position(|n| n == m);
     let export = |t: usize, n: &str| exported(sc, t, n);
@@ -804,7 +829,32 @@ fn outer_view(
             }
         }
     }
+    // An inline module is a name of the module it sits in, and `m.T` its `pub T` (R11.1.3).
+    for (t, w) in within.iter().enumerate() {
+        if *w == Some(ModId(mi)) {
+            let m = names[t].rsplit('.').next().unwrap_or("");
+            v.insert(m.to_string(), Named::Module(ModId(t)));
+            for n in exports(sc, t) {
+                if let Some(x) = export(t, &n) {
+                    v.insert(format!("{m}.{n}"), x);
+                }
+            }
+        }
+    }
     v
+}
+
+/// What each name module `t` declares or exports means, and whether another module may name it.
+fn export_map(sc: &Scopes, t: usize) -> HashMap<String, (Named, bool)> {
+    let mut m: HashMap<String, (Named, bool)> = (sc.own[t].iter())
+        .map(|(n, x)| (n.clone(), (*x, sc.public[t].contains(n))))
+        .collect();
+    for n in exports(sc, t) {
+        if let Some(x) = exported(sc, t, &n) {
+            m.insert(n, (x, true));
+        }
+    }
+    m
 }
 
 /// The names module `t` exports: its `pub` declarations and what its `pub use` lines name.

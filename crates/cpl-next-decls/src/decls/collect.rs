@@ -72,6 +72,14 @@ fn layer(
         None => usize::MAX,
     });
     d.module_names = mods.iter().map(|m| m.name.clone()).collect();
+    d.within = (mods.iter())
+        .map(|m| {
+            let w = m.within.as_ref()?;
+            mods.iter().position(|x| x.name == *w).map(ModId)
+        })
+        .collect();
+    let within = d.within.clone();
+    let in_program: Vec<bool> = (0..n).map(|i| d.of_program(ModId(i))).collect();
     d.module_errors.resize(n, Vec::new());
     d.seen = match base {
         Some(_) => seen.to_vec(),
@@ -410,7 +418,7 @@ fn layer(
                         ty,
                         init: Some(init),
                         ..
-                    } if d.is_library(mid) && generics.is_empty() => {
+                    } if d.items_only(mid) && generics.is_empty() => {
                         own[mi].insert(name.text.clone(), Named::Const(ConstId(d.consts.len())));
                         d.consts.push(LibConst {
                             module: mid,
@@ -430,7 +438,7 @@ fn layer(
                             fields: fields.clone(),
                         });
                     }
-                    other if d.is_library(mid) => {
+                    other if d.items_only(mid) => {
                         let e = Unbuilt::LibraryItem {
                             kind: crate::kind_name(other),
                         };
@@ -486,6 +494,7 @@ fn layer(
         names: &names,
         imports: &imports,
         prelude,
+        within: &within,
     };
     remake_views(&mut d, &sc, from, core_too, None);
     // A product's record is a core struct, so the program's domains are placed once the views are.
@@ -506,8 +515,9 @@ fn layer(
                 names: &names,
                 imports: &imports,
                 prelude,
+                within: &within,
             };
-            let mut v = outer_view(&sc, m.0, m.0 == program, None, None);
+            let mut v = outer_view(&sc, m.0, in_program[m.0], None, None);
             let outside = v.get(&name).copied();
             v.extend(own[m.0].iter().map(|(n, x)| (n.clone(), *x)));
             if let Some(x) = outside {
@@ -655,6 +665,7 @@ fn layer(
                     names: &names,
                     imports: &imports,
                     prelude,
+                    within: &within,
                 };
                 remake_views(&mut d, &sc, from, core_too, None);
             }
@@ -1224,6 +1235,7 @@ fn layer(
         names: &names,
         imports: &imports,
         prelude,
+        within: &within,
     };
     remake_views(&mut d, &sc, from, core_too, Some(&mut errors));
     d.errors.extend(errors);
@@ -1257,7 +1269,6 @@ fn remake_views(
     core_too: bool,
     mut errors: Option<&mut Vec<Msg>>,
 ) {
-    let program = d.program.0;
     for mi in 0..sc.names.len() {
         if mi < from && !(mi == CORE.0 && core_too) {
             continue;
@@ -1267,7 +1278,14 @@ fn remake_views(
             false => errors.as_deref_mut(),
         };
         let mut ambiguous = HashSet::new();
-        let v = view(sc, mi, mi == program, e, &mut ambiguous);
+        let v = view(sc, mi, d.of_program(ModId(mi)), e, &mut ambiguous);
+        let exports = match d.within.get(mi).copied().flatten() {
+            Some(_) => Arc::new(export_map(sc, mi)),
+            None => Arc::default(),
+        };
+        d.exports
+            .resize(d.exports.len().max(mi + 1), Arc::default());
+        d.exports[mi] = exports;
         match mi < d.views.len() {
             true => {
                 d.views[mi] = Arc::new(v);

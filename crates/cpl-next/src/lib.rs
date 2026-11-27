@@ -385,7 +385,7 @@ pub fn units(std: &Std, user_src: &str, roots: &Roots) -> (Vec<Unit>, Vec<Diag>)
         let fd = f.d.f(*id);
         // A derived impl's methods are made, not written: they are the struct's.
         let derived = matches!(fd.owner, Some(decls::Owner::Impl(i)) if f.d.impls[i].derived);
-        fd.module == f.d.program
+        f.d.of_program(fd.module)
             && !derived
             && fd.intrinsic.is_none()
             && !matches!(fd.body, cpl_syntax::ast::FnBody::None)
