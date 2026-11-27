@@ -42,10 +42,26 @@ struct Frame {
     pending: Option<Flow>,
 }
 
+/// Where a word is: `i` into the stack when `h` is 0, else into storage `h`'s words. Handle 0
+/// is never storage.
 #[derive(Clone, Copy)]
-enum Loc {
-    Stack(usize),
-    Heap(u32, usize),
+struct Loc {
+    h: u32,
+    i: usize,
+}
+impl Loc {
+    fn stack(i: usize) -> Loc {
+        Loc { h: 0, i }
+    }
+    fn heap(h: u32, i: usize) -> Loc {
+        Loc { h, i }
+    }
+    fn off(self, n: usize) -> Loc {
+        Loc {
+            i: self.i + n,
+            ..self
+        }
+    }
 }
 
 struct M<'a> {
@@ -221,10 +237,7 @@ impl M<'_> {
         }
         if let Some(at) = &c.lays.flat[lay as usize] {
             for &o in at {
-                let h = self.word(match loc {
-                    Loc::Stack(a) => Loc::Stack(a + o as usize),
-                    Loc::Heap(h, i) => Loc::Heap(h, i + o as usize),
-                });
+                let h = self.word(loc.off(o as usize));
                 if h == 0 {
                     continue;
                 }
@@ -238,13 +251,11 @@ impl M<'_> {
             return;
         }
         let mut hs = Vec::new();
-        match loc {
-            Loc::Stack(a) => self.c.lays.handles(lay, &self.stack[a..], &mut hs),
-            Loc::Heap(h, i) => self
-                .c
-                .lays
-                .handles(lay, &self.heap[h as usize].words[i..], &mut hs),
-        }
+        let words = match loc.h {
+            0 => &self.stack[loc.i..],
+            h => &self.heap[h as usize].words[loc.i..],
+        };
+        c.lays.handles(lay, words, &mut hs);
         self.dec(hs);
     }
     fn dec(&mut self, mut hs: Vec<u32>) {
@@ -266,15 +277,15 @@ impl M<'_> {
         }
     }
     fn word(&self, loc: Loc) -> u64 {
-        match loc {
-            Loc::Stack(a) => self.stack[a],
-            Loc::Heap(h, i) => self.heap[h as usize].words[i],
+        match loc.h {
+            0 => self.stack[loc.i],
+            h => self.heap[h as usize].words[loc.i],
         }
     }
     fn set_word(&mut self, loc: Loc, v: u64) {
-        match loc {
-            Loc::Stack(a) => self.stack[a] = v,
-            Loc::Heap(h, i) => self.heap[h as usize].words[i] = v,
+        match loc.h {
+            0 => self.stack[loc.i] = v,
+            h => self.heap[h as usize].words[loc.i] = v,
         }
     }
     /// Copies `n` stack words at `s` to `d`.
@@ -287,19 +298,19 @@ impl M<'_> {
     }
     /// Copies `n` words at `loc` to stack address `a`.
     fn read(&mut self, loc: Loc, a: usize, n: usize) {
-        match loc {
-            Loc::Stack(s) => self.copy(s, a, n),
-            Loc::Heap(h, i) => {
-                self.stack[a..a + n].copy_from_slice(&self.heap[h as usize].words[i..i + n])
+        match loc.h {
+            0 => self.copy(loc.i, a, n),
+            h => {
+                self.stack[a..a + n].copy_from_slice(&self.heap[h as usize].words[loc.i..loc.i + n])
             }
         }
     }
     /// Copies `n` words at stack address `a` to `loc`.
     fn write(&mut self, loc: Loc, a: usize, n: usize) {
-        match loc {
-            Loc::Stack(d) => self.copy(a, d, n),
-            Loc::Heap(h, i) => {
-                self.heap[h as usize].words[i..i + n].copy_from_slice(&self.stack[a..a + n])
+        match loc.h {
+            0 => self.copy(a, loc.i, n),
+            h => {
+                self.heap[h as usize].words[loc.i..loc.i + n].copy_from_slice(&self.stack[a..a + n])
             }
         }
     }
@@ -337,16 +348,13 @@ impl M<'_> {
     fn place(&mut self, fp: usize, p: u32, own: bool) -> R<Loc> {
         let pc = &self.c.places[p as usize];
         let mut loc = match pc.root {
-            Root::Local(r) => Loc::Stack(fp + r as usize),
-            Root::Global(g) => Loc::Stack(g as usize),
+            Root::Local(r) => Loc::stack(fp + r as usize),
+            Root::Global(g) => Loc::stack(g as usize),
         };
         for st in &pc.steps {
             loc = match *st {
-                Step::Off(at) => match loc {
-                    Loc::Stack(a) => Loc::Stack(a + at as usize),
-                    Loc::Heap(h, i) => Loc::Heap(h, i + at as usize),
-                },
-                Step::Deref => Loc::Stack(self.word(loc) as usize),
+                Step::Off(at) => loc.off(at as usize),
+                Step::Deref => Loc::stack(self.word(loc) as usize),
                 Step::Slot { i, stride } => {
                     let idx = self.stack[fp + i as usize] as i64;
                     let h = match own {
@@ -358,7 +366,7 @@ impl M<'_> {
                     };
                     match usize::try_from(idx) {
                         Ok(idx) if idx < self.heap[h as usize].len => {
-                            Loc::Heap(h, idx * stride as usize)
+                            Loc::heap(h, idx * stride as usize)
                         }
                         _ => return broken("a cell outside its storage"),
                     }
@@ -401,7 +409,7 @@ impl M<'_> {
         };
         self.cur = frame.parent.unwrap_or(0);
         for &(at, lay) in &fc.drops {
-            self.release(lay, Loc::Stack(fp + at as usize));
+            self.release(lay, Loc::stack(fp + at as usize));
         }
         Ok(match flow {
             Flow::Exit(f) => Some(*f),
@@ -550,7 +558,7 @@ impl M<'_> {
                     self.release(lay, loc);
                     self.write(loc, r(s), self.size(lay));
                 }
-                Op::Drop { s, lay } => self.release(lay, Loc::Stack(r(s))),
+                Op::Drop { s, lay } => self.release(lay, Loc::stack(r(s))),
                 Op::Text { d, t } => {
                     let mut h = self.texts[t as usize];
                     if h == 0 {
@@ -641,7 +649,7 @@ impl M<'_> {
                         return broken("yield with no caller code");
                     };
                     let v = self.frames[rg.fr].fp + rg.var as usize;
-                    self.release(lay, Loc::Stack(v));
+                    self.release(lay, Loc::stack(v));
                     let n = self.size(lay);
                     self.stack.copy_within(r(s)..r(s) + n, v);
                     let was = self.cur;
@@ -659,7 +667,7 @@ impl M<'_> {
                     };
                     let (v, n) = (self.frames[rg.fr].fp + rg.var as usize, self.size(lay));
                     let loc = self.loc(fp, p)?;
-                    self.release(lay, Loc::Stack(v));
+                    self.release(lay, Loc::stack(v));
                     self.read(loc, v, n);
                     let was = self.cur;
                     self.cur = rg.fr;
@@ -738,7 +746,7 @@ impl M<'_> {
                             Some(v) => ops::show(v, &mut line),
                             None => {
                                 line.push('?');
-                                self.release(lay, Loc::Stack(r(s)));
+                                self.release(lay, Loc::stack(r(s)));
                             }
                         }
                     }
@@ -779,7 +787,7 @@ impl M<'_> {
                     }
                     let len = self.heap[h as usize].len;
                     let at = ops::cell(self.stack[r(i)] as i64, len, false)? * self.size(elem);
-                    self.read(Loc::Heap(h, at), r(d), self.size(elem));
+                    self.read(Loc::heap(h, at), r(d), self.size(elem));
                     self.retain(elem, r(d));
                     if owned {
                         self.dec(vec![h]);
@@ -794,8 +802,8 @@ impl M<'_> {
                     let len = self.heap[h as usize].len;
                     let at = ops::cell(self.stack[r(i)] as i64, len, true)? * self.size(elem);
                     let h = self.unique(loc)?;
-                    self.release(elem, Loc::Heap(h, at));
-                    self.write(Loc::Heap(h, at), r(x), self.size(elem));
+                    self.release(elem, Loc::heap(h, at));
+                    self.write(Loc::heap(h, at), r(x), self.size(elem));
                 }
                 Op::RawTake { d, p, i, elem } => {
                     let loc = self.loc(fp, p)?;
@@ -806,7 +814,7 @@ impl M<'_> {
                     let size = self.size(elem);
                     let at = ops::cell(self.stack[r(i)] as i64, len, false)? * size;
                     let h = self.unique(loc)?;
-                    self.read(Loc::Heap(h, at), r(d), size);
+                    self.read(Loc::heap(h, at), r(d), size);
                     self.heap[h as usize].words[at..at + size].fill(0);
                 }
                 Op::RawCap { d, n, elem } => {
