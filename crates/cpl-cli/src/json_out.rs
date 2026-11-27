@@ -3,7 +3,10 @@
 use cpl_diag::LineIndex;
 use cpl_json::{obj, Value};
 
-pub(crate) use cpl_diag::json::diagnostic;
+/// [`cpl_diag::json::diagnostic`] as a value.
+pub(crate) fn diagnostic(d: &cpl_diag::Diagnostic, lines: &LineIndex) -> Value {
+    Value::Object(cpl_diag::json::diagnostic(d, lines))
+}
 
 fn text(s: &str) -> Value {
     Value::String(s.to_string())

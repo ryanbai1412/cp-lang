@@ -196,7 +196,7 @@ impl Vm {
     /// The trap as `cpl check --format json` gives a diagnostic.
     fn json(&self, trap: &cpl_facade::Trap) -> cpl_json::Value {
         let diagnostic = trap.to_diagnostic(&self.name, &self.lines);
-        cpl_diag::json::diagnostic(&diagnostic, &self.lines)
+        cpl_diag::json::diagnostic(&diagnostic, &self.lines).into()
     }
 
     /// One draw of a `@gen` fn, and the choices it made.

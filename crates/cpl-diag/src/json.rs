@@ -1,7 +1,8 @@
 //! Diagnostics as JSON: the shape every `--json` command prints.
 
 use crate::{Diagnostic, LineIndex};
-use cpl_json::{obj, Value};
+use cpl_json::{fields, obj, Value};
+use std::collections::BTreeMap;
 
 fn text(s: &str) -> Value {
     Value::String(s.to_string())
@@ -17,8 +18,9 @@ fn position(offset: u32, lines: &LineIndex) -> Value {
     ])
 }
 
-/// One diagnostic with everything the text rendering shows.
-pub fn diagnostic(d: &Diagnostic, lines: &LineIndex) -> Value {
+/// One diagnostic with everything the text rendering shows, as an object's fields so a tool
+/// can add its own.
+pub fn diagnostic(d: &Diagnostic, lines: &LineIndex) -> BTreeMap<String, Value> {
     let labels = d.labels.iter().map(|label| {
         obj([
             ("message", text(&label.message)),
@@ -39,7 +41,7 @@ pub fn diagnostic(d: &Diagnostic, lines: &LineIndex) -> Value {
             ("edits", Value::Array(edits.collect())),
         ])
     });
-    obj([
+    fields([
         ("code", text(d.code.0)),
         ("severity", text(d.severity.as_str())),
         ("message", text(&d.message)),

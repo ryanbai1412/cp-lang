@@ -19,7 +19,7 @@ fn json_gives_one_based_positions_offsets_and_the_page() {
     let src = "let x = 1\nfoo\n";
     let mut d = Diagnostic::error(Code("E0201"), Span::new(10, 13), "no `foo`");
     d.fix("rename", Span::new(10, 13), "x");
-    let v = json::diagnostic(&d, &LineIndex::new(src));
+    let v = cpl_json::Value::from(json::diagnostic(&d, &LineIndex::new(src)));
     let at = |end: &str, key: &str| field(field(&v, end), key).to_string();
     assert_eq!(
         [
@@ -237,14 +237,18 @@ fn json_gives_the_witness_as_names_and_values() {
     let src = "let b: 0..=9 = read()\n";
     let d = Diagnostic::warning(Code("L0599"), Span::new(4, 5), "`b` can be 0")
         .with_witness(vec![("b".into(), 0), ("n".into(), 1 << 70)]);
-    let v = json::diagnostic(&d, &LineIndex::new(src));
+    let v = cpl_json::Value::from(json::diagnostic(&d, &LineIndex::new(src)));
     assert_eq!(
         field(&v, "witness").to_string(),
         r#"[{"name":"b","value":0},{"name":"n","value":"1180591620717411303424"}]"#
     );
     let plain = Diagnostic::warning(Code("L0599"), Span::new(4, 5), "m");
     assert_eq!(
-        field(&json::diagnostic(&plain, &LineIndex::new(src)), "witness").to_string(),
+        field(
+            &json::diagnostic(&plain, &LineIndex::new(src)).into(),
+            "witness"
+        )
+        .to_string(),
         "[]"
     );
 }

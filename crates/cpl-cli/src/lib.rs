@@ -1438,11 +1438,9 @@ fn observe_file(
         // `line` the editor's overlay reads (errors/R12).
         let error = observed.trap.as_ref().map(|trap| {
             let mut error = cpl_diag::json::diagnostic(&trap.to_diagnostic(path, &lines), &lines);
-            if let cpl_json::Value::Object(fields) = &mut error {
-                let line = lines.line_of(trap.span.start) + 1;
-                fields.insert("line".into(), cpl_json::Value::Int(line.into()));
-            }
-            error
+            let line = lines.line_of(trap.span.start) + 1;
+            error.insert("line".into(), cpl_json::Value::Int(line.into()));
+            cpl_json::Value::Object(error)
         });
         let diagnostic = observed
             .trap

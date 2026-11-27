@@ -44,7 +44,7 @@ impl Trapped {
 
     /// As `cpl check --format json` gives it.
     pub fn json(&self) -> cpl_json::Value {
-        cpl_diag::json::diagnostic(&self.diagnostic, &cpl_diag::LineIndex::new(&self.text))
+        cpl_diag::json::diagnostic(&self.diagnostic, &cpl_diag::LineIndex::new(&self.text)).into()
     }
 }
 

@@ -106,7 +106,10 @@ impl Diag {
             labels: self.labels.clone(),
             help: self.help.clone(),
             fixes: self.fixes.clone(),
-            ..cpl_diag::Diagnostic::error(code, span, self.message.clone())
+            ..cpl_diag::msgs::check::NEXT_SAID
+                .at(&[&self.message])
+                .with_code(code)
+                .error(span)
         }
     }
 
@@ -114,13 +117,12 @@ impl Diag {
     /// and `text`, the line `Display` prints.
     pub fn json(&self) -> cpl_json::Value {
         let lines = cpl_diag::LineIndex::new(self.src.as_deref().unwrap_or(""));
-        let mut v = cpl_diag::json::diagnostic(&self.diagnostic(), &lines);
+        let mut o = cpl_diag::json::diagnostic(&self.diagnostic(), &lines);
         let refusal = match &self.kind {
             Kind::Refusal(u) => cpl_json::Value::String(u.variant()),
             Kind::Verdict(_) => cpl_json::Value::Null,
         };
         let text = |t: Option<String>| t.map_or(cpl_json::Value::Null, cpl_json::Value::String);
-        let o = v.as_object_mut().expect("a diagnostic is an object");
         o.insert(
             "stage".into(),
             cpl_json::Value::String(self.stage.name().into()),
@@ -132,7 +134,7 @@ impl Diag {
         o.insert("module".into(), text(self.module.clone()));
         o.insert("text".into(), text(Some(self.to_string())));
         o.insert("refusal".into(), refusal);
-        v
+        cpl_json::Value::Object(o)
     }
 
     /// `m` placed in its file.

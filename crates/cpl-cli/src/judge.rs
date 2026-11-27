@@ -107,7 +107,7 @@ fn verdict(
         if let Some(file) = diagnostic {
             let lines = cpl_diag::LineIndex::new(text);
             let json = cpl_diag::json::diagnostic(&trap.to_diagnostic(path, &lines), &lines);
-            let _ = std::fs::write(file, json.to_string());
+            let _ = std::fs::write(file, cpl_json::Value::from(json).to_string());
         }
     }
     code

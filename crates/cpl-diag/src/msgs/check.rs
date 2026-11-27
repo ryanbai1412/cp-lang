@@ -358,4 +358,6 @@ super::msgs! {
     /// Decision 543: a type parameter named in several bounds is one type.
     SHARED_BOUND_ARG = TYPE_MISMATCH, "`{}` needs one `{}` for `{}` and `{}`, but `{}` gives `{}` and `{}` gives `{}`";
     BUT_2 = TYPE_MISMATCH, "`{}` {} {}{}, but `{}` is {}";
+    /// A cpl-next checker message, said with the code the checker gives it.
+    NEXT_SAID = UNSUPPORTED, "{}";
 }

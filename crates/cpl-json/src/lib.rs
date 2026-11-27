@@ -206,15 +206,21 @@ impl From<BTreeMap<String, Value>> for Value {
 /// costs a few bytes of wasm rather than a copy of the map building.
 #[inline]
 pub fn obj<const N: usize>(members: [(&str, Value); N]) -> Value {
+    Value::Object(object(&mut members.into_iter()))
+}
+
+/// [`obj`]'s fields, for a caller that adds its own before it is a value.
+#[inline]
+pub fn fields<const N: usize>(members: [(&str, Value); N]) -> BTreeMap<String, Value> {
     object(&mut members.into_iter())
 }
 
-fn object(members: &mut dyn Iterator<Item = (&str, Value)>) -> Value {
+fn object(members: &mut dyn Iterator<Item = (&str, Value)>) -> BTreeMap<String, Value> {
     let mut map = BTreeMap::new();
     for (k, v) in members {
         map.insert(k.to_string(), v);
     }
-    Value::Object(map)
+    map
 }
 
 /// Writes `s` as a quoted, RFC 8259-escaped JSON string, safe to embed

@@ -162,7 +162,7 @@ impl Watch {
                 let diagnostics = round
                     .diagnostics
                     .iter()
-                    .map(|d| cpl_diag::json::diagnostic(d, &lines))
+                    .map(|d| cpl_diag::json::diagnostic(d, &lines).into())
                     .collect();
                 let (test, skipped) = match &round.test {
                     Tested::Stopped => (Value::Null, Value::Null),
