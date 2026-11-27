@@ -2907,3 +2907,6 @@ core-10/read-record-str-fields.cp
 core-10/tree-edges-over-edge-domain.cp
 std-graph/undirected-over-an-inline-range-edge-array.cp
 core-10/read-struct-by-its-fields.cp
+next/n_opt_map_01_keeps_none.cp
+core-04/library-domain-walk-queries.cp
+std-seq/extremes-ties-last.cp

@@ -9,6 +9,15 @@ pub struct Optional<T>:
     some: Bool
     val: T
 
+    /// `f` of the value, kept `?`: `None` stays `None` (R02.4.1). A member, so it is found before
+    /// `Seq`'s `map` (R08.1.4).
+    ///
+    /// cost: one call of `f` when present
+    /// empty: `let a: ?Int = None; a.map(x => x + 1) == None`
+    /// traps: never
+    /// example: `Some(3).map(x => x * 2) == Some(6)`
+    pub fn map<U>(self, f: T -> U) -> ?U = if some: Some(f(val)) else: None
+
 /// `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
 @pattern
 pub fn Some<T>(v: T) -> ?T = v
