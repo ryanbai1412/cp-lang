@@ -1950,9 +1950,56 @@ impl<R: Domain, C: Domain, T> Keyed<C, T> for Row<R, C, T>:
 impl<R: Domain, C: Domain, T> Positional<T> for Row<R, C, T>:
     fn nth(self, k: Int) -> T = self.src[self.r, C.nth((0..C.count)[k])]
 
-impl<R: Domain, C: Domain, T> Indexed<C, T> for Row<R, C, T>:
+impl<R: Domain, C: Domain, T> IndexGet<C, T> for Row<R, C, T>:
     fn at(self, c: C) -> T = self.src[self.r, c]
+impl<R: Domain, C: Domain, T> Indexed<C, T> for Row<R, C, T>:
     @get fn keys(self) -> Range<C> = C
+
+/// `g[r, cs]`: the columns `cs` of row `r` of `g`, keyed by `C`; `g[r, ..]` is all of it
+/// (R04.4.11).
+@index fn row_piece<R: Domain, C: Domain, T>(
+    self: [R, C]T,
+    k: (R, Range<C>)
+) -> Slice<Row<R, C, T>> = Row(self, k._0)[k._1]
+
+/// \(O(1)\) to make. `g[.., c]`: column `c` of a grid `[R, C]T`, a lent view keyed by the row
+/// domain, so its keys are `R`'s positions, not offsets from 0 (R04b.1.12).
+pub struct Col<R, C, T>(
+    /// The grid the column was cut from, lent: frozen while the column is alive.
+    src: [R, C]T,
+    /// Which column of `src` this is.
+    c: C,
+)
+
+/// `g[rs, c]`: the rows `rs` of column `c` of `g`, keyed by `R`; `g[.., c]` is all of it
+/// (R04.4.11).
+@index fn col<R: Domain, C: Domain, T>(
+    self: [R, C]T,
+    k: (Range<R>, C)
+) -> Slice<Col<R, C, T>> = Col(self, k._1)[k._0]
+
+impl<R: Domain, C: Domain, T> Seq<T> for Col<R, C, T>:
+    fn iter(self) -> yields T:
+        for r in R: yield self.src[r, self.c]
+
+impl<R: Domain, C: Domain, T> Bidir<T> for Col<R, C, T>:
+    fn iter_rev(self) -> yields T:
+        for r in self.keys.rev: yield self.src[r, self.c]
+
+impl<R: Domain, C: Domain, T> Sized for Col<R, C, T>:
+    @get fn len(self) -> Int = R.count
+
+impl<R: Domain, C: Domain, T> Keyed<R, T> for Col<R, C, T>:
+    fn items(self) -> yields (R, T):
+        for r in R: yield (r, self.src[r, self.c])
+
+impl<R: Domain, C: Domain, T> Positional<T> for Col<R, C, T>:
+    fn nth(self, k: Int) -> T = self.src[R.nth((0..R.count)[k]), self.c]
+
+impl<R: Domain, C: Domain, T> IndexGet<R, T> for Col<R, C, T>:
+    fn at(self, r: R) -> T = self.src[r, self.c]
+impl<R: Domain, C: Domain, T> Indexed<R, T> for Col<R, C, T>:
+    @get fn keys(self) -> Range<R> = R
 
 /// \(O(1)\). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
@@ -4430,6 +4477,14 @@ impl Show for Slice<S>:
         out
 
 impl Show for Row<R, C, T>:
+    fn show(v):
+        var out = ""
+        for x in v:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for Col<R, C, T>:
     fn show(v):
         var out = ""
         for x in v:

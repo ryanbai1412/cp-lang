@@ -45,13 +45,18 @@ impl Cx<'_> {
     }
     /// Whether `t` is the type the `@index` fns take as a key: a `Range` (R07.4.17).
     pub(super) fn is_range(&mut self, t: &Ty) -> bool {
+        matches!(self.shallow(t), Ty::Struct(s, ..) if Some(s) == self.range_struct())
+    }
+    /// The `Range` struct: the key of the `@index` fn that cuts any indexed `S` (R07.4.17).
+    fn range_struct(&self) -> Option<StructId> {
         let d = self.d;
-        let key = |s: StructId| {
-            (d.index_fns.iter()).any(|f| {
-                matches!(d.f(*f).params.first().map(|p| &p.ty), Some(Ty::Struct(k, ..)) if *k == s)
-            })
-        };
-        matches!(self.shallow(t), Ty::Struct(s, ..) if key(s))
+        (d.index_fns.iter()).find_map(|f| match (&d.f(*f).self_ty, &d.f(*f).params[..]) {
+            (Some(Ty::Param(_)), [p]) => match p.ty {
+                Ty::Struct(r, ..) => Some(r),
+                _ => None,
+            },
+            _ => None,
+        })
     }
     /// R07.4.5: a literal key into a view made by `s[r]` reads a key, so it must be proven one:
     /// inside the literal range the view was cut by. Anything else is E0305, as `w[0]` is meant
@@ -133,14 +138,46 @@ impl Cx<'_> {
             (h, t) => self.fits(&h, t),
         }
     }
+    /// The key `s[(.., c)]` wants: its product key with each range part a range over that
+    /// part's factor (R04.4.11).
+    pub(super) fn ranged_key(&mut self, s: &Ty, parts: &[ast::Expr]) -> Option<Ty> {
+        let ranged = |p: &ast::Expr| matches!(unparen(p).kind, ExprKind::Range { .. });
+        if !parts.iter().any(ranged) {
+            return None;
+        }
+        let k = self.key_of(s)?;
+        let Ty::Struct(t, fs, sets) = self.shallow(&k) else {
+            return None;
+        };
+        if self.d.tuples.get(&parts.len()) != Some(&t) || fs.len() != parts.len() {
+            return None;
+        }
+        let fs = (parts.iter().zip(fs))
+            .map(|(p, f)| {
+                if ranged(p) {
+                    self.range_over(f)
+                } else {
+                    Some(f)
+                }
+            })
+            .collect::<Option<Vec<_>>>()?;
+        Some(Ty::Struct(t, fs, sets))
+    }
+    /// `D`, when a bare `..` stands where a `Range<D>` is wanted: all of `D` (R04.4.11).
+    pub(super) fn whole_of(&self, want: Option<&Ty>) -> Option<Ty> {
+        let w = self.shallow(want?);
+        let Ty::Struct(_, a, _) = &w else {
+            return None;
+        };
+        let [d] = &a[..] else {
+            return None;
+        };
+        (self.range_over(d.clone()).as_ref() == Some(&w)).then(|| d.clone())
+    }
     /// The range type over `k` that the `@index` fns take, where a literal range indexes a
     /// source keyed by `k`, so a range of cuts there is the piece between them (R04.4.4).
     pub(super) fn range_over(&self, k: Ty) -> Option<Ty> {
-        let d = self.d;
-        (d.index_fns.iter()).find_map(|f| match d.f(*f).params.first().map(|p| &p.ty) {
-            Some(Ty::Struct(r, ..)) => Some(Ty::Struct(*r, vec![k.clone()], Vec::new())),
-            _ => None,
-        })
+        (self.range_struct()).map(|r| Ty::Struct(r, vec![k], Vec::new()))
     }
     /// The type of the cell `s[k]` reads, through `Indexed`.
     pub(super) fn cell_of(&mut self, s: &Ty) -> Option<Ty> {
@@ -184,9 +221,14 @@ impl Cx<'_> {
             _ => None,
         };
         let d = self.d;
+        let range = self.range_struct();
         let ends = |f: &FnId| {
             let ps = &d.f(*f).params;
-            ps.len() == arity && matches!(ps.first().map(|p| &p.ty), Some(Ty::Struct(..)))
+            let first = match ps.first().map(|p| &p.ty) {
+                Some(Ty::Struct(k, ..)) => Some(*k),
+                _ => None,
+            };
+            ps.len() == arity && first.is_some() && (arity > 1 || first == range)
         };
         let mut any = None;
         for &f in d.index_fns.iter().filter(|f| ends(f)) {

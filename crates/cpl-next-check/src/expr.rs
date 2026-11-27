@@ -1418,6 +1418,7 @@ impl<'a> Cx<'a> {
                 }
                 let want = match &super::index::unparen(&indices[0]).kind {
                     ExprKind::Range { .. } => (self.key_of(&b.ty)).and_then(|k| self.range_over(k)),
+                    ExprKind::Tuple(parts) => self.ranged_key(&b.ty, parts),
                     _ => None,
                 };
                 let i = self.expr(&indices[0], Some(want.as_ref().unwrap_or(&Ty::Int)));
@@ -1759,6 +1760,10 @@ impl<'a> Cx<'a> {
             } if lo.is_some() || hi.is_some() => {
                 let (lo, hi) = (lo.as_deref(), hi.as_deref());
                 self.range_value(lo, hi, *inclusive, step.as_deref(), want, span)
+            }
+            ExprKind::Range { step: None, .. } if self.whole_of(want).is_some() => {
+                let d = self.whole_of(want).unwrap_or(Ty::Error);
+                self.domain_value(d, span)
             }
             ExprKind::By { walk, step } => match &walk.kind {
                 ExprKind::Range {
