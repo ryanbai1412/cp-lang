@@ -204,6 +204,7 @@ core-03/ranged-return-traps.cp
 core-03/rb1-q30-const-range-store.cp
 core-03/rb1-q31-range-store-traps-checked.cp
 core-03/read-int-just-above-spare.cp
+core-03/read-rejects-spare.cp
 core-03/spare-value-overflow.cp
 core-03/store-in-range-fits.cp
 core-03/structs-holding-each-other-is-an-error.cp
@@ -824,6 +825,7 @@ next/n_lambda_04_context_fixes_params.cp
 next/n_lambda_04_recursive.cp
 next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
+next/n_read_01_an_int_past_int_traps_out_of_contract.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_02_field_traits.cp
 next/n_slice_01_range_gives_view.cp

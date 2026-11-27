@@ -158,7 +158,12 @@ static inline int64_t cpl_read() {
     errno = 0;
     char* end;
     long long x = strtoll(buf, &end, 10);
-    if (*end || end == buf || errno == ERANGE || x == LLONG_MIN) cpl_fail(CPL_BAD_INT_TOKEN);
+    if (*end || end == buf) cpl_fail(CPL_BAD_INT_TOKEN);
+    if (errno == ERANGE || x == LLONG_MIN) {
+        char msg[sizeof buf + 32];
+        snprintf(msg, sizeof msg, "`%s` does not fit in an `Int`", buf);
+        cpl_trap(cpl_faults[CPL_INT_PAST_INT][0], msg);
+    }
     return (int64_t)x;
 }
 // The caller's code handed to a generator or lender that calls itself: two words, not owning.

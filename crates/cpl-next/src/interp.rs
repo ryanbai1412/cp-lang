@@ -592,17 +592,30 @@ impl<'a> Machine<'a> {
                     _ => return broken("the code of a non-Char"),
                 }
             }
-            Intr::ReadInt => match self
-                .input
-                .next()
-                .and_then(|t| t.parse::<i64>().ok())
-                .filter(|v| *v != i64::MIN)
-            {
-                Some(i) => V::Int(i),
-                None => return trap(Fault::BadIntToken),
-            },
+            Intr::ReadInt => {
+                let t = self.input.next();
+                let t = t.as_deref().unwrap_or("");
+                match t.parse::<i64>().ok().filter(|v| *v != i64::MIN) {
+                    Some(i) => V::Int(i),
+                    // A whole number past `Int` is out of the contract, not a bad token (R10.2.6).
+                    None if whole(t) => {
+                        let msg = format!("`{t}` does not fit in an `Int`");
+                        return Err(Trap {
+                            msg,
+                            ..Fault::IntPastInt.into()
+                        });
+                    }
+                    None => return trap(Fault::BadIntToken),
+                }
+            }
         })
     }
+}
+
+/// An optional `-` and then only digits.
+fn whole(t: &str) -> bool {
+    let d = t.strip_prefix('-').unwrap_or(t);
+    !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit())
 }
 
 fn u64_op(op: Intr, a: V, b: V) -> R<V> {

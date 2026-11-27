@@ -68,7 +68,6 @@ core-03/range-field-niche.cp	wrong-reject	check: program:5:7: E0302: expected `U
 core-03/range-store-traps.cp	wrong-reject	check: program:3:19: E0302: expected `Array<$range0, 0..=9>`, found `Array<$range1, Int>`
 core-03/range-value-is-int-in-arithmetic.cp	wrong-reject	check: program:6:7: E0201: unknown name `max`
 core-03/rb1-q32-no-u8.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E0204: unknown type `U8`
-core-03/read-rejects-spare.cp	wrong-trap	wanted R0502 on line 4, got: trap: R0501: line 4: expected an integer in the input
 core-03/str-plus-eq-char-if.cp	wrong-reject	check: program:6:48: E0302: expected `Str`, found `Char`
 core-03/tag-byte-enum.cp	wrong-reject	check: program:7:13: E0302: expected `U64`, found `Int`
 core-03/window-plus-over-ranged-is-int.cp	wrong-reject	check: program:4:30: E0302: expected `Array<$range0, 0..=1000000000>`, found `Array<$range0, Int>`

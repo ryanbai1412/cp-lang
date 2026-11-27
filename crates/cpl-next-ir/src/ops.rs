@@ -21,6 +21,7 @@ pub enum Fault {
     KeyOutside,
     RangeCut,
     BadIntToken,
+    IntPastInt,
     StackExhausted,
     /// A `Check` statement: its code comes from its kind, its message from the IR.
     Check(CheckKind),
@@ -29,7 +30,7 @@ pub enum Fault {
 }
 
 /// The faults an operation raises by itself, in the order of the C++ runtime's trap table.
-pub const FAULTS: [Fault; 15] = [
+pub const FAULTS: [Fault; 16] = [
     Fault::Overflow,
     Fault::U64PastInt,
     Fault::CharPastAscii,
@@ -44,6 +45,7 @@ pub const FAULTS: [Fault; 15] = [
     Fault::KeyOutside,
     Fault::RangeCut,
     Fault::BadIntToken,
+    Fault::IntPastInt,
     Fault::StackExhausted,
 ];
 
@@ -70,6 +72,7 @@ impl Fault {
                 codes::INDEX_OUT_OF_RANGE
             }
             Fault::BadIntToken => codes::BAD_INPUT_TOKEN,
+            Fault::IntPastInt => codes::INPUT_OUT_OF_CONTRACT,
             Fault::StackExhausted => codes::STACK_EXHAUSTED,
             Fault::Check(k) => k.code(),
             Fault::Internal(_) => return INTERNAL,
@@ -93,6 +96,7 @@ impl Fault {
             Fault::KeyOutside => "key outside the sequence",
             Fault::RangeCut => "a cut of a range outside it",
             Fault::BadIntToken => "expected an integer in the input",
+            Fault::IntPastInt => "a whole number in the input does not fit in an `Int`",
             Fault::StackExhausted => "the stack ran out",
             Fault::Check(_) => "a check failed",
             Fault::Internal(rule) => rule,
