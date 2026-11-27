@@ -65,7 +65,7 @@ Beside its fns, lowering hands link two whole-program tables and the diagnostics
 no crate past lowering depends on `cpl-next-check`):
 
 ```rust
-struct SetAdds { params: Map<(FnId, Slot), SetTy>, calls: List<(FnRef, Slot)> }  // what `SetTy::AddedAt` resolves to
+struct SetAdds { params: Map<(FnId, Slot), SetTy>, calls: List<(FnRef, Slot)>, live: List<bool> }  // what `SetTy::AddedAt` resolves to
 struct Whole {
     domains: List<Dom>,        // by DomId, what a `Ty::Dom` names: its size and start variables, its fn
     globals: List<Global>,     // by GlobalId, what a `Place::Global` names: name, top-level or in a block
@@ -73,6 +73,14 @@ struct Whole {
 }
 enum DomValue { Len(DomId), Lo(DomId) }   // a run-time value a domain carries, threaded by link
 ```
+
+Each call passing a set gives it a `SetTy::AddedAt` member when its
+body is checked, numbered by the call's place in that body, so a body
+typed alone is final. `params` is each fn's summary: what its body adds
+to its set parameters, a call's `AddedAt` included. `live` says which
+calls' callees can add at all: a fixpoint over the summaries alone, no
+body checked again. Link fills each live `AddedAt` from the callee's
+summary per instance when it closes sets (2026-11-27).
 
 ```rust
 struct Deferred(Map<FnId, List<Msg>>)  // in msg.rs: a library fn reached only through a trait, said if an instance runs it
