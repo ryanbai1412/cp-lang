@@ -610,12 +610,13 @@ fn layer(
             continue;
         };
         d.structs[id.0].values = values;
-        d.structs[id.0].variants = (vs.into_iter())
+        let vs = (vs.into_iter())
             .filter_map(|v| match own[mi].get(&format!("{name}.{v}")) {
-                Some(Named::Struct(p)) => Some((v, *p)),
+                Some(Named::Struct(p)) => Some((d.syms.intern(&v), *p)),
                 _ => None,
             })
             .collect();
+        d.structs[id.0].variants = vs;
     }
     // The derived impls that read their struct's `@cache` fields, by the impl they are.
     let mut copying: HashSet<*const ast::Stmt> = HashSet::new();

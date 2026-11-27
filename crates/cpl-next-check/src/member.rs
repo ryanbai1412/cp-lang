@@ -819,7 +819,7 @@ impl<'a> Cx<'a> {
                 self.d.struct_named(self.module, n),
                 self.lookup(n).is_none(),
             ) {
-                if let Some(i) = (self.d.s(e).variants.iter()).position(|(v, _)| *v == name.text) {
+                if let Some(i) = self.d.variant(e, &name.text) {
                     self.no_targs(name, written_targs, span);
                     let mut pre = Vec::new();
                     let given: Vec<Ty> = (written.iter())

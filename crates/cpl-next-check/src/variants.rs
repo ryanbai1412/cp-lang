@@ -308,7 +308,7 @@ impl Cx<'_> {
         let Some(Ty::Struct(e, ..)) = want.map(|t| self.shallow(t)) else {
             return None;
         };
-        let i = (self.d.s(e).variants.iter()).position(|(v, _)| v == n)?;
+        let i = self.d.variant(e, n)?;
         (!self.nearer(n)).then_some((e, i))
     }
     pub(super) fn scoped_variant(&self, n: &str) -> Option<(StructId, usize)> {
@@ -324,9 +324,7 @@ impl Cx<'_> {
         let mut found: Vec<(StructId, usize)> =
             (self.d.names(self.module).into_iter().map(|(_, x)| x))
                 .filter_map(|x| match x {
-                    decls::Named::Struct(e) => {
-                        Some((e, (self.d.s(e).variants.iter()).position(|(v, _)| v == n)?))
-                    }
+                    decls::Named::Struct(e) => Some((e, self.d.variant(e, n)?)),
                     _ => None,
                 })
                 .collect();

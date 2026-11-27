@@ -233,7 +233,7 @@ impl Cx<'_> {
             PatternKind::Wildcard | PatternKind::Error => None,
             PatternKind::Name(n) => {
                 if let Some((e, _)) = self.enum_of(&v.ty) {
-                    if let Some(i) = self.d.s(e).variants.iter().position(|(m, _)| m == n) {
+                    if let Some(i) = self.d.variant(e, n) {
                         return Some(tag_is(v, i));
                     }
                 }
@@ -373,7 +373,7 @@ impl Cx<'_> {
                     self.mismatch(span, &format!("`{head}`"), &v.ty);
                     return None;
                 };
-                let Some(i) = self.d.s(e).variants.iter().position(|(n, _)| n == head) else {
+                let Some(i) = self.d.variant(e, head) else {
                     let en = self.d.s(e).name.clone();
                     let code = cpl_diag::codes::UNKNOWN_FIELD;
                     self.err(
@@ -664,7 +664,7 @@ impl Cx<'_> {
         match &pat.kind {
             PatternKind::Wildcard | PatternKind::Error | PatternKind::Domain(_) => Space::Any,
             PatternKind::Name(n) => match self.enum_of(t) {
-                Some((e, ts)) => match self.d.s(e).variants.iter().position(|(m, _)| m == n) {
+                Some((e, ts)) => match self.d.variant(e, n) {
                     Some(i) => {
                         let arity = self.variant_tys(e, &ts, i).1.len();
                         Space::Ctor(i, vec![Space::Any; arity])
@@ -728,7 +728,7 @@ impl Cx<'_> {
                 let Some((e, ts)) = self.enum_of(t) else {
                     return Space::Any;
                 };
-                match self.d.s(e).variants.iter().position(|(n, _)| n == head) {
+                match self.d.variant(e, head) {
                     Some(i) => {
                         let tys = self.variant_tys(e, &ts, i).1;
                         let parts = (tys.iter().enumerate())
@@ -754,7 +754,12 @@ impl Cx<'_> {
             let vs = &self.d.s(e).variants;
             return Some(
                 (0..vs.len())
-                    .map(|i| (vs[i].0.clone(), self.variant_tys(e, &ts, i).1))
+                    .map(|i| {
+                        (
+                            self.d.text(vs[i].0).to_string(),
+                            self.variant_tys(e, &ts, i).1,
+                        )
+                    })
                     .collect(),
             );
         }

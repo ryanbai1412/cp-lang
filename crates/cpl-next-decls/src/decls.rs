@@ -134,7 +134,7 @@ pub struct StructDecl {
     /// Its static `new`, which `T(args)` calls outside its own body (R02.6.3).
     pub ctor: Option<FnId>,
     /// An enum's variants, each with the struct of its payload, named `Enum.Variant` (R02.7).
-    pub variants: Vec<(String, StructId)>,
+    pub variants: Vec<(Sym, StructId)>,
     /// What its fields use that the slice does not build, said only when the program reaches it.
     pub errors: Vec<Msg>,
     /// An enum's `Int` of each variant: its written value (`Neg = -1`), else its place from 0.
@@ -606,6 +606,11 @@ impl Decls {
         self.syms.text(s)
     }
     /// The member `name` of a struct's, trait's or impl's members.
+    /// Which of enum `e`'s variants is named `name`.
+    pub fn variant(&self, e: StructId, name: &str) -> Option<usize> {
+        let name = self.sym(name)?;
+        (self.structs[e.0].variants.iter()).position(|(v, _)| *v == name)
+    }
     pub fn member(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
         members.get(&self.sym(name)?).copied()
     }
