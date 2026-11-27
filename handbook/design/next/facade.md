@@ -224,6 +224,58 @@ struct Source { module: String, span: Span, line: u32 }
 - `Place` becomes `{ site: StmtId, visit }`, and `find` aligns by it,
   which is contract 8's `align` by `At`.
 
+## Running
+
+A run is contract 0's `RunInput` and contract 7's `Outcome`, the same
+types on the reference interpreter and the engine (the C++ gets its
+limits from the judge profile), so the VM and the C++ agree. Audit S10;
+`next_run_api_unbuilt` counts each contract member not built yet.
+
+```rust
+pub struct RunInput { entry: Entry, io: Io, args: Vec<String>, choices: Choices, limits: Limits, cold_caches: bool }
+pub enum Entry { Program, Call { f: Item, args: Vec<Value> } }
+pub enum Io { Fixed(Vec<u8>), Stream(Box<dyn Read + Send>), Peer { program: Snapshot, input: Vec<u8> }, Transcript(Vec<Turn>) }
+pub struct Limits { time: Option<Duration>, memory: u64, stack: u64, output: u64, peer_turns: u64 }
+pub enum Outcome {
+    Finished { output: Vec<u8>, exit: i32, used: Usage },
+    Failed   { check: Code, at: StmtId, origin: Vec<Frame>, message: String, output_so_far: Vec<u8> },
+    Limit    { which: Limit, estimated: bool },
+    Stalled  { waiting_on: Side },
+    CompilerBug { instance: InstanceId, detail: String },
+}
+fn run(&self, input: RunInput, stop: &Stop, events: &mut dyn Sink) -> Outcome
+fn entries(&self) -> Vec<(Role, Item)>        // Role: Test, Alt, Check, Interactor
+```
+
+- **Entry roots.** `@test`, `@alt`, `@check` and an interactor are
+  roles decls records on a fn, so `entries()` reads them through
+  `Signatures`, never by name. Running one is `Entry::Call` of its item;
+  an interactor runs as the `Peer` of the solution.
+- **I/O is pulled.** The engine's `ops::Input` asks its source for bytes
+  when its buffer runs dry. `Fixed` is one piece. `Stream` reads a
+  terminal or pipe as the program reads, which contract 0 lacks; it is
+  added there in the same landing. `Peer` runs the other program on a
+  thread of its own with a pipe each way. A read sends the reader's
+  pending output to its peer first; both sides reading is `Stalled`, and
+  each turn counts against `peer_turns`. `Transcript` replays a recorded
+  exchange.
+- **Limits are the snapshot's, not constants.** Time is a deadline that
+  the step counter checks, beside `Stop`'s cancel. Memory is the live
+  heap words; it replaces `ops::MAX_STORAGE` (audit S16). Stack is the
+  frame words; it replaces the engine's frame-count constant. Output is
+  the bytes written. Each limit hit is `Outcome::Limit`, never a trap.
+- **Frames at a failure.** `Failed::origin` is the calls the check left,
+  innermost first, each a `Frame { call: Call, site: StmtId, locals }`,
+  so the debugger and `explain` show locals at a trap. A trace keeps a
+  window of the last events (a ring buffer the `Request` sizes) when the
+  whole stream is too long; lane H's `Recording` holds it.
+
+Landings, each building its piece whole: (1) the types in
+`cpl-next-ir::run`, with `Fixed`/`Stream` and every limit on both the
+interpreter and the engine; (2) `Peer`, `Transcript` and `Stalled`;
+(3) `Entry::Call` and `entries()`; (4) `Session::run` on the facade, and
+the cpl-next CLI and harness move onto it.
+
 ## Must never
 
 - A tool of the new pipeline names `compile`, `units`, `Compiled`,
