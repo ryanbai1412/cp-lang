@@ -557,6 +557,31 @@ class LandTest(unittest.TestCase):
             self.assertEqual(git(ours, "show", "origin/main:pkg.txt") if code == 0 else
                              git(ours, "ls-tree", "origin/main", "pkg.txt"), "" if code else slices)
 
+    def test_the_traits_gate_refuses_only_problem_lines_main_doesnt_have(self):
+        ours = self.clone("ours")
+        (ours / "scripts" / "spec-gate.py").write_text(
+            "import pathlib, sys\n"
+            "names = (pathlib.Path(__file__).resolve().parents[1] / 'std' / 'gaps.txt').read_text().split()\n"
+            "for n in names: print(f'spec-gate traits: traits.toml: no case: {n} (write one)')\n"
+            "sys.exit(1 if names else 0)\n")
+        (ours / "std").mkdir()
+        (ours / "std" / "gaps.txt").write_text("Main/A/a\n")
+        self.commit(ours, "a traits gate main fails")
+        git(ours, "push", "-q", "origin", "HEAD:main")
+        # Swapping main's problem for another still refuses: lines are compared, not counts.
+        for gaps, code in (("Mine/B/b\n", 1), ("Main/A/a\nMine/B/b\n", 1), ("Main/A/a\n", 0)):
+            git(ours, "reset", "-q", "--hard", "origin/main")
+            (ours / "std" / "gaps.txt").write_text(gaps)
+            (ours / "std" / "x.cp").write_text(gaps)
+            self.commit(ours, "ours")
+            r = self.land(ours)
+            self.assertEqual(r.returncode, code, r.stderr)
+            self.assertNotIn("no case: Main/A/a", r.stderr)
+            if code:
+                self.assertIn("no case: Mine/B/b", r.stderr)
+            else:
+                self.assertIn("1 problems, all already on main", r.stderr)
+
     def test_land_runs_the_slices_the_rebased_tips_affected_py_selects(self):
         # fc73818ec was committed before main had the silent-unknowns slice, so its hook
         # never chose it and land ran nothing: land selects again at the rebased tip.
