@@ -20,7 +20,6 @@ pub enum Unbuilt {
     NestedFn {
         what: String,
     },
-    FnValueFixedSet,
     FnValueSetsDiffer,
     MutArgToFnValue,
     FnValueInVariant,
@@ -181,10 +180,6 @@ impl fmt::Display for Unbuilt {
             ),
             LambdaParam => write!(f, "unsupported lambda parameter"),
             NestedFn { what } => write!(f, "a nested fn with {what}"),
-            FnValueFixedSet => write!(
-                f,
-                "this function value came from a call, so the functions it can hold are fixed there; a new one cannot be added here"
-            ),
             FnValueSetsDiffer => write!(f, "these two function values have different fixed sets"),
             MutArgToFnValue => write!(f, "a `mut` argument to a function value is not built yet"),
             FnValueInVariant => write!(f, "a function value in a variant's payload"),

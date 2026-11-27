@@ -50,19 +50,32 @@ pub enum Ty {
     Error,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SetTy {
     Var(usize),
     /// The i-th implicit set parameter of the enclosing fn or struct.
     Param(usize),
-    /// "Whatever set f<..> returns": resolved per instance.
-    RetOf(Box<FnRef>, usize),
     /// "Whatever the fn a call reaches adds to its `slot`-th set argument": `call_adds[i]` is
-    /// that call and slot. Resolved per instance, as `RetOf` is.
+    /// that call and slot, a fn's result slots after its own sets. Resolved per instance.
     AddedAt(usize),
-    /// In a signature: the k-th function type of the result. Callers see `RetOf(f, k)`.
+    /// In a signature: the k-th function type of the result. A call passes its set for it after
+    /// the fn's own, so the body sees `Param(n_sets + k)`.
     RetSlot(usize),
     Closed(Vec<Member>),
+}
+
+/// As derived, but a set parameter prints as `SetParam(i)`, apart from a type's `Param(i)`, so
+/// the parameters a fn's IR names can be read off its text.
+impl std::fmt::Debug for SetTy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SetTy::Var(v) => f.debug_tuple("Var").field(v).finish(),
+            SetTy::Param(i) => f.debug_tuple("SetParam").field(i).finish(),
+            SetTy::AddedAt(c) => f.debug_tuple("AddedAt").field(c).finish(),
+            SetTy::RetSlot(k) => f.debug_tuple("RetSlot").field(k).finish(),
+            SetTy::Closed(ms) => f.debug_tuple("Closed").field(ms).finish(),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -130,7 +143,6 @@ impl Subst<'_> {
     pub fn set(&self, s: &SetTy) -> SetTy {
         match s {
             SetTy::Param(i) => self.sets.get(*i).cloned().unwrap_or(SetTy::Closed(vec![])),
-            SetTy::RetOf(f, k) => SetTy::RetOf(Box::new(self.fnref(f)), *k),
             SetTy::RetSlot(k) => SetTy::RetSlot(*k),
             // Its call is resolved where it sits, under that fn's own parameters.
             SetTy::AddedAt(c) => SetTy::AddedAt(*c),

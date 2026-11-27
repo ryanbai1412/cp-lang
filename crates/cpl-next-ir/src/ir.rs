@@ -289,6 +289,8 @@ pub enum Target<T> {
         args: Vec<T>,
         method: String,
         self_ty: T,
+        /// The call's result type, whose function types carry the sets it passes the impl.
+        ret: T,
     },
     /// Instance IR: the instance to call.
     Inst(usize),

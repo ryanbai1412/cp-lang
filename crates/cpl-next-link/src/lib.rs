@@ -26,8 +26,9 @@ struct Link<'a> {
     index: HashMap<InstKey, usize>,
     structs: HashMap<CTy, Vec<CTy>>,
     sums: HashMap<CTy, Vec<CTy>>,
-    ret_busy: BTreeSet<(InstKey, usize)>,
     add_busy: BTreeSet<usize>,
+    /// The lambdas whose named sets are being read, so one met inside itself keeps all.
+    named_busy: std::collections::HashSet<FuncKey>,
     named: HashMap<FuncKey, BTreeSet<usize>>,
     errors: Vec<Msg>,
     globals: Vec<CTy>,
@@ -90,8 +91,8 @@ pub fn link(
         index: HashMap::new(),
         structs: HashMap::new(),
         sums: HashMap::new(),
-        ret_busy: BTreeSet::new(),
         add_busy: BTreeSet::new(),
+        named_busy: std::collections::HashSet::new(),
         named: HashMap::new(),
         errors: Vec::new(),
         globals: Vec::new(),
@@ -333,8 +334,7 @@ impl Link<'_> {
             sets: f.sets.iter().map(|s| self.set(s, env)).collect(),
         }
     }
-    /// The indices of type or set parameters a fn's generic IR names anywhere. An upper bound
-    /// (type and set parameters print alike), which is the safe direction.
+    /// The set parameters a fn's generic IR names anywhere.
     fn params_named(&mut self, k: FuncKey) -> BTreeSet<usize> {
         if let Some(u) = self.named.get(&k) {
             return u.clone();
@@ -344,8 +344,11 @@ impl Link<'_> {
             .get(&k)
             .map(|f| format!("{:?} {:?} {:?}", f.locals, f.ret, f.body))
             .unwrap_or_default();
+        self.named_busy.insert(k.clone());
+        let text = self.kept_text(&text);
+        self.named_busy.remove(&k);
         let mut u = BTreeSet::new();
-        for part in text.split("Param(").skip(1) {
+        for part in text.split("SetParam(").skip(1) {
             let digits: String = part.chars().take_while(|c| c.is_ascii_digit()).collect();
             if let Ok(i) = digits.parse() {
                 u.insert(i);
@@ -353,6 +356,43 @@ impl Link<'_> {
         }
         self.named.insert(k, u.clone());
         u
+    }
+    /// `text` with each lambda's set arguments kept only where that lambda names them: a set
+    /// a nested closure is given but never uses is no set the fn around it names.
+    fn kept_text(&mut self, text: &str) -> String {
+        const AT: &str = "Lambda(LambdaId(";
+        let mut out = String::new();
+        let mut rest = text;
+        while let Some(p) = rest.find(AT) {
+            let (head, tail) = rest.split_at(p + AT.len());
+            out.push_str(head);
+            let digits: String = tail.chars().take_while(char::is_ascii_digit).collect();
+            let lists = (tail.find('['))
+                .and_then(|a| Some((a, closing(tail, a)?)))
+                .and_then(|(a, b)| {
+                    let c = b + tail[b..].find('[')?;
+                    Some((a, c, closing(tail, c)?))
+                });
+            let (Ok(id), Some((_, c, d))) = (digits.parse::<usize>(), lists) else {
+                rest = tail;
+                continue;
+            };
+            let key = FuncKey::Lambda(LambdaId(id));
+            let used = (!self.named_busy.contains(&key)).then(|| self.params_named(key));
+            out.push_str(&self.kept_text(&tail[..=c]));
+            let kept: Vec<String> = (top_level(&tail[c + 1..d]).into_iter().enumerate())
+                .map(
+                    |(i, el)| match used.as_ref().is_none_or(|u| u.contains(&i)) {
+                        true => self.kept_text(el),
+                        false => "_".to_string(),
+                    },
+                )
+                .collect();
+            out.push_str(&kept.join(", "));
+            rest = &tail[d..];
+        }
+        out.push_str(rest);
+        out
     }
     fn clo(&mut self, c: &CloRef, env: &Env) -> InstKey {
         match c {
@@ -409,10 +449,29 @@ impl Link<'_> {
             Some(cpl_next_decls::decls::Owner::Trait(tr)) => {
                 let (st, args) = f.targs.split_first()?;
                 let method = self.d.f(f.decl).name.clone();
-                self.trait_key(&tr, args, &method, st, env)
+                let mut k = self.trait_key(&tr, args, &method, st, env)?;
+                let base = self.d.f(f.decl).n_sets;
+                let ret = (f.sets.iter().skip(base))
+                    .map(|s| self.set(s, env))
+                    .collect();
+                self.with_ret_sets(&mut k, ret);
+                Some(k)
             }
             _ => Some(self.fnref(f, env)),
         }
+    }
+    /// An impl's fn takes the sets its caller passes for its result after the impl's own.
+    fn with_ret_sets(&self, k: &mut InstKey, ret: Vec<CSet>) {
+        let FuncKey::Decl(g) = k.func else {
+            return;
+        };
+        let fd = self.d.f(g);
+        if fd.n_ret_sets == 0 {
+            return;
+        }
+        k.sets.resize(fd.n_sets, CSet::default());
+        k.sets.extend(ret.into_iter().take(fd.n_ret_sets));
+        k.sets.resize(fd.n_sets + fd.n_ret_sets, CSet::default());
     }
     fn set_into(&mut self, s: &SetTy, env: &Env, out: &mut BTreeSet<InstKey>) {
         match s {
@@ -435,6 +494,12 @@ impl Link<'_> {
                 let (f, slot) = self.typed.call_adds[*c].clone();
                 if let Some(k) = self.callee_key(&f, env) {
                     if let FuncKey::Decl(decl) = k.func {
+                        // A trait's result slot is the impl's, after the impl's own sets.
+                        let base = self.d.f(f.decl).n_sets;
+                        let slot = match decl != f.decl && slot >= base {
+                            true => self.d.f(decl).n_sets + slot - base,
+                            false => slot,
+                        };
                         if let Some(s) = self.typed.param_adds.get(&(decl, slot)).cloned() {
                             let inner = Env {
                                 targs: &k.targs,
@@ -445,26 +510,6 @@ impl Link<'_> {
                     }
                 }
                 self.add_busy.remove(c);
-            }
-            SetTy::RetOf(f, slot) => {
-                // A trait's fn returns what the impl's fn the type picks returns.
-                let Some(k) = self.callee_key(f, env) else {
-                    return;
-                };
-                let FuncKey::Decl(decl) = k.func else {
-                    return;
-                };
-                // A fn that returns what it itself returns adds nothing.
-                if self.ret_busy.insert((k.clone(), *slot)) {
-                    if let Some(rs) = self.typed.ret_sets.get(&(decl, *slot)) {
-                        let inner = Env {
-                            targs: &k.targs,
-                            sets: &k.sets,
-                        };
-                        self.set_into(&rs.clone(), &inner, out);
-                    }
-                    self.ret_busy.remove(&(k, *slot));
-                }
             }
             SetTy::RetSlot(_) => {}
             SetTy::Var(_) => {}
@@ -561,7 +606,20 @@ impl Link<'_> {
                 args,
                 method,
                 self_ty,
-            } => self.trait_key(tr, args, method, self_ty, env),
+                ret,
+            } => {
+                let mut k = self.trait_key(tr, args, method, self_ty, env)?;
+                if let FuncKey::Decl(g) = k.func {
+                    let mut out = vec![None; self.d.f(g).n_ret_sets];
+                    let c = self.ty(ret, env);
+                    ret_sets_in(&self.d.f(g).ret, &c, &mut out);
+                    self.with_ret_sets(
+                        &mut k,
+                        out.into_iter().map(Option::unwrap_or_default).collect(),
+                    );
+                }
+                Some(k)
+            }
             Target::Inst(i) => Some(self.keys[*i].clone()),
             Target::Value(_) => None,
         }
@@ -1613,4 +1671,74 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
         (_, CTy::Lent(t)) => fit_cty(p, t, binds),
         _ => false,
     }
+}
+
+/// The sets a value of type `c` holds where `t`, a fn's declared result, has its result slots.
+fn ret_sets_in(t: &Ty, c: &CTy, out: &mut [Option<CSet>]) {
+    let mut put = |s: &SetTy, cs: &CSet| {
+        if let SetTy::RetSlot(k) = s {
+            if let Some(o) = out.get_mut(*k) {
+                *o = Some(cs.clone());
+            }
+        }
+    };
+    match (t, c) {
+        (Ty::Fn(_, _, s), CTy::Set(cs)) => put(s, cs),
+        (Ty::Struct(_, ts, ss), CTy::Struct(_, cs, css)) => {
+            ss.iter().zip(css).for_each(|(s, cs)| put(s, cs));
+            for (t, c) in ts.iter().zip(cs) {
+                ret_sets_in(t, c, out);
+            }
+        }
+        (Ty::Raw(t), CTy::Raw(c)) | (Ty::Ref(t), CTy::Ref(c)) => ret_sets_in(t, c, out),
+        (t, CTy::Lent(c)) => ret_sets_in(t, c, out),
+        _ => {}
+    }
+}
+
+/// The index of the bracket closing the one at `open` in a value's debug text.
+fn closing(s: &str, open: usize) -> Option<usize> {
+    let (mut depth, mut quoted, mut escaped) = (0usize, false, false);
+    for (i, b) in s.bytes().enumerate().skip(open) {
+        match (quoted, b) {
+            (true, _) if escaped => escaped = false,
+            (true, b'\\') => escaped = true,
+            (_, b'"') => quoted = !quoted,
+            (true, _) => {}
+            (false, b'[' | b'(' | b'{') => depth += 1,
+            (false, b']' | b')' | b'}') => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// The elements of a debug-printed list's inside, split at its top-level commas.
+fn top_level(s: &str) -> Vec<&str> {
+    let (mut out, mut from) = (Vec::new(), 0);
+    let (mut depth, mut quoted, mut escaped) = (0usize, false, false);
+    for (i, b) in s.bytes().enumerate() {
+        match (quoted, b) {
+            (true, _) if escaped => escaped = false,
+            (true, b'\\') => escaped = true,
+            (_, b'"') => quoted = !quoted,
+            (true, _) => {}
+            (false, b'[' | b'(' | b'{') => depth += 1,
+            (false, b']' | b')' | b'}') => depth = depth.saturating_sub(1),
+            (false, b',') if depth == 0 => {
+                out.push(&s[from..i]);
+                from = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if !s.trim().is_empty() {
+        out.push(&s[from..]);
+    }
+    out
 }

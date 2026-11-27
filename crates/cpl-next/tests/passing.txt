@@ -1430,6 +1430,7 @@ next/n_record_02_field_traits.cp
 next/n_scope_01_param_shadows_domain.cp
 next/n_set_01_closure_added_through_mut_param.cp
 next/n_set_02_closure_stored_in_mut_param_field.cp
+next/n_set_03_call_result_set_takes_more.cp
 next/n_set_ordered.cp
 next/n_slice_01_range_gives_view.cp
 next/n_slice_02_range_outside_traps.cp

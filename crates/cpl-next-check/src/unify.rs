@@ -163,7 +163,6 @@ impl<'a> Cx<'a> {
                 self.zonking.borrow_mut().truncate(mark);
                 SetTy::Closed(out)
             }
-            SetTy::RetOf(f, k) => SetTy::RetOf(Box::new(self.zonk_fnref(&f)), k),
             SetTy::Closed(ms) => SetTy::Closed(ms),
             p => p,
         }
@@ -186,6 +185,14 @@ impl<'a> Cx<'a> {
                 let empty = matches!(&self.sets[x], SetVar::Root(ms) if ms.is_empty());
                 if empty {
                     self.sets[x] = SetVar::Bound(other);
+                } else if let (SetTy::Param(j), Some(g)) = (&other, self.decl) {
+                    // The fn's own set parameter, which each call passes: the variable's members
+                    // are what the fn adds to it.
+                    let j = *j;
+                    let was = std::mem::replace(&mut self.sets[x], SetVar::Bound(other));
+                    if let SetVar::Root(ms) = was {
+                        self.param_adds.entry((g, j)).or_default().extend(ms);
+                    }
                 } else if let SetVar::Root(ms) = &mut self.sets[x] {
                     ms.push(Member::Sub(other));
                 }
@@ -315,39 +322,40 @@ impl<'a> Cx<'a> {
             ),
         }
     }
-    /// The result type of a call, with "whatever f returns" for a function-value result.
+    /// The result type of a call: its function types hold the sets the call passes for them.
     pub(super) fn ret_ty(&mut self, f: &FnRef) -> Ty {
         let ret = self.d.f(f.decl).ret.clone();
         self.result_of(f, &ret)
     }
-    /// `t`, a type in `f`'s result (what it returns or yields), as one call of `f` gives it.
+    /// `t`, a type in `f`'s result (what it returns or yields), as one call of `f` gives it: its
+    /// k-th result slot is the set the call passes after `f`'s own sets.
     pub(super) fn result_of(&mut self, f: &FnRef, t: &Ty) -> Ty {
         let sub = Subst {
             tys: &f.targs,
             sets: &f.sets,
         };
-        // A call to the fn being checked uses its own result sets: recursion does not get a second copy.
-        let own = self.ret_sets.clone();
-        let me = self.decl;
-        let t = map_slots(&sub.ty(t), &|k| {
-            if me == Some(f.decl) {
-                own[&(f.decl, k)].clone()
-            } else {
-                SetTy::RetOf(Box::new(f.clone()), k)
-            }
-        });
+        let n = self.d.f(f.decl).n_sets;
+        let at = |k| f.sets.get(n + k).cloned();
+        let t = map_slots(&sub.ty(t), &|k| at(k).unwrap_or(SetTy::Closed(Vec::new())));
         self.fresh_sets(&t)
     }
     /// What trait fn `m` returns at `Self` and the trait's arguments `tys`: its fns are the ones
     /// the impl the type picks returns.
     pub(super) fn trait_ret(&mut self, m: FnId, tys: Vec<Ty>) -> Ty {
+        let fd = self.d.f(m);
+        let sets = (0..fd.n_sets + fd.n_ret_sets)
+            .map(|_| self.new_set())
+            .collect();
         let f = FnRef {
             decl: m,
             targs: tys,
-            sets: Vec::new(),
+            sets,
             ctx: 0,
         };
-        let ret = self.d.f(m).ret.clone();
+        if fd.n_ret_sets > 0 {
+            self.set_calls.push((f.clone(), self.decl));
+        }
+        let ret = fd.ret.clone();
         self.result_of(&f, &ret)
     }
     /// `T` when `t` is `?T`.
@@ -638,7 +646,10 @@ impl<'a> Cx<'a> {
                             self.param_adds.entry((f, i)).or_default().push(m);
                         }
                     }
-                    _ => self.err(span, Unbuilt::FnValueFixedSet),
+                    _ => self.err(
+                        span,
+                        Msg::internal("a function value is put in a set no fn or call owns"),
+                    ),
                 }
                 TExpr {
                     kind: TK::Inject(Box::new(e)),
@@ -684,6 +695,17 @@ impl<'a> Cx<'a> {
                         self.unify_set(&a, &b);
                         e
                     }
+                    // Into the fn's own set parameter, which each call passes: the fn adds `a`.
+                    (_, SetTy::Param(j)) if self.decl.is_some() => {
+                        let g = self.decl.unwrap_or(FnId(0));
+                        let m = Member::Sub(a.clone());
+                        self.param_adds.entry((g, *j)).or_default().push(m);
+                        TExpr {
+                            kind: TK::Widen(Box::new(e)),
+                            ty: want_s,
+                            span,
+                        }
+                    }
                     _ => {
                         self.err(span, Unbuilt::FnValueSetsDiffer);
                         e
@@ -697,7 +719,7 @@ impl<'a> Cx<'a> {
                         let (a, b) = (self.shallow_set(a), self.shallow_set(b));
                         a != b
                             && (self.joining || !matches!(a, SetTy::Var(_)))
-                            && matches!(b, SetTy::Var(_))
+                            && matches!(b, SetTy::Var(_) | SetTy::Param(_))
                     }) =>
             {
                 for (x, y) in t1.iter().zip(t2) {

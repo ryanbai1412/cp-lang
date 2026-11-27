@@ -827,16 +827,6 @@ impl Cx<'_> {
                     }
                 }
             }
-            SetTy::RetOf(f, k) => {
-                if let Some(rs) = self.t.ret_sets.get(&(f.decl, *k)) {
-                    let rs = Subst {
-                        tys: &f.targs,
-                        sets: &f.sets,
-                    }
-                    .set(rs);
-                    out.add(&self.set_fx(&rs, depth + 1));
-                }
-            }
             SetTy::AddedAt(c) => {
                 if let Some((f, k)) = self.t.call_adds.get(*c) {
                     if let Some(s) = self.t.param_adds.get(&(f.decl, *k)) {

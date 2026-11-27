@@ -449,8 +449,13 @@ impl<'a> Cx<'a> {
             targs.push(self.new_ty());
         }
         let mut sets = given_sets;
-        while sets.len() < f.n_sets {
-            sets.push(self.new_set());
+        // A fn's call of itself passes its own result sets: recursion gets no second copy.
+        while sets.len() < f.n_sets + f.n_ret_sets {
+            let i = sets.len();
+            sets.push(match self.decl == Some(decl) && i >= f.n_sets {
+                true => SetTy::Param(i),
+                false => self.new_set(),
+            });
         }
         let r = FnRef {
             decl,

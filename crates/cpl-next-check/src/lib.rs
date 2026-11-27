@@ -259,8 +259,6 @@ pub struct Typed {
     pub globals: Vec<Local>,
     pub main: Vec<TStmt>,
     pub lambdas: Vec<LambdaInfo>,
-    /// The set a fn returns, for fns whose result is a function value.
-    pub ret_sets: HashMap<(FnId, usize), SetTy>,
     /// The closures a fn's body adds to its i-th set parameter, a callee's adds included.
     pub param_adds: HashMap<(FnId, usize), SetTy>,
     /// Each call whose callee adds to a set argument, and that argument's slot.
@@ -297,7 +295,6 @@ struct Cx<'a> {
     lambdas: Vec<LambdaInfo>,
     globals: Vec<Local>,
     global_names: HashMap<String, LocalId>,
-    ret_sets: HashMap<(FnId, usize), SetTy>,
     param_adds: HashMap<(FnId, usize), Vec<Member>>,
     /// Every fn reference with set arguments, and the fn it sits in.
     set_calls: Vec<(FnRef, Option<FnId>)>,
@@ -391,7 +388,6 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
         lambdas: Vec::new(),
         globals: Vec::new(),
         global_names: HashMap::new(),
-        ret_sets: HashMap::new(),
         param_adds: HashMap::new(),
         set_calls: Vec::new(),
         // A top-level domain's place is kept for it until its statement runs.
@@ -436,13 +432,6 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
         const_busy: vec![false; d.consts.len()],
         const_init: Vec::new(),
     };
-    // The set each fn returns is one variable per declaration, filled as bodies are checked.
-    for (id, f) in d.fns.iter().enumerate() {
-        for k in 0..f.n_ret_sets {
-            let v = cx.new_set();
-            cx.ret_sets.insert((FnId(id), k), v);
-        }
-    }
     for (at, code, msg) in &d.misdeclared {
         cx.errors
             .push(Msg::at(at.clone(), Msg::verdict(*code, msg.clone())));
@@ -664,14 +653,15 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
             (f, k)
         })
         .collect();
+    // Each through a variable, so its closures' own types are written out as any set's are.
     let param_adds = (cx.param_adds.clone().into_iter())
-        .map(|(k, ms)| (k, cx.zonk_set(&SetTy::Closed(ms))))
-        .collect();
-    let ret_sets = cx
-        .ret_sets
-        .clone()
-        .into_iter()
-        .map(|(k, v)| (k, cx.zonk_set(&v)))
+        .map(|(k, ms)| {
+            let v = cx.new_set();
+            if let SetTy::Var(i) = v {
+                cx.sets[i] = SetVar::Root(ms);
+            }
+            (k, cx.zonk_set(&v))
+        })
         .collect();
     if cx.domains.iter().any(|d| d.name.is_empty()) {
         cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
@@ -686,7 +676,6 @@ pub fn check(d: &Decls, main: &[(ItemId, ast::Stmt)], src: &crate::modules::Load
         globals,
         main: main_z,
         lambdas,
-        ret_sets,
         param_adds,
         call_adds,
         errors: cx.errors,
@@ -786,8 +775,13 @@ impl<'a> Cx<'a> {
         loop {
             let mut changed = false;
             for (ci, (f, caller)) in calls.iter().enumerate() {
+                let fd = self.d.f(f.decl);
+                // A trait's fn's impls are known per instance: each may add to the result.
+                let by_impl = matches!(fd.owner, Some(Owner::Trait(_)));
                 for (slot, s) in f.sets.iter().enumerate() {
-                    if !self.param_adds.contains_key(&(f.decl, slot)) || !done.insert((ci, slot)) {
+                    let adds = (by_impl && slot >= fd.n_sets)
+                        || self.param_adds.contains_key(&(f.decl, slot));
+                    if !adds || !done.insert((ci, slot)) {
                         continue;
                     }
                     changed = true;
@@ -861,7 +855,8 @@ impl<'a> Cx<'a> {
         self.module = f.module;
         let top_doms = self.doms.clone();
         self.generics = f.generics.clone();
-        self.n_sets = f.n_sets;
+        // A fn's result slots are set parameters after its own: each call passes its sets.
+        self.n_sets = f.n_sets + f.n_ret_sets;
         self.locals = Vec::new();
         self.scopes = vec![HashMap::new()];
         self.item = f.item.clone();
@@ -877,10 +872,9 @@ impl<'a> Cx<'a> {
             let ty = self.fresh_sets(&p.ty);
             params.push(self.add_local(&p.name, ty));
         }
-        let slots = self.ret_sets.clone();
-        self.region =
-            (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| slots[&(id, k)].clone())));
-        self.ret = map_slots(&f.ret, &|k| slots[&(id, k)].clone());
+        let n = f.n_sets;
+        self.region = (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| SetTy::Param(n + k))));
+        self.ret = map_slots(&f.ret, &|k| SetTy::Param(n + k));
         let ret = self.ret.clone();
         // A library fn refused as declared (a decorator the slice lacks) is that refusal: its
         // body, written for the meaning the slice does not build, is not checked.

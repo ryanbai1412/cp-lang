@@ -667,6 +667,7 @@ impl Lw<'_> {
                         args: tr.args.clone(),
                         method: method.clone(),
                         self_ty,
+                        ret: e.ty.clone(),
                     },
                     a,
                     site,
@@ -1256,6 +1257,7 @@ impl Lw<'_> {
                         args: tr.args.clone(),
                         method: method.clone(),
                         self_ty: r.map_or(Ty::Error, |r| self.self_ty(r, &a)),
+                        ret: Ty::Unit,
                     },
                 };
                 out.push(Stmt::Region {
