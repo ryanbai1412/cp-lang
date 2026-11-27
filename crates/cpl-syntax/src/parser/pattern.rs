@@ -46,9 +46,6 @@ impl<'a> Parser<'a> {
             }
             T::Ident if self.text().starts_with(|c: char| c.is_ascii_uppercase()) => {
                 let mut path = vec![self.name()];
-                if path[0].text == "Some" && self.at(T::LParen) {
-                    path[0].text = "some".into();
-                }
                 while self.at(T::Dot) && self.peek_n(1) == T::Ident {
                     self.bump();
                     path.push(self.name());

@@ -492,11 +492,11 @@ fn same(a: &Value, b: &Value) -> bool {
 }
 
 pub(crate) fn is_builtin(name: &str) -> bool {
-    matches!(name, "min" | "max" | "abs" | "gcd" | "some")
+    matches!(name, "min" | "max" | "abs" | "gcd" | "Some")
 }
 
 fn builtin(name: &str, args: &[Value]) -> Result<Value, Trap> {
-    if name == "some" && args.len() == 1 {
+    if name == "Some" && args.len() == 1 {
         return Ok(args[0].clone());
     }
     let mut ints = Vec::with_capacity(args.len());

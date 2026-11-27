@@ -62,7 +62,7 @@ impl Checker<'_> {
             *f == name.text
                 && matches!(kind, crate::PreludeKind::Value | crate::PreludeKind::Std(_))
         });
-        let takes_value = !["read", "flush", "rand", "some"]
+        let takes_value = !["read", "flush", "rand", "Some"]
             .iter()
             .any(|r| name.text.starts_with(r));
         if twin.is_some() || !free || !takes_value {

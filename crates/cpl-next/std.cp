@@ -23,7 +23,7 @@ use std.list.{List, Array, Str}
 pub use std.list.{List, Array, Str, yes}
 use std.optional.{Optional}
 /// `?T` and `Some(v)` every module names unimported (R02.4).
-pub use std.optional.{Optional, some}
+pub use std.optional.{Optional, Some}
 use std.tuple.{Tuple1, Tuple2, Tuple3, Tuple4}
 /// Tuples every module names unimported (R02.5).
 pub use std.tuple.{Tuple1, Tuple2, Tuple3, Tuple4}

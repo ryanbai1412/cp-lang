@@ -6,7 +6,7 @@
 // model: slice_ends
 // model: sub_range
 // model: sub_range_ends
-// model: some
+// model: Some
 // `lo..hi by st` against a list of its values built by a loop, and `xs[a..b]`, `xs[a..]`,
 // `xs[..b]`, `xs[..=b]` of a list and `q[a..b]`, `q[a..]`, `q[..=b]` of a range against copies
 // made index by index, for seeded random ends. Reads `seed n`; prints the first that differs.

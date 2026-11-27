@@ -132,10 +132,10 @@ impl<'a> Lowerer<'a> {
                 });
             }
         }
-        // `if let some(Seeking) = x` and `if let (some(l), some(r)) = (a, b)` test the whole value.
+        // `if let Some(Seeking) = x` and `if let (Some(l), Some(r)) = (a, b)` test the whole value.
         let whole = match &pat.kind {
             ast::PatternKind::Variant { path, args } => {
-                path.len() == 1 && path[0].text == "some" && args.len() == 1 && refutable(&args[0])
+                path.len() == 1 && path[0].text == "Some" && args.len() == 1 && refutable(&args[0])
             }
             ast::PatternKind::Tuple(_) | ast::PatternKind::Record { .. } => refutable(pat),
             _ => false,
@@ -162,7 +162,7 @@ impl<'a> Lowerer<'a> {
                     return Some(present);
                 }
             }
-            if path.len() == 1 && path[0].text == "some" && args.len() == 1 {
+            if path.len() == 1 && path[0].text == "Some" && args.len() == 1 {
                 let (present, inner) = self.optional(value, what, before)?;
                 self.bind(&args[0], inner, binds);
                 return Some(present);
@@ -425,7 +425,7 @@ impl<'a> Lowerer<'a> {
                 let Some(name) = path.last() else {
                     return Some(self.err_expr(span));
                 };
-                if path.len() == 1 && name.text == "some" {
+                if path.len() == 1 && name.text == "Some" {
                     let Ty::Opt(inner_ty) = value.ty.clone() else {
                         if value.ty != Ty::Error {
                             self.report(

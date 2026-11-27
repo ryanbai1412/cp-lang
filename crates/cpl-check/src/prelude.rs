@@ -876,7 +876,7 @@ pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'stati
         ("min", _) => "The smallest of its arguments, in O(1) per argument; `min(xs)` gives the smallest element of `xs`.\n\ncost: O(1)",
         ("max", _) => "The largest of its arguments, in O(1) per argument; `max(xs)` gives the largest element of `xs`.\n\ncost: O(1)",
         ("swap", _) => "Exchanges the values of two `mut` places, in O(1) whatever their size.\n\ncost: O(1)",
-        ("some", _) => "The value as a present `?T`, in O(1).\n\ncost: O(1)",
+        ("Some", _) => "The value as a present `?T`, in O(1).\n\ncost: O(1)",
         _ => return None,
     })
 }

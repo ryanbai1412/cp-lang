@@ -415,7 +415,7 @@ impl Checker<'_> {
 
     /// Whether `path` is the `Some(x)` pattern, reporting the old `some` spelling.
     pub(super) fn some_pattern(&mut self, path: &[Name]) -> bool {
-        let is_some = path.len() == 1 && path[0].text == "some";
+        let is_some = path.len() == 1 && matches!(&*path[0].text, "some" | "Some");
         if is_some {
             self.old_optional_spelling(path[0].span, "Some");
         }

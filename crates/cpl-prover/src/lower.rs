@@ -596,7 +596,7 @@ impl<'a> Lowerer<'a> {
             }
             SVal::Named(name) => {
                 let args = match <[SVal; 1]>::try_from(args) {
-                    Ok([value]) if name == "some" => {
+                    Ok([value]) if name == "Some" => {
                         return Ok(match value {
                             SVal::Opt { .. } | SVal::NoneLit => value,
                             present => SVal::Opt {

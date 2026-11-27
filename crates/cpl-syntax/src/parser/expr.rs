@@ -1074,10 +1074,7 @@ impl<'a> Parser<'a> {
                 if let Some(none) = self.cpp_npos().or_else(|| self.cpp_temporary()) {
                     return none;
                 }
-                let mut name = self.name();
-                if name.text == "Some" {
-                    name.text = "some".into();
-                }
+                let name = self.name();
                 let type_like = name.is_type_like();
                 let expr = Expr {
                     kind: ExprKind::Name(name.text),
