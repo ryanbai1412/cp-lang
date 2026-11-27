@@ -122,10 +122,18 @@ impl Cx<'_> {
                 let want: Vec<Ty> = (self.d.traits[r.tr.0].inputs(&r.args).iter())
                     .map(|a| self.zonk(a))
                     .collect();
-                let found: Vec<(usize, Vec<Ty>)> = (self.d.impls.iter().enumerate())
+                let mut found: Vec<(usize, Vec<Ty>)> = (self.d.impls.iter().enumerate())
                     .filter(|(_, im)| im.trait_.tr == r.tr)
                     .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
+                    .filter(|(k, _)| {
+                        !self.d.impls[*k].blanket()
+                            || self.d.fits_impl(&self.d.impls[*k], t).is_some()
+                    })
                     .collect();
+                // An impl for a written type beats a blanket one (R08.1.2).
+                if found.iter().any(|(k, _)| !self.d.impls[*k].blanket()) {
+                    found.retain(|(k, _)| !self.d.impls[*k].blanket());
+                }
                 if found.len() > 1 {
                     if self.unknown(t) || want.iter().any(|a| self.unknown(a)) {
                         return None;

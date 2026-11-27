@@ -476,11 +476,12 @@ impl Link<'_> {
                 };
                 let d = self.d;
                 let mut found = None;
-                for im in d.impls.iter().filter(|im| im.trait_.tr == *tr) {
+                for im in d.impls_of(*tr) {
                     let mut binds = vec![None; im.generics.len()];
-                    if !fit_cty(&im.for_, &st, &mut binds, &im.domains)
+                    if !fit_cty(&im.for_, &st, &mut binds)
                         || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
-                            .all(|(p, w)| fit_cty(p, w, &mut binds, &im.domains))
+                            .all(|(p, w)| fit_cty(p, w, &mut binds))
+                        || !blanket_met(d, im, &binds)
                     {
                         continue;
                     }
@@ -1349,9 +1350,9 @@ impl Link<'_> {
                 let Some(bt) = binds[*i].clone() else {
                     continue;
                 };
-                for m in d.impls.iter().filter(|m| m.trait_.tr == r.tr) {
+                for m in d.impls_of(r.tr) {
                     let mut b = vec![None; m.generics.len()];
-                    if !fit_cty(&m.for_, &bt, &mut b, &m.domains) {
+                    if !fit_cty(&m.for_, &bt, &mut b) || !blanket_met(d, m, &b) {
                         continue;
                     }
                     self.bound_only(m, &mut b);
@@ -1362,7 +1363,7 @@ impl Link<'_> {
                     };
                     let args: Vec<CTy> = m.trait_.args.iter().map(|a| self.ty(a, &env)).collect();
                     for (p, a) in r.args.iter().zip(&args) {
-                        fit_cty(p, a, binds, &im.domains);
+                        fit_cty(p, a, binds);
                     }
                     break;
                 }
@@ -1374,9 +1375,24 @@ impl Link<'_> {
     }
 }
 
-fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>], doms: &[usize]) -> bool {
+/// Whether a blanket impl's bounds hold of the types it binds, as the checker asked
+/// (`Decls::fits_impl`); an impl for a written type is taken as found.
+fn blanket_met(d: &Decls, im: &crate::decls::ImplDecl, binds: &[Option<CTy>]) -> bool {
+    !im.blanket()
+        || (im.bounds.iter()).all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
+}
+fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
+    if Some(tr) == d.domain_trait {
+        return matches!(t, CTy::Dom(_));
+    }
+    d.impls_of(tr).any(|im| {
+        let mut b = vec![None; im.generics.len()];
+        fit_cty(&im.for_, t, &mut b)
+            && (im.bounds.iter()).all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, a, r.tr)))
+    })
+}
+fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
     match (p, t) {
-        (Ty::Param(i), _) if doms.contains(i) && !matches!(t, CTy::Dom(_)) => false,
         (Ty::Param(i), _) => match &binds[*i] {
             Some(b) => b == t,
             None => {
@@ -1389,14 +1405,12 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>], doms: &[usize]) -> bool {
         | (Ty::Char, CTy::Char)
         | (Ty::U64, CTy::U64)
         | (Ty::Unit, CTy::Unit) => true,
-        (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds, doms),
+        (Ty::Raw(a), CTy::Raw(b)) | (Ty::Ref(a), CTy::Ref(b)) => fit_cty(a, b, binds),
         (Ty::Struct(d1, a, _), CTy::Struct(d2, b, _)) => {
-            d1 == d2
-                && a.len() == b.len()
-                && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds, doms))
+            d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit_cty(x, y, binds))
         }
         // A lent slot reads as the value it points at.
-        (_, CTy::Lent(t)) => fit_cty(p, t, binds, doms),
+        (_, CTy::Lent(t)) => fit_cty(p, t, binds),
         _ => false,
     }
 }

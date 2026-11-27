@@ -12,7 +12,7 @@ use std::rc::Rc;
 mod impls;
 mod inherent;
 mod tyconv;
-use impls::{overlap, supertraits_unmet};
+use impls::{overlap, same_shape, supertraits_unmet};
 use inherent::inherent_impl;
 use tyconv::*;
 pub use tyconv::{body_type, prim_type};
@@ -153,13 +153,18 @@ pub struct AliasDecl {
 }
 /// `impl Trait<A> for T`: `trait_` and `for_` are in the impl's own type parameters, which are
 /// the names it writes that no declaration has (`impl Seq<T> for List<T>`) and its bounds' (R08.1.2).
+impl ImplDecl {
+    /// For a bare type parameter (`impl<D: Domain> Eq for D`): any impl for a written type is
+    /// more specific and is chosen over it (R08.1.2).
+    pub fn blanket(&self) -> bool {
+        matches!(self.for_, Ty::Param(_))
+    }
+}
 pub struct ImplDecl {
     pub trait_: TraitRef,
     pub generics: Vec<String>,
     pub bounds: Vec<(usize, TraitRef)>,
     pub for_: Ty,
-    /// Its parameters bounded by the domain trait: each fits only a domain.
-    pub domains: Vec<usize>,
     pub methods: HashMap<String, FnId>,
     /// Where it is written.
     pub at: usize,
@@ -1144,16 +1149,12 @@ pub fn collect(
                     }
                     let at = (item + s.span.start) as usize;
                     let tname = d.traits[tref.tr.0].name.clone();
-                    let domains: Vec<usize> = (ibounds.iter())
-                        .filter(|(_, r)| Some(r.tr) == d.domain_trait)
-                        .map(|(i, _)| *i)
-                        .collect();
                     if d.impls.iter().any(|im| {
                         im.trait_.tr == tref.tr
-                            && overlap(&im.for_, &im.domains, &for_, &domains)
+                            && overlap(&im.for_, &for_)
                             && (d.traits[tref.tr.0].inputs(&im.trait_.args).iter())
                                 .zip(d.traits[tref.tr.0].inputs(&tref.args))
-                                .all(|(x, y)| overlap(x, &im.domains, y, &domains))
+                                .all(|(x, y)| same_shape(x, y))
                     }) {
                         // A type's own impl replaces its derived one (R08.1.6).
                         if id.is_some() {
@@ -1258,7 +1259,6 @@ pub fn collect(
                         generics,
                         bounds: ibounds,
                         for_,
-                        domains,
                         methods,
                         at,
                         assoc_at,

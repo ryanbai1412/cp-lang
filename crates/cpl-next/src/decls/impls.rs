@@ -56,20 +56,22 @@ impl Decls {
             Ty::Struct(_, _, ss) => ss.clone(),
             _ => Vec::new(),
         };
-        self.impls.iter().find_map(|im| {
+        let ordered = (self.impls.iter().filter(|im| !im.blanket()))
+            .chain(self.impls.iter().filter(|im| im.blanket()));
+        ordered.into_iter().find_map(|im| {
             let tr = &self.traits[im.trait_.tr.0];
             if trait_name.is_some_and(|n| n != tr.name) {
                 return None;
             }
             if let Some(m) = im.methods.get(name).filter(|m| pick(self.f(**m))) {
-                let targs = self.impl_args(im, recv)?;
+                let targs = self.fits_impl(im, recv)?;
                 return Some(Member::Method(*m, targs, sets.clone()));
             }
             let tm = *tr.methods.get(name)?;
             if matches!(self.f(tm).body, FnBody::None) || !pick(self.f(tm)) {
                 return None;
             }
-            let binds = self.impl_args(im, recv)?;
+            let binds = self.fits_impl(im, recv)?;
             let sub = Subst {
                 tys: &binds,
                 sets: &[],
@@ -90,21 +92,33 @@ impl Decls {
         let bodiless = |m: &FnId| self.f(*m).getter && matches!(self.f(*m).body, ast::FnBody::None);
         !t.alias && !t.methods.is_empty() && t.methods.values().all(bodiless)
     }
+    /// The impls of `tr`, those for a written type before blanket ones (R08.1.2).
+    pub fn impls_of(&self, tr: TraitId) -> impl Iterator<Item = &ImplDecl> {
+        let of = move |b: bool| {
+            (self.impls.iter()).filter(move |im| im.trait_.tr == tr && im.blanket() == b)
+        };
+        of(false).chain(of(true))
+    }
+    /// The impl's type arguments for `t`; a blanket impl only where `t` meets its bounds.
+    pub fn fits_impl(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
+        let targs = self.impl_args(im, t)?;
+        (!im.blanket() || self.bounds_met(im, &targs)).then_some(targs)
+    }
+    fn bounds_met(&self, im: &ImplDecl, targs: &[Ty]) -> bool {
+        (im.bounds.iter()).all(|(i, b)| targs.get(*i).is_none_or(|a| self.has_impl(a, b.tr)))
+    }
     /// Whether `t` has an impl of `tr`, its parameters taken to meet the impl's bounds.
-    pub(super) fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
+    pub fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
             return true;
         }
         if Some(tr) == self.domain_trait {
             return matches!(t, Ty::Dom(_));
         }
-        (self.impls.iter())
-            .filter(|im| im.trait_.tr == tr)
-            .find_map(|im| Some((im, self.impl_args(im, t)?)))
-            .is_some_and(|(im, targs)| {
-                (im.bounds.iter())
-                    .all(|(i, b)| targs.get(*i).is_none_or(|a| self.has_impl(a, b.tr)))
-            })
+        (self.impls_of(tr)).any(|im| {
+            self.impl_args(im, t)
+                .is_some_and(|targs| self.bounds_met(im, &targs))
+        })
     }
     /// The library method `name` whose `self` can be `recv` (R11.3.4).
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
@@ -134,13 +148,8 @@ impl Decls {
                 _ => a == b,
             }
         }
-        fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>], doms: &[usize]) -> bool {
+        fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
             match (p, t) {
-                (Ty::Param(i), _)
-                    if doms.contains(i) && !matches!(t, Ty::Dom(_) | Ty::Var(_) | Ty::Error) =>
-                {
-                    false
-                }
                 // A parameter binds even to a type not known yet, so the method's own
                 // arguments follow it once it is.
                 (Ty::Param(i), _) => match &binds[*i] {
@@ -152,11 +161,9 @@ impl Decls {
                     }
                 },
                 (_, Ty::Var(_) | Ty::Error) => true,
-                (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds, doms),
+                (Ty::Raw(a), Ty::Raw(b)) | (Ty::Ref(a), Ty::Ref(b)) => fit(a, b, binds),
                 (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
-                    d1 == d2
-                        && a.len() == b.len()
-                        && a.iter().zip(b).all(|(x, y)| fit(x, y, binds, doms))
+                    d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
                 }
                 (Ty::Range(..) | Ty::RangeOf(_), Ty::Int)
                 | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_)) => true,
@@ -164,10 +171,10 @@ impl Decls {
             }
         }
         let mut binds = vec![None; im.generics.len()];
-        if !fit(&im.for_, t, &mut binds, &im.domains)
+        if !fit(&im.for_, t, &mut binds)
             || !(self.traits[im.trait_.tr.0].inputs(&im.trait_.args).iter())
                 .zip(self.traits[im.trait_.tr.0].inputs(trait_args))
-                .all(|(p, a)| fit(p, a, &mut binds, &im.domains))
+                .all(|(p, a)| fit(p, a, &mut binds))
         {
             return None;
         }
@@ -188,7 +195,7 @@ impl Decls {
                     continue;
                 };
                 for (p, a) in r.args.iter().zip(&args) {
-                    fit(p, a, &mut binds, &im.domains);
+                    fit(p, a, &mut binds);
                 }
             }
             if unbound == 0 || binds.iter().filter(|b| b.is_none()).count() == unbound {
@@ -229,7 +236,7 @@ pub(super) fn supertraits_unmet(d: &Decls) -> Vec<(usize, &'static str, String)>
             let met = match t {
                 Ty::Param(i) => im.bounds.iter().any(|(j, r)| j == i && r.tr == ab.tr),
                 Ty::Error => true,
-                t => (d.impls.iter()).any(|o| o.trait_.tr == ab.tr && d.impl_args(o, t).is_some()),
+                t => d.has_impl(t, ab.tr),
             };
             if !met {
                 let k = a - (tr.defaults.len() + 1 - tr.assoc.len());
@@ -246,16 +253,22 @@ pub(super) fn supertraits_unmet(d: &Decls) -> Vec<(usize, &'static str, String)>
     }
     out
 }
-/// Whether one type could fit both impl headers; a parameter in `ad` or `bd` fits only a domain.
-pub(super) fn overlap(a: &Ty, ad: &[usize], b: &Ty, bd: &[usize]) -> bool {
-    let only_doms = |t: &Ty, ds: &[usize]| matches!(t, Ty::Param(i) if ds.contains(i));
+/// Whether one type could fit both impl headers. A bare parameter and a written type don't: the
+/// impl for the written type is more specific and is the one chosen (R08.1.2).
+pub(super) fn overlap(a: &Ty, b: &Ty) -> bool {
     match (a, b) {
-        _ if only_doms(a, ad) => matches!(b, Ty::Param(_) | Ty::Dom(_)),
-        _ if only_doms(b, bd) => matches!(a, Ty::Param(_) | Ty::Dom(_)),
+        (Ty::Param(_), Ty::Param(_)) => true,
+        (Ty::Param(_), _) | (_, Ty::Param(_)) => false,
+        _ => same_shape(a, b),
+    }
+}
+/// Whether one type could be both, a parameter fitting anything.
+pub(super) fn same_shape(a: &Ty, b: &Ty) -> bool {
+    match (a, b) {
         (Ty::Param(_), _) | (_, Ty::Param(_)) => true,
-        (Ty::Raw(x), Ty::Raw(y)) | (Ty::Ref(x), Ty::Ref(y)) => overlap(x, ad, y, bd),
+        (Ty::Raw(x), Ty::Raw(y)) | (Ty::Ref(x), Ty::Ref(y)) => same_shape(x, y),
         (Ty::Struct(d1, x, _), Ty::Struct(d2, y, _)) => {
-            d1 == d2 && x.iter().zip(y).all(|(x, y)| overlap(x, ad, y, bd))
+            d1 == d2 && x.iter().zip(y).all(|(x, y)| same_shape(x, y))
         }
         _ => a == b,
     }
