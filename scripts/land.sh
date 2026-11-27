@@ -12,7 +12,7 @@
 # Each landing appends one JSON line (domain, seconds, tries) to
 # .git/cpl-land.log; scripts/land_stats.py reads it.
 #
-# Usage: scripts/land.sh [remote]   (default origin; CPL_LAND_TRIES, default 5)
+# Usage: scripts/land.sh [remote]   (default origin; CPL_LAND_TRIES, default 5; CPL_LAND_FAST=1)
 set -euo pipefail
 # The copy running now: a pull that changes scripts/land.sh lands with the new one.
 self_blob=$(git hash-object "${BASH_SOURCE[0]}")
@@ -21,6 +21,9 @@ cd "$(git rev-parse --show-toplevel)"
 remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=${CPL_LAND_T0:-$(date +%s)}
+# CPL_LAND_FAST=1: rebase, the quick checks (markers, ratchet, fmt, clippy), push. The
+# integrator lane runs the suites and regenerates the case lists on main afterwards.
+fast=${CPL_LAND_FAST:-}
 git fetch -q "$remote" main
 # A checkout behind main lands with main's land.sh, so a fix to landing reaches
 # every lane at once instead of after its next rebase.
@@ -158,6 +161,7 @@ gate_paths="scripts .githooks gen.toml justfile"
 # that changed land.sh, and main changed it every few minutes (20+ min, no lock wait).
 rechecked=${CPL_LAND_RECHECKED:-}
 recheck() {
+    [ -z "$fast" ] || return 0
     moved=$(git diff --name-only "$checked" "$main_base" -- $gate_paths)
     checked=$main_base
     [ -n "$moved" ] && [ -x .githooks/pre-commit ] || return 0
@@ -215,7 +219,7 @@ recheck
 pending="$(git rev-parse --git-dir)/cpl-pending-slices"
 tip_slices=$(uv run --quiet python scripts/affected.py --base FETCH_HEAD 2>/dev/null | sed -n 's/^slices=//p') || tip_slices=
 slices=$({ cat "$pending" 2>/dev/null; printf '%s\n' $tip_slices; } | sed '/^$/d' | sort -u | tr '\n' ' ' | sed 's/ $//')
-if [ -n "$slices" ]; then
+if [ -z "$fast" ] && [ -n "$slices" ]; then
     echo "land: running the touched-path slices at the rebased tip: $slices" >&2
     { uv run --quiet python scripts/affected.py --build-slices $slices >&2 &&
         uv run --quiet python scripts/affected.py --run-slices --base "$main_base" $slices >&2; } ||
@@ -229,7 +233,7 @@ fi
 pending_steps="$(git rev-parse --git-dir)/cpl-pending-steps"
 steps_runs=${CPL_LAND_STEPS_RUNS:-0}
 run_pending_steps() {
-    [ -s "$pending_steps" ] || return 0
+    [ -z "$fast" ] && [ -s "$pending_steps" ] || return 0
     steps=$(sort -u "$pending_steps" | tr '\n' ',' | sed 's/,$//')
     # Once, on the first rebased tip: every rerun gives main another window to
     # move, and at its pace one per lost race cost minutes a try; CI checks the tip.
@@ -297,7 +301,7 @@ changed=$(git diff --name-only --diff-filter=ACMR "$main_base" HEAD)
 # main's sizes, a crate over its budget refuses only if it grew, so main never gets
 # worse while lanes cut a crate back under.
 wasm_touched=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*|\1|p' | sort -u)
-if [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
+if [ -z "$fast" ] && [ -n "$wasm_touched" ] && [ -x scripts/wasm-warm.sh ]; then
     # Fail closed (wasm-cut): skipping when the warm build was of the pre-rebase tree let
     # 277f37f42 and five more grow an over-budget cpl_check. --check builds main's sizes.
     if ! wasm=$(scripts/wasm-warm.sh --current $wasm_touched 2>/dev/null); then
