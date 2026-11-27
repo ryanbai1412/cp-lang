@@ -11,8 +11,6 @@ methods = ["sub"]
 methods = ["mul"]
 [trait.Div]
 methods = ["div"]
-[trait.Neg]
-methods = ["neg"]
 [trait.Pow]
 methods = ["pow"]
 [trait.BitAnd]
@@ -23,22 +21,16 @@ methods = ["bitor"]
 methods = ["bitxor"]
 [trait.Ord]
 methods = ["lt"]
-[trait.Eq]
-methods = ["eq"]
 [trait.Show]
 methods = ["show"]
 [trait.Read]
 methods = ["read"]
-[trait.Into]
-methods = ["into"]
 [trait.Index]
 methods = ["ord", "nth"]
 
 
 # The core types that claim the std/seq.cp sequence traits (spec/core/12-powers.md W4)
 # (spec/core/07-sequences.md, capabilities table). Array is `[D]T`.
-[trait.Contains]
-methods = ["contains"]
 [[claim]]
 type = "Bool"
 trait = "Random"
@@ -3373,3 +3365,149 @@ s.insert(1)
 print(s)
 """
 out = "1 3"
+
+[case."Add/List/add"]
+code = """
+print([1, 2] + [3])
+"""
+out = "1 2 3"
+
+[case."Add/Str/add"]
+code = """
+print("ab" + "cd")
+"""
+out = "abcd"
+
+[case."Clone/List/clone"]
+code = """
+let a = [1, 2]
+var b = a.clone()
+b[0] = 9
+print(a, b)
+"""
+out = "1 2 9 2"
+
+[case."Clone/Optional/clone"]
+code = """
+let a: ?Int = Some(3)
+print(a.clone()!)
+"""
+out = "3"
+
+[case."Clone/Range/clone"]
+code = """
+print((2..5).clone().len)
+"""
+out = "3"
+
+[case."Clone/Str/clone"]
+code = """
+print("ab".clone())
+"""
+out = "ab"
+
+[case."Eq/List/eq"]
+code = """
+print(if [1, 2] == [1, 2] and [1] != [2]: 1 else: 0)
+"""
+out = "1"
+
+[case."Eq/Optional/eq"]
+code = """
+let a: ?Int = Some(1)
+let b: ?Int = None
+print(if a == Some(1) and a != b: 1 else: 0)
+"""
+out = "1"
+
+[case."Eq/Range/eq"]
+code = """
+print(if (1..3) == (1..3) and (1..3) != (1..4): 1 else: 0)
+"""
+out = "1"
+
+[case."Eq/Str/eq"]
+code = """
+print(if "ab" == "ab" and "ab" != "b": 1 else: 0)
+"""
+out = "1"
+
+[case."Ord/List/lt"]
+code = """
+print(if [1, 2] < [1, 3] and [2] > [1, 9]: 1 else: 0)
+"""
+out = "1"
+
+[case."Ord/Str/lt"]
+code = """
+print(if "ab" < "b" and "b" > "ab": 1 else: 0)
+"""
+out = "1"
+
+[case."Positional/List/nth"]
+code = """
+print([5, 6, 7].nth(1))
+"""
+out = "6"
+
+[case."Positional/Range/nth"]
+code = """
+print((2..9).nth(3))
+"""
+out = "5"
+
+[case."Positional/Str/nth"]
+code = """
+print("abc".nth(2))
+"""
+out = "c"
+
+[case."Into/Cut/into"]
+code = """
+domain P = 0..4
+print(Int(P.cuts.last!))
+"""
+out = "4"
+
+[case."Domain/Cut/ord"]
+code = """
+domain P = 0..4
+print(P.cuts.last!.ord)
+"""
+out = "4"
+
+[case."Clone/Array/clone"]
+code = """
+domain V = 0..3
+let a: [V]Int = [1, 2, 3]
+var b = a.clone()
+b[V(0)] = 9
+print(a, b)
+"""
+out = "1 2 3 9 2 3"
+
+[case."Eq/Array/eq"]
+code = """
+domain V = 0..3
+let a: [V]Int = [1, 2, 3]
+let b: [V]Int = [1, 2, 4]
+print(if a == a.clone() and a != b: 1 else: 0)
+"""
+out = "1"
+
+[case."Positional/Array/nth"]
+code = """
+domain V = 0..3
+let a: [V]Int = [4, 5, 6]
+print(a.nth(2))
+"""
+out = "6"
+
+[case."Contains/Set/contains"]
+code = """
+var s = Set<Int>()
+s.add(3)
+s.add(1)
+print(if s.contains(3): 1 else: 0, if s.contains(2): 1 else: 0)
+"""
+out = "1 0"
