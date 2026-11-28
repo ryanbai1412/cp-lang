@@ -667,32 +667,6 @@ fn a_build_reaching_an_untyped_library_body_reports_it() {
     assert_eq!(c.run("").output, "1\n");
 }
 
-/// A part the checker left untyped lowers to a trap and a value of the part's own type, so the
-/// C++ builds and runs as the engine does wherever that part is not reached.
-#[test]
-fn an_untyped_part_is_a_value_of_its_type() {
-    let src = "use std.graph.{johnson}\ndomain V = 0..2\ndomain E = 0..0\nlet es: [E](u: V, v: V, w: Int) = []\nlet d = johnson(Graph.directed(es))!\nprint(yes(d[0, 0] == Some(0)), yes(d[0, 1] == None))\n";
-    let c = compile(
-        &Std::read(),
-        src,
-        &Roots::std(),
-        false,
-        None,
-        Checks::CHECKED,
-    )
-    .expect("compiles");
-    let o = c.run("");
-    assert_eq!((o.output.as_str(), o.trap.is_none()), ("YES YES\n", true));
-    let (bin, _) = cxx::build(
-        c.cpp().as_bytes(),
-        &["-std=c++17", "-O1", "-w", "-pthread", "-x", "c++"],
-    )
-    .expect("g++ builds it");
-    let ran = std::process::Command::new(bin).output().expect("runs");
-    assert_eq!(ran.status.code(), Some(0));
-    assert_eq!(String::from_utf8_lossy(&ran.stdout), o.output);
-}
-
 /// A `let .. else` of an error binds its name to the error: its uses say nothing more.
 #[test]
 fn a_let_else_of_an_error_binds_the_error() {

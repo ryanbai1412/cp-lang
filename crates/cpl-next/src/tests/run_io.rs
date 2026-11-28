@@ -251,3 +251,55 @@ fn an_event_whose_value_traps_is_not_written() {
     );
     assert_eq!(evs.len(), o.events.len(), "{err}");
 }
+
+/// A part the checker left untyped lowers to a trap and a value of the part's own type, so the
+/// C++ builds and runs as the engine does wherever that part is not reached.
+#[test]
+fn an_untyped_part_is_a_value_of_its_type() {
+    let src = "use std.graph.{johnson}\ndomain V = 0..2\ndomain E = 0..0\nlet es: [E](u: V, v: V, w: Int) = []\nlet d = johnson(Graph.directed(es))!\nprint(yes(d[0, 0] == Some(0)), yes(d[0, 1] == None))\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let o = c.run("");
+    assert_eq!((o.output.as_str(), o.trap.is_none()), ("YES YES\n", true));
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-pthread", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(ran.status.code(), Some(0));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), o.output);
+}
+
+/// The code a generator hands a value lent from a place binds it with the generator's marks, so
+/// the calls on it are the instances the C++ passes it to.
+#[test]
+fn a_walk_binds_what_its_generator_yields_lent() {
+    let src = "let a = [1, 1, 2, 2, 2, 1]\nfor r in a[1..].runs(): print(r.keys.first!, r.len, r[r.keys.first!])\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let o = c.run("");
+    assert_eq!(o.output, "1 1 1\n2 3 2\n5 1 1\n");
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-pthread", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(ran.status.code(), Some(0));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), o.output);
+}

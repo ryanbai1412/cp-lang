@@ -31,6 +31,9 @@ pub(crate) fn mark(
             (id, (ps, f.ret.clone()))
         })
         .collect();
+    let yields: HashMap<FnId, Ty> = (funcs.values())
+        .filter_map(|f| Some((f.key.decl()?, f.region.as_ref()?.1.clone())))
+        .collect();
     let mut keys: Vec<FuncKey> = (funcs.keys())
         .filter(|k| !matches!(k, FuncKey::Lambda(_)))
         .cloned()
@@ -45,6 +48,7 @@ pub(crate) fn mark(
     let mut w = Lw {
         d,
         sigs,
+        yields,
         copies,
         funcs,
         globals,
@@ -70,6 +74,8 @@ struct Lw<'a> {
     d: &'a dyn Signatures,
     /// Each fn's declared parameter types, receiver first, and its result type.
     sigs: HashMap<FnId, (Vec<Ty>, Ty)>,
+    /// What each generator or lender hands the caller's code.
+    yields: HashMap<FnId, Ty>,
     /// Each declared fn's copies: its body, and one per set of context values.
     copies: HashMap<FnId, Vec<FuncKey>>,
     funcs: &'a mut HashMap<FuncKey, Func<Ty>>,
@@ -114,6 +120,9 @@ impl Lw<'_> {
         if let (Some(id), Some(f)) = (k.decl(), self.funcs.get(k)) {
             if let Some((_, ret)) = self.sigs.get_mut(&id) {
                 *ret = mark_lent(ret, &f.ret);
+            }
+            if let (Some(y), Some((_, r))) = (self.yields.get_mut(&id), &f.region) {
+                *y = mark_lent(y, r);
             }
         }
     }
@@ -215,10 +224,27 @@ impl Lw<'_> {
                 arms.iter_mut().for_each(|a| self.block(fr, a));
             }
             Stmt::Region {
-                target, args, body, ..
+                target,
+                args,
+                var,
+                body,
+                ..
             } => {
                 self.args(fr, target, args);
                 self.target(fr, target, args);
+                // The caller's code binds what the callee hands it, with its marks.
+                if let Target::Fn(f) = target {
+                    self.callee(f.decl);
+                    if let (Some(y), Some(t)) = (self.yields.get(&f.decl), fr.locals.get_mut(*var))
+                    {
+                        let y = Subst {
+                            tys: &f.targs,
+                            sets: &f.sets,
+                        }
+                        .ty(y);
+                        *t = mark_lent(t, &y).unlent().clone();
+                    }
+                }
                 self.block(fr, body);
             }
             Stmt::Break | Stmt::Continue | Stmt::LendOut(_) | Stmt::Drop(_) => {}
