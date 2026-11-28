@@ -178,6 +178,20 @@ pub struct UseForm {
     pub alias: Option<String>,
 }
 
+impl UseForm {
+    pub fn read(public: bool, u: &ast::UseDecl) -> UseForm {
+        UseForm {
+            public,
+            path: u.path().map(|t| t.text().to_string()).collect(),
+            names: (u.names().iter())
+                .flat_map(|n| n.names().map(|t| t.text().to_string()).collect::<Vec<_>>())
+                .collect(),
+            glob: u.is_glob(),
+            alias: u.alias().map(|t| t.text().to_string()),
+        }
+    }
+}
+
 /// What one item declares, as its form.
 #[derive(Clone, Debug)]
 pub enum Form {
@@ -566,15 +580,7 @@ impl Reader<'_> {
                     .collect(),
             },
             Some(D::Domain(dd)) => Form::Domain(dd),
-            Some(D::Use(u)) => Form::Use(UseForm {
-                public: it.is_pub(),
-                path: u.path().map(|t| t.text().to_string()).collect(),
-                names: (u.names().iter())
-                    .flat_map(|n| n.names().map(|t| t.text().to_string()).collect::<Vec<_>>())
-                    .collect(),
-                glob: u.is_glob(),
-                alias: u.alias().map(|t| t.text().to_string()),
-            }),
+            Some(D::Use(u)) => Form::Use(UseForm::read(it.is_pub(), &u)),
             Some(D::Mod(_) | D::Extern(_)) => Form::Other(it.clone()),
             None => match it.stmt() {
                 Some(s) => Form::Stmt(s),

@@ -1,5 +1,5 @@
 //! Collecting declarations: std's once, and each program's as a layer over them.
-use super::forms::{Form, Reader};
+use super::forms::{Form, Reader, UseForm};
 use super::impls::{overlap, same_shape, supertraits_unmet};
 use super::inherent::inherent_impl;
 use super::tyconv::input_bound;
@@ -138,12 +138,15 @@ fn layer(
     let mut pending: Vec<(ModId, ItemId, &ast::Stmt, Option<Named>)> = Vec::new();
     let mut op_methods: HashMap<TraitId, String> = HashMap::new();
     // The core's `use` lines, for its view made again over a program's records.
-    let mut imports: Vec<(ModId, &ast::Stmt)> = match from {
+    let mut imports: Vec<(ModId, UseForm)> = match from {
         0 => Vec::new(),
         _ => (mods[CORE.0].items.iter())
-            .flat_map(|it| &it.stmts)
-            .filter(|s| matches!(s.kind, StmtKind::Use { .. }))
-            .map(|s| (CORE, s))
+            .filter_map(|it| match it.item.decl() {
+                Some(cpl_next_syntax::ast::Decl::Use(u)) => {
+                    Some((CORE, UseForm::read(it.item.is_pub(), &u)))
+                }
+                _ => None,
+            })
             .collect(),
     };
     let mut aliases: Vec<(ModId, SourceId, String, Vec<String>, ast::Type)> = Vec::new();
