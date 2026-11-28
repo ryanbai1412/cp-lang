@@ -143,21 +143,11 @@ impl Cx<'_> {
     /// beats a blanket one (R08.1.2). `Int` has `Into<Char>` and `Into<U64>`: the trait's
     /// arguments, where known, choose among them.
     fn fitting(&self, t: &Ty, r: &TraitRef) -> Vec<(ImplIdx, Vec<Ty>)> {
-        let want: Vec<Ty> = (self.items.t(r.tr).inputs(&r.args).iter())
-            .map(|a| self.zonk(a))
-            .collect();
-        let mut found: Vec<(ImplIdx, Vec<Ty>)> = (self.impls().trait_impls(r.tr))
-            .filter_map(|(k, im)| Some((k, self.impls().impl_args_for(im, t, &want)?)))
-            .filter(|(k, _)| {
-                !self.impls().imp(*k).blanket()
-                    || self.impls().fits_impl(self.impls().imp(*k), t).is_some()
-            })
-            .collect();
-        let rank = |k: &ImplIdx| self.d.impl_rank(self.impls().imp(*k));
-        if let Some(best) = found.iter().map(|(k, _)| rank(k)).min() {
-            found.retain(|(k, _)| rank(k) == best);
-        }
-        found
+        let r = TraitRef {
+            tr: r.tr,
+            args: r.args.iter().map(|a| self.zonk(a)).collect(),
+        };
+        self.impls().best(t, &r)
     }
     /// The bounds type parameter `i` states for `r`'s trait whose arguments fit `r`'s:
     /// `T: Cv<Int> + Cv<Bool>` meets `T: Cv<?U>` by both until `?U` is known.

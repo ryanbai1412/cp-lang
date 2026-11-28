@@ -14,7 +14,7 @@ use cpl_next_syntax::ast::AstNode as _;
 pub struct Prepared {
     /// Each std module's forms, which a program's layer reads its derives and roles from too.
     pub read: Arc<Vec<Vec<(ItemId, Form)>>>,
-    d: Decls,
+    pub(crate) d: Decls,
     own: Layer<HashMap<String, Named>>,
     public: Layer<HashSet<String>>,
     /// The record shapes std writes, sorted.

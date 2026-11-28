@@ -23,7 +23,7 @@ mod tyconv;
 use crate::views::Shapes;
 pub use collect::{body_of, collect, factor_name, prepare, Prepared};
 pub use forms::TyForm;
-pub use impls::{ImplIdx, Impls};
+pub use impls::{Choice, ImplIdx, Impls};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{

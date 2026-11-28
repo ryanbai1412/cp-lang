@@ -5,7 +5,7 @@
 //! every fn.
 use crate::decls::{
     AliasDecl, AliasId, ConstId, Decls, FnDecl, ImplDecl, Impls, LibConst, ModId, Named, Role,
-    Roles, StructDecl, Sugar, TraitDecl,
+    Roles, StructDecl, Sugar, TraitDecl, TraitRef,
 };
 use crate::sym::Sym;
 use cpl_next_ir::ir::{Func, FuncKey};
@@ -136,6 +136,8 @@ pub trait Items: Texts {
     fn impls_named(&self, name: Sym) -> &[usize];
     /// Whether a lookup may find impl `i` (R11.3.4).
     fn live(&self, i: usize) -> bool;
+    /// How many traits there are: `TraitId(0)` up to it.
+    fn traits(&self) -> usize;
 }
 
 /// `signature(ItemId)`: what an item declares, never its body.
@@ -244,12 +246,13 @@ pub struct Chosen {
     pub binds: Vec<Ty>,
 }
 
-/// `impl_for(TraitId, Ty)`: which impl a type takes, as the checker chose it. Keyed by the type
-/// itself, compared by structure, so an instance's type that no item names has its answer too.
+/// `impl_for(TraitRef, Ty)`: which impl a type takes, as the checker chose it. Keyed by the trait
+/// with its arguments (`Int` has `Into<Char>` and `Into<U64>`) and the type itself, compared by
+/// structure, so an instance's type that no item names has its answer too.
 pub trait ImplChoice {
-    /// The impl of `tr` that `t` takes: the head ranked first (R08.1.9), a domain's row as
-    /// `ImplIdx::Row`. `None` when no impl's head fits or the chosen one's bounds fail.
-    fn impl_for(&self, tr: TraitId, t: &Ty) -> Option<Chosen>;
+    /// The impl of `r` that `t` takes: the head ranked first (R08.1.9), a domain's row as
+    /// `ImplIdx::Row`. `None` when no impl's head fits, two do, or the chosen one's bounds fail.
+    fn impl_for(&self, r: &TraitRef, t: &Ty) -> Option<Chosen>;
     /// Each trait `t` implements with the impl it takes, by `TraitId`, then `ImplIdx`.
     fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)>;
 }
@@ -337,6 +340,9 @@ impl Items for Decls {
     }
     fn live(&self, i: usize) -> bool {
         Decls::live(self, &self.impls[i])
+    }
+    fn traits(&self) -> usize {
+        self.traits.len()
     }
 }
 
