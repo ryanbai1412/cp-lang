@@ -1307,7 +1307,7 @@ pub struct BitTrie<W>:
     /// traps: never
     /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 5); t.add(mut ar, 1); t.add(mut ar, 5); t.each(ar).collect() == [1, 5, 5]`
     pub fn each(self, ar: BitTrieArena<W>) -> yields Int:
-        guard let r = root else: return
+        let r = root else: return
         // A node with copies and no child is a full-width leaf.
         var stack = [(node: r, value: 0)]
         while let top = stack.pop():
@@ -1349,10 +1349,10 @@ pub struct BitTrie<W>:
     /// example: `var ar = BitTrieArena<3>(); var t = BitTrie<3>.of(mut ar, 0); t.add(mut ar, 7); t.count(ar, 8) == 0 and t.count(ar, -1) == 0`
     pub fn count(self, ar: BitTrieArena<W>, x: Int) -> Int:
         if x < 0 or x >= 1 << W: return 0
-        guard let r = root else: return 0
+        let r = root else: return 0
         var t = r
         for b in (0..W).rev:
-            guard let c = ar.nodes[t].kid[(x >> b) & 1] else: return 0
+            let c = ar.nodes[t].kid[(x >> b) & 1] else: return 0
             t = c
         ar.nodes[t].cnt
 
@@ -1371,11 +1371,11 @@ pub struct BitTrie<W>:
     /// example: `var ar = BitTrieArena<3>(); List(BitTrie<3>.of(mut ar, 0).walk(ar, 8)).len == 3` (traps R0401)
     pub fn walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int):
         assert 0 <= x < 1 << W
-        guard let r = root else: return
+        let r = root else: return
         var t = r
         for b in (0..W).rev:
             unchecked:
-                guard let c = ar.nodes[t].kid[(x >> b) & 1] else: return
+                let c = ar.nodes[t].kid[(x >> b) & 1] else: return
                 t = c
                 yield (bit: b, count: ar.nodes[t].cnt)
 

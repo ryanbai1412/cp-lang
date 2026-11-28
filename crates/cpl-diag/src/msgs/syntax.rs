@@ -17,6 +17,7 @@ super::msgs! {
     UNNAMED_PAYLOAD = REMOVED_SYNTAX, "a variant's payload fields are `name: Type`, like a struct's";
     LAZY_PARAM = REMOVED_SYNTAX, "a parameter can't be `lazy`; it is lent, `mut` or `var`, and a deferred value is a `() -> T`";
     YIELDS_PARAM = REMOVED_SYNTAX, "a parameter can't be `yields`; it is lent, `mut` or `var`, and only a fn's result yields";
+    GUARD_LET = REMOVED_SYNTAX, "CP Lang has no `guard let`; `let p = e else: ...` binds `p` or leaves";
     AND_LET = REMOVED_SYNTAX, "a `let` condition is joined to the next one with `,`, not `and`";
     AMP_MUT_PARAM = REMOVED_SYNTAX, "CP Lang has no `&mut` types; a parameter that changes the caller's place is `mut x: T`";
     MATCH_NEEDS_ARMS = EXPECTED_BLOCK, "expected indented `pattern => value` arms after `match`";

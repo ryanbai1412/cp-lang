@@ -9579,3 +9579,15 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `fn f(self: yields Slice<S>)` is E0503 and the fix deletes `yields`. A parameter is lent, `mut` or `var` (R05.2.3), and `yields` is a mode of a fn's result only. core-07's slice-receiver case now takes `self: Slice<S>` per window and keeps its 07.7.9 intent.
 - **Why.** Coordinator ruling of 2026-11-27, 18:51. No R-rule gave a `yields` parameter a meaning.
 - **Reverse.** Define a generator-parameter mode in R05.2.3.
+
+## 658. There is no `guard let`; the let-else is the one spelling (compiler, 2026-11-27)
+
+- **Call.** `guard let r = root else: return` is E0503 and the fix deletes `guard`, leaving the let-else of R01.6.2 (`let r = root else: return`). It binds `r` after the statement and leaves otherwise, as `guard let` did. std's bitset and one std-tree case are rewritten.
+- **Why.** Coordinator ruling of 2026-11-27, 18:35: two spellings of one statement.
+- **Reverse.** Read `guard` as an optional prefix of a let-else.
+
+## 659. A clause's `if` filter takes a condition (compiler, 2026-11-27)
+
+- **Call.** `for side in 0..2 if let c = kids[side]:` and `for x in xs if p(x), q(x), y in ys:` parse: a `for` clause's filter is `cond` (01:356, 498), with `let` binders and `,` parts. In a `for` header, a `,` followed by `p in e` (a name or a parenthesised pattern, then `in`) starts the next clause instead, so a membership test right after a filter's comma is written with `and`. A comprehension's `if` takes one condition part, `let` included, per `if`.
+- **Why.** Coordinator ruling of 2026-11-27, 18:31 (item 4). std/bitset.cp filters a clause with `if let`.
+- **Reverse.** Filters go back to a plain `Bool` expression.

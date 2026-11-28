@@ -48,6 +48,9 @@ impl Parser<'_> {
             T::Ident if self.word() == Some(Contextual::Repeat) && self.nth(1) != T::Eq => {
                 self.headed(NodeKind::RepeatStmt, |p| p.expr())
             }
+            T::Ident if self.word() == Some(Contextual::Guard) && self.nth(1) == T::Let => {
+                self.guard_let()
+            }
             T::Ident if self.word() == Some(Contextual::Loop) && self.nth(1) == T::Colon => {
                 let span = self.span();
                 self.diagnostics
@@ -338,37 +341,91 @@ impl Parser<'_> {
 
     pub(super) fn cond(&mut self) {
         self.start(NodeKind::Condition);
-        loop {
-            if self.at(T::Let) {
-                self.start(NodeKind::LetCond);
-                self.bump();
-                self.pattern();
-                if self.want(T::Eq, "`=` and the value to match") {
-                    let outer = std::mem::replace(&mut self.no_and, true);
-                    self.expr();
-                    self.no_and = outer;
-                }
-                self.finish();
-                if self.at(T::And) {
-                    self.and_after_let();
-                    continue;
-                }
-            } else if self.bound_cond_ahead() {
-                self.start(NodeKind::BoundCond);
-                self.start(NodeKind::NameRef);
-                self.bump();
-                self.finish();
-                self.bump();
-                self.bound();
-                self.finish();
-            } else {
-                self.expr();
-            }
-            if !self.eat(T::Comma) {
-                break;
-            }
+        self.cond_part();
+        while self.eat(T::Comma) {
+            self.cond_part();
         }
         self.finish();
+    }
+
+    /// A `for` clause's `if` filter (01:356): a condition, where a `,`
+    /// before `p in e` starts the next clause instead.
+    fn filter(&mut self) {
+        self.start(NodeKind::Condition);
+        self.cond_part();
+        while self.at(T::Comma) && !self.clause_after_comma() {
+            self.bump();
+            self.cond_part();
+        }
+        self.finish();
+    }
+
+    /// `, x in e` or `, (a, b) in e` at the cursor.
+    fn clause_after_comma(&self) -> bool {
+        match self.nth(1) {
+            T::Ident => self.nth(2) == T::In,
+            T::LParen => {
+                let (mut depth, mut n) = (0usize, 1);
+                loop {
+                    match self.nth(n) {
+                        T::LParen => depth += 1,
+                        T::RParen => {
+                            depth -= 1;
+                            if depth == 0 {
+                                return self.nth(n + 1) == T::In;
+                            }
+                        }
+                        T::Eof | T::Newline => return false,
+                        _ => {}
+                    }
+                    n += 1;
+                }
+            }
+            _ => false,
+        }
+    }
+
+    /// One part of a condition: `let p = e`, a bound test, or a `Bool`.
+    pub(super) fn cond_part(&mut self) {
+        if self.at(T::Let) {
+            self.start(NodeKind::LetCond);
+            self.bump();
+            self.pattern();
+            if self.want(T::Eq, "`=` and the value to match") {
+                let outer = std::mem::replace(&mut self.no_and, true);
+                self.expr();
+                self.no_and = outer;
+            }
+            self.finish();
+            if self.at(T::And) {
+                self.and_after_let();
+                self.cond_part();
+            }
+        } else if self.bound_cond_ahead() {
+            self.start(NodeKind::BoundCond);
+            self.start(NodeKind::NameRef);
+            self.bump();
+            self.finish();
+            self.bump();
+            self.bound();
+            self.finish();
+        } else {
+            self.expr();
+        }
+    }
+
+    /// `guard let p = e else: leave`: one spelling, the let-else (R01.6.2);
+    /// the fix deletes `guard`.
+    fn guard_let(&mut self) {
+        let word = self.span();
+        let to_let = Span::new(word.start, self.nth_span(1).start);
+        let err = msgs::syntax::GUARD_LET.error(word, &[]);
+        self.diagnostics
+            .push(err.with_fix("delete `guard`", to_let, ""));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+        self.stmt();
     }
 
     /// `if let p = e and c:`: a `let` joins what follows with `,` (01:505);
@@ -411,7 +468,7 @@ impl Parser<'_> {
                 self.expr();
             }
             if self.eat(T::If) {
-                self.expr_at(crate::ops::Level::Expr);
+                self.filter();
             }
             self.finish();
             if !self.eat(T::Comma) {

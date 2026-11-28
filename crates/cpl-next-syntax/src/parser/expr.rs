@@ -344,7 +344,9 @@ impl Parser<'_> {
                 self.expr_at(Level::Expr);
             }
             while self.eat(T::If) {
-                self.expr_at(Level::Expr);
+                self.start(NodeKind::Condition);
+                self.cond_part();
+                self.finish();
             }
             self.finish();
         }

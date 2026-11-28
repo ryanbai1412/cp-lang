@@ -539,3 +539,26 @@ fn a_yields_param_is_reported_with_a_fix_that_deletes_it() {
         ("yields ", "")
     );
 }
+
+#[test]
+fn guard_let_is_reported_and_the_let_else_kept() {
+    let src = "fn f(r: ?Int) -> Int:\n    guard let x = r else: return 0\n    x\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    let (span, text) = file.diagnostics[0].fixes[0].edits[0].clone();
+    assert_eq!(
+        (&src[span.start as usize..span.end as usize], text.as_str()),
+        ("guard ", "")
+    );
+}
+
+#[test]
+fn a_clause_filter_takes_let_binders_and_commas() {
+    let src = "for s in 0..2 if let c = kid[s], c > 0, j in 0..c, (a, b) in ps:\n    print(j)\nlet q = [y for x in xs if let y = f(x) if y > 1]\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
+    assert_eq!(count(NodeKind::ForClause), 3);
+    assert_eq!(count(NodeKind::LetCond), 2);
+}

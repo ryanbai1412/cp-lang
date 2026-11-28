@@ -245,7 +245,8 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   `let Some(y) = x else:` are the same. The bindings are in scope after
   the statement, unwrapped, at top level as in a `fn` or loop body, and
   not inside the block (E0201). Without `else`, `p` must always match:
-  `let (1, b) = p` and `for (a, 2) in xs` are E0106. (R01.6.2)
+  `let (1, b) = p` and `for (a, 2) in xs` are E0106. There is no
+  `guard let` (E0503, decision 658). (R01.6.2)
 - `var` inside a pattern makes that one binding mutable:
   `for (var left, v) in items:`. (R01.6.3)
 - Assignment `place = e`, destructuring `(a, b) = (b, a)` (its places may be elements of one
@@ -507,7 +508,7 @@ cond        := 'let' pattern '=' expr (',' cond)* | expr (',' cond)*
              | place ('min=' | 'max=') expr      // true when improved (R01.6.4)
              | NAME ':' bound                    // `if M: Selective<T>:` (R08, decision 602)
 for_stmt    := (LABEL ':')? 'for' clause (',' clause)* block ('else' block)?
-clause      := pattern 'in' expr ('if' expr)?
+clause      := pattern 'in' expr ('if' cond)?   // `, p in e` after a filter is the next clause (decision 659)
 while_stmt  := (LABEL ':')? 'while' cond block ('else' block)?
 match_stmt  := 'match' expr ':' (arm (',' arm)* NL | NL INDENT (arm NL)+ DEDENT)
 arm         := pattern ('if' expr)? '=>' (expr | assign | NL INDENT stmt+ DEDENT)
