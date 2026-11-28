@@ -719,6 +719,21 @@ impl<'a> Cx<'a> {
         );
         mk(TK::Block(hold, Some(Box::new(pick))), opt)
     }
+    /// E0902 for a constant `i` (or a `let` that keeps it) stored where `want` cannot hold it.
+    fn const_out_of_range(&mut self, e: &TExpr, i: i64, want: &Ty, span: Span) {
+        let what = match &e.kind {
+            TK::Var(v) => format!("`{}`", self.var_name(*v)),
+            _ => i.to_string(),
+        };
+        let range = self.show(want);
+        self.err(
+            span,
+            Msg::verdict(
+                cpl_diag::codes::RANGE_STORE_CONST,
+                format!("{what} is out of range for `{range}`"),
+            ),
+        );
+    }
     /// A range type's end as a run-time value: a constant, or the global of the top-level `let`
     /// it names (R02.10.3), made before any body is checked; `less` is one below it, for an
     /// excluded end.
@@ -972,6 +987,30 @@ impl<'a> Cx<'a> {
                 if (*h == Ty::Int || h.is_int_range()) && ends_at_global(lo, hi) =>
             {
                 let (lo, hi, inclusive) = (lo.clone(), hi.clone(), *inclusive);
+                // A top-level `let` end lies in its declared range: a constant outside every
+                // value the range can take is an error now, and a value inside every one needs
+                // no check (R03.1.10).
+                let least = lo.bounds();
+                let most = (hi.bounds()).map(|(a, b)| match inclusive {
+                    true => (a, b),
+                    false => (a.saturating_sub(1), b.saturating_sub(1)),
+                });
+                match known_range(&self.b.let_ranges, &e) {
+                    Some((i, j))
+                        if i == j
+                            && (least.is_some_and(|l| i < l.0)
+                                || most.is_some_and(|m| i > m.1)) =>
+                    {
+                        self.const_out_of_range(&e, i, &want_s, span);
+                        return TExpr { ty: want_s, ..e };
+                    }
+                    Some((i, j))
+                        if least.is_some_and(|l| l.1 <= i) && most.is_some_and(|m| j <= m.0) =>
+                    {
+                        return TExpr { ty: want_s, ..e };
+                    }
+                    _ => {}
+                }
                 let lo = self.range_end(&lo, false, span);
                 let hi = self.range_end(&hi, !inclusive, span);
                 let v = TExpr { ty: Ty::Int, ..e };
@@ -986,18 +1025,7 @@ impl<'a> Cx<'a> {
                 // no check.
                 match known_range(&self.b.let_ranges, &e) {
                     Some((i, j)) if i == j && (i < lo || i > hi) => {
-                        let what = match &e.kind {
-                            TK::Var(v) => format!("`{}`", self.var_name(*v)),
-                            _ => i.to_string(),
-                        };
-                        let range = self.show(&want_s);
-                        self.err(
-                            span,
-                            Msg::verdict(
-                                cpl_diag::codes::RANGE_STORE_CONST,
-                                format!("{what} is out of range for `{range}`"),
-                            ),
-                        );
+                        self.const_out_of_range(&e, i, &want_s, span);
                         return TExpr { ty: want_s, ..e };
                     }
                     Some((i, j)) if lo <= i && j <= hi => return TExpr { ty: want_s, ..e },
