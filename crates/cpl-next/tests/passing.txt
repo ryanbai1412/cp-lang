@@ -1751,6 +1751,7 @@ next/n_fresh_domain_owned_mix.cp
 next/n_fresh_domain_owned_type.cp
 next/n_fresh_domain_record.cp
 next/n_fresh_domain_result.cp
+next/n_fresh_domain_some.cp
 next/n_fromop_01_bare_op_at_a_bound.cp
 next/n_fromop_02_closure_takes_fn_type_impl.cp
 next/n_fromop_03_std_monoid_of_an_operator.cp

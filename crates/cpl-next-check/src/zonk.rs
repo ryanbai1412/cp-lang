@@ -22,7 +22,8 @@ impl<'a> Cx<'a> {
             }
             TStmt::Return(e) => {
                 if let Some(e) = e {
-                    self.zonk_expr(e)
+                    self.zonk_expr(e);
+                    self.as_body.borrow_mut().result(e);
                 }
             }
             TStmt::Break | TStmt::Continue | TStmt::Item(_) | TStmt::Checks(_) => {}
@@ -114,7 +115,11 @@ impl<'a> Cx<'a> {
                 args.iter_mut().for_each(|a| self.zonk_arg(a));
             }
             TK::Struct(fs) => fs.iter_mut().for_each(|a| self.zonk_expr(a)),
-            TK::Lambda { body, .. } => self.zonk_expr(body),
+            TK::Lambda { body, .. } => {
+                self.as_body.borrow_mut().lambdas += 1;
+                self.zonk_expr(body);
+                self.as_body.borrow_mut().lambdas -= 1;
+            }
             TK::FnItem(f) => *f = self.zonk_fnref(f),
             TK::Bin(_, a, b) | TK::Cmp(_, a, b) | TK::Slot(a, b) => {
                 self.zonk_expr(a);

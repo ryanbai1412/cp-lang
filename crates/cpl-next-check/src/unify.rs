@@ -124,6 +124,14 @@ impl<'a> Cx<'a> {
                 self.zonk_set(&s),
             ),
             Ty::Clo(c) => Ty::Clo(Box::new(self.zonk_clo(&c))),
+            Ty::Dom(c) => {
+                let doms = &self.as_body.borrow().doms;
+                Ty::Dom(
+                    (doms.iter())
+                        .find_map(|&(r, j)| (r == c).then_some(j))
+                        .unwrap_or(c),
+                )
+            }
             other => other,
         }
     }

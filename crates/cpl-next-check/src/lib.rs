@@ -302,6 +302,46 @@ pub struct Local {
     /// The `let` that bound it, which a fix writes `var` over.
     pub let_at: Option<cpl_next_ir::ids::SourceId>,
 }
+/// A body's names for its result's fresh domains while it is zonked: a domain returned as the
+/// result's `C` is `C` there, so the body's types name it once, as the body domain whose ends
+/// it reads (R02.9.3), and each value the body returns is held and read as the result's type.
+#[derive(Default)]
+struct AsBody {
+    /// Each such `C` and the body domain it is.
+    doms: Vec<(usize, usize)>,
+    /// The result in the body's types, and as the fn gives it, when the two differ.
+    ret: Option<(Ty, Ty)>,
+    /// The holds the returns take, the fn's locals from `first` on.
+    holds: Vec<Local>,
+    first: usize,
+    /// How many lambdas deep the walk is: their returns are their own.
+    lambdas: usize,
+}
+impl AsBody {
+    /// A value of the body's types returned as the result's fresh `C`: held, then read as `C`.
+    fn result(&mut self, e: &mut TExpr) {
+        let Some((_, ret)) = (self.ret.clone()).filter(|(t, _)| self.lambdas == 0 && e.ty == *t)
+        else {
+            return;
+        };
+        let (span, hold) = (e.span, VarRef::Local(self.first + self.holds.len()));
+        self.holds.push(Local {
+            name: "$result".into(),
+            ty: e.ty.clone(),
+            top: false,
+            mutable: false,
+            fixed: false,
+            let_at: None,
+        });
+        let read = TExpr {
+            kind: TK::Var(hold),
+            ty: ret.clone(),
+            span,
+        };
+        let value = std::mem::replace(e, read.clone());
+        *e = crate::expr::block(vec![TStmt::Let(hold, value)], read);
+    }
+}
 pub struct TypedFn {
     pub self_local: Option<LocalId>,
     pub params: Vec<LocalId>,
@@ -454,6 +494,8 @@ struct Cx<'a> {
     /// A body domain and the result's `domain C` it was returned as, which it then stands for;
     /// or a result's `domain C` and the domain its caller bound it to (R02.9.3).
     fresh_eq: Vec<(usize, usize)>,
+    /// While a finished body is zonked, how its types name a result's fresh domains (R02.9.3).
+    as_body: std::cell::RefCell<AsBody>,
     /// The `let`s bound to the `None` value: comparing one with a `?T` tests presence (R02.4.5).
     none_lets: HashSet<VarRef>,
     ranges: Vec<RangeInfo>,
@@ -685,6 +727,7 @@ pub fn check(
             })
             .collect(),
         fresh_eq: Vec::new(),
+        as_body: Default::default(),
         none_lets: HashSet::new(),
         ranges: Vec::new(),
         found_ret: HashMap::new(),
@@ -1254,13 +1297,32 @@ impl<'a> Cx<'a> {
     }
 
     /// `tf` with every variable replaced by what it was solved to.
+    /// A domain returned as the result's fresh `C` is `C` in the body (R02.9.3), so the body's
+    /// types name it once, as the body domain, whose ends it reads; the result stays `C`.
     fn zonk_fn(&mut self, tf: &mut TypedFn) {
+        tf.ret = self.zonk(&tf.ret);
+        let ret = &tf.ret;
+        let doms = (self.fresh_eq.iter())
+            .filter(|&&(_, c)| pattern::holds_dom(ret, c))
+            .map(|&(j, c)| (c, j))
+            .collect();
+        *self.as_body.borrow_mut() = AsBody {
+            doms,
+            ..AsBody::default()
+        };
+        let body_ret = self.zonk(&tf.ret);
+        {
+            let mut b = self.as_body.borrow_mut();
+            b.first = tf.locals.len();
+            b.ret = (body_ret != tf.ret).then(|| (body_ret, tf.ret.clone()));
+        }
         self.zonk_expr(&mut tf.body);
+        self.as_body.borrow_mut().result(&mut tf.body);
         for l in &mut tf.locals {
             l.ty = self.zonk(&l.ty);
         }
-        tf.ret = self.zonk(&tf.ret);
         tf.region = (tf.region.take()).map(|(l, t)| (l, self.zonk(&t)));
+        tf.locals.extend(self.as_body.take().holds);
     }
     fn check_fn(&mut self, id: FnId, frames: Vec<CtxFrame>) -> TypedFn {
         let lends_last =
