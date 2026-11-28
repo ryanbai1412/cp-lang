@@ -304,10 +304,12 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
     let (prog, owned) = own::link(
         &f.d,
         &g.whole,
-        &g.deferred,
+        own::Answered {
+            deferred: &g.deferred,
+            adds: &g.adds,
+        },
         &mut g.funcs,
         &mut g.globals,
-        &g.adds,
         &names,
         events,
     );

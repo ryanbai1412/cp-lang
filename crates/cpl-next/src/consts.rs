@@ -220,10 +220,12 @@ impl<'a> Evaluator<'a> {
         let (mut prog, owned) = own::link(
             self.d,
             &low.whole,
-            &low.deferred,
+            own::Answered {
+                deferred: &low.deferred,
+                adds: &low.adds,
+            },
             &mut low.funcs,
             &mut low.globals,
-            &low.adds,
             &names,
             false,
         );

@@ -207,20 +207,26 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
 use cpl_next_decls::views::Answers;
 pub use inst::Owned;
 
+/// What the checker and lowering left for own to read beside the generic fns.
+pub struct Answered<'a> {
+    pub deferred: &'a cpl_next_ir::msg::Deferred,
+    pub adds: &'a SetAdds,
+}
+
 /// Ownership around link (contract 4): marks what the generic fns lend (`lent`), links them,
 /// checks the linked instances and settles their passed places. `globals` names each
 /// top-level binding and whether it is a `var`.
 pub fn link(
     d: &dyn Signatures,
     whole: &Whole,
-    deferred: &cpl_next_ir::msg::Deferred,
+    answered: Answered,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
     tys: &mut [Ty],
-    adds: &SetAdds,
     globals: &[(String, bool)],
     events: bool,
 ) -> (Program, Owned) {
     use cpl_next_ir::verify::{all, callees, instances, Stage};
+    let Answered { deferred, adds } = answered;
     let debug = cfg!(debug_assertions);
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     let generic = if debug {
