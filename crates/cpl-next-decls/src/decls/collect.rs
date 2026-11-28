@@ -62,9 +62,11 @@ pub fn collect(
     mods: &[crate::modules::Module],
     seen: &[bool],
     prelude: &HashMap<String, String>,
-) -> (Decls, Vec<ItemId>) {
+) -> Decls {
     let (layer, main) = layer(Some(std), mods, seen, prelude);
-    (layer.d, main)
+    let mut d = layer.d;
+    d.statements = main;
+    d
 }
 
 /// The declarations of `mods` past `base`'s, over `base`'s; with no base, std's own.

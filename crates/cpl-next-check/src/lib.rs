@@ -731,563 +731,592 @@ pub enum ConstError {
     Failed(Box<Msg>),
 }
 
-/// The items a check covers.
-#[derive(Clone, Copy, Default)]
-pub struct Program<'a> {
-    /// The program's own items, in order.
-    pub main: &'a [ItemId],
-    /// Values bound after them, each a top-level `let` of its name.
-    pub values: &'a [(ItemId, String, next::Expr)],
-    /// Library modules whose every fn is checked as the program's are, reached or not.
-    pub roots: &'a [ModId],
-}
-
-/// `program.roots`: library modules whose every fn is checked as the program's are, reached or not.
+/// A check, one keyed item at a time: the program's top-level items in order (`top`), the
+/// values a constant's run binds after them (`value`) and the fns whose bodies it checks
+/// (`body`); `finish` checks what those reach and answers the whole.
 /// A result's `_` that is no domain is fixed by its fn's body (R02.9.3): a call checked before
 /// that body is checked again, with each such result as the bodies fixed it.
 /// What bodies make is named as `prior` named it where they make it again: an edit leaves
 /// the bodies it does not touch typed the same (`Ids::default()` for a first check).
-pub fn check(
-    d: &Decls,
-    program: Program,
-    src: &crate::modules::Loaded,
-    consts: &dyn Consts,
-    build: Build,
-    prior: &Ids,
-) -> Typed {
-    let Program {
-        main,
-        values,
-        roots,
-    } = program;
-    let Build { judge, checks } = build;
-    let mut cx = Cx {
-        values: consts,
-        checks_kept: checks,
-        checks,
-        ctx_made: HashSet::new(),
-        ctx_pending: Vec::new(),
-        ctx_impls: HashMap::new(),
-        items: d,
-        names: d,
-        facts: d,
-        bodies: src,
-        rows: d,
-        role_structs: d,
-        shapes: d,
-        methods: d,
-        doms: d,
-        tables: d,
-        syms: &d.syms,
-        program: d.program,
-        top_doms: d.top_doms.clone(),
-        top_keys: (d.top_values.iter())
-            .map(|t| (t.item.clone(), t.name))
-            .collect(),
-        dom_rows: Vec::new(),
-        tys: Vec::new(),
-        sets: Vec::new(),
-        zonking: Default::default(),
-        cyclic: Default::default(),
-        early: Default::default(),
-        view_keys: HashMap::new(),
-        judge,
-        errors: Vec::new(),
-        lambdas: Vec::new(),
-        ids: prior.clone(),
-        made: [0; 4],
-        copy: 0,
-        globals: d.top_values.iter().map(|t| top_global(d, t)).collect(),
-        global_names: HashMap::new(),
-        top_slots: (0..d.top_values.len()).collect(),
-        param_adds: HashMap::new(),
-        requires: HashMap::new(),
-        generic_calls: Vec::new(),
-        global_adds: HashMap::new(),
-        added: Vec::new(),
-        // A top-level domain's place is kept for it until its statement runs.
-        domains: (0..d.dom_ids.len())
-            .map(|_| DomInfo {
-                name: String::new(),
-                len: VarRef::Global(usize::MAX),
-                lo: VarRef::Global(usize::MAX),
+pub struct Checker<'a> {
+    cx: Cx<'a>,
+    /// How many errors the declarations gave before any item.
+    errs: usize,
+    top: Vec<ItemId>,
+    values: Vec<(ItemId, String, next::Expr)>,
+    todo: Vec<FnId>,
+}
+
+impl<'a> Checker<'a> {
+    pub fn new(
+        d: &'a Decls,
+        bodies: &'a dyn views::Bodies,
+        consts: &'a dyn Consts,
+        build: Build,
+        prior: &Ids,
+    ) -> Self {
+        let Build { judge, checks } = build;
+        let mut cx = Cx {
+            values: consts,
+            checks_kept: checks,
+            checks,
+            ctx_made: HashSet::new(),
+            ctx_pending: Vec::new(),
+            ctx_impls: HashMap::new(),
+            items: d,
+            names: d,
+            facts: d,
+            bodies,
+            rows: d,
+            role_structs: d,
+            shapes: d,
+            methods: d,
+            doms: d,
+            tables: d,
+            syms: &d.syms,
+            program: d.program,
+            top_doms: d.top_doms.clone(),
+            top_keys: (d.top_values.iter())
+                .map(|t| (t.item.clone(), t.name))
+                .collect(),
+            dom_rows: Vec::new(),
+            tys: Vec::new(),
+            sets: Vec::new(),
+            zonking: Default::default(),
+            cyclic: Default::default(),
+            early: Default::default(),
+            view_keys: HashMap::new(),
+            judge,
+            errors: Vec::new(),
+            lambdas: Vec::new(),
+            ids: prior.clone(),
+            made: [0; 4],
+            copy: 0,
+            globals: d.top_values.iter().map(|t| top_global(d, t)).collect(),
+            global_names: HashMap::new(),
+            top_slots: (0..d.top_values.len()).collect(),
+            param_adds: HashMap::new(),
+            requires: HashMap::new(),
+            generic_calls: Vec::new(),
+            global_adds: HashMap::new(),
+            added: Vec::new(),
+            // A top-level domain's place is kept for it until its statement runs.
+            domains: (0..d.dom_ids.len())
+                .map(|_| DomInfo {
+                    name: String::new(),
+                    len: VarRef::Global(usize::MAX),
+                    lo: VarRef::Global(usize::MAX),
+                    within: (None, None),
+                    owner: None,
+                    count: None,
+                    chars: false,
+                    counted: false,
+                    anonymous: false,
+                })
+                .collect(),
+            fresh_eq: Vec::new(),
+            none_lets: HashSet::new(),
+            ranges: Vec::new(),
+            found_ret: HashMap::new(),
+            ret_busy: Vec::new(),
+            fns: HashMap::new(),
+            reached: Vec::new(),
+            through_trait: Vec::new(),
+            fanned_out: HashSet::new(),
+            named: Default::default(),
+            unnamed: HashMap::new(),
+            held: HashMap::new(),
+            reported: HashSet::new(),
+            left_parts: HashSet::new(),
+            consts: vec![None; d.consts.len()],
+            const_busy: vec![false; d.consts.len()],
+            const_init: Vec::new(),
+            b: Body::new(d.top_doms.clone(), d.program),
+        };
+        // A result's `domain C` keeps its ends in one static slot per declaration site (R02.9.4).
+        let slot = |cx: &mut Cx, role: &str| {
+            cx.globals.push(Local {
+                name: role.to_string(),
+                ty: Ty::Int,
+                top: true,
+                mutable: true,
+                fixed: false,
+                let_at: None,
+                synthetic: true,
+            });
+            VarRef::Global(cx.globals.len() - 1)
+        };
+        for (i, name) in &d.fresh_doms {
+            let (lo, len) = (slot(&mut cx, "$lo"), slot(&mut cx, "$len"));
+            cx.domains[*i] = DomInfo {
+                name: name.clone(),
+                len,
+                lo,
                 within: (None, None),
                 owner: None,
                 count: None,
                 chars: false,
                 counted: false,
                 anonymous: false,
-            })
-            .collect(),
-        fresh_eq: Vec::new(),
-        none_lets: HashSet::new(),
-        ranges: Vec::new(),
-        found_ret: HashMap::new(),
-        ret_busy: Vec::new(),
-        fns: HashMap::new(),
-        reached: Vec::new(),
-        through_trait: Vec::new(),
-        fanned_out: HashSet::new(),
-        named: Default::default(),
-        unnamed: HashMap::new(),
-        held: HashMap::new(),
-        reported: HashSet::new(),
-        left_parts: HashSet::new(),
-        consts: vec![None; d.consts.len()],
-        const_busy: vec![false; d.consts.len()],
-        const_init: Vec::new(),
-        b: Body::new(d.top_doms.clone(), d.program),
-    };
-    // A result's `domain C` keeps its ends in one static slot per declaration site (R02.9.4).
-    let slot = |cx: &mut Cx, role: &str| {
-        cx.globals.push(Local {
-            name: role.to_string(),
-            ty: Ty::Int,
-            top: true,
-            mutable: true,
-            fixed: false,
-            let_at: None,
-            synthetic: true,
-        });
-        VarRef::Global(cx.globals.len() - 1)
-    };
-    for (i, name) in &d.fresh_doms {
-        let (lo, len) = (slot(&mut cx, "$lo"), slot(&mut cx, "$len"));
-        cx.domains[*i] = DomInfo {
-            name: name.clone(),
-            len,
-            lo,
-            within: (None, None),
-            owner: None,
-            count: None,
-            chars: false,
-            counted: false,
-            anonymous: false,
-        };
-    }
-    for (at, code, msg) in &d.misdeclared {
-        cx.errors
-            .push(Msg::at(at.clone(), Msg::verdict(*code, msg.clone())));
-    }
-    for (i, s) in (d.structs.iter().enumerate()).filter(|(_, s)| d.seen(s.module)) {
-        if let Some(f) = decls::field_holding_itself(d, StructId(i)) {
-            cx.errors.push(Msg::at(
-                s.field_at[f].clone(),
-                Msg::verdict(
-                    cpl_diag::codes::RECURSIVE_FIELD,
-                    format!(
-                        "a `{}` would hold another `{}` inline, so it has no size; \
+            };
+        }
+        for (at, code, msg) in &d.misdeclared {
+            cx.errors
+                .push(Msg::at(at.clone(), Msg::verdict(*code, msg.clone())));
+        }
+        for (i, s) in (d.structs.iter().enumerate()).filter(|(_, s)| d.seen(s.module)) {
+            if let Some(f) = decls::field_holding_itself(d, StructId(i)) {
+                cx.errors.push(Msg::at(
+                    s.field_at[f].clone(),
+                    Msg::verdict(
+                        cpl_diag::codes::RECURSIVE_FIELD,
+                        format!(
+                            "a `{}` would hold another `{}` inline, so it has no size; \
                  keep the others in a list and hold an index",
-                        s.name, s.name
+                            s.name, s.name
+                        ),
                     ),
-                ),
-            ));
+                ));
+            }
+        }
+        let errs = cx.errors.len();
+        Checker {
+            cx,
+            errs,
+            top: Vec::new(),
+            values: Vec::new(),
+            todo: Vec::new(),
         }
     }
-    let errs = cx.errors.len();
-    let mut main_out = Vec::new();
-    let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
-    // A `const` with a scalar value, and a domain whose ends have values, hoist; one read at
-    // run time runs where it is written (R11.1.1).
-    let main = program_items(src, main);
-    let lifted: Vec<Option<Option<ops::Scalar>>> = (main.iter())
-        .map(|(off, s)| {
-            cx.b.item = off.clone();
-            cx.hoisted(s)
-        })
-        .collect();
-    for ((off, s), known) in main.iter().zip(&lifted) {
-        if let Some(known) = known {
-            cx.b.item = off.clone();
-            main_out.push(TStmt::Item(off.clone()));
-            cx.top_item(s, *known, &mut main_out);
-        }
+
+    /// Top-level item `id`, in program order. A place binding holds the items below it, so the
+    /// top level is checked once `finish` has them all.
+    pub fn top(&mut self, id: ItemId) {
+        self.top.push(id);
     }
-    // A bare `with` line comes before the program's first statement (R09.1.1).
-    let mut begun = false;
-    // The domains declared from here on are a test case's own.
-    let mut case_doms = 0;
-    // Statements a `let p = mut a[i]` above holds ran inside its lend.
-    let mut placed = 0;
-    for (k, ((off, s), hoisted)) in main.iter().zip(&lifted).enumerate() {
-        if hoisted.is_none() && placed > 0 {
-            placed -= 1;
-            continue;
+
+    /// A value bound below the program's items by a top-level `let name`.
+    pub fn value(&mut self, item: ItemId, name: String, e: next::Expr) {
+        self.values.push((item, name, e));
+    }
+
+    /// Fn `id`'s body. A made fn (a record's impls, a derived one) and one of an impl that is not
+    /// live are checked once a reference reaches them.
+    pub fn body(&mut self, id: FnId) {
+        let items = self.cx.items;
+        let f = items.f(id);
+        if matches!(f.body, decls::Body::Synth(_)) {
+            return;
         }
-        cx.b.item = off.clone();
-        let span = cx.at(s);
-        // `@!multitest`: the count is read once and everything below runs once per case.
-        let counted = s.directive().filter(multitest);
-        if let (None, Some(m)) = (&cases, &counted) {
-            case_doms = cx.b.block_doms.len();
-            main_out.push(TStmt::Item(off.clone()));
-            let reads = case_count(m).unwrap_or_else(|| {
-                cx.err(span, Unbuilt::MultitestArg);
-                true
-            });
-            let count = reads.then_some(TExpr {
-                kind: TK::ReadInt,
-                ty: Ty::Int,
-                span,
-            });
-            cases = Some((count, Vec::new()));
-        }
-        let memo_item = matches!(s.decl(), Some(next::Decl::Fn(fd)) if stmt::is_memo(&fd));
-        let unbuilt: Vec<String> = (s.directive().filter(|x| !multitest(x)))
-            .and_then(|x| x.name())
-            .into_iter()
-            .chain(s.decorators().iter().filter_map(next::Decorator::name))
-            .filter(|n| !(memo_item && n.text() == "memo"))
-            .map(|t| t.text().to_string())
-            .collect();
-        for name in unbuilt {
-            cx.err(span, Unbuilt::Decorator { name });
-        }
-        // A hoisted item ran above; `@!multitest` on it still divides the file here.
-        if hoisted.is_some() {
-            continue;
-        }
-        let into = match &mut cases {
-            Some((_, body)) => body,
-            None => &mut main_out,
+        let later = |i: usize| {
+            let s = matches!(items.imp(i).for_, Ty::Struct(s, ..) if items.s(s).record);
+            !items.live(i) || s
         };
-        let bare_with = matches!(s.stmt(), Some(next::Stmt::With(w)) if w.body().is_none());
-        if bare_with && begun {
-            let code = cpl_diag::codes::WITH_NOT_FIRST;
-            cx.err(
-                span,
-                Msg::verdict(code, "a bare `with` line comes first in its block"),
-            );
-            continue;
+        if !matches!(f.owner, Some(Owner::Impl(i)) if later(i)) {
+            self.todo.push(id);
         }
-        begun |= !bare_with;
-        if let Some(st) = s.stmt() {
-            cx.leaves_from_parts(st.syntax());
+    }
+
+    /// Checks the bodies the given items reach, and answers the whole.
+    pub fn finish(self) -> Typed {
+        let Checker {
+            mut cx,
+            errs,
+            top,
+            values,
+            todo,
+        } = self;
+        let items = cx.items;
+        let mut main_out = Vec::new();
+        let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
+        // A `const` with a scalar value, and a domain whose ends have values, hoist; one read at
+        // run time runs where it is written (R11.1.1).
+        let main = statements(cx.bodies, &top);
+        let lifted: Vec<Option<Option<ops::Scalar>>> = (main.iter())
+            .map(|(off, s)| {
+                cx.b.item = off.clone();
+                cx.hoisted(s)
+            })
+            .collect();
+        for ((off, s), known) in main.iter().zip(&lifted) {
+            if let Some(known) = known {
+                cx.b.item = off.clone();
+                main_out.push(TStmt::Item(off.clone()));
+                cx.top_item(s, *known, &mut main_out);
+            }
         }
-        into.push(TStmt::Item(off.clone()));
-        if let Some((p, _)) = s.stmt().as_ref().and_then(place::place_binding) {
-            let items: Vec<(ItemId, next::Item)> = (main[k..].iter().zip(&lifted[k..]))
-                .filter(|(_, l)| l.is_none())
-                .map(|(x, _)| x.clone())
+        // A bare `with` line comes before the program's first statement (R09.1.1).
+        let mut begun = false;
+        // The domains declared from here on are a test case's own.
+        let mut case_doms = 0;
+        // Statements a `let p = mut a[i]` above holds ran inside its lend.
+        let mut placed = 0;
+        for (k, ((off, s), hoisted)) in main.iter().zip(&lifted).enumerate() {
+            if hoisted.is_none() && placed > 0 {
+                placed -= 1;
+                continue;
+            }
+            cx.b.item = off.clone();
+            let span = cx.at(s);
+            // `@!multitest`: the count is read once and everything below runs once per case.
+            let counted = s.directive().filter(multitest);
+            if let (None, Some(m)) = (&cases, &counted) {
+                case_doms = cx.b.block_doms.len();
+                main_out.push(TStmt::Item(off.clone()));
+                let reads = case_count(m).unwrap_or_else(|| {
+                    cx.err(span, Unbuilt::MultitestArg);
+                    true
+                });
+                let count = reads.then_some(TExpr {
+                    kind: TK::ReadInt,
+                    ty: Ty::Int,
+                    span,
+                });
+                cases = Some((count, Vec::new()));
+            }
+            let memo_item = matches!(s.decl(), Some(next::Decl::Fn(fd)) if stmt::is_memo(&fd));
+            let unbuilt: Vec<String> = (s.directive().filter(|x| !multitest(x)))
+                .and_then(|x| x.name())
+                .into_iter()
+                .chain(s.decorators().iter().filter_map(next::Decorator::name))
+                .filter(|n| !(memo_item && n.text() == "memo"))
+                .map(|t| t.text().to_string())
                 .collect();
-            let rest: Vec<next::Item> = items[1..].iter().map(|(_, s)| s.clone()).collect();
-            let held = place::place_held(&p, &rest);
-            placed = held;
-            into.pop();
-            cx.items_placed(&items[..=held], into);
-            continue;
+            for name in unbuilt {
+                cx.err(span, Unbuilt::Decorator { name });
+            }
+            // A hoisted item ran above; `@!multitest` on it still divides the file here.
+            if hoisted.is_some() {
+                continue;
+            }
+            let into = match &mut cases {
+                Some((_, body)) => body,
+                None => &mut main_out,
+            };
+            let bare_with = matches!(s.stmt(), Some(next::Stmt::With(w)) if w.body().is_none());
+            if bare_with && begun {
+                let code = cpl_diag::codes::WITH_NOT_FIRST;
+                cx.err(
+                    span,
+                    Msg::verdict(code, "a bare `with` line comes first in its block"),
+                );
+                continue;
+            }
+            begun |= !bare_with;
+            if let Some(st) = s.stmt() {
+                cx.leaves_from_parts(st.syntax());
+            }
+            into.push(TStmt::Item(off.clone()));
+            if let Some((p, _)) = s.stmt().as_ref().and_then(place::place_binding) {
+                let items: Vec<(ItemId, next::Item)> = (main[k..].iter().zip(&lifted[k..]))
+                    .filter(|(_, l)| l.is_none())
+                    .map(|(x, _)| x.clone())
+                    .collect();
+                let rest: Vec<next::Item> = items[1..].iter().map(|(_, s)| s.clone()).collect();
+                let held = place::place_held(&p, &rest);
+                placed = held;
+                into.pop();
+                cx.items_placed(&items[..=held], into);
+                continue;
+            }
+            cx.top_item(s, None, into);
+            if let Some(i) = cx.early.take() {
+                let name = (cx.top_doms.iter())
+                    .find(|(_, t)| matches!(t, Ty::Dom(k) if *k == i))
+                    .map_or("", |(n, _)| items.text(*n));
+                cx.err(
+                    span,
+                    Msg::verdict(
+                        cpl_diag::codes::USED_BEFORE_SET,
+                        format!(
+                            "domain `{name}` is used above the line that declares it (R11.1.1)"
+                        ),
+                    ),
+                );
+            }
         }
-        cx.top_item(s, None, into);
-        if let Some(i) = cx.early.take() {
-            let name = (d.top_doms.iter())
-                .find(|(_, t)| matches!(t, Ty::Dom(k) if *k == i))
-                .map_or("", |(n, _)| d.text(*n));
-            cx.err(
-                span,
-                Msg::verdict(
-                    cpl_diag::codes::USED_BEFORE_SET,
-                    format!("domain `{name}` is used above the line that declares it (R11.1.1)"),
-                ),
-            );
+        // Each value a constant's run works out is a top-level `let` after the program's items.
+        for (item, name, e) in &values {
+            cx.b.item = item.clone();
+            main_out.push(TStmt::Item(item.clone()));
+            let span = cx.at(e);
+            cx.let_name(name, e, span, &mut main_out);
         }
-    }
-    // Each value a constant's run works out is a top-level `let` after the program's items.
-    for (item, name, e) in values {
-        cx.b.item = item.clone();
-        main_out.push(TStmt::Item(item.clone()));
-        let span = cx.at(e);
-        cx.let_name(name, e, span, &mut main_out);
-    }
-    cx.solve(true);
-    if let Some((count, body)) = cases {
-        let doms: Vec<(usize, String)> = (cx.b.block_doms[case_doms..].iter())
-            .map(|&k| (k, cx.domains[k].name.clone()))
-            .collect();
-        let above: Vec<(VarRef, String, Ty)> = (main_out.iter())
-            .filter_map(|s| match s {
-                TStmt::Let(VarRef::Global(g), _) => Some(*g),
-                _ => None,
-            })
-            .map(|g| {
-                (
-                    VarRef::Global(g),
-                    cx.globals[g].name.clone(),
-                    cx.zonk(&cx.globals[g].ty),
-                )
-            })
-            .collect();
-        for leak in cases::per_test_leaks(&above, &doms, &body) {
-            let cases::Leak {
-                item,
-                span,
-                name,
-                dom,
-            } = leak;
-            let text = format!(
+        cx.solve(true);
+        if let Some((count, body)) = cases {
+            let doms: Vec<(usize, String)> = (cx.b.block_doms[case_doms..].iter())
+                .map(|&k| (k, cx.domains[k].name.clone()))
+                .collect();
+            let above: Vec<(VarRef, String, Ty)> = (main_out.iter())
+                .filter_map(|s| match s {
+                    TStmt::Let(VarRef::Global(g), _) => Some(*g),
+                    _ => None,
+                })
+                .map(|g| {
+                    (
+                        VarRef::Global(g),
+                        cx.globals[g].name.clone(),
+                        cx.zonk(&cx.globals[g].ty),
+                    )
+                })
+                .collect();
+            for leak in cases::per_test_leaks(&above, &doms, &body) {
+                let cases::Leak {
+                    item,
+                    span,
+                    name,
+                    dom,
+                } = leak;
+                let text = format!(
                 "`{name}` is declared above `@!multitest`, so a `{dom}` stored in it would outlive its test case"
             );
-            let msg = Msg::verdict(cpl_diag::codes::FRESH_TYPE_LEAKS_TEST, text);
-            let help =
-                format!("declare `{name}` below `@!multitest`, so each test case has its own");
-            let outer = std::mem::replace(&mut cx.b.item, item);
-            cx.err_help(span, msg, Some(help));
-            cx.b.item = outer;
-        }
-        main_out.push(TStmt::Cases(count, body));
-    }
-    cx.own_global_sets();
-    // The program's fns are all checked; a library's, core's too, only once a reference reaches
-    // them, so what a module declares and the program never uses refuses nothing.
-    // A made fn (a record's impls, a derived one) is checked once a reference reaches it.
-    let mut todo: Vec<FnId> = (0..d.fns.len())
-        .map(FnId)
-        .filter(|id| {
-            let f = d.f(*id);
-            if matches!(f.body, decls::Body::Synth(_)) {
-                return false;
+                let msg = Msg::verdict(cpl_diag::codes::FRESH_TYPE_LEAKS_TEST, text);
+                let help =
+                    format!("declare `{name}` below `@!multitest`, so each test case has its own");
+                let outer = std::mem::replace(&mut cx.b.item, item);
+                cx.err_help(span, msg, Some(help));
+                cx.b.item = outer;
             }
-            let later = |im: &decls::ImplDecl| {
-                !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
-            };
-            (roots.contains(&f.module) || d.of_program(f.module))
-                && !matches!(f.owner, Some(Owner::Impl(i)) if later(d.imp(i)))
-        })
-        .collect();
-    // The trace role's fns are reached by events, which a build adds after checking (contract 8).
-    todo.extend(d.roles.trace.iter().copied());
-    // In the order the collector made them, so a program over std checks as one collection would.
-    todo.sort_by_key(|id| std::cmp::Reverse((d.f(*id).made, *id)));
-    cx.name_types(&main_out);
-    let mut deferred: HashMap<FnId, Vec<Msg>> = HashMap::new();
-    let mut quiet_fns = HashSet::new();
-    let mut ctx_fns: Vec<(u32, FnId, TypedFn)> = Vec::new();
-    loop {
+            main_out.push(TStmt::Cases(count, body));
+        }
+        cx.own_global_sets();
+        let mut todo = todo;
+        // The trace role's fns are reached by events, which a build adds after checking (contract 8).
+        todo.extend(cx.rows.role_fns(decls::Role::Trace).iter().copied());
+        // In the order the collector made them, so a program over std checks as one collection would.
+        todo.sort_by_key(|id| std::cmp::Reverse((items.f(*id).made, *id)));
+        cx.name_types(&main_out);
+        let mut deferred: HashMap<FnId, Vec<Msg>> = HashMap::new();
+        let mut quiet_fns = HashSet::new();
+        let mut ctx_fns: Vec<(u32, FnId, TypedFn)> = Vec::new();
         loop {
-            let fresh = std::mem::take(&mut cx.named.get_mut().1);
-            if fresh.is_empty() {
-                break;
-            }
-            for (m, quiet) in fresh.iter().flat_map(|s| cx.unnamed.remove(s)).flatten() {
-                match quiet {
-                    true => cx.through_trait.push(m),
-                    false => cx.reached.push(m),
+            loop {
+                let fresh = std::mem::take(&mut cx.named.get_mut().1);
+                if fresh.is_empty() {
+                    break;
+                }
+                for (m, quiet) in fresh.iter().flat_map(|s| cx.unnamed.remove(s)).flatten() {
+                    match quiet {
+                        true => cx.through_trait.push(m),
+                        false => cx.reached.push(m),
+                    }
+                }
+                let named = cx.named.get_mut();
+                for s in fresh.iter().flat_map(|s| cx.held.remove(s)).flatten() {
+                    if named.0.insert(s) {
+                        named.1.push(s);
+                    }
                 }
             }
-            let named = cx.named.get_mut();
-            for s in fresh.iter().flat_map(|s| cx.held.remove(s)).flatten() {
-                if named.0.insert(s) {
-                    named.1.push(s);
-                }
+            todo.append(&mut cx.reached);
+            if let Some((id, k, frames)) = cx.ctx_pending.pop() {
+                cx.copy = k;
+                let tf = cx.check_fn(id, frames);
+                cx.copy = 0;
+                ctx_fns.push((k, id, tf));
+                continue;
             }
-        }
-        todo.append(&mut cx.reached);
-        if let Some((id, k, frames)) = cx.ctx_pending.pop() {
-            cx.copy = k;
-            let tf = cx.check_fn(id, frames);
-            cx.copy = 0;
-            ctx_fns.push((k, id, tf));
-            continue;
-        }
-        let (id, quiet) = match todo.pop() {
-            Some(id) => (id, false),
-            None => match cx.through_trait.pop() {
-                Some(id) => (id, true),
-                None => break,
-            },
-        };
-        let f = d.f(id);
-        // A trait's fn whose body is an intrinsic is checked into that operation on `Self`.
-        let of_trait = matches!(f.owner, Some(Owner::Trait(_)));
-        let lowered_intrinsic = f.intrinsic.is_some() && !of_trait;
-        let undeclared = matches!(f.body, decls::Body::None) && !of_trait;
-        if cx.fns.contains_key(&id) || lowered_intrinsic || undeclared {
-            continue;
-        }
-        if !quiet {
+            let (id, quiet) = match todo.pop() {
+                Some(id) => (id, false),
+                None => match cx.through_trait.pop() {
+                    Some(id) => (id, true),
+                    None => break,
+                },
+            };
+            let f = items.f(id);
+            // A trait's fn whose body is an intrinsic is checked into that operation on `Self`.
+            let of_trait = matches!(f.owner, Some(Owner::Trait(_)));
+            let lowered_intrinsic = f.intrinsic.is_some() && !of_trait;
+            let undeclared = matches!(f.body, decls::Body::None) && !of_trait;
+            if cx.fns.contains_key(&id) || lowered_intrinsic || undeclared {
+                continue;
+            }
+            if !quiet {
+                let tf = cx.check_fn(id, Vec::new());
+                cx.fns.insert(id, tf);
+                continue;
+            }
+            quiet_fns.insert(id);
+            let (n, reported) = (cx.errors.len(), cx.reported.clone());
+            cx.reach(id);
+            let named_before = cx.named.get_mut().1.len();
             let tf = cx.check_fn(id, Vec::new());
+            cx.hold_names(id, named_before);
             cx.fns.insert(id, tf);
-            continue;
-        }
-        quiet_fns.insert(id);
-        let (n, reported) = (cx.errors.len(), cx.reported.clone());
-        cx.reach(id);
-        let named_before = cx.named.get_mut().1.len();
-        let tf = cx.check_fn(id, Vec::new());
-        cx.hold_names(id, named_before);
-        cx.fns.insert(id, tf);
-        let errors = cx.errors.split_off(n);
-        cx.reported = reported;
-        let more = std::mem::take(&mut cx.reached);
-        cx.through_trait.extend(more);
-        if !errors.is_empty() {
-            // A library body that does not check is the pipeline's to fix, said where it is used.
-            let errors = match d.is_library(d.f(id).module) {
-                true => (errors.into_iter())
-                    .map(|m| Msg {
-                        refusal: Some(Unbuilt::LibraryBody {
-                            func: d.f(id).name.clone(),
-                            why: m.text.clone(),
-                        }),
-                        text: String::new(),
-                        code: cpl_diag::codes::INTERNAL,
-                        ..m
-                    })
-                    .collect(),
-                false => errors,
-            };
-            deferred.insert(id, errors);
-        }
-    }
-    // Every top value's global is filled by its `let`; one left unfilled with no refusal to
-    // explain it is a checker ordering bug, reported rather than read as `Error`.
-    if cx.errors.is_empty() {
-        for (t, &g) in d.top_values.iter().zip(&cx.top_slots) {
-            if cx.globals[g].ty == Ty::Error {
-                let what = format!(
-                    "`{}`'s global was never filled by its `let`",
-                    d.syms.text(t.name)
-                );
-                cx.errors
-                    .push(Msg::at(t.item.at(Span::default()), Msg::internal(what)));
+            let errors = cx.errors.split_off(n);
+            cx.reported = reported;
+            let more = std::mem::take(&mut cx.reached);
+            cx.through_trait.extend(more);
+            if !errors.is_empty() {
+                // A library body that does not check is the pipeline's to fix, said where it is used.
+                let errors = match !cx.names.of_program(f.module) {
+                    true => (errors.into_iter())
+                        .map(|m| Msg {
+                            refusal: Some(Unbuilt::LibraryBody {
+                                func: f.name.clone(),
+                                why: m.text.clone(),
+                            }),
+                            text: String::new(),
+                            code: cpl_diag::codes::INTERNAL,
+                            ..m
+                        })
+                        .collect(),
+                    false => errors,
+                };
+                deferred.insert(id, errors);
             }
         }
-    }
-    let call_live = cx.adds_live();
-    let call_adds = std::mem::take(&mut cx.added);
-    // Zonk: every variable is replaced by what it was solved to.
-    let mut main_z = std::mem::take(&mut cx.const_init);
-    main_z.extend(main_out);
-    for s in &mut main_z {
-        if let TStmt::Item(off) = s {
-            cx.b.item = off.clone();
-        }
-        cx.zonk_stmt(s);
-    }
-    cx.unfixed_targs(errs);
-    cx.rejected_defaults();
-    for (caller, m) in cx.inherited_rejects() {
-        match caller.filter(|g| quiet_fns.contains(g)) {
-            Some(g) => deferred.entry(g).or_default().push(m),
-            None => cx.errors.push(m),
-        }
-    }
-    for (g, rs) in &cx.requires {
-        if let Some(tf) = cx.fns.get_mut(g) {
-            tf.requires = rs.clone();
-        }
-    }
-    ctx_fns.sort_by_key(|c| c.0);
-    let mut globals = std::mem::take(&mut cx.globals);
-    for g in &mut globals {
-        g.ty = cx.zonk(&g.ty);
-    }
-    let mut lambdas = std::mem::take(&mut cx.lambdas);
-    for l in &mut lambdas {
-        l.params = l.params.iter().map(|t| cx.zonk(t)).collect();
-        l.ret = cx.zonk(&l.ret);
-        l.yields = l.yields.as_ref().map(|t| cx.zonk(t));
-    }
-    let call_adds = (call_adds.into_iter())
-        .map(|(f, k)| {
-            let f = FnRef {
-                targs: f.targs.iter().map(|t| cx.zonk(t)).collect(),
-                sets: f.sets.iter().map(|s| cx.zonk_set(s)).collect(),
-                ..f
-            };
-            (f, k)
-        })
-        .collect();
-    // Each through a variable, so its closures' own types are written out as any set's are.
-    let param_adds = (cx.param_adds.clone().into_iter())
-        .map(|(k, ms)| {
-            let v = cx.new_set();
-            if let SetTy::Var(i) = v {
-                cx.sets[i] = SetVar::Root(ms);
-            }
-            (k, cx.zonk_set(&v))
-        })
-        .collect();
-    let global_adds = (cx.global_adds.clone().into_iter())
-        .map(|(k, ms)| {
-            let v = cx.new_set();
-            if let SetTy::Var(i) = v {
-                cx.sets[i] = SetVar::Root(ms);
-            }
-            (k, cx.zonk_set(&v))
-        })
-        .collect();
-    // R08.2.10: each call passes its caller's type parameters to the callee's, as themselves or
-    // inside a larger type. A cycle of calls through a larger one makes a new instance on every
-    // round, so its first such call is E0319.
-    let mut callers: Vec<FnId> = cx.fns.keys().copied().collect();
-    callers.sort();
-    let mut edges = Vec::new();
-    for caller in callers {
-        cx.fns[&caller].body.each(&mut |e| {
-            let TK::Call { f, .. } = &e.kind else { return };
-            for (j, t) in f.targs.iter().enumerate() {
-                let mut ps = std::collections::BTreeSet::new();
-                cpl_next_ir::ty::params_in(t, &mut ps);
-                for i in ps {
-                    let grows = *t != Ty::Param(i);
-                    edges.push(((caller, i), (f.decl, j), grows, e.span, t.clone()));
-                }
-            }
-        });
-    }
-    let mut grown = HashSet::new();
-    for (from, to, grows, span, t) in &edges {
-        if !grows || grown.contains(&from.0) {
-            continue;
-        }
-        let mut seen = HashSet::from([*to]);
-        let mut stack = vec![*to];
-        while let Some(n) = stack.pop() {
-            for (a, b, ..) in &edges {
-                if *a == n && seen.insert(*b) {
-                    stack.push(*b);
+        // Every top value's global is filled by its `let`; one left unfilled with no refusal to
+        // explain it is a checker ordering bug, reported rather than read as `Error`.
+        if cx.errors.is_empty() {
+            for ((item, name), &g) in cx.top_keys.iter().zip(&cx.top_slots) {
+                if cx.globals[g].ty == Ty::Error {
+                    let what = format!(
+                        "`{}`'s global was never filled by its `let`",
+                        items.text(*name)
+                    );
+                    cx.errors
+                        .push(Msg::at(item.at(Span::default()), Msg::internal(what)));
                 }
             }
         }
-        if !seen.contains(from) {
-            continue;
+        let call_live = cx.adds_live();
+        let call_adds = std::mem::take(&mut cx.added);
+        // Zonk: every variable is replaced by what it was solved to.
+        let mut main_z = std::mem::take(&mut cx.const_init);
+        main_z.extend(main_out);
+        for s in &mut main_z {
+            if let TStmt::Item(off) = s {
+                cx.b.item = off.clone();
+            }
+            cx.zonk_stmt(s);
         }
-        grown.insert(from.0);
-        let (caller, callee) = (d.f(from.0), d.f(to.0));
-        cx.b.item = caller.item.clone();
-        cx.b.generics = caller.generics.clone();
-        let (outer, inner) = (cx.show(&Ty::Param(from.1)), cx.show(t));
-        let name = &callee.name;
-        let text = cpl_diag::msgs::ir::GROWING_INSTANTIATION_CALLS_ITSELF_AT_A
-            .say(&[name, name, &outer, name, &inner]);
-        let help = "a generic fn is compiled once per type: recurse at the same type, or keep the growing part in a value of one fixed type (R08.2.10)";
-        let code = cpl_diag::codes::GROWING_INSTANTIATION;
-        cx.err_help(*span, Msg::verdict(code, text), Some(help.to_string()));
-    }
-    if cx.domains.iter().any(|d| d.name.is_empty()) {
-        cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
-    }
-    if cx.cyclic.get() {
-        cx.errors.push(Msg::internal("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name"));
-    }
-    Typed {
-        checks,
-        domains: std::mem::take(&mut cx.domains),
-        dom_rows: std::mem::take(&mut cx.dom_rows),
-        fns: std::mem::take(&mut cx.fns),
-        ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),
-        ctx_impls: std::mem::take(&mut cx.ctx_impls),
-        globals,
-        main: main_z,
-        lambdas,
-        param_adds,
-        global_adds,
-        call_adds,
-        call_live,
-        errors: cx.errors,
-        deferred,
-        quiet: quiet_fns,
-        ids: cx.ids,
+        cx.unfixed_targs(errs);
+        cx.rejected_defaults();
+        for (caller, m) in cx.inherited_rejects() {
+            match caller.filter(|g| quiet_fns.contains(g)) {
+                Some(g) => deferred.entry(g).or_default().push(m),
+                None => cx.errors.push(m),
+            }
+        }
+        for (g, rs) in &cx.requires {
+            if let Some(tf) = cx.fns.get_mut(g) {
+                tf.requires = rs.clone();
+            }
+        }
+        ctx_fns.sort_by_key(|c| c.0);
+        let mut globals = std::mem::take(&mut cx.globals);
+        for g in &mut globals {
+            g.ty = cx.zonk(&g.ty);
+        }
+        let mut lambdas = std::mem::take(&mut cx.lambdas);
+        for l in &mut lambdas {
+            l.params = l.params.iter().map(|t| cx.zonk(t)).collect();
+            l.ret = cx.zonk(&l.ret);
+            l.yields = l.yields.as_ref().map(|t| cx.zonk(t));
+        }
+        let call_adds = (call_adds.into_iter())
+            .map(|(f, k)| {
+                let f = FnRef {
+                    targs: f.targs.iter().map(|t| cx.zonk(t)).collect(),
+                    sets: f.sets.iter().map(|s| cx.zonk_set(s)).collect(),
+                    ..f
+                };
+                (f, k)
+            })
+            .collect();
+        // Each through a variable, so its closures' own types are written out as any set's are.
+        let param_adds = (cx.param_adds.clone().into_iter())
+            .map(|(k, ms)| {
+                let v = cx.new_set();
+                if let SetTy::Var(i) = v {
+                    cx.sets[i] = SetVar::Root(ms);
+                }
+                (k, cx.zonk_set(&v))
+            })
+            .collect();
+        let global_adds = (cx.global_adds.clone().into_iter())
+            .map(|(k, ms)| {
+                let v = cx.new_set();
+                if let SetTy::Var(i) = v {
+                    cx.sets[i] = SetVar::Root(ms);
+                }
+                (k, cx.zonk_set(&v))
+            })
+            .collect();
+        // R08.2.10: each call passes its caller's type parameters to the callee's, as themselves or
+        // inside a larger type. A cycle of calls through a larger one makes a new instance on every
+        // round, so its first such call is E0319.
+        let mut callers: Vec<FnId> = cx.fns.keys().copied().collect();
+        callers.sort();
+        let mut edges = Vec::new();
+        for caller in callers {
+            cx.fns[&caller].body.each(&mut |e| {
+                let TK::Call { f, .. } = &e.kind else { return };
+                for (j, t) in f.targs.iter().enumerate() {
+                    let mut ps = std::collections::BTreeSet::new();
+                    cpl_next_ir::ty::params_in(t, &mut ps);
+                    for i in ps {
+                        let grows = *t != Ty::Param(i);
+                        edges.push(((caller, i), (f.decl, j), grows, e.span, t.clone()));
+                    }
+                }
+            });
+        }
+        let mut grown = HashSet::new();
+        for (from, to, grows, span, t) in &edges {
+            if !grows || grown.contains(&from.0) {
+                continue;
+            }
+            let mut seen = HashSet::from([*to]);
+            let mut stack = vec![*to];
+            while let Some(n) = stack.pop() {
+                for (a, b, ..) in &edges {
+                    if *a == n && seen.insert(*b) {
+                        stack.push(*b);
+                    }
+                }
+            }
+            if !seen.contains(from) {
+                continue;
+            }
+            grown.insert(from.0);
+            let (caller, callee) = (items.f(from.0), items.f(to.0));
+            cx.b.item = caller.item.clone();
+            cx.b.generics = caller.generics.clone();
+            let (outer, inner) = (cx.show(&Ty::Param(from.1)), cx.show(t));
+            let name = &callee.name;
+            let text = cpl_diag::msgs::ir::GROWING_INSTANTIATION_CALLS_ITSELF_AT_A
+                .say(&[name, name, &outer, name, &inner]);
+            let help = "a generic fn is compiled once per type: recurse at the same type, or keep the growing part in a value of one fixed type (R08.2.10)";
+            let code = cpl_diag::codes::GROWING_INSTANTIATION;
+            cx.err_help(*span, Msg::verdict(code, text), Some(help.to_string()));
+        }
+        if cx.domains.iter().any(|d| d.name.is_empty()) {
+            cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
+        }
+        if cx.cyclic.get() {
+            cx.errors.push(Msg::internal("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name"));
+        }
+        Typed {
+            checks: cx.checks,
+            domains: std::mem::take(&mut cx.domains),
+            dom_rows: std::mem::take(&mut cx.dom_rows),
+            fns: std::mem::take(&mut cx.fns),
+            ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),
+            ctx_impls: std::mem::take(&mut cx.ctx_impls),
+            globals,
+            main: main_z,
+            lambdas,
+            param_adds,
+            global_adds,
+            call_adds,
+            call_live,
+            errors: cx.errors,
+            deferred,
+            quiet: quiet_fns,
+            ids: cx.ids,
+        }
     }
 }
 
@@ -1717,13 +1746,9 @@ impl<'a> Cx<'a> {
 }
 
 /// The syntax of each of the program's top-level items `main`, in order.
-pub fn program_items(src: &crate::modules::Loaded, main: &[ItemId]) -> Vec<(ItemId, next::Item)> {
-    let syntax: HashMap<&ItemId, &next::Item> = (src.modules.iter())
-        .flat_map(|m| m.items.iter())
-        .map(|i| (&i.id, &i.item))
-        .collect();
-    (main.iter())
-        .filter_map(|id| Some((id.clone(), (*syntax.get(id)?).clone())))
+fn statements(bodies: &dyn views::Bodies, items: &[ItemId]) -> Vec<(ItemId, next::Item)> {
+    (items.iter())
+        .filter_map(|id| Some((id.clone(), bodies.item(id)?)))
         .collect()
 }
 

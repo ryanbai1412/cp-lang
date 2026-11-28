@@ -39,11 +39,15 @@ pub(crate) struct Evaluator<'a> {
 }
 
 impl<'a> Evaluator<'a> {
-    pub(crate) fn new(d: &'a Decls, loaded: &'a Loaded, main: &[ItemId]) -> Self {
+    pub(crate) fn new(d: &'a Decls, loaded: &'a Loaded) -> Self {
         Evaluator {
             d,
             loaded,
-            main: check::program_items(loaded, main),
+            main: (d.statements.iter())
+                .filter_map(|id| {
+                    Some((id.clone(), cpl_next_decls::views::Bodies::item(loaded, id)?))
+                })
+                .collect(),
             done: RefCell::default(),
             busy: RefCell::default(),
             cyclic: RefCell::default(),
@@ -205,13 +209,8 @@ impl<'a> Evaluator<'a> {
         values: &[(ItemId, String, next::Expr)],
         lets: usize,
     ) -> Ran {
-        let t = check::check(
+        let mut c = crate::checker(
             self.d,
-            check::Program {
-                main,
-                values,
-                roots: &[],
-            },
             self.loaded,
             self,
             // A constant is worked out in the compiler, so each check costs nothing there and
@@ -220,8 +219,14 @@ impl<'a> Evaluator<'a> {
                 judge: None,
                 checks: Checks::CHECKED,
             },
+            None,
             &check::Ids::default(),
+            main,
         );
+        for (item, name, e) in values {
+            c.value(item.clone(), name.clone(), e.clone());
+        }
+        let t = c.finish();
         // The program's own domains are declared by statements this run leaves out; one the
         // expression reads fails to lower.
         if (t.errors.iter()).any(|m| m.refusal != Some(Unbuilt::UndeclaredTopDomain)) {

@@ -300,7 +300,6 @@ pub(crate) struct Front {
     d: decls::Decls,
     t: check::Typed,
     g: lower::Generic,
-    main: Vec<ItemId>,
     diags: Vec<Diag>,
 }
 
@@ -318,6 +317,31 @@ fn staged(
         .filter(|m| stage == Stage::Syntax || !unread(m))
         .map(|e| Diag::new(stage, e, loaded))
         .collect()
+}
+
+/// A check of the program `d` collected, given its items `top` in order and the bodies it checks
+/// whether or not a reference reaches them: the program's fns, and with `library` every fn that
+/// library module declares.
+pub(crate) fn checker<'a>(
+    d: &'a decls::Decls,
+    bodies: &'a dyn cpl_next_decls::views::Bodies,
+    consts: &'a dyn check::Consts,
+    build: Build,
+    library: Option<decls::ModId>,
+    prior: &check::Ids,
+    top: &[ItemId],
+) -> check::Checker<'a> {
+    let mut c = check::Checker::new(d, bodies, consts, build, prior);
+    for id in top {
+        c.top(id.clone());
+    }
+    for id in (0..d.fns.len()).map(ty::FnId) {
+        let m = d.f(id).module;
+        if Some(m) == library || d.of_program(m) {
+            c.body(id);
+        }
+    }
+    c
 }
 
 /// A whole build's link roots: every fn of `fns` and the first `globals` globals.
@@ -370,23 +394,22 @@ fn front(db: &Db, std: &Std, root: &FileId, judge: Option<&Judge>, checks: Check
         .collect();
     let diags = |stage, es: &[diag::Msg]| staged(stage, es, &loaded, &rejected);
     let mut out = diags(Stage::Syntax, &loaded.errors);
-    let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+    let d = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
     out.extend(diags(Stage::Decls, &d.errors));
-    let values = consts::Evaluator::new(&d, &loaded, &main);
-    let t = check::check(
+    let values = consts::Evaluator::new(&d, &loaded);
+    let t = checker(
         &d,
-        check::Program {
-            main: &main,
-            ..Default::default()
-        },
         &loaded,
         &values,
         Build {
             judge: judge.cloned(),
             checks,
         },
+        None,
         &check::Ids::default(),
-    );
+        &d.statements,
+    )
+    .finish();
     out.extend(diags(Stage::Check, &t.errors));
     let g = lower::lower(&d, &t, &loaded);
     out.extend(diags(Stage::Lower, &g.errors));
@@ -396,7 +419,6 @@ fn front(db: &Db, std: &Std, root: &FileId, judge: Option<&Judge>, checks: Check
         d,
         t,
         g,
-        main,
         diags: out,
     }
 }
@@ -458,27 +480,24 @@ pub(crate) fn std_unchecked(
                 Ok(()) => modules::load(db, std, &root),
                 Err(e) => return (m.to_string(), vec![Diag::internal(&e)]),
             };
-            let (d, main) =
-                decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+            let d = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
             let at = (d.module_names.iter())
                 .position(|n| n == m)
                 .map(decls::ModId);
-            let values = consts::Evaluator::new(&d, &loaded, &main);
-            let t = check::check(
+            let values = consts::Evaluator::new(&d, &loaded);
+            let t = checker(
                 &d,
-                check::Program {
-                    main: &main,
-                    values: &[],
-                    roots: &at.into_iter().collect::<Vec<_>>(),
-                },
                 &loaded,
                 &values,
                 Build {
                     judge: judge.cloned(),
                     checks,
                 },
+                at,
                 &check::Ids::default(),
-            );
+                &d.statements,
+            )
+            .finish();
             let ds = (staged(Stage::Decls, &d.errors, &loaded, &[]).into_iter()).chain(staged(
                 Stage::Check,
                 &t.errors,
@@ -864,8 +883,13 @@ pub(crate) fn units(
         let lowered = f.g.funcs.contains_key(&ir::FuncKey::Decl(id));
         (Some(fd.name.clone()), fn_extent(db, &fd.span), lowered)
     });
-    let statements = check::program_items(&f.loaded, &f.main)
-        .into_iter()
+    let statements = (f.d.statements.iter())
+        .filter_map(|id| {
+            Some((
+                id.clone(),
+                cpl_next_decls::views::Bodies::item(&f.loaded, id)?,
+            ))
+        })
         .map(|(off, s)| {
             let span = off.at(cpl_next_syntax::ast::AstNode::syntax(&s).span());
             (None, span, f.g.funcs.contains_key(&ir::FuncKey::Main))

@@ -4130,6 +4130,92 @@ def next_handoff_side_fields(root: Path) -> list[str]:
     return out
 
 
+def _split_top(text: str) -> list[str]:
+    """`text` split at its commas outside brackets."""
+    parts, depth, cur = [], 0, ""
+    for ch in text:
+        depth += 1 if ch in "<([" else -1 if ch in ">)]" else 0
+        if ch == "," and depth == 0:
+            parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return [x for x in parts + [cur.strip()] if x]
+
+
+def _pub_sigs(lines: list[str]) -> list[tuple[int, str, str, list[str]]]:
+    """Each pub fn, pub field and pub type alias in `lines`, as (line, kind, name, types): a fn's
+    parameter types (`self` left out), a field's or alias's one type."""
+    out = []
+    in_struct = False
+    for i, line in enumerate(lines):
+        code = line.split("//")[0]
+        if re.match(r"\s*pub(?:\([^)]*\))?\s+struct\s+\w+[^;(]*\{\s*$", code):
+            in_struct = True
+            continue
+        if in_struct:
+            if code.startswith("}"):
+                in_struct = False
+            elif f := re.match(r"\s*pub(?:\([^)]*\))?\s+(\w+):\s*(.+?),?\s*$", code):
+                out.append((i + 1, "field", f.group(1), [f.group(2)]))
+            continue
+        if t := re.match(r"\s*pub(?:\([^)]*\))?\s+type\s+(\w+)(?:<[^=]*>)?\s*=\s*(.+?);", code):
+            out.append((i + 1, "type", t.group(1), [t.group(2)]))
+            continue
+        m = re.match(r"\s*pub(?:\([^)]*\))?\s+(?:const\s+|unsafe\s+)?fn\s+(\w+)", code)
+        if not m:
+            continue
+        sig, k = "", i
+        while k < len(lines):
+            sig += " " + lines[k].split("//")[0]
+            if re.search(r"\)\s*(?:->[^{;]*)?(?:where[^{;]*)?[{;]", sig):
+                break
+            k += 1
+        start = sig.index("(", sig.index(m.group(1)) + len(m.group(1)))
+        depth, end = 0, start
+        for j in range(start, len(sig)):
+            depth += 1 if sig[j] in "<([" else -1 if sig[j] in ">)]" else 0
+            if depth == 0:
+                end = j
+                break
+        params = [p.split(":", 1)[1].strip() for p in _split_top(sig[start + 1:end]) if ":" in p]
+        out.append((i + 1, "fn", m.group(1), params))
+    return out
+
+
+def _program_shape(ty: str) -> str | None:
+    """Which whole-program shape type `ty` holds, if any: `Program`, a slice or Vec of ItemId
+    or ModId, or a tuple pairing an ItemId with a String."""
+    ty = re.sub(r"\s+", "", ty)
+    if re.search(r"\bProgram\b", ty):
+        return "Program"
+    if re.search(r"(?:\[|Vec<)(?:\w+::)*(?:ItemId|ModId)[\];>]", ty):
+        return "list of ids"
+    for inner in re.findall(r"\(([^()]*)\)", ty):
+        elems = [re.sub(r"^&(?:'\w+)?", "", e).split("::")[-1] for e in _split_top(inner)]
+        if "ItemId" in elems and ({"String", "str"} & set(elems)):
+            return "ItemId beside a String"
+    return None
+
+
+def check_program_params(root: Path) -> list[str]:
+    """Each pub fn parameter, pub field or pub type alias of the checker whose type holds a whole
+    program's items (audit #18 item 2): `Program`, a slice or Vec of ItemId or ModId, or a tuple
+    pairing an ItemId with a String, and each pub fn taking an ItemId and a String apart. The
+    checker answers one item at a time (`Checker::top(ItemId)`, `body(FnId)`), keyed by id, and
+    the database runs the loop (handbook/design/next/incremental.md), so this reaches 0."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-next-check/src", tests=False):
+        rel = _rel(root, p)
+        for line, kind, name, types in _pub_sigs(_lines(p)):
+            shapes = [s for s in map(_program_shape, types) if s]
+            bare = [re.sub(r"^&(?:'\w+)?|\s", "", t).split("::")[-1] for t in types]
+            if kind == "fn" and "ItemId" in bare and ({"String", "str"} & set(bare)):
+                shapes.append("ItemId beside a String")
+            out += [f"{rel}:{line}: {kind} {name}: {s}" for s in dict.fromkeys(shapes)]
+    return out
+
+
 def next_check_set_facts(root: Path) -> list[str]:
     """Sites in the checker that build a function-value set fact, `SetTy::Global` or
     `SetTy::AddedAt` (shortcut audit S25): which closures a set holds is a link-time fact
@@ -5292,6 +5378,7 @@ COUNTERS = {
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "next_whole_program_inputs": ("new-pipeline params, fields, closures and holder-struct methods that hold a whole-program value (Core)", next_whole_program_inputs, True),
     "next_handoff_side_fields": ("fields reaching link beside the IR, through any struct or tuple of the handoff (Core)", next_handoff_side_fields, True),
+    "check_program_params": ("checker pub params, fields and types holding a whole program's items: Program, a list of ids, an ItemId beside a String (Core)", check_program_params, True),
     "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
     "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),

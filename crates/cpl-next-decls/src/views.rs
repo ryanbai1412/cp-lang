@@ -211,6 +211,8 @@ pub trait Names {
     fn of_program(&self, m: ModId) -> bool;
     /// What module `m` says of itself, once wherever its items are reached.
     fn module_errors(&self, m: ModId) -> &[Msg];
+    /// Module `m`'s top-level items in order, when it is the program: what its run runs.
+    fn statements(&self, m: ModId) -> &[cpl_next_ir::ids::ItemId];
 }
 
 /// What a fn's signature says beyond its decl, keyed by the fn.
@@ -642,6 +644,12 @@ impl Names for Decls {
     }
     fn module_errors(&self, m: ModId) -> &[Msg] {
         &self.module_errors[m.0]
+    }
+    fn statements(&self, m: ModId) -> &[cpl_next_ir::ids::ItemId] {
+        match m == self.program {
+            true => &self.statements,
+            false => &[],
+        }
     }
 }
 

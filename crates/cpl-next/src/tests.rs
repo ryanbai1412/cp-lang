@@ -630,7 +630,7 @@ fn std_modules_are_those_of_std_layer() {
     );
     std::fs::remove_dir_all(&dir).unwrap();
     let loaded = modules::load(&db, &std, &root);
-    let (d, _) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+    let d = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
     let of = |name: &str| {
         let i = (d.module_names.iter()).position(|m| m == name);
         d.of_std[i.unwrap_or_else(|| panic!("{name}: {:?}", d.module_names))]
@@ -1069,22 +1069,21 @@ fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
     let typed = |src: &str, prior: &check::Ids| {
         let (db, root) = alone(&std, src, &Roots::std());
         let loaded = modules::load(&db, &std, &root);
-        let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
-        let values = consts::Evaluator::new(&d, &loaded, &main);
-        let t = check::check(
+        let d = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+        let values = consts::Evaluator::new(&d, &loaded);
+        let t = checker(
             &d,
-            check::Program {
-                main: &main,
-                ..Default::default()
-            },
             &loaded,
             &values,
             Build {
                 judge: None,
                 checks: Checks::CHECKED,
             },
+            None,
             prior,
-        );
+            &d.statements,
+        )
+        .finish();
         assert!(t.errors.is_empty(), "{:?}", t.errors);
         let bodies: std::collections::HashMap<String, String> = (t.fns.iter())
             .filter(|(id, _)| {
@@ -1127,22 +1126,21 @@ fn a_body_adding_to_a_global_set_leaves_its_readers_typed_the_same() {
     let top = |src: &str| {
         let (db, root) = alone(&std, src, &Roots::std());
         let loaded = modules::load(&db, &std, &root);
-        let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
-        let values = consts::Evaluator::new(&d, &loaded, &main);
-        let t = check::check(
+        let d = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+        let values = consts::Evaluator::new(&d, &loaded);
+        let t = checker(
             &d,
-            check::Program {
-                main: &main,
-                ..Default::default()
-            },
             &loaded,
             &values,
             Build {
                 judge: None,
                 checks: Checks::CHECKED,
             },
+            None,
             &check::Ids::default(),
-        );
+            &d.statements,
+        )
+        .finish();
         let ours = |m: &&cpl_next_decls::diag::Msg| {
             m.at.as_ref()
                 .is_some_and(|a| &*a.item.module == modules::PROGRAM)

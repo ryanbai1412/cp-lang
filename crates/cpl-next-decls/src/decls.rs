@@ -569,6 +569,8 @@ pub struct Decls {
     /// `pub`: `m.f` outside it.
     pub exports: Vec<Arc<HashMap<Sym, (Named, bool)>>>,
     pub program: ModId,
+    /// The program's top-level items in order: its statements, constants and `@memo(word)` fns.
+    pub statements: Vec<ItemId>,
     /// Per library module, what it uses outside its fns that the slice does not build.
     pub module_errors: Vec<Vec<Msg>>,
     /// Why each `Named::Refused` library item is not built.

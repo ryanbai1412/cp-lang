@@ -2723,6 +2723,36 @@ class DebtRatchetTest(unittest.TestCase):
                              [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 4, 7, 12, 15)])
             self.assertEqual(len(dr.next_cpp_runtime_lines(root)), 2)
 
+    def test_check_program_params_count_each_shape_in_the_checkers_pub_signatures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-check/src"
+            src.mkdir(parents=True)
+            (src / "lib.rs").write_text(
+                "pub fn check(d: &Decls, program: Program) -> Typed {}\n"
+                "pub fn top(&mut self, id: ItemId) {}\n"
+                "pub struct Run<'a> {\n"
+                "    pub main: &'a [ItemId],\n"
+                "    pub module: ModId,\n"
+                "    pub roots: Vec<ModId>,\n"
+                "    pub fns: Vec<FnId>,\n"
+                "    values: &'a [(ItemId, String, Expr)],\n"
+                "}\n"
+                "pub type Values = Vec<(ItemId, String, next::Expr)>;\n"
+                "pub type Keys = Vec<(ItemId, Sym)>;\n"
+                "pub fn value(\n    &mut self,\n    item: ItemId,\n    name: String,\n) {}\n"
+                "pub fn named(&mut self, item: ItemId, name: Sym) {}\n"
+                "fn private(program: Program, main: &[ItemId]) {}\n"
+                "// pub fn commented(program: Program) {}\n"
+            )
+            self.assertEqual(dr.check_program_params(root), [
+                "crates/cpl-next-check/src/lib.rs:1: fn check: Program",
+                "crates/cpl-next-check/src/lib.rs:4: field main: list of ids",
+                "crates/cpl-next-check/src/lib.rs:6: field roots: list of ids",
+                "crates/cpl-next-check/src/lib.rs:10: type Values: ItemId beside a String",
+                "crates/cpl-next-check/src/lib.rs:12: fn value: ItemId beside a String",
+            ])
+
     def test_whole_program_inputs_count_holders_their_fields_and_their_methods(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
