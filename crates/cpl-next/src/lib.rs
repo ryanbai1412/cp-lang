@@ -9,6 +9,7 @@
 mod consts;
 pub mod facade;
 pub mod linked;
+pub mod trace;
 
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
