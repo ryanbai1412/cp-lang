@@ -51,7 +51,7 @@ pub(crate) fn checked(path: Option<&std::path::Path>, src: &str, config: &Config
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| "<lint>.cp".to_string());
     let mut db = cpl_facade::Session::default();
-    db.set_file(&key, src);
+    db = db.with_file(&key, src);
     let Some(analysis) = db.analyze(&key) else {
         return Checked::default();
     };

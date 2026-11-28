@@ -233,7 +233,7 @@ impl Server {
         let empty = cpl_facade::Snapshot::default().with_std_of(self.db.snapshot());
         self.db = Session::open(empty);
         for (uri, text) in &self.docs {
-            self.db.set_file(uri, text.as_str());
+            self.db = self.db.with_file(uri, text.as_str());
         }
         let args: &[&dyn std::fmt::Display] = &[&method, &what];
         let text = cpl_diag::msgs::check::INTERNAL_ERROR.say(args);
@@ -319,7 +319,7 @@ impl Server {
                     .as_str()
                     .ok_or((INVALID_PARAMS, "didOpen without text".to_string()))?;
                 self.docs.insert(uri.to_string(), text.to_string());
-                self.db.set_file(uri, text);
+                self.db = self.db.with_file(uri, text);
                 Ok(Reply::notify(self.first_diagnostics(uri)))
             }
             "textDocument/didChange" => {
@@ -336,7 +336,7 @@ impl Server {
                 {
                     apply_change(&mut text, change)?;
                 }
-                self.db.set_file(uri, text.as_str());
+                self.db = self.db.with_file(uri, text.as_str());
                 self.docs.insert(uri.to_string(), text);
                 #[cfg(not(target_arch = "wasm32"))]
                 self.runs.edited(uri);
@@ -348,7 +348,7 @@ impl Server {
                 self.proven.remove(uri);
                 #[cfg(not(target_arch = "wasm32"))]
                 self.runs.edited(uri);
-                self.db.remove_file(uri);
+                self.db = self.db.without_file(uri);
                 Ok(Reply::notify(publish(uri, Vec::new())))
             }
             "textDocument/hover" => {
@@ -686,7 +686,7 @@ impl Server {
                         let Ok(text) = std::fs::read_to_string(&path) else {
                             continue;
                         };
-                        self.db.set_file(&path, text);
+                        self.db = self.db.with_file(&path, text);
                     }
                     files.push(path);
                 }
@@ -1668,7 +1668,7 @@ fn fix_file(_db: &mut Session, _uri: &str, _text: &str) -> Option<String> {
 #[cfg(not(target_arch = "wasm32"))]
 fn fix_file(db: &mut Session, uri: &str, text: &str) -> Option<String> {
     let (fixed, applied, _) = crate::fix::document(db, uri, text, &lint_config(uri));
-    db.set_file(uri, text);
+    *db = db.with_file(uri, text);
     (applied > 0).then_some(fixed)
 }
 

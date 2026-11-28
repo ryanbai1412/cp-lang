@@ -624,7 +624,7 @@ fn the_playground_lints_like_cpl_lint() {
                 diags.iter().map(|d| d.code.0.to_string()).collect()
             };
             let mut db = cpl_facade::Session::default();
-            db.set_file(case, source.as_str());
+            db = db.with_file(case, source.as_str());
             let analysis = db.analyze(case).expect("record analyzes");
             let want = codes(&cpl_lint::lint_analysis(
                 &analysis,

@@ -183,7 +183,7 @@ pub fn fix_checked_removed_syntax_in(
         codes::WRONG_ARG_COUNT,
     ];
     let out = fix_rounds(src, &mut |text| {
-        db.set_file(key, text);
+        *db = db.with_file(key, text);
         let all = db
             .analyze(key)
             .map(|a| a.diagnostics.clone())
@@ -196,7 +196,7 @@ pub fn fix_checked_removed_syntax_in(
             all,
         )
     });
-    db.set_file(key, out.0.as_str());
+    *db = db.with_file(key, out.0.as_str());
     out
 }
 
@@ -227,7 +227,7 @@ pub fn apply_lint_fixes_where(
         findings.retain(|d| keep(d));
         (findings, db.diagnostics(path, upto))
     });
-    db.set_file(path, out.0.as_str());
+    *db = db.with_file(path, out.0.as_str());
     out
 }
 

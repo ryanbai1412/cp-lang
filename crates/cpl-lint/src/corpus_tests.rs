@@ -86,7 +86,7 @@ fn corpus_warnings_only_go_down() {
 fn checker_errors(path: &Path, src: &str) -> usize {
     let key = path.to_string_lossy().into_owned();
     let mut db = cpl_facade::Session::default();
-    db.set_file(&key, src);
+    db = db.with_file(&key, src);
     db.analyze(&key).map_or(0, |analysis| {
         analysis
             .diagnostics
@@ -150,7 +150,7 @@ fn the_cli_and_the_editor_read_the_same_facts() {
     for path in files(&root, crate::STD_DIR, "") {
         let src = std::fs::read_to_string(&path).unwrap();
         let mut db = cpl_facade::Session::default();
-        db.set_file("<lint>.cp", src.as_str());
+        db = db.with_file("<lint>.cp", src.as_str());
         let Some(analysis) = db.analyze("<lint>.cp") else {
             continue;
         };

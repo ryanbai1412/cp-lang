@@ -34,7 +34,7 @@ fn a_reversed_else_if_fix_from_the_parser_is_left_alone() {
 
 pub(crate) fn checker_errors(src: &str) -> Vec<String> {
     let mut db = cpl_facade::Session::default();
-    db.set_file("probe.cp", src);
+    db = db.with_file("probe.cp", src);
     db.diagnostics("probe.cp", cpl_facade::Layer::Program)
         .iter()
         .filter(|d| d.severity == cpl_diag::Severity::Error)
@@ -88,7 +88,7 @@ fn checked(
 ) -> (String, usize) {
     let mut db = cpl_facade::Session::default();
     let mut report = |t: &str| {
-        db.set_file("<t>.cp", t);
+        db = db.with_file("<t>.cp", t);
         let errors = check(&db);
         let fires = still_fires || t == text;
         (if fires { findings.to_vec() } else { Vec::new() }, errors)

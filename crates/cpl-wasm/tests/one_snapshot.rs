@@ -310,7 +310,7 @@ fn equal_snapshots_give_identical_answers() {
         // A session that held another text first, then this one.
         let mut second = Session::open(snapshot(&path, "print(1)\n"));
         second.diagnostics(path.as_str(), Layer::Built);
-        second.set_file(path.as_str(), case.source);
+        second = second.with_file(path.as_str(), case.source);
         assert_eq!(first.snapshot(), second.snapshot(), "{}", case.name);
         for layer in [Layer::Typed, Layer::Program, Layer::Built] {
             let (a, b) = (

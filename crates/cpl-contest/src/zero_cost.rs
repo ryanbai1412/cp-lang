@@ -61,7 +61,7 @@ pub fn emit_cpp(path: &Path) -> Result<String, String> {
         std::fs::read_to_string(path).map_err(|e| format!("can't read {}: {e}", path.shown()))?;
     let mut db = cpl_facade::Session::default();
     let name = path.to_string_lossy().into_owned();
-    db.set_file(&name, source.as_str());
+    db = db.with_file(&name, source.as_str());
     let stops = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
     let ir = (db.program(&name, &cpl_facade::Job::program())).map_err(|diagnostics| {
         let msgs: Vec<String> = (diagnostics.into_iter().filter(stops))

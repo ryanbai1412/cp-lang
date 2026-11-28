@@ -84,7 +84,7 @@ impl Watch {
         let name = self.source.shown();
         let text =
             std::fs::read_to_string(&self.source).map_err(|e| format!("can't read {name}: {e}"))?;
-        self.db.set_file(&name, text.as_str());
+        self.db = self.db.with_file(&name, text.as_str());
         let analysis = (self.db.analyze(&name)).ok_or_else(|| format!("can't check {name}"))?;
         let errors = analysis.diagnostics.clone();
         let round = |diagnostics, errors, test| Round {

@@ -364,18 +364,6 @@ impl Session {
         self.at(self.snapshot.lacking(file.as_ref()))
     }
 
-    /// Moves a tool's handle on to [`Session::with_file`]'s session.
-    #[inline(always)]
-    pub fn set_file(&mut self, file: impl AsRef<str>, text: impl AsRef<str>) {
-        *self = self.at(self.snapshot.with_file(file, text));
-    }
-
-    /// Moves a tool's handle on to [`Session::without_file`]'s session.
-    #[inline(always)]
-    pub fn remove_file(&mut self, file: impl AsRef<str>) {
-        *self = self.at(self.snapshot.lacking(file.as_ref()));
-    }
-
     pub fn snapshot(&self) -> &Snapshot {
         &self.snapshot
     }

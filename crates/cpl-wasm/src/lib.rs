@@ -111,7 +111,7 @@ impl Playground {
     /// not been given yet, by name (`["sparse"]`): give each with
     /// `provide_std`, then ask again until it is empty.
     pub fn std_needed(&mut self, name: &str, source: &str) -> Value {
-        self.db.set_file(name, source);
+        self.db = self.db.with_file(name, source);
         names(self.db.std_needed(name))
     }
 
@@ -165,7 +165,7 @@ impl Playground {
 
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
-        self.db.set_file(name, source);
+        self.db = self.db.with_file(name, source);
         let diagnostics = self.db.diagnostics(name, cpl_facade::Layer::Built);
         let code = if diagnostics.iter().any(|d| d.severity == Severity::Error) {
             EXIT_ERRORS
@@ -585,7 +585,7 @@ impl Playground {
     /// the name there and what it costs. `null` where there is nothing to
     /// say.
     pub fn hover(&mut self, name: &str, source: &str, offset: u32) -> Value {
-        self.db.set_file(name, source);
+        self.db = self.db.with_file(name, source);
         let text = Text::new(source);
         match self.db.hover(name, text.byte(offset)) {
             Some(hover) => text.located(hover.span, [("text", hover.text.into())]),
@@ -595,7 +595,7 @@ impl Playground {
 
     /// Where the name at `offset` is declared, or `null`.
     pub fn definition(&mut self, name: &str, source: &str, offset: u32) -> Value {
-        self.db.set_file(name, source);
+        self.db = self.db.with_file(name, source);
         let text = Text::new(source);
         match self.db.definition(name, text.byte(offset)) {
             Some(def) if def.path == name => text.located(def.span, []),
@@ -605,7 +605,7 @@ impl Playground {
 
     /// The top-level declarations of `source`, in source order.
     pub fn symbols(&mut self, name: &str, source: &str) -> Value {
-        self.db.set_file(name, source);
+        self.db = self.db.with_file(name, source);
         let text = Text::new(source);
         let symbols = self.db.symbols(name).into_iter().map(|symbol| {
             text.located(
@@ -672,7 +672,7 @@ impl Playground {
     /// The gate `run` and `build` both go through, as in `cpl`: check, then
     /// lower. On failure, the finished result.
     fn compile(&mut self, name: &str, source: &str) -> Result<Compiled, Value> {
-        self.db.set_file(name, source);
+        self.db = self.db.with_file(name, source);
         match self.db.program(name, &cpl_facade::Job::program()) {
             Ok(program) => {
                 let diagnostics = self.db.diagnostics(name, cpl_facade::Layer::Typed);

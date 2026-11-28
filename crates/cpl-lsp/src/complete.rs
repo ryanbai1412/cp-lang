@@ -246,9 +246,6 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
     items
 }
 
-/// `xs.sorted(b|`: each parameter of the open call that no argument gives
-/// yet, offered as `name:`, the named-only ones first.
-
 /// The text after `with lint(` while the cursor is inside its parentheses.
 fn lint_args(line: &str) -> Option<&str> {
     let at = line.rfind("lint(")?;

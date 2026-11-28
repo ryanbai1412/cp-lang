@@ -13,7 +13,7 @@ use cpl_diag::{Diagnostic, Severity};
 /// The errors of `src` as `(code, message)`, in a stable order: spans move
 /// when a line goes, what is reported does not.
 fn verdict(db: &mut cpl_facade::Session, src: &str) -> Vec<(String, String)> {
-    db.set_file("<lint>.cp", src);
+    *db = db.with_file("<lint>.cp", src);
     errors(db.diagnostics("<lint>.cp", cpl_facade::Layer::Typed))
 }
 

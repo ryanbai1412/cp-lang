@@ -87,7 +87,7 @@ pub fn with_law_tests(
     }) {
         return None;
     }
-    db.set_file(path, src);
+    *db = db.with_file(path, src);
     let facts = db.facts(path);
     let mut out = String::new();
     let mut names = Vec::new();

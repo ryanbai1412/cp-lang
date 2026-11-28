@@ -179,7 +179,7 @@ fn next_reported(mode: &str, src: &str, input: &str, name: &str) -> Result<Vec<S
 /// `src` with the fix-it of its first diagnostic applied, if it has one.
 fn apply_first_fix_it(src: &str) -> Option<String> {
     let mut db = cpl_facade::Session::default();
-    db.set_file("trigger.cp", src);
+    db = db.with_file("trigger.cp", src);
     let mut diags = db.diagnostics("trigger.cp", cpl_facade::Layer::Built);
     diags.sort_by_key(|d| d.span.start);
     let mut edits = diags.first()?.fixes.first()?.edits.clone();

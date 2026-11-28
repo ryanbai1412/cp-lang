@@ -68,7 +68,7 @@ impl Server {
         // Choosing an error's fix re-checks candidates in the server's
         // database; the buffer goes back until the client applies one.
         if rechecked {
-            self.db.set_file(uri, analysis.text.clone());
+            self.db = self.db.with_file(uri, analysis.text.clone());
         }
         // `cpl fix` on the document, for an editor's fix-all (on save):
         // with no fix on any diagnostic it has nothing to apply.

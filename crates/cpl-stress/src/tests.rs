@@ -1236,7 +1236,7 @@ fn solve():
 fn the_stdlib_perm_and_tree_are_made_as_a_permutation_and_a_tree() {
     let src = "use std.graph.{Tree}\nuse std.seq.{Perm}\nlet n: 1..=10 = read()\ndomain V = 1..=n\nlet p: Perm<V> = read()\nlet t: Tree<V> = read()\nprint(n)\n";
     let mut db = cpl_facade::Session::default();
-    db.set_file("t.cp", src);
+    db = db.with_file("t.cp", src);
     let analysis = db.analyze("t.cp").expect("analyzed");
     assert!(
         !analysis.has_errors(),
@@ -1717,7 +1717,7 @@ fn every_stress_decorator_gives_the_file_a_judge_and_a_mention_does_not() {
         let src = format!("let n: 1..=9 = read()\n@{name}\nfn other():\n    print(n)\nprint(n)\n");
         assert!(crate::stress_targets(&src), "@{name}");
         let mut db = cpl_facade::Session::default();
-        db.set_file("s.cp", src.as_str());
+        db = db.with_file("s.cp", src.as_str());
         let roles = db.roles("s.cp").unwrap();
         let judged =
             roles.alt().is_some() || roles.checker().is_some() || roles.interactor().is_some();

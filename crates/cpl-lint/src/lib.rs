@@ -622,7 +622,7 @@ pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
 /// `src` checked in a database of its own, for callers that hold none.
 pub(crate) fn analyze_alone(src: &str) -> Option<std::sync::Arc<cpl_facade::today::Analysis>> {
     let mut db = cpl_facade::Session::default();
-    db.set_file("<lint>.cp", src);
+    db = db.with_file("<lint>.cp", src);
     db.analyze("<lint>.cp")
 }
 

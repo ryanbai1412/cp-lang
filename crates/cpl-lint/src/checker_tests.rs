@@ -176,7 +176,7 @@ fn a_lint_does_not_repeat_the_error_at_its_place() {
 fn a_getter_called_with_parens_is_the_checker_s_with_its_fix() {
     let src = "let ys = [1, 2]\nprint(ys.first())\n";
     let mut db = cpl_facade::Session::default();
-    db.set_file("probe.cp", src);
+    db = db.with_file("probe.cp", src);
     let analysis = db.analyze("probe.cp").unwrap();
     let error = analysis
         .diagnostics

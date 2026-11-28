@@ -200,7 +200,7 @@ pub fn run_with(
             if !as_json && !taste {
                 // What `cpl check` shows, so each root cause is reported
                 // once, as in the editor.
-                db.set_file(&key, src.as_str());
+                *db = db.with_file(&key, src.as_str());
                 let mut errors = db.diagnostics(&key, upto);
                 errors.retain(|d| d.severity == Severity::Error);
                 show(stdout, &errors, &name, &src);

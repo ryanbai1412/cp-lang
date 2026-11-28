@@ -98,7 +98,7 @@ fn builtin_domain_and_position_members_are_the_checkers() {
                 "domain V = 0..5\nfor v in V:\n    let x = {receiver}.{name}\n    let y: Str = x\n"
             );
             let mut db = cpl_facade::Session::default();
-            db.set_file("a.cp", src.as_str());
+            db = db.with_file("a.cp", src.as_str());
             // "Not implemented yet" (E05xx) is a back-end gap, not a typing one.
             let all = db.diagnostics("a.cp", cpl_facade::Layer::Typed);
             let gap = all.iter().any(|d| d.code.0.starts_with("E05"));
@@ -929,7 +929,7 @@ fn an_extension_is_offered_exactly_where_the_checker_takes_its_receiver() {
             let offered = labels(&items).contains(&name);
             let src = format!("{head}let v = {recv}.{name}{call}\n");
             let mut session = cpl_facade::Session::default();
-            session.set_file("/w/a.cp", src.as_str());
+            session = session.with_file("/w/a.cp", src.as_str());
             let accepted = (session
                 .diagnostics("/w/a.cp", cpl_facade::Layer::Program)
                 .iter())

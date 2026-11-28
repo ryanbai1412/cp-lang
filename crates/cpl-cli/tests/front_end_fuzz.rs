@@ -141,7 +141,7 @@ fn mutate(src: &str, rng: &mut Rng) -> String {
 
 /// Every diagnostic the checker, lowering and linter report, as text.
 fn front_end(db: &mut cpl_facade::Session, path: &str, src: &str) -> Vec<String> {
-    db.set_file(path, src);
+    *db = db.with_file(path, src);
     let lints = cpl_lint::lint(src, &cpl_lint::Config::default());
     db.diagnostics(path, cpl_facade::Layer::Built)
         .iter()
@@ -648,7 +648,7 @@ fn a_planted_mistake_gives_one_error() {
     let mistakes = mistakes();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let errors = |db: &mut cpl_facade::Session, name: &str, src: &str| {
-        db.set_file(name, src);
+        *db = db.with_file(name, src);
         db.diagnostics(name, cpl_facade::Layer::Built)
             .into_iter()
             .filter(|d| d.severity == cpl_diag::Severity::Error)

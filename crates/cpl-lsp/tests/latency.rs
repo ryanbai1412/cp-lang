@@ -166,7 +166,7 @@ fn check_latency(lines: usize) {
     let mut cold = Samples(Vec::new());
     for _ in 0..10 {
         let mut db = Session::default();
-        db.set_file("a.cp", src.as_str());
+        db = db.with_file("a.cp", src.as_str());
         let (analysis, took) = time_cpu(|| db.analyze("a.cp").unwrap());
         cold.0.push(took);
         assert!(
@@ -184,13 +184,13 @@ fn check_latency(lines: usize) {
 
     // Warm: one keystroke at a time in a fn body, as the editor sees it.
     let mut db = Session::default();
-    db.set_file("a.cp", src.as_str());
+    db = db.with_file("a.cp", src.as_str());
     db.analyze("a.cp");
     let mut warm = Samples(Vec::new());
     for key in 0..200 {
         let text = typed(&src, at, key);
         let (_, took) = time_cpu(|| {
-            db.set_file("a.cp", text.as_str());
+            db = db.with_file("a.cp", text.as_str());
             db.analyze("a.cp").unwrap()
         });
         warm.0.push(took);
@@ -200,7 +200,7 @@ fn check_latency(lines: usize) {
     // The keystrokes re-checked only the fn being typed in.
     let before = db.stats();
     let unseen = format!("{}deg[other.u] - {}", &src[..at], &src[at..]);
-    db.set_file("a.cp", unseen.as_str());
+    db = db.with_file("a.cp", unseen.as_str());
     db.analyze("a.cp");
     let after = db.stats();
     assert_eq!(after.items_parsed - before.items_parsed, 1);

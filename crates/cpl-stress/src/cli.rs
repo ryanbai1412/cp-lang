@@ -548,7 +548,7 @@ pub fn run_with(
     let analysis = match (args.file.extension().and_then(|e| e.to_str()), &args.fast) {
         (Some("cp"), None) => {
             let mut db = cpl_facade::Session::default();
-            db.set_file(&name, src.as_str());
+            db = db.with_file(&name, src.as_str());
             db.analyze(&name)
         }
         _ => None,

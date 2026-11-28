@@ -1887,7 +1887,7 @@ fn every_member_completion_type_checks_when_inserted() {
         for name in names {
             let src = format!("{prefix}let probe = {receiver}.{name}\n");
             let mut db = cpl_facade::Session::default();
-            db.set_file("a.cp", src.as_str());
+            db = db.with_file("a.cp", src.as_str());
             let unknown: Vec<_> = (db.diagnostics("a.cp", cpl_facade::Layer::Typed).into_iter())
                 .filter(|d| d.code.0 == "E0203")
                 .map(|d| d.message)

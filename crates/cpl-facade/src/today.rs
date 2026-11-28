@@ -57,7 +57,7 @@ impl Session {
     /// [`Session::analyze`] of the session moved on to `file` holding `text`.
     #[inline(always)]
     pub fn analyze_text(&mut self, file: impl AsRef<str>, text: impl AsRef<str>) -> Arc<Analysis> {
-        self.set_file(&file, text);
+        *self = self.with_file(&file, text);
         self.checked(file.as_ref()).unwrap_or_default()
     }
 

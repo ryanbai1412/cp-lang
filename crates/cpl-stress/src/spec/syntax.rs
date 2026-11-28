@@ -260,7 +260,7 @@ pub(super) struct ReadFacts {
 
 pub(super) fn read_types(src: &str) -> ReadFacts {
     let mut db = cpl_facade::Session::default();
-    db.set_file("input.cp", src);
+    db = db.with_file("input.cp", src);
     let Some(facts) = db.facts("input.cp") else {
         return ReadFacts::default();
     };
@@ -729,7 +729,7 @@ pub(super) fn read_gen(expr: &Expr) -> Option<String> {
 pub(super) fn gen_program(src: &str, func: &str, line: u32) -> Option<cpl_facade::Program> {
     let name = "input.cp";
     let mut db = cpl_facade::Session::default();
-    db.set_file(name, src);
+    db = db.with_file(name, src);
     let job = cpl_facade::Job::of(cpl_facade::Root::GeneratorRead(func.to_string(), line));
     db.program(name, &job).ok()
 }

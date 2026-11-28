@@ -251,7 +251,7 @@ fn every_record_after_and_near_miss_pass_cpl_check() {
 fn every_record_before_passes_cpl_check_or_names_its_removed_spelling() {
     for lint in LINTS {
         let mut db = cpl_facade::Session::default();
-        db.set_file("before.cp", lint.trigger);
+        db = db.with_file("before.cp", lint.trigger);
         let reported = db.diagnostics("before.cp", cpl_facade::Layer::Program);
         let mut codes: Vec<&str> = reported
             .iter()

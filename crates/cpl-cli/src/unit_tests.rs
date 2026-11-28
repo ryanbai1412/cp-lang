@@ -51,7 +51,7 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
         }
         if let Ok(text) = std::fs::read_to_string(p) {
             let mut db = cpl_facade::Session::default();
-            db.set_file(paths[0], text.as_str());
+            db = db.with_file(paths[0], text.as_str());
             if laws::with_law_tests(&mut db, paths[0], &text).is_some() {
                 return true;
             }
@@ -134,7 +134,7 @@ pub(crate) fn run_unit_tests(
             Some((with_laws, _)) => with_laws,
             None => text,
         };
-        db.set_file(&path_str, text.as_str());
+        db = db.with_file(&path_str, text.as_str());
         let Some(roles) = db.roles(&path_str) else {
             continue;
         };

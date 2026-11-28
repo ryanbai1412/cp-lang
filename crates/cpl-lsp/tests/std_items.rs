@@ -854,7 +854,7 @@ fn own_member_uses(
                 continue;
             }
             let program = format!("{head}{}\n", code.replace("; ", "\n"));
-            session.set_file("/w/example.cp", program.as_str());
+            session = session.with_file("/w/example.cp", program.as_str());
             // Prose like `s.min()` names no value, so the checker can't say.
             let checks = session
                 .diagnostics("/w/example.cp", cpl_facade::Layer::Typed)

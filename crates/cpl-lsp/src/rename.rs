@@ -485,7 +485,7 @@ pub fn changed_meaning(
             let Some(edited) = cpl_diag::splice(&text, words) else {
                 continue;
             };
-            trial.set_file(&path, edited);
+            trial = trial.with_file(&path, edited);
         }
     }
     let broken = expected.into_iter().find(|(file, _, at, path, def_at)| {

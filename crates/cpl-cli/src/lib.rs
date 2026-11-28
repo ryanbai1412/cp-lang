@@ -782,7 +782,7 @@ fn compile_side(path: &str, side: Side, stderr: &mut String) -> Result<Compiled,
 /// Checks and lowers `text` as the file at `path`.
 fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Result<Compiled, u8> {
     let db = with_db(|db| {
-        db.set_file(path, text.as_str());
+        *db = db.with_file(path, text.as_str());
         db.clone()
     });
     let typed = db.diagnostics(path, cpl_facade::Layer::Typed);

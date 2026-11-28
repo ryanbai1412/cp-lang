@@ -126,7 +126,7 @@ fn reads(
         "use std.{module}.{{{name}}}\nlet (n, m): (1..=8, 1..=8) = read()\n\
          domain V = 1..=n\ndomain E = 0..m\nlet x: {ty} = read()\nprint(n)\n"
     );
-    db.set_file("s.cp", src.as_str());
+    *db = db.with_file("s.cp", src.as_str());
     let error = |d: &cpl_diag::Diagnostic| d.severity == cpl_diag::Severity::Error;
     if (db.diagnostics("s.cp", cpl_facade::Layer::Built).iter()).any(error) {
         return None;

@@ -32,7 +32,7 @@ fn root() -> PathBuf {
 /// editor sees a stream of edits.
 fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
     let built = with_db(|db| {
-        db.set_file(path, src);
+        *db = db.with_file(path, src);
         db.diagnostics(path, cpl_facade::Layer::Built)
     });
     let mut out: Vec<Diagnostic> = built
