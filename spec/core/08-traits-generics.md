@@ -48,7 +48,9 @@ impl Ord for Frac:
   impls that apply, the top rank (R08.1.9) is chosen; two of one rank whose
   heads may meet are E0202 where declared, whatever their bounds. A chosen
   impl with a written head whose bounds fail is E0606, never a fall back to
-  an impl of a lower rank. (R08.1.2)
+  an impl of a lower rank. Its body holds only the members of the trait
+  and its supertraits: any other name is E0707, with the closest member or
+  a move to `impl T:` as help. (R08.1.2)
 - Inherent methods (`impl T:` or methods in a struct body) live in the
   type's module only. (R08.1.3)
 - Method lookup: inherent first, then traits in scope that the type

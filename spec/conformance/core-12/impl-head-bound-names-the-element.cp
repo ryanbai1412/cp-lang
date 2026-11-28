@@ -8,10 +8,11 @@ impl Seq<T> for Wrap<S: Seq<T>>:
         for x in s: yield x
 struct Z<A, B>(a: A, b: B)
 impl Keyed<K, (T, U)> for Z<A: Indexed<K, T>, B: Indexed<L, U>>:
-    fn keys(self) -> yields K:
-        for (k, _) in a.items: yield k
+    fn items(self) -> yields (K, (T, U)):
+        for (k, x) in a.items: yield (k, (x, b[k]))
+impl Seq<(T, U)> for Z<A: Indexed<K, T>, B: Indexed<L, U>>:
     fn iter(self) -> yields (T, U):
         for (i, x) in a.items: yield (x, b[i])
 let w = Wrap([1, 2, 3])
 let z = Z([1, 2, 3], "abc")
-print(w.sum(), [x * 2 for x in w], [k for k in z.keys()], [x for (x, c) in z if c == 'b'])
+print(w.sum(), [x * 2 for x in w], [k for (k, _) in z.items], [x for (x, c) in z if c == 'b'])
