@@ -1580,13 +1580,23 @@ NEXT_RAW_OPEN_RE = re.compile(r'\br(#*)"')
 NEXT_INCLUDED_CPP_RE = re.compile(r'include_str!\(\s*"[^"]*\.(?:h|hpp|cpp|cc|inc)"')
 
 
+NEXT_TEST_MOD_RE = re.compile(r"^\s*mod \w+ \{")
+
+
 def next_cpp_runtime_lines(root: Path) -> list[str]:
     """Lines of C++ written by hand inside the new emitter (its raw-string runtime): each runtime
     operation is a CP std body or an `ops` table entry, so C++ cannot disagree with the engine."""
     out, inside, close = [], False, ""
     for p in _rs_files(root, *_next_srcs(root), tests=False):
         rel = _rel(root, p)
-        for i, l in enumerate(_lines(p), 1):
+        lines = _lines(p)
+        for i, l in enumerate(lines, 1):
+            # Comments and a file's `#[cfg(test)] mod` hold no emitter C++ (ca568afe1 counted
+            # cpl-next-syntax's lexer comments and its tests' raw strings).
+            if not inside and l.strip() == "#[cfg(test)]" and i < len(lines) and NEXT_TEST_MOD_RE.match(lines[i]):
+                break
+            if not inside and l.lstrip().startswith("//"):
+                continue
             # A raw string of any hash count (`r"`, `r#"`, `r##"`), not only `r#"` (shortcut audit).
             m = None if inside else NEXT_RAW_OPEN_RE.search(l)
             if inside or m:

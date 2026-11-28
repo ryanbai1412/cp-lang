@@ -2757,5 +2757,17 @@ class CiOnlyCountersTest(unittest.TestCase):
         self.assertFalse(set(dr.CI_ONLY) & seen["only"])
 
 
+class CppRuntimeLinesTest(unittest.TestCase):
+    def test_comments_and_a_test_module_are_not_emitter_cpp(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "crates/cpl-next-syntax/src"
+            src.mkdir(parents=True)
+            (src / "lexer.rs").write_text(
+                '// r"not a raw string\nconst H: &str = r"int f();";\n'
+                '#[cfg(test)]\nmod tests {\n    const T: &str = r"x\n    y";\n}\n')
+            self.assertEqual(dr.next_cpp_runtime_lines(root), ["crates/cpl-next-syntax/src/lexer.rs:2"])
+
+
 if __name__ == "__main__":
     unittest.main()
