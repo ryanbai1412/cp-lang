@@ -46,6 +46,7 @@ fn layout(type_: Type) -> Layout     // pure in a concrete type and the profile;
 impl Type {
     fn text() -> Str                                  // as a diagnostic writes it: the one type printer
     fn range() -> Option<(Option<i64>, Option<i64>)>  // an integer's ends; None where the checker knows none
+    fn prim() -> Option<Prim>                         // the core primitive it is: Int (any range), Bool, Char, U64, I128, F64
     fn decl() -> Option<Definition>                   // the struct or enum it is an instance of
     fn args() -> List<Type>                           // that declaration's type arguments
     fn implements(trait_: TraitId) -> bool            // the checker's impl lookup: how a tool asks what a type can do
