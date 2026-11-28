@@ -1,6 +1,7 @@
 //! Collecting declarations: std's once, and each program's as a layer over them.
 use super::forms::{Form, Reader, UseForm};
 use super::impls::{overlap, same_shape, supertraits_unmet};
+use super::Impls;
 use super::inherent::inherent_impl;
 use super::tyconv::input_bound;
 use super::*;
@@ -1180,7 +1181,7 @@ fn layer(
                     };
                     if let Some(Named::Struct(sid)) = id.filter(|_| !d.field_trait(tref.tr)) {
                         let Some(asked) =
-                            d.derived_bounds(sid, &tref, copying.contains(&(s as *const _)))
+                            Impls::of(&d).derived_bounds(sid, &tref, copying.contains(&(s as *const _)))
                         else {
                             wait.push((mid, item, s, id));
                             continue;

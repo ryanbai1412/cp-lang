@@ -111,6 +111,16 @@ driver merges nothing by hand.
   rest of the program still runs. The trap is only the partial run: a
   build that reaches the unit reports its diagnostic and is not clean.
 - Drops are placed once, by the ownership pass.
+- **A range with a value-parameter end is `Ty::RangeEnds`.** `0..P` of
+  `Mod<P>` (R03.5.1) has ends `End::Lit(i64)` or `End::Of(ty)`, where
+  `ty` names one value: a static argument is its singleton
+  `Ty::Range(k, k)` (`Mod<7>`), a run-time modulus `Mod(p)` a
+  `Ty::RangeOf`. It is built and substituted only through
+  `Ty::range_ends`, which gives `Ty::Range` once both ends are known
+  values. Verify rejects a `RangeEnds` whose two ends are both known
+  values, and any end still holding a `Param` past the generic stage. A
+  `RangeOf`-ended one is legal and links to `CTy::Int`, exactly like
+  `RangeOf`.
 - Every fact names its tier; every removed check names the facts that
   removed it.
 

@@ -32,6 +32,10 @@ pub enum Ty {
     /// a domain type, give or take a constant (`dep: [V]0..=V.count`). A store checks it against `D.m` where
     /// it is made, so it keeps the end a struct's arguments give it (R03.1.4).
     RangeTo(Box<Ty>, FnId, i64, i64),
+    /// `lo..hi` with an end that is a value parameter (`0..P` of `Mod<P>`, R03.5.1). Built only
+    /// through [`Ty::range_ends`], which gives `Range` once both ends are singletons, so a fully
+    /// substituted type never holds it.
+    RangeEnds { lo: End, hi: End, inclusive: bool },
     Bool,
     /// An ASCII character, `0..=127`, one byte.
     Char,
@@ -62,7 +66,41 @@ pub enum Ty {
     Var(usize),
     Error,
 }
+/// An end of a [`Ty::RangeEnds`]: a constant, or a type that names one value (a parameter whose
+/// argument is a singleton range, `Mod<7>`'s `7..=7`).
+#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum End {
+    Lit(i64),
+    Of(Box<Ty>),
+}
+
+impl End {
+    fn value(&self) -> Option<i64> {
+        match self {
+            End::Lit(k) => Some(*k),
+            End::Of(t) => t.singleton(),
+        }
+    }
+}
+
 impl Ty {
+    /// The one value a singleton range type holds: `7` of `Mod<7>`'s argument `7..=7`.
+    pub fn singleton(&self) -> Option<i64> {
+        match self {
+            Ty::Range(a, b) if a == b => Some(*a),
+            _ => None,
+        }
+    }
+
+    /// The range `lo..hi` (`..=` when `inclusive`), as `Range` when both ends are known values.
+    pub fn range_ends(lo: End, hi: End, inclusive: bool) -> Ty {
+        let hi_at = hi.value().and_then(|b| if inclusive { Some(b) } else { b.checked_sub(1) });
+        match (lo.value(), hi_at) {
+            (Some(a), Some(b)) => Ty::Range(a, b),
+            _ => Ty::RangeEnds { lo, hi, inclusive },
+        }
+    }
+
     /// R1 before instancing (`prog::holds` after it): what a value of this type holds, where
     /// `fields` gives a struct's field types. A fn value holds an address, as it captures heap
     /// values by reference (R05.10.1-2); a type parameter could be a heap type.
@@ -72,6 +110,7 @@ impl Ty {
             | Ty::Range(..)
             | Ty::RangeOf(_)
             | Ty::RangeTo(..)
+            | Ty::RangeEnds { .. }
             | Ty::Bool
             | Ty::Char
             | Ty::U64
@@ -193,6 +232,13 @@ impl Subst<'_> {
             Ty::Param(i) => self.tys.get(*i).cloned().unwrap_or(Ty::Error),
             Ty::Raw(e) => Ty::Raw(Box::new(self.ty(e))),
             Ty::RangeTo(d, m, lo, k) => Ty::RangeTo(Box::new(self.ty(d)), *m, *lo, *k),
+            Ty::RangeEnds { lo, hi, inclusive } => {
+                let end = |e: &End| match e {
+                    End::Lit(k) => End::Lit(*k),
+                    End::Of(t) => End::Of(Box::new(self.ty(t))),
+                };
+                Ty::range_ends(end(lo), end(hi), *inclusive)
+            }
             Ty::Ref(e) => Ty::Ref(Box::new(self.ty(e))),
             Ty::Lent(e) => Ty::Lent(Box::new(self.ty(e))),
             Ty::Mut(e) => Ty::Mut(Box::new(self.ty(e))),
@@ -254,6 +300,10 @@ pub fn params_in(t: &Ty, out: &mut std::collections::BTreeSet<usize>) {
         Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => {
             params_in(e, out)
         }
+        Ty::RangeEnds { lo, hi, .. } => [lo, hi].into_iter().for_each(|e| match e {
+            End::Of(t) => params_in(t, out),
+            End::Lit(_) => {}
+        }),
         Ty::Struct(_, ts, _) => ts.iter().for_each(|t| params_in(t, out)),
         Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| params_in(t, out)),
         _ => {}
@@ -324,7 +374,7 @@ impl Ty {
     pub fn prim(&self) -> Option<cpl_contract::Prim> {
         use cpl_contract::Prim;
         Some(match self {
-            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::AnyRange(_) | Ty::RangeTo(..) => {
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::AnyRange(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. } => {
                 Prim::Int
             }
             Ty::Bool => Prim::Bool,

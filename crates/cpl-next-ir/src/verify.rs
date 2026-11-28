@@ -6,7 +6,7 @@ use crate::facts::Proved;
 use crate::ir::*;
 use crate::msg::Msg;
 use crate::prog::CTy;
-use crate::ty::{SetTy, Ty};
+use crate::ty::{params_in, End, SetTy, Ty};
 
 /// What a call site may assume of the instance it calls: whether it is an operator
 /// (`Func::fast`), and which of its params it views (`Func::views`).
@@ -68,6 +68,18 @@ impl StageTy for Ty {
             Ty::Var(_) => Some("an unsolved type variable"),
             Ty::Lent(_) | Ty::Ref(_) => Some("a lend or reference chosen before ownership"),
             Ty::Raw(t) | Ty::Mut(t) | Ty::RangeTo(t, ..) => t.wrong(Stage::Generic),
+            Ty::RangeEnds { lo, hi, .. } => {
+                let ends = [lo, hi].map(|e| match e {
+                    End::Of(t) => Some(&**t),
+                    End::Lit(_) => None,
+                });
+                let mut ps = std::collections::BTreeSet::new();
+                ends.iter().flatten().for_each(|t| params_in(t, &mut ps));
+                if ps.is_empty() {
+                    return Some("a range whose ends are known values, not made `Range`");
+                }
+                ends.iter().flatten().find_map(|t| t.wrong(Stage::Generic))
+            }
             Ty::Struct(_, ts, ss) => (ts.iter().find_map(|t| t.wrong(Stage::Generic)))
                 .or_else(|| ss.iter().find_map(set)),
             Ty::Fn(ps, r, s) => (ps.iter().chain([&**r]))
