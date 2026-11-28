@@ -9,6 +9,7 @@ use std.seq.{each, collect, nth, find, Seq, Indexed, all}
 use std.sparse.{LinearRmq}
 use std.range.{Len, first_true, last_true}
 use std.io.{io}
+use std.hash.{Hash, HashMap}
 
 const CAP = 2_000_000_000
 type Count = 0..=CAP
@@ -738,7 +739,7 @@ pub struct KmpAutomaton<A>:
 /// order: increasing start
 /// traps: never
 /// example: `"abab".shift_and("ab").collect() == [0, 2]`
-pub fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K:
+pub fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Hash + Eq>(self: S, pat: P) -> yields K:
     let m = pat.len
     if m == 0:
         for k in self.keys: yield k

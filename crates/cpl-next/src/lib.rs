@@ -20,7 +20,7 @@ use cpl_next_decls::views::Answers;
 use cpl_next_decls::{decls, diag, modules};
 use cpl_next_ir::build::{Build, Checks, Judge};
 use cpl_next_ir::ids::{ItemId, SourceId};
-use cpl_next_ir::run::{Limits, RunInput};
+use cpl_next_ir::run::{Io, Limits, RunInput};
 use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
 use cpl_next_lower as lower;
@@ -235,15 +235,18 @@ pub enum IrStage {
     Owned,
     Canonical,
     Optimized,
+    /// Not IR: each binding's frozen and lent places, from ownership's reporting walk.
+    Borrows,
 }
 
 impl IrStage {
     /// Each stage, by the name `--stage` takes.
-    const NAMES: [(&str, IrStage); 4] = [
+    const NAMES: [(&str, IrStage); 5] = [
         ("raw", IrStage::Raw),
         ("owned", IrStage::Owned),
         ("canonical", IrStage::Canonical),
         ("optimized", IrStage::Optimized),
+        ("borrows", IrStage::Borrows),
     ];
 
     pub fn named(name: &str) -> Option<IrStage> {
@@ -308,7 +311,7 @@ pub(crate) fn roots(fns: &HashMap<ir::FuncKey, ir::Func<ty::Ty>>, globals: usize
 
 /// Link, then ownership on the linked instances (contract 4), where the program checked clean:
 /// the program, its copies settled, and ownership's diagnostics.
-fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
+fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<own::Bound>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
@@ -317,28 +320,23 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
         .collect();
     let g = &mut f.g;
     let d = &f.d;
-    let (prog, owned) = own::link(
-        d,
-        &mut g.funcs,
-        &mut g.globals,
-        &names,
-        &|fns, tys, lend| {
-            let checked = Answers {
-                whole: &g.whole,
-                deferred: &g.deferred,
-                globals: tys,
-            };
-            let v = inst::Inputs {
-                sigs: d,
-                fns,
-                sums: &g.adds,
-                checked: &checked,
-            };
-            inst::link(v, &roots(fns, tys.len()), lend, events)
-        },
-    );
+    let before = own::before(d, &mut g.funcs, &mut g.globals, &names);
+    let (fns, tys) = (&g.funcs, &g.globals[..]);
+    let checked = Answers {
+        whole: &g.whole,
+        deferred: &g.deferred,
+        globals: tys,
+    };
+    let v = inst::Inputs {
+        sigs: d,
+        fns,
+        sums: &g.adds,
+        checked: &checked,
+    };
+    let mut prog = inst::link(v, &roots(fns, tys.len()), events);
+    let owned = own::after(d, &mut prog, &names, before);
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
-    Some((prog, diags))
+    Some((prog, diags, owned.binds))
 }
 
 /// `judge` is the judge the snapshot is built for; it is the tool's to resolve (contract 0).
@@ -466,7 +464,7 @@ pub(crate) fn compile(
     checks: Checks,
 ) -> Result<Compiled, Vec<Diag>> {
     let mut f = front(db, std, root, judge, checks);
-    let Some((mut prog, own)) = back(&mut f, events) else {
+    let Some((mut prog, own, _)) = back(&mut f, events) else {
         return Err(f.diags);
     };
     f.diags.extend(own);
@@ -492,7 +490,7 @@ pub(crate) fn compile(
     }
     let canon =
         inst::canonicalize(&mut prog, &cpl_next_own::expand_calls).map_err(|es| link(&es))?;
-    let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
+    let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog);
     {
         use cpl_next_ir::verify::{accounted, instances, Stage};
         let g = prog.globals.len();
@@ -763,6 +761,15 @@ pub struct Unit {
     pub lowered: bool,
 }
 
+/// `b` as `--dump-own` prints it: the fn and instance, the binding, its frozen and lent places.
+fn bound_line(b: &own::Bound) -> String {
+    let (fr, le) = (b.frozen.join(", "), b.lent.join(", "));
+    format!(
+        "{}#{} {}: frozen [{fr}] lent [{le}]\n",
+        b.fn_name, b.inst, b.local
+    )
+}
+
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
 pub(crate) fn units(
@@ -773,7 +780,7 @@ pub(crate) fn units(
     checks: Checks,
 ) -> (Vec<Unit>, Vec<Diag>) {
     let mut f = front(db, std, root, judge, checks);
-    if let Some((_, own)) = back(&mut f, false) {
+    if let Some((_, own, _)) = back(&mut f, false) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);
     }
@@ -826,7 +833,26 @@ impl Compiled {
 
     /// Runs on the engine, the one evaluator, on the calling thread.
     pub fn run(&self, input: &str) -> Outcome {
-        cpl_next_engine::run(&self.prog, &self.opt, self.input(input))
+        self.run_on(self.input(input))
+    }
+
+    /// Runs `input` on the engine, on the calling thread.
+    pub fn run_on(&self, input: RunInput) -> Outcome {
+        cpl_next_engine::run(&self.prog, &self.opt, input)
+    }
+
+    /// A run that reads `from` as the program reads and writes `to` as it flushes, under the
+    /// limits of the judge the program was built for: a terminal, a pipe or an interactor.
+    pub fn streamed(
+        &self,
+        from: Box<dyn std::io::Read + Send>,
+        to: Box<dyn std::io::Write + Send>,
+    ) -> RunInput {
+        RunInput {
+            io: Io::Stream(from),
+            limits: self.limits,
+            out: Some(to),
+        }
     }
 
     /// A run of all of `input` under the limits of the judge the program was built for.

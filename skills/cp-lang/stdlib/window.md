@@ -41,7 +41,7 @@ The queue-undo trick: a `Track` over an `Undo` structure, so a window that adds 
 - `fn pop(mut self, x: T)` — \(O(\log n)\) applications of `add` amortized; Drop the front element, which must be `x`.; traps: on an empty `Undoing`
 - `@get fn state(self) -> S` — \(O(1)\); The structure with exactly the window's elements applied.
 
-## `struct Sweep<D, S>(pub state: S)`
+## `struct Sweep<D: Domain, S: Track<D>>(pub state: S)`
 
 A movable range over `D` feeding a `Track`, for Mo and divide-and-conquer DP.
 
@@ -51,7 +51,7 @@ A movable range over `D` feeding a `Track`, for Mo and divide-and-conquer DP.
 
 ## Functions
 
-- `fn window_fold<S: Indexed<D, T>, D: Domain, T, M: Op<T>>(self: S, k: 1.., op: M) -> yields T` — \(O(n)\) amortized calls of `op`; One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)` keeps it (two stacks).; traps: when `k < 1`
+- `fn window_fold<S: Indexed<D, T>, D: Domain, T: Eq, M: Op<T>>(self: S, k: 1.., op: M) -> yields T` — \(O(n)\) amortized calls of `op`; One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)` keeps it (two stacks).; traps: when `k < 1`
 - `fn track<S, T>(state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ()) -> Tracked<S, T>` — \(O(1)\); A `Track` over any structure: `add(mut state, x)` applies an element at the back and `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`.
 - `fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T>` — \(O(1)\); `Undoing` over `state`, holding no elements; see there.
 

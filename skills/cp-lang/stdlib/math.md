@@ -4,7 +4,7 @@
 
 Number theory on plain `Int`s.
 
-In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `acos`, `asin`, `atan2`, `bit`, `bit_ceil`, `bit_len`, `bit_width`, `ceil`, `ceil_div`, `choose`, `choose2`, `clz`, `cos`, `crt`, `crt_all`, `ctz`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `exp`, `ext_gcd`, `factor`, `fixed`, `floor`, `floor_quotients`, `floor_sum`, `gcd`, `hypot`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `ln`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `popcount`, `pow_mod`, `primitive_root`, `round`, `sieve_multiplicative`, `sign`, `sin`, `splitmix64`, `sqrt`, `tan`, `to_str`, `trunc`.
+In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `acos`, `asin`, `atan2`, `bit`, `bit_ceil`, `bit_len`, `bit_width`, `ceil`, `ceil_div`, `choose`, `choose2`, `clz`, `cos`, `crt`, `crt_all`, `ctz`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `exp`, `ext_gcd`, `factor`, `fixed`, `floor`, `floor_quotients`, `floor_sum`, `gcd`, `hypot`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `ln`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `popcount`, `pow_mod`, `primitive_root`, `round`, `sieve_multiplicative`, `sign`, `sin`, `sqrt`, `tan`, `to_str`, `trunc`.
 
 ## Types & Constants
 
@@ -12,13 +12,13 @@ In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `acos`,
 
 ## `struct Sieve`
 
-The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality bitset of \(n / 16\) bytes and the list `primes`.
+The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality bitset of \(n / 16\) bytes, the list `primes` and the smallest prime factor table `spf` of \(4n\) bytes, which `factor`, `phi`, `mobius`, `divisors` and the `*_table` methods read.
 
 Fields: `top: Int`, `odd_composite: List<U64>`.
 
-- `fn new(n: 0..) -> Sieve` — \(O(n \log \log n)\) time, \(n / 16\) bytes plus 4 bytes a prime; A sieve up to `n`: which of `0..=n` are prime, and the primes.; traps: when `n < 0` or `n > 2_000_000_000`
-- `@get fn spf(self) -> List<SieveVal>` — \(O(n)\) time and \(4n\) bytes on the first read, then \(O(1)\), lent; The smallest prime factor of every `0..=n`, with `spf[0]` and `spf[1]` 0.
-- `fn is_prime(self, x: Int) -> Bool` — \(O(1)\); Whether `x` is prime, for `0 <= x <= n`, from the primality bitset (no `spf` build).; traps: when `x` is outside `0..=n`
+- `fn new(n: 0..) -> Sieve` — \(O(n \log \log n)\) time, \(4n + n / 16\) bytes plus 4 bytes a prime; A sieve up to `n`: which of `0..=n` are prime, the primes, and `spf` by a linear sieve over the primes.; traps: when `n < 0` or `n > 2_000_000_000`
+- `@get fn spf(self) -> lends List<SieveVal>` — \(O(1)\), lent; The smallest prime factor of every `0..=n`, with `spf[0]` and `spf[1]` 0, built with the sieve.
+- `fn is_prime(self, x: Int) -> Bool` — \(O(1)\); Whether `x` is prime, for `0 <= x <= n`, from the primality bitset.; traps: when `x` is outside `0..=n`
 - `fn factor(self, x: Int) -> List<(Int, Int)>` — \(O(\log x)\); The prime factorization of `x` in `1..=n` as `(prime, exponent)` pairs, by repeated `spf`.; traps: when `x` is outside `1..=n`
 - `fn phi(self, x: Int) -> Int` — \(O(\log x)\); Euler's totient of `x` in `1..=n`: how many of `1..=x` are coprime to `x`.; traps: when `x` is outside `1..=n`
 - `fn mobius(self, x: Int) -> Int` — \(O(\log x)\); The Mobius function of `x` in `1..=n`: 0 if a square above 1 divides `x`, else -1 to the number of prime factors.; traps: when `x` is outside `1..=n`
@@ -121,7 +121,6 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `@get fn sign(self: Int) -> Sign` — \(O(1)\); The side of zero `self` is on: `Neg`, `Zero` or `Pos`.
 - `fn bit(self: Int, i: 0..) -> Bool` — \(O(1)\); Whether bit `i` of `self` is set, bit 0 the lowest, in two's complement.; traps: when `i < 0`
 - `@get fn is_pow2(self: Int) -> Bool` — \(O(1)\); Is `self` a power of two?
-- `fn splitmix64(x: U64) -> U64` — \(O(1)\); SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
 - `fn factor(x: 1..) -> List<(Int, Int)>` — \(O(\sqrt x)\) for `x <= 1_000_000`; \(O(x^{1/4} \log x)\) expected above; The prime factorization of `x >= 1` as `(prime, exponent)` pairs, for any 64-bit `Int`.; traps: when `x < 1`
 - `fn divisors(self: Int) -> List<Int>` — \(O(\sqrt x)\); The positive divisors of `x >= 1`, ascending.; traps: when `x < 1`
 - `fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>` — \(O(d \log d)\) for `d` divisors; Every positive divisor of the number whose factorization is `factors`, ascending.; traps: when an exponent is negative, or a divisor overflows `Int`

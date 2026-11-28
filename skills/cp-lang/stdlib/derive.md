@@ -4,11 +4,7 @@
 
 The `Eq`, `Ord`, `Show` and `Hash` a struct gets field by field, as library code on `fields` (decision 28.7), for an `impl` to call: `impl Ord for Job: fn lt(a, b) = lt_fields(b, a)` orders the other way, and `impl Hash for P: fn hash(self) = hash_fields(self)` is a struct's whole `Hash`. Each costs \(O(\mathit{fields})\) plus what its fields' own operations cost.
 
-In prelude (no `use` needed): `Hash`.
-
-## `trait Hash`
-
-A value's 64-bit hash: equal values hash equal.
+Import: `use std.derive.{...}`.
 
 ## Functions
 

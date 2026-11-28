@@ -251,14 +251,13 @@ Fields: `k: Int,`.
 - `fn dedup<T: Eq>(mut self: List<T>)` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
 - `fn deduped<S: Seq<T>, T: Eq>(self: S) -> List<T>` — \(O(n)\); `self` without each value equal to the one before it: the value form of `dedup`, as `sorted` is of `sort`.
 - `fn record_highs<D, T, K: Ord>(self: [D]T, by: T -> K = x => x) -> yields D` — \(O(1)\) per step; \(O(n)\).
-- `fn distinct<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(n)\) extra space; Distinct values of `self` in first-seen order (optionally keyed by `by:`).
+- `fn distinct<S: Seq<T>, T, K: Hash + Eq>(self: S, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(n)\) extra space; Distinct values of `self` in first-seen order (optionally keyed by `by:`).
 - `fn partition<S: Seq<T>, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>)` — \(O(n)\); The values of `self` that `keep` holds for, then the ones it does not, each in the order they came.
 - `fn select<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)` — \(O(n)\) expected, \(O(n \log n)\) worst case, \(O(1)\) extra space; traps: when `k` is not in `0..self.len`
 - `fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K: Ord>(self: A, b: B, by: T -> K = x => x) -> yields T` — \(O(1)\) per step and \(O(1)\) memory, so a whole walk is \(O(\lvert a \rvert + \lvert b \rvert)\); `.collect()` keeps it as a `List`; \(O(1)\) per step, \(O(1)\) memory.; traps: never; unsorted inputs give an unspecified interleaving
 - `fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per window; traps: when `k < 1`
 - `fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per chunk; traps: when `k < 1`
 - `@get fn adjacent<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives `(10, 20)` then `(20, 30)`.
-- `fn each<S: Seq<T>, T>(self: S) -> yields T` — what `iter` costs; The sequence's elements from its start: `iter`, by the name the sequence types give it.
 - `fn pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(n^2)\) to walk, \(O(1)\) per pair; Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`, `(20, 30)`.
 - `@get fn with_prev<S: Seq<T>, T>(self: S) -> yields (?T, T)` — \(O(1)\) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.
@@ -348,7 +347,7 @@ Fields: `k: Int,`.
 - `fn kway_merge<S: Indexed<D, T>, D: Domain, T>(lists: List<S>) -> List<T>` — \(O(N \log k)\), \(O(N)\) memory
 - `fn radix_sort<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, by: T -> Int = x => x)` — \(O(n)\) passes over 8-bit digits of the key, \(O(n)\) memory; \(O(n)\), \(O(n)\) memory.
 - `fn counting_sort<S: IndexedMut<D, T>, D: Domain, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their order: one count per position of `K`, then each element goes to its slot.
-- `fn is_permutation<A: Seq<T>, B: Seq<T>, T>(self: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
+- `fn is_permutation<A: Seq<T>, B: Seq<T>, T: Hash + Eq>(self: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
 - `fn is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
 - `fn perm_rank<V>(self: [V]V) -> Int` — \(O(n)\), \(O(1)\) memory; traps: when `|V| > 20` or `p` is not a permutation
 - `fn perm_unrank<V>(rank: Int) -> [V]V` — \(O(n \log n)\), \(O(1)\) memory beyond the result; traps: when `rank` is not in `0..|V|!`
@@ -373,8 +372,8 @@ Fields: `k: Int,`.
 - `fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>` — \(O(n)\); For each position, the widest piece where it is the minimum of `by` (ties: the left one extends).
 - `fn prev_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D` — \(O(n)\); Nearest earlier position with a smaller key (`strict: false`: smaller or equal).
 - `fn next_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D` — \(O(n)\); Nearest later position with a smaller key.
-- `fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D` — \(O(n)\) expected; Nearest earlier position with an equal key.
-- `fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D` — \(O(n)\) expected; Nearest later position with an equal key.
+- `fn prev_same<D, T, K: Hash + Eq>(self: [D]T, by: T -> K = x => x) -> [D]?D` — \(O(n)\) expected; Nearest earlier position with an equal key.
+- `fn next_same<D, T, K: Hash + Eq>(self: [D]T, by: T -> K = x => x) -> [D]?D` — \(O(n)\) expected; Nearest later position with an equal key.
 - `fn outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>` — \(O(n \log n)\); The ranges no other range contains, sorted by left end (ties: the first kept).
 - `@get fn keys<T>(self: List<T>) -> Range<Int>` — \(O(1)\)
 

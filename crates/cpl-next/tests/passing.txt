@@ -922,8 +922,10 @@ core-07/zip-pairs-by-walk.cp
 core-07/zip-takes-a-rev.cp
 core-08/a-callee-generic-is-not-the-receivers-of-the-same-name.cp
 core-08/a-fn-item-passes-for-its-own-type-of.cp
+core-08/a-std-struct-answers-its-static-trait-fns.cp
 core-08/a-tuple-meets-no-constant-trait.cp
 core-08/a-variant-named-like-a-trait-does-not-hide-it.cp
+core-08/an-alias-answers-its-types-static-fns.cp
 core-08/assoc-default-names-trait-param.cp
 core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
@@ -942,6 +944,7 @@ core-08/conditional-on-bound.cp
 core-08/default-arg-binds-generic-before-bounds.cp
 core-08/default-method-override-once.cp
 core-08/derive-needs-fields.cp
+core-08/derived-impl-meets-its-supertrait-bounds.cp
 core-08/domain-kind-param.cp
 core-08/duplicate-impl.cp
 core-08/explicit-conversion.cp
@@ -1085,6 +1088,7 @@ core-10/bool-var-not-print.cp
 core-10/crlf-input-tokens.cp
 core-10/crlf-read-line-drops-cr.cp
 core-10/float-precision.cp
+core-10/flush-keeps-the-output-bytes.cp
 core-10/grid-first-factor-is-row.cp
 core-10/grid-int-read-row-major.cp
 core-10/interpolated-optional-is-not-show.cp
@@ -1553,6 +1557,7 @@ next/a_own_21_get_of_plain_element_copies.cp
 next/a_own_22_list_param_result_is_owned.cp
 next/a_own_23_cell_write_of_a_view_of_the_container.cp
 next/a_own_24_copy_in_its_turn.cp
+next/a_own_25_nested_fn_writes_a_capture_a_view_lends.cp
 next/a_range_rt_01_store_above_end.cp
 next/a_range_rt_03_tuple_read_bounded_by_earlier.cp
 next/a_range_rt_04_tuple_read_at_bound.cp
@@ -1784,6 +1789,7 @@ next/n_lambda_04_recursive.cp
 next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
 next/n_lambda_07_unit_body_drops.cp
+next/n_last_use_moves_into_result.cp
 next/n_lends_01_result_lent_until_last_use.cp
 next/n_lends_02_write_before_last_use.cp
 next/n_lends_03_body_lends_its_place.cp
@@ -1866,6 +1872,7 @@ next/n_read_03_read_is_an_ordinary_fn_over_read.cp
 next/n_read_04_str_and_char_read_tokens.cp
 next/n_read_05_str_read_at_the_end_traps.cp
 next/n_read_06_parts_held_to_their_ranges.cp
+next/n_read_after_last_use_still_lends.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_01_update_copies_with_replacements.cp
 next/n_record_02_field_traits.cp
@@ -1909,6 +1916,7 @@ next/n_todo_01_todo_traps_where_reached.cp
 next/n_trace_01_shows_a_bool.cp
 next/n_trace_02_shows_an_optional_int.cp
 next/n_trace_03_shows_an_optional_list.cp
+next/n_trace_04_a_list_of_bools_runs_traced.cp
 next/n_trait_call_01.cp
 next/n_trait_call_02_no_impl.cp
 next/n_trait_static_fn.cp
@@ -2232,7 +2240,10 @@ std-math/splitmix64-at-zero.cp
 std-matrix/f64-identity-from-zero-and-one.cp
 std-matrix/get-outside-columns-traps.cp
 std-models/check-value.cp
+std-models/flush.cp
+std-models/hash.cp
 std-models/input.cp
+std-models/laws.cp
 std-models/list-str-array-cut.cp
 std-models/map.cp
 std-models/memo-array.cp
@@ -2729,6 +2740,8 @@ next/n_impl_12_two_fitting_impls_are_ambiguous.cp
 next/n_impl_13_two_bounds_give_one_method.cp
 next/n_impl_14_expected_type_picks_a_bound.cp
 next/n_impl_15_closure_takes_its_fn_types_impl_method.cp
+next/n_impl_16_a_bounded_impl_is_chosen_by_its_head.cp
+next/n_impl_17_an_unmet_bound_on_the_chosen_impl_is_e0606.cp
 core-04/a-domain-over-a-float-is-a-type-error.cp
 core-04/a-domain-over-a-plain-struct-is-a-type-error.cp
 core-04/char-domain-position-to-char.cp
@@ -2948,3 +2961,4 @@ next/n_closure_arg_kept_in_mut_param.cp
 next/n_intrinsic_has_its_entry_signature.cp
 next/n_named_arg_pack_lends_names.cp
 next/n_growing_type_through_two_fns.cp
+next/n_nested_fn_captures_borrowed_per_call.cp

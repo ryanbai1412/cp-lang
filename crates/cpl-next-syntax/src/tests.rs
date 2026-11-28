@@ -575,3 +575,32 @@ fn a_record_expression_takes_a_rest_that_drops_fields() {
     assert!(d.fields().next().unwrap().value().is_none());
     assert!(first::<ast::RecordExpr>(&items[2]).is_none());
 }
+
+#[test]
+fn a_non_ascii_literal_names_its_literal_kind_not_a_type() {
+    let message = |src| crate::lex(src).diagnostics[0].message.clone();
+    assert!(message("print(\"naïve\")\n").contains("a string literal holds"));
+    assert!(message("let c = 'é'\n").contains("a character literal holds"));
+}
+
+#[test]
+fn only_the_for_keyword_starts_a_c_style_header() {
+    let lexed = crate::lex("forest(x); y--\n");
+    let want = cpl_diag::msgs::lexer::NO_DECREMENT.say(&[]);
+    assert!(
+        lexed.diagnostics.iter().any(|d| d.message == want),
+        "{:?}",
+        lexed.diagnostics
+    );
+}
+
+#[test]
+fn a_c_style_for_header_leaves_its_increment_to_the_parser() {
+    let lexed = crate::lex("for (i = 0; i < n; i++)\n");
+    let inc = cpl_diag::msgs::lexer::NO_INCREMENT.say(&[]);
+    assert!(
+        lexed.diagnostics.iter().all(|d| d.message != inc),
+        "{:?}",
+        lexed.diagnostics
+    );
+}

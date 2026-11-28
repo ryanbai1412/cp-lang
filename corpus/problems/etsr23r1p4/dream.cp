@@ -7,7 +7,7 @@ var t = BeatsSegTree([I] i => Int(a[i]))
 for _ in 0..q:
     let (op, l, r): (1..=4, I, I) = read()
     match op:
-        1: t.add(l..=r, read<-1e4..=1e4>())
-        2: t.chdiv(l..=r, read<1..=1e9>())
-        3: print(t.min_val(l..=r)!)
-        _: print(t.sum(l..=r))
+        1 => t.add(l..=r, read<-1e4..=1e4>())
+        2 => t.chdiv(l..=r, read<1..=1e9>())
+        3 => print(t.min_val(l..=r)!)
+        _ => print(t.sum(l..=r))

@@ -24,10 +24,23 @@ pub fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str uses io:
     let words = if let a = answers: a else: io.answers
     (if ok: words.0 else: words.1).clone()
 
+/// Hand everything written so far to the judge now, not at exit: what an interactive program
+/// calls after a query and before it reads the answer (spec/core/10-io.md §10.4).
+///
+/// Output is buffered, so without a flush a query can sit in the buffer while the program waits.
+/// Under `Wire` every read flushes on its own, and a program that never flushes loses nothing:
+/// exit flushes too.
+///
+/// cost: one write of the buffered output
+/// traps: never
+/// example: `print(1); flush(); true`
+pub fn flush() = @intrinsic("flush")
+
 /// Interactive mode. Constructing one (`let wire = Wire()`) makes every read and the program's
 /// exit flush stdout first; a program that never builds one never flushes early. \(O(1)\).
 pub struct Wire():
-    /// A handle that puts the program in interactive mode (spec/core/10-io.md §10.4).
+    /// The handle for an interactive judge: `ask` prints a query, flushes and reads the answer
+    /// (spec/core/10-io.md §10.4).
     ///
     /// From construction on, every read and every exit flushes stdout first, so a query is never
     /// stuck in the buffer while the program waits for its answer. A program that never constructs a
@@ -48,7 +61,7 @@ pub struct Wire():
     /// cost: \(O(\lvert \mathit{query} \rvert)\) plus the read of one `T`
     /// traps: when input ends before an answer, or the answer is not a valid `T`
     /// example: `let wire = Wire(); let x: Int = wire.ask("? 1 2"); x == 7` (stdin `7`)
-    pub fn ask<T>(self, query: Str) -> T:
+    pub fn ask<T: Read>(self, query: Str) -> T:
         print(query)
         flush()
         read<T>()

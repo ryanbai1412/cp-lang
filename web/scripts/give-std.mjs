@@ -1,10 +1,11 @@
 // cpl.wasm carries only std's prelude and mod (scripts/build-wasm.sh); a
-// script that loads it in Node gives it every other module from std/ up front.
+// script that loads it in Node gives it every other module of that std up front.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const std = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), 'std');
+// cpl.wasm is the old pipeline, so it takes the std that pipeline is pinned to.
+const std = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), 'crates', 'cpl-check', 'frozen', 'std');
 
 export function giveStd(instance) {
   for (const f of readdirSync(std)) {

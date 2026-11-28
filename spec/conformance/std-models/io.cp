@@ -3,7 +3,7 @@
 // model: yes
 // model: Wire
 // model: read_all
-// `read_all` takes the whole `seed n` input, a `Wire` puts the run in interactive mode, then
+// `read_all` takes the whole `seed n` input after a `Wire` is made, then
 // seeded random `yes` calls (default words, `answers:`, and a `with io(answers:)` scope) are
 // checked against the plain `if`. Reads `seed n`; prints the first op that differs.
 use std.rand.{Rng}

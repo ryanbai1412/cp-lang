@@ -45,6 +45,7 @@ cpl-prover = { path = "crates/cpl-prover" }
 cpl-prim = { path = "crates/cpl-prim" }
 cpl-rt = { path = "crates/cpl-rt" }
 mimalloc = "0.1.52"
+stacker = "=0.1.25"
 
 [profile.release]
 lto = "thin"

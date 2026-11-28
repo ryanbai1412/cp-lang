@@ -408,11 +408,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// `List[Int]`, Python's generic brackets: read as `List<Int>`, with
-    /// one error that turns the brackets into `<>`.
+    /// `List[Int]`, Python's generic brackets after any type name: read as
+    /// `List<Int>`, with one error that turns the brackets into `<>`.
     pub(in crate::parser) fn bracket_type_args(&mut self, name: &str) -> Vec<Type> {
-        if !self.at(T::LBracket) || !matches!(name, "List" | "Map" | "Set" | "HashMap" | "HashSet")
-        {
+        if !self.at(T::LBracket) {
             return Vec::new();
         }
         let open = self.span();

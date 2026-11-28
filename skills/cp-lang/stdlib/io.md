@@ -4,18 +4,19 @@
 
 Answer words for yes/no problems. `print`, `read` and the `io` context are core (spec/core/10-io.md); this module holds the library half.
 
-In prelude (no `use` needed): `Wire`, `io`, `read_all`, `yes`.
+In prelude (no `use` needed): `Wire`, `flush`, `io`, `read_all`, `yes`.
 
 ## `struct Wire()`
 
 Interactive mode.
 
-- `fn new() -> Wire` — \(O(1)\); A handle that puts the program in interactive mode (spec/core/10-io.md §10.4).
-- `fn ask<T>(self, query: Str) -> T` — \(O(\lvert \mathit{query} \rvert)\) plus the read of one `T`; Print `query` and a newline, flush, then read one answer as the `T` the call site expects.; traps: when input ends before an answer, or the answer is not a valid `T`
+- `fn new() -> Wire` — \(O(1)\); The handle for an interactive judge: `ask` prints a query, flushes and reads the answer (spec/core/10-io.md §10.4).
+- `fn ask<T: Read>(self, query: Str) -> T` — \(O(\lvert \mathit{query} \rvert)\) plus the read of one `T`; Print `query` and a newline, flush, then read one answer as the `T` the call site expects.; traps: when input ends before an answer, or the answer is not a valid `T`
 
 ## Functions
 
 - `fn yes(ok: Bool, answers: ?(Str, Str) = None) -> Str uses io` — \(O(1)\); The answer word for `ok`: `io.answers.0` when true, else `io.answers.1`.
+- `fn flush()` — one write of the buffered output; Hand everything written so far to the judge now, not at exit: what an interactive program calls after a query and before it reads the answer (spec/core/10-io.md §10.4).
 - `fn read_all<T: Read>(until: ?(T -> Bool) = None) -> List<T> uses io` — \(O(\text{tokens read})\); Every remaining `T` on stdin, for statements that give no count.; traps: when a token is not a valid `T`
 
 ## Example

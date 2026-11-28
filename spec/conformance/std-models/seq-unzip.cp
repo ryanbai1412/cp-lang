@@ -20,7 +20,7 @@ for k in 0..n:
         ps.push((x, c))
         xs.push(x)
         cs.push(c)
-    if ps.unzip() != (xs, cs):
+    if ps.unzip() != (xs.clone(), cs.clone()):
         bad = "op {k}: unzip of {len} pairs"
     elif ps.rev.unzip() != (xs.rev.collect(), cs.rev.collect()):
         bad = "op {k}: unzip of the reversed {len} pairs"

@@ -1593,16 +1593,9 @@ impl<'a> Parser<'a> {
             self.c_case();
             let pat = self.pattern();
             let guard = self.eat(T::If).then(|| self.expr());
-            // `Pat => value`; `Pat:` is an error whose fix writes `=>`
-            // (decision 4.1), and its block is still read.
-            let body = if self.at(T::Colon) {
-                let span = self.span();
-                self.error(msgs::syntax::COLON_ARM.error(span, &[]).with_fix(
-                    "replace `:` with `=>`",
-                    span,
-                    " =>",
-                ));
-                self.bump();
+            // `Pat => value` or, for an arm of statements, `Pat:` and a
+            // block.
+            let body = if self.eat(T::Colon) {
                 self.block("`:`")
             } else if self.expect_token(T::FatArrow, "`=>` after the pattern") {
                 self.block("`=>`")

@@ -1414,7 +1414,7 @@ impl<'a> Lexer<'a> {
             );
             self.out.poisoned.push(span);
         }
-        self.ascii_only(start, "Str");
+        self.ascii_only(start, "string");
         self.push(
             if raw {
                 TokenKind::RawStr
@@ -1501,7 +1501,7 @@ impl<'a> Lexer<'a> {
         if let Some(len) = char_len {
             if rest.as_bytes().get(len) == Some(&b'\'') {
                 self.pos += len + 1;
-                self.ascii_only(start, "Char");
+                self.ascii_only(start, "character");
                 self.push(TokenKind::Char, start);
                 return;
             }

@@ -69,7 +69,7 @@ impl Fx {
 /// turn where ownership found the call also writes it (R4), else a view from the call's start
 /// (R11) or a read. Then marks the params each instance reads in place (`Func::views`), and
 /// places every release (`Func::drops`, `Stmt::Drop`).
-fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
+pub(crate) fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
     for (i, f) in p.insts.iter_mut().enumerate() {
         Settle {
             locals: &mut f.locals,
@@ -203,62 +203,30 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
     }
 }
 
-pub use inst::Owned;
+pub use inst::{after, Bound, Owned};
 
-/// The lent-slot rule link reads to type an instance's slots: [`lent_slot`]'s shape.
-pub type Lend = dyn Fn(
-    CTy,
-    &dyn Fn(&CTy) -> Vec<CTy>,
-    &dyn Fn(&cpl_next_ir::prog::InstKey) -> Option<Vec<CTy>>,
-) -> CTy;
+/// What ownership found before link that its check after link reports: the generic fns'
+/// verify errors and the `@cache` rule's findings on the bodies as written.
+pub struct Before {
+    pub(crate) generic: Vec<cpl_next_ir::msg::Msg>,
+    pub(crate) cache: Vec<cpl_next_ir::msg::Msg>,
+}
 
-/// Links the generic fns by their lent marks and a lent-slot rule: the caller's link stage.
-pub type Linker<'a> = dyn Fn(&HashMap<FuncKey, Func<Ty>>, &[Ty], &Lend) -> Program + 'a;
-
-/// Ownership around link (contract 4). Before link: marks what the generic fns lend (`lent`),
-/// since link keys an instance by those marks, and checks the `@cache` rule on the bodies as
-/// written. `link` links them by those marks and [`lent_slot`]. After link: checks the linked
-/// instances and settles their passed places. `globals` names each top-level binding and
-/// whether it is a `var`.
-pub fn link(
+/// Ownership before link (contract 4): marks what the generic fns lend (`lent`), since link
+/// keys an instance by those marks, and checks the `@cache` rule on the bodies as written.
+/// `globals` names each top-level binding and whether it is a `var`.
+pub fn before(
     d: &dyn Signatures,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
     tys: &mut [Ty],
     globals: &[(String, bool)],
-    link: &Linker<'_>,
-) -> (Program, Owned) {
-    use cpl_next_ir::verify::{all, callees, instances, Stage};
+) -> Before {
+    use cpl_next_ir::verify::{all, Stage};
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
     lent::mark(d, funcs, tys, &mutable);
     let cache = inst::cache_calls(d, funcs);
-    let mut prog = link(funcs, tys, &lent_slot);
-    let fast = callees(&prog.insts);
-    prog.errors.extend(generic);
-    prog.errors.extend(all(
-        &prog.insts,
-        Stage::Instances,
-        &fast,
-        prog.globals.len(),
-    ));
-    let owned = inst::check(d, &prog, globals, cache);
-    place_copies(&mut prog, &owned.copies);
-    let raw = instances(&prog.insts, Stage::Raw, prog.globals.len());
-    prog.errors.extend(raw);
-    (prog, owned)
-}
-
-/// The type of the slot a value of `t` is lent in, in an instance: a plain value lent is copied,
-/// as nothing it holds can be kept past the lend. A fn value is plain when what it captures is.
-fn lent_slot(
-    t: CTy,
-    parts: &dyn Fn(&CTy) -> Vec<CTy>,
-    captures: &dyn Fn(&cpl_next_ir::prog::InstKey) -> Option<Vec<CTy>>,
-) -> CTy {
-    match cpl_next_ir::prog::plain(parts, captures, &t) {
-        true => t,
-        false => CTy::Lent(Box::new(t)),
-    }
+    Before { generic, cache }
 }
 
 /// The parameters a call to `f` lends to its result, receiver first, from its signature: the
@@ -292,31 +260,65 @@ fn lends(d: &dyn Signatures, f: FnId) -> BTreeSet<usize> {
         .collect()
 }
 
-#[cfg(test)]
-mod lent_slot_tests {
-    use super::*;
-    use cpl_next_ir::prog::InstKey;
-
-    /// A fn value lent is copied when what it captures is plain, and lent in a slot when it
-    /// captures an address or storage (R05.10.1-2): its real captures decide, not a stub.
-    #[test]
-    fn a_fn_value_lent_is_copied_when_its_captures_are_plain() {
-        let key = |n: i64| InstKey {
-            func: FuncKey::Main,
-            targs: vec![CTy::Range(0, n)],
-            sets: vec![],
-        };
-        let caps = |k: &InstKey| match k.targs[0] {
-            CTy::Range(0, 0) => Some(vec![CTy::Int, CTy::Bool]),
-            _ => Some(vec![CTy::Ref(Box::new(CTy::Int))]),
-        };
-        let none = |_: &CTy| Vec::new();
-        let plain = CTy::Clo(Box::new(key(0)));
-        let lending = CTy::Clo(Box::new(key(1)));
-        assert_eq!(lent_slot(plain.clone(), &none, &caps), plain);
-        assert_eq!(
-            lent_slot(lending.clone(), &none, &caps),
-            CTy::Lent(Box::new(lending))
-        );
+/// Where each local is read for the last time (R05.5.3): the statement that names it once,
+/// after every other place it is named, in the loop it is declared in, or a `return`.
+#[derive(Default)]
+pub(crate) struct Last {
+    total: HashMap<usize, usize>,
+    seen: HashMap<usize, usize>,
+    pub depth: usize,
+    at: HashMap<usize, usize>,
+    pub here: BTreeSet<usize>,
+}
+impl Last {
+    pub fn new<T: Clone>(b: &[Stmt<T>]) -> Last {
+        let mut last = Last::default();
+        uses(b, &mut last.total);
+        last
     }
+    pub fn stmt<T: Clone>(&mut self, s: &Stmt<T>) {
+        self.here.clear();
+        if let Stmt::Let(l, _) = s {
+            self.at.insert(*l, self.depth);
+        }
+        // A compound statement's own reads, not its blocks', which are walked one by one.
+        let head = match s {
+            Stmt::If(c, ..) | Stmt::Switch(c, _) => Some(Stmt::Expr(c.clone())),
+            Stmt::Region { .. } => {
+                let mut h = s.clone();
+                if let Stmt::Region { body, .. } = &mut h {
+                    body.clear();
+                }
+                Some(h)
+            }
+            Stmt::Loop(..) => return,
+            _ => None,
+        };
+        let mut here = HashMap::new();
+        uses(std::slice::from_ref(head.as_ref().unwrap_or(s)), &mut here);
+        if head.is_some() {
+            for (l, n) in here {
+                *self.seen.entry(l).or_default() += n;
+            }
+            return;
+        }
+        let ret = matches!(s, Stmt::Return(_));
+        for (l, n) in here {
+            let seen = self.seen.entry(l).or_default();
+            *seen += n;
+            let after = Some(&*seen) == self.total.get(&l) && self.at.get(&l) == Some(&self.depth);
+            if n == 1 && (ret || after) {
+                self.here.insert(l);
+            }
+        }
+    }
+}
+/// How many places in `b` each local is part of.
+fn uses<T: Clone>(b: &[Stmt<T>], n: &mut HashMap<usize, usize>) {
+    let mut b = b.to_vec();
+    cpl_next_ir::ir::visit_places(&mut b, &mut |p| {
+        if let Some(l) = p.local() {
+            *n.entry(l).or_default() += 1;
+        }
+    });
 }

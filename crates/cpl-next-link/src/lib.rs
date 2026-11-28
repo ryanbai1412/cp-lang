@@ -19,8 +19,6 @@ pub use canon::canonicalize;
 pub use events::add_events;
 
 struct Link<'a> {
-    /// The type of a slot a value of a type is lent in: ownership's rule (`cpl_next_own`).
-    lent: &'a Lend,
     d: &'a dyn Signatures,
     c: &'a dyn Checked,
     generic: &'a dyn Generics,
@@ -137,11 +135,6 @@ fn closed_fn(d: &dyn Signatures, f: FnId) -> bool {
         && !matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Trait(_)))
 }
 
-/// Given a type, how to read its parts and what each closure in it captures, the type of a
-/// slot a value of it is lent in.
-pub type Lend =
-    dyn Fn(CTy, &dyn Fn(&CTy) -> Vec<CTy>, &dyn Fn(&InstKey) -> Option<Vec<CTy>>) -> CTy;
-
 /// What link reads, each answer by id: the views the query database serves per item.
 #[derive(Clone, Copy)]
 pub struct Inputs<'a> {
@@ -158,12 +151,11 @@ pub struct Roots {
 }
 
 /// A closure in a signature takes its set from the calls that reach the fn.
-pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
+pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
     let (d, c, generic) = (v.sigs, v.checked, v.fns);
     let mut l = Link {
         d,
         c,
-        lent,
         generic,
         adds: v.sums,
         keys: Vec::new(),
@@ -547,7 +539,7 @@ impl Link<'_> {
                             caps.insert(k, cs);
                         }
                     }
-                    (self.lent)(t, &|s| self.parts(s), &|k| caps.get(k).cloned())
+                    cpl_next_ir::prog::lent_slot(t, &|s| self.parts(s), &|k| caps.get(k).cloned())
                 }
             },
             Ty::Param(i) | Ty::AnyRange(i) => match env.targs.get(*i) {
@@ -989,7 +981,11 @@ impl Link<'_> {
                 fits_head(d, im, &st, &mut binds)
                     && (d.t(tr).inputs(&im.trait_.args).iter().zip(&want))
                         .all(|(p, w)| fit_cty(p, w, &mut binds))
-                    && blanket_met(d, self.c, im, &binds)
+                    // An impl's bounds hold too: `List<T: Show>` is `Show` for `List<Int>`, not for
+                    // `List<Bool>`.
+                    && (im.bounds.iter()).all(|(i, r)| {
+                        binds[*i].as_ref().is_none_or(|t| cty_meets(d, self.c, t, r.tr))
+                    })
             });
         by_impl || (want.is_empty() && cty_meets(d, self.c, &st, tr))
     }

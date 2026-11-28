@@ -32,7 +32,7 @@ Fields: `vals: [D]T`, `default_val: T`.
 - `fn remove(mut self, v: D) -> ?T` — \(O(1)\); Remove `v` and return the value it had, or `None` (and change nothing) when it was absent.; traps: when `v` is outside `D`
 - `fn clear(mut self)` — \(O(1)\) amortized; \(O(\lvert D \rvert)\) on the call that wraps the counter; Remove every key by moving to a new generation, without touching the value array; the arrays are reset when the counter reaches `2_000_000_000`, as for `Marks.clear`.
 
-## `struct Interner<K>`
+## `struct Interner<K: Hash + Eq>`
 
 Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 

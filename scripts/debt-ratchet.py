@@ -1417,8 +1417,10 @@ def _whole_res(types: tuple[str, ...], traits: tuple[str, ...] = ()) -> tuple[re
 
 
 NEXT_TRAIT_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?trait\s+(\w+)(?:<[^{:]*>)?\s*(?::\s*([^{]+))?\{")
-# A view method's key: an item id, a `Sym`, or an impl or call index (lane I's rule).
-NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|usize|u32|u16|u8)$")
+# A view method's key: an item id, a `Sym`, an impl or call index (lane I's rule), or a
+# concrete `Ty` by value, which belongs to no item and is compared by structure, never an
+# arena index or an interner's first-asked order (coordinator ruling 20:52, link's `impl_for`).
+NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|Ty|usize|u32|u16|u8)$")
 NEXT_VIEW_TABLE_RE = re.compile(r"\b(?:str|String|HashMap|BTreeMap|HashSet|Vec|Decls|Typed|Loaded|Whole|Generic|Deferred|SetAdds)\b|\[")
 
 
@@ -1449,8 +1451,9 @@ def _params(sig: str) -> list[str]:
 
 
 def _view_method_ok(sig: str) -> bool:
-    """Lane I's rule for one view method: it takes at least one key, every key is an id or a
-    `Sym` (never text or a table), and it answers that key alone, never every item of a kind."""
+    """Lane I's rule for one view method: it takes at least one key, every key is an id, a
+    `Sym` or a concrete `Ty` (never text or a table), and it answers that key alone, never
+    every item of a kind."""
     name = re.search(r"fn\s+(\w+)", sig).group(1)
     if re.match(r"(?:all|every)(?:_|$)", name) or name.endswith("_all"):
         return False
@@ -1499,8 +1502,8 @@ def next_whole_program_inputs(root: Path) -> list[str]:
     methods are the value itself, not a reader of it, and a fn returning one produces it. The
     incremental core (handbook/design/next/incremental.md) calls every layer per item over
     small views, so this reaches 0: a context that holds views instead stops counting. A
-    `&dyn T` view is such a value unless every method of T and its supertraits takes an id
-    or `Sym` key and answers that key alone (`_view_method_ok`, lane I's rule)."""
+    `&dyn T` view is such a value unless every method of T and its supertraits takes an id,
+    `Sym` or concrete `Ty` key and answers that key alone (`_view_method_ok`, lane I's rule)."""
     return _holding_lines(root, NEXT_WHOLE_PROGRAM_TYPES, "", views=True)
 
 
@@ -1526,12 +1529,33 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
                 impls.append((m.group(1), rel, i, _block(lines, i)))
     holders: dict[str, set[str]] = {}
     crates: dict[str, set[str]] = {}
+    # Each file's `use` items, as (words, globs, pub); a multi-line `use a::{b, c};` is one.
+    uses = {rel: [(set(re.findall(r"\w+", u)), "*" in u, bool(v))
+                  for v, u in re.findall(r"^\s*(pub(?:\([^)]*\))?\s+)?use\s+([^;]*);", "\n".join(lines), re.M)]
+            for rel, lines in files.items()}
+    local = {"crate", "self", "super"}
+    def seen(name: str, rel: str) -> bool:
+        """Whether a bare `name` in `rel` can be the holder: its crate defines one, or a `use`
+        item imports it (or globs) from a path naming the holder's module or crate, directly or
+        through a `pub use` re-export of it in this crate."""
+        krate = rel.split("/")[1]
+        if krate in crates[name]:
+            return True
+        where = holders[name] - local
+        def brings(items, only_pub=False):
+            return [words for words, glob, pub in items
+                    if (name in words or glob) and (pub or not only_pub)]
+        if any(words & where for words in brings(uses[rel])):
+            return True
+        return any(words & local for words in brings(uses[rel])) and any(
+            words & where for r, items in uses.items() if r.split("/")[1] == krate
+            for words in brings(items, only_pub=True))
     def paths(rel: str) -> set[str]:
         """The path segments that may qualify a struct defined in `rel`: its file's module, its
         crate's name and the short name the pipeline imports it by."""
         krate = rel.split("/")[1].replace("-", "_")
         return {Path(rel).stem, krate, krate.removeprefix("cpl_next_"), "crate", "self", "super"}
-    def holds(line: str) -> bool:
+    def holds(line: str, rel: str) -> bool:
         text = code(line)
         if by_ref.search(line) and text.strip() or owned.search(text):
             return True
@@ -1539,28 +1563,29 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
         if not holders or not at:
             return False
         names = "|".join(sorted(holders))
-        return any(m.group(1) is None or m.group(1) in holders[m.group(2)] for m in re.finditer(
-            r"(?:(\w+)::)?\b(%s)\b(?!\s*(?:::|\{|\())" % names, text[at.end():]))
-    def tuple_holds(first: str) -> bool:
+        return any(m.group(1) in holders[m.group(2)] if m.group(1) else seen(m.group(2), rel)
+                   for m in re.finditer(r"(?:(\w+)::)?\b(%s)\b(?!\s*(?:::|\{|\())" % names,
+                                        text[at.end():]))
+    def tuple_holds(first: str, rel: str) -> bool:
         if "(" not in first or "{" in first:
             return False
         inner = first[first.index("(") + 1:first.rindex(")") if ")" in first else None]
-        return any(holds("x: " + f.strip().removeprefix("pub ")) for f in inner.split(","))
+        return any(holds("x: " + f.strip().removeprefix("pub "), rel) for f in inner.split(","))
     grew = True
     while grew:
         grew = False
         for name, rel, i, j in structs:
             if name in holders or name in types:
                 continue
-            if any(holds(line) for line in files[rel][i + 1:j + 1]) or tuple_holds(files[rel][i]):
+            if any(holds(line, rel) for line in files[rel][i + 1:j + 1]) or tuple_holds(files[rel][i], rel):
                 holders.setdefault(name, set()).update(paths(rel))
                 crates.setdefault(name, set()).add(rel.split("/")[1])
                 grew = True
     own = {(rel, k) for name, rel, i, j in structs + impls if name in types
            for k in range(i, j + 1)}
     out = {(rel, k) for rel, lines in files.items() for k, line in enumerate(lines)
-           if (rel, k) not in own and holds(line)}
-    out |= {(rel, i) for name, rel, i, j in structs if name in holders and tuple_holds(files[rel][i])}
+           if (rel, k) not in own and holds(line, rel)}
+    out |= {(rel, i) for name, rel, i, j in structs if name in holders and tuple_holds(files[rel][i], rel)}
     held = sorted(set(types) | set(holders))
     for name, rel, i, j in impls:
         # A builder returning its own struct with one more plain setting reads nothing.
@@ -1780,6 +1805,28 @@ def next_source_text_guards(root: Path) -> list[str]:
     pat = re.compile(r'include_str!\("[^"]*\.rs"\)')
     return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root))
             for i, l in enumerate(_lines(p), 1) if pat.search(l)]
+
+
+def next_synthetic_name_tests(root: Path) -> list[str]:
+    """A test of a name's text for the `$` that marks a synthetic local or domain in cpl-next's
+    checker: whether a name is synthetic is a flag the item carries, not a spelling read back
+    (coordinator ruling; lane D's `Local.synthetic`), so this goes to 0 and stays there."""
+    pat = re.compile(r"""starts_with\(\s*(?:'\$'|"\$")\s*\)""")
+    src = root / "crates/cpl-next-check/src"
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, src)
+            for i, l in enumerate(_lines(p), 1) if pat.search(l)] if src.is_dir() else []
+
+
+DECLS_OP_ARM_RE = re.compile(r"\bTokenKind::(?:Plus|Minus|Star|StarStar|Slash|SlashSlash|Percent|Shl|Shr|"
+                             r"Amp|Pipe|Caret|Tilde)\b[^=]*=>")
+
+
+def decls_const_op_arms(root: Path) -> list[str]:
+    """Per-operator `TokenKind::` match arms in cpl-next-decls: a constant in a type (a range's
+    end, an array length) is evaluated by ir's operator table, the one the run uses, so no layer
+    keeps a second copy of `+`'s meaning (coordinator ruling; lane D's tyconv.rs `const_value`)."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-next-decls/src", tests=False)
+            for i, l in enumerate(_lines(p), 1) if DECLS_OP_ARM_RE.search(l)]
 
 
 def next_core_standin_lines(root: Path) -> list[str]:
@@ -2561,13 +2608,23 @@ def next_std_names(root: Path) -> list[str]:
     # `cpl-prim` holds the `@intrinsic` ids the IR maps to its operations, so it is scanned too.
     files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), "crates/cpl-prim/src", tests=False)
              if _rel(root, p) != NEXT_GRAMMAR_TABLE}
+    # An id table's row binds an id std writes as `@intrinsic("id")` or `@fast(id)`; a row std writes no
+    # binding for is a name the compiler knows, and counts.
+    ids = {a or b for f in sources for a, b in NEXT_INTRINSIC_ID_RE.findall(f.read_text(encoding="utf-8"))}
+    # The check-name table's rows are R09.3's names, read from the spec itself.
+    bound = {rel: _spec_check_names(root) if rel == NEXT_CHECK_NAMES[0] else ids for rel in NEXT_INTRINSIC_TABLES}
     out: list[str] = []
     wrappers: dict[str, tuple[str, int]] = {}
     for rel, lines in files.items():
-        for i, line in enumerate(lines, 1):
+        table = None
+        for i, line in _ungated_lines(lines):
             if line.lstrip().startswith("//"):
                 continue
-            hits = [n for n in RUST_STR_RE.findall(line) if n in names]
+            if (t := NEXT_INTRINSIC_TABLES.get(rel)) and re.match(rf"\s*pub const {t}\b", line):
+                table = t
+            hits = [n for n in RUST_STR_RE.findall(line) if n in names and not (table and n in bound[rel])]
+            if table and line.strip().startswith("];"):
+                table = None
             # A display arm naming its own variant (`Stage::Check => "check"`) is the compiler's label.
             if (arm := NEXT_LABEL_ARM_RE.match(line)) and hits == [arm.group(1).lower()]:
                 hits = []
@@ -2598,6 +2655,22 @@ def next_std_names(root: Path) -> list[str]:
 
 
 NEXT_WRAPPER_LINES = 8
+# An id std binds: a body `= @intrinsic("id")`, or `@fast(id)` on a CP body the op computes.
+NEXT_INTRINSIC_ID_RE = re.compile(r'@intrinsic\("(\w+)"\)|@fast\((\w+)\)')
+# The one table of `@intrinsic` ids (in build.rs, of R09.3 check names) each file keeps, by its `const`'s name.
+NEXT_CHECK_NAMES = ("crates/cpl-next-ir/src/build.rs", "ALL")
+NEXT_INTRINSIC_TABLES = {"crates/cpl-next-ir/src/ops.rs": "INTRINSICS", "crates/cpl-prim/src/lib.rs": "IDS",
+                         NEXT_CHECK_NAMES[0]: NEXT_CHECK_NAMES[1]}
+NEXT_CHECK_NAMES_SPEC = "spec/core/09-contexts-checks.md"
+NEXT_CHECK_NAMES_RE = re.compile(r"Each row has one check name(.*?)This is the one list", re.S)
+
+
+def _spec_check_names(root: Path) -> set[str]:
+    """R09.3's check names (`bounds`, `div`, ..), the words `with checks(..)` takes."""
+    spec = root / NEXT_CHECK_NAMES_SPEC
+    m = NEXT_CHECK_NAMES_RE.search(spec.read_text(encoding="utf-8")) if spec.is_file() else None
+    return set(re.findall(r"`(\w+)`", m.group(1))) if m else set()
+
 NEXT_QUERY_NAME_RE = re.compile(r'^\s*const NAME: &\'static str = "[a-z_]+";\s*$')
 NEXT_LABEL_ARM_RE = re.compile(r'^\s*[A-Z]\w*::([A-Z]\w*)\s*=>\s*"[a-z_]+",?\s*$')
 NEXT_FN_RE = re.compile(r"^(\s*)(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s+([a-z_]\w*)")
@@ -2658,6 +2731,14 @@ def old_pipeline_lines(root: Path) -> list[str]:
         for p in _rs_files(root, f"crates/{crate}/src"):
             rel = _rel(root, p)
             out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
+    return out
+
+
+def old_std_copy_lines(root: Path) -> list[str]:
+    """Code lines of `FROZEN_STD`, the pinned copy of std the old pipeline reads (7fd97e1e2).
+    Apart from `old_pipeline_lines` so that the switch, which deletes it with the old crates,
+    shows it going on its own (coordinator, 18:47)."""
+    out = []
     for p in sorted((root / FROZEN_STD).rglob("*.cp")):
         rel = _rel(root, p)
         out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
@@ -4144,11 +4225,14 @@ def std_trait_matrix(root: Path) -> list[str]:
 def std_types_shown_empty(root: Path) -> list[str]:
     """`pub struct`s in std with no `pub` field and no `impl Show`: a trace shows their
     values as `{}`, since a std type's private fields never reach a user (Content).
-    The struct filling the `option` role (`@role(option)`) is not one: `?T` is deliberately not `Show` (R10.3.7)."""
+    The struct filling the `option` role (`@role(option)`) is not one: `?T` is deliberately not `Show` (R10.3.7).
+    A struct a `@role(trace)` fn takes is not one either: that fn is what a trace shows (Rtrace.7)."""
     shows, domains, blanket, empty = set(), set(), False, []
     for rel in _git(root, "ls-files", "std/*.cp"):
         lines = (root / rel).read_text(encoding="utf-8").split("\n")
         shows |= {m.group(1) for l in lines if (m := re.match(r"impl(?:<.*>)? Show for (\w+)", l))}
+        shows |= {m.group(1) for a, l in zip(lines, lines[1:]) if a == "@role(trace)"
+                  and (m := re.match(r"(?:pub )?fn \w+(?:<[^>]*>)?\(\w+: (\w+)", l))}
         domains |= {m.group(1) for l in lines if (m := re.match(r"impl(?:<.*>)? Domain for (\w+)", l))}
         blanket |= any(re.match(r"impl<D: Domain> Show for D:", l) for l in lines)
         for i, line in enumerate(lines):
@@ -4790,6 +4874,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
     "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
+    "crates/cpl-next/tests/smoke.txt": (None, "core", "data: the commit-tier smoke sample each backend runs"),
     "crates/cpl-next/tests/passing.txt": ("next_not_passing", "core", "every case listed: the landing that switches `cpl` to cpl-next deletes the list"),
     "tests/old-parser-accepts.txt": ("next_old_parser_accepts", "core", "deleted in stage 5's switching landing, with the old parser that accepts these forms"),
     "crates/cpl-next/tests/lowered.txt": ("next_lowered", "core", "deleted: programs.rs fails on any error only lowering finds"),
@@ -4894,7 +4979,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"frozen_std_drift", "next_standin_notes", "next_domain_fiat", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"frozen_std_drift", "decls_const_op_arms", "next_standin_notes", "next_domain_fiat", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
@@ -5026,6 +5111,7 @@ COUNTERS = {
     "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses: `Unbuilt` variants (Core)", next_refusal_kinds, True),
     "frozen_std_drift": ("files of the old pipeline's std that are not std/ at c7ac8761d^ (Core)", frozen_std_drift, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
+    "old_std_copy_lines": ("code lines of the pinned std copy the frozen old pipeline reads (Core)", old_std_copy_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_refused": ("cases the new pipeline (cpl-next) refuses: on no list (Core)", next_refused, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
@@ -5045,6 +5131,8 @@ COUNTERS = {
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
     "next_standin_notes": ("new-pipeline lines saying the code beside them stands in for a designed component (Core)", next_standin_notes, True),
     "next_source_text_guards": ("new-pipeline guards that read Rust source as text through include_str! (Core)", next_source_text_guards, True),
+    "decls_const_op_arms": ("per-operator TokenKind arms in cpl-next-decls, which evaluates constants through ir's ops (Core)", decls_const_op_arms, True),
+    "next_synthetic_name_tests": ("cpl-next checker tests of a name's text for the synthetic `$` (Core)", next_synthetic_name_tests, True),
     "next_op_arms_outside_ir": ("new-pipeline `Intr::` match arms outside cpl-next-ir that are not a back end's machine primitive, or a primitive a back end lacks (Core)", next_op_arms_outside_ir, True),
     "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
@@ -5517,6 +5605,28 @@ def skipped_ratchet(root: Path, base: str) -> list[str]:
             if SKIPPED_RATCHET_RE.search("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
 
 
+# A pushed commit with no `Lane:` gets its lane from a later commit's trailer, never a rewrite:
+# `Lane-for: <sha> <lane>, signed off by coordinator` (coordinator ruling 21:10, lane-j-check).
+LANE_FOR_RE = re.compile(r"^Lane-for:\s*(.*)$", re.MULTILINE)
+SIGNED_LANE_FOR_RE = re.compile(r"^([0-9a-f]{7,40})\s+(\w+)\s*,\s*signed off by\s+(\S+?)\.?\s*$")
+
+
+def lanes_for(root: Path, base: str) -> tuple[dict[str, str], list[str]]:
+    """The commits `Lane-for:` trailers in `base..HEAD` give a lane to, as {sha prefix: lane},
+    and each trailer refused: one not `<sha> <lane>, signed off by coordinator`, since only the
+    coordinator may name a lane for a commit that names none (the same rule as `Raise:`)."""
+    given, bad = {}, []
+    for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD"):
+        for m in LANE_FOR_RE.finditer("\n".join(_git(root, "log", "-1", "--format=%B", sha))):
+            s = SIGNED_LANE_FOR_RE.match(m.group(1).strip())
+            if s and s.group(3) == "coordinator":
+                given[s.group(1)] = s.group(2)
+            else:
+                bad.append(f"{sha[:9]}: `Lane-for: {m.group(1).strip()}` is not "
+                           "`Lane-for: <sha> <lane>, signed off by coordinator`")
+    return given, bad
+
+
 def unlaned(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that touch the new pipeline (`crates/cpl-next*`) or `std/` with no
     `Lane:` trailer. commit-msg adds or demands one, but a hook is skipped where it is not
@@ -5525,11 +5635,14 @@ def unlaned(root: Path, base: str) -> list[str]:
     paths = [str(p.relative_to(root)) for p in sorted((root / "crates").glob("cpl-next*"))]
     paths += ["std"] if (root / "std").is_dir() else []
     if not paths:
-        return []
-    return [f"{sha[:9]}: touches the new pipeline or std with no `Lane:` trailer; add the lane "
-            f"that lands it (`git commit --amend`, or set CPL_LANE)"
-            for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths)
-            if not any(l.strip() for l in _git(root, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", sha))]
+        return lanes_for(root, base)[1]
+    given, bad = lanes_for(root, base)
+    return bad + [f"{sha[:9]}: touches the new pipeline or std with no `Lane:` trailer; add the lane "
+                  f"that lands it (`git commit --amend`, or set CPL_LANE; a pushed one takes a "
+                  f"coordinator-signed `Lane-for: {sha[:9]} <lane>`)"
+                  for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths)
+                  if not any(sha.startswith(g) for g in given)
+                  and not any(l.strip() for l in _git(root, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", sha))]
 
 
 # Counters a programs run measures: a raise of one is the run's evidence, never a re-reading.
@@ -5561,6 +5674,46 @@ def raise_evidence(root: Path, base: str, name: str) -> str | None:
             f"<why>, full run target/cpl-next/<list> at <sha>`, never from a CPL_NEXT_ONLY run")
 
 
+SIGNED_RAISE_RE = re.compile(r"^(\d+)\s*->\s*(\d+),\s*signed off by\s+(\S+?)\.?\s*$")
+
+
+def raises(root: Path, base: str) -> list[tuple[str, str, str]]:
+    """Each `Raise: <name> <rest>` in `base..HEAD`, as (commit, name, rest), and the commit
+    being made's from CPL_RAISE (`;`-separated): pre-commit runs before its message exists, and
+    commit-msg writes them as trailers."""
+    out = [(sha[:9], m.group(1).rstrip(":"), m.group(2).strip())
+           for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD")
+           for m in RAISE_RE.finditer("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
+    given = [r.strip().split(None, 1) for r in os.environ.get("CPL_RAISE", "").split(";") if r.strip()]
+    return out + [("this commit", r[0].rstrip(":"), r[1] if len(r) > 1 else "") for r in given]
+
+
+def signed_raise(root: Path, base: str, name: str, old: int, new: int) -> str | None:
+    """None when `Raise: <name> <old> -> <new>, signed off by coordinator` is in `base..HEAD` (or
+    CPL_RAISE) and the change gives its reason: decisions.md lines it adds, or the commit's body,
+    name the counter. Only the coordinator signs a raise, so no lane admits its own debt, and a
+    hard-zero counter is never raised. Else what is missing."""
+    if name in HARD_ZERO or name in HARD_FLOOR:
+        return f"{name} is hard-zero; it is never raised (remove the debt)"
+    given = [(w, rest) for w, n, rest in raises(root, base) if n == name]
+    if not given:
+        return (f"remove the new debt instead, or have the coordinator sign it: "
+                f"`Raise: {name} {old} -> {new}, signed off by coordinator`, with its reason")
+    added = [l for l in _git(root, "diff", base, "--", "decisions.md") if l.startswith("+")]
+    for w, rest in given:
+        m = SIGNED_RAISE_RE.match(rest)
+        if not m:
+            return f"`Raise: {name} {rest}` must read `{old} -> {new}, signed off by coordinator`"
+        if m.group(3) != "coordinator":
+            return f"`Raise: {name}` is signed off by {m.group(3)}; only the coordinator signs a raise"
+        if (int(m.group(1)), int(m.group(2))) != (old, new):
+            return f"`Raise: {name} {m.group(1)} -> {m.group(2)}` does not match the baseline's {old} -> {new}"
+        body = [] if w == "this commit" else _git(root, "log", "-1", "--format=%B", w)
+        if not any(name in l for l in added + [l for l in body if not RAISE_RE.match(l)]):
+            return f"`Raise: {name}` gives no reason: name {name} in the change's decisions.md entry or body"
+    return None
+
+
 def frozen_edits(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that add lines to the frozen old pipeline (migration rule 9: no
     fixes, no features). `old_pipeline_lines` only sees the net, so a fix that deletes more than
@@ -5583,8 +5736,11 @@ def frozen_edits(root: Path, base: str) -> list[str]:
     out = []
     for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
         # A shallow clone's oldest commit has no parent here, so `show` would count the whole
-        # tree as added (CI's ratchet at 55999d45b: "adds 204623 lines").
+        # tree as added (CI's ratchet at 55999d45b: "adds 204623 lines"). Skipping it unseen let
+        # 14960b972 and 0288f1c15 through, so it fails: the clone must reach `base`.
         if not _git(root, "rev-parse", "-q", "--verify", f"{sha}^"):
+            out.append(f"{sha[:9]}: its parent is not in this clone, so its edits to the frozen old "
+                       f"pipeline can't be seen; fetch back to {base[:9]} (CI: the ratchet's fetch-depth)")
             continue
         rows = [l.split("\t") for l in _git(root, "show", "--numstat", "--format=", sha, "--", *paths)]
         added = sum(int(r[0]) for r in rows if r[0].isdigit())
@@ -5626,7 +5782,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     that entry (a new definition of the count, re-measured), when putting the old crates back
     at `FROZEN_PIN` adds all of it (`measured_without_restore`), or when `ref`
     itself measures at least the raised number (`upstream`): that restores a
-    number lowered by hand, it admits no debt. `next_not_passing` may also rise by
+    number lowered by hand, it admits no debt, or when the coordinator signs it
+    (`signed_raise`). `next_not_passing` may also rise by
     the number of conformance cases the change adds, and `next_wrong` only by the cases a
     `Regressed:` trailer names, a refusal lifted (`unhidden_wrong`) too. Never on a decisions.md
     line or a Skipped: trailer. New debt is removed, not admitted.
@@ -5683,7 +5840,9 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
             f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); {need}"
             for n, key in raised
             for need in [raise_evidence(root, base, n) if n in RUN_MEASURED
-                         else None if remeasured(root, base, key) else stale] if need]
+                         else None if remeasured(root, base, key)
+                         else signed_raise(root, base, n, old[n], baseline[n]) if n in COUNTERS
+                         else stale] if need]
 
 
 def hand_lowered(root: Path, baseline: dict, actual: dict, ref: str = "origin/main") -> list[str]:
@@ -5932,6 +6091,9 @@ def main(argv: list[str] | None = None) -> int:
 
     for w in warnings:
         print(f"debt-ratchet: WARNING: {w}", file=sys.stderr)
+    # Every raise is shown, so the coordinator and the audits check each one against a ruling.
+    for at, n, rest in raises(args.root, (_git(args.root, "merge-base", ref, "HEAD") or [ref])[0]):
+        print(f"debt-ratchet: RAISE {at}: {n} {rest}", file=sys.stderr)
     for e in errors:
         print(f"debt-ratchet: ERROR: {e}", file=sys.stderr)
     counts = ", ".join(

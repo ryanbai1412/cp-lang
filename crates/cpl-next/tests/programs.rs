@@ -963,6 +963,71 @@ fn longest_first(
 }
 
 /// The harness runs cases on every core; a sample run one at a time gives the same verdicts.
+/// What a worker left for one case: each file it wrote in the case's directory.
+fn worker_files(w: &mut Worker, path: &Path, dir: &Path) -> BTreeMap<String, String> {
+    std::fs::create_dir_all(dir).expect("the case directory is made");
+    std::fs::write(dir.join("in"), b"").expect("the input is written");
+    assert!(
+        w.finished(path, dir),
+        "{} finishes in the worker",
+        path.display()
+    );
+    let files = std::fs::read_dir(dir)
+        .expect("the case directory reads")
+        .map(|e| e.unwrap().path());
+    let out = files
+        .map(|f| {
+            (
+                f.file_name().unwrap().to_string_lossy().into_owned(),
+                std::fs::read_to_string(&f).unwrap_or_default(),
+            )
+        })
+        .collect();
+    let _ = std::fs::remove_dir_all(dir);
+    out
+}
+
+/// A case gives the same in a worker that has compiled others before it as in a worker of its
+/// own, so nothing one case leaves (a query, a cache, an instance) reaches the next: lane D
+/// saw 120 cases fail only inside the `--all` worker.
+#[test]
+fn a_case_in_the_worker_gives_what_it_gives_alone() {
+    let cases: Vec<_> = all_cases()
+        .into_iter()
+        .filter(|(id, _)| id.starts_with("core-07/") || id.starts_with("std-heap/"))
+        .step_by(7)
+        .take(12)
+        .collect();
+    let root = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("alone")
+        .join(std::process::id().to_string());
+    let alone: Vec<_> = std::thread::scope(|s| {
+        let runs: Vec<_> = (cases.iter().enumerate())
+            .map(|(i, (_, path))| {
+                let dir = root.join(format!("alone-{i}"));
+                s.spawn(move || worker_files(&mut Worker::new(), path, &dir))
+            })
+            .collect();
+        runs.into_iter().map(|r| r.join().unwrap()).collect()
+    });
+    let mut shared = Worker::new();
+    let mut differ = vec![];
+    for (i, ((id, path), alone)) in cases.iter().zip(&alone).enumerate() {
+        let inside = worker_files(&mut shared, path, &root.join(format!("shared-{i}")));
+        if &inside != alone {
+            let names: Vec<_> = (alone.keys().chain(inside.keys()))
+                .filter(|k| inside.get(*k) != alone.get(*k))
+                .collect();
+            differ.push(format!("{id}: {names:?}"));
+        }
+    }
+    assert!(
+        differ.is_empty(),
+        "cases the worker gives otherwise than alone:\n{}",
+        differ.join("\n")
+    );
+}
+
 #[test]
 fn a_parallel_run_gives_what_a_serial_one_does() {
     let cases = all_cases();
@@ -1366,6 +1431,46 @@ fn a_traced_cpp_run_writes_its_whole_trace() {
         let want_err: String = trace.map(|l| format!("{l}\n")).collect();
         assert_eq!((got.stdout, got.stderr), (want.stdout, want_err), "{name}");
     }
+}
+
+/// Every case `tests/smoke.txt` lists, a sample of unions, closures, lent slots and traced
+/// instances, gives traced C++ that g++ accepts: a commit-tier check, quick enough to run on
+/// every commit, that the C++ backend still builds what the listed passes cover.
+#[test]
+fn the_smoke_sample_gives_cpp_gxx_accepts() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let ids = std::fs::read_to_string(here.join("tests/smoke.txt")).unwrap();
+    let ids: Vec<&str> = (ids.lines().map(str::trim))
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .collect();
+    let cases: BTreeMap<String, PathBuf> = all_cases().into_iter().collect();
+    let dir = here.join("../../target/cpl-next/scratch/smoke");
+    std::fs::create_dir_all(&dir).unwrap();
+    let bad = parallel::parallel(&ids, |id| {
+        let path = cases
+            .get(*id)
+            .unwrap_or_else(|| panic!("{id}: no such case"));
+        let ran = next(path, &["--cpp", "--trace"], b"", LIMIT);
+        if ran.status != Some(0) {
+            return Some(format!(
+                "{id}: not accepted, so not a sample: {}",
+                ran.stdout.trim()
+            ));
+        }
+        let cpp = ran.stdout;
+        let file = dir.join(format!("{}.cpp", id.replace('/', "_")));
+        std::fs::write(&file, cpp).unwrap();
+        let out = Command::new("g++")
+            .args(["-std=c++17", "-fsyntax-only", "-w"])
+            .arg(&file)
+            .output()
+            .expect("g++ runs");
+        let err = String::from_utf8_lossy(&out.stderr);
+        let first = err.lines().find(|l| l.contains("error")).unwrap_or("");
+        (!out.status.success()).then(|| format!("{id}: {first}"))
+    });
+    let bad: Vec<String> = bad.into_iter().flatten().collect();
+    assert!(bad.is_empty(), "g++ rejects:\n{}", bad.join("\n"));
 }
 
 /// How many words each `@fast` fn is called on: the edge words, then seeded random ones.

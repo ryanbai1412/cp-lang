@@ -3,6 +3,7 @@
 //! start: `gcd`, `Sieve`, `isqrt`, `ext_gcd`, `popcount`
 //! example: `gcd(12, 18) == 6`
 use std.range.{last_true}
+use std.hash.{HashMap}
 
 /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.
 ///
@@ -197,10 +198,8 @@ pub fn ceil_div(self: Int, b: Int) -> Int = if b > 0: -((-self) / b) else: -(sel
 pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
 
 /// The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality
-/// bitset of \(n / 16\) bytes and the list `primes`. The smallest prime factor table `spf` is
-/// built on its first read and kept: the first call that reads it (`spf`, `factor`, `phi`,
-/// `mobius`, `divisors` and the `*_table` methods) pays \(O(n)\) time and \(4n\) bytes.
-/// `is_prime` and `primes` never build it.
+/// bitset of \(n / 16\) bytes, the list `primes` and the smallest prime factor table `spf` of
+/// \(4n\) bytes, which `factor`, `phi`, `mobius`, `divisors` and the `*_table` methods read.
 pub struct Sieve:
     /// The primes in `2..=n`, ascending.
     pub primes: List<SieveVal>
@@ -208,16 +207,17 @@ pub struct Sieve:
     top: Int
     /// Bit `k % 64` of word `k / 64` is set when the odd number `2k + 1` is not prime.
     odd_composite: List<U64>
-    @cache _spf: List<SieveVal>
+    _spf: List<SieveVal>
 
-    /// A sieve up to `n`: which of `0..=n` are prime, and the primes. `spf` waits for its first reader.
+    /// A sieve up to `n`: which of `0..=n` are prime, the primes, and `spf` by a linear sieve over
+    /// the primes.
     ///
     /// Queries take any `x` in `0..=n` (`1..=n` where 0 is meaningless).
     ///
     /// Only odd numbers up to \(\sqrt n\) cross off; the primes are then read a 64-bit word at a
     /// time (`popcount` sizes the list, `ctz` walks each word's primes).
     ///
-    /// cost: \(O(n \log \log n)\) time, \(n / 16\) bytes plus 4 bytes a prime
+    /// cost: \(O(n \log \log n)\) time, \(4n + n / 16\) bytes plus 4 bytes a prime
     /// traps: when `n < 0` or `n > 2_000_000_000`
     /// example: `Sieve(10).is_prime(7) == true`
     /// example: `Sieve(0).is_prime(0) == false`
@@ -254,12 +254,6 @@ pub struct Sieve:
                     primes[at] = 128 * k + 2 * ctz(z) + 1
                     at += 1
                     z &= z - U64(1)
-        Sieve(primes, bound, odd_composite, [])
-
-    /// Fill `_spf` by a linear sieve over `primes` on the first call.
-    fn build_spf(self):
-        if not _spf.is_empty: return
-        let n = top
         var spf: List<SieveVal> = List.filled(n + 1, 0)
         unchecked:
             for i in 2..=n:
@@ -268,19 +262,17 @@ pub struct Sieve:
                 for p in primes:
                     if p > si or i * p > n: break
                     spf[i * p] = p
-        _spf = spf
+        Sieve(primes, bound, odd_composite, spf)
 
-    /// The smallest prime factor of every `0..=n`, with `spf[0]` and `spf[1]` 0. The first read
-    /// builds it by a linear sieve over `primes` and keeps it.
+    /// The smallest prime factor of every `0..=n`, with `spf[0]` and `spf[1]` 0, built with the
+    /// sieve.
     ///
-    /// cost: \(O(n)\) time and \(4n\) bytes on the first read, then \(O(1)\), lent
+    /// cost: \(O(1)\), lent
     /// traps: never
     /// example: `Sieve(12).spf == [0, 0, 2, 3, 2, 5, 2, 7, 2, 3, 2, 11, 2]`
-    @get pub fn spf(self) -> List<SieveVal>:
-        self.build_spf()
-        _spf
+    @get pub fn spf(self) -> lends List<SieveVal> = _spf
 
-    /// Whether `x` is prime, for `0 <= x <= n`, from the primality bitset (no `spf` build).
+    /// Whether `x` is prime, for `0 <= x <= n`, from the primality bitset.
     ///
     /// cost: \(O(1)\)
     /// traps: when `x` is outside `0..=n`
@@ -301,7 +293,6 @@ pub struct Sieve:
     /// example: `Sieve(100).factor(97) == [(97, 1)]`
     /// example: `Sieve(100).factor(1) == []`
     pub fn factor(self, x: Int) -> List<(Int, Int)>:
-        self.build_spf()
         let spf = _spf
         var out = List<(Int, Int)>()
         var rest = x
@@ -345,7 +336,6 @@ pub struct Sieve:
     /// traps: never
     /// example: `Sieve(6).phi_table() == [0, 1, 1, 2, 2, 4, 2]`
     pub fn phi_table(self) -> List<Int>:
-        self.build_spf()
         let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
@@ -364,7 +354,6 @@ pub struct Sieve:
     /// traps: never
     /// example: `Sieve(6).mobius_table() == [0, 1, -1, -1, 0, -1, 1]`
     pub fn mobius_table(self) -> List<Int>:
-        self.build_spf()
         let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
@@ -383,7 +372,6 @@ pub struct Sieve:
     /// traps: never
     /// example: `Sieve(6).div_count_table() == [0, 1, 2, 2, 3, 2, 4]`
     pub fn div_count_table(self) -> List<Int>:
-        self.build_spf()
         let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
@@ -407,7 +395,6 @@ pub struct Sieve:
     /// traps: when a sum overflows `Int`
     /// example: `Sieve(6).div_sum_table() == [0, 1, 3, 4, 7, 6, 12]`
     pub fn div_sum_table(self) -> List<Int>:
-        self.build_spf()
         let spf = _spf
         let n = spf.len - 1
         var out = List.filled(n + 1, 0)
@@ -442,7 +429,6 @@ pub struct Sieve:
     /// example: `Sieve(12).divisors(1).collect() == [1]`
     /// example: `Sieve(1000).divisors(720).sum() == 2418`
     pub fn divisors(self, x: Int) -> yields Int:
-        self.build_spf()
         let spf = _spf
         assert 1 <= x < spf.len
         var d = 1
@@ -810,22 +796,6 @@ pub fn bit(self: Int, i: 0..) -> Bool = if i >= 64: self < 0 else: (self >> i) &
 /// example: `6.is_pow2 == false`
 /// example: `0.is_pow2 == false`
 @get pub fn is_pow2(self: Int) -> Bool = self > 0 and self & (self - 1) == 0
-
-/// SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
-///
-/// One full splitmix64 step on state `x`: `z = x + 0x9E3779B97F4A7C15`, then `z ^= z >> 30; z *=
-/// 0xBF58476D1CE4E5B9; z ^= z >> 27; z *= 0x94D049BB133111EB; z ^= z >> 31`, all wrapping. It is
-/// the usual guard for `HashMap` keys, and `std.rand.Rng.next` is this applied to its state.
-///
-/// cost: \(O(1)\)
-/// traps: never
-/// example: `splitmix64(0) == 0xE220A8397B1DCDAF`
-/// example: `splitmix64(1) != splitmix64(2)`
-pub fn splitmix64(x: U64) -> U64:
-    var z: U64 = x + 0x9e3779b97f4a7c15
-    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
-    z = (z ^ (z >> 27)) * 0x94d049bb133111eb
-    z ^ (z >> 31)
 
 /// The prime factorization of `x >= 1` as `(prime, exponent)` pairs, for any 64-bit `Int`.
 ///
@@ -2189,12 +2159,6 @@ fn sign_is_minus_one_zero_or_one():
 fn is_pow2_is_one_set_bit():
     assert 1.is_pow2 and 2.is_pow2 and 1024.is_pow2 and (1 << 62).is_pow2
     assert not 0.is_pow2 and not 6.is_pow2 and not (-4).is_pow2 and not 1023.is_pow2
-
-@test
-fn splitmix64_matches_the_reference_values():
-    assert splitmix64(0) == 0xe220a8397b1dcdaf
-    assert splitmix64(0x9e3779b97f4a7c15) == 0x6e789e6aa1b965f4
-    assert splitmix64(1) != splitmix64(2)
 
 @test
 fn miller_rabin_agrees_with_the_sieve_and_refuses_pseudoprimes():

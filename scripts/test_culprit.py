@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from culprit import failing_tests, nextest_cmd, source_of, summary, triage
+from culprit import failing_tests, job_ranges, nextest_cmd, source_of, summary, triage
 
 LOG = """\
 2026-11-23T17:15:19.6Z        FAIL [   0.878s] (28/34) cpl-cli::runtime_errors wide_range_overflow_traps
@@ -36,6 +36,34 @@ class CulpritTest(unittest.TestCase):
         self.assertIn("ccccccccc (compiler) check: s: 1 test(s), revert passes, on culprit/revert-ccccccccc", text)
         self.assertIn("flaky: x y", text)
 
+
+    def test_a_red_job_ranges_from_its_own_last_pass_when_no_run_is_green(self):
+        with tempfile.TemporaryDirectory() as root:
+            def run(*args):
+                return subprocess.run(args, cwd=root, check=True, capture_output=True, text=True).stdout.strip()
+
+            def commit(msg):
+                run("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", msg)
+                return run("git", "rev-parse", "HEAD")
+
+            run("git", "init", "-q")
+            c1 = commit("a: one\n\nLane: A")
+            c2 = commit("b: two\n\nLane: B")
+            c3 = commit("c: three")
+            runs = [{"id": 1, "head_sha": c1}, {"id": 2, "head_sha": c2}, {"id": 3, "head_sha": c3}]
+            jobs = {1: [{"name": "site", "conclusion": "success"}, {"name": "tests (1)", "conclusion": "failure"}],
+                    2: [{"name": "site", "conclusion": "failure"}, {"name": "tests (1)", "conclusion": "success"}],
+                    3: [{"name": "site", "conclusion": "failure"}, {"name": "tests (1)", "conclusion": "failure"},
+                        {"name": "gate", "conclusion": "failure"}]}
+            got = {j["job"]: j for j in job_ranges(3, c3, root, runs=runs, jobs_of=jobs.__getitem__)}
+            self.assertEqual(got["site"]["good"], c1)
+            self.assertEqual([(c["sha"], c["lane"]) for c in got["site"]["commits"]], [(c3, "no lane"), (c2, "B")])
+            self.assertEqual((got["tests (1)"]["good"], got["tests (1)"]["count"]), (c2, 1))
+            self.assertIsNone(got["gate"]["good"])
+            text = summary({"good": None, "bad": c3, "jobs": list(got.values())})
+            self.assertIn(f"- site: red since {c1[:9]}, 2 commit(s)", text)
+            self.assertIn(f"{c2[:9]} (B) b: two", text)
+            self.assertIn("- gate: red in every finished main run checked (the last 40); no range", text)
 
     def test_names_each_tests_suspects_before_any_bisect(self):
         with tempfile.TemporaryDirectory() as root:

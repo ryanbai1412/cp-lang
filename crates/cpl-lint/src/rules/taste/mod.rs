@@ -36,7 +36,6 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         next_base: 0,
         valued_fns: HashSet::new(),
         declared: HashSet::new(),
-        idents: idents(file.src),
         asks: asks(file),
         unchecked: unchecked_spans(file),
         findings: Vec::new(),
@@ -117,7 +116,6 @@ struct Taste<'a> {
     /// would call the file's own `count`.
     declared: HashSet<String>,
     /// Every identifier-like word in the file, for picking fresh names.
-    idents: HashSet<&'a str>,
     /// Whether the file calls std's `ask`: an interactive program.
     asks: bool,
     findings: Vec<Finding>,
@@ -219,10 +217,7 @@ impl<'a> Taste<'a> {
         let start = base + stmt.span.start;
         // An interactive search's queries are counted: `first_true` asks at
         // the ends too.
-        if self.unchecked.iter().any(|&(a, b)| a <= start && start < b)
-            || self.asks
-            || self.idents.contains("flush")
-        {
+        if self.unchecked.iter().any(|&(a, b)| a <= start && start < b) || self.asks {
             return;
         }
         let at = |b: u32, span: Span| &self.src[(b + span.start) as usize..(b + span.end) as usize];
@@ -1158,7 +1153,7 @@ fn in_place_twin(name: &str) -> Option<String> {
         .find(|stem| std.has_method(stem))
 }
 
-/// Whether `file` calls std's `ask`, by the checker's callees.
+/// Whether `file` is interactive: it calls std's `ask` or `flush`, by the checker's callees.
 fn asks(file: &File) -> bool {
     struct Asks<'a> {
         facts: Option<&'a crate::Facts>,
@@ -1168,7 +1163,8 @@ fn asks(file: &File) -> bool {
     impl crate::walk::Visitor for Asks<'_> {
         fn expr(&mut self, e: &Expr) {
             if matches!(e.kind, ExprKind::Call { .. }) {
-                self.found |= Calls::new(self.facts, self.base).is(e, std_fn::ASK);
+                let calls = Calls::new(self.facts, self.base);
+                self.found |= calls.is(e, std_fn::ASK) || calls.is(e, std_fn::FLUSH);
             }
         }
     }

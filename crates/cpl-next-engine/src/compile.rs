@@ -195,6 +195,8 @@ pub(crate) enum Op {
     },
     /// Where the output is now: the next event keeps what is written after it.
     Capture,
+    /// Hands the output written so far to the judge (R10.4).
+    Flush,
     Event {
         e: u32,
     },
@@ -1161,6 +1163,7 @@ impl Fc<'_> {
                     elem,
                 });
             }
+            Intr::Flush => self.ops.push(Op::Flush),
             Intr::Out => {
                 let (Some(r), Some(Arg::Value(n))) = (args.first(), args.get(1)) else {
                     return self.fail("output without storage and a count");

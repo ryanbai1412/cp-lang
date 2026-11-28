@@ -238,7 +238,7 @@ limits from the judge profile), so the VM and the C++ agree. Audit S10;
 `next_run_api_unbuilt` counts each contract member not built yet.
 
 ```rust
-pub struct RunInput { entry: Entry, io: Io, args: Vec<String>, choices: Choices, limits: Limits, cold_caches: bool }
+pub struct RunInput { entry: Entry, io: Io, out: Option<Box<dyn Write + Send>>, args: Vec<String>, choices: Choices, limits: Limits, cold_caches: bool }
 pub enum Entry { Program, Call { f: Item, args: Vec<Value> } }
 pub enum Io { Fixed(Vec<u8>), Stream(Box<dyn Read + Send>), Peer { program: Snapshot, input: Vec<u8> }, Transcript(Vec<Turn>) }
 pub struct Limits { time: Option<Duration>, memory: u64, stack: u64, output: u64, peer_turns: u64 }
@@ -261,8 +261,12 @@ fn entries(&self) -> Vec<(Role, Item)>        // Role: Test, Alt, Check, Interac
   when its buffer runs dry. `Fixed` is one piece. `Stream` reads a
   terminal or pipe as the program reads, which contract 0 lacks; it is
   added there in the same landing. `Peer` runs the other program on a
-  thread of its own with a pipe each way. A read sends the reader's
-  pending output to its peer first; both sides reading is `Stalled`, and
+  thread of its own with a pipe each way. A read that must wait for
+  more input sends the reader's pending output on first, to its peer or
+  to `out`, the sink a `Stream` run's output goes to; a flush and the
+  exit send it too, and `Outcome` keeps the whole output either way
+  (R10.4). `ops::Input` decides when a read must wait, for every back
+  end. Both sides reading is `Stalled`, and
   each turn counts against `peer_turns`. `Transcript` replays a recorded
   exchange.
 - **Limits are the snapshot's, not constants.** Time is a deadline that

@@ -1,7 +1,8 @@
 name: culprit
-# When a main CI run fails, bisect each failing nextest test over the
-# commits since the last green main run (superseded runs are cancelled, so
-# a red run covers many commits), name the culprit commit and its lane, and
+# When a main CI run fails, name each red job's range (the commits since that
+# job last passed on main, with their lanes), bisect each failing nextest test
+# over the commits since the last green main run (or, while no run is green,
+# since every red job last passed), name the culprit commit and its lane, and
 # push a revert that makes the tests pass to culprit/revert-<sha>. The
 # infra sheriff lands that revert or a fix forward. See scripts/culprit.py.
 on:
@@ -67,30 +68,30 @@ jobs:
         if: steps.range.outputs.fails != '0'
         with:
           tools: cargo-nextest@0.9.152
-      - name: Bisect
-        if: steps.range.outputs.fails != '0'
+      - name: Name each red job's range and bisect
         # Below the job's 30: the summary and statuses still post what it found.
         timeout-minutes: 25
         run: |
           git config user.name "cpl culprit"
           git config user.email "culprit@users.noreply.github.com"
           mv failed.log "$RUNNER_TEMP/failed.log"
-          uv run --quiet python scripts/culprit.py --in-place --push-reverts --good "${{ steps.range.outputs.good }}" \
+          good=${{ steps.range.outputs.good }}
+          uv run --quiet python scripts/culprit.py --in-place --push-reverts ${good:+--good "$good"} --run "$RUN_ID" \
               --bad "$BAD" --from-log "$RUNNER_TEMP/failed.log" --json "$RUNNER_TEMP/culprit.json" \
               | tee "$RUNNER_TEMP/culprit.txt"
       - name: Summary
-        if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
+        if: ${{ !cancelled() }}
         run: |
           [ -s "$RUNNER_TEMP/culprit.json" ] || exit 0
           { echo '```'; uv run --quiet python scripts/culprit.py --summary "$RUNNER_TEMP/culprit.json"; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
       - name: Mark each culprit commit
-        if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
+        if: ${{ !cancelled() }}
         run: |
           [ -s "$RUNNER_TEMP/culprit.json" ] || exit 0
           uv run --quiet python scripts/commit_status.py --run "$RUN_ID" --culprits "$RUNNER_TEMP/culprit.json" \
               --url "${{ github.event.workflow_run.html_url }}"
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() && steps.range.outputs.fails != '0' }}
+        if: ${{ !cancelled() }}
         with:
           name: culprit
           path: ${{ runner.temp }}/culprit.*

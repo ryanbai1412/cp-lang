@@ -38,7 +38,7 @@ def matrix(root=ROOT):
             missing = []
             view = re.search(r"pub fn within\(self, [^)]*\) -> lends (\w+)", body)
             viewed = view and re.search(rf"^pub struct {view.group(1)}\b", text, re.M)
-            if not viewed and not re.search(rf"^impl(?:<[^>]*>)? Show for {name}\b", every, re.M):
+            if not viewed and not re.search(rf"^impl(?:<(?:[^<>\n]|<[^<>\n]*>)*>)? Show for {name}\b", every, re.M):
                 missing.append("Show")
             walks = re.search(r"pub fn (?:each|iter|items)(?:<[^>]*>)?\(self\)[^\n]*yields", body) or re.search(
                 rf"^impl\b[^\n]* Seq<[^\n]*> for {name}\b", text, re.M)
