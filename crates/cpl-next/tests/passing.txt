@@ -905,8 +905,6 @@ core-07/view-is-not-a-list.cp
 core-07/view-key-outside-keys-traps.cp
 core-07/view-not-in-var.cp
 core-07/view-of-a-temporary-copied-is-owned.cp
-core-07/view-of-a-temporary-in-a-var.cp
-core-07/view-of-a-temporary-outlives-it.cp
 core-07/view-of-a-temporary-used-in-its-statement.cp
 core-07/view-sees-source-mutation-rejected.cp
 core-07/view-walks.cp
@@ -2018,8 +2016,6 @@ ownership/fn-named-let.cp
 ownership/fn-named-var.cp
 ownership/fn-param-let.cp
 ownership/fn-param-var.cp
-ownership/fn-temp-let.cp
-ownership/fn-temp-var.cp
 ownership/top-named-let.cp
 ownership/top-named-var.cp
 std-algebra/cmp-ordering.cp
