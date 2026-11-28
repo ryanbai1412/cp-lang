@@ -3,6 +3,7 @@ use super::expr::{block, named_params, pure};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::TokenKind;
+use std::collections::BTreeSet;
 
 /// One argument of a call: written (`f(x)`, `f(k: x)`, `f(mut x)`), given by a form that
 /// calls a member for the program, as `..r without (u, v)` does, or checked already, as
@@ -96,6 +97,38 @@ impl Cx<'_> {
             return Self::error_node(span);
         };
         self.call_of(n, named, written, args, span, want)
+    }
+    /// Whether `f`'s type parameter `i` is in its result and in no parameter or `self`: only
+    /// the place its value goes can fix it, as `read`'s `T` (R01.3.4).
+    pub(super) fn only_in_result(&self, f: FnId, i: usize) -> bool {
+        let fd = self.items.f(f);
+        let (mut given, mut ret) = (BTreeSet::new(), BTreeSet::new());
+        for t in (fd.params.iter().map(|p| &p.ty)).chain(fd.self_ty.as_ref()) {
+            cpl_next_ir::ty::params_in(t, &mut given);
+        }
+        cpl_next_ir::ty::params_in(&fd.ret, &mut ret);
+        ret.contains(&i) && !given.contains(&i)
+    }
+    /// The calls zonked since `errs` errors whose type argument nothing fixed: `let x = read()`
+    /// says nothing of what `read`'s `T` is (R01.3.4). After another error, an unknown type is
+    /// downstream of it.
+    pub(super) fn unfixed_targs(&mut self, errs: usize) {
+        let mut open = std::mem::take(&mut self.b.unsolved);
+        if self.errors.len() != errs {
+            return;
+        }
+        open.dedup_by(|a, b| a.0 == b.0);
+        for (at, f, i) in open {
+            let fd = self.items.f(f);
+            let (name, g) = (fd.name.clone(), self.syms.text(fd.generics[i]).to_string());
+            let text = format!("nothing here says what `{g}` is in this call of `{name}`");
+            let verdict = Msg::verdict(cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION, text);
+            let mut msg = Msg::at(at, verdict);
+            msg.help = Some(format!(
+                "write the type where the value goes, as in `let x: Int = {name}(..)`"
+            ));
+            self.errors.push(msg);
+        }
     }
     /// The overload of `first`'s name the labels `args` give pick, or the named-argument error
     /// (E0310) when no overload takes them all (R06.1.6).

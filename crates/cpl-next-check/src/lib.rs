@@ -595,6 +595,9 @@ struct Body {
     /// Each list literal of `n` elements made a `[D]T` whose `D` nothing has fixed yet: unless
     /// its statement fixes it, `D` is the list's positions `0..n` (R04.4.30).
     list_doms: Vec<(Ty, usize, Span)>,
+    /// Each call whose type argument was still unknown when the body was zonked, by where the
+    /// call is, its fn and the parameter: nothing fixed it, so the call is E0806 (R01.3.4).
+    unsolved: Vec<(cpl_next_ir::ids::SourceId, FnId, usize)>,
     /// The names of items the checker refused: a use of one is downstream of that refusal.
     refused_names: std::collections::HashSet<String>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
@@ -646,6 +649,7 @@ impl Body {
             group: Vec::new(),
             ahead: Vec::new(),
             list_doms: Vec::new(),
+            unsolved: Vec::new(),
             refused_names: Default::default(),
             nested: None,
             joining: false,
@@ -1044,8 +1048,13 @@ pub fn check(
     let mut main_z = std::mem::take(&mut cx.const_init);
     main_z.extend(main_out);
     for s in &mut main_z {
+        if let TStmt::Item(off) = s {
+            cx.b.item = off.clone();
+        }
         cx.zonk_stmt(s);
     }
+    let errs = cx.errors.len();
+    cx.unfixed_targs(errs);
     ctx_fns.sort_by_key(|c| c.0);
     let mut globals = std::mem::take(&mut cx.globals);
     for g in &mut globals {
@@ -1351,6 +1360,7 @@ impl<'a> Cx<'a> {
         tf.region = (tf.region.take()).map(|(l, t)| (l, self.zonk(&t)));
     }
     fn check_fn(&mut self, id: FnId, frames: Vec<CtxFrame>) -> TypedFn {
+        let errs = self.errors.len();
         let lends_last = |b: &next::Block| matches!(b.stmts().last(), Some(next::Stmt::Lend(_)));
         let d = self.d;
         let f = d.f(id);
@@ -1519,6 +1529,7 @@ impl<'a> Cx<'a> {
         };
         // Typed once checked: no later body changes this one's types (`SetTy::AddedAt`, `SetTy::Global`).
         self.zonk_fn(&mut out);
+        self.unfixed_targs(errs);
         self.b.decl = None;
         self.b.module = d.program;
         self.b.region = None;

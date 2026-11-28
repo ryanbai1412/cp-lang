@@ -3,12 +3,12 @@
 use super::*;
 
 impl<'a> Cx<'a> {
-    pub(super) fn zonk_arg(&self, a: &mut TArg) {
+    pub(super) fn zonk_arg(&mut self, a: &mut TArg) {
         match a {
             TArg::Value(e) | TArg::Mut(e) => self.zonk_expr(e),
         }
     }
-    pub(super) fn zonk_stmt(&self, s: &mut TStmt) {
+    pub(super) fn zonk_stmt(&mut self, s: &mut TStmt) {
         match s {
             TStmt::Let(_, e) | TStmt::Expr(e) | TStmt::Assert(e, ..) => self.zonk_expr(e),
             TStmt::Assign(a, b) | TStmt::While(a, b) => {
@@ -55,7 +55,7 @@ impl<'a> Cx<'a> {
             }
         }
     }
-    pub(super) fn zonk_expr(&self, e: &mut TExpr) {
+    pub(super) fn zonk_expr(&mut self, e: &mut TExpr) {
         e.ty = self.zonk(&e.ty);
         match &mut e.kind {
             TK::Field(b, _)
@@ -87,6 +87,14 @@ impl<'a> Cx<'a> {
                 self.zonk_expr(b);
             }
             TK::Call { f, recv, args } => {
+                let open = (0..f.targs.len()).find(|&i| {
+                    matches!(self.shallow(&f.targs[i]), Ty::Var(_))
+                        && self.only_in_result(f.decl, i)
+                });
+                if let Some(i) = open {
+                    let at = self.b.item.at(e.span);
+                    self.b.unsolved.push((at, f.decl, i));
+                }
                 *f = self.zonk_fnref(f);
                 if let Some(r) = recv {
                     self.zonk_arg(r);
