@@ -1859,6 +1859,42 @@ fn an_event_shows_a_bool_and_an_option() {
     );
 }
 
+/// An event shows a `HashMap` and a `HashSet`, which are not `Show` (R10.3.8), through std.hash's
+/// trace fns: as a `Map` and a `Set` write, in table order (Rtrace.7), alike on the interpreter,
+/// the engine and the C++.
+#[test]
+fn an_event_shows_a_hash_map_and_set() {
+    let src = "var h = HashMap([(1, 10), (2, 20)])\nvar s = HashSet([3, 4])\nprint(h.len, s.len)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let want = [["1 10\n2 20"], ["3 4"]];
+    for o in [raw(&c), c.run("")] {
+        assert_eq!(o.output, "2 2\n");
+        assert_eq!(
+            o.events.iter().map(|e| e.vals.clone()).collect::<Vec<_>>(),
+            want
+        );
+    }
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "2 2\n");
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stderr),
+        "ev set h 1 10\n2 20\nev set s 3 4\n"
+    );
+}
+
 /// An event shows a value as `write` gives it, through std's `traced`: a struct by its own
 /// `Show`, a list by std's, and a `Bool`, which is not `Show` (R10.3), by `traced_bool`. The `Show`
 /// it runs places no events, alike on the interpreter, the engine and the C++.

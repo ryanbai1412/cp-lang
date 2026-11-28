@@ -344,3 +344,19 @@ fn splitmix64_matches_the_reference_values():
     assert splitmix64(0) == 0xe220a8397b1dcdaf
     assert splitmix64(0x9e3779b97f4a7c15) == 0x6e789e6aa1b965f4
     assert splitmix64(1) != splitmix64(2)
+
+/// What a trace shows of a `HashMap`, which is not `Show`: one `k v` line per entry, as a `Map`
+/// writes them, in the table's own order, which nothing may rely on (Rtrace.7).
+@role(trace)
+fn traced_hash_map<K: Show, V: Show>(m: HashMap<K, V>) uses io:
+    for d in 0..m.ks.len:
+        if d > 0: write("\n")
+        write(m.ks[d], m.vs[d])
+
+/// What a trace shows of a `HashSet`, which is not `Show`: its elements on one line, as a `Set`
+/// writes them, in the table's own order, which nothing may rely on (Rtrace.7).
+@role(trace)
+fn traced_hash_set<T: Show>(s: HashSet<T>) uses io:
+    for d in 0..s.m.ks.len:
+        if d > 0: write(" ")
+        write(s.m.ks[d])

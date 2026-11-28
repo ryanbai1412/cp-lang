@@ -4127,11 +4127,14 @@ def std_trait_matrix(root: Path) -> list[str]:
 def std_types_shown_empty(root: Path) -> list[str]:
     """`pub struct`s in std with no `pub` field and no `impl Show`: a trace shows their
     values as `{}`, since a std type's private fields never reach a user (Content).
-    The struct filling the `option` role (`@role(option)`) is not one: `?T` is deliberately not `Show` (R10.3.7)."""
+    The struct filling the `option` role (`@role(option)`) is not one: `?T` is deliberately not `Show` (R10.3.7).
+    A struct a `@role(trace)` fn takes is not one either: that fn is what a trace shows (Rtrace.7)."""
     shows, domains, blanket, empty = set(), set(), False, []
     for rel in _git(root, "ls-files", "std/*.cp"):
         lines = (root / rel).read_text(encoding="utf-8").split("\n")
         shows |= {m.group(1) for l in lines if (m := re.match(r"impl(?:<.*>)? Show for (\w+)", l))}
+        shows |= {m.group(1) for a, l in zip(lines, lines[1:]) if a == "@role(trace)"
+                  and (m := re.match(r"(?:pub )?fn \w+(?:<[^>]*>)?\(\w+: (\w+)", l))}
         domains |= {m.group(1) for l in lines if (m := re.match(r"impl(?:<.*>)? Domain for (\w+)", l))}
         blanket |= any(re.match(r"impl<D: Domain> Show for D:", l) for l in lines)
         for i, line in enumerate(lines):
