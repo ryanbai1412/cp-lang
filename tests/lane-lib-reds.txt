@@ -4,6 +4,5 @@ cpl-next tests::a_lambda_names_the_copy_that_makes_it  # triage: E0801 `io.base`
 cpl-next tests::a_lends_without_its_arrow_offers_to_insert_it  # triage: E0503 from syntax, no E0103 fix
 cpl-next tests::a_refusal_prints_its_feature_text  # triage: slice: type Literal
 cpl-next tests::facts_leave_out_only_the_checks_they_prove  # triage: RangeStore 3 facts gone
-cpl-next tests::types_told_apart_by_domains_share_a_representation  # triage: E0606 `t.P` does not implement Domain
 cpl-doc tests::every_std_module_opens_with_an_outline  # core std modules without start: (589e688c7 and 8 more, unlabelled); laws, subset, default, raw
 cpl-next the_smoke_sample_gives_cpp_gxx_accepts  # D: core-02/fresh-domain-struct-return E0606 Domain; J: core-07/group-lists-keep-walk-order E0505 lint from
