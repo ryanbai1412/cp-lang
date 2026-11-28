@@ -1255,6 +1255,40 @@ fn a_trap_names_its_line_without_trace() {
     }
 }
 
+/// A traced C++ run writes its whole trace, past its buffer, before a trap's line and at exit.
+#[test]
+fn a_traced_cpp_run_writes_its_whole_trace() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let dir = here.join("../../target/cpl-next/scratch/trace-flush");
+    std::fs::create_dir_all(&dir).unwrap();
+    let ends = [("exits", "0"), ("traps", "10 / n")];
+    for (name, end) in ends {
+        let path = dir.join(format!("{name}.cp"));
+        let src =
+            format!("fn f(n: Int) -> Int = if n == 0: {end} else: f(n - 1) + 1\nprint(f(5000))\n");
+        std::fs::write(&path, src).unwrap();
+        let cpp = next(&path, &["--cpp", "--trace"], b"", LIMIT).stdout;
+        let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
+            .unwrap_or_else(|e| panic!("{name}: {e}"))
+            .0;
+        let (want, got) = (
+            next(&path, &["--trace"], b"", LIMIT),
+            run_kept(&bin, b"", LIMIT),
+        );
+        assert!(
+            got.stderr.len() > 1 << 16,
+            "{name}: the trace fits its buffer"
+        );
+        // The call stack is the reference's own line after a trap; the C++ has none.
+        let trace = want
+            .stderr
+            .lines()
+            .filter(|l| !l.starts_with("call stack: "));
+        let want_err: String = trace.map(|l| format!("{l}\n")).collect();
+        assert_eq!((got.stdout, got.stderr), (want.stdout, want_err), "{name}");
+    }
+}
+
 /// How many words each `@fast` fn is called on: the edge words, then seeded random ones.
 const FAST_WORDS: usize = 256;
 

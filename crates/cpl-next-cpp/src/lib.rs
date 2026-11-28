@@ -49,8 +49,11 @@ template <> struct cpl_raw<bool> : std::vector<cpl_bool_cell> {
 };
 // The innermost line of the user's file that is running (`ir::Site`).
 static int cpl_at = 0;
+static char cpl_tb[1 << 16]; static size_t cpl_tn = 0;
+static void cpl_tflush() { if (cpl_tn && write(2, cpl_tb, cpl_tn)) {} cpl_tn = 0; }
+static void cpl_tput(const char* p, size_t n) { if (cpl_tn + n > sizeof cpl_tb) cpl_tflush(); if (n > sizeof cpl_tb) { if (write(2, p, n)) {} } else { memcpy(cpl_tb + cpl_tn, p, n); cpl_tn += n; } }
 [[noreturn]] static void cpl_trap(const char* code, const char* msg) {
-    fflush(stdout);
+    fflush(stdout); cpl_tflush();
     fprintf(stderr, "trap: %s: line %d: %s\n", code, cpl_at, msg);
     exit(3);
 }
@@ -60,20 +63,15 @@ static int cpl_at = 0;
 const RUNTIME: &str = r#"[[noreturn]] static void cpl_fail(int f) { cpl_trap(cpl_faults[f][0], cpl_faults[f][1]); }
 static char cpl_altstack[1 << 16];
 static void cpl_segv(int) {
-    // Only `write` is safe here, so the line is printed by hand.
+    // Only `write` is safe here: the line goes after the trace through its buffer (`cpl_tput`), by hand.
     const char* code = cpl_faults[CPL_STACK_EXHAUSTED][0];
     const char* msg = cpl_faults[CPL_STACK_EXHAUSTED][1];
-    char m[160] = "trap: ";
-    int k = (int)strlen(m);
-    memcpy(m + k, code, strlen(code)); k += (int)strlen(code);
-    memcpy(m + k, ": line ", 7); k += 7;
+    cpl_tput("trap: ", 6); cpl_tput(code, strlen(code)); cpl_tput(": line ", 7);
     char d[12]; int n = 0;
     for (int v = cpl_at; v || !n; v /= 10) d[n++] = (char)('0' + v % 10);
-    while (n) m[k++] = d[--n];
-    m[k++] = ':'; m[k++] = ' ';
-    memcpy(m + k, msg, strlen(msg)); k += (int)strlen(msg);
-    m[k++] = '\n';
-    if (write(2, m, k)) {}
+    while (n) cpl_tput(&d[--n], 1);
+    cpl_tput(": ", 2); cpl_tput(msg, strlen(msg)); cpl_tput("\n", 1);
+    cpl_tflush();
     _exit(3);
 }
 static void cpl_guard_stack() {
@@ -172,9 +170,9 @@ template <class T> struct cpl_body {
     int operator()(T x) const { return fn(env, static_cast<T>(x)); }
 };
 // A scalar as `ops::show` writes it in an event.
-static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
-static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
-template <class T, std::enable_if_t<std::is_integral_v<T>, int> = 0> static inline void cpl_ev(T x) { fprintf(stderr, " %s", std::to_string(x).c_str()); }
+static inline void cpl_ev(cpl_char c) { char b[2] = {' ', (char)c.code}; cpl_tput(b, 2); }
+static inline void cpl_ev(bool b) { cpl_tput(b ? " true" : " false", b ? 5 : 6); }
+template <class T, std::enable_if_t<std::is_integral_v<T>, int> = 0> static inline void cpl_ev(T x) { std::string t = " " + std::to_string(x); cpl_tput(t.data(), t.size()); }
 static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) { fwrite(r.data(), 1, (size_t)(n < 0 ? 0 : n < (int64_t)r.size() ? n : (int64_t)r.size()), stdout); return {}; }
 "#;
 
@@ -309,7 +307,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32]) -> String {
         put_line!(s, "}}");
     }
     // Spec 9.6: `main` runs on a thread with a 1 GB stack.
-    put_line!(s, "static void* cpl_main(void*) {{ cpl_guard_stack(); f{}(); fflush(stdout); return nullptr; }}", p.main);
+    put_line!(s, "static void* cpl_main(void*) {{ cpl_guard_stack(); f{}(); fflush(stdout); cpl_tflush(); return nullptr; }}", p.main);
     put_line!(
         s,
         "int main() {{ pthread_attr_t a; pthread_t t; pthread_attr_init(&a); pthread_attr_setstacksize(&a, (size_t)1 << 30);\n    if (pthread_create(&t, &a, cpl_main, nullptr)) {{ cpl_main(nullptr); return 0; }}\n    pthread_join(t, nullptr); return 0; }}"
@@ -797,14 +795,14 @@ impl Emit<'_> {
                     "{pad}{{ int c = body({}); cpl_at = cpl_was; if (c) return c; }}",
                     self.expr(e)
                 ),
-                // Events go to stderr in order; stdout is flushed first so the two streams line up.
+                // Events go to the trace stream in order (`cpl_tput`).
                 Stmt::Event(ev) => {
                     let label = format!("ev {}", ev.label(self.funcs));
-                    put_line!(s, "{pad}fputs({label:?}, stderr);");
+                    put_line!(s, "{pad}cpl_tput({label:?}, {});", label.len());
                     for v in &ev.vals {
                         put_line!(s, "{pad}cpl_ev({});", self.expr(v));
                     }
-                    put_line!(s, "{pad}fputc('\\n', stderr);");
+                    put_line!(s, "{pad}cpl_tput(\"\\n\", 1);");
                 }
                 // A lender finishes its own code first; the caller leaves after it.
                 Stmt::LendOut(p) => put_line!(s, "{pad}cpl_code = body({});", self.place(p)),
@@ -1210,7 +1208,9 @@ mod tests {
             let mut out = String::new();
             ops::show(v, &mut out);
             case(
-                format!("printf(\"[\"); fflush(stdout); cpl_ev({cpp}); fflush(stderr); printf(\"]\\n\");"),
+                format!(
+                    "printf(\"[\"); fflush(stdout); cpl_ev({cpp}); cpl_tflush(); printf(\"]\\n\");"
+                ),
                 format!("[ {out}]\n"),
             );
         };
