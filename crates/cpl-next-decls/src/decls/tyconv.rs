@@ -4,7 +4,7 @@
 use super::forms::TyForm;
 use super::*;
 use crate::ops::{bin_intr, fold, un_intr};
-use crate::views::{Scope, Signatures, Texts, TypeTables};
+use crate::views::{Scope, Shapes, Signatures, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::End;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -14,8 +14,6 @@ use cpl_next_syntax::ops::BinOp;
 use cpl_next_syntax::tree::SyntaxToken;
 use cpl_next_syntax::TokenKind;
 
-/// Type arguments written but left off the end take their defaults, which may name the
-/// arguments before them (R08.2.5).
 /// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
 pub(crate) fn by_arity(
     arity: &HashMap<StructId, Vec<(StructId, usize)>>,
@@ -27,7 +25,29 @@ pub(crate) fn by_arity(
         .map_or(s, |(o, _)| *o)
 }
 
-pub(super) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>) {
+/// The record struct whose fields are named `fields`, in that order.
+pub(crate) fn record_of(
+    records: &HashMap<Vec<String>, StructId>,
+    syms: &Syms,
+    fields: &[Sym],
+) -> Option<StructId> {
+    let names: Vec<String> = fields.iter().map(|f| syms.text(*f).to_string()).collect();
+    records.get(&names).copied()
+}
+
+/// Record `s`'s field names, or `None` when `s` is not a record.
+pub(crate) fn fields_of_record(
+    records: &HashMap<Vec<String>, StructId>,
+    syms: &Syms,
+    s: StructId,
+) -> Option<Vec<Sym>> {
+    let (names, _) = records.iter().find(|(_, id)| **id == s)?;
+    names.iter().map(|n| syms.get(n)).collect()
+}
+
+/// Type arguments written but left off the end take their defaults, which may name the
+/// arguments before them (R08.2.5).
+pub(crate) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>) {
     let Some(ds) = defaults else { return };
     while a.len() < ds.len() {
         let Some(t) = &ds[a.len()] else { break };
@@ -309,10 +329,7 @@ pub(super) fn conv_form(cx: &mut TyCx, t: &TyForm, errors: &mut Vec<Msg>) -> Ty 
             named(cx, *n, a, errors)
         }
         TyForm::Record(fs) => {
-            let names: Vec<String> = fs
-                .iter()
-                .map(|(n, _)| cx.env.text(*n).to_string())
-                .collect();
+            let names: Vec<Sym> = fs.iter().map(|(n, _)| *n).collect();
             let Some(d) = cx.env.record(&names) else {
                 return unbuilt("Record", errors);
             };
@@ -453,7 +470,7 @@ fn conv_path(cx: &mut TyCx, segs: &[SyntaxToken], a: Vec<Ty>, errors: &mut Vec<M
     // `D.m`: the `@member(m)` struct at `D`, as `D.cuts` is `Cut<D>`.
     if let [base @ .., m] = segs {
         if !base.is_empty() {
-            if let Some(id) = cx.env.member(m.text()) {
+            if let Some(id) = cx.env.sym(m.text()).and_then(|m| cx.env.member(m)) {
                 let base = conv_path(cx, base, Vec::new(), errors);
                 let sets = (0..cx.env.n_sets(id)).map(|_| slot(cx)).collect();
                 return Ty::Struct(id, vec![base], sets);
@@ -546,7 +563,7 @@ fn conv_record(cx: &mut TyCx, r: &next::RecordType, errors: &mut Vec<Msg>) -> Ty
             (None, _) => String::new(),
         })
         .collect();
-    let Some(d) = cx.env.record(&names) else {
+    let Some(d) = record_named(cx, &names) else {
         return unbuilt("Record", errors);
     };
     let a = (fields.iter())
@@ -812,24 +829,7 @@ fn item_of(cx: &mut TyCx, o: &next::TypeOfType, errors: &mut Vec<Msg>) -> Ty {
 
 /// Converts a type written in a body: fn types get a placeholder set the checker replaces. It
 /// reads the module's scope and the signatures, and gives the type with what is wrong in it.
-pub fn body_type(
-    sigs: &dyn Signatures,
-    scope: &dyn Scope,
-    m: ModId,
-    generics: &[Sym],
-    doms: &HashMap<Sym, Ty>,
-    scoped: &dyn Fn(Sym) -> Option<Ty>,
-    axes: &HashMap<cpl_diag::Span, Ty>,
-    t: &Type,
-) -> (Ty, Vec<Msg>) {
-    let at = BodyScope {
-        sigs,
-        scope,
-        m,
-        generics,
-        doms,
-        scoped,
-    };
+pub fn body_type(at: &BodyScope, axes: &HashMap<cpl_diag::Span, Ty>, t: &Type) -> (Ty, Vec<Msg>) {
     at.run_at(Some(axes), |cx, errors| conv(cx, t, errors))
 }
 
@@ -925,6 +925,7 @@ impl BodyScope<'_> {
 pub(super) struct Tables {
     aliases: Layer<AliasDecl>,
     consts: Layer<LibConst>,
+    structs: Layer<StructDecl>,
     pub(super) values: Arc<Vec<TopValue>>,
     pub(super) syms: Syms,
     ops: Arc<Vec<(Sym, FnId)>>,
@@ -946,6 +947,7 @@ impl Decls {
         Tables {
             aliases: self.aliases.clone(),
             consts: self.consts.clone(),
+            structs: self.structs.clone(),
             values: self.top_values.clone(),
             syms: self.syms.clone(),
             ops: self.operator_fns(),
@@ -993,6 +995,15 @@ impl TypeTables for Tables {
     fn getter(&self, m: &str) -> Option<FnId> {
         self.getters.get(&self.syms.get(m)?).copied()
     }
+    fn sugar(&self) -> Sugar {
+        self.sugar
+    }
+    fn roles(&self) -> &Roles {
+        &self.roles
+    }
+}
+
+impl Shapes for Tables {
     fn n_sets(&self, s: StructId) -> usize {
         self.struct_sets.get(&s).copied().unwrap_or(0)
     }
@@ -1005,25 +1016,20 @@ impl TypeTables for Tables {
     fn tuple(&self, n: usize) -> Option<StructId> {
         self.tuples.get(&n).copied()
     }
-    fn widest_tuple(&self) -> usize {
-        self.tuples.keys().max().copied().unwrap_or(0)
+    fn record(&self, fields: &[Sym]) -> Option<StructId> {
+        record_of(&self.records, &self.syms, fields)
     }
-    fn record(&self, fields: &[String]) -> Option<StructId> {
-        self.records.get(fields).copied()
+    fn record_fields(&self, s: StructId) -> Option<Vec<Sym>> {
+        fields_of_record(&self.records, &self.syms, s)
     }
-    fn record_fields(&self, s: StructId) -> Option<Vec<String>> {
-        (self.records.iter())
-            .find(|(_, id)| **id == s)
-            .map(|(fs, _)| fs.clone())
+    fn field_names(&self, s: StructId) -> Vec<Sym> {
+        self.structs[s.0].fields.iter().map(|(f, _)| *f).collect()
     }
-    fn member(&self, m: &str) -> Option<StructId> {
-        self.members.get(&self.syms.get(m)?).copied()
+    fn member(&self, m: Sym) -> Option<StructId> {
+        self.members.get(&m).copied()
     }
-    fn sugar(&self) -> Sugar {
-        self.sugar
-    }
-    fn roles(&self) -> &Roles {
-        &self.roles
+    fn variant(&self, e: StructId, name: Sym) -> Option<usize> {
+        (self.structs[e.0].variants.iter()).position(|(v, _)| *v == name)
     }
 }
 
@@ -1031,6 +1037,15 @@ impl TypeTables for Tables {
 fn count_axis(cx: &TyCx, re: &next::RangeExpr) -> bool {
     count_end(cx, re.lo().as_ref(), re.hi().as_ref(), re.is_inclusive())
         .is_some_and(|(_, d, m, _)| is_type_name(cx, &d) && cx.env.getter(m.text()).is_some())
+}
+
+/// The record struct with fields written `names`: none when a name is one no declaration gave.
+fn record_named(cx: &TyCx, names: &[String]) -> Option<StructId> {
+    let fields = names
+        .iter()
+        .map(|n| cx.env.sym(n))
+        .collect::<Option<Vec<_>>>()?;
+    cx.env.record(&fields)
 }
 
 /// No binding is in scope where decls reads a type.
@@ -1062,11 +1077,12 @@ fn without(
                 errors.push(missing(cx, "a type that is not a record"));
                 return Ty::Error;
             };
+            let fs: Vec<String> = fs.iter().map(|f| cx.env.text(*f).to_string()).collect();
             let Some(made) = crate::records::without_shape(form, &fs) else {
                 errors.push(missing(cx, "the record"));
                 return Ty::Error;
             };
-            let Some(id) = cx.env.record(&made) else {
+            let Some(id) = record_named(cx, &made) else {
                 return unbuilt("RowWithout", errors);
             };
             let a = (made.iter())

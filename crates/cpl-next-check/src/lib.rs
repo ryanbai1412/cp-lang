@@ -8,7 +8,7 @@ use cpl_next_decls::decls::{
     self, Decls, ImplDecl, Impls, ModId, Named, Owner, SelfMode, TraitRef,
 };
 use cpl_next_decls::sym::{Sym, Syms};
-use cpl_next_decls::views::{Items, Scope, Signatures, TypeTables};
+use cpl_next_decls::views::{self as views, Items, Scope, Shapes, Signatures, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, records};
 use cpl_next_ir::build::{Build, CheckName, Checks};
 use cpl_next_ir::ids::ItemId;
@@ -17,7 +17,6 @@ use cpl_next_ir::{ir, ops, ty};
 use cpl_next_syntax::ast::{self as next, AstNode};
 use cpl_next_syntax::fall_through;
 use cpl_next_syntax::ops::{BinOp, CmpOp, UnOp};
-use cpl_syntax::ast::{self, ExprKind, PatternKind, StrPiece, TypeKind};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -457,6 +456,13 @@ pub struct Ids {
 
 struct Cx<'a> {
     d: &'a Decls,
+    /// The program's views, each read by key (incremental.md): `d` and `src` go once every
+    /// read is on them.
+    items: &'a dyn Items,
+    names: &'a dyn views::Names,
+    facts: &'a dyn views::FnFacts,
+    bodies: &'a dyn views::Bodies,
+    syms: &'a Syms,
     /// Each block's `@memo` fn checked so far.
     memos: Vec<Memo>,
     /// The `Domain` and `Ordered` impls of each domain this check declares (R04.2).
@@ -663,9 +669,9 @@ struct CtxFrame {
 /// incremental.md`). The driver works each out by running it on the engine, the one evaluator,
 /// so the checker holds no evaluator of its own and does not depend on the engine.
 pub trait Consts {
-    /// The value of `e`, written in program item `item`, when nothing it reads is decided at
-    /// run time: `None` for a value that is not a scalar.
-    fn value(&self, item: &ItemId, e: &next::Expr) -> Result<Option<ops::Scalar>, ConstError>;
+    /// The value of the expression at `at`, when nothing it reads is decided at run time:
+    /// `None` for a value that is not a scalar.
+    fn value(&self, at: cpl_next_ir::ids::SourceId) -> Result<Option<ops::Scalar>, ConstError>;
 }
 
 /// Why an expression has no value at compile time.
@@ -703,6 +709,11 @@ pub fn check(
         ctx_pending: Vec::new(),
         ctx_impls: HashMap::new(),
         d,
+        items: d,
+        names: d,
+        facts: d,
+        bodies: src,
+        syms: &d.syms,
         dom_rows: Vec::new(),
         src,
         tys: Vec::new(),
@@ -1138,15 +1149,6 @@ pub fn check(
 }
 
 impl<'a> Cx<'a> {
-    /// Whether the `@!multitest` on `s` reads a count of cases: `(until_eof)` does not.
-    /// The syntax of item `id`, its spans counted from its start.
-    fn item_syntax(&self, id: &ItemId) -> Option<next::Item> {
-        (self.src.modules.iter())
-            .filter(|m| m.name == *id.module)
-            .flat_map(|m| m.items.iter())
-            .find(|i| i.id == *id)
-            .map(|i| i.item.clone())
-    }
     /// What an expression that was diagnosed or refused becomes. An operation on it is the
     /// error node again and says nothing more, so one fault is one diagnostic.
     fn error_node(span: Span) -> TExpr {
@@ -1171,7 +1173,7 @@ impl<'a> Cx<'a> {
     }
     /// The source text `span` covers.
     fn text(&self, span: Span) -> &'a str {
-        (self.src).text(&self.b.item.at(span))
+        self.bodies.text(&self.b.item.at(span))
     }
     /// A reference reached fn `id`: it is checked, and what its library declaration uses that
     /// the slice does not build is said once. A trait's method reaches every impl's.
@@ -1179,7 +1181,7 @@ impl<'a> Cx<'a> {
     /// call, else the one checked under the values set (R09.1.3, R09.1.4).
     /// The copy a call of trait `tr`'s fn `method` makes.
     pub(crate) fn trait_ctx(&mut self, tr: TraitId, method: &str) -> u32 {
-        match self.d.member(&self.d.t(tr).methods, method) {
+        match self.d.member(&self.items.t(tr).methods, method) {
             Some(m) => self.ctx_copy(m),
             None => 0,
         }
@@ -1246,7 +1248,7 @@ impl<'a> Cx<'a> {
     /// alone (`param_adds`): no body is checked again.
     fn adds_live(&self) -> Vec<bool> {
         let callee_adds = |live: &[bool], (f, slot): &(FnRef, usize)| {
-            let fd = self.d.f(f.decl);
+            let fd = self.items.f(f.decl);
             let by_impl = matches!(fd.owner, Some(Owner::Trait(_))) && *slot >= fd.n_sets;
             by_impl
                 || (self.param_adds.get(&(f.decl, *slot))).is_some_and(|ms| {
@@ -1378,7 +1380,7 @@ impl<'a> Cx<'a> {
         // A body that can end without its value is that error, not a mismatch at its end.
         let syntax = match f.body {
             decls::Body::Written | decls::Body::Value => {
-                (self.item_syntax(&f.item)).and_then(|it| decls::body_of(d, id, &it))
+                (self.bodies.item(&f.item)).and_then(|it| decls::body_of(d, id, &it))
             }
             decls::Body::Synth(_) | decls::Body::None => None,
         };
@@ -1616,7 +1618,7 @@ impl Cx<'_> {
     /// something decided at run time or working it out failed, which is said; `Some(None)` for
     /// a value that is not a scalar.
     fn const_value(&mut self, e: &next::Expr) -> Option<Option<ops::Scalar>> {
-        match self.values.value(&self.b.item, e) {
+        match self.values.value(self.b.item.at(e.syntax().span())) {
             Ok(v) => Some(v),
             Err(ConstError::Open) => None,
             Err(ConstError::Failed(m)) => {

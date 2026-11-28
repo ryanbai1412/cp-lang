@@ -16,7 +16,7 @@ use std::collections::HashMap;
 
 /// The part of the signatures a written type is converted against, each table read by key.
 /// Decls reads it while it is still building the rest of the signatures.
-pub trait TypeTables: Texts {
+pub trait TypeTables: Texts + Shapes {
     /// The id of a name written `text`, if any table holds it.
     fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
     fn alias(&self, id: AliasId) -> &AliasDecl;
@@ -32,22 +32,40 @@ pub trait TypeTables: Texts {
     fn operator(&self, op: &str) -> Option<FnId>;
     /// `Domain`'s getter `m`, which a range type's end `D.m` names.
     fn getter(&self, m: &str) -> Option<FnId>;
+    fn sugar(&self) -> Sugar;
+    fn roles(&self) -> &Roles;
+}
+
+/// The shapes of the structs, each read by key: a struct's sets, defaults, fields and variants,
+/// its siblings by arity, and the tuple, record and `@member` structs a written type names.
+pub trait Shapes: Texts {
     /// How many set parameters struct `s` has, so a struct named in a type gets its own.
     fn n_sets(&self, s: StructId) -> usize;
+    /// Each of struct `s`'s type parameters' default, when it declares any.
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>>;
     /// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
     fn by_arity(&self, s: StructId, n: usize) -> StructId;
-    /// Core's `@role(tuple)` struct with `n` fields.
+    /// Core's `@role(tuple)` struct with `n` fields; `None` past the widest, where a longer tuple
+    /// nests its last parts.
     fn tuple(&self, n: usize) -> Option<StructId>;
-    /// The most fields a the `@role(tuple)` struct has: a longer tuple nests its last parts.
-    fn widest_tuple(&self) -> usize;
-    /// The record struct with these field names.
-    fn record(&self, fields: &[String]) -> Option<StructId>;
-    fn record_fields(&self, s: StructId) -> Option<Vec<String>>;
+    /// The record struct with these field names, in this order.
+    fn record(&self, fields: &[Sym]) -> Option<StructId>;
+    /// Record `s`'s field names, or `None` when `s` is not a record.
+    fn record_fields(&self, s: StructId) -> Option<Vec<Sym>>;
+    /// The names of struct `s`'s fields, in order.
+    fn field_names(&self, s: StructId) -> Vec<Sym>;
     /// The `@member(m)` struct.
-    fn member(&self, m: &str) -> Option<StructId>;
-    fn sugar(&self) -> Sugar;
-    fn roles(&self) -> &Roles;
+    fn member(&self, m: Sym) -> Option<StructId>;
+    /// Which of enum `e`'s variants is named `name`.
+    fn variant(&self, e: StructId, name: Sym) -> Option<usize>;
+    /// `Tagged<Str>` written in a body: its arguments, the defaults filling those left off.
+    fn with_defaults_of(&self, s: StructId, given: &[Ty]) -> Vec<Ty> {
+        let mut given = given.to_vec();
+        if !given.is_empty() {
+            crate::decls::fill_defaults(self.struct_defaults(s), &mut given);
+        }
+        given
+    }
 }
 
 /// `text(Sym)`: the text a name was written with, for showing it.
@@ -181,6 +199,17 @@ pub trait ImplChoice {
     fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)>;
 }
 
+/// `item(ItemId)` and the module text a `SourceId` lies in: what a body's checker reads of the
+/// source. `Loaded` serves it until the db answers `ItemOf`/`Parse` per query.
+pub trait Bodies {
+    /// Item `id`'s syntax, its spans counted from its start.
+    fn item(&self, id: &cpl_next_ir::ids::ItemId) -> Option<cpl_next_syntax::ast::Item>;
+    /// The text of the module `at` lies in.
+    fn source(&self, at: &cpl_next_ir::ids::SourceId) -> &crate::modules::Text;
+    /// The source text `at` covers.
+    fn text(&self, at: &cpl_next_ir::ids::SourceId) -> &str;
+}
+
 /// `checked(ItemId)`: what the checker answered about one item that link reads by id. No
 /// method lists a whole table, so link reads only the items it instantiates.
 pub trait Checked {
@@ -302,6 +331,15 @@ impl TypeTables for Decls {
         let tr = self.roles.domain?;
         (self.member(&self.traits[tr.0].methods, m)).filter(|f| self.fns[f.0].getter)
     }
+    fn sugar(&self) -> Sugar {
+        self.sugar
+    }
+    fn roles(&self) -> &Roles {
+        &self.roles
+    }
+}
+
+impl Shapes for Decls {
     fn n_sets(&self, s: StructId) -> usize {
         self.struct_sets.get(&s).copied().unwrap_or(0)
     }
@@ -314,25 +352,20 @@ impl TypeTables for Decls {
     fn tuple(&self, n: usize) -> Option<StructId> {
         self.tuples.get(&n).copied()
     }
-    fn widest_tuple(&self) -> usize {
-        self.tuples.keys().max().copied().unwrap_or(0)
+    fn record(&self, fields: &[Sym]) -> Option<StructId> {
+        crate::decls::record_of(&self.records, &self.syms, fields)
     }
-    fn record(&self, fields: &[String]) -> Option<StructId> {
-        self.records.get(fields).copied()
+    fn record_fields(&self, s: StructId) -> Option<Vec<Sym>> {
+        crate::decls::fields_of_record(&self.records, &self.syms, s)
     }
-    fn record_fields(&self, s: StructId) -> Option<Vec<String>> {
-        (self.records.iter())
-            .find(|(_, id)| **id == s)
-            .map(|(fs, _)| fs.clone())
+    fn field_names(&self, s: StructId) -> Vec<Sym> {
+        self.structs[s.0].fields.iter().map(|(f, _)| *f).collect()
     }
-    fn member(&self, m: &str) -> Option<StructId> {
-        self.member_types.get(&self.sym(m)?).copied()
+    fn member(&self, m: Sym) -> Option<StructId> {
+        self.member_types.get(&m).copied()
     }
-    fn sugar(&self) -> Sugar {
-        self.sugar
-    }
-    fn roles(&self) -> &Roles {
-        &self.roles
+    fn variant(&self, e: StructId, name: Sym) -> Option<usize> {
+        (self.structs[e.0].variants.iter()).position(|(v, _)| *v == name)
     }
 }
 
@@ -389,6 +422,22 @@ impl Names for Decls {
     }
     fn names(&self, m: ModId) -> Vec<(Sym, Named)> {
         self.views[m.0].iter().map(|(n, x)| (*n, *x)).collect()
+    }
+}
+
+impl Bodies for crate::modules::Loaded {
+    fn item(&self, id: &cpl_next_ir::ids::ItemId) -> Option<cpl_next_syntax::ast::Item> {
+        (self.modules.iter())
+            .filter(|m| m.name == *id.module)
+            .flat_map(|m| m.items.iter())
+            .find(|i| i.id == *id)
+            .map(|i| i.item.clone())
+    }
+    fn source(&self, at: &cpl_next_ir::ids::SourceId) -> &crate::modules::Text {
+        self.text_of(at)
+    }
+    fn text(&self, at: &cpl_next_ir::ids::SourceId) -> &str {
+        self.text(at)
     }
 }
 

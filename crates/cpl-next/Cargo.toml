@@ -6,7 +6,6 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
-cpl-syntax.workspace = true
 cpl-next-syntax.workspace = true
 cpl-diag.workspace = true
 cpl-contract.workspace = true

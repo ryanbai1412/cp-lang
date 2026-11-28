@@ -27,7 +27,7 @@ impl Cx<'_> {
             return;
         };
         let (key, value) = self.nested_sig(fd);
-        let n_sets = self.d.s(table).n_sets;
+        let n_sets = self.items.s(table).n_sets;
         let sets: Vec<SetTy> = (0..n_sets).map(|_| self.new_set()).collect();
         let key_ty = match &key[..] {
             [k] => k.clone(),
@@ -83,8 +83,9 @@ impl Cx<'_> {
             return None;
         };
         let w = w.ident()?.text().to_string();
-        match self.d.named(self.b.module, &cpl_next_decls::memo_key(&w))? {
-            decls::Named::Struct(s) => Some((self.b.syms.intern(&self.d.syms, &w), s)),
+        let key = self.syms.get(&cpl_next_decls::memo_key(&w))?;
+        match self.names.named(self.b.module, key)? {
+            decls::Named::Struct(s) => Some((self.b.syms.intern(&self.syms, &w), s)),
             _ => None,
         }
     }

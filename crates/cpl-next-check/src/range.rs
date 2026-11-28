@@ -57,7 +57,7 @@ impl Cx<'_> {
         let array = self.d.sugar().array?;
         let mut pre = Vec::new();
         let axis = self.axis_of(index, span, &mut pre)?;
-        let m = self.d.member(&self.d.s(array).methods, name.text)?;
+        let m = self.d.member(&self.items.s(array).methods, name.text)?;
         let given = vec![axis, self.new_ty()];
         let f = self.fnref(m, given, Vec::new());
         let call = self.call_fn(f, None, args, span, want);
@@ -99,7 +99,7 @@ impl Cx<'_> {
     ) -> Option<TExpr> {
         let core = [self.d.roles().domain, self.d.roles().order];
         let m = (core.iter().flatten())
-            .find_map(|tr| self.d.member(&self.d.t(*tr).methods, name.text))?;
+            .find_map(|tr| self.d.member(&self.items.t(*tr).methods, name.text))?;
         self.domain_fn_of(dty, m, name, call, span)
     }
     /// `D.m`, `m` being one of `Domain`'s or `Ordered`'s fns, which the program calls `name`.
@@ -113,8 +113,8 @@ impl Cx<'_> {
     ) -> Option<TExpr> {
         let core = [self.d.roles().domain, self.d.roles().order];
         let tr = (core.into_iter().flatten())
-            .find(|tr| self.d.t(*tr).methods.values().any(|&f| f == m))?;
-        let fd = self.d.f(m);
+            .find(|tr| self.items.t(*tr).methods.values().any(|&f| f == m))?;
+        let fd = self.items.f(m);
         if !super::member::takes(fd, call) || (call.is_none() && !fd.getter) {
             return None;
         }
@@ -353,7 +353,8 @@ impl Cx<'_> {
                 let names = (fs.iter())
                     .map(|f| f.name().map(|n| n.text().to_string()))
                     .collect::<Option<Vec<String>>>()?;
-                let record = self.d.record(&names)?;
+                let fields = names.iter().map(|n| self.d.sym(n));
+                let record = self.d.record(&fields.collect::<Option<Vec<_>>>()?)?;
                 let parts = (fs.iter().zip(&names))
                     .map(|(f, n)| match f.value() {
                         Some(x) => self.type_path(&x),
@@ -407,12 +408,12 @@ impl Cx<'_> {
     }
     /// A struct type whose constructor takes `n` fields.
     pub(super) fn built_from(&self, t: &Ty, n: usize) -> bool {
-        matches!(t, Ty::Struct(s, ..) if self.d.s(*s).fields.len() == n)
+        matches!(t, Ty::Struct(s, ..) if self.items.s(*s).fields.len() == n)
     }
     /// `D.m`: the `@member(m)` struct at `D` (R06).
     fn member_type(&self, d: &Ty, m: &str) -> Option<Ty> {
         let &id = self.d.member_types.get(&self.d.sym(m)?)?;
-        (self.d.s(id).n_sets == 0).then(|| Ty::Struct(id, vec![d.clone()], Vec::new()))
+        (self.items.s(id).n_sets == 0).then(|| Ty::Struct(id, vec![d.clone()], Vec::new()))
     }
     /// `D(x)`: the position of `x`, checked; a library domain (`Cell((0, 2))` of a product)
     /// converts by its `Into` impl.
@@ -443,7 +444,7 @@ impl Cx<'_> {
     }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
-        let sym = self.b.syms.of(&self.d.syms, n);
+        let sym = self.b.syms.of(&self.syms, n);
         // A fn's own type parameter is nearer than any domain declared outside it.
         if let Some(p) = sym.and_then(|s| self.b.generics.iter().position(|g| *g == s)) {
             return Some(Ty::Param(p));
@@ -468,7 +469,7 @@ impl Cx<'_> {
         // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).
         if let Some(decls::Named::Struct(s)) = self.d.named(self.b.module, n) {
             let t = Ty::Struct(s, Vec::new(), Vec::new());
-            if self.d.s(s).generics.is_empty() && self.is_domain(&t) {
+            if self.items.s(s).generics.is_empty() && self.is_domain(&t) {
                 return Some(t);
             }
         }
@@ -930,15 +931,15 @@ impl Cx<'_> {
     /// The fn of core's `Domain` whose body is the intrinsic `op`.
     fn domain_method(&self, op: DomainOp) -> Option<DomainFn> {
         let tr = self.d.roles().domain?;
-        let ms = &self.d.t(tr).methods;
+        let ms = &self.items.t(tr).methods;
         let (n, &m) = ms
             .iter()
-            .find(|(_, &m)| self.d.f(m).intrinsic == Some(Intrinsic::Domain(op)))?;
+            .find(|(_, &m)| self.items.f(m).intrinsic == Some(Intrinsic::Domain(op)))?;
         let r = decls::TraitRef {
             tr,
             args: Vec::new(),
         };
-        Some((r, self.d.text(*n).to_string(), m))
+        Some((r, self.items.text(*n).to_string(), m))
     }
     /// `v.ord` of a value whose type implements `Domain`, through the trait.
     fn ordinal(&mut self, v: TExpr, ord: &DomainFn) -> TExpr {

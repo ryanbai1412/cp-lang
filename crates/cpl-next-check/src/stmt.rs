@@ -1430,16 +1430,15 @@ impl<'a> Cx<'a> {
             let h = self.b.syms.intern(&self.d.syms, h);
             generics.push(h);
         }
-        let (ty, errs) = decls::body_type(
-            self.d,
-            self.d,
-            self.b.module,
-            &generics,
-            &self.b.doms,
-            &|n| self.owned_named(n),
-            &axes,
-            t,
-        );
+        let at = decls::BodyScope {
+            sigs: self.d,
+            scope: self.d,
+            m: self.b.module,
+            generics: &generics,
+            doms: &self.b.doms,
+            scoped: &|n| self.owned_named(n),
+        };
+        let (ty, errs) = decls::body_type(&at, &axes, t);
         for e in errs {
             self.err(span, e);
         }

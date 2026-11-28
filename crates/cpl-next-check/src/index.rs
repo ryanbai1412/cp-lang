@@ -324,7 +324,7 @@ impl Cx<'_> {
                     tys: &ts,
                     sets: &[],
                 };
-                let f = self.d.f(m);
+                let f = self.items.f(m);
                 Some((sub.ty(&f.params[0].ty), sub.ty(&f.ret)))
             }
             _ => None,
@@ -336,7 +336,7 @@ impl Cx<'_> {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
                 .find(|t| {
                     self.d
-                        .member(&self.d.t(t.tr).methods, &self.index_read())
+                        .member(&self.items.t(t.tr).methods, &self.index_read())
                         .is_some()
                 })
                 .and_then(|t| t.args.first().cloned()),
@@ -520,7 +520,9 @@ impl Cx<'_> {
         }
         let d = self.d.tuple(parts.len())?;
         let tys = parts.iter().map(|p| p.ty.clone()).collect();
-        let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
+        let sets = (0..self.items.s(d).n_sets)
+            .map(|_| self.new_set())
+            .collect();
         Some(TExpr {
             kind: TK::Struct(parts),
             ty: Ty::Struct(d, tys, sets),
@@ -556,11 +558,11 @@ impl Cx<'_> {
         let Ty::Struct(sid, targs, sets) = self.shallow(&k) else {
             return None;
         };
-        let sd = self.d.s(sid);
+        let sd = self.items.s(sid);
         if sd.record || self.d.tuple(sd.fields.len()) == Some(sid) {
             return None;
         }
-        let takes = (sd.ctor).map_or(sd.fields.len(), |c| self.d.f(c).params.len());
+        let takes = (sd.ctor).map_or(sd.fields.len(), |c| self.items.f(c).params.len());
         if takes != args.len() {
             let (ks, n) = (self.show(&k), args.len());
             let msg = format!(
@@ -695,7 +697,7 @@ impl Cx<'_> {
         let rt = self.shallow(&probe.ty);
         let writes = match self.member_named(&rt, self.d.sym(name.text())) {
             Some(decls::Member::Method(m, ..)) => {
-                self.d.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
+                self.items.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
             }
             _ => false,
         };
@@ -908,7 +910,7 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         let f = self.fnref(f, Vec::new(), Vec::new());
-        let fd = self.d.f(f.decl);
+        let fd = self.items.f(f.decl);
         let sub = Subst {
             tys: &f.targs,
             sets: &f.sets,
