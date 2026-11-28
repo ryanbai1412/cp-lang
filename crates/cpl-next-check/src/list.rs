@@ -34,8 +34,8 @@ impl Cx<'_> {
             return None;
         };
         let (new, push) = (
-            self.d.text(*new).to_string(),
-            self.d.text(*push).to_string(),
+            self.items.text(*new).to_string(),
+            self.items.text(*push).to_string(),
         );
         self.reach(*nf);
         self.reach(*pf);
@@ -326,9 +326,9 @@ impl Cx<'_> {
     ) -> TExpr {
         // A struct a map literal can start empty: a `new()`, or a default for every field.
         let empty = |d: StructId| {
-            let sd = self.d.s(d);
+            let sd = self.items.s(d);
             match sd.ctor {
-                Some(c) => self.d.f(c).params.is_empty(),
+                Some(c) => self.items.f(c).params.is_empty(),
                 None => sd.defaults.iter().all(Option::is_some),
             }
         };
@@ -336,7 +336,7 @@ impl Cx<'_> {
             Some(Ty::Struct(d, ts, ss)) if empty(d) => (d, ts, ss),
             _ => match self.d.sugar.map.filter(|&d| empty(d)) {
                 Some(d) => {
-                    let sd = self.d.s(d);
+                    let sd = self.items.s(d);
                     let (n, m) = (sd.generics.len(), sd.n_sets);
                     let targs = (0..n).map(|_| self.new_ty()).collect();
                     (d, targs, (0..m).map(|_| self.new_set()).collect())
@@ -349,7 +349,7 @@ impl Cx<'_> {
         };
         let ty = Ty::Struct(sid, targs.clone(), sets.clone());
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let new = match self.d.s(sid).ctor {
+        let new = match self.items.s(sid).ctor {
             Some(c) => {
                 let f = self.fnref(c, targs, sets);
                 mk(
