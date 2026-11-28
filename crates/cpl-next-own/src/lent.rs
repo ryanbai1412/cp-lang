@@ -88,6 +88,8 @@ struct Fr {
     held: Vec<usize>,
     /// The temps a variadic argument is spilled to before its call: their struct is a pack.
     packs: BTreeSet<usize>,
+    params: Vec<usize>,
+    last: crate::Last,
 }
 
 impl Lw<'_> {
@@ -140,12 +142,15 @@ impl Lw<'_> {
                 packs.insert(*l);
             }
         });
+        let last = crate::Last::new(&f.body);
         let mut fr = Fr {
             locals: std::mem::take(&mut f.locals),
             names: f.names.clone(),
             vars: f.vars.clone(),
             held,
             packs,
+            params: f.params.iter().map(|(l, _)| *l).collect(),
+            last,
         };
         self.block(&mut fr, &mut f.body);
         f.locals = fr.locals;
@@ -165,6 +170,7 @@ impl Lw<'_> {
         }
     }
     fn stmt(&mut self, fr: &mut Fr, s: &mut Stmt<Ty>) {
+        fr.last.stmt(s);
         match s {
             Stmt::Let(l, v) => {
                 let pack = fr.packs.contains(l);
@@ -199,8 +205,10 @@ impl Lw<'_> {
                 self.block(fr, b);
             }
             Stmt::Loop(a, b, _) => {
+                fr.last.depth += 1;
                 self.block(fr, a);
                 self.block(fr, b);
+                fr.last.depth -= 1;
             }
             Stmt::Switch(c, arms) => {
                 self.expr(fr, c);
@@ -225,6 +233,21 @@ impl Lw<'_> {
     }
     fn args(&mut self, fr: &mut Fr, target: &Target<Ty>, args: &mut [Arg<Ty>]) {
         let pack = self.pack(target);
+        // R05.5.3: an owned local the result holds, read for the last time, moves in.
+        if let Target::Fn(f) = target {
+            let holds = lends(self.d, f.decl);
+            for (i, a) in args.iter_mut().enumerate() {
+                if holds.contains(&i) && moves_in(fr, a) {
+                    if let Arg::Value(Expr {
+                        kind: EK::Pass(_, view, _),
+                        ..
+                    }) = a
+                    {
+                        *view = false;
+                    }
+                }
+            }
+        }
         for (i, a) in args.iter_mut().enumerate() {
             if let Arg::Value(v) = a {
                 self.expr_in(fr, v, pack == Some(i));
@@ -513,6 +536,20 @@ fn through(p: &mut Place, lent: &[usize]) {
 }
 
 /// Whether an argument is read where the caller has it, not made fresh for the call.
+/// A local passed whole where it is read for the last time, owned by this fn.
+fn moves_in(fr: &Fr, a: &Arg<Ty>) -> bool {
+    let Arg::Value(Expr {
+        kind: EK::Pass(Place::Local(l), true, _),
+        ..
+    }) = a
+    else {
+        return false;
+    };
+    fr.last.here.contains(l)
+        && !fr.params.contains(l)
+        && !fr.packs.contains(l)
+        && !matches!(fr.locals.get(*l), Some(Ty::Lent(_)))
+}
 fn placed<T>(a: &Arg<T>) -> bool {
     match a {
         Arg::View(_) | Arg::Lend(_) => true,

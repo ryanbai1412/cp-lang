@@ -233,7 +233,9 @@ the call returns. (R05.5.2)
 whose result type keeps one, a struct field of that type, directly or
 through the type's generic arguments, needs no `lends`: each call whose
 argument for it is a heap value or `mut` lends that argument while the
-result lives, and a plain one (`MinCount(5)`) lends nothing.
+result lives, and a plain one (`MinCount(5)`) lends nothing. An owned
+binding passed whole where it is read for the last time, as in
+`return Some(out)`, moves into the result and lends nothing.
 `filter(xs, p)` is a `Filtered<S, T>` whose `src: S` is `xs`, and
 `map(filter(xs, p), f)` holds `xs` through it. A fn that returns such a
 call's result built from its own lent parameter returns a lent value

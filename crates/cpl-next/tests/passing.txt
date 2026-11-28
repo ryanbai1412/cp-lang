@@ -1784,6 +1784,7 @@ next/n_lambda_04_recursive.cp
 next/n_lambda_05_nested_fn.cp
 next/n_lambda_06_match_joins_fns.cp
 next/n_lambda_07_unit_body_drops.cp
+next/n_last_use_moves_into_result.cp
 next/n_lends_01_result_lent_until_last_use.cp
 next/n_lends_02_write_before_last_use.cp
 next/n_lends_03_body_lends_its_place.cp
@@ -1866,6 +1867,7 @@ next/n_read_03_read_is_an_ordinary_fn_over_read.cp
 next/n_read_04_str_and_char_read_tokens.cp
 next/n_read_05_str_read_at_the_end_traps.cp
 next/n_read_06_parts_held_to_their_ranges.cp
+next/n_read_after_last_use_still_lends.cp
 next/n_record_01_records_are_core_structs.cp
 next/n_record_01_update_copies_with_replacements.cp
 next/n_record_02_field_traits.cp

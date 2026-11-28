@@ -65,6 +65,7 @@ pub(crate) struct Walk<'a> {
     /// The instances that are methods: what their result views is cut from the receiver.
     pub receivers: BTreeSet<usize>,
     pub copies: BTreeSet<(usize, Site)>,
+    pub last: crate::Last,
     pub report: bool,
     pub errors: Vec<Msg>,
 }
@@ -560,6 +561,20 @@ impl Walk<'_> {
                             // one, or any the signature says `lends` (a fixed-size grid).
                             let heap = !self.p.plain(&v.ty) || self.declares_lends(*i);
                             if let (EK::Copy(p), true) = (&v.kind, heap) {
+                                // An owned binding read for the last time moves in, with what
+                                // it borrows (R05.5.3).
+                                if let Place::Local(l) = p {
+                                    let r = Root::Local(*l);
+                                    if self.last.here.contains(l)
+                                        && self.decl.contains_key(&r)
+                                        && !self.borrowed.contains(&r)
+                                    {
+                                        out.extend(
+                                            self.lent.get(&r).into_iter().flatten().cloned(),
+                                        );
+                                        continue;
+                                    }
+                                }
                                 out.extend(self.lent_pl(p));
                                 // A view cut from a temporary holds it (R07.5.10).
                                 let viewed = (k == 0 && self.receivers.contains(i))
@@ -994,6 +1009,7 @@ impl Walk<'_> {
         (held, lent)
     }
     fn stmt(&mut self, s: &Stmt<CTy>, fx: &mut Fx) {
+        self.last.stmt(s);
         if let Stmt::Let(l, e) = s {
             if copy_of(e).is_some_and(|m| self.closure_params.contains(&m)) {
                 self.closure_params.insert(*l);
@@ -1157,8 +1173,10 @@ impl Walk<'_> {
             }
             Stmt::Loop(a, b, site) => {
                 let (at, before) = (self.next, self.moved.clone());
+                self.last.depth += 1;
                 self.block(a, fx);
                 self.block(b, fx);
+                self.last.depth -= 1;
                 self.moved_in_loop(*site, at, &before);
             }
             Stmt::Switch(c, arms) => {
@@ -1435,6 +1453,7 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
         literals,
         receivers,
         copies: BTreeSet::new(),
+        last: crate::Last::default(),
         pending: vec![],
         report: false,
         errors: vec![],
@@ -1466,6 +1485,7 @@ impl Walk<'_> {
     fn instance(&mut self, i: usize) -> Summary {
         self.cur = i;
         let f = &self.p.insts[i];
+        self.last = crate::Last::new(&f.body);
         self.lent.clear();
         self.moved.clear();
         self.decl.clear();

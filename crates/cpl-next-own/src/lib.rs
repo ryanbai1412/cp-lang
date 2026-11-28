@@ -320,3 +320,53 @@ mod lent_slot_tests {
         );
     }
 }
+
+/// Where each local is read for the last time (R05.5.3): the statement that names it once,
+/// after every other place it is named, in the loop it is declared in, or a `return`.
+#[derive(Default)]
+pub(crate) struct Last {
+    total: HashMap<usize, usize>,
+    seen: HashMap<usize, usize>,
+    pub depth: usize,
+    at: HashMap<usize, usize>,
+    pub here: BTreeSet<usize>,
+}
+impl Last {
+    pub fn new<T: Clone>(b: &[Stmt<T>]) -> Last {
+        let mut last = Last::default();
+        uses(b, &mut last.total);
+        last
+    }
+    pub fn stmt<T: Clone>(&mut self, s: &Stmt<T>) {
+        self.here.clear();
+        if let Stmt::Let(l, _) = s {
+            self.at.insert(*l, self.depth);
+        }
+        if matches!(
+            s,
+            Stmt::If(..) | Stmt::Loop(..) | Stmt::Switch(..) | Stmt::Region { .. }
+        ) {
+            return;
+        }
+        let mut here = HashMap::new();
+        uses(std::slice::from_ref(s), &mut here);
+        let ret = matches!(s, Stmt::Return(_));
+        for (l, n) in here {
+            let seen = self.seen.entry(l).or_default();
+            *seen += n;
+            let after = Some(&*seen) == self.total.get(&l) && self.at.get(&l) == Some(&self.depth);
+            if n == 1 && (ret || after) {
+                self.here.insert(l);
+            }
+        }
+    }
+}
+/// How many places in `b` each local is part of.
+fn uses<T: Clone>(b: &[Stmt<T>], n: &mut HashMap<usize, usize>) {
+    let mut b = b.to_vec();
+    cpl_next_ir::ir::visit_places(&mut b, &mut |p| {
+        if let Some(l) = p.local() {
+            *n.entry(l).or_default() += 1;
+        }
+    });
+}
