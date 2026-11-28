@@ -290,15 +290,11 @@ impl Decls {
     /// Which impl a type takes when several fit: one for its written type (0) before one for
     /// every record with some fields (1), before any other blanket one (2) (R08.1.2, R08.4.5).
     pub fn impl_rank(&self, im: &ImplDecl) -> u8 {
-        self.rank_of(&im.for_, &im.bounds)
+        impls::impl_rank(self, im)
     }
     /// `impl_rank` of an impl for `for_` with `bounds`.
     pub fn rank_of(&self, for_: &Ty, bounds: &[(usize, TraitRef)]) -> u8 {
-        let Ty::Param(i) = *for_ else { return 0 };
-        match (bounds.iter()).any(|(k, b)| *k == i && self.traits[b.tr.0].row) {
-            true => 1,
-            false => 2,
-        }
+        impls::rank_of(self, for_, bounds)
     }
 }
 #[derive(Clone)]

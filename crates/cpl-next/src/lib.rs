@@ -413,7 +413,7 @@ pub(crate) fn std_unchecked(
 ) -> Vec<(String, Vec<Diag>)> {
     let db = &Db::default();
     (std.module_names())
-        .filter(|m| Some(*m) != std.prelude_module())
+        .filter(|m| Some(*m) != std.prelude_module.as_deref())
         .map(|m| {
             // The program that only uses `m`, in a file named for it.
             let root = FileId::new(m);
