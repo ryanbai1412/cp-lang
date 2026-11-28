@@ -660,7 +660,14 @@ impl<'s> Type<'s> {
     /// As a diagnostic writes it.
     pub fn text(&self) -> String {
         let f = self.front;
-        check::show_ty(&f.d, &f.t.domains, self.generics, &|t| t.clone(), self.ty)
+        check::show_ty(
+            &f.d,
+            f.d.roles().option,
+            &f.t.domains,
+            self.generics,
+            &|t| t.clone(),
+            self.ty,
+        )
     }
 
     /// An integer's ends, `None` where it has none the checker knows.

@@ -103,7 +103,14 @@ impl TypeFacts for TypeView<'_> {
         let generics: Vec<String> = (table.generics.iter())
             .map(|g| self.d.text(*g).to_string())
             .collect();
-        Some(show_ty(self.d, self.domains, &generics, &|t| t.clone(), ty))
+        Some(show_ty(
+            self.d,
+            self.d.roles().option,
+            self.domains,
+            &generics,
+            &|t| t.clone(),
+            ty,
+        ))
     }
 
     fn range(&self, t: &TyId) -> Option<(Option<i64>, Option<i64>)> {
