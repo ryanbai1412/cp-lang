@@ -243,7 +243,7 @@ pub enum CoreType {
 pub struct ContextDecl {
     pub module: ModId,
     pub name: String,
-    pub fields: Vec<ast::FieldDecl>,
+    pub fields: Vec<forms::FieldForm>,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct ContextId(pub usize);

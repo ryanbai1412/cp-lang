@@ -735,6 +735,24 @@ impl Form {
     }
 
     /// What kind of declaration it is, as a diagnostic says it.
+    /// Whether the form is declared `pub`.
+    pub fn public(&self) -> bool {
+        match self {
+            Form::Fn(f) => f.public,
+            Form::Struct(s) => s.public,
+            Form::Enum(e) => e.public,
+            Form::Trait(t) => t.public,
+            Form::Alias(a) => a.public,
+            Form::Const { public, .. } => *public,
+            Form::Use(u) => u.public,
+            Form::Context { .. }
+            | Form::Impl(_)
+            | Form::Domain(_)
+            | Form::Stmt(_)
+            | Form::Other(_) => false,
+        }
+    }
+
     pub fn kind(&self) -> &'static str {
         match self {
             Form::Fn(_) => "fn",

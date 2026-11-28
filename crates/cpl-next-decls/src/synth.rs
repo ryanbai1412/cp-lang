@@ -740,12 +740,12 @@ pub(crate) fn enum_conversions(
 /// The structs marked `@memo_table(word)`, by word: the module that declares the table a
 /// `@memo(word)` fn keeps, and its name there. Any module may declare one (R06.4.1).
 pub(crate) fn memo_tables(
-    forms: &[Vec<(ItemId, Form)>],
+    forms: &[&[(ItemId, Form)]],
     syms: &mut crate::sym::Syms,
 ) -> Vec<(Sym, (usize, Sym))> {
     let mut out = Vec::new();
     for (mi, items) in forms.iter().enumerate() {
-        for (_, form) in items {
+        for (_, form) in items.iter() {
             let Form::Struct(sd) = form else {
                 continue;
             };

@@ -1,10 +1,11 @@
 //! Collecting declarations: std's once, and each program's as a layer over them.
-use super::forms::{Form, Reader, UseForm};
+use super::forms::{Form, ImplForm, Reader, TyForm, UseForm};
 use super::impls::{overlap, same_shape, supertraits_unmet};
 use super::inherent::inherent_impl;
 use super::tyconv::input_bound;
 use super::Impls;
 use super::*;
+use crate::attrs::Decorator;
 use crate::synth::{enum_structs, module_derived};
 use cpl_diag::codes::FIELD_BOUND_FROM_INPUT;
 use cpl_diag::msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS;
@@ -16,6 +17,8 @@ use cpl_syntax::decorators::Mark;
 /// Std's declarations, collected once and never written after: the core's and every std
 /// module's. A program's declarations are a layer over them.
 pub struct Prepared {
+    /// Each std module's forms, which a program's layer reads its derives and roles from too.
+    pub read: Arc<Vec<Vec<(ItemId, Form)>>>,
     d: Decls,
     own: Layer<HashMap<String, Named>>,
     public: Layer<HashSet<String>>,
@@ -62,7 +65,7 @@ pub fn collect(
     mods: &[crate::modules::Module],
     seen: &[bool],
     prelude: &HashMap<String, String>,
-) -> (Decls, Vec<(ItemId, ast::Stmt)>) {
+) -> (Decls, Vec<ItemId>) {
     let (layer, main) = layer(Some(std), mods, seen, prelude);
     (layer.d, main)
 }
@@ -73,7 +76,7 @@ fn layer(
     mods: &[crate::modules::Module],
     seen: &[bool],
     prelude: &HashMap<String, String>,
-) -> (Prepared, Vec<(ItemId, ast::Stmt)>) {
+) -> (Prepared, Vec<ItemId>) {
     let from = base.map_or(0, |b| b.d.module_names.len());
     let mut d = base.map_or_else(Decls::default, |b| b.d.clone());
     if base.is_none() {
@@ -140,8 +143,8 @@ fn layer(
     let mut main = Vec::new();
     let mut memos: Vec<(usize, String)> = Vec::new();
     // Pass 1: names, so signatures can mention later declarations.
-    let mut pending: Vec<(ModId, ItemId, &ast::Stmt, Option<Named>)> = Vec::new();
-    let mut op_methods: HashMap<TraitId, String> = HashMap::new();
+    let mut pending: Vec<(ModId, ItemId, &Form, Option<Named>)> = Vec::new();
+    let mut op_methods: HashMap<TraitId, Sym> = HashMap::new();
     // The core's `use` lines, for its view made again over a program's records.
     let mut imports: Vec<(ModId, UseForm)> = match from {
         0 => Vec::new(),
@@ -154,7 +157,13 @@ fn layer(
             })
             .collect(),
     };
-    let mut aliases: Vec<(ModId, SourceId, String, Vec<String>, ast::Type)> = Vec::new();
+    let mut aliases: Vec<(
+        ModId,
+        SourceId,
+        String,
+        Vec<String>,
+        cpl_next_syntax::ast::Type,
+    )> = Vec::new();
     let mut enums: Vec<(usize, String, Vec<String>, Vec<i64>)> = Vec::new();
     // Every record shape the program and its modules write is a core struct (R02.5.2).
     // A program's are those std does not write.
@@ -193,420 +202,249 @@ fn layer(
     let old_rows = rows.clone();
     rows.extend(new_rows.iter().cloned());
     rows.sort();
-    let core_first = mods[CORE.0].items.first();
-    let records: Vec<crate::modules::Item> = (core_first
-        .and_then(|it| Some((it.id.clone(), it.stmts.first()?.span))))
-    .map(|(id, span)| {
-        let mut stmts = crate::records::structs(&new_shapes, span);
-        stmts.extend(crate::records::row_traits(&new_rows, span));
-        stmts.extend(crate::records::without_traits(&new_forms, span));
-        vec![crate::modules::Item { id, stmts }]
-    })
-    .unwrap_or_default();
-    let all = || {
-        mods.iter()
-            .flat_map(|m| m.items.iter())
-            .flat_map(|it| &it.stmts)
+    // The core's generated declarations: each new record shape's struct, row trait and
+    // `without` trait (R02.5.2, R08.4.1), as forms of the core's first item.
+    let at = Span::new(0, 0);
+    let records: Vec<(ItemId, Form)> = match mods[CORE.0].items.first() {
+        Some(it) => {
+            let syms = &mut d.syms;
+            let mut fs: Vec<Form> = (crate::records::structs(&new_shapes, syms, at).into_iter())
+                .map(Form::Struct)
+                .collect();
+            fs.extend(
+                crate::records::row_traits(&new_rows, syms, at)
+                    .into_iter()
+                    .map(Form::Trait),
+            );
+            fs.extend(
+                (crate::records::without_traits(&new_forms, syms, at).into_iter()).map(Form::Trait),
+            );
+            fs.into_iter().map(|f| (it.id.clone(), f)).collect()
+        }
+        None => Vec::new(),
     };
-    let each = crate::synth::derive_each(all);
-    let convert = crate::synth::convert_marked(all);
-    let positions = crate::records::positions(all());
+    let std_read: &[Vec<(ItemId, Form)>] = base.map_or(&[], |b| &b.read[..]);
+    let forms_of: Vec<&[(ItemId, Form)]> = (0..mods.len())
+        .map(|mi| match mi < from {
+            true => std_read.get(mi).map_or(&[][..], |v| &v[..]),
+            false => &read[mi][..],
+        })
+        .collect();
+    let all: Vec<&Form> = (forms_of.iter())
+        .flat_map(|fs| fs.iter().map(|(_, f)| f))
+        .chain(records.iter().map(|(_, f)| f))
+        .collect();
+    let each = crate::synth::derive_each(&all);
+    let cmp = comparisons(&all);
+    let convert = crate::synth::convert_marked(&all);
+    let positions = crate::records::positions(&all);
     // Only a derive that rebuilds its value copies the `@cache` fields.
-    let none_copy =
-        |v: Vec<(ItemId, String, ast::Stmt)>| v.into_iter().map(|(i, n, s)| (i, n, s, false));
-    let derived: Vec<Vec<(ItemId, String, ast::Stmt, bool)>> = (mods.iter().enumerate())
-        .map(|(mi, m)| {
-            // Std's modules get only what a program's records add.
-            let ours = mi >= from;
-            let mut made = match (mi == CORE.0, ours) {
-                (true, _) => module_derived(&records, &each),
-                (false, true) => module_derived(&m.items, &each),
-                (false, false) => Vec::new(),
-            };
-            if let (true, Some(it)) = (mi == CORE.0, records.first()) {
-                if let Some(at) = it.stmts.first() {
-                    let impls = crate::records::domain_impls(all(), &new_shapes, at.span);
-                    made.extend(
-                        impls
-                            .into_iter()
-                            .map(|(n, imp)| (it.id.clone(), n, imp, false)),
-                    );
-                    // Each new row over every shape, and std's rows over the new shapes.
-                    let rows_of = |rs: &[Vec<String>]| crate::modules::Item {
-                        id: it.id.clone(),
-                        stmts: crate::records::row_traits(rs, at.span),
-                    };
-                    made.extend(none_copy(crate::synth::field_trait_impls(
-                        &[rows_of(&new_rows)],
-                        &shapes,
-                    )));
-                    if !new_shapes.is_empty() {
-                        let old = [rows_of(&old_rows)];
-                        made.extend(none_copy(crate::synth::field_trait_impls(
-                            &old,
-                            &new_shapes,
-                        )));
-                    }
-                    let without = (crate::records::without_impls(&new_forms, &shapes, at.span))
-                        .into_iter()
-                        .chain(crate::records::without_impls(
-                            &old_forms,
-                            &new_shapes,
-                            at.span,
-                        ));
-                    made.extend(without.map(|(n, imp)| (it.id.clone(), n, imp, false)));
-                }
+    let impl_of = |v: Vec<(ItemId, String, ImplForm)>, caches: bool| {
+        v.into_iter()
+            .map(move |(i, n, s)| (i, n, Form::Impl(s), caches))
+    };
+    let mut derived: Vec<Vec<(ItemId, String, Form, bool)>> = Vec::new();
+    for (mi, fs) in forms_of.iter().enumerate() {
+        // Std's modules get only what a program's records add.
+        let ours = mi >= from;
+        let made_here = match (mi == CORE.0, ours) {
+            (true, _) => module_derived(&records, &each, &cmp, &mut d.syms),
+            (false, true) => module_derived(fs, &each, &cmp, &mut d.syms),
+            (false, false) => Vec::new(),
+        };
+        let mut made: Vec<(ItemId, String, Form, bool)> = (made_here.into_iter())
+            .map(|(i, n, s, c)| (i, n, Form::Impl(s), c))
+            .collect();
+        if let (true, Some((id, _))) = (mi == CORE.0, records.first()) {
+            let syms = &mut d.syms;
+            let impls = crate::records::domain_impls(positions.as_ref(), &new_shapes, syms, at);
+            made.extend(
+                impls
+                    .into_iter()
+                    .map(|(n, imp)| (id.clone(), n, Form::Impl(imp), false)),
+            );
+            // Each new row over every shape, and std's rows over the new shapes.
+            let rows_of =
+                |rs: &[Vec<String>], syms: &mut crate::sym::Syms| -> Vec<(ItemId, Form)> {
+                    (crate::records::row_traits(rs, syms, at).into_iter())
+                        .map(|t| (id.clone(), Form::Trait(t)))
+                        .collect()
+                };
+            let rows = rows_of(&new_rows, syms);
+            made.extend(impl_of(
+                crate::synth::field_trait_impls(&rows, &shapes, syms),
+                false,
+            ));
+            if !new_shapes.is_empty() {
+                let old = rows_of(&old_rows, syms);
+                made.extend(impl_of(
+                    crate::synth::field_trait_impls(&old, &new_shapes, syms),
+                    false,
+                ));
             }
-            if ours || !new_shapes.is_empty() {
-                let shapes = if ours { &shapes } else { &new_shapes };
-                made.extend(none_copy(crate::synth::field_trait_impls(&m.items, shapes)));
-            }
-            if let Some(c) = convert.as_ref().filter(|_| ours) {
-                made.extend(none_copy(crate::synth::enum_conversions(
-                    &m.items,
-                    c,
-                    positions.as_ref(),
-                )));
-            }
-            made
-        })
-        .collect();
-    for (w, (home, name)) in crate::synth::memo_tables(mods) {
-        let (w, name) = (d.syms.intern(&w), d.syms.intern(&name));
-        d.memo_homes.insert(w, (home, name));
+            let mut without = crate::records::without_impls(&new_forms, &shapes, syms, at);
+            without.extend(crate::records::without_impls(
+                &old_forms,
+                &new_shapes,
+                syms,
+                at,
+            ));
+            made.extend(
+                without
+                    .into_iter()
+                    .map(|(n, imp)| (id.clone(), n, Form::Impl(imp), false)),
+            );
+        }
+        if ours || !new_shapes.is_empty() {
+            let shapes = if ours { &shapes } else { &new_shapes };
+            made.extend(impl_of(
+                crate::synth::field_trait_impls(fs, shapes, &mut d.syms),
+                false,
+            ));
+        }
+        if let Some(c) = convert.filter(|_| ours) {
+            let made_c = crate::synth::enum_conversions(fs, c, positions.as_ref(), &mut d.syms);
+            made.extend(impl_of(made_c, false));
+        }
+        derived.push(made);
     }
-    let (syms, words) = (d.syms.clone(), d.memo_homes.clone());
-    let tables = |w: &str| syms.get(w).is_some_and(|w| words.contains_key(&w));
-    let synth: Vec<Vec<(ItemId, ast::Stmt)>> = (mods.iter().enumerate())
-        .map(|(mi, m)| {
-            let mut out = Vec::new();
-            if mi == CORE.0 {
-                out.extend(
-                    (records.iter())
-                        .flat_map(|it| it.stmts.iter().map(|s| (it.id.clone(), s.clone()))),
-                );
+    for (w, home) in crate::synth::memo_tables(&forms_of, &mut d.syms) {
+        d.memo_homes.insert(w, home);
+    }
+    // Each enum as structs: its own and one per variant (R02.7).
+    let mut synth: Vec<Vec<(ItemId, Form)>> = vec![Vec::new(); mods.len()];
+    synth[CORE.0].extend(records.iter().cloned());
+    for mi in from..mods.len() {
+        for (k, (item, f)) in read[mi].iter().enumerate() {
+            let Form::Enum(e) = f else {
+                continue;
+            };
+            let errors = crate::synth::enum_tags(item, &mods[mi].items[k].item, e, &d.syms);
+            match ModId(mi) == d.program {
+                true => d.errors.extend(errors),
+                false => d.module_errors[mi].extend(errors),
             }
-            for crate::modules::Item { id: item, stmts } in m.items.iter().filter(|_| mi >= from) {
-                for s in stmts {
-                    if let Some((f, t)) = crate::synth::memo_table(s, &tables) {
-                        let fns = crate::synth::memo_fns(f, s, &t);
-                        out.extend(fns.into_iter().map(|x| (item.clone(), x)));
-                    }
-                    if let StmtKind::Enum(e) = &s.kind {
-                        let (structs, mut errors, values) = enum_structs(s, e);
-                        errors.extend(crate::synth::enum_tags(item, s, e));
-                        match ModId(mi) == d.program {
-                            true => d.errors.extend(errors),
-                            false => d.module_errors[mi].extend(errors),
-                        }
-                        let vs = e.variants.iter().map(|v| v.name.text.clone()).collect();
-                        enums.push((mi, e.name.text.clone(), vs, values));
-                        out.extend(structs.into_iter().map(|x| (item.clone(), x)));
-                    }
-                }
-            }
-            out
-        })
-        .collect();
-    for (mi, m) in mods.iter().enumerate() {
+            let vs = e
+                .variants
+                .iter()
+                .map(|v| d.text(v.name).to_string())
+                .collect();
+            let values = (0..e.variants.len() as i64).collect();
+            enums.push((mi, d.text(e.name).to_string(), vs, values));
+            let structs = enum_structs(e, &mut d.syms);
+            synth[mi].extend(structs.into_iter().map(|s| (item.clone(), Form::Struct(s))));
+        }
+    }
+    for mi in 0..mods.len() {
         let mid = ModId(mi);
         if mi < from && synth[mi].is_empty() {
             continue;
         }
-        let heads = match mi >= from {
-            true => crate::items::items(m),
-            false => Vec::new(),
-        };
-        for (k, crate::modules::Item { id: item, stmts }) in m.items.iter().enumerate() {
-            let made = synth[mi].iter().filter(|(i, _)| i == item).map(|(_, s)| s);
-            let memo = |s: &ast::Stmt| crate::synth::memo_table(s, &tables).is_some();
-            if let Some(h) = heads.get(k).filter(|_| !stmts.iter().any(memo)) {
+        if mi >= from {
+            for h in crate::items::items(&mods[mi]) {
                 public[mi].extend(h.exports().map(str::to_string));
             }
-            for s in made.clone() {
-                if let (true, Some(name)) = (s.public, item_name(s)) {
-                    public[mi].insert(name.to_string());
-                }
+        }
+        for (_, f) in &synth[mi] {
+            if let (true, Some(n)) = (f.public(), f.name()) {
+                public[mi].insert(d.text(n).to_string());
             }
-            for s in stmts
-                .iter()
-                .filter(|_| mi >= from)
-                .filter(|s| !matches!(s.kind, StmtKind::Enum(_)))
-                .chain(made)
-            {
-                if let Some((f, t)) = crate::synth::memo_table(s, &tables).filter(|_| mi >= from) {
-                    memos.push((mi, f.name.text.clone()));
-                    main.push((item.clone(), crate::synth::memo_var(f, f.sig_span, &t)));
-                    continue;
+        }
+        let written = (read[mi].iter()).filter(|(_, f)| !matches!(f, Form::Enum(_)));
+        for (item, f) in written.chain(synth[mi].iter()) {
+            match f {
+                Form::Struct(sd) => {
+                    let id = super::names::name_struct(&mut d, &mut own[mi], mid, item, sd);
+                    pending.push((mid, item.clone(), f, Some(Named::Struct(id))));
                 }
-                match &s.kind {
-                    StmtKind::Struct(sd) => {
-                        let id = StructId(d.structs.len());
-                        let n = sd.generics.len();
-                        // One of a name and another arity is a sibling of the first; one of
-                        // the same arity is a duplicate (R02.11.4).
-                        match own[mi].get(&sd.name.text) {
-                            Some(&Named::Struct(f)) => {
-                                let first = (f, d.structs[f.0].generics.len());
-                                let of_name = (Arc::make_mut(&mut d.struct_arity).entry(f))
-                                    .or_insert_with(|| vec![first]);
-                                match of_name.iter().any(|(_, k)| *k == n) {
-                                    true => d.errors.push(Msg::at(
-                                        item.at(s.span),
-                                        Msg::verdict(
-                                            cpl_diag::codes::DUPLICATE_DEFINITION,
-                                            format!(
-                                                "a second struct `{}` with {n} type parameters \
-                                                 (R02.11.4)",
-                                                sd.name.text
-                                            ),
-                                        ),
-                                    )),
-                                    false => of_name.push((id, n)),
-                                }
-                            }
-                            _ => _ = own[mi].insert(sd.name.text.clone(), Named::Struct(id)),
-                        }
-                        for (x, role) in super::role_marks(s) {
-                            // The tuple role takes one struct per field count (R02.5.1).
-                            if role == Some(Role::Tuple) {
-                                let n = sd.fields.len();
-                                match d.tuples.contains_key(&n) {
-                                    true => d.errors.push(again(item, s, "role(tuple)")),
-                                    false => _ = Arc::make_mut(&mut d.tuples).insert(n, id),
-                                }
-                                continue;
-                            }
-                            let slot = match role {
-                                Some(Role::Option) => &mut d.roles.option,
-                                Some(Role::Recipe) => &mut d.roles.recipe,
-                                Some(Role::Cuts) => &mut d.roles.cut,
-                                Some(Role::List) => &mut d.sugar.list,
-                                Some(Role::Str) => &mut d.sugar.str,
-                                Some(Role::Map) => &mut d.sugar.map,
-                                Some(Role::Array) => &mut d.sugar.array,
-                                Some(Role::Pack) => &mut d.roles.pack,
-                                _ => {
-                                    d.errors.push(misplaced_role(item, x, role, "struct"));
-                                    continue;
-                                }
-                            };
-                            let dup =
-                                again(item, s, &format!("role({})", role.map_or("", Role::name)));
-                            once(slot, id, dup, &mut d.errors);
-                        }
-                        if marked(s, Mark::Record) {
-                            let names = sd.fields.iter().map(|f| f.name.text.clone()).collect();
-                            Arc::make_mut(&mut d.records).insert(names, id);
-                        }
-                        let member = s.decorators.iter().find(|x| x.mark == Some(Mark::Member));
-                        if let Some(ast::ExprKind::Name(m)) =
-                            member.and_then(|x| x.args.first()).map(|a| &a.value.kind)
-                        {
-                            let m = d.syms.intern(m);
-                            Arc::make_mut(&mut d.member_types).insert(m, id);
-                        }
-                        let mut consts = HashMap::new();
-                        for m in &sd.methods {
-                            if let StmtKind::Const {
-                                name,
-                                generics,
-                                ty,
-                                init: Some(init),
-                                ..
-                            } = &m.kind
-                            {
-                                if generics.is_empty() {
-                                    let n = d.syms.intern(&name.text);
-                                    consts.insert(n, ConstId(d.consts.len()));
-                                    d.consts.push(LibConst {
-                                        module: mid,
-                                        name: format!("{}.{}", sd.name.text, name.text),
-                                        item: item.clone(),
-                                        ty: ty.clone(),
-                                        init: init.clone(),
-                                    });
-                                }
-                            }
-                        }
-                        d.structs.push(StructDecl {
-                            name: sd.name.text.clone(),
-                            record: marked(s, Mark::Record),
-                            generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
-                            fields: Vec::new(),
-                            var_fields: Vec::new(),
-                            pub_fields: Vec::new(),
-                            cached: Vec::new(),
-                            field_at: Vec::new(),
-                            defaults: Vec::new(),
-                            module: mid,
-                            item: item.clone(),
-                            n_sets: 0,
-                            methods: HashMap::new(),
-                            consts,
-                            shaped: HashMap::new(),
-                            ctor: None,
-                            variants: Vec::new(),
-                            errors: Vec::new(),
-                            values: Vec::new(),
-                            bounds: Vec::new(),
-                        });
-                        pending.push((mid, item.clone(), s, Some(Named::Struct(id))));
-                    }
-                    StmtKind::Trait { name, alias, .. } => {
-                        let id = TraitId(d.traits.len());
-                        for (x, role) in super::role_marks(s) {
-                            let slot = match role {
-                                Some(Role::Iteration) => &mut d.roles.iteration,
-                                Some(Role::Positions) => &mut d.roles.domain,
-                                Some(Role::Order) => &mut d.roles.order,
-                                Some(Role::Convert) => &mut d.roles.convert,
-                                Some(Role::Counted) => &mut d.roles.counted,
-                                Some(Role::RangeBounds) => &mut d.roles.bounds,
-                                Some(Role::DeriveFields) => &mut d.roles.derive_fields,
-                                _ => {
-                                    d.errors.push(misplaced_role(item, x, role, "trait"));
-                                    continue;
-                                }
-                            };
-                            let dup = again(item, s, "role(..)");
-                            once(slot, id, dup, &mut d.errors);
-                        }
-                        let lit = s.decorators.iter().find(|x| x.mark == Some(Mark::Literal));
-                        if let Some(ast::ExprKind::Str(text)) =
-                            lit.and_then(|x| x.args.first()).map(|a| &a.value.kind)
-                        {
-                            if let [ast::StrPiece::Text(t)] = text.as_slice() {
-                                let t = d.syms.intern(t);
-                                match d.literals.iter().any(|(o, _)| *o == t) {
-                                    true => d.errors.push(again(
-                                        item,
-                                        s,
-                                        lit.map_or("", |x| &x.name.text),
-                                    )),
-                                    false => d.literals.push((t, id)),
-                                }
-                            }
-                        }
-                        let op = s.decorators.iter().find(|x| x.mark == Some(Mark::Operator));
-                        if let Some(ast::ExprKind::Str(text)) =
-                            op.and_then(|x| x.args.first()).map(|a| &a.value.kind)
-                        {
-                            if let [ast::StrPiece::Text(t)] = text.as_slice() {
-                                let m = operator_method(s);
-                                let t = d.syms.intern(t);
-                                let method = |tr: &TraitId| match op_methods.get(tr) {
-                                    Some(m) => Some(m.clone()),
-                                    None => d.traits[tr.0]
-                                        .methods
-                                        .keys()
-                                        .next()
-                                        .map(|n| d.text(*n).to_string()),
-                                };
-                                let taken =
-                                    (d.operators.iter()).any(|(o, tr)| *o == t && method(tr) == m);
-                                match taken {
-                                    true => d.errors.push(again(
-                                        item,
-                                        s,
-                                        op.map_or("", |x| &x.name.text),
-                                    )),
-                                    false => {
-                                        d.operators.push((t, id));
-                                        op_methods.extend(m.map(|m| (id, m)));
-                                    }
-                                }
-                            }
-                        }
-                        own[mi].insert(name.text.clone(), Named::Trait(id));
-                        d.traits.push(TraitDecl {
-                            name: name.text.clone(),
-                            module: mid,
-                            alias: *alias,
-                            supers: Vec::new(),
-                            methods: HashMap::new(),
-                            errors: Vec::new(),
-                            defaults: Vec::new(),
-                            assoc: Vec::new(),
-                            assoc_bounds: Vec::new(),
-                            unimplemented: unimplemented(item, s, &mut d.errors),
-                            row: marked(s, Mark::Record),
-                        });
-                        pending.push((mid, item.clone(), s, Some(Named::Trait(id))));
-                    }
-                    StmtKind::TypeAlias {
-                        name,
-                        generics,
-                        ty,
-                        bounds,
-                    } if bounds.is_empty() => {
-                        let library = d.is_library(mid);
-                        for x in
-                            (s.decorators.iter()).filter(|x| !(library && read_elsewhere(x.mark)))
-                        {
-                            let at = item.at(x.span);
-                            let e = Msg::at(
-                                at,
-                                Unbuilt::Decorator {
-                                    name: x.name.text.clone(),
-                                },
-                            );
-                            match d.is_library(mid) {
-                                true => d.module_errors[mi].push(e),
-                                false => d.errors.push(e),
-                            }
-                        }
-                        own[mi].insert(
-                            name.text.clone(),
-                            Named::Alias(AliasId(aliases_from + aliases.len())),
+                Form::Trait(t) => {
+                    let id = super::names::name_trait(
+                        &mut d,
+                        &mut own[mi],
+                        &mut op_methods,
+                        mid,
+                        item,
+                        t,
+                    );
+                    pending.push((mid, item.clone(), f, Some(Named::Trait(id))));
+                }
+                Form::Alias(a) => {
+                    let library = d.is_library(mid);
+                    for x in a.attrs.iter().filter(|x| {
+                        !(library
+                            && matches!(
+                                x.attr,
+                                Decorator::Lint | Decorator::Stress | Decorator::OnUnimplemented
+                            ))
+                    }) {
+                        let e = Msg::at(
+                            item.at(super::names::attr_at(x, a.span)),
+                            Unbuilt::Decorator {
+                                name: x.attr.name().to_string(),
+                            },
                         );
-                        let generics = generics.iter().map(|g| g.text.clone()).collect();
-                        let at = item.at(Span::new(s.span.start, s.span.start));
-                        aliases.push((mid, at, name.text.clone(), generics, ty.clone()));
-                    }
-                    StmtKind::Fn(_) | StmtKind::Impl { .. } => {
-                        pending.push((mid, item.clone(), s, None))
-                    }
-                    StmtKind::Const {
-                        name,
-                        generics,
-                        ty,
-                        init: Some(init),
-                        ..
-                    } if d.items_only(mid) && generics.is_empty() => {
-                        own[mi].insert(name.text.clone(), Named::Const(ConstId(d.consts.len())));
-                        d.consts.push(LibConst {
-                            module: mid,
-                            name: name.text.clone(),
-                            item: item.clone(),
-                            ty: ty.clone(),
-                            init: init.clone(),
-                        });
-                    }
-                    StmtKind::Use { .. } => imports.push((mid, s)),
-                    StmtKind::Context { name, fields } => {
-                        let id = ContextId(d.contexts.len());
-                        own[mi].insert(name.text.clone(), Named::Context(id));
-                        d.contexts.push(ContextDecl {
-                            module: mid,
-                            name: name.text.clone(),
-                            fields: fields.clone(),
-                        });
-                    }
-                    other if d.items_only(mid) => {
-                        let e = Unbuilt::LibraryItem {
-                            kind: crate::kind_name(other),
-                        };
-                        match item_name(s) {
-                            Some(n) => {
-                                own[mi].insert(n.to_string(), Named::Refused(d.refused.len()));
-                                d.refused.push(e);
-                            }
-                            None => d.module_errors[mi].push(e.into()),
+                        match library {
+                            true => d.module_errors[mi].push(e),
+                            false => d.errors.push(e),
                         }
                     }
-                    _ => main.push((item.clone(), s.clone())),
+                    let name = d.text(a.name).to_string();
+                    own[mi].insert(
+                        name.clone(),
+                        Named::Alias(AliasId(aliases_from + aliases.len())),
+                    );
+                    let generics = a.generics.iter().map(|g| d.text(*g).to_string()).collect();
+                    let at = item.at(Span::new(a.span.start, a.span.start));
+                    let TyForm::Written(ty) = &a.ty else {
+                        unreachable!("an alias's type is written")
+                    };
+                    aliases.push((mid, at, name, generics, ty.clone()));
                 }
+                Form::Fn(_) | Form::Impl(_) => pending.push((mid, item.clone(), f, None)),
+                Form::Const {
+                    name,
+                    ty,
+                    value: Some(init),
+                    ..
+                } if d.items_only(mid) => {
+                    let name = d.text(*name).to_string();
+                    own[mi].insert(name.clone(), Named::Const(ConstId(d.consts.len())));
+                    let ty = ty.as_ref().map(|t| match t {
+                        TyForm::Written(t) => t.clone(),
+                        _ => unreachable!("a const's type is written"),
+                    });
+                    d.consts.push(LibConst {
+                        module: mid,
+                        name,
+                        item: item.clone(),
+                        ty,
+                        init: init.clone(),
+                    });
+                }
+                Form::Use(u) => imports.push((mid, u.clone())),
+                Form::Context { name, fields } => {
+                    let id = ContextId(d.contexts.len());
+                    let name = d.text(*name).to_string();
+                    own[mi].insert(name.clone(), Named::Context(id));
+                    d.contexts.push(ContextDecl {
+                        module: mid,
+                        name,
+                        fields: fields.clone(),
+                    });
+                }
+                other if d.items_only(mid) => {
+                    let e = Unbuilt::LibraryItem {
+                        kind: other.kind().to_string(),
+                    };
+                    match other.name() {
+                        Some(n) => {
+                            own[mi].insert(d.text(n).to_string(), Named::Refused(d.refused.len()));
+                            d.refused.push(e);
+                        }
+                        None => d.module_errors[mi].push(e.into()),
+                    }
+                }
+                _ => main.push(item.clone()),
             }
         }
     }
@@ -624,7 +462,7 @@ fn layer(
         d.structs[id.0].variants = vs;
     }
     // The derived impls that read their struct's `@cache` fields, by the impl they are.
-    let mut copying: HashSet<*const ast::Stmt> = HashSet::new();
+    let mut copying: HashSet<*const Form> = HashSet::new();
     for (mi, made) in derived.iter().enumerate() {
         for (item, name, s, caches) in made {
             if *caches {
@@ -635,9 +473,9 @@ fn layer(
             let found = own[mi]
                 .get(name)
                 .or_else(|| own[CORE.0].get(name).filter(|n| record(n)));
-            let n = match &s.kind {
-                StmtKind::Impl { target, .. } => match &target.kind {
-                    TypeKind::Named { args, .. } => args.len(),
+            let n = match s {
+                Form::Impl(imp) => match &imp.self_ty {
+                    TyForm::Named(_, args) => args.len(),
                     _ => 0,
                 },
                 _ => 0,
@@ -668,15 +506,18 @@ fn layer(
     remake_views(&mut d, &sc, from, core_too, None);
     // A product's record is a core struct, so the program's domains are placed once the views are.
     if base.is_some() {
-        for it in mods[n - 1].items.iter() {
-            for s in &it.stmts {
-                if let StmtKind::Domain { name, def, .. } = &s.kind {
-                    let t = product(&mut d, &it.id, &name.text, def);
-                    if !d.top_doms.contains_key(&name.text) {
-                        let t = t.unwrap_or_else(|| d.new_dom(&it.id));
-                        d.top_doms.insert(name.text.clone(), t);
-                    }
-                }
+        for (id, f) in &read[n - 1] {
+            let Form::Domain(dd) = f else {
+                continue;
+            };
+            let Some(name) = dd.name() else {
+                continue;
+            };
+            let name = name.text().to_string();
+            let t = dd.size().and_then(|def| product(&mut d, id, &name, &def));
+            if !d.top_doms.contains_key(&name) {
+                let t = t.unwrap_or_else(|| d.new_dom(id));
+                d.top_doms.insert(name, t);
             }
         }
     }
@@ -1474,6 +1315,7 @@ fn layer(
     }
     d.rank_impls();
     let layer = Prepared {
+        read: Arc::new(read),
         d,
         own,
         public,
@@ -1535,29 +1377,44 @@ fn remake_views(
 
 /// `domain P = (A, B)` or `(a: A, b: B)` over domains declared above it, or over ranges: the
 /// tuple or record of them (R04.2.10, R04.2.11). A range factor is a domain of its own, named `P.i`, which no program can write.
-fn product(d: &mut Decls, item: &ItemId, name: &str, def: &ast::Expr) -> Option<Ty> {
-    let (product, xs): (StructId, Vec<&ast::Expr>) = match &def.kind {
-        ast::ExprKind::Tuple(xs) => (*d.tuples.get(&xs.len())?, xs.iter().collect()),
-        ast::ExprKind::Record(fs) => {
-            let names: Vec<String> = fs.iter().map(|(n, _)| n.text.clone()).collect();
+fn product(
+    d: &mut Decls,
+    item: &ItemId,
+    name: &str,
+    def: &cpl_next_syntax::ast::Expr,
+) -> Option<Ty> {
+    use cpl_next_syntax::ast::{AstNode, Expr};
+    let (product, xs): (StructId, Vec<Expr>) = match def {
+        Expr::Tuple(t) => {
+            let xs: Vec<Expr> = t.syntax().children().filter_map(Expr::cast).collect();
+            (*d.tuples.get(&xs.len())?, xs)
+        }
+        Expr::Record(r) => {
+            let fs: Vec<_> = r.fields().collect();
+            let names = (fs.iter())
+                .map(|f| Some(f.name()?.text().to_string()))
+                .collect::<Option<Vec<String>>>()?;
             let record = *d.records.get(&names)?;
-            (record, fs.iter().map(|(_, x)| x).collect())
+            (record, fs.iter().map(|f| f.value()).collect::<Option<_>>()?)
         }
         _ => return None,
     };
-    let fits = |x: &ast::Expr| match &x.kind {
-        ast::ExprKind::Name(n) => d.top_doms.contains_key(n),
-        ast::ExprKind::Range { .. } => true,
-        _ => false,
+    let dom = |x: &Expr| match x {
+        Expr::Name(n) => Some(n.ident()?.text().to_string()),
+        _ => None,
     };
-    if !xs.iter().all(|x| fits(x)) {
+    let fits = |x: &Expr| match x {
+        Expr::Range(_) => true,
+        _ => dom(x).is_some_and(|n| d.top_doms.contains_key(&n)),
+    };
+    if !xs.iter().all(fits) {
         return None;
     }
     let mut parts = Vec::new();
     for (i, x) in xs.iter().enumerate() {
-        parts.push(match &x.kind {
-            ast::ExprKind::Name(n) => d.top_doms[n].clone(),
-            _ => {
+        parts.push(match dom(x) {
+            Some(n) => d.top_doms[&n].clone(),
+            None => {
                 let t = d.new_dom(item);
                 d.top_doms.insert(factor_name(name, i), t.clone());
                 t
