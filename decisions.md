@@ -9605,3 +9605,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 689. (reserved, G: D: an unwritten domain parameter's implied bound is the unique weakest trait holding what its body reads)
 
 ## 690. (reserved, G: D: Discrete is positions without a count; Domain, Ordered and Cyclic add to it)
+
+## 691. (reserved, E: the lawful role `Lawful<S>`: laws are a derived member, `laws_hold` is an ordinary std fn)
