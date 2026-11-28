@@ -145,11 +145,10 @@ impl<'a> Cx<'a> {
                 return self.bound_walk(p, call, name, body, span, out);
             }
             self.b.allow_region = true;
-            let own = "each";
-            let walk = match self.impls().lookup_member(&rt, own) {
-                Some(_) => own.to_string(),
-                None => (self.d.iteration_walk()).map_or_else(String::new, |(n, _)| n.to_string()),
-            };
+            let own = (self.d.iteration_own_walk())
+                .filter(|(n, _)| self.impls().lookup_member(&rt, n).is_some());
+            let walk = (own.or_else(|| self.d.iteration_walk()))
+                .map_or_else(String::new, |(n, _)| n.to_string());
             call = self.method_call(call, &walk, vec![], span, false);
             self.b.allow_region = false;
         }

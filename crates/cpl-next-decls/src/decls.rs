@@ -719,6 +719,15 @@ impl Decls {
             .find(|(_, f)| self.f(**f).region.is_some() && self.f(**f).bodiless())
             .map(|(n, f)| (self.text(*n), *f))
     }
+
+    /// The iteration role's yielding method with a default body (`each`), which a type may
+    /// write its own of; a type without one walks through `iteration_walk`.
+    pub fn iteration_own_walk(&self) -> Option<(&str, FnId)> {
+        let tr = &self.traits[self.roles.iteration?.0];
+        (tr.methods.iter())
+            .find(|(_, f)| self.f(**f).region.is_some() && !self.f(**f).bodiless())
+            .map(|(n, f)| (self.text(*n), *f))
+    }
     /// The id of a name some declaration gave, or `None` when none did.
     pub fn sym(&self, text: &str) -> Option<Sym> {
         self.syms.get(text)
