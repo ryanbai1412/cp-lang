@@ -296,6 +296,13 @@ impl<'a> Cx<'a> {
                 continue;
             }
             if valued && i + 1 == entries.len() {
+                if let next::Stmt::If(x) = s {
+                    let unit = want.is_none_or(|w| self.shallow(w) == Ty::Unit);
+                    if !unit && x.else_clause().is_some() {
+                        let v = self.if_stmt(x, want);
+                        return Some(want.map_or(v.clone(), |w| self.coerce(v, w)));
+                    }
+                }
                 if let Some(e) = (match s {
                     next::Stmt::Expr(x) => Some(x),
                     _ => None,
@@ -1257,7 +1264,7 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Assert(c, msg, span, CheckKind::Assert));
             }
             next::Stmt::If(i) => {
-                let e = self.if_stmt(i);
+                let e = self.if_stmt(i, None);
                 out.push(TStmt::Expr(e));
             }
             next::Stmt::With(w) => self.with_stmt(w, out),

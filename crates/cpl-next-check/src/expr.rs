@@ -1119,8 +1119,9 @@ impl<'a> Cx<'a> {
         let otherwise = i.else_clause().and_then(|e| e.body());
         self.if_chain(branches, otherwise, want, span)
     }
-    /// `if` written as a statement: its blocks give no value.
-    pub(super) fn if_stmt(&mut self, i: &next::IfStmt) -> TExpr {
+    /// `if` written as a statement: its blocks give a value only against `want`, as the last
+    /// line of a block with an `else`.
+    pub(super) fn if_stmt(&mut self, i: &next::IfStmt, want: Option<&Ty>) -> TExpr {
         let span = self.at(i);
         if i.is_const() {
             self.err(
@@ -1141,7 +1142,7 @@ impl<'a> Cx<'a> {
             }
         }
         let otherwise = i.else_clause().and_then(|e| e.body());
-        self.if_chain(branches, otherwise, None, span)
+        self.if_chain(branches, otherwise, want, span)
     }
     pub(super) fn self_field(&self, n: &str) -> Option<usize> {
         let s = self.self_expr(Span::new(0, 0))?;
