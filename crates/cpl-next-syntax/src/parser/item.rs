@@ -433,7 +433,13 @@ impl Parser<'_> {
     }
 
     fn field(&mut self) {
-        self.start(NodeKind::FieldDecl);
+        let at = self.checkpoint();
+        self.field_at(at);
+    }
+
+    /// A field from `at`, so the decorators read before it are its own.
+    fn field_at(&mut self, at: Checkpoint) {
+        self.start_at(at, NodeKind::FieldDecl);
         self.eat(T::Pub);
         self.eat(T::Var);
         self.name("a field's name");
@@ -449,20 +455,17 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// A member that is a fn, a field or (in enums) a variant.
-    fn fn_or(&mut self, other: fn(&mut Self)) {
-        let k = usize::from(self.at(T::Pub));
-        if self.at(T::At) || self.nth(k) == T::Fn {
-            let at = self.checkpoint();
-            while self.at(T::At) {
-                self.decorator();
-            }
-            if self.nth(usize::from(self.at(T::Pub))) == T::Fn {
-                return self.fn_decl(at);
-            }
-            return other(self);
+    /// A member that is a fn, a field or (in enums) a variant. The
+    /// decorators before it are inside the member's node.
+    fn fn_or(&mut self, other: fn(&mut Self, Checkpoint)) {
+        let at = self.checkpoint();
+        while self.at(T::At) {
+            self.decorator();
         }
-        other(self);
+        if self.nth(usize::from(self.at(T::Pub))) == T::Fn {
+            return self.fn_decl(at);
+        }
+        other(self, at);
     }
 
     fn struct_decl(&mut self, at: Checkpoint) {
@@ -488,7 +491,7 @@ impl Parser<'_> {
                 self.field();
             }
         } else if self.at(T::Colon) {
-            self.members(|p| p.fn_or(Self::field));
+            self.members(|p| p.fn_or(Self::field_at));
         }
         self.finish();
     }
@@ -517,13 +520,18 @@ impl Parser<'_> {
                 self.variant();
             }
         } else {
-            self.members(|p| p.fn_or(Self::variant));
+            self.members(|p| p.fn_or(Self::variant_at));
         }
         self.finish();
     }
 
     fn variant(&mut self) {
-        self.start(NodeKind::Variant);
+        let at = self.checkpoint();
+        self.variant_at(at);
+    }
+
+    fn variant_at(&mut self, at: Checkpoint) {
+        self.start_at(at, NodeKind::Variant);
         while self.at(T::At) {
             self.decorator();
         }
@@ -595,7 +603,7 @@ impl Parser<'_> {
                 self.field();
             }
         } else {
-            self.members(|p| p.assoc_member(Self::field));
+            self.members(|p| p.assoc_member(Self::field_at));
         }
         self.finish();
     }
@@ -613,14 +621,14 @@ impl Parser<'_> {
         self.where_clause();
         if self.at(T::Colon) {
             self.members(|p| {
-                p.assoc_member(|p| p.recover(codes::EXPECTED_TOKEN, "a fn, a `type` or a `law`"))
+                p.assoc_member(|p, _| p.recover(codes::EXPECTED_TOKEN, "a fn, a `type` or a `law`"))
             });
         }
         self.finish();
     }
 
     /// A trait's or impl's member: `type`, `law`, a fn, or `other`.
-    fn assoc_member(&mut self, other: fn(&mut Self)) {
+    fn assoc_member(&mut self, other: fn(&mut Self, Checkpoint)) {
         if self.at(T::Type) {
             let at = self.checkpoint();
             return self.type_alias(at, NodeKind::AssocType);

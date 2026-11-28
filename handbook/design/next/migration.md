@@ -123,6 +123,10 @@ commit that keeps one.
   `Rebased`, `Row`, `Col` and `Rect`) writes elements with `write_to`, not `write_fmt`:
   importing `std.show.{Fmt}` breaks the old `cpl`. Switch it to `write_fmt` and add a
   case printing a view of `F64` with `precision:` and of a counted domain under `io.base`.
+- [ ] `cpl-syntax` depends on `cpl-next-syntax` for the shared lexer,
+  `Token`, `split_items`, `literal` and `doc` only, nothing parser-level
+  (S20). The edge goes with `cpl-syntax`, and so does its copy of the
+  contextual words, `crates/cpl-syntax/src/words.rs`.
 - [ ] `std/mod.cp` `impl Read for Mod<P>` keeps `fn read()`: the old
   `cpl` has no `Input`, so `read<Mod<P>>(from: s)` reads standard
   input. It becomes `fn read(mut input: Input)`, reading

@@ -76,12 +76,20 @@ parse error already has its diagnostic, so the reader stays quiet. Desugarings t
 `desugar`, one fn per sugar over the typed node, which every reader calls;
 check and lower never desugar on their own.
 
-`src/ast.rs` holds the views. Its first slice is what ids need:
-`Item::decl` and `Item::name` (fns, types, consts, contexts, mods),
-`ImplDecl::trait_ref`/`self_ty`/`members`, `Members::fns`/`laws`,
-`OpFnName::op`, and `ModDecl::items`: a mod's items are `Item` nodes, read
-like top-level ones. An impl, a `use`, an operator fn and a statement have
-no name. A `const` is a `ConstDecl` wherever it appears.
+`src/ast.rs` holds the views: one per node kind, and the categories
+`Decl`, `Stmt`, `Type`, `Expr`, `Pattern` and `GenericArg`. Its
+accessors so far are what ids and decls read: an item's decorators, `pub`
+and name; a fn's generics, params (`mut`, `var`, label, named-only,
+variadic, default), return (`yields`, `lends`), `uses`, where clause,
+body and `signature_span`; struct, enum, trait and impl members, fields,
+variants, aliases, consts, domains, contexts and `use`; every type; and
+the expressions decls reads (names, literals, fields, parens, binary,
+prefix, ranges, calls, generic arguments). Check's accessors come with
+check's move. Decorators before a member are inside its node. A mod's
+items are `Item` nodes, read like top-level ones. An impl, an operator fn
+and a statement have no name. A `const` is a `ConstDecl` wherever it
+appears. A test checks that every child a view reads in std and
+conformance has a view.
 
 ## Error recovery
 

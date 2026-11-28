@@ -38,11 +38,11 @@ fn item_name(item: &ast::Item) -> String {
     if let Some(t) = item.name() {
         return t.text().to_string();
     }
-    let words = |n: SyntaxNode| n.text().split_whitespace().collect::<Vec<_>>().join(" ");
+    let words = |n: &SyntaxNode| n.text().split_whitespace().collect::<Vec<_>>().join(" ");
     match item.decl() {
         Some(ast::Decl::Impl(d)) => match (d.trait_ref(), d.self_ty()) {
-            (Some(t), Some(s)) => format!("impl {} for {}", words(t), words(s)),
-            (None, Some(s)) => format!("impl {}", words(s)),
+            (Some(t), Some(s)) => format!("impl {} for {}", words(t.syntax()), words(s.syntax())),
+            (None, Some(s)) => format!("impl {}", words(s.syntax())),
             _ => "impl".to_string(),
         },
         Some(ast::Decl::Fn(f)) => {

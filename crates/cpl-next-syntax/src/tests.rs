@@ -126,10 +126,19 @@ fn items_name_their_declarations_and_impls_list_their_methods() {
         })
         .collect();
     let text = |n: Option<SyntaxNode>| n.map(|n| n.text());
-    assert_eq!(text(impls[0].trait_ref()).as_deref(), Some("Show"));
-    assert_eq!(text(impls[0].self_ty()).as_deref(), Some("P"));
-    assert_eq!(text(impls[1].trait_ref()), None);
-    assert_eq!(text(impls[1].self_ty()).as_deref(), Some("Q"));
+    assert_eq!(
+        text(impls[0].trait_ref().map(|n| n.syntax().clone())).as_deref(),
+        Some("Show")
+    );
+    assert_eq!(
+        text(impls[0].self_ty().map(|n| n.syntax().clone())).as_deref(),
+        Some("P")
+    );
+    assert_eq!(text(impls[1].trait_ref().map(|n| n.syntax().clone())), None);
+    assert_eq!(
+        text(impls[1].self_ty().map(|n| n.syntax().clone())).as_deref(),
+        Some("Q")
+    );
     let methods: Vec<String> = impls
         .iter()
         .filter_map(ast::ImplDecl::members)
@@ -208,4 +217,160 @@ fn loop_is_reported_with_a_fix_and_parses_as_while() {
     let stmt = file.items().next().unwrap();
     assert!(stmt.descendants().any(|n| n.kind() == NodeKind::WhileStmt));
     assert_eq!(file.root.text(), src);
+}
+
+fn decls(src: &str) -> Vec<ast::Decl> {
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    assert_eq!(file.root.text(), src);
+    file.root
+        .children()
+        .filter_map(ast::Item::cast)
+        .filter_map(|i| i.decl())
+        .collect()
+}
+
+fn texts(tokens: impl Iterator<Item = crate::tree::SyntaxToken>) -> Vec<String> {
+    tokens.map(|t| t.text().to_string()).collect()
+}
+
+#[test]
+fn a_fn_signature_reads_through_its_views() {
+    let src = "@inline\npub fn gcd<T: Eq + Ord, const N: Int = 3>(a: T, by step: T; mut k = 1, var xs: List<T>, ..rest: Int) -> lends(a) mut T uses io where T: Copy = a\n";
+    let [ast::Decl::Fn(f)] = &decls(src)[..] else {
+        panic!()
+    };
+    assert!(f.is_pub());
+    assert_eq!(texts(f.decorators().filter_map(|d| d.name())), ["inline"]);
+    assert_eq!(f.name().unwrap().text(), "gcd");
+    let g: Vec<_> = f.generics().unwrap().params().collect();
+    assert_eq!(g[0].bound().unwrap().types().count(), 2);
+    assert!(g[1].is_const() && g[1].ty().is_some());
+    assert!(matches!(g[1].default(), Some(ast::Type::Literal(_))));
+    let p: Vec<_> = f.params().unwrap().params().collect();
+    let names: Vec<_> = p
+        .iter()
+        .map(|p| p.name().unwrap().text().to_string())
+        .collect();
+    assert_eq!(names, ["a", "step", "k", "xs", "rest"]);
+    assert_eq!(p[1].label().unwrap().text(), "by");
+    assert!(p[0].label().is_none() && !p[1].is_named_only());
+    assert!(p[2].is_named_only() && p[2].is_mut() && p[2].default().is_some());
+    assert!(p[3].is_var() && !p[3].is_mut() && p[4].is_variadic());
+    let ret = f.ret().unwrap();
+    assert!(ret.lends() && ret.lends_mut() && !ret.is_yields() && ret.ty().is_some());
+    assert_eq!(texts(ret.lend_sources().unwrap().names()), ["a"]);
+    assert_eq!(texts(f.uses().unwrap().contexts()), ["io"]);
+    assert_eq!(f.where_clause().unwrap().preds().count(), 1);
+    assert!(matches!(
+        f.body(),
+        Some(ast::FnBody::Expr(ast::Expr::Name(_)))
+    ));
+    let sig = f.signature_span();
+    assert!(src[sig.start as usize..sig.end as usize].starts_with("pub fn gcd"));
+    assert!(src[..sig.end as usize].ends_with("T: Copy"));
+}
+
+#[test]
+fn members_fields_variants_and_impl_heads_read_through_their_views() {
+    let src = "struct P(x: Int):\n    @cache\n    pub var y: ?Int = none\n    fn norm(self) -> Int: return self.x\nenum Op:\n    @tag(1)\n    Add(l: Int, r: Int)\n    Ask\ntrait Both = Eq + Ord\ntrait Seq(Eq):\n    type Elem\nimpl Seq for [V]Int:\n    type Elem = Int\nimpl P:\n    fn f(self) = 0\nuse lib.treap.{Treap, Node}\n";
+    let d = decls(src);
+    let ast::Decl::Struct(s) = &d[0] else {
+        panic!()
+    };
+    let fields = s.fields();
+    assert_eq!(fields.len(), 2);
+    let y = &fields[1];
+    assert_eq!(texts(y.decorators().filter_map(|d| d.name())), ["cache"]);
+    assert!(y.is_pub() && y.is_var() && y.default().is_some());
+    assert!(matches!(y.ty(), Some(ast::Type::Optional(_))));
+    assert_eq!(s.members().unwrap().fns().count(), 1);
+    let ast::Decl::Enum(e) = &d[1] else { panic!() };
+    let v = e.variants();
+    assert_eq!(texts(v.iter().filter_map(|v| v.name())), ["Add", "Ask"]);
+    let tag = v[0].decorators().next().unwrap();
+    assert_eq!(tag.name().unwrap().text(), "tag");
+    assert_eq!(tag.args().unwrap().args().count(), 1);
+    assert_eq!(v[0].fields().count(), 2);
+    let ast::Decl::Trait(both) = &d[2] else {
+        panic!()
+    };
+    assert!(both.alias().is_some_and(|b| b.types().count() == 2) && both.supertraits().is_none());
+    let ast::Decl::Trait(seq) = &d[3] else {
+        panic!()
+    };
+    assert_eq!(seq.supertraits().unwrap().types().count(), 1);
+    let elem = seq.members().unwrap().assoc_types().next().unwrap();
+    assert!(elem.name().is_some() && elem.ty().is_none());
+    let ast::Decl::Impl(i) = &d[4] else { panic!() };
+    assert!(i.trait_ref().is_some());
+    let Some(ast::Type::Array(arr)) = i.self_ty() else {
+        panic!()
+    };
+    assert_eq!(arr.dims().unwrap().args().count(), 1);
+    assert!(matches!(arr.elem(), Some(ast::Type::Path(_))));
+    assert!(i
+        .members()
+        .unwrap()
+        .assoc_types()
+        .next()
+        .unwrap()
+        .ty()
+        .is_some());
+    let ast::Decl::Impl(inherent) = &d[5] else {
+        panic!()
+    };
+    assert!(inherent.trait_ref().is_none());
+    let Some(ast::Type::Path(p)) = inherent.self_ty() else {
+        panic!()
+    };
+    assert_eq!(texts(p.segments()), ["P"]);
+    let ast::Decl::Use(u) = &d[6] else { panic!() };
+    assert_eq!(texts(u.path()), ["lib", "treap"]);
+    assert_eq!(texts(u.names().unwrap().names()), ["Treap", "Node"]);
+}
+
+#[test]
+fn types_read_through_their_views() {
+    let src = "fn g(f: (mut S, Int) -> Bool, r: 0..=n, s: Str of \"01\", t: Mod<7>, u: (lo: Int, ..R)) = 0\n";
+    let [ast::Decl::Fn(g)] = &decls(src)[..] else {
+        panic!()
+    };
+    let tys: Vec<_> = g
+        .params()
+        .unwrap()
+        .params()
+        .filter_map(|p| p.ty())
+        .collect();
+    let ast::Type::Fn(f) = &tys[0] else { panic!() };
+    let Some(ast::Type::Tuple(args)) = f.param() else {
+        panic!()
+    };
+    let muts: Vec<_> = args.elems().into_iter().map(|(m, _)| m).collect();
+    assert_eq!(muts, [true, false]);
+    assert!(matches!(f.ret(), Some(ast::Type::Path(_))));
+    let ast::Type::Range(r) = &tys[1] else {
+        panic!()
+    };
+    let Some(ast::Expr::Range(r)) = r.expr() else {
+        panic!()
+    };
+    assert!(r.is_inclusive() && r.lo().is_some() && r.hi().is_some());
+    let ast::Type::Alphabet(s) = &tys[2] else {
+        panic!()
+    };
+    assert_eq!(s.alphabet().unwrap().text(), "\"01\"");
+    let ast::Type::Path(t) = &tys[3] else {
+        panic!()
+    };
+    let arg = t.generic_args().unwrap().args().next();
+    assert!(matches!(
+        arg,
+        Some(ast::GenericArg::Type(ast::Type::Literal(_)))
+    ));
+    let ast::Type::Record(u) = &tys[4] else {
+        panic!()
+    };
+    let rest: Vec<_> = u.fields().map(|f| f.is_rest()).collect();
+    assert_eq!(rest, [false, true]);
 }
