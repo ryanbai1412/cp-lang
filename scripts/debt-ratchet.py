@@ -5648,6 +5648,34 @@ def signoffs(root: Path) -> dict:
     return tomllib.loads(shown.stdout) if shown.returncode == 0 else {}
 
 
+SIGNOFF_FIELDS = {"lane_for": {"sha": str, "lane": str, "why": str},
+                  "raise": {"counter": str, "old": int, "new": int, "why": str},
+                  "frozen": {"patch_id": str, "sha": str, "why": str},
+                  "budget_raise": {"crate": str, "old": int, "new": int, "why": str}}
+
+
+def signoffs_malformed(root: Path) -> list[str]:
+    """What is wrong with this tree's `SIGNOFFS`: TOML that doesn't parse, a table no gate reads,
+    or a row missing a field or holding the wrong type. A PR is checked here, before main holds
+    it, because every land reads main's copy and stops at a broken one."""
+    path = root / SIGNOFFS
+    if not path.is_file():
+        return []
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as e:
+        return [f"{SIGNOFFS}: {e}"]
+    out = [f"{SIGNOFFS}: [[{k}]] is no table a gate reads" for k in data if k not in SIGNOFF_FIELDS]
+    for kind, fields in SIGNOFF_FIELDS.items():
+        rows = data.get(kind, [])
+        for n, row in enumerate(rows if isinstance(rows, list) else [rows], 1):
+            bad = [f for f, t in fields.items() if not isinstance(row, dict) or not isinstance(row.get(f), t)
+                   or (t is str and not row[f].strip())]
+            if bad:
+                out.append(f"{SIGNOFFS}: [[{kind}]] row {n} lacks or mistypes {', '.join(bad)}")
+    return out
+
+
 def owner_approved(sha: str) -> bool:
     """Whether GitHub merged `sha` in a PR a code owner of `SIGNOFFS` approved: CI on main asks,
     with its token; anywhere else nothing can tell, so nothing is."""
@@ -5885,6 +5913,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     # push (pre-push `--authority`), refuse one that no approved PR merged.
     if os.environ.get("GITHUB_REF") in ("refs/heads/main", "refs/heads/lane-j-check"):
         moved += signoff_edits(root, base)
+    moved += signoffs_malformed(root)
     moved += skipped_ratchet(root, base)
     moved += unlaned(root, base)
     moved += set_swaps(root, ref)

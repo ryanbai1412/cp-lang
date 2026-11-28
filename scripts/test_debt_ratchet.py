@@ -1389,6 +1389,22 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
                              ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
 
+    def test_a_malformed_signoffs_file_is_caught_before_main_holds_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(dr.signoffs_malformed(root), [])
+            self._write(root, "plan/signoffs.toml", "[[lane_for]\n")
+            self.assertEqual(len(dr.signoffs_malformed(root)), 1)
+            self._write(root, "plan/signoffs.toml", '[[lane_for]]\nsha = "a"\nlane = "J"\nwhy = " "\n'
+                                                    '[[raise]]\ncounter = "x"\nold = "5"\nnew = 6\nwhy = "w"\n'
+                                                    '[[other]]\nx = 1\n')
+            got = dr.signoffs_malformed(root)
+            self.assertEqual(len(got), 3, got)
+            self.assertTrue(any("row 1 lacks or mistypes why" in g for g in got), got)
+            self.assertTrue(any("lacks or mistypes old" in g for g in got), got)
+            self._write(root, "plan/signoffs.toml", '[[frozen]]\npatch_id = "p"\nsha = "s"\nwhy = "w"\n')
+            self.assertEqual(dr.signoffs_malformed(root), [])
+
     def test_only_a_signoffs_row_raises_a_counter_and_it_gives_its_reason(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
