@@ -1,9 +1,11 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
 use crate::attrs::Attr;
-use crate::decls::forms::{AttrForm, BodyForm, FnForm, Form, ImplForm, ParamForm, TyForm};
+use crate::decls::forms::{
+    AttrForm, BodyForm, FnForm, Form, ImplForm, ParamForm, TraitForm, TyForm,
+};
 use crate::decls::unnamed;
-use crate::decls::{fills, Role};
+use crate::decls::{fills, form_fills, Role};
 use crate::diag::Msg;
 use crate::records::marker;
 use crate::sym::Sym;
@@ -18,41 +20,62 @@ use std::collections::HashMap;
 /// An enum's tag errors (R02.7.2): a variant whose token another one before it has (E0407), and
 /// an enum-level `@tags(..)`, which is removed: each variant writes its own `@tag` (decision
 /// 459). With one plain tag per variant, the help is the rewrite.
-pub(crate) fn enum_tags(item: &ItemId, s: &ast::Stmt, e: &ast::EnumDecl) -> Vec<Msg> {
+pub(crate) fn enum_tags(
+    item: &ItemId,
+    it: &next::Item,
+    e: &crate::decls::forms::EnumForm,
+    syms: &crate::sym::Syms,
+) -> Vec<Msg> {
+    let tokens: Vec<String> = e.variants.iter().map(|v| token(v, syms)).collect();
     let mut out: Vec<Msg> = (e.variants.iter().enumerate())
         .filter_map(|(i, v)| {
-            let t = token(v);
-            let first = e.variants[..i].iter().find(|w| token(w) == t)?;
+            let t = &tokens[i];
+            let first = (0..i).find(|&w| &tokens[w] == t)?;
             let what = format!(
                 "`{}` reads and prints as `{t}`, as `{}` does: tags are distinct within an enum",
-                v.name.text, first.name.text
+                syms.text(v.name),
+                syms.text(e.variants[first].name)
             );
             let m = Msg::verdict(cpl_diag::codes::DUPLICATE_VARIANT_TAG, what);
-            Some(Msg::at(item.at(v.name.span), m))
+            Some(Msg::at(item.at(v.name_span), m))
         })
         .collect();
     let level = || -> Option<Msg> {
-        let x = s.decorators.iter().find(|x| x.mark == Some(Mark::Tags))?;
+        let tags = |x: &next::Decorator| {
+            x.name().and_then(|n| crate::attrs::Removed::of(n.text()))
+                == Some(crate::attrs::Removed::Tags)
+        };
+        let x = it.decorators().into_iter().find(tags)?;
         let text = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.say(&[]);
         let mut m = Msg::at(
-            item.at(x.span),
+            item.at(x.syntax().span()),
             Msg::verdict(cpl_diag::codes::REMOVED_SYNTAX, text),
         );
-        let tag = |a: &ast::Arg| match &a.value.kind {
-            ast::ExprKind::Str(p) => match p.as_slice() {
-                [ast::StrPiece::Text(t)] => Some(format!("{t:?}")),
-                _ => None,
-            },
+        let tag = |a: next::Arg| match a.value()? {
+            next::Expr::Literal(l) => {
+                let t = l.token()?;
+                let text = t.text();
+                let parts = cpl_next_syntax::literal::string_parts(text);
+                match (t.kind(), parts.as_slice()) {
+                    (
+                        cpl_next_syntax::TokenKind::Str,
+                        [cpl_next_syntax::literal::StrPart::Text(p)],
+                    ) => Some(text[p.start as usize..p.end as usize].to_string()),
+                    _ => None,
+                }
+            }
             _ => None,
         };
-        let each = (x.args.len() == e.variants.len())
-            .then(|| x.args.iter().zip(&e.variants))
+        let args: Vec<next::Arg> = x.args().map_or(Vec::new(), |a| a.args().collect());
+        let each = (args.len() == e.variants.len())
+            .then(|| args.into_iter().zip(&e.variants))
             .into_iter()
             .flatten()
-            .map(|(a, v)| Some(format!("@tag({}) {}", tag(a)?, v.name.text)))
+            .map(|(a, v)| Some(format!("@tag({:?}) {}", tag(a)?, syms.text(v.name))))
             .collect::<Option<Vec<_>>>()
             .filter(|w| !w.is_empty());
-        m.help = each.map(|w| cpl_diag::habits::ENUM_TAGS.say(&[&e.name.text, &w.join(" | ")]));
+        let name = syms.text(e.name);
+        m.help = each.map(|w| cpl_diag::habits::ENUM_TAGS.say(&[name, w.join(" | ").as_str()]));
         Some(m)
     };
     out.extend(level());
@@ -63,493 +86,267 @@ pub(crate) fn enum_tags(item: &ItemId, s: &ast::Stmt, e: &ast::EnumDecl) -> Vec<
 /// per variant holding that variant's payload, named `Enum.Variant`, which no source name can be
 /// (R02.7).
 pub(crate) fn enum_structs(
-    s: &ast::Stmt,
-    e: &ast::EnumDecl,
-) -> (Vec<ast::Stmt>, Vec<Msg>, Vec<i64>) {
-    let mut errors = Vec::new();
-    let mut values = Vec::new();
-    let one = |name: String, fields, methods, decorators| ast::Stmt {
-        kind: StmtKind::Struct(ast::StructDecl {
-            name: ast::Name {
-                text: name,
-                span: e.name.span,
-            },
-            generics: e.generics.clone(),
-            generic_defaults: vec![None; e.generics.len()],
-            bounds: Vec::new(),
-            fields,
-            methods,
-        }),
-        span: s.span,
-        decorators,
-        public: s.public,
+    e: &crate::decls::forms::EnumForm,
+    syms: &mut crate::sym::Syms,
+) -> Vec<crate::decls::forms::StructForm> {
+    use crate::decls::forms::{FieldForm, StructForm};
+    let one = |name: Sym, public: bool, attrs: Vec<AttrForm>, fields: Vec<FieldForm>| StructForm {
+        name,
+        public,
+        attrs,
+        generics: e.generics.clone(),
+        generic_defaults: vec![None; e.generics.len()],
+        bounds: Vec::new(),
+        fields,
+        methods: Vec::new(),
+        consts: Vec::new(),
+        span: e.span,
     };
-    let mut out = vec![one(
-        e.name.text.clone(),
-        Vec::new(),
-        Vec::new(),
-        s.decorators.clone(),
-    )];
-    for (i, v) in e.variants.iter().enumerate() {
-        let value = match &v.value {
-            None => Some(i as i64),
-            Some(_) if !v.fields.is_empty() => None,
-            Some(x) => x.int_literal(),
-        };
-        if value.is_none() {
-            errors.push(
-                Unbuilt::VariantValue {
-                    name: v.name.text.clone(),
-                }
-                .into(),
-            );
-        }
-        values.push(value.unwrap_or(i as i64));
-        let fields = (v.fields.iter().enumerate())
-            .map(|(i, (n, t))| ast::FieldDecl {
-                name: n.clone().unwrap_or_else(|| ast::Name {
-                    text: i.to_string(),
-                    span: t.span,
-                }),
-                ty: t.clone(),
-                default: None,
-                mutable: false,
-                cached: false,
-                bits: false,
+    let mut out = vec![one(e.name, e.public, e.attrs.clone(), Vec::new())];
+    for v in &e.variants {
+        let name = syms.intern(&format!("{}.{}", syms.text(e.name), syms.text(v.name)));
+        let fields = (v.fields.iter())
+            .map(|f| FieldForm {
                 public: true,
+                ..f.clone()
             })
             .collect();
-        out.push(one(
-            format!("{}.{}", e.name.text, v.name.text),
-            fields,
-            Vec::new(),
-            Vec::new(),
-        ));
+        out.push(one(name, e.public, Vec::new(), fields));
     }
-    (out, errors, values)
-}
-
-enum Derive<'a> {
-    Cmp(ast::CmpOp, &'a str),
-    /// A core trait marked `@derive`: its one method builds a struct from that method on each field.
-    Each(&'a ast::FnDecl),
-    /// The `@role(derive_fields)` trait: each method is that method on the `@role(pack)` of the
-    /// fields.
-    Fields(&'a str, &'a [ast::FnDecl]),
-    /// A `@derive` method making a `Self`, for an enum: the variant its first parameter's
-    /// `variant([tags])` picks, each field read by that parameter's `read<F>()` (R10.2.1).
-    Tags(&'a ast::FnDecl, &'a [ast::Variant]),
-    /// The same for an enum: each method is that method on the variant's name (R10.3.5).
-    Names(&'a [ast::FnDecl], &'a [ast::Variant]),
+    out
 }
 
 /// A core trait every struct gets from its fields, and how.
 pub(crate) enum Derivable {
     /// `@derive`, with its one method.
-    Each(Box<ast::FnDecl>),
+    Each(Box<FnForm>),
     /// `@role(derive_fields)`, with the `@role(pack)` struct and the trait's methods.
-    Fields(String, Vec<ast::FnDecl>),
+    Fields(Sym, Vec<FnForm>),
 }
 
 /// Per struct a module declares, the impls it gets structurally (R08.1.6), made after every written
 /// impl and only where none is: `Eq` field by field, `Ord` lexicographic in declaration order, and
 /// `Clone` cloning each field (R05.2.2).
 pub(crate) fn module_derived(
-    items: &[crate::modules::Item],
-    each: &[(String, Derivable)],
-) -> Vec<(ItemId, String, ast::Stmt, bool)> {
+    items: &[(ItemId, Form)],
+    each: &[(Sym, Derivable)],
+    cmp: &[(Sym, Sym, bool)],
+    syms: &mut crate::sym::Syms,
+) -> Vec<(ItemId, String, ImplForm, bool)> {
     let mut out = Vec::new();
-    for crate::modules::Item { id: item, stmts } in items {
-        for s in stmts {
-            if let StmtKind::Enum(e) = &s.kind {
-                let sd = ast::StructDecl {
-                    name: e.name.clone(),
-                    generics: e.generics.clone(),
-                    generic_defaults: vec![None; e.generics.len()],
-                    bounds: Vec::new(),
-                    fields: Vec::new(),
-                    methods: Vec::new(),
-                };
+    let a = syms.intern("a");
+    let b = syms.intern("b");
+    for (item, form) in items {
+        match form {
+            Form::Enum(e) => {
                 for (tr, how) in each {
-                    let derive = match how {
-                        Derivable::Fields(_, fns) => Derive::Names(fns, &e.variants),
-                        Derivable::Each(m) if made(m) => Derive::Tags(m, &e.variants),
+                    let fns = match how {
+                        Derivable::Fields(_, fns) => {
+                            let variants: Vec<(Sym, String)> = e
+                                .variants
+                                .iter()
+                                .map(|v| (v.name, token(v, syms)))
+                                .collect();
+                            passing(fns, a, |m| SynthBody::VariantName {
+                                method: m,
+                                variants: variants.clone(),
+                            })
+                        }
+                        Derivable::Each(m) if made(m) => {
+                            let variants = (e.variants.iter())
+                                .map(|v| (v.name, token(v, syms), v.fields.len()))
+                                .collect();
+                            vec![made_fn(
+                                m,
+                                SynthBody::VariantByTag {
+                                    method: m.name,
+                                    variants,
+                                },
+                            )]
+                        }
                         Derivable::Each(_) => continue,
                     };
-                    let caches = copies_caches(&derive);
-                    let derived = derived_impl(s, &sd, derive, tr);
-                    out.push((item.clone(), sd.name.text.clone(), derived, caches));
+                    let imp = derived_impl(e.name, &e.generics, *tr, fns, e.span);
+                    out.push((item.clone(), syms.text(e.name).to_string(), imp, false));
                 }
             }
-            let StmtKind::Struct(sd) = &s.kind else {
-                continue;
-            };
-            // The traits `==` and `<` call, and `.clone()`: the derivable ones.
-            for op in [ast::CmpOp::Eq, ast::CmpOp::Lt] {
-                let Some((tr, method)) = op.trait_method() else {
-                    continue;
+            Form::Struct(sd) => {
+                let cached = |f: &&crate::decls::forms::FieldForm| {
+                    f.attrs.iter().any(|x| x.attr == Attr::Cache)
                 };
-                let derived = derived_impl(s, sd, Derive::Cmp(op, method), tr);
-                out.push((item.clone(), sd.name.text.clone(), derived, false));
+                let all: Vec<Sym> = sd.fields.iter().map(|f| f.name).collect();
+                let uncached: Vec<Sym> = sd
+                    .fields
+                    .iter()
+                    .filter(|f| !cached(f))
+                    .map(|f| f.name)
+                    .collect();
+                let name = syms.text(sd.name).to_string();
+                // The traits `==` and `<` call: the comparisons a struct derives.
+                for &(tr, method, eq) in cmp {
+                    let body = match eq {
+                        true => SynthBody::EqFields(uncached.clone()),
+                        false => SynthBody::LtFields(uncached.clone()),
+                    };
+                    let f = synth_fn(
+                        method,
+                        vec![plain(a, sd.span), plain(b, sd.span)],
+                        body,
+                        sd.span,
+                    );
+                    out.push((
+                        item.clone(),
+                        name.clone(),
+                        derived_impl(sd.name, &sd.generics, tr, vec![f], sd.span),
+                        false,
+                    ));
+                }
+                for (tr, how) in each {
+                    let (fns, caches) = match how {
+                        // A made value needs every field, and a derive gives no `@cache` field
+                        // (R05.10.13): a struct with one makes itself by hand.
+                        Derivable::Each(m) if made(m) && sd.fields.iter().any(|f| cached(&f)) => {
+                            continue
+                        }
+                        Derivable::Each(m) if made(m) => (
+                            vec![made_fn(
+                                m,
+                                SynthBody::MadeEach {
+                                    method: m.name,
+                                    fields: uncached.clone(),
+                                },
+                            )],
+                            false,
+                        ),
+                        // Only a derive that rebuilds its value copies the `@cache` fields.
+                        Derivable::Each(m) => {
+                            let body = SynthBody::EachField {
+                                method: m.name,
+                                fields: all.clone(),
+                            };
+                            (
+                                vec![synth_fn(m.name, vec![plain(a, sd.span)], body, sd.span)],
+                                true,
+                            )
+                        }
+                        Derivable::Fields(_, fns) => (
+                            passing(fns, a, |m| SynthBody::PackFields {
+                                method: m,
+                                fields: uncached.clone(),
+                            }),
+                            false,
+                        ),
+                    };
+                    let imp = derived_impl(sd.name, &sd.generics, *tr, fns, sd.span);
+                    out.push((item.clone(), name.clone(), imp, caches));
+                }
             }
-            for (tr, how) in each {
-                let derive = match how {
-                    // A made value needs every field, and a derive gives no `@cache` field
-                    // (R05.10.13): a struct with one makes itself by hand.
-                    Derivable::Each(m) if made(m) && sd.fields.iter().any(|f| f.cached) => {
-                        continue;
-                    }
-                    Derivable::Each(m) => Derive::Each(m),
-                    Derivable::Fields(pack, fns) => Derive::Fields(pack, fns),
-                };
-                let caches = copies_caches(&derive);
-                let derived = derived_impl(s, sd, derive, tr);
-                out.push((item.clone(), sd.name.text.clone(), derived, caches));
-            }
+            _ => {}
         }
     }
     out
 }
 
-/// The token a variant reads and prints as: its `@tag`'s literal, else its name (R02.7.2).
-fn token(v: &ast::Variant) -> String {
-    use ast::ExprKind;
-    match v.tag.as_ref().map(|t| &t.kind) {
-        Some(ExprKind::Str(pieces)) => (pieces.iter())
-            .map(|p| match p {
-                ast::StrPiece::Text(t) => t.clone(),
-                _ => String::new(),
-            })
-            .collect(),
-        Some(ExprKind::Char(c)) => c.to_string(),
-        Some(_) => (v.tag.as_ref().and_then(|t| t.int_literal()))
-            .map_or_else(|| v.name.text.clone(), |k| k.to_string()),
-        None => v.name.text.clone(),
-    }
-}
-
-/// A `@derive` method making a `Self` from its parameters, not from a `self`: its first one has a
-/// written type, as `Read`'s `read(mut input: Input)`, where a trait's receiver has none.
-/// Whether the derived impl reads the `@cache` fields: a `@cache` field is not part of the value
-/// a derive compares or shows (R05.10.13); a clone copies it too.
-fn copies_caches(derive: &Derive) -> bool {
-    matches!(derive, Derive::Each(m) if !made(m))
-}
-
-fn made(m: &ast::FnDecl) -> bool {
-    m.params.first().is_some_and(|p| p.ty.is_some())
-}
-
-/// `impl<T: Eq> Eq for S<T>: fn eq(a, b) = a.x == b.x and ..`, `Ord`'s `lt` over the fields in
-/// order, `fn clone(a) = S(x: a.x.clone(), ..)`, or `fn show(a) = Pack(a.x, Pack(a.y, ())).show()`,
-/// written at the struct. Its bounds are what its fields' impls ask, which only decls knows.
-fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -> ast::Stmt {
-    use ast::{BinOp, CmpOp, ExprKind};
-    let span = s.span;
-    let name = |text: &str| ast::Name {
-        text: text.to_string(),
-        span,
-    };
-    let ty = |text: &str, args| ast::Type {
-        kind: TypeKind::Named {
-            name: name(text),
-            args,
-        },
-        span,
-    };
-    let ex = |kind| ast::Expr { kind, span };
-    let field_of = |base: ast::Expr, f: &str| {
-        ex(ExprKind::Field {
-            base: Box::new(base),
-            name: name(f),
-        })
-    };
-    let field = |side: &str, f: &str| field_of(ex(ExprKind::Name(side.to_string())), f);
-    let cmp = |op, f: &str| {
-        ex(ExprKind::Compare {
-            first: Box::new(field("a", f)),
-            rest: vec![(op, field("b", f))],
-        })
-    };
-    let bin = |op, lhs, rhs| {
-        ex(ExprKind::Binary {
-            op,
-            op_span: span,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        })
-    };
-    let clone = copies_caches(&derive);
-    let compared: Vec<&ast::FieldDecl> = sd.fields.iter().filter(|f| clone || !f.cached).collect();
-    let fields: Vec<&str> = compared.iter().map(|f| f.name.text.as_str()).collect();
-    let stmt = |kind| ast::Stmt {
-        kind,
-        span,
-        decorators: Vec::new(),
+/// A made fn: one of the language's own, with its signature from the trait it meets.
+fn synth_fn(name: Sym, params: Vec<ParamForm>, body: SynthBody, span: cpl_diag::Span) -> FnForm {
+    FnForm {
+        name,
         public: false,
-    };
-    let call = |callee, args| {
-        ex(ExprKind::Call {
-            callee: Box::new(callee),
-            args,
-        })
-    };
-    // `input.read<F>()`: a field of type `F` read by the method's first parameter.
-    let made_from = |m: &ast::FnDecl, t: &ast::Type| {
-        call(
-            ex(ExprKind::Generic {
-                base: Box::new(field(&m.params[0].name.text, &m.name.text)),
-                args: vec![t.clone()],
-            }),
-            Vec::new(),
-        )
-    };
-    let body = match derive {
-        Derive::Tags(m, variants) => {
-            let tags = (variants.iter())
-                .map(|v| ex(ExprKind::Str(vec![ast::StrPiece::Text(token(v))])))
-                .collect();
-            let picked = call(
-                field(&m.params[0].name.text, "variant"),
-                vec![ast::Arg {
-                    name: None,
-                    mutable: false,
-                    value: ex(ExprKind::List(tags)),
-                }],
-            );
-            let last = variants.len().saturating_sub(1);
-            ex(ExprKind::Match {
-                scrutinee: Box::new(picked),
-                arms: (variants.iter().enumerate())
-                    .map(|(i, v)| {
-                        let made = field(&sd.name.text, &v.name.text);
-                        let made = match v.fields.is_empty() {
-                            true => made,
-                            false => call(
-                                made,
-                                (v.fields.iter())
-                                    .map(|(_, t)| ast::Arg {
-                                        name: None,
-                                        mutable: false,
-                                        value: made_from(m, t),
-                                    })
-                                    .collect(),
-                            ),
-                        };
-                        let pat = match i == last {
-                            true => ast::PatternKind::Wildcard,
-                            false => {
-                                ast::PatternKind::Literal(Box::new(ex(ExprKind::Int(i as i128))))
-                            }
-                        };
-                        ast::Arm {
-                            pat: ast::Pattern { kind: pat, span },
-                            guard: None,
-                            body: ast::Block {
-                                stmts: vec![stmt(StmtKind::Expr(made))],
-                                span,
-                            },
-                        }
-                    })
-                    .collect(),
-            })
-        }
-        Derive::Names(_, variants) => ex(ExprKind::Match {
-            scrutinee: Box::new(ex(ExprKind::Name("a".to_string()))),
-            arms: (variants.iter())
-                .map(|v| ast::Arm {
-                    pat: ast::Pattern {
-                        kind: ast::PatternKind::Variant {
-                            path: vec![sd.name.clone(), v.name.clone()],
-                            args: (v.fields.iter())
-                                .map(|_| ast::Pattern {
-                                    kind: ast::PatternKind::Wildcard,
-                                    span,
-                                })
-                                .collect(),
-                        },
-                        span,
-                    },
-                    guard: None,
-                    body: ast::Block {
-                        stmts: vec![stmt(StmtKind::Expr(ex(ExprKind::Str(vec![
-                            ast::StrPiece::Text(token(v)),
-                        ]))))],
-                        span,
-                    },
-                })
-                .collect(),
-        }),
-        Derive::Fields(pack, _) => {
-            (fields.iter().rev()).fold(ex(ExprKind::Tuple(Vec::new())), |rest, f| {
-                let arg = |value| ast::Arg {
-                    name: None,
-                    mutable: false,
-                    value,
-                };
-                call(
-                    ex(ExprKind::Name(pack.to_string())),
-                    vec![arg(field("a", f)), arg(rest)],
-                )
-            })
-        }
-        Derive::Each(m) => {
-            // `a.f.clone()`; or, where the method makes a `Self` from its first parameter, as
-            // `Read`'s does from its `Input`, that parameter's own `read<F>()` at each field's type.
-            let value = |f: &ast::FieldDecl| match made(m) {
-                true => made_from(m, &f.ty),
-                false => call(field_of(field("a", &f.name.text), &m.name.text), Vec::new()),
-            };
-            let args = (compared.iter())
-                .map(|f| ast::Arg {
-                    name: Some(f.name.clone()),
-                    mutable: false,
-                    value: value(f),
-                })
-                .collect();
-            // Named with its parameters, so a struct overloaded by arity makes its own (R02.11.4).
-            let base = Box::new(ex(ExprKind::Name(sd.name.text.clone())));
-            let callee = match sd.generics.is_empty() {
-                true => base,
-                false => Box::new(ex(ExprKind::Generic {
-                    base,
-                    args: sd
-                        .generics
-                        .iter()
-                        .map(|g| ty(&g.text, Vec::new()))
-                        .collect(),
-                })),
-            };
-            ex(ExprKind::Call { callee, args })
-        }
-        Derive::Cmp(CmpOp::Eq, _) => (fields.iter().map(|f| cmp(CmpOp::Eq, f)))
-            .reduce(|a, b| bin(BinOp::And, a, b))
-            .unwrap_or_else(|| ex(ExprKind::Bool(true))),
-        Derive::Cmp(..) => (fields.iter().rev())
-            .fold(None, |rest, f| {
-                Some(match rest {
-                    None => cmp(CmpOp::Lt, f),
-                    Some(r) => bin(
-                        BinOp::Or,
-                        cmp(CmpOp::Lt, f),
-                        bin(BinOp::And, cmp(CmpOp::Eq, f), r),
-                    ),
-                })
-            })
-            .unwrap_or_else(|| ex(ExprKind::Bool(false))),
-    };
-    let param = |n: &str| ast::Param {
-        mutable: false,
-        variadic: false,
-        lazy: false,
-        named_only: false,
-        label: None,
-        name: name(n),
-        ty: None,
-        default: None,
-        span,
-    };
-    let f = |method: &str, params, body| ast::FnDecl {
-        name: name(method),
+        attrs: Vec::new(),
         generics: Vec::new(),
         bounds: Vec::new(),
         params,
         ret: None,
+        yields: false,
         lends: None,
         uses: Vec::new(),
-        body: FnBody::Expr(body),
-        sig_span: span,
-    };
-    let fns = match derive {
-        Derive::Each(m) | Derive::Tags(m, _) if made(m) => {
-            let params = (m.params.iter()).map(|p| ast::Param {
-                ty: None,
-                default: None,
-                span,
-                ..p.clone()
-            });
-            vec![f(&m.name.text, params.collect(), body)]
-        }
-        Derive::Each(m) | Derive::Tags(m, _) => vec![f(&m.name.text, vec![param("a")], body)],
-        Derive::Cmp(_, m) => vec![f(m, vec![param("a"), param("b")], body)],
-        // Each method passes its other parameters on as they came.
-        Derive::Fields(_, methods) | Derive::Names(methods, _) => (methods.iter())
-            .map(|m| {
-                let rest = m.params.iter().skip(1);
-                let args = (rest.clone())
-                    .map(|p| ast::Arg {
-                        name: None,
-                        mutable: p.mutable,
-                        value: ex(ExprKind::Name(p.name.text.clone())),
-                    })
-                    .collect();
-                let callee = ex(ExprKind::Field {
-                    base: Box::new(body.clone()),
-                    name: name(&m.name.text),
-                });
-                let params = std::iter::once(param("a")).chain(rest.map(|p| ast::Param {
-                    ty: None,
-                    default: None,
-                    span,
-                    ..p.clone()
-                }));
-                f(&m.name.text, params.collect(), call(callee, args))
-            })
-            .collect(),
-    };
-    stmt(StmtKind::Impl {
-        trait_name: Some(ty(tr, Vec::new())),
-        target: ty(
-            &sd.name.text,
-            sd.generics
-                .iter()
-                .map(|g| ty(&g.text, Vec::new()))
-                .collect(),
-        ),
-        // Every parameter is declared, so a name longer than a letter is one too.
-        bounds: (sd.generics.iter())
-            .map(|g| ast::Bound {
-                name: g.clone(),
-                traits: Vec::new(),
-            })
-            .collect(),
-        body: ast::Block {
-            stmts: fns.into_iter().map(|f| stmt(StmtKind::Fn(f))).collect(),
-            span,
-        },
-    })
+        body: BodyForm::Synth(body),
+        span,
+    }
+}
+
+fn plain(name: Sym, span: cpl_diag::Span) -> ParamForm {
+    ParamForm {
+        name,
+        label: name,
+        ty: None,
+        is_self: false,
+        mutable: false,
+        named_only: false,
+        variadic: false,
+        default: None,
+        span,
+    }
+}
+
+/// A parameter as the trait's method declares it, its type and default left to the trait.
+fn untyped(p: &ParamForm) -> ParamForm {
+    ParamForm {
+        ty: None,
+        default: None,
+        ..p.clone()
+    }
+}
+
+/// A `@derive` method making a `Self`: its parameters as the trait declares them.
+fn made_fn(m: &FnForm, body: SynthBody) -> FnForm {
+    synth_fn(m.name, m.params.iter().map(untyped).collect(), body, m.span)
+}
+
+/// Each method of a `@derive_fields` trait, passing its other parameters on as they came.
+fn passing(fns: &[FnForm], a: Sym, body: impl Fn(Sym) -> SynthBody) -> Vec<FnForm> {
+    (fns.iter())
+        .map(|m| {
+            let params =
+                std::iter::once(plain(a, m.span)).chain(m.params.iter().skip(1).map(untyped));
+            synth_fn(m.name, params.collect(), body(m.name), m.span)
+        })
+        .collect()
+}
+
+fn derived_impl(
+    ty: Sym,
+    generics: &[Sym],
+    tr: Sym,
+    methods: Vec<FnForm>,
+    span: cpl_diag::Span,
+) -> ImplForm {
+    ImplForm {
+        attrs: Vec::new(),
+        generics: generics.to_vec(),
+        bounds: Vec::new(),
+        trait_: Some(TyForm::Named(tr, Vec::new())),
+        self_ty: TyForm::Named(ty, (0..generics.len()).map(TyForm::Param).collect()),
+        assoc: Vec::new(),
+        methods,
+        derived: true,
+        span,
+    }
 }
 
 /// The traits marked `@derive`, with their one method, and the `@role(derive_fields)` trait,
 /// with its methods and the `@role(pack)` struct: every struct whose fields all have one gets it field by
 /// field (R08.1.6).
-pub(crate) fn derive_each<'a, I: Iterator<Item = &'a ast::Stmt>>(
-    stmts: impl Fn() -> I,
-) -> Vec<(String, Derivable)> {
-    let marked = |s: &ast::Stmt, m: Mark| s.mark(m).is_some();
-    let pack = stmts().find_map(|s| match &s.kind {
-        StmtKind::Struct(sd) if fills(s, Role::Pack) => Some(sd.name.text.clone()),
+pub(crate) fn derive_each(forms: &[&Form]) -> Vec<(Sym, Derivable)> {
+    let pack = forms.iter().find_map(|f| match f {
+        Form::Struct(sd) if form_fills(&sd.attrs, Role::Pack) => Some(sd.name),
         _ => None,
     });
-    stmts()
-        .filter_map(|s| {
-            let StmtKind::Trait { name, body, .. } = &s.kind else {
+    let derive = |t: &TraitForm| t.attrs.iter().any(|a| a.attr == Attr::Derive);
+    forms
+        .iter()
+        .filter_map(|f| {
+            let Form::Trait(t) = f else {
                 return None;
             };
-            let fns = body.stmts.iter().filter_map(|m| match &m.kind {
-                StmtKind::Fn(f) => Some(f.clone()),
-                _ => None,
-            });
-            let how = match (&body.stmts[..], &pack) {
-                ([_], _) if marked(s, Mark::Derive) => {
-                    Derivable::Each(Box::new(fns.clone().next()?))
-                }
-                (_, Some(p)) if fills(s, Role::DeriveFields) => {
-                    Derivable::Fields(p.clone(), fns.collect())
+            let how = match (&t.methods[..], pack) {
+                ([m], _) if derive(t) && t.assoc.is_empty() => Derivable::Each(Box::new(m.clone())),
+                (_, Some(p)) if form_fills(&t.attrs, Role::DeriveFields) => {
+                    Derivable::Fields(p, t.methods.clone())
                 }
                 _ => return None,
             };
-            Some((name.text.clone(), how))
+            Some((t.name, how))
         })
         .collect()
 }
@@ -761,22 +558,16 @@ fn writable(t: &next::Type) -> bool {
 
 /// The `@role(convert)` trait with its one method, and the `@role(variant_check)` fn: what a
 /// payload-free enum's conversions are written with.
-pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
-    stmts: impl Fn() -> I,
-) -> Option<(String, String, String)> {
-    let (tr, method) =
-        (stmts().filter(|s| fills(s, Role::Convert))).find_map(|s| match &s.kind {
-            StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
-                [ast::Stmt {
-                    kind: StmtKind::Fn(f),
-                    ..
-                }] => Some((name.text.clone(), f.name.text.clone())),
-                _ => None,
-            },
+pub(crate) fn convert_marked(forms: &[&Form]) -> Option<(Sym, Sym, Sym)> {
+    let (tr, method) = forms.iter().find_map(|f| match f {
+        Form::Trait(t) if form_fills(&t.attrs, Role::Convert) => match &t.methods[..] {
+            [m] => Some((t.name, m.name)),
             _ => None,
-        })?;
-    let check = (stmts().filter(|s| fills(s, Role::VariantCheck))).find_map(|s| match &s.kind {
-        StmtKind::Fn(f) => Some(f.name.text.clone()),
+        },
+        _ => None,
+    })?;
+    let check = forms.iter().find_map(|f| match f {
+        Form::Fn(f) if form_fills(&f.attrs, Role::VariantCheck) => Some(f.name),
         _ => None,
     })?;
     Some((tr, method, check))
@@ -1327,12 +1118,8 @@ pub enum SynthBody {
     /// field read at its own type, as `Read`'s `read(mut input)` (R10.2.1).
     MadeEach { method: Sym, fields: Vec<Sym> },
     /// `Pack(a.x, Pack(a.y, ())).m(rest..)`: a `@derive_fields` method on the fields packed into
-    /// the `@pack` struct (R08.1.6).
-    PackFields {
-        pack: StructId,
-        method: Sym,
-        fields: Vec<Sym>,
-    },
+    /// the `@role(pack)` struct, read from `Roles` (R08.1.6).
+    PackFields { method: Sym, fields: Vec<Sym> },
     /// An enum read by its tags: the variant `p.variant([tags])` picks, its payload read field by
     /// field (R10.2.1).
     VariantByTag {
@@ -1374,4 +1161,43 @@ pub enum SynthBody {
     IntToEnum { check: Sym, variants: Vec<Sym> },
     /// A payload-free enum's size as a domain: its number of variants (R04.2.22).
     EnumCount(usize),
+}
+
+/// Whether a `@derive` method makes a `Self` from its first parameter, as `Read`'s does.
+fn made(m: &FnForm) -> bool {
+    m.params.first().is_some_and(|p| p.ty.is_some())
+}
+
+/// The token a variant reads and prints as: its `@tag`'s literal, else its name (R02.7.2).
+fn token(v: &crate::decls::forms::VariantForm, syms: &crate::sym::Syms) -> String {
+    use cpl_next_syntax::literal::{int_value, string_parts, StrPart};
+    use cpl_next_syntax::TokenKind;
+    let tag = v
+        .attrs
+        .iter()
+        .find(|a| a.attr == Attr::Tag)
+        .and_then(|a| a.node.as_ref());
+    let lit = tag
+        .and_then(|x| x.args()?.args().next()?.value())
+        .and_then(|e| match e {
+            next::Expr::Literal(l) => l.token(),
+            _ => None,
+        });
+    let Some(t) = lit else {
+        return syms.text(v.name).to_string();
+    };
+    let text = t.text();
+    match t.kind() {
+        TokenKind::Str => (string_parts(text).into_iter())
+            .filter_map(|p| match p {
+                StrPart::Text(s) => Some(&text[s.start as usize..s.end as usize]),
+                StrPart::Expr(_) => None,
+            })
+            .collect(),
+        TokenKind::Char => text.trim_matches('\'').to_string(),
+        TokenKind::Int => {
+            int_value(text).map_or_else(|| syms.text(v.name).to_string(), |k| k.to_string())
+        }
+        _ => syms.text(v.name).to_string(),
+    }
 }

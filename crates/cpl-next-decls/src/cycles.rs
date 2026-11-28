@@ -3,49 +3,81 @@
 use crate::decls::{AliasId, Named};
 use crate::ty::*;
 use crate::views::Signatures;
-use cpl_syntax::ast::{self, TypeKind};
+use cpl_next_syntax::ast::{GenericArg, Type};
+
+/// The types a written type is built from, read through the typed view.
+pub(crate) fn parts(t: &Type) -> Vec<Type> {
+    let args = |a: Option<cpl_next_syntax::ast::GenericArgs>| -> Vec<Type> {
+        (a.into_iter().flat_map(|a| a.args().collect::<Vec<_>>()))
+            .filter_map(|a| match a {
+                GenericArg::Type(t) => Some(t),
+                GenericArg::Param(_) => None,
+            })
+            .collect()
+    };
+    match t {
+        Type::Path(p) => args(p.generic_args()),
+        Type::Optional(o) => o.inner().into_iter().collect(),
+        Type::Array(a) => {
+            let dims = a
+                .dims()
+                .into_iter()
+                .flat_map(|d| d.args().collect::<Vec<_>>());
+            (dims.filter_map(|a| match a {
+                GenericArg::Type(t) => Some(t),
+                GenericArg::Param(_) => None,
+            }))
+            .chain(a.elem())
+            .collect()
+        }
+        Type::Tuple(ts) => ts.elems().into_iter().map(|(_, t)| t).collect(),
+        Type::Record(r) => r.fields().filter_map(|f| f.ty()).collect(),
+        Type::Fn(f) => f
+            .param()
+            .into_iter()
+            .chain(f.ret().and_then(|r| r.ty()))
+            .collect(),
+        Type::Alphabet(a) => a.base().into_iter().collect(),
+        Type::DomainBinder(_)
+        | Type::Range(_)
+        | Type::Literal(_)
+        | Type::Infer(_)
+        | Type::TypeOf(_) => Vec::new(),
+    }
+}
+
+/// `std.Pair` in `std.Pair<A, B>`: the path a written type names, as one name.
+pub(crate) fn path_text(p: &cpl_next_syntax::ast::PathType) -> String {
+    let segs: Vec<String> = p.segments().map(|t| t.text().to_string()).collect();
+    segs.join(".")
+}
 
 /// Whether alias `root`'s type needs `root` itself, through its own name or other aliases (E0323).
 pub fn alias_cycle(d: &dyn Signatures, root: AliasId) -> bool {
     fn needs(
         d: &dyn Signatures,
         at: AliasId,
-        t: &ast::Type,
+        t: &Type,
         root: AliasId,
         seen: &mut Vec<AliasId>,
     ) -> bool {
-        let inner: Vec<&ast::Type> = match &t.kind {
-            TypeKind::Named { name, args } => {
-                if let Some(Named::Alias(b)) = d
-                    .sym(&name.text)
-                    .and_then(|s| d.alias(at).names.get(&s).copied())
-                {
-                    if b == root {
+        if let Type::Path(p) = t {
+            let named = d
+                .sym(&path_text(p))
+                .and_then(|s| d.alias(at).names.get(&s).copied());
+            if let Some(Named::Alias(b)) = named {
+                if b == root {
+                    return true;
+                }
+                if !seen.contains(&b) {
+                    seen.push(b);
+                    if needs(d, b, &d.alias(b).ty, root, seen) {
                         return true;
                     }
-                    if !seen.contains(&b) {
-                        seen.push(b);
-                        if needs(d, b, &d.alias(b).ty, root, seen) {
-                            return true;
-                        }
-                    }
                 }
-                args.iter().collect()
             }
-            TypeKind::Array { index, elem } => index.iter().chain([&**elem]).collect(),
-            TypeKind::OwnDomain { elem: t, .. }
-            | TypeKind::Optional(t)
-            | TypeKind::Mut(t)
-            | TypeKind::Yields(t) => vec![&**t],
-            TypeKind::Tuple(ts) => ts.iter().collect(),
-            TypeKind::Record(fs) | TypeKind::Row(fs) => fs.iter().map(|(_, t)| t).collect(),
-            TypeKind::Fn { params, ret } => params.iter().chain([&**ret]).collect(),
-            TypeKind::RowWithout { prefix, base, .. } => {
-                prefix.iter().map(|(_, t)| t).chain([&**base]).collect()
-            }
-            _ => Vec::new(),
-        };
-        inner.into_iter().any(|t| needs(d, at, t, root, seen))
+        }
+        parts(t).iter().any(|t| needs(d, at, t, root, seen))
     }
     needs(d, root, &d.alias(root).ty, root, &mut vec![root])
 }

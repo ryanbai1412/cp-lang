@@ -109,6 +109,7 @@ pub struct StructForm {
 #[derive(Clone, Debug)]
 pub struct VariantForm {
     pub name: Sym,
+    pub name_span: Span,
     pub attrs: Vec<AttrForm>,
     pub fields: Vec<FieldForm>,
     pub span: Span,
@@ -520,14 +521,20 @@ impl Reader<'_> {
             .map(|v| {
                 let (attrs, other) = self.attrs(v.decorators());
                 unknown.extend(other);
-                let fields = (v.fields().collect::<Vec<_>>().iter())
-                    .filter_map(|f| {
+                // A payload's unnamed fields are named by position (R02.7).
+                let fields = (v.fields().collect::<Vec<_>>().iter().enumerate())
+                    .filter_map(|(i, f)| {
                         let (attrs, other) = self.attrs(f.decorators());
                         unknown.extend(other);
-                        self.field(f, attrs)
+                        let mut field = self.field(f, attrs)?;
+                        if f.name().is_none() {
+                            field.name = self.syms.intern(&i.to_string());
+                        }
+                        Some(field)
                     })
                     .collect();
                 VariantForm {
+                    name_span: v.name().map_or(v.syntax().span(), |n| n.span()),
                     name: self.sym(v.name()),
                     attrs,
                     fields,
