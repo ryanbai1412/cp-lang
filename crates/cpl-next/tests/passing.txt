@@ -2740,6 +2740,8 @@ next/n_impl_12_two_fitting_impls_are_ambiguous.cp
 next/n_impl_13_two_bounds_give_one_method.cp
 next/n_impl_14_expected_type_picks_a_bound.cp
 next/n_impl_15_closure_takes_its_fn_types_impl_method.cp
+next/n_impl_16_a_bounded_impl_is_chosen_by_its_head.cp
+next/n_impl_17_an_unmet_bound_on_the_chosen_impl_is_e0606.cp
 core-04/a-domain-over-a-float-is-a-type-error.cp
 core-04/a-domain-over-a-plain-struct-is-a-type-error.cp
 core-04/char-domain-position-to-char.cp
