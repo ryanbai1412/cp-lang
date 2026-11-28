@@ -919,7 +919,11 @@ impl<'a> Cx<'a> {
             }
             _ => None,
         };
-        let i = self.expr(key, Some(want.as_ref().unwrap_or(&Ty::Int)));
+        // A branching key takes its type from its branches, so `par[if c: y else: x]` reads a
+        // position of `par`'s domain when its branches are positions.
+        let branches = matches!(k, next::Expr::If(_) | next::Expr::Match(_));
+        let hint = want.as_ref().or((!branches).then_some(&Ty::Int));
+        let i = self.expr(key, hint);
         if self.is_error(&i.ty) {
             return Self::error_node(span);
         }
