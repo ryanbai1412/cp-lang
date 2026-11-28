@@ -2,7 +2,7 @@
 // rule: R04.3.4 R04.4.1
 // A constant axis `[0..4]T` is keyed by the range type `0..=3`: its keys walk as `Int`s, a
 // literal or open range cuts a piece by `Int`, and an `Int` key is checked into the range.
-let u: [0..4]Int = [1, 2, 3, 4]
+var u: [0..4]Int = [1, 2, 3, 4]
 print(u[..2].sum(), u[2..].sum(), u[1..=2].sum())
 for i in u.keys:
     u[i] += i

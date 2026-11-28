@@ -143,12 +143,17 @@ class GatesTest(unittest.TestCase):
     def test_traits(self):
         files = {"std/a.cp": "pub trait Shout:\n    fn shout(self) -> Str\n\npub struct Dog(n: Int)\nimpl Shout for Dog:\n    fn shout(self) -> Str = \"woof\"\n",
                  "spec/conformance/traits.toml": '[case."Shout/Dog/shout"]\ncode = "print(Dog(1).shout())"\nout = "woof"\n'}
+        files["crates/cpl-check/frozen/std/a.cp"] = files["std/a.cp"]
         with Tree(files) as t:
             self.assertEqual([p.where.split("/")[-1] for p in run("traits")], ["Dog--shout.cp"])
             self.assertEqual(run("traits", "--write"), [])
             self.assertEqual(t.read("spec/conformance/traits/Shout/Dog--shout.cp"), '// expect: ok, output "woof"\nprint(Dog(1).shout())\n')
         with Tree({"std/a.cp": files["std/a.cp"], "spec/conformance/traits.toml": ""}):
             self.assertEqual([p.what for p in run("traits")], ["no case: Shout/Dog/shout (write one)"])
+        unpinned = {"std/a.cp": files["std/a.cp"], "spec/conformance/traits.toml": files["spec/conformance/traits.toml"]}
+        with Tree(unpinned) as t:
+            self.assertEqual(run("traits", "--write"), [])
+            self.assertIn("// engines: next\n", t.read("spec/conformance/traits/Shout/Dog--shout.cp"))
         next_only = files["spec/conformance/traits.toml"] + 'engines = "next"\n'
         with Tree({"std/a.cp": files["std/a.cp"], "spec/conformance/traits.toml": next_only}) as t:
             self.assertEqual(run("traits", "--write"), [])

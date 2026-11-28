@@ -36,6 +36,8 @@ core-01/comprehension-filter-if-let.cp
 core-01/comprehension-several-for-clauses.cp
 core-01/concat-with-plus.cp
 core-01/const-capitalized.cp
+core-01/const-past-the-step-budget.cp
+core-01/const-within-the-step-budget.cp
 core-01/continuation-leading-or.cp
 core-01/continuation-needs-operator.cp
 core-01/continuation-skips-blank-and-comment-lines.cp
@@ -204,6 +206,8 @@ core-02/enum-nonexhaustive.cp
 core-02/existential-return.cp
 core-02/expected-type-and-unit-forms-are-typed.cp
 core-02/f64-to-int-bare-rejected.cp
+core-02/field-of-a-call-result-is-not-a-place.cp
+core-02/fixed-field-of-a-list-element.cp
 core-02/fixed-field.cp
 core-02/fresh-slot-recursion.cp
 core-02/fresh-type-block-int-escapes.cp
@@ -290,6 +294,8 @@ core-02/unnamed-payload-is-rejected.cp
 core-02/var-field-assign.cp
 core-02/variant-named-like-prelude-type.cp
 core-02/variant-through-tuple-annotation.cp
+core-02/write-into-a-fixed-field-of-a-list-element.cp
+core-02/write-into-a-var-field-of-a-list-element.cp
 core-03/a-generic-field-keeps-its-range-and-nested-nones.cp
 core-03/a-list-or-handle-of-itself-is-fine.cp
 core-03/a-struct-never-holds-itself.cp
@@ -565,6 +571,9 @@ core-04/zip-view-sizes-and-walks-back.cp
 core-05/a-closure-in-an-optional-the-callee-only-calls-borrows-its-list.cp
 core-05/a-fn-copies-a-top-level-heap-value-with-clone.cp
 core-05/a-free-fn-named-like-a-builtin-method-is-callable.cp
+core-05/a-let-lists-element-cannot-be-assigned.cp
+core-05/a-let-lists-element-has-no-cell-for-a-mut-method.cp
+core-05/a-let-lists-element-has-no-cell-to-write.cp
 core-05/a-positional-arg-never-binds-a-named-only-param.cp
 core-05/a-user-method-on-self-does-not-change-its-receiver.cp
 core-05/amp-mut-param-is-rejected.cp
@@ -3111,3 +3120,7 @@ diagnostics/str-of-a-number-is-its-show.cp
 diagnostics/str-of-a-show-type-is-its-text.cp
 traits/Zero/MinCount--zero.cp
 traits/Zero/MaxCount--zero.cp
+core-04/all-is-every-position-in-walk-order.cp
+core-04/an-ordered-bound-steps-a-domain.cp
+core-06/a-program-marks-its-own-derive.cp
+core-06/a-second-operator-for-one-method-is-refused.cp
