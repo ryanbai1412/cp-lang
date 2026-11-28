@@ -4894,7 +4894,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"frozen_std_drift", "next_domain_fiat", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"frozen_std_drift", "next_standin_notes", "next_domain_fiat", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
