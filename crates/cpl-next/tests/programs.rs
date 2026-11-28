@@ -826,14 +826,10 @@ fn guarded_rejections_stay_rejected() {
         .collect();
     assert!(!cases.is_empty(), "no guarded rejection was found");
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
-    let std = std::sync::Arc::new(cpl_next::Std::read());
-    let snapshot = (cases.iter()).fold(
-        Snapshot::new(World::Disk).with_std_lib(std),
-        |s, (_, path)| {
-            let text = std::fs::read_to_string(path).expect("the case is read");
-            s.with_file(path.to_string_lossy(), text)
-        },
-    );
+    let snapshot = (cases.iter()).fold(Snapshot::new(World::Disk), |s, (_, path)| {
+        let text = std::fs::read_to_string(path).expect("the case is read");
+        s.with_file(path.to_string_lossy(), text)
+    });
     let next = std::sync::atomic::AtomicUsize::new(0);
     let accepted = std::sync::Mutex::new(Vec::new());
     std::thread::scope(|scope| {

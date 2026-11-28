@@ -158,3 +158,13 @@ fn a_library_module_is_the_file_its_root_names_for_it() {
     assert_eq!(file("other.m"), Ok(None));
     assert_eq!(file("kit"), Ok(None));
 }
+
+#[test]
+fn a_file_is_cut_once_however_many_of_its_items_are_read() {
+    let (db, f) = db_with(TWO);
+    for id in db.get::<Items>(&(f, "main".into())).unwrap() {
+        db.get::<ItemOf>(&id).unwrap();
+        db.get::<ItemAt>(&id).unwrap();
+    }
+    assert_eq!(db.computed().get(ItemNodes::NAME), Some(&1));
+}

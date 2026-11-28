@@ -68,7 +68,7 @@ pub fn program(args: &[String], usage: &str) -> Arc<Program> {
         std::process::exit(2);
     });
     let mut snapshot = judged(
-        (Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(args)))).with_file(path, &src),
+        std_in_use(Snapshot::new(World::Disk), args).with_file(path, &src),
         args,
     );
     if has(args, "--trace") {
@@ -141,11 +141,11 @@ pub fn judge_given(j: &str) -> Option<(&str, u64)> {
     Some((name, mb.parse().ok()?))
 }
 
-/// The std this binary was built with, or the directory `--std DIR` names.
-pub fn std_in_use(args: &[String]) -> Std {
+/// `snapshot` checked against the std `--std DIR` names, or against the built-in one it holds.
+pub fn std_in_use(snapshot: Snapshot, args: &[String]) -> Snapshot {
     let at = args.iter().position(|a| a == "--std");
     match at.and_then(|i| args.get(i + 1)) {
-        Some(dir) => Std::read_dir(Path::new(dir)),
-        None => Std::read(),
+        Some(dir) => snapshot.with_std_lib(Arc::new(Std::read_dir(Path::new(dir)))),
+        None => snapshot,
     }
 }

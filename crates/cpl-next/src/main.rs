@@ -18,7 +18,6 @@ use cli::{code, file, has, judged, said, std_in_use};
 use cpl_next::facade::{Session, Snapshot, World};
 use cpl_next::IrStage;
 use std::io::Write;
-use std::sync::Arc;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -39,10 +38,7 @@ fn real_main() {
         return dump_own(&args);
     }
     if has("--std-modules") {
-        let std = judged(
-            Snapshot::new(World::Closed).with_std_lib(Arc::new(std_in_use(&args))),
-            &args,
-        );
+        let std = judged(std_in_use(Snapshot::new(World::Closed), &args), &args);
         // `--std-modules std.x` shows the diagnostics of the modules it begins; alone, each
         // module's count.
         let at = args.iter().position(|a| a == "--std-modules");
@@ -84,7 +80,7 @@ fn disk_session(args: &[String], path: &str) -> Session {
         std::process::exit(2);
     });
     Session::open(judged(
-        (Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(args)))).with_file(path, &src),
+        std_in_use(Snapshot::new(World::Disk), args).with_file(path, &src),
         args,
     ))
 }

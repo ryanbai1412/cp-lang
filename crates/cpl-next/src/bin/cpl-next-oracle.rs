@@ -21,7 +21,6 @@ use cpl_next::Form;
 use std::io::{BufRead, Write};
 use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;
-use std::sync::Arc;
 use std::time::Duration;
 
 const USAGE: &str = "cpl-next-oracle FILE --raw|--canonical [--json] [--trace] [--bodies] [--judge NAME=MB] [--std DIR] | --all --within MS [--trace]";
@@ -68,10 +67,7 @@ fn oracle(c: &Program, form: Form, input: &str) -> cpl_next::Outcome {
 
 /// `--all`: every case on stdin compiled against one read of std.
 fn every_case(limit: Duration, events: bool, args: &[String]) {
-    let std = judged(
-        Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(args))),
-        args,
-    );
+    let std = judged(std_in_use(Snapshot::new(World::Disk), args), args);
     for line in std::io::stdin().lock().lines() {
         let Ok(line) = line else { break };
         let mut fields = line.split('\t');
