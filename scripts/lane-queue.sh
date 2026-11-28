@@ -18,6 +18,8 @@ once=0
 
 take() {  # $1 = queue branch name, e.g. queue/c-clippy
     local branch=$1 head out=target/lane-queue/${1//\//-}.log
+    # The gates measure against the lane tip the push replaces, so that tip must be here.
+    git fetch -q origin lane-j-check "+refs/heads/$branch:refs/remotes/origin/$branch" || return 1
     head=$(git rev-parse "origin/$branch")
     [ "$(cat "$out.head" 2>/dev/null)" = "$head" ] && return 1  # failed before, unchanged
     git checkout -q --detach origin/lane-j-check || return 1
