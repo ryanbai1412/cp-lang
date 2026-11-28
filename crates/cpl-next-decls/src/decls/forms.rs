@@ -103,6 +103,7 @@ pub struct StructForm {
     pub bounds: Vec<BoundForm>,
     pub fields: Vec<FieldForm>,
     pub methods: Vec<FnForm>,
+    pub lets: Vec<LetForm>,
     pub consts: Vec<(Sym, Option<TyForm>, ast::Expr)>,
     pub span: Span,
 }
@@ -149,6 +150,15 @@ pub struct TraitForm {
     pub span: Span,
 }
 
+/// A struct's or impl's `let n = e` member: an impl's is the value its getter `n` gives
+/// (R04.2.26).
+#[derive(Clone, Debug)]
+pub struct LetForm {
+    pub name: Sym,
+    pub span: Span,
+    pub value: Option<ast::Expr>,
+}
+
 #[derive(Clone, Debug)]
 pub struct ImplForm {
     pub attrs: Vec<AttrForm>,
@@ -158,6 +168,7 @@ pub struct ImplForm {
     pub self_ty: TyForm,
     pub assoc: Vec<(Sym, TyForm)>,
     pub methods: Vec<FnForm>,
+    pub lets: Vec<LetForm>,
     /// Made by a derive: replaced by a written impl of its trait for its type (R08.1.6).
     pub derived: bool,
     pub span: Span,
@@ -439,6 +450,27 @@ impl Reader<'_> {
         }
     }
 
+    /// Each `let n = e` member of a struct or impl.
+    fn lets(&mut self, members: &Option<ast::Members>) -> Vec<LetForm> {
+        (members.iter().flat_map(|m| m.lets().collect::<Vec<_>>()))
+            .filter_map(|l| {
+                let ps: Vec<ast::Pattern> = l.patterns().collect();
+                let [ast::Pattern::Path(p)] = &ps[..] else {
+                    return None;
+                };
+                let segs: Vec<_> = p.segments().collect();
+                let [n] = &segs[..] else {
+                    return None;
+                };
+                Some(LetForm {
+                    name: self.syms.intern(n.text()),
+                    span: p.syntax().span(),
+                    value: l.value(),
+                })
+            })
+            .collect()
+    }
+
     pub fn struct_(
         &mut self,
         sd: &ast::StructDecl,
@@ -474,6 +506,7 @@ impl Reader<'_> {
             fields,
             methods,
             consts,
+            lets: self.lets(&members),
             span: sd.syntax().span(),
         };
         (form, unknown)
@@ -509,6 +542,7 @@ impl Reader<'_> {
             self_ty: TyForm::Written(im.self_ty()?),
             assoc,
             methods,
+            lets: self.lets(&members),
             derived: false,
             span: im.syntax().span(),
         };

@@ -100,6 +100,7 @@ pub(crate) fn enum_structs(
         bounds: Vec::new(),
         fields,
         methods: Vec::new(),
+        lets: Vec::new(),
         consts: Vec::new(),
         span: e.span,
     };
@@ -321,6 +322,7 @@ fn derived_impl(
         self_ty: TyForm::Named(ty, (0..generics.len()).map(TyForm::Param).collect()),
         assoc: Vec::new(),
         methods,
+        lets: Vec::new(),
         derived: true,
         span,
     }
@@ -523,6 +525,7 @@ pub(crate) fn field_trait_impls(
                 self_ty: TyForm::Record(fields),
                 assoc: Vec::new(),
                 methods: Vec::new(),
+                lets: Vec::new(),
                 derived: false,
                 span: t.span,
             };
@@ -645,6 +648,7 @@ pub(crate) fn enum_conversions(
             self_ty: for_,
             assoc: Vec::new(),
             methods,
+            lets: Vec::new(),
             derived: false,
             span,
         };

@@ -168,7 +168,6 @@ fn run(src: &str) -> Option<(Vec<(TokenKind, String)>, usize)> {
     (file.diagnostics.is_empty() && n > 0).then(|| (tokens(src), n))
 }
 
-
 /// The names a pattern's tokens use, labels aside: what a hole can be.
 fn names(toks: &[(TokenKind, String)]) -> Vec<String> {
     let kinds: Vec<TokenKind> = toks.iter().map(|t| t.0).collect();

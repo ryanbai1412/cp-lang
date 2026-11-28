@@ -322,6 +322,7 @@ pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitF
                 variadic: false,
                 default: None,
                 span,
+                name_span: span,
             };
             let mut params = vec![self_param(this, None)];
             for (i, f) in form.0.iter().enumerate() {
@@ -399,6 +400,7 @@ pub fn without_impls(
                 variadic: false,
                 default: None,
                 span,
+                name_span: span,
             };
             let mut params = vec![param(this, None)];
             for (k, f) in form.0.iter().enumerate() {
@@ -435,6 +437,7 @@ pub fn without_impls(
                 ),
                 assoc: vec![(m, made_ty)],
                 methods: vec![build],
+                lets: Vec::new(),
                 derived: false,
                 span,
             };
@@ -471,6 +474,7 @@ pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Struc
                 bounds: Vec::new(),
                 fields,
                 methods: Vec::new(),
+                lets: Vec::new(),
                 consts: Vec::new(),
                 span,
             }
@@ -564,6 +568,7 @@ pub fn domain_impls(
             variadic: false,
             default: None,
             span,
+            name_span: span,
         };
         let method =
             |getter: bool, name: Sym, params: Vec<ParamForm>, ret: TyForm, body: SynthBody| {
@@ -633,6 +638,7 @@ pub fn domain_impls(
             self_ty: record.clone(),
             assoc: Vec::new(),
             methods,
+            lets: Vec::new(),
             derived: false,
             span,
         };
