@@ -47,7 +47,7 @@ impl Cx<'_> {
         (l.mutable, l.fixed, l.let_at) = (mutable, !mutable, let_at);
         var
     }
-    fn var_name(&self, v: VarRef) -> &str {
+    pub(super) fn var_name(&self, v: VarRef) -> &str {
         match v {
             VarRef::Local(i) => &self.b.locals[i].name,
             VarRef::Global(i) => &self.globals[i].name,

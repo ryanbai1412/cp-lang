@@ -847,6 +847,11 @@ impl<'a> Cx<'a> {
                 if !*mutable && self.is_none_value(&v) {
                     self.none_lets.insert(var);
                 }
+                if let (false, Some(r)) =
+                    (*mutable, super::unify::known_range(&self.b.let_ranges, &v))
+                {
+                    self.b.let_ranges.insert(var, r);
+                }
                 if let Some(keys) = super::index::literal_cut(init) {
                     self.view_keys.insert(var, keys);
                 }

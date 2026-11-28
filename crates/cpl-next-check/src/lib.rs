@@ -507,6 +507,8 @@ struct Body {
     obligations: Vec<(Ty, decls::TraitRef, Span, Origin)>,
     /// Temporaries holding an input value whose parts are held to their types one by one.
     input_parts: std::collections::HashSet<VarRef>,
+    /// The range each `let` keeps from its initializer, where it is known (R02.10.2).
+    let_ranges: std::collections::HashMap<VarRef, (i64, i64)>,
     ret: Ty,
     /// What the fn being checked yields or lends.
     region: Option<(bool, Ty)>,
@@ -574,6 +576,7 @@ impl Body {
             self_local: None,
             obligations: Vec::new(),
             input_parts: Default::default(),
+            let_ranges: Default::default(),
             ret: Ty::Unit,
             region: None,
             loops: 0,

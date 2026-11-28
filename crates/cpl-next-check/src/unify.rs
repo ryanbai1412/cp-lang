@@ -943,26 +943,27 @@ impl<'a> Cx<'a> {
             (Ty::Range(a, b), Ty::Range(lo, hi)) if lo <= a && b <= hi => TExpr { ty: want_s, ..e },
             (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Range(lo, hi)) => {
                 let (lo, hi) = (*lo, *hi);
-                // A constant is checked here, not when the program runs (R03.1.10).
-                let k = match &e.kind {
-                    TK::Int(i) => Some(*i),
-                    TK::Neg(x) => match x.kind {
-                        TK::Int(i) => i.checked_neg(),
-                        _ => None,
-                    },
-                    _ => None,
-                };
-                if let Some(i) = k {
-                    if i < lo || i > hi {
+                // A constant is checked here, not when the program runs (R03.1.10), and so is
+                // arithmetic on the `let`s that keep one (R02.10.2); a value known to fit needs
+                // no check.
+                match known_range(&self.b.let_ranges, &e) {
+                    Some((i, j)) if i == j && (i < lo || i > hi) => {
+                        let what = match &e.kind {
+                            TK::Var(v) => format!("`{}`", self.var_name(*v)),
+                            _ => i.to_string(),
+                        };
+                        let range = self.show(&want_s);
                         self.err(
                             span,
                             Msg::verdict(
                                 cpl_diag::codes::RANGE_STORE_CONST,
-                                format!("{i} is outside `{lo}..={hi}`"),
+                                format!("{what} is out of range for `{range}`"),
                             ),
                         );
+                        return TExpr { ty: want_s, ..e };
                     }
-                    return TExpr { ty: want_s, ..e };
+                    Some((i, j)) if lo <= i && j <= hi => return TExpr { ty: want_s, ..e },
+                    _ => {}
                 }
                 let int = |i| TExpr {
                     kind: TK::Int(i),
@@ -1215,6 +1216,7 @@ pub fn show_ty(
     let show = |t: &Ty| show_ty(decls, domains, generics, resolve, t);
     match resolve(t) {
         Ty::Int => "Int".into(),
+        Ty::Range(lo, i64::MAX) => format!("{lo}.."),
         Ty::Range(lo, hi) => format!("{lo}..={hi}"),
         Ty::RangeOf(_) => "a range with run-time ends".into(),
         Ty::AnyRange(_) => "_..=_".into(),
@@ -1265,5 +1267,39 @@ pub fn show_ty(
         Ty::Dom(d) => domains[d].name.clone(),
         Ty::Var(_) => "_".into(),
         Ty::Error => "<error>".into(),
+    }
+}
+
+/// The range an `Int` expression is known to lie in: a literal, a `let` that keeps one, and
+/// `+`, `-` and `*` of those (R02.10.2); no loop or call is followed.
+pub(super) fn known_range(lets: &HashMap<VarRef, (i64, i64)>, e: &TExpr) -> Option<(i64, i64)> {
+    match &e.kind {
+        TK::Int(k) => Some((*k, *k)),
+        TK::Neg(x) => {
+            let (a, b) = known_range(lets, x)?;
+            Some((b.checked_neg()?, a.checked_neg()?))
+        }
+        TK::Var(v) => lets.get(v).copied(),
+        TK::Bin(op, l, r) => {
+            let ((a, b), (c, d)) = (known_range(lets, l)?, known_range(lets, r)?);
+            match op {
+                BinOp::Add => Some((a.checked_add(c)?, b.checked_add(d)?)),
+                BinOp::Sub => Some((a.checked_sub(d)?, b.checked_sub(c)?)),
+                BinOp::Mul => {
+                    let ps = [
+                        a.checked_mul(c)?,
+                        a.checked_mul(d)?,
+                        b.checked_mul(c)?,
+                        b.checked_mul(d)?,
+                    ];
+                    Some((*ps.iter().min()?, *ps.iter().max()?))
+                }
+                _ => None,
+            }
+        }
+        _ => match &e.ty {
+            Ty::Range(lo, hi) => Some((*lo, *hi)),
+            _ => None,
+        },
     }
 }
