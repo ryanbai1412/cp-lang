@@ -9,6 +9,7 @@
 //! compiler. A library module says what it uses: only the program being
 //! checked or run gets the prelude.
 
+@role(prelude)
 use std.algebra.{
     Each,
     Action,

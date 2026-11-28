@@ -194,7 +194,7 @@ impl Std {
             .map(|(i, p)| (p.text.name.clone(), i))
             .collect::<HashMap<_, _>>();
         let mut prelude = HashMap::new();
-        if let Some(p) = index.get("std.prelude").map(|i| &modules[*i]) {
+        if let Some(p) = modules.iter().find(|p| is_prelude(&p.items)) {
             for (module, u, _) in uses(&p.items) {
                 for n in u.names().iter().flat_map(ast::UseNames::names) {
                     prelude.insert(n.text().to_string(), module.clone());
@@ -213,6 +213,12 @@ impl Std {
         &self.decls
     }
     /// Std's modules by name, the core not among them.
+    /// The module marked `@role(prelude)`, whose `use`s every program has (R11.6).
+    pub fn prelude_module(&self) -> Option<&str> {
+        (self.modules.iter())
+            .find(|p| is_prelude(&p.items))
+            .map(|p| p.text.name.as_str())
+    }
     pub fn module_names(&self) -> impl Iterator<Item = &str> {
         self.modules[1..].iter().map(|p| p.text.name.as_str())
     }
@@ -341,6 +347,23 @@ impl Roots {
 }
 
 /// Each `use` line's module, the line, and where it is written.
+/// Whether a module is marked `@role(prelude)`: a decorator above its first `use` (R11.6).
+fn is_prelude(items: &[Item]) -> bool {
+    let Some(ast::Decl::Use(u)) = items.first().and_then(|it| it.item.decl()) else {
+        return false;
+    };
+    let marked = u.decorators().any(|x| {
+        let attr = x.name().and_then(|n| crate::attrs::Attr::of(n.text()));
+        attr.and_then(|attr| {
+            crate::decls::form_role(&crate::decls::forms::AttrForm {
+                attr,
+                node: Some(x),
+            })
+        }) == Some(crate::decls::Role::Prelude)
+    });
+    marked
+}
+
 fn uses(items: &[Item]) -> impl Iterator<Item = (String, ast::UseDecl, SourceId)> + '_ {
     items.iter().filter_map(|it| match it.item.decl()? {
         ast::Decl::Use(u) => {
