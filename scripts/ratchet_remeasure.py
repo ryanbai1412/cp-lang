@@ -101,6 +101,28 @@ def measure(mods, name, sides, root, build=build_cpl):
     return None
 
 
+def measure_all(mods, jobs, root):
+    """`measure` for each job, in forked processes: serially a rule change reaching a shared
+    helper re-measured dozens of counters one by one. A refusal comes back as its exception."""
+    def one(job):
+        name, _, moved = job
+        try:
+            return measure(mods, name, ["tip", *moved], root)
+        except Refused as err:
+            return err
+    if len(jobs) < 2 or not hasattr(os, "fork"):
+        return [one(j) for j in jobs]
+    import multiprocessing
+    global _ONE
+    _ONE = one
+    with multiprocessing.get_context("fork").Pool(min(len(jobs), os.cpu_count() or 1)) as pool:
+        return pool.map(_run_one, jobs)
+
+
+def _run_one(job):
+    return _ONE(job)
+
+
 def main(argv):
     sys.dont_write_bytecode = True
     revs = {"before": argv[1], "upstream": argv[2], "tip": "HEAD"}
@@ -111,15 +133,18 @@ def main(argv):
     current = json.loads(Path(RATCHET).read_text(encoding="utf-8"))
     root, restated = Path.cwd(), []
     mods = {side: load(text, f"ratchet_rule_{side}") for side, text in texts.items()}
+    # Counters that run cpl over every case are CI's on each main tip (debt-ratchet's CI_ONLY):
+    # restating one here cost a land 100 s.
+    ci_only = () if os.environ.get("CI") else getattr(mods["tip"], "CI_ONLY", ())
+    jobs = []
     for name, (_, _, gated) in mods["tip"].COUNTERS.items():
         sides = [s for s in SIDES if name in counts[s] and name in mods[s].COUNTERS]
         moved = [s for s in sides if rule(mods[s], name) != rule(mods["tip"], name)]
-        if not gated or name not in current or not moved:
-            continue
-        try:
-            measured = measure(mods, name, ["tip", *moved], root)
-        except Refused as err:
-            print(f"land: {err}", file=sys.stderr)
+        if gated and name in current and moved and name not in ci_only:
+            jobs.append((name, sides, moved))
+    for (name, sides, moved), measured in zip(jobs, measure_all(mods, jobs, root)):
+        if isinstance(measured, Refused):
+            print(f"land: {measured}", file=sys.stderr)
             return 1
         if measured is None:
             continue

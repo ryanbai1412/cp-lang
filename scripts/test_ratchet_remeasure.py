@@ -39,5 +39,16 @@ class Measure(unittest.TestCase):
         self.assertIsNone(rr.measure(mods(False, 9), "c", ["tip"], Path("."), build=lambda: False))
 
 
+class MeasureAllTest(unittest.TestCase):
+    def test_each_job_is_measured_in_order_and_a_refusal_comes_back(self):
+        side = types.SimpleNamespace(COUNTERS={"a": ("", lambda r: [1], True), "b": ("", lambda r: [1, 2], True),
+                                               "z": ("", lambda r: 1 / 0, True)}, HARD_ZERO={"z"})
+        m = {"tip": side, "before": side}
+        jobs = [("a", ["before"], ["before"]), ("b", ["before"], ["before"]), ("z", ["before"], ["before"])]
+        got = rr.measure_all(m, jobs, Path("."))
+        self.assertEqual(got[:2], [{"tip": 1, "before": 1}, {"tip": 2, "before": 2}])
+        self.assertIsInstance(got[2], rr.Refused)
+
+
 if __name__ == "__main__":
     unittest.main()
