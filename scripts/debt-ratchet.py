@@ -2633,6 +2633,14 @@ def old_pipeline_lines(root: Path) -> list[str]:
         for p in _rs_files(root, f"crates/{crate}/src"):
             rel = _rel(root, p)
             out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
+    return out
+
+
+def old_std_copy_lines(root: Path) -> list[str]:
+    """Code lines of `FROZEN_STD`, the pinned copy of std the old pipeline reads (7fd97e1e2).
+    Apart from `old_pipeline_lines` so that the switch, which deletes it with the old crates,
+    shows it going on its own (coordinator, 18:47)."""
+    out = []
     for p in sorted((root / FROZEN_STD).rglob("*.cp")):
         rel = _rel(root, p)
         out += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip() and not l.lstrip().startswith("//")]
@@ -4869,7 +4877,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"frozen_std_drift", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"frozen_std_drift", "next_standin_notes", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
@@ -5001,6 +5009,7 @@ COUNTERS = {
     "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses: `Unbuilt` variants (Core)", next_refusal_kinds, True),
     "frozen_std_drift": ("files of the old pipeline's std that are not std/ at c7ac8761d^ (Core)", frozen_std_drift, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
+    "old_std_copy_lines": ("code lines of the pinned std copy the frozen old pipeline reads (Core)", old_std_copy_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_refused": ("cases the new pipeline (cpl-next) refuses: on no list (Core)", next_refused, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
@@ -5557,8 +5566,11 @@ def frozen_edits(root: Path, base: str) -> list[str]:
     out = []
     for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
         # A shallow clone's oldest commit has no parent here, so `show` would count the whole
-        # tree as added (CI's ratchet at 55999d45b: "adds 204623 lines").
+        # tree as added (CI's ratchet at 55999d45b: "adds 204623 lines"). Skipping it unseen let
+        # 14960b972 and 0288f1c15 through, so it fails: the clone must reach `base`.
         if not _git(root, "rev-parse", "-q", "--verify", f"{sha}^"):
+            out.append(f"{sha[:9]}: its parent is not in this clone, so its edits to the frozen old "
+                       f"pipeline can't be seen; fetch back to {base[:9]} (CI: the ratchet's fetch-depth)")
             continue
         rows = [l.split("\t") for l in _git(root, "show", "--numstat", "--format=", sha, "--", *paths)]
         added = sum(int(r[0]) for r in rows if r[0].isdigit())

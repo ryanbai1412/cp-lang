@@ -324,7 +324,7 @@
   "end_state_broken": 0,
   "next_cases_removed": 0,
   "next_std_names": 42,
-  "old_pipeline_lines": 213697,
+  "old_pipeline_lines": 179938,
   "next_masked": 129,
   "next_refusal_kinds": 60,
   "next_core_privilege": 16,
@@ -428,5 +428,6 @@
     "tools-trace/trap-flushes-output-and-shows-locals.cp"
   ],
   "frozen_std_drift": 0,
-  "next_hidden_const_evaluators": 2
+  "next_hidden_const_evaluators": 2,
+  "old_std_copy_lines": 33759
 }

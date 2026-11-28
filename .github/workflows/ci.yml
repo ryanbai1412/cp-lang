@@ -42,7 +42,11 @@ jobs:
       contents: read
       actions: write  # scripts/ci_cache_prune.py deletes superseded caches
     steps:
+      # The ratchet checks each pushed commit (the freeze's frozen_edits), so it needs their
+      # parents: a depth-1 clone gave 14960b972 and 0288f1c15 no parent, and they passed unseen.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ matrix.part == 'ratchet' && 200 || 1 }}
       - uses: ./.github/actions/setup-rust
         with:
           target: ${{ matrix.part == 'checks' && 'clippy' || matrix.part == 'fmt' && 'release' || 'dev' }}

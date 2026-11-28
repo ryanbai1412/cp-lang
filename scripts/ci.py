@@ -760,6 +760,12 @@ class Tail:
             if self.call([*NEW_REDS, "cargo", "nextest", "run", "-p", "cpl-next", "--test", "programs", "-E", test]):
                 raise Failed("cpl-next now accepts a case that expects an error (named above); rerun: "
                              f"cargo nextest run -p cpl-next --test programs -E '{test}'")
+        if sel.get("old_same") == "1" and self.wants("old_same"):
+            # 9ad9cbbd1 changed cpl-syntax under the frozen checker, and the old pipeline lost `Some`.
+            self.step("the old pipeline's output is byte-identical to the merge base's (scripts/old-pipeline-same.py)")
+            if self.call([sys.executable, "scripts/old-pipeline-same.py"]):
+                raise Failed("a change to a crate the old pipeline is built from changed what it prints (cases above);"
+                             " the freeze keeps it byte-identical: leave the old side's behaviour as it was")
         if sel.get("dreams") == "1" and self.wants("dreams"):
             # A std/ or checker change (an E05xx rename) lands with every dream's migration;
             # one step per mode keeps each under the 20 s slice budget.
@@ -1227,7 +1233,7 @@ AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only h
 # The commit tier refuses only the reds a change brings: a test that fails at
 # the base too is main's, reported with its owner (scripts/new_reds.py).
 NEW_REDS = [sys.executable, str(ROOT / "scripts" / "new_reds.py"), "--"]
-COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits", "wrong_accepts", "dreams",
+COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits", "wrong_accepts", "old_same", "dreams",
                 "touched_steps", "script_tests", "site")
 
 
