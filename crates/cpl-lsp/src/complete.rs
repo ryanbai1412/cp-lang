@@ -1538,6 +1538,15 @@ fn scope_completion(
             add(&entry, 3, &mut items);
         }
     }
+    // `?T`'s variants are prelude names like any other (R01.3.6), ahead of
+    // the compiler's value `Some` so a pattern is offered the variant.
+    for (name, detail) in [("Some", "Some(x: T) -> ?T"), ("None", "None: ?T")] {
+        add(
+            &plain(name, Kind::Variant, detail.into(), ""),
+            3,
+            &mut items,
+        );
+    }
     // The compiler's own names; the `std/prelude.cp` ones came above
     // with their signatures and docs.
     for (name, kind) in prelude_names() {
@@ -1548,14 +1557,6 @@ fn scope_completion(
             PreludeKind::Std(_) => continue,
         };
         add(&plain(name, kind, detail.into(), ""), 3, &mut items);
-    }
-    // `?T`'s variants are prelude names like any other (R01.3.6).
-    for (name, detail) in [("Some", "Some(x: T) -> ?T"), ("None", "None: ?T")] {
-        add(
-            &plain(name, Kind::Variant, detail.into(), ""),
-            3,
-            &mut items,
-        );
     }
     for keyword in cpl_syntax::KEYWORDS {
         add(
