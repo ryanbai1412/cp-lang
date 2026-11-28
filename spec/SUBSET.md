@@ -58,6 +58,7 @@ documented.
 | R04.4 | Two kinds of range, one type | supported |  |
 | R04.7 | Middle of a range | supported |  |
 | R04.8 | Decided (decision 137) | supported |  |
+| R05.1 | Proved, promised, unsafe | supported |  |
 | R05.2 | 2. Plain and heap values (R1, R2) | supported |  |
 | R05.3 | 3. Bindings and places | supported |  |
 | R05.4 | 4. Parameters and calls (R4) | supported |  |
@@ -106,6 +107,7 @@ documented.
 | R11.6 | 11.6 Language roles | supported |  |
 | R12.4 | W4. Sequences, views and index spaces (P4) | documented | user-library powers: specified, not promised for the milestone |
 | R12.11 | W10a. Records, associated types and inline bounds (P10) | documented | user-library powers: specified, not promised for the milestone |
+| R12.13 | W13. Modules, pins and codemods (P13) | supported |  |
 | R12.14 | W14. Inline C++ (P14) | supported |  |
 | R13.1 | 13.1 The output file | supported |  |
 | R13.2 | 13.2 Values | supported |  |

@@ -1392,7 +1392,11 @@ fn a_case_judge_comes_from_its_own_cp_toml() {
     let case = dir.join("case.cp");
     std::fs::write(&case, "// expect: exit 1\n// judge: small\nprint(1)\n").unwrap();
     assert_eq!(judge(&case), None, "`small` is no built-in judge");
-    std::fs::write(dir.join("cp.toml"), "[judge.small]\nextends = \"generic\"\nmemory_mb = 1\n").unwrap();
+    std::fs::write(
+        dir.join("cp.toml"),
+        "[judge.small]\nextends = \"generic\"\nmemory_mb = 1\n",
+    )
+    .unwrap();
     assert_eq!(judge(&case).as_deref(), Some("small=1"));
     let _ = std::fs::remove_dir_all(&dir);
 }
