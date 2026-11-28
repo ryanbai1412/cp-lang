@@ -9552,3 +9552,4 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Why.** 728b1ebf5 ran every program on a fixed 16 GB thread stack. CI runners refuse a mapping that size, so 405 listed passes crashed. Both interpreters recurse natively, and a host frame there is 32 to 128 times the run's counted frame words, so no thread size tied to the judge's stack lets R0601 (`Stack::enter`) run out before the host does. Growing the host stack in segments does, and only touches what a run uses. A fresh thread per segment would need no crate, but the interpreter's values hold `Rc` and cannot cross threads.
 - **Reverse.** The engine leaves stacker once it runs on its own frame stack (lane F). The oracle, a small tree-walker, keeps it, so the crate stays and the count does not drop.
 
+## 658. (reserved, unknown)
