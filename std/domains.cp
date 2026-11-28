@@ -117,14 +117,11 @@ pub struct MemoArray<K: Domain + Finite, V>:
 
 /// A cut of `D`: the place between two neighbouring positions, or at either end, with `k`
 /// positions before it. `D.cuts` names its type and, as a value, the domain of them (R04.2.5).
+/// Its one field is `k`, so it prints as that integer (R04.2.16, R10.3.5).
 @member(cuts)
 @role(cuts)
 pub struct Cut<D: Domain>:
     k: Int
-
-    /// A cut prints as its integer (R04.2.16).
-    pub fn write(self):
-        write(k)
 
     /// `c.l`: the position just before `c`, or `None` at the start (R04.3.2).
     @get pub fn l(self) -> ?D:
