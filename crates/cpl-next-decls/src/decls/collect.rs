@@ -390,13 +390,11 @@ fn layer(
                     pending.push((mid, item.clone(), f, Some(Named::Trait(id))));
                 }
                 Form::Alias(a) => {
-                    let library = d.is_library(mid);
                     for x in a.attrs.iter().filter(|x| {
-                        !(library
-                            && matches!(
-                                x.attr,
-                                Decorator::Lint | Decorator::Stress | Decorator::OnUnimplemented
-                            ))
+                        !matches!(
+                            x.attr,
+                            Decorator::Lint | Decorator::Stress | Decorator::OnUnimplemented
+                        )
                     }) {
                         let e = Msg::at(
                             item.at(super::names::attr_at(x, a.span)),
@@ -404,10 +402,7 @@ fn layer(
                                 name: x.attr.name().to_string(),
                             },
                         );
-                        match library {
-                            true => d.module_errors[mi].push(e),
-                            false => d.errors.push(e),
-                        }
+                        d.module_errors[mi].push(e);
                     }
                     let name = d.text(a.name).to_string();
                     own[mi].insert(
@@ -427,7 +422,7 @@ fn layer(
                     ty,
                     value: Some(init),
                     ..
-                } if d.items_only(mid) => {
+                } if mid != d.program => {
                     let name = d.text(*name).to_string();
                     own[mi].insert(name.clone(), Named::Const(ConstId(d.consts.len())));
                     let ty = ty.as_ref().map(|t| match t {
@@ -453,7 +448,7 @@ fn layer(
                         fields: fields.clone(),
                     });
                 }
-                other if d.items_only(mid) => {
+                other if mid != d.program => {
                     let e = Unbuilt::LibraryItem {
                         kind: other.kind().to_string(),
                     };
@@ -522,7 +517,7 @@ fn layer(
         prelude,
         within: &within,
     };
-    remake_views(&mut d, &sc, from, core_too, None);
+    remake_views(&mut d, &sc, from, core_too, false);
     // A product's record is a core struct, so the program's domains are placed once the views are.
     if base.is_some() {
         for (id, f) in &read[n - 1] {
@@ -572,11 +567,17 @@ fn layer(
         .collect();
     made.into_iter().for_each(|a| d.aliases.push(a));
     for (i, a) in d.aliases.iter().enumerate().skip(aliases_from) {
-        if d.is_library(a.module) && alias_cycle(&d, &d.syms, AliasId(i)) {
-            d.module_errors[a.module.0].push(Msg::internal(format!(
-                "type alias `{}` is defined by itself",
-                a.name
-            )));
+        if alias_cycle(&d, &d.syms, AliasId(i)) {
+            d.module_errors[a.module.0].push(Msg::at(
+                a.at.clone(),
+                Msg::verdict(
+                    cpl_diag::codes::ALIAS_CYCLE,
+                    format!(
+                        "type alias `{}` is defined by itself, so it names no type",
+                        a.name
+                    ),
+                ),
+            ));
         }
     }
     // Struct fields first, to a fixed point: a struct holding a struct with function fields has those sets too.
@@ -634,7 +635,7 @@ fn layer(
                     prelude,
                     within: &within,
                 };
-                remake_views(&mut d, &sc, from, core_too, None);
+                remake_views(&mut d, &sc, from, core_too, false);
             }
             match (s, id) {
                 (Form::Struct(sd), Some(Named::Struct(id))) => {
@@ -736,7 +737,6 @@ fn layer(
     for k in stamped..d.fns.len() {
         d.fns[k].made = made;
     }
-    let mut errors = Vec::new();
     let sc = Scopes {
         own: &own,
         public: &public,
@@ -745,8 +745,7 @@ fn layer(
         prelude,
         within: &within,
     };
-    remake_views(&mut d, &sc, from, core_too, Some(&mut errors));
-    d.errors.extend(errors);
+    remake_views(&mut d, &sc, from, core_too, true);
     // Each written fn's body, matched to its fn by the item's fns in the order they were made.
     let mut bodies = HashMap::new();
     for it in mods[from..].iter().flat_map(|m| m.items.iter()) {
@@ -776,6 +775,36 @@ fn layer(
             d.memo_clears.insert(*w, *c);
         }
     }
+    // The program's own declaration errors are said at once; every other module's stay with
+    // their item or module until the program reaches it. A fn whose refusal is said is the error.
+    let ours: Vec<bool> = (0..d.module_errors.len())
+        .map(|m| d.of_program(ModId(m)))
+        .collect();
+    for i in 0..d.structs.len() {
+        if ours[d.structs[i].module.0] {
+            let errors = std::mem::take(&mut d.structs[i].errors);
+            d.errors.extend(errors);
+        }
+    }
+    for i in 0..d.traits.len() {
+        if ours[d.traits[i].module.0] {
+            let errors = std::mem::take(&mut d.traits[i].errors);
+            d.errors.extend(errors);
+        }
+    }
+    for i in 0..d.fns.len() {
+        if d.fns[i].errors.iter().any(|e| e.refusal.is_some()) {
+            d.refused_fns.insert(FnId(i));
+        }
+        if ours[d.fns[i].module.0] {
+            let errors = std::mem::take(&mut d.fns[i].errors);
+            d.errors.extend(errors);
+        }
+    }
+    for m in (0..ours.len()).filter(|m| ours[*m]) {
+        let errors = std::mem::take(&mut d.module_errors[m]);
+        d.errors.extend(errors);
+    }
     d.rank_impls();
     let layer = Prepared {
         read: Arc::new(read),
@@ -791,25 +820,20 @@ fn layer(
 }
 
 /// Each module's view, made again where this layer changes it: every module's for std, and for
-/// a program its own modules' and, when its records add to the core, the core's. `errors` takes
-/// the names the core's and the program's views miss, the first time each is made.
-fn remake_views(
-    d: &mut Decls,
-    sc: &Scopes,
-    from: usize,
-    core_too: bool,
-    mut errors: Option<&mut Vec<Msg>>,
-) {
+/// a program its own modules' and, when its records add to the core, the core's. The names the
+/// program's views miss are kept with their module the `first` time each is made.
+fn remake_views(d: &mut Decls, sc: &Scopes, from: usize, core_too: bool, first: bool) {
     for mi in 0..sc.names.len() {
         if mi < from && !(mi == CORE.0 && core_too) {
             continue;
         }
-        let e = match d.is_library(ModId(mi)) || mi < from {
-            true => None,
-            false => errors.as_deref_mut(),
-        };
+        let mut missed = Vec::new();
+        // A sliced module misses what the program does not reach; the entry file is built whole.
+        let whole = d.of_program(ModId(mi));
+        let e = (first && mi >= from && whole).then_some(&mut missed);
         let mut ambiguous = HashSet::new();
-        let v = view(sc, mi, d.of_program(ModId(mi)), e, &mut ambiguous);
+        let v = view(sc, mi, whole, e, &mut ambiguous);
+        d.module_errors[mi].extend(missed);
         let v = v.into_iter().map(|(n, x)| (d.syms.intern(&n), x)).collect();
         let ambiguous = ambiguous.iter().map(|n| d.syms.intern(n)).collect();
         let exports = export_map(sc, mi).into_iter();

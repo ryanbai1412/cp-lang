@@ -83,10 +83,7 @@ pub(super) fn struct_defaults(d: &mut Decls, mid: ModId, id: StructId, sd: &Stru
         .map(|t| t.as_ref().map(|t| conv_form(&mut cx, t, &mut errors)))
         .collect();
     Arc::make_mut(&mut d.struct_defaults).insert(id, tys);
-    match d.is_library(mid) {
-        true => d.structs[id.0].errors.extend(errors),
-        false => d.errors.extend(errors),
-    }
+    d.structs[id.0].errors.extend(errors);
 }
 
 /// Struct `id`'s fields, bounds and methods.
@@ -141,10 +138,7 @@ pub(super) fn struct_body(d: &mut Decls, mid: ModId, item: &ItemId, id: StructId
             }
         })
         .collect();
-    match d.is_library(mid) {
-        true => d.structs[id.0].errors.extend(errors),
-        false => d.errors.extend(errors),
-    }
+    d.structs[id.0].errors.extend(errors);
     let self_ty = Ty::Struct(
         id,
         (0..sd.generics.len()).map(Ty::Param).collect(),

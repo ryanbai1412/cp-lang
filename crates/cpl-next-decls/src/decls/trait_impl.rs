@@ -173,17 +173,18 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
         }
     }
     let n_sets = cx.next_set.unwrap_or(0);
-    // A library impl the slice cannot build is said where a program could reach it: through
-    // its type when that is a struct, else through its trait.
-    if let (Some(r), true) = (&tref, d.is_library(mid) && !errors.is_empty()) {
+    // An impl the slice cannot build is said where a program reaches it: through its type when
+    // that is a struct, else through its trait.
+    if let (Some(r), false) = (&tref, errors.is_empty()) {
         match &for_ {
             Ty::Struct(sd, ..) => d.structs[sd.0].errors.append(&mut errors),
             _ => d.traits[r.tr.0].errors.append(&mut errors),
         }
         return Made::Done;
     }
-    // No program can reach a library impl of a trait the slice does not declare.
-    if tref.is_none() && d.is_library(mid) {
+    // The slice builds every trait the entry file names, and only the traits a program reaches
+    // from the others: an impl of one it lacks is out of reach.
+    if tref.is_none() && !d.of_program(mid) {
         return Made::Done;
     }
     let Some(tref) = tref.filter(|_| errors.is_empty()) else {

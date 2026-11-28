@@ -826,20 +826,6 @@ pub fn check(
             ));
         }
     }
-    for (i, a) in d.aliases.iter().enumerate() {
-        if d.of_program(a.module) && decls::alias_cycle(d, &d.syms, decls::AliasId(i)) {
-            cx.errors.push(Msg::at(
-                a.at.clone(),
-                Msg::verdict(
-                    cpl_diag::codes::ALIAS_CYCLE,
-                    format!(
-                        "type alias `{}` is defined by itself, so it names no type",
-                        a.name
-                    ),
-                ),
-            ));
-        }
-    }
     let mut main_out = Vec::new();
     let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
     // A `const` with a scalar value, and a domain whose ends have values, hoist; one read at
@@ -960,7 +946,7 @@ pub fn check(
             let later = |im: &decls::ImplDecl| {
                 !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
             };
-            (roots.contains(&f.module) || !d.is_library(f.module))
+            (roots.contains(&f.module) || d.of_program(f.module))
                 && !matches!(f.owner, Some(Owner::Impl(i)) if later(d.imp(i)))
         })
         .collect();
@@ -1298,15 +1284,12 @@ impl<'a> Cx<'a> {
             for (_, im) in d.trait_impls(t) {
                 if let Some(m) = d.member(&im.methods, &f.name) {
                     let made = matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record);
-                    match d.is_library(im.module) || made {
+                    match !d.of_program(im.module) || made {
                         true => self.through_trait.push(m),
                         false => self.reached.push(m),
                     }
                 }
             }
-        }
-        if !d.is_library(f.module) {
-            return;
         }
         let module = &d.module_names[f.module.0];
         let mut said = Vec::new();
@@ -1401,8 +1384,7 @@ impl<'a> Cx<'a> {
         let ret = self.b.ret.clone();
         // A fn refused as declared (a decorator the slice lacks) is that refusal, and one rejected
         // as declared is that error: its body is not checked.
-        let refused =
-            (f.errors.iter()).any(|e| e.refusal.is_some()) || d.rejected_bodies.contains(&id);
+        let refused = d.refused_fns.contains(&id) || d.rejected_bodies.contains(&id);
         // A body that can end without its value is that error, not a mismatch at its end.
         let syntax = match f.body {
             decls::Body::Written | decls::Body::Value => {

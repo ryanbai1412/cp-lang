@@ -565,6 +565,9 @@ pub struct Decls {
     /// The fns whose body decls rejected, as an intrinsic not in the table: its error is said,
     /// and check reads no body for them.
     pub rejected_bodies: std::collections::BTreeSet<FnId>,
+    /// The fns refused as declared (a decorator the slice lacks): the refusal is the error, so
+    /// check reads neither their body nor their calls.
+    pub refused_fns: std::collections::BTreeSet<FnId>,
     /// Each module's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
     pub methods: HashMap<Sym, Vec<FnId>>,
@@ -657,14 +660,10 @@ impl Decls {
             false => HashMap::new(),
         }
     }
-    /// What a declaration uses that the slice does not build: a library's is said when the program
-    /// reaches it, the program's at once.
+    /// What a declaration uses that the slice does not build, kept with its module: said when
+    /// the program reaches the module, at once for the program's own.
     fn module_or_program_errors(&mut self, m: ModId, errors: Vec<Msg>) {
-        if self.is_library(m) {
-            self.module_errors[m.0].extend(errors);
-        } else {
-            self.errors.extend(errors);
-        }
+        self.module_errors[m.0].extend(errors);
     }
     /// The fn a bare operator names: its core `@operator` trait's fn of that many operands.
     pub fn operator_fn(&self, text: &str, binary: bool) -> Option<FnId> {
@@ -860,13 +859,10 @@ impl Decls {
         fd.self_mode == SelfMode::Value
             && matches!(fd.owner, Some(Owner::Struct(s)) if self.s(s).cached.contains(&true))
     }
-    /// A library declaration's place is not the program's: its module's name.
+    /// Whether a body in `m` that does not check is the pipeline's to fix rather than the
+    /// program's: until every std fn checks (`next_std_unchecked` 0), a library's is a refusal.
     pub fn is_library(&self, m: ModId) -> bool {
         !self.of_program(m)
-    }
-    /// Whether `m` holds only items: a library, or an inline `mod` (R11.1.2, R11.1.3).
-    pub fn items_only(&self, m: ModId) -> bool {
-        self.is_library(m) || self.within.get(m.0).copied().flatten().is_some()
     }
     /// Whether `m` is the program or an inline module inside it.
     pub fn of_program(&self, mut m: ModId) -> bool {
@@ -1768,14 +1764,6 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
             errors.push(Msg::at(attr_at(x), Unbuilt::Decorator { name }));
         }
     }
-    // A program's are said now; its refusals stay on the fn, which is then the error.
-    let mut errors = if d.is_library(m) {
-        errors
-    } else {
-        d.errors.extend(errors.iter().cloned());
-        errors.retain(|e| e.refusal.is_some());
-        errors
-    };
     let has = |a: Decorator| f.attrs.iter().any(|x| x.attr == a);
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
     let getter = has(Decorator::Get);
