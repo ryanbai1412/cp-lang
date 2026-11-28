@@ -1229,7 +1229,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); m.solve([true, true]) == Some([false, true])`
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve([true, false]) == None`
     pub fn solve(self, b: List<Bool>) -> ?List<Bool>:
-        if let sp = self.solve_space(b): return Some(sp.x0)
+        if let sp = self.solve_space(b): return Some(sp.x0.clone())
         None
 
     /// One solution `x0` and a nullspace basis over GF(2), or `None`.
