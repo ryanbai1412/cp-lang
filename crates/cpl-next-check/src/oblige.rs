@@ -310,10 +310,12 @@ impl Cx<'_> {
                 let i = *i;
                 return Some(match self.param_impl(i, r) {
                     Some(k) => {
-                        let im = self.impls().imp(k);
-                        let mut targs: Vec<Ty> =
-                            im.generics.iter().map(|_| self.new_ty()).collect();
-                        if let Ty::Param(p) = im.for_ {
+                        let (n, for_) = {
+                            let im = self.impls().imp(k);
+                            (im.generics.len(), im.for_.clone())
+                        };
+                        let mut targs: Vec<Ty> = (0..n).map(|_| self.new_ty()).collect();
+                        if let Ty::Param(p) = for_ {
                             targs[p] = Ty::Param(i);
                         }
                         self.take_impl(k, targs, r, span, None)
