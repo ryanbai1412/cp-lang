@@ -569,6 +569,9 @@ core-04/zip-view-sizes-and-walks-back.cp
 core-05/a-closure-in-an-optional-the-callee-only-calls-borrows-its-list.cp
 core-05/a-fn-copies-a-top-level-heap-value-with-clone.cp
 core-05/a-free-fn-named-like-a-builtin-method-is-callable.cp
+core-05/a-let-lists-element-cannot-be-assigned.cp
+core-05/a-let-lists-element-has-no-cell-for-a-mut-method.cp
+core-05/a-let-lists-element-has-no-cell-to-write.cp
 core-05/a-positional-arg-never-binds-a-named-only-param.cp
 core-05/a-user-method-on-self-does-not-change-its-receiver.cp
 core-05/amp-mut-param-is-rejected.cp

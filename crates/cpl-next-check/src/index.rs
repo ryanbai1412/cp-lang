@@ -481,6 +481,14 @@ impl Cx<'_> {
             }
         }
         let b = self.place(base);
+        // A cell is lent to be written, so a `let` root has none to lend (R05.6.3).
+        if let Some(name) = self.let_root(&b) {
+            let msg = Msg::verdict(
+                cpl_diag::codes::ASSIGN_TO_LET,
+                format!("`{name}` is bound by `let` and cannot be assigned; declare it with `var`"),
+            );
+            self.err(span, self.with_var_fix(&b, &name, msg));
+        }
         // A cell of a place that was diagnosed is the error: its index is not fitted to it.
         if self.mentions_error(&b.ty) {
             self.expr(idx, None);
