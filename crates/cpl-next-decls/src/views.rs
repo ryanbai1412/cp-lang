@@ -17,9 +17,8 @@ use std::collections::HashMap;
 /// The part of the signatures a written type is converted against, each table read by key.
 /// Decls reads it while it is still building the rest of the signatures.
 pub trait TypeTables: Texts {
-    fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
     /// The id of a name written `text`, if any table holds it.
-
+    fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
     fn alias(&self, id: AliasId) -> &AliasDecl;
     fn konst(&self, id: ConstId) -> &LibConst;
     /// The core type written `n`: `Int`, `Raw`.

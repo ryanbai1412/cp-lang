@@ -27,7 +27,7 @@ pub(super) fn inherent_impl(d: &mut Decls, mid: ModId, item: ItemId, t: StructId
     }
     let bare = |a: &GenericArg| match a {
         GenericArg::Type(Type::Path(q)) => {
-            q.generic_args().map_or(true, |g| g.args().next().is_none())
+            q.generic_args().is_none_or(|g| g.args().next().is_none())
         }
         _ => false,
     };

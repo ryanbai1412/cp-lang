@@ -16,9 +16,6 @@ use cpl_next_syntax::TokenKind;
 
 /// Type arguments written but left off the end take their defaults, which may name the
 /// arguments before them (R08.2.5).
-
-/// Type arguments written but left off the end take their defaults, which may name the
-/// arguments before them (R08.2.5).
 /// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
 pub(crate) fn by_arity(
     arity: &HashMap<StructId, Vec<(StructId, usize)>>,

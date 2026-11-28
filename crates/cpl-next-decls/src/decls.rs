@@ -8,7 +8,6 @@ use cpl_diag::Span;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, StmtKind, TypeKind};
-use cpl_syntax::decorators::Mark;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -933,10 +932,6 @@ impl Decls {
         }
         self.impls.push(im);
     }
-}
-
-fn field_names(fs: &[(ast::Name, ast::Type)]) -> Vec<String> {
-    fs.iter().map(|(n, _)| n.text.clone()).collect()
 }
 
 /// What each name means in one module, by the name's id.
@@ -2281,24 +2276,6 @@ fn fresh_binders(ret: Option<&forms::TyForm>) -> Vec<(usize, String)> {
             .filter_map(|(k, (_, t))| Some((k, binder(Some(t))?)))
             .collect(),
         _ => Vec::new(),
-    }
-}
-
-/// Each `@role(name)` on `s`, with the role it names when `name` is one of R11.6.1's.
-pub(super) fn role_marks(s: &ast::Stmt) -> impl Iterator<Item = (&ast::Decorator, Option<Role>)> {
-    let marks = s.decorators.iter().filter(|x| x.mark == Some(Mark::Role));
-    marks.map(|x| (x, role_of(x)))
-}
-
-/// Whether `s` is marked `@role(r)`.
-pub(crate) fn fills(s: &ast::Stmt, r: Role) -> bool {
-    role_marks(s).any(|(_, role)| role == Some(r))
-}
-
-fn role_of(x: &ast::Decorator) -> Option<Role> {
-    match &x.args.first()?.value.kind {
-        ast::ExprKind::Name(n) => Role::ALL.into_iter().find(|r| r.name() == n),
-        _ => None,
     }
 }
 

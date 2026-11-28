@@ -22,11 +22,14 @@ impl Syms {
         Arc::make_mut(&mut self.ids).insert(text.to_string(), s);
         s
     }
-    /// The id of a name some declaration gave, or `None` when none did.
     /// How many names are interned; the next fresh `Sym` is this one.
     pub fn len(&self) -> usize {
         self.texts.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.texts.is_empty()
+    }
+    /// The id of a name some declaration gave, or `None` when none did.
     pub fn get(&self, text: &str) -> Option<Sym> {
         self.ids.get(text).copied()
     }
