@@ -1540,3 +1540,28 @@ total = total + add(k)\nlet n: Int = read()\nfor i in 0..n:\n    bump(i)\nprint(
     );
     assert_ne!(sites[0], sites[1]);
 }
+
+/// A trace shows the writes the user's file makes to its top-level bindings, and none of
+/// std's, though std's are set in the same top level.
+#[test]
+fn a_trace_shows_only_the_users_writes() {
+    use cpl_next_ir::ir::EventKind;
+    let src = "var t = 1\nt = t + 1\nprint(t)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let o = c.run("");
+    let written: Vec<_> = (o.events.iter())
+        .filter_map(|e| match &e.kind {
+            EventKind::Write { shown, .. } => Some(format!("{shown} {}", e.vals.join(" "))),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(written, ["t 1", "t 2"]);
+}
