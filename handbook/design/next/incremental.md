@@ -376,5 +376,18 @@ appended when a body first reads it.
 5. `generic`, `instance` and `program` as queries; ownership, on both sides
    of link, reads per-item summaries.
 
+6. Diagnostics are a query (trend audit #15, item 3), after `body(ItemId)`
+   and before link reads per-item answers in step 5. `body(ItemId)`
+   answers its own diagnostics and, apart, its deferred ones: those of
+   a library fn reached only through a trait, said only if an instance
+   runs it. `generic(ItemId)` answers lower's for a quiet fn the same
+   way. `program(Job)` answers which fns its instances run, and the
+   facade joins each item's diagnostics with the deferred ones of each
+   fn that runs. `Deferred`, lower's copy of the checker's, and link's
+   `l.errors.extend(c.deferred(g))` are deleted: link says only its
+   own. `link_reads_check` (lane G) follows relays and trait objects,
+   so a checker diagnostic that reaches link through lower or a `&dyn`
+   fails it.
+
 Steps 1 to 3 each land on their own and make the batch pipeline
 cleaner even before the database exists.
