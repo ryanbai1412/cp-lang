@@ -183,7 +183,7 @@ library or by this spec:
 - `@same_keys` on a fn (std's `zip`): its arguments that are arrays over
   domains must share one domain, so arrays over two domains are a type
   error at the call (R04b.1.3).
-- `@recipe` on a struct (std's `Gen<T>`): the value of a `-> yields T`
+- `@role(recipe)` on a struct (std's `Gen<T>`, §11.6): the value of a `-> yields T`
   call made outside a `for` head, holding the call's fn and evaluated
   arguments in its one fn-typed field; a `for` over it runs that call
   (R07.6.2).

@@ -360,18 +360,18 @@ fn layer(
                                 false => _ = Arc::make_mut(&mut d.tuples).insert(n, id),
                             }
                         }
-                        if d.is_library(mid)
-                            && s.decorators.iter().any(|x| x.mark == Some(Mark::Recipe))
-                        {
-                            d.roles.recipe = Some(id);
-                        }
                         for (x, role) in super::role_marks(s) {
-                            if role == Some(Role::Option) {
-                                let dup = again(item, s, "role(option)");
-                                once(&mut d.roles.option, id, dup, &mut d.errors);
-                                continue;
-                            }
-                            d.errors.push(misplaced_role(item, x, role, "struct"));
+                            let slot = match role {
+                                Some(Role::Option) => &mut d.roles.option,
+                                Some(Role::Recipe) => &mut d.roles.recipe,
+                                _ => {
+                                    d.errors.push(misplaced_role(item, x, role, "struct"));
+                                    continue;
+                                }
+                            };
+                            let dup =
+                                again(item, s, &format!("role({})", role.map_or("", Role::name)));
+                            once(slot, id, dup, &mut d.errors);
                         }
                         for (n, slot) in [
                             (Mark::Cuts, &mut d.roles.cut),

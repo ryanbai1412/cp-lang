@@ -1451,7 +1451,7 @@ pub trait Seq<T>:
 /// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
 /// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the
 /// results with `List(g)`.
-@recipe pub struct Gen<T>:
+@role(recipe) pub struct Gen<T>:
     run: () -> ()
 
 impl Seq<T> for Gen<T>:

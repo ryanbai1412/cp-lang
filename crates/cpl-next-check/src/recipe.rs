@@ -4,7 +4,7 @@ use super::expr::block;
 use super::*;
 
 impl Cx<'_> {
-    /// `gen(args)` as a value: the library's `@recipe` struct around a closure whose body walks
+    /// `gen(args)` as a value: the `@role(recipe)` struct around a closure whose body walks
     /// the call. Its arguments are evaluated now; a place stays a place, so the value is lent from
     /// what it names as long as it is held.
     pub(super) fn recipe(&mut self, mut pre: Vec<TStmt>, call: TExpr) -> TExpr {

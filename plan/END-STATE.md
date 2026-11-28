@@ -75,7 +75,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_asks_refused` | 7 |
 | `next_check_set_facts` | 11 |
 | `next_core_checks` | 14 |
-| `next_core_privilege` | 20 |
+| `next_core_privilege` | 19 |
 | `next_core_standin_lines` | 43 |
 | `next_cpp_runtime_lines` | 147 |
 | `next_error_typed` | 34 |
@@ -83,12 +83,12 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_handoff_side_fields` | 11 |
 | `next_harness_refusals` | 4 |
 | `next_late_rejects` | 90 |
-| `next_library_gates` | 24 |
+| `next_library_gates` | 23 |
 | `next_lowered` | 2 |
 | `next_masked` | 129 |
 | `next_name_compares` | 23 |
 | `next_not_passing` | 2,270 |
-| `next_old_syntax_analyses` | 115 |
+| `next_old_syntax_analyses` | 114 |
 | `next_reference_evaluator_lines` | 586 |
 | `next_refusal_kinds` | 61 |
 | `next_refused` | 687 |
@@ -100,7 +100,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_std_names` | 51 |
 | `next_std_unchecked` | 37 |
 | `next_string_keyed_maps` | 79 |
-| `next_syntax_old_refs` | 847 |
+| `next_syntax_old_refs` | 846 |
 | `next_weak_oracle_passes` | 7 |
 | `next_whole_program_inputs` | 597 |
 | `next_wrong` | 1,454 |

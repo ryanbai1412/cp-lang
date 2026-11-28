@@ -135,6 +135,7 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `write` | `write` | `write(...)`: the same without the line end |
 | `iteration` | `Seq`, with `iter` and `each` | `for x in s`, `s.each(f)` and `s.iter()` |
 | `todo` | `todo` | the expression `todo`, of any type, that traps when run (R01.6.7) |
+| `recipe` | `Gen<T>` | the value of a `-> yields T` call made outside a `for` head, which a `for` over it runs (R07.6.2) |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |
 
 The operator and literal markers of R06.4.12 (`@operator("op")`,
@@ -153,7 +154,8 @@ Rules:
   name is E0201.
 - A filler has the shape its role needs: `option` is a generic type with a
   one-part constructor `Some` and an empty one `None`, `show` a trait with
-  one method, `iteration` a trait whose `iter` yields its elements, `print`,
+  one method, `iteration` a trait whose `iter` yields its elements, `recipe` a generic
+  struct with one fn-typed field, `print`,
   `write` and `todo` fns, and `prelude` a module (`@role(prelude)` at its top). A filler
   of the wrong shape is E0606 at the marker.
 - Syntax whose role has no filler in the program is E0201, naming the role

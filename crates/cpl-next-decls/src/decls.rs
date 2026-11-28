@@ -328,7 +328,7 @@ pub struct Roles {
     pub write: Option<FnId>,
     /// `for x in s`: the trait whose one yielding method walks `s`.
     pub iteration: Option<TraitId>,
-    /// A library's `@recipe` struct: the value of a `-> yields T` call made outside a `for`
+    /// The `@role(recipe)` struct: the value of a `-> yields T` call made outside a `for`
     /// (R07.6.2). Its one field is the closure that walks the call.
     pub recipe: Option<StructId>,
     /// The struct core marks `@cuts`: a half-open literal range of its values, where a
@@ -359,10 +359,11 @@ pub enum Role {
     Iteration,
     Todo,
     Prelude,
+    Recipe,
 }
 
 impl Role {
-    pub const ALL: [Role; 7] = [
+    pub const ALL: [Role; 8] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -370,6 +371,7 @@ impl Role {
         Role::Iteration,
         Role::Todo,
         Role::Prelude,
+        Role::Recipe,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -381,6 +383,7 @@ impl Role {
             Role::Iteration => "iteration",
             Role::Todo => "todo",
             Role::Prelude => "prelude",
+            Role::Recipe => "recipe",
         }
     }
 }

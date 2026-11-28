@@ -81,7 +81,6 @@ marks! {
     SameKeys = "same_keys", "on a fn: its arguments that are arrays over domains share one domain (R04b.1.3)";
     Index = "index", "on a fn: what `s[r]` calls when `r` is not a key of `s` (R07.4.17)";
     Fast = "fast", "`@fast(op)` on a fn with a body: the operation the engines and C++ run for a call";
-    Recipe = "recipe", "on a library struct: the value of a `-> yields T` call made outside a `for` (R07.6.2)";
     Tuple = "tuple", "on a struct: the struct an n-tuple of its field count is";
     List = "list", "on a struct: the struct a list literal `[a, b]` builds";
     Str = "str", "on a struct: the struct a string literal is";
