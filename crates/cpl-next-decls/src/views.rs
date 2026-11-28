@@ -105,6 +105,23 @@ pub trait Summaries {
     fn added_at(&self, c: usize) -> Option<&(FnRef, usize)>;
 }
 
+/// The impl one trait's call takes at one type: its index and the type arguments its head binds.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Chosen {
+    pub imp: crate::decls::ImplIdx,
+    pub binds: Vec<Ty>,
+}
+
+/// `impl_for(TraitId, Ty)`: which impl a type takes, as the checker chose it. Keyed by the type
+/// itself, compared by structure, so an instance's type that no item names has its answer too.
+pub trait ImplChoice {
+    /// The impl of `tr` that `t` takes: the head ranked first (R08.1.9), a domain's row as
+    /// `ImplIdx::Row`. `None` when no impl's head fits or the chosen one's bounds fail.
+    fn impl_for(&self, tr: TraitId, t: &Ty) -> Option<Chosen>;
+    /// Each trait `t` implements with the impl it takes, by `TraitId`, then `ImplIdx`.
+    fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)>;
+}
+
 /// `checked(ItemId)`: what the checker answered about one item that link reads by id. No
 /// method lists a whole table, so link reads only the items it instantiates.
 pub trait Checked {
