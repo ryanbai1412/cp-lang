@@ -177,6 +177,10 @@ impl Rounding {
     }
 }
 impl Intr {
+    /// Whether it makes a value of whatever type it is given, holding nothing.
+    pub fn untyped(self) -> bool {
+        matches!(self, Intr::Unset)
+    }
     /// The operation that wraps where this one traps on overflow; itself if it cannot overflow.
     pub fn wrapping(self) -> Intr {
         match self {

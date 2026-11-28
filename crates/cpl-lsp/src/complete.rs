@@ -1157,33 +1157,16 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
     out
 }
 
-/// The type the `@role(range_literal)` fn returns: what `a..b` builds, whose members
-/// the checker of today gives as `RANGE_MEMBERS`.
+/// The range type: what the checker types `a..b` as, whose members the checker of today
+/// gives as `RANGE_MEMBERS`.
 fn range_type() -> Option<&'static str> {
-    use cpl_syntax::ast::{StmtKind, TypeKind};
     static FOUND: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
     let found = FOUND.get_or_init(|| {
-        let std = cpl_facade::Std;
-        let marked = std
-            .outlines()
-            .iter()
-            .filter(|(_, o)| o.contains("@range_literal"));
-        let texts = marked.filter_map(|(m, _)| std.text(m));
-        texts
-            .flat_map(|t| cpl_syntax::parse_file(t).items)
-            .find_map(|(_, item)| {
-                item.stmts.into_iter().find_map(|s| match s.kind {
-                    StmtKind::Fn(f)
-                        if s.decorators.iter().any(|d| d.name.text == "range_literal") =>
-                    {
-                        match f.ret?.kind {
-                            TypeKind::Named { name, .. } => Some(name.text),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                })
-            })
+        let (src, literal) = ("let r = 0..1\n", cpl_diag::Span::new(8, 12));
+        let mut db = cpl_facade::Session::default();
+        db.set_file("input.cp", src);
+        let ty = db.facts("input.cp")?.type_of(literal)?.to_string();
+        Some(ty.split('<').next()?.to_string())
     });
     found.as_deref()
 }

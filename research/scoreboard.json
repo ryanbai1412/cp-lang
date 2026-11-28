@@ -5670,7 +5670,7 @@
         "conformance/std-algebra/affine.cp": "pass",
         "conformance/std-algebra/cmp-ordering.cp": "pass",
         "conformance/std-algebra/counts.cp": "pass",
-        "conformance/std-algebra/default-operator-argument.cp": "pass",
+        "conformance/std-algebra/default-operator-argument.cp": "skip",
         "conformance/std-algebra/each-monoid-components.cp": "pass",
         "conformance/std-algebra/each-named-components.cp": "pass",
         "conformance/std-algebra/each-of-bare-operators.cp": "pass",
@@ -7123,10 +7123,10 @@
       "counts": {
         "cxx_err": 1,
         "error": 1,
-        "pass": 2629,
-        "skip": 2
+        "pass": 2628,
+        "skip": 3
       },
-      "passed": 2629,
+      "passed": 2628,
       "total": 2633
     },
     "docs": {

@@ -111,6 +111,18 @@ fn apply_first_fix_it(src: &str) -> Option<String> {
     Some(out)
 }
 
+/// The *(next)* codes of spec/diagnostics.md: `cpl-next` emits them, so their triggers run
+/// there (`crates/cpl-next/tests/programs.rs`), and here only must not fire on old `cpl`.
+fn next_only() -> BTreeSet<String> {
+    let text = std::fs::read_to_string(root().join("spec/diagnostics.md")).unwrap();
+    (text.lines())
+        .filter_map(|l| {
+            let cells: Vec<&str> = l.split('|').map(str::trim).collect();
+            (cells.get(2)?.contains("*(next)*")).then(|| cells[1].to_string())
+        })
+        .collect()
+}
+
 #[test]
 fn every_defined_code_is_catalogued() {
     let listed: BTreeSet<String> = catalogue().into_iter().map(|(c, _)| c).collect();
@@ -152,6 +164,7 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
     let mut failures = Vec::new();
     let (mut tested, mut with_fix_it, mut emitted) = (0, 0, 0);
     let mut no_fix_it = Vec::new();
+    let next = next_only();
     let catalogue: Vec<(String, bool)> = catalogue()
         .into_iter()
         .filter(|(c, _)| !c.starts_with('L'))
@@ -179,6 +192,14 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
         };
         let (errors, warnings) =
             reported(mode, info.trigger, info.input, &format!("{code}_trigger"));
+        if next.contains(&code) {
+            if errors.contains(&code) {
+                failures.push(format!(
+                    "{code}: old cpl emits it, so it is not *(next)*; drop the mark"
+                ));
+            }
+            continue;
+        }
         let exact = if code.starts_with('W') {
             errors.is_empty() && warnings.iter().all(|w| *w == code) && !warnings.is_empty()
         } else {

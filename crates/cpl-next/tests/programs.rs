@@ -1724,3 +1724,53 @@ fn fast_program(fns: &[FastFn]) -> String {
     }
     p
 }
+
+/// Each *(next)* code of spec/diagnostics.md, which only cpl-next emits, has a registry trigger
+/// that reports exactly it here and a fix that clears it; cpl-cli's catalogue test holds old
+/// cpl's codes to the same.
+#[test]
+fn next_codes_have_an_exact_trigger_and_a_clean_fix() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let table = std::fs::read_to_string(here.join("../../spec/diagnostics.md")).unwrap();
+    let codes: Vec<&str> = (table.lines())
+        .filter_map(|l| {
+            let cells: Vec<&str> = l.split('|').map(str::trim).collect();
+            (cells.get(2)?.contains("*(next)*")).then(|| cells[1])
+        })
+        .collect();
+    assert!(!codes.is_empty(), "no *(next)* code: the scan is broken");
+    let dir = here.join("../../target/cpl-next/scratch/next-codes");
+    std::fs::create_dir_all(&dir).unwrap();
+    let reported = |name: &str, src: &str, input: &str| -> Vec<String> {
+        let path = dir.join(format!("{name}.cp"));
+        std::fs::write(&path, src).unwrap();
+        let ran = whole(next(&path, &[], input.as_bytes(), TOOL_LIMIT));
+        (ran.stdout.lines().chain(ran.stderr.lines()))
+            .filter_map(|l| {
+                l.split(": ").find(|w| {
+                    w.len() == 5
+                        && w.starts_with(['E', 'W'])
+                        && w[1..].bytes().all(|b| b.is_ascii_digit())
+                })
+            })
+            .map(str::to_string)
+            .collect()
+    };
+    let mut failures = Vec::new();
+    for code in codes {
+        let Some(info) = cpl_diag::registry::lookup(code) else {
+            failures.push(format!("{code}: no registry entry"));
+            continue;
+        };
+        let errors = reported(&format!("{code}_trigger"), info.trigger, info.input);
+        if errors != [code] {
+            failures.push(format!("{code}: trigger reports {errors:?}"));
+            continue;
+        }
+        let errors = reported(&format!("{code}_fix"), info.fix, info.input);
+        if !errors.is_empty() {
+            failures.push(format!("{code}: fix still reports {errors:?}"));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
