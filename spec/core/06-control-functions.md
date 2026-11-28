@@ -183,10 +183,10 @@ library or by this spec:
 - `@memo_table(word)` on a struct (std's `HashMap`): the table a
   `@memo(word)` fn keeps, `T<K, R>` for key `K` (the one parameter's type,
   else the tuple of them) and result `R`, built by `T<K, R>()`. It is a
-  table through an ordinary `impl MemoTable<K, R>` (std's `@role(memo_table)`
+  table through its impl of `MemoTable<K, R>` (std's `@role(memo_table)`
   trait, in the prelude); a `@memo_table` struct without one is an error at
-  the struct. `@memo` reads it with the trait's `get(k) -> ?R` and keeps a
-  result with its `set(k, r)`; its
+  the struct (E0327). `@memo` reads it with the trait's `get(k) -> ?R` and
+  keeps a result with its `set(k, r)`; its
   bounds on `K` are the key's (R06.4.1). `f.clear()` empties
   it by building a fresh `T<K, R>()`.
   A block's or the top level's `@memo(word) fn f(params) -> R: body` is,
