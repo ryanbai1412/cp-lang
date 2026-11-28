@@ -9603,3 +9603,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 688. (reserved, A: a constant type argument is `Ty::Const`, a type's value params are `const P: Int`)
 
 ## 689. (reserved, G: D: an unwritten domain parameter's implied bound is the unique weakest trait holding what its body reads)
+
+## 690. (reserved, G: D: Discrete is positions without a count; Domain, Ordered and Cyclic add to it)
