@@ -341,16 +341,16 @@ pub struct Roles {
     /// The struct core marks `@cuts`: a half-open literal range of its values, where a
     /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
     pub cut: Option<StructId>,
-    /// The trait core marks `@positions`: every domain's position type has it, and nothing else.
+    /// The `@role(positions)` trait: every domain's position type has it, and nothing else.
     pub domain: Option<TraitId>,
-    /// The trait core marks `@order`: stepping and order, which every domain the compiler declares
+    /// The `@role(order)` trait: stepping and order, which every domain the compiler declares
     /// has and a library domain lacks (R04.2.31).
     pub order: Option<TraitId>,
-    /// The trait core marks `@convert`: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
+    /// The `@role(convert)` trait: `T(x)` for a core type `T` is `x`'s impl of it at `T`.
     pub convert: Option<TraitId>,
-    /// `@counted`: the trait whose one fn counts `domain V = xs`'s positions (R04.2.29).
+    /// The `@role(counted)` trait: the one whose one fn counts `domain V = xs`'s positions (R04.2.29).
     pub counted: Option<TraitId>,
-    /// `@range_bounds`: the trait whose fns give a range's first and past-the-end cuts (R04b.1.5).
+    /// The `@role(range_bounds)` trait: the one whose fns give a range's first and past-the-end cuts (R04b.1.5).
     pub bounds: Option<TraitId>,
     /// Core's `@interpolation` fn: `put(mut out, x)` appends each piece of an interpolated string.
     pub interpolate: Option<FnId>,
@@ -368,10 +368,15 @@ pub enum Role {
     Prelude,
     Recipe,
     Trace,
+    Positions,
+    Order,
+    Convert,
+    Counted,
+    RangeBounds,
 }
 
 impl Role {
-    pub const ALL: [Role; 9] = [
+    pub const ALL: [Role; 14] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -381,6 +386,11 @@ impl Role {
         Role::Prelude,
         Role::Recipe,
         Role::Trace,
+        Role::Positions,
+        Role::Order,
+        Role::Convert,
+        Role::Counted,
+        Role::RangeBounds,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -394,6 +404,11 @@ impl Role {
             Role::Prelude => "prelude",
             Role::Recipe => "recipe",
             Role::Trace => "trace",
+            Role::Positions => "positions",
+            Role::Order => "order",
+            Role::Convert => "convert",
+            Role::Counted => "counted",
+            Role::RangeBounds => "range_bounds",
         }
     }
 }
@@ -2111,6 +2126,11 @@ fn fresh_binders(ret: Option<&ast::Type>) -> Vec<(usize, String)> {
 pub(super) fn role_marks(s: &ast::Stmt) -> impl Iterator<Item = (&ast::Decorator, Option<Role>)> {
     let marks = s.decorators.iter().filter(|x| x.mark == Some(Mark::Role));
     marks.map(|x| (x, role_of(x)))
+}
+
+/// Whether `s` is marked `@role(r)`.
+pub(crate) fn fills(s: &ast::Stmt, r: Role) -> bool {
+    role_marks(s).any(|(_, role)| role == Some(r))
 }
 
 fn role_of(x: &ast::Decorator) -> Option<Role> {

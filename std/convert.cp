@@ -4,7 +4,7 @@
 //! example: `Int('a') == 97 and Char(98) == 'b'`
 
 /// `T(x)` for a core type `T`: `x` as a `T`, by `x`'s impl (R04.2.28).
-@convert
+@role(convert)
 pub trait Into<T>:
     fn into(self) -> T
 

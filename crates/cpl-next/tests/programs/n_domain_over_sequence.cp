@@ -1,7 +1,7 @@
 // expect: ok, output "3 4 10 5 4 3\n3"
 // rule: R04.2.29
 // `domain V = xs` has one position per element of a list, string or array, and another
-// domain's value has that domain's count: each through its impl of the `@counted` trait.
+// domain's value has that domain's count: each through its impl of the `@role(counted)` trait.
 domain V = [4, 5, 6]
 var s = 0
 for v in V: s += 1

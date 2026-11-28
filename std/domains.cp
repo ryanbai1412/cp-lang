@@ -10,7 +10,7 @@ use std.seq.{Seq}
 pub fn check_value(ok: Bool) = @intrinsic("value_check")
 
 /// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.
-@positions
+@role(positions)
 pub trait Domain:
     /// `D.count`: how many positions it has.
     @get fn count() -> Int = @intrinsic("dom_count")
@@ -34,7 +34,7 @@ pub trait Domain:
 /// The order of a domain's positions (R04.2.31): stepping to a neighbour, the cuts around a
 /// position and its integer. Every core domain has it; a library domain, which only counts its
 /// values, does not, so a generic body that steps bounds `D: Ordered`.
-@order
+@role(order)
 pub trait Ordered(Domain):
     /// `D.at(x)`: the position with integer `x`, or `None` outside it (R04.2.8).
     fn at(x: Int) -> ?Self = @intrinsic("dom_at")
@@ -157,7 +157,7 @@ impl<D: Domain> Into<Int> for Cut<D>:
     fn into(self) -> Int = k
 
 /// A run's ends as cuts: `[r]T` covers the keys from `r.start` to `r.end` (R04b.1.5).
-@range_bounds
+@role(range_bounds)
 pub trait RangeEnds<D: Domain>:
     fn start(self) -> Cut<D>
     fn end(self) -> Cut<D>

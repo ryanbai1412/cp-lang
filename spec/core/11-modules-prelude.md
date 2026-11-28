@@ -137,6 +137,11 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `trace` | `traced`, `traced_bool` and `traced_option` | what a trace event (contract 8) shows of a value: the text the fn whose parameter takes the value writes, kept in the event instead of the output (Rtrace.7) |
 | `todo` | `todo` | the expression `todo`, of any type, that traps when run (R01.6.7) |
 | `recipe` | `Gen<T>` | the value of a `-> yields T` call made outside a `for` head, which a `for` over it runs (R07.6.2) |
+| `positions` | `Domain` | the trait every domain's positions implement, and nothing else does |
+| `order` | `Ordered` | stepping and order, which every core domain also implements (R04.2.31) |
+| `convert` | `Into<T>` | `T(x)` for a core type `T`: `x`'s impl of the trait at `T` (R04.2.28) |
+| `counted` | `Sized` | the trait whose one fn counts the positions of `domain V = xs` (R04.2.29) |
+| `range_bounds` | `RangeEnds<D>` | the trait whose first and second fns give the cuts `[r]T` covers (R04b.1.5) |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |
 
 The operator and literal markers of R06.4.12 (`@operator("op")`,
@@ -157,7 +162,8 @@ Rules:
   name is E0201.
 - A filler has the shape its role needs: `option` is a generic type with a
   one-part constructor `Some` and an empty one `None`, `show` a trait with
-  one method, `iteration` a trait whose `iter` yields its elements, `recipe` a generic
+  one method, `iteration` a trait whose `iter` yields its elements,
+  `positions`, `order`, `convert`, `counted` and `range_bounds` traits, `recipe` a generic
   struct with one fn-typed field, `print`,
   `write` and `todo` fns, and `prelude` a module (`@role(prelude)` at its top). A filler
   of the wrong shape is E0606 at the marker.

@@ -51,7 +51,7 @@ mod zonk;
 enum Origin {
     /// A bound a fn or impl states.
     Bound,
-    /// `T(x)`: `x` is converted by its `@convert` impl (R04.2.28).
+    /// `T(x)`: `x` is converted by its impl of the `@role(convert)` trait (R04.2.28).
     Convert,
     /// `T(x)` where `T`'s `new` takes nothing: without a conversion, `x` is one argument too
     /// many (R02.6.3, R07.8.1).

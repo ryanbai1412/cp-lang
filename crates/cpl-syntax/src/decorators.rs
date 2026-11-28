@@ -90,13 +90,8 @@ marks! {
     StrLiteral = "str_literal", "on a fn: what builds a string literal from its characters";
     RangeLiteral = "range_literal", "on a fn: what builds the range `lo..hi by step`";
     Cuts = "cuts", "on a struct: the cuts of a domain, `D.cuts`";
-    Positions = "positions", "on a trait: the trait a domain's positions implement";
-    Order = "order", "on a trait: stepping and order, which every core domain implements";
-    Convert = "convert", "on a trait: the conversion `T(x)` calls";
     Operator = "operator", "`@operator(\"op\")` on a trait: the trait an operator calls";
     Literal = "literal", "`@literal(\"[]\")` on a trait: the trait a list literal builds through; `\"[;]\"` an array fill";
-    Counted = "counted", "on a trait: the trait whose one fn counts `domain V = xs`'s positions";
-    RangeBounds = "range_bounds", "on a trait: the trait whose fns give a range's ends";
     Derive = "derive", "on a trait: every struct whose fields all have it gets it field by field";
     Coerce = "coerce", "on a fn: an implicit conversion where its result type is wanted";
     Pattern = "pattern", "on a fn: what a pattern over its type calls";

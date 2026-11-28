@@ -1,6 +1,7 @@
 //! Records `(lo: Int, hi: V)` (R02.5.2). Each list of field names, in order, is one generic core
 //! struct `(lo:, hi:)<A, B>`, so two record types are equal exactly when their field names, order
 //! and types are, and fields, constructors, patterns and derived `Eq` and `Ord` are a struct's.
+use crate::decls::{fills, Role};
 use cpl_diag::Span;
 use cpl_syntax::ast::{self, ExprKind, FnDecl, StmtKind, TypeKind};
 use cpl_syntax::decorators::Mark;
@@ -549,9 +550,9 @@ impl Visitor for Shapes<'_> {
     }
 }
 
-/// The `@positions` trait, in whichever module declares it, and the names of its members marked
+/// The `@role(positions)` trait, in whichever module declares it, and the names of its members marked
 /// `dom_count`, `dom_nth` and `dom_ord`: what a domain the compiler declares implements, with
-/// the `@order` trait, whose members all have bodies.
+/// the `@role(order)` trait, whose members all have bodies.
 pub struct Positions {
     pub tr: String,
     pub order: Option<String>,
@@ -561,13 +562,12 @@ pub struct Positions {
 }
 
 pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<Positions> {
-    let marked = |m: Mark, s: &&ast::Stmt| s.mark(m).is_some();
     let (mut marks, mut order) = (None, None);
     for s in stmts {
-        if marked(Mark::Positions, &s) {
+        if fills(s, Role::Positions) {
             marks = Some(s);
         }
-        if let (true, StmtKind::Trait { name, .. }) = (marked(Mark::Order, &s), &s.kind) {
+        if let (true, StmtKind::Trait { name, .. }) = (fills(s, Role::Order), &s.kind) {
             order = Some(name.text.clone());
         }
     }
@@ -596,7 +596,7 @@ pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<P
 
 /// A record of domains is the product domain over its fields, walked row-major with the last
 /// field fastest, as core's tuples are (R04.2.10): per shape, `impl<A: Domain, ..> Domain for
-/// (lo: A, ..)` giving the members the `@positions` trait marks `dom_count`, `dom_nth` and
+/// (lo: A, ..)` giving the members the `@role(positions)` trait marks `dom_count`, `dom_nth` and
 /// `dom_ord`.
 pub fn domain_impls<'a>(
     stmts: impl IntoIterator<Item = &'a ast::Stmt>,

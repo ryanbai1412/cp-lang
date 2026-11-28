@@ -198,7 +198,7 @@ impl fmt::Display for Unbuilt {
             AliasCall { name } => write!(f, "building a value by calling the alias `{name}`"),
             Derived { tr, ty } => write!(f, "derived `{tr}` for `{ty}`"),
             FieldwiseTrait { ty, tr } => write!(f, "`{ty}` meeting `{tr}` by its fields"),
-            ConversionWithoutConvert => write!(f, "a conversion without core's `@convert` trait"),
+            ConversionWithoutConvert => write!(f, "a conversion without the `@role(convert)` trait"),
             TraitIntrinsic { op } => write!(f, "intrinsic `{op}` of a trait"),
             Intrinsic { name } => write!(f, "intrinsic `{name}`"),
             BoundNotNamed => write!(f, "a bound that is not a named trait"),

@@ -445,23 +445,20 @@ fn layer(
                     StmtKind::Trait { name, alias, .. } => {
                         let id = TraitId(d.traits.len());
                         for (x, role) in super::role_marks(s) {
-                            if role == Some(Role::Iteration) {
-                                let dup = again(item, s, "role(iteration)");
-                                once(&mut d.roles.iteration, id, dup, &mut d.errors);
-                                continue;
-                            }
-                            d.errors.push(misplaced_role(item, x, role, "trait"));
-                        }
-                        for (n, slot) in [
-                            (Mark::Positions, &mut d.roles.domain),
-                            (Mark::Order, &mut d.roles.order),
-                            (Mark::Convert, &mut d.roles.convert),
-                            (Mark::Counted, &mut d.roles.counted),
-                            (Mark::RangeBounds, &mut d.roles.bounds),
-                        ] {
-                            if marked(s, n) {
-                                once(slot, id, again(item, s, n.name()), &mut d.errors);
-                            }
+                            let slot = match role {
+                                Some(Role::Iteration) => &mut d.roles.iteration,
+                                Some(Role::Positions) => &mut d.roles.domain,
+                                Some(Role::Order) => &mut d.roles.order,
+                                Some(Role::Convert) => &mut d.roles.convert,
+                                Some(Role::Counted) => &mut d.roles.counted,
+                                Some(Role::RangeBounds) => &mut d.roles.bounds,
+                                _ => {
+                                    d.errors.push(misplaced_role(item, x, role, "trait"));
+                                    continue;
+                                }
+                            };
+                            let dup = again(item, s, "role(..)");
+                            once(slot, id, dup, &mut d.errors);
                         }
                         let lit = s.decorators.iter().find(|x| x.mark == Some(Mark::Literal));
                         if let Some(ast::ExprKind::Str(text)) =

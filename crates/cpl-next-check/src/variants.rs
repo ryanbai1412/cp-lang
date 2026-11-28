@@ -4,7 +4,7 @@ use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
 impl Cx<'_> {
-    /// `T(x)` for a core type or a payload-free enum `T`: `x`'s impl of core's `@convert` trait at
+    /// `T(x)` for a core type or a payload-free enum `T`: `x`'s impl of the `@role(convert)` trait at
     /// `T` (R04.2.28, R02.7); a position's `Int` is its integer.
     pub(super) fn convert(&mut self, to: Ty, x: &ast::Expr, span: Span, why: Origin) -> TExpr {
         let v = self.expr(x, None);

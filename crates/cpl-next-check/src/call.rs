@@ -128,7 +128,7 @@ impl Cx<'_> {
         };
         let v = match (ctor, named) {
             // `List(s)`: a `new` that takes nothing builds nothing from `s`, so `T(x)` is `x`'s
-            // conversion to `T`, by its impl of core's `@convert` trait (R07.8.1, R04.2.28).
+            // conversion to `T`, by its impl of the `@role(convert)` trait (R07.8.1, R04.2.28).
             (Some(new), Named::Struct(d))
                 if self.d.f(new).params.is_empty() && matches!(args, [a] if a.name.is_none()) =>
             {

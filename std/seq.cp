@@ -1466,7 +1466,7 @@ pub trait Keyed<D, T>: Seq<T>:
 
 /// A sequence with an \(O(1)\) length (R07.3.3). `domain V = xs` has `xs.len` positions
 /// (R04.2.29).
-@counted
+@role(counted)
 pub trait Sized:
     /// The element count.
     @get fn len(self) -> Int

@@ -33,7 +33,7 @@ impl Cx<'_> {
         (lo, end, within, chars)
     }
     /// `domain V = e` where `e` is not a range: an `Int` count is `0..e`, a value with an impl
-    /// of the `@counted` trait has its count's positions, and any other type is E0302
+    /// of the `@role(counted)` trait has its count's positions, and any other type is E0302
     /// (R04.2.29). False for a form that is not built yet.
     pub(super) fn counted_domain(
         &mut self,
@@ -89,7 +89,7 @@ impl Cx<'_> {
         self.domains[i].counted = true;
         true
     }
-    /// `xs`'s count through its impl of the `@counted` trait `tr`, `xs` read once in `out`.
+    /// `xs`'s count through its impl of the `@role(counted)` trait `tr`, `xs` read once in `out`.
     fn count_of(&mut self, tr: TraitId, xs: TExpr, out: &mut Vec<TStmt>) -> Option<TExpr> {
         let (span, ty) = (xs.span, xs.ty.clone());
         let &(n, m) = self.d.trait_fns(tr).first()?;
@@ -337,7 +337,7 @@ impl Cx<'_> {
         let (Some(tr), [lo, hi, ..]) = (bounds, &fns[..]) else {
             self.err(
                 span,
-                Msg::internal("no trait marked `@range_bounds` with two fns"),
+                Msg::internal("no `@role(range_bounds)` trait with two fns"),
             );
             let e = || TExpr {
                 kind: TK::Error,

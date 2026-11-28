@@ -114,7 +114,7 @@ not have. A generic body that steps bounds `D: Ordered`: under `D: Domain`,
 `domain V = e` counts its positions from `e`: an `Int` count, a range of
 `Int`s, a list, array or string (one position per element), a struct that
 holds one of those, or another domain's value: any value whose type has an
-impl of the `@counted` trait, std's `Sized`, counts its `len`. Any other type is E0302,
+impl of the `@role(counted)` trait (§11.6), std's `Sized`, counts its `len`. Any other type is E0302,
 which names it: a domain over `F64`s, `Bool`s or a plain struct has no
 positions to count. (R04.2.29)
 

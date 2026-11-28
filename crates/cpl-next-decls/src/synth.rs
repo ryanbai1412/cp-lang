@@ -1,6 +1,7 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
 use crate::decls::unnamed;
+use crate::decls::{fills, Role};
 use crate::diag::Msg;
 use crate::records::marker;
 use cpl_next_ir::ids::ItemId;
@@ -773,14 +774,14 @@ fn writable(t: &ast::Type) -> bool {
     }
 }
 
-/// The `@convert` trait with its one method, and the fn marked `@variant_check`: what a
+/// The `@role(convert)` trait with its one method, and the fn marked `@variant_check`: what a
 /// payload-free enum's conversions are written with.
 pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
     stmts: impl Fn() -> I,
 ) -> Option<(String, String, String)> {
     let marked = |s: &ast::Stmt, m: Mark| s.mark(m).is_some();
     let (tr, method) =
-        (stmts().filter(|s| marked(s, Mark::Convert))).find_map(|s| match &s.kind {
+        (stmts().filter(|s| fills(s, Role::Convert))).find_map(|s| match &s.kind {
             StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
                 [ast::Stmt {
                     kind: StmtKind::Fn(f),
@@ -800,7 +801,7 @@ pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
 
 /// Per payload-free enum a module declares, `Int(e)` and `E(x)` (R02.7): `impl Into<Int> for E`,
 /// a `match` giving each variant's value, and `impl Into<E> for Int`, which checks `x` is a
-/// variant's value and gives that variant. With core's `@positions` trait, the enum is also a
+/// variant's value and gives that variant. With the `@role(positions)` trait, the enum is also a
 /// domain whose positions are its variants in declaration order (R02.7, R04.2.22).
 pub(crate) fn enum_conversions(
     items: &[crate::modules::Item],
