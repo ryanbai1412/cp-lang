@@ -154,6 +154,7 @@ pub(super) fn name_trait(
             Some(Role::Convert) => &mut d.roles.convert,
             Some(Role::Counted) => &mut d.roles.counted,
             Some(Role::RangeBounds) => &mut d.roles.bounds,
+            Some(Role::Endpoint) => &mut d.roles.endpoint,
             Some(Role::DeriveFields) => &mut d.roles.derive_fields,
             _ => {
                 let at = item.at(attr_at(x, t.span));

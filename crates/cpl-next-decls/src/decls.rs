@@ -386,6 +386,9 @@ pub struct Roles {
     pub counted: Option<TraitId>,
     /// The `@role(range_bounds)` trait: the one whose fns give a range's first and past-the-end cuts (R04b.1.5).
     pub bounds: Option<TraitId>,
+    /// The `@role(endpoint)` trait: its associated type is the struct `lo..hi` builds from two
+    /// ends of the implementing type, `Range<D>` for a domain and `RealRange` for `F64`.
+    pub endpoint: Option<TraitId>,
     /// Core's `@role(interpolation)` fn: `put(mut out, x)` appends each piece of an interpolated string.
     pub interpolate: Option<FnId>,
     /// The `@role(pack)` struct: the head-and-tail pair a `@role(derive_fields)` trait's derived
@@ -417,6 +420,7 @@ pub enum Role {
     Convert,
     Counted,
     RangeBounds,
+    Endpoint,
     Tuple,
     List,
     Str,
@@ -432,7 +436,7 @@ pub enum Role {
 }
 
 impl Role {
-    pub const ALL: [Role; 26] = [
+    pub const ALL: [Role; 27] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -447,6 +451,7 @@ impl Role {
         Role::Convert,
         Role::Counted,
         Role::RangeBounds,
+        Role::Endpoint,
         Role::Tuple,
         Role::List,
         Role::Str,
@@ -477,6 +482,7 @@ impl Role {
             Role::Convert => "convert",
             Role::Counted => "counted",
             Role::RangeBounds => "range_bounds",
+            Role::Endpoint => "endpoint",
             Role::Tuple => "tuple",
             Role::List => "list",
             Role::Str => "str",

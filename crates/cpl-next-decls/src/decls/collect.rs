@@ -1157,3 +1157,17 @@ fn let_name(syms: &mut crate::sym::Syms, form: &Form) -> Option<Sym> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    /// `lo..hi` reads its struct off the ends' `@role(endpoint)` impl, so std fills the role with
+    /// a trait of one associated type and implements it for every domain (decision 456).
+    #[test]
+    fn std_fills_the_endpoint_role_and_every_domain_has_it() {
+        let std = crate::modules::Std::read();
+        let d = &std.decls().d;
+        let tr = d.roles.endpoint.expect("std fills `@role(endpoint)`");
+        assert_eq!(d.traits[tr.0].assoc.len(), 1);
+        assert!(d.trait_impls(tr).count() >= 1);
+    }
+}
