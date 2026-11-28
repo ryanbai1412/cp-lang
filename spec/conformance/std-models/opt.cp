@@ -5,6 +5,7 @@
 // model: and_then
 // model: is_some
 // model: is_none
+// model: Optional
 // The optional methods against `if let`: seeded random `?Int` values and thresholds, with each
 // method compared to the plain match it abbreviates. Reads `seed n`; prints the first op that differs.
 use std.rand.{Rng}

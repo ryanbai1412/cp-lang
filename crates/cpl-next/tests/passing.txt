@@ -2238,6 +2238,7 @@ std-models/memo-array.cp
 std-models/print-read.cp
 std-models/ranges.cp
 std-models/raw.cp
+std-models/seq-len.cp
 std-models/write.cp
 std-opt/a-niche-packed-field-lends-to-a-read-only-param.cp
 std-opt/and-then-chains-optionals.cp
