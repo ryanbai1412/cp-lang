@@ -2914,6 +2914,7 @@ traits/Show/SparseIntervalSet--show.cp
 traits/Show/SparseSet--show.cp
 traits/Show/XorBasis--show.cp
 traits/Show/XorTrie--show.cp
+traits/Show/PersistentLazySegTree--show.cp
 traits/Sub/Subset--sub.cp
 traits/Track/Tracked--pop.cp
 traits/Track/Tracked--push.cp
@@ -2951,6 +2952,7 @@ next/n_fill_nested_01_every_cell.cp
 std-pair/two-positions-index-a-pair-table.cp
 core-05/local-fn-closure-reads-a-lent-capture-in-a-callee.cp
 core-05/nested-fn-passes-on-a-closure-over-a-captured-var.cp
+core-05/a-closure-calling-a-method-holds-what-the-method-adds.cp
 std-geometry/hull-extreme-ties-take-the-smallest-index.cp
 std-math/mod-sqrt-is-the-smaller-root.cp
 std-mo/mo-bodies-match-brute.cp
@@ -2965,6 +2967,7 @@ core-10/read-base-arg.cp
 core-10/read-optional-sentinel-at-end-traps.cp
 std-journeys/subset.cp
 std-models/subset.cp
+std-models/persistent-lazy.cp
 std-subset/folds-take-its-members.cp
 next/n_free_len_01_any_sized.cp
 std-subset/for-walks-members.cp

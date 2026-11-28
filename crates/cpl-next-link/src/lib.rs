@@ -34,9 +34,15 @@ struct Link<'a> {
     index: HashMap<InstKey, usize>,
     structs: HashMap<CTy, Vec<CTy>>,
     sums: HashMap<CTy, Vec<CTy>>,
-    add_busy: BTreeSet<usize>,
-    /// The globals' sets being read, so one met inside itself adds nothing more.
-    global_busy: BTreeSet<(usize, usize)>,
+    /// What each call adds to the set it passes (`SetTy::AddedAt`), per instance's values, and
+    /// each global's sets.
+    added: HashMap<Grown, Added>,
+    /// The round of the fixpoint the outermost `set` is growing, whether it grew, the added
+    /// sets it read, and how deep inside added sets the current read is.
+    round: usize,
+    grew: bool,
+    touched: Vec<Grown>,
+    depth: usize,
     /// The lambdas whose named sets are being read, so one met inside itself keeps all.
     named_busy: std::collections::HashSet<FuncKey>,
     named: HashMap<FuncKey, BTreeSet<usize>>,
@@ -49,6 +55,21 @@ struct Link<'a> {
     /// The closures whose captures are being read, so one met inside itself is not entered.
     captures_busy: BTreeSet<InstKey>,
 }
+/// A set grown to a fixpoint: what call `c` adds under one instance's values, or a global's.
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum Grown {
+    Added(usize, Vec<CTy>, Vec<CSet>),
+    Global(usize, usize),
+}
+
+/// A grown set: grown each round of a fixpoint, then kept.
+#[derive(Default)]
+struct Added {
+    round: usize,
+    done: bool,
+    set: BTreeSet<InstKey>,
+}
+
 struct Env<'e> {
     targs: &'e [CTy],
     sets: &'e [CSet],
@@ -164,6 +185,11 @@ pub struct Roots {
     pub globals: Vec<GlobalId>,
 }
 
+/// Rounds a set may take to reach its fixpoint before linking gives up on it.
+const SETTLE: usize = 64;
+const UNSETTLED: &str =
+    "a closure's set does not settle: each round of growing it names it under a larger set";
+
 /// A closure in a signature takes its set from the calls that reach the fn.
 pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
     let (d, c, generic) = (v.items, v.checked, v.fns);
@@ -181,8 +207,11 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
         index: HashMap::new(),
         structs: HashMap::new(),
         sums: HashMap::new(),
-        add_busy: BTreeSet::new(),
-        global_busy: BTreeSet::new(),
+        added: HashMap::new(),
+        round: 0,
+        grew: false,
+        touched: Vec::new(),
+        depth: 0,
         named_busy: std::collections::HashSet::new(),
         named: HashMap::new(),
         errors: Vec::new(),
@@ -211,16 +240,37 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
         .cloned()
         .collect();
     closed.sort();
-    // Uncalled, a fn's result sets are what its own body puts there.
+    // Uncalled, a fn's sets are what its own body puts there, which may hold closures that
+    // name those sets: grown from empty until they hold all of it.
     for func in closed {
         let FuncKey::Decl(f) = func else { continue };
         let fd = d.f(f);
-        let sets = (0..fd.n_sets + fd.n_ret_sets)
-            .map(|i| match l.adds(f, i) {
-                Some(s) => l.set(&s, &none),
-                None => CSet::default(),
-            })
-            .collect();
+        let mut sets = vec![CSet::default(); fd.n_sets + fd.n_ret_sets];
+        for round in 0.. {
+            if round == SETTLE {
+                l.errors.push(Msg::internal(UNSETTLED.to_string()));
+                break;
+            }
+            let next: Vec<CSet> = (0..sets.len())
+                .map(|i| match l.adds(f, i) {
+                    Some(s) => l.set_of(
+                        &s,
+                        &Env {
+                            targs: &[],
+                            sets: &sets,
+                        },
+                    ),
+                    None => CSet::default(),
+                })
+                .collect();
+            if next == sets {
+                break;
+            }
+            sets = next;
+        }
+        for k in sets.iter().flatten() {
+            l.intern(k.clone());
+        }
         l.intern(InstKey {
             func,
             targs: vec![],
@@ -793,13 +843,44 @@ impl Link<'_> {
             }
         }
     }
-    /// The closures a set holds, for this instance. Sorted, so the same set is the same type everywhere.
-    fn set(&mut self, s: &SetTy, env: &Env) -> CSet {
+    /// The closures a set holds, made into no instances. A read inside a call's added sets
+    /// gives the sets grown so far; the outermost read grows them to their least fixpoint.
+    fn set_of(&mut self, s: &SetTy, env: &Env) -> CSet {
         let mut out = BTreeSet::new();
-        self.set_into(s, env, &mut out);
-        let v: CSet = out.into_iter().collect();
-        for k in &v {
-            self.intern(k.clone());
+        if self.depth > 0 {
+            self.set_into(s, env, &mut out);
+            return out.into_iter().collect();
+        }
+        for _ in 0..SETTLE {
+            self.round += 1;
+            self.grew = false;
+            out.clear();
+            self.set_into(s, env, &mut out);
+            if !self.grew {
+                break;
+            }
+        }
+        if self.grew {
+            self.errors.push(Msg::internal(UNSETTLED.to_string()));
+        }
+        // Only those read in the last round are at the fixpoint: an earlier round's may be
+        // under sets that have grown since.
+        for at in std::mem::take(&mut self.touched) {
+            if let Some(a) = (self.added.get_mut(&at)).filter(|a| a.round == self.round) {
+                a.done = true;
+            }
+        }
+        out.into_iter().collect()
+    }
+    /// The closures a set holds, for this instance. Sorted, so the same set is the same type everywhere.
+    /// Only the outermost read makes instances: one inside an added set may be under sets that
+    /// have not grown to their fixpoint yet.
+    fn set(&mut self, s: &SetTy, env: &Env) -> CSet {
+        let v = self.set_of(s, env);
+        if self.depth == 0 {
+            for k in &v {
+                self.intern(k.clone());
+            }
         }
         v
     }
@@ -849,6 +930,63 @@ impl Link<'_> {
         k.sets.extend(ret.into_iter().take(fd.n_ret_sets));
         k.sets.resize(fd.n_sets + fd.n_ret_sets, CSet::default());
     }
+    /// A set a call adds to, or a global's: read from the round's sets grown so far when met
+    /// again inside itself or already read this round, else grown from what it holds.
+    fn grow(&mut self, at: Grown, env: &Env, out: &mut BTreeSet<InstKey>) {
+        match self.added.get(&at) {
+            Some(a) if a.done || a.round == self.round => return out.extend(a.set.iter().cloned()),
+            _ => {}
+        }
+        let round = self.round;
+        self.added.entry(at.clone()).or_default().round = round;
+        self.touched.push(at.clone());
+        let mut got = BTreeSet::new();
+        self.depth += 1;
+        match &at {
+            Grown::Added(c, ..) => self.added_by(*c, env, &mut got),
+            // A global is the top level's: what the program puts in it names no fn's parameters.
+            Grown::Global(g, k) => {
+                if let Some(s) = self.adds.global_set(GlobalId(*g), *k).cloned() {
+                    let top = Env {
+                        targs: &[],
+                        sets: &[],
+                    };
+                    self.set_into(&s, &top, &mut got);
+                }
+            }
+        }
+        self.depth -= 1;
+        // Replaced, not added to: a closure read under the last round's sets is a different
+        // key from the same closure under this round's.
+        if let Some(a) = self.added.get_mut(&at) {
+            self.grew |= a.set != got;
+            a.set = got;
+            out.extend(a.set.iter().cloned());
+        }
+    }
+    /// What the callee of call `c` adds to the set it is passed there, under `env`.
+    fn added_by(&mut self, c: usize, env: &Env, out: &mut BTreeSet<InstKey>) {
+        let Some((f, slot)) = self.adds.added_at(c).cloned() else {
+            return;
+        };
+        if let Some(k) = self.callee_key(&f, env) {
+            if let Some(decl) = k.func.decl() {
+                // A trait's result slot is the impl's, after the impl's own sets.
+                let base = self.d.f(f.decl).n_sets;
+                let slot = match decl != f.decl && slot >= base {
+                    true => self.d.f(decl).n_sets + slot - base,
+                    false => slot,
+                };
+                if let Some(s) = self.adds(decl, slot) {
+                    let inner = Env {
+                        targs: &k.targs,
+                        sets: &k.sets,
+                    };
+                    self.set_into(&s, &inner, out);
+                }
+            }
+        }
+    }
     fn set_into(&mut self, s: &SetTy, env: &Env, out: &mut BTreeSet<InstKey>) {
         match s {
             SetTy::Param(i) => out.extend(env.sets.get(*i).cloned().unwrap_or_default()),
@@ -860,47 +998,12 @@ impl Link<'_> {
                     }
                 }
             }
-            SetTy::AddedAt(c) => {
-                let Some((f, slot)) = self.adds.added_at(*c).cloned() else {
-                    return;
-                };
-                // A call met again inside its own arguments' sets adds nothing more.
-                if !self.add_busy.insert(*c) {
-                    return;
-                }
-                if let Some(k) = self.callee_key(&f, env) {
-                    if let Some(decl) = k.func.decl() {
-                        // A trait's result slot is the impl's, after the impl's own sets.
-                        let base = self.d.f(f.decl).n_sets;
-                        let slot = match decl != f.decl && slot >= base {
-                            true => self.d.f(decl).n_sets + slot - base,
-                            false => slot,
-                        };
-                        if let Some(s) = self.adds(decl, slot) {
-                            let inner = Env {
-                                targs: &k.targs,
-                                sets: &k.sets,
-                            };
-                            self.set_into(&s, &inner, out);
-                        }
-                    }
-                }
-                self.add_busy.remove(c);
-            }
-            // A global is the top level's: what the program puts in it names no fn's parameters.
-            SetTy::Global(g, k) => {
-                if !self.global_busy.insert((*g, *k)) {
-                    return;
-                }
-                if let Some(s) = self.adds.global_set(GlobalId(*g), *k).cloned() {
-                    let top = Env {
-                        targs: &[],
-                        sets: &[],
-                    };
-                    self.set_into(&s, &top, out);
-                }
-                self.global_busy.remove(&(*g, *k));
-            }
+            SetTy::AddedAt(c) => self.grow(
+                Grown::Added(*c, env.targs.to_vec(), env.sets.to_vec()),
+                env,
+                out,
+            ),
+            SetTy::Global(g, k) => self.grow(Grown::Global(*g, *k), env, out),
             SetTy::RetSlot(_) => {}
             SetTy::Var(_) => {}
         }
