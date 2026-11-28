@@ -9,6 +9,7 @@
 mod consts;
 pub mod db;
 pub mod facade;
+pub mod items;
 
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;

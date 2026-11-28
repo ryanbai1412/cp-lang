@@ -2135,6 +2135,14 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_std_names(root),
                              ["crates/cpl-next/src/lib.rs:2: link", "crates/cpl-next/src/lib.rs:3: check"])
 
+    def test_next_std_names_skips_a_querys_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/seq.cp", "pub fn parse(self) -> Int = 0\n")
+            self._write(root, "crates/cpl-next/src/lib.rs",
+                        '    const NAME: &\'static str = "parse";\nif n == "parse" {}\n')
+            self.assertEqual(dr.next_std_names(root), ["crates/cpl-next/src/lib.rs:2: parse"])
+
     def test_next_std_names_counts_without_the_core_stand_in(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

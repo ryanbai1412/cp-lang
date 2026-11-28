@@ -2392,6 +2392,9 @@ def next_std_names(root: Path) -> list[str]:
             # A display arm naming its own variant (`Stage::Check => "check"`) is the compiler's label.
             if (arm := NEXT_LABEL_ARM_RE.match(line)) and hits == [arm.group(1).lower()]:
                 hits = []
+            # A query's name (`const NAME: &'static str = "parse";`) labels its recompute count.
+            if NEXT_QUERY_NAME_RE.match(line):
+                hits = []
             out += [f"{rel}:{i}: {n}" for n in hits]
             # A std module by its dotted name (`"std.prelude"`).
             out += [f"{rel}:{i}: {n}" for n in NEXT_STD_MODULE_RE.findall(line)]
@@ -2416,6 +2419,7 @@ def next_std_names(root: Path) -> list[str]:
 
 
 NEXT_WRAPPER_LINES = 8
+NEXT_QUERY_NAME_RE = re.compile(r'^\s*const NAME: &\'static str = "[a-z_]+";\s*$')
 NEXT_LABEL_ARM_RE = re.compile(r'^\s*[A-Z]\w*::([A-Z]\w*)\s*=>\s*"[a-z_]+",?\s*$')
 NEXT_FN_RE = re.compile(r"^(\s*)(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s+([a-z_]\w*)")
 NEXT_CONST_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:const|static)\s+([A-Z_][A-Z0-9_]*)\s*:")
