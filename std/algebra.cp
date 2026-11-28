@@ -577,12 +577,12 @@ pub struct MinCount<T>(pub val: T, pub count: Int):
 
 
 /// The empty fold, `+`'s identity: the far end of `T` (as `Monoid.of(min)`) with count 0.
-impl<T: Ord> Zero for MinCount<T>:
+impl<T: Ord + Bounded> Zero for MinCount<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `MinCount<Int>.zero.count == 0`
     @get fn zero() -> MinCount<T> = MinCount(Monoid<T>.of(min).id, 0)
-impl<T> Add for MinCount<T>:
+impl<T: Ord> Add for MinCount<T>:
     fn add(a, b) = MinCount.join(a, b)
 
 /// \(O(1)\) per merge. Maximum value together with its multiplicity (range add: `SegTree(MaxCount.monoid, a, act: add)`).
@@ -613,12 +613,12 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
 
 
 /// The empty fold, `+`'s identity: the low end of `T` (as `Monoid.of(max)`) with count 0.
-impl<T: Ord> Zero for MaxCount<T>:
+impl<T: Ord + Bounded> Zero for MaxCount<T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `MaxCount<Int>.zero.count == 0`
     @get fn zero() -> MaxCount<T> = MaxCount(Monoid<T>.of(max).id, 0)
-impl<T> Add for MaxCount<T>:
+impl<T: Ord> Add for MaxCount<T>:
     fn add(a, b) = MaxCount.join(a, b)
 
 /// \(O(1)\) per composition/eval. Affine map `x -> a * x + b` over any ring `T` (`Int`, `Mod<P>`).

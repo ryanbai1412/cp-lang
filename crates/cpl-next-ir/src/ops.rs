@@ -740,6 +740,18 @@ pub fn out_len(n: i64, len: usize) -> usize {
     usize::try_from(n).unwrap_or(0).min(len)
 }
 
+/// The first `n` characters of `cs` (`out_len`) as text: what `Out` writes and `ParseF64`
+/// reads. A cell that is no character is a broken program.
+pub fn text(n: i64, cs: impl ExactSizeIterator<Item = Option<Scalar>>) -> Result<String, Fault> {
+    let n = out_len(n, cs.len());
+    cs.take(n)
+        .map(|c| match c {
+            Some(Scalar::Char(c)) => Ok(char::from(c)),
+            _ => Err(Fault::Internal("text of a non-character")),
+        })
+        .collect()
+}
+
 /// The answer an operation has from its operands' types alone: an ordinal is always below
 /// the length of a type that is not a domain, as such a type is its own integers.
 pub fn decided(op: Intr, args: &[Arg<CTy>]) -> Option<bool> {

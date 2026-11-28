@@ -137,6 +137,18 @@ jobs:
       - name: Memory, swap and CPU during the gate (MB; si/so swapping, wa I/O wait), and its busiest processes
         if: ${{ !cancelled() }}
         run: "[ ! -f \"$RUNNER_TEMP/vmstat.log\" ] || cat \"$RUNNER_TEMP/vmstat.log\" \"$RUNNER_TEMP/top.log\""
+      # What this lists@ shard measured (target/cpl-next/shard-N-of-M), so a fresh, whole run's
+      # lists can be put together from one CI run's 16 shards instead of a 45-min local run.
+      - name: Name this shard's lists
+        if: ${{ !cancelled() && startsWith(matrix.part, 'lists@') }}
+        run: echo "LISTS_NAME=next-$(echo '${{ matrix.part }}' | tr '@/' '--')" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && startsWith(matrix.part, 'lists@') }}
+        with:
+          name: ${{ env.LISTS_NAME }}
+          path: target/cpl-next/shard-*/
+          retention-days: 14
+          if-no-files-found: ignore
       # The rule coverage report (scripts/spec-gate.py coverage), kept per run, not committed.
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && matrix.part == 'checks' }}
@@ -296,6 +308,8 @@ jobs:
             cxx-${{ runner.os }}-tests-${{ matrix.part }}-
             cxx-${{ runner.os }}-tests-
             cxx-${{ runner.os }}-
+      - name: Note when this job starts using the cache
+        run: echo "CXX_SINCE=$(date +%s)" >> "$GITHUB_ENV"
       # The cases scripts/corpus.py make wrote in the conform part (interp_memory, fix_behavior).
       - uses: actions/cache/restore@v4
         with:
@@ -315,6 +329,12 @@ jobs:
           CPL_GATE_PART: tests:${{ matrix.part }}
           CPL_NEXTEST_ARCHIVE: nextest.tar.zst
         run: just check
+      # Only the builds this part used: a shard restored from the `cxx-` fallback saved all
+      # it restored, so 5 shards of 1.78 GB filled the 10 GB and evicted every conform:diff
+      # and acceptance cache, whose parts then built cold past their caps (run 46140296444).
+      - name: Drop the g++ builds this part didn't use
+        if: ${{ !cancelled() }}
+        run: just cxx-trim "$CXX_SINCE"
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() }}
         with:

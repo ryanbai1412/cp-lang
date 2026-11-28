@@ -1,6 +1,7 @@
 //! `List<T>`, `[D]T` and `Str`: values in a run of cells, read and written in \(O(1)\) at a key.
 //! Core re-exports all three, so no module imports them.
 //!
+//! start: `List`, `Str`, `Array`, `List.insert`, `List.remove`
 //! example: `var xs = [3, 1]; xs.push(2); xs[2] == 2 and xs.len == 3`
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key}
 use std.literal.{ListLiteral, Filled}
@@ -8,6 +9,7 @@ use std.seq.{Seq, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
 
 fn out(text: Raw<Char>, n: Int) = @intrinsic("out")
 
+/// A growable run of `T`s, `[a, b]`: \(O(1)\) at a position and amortized \(O(1)\) to `push` (R07.1).
 @role(list)
 pub struct List<T>:
     var buf: Raw<T>
@@ -93,6 +95,7 @@ pub struct List<T>:
             raw_take(mut buf, i)
             raw_set(mut buf, i, x)
 
+/// `[D]T`: one `T` for each position of the domain `D`, read and written at a `D` (R04.3).
 @role(array)
 pub struct Array<D: Domain, T>:
     buf: Raw<T>
@@ -124,7 +127,7 @@ fn array_of_list<D: Domain, T>(xs: List<T>) -> [D]T:
     assert xs.len == D.count, "a list for `[D]T` has one element per position"
     Array(xs.buf)
 
-// A flat sequence of `Char` (R02.3).
+/// A word: a flat sequence of `Char`s, `"ab"` (R02.3).
 @role(str)
 pub struct Str:
     pub var chars: List<Char>

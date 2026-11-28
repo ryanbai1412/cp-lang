@@ -11,7 +11,7 @@ fn builtins_take_their_arguments_by_count() {
         "abs(a) >= 0",
         "max(a) == a and min(a, b) <= b",
         "gcd(b) == b",
-        "(some(a) ?? 0) == a",
+        "(Some(a) ?? 0) == a",
     ] {
         let verdict = ctx.prove(goal);
         assert!(

@@ -89,6 +89,21 @@ impl Cx<'_> {
                     "this is not a place that can be assigned or lent",
                 ),
             );
+            return v;
+        }
+        // A field or cell is a place only in storage a name holds: `mk().f = v` writes nothing.
+        let mut root = &v;
+        while let TK::Field(b, _) | TK::Slot(b, _) | TK::Payload(b, _) = &root.kind {
+            root = b;
+        }
+        if !matches!(root.kind, TK::Var(_) | TK::Error) {
+            self.err(
+                e.span,
+                Msg::verdict(
+                    cpl_diag::codes::ASSIGN_TO_LET,
+                    "only a variable, a field, or an element can be assigned to",
+                ),
+            );
         }
         v
     }

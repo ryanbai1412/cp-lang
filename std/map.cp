@@ -1,6 +1,7 @@
 //! Ordered maps and sets, as ordinary CP: `Map` and `Set` keep their keys in `<` order in an AVL
 //! tree, \(O(\log n)\) a step. Core re-exports both, so no module imports them.
 //!
+//! start: `Map`, `Set`
 //! example: `var m = Map<Str, Int>(); m["a"] += 2; m["a"] == 2`
 use std.seq.{IndexGet, Seq, Sized}
 

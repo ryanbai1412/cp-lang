@@ -9593,3 +9593,17 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 683. (reserved, E: a law body is checked like a trait default, once and generically)
 
 ## 684. (reserved, E: a bare name in a trait's fn finds the trait's own members)
+
+## 685. (reserved, H: `and` and `or` as values are std fns marked `@operator`)
+
+## 686. (reserved, I: core is deleted; record shapes live in the module @role marks record)
+
+## 687. (reserved, C: `FromInt` is std's trait for Int to number conversion)
+
+## 688. (reserved, A: a constant type argument is `Ty::Const`, a type's value params are `const P: Int`)
+
+## 689. (reserved, G: D: an unwritten domain parameter's implied bound is the unique weakest trait holding what its body reads)
+
+## 690. (reserved, G: D: Discrete is positions without a count; Domain, Ordered and Cyclic add to it)
+
+## 691. (reserved, E: the lawful role `Lawful<S>`: laws are a derived member, `laws_hold` is an ordinary std fn)

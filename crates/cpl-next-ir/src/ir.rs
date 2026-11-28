@@ -360,7 +360,7 @@ pub enum Place {
     Local(usize),
     Global(usize),
     Field(Box<Place>, usize),
-    /// The payload of member `i` of a function-value set. Canonical IR only.
+    /// The payload of member `i`: an enum's variant, or in canonical IR a fn-value set's member.
     Variant(Box<Place>, usize),
     /// The variable a captured reference points at.
     Deref(Box<Place>),

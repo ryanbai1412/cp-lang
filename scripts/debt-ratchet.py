@@ -2027,9 +2027,21 @@ def next_name_compares(root: Path) -> list[str]:
     pat = re.compile(r'(?:==|!=)\s*"[A-Za-z_]\w*"|^\s*(?:\|\s*)?[^=|]*"[A-Za-z_]\w*"[^=]*(?:\|.*)?=>'
                      r'|matches!\([^)]*"[A-Za-z_]\w*"|\.eq\(\s*"[A-Za-z_]\w*"\s*\)'
                      r'|\.(?:get|get_mut|contains_key|remove|entry)\(\s*"[A-Za-z_]\w*"\s*\)')
-    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+    # A prefix test for std's modules (`starts_with("std.")`) is the same knowing by text, and so
+    # is any compare against a constant spelling a name (`const CORE: &str = "core"`, `== CORE`).
+    std_prefix = re.compile(r'\.(?:starts_with|strip_prefix|ends_with|strip_suffix)\(\s*"std\b')
+    files = list(_rs_files(root, *_next_srcs(root), tests=False))
+    named = sorted({m.group(1) for p in files for l in _lines(p)
+                    if (m := re.match(r'\s*(?:pub(?:\([^)]*\))? )?const ([A-Z][A-Z0-9_]*): &(?:\'static )?str = '
+                                      r'"[A-Za-z_]\w*";', l))})
+    name = r"\b(?:{0})\b(?![.(\w])".format("|".join(named))
+    by_const = re.compile(rf'(?:==|!=)\s*&?(?:\w+::)*{name}|^\s*(?:\|\s*)?(?:\w+::)*{name}\s*(?:\|.*)?=>'
+                          rf'|matches!\([^)]*{name}|\.(?:eq|starts_with|strip_prefix|get|contains_key)'
+                          rf'\(\s*&?(?:\w+::)*{name}\s*\)') if named else None
+    return [f"{_rel(root, p)}:{i}" for p in files
             for i, l in enumerate(_lines(p), 1)
-            if not l.lstrip().startswith("//") and pat.search(l)]
+            if not l.lstrip().startswith("//")
+            and (pat.search(l) or std_prefix.search(l) or (by_const and by_const.search(l)))]
 
 
 def next_library_gates(root: Path) -> list[str]:

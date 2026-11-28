@@ -1,5 +1,8 @@
 //! `Raw<T>`: a run of cells with no length or bounds, what `List`, `Str` and `Array` store
 //! their values in. Each fn is one machine operation; the checked types build on them.
+//!
+//! start: `raw_new`, `raw_get`, `raw_set`, `raw_take`
+//! example: `use std.raw.{raw_new, raw_get, raw_set}; var r = raw_new(3, 0); raw_set(mut r, 1, 5); raw_get(r, 1) == 5`
 
 /// No cells.
 pub fn raw_empty<T>() -> Raw<T> = @intrinsic("raw_empty")

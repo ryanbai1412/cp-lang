@@ -175,3 +175,79 @@ print(\"? {a + b}\")\nlet c: Int = read()\nprint(\"! {c}\")\n";
     assert!(ch.wait().expect("ends").success());
     assert_eq!(String::from_utf8_lossy(&seen), want);
 }
+
+/// The last token reads the same with or without a newline after it, on every runner: the C++
+/// finds the token again after the fill that meets the input's end, which moved the buffer.
+#[test]
+fn the_last_token_reads_with_no_newline_after_it() {
+    let src = "let t = read<(Int, Int, Int)>()\nlet a: Int = read()\nprint(t, a)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let (p, fs) = c.form(Form::Raw);
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let want = "7 8 9 16\n";
+    for input in ["7 8 9 16", "7 8 9 16\n", "7\n8 9  16"] {
+        let fixed = cpl_next_ir::run::RunInput::fixed(input);
+        assert_eq!(cpl_next_interp::run(p, fs, fixed).output, want, "{input:?}");
+        assert_eq!(c.run(input).output, want, "{input:?}");
+        let mut ch = std::process::Command::new(&bin)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .expect("runs");
+        let mut to = ch.stdin.take().expect("stdin");
+        std::io::Write::write_all(&mut to, input.as_bytes()).expect("feeds it");
+        drop(to);
+        let ran = ch.wait_with_output().expect("ends");
+        assert!(ran.status.success(), "{input:?}");
+        assert_eq!(String::from_utf8_lossy(&ran.stdout), want, "{input:?}");
+    }
+}
+
+/// An event whose value traps while it is shown is not written, on the engine and in the C++:
+/// the trap starts its own line, after the whole events before it.
+#[test]
+fn an_event_whose_value_traps_is_not_written() {
+    let src = "let a = [0, 1, 2]\nlet m = a.map(x => 10 / x)\nprint(m.drop(1))\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let o = c.run("");
+    assert_eq!(o.trap.as_ref().map(|t| t.code()), Some("R0203"));
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-pthread", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    let err = String::from_utf8_lossy(&ran.stderr);
+    let lines: Vec<_> = err
+        .lines()
+        .filter(|l| !l.starts_with("call stack: "))
+        .collect();
+    let (trap, evs) = lines.split_last().expect("a trap line");
+    assert!(trap.starts_with("trap: R0203: line 2:"), "{err}");
+    assert!(
+        evs.iter()
+            .all(|l| l.starts_with("ev ") && !l.contains("trap:")),
+        "{err}"
+    );
+    assert_eq!(evs.len(), o.events.len(), "{err}");
+}

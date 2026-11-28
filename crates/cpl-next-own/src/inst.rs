@@ -3,6 +3,7 @@
 //! of its parameters and of globals (`Fx`), and which parameters it keeps. A call names its
 //! instance (`Target::Inst`), and a call through a fn value calls each closure of its set, so
 //! nothing here widens a set or folds a trait's impls.
+use crate::escape::escape;
 use crate::lends;
 use crate::{overlap, Fx, Pl, Root, Step};
 use cpl_diag::codes;
@@ -11,7 +12,7 @@ use cpl_next_decls::diag::Msg;
 use cpl_next_decls::views::Signatures;
 use cpl_next_ir::ir::{Arg, Expr, Place, Stmt, Target, EK};
 use cpl_next_ir::ir::{Func, FuncKey, Site};
-use cpl_next_ir::prog::{CTy, InstKey, Program};
+use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::Ty;
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
@@ -46,6 +47,9 @@ pub(crate) struct Walk<'a> {
     /// What each binding of a heap value borrows: written while it is used is E0602 (a fn
     /// value's captures are not frozen, R10).
     pub frozen: HashMap<Root, BTreeSet<Pl>>,
+    /// A binding a pattern bound from an enum's payload, and that place: the binding is its
+    /// copy, so writing the place leaves it as it was (R05.3.2).
+    pub payloads: HashMap<Root, BTreeSet<Pl>>,
     /// A write to what a binding borrows, said if that binding is used later (E0602).
     pub pending: Vec<(Root, u32, Msg)>,
     /// A binding built as a struct from fields of a lent binding, and each such field with the
@@ -334,6 +338,7 @@ impl Walk<'_> {
         self.pending.retain(|x| x.0 != r);
         self.frozen.remove(&r);
         self.built.remove(&r);
+        self.payloads.remove(&r);
         self.next += 1;
         self.decl.insert(r, (self.scopes.clone(), self.next));
     }
@@ -392,7 +397,11 @@ impl Walk<'_> {
         let n = self.root_name(p.root);
         let hit: Vec<Root> = (self.frozen.iter())
             .filter(|(b, srcs)| {
-                **b != p.root && !via.contains(*b) && srcs.iter().any(|s| overlap(s, p))
+                let copied = self.payloads.get(*b);
+                **b != p.root
+                    && !via.contains(*b)
+                    && (srcs.iter())
+                        .any(|s| overlap(s, p) && !copied.is_some_and(|c| c.contains(s)))
             })
             .map(|(b, _)| *b)
             .collect();
@@ -1085,6 +1094,12 @@ impl Walk<'_> {
                         self.built.insert(Root::Local(*l), lent);
                     }
                 }
+                let read = if let EK::Copy(p) = &e.kind {
+                    self.pl(p)
+                } else {
+                    None
+                };
+                copies_payload(&mut self.payloads, Root::Local(*l), e, read);
                 let mut src = self.sources(e);
                 if self.var(Root::Local(*l)) && self.elem_read(e) {
                     src.retain(|p| {
@@ -1173,6 +1188,14 @@ impl Walk<'_> {
                         if self.cur == self.p.main && !self.decl.contains_key(&q.root) {
                             self.bind(q.root);
                         }
+                    }
+                    if q.path.is_empty() {
+                        let read = if let EK::Copy(p) = &e.kind {
+                            self.pl(p)
+                        } else {
+                            None
+                        };
+                        copies_payload(&mut self.payloads, q.root, e, read);
                     }
                     let mut what = self.sources(e);
                     if q.path.is_empty() && self.var(q.root) && self.elem_read(e) {
@@ -1516,6 +1539,7 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
         borrowed: BTreeSet::new(),
         consts: HashMap::new(),
         frozen: HashMap::new(),
+        payloads: HashMap::new(),
         kept: BTreeSet::new(),
         closure_params: BTreeSet::new(),
         caps: HashMap::new(),
@@ -1569,6 +1593,7 @@ impl Walk<'_> {
         self.pending.clear();
         self.frozen.clear();
         self.built.clear();
+        self.payloads.clear();
         self.kept.clear();
         self.caps.clear();
         self.spilled.clear();
@@ -1829,7 +1854,6 @@ pub fn after(
         .extend(all(&p.insts, Stage::Instances, &fast, p.globals.len()));
     let mut owned = run(d, p, globals);
     owned.errors.extend(before.cache);
-    owned.errors.extend(lenders_lend(p));
     if p.errors.is_empty() {
         owned.errors.extend(escape(d, p));
     }
@@ -1839,199 +1863,35 @@ pub fn after(
     owned
 }
 
-/// A lender lends one place on every path through it: its one expression, or a `lend mut`
-/// (R05.6.3). A path that leaves without one would lose the caller's write.
-fn lenders_lend(p: &Program) -> Vec<Msg> {
-    /// Whether a path through `b` reaches its end, and whether one leaves the fn, unlent.
-    fn gap(b: &[Stmt<CTy>]) -> (bool, bool) {
-        let (mut on, mut left) = (true, false);
-        for s in b {
-            if !on {
-                break;
-            }
-            match s {
-                Stmt::LendOut(_) | Stmt::Break | Stmt::Continue => on = false,
-                Stmt::Return(_) => (on, left) = (false, true),
-                Stmt::If(_, a, b) => {
-                    let ((fa, la), (fb, lb)) = (gap(a), gap(b));
-                    (on, left) = (fa || fb, left || la || lb);
-                }
-                Stmt::Switch(_, arms) if !arms.is_empty() => {
-                    let gs: Vec<_> = arms.iter().map(|a| gap(a)).collect();
-                    on = gs.iter().any(|g| g.0);
-                    left |= gs.iter().any(|g| g.1);
-                }
-                // A lend's body runs once; a loop's or a walk's may not run, and lends nothing.
-                Stmt::Region {
-                    lend: true, body, ..
-                } => {
-                    let (f, l) = gap(body);
-                    (on, left) = (f, left || l);
-                }
-                Stmt::Loop(body, step, _) => left |= gap(body).1 || gap(step).1,
-                Stmt::Region { body, .. } => left |= gap(body).1,
-                _ => {}
-            }
-        }
-        (on, left)
+/// Notes `r` as a copy of the payload `e` reads at `read`, directly or through a temp: the
+/// places it holds go in `payloads`.
+fn copies_payload(
+    payloads: &mut HashMap<Root, BTreeSet<Pl>>,
+    r: Root,
+    e: &Expr<CTy>,
+    read: Option<Pl>,
+) {
+    let held = match read {
+        Some(q) if payload_read(e) => BTreeSet::from([q]),
+        Some(q) if q.path.is_empty() => payloads.get(&q.root).cloned().unwrap_or_default(),
+        _ => BTreeSet::new(),
+    };
+    if held.is_empty() {
+        payloads.remove(&r);
+    } else {
+        payloads.insert(r, held);
     }
-    let mut bad = Vec::new();
-    for f in &p.insts {
-        if !matches!(f.region, Some((true, _))) || gap(&f.body) == (false, false) {
-            continue;
-        }
-        let last = f.body.last().map(std::slice::from_ref).unwrap_or_default();
-        let site = site_of(last, &|_| true).or_else(|| site_of(&f.body, &|_| true));
-        let m = Msg::verdict(
-            codes::UNSUPPORTED,
-            format!(
-                "`{}` is declared `lends mut`, so every path through it ends in `lend mut place`; \
-                 a body that leaves without one would lose the caller's write (R05.6.3)",
-                f.shown
-            ),
-        );
-        let m = match site.and_then(|i| f.sites.get(i)) {
-            Some(s) => Msg::at(s.clone(), m),
-            None => m,
-        };
-        if !bad.contains(&m) {
-            bad.push(m);
-        }
-    }
-    bad
 }
-
-/// A closure that shares a `var` of the fn around it is lent: it cannot be returned (spec R05.10).
-/// Nor can it be stored through a `mut` parameter.
-fn escape(d: &dyn Signatures, p: &Program) -> Vec<Msg> {
-    // `made` keeps the closures the returning fn itself makes: one passed in through a
-    // container's `new` or `at` captures what its maker's frame holds, which outlives them.
-    fn holds_ref(
-        p: &Program,
-        t: &CTy,
-        seen: &mut Vec<CTy>,
-        made: &dyn Fn(&InstKey) -> bool,
-    ) -> bool {
-        if seen.contains(t) {
-            return false;
-        }
-        seen.push(t.clone());
-        match t {
-            CTy::Ref(_) => true,
-            CTy::Raw(e) => holds_ref(p, e, seen, made),
-            CTy::Struct(..) => p.parts(t).iter().any(|f| holds_ref(p, f, seen, made)),
-            CTy::Fn(_, _, ms) => ms
-                .iter()
-                .any(|k| holds_ref(p, &CTy::Clo(Box::new(k.clone())), seen, made)),
-            CTy::Clo(k) if made(k) => p.captures(k).iter().any(|c| holds_ref(p, c, seen, made)),
+/// A read of a place inside an enum's payload (`Place::Variant`), as a pattern binds one.
+fn payload_read(e: &Expr<CTy>) -> bool {
+    fn inside(p: &Place) -> bool {
+        match p {
+            Place::Variant(..) => true,
+            Place::Field(b, _) => inside(b),
             _ => false,
         }
     }
-    let mut bad = Vec::new();
-    for (me, f) in p.insts.iter().enumerate() {
-        let owner = match f.key {
-            FuncKey::Decl(g) | FuncKey::Ctx(g, _) => Some(g),
-            _ => None,
-        };
-        // A generator's frame ends with its walk, so a closure made in one outlives it anywhere.
-        let made = |k: &InstKey| match (owner, &k.func) {
-            (Some(g), FuncKey::Lambda(_)) => {
-                let o = (p.index.get(k)).and_then(|&i| p.insts.get(i)?.maker.as_ref()?.decl());
-                o == Some(g) || o.is_some_and(|o| matches!(d.f(o).region, Some((false, _))))
-            }
-            (Some(_), _) => false,
-            (None, _) => true,
-        };
-        // Said where the fn makes the closure, or else where it is called.
-        let at = |bad: &mut Vec<Msg>, m: String| {
-            let made_here = |e: &Expr<CTy>| {
-                matches!((&e.kind, &e.ty), (EK::MakeClosure(_), CTy::Clo(k))
-                    if made(k) && p.captures(k).iter().any(|c| matches!(c, CTy::Ref(_))))
-            };
-            let calls_me =
-                |e: &Expr<CTy>| matches!(&e.kind, EK::Call(Target::Inst(j), ..) if *j == me);
-            let site = (site_of(&f.body, &made_here).and_then(|i| f.sites.get(i))).or_else(|| {
-                (p.insts.iter())
-                    .find_map(|g| site_of(&g.body, &calls_me).and_then(|i| g.sites.get(i)))
-            });
-            let m = Msg::verdict(codes::LENT_ESCAPES, m);
-            bad.push(match site {
-                Some(s) => Msg::at(s.clone(), m),
-                None => m,
-            });
-        };
-        if holds_ref(p, &f.ret, &mut Vec::new(), &made) {
-            at(&mut bad, format!("`{}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", f.name));
-        }
-        // What a `mut` parameter holds is the caller's, so a closure stored there outlives this fn too.
-        let stored = (f.params.iter().filter(|(_, m)| *m)).any(|(l, _)| {
-            let t = match &f.locals[*l] {
-                CTy::Ref(t) => t,
-                t => t,
-            };
-            owner.is_some() && holds_ref(p, t, &mut Vec::new(), &made)
-        });
-        if stored {
-            at(&mut bad, format!("`{}` stores a function that uses one of its `var`s through a `mut` parameter; the variable is gone when it returns", f.name));
-        }
-    }
-    bad
-}
-
-/// The site of the first expression of `b` that `hit` takes, outermost first.
-fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
-    fn ex(e: &Expr<CTy>, hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
-        if hit(e) {
-            return Some(e.site as usize);
-        }
-        let args = |xs: &[Arg<CTy>]| {
-            xs.iter().find_map(|a| match a {
-                Arg::Value(v) => ex(v, hit),
-                Arg::View(_) | Arg::Lend(_) => None,
-            })
-        };
-        match &e.kind {
-            EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().find_map(|x| ex(x, hit)),
-            EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => ex(x, hit),
-            EK::Intr(_, xs, _) | EK::Call(_, xs, _) => args(xs),
-            EK::CallValue(g, xs, _) => ex(g, hit).or_else(|| args(xs)),
-            EK::Copy(_)
-            | EK::Pass(..)
-            | EK::AddrOf(_)
-            | EK::Lent(_)
-            | EK::Tag(_)
-            | EK::Int(_)
-            | EK::F64(_)
-            | EK::Bool(_)
-            | EK::Unit
-            | EK::Text(_)
-            | EK::DomLen(_)
-            | EK::DomLo(_)
-            | EK::DomHeld(_)
-            | EK::DomCounted(_)
-            | EK::HasBound(..) => None,
-        }
-    }
-    b.iter().find_map(|s| match s {
-        Stmt::Let(_, e) | Stmt::Assign(_, e) => ex(e, hit),
-        Stmt::Expr(e) | Stmt::Yield(e) | Stmt::Fact(e) | Stmt::Check { cond: e, .. } => ex(e, hit),
-        Stmt::Return(e) => e.as_ref().and_then(|e| ex(e, hit)),
-        Stmt::If(c, x, y) => ex(c, hit)
-            .or_else(|| site_of(x, hit))
-            .or_else(|| site_of(y, hit)),
-        Stmt::Loop(x, y, _) => site_of(x, hit).or_else(|| site_of(y, hit)),
-        Stmt::Switch(c, arms) => ex(c, hit).or_else(|| arms.iter().find_map(|a| site_of(a, hit))),
-        Stmt::Region { args: xs, body, .. } => (xs.iter())
-            .find_map(|a| match a {
-                Arg::Value(v) => ex(v, hit),
-                Arg::View(_) | Arg::Lend(_) => None,
-            })
-            .or_else(|| site_of(body, hit)),
-        Stmt::Event(cpl_next_ir::ir::EventPoint { vals: xs, .. }) => {
-            xs.iter().find_map(|x| ex(x, hit))
-        }
-        Stmt::LendOut(_) | Stmt::Drop(_) | Stmt::Break | Stmt::Continue => None,
-    })
+    matches!(&e.kind, EK::Copy(p) if inside(p))
 }
 
 /// The local a value is a copy of, through widening a fn value's closure set.

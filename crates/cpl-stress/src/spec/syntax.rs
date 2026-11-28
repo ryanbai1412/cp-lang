@@ -645,7 +645,8 @@ pub(super) fn counted(count: &str) -> (Expr, Expr) {
 }
 
 /// `read()` as `Some(None)`, and `read(none: x)` with a number `x`
-/// (or a string that is one) as `Some(Some(x))`.
+/// (or a string that is one) as `Some(Some(x))`. A `base:` beside them
+/// shifts the shape, not what is read (see [`read_base`]).
 pub(super) fn read_none(expr: &Expr) -> Option<Option<i128>> {
     if is_read(expr) {
         return Some(None);
@@ -653,22 +654,26 @@ pub(super) fn read_none(expr: &Expr) -> Option<Option<i128>> {
     let ExprKind::Call { callee, args } = &expr.kind else {
         return None;
     };
-    let [arg] = args.as_slice() else {
-        return None;
-    };
-    if !matches!(&callee.kind, ExprKind::Name(name) if name == "read")
-        || arg.name.as_ref().is_none_or(|name| name.text != "none")
-    {
+    if !matches!(&callee.kind, ExprKind::Name(name) if name == "read") || args.is_empty() {
         return None;
     }
-    let none = match &arg.value.kind {
-        ExprKind::Str(pieces) => match pieces.as_slice() {
-            [cpl_syntax::ast::StrPiece::Text(text)] => text.trim().parse().ok(),
-            _ => None,
-        },
-        _ => eval(&arg.value, &Env::new()),
-    };
-    Some(Some(none?))
+    let mut none = None;
+    for arg in args {
+        match arg.name.as_ref().map(|name| name.text.as_str()) {
+            Some("base") => {}
+            Some("none") => {
+                none = Some(match &arg.value.kind {
+                    ExprKind::Str(pieces) => match pieces.as_slice() {
+                        [cpl_syntax::ast::StrPiece::Text(text)] => text.trim().parse().ok()?,
+                        _ => return None,
+                    },
+                    _ => eval(&arg.value, &Env::new())?,
+                })
+            }
+            _ => return None,
+        }
+    }
+    Some(none)
 }
 
 /// The `k` of `read(base: k)` or `read<T>(base: k)`.

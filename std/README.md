@@ -51,7 +51,7 @@ entry. Its `//!` block starts with one paragraph saying what the module is for, 
 
 | Label | Says |
 |---|---|
-| `start:` | the 3 to 5 public items (or `Type.member`s) a reader begins with, most used first |
+| `start:` | the 3 to 5 public items (or `Type.member`s) a reader begins with, most used first; a module of fewer than 3 names each |
 | `example:` | one or more, run like a fn's: the module at work, shown under the entry points |
 
 More prose may follow. `cpl-doc`'s `every_std_module_opens_with_an_outline` fails on a module

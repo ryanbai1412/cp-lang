@@ -107,8 +107,9 @@ impl Backend<'_> {
                 })
             }
             Backend::Next(next) => {
-                let mut runs = ["--raw", "--engine"]
-                    .map(|form| cli_within(next, &[path, form], input, case_limit(text)));
+                let oracle = oracle_binary(next);
+                let mut runs = [(oracle.as_path(), "--raw"), (next.as_path(), "--engine")]
+                    .map(|(bin, form)| cli_within(bin, &[path, form], input, case_limit(text)));
                 let [raw, engine] = &mut runs;
                 let (code, out, err) = std::mem::replace(raw, Ok(Default::default()))?;
                 if code != 0 && code != 3 {
@@ -137,7 +138,16 @@ fn on_next(text: &str) -> bool {
     header_values(text, "engines:").contains(&"next")
 }
 
-/// The `cpl-next` beside cpl-conform.
+/// The reference interpreter, `cpl-next-oracle`, beside `next`.
+fn oracle_binary(next: &Path) -> PathBuf {
+    next.with_file_name(if cfg!(windows) {
+        "cpl-next-oracle.exe"
+    } else {
+        "cpl-next-oracle"
+    })
+}
+
+/// The `cpl-next` beside cpl-conform, with the `cpl-next-oracle` it is compared against.
 fn next_binary() -> Result<PathBuf, String> {
     let next = std::env::current_exe()
         .map_err(|e| format!("cannot find cpl-conform: {e}"))?
@@ -146,16 +156,18 @@ fn next_binary() -> Result<PathBuf, String> {
         } else {
             "cpl-next"
         });
-    if !next.exists() {
-        return Err(format!(
-            "a `// engines: next` case needs `cpl-next` next to cpl-conform ({}); build it: cargo build -p cpl-next",
-            next.display()
-        ));
+    for bin in [next.clone(), oracle_binary(&next)] {
+        if !bin.exists() {
+            return Err(format!(
+                "a `// engines: next` case needs `cpl-next` and `cpl-next-oracle` next to cpl-conform ({}); build them: cargo build -p cpl-next",
+                bin.display()
+            ));
+        }
+        if let Some(why) = stale_cli(&bin) {
+            return Err(why);
+        }
     }
-    match stale_cli(&next) {
-        Some(why) => Err(why),
-        None => Ok(next),
-    }
+    Ok(next)
 }
 
 /// A program that traps in a checked build is invalid, and release runs no

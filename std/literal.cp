@@ -2,11 +2,13 @@
 //! `@literal("[]")` trait, and `var a: [D]T = x` fills through `@literal("[;]")` (R01.8.8). Core
 //! re-exports both, so a program's own type gets the literals by implementing them.
 //!
+//! start: `ListLiteral`, `Filled`, `ListLiteral.with_room`
 //! example: `let xs: List<Int> = [1, 2]; xs.len == 2`
 
 /// What `[a, b]` builds when its type is `Self`: `with_room(2)`, then a `push` of each (R01.8.8).
 @literal("[]")
 pub trait ListLiteral<T>:
+    /// An empty value with room for `n` elements, before the literal's pushes.
     fn with_room(n: Int) -> Self
     fn push(mut self, x: T)
 

@@ -1,23 +1,28 @@
 //! Tuples `(a, b)`, as `Tuple1` to `Tuple12`: compared field by field, cloned deeply, and a
 //! product domain when every part is a domain. Core re-exports them, so no module imports them.
 //!
+//! start: `Tuple2`, `Tuple3`, `Tuple1`
 //! example: `(1, 2) < (1, 3) and (2, "a").clone() == (2, "a")`
 
+/// A tuple of one value, field `_0`.
 @role(tuple)
 pub struct Tuple1<A>:
     pub _0: A
 
+/// A tuple of two values, `(a, b)`, fields `_0` and `_1`.
 @role(tuple)
 pub struct Tuple2<A, B>:
     pub _0: A
     pub _1: B
 
+/// A tuple of three values, `(a, b, c)`, fields `_0` to `_2`.
 @role(tuple)
 pub struct Tuple3<A, B, C>:
     pub _0: A
     pub _1: B
     pub _2: C
 
+/// A tuple of 4 values, fields `_0` to `_3`.
 @role(tuple)
 pub struct Tuple4<A, B, C, E>:
     pub _0: A
@@ -25,6 +30,7 @@ pub struct Tuple4<A, B, C, E>:
     pub _2: C
     pub _3: E
 
+/// A tuple of 5 values, fields `_0` to `_4`.
 @role(tuple)
 pub struct Tuple5<A, B, C, E, F>:
     pub _0: A
@@ -33,6 +39,7 @@ pub struct Tuple5<A, B, C, E, F>:
     pub _3: E
     pub _4: F
 
+/// A tuple of 6 values, fields `_0` to `_5`.
 @role(tuple)
 pub struct Tuple6<A, B, C, E, F, G>:
     pub _0: A
@@ -42,6 +49,7 @@ pub struct Tuple6<A, B, C, E, F, G>:
     pub _4: F
     pub _5: G
 
+/// A tuple of 7 values, fields `_0` to `_6`.
 @role(tuple)
 pub struct Tuple7<A, B, C, E, F, G, H>:
     pub _0: A
@@ -52,6 +60,7 @@ pub struct Tuple7<A, B, C, E, F, G, H>:
     pub _5: G
     pub _6: H
 
+/// A tuple of 8 values, fields `_0` to `_7`.
 @role(tuple)
 pub struct Tuple8<A, B, C, E, F, G, H, J>:
     pub _0: A
@@ -63,6 +72,7 @@ pub struct Tuple8<A, B, C, E, F, G, H, J>:
     pub _6: H
     pub _7: J
 
+/// A tuple of 9 values, fields `_0` to `_8`.
 @role(tuple)
 pub struct Tuple9<A, B, C, E, F, G, H, J, K>:
     pub _0: A
@@ -75,6 +85,7 @@ pub struct Tuple9<A, B, C, E, F, G, H, J, K>:
     pub _7: J
     pub _8: K
 
+/// A tuple of 10 values, fields `_0` to `_9`.
 @role(tuple)
 pub struct Tuple10<A, B, C, E, F, G, H, J, K, L>:
     pub _0: A
@@ -88,6 +99,7 @@ pub struct Tuple10<A, B, C, E, F, G, H, J, K, L>:
     pub _8: K
     pub _9: L
 
+/// A tuple of 11 values, fields `_0` to `_10`.
 @role(tuple)
 pub struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
     pub _0: A
@@ -102,6 +114,7 @@ pub struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
     pub _9: L
     pub _10: M
 
+/// A tuple of 12 values, fields `_0` to `_11`.
 @role(tuple)
 pub struct Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
     pub _0: A

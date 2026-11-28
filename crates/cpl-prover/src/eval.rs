@@ -608,9 +608,9 @@ mod tests {
         assert_eq!(int("(sum: 4, pre: 9).pre + (1, 2).1"), 11);
         assert_eq!(eval("(sum: 1, pre: 2) == (1, 2)"), Ok(Value::Bool(true)));
         assert_eq!(int("none ?? 4"), 4);
-        assert_eq!(int("some(3)! + (5 ?? 4)"), 8);
+        assert_eq!(int("Some(3)! + (5 ?? 4)"), 8);
         assert_eq!(eval("none!"), Err(Trap::UnwrapNone));
-        assert_eq!(eval("some(3) == none"), Ok(Value::Bool(false)));
+        assert_eq!(eval("Some(3) == none"), Ok(Value::Bool(false)));
     }
 
     #[test]

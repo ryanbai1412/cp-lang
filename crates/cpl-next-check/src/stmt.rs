@@ -1079,6 +1079,44 @@ impl<'a> Cx<'a> {
             }
             StmtKind::Assign { target, op, value } => {
                 let kept = self.b.kept.take();
+                // `a[i].f = v`: `f` is written in the cell `a`'s `IndexMut` lends (R12.4.6).
+                if let Some((at, names)) = super::index::cell_path(target) {
+                    let seen = self.errors.len();
+                    let probe = self.expr_as_typed(target, None);
+                    self.errors.truncate(seen);
+                    let mut cell = &probe;
+                    while let TK::Field(b, _) = &cell.kind {
+                        cell = b;
+                    }
+                    if !matches!(cell.kind, TK::Slot(..)) {
+                        let want = probe.ty.clone();
+                        let at = self.hoist_indices(at, out);
+                        let value = self.hoist(value, (Some(&want), true), "$rhs", out);
+                        let ExprKind::Index { base, indices } = &at.kind else {
+                            return;
+                        };
+                        let (op, span) = (*op, s.span);
+                        return self.through_cell(
+                            (base, &indices[0]),
+                            target.span,
+                            out,
+                            Box::new(move |this, cell, out| {
+                                this.b.kept = kept;
+                                let assign = ast::Stmt {
+                                    kind: StmtKind::Assign {
+                                        target: super::index::on_fields(cell, &names),
+                                        op,
+                                        value,
+                                    },
+                                    span,
+                                    decorators: Vec::new(),
+                                    public: false,
+                                };
+                                this.stmt(&assign, out)
+                            }),
+                        );
+                    }
+                }
                 // `a[i] = v` and `a[i] op= v`: the indices, then the value, are read once; then
                 // `a = v` is `a`'s `IndexSet` write when it has one (spec 12, W8); otherwise `a`'s
                 // `IndexMut` lends the cell and the assignment runs while it is lent (R12.4.6).
@@ -1450,6 +1488,12 @@ impl<'a> Cx<'a> {
                 let i = self.declare_domain(&name.text, lo, end, within, s.span, out);
                 self.domains[i].chars = chars;
                 self.domains[i].counted = *counted;
+            }
+            // `yield from e` is `for x in e: yield x` (R06.3.6).
+            StmtKind::Yield { value, from: true } => {
+                for s in &super::yield_each(value).stmts {
+                    self.stmt(s, out);
+                }
             }
             StmtKind::Yield { value, from: false } => match self.b.region.clone() {
                 Some((false, t)) => {

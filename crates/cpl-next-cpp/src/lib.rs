@@ -75,10 +75,10 @@ static void cpl_segv(int) {
     cpl_tflush();
     _exit(3);
 }
-static void cpl_guard_stack() {
 #ifdef __SANITIZE_ADDRESS__
-    return; // the sanitizer owns the signal stack
+extern "C" const char* __asan_default_options() { return "handle_segv=0:handle_sigbus=0:use_sigaltstack=0"; }
 #endif
+static void cpl_guard_stack() {
     stack_t ss; ss.ss_sp = cpl_altstack; ss.ss_size = sizeof cpl_altstack; ss.ss_flags = 0;
     sigaltstack(&ss, nullptr);
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = cpl_segv; sa.sa_flags = SA_ONSTACK;
@@ -158,7 +158,7 @@ static inline int64_t cpl_read() {
         for (s = cpl_in_at; s < n && cpl_is_space(cpl_in[s]); s++) {}
         for (e = s; e < n && !cpl_is_space(cpl_in[e]); e++) {}
         for (k = e; k < n && (cpl_in[k] == ' ' || cpl_in[k] == '\t' || cpl_in[k] == '\r'); k++) {}
-    } while (k == n && cpl_fill(n - cpl_in_at));
+    } while (k == n && !cpl_in_ended && (cpl_fill(n - cpl_in_at), true));
     cpl_in_at = k == n ? n : cpl_in[k] == '\n' ? k + 1 : e;
     if (s == e) cpl_fail(CPL_BAD_INT_TOKEN);
     return cpl_int_token(cpl_in.substr(s, e - s));
@@ -863,14 +863,15 @@ impl Emit<'_> {
                 ),
                 // Events go to the trace stream in order (`cpl_tput`).
                 Stmt::Event(ev) => {
-                    // The code that shows an event's value places no events of its own.
+                    // The code that shows an event's value places no events of its own. The
+                    // values are shown before the event is written, so one that traps leaves
+                    // no event, as on the engine.
                     let label = format!("ev {}", ev.label(self.funcs));
-                    put_line!(s, "{pad}if (!cpl_capture) {{ cpl_tput({label:?}, {});", label.len());
+                    put_line!(s, "{pad}if (!cpl_capture) {{ std::string cpl_e; cpl_capture = &cpl_e;");
                     for v in &ev.vals {
-                        let v = self.expr(v);
-                        put_line!(s, "{pad}{{ std::string cpl_s; cpl_capture = &cpl_s; {v}; cpl_capture = nullptr; cpl_tput(\" \", 1); cpl_tput(cpl_s.data(), cpl_s.size()); }}");
+                        put_line!(s, "{pad}cpl_e += ' '; {};", self.expr(v));
                     }
-                    put_line!(s, "{pad}cpl_tput(\"\\n\", 1); }}");
+                    put_line!(s, "{pad}cpl_capture = nullptr; cpl_tput({label:?}, {}); cpl_tput(cpl_e.data(), cpl_e.size()); cpl_tput(\"\\n\", 1); }}", label.len());
                 }
                 // A lender finishes its own code first; the caller leaves after it.
                 Stmt::LendOut(p) => put_line!(s, "{pad}cpl_code = body({});", self.place(p)),

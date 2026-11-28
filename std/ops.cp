@@ -2,6 +2,7 @@
 //! meaning (R08.1.5), `T.zero` and `T.one`, and the numbers' own impls of them. Core re-exports
 //! them, so no module imports them.
 //!
+//! start: `Eq`, `Ord`, `Add`, `Zero`, `min`
 //! example: `3 + 4 == 7 and Int.zero == 0 and 2 < 3`
 use std.algebra.{Ordering}
 
@@ -38,9 +39,11 @@ pub trait Div<Rhs = Self>:
 @operator("%")
 pub trait Rem<Rhs = Self>:
     fn rem(self, other: Rhs) -> Self
-/// `a ** e`: `a` to the power `e`, an `Int` unless the impl says otherwise.
+/// `a ** e`: `a` to the power `e`, an `Int` unless the impl says otherwise. `a.pow(e)` is not
+/// its spelling: the call is told to write `a ** e` (R01.11.1).
 @operator("**")
 pub trait Pow<Rhs = Int>:
+    @aka(pow)
     fn pow(self, e: Rhs) -> Self
 @operator("-")
 pub trait Neg:

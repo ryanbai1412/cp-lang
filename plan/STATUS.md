@@ -335,6 +335,7 @@ Process costing more than 10% of a change is skipped with a trailer
 
 | Day | Lane | Skipped |
 |---|---|---|
+| 2026-11-28 | spec | 1 |
 | 2026-11-28 | factory | 3 |
 | 2026-11-27 | stdlib | 4 |
 | 2026-11-27 | none | 37 |

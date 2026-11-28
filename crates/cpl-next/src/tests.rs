@@ -4,6 +4,7 @@ use cpl_next_ir::prog::CTy;
 use modules::PROGRAM;
 
 mod run_io;
+mod stack;
 
 #[path = "../../cpl-cli/tests/support/cxx.rs"]
 mod cxx;
@@ -26,6 +27,43 @@ fn a_method_call_loads_no_module() {
     let g = "domain R = 0..2\ndomain C = 0..3\nlet g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c)\n";
     let called = seen(&format!("{g}print(g.transposed()[C(2), R(1)])\n"));
     assert_eq!(called, seen(&format!("{g}print(g[R(1), C(2)])\n")));
+}
+
+/// A payload a pattern binds is its copy (R05.3.2): writing the scrutinee in the arm, directly
+/// or as a `mut` param, leaves it as it was, the same on every runner. One of a lent param
+/// returned still borrows it (E0603).
+#[test]
+fn a_payload_a_pattern_binds_outlives_a_write_of_its_scrutinee() {
+    let src = "enum Q = Ask(s: Str) | Skip\nvar q = Q.Ask(\"ab\")\nlet u = match q:\n    Ask(s) =>\n        q = Q.Skip\n        s\n    Skip => \"none\"\nfn go(mut r: Q) -> Int:\n    match r:\n        Ask(s) =>\n            r = Q.Skip\n            print(s)\n            1\n        Skip => 0\nvar g = Q.Ask(\"cd\")\nprint(u, go(mut g), match g: Skip => \"skip\", Ask(_) => \"ask\")\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let want = "cd\nab 1 skip\n";
+    assert_eq!(raw(&c).output, want);
+    assert_eq!(c.run("").output, want);
+    let flags = ["-std=c++17", "-O1", "-w", "-x", "c++"];
+    let (bin, _) = cxx::build(c.cpp().as_bytes(), &flags).expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), want);
+
+    use crate::facade::{Session, Snapshot};
+    let lent = "enum Q = Ask(s: Str) | Skip\nfn get(x: Q) -> Str:\n    match x:\n        Ask(s) => s\n        Skip => \"none\"\nprint(get(Q.Ask(\"ab\")))\n";
+    let s =
+        Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", lent));
+    let diags = s.program("program.cp").err().expect("refused");
+    assert!(
+        (diags.iter()).any(|d| matches!(
+            d.kind,
+            crate::Kind::Verdict(c) if c == cpl_diag::codes::LENT_ESCAPES
+        )),
+        "{diags:?}"
+    );
 }
 
 /// Ownership marks a heap param nothing writes as read where the caller has it; a plain
@@ -627,6 +665,32 @@ fn a_build_reaching_an_untyped_library_body_reports_it() {
     assert!(!ds.iter().any(|d| d.starts_with("link:")), "{ds:?}");
     let c = unreached.expect("an untyped body it never reaches leaves it clean");
     assert_eq!(c.run("").output, "1\n");
+}
+
+/// A part the checker left untyped lowers to a trap and a value of the part's own type, so the
+/// C++ builds and runs as the engine does wherever that part is not reached.
+#[test]
+fn an_untyped_part_is_a_value_of_its_type() {
+    let src = "use std.graph.{johnson}\ndomain V = 0..2\ndomain E = 0..0\nlet es: [E](u: V, v: V, w: Int) = []\nlet d = johnson(Graph.directed(es))!\nprint(yes(d[0, 0] == Some(0)), yes(d[0, 1] == None))\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let o = c.run("");
+    assert_eq!((o.output.as_str(), o.trap.is_none()), ("YES YES\n", true));
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-pthread", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(ran.status.code(), Some(0));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), o.output);
 }
 
 /// A `let .. else` of an error binds its name to the error: its uses say nothing more.
@@ -1610,44 +1674,6 @@ with checks(asserts: on):\n    assert z == 1, \"kept\"\nprint(2)\n";
         o.trap.map(|t| t.fault),
         Some(cpl_next_ir::ops::Fault::DivisionByZero)
     );
-}
-
-/// The stack runs out at the run's limit (contract 0's `Limits`), on the reference interpreter
-/// and the engine alike.
-#[test]
-fn the_stack_runs_out_at_the_runs_limit() {
-    use cpl_next_engine::{Io, Limits, RunInput};
-    let src = "fn f(k: Int) -> Int = if k == 0: 0 else: 1 + f(k - 1)\nprint(f(100))\n";
-    let c = compile(
-        &Std::read(),
-        src,
-        &Roots::std(),
-        false,
-        None,
-        Checks::CHECKED,
-    )
-    .expect("compiles");
-    let (p, fs) = c.form(Form::Raw);
-    for (stack, out) in [(1 << 10, true), (64 << 10, false)] {
-        let input = || RunInput {
-            io: Io::Fixed(Vec::new()),
-            limits: Limits {
-                stack,
-                ..Limits::default()
-            },
-            out: None,
-        };
-        let raw = cpl_next_interp::run(p, fs, input());
-        let fast = cpl_next_engine::run(&c.prog, &c.opt, input());
-        for o in [&raw, &fast] {
-            assert_eq!(
-                o.trap.as_ref().map(|t| t.code()),
-                out.then_some("R0601"),
-                "{stack}"
-            );
-            assert_eq!(o.output, if out { "" } else { "100\n" }, "{stack}");
-        }
-    }
 }
 
 /// Events name their statement by its fn and site, the same on the interpreter and the engine,

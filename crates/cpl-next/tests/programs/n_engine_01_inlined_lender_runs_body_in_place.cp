@@ -7,7 +7,7 @@
 struct Acc:
     var xs: List<Int>
     var total: Int
-    fn at(mut self, i: Int) lends mut Int:
+    fn at(mut self, i: Int) -> lends mut Int:
         var cell = xs[i]
         let before = cell
         lend cell

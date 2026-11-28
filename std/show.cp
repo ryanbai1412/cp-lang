@@ -2,6 +2,7 @@
 //! any number of values through the `ShowAll` tuple they pack into (R10.3). Core re-exports
 //! `Show`, `print` and `write`, so no module imports them.
 //!
+//! start: `print`, `write`, `Show`, `Fmt`
 //! example: `print(1, "a", [2, 3], sep: ",")`
 use std.tuple.{Tuple1, Tuple2, Tuple3, Tuple4, Tuple5, Tuple6, Tuple7, Tuple8, Tuple9, Tuple10, Tuple11, Tuple12}
 

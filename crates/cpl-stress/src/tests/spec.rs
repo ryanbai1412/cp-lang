@@ -1516,6 +1516,9 @@ with io(base: 1):
     let b: [3]W = read()
     let c = read<[3]V>(base: 0)
 let d = read<V>(base: 1)
+let e: [2]V = read(base: 0)
+with io(base: 1):
+    let f: V = read(base: 0)
 ";
     let spec = InputSpec::from_source(src).unwrap();
     for seed in 0..30 {
@@ -1531,6 +1534,7 @@ let d = read<V>(base: 1)
         assert!(tokens[1..7].iter().all(|v| one.contains(v)), "{text}");
         assert!(tokens[7..10].iter().all(|v| zero.contains(v)), "{text}");
         assert!(one.contains(&tokens[10]), "{text}");
+        assert!(tokens[11..14].iter().all(|v| zero.contains(v)), "{text}");
     }
 }
 

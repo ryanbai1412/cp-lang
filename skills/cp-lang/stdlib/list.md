@@ -8,6 +8,8 @@ Import: `use std.list.{...}`.
 
 ## `struct List<T>`
 
+A growable run of `T`s, `[a, b]`: \(O(1)\) at a position and amortized \(O(1)\) to `push` (R07.1).
+
 - `fn new() -> List<T>`
 - `fn filled(n: Int, x: T) -> List<T>`
 - `@get fn len(self) -> Int`
@@ -27,6 +29,8 @@ Import: `use std.list.{...}`.
 
 ## `struct Array<D: Domain, T>`
 
+`[D]T`: one `T` for each position of the domain `D`, read and written at a `D` (R04.3).
+
 Fields: `buf: Raw<T>`.
 
 - `@get fn len(self) -> Int`
@@ -36,6 +40,8 @@ Fields: `buf: Raw<T>`.
 - `fn each(self) -> yields T`
 
 ## `struct Str`
+
+A word: a flat sequence of `Char`s, `"ab"` (R02.3).
 
 - `fn new() -> Str` — The empty string; `Str(x)` is `x`'s conversion to a word (R07.8.1).
 - `@get fn len(self) -> Int`

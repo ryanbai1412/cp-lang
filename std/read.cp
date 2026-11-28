@@ -2,6 +2,7 @@
 //! its `Read` impl over an `Input`'s bytes (R10.2). Core re-exports `Read`, `Input`, `read` and
 //! `read_line`, so no module imports them.
 //!
+//! start: `read`, `read_line`, `Read`, `Input`
 //! example: `let (n, k): (Int, Int) = read()`
 use std.tuple.{Tuple2, Tuple3, Tuple4}
 use std.io.{io}

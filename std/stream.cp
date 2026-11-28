@@ -1,6 +1,7 @@
 //! The program's one random stream, the same on every engine and build. Core re-exports `rand`,
 //! so no module imports it; `std.rand` builds `shuffle`, `gen` and `Rng` on top.
 //!
+//! start: `rand`
 //! example: `let x = rand(1, 6); 1 <= x and x <= 6`
 
 fn check_range(ok: Bool) = @intrinsic("range_check")

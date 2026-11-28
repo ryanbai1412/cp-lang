@@ -675,7 +675,7 @@ impl Lw<'_> {
                     msg: "a part with a type error ran".into(),
                     site,
                 });
-                mk(EK::Unit)
+                mk(EK::Intr(Intr::Unset, vec![], 0))
             }
             TK::Text(t) => mk(EK::Text(t.clone())),
             TK::Unset => mk(EK::Intr(Intr::Unset, vec![], 0)),

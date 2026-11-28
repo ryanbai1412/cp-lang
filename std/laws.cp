@@ -1,7 +1,7 @@
 //! The values `cpl laws` tries a law's arguments with. Each argument is tried with every value
 //! its type's `samples()` lists, so a law over a type of your own runs once it says its samples.
 //!
-//! start: `Sample`, `Sample.samples`
+//! start: `Sample`, `Sample.samples`, `samples_of`
 //! example: `Bool.samples() == [false, true]`
 
 /// A type `cpl laws` tries a law's argument with: a short fixed list holding the values a law

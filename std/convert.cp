@@ -1,11 +1,13 @@
 //! `Into`: `T(x)` converts `x` by its impl (R04.2.28), and the conversions between the core
 //! types. Core re-exports it, so no module imports it.
 //!
+//! start: `Into`, `Into.into`
 //! example: `Int('a') == 97 and Char(98) == 'b'`
 
 /// `T(x)` for a core type `T`: `x` as a `T`, by `x`'s impl (R04.2.28).
 @role(convert)
 pub trait Into<T>:
+    /// `self` as a `T`; `T(x)` calls it.
     fn into(self) -> T
 
 /// A character's code, and the character with a code, which traps R0201 outside `0..=127`.

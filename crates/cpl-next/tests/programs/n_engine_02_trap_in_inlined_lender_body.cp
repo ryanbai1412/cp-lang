@@ -3,7 +3,7 @@
 // line and call stack, as the reference interpreter does.
 struct Cells:
     var xs: List<Int>
-    fn at(mut self, i: Int) lends mut Int:
+    fn at(mut self, i: Int) -> lends mut Int:
         var cell = xs[i]
         lend cell
         xs[i] = cell

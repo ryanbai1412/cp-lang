@@ -173,7 +173,10 @@ struct Tally:
 
 - Fields are fixed after construction unless declared `var`, in the body
   or in the header (`struct Rng(var s: U64)`); assigning a non-`var` field
-  is an error naming the field (decision 136). (R02.6.1)
+  is an error naming the field (decision 136). What is fixed is the
+  field's binding, not its contents: `x.f[j] = v`, `t.s[0] = 5` and a
+  `mut self` method's `s[i] = 7` write into a fixed field and are legal
+  (decision 136). (R02.6.1)
 - Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`;
   fields with defaults may be omitted (decision 134). A custom
   constructor is a static fn (`Graph.read()`). A `type` alias is the type

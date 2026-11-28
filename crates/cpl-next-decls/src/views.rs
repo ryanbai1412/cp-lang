@@ -25,6 +25,8 @@ pub trait TypeTables {
     fn konst(&self, id: ConstId) -> &LibConst;
     /// Whether the program's top level binds `name` with `let`: a value, not an item.
     fn top_value(&self, name: &str) -> bool;
+    /// Whether the program's top level binds `name` with `var`, which no type may end at.
+    fn top_var(&self, name: &str) -> bool;
     /// Binary operator `op`'s fn, which `type_of(+)` names.
     fn operator(&self, op: &str) -> Option<FnId>;
     /// `Domain`'s getter `m`, which a range type's end `D.m` names.
@@ -189,6 +191,9 @@ impl TypeTables for Decls {
     }
     fn top_value(&self, name: &str) -> bool {
         self.sym(name).is_some_and(|s| self.top_values.contains(&s))
+    }
+    fn top_var(&self, name: &str) -> bool {
+        self.sym(name).is_some_and(|s| self.top_vars.contains(&s))
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         self.operator_fn(op, true)

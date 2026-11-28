@@ -53,7 +53,7 @@ documented.
 | R03.3 | 3. Operations on niche types | supported |  |
 | R03.4 | 4. Overflow, in one table | supported |  |
 | R03.5 | 5. Modular numbers | supported |  |
-| R04.2 | The model in one paragraph | supported | 2 known gaps |
+| R04.2 | The model in one paragraph | supported |  |
 | R04.3 | Positions and cuts move the same way | supported |  |
 | R04.4 | Two kinds of range, one type | supported |  |
 | R04.7 | Middle of a range | supported |  |

@@ -1,4 +1,4 @@
-// expect: E0501
+// expect: E0604
 // rule: 05.6.3
 // engines: next
 // A block body lends with `lend mut place`; one that ends in a plain place lends nothing.

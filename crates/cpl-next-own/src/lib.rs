@@ -12,6 +12,7 @@ use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
 mod drops;
+mod escape;
 pub use drops::expand_calls;
 mod inst;
 mod lent;
@@ -208,14 +209,16 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
 pub use inst::{after, Bound, Owned};
 
 /// What ownership found before link that its check after link reports: the generic fns'
-/// verify errors and the `@cache` rule's findings on the bodies as written.
+/// verify errors, and the `@cache` rule's and the lender rule's findings on the bodies as
+/// written.
 pub struct Before {
     pub(crate) generic: Vec<cpl_next_ir::msg::Msg>,
     pub(crate) cache: Vec<cpl_next_ir::msg::Msg>,
 }
 
 /// Ownership before link (contract 4): marks what the generic fns lend (`lent`), since link
-/// keys an instance by those marks, and checks the `@cache` rule on the bodies as written.
+/// keys an instance by those marks, and checks the `@cache` rule and that every path through a
+/// lender lends (R05.6.3) on the bodies as written.
 /// `globals` names each top-level binding and whether it is a `var`.
 pub fn before(
     d: &dyn Signatures,
@@ -227,7 +230,12 @@ pub fn before(
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
     lent::mark(d, funcs, tys, &mutable);
-    let cache = inst::cache_calls(d, funcs);
+    let mut cache = inst::cache_calls(d, funcs);
+    // A trait's required method has no body to check; each impl's has its own.
+    let bodied = |f: &&Func<Ty>| !f.key.decl().is_some_and(|g| d.f(g).bodiless());
+    let mut fs: Vec<_> = funcs.values().filter(bodied).collect();
+    fs.sort_by_key(|f| (f.line, &f.shown));
+    cache.extend(escape::lenders_lend(fs));
     Before { generic, cache }
 }
 

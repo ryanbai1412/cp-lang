@@ -557,6 +557,8 @@ pub struct Decls {
     pub ret_holes: Vec<FnId>,
     /// The names the program's top level binds with `let`.
     pub top_values: Arc<HashSet<Sym>>,
+    /// The names the program's top level binds with `var`, which no type may end at (R02.10.3).
+    pub top_vars: Arc<HashSet<Sym>>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
     pub operators: Vec<(Sym, TraitId)>,
@@ -649,6 +651,22 @@ impl Decls {
         (self.operators.iter())
             .filter(move |(o, _)| Some(*o) == op)
             .map(|&(_, tr)| tr)
+    }
+    /// The operator `x.name(..)` must be written as: `m` is an impl's or trait's fn whose
+    /// `@operator` trait's operator fn is `name` and lists `name` in its `@aka`, so `x.pow(e)`
+    /// is `**` (R12.13.2, R01.11.1).
+    pub fn operator_by_name(&self, m: &Member, name: &str) -> Option<&str> {
+        let Member::Method(f, ..) = m else {
+            return None;
+        };
+        let tr = match self.fns[f.0].owner? {
+            Owner::Impl(i) => self.impls[i].trait_.tr,
+            Owner::Trait(tr) => tr,
+            Owner::Struct(_) => return None,
+        };
+        let (own, op_fn) = self.operator_method(tr)?;
+        (own == name && self.fns[op_fn.0].aka.iter().any(|a| a == name)).then_some(())?;
+        (self.operators.iter()).find_map(|&(o, t)| (t == tr).then(|| self.text(o)))
     }
     /// The `Domain` getter `m` a range type's end `D.m` names.
     pub fn domain_getter(&self, m: &str) -> Option<FnId> {
@@ -1694,6 +1712,10 @@ fn add_fn(
             continue;
         }
         let elsewhere = d.is_library(m) && read_elsewhere(x.mark);
+        if !elsewhere && is_stress(x) {
+            errors.extend(stress_misuse(x, false).map(|e| Msg::at(item.at(x.span), e)));
+            continue;
+        }
         let built = matches!(
             x.mark,
             Some(

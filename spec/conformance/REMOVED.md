@@ -14,3 +14,13 @@ A conformance case or new-pipeline test leaves only with a line here naming it a
   domain's count is read lazily, so nothing cycles; the case runs on `cpl-next` and prints `1`.
 - `spec/conformance/lints/turbofish-call.cp`: L0204 is deleted (decision 664), since `::<` is now
   E0503 in the parser with the same fix. The case moved to `core-01/turbofish-is-rejected.cp`.
+- `spec/conformance/traits/Domain/Cut--after.cp`, `spec/conformance/traits/Domain/Cut--at.cp`, `spec/conformance/traits/Domain/Cut--before.cp`, `spec/conformance/traits/Domain/Cut--l.cp`, `spec/conformance/traits/Domain/Cut--next.cp`, `spec/conformance/traits/Domain/Cut--prev.cp`, `spec/conformance/traits/Domain/Cut--r.cp`, `spec/conformance/traits/Domain/Cut--wrap.cp`: each renamed to `traits/Ordered/Cut--<method>.cp`, with the same code and
+  output. Lane D's Discrete/Domain/Ordered split moved these methods from `Domain` to
+  `Ordered`, and a generated case follows the trait that declares its method.
+- `spec/conformance/std-search/bsearch-found-follows-the-element-type.cp`: renamed to
+  `bsearch-found-follows-the-range-type.cp`. Decision 672 retires the `Search` trait, so its
+  generic `edge<D: Search>(..) -> D.Found` has no meaning left: `bsearch` is two methods, a
+  `Cut<D>` on `Range<D>` and `?F64` on `RealRange`, chosen by the receiver (R08.1.4). The new
+  case compares the whole Int cuts, `(8..8).l` and `(4..4).l`, where the old one printed one
+  side (8 and 3). It adds the domain `last: true` search. `real-bsearch-is-a-range-method.cp`
+  covers the real search in its own right.
