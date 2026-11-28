@@ -645,6 +645,9 @@ fn const_value(e: &Expr, name: &dyn Fn(&SyntaxToken) -> Option<i64>) -> Option<i
                 TokenKind::Plus => x.checked_add(y),
                 TokenKind::Minus => x.checked_sub(y),
                 TokenKind::Star => x.checked_mul(y),
+                TokenKind::StarStar => x.checked_pow(u32::try_from(y).ok()?),
+                TokenKind::Shl => x.checked_mul(1 << u32::try_from(y).ok().filter(|&k| k < 63)?),
+                TokenKind::Shr => x.checked_shr(u32::try_from(y).ok()?),
                 _ => None,
             }
         }
