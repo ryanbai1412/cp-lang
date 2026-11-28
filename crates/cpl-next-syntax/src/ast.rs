@@ -1423,3 +1423,11 @@ impl RecordPatField {
         child(&self.0)
     }
 }
+
+impl IntrinsicExpr {
+    /// The string literal naming the intrinsic: `"dom_count"` in
+    /// `@intrinsic("dom_count")`.
+    pub fn id(&self) -> Option<SyntaxToken> {
+        own_token(&self.0, TokenKind::Str)
+    }
+}
