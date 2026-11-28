@@ -1351,10 +1351,7 @@ fn layer(
                     let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
                     let k = d.syms.intern(&f.name.text);
                     Arc::make_mut(&mut d.views[mi]).insert(k, Named::Fn(fid));
-                    if d.is_library(mid)
-                        && public[mi].contains(&f.name.text)
-                        && d.f(fid).self_ty.is_some()
-                    {
+                    if public[mi].contains(&f.name.text) && d.f(fid).self_ty.is_some() {
                         let n = d.syms.intern(&f.name.text);
                         d.methods.entry(n).or_default().push(fid);
                     }

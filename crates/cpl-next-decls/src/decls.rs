@@ -434,7 +434,7 @@ pub struct Decls {
     pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
     pub misdeclared: Vec<(SourceId, cpl_diag::Code, String)>,
-    /// Each library's public free fns with a `self`, by name: a method call finds them with no
+    /// Each module's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
     pub methods: HashMap<Sym, Vec<FnId>>,
     /// The free fns of one name in one module past its first, keyed by the first: each has its

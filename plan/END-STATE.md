@@ -75,7 +75,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_asks_refused` | 7 |
 | `next_check_set_facts` | 11 |
 | `next_core_checks` | 14 |
-| `next_core_privilege` | 19 |
+| `next_core_privilege` | 18 |
 | `next_core_standin_lines` | 43 |
 | `next_cpp_runtime_lines` | 147 |
 | `next_error_typed` | 34 |
@@ -83,7 +83,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_handoff_side_fields` | 11 |
 | `next_harness_refusals` | 4 |
 | `next_late_rejects` | 90 |
-| `next_library_gates` | 23 |
+| `next_library_gates` | 22 |
 | `next_lowered` | 2 |
 | `next_masked` | 129 |
 | `next_name_compares` | 23 |
