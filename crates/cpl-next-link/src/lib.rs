@@ -90,6 +90,7 @@ fn value_only(f: &Func<Ty>) -> Func<CTy> {
         drops: Vec::new(),
         maker: f.maker,
         shown: f.shown.clone(),
+        guards: Vec::new(),
         fast: None,
     }
 }
@@ -334,6 +335,7 @@ impl Link<'_> {
             drops: Vec::new(),
             maker: f.maker,
             shown: f.shown.clone(),
+            guards: Vec::new(),
             fast: f.fast,
         }
     }
@@ -451,11 +453,15 @@ impl Link<'_> {
                 Box::new(self.ty(r, env).unlent().clone()),
                 self.set(s, env),
             ),
-            Ty::Clo(c) => {
-                let k = self.clo(c, env);
-                self.intern(k.clone());
-                CTy::Clo(Box::new(k))
-            }
+            Ty::Clo(c) => match self.clo(c, env) {
+                Some(k) => {
+                    self.intern(k.clone());
+                    CTy::Clo(Box::new(k))
+                }
+                // Only a local of the branch it is written in has its type, and that branch is
+                // never linked: the local holds nothing.
+                None => CTy::Unit,
+            },
             Ty::Var(_) | Ty::Error => CTy::Error,
         }
     }
@@ -529,21 +535,35 @@ impl Link<'_> {
         out.push_str(rest);
         out
     }
-    fn clo(&mut self, c: &CloRef, env: &Env) -> InstKey {
+    fn clo(&mut self, c: &CloRef, env: &Env) -> Option<InstKey> {
         match c {
             CloRef::Item(f) => {
                 let k = self.fnref(f, env);
                 // A fn item nothing calls is one value of the item, not of an instance (R08.1.10).
-                match k.targs.contains(&CTy::Error) {
+                Some(match k.targs.contains(&CTy::Error) {
                     true => InstKey {
                         func: k.func,
                         targs: Vec::new(),
                         sets: Vec::new(),
                     },
                     false => k,
-                }
+                })
             }
             CloRef::Lambda(id, ts, ss) => {
+                let targs: Vec<CTy> = ts.iter().map(|t| self.targ(t, env)).collect();
+                // A lambda written in a branch of a bound test this instance does not take is
+                // never made, so no set holds it (R08.2.9).
+                let at = Env {
+                    targs: &targs,
+                    sets: &[],
+                };
+                let guards = (self.generic.generic(&FuncKey::Lambda(*id)))
+                    .map_or_else(Vec::new, |f| f.guards.clone());
+                if (guards.iter())
+                    .any(|(t, tr, args, taken)| self.has_bound(t, *tr, args, &at) != *taken)
+                {
+                    return None;
+                }
                 // A lambda is one instance per value of the parameters its body names. A set
                 // parameter of the fn around it that it never mentions is left out of its
                 // identity, so a closure passed to a recursive call of that fn (the callback
@@ -560,11 +580,11 @@ impl Link<'_> {
                         }
                     })
                     .collect();
-                InstKey {
+                Some(InstKey {
                     func: FuncKey::Lambda(*id),
-                    targs: ts.iter().map(|t| self.targ(t, env)).collect(),
+                    targs,
                     sets,
-                }
+                })
             }
         }
     }
@@ -630,9 +650,7 @@ impl Link<'_> {
             SetTy::Closed(ms) => {
                 for m in ms {
                     match m {
-                        Member::Clo(c) => {
-                            out.insert(self.clo(c, env));
-                        }
+                        Member::Clo(c) => out.extend(self.clo(c, env)),
                         Member::Sub(s) => self.set_into(s, env, out),
                     }
                 }
@@ -809,6 +827,7 @@ impl Link<'_> {
             Target::Value(_) => None,
         }
     }
+
     /// The impl's fn a method of a bound runs, now the type is known.
     /// Whether `t` meets trait `tr` at `args` in this instance: an impl fits it, or the type
     /// meets the trait without one (a domain, for `Domain`).

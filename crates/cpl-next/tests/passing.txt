@@ -928,6 +928,7 @@ core-08/associated-type.cp
 core-08/blanket-impl.cp
 core-08/bound-element-pattern-binds-its-param.cp
 core-08/bound-only-params-bind-from-the-impl.cp
+core-08/bound-test-branch-lambda-needs-no-impl.cp
 core-08/bound-trait-method-yields-the-impl-types.cp
 core-08/bound-unmet.cp
 core-08/bounds-three-ways.cp

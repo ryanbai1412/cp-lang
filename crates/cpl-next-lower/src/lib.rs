@@ -46,6 +46,8 @@ struct Lw<'a> {
     /// The lambda's captures that hold an address: its body reads them where they point.
     by_addr: BTreeSet<usize>,
     lambdas: Vec<Func<Ty>>,
+    /// The bound tests around the code being lowered, each with the branch it is in.
+    guards: Vec<Guard>,
     /// The lambdas being lowered, each with its own value as its body makes it: its captures.
     /// A nested fn's siblings are in its group and share its captures.
     selves: Vec<(Vec<LambdaId>, Vec<Expr<Ty>>)>,
@@ -100,6 +102,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         remap: HashMap::new(),
         by_addr: BTreeSet::new(),
         lambdas: Vec::new(),
+        guards: Vec::new(),
         selves: Vec::new(),
         group_free: HashMap::new(),
         errors: Vec::new(),
@@ -138,6 +141,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             drops: Vec::new(),
             maker: None,
             shown: "top level".into(),
+            guards: Vec::new(),
             fast: None,
         },
     );
@@ -220,6 +224,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 drops: Vec::new(),
                 maker: None,
                 shown: shown_name(d, fd),
+                guards: Vec::new(),
                 fast: fd.fast.as_deref().map(|n| {
                     Intr::named(n).unwrap_or_else(|| {
                         let name = n.to_string();
@@ -267,6 +272,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 body: vec![Stmt::Return(Some(call))],
                 ret: fd.ret.clone(),
                 region: None,
+                guards: Vec::new(),
                 fast: None,
                 line: lw.src.program_line(&fd.span),
                 sites,
@@ -898,8 +904,17 @@ impl Lw<'_> {
                 let cv = self.expr(c, out);
                 let cv = self.spill(cv, out);
                 let (mut sa, mut sb) = (Vec::new(), Vec::new());
+                // A bound test's branches: each lambda in one records which it is in.
+                let n = self.guards.len();
+                if let TK::HasBound(t, r) = &c.kind {
+                    self.guards.push((t.clone(), r.tr, r.args.clone(), true));
+                }
                 let va = self.expr(a, &mut sa);
+                if let Some(g) = self.guards.get_mut(n) {
+                    g.3 = false;
+                }
                 let vb = self.expr(b, &mut sb);
+                self.guards.truncate(n);
                 if ty == Ty::Unit {
                     self.effect(va, &mut sa);
                     self.effect(vb, &mut sb);
@@ -1329,6 +1344,7 @@ impl Lw<'_> {
                     drops: Vec::new(),
                     maker: None,
                     shown: "case".into(),
+                    guards: Vec::new(),
                     fast: None,
                 });
                 self.off = off;
@@ -1523,6 +1539,7 @@ impl Lw<'_> {
             drops: Vec::new(),
             maker: info.owner,
             shown: "lambda".into(),
+            guards: self.guards.clone(),
             fast: None,
         });
         Self::capture_args(caps)

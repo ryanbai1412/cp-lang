@@ -491,6 +491,9 @@ pub enum Stmt<T> {
     Fact(Expr<T>),
 }
 
+/// A bound test `if T: Trait<args>:` and whether the code it guards is its taken branch.
+pub type Guard = (Ty, TraitId, Vec<Ty>, bool);
+
 #[derive(Clone, Debug)]
 pub struct Func<T> {
     pub key: FuncKey,
@@ -530,6 +533,9 @@ pub struct Func<T> {
     /// op only computes it faster, and `fast_ops_agree_with_their_bodies` checks the two
     /// equal on every runner.
     pub fast: Option<Intr>,
+    /// For a lambda: the bound tests around where it is written, each with the branch it is
+    /// in. An instance where one decides the other way never makes it (R08.2.9).
+    pub guards: Vec<Guard>,
 }
 
 /// Calls `f` on every place a block names, outermost first: read, written, lent, viewed or
