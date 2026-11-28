@@ -76,12 +76,12 @@ pub struct FlatMap<V>:
         Int(h & U64(state.len - 1))
 
     fn rehash(mut self, new_cap: Int):
-        let old_k = ks
-        let old_v = vs
-        let old_s = state
-        ks = List.filled(new_cap, 0)
-        vs = List.filled(new_cap, default_val)
-        state = List.filled(new_cap, 0)
+        var old_k = List.filled(new_cap, 0)
+        var old_v = List.filled(new_cap, default_val)
+        var old_s = List.filled(new_cap, 0)
+        swap(mut ks, mut old_k)
+        swap(mut vs, mut old_v)
+        swap(mut state, mut old_s)
         live = 0
         used = 0
         for i in 0..old_s.len:
@@ -177,10 +177,13 @@ pub struct FlatMap<V>:
     /// traps: never
     /// example: `var m = FlatMap(0); m.set(1, 2); let t = m.take(); m.is_empty and t.get(1) == Some(2)`
     pub fn take(mut self) -> FlatMap<V>:
-        let out = FlatMap(ks, vs, state, default_val, salt, live, used)
-        ks = List.filled(2, 0)
-        vs = List.filled(2, default_val)
-        state = List.filled(2, 0)
+        var k2 = List.filled(2, 0)
+        var v2 = List.filled(2, default_val)
+        var s2 = List.filled(2, 0)
+        swap(mut ks, mut k2)
+        swap(mut vs, mut v2)
+        swap(mut state, mut s2)
+        let out = FlatMap(k2, v2, s2, default_val, salt, live, used)
         live = 0
         used = 0
         out

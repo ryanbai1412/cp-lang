@@ -514,8 +514,11 @@ impl Walk<'_> {
                 }
             }
             // A field read into a struct moves into it (R05.2.2): it holds what the base holds.
+            // A plain field or a type parameter's is a copy, as read anywhere (`sources(x)`).
             EK::MakeStruct(xs) => xs.iter().for_each(|x| match &x.kind {
-                EK::Copy(p @ Place::Field(..)) if fields_only(p) => {
+                EK::Copy(p @ Place::Field(..))
+                    if fields_only(p) && !self.plain(&x.ty) && !self.generic_field(p) =>
+                {
                     if let Some(q) = self.pl(p) {
                         out.extend(self.lent.get(&q.root).into_iter().flatten().cloned());
                         if self.borrowed.contains(&q.root) {
