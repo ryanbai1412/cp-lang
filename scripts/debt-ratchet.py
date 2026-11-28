@@ -2280,7 +2280,9 @@ def next_facade_split(root: Path) -> list[str]:
     old = _facade_queries(sorted((root / "crates/cpl-facade/src").glob("*.rs")))
     new_file = root / "crates/cpl-next/src/facade.rs"
     new = _facade_queries([new_file] if new_file.is_file() else [])
-    named = lambda q: re.match(r"(\w+::)pub fn (\w+)", q).group(1, 2)
+    def named(q: str) -> tuple[str, str] | str:
+        m = re.match(r"(\w+::)pub fn (\w+)", q)
+        return m.group(1, 2) if m else q
     old_names = {named(q) for q in old}
     out = [f"cpl-facade {q}" for q in sorted(old - new)] + \
         [f"cpl-next {q}" for q in sorted(new - old) if named(q) in old_names]
