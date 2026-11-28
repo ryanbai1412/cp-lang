@@ -1044,16 +1044,17 @@ impl<'a> Cx<'a> {
                 return self.const_read(c, span);
             }
         }
-        // `MaxSub.zero`: a self-less `@get` fn of a trait the struct implements, read without
-        // `()`, where the struct has no member of that name.
-        if let (Some((_, d)), None) = (named, call) {
-            if member_of(&self.items.s(d).methods, name).is_none() && !self.walks_for(d, name) {
+        // `MaxSub.zero`, `Str.default()`: a member a struct does not declare is a self-less fn of
+        // a trait it implements, read or called; its own member of the name shadows the trait's.
+        if let Some((_, d)) = named {
+            let own = member_of(&self.items.s(d).methods, name).is_some();
+            if !own && !self.walks_for(d, name) && !self.walks_at(d, &written, name) {
                 let mut pre = Vec::new();
                 let given = (written.iter().take(self.items.s(d).generics.len()))
                     .map(|t| self.body_ty(t, &mut pre))
                     .collect::<Vec<_>>();
                 let t = Ty::Struct(d, self.shapes.with_defaults_of(d, &given), Vec::new());
-                if let Some(e) = self.type_static(t, name, None, span) {
+                if let Some(e) = self.type_static(t, name, call, span) {
                     self.no_targs(name, written_targs, span);
                     return block(pre, e);
                 }
@@ -1072,15 +1073,6 @@ impl<'a> Cx<'a> {
             if let Some((_, d)) = named.filter(|&(_, d)| !walks && !self.walks_for(d, name)) {
                 let s = self.items.s(d);
                 let Some(m) = member_of(&s.methods, name) else {
-                    // `Str.default()`: a self-less fn of a trait the struct implements.
-                    let mut pre = Vec::new();
-                    let given = (written.iter().take(s.generics.len()))
-                        .map(|t| self.body_ty(t, &mut pre))
-                        .collect::<Vec<_>>();
-                    let t = Ty::Struct(d, self.shapes.with_defaults_of(d, &given), Vec::new());
-                    if let Some(e) = self.type_static(t, name, Some(args), span) {
-                        return block(pre, e);
-                    }
                     self.err(
                         span,
                         Msg::verdict(
