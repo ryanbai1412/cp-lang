@@ -1,6 +1,7 @@
 //! Inherent impls: `impl T:` blocks, whose fns are methods of `T` (R08.1.3).
 use super::{add_fn, unnamed, Decls, ModId, Owner, StructId, Within};
 use crate::ty::*;
+use crate::views::Scope;
 use cpl_diag::Span;
 use cpl_next_ir::ids::ItemId;
 use cpl_syntax::ast::{self, StmtKind, TypeKind};
@@ -19,7 +20,7 @@ pub(super) fn inherent_impl(
     let TypeKind::Named { args, .. } = &target.kind else {
         return;
     };
-    let names = &|n: &str| d.named(mid, n);
+    let names = &|n: &str| d.sym(n).and_then(|s| d.named(mid, s));
     let mut generics = Vec::new();
     for a in args {
         unnamed(a, names, &mut generics);
@@ -89,7 +90,11 @@ fn shaped_impl(
     body: &ast::Block,
 ) {
     let mut generics = Vec::new();
-    unnamed(target, &|n: &str| d.named(mid, n), &mut generics);
+    unnamed(
+        target,
+        &|n: &str| d.sym(n).and_then(|s| d.named(mid, s)),
+        &mut generics,
+    );
     for m in &body.stmts {
         let StmtKind::Fn(f) = &m.kind else {
             continue;

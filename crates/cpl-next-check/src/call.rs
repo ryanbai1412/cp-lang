@@ -13,7 +13,7 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
-        let Some(named) = self.d.named(self.b.module, n) else {
+        let Some(named) = self.d.sym(n).and_then(|s| self.d.named(self.b.module, s)) else {
             self.err(
                 span,
                 Msg::internal(format!(

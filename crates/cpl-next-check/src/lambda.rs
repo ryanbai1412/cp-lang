@@ -517,7 +517,11 @@ impl Cx<'_> {
         let Some(Ty::Fn(ps, ..)) = want.map(|w| self.shallow(w)) else {
             return None;
         };
-        let f = (self.d.fn_named(self.b.module, n)).filter(|_| self.lookup(n).is_none())?;
+        let f = (self
+            .d
+            .sym(n)
+            .and_then(|s| self.d.fn_named(self.b.module, s)))
+        .filter(|_| self.lookup(n).is_none())?;
         let fd = self.d.f(f);
         if fd.params.len() <= ps.len() || fd.params[ps.len()..].iter().any(|p| p.default.is_none())
         {
@@ -576,9 +580,8 @@ impl Cx<'_> {
         let Ty::Fn(ps, ..) = self.shallow(want?) else {
             return None;
         };
-        let d = self
-            .d
-            .fn_named(self.b.module, n)
+        let d = (self.d.sym(n))
+            .and_then(|s| self.d.fn_named(self.b.module, s))
             .filter(|_| self.declared(n))?;
         let fd = self.d.f(d);
         let rest = fd.params.get(ps.len()..).filter(|r| !r.is_empty())?;

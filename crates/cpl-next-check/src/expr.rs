@@ -194,7 +194,7 @@ impl<'a> Cx<'a> {
     fn fold_form(&self, n: &str, args: &[ast::Arg]) -> bool {
         args.first()
             .is_some_and(|a| a.name.is_none() && a.value.is_generator())
-            && matches!(self.d.named(self.b.module, n), Some(decls::Named::Fn(f)) if self.d.f(f).self_ty.is_none())
+            && matches!(self.d.sym(n).and_then(|s| self.d.named(self.b.module, s)), Some(decls::Named::Fn(f)) if self.d.f(f).self_ty.is_none())
     }
     /// More parts than the widest tuple: the last part is a tuple of the rest, nested as far as
     /// needed.
@@ -849,10 +849,16 @@ impl<'a> Cx<'a> {
                 };
             }
         }
-        if let Some(decls::Named::Const(c)) = self.d.named(self.b.module, n) {
+        if let Some(decls::Named::Const(c)) =
+            self.d.sym(n).and_then(|s| self.d.named(self.b.module, s))
+        {
             return self.const_read(c, span);
         }
-        if let Some(d) = self.d.fn_named(self.b.module, n) {
+        if let Some(d) = self
+            .d
+            .sym(n)
+            .and_then(|s| self.d.fn_named(self.b.module, s))
+        {
             let f = self.fnref(d, Vec::new(), Vec::new());
             return self.fn_item_value(f, span);
         }
@@ -885,7 +891,11 @@ impl<'a> Cx<'a> {
                 span,
             };
         }
-        if self.d.is_ambiguous(self.b.module, n) {
+        if self
+            .d
+            .sym(n)
+            .is_some_and(|s| self.d.is_ambiguous(self.b.module, s))
+        {
             self.two_imports(n, span);
         } else if !self.b.refused_names.contains(n) {
             let mut msg = Msg::verdict(
@@ -913,7 +923,7 @@ impl<'a> Cx<'a> {
     fn closest_name(&self, n: &str) -> Option<String> {
         let scoped = self.b.scopes.iter().flat_map(|s| s.keys());
         let module = self.d.names(self.b.module);
-        let names = (module.iter().map(|(name, _)| *name))
+        let names = (module.iter().map(|(name, _)| self.d.text(*name)))
             .chain(self.global_names.keys().map(String::as_str))
             .chain(scoped.map(String::as_str))
             .filter(|name| !name.starts_with('$'));
@@ -925,7 +935,12 @@ impl<'a> Cx<'a> {
     fn import_fix(&self, n: &str, span: Span) -> Option<cpl_next_ir::msg::Fix> {
         let module = (self.d.module_names.iter().enumerate())
             .find(|(i, m)| {
-                m.starts_with("std.") && self.d.export(ModId(*i), n).is_some_and(|e| e.1)
+                m.starts_with("std.")
+                    && self
+                        .d
+                        .sym(n)
+                        .and_then(|s| self.d.export(ModId(*i), s))
+                        .is_some_and(|e| e.1)
             })
             .map(|(_, m)| m.as_str())?;
         let text = self.src.text_of(&self.b.item.at(span));
@@ -1724,7 +1739,11 @@ impl<'a> Cx<'a> {
         self.lookup(n).is_none()
             && self.itself(n, Span::new(0, 0)).is_none()
             && self.self_field(n).is_none()
-            && self.d.named(self.b.module, n).is_some()
+            && self
+                .d
+                .sym(n)
+                .and_then(|s| self.d.named(self.b.module, s))
+                .is_some()
     }
 
     /// A call of a declared fn or struct, with the type arguments written at the call.
@@ -1733,11 +1752,15 @@ impl<'a> Cx<'a> {
     /// Whether `n` names the fn filling the `print` or `write` role here (R11.6.1).
     fn names_io(&self, n: &str) -> bool {
         let r = &self.d.roles;
-        matches!(self.d.named(self.b.module, n), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
+        matches!(self.d.sym(n).and_then(|s| self.d.named(self.b.module, s)), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
     }
     fn io_args(&self, args: &[ast::Arg]) -> Vec<ast::Arg> {
         let mut out = args.to_vec();
-        let Some(Named::Context(io)) = self.d.named(self.b.module, "io") else {
+        let Some(Named::Context(io)) = self
+            .d
+            .sym("io")
+            .and_then(|s| self.d.named(self.b.module, s))
+        else {
             return out;
         };
         for field in ["sep", "precision"] {

@@ -635,9 +635,9 @@ impl<'s> Type<'s> {
     /// Whether it implements the trait the program's scope names `name`, as the checker's
     /// impl lookup answers (the Signatures view).
     pub fn implements(&self, name: &str) -> bool {
-        use cpl_next_decls::views::{Scope, Signatures};
+        use cpl_next_decls::views::{Scope, Signatures, TypeTables};
         let d = &self.front.d;
-        match Scope::named(d, d.program, name) {
+        match TypeTables::sym(d, name).and_then(|s| Scope::named(d, d.program, s)) {
             Some(decls::Named::Trait(tr)) => Signatures::has_impl(d, self.shown(), tr),
             _ => false,
         }

@@ -152,7 +152,11 @@ impl<'a> Cx<'a> {
         call: Option<&[ast::Arg]>,
     ) -> Option<String> {
         let args = call?;
-        let Some(decls::Named::Fn(f)) = self.d.named(self.b.module, &name.text) else {
+        let Some(decls::Named::Fn(f)) = self
+            .d
+            .sym(&name.text)
+            .and_then(|s| self.d.named(self.b.module, s))
+        else {
             return None;
         };
         if self.d.f(f).self_ty.is_some() {
@@ -202,7 +206,7 @@ impl<'a> Cx<'a> {
             return;
         };
         let m = &name.text;
-        let mine = match self.d.named(self.b.module, m) {
+        let mine = match self.d.sym(m).and_then(|s| self.d.named(self.b.module, s)) {
             Some(decls::Named::Fn(f)) => {
                 let fd = self.d.f(f);
                 fd.module == self.b.module
@@ -339,7 +343,9 @@ impl<'a> Cx<'a> {
         if first.name.is_some() || self.lookup(n).is_some() {
             return None;
         }
-        let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, n) else {
+        let Some(decls::Named::Trait(tr)) =
+            self.d.sym(n).and_then(|s| self.d.named(self.b.module, s))
+        else {
             return None;
         };
         let recv = self.expr(&first.value, None);
@@ -409,7 +415,13 @@ impl<'a> Cx<'a> {
         let ExprKind::Name(n) = &base.kind else {
             return None;
         };
-        if self.lookup(n).is_some() || self.d.named(self.b.module, n).is_some() {
+        if self.lookup(n).is_some()
+            || self
+                .d
+                .sym(n)
+                .and_then(|s| self.d.named(self.b.module, s))
+                .is_some()
+        {
             return None;
         }
         let t = ast::Type::named(n, base.span);
@@ -514,7 +526,13 @@ impl<'a> Cx<'a> {
         let ExprKind::Name(n) = &callee.kind else {
             return None;
         };
-        if self.lookup(n).is_some() || self.d.named(self.b.module, n).is_some() {
+        if self.lookup(n).is_some()
+            || self
+                .d
+                .sym(n)
+                .and_then(|s| self.d.named(self.b.module, s))
+                .is_some()
+        {
             return None;
         }
         let found = (self.d.names(self.b.module).into_iter().map(|(_, x)| x))
@@ -611,7 +629,7 @@ impl<'a> Cx<'a> {
         };
         let d = self.d;
         let Some(decls::Named::Context(id)) = (self.lookup(n).is_none())
-            .then(|| d.named(self.b.module, n))
+            .then(|| d.sym(n).and_then(|s| d.named(self.b.module, s)))
             .flatten()
         else {
             return None;
@@ -655,7 +673,7 @@ impl<'a> Cx<'a> {
         };
         let d = self.d;
         let Some(decls::Named::Module(t)) = (self.lookup(m).is_none())
-            .then(|| d.named(self.b.module, m))
+            .then(|| d.sym(m).and_then(|s| d.named(self.b.module, s)))
             .flatten()
         else {
             return None;
@@ -665,7 +683,7 @@ impl<'a> Cx<'a> {
             ty: Ty::Error,
             span,
         };
-        let x = match d.export(t, &name.text) {
+        let x = match d.sym(&name.text).and_then(|s| d.export(t, s)) {
             Some((x, true)) => x,
             Some((_, false)) => {
                 let code = cpl_diag::codes::PRIVATE_NAME;
@@ -829,7 +847,9 @@ impl<'a> Cx<'a> {
         // `Enum.Variant(args)`, or `Enum.Variant` with no payload (R02.7.1).
         if let Some(n) = ty_name {
             if let (Some(e), true) = (
-                self.d.struct_named(self.b.module, n),
+                self.d
+                    .sym(n)
+                    .and_then(|s| self.d.struct_named(self.b.module, s)),
                 self.lookup(n).is_none(),
             ) {
                 if let Some(i) = self.d.variant(e, &name.text) {
@@ -844,9 +864,14 @@ impl<'a> Cx<'a> {
                 }
             }
         }
-        let named = ty_name
-            .filter(|n| self.lookup(n).is_none())
-            .and_then(|n| Some((n, self.d.struct_named(self.b.module, n)?)));
+        let named = ty_name.filter(|n| self.lookup(n).is_none()).and_then(|n| {
+            Some((
+                n,
+                self.d
+                    .sym(n)
+                    .and_then(|s| self.d.struct_named(self.b.module, s))?,
+            ))
+        });
         // `Dir4.up`: a struct's const.
         if let (Some((_, d)), None) = (named, call) {
             if let Some(&c) = (self.d.sym(&name.text)).and_then(|n| self.d.s(d).consts.get(&n)) {
@@ -929,7 +954,11 @@ impl<'a> Cx<'a> {
         // name; walked by a `for`, it names the yielding method.
         let walked = call.is_none() && self.b.allow_region;
         let getter = (call.is_none() && !walked)
-            .then(|| self.d.named(self.b.module, &name.text))
+            .then(|| {
+                self.d
+                    .sym(&name.text)
+                    .and_then(|s| self.d.named(self.b.module, s))
+            })
             .flatten()
             .or_else(|| {
                 (call.is_none() && !walked)
@@ -996,7 +1025,10 @@ impl<'a> Cx<'a> {
                 _ => {}
             }
         }
-        if self.d.is_ambiguous(self.b.module, &name.text)
+        if self
+            .d
+            .sym(&name.text)
+            .is_some_and(|s| self.d.is_ambiguous(self.b.module, s))
             && self.d.lookup_member(&rt, &name.text).is_none()
         {
             self.two_imports(&name.text, name.span);
@@ -1011,9 +1043,11 @@ impl<'a> Cx<'a> {
             None => (self.d.shaped_member(&rt, &name.text).map(decls::Named::Fn))
                 .or_else(|| {
                     // A free fn with no `self` in view does not hide the method a module declares.
-                    (self.d.named(self.b.module, &name.text)).filter(
-                        |n| !matches!(n, decls::Named::Fn(f) if self.d.f(*f).self_ty.is_none()),
-                    )
+                    (self
+                        .d
+                        .sym(&name.text)
+                        .and_then(|s| self.d.named(self.b.module, s)))
+                    .filter(|n| !matches!(n, decls::Named::Fn(f) if self.d.f(*f).self_ty.is_none()))
                 })
                 .or_else(|| self.d.method_for(&name.text, &rt).map(decls::Named::Fn)),
             Some(decls::Member::Method(m, ..)) if !self.d.f(m).getter && getter.is_some() => getter,
@@ -1162,7 +1196,9 @@ impl<'a> Cx<'a> {
                 VarRef::Global(k) => self.globals[k].name.clone(),
             },
             None => {
-                let Some(decls::Named::Fn(w)) = self.d.named(self.b.module, f) else {
+                let Some(decls::Named::Fn(w)) =
+                    self.d.sym(f).and_then(|s| self.d.named(self.b.module, s))
+                else {
                     return None;
                 };
                 self.d.f(*self.d.memo_clears.get(&w)?).name.clone()

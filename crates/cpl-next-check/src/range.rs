@@ -375,7 +375,13 @@ impl Cx<'_> {
         let ExprKind::Name(n) = &base.kind else {
             return None;
         };
-        if self.lookup(n).is_some() || self.d.struct_named(self.b.module, n).is_none() {
+        if self.lookup(n).is_some()
+            || self
+                .d
+                .sym(n)
+                .and_then(|s| self.d.struct_named(self.b.module, s))
+                .is_none()
+        {
             return None;
         }
         let t = ast::Type {
@@ -436,7 +442,9 @@ impl Cx<'_> {
             return Some(t.clone());
         }
         // `type Cell = (Row, Col)` names the product domain too (R04.2.10).
-        if let Some(decls::Named::Alias(_)) = self.d.named(self.b.module, n) {
+        if let Some(decls::Named::Alias(_)) =
+            self.d.sym(n).and_then(|s| self.d.named(self.b.module, s))
+        {
             let written = ast::Type {
                 kind: ast::TypeKind::Named {
                     name: ast::Name {
@@ -460,7 +468,9 @@ impl Cx<'_> {
             return Some(t).filter(|t| self.is_domain(t));
         }
         // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).
-        if let Some(decls::Named::Struct(s)) = self.d.named(self.b.module, n) {
+        if let Some(decls::Named::Struct(s)) =
+            self.d.sym(n).and_then(|s| self.d.named(self.b.module, s))
+        {
             let t = Ty::Struct(s, Vec::new(), Vec::new());
             if self.d.s(s).generics.is_empty() && self.is_domain(&t) {
                 return Some(t);

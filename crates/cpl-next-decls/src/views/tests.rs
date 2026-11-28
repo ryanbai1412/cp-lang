@@ -37,12 +37,13 @@ fn a_summary_view_is_a_map_or_the_checkers_adds() {
 fn the_declarations_are_the_signatures_and_scope_views() {
     let mut d = Decls::default();
     let f = d.syms.intern("f");
+    let g = d.syms.intern("g");
     let names = HashMap::from([(f, Named::Fn(FnId(0)))]);
     d.views.push(std::sync::Arc::new(names));
     let (sigs, scope): (&dyn Signatures, &dyn Scope) = (&d, &d);
     assert!(sigs.impls_of(TraitId(0)).is_empty());
-    assert_eq!(scope.named(ModId(0), "f"), Some(Named::Fn(FnId(0))));
-    assert_eq!(scope.named(ModId(0), "g"), None);
+    assert_eq!(scope.named(ModId(0), f), Some(Named::Fn(FnId(0))));
+    assert_eq!(scope.named(ModId(0), g), None);
 }
 
 #[test]

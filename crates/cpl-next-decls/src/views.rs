@@ -80,9 +80,29 @@ pub trait Signatures: TypeTables {
 
 /// `scope(ModId)`: what a name means in a module.
 pub trait Scope {
-    fn named(&self, m: ModId, name: &str) -> Option<Named>;
+    fn named(&self, m: ModId, name: Sym) -> Option<Named>;
     /// Each name the module's scope gives and what it means, in no fixed order.
-    fn names(&self, m: ModId) -> Vec<(&str, Named)>;
+    fn names(&self, m: ModId) -> Vec<(Sym, Named)>;
+    /// What module `m` exports as `name`, and whether it is `pub`.
+    fn export(&self, m: ModId, name: Sym) -> Option<(Named, bool)>;
+    /// Whether two of module `m`'s `use` lines import `name` as different items (R08.1.4).
+    fn is_ambiguous(&self, m: ModId, name: Sym) -> bool;
+    /// Whether `m` is the program's own top-level module.
+    fn is_program(&self, m: ModId) -> bool;
+    /// The path module `m` is written by (`std.list`, `m`).
+    fn module_name(&self, m: ModId) -> &str;
+    fn fn_named(&self, m: ModId, name: Sym) -> Option<FnId> {
+        match self.named(m, name) {
+            Some(Named::Fn(f)) => Some(f),
+            _ => None,
+        }
+    }
+    fn struct_named(&self, m: ModId, name: Sym) -> Option<StructId> {
+        match self.named(m, name) {
+            Some(Named::Struct(s)) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 /// `summary(ItemId)`: what a fn's body adds to its set parameters, read without checking it.
@@ -236,14 +256,23 @@ impl TypeTables for Decls {
 }
 
 impl Scope for Decls {
-    fn named(&self, m: ModId, name: &str) -> Option<Named> {
-        self.named(m, name)
+    fn named(&self, m: ModId, name: Sym) -> Option<Named> {
+        self.views[m.0].get(&name).copied()
     }
-    fn names(&self, m: ModId) -> Vec<(&str, Named)> {
-        self.views[m.0]
-            .iter()
-            .map(|(n, x)| (self.syms.text(*n), *x))
-            .collect()
+    fn names(&self, m: ModId) -> Vec<(Sym, Named)> {
+        self.views[m.0].iter().map(|(n, x)| (*n, *x)).collect()
+    }
+    fn export(&self, m: ModId, name: Sym) -> Option<(Named, bool)> {
+        self.exports[m.0].get(&name).copied()
+    }
+    fn is_ambiguous(&self, m: ModId, name: Sym) -> bool {
+        self.ambiguous[m.0].contains(&name)
+    }
+    fn is_program(&self, m: ModId) -> bool {
+        m == self.program
+    }
+    fn module_name(&self, m: ModId) -> &str {
+        &self.module_names[m.0]
     }
 }
 

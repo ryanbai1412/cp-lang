@@ -1530,7 +1530,9 @@ impl<'a> Cx<'a> {
                 args,
                 body: None,
             } if matches!(
-                self.d.named(self.b.module, &ctx.text),
+                self.d
+                    .sym(&ctx.text)
+                    .and_then(|s| self.d.named(self.b.module, s)),
                 Some(decls::Named::Context(_))
             ) =>
             {
@@ -1543,7 +1545,9 @@ impl<'a> Cx<'a> {
                 args,
                 body: Some(body),
             } if matches!(
-                self.d.named(self.b.module, &ctx.text),
+                self.d
+                    .sym(&ctx.text)
+                    .and_then(|s| self.d.named(self.b.module, s)),
                 Some(decls::Named::Context(_))
             ) =>
             {
@@ -1635,9 +1639,8 @@ impl<'a> Cx<'a> {
         let ExprKind::Name(n) = &base.kind else {
             return None;
         };
-        let f = self
-            .d
-            .fn_named(self.b.module, n)
+        let f = (self.d.sym(n))
+            .and_then(|s| self.d.fn_named(self.b.module, s))
             .filter(|_| self.declared(n))?;
         let fd = self.d.f(f);
         let shape = fd.params.iter().all(|p| p.default.is_some()) && fd.generics.len() == 1;
@@ -1743,7 +1746,9 @@ impl<'a> Cx<'a> {
     /// names no context.
     fn ctx_frames(&mut self, ctx: &ast::Name, args: &[ast::Arg]) -> Option<Vec<super::CtxFrame>> {
         let d = self.d;
-        let Some(decls::Named::Context(id)) = d.named(self.b.module, &ctx.text) else {
+        let Some(decls::Named::Context(id)) =
+            d.sym(&ctx.text).and_then(|s| d.named(self.b.module, s))
+        else {
             return None;
         };
         let c = &d.contexts[id.0];

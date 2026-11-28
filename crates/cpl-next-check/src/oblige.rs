@@ -479,7 +479,11 @@ impl Cx<'_> {
             self.err(span, Unbuilt::BoundNotNamed);
             return error;
         };
-        let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, &name.text) else {
+        let Some(decls::Named::Trait(tr)) = self
+            .d
+            .sym(&name.text)
+            .and_then(|s| self.d.named(self.b.module, s))
+        else {
             let code = cpl_diag::codes::UNKNOWN_TYPE;
             self.err(
                 bound.span,

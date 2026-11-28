@@ -1091,7 +1091,7 @@ impl<'a> Cx<'a> {
         let d = self.d;
         let f = d.f(id);
         let used: Vec<decls::ContextId> = (f.uses.iter())
-            .filter_map(|n| match d.named(f.module, n) {
+            .filter_map(|n| match d.sym(n).and_then(|s| d.named(f.module, s)) {
                 Some(decls::Named::Context(c)) => Some(c),
                 _ => None,
             })

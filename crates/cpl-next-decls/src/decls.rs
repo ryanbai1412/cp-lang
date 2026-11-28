@@ -710,30 +710,6 @@ impl Decls {
         let msg = Msg::verdict(cpl_diag::codes::PRIVATE_NAME, text);
         Some((msg, format!("mark `{name}` `pub` in `mod {m}`")))
     }
-    pub fn named(&self, m: ModId, name: &str) -> Option<Named> {
-        look(&self.syms, &self.views[m.0], name)
-    }
-    /// What module `m` exports as `name`, and whether it is `pub`.
-    pub fn export(&self, m: ModId, name: &str) -> Option<(Named, bool)> {
-        self.exports[m.0].get(&self.sym(name)?).copied()
-    }
-    /// Whether two of module `m`'s `use` lines import `name` as different items (R08.1.4).
-    pub fn is_ambiguous(&self, m: ModId, name: &str) -> bool {
-        self.sym(name)
-            .is_some_and(|s| self.ambiguous[m.0].contains(&s))
-    }
-    pub fn fn_named(&self, m: ModId, name: &str) -> Option<FnId> {
-        match self.named(m, name) {
-            Some(Named::Fn(f)) => Some(f),
-            _ => None,
-        }
-    }
-    pub fn struct_named(&self, m: ModId, name: &str) -> Option<StructId> {
-        match self.named(m, name) {
-            Some(Named::Struct(s)) => Some(s),
-            _ => None,
-        }
-    }
     /// A read-only method that may still write its receiver's `@cache` fields, so a call
     /// lends the receiver for writing (R05.10.10).
     pub fn writes_cache(&self, f: FnId) -> bool {

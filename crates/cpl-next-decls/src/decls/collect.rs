@@ -4,6 +4,7 @@ use super::inherent::inherent_impl;
 use super::tyconv::input_bound;
 use super::*;
 use crate::synth::{enum_structs, module_derived};
+use crate::views::Scope;
 use cpl_diag::codes::FIELD_BOUND_FROM_INPUT;
 use cpl_diag::msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS;
 use cpl_next_ir::ids::{ItemId, SourceId};
@@ -1405,7 +1406,8 @@ fn layer(
                     let TypeKind::Named { name, .. } = &target.kind else {
                         continue;
                     };
-                    let Some(t) = d.struct_named(ModId(mi), &name.text) else {
+                    let Some(t) = d.sym(&name.text).and_then(|n| d.struct_named(ModId(mi), n))
+                    else {
                         continue;
                     };
                     if d.s(t).module != mid {

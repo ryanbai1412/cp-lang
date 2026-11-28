@@ -317,7 +317,7 @@ impl Cx<'_> {
         if self.nearer(n)
             || self.domain_named(n).is_some()
             || matches!(
-                self.d.named(self.b.module, n),
+                self.d.sym(n).and_then(|s| self.d.named(self.b.module, s)),
                 Some(decls::Named::Fn(_) | decls::Named::Struct(_) | decls::Named::Const(_))
             )
         {

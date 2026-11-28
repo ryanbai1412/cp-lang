@@ -499,7 +499,7 @@ pub fn body_type(
 ) -> (Ty, Vec<Msg>) {
     let mut errors = Vec::new();
     let mut cx = TyCx {
-        names: &|n: &str| scope.named(m, n),
+        names: &|n: &str| sigs.sym(n).and_then(|s| scope.named(m, s)),
         env: sigs,
         item: None,
         generics,
