@@ -398,6 +398,22 @@ impl M<'_> {
         }
         Ok(loc)
     }
+    /// The first `n` characters of the storage in `s`, registers of the frame at `fp` (`ops::out_len`).
+    fn text(&self, fp: usize, s: Reg, n: Reg) -> R<String> {
+        let h = self.stack[fp + s as usize] as u32;
+        if h == 0 {
+            return broken("text of non-storage");
+        }
+        let o = &self.heap[h as usize];
+        let stride = self.size(o.elem).max(1);
+        let n = ops::out_len(self.stack[fp + n as usize] as i64, o.len);
+        o.words
+            .iter()
+            .step_by(stride)
+            .take(n)
+            .map(|&w| byte(w).map(char::from))
+            .collect()
+    }
     fn size(&self, lay: Lay) -> usize {
         self.c.lays.size[lay as usize] as usize
     }
@@ -768,19 +784,18 @@ impl M<'_> {
                 }
                 Op::Guard { op, c: x } => ops::check(op, self.stack[r(x)] != 0)?,
                 Op::Out { r: s, n, owned } => {
-                    let h = self.stack[r(s)] as u32;
-                    if h == 0 {
-                        return broken("output of non-storage");
-                    }
-                    let stride = self.size(self.heap[h as usize].elem).max(1);
-                    let o = &self.heap[h as usize];
-                    let n = ops::out_len(self.stack[r(n)] as i64, o.len);
-                    for &w in o.words.iter().step_by(stride).take(n) {
-                        self.out.text.push(char::from(byte(w)?));
-                    }
+                    let text = self.text(fp, s, n)?;
+                    self.out.text.push_str(&text);
                     if owned {
-                        self.dec(vec![h]);
+                        self.dec(vec![self.stack[r(s)] as u32]);
                     }
+                }
+                Op::ParseF64 { d, r: s, n, owned } => {
+                    let x = ops::f64_token(&self.text(fp, s, n)?)?;
+                    if owned {
+                        self.dec(vec![self.stack[r(s)] as u32]);
+                    }
+                    self.stack[r(d)] = x.to_bits();
                 }
                 Op::Showing { d } => self.stack[r(d)] = u64::from(self.out.showing()),
                 Op::Capture => self.out.mark(),

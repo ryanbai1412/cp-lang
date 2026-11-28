@@ -189,6 +189,12 @@ pub(crate) enum Op {
         n: Reg,
         owned: bool,
     },
+    ParseF64 {
+        d: Reg,
+        r: Reg,
+        n: Reg,
+        owned: bool,
+    },
     /// Whether an event is showing a value now: the code that shows it places no events.
     Showing {
         d: Reg,
@@ -951,6 +957,24 @@ impl Fc<'_> {
         Some(base + j as Reg)
     }
     /// The register holding `e`'s value: a local's own when reading it copies nothing.
+    /// Storage of characters into a fresh register, and whether the op owns it then: `None` for
+    /// lent storage, which text never takes.
+    fn text_arg(&mut self, r: &Arg<CTy>) -> Option<(Reg, bool)> {
+        let t = self.temp(1);
+        let owned = match r {
+            Arg::Value(r) => {
+                self.expr(r, t);
+                true
+            }
+            Arg::View(p) => {
+                let p = self.place(p);
+                self.ops.push(Op::Peek { d: t, p });
+                false
+            }
+            Arg::Lend(_) => return None,
+        };
+        Some((t, owned))
+    }
     fn operand(&mut self, e: &Expr<CTy>) -> Reg {
         if let (EK::Int(i), true) = (&e.kind, self.looping > 0) {
             if let Some(r) = self.konst(*i as u64) {
@@ -1168,18 +1192,8 @@ impl Fc<'_> {
                 let (Some(r), Some(Arg::Value(n))) = (args.first(), args.get(1)) else {
                     return self.fail("output without storage and a count");
                 };
-                let t = self.temp(1);
-                let owned = match r {
-                    Arg::Value(r) => {
-                        self.expr(r, t);
-                        true
-                    }
-                    Arg::View(p) => {
-                        let p = self.place(p);
-                        self.ops.push(Op::Peek { d: t, p });
-                        false
-                    }
-                    Arg::Lend(_) => return self.fail("lent storage in an output"),
+                let Some((t, owned)) = self.text_arg(r) else {
+                    return self.fail("lent storage in an output");
                 };
                 let n = self.operand(n);
                 self.ops.push(Op::Out { r: t, n, owned });
@@ -1248,6 +1262,16 @@ impl Fc<'_> {
             Intr::InputLeft => self.ops.push(Op::InputLeft { d }),
             Intr::ReadInt => self.ops.push(Op::ReadInt { d }),
             Intr::ReadByte => self.ops.push(Op::ReadByte { d }),
+            Intr::ParseF64 => {
+                let (Some(r), Some(Arg::Value(n))) = (args.first(), args.get(1)) else {
+                    return self.fail("a number parse without storage and a count");
+                };
+                let Some((t, owned)) = self.text_arg(r) else {
+                    return self.fail("lent storage in a number parse");
+                };
+                let n = self.operand(n);
+                self.ops.push(Op::ParseF64 { d, r: t, n, owned });
+            }
             Intr::PeekByte => {
                 let Some(&[k]) = self.operands(args).as_deref() else {
                     return self.fail("a lent operand");

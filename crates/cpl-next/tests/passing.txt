@@ -1091,6 +1091,9 @@ core-10/bool-not-print.cp
 core-10/bool-var-not-print.cp
 core-10/crlf-input-tokens.cp
 core-10/crlf-read-line-drops-cr.cp
+core-10/f64-read-is-correctly-rounded.cp
+core-10/f64-read-of-a-bad-number-traps.cp
+core-10/f64-read-takes-a-sign-and-a-bare-point.cp
 core-10/float-precision.cp
 core-10/flush-keeps-the-output-bytes.cp
 core-10/grid-first-factor-is-row.cp
@@ -1594,6 +1597,7 @@ next/a_trap_15_or_evaluates_right.cp
 next/a_trap_16_compound_index_assign.cp
 next/a_trap_17_bad_token.cp
 next/a_trap_19_domain_cast_in_generic.cp
+next/b_read_01_f64_inf_is_a_bad_token.cp
 next/c_n01_sum.cp
 next/c_n02_max.cp
 next/c_n04_ceil.cp

@@ -362,6 +362,14 @@ pub fn tokens(input: &str) -> impl Iterator<Item = &str> {
 
 /// The `Int` an input token spells. A whole number past `Int` is out of the contract, not a
 /// bad token (R10.2.6); the end of the input is a bad token.
+/// The `F64` nearest the number token `t` spells (R10.2.6): Rust's parse and C++'s `strtod`
+/// both round correctly, so every back end gets the same bits. `Read for F64` checks the
+/// token's syntax first, so a token neither accepts is a broken program, not an input error.
+pub fn f64_token(t: &str) -> Result<f64, Fault> {
+    t.parse()
+        .map_err(|_| Fault::Internal("a number token `Read for F64` did not check"))
+}
+
 pub fn read_int(t: Option<&str>) -> Result<i64, Fault> {
     let t = t.unwrap_or("");
     let digits = t.strip_prefix('-').unwrap_or(t);
@@ -698,7 +706,7 @@ pub fn cell(i: i64, len: usize, write: bool) -> Result<usize, Fault> {
 /// guard model, not semantics. These are the only `Intr` arms a back end has; every fault,
 /// bound, input rule and guard result inside them comes from this module, and every other
 /// operation is computed from it (`on_scalars`, `scalar`, `cpp_text`).
-pub const MACHINE: [Intr; 19] = [
+pub const MACHINE: [Intr; 20] = [
     Intr::RawEmpty,
     Intr::RawNew,
     Intr::RawGet,
@@ -706,6 +714,7 @@ pub const MACHINE: [Intr; 19] = [
     Intr::RawTake,
     Intr::RawCap,
     Intr::Out,
+    Intr::ParseF64,
     Intr::Flush,
     Intr::InputLeft,
     Intr::ReadInt,
@@ -902,6 +911,9 @@ pub fn cpp_text(op: Intr, first: Operand) -> String {
         I::CheckInput => "cpl_check_input($0)".into(),
         I::RandWord => "cpl_rand_word()".into(),
         I::Out => "cpl_out($0, $1)".into(),
+        I::ParseF64 => {
+            "strtod(std::string((const char*)($0).data(), (size_t)($1)).c_str(), nullptr)".into()
+        }
         I::Flush => "(cpl_capture || fflush(stdout), cpl_unit{})".into(),
         // `cpp` and `cpp_wide` spell the rest, for operands of every kind they take.
         _ => "/* not an operation */".into(),
@@ -1050,6 +1062,7 @@ pub const INTRINSICS: &[(&str, Intrinsic)] = &[
     ("f64_of", Intrinsic::Op(Intr::ToF64)),
     ("f64_bits", Intrinsic::Op(Intr::F64Bits)),
     ("out", Intrinsic::Op(Intr::Out)),
+    ("f64_parse", Intrinsic::Op(Intr::ParseF64)),
     ("flush", Intrinsic::Op(Intr::Flush)),
     (Prim::Popcount.id(), Intrinsic::Op(Intr::Popcount)),
     (Prim::Abs.id(), Intrinsic::Op(Intr::Abs)),
@@ -1127,6 +1140,18 @@ mod tests {
         assert!(low.is_err());
         let wrong = unary(Intr::CodeOf, at(Intr::CodeOf, Operand::Char), [300, 0]);
         assert!(matches!(wrong, Err(Fault::Internal(_))));
+    }
+
+    #[test]
+    fn a_number_token_reads_correctly_rounded() {
+        let bits = |t| f64_token(t).map(f64::to_bits);
+        assert_eq!(bits("9007199254740993"), Ok(9007199254740992f64.to_bits()));
+        assert_eq!(
+            bits("2.2250738585072011e-308"),
+            Ok(2.225073858507201e-308f64.to_bits())
+        );
+        assert_eq!(bits("-0.0"), Ok((-0.0f64).to_bits()));
+        assert!(matches!(f64_token("1.5x"), Err(Fault::Internal(_))));
     }
 
     #[test]

@@ -141,6 +141,7 @@ fn traps(op: &Op, places: &[PlaceCode]) -> bool {
                 | Op::Switch { .. }
                 | Op::Leave(_)
                 | Op::Out { .. }
+                | Op::ParseF64 { .. }
                 | Op::Showing { .. }
                 | Op::Capture
                 | Op::Flush
@@ -545,6 +546,7 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         Op::PutG { s, n, .. } => (vec![(s, n)], vec![]),
         Op::Retain { s, lay } | Op::Drop { s, lay } => (vec![(s, size(lay))], vec![]),
         Op::Out { r, n, .. } => (vec![one(r), one(n)], vec![]),
+        Op::ParseF64 { d, r, n, .. } => (vec![one(r), one(n)], vec![one(d)]),
         Op::Check { c, .. }
         | Op::Guard { c, .. }
         | Op::JumpUnless { c, .. }
@@ -619,7 +621,7 @@ fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
         | Op::JumpIf { c: a, .. } => vec![a],
         Op::Move { s, n: 1, .. } | Op::PutG { s, n: 1, .. } | Op::Put { s, n: 1, .. } => vec![s],
         Op::RawGet { r, i, .. } => vec![r, i],
-        Op::Out { r, n, .. } => vec![r, n],
+        Op::Out { r, n, .. } | Op::ParseF64 { r, n, .. } => vec![r, n],
         Op::PeekByte { k, .. } => vec![k],
         Op::RawSet { i, x, elem, .. } => match one(*elem) {
             true => vec![i, x],

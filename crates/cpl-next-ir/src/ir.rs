@@ -76,6 +76,9 @@ pub enum Intr {
     CheckInput,
     /// Writes the first `n` characters of storage to the output.
     Out,
+    /// The `F64` nearest the number the first `n` characters of storage spell, a token
+    /// `Read for F64` has checked (`ops::f64_token`, R10.2.6).
+    ParseF64,
     /// Hands the output written so far to the host now, not at exit.
     Flush,
     /// The next word of the program's one random stream (`ops::rand_word`).
