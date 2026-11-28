@@ -1894,6 +1894,7 @@ next/n_ret_01_dispatch_by_return_type.cp
 next/n_row_01_row_bounds.cp
 next/n_row_02_row_without.cp
 next/n_row_03_row_without_missing.cp
+next/n_row_04_without_is_met_by_its_impl.cp
 next/n_scope_01_param_shadows_domain.cp
 next/n_set_01_closure_added_through_mut_param.cp
 next/n_set_02_closure_stored_in_mut_param_field.cp

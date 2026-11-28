@@ -204,7 +204,9 @@ pub(super) fn name_trait(
         assoc: Vec::new(),
         assoc_bounds: Vec::new(),
         unimplemented,
-        row: t.record,
+        // A `without` form's trait is compiler-declared too, but met by its impls, not by fields.
+        row: t.record
+            && (t.methods.iter()).all(|f| f.attrs.iter().any(|a| a.attr == Decorator::Get)),
     });
     id
 }
