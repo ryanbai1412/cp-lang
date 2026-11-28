@@ -156,8 +156,18 @@ impl Decls {
     ) -> Option<Vec<(usize, TraitRef)>> {
         let sd = self.s(s);
         let mut out = Vec::new();
+        // A derived impl meets its supertraits' derived bounds too: `<` compares the leading
+        // fields with `==` (R08.1.1).
+        let arity = self.traits[r.tr.0].defaults.len();
+        let supers = (self.traits[r.tr.0].supers.iter())
+            .filter(|sup| self.traits[sup.tr.0].defaults.len() == arity)
+            .map(|sup| TraitRef {
+                tr: sup.tr,
+                args: r.args.clone(),
+            });
+        let asks: Vec<TraitRef> = std::iter::once(r.clone()).chain(supers).collect();
         for ((_, t), cached) in sd.fields.iter().zip(&sd.cached) {
-            if (caches || !*cached) && !self.needs(t, r, &mut out, 32) {
+            if (caches || !*cached) && !asks.iter().all(|a| self.needs(t, a, &mut out, 32)) {
                 return None;
             }
         }
