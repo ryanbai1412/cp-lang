@@ -65,6 +65,16 @@ pub fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step
     Range(lo, n, step)
 
+/// The type of a range's ends picks what `lo..hi` is (decision 456): `Range<D>` over a domain's
+/// positions, `RealRange` over reals.
+@role(endpoint)
+pub trait Endpoint:
+    /// The struct `lo..hi` builds from two ends of this type.
+    type Range
+
+impl<D: Domain> Endpoint for D:
+    type Range = Range<D>
+
 /// `r by k` is `r.step(k)`: every `k`-th value from its first, so `V by 2` and `r.rev by 3` are
 /// ranges again (R01.8.4).
 impl<D: Domain> By<Int> for Range<D>:
