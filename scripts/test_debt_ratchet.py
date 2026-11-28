@@ -2870,7 +2870,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-next-decls/src/impls.rs",
                         "fn best_in(&self, t: &Ty) -> Vec<u8> {\n"
                         "    let found: Vec<_> = (self.trait_impls(r.tr))\n"
-                        "        .filter_map(|(k, im)| self.impl_args_for(im, t, w)).collect();\n"
+                        "        .filter_map(|(k, im)| self.args_in(im, t, w, CAP)).collect();\n"
                         "    found.iter().min();\n"
                         "}\n"
                         "fn has(&self, t: &Ty) -> bool {\n"

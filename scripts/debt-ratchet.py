@@ -4181,7 +4181,7 @@ def next_check_name_keys(root: Path) -> list[str]:
 # S11: a walk of one trait's impls, a fit of an impl's head against a type, and a keep of one.
 IMPL_WALK_RE = re.compile(r"\b(?:trait_impls|impls_of|ranked_impls)\(|\.impls\.iter\(\)")
 IMPL_ASKS_RE = re.compile(r"\.(?:any|all|count)\(")
-IMPL_FIT_RE = re.compile(r"\b(?:fits_impl|impl_args_for|impl_args|head_fits|fit|fit_cty)\(|"
+IMPL_FIT_RE = re.compile(r"\b(?:fits_impl|impl_args_for|impl_args|args_in|head_fits|fit|fit_cty)\(|"
                          r"matches!\(&?\w+\.for_, Ty::(?:Fn|Param)\b")
 IMPL_KEEP_RE = re.compile(r"\.(?:find|find_map|min|max|min_by_key|max_by_key|position)\(|\.next\(\)|"
                           r"\blet \[|\bbreak;")
