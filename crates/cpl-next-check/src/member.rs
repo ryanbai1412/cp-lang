@@ -17,6 +17,17 @@ pub(super) struct Called<'n> {
     pub span: Span,
 }
 
+impl<'n> Called<'n> {
+    /// The member name `text` written at `span`.
+    pub fn written(syms: &Syms, text: &'n str, span: Span) -> Self {
+        Called {
+            text,
+            sym: syms.get(text),
+            span,
+        }
+    }
+}
+
 /// The fn of `members` that `name` names.
 fn member_of(members: &HashMap<Sym, FnId>, name: Called<'_>) -> Option<FnId> {
     members.get(&name.sym?).copied()
@@ -919,23 +930,17 @@ impl<'a> Cx<'a> {
     pub(super) fn member(
         &mut self,
         base: &next::Expr,
-        name: &str,
-        name_at: Span,
+        name: Called<'_>,
         call: Option<&[CallArg]>,
         span: Span,
         want: Option<&Ty>,
         written_targs: &[Ty],
     ) -> TExpr {
         // A tuple's `.1` is its field `_1`, read or called (R02.5).
-        let digit = format!("_{name}");
-        let text = match name.starts_with(|c: char| c.is_ascii_digit()) {
-            true => &digit,
+        let digit = format!("_{}", name.text);
+        let name = match name.text.starts_with(|c: char| c.is_ascii_digit()) {
+            true => Called::written(self.syms, &digit, name.span),
             false => name,
-        };
-        let name = Called {
-            text,
-            sym: self.syms.get(text),
-            span: name_at,
         };
         if let Some(e) = self.ctx_read(base, name, span) {
             self.no_targs(name, written_targs, span);

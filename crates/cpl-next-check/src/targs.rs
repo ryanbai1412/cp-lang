@@ -99,15 +99,8 @@ impl Cx<'_> {
         };
         let mut pre = Vec::new();
         let given: Vec<Ty> = (targs.iter()).map(|t| self.body_ty(t, &mut pre)).collect();
-        let v = self.member(
-            &base,
-            name.text(),
-            name.span(),
-            Some(args),
-            span,
-            want,
-            &given,
-        );
+        let name = Called::written(self.syms, name.text(), name.span());
+        let v = self.member(&base, name, Some(args), span, want, &given);
         block(pre, v)
     }
 
