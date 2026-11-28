@@ -1,4 +1,5 @@
 //! Collecting declarations: std's once, and each program's as a layer over them.
+use super::forms::{Form, Reader};
 use super::impls::{overlap, same_shape, supertraits_unmet};
 use super::inherent::inherent_impl;
 use super::tyconv::input_bound;
@@ -105,15 +106,21 @@ fn layer(
         let kept = (d.member_types.iter()).filter(|(_, s)| !unseen(&d, s));
         d.member_types = Arc::new(kept.map(|(m, s)| (*m, *s)).collect());
     }
+    // Each module's items as their forms, read once (only this layer's modules are read).
+    let mut unknown_marks = Vec::new();
+    let read: Vec<Vec<(ItemId, Form)>> = (mods.iter().enumerate())
+        .map(|(mi, m)| match mi >= from {
+            true => {
+                let (forms, unknown) = read_forms(&mut d.syms, m);
+                unknown_marks.extend(unknown.into_iter().map(|u| (ModId(mi), u)));
+                forms
+            }
+            false => Vec::new(),
+        })
+        .collect();
     if base.is_some() {
-        let values = (mods[n - 1].items.iter().flat_map(|it| &it.stmts))
-            .filter_map(|s| match &s.kind {
-                StmtKind::Let { pat, .. } => match &pat.kind {
-                    ast::PatternKind::Name(x) => Some(d.syms.intern(x)),
-                    _ => None,
-                },
-                _ => None,
-            })
+        let values = (read[n - 1].iter())
+            .filter_map(|(_, f)| let_name(&mut d.syms, f))
             .collect();
         d.top_values = Arc::new(values);
     }
@@ -1713,5 +1720,43 @@ impl cpl_syntax::visit::Visitor for Reads {
         if let ast::ExprKind::Name(n) = &e.kind {
             self.0.push((n.clone(), e.span));
         }
+    }
+}
+
+/// Each item of `m` as its form, read once; and the decorators on them no attribute names, each
+/// with the item it is on, for E0107.
+fn read_forms(
+    syms: &mut crate::sym::Syms,
+    m: &crate::modules::Module,
+) -> (
+    Vec<(ItemId, Form)>,
+    Vec<(ItemId, cpl_next_syntax::ast::Decorator)>,
+) {
+    let mut reader = Reader { syms };
+    let (mut forms, mut unknown) = (Vec::new(), Vec::new());
+    for it in m.items.iter() {
+        let (form, other) = reader.item(&it.item);
+        unknown.extend(other.into_iter().map(|x| (it.id.clone(), x)));
+        forms.push((it.id.clone(), form));
+    }
+    (forms, unknown)
+}
+
+/// The name a top-level `let` binds, when it binds one name: what `top_values` holds.
+fn let_name(syms: &mut crate::sym::Syms, form: &Form) -> Option<Sym> {
+    use cpl_next_syntax::ast::{Pattern, Stmt};
+    let Form::Stmt(Stmt::Let(l)) = form else {
+        return None;
+    };
+    let pats: Vec<Pattern> = l.patterns().collect();
+    match pats.as_slice() {
+        [Pattern::Path(p)] if p.args().is_none() => {
+            let segs: Vec<_> = p.segments().collect();
+            match segs.as_slice() {
+                [n] => Some(syms.intern(n.text())),
+                _ => None,
+            }
+        }
+        _ => None,
     }
 }
