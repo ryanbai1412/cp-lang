@@ -1312,3 +1312,33 @@ fn removed_spellings_say_what_replaced_them() {
     }
     assert_eq!(codes("@alt(f)\nfn g() = 1\n"), []);
 }
+
+/// Forms main's parser reads that the corpus writes: an arm's `a; b` (cco23p5), a range
+/// type whose bound computes from a name (noi21p3), and a block statement on a header's line
+/// (ioi25_souvenirs).
+#[test]
+fn an_arms_statement_run_a_computed_bound_and_an_inline_repeat_parse() {
+    let (got, errors) = stmts(
+        "match k:\n    1 => print(a); f(b)\n    _ => g({ x; y })\nlet (m, q): (n - 1..=6e5, 1..=3e5) = read()\nfor i in T: repeat i.ord - b[i]: t(i)\nif c: match k: 1 => a, _ => b\n",
+    );
+    assert_eq!(errors, 0, "{got:#?}");
+    assert!(
+        got[0].contains("=> Block(ExprStmt(CallExpr(NameRef(print) ArgList(( Arg(NameRef(a)) )))) ; ExprStmt(CallExpr(NameRef(f)"),
+        "{}",
+        got[0]
+    );
+    assert!(got[0].contains("=> CallExpr(NameRef(g)"), "{}", got[0]);
+    assert!(
+        got[1].contains(
+            "TupleType(( RangeType(RangeExpr(BinExpr(NameRef(n) - Literal(1)) ..= Literal(6e5)))"
+        ),
+        "{}",
+        got[1]
+    );
+    assert!(got[2].contains("Block(: RepeatStmt(repeat"), "{}", got[2]);
+    assert!(
+        got[3].contains("Block(: ExprStmt(MatchExpr(match"),
+        "{}",
+        got[3]
+    );
+}

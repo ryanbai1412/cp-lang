@@ -62,7 +62,10 @@ impl Parser<'_> {
                 self.bump();
                 self.finish();
             }
-            T::Ident if ops::RANGE.contains(&self.nth(1)) => self.range_type(),
+            // `n - 1..=6e5`: a name with arithmetic after it is a range's bound.
+            T::Ident if ops::RANGE.contains(&self.nth(1)) || self.computed_bound() => {
+                self.range_type()
+            }
             T::Ident | T::SelfKw => self.path_type(),
             T::Int | T::Float | T::Minus | T::DotDot | T::DotDotEq => self.range_type(),
             T::Str | T::Char => {
@@ -84,7 +87,7 @@ impl Parser<'_> {
     /// `0..n`, `..=9`, `-1e9..=1e9`, and a literal union `1 | 2`.
     fn range_type(&mut self) {
         let next = self.nth(1);
-        let arith = matches!(next, T::Plus | T::Minus | T::Star | T::Slash | T::Percent);
+        let arith = Self::arith(next);
         let alone = !ops::RANGE.contains(&next) && !arith;
         if self.at(T::Int) && alone {
             self.start(NodeKind::LiteralType);
@@ -98,6 +101,32 @@ impl Parser<'_> {
         self.start(NodeKind::RangeType);
         self.expr_at(Level::Range);
         self.finish();
+    }
+
+    /// An operator a range type's bound computes with (`n - 1`, `1e9 + 7`).
+    fn arith(t: T) -> bool {
+        matches!(t, T::Plus | T::Minus | T::Star | T::Slash | T::Percent)
+    }
+
+    /// `n - 1..=6e5`: a name, arithmetic, and a range operator before the type ends; `A + B`
+    /// with no range operator is a sum of bounds.
+    fn computed_bound(&self) -> bool {
+        if !Self::arith(self.nth(1)) {
+            return false;
+        }
+        let mut depth = 0u32;
+        let mut n = 2;
+        loop {
+            match self.nth(n) {
+                t if ops::RANGE.contains(&t) && depth == 0 => return true,
+                T::LParen | T::LBracket => depth += 1,
+                T::RParen | T::RBracket if depth > 0 => depth -= 1,
+                T::Ident | T::Int | T::Float | T::RParen | T::RBracket => {}
+                t if Self::arith(t) => {}
+                _ => return false,
+            }
+            n += 1;
+        }
     }
 
     fn path_type(&mut self) {

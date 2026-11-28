@@ -313,6 +313,15 @@ impl Parser<'_> {
             T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
             T::While => self.while_stmt(),
             T::For => self.for_stmt(),
+            T::Match => {
+                self.start(NodeKind::ExprStmt);
+                self.match_expr();
+                self.finish();
+            }
+            T::Unchecked => self.headed(NodeKind::UncheckedStmt, |_| {}),
+            T::Ident if self.word() == Some(Contextual::Repeat) && self.nth(1) != T::Eq => {
+                self.headed(NodeKind::RepeatStmt, |p| p.expr())
+            }
             _ => self.simple(),
         }
     }
@@ -624,9 +633,38 @@ impl Parser<'_> {
                 ));
             self.block();
         } else if self.want(T::FatArrow, "`=>` and the arm's value") {
-            self.arm_body();
+            if self.semi_run_ahead() {
+                // `p => a; b`: the statements on the line are the arm's block (R01.2.5).
+                self.start(NodeKind::Block);
+                self.inline_stmt();
+                while self.eat(T::Semi) {
+                    self.inline_stmt();
+                }
+                self.finish();
+            } else {
+                self.arm_body();
+            }
         }
         self.finish();
+    }
+
+    /// Whether the rest of the line is statements joined by `;`: one outside brackets, with
+    /// more on the line after it.
+    fn semi_run_ahead(&self) -> bool {
+        let mut depth = 0u32;
+        let mut n = 0;
+        loop {
+            match self.nth(n) {
+                T::Newline | T::Eof | T::Dedent | T::Indent => return false,
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace => depth = depth.saturating_sub(1),
+                T::Semi if depth == 0 => {
+                    return !matches!(self.nth(n + 1), T::Newline | T::Eof | T::Dedent)
+                }
+                _ => {}
+            }
+            n += 1;
+        }
     }
 
     /// An arm's or a lambda's body: an expression or an assignment on the
