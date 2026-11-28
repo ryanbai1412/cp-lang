@@ -313,8 +313,6 @@ core-07/tally-is-counter.cp	wrong-reject	check: program:5:7: E0305: `Counter<Int
 core-07/tally-missing-key-is-zero.cp	wrong-reject	check: program:5:7: E0305: `Counter<Int, Int>` is not indexed: it has no `Indexed` impl
 core-07/tally.cp	wrong-reject	check: program:3:7: E0305: `Counter<Int, Int>` is not indexed: it has no `Indexed` impl
 core-07/view-has-no-push.cp	wrong-error	wanted E0401 on line 4, got: check: program:4:1: E0203: `Rev<List<Int>>` has no member `push`
-core-07/view-of-a-temporary-in-a-var.cp	wrong-accept	wanted E0603 on line 4, ran and printed: 1
-core-07/view-of-a-temporary-outlives-it.cp	wrong-accept	wanted E0603 on line 4, ran and printed: 1
 core-07/view-of-temporary-lives-as-long-as-the-view.cp	wrong-reject	check: program:5:17: E0606: `Gen<Slice<List<Int>>>` does not implement `Keyed`
 core-07/views-pass-where-a-seq-is-written.cp	wrong-reject	link: std.seq:2120:47: E0606: `S` does not implement `Domain`
 core-07/zip-domain-stops-at-shorter-list-and-rev.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not implement `Indexed`
@@ -454,10 +452,8 @@ ownership/fn-param-assign-after.cp	wrong-reject	check: program:6:9: E0302: expec
 ownership/fn-param-out.cp	wrong-error	wanted E0603 on line 5, got: check: program:5:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/fn-param-push-after.cp	wrong-reject	check: program:6:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/fn-temp-assign-after.cp	wrong-error	wanted E0603 on line 6, got: check: program:6:9: E0302: expected `List<Int>`, found `Slice<List<Int>>`
-ownership/fn-temp-let.cp	wrong-accept	wanted E0603 on line 5, ran and printed: 3
 ownership/fn-temp-out.cp	wrong-error	wanted E0603 on line 5, got: check: program:5:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/fn-temp-push-after.cp	wrong-error	wanted E0603 on line 6, got: check: program:6:13: E0302: expected `List<Int>`, found `Slice<List<Int>>`
-ownership/fn-temp-var.cp	wrong-accept	wanted E0603 on line 5, ran and printed: 3
 ownership/top-named-assign-after.cp	wrong-reject	check: program:6:5: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/top-named-assign-before.cp	wrong-error	wanted E0603 on line 6, got: check: program:6:5: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/top-named-push-after.cp	wrong-reject	check: program:6:9: E0302: expected `List<Int>`, found `Slice<List<Int>>`

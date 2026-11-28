@@ -563,9 +563,17 @@ impl Walk<'_> {
                             // one, or any the signature says `lends` (a fixed-size grid).
                             let heap = !self.p.plain(&v.ty) || self.declares_lends(*i);
                             if let (EK::Copy(p), true) = (&v.kind, heap) {
+                                // A view cut from a temporary holds it (R07.5.10).
+                                let viewed = (k == 0 && self.receivers.contains(i))
+                                    || self.declares_lends(*i);
+                                let cut_here = (self.pl(p))
+                                    .filter(|q| {
+                                        fresh(&self.made, &self.spilled, &self.lent, q.root)
+                                    })
+                                    .filter(|_| viewed && !self.p.copied(&e.ty));
                                 // An owned binding read for the last time moves in, with what
-                                // it borrows (R05.5.3).
-                                if let Place::Local(l) = p {
+                                // it borrows (R05.5.3); a temporary a view is cut from does not.
+                                if let (Place::Local(l), None) = (p, &cut_here) {
                                     let r = Root::Local(*l);
                                     if self.last.here.contains(l)
                                         && self.decl.contains_key(&r)
@@ -578,14 +586,7 @@ impl Walk<'_> {
                                     }
                                 }
                                 out.extend(self.lent_pl(p));
-                                // A view cut from a temporary holds it (R07.5.10).
-                                let viewed = (k == 0 && self.receivers.contains(i))
-                                    || self.declares_lends(*i);
-                                if viewed && !self.p.copied(&e.ty) {
-                                    cut.extend(self.pl(p).filter(|q| {
-                                        fresh(&self.made, &self.spilled, &self.lent, q.root)
-                                    }));
-                                }
+                                cut.extend(cut_here);
                             }
                         }
                         Arg::View(p) | Arg::Lend(p) => {
