@@ -1,6 +1,7 @@
 //! Structs and enums as values: building them, their variants, and `match` (R02.6, R02.7).
 use super::call::CallArg;
-use super::expr::{block, Formal};
+use super::call::Formal;
+use super::expr::block;
 use super::stmt::arm_leaves;
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -125,7 +126,10 @@ impl Cx<'_> {
             tys: &targs,
             sets: &sets,
         };
-        let named = super::expr::named_params(&s.generics, &sub);
+        let generics: Vec<Sym> = (s.generics.iter())
+            .map(|g| self.b.syms.intern(&self.d.syms, g))
+            .collect();
+        let named = super::expr::named_params(&generics, &sub);
         let formals: Vec<Formal> = (s.fields.iter().zip(&s.defaults))
             .map(|((n, t), e)| Formal {
                 label: self.d.text(*n),

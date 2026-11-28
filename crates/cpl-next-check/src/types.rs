@@ -101,14 +101,11 @@ impl<'a> TypeView<'a> {
 impl TypeFacts for TypeView<'_> {
     fn text(&self, t: &TyId) -> Option<String> {
         let (table, ty) = self.ty(t)?;
-        let generics: Vec<String> = (table.generics.iter())
-            .map(|g| self.items.text(*g).to_string())
-            .collect();
         let shown = show_ty(
             self.items,
             self.option,
             self.domains,
-            &generics,
+            &table.generics,
             &|t| t.clone(),
             ty,
         );
