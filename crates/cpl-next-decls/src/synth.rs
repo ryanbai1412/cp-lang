@@ -470,11 +470,18 @@ pub(crate) fn field_trait_impls(
             continue;
         }
         let getter = |f: &FnForm| f.attrs.iter().any(|a| a.attr == Decorator::Get);
+        // A member's type as the impl writes it: a written one as it is, or the trait's own
+        // parameter `j` (0 is `Self`), as a row trait's `(u: A, ..)` is (R08.4.1).
         let member = |f: &FnForm| match (&f.body, &f.ret) {
             (BodyForm::None, Some(TyForm::Written(ty)))
                 if f.params.len() <= 1 && getter(f) && writable(ty) =>
             {
-                Some((f.name, ty.clone()))
+                Some((f.name, TyForm::Written(ty.clone())))
+            }
+            (BodyForm::None, Some(TyForm::Param(j)))
+                if *j > 0 && f.params.len() <= 1 && getter(f) =>
+            {
+                Some((f.name, TyForm::Param(j - 1)))
             }
             _ => None,
         };
@@ -487,6 +494,9 @@ pub(crate) fn field_trait_impls(
             .map(|g| syms.text(*g).to_string())
             .collect();
         for (_, ty) in &members {
+            let TyForm::Written(ty) = ty else {
+                continue;
+            };
             let names = ty.syntax().descendants().filter_map(next::PathType::cast);
             taken.extend(names.map(|p| crate::cycles::path_text(&p)));
         }
@@ -505,7 +515,7 @@ pub(crate) fn field_trait_impls(
             let mut fields = Vec::new();
             for f in &names {
                 match members.iter().find(|(m, _)| m == f) {
-                    Some((_, ty)) => fields.push((*f, TyForm::Written(ty.clone()))),
+                    Some((_, ty)) => fields.push((*f, ty.clone())),
                     None => {
                         let Some(g) = extra.next() else { break };
                         generics.push(syms.intern(g));

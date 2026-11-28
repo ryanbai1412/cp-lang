@@ -1,6 +1,6 @@
 //! Contract 5: generic IR -> instances. The link step: it decides which
 //! instances exist and what each function-value set holds, from the whole program.
-use cpl_next_decls::decls::{Choice, ImplIdx, TraitRef};
+use cpl_next_decls::decls::{Choice, ImplIdx};
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::sym::Sym;
 use cpl_next_decls::views::{Checked, Generics, ImplChoice, Items, RoleRows, Summaries};
@@ -448,55 +448,6 @@ impl Link<'_> {
                 })
                 .collect(),
         }
-    }
-    /// `e.v` through a row bound `R: (u: V, v: V, ..)`: a record meets the row trait by its
-    /// fields (R08.4.1), so at this instance's record the getter is the read of field `v`.
-    fn row_read(
-        &mut self,
-        t: &Target<Ty>,
-        args: &[Arg<CTy>],
-        at: Site,
-        env: &Env,
-    ) -> Option<EK<CTy>> {
-        let Target::Trait {
-            tr,
-            method,
-            self_ty,
-            ..
-        } = t
-        else {
-            return None;
-        };
-        if !self.d.t(*tr).row {
-            return None;
-        }
-        let CTy::Struct(s, ..) = self.targ(self_ty, env).unlent().clone() else {
-            return None;
-        };
-        let sd = self.d.s(s);
-        if !sd.record {
-            return None;
-        }
-        let i = (sd.fields.iter()).position(|(n, _)| self.d.text(*n) == method)?;
-        let Some(Arg::Value(Expr {
-            kind: EK::Copy(p) | EK::Pass(p, ..),
-            ..
-        })) = args.first()
-        else {
-            self.errors.push(Msg::internal(format!(
-                "a row getter `{method}` reads a record that is no place"
-            )));
-            return Some(EK::Intr(Intr::Unset, Vec::new(), at));
-        };
-        let base = match self.place_ty(p) {
-            Some(CTy::Lent(_)) => Place::Through(Box::new(p.clone())),
-            _ => p.clone(),
-        };
-        let f = Place::Field(Box::new(base), i);
-        Some(EK::Copy(match self.place_ty(&f) {
-            Some(CTy::Lent(_)) => Place::Through(Box::new(f)),
-            _ => f,
-        }))
     }
     /// `p` read through each lent slot on its path.
     fn place(&self, p: &Place) -> Place {
@@ -1070,20 +1021,12 @@ impl Link<'_> {
     fn dom_row(&self, t: &CTy, tr: TraitId) -> bool {
         matches!(t, CTy::Dom(i) if self.c.domain(DomId(*i)).impls.contains(&tr))
     }
-    /// Whether `t` meets trait `tr` at `args` in this instance: an impl applies, or the type
-    /// meets the trait without one (a domain, for `Domain`).
+    /// Whether `t` meets trait `tr` at `args` in this instance: an impl applies (a record's
+    /// made impl of a row trait among them, R08.4.1), or a domain meets `Domain` without one.
     fn has_bound(&mut self, t: &Ty, tr: TraitId, args: &[Ty], env: &Env) -> bool {
         let st = self.targ(t, env).unlent().clone();
         let bare = self.d.t(tr).inputs(args).is_empty();
-        // A record meets a row trait by its fields, with no impl (R08.4.1).
-        let row = self.d.t(tr).row && {
-            let r = TraitRef {
-                tr,
-                args: args.iter().map(|a| self.targ(a, env).to_ty()).collect(),
-            };
-            self.choice.impls.row_holds(&st.to_ty(), &r)
-        };
-        row || (bare && self.dom_row(&st, tr)) || self.chosen(tr, args, &st, env).is_some()
+        (bare && self.dom_row(&st, tr)) || self.chosen(tr, args, &st, env).is_some()
     }
     fn trait_key(
         &mut self,
@@ -1236,9 +1179,7 @@ impl Link<'_> {
             ),
             EK::Call(t, args, at) => {
                 let args: Vec<Arg<CTy>> = args.iter().map(|a| self.arg(a, env)).collect();
-                if let Some(read) = self.row_read(t, &args, *at, env) {
-                    read
-                } else {
+                {
                     // A method an impl gives as an intrinsic is that operation.
                     let key = self.key(t, env);
                     let intr = match &key {
