@@ -592,7 +592,7 @@ pub struct PotentialDsu<V, W = Int>:
     /// cost: \(O(\log n)\), plus one log entry when it merges or contradicts
     /// traps: never
     /// example: `var d = PotentialDsu<0..3>(); d.unite(0, 1, 5); d.unite(1, 2, 3); not d.unite(0, 2, 7) and d.unite(0, 2, 8)`
-    pub fn unite(mut self, a: V, b: V, diff: W) -> Bool:
+    pub fn unite(mut self, a: V, b: V, diff: W) -> Bool where W: Eq:
         let (ra, da) = self.find(a)
         let (rb, db) = self.find(b)
         if ra == rb:
@@ -677,7 +677,7 @@ pub struct PotentialDsu<V, W = Int>:
                 pot[y] = g.id
                 parts += 1
 
-impl Show for PotentialDsu<V, W>:
+impl Show for PotentialDsu<V, W: Show>:
     /// Each position's `root:offset`, in `V` order; read-only.
     fn show(d):
         var out = ""
@@ -1138,7 +1138,7 @@ impl Show for Mark:
     /// example: `var a = RollbackArray<0..2, Int>(init: _ => 0); a.set(0, 5); "{a.mark()}" == "mark 1"`
     fn show(m) = "mark {m.at}"
 
-impl Show for RollbackArray<D, T>:
+impl Show for RollbackArray<D, T: Show>:
     /// The current values in key order, space-separated.
     ///
     /// example: `var a = RollbackArray<0..3, Int>(init: i => Int(i)); a.set(1, 7); "{a}" == "0 7 2"`
@@ -1181,7 +1181,7 @@ pub struct PersistentDsuWithin<V>(ar: PArena<DsuNode<V>>, dsu: PersistentDsu<V>)
     @get pub fn items(self) -> yields (V, V):
         for v in V: yield (v, dsu.find(ar, v))
 
-impl Show for PersistentDsuWithin<V>:
+impl Show for PersistentDsuWithin<V: Show>:
     /// Each position's representative, in position order, as `Dsu` prints.
     ///
     /// example: `use std.persistent.{PArena}; domain V = 0..3; var ar = PArena<DsuNode<V>>(); "{PersistentDsu<V>.new(mut ar).within(ar)}" == "0 1 2"`

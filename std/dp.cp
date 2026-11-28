@@ -147,7 +147,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
             if a <= mid: todo.push((self.kid(i, false), l, mid))
             if mid < b: todo.push((self.kid(i, true), mid + 1, r))
 
-    fn wins(self, a: K, b: K) -> Bool = pick(a, b) == a and a != b
+    fn wins(self, a: K, b: K) -> Bool where K: Eq = pick(a, b) == a and a != b
 
     fn kid(mut self, i: Int, right_side: Bool) -> Int:
         let k = if right_side: right[i] else: left[i]
@@ -448,7 +448,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// ties: `var p = MongePath([0, 1, 2], (a, b) => b - a); p.next(); p.next().val == 2`
     /// traps: when every node has been reached (`len == nodes.len`)
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.next() == (val: 2, prev: 1)`
-    pub fn next(mut self) -> (val: K, prev: Int):
+    pub fn next(mut self) -> (val: K, prev: Int) where K: Ord:
         self.setup()
         assert reached < nodes.len, "`MongePath.next`: every node has been reached"
         let rows = nodes.len - 1
@@ -923,7 +923,7 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
 /// example: `[3, 1, 4, 1, 5].lis_ends() == [1, 1, 2, 1, 3]`
 /// example: `[1, 1, 2].lis_ends(strict: false) == [1, 2, 3]`
 /// example: `[3, 1, 2].lis_ends(by: x => -x) == [1, 2, 2]`
-pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int:
+pub fn lis_ends<D, T, K: Ord>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int:
     var tails: List<K> = []
     var out: [D]Int = 0
     for i in D:
@@ -1163,7 +1163,7 @@ fn hulls_and_monge_path_walk_and_show():
     for l in [Line(1, 0), Line(-1, 4), Line(0, 9)]: d.add(l)
     assert d.each().collect() == [Line(-1, 4), Line(1, 0)]
 
-impl Show for MongePath<N, K>:
+impl Show for MongePath<N, K: Show>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:
@@ -1171,7 +1171,7 @@ impl Show for MongePath<N, K>:
             out += "{x}"
         out
 
-impl Show for MonotoneHull<P>:
+impl Show for MonotoneHull<P: Ord>:
     fn show(v):
         var out = ""
         for (l, _) in v.items:
@@ -1187,7 +1187,7 @@ impl Show for LineContainer:
             out += "{l.k}x + {l.m}"
         out
 
-impl Show for LiChao<L, K>:
+impl Show for LiChao<L: Show, K>:
     /// Every line it holds, each through its own `Show`, comma-separated in the order they sit in the tree; `no lines` for none.
     ///
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); "{t}" == "-1 6, 1 0"`

@@ -2871,7 +2871,7 @@ pub struct SortedRange<K: Ord>:
     @get pub fn rev(self) -> yields K = bag.range_each_rev(lo, hi, hi_inc)
 
 /// `push(x)` adds one copy of `x` and `pop(x)` removes one.
-impl Track<K> for SortedBag<K>:
+impl Track<K> for SortedBag<K: Ord>:
     fn push(mut self, x: K):
         self.add(x)
     fn pop(mut self, x: K):
@@ -2896,7 +2896,7 @@ fn bag_family_walks_and_shows():
     assert c.each().collect() == [0, 15, 29]
     assert "{SortedBag.of([1, 3, 3, 7]).range(2..)}" == "3 3 7"
 
-impl Show for SortedBag<K>:
+impl Show for SortedBag<K: Ord + Show>:
     fn show(b):
         var out = ""
         for x in b.each():
@@ -2904,7 +2904,7 @@ impl Show for SortedBag<K>:
             out += "{x}"
         out
 
-impl Show for SortedSet<K>:
+impl Show for SortedSet<K: Ord + Show>:
     fn show(s):
         var out = ""
         for x in s.each():
@@ -2912,7 +2912,7 @@ impl Show for SortedSet<K>:
             out += "{x}"
         out
 
-impl Show for SortedMap<K, V>:
+impl Show for SortedMap<K: Ord + Show, V: Show>:
     fn show(v):
         var out = ""
         for (k, x) in v.items:
@@ -2920,7 +2920,7 @@ impl Show for SortedMap<K, V>:
             out += "{k}={x}"
         out
 
-impl Show for AugSortedBag<K, T>:
+impl Show for AugSortedBag<K: Ord + Show, T>:
     fn show(v):
         var out = ""
         for x in v.each():
@@ -2928,7 +2928,7 @@ impl Show for AugSortedBag<K, T>:
             out += "{x}"
         out
 
-impl Show for AugSortedSet<K, T>:
+impl Show for AugSortedSet<K: Ord + Show, T>:
     fn show(v):
         var out = ""
         for x in v.each():
@@ -2944,11 +2944,11 @@ impl Show for BucketCount:
             out += "{x}"
         out
 
-impl Seq<K> for SortedRange<K>:
+impl Seq<K> for SortedRange<K: Ord>:
     fn iter(self) -> yields K:
         for x in self.each(): yield x
 
-impl Show for SortedRange<K>:
+impl Show for SortedRange<K: Ord + Show>:
     fn show(v):
         var out = ""
         for x in v.each():

@@ -1669,7 +1669,7 @@ fn poly_walks_coefficients_and_shows():
     assert p.items.collect() == [(0, 1), (1, 0), (2, 3)] and "{p}" == "1 0 3"
     assert Poly<Int>([]).is_empty and "{Poly<Int>([])}" == ""
 
-impl Show for Poly<T>:
+impl Show for Poly<T: Show>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:

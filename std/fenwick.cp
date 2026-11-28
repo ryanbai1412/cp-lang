@@ -86,7 +86,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// example: `Fenwick([1, 2, 3]).first_ge(3) == Some((0..2).r)`
     /// example: `Fenwick([1, 2, 3]).first_ge(7) == None`
     /// example: `Fenwick([1, 2, 3]).first_ge(0) == Some((0..0).r)`
-    pub fn first_ge(self, target: Int) -> ?Cut<D>:
+    pub fn first_ge(self, target: Int) -> ?Cut<D> where T: Ord:
         if target <= 0: return D.cuts.nth(0)
         var p = 0
         var rest = target
@@ -159,7 +159,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// traps: never (negative values give an unspecified cut, not a trap)
     /// example: `Fenwick([1, 2, 3]).first_gt(3) == Some((0..3).r)`
     /// example: `Fenwick([1, 2, 3]).first_gt(6) == None`
-    pub fn first_gt(self, target: Int) -> ?Cut<D>:
+    pub fn first_gt(self, target: Int) -> ?Cut<D> where T: Ord:
         if target < 0: return D.cuts.nth(0)
         var p = 0
         var rest = target
@@ -682,7 +682,7 @@ fn dual_and_range_fenwick_match_brute():
         let i = seed / 100000 % 23
         assert f.get(V(i)) == a[i]
 
-impl Show for Fenwick<D, T>:
+impl Show for Fenwick<D, T: Show>:
     /// The current values in key order, space-separated.
     ///
     /// example: `"{Fenwick([1, 2, 3])}" == "1 2 3"`
@@ -693,7 +693,7 @@ impl Show for Fenwick<D, T>:
             out += "{f.get(i)}"
         out
 
-impl Show for Fenwick2D<R, C, T>:
+impl Show for Fenwick2D<R, C, T: Show>:
     /// The current grid, one row of values per line.
     ///
     /// example: `domain R = 0..2; domain C = 0..2; var f = Fenwick2D<R, C, Int>(); f.add(R(1), C(0), 5); "{f}" == "0 0\n5 0"`
@@ -708,7 +708,7 @@ impl Show for Fenwick2D<R, C, T>:
             out += row
         out
 
-impl Show for DualFenwick<D, T>:
+impl Show for DualFenwick<D, T: Show>:
     /// The current values in key order, space-separated.
     ///
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(1..3, 5); "{d}" == "1 7 8"`
@@ -741,7 +741,7 @@ impl Show for XorFenwick<D, T>:
             out += "{f.xor(i..=i)}"
         out
 
-impl Show for SparseFenwick2D<T>:
+impl Show for SparseFenwick2D<T: Show>:
     /// Each added point as `x y: value`, comma-separated; before `build`, the points alone.
     ///
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.add(1, 2, 7); "{f}" == "1 2: 7"`

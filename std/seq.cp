@@ -142,7 +142,7 @@ pub fn max<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties
 /// traps: never
 /// example: `[5, 1, 4].minmax() == Some((1, 5))`
 /// example: `[(2, 'a'), (1, 'b'), (2, 'c')].minmax(by: .0) == Some(((1, 'b'), (2, 'a')))`
-pub fn minmax<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(T, T):
+pub fn minmax<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> ?(T, T):
     var best: ?(T, T) = None
     for x in self:
         if let (lo, hi) = best:
@@ -442,7 +442,7 @@ pub fn reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None):
 /// ties: `var a = [2, 2, 2, 1, 1]; a.dedup(); a == [2, 1]`
 /// traps: never
 /// example: `var a = [1, 1, 2, 1]; a.dedup(); a == [1, 2, 1]`
-pub fn dedup<T>(mut self: List<T>):
+pub fn dedup<T: Eq>(mut self: List<T>):
     var n = 0
     for i in 0..self.len:
         if n == 0 or self[i] != self[n - 1]:
@@ -458,7 +458,7 @@ pub fn dedup<T>(mut self: List<T>):
 /// order: first of each run, in input order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 1, 2, 1].deduped() == [1, 2, 1]`
-pub fn deduped<S: Seq<T>, T>(self: S) -> List<T>:
+pub fn deduped<S: Seq<T>, T: Eq>(self: S) -> List<T>:
     var out: List<T> = []
     for x in self:
         if out.is_empty or out.last! != x:
@@ -474,7 +474,7 @@ pub fn deduped<S: Seq<T>, T>(self: S) -> List<T>:
 /// order: increasing keys of `self`
 /// traps: never
 /// example: `[3, 1, 4, 4, 5].record_highs().collect() == [0, 2, 4]`
-pub fn record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D:
+pub fn record_highs<D, T, K: Ord>(self: [D]T, by: T -> K = x => x) -> yields D:
     var best: ?K = None
     for i in D:
         let k = by(self[i])
@@ -597,7 +597,7 @@ fn sift_down<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, lo: Int, from: Int,
 /// order: non-decreasing by `by`; a generator, rerun on every walk
 /// traps: never; unsorted inputs give an unspecified interleaving
 /// example: `merge_sorted([1, 3], [2, 3]) == [1, 2, 3, 3]`
-pub fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K>(self: A, b: B, by: T -> K = x => x) -> yields T:
+pub fn merge_sorted<A: Positional<T>, B: Positional<T>, T, K: Ord>(self: A, b: B, by: T -> K = x => x) -> yields T:
     var (i, j) = (0, 0)
     while i < self.len and j < b.len:
         if by(b.nth(j)) < by(self.nth(i)):
@@ -763,7 +763,7 @@ pub fn unzip<S: Seq<(A, B)>, A, B>(self: S) -> (List<A>, List<B>):
 /// cost: \(O(\log n)\)
 /// traps: never
 /// example: `var m: Map<Str, Int> = Map(); m.get_or_insert("a", 7) == 7 and m.get_or_insert("a", 9) == 7`
-pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
+pub fn get_or_insert<K: Ord, V>(mut self: Map<K, V>, k: K, v: V) -> V:
     if not (k in self): self[k] = v
     self[k]
 
@@ -773,7 +773,7 @@ pub fn get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V:
 /// cost: \(O(\log n)\), plus one call of `f`
 /// traps: never
 /// example: `var c: Map<Char, Int> = Map(); c.update('x', 0, v => v + 1); c['x'] == 1`
-pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
+pub fn update<K: Ord, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
     self[k] = f(self.get(k) ?? init)
 
 /// Add every element of `o` to `self` in place: `self | o`, named as on `Bitset`.
@@ -782,7 +782,7 @@ pub fn update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
 /// empty: `var s: Set<Int> = Set(); s.insert(1); let t: Set<Int> = Set(); s.union(t); s.sorted() == [1]`
 /// traps: never
 /// example: `var s: Set<Int> = Set(); s.insert(1); var t: Set<Int> = Set(); t.insert(2); s.union(t); s.sorted() == [1, 2]`
-pub fn union<T>(mut self: Set<T>, o: Set<T>):
+pub fn union<T: Ord>(mut self: Set<T>, o: Set<T>):
     for x in o: self.insert(x)
 
 /// Keep only the elements of `self` that are also in `o`, in place: `self & o`, named as on `Bitset`.
@@ -791,7 +791,7 @@ pub fn union<T>(mut self: Set<T>, o: Set<T>):
 /// empty: `var s: Set<Int> = Set(); s.insert(1); let t: Set<Int> = Set(); s.intersect(t); s.sorted() == []`
 /// traps: never
 /// example: `var s: Set<Int> = Set(); s.insert(1); s.insert(2); var t: Set<Int> = Set(); t.insert(2); s.intersect(t); s.sorted() == [2]`
-pub fn intersect<T>(mut self: Set<T>, o: Set<T>):
+pub fn intersect<T: Ord>(mut self: Set<T>, o: Set<T>):
     let gone = [x for x in self if not o.contains(x)]
     for x in gone: self.remove(x)
 
@@ -801,7 +801,7 @@ pub fn intersect<T>(mut self: Set<T>, o: Set<T>):
 /// empty: `var s: Set<Int> = Set(); s.insert(1); let t: Set<Int> = Set(); s.subtract(t); s.sorted() == [1]`
 /// traps: never
 /// example: `var s: Set<Int> = Set(); s.insert(1); s.insert(2); var t: Set<Int> = Set(); t.insert(2); s.subtract(t); s.sorted() == [1]`
-pub fn subtract<T>(mut self: Set<T>, o: Set<T>):
+pub fn subtract<T: Ord>(mut self: Set<T>, o: Set<T>):
     for x in o: self.remove(x)
 
 /// Rotate `self` left by `k` in place (or only the subrange `range` when given): what was at
@@ -939,7 +939,7 @@ pub fn prev_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> 
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [2, 3]`
-pub fn runs<S: Indexed<D, T>, D: Domain, T, K>(
+pub fn runs<S: Indexed<D, T>, D: Domain, T, K: Eq>(
     self: S,
     by: T -> K = x => x,
     link: ?((T, T) -> Bool) = None,
@@ -1233,7 +1233,7 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D:
 /// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 /// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
-pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
+pub fn first_gt<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
     let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
     if lo < D.count: Some(D.nth(lo)) else: None
 
@@ -1245,7 +1245,7 @@ pub fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 /// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 /// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].last_lt(3) == Some(0)`
-pub fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
+pub fn last_lt<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
     let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
     if lo > 0: Some(D.nth(lo - 1)) else: None
 
@@ -1326,7 +1326,7 @@ pub fn perm_pow<V>(p: [V]V, k: 0..) -> [V]V:
 /// example: `[3, 1, 2].inversions() == 2`
 /// example: `inversions([3, 1, 2]) == 2`
 @lint(inversions_by_fenwick, from: "var bit = Fenwick<C, Int>()\nvar inv = 0\nfor i in I:\n    let id = comp.index_of(self[i])\n    inv += i.ord - bit.prefix(id.r)\n    bit.add(id, 1)", to: "let inv = self.inversions()", holes: "C, I, comp")
-pub fn inversions<S: Seq<T>, T>(self: S) -> Int:
+pub fn inversions<S: Seq<T>, T: Ord>(self: S) -> Int:
     var cur: List<T> = self.collect()
     let n = cur.len
     var tmp = cur.clone()
@@ -2520,7 +2520,7 @@ pub fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> A
 /// ties: `[(3, 'a'), (1, 'b'), (3, 'c')].max_count(by: .0) == Some((val: (3, 'a'), count: 2))`
 /// traps: never
 /// example: `[3, 1, 3].max_count() == Some((val: 3, count: 2))`
-pub fn max_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
+pub fn max_count<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
     var best: ?(T, K) = None
     var count = 0
     for x in self:
@@ -2542,7 +2542,7 @@ pub fn max_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, cou
 /// ties: `[(1, 'a'), (3, 'b'), (1, 'c')].min_count(by: .0) == Some((val: (1, 'a'), count: 2))`
 /// traps: never
 /// example: `[1, 2, 1].min_count() == Some((val: 1, count: 2))`
-pub fn min_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
+pub fn min_count<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int):
     var best: ?(T, K) = None
     var count = 0
     for x in self:
@@ -2730,7 +2730,7 @@ pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
 /// traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 /// otherwise unsorted input gives an unspecified range
 /// example: `[1, 3, 3, 5].equal_range(3) == 1..3`
-pub fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>:
+pub fn equal_range<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>:
     let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
     let a = (lo..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
     D.cuts.nth(lo)..D.cuts.nth(a)
@@ -2757,7 +2757,7 @@ pub fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int:
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 3].sorted_union([2, 3]) == [1, 2, 3]`
-pub fn sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
+pub fn sorted_union<A: Indexed, B: Indexed, T: Eq>(self: A, b: B) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
     while i < self.len or j < b.len:
@@ -3152,7 +3152,7 @@ pub fn subsequences<S: Indexed<D, T>, D: Domain, T>(self: S) -> yields SubseqSte
 /// traps: never
 /// example: `[3, 1, 2, 2, 5].lis() == [1, 2, 4]`
 /// example: `[3, 1, 2, 2, 5].lis(strict: false).len == 4`
-pub fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>:
+pub fn lis<D, T, K: Ord>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>:
     var tails: List<D> = []
     var prev: [D]?D = None
     for i in D:
@@ -3209,7 +3209,7 @@ pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>:
 /// order: arrays keyed by `D`
 /// traps: never
 /// example: `[3, 1, 2].cartesian_tree().root == Some(1)`
-pub fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (
+pub fn cartesian_tree<D, T: Ord>(self: [D]T, min_root: Bool = true) -> (
     root: ?D,
     left: [D]?D,
     right: [D]?D,
@@ -3254,7 +3254,7 @@ pub struct OnlineLis<T>(strict: Bool = true):
     /// cost: \(O(\log n)\)
     /// traps: never
     /// example: `var t = OnlineLis<Int>(); t.push(5); t.push(1); t.push(7) == 2`
-    pub fn push(mut self, x: T) -> Int:
+    pub fn push(mut self, x: T) -> Int where T: Ord:
         let lo = (0..tails.len).first_true(m => not (tails[m] < x or (not strict and tails[m] == x))) ?? tails.len
         prev.push(if lo > 0: tail_at[lo - 1] else: -1)
         ends.push(lo + 1)
@@ -3364,7 +3364,7 @@ pub struct MonoStack<D, T>(keep_smaller: Bool = true, strict: Bool = true):
     out_idx: List<D> = []
     out_val: List<T> = []
 
-    fn pops(self, top: T, x: T) -> Bool:
+    fn pops(self, top: T, x: T) -> Bool where T: Ord:
         if top == x: return strict
         if keep_smaller: top < x else: top > x
 
@@ -4327,7 +4327,7 @@ pub struct RingSlice<D, T>():
 /// order: left ends ascending, then shorter first
 /// traps: never
 /// example: `[3, 1, 2, 5].valleys().collect() == [1..2, 1..3]`
-pub fn valleys<D, T>(self: [D]T) -> yields Range<D>:
+pub fn valleys<D, T: Ord>(self: [D]T) -> yields Range<D>:
     let n = D.count
     var ends: List<List<Int>> = [[] for _ in 0..n]
     var st: List<Int> = []
@@ -4365,7 +4365,7 @@ pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 3].prev_smaller() == [None, None, Some(1)]`
-pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
+pub fn prev_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
     var out: [D]?D = None
     var st: List<D> = []
     for i in D:
@@ -4393,7 +4393,7 @@ pub fn prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = tru
 @lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] > self[i]:\n    let j = st.last!\n    st.pop()\n    ans[j] = i", to: "self.next_smaller()", holes: "st, i, ans")
 @lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] >= self[i]:\n    ans[st.pop()!] = i", to: "self.next_smaller(strict: false)", holes: "st, i, ans")
 @lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] >= self[i]:\n    let j = st.last!\n    st.pop()\n    ans[j] = i", to: "self.next_smaller(strict: false)", holes: "st, i, ans")
-pub fn next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
+pub fn next_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
     var out: [D]?D = None
     var st: List<D> = []
     for k in (0..D.count).rev:
@@ -4563,17 +4563,17 @@ impl<S: Indexed<K, T>, K: Domain, T: Show> Show for Slice<S>:
     fn gap(self, mut out: Str):
         out.push('\n')
 
-impl Show for Row<R, C, T>:
+impl Show for Row<R, C, T: Show>:
     fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
     fn gap(self, mut out: Str):
         out.push('\n')
 
-impl Show for Col<R, C, T>:
+impl Show for Col<R, C, T: Show>:
     fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
     fn gap(self, mut out: Str):
         out.push('\n')
 
-impl Show for Rect<R, C, T>:
+impl Show for Rect<R, C, T: Show>:
     fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
     fn gap(self, mut out: Str):
         out.push('\n')
@@ -4599,7 +4599,7 @@ impl Show for Stepped<S, T: Show>:
             first = false
         out
 
-impl Show for Compressed<D, T>:
+impl Show for Compressed<D, T: Show>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:
@@ -4607,7 +4607,7 @@ impl Show for Compressed<D, T>:
             out += "{x}"
         out
 
-impl Show for OnlineLis<T>:
+impl Show for OnlineLis<T: Show>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:
@@ -4615,7 +4615,7 @@ impl Show for OnlineLis<T>:
             out += "{x}"
         out
 
-impl Show for MonoStack<D, T>:
+impl Show for MonoStack<D: Show, T: Show>:
     fn show(v):
         var out = ""
         for (i, x) in v.items:
@@ -4623,7 +4623,7 @@ impl Show for MonoStack<D, T>:
             out += "{i}={x}"
         out
 
-impl Show for RingSlice<D, T>:
+impl Show for RingSlice<D: Show, T>:
     fn show(v):
         var out = ""
         for x in v.each():

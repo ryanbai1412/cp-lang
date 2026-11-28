@@ -423,7 +423,7 @@ pub struct RangeKth<D, T>:
             rk.roots.push(nxt)
         rk
 
-    fn lower_val(self, x: T) -> Int:
+    fn lower_val(self, x: T) -> Int where T: Ord:
         var (lo, hi) = (0, vals.len)
         unchecked:
             while lo < hi:
@@ -432,7 +432,7 @@ pub struct RangeKth<D, T>:
                 else: hi = mid
         lo
 
-    fn upper_val(self, x: T) -> Int:
+    fn upper_val(self, x: T) -> Int where T: Ord:
         var (lo, hi) = (0, vals.len)
         unchecked:
             while lo < hi:
@@ -528,7 +528,7 @@ pub struct RangeKth<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 2, 5) == 3`
     /// example: `RangeKth([5, 1, 4, 2]).count_in(0..4, 5, 2) == 0`
-    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
+    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int where T: Ord:
         if hi_v < lo_v: return 0
         self.count_le(r, hi_v) - self.count_lt(r, lo_v)
 
@@ -987,7 +987,7 @@ fn pmultiset_within_walks_and_shows():
     assert t.within(ar).each().collect() == [0, 5, 7] and t.within(ar).len == 3
     assert e.within(ar).is_empty and "{e.within(ar)}" == ""
 
-impl Show for PMultisetWithin<D>:
+impl Show for PMultisetWithin<D: Show>:
     fn show(v):
         var out = ""
         for x in v.each():
@@ -1002,7 +1002,7 @@ impl Show for PMultiset<D>:
     /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 3); "{s}" == "multiset of 2"`
     fn show(s) = "multiset of {s.len}"
 
-impl Show for PArena<T>:
+impl Show for PArena<T: Show>:
     /// The allocated values in allocation order, space-separated.
     ///
     /// example: `var a = PArena<Int>(); a.alloc(5); a.alloc(6); "{a}" == "5 6"`
@@ -1022,7 +1022,7 @@ impl<D: Domain, T, F> Versioned<D, T> for PersistentLazySegTree<D, T, F>:
 impl<D: Domain, T> Versioned<D, T> for PersistentArray<D, T>:
     fn get(self, v: Version<PersistentArray<D, T>>, i: D) -> T = self.get(v, i)
 
-impl Show for VersionWithin<S, D, T>:
+impl Show for VersionWithin<S, D, T: Show>:
     /// The version's values in key order, space-separated.
     ///
     /// example: `domain P = 0..3; var t = PersistentLazySegTree<P, Int, Int>(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [P] i => i.ord + 1); let v = t.apply(t.base, P(1)..=P(2), 1); "{v.within(t)}" == "1 3 4"`
@@ -1039,7 +1039,7 @@ impl Show for Version<S>:
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); "{t.base}" == "version @5"`
     fn show(v) = "version @{v.root}"
 
-impl Show for PersistentSegTree<D, T: Sub>:
+impl Show for PersistentSegTree<D, T: Sub + Show>:
     /// The base version's values in key order, space-separated.
     ///
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); "{t}" == "1 2 3"`
@@ -1050,7 +1050,7 @@ impl Show for PersistentSegTree<D, T: Sub>:
             out += "{t.get(t.base, D(i))}"
         out
 
-impl Show for PersistentLazySegTree<D, T, F>:
+impl Show for PersistentLazySegTree<D, T: Show, F>:
     /// The base version's values in key order, space-separated.
     ///
     /// example: `var t = PersistentLazySegTree(Action<Int, Int>(apply: (d, x, span) => x + d * span), a: [1, 2, 3]); "{t}" == "1 2 3"`
@@ -1061,7 +1061,7 @@ impl Show for PersistentLazySegTree<D, T, F>:
             out += "{t.get(t.base, D(i))}"
         out
 
-impl Show for PersistentArray<D, T>:
+impl Show for PersistentArray<D, T: Show>:
     /// The base version's values in key order, space-separated.
     ///
     /// example: `var t = PersistentArray(a: [4, 5, 6]); "{t}" == "4 5 6"`
@@ -1072,7 +1072,7 @@ impl Show for PersistentArray<D, T>:
             out += "{t.get(t.base, D(i))}"
         out
 
-impl Show for RangeKth<D, T>:
+impl Show for RangeKth<D, T: Show>:
     /// The values it was built from, in key order, space-separated.
     ///
     /// example: `"{RangeKth([5, 1, 4, 2])}" == "5 1 4 2"`

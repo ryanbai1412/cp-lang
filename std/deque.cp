@@ -650,7 +650,7 @@ fn a_deque_reserve_preserves_order():
     assert q[0] == -10 and q[10] == 0 and q[29] == 19
     assert q.pop_front() == -10 and q.pop() == 19
 
-impl Show for Deque<T>:
+impl Show for Deque<T: Show>:
     fn show(q):
         var out = ""
         for x in q.each():
@@ -658,7 +658,7 @@ impl Show for Deque<T>:
             out += "{x}"
         out
 
-impl Show for LinkedList<T>:
+impl Show for LinkedList<T: Show>:
     fn show(l):
         var out = ""
         for x in l.each():

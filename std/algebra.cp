@@ -273,7 +273,7 @@ pub struct Desc<T>(pub x: T)
 impl<T: Ord> Ord for Desc<T>:
     fn lt(a, b) = b.x < a.x
 
-impl Show for Desc<T>:
+impl Show for Desc<T: Show>:
     fn show(a) = "desc({a.x})"
 
 /// `x` wrapped so that it compares the other way round: `desc(a) < desc(b)` exactly when
@@ -564,7 +564,7 @@ pub struct MinCount<T>(pub val: T, pub count: Int):
     /// traps: never
     /// example: `MinCount.join(MinCount.of(2), MinCount.of(2)).count == 2`
     /// example: `MinCount.join(MinCount(1, 3), MinCount(2, 5)).val == 1`
-    pub fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T>:
+    pub fn join(a: MinCount<T>, b: MinCount<T>) -> MinCount<T> where T: Ord:
         if a.val < b.val: a elif b.val < a.val: b else: MinCount(a.val, a.count + b.count)
 
     /// `Monoid(id, MinCount.join)` with identity value the far end of `T` (as `Monoid.of(min)`)
@@ -600,7 +600,7 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
     /// ties: `let m = MaxCount.join(MaxCount(4, 1), MaxCount(4, 2)); (m.val, m.count) == (4, 3)`
     /// traps: never
     /// example: `MaxCount.join(MaxCount(4, 1), MaxCount(4, 2)).count == 3`
-    pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T>:
+    pub fn join(a: MaxCount<T>, b: MaxCount<T>) -> MaxCount<T> where T: Ord:
         if b.val < a.val: a elif a.val < b.val: b else: MaxCount(a.val, a.count + b.count)
 
     /// `Monoid(id, MaxCount.join)` with identity value the low end of `T` (as `Monoid.of(max)`)

@@ -650,7 +650,7 @@ fn marks_walk_and_show():
     t.id("x")
     assert t.each().collect() == ["y", "x"]
 
-impl Show for Interner<K>:
+impl Show for Interner<K: Show>:
     fn show(t):
         var out = ""
         for k in t.keys:
@@ -666,7 +666,7 @@ impl Show for Marks<D>:
             out += "{v}"
         out
 
-impl Show for MarkMap<D, T>:
+impl Show for MarkMap<D, T: Show>:
     fn show(m):
         var out = ""
         for (v, x) in m.items:
@@ -682,7 +682,7 @@ impl Show for SparseSet<D>:
             out += "{v}"
         out
 
-impl Show for Arena<T>:
+impl Show for Arena<T: Show>:
     fn show(a):
         var out = ""
         for (_, x) in a.items:

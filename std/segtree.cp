@@ -913,7 +913,7 @@ pub struct MergeSortTree<D, T>:
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_lt(0..5, 3) == 2`
-    pub fn new(a: [D]T) -> MergeSortTree<D, T>:
+    pub fn new(a: [D]T) -> MergeSortTree<D, T> where T: Ord:
         let size = bit_ceil(D.count)
         var data: List<T> = []
         var beg: List<Pos> = List.filled(2 * size, 0)
@@ -945,7 +945,7 @@ pub struct MergeSortTree<D, T>:
                 fin[p] = data.len
         MergeSortTree(data, beg, fin, size)
 
-    fn lower_idx(self, u: Int, x: T) -> Int:
+    fn lower_idx(self, u: Int, x: T) -> Int where T: Ord:
         unchecked:
             let base = beg[u]
             var (lo, hi) = (base, fin[u])
@@ -955,7 +955,7 @@ pub struct MergeSortTree<D, T>:
                 else: hi = mid
             return lo - base
 
-    fn upper_idx(self, u: Int, x: T) -> Int:
+    fn upper_idx(self, u: Int, x: T) -> Int where T: Ord:
         unchecked:
             let base = beg[u]
             var (lo, hi) = (base, fin[u])
@@ -1014,7 +1014,7 @@ pub struct MergeSortTree<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_in(1..4, 1, 4) == 3`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).count_in(0..5, 4, 3) == 0`
-    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
+    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int where T: Ord:
         if lo_v > hi_v: return 0
         self.count_le(r, hi_v) - self.count_lt(r, lo_v)
 
@@ -1047,7 +1047,7 @@ pub struct MergeSortTree<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).first_ge(0..3, 2) == Some(3)`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).first_ge(0..3, 5) == None`
-    pub fn first_ge(self, r: Range<D>, x: T) -> ?T:
+    pub fn first_ge(self, r: Range<D>, x: T) -> ?T where T: Ord:
         let (lo, hi) = r.ends
         var (l, h) = (lo + size, hi + size)
         var best: ?T = None
@@ -1074,7 +1074,7 @@ pub struct MergeSortTree<D, T>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).last_le(2..5, 3) == Some(1)`
     /// example: `MergeSortTree([3, 1, 4, 1, 5]).last_le(2..5, 0) == None`
-    pub fn last_le(self, r: Range<D>, x: T) -> ?T:
+    pub fn last_le(self, r: Range<D>, x: T) -> ?T where T: Ord:
         let (lo, hi) = r.ends
         var (l, h) = (lo + size, hi + size)
         var best: ?T = None
@@ -1424,7 +1424,7 @@ pub struct DynamicOrderTree<D, T>:
         i => if le: vs[i] > x else: vs[i] >= x
     ) ?? vs.len
 
-    fn bump(mut self, i: Int, x: T, put: Bool):
+    fn bump(mut self, i: Int, x: T, put: Bool) where T: Ord:
         if ranked:
             let b = self.rank_of(x, false)
             assert b < vs.len and
@@ -1443,7 +1443,7 @@ pub struct DynamicOrderTree<D, T>:
             else: bit[j].remove(x)
             j += j & -j
 
-    fn below(self, end: Int, x: T, le: Bool) -> Int:
+    fn below(self, end: Int, x: T, le: Bool) -> Int where T: Ord:
         var acc = 0
         var j = end
         if ranked:
@@ -1483,7 +1483,7 @@ pub struct DynamicOrderTree<D, T>:
     /// traps: with `values:`, when `a` holds a value not in it
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
     /// example: `DynamicOrderTree([3, 1, 4], values: [1, 3, 4, 9]).kth(0..3, 2) == Some(4)`
-    pub fn new(a: [D]T, values: ?List<T> = None) -> DynamicOrderTree<D, T>:
+    pub fn new(a: [D]T, values: ?List<T> = None) -> DynamicOrderTree<D, T> where T: Ord:
         let val = [a[i] for i in D]
         if let given = values:
             var vs = List<T>()
@@ -1531,7 +1531,7 @@ pub struct DynamicOrderTree<D, T>:
     /// empty: `DynamicOrderTree([3, 1, 4]).count_in(1..1, 0, 9) == 0`
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).count_in(0..3, 1, 3) == 2`
-    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int:
+    pub fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int where T: Ord:
         if hi_v < lo_v: return 0
         self.span_count(r, hi_v, true) - self.span_count(r, lo_v, false)
 
@@ -1544,7 +1544,7 @@ pub struct DynamicOrderTree<D, T>:
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 1) == Some(3)`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 3) == None`
-    pub fn kth(self, r: Range<D>, k: 0..) -> ?T:
+    pub fn kth(self, r: Range<D>, k: 0..) -> ?T where T: Ord:
         assert k >= 0, "`kth` takes `k >= 0`"
         if k >= r.len: return None
         if ranked: return self.walk(r, k)
@@ -1924,7 +1924,7 @@ fn merge_sort_and_sparse_segtree_match_brute():
                 assert mst.count_le(rng, v) == cnt(rng, x => x <= v)
             assert mst.count_in(rng, -3, 4) == cnt(rng, x => -3 <= x <= 4)
 
-impl Show for SegTree<D, T, F>:
+impl Show for SegTree<D, T: Show, F>:
     /// Every position's value, with tags applied, space-separated; a sparse tree (built with `over:`) shows its size and fold.
     ///
     /// example: `var s = SegTree(+, [4, 5, 6]); s.set(1, 9); "{s}" == "4 9 6"`
@@ -1937,7 +1937,7 @@ impl Show for SegTree<D, T, F>:
             out += "{s.get(D.at(i))}"
         out
 
-impl Show for MergeSortTree<D, T>:
+impl Show for MergeSortTree<D, T: Show>:
     /// The values it was built from, space-separated in position order.
     ///
     /// example: `"{MergeSortTree([3, 1, 4])}" == "3 1 4"`

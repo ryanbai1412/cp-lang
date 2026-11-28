@@ -11,7 +11,7 @@
 
 use std.seq.{Seq}
 
-fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
+fn golden_pick<I, K: Ord>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     let n = r.len
     if n == 0: return None
     var fib = List<Int>()
@@ -186,7 +186,7 @@ pub fn parallel_bsearch<I>(
 /// traps: never
 /// example: `gallop_first(0, i => i * i >= 50) == Some(8)`
 /// example: `gallop_first(10, i => i >= 3) == Some(10)`
-pub fn gallop_first<I: Add>(from: I, ok: I -> Bool) -> ?I:
+pub fn gallop_first<I: Add + Ord>(from: I, ok: I -> Bool) -> ?I:
     if ok(from): return Some(from)
     var (lo, step) = (from, 1)
     while true:

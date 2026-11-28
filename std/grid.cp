@@ -415,7 +415,7 @@ impl Show for GridRows<R, C, T>:
             out += "{x}"
         out
 
-impl Show for GridCols<R, C, T>:
+impl Show for GridCols<R, C, T: Show>:
     fn show(v):
         var out = ""
         for x in v.each():

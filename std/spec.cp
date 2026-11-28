@@ -18,7 +18,7 @@ use std.seq.{all}
 /// traps: never
 /// example: `decrease([1, 2, 2, 5]) == None`
 /// example: `decrease([1, 3, 2, 1]) == Some(2)`
-pub fn decrease<T>(xs: List<T>) -> ?Int:
+pub fn decrease<T: Ord>(xs: List<T>) -> ?Int:
     for i in 1..xs.len:
         if xs[i] < xs[i - 1]: return Some(i)
     None
@@ -31,7 +31,7 @@ pub fn decrease<T>(xs: List<T>) -> ?Int:
 /// traps: never
 /// example: `increase([5, 2, 2, 1]) == None`
 /// example: `increase([3, 1, 2, 0]) == Some(2)`
-pub fn increase<T>(xs: List<T>) -> ?Int:
+pub fn increase<T: Ord>(xs: List<T>) -> ?Int:
     for i in 1..xs.len:
         if xs[i] > xs[i - 1]: return Some(i)
     None

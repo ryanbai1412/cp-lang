@@ -847,7 +847,7 @@ pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C):
 /// order: keyed by `V`
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; cut_vertices(Graph.undirected(es)) == [false, true, false]`
-pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
+pub fn cut_vertices<V, E: Eq>(g: EdgedNext<V, E>) -> [V]Bool:
     var tin: [V]?Int = None
     var low: [V]Int = 0
     var is_cut: [V]Bool = false
@@ -1084,7 +1084,7 @@ fn random_edges<V, E>() -> [E](u: V, v: V):
     [E] e => (u: V.nth(rand(0, V.count - 1)), v: V.nth(rand(0, V.count - 1)))
 
 /// Are `a` and `b` connected when edge `skip` and vertex `gone` are removed?
-fn linked<V, E>(edges: [E](u: V, v: V), a: V, b: V, skip: ?E, gone: ?V) -> Bool:
+fn linked<V: Eq, E>(edges: [E](u: V, v: V), a: V, b: V, skip: ?E, gone: ?V) -> Bool:
     var d = Dsu<V>()
     for e in E:
         if e != skip and edges[e].u != gone and edges[e].v != gone: d.unite(edges[e].u, edges[e].v)
@@ -1398,7 +1398,7 @@ pub fn bfs01<V, G: WeightedNext<V, Int>>(
 @lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d > dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
 @lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
 @lint(stale_entry_skip, from: "let (d, u) = pq.pop()!\nif d != dist[u]!:\n    continue", to: "dijkstra(Graph.directed(es), from: [(s, 0)])", holes: "pq, dist")
-pub fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
+pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M>(
     g: G,
     from: Seq<(V, W)>,
     step: M = (+),
@@ -2041,7 +2041,7 @@ fn euler_walks_use_every_edge_once_and_exist_when_brute_force_finds_one():
                 at = a.to
             assert w.vertices.collect().len == w.arcs.len + 1
 /// Does `walk` trace connected edges, starting at `start`?
-fn follows<V>(edges: List<(V, V)>, walk: List<Int>, directed: Bool, start: V) -> Bool:
+fn follows<V: Eq>(edges: List<(V, V)>, walk: List<Int>, directed: Bool, start: V) -> Bool:
     var at = start
     for i in walk:
         let (u, v) = edges[i]
@@ -2058,7 +2058,7 @@ fn has_walk<V>(edges: List<(V, V)>, directed: Bool) -> Bool:
             if extend(edges, directed, mut used, s, 0): return true
     false
 
-fn extend<V>(edges: List<(V, V)>, directed: Bool, mut used: List<Bool>, at: V, done: Int) -> Bool:
+fn extend<V: Eq>(edges: List<(V, V)>, directed: Bool, mut used: List<Bool>, at: V, done: Int) -> Bool:
     if done == edges.len: return true
     for i in 0..edges.len:
         if used[i]: continue
@@ -2286,7 +2286,7 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; let d = johnson(Graph.directed(es))!; d[0, 1] == Some(2) and d[1, 0] == None and d[1, 1] == Some(0)`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; johnson(Graph.directed(es)) == None`
-pub fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W:
+pub fn johnson<V, W: Add + Sub + Ord>(g: WeightedNext<V, W>) -> ?[V, V]?W:
     var h: [V]W = W.zero
     for round in 0..V.count:
         var changed = false
@@ -2326,7 +2326,7 @@ pub fn johnson<V, W: Add + Sub>(g: WeightedNext<V, W>) -> ?[V, V]?W:
 /// traps: on a negative weight
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 1)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [1, 3, 5]`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 7)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [7]`
-pub fn k_shortest<V, W: Add>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W>:
+pub fn k_shortest<V, W: Add + Ord>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W>:
     var ans = List<W>()
     if k <= 0: return ans
     var rev: [V]List<(V, W)> = []
@@ -3269,7 +3269,7 @@ pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(
 /// ties: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[0, 2] = Some(1); w[2, 0] = Some(1); w[1, 2] = Some(1); w[2, 1] = Some(1); prim(w) == Some((total: 2, parent: [None, Some(0), Some(0)]))`
 /// traps: never
 /// example: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[1, 2] = Some(2); w[2, 1] = Some(2); w[0, 2] = Some(5); w[2, 0] = Some(5); prim(w) == Some((total: 3, parent: [None, Some(0), Some(1)]))`
-pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
+pub fn prim<V, W: Ord>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
     var parent: [V]?V = None
     var best: [V]?W = None
     var done: [V]Bool = false
@@ -3463,7 +3463,7 @@ fn arb_push<W: Add + Sub>(mut h: ArbHeap<W>, a: Int):
     if h.r[a] >= 0: h.lazy[h.r[a]] += d
     h.lazy[a] = W.zero
 
-fn arb_merge<W: Add + Sub>(mut h: ArbHeap<W>, a: Int, b: Int) -> Int:
+fn arb_merge<W: Add + Sub + Ord>(mut h: ArbHeap<W>, a: Int, b: Int) -> Int:
     if a < 0: return b
     if b < 0: return a
     arb_push(mut h, a)
@@ -4014,7 +4014,7 @@ impl<V: Domain, A: Target<V>> Random for Graph<V, A>:
             if not directed: pairs.push((from: v, arc: reversed_arc(a, u)))
         Graph.of(pairs)
 
-impl Show for Reweighted<V, E, A, W>:
+impl Show for Reweighted<V, E, A, W: Show>:
     /// Every arc as `u->v:w`, space-separated in vertex then arc order; `no arcs` for none.
     ///
     /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; "{Graph.directed(es).weighted(a => 5)}" == "0->1:5"`
@@ -4057,7 +4057,7 @@ impl Show for Complement<V, G>:
         if out.is_empty: return "no arcs"
         out
 
-impl Show for Paths<V, W, A>:
+impl Show for Paths<V, W: Show, A>:
     fn show(p):
         var out = ""
         for (v, d) in p.iter():

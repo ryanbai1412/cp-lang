@@ -1472,7 +1472,7 @@ pub struct Settle<K, P>(best: (P, P) -> P = min):
     done: HashMap<K, Bool> = HashMap()
     q: List<(P, K)> = []
 
-    fn better(self, a: Int, b: Int) -> Bool:
+    fn better(self, a: Int, b: Int) -> Bool where P: Eq:
         let (x, y) = (q[a].0, q[b].0)
         x != y and best(x, y) == x
 
@@ -1566,7 +1566,7 @@ fn heaps_walk_in_pop_order_and_show():
     let empty: Heap<Int> = Heap()
     assert empty.each().collect().is_empty and "{empty}" == ""
 
-impl Show for Heap<T>:
+impl Show for Heap<T: Ord + Show>:
     fn show(h):
         var out = ""
         var rest = h
@@ -1575,7 +1575,7 @@ impl Show for Heap<T>:
             out += "{x}"
         out
 
-impl Show for ErasableHeap<T>:
+impl Show for ErasableHeap<T: Ord + Show>:
     fn show(h):
         var out = ""
         for x in h.each():
@@ -1583,7 +1583,7 @@ impl Show for ErasableHeap<T>:
             out += "{x}"
         out
 
-impl Show for IndexedHeap<D, K>:
+impl Show for IndexedHeap<D, K: Ord + Show>:
     fn show(h):
         var out = ""
         for (v, k) in h.each():
@@ -1591,7 +1591,7 @@ impl Show for IndexedHeap<D, K>:
             out += "{v}={k}"
         out
 
-impl Show for MinMaxHeap<T>:
+impl Show for MinMaxHeap<T: Ord + Show>:
     fn show(h):
         var out = ""
         for x in h.each():
@@ -1599,7 +1599,7 @@ impl Show for MinMaxHeap<T>:
             out += "{x}"
         out
 
-impl Show for MeldHeap<T>:
+impl Show for MeldHeap<T: Ord + Show>:
     fn show(h):
         var out = ""
         for x in h.each():
@@ -1607,7 +1607,7 @@ impl Show for MeldHeap<T>:
             out += "{x}"
         out
 
-impl Show for MaxHeap<T>:
+impl Show for MaxHeap<T: Ord + Show>:
     fn show(h):
         var out = ""
         for x in h.each():

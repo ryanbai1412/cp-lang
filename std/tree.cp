@@ -2876,7 +2876,7 @@ fn brute_side<V>(adj: [V]List<V>, s: V, block: ?(V, V)) -> List<V>:
                 q.push(w)
     q
 
-fn drop_one<V>(mut l: List<V>, x: V):
+fn drop_one<V: Eq>(mut l: List<V>, x: V):
     var k = 0
     while l[k] != x: k += 1
     l[k] = l.last!
@@ -4206,7 +4206,7 @@ impl<V, Pre: Ordered, A> Random for Rooted<V, Pre, A>:
             par[label[i]] = Some(label[j])
         Rooted.from_parents(par)
 
-impl Show for EulerTourTree<V, T>:
+impl Show for EulerTourTree<V, T: Show>:
     /// Every vertex's value, space-separated in vertex order.
     ///
     /// example: `var t = EulerTourTree<0..3, Int>(+, a: [4, 5, 6]); t.link(0, 1); t.set(2, 9); "{t}" == "4 5 9"`
@@ -4217,7 +4217,7 @@ impl Show for EulerTourTree<V, T>:
             out += "{t.get(v)}"
         out
 
-impl Show for LazyEulerTourTree<V, T, F>:
+impl Show for LazyEulerTourTree<V, T: Show, F>:
     /// Every vertex's value, space-separated in vertex order, read through `to_array` without
     /// pushing any tag down.
     ///

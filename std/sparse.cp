@@ -106,7 +106,7 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
 /// traps: never (`op` may trap)
 /// example: `idempotent(max, [1, 5]) == true`
 /// example: `idempotent((a, b) => a + b, [0, 1]) == false`
-pub fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool:
+pub fn idempotent<T: Eq>(op: (T, T) -> T, xs: List<T>) -> Bool:
     for x in xs:
         if op(x, x) != x: return false
     true
@@ -467,7 +467,7 @@ fn disjoint_sparse_table_handles_non_idempotent_non_commutative_folds():
     assert st_cat.fold(P(2)..=P(4)) == "cde"
     assert st_cat.fold(P(5)..=P(5)) == "f"
 
-impl Show for SparseTable<D, T>:
+impl Show for SparseTable<D, T: Show>:
     /// The values it was built from, in key order, space-separated.
     ///
     /// example: `"{SparseTable(min, [3, 1, 2])}" == "3 1 2"`
@@ -478,7 +478,7 @@ impl Show for SparseTable<D, T>:
             out += "{t.get(i)}"
         out
 
-impl Show for DisjointSparseTable<D, T>:
+impl Show for DisjointSparseTable<D, T: Show>:
     /// The values it was built from, in key order, space-separated.
     ///
     /// example: `"{DisjointSparseTable((x, y) => x + y, [3, 1, 2])}" == "3 1 2"`
@@ -489,7 +489,7 @@ impl Show for DisjointSparseTable<D, T>:
             out += "{t.get(i)}"
         out
 
-impl Show for SparseTable2D<R, C, T>:
+impl Show for SparseTable2D<R, C, T: Show>:
     /// The grid it was built from, one row of values per line.
     ///
     /// example: `"{SparseTable2D(min, [2, 2] (r, c) => r * 2 + c)}" == "0 1\n2 3"`
@@ -504,7 +504,7 @@ impl Show for SparseTable2D<R, C, T>:
             out += row
         out
 
-impl Show for LinearRmq<D, T>:
+impl Show for LinearRmq<D, T: Show>:
     /// The values it was built from, in key order, space-separated.
     ///
     /// example: `"{LinearRmq([3, 1, 2])}" == "3 1 2"`

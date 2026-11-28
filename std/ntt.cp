@@ -462,7 +462,7 @@ fn fft(mut re: List<F64>, mut im: List<F64>):
 
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
-fn semiring_convolve<T: Add + Sub, R>(a: List<T>, b: List<T>, over: R, shape: ?Curved) -> List<T>:
+fn semiring_convolve<T: Add + Sub + Ord, R>(a: List<T>, b: List<T>, over: R, shape: ?Curved) -> List<T>:
     if a.is_empty or b.is_empty: return []
     let add = Monoid<T>.of(over.add)
     let mul = Monoid<T>.of(over.mul)

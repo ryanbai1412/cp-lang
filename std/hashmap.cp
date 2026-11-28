@@ -342,7 +342,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: never
     /// example: `var c = Counter.of(['a']); c['a'] = 4; c['a'] == 4`
     /// example: `var c = Counter.of(['a']); c['a'] = 0; c.contains('a') == false`
-    pub fn set(mut self, k: K, v: V):
+    pub fn set(mut self, k: K, v: V) where V: Eq:
         if v == init:
             m.remove(k)
             return
@@ -356,7 +356,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c['x'] == 2`
     /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c.add('x', -2); c.len == 0`
-    pub fn add(mut self, k: K, delta: V):
+    pub fn add(mut self, k: K, delta: V) where V: Eq:
         if init != V(0):
             self.set(k, self.get(k) + delta)
             return
@@ -448,7 +448,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: when `k < 0` or `k >= 2^31`
     /// example: `Counter.of([3, 1, 3, 2, 1, 3]).most_common(2) == [(3, 3), (1, 2)]`
     /// example: `Counter.of(['b', 'a']).most_common(5) == [('a', 1), ('b', 1)]`
-    pub fn most_common(self, k: Len) -> List<(K, V)>:
+    pub fn most_common(self, k: Len) -> List<(K, V)> where K: Ord, V: Ord:
         var es: List<(K, V)> = [(k, v) for (k, v) in m.items]
         es = es.sorted(by: e => e.0)
         es = es.sorted(by: e => desc(e.1))
@@ -605,7 +605,7 @@ fn tally_counts_each_key():
     assert t[3] == 3 and t[1] == 1 and t[2] == 0
 
 /// A Counter prints `k=v` in key order on both engines, not in hash order: \(O(n \log n)\).
-impl Show for Counter<K: Ord, V>:
+impl Show for Counter<K: Ord + Show, V: Show>:
     fn show(c):
         var out = ""
         for (k, v) in c.items.sorted(by: e => e.0):
@@ -613,7 +613,7 @@ impl Show for Counter<K: Ord, V>:
             out += "{k}={v}"
         out
 
-impl Show for FlatMap<V>:
+impl Show for FlatMap<V: Show>:
     fn show(m):
         var out = ""
         for (k, x) in m.items.sorted(by: e => e.0):

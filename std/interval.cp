@@ -46,7 +46,7 @@ pub struct IntervalMap<D, T>:
     /// order: positions keep the domain `D` of `a`
     /// traps: never
     /// example: `IntervalMap.from([1, 1, 2]).runs == 2`
-    pub fn from(a: [D]T) -> IntervalMap<D, T>:
+    pub fn from(a: [D]T) -> IntervalMap<D, T> where T: Eq:
         var m = Map<Int, (hi: Int, val: T)>()
         if D.count == 0: return IntervalMap(m)
         var lo = 0
@@ -101,7 +101,7 @@ pub struct IntervalMap<D, T>:
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); m.runs == 3`
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); m.assign(1..3, 0); m.runs == 1`
     /// example: `var m = IntervalMap.from([1, 1, 2, 2]); var old: List<Int> = []; m.assign(1..3, 9, on_old: (_, v) => old.push(v)); old == [1, 2]`
-    pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()):
+    pub fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()) where T: Eq:
         let (lo, hi) = r.ends
         if lo >= hi: return
         var new_lo = lo
@@ -577,7 +577,7 @@ pub struct SparseIntervalMap<T>:
                 segs[s] = (hi: x, val: seg.val)
                 segs[x] = (hi: seg.hi, val: seg.val)
 
-    fn merge_at(mut self, x: Int):
+    fn merge_at(mut self, x: Int) where T: Eq:
         if let cur = segs.get(x):
             if let (pl, p) = segs.last_lt(x):
                 if p.hi == x and p.val == cur.val:
@@ -702,7 +702,7 @@ pub struct SparseIntervalMap<T>:
         let all = [(s, seg) for (s, seg) in segs.items]
         for k in (0..all.len).rev: yield (range: all[k].0..all[k].1.hi, val: all[k].1.val)
 
-impl Show for SparseIntervalMap<T>:
+impl Show for SparseIntervalMap<T: Show>:
     fn show(z):
         var out = ""
         for run in z.each():
@@ -710,7 +710,7 @@ impl Show for SparseIntervalMap<T>:
             out += "{run.range.l}..{run.range.r}={run.val}"
         out
 
-impl Show for IntervalMap<D, T>:
+impl Show for IntervalMap<D, T: Show>:
     /// Each run as `range: value`, comma-separated, in key order; `empty` for an empty `D`.
     ///
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); "{m}" == "0..1: 0, 1..3: 7, 3..5: 0"`

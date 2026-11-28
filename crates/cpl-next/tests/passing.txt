@@ -2065,6 +2065,7 @@ std-deque/linked-list-of-a-list-is-rejected.cp
 std-deque/pop-both-ends.cp
 std-deque/pop-front-empty.cp
 std-deque/rotate-right.cp
+std-deque/show-needs-element-show.cp
 std-deque/sliding-window-max.cp
 std-derive/float-part-is-not-structural-hash.cp
 std-dp/dnc-layer-empty-and-unreachable.cp

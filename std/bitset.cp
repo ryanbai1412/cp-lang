@@ -1486,7 +1486,7 @@ fn every_set_shows_its_members_space_separated():
         d.add(i)
     assert "{b}" == "0 3 65" and "{d}" == "0 3 65"
 
-impl Show for Bitset<D>:
+impl Show for Bitset<D: Show>:
     fn show(a):
         var out = ""
         for v in a.each():

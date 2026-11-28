@@ -330,7 +330,7 @@ impl<D: Domain> Contains<D> for RingRange<D>:
         if n == 0: return false
         (i.ord - at!.ord + D.count) % D.count < n
 
-impl Show for RingRange<D>:
+impl Show for RingRange<D: Show>:
     fn show(v):
         var out = ""
         for x in v.each():

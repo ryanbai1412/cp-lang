@@ -557,7 +557,7 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
 /// order: increasing keys; the first is the first key of `s`
 /// traps: never
 /// example: `lyndon_factorization("banana") == [0, 1, 3, 5]`
-pub fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>:
+pub fn lyndon_factorization<S: Indexed<K, T>, K, T: Ord>(s: S) -> List<K>:
     let n = s.len
     var starts: List<K> = []
     var i = 0
@@ -582,7 +582,7 @@ pub fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>:
 /// traps: never
 /// example: `min_rotation("baca") == Some(3)`
 /// example: `min_rotation("abab") == Some(0)`
-pub fn min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
+pub fn min_rotation<S: Indexed<K, T>, K, T: Ord>(s: S) -> ?K:
     let n = s.len
     if n == 0: return None
     var (a, b) = (0, 1)
@@ -609,7 +609,7 @@ pub fn min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
 /// traps: never
 /// example: `max_rotation("baca") == Some(2)`
 /// example: `max_rotation("abab") == Some(1)`
-pub fn max_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
+pub fn max_rotation<S: Indexed<K, T>, K, T: Ord>(s: S) -> ?K:
     let n = s.len
     if n == 0: return None
     var (a, b) = (0, 1)
@@ -3336,12 +3336,12 @@ fn random_word(n: Int, letters: Int) -> List<Char> = [
     Char(Int('a') + rand(0, letters - 1)) for _ in 0..n
 ]
 
-fn common_prefix<T>(s: List<T>, a: Int, b: Int) -> Int:
+fn common_prefix<T: Eq>(s: List<T>, a: Int, b: Int) -> Int:
     var k = 0
     while a + k < s.len and b + k < s.len and s[a + k] == s[b + k]: k += 1
     k
 
-fn suffix_less<T>(s: List<T>, a: Int, b: Int) -> Bool:
+fn suffix_less<T: Ord>(s: List<T>, a: Int, b: Int) -> Bool:
     let k = common_prefix(s, a, b)
     if b + k == s.len: return false
     a + k == s.len or s[a + k] < s[b + k]
@@ -4066,7 +4066,7 @@ impl Show for Palindromes:
             out += "{r.odd}/{r.even}"
         out
 
-impl Show for SuffixArray<T>:
+impl Show for SuffixArray<T: Ord>:
     fn show(v):
         var out = ""
         for x in v.each():
@@ -4074,7 +4074,7 @@ impl Show for SuffixArray<T>:
             out += "{x}"
         out
 
-impl Show for Trie<A>:
+impl Show for Trie<A: Show>:
     fn show(t):
         var out = ""
         var first = true
@@ -4110,7 +4110,7 @@ impl Show for DynamicHash<D>:
         if h.len == 1: return "1 element"
         "{h.len} elements"
 
-impl Show for PalindromicTree<A>:
+impl Show for PalindromicTree<A: Show>:
     /// The elements pushed so far, space-separated, then how many distinct palindromes they hold.
     ///
     /// example: `"{PalindromicTree<Char>.of("aba")}" == "a b a: 3 palindromes"`

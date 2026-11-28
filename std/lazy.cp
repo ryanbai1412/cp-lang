@@ -61,7 +61,7 @@ fn brute<D>(a: [D]Int, r: Range<D>, pick: Int) -> Int:
     if pick == 1: return [a[v] for v in r].min() ?? Int.MAX
     [a[v] for v in r].max() ?? Int.MIN
 
-fn act_laws<T, F>(act: Action<T, F>, ts: List<T>, fs: List<F>) -> Bool:
+fn act_laws<T: Eq, F>(act: Action<T, F>, ts: List<T>, fs: List<F>) -> Bool:
     for x in ts:
         if act.apply(act.id, x, 1) != x: return false
         for y in ts:
@@ -1670,7 +1670,7 @@ fn flip_action_toggles_ranges():
     st.apply(I(0)..I(3), true)
     assert st.all.now == 2
 
-impl Show for Rope<D, T>:
+impl Show for Rope<D, T: Show>:
     /// The current values in position order, space-separated, read through `to_array` without
     /// pushing any tag down.
     ///
@@ -1694,7 +1694,7 @@ impl Show for ForestSeq:
     /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); "{s}" == "seq 0"`
     fn show(s) = "seq {s.id}"
 
-impl Show for LazyTreap<T, F>:
+impl Show for LazyTreap<T: Show, F>:
     /// Every element in sequence order, space-separated, read through `to_list` without pushing
     /// any tag down.
     ///
