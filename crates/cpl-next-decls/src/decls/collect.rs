@@ -756,11 +756,11 @@ fn layer(
         within: &within,
     };
     remake_views(&mut d, &sc, from, core_too, true);
-    // Each written fn's body, matched to its fn by the item's fns in the order they were made.
+    // Each fn's body as body_of reads it, a written body or an impl `let`'s value alike.
     let mut bodies = HashMap::new();
     for it in mods[from..].iter().flat_map(|m| m.items.iter()) {
         for &id in d.fns_of(&it.id) {
-            if let (Body::Written, Some(b)) = (&d.f(id).body, body_of(&d, id, &it.item)) {
+            if let Some(b) = body_of(&d, id, &it.item) {
                 bodies.insert(id, b);
             }
         }
