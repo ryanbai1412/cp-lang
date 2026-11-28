@@ -790,11 +790,10 @@ pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
             },
             _ => None,
         })?;
-    let check =
-        (stmts().filter(|s| fills(s, Role::VariantCheck))).find_map(|s| match &s.kind {
-            StmtKind::Fn(f) => Some(f.name.text.clone()),
-            _ => None,
-        })?;
+    let check = (stmts().filter(|s| fills(s, Role::VariantCheck))).find_map(|s| match &s.kind {
+        StmtKind::Fn(f) => Some(f.name.text.clone()),
+        _ => None,
+    })?;
     Some((tr, method, check))
 }
 
