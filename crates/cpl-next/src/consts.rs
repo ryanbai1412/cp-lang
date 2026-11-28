@@ -264,7 +264,13 @@ impl<'a> Evaluator<'a> {
             checked: &checked,
             rows: &t.dom_rows,
         };
-        let mut prog = inst::link(v, &crate::roots(fns, tys.len()), false);
+        // Only what the constants read is linked: a fn whose signature names a constant still
+        // being worked out (`fn f(x: Mod<P>) -> Mod<P>` while `P` is) has no instance yet.
+        let roots = inst::Roots {
+            fns: Default::default(),
+            globals: (0..tys.len()).map(cpl_next_ir::whole::GlobalId).collect(),
+        };
+        let mut prog = inst::link(v, &roots, false);
         let owned = own::after(d, &mut prog, &names, before);
         if !owned.errors.is_empty() {
             return Ran::Open;
