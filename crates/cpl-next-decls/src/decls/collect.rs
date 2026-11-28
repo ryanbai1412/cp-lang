@@ -87,6 +87,9 @@ fn layer(
         None => usize::MAX,
     });
     d.module_names = mods.iter().map(|m| m.name.clone()).collect();
+    if base.is_none() {
+        d.std_modules = n;
+    }
     d.within = (mods.iter())
         .map(|m| {
             let w = m.within.as_ref()?;

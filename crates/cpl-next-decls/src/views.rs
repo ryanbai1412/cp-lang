@@ -609,11 +609,9 @@ impl Names for Decls {
         self.views[m.0].iter().map(|(n, x)| (*n, *x)).collect()
     }
     fn exporters(&self, name: Sym) -> Vec<ModId> {
-        (self.module_names.iter().enumerate())
-            .filter(|(i, m)| {
-                m.starts_with("std.") && self.exports[*i].get(&name).is_some_and(|e| e.1)
-            })
-            .map(|(i, _)| ModId(i))
+        (1..self.std_modules)
+            .filter(|&i| self.exports[i].get(&name).is_some_and(|e| e.1))
+            .map(ModId)
             .collect()
     }
     fn module_name(&self, m: ModId) -> &str {

@@ -79,7 +79,12 @@ pub fn splice(src: &str, mut edits: Vec<(Span, String)>) -> Option<String> {
 /// the file's `use std.<module>.{..}` when it has one, else as a line after
 /// its last top-level `use`, else above its first line of code.
 pub fn import_edit(text: &str, module: &str, name: &str) -> (crate::Span, String) {
-    let head = format!("use std.{module}.{{");
+    use_edit(text, &format!("std.{module}"), name)
+}
+
+/// The edit that brings `name` in from the module named `path` (`std.seq`), as `import_edit`.
+pub fn use_edit(text: &str, path: &str, name: &str) -> (crate::Span, String) {
+    let head = format!("use {path}.{{");
     let mut after_uses = None;
     let mut first_code = None;
     let mut at = 0;
@@ -106,7 +111,7 @@ pub fn import_edit(text: &str, module: &str, name: &str) -> (crate::Span, String
         }
         at = end;
     }
-    let line = format!("use std.{module}.{{{name}}}\n");
+    let line = format!("use {path}.{{{name}}}\n");
     match (after_uses, first_code) {
         (Some(end), _) if !text[..end].ends_with('\n') => {
             (crate::Span::point(end as u32), format!("\n{line}"))

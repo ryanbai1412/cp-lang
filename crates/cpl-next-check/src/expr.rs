@@ -568,7 +568,7 @@ impl<'a> Cx<'a> {
         let at = *self.names.exporters(self.syms.get(n)?).first()?;
         let module = self.names.module_name(at);
         let text = self.bodies.source(&self.b.item.at(span));
-        let (point, edit) = cpl_diag::import_edit(&text.text, module.strip_prefix("std.")?, n);
+        let (point, edit) = cpl_diag::use_edit(&text.text, module, n);
         Some(cpl_next_ir::msg::Fix {
             title: format!("add `use {module}.{{{n}}}`"),
             edits: vec![(text.at_offset(point.start)?, edit)],

@@ -17,7 +17,7 @@ pub mod usage;
 pub mod view;
 
 pub use file::FileId;
-pub use fix::{import_edit, splice, splice_fixes};
+pub use fix::{import_edit, splice, splice_fixes, use_edit};
 pub use registry::{lookup, CodeInfo, REGISTRY};
 pub use render::{render, render_all};
 pub use source::{LineCol, LineIndex};
