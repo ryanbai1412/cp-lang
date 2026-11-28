@@ -73,6 +73,7 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
     let tables = d.tables();
     let mut errors = Vec::new();
     let mut cx = TyCx {
+        axes: None,
         names: &names,
         env: &tables,
         item: Some(item.clone()),

@@ -30,6 +30,7 @@ pub(super) fn struct_sets(d: &mut Decls, mid: ModId, sd: &StructForm) -> usize {
     let view = d.views[mid.0].clone();
     let tables = d.tables();
     let mut cx = TyCx {
+        axes: None,
         names: &|n: Sym| view.get(&n).copied(),
         env: &tables,
         item: None,
@@ -60,6 +61,7 @@ pub(super) fn struct_defaults(d: &mut Decls, mid: ModId, id: StructId, sd: &Stru
     let view = d.views[mid.0].clone();
     let tables = d.tables();
     let mut cx = TyCx {
+        axes: None,
         names: &|n: Sym| view.get(&n).copied(),
         env: &tables,
         item: None,
@@ -91,6 +93,7 @@ pub(super) fn struct_body(d: &mut Decls, mid: ModId, item: &ItemId, id: StructId
     let view = d.views[mid.0].clone();
     let tables = d.tables();
     let mut cx = TyCx {
+        axes: None,
         names: &|n: Sym| view.get(&n).copied(),
         env: &tables,
         item: None,
@@ -191,6 +194,7 @@ pub(super) fn trait_body(d: &mut Decls, mid: ModId, item: &ItemId, id: TraitId, 
     let view = d.views[mid.0].clone();
     let tables = d.tables();
     let mut cx = TyCx {
+        axes: None,
         names: &|n: Sym| view.get(&n).copied(),
         env: &tables,
         item: None,

@@ -27,8 +27,10 @@ pub use forms::TyForm;
 pub use impls::{ImplIdx, Impls};
 pub use layer::Layer;
 use tyconv::*;
-pub use tyconv::{alias_type, body_type, prim_type, BodyScope};
-pub(crate) use tyconv::{by_arity, literal_int, unnamed};
+pub use tyconv::{
+    alias_type, body_type, literal_int, prim_type, static_axis, struct_args, BodyScope,
+};
+pub(crate) use tyconv::{by_arity, unnamed};
 
 /// A module: the core, a library file or the program.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
@@ -1549,6 +1551,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
     let tables = d.tables();
     let rows = std::cell::RefCell::new(Vec::new());
     let mut cx = TyCx {
+        axes: None,
         names: &named,
         env: &tables,
         item: Some(item.clone()),

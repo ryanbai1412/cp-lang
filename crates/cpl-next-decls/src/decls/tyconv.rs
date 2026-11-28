@@ -67,6 +67,9 @@ pub(super) struct TyCx<'a> {
     pub(super) ret_slots: Option<usize>,
     /// Next implicit set parameter; `None` where a fn type may not appear bare.
     pub(super) next_set: Option<usize>,
+    /// In a body: the type the checker gave each axis or range type with run-time ends, by its
+    /// item-relative span, read in place of converting it.
+    pub(super) axes: Option<&'a HashMap<cpl_diag::Span, Ty>>,
 }
 
 /// The set for one function type written here: a parameter of the signature, a result slot, or a
@@ -108,6 +111,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, name: &str, a: Vec<Ty>, errors: &m
     expanding.push(id);
     let none = HashMap::new();
     let mut inner = TyCx {
+        axes: None,
         names: &|n: Sym| decl.names.get(&n).copied(),
         env,
         item: None,
@@ -328,6 +332,9 @@ fn param(cx: &TyCx, i: usize) -> Ty {
 }
 
 pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
+    if let Some(given) = cx.axes.and_then(|a| a.get(&t.syntax().span())) {
+        return given.clone();
+    }
     match t {
         Type::Path(p) => {
             let segs: Vec<SyntaxToken> = p.segments().collect();
@@ -487,8 +494,7 @@ pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>
     match found {
         // Set arguments of a struct named in a signature are fresh parameters.
         Some(Named::Struct(d)) => {
-            let d = cx.env.by_arity(d, a.len());
-            fill_defaults(cx.env.struct_defaults(d), &mut a);
+            let (d, a) = struct_args(cx.env, d, a);
             let sets = (0..cx.env.n_sets(d)).map(|_| slot(cx)).collect();
             Ty::Struct(d, a, sets)
         }
@@ -615,7 +621,7 @@ pub(super) fn const_int(cx: &TyCx, e: &Expr) -> Option<i64> {
 }
 
 /// The integer a constant expression of literals is.
-pub(crate) fn literal_int(e: &Expr) -> Option<i64> {
+pub fn literal_int(e: &Expr) -> Option<i64> {
     const_value(e, &|_| None)
 }
 
@@ -701,11 +707,8 @@ fn conv_array(cx: &mut TyCx, a: &next::ArrayType, errors: &mut Vec<Msg>) -> Ty {
     // `[0..2]T`: an axis over a constant range is keyed by that range type (R04.3.4).
     if let [Type::Range(r)] = &axes[..] {
         if let Some(Expr::Range(re)) = r.expr() {
-            let constant = re
-                .lo()
-                .zip(re.hi())
-                .is_some_and(|(l, h)| const_int(cx, &l).is_some() && const_int(cx, &h).is_some());
-            if !constant && !count_axis(cx, &re) {
+            let given = cx.axes.is_some_and(|a| a.contains_key(&r.syntax().span()));
+            if !given && !static_range(cx, &re) {
                 errors.push(Unbuilt::RangeIndexedArray.into());
                 return Ty::Error;
             }
@@ -799,6 +802,7 @@ pub fn body_type(
     generics: &[Sym],
     doms: &HashMap<Sym, Ty>,
     scoped: &dyn Fn(Sym) -> Option<Ty>,
+    axes: &HashMap<cpl_diag::Span, Ty>,
     t: &Type,
 ) -> (Ty, Vec<Msg>) {
     let at = BodyScope {
@@ -809,7 +813,41 @@ pub fn body_type(
         doms,
         scoped,
     };
-    at.run(|cx, errors| conv(cx, t, errors))
+    at.run_at(Some(axes), |cx, errors| conv(cx, t, errors))
+}
+
+/// Whether a range axis `[lo..hi]T` is keyed by its range type, which decls makes: both ends
+/// constant, or ending at a domain's count. Any other the checker names in a body.
+pub fn static_axis(
+    sigs: &dyn Signatures,
+    scope: &dyn Scope,
+    m: ModId,
+    generics: &[Sym],
+    doms: &HashMap<Sym, Ty>,
+    re: &next::RangeExpr,
+) -> bool {
+    let at = BodyScope {
+        sigs,
+        scope,
+        m,
+        generics,
+        doms,
+        scoped: &unscoped,
+    };
+    at.run(|cx, _| static_range(cx, re)).0
+}
+
+fn static_range(cx: &TyCx, re: &next::RangeExpr) -> bool {
+    let constant = (re.lo().zip(re.hi()))
+        .is_some_and(|(l, h)| const_int(cx, &l).is_some() && const_int(cx, &h).is_some());
+    constant || count_axis(cx, re)
+}
+
+/// Struct `d` written with the arguments `a`: the declaration of that arity, its defaults filled.
+pub fn struct_args(sigs: &dyn TypeTables, d: StructId, mut a: Vec<Ty>) -> (StructId, Vec<Ty>) {
+    let d = sigs.by_arity(d, a.len());
+    fill_defaults(sigs.struct_defaults(d), &mut a);
+    (d, a)
 }
 
 /// Alias `id` given its arguments as types, as a call writes it: `AliasBox(42)` infers the
@@ -831,9 +869,17 @@ pub struct BodyScope<'a> {
 
 impl BodyScope<'_> {
     fn run<R>(&self, f: impl FnOnce(&mut TyCx, &mut Vec<Msg>) -> R) -> (R, Vec<Msg>) {
+        self.run_at(None, f)
+    }
+    fn run_at<R>(
+        &self,
+        axes: Option<&HashMap<cpl_diag::Span, Ty>>,
+        f: impl FnOnce(&mut TyCx, &mut Vec<Msg>) -> R,
+    ) -> (R, Vec<Msg>) {
         let mut errors = Vec::new();
         let names = |n: Sym| self.scope.named(self.m, self.sigs.text(n));
         let mut cx = TyCx {
+            axes,
             names: &names,
             env: self.sigs,
             item: None,
