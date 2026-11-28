@@ -385,17 +385,33 @@ impl<'a> Cx<'a> {
         let mut pre = Vec::new();
         if reordered {
             for t in typed.iter_mut() {
-                if let Some(TArg::Value(v)) = t {
-                    if !pure(v) {
-                        let ty = v.ty.clone();
-                        let tmp = self.bind("$arg", ty.clone());
-                        let read = TExpr {
-                            kind: TK::Var(tmp),
-                            ty,
-                            span: v.span,
-                        };
-                        pre.push(TStmt::Let(tmp, std::mem::replace(v, read)));
+                // A built struct's parts are read one by one, so a name in it (a variadic
+                // pack's) stays the name the struct reads where it is made, not a value moved
+                // into a temp.
+                let Some(TArg::Value(v)) = t else { continue };
+                let mut parts = vec![v];
+                while let Some(v) = parts.pop() {
+                    if pure(v) {
+                        continue;
                     }
+                    let v = match v {
+                        TExpr {
+                            kind: TK::Struct(fs),
+                            ..
+                        } => {
+                            parts.extend(fs.iter_mut().rev());
+                            continue;
+                        }
+                        v => v,
+                    };
+                    let ty = v.ty.clone();
+                    let tmp = self.bind("$arg", ty.clone());
+                    let read = TExpr {
+                        kind: TK::Var(tmp),
+                        ty,
+                        span: v.span,
+                    };
+                    pre.push(TStmt::Let(tmp, std::mem::replace(v, read)));
                 }
             }
         }

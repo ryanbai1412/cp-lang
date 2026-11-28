@@ -2943,3 +2943,4 @@ std-seq/zip-rev-shorter-later-arg.cp
 next/n_temp_values_are_kept_whole.cp
 next/n_closure_arg_kept_in_mut_param.cp
 next/n_intrinsic_has_its_entry_signature.cp
+next/n_named_arg_pack_lends_names.cp
