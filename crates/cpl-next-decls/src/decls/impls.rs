@@ -132,7 +132,7 @@ impl Decls {
             return Some(Member::Method(m, targs, sets.to_vec()));
         }
         let tm = self.member(&tr.methods, name)?;
-        if matches!(self.f(tm).body, FnBody::None) || !pick(self.f(tm)) {
+        if self.f(tm).bodiless() || !pick(self.f(tm)) {
             return None;
         }
         let binds = self.fits_impl(im, recv)?;
@@ -212,7 +212,7 @@ impl Decls {
     /// A trait made only of bodiless `@get` members, met by fields of those names (R12.11.3).
     pub(super) fn field_trait(&self, tr: TraitId) -> bool {
         let t = &self.traits[tr.0];
-        let bodiless = |m: &FnId| self.f(*m).getter && matches!(self.f(*m).body, ast::FnBody::None);
+        let bodiless = |m: &FnId| self.f(*m).getter && self.f(*m).bodiless();
         !t.alias && !t.methods.is_empty() && t.methods.values().all(bodiless)
     }
     /// The impls of `tr`, in the order a type takes them (`impl_rank`).

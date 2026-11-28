@@ -92,6 +92,13 @@ pub struct FnDecl {
     /// What its signature uses that the slice does not build, said only when a call reaches it.
     pub errors: Vec<Msg>,
 }
+
+impl FnDecl {
+    /// Whether it is declared without a body, as a trait's required method is.
+    pub fn bodiless(&self) -> bool {
+        matches!(self.body, FnBody::None)
+    }
+}
 #[derive(Clone)]
 pub struct Param {
     pub name: String,
@@ -673,7 +680,7 @@ impl Decls {
     pub fn iteration_walk(&self) -> Option<(&str, FnId)> {
         let tr = &self.traits[self.roles.iteration?.0];
         (tr.methods.iter())
-            .find(|(_, f)| self.f(**f).region.is_some() && matches!(self.f(**f).body, FnBody::None))
+            .find(|(_, f)| self.f(**f).region.is_some() && self.f(**f).bodiless())
             .map(|(n, f)| (self.text(*n), *f))
     }
     /// The id of a name some declaration gave, or `None` when none did.
@@ -1062,7 +1069,7 @@ fn domain_params(d: &mut Decls, from: usize) {
             match &f.body {
                 FnBody::Block(b) => cpl_syntax::visit::walk_block(b, &mut v),
                 FnBody::Expr(e) => cpl_syntax::visit::walk_expr(e, &mut v),
-                FnBody::None => {}
+                _ => {}
             }
             (v.found, v.ordered)
         })
