@@ -42,7 +42,13 @@ impl Ord for Frac:
   types, field requirements and laws. Supertraits go in parentheses. (R08.1.1)
 - `impl Trait for T` implements it; `impl A + B for T` is shorthand for
   two impls. One impl per (trait, type), declared with the trait or the
-  type. Blanket impls are allowed (`impl<T: Add> Add for ?T`). (R08.1.2)
+  type. Blanket impls are allowed (`impl<T: Add> Add for ?T`); an impl is
+  blanket when its head is a bare type parameter. An impl applies to a type
+  when its head fits it and, for a blanket impl, its bounds hold. Among the
+  impls that apply, the top rank (R08.1.9) is chosen; two of one rank whose
+  heads may meet are E0202 where declared, whatever their bounds. A chosen
+  impl with a written head whose bounds fail is E0606, never a fall back to
+  an impl of a lower rank. (R08.1.2)
 - Inherent methods (`impl T:` or methods in a struct body) live in the
   type's module only. (R08.1.3)
 - Method lookup: inherent first, then traits in scope that the type

@@ -420,6 +420,9 @@ impl<'a> Impls<'a> {
             return true;
         }
         let tr = self.items.t(r.tr);
+        if tr.row {
+            return self.row_holds(t, r);
+        }
         if tr.alias {
             let sub = Subst {
                 tys: &r.args,
@@ -435,6 +438,39 @@ impl<'a> Impls<'a> {
         }
         (self.best_in(t, r, cap).iter())
             .any(|(k, binds)| cap > 0 && self.bounds_hold(self.imp(*k), binds, cap - 1))
+    }
+    /// Whether `t` meets row trait `r`, `(to:, ..)<V>`, by its fields: a record with a field of
+    /// each name the row's getters read, of the type its argument gives (R08.4.1).
+    pub fn row_holds(&self, t: &Ty, r: &TraitRef) -> bool {
+        (self.row_fields(t, r)).is_some_and(|fs| {
+            (fs.iter()).all(|(i, ft)| {
+                (r.args.get(*i)).is_none_or(|a| matches!(a, Ty::Param(_)) || agree(a, ft))
+            })
+        })
+    }
+    /// The type of each field row trait `r` reads of record `t`, by the row argument it gives:
+    /// `None` when `t` is no record or lacks one of the fields.
+    pub fn row_fields(&self, t: &Ty, r: &TraitRef) -> Option<Vec<(usize, Ty)>> {
+        let Ty::Struct(s, targs, _) = t else {
+            return None;
+        };
+        let sd = self.items.s(*s);
+        if !sd.record {
+            return None;
+        }
+        let sub = Subst {
+            tys: targs,
+            sets: &[],
+        };
+        let mut out = Vec::new();
+        for (name, f) in &self.items.t(r.tr).methods {
+            let (_, ft) = sd.fields.iter().find(|(n, _)| n == name)?;
+            if let Ty::Param(i) = self.items.f(*f).ret {
+                out.push((i, sub.ty(ft)));
+            }
+        }
+        out.sort_by_key(|f| f.0);
+        Some(out)
     }
     /// Whether impl `im`'s bounds hold at its type arguments `targs` (`holds`).
     fn bounds_hold(&self, im: &ImplDecl, targs: &[Ty], cap: usize) -> bool {
@@ -633,10 +669,11 @@ impl ImplChoice for Choice<'_> {
     }
 }
 
-/// Whether `t` has no part a check has yet to fix: no variable, parameter or error.
+/// Whether `t` has no part a check has yet to fix and names no checker table: no variable,
+/// parameter or error, and no `RangeOf`/`Dom` index, which means another type in another run.
 fn known(t: &Ty) -> bool {
     match t {
-        Ty::Var(_) | Ty::Param(_) | Ty::Error => false,
+        Ty::Var(_) | Ty::Param(_) | Ty::Error | Ty::RangeOf(_) | Ty::Dom(_) => false,
         Ty::RangeTo(t, ..) | Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) | Ty::Mut(t) => known(t),
         Ty::Struct(_, ts, _) => ts.iter().all(known),
         Ty::Fn(ps, r, _) => ps.iter().all(known) && known(r),

@@ -59,12 +59,6 @@ impl Cx<'_> {
                         self.poison(&r);
                         let tr = self.items.t(r.tr).name.clone();
                         let shown = self.show(&t);
-                        let record = matches!(&t, Ty::Struct(d, ..) if self.items.s(*d).record);
-                        if record {
-                            let msg = Unbuilt::FieldwiseTrait { ty: shown, tr };
-                            self.err(span, msg);
-                            continue;
-                        }
                         // A type no impl converts to has no `T(x)` at all; one some impl converts to
                         // takes only what converts (`List(5)` is a mismatch, `Deque(xs)` is not a call).
                         let converts = why == Origin::Construct
@@ -314,6 +308,15 @@ impl Cx<'_> {
                 });
             };
             return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
+        }
+        // A record meets a row trait by its fields, each field's type its argument (R08.4.1).
+        if self.items.t(r.tr).row && !matches!(t, Ty::Error) {
+            let Some(fs) = self.impls().row_fields(t, r) else {
+                return Some(false);
+            };
+            return Some(
+                (fs.iter()).all(|(i, ft)| r.args.get(*i).is_none_or(|a| self.unify(a, ft))),
+            );
         }
         match t {
             Ty::Error => Some(true),
