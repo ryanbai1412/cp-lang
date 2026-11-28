@@ -6,6 +6,7 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
+use std::thread::ThreadId;
 
 /// Why the database could not answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,10 +61,42 @@ struct State {
     revision: u64,
     /// By query or input type: `HashMap<Key, Memo<Value>>`.
     memos: HashMap<TypeId, Box<dyn Any + Send>>,
-    /// What each query being computed has read so far, innermost last.
+    /// Per thread, the queries it is computing: threads that share one database each compute
+    /// their own, so one thread's reads never land in another's frame.
+    threads: HashMap<ThreadId, Stack>,
+    computed: HashMap<&'static str, usize>,
+}
+
+/// The queries one thread is computing, innermost last.
+#[derive(Default)]
+struct Stack {
+    /// What each has read so far.
     frames: Vec<Vec<Dep>>,
     active: Vec<(TypeId, Box<dyn Any + Send>)>,
-    computed: HashMap<&'static str, usize>,
+}
+
+impl State {
+    fn stack(&mut self) -> &mut Stack {
+        self.threads.entry(std::thread::current().id()).or_default()
+    }
+    /// The frame of the query this thread is computing, if any.
+    fn frame(&mut self) -> Option<&mut Vec<Dep>> {
+        let me = std::thread::current().id();
+        self.threads.get_mut(&me)?.frames.last_mut()
+    }
+    /// Ends this thread's innermost query, forgetting the thread once it computes none.
+    fn pop(&mut self) -> Vec<Dep> {
+        let me = std::thread::current().id();
+        let Some(stack) = self.threads.get_mut(&me) else {
+            return Vec::new();
+        };
+        stack.active.pop();
+        let deps = stack.frames.pop().unwrap_or_default();
+        if stack.active.is_empty() && stack.frames.is_empty() {
+            self.threads.remove(&me);
+        }
+        deps
+    }
 }
 
 #[derive(Default)]
@@ -137,7 +170,7 @@ impl Db {
             let table = Self::table::<I::Key, I::Value>(&mut st, TypeId::of::<InputMarker<I>>());
             (table.ok().and_then(|t| t.get(&k))).map_or(u64::MAX, |m| m.changed)
         });
-        if let Some(f) = st.frames.last_mut() {
+        if let Some(f) = st.frame() {
             f.push(dep);
         }
         Ok(value)
@@ -148,7 +181,7 @@ impl Db {
         let (value, _) = self.fetch::<Q>(key);
         let k = key.clone();
         let dep: Dep = Arc::new(move |db: &Db| db.fetch::<Q>(&k).1);
-        if let Some(f) = self.lock().frames.last_mut() {
+        if let Some(f) = self.lock().frame() {
             f.push(dep);
         }
         value
@@ -164,7 +197,9 @@ impl Db {
         let t = TypeId::of::<Q>();
         let (rev, held) = {
             let mut st = self.lock();
-            if (st.active.iter()).any(|(a, k)| *a == t && k.downcast_ref::<Q::Key>() == Some(key)) {
+            if (st.stack().active.iter())
+                .any(|(a, k)| *a == t && k.downcast_ref::<Q::Key>() == Some(key))
+            {
                 drop(st);
                 let cycle = DbError::Cycle {
                     query: Q::NAME,
@@ -184,9 +219,12 @@ impl Db {
             if *verified == rev {
                 return (value.clone(), *changed);
             }
-            self.lock().active.push((t, Box::new(key.clone())));
+            let mut st = self.lock();
+            st.stack().frames.push(Vec::new());
+            st.stack().active.push((t, Box::new(key.clone())));
+            drop(st);
             let fresh = deps.iter().all(|d| d(self) <= *verified);
-            self.lock().active.pop();
+            self.lock().pop();
             if fresh {
                 let mut st = self.lock();
                 if let Ok(Some(m)) =
@@ -199,14 +237,13 @@ impl Db {
         }
         {
             let mut st = self.lock();
-            st.frames.push(Vec::new());
-            st.active.push((t, Box::new(key.clone())));
+            st.stack().frames.push(Vec::new());
+            st.stack().active.push((t, Box::new(key.clone())));
             *st.computed.entry(Q::NAME).or_default() += 1;
         }
         let value = Q::compute(self, key);
         let mut st = self.lock();
-        st.active.pop();
-        let deps = st.frames.pop().unwrap_or_default();
+        let deps = st.pop();
         let changed = match &held {
             Some((old, _, _, changed)) if *old == value => *changed,
             _ => rev,
@@ -319,5 +356,41 @@ mod tests {
             key: "2".into(),
         };
         assert_eq!(db.get::<Loop>(&2), Err(cycle));
+    }
+
+    /// Holds its first caller inside `compute` until a second thread has read the same key.
+    struct Held;
+    static ENTERED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    static RELEASED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    impl Query for Held {
+        type Key = ();
+        type Value = u32;
+        const NAME: &'static str = "held";
+        fn compute(_: &Db, _: &()) -> Result<u32, DbError> {
+            use std::sync::atomic::Ordering::SeqCst;
+            if !ENTERED.swap(true, SeqCst) {
+                while !RELEASED.load(SeqCst) {
+                    std::thread::yield_now();
+                }
+            }
+            Ok(7)
+        }
+    }
+
+    /// A key one thread is computing is not a cycle for another thread that reads it.
+    #[test]
+    fn another_threads_query_is_not_a_cycle() {
+        use std::sync::atomic::Ordering::SeqCst;
+        let db = Db::default();
+        std::thread::scope(|scope| {
+            let first = scope.spawn(|| db.get::<Held>(&()));
+            while !ENTERED.load(SeqCst) {
+                std::thread::yield_now();
+            }
+            let second = db.get::<Held>(&());
+            RELEASED.store(true, SeqCst);
+            assert_eq!(second, Ok(7));
+            assert_eq!(first.join().unwrap(), Ok(7));
+        });
     }
 }
