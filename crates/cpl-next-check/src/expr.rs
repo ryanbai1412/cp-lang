@@ -1736,17 +1736,25 @@ impl Cx<'_> {
             }
             return mk(TK::Error, Ty::Error);
         };
+        // A read whose result is a new value: both sides flow into fresh sets, so a lambda on
+        // the right is no member of the left's (`self.g ?? (_ => true)` leaves `g`'s set alone).
+        let joined = self.join_ty(&inner);
         // An optional right side keeps the result optional: `a ?? b ?? 9` (R01.8.6).
-        let r = self.expr(rhs, Some(&inner));
+        let r = self.expr(rhs, Some(&joined));
         let opt = l.ty.clone();
+        let was_joining = std::mem::replace(&mut self.b.joining, true);
         let (r, out) = match self.optional_of(&r.ty) {
             Some(_) => (self.coerce(r, &opt), opt.clone()),
-            None => (self.coerce(r, &inner), inner.clone()),
+            None => (self.coerce(r, &joined), joined),
         };
         self.b.scopes.push(HashMap::new());
         let (bind, flag, val) = self.opened(l, inner);
         self.b.scopes.pop();
-        let val = if out == opt { self.some(val, opt) } else { val };
+        let val = match out == opt {
+            true => self.some(val, opt),
+            false => self.coerce(val, &out),
+        };
+        self.b.joining = was_joining;
         let pick = mk(
             TK::If(Box::new(flag), Box::new(val), Box::new(r)),
             out.clone(),

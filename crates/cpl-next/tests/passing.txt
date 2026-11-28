@@ -2953,6 +2953,7 @@ std-pair/two-positions-index-a-pair-table.cp
 core-05/local-fn-closure-reads-a-lent-capture-in-a-callee.cp
 core-05/nested-fn-passes-on-a-closure-over-a-captured-var.cp
 core-05/a-closure-calling-a-method-holds-what-the-method-adds.cp
+core-05/a-method-reached-through-a-bound-keeps-its-fallback-lambda.cp
 std-geometry/hull-extreme-ties-take-the-smallest-index.cp
 std-math/mod-sqrt-is-the-smaller-root.cp
 std-mo/mo-bodies-match-brute.cp
