@@ -533,9 +533,58 @@ impl Cx<'_> {
         let diagnosed = self.errors.len();
         let (args, d) = match self.ord_ends(&first.ty, step) {
             Some(ord) => self.domain_range(first, hi, inclusive, want, ord, span),
-            None => (self.int_ends(first, hi, inclusive, step, span), Ty::Int),
+            None => match self.endpoint_struct(&first.ty) {
+                Some(Ty::Struct(d, targs, sets)) => {
+                    let ends = (first, hi);
+                    return self.endpoint_range(ends, inclusive, step, (d, targs, sets), span);
+                }
+                _ => (self.int_ends(first, hi, inclusive, step, span), Ty::Int),
+            },
         };
         self.range_built(args, d, diagnosed, span)
+    }
+    /// The struct `lo..hi` builds from ends of type `t`: the associated type of `t`'s
+    /// `@role(endpoint)` impl (decision 456). `None` for `Int` ends and a domain's positions,
+    /// which take `range_literal`.
+    fn endpoint_struct(&self, t: &Ty) -> Option<Ty> {
+        let tr = self.d.roles().endpoint?;
+        let t = self.shallow(t);
+        let int_like = matches!(t, Ty::Int | Ty::Range(..) | Ty::Dom(_));
+        if int_like || matches!(t, Ty::Error | Ty::Var(_) | Ty::Param(_)) {
+            return None;
+        }
+        let impls = self.impls();
+        let (im, targs) = (impls.ranked_impls(tr))
+            .find_map(|(_, im)| impls.fits_impl(im, &t).map(|targs| (im, targs)))?;
+        let sub = Subst {
+            tys: &targs,
+            sets: &[],
+        };
+        Some(sub.ty(im.trait_.args.last()?))
+    }
+    /// `lo..hi` over an endpoint whose range has no positions: its struct from the two ends. Such
+    /// a range has no excluded end to include and nothing to step, so `..=` and `by` are E0302.
+    fn endpoint_range(
+        &mut self,
+        (lo, hi): (TExpr, &next::Expr),
+        inclusive: bool,
+        step: Option<&next::Expr>,
+        (d, targs, sets): (StructId, Vec<Ty>, Vec<SetTy>),
+        span: Span,
+    ) -> TExpr {
+        let t = lo.ty.clone();
+        let hi = self.expr(hi, Some(&t));
+        let hi = self.coerce(hi, &t);
+        if inclusive || step.is_some() {
+            let shown = self.show(&t);
+            let what = if inclusive { "`..=`" } else { "`by`" };
+            let code = cpl_diag::codes::TYPE_MISMATCH;
+            let msg = format!("a range of `{shown}` ends has no positions, so it cannot take {what}");
+            self.err(span, Msg::verdict(code, msg));
+            return Self::error_node(span);
+        }
+        let args = [CallArg::held(None, lo, span), CallArg::held(None, hi, span)];
+        self.construct(d, targs, sets, &args, span, None)
     }
     /// The range of positions `args` of `d`, unless checking its ends found errors.
     fn range_built(&mut self, args: Vec<TExpr>, d: Ty, diagnosed: usize, span: Span) -> TExpr {
@@ -716,7 +765,15 @@ impl Cx<'_> {
     fn int_end(&mut self, v: TExpr) -> TExpr {
         if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
             let t = self.show(&v.ty);
-            self.err(v.span, Unbuilt::RangeOfEnds { ty: t });
+            match self.d.roles().endpoint {
+                // Ends whose type has no `@role(endpoint)` impl make no range.
+                Some(_) => {
+                    let code = cpl_diag::codes::TYPE_MISMATCH;
+                    let msg = format!("a range's ends cannot be `{t}`: it has no `Endpoint` impl");
+                    self.err(v.span, Msg::verdict(code, msg));
+                }
+                None => self.err(v.span, Unbuilt::RangeOfEnds { ty: t }),
+            }
             return Self::error_node(v.span);
         }
         self.coerce(v, &Ty::Int)
