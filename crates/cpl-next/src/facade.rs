@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 
 pub use cpl_next_ir::build::Checks;
 
-use crate::linked::{Built, Job, Linked, Shared, StdLib};
+use crate::linked::{Built, Job, Linked, StdLib};
 use crate::{
     bound_line, dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage,
     Item, Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
@@ -30,7 +30,8 @@ struct Held {
     /// In the order of their ids, each once.
     files: Vec<(FileId, Text)>,
     world: World,
-    std: Arc<Std>,
+    /// Std's texts by module name, the core first.
+    std: StdTexts,
     events: bool,
     bodies: bool,
     judge: Option<Judge>,
@@ -43,7 +44,7 @@ impl Snapshot {
         Snapshot(Arc::new(Held {
             files: Vec::new(),
             world,
-            std: Arc::new(Std::read()),
+            std: modules::std_texts(Path::new(modules::STD_DIR)).into(),
             events: false,
             bodies: false,
             judge: None,
@@ -65,8 +66,9 @@ impl Snapshot {
         self.changed(|h| h.files.retain(|(f, _)| f != file))
     }
 
-    /// This snapshot checked against `std`, which whoever builds the snapshot read.
-    pub fn with_std_lib(&self, std: Arc<Std>) -> Snapshot {
+    /// This snapshot checked against the std in the directory `dir`, read now.
+    pub fn with_std_dir(&self, dir: &Path) -> Snapshot {
+        let std: StdTexts = modules::std_texts(dir).into();
         self.changed(|h| h.std = std)
     }
 
@@ -226,6 +228,21 @@ struct Work {
     db: Db,
     files: Vec<(FileId, Text)>,
     read: Vec<FileId>,
+    /// The std texts last set, so an unchanged std is not compared text by text again.
+    std: Option<StdTexts>,
+}
+
+type StdTexts = Arc<[(String, Arc<str>)]>;
+
+impl Work {
+    /// The std of `h`, set as the database's inputs and read through `std()`.
+    fn std(&mut self, h: &Held) -> Result<Arc<Std>, DbError> {
+        if !self.std.as_ref().is_some_and(|s| Arc::ptr_eq(s, &h.std)) {
+            crate::linked::set_std(&self.db, &h.std)?;
+            self.std = Some(h.std.clone());
+        }
+        Ok(self.db.get::<StdLib>(&())?.0)
+    }
 }
 
 /// The answers for one snapshot, per file. A file the snapshot does not hold is no program and
@@ -288,9 +305,9 @@ impl Session {
             }
             (w.files, w.read) = (h.files.clone(), read);
         }
-        w.db.set::<StdLib>((), Shared(h.std.clone()))?;
+        let std = w.std(h)?;
         let lacks = || {
-            modules::load(&w.db, &h.std, root)
+            modules::load(&w.db, &std, root)
                 .missing
                 .into_iter()
                 .map(|(_, p)| p)
@@ -357,11 +374,12 @@ impl Session {
                 let Some((id, _, _)) = self.file(file) else {
                     return Err(Arc::from(Vec::new()));
                 };
-                let Ok(w) = self.work(id) else {
+                let Ok(mut w) = self.work(id) else {
                     return Err(Arc::from(Vec::new()));
                 };
                 let h = &self.snapshot.0;
-                let mut f = crate::front(&w.db, &h.std, id, h.judge.as_ref(), h.checks);
+                let std = w.std(h).map_err(|e| Arc::from(vec![Diag::internal(&e)]))?;
+                let mut f = crate::front(&w.db, &std, id, h.judge.as_ref(), h.checks);
                 match crate::back(&mut f, false) {
                     Some((prog, _, binds)) => {
                         let globals: Vec<String> =
@@ -397,7 +415,10 @@ impl Session {
         let (units, diags) = f.units.get_or_init(|| {
             let h = &self.snapshot.0;
             match self.work(id) {
-                Ok(w) => units(&w.db, &h.std, id, h.judge.as_ref(), h.checks),
+                Ok(mut w) => match w.std(h) {
+                    Ok(std) => units(&w.db, &std, id, h.judge.as_ref(), h.checks),
+                    Err(e) => (Vec::new(), vec![Diag::internal(&e)]),
+                },
                 Err(e) => (Vec::new(), vec![Diag::internal(&e)]),
             }
         });
@@ -410,11 +431,13 @@ impl Session {
         if let Some(front) = f.front.get() {
             return Some(front);
         }
-        let w = self.work(id).ok()?;
-        Some(f.front.get_or_init(|| {
-            let h = &self.snapshot.0;
-            crate::front(&w.db, &h.std, id, h.judge.as_ref(), h.checks)
-        }))
+        let mut w = self.work(id).ok()?;
+        let h = &self.snapshot.0;
+        let std = w.std(h).ok()?;
+        Some(
+            f.front
+                .get_or_init(|| crate::front(&w.db, &std, id, h.judge.as_ref(), h.checks)),
+        )
     }
 
     /// The item the name at byte `at` of `file` names, if it names one.
@@ -523,7 +546,11 @@ impl Session {
     /// a program reaches (suite 4).
     pub fn std_unchecked(&self) -> Vec<(String, Vec<Diag>)> {
         let h = &self.snapshot.0;
-        std_unchecked(&h.std, h.judge.as_ref(), h.checks)
+        let mut w = self.work.lock().unwrap_or_else(|e| e.into_inner());
+        match w.std(h) {
+            Ok(std) => std_unchecked(&std, h.judge.as_ref(), h.checks),
+            Err(e) => vec![("std".into(), vec![Diag::internal(&e)])],
+        }
     }
 
     pub fn verdict(&self, file: &str) -> Verdict {

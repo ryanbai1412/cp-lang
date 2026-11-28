@@ -25,7 +25,7 @@ switching landing then puts `cpl_next::facade` behind `cpl-facade`'s
 struct Snapshot {                       // contract 0; cheap to clone, never changed in place
     files: List<(FileId, Text)>,        // cpl-contract's types, the ones cpl-facade's API names
     world: World,                       // Disk: a file's cp.toml names its libraries; Closed: std only
-    std: Arc<Std>,                      // built in, or read by whoever builds the snapshot
+    std: List<(Module, Text)>,          // std's texts, the core first: read from std/ when the snapshot is made
     events: bool,                       // a run reports semantic events (trace)
 }
 impl Snapshot {
@@ -35,7 +35,7 @@ impl Snapshot {
     fn text(&self, file: &FileId) -> Option<&Text>
     fn files(&self) -> impl Iterator<Item = (&FileId, &Text)>
     fn world(&self) -> World
-    fn with_std_lib(&self, std: Arc<Std>) -> Snapshot   // `cpl-next --std DIR`
+    fn with_std_dir(&self, dir: &Path) -> Snapshot      // `cpl-next --std DIR`
     fn traced(&self) -> Snapshot                         // runs report semantic events
     fn with_bodies(&self) -> Snapshot                    // `@fast` fns run their CP bodies
 }
@@ -310,6 +310,7 @@ the cpl-next CLI and harness move onto it.
 
 ## Open
 
-- `Std::read` reads live `std/` beside the crate. A snapshot of an
-  edited std (the editor on a std file) needs `Std` built from given
-  texts, the way `cpl-facade`'s `with_std` does.
+- A snapshot holds std's texts, read from `std/` (or `--std DIR`) when it
+  is made, and `std()` builds `Std` from them as database sources. An
+  editor's unsaved std edit still needs a `with_std_file`, the way
+  `cpl-facade`'s `with_std` takes given texts.

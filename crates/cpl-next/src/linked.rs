@@ -8,6 +8,7 @@ use crate::{compile, Diag, Std};
 use cpl_contract::FileId;
 use cpl_next_db::db::{Db, DbError, Input, Query};
 use cpl_next_db::items::Source;
+use cpl_next_decls::modules;
 use cpl_next_ir::build::{Checks, Judge};
 use std::sync::Arc;
 
@@ -40,11 +41,31 @@ impl<T> PartialEq for Shared<T> {
 
 impl<T> Eq for Shared<T> {}
 
-/// The std the snapshot is checked against.
+/// Std's modules by name, the core first: each one's text is the `Source` of its `std_file`.
+pub struct StdModules;
+impl Input for StdModules {
+    type Key = ();
+    type Value = Arc<[String]>;
+}
+
+/// `std()`: the std the snapshot is checked against, read from its `StdModules`' sources.
 pub struct StdLib;
-impl Input for StdLib {
+impl Query for StdLib {
     type Key = ();
     type Value = Shared<Std>;
+    const NAME: &'static str = "std";
+    fn compute(db: &Db, _: &()) -> Result<Shared<Std>, DbError> {
+        let names = db.input::<StdModules>(&())?.unwrap_or_default();
+        Ok(Shared(Arc::new(Std::from_db(db, &names))))
+    }
+}
+
+/// Sets `db`'s std to `texts`, by module name, the core first.
+pub fn set_std(db: &Db, texts: &[(String, Arc<str>)]) -> Result<(), DbError> {
+    for (name, text) in texts {
+        db.set::<Source>(modules::std_file(name), text.clone())?;
+    }
+    db.set::<StdModules>((), texts.iter().map(|(n, _)| n.clone()).collect())
 }
 
 /// A built program, or every diagnostic that stops it, in layer order. Two builds are the
@@ -71,10 +92,10 @@ impl Query for Linked {
     type Value = Built;
     const NAME: &'static str = "program";
     fn compute(db: &Db, job: &Job) -> Result<Built, DbError> {
-        let (Some(_), Some(std)) = (db.input::<Source>(&job.root)?, db.input::<StdLib>(&())?)
-        else {
+        if db.input::<Source>(&job.root)?.is_none() {
             return Ok(Built(Err(Arc::from(Vec::new()))));
-        };
+        }
+        let std = db.get::<StdLib>(&())?;
         let built = compile(
             db,
             &std.0,

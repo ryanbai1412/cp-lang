@@ -1,7 +1,7 @@
 //! What `cpl-next` and the tests' `cpl-next-oracle` read from their arguments alike: the file,
 //! the judge, the std, the compile and what a run writes to stderr.
 use cpl_next::facade::{Program, Session, Snapshot, Verdict, World};
-use cpl_next::{Form, Std};
+use cpl_next::Form;
 use cpl_next_ir::build::Judge;
 use cpl_next_ir::run::Limits;
 use std::path::Path;
@@ -141,11 +141,11 @@ pub fn judge_given(j: &str) -> Option<(&str, u64)> {
     Some((name, mb.parse().ok()?))
 }
 
-/// `snapshot` checked against the std `--std DIR` names, or against the built-in one it holds.
+/// `snapshot` checked against the std `--std DIR` names, or against the one it read.
 pub fn std_in_use(snapshot: Snapshot, args: &[String]) -> Snapshot {
     let at = args.iter().position(|a| a == "--std");
     match at.and_then(|i| args.get(i + 1)) {
-        Some(dir) => snapshot.with_std_lib(Arc::new(Std::read_dir(Path::new(dir)))),
+        Some(dir) => snapshot.with_std_dir(Path::new(dir)),
         None => snapshot,
     }
 }

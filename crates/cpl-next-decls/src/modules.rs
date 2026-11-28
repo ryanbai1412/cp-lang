@@ -154,34 +154,37 @@ pub struct Std {
 }
 
 impl Std {
-    /// The std this binary was built with.
+    /// The std in the source tree this binary was built from, as it is on disk now.
     pub fn read() -> Std {
-        Std::from_files(
-            STD_FILES
-                .iter()
-                .map(|(m, t)| (m.to_string(), t.to_string()))
-                .collect(),
-        )
+        Std::read_dir(Path::new(STD_DIR))
     }
 
-    /// The std in the directory `root`, in place of the one this binary was built with.
+    /// The std in the directory `root`.
     pub fn read_dir(root: &Path) -> Std {
-        Std::from_files(read_dir_modules(root))
+        let db = &Db::default();
+        let texts = std_texts(root);
+        for (name, text) in &texts {
+            // A set that fails fails the read of the same table in `from_db`, which says so.
+            let _ = db.set::<Source>(std_file(name), text.clone());
+        }
+        Std::from_db(db, &texts.into_iter().map(|(n, _)| n).collect::<Vec<_>>())
     }
 
-    fn from_files(mut files: Vec<(String, String)>) -> Std {
-        const CORE_TEXT: &str = include_str!("../../cpl-next/std.cp");
-        files.sort();
-        let placed = std::iter::once((CORE.to_string(), CORE_TEXT.to_string())).chain(files);
+    /// Std's modules `names`, the core first, each read from the `Source` of its `std_file`
+    /// in `db`. Every text is read on this thread, so a query computing a std depends on each.
+    pub fn from_db(db: &Db, names: &[String]) -> Std {
+        let read: Vec<_> = (names.iter())
+            .map(|n| (n.clone(), db.input::<Source>(&std_file(n))))
+            .collect();
         // Each module is read alone, so they are parsed side by side.
-        let db = &Db::default();
         let modules: Vec<Parsed> = std::thread::scope(|scope| {
-            let parsing: Vec<_> = placed
-                .map(|(name, text)| {
-                    let file = FileId::new(&std_path(&name));
-                    scope.spawn(move || match db.set::<Source>(file.clone(), text.into()) {
-                        Ok(()) => Parsed::read(db, file, &name)
+            let parsing: Vec<_> = read
+                .into_iter()
+                .map(|(name, got)| {
+                    scope.spawn(move || match got {
+                        Ok(Some(_)) => Parsed::read(db, std_file(&name), &name)
                             .unwrap_or_else(|| Parsed::empty(&name, Default::default())),
+                        Ok(None) => Parsed::empty(&name, Default::default()),
                         Err(e) => {
                             Parsed::empty(&name, (vec![Msg::internal(e.to_string())], vec![]))
                         }
@@ -280,8 +283,26 @@ pub const PROGRAM: &str = "program";
 /// names under `[libs]` (R11.2.1). `std` is the pinned stdlib, read into a `Std`.
 pub struct Roots(Vec<(String, PathBuf)>);
 
-/// Std's modules as `std/` was when this binary was built, by module name.
-const STD_FILES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_files.rs"));
+/// The `std/` of the source tree this binary was built from. A snapshot reads it when it is
+/// made, so a std edit needs no rebuild (`cpl-next --std DIR` names another).
+pub const STD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../std");
+
+/// Std's texts in the directory `root` by module name: the core first, then std's modules by
+/// name. Each is the `Source` of its `std_file`.
+pub fn std_texts(root: &Path) -> Vec<(String, Arc<str>)> {
+    const CORE_TEXT: &str = include_str!("../../cpl-next/std.cp");
+    let mut files = read_dir_modules(root);
+    files.sort();
+    let files = files.into_iter().map(|(m, t)| (m, Arc::from(t)));
+    std::iter::once((CORE.to_string(), Arc::from(CORE_TEXT)))
+        .chain(files)
+        .collect()
+}
+
+/// The file std module `name`'s text is the `Source` of.
+pub fn std_file(name: &str) -> FileId {
+    FileId::new(&std_path(name))
+}
 
 /// The file std module `name` is read from, from std's parent: `std.graph` is `std/graph.cp`,
 /// the name `read_dir_modules` gives it.

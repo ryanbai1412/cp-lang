@@ -9702,6 +9702,18 @@ Reverse it by deleting `not_members` and the cases (R08.1.2).
 - **Why.** Decimal-to-binary rounding is a bignum algorithm a std parser would get wrong in the last bit; it is each back end's own library, like output, so it is a machine primitive. One op serves `read<F64>()` and `Str.parse<F64>()` alike, since both go through `Input`.
 - **Reverse.** Drop the row and write the parse in std over `I128` digits, accepting last-bit differences.
 
+## 679. Std is read from `std/` when a snapshot is made, as database sources (check, 2026-11-28)
+
+`cpl-next-decls/build.rs` baked every `std/*.cp` into the binary with `include!`,
+so a std edit needed a rebuild and std could not be cached per item. Now a
+`Snapshot` holds std's texts, read from the `std/` of the source tree the
+binary was built from (or `--std DIR`) when it is made. The session sets them
+as `Source`s with a `StdModules` input, and the `std()` query builds `Std`
+from them, so an edited std file is parsed again and nothing else. Test:
+`a_std_edit_is_seen_with_no_rebuild`. The core still comes from
+`crates/cpl-next/std.cp` until it is an ordinary std module (audit #17, S2).
+Reverse by restoring `build.rs` and `Std::read` over `STD_FILES`.
+
 ## 677. `@reject` guards a default that is wrong for some types (check, 2026-11-28)
 
 `[true, false].count()` counted the falses too and was accepted: old

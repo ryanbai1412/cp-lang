@@ -1,9 +1,9 @@
 //! A trace is one run over the db's build: calls, places and steps from its event stream.
 use super::*;
-use crate::linked::{Shared, StdLib};
-use crate::Std;
-use cpl_contract::{FileId, World};
+use crate::linked::set_std;
+use cpl_contract::FileId;
 use cpl_next_db::items::Source;
+use cpl_next_decls::modules;
 use cpl_next_ir::build::Checks;
 
 const SRC: &str = "var total = 0\nfn add(x: Int) -> Int = x + 1\nfn bump(k: Int):\n    \
@@ -13,7 +13,11 @@ fn db_with(text: &str) -> (Db, Job) {
     let db = Db::default();
     let f = FileId::new("main.cp");
     db.set::<Source>(f.clone(), text.into()).unwrap();
-    db.set::<StdLib>((), Shared(Arc::new(Std::read()))).unwrap();
+    set_std(
+        &db,
+        &modules::std_texts(std::path::Path::new(modules::STD_DIR)),
+    )
+    .unwrap();
     let job = Job {
         root: f,
         events: false,
