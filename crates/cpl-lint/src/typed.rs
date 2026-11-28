@@ -29,7 +29,7 @@ pub fn lint_analysis(analysis: &Analysis, config: &crate::Config) -> Vec<Diagnos
 }
 
 /// [`lint_analysis`] with `analysis`'s facts and the bounds proof, which a
-/// [`crate::Session`] shares with the editor's hovers.
+/// [`crate::LintRun`] shares with the editor's hovers.
 pub(crate) fn lints_of(
     analysis: &Analysis,
     facts: &Facts,

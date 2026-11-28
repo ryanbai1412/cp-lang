@@ -12,7 +12,7 @@ use crate::{
     rules, Config, Facts, File, ProvenExpr, ProvenFn, ProvenIndex, ProvenLoop, ProvenSize,
 };
 
-pub struct Session {
+pub struct LintRun {
     analysis: Arc<Analysis>,
     proven: OnceLock<rules::Proven>,
     derived: OnceLock<Derived>,
@@ -26,9 +26,9 @@ struct Derived {
     fns: Vec<ProvenFn>,
 }
 
-impl Session {
-    pub fn new(analysis: Arc<Analysis>) -> Session {
-        Session {
+impl LintRun {
+    pub fn new(analysis: Arc<Analysis>) -> LintRun {
+        LintRun {
             analysis,
             proven: OnceLock::new(),
             derived: OnceLock::new(),

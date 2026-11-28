@@ -780,7 +780,7 @@ fn parsed_facts_agree_with_the_facts_of_the_source() {
 #[test]
 fn a_session_proves_once_what_each_entry_point_proves_alone() {
     let src = "let (n, q): (1..=200000, 1..=1000) = read()\ndomain V = 1..=n\nlet a: [V]Int = 0\nvar xs: List<Int> = []\nfor i in 0..q: xs.push(i)\nfn f() -> Int:\n    var s = 0\n    for i in 0..q: s += i\n    s\nprint(a.sum(), xs.len, f())\n";
-    let session = crate::Session::new(crate::analyze_alone(src).unwrap());
+    let session = crate::LintRun::new(crate::analyze_alone(src).unwrap());
     assert!(!session.loops().is_empty());
     assert_eq!(session.fns(), crate::proven_fns(src));
     assert_eq!(session.ranges(), crate::proven_ranges(src));
@@ -796,7 +796,7 @@ fn a_session_proves_once_what_each_entry_point_proves_alone() {
     .unwrap();
     for text in [src, std.as_str()] {
         let analysis = crate::analyze_alone(text).unwrap();
-        let session = crate::Session::new(analysis.clone());
+        let session = crate::LintRun::new(analysis.clone());
         let codes = |d: Vec<cpl_diag::Diagnostic>| {
             d.into_iter()
                 .map(|d| (d.code, d.span, d.message))

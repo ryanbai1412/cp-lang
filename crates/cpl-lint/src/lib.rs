@@ -65,9 +65,9 @@ mod config;
 pub mod facts;
 mod fix;
 mod library;
+mod lint_run;
 mod recheck;
 mod rules;
-mod session;
 /// The names std declares `pub fn`, generated from `std/*.cp`: lint rules
 /// name std's API through these, never a string literal.
 pub mod std_fn {
@@ -83,7 +83,7 @@ pub use checker::{at_levels, checked_analysis, Checked, CheckerLint};
 pub(crate) use checker::{checked, checker_lints};
 pub use config::{Config, ConfigError};
 pub use facts::Facts;
-pub use session::Session;
+pub use lint_run::LintRun;
 pub use typed::{lint_analysis, refine_with_analysis};
 
 use cpl_diag::{Code, Diagnostic, Severity, Span};
