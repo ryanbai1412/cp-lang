@@ -51,7 +51,7 @@ fi
 # plan/signoffs.toml either (audit #18 (2)): a PR branch carries that edit to its code owner.
 if [ -f scripts/debt-ratchet.py ] && git rev-parse -q --verify origin/main >/dev/null 2>&1; then
     if [ "$to_main" = 1 ] || [ "$to_lane" = 1 ]; then authority=--authority; else authority=--frozen; fi
-    python3 scripts/debt-ratchet.py "$authority" origin/main ||
+    uv run --quiet python scripts/debt-ratchet.py "$authority" origin/main ||
         fail "an edit to a frozen crate or to plan/signoffs.toml (above) that plan/signoffs.toml doesn't admit"
 fi
 
