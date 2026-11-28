@@ -620,37 +620,6 @@ impl<'a> Cx<'a> {
     }
 }
 
-/// `all(x > 1 for x in xs)` passed to a fn whose next parameter is a test is `all(xs, x => x > 1)`:
-/// a generator of tests is the predicate (R01.10.1, decision 53).
-pub(super) fn tests_form(fd: &decls::FnDecl, args: &[ast::Arg]) -> Option<Vec<ast::Arg>> {
-    let [a] = args else { return None };
-    let ExprKind::Comprehension { body, clauses } = &a.value.kind else {
-        return None;
-    };
-    let [c] = &clauses[..] else { return None };
-    let test = matches!(fd.params.first().map(|p| &p.ty), Some(Ty::Fn(ps, r, _)) if ps.len() == 1 && **r == Ty::Bool);
-    if !(a.value.is_generator() && fd.self_mode != SelfMode::None && test && c.conds.is_empty()) {
-        return None;
-    }
-    let lambda = ExprKind::Lambda {
-        params: vec![c.pat.clone()],
-        param_tys: vec![None],
-        param_mut: Vec::new(),
-        ret_ty: None,
-        body: body.clone(),
-    };
-    let arg = |value| ast::Arg {
-        name: None,
-        mutable: false,
-        value,
-    };
-    let span = a.value.span;
-    Some(vec![
-        arg(c.iter.clone()),
-        arg(ast::Expr { kind: lambda, span }),
-    ])
-}
-
 /// One parameter of a lambda being made: what binds it (`None` for a slot only a made body
 /// reads), its type when it is known, and whether it is `mut`.
 pub(super) struct LamParam {
