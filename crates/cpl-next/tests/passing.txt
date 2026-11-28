@@ -659,7 +659,9 @@ core-05/let-bound-element-blocks-its-write.cp
 core-05/let-bound-element-lends-only-it.cp
 core-05/let-cannot-assign.cp
 core-05/let-receiver-builtin-mutator-rejects.cp
+core-05/local-fn-called-in-a-lambda-arg.cp
 core-05/local-fns-calling-each-other-capture-their-fn.cp
+core-05/local-memo-fn-recursing-through-its-wrapper.cp
 core-05/local-var-captured-by-reference.cp
 core-05/loop-item-clone-kept.cp
 core-05/loop-item-cloned-kept.cp
@@ -1867,6 +1869,7 @@ next/n_mod_01_inline_modules.cp
 next/n_nested_02_capture_unset_at_call.cp
 next/n_nested_03_hoisted_call.cp
 next/n_nested_04_lambda_binds_inside_nested_fn.cp
+next/n_nested_05_lambda_names_its_nested_fn.cp
 next/n_op_01_operator_traits.cp
 next/n_op_02_bit_operator_traits_and_one.cp
 next/n_operator_trait.cp

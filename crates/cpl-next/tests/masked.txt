@@ -12,7 +12,6 @@ core-05/call-through-a-lends-mut-call.cp
 core-05/call-through-a-user-lends-mut-index.cp
 core-05/exercise-20-segtree-lent-from-ws.cp
 core-05/lends-mut-slice-is-a-mut-place.cp
-core-05/local-memo-fn-recursing-through-its-wrapper.cp
 core-05/place-under-a-user-at-beside-another-get.cp
 core-05/projections-conflict.cp
 core-05/spec-block-segtree-of-ws.cp

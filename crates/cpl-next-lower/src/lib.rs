@@ -1486,6 +1486,20 @@ impl Lw<'_> {
         let mut bound: BTreeSet<VarRef> = BTreeSet::new();
         free_vars(body, self.in_main, &mut used, &mut bound);
         used.extend(self.group_free.get(&id).into_iter().flatten().copied());
+        // A nested fn this lambda names, outside its own group, is rebuilt here from what that
+        // fn's group reads, so the lambda holds those too.
+        let mut named = BTreeSet::new();
+        body.each(&mut |x| {
+            if let TK::Itself(g) = x.kind {
+                named.insert(g);
+            }
+        });
+        for g in named
+            .iter()
+            .filter(|g| **g != id && !info.group.contains(g))
+        {
+            used.extend(self.group_free.get(g).into_iter().flatten().copied());
+        }
         let saved_remap = self.remap.clone();
         let param_refs: Vec<VarRef> = params
             .iter()
