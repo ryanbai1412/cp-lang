@@ -199,6 +199,7 @@ pub struct TraitForm {
 pub struct LetForm {
     pub name: Sym,
     pub span: Span,
+    pub ty: Option<TyForm>,
     pub value: Option<ast::Expr>,
 }
 
@@ -525,6 +526,7 @@ impl Reader<'_> {
                 Some(LetForm {
                     name: self.syms.intern(n.text()),
                     span: p.syntax().span(),
+                    ty: l.ty().map(TyForm::Written),
                     value: l.value(),
                 })
             })

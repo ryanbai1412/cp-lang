@@ -161,7 +161,7 @@ fn layer(
         ModId,
         SourceId,
         String,
-        Vec<String>,
+        Vec<Sym>,
         cpl_next_syntax::ast::Type,
     )> = Vec::new();
     let mut enums: Vec<(usize, String, Vec<String>, Vec<i64>)> = Vec::new();
@@ -393,7 +393,7 @@ fn layer(
                         name.clone(),
                         Named::Alias(AliasId(aliases_from + aliases.len())),
                     );
-                    let generics = a.generics.iter().map(|g| d.text(*g).to_string()).collect();
+                    let generics = a.generics.clone();
                     let at = item.at(Span::new(a.span.start, a.span.start));
                     let TyForm::Written(ty) = &a.ty else {
                         unreachable!("an alias's type is written")
@@ -563,32 +563,10 @@ fn layer(
     loop {
         let mut changed = false;
         for (mid, _, s, id) in &pending {
-            let (StmtKind::Struct(sd), Some(Named::Struct(id))) = (&s.kind, id) else {
+            let (Form::Struct(sd), Some(Named::Struct(id))) = (s, id) else {
                 continue;
             };
-            let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
-            let doms = d.doms_in(*mid);
-            let names = d.views[mid.0].clone();
-            let syms = d.syms.clone();
-            let tables = d.tables();
-            let mut cx = TyCx {
-                names: &|n: &str| look(&syms, &names, n),
-                env: &tables,
-                item: None,
-                generics: &generics,
-                outer: &generics,
-                args: None,
-                expanding: Vec::new(),
-                doms: &doms,
-                scoped: &tyconv::unscoped,
-                ret_slots: None,
-                next_set: Some(0),
-            };
-            let mut errors = Vec::new();
-            for f in &sd.fields {
-                conv(&mut cx, &f.ty, &mut errors);
-            }
-            let n = cx.next_set.unwrap_or(0);
+            let n = super::structs::struct_sets(&mut d, *mid, sd);
             if Arc::make_mut(&mut d.struct_sets).insert(*id, n) != Some(n) {
                 changed = true;
             }
@@ -599,46 +577,15 @@ fn layer(
     }
     // Then their default type arguments, which name its earlier parameters and any struct.
     for (mid, _, s, id) in &pending {
-        let (StmtKind::Struct(sd), Some(Named::Struct(id))) = (&s.kind, id) else {
-            continue;
-        };
-        if sd.generic_defaults.iter().all(Option::is_none) {
-            continue;
-        }
-        let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
-        let doms = d.doms_in(*mid);
-        let names = d.views[mid.0].clone();
-        let syms = d.syms.clone();
-        let tables = d.tables();
-        let mut cx = TyCx {
-            names: &|n: &str| look(&syms, &names, n),
-            env: &tables,
-            item: None,
-            generics: &generics,
-            outer: &generics,
-            args: None,
-            expanding: Vec::new(),
-            doms: &doms,
-            scoped: &tyconv::unscoped,
-            ret_slots: None,
-            next_set: None,
-        };
-        let mut errors = Vec::new();
-        let tys = (sd.generic_defaults.iter())
-            .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
-            .collect();
-        Arc::make_mut(&mut d.struct_defaults).insert(*id, tys);
-        if d.is_library(*mid) {
-            d.structs[id.0].errors.extend(errors);
-        } else {
-            d.errors.extend(errors);
+        if let (Form::Struct(sd), Some(Named::Struct(id))) = (s, id) {
+            super::structs::struct_defaults(&mut d, *mid, *id, sd);
         }
     }
     // Traits first, for the defaults every use of one reads; impls last, for their trait's fns.
-    let pass = |s: &ast::Stmt, id: &Option<Named>| match s.kind {
-        StmtKind::Trait { .. } => 0,
-        StmtKind::Impl { .. } if id.is_some() => 3,
-        StmtKind::Impl { .. } => 2,
+    let pass = |s: &Form, id: &Option<Named>| match s {
+        Form::Trait(_) => 0,
+        Form::Impl(_) if id.is_some() => 3,
+        Form::Impl(_) => 2,
         _ => 1,
     };
     pending.sort_by_key(|(_, _, s, id)| pass(s, id));
@@ -669,545 +616,63 @@ fn layer(
                 };
                 remake_views(&mut d, &sc, from, core_too, None);
             }
-            match (&s.kind, id) {
-                (StmtKind::Struct(sd), Some(Named::Struct(id))) => {
-                    let generics: Vec<String> =
-                        sd.generics.iter().map(|g| g.text.clone()).collect();
-                    let doms = d.doms_in(ModId(mi));
-                    let names = d.views[mi].clone();
-                    let syms = d.syms.clone();
-                    let tables = d.tables();
-                    let mut cx = TyCx {
-                        names: &|n: &str| look(&syms, &names, n),
-                        env: &tables,
-                        item: None,
-                        generics: &generics,
-                        outer: &generics,
-                        args: None,
-                        expanding: Vec::new(),
-                        doms: &doms,
-                        scoped: &tyconv::unscoped,
-                        ret_slots: None,
-                        next_set: Some(0),
-                    };
-                    let mut errors = Vec::new();
-                    let fields: Vec<_> =
-                        sd.fields
-                            .iter()
-                            .map(|f| {
-                                let ty =
-                                    match input_bound(&f.ty, &tables.values, &tables.syms) {
-                                        Some((written, name)) => {
-                                            let text = FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS
-                                                .say(&[&f.name.text, &written, &name]);
-                                            let at = item.at(f.ty.span);
-                                            errors.push(Msg::at(
-                                                at,
-                                                Msg::verdict(FIELD_BOUND_FROM_INPUT, text),
-                                            ));
-                                            Ty::Error
-                                        }
-                                        None => conv(&mut cx, &f.ty, &mut errors),
-                                    };
-                                (f.name.text.clone(), ty)
-                            })
-                            .collect();
-                    let n_sets = cx.next_set.unwrap_or(0);
-                    d.structs[id.0].bounds = (sd.bounds.iter())
-                        .filter_map(|b| Some((generics.iter().position(|g| *g == b.name.text)?, b)))
-                        .flat_map(|(i, b)| {
-                            b.traits.iter().filter_map(move |t| match &t.kind {
-                                TypeKind::Named { name, .. } => Some((i, name)),
-                                _ => None,
-                            })
-                        })
-                        .filter_map(|(i, name)| match look(&d.syms, &d.views[mi], &name.text) {
-                            Some(Named::Trait(tr)) => Some((i, tr)),
-                            _ => None,
-                        })
-                        .collect();
-                    if d.is_library(mid) {
-                        d.structs[id.0].errors.extend(errors);
-                    } else {
-                        d.errors.extend(errors);
-                    }
-                    let mut methods = HashMap::new();
-                    for m in &sd.methods {
-                        if let StmtKind::Fn(f) = &m.kind {
-                            // The struct's bounds hold in each of its methods (`struct Range<D: Domain>`).
-                            let mut f = f.clone();
-                            f.bounds.splice(0..0, sd.bounds.iter().cloned());
-                            let fid = add_fn(
-                                &mut d,
-                                mid,
-                                item.clone(),
-                                m,
-                                &f,
-                                Within {
-                                    owner: Some(Owner::Struct(id)),
-                                    generics: &generics,
-                                    sets: n_sets,
-                                    self_ty: Some(Ty::Struct(
-                                        id,
-                                        (0..generics.len()).map(Ty::Param).collect(),
-                                        (0..n_sets).map(SetTy::Param).collect(),
-                                    )),
-                                    sig: None,
-                                },
-                            );
-                            methods.insert(d.syms.intern(&f.name.text), fid);
-                        }
-                    }
-                    let fields = (fields.into_iter())
-                        .map(|(n, t)| (d.syms.intern(&n), t))
-                        .collect();
-                    let ctor = d.member(&methods, "new");
-                    let sdecl = &mut d.structs[id.0];
-                    sdecl.fields = fields;
-                    sdecl.var_fields = sd.fields.iter().map(|f| f.mutable).collect();
-                    sdecl.pub_fields = sd.fields.iter().map(|f| f.public).collect();
-                    sdecl.cached = sd.fields.iter().map(|f| f.cached).collect();
-                    sdecl.defaults = sd.fields.iter().map(|f| f.default.clone()).collect();
-                    sdecl.field_at = sd
-                        .fields
-                        .iter()
-                        .map(|f| item.at(Span::new(f.ty.span.start, f.ty.span.start)))
-                        .collect();
-                    sdecl.n_sets = n_sets;
-                    sdecl.ctor = ctor;
-                    sdecl.methods = methods;
+            match (s, id) {
+                (Form::Struct(sd), Some(Named::Struct(id))) => {
+                    super::structs::struct_body(&mut d, mid, &item, id, sd)
                 }
-                (
-                    StmtKind::Trait {
-                        body,
-                        supers,
-                        generics,
-                        generic_defaults,
-                        ..
-                    },
-                    Some(Named::Trait(id)),
-                ) => {
-                    let mut tgen = vec!["Self".to_string()];
-                    tgen.extend(generics.iter().map(|g| g.text.clone()));
-                    let assoc: Vec<(&str, &Vec<ast::Type>, &ast::Type)> = (body.stmts.iter())
-                        .filter_map(|m| match &m.kind {
-                            StmtKind::TypeAlias {
-                                name, bounds, ty, ..
-                            } => Some((name.text.as_str(), bounds, ty)),
-                            _ => None,
-                        })
-                        .collect();
-                    tgen.extend(assoc.iter().map(|(a, ..)| format!("Self.{a}")));
-                    let mut errors = Vec::new();
-                    let names = d.views[mi].clone();
-                    let syms = d.syms.clone();
-                    let doms = d.doms_in(ModId(mi));
-                    let tables = d.tables();
-                    let mut cx = TyCx {
-                        names: &|n: &str| look(&syms, &names, n),
-                        env: &tables,
-                        item: None,
-                        generics: &tgen,
-                        outer: &tgen,
-                        args: None,
-                        expanding: Vec::new(),
-                        doms: &doms,
-                        scoped: &tyconv::unscoped,
-                        ret_slots: None,
-                        next_set: None,
-                    };
-                    d.traits[id.0].defaults = (generic_defaults.iter())
-                        .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
-                        .collect();
-                    // `type Taken = Slice<Self>`: what an impl that leaves it out has.
-                    for (_, _, t) in &assoc {
-                        let t = (!matches!(t.kind, TypeKind::Error))
-                            .then(|| conv(&mut cx, t, &mut errors));
-                        d.traits[id.0].defaults.push(t);
-                    }
-                    let first = tgen.len() - assoc.len();
-                    let mut assoc_bounds = Vec::new();
-                    for (k, (_, bs, _)) in assoc.iter().enumerate() {
-                        for b in bs.iter() {
-                            if let Some(r) = trait_ref(&mut cx, b, &mut errors) {
-                                let r = d.with_defaults(r, &Ty::Param(first + k));
-                                assoc_bounds.push((first + k, r));
-                            }
-                        }
-                    }
-                    d.traits[id.0].assoc = assoc.iter().map(|(a, ..)| a.to_string()).collect();
-                    d.traits[id.0].assoc_bounds = assoc_bounds;
-                    // A supertrait is in the trait's own parameters, without `Self`.
-                    let own_params = |r: TraitRef| TraitRef {
-                        tr: r.tr,
-                        args: r.args.iter().map(shift_down).collect(),
-                    };
-                    let sup: Vec<TraitRef> = supers
-                        .iter()
-                        .filter_map(|t| trait_ref(&mut cx, t, &mut errors))
-                        .map(|r| d.with_defaults(r, &Ty::Param(0)))
-                        .map(own_params)
-                        .collect();
-                    d.module_or_program_errors(mid, errors);
-                    let mut methods = HashMap::new();
-                    for m in &body.stmts {
-                        if let StmtKind::Fn(f) = &m.kind {
-                            let fid = add_fn(
-                                &mut d,
-                                mid,
-                                item.clone(),
-                                m,
-                                f,
-                                Within {
-                                    owner: Some(Owner::Trait(id)),
-                                    generics: &tgen,
-                                    sets: 0,
-                                    self_ty: Some(Ty::Param(0)),
-                                    sig: None,
-                                },
-                            );
-                            // Inside the trait, `Self` has the trait: a default body may call its other fns.
-                            let own = TraitRef {
-                                tr: id,
-                                args: (1..tgen.len()).map(Ty::Param).collect(),
-                            };
-                            d.fns[fid.0].bounds.push((0, own));
-                            methods.insert(d.syms.intern(&f.name.text), fid);
-                        }
-                    }
-                    d.traits[id.0].methods = methods;
-                    d.traits[id.0].supers = sup;
+                (Form::Trait(t), Some(Named::Trait(id))) => {
+                    super::structs::trait_body(&mut d, mid, &item, id, t)
                 }
-                (
-                    StmtKind::Impl {
-                        trait_name: Some(tr),
-                        target,
-                        body,
-                        bounds,
-                    },
-                    _,
-                ) => {
-                    let names = d.views[mi].clone();
-                    let syms = d.syms.clone();
-                    // The impl's own type parameters: its bounds' names, then what its header and
-                    // bounds write that names nothing (`K` of `impl<S: Indexed<K, T>, K, T>`).
-                    let mut generics: Vec<String> =
-                        bounds.iter().map(|b| b.name.text.clone()).collect();
-                    for t in [tr, target]
-                        .into_iter()
-                        .chain(bounds.iter().flat_map(|b| &b.traits))
-                    {
-                        unnamed(t, &|n: &str| look(&syms, &names, n), &mut generics);
-                    }
-                    let hidden =
-                        hidden_params(&d, &|n: &str| look(&syms, &names, n), bounds, &mut generics);
-                    // `_..=_`: a parameter of the impl's own that only a range type meets, which
-                    // its body names `Self`.
-                    let ranges_only = any_range(target);
-                    let range_param = ranges_only.then(|| {
-                        generics.push("Self".to_string());
-                        generics.len() - 1
-                    });
-                    let doms = d.doms_in(ModId(mi));
-                    let mut errors = Vec::new();
-                    let tables = d.tables();
-                    let mut cx = TyCx {
-                        names: &|n: &str| look(&syms, &names, n),
-                        env: &tables,
-                        item: Some(item.clone()),
-                        generics: &generics,
-                        outer: &generics,
-                        args: None,
-                        expanding: Vec::new(),
-                        doms: &doms,
-                        scoped: &tyconv::unscoped,
-                        ret_slots: None,
-                        next_set: Some(0),
-                    };
-                    let for_ = match range_param {
-                        Some(i) => Ty::Param(i),
-                        None => conv(&mut cx, target, &mut errors),
-                    };
-                    let head = match range_param {
-                        Some(i) => Ty::AnyRange(i),
-                        None => for_.clone(),
-                    };
-                    let tref =
-                        trait_ref(&mut cx, tr, &mut errors).map(|r| d.with_defaults(r, &for_));
-                    // An associated type is the argument the impl's body writes: `type Arc = A`.
-                    let mut assoc_at = Vec::new();
-                    let mut missing = Vec::new();
-                    let tref = tref.map(|mut r| {
-                        let assoc = d.traits[r.tr.0].assoc.clone();
-                        let n = d.traits[r.tr.0].defaults.len() - assoc.len();
-                        if r.args.len() >= n {
-                            r.args.truncate(n);
-                            for (k, a) in assoc.iter().enumerate() {
-                                let ty = body.stmts.iter().find_map(|m| match &m.kind {
-                                    StmtKind::TypeAlias { name, ty, .. } if name.text == *a => {
-                                        Some((ty, item.at(Span::new(m.span.start, m.span.start))))
-                                    }
-                                    _ => None,
-                                });
-                                assoc_at.push(ty.as_ref().map_or(item.at(Span::new(s.span.start, s.span.start)), |t| t.1.clone()));
-                                let ty = ty.map(|t| t.0);
-                                let default = d.traits[r.tr.0].defaults[n + k].clone();
-                                match (ty, default) {
-                                    (Some(t), _) => r.args.push(conv(&mut cx, t, &mut errors)),
-                                    (None, Some(t)) => {
-                                        let mut tys = vec![for_.clone()];
-                                        tys.extend(r.args.iter().cloned());
-                                        let t = Subst {
-                                            tys: &tys,
-                                            sets: &[],
-                                        }
-                                        .ty(&t);
-                                        r.args.push(t);
-                                    }
-                                    (None, None) => {
-                                        let tname = &d.traits[r.tr.0].name;
-                                        missing.push(format!(
-                                            "`impl {tname}` does not say its associated type `{a}` (R08.1.9)"
-                                        ));
-                                        r.args.push(Ty::Error);
-                                    }
-                                }
-                            }
-                        }
-                        r
-                    });
-                    let mut ibounds = Vec::new();
-                    for b in bounds {
-                        let i = generics.iter().position(|g| *g == b.name.text).unwrap_or(0);
-                        for (j, t) in b.traits.iter().enumerate() {
-                            if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
-                                let key = (b.name.text.clone(), j);
-                                bound_ref(&d, r, i, key, &hidden, &mut ibounds);
-                            }
-                        }
-                    }
-                    // A range type is a domain with an order (R04.2.31), so `Self` in a `_..=_`
-                    // impl's fns meets `Domain` and `Ordered`; the impl itself is not bound by them.
-                    let mut fn_bounds = ibounds.clone();
-                    if let Some(i) = range_param {
-                        for tr in [d.roles.domain, d.roles.order].into_iter().flatten() {
-                            fn_bounds.push((
-                                i,
-                                TraitRef {
-                                    tr,
-                                    args: Vec::new(),
-                                },
-                            ));
-                        }
-                    }
-                    let n_sets = cx.next_set.unwrap_or(0);
-                    // A library impl the slice cannot build is said where a program could reach
-                    // it: through its type when that is a struct, else through its trait.
-                    if let (Some(r), true) = (&tref, d.is_library(mid) && !errors.is_empty()) {
-                        match &for_ {
-                            Ty::Struct(sd, ..) => d.structs[sd.0].errors.append(&mut errors),
-                            _ => d.traits[r.tr.0].errors.append(&mut errors),
-                        }
-                        continue;
-                    }
-                    // No program can reach a library impl of a trait the slice does not declare.
-                    if tref.is_none() && d.is_library(mid) {
-                        continue;
-                    }
-                    let Some(tref) = tref.filter(|_| errors.is_empty()) else {
-                        if errors.is_empty() {
-                            errors.push(Msg::verdict(
-                                cpl_diag::codes::UNKNOWN_TYPE,
-                                "impl of an unknown trait",
-                            ));
-                        }
-                        d.module_or_program_errors(mid, errors);
-                        continue;
-                    };
-                    if let Some(Named::Struct(sid)) = id.filter(|_| !d.field_trait(tref.tr)) {
-                        let Some(asked) = Impls::of(&d).derived_bounds(
-                            sid,
-                            &tref,
-                            copying.contains(&(s as *const _)),
-                        ) else {
+                (Form::Impl(form), id) => match &form.trait_ {
+                    Some(tr) => {
+                        let of = super::trait_impl::Of {
+                            mid,
+                            item: &item,
+                            form,
+                            tr,
+                            derived_for: id,
+                            copies: copying.contains(&(s as *const _)),
+                            impls_from,
+                            top: forms_of[mi],
+                        };
+                        if let super::trait_impl::Made::Wait =
+                            super::trait_impl::trait_impl(&mut d, of)
+                        {
                             wait.push((mid, item, s, id));
+                        }
+                    }
+                    None => {
+                        // Inherent methods live in their type's module only (R08.1.3).
+                        let (name, at) = match &form.self_ty {
+                            TyForm::Written(cpl_next_syntax::ast::Type::Path(p)) => {
+                                let segs: Vec<String> =
+                                    p.segments().map(|t| t.text().to_string()).collect();
+                                (segs.join("."), p.syntax().span())
+                            }
+                            TyForm::Named(n, _) => (d.text(*n).to_string(), form.span),
+                            _ => continue,
+                        };
+                        let Some(t) = d.struct_named(ModId(mi), &name) else {
                             continue;
                         };
-                        for b in asked {
-                            if !ibounds.contains(&b) {
-                                fn_bounds.push(b.clone());
-                                ibounds.push(b);
-                            }
-                        }
-                    }
-                    let at = item.at(Span::new(s.span.start, s.span.start));
-                    let tname = d.traits[tref.tr.0].name.clone();
-                    let top = mods[mi].items.iter().flat_map(|it| &it.stmts);
-                    impl_names(&mut d, top, &item, &tref, body);
-                    // An impl for every record with some fields is not a blanket one: a record
-                    // takes it over a blanket impl it also meets (R08.4.5).
-                    let rank = d.rank_of(&head, &ibounds);
-                    let clashes = |d: &Decls, im: &ImplDecl| {
-                        im.trait_.tr == tref.tr
-                            && overlap(&im.for_, &head)
-                            && d.impl_rank(im) == rank
-                            && (d.traits[tref.tr.0].inputs(&im.trait_.args).iter())
-                                .zip(d.traits[tref.tr.0].inputs(&tref.args))
-                                .all(|(x, y)| same_shape(x, y))
-                    };
-                    // Every written impl is made before any derived one, so it meets none.
-                    let written = id.is_none();
-                    if (d.impls.iter())
-                        .any(|im| d.live(im) && !(written && im.derived) && clashes(&d, im))
-                    {
-                        // A type's own impl replaces its derived one (R08.1.6).
-                        if id.is_some() {
+                        if d.s(t).module != mid {
+                            d.misdeclared.push((
+                                item.at(Span::new(at.start, at.start)),
+                                cpl_diag::codes::UNSUPPORTED,
+                                format!("`{name}` is declared in another module; its inherent methods live there"),
+                            ));
                             continue;
                         }
-                        d.misdeclared.push((
-                            at,
-                            cpl_diag::codes::DUPLICATE_DEFINITION,
-                            format!("a second impl of `{tname}` for one type (R08.1.2)"),
-                        ));
-                        continue;
+                        inherent_impl(&mut d, mid, item, t, form);
                     }
-                    if d.traits[tref.tr.0].alias {
-                        d.misdeclared.push((
-                            at,
-                            cpl_diag::codes::UNSUPPORTED,
-                            format!(
-                                "`{tname}` is a trait alias: impl each trait it names (R08.2.6)"
-                            ),
-                        ));
-                        continue;
-                    }
-                    // An impl lives with its trait, its type or a type among the trait's arguments
-                    // (`impl Into<E> for Int`), or with its fn for `type_of(f)` (R08.1.11), so it
-                    // is never an orphan (R08.5.2).
-                    let local = |t: &Ty| match t {
-                        Ty::Struct(sd, ..) => d.s(*sd).module == mid,
-                        Ty::Clo(c) => matches!(&**c, CloRef::Item(f) if d.f(f.decl).module == mid),
-                        _ => false,
-                    };
-                    if d.traits[tref.tr.0].module != mid
-                        && !local(&for_)
-                        && !tref.args.iter().any(local)
-                    {
-                        d.misdeclared.push((
-                            at,
-                            cpl_diag::codes::UNSUPPORTED,
-                            format!("`{tname}` and the type are both declared elsewhere: an impl lives with one of them"),
-                        ));
-                        continue;
-                    }
-                    // ... and replaces one std derived (R08.1.6).
-                    for k in (0..impls_from).filter(|_| written) {
-                        if d.impls[k].derived && d.live(&d.impls[k]) && clashes(&d, &d.impls[k]) {
-                            d.impls[k].replaced = true;
-                        }
-                    }
-                    let derived = id.is_some();
-                    let id = d.impls.len();
-                    // A bodiless `@get` member the impl leaves out is met by the field of that
-                    // name (R12.11.3).
-                    let written = |n: &str| {
-                        (body.stmts.iter())
-                            .any(|m| matches!(&m.kind, StmtKind::Fn(f) if f.name.text == n))
-                    };
-                    let mut filled: Vec<ast::Stmt> = body
-                        .stmts
-                        .iter()
-                        .filter_map(crate::synth::impl_value)
-                        .collect();
-                    let valued: Vec<String> = (filled.iter())
-                        .filter_map(|m| match &m.kind {
-                            StmtKind::Fn(f) => Some(f.name.text.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let written = |n: &str| written(n) || valued.iter().any(|v| v == n);
-                    if let Ty::Struct(sid, ..) = &for_ {
-                        let mut ms: Vec<(Sym, FnId)> = (d.traits[tref.tr.0].methods.iter())
-                            .map(|(&n, &f)| (n, f))
-                            .collect();
-                        ms.sort_by_key(|&(n, _)| d.text(n));
-                        for (n, tm) in ms {
-                            let n = d.text(n);
-                            let tf = d.f(tm);
-                            if tf.getter
-                                && matches!(tf.body, ast::FnBody::None)
-                                && !written(n)
-                                && d.field(*sid, n).is_some()
-                            {
-                                filled.push(crate::synth::field_getter(n, s.span));
-                            }
-                        }
-                    }
-                    let mut methods = HashMap::new();
-                    for m in body.stmts.iter().chain(&filled) {
-                        if let StmtKind::Fn(f) = &m.kind {
-                            let sig =
-                                d.member(&d.traits[tref.tr.0].methods, &f.name.text)
-                                    .map(|tm| {
-                                        let td = d.f(tm);
-                                        let mut tys = vec![for_.clone()];
-                                        tys.extend(tref.args.iter().cloned());
-                                        let sub = Subst {
-                                            tys: &tys,
-                                            sets: &[],
-                                        };
-                                        TraitSig {
-                                            self_mode: td.self_mode,
-                                            params: td
-                                                .params
-                                                .iter()
-                                                .map(|p| sub.ty(&p.ty))
-                                                .collect(),
-                                            ret: sub.ty(&td.ret),
-                                        }
-                                    });
-                            let fid = add_fn(
-                                &mut d,
-                                mid,
-                                item.clone(),
-                                m,
-                                f,
-                                Within {
-                                    owner: Some(Owner::Impl(id)),
-                                    generics: &generics,
-                                    sets: n_sets,
-                                    self_ty: Some(for_.clone()),
-                                    sig,
-                                },
-                            );
-                            // The impl's parameters come first in each method's, with its bounds.
-                            d.fns[fid.0].bounds.extend(fn_bounds.iter().cloned());
-                            methods.insert(d.syms.intern(&f.name.text), fid);
-                        }
-                    }
-                    let code = cpl_diag::codes::MISSING_IMPL;
-                    (d.misdeclared).extend(missing.into_iter().map(|m| (at.clone(), code, m)));
-                    d.push_impl(ImplDecl {
-                        trait_: tref,
-                        generics,
-                        bounds: ibounds,
-                        for_: head,
-                        methods,
-                        at,
-                        assoc_at,
-                        module: mid,
-                        derived,
-                        replaced: false,
-                    });
-                }
-                (StmtKind::Fn(f), _) => {
-                    let fid = add_fn(&mut d, mid, item.clone(), s, f, FREE);
-                    let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
-                    let k = d.syms.intern(&f.name.text);
-                    Arc::make_mut(&mut d.views[mi]).insert(k, Named::Fn(fid));
-                    if public[mi].contains(&f.name.text) && d.f(fid).self_ty.is_some() {
-                        let n = d.syms.intern(&f.name.text);
-                        d.methods.entry(n).or_default().push(fid);
+                },
+                (Form::Fn(f), _) => {
+                    let fid = add_fn(&mut d, mid, item.clone(), f, FREE);
+                    let name = d.text(f.name).to_string();
+                    let before = own[mi].insert(name.clone(), Named::Fn(fid));
+                    Arc::make_mut(&mut d.views[mi]).insert(f.name, Named::Fn(fid));
+                    if public[mi].contains(&name) && d.f(fid).self_ty.is_some() {
+                        d.methods.entry(f.name).or_default().push(fid);
                     }
                     if let Some(Named::Fn(first)) = before {
                         // Free fns of one name whose required labels differ are overloads: the
@@ -1217,58 +682,25 @@ fn layer(
                         let clash = (std::iter::once(&first).chain(rest))
                             .any(|o| d.required_labels(*o) == d.required_labels(fid));
                         if free && !clash {
-                            own[mi].insert(f.name.text.clone(), Named::Fn(first));
-                            let k = d.syms.intern(&f.name.text);
-                            Arc::make_mut(&mut d.views[mi]).insert(k, Named::Fn(first));
+                            own[mi].insert(name, Named::Fn(first));
+                            Arc::make_mut(&mut d.views[mi]).insert(f.name, Named::Fn(first));
                             d.overloads.entry(first).or_default().push(fid);
                             continue;
                         }
                         // Two with a `self` are one method's overloads unless one call could take
                         // both (R08.1.4); that test isn't built.
                         if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {
-                            d.errors.push(
-                                Unbuilt::MethodsOfOneName {
-                                    name: f.name.text.clone(),
-                                }
-                                .into(),
-                            );
+                            d.errors.push(Unbuilt::MethodsOfOneName { name }.into());
                             continue;
                         }
                         // One name and one set of required labels is one fn: nothing is chosen
                         // by argument type (R02.11.3, R06.1.6).
-                        let code = cpl_diag::codes::OVERLOAD_BY_TYPE;
                         d.misdeclared.push((
-                            item.at(Span::new(s.span.start, s.span.start)),
-                            code,
-                            format!("`{}` is already a fn; one name is one fn", f.name.text),
+                            item.at(Span::new(f.span.start, f.span.start)),
+                            cpl_diag::codes::OVERLOAD_BY_TYPE,
+                            format!("`{name}` is already a fn; one name is one fn"),
                         ));
                     }
-                }
-                (
-                    StmtKind::Impl {
-                        trait_name: None,
-                        target,
-                        bounds,
-                        body,
-                    },
-                    _,
-                ) => {
-                    // Inherent methods live in their type's module only (R08.1.3).
-                    let TypeKind::Named { name, .. } = &target.kind else {
-                        continue;
-                    };
-                    let Some(t) = d.struct_named(ModId(mi), &name.text) else {
-                        continue;
-                    };
-                    if d.s(t).module != mid {
-                        d.misdeclared.push((
-                            item.at(Span::new(target.span.start, target.span.start)),
-                            cpl_diag::codes::UNSUPPORTED,
-                            format!("`{}` is declared in another module; its inherent methods live there", name.text),
-                        ));
-                        continue;
-                    }
-                    inherent_impl(&mut d, mid, item, t, target, bounds, body);
                 }
                 _ => {}
             }
@@ -1293,7 +725,16 @@ fn layer(
     };
     remake_views(&mut d, &sc, from, core_too, Some(&mut errors));
     d.errors.extend(errors);
-    domain_params(&mut d, fns_from);
+    // Each written fn's body, matched to its fn by the item's fns in the order they were made.
+    let mut bodies = HashMap::new();
+    for (item, f) in forms_of[from..].iter().flat_map(|fs| fs.iter()) {
+        let made = (d.item_fns.get(item).into_iter().flatten())
+            .filter(|id| matches!(d.fns[id.0].body, Body::Written));
+        for (id, b) in made.zip(written_bodies(f)) {
+            bodies.insert(*id, b.clone());
+        }
+    }
+    domain_params(&mut d, fns_from, &bodies);
     fresh_results(&mut d);
     let unmet: Vec<_> = (d.impls.iter().skip(impls_from))
         .flat_map(|im| supertraits_unmet(&d, im))
@@ -1422,6 +863,24 @@ fn product(
         });
     }
     Some(Ty::Struct(product, parts, Vec::new()))
+}
+
+/// The bodies form `f` writes, in the order its fns are made.
+fn written_bodies(f: &Form) -> Vec<&cpl_next_syntax::ast::FnBody> {
+    let fns: Vec<&super::forms::FnForm> = match f {
+        Form::Fn(f) => vec![f],
+        Form::Struct(s) => s.methods.iter().collect(),
+        Form::Enum(e) => e.methods.iter().collect(),
+        Form::Trait(t) => t.methods.iter().collect(),
+        Form::Impl(i) => i.methods.iter().collect(),
+        _ => Vec::new(),
+    };
+    (fns.into_iter())
+        .filter_map(|f| match &f.body {
+            super::forms::BodyForm::Written(b) => Some(b),
+            _ => None,
+        })
+        .collect()
 }
 
 /// The name of product `P`'s `i`th factor when it is written as a range.
@@ -1557,7 +1016,7 @@ pub(super) fn unimplemented(
 }
 
 /// `_..=_` or `_.._` as an impl's type: every range type.
-fn any_range(t: &super::forms::TyForm) -> bool {
+pub(super) fn any_range(t: &super::forms::TyForm) -> bool {
     use cpl_next_syntax::ast as next;
     let super::forms::TyForm::Written(next::Type::Range(r)) = t else {
         return false;
@@ -1572,7 +1031,7 @@ fn any_range(t: &super::forms::TyForm) -> bool {
 /// An impl's members are its trait's names: one under the name a member `@was` is E0605, which
 /// says the name now (decision 504). An impl's `let` is frozen where the impl is declared, so it
 /// reads no `var` (R04.2.26).
-fn impl_names(
+pub(super) fn impl_names(
     d: &mut Decls,
     top: &[(ItemId, Form)],
     item: &ItemId,

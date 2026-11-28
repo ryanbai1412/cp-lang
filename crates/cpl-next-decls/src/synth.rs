@@ -357,63 +357,62 @@ pub(crate) fn derive_each(forms: &[&Form]) -> Vec<(Sym, Derivable)> {
 
 /// `@get fn name(self) = self.name`: how a struct meets a bodiless `@get` member its impl leaves
 /// out (R12.11.3).
-pub(crate) fn field_getter(field: &str, span: cpl_diag::Span) -> ast::Stmt {
-    let name = |text: &str| ast::Name {
-        text: text.to_string(),
-        span,
-    };
-    let ex = |kind| ast::Expr { kind, span };
-    let f = ast::FnDecl {
-        name: name(field),
+pub(crate) fn field_getter(
+    field: Sym,
+    span: cpl_diag::Span,
+    syms: &mut crate::sym::Syms,
+) -> FnForm {
+    let this = syms.intern("self");
+    FnForm {
+        name: field,
+        public: false,
+        attrs: vec![AttrForm {
+            attr: Decorator::Get,
+            node: None,
+        }],
         generics: Vec::new(),
         bounds: Vec::new(),
-        params: vec![ast::Param {
-            mutable: false,
-            variadic: false,
-            lazy: false,
-            named_only: false,
-            label: None,
-            name: name("self"),
+        params: vec![ParamForm {
+            name: this,
+            label: this,
             ty: None,
+            is_self: true,
+            mutable: false,
+            named_only: false,
+            variadic: false,
             default: None,
             span,
+            name_span: span,
         }],
         ret: None,
+        yields: false,
         lends: None,
         uses: Vec::new(),
-        body: FnBody::Expr(ex(ast::ExprKind::Field {
-            base: Box::new(ex(ast::ExprKind::Name("self".to_string()))),
-            name: name(field),
-        })),
-        sig_span: span,
-    };
-    ast::Stmt {
-        kind: StmtKind::Fn(f),
+        body: BodyForm::Synth(SynthBody::Getter(field)),
         span,
-        decorators: vec![marker(Mark::Get, span)],
-        public: false,
     }
 }
 
 /// An impl's `let count = e`: the self-less getter `@get fn count() = e` that meets its trait's
 /// member of that name (R04.2.26).
-pub(crate) fn impl_value(m: &ast::Stmt) -> Option<ast::Stmt> {
-    let StmtKind::Let {
-        pat,
-        ty,
-        init: Some(init),
-        ..
-    } = &m.kind
-    else {
-        return None;
-    };
-    let mut get = field_getter(pat.let_name()?, m.span);
-    if let StmtKind::Fn(f) = &mut get.kind {
-        f.params.clear();
-        f.ret = ty.clone();
-        f.body = FnBody::Expr(init.clone());
-    }
-    Some(get)
+pub(crate) fn value_fn(l: &crate::decls::forms::LetForm) -> Option<FnForm> {
+    Some(FnForm {
+        name: l.name,
+        public: false,
+        attrs: vec![AttrForm {
+            attr: Decorator::Get,
+            node: None,
+        }],
+        generics: Vec::new(),
+        bounds: Vec::new(),
+        params: Vec::new(),
+        ret: l.ty.clone(),
+        yields: false,
+        lends: None,
+        uses: Vec::new(),
+        body: BodyForm::Value(l.value.clone()?),
+        span: l.span,
+    })
 }
 
 /// `@get fn name(self) -> T` with no body: a field requirement, met by a field `name` (R08.1.7).

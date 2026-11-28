@@ -19,6 +19,8 @@ mod impls;
 mod inherent;
 mod layer;
 mod names;
+mod structs;
+mod trait_impl;
 mod tyconv;
 pub use collect::{collect, factor_name, prepare, Prepared};
 pub use impls::Impls;
@@ -152,7 +154,7 @@ pub struct StructDecl {
     /// Per field: where its type is written, as an offset into the source.
     pub field_at: Vec<SourceId>,
     /// Per field: the value a constructor that leaves it out stores, read in `module` (R02.6.1).
-    pub defaults: Vec<Option<ast::Expr>>,
+    pub defaults: Vec<Option<cpl_next_syntax::ast::Expr>>,
     pub module: ModId,
     /// Where its declaration starts in the source: the spans of its defaults count from here.
     pub item: ItemId,
