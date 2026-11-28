@@ -12,7 +12,7 @@
 use std.math.{gcd}
 use std.domains.{Cut}
 use std.list.{Str}
-use std.ops.{Add, BitAnd, BitOr, BitXor, Bounded, Mul, One, Ord, Sub, Zero, max, min}
+use std.ops.{Add, BitAnd, BitOr, BitXor, Bounded, Eq, Mul, One, Ord, Sub, Zero, max, min}
 use std.optional.{Some}
 use std.ranges.{Range}
 use std.show.{Show}
