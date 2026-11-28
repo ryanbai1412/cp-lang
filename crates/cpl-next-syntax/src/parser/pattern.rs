@@ -39,9 +39,24 @@ impl Parser<'_> {
                 }
                 self.finish();
             }
-            T::LParen => self.list(NodeKind::TuplePat, T::RParen, "the tuple pattern", |p| {
-                p.pattern()
-            }),
+            T::LParen => {
+                let mut record = false;
+                self.list(NodeKind::TuplePat, T::RParen, "the tuple pattern", |p| {
+                    if p.at(T::Ident) && p.nth(1) == T::Colon {
+                        record = true;
+                        p.start(NodeKind::RecordPatField);
+                        p.bump();
+                        p.bump();
+                        p.pattern();
+                        p.finish();
+                    } else {
+                        p.pattern();
+                    }
+                });
+                if record {
+                    self.b.relabel_last(NodeKind::RecordPat);
+                }
+            }
             k if begins_pattern(k) => {
                 self.start(NodeKind::LiteralPat);
                 self.eat(T::Minus);

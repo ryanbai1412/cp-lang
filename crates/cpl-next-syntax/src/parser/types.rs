@@ -34,7 +34,7 @@ impl Parser<'_> {
             }
             T::LBracket => {
                 self.start(NodeKind::ArrayType);
-                self.list(NodeKind::Dims, T::RBracket, "the dimensions", |p| p.ty());
+                self.list(NodeKind::Dims, T::RBracket, "the dimensions", |p| p.targ());
                 self.ty();
                 self.finish();
             }
@@ -87,10 +87,59 @@ impl Parser<'_> {
             self.bump();
             self.bump();
         }
+        // `Mod(p)`: a type taking values. After type arguments, a `(`
+        // is what follows the type, as in `fn f<S: Seq<B>>(xs: S)`.
         if self.at(T::Lt) {
             self.generic_args();
+        } else if self.at(T::LParen) {
+            self.list(
+                NodeKind::ArgList,
+                T::RParen,
+                "the type's arguments",
+                Self::arg,
+            );
         }
         self.finish();
+    }
+
+    /// A type argument or a dimension: a type, a value such as `n - 1`
+    /// or `1e9 + 7`, or `K: Ord` naming a parameter in an impl's head.
+    pub(super) fn targ(&mut self) {
+        if self.at(T::Ident) && self.nth(1) == T::Colon {
+            return self.generic_param();
+        }
+        if self.value_ahead() {
+            return self.range_type();
+        }
+        self.ty();
+    }
+
+    /// An arithmetic operator before the argument ends.
+    fn value_ahead(&self) -> bool {
+        let mut depth = 0usize;
+        for n in 0.. {
+            match self.nth(n) {
+                T::LParen | T::LBracket | T::Lt => depth += 1,
+                T::RParen | T::RBracket | T::Gt | T::Shr | T::Comma if depth == 0 => return false,
+                T::RParen | T::RBracket | T::Gt => depth -= 1,
+                T::Shr => depth = depth.saturating_sub(2),
+                T::Newline | T::Eof | T::Colon | T::Eq => return false,
+                T::Plus
+                | T::Minus
+                | T::Star
+                | T::Slash
+                | T::Percent
+                | T::DotDot
+                | T::DotDotEq
+                | T::Float
+                    if depth == 0 =>
+                {
+                    return true
+                }
+                _ => {}
+            }
+        }
+        false
     }
 
     /// `<T, 3, ?U>`. A `>>` closes two lists: the inner one takes the token,
@@ -98,8 +147,9 @@ impl Parser<'_> {
     pub(super) fn generic_args(&mut self) {
         self.start(NodeKind::GenericArgs);
         self.bump();
+        let outer = std::mem::replace(&mut self.no_gt, true);
         loop {
-            self.ty();
+            self.targ();
             if self.half_gt || !self.eat(T::Comma) || matches!(self.peek(), T::Gt | T::Shr) {
                 break;
             }
@@ -112,6 +162,7 @@ impl Parser<'_> {
         } else {
             self.want(T::Gt, "`>` to close the type arguments");
         }
+        self.no_gt = outer;
         self.finish();
     }
 

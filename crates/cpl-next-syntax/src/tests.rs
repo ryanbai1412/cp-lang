@@ -189,3 +189,12 @@ fn a_one_line_enum_after_a_colon_is_an_error_that_keeps_its_variants() {
     assert_eq!(variants, 2);
     assert_eq!(file.root.text(), src);
 }
+
+#[test]
+fn a_decorator_on_the_item_line_heads_only_that_item() {
+    let src = "@get pub fn r(self: R) -> Int = self.end\n@memo(map) fn f(x: D) -> Int = 7\nprint(f(D((1, 2))))\npub trait Signed\nimpl Signed for Int\nimpl Ord for P: fn lt(a, b) = b.v < a.v\ntype Z = Mod(p)\n";
+    let file = parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    assert_eq!(file.items().count(), 7);
+    assert_eq!(file.root.text(), src);
+}

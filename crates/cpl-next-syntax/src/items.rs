@@ -30,7 +30,7 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
         let mut depth = 0i32;
         let mut brackets = 0i32;
         // A line of decorators (or a `--- multitest ---` wrap-line) belongs to the statement after it.
-        let mut decorator_line = is_directive_line(tokens, i);
+        let mut decorator_line = heads_next_line(tokens, i);
         loop {
             match tokens[i].kind {
                 T::Eof => break,
@@ -48,7 +48,7 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
                         break;
                     }
                     if decorator_line {
-                        decorator_line = is_directive_line(tokens, i + 1);
+                        decorator_line = heads_next_line(tokens, i + 1);
                     }
                 }
                 _ => {}
@@ -82,6 +82,40 @@ pub fn split_items(tokens: &[Token]) -> Vec<ItemRange> {
         });
     }
     items
+}
+
+/// A line that only heads the line below it: decorators, a directive, or a
+/// `--- multitest ---` wrap-line. `@get pub fn f() = 1` is an item itself.
+fn heads_next_line(tokens: &[Token], mut i: usize) -> bool {
+    let kind = |i: usize| tokens.get(i).map_or(T::Eof, |t| t.kind);
+    if kind(i) != T::At {
+        return is_directive_line(tokens, i);
+    }
+    while kind(i) == T::At {
+        i += 1;
+        if kind(i) == T::Bang {
+            return true;
+        }
+        while matches!(kind(i), T::Ident | T::Dot) {
+            i += 1;
+        }
+        if kind(i) == T::LParen {
+            let mut depth = 0usize;
+            loop {
+                match kind(i) {
+                    T::LParen => depth += 1,
+                    T::RParen => depth -= 1,
+                    T::Newline | T::Eof => return false,
+                    _ => {}
+                }
+                i += 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+        }
+    }
+    kind(i) == T::Newline
 }
 
 fn is_directive_line(tokens: &[Token], i: usize) -> bool {

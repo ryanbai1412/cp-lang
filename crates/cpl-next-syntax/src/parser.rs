@@ -126,6 +126,8 @@ pub(crate) struct Parser<'t> {
     /// A `>>` closed an inner type-argument list; the enclosing one closes
     /// on the same token.
     half_gt: bool,
+    /// Inside type arguments, where `>` closes the list.
+    no_gt: bool,
     b: GreenBuilder,
     diagnostics: Vec<Diagnostic>,
 }
@@ -138,6 +140,7 @@ impl<'t> Parser<'t> {
             pos: 0,
             emitted: 0,
             half_gt: false,
+            no_gt: false,
             b: GreenBuilder::default(),
             diagnostics: Vec::new(),
         };

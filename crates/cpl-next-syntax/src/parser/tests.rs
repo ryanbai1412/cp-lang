@@ -366,3 +366,24 @@ fn a_lowercase_name_takes_type_arguments_only_before_a_call() {
     assert!(!got[0].contains("GenericExpr"), "{}", got[0]);
     assert!(got[1].contains("GenericExpr(NameRef(read)"), "{}", got[1]);
 }
+
+#[test]
+fn places_punning_field_fns_with_and_record_patterns_parse() {
+    let src = "let p = mut m[k]\nlet h = Heap.new(by:)\nlet b = xs.min(by: .0)\nlet s = t with base: lo, n: hi - lo\nlet (mat: got, rank) = m.rref()\nlet r = if ok: 1 else: return None\nvar ar = PArena<PMultiset<0..8>>()\n";
+    let (got, errors) = stmts(src);
+    assert_eq!(errors, 0, "{got:#?}");
+    for (i, want) in [
+        "MutExpr(mut IndexExpr(",
+        "Arg(by :)",
+        "Arg(by : FieldFn(. 0))",
+        "WithExpr(NameRef(t) with RecordField(base : NameRef(lo)) , RecordField(n : ",
+        "RecordPat(( RecordPatField(mat : PathPat(got)) , PathPat(rank) ))",
+        "ReturnStmt(return ",
+        "GenericExpr(NameRef(PArena) GenericArgs(< PathType(PMultiset GenericArgs(< RangeType(",
+    ]
+    .iter()
+    .enumerate()
+    {
+        assert!(got[i].contains(want), "{}: {}", want, got[i]);
+    }
+}

@@ -58,6 +58,12 @@ pub enum NodeKind {
     IntrinsicExpr,
     /// `{ s; s; value }`.
     BlockExpr,
+    /// `.0`, `.name`: the fn that reads that field.
+    FieldFn,
+    /// `mut a[i]`: a place, named for writing (R05.3.4).
+    MutExpr,
+    /// `x with f: v, g: w`: `x` with those fields replaced.
+    WithExpr,
     /// `-x`, `not x`, `~x`.
     PrefixExpr,
     /// `a + b`, with the operator from `ops::BINARY`.
@@ -98,6 +104,10 @@ pub enum NodeKind {
     PatArgs,
     /// `(p, q)`.
     TuplePat,
+    /// `(x: a, y)`: a record's fields, by name.
+    RecordPat,
+    /// `x: a`, or `y` for `y: y`.
+    RecordPatField,
     /// `1`, `-1`, `"s"`.
     LiteralPat,
     /// `p | q`.

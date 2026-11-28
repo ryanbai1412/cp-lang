@@ -309,7 +309,7 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn generic_param(&mut self) {
+    pub(super) fn generic_param(&mut self) {
         self.start(NodeKind::GenericParam);
         let constant = self.eat(T::Const);
         if !constant {
@@ -362,6 +362,10 @@ impl Parser<'_> {
     /// `:` then an indented run of members, one per line; a broken member
     /// ends at its newline.
     fn members(&mut self, member: fn(&mut Self)) {
+        // `pub trait Signed`, `impl Signed for Int`: no members.
+        if matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
+            return;
+        }
         self.start(NodeKind::Members);
         self.want(T::Colon, "`:` and the members");
         if self.at(T::Newline) && self.nth(1) == T::Indent {
@@ -379,6 +383,9 @@ impl Parser<'_> {
                 }
             }
             self.want(T::Dedent, "the end of the members");
+        } else if !matches!(self.peek(), T::Newline | T::Eof) {
+            // `impl Ord for P: fn lt(a, b) = b.v < a.v`: one member.
+            member(self);
         } else {
             self.error_here(codes::EXPECTED_TOKEN, "an indented run of members");
         }

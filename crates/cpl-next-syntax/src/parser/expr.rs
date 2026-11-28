@@ -155,6 +155,9 @@ impl Parser<'_> {
 
     /// The binary operator here: `ops::BINARY`'s, or `not in`.
     fn binary_here(&self) -> Option<ops::Binary> {
+        if self.no_gt && matches!(self.peek(), T::Gt | T::Shr | T::GtEq) {
+            return None;
+        }
         if self.at(T::Not) && self.nth(1) == T::In {
             return ops::binary(T::In);
         }
@@ -203,6 +206,16 @@ impl Parser<'_> {
         if self.op_value_ahead() {
             return self.postfix();
         }
+        if self.at(T::Mut) {
+            self.start(NodeKind::MutExpr);
+            self.bump();
+            self.postfix();
+            return self.finish();
+        }
+        // `else: return None`: a branch that leaves.
+        if matches!(self.peek(), T::Return | T::Break | T::Continue) {
+            return self.simple();
+        }
         if let Some(level) =
             ops::prefix(self.peek()).filter(|_| !(self.at(T::Not) && self.nth(1) == T::In))
         {
@@ -242,6 +255,30 @@ impl Parser<'_> {
                 T::Question => NodeKind::TryExpr,
                 // `x !in xs` is a foreign `not in`, not an unwrap.
                 T::Bang if !(self.nth(1) == T::In && self.glued(1)) => NodeKind::UnwrapExpr,
+                T::Ident
+                    if self.contextual() == Some(Contextual::With)
+                        && self.nth(1) == T::Ident
+                        && self.nth(2) == T::Colon =>
+                {
+                    self.start_at(at, NodeKind::WithExpr);
+                    self.bump();
+                    loop {
+                        self.start(NodeKind::RecordField);
+                        self.bump();
+                        self.bump();
+                        self.expr();
+                        self.finish();
+                        if !(self.at(T::Comma)
+                            && self.nth(1) == T::Ident
+                            && self.nth(2) == T::Colon)
+                        {
+                            break;
+                        }
+                        self.bump();
+                    }
+                    self.finish();
+                    continue;
+                }
                 T::Ident if self.contextual() == Some(Contextual::Is) => {
                     self.start_at(at, NodeKind::IsExpr);
                     self.bump();
@@ -272,6 +309,10 @@ impl Parser<'_> {
         if self.nth(1) == T::Colon && (self.at(T::Ident) || self.peek().spelling().is_some()) {
             self.bump();
             self.bump();
+            // `f(by:)` passes the variable `by`.
+            if matches!(self.peek(), T::Comma | T::RParen) {
+                return self.finish();
+            }
         }
         self.eat(T::Mut);
         let at = self.checkpoint();
@@ -428,6 +469,12 @@ impl Parser<'_> {
                 self.finish();
             }
             T::LBrace => self.block_expr(),
+            T::Dot if matches!(self.nth(1), T::Int | T::Ident) => {
+                self.start(NodeKind::FieldFn);
+                self.bump();
+                self.bump();
+                self.finish();
+            }
             T::LParen => self.paren(),
             T::LBracket => self.bracket(),
             _ => self.recover(codes::EXPECTED_EXPR, "an expression"),
@@ -555,7 +602,7 @@ impl Parser<'_> {
     fn table(&mut self) {
         self.start(NodeKind::TableExpr);
         self.list(NodeKind::Dims, T::RBracket, "the table's domains", |p| {
-            p.ty()
+            p.targ()
         });
         if self.at(T::LParen) {
             self.list(
@@ -580,6 +627,7 @@ impl Parser<'_> {
         let mut elems = 0;
         let mut comma = false;
         let mut record = false;
+        let outer = std::mem::replace(&mut self.no_gt, false);
         self.list(NodeKind::TupleExpr, T::RParen, "the parentheses", |p| {
             elems += 1;
             if p.at(T::Ident) && p.nth(1) == T::Colon {
@@ -596,6 +644,7 @@ impl Parser<'_> {
             }
             comma |= p.at(T::Comma);
         });
+        self.no_gt = outer;
         if record {
             self.b.relabel_last(NodeKind::RecordExpr);
         } else if elems == 1 && !comma {
