@@ -86,9 +86,70 @@ pub fn string_parts(text: &str) -> Vec<StrPart> {
     parts
 }
 
+/// The text of a string or char literal with its escapes decoded: `\n`,
+/// `\t`, `\r`, `\0`, `\xHH`, and `\c` for any other `c`; `{{` and `}}` are
+/// one brace.
+pub fn unescape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => match chars.next() {
+                Some('n') => out.push('\n'),
+                Some('t') => out.push('\t'),
+                Some('r') => out.push('\r'),
+                Some('0') => out.push('\0'),
+                Some('x') => {
+                    let hex: String = chars.clone().take(2).collect();
+                    match u8::from_str_radix(&hex, 16) {
+                        Ok(b) if hex.len() == 2 => {
+                            chars.nth(1);
+                            out.push(char::from(b));
+                        }
+                        _ => out.push('x'),
+                    }
+                }
+                Some(other) => out.push(other),
+                None => out.push('\\'),
+            },
+            '{' | '}' if chars.peek() == Some(&c) => {
+                chars.next();
+                out.push(c);
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// The value of a char literal, quotes included: `'a'`, `'\n'`, `'\x41'`.
+/// `None` when the text is not one quoted, decoded char.
+pub fn char_value(text: &str) -> Option<char> {
+    let inner = text.strip_prefix('\'')?.strip_suffix('\'')?;
+    let decoded = unescape(inner);
+    let mut chars = decoded.chars();
+    let c = chars.next()?;
+    chars.next().is_none().then_some(c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn char_literals_decode_as_the_old_parser_did() {
+        assert_eq!(char_value("'a'"), Some('a'));
+        assert_eq!(char_value("'\\n'"), Some('\n'));
+        assert_eq!(char_value("'\\0'"), Some('\0'));
+        assert_eq!(char_value("'\\x41'"), Some('A'));
+        assert_eq!(char_value("'\\''"), Some('\''));
+        assert_eq!(char_value("'\\\\'"), Some('\\'));
+        assert_eq!(char_value("'\\q'"), Some('q'));
+        assert_eq!(char_value("'ab'"), None);
+        assert_eq!(char_value("''"), None);
+        assert_eq!(char_value("'a"), None);
+        assert_eq!(unescape("a{{b}}\\tc"), "a{b}\tc");
+    }
 
     #[test]
     fn integer_literals() {

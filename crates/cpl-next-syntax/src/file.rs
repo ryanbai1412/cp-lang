@@ -114,6 +114,8 @@ pub enum NodeKind {
     PatArgs,
     /// `(p, q)`.
     TuplePat,
+    /// `(p)`: a pattern in parentheses, one element and no comma.
+    ParenPat,
     /// `(x: a, y)`: a record's fields, by name.
     RecordPat,
     /// `x: a`, or `y:` for `y: y`.

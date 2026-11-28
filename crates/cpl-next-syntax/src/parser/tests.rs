@@ -318,7 +318,7 @@ fn a_colon_arm_is_one_error_and_keeps_its_body() {
     let diags = parse_stmts("match k:\n    0: yield 1\n").diagnostics;
     assert_eq!(diags[0].fixes.len(), 1, "{diags:?}");
     assert!(
-        got[0].contains("MatchArm(LiteralPat(0) Block(: YieldStmt(yield Literal(1))))"),
+        got[0].contains("MatchArm(LiteralPat(Literal(0)) Block(: YieldStmt(yield Literal(1))))"),
         "{}",
         got[0]
     );
@@ -748,4 +748,249 @@ fn interactive_is_no_directive() {
     assert!(crate::parse("@!multitest\nlet n: Int = read()\n")
         .diagnostics
         .is_empty());
+}
+
+#[test]
+fn statement_and_expression_views_read_their_children() {
+    let src = "fn f(xs: [I]Int) -> Int:
+    'outer: for i in xs if i > 0, j in xs:
+        a[i, j] += 1
+        best max= j
+        if let y = g(i):
+            break 'outer
+        elif T: Ord:
+            continue
+        else:
+            lend mut a[i]
+    while ok:
+        assert ok, \"why\"
+    let v = match k:
+        -1 if k < 0 => return 0
+        0 | 1 => xs[0]?
+        _ => { s = 1; s }
+    let t = if ok: 1 else: return 2
+    let ys = [x * 2 for x in xs if x > 1]
+    let m = [1: 2, 3: 4]
+    let z = [n] 0
+    let h = (mut p: Int, q) -> Int => p
+    v
+";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    let all =
+        |f: &dyn Fn(SyntaxNode) -> bool| file.root.descendants().filter(|n| f(n.clone())).count();
+    let first = |k| file.root.descendants().find(|n| n.kind() == k).unwrap();
+    let t = |n: &SyntaxNode| n.text().to_string().trim().to_string();
+
+    let f = ast::ForStmt::cast(first(NodeKind::ForStmt)).unwrap();
+    assert_eq!(f.label().unwrap().text(), "'outer");
+    let cl: Vec<_> = f.clauses().collect();
+    assert_eq!(cl.len(), 2);
+    assert_eq!(t(cl[0].pattern().unwrap().syntax()), "i");
+    assert_eq!(t(cl[0].iter().unwrap().syntax()), "xs");
+    assert_eq!(cl[0].filters().count(), 1);
+    assert_eq!(cl[1].filters().count(), 0);
+    assert!(f.body().is_some() && f.else_clause().is_none());
+
+    let a = ast::AssignStmt::cast(first(NodeKind::AssignStmt)).unwrap();
+    assert_eq!(t(a.target().unwrap().syntax()), "a[i, j]");
+    assert_eq!(t(a.value().unwrap().syntax()), "1");
+    let ix = ast::IndexExpr::cast(first(NodeKind::IndexExpr)).unwrap();
+    assert_eq!(t(ix.base().unwrap().syntax()), "a");
+    assert_eq!(ix.indices().count(), 2);
+
+    let k = ast::KeepExpr::cast(first(NodeKind::KeepExpr)).unwrap();
+    assert!(k.is_max());
+    assert_eq!(t(k.target().unwrap().syntax()), "best");
+    assert_eq!(t(k.value().unwrap().syntax()), "j");
+
+    let i = ast::IfStmt::cast(first(NodeKind::IfStmt)).unwrap();
+    let parts: Vec<_> = i.cond().unwrap().parts().collect();
+    let [ast::CondPart::Let(l)] = &parts[..] else {
+        panic!("{parts:?}")
+    };
+    assert_eq!(t(l.pattern().unwrap().syntax()), "y");
+    assert_eq!(t(l.value().unwrap().syntax()), "g(i)");
+    assert!(i.body().is_some());
+    let elifs: Vec<_> = i.elifs().collect();
+    assert_eq!(elifs.len(), 1);
+    let parts: Vec<_> = elifs[0].cond().unwrap().parts().collect();
+    let [ast::CondPart::Bound(b)] = &parts[..] else {
+        panic!("{parts:?}")
+    };
+    assert_eq!(b.param().unwrap().ident().unwrap().text(), "T");
+    assert!(b.bound().is_some());
+    assert!(matches!(elifs[0].body(), Some(ast::ArmBody::Block(_))));
+    assert!(i.else_clause().unwrap().block().is_some());
+    let br = ast::BreakStmt::cast(first(NodeKind::BreakStmt)).unwrap();
+    assert_eq!(br.label().unwrap().text(), "'outer");
+    let le = ast::LendStmt::cast(first(NodeKind::LendStmt)).unwrap();
+    assert!(le.is_mut());
+    assert_eq!(t(le.place().unwrap().syntax()), "a[i]");
+
+    let w = ast::WhileStmt::cast(first(NodeKind::WhileStmt)).unwrap();
+    assert!(w.cond().is_some() && w.body().is_some() && w.label().is_none());
+    let asr = ast::AssertStmt::cast(first(NodeKind::AssertStmt)).unwrap();
+    assert_eq!(t(asr.cond().unwrap().syntax()), "ok");
+    assert_eq!(t(asr.message().unwrap().syntax()), "\"why\"");
+
+    let m = ast::MatchExpr::cast(first(NodeKind::MatchExpr)).unwrap();
+    assert_eq!(t(m.scrutinee().unwrap().syntax()), "k");
+    let arms: Vec<_> = m.arms().collect();
+    assert_eq!(arms.len(), 3);
+    let ast::Pattern::Literal(lp) = arms[0].pattern().unwrap() else {
+        panic!()
+    };
+    assert!(matches!(lp.value(), Some(ast::Expr::Prefix(_))));
+    assert_eq!(t(arms[0].guard().unwrap().syntax()), "k < 0");
+    assert!(matches!(
+        arms[0].body(),
+        Some(ast::ArmBody::Expr(ast::Expr::Return(_)))
+    ));
+    let ast::Pattern::Or(or) = arms[1].pattern().unwrap() else {
+        panic!()
+    };
+    assert_eq!(or.alternatives().count(), 2);
+    assert!(arms[1].guard().is_none());
+    assert!(matches!(
+        arms[1].body(),
+        Some(ast::ArmBody::Expr(ast::Expr::Try(_)))
+    ));
+    let Some(ast::ArmBody::Expr(ast::Expr::Block(be))) = arms[2].body() else {
+        panic!()
+    };
+    assert_eq!(be.stmts().count(), 2);
+    assert!(!be.ends_with_semi());
+
+    let ie = ast::IfExpr::cast(first(NodeKind::IfExpr)).unwrap();
+    assert!(matches!(
+        ie.body(),
+        Some(ast::ArmBody::Expr(ast::Expr::Literal(_)))
+    ));
+    let els = ie.else_clause().unwrap().body();
+    assert!(matches!(
+        els,
+        Some(ast::ArmBody::Expr(ast::Expr::Return(_)))
+    ));
+
+    let c = ast::CompExpr::cast(first(NodeKind::CompExpr)).unwrap();
+    assert_eq!(t(c.body().unwrap().syntax()), "x * 2");
+    let cc: Vec<_> = c.clauses().collect();
+    assert_eq!(t(cc[0].iter().unwrap().syntax()), "xs");
+    assert_eq!(cc[0].filters().count(), 1);
+
+    let mp = ast::MapExpr::cast(first(NodeKind::MapExpr)).unwrap();
+    let es: Vec<_> = mp.entries().collect();
+    assert_eq!(
+        (
+            t(es[1].key().unwrap().syntax()),
+            t(es[1].value().unwrap().syntax())
+        ),
+        ("3".into(), "4".into())
+    );
+
+    let fill = ast::TableFill::cast(first(NodeKind::TableFill)).unwrap();
+    assert_eq!(fill.list().unwrap().elems().count(), 1);
+    assert_eq!(t(fill.fill().unwrap().syntax()), "0");
+    assert!(file
+        .root
+        .descendants()
+        .filter_map(ast::Expr::cast)
+        .any(|e| matches!(e, ast::Expr::Fill(_))));
+
+    let lam = ast::LambdaExpr::cast(first(NodeKind::LambdaExpr)).unwrap();
+    let ps = lam.params().unwrap().lambda_params();
+    assert_eq!(ps.len(), 2);
+    assert!(ps[0].is_mut && ps[0].ty.is_some());
+    assert!(!ps[1].is_mut && ps[1].ty.is_none());
+    assert!(lam.ret().is_some());
+    assert!(matches!(lam.body(), Some(ast::ArmBody::Expr(_))));
+    assert_eq!(all(&|n| n.kind() == NodeKind::Error), 0);
+}
+
+#[test]
+fn yield_from_range_steps_and_block_entries_read_their_children() {
+    let src = "fn g(xs: [I]Int) -> yields Int:
+    yield from odd(xs)
+    yield from.x
+    yield
+    fn local() -> Int: 1
+    var k = 0..n by 2
+    let w = r by 3
+    k
+";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let t = |n: &SyntaxNode| n.text().to_string().trim().to_string();
+    let of = |k| file.root.descendants().filter(move |n| n.kind() == k);
+    let ys: Vec<_> = of(NodeKind::YieldStmt)
+        .filter_map(ast::YieldStmt::cast)
+        .collect();
+    assert!(ys[0].is_from());
+    assert_eq!(t(ys[0].value().unwrap().syntax()), "odd(xs)");
+    assert!(!ys[1].is_from(), "`from.x` is a value");
+    assert_eq!(t(ys[1].value().unwrap().syntax()), "from.x");
+    assert!(!ys[2].is_from() && ys[2].value().is_none());
+
+    let body = of(NodeKind::Block).find_map(ast::Block::cast).unwrap();
+    let kinds: Vec<_> = body
+        .entries()
+        .map(|e| match e {
+            ast::BlockEntry::Decl(_) => "item",
+            ast::BlockEntry::Stmt(_) => "stmt",
+        })
+        .collect();
+    assert_eq!(
+        kinds,
+        ["stmt", "stmt", "stmt", "item", "stmt", "stmt", "stmt"]
+    );
+    let lets: Vec<_> = of(NodeKind::LetStmt)
+        .filter_map(ast::LetStmt::cast)
+        .collect();
+    assert!(lets[0].is_var() && !lets[1].is_var());
+
+    let rs: Vec<_> = of(NodeKind::RangeExpr)
+        .filter_map(ast::RangeExpr::cast)
+        .collect();
+    assert_eq!(t(rs[0].lo().unwrap().syntax()), "0");
+    assert_eq!(t(rs[0].hi().unwrap().syntax()), "n");
+    assert_eq!(t(rs[0].step().unwrap().syntax()), "2");
+    assert!(rs[0].walk().is_none());
+    assert_eq!(t(rs[1].walk().unwrap().syntax()), "r");
+    assert_eq!(t(rs[1].step().unwrap().syntax()), "3");
+    assert!(rs[1].lo().is_none() && rs[1].hi().is_none());
+}
+
+#[test]
+fn self_and_parenthesized_patterns_parse() {
+    let src = "fn f():
+    match v:
+        (self) => 1
+        (a,) => 2
+        (a, b) => 3
+        () => 4
+";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let pats: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::MatchArm::cast)
+        .filter_map(|a| a.pattern())
+        .collect();
+    let ast::Pattern::Paren(p) = &pats[0] else {
+        panic!("{pats:?}")
+    };
+    let Some(ast::Pattern::Path(s)) = p.pattern() else {
+        panic!()
+    };
+    assert_eq!(s.binding().unwrap().text(), "self");
+    for (i, n) in [(1, 1), (2, 2), (3, 0)] {
+        let ast::Pattern::Tuple(t) = &pats[i] else {
+            panic!("{pats:?}")
+        };
+        assert_eq!(t.patterns().count(), n);
+    }
 }

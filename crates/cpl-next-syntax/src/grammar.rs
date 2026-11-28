@@ -116,6 +116,8 @@ pub enum Contextual {
     Guard,
     Trusted,
     Do,
+    /// `yield from xs` yields each value of `xs`.
+    From,
 }
 
 /// Each contextual word and how it is spelled.
@@ -144,6 +146,7 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("guard", Contextual::Guard),
     ("trusted", Contextual::Trusted),
     ("do", Contextual::Do),
+    ("from", Contextual::From),
     ("without", Contextual::Without),
     ("type_of", Contextual::TypeOf),
 ];
