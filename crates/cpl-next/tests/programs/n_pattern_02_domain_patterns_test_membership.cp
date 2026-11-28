@@ -13,9 +13,9 @@ fn at(i: Int) -> Int:
 print(at(20), at(19))
 fn where_(x: Int) -> Int =
     match x:
-        V(j) if Int(j) % 2 == 0: Int(j) * 10
-        V(j): Int(j)
-        _: -1
+        V(j) if Int(j) % 2 == 0 => Int(j) * 10
+        V(j) => Int(j)
+        _ => -1
 print(where_(2), where_(3), where_(7))
 fn first(x: Int) -> Int:
     let V(k) = x else: return 0
