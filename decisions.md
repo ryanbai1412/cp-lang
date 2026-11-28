@@ -417,6 +417,13 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   answer) and a shared label `Merge(a, b: Ship)`, which `fields` doesn't
   have. Both are E0503 now, with a fix naming a type payload `v`, `v2`, ....
   The two conformance cases that used `One(T)` name it.
+- **A parameter is lent, `mut` or `var`.** Syntax and ownership, 5.2: std
+  (bag.cp) and core-05 take `var xs: T`, an owned parameter, which neither
+  the grammar nor R05 wrote down. `param` gains `('mut' | 'var')?` and
+  R05.2.3 states it: the argument moves in, the caller marks nothing, and
+  `mut` (the caller's place) doesn't combine with `var`. The old parser's
+  `lazy f: T` and `x: &mut T` had no spec and no uses; both are E0503, with
+  fixes deleting `lazy` and writing `mut x: T` (R05 13a: no `&mut T`).
 - **`if T: Bound:` is a condition.** Syntax, 8 (decision 602): R08 §190's
   bound test was missing from `cond`. It is `NAME ':' bound` with a full
   trait ref, told from a one-line `if ok: x` by the `:` that ends the bound.

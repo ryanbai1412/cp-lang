@@ -246,9 +246,17 @@ impl Parser<'_> {
         self.finish();
     }
 
+    /// `mut` lends the caller's place and `var` owns the argument
+    /// (R05.2.3); the two don't combine.
     fn param(&mut self) {
+        let start = self.span().start;
         self.start(NodeKind::Param);
-        self.eat(T::Mut);
+        if self.word() == Some(W::Lazy) && self.nth(1) == T::Ident {
+            self.lazy_param();
+        }
+        if (self.eat(T::Mut) || self.eat(T::Var)) && matches!(self.peek(), T::Mut | T::Var) {
+            self.recover(codes::EXPECTED_TOKEN, "one of `mut` and `var`, not both");
+        }
         if self.eat(T::DotDot) {
             self.name("the variadic parameter's name");
         } else if self.at(T::SelfKw) {
@@ -261,11 +269,43 @@ impl Parser<'_> {
             self.pattern();
         }
         if self.eat(T::Colon) {
+            if self.at(T::Amp) && self.nth(1) == T::Mut {
+                self.amp_mut_param(start);
+            }
             self.ty();
         }
         if self.eat(T::Eq) {
             self.expr();
         }
+        self.finish();
+    }
+
+    /// `lazy f: T`: no such mode (R05.2.3); the fix deletes `lazy`.
+    fn lazy_param(&mut self) {
+        let word = self.span();
+        let to_name = Span::new(word.start, self.nth_span(1).start);
+        let err = msgs::syntax::LAZY_PARAM.error(word, &[]);
+        self.diagnostics
+            .push(err.with_fix("delete `lazy`", to_name, ""));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+    }
+
+    /// `x: &mut T`: there are no `&mut` types (R05.2.3); the fix writes
+    /// `mut x: T`.
+    fn amp_mut_param(&mut self, start: u32) {
+        let amp = Span::new(self.span().start, self.nth_span(2).start);
+        let edits = vec![
+            (amp, String::new()),
+            (Span::point(start), "mut ".to_string()),
+        ];
+        let err = msgs::syntax::AMP_MUT_PARAM.error(amp, &[]);
+        self.diagnostics
+            .push(err.with_edits("write `mut x: T`", edits));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.bump();
         self.finish();
     }
 

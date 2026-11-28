@@ -433,3 +433,27 @@ fn an_unnamed_payload_is_reported_and_kept() {
     assert_eq!(fields, 5);
     assert_eq!(file.root.text(), src);
 }
+
+#[test]
+fn var_params_parse_and_lazy_and_amp_mut_are_reported() {
+    let src = "fn f(var xs: List<Int>, mut y: Int, lazy z: Int, w: &mut Int):\n    xs.len\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    let params = file
+        .root
+        .descendants()
+        .filter(|n| n.kind() == NodeKind::Param)
+        .count();
+    assert_eq!(params, 4);
+    let at = |s: cpl_diag::Span| &src[s.start as usize..s.end as usize];
+    let fixes: Vec<_> = file
+        .diagnostics
+        .iter()
+        .map(|d| d.fixes[0].edits.clone())
+        .collect();
+    assert_eq!(fixes.len(), 2, "{:?}", file.diagnostics);
+    assert_eq!((at(fixes[0][0].0), fixes[0][0].1.as_str()), ("lazy ", ""));
+    assert_eq!((at(fixes[1][0].0), fixes[1][0].1.as_str()), ("&mut ", ""));
+    let w = src.find("w:").unwrap() as u32;
+    assert_eq!((fixes[1][1].0.start, fixes[1][1].1.as_str()), (w, "mut "));
+}

@@ -25,6 +25,7 @@ mod parser;
 pub mod planned;
 pub mod stress;
 pub mod visit;
+mod words;
 
 pub use cpl_next_syntax::literal;
 pub use cpl_next_syntax::{

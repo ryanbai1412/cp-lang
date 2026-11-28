@@ -454,9 +454,9 @@ fn_name     := NAME | '(' param ')' BINOP '(' param ')'     // operator fns
 ret         := '->' ('yields' | 'lends' lend_src?)? type
 lend_src    := '(' NAME (',' NAME)* ')'
 params      := param (',' param)* (';' param (',' param)*)? ','?
-param       := 'mut'? (WORD NAME | pattern | 'self') (':' type)? ('=' expr)?
+param       := ('mut' | 'var')? (WORD NAME | pattern | 'self') (':' type)? ('=' expr)?
                // `while ok: K -> Bool`: the caller writes `while:`, the body `ok`;
-               // the outer label may be a reserved word
+               // the outer label may be a reserved word; `mut` and `var`: R05.2.3
              | '..' NAME ':' TYPE_NAME                      // variadic tuple
 generics    := '<' gparam (',' gparam)* ','? '>'
 gparam      := 'domain'? TYPE_NAME (':' bound)? ('=' type)?

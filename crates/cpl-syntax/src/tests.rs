@@ -531,11 +531,12 @@ fn fn_forms() {
     assert!(f.params[0].mutable && !f.params[1].named_only);
     assert!(f.params[2].named_only && f.params[2].default.is_some());
     assert!(f.params[3].variadic);
-    let lz = stmts("fn f(lazy d: () -> Int, lazy: Int) -> Int = lazy\n");
+    assert_eq!(codes("fn f(lazy d: () -> Int) -> Int = d()\n"), ["E0503"]);
+    let lz = stmts("fn f(lazy: Int) -> Int = lazy\n");
     let StmtKind::Fn(f) = &lz[0].kind else {
         panic!()
     };
-    assert!(f.params[0].lazy && !f.params[1].lazy && f.params[1].name.text == "lazy");
+    assert!(!f.params[0].lazy && f.params[0].name.text == "lazy");
     let StmtKind::Fn(f) = &s[3].kind else {
         panic!()
     };
@@ -611,7 +612,7 @@ fn grader_domain_without_range() {
 
 #[test]
 fn structs_enums_domains_and_match() {
-    let s = stmts("domain V = 1..=n\nstruct Road:\n    u, v: V\n    len: 1..=1e9 = 1\n    fn other(self, x: V) -> V:\n        if x == self.u: self.v else: self.u\nenum Dir = L | R | U | D\nenum Op:\n    Add(l: V, r: V)\n    Ask(V)\nmatch op:\n    Add(l, r) => st.add(l, r)\n    Ask(i) =>\n        let x = st.get(i)\n        print(x)\n    _ => print(0)\nuse std.segtree\nuse lib.treap.{Treap, Node}\nuse lib.graph.flow as fl\n");
+    let s = stmts("domain V = 1..=n\nstruct Road:\n    u, v: V\n    len: 1..=1e9 = 1\n    fn other(self, x: V) -> V:\n        if x == self.u: self.v else: self.u\nenum Dir = L | R | U | D\nenum Op:\n    Add(l: V, r: V)\n    Ask(i: V)\nmatch op:\n    Add(l, r) => st.add(l, r)\n    Ask(i) =>\n        let x = st.get(i)\n        print(x)\n    _ => print(0)\nuse std.segtree\nuse lib.treap.{Treap, Node}\nuse lib.graph.flow as fl\n");
     assert!(matches!(&s[0].kind, StmtKind::Domain { name, .. } if name.text == "V"));
     let StmtKind::Struct(road) = &s[1].kind else {
         panic!()
@@ -846,9 +847,9 @@ fn structs_take_fields_in_the_header_and_declarations_in_the_body() {
         Stmt { public: true, kind: StmtKind::Fn(_), ref decorators, .. } if decorators[0].name.text == "get"
     ));
     assert!(matches!(
-        one_stmt("enum Op:\n    Merge(a, b: Ship)\n    Ask(Int)\n").kind,
+        one_stmt("enum Op:\n    Merge(a: Ship, b: Ship)\n    Ask(v: Int)\n").kind,
         StmtKind::Enum(EnumDecl { ref variants, .. })
-            if variants[0].fields.len() == 2 && variants[0].fields[0].0.is_some() && variants[1].fields[0].0.is_none()
+            if variants[0].fields.len() == 2 && variants[0].fields[0].0.is_some() && variants[1].fields[0].0.is_some()
     ));
 }
 
@@ -1196,13 +1197,14 @@ fn a_range_in_parentheses_takes_a_step() {
 fn v03_traits_opaque_structs_mut_ref_params_and_multi_trait_impl_parse() {
     let src = "\
 trait Ord(Eq): fn cmp(self, o: Self) -> Ordering
-trait Hash: fn hash(self, h: &mut Hasher)
+trait Hash: fn hash(self, mut h: Hasher)
 struct List<T>
 struct Str
 impl Read + Print for Str:
     fn read() -> Str = \"\"
 ";
     assert_eq!(codes(src), Vec::<&str>::new());
+    assert_eq!(codes("fn f(h: &mut Hasher) = 0\n"), ["E0503"]);
     let items = stmts(src);
     assert_eq!(items.len(), 6);
     assert!(matches!(&items[0].kind, StmtKind::Trait { supers, .. } if supers.len() == 1));

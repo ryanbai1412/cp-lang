@@ -126,6 +126,22 @@ element, is `xs[i].take()`, which exists only where the type has an empty
 value to leave behind: `None` in a `?T`, the empty `List`, `Str`, map or
 set. For anything else, `xs[i].replace(x)` returns the old value.
 
+**A parameter is lent, `mut` or `var`.** A plain parameter is lent: the
+callee reads the caller's value. `mut x: T` lends the caller's place, and
+the caller marks the argument `mut`. `var x: T` owns its argument, which
+moves in at the call as with any binding (R2), so the caller marks nothing
+and can't use a moved heap value afterwards; it is mutable in the body.
+The modes don't combine, and there is no other: no `&mut T` type and no
+`lazy` parameter. (R05.2.3)
+
+```python
+fn split(var xs: List<Int>) -> Int:   // xs is the fn's own
+    xs.push(0)
+    xs.len
+let ys = [1, 2]
+print(split(ys))                      // ys moves in
+```
+
 ## 3. Bindings and places
 
 - `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated. (R05.3.1)
@@ -662,7 +678,7 @@ not objects, already removes most aliasing; XOR is checked only on lends.
 past the caller's block.
 
 - No `&T`, `&mut T` or lifetimes; a fn says `lends` / `lends(x)` instead.
-- Parameters are lent or `mut`; a callee never takes ownership.
+- Parameters are lent or `mut`, or `var` to take ownership (R05.2.3).
 - Plain values copy and heap values move by rule (no `derive(Copy)`).
 - One closure kind; captures are borrowed per call, not for the closure's
   life, so `let inc = () => cnt += 1; inc(); print(cnt); inc()` compiles.

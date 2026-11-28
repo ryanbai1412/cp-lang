@@ -1,9 +1,9 @@
 //! Statements and blocks.
 
 use super::*;
+use crate::words::{word, Word::Loop};
 use cpl_diag::msgs::stmt as msg;
 use cpl_diag::{habits::REPLACE_WITH, msgs::syntax::LOOP_KEYWORD};
-use cpl_next_syntax::grammar::{contextual, Contextual::Loop};
 
 /// A `for` clause: its pattern, what it walks, and its `if` filter.
 type ForClause = (Pattern, Expr, Option<(u32, Cond)>);
@@ -646,14 +646,10 @@ impl<'a> Parser<'a> {
                 }
                 StmtKind::Error
             }
-            T::Ident if contextual(self.text()) == Some(Loop) && self.peek_n(1) == T::Colon => {
+            T::Ident if word(self.text()) == Some(Loop) && self.peek_n(1) == T::Colon => {
                 let span = self.span();
                 let fix = REPLACE_WITH.say(&[&"while true"]);
-                self.error(
-                    LOOP_KEYWORD
-                        .error(span, &[])
-                        .with_fix(fix, span, "while true"),
-                );
+                self.error_fix(LOOP_KEYWORD.error(span, &[]), fix, span, "while true");
                 self.bump();
                 self.colon_block("`while true`");
                 StmtKind::Error
@@ -746,22 +742,14 @@ impl<'a> Parser<'a> {
             }
             T::Mut if self.peek_n(1) == T::Fn => {
                 let span = self.span();
-                self.error(
-                    msg::MUT_FN
-                        .error(span, &[])
-                        .with_fix("remove `mut`", span, ""),
-                );
+                self.error_fix(msg::MUT_FN.error(span, &[]), "remove `mut`", span, "");
                 self.recovering = false;
                 self.bump();
                 StmtKind::Fn(self.fn_decl())
             }
             T::Ident if self.text() == "pure" && self.peek_n(1) == T::Fn => {
                 let span = self.span();
-                self.error(
-                    msg::PURE_FN
-                        .error(span, &[])
-                        .with_fix("remove `pure`", span, ""),
-                );
+                self.error_fix(msg::PURE_FN.error(span, &[]), "remove `pure`", span, "");
                 self.recovering = false;
                 self.bump();
                 StmtKind::Fn(self.fn_decl())
@@ -794,11 +782,8 @@ impl<'a> Parser<'a> {
         self.bump();
         if !mutable && self.at(T::Mut) {
             let span = Span::new(stmt_start, self.span().end);
-            self.error(
-                msg::LET_MUT
-                    .error(span, &[])
-                    .with_fix("replace with `var`", span, "var"),
-            );
+            let err = msg::LET_MUT.error(span, &[]);
+            self.error_fix(err, "replace with `var`", span, "var");
             self.bump();
             mutable = true;
         }

@@ -197,6 +197,11 @@ impl<'t> Parser<'t> {
             .map_or(Span::point(self.src.len() as u32), |t| t.span)
     }
 
+    fn nth_span(&self, n: usize) -> Span {
+        self.nth_index(n)
+            .map_or(Span::point(self.src.len() as u32), |i| self.tokens[i].span)
+    }
+
     /// True when the token `n` ahead starts where the one before it ends.
     fn glued(&self, n: usize) -> bool {
         match (self.nth_index(n.wrapping_sub(1)), self.nth_index(n)) {

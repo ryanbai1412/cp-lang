@@ -107,6 +107,8 @@ pub enum Contextual {
     Lend,
     /// `loop:`, reported: write `while true:`.
     Loop,
+    /// `lazy f: T`, reported: a param is lent, `mut` or `var` (R05.2.3).
+    Lazy,
 }
 
 /// Each contextual word and how it is spelled.
@@ -131,6 +133,7 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("cpp", Contextual::Cpp),
     ("lend", Contextual::Lend),
     ("loop", Contextual::Loop),
+    ("lazy", Contextual::Lazy),
 ];
 
 /// The contextual word `text` spells, if any.

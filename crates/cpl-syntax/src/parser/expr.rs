@@ -1134,11 +1134,8 @@ impl<'a> Parser<'a> {
                     let op_text = self.text().to_string();
                     self.pos = super::after_group(self.tokens, self.pos.saturating_sub(1));
                     let span = self.span_from(start);
-                    self.error(
-                        msgs::syntax::BARE_OP_TUPLE
-                            .error(span, &[&op_text, &op_text])
-                            .with_fix("insert `each`", Span::point(span.start), "each"),
-                    );
+                    let err = msgs::syntax::BARE_OP_TUPLE.error(span, &[&op_text, &op_text]);
+                    self.error_fix(err, "insert `each`", Span::point(span.start), "each");
                     ExprKind::Error
                 } else if self.eat(T::DotDot) {
                     let base = self.expr();

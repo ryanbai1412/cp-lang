@@ -1,6 +1,8 @@
 //! Declarations: fns, structs, enums, domains, aliases, traits, imports.
 
 use super::*;
+use crate::words::{word, Word::Lazy};
+use cpl_diag::msgs::syntax::{AMP_MUT_PARAM, LAZY_PARAM};
 
 impl<'a> Parser<'a> {
     pub(super) fn fn_stmt(&mut self) -> StmtKind {
@@ -406,8 +408,11 @@ impl<'a> Parser<'a> {
     fn param(&mut self, named_only: bool) -> Param {
         let start = self.start();
         let variadic = self.eat(T::DotDot);
-        let lazy = self.at(T::Ident) && self.text() == "lazy" && self.peek_n(1) == T::Ident;
+        let lazy = word(self.text()) == Some(Lazy) && self.peek_n(1) == T::Ident;
         if lazy {
+            let span = Span::new(start, self.span_n(1).start);
+            let err = LAZY_PARAM.error(self.span(), &[]);
+            self.error_fix(err, "delete `lazy`", span, "");
             self.bump();
         }
         let mut mutable = self.eat(T::Mut);
@@ -434,6 +439,10 @@ impl<'a> Parser<'a> {
         }
         let ty = self.eat(T::Colon).then(|| {
             if self.at(T::Amp) && self.peek_n(1) == T::Mut {
+                let amp = Span::new(self.start(), self.span_n(2).start);
+                let fix = vec![(amp, String::new()), (Span::point(start), "mut ".into())];
+                let err = AMP_MUT_PARAM.error(amp, &[]);
+                self.error(err.with_edits("write `mut x: T`", fix));
                 self.bump();
                 self.bump();
                 mutable = true;

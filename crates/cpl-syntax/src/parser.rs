@@ -363,6 +363,11 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// `diag` with one fix, replacing `at` by `text`.
+    fn error_fix(&mut self, diag: Diagnostic, title: impl Into<String>, at: Span, text: &str) {
+        self.error(diag.with_fix(title, at, text));
+    }
+
     fn error(&mut self, diag: Diagnostic) {
         if self.speculating > 0 {
             self.speculation_failed = true;
