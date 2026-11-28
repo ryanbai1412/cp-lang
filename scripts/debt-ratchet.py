@@ -4216,6 +4216,29 @@ def check_program_params(root: Path) -> list[str]:
     return out
 
 
+def next_check_whole_entries(root: Path) -> list[str]:
+    """Each pub fn of the checker that answers the whole program at once, returning `Typed`, and
+    each pub fn parameter, pub field or pub type alias that holds the whole declaration table
+    (`Decls`) rather than a view of it. The checker's entries are to be `body(FnId)` and its
+    kin, each returning that item's own answer and reading declarations through views, so this
+    reaches 0 (per-item checker S4)."""
+    out = []
+    for p in _rs_files(root, "crates/cpl-next-check/src", tests=False):
+        rel, lines = _rel(root, p), _lines(p)
+        for line, kind, name, types in _pub_sigs(lines):
+            if any(re.search(r"(?<![\w:])(?:\w+::)*Decls\b", t) for t in types):
+                out.append(f"{rel}:{line}: {kind} {name}: the whole Decls")
+            if kind == "fn":
+                sig, k = "", line - 1
+                while k < len(lines) and not re.search(r"[{;]", sig):
+                    sig += " " + lines[k].split("//")[0]
+                    k += 1
+                ret = re.search(r"\)\s*->\s*([^{;]+?)\s*(?:where\b|[{;])", sig)
+                if ret and re.fullmatch(r"(?:\w+::)*Typed", ret.group(1).strip()):
+                    out.append(f"{rel}:{line}: fn {name}: answers the whole program")
+    return out
+
+
 def next_check_relay_sites(root: Path) -> list[str]:
     """Lines of the new pipeline that hold back or relay the checker's diagnostics: each naming
     the `deferred` store (`Typed::deferred`, `Deferred`, `Answers::deferred`, link's
@@ -5400,6 +5423,7 @@ COUNTERS = {
     "next_whole_program_inputs": ("new-pipeline params, fields, closures and holder-struct methods that hold a whole-program value (Core)", next_whole_program_inputs, True),
     "next_handoff_side_fields": ("fields reaching link beside the IR, through any struct or tuple of the handoff (Core)", next_handoff_side_fields, True),
     "next_check_relay_sites": ("lines holding back or relaying checker diagnostics: the deferred store and the quiet branch (Core)", next_check_relay_sites, True),
+    "next_check_whole_entries": ("checker pub fns answering the whole program (-> Typed) and pub params, fields and types holding the whole Decls rather than a view (Core)", next_check_whole_entries, True),
     "check_program_params": ("checker pub params, fields and types holding a whole program's items: Program, a list of ids, an ItemId beside a String (Core)", check_program_params, True),
     "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
     "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),

@@ -2744,6 +2744,29 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-link/src/lib.rs:1",
             ])
 
+    def test_check_whole_entries_count_whole_answers_and_the_whole_decls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-check/src"
+            src.mkdir(parents=True)
+            (src / "lib.rs").write_text(
+                "pub fn new(\n    d: &'a Decls,\n    bodies: &'a dyn views::Bodies,\n) -> Self {}\n"
+                "pub fn finish(self) -> Typed {\n"
+                "pub fn body(&mut self, id: FnId) -> TypedFn {}\n"
+                "pub fn kept(&self) -> Option<Typed> {}\n"
+                "pub fn read(names: &dyn views::Names, rows: &dyn Rows) {}\n"
+                "pub struct Run<'a> {\n    pub d: &'a decls::Decls,\n    pub n: &'a NamedDecls,\n}\n"
+                "pub type Table = Arc<Decls>;\n"
+                "fn private(d: &Decls) -> Typed {}\n"
+                "// pub fn commented(d: &Decls) -> Typed {}\n"
+            )
+            self.assertEqual(dr.next_check_whole_entries(root), [
+                "crates/cpl-next-check/src/lib.rs:1: fn new: the whole Decls",
+                "crates/cpl-next-check/src/lib.rs:5: fn finish: answers the whole program",
+                "crates/cpl-next-check/src/lib.rs:10: field d: the whole Decls",
+                "crates/cpl-next-check/src/lib.rs:13: type Table: the whole Decls",
+            ])
+
     def test_check_program_params_count_each_shape_in_the_checkers_pub_signatures(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
