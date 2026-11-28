@@ -1143,6 +1143,13 @@ impl<'a> Cx<'a> {
                 None
             }
         };
+        let ext = match (ext, call) {
+            (Some(decls::Named::Fn(f)), Some(args)) => match self.overload_for(f, args, span) {
+                Some(f) => Some(decls::Named::Fn(f)),
+                None => return Self::error_node(span),
+            },
+            (ext, _) => ext,
+        };
         if let Some(decls::Named::Fn(fid)) = ext {
             if let Some(st) = self.items.f(fid).self_ty.clone() {
                 let mut ts = self.written_targs(fid, Vec::new(), written_targs, span);

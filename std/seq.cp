@@ -290,6 +290,15 @@ pub fn rfind<S: Bidir<T>, T>(self: S, p: T -> Bool) -> ?T:
         if p(x): return Some(x)
     None
 
+/// Sorts `self` in place by the comparator `cmp`, a strict weak order; `by:` and `cmp:`
+/// don't combine (E0310).
+///
+/// cost: \(O(n \log n)\) calls of `cmp`
+/// traps: in `cpl run` and `--checked`, when `cmp` is not a strict weak order
+/// example: `var a = [(3, 1), (1, 2), (2, 2)]; a.sort(cmp: (p, q) => p.0 * q.1 < q.0 * p.1); a == [(1, 2), (2, 2), (3, 1)]`
+pub fn sort<S: IndexedMut<D, T>, D: Domain, T>(mut self: S; cmp: (T, T) -> Bool):
+    sort_cmp(mut self, cmp)
+
 // `sort(cmp:)`'s body, apart so that no key type is solved for it: `T` needs no `Ord`.
 fn sort_cmp<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, before: (T, T) -> Bool):
     let n = self.len
@@ -315,9 +324,8 @@ fn sort_cmp<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, before: (T, T) -> Bo
 /// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
 /// example: `var a = [(3, 1), (1, 2), (2, 2)]; a.sort(cmp: (p, q) => p.0 * q.1 < q.0 * p.1); a == [(1, 2), (2, 2), (3, 1)]`
 /// example: `var a = [2, 1]; a.sort(cmp: (x, y) => x <= y); a == [1, 2]` (traps R0001)
-/// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0309)
-pub fn sort<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None):
-    if let before = cmp: return sort_cmp(mut self, before)
+/// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0310)
+pub fn sort<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(mut self: S; by: T -> K = x => x):
     // One buffer: each key with its position, heap-sorted in place (ties go by
     // position, so the order is stable), then the elements moved by its cycles.
     let n = self.len
@@ -399,10 +407,20 @@ fn merge_runs<E>(src: List<E>, mut dst: List<E>, w: Int, before: (E, E) -> Bool)
 /// example: `[(3, 1), (1, 2), (2, 2)].sorted(cmp: (p, q) => p.0 * q.1 < q.0 * p.1) == [(1, 2), (2, 2), (3, 1)]`
 @lint(argsort_loop, from: "[(xs[i], i) for i in self].sorted()", to: "self.sorted(by: i => xs[i])", holes: "xs")
 @lint(argsort_loop, from: "for i in self:\n    p.push((xs[i], i))\nlet s = p.sorted()", to: "let s = self.sorted(by: i => xs[i])", holes: "xs, p")
-pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>:
+pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>:
     var out: List<T> = self.collect()
-    if let before = cmp: sort_cmp(mut out, before)
-    else: sort(mut out, by:)
+    sort(mut out, by:)
+    out
+
+/// A new list of the elements ordered by the comparator `cmp`, a strict weak order; `by:` and
+/// `cmp:` don't combine (E0310).
+///
+/// cost: \(O(n \log n)\) calls of `cmp`
+/// traps: in `cpl run` and `--checked`, when `cmp` is not a strict weak order
+/// example: `[(3, 1), (1, 2), (2, 2)].sorted(cmp: (p, q) => p.0 * q.1 < q.0 * p.1) == [(1, 2), (2, 2), (3, 1)]`
+pub fn sorted<S: Seq<T>, T>(self: S; cmp: (T, T) -> Bool) -> List<T>:
+    var out: List<T> = self.collect()
+    sort_cmp(mut out, cmp)
     out
 
 /// \(O(n)\). A new list of the elements in reverse order; `self.rev` walks them without copying.

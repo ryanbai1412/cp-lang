@@ -97,6 +97,27 @@ impl Cx<'_> {
         };
         self.call_of(n, named, written, args, span, want)
     }
+    /// The overload of `first`'s name the labels `args` give pick, or the named-argument error
+    /// (E0310) when no overload takes them all (R06.1.6).
+    pub(super) fn overload_for(
+        &mut self,
+        first: FnId,
+        args: &[CallArg],
+        span: Span,
+    ) -> Option<FnId> {
+        let given: Vec<&str> = (args.iter()).filter_map(|a| a.label.as_deref()).collect();
+        let found = self.d.overload(first, &given);
+        if found.is_none() {
+            let labels: Vec<String> = given.iter().map(|l| format!("`{l}:`")).collect();
+            let text = format!(
+                "no `fn {}` takes {}",
+                self.items.f(first).name,
+                labels.join(" and ")
+            );
+            self.err(span, Msg::verdict(cpl_diag::codes::UNKNOWN_ARG_NAME, text));
+        }
+        found
+    }
     /// A call of `named`, which the call writes as `n`.
     pub(super) fn call_of(
         &mut self,
@@ -109,8 +130,10 @@ impl Cx<'_> {
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         if let Named::Fn(first) = named {
-            let given: Vec<&str> = (args.iter()).filter_map(|a| a.label.as_deref()).collect();
-            named = Named::Fn(self.d.overload(first, &given));
+            match self.overload_for(first, args, span) {
+                Some(f) => named = Named::Fn(f),
+                None => return Self::error_node(span),
+            }
         }
         // `Pair<A, B>(..)`: the struct of that name with as many parameters (R02.11.4).
         if let Named::Struct(d) = named {
