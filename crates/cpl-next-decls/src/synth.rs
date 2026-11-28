@@ -787,274 +787,156 @@ pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
 /// variant's value and gives that variant. With the `@role(positions)` trait, the enum is also a
 /// domain whose positions are its variants in declaration order (R02.7, R04.2.22).
 pub(crate) fn enum_conversions(
-    items: &[crate::modules::Item],
-    (tr, method, check): &(String, String, String),
+    items: &[(ItemId, Form)],
+    (tr, method, check): (Sym, Sym, Sym),
     positions: Option<&crate::records::Positions>,
-) -> Vec<(ItemId, String, ast::Stmt)> {
-    use ast::{CmpOp, ExprKind};
+    syms: &mut crate::sym::Syms,
+) -> Vec<(ItemId, String, ImplForm)> {
     let mut out = Vec::new();
-    for crate::modules::Item { id: item, stmts } in items {
-        for s in stmts {
-            let StmtKind::Enum(e) = &s.kind else {
-                continue;
-            };
-            let plain = (e.variants.iter()).all(|v| v.fields.is_empty() && v.tag.is_none());
-            if !e.generics.is_empty() || e.variants.is_empty() || !plain {
-                continue;
-            }
-            let values: Option<Vec<i64>> = (e.variants.iter().enumerate())
-                .map(|(i, v)| match &v.value {
-                    None => Some(i as i64),
-                    Some(x) => x.int_literal(),
-                })
-                .collect();
-            let Some(values) = values else {
-                continue;
-            };
-            let span = s.span;
-            let name = |text: &str| ast::Name {
-                text: text.to_string(),
-                span,
-            };
-            let ty = |text: &str, args| ast::Type {
-                kind: TypeKind::Named {
-                    name: name(text),
-                    args,
-                },
-                span,
-            };
-            let ex = |kind| ast::Expr { kind, span };
-            let stmt = |kind| ast::Stmt {
-                kind,
-                span,
-                decorators: Vec::new(),
-                public: false,
-            };
-            let block = |stmts: Vec<ast::Expr>| ast::Block {
-                stmts: stmts.into_iter().map(|e| stmt(StmtKind::Expr(e))).collect(),
-                span,
-            };
-            let this = || ex(ExprKind::Name("self".to_string()));
-            let int = |k: i64| ex(ExprKind::Int(k as i128));
-            let is = |k: i64| {
-                ex(ExprKind::Compare {
-                    first: Box::new(this()),
-                    rest: vec![(CmpOp::Eq, int(k))],
-                })
-            };
-            let variant = |v: &ast::Name| {
-                ex(ExprKind::Field {
-                    base: Box::new(ex(ExprKind::Name(e.name.text.clone()))),
-                    name: v.clone(),
-                })
-            };
-            let conversion = |to: ast::Type, from: ast::Type, body| {
-                let f = ast::FnDecl {
-                    name: name(method),
-                    generics: Vec::new(),
-                    bounds: Vec::new(),
-                    params: vec![ast::Param {
-                        mutable: false,
-                        variadic: false,
-                        lazy: false,
-                        named_only: false,
-                        label: None,
-                        name: name("self"),
-                        ty: None,
-                        default: None,
-                        span,
-                    }],
-                    ret: Some(to.clone()),
-                    lends: None,
-                    uses: Vec::new(),
-                    body,
-                    sig_span: span,
-                };
-                stmt(StmtKind::Impl {
-                    trait_name: Some(ty(tr, vec![to])),
-                    target: from,
-                    bounds: Vec::new(),
-                    body: ast::Block {
-                        stmts: vec![stmt(StmtKind::Fn(f))],
-                        span,
+    let this = syms.intern("self");
+    let k = syms.intern("k");
+    let int = TyForm::Named(syms.intern("Int"), Vec::new());
+    for (item, form) in items {
+        let Form::Enum(e) = form else {
+            continue;
+        };
+        let plain = (e.variants.iter())
+            .all(|v| v.fields.is_empty() && v.attrs.iter().all(|a| a.attr != Attr::Tag));
+        if !e.generics.is_empty() || e.variants.is_empty() || !plain {
+            continue;
+        }
+        let span = e.span;
+        let variants: Vec<Sym> = e.variants.iter().map(|v| v.name).collect();
+        let enum_ty = TyForm::Named(e.name, Vec::new());
+        let param = |name: Sym, ty: Option<TyForm>| ParamForm {
+            name,
+            label: name,
+            ty,
+            is_self: name == this,
+            mutable: false,
+            named_only: false,
+            variadic: false,
+            default: None,
+            span,
+        };
+        let func =
+            |getter: bool, name: Sym, params: Vec<ParamForm>, ret: TyForm, body: SynthBody| {
+                FnForm {
+                    name,
+                    public: false,
+                    attrs: match getter {
+                        true => vec![AttrForm {
+                            attr: Attr::Get,
+                            node: None,
+                        }],
+                        false => Vec::new(),
                     },
-                })
-            };
-            let arms = (e.variants.iter().zip(&values))
-                .map(|(v, k)| ast::Arm {
-                    pat: ast::Pattern {
-                        kind: ast::PatternKind::Variant {
-                            path: vec![v.name.clone()],
-                            args: Vec::new(),
-                        },
-                        span,
-                    },
-                    guard: None,
-                    body: block(vec![int(*k)]),
-                })
-                .collect();
-            let value = ex(ExprKind::Match {
-                scrutinee: Box::new(this()),
-                arms,
-            });
-            let known = (values.iter().map(|k| is(*k)))
-                .reduce(|a, b| {
-                    ex(ExprKind::Binary {
-                        op: ast::BinOp::Or,
-                        op_span: span,
-                        lhs: Box::new(a),
-                        rhs: Box::new(b),
-                    })
-                })
-                .unwrap_or_else(|| ex(ExprKind::Bool(false)));
-            let checked = ex(ExprKind::Call {
-                callee: Box::new(ex(ExprKind::Name(check.clone()))),
-                args: vec![ast::Arg {
-                    name: None,
-                    mutable: false,
-                    value: known,
-                }],
-            });
-            let last = e.variants.len() - 1;
-            let pick = match last {
-                0 => variant(&e.variants[0].name),
-                _ => ex(ExprKind::If {
-                    branches: (e.variants[..last].iter().zip(&values))
-                        .map(|(v, k)| (ast::Cond::Expr(is(*k)), block(vec![variant(&v.name)])))
-                        .collect(),
-                    otherwise: Some(block(vec![variant(&e.variants[last].name)])),
-                }),
-            };
-            let enum_ty = || ty(&e.name.text, Vec::new());
-            let int_ty = || ty("Int", Vec::new());
-            let into_int = conversion(int_ty(), enum_ty(), FnBody::Expr(value));
-            let into_enum = conversion(
-                enum_ty(),
-                int_ty(),
-                FnBody::Block(block(vec![checked, pick])),
-            );
-            out.push((item.clone(), e.name.text.clone(), into_int));
-            out.push((item.clone(), e.name.text.clone(), into_enum));
-            let Some(p) = positions else {
-                continue;
-            };
-            let n = e.variants.len() as i64;
-            let k = || ex(ExprKind::Name("k".to_string()));
-            let cmp = |a, op, b| {
-                ex(ExprKind::Compare {
-                    first: Box::new(a),
-                    rest: vec![(op, b)],
-                })
-            };
-            let in_range = ex(ExprKind::Binary {
-                op: ast::BinOp::And,
-                op_span: span,
-                lhs: Box::new(cmp(int(0), CmpOp::Le, k())),
-                rhs: Box::new(cmp(k(), CmpOp::Lt, int(n))),
-            });
-            let checked = ex(ExprKind::Call {
-                callee: Box::new(ex(ExprKind::Name(check.clone()))),
-                args: vec![ast::Arg {
-                    name: None,
-                    mutable: false,
-                    value: in_range,
-                }],
-            });
-            let nth = match last {
-                0 => variant(&e.variants[0].name),
-                _ => ex(ExprKind::If {
-                    branches: (e.variants[..last].iter().enumerate())
-                        .map(|(i, v)| {
-                            let at = cmp(k(), CmpOp::Eq, int(i as i64));
-                            (ast::Cond::Expr(at), block(vec![variant(&v.name)]))
-                        })
-                        .collect(),
-                    otherwise: Some(block(vec![variant(&e.variants[last].name)])),
-                }),
-            };
-            let ords = (e.variants.iter().enumerate())
-                .map(|(i, v)| ast::Arm {
-                    pat: ast::Pattern {
-                        kind: ast::PatternKind::Variant {
-                            path: vec![v.name.clone()],
-                            args: Vec::new(),
-                        },
-                        span,
-                    },
-                    guard: None,
-                    body: block(vec![int(i as i64)]),
-                })
-                .collect();
-            let ord = ex(ExprKind::Match {
-                scrutinee: Box::new(this()),
-                arms: ords,
-            });
-            let param = |n: &str, ty| ast::Param {
-                mutable: false,
-                variadic: false,
-                lazy: false,
-                named_only: false,
-                label: None,
-                name: name(n),
-                ty,
-                default: None,
-                span,
-            };
-            let member = |getter: bool, n: &str, params, ret, body| ast::Stmt {
-                kind: StmtKind::Fn(ast::FnDecl {
-                    name: name(n),
                     generics: Vec::new(),
                     bounds: Vec::new(),
                     params,
                     ret: Some(ret),
+                    yields: false,
                     lends: None,
                     uses: Vec::new(),
-                    body,
-                    sig_span: span,
-                }),
-                span,
-                decorators: (getter.then(|| marker(Mark::Get, span)))
-                    .into_iter()
-                    .collect(),
-                public: false,
+                    body: BodyForm::Synth(body),
+                    span,
+                }
             };
-            let body = vec![
-                member(true, &p.count, Vec::new(), int_ty(), FnBody::Expr(int(n))),
-                member(
-                    false,
-                    &p.nth,
-                    vec![param("k", Some(int_ty()))],
-                    enum_ty(),
-                    FnBody::Block(block(vec![checked, nth])),
-                ),
-                member(
-                    true,
-                    &p.ord,
-                    vec![param("self", None)],
-                    int_ty(),
-                    FnBody::Expr(ord),
-                ),
-            ];
-            let domain = stmt(StmtKind::Impl {
-                trait_name: Some(ty(&p.tr, Vec::new())),
-                target: enum_ty(),
-                bounds: Vec::new(),
-                body: ast::Block { stmts: body, span },
-            });
-            out.push((item.clone(), e.name.text.clone(), domain));
-            // An enum's variants are in declaration order (R04.2.31).
-            if let Some(o) = &p.order {
-                let ordered = stmt(StmtKind::Impl {
-                    trait_name: Some(ty(o, Vec::new())),
-                    target: enum_ty(),
-                    bounds: Vec::new(),
-                    body: ast::Block {
-                        stmts: Vec::new(),
-                        span,
-                    },
-                });
-                out.push((item.clone(), e.name.text.clone(), ordered));
-            }
+        let imp = |tr: TyForm, for_: TyForm, methods: Vec<FnForm>| ImplForm {
+            attrs: Vec::new(),
+            generics: Vec::new(),
+            bounds: Vec::new(),
+            trait_: Some(tr),
+            self_ty: for_,
+            assoc: Vec::new(),
+            methods,
+            derived: false,
+            span,
+        };
+        let name = syms.text(e.name).to_string();
+        let to_int = func(
+            false,
+            method,
+            vec![param(this, None)],
+            int.clone(),
+            SynthBody::EnumToInt(variants.clone()),
+        );
+        let to_enum = func(
+            false,
+            method,
+            vec![param(this, None)],
+            enum_ty.clone(),
+            SynthBody::IntToEnum {
+                check,
+                variants: variants.clone(),
+            },
+        );
+        out.push((
+            item.clone(),
+            name.clone(),
+            imp(
+                TyForm::Named(tr, vec![int.clone()]),
+                enum_ty.clone(),
+                vec![to_int],
+            ),
+        ));
+        out.push((
+            item.clone(),
+            name.clone(),
+            imp(
+                TyForm::Named(tr, vec![enum_ty.clone()]),
+                int.clone(),
+                vec![to_enum],
+            ),
+        ));
+        let Some(p) = positions else {
+            continue;
+        };
+        let (count, nth, ord) = (
+            syms.intern(&p.count),
+            syms.intern(&p.nth),
+            syms.intern(&p.ord),
+        );
+        let methods = vec![
+            func(
+                true,
+                count,
+                Vec::new(),
+                int.clone(),
+                SynthBody::EnumCount(variants.len()),
+            ),
+            func(
+                false,
+                nth,
+                vec![param(k, Some(int.clone()))],
+                enum_ty.clone(),
+                SynthBody::IntToEnum {
+                    check,
+                    variants: variants.clone(),
+                },
+            ),
+            func(
+                true,
+                ord,
+                vec![param(this, None)],
+                int.clone(),
+                SynthBody::EnumToInt(variants.clone()),
+            ),
+        ];
+        let domain = syms.intern(&p.tr);
+        out.push((
+            item.clone(),
+            name.clone(),
+            imp(TyForm::Named(domain, Vec::new()), enum_ty.clone(), methods),
+        ));
+        // An enum's variants are in declaration order (R04.2.31).
+        if let Some(o) = &p.order {
+            let o = syms.intern(o);
+            out.push((
+                item.clone(),
+                name.clone(),
+                imp(TyForm::Named(o, Vec::new()), enum_ty.clone(), Vec::new()),
+            ));
         }
     }
     out
@@ -1484,4 +1366,12 @@ pub enum SynthBody {
         count: Sym,
         fields: Vec<Sym>,
     },
+    /// `Int(e)` and a payload-free enum's rank as a domain: the variant's position in
+    /// declaration order (R02.7, R04.2.22).
+    EnumToInt(Vec<Sym>),
+    /// `E(x)` and the enum's `nth(k)`: `x` checked through the `@role(variant_check)` fn to be
+    /// in `0..n`, then the variant at that position (R02.7, R04.2.22).
+    IntToEnum { check: Sym, variants: Vec<Sym> },
+    /// A payload-free enum's size as a domain: its number of variants (R04.2.22).
+    EnumCount(usize),
 }
