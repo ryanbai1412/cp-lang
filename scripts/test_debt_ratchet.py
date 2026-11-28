@@ -2713,5 +2713,27 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_cases_removed(root, "main"), [])
 
 
+class CiOnlyCountersTest(unittest.TestCase):
+    def test_a_counter_left_to_ci_is_never_tightened_from_its_absence(self) -> None:
+        self.assertIn("explain_copy_mismatches", dr.CI_ONLY)
+        self.assertNotIn("explain_copy_mismatches",
+                         dr.improved({"rs_file_size_allowlist": {}}, {"explain_copy_mismatches": 3}))
+        self.assertEqual(dr.improved({"rs_file_size_allowlist": {}, "explain_copy_mismatches": 1},
+                                     {"explain_copy_mismatches": 3}), ["explain_copy_mismatches"])
+
+    def test_a_local_check_skips_the_ci_only_counters(self) -> None:
+        seen = {}
+        def measure(root, max_lines, only=None):
+            seen["only"] = only
+            raise SystemExit(0)
+        with mock.patch.object(dr, "measure", measure), mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CI", None)
+            os.environ.pop("CPL_RATCHET_ALL", None)
+            with self.assertRaises(SystemExit):
+                dr.main(["--check"])
+        self.assertTrue(seen["only"])
+        self.assertFalse(set(dr.CI_ONLY) & seen["only"])
+
+
 if __name__ == "__main__":
     unittest.main()

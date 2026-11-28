@@ -2431,7 +2431,9 @@ def explain_copy_mismatches(root: Path) -> list[str]:
     # cpl embeds std, so its bytes, the counter's rules and a case's text decide the row:
     # land.sh's re-measures after each lost push race rerun a cpl they already ran.
     binary = hashlib.sha256(Path(cpl).read_bytes() + Path(explain_copies.__file__).read_bytes()).hexdigest()[:16]
-    cache_path = root / "target" / "explain-copies-cache" / f"{binary}.json"
+    # In the common git dir, so the scratch worktree that measures main reads every land's rows.
+    common = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir", env=_git_env())
+    cache_path = (Path(common[0]) if common else root / "target") / "explain-copies-cache" / f"{binary}.json"
     try:
         cache = json.loads(cache_path.read_text())
     except (OSError, ValueError):
@@ -2621,6 +2623,11 @@ def _built_cpl(root: Path) -> Path:
     """`corpus.current_cpl`: a stale cpl measures the code it was built from, so with none
     current it raises, naming the build command, and never counts."""
     cpl, why = _corpus().current_cpl(root)
+    if why and not os.environ.get("CPL") and not os.environ.get("CI"):
+        # A stale cpl after a pull or a rebase is the usual case: an incremental build
+        # (cargo's lock serialises the forked counters) brings it current.
+        subprocess.run(["cargo", "build", "-q", "-p", "cpl-cli"], cwd=root, capture_output=True)
+        cpl, why = _corpus().current_cpl(root)
     if why:
         raise MeasureError(f"cpl: {why}")
     return cpl
@@ -4806,6 +4813,8 @@ def _count(name: str, root: Path) -> int:
     return len(COUNTERS[name][1](root))
 
 
+CI_ONLY = ("explain_copy_mismatches",)
+
 SLOW_COUNTERS = ("explain_copy_mismatches", "std_model_gaps", "near_dup_fns", "corpus_no_statement", "unwrap_input", "written_twice",
                  "corpus_walkers")
 
@@ -4869,7 +4878,7 @@ def improved(actual: dict, baseline: dict) -> list[str]:
     names = []
     if actual.get("rs_file_size_allowlist") != baseline.get("rs_file_size_allowlist", actual.get("rs_file_size_allowlist")):
         names.append("rs_over_cap")
-    names += [n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and int(actual.get(n, 0)) < int(baseline[n])]
+    names += [n for n, (_, _, g) in COUNTERS.items() if g and n in baseline and n in actual and int(actual[n]) < int(baseline[n])]
     if any(n < baseline.get("register_rows_by_domain", {}).get(d, n)
            for d, n in actual.get("register_rows_by_domain", {}).items()):
         names.append("register_rows_by_domain")
@@ -5414,7 +5423,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     baseline = json.loads(args.ratchet.read_text(encoding="utf-8"))
-    actual = measure(args.root, max_lines)
+    # Off CI, the counters that run cpl over every case are left to CI on each main tip
+    # (culprit.yml names the commit): they cost minutes whenever cpl changed, and a case
+    # measurement never blocks a land.
+    local = None if os.environ.get("CI") or os.environ.get("CPL_RATCHET_ALL") else set(COUNTERS) - set(CI_ONLY)
+    actual = measure(args.root, max_lines, local)
     errors, warnings, notes = evaluate(actual, baseline)
     # On main, HEAD is origin/main: CI names the tip it last saw instead.
     ref = os.environ.get("CPL_RATCHET_BASE") or "origin/main"
@@ -5454,7 +5467,7 @@ def main(argv: list[str] | None = None) -> int:
     for e in errors:
         print(f"debt-ratchet: ERROR: {e}", file=sys.stderr)
     counts = ", ".join(
-        f"{k}={actual[k]}/{baseline[k]}" for k, (_, _, g) in COUNTERS.items() if g and k in baseline
+        f"{k}={actual[k]}/{baseline[k]}" for k, (_, _, g) in COUNTERS.items() if g and k in baseline and k in actual
     )
     print(
         f"debt-ratchet: rs>{max_lines}={len(actual['rs_file_size_allowlist'])} "
