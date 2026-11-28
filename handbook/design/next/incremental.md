@@ -106,6 +106,60 @@ Order: after step 1 (the views), before `body(ItemId)` caches across
 programs. The test checks two programs over std in one database and
 counts zero std `body` or `signature` recomputations for the second.
 
+## Std's answers on disk
+
+A run starts in under 300 ms at p95 (END-STATE). Checking all of std on
+every start takes 1.15 s on `print(1)` (lane F, 2026-11-27), so std's
+answers are kept on disk and read instead of computed. The store is part
+of the database, not a CLI-side std blob, so the CLI, the language
+server and the judge read the same one (coordinator, 2026-11-27).
+
+Order:
+
+1. Std is db queries: `Source(std file)` inputs, then `decls`,
+   `signature(ItemId)`, `body(ItemId)` and `generic(ItemId)` (the joint
+   decls and check landing). `print(1)` then checks only the std bodies
+   lower reaches.
+2. Measure start after step 1 alone and write the number here, so the
+   store's share is known.
+3. The store, if step 2 is still over 300 ms.
+
+The store:
+
+- A query opts in with `Persist: Query`, whose key and value encode and
+  decode. `Db::open_store(path)` attaches one file.
+- The file is `<cache dir>/cpl/std-<build id>-<std hash>.bin`; the
+  cache dir is `$CPL_CACHE` or the platform's. The build id is the
+  compiler's commit and a hash of uncommitted changes, and the std hash
+  is over std's file texts. A new compiler or another std is another
+  file, so a stale file is never read. Writing keeps the newest 4 files.
+- An entry is `(query name, key) -> (value, deps)`. Its deps are the
+  inputs it read, with each one's content hash, and the queries it read,
+  with each answer's hash. An entry seeds the database's memo as
+  verified only while every input's hash matches the current input;
+  otherwise it is computed, with early cutoff, so editing one file of a
+  `--std` directory reuses the rest.
+- A file whose magic, format version or checksum is wrong, or that does
+  not decode, is discarded and its answers computed. The store never
+  causes an error.
+- The file is a header (magic, format version, build id, std hash), an
+  index from `(query, key hash)` to offset, then the entries. An entry
+  is decoded when a query first asks for it. It is read whole; `mmap`
+  comes only if a measurement says reading is the cost, through
+  `memmap2`. A write goes to a temporary file renamed into place, so
+  runs at the same time are safe.
+- Encoding is `serde` and `postcard`. It is deterministic: maps are
+  encoded sorted, never in `HashMap` order, so two runs write the same
+  bytes, and the determinism test covers the file.
+- A persisted value holds only stable ids: `ItemId`, item-relative
+  spans, and `Sym`s resolved through the interner persisted with them;
+  never an arena index, a pointer or an `Rc`'s identity. A test fails if
+  a `Persist` value type holds a process-local handle.
+
+Tests, in the commit tier: a session in a fresh process over a written
+store computes no std `decls`, `signature` or `body` (by
+`Db::computed`); a corrupted file gives the same answers as no file.
+
 ## Diagnostics
 
 Each query returns its diagnostics with its answer (contract 9). The
