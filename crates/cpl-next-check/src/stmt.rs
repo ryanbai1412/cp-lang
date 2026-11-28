@@ -279,7 +279,7 @@ impl<'a> Cx<'a> {
             body,
         });
     }
-    pub(super) fn block(&mut self, b: &ast::Block, want: Option<&Ty>) -> TExpr {
+    pub(super) fn block(&mut self, b: &next::Block, want: Option<&Ty>) -> TExpr {
         self.b.scopes.push(HashMap::new());
         let mut out = Vec::new();
         let mut value = None;
@@ -694,7 +694,7 @@ impl<'a> Cx<'a> {
             }
         }
     }
-    pub(super) fn stmt(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
+    pub(super) fn stmt(&mut self, s: &next::Stmt, out: &mut Vec<TStmt>) {
         let (mark, at) = (self.b.list_doms.len(), out.len());
         let outer = std::mem::replace(&mut self.b.rhs_extent, s.rhs_extent());
         self.stmt_kind(s, out);
@@ -1797,18 +1797,18 @@ impl<'a> Cx<'a> {
         Some(fs)
     }
 
-    pub(super) fn body_ty(&mut self, t: &ast::Type, span: Span, out: &mut Vec<TStmt>) -> Ty {
-        self.body_ty_open(t, &[], span, out)
+    pub(super) fn body_ty(&mut self, t: &next::Type, out: &mut Vec<TStmt>) -> Ty {
+        self.body_ty_open(t, &[], out)
     }
     /// `t` read with `holes` as type parameters past the fn's own, each then a fresh variable
     /// for the checker to infer.
     pub(super) fn body_ty_open(
         &mut self,
-        t: &ast::Type,
+        t: &next::Type,
         holes: &[String],
-        span: Span,
         out: &mut Vec<TStmt>,
     ) -> Ty {
+        let span = self.at(t);
         let t = self.name_ranges(t, span, out);
         let mut generics = self.b.generics.clone();
         generics.extend(holes.iter().cloned());

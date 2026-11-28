@@ -927,7 +927,12 @@ impl<'a> Cx<'a> {
 
     /// The value of `e`. One read from a slot of a range type is an `Int` (R03.1.4), unless it
     /// goes straight into a slot of the same range.
-    pub(super) fn expr(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
+    /// Where node `n` is written, counted from its item's start, as every span in a body is.
+    pub(super) fn at(&self, n: &impl AstNode) -> Span {
+        n.syntax().span()
+    }
+
+    pub(super) fn expr(&mut self, e: &next::Expr, want: Option<&Ty>) -> TExpr {
         if self.b.rhs_extent.take_if(|at| *at == e.span).is_some() {
             return self.extent(e, want);
         }

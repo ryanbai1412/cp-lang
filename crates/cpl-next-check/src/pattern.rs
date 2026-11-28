@@ -86,7 +86,7 @@ impl Cx<'_> {
     /// Whether `head(p)` names a core fn a pattern may be headed by, whose result is the
     /// optional it is a present value of (`some(p)`).
     /// Whether `pat` is written against an optional itself (`Some(p)`, `None`), not its value.
-    pub(super) fn optional_pattern(&self, pat: &ast::Pattern) -> bool {
+    pub(super) fn optional_pattern(&self, pat: &next::Pattern) -> bool {
         match &pat.kind {
             PatternKind::Wildcard | PatternKind::Error => true,
             PatternKind::Literal(e) => matches!(e.kind, ExprKind::None),
@@ -662,7 +662,7 @@ impl Cx<'_> {
             _ => None,
         }
     }
-    pub(super) fn space(&self, pat: &ast::Pattern, t: &Ty) -> Space {
+    pub(super) fn space(&self, pat: &next::Pattern, t: &Ty) -> Space {
         match &pat.kind {
             PatternKind::Wildcard | PatternKind::Error | PatternKind::Domain(_) => Space::Any,
             PatternKind::Name(n) => match self.enum_of(t) {

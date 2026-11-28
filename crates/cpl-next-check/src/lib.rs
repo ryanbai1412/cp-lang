@@ -13,6 +13,7 @@ use cpl_next_ir::build::{Build, CheckName, Checks};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::{ir, ops, ty};
+use cpl_next_syntax::ast::{self as next, AstNode};
 use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
     TypeKind, UnOp,
