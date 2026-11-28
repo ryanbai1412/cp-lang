@@ -2360,6 +2360,28 @@ class DebtRatchetTest(unittest.TestCase):
                              [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 4, 7, 12, 15)])
             self.assertEqual(len(dr.next_cpp_runtime_lines(root)), 2)
 
+    def test_whole_program_inputs_count_holders_their_fields_and_their_methods(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-check/src"
+            src.mkdir(parents=True)
+            (src / "lib.rs").write_text(
+                "struct Front {\n    d: Decls,\n    items: Vec<Item>,\n}\n"
+                "struct Cx<'a> {\n    f: &'a Front,\n}\n"
+                "impl<'a> Cx<'a> {\n    fn a(&self) {}\n    fn new(f: &'a Front) -> Self {}\n"
+                "    fn b(\n        &mut self,\n    ) {}\n}\n"
+                "impl<'a> Signatures for Cx<'a> {\n    fn c(&self) {}\n}\n"
+                "fn walk(cx: &mut Cx<'_>) {}\n"
+                "impl Decls {\n    fn sig(&self) {}\n}\n"
+                "struct Tidy {\n    ty: TypedFn,\n}\n"
+                "fn make(n: usize) -> Front {}\n"
+                "use cpl_next_decls::decls::Decls;\n"
+                "struct Pair(Generic);\n"
+                "struct Sig {\n    ret: ast::Front,\n}\n"
+            )
+            self.assertEqual(dr.next_whole_program_inputs(root),
+                             [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (2, 6, 9, 10, 11, 16, 18, 27)])
+
     def test_audit_counters_find_soundness_core_checks_ownership_and_foreign_deps(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

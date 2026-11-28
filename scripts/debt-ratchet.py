@@ -1339,19 +1339,102 @@ def next_core_privilege(root: Path) -> list[str]:
 NEXT_WHOLE_PROGRAM_RE = re.compile(r"&(?:'\w+\s+)?(?:mut\s+)?(?:\w+::)*(?:Decls|Typed|Loaded|Whole|Generic)\b")
 
 
+NEXT_WHOLE_PROGRAM_TYPES = ("Decls", "Typed", "Loaded", "Whole", "Generic")
+NEXT_OWNED_WHOLE_RE = re.compile(
+    r"\b\w+\s*(?<!:):(?!:)\s*(?:[\w:]+<\s*)*(?:\w+::)*(?:%s)\b(?!\s*(?:::|\{|\())"
+    % "|".join(NEXT_WHOLE_PROGRAM_TYPES))
+NEXT_STRUCT_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?struct\s+(\w+)")
+NEXT_IMPL_RE = re.compile(r"^\s*impl\b(?:\s*<[^{]*?>)?\s+(?:[\w:<>,' &]+?\s+for\s+)?(?:\w+::)*(\w+)\b")
+NEXT_FN_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:const\s+|async\s+|unsafe\s+)*fn\s+\w+")
+
+
+def _block(lines: list[str], start: int) -> int:
+    """The index of the line closing the `{` block opened on `lines[start]`, or `start` for an
+    item that ends at its `;` first."""
+    depth = 0
+    for j in range(start, len(lines)):
+        text = lines[j].split("//")[0]
+        if depth == 0 and "{" not in text and text.rstrip().endswith(";"):
+            return j
+        depth += text.count("{") - text.count("}")
+        if depth <= 0 and "{" in "".join(lines[start:j + 1]):
+            return j
+    return len(lines) - 1
+
+
 def next_whole_program_inputs(root: Path) -> list[str]:
-    """Each place the new pipeline takes a whole-program value by reference: a fn parameter of
-    any visibility, a struct field, a closure parameter, anything typed `&Decls`, `&Typed`,
-    `&Loaded`, `&Whole` or `&Generic` (shortcut audit S2). The incremental core
-    (handbook/design/next/incremental.md) calls every layer per item over small views, so this
-    reaches 0: what is left today is the checker, lowering, ownership and link, until each takes
-    the views."""
-    out = []
+    """Each place the new pipeline holds a whole-program value (shortcut audit S2, condition 2
+    of the 15:00 review): `Decls`, `Typed`, `Loaded`, `Whole` or `Generic` by reference
+    anywhere, or owned as a fn parameter, closure parameter or struct field; a field or
+    parameter whose type is a struct holding one (transitively); and each method taking `self`
+    of such a struct, which reaches the whole program through `self`. The five types' own
+    methods are the value itself, not a reader of it, and a fn returning one produces it. The
+    incremental core (handbook/design/next/incremental.md) calls every layer per item over
+    small views, so this reaches 0: a context that holds views instead stops counting."""
+    files = {}
     for p in _rs_files(root, *_next_srcs(root), tests=False):
-        rel = _rel(root, p)
-        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1)
-                if not line.lstrip().startswith("//") and NEXT_WHOLE_PROGRAM_RE.search(line)]
-    return out
+        files[_rel(root, p)] = list(_lines(p))
+    def code(line: str) -> str:
+        return "" if line.lstrip().startswith("//") else line.split("->")[0]
+    structs, impls = [], []
+    for rel, lines in files.items():
+        for i, line in enumerate(lines):
+            if line.lstrip().startswith("//"):
+                continue
+            if m := NEXT_STRUCT_RE.match(line):
+                structs.append((m.group(1), rel, i, _block(lines, i)))
+            elif m := NEXT_IMPL_RE.match(line):
+                impls.append((m.group(1), rel, i, _block(lines, i)))
+    holders: dict[str, set[str]] = {}
+    def paths(rel: str) -> set[str]:
+        """The path segments that may qualify a struct defined in `rel`: its file's module, its
+        crate's name and the short name the pipeline imports it by."""
+        krate = rel.split("/")[1].replace("-", "_")
+        return {Path(rel).stem, krate, krate.removeprefix("cpl_next_"), "crate", "self", "super"}
+    def holds(line: str) -> bool:
+        text = code(line)
+        if NEXT_WHOLE_PROGRAM_RE.search(line) and text.strip() or NEXT_OWNED_WHOLE_RE.search(text):
+            return True
+        at = re.search(r"(?<!:):(?!:)", text)
+        if not holders or not at:
+            return False
+        names = "|".join(sorted(holders))
+        return any(m.group(1) is None or m.group(1) in holders[m.group(2)] for m in re.finditer(
+            r"(?:(\w+)::)?\b(%s)\b(?!\s*(?:::|\{|\())" % names, text[at.end():]))
+    def tuple_holds(first: str) -> bool:
+        if "(" not in first or "{" in first:
+            return False
+        inner = first[first.index("(") + 1:first.rindex(")") if ")" in first else None]
+        return any(holds("x: " + f.strip().removeprefix("pub ")) for f in inner.split(","))
+    grew = True
+    while grew:
+        grew = False
+        for name, rel, i, j in structs:
+            if name in holders or name in NEXT_WHOLE_PROGRAM_TYPES:
+                continue
+            if any(holds(line) for line in files[rel][i + 1:j + 1]) or tuple_holds(files[rel][i]):
+                holders.setdefault(name, set()).update(paths(rel))
+                grew = True
+    own = {(rel, k) for name, rel, i, j in structs + impls if name in NEXT_WHOLE_PROGRAM_TYPES
+           for k in range(i, j + 1)}
+    out = {(rel, k) for rel, lines in files.items() for k, line in enumerate(lines)
+           if (rel, k) not in own and holds(line)}
+    out |= {(rel, i) for name, rel, i, j in structs if name in holders and tuple_holds(files[rel][i])}
+    for name, rel, i, j in impls:
+        if name not in holders:
+            continue
+        lines = files[rel]
+        for k in range(i + 1, j + 1):
+            if not NEXT_FN_RE.match(lines[k]):
+                continue
+            sig = ""
+            for line in lines[k:j + 1]:
+                sig += code(line)
+                if "{" in line or line.rstrip().endswith(";"):
+                    break
+            if re.search(r"\bself\b", sig):
+                out.add((rel, k))
+    return [f"{rel}:{k + 1}" for rel, k in sorted(out)]
 
 
 def _next_file_lines(root: Path, rel: str) -> list[str]:
@@ -4640,7 +4723,7 @@ COUNTERS = {
     "next_error_typed": ("programs cases linking an instance that holds an error type (Core)", next_error_typed, True),
     "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
-    "next_whole_program_inputs": ("new-pipeline params, fields and closures taking a whole-program value by reference (Core)", next_whole_program_inputs, True),
+    "next_whole_program_inputs": ("new-pipeline params, fields, closures and holder-struct methods that hold a whole-program value (Core)", next_whole_program_inputs, True),
     "next_handoff_side_fields": ("fields reaching link beside the IR, through any struct or tuple of the handoff (Core)", next_handoff_side_fields, True),
     "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
     "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),
