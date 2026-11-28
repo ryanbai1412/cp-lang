@@ -30,7 +30,7 @@ const RUNTIME_HEAD: &str = r#"#include <cstdint>
 #include <csignal>
 #include <cstring>
 #include <unistd.h>
-#include <climits>
+#include <new>
 #include <vector>
 #include <string>
 struct cpl_unit {};
@@ -217,6 +217,49 @@ struct Emit<'a> {
     lines: &'a [u32],
 }
 
+/// A union's C++ body: the tag, then one member's payload in storage shared by all of them, as
+/// the layout table lays it out. A union whose members can hold a handle (`owns`) copies,
+/// moves and destroys the member its tag names.
+fn tagged(n: &str, ms: &[String], owns: bool) -> String {
+    if ms.is_empty() {
+        return "int64_t tag;".to_string();
+    }
+    let each = |f: &dyn Fn(usize) -> String| {
+        let cases: Vec<String> = (0..ms.len())
+            .map(|i| format!("case {i}: {} break;", f(i)))
+            .collect();
+        format!("switch (tag) {{ {} }}", cases.join(" "))
+    };
+    let mut b = String::new();
+    for (i, m) in ms.iter().enumerate() {
+        put!(b, "using M{i} = {m}; ");
+    }
+    let vs: Vec<String> = (0..ms.len()).map(|i| format!("M{i} v{i};")).collect();
+    put!(
+        b,
+        "int64_t tag; union {{ {} }}; {n}() : tag(0), v0() {{}}",
+        vs.join(" ")
+    );
+    let clear = if owns { "u.clear(); " } else { "" };
+    for i in 0..ms.len() {
+        put!(b, " static {n} m{i}(const M{i}& x) {{ {n} u; {clear}u.tag = {i}; new (&u.v{i}) M{i}(x); return u; }}");
+    }
+    if owns {
+        let copy = each(&|i| format!("new (&v{i}) M{i}(o.v{i});"));
+        let take = each(&|i| format!("new (&v{i}) M{i}(static_cast<M{i}&&>(o.v{i}));"));
+        put!(b, " {n}(const {n}& o) : tag(o.tag) {{ {copy} }}");
+        put!(b, " {n}({n}&& o) noexcept : tag(o.tag) {{ {take} }}");
+        put!(b, " {n}& operator=(const {n}& o) {{ if (this != &o) {{ clear(); tag = o.tag; {copy} }} return *this; }}");
+        put!(b, " {n}& operator=({n}&& o) noexcept {{ if (this != &o) {{ clear(); tag = o.tag; {take} }} return *this; }}");
+        put!(
+            b,
+            " ~{n}() {{ clear(); }} void clear() {{ {} }}",
+            each(&|i| format!("v{i}.~M{i}();"))
+        );
+    }
+    b
+}
+
 /// The program as C++. A trap prints the line of `lines` its origin is on.
 pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32], limits: &Limits) -> String {
     let mut e = Emit {
@@ -271,14 +314,11 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32], limits: &Limits) ->
         match &lays.shape[l] {
             Shape::Union(ms) => {
                 let ms: Vec<String> = ms.iter().map(|m| part(*m)).collect();
-                let mut body = String::from("int64_t tag;");
-                for (i, m) in ms.iter().enumerate() {
-                    put!(body, " {m} v{i};");
-                }
-                for (i, m) in ms.iter().enumerate() {
-                    put!(body, " static {n} m{i}(const {m}& x) {{ {n} u{{}}; u.tag = {i}; u.v{i} = x; return u; }}");
-                }
-                put_line!(s, "struct {n} {{ {body} }};");
+                put_line!(
+                    s,
+                    "struct {n} {{ {} }};",
+                    tagged(&n, &ms, lays.flat[l].is_none())
+                );
             }
             Shape::Struct(fs) => {
                 let fs: Vec<String> = (fs.iter().enumerate())
