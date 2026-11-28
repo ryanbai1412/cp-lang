@@ -108,6 +108,17 @@ def restate(baseline, old, new):
     return min(baseline, new) if old > baseline else baseline + new - old
 
 
+def merged(counts, name, sides, moved, measured):
+    """The rebased tip's baseline. When the commit landing brings the tip's rule, its own number
+    was measured on its old base, so the tip's measure is the baseline: 0dbb0c6ba kept its 597
+    though the rebased tip measured 603, and main sat 6 over. Otherwise main changed the rule:
+    restate each side the rule moved under, and keep the lower."""
+    if "before" not in moved:
+        return measured["tip"]
+    return max(0, min(restate(int(counts[s][name]), measured[s], measured["tip"]) if s in moved
+                      else int(counts[s][name]) for s in sides))
+
+
 def measure_all(mods, jobs, root):
     """`measure` for each job, in forked processes: serially a rule change reaching a shared
     helper re-measured dozens of counters one by one. A refusal comes back as its exception."""
@@ -155,8 +166,7 @@ def main(argv):
             return 1
         if measured is None:
             continue
-        value = max(0, min(restate(int(counts[s][name]), measured[s], measured["tip"]) if s in moved
-                           else int(counts[s][name]) for s in sides))
+        value = merged(counts, name, sides, moved, measured)
         if value != current[name]:
             restated.append(f"{name} {current[name]} -> {value}")
             current[name] = value

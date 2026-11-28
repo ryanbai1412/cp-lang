@@ -62,3 +62,14 @@ class RestateTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_a_commit_bringing_the_rule_takes_the_tips_measure(self):
+        counts = {"before": {"c": 597}, "upstream": {"c": 59}}
+        sides = ["before", "upstream"]
+        self.assertEqual(rr.merged(counts, "c", sides, ["upstream"], {"upstream": 59, "tip": 603}), 603)
+        self.assertEqual(rr.merged(counts, "c", sides, ["upstream"], {"upstream": 59, "tip": 590}), 590)
+
+    def test_a_rule_main_changed_restates_this_commits_number(self):
+        counts = {"before": {"c": 150}, "upstream": {"c": 147}}
+        got = rr.merged(counts, "c", ["before", "upstream"], ["before"], {"before": 155, "tip": 147})
+        self.assertEqual(got, 147)
