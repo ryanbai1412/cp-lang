@@ -22,8 +22,8 @@ impl<'a> Cx<'a> {
         // (`s.keys`) walks as the value it returns.
         let yields = |tr: &TraitRef, m: &str| {
             self.d
-                .member(&self.d.t(tr.tr).methods, m)
-                .is_some_and(|m| self.d.f(m).region.is_some())
+                .member(&self.items.t(tr.tr).methods, m)
+                .is_some_and(|m| self.items.f(m).region.is_some())
         };
         call = match call.kind {
             TK::CallTrait {
@@ -37,7 +37,7 @@ impl<'a> Cx<'a> {
             }
             kind => TExpr { kind, ..call },
         };
-        if !matches!(&call.kind, TK::Call { f, .. } if self.d.f(f.decl).region.is_some()) {
+        if !matches!(&call.kind, TK::Call { f, .. } if self.items.f(f.decl).region.is_some()) {
             // A type without its own `each` walks through its `Seq` impl (R07.1.1).
             let rt = self.shallow(&call.ty);
             if let Ty::Param(p) = rt {
@@ -58,7 +58,7 @@ impl<'a> Cx<'a> {
         let TK::Call { f, recv, args } = call.kind else {
             return;
         };
-        let Some((false, elem)) = self.d.f(f.decl).region.clone() else {
+        let Some((false, elem)) = self.items.f(f.decl).region.clone() else {
             return self.err(
                 span,
                 Msg::verdict(
@@ -88,13 +88,13 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) {
-        let Some(m) = self.d.member(&self.d.t(tr.tr).methods, &method) else {
+        let Some(m) = self.d.member(&self.items.t(tr.tr).methods, &method) else {
             return self.err(
                 span,
                 Msg::internal("a bound's walk names no fn of its trait"),
             );
         };
-        let Some((false, elem)) = self.d.f(m).region.clone() else {
+        let Some((false, elem)) = self.items.f(m).region.clone() else {
             return self.err(
                 span,
                 Msg::verdict(
@@ -146,7 +146,7 @@ impl<'a> Cx<'a> {
                 ),
             );
         };
-        let Some((false, elem)) = self.d.f(m).region.clone() else {
+        let Some((false, elem)) = self.items.f(m).region.clone() else {
             return self.err(
                 span,
                 Msg::verdict(

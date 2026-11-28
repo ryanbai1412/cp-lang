@@ -251,6 +251,8 @@ impl Parser<'_> {
     pub(super) fn params(&mut self) {
         self.start(NodeKind::ParamList);
         if self.want(T::LParen, "`(` and the parameters") {
+            // `(; c)` has no positional params.
+            self.eat(T::Semi);
             while !matches!(self.peek(), T::RParen | T::Newline | T::Eof | T::Dedent) {
                 self.param();
                 if !(self.eat(T::Comma) || self.eat(T::Semi)) {

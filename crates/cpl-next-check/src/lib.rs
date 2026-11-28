@@ -586,7 +586,7 @@ struct Body {
     selves: Vec<(String, LambdaId, usize)>,
     /// The nested `fn`s of the blocks being checked, by the offset of their statement; and the
     /// one whose lambda is being made.
-    group: Vec<(u32, String, LambdaId)>,
+    group: Vec<(u32, Option<String>, LambdaId)>,
     /// Each use of a nested `fn` above its statement, with the names set at that point: every
     /// capture of the fn must be among them (R06.1.7).
     ahead: Vec<(LambdaId, String, Span, std::collections::BTreeSet<VarRef>)>,
@@ -684,21 +684,35 @@ pub enum ConstError {
     Failed(Box<Msg>),
 }
 
-/// `roots`: library modules whose every fn is checked as the program's are, reached or not.
+/// The items a check covers.
+#[derive(Clone, Copy, Default)]
+pub struct Program<'a> {
+    /// The program's own items, in order.
+    pub main: &'a [ItemId],
+    /// Values bound after them, each a top-level `let` of its name.
+    pub values: &'a [(ItemId, String, next::Expr)],
+    /// Library modules whose every fn is checked as the program's are, reached or not.
+    pub roots: &'a [ModId],
+}
+
+/// `program.roots`: library modules whose every fn is checked as the program's are, reached or not.
 /// A result's `_` that is no domain is fixed by its fn's body (R02.9.3): a call checked before
 /// that body is checked again, with each such result as the bodies fixed it.
 /// What bodies make is named as `prior` named it where they make it again: an edit leaves
 /// the bodies it does not touch typed the same (`Ids::default()` for a first check).
 pub fn check(
     d: &Decls,
-    main: &[ItemId],
-    values: &[(ItemId, String, next::Expr)],
+    program: Program,
     src: &crate::modules::Loaded,
     consts: &dyn Consts,
-    roots: &[ModId],
     build: Build,
     prior: &Ids,
 ) -> Typed {
+    let Program {
+        main,
+        values,
+        roots,
+    } = program;
     let Build { judge, checks } = build;
     let mut cx = Cx {
         memos: Vec::new(),

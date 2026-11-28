@@ -354,11 +354,12 @@ fn front(db: &Db, std: &Std, root: &FileId, judge: Option<&Judge>, checks: Check
     let values = consts::Evaluator::new(&d, &loaded, &main);
     let t = check::check(
         &d,
-        &main,
-        &[],
+        check::Program {
+            main: &main,
+            ..Default::default()
+        },
         &loaded,
         &values,
-        &[],
         Build {
             judge: judge.cloned(),
             checks,
@@ -428,11 +429,13 @@ pub(crate) fn std_unchecked(
             let values = consts::Evaluator::new(&d, &loaded, &main);
             let t = check::check(
                 &d,
-                &main,
-                &[],
+                check::Program {
+                    main: &main,
+                    values: &[],
+                    roots: &at.into_iter().collect::<Vec<_>>(),
+                },
                 &loaded,
                 &values,
-                &at.into_iter().collect::<Vec<_>>(),
                 Build {
                     judge: judge.cloned(),
                     checks,

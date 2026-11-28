@@ -235,6 +235,20 @@ fn texts(tokens: impl Iterator<Item = crate::tree::SyntaxToken>) -> Vec<String> 
 }
 
 #[test]
+fn a_leading_semicolon_makes_every_param_named_only() {
+    let [ast::Decl::Fn(f)] = &decls("fn g(; from: Str, base: Int = 10) -> Int: 0\n")[..] else {
+        panic!()
+    };
+    let p: Vec<_> = f.params().unwrap().params().collect();
+    let names: Vec<_> = p
+        .iter()
+        .map(|p| p.name().unwrap().text().to_string())
+        .collect();
+    assert_eq!(names, ["from", "base"]);
+    assert!(p.iter().all(|p| p.is_named_only()));
+}
+
+#[test]
 fn a_fn_signature_reads_through_its_views() {
     let src = "@inline\npub fn gcd<T: Eq + Ord, const N: Int = 3>(a: T, by step: T; mut k = 1, var xs: List<T>, ..rest: Int) -> lends(a) mut T uses io where T: Copy = a\n";
     let [ast::Decl::Fn(f)] = &decls(src)[..] else {

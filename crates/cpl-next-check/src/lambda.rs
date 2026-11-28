@@ -247,7 +247,7 @@ impl<'a> Cx<'a> {
             self.b.selves.push((name, id, depth));
         }
         for (_, name, sib) in &self.b.group {
-            if *sib != id && group.contains(sib) {
+            if let Some(name) = name.as_ref().filter(|_| *sib != id && group.contains(sib)) {
                 self.b.selves.push((name.clone(), *sib, depth));
             }
         }
@@ -414,29 +414,30 @@ impl<'a> Cx<'a> {
             let at = self.at(fd).start;
             if memo {
                 end_run(self, &mut run);
-                self.b.group.push((at, format!("{own}.body"), id));
+                self.b.group.push((at, None, id));
                 run.push(id);
                 end_run(self, &mut run);
                 continue;
             }
-            self.b.group.push((at, own, id));
+            self.b.group.push((at, Some(own), id));
             run.push(id);
         }
         end_run(self, &mut run);
     }
     /// `fn f(x: T) -> R: body` in a block is a lambda bound to `name` (R05.10): its own name,
-    /// or for a `@memo fn` the name of the body its wrapper calls.
+    /// or `None` for a `@memo fn`'s body, which only its wrapper calls.
     pub(super) fn nested_fn(
         &mut self,
         fd: &next::FnDecl,
-        name: &str,
+        name: Option<&str>,
         out: &mut Vec<TStmt>,
     ) -> Option<VarRef> {
         let span = self.at(fd);
+        let bound = name.unwrap_or("$body");
         if let Some(what) = nested_gap(fd) {
             let what = what.to_string();
             self.err(span, Unbuilt::NestedFn { what });
-            return Some(self.bind(name, Ty::Error));
+            return Some(self.bind(bound, Ty::Error));
         }
         let &(_, _, id) = self.b.group.iter().rev().find(|g| g.0 == span.start)?;
         let body = LamBody::Fn(fd.body()?);
@@ -449,12 +450,12 @@ impl<'a> Cx<'a> {
             })
             .collect();
         self.b.nested = Some(id);
-        self.b.recur = Some(name.to_string());
+        self.b.recur = name.map(str::to_string);
         let v = self.lambda_of(params, Some(ret), body, None, span);
         self.b.nested = None;
         self.b.recur = None;
-        let var = self.let_bind(name, false, v.ty.clone(), v, span, out);
-        if fd.name().is_none_or(|t| t.text() != name) {
+        let var = self.let_bind(bound, false, v.ty.clone(), v, span, out);
+        if fd.name().is_none_or(|t| Some(t.text()) != name) {
             match var {
                 VarRef::Local(l) => self.b.locals[l].synthetic = true,
                 VarRef::Global(g) => self.globals[g].synthetic = true,
@@ -536,7 +537,7 @@ impl<'a> Cx<'a> {
             return None;
         };
         let f = (self.d.fn_named(self.b.module, n)).filter(|_| self.lookup(n).is_none())?;
-        let fd = self.d.f(f);
+        let fd = self.items.f(f);
         if fd.params.len() <= ps.len() || fd.params[ps.len()..].iter().any(|p| p.default.is_none())
         {
             return None;
@@ -597,7 +598,7 @@ impl<'a> Cx<'a> {
             .d
             .fn_named(self.b.module, n)
             .filter(|_| self.declared(n))?;
-        let fd = self.d.f(d);
+        let fd = self.items.f(d);
         let rest = fd.params.get(ps.len()..).filter(|r| !r.is_empty())?;
         if !rest.iter().all(|p| p.default.is_some() || p.variadic)
             || fd.params[..ps.len()].iter().any(|p| p.variadic)
@@ -613,7 +614,7 @@ impl<'a> Cx<'a> {
         let Ty::Struct(d, ..) = self.shallow(t) else {
             return None;
         };
-        let s = self.d.s(d);
+        let s = self.items.s(d);
         let names = self.d.field_names(d);
         let positional = (names.iter().enumerate()).all(|(k, n)| *n == format!("_{k}"));
         (positional || s.record).then_some(names)

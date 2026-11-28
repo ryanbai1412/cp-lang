@@ -43,7 +43,7 @@ impl<'a> Cx<'a> {
                 synthetic: false,
             };
             // A top-level value (R02.10.3) fills the global made for it, found by item and Sym.
-            let sym = self.b.syms.of(&self.d.syms, name);
+            let sym = self.b.syms.of(&self.syms, name);
             let item = &self.b.item;
             let top = self
                 .d
@@ -253,7 +253,7 @@ impl<'a> Cx<'a> {
                 }
                 next::BlockEntry::Decl(next::Decl::Fn(f)) => {
                     let name = f.name().map_or_else(String::new, |t| t.text().to_string());
-                    self.nested_fn(f, &name, out);
+                    self.nested_fn(f, Some(&name), out);
                     continue;
                 }
                 next::BlockEntry::Decl(next::Decl::Domain(d)) => {
@@ -296,6 +296,13 @@ impl<'a> Cx<'a> {
                 continue;
             }
             if valued && i + 1 == entries.len() {
+                if let next::Stmt::If(x) = s {
+                    let unit = want.is_none_or(|w| self.shallow(w) == Ty::Unit);
+                    if !unit && x.else_clause().is_some() {
+                        let v = self.if_stmt(x, want);
+                        return Some(want.map_or(v.clone(), |w| self.coerce(v, w)));
+                    }
+                }
                 if let Some(e) = (match s {
                     next::Stmt::Expr(x) => Some(x),
                     _ => None,
@@ -650,7 +657,7 @@ impl<'a> Cx<'a> {
             return self.bind_unknown(p, mutable, out);
         };
         let names = self.d.field_names(s);
-        let record = self.d.s(s).record;
+        let record = self.items.s(s).record;
         if exact && record && names.len() != parts.len() {
             let (n, have) = (parts.len(), names.len());
             let code = cpl_diag::codes::TYPE_MISMATCH;
@@ -708,9 +715,9 @@ impl<'a> Cx<'a> {
             }
             // `tree.Pre` is the domain the whole value owns as its `tree.Pre`.
             if let (Some(n), Some(field)) = (bound, names.get(i)) {
-                let field = self.b.syms.intern(&self.d.syms, field);
-                let part = self.b.syms.intern(&self.d.syms, n.text());
-                let held = self.b.syms.intern(&self.d.syms, &held);
+                let field = self.b.syms.intern(&self.syms, field);
+                let part = self.b.syms.intern(&self.syms, n.text());
+                let held = self.b.syms.intern(&self.syms, &held);
                 self.hand_down(held, field, part);
             }
         }
@@ -1027,7 +1034,7 @@ impl<'a> Cx<'a> {
             .d
             .fn_named(self.b.module, &n)
             .filter(|_| self.declared(&n))?;
-        let fd = self.d.f(f);
+        let fd = self.items.f(f);
         let shape = fd.params.iter().all(|p| p.default.is_some()) && fd.generics.len() == 1;
         let args = c.args().map(|a| a.args().collect()).unwrap_or_default();
         (shape && fd.ret == Ty::Param(0)).then_some((n, targ, args))
@@ -1101,7 +1108,7 @@ impl<'a> Cx<'a> {
                 let p = self.place(place);
                 self.lend_out(p, &t, span, out);
             }
-            None if (self.b.decl).is_some_and(|f| self.d.f(f).lends.is_some()) => {
+            None if (self.b.decl).is_some_and(|f| self.items.f(f).lends.is_some()) => {
                 let ret = self.b.ret.clone();
                 let v = self.expr(place, Some(&ret));
                 let v = self.coerce(v, &ret);
@@ -1257,7 +1264,7 @@ impl<'a> Cx<'a> {
                 out.push(TStmt::Assert(c, msg, span, CheckKind::Assert));
             }
             next::Stmt::If(i) => {
-                let e = self.if_stmt(i);
+                let e = self.if_stmt(i, None);
                 out.push(TStmt::Expr(e));
             }
             next::Stmt::With(w) => self.with_stmt(w, out),
@@ -1386,7 +1393,7 @@ impl<'a> Cx<'a> {
             };
             let at = self.at(&value);
             let field = a.label().map(|n| n.text().to_string()).unwrap_or_default();
-            if !c.fields.iter().any(|x| self.d.syms.text(x.name) == field) {
+            if !c.fields.iter().any(|x| self.syms.text(x.name) == field) {
                 let code = cpl_diag::codes::UNKNOWN_ARG_NAME;
                 let msg =
                     Msg::verdict(code, format!("context `{}` has no field `{field}`", c.name));
@@ -1420,7 +1427,7 @@ impl<'a> Cx<'a> {
         let axes = self.name_ranges(t, out);
         let mut generics = self.b.generics.clone();
         for h in holes {
-            let h = self.b.syms.intern(&self.d.syms, h);
+            let h = self.b.syms.intern(&self.syms, h);
             generics.push(h);
         }
         let at = decls::BodyScope {
@@ -1471,7 +1478,7 @@ impl<'a> Cx<'a> {
         let fns = tr.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
         match (tr, fns.first()) {
             (Some(tr), Some(&(n, m))) => {
-                let n = self.d.text(n);
+                let n = self.items.text(n);
                 self.reach(m);
                 let tr = decls::TraitRef {
                     tr,

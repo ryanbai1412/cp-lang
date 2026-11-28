@@ -23,7 +23,7 @@ impl Cx<'_> {
             self.err(at, msg);
         }
         let Some((word, table)) = self.memo_table(fd) else {
-            self.nested_fn(fd, &name, out);
+            self.nested_fn(fd, Some(&name), out);
             return;
         };
         let (key, value) = self.nested_sig(fd);
@@ -37,14 +37,14 @@ impl Cx<'_> {
             },
         };
         let table_v = self.temp(
-            &format!("{name}.memo"),
+            "$memo",
             Ty::Struct(table, vec![key_ty, value.clone()], sets),
         );
         let fn_ty = Ty::Fn(key.clone(), Box::new(value.clone()), self.new_set());
         let f = self.bind(&name, fn_ty);
         let clear_ty = Ty::Fn(Vec::new(), Box::new(Ty::Unit), self.new_set());
         let clear = self.bind(&cpl_next_decls::memo_clear_name(&name), clear_ty);
-        let Some(body) = self.nested_fn(fd, &format!("{name}.body"), out) else {
+        let Some(body) = self.nested_fn(fd, None, out) else {
             return;
         };
         self.memos.push(Memo {
