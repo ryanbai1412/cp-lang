@@ -438,7 +438,15 @@ impl Cx<'_> {
         binds: &mut Vec<TStmt>,
     ) -> Option<TExpr> {
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let head = path[path.len() - 1].text();
+        let mut head = path[path.len() - 1].text();
+        // `some(p)` on an optional is read as `Some(p)` once its E0503 is said.
+        if path.len() == 1
+            && !self.present_pattern(head)
+            && self.optional_of(&v.ty).is_some()
+            && self.old_optional_spelling(head, path[0].span())
+        {
+            head = "Some";
+        }
         if path.len() == 1 && self.present_pattern(head) {
             let Some(inner) = self.optional_of(&v.ty) else {
                 self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
@@ -852,7 +860,10 @@ impl Cx<'_> {
         }
     }
     fn ctor_space(&self, path: &[SyntaxToken], args: &[next::Pattern], t: &Ty) -> Space {
-        let head = path[path.len() - 1].text();
+        let head = match path[path.len() - 1].text() {
+            "some" if path.len() == 1 && !self.present_pattern("some") => "Some",
+            h => h,
+        };
         if let (Some(inner), [p]) = (self.optional_of(t), args) {
             if path.len() == 1 && self.present_pattern(head) {
                 return Space::Ctor(1, vec![self.space(p, &inner)]);

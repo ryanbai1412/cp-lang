@@ -525,6 +525,7 @@ impl<'a> Cx<'a> {
         }
         if self.is_ambiguous(self.b.module, n) {
             self.two_imports(n, span);
+        } else if self.old_optional_spelling(n, span) {
         } else if !self.b.refused_names.contains(n) {
             let mut msg = Msg::verdict(
                 cpl_diag::codes::UNRESOLVED_NAME,
@@ -1643,6 +1644,24 @@ impl Cx<'_> {
         self.err_help(at, msg, Some(help.to_string()));
     }
 
+    /// `some` and `none`, the optional spellings before `Some` and `None` (decision 157): E0503
+    /// with the fix `cpl migrate` applies. False for any other name.
+    pub(super) fn old_optional_spelling(&mut self, n: &str, span: Span) -> bool {
+        let new = match n {
+            "some" => "Some",
+            "none" => "None",
+            _ => return false,
+        };
+        let text = cpl_diag::msgs::check::REMOVED_SYNTAX_IS_SPELLED_SINCE_0.say(&[&n, &new]);
+        let mut msg = Msg::verdict(cpl_diag::codes::REMOVED_SYNTAX, text);
+        msg.help = Some(cpl_diag::habits::OLD_OPTIONAL_SPELLING.say(&[&n]));
+        msg.fixes.push(cpl_next_ir::msg::Fix {
+            title: format!("write `{new}`"),
+            edits: vec![(self.b.item.at(span), new.to_string())],
+        });
+        self.err(span, msg);
+        true
+    }
     fn coalesce(&mut self, lhs: &next::Expr, rhs: &next::Expr, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let l = match lhs.bare_try() {
