@@ -201,7 +201,7 @@
   "rs_near_cap": [],
   "skip_lists": 0,
   "dead_code_allows": 0,
-  "external_crates": 5,
+  "external_crates": 14,
   "corpus_test_files": 0,
   "corpus_no_max": 0,
   "corpus_no_limits": 0,

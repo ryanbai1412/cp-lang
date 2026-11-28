@@ -6,7 +6,7 @@ use cpl_diag::msgs;
 
 impl<'a> Lowerer<'a> {
     /// `fn size(s: List<T>)`: an undeclared one-letter type in the signature
-    /// is a type parameter of the fn (R02.10.3).
+    /// is a type parameter of the fn (R02.10.4).
     /// `inline` is the body of an inline `mod m:`, whose names live in no
     /// `self.mods` entry of their own.
     pub(in crate::lower) fn with_implicit_generics(

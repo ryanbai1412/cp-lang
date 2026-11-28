@@ -7,7 +7,7 @@ use crate::prog::Holds;
 pub struct FnId(pub usize);
 /// A value the program's top level binds under one name: an index into `Decls::top_values`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
-pub struct GlobalId(pub usize);
+pub struct TopValueId(pub usize);
 /// A struct declaration: an index into `Decls::structs`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct StructId(pub usize);
@@ -79,6 +79,12 @@ pub enum Ty {
 pub enum End {
     Lit(i64),
     Of(Box<Ty>),
+    /// A value the program's top level binds with `let`, fixed before any fn runs (R02.10.3),
+    /// and the range its own type declares, which bounds what the end can be.
+    Global {
+        id: TopValueId,
+        within: (i64, i64),
+    },
 }
 
 impl End {
@@ -86,11 +92,30 @@ impl End {
         match self {
             End::Lit(k) => Some(*k),
             End::Of(t) => t.singleton(),
+            End::Global { .. } => None,
+        }
+    }
+
+    /// The least and greatest value the end can be: a constant is itself, a top-level value
+    /// lies in its declared range; `None` for a parameter's that is not yet known.
+    pub fn bounds(&self) -> Option<(i64, i64)> {
+        match self {
+            End::Global { within, .. } => Some(*within),
+            e => e.value().map(|k| (k, k)),
         }
     }
 }
 
 impl Ty {
+    /// Whether the type is a range type of `Int`s: its value is an `Int`, checked into the
+    /// range as it is stored (R03.1.4).
+    pub fn is_int_range(&self) -> bool {
+        matches!(
+            self,
+            Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. }
+        )
+    }
+
     /// The one value a singleton range type holds: `7` of `Mod<7>`'s argument `7..=7`.
     pub fn singleton(&self) -> Option<i64> {
         match self {
@@ -110,13 +135,18 @@ impl Ty {
         }
     }
 
-    /// Whether the type is a range type of `Int`s: its value is an `Int`, checked into the
-    /// range as it is stored (R03.1.4).
-    pub fn is_int_range(&self) -> bool {
-        matches!(
-            self,
-            Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. }
-        )
+    /// The values a range type proves its value lies in, from its ends' own bounds: what a
+    /// store of it needs no check for, and the width that holds it.
+    pub fn proven(&self) -> Option<(i64, i64)> {
+        match self {
+            Ty::Range(a, b) => Some((*a, *b)),
+            Ty::RangeEnds { lo, hi, inclusive } => {
+                let (a, _) = lo.bounds()?;
+                let (_, b) = hi.bounds()?;
+                Some((a, if *inclusive { b } else { b.checked_sub(1)? }))
+            }
+            _ => None,
+        }
     }
 
     /// R1 before instancing (`prog::holds` after it): what a value of this type holds, where
@@ -254,6 +284,10 @@ impl Subst<'_> {
                 let end = |e: &End| match e {
                     End::Lit(k) => End::Lit(*k),
                     End::Of(t) => End::Of(Box::new(self.ty(t))),
+                    End::Global { id, within } => End::Global {
+                        id: *id,
+                        within: *within,
+                    },
                 };
                 Ty::range_ends(end(lo), end(hi), *inclusive)
             }
@@ -320,7 +354,7 @@ pub fn params_in(t: &Ty, out: &mut std::collections::BTreeSet<usize>) {
         }
         Ty::RangeEnds { lo, hi, .. } => [lo, hi].into_iter().for_each(|e| match e {
             End::Of(t) => params_in(t, out),
-            End::Lit(_) => {}
+            End::Lit(_) | End::Global { .. } => {}
         }),
         Ty::Struct(_, ts, _) => ts.iter().for_each(|t| params_in(t, out)),
         Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| params_in(t, out)),

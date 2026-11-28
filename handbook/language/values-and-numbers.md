@@ -292,7 +292,7 @@ classic wrong answer). Why: "types carry the proofs".
 ### Inference is local; conversions are spelled
 
 **Chose:** a type is inferred within one expression from its context,
-never from later uses (decision 131; R02.10.1 to R02.10.3). No
+never from later uses (decision 131; R02.10.1 to R02.10.4). No
 conversion is implicit: `Int(x)`, `F64(n)`, `floor(x)`; there is no
 truthiness, and there is no method overloading (decision 127; R02.11.1
 to R02.11.3). `Int(...)` of a subset or pair value gives its index
