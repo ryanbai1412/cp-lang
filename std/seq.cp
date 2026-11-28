@@ -4050,7 +4050,7 @@ pub fn maximal<D, T, St: Track<T>>(
     var st = state
     var out: [D]Range<D> = D.cuts.nth(0)..D.cuts.nth(0)
     match anchor:
-        Anchor.End:
+        Anchor.End =>
             var l = 0
             for r in 0..n:
                 st.push(self[D.nth(r)])
@@ -4058,7 +4058,7 @@ pub fn maximal<D, T, St: Track<T>>(
                     st.pop(self[D.nth(l)])
                     l += 1
                 out[D.nth(r)] = D.cuts.nth(l)..D.cuts.nth(r + 1)
-        Anchor.Start:
+        Anchor.Start =>
             var l = 0
             for r in 0..n:
                 st.push(self[D.nth(r)])
@@ -4097,7 +4097,7 @@ pub fn minimal<D, T, St: Track<T>>(
     var st = state
     var out: [D]?Range<D> = None
     match anchor:
-        Anchor.End:
+        Anchor.End =>
             var l = 0
             var best_l: ?Int = None
             for r in 0..n:
@@ -4107,7 +4107,7 @@ pub fn minimal<D, T, St: Track<T>>(
                     st.pop(self[D.nth(l)])
                     l += 1
                 if let bl = best_l: out[D.nth(r)] = Some(D.cuts.nth(bl)..D.cuts.nth(r + 1))
-        Anchor.Start:
+        Anchor.Start =>
             var l = 0
             for r in 0..n:
                 st.push(self[D.nth(r)])

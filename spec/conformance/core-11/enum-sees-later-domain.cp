@@ -6,4 +6,4 @@ enum C:
 domain V = 0..3
 let c = At(2)
 match c:
-    At(v): print(Int(v))
+    At(v) => print(Int(v))

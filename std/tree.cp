@@ -58,13 +58,13 @@ pub fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (
     var path: List<V> = []
     for step in dfs(self, from: [root]):
         match step:
-            Visit.Enter(v, via):
+            Visit.Enter(v, via) =>
                 if let a = via:
                     par[v] = Some(path.last!)
                     tree_edge[a.e] = true
                 path.push(v)
-            Visit.Exit(_, _): path.pop()
-            _: ()
+            Visit.Exit(_, _) => path.pop()
+            _ => ()
     (tree: Rooted.from_parents(par), tree_edge:)
 
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.

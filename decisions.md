@@ -398,6 +398,10 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
 
   This is the monoid rule the library already uses (`opt` of a semigroup),
   applied to one place, not a special case for `min`.
+- **A `match` arm is `pattern => body`, never `pattern: body`.** Syntax,
+  4.1: the old parser also took a colon arm, a second spelling of one
+  construct. The new parser reports it as a syntax error whose fix writes
+  `=>`, and std and conformance use `=>` arms only.
 - **`e?` works inside an expression.** Syntax, widening 4.1: `?` was only
   allowed on a whole `let`. Now `i.ord + on_foot[line[i]]?` leaves the fn
   with `none` when the operand is `none`. The operands before it are still

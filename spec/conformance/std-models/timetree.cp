@@ -29,13 +29,13 @@ for k in 0..n:
     var applied: List<Int> = []
     for step in tt.steps():
         match step:
-            Apply(id):
+            Apply(id) =>
                 live.push(tt.event(id))
                 applied.push(id)
-            Query(t):
+            Query(t) =>
                 if t != seen.len: bad = "op {k}: query {t} out of order"
                 seen.push(sorted(live))
-            Undo:
+            Undo =>
                 if live.len == 0: bad = "op {k}: undo with nothing applied"
                 else: live.pop()
     if bad == "" and (seen != want or live.len != 0):

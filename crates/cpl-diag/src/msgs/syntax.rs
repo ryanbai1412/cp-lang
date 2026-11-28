@@ -12,6 +12,7 @@ super::msgs! {
     DOUBLED_OPERATOR = EXPECTED_EXPR, "expected a value {}, found {}";
     FIELD_NEEDS_NAME = EXPECTED_EXPR, "a record field needs a name: write `name: value`";
     ELSE_IF = REMOVED_SYNTAX, "use `elif`, not `else if`";
+    COLON_ARM = REMOVED_SYNTAX, "a `match` arm takes `=>` after its pattern, not `:`";
     MATCH_NEEDS_ARMS = EXPECTED_BLOCK, "expected indented `pattern => value` arms after `match`";
     BAD_NUMBER_FORMAT = UNEXPECTED_TOKEN, "`:{}` is not a number format";
     OPTIONAL_MARK_FIRST = EXPECTED_TYPE, "an optional type puts its `?` first in CP Lang";

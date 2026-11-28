@@ -309,9 +309,11 @@ fn leading_trivia_is_inside_the_file() {
 }
 
 #[test]
-fn match_arms_take_a_block_after_colon() {
-    let (got, errors) = stmts("match k:\n    0: yield 1\n    _:\n        yield k\n");
-    assert_eq!(errors, 0, "{got:#?}");
+fn a_colon_arm_is_one_error_and_keeps_its_body() {
+    let (got, errors) = stmts("match k:\n    0: yield 1\n    _ => k\n");
+    assert_eq!(errors, 1, "{got:#?}");
+    let diags = parse_stmts("match k:\n    0: yield 1\n").diagnostics;
+    assert_eq!(diags[0].fixes.len(), 1, "{diags:?}");
     assert!(
         got[0].contains("MatchArm(LiteralPat(0) Block(: YieldStmt(yield Literal(1))))"),
         "{}",

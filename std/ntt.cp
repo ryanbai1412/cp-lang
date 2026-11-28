@@ -512,14 +512,14 @@ pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false):
     assert n.is_pow2, "sos requires a power-of-two length"
     var bit = 1
     match over:
-        Sub:
+        Sub =>
             while bit < n:
                 for mask in 0..n:
                     if (mask & bit) != 0:
                         if inverse: a[ks.nth(mask)] -= a[ks.nth(mask ^ bit)]
                         else: a[ks.nth(mask)] += a[ks.nth(mask ^ bit)]
                 bit <<= 1
-        Sup:
+        Sup =>
             while bit < n:
                 for mask in 0..n:
                     if (mask & bit) == 0:

@@ -8,5 +8,5 @@ enum Q:
     @tag(2) Get(v: V)
 let q = read<Q>()
 match q:
-    Add(r, x): print(r.len, x)
-    Get(v): print(Int(v))
+    Add(r, x) => print(r.len, x)
+    Get(v) => print(Int(v))

@@ -26,10 +26,10 @@ for k in 0..n:
         if ys.min()! != v0 or ys.max()! + 1 != v1: bad = "op {k}: vals {s0}..{s1}"
         elif pt.kind[x] != PermKind.Partial and v1 - v0 != s1 - s0: bad = "op {k}: not an interval {s0}..{s1}"
         match pt.node(x):
-            Leaf(i):
+            Leaf(i) =>
                 leaves += 1
                 if s1 - s0 != 1 or i.ord != s0 or pt.leaf(i) != x or pt.kind[x] != PermKind.Leaf: bad = "op {k}: leaf {s0}"
-            Inner(l, r, kind):
+            Inner(l, r, kind) =>
                 let (l0, l1) = pt.span(l).ends
                 let (r0, r1) = pt.span(r).ends
                 if pt.left(x) != l or pt.right(x) != r or kind != pt.kind[x]: bad = "op {k}: children {s0}..{s1}"

@@ -187,9 +187,9 @@ for k in 0..n:
     var got = List<(Int, Int, Int)>()
     for e in dfs(g, from: [V(s)]):
         match e:
-            Visit.Enter(v, via): got.push((0, v.ord, if let a = via: a.ord else: -1))
-            Visit.Exit(v, via): got.push((1, v.ord, if let a = via: a.ord else: -1))
-            Visit.Again(from, via): got.push((2, from.ord, via.ord))
+            Visit.Enter(v, via) => got.push((0, v.ord, if let a = via: a.ord else: -1))
+            Visit.Exit(v, via) => got.push((1, v.ord, if let a = via: a.ord else: -1))
+            Visit.Again(from, via) => got.push((2, from.ord, via.ord))
     if got != ev: bad = "op {k}: dfs events"
     let pre = [V(x.1) for x in ev if x.0 == 0]
     if reachable(g, from: [V(s)]).collect() != pre: bad = "op {k}: reachable"

@@ -39,9 +39,9 @@ for k in 0..n:
         let i = rng.int(0, sets.len - 1)
         let alive = (x..20).find(y => has(masks[i], y) and not dead[y])
         match p.first_ge(sets[i], D(x)):
-            None:
+            None =>
                 if alive != None: bad = "op {k}: first_ge {x} is None"
-            Some(g):
+            Some(g) =>
                 let q = g.ord
                 if q < x or not has(masks[i], q) or (x..q).any(y => has(masks[i], y) and not dead[y]) or (not dead[q] and alive != Some(q)):
                     bad = "op {k}: first_ge {x} gave {q}"

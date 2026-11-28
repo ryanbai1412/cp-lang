@@ -279,13 +279,13 @@ fn timetree_dynamic_connectivity_with_rollback_dsu():
     var comps = List.filled(q, 0)
     for step in tt.steps():
         match step:
-            Apply(id):
+            Apply(id) =>
                 let e = tt.event(id)
                 marks.push(dsu.mark())
                 dsu.unite(e.0, e.1)
-            Query(t):
+            Query(t) =>
                 comps[t] = dsu.components
-            Undo:
+            Undo =>
                 if let m = marks.pop(): dsu.undo_to(m)
     assert comps == [5, 5, 4, 4, 3, 4, 3, 4]
 

@@ -379,8 +379,16 @@ impl Parser<'_> {
         if self.eat(T::If) {
             self.expr_at(crate::ops::Level::Expr);
         }
-        // `p => value`, or `p:` and a block of statements.
+        // `p: body` is not an arm (decision 4.1): one error whose fix
+        // writes `=>`, and the body after it is still kept.
         if self.at(T::Colon) {
+            let span = self.span();
+            self.diagnostics
+                .push(msgs::syntax::COLON_ARM.error(span, &[]).with_fix(
+                    cpl_diag::habits::REPLACE_WITH.say(&[&"=>"]),
+                    span,
+                    " =>",
+                ));
             self.block();
         } else if self.want(T::FatArrow, "`=>` and the arm's value") {
             self.arm_body();

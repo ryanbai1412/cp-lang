@@ -5,5 +5,5 @@ enum Ev:
     Ask(l: Int, r: Int)
 let e = Ev.Ask(1, 2)
 match e:
-    Add(v): print(v)
-    Ask(l, r): print(r)
+    Add(v) => print(v)
+    Ask(l, r) => print(r)
