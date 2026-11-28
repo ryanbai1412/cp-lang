@@ -294,6 +294,8 @@ jobs:
             cxx-${{ runner.os }}-tests-${{ matrix.part }}-
             cxx-${{ runner.os }}-tests-
             cxx-${{ runner.os }}-
+      - name: Note when this job starts using the cache
+        run: echo "CXX_SINCE=$(date +%s)" >> "$GITHUB_ENV"
       # The cases scripts/corpus.py make wrote in the conform part (interp_memory, fix_behavior).
       - uses: actions/cache/restore@v4
         with:
@@ -313,6 +315,12 @@ jobs:
           CPL_GATE_PART: tests:${{ matrix.part }}
           CPL_NEXTEST_ARCHIVE: nextest.tar.zst
         run: just check
+      # Only the builds this part used: a shard restored from the `cxx-` fallback saved all
+      # it restored, so 5 shards of 1.78 GB filled the 10 GB and evicted every conform:diff
+      # and acceptance cache, whose parts then built cold past their caps (run 46140296444).
+      - name: Drop the g++ builds this part didn't use
+        if: ${{ !cancelled() }}
+        run: just cxx-trim "$CXX_SINCE"
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() }}
         with:
