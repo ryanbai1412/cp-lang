@@ -1,0 +1,236 @@
+//! What a declaration says, as decls reads it: one form per kind, built from the typed tree for
+//! a written item and directly by synth and records for a made one (R02.5.2, R08.1.6). The kind
+//! builders and the type conversion read only forms, so a made declaration is never written as
+//! syntax and parsed back.
+use crate::attrs::Attr;
+use crate::sym::Sym;
+use crate::synth::SynthBody;
+use cpl_diag::Span;
+use cpl_next_syntax::ast::{self, AstNode};
+
+/// A type as a declaration writes it: the tree's own node for a written one; for a made one, the
+/// parts the conversion of a written one reaches once its names resolve.
+#[derive(Clone, Debug)]
+pub enum TyForm {
+    Written(ast::Type),
+    /// The declaration's own type parameter, by index.
+    Param(usize),
+    /// `Self` of the trait or impl the declaration is in.
+    SelfTy,
+    /// A resolved name with its arguments: `Bool`, `Eq<T>`, a record shape's struct.
+    Named(Sym, Vec<TyForm>),
+    /// `(lo: A, hi: B)` by its field names.
+    Record(Vec<(Sym, TyForm)>),
+}
+
+/// `T: Tr<A>`: the bounded parameter and the trait it must have.
+#[derive(Clone, Debug)]
+pub struct BoundForm {
+    pub param: Sym,
+    pub tr: TyForm,
+}
+
+/// A decorator read once, at its node: what it is and the node, for its arguments and span.
+#[derive(Clone, Debug)]
+pub struct AttrForm {
+    pub attr: Attr,
+    pub node: Option<ast::Decorator>,
+}
+
+#[derive(Clone, Debug)]
+pub enum BodyForm {
+    Written(ast::FnBody),
+    /// An impl's `let count = e`: the value its getter gives (R04.2.26).
+    Value(ast::Expr),
+    /// A made fn's body, built as IR by lower from its variant.
+    Synth(SynthBody),
+    /// A trait's member with no default.
+    None,
+}
+
+#[derive(Clone, Debug)]
+pub struct ParamForm {
+    pub name: Sym,
+    pub label: Sym,
+    pub ty: Option<TyForm>,
+    pub is_self: bool,
+    pub mutable: bool,
+    pub named_only: bool,
+    pub variadic: bool,
+    pub default: Option<ast::Expr>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct FnForm {
+    pub name: Sym,
+    pub public: bool,
+    pub attrs: Vec<AttrForm>,
+    pub generics: Vec<Sym>,
+    pub bounds: Vec<BoundForm>,
+    pub params: Vec<ParamForm>,
+    pub ret: Option<TyForm>,
+    pub yields: bool,
+    /// `-> lends T` / `-> lends mut T`, with the parameters it borrows from.
+    pub lends: Option<(bool, Vec<Sym>)>,
+    pub uses: Vec<Sym>,
+    pub body: BodyForm,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct FieldForm {
+    pub name: Sym,
+    pub ty: TyForm,
+    pub public: bool,
+    pub var: bool,
+    pub attrs: Vec<AttrForm>,
+    pub default: Option<ast::Expr>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct StructForm {
+    pub name: Sym,
+    pub public: bool,
+    pub attrs: Vec<AttrForm>,
+    pub generics: Vec<Sym>,
+    pub generic_defaults: Vec<Option<TyForm>>,
+    pub bounds: Vec<BoundForm>,
+    pub fields: Vec<FieldForm>,
+    pub methods: Vec<FnForm>,
+    pub consts: Vec<(Sym, Option<TyForm>, ast::Expr)>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct AssocForm {
+    pub name: Sym,
+    pub bounds: Vec<TyForm>,
+    pub default: Option<TyForm>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TraitForm {
+    pub name: Sym,
+    pub public: bool,
+    pub attrs: Vec<AttrForm>,
+    pub alias: bool,
+    pub generics: Vec<Sym>,
+    pub generic_defaults: Vec<Option<TyForm>>,
+    pub supers: Vec<TyForm>,
+    pub assoc: Vec<AssocForm>,
+    pub methods: Vec<FnForm>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct ImplForm {
+    pub attrs: Vec<AttrForm>,
+    pub generics: Vec<Sym>,
+    pub bounds: Vec<BoundForm>,
+    pub trait_: Option<TyForm>,
+    pub self_ty: TyForm,
+    pub assoc: Vec<(Sym, TyForm)>,
+    pub methods: Vec<FnForm>,
+    /// Made by a derive: replaced by a written impl of its trait for its type (R08.1.6).
+    pub derived: bool,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct AliasForm {
+    pub name: Sym,
+    pub public: bool,
+    pub attrs: Vec<AttrForm>,
+    pub generics: Vec<Sym>,
+    pub ty: TyForm,
+    pub span: Span,
+}
+
+/// Reads a written item into its form: each name interned once, here, at the token.
+pub struct Reader<'a> {
+    pub syms: &'a mut crate::sym::Syms,
+}
+
+impl Reader<'_> {
+    fn sym(&mut self, t: Option<cpl_next_syntax::tree::SyntaxToken>) -> Sym {
+        self.syms.intern(t.as_ref().map_or("", |t| t.text()))
+    }
+
+    fn ty(&mut self, t: Option<ast::Type>) -> Option<TyForm> {
+        t.map(TyForm::Written)
+    }
+
+    pub fn generics(&mut self, g: Option<ast::GenericParams>) -> (Vec<Sym>, Vec<Option<TyForm>>, Vec<BoundForm>) {
+        let (mut names, mut defaults, mut bounds) = (Vec::new(), Vec::new(), Vec::new());
+        for p in g.iter().flat_map(|g| g.params().collect::<Vec<_>>()) {
+            let name = self.sym(p.name());
+            for t in p.bound().iter().flat_map(|b| b.types().collect::<Vec<_>>()) {
+                bounds.push(BoundForm { param: name, tr: TyForm::Written(t) });
+            }
+            names.push(name);
+            defaults.push(self.ty(p.default()));
+        }
+        (names, defaults, bounds)
+    }
+
+    pub fn where_bounds(&mut self, w: Option<ast::WhereClause>, out: &mut Vec<BoundForm>) {
+        for p in w.iter().flat_map(|w| w.preds().collect::<Vec<_>>()) {
+            let Some(ast::Type::Path(t)) = p.ty() else { continue };
+            let param = self.syms.intern(&crate::cycles::path_text(&t));
+            for tr in p.bound().iter().flat_map(|b| b.types().collect::<Vec<_>>()) {
+                out.push(BoundForm { param, tr: TyForm::Written(tr) });
+            }
+        }
+    }
+
+    pub fn param(&mut self, p: &ast::Param) -> ParamForm {
+        let name = self.sym(p.name());
+        let label = match p.label() {
+            Some(l) => self.sym(Some(l)),
+            None => name,
+        };
+        ParamForm {
+            name,
+            label,
+            ty: self.ty(p.ty()),
+            is_self: p.is_self(),
+            mutable: p.is_mut(),
+            named_only: p.is_named_only(),
+            variadic: p.is_variadic(),
+            default: p.default(),
+            span: p.syntax().span(),
+        }
+    }
+
+    pub fn func(&mut self, f: &ast::FnDecl, attrs: Vec<AttrForm>) -> FnForm {
+        let (generics, _, mut bounds) = self.generics(f.generics());
+        self.where_bounds(f.where_clause(), &mut bounds);
+        let params = (f.params().iter().flat_map(|l| l.params().collect::<Vec<_>>()))
+            .map(|p| self.param(&p))
+            .collect();
+        let ret = f.ret();
+        let lends = ret.as_ref().filter(|r| r.lends()).map(|r| {
+            let srcs = r.lend_sources().iter().flat_map(|s| s.names().collect::<Vec<_>>()).collect::<Vec<_>>();
+            (r.lends_mut(), srcs.into_iter().map(|t| self.sym(Some(t))).collect())
+        });
+        let uses = (f.uses().iter().flat_map(|u| u.contexts().collect::<Vec<_>>()))
+            .map(|t| self.sym(Some(t)))
+            .collect();
+        FnForm {
+            name: self.sym(f.name()),
+            public: f.is_pub(),
+            attrs,
+            generics,
+            bounds,
+            params,
+            yields: ret.as_ref().is_some_and(|r| r.is_yields()),
+            ret: self.ty(ret.and_then(|r| r.ty())),
+            lends,
+            uses,
+            body: f.body().map_or(BodyForm::None, BodyForm::Written),
+            span: f.signature_span(),
+        }
+    }
+}

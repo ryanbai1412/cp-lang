@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 mod collect;
+pub(crate) mod forms;
 mod impls;
 mod inherent;
 mod layer;

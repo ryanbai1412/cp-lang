@@ -3,6 +3,7 @@
 //! body. Every later layer reads what it gives; it reads none of them.
 
 use cpl_next_ir::ty;
+pub mod attrs;
 mod cycles;
 pub mod decls;
 pub mod diag;
