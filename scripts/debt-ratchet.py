@@ -1510,6 +1510,65 @@ def _indent(l: str) -> int:
     return len(l) - len(l.lstrip())
 
 
+NEXT_INTR_RE = re.compile(r"\bIntr::(\w+)")
+# The back ends that hold the machine primitives' arms (decision 653); the C++ takes every
+# operation's text from `ops`.
+NEXT_OP_BACKENDS = ("crates/cpl-next-engine/src/", "crates/cpl-next-interp/src/")
+
+
+def _machine_ops(root: Path) -> set[str]:
+    text = (root / "crates/cpl-next-ir/src/ops.rs").read_text()
+    m = re.search(r"pub const MACHINE: \[Intr; \d+\] = \[(.*?)\];", text, re.S)
+    return set(NEXT_INTR_RE.findall(m.group(1))) if m else set()
+
+
+def _intr_arm(lines: list[str], i: int, at: int) -> bool:
+    """Whether the `Intr::` at column `at` of line `i` (1-based) is in a match pattern: in a
+    `matches!`, before an arm's `=>` on its line, or one of a pattern's `|` alternatives."""
+    code = lines[i - 1].split("//")[0]
+    before, after = code[:at], code[at:]
+    if "matches!(" in before or ("=>" in after and "=>" not in before):
+        return True
+    if "=>" in code:
+        return False
+    s = code.strip()
+    nxt = next((x.strip() for x in lines[i:] if x.strip()), "")
+    return s.startswith("|") or s.endswith("|") or nxt.startswith("|")
+
+
+def next_op_arms_outside_ir(root: Path) -> list[str]:
+    """`Intr::` match arms outside `cpl-next-ir` that are not a back end's machine primitive
+    (`ops::MACHINE`, decision 653), and machine primitives a back end has no arm for. Every
+    other operation's meaning is `ops` data that each back end reads, so a back end that
+    matches one has a meaning of its own. Counts match patterns, not fn names. 0 is
+    condition 6: the back ends are generated from one op table."""
+    machine, out = _machine_ops(root), []
+    if not machine:
+        out.append("crates/cpl-next-ir/src/ops.rs: no `MACHINE` table")
+    seen = {b: set() for b in NEXT_OP_BACKENDS}
+    for p in _rs_files(root, *_next_srcs(root), tests=False):
+        rel = _rel(root, p)
+        if rel.startswith("crates/cpl-next-ir/"):
+            continue
+        lines = _lines(p)
+        for i, l in enumerate(lines, 1):
+            if l.strip() == "#[cfg(test)]" and i < len(lines) and NEXT_TEST_MOD_RE.match(lines[i]):
+                break
+            if l.lstrip().startswith("//"):
+                continue
+            for m in NEXT_INTR_RE.finditer(l):
+                if not _intr_arm(lines, i, m.start()):
+                    continue
+                b = next((b for b in NEXT_OP_BACKENDS if rel.startswith(b)), None)
+                if b and m.group(1) in machine:
+                    seen[b].add(m.group(1))
+                else:
+                    out.append(f"{rel}:{i} Intr::{m.group(1)}")
+    for b, ops in seen.items():
+        out += [f"{b}: no arm for Intr::{o}" for o in sorted(machine - ops)]
+    return out
+
+
 def next_repr_second_defs(root: Path) -> list[str]:
     """Definitions of a value-representation predicate (`unlent`, `plain`, `plain_in`, `stores`)
     outside the IR's one classifier (`Program::holds` and its readers, `CTy::unlent`,
@@ -4610,7 +4669,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"next_listed_twice", "next_repr_second_defs", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
@@ -4758,6 +4817,7 @@ COUNTERS = {
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
     "next_standin_notes": ("new-pipeline lines saying the code beside them stands in for a designed component (Core)", next_standin_notes, True),
     "next_source_text_guards": ("new-pipeline guards that read Rust source as text through include_str! (Core)", next_source_text_guards, True),
+    "next_op_arms_outside_ir": ("new-pipeline `Intr::` match arms outside cpl-next-ir that are not a back end's machine primitive, or a primitive a back end lacks (Core)", next_op_arms_outside_ir, True),
     "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),

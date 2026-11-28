@@ -847,7 +847,7 @@ impl Lw<'_> {
                     true => i.wrapping(),
                     false => i,
                 };
-                let unchecked_div = matches!(i, Intr::Div | Intr::Rem)
+                let unchecked_div = cpl_next_ir::ops::divides(i)
                     && e.ty != Ty::F64
                     && !self.kept.keeps(CheckName::Div);
                 if unchecked_div {

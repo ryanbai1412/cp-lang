@@ -556,7 +556,7 @@ impl<'a> Machine<'a> {
                 let Store::Any(cs) = &*r else {
                     return broken("output of storage of another kind");
                 };
-                for c in cs.iter().take(usize::try_from(n).unwrap_or(0)) {
+                for c in cs.iter().take(ops::out_len(n, cs.len())) {
                     let V::Char(c) = c else {
                         return broken("output of a value that is not a character");
                     };

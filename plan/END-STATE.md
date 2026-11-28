@@ -30,7 +30,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 7 | Engine agreement | unmeasured | `next_wrong` 1,454 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
+| 7 | Engine agreement | unmeasured | `next_wrong` 1,454 → 0, `next_op_arms_outside_ir` 0 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
 | 8 | Sanitized C++ | unmeasured | no number yet for: accepted cases whose C++ is not sanitizer-clean and warning-free on GCC and Clang |
 | 9 | IR stage contracts | unmeasured | no number yet for: cases a stage verifier rejects |
 | 10 | Traps | unmeasured | no number yet for: trap code by operation cells that differ between engines |
@@ -157,8 +157,9 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 
 - Decides: Reference interpreter, bytecode engine, machine code and C++ give one answer.
 - Minimum size: Every case of suites 1 to 4, plus at least 100,000 generated programs per night.
-- At the end state: Same stdout, exit status, trap code and line; 0 splits.
+- At the end state: Same stdout, exit status, trap code and line; 0 splits; every back end takes each operation's meaning from the ops table, with only the closed machine-primitive table (decision 653) as its own arms.
 - Mechanism level (`handbook/process/quality.md`): 2.
+- Last changed: 2026-11-27: condition 6, back ends generated from one op table (decision 653).
 
 ### 8. Sanitized C++
 

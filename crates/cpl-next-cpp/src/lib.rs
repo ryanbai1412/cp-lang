@@ -175,7 +175,7 @@ template <class T> struct cpl_body {
 static inline void cpl_ev(cpl_char c) { fprintf(stderr, " %c", (char)c.code); }
 static inline void cpl_ev(bool b) { fputs(b ? " true" : " false", stderr); }
 template <class T, std::enable_if_t<std::is_integral_v<T>, int> = 0> static inline void cpl_ev(T x) { fprintf(stderr, " %s", std::to_string(x).c_str()); }
-static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) { fwrite(r.data(), 1, (size_t)n, stdout); return {}; }
+static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) { fwrite(r.data(), 1, (size_t)(n < 0 ? 0 : n < (int64_t)r.size() ? n : (int64_t)r.size()), stdout); return {}; }
 "#;
 
 /// What `break`, `continue` and `return` mean at a point in the output.

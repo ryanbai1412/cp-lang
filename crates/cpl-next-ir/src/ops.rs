@@ -5,7 +5,7 @@
 //! An operation a std fn names with `@fast(op)` is only a faster way to compute that fn's CP
 //! body, which is what the fn means: `fast_ops_agree_with_their_bodies` runs both on every
 //! runner and they must agree.
-use crate::ir::{CheckKind, FloatFn, Intr, Rounding};
+use crate::ir::{Arg, CheckKind, FloatFn, Intr, Rounding, EK};
 use crate::prog::CTy;
 use cpl_diag::{codes, Code};
 use cpl_prim::Prim;
@@ -703,6 +703,54 @@ pub fn cell(i: i64, len: usize, write: bool) -> Result<usize, Fault> {
     }
 }
 
+/// The machine primitives (decision 653): each back end's own storage, input, output and
+/// guard model, not semantics. These are the only `Intr` arms a back end has; every fault,
+/// bound, input rule and guard result inside them comes from this module, and every other
+/// operation is computed from it (`on_scalars`, `scalar`, `cpp_text`).
+pub const MACHINE: [Intr; 18] = [
+    Intr::RawEmpty,
+    Intr::RawNew,
+    Intr::RawGet,
+    Intr::RawSet,
+    Intr::RawTake,
+    Intr::RawCap,
+    Intr::Out,
+    Intr::InputLeft,
+    Intr::ReadInt,
+    Intr::ReadByte,
+    Intr::PeekByte,
+    Intr::RandWord,
+    Intr::Unset,
+    Intr::CheckKey,
+    Intr::CheckRange,
+    Intr::CheckVariant,
+    Intr::CheckToken,
+    Intr::CheckInput,
+];
+
+/// Whether the operation divides: R09.3's `div` check guards it, and where that check is off
+/// its result for a zero divisor is 0.
+pub fn divides(op: Intr) -> bool {
+    matches!(op, Intr::Div | Intr::Rem)
+}
+
+/// How many characters of `len` an output of `n` writes: `n` clamped to the storage.
+pub fn out_len(n: i64, len: usize) -> usize {
+    usize::try_from(n).unwrap_or(0).min(len)
+}
+
+/// The answer an operation has from its operands' types alone: an ordinal is always below
+/// the length of a type that is not a domain, as such a type is its own integers.
+pub fn decided(op: Intr, args: &[Arg<CTy>]) -> Option<bool> {
+    match (op, args) {
+        (Intr::Below, [_, Arg::Value(n)]) => match &n.kind {
+            EK::DomLen(t) if !matches!(t, CTy::Dom(_)) => Some(true),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 /// A check std makes (`key_check`, `range_check`): passes when its operand is true.
 pub fn check(op: Intr, ok: bool) -> Result<(), Fault> {
     match op {
@@ -1037,6 +1085,14 @@ mod tests {
             let text = cpp_text(op, Operand::Int);
             assert!(!text.contains("not an operation"), "{name}: {text}");
         }
+    }
+
+    #[test]
+    fn a_machine_primitive_is_not_computed_here() {
+        for op in MACHINE {
+            assert!(!on_scalars(op) && !divides(op), "{op:?}");
+        }
+        assert_eq!((out_len(-1, 3), out_len(2, 3), out_len(9, 3)), (0, 2, 3));
     }
 
     #[test]

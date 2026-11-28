@@ -78,9 +78,10 @@ group = "B. Every way of running a program agrees"
 name = "Engine agreement"
 decides = "Reference interpreter, bytecode engine, machine code and C++ give one answer"
 size = "Every case of suites 1 to 4, plus at least 100,000 generated programs per night"
-properties = "Same stdout, exit status, trap code and line; 0 splits"
+properties = "Same stdout, exit status, trap code and line; 0 splits; every back end takes each operation's meaning from the ops table, with only the closed machine-primitive table (decision 653) as its own arms"
 level = "2"
-numbers = [{ counter = "next_wrong", target = 0 }]
+numbers = [{ counter = "next_wrong", target = 0 }, { counter = "next_op_arms_outside_ir", target = 0 }]
+changed = "2026-11-27: condition 6, back ends generated from one op table (decision 653)"
 missing = "splits on generated programs each night; engines beyond the interpreter and the C++"
 
 [[suite]]

@@ -766,10 +766,10 @@ impl M<'_> {
                     if h == 0 {
                         return broken("output of non-storage");
                     }
-                    let n = usize::try_from(self.stack[r(n)] as i64).unwrap_or(0);
                     let stride = self.size(self.heap[h as usize].elem).max(1);
                     let o = &self.heap[h as usize];
-                    for &w in o.words.iter().step_by(stride).take(n.min(o.len)) {
+                    let n = ops::out_len(self.stack[r(n)] as i64, o.len);
+                    for &w in o.words.iter().step_by(stride).take(n) {
                         self.out.push(char::from(byte(w)?));
                     }
                     if owned {
