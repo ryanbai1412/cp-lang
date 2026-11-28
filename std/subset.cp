@@ -1,6 +1,6 @@
 //! Subsets of a small domain as one machine word: the mask of mask DP with its domain kept.
 //!
-//! start: `Subset`, `Subset.contains`, `Subset.with`, `Subset.full`
+//! start: `Subset`, `Subset.with`, `Subset.len`, `Subset.full`
 //! example: `domain B = 0..4; Subset<B>.empty.with(1).with(3).len == 2`
 
 use std.math.{popcount, ctz}

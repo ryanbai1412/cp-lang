@@ -2,6 +2,7 @@
 //! view of `s`, `r[a..b]` of a range a range again. Core re-exports `Range` and the `[]` fns, so no
 //! module imports them. `std.range` has the algorithms over ranges.
 //!
+//! start: `Range`, `Range.rev`, `Range.take`, `Range.step`
 //! example: `let r = 2..8 by 3; r.len == 2 and r[5] == 5`
 use std.seq.{IndexGet, Keyed, Positional, Indexed, Slice}
 use std.raw.{check_key, check_range}

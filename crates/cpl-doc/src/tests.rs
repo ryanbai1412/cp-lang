@@ -863,7 +863,7 @@ fn an_indented_line_continues_a_list_item_and_only_a_list_item() {
 
 /// site/R22 at commit time: every std module page opens with an outline, from its `//!`
 /// block: a purpose paragraph, a `start:` line naming 3 to 5 of its public items or their
-/// members, and an `example:` that shows the module at work.
+/// members (each of them when it has fewer than 3), and an `example:` that shows the module at work.
 #[test]
 fn every_std_module_opens_with_an_outline() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -876,20 +876,36 @@ fn every_std_module_opens_with_an_outline() {
         if crate::model::summary(&module.prose).is_empty() {
             wrong.push(format!("{at}: no purpose paragraph"));
         }
-        if !(3..=5).contains(&module.start.len()) {
+        // A member is an entry of a public owner when it is public too, or the owner is a trait.
+        let entry = |owner: Option<&str>, item: &Item| {
+            item.kind != Kind::Impl
+                && owner.map_or(public(item), |o| {
+                    (module.items.iter()).any(|i| {
+                        i.name == o && public(i) && (public(item) || i.kind == Kind::Trait)
+                    })
+                })
+        };
+        // A module of fewer than 3 public items names each of them (std/README.md).
+        let entries = module.all_items().filter(|(o, i)| entry(*o, i)).count();
+        let want = if entries < 3 {
+            entries..=entries
+        } else {
+            3..=5
+        };
+        if !want.contains(&module.start.len()) {
             wrong.push(format!(
-                "{at}: `start:` names {} entry points, not 3 to 5",
-                module.start.len()
+                "{at}: `start:` names {} entry points, not {}",
+                module.start.len(),
+                if entries < 3 {
+                    format!("its {entries} public items")
+                } else {
+                    "3 to 5".into()
+                }
             ));
         }
         for name in &module.start {
-            let found = module.all_items().find(|(owner, item)| {
-                item.anchor(*owner) == *name
-                    && item.kind != Kind::Impl
-                    && owner.map_or(public(item), |o| {
-                        module.items.iter().any(|i| i.name == o && public(i))
-                    })
-            });
+            let found = (module.all_items())
+                .find(|(owner, item)| item.anchor(*owner) == *name && entry(*owner, item));
             match found {
                 None => wrong.push(format!(
                     "{at}: `start:` names `{name}`, which is no public item of it"

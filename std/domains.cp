@@ -1,6 +1,7 @@
 //! `Domain`: the positions of a domain (R04.2), `Int` as one, and `Cut<D>`, the places between
 //! them. Core re-exports both, so no module imports them.
 //!
+//! start: `Domain`, `Ordered`, `Domain.count`, `Cut`
 //! example: `Int.nth(3) == 3 and 5.next! == 6`
 use std.ranges.{Range, range_of}
 use std.raw.{check_range}

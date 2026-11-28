@@ -1,9 +1,10 @@
 //! `?T`, the struct `Optional<T>`: a `T` or `None` (R02.4). Core re-exports it and `Some`, so
 //! no module imports them.
 //!
+//! start: `Optional`, `Some`, `Optional.map`
 //! example: `let a: ?Int = Some(3); a == Some(3)`
 
-// `?T`: `T` or `None`. `val` is read only when `some`.
+/// `?T`: a `T`, or `None` (R02.4). `val` is read only when `some`.
 @role(option)
 pub struct Optional<T>:
     pub some: Bool
