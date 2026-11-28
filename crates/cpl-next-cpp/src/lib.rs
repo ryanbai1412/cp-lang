@@ -640,7 +640,7 @@ impl Emit<'_> {
                 format!("cpl_raw_text(\"{lit}\", {})", t.len())
             }
             EK::Unit => "cpl_unit{}".to_string(),
-            EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) | EK::DomCounted(_) => {
+            EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) | EK::DomFromCount(_) => {
                 "/* unresolved domain value */".to_string()
             }
             EK::HasBound(..) => "/* undecided bound test */".to_string(),

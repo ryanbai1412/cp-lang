@@ -60,7 +60,24 @@ impl<'a> Cx<'a> {
                 None => break,
             }
         }
-        t
+        self.listed(t)
+    }
+    /// `[D]T` is `List<T>` once `D` is known to have no count (R04.8.11).
+    fn listed(&self, t: Ty) -> Ty {
+        match (&t, self.d.sugar.list) {
+            (Ty::Struct(a, ts, _), Some(list))
+                if Some(*a) == self.d.sugar.array && ts.len() == 2 =>
+            {
+                if self
+                    .impls()
+                    .uncounted(&self.shallow(&ts[0]), self.d.roles())
+                {
+                    return Ty::Struct(list, vec![ts[1].clone()], Vec::new());
+                }
+                t
+            }
+            _ => t,
+        }
     }
     pub(super) fn shallow_set(&self, s: &SetTy) -> SetTy {
         match s {

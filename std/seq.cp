@@ -227,11 +227,11 @@ pub fn rfind<S: Bidir<T>, T>(self: S, p: T -> Bool) -> ?T:
 /// cost: \(O(n \log n)\) calls of `cmp`
 /// traps: in `cpl run` and `--checked`, when `cmp` is not a strict weak order
 /// example: `var a = [(3, 1), (1, 2), (2, 2)]; a.sort(cmp: (p, q) => p.0 * q.1 < q.0 * p.1); a == [(1, 2), (2, 2), (3, 1)]`
-pub fn sort<S: IndexedMut<D, T>, D: Domain, T>(mut self: S; cmp: (T, T) -> Bool):
+pub fn sort<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S; cmp: (T, T) -> Bool):
     sort_cmp(mut self, cmp)
 
 // `sort(cmp:)`'s body, apart so that no key type is solved for it: `T` needs no `Ord`.
-fn sort_cmp<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, before: (T, T) -> Bool):
+fn sort_cmp<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S, before: (T, T) -> Bool):
     let n = self.len
     let ks = self.keys
     var a: List<T> = [self[k] for k in ks]
@@ -256,7 +256,7 @@ fn sort_cmp<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, before: (T, T) -> Bo
 /// example: `var a = [(3, 1), (1, 2), (2, 2)]; a.sort(cmp: (p, q) => p.0 * q.1 < q.0 * p.1); a == [(1, 2), (2, 2), (3, 1)]`
 /// example: `var a = [2, 1]; a.sort(cmp: (x, y) => x <= y); a == [1, 2]` (traps R0001)
 /// example: `var a = [2, 1]; a.sort(by: x => x, cmp: (x, y) => x < y); a == [1, 2]` (error E0310)
-pub fn sort<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(mut self: S; by: T -> K = x => x):
+pub fn sort<S: IndexedMut<D, T>, D: Discrete, T, K: Ord>(mut self: S; by: T -> K = x => x):
     // One buffer: each key with its position, heap-sorted in place (ties go by
     // position, so the order is stable), then the elements moved by its cycles.
     let n = self.len
@@ -473,7 +473,7 @@ pub fn partition<S: Seq<T>, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>):
 /// ties: `var a = [2, 1, 2, 1]; a.select(2); a.nth(2) == 2`
 /// traps: when `k` is not in `0..self.len`
 /// example: `var a = [5, 1, 4, 2]; a.select(1); a.nth(1) == 2`
-pub fn select<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(
+pub fn select<S: IndexedMut<D, T>, D: Discrete, T, K: Ord>(
     mut self: S,
     k: Int,
     by: T -> K = x => x,
@@ -510,7 +510,7 @@ pub fn select<S: IndexedMut<D, T>, D: Domain, T, K: Ord>(
         elif k >= i: lo = i
         else: return
 
-fn heap_select<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, lo: Int, hi: Int, k: Int, less: (T, T) -> Bool):
+fn heap_select<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S, lo: Int, hi: Int, k: Int, less: (T, T) -> Bool):
     let m = hi - lo
     var start = m / 2 - 1
     while start >= 0:
@@ -524,7 +524,7 @@ fn heap_select<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, lo: Int, hi: Int,
     if end >= 0:
         self.swap_idx(lo, lo + end)
 
-fn sift_down<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T, T) -> Bool):
+fn sift_down<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S, lo: Int, from: Int, m: Int, less: (T, T) -> Bool):
     var i = from
     while true:
         var c = 2 * i + 1
@@ -824,7 +824,7 @@ pub fn rotated_right<S: Seq<T>, T>(self: S, k: Int) -> List<T>:
 /// ties: `var a = [1, 2, 1]; a.next_permutation() and a == [2, 1, 1]`
 /// traps: never
 /// example: `var a = [1, 2, 3]; a.next_permutation() and a == [1, 3, 2]`
-pub fn next_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> Bool:
+pub fn next_permutation<S: IndexedMut<D, T>, D: Discrete, T: Ord>(mut self: S) -> Bool:
     var i = self.len - 2
     while i >= 0 and not (self.nth(i) < self.nth(i + 1)): i -= 1
     if i < 0:
@@ -850,7 +850,7 @@ pub fn next_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> 
 /// ties: `var a = [2, 1, 1]; a.prev_permutation() and a == [1, 2, 1]`
 /// traps: never
 /// example: `var a = [1, 3, 2]; a.prev_permutation() and a == [1, 2, 3]`
-pub fn prev_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> Bool:
+pub fn prev_permutation<S: IndexedMut<D, T>, D: Discrete, T: Ord>(mut self: S) -> Bool:
     var i = self.len - 2
     while i >= 0 and not (self.nth(i + 1) < self.nth(i)): i -= 1
     if i < 0:
@@ -880,7 +880,7 @@ pub fn prev_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> 
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [2, 3]`
-pub fn runs<S: Indexed<D, T>, D: Domain, T, K: Eq>(
+pub fn runs<S: Indexed<D, T>, D: Discrete, T, K: Eq>(
     self: S,
     by: T -> K = x => x,
     link: ?((T, T) -> Bool) = None,
@@ -1313,7 +1313,7 @@ pub fn swap_at<D, T>(mut self: [D]T, i: D, j: D):
 /// traps: when `i` or `j` is not in `0..self.len`
 /// example: `var a = [1, 2, 3]; a.swap_idx(0, 2); a == [3, 2, 1]`
 /// empty: `var a: List<Int> = []; a.swap_idx(0, 0); a == []` (traps R0101)
-pub fn swap_idx<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, i: Int, j: Int):
+pub fn swap_idx<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S, i: Int, j: Int):
     let (a, b) = (self.keys.nth(i), self.keys.nth(j))
     if i == j: return
     let t = self[a]
@@ -1328,7 +1328,7 @@ pub fn swap_idx<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, i: Int, j: Int):
 /// order: a new `List`, keyed from 0
 /// traps: when `n < 0` or `n >= 2^31`
 /// example: `[1, 2, 3].resized(5, 0) == [1, 2, 3, 0, 0]`
-pub fn resized<S: Indexed<D, T>, D: Domain, T>(self: S, n: Len, fill: T) -> List<T> = [
+pub fn resized<S: Indexed<D, T>, D: Discrete, T>(self: S, n: Len, fill: T) -> List<T> = [
     if i < self.len: self.nth(i) else: fill for i in 0..n
 ]
 
@@ -1492,6 +1492,8 @@ pub trait Keyed<D, T>: Seq<T>:
 pub trait Sized:
     /// The element count.
     @get fn len(self) -> Int
+    /// Whether it has no elements.
+    @get fn is_empty(self) -> Bool = self.len == 0
 
 /// The element count of any `Sized` value, as a call: `len(xs)` is `xs.len`.
 ///
@@ -1553,17 +1555,6 @@ impl Sized for Str:
 impl Keyed<Int, Char> for Str:
     fn items(self) -> yields (Int, Char):
         for i in 0..self.len: yield (i, self[i])
-
-impl Seq<T> for [D]T:
-    fn iter(self) -> yields T:
-        for x in self: yield x
-
-impl Bidir<T> for [D]T:
-    fn iter_rev(self) -> yields T:
-        for v in D.rev: yield self[v]
-
-impl Sized for [D]T:
-    @get fn len(self) -> Int = self.len
 
 impl<D: Domain> Sized for D:
     @get fn len(self) -> Int = D.count
@@ -1954,16 +1945,16 @@ pub fn take_last<S: Indexed>(self: S, k: Len) -> Slice<S> = piece(
 /// empty: `let a: List<Int> = []; a.nth(0) == 0` (traps R0101)
 /// traps: when `k` is not in `0..self.len`
 /// example: `[5, 6, 7][1..].nth(0) == 6`
-pub fn nth<S: Indexed<D, T>, D: Domain, T>(self: S, k: Int) -> T = self.at(self.keys.nth(k))
+pub fn nth<S: Indexed<D, T>, D: Discrete, T>(self: S, k: Int) -> T = self.at(self.keys.nth(k))
 
-impl<S: Indexed<K, T>, K: Domain, T> Seq<T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Seq<T> for Slice<S>:
     fn iter(self) -> yields T:
         for i in self.lo..self.hi: yield self.src.nth(i)
 
-impl<S: Indexed<K, T>, K: Domain, T> Sized for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Sized for Slice<S>:
     @get fn len(self) -> Int = self.hi - self.lo
 
-impl<S: Indexed<K, T>, K: Domain, T> Keyed<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Keyed<K, T> for Slice<S>:
     /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
     /// same elements without the keys.
     ///
@@ -1975,19 +1966,19 @@ impl<S: Indexed<K, T>, K: Domain, T> Keyed<K, T> for Slice<S>:
     fn items(self) -> yields (K, T):
         for i in self.lo..self.hi: yield (self.src.keys.nth(i), self.src.nth(i))
 
-impl<S: Indexed<K, T>, K: Domain, T> Bidir<T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Bidir<T> for Slice<S>:
     fn iter_rev(self) -> yields T:
         for i in (self.lo..self.hi).rev: yield self.src.nth(i)
 
-impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Positional<T> for Slice<S>:
     /// `(0..len)[k]` is `k`, read as a key so one outside the slice traps R0101 (R07.4.5).
     fn nth(self, k: Int) -> T = self.src.nth(self.lo + (0..self.len)[k])
 
-impl<S: Indexed<K, T>, K: Domain, T> IndexGet<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> IndexGet<K, T> for Slice<S>:
     /// `keys[i]` is `i`, checked: a key outside the slice traps R0101, never reading the source
     /// around it (R07.4.5).
     fn at(self, i: K) -> T = self.src.at(self.keys[i])
-impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Indexed<K, T> for Slice<S>:
     /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
     ///
     /// cost: \(O(1)\)
@@ -2124,27 +2115,27 @@ impl<R: Domain, C: Domain, T> Keyed<(R, C), T> for Rect<R, C, T>:
 pub struct Rebased<S>(pub src: S):
     domain Idx = 0..src.len
 
-impl<S: Indexed<K, T>, K: Domain, T> Seq<T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Seq<T> for Rebased<S>:
     fn iter(self) -> yields T:
         for x in self.src: yield x
 
 impl<S: Sized> Sized for Rebased<S>:
     @get fn len(self) -> Int = self.src.len
 
-impl<S: Indexed<K, T>, K: Domain, T> Keyed<Idx, T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Keyed<Idx, T> for Rebased<S>:
     fn items(self) -> yields (Idx, T):
         for i in Idx.all: yield (i, self.src.nth(i.ord))
 
-impl<S: Indexed<K, T>, K: Domain, T> Bidir<T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Bidir<T> for Rebased<S>:
     fn iter_rev(self) -> yields T:
         for x in self.src.rev: yield x
 
-impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Positional<T> for Rebased<S>:
     fn nth(self, k: Int) -> T = self.src.nth(k)
 
-impl<S: Indexed<K, T>, K: Domain, T> IndexGet<Idx, T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> IndexGet<Idx, T> for Rebased<S>:
     fn at(self, i: Idx) -> T = self.src.nth(i.ord)
-impl<S: Indexed<K, T>, K: Domain, T> Indexed<Idx, T> for Rebased<S>:
+impl<S: Indexed<K, T>, K: Discrete, T> Indexed<Idx, T> for Rebased<S>:
     @get fn keys(self) -> Range<Idx> = Idx.all
 
 /// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks
@@ -2241,7 +2232,7 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
     /// example: `[3, 1, 2, 4, 5].step(2).keys.len == 3`
     @get pub fn len(self) -> Int = if from >= n: 0 else: (n - from + k - 1) / k
 
-impl<K: Domain> Contains<K> for StepKeys:
+impl<K: Discrete> Contains<K> for StepKeys:
     /// \(O(1)\). Whether the walk visits `i`: `i in s.keys`.
     ///
     /// cost: \(O(1)\)
@@ -2471,7 +2462,7 @@ pub fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yie
 /// order: left to right
 /// traps: when `k < 1`
 /// example: `[1, 2, 3].chunks_padded(2, 0).collect() == [[1, 2], [3, 0]]`
-pub fn chunks_padded<S: Indexed<D, T>, D: Domain, T>(self: S, k: 1.., pad: T) -> yields List<T>:
+pub fn chunks_padded<S: Indexed<D, T>, D: Discrete, T>(self: S, k: 1.., pad: T) -> yields List<T>:
     assert k >= 1
     var i = 0
     while i < self.len:
@@ -2671,7 +2662,7 @@ fn keep_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K, first: ((K, Int, T), (K,
 /// order: kept elements in `0..mid`, the rest after, each side in unspecified order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.partition_in_place(x => x % 2 == 0) == 2`
-pub fn partition_in_place<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, keep: T -> Bool) -> Int:
+pub fn partition_in_place<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S, keep: T -> Bool) -> Int:
     var mid = 0
     for i in 0..self.len:
         if keep(self.nth(i)):
@@ -2686,7 +2677,7 @@ pub fn partition_in_place<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, keep: 
 /// order: kept elements in `0..mid`, the rest after, each side in input order
 /// traps: never
 /// example: `var a = [1, 2, 3, 4]; a.stable_partition_in_place(x => x % 2 == 0); a == [2, 4, 1, 3]`
-pub fn stable_partition_in_place<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, keep: T -> Bool) -> Int:
+pub fn stable_partition_in_place<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S, keep: T -> Bool) -> Int:
     var yes: List<T> = []
     var no: List<T> = []
     for i in 0..self.len:
@@ -2838,7 +2829,7 @@ pub fn sorted_diff<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Ord>(self: A
 /// order: non-decreasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `kway_merge([[1, 4], [2], [3]]) == [1, 2, 3, 4]`
-pub fn kway_merge<S: Indexed<D, T>, D: Domain, T>(lists: List<S>) -> List<T>:
+pub fn kway_merge<S: Indexed<D, T>, D: Discrete, T>(lists: List<S>) -> List<T>:
     if lists.len == 0: return []
     var parts: List<List<T>> = [l.collect() for l in lists]
     while parts.len > 1:
@@ -2858,7 +2849,7 @@ pub fn kway_merge<S: Indexed<D, T>, D: Domain, T>(lists: List<S>) -> List<T>:
 /// ties: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.radix_sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
 /// traps: never
 /// example: `var a = [3, -1, 2]; a.radix_sort(); a == [-1, 2, 3]`
-pub fn radix_sort<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, by: T -> Int = x => x):
+pub fn radix_sort<S: IndexedMut<D, T>, D: Discrete, T>(mut self: S, by: T -> Int = x => x):
     let n = self.len
     if n <= 1: return
     var cur: List<(Int, T)> = [(by(self.nth(i)), self.nth(i)) for i in 0..n]
@@ -2897,7 +2888,7 @@ pub fn radix_sort<S: IndexedMut<D, T>, D: Domain, T>(mut self: S, by: T -> Int =
 /// empty: `domain K = 0..2; var a: List<(k: K, s: Str)> = []; a.counting_sort(by: p => p.k); a == []`
 /// ties: `domain K = 0..2; var a = [(k: K(1), s: "b"), (k: K(1), s: "a")]; a.counting_sort(by: p => p.k); [p.s for p in a] == ["b", "a"]`
 /// traps: never
-pub fn counting_sort<S: IndexedMut<D, T>, D: Domain, T, K>(mut self: S, by: T -> K):
+pub fn counting_sort<S: IndexedMut<D, T>, D: Discrete, T, K>(mut self: S, by: T -> K):
     let n = self.len
     var start: [K]Int = 0
     for i in 0..n: start[by(self.nth(i))] += 1
@@ -3069,7 +3060,7 @@ pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
 /// order: lexicographic by position
 /// traps: when `k < 0` or `k >= 2^31`
 /// example: `[1, 2, 3].combinations(2).collect() == [[1, 2], [1, 3], [2, 3]]`
-pub fn combinations<S: Indexed<D, T>, D: Domain, T>(self: S, k: Len) -> yields List<T>:
+pub fn combinations<S: Indexed<D, T>, D: Discrete, T>(self: S, k: Len) -> yields List<T>:
     let n = self.len
     if k > n: return
     var idx = (0..k).collect()
@@ -3101,7 +3092,7 @@ pub fn index_pairs<D>(self: Range<D>) -> yields (D, D):
 /// order: lexicographic by position
 /// traps: when `k` is not in `0..=self.len`
 /// example: `[1, 2].permutations().collect() == [[1, 2], [2, 1]]`
-pub fn permutations<S: Indexed<D, T>, D: Domain, T>(self: S, k: ?Int = None) -> yields List<T>:
+pub fn permutations<S: Indexed<D, T>, D: Discrete, T>(self: S, k: ?Int = None) -> yields List<T>:
     let n = self.len
     let m = k ?? n
     let _ = [0 for _ in 0..n + 1][m]
@@ -3145,7 +3136,7 @@ pub struct SubseqStep<T>(pub items: List<T>, var pruned: Bool = false):
 @lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    let s = sum(self[i] for i in 0..n if (mask >> i) & 1 == 1)\n    body", advice: "self.subsequences()", holes: "n, body")
 @lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    var s = 0\n    for i in 0..n:\n        if mask.bit(i):\n            s += self[i]\n    body", advice: "self.subsequences()", holes: "n, body")
 @lint(subset_masks_by_hand, from: "for mask in 0..(1 << n):\n    var s = 0\n    for i in 0..n:\n        if (mask >> i) & 1 == 1:\n            s += self[i]\n    body", advice: "self.subsequences()", holes: "n, body")
-pub fn subsequences<S: Indexed<D, T>, D: Domain, T>(self: S) -> yields SubseqStep<T>:
+pub fn subsequences<S: Indexed<D, T>, D: Discrete, T>(self: S) -> yields SubseqStep<T>:
     let n = self.len
     var pick: List<Int> = []
     while true:
@@ -4017,7 +4008,7 @@ impl Sep<Int> for Int:
 /// example: `[p.len for p in [1, 0, 0, 2].split(0)] == [1, 0, 1]`
 /// example: `[Str(p) for p in "a,b,,c".split(',')] == ["a", "b", "", "c"]`
 /// example: `"".split(',').count() == 1`
-pub fn split<S: Indexed<D, T>, D: Domain, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>:
+pub fn split<S: Indexed<D, T>, D: Discrete, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>:
     var i = 0
     for j in 0..self.len:
         if sep.is_sep(self.nth(j)):
@@ -4030,7 +4021,7 @@ fn clamp_count(k: Int, n: Int) -> Int:
     assert k >= 0, "a count must not be negative"
     if k < n: k else: n
 
-fn piece<S: Indexed<D, T>, D: Domain, T>(s: S, i: Int, j: Int) -> Slice<S>:
+fn piece<S: Indexed<D, T>, D: Discrete, T>(s: S, i: Int, j: Int) -> Slice<S>:
     let n = s.len
     if i < j: return s[s.keys.nth(i)..=s.keys.nth(j - 1)]
     if i < n:
@@ -4575,12 +4566,12 @@ impl Show for Mapped<S: Seq<T>, T, U: Show>:
     fn gap(self, mut out: Str):
         out.push('\n')
 
-impl<S: Indexed<K, T>, K: Domain, T: Show> Show for Rebased<S>:
+impl<S: Indexed<K, T>, K: Discrete, T: Show> Show for Rebased<S>:
     fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
     fn gap(self, mut out: Str):
         out.push('\n')
 
-impl<S: Indexed<K, T>, K: Domain, T: Show> Show for Slice<S>:
+impl<S: Indexed<K, T>, K: Discrete, T: Show> Show for Slice<S>:
     fn write_to(self, mut out: Str, sep: ?Str) = write_seq(self, mut out, sep)
     fn gap(self, mut out: Str):
         out.push('\n')

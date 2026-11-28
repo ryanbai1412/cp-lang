@@ -419,7 +419,7 @@ impl Show for Str:
 impl<D: Domain> Show for D:
     fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
-        (Int(self) + (if D.counted: fmt.base else: 0)).write_to(mut out, sep)
+        (Int(self) + (if D.from_count: fmt.base else: 0)).write_to(mut out, sep)
 
 impl Show for ():
     fn write_to(self, mut out: Str, sep: ?Str) = ()

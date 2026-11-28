@@ -541,7 +541,7 @@ pub fn sos<S: IndexedMut>(mut a: S, over: SosOver = Sub, inverse: Bool = false):
 /// example: `var a = [1, 2]; fwht(mut a); a == [3, -1]`
 /// example: `var a = [1, 2, 3, 4]; fwht(mut a); a == [10, -2, -4, 0]`
 /// example: `var a = [10, -2, -4, 0]; fwht(mut a, inverse: true); a == [1, 2, 3, 4]`
-pub fn fwht<S: IndexedMut<D, T>, D: Domain, T>(mut a: S, inverse: Bool = false) where T: One + Zero + Add + Div + Eq + Mul + Sub:
+pub fn fwht<S: IndexedMut<D, T>, D: Discrete, T>(mut a: S, inverse: Bool = false) where T: One + Zero + Add + Div + Eq + Mul + Sub:
     let n = a.len
     let ks = a.keys
     assert n.is_pow2, "fwht requires a power-of-two length"

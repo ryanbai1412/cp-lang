@@ -404,6 +404,8 @@ pub struct Roles {
     /// The struct core marks `@role(cuts)`: a half-open literal range of its values, where a
     /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
     pub cut: Option<StructId>,
+    /// The `@role(discrete)` trait: positions in a walk, which `Int` and every domain have.
+    pub discrete: Option<TraitId>,
     /// The `@role(positions)` trait: every domain's position type has it, and nothing else.
     pub domain: Option<TraitId>,
     /// The `@role(order)` trait: stepping and order, which every domain the compiler declares
@@ -447,6 +449,7 @@ pub enum Role {
     Prelude,
     Recipe,
     Trace,
+    Discrete,
     Positions,
     Order,
     Convert,
@@ -469,7 +472,7 @@ pub enum Role {
 }
 
 impl Role {
-    pub const ALL: [Role; 28] = [
+    pub const ALL: [Role; 29] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -479,6 +482,7 @@ impl Role {
         Role::Prelude,
         Role::Recipe,
         Role::Trace,
+        Role::Discrete,
         Role::Positions,
         Role::Order,
         Role::Convert,
@@ -511,6 +515,7 @@ impl Role {
             Role::Prelude => "prelude",
             Role::Recipe => "recipe",
             Role::Trace => "trace",
+            Role::Discrete => "discrete",
             Role::Positions => "positions",
             Role::Order => "order",
             Role::Convert => "convert",
@@ -982,18 +987,19 @@ fn fresh_results(d: &mut Decls) {
 
 /// `t` keys by parameter `i`, also through a struct whose own parameter in that place is a
 /// domain: `self: Dsu<V>`.
-fn keys(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
-    let go = |t: &Ty| depth < 8 && keys(d, t, domain, i, depth + 1);
+fn keys(d: &Decls, t: &Ty, pos: &[TraitId], i: usize, depth: usize) -> bool {
+    let go = |t: &Ty| depth < 8 && keys(d, t, pos, i, depth + 1);
     match t {
         Ty::Struct(s, ts, _) => {
             ts.iter().any(go)
                 || (ts.iter().enumerate()).any(|(k, a)| {
-                    (d.structs[s.0].bounds.contains(&(k, domain))
-                        && domain_at(d, a, domain, i, depth))
+                    (pos.iter()
+                        .any(|tr| d.structs[s.0].bounds.contains(&(k, *tr)))
+                        && domain_at(d, a, pos, i, depth))
                         || (*a == Ty::Param(i)
                             && depth < 8
                             && (d.structs[s.0].fields.iter())
-                                .any(|(_, f)| keys(d, f, domain, k, depth + 1)))
+                                .any(|(_, f)| keys(d, f, pos, k, depth + 1)))
                 })
         }
         Ty::Raw(e) | Ty::Ref(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => go(e),
@@ -1003,26 +1009,27 @@ fn keys(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
 }
 /// `P` in a domain's place is one, and so is a part of it that `P`'s `Domain` impl bounds by
 /// `Domain`: `V` in `[(V, V)]T` (R04.2.11).
-fn domain_at(d: &Decls, t: &Ty, domain: TraitId, i: usize, depth: usize) -> bool {
+fn domain_at(d: &Decls, t: &Ty, pos: &[TraitId], i: usize, depth: usize) -> bool {
     let Ty::Struct(s, ts, _) = t else {
         return *t == Ty::Param(i);
     };
-    depth < 8
-        && (d.impls.iter()).any(|m| {
-            let Ty::Struct(f, ps, _) = &m.for_ else {
-                return false;
-            };
-            m.trait_.tr == domain && f == s && (ps.iter().zip(ts)).any(|(p, a)| {
-                matches!(p, Ty::Param(j) if m.bounds.iter().any(|(b, r)| b == j && r.tr == domain))
-                    && domain_at(d, a, domain, i, depth + 1)
-            })
+    depth < 8 && (d.impls.iter()).any(|m| {
+        let Ty::Struct(f, ps, _) = &m.for_ else {
+            return false;
+        };
+        pos.contains(&m.trait_.tr) && f == s && (ps.iter().zip(ts)).any(|(p, a)| {
+            matches!(p, Ty::Param(j) if m.bounds.iter().any(|(b, r)| b == j && pos.contains(&r.tr)))
+                && domain_at(d, a, pos, i, depth + 1)
         })
+    })
 }
 
 /// `s`'s parameter `k` is a domain: a field keys by it, as `at: [Pre]V` does, or it is bounded so.
 fn domain_param_of(d: &Decls, s: StructId, k: usize, domain: TraitId) -> bool {
-    d.structs[s.0].bounds.contains(&(k, domain))
-        || (d.structs[s.0].fields.iter()).any(|(_, f)| keys(d, f, domain, k, 0))
+    let pos: Vec<TraitId> = d.roles.discrete.into_iter().chain([domain]).collect();
+    pos.iter()
+        .any(|tr| d.structs[s.0].bounds.contains(&(k, *tr)))
+        || (d.structs[s.0].fields.iter()).any(|(_, f)| keys(d, f, &pos, k, 0))
 }
 
 /// The `_`s of `t`, a result, in its structs' domain parameters, each made a fresh domain.
@@ -1061,7 +1068,10 @@ fn domain_params(d: &mut Decls, from: usize, bodies: &HashMap<FnId, cpl_next_syn
     // or an array by it (`[V] v => e`, `var s: [V]Int`), is one (R04.4.30).
     // One that names one of `Ordered`'s steps on it (`D.at(x)`) is ordered too (R04.2.31).
     use cpl_next_syntax::ast::{self as next, AstNode, GenericArg, Type};
-    let dom_fns: Vec<Sym> = d.traits[domain.0].methods.keys().copied().collect();
+    let pos: Vec<TraitId> = d.roles.discrete.into_iter().chain([domain]).collect();
+    let dom_fns: Vec<Sym> = (pos.iter())
+        .flat_map(|tr| d.traits[tr.0].methods.keys().copied())
+        .collect();
     let steps: Vec<Sym> = (d.roles.order.iter())
         .flat_map(|tr| d.traits[tr.0].methods.keys().copied())
         .collect();
@@ -1145,7 +1155,7 @@ fn domain_params(d: &mut Decls, from: usize, bodies: &HashMap<FnId, cpl_next_syn
                     .chain([&f.ret])
                     .chain(&f.self_ty)
                     .chain(fields.iter().map(|(_, t)| t))
-                    .any(|t| keys(d, t, domain, i, 0))
+                    .any(|t| keys(d, t, &pos, i, 0))
                     || used[k - from].contains(&i)
                     || matches!(f.owner, Some(Owner::Impl(m)) if d.impls[m].for_ == Ty::AnyRange(i))
             })

@@ -9685,6 +9685,7 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `Domain` gains `fn try_nth(k: Int) -> ?Self`, the position `k` steps into the walk or `None` past either end (R04.2.32), by default `if 0 <= k and k < Self.count: Some(Self.nth(k)) else: None`. `impl Domain for Int` overrides it as `Some(k)`. `Cut.l`/`Cut.r`, `Ordered.next` and `offset` call it, so the bounds check is written once.
 - **Why.** Coordinator ruling of 2026-11-27, 23:47. `Cut.r` read `D.count`, which `Int` doesn't have, so `(0..100).bsearch(..).r` (a `Cut<Int>`) was rejected. `Cut.l` also gave `None` at cut 0 of `Int`, which has position -1. The name follows `try_at`/`try_index_of`, and `nth_at` would read as `Ordered.at`'s integer key.
 - **Reverse.** Inline the bounds check back into `Cut.l`/`Cut.r`, `next` and `offset`, and give `Int` a count or no cuts.
+- **Amended 2026-11-28 (decision 676).** `try_nth` now lives in `Discrete`, whose default is the intrinsic `dom_try_nth`: core domains bound it through their own `count` and `nth` in the checker, `Int` overrides it as `Some(k)`, and `impl<T: Index> Discrete for T` and `Cut<D>` write theirs in std, as `nth` already was.
 ## 675. An `impl Trait for T` body holds only the trait's members (check, 2026-11-27)
 
 `impl Seq<Int> for Hundred` with an extra `fn sum` was accepted, and a
@@ -9775,3 +9776,9 @@ named. 636's own-module level stays for extension against extension. `sum`
 keeps its plain call `sum(e for x in s)` through `@free_form` (676).
 Reverse: move `sum` back to a free `pub fn sum<S: Seq<T>>` and restore the
 old case.
+
+## 676. `Discrete` is positions without a count; `Domain` means counted, and `[D]T` over a `Discrete`-only `D` is the list (stdlib, 2026-11-28)
+
+- **Call.** `pub trait Discrete` holds `ord`, `nth` and `try_nth` (default `@intrinsic("dom_try_nth")`). `Domain(Discrete)` holds `count`, `all`, `range`, `mask` and `from_count` (renamed from `counted`, since `Domain` itself now means counted). `Ordered(Discrete)` keeps `at`, `next`, `prev`, `l`, `r` and `before`; `wrap` and `after`, which read the count, move to `Cyclic: Ordered + Domain` with one blanket impl. `Int` implements `Discrete` and `Ordered`, not `Domain`. `[D]T` is `List<T>` when `D` implements `Discrete` but not `Domain` (R04.8.11), applied when a type is read (`Cx::listed` in check, `Link::listed` in link), so a generic `[D]T` at `D = Int` is the list. Array's inherent `len`, `is_empty`, `get`, `each` and `filled` move to `Sized` (with an `is_empty` default), `IndexGet`, `Seq` and `Filled`, which `List` implements too. Generic std over `S: Indexed<D, T>` that never reads a count, and `Range<D>`, `Cut<D>`, `RangeEnds<D>` and `Endpoint`, bound `D: Discrete`.
+- **Why.** Coordinator rulings of 2026-11-28, 00:10-00:17: core-07/list-key-domain-is-int (`LinearRmq(xs)` at `D = Int`) needed a list's keys to be an `Int` range with no count. A name-keyed `[Int]T` (old cpl's 1d7a5b60e) was rejected, as were storing a length in every array (it costs zero-cost arrays) and rewriting the case. With `Domain` meaning counted, every existing `D: Domain` generic and `var x: [V]Int = 0` is unchanged and stays sound when checked.
+- **Reverse.** Fold `Discrete` back into `Domain`, give `Int` a `Domain` impl again, and delete `listed` and `Cyclic`.

@@ -1956,7 +1956,7 @@ fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
             | EK::DomLen(_)
             | EK::DomLo(_)
             | EK::DomHeld(_)
-            | EK::DomCounted(_)
+            | EK::DomFromCount(_)
             | EK::HasBound(..) => None,
         }
     }

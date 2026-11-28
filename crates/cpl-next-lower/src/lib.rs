@@ -308,7 +308,7 @@ fn dom_impls(d: &Decls, typed: &Typed, i: usize) -> Vec<cpl_next_ir::ty::TraitId
         rows: &typed.dom_rows,
     };
     let dom = cpl_next_ir::ty::Ty::Dom(i);
-    (d.roles.domain.into_iter().chain(d.roles.order))
+    (d.roles.discrete.into_iter().chain(d.roles.domain).chain(d.roles.order))
         .filter(|&tr| impls.trait_impls(tr).any(|(_, im)| im.for_ == dom))
         .collect()
 }
@@ -999,7 +999,7 @@ impl Lw<'_> {
                 v
             }
             TK::DomLen(t) => mk(EK::DomLen(t.clone())),
-            TK::DomCounted(t) => mk(EK::DomCounted(t.clone())),
+            TK::DomFromCount(t) => mk(EK::DomFromCount(t.clone())),
             TK::HasBound(t, r) => mk(EK::HasBound(t.clone(), r.tr, r.args.clone())),
             TK::Ordinal(x) => {
                 let v = self.expr(x, out);
@@ -1025,7 +1025,7 @@ impl Lw<'_> {
                     return int(v.kind);
                 }
                 // A parameter may be a domain that is a struct, as `Cut<D>`: its `ord` says it.
-                let v = match (&x.ty, self.d.roles.domain) {
+                let v = match (&x.ty, self.d.roles.discrete) {
                     (Ty::Param(_), Some(tr)) => {
                         let ord = Target::Trait {
                             tr,

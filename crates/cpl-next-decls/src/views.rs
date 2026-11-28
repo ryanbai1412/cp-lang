@@ -434,8 +434,9 @@ impl TypeTables for Decls {
         self.operator_fn_of(op, true)
     }
     fn getter(&self, m: crate::sym::Sym) -> Option<FnId> {
-        let tr = self.roles.domain?;
-        (self.member(&self.traits[tr.0].methods, self.syms.text(m)))
+        let text = self.syms.text(m);
+        (self.roles.discrete.into_iter().chain(self.roles.domain))
+            .find_map(|tr| self.member(&self.traits[tr.0].methods, text))
             .filter(|f| self.fns[f.0].getter)
     }
 }
@@ -450,6 +451,7 @@ impl RoleRows for Decls {
     fn role_trait(&self, r: Role) -> Option<TraitId> {
         match r {
             Role::Iteration => self.roles.iteration,
+            Role::Discrete => self.roles.discrete,
             Role::Positions => self.roles.domain,
             Role::Order => self.roles.order,
             Role::Convert => self.roles.convert,

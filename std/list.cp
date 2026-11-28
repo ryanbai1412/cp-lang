@@ -4,7 +4,7 @@
 //! example: `var xs = [3, 1]; xs.push(2); xs[2] == 2 and xs.len == 3`
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key}
 use std.literal.{ListLiteral, Filled}
-use std.seq.{Seq, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
+use std.seq.{Seq, Bidir, Sized, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
 
 fn out(text: Raw<Char>, n: Int) = @intrinsic("out")
 
@@ -65,9 +65,6 @@ pub struct List<T>:
         self.reserve(n + xs.len)
         for x in xs: self.push(x)
 
-    @get pub fn is_empty(self) -> Bool:
-        n == 0
-
     pub fn pop(mut self) -> ?T:
         if n == 0: return None
         n -= 1
@@ -108,19 +105,18 @@ pub struct List<T>:
 pub struct Array<D: Domain, T>:
     buf: Raw<T>
 
-    @get pub fn len(self) -> Int:
-        D.count
+/// Cell by cell, in walk order: its length, `is_empty`, `a[v]` and `for x in a` come from
+/// these impls, which a list has too, so generic code over `[D]T` reads either (R04.8.11).
+impl<D: Domain, T> Seq<T> for Array<D, T>:
+    fn iter(self) -> yields T:
+        for i in 0..D.count: yield raw_get(self.buf, i)
 
-    @get pub fn is_empty(self) -> Bool = D.count == 0
+impl<D: Domain, T> Bidir<T> for Array<D, T>:
+    fn iter_rev(self) -> yields T:
+        for i in (0..D.count).rev: yield raw_get(self.buf, i)
 
-    pub fn filled(x: T) -> Array<D, T>:
-        Array(raw_new(D.count, x))
-
-    pub fn get(self, i: D) -> T:
-        raw_get(buf, i.ord)
-
-    pub fn each(self) -> yields T:
-        for i in 0..D.count: yield raw_get(buf, i)
+impl<D: Domain, T> Sized for Array<D, T>:
+    @get fn len(self) -> Int = D.count
 
 /// Cell by cell, in walk order (R08.1.6).
 impl<D: Domain, T: Eq> Eq for Array<D, T>:
@@ -255,7 +251,7 @@ impl<T> ListLiteral<T> for List<T>:
 
 impl<D: Domain, T> Filled<T> for Array<D, T>:
     fn filled(x: T) -> Array<D, T>:
-        [D].filled(x)
+        Array(raw_new(D.count, x))
 
 /// A list, a string and an array read in O(1) at any key, by position from 0 or, for an
 /// array, by its domain's positions (R12.4.5).
@@ -285,9 +281,9 @@ impl<D: Domain, T> Keyed<D, T> for Array<D, T>:
     fn items(self) -> yields (D, T):
         for i in 0..D.count: yield (D.nth(i), raw_get(self.buf, i))
 impl<D: Domain, T> Positional<T> for Array<D, T>:
-    fn nth(self, k: Int) -> T = self.get(D.nth(k))
+    fn nth(self, k: Int) -> T = raw_get(self.buf, D.nth(k).ord)
 impl<D: Domain, T> IndexGet<D, T> for Array<D, T>:
-    fn at(self, i: D) -> T = self.get(i)
+    fn at(self, i: D) -> T = raw_get(self.buf, i.ord)
 impl<D: Domain, T> Indexed<D, T> for Array<D, T>:
     @get fn keys(self) -> Range<D> = D
 impl<D: Domain, T> IndexMut<D, T> for Array<D, T>:

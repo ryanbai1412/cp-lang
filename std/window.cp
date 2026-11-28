@@ -21,7 +21,7 @@ use std.seq.{Track, Indexed, collect}
 /// traps: when `k < 1`
 /// example: `[3, 1, 4, 1, 5].window_fold(2, max).collect() == [3, 4, 4, 5]`
 /// example: `[1, 2, 3].window_fold(2, +).collect() == [3, 5]`
-pub fn window_fold<S: Indexed<D, T>, D: Domain, T: Eq, M: Op<T>>(self: S, k: 1.., op: M) -> yields T:
+pub fn window_fold<S: Indexed<D, T>, D: Discrete, T: Eq, M: Op<T>>(self: S, k: 1.., op: M) -> yields T:
     assert k >= 1, "a window holds at least one element"
     var w = Window<T, M>.new(op)
     for i in 0..self.len:

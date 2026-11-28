@@ -413,7 +413,7 @@ pub enum EK<T> {
     DomHeld(T),
     /// Whether a domain type is declared by a count alone (R10.2.2). Resolved by the link step
     /// to a constant.
-    DomCounted(T),
+    DomFromCount(T),
     /// Generic IR only: whether a type meets a trait at its arguments (`if T: Tr<A>:`). The
     /// link step makes it a `Bool` and keeps only the branch it takes (R08.2.9).
     HasBound(T, TraitId, Vec<T>),
@@ -644,7 +644,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
             | EK::DomLen(_)
             | EK::DomLo(_)
             | EK::DomHeld(_)
-            | EK::DomCounted(_)
+            | EK::DomFromCount(_)
             | EK::HasBound(..) => {}
         }
     }
@@ -794,7 +794,7 @@ pub fn pure<T>(e: &Expr<T>) -> bool {
         | EK::DomLen(_)
         | EK::DomLo(_)
         | EK::DomHeld(_)
-        | EK::DomCounted(_)
+        | EK::DomFromCount(_)
         | EK::HasBound(..) => true,
         EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().all(pure),
         EK::Inject(x) | EK::MakeUnion(_, x) => pure(x),

@@ -40,8 +40,8 @@ impl Decls {
         let bodiless = |m: &FnId| self.f(*m).getter && self.f(*m).bodiless();
         !t.alias && !t.methods.is_empty() && t.methods.values().all(bodiless)
     }
-    /// The impls every domain has, `Domain` and `Ordered`, for domain `dom` declared at `at`:
-    /// they write no members, so each member is the trait's default (R04.2, R04.2.31).
+    /// The impls every domain has, `Discrete`, `Domain` and `Ordered`, for domain `dom` declared
+    /// at `at`: they write no members, so each member is the trait's default (R04.2, R04.2.31).
     pub fn domain_rows(&self, dom: usize, at: SourceId, module: ModId) -> Vec<ImplDecl> {
         domain_rows(self, dom, at, module)
     }
@@ -516,6 +516,14 @@ impl<'a> Impls<'a> {
     }
     /// Whether `t` has an impl of `tr` at any arguments, its parameters taken to meet the
     /// impl's bounds.
+    /// Whether `t` is `Discrete` but not a `Domain`: positions with no count, as `Int`'s are. An
+    /// array over one is the list, whose length is the value's own (R04.8.11).
+    pub fn uncounted(&self, t: &Ty, roles: &crate::decls::Roles) -> bool {
+        let (Some(walk), Some(dom)) = (roles.discrete, roles.domain) else {
+            return false;
+        };
+        matches!(t, Ty::Int | Ty::Struct(..)) && self.has_impl(t, walk) && !self.has_impl(t, dom)
+    }
     pub fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         let r = TraitRef {
             tr,
@@ -895,15 +903,15 @@ pub fn with_defaults(items: &dyn Items, mut r: TraitRef, self_ty: &Ty) -> TraitR
     r
 }
 
-/// The impls every domain has, `Domain` and `Ordered`, for domain `dom` declared at `at`:
-/// they write no members, so each member is the trait's default (R04.2, R04.2.31).
+/// The impls every domain has, `Discrete`, `Domain` and `Ordered`, for domain `dom` declared
+/// at `at`: they write no members, so each member is the trait's default (R04.2, R04.2.31).
 pub fn domain_rows(
     rows: &dyn crate::views::RoleRows,
     dom: usize,
     at: SourceId,
     module: ModId,
 ) -> Vec<ImplDecl> {
-    let traits = [Role::Positions, Role::Order].map(|r| rows.role_trait(r));
+    let traits = [Role::Discrete, Role::Positions, Role::Order].map(|r| rows.role_trait(r));
     (traits.into_iter().flatten())
         .map(|tr| ImplDecl {
             trait_: TraitRef {

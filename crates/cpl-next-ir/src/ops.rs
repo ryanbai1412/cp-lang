@@ -979,8 +979,9 @@ fn cpp_name(f: Fault) -> String {
 pub enum DomainOp {
     Count,
     Nth,
+    TryNth,
     At,
-    Counted,
+    FromCount,
     Ord,
 }
 
@@ -1104,8 +1105,9 @@ pub const INTRINSICS: &[(&str, Intrinsic)] = &[
     ),
     ("dom_count", Intrinsic::Domain(DomainOp::Count)),
     ("dom_nth", Intrinsic::Domain(DomainOp::Nth)),
+    ("dom_try_nth", Intrinsic::Domain(DomainOp::TryNth)),
     ("dom_at", Intrinsic::Domain(DomainOp::At)),
-    ("dom_counted", Intrinsic::Domain(DomainOp::Counted)),
+    ("dom_from_count", Intrinsic::Domain(DomainOp::FromCount)),
     ("dom_ord", Intrinsic::Domain(DomainOp::Ord)),
 ];
 

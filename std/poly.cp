@@ -309,7 +309,7 @@ pub fn sqrt<P>(a: List<Mod<P>>, n: Len) -> ?List<Mod<P>>:
 /// traps: never (beyond the ring's own arithmetic)
 /// example: `[1, 2, 3].eval(2) == 17`
 /// example: `[5].eval(100) == 5`
-pub fn eval<S: Indexed<D, T>, D: Domain, T>(self: S, x: T) -> T where T: Zero + Add + Mul:
+pub fn eval<S: Indexed<D, T>, D: Discrete, T>(self: S, x: T) -> T where T: Zero + Add + Mul:
     var acc = T.zero
     for i in (0..self.len).rev: acc = acc * x + self[i]
     acc
