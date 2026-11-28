@@ -434,7 +434,7 @@ pub(crate) fn compile(
     let canon =
         inst::canonicalize(&mut prog, &cpl_next_own::expand_calls).map_err(|es| link(&es))?;
     let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
-    if cfg!(debug_assertions) {
+    {
         use cpl_next_ir::verify::{accounted, instances, Stage};
         let g = prog.globals.len();
         let mut bad = instances(&canon, Stage::Canonical, g);

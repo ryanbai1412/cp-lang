@@ -292,9 +292,7 @@ fn every_form(c: &cpl_next::facade::Program, dir: &Path, budget: Duration, input
         let _ = done.send(());
     }
     write("c++", &c.cpp());
-    if cfg!(debug_assertions) {
-        write("error-typed", &c.error_typed().join("\n"));
-    }
+    write("error-typed", &c.error_typed().join("\n"));
 }
 
 /// The flags that take the next argument as their value.

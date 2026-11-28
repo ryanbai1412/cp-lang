@@ -227,13 +227,8 @@ pub fn link(
 ) -> (Program, Owned) {
     use cpl_next_ir::verify::{all, callees, instances, Stage};
     let Answered { deferred, adds } = answered;
-    let debug = cfg!(debug_assertions);
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
-    let generic = if debug {
-        all(funcs.values(), Stage::Generic, &[], tys.len())
-    } else {
-        Vec::new()
-    };
+    let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
     lent::mark(d, funcs, tys, &mutable);
     let roots = cpl_next_link::Roots {
         fns: funcs.keys().cloned().collect(),
@@ -251,22 +246,18 @@ pub fn link(
         checked: &answers,
     };
     let mut prog = cpl_next_link::link(inputs, &roots, &lent_slot, events);
-    if debug {
-        let fast = callees(&prog.insts);
-        prog.errors.extend(generic);
-        prog.errors.extend(all(
-            &prog.insts,
-            Stage::Instances,
-            &fast,
-            prog.globals.len(),
-        ));
-    }
+    let fast = callees(&prog.insts);
+    prog.errors.extend(generic);
+    prog.errors.extend(all(
+        &prog.insts,
+        Stage::Instances,
+        &fast,
+        prog.globals.len(),
+    ));
     let owned = inst::check(d, funcs, &prog, globals);
     place_copies(&mut prog, &owned.copies);
-    if debug {
-        let raw = instances(&prog.insts, Stage::Raw, prog.globals.len());
-        prog.errors.extend(raw);
-    }
+    let raw = instances(&prog.insts, Stage::Raw, prog.globals.len());
+    prog.errors.extend(raw);
     (prog, owned)
 }
 
