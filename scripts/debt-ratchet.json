@@ -424,5 +424,6 @@
     "std-seq/sort-cmp-not-strict-weak-order-traps.cp",
     "tools-trace/trap-flushes-output-and-shows-locals.cp"
   ],
-  "frozen_std_drift": 0
+  "frozen_std_drift": 0,
+  "next_hidden_const_evaluators": 2
 }

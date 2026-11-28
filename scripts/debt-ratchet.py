@@ -1882,6 +1882,19 @@ def next_ignored_settings(root: Path) -> list[str]:
             for n in re.findall(r'"(\w+)"', m.group(1))]
 
 
+def next_hidden_const_evaluators(root: Path) -> list[str]:
+    """Constant evaluators outside the consts layer (audit F4, consts.md): each `impl .. Consts
+    for` and each call of the engine's `eval` in a cpl-next* crate other than `cpl-next-consts`
+    and the engine itself. Such an evaluator runs lower, own and the engine from wherever it
+    sits, over whole-program `Decls`/`Loaded`; the `const_value(SourceId)` query in
+    `cpl-next-consts` replaces it. Target 0."""
+    pat = re.compile(r"\bimpl\b.*\bConsts\s+for\b|\bcpl_next_engine::eval\(")
+    skip = tuple(f"crates/{c}/" for c in ("cpl-next-consts", "cpl-next-engine"))
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            if not _rel(root, p).startswith(skip)
+            for i, l in enumerate(_lines(p), 1) if pat.search(l)]
+
+
 def event_labels(root: Path) -> list[str]:
     """New-pipeline events named by a label string: `Stmt::Event(format!(..), ..)`, or a backend
     matching one apart as `Event(label, ..)`. An event is a typed point (kind, fn, site) that the facade
@@ -4963,6 +4976,7 @@ COUNTERS = {
     "next_late_rejects": ("cases the spec accepts that link or own rejects with a user code: unbuilt features said as errors (Core)", next_late_rejects, True),
     "next_core_checks": ("new-pipeline code singling out core or a std module by id or name (Core)", next_core_checks, True),
     "next_ignored_settings": ("new-pipeline settings accepted and then ignored: an empty arm over source names (Core)", next_ignored_settings, True),
+    "next_hidden_const_evaluators": ("constant evaluators outside cpl-next-consts, over the whole program (Core)", next_hidden_const_evaluators, True),
     "event_labels": ("new-pipeline events named by a label string instead of a typed point (Core)", event_labels, True),
     "trace_old_interp_uses": ("tool and facade lines reading the old interpreter's trace (Core)", trace_old_interp_uses, True),
     "next_name_compares": ("new-pipeline comparisons of source text against a fixed identifier: names known by text (Core)", next_name_compares, True),

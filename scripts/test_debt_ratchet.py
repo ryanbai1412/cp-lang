@@ -2521,6 +2521,14 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_ignored_settings(root),
                              ["crates/cpl-next-engine/src/set.rs:2 ranges", "crates/cpl-next-engine/src/set.rs:2 div"])
             (root / "crates/cpl-next-engine/src/set.rs").unlink()
+            (root / "crates/cpl-next-engine/src/set.rs").write_text(
+                "impl check::Consts for E {}\nlet v = cpl_next_engine::eval(p, f, g, 9);\n")
+            self.assertEqual(dr.next_hidden_const_evaluators(root), [])
+            self._write(root, "crates/cpl-next-lower/src/c.rs",
+                        "impl<'a> check::Consts for E<'a> {}\nlet v = cpl_next_engine::eval(p, f, g, 9);\n// Consts for\n")
+            self.assertEqual(dr.next_hidden_const_evaluators(root),
+                             ["crates/cpl-next-lower/src/c.rs:1", "crates/cpl-next-lower/src/c.rs:2"])
+            (root / "crates/cpl-next-lower/src/c.rs").unlink()
             (root / "crates/cpl-next-check").mkdir(parents=True)
             (root / "crates/cpl-next-check/Cargo.toml").write_text(
                 '[dependencies]\ncpl-syntax.workspace = true\ncpl-judge.workspace = true\ncpl-next-ir.workspace = true\n')
