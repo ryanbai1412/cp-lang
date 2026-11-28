@@ -9586,4 +9586,4 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 
 ## 680. (reserved, A: A member is inherent or a trait method of an impl)
 
-## 681. (reserved, J: There is no guard let; the let-else is the one spelling)
+## 681. (reserved, B: `F64` reads through one machine primitive, `ParseF64`)
