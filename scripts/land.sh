@@ -55,6 +55,10 @@ fi
 for c in $(git rev-list "FETCH_HEAD..HEAD"); do
     git log -1 --format='%(trailers:key=Domain,valueonly)' "$c" | grep -q . ||
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Domain: trailer" >&2; exit 1; }
+    # The commit-msg hook adds Lane:, but a commit made without the hooks has none, and a
+    # counter or verdict traced to it then reaches no owner.
+    git log -1 --format='%(trailers:key=Lane,valueonly)' "$c" | grep -q . ||
+        { echo "land: $(git log -1 --format='%h %s' "$c") has no Lane: trailer (set CPL_LANE, or git commit --amend --trailer 'Lane: X')" >&2; exit 1; }
 done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
 # A conflict only in generated files (a gen.toml entry's, or pnpm-lock.yaml) is
