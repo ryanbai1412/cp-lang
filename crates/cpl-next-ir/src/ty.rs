@@ -5,6 +5,9 @@ use crate::prog::Holds;
 /// A fn declaration: an index into `Decls::fns`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct FnId(pub usize);
+/// A value the program's top level binds under one name: an index into `Decls::top_values`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub struct GlobalId(pub usize);
 /// A struct declaration: an index into `Decls::structs`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct StructId(pub usize);

@@ -223,6 +223,17 @@ pub struct TraitRef {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ConstId(pub usize);
+/// A value the program's top level binds under one name, `let m = ..` or `var m = ..`.
+#[derive(Clone, Debug)]
+pub struct TopValue {
+    pub name: Sym,
+    pub item: ItemId,
+    pub mutable: bool,
+}
+/// The top-level value `name` is, the last one bound under it.
+pub fn top_value(values: &[TopValue], name: Sym) -> Option<GlobalId> {
+    values.iter().rposition(|v| v.name == name).map(GlobalId)
+}
 
 /// A library's `const NAME[: T] = init`.
 #[derive(Clone, Debug)]
@@ -576,8 +587,8 @@ pub struct Decls {
     pub fresh_slots: Vec<(FnId, Vec<usize>)>,
     /// The fns whose result leaves a struct's parameter as `_`, `-> Rooted<V, _, _>` (R02.9.3).
     pub ret_holes: Vec<FnId>,
-    /// The names the program's top level binds with `let`.
-    pub top_values: Arc<HashSet<Sym>>,
+    /// What the program's top level binds under one name, in order: `GlobalId` indexes it.
+    pub top_values: Arc<Vec<TopValue>>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
     pub operators: Vec<(Sym, TraitId)>,

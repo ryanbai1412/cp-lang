@@ -189,17 +189,13 @@ fn trait_named(cx: &TyCx, n: Option<Sym>, text: String, errors: &mut Vec<Msg>) -
 /// A range type with an end naming a value the program's top level binds, as written, and that
 /// value: a struct field's layout is fixed before input is read, so no field is bounded by one
 /// (R03.1.3).
-pub(super) fn input_bound(
-    t: &Type,
-    values: &HashSet<Sym>,
-    syms: &Syms,
-) -> Option<(String, String)> {
+pub(super) fn input_bound(t: &Type, values: &[TopValue], syms: &Syms) -> Option<(String, String)> {
     match t {
         Type::Range(r) => {
             let n = (r.syntax().descendants())
                 .filter_map(next::NameRef::cast)
                 .filter_map(|n| n.ident())
-                .find(|n| syms.get(n.text()).is_some_and(|s| values.contains(&s)))?;
+                .find(|n| (syms.get(n.text())).is_some_and(|s| top_value(values, s).is_some()))?;
             Some((r.syntax().text().trim().to_string(), n.text().to_string()))
         }
         Type::Tuple(ts) => ts
@@ -905,7 +901,7 @@ impl BodyScope<'_> {
 pub(super) struct Tables {
     aliases: Layer<AliasDecl>,
     consts: Layer<LibConst>,
-    pub(super) values: Arc<HashSet<Sym>>,
+    pub(super) values: Arc<Vec<TopValue>>,
     pub(super) syms: Syms,
     ops: Arc<Vec<(Sym, FnId)>>,
     getters: Arc<HashMap<Sym, FnId>>,
@@ -965,7 +961,7 @@ impl TypeTables for Tables {
     fn top_value(&self, name: &str) -> bool {
         self.syms
             .get(name)
-            .is_some_and(|s| self.values.contains(&s))
+            .is_some_and(|s| top_value(&self.values, s).is_some())
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         let op = self.syms.get(op)?;

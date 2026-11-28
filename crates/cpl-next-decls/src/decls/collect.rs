@@ -128,7 +128,7 @@ fn layer(
         .collect();
     if base.is_some() {
         let values = (read[n - 1].iter())
-            .filter_map(|(_, f)| let_name(&mut d.syms, f))
+            .filter_map(|(item, f)| top_value_of(&mut d.syms, item, f))
             .collect();
         d.top_values = Arc::new(values);
     }
@@ -1139,8 +1139,8 @@ fn read_forms(
     (forms, unknown)
 }
 
-/// The name a top-level `let` binds, when it binds one name: what `top_values` holds.
-fn let_name(syms: &mut crate::sym::Syms, form: &Form) -> Option<Sym> {
+/// What a top-level `let` binds, when it binds one name: what `top_values` holds.
+fn top_value_of(syms: &mut crate::sym::Syms, item: &ItemId, form: &Form) -> Option<TopValue> {
     use cpl_next_syntax::ast::{Pattern, Stmt};
     let Form::Stmt(Stmt::Let(l)) = form else {
         return None;
@@ -1150,7 +1150,11 @@ fn let_name(syms: &mut crate::sym::Syms, form: &Form) -> Option<Sym> {
         [Pattern::Path(p)] if p.args().is_none() => {
             let segs: Vec<_> = p.segments().collect();
             match segs.as_slice() {
-                [n] => Some(syms.intern(n.text())),
+                [n] => Some(TopValue {
+                    name: syms.intern(n.text()),
+                    item: item.clone(),
+                    mutable: p.is_var(),
+                }),
                 _ => None,
             }
         }

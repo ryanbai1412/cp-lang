@@ -227,7 +227,7 @@ impl TypeTables for Decls {
         &self.consts[id.0]
     }
     fn top_value(&self, name: &str) -> bool {
-        self.sym(name).is_some_and(|s| self.top_values.contains(&s))
+        (self.sym(name)).is_some_and(|s| crate::decls::top_value(&self.top_values, s).is_some())
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         self.operator_fn(op, true)
