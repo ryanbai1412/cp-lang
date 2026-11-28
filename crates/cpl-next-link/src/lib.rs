@@ -486,7 +486,9 @@ impl Link<'_> {
     }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
-            t if *t == Ty::Int || t.is_int_range() => CTy::Int,
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. } => {
+                CTy::Int
+            }
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
             Ty::U64 => CTy::U64,

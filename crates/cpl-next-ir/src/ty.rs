@@ -107,6 +107,9 @@ impl Ty {
         match (lo.value(), hi_at) {
             (Some(a), Some(b)) => Ty::Range(a, b),
             _ => Ty::RangeEnds { lo, hi, inclusive },
+        }
+    }
+
     /// Whether the type is a range type of `Int`s: its value is an `Int`, checked into the
     /// range as it is stored (R03.1.4).
     pub fn is_int_range(&self) -> bool {
@@ -114,9 +117,6 @@ impl Ty {
             self,
             Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. }
         )
-    }
-
-        }
     }
 
     /// R1 before instancing (`prog::holds` after it): what a value of this type holds, where
