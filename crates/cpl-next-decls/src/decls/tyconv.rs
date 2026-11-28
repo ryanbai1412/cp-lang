@@ -227,22 +227,9 @@ pub(super) fn shift_down(t: &Ty) -> Ty {
     .ty(t)
 }
 
-/// The core types, each by the name a program writes.
-const PRIM_TYPES: [(&str, Ty); 6] = [
-    ("Int", Ty::Int),
-    ("Bool", Ty::Bool),
-    ("Char", Ty::Char),
-    ("U64", Ty::U64),
-    ("I128", Ty::I128),
-    ("F64", Ty::F64),
-];
-
 /// A core type written by its name.
 pub fn prim_type(n: &str) -> Option<Ty> {
-    PRIM_TYPES
-        .iter()
-        .find(|(m, _)| *m == n)
-        .map(|(_, t)| t.clone())
+    cpl_contract::Prim::named(n).map(Ty::of_prim)
 }
 
 pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {

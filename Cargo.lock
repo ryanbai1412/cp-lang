@@ -286,6 +286,7 @@ name = "cpl-next-decls"
 version = "0.3.0"
 dependencies = [
  "cpl-config",
+ "cpl-contract",
  "cpl-diag",
  "cpl-next-ir",
  "cpl-syntax",
@@ -309,6 +310,7 @@ dependencies = [
 name = "cpl-next-ir"
 version = "0.3.0"
 dependencies = [
+ "cpl-contract",
  "cpl-diag",
  "cpl-prim",
 ]

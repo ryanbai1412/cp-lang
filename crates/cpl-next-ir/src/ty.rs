@@ -305,3 +305,34 @@ mod tests {
         assert!(!with_raw.copied(&fields) && !Ty::Param(0).copied(&fields));
     }
 }
+
+impl Ty {
+    /// The core type `p` is.
+    pub fn of_prim(p: cpl_contract::Prim) -> Ty {
+        use cpl_contract::Prim;
+        match p {
+            Prim::Int => Ty::Int,
+            Prim::Bool => Ty::Bool,
+            Prim::Char => Ty::Char,
+            Prim::U64 => Ty::U64,
+            Prim::I128 => Ty::I128,
+            Prim::F64 => Ty::F64,
+        }
+    }
+
+    /// The core type this is, if it is one: `Int` for an integer of any range.
+    pub fn prim(&self) -> Option<cpl_contract::Prim> {
+        use cpl_contract::Prim;
+        Some(match self {
+            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::AnyRange(_) | Ty::RangeTo(..) => {
+                Prim::Int
+            }
+            Ty::Bool => Prim::Bool,
+            Ty::Char => Prim::Char,
+            Ty::U64 => Prim::U64,
+            Ty::I128 => Prim::I128,
+            Ty::F64 => Prim::F64,
+            _ => return None,
+        })
+    }
+}
