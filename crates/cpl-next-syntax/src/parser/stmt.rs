@@ -289,15 +289,25 @@ impl Parser<'_> {
         self.eat(T::Const);
         self.cond();
         body(self);
+        // A value's `elif`/`else` may sit on deeper lines below it (R01.2.4):
+        // the parser reads that layout, so the shared lexer stays as the
+        // frozen `cpl` reads it.
+        let mut indented = false;
         loop {
-            let next = match (self.peek(), self.nth(1)) {
-                (T::Elif | T::Else, _) => 0,
-                (T::Newline, T::Elif | T::Else) => 1,
+            let next = match (self.peek(), self.nth(1), self.nth(2)) {
+                (T::Elif | T::Else, _, _) => 0,
+                (T::Newline, T::Elif | T::Else, _) => 1,
+                (T::Newline, T::Indent, T::Elif | T::Else)
+                    if node == NodeKind::IfExpr && !indented =>
+                {
+                    2
+                }
                 _ => break,
             };
-            if next == 1 {
+            for _ in 0..next {
                 self.bump();
             }
+            indented |= next == 2;
             let elif = self.at(T::Elif);
             self.start(if elif {
                 NodeKind::ElifClause
@@ -313,6 +323,12 @@ impl Parser<'_> {
             if !elif {
                 break;
             }
+        }
+        if indented {
+            if self.at(T::Newline) && self.nth(1) == T::Dedent {
+                self.bump();
+            }
+            self.want(T::Dedent, "the end of the indented `elif`/`else` lines");
         }
         self.finish();
     }

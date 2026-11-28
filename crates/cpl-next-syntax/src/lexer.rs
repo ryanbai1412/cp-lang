@@ -495,9 +495,7 @@ impl<'a> Lexer<'a> {
         // Blank and comment-only lines in between are skipped, as in a block.
         let continues = loop {
             if let Some(width) = self.measure_indent() {
-                break width > self.stmt_indent
-                    && (self.line_starts_operator()
-                        || (self.line_starts_branch() && self.line_has_open_inline_if()));
+                break width > self.stmt_indent && self.line_starts_operator();
             }
             if self.pos >= self.bytes.len() {
                 break false;
@@ -516,36 +514,6 @@ impl<'a> Lexer<'a> {
             self.out.comments.truncate(comments);
         }
         continues
-    }
-
-    /// `elif` or `else` at the cursor.
-    fn line_starts_branch(&self) -> bool {
-        ["elif", "else"].iter().any(|w| {
-            let next = self.peek_at(w.len());
-            self.src[self.pos..].starts_with(w) && !next.is_ascii_alphanumeric() && next != b'_'
-        })
-    }
-
-    /// Whether the logical line so far holds an `if` after its first token,
-    /// outside brackets, that no `else` has closed yet.
-    fn line_has_open_inline_if(&self) -> bool {
-        use TokenKind::*;
-        let toks = &self.out.tokens;
-        let start = toks
-            .iter()
-            .rposition(|t| matches!(t.kind, Newline | Indent | Dedent))
-            .map_or(0, |i| i + 1);
-        let (mut depth, mut open) = (0usize, 0usize);
-        for t in toks.iter().skip(start + 1) {
-            match t.kind {
-                LParen | LBracket | LBrace => depth += 1,
-                RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
-                If if depth == 0 => open += 1,
-                Else if depth == 0 => open = open.saturating_sub(1),
-                _ => {}
-            }
-        }
-        open > 0
     }
 
     fn line_starts_operator(&self) -> bool {

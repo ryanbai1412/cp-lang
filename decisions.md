@@ -9564,7 +9564,7 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 
 ## 655. An inline `if` continues on deeper `elif` and `else` lines (compiler, 2026-11-27)
 
-- **Call.** A line indented deeper than the logical line above, which does not end in `:`, continues it when it starts with `elif` or `else` and that line holds an inline `if` (one after its first token, outside brackets) that no `else` has closed. So `let ob = if k == 0: a` can take its `elif k == 1: b` and `else: c` on their own lines (R01.2.4). The shared lexer decides it, as it does for the other continuation lines.
+- **Call.** A line indented deeper than the logical line above, which does not end in `:`, continues it when it starts with `elif` or `else` and that line holds an inline `if` (one after its first token, outside brackets) that no `else` has closed. So `let ob = if k == 0: a` can take its `elif k == 1: b` and `else: c` on their own lines (R01.2.4). The parser reads it, for an `if` value only; the shared lexer is unchanged, so the frozen `cpl fmt` keeps such lines as written.
 - **Why.** Coordinator ruling of 2026-11-27, 18:51. std-models/bitset.cp writes a five-way `if` value this way, and one long line is worse.
 - **Reverse.** Drop `elif`/`else` from the continuation list; such values go back to one line or a `match`.
 
