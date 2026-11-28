@@ -36,6 +36,8 @@ core-01/comprehension-filter-if-let.cp
 core-01/comprehension-several-for-clauses.cp
 core-01/concat-with-plus.cp
 core-01/const-capitalized.cp
+core-01/const-past-the-step-budget.cp
+core-01/const-within-the-step-budget.cp
 core-01/continuation-leading-or.cp
 core-01/continuation-needs-operator.cp
 core-01/continuation-skips-blank-and-comment-lines.cp
