@@ -9619,3 +9619,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** The shipped `cpl` reads `crates/cpl-check/frozen/std`, so gen-ref, the reference pages and the docs examples document and run that pinned std, not live `std/`. A module or member only live `std/` has (std.hash, std.default, std.raw, ...) gets no page and no outline until the migration switch. There is no per-module exception. Signed off by the coordinator.
 - **Why.** The site shows what the site's own `cpl` runs. Publishing live-only examples would document behavior the shipped `cpl` rejects, and a per-module exception list would grow with every cpl-next std change and hide real docs regressions.
 - **Reverse.** At the switch, when the old pipeline and its pin are deleted, gen-ref reads `std/` again and the live-only modules are published.
+
+## 694. (reserved, C)
