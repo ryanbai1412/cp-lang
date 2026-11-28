@@ -736,21 +736,36 @@ pub(crate) fn enum_conversions(
 /// The structs marked `@memo_table(word)`, by word: the module that declares the table a
 /// `@memo(word)` fn keeps, and its name there. Any module may declare one (R06.4.1).
 pub(crate) fn memo_tables(
-    mods: &[crate::modules::Module],
-) -> impl Iterator<Item = (String, (usize, String))> + '_ {
-    (mods.iter().enumerate())
-        .flat_map(|(mi, m)| {
-            m.items
+    forms: &[Vec<(ItemId, Form)>],
+    syms: &mut crate::sym::Syms,
+) -> Vec<(Sym, (usize, Sym))> {
+    let mut out = Vec::new();
+    for (mi, items) in forms.iter().enumerate() {
+        for (_, form) in items {
+            let Form::Struct(sd) = form else {
+                continue;
+            };
+            let word = sd
+                .attrs
                 .iter()
-                .flat_map(move |it| it.stmts.iter().map(move |s| (mi, s)))
-        })
-        .filter_map(|(mi, s)| match &s.kind {
-            StmtKind::Struct(sd) => (s.decorators.iter())
-                .find(|x| x.mark == Some(Mark::MemoTable))
-                .and_then(memo_word)
-                .map(|w| (w, (mi, sd.name.text.clone()))),
+                .find(|a| a.attr == Attr::MemoTable)
+                .and_then(|a| attr_word(a, syms));
+            out.extend(word.map(|w| (w, (mi, sd.name))));
+        }
+    }
+    out
+}
+
+/// The one bare word a `@memo(word)` or `@memo_table(word)` names.
+fn attr_word(x: &AttrForm, syms: &mut crate::sym::Syms) -> Option<Sym> {
+    let args: Vec<next::Arg> = x.node.as_ref()?.args()?.args().collect();
+    match &args[..] {
+        [a] => match a.value()? {
+            next::Expr::Name(n) => Some(syms.intern(n.ident()?.text())),
             _ => None,
-        })
+        },
+        _ => None,
+    }
 }
 
 /// The name every module sees `@memo(word)`'s table under, whatever it imports: none a program
