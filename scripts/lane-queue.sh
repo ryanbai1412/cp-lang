@@ -57,7 +57,7 @@ take() {  # $1 = queue branch name, e.g. queue/c-clippy
     return 1
 }
 
-factory() { git diff --quiet "origin/lane-j-check...origin/queue/$1" -- . ':!scripts'; }
+factory() { git diff --quiet "origin/lane-j-check...origin/$1" -- . ':!scripts'; }
 
 while :; do
     git fetch -q --prune origin lane-j-check '+refs/heads/queue/*:refs/remotes/origin/queue/*'
