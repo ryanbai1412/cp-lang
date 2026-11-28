@@ -1,9 +1,35 @@
 //! Where a thing is, so that an edit stays local (handbook/design/next/incremental.md): an item
 //! by its path, never by a byte offset or by the order modules were loaded in, and a place
 //! inside it relative to its start.
-pub use cpl_contract::FileId;
 use cpl_diag::Span;
 use std::sync::Arc;
+
+/// A file of a snapshot: its path, as the tool was given it. Stable for
+/// the life of a session.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct FileId(Arc<str>);
+
+impl FileId {
+    pub fn new(path: &str) -> FileId {
+        FileId(Arc::from(path))
+    }
+
+    pub fn path(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for FileId {
+    fn from(path: &str) -> FileId {
+        FileId::new(path)
+    }
+}
+
+impl AsRef<str> for FileId {
+    fn as_ref(&self) -> &str {
+        self.path()
+    }
+}
 
 /// An item by its path: its module, its name, which of that module's items with that name it
 /// is (an impl's head, or the k-th block of top-level statements), and the file that holds the

@@ -121,6 +121,7 @@ name = "cpl-contract"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
+ "cpl-next-ir",
 ]
 
 [[package]]
@@ -271,7 +272,6 @@ dependencies = [
 name = "cpl-next-check"
 version = "0.3.0"
 dependencies = [
- "cpl-contract",
  "cpl-diag",
  "cpl-next-decls",
  "cpl-next-ir",
@@ -301,7 +301,6 @@ name = "cpl-next-decls"
 version = "0.3.0"
 dependencies = [
  "cpl-config",
- "cpl-contract",
  "cpl-diag",
  "cpl-next-db",
  "cpl-next-ir",
@@ -328,7 +327,6 @@ dependencies = [
 name = "cpl-next-ir"
 version = "0.3.0"
 dependencies = [
- "cpl-contract",
  "cpl-diag",
  "cpl-prim",
 ]

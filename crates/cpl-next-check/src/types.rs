@@ -2,8 +2,8 @@
 //! hold, and the view that answers a tool's questions about one by its id alone. No `Ty`
 //! leaves the checker through it, and a tool never matches a type's variants.
 use super::*;
-use cpl_contract::Prim;
 use cpl_next_decls::views::{ImplChoice, Items};
+use cpl_next_ir::prim::Prim;
 use decls::ImplIdx;
 
 /// A type in an item's table: `n` is its place in that item's walk, so it does not depend on

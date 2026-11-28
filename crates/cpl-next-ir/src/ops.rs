@@ -9,7 +9,7 @@ use crate::ir::{Arg, CheckKind, FloatFn, Intr, Rounding, EK};
 use crate::prog::CTy;
 use crate::run::Written;
 use cpl_diag::{codes, Code};
-use cpl_prim::Prim;
+use cpl_prim::PrimOp;
 
 mod rules;
 pub use rules::{
@@ -1001,7 +1001,7 @@ impl Intrinsic {
 /// The parameter and result types an `@intrinsic(id)` fn must have, `|` between the types one
 /// accepts, when `id` is one of the table's primitives (R12.14.2).
 pub fn entry_sig(id: &str) -> Option<(&'static [&'static str], &'static str)> {
-    Prim::from_id(id).map(|p| (p.params(), p.result()))
+    PrimOp::from_id(id).map(|p| (p.params(), p.result()))
 }
 
 /// Whether `ty` is one of `want`, a cell of an entry's signature.
@@ -1049,33 +1049,42 @@ pub const INTRINSICS: &[(&str, Intrinsic)] = &[
     ("f64_bits", Intrinsic::Op(Intr::F64Bits)),
     ("out", Intrinsic::Op(Intr::Out)),
     ("flush", Intrinsic::Op(Intr::Flush)),
-    (Prim::Popcount.id(), Intrinsic::Op(Intr::Popcount)),
-    (Prim::Abs.id(), Intrinsic::Op(Intr::Abs)),
-    (Prim::Ctz.id(), Intrinsic::Op(Intr::Ctz)),
-    (Prim::Clz.id(), Intrinsic::Op(Intr::Clz)),
-    (Prim::BitWidth.id(), Intrinsic::Op(Intr::BitWidth)),
-    (Prim::BitCeil.id(), Intrinsic::Op(Intr::BitCeil)),
-    (Prim::Sqrt.id(), Intrinsic::Op(Intr::Float(FloatFn::Sqrt))),
-    (Prim::Sin.id(), Intrinsic::Op(Intr::Float(FloatFn::Sin))),
-    (Prim::Cos.id(), Intrinsic::Op(Intr::Float(FloatFn::Cos))),
-    (Prim::Tan.id(), Intrinsic::Op(Intr::Float(FloatFn::Tan))),
-    (Prim::Asin.id(), Intrinsic::Op(Intr::Float(FloatFn::Asin))),
-    (Prim::Acos.id(), Intrinsic::Op(Intr::Float(FloatFn::Acos))),
-    (Prim::Atan2.id(), Intrinsic::Op(Intr::Float(FloatFn::Atan2))),
-    (Prim::Hypot.id(), Intrinsic::Op(Intr::Float(FloatFn::Hypot))),
-    (Prim::Exp.id(), Intrinsic::Op(Intr::Float(FloatFn::Exp))),
-    (Prim::Ln.id(), Intrinsic::Op(Intr::Float(FloatFn::Ln))),
+    (PrimOp::Popcount.id(), Intrinsic::Op(Intr::Popcount)),
+    (PrimOp::Abs.id(), Intrinsic::Op(Intr::Abs)),
+    (PrimOp::Ctz.id(), Intrinsic::Op(Intr::Ctz)),
+    (PrimOp::Clz.id(), Intrinsic::Op(Intr::Clz)),
+    (PrimOp::BitWidth.id(), Intrinsic::Op(Intr::BitWidth)),
+    (PrimOp::BitCeil.id(), Intrinsic::Op(Intr::BitCeil)),
+    (PrimOp::Sqrt.id(), Intrinsic::Op(Intr::Float(FloatFn::Sqrt))),
+    (PrimOp::Sin.id(), Intrinsic::Op(Intr::Float(FloatFn::Sin))),
+    (PrimOp::Cos.id(), Intrinsic::Op(Intr::Float(FloatFn::Cos))),
+    (PrimOp::Tan.id(), Intrinsic::Op(Intr::Float(FloatFn::Tan))),
+    (PrimOp::Asin.id(), Intrinsic::Op(Intr::Float(FloatFn::Asin))),
+    (PrimOp::Acos.id(), Intrinsic::Op(Intr::Float(FloatFn::Acos))),
     (
-        Prim::Floor.id(),
+        PrimOp::Atan2.id(),
+        Intrinsic::Op(Intr::Float(FloatFn::Atan2)),
+    ),
+    (
+        PrimOp::Hypot.id(),
+        Intrinsic::Op(Intr::Float(FloatFn::Hypot)),
+    ),
+    (PrimOp::Exp.id(), Intrinsic::Op(Intr::Float(FloatFn::Exp))),
+    (PrimOp::Ln.id(), Intrinsic::Op(Intr::Float(FloatFn::Ln))),
+    (
+        PrimOp::Floor.id(),
         Intrinsic::Op(Intr::ToInt(Rounding::Floor)),
     ),
-    (Prim::Ceil.id(), Intrinsic::Op(Intr::ToInt(Rounding::Ceil))),
     (
-        Prim::Round.id(),
+        PrimOp::Ceil.id(),
+        Intrinsic::Op(Intr::ToInt(Rounding::Ceil)),
+    ),
+    (
+        PrimOp::Round.id(),
         Intrinsic::Op(Intr::ToInt(Rounding::Round)),
     ),
     (
-        Prim::Trunc.id(),
+        PrimOp::Trunc.id(),
         Intrinsic::Op(Intr::ToInt(Rounding::Trunc)),
     ),
     ("dom_count", Intrinsic::Domain(DomainOp::Count)),

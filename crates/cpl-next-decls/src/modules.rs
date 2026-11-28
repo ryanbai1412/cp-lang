@@ -6,10 +6,10 @@
 //! resolves on its receiver's type, wherever the program spells it (R11.3.4). Libraries get
 //! no prelude (R11.3.1).
 use crate::diag::Msg;
-use cpl_contract::FileId;
 use cpl_diag::Span;
 use cpl_next_db::db::Db;
 use cpl_next_db::items::{self as queries, ItemAt, ItemOf, ModuleFile, Parse, Source, SOURCE_EXT};
+use cpl_next_ir::ids::FileId;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_syntax::ast::{self, AstNode};
 use cpl_next_syntax::{NodeKind, SyntaxNode};
