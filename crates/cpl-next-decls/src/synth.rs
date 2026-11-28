@@ -850,8 +850,10 @@ pub fn jagged(params: &[(String, Option<next::Type>)]) -> Vec<Option<((i64, i64)
     out
 }
 
-/// A made fn's body: what lower builds its IR from, by variant, with no syntax in between. Each
-/// is one shape the language derives or desugars; check reads its signature, never a body.
+/// A made fn's body, by variant, with no syntax in between: each is one shape the language
+/// derives or desugars, and check types it into the fn's body through ordinary resolution, from
+/// one per-field typed expansion. Std's bodies over `fields(a)` replace these and reuse that
+/// expansion.
 #[derive(Clone, Debug)]
 pub enum SynthBody {
     /// `a.x == b.x and ..` over the compared fields, through the `==` operator's trait (R08.1.6).

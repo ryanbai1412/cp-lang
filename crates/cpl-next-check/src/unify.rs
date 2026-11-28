@@ -115,11 +115,18 @@ impl<'a> Cx<'a> {
             Ty::Raw(e) => Ty::Raw(Box::new(self.zonk(&e))),
             Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(self.zonk(&e)), m, lo, k),
             Ty::Mut(e) => Ty::Mut(Box::new(self.zonk(&e))),
-            Ty::Struct(d, ts, ss) => Ty::Struct(
-                d,
-                ts.iter().map(|t| self.zonk(t)).collect(),
-                ss.iter().map(|s| self.zonk_set(s)).collect(),
-            ),
+            Ty::Struct(d, ts, ss) => {
+                let mut named = self.named.borrow_mut();
+                if named.0.insert(d) {
+                    named.1.push(d);
+                }
+                drop(named);
+                Ty::Struct(
+                    d,
+                    ts.iter().map(|t| self.zonk(t)).collect(),
+                    ss.iter().map(|s| self.zonk_set(s)).collect(),
+                )
+            }
             Ty::Fn(ps, r, s) => Ty::Fn(
                 ps.iter().map(|t| self.zonk(t)).collect(),
                 Box::new(self.zonk(&r)),

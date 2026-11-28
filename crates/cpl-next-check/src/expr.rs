@@ -1420,7 +1420,7 @@ impl Cx<'_> {
     }
 
     /// A string with no holes, through `@sugar(str_literal)`.
-    fn text_value(&mut self, text: String, span: Span) -> TExpr {
+    pub(super) fn text_value(&mut self, text: String, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         if !text.is_ascii() {
             self.err(span, Unbuilt::NonAsciiString);

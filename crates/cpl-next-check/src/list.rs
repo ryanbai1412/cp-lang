@@ -160,6 +160,21 @@ impl Cx<'_> {
         e
     }
 
+    /// A list of the checked `vs`, as a literal of them is.
+    pub(super) fn list_of(&mut self, vs: Vec<TExpr>, span: Span) -> TExpr {
+        match self.new_list("$list", vs.len(), None, span) {
+            Some((l, init)) => {
+                let mut stmts = vec![init];
+                for v in vs {
+                    let push = self.push_value(&l, v, span);
+                    stmts.push(TStmt::Expr(push));
+                }
+                filled(stmts, l, span)
+            }
+            None => error(span),
+        }
+    }
+
     /// Where `[K]List<E>` is wanted a literal is one list per cell, unless each element could be
     /// an `E`, making it one `List<E>` that fills every cell (R04.8.10).
     fn cells_wanted(&self, xs: &[next::Expr], want: Option<&Ty>) -> Option<Ty> {

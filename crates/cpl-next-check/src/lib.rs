@@ -41,6 +41,7 @@ mod question;
 mod range;
 mod recipe;
 mod stmt;
+mod synth;
 mod targs;
 mod types;
 pub use types::{ItemTypes, TyId, TypeFacts, TypeView};
@@ -541,6 +542,16 @@ struct Cx<'a> {
     /// Library fns reached only as a trait's impl, or from one: what they use that the slice
     /// does not build refuses only a program whose instances run them.
     through_trait: Vec<FnId>,
+    /// The trait fns whose impls' members are queued already.
+    fanned_out: HashSet<FnId>,
+    /// The types a checked tree has named, in the order they were first named, and the made
+    /// fns of a type's derived impls a trait fn reached before any tree named the type: only
+    /// a named type's values can reach them.
+    named: std::cell::RefCell<(HashSet<StructId>, Vec<StructId>)>,
+    unnamed: HashMap<StructId, Vec<(FnId, bool)>>,
+    /// The types a library fn reached only through a trait named, by the type it is a member
+    /// of: that fn runs only on a value of its type, so what it names is named once that is.
+    held: HashMap<StructId, Vec<StructId>>,
     /// Each library `const`'s global, once its initializer is checked.
     consts: Vec<Option<LocalId>>,
     const_busy: Vec<bool>,
@@ -799,6 +810,10 @@ pub fn check(
         fns: HashMap::new(),
         reached: Vec::new(),
         through_trait: Vec::new(),
+        fanned_out: HashSet::new(),
+        named: Default::default(),
+        unnamed: HashMap::new(),
+        held: HashMap::new(),
         reported: HashSet::new(),
         consts: vec![None; d.consts.len()],
         const_busy: vec![false; d.consts.len()],
@@ -963,11 +978,14 @@ pub fn check(
     cx.own_global_sets();
     // The program's fns are all checked; a library's, core's too, only once a reference reaches
     // them, so what a module declares and the program never uses refuses nothing.
-    // A record's impls are made, not written: one is checked once a reference reaches it.
+    // A made fn (a record's impls, a derived one) is checked once a reference reaches it.
     let mut todo: Vec<FnId> = (0..d.fns.len())
         .map(FnId)
         .filter(|id| {
             let f = d.f(*id);
+            if matches!(f.body, decls::Body::Synth(_)) {
+                return false;
+            }
             let later = |im: &decls::ImplDecl| {
                 !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
             };
@@ -979,10 +997,29 @@ pub fn check(
     todo.extend(d.roles.trace.iter().copied());
     // In the order the collector made them, so a program over std checks as one collection would.
     todo.sort_by_key(|id| std::cmp::Reverse((d.f(*id).made, *id)));
+    cx.name_types(&main_out);
     let mut deferred: HashMap<FnId, Vec<Msg>> = HashMap::new();
     let mut quiet_fns = HashSet::new();
     let mut ctx_fns: Vec<(u32, FnId, TypedFn)> = Vec::new();
     loop {
+        loop {
+            let fresh = std::mem::take(&mut cx.named.get_mut().1);
+            if fresh.is_empty() {
+                break;
+            }
+            for (m, quiet) in fresh.iter().flat_map(|s| cx.unnamed.remove(s)).flatten() {
+                match quiet {
+                    true => cx.through_trait.push(m),
+                    false => cx.reached.push(m),
+                }
+            }
+            let named = cx.named.get_mut();
+            for s in fresh.iter().flat_map(|s| cx.held.remove(s)).flatten() {
+                if named.0.insert(s) {
+                    named.1.push(s);
+                }
+            }
+        }
         todo.append(&mut cx.reached);
         if let Some((id, k, frames)) = cx.ctx_pending.pop() {
             cx.copy = k;
@@ -1002,7 +1039,7 @@ pub fn check(
         // A trait's fn whose body is an intrinsic is checked into that operation on `Self`.
         let of_trait = matches!(f.owner, Some(Owner::Trait(_)));
         let lowered_intrinsic = f.intrinsic.is_some() && !of_trait;
-        let undeclared = matches!(f.body, decls::Body::None | decls::Body::Synth(_)) && !of_trait;
+        let undeclared = matches!(f.body, decls::Body::None) && !of_trait;
         if cx.fns.contains_key(&id) || lowered_intrinsic || undeclared {
             continue;
         }
@@ -1014,7 +1051,9 @@ pub fn check(
         quiet_fns.insert(id);
         let (n, reported) = (cx.errors.len(), cx.reported.clone());
         cx.reach(id);
+        let named_before = cx.named.get_mut().1.len();
         let tf = cx.check_fn(id, Vec::new());
+        cx.hold_names(id, named_before);
         cx.fns.insert(id, tf);
         let errors = cx.errors.split_off(n);
         cx.reported = reported;
@@ -1317,13 +1356,20 @@ impl<'a> Cx<'a> {
         let d = self.d;
         let f = d.f(id);
         self.reached.push(id);
-        if let Some(Owner::Trait(t)) = f.owner {
+        if let Some(Owner::Trait(t)) = f.owner.filter(|_| self.fanned_out.insert(id)) {
             for (_, im) in d.trait_impls(t) {
                 if let Some(m) = d.member(&im.methods, &f.name) {
                     let made = matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record);
-                    match !d.of_program(im.module) || made {
-                        true => self.through_trait.push(m),
-                        false => self.reached.push(m),
+                    let quiet = !d.of_program(im.module) || made;
+                    match im.for_ {
+                        Ty::Struct(s, ..)
+                            if matches!(d.f(m).body, decls::Body::Synth(_))
+                                && !self.named.borrow().0.contains(&s) =>
+                        {
+                            self.unnamed.entry(s).or_default().push((m, quiet))
+                        }
+                        _ if quiet => self.through_trait.push(m),
+                        _ => self.reached.push(m),
                     }
                 }
             }
@@ -1370,6 +1416,40 @@ impl<'a> Cx<'a> {
         true
     }
 
+    /// Holds the types quiet fn `id`'s body named after the first `before` until the type
+    /// `id` is a member of is named, when that is a struct not named yet.
+    fn hold_names(&mut self, id: FnId, before: usize) {
+        let d = self.d;
+        let of = match d.f(id).owner {
+            Some(Owner::Struct(s)) => Some(s),
+            Some(Owner::Impl(k)) => match d.imp(k).for_ {
+                Ty::Struct(s, ..) => Some(s),
+                _ => None,
+            },
+            _ => None,
+        };
+        let named = self.named.get_mut();
+        // Named before this body was, not by it: its own `self` names it.
+        let live = |s: &StructId| named.0.contains(s) && !named.1[before..].contains(s);
+        let Some(of) = of.filter(|s| !live(s)) else {
+            return;
+        };
+        let new = named.1.split_off(before);
+        for s in &new {
+            named.0.remove(s);
+        }
+        self.held.entry(of).or_default().extend(new);
+    }
+    /// Marks the types `stmts` name, a tree zonked once it is whole, as named. Only the naming
+    /// is kept: the calls this zonk records are recorded again by the tree's own zonk.
+    fn name_types(&mut self, stmts: &[TStmt]) {
+        let (calls, unsolved) = (self.generic_calls.len(), self.b.unsolved.len());
+        for mut s in stmts.iter().cloned() {
+            self.zonk_stmt(&mut s);
+        }
+        self.generic_calls.truncate(calls);
+        self.b.unsolved.truncate(unsolved);
+    }
     /// `tf` with every variable replaced by what it was solved to.
     fn zonk_fn(&mut self, tf: &mut TypedFn) {
         self.zonk_expr(&mut tf.body);
@@ -1516,9 +1596,11 @@ impl<'a> Cx<'a> {
                 };
                 self.coerce(v, &ret)
             }
-            None => match f.owner {
+            None => match (&f.body, f.owner) {
+                // A made fn: the source its variant stands for.
+                (decls::Body::Synth(b), _) => self.synth_body(f, b, &params, &ret),
                 // A trait's fn as a value: the impl's fn of `Self`'s type.
-                Some(Owner::Trait(tr)) => self.trait_dispatch(id, tr, &params),
+                (_, Some(Owner::Trait(tr))) => self.trait_dispatch(id, tr, &params),
                 _ => {
                     let span = Span::new(0, 0);
                     self.err(span, Unbuilt::FnWithoutBody);
@@ -1801,6 +1883,7 @@ impl Cx<'_> {
         });
         let g = self.globals.len() - 1;
         out.push(TStmt::Let(VarRef::Global(g), e));
+        self.name_types(&out);
         self.const_init.extend(out);
         self.consts[c.0] = Some(g);
         self.const_busy[c.0] = false;

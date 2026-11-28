@@ -1161,6 +1161,11 @@ impl Cx<'_> {
         let x = match &a.value {
             ArgValue::Written(x) => x,
             ArgValue::Checked(v) => {
+                // A place checked already and lent `mut` (a made fn's `mut out`).
+                let place = matches!(v.kind, TK::Var(_) | TK::Field(..));
+                if pmut && a.mutable && place && self.unify(&v.ty, pty) {
+                    return TArg::Mut(v.clone());
+                }
                 if pmut {
                     let text = "an argument checked already is given to a `mut` parameter";
                     self.err(a.at, Msg::internal(text));
