@@ -83,7 +83,7 @@ impl Cx<'_> {
     /// The enum `t` is, with its type arguments.
     fn enum_of(&self, t: &Ty) -> Option<(StructId, Vec<Ty>)> {
         match self.shallow(t) {
-            Ty::Struct(e, ts, _) if !self.d.s(e).variants.is_empty() => Some((e, ts)),
+            Ty::Struct(e, ts, _) if !self.items.s(e).variants.is_empty() => Some((e, ts)),
             _ => None,
         }
     }
@@ -96,18 +96,24 @@ impl Cx<'_> {
             tys: &ts,
             sets: &[],
         };
-        let decl = self.d.s(s);
+        let decl = self.items.s(s);
         let fields = decl.fields.iter().map(|(_, t)| sub.ty(t)).collect();
         (decl.variants.is_empty()).then_some((s, fields))
     }
     /// The payload fields of variant `i` of the enum `e` at `targs`.
     fn variant_tys(&self, e: StructId, targs: &[Ty], i: usize) -> (StructId, Vec<Ty>) {
-        let p = self.d.s(e).variants[i].1;
+        let p = self.items.s(e).variants[i].1;
         let sub = Subst {
             tys: targs,
             sets: &[],
         };
-        let fields = self.d.s(p).fields.iter().map(|(_, t)| sub.ty(t)).collect();
+        let fields = self
+            .items
+            .s(p)
+            .fields
+            .iter()
+            .map(|(_, t)| sub.ty(t))
+            .collect();
         (p, fields)
     }
     /// What the path pattern `p` is; `None` when it is broken.
@@ -197,7 +203,7 @@ impl Cx<'_> {
         }
     }
     fn present_pattern(&self, head: &str) -> bool {
-        (self.d.pattern_fns.iter()).any(|f| self.d.f(*f).name == head)
+        (self.d.pattern_fns.iter()).any(|f| self.items.f(*f).name == head)
     }
     fn mismatch(&mut self, span: Span, what: &str, t: &Ty) {
         if self.shallow(t) == Ty::Error {
@@ -352,7 +358,8 @@ impl Cx<'_> {
                 let tuple = self.d.tuple(ps.len());
                 match self.field_tys(&v.ty) {
                     Some((s, tys))
-                        if Some(s) == tuple || (tys.len() == ps.len() && self.d.s(s).record) =>
+                        if Some(s) == tuple
+                            || (tys.len() == ps.len() && self.items.s(s).record) =>
                     {
                         self.pat_parts(ps.iter().map(Part::Pat).zip(0..), v, &tys, mutable, binds)
                     }
@@ -482,7 +489,7 @@ impl Cx<'_> {
             return None;
         };
         let Some(i) = self.d.variant(e, head) else {
-            let en = self.d.s(e).name.clone();
+            let en = self.items.s(e).name.clone();
             let code = cpl_diag::codes::UNKNOWN_FIELD;
             self.err(
                 span,
@@ -655,7 +662,7 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) -> Option<(usize, usize)> {
         let c = self.fresh_slot_of(t)?;
-        let shown = self.b.syms.text(&self.d.syms, name).to_string();
+        let shown = self.b.syms.text(&self.syms, name).to_string();
         let i = self.fresh_from(&shown, c, span, out);
         self.b.doms.insert(name, Ty::Dom(i));
         Some((c, i))
@@ -686,7 +693,7 @@ impl Cx<'_> {
         self.fresh_in(&t, &[], &mut out);
         // A `domain C` binder's domain is bound by its pattern, not owned here.
         let binders: Vec<usize> = match &t {
-            Ty::Struct(s, ts, _) if self.d.s(*s).record => {
+            Ty::Struct(s, ts, _) if self.items.s(*s).record => {
                 ts.iter().filter_map(|a| self.fresh_slot_of(a)).collect()
             }
             _ => Vec::new(),
@@ -699,7 +706,7 @@ impl Cx<'_> {
         let Ty::Struct(s, ts, _) = t else {
             return;
         };
-        let sd = self.d.s(*s);
+        let sd = self.items.s(*s);
         for (k, a) in ts.iter().enumerate() {
             match self.shallow(a) {
                 Ty::Dom(c) if !sd.record && self.d.fresh_doms.iter().any(|f| f.0 == c) => {
@@ -709,7 +716,7 @@ impl Cx<'_> {
                     let field = sd
                         .fields
                         .get(k)
-                        .map_or(String::new(), |f| self.d.text(f.0).to_string());
+                        .map_or(String::new(), |f| self.items.text(f.0).to_string());
                     self.fresh_in(&a, &[path, &[field]].concat(), out);
                 }
                 _ => {}
@@ -725,7 +732,7 @@ impl Cx<'_> {
     }
     /// `t.Pre` written in a type: the domain the binding `t` owns as its `Pre`.
     pub(super) fn owned_named(&self, n: Sym) -> Option<Ty> {
-        let mut parts = self.b.syms.text(&self.d.syms, n).split('.');
+        let mut parts = self.b.syms.text(&self.syms, n).split('.');
         let head = parts.next()?;
         let path: Vec<String> = parts.map(str::to_string).collect();
         self.owned_at(head, &path)
@@ -740,13 +747,13 @@ impl Cx<'_> {
     /// `let (tree, ..) = r`: what `r` owns under `tree` the new binding `tree` owns.
     pub(super) fn hand_down(&mut self, whole: Sym, field: Sym, part: Sym) {
         let (whole, part) = (
-            self.b.syms.text(&self.d.syms, whole),
-            self.b.syms.text(&self.d.syms, part),
+            self.b.syms.text(&self.syms, whole),
+            self.b.syms.text(&self.syms, part),
         );
         let (Some((from, _)), Some((to, _))) = (self.lookup(whole), self.lookup(part)) else {
             return;
         };
-        let field = self.b.syms.text(&self.d.syms, field);
+        let field = self.b.syms.text(&self.syms, field);
         let moved: Vec<_> = (self.b.owned.iter())
             .filter(|((v, path), _)| *v == from && path.first().is_some_and(|f| f == field))
             .map(|((_, path), &i)| ((to, path[1..].to_vec()), i))
@@ -905,12 +912,12 @@ impl Cx<'_> {
             ]);
         }
         if let Some((e, ts)) = self.enum_of(t) {
-            let vs = &self.d.s(e).variants;
+            let vs = &self.items.s(e).variants;
             return Some(
                 (0..vs.len())
                     .map(|i| {
                         (
-                            self.d.text(vs[i].0).to_string(),
+                            self.items.text(vs[i].0).to_string(),
                             self.variant_tys(e, &ts, i).1,
                         )
                     })

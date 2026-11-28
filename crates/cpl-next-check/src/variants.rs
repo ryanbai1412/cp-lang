@@ -40,8 +40,8 @@ impl Cx<'_> {
             _ => v,
         };
         let conv = self.d.roles().convert.and_then(|tr| {
-            let (m, f) = self.d.t(tr).methods.iter().next()?;
-            Some((tr, self.d.text(*m).to_string(), *f))
+            let (m, f) = self.items.t(tr).methods.iter().next()?;
+            Some((tr, self.items.text(*m).to_string(), *f))
         });
         let Some((tr, method, f)) = conv else {
             self.err(span, Unbuilt::ConversionWithoutConvert);
@@ -72,8 +72,8 @@ impl Cx<'_> {
     pub(super) fn plain_enum(&self, t: &Ty) -> Option<StructId> {
         match self.shallow(t) {
             Ty::Struct(id, ..) => {
-                let vs = &self.d.s(id).variants;
-                let plain = vs.iter().all(|(_, p)| self.d.s(*p).fields.is_empty());
+                let vs = &self.items.s(id).variants;
+                let plain = vs.iter().all(|(_, p)| self.items.s(*p).fields.is_empty());
                 (!vs.is_empty() && plain).then_some(id)
             }
             _ => None,
@@ -121,19 +121,19 @@ impl Cx<'_> {
             let open = (0..sets.len()).map(|_| self.new_set()).collect();
             self.unify(&Ty::Struct(d, targs.clone(), open), &w);
         }
-        let s = self.d.s(d);
+        let s = self.items.s(d);
         let sub = Subst {
             tys: &targs,
             sets: &sets,
         };
         let generics: Vec<Sym> = (s.generics.iter())
-            .map(|g| self.b.syms.intern(&self.d.syms, g))
+            .map(|g| self.b.syms.intern(&self.syms, g))
             .collect();
         let named = super::expr::named_params(&generics, &sub);
         let formals: Vec<Formal> = (s.fields.iter().zip(&s.defaults))
             .map(|((n, t), e)| Formal {
-                label: self.d.text(*n),
-                name: self.d.text(*n),
+                label: self.items.text(*n),
+                name: self.items.text(*n),
                 written: None,
                 ty: sub.ty(t),
                 mutable: false,
@@ -283,11 +283,11 @@ impl Cx<'_> {
         args: &[CallArg],
         span: Span,
     ) -> TExpr {
-        let s = self.d.s(e);
+        let s = self.items.s(e);
         let fresh = s.generics.len().saturating_sub(targs.len());
         targs.extend((0..fresh).map(|_| self.new_ty()));
         let p = s.variants[i].1;
-        if self.d.s(p).n_sets > 0 {
+        if self.items.s(p).n_sets > 0 {
             self.err(span, Unbuilt::FnValueInVariant);
         }
         let payload = self.construct(p, targs.clone(), Vec::new(), args, span, None);
