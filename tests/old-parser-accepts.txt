@@ -1,4 +1,5 @@
 core-01/guard-let-is-rejected.cp
+core-01/second-for-in-a-comprehension-is-rejected.cp
 core-02/a-variant-value-is-not-in-the-design.cp
 core-02/and-let-is-rejected.cp
 core-05/yields-param-is-rejected.cp

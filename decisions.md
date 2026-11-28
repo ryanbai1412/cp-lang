@@ -9591,3 +9591,9 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `for side in 0..2 if let c = kids[side]:` and `for x in xs if p(x), q(x), y in ys:` parse: a `for` clause's filter is `cond` (01:356, 498), with `let` binders and `,` parts. In a `for` header, a `,` followed by `p in e` (a name or a parenthesised pattern, then `in`) starts the next clause instead, so a membership test right after a filter's comma is written with `and`. A comprehension's `if` takes one condition part, `let` included, per `if`.
 - **Why.** Coordinator ruling of 2026-11-27, 18:31 (item 4). std/bitset.cp filters a clause with `if let`.
 - **Reverse.** Filters go back to a plain `Bool` expression.
+
+## 660. A comprehension's clauses are joined with `,`; a second `for` is E0503 (compiler, 2026-11-27)
+
+- **Call.** `[(i, j) for i in R for j in C]` is E0503, and the fix replaces ` for` with `,`: `[(i, j) for i in R, j in C]`, as decision 659 and 01:552 write it. std, the conformance cases and spec prose (01:569, lib/flows.md, lib/math.md) are rewritten in a commit before the rejection.
+- **Why.** Coordinator ruling of 2026-11-27, 19:06: one spelling, and ruling 4 (18:31) gives clauses `,` and no `for`.
+- **Reverse.** Accept a repeated `for` as a second spelling of `,`.

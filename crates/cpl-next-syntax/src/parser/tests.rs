@@ -563,3 +563,18 @@ fn a_clause_filter_takes_let_binders_and_commas() {
     assert_eq!(count(NodeKind::CompClause), 5);
     assert_eq!(count(NodeKind::LetCond), 2);
 }
+
+#[test]
+fn a_second_for_in_a_comprehension_is_reported_with_a_comma_fix() {
+    let src = "let ps = [(i, j) for i in 0..3 for j in 0..2]\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    let (span, text) = file.diagnostics[0].fixes[0].edits[0].clone();
+    assert_eq!(
+        (&src[span.start as usize..span.end as usize], text.as_str()),
+        (" for", ",")
+    );
+    let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
+    assert_eq!(count(NodeKind::CompClause), 2);
+}

@@ -349,8 +349,8 @@ impl Parser<'_> {
             }
             self.finish();
             if self.at(T::For) {
+                self.second_for();
                 self.start(NodeKind::CompClause);
-                self.bump();
                 continue;
             }
             if !(self.at(T::Comma) && self.clause_after_comma()) {
@@ -359,6 +359,20 @@ impl Parser<'_> {
             self.bump();
             self.start(NodeKind::CompClause);
         }
+    }
+
+    /// `[e for x in xs for y in ys]`: clauses are joined with `,` (decision 660).
+    fn second_for(&mut self) {
+        let word = self.span();
+        let prev = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(word.start, |t| t.span.end);
+        let err = msgs::syntax::SECOND_FOR.error(word, &[]);
+        let fix = Span::new(prev, word.end);
+        self.diagnostics.push(err.with_fix("write `,`", fix, ","));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
     }
 
     /// An operator alone where a value goes: `fold(+, xs)`, `(+)`.
