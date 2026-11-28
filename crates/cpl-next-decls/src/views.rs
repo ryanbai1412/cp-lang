@@ -82,7 +82,7 @@ pub trait Signatures: TypeTables + Items {
     fn literal_trait(&self, op: &str) -> Option<TraitId>;
     /// The traits that declare a method `name`, by id (`traits(name)`, indexed from the
     /// signatures).
-    fn traits_with(&self, name: &str) -> Vec<TraitId>;
+    fn traits_with(&self, name: Sym) -> Vec<TraitId>;
     /// The fns that `@aka` or `@was` give `name`, by id.
     fn renamed(&self, name: &str) -> Vec<FnId>;
     /// Which impl a type takes when several fit, lowest first (R08.1.2).
@@ -247,10 +247,10 @@ impl Signatures for Decls {
     fn impls(&self) -> Impls<'_> {
         Impls::of(self)
     }
-    fn traits_with(&self, name: &str) -> Vec<TraitId> {
+    fn traits_with(&self, name: Sym) -> Vec<TraitId> {
         (0..self.traits.len())
             .map(TraitId)
-            .filter(|tr| self.member(&self.traits[tr.0].methods, name).is_some())
+            .filter(|tr| self.traits[tr.0].methods.contains_key(&name))
             .collect()
     }
     fn impl_rank(&self, im: &ImplDecl) -> u8 {
