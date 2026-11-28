@@ -566,13 +566,16 @@ impl Cx<'_> {
             return None;
         }
         let impls = self.impls();
-        let (im, targs) = (impls.ranked_impls(tr))
-            .find_map(|(_, im)| impls.fits_impl(im, &t).map(|targs| (im, targs)))?;
+        let any = decls::TraitRef {
+            tr,
+            args: Vec::new(),
+        };
+        let (k, targs) = impls.best(&t, &any).into_iter().next()?;
         let sub = Subst {
             tys: &targs,
             sets: &[],
         };
-        Some(sub.ty(im.trait_.args.last()?))
+        Some(sub.ty(impls.imp(k).trait_.args.last()?))
     }
     /// `lo..hi` over an endpoint whose range has no positions: its struct from the two ends. Such
     /// a range has no excluded end to include and nothing to step, so `..=` and `by` are E0302.

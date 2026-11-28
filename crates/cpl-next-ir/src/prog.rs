@@ -35,7 +35,33 @@ pub enum CTy {
     Error,
 }
 impl CTy {
-    /// The value a slot of this type holds: a lent mark applies to slots, not values.
+    /// The checker's type this linked type is, the one form an impl lookup reads (decls'
+    /// `ImplChoice`): every part an impl head or bound can see is kept, ranges with their
+    /// getter, closures with their instance's fn and arguments; only `Lent`, a mark on slots
+    /// and never on a type an impl names, goes.
+    pub fn to_ty(&self) -> Ty {
+        let all = |ts: &[CTy]| ts.iter().map(CTy::to_ty).collect::<Vec<_>>();
+        match self {
+            CTy::Int => Ty::Int,
+            CTy::Bool => Ty::Bool,
+            CTy::Char => Ty::Char,
+            CTy::U64 => Ty::U64,
+            CTy::I128 => Ty::I128,
+            CTy::F64 => Ty::F64,
+            CTy::Unit => Ty::Unit,
+            CTy::Raw(t) => Ty::Raw(Box::new(t.to_ty())),
+            CTy::Ref(t) => Ty::Ref(Box::new(t.to_ty())),
+            CTy::Lent(t) => t.to_ty(),
+            CTy::Struct(s, ts, ss) => Ty::Struct(*s, all(ts), ss.iter().map(set_ty).collect()),
+            CTy::Fn(ps, r, s) => Ty::Fn(all(ps), Box::new(r.to_ty()), set_ty(s)),
+            CTy::Clo(k) => clo_ref(k).map_or(Ty::Error, |c| Ty::Clo(Box::new(c))),
+            CTy::Dom(i) => Ty::Dom(*i),
+            CTy::Range(lo, hi) => Ty::Range(*lo, *hi),
+            CTy::RangeTo(d, m, lo, k) => Ty::RangeTo(Box::new(d.to_ty()), *m, *lo, *k),
+            CTy::Error => Ty::Error,
+        }
+    }
+
     pub fn unlent(&self) -> &CTy {
         match self {
             CTy::Lent(t) => t,
@@ -44,6 +70,29 @@ impl CTy {
     }
 }
 pub type CSet = Vec<InstKey>;
+/// A linked closure set as the checker's closed set of those closures (`CTy::to_ty`).
+fn set_ty(s: &CSet) -> SetTy {
+    SetTy::Closed(s.iter().filter_map(clo_ref).map(Member::Clo).collect())
+}
+/// The closure an instance is: its fn or lambda with its arguments; `None` for a program root.
+fn clo_ref(k: &InstKey) -> Option<CloRef> {
+    let targs: Vec<Ty> = k.targs.iter().map(CTy::to_ty).collect();
+    let sets: Vec<SetTy> = k.sets.iter().map(set_ty).collect();
+    let item = |decl, ctx| {
+        CloRef::Item(FnRef {
+            decl,
+            targs: targs.clone(),
+            sets: sets.clone(),
+            ctx,
+        })
+    };
+    match k.func {
+        FuncKey::Decl(f) => Some(item(f, 0)),
+        FuncKey::Ctx(f, c) => Some(item(f, c)),
+        FuncKey::Lambda(l) => Some(CloRef::Lambda(l, targs, sets)),
+        FuncKey::Main | FuncKey::Case => None,
+    }
+}
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct InstKey {
     pub func: FuncKey,
@@ -214,6 +263,36 @@ mod tests {
             targs: vec![CTy::Range(0, n.len() as i64)],
             sets: vec![],
         }
+    }
+
+    /// Impl choice reads a linked type through `to_ty`, so it keeps each part a head can
+    /// fit: the struct and its arguments, a range's ends, and the getter a `RangeTo` names.
+    #[test]
+    fn to_ty_keeps_what_an_impl_head_fits() {
+        let s = crate::ty::StructId(3);
+        let cs = [
+            CTy::Int,
+            CTy::U64,
+            CTy::Raw(Box::new(CTy::Int)),
+            CTy::Ref(Box::new(CTy::Bool)),
+            CTy::Struct(s, vec![CTy::Int], vec![]),
+            CTy::Struct(s, vec![CTy::Bool], vec![]),
+            CTy::Fn(vec![CTy::Int], Box::new(CTy::Bool), vec![]),
+            CTy::Dom(2),
+            CTy::Range(0, 5),
+            CTy::Range(0, 6),
+            CTy::RangeTo(Box::new(CTy::Dom(1)), FnId(4), 0, 1),
+            CTy::RangeTo(Box::new(CTy::Dom(1)), FnId(5), 0, 1),
+        ];
+        let ts: Vec<Ty> = cs.iter().map(CTy::to_ty).collect();
+        for (i, a) in ts.iter().enumerate() {
+            for b in &ts[i + 1..] {
+                assert_ne!(a, b);
+            }
+        }
+        assert_eq!(ts[4], Ty::Struct(s, vec![Ty::Int], vec![]));
+        assert_eq!(ts[10], Ty::RangeTo(Box::new(Ty::Dom(1)), FnId(4), 0, 1));
+        assert_eq!(CTy::Lent(Box::new(CTy::Int)).to_ty(), Ty::Int);
     }
 
     /// A fn value is plain exactly when what it captures is (R1), and holds storage exactly when

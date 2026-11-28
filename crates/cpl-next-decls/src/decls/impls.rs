@@ -280,8 +280,9 @@ impl<'a> Impls<'a> {
         Some(out)
     }
     /// Whether `t` can have `r`, pushing to `out` what that asks of the parameters `t` names:
-    /// the first impl in `impls_of` order whose bounds can all be met. The cap only guards a
-    /// blanket impl bounded by its own trait.
+    /// the impl the one search chooses (`best_in`) and what its bounds ask in turn. A chosen
+    /// impl's unmet bound is a miss, never a fall-back (R08.1.2). The cap only guards a blanket
+    /// impl bounded by its own trait.
     fn needs(&self, t: &Ty, r: &TraitRef, out: &mut Vec<(usize, TraitRef)>, cap: usize) -> bool {
         match t {
             Ty::Param(i) => {
@@ -295,26 +296,20 @@ impl<'a> Impls<'a> {
             _ if cap == 0 => return false,
             _ => {}
         }
-        (self.impls_of(r.tr)).any(|im| {
-            let Some(targs) = self.impl_args_for(im, t, &r.args) else {
-                return false;
+        let mut top = self.best_in(t, r, cap, Applies::Bounds);
+        let (Some((k, targs)), true) = (top.pop(), top.is_empty()) else {
+            return false;
+        };
+        let sub = Subst {
+            tys: &targs,
+            sets: &[],
+        };
+        (self.imp(k).bounds.iter()).all(|(i, b)| {
+            let b = TraitRef {
+                tr: b.tr,
+                args: b.args.iter().map(|x| sub.ty(x)).collect(),
             };
-            let sub = Subst {
-                tys: &targs,
-                sets: &[],
-            };
-            let mut asked = out.clone();
-            let met = im.bounds.iter().all(|(i, b)| {
-                let b = TraitRef {
-                    tr: b.tr,
-                    args: b.args.iter().map(|x| sub.ty(x)).collect(),
-                };
-                (targs.get(*i)).is_none_or(|a| self.needs(a, &b, &mut asked, cap - 1))
-            });
-            if met {
-                *out = asked;
-            }
-            met
+            (targs.get(*i)).is_none_or(|a| self.needs(a, &b, out, cap - 1))
         })
     }
     /// The impls of `tr`, in the order a type takes them (`impl_rank`).
@@ -355,14 +350,27 @@ impl<'a> Impls<'a> {
     /// back to an impl of a later rank. A blanket impl's bounds are all its head says, so one
     /// applies only where they hold.
     pub fn best(&self, t: &Ty, r: &TraitRef) -> Vec<(ImplIdx, Vec<Ty>)> {
-        self.best_in(t, r, CAP)
+        self.best_in(t, r, CAP, Applies::Bounds)
     }
-    fn best_in(&self, t: &Ty, r: &TraitRef, cap: usize) -> Vec<(ImplIdx, Vec<Ty>)> {
-        let want = self.items.t(r.tr).inputs(&r.args);
+    /// `best` at type parameter `t`, which has the traits `have`: a blanket impl applies where
+    /// `have` holds what it bounds its head by (`impl<D: Domain> Eq for D` for a `D: Domain`).
+    pub fn best_given(&self, t: &Ty, r: &TraitRef, have: &[TraitId]) -> Vec<(ImplIdx, Vec<Ty>)> {
+        self.best_in(t, r, CAP, Applies::Given(have))
+    }
+    /// The one impl search (S11): the impls of `r` whose heads fit `t`, of the most specific
+    /// rank, with the blanket impls that apply as `how` says.
+    fn best_in(&self, t: &Ty, r: &TraitRef, cap: usize, how: Applies) -> Vec<(ImplIdx, Vec<Ty>)> {
         let mut found: Vec<(u8, ImplIdx, Vec<Ty>)> = (self.trait_impls(r.tr))
             .filter_map(|(k, im)| {
-                let binds = self.impl_args_for(im, t, want)?;
-                let applies = !im.blanket() || (cap > 0 && self.bounds_hold(im, &binds, cap - 1));
+                let binds = self.args_in(im, t, &r.args, cap)?;
+                let applies = !im.blanket()
+                    || match how {
+                        Applies::Heads => true,
+                        Applies::Bounds => cap > 0 && self.bounds_hold(im, &binds, cap - 1),
+                        Applies::Given(have) => (im.bounds.iter())
+                            .filter(|(k, _)| im.for_ == Ty::Param(*k))
+                            .all(|(_, b)| have.contains(&b.tr)),
+                    };
                 applies.then(|| (impl_rank(self.items, im), k, binds))
             })
             .collect();
@@ -377,7 +385,7 @@ impl<'a> Impls<'a> {
         self.choose_in(t, r, CAP)
     }
     fn choose_in(&self, t: &Ty, r: &TraitRef, cap: usize) -> Option<Chosen> {
-        let mut best = self.best_in(t, r, cap);
+        let mut best = self.best_in(t, r, cap, Applies::Bounds);
         let (imp, binds) = best.pop().filter(|_| best.is_empty() && cap > 0)?;
         (self.bounds_hold(self.imp(imp), &binds, cap - 1)).then_some(Chosen { imp, binds })
     }
@@ -408,7 +416,7 @@ impl<'a> Impls<'a> {
                 cap > 0 && self.holds_in(t, &s, cap - 1)
             });
         }
-        (self.best_in(t, r, cap).iter())
+        (self.best_in(t, r, cap, Applies::Bounds).iter())
             .any(|(k, binds)| cap > 0 && self.bounds_hold(self.imp(*k), binds, cap - 1))
     }
     /// Whether `t` meets row trait `r`, `(to:, ..)<V>`, by its fields: a record with a field of
@@ -468,18 +476,11 @@ impl<'a> Impls<'a> {
         // An impl's bound names a part of its type, so each step is a smaller type; the cap
         // only guards a blanket impl bounded by its own trait.
         for _ in 0..32 {
-            let heads: Vec<(&ImplDecl, Vec<Ty>)> = (self.impls_of(r.tr))
-                .filter_map(|im| Some((im, self.impl_args_for(im, &t, &r.args)?)))
-                .collect();
-            let Some(best) = heads.iter().map(|(im, _)| impl_rank(self.items, im)).min() else {
+            let mut heads = self.best_in(&t, &r, CAP, Applies::Heads);
+            let (Some((k, targs)), true) = (heads.pop(), heads.is_empty()) else {
                 break;
             };
-            let mut heads = heads
-                .into_iter()
-                .filter(|(im, _)| impl_rank(self.items, im) == best);
-            let (Some((im, targs)), None) = (heads.next(), heads.next()) else {
-                break;
-            };
+            let im = self.imp(k);
             let sub = Subst {
                 tys: &targs,
                 sets: &[],
@@ -540,6 +541,9 @@ impl<'a> Impls<'a> {
     /// The impl's type arguments when it is for `t` and of the trait with arguments `trait_args`
     /// (`impl Into<Char> for Int` and not `impl Into<U64> for Int`); fewer are not checked.
     pub fn impl_args_for(&self, im: &ImplDecl, t: &Ty, trait_args: &[Ty]) -> Option<Vec<Ty>> {
+        self.args_in(im, t, trait_args, CAP)
+    }
+    fn args_in(&self, im: &ImplDecl, t: &Ty, trait_args: &[Ty], cap: usize) -> Option<Vec<Ty>> {
         // A struct's impl fits only that struct or a type not known yet, as `fit` would say.
         if let Ty::Struct(d, ..) = im.for_ {
             if !matches!(t, Ty::Struct(e, ..) if *e == d) && !matches!(t, Ty::Var(_) | Ty::Error) {
@@ -570,20 +574,20 @@ impl<'a> Impls<'a> {
                     continue;
                 };
                 // Only the one impl of the most specific rank that meets it fixes them (R08.1.4).
-                let mut fits = (self.impls_of(r.tr)).filter_map(|m| {
-                    let b = self.fits_impl(m, &bt)?;
-                    let sub = Subst { tys: &b, sets: &[] };
-                    let args: Vec<Ty> = m.trait_.args.iter().map(|a| sub.ty(a)).collect();
-                    Some((impl_rank(self.items, m), args))
-                });
-                let Some((rank, args)) = fits.next() else {
+                let any = TraitRef {
+                    tr: r.tr,
+                    args: Vec::new(),
+                };
+                let mut top = match cap {
+                    0 => Vec::new(),
+                    _ => self.best_in(&bt, &any, cap - 1, Applies::Bounds),
+                };
+                let (Some((k, b)), true) = (top.pop(), top.is_empty()) else {
                     continue;
                 };
-                if fits.next().is_some_and(|(k, _)| k == rank) {
-                    continue;
-                }
-                for (p, a) in r.args.iter().zip(&args) {
-                    fit(p, a, &mut binds);
+                let sub = Subst { tys: &b, sets: &[] };
+                for (p, a) in r.args.iter().zip(&self.imp(k).trait_.args) {
+                    fit(p, &sub.ty(a), &mut binds);
                 }
             }
             if unbound == 0 || binds.iter().filter(|b| b.is_none()).count() == unbound {
@@ -592,6 +596,16 @@ impl<'a> Impls<'a> {
         }
         Some(binds.into_iter().map(|b| b.unwrap_or(Ty::Error)).collect())
     }
+}
+
+/// Which blanket impls `best_in` takes: those whose bounds hold, every one whose head fits (a
+/// diagnosis of why a type misses a trait), or at a type parameter those whose head bounds the
+/// parameter's own traits give.
+#[derive(Clone, Copy)]
+enum Applies<'b> {
+    Bounds,
+    Heads,
+    Given(&'b [TraitId]),
 }
 
 /// How deep an impl's bounds are followed: each bound names a part of the impl's type, so each

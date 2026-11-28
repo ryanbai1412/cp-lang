@@ -1,7 +1,8 @@
 //! Contract 5: generic IR -> instances. The link step: it decides which
 //! instances exist and what each function-value set holds, from the whole program.
+use cpl_next_decls::decls::{Choice, ImplIdx, TraitRef};
 use cpl_next_decls::diag::Msg;
-use cpl_next_decls::views::{Checked, Generics, Signatures, Summaries};
+use cpl_next_decls::views::{Checked, Generics, ImplChoice, Signatures, Summaries};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::ty::*;
@@ -21,6 +22,8 @@ pub use events::add_events;
 
 struct Link<'a> {
     d: &'a dyn Signatures,
+    /// Decls' one impl choice, each linked type asked as the checker's type it is (R08.1.2).
+    choice: Choice<'a>,
     c: &'a dyn Checked,
     generic: &'a dyn Generics,
     adds: &'a dyn Summaries,
@@ -142,6 +145,8 @@ pub struct Inputs<'a> {
     pub fns: &'a dyn Generics,
     pub sums: &'a dyn Summaries,
     pub checked: &'a dyn Checked,
+    /// The `Domain` and `Ordered` rows of each domain the check declared.
+    pub rows: &'a [cpl_next_decls::decls::ImplDecl],
 }
 
 /// The items one build links: every lowered fn, and the program's globals in order.
@@ -155,6 +160,10 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
     let (d, c, generic) = (v.sigs, v.checked, v.fns);
     let mut l = Link {
         d,
+        choice: Choice::new(cpl_next_decls::decls::Impls {
+            rows: v.rows,
+            ..d.impls()
+        }),
         c,
         generic,
         adds: v.sums,
@@ -1015,34 +1024,53 @@ impl Link<'_> {
         }
     }
 
-    /// The impl's fn a method of a bound runs, now the type is known.
-    /// Whether `t` meets trait `tr` at `args` in this instance: an impl fits it, or the type
+    /// The impl `t` takes for `tr` at `args`, by decls' choice (R08.1.2), with its parameters as
+    /// linked types.
+    fn chosen(
+        &mut self,
+        tr: TraitId,
+        args: &[Ty],
+        t: &CTy,
+        env: &Env,
+    ) -> Option<(ImplIdx, Vec<CTy>)> {
+        let want: Vec<CTy> = args.iter().map(|a| self.targ(a, env)).collect();
+        let tys: Vec<Ty> = want.iter().map(CTy::to_ty).collect();
+        let c = self.choice.impl_for(tr, &tys, &t.to_ty())?;
+        // The head's and the trait arguments' parameters as `t` and `args` have them, a lent
+        // part kept; a parameter only a bound names is decls'.
+        let im = self.choice.impls.imp(c.imp);
+        let mut head = vec![None; im.generics.len()];
+        fit_cty(&im.for_, t, &mut head);
+        for (p, w) in im.trait_.args.iter().zip(&want) {
+            fit_cty(p, w, &mut head);
+        }
+        let none = Env {
+            targs: &[],
+            sets: &[],
+        };
+        let binds = (c.binds.iter().zip(head))
+            .map(|(b, h)| h.unwrap_or_else(|| self.targ(b, &none)))
+            .collect();
+        Some((c.imp, binds))
+    }
+    /// Whether `t` is a domain meeting `tr` with no impl: its rows travel with it in `Whole` (S11).
+    fn dom_row(&self, t: &CTy, tr: TraitId) -> bool {
+        matches!(t, CTy::Dom(i) if self.c.domain(DomId(*i)).impls.contains(&tr))
+    }
+    /// Whether `t` meets trait `tr` at `args` in this instance: an impl applies, or the type
     /// meets the trait without one (a domain, for `Domain`).
     fn has_bound(&mut self, t: &Ty, tr: TraitId, args: &[Ty], env: &Env) -> bool {
         let st = self.targ(t, env).unlent().clone();
-        let want: Vec<CTy> = (self.d.t(tr).inputs(args).iter())
-            .map(|a| self.targ(a, env))
-            .collect();
-        let d = self.d;
-        let by_impl = d
-            .impls()
-            .ranked_impls(tr)
-            .map(|(k, _)| k)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .map(|k| d.impls().imp(k))
-            .any(|im| {
-                let mut binds = vec![None; im.generics.len()];
-                fits_head(d, im, &st, &mut binds)
-                    && (d.t(tr).inputs(&im.trait_.args).iter().zip(&want))
-                        .all(|(p, w)| fit_cty(p, w, &mut binds))
-                    // An impl's bounds hold too: `List<T: Show>` is `Show` for `List<Int>`, not for
-                    // `List<Bool>`.
-                    && (im.bounds.iter()).all(|(i, r)| {
-                        binds[*i].as_ref().is_none_or(|t| cty_meets(d, self.c, t, r.tr))
-                    })
-            });
-        by_impl || ((want.is_empty() || d.t(tr).row) && cty_meets(d, self.c, &st, tr))
+        let bare = self.d.t(tr).inputs(args).is_empty();
+        // A record meets a row trait by its fields, with no impl (R08.4.1).
+        let row = self.d.t(tr).row && {
+            let r = TraitRef {
+                tr,
+                args: args.iter().map(|a| self.targ(a, env).to_ty()).collect(),
+            };
+            self.choice.impls.row_holds(&st.to_ty(), &r)
+        };
+        row || (bare && self.dom_row(&st, tr)) || self.chosen(tr, args, &st, env).is_some()
     }
     fn trait_key(
         &mut self,
@@ -1057,9 +1085,6 @@ impl Link<'_> {
         if st == CTy::Error {
             return None;
         }
-        let want: Vec<CTy> = (self.d.t(*tr).inputs(args).iter())
-            .map(|a| self.targ(a, env))
-            .collect();
         // The impl's sets are its target's: a struct's, or a fn type's own set.
         let sets = match &st {
             CTy::Struct(_, _, ss) => ss.clone(),
@@ -1079,55 +1104,29 @@ impl Link<'_> {
                     sets: Vec::new(),
                 })
         };
-        // The checker let exactly one impl of the most specific rank fit (R08.1.2).
-        let (mut found, mut rank) = (None, None);
-        for im in d
-            .impls()
-            .ranked_impls(*tr)
-            .map(|(k, _)| k)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .map(|k| d.impls().imp(k))
-        {
-            if rank.is_some_and(|r| d.impl_rank(im) > r) {
-                break;
-            }
-            let mut binds = vec![None; im.generics.len()];
-            if !fits_head(d, im, &st, &mut binds)
-                || !(d.t(*tr).inputs(&im.trait_.args).iter().zip(&want))
-                    .all(|(p, w)| fit_cty(p, w, &mut binds))
-                || !blanket_met(d, self.c, im, &binds)
-            {
-                continue;
-            }
-            if rank.is_some() {
-                self.errors.push(Msg::internal(format!(
-                    "two impls of `{}` give `{method}` for one type",
-                    d.t(*tr).name
-                )));
-                break;
-            }
-            rank = Some(d.impl_rank(im));
-            self.bound_only(im, &mut binds);
-            let binds: Vec<CTy> = binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
-            found = match self.d.member_named(&im.methods, method) {
-                Some(m) => Some(InstKey {
-                    func: FuncKey::Decl(m),
-                    targs: binds,
-                    sets: sets.clone(),
-                }),
-                None => {
-                    let env = Env {
-                        targs: &binds,
-                        sets: &sets,
-                    };
-                    default(im.trait_.args.iter().map(|t| self.ty(t, &env)).collect())
+        let found = match self.chosen(*tr, args, &st, env) {
+            Some((k, binds)) => {
+                let im = self.choice.impls.imp(k);
+                match d.member_named(&im.methods, method) {
+                    Some(m) => Some(InstKey {
+                        func: FuncKey::Decl(m),
+                        targs: binds,
+                        sets: sets.clone(),
+                    }),
+                    None => {
+                        let env = Env {
+                            targs: &binds,
+                            sets: &sets,
+                        };
+                        default(im.trait_.args.iter().map(|t| self.ty(t, &env)).collect())
+                    }
                 }
-            };
-        }
-        if found.is_none() && cty_meets(d, self.c, &st, *tr) {
-            found = default(args.iter().map(|t| self.ty(t, env)).collect());
-        }
+            }
+            None if self.dom_row(&st, *tr) => {
+                default(args.iter().map(|t| self.ty(t, env)).collect())
+            }
+            None => None,
+        };
         if found.is_none() {
             self.errors.push(Msg::internal(format!(
                 "no impl provides `{method}` for this type"
@@ -1617,129 +1616,7 @@ fn thread_values(p: &mut Program, c: &dyn Checked) {
     }
 }
 
-/// Whether a type an impl is written for, in the impl's type parameters, is `t`: binds them.
-impl Link<'_> {
-    /// Fixes each parameter of `im` only a bound names (`K` of `impl<S: Indexed<K, T>, K, T>`) to
-    /// what the impl meeting that bound gives it, as the checker does (R08.1.2).
-    fn bound_only(&mut self, im: &cpl_next_decls::decls::ImplDecl, binds: &mut [Option<CTy>]) {
-        let d = self.d;
-        loop {
-            let unbound = binds.iter().filter(|b| b.is_none()).count();
-            if unbound == 0 {
-                return;
-            }
-            for (i, r) in &im.bounds {
-                let Some(bt) = binds[*i].clone() else {
-                    continue;
-                };
-                // The one impl of the most specific rank that fits fixes them: coherence and
-                // the checker leave no second (R08.1.2), so one is a checker bug.
-                let (mut one, mut rank) = (None, None);
-                for m in d
-                    .impls()
-                    .ranked_impls(r.tr)
-                    .map(|(k, _)| k)
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .map(|k| d.impls().imp(k))
-                {
-                    if rank.is_some_and(|k| d.impl_rank(m) > k) {
-                        break;
-                    }
-                    let mut b = vec![None; m.generics.len()];
-                    if !fit_cty(&m.for_, &bt, &mut b) || !blanket_met(d, self.c, m, &b) {
-                        continue;
-                    }
-                    if rank.is_some() {
-                        self.errors.push(Msg::internal(format!(
-                            "two impls of `{}` fit one bound at one rank",
-                            d.t(r.tr).name
-                        )));
-                        one = None;
-                        break;
-                    }
-                    rank = Some(d.impl_rank(m));
-                    self.bound_only(m, &mut b);
-                    let b: Vec<CTy> = b.into_iter().map(|x| x.unwrap_or(CTy::Error)).collect();
-                    let env = Env {
-                        targs: &b,
-                        sets: &[],
-                    };
-                    one = Some(
-                        m.trait_
-                            .args
-                            .iter()
-                            .map(|a| self.ty(a, &env))
-                            .collect::<Vec<CTy>>(),
-                    );
-                }
-                for (p, a) in r.args.iter().zip(one.iter().flatten()) {
-                    fit_cty(p, a, binds);
-                }
-            }
-            if binds.iter().filter(|b| b.is_none()).count() == unbound {
-                return;
-            }
-        }
-    }
-}
-
-/// Whether a blanket impl's bounds hold of the types it binds, as the checker asked
-/// (`Decls::fits_impl`); an impl for a written type is taken as found.
-fn blanket_met(
-    d: &dyn Signatures,
-    c: &dyn Checked,
-    im: &cpl_next_decls::decls::ImplDecl,
-    binds: &[Option<CTy>],
-) -> bool {
-    !im.blanket()
-        || (im.bounds.iter())
-            .all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, c, t, r.tr)))
-}
-fn cty_meets(d: &dyn Signatures, c: &dyn Checked, t: &CTy, tr: TraitId) -> bool {
-    // A record meets a row trait by having each field its getters read (R08.4.1).
-    if d.t(tr).row {
-        let CTy::Struct(s, ..) = t else {
-            return false;
-        };
-        let sd = d.s(*s);
-        return sd.record && (d.t(tr).methods.keys()).all(|m| sd.fields.iter().any(|f| f.0 == *m));
-    }
-    // A domain's impl rows travel with it in `Whole` (S11).
-    if let CTy::Dom(i) = t {
-        if c.domain(DomId(*i)).impls.contains(&tr) {
-            return true;
-        }
-    }
-    d.impls()
-        .ranked_impls(tr)
-        .map(|(k, _)| k)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .map(|k| d.impls().imp(k))
-        .any(|im| {
-            let mut b = vec![None; im.generics.len()];
-            fits_head(d, im, t, &mut b)
-                && (im.bounds.iter())
-                    .all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, c, a, r.tr)))
-        })
-}
-/// Whether an impl is for `t`, as `Decls::head_fits` says of a range type and `Int`.
-fn fits_head(
-    d: &dyn Signatures,
-    im: &cpl_next_decls::decls::ImplDecl,
-    t: &CTy,
-    binds: &mut [Option<CTy>],
-) -> bool {
-    let head = match t {
-        CTy::Int => Ty::Int,
-        CTy::Range(lo, hi) => Ty::Range(*lo, *hi),
-        // Only its kind matters to `head_fits`: a range's.
-        CTy::RangeTo(_, _, lo, _) => Ty::Range(*lo, *lo),
-        _ => Ty::Unit,
-    };
-    d.impls().head_fits(im, &head) && fit_cty(&im.for_, t, binds)
-}
+/// Whether a type a fn's parameter is written as, in the fn's type parameters, is `t`: binds them.
 fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
     match (p, t) {
         (Ty::Param(i), _) => match &binds[*i] {

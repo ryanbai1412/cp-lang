@@ -595,11 +595,13 @@ impl<'a> Cx<'a> {
         // An impl for a written type beats a blanket one of another trait (R08.1.4): `Cut<D>`'s
         // `Domain.count` over `Positions`' `impl<D: Domain> .. for D`.
         let rank = |tr: TraitId| {
-            (self.impls().trait_impls(tr))
-                .filter(|(_, im)| self.impls().fits_impl(im, &t).is_some())
-                .map(|(_, im)| decls::impl_rank(self.items, im))
-                .min()
-                .unwrap_or(0)
+            let any = decls::TraitRef {
+                tr,
+                args: Vec::new(),
+            };
+            (self.impls().best(&t, &any).first()).map_or(0, |(k, _)| {
+                decls::impl_rank(self.items, self.impls().imp(*k))
+            })
         };
         let best = found.iter().map(|&(tr, _)| rank(tr)).min();
         let found: Vec<(TraitId, FnId)> = found

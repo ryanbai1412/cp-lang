@@ -181,23 +181,32 @@ impl Cx<'_> {
     /// parameters fixed by the bound's arguments. `v` becomes that fn type, so the lambda passes
     /// as a value of it.
     pub(super) fn fn_impl_for(&mut self, v: usize, arity: usize) -> Option<Ty> {
-        let items = self.items;
         let bounds: Vec<TraitRef> = (self.b.obligations.iter())
             .filter(|(t, ..)| self.shallow(t) == Ty::Var(v))
             .map(|(_, r, ..)| r.clone())
             .collect();
-        let found: Vec<(usize, &TraitRef)> = (bounds.iter())
+        // Any fn type of that arity: the impls that apply to it, headed ones first (R08.1.4).
+        let probe = Ty::Fn(
+            vec![Ty::Error; arity],
+            Box::new(Ty::Error),
+            SetTy::Closed(Vec::new()),
+        );
+        let impls = self.impls();
+        let found: Vec<(ImplIdx, &TraitRef)> = (bounds.iter())
             .flat_map(|r| {
-                (items.impls_by_trait(r.tr).iter())
-                    .filter(|&&k| items.live(k))
-                    .filter(|&&k| matches!(&items.imp(k).for_, Ty::Fn(ps, ..) if ps.len() == arity))
-                    .map(move |&k| (k, r))
+                let any = TraitRef {
+                    tr: r.tr,
+                    args: Vec::new(),
+                };
+                (impls.best(&probe, &any).into_iter())
+                    .filter(|(k, _)| !impls.imp(*k).blanket())
+                    .map(move |(k, _)| (k, r))
             })
             .collect();
         let [(k, r)] = found[..] else {
             return None;
         };
-        let im = items.imp(k);
+        let im = impls.imp(k).clone();
         let Ty::Fn(ps, ret, _) = &im.for_ else {
             return None;
         };
@@ -436,24 +445,36 @@ impl Cx<'_> {
     /// `impl<S: Seq<T>, T> Into<List<T>> for S`; the bounds fix the impl's other parameters.
     fn param_impl(&self, i: usize, r: &TraitRef) -> Option<ImplIdx> {
         let have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
-        let mut found = (self.impls().trait_impls(r.tr)).filter(|(_, im)| {
-            !im.trait_.args.is_empty()
-                && matches!(im.for_, Ty::Param(_))
-                && (im.bounds.iter())
-                    .filter(|(k, _)| im.for_ == Ty::Param(*k))
-                    .all(|(_, b)| have.contains(&b.tr))
-        });
-        let (k, _) = found.next()?;
-        found.next().is_none().then_some(k)
+        let impls = self.impls();
+        let any = TraitRef {
+            tr: r.tr,
+            args: Vec::new(),
+        };
+        let found: Vec<ImplIdx> = (impls.best_given(&Ty::Param(i), &any, &have).into_iter())
+            .map(|(k, _)| k)
+            .filter(|&k| !impls.imp(k).trait_.args.is_empty() && impls.imp(k).blanket())
+            .collect();
+        let [k] = found[..] else {
+            return None;
+        };
+        Some(k)
     }
     /// The one impl of `r` for a struct whose arguments are still open, by its head alone.
     fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(ImplIdx, Vec<Ty>)> {
-        let mut found = (self.items.impls_by_trait(r.tr).iter())
-            .map(|&k| (k, self.items.imp(k)))
-            .filter(|(_, im)| !im.blanket())
-            .filter_map(|(k, im)| Some((ImplIdx::Decl(k), self.impls().fits_impl(im, t)?)));
-        let one = found.next()?;
-        found.next().is_none().then_some(one)
+        let impls = self.impls();
+        let headed = |im: &decls::ImplDecl| !im.blanket() && impls.fits_impl(im, t).is_some();
+        if (impls.trait_impls(r.tr))
+            .filter(|(_, im)| headed(im))
+            .count()
+            != 1
+        {
+            return None;
+        }
+        let any = TraitRef {
+            tr: r.tr,
+            args: Vec::new(),
+        };
+        (impls.best(t, &any).into_iter()).find(|(k, _)| !impls.imp(*k).blanket())
     }
     /// Whether type parameter `i` meets `tr` through a blanket impl whose bounds its own bounds
     /// meet: `impl<D: Domain> Eq for D` gives every `D: Domain` its `==`.

@@ -351,6 +351,7 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
         fns,
         sums: &g.adds,
         checked: &checked,
+        rows: &f.t.dom_rows,
     };
     let mut prog = inst::link(v, &roots(fns, tys.len()), events);
     let owned = own::after(d, &mut prog, &names, before);
