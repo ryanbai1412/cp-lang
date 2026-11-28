@@ -5671,7 +5671,9 @@ def signoff_edits(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that main doesn't hold and that edit `SIGNOFF_PATHS`, on any
     branch: only a PR a code owner approves changes them (`owner_approved`), so a lane never
     signs its own debt off."""
-    main = ["--not", "origin/main"] if _git(root, "rev-parse", "-q", "--verify", "origin/main", env=_git_env()) else []
+    # CI on main has origin/main at the pushed tip, so there it would hide the push itself.
+    main = ["--not", "origin/main"] if os.environ.get("GITHUB_REF") != "refs/heads/main" and \
+        _git(root, "rev-parse", "-q", "--verify", "origin/main", env=_git_env()) else []
     return [f"{sha[:9]}: edits {SIGNOFFS} or its CODEOWNERS; only a PR its code owner approves may, "
             f"so send the row to the coordinator"
             for sha in _git(root, "rev-list", f"{base}..HEAD", *main, "--", *SIGNOFF_PATHS, env=_git_env())
