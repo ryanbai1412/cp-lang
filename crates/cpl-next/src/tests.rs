@@ -1611,6 +1611,86 @@ fn a_trace_shows_only_the_users_writes() {
     assert_eq!(written, ["t 1", "t 2"]);
 }
 
+/// No std privilege (§11.6): a std module that fills no role, copied under a `[libs]` path,
+/// checks and runs each of its cases as std's own does, given by `use` the names the prelude
+/// gives.
+#[test]
+fn a_std_module_copied_into_a_library_behaves_as_std() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let std = Std::read();
+    let prelude = std::fs::read_to_string(root.join("std/prelude.cp")).unwrap();
+    let dir = std::env::temp_dir().join(format!("cpl-no-privilege-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("kit")).unwrap();
+    std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
+    let said = |src: &str, roots: &Roots| -> String {
+        let shown = match compile(&std, src, roots, false, None, Checks::CHECKED) {
+            Ok(c) => {
+                let (a, b) = (raw(&c), c.run(""));
+                format!(
+                    "{}{:?}|{}{:?}",
+                    a.output,
+                    a.trap.is_some(),
+                    b.output,
+                    b.trap.is_some()
+                )
+            }
+            Err(ds) => ds.iter().map(|d| format!("{d}\n")).collect(),
+        };
+        shown.replace("kit.", "std.").replace("kit/", "std/")
+    };
+    let mut ran = 0;
+    for m in ["dsu", "fenwick"] {
+        let text = std::fs::read_to_string(root.join(format!("std/{m}.cp"))).unwrap();
+        assert!(
+            !text.contains("@role("),
+            "std.{m} fills no role, so its copy is all of it"
+        );
+        std::fs::write(dir.join(format!("kit/{m}.cp")), text).unwrap();
+        let given: Vec<&str> = (prelude.lines())
+            .find_map(|l| l.strip_prefix(&format!("use std.{m}.{{")))
+            .map(|l| l.trim_end_matches('}').split(", ").collect())
+            .unwrap_or_default();
+        let cases = root.join(format!("spec/conformance/std-{m}"));
+        let mut paths: Vec<_> = (std::fs::read_dir(cases).unwrap())
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.extension().is_some_and(|x| x == "cp"))
+            .collect();
+        paths.sort();
+        for path in paths {
+            let src = std::fs::read_to_string(&path).unwrap();
+            if src.contains("// file:") {
+                continue;
+            }
+            let moved = src.replace(&format!("std.{m}.{{"), &format!("kit.{m}.{{"));
+            let named: Vec<&str> = (given.iter().copied())
+                .filter(|n| {
+                    !moved
+                        .lines()
+                        .any(|l| l.contains(&format!("kit.{m}.")) && l.contains(n))
+                })
+                .collect();
+            // The `use` takes a header comment's line, so every line keeps its number.
+            let moved = match named.is_empty() {
+                true => moved,
+                false => moved.replacen(
+                    "// ",
+                    &format!("use kit.{m}.{{{}}} // ", named.join(", ")),
+                    1,
+                ),
+            };
+            assert_eq!(
+                said(&src, &Roots::from(&dir)),
+                said(&moved, &Roots::from(&dir)),
+                "{}",
+                path.display()
+            );
+            ran += 1;
+        }
+    }
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert!(ran > 30, "{ran} cases");
+}
+
 /// An event shows a value as `write` gives it, through std's `traced`: a struct by its own
 /// `Show`, a list by std's, and a `Bool`, which is not `Show` (R10.3), by nothing. The `Show`
 /// it runs places no events, alike on the interpreter, the engine and the C++.
