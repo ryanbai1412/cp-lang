@@ -1384,7 +1384,7 @@ fn bounded_flow<V, E>(
 /// let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 2), (u: 1, v: 2, w: 3)]
 /// gomory_hu(es) == [(u: 1, v: 0, w: 2), (u: 2, v: 1, w: 3)]
 /// ```
-pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>:
+pub fn gomory_hu<V: Cyclic, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: Int)>:
     var g = FlowGraph<V>()
     for e in E: g.add_both(edges[e].u, edges[e].v, edges[e].w)
     var parent: [V]V = V.first!
