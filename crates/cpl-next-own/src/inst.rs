@@ -767,6 +767,7 @@ impl Walk<'_> {
         {
             q.path.push(Step::Key(*k));
         }
+        let mut captured = BTreeSet::new();
         let (mut other, mut keeps) = (
             Fx::default(),
             kept.iter().copied().collect::<BTreeSet<usize>>(),
@@ -793,6 +794,14 @@ impl Walk<'_> {
             other.reads.extend(ot.into_iter().filter_map(map));
             other.writes.extend(ow.into_iter().filter_map(map));
             fx.reads.extend(tr.into_iter().filter_map(map));
+            // A write through a viewed parameter is a closure's write to what it captured: the
+            // call writes that place (R05.10.3).
+            let viewed = |p: &&&Pl| match p.root {
+                Root::Local(l) => (ps.iter().position(|x| *x == l))
+                    .is_some_and(|i| matches!(args.get(i), Some(Arg::View(_)))),
+                Root::Global(_) => false,
+            };
+            captured.extend(tw.iter().filter(viewed).filter_map(|p| map(p)));
             fx.writes.extend(tw.into_iter().filter_map(map));
             other.held.extend(sum.fx.held.iter().filter_map(map));
         }
@@ -982,11 +991,9 @@ impl Walk<'_> {
         for p in lent.clone() {
             self.store(site, p.root, kept.clone());
         }
-        for p in lent
-            .iter()
-            .chain(&other.writes)
+        for p in (lent.iter().chain(&other.writes).chain(&captured))
             .cloned()
-            .collect::<Vec<_>>()
+            .collect::<BTreeSet<_>>()
         {
             self.wrote_via(site, &p, &via);
         }

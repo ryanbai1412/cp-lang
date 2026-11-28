@@ -1557,6 +1557,7 @@ next/a_own_21_get_of_plain_element_copies.cp
 next/a_own_22_list_param_result_is_owned.cp
 next/a_own_23_cell_write_of_a_view_of_the_container.cp
 next/a_own_24_copy_in_its_turn.cp
+next/a_own_25_nested_fn_writes_a_capture_a_view_lends.cp
 next/a_range_rt_01_store_above_end.cp
 next/a_range_rt_03_tuple_read_bounded_by_earlier.cp
 next/a_range_rt_04_tuple_read_at_bound.cp
