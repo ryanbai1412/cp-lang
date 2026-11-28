@@ -1291,12 +1291,7 @@ fn outer_view(
             match export(t, n) {
                 Some(_) if own[mi].contains_key(n) => {
                     if let Some(e) = errors.as_deref_mut() {
-                        e.push(
-                            Unbuilt::UseOfOwn {
-                                name: n.clone(),
-                            }
-                            .into(),
-                        );
+                        e.push(Unbuilt::UseOfOwn { name: n.clone() }.into());
                     }
                 }
                 // Two imports of one name stay ambiguous where it is used (R08.1.4).
@@ -2165,4 +2160,23 @@ fn role_of(x: &ast::Decorator) -> Option<Role> {
         ast::ExprKind::Name(n) => Role::ALL.into_iter().find(|r| r.name() == n),
         _ => None,
     }
+}
+
+/// The role a `@role(name)` attribute names, when `name` is one of R11.6.1's.
+pub(crate) fn form_role(x: &forms::AttrForm) -> Option<Role> {
+    use cpl_next_syntax::ast::Expr;
+    if x.attr != crate::attrs::Attr::Role {
+        return None;
+    }
+    let arg = x.node.as_ref()?.args()?.args().next()?.value()?;
+    let Expr::Name(n) = arg else {
+        return None;
+    };
+    let n = n.ident()?;
+    Role::ALL.into_iter().find(|r| r.name() == n.text())
+}
+
+/// Whether a declaration with these attributes fills role `r`.
+pub(crate) fn form_fills(attrs: &[forms::AttrForm], r: Role) -> bool {
+    attrs.iter().any(|x| form_role(x) == Some(r))
 }

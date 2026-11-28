@@ -1514,4 +1514,20 @@ pub enum SynthBody {
     /// A `without` form's member on a record it fits: `fn R(self, to: P0) = (to: to, w: self.w)`,
     /// its added fields from its parameters, then the kept ones from `self` (R08.4.1).
     Without { added: Vec<Sym>, kept: Vec<Sym> },
+    /// A record of domains as the product domain, row-major with the last field fastest
+    /// (R04.2.10): its size, `A.count * B.count * ..`, through the `@role(positions)` trait's
+    /// count member.
+    ProductCount { count: Sym, n: usize },
+    /// Position `k` of the product: field `i` is `A_i.nth(k / (the sizes after it) % its size)`.
+    ProductNth {
+        nth: Sym,
+        count: Sym,
+        fields: Vec<Sym>,
+    },
+    /// The rank of a position: `((self.a.ord * B.count) + self.b.ord) * ..`.
+    ProductOrd {
+        ord: Sym,
+        count: Sym,
+        fields: Vec<Sym>,
+    },
 }
