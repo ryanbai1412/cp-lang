@@ -14,3 +14,16 @@ A conformance case or new-pipeline test leaves only with a line here naming it a
   domain's count is read lazily, so nothing cycles; the case runs on `cpl-next` and prints `1`.
 - `spec/conformance/lints/turbofish-call.cp`: L0204 is deleted (decision 664), since `::<` is now
   E0503 in the parser with the same fix. The case moved to `core-01/turbofish-is-rejected.cp`.
+- `spec/conformance/std-seq/drop-negative-traps.cp`, `spec/conformance/std-seq/min-k-negative-traps.cp`,
+  `spec/conformance/std-seq/step-of-zero-traps.cp` and `spec/conformance/std-seq/windows-zero-traps.cp`:
+  renamed to `drop-negative-is-rejected.cp`, `min-k-negative-is-rejected.cp`,
+  `step-of-zero-is-rejected.cp` and `windows-zero-is-rejected.cp` (0bb387920, the coordinator's
+  ruling). Each passes a constant out of its parameter's range (`k: Len`), which R04.4.24 checks
+  when compiled as E0902; a computed value out of range still traps at run time.
+- `spec/conformance/core-07/rev-iter-is-walked-not-called.cp`: removed, its E0203 encoded the
+  frozen `cpl`'s `foreign_iter_call` name list (an `.iter()`/`.into_iter()`/`.chars()` call on a
+  concrete std type rejected by name), which no spec rule states. R08.1.4 finds a trait's method
+  on a type that implements it, and R11.1.4 / decision 358 give trait methods the trait's
+  visibility, so `a.rev.iter()` calls `Rev`'s `impl Seq` walk (coordinator ruling, option A).
+  Replaced by `core-07/rev-iter-resolves-through-seq.cp` (`expect: ok`, `4 1 3` on all three
+  runners).
