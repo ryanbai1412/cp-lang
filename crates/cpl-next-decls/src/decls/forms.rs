@@ -566,3 +566,36 @@ impl Reader<'_> {
         (form, unknown)
     }
 }
+
+impl Form {
+    /// The name it declares in its module; `None` for an impl, a `use` and the like.
+    pub fn name(&self) -> Option<Sym> {
+        match self {
+            Form::Fn(f) => Some(f.name),
+            Form::Struct(s) => Some(s.name),
+            Form::Enum(e) => Some(e.name),
+            Form::Trait(t) => Some(t.name),
+            Form::Alias(a) => Some(a.name),
+            Form::Const { name, .. } | Form::Context { name, .. } => Some(*name),
+            Form::Impl(_) | Form::Domain(_) | Form::Use(_) | Form::Stmt(_) | Form::Other(_) => None,
+        }
+    }
+
+    /// What kind of declaration it is, as a diagnostic says it.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Form::Fn(_) => "fn",
+            Form::Struct(_) => "struct",
+            Form::Enum(_) => "enum",
+            Form::Trait(_) => "trait",
+            Form::Impl(_) => "impl",
+            Form::Alias(_) => "type alias",
+            Form::Const { .. } => "const",
+            Form::Context { .. } => "context",
+            Form::Domain(_) => "domain",
+            Form::Use(_) => "use",
+            Form::Stmt(_) => "statement",
+            Form::Other(_) => "item",
+        }
+    }
+}
