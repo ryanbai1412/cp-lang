@@ -1797,6 +1797,8 @@ done
         repo = self.tmp / "drv"
         repo.mkdir()
         git(repo, "init", "-q", "-b", "main")
+        git(repo, "config", "user.email", "t@example.com")
+        git(repo, "config", "user.name", "t")
         (repo / "scripts").mkdir()
         for name in ("ratchet_merge.py", "merge-drivers.sh"):
             shutil.copy(HERE / name, repo / "scripts" / name)
