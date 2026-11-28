@@ -1422,7 +1422,7 @@ impl<'a> Cx<'a> {
             Some(next::FnBody::Expr(e)) if matches!(f.region, Some((true, _))) => {
                 let span = self.at(e);
                 self.scoped_block(span, |cx, out| {
-                    cx.lend_stmt(true, e, span, out);
+                    cx.lend_stmt(e, span, out);
                     None
                 })
             }
