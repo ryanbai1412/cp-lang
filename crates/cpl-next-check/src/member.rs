@@ -1363,8 +1363,22 @@ impl<'a> Cx<'a> {
                 )
             })
             .or_else(|| {
+                // A list is `[Int]T`, so a `self: [D]T` fn takes it too (R04.8.11).
+                let as_array = match (&rt, self.array_id()) {
+                    (Ty::Struct(l, ts, _), Some(a))
+                        if Some(*l) == self.role_structs.role_struct(Role::List) =>
+                    {
+                        Some(Ty::Struct(a, vec![Ty::Int, ts[0].clone()], Vec::new()))
+                    }
+                    _ => None,
+                };
                 (self.syms.get(name.text))
-                    .and_then(|n| decls::method_for(self.items, self.methods, n, &rt))
+                    .and_then(|n| {
+                        decls::method_for(self.items, self.methods, n, &rt).or_else(|| {
+                            as_array
+                                .and_then(|r| decls::method_for(self.items, self.methods, n, &r))
+                        })
+                    })
                     .map(decls::Named::Fn)
             }),
             Some(decls::Member::Method(m, ..)) if !self.items.f(m).getter && getter.is_some() => {
@@ -1402,6 +1416,16 @@ impl<'a> Cx<'a> {
                     (Ty::Clo(c), Ty::Fn(ps, ..)) => self.clo_sig(&c).0.len() == ps.len(),
                     _ => false,
                 };
+                // A list receiver is the list itself, literal or not: its key is `Int` (R04.8.11).
+                let listed = match (&recv_ty, self.shallow(&st)) {
+                    (Ty::Struct(l, ..), Ty::Struct(a, ts, _)) => {
+                        Some(*l) == self.role_structs.role_struct(Role::List)
+                            && Some(a) == self.array_id()
+                            && self.unify(&ts[0], &Ty::Int)
+                    }
+                    _ => false,
+                };
+                let scalar = scalar || listed;
                 if scalar || clo || self.unify(&recv.ty, &st) {
                     let recv = if scalar || clo {
                         self.coerce(recv, &st)

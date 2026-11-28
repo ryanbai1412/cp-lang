@@ -227,10 +227,11 @@ pub fn back<D>(self: D, k: Int) -> ?D = self.offset(-k)
     (lo, hi)
 
 /// A run of positions of `D` read cyclically, possibly wrapping past the last position, at most
-/// `D.count` of them. The keys-only half of a `RingSlice`, so it needs no array.
-pub struct RingRange<D>():
+/// the ring's length of them. The keys-only half of a `RingSlice`, so it needs no array.
+pub struct RingRange<D: Discrete>():
     pub at: ?D = None
     n: Len = 0
+    m: Len = 0
 
     /// The number of positions in the run.
     ///
@@ -268,7 +269,7 @@ pub struct RingRange<D>():
     /// cost: \(O(1)\)
     /// traps: on an empty span
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
-    @get pub fn end(self) -> D = D.nth((at!.ord + n - 1) % D.count)
+    @get pub fn end(self) -> D = D.nth((at!.ord + n - 1) % m)
 
     /// \(O(1)\) to make. Its positions in ring order.
     ///
@@ -277,9 +278,9 @@ pub struct RingRange<D>():
     /// traps: never
     /// example: `[1, 2, 3].ring.span(2, 2).keys.collect() == [2, 0]`
     @get pub fn keys(self) -> yields D:
-        for k in 0..n: yield D.nth((at!.ord + k) % D.count)
+        for k in 0..n: yield D.nth((at!.ord + k) % m)
 
-impl<D: Domain> Contains<D> for RingRange<D>:
+impl<D: Discrete> Contains<D> for RingRange<D>:
     /// Whether position `i` is in the run, counting the wrap past the last position.
     ///
     /// cost: \(O(1)\)
@@ -287,7 +288,7 @@ impl<D: Domain> Contains<D> for RingRange<D>:
     /// example: `[1, 2, 3].ring.span(2, 2).contains(0) == true`
     fn contains(self, i: D) -> Bool:
         if n == 0: return false
-        (i.ord - at!.ord + D.count) % D.count < n
+        (i.ord - at!.ord + m) % m < n
 
 impl Show for RingRange<D: Show>:
     fn show(v):

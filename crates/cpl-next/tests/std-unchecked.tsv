@@ -12,7 +12,7 @@ std.dp	26
 std.dsu	0
 std.fenwick	46
 std.flow	29
-std.geometry	14
+std.geometry	13
 std.graph	49
 std.grid	0
 std.hash	0
@@ -53,7 +53,7 @@ std.slope	0
 std.sparse	0
 std.spec	0
 std.stream	0
-std.strings	26
+std.strings	22
 std.subset	0
 std.timetree	0
 std.tree	17

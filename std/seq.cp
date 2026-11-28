@@ -1150,8 +1150,8 @@ pub fn cycle<D>(self: [D]D, from: D) -> yields D:
 /// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].first_gt(3) == Some(3)`
 pub fn first_gt<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
-    if lo < D.count: Some(D.nth(lo)) else: None
+    let lo = (0..self.len).first_true(m => by(self[D.nth(m)]) > target) ?? self.len
+    if lo < self.len: Some(D.nth(lo)) else: None
 
 /// Last index in sorted `self` with `by(self[i]) < target`, or `None`.
 ///
@@ -1162,7 +1162,7 @@ pub fn first_gt<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
 /// otherwise unsorted input gives an unspecified key
 /// example: `[1, 3, 3, 5].last_lt(3) == Some(0)`
 pub fn last_lt<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> ?D:
-    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
+    let lo = (0..self.len).first_true(m => by(self[D.nth(m)]) >= target) ?? self.len
     if lo > 0: Some(D.nth(lo - 1)) else: None
 
 // ---- Permutations, monotone stack, and sliding-window extrema
@@ -2725,7 +2725,7 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 @aka(partition_point)
 pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
     let at = m => ok(self[D.nth(m)])
-    D.cuts.nth(if last: ((0..D.count).last_true(at) ?? -1) + 1 else: (0..D.count).first_true(at) ?? D.count)
+    D.cuts.nth(if last: ((0..self.len).last_true(at) ?? -1) + 1 else: (0..self.len).first_true(at) ?? self.len)
 
 /// \(O(\log n)\). Contiguous range of elements in sorted `self` with `by(x) == target` (empty at insertion cut if absent).
 ///
@@ -2736,8 +2736,8 @@ pub fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>:
 /// otherwise unsorted input gives an unspecified range
 /// example: `[1, 3, 3, 5].equal_range(3) == 1..3`
 pub fn equal_range<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>:
-    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= target) ?? D.count
-    let a = (lo..D.count).first_true(m => by(self[D.nth(m)]) > target) ?? D.count
+    let lo = (0..self.len).first_true(m => by(self[D.nth(m)]) >= target) ?? self.len
+    let a = (lo..self.len).first_true(m => by(self[D.nth(m)]) > target) ?? self.len
     D.cuts.nth(lo)..D.cuts.nth(a)
 
 /// \(O(\log n)\). How many elements of sorted `self` have `by(x)` in the half-open `r`.
@@ -2750,8 +2750,8 @@ pub fn equal_range<D, T, K: Ord>(self: [D]T, target: K, by: T -> K = x => x) -> 
 /// example: `[1, 3, 3, 5, 8].count_in(4..5) == 0`
 pub fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int:
     if r.r <= r.l: return 0
-    let lo = (0..D.count).first_true(m => by(self[D.nth(m)]) >= r.l) ?? D.count
-    let hi = (lo..D.count).first_true(m => by(self[D.nth(m)]) >= r.r) ?? D.count
+    let lo = (0..self.len).first_true(m => by(self[D.nth(m)]) >= r.l) ?? self.len
+    let hi = (lo..self.len).first_true(m => by(self[D.nth(m)]) >= r.r) ?? self.len
     hi - lo
 
 /// \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\), \(O(\lvert \mathit{self} \rvert + \lvert b \rvert)\) memory. Sorted deduplicated union of two sorted sequences.
@@ -4129,17 +4129,19 @@ pub fn minimal<D, T, St: Track<T>>(
 /// empty: `let e: List<Int> = []; e.ring.src.len == 0`
 /// traps: never
 /// example: `[1, 2, 3].ring.next(2) == 0`
-@get pub fn ring<D, T>(self: [D]T) -> Ring<D, T> = Ring(self)
+@get pub fn ring<D: Discrete, T>(self: [D]T) -> Ring<D, T> = Ring(self)
 
 /// `a.ring`; see `ring`.
-pub struct Ring<D, T>(pub src: [D]T):
+pub struct Ring<D: Discrete, T>(pub src: [D]T):
     /// The position `d` steps after `i` (before it when `d < 0`), wrapping: a forced-online
     /// decode `(v + last - 1) % n + 1` is `V.ring.step(v, last)`. \(O(1)\).
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[1, 2, 3].ring.step(0, -1) == 2`
-    pub fn step(self, i: D, d: Int) -> D = D.nth(((i.ord + d) % D.count + D.count) % D.count)
+    pub fn step(self, i: D, d: Int) -> D:
+        let n = src.len
+        D.nth(((i.ord + d) % n + n) % n)
 
     /// The position after `i`, wrapping.
     ///
@@ -4164,7 +4166,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: never
     /// example: `[1, 2, 3].ring.from(1).collect() == [1, 2, 0]`
     pub fn from(self, i: D) -> yields D:
-        for k in 0..D.count: yield self.step(i, k)
+        for k in 0..src.len: yield self.step(i, k)
 
     /// The `len` positions from `start` on, wrapping (`len <= n`).
     ///
@@ -4173,8 +4175,8 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: when `len` is not in `0..=n`
     /// example: `[1, 2, 3].ring.span(2, 2).end == 0`
     pub fn span(self, start: D, len: Int) -> RingRange<D>:
-        assert 0 <= len <= D.count
-        RingRange<D>(at: Some(start), n: len)
+        assert 0 <= len <= src.len
+        RingRange<D>(at: Some(start), n: len, m: src.len)
 
     /// The n windows of `k` elements, one starting at each position, wrapping. \(O(n)\) to walk.
     /// An empty ring traps for every `k`: no `k` is in `1..=n`.
@@ -4188,7 +4190,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: when `k` is not in `1..=n`
     /// example: `[1, 2, 3].ring.windows(2).count() == 3`
     pub fn windows(self, k: Int) -> RingWindows<D, T>:
-        assert 1 <= k <= D.count
+        assert 1 <= k <= src.len
         RingWindows(self, k)
 
     /// Two pointers round the cycle: for each position as the last element, the longest
@@ -4203,7 +4205,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
     /// ties: `[5, 5].ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 1).map(w => w.len) == [2, 2]`
     pub fn maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>:
-        let n = D.count
+        let n = src.len
         var st = state
         var out: List<RingSlice<D, T>> = []
         var l = 0
@@ -4226,7 +4228,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// example: `[2, 0, 1].ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
     /// ties: `[3, 3].ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(1), Some(1)]`
     pub fn minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>:
-        let n = D.count
+        let n = src.len
         var st = state
         var out: [D]?RingSlice<D, T> = [D] _ => None
         var l = 0
@@ -4253,14 +4255,14 @@ pub struct RingWindows<D, T>(
 
 impl Seq<RingSlice<D, T>> for RingWindows<D, T>:
     fn iter(self) -> yields RingSlice<D, T>:
-        for i in D: yield RingSlice<D, T>(rr: src.span(i, k))
+        for i in src.src.keys: yield RingSlice<D, T>(rr: src.span(i, k))
 
 impl Bidir<RingSlice<D, T>> for RingWindows<D, T>:
     fn iter_rev(self) -> yields RingSlice<D, T>:
-        for j in (0..D.count).rev: yield RingSlice<D, T>(rr: src.span(D.nth(j), k))
+        for j in (0..src.src.len).rev: yield RingSlice<D, T>(rr: src.span(D.nth(j), k))
 
 impl Sized for RingWindows<D, T>:
-    @get fn len(self) -> Int = D.count
+    @get fn len(self) -> Int = src.src.len
 
 impl<D, T> Seq<D> for RingSlice<D, T>:
     /// \(O(\mathit{len})\). Visit the window's positions in the source; read its elements as

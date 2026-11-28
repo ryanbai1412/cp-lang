@@ -69,9 +69,7 @@ core-04/a6-in-place-verbs.cp	wrong-reject	check: program:4:1: E0403: a `mut self
 core-04/a7-consume-front.cp	wrong-reject	check: program:9:12: E0302: expected `Slice<List<Int>>`, found `Slice<Slice<List<Int>>>`
 core-04/a8-copy-counts-from-zero.cp	wrong-reject	check: program:4:13: E0302: expected `List<Char>`, found `Slice<Str>`
 core-04/an-inline-product-type-arg-is-a-domain-in-the-callee.cp	wrong-reject	check: program:11:56: E0606: `D` does not implement `Domain`
-core-04/array-ring-steps-wrap.cp	wrong-reject	check: program:5:7: E0203: `List<Int>` has no member `ring`
 core-04/array-value-run-time-count-differs-traps.cp	wrong-trap	wanted R0001 on line 6, got: trap: R0401: line 6: a list for `[D]T` has one element per position
-core-04/b1-rekey-domain.cp	wrong-reject	check: program:5:9: E0203: `List<Int>` has no member `rekey`
 core-04/b1-rekey-generic-table.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-04/b1-rekey-length-mismatch.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
 core-04/b1-rekey-list.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
