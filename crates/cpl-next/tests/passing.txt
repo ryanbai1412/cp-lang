@@ -1603,6 +1603,8 @@ next/d16_empty_domain_cast.cp
 next/d17_literal_never_a_position.cp
 next/d_range_01_anonymous_key_reads_as_int.cp
 next/d_range_02_anonymous_key_into_int_cell.cp
+next/d_range_03_constant_ends_fold_power_and_shift.cp
+next/d_range_04_constant_end_overflow_traps.cp
 next/k01_escape_global_list.cp
 next/k02_escape_global_var.cp
 next/k03_escape_mut_param.cp

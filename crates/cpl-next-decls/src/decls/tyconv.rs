@@ -3,12 +3,14 @@
 //! written type and every form decls makes reaches one conversion, keyed by `Sym`.
 use super::forms::TyForm;
 use super::*;
+use crate::ops::{bin_intr, bin_op, fold, un_intr};
 use crate::views::{Scope, Signatures, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::End;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::ast::{self as next, AstNode, Expr, GenericArg, Type};
 use cpl_next_syntax::literal::int_value;
+use cpl_next_syntax::ops::BinOp;
 use cpl_next_syntax::tree::SyntaxToken;
 use cpl_next_syntax::TokenKind;
 
@@ -636,20 +638,13 @@ fn const_value(e: &Expr, name: &dyn Fn(&SyntaxToken) -> Option<i64>) -> Option<i
             }
         }
         Expr::Paren(p) => const_value(&p.inner()?, name),
-        Expr::Prefix(p) if p.op()?.kind() == TokenKind::Minus => {
-            const_value(&p.operand()?, name)?.checked_neg()
+        Expr::Prefix(p) => {
+            let op = cpl_next_syntax::ops::prefix_op(p.op()?.kind())?;
+            fold(un_intr(op)?, &[const_value(&p.operand()?, name)?])
         }
         Expr::Bin(b) => {
             let (x, y) = (const_value(&b.lhs()?, name)?, const_value(&b.rhs()?, name)?);
-            match b.op()?.kind() {
-                TokenKind::Plus => x.checked_add(y),
-                TokenKind::Minus => x.checked_sub(y),
-                TokenKind::Star => x.checked_mul(y),
-                TokenKind::StarStar => x.checked_pow(u32::try_from(y).ok()?),
-                TokenKind::Shl => x.checked_mul(1 << u32::try_from(y).ok().filter(|&k| k < 63)?),
-                TokenKind::Shr => x.checked_shr(u32::try_from(y).ok()?),
-                _ => None,
-            }
+            fold(bin_intr(bin_op(b)?)?, &[x, y])
         }
         Expr::Name(n) => name(&n.ident()?),
         _ => None,
@@ -672,15 +667,12 @@ fn count_end(
                 Expr::Name(d) => Some((d.ident()?, f.name()?, 0)),
                 _ => None,
             },
+            // An offset from the getter: `+ k` or `- k`.
             Expr::Bin(b) => {
+                let op = bin_op(b).filter(|op| matches!(op, BinOp::Add | BinOp::Sub))?;
                 let j = const_int(cx, &b.rhs()?)?;
-                let j = match b.op()?.kind() {
-                    TokenKind::Plus => j,
-                    TokenKind::Minus => j.checked_neg()?,
-                    _ => return None,
-                };
                 let (d, m, k) = end(cx, &b.lhs()?)?;
-                Some((d, m, k.checked_add(j)?))
+                Some((d, m, fold(bin_intr(op)?, &[k, j])?))
             }
             _ => None,
         }

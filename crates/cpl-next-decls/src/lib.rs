@@ -10,6 +10,7 @@ pub mod diag;
 pub mod fields;
 pub mod items;
 pub mod modules;
+pub mod ops;
 pub mod records;
 pub mod sym;
 mod synth;
