@@ -138,7 +138,10 @@ impl Parser<'_> {
 
     pub(super) fn simple(&mut self) {
         match self.peek() {
-            T::Let | T::Var => self.let_stmt(),
+            T::Let | T::Var => {
+                let at = self.checkpoint();
+                self.let_stmt(at);
+            }
             T::Const => {
                 let at = self.checkpoint();
                 self.const_decl(at);
@@ -183,11 +186,11 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn let_stmt(&mut self) {
+    pub(super) fn let_stmt(&mut self, at: Checkpoint) {
         if self.at(T::Let) && self.nth(1) == T::LParen && self.nth(2) == T::Domain {
             return self.domain_let();
         }
-        self.start(NodeKind::LetStmt);
+        self.start_at(at, NodeKind::LetStmt);
         self.bump();
         self.pattern();
         while self.eat(T::Comma) {

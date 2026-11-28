@@ -884,6 +884,20 @@ impl Members {
     pub fn assoc_types(&self) -> impl Iterator<Item = AssocType> + '_ {
         children(&self.0)
     }
+
+    pub fn consts(&self) -> impl Iterator<Item = ConstDecl> + '_ {
+        children(&self.0)
+    }
+
+    /// An impl's `let count = e`.
+    pub fn lets(&self) -> impl Iterator<Item = LetStmt> + '_ {
+        children(&self.0)
+    }
+
+    /// A struct's `domain Idx = 0..src.len`.
+    pub fn domains(&self) -> impl Iterator<Item = DomainDecl> + '_ {
+        children(&self.0)
+    }
 }
 
 impl TypeAlias {

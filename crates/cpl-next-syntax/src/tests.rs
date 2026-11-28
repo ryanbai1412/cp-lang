@@ -439,3 +439,28 @@ fn type_of_and_a_domain_binder_read() {
         .unwrap();
     assert_eq!(binder.name().unwrap().text(), "P");
 }
+
+#[test]
+fn struct_and_impl_members_beyond_fns_and_fields_read() {
+    use crate::ast::{self, AstNode};
+    let src = "struct M<T>(id: T):\n    const zero = M(0)\n    domain Idx = 0..3\n    law ident(a: T) = a == a\n    x: Int\nimpl Index for P:\n    let count = 4\n    pub const n = 2\n    fn f() = 1\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let ms: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::Members::cast)
+        .collect();
+    let count = |m: &ast::Members| {
+        (
+            m.consts().count(),
+            m.domains().count(),
+            m.laws().count(),
+            m.fields().count(),
+            m.lets().count(),
+            m.fns().count(),
+        )
+    };
+    assert_eq!(count(&ms[0]), (1, 1, 1, 1, 0, 0));
+    assert_eq!(count(&ms[1]), (1, 0, 0, 0, 1, 1));
+}

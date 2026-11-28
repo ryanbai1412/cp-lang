@@ -491,7 +491,7 @@ impl Parser<'_> {
                 self.field();
             }
         } else if self.at(T::Colon) {
-            self.members(|p| p.fn_or(Self::field_at));
+            self.members(|p| p.fn_or(Self::struct_member));
         }
         self.finish();
     }
@@ -639,9 +639,7 @@ impl Parser<'_> {
         }
         self.where_clause();
         if self.at(T::Colon) {
-            self.members(|p| {
-                p.assoc_member(|p, _| p.recover(codes::EXPECTED_TOKEN, "a fn, a `type` or a `law`"))
-            });
+            self.members(|p| p.assoc_member(Self::impl_member));
         }
         self.finish();
     }
@@ -652,18 +650,52 @@ impl Parser<'_> {
             let at = self.checkpoint();
             return self.type_alias(at, NodeKind::AssocType);
         }
-        if self.word() == Some(W::Law) && self.nth(1) == T::Ident {
-            self.start(NodeKind::LawDecl);
-            self.bump();
-            self.name("the law's name");
-            self.params();
-            self.where_clause();
-            if self.want(T::Eq, "`=` and the law's condition") {
-                self.expr();
-            }
-            return self.finish();
+        if self.law_ahead() {
+            let at = self.checkpoint();
+            return self.law_decl(at);
         }
         self.fn_or(other);
+    }
+
+    fn law_ahead(&self) -> bool {
+        self.word() == Some(W::Law) && self.nth(1) == T::Ident
+    }
+
+    /// `law assoc(a: T, b: T) where T: Eq = e` (R08.3).
+    fn law_decl(&mut self, at: Checkpoint) {
+        self.start_at(at, NodeKind::LawDecl);
+        self.bump();
+        self.name("the law's name");
+        self.params();
+        self.where_clause();
+        if self.want(T::Eq, "`=` and the law's condition") {
+            self.expr();
+        }
+        self.finish();
+    }
+
+    /// A struct member other than a fn: a field, `const zero = e` (R12),
+    /// `domain Idx = 0..src.len` (R04) or a `law` the struct states (R08.3).
+    fn struct_member(&mut self, at: Checkpoint) {
+        match self.nth(usize::from(self.at(T::Pub))) {
+            T::Const => self.const_decl(at),
+            T::Domain if self.nth(1) == T::Ident => self.domain_decl(at),
+            _ if self.law_ahead() => self.law_decl(at),
+            _ => self.field_at(at),
+        }
+    }
+
+    /// An impl member other than a fn, a `type` or a `law`: `const name = e`
+    /// (R12) or `let count = e` (R04).
+    fn impl_member(&mut self, at: Checkpoint) {
+        match self.nth(usize::from(self.at(T::Pub))) {
+            T::Const => self.const_decl(at),
+            T::Let => self.let_stmt(at),
+            _ => self.recover(
+                codes::EXPECTED_TOKEN,
+                "a fn, a `type`, a `law`, a `const` or a `let`",
+            ),
+        }
     }
 
     /// `type Name<G>: Bound = T`; a trait's associated type has no `= T`.

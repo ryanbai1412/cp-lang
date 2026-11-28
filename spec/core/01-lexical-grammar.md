@@ -469,7 +469,8 @@ bound       := type ('+' type)*
 where       := 'where' TYPE_NAME ':' bound (',' TYPE_NAME ':' bound)*
 
 struct_decl := 'pub'? 'struct' TYPE_NAME generics? (':' fields NL
-             | ':' NL INDENT (field NL | fn_decl)+ DEDENT | NL)  // bodyless: opaque
+             | ':' NL INDENT (field NL | fn_decl | const_member | domain_decl
+               | law)+ DEDENT | NL)  // bodyless: opaque; members: R04, R08.3, R12
 fields      := field (',' field)*
 field       := 'pub'? 'var'? NAME ':' type ('=' expr)?   // `pub`: R11.1.4
 enum_decl   := 'pub'? 'enum' TYPE_NAME generics? ('=' NAME ('|' NAME)* NL
@@ -481,7 +482,9 @@ trait_item  := 'type' TYPE_NAME (':' bound)? NL | field NL | fn_sig NL
              | fn_decl | law
 law         := 'law' NAME '(' params? ')' '=' expr NL
 impl_decl   := 'impl' generics? bound ('for' type)? where? (':' NL INDENT
-               (fn_decl | 'type' TYPE_NAME '=' type NL | law)+ DEDENT | NL)
+               (fn_decl | 'type' TYPE_NAME '=' type NL | law | const_member
+               | 'let' NAME '=' expr NL)+ DEDENT | NL)
+const_member := 'pub'? 'const' NAME (':' type)? '=' expr NL   // R12, 12:238
 type_decl   := 'pub'? 'type' TYPE_NAME generics? '=' type NL
 domain_decl := 'domain' TYPE_NAME '=' expr NL
              | 'let' '(' 'domain' TYPE_NAME (',' pattern)* ')' '=' expr NL

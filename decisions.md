@@ -432,6 +432,13 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   `mut` (the caller's place) doesn't combine with `var`. The old parser's
   `lazy f: T` and `x: &mut T` had no spec and no uses; both are E0503, with
   fixes deleting `lazy` and writing `mut x: T` (R05 13a: no `&mut T`).
+- **Structs and impls state constants, domains and laws.** Syntax, 4.1:
+  std writes `let count = e` in an impl (R04, 04:71), `const zero = e` in
+  a struct or impl (12:238), `domain Idx = 0..src.len` in a struct
+  (std/seq's `Rebased`, core-04) and `law` in a struct body (Monoid<T>
+  states its laws on itself, and `laws_hold` uses them, spec/lib/math.md
+  418). None was in `struct_decl` or `impl_decl`, so the grammar gains
+  them, and the CST keeps each as its own member node.
 - **`if T: Bound:` is a condition.** Syntax, 8 (decision 602): R08 §190's
   bound test was missing from `cond`. It is `NAME ':' bound` with a full
   trait ref, told from a one-line `if ok: x` by the `:` that ends the bound.
