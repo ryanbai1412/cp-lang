@@ -829,24 +829,7 @@ fn item_of(cx: &mut TyCx, o: &next::TypeOfType, errors: &mut Vec<Msg>) -> Ty {
 
 /// Converts a type written in a body: fn types get a placeholder set the checker replaces. It
 /// reads the module's scope and the signatures, and gives the type with what is wrong in it.
-pub fn body_type(
-    sigs: &dyn Signatures,
-    scope: &dyn Scope,
-    m: ModId,
-    generics: &[Sym],
-    doms: &HashMap<Sym, Ty>,
-    scoped: &dyn Fn(Sym) -> Option<Ty>,
-    axes: &HashMap<cpl_diag::Span, Ty>,
-    t: &Type,
-) -> (Ty, Vec<Msg>) {
-    let at = BodyScope {
-        sigs,
-        scope,
-        m,
-        generics,
-        doms,
-        scoped,
-    };
+pub fn body_type(at: &BodyScope, axes: &HashMap<cpl_diag::Span, Ty>, t: &Type) -> (Ty, Vec<Msg>) {
     at.run_at(Some(axes), |cx, errors| conv(cx, t, errors))
 }
 
