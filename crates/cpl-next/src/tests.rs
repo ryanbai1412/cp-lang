@@ -2057,3 +2057,23 @@ fn the_snapshot_says_which_checks_a_build_keeps() {
         ("", true)
     );
 }
+
+/// A program's declaration errors are said in this order, each once, wherever the pipeline
+/// keeps them until it says them.
+#[test]
+fn a_programs_declaration_errors_keep_their_order() {
+    let src = "struct S<T = Nope>:\n    x: Int\ntype A = A\nimpl Missing for Int:\n    fn f(self) -> Int = 1\nstruct P:\n    y: Unknown2\n@stress(perm)\ntype Q = Int\nstruct P:\n    z: Int\nprint(1)\n";
+    let said: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+    assert_eq!(
+        said,
+        [
+            "decls: program:8:1: slice: decorator `@stress`",
+            "decls: program:10:1: E0202: a second struct `P` with 0 type parameters (R02.11.4)",
+            "decls: E0204: unknown type `Nope`",
+            "decls: E0204: unknown type `Unknown2`",
+            "decls: E0204: unknown trait `Missing`",
+            "check: program:3:1: E0323: type alias `A` is defined by itself, so it names no type",
+            "check: program:6:1: E0204: unknown type `Unknown2`",
+        ]
+    );
+}
