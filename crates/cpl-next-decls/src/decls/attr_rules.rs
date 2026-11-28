@@ -357,6 +357,52 @@ fn lint_error(node: &ast::Decorator, f: &LintedFn) -> Option<(String, &'static s
     })
 }
 
+/// A module's `@lint`s, each with its item and the type whose method it is on: one name may
+/// say the same `from` once per receiver (LINT_TWICE, E0505), as `pop_first` on two bags.
+pub fn module_lints<'a>(
+    lints: impl IntoIterator<Item = (&'a ItemId, &'a AttrForm, Option<&'a str>)>,
+    errors: &mut Vec<Msg>,
+) {
+    type Seen<'a> = (
+        String,
+        Option<&'a str>,
+        Vec<(TokenKind, String)>,
+        cpl_next_ir::ids::SourceId,
+    );
+    let mut first: Vec<Seen> = Vec::new();
+    for (item, attr, receiver) in lints {
+        let Some(node) = &attr.node else {
+            continue;
+        };
+        let name = args(node)
+            .iter()
+            .find(|a| a.label().is_none())
+            .and_then(bare_name);
+        let from = arg_text(node, "from").and_then(|f| run(&f)).map(|(t, _)| t);
+        let (Some(name), Some(from)) = (name, from) else {
+            continue;
+        };
+        let at = item.at(node.syntax().span());
+        match first
+            .iter()
+            .find(|(n, r, f, _)| *n == name && *r == receiver && *f == from)
+        {
+            Some((.., was)) => {
+                let m = Msg {
+                    help: Some("give each spelling of a lint its own `from`".to_string()),
+                    labels: vec![(was.clone(), "first declared here".to_string())],
+                    ..Msg::verdict(
+                        codes::BAD_LIBRARY_LINT,
+                        msgs::syntax::LINT_TWICE.say(&[&name]),
+                    )
+                };
+                errors.push(Msg::at(at, m));
+            }
+            None => first.push((name, receiver, from, at)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
