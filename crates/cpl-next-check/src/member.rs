@@ -270,7 +270,7 @@ impl<'a> Cx<'a> {
         if self.lookup(n).is_some() {
             return None;
         }
-        let g = self.sym_of(n)?;
+        let g = self.b.syms.of(&self.d.syms, n)?;
         let i = self.b.generics.iter().position(|x| *x == g)?;
         let pick = |fd: &decls::FnDecl| fd.self_mode == SelfMode::None && takes(fd, call);
         let found = match self.bound_giving(i, &name.text, pick, span) {
@@ -456,7 +456,11 @@ impl<'a> Cx<'a> {
             return None;
         }
         let t = match self.d.named(self.b.module, n) {
-            _ if (self.sym_of(n)).is_some_and(|g| self.b.generics.contains(&g)) => return None,
+            _ if (self.b.syms.of(&self.d.syms, n))
+                .is_some_and(|g| self.b.generics.contains(&g)) =>
+            {
+                return None
+            }
             Some(decls::Named::Alias(id)) => {
                 let (t, errs) = self.with_body_scope(|at| decls::alias_type(at, id, Vec::new()));
                 if !errs.is_empty() {
@@ -465,9 +469,18 @@ impl<'a> Cx<'a> {
                 t
             }
             Some(_) => return None,
-            None => (self.sym_of(n).and_then(|s| self.b.doms.get(&s).cloned()))
-                .or_else(|| self.sym_of(n).and_then(|s| self.owned_named(s)))
-                .or_else(|| decls::prim_type(n))?,
+            None => (self
+                .b
+                .syms
+                .of(&self.d.syms, n)
+                .and_then(|s| self.b.doms.get(&s).cloned()))
+            .or_else(|| {
+                self.b
+                    .syms
+                    .of(&self.d.syms, n)
+                    .and_then(|s| self.owned_named(s))
+            })
+            .or_else(|| decls::prim_type(n))?,
         };
         let t = self.shallow(&t);
         if matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_)) {
@@ -929,7 +942,7 @@ impl<'a> Cx<'a> {
                     // `Str.default()`: a self-less fn of a trait the struct implements.
                     let mut pre = Vec::new();
                     let given = (written.iter().take(s.generics.len()))
-                        .map(|t| self.body_ty(t, span, &mut pre))
+                        .map(|t| self.body_ty(t, &mut pre))
                         .collect();
                     let t = Ty::Struct(d, self.d.with_defaults_of(d, given), Vec::new());
                     if let Some(e) = self.type_static(t, name, Some(args), span) {
