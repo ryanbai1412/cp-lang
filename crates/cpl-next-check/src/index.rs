@@ -461,6 +461,25 @@ impl Cx<'_> {
                 );
             }
         }
+        // `s[k].f[i]`: `f` is a field of the cell `s`'s `IndexMut` lends.
+        if let Some((at, names)) = cell_path(base) {
+            let seen = self.errors.len();
+            let probe = self.expr_as_typed(at, None);
+            self.errors.truncate(seen);
+            if let (ExprKind::Index { base: b2, indices }, false) =
+                (&at.kind, matches!(probe.kind, TK::Slot(..)))
+            {
+                let (i2, idx) = (indices[0].clone(), idx.clone());
+                return self.through_cell(
+                    (b2, &i2),
+                    span,
+                    out,
+                    Box::new(move |this, cell, out| {
+                        this.through_cell((&on_fields(cell, &names), &idx), span, out, inner)
+                    }),
+                );
+            }
+        }
         let b = self.place(base);
         // A cell of a place that was diagnosed is the error: its index is not fitted to it.
         if self.mentions_error(&b.ty) {
@@ -612,8 +631,9 @@ impl Cx<'_> {
         let ExprKind::Index { base, indices } = &target.kind else {
             return target.clone();
         };
-        let base = match &unparen(base).kind {
-            ExprKind::Index { .. } => self.hoist_indices(unparen(base), out),
+        let base = match (&unparen(base).kind, cell_path(base)) {
+            (ExprKind::Index { .. }, _) => self.hoist_indices(unparen(base), out),
+            (_, Some((at, names))) => on_fields(self.hoist_indices(at, out), &names),
             _ => (**base).clone(),
         };
         // A tuple written in place is fitted to a named array's key before it is held (R04.2.10).
@@ -856,6 +876,29 @@ impl Cx<'_> {
             span,
         }
     }
+}
+
+/// `s[k].f.g`: the one-index indexing a field path starts from, and the path's names,
+/// outermost first.
+pub(super) fn cell_path(e: &ast::Expr) -> Option<(&ast::Expr, Vec<ast::Name>)> {
+    let (mut at, mut names) = (unparen(e), Vec::new());
+    while let ExprKind::Field { base, name } = &at.kind {
+        names.push(name.clone());
+        at = unparen(base);
+    }
+    let one = matches!(&at.kind, ExprKind::Index { indices, .. } if indices.len() == 1);
+    (one && !names.is_empty()).then_some((at, names))
+}
+
+/// The field path `names` (outermost first) read from `cell`.
+pub(super) fn on_fields(cell: ast::Expr, names: &[ast::Name]) -> ast::Expr {
+    (names.iter().rev()).fold(cell, |base, name| ast::Expr {
+        span: base.span.to(name.span),
+        kind: ExprKind::Field {
+            base: Box::new(base),
+            name: name.clone(),
+        },
+    })
 }
 
 pub(super) fn unparen(mut e: &ast::Expr) -> &ast::Expr {

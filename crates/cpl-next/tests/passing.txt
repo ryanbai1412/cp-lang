@@ -204,6 +204,8 @@ core-02/enum-nonexhaustive.cp
 core-02/existential-return.cp
 core-02/expected-type-and-unit-forms-are-typed.cp
 core-02/f64-to-int-bare-rejected.cp
+core-02/field-of-a-call-result-is-not-a-place.cp
+core-02/fixed-field-of-a-list-element.cp
 core-02/fixed-field.cp
 core-02/fresh-slot-recursion.cp
 core-02/fresh-type-block-int-escapes.cp
@@ -290,6 +292,8 @@ core-02/unnamed-payload-is-rejected.cp
 core-02/var-field-assign.cp
 core-02/variant-named-like-prelude-type.cp
 core-02/variant-through-tuple-annotation.cp
+core-02/write-into-a-fixed-field-of-a-list-element.cp
+core-02/write-into-a-var-field-of-a-list-element.cp
 core-03/a-generic-field-keeps-its-range-and-nested-nones.cp
 core-03/a-list-or-handle-of-itself-is-fine.cp
 core-03/a-struct-never-holds-itself.cp
