@@ -590,7 +590,7 @@ let n: 1..=50 = read()
 let k: 1..=1_000_000_000_000_000_000 = read()
 let adj = [[Z(read<0..=1>()) for _ in 0..n] for _ in 0..n]
 let walks = Mat<Z>.of(adj) ** k
-print(sum(walks.get(i, j) for i in 0..n for j in 0..n))
+print(sum(walks.get(i, j) for i in 0..n, j in 0..n))
 ```
 
 Compare with `proto/ports/dpr.cp`: both hand-rolled matrix multiplication and

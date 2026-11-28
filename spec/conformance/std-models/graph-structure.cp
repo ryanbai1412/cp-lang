@@ -173,7 +173,7 @@ for k in 0..n:
         for x in adj[u.ord]:
             if comp[u] > comp[V(x)]: bad = "op {k}: scc order {u}"
     for c in C:
-        let want = [(to: comp[V(b)]) for u in V if comp[u] == c for b in adj[u.ord] if comp[V(b)] != c]
+        let want = [(to: comp[V(b)]) for u in V if comp[u] == c, b in adj[u.ord] if comp[V(b)] != c]
         if h2[c].len != want.len: bad = "op {k}: condense"
     let rs = reach_sets(g)
     for u in V:

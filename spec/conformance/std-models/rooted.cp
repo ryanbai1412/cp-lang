@@ -50,7 +50,7 @@ for k in 0..n:
     let kk = rng.int(0, 12)
     let dist = [V] v => climb(par, v).len - 1
     let height = [v for v in sub].map(v => dist[v] - dist[a]).max()!
-    let diam = [bpath(par, x, y).len - 1 for x in V for y in V].max()!
+    let diam = [bpath(par, x, y).len - 1 for x in V, y in V].max()!
     let biggest = [V] v => max(11 - [u for u in V if climb(par, u).contains(v)].len, ([[u for u in V if climb(par, u).contains(w)].len for w in V if par[w] == Some(v)].max() ?? 0))
     var at: [V]Int = 0
     for i in 0..t.order.len: at[t.order[i]] = i

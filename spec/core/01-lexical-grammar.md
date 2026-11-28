@@ -566,7 +566,7 @@ decision 53: `sum(f(x) for x in xs)`, `count(c == x for c in cs)`,
 same sequence (`max` gives `?T`). `argmax(f(v) for v in V)` and `argmin`
 give the position, what the `for`s bind: `v`, or over several `for`s or a
 pattern the tuple of the names bound, in order, so
-`argmax(g[i, j] for i in R for j in C)` is a `?(R, C)`. A generator is only ever a call
+`argmax(g[i, j] for i in R, j in C)` is a `?(R, C)`. A generator is only ever a call
 argument: `(f(x) for x in xs).max()` is E0103, with `max(f(x) for x in xs)`
 as the fix. A `mut`
 parameter is marked `mut` at the call too (`link(mut d, a, b)`), except

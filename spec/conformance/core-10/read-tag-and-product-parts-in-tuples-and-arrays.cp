@@ -24,4 +24,4 @@ fn grid(m: Int) -> [2, 2](Run, Cell):
     g
 for _ in 0..2:
     let g = grid(1)
-    print(count(g[i, j].0 == First for i in 0..2 for j in 0..2))
+    print(count(g[i, j].0 == First for i in 0..2, j in 0..2))

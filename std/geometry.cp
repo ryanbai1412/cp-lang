@@ -4046,7 +4046,7 @@ fn minkowski_sum_and_upper_match_brute():
         let b = convex_hull(random_points(10, 5))
         if a.len == 0 or b.len == 0: continue
         let got = minkowski_sum(a, b)
-        let brute = convex_hull([p + q for p in a for q in b])
+        let brute = convex_hull([p + q for p in a, q in b])
         assert area2(got) == area2(brute)
         assert convex_hull(got) == brute
         // upper hull Minkowski sum
@@ -4057,7 +4057,7 @@ fn minkowski_sum_and_upper_match_brute():
         let ua = upper_hull(sa)
         let ub = upper_hull(sb)
         let mu = minkowski_upper(ua, ub)
-        var all_sums = [p + q for p in ua for q in ub]
+        var all_sums = [p + q for p in ua, q in ub]
         all_sums.sort()
         assert mu == upper_hull(all_sums)
 

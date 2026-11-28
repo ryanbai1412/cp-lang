@@ -638,7 +638,7 @@ pub struct Diff<R: Ordered, C: Ordered, T: Add + Sub + Zero>:
     /// Add `x` to every cell in `rows` by `cols`; an empty side changes nothing.
     ///
     /// cost: \(O(1)\)
-    /// empty: `domain R = 0..2; domain C = 0..2; var d = Diff<R, C, Int>(); d.add(0..=1, 1..1, 3); d.add(1..1, 0..=1, 3); let g = d.finish(); [g[r, c] for r in R for c in C] == [0, 0, 0, 0]`
+    /// empty: `domain R = 0..2; domain C = 0..2; var d = Diff<R, C, Int>(); d.add(0..=1, 1..1, 3); d.add(1..1, 0..=1, 3); let g = d.finish(); [g[r, c] for r in R, c in C] == [0, 0, 0, 0]`
     /// traps: never
     /// example: `domain R = 0..2; domain C = 0..3; var d = Diff<R, C, Int>(); d.add(0..=1, 1..=2, 3); d.finish()[R(1), C(2)] == 3 and d.finish()[R(0), C(0)] == 0`
     pub fn add(mut self, rows: Range<R>, cols: Range<C>, x: T):

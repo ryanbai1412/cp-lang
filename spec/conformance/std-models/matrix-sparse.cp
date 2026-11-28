@@ -113,7 +113,7 @@ for k in 0..n:
         let lo = best(rows, rhs, c, 10_000)
         let hi = best(rows, rhs, c, 100_000)
         let want: ?F64 = if lo == None or lo!.0 * hi!.1 != hi!.0 * lo!.1: None else: Some(F64(lo!.0) / F64(lo!.1))
-        let a = Mat<F64>.from_flat(nr, nv, [F64(rows[i][j]) for i in 0..nr for j in 0..nv])
+        let a = Mat<F64>.from_flat(nr, nv, [F64(rows[i][j]) for i in 0..nr, j in 0..nv])
         let got = simplex(a, [F64(v) for v in rhs], [F64(v) for v in c])
         if (got == None) != (want == None): bad = "op {k}: simplex {rows} {rhs} {c} feasible+bounded is {yes(want != None)}"
         elif got != None:
