@@ -90,6 +90,7 @@ pub fn row_traits(rows: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Trai
                 supers: Vec::new(),
                 assoc: Vec::new(),
                 methods,
+                laws: Vec::new(),
                 span,
             }
         })
@@ -291,6 +292,7 @@ pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitF
                     default: None,
                 }],
                 methods: vec![build],
+                laws: Vec::new(),
                 span,
             }
         })
@@ -410,6 +412,7 @@ pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Struc
                 bounds: Vec::new(),
                 fields,
                 methods: Vec::new(),
+                laws: Vec::new(),
                 lets: Vec::new(),
                 consts: Vec::new(),
                 span,

@@ -1039,8 +1039,16 @@ pub fn body_of(
                 .take_while(|g| **g != f)
                 .filter(|g| matches!(d.f(**g).body, Body::Written))
                 .count();
+            // Its fns' bodies, then its laws' (`forms::laws`).
+            let laws = match item.decl() {
+                Some(next::Decl::Struct(s)) => s.members(),
+                Some(next::Decl::Trait(t)) => t.members(),
+                _ => None,
+            };
+            let laws = (laws.iter()).flat_map(|m| m.laws().collect::<Vec<_>>());
             (member_fns(item).into_iter())
                 .filter_map(|g| g.body())
+                .chain(laws.filter_map(|l| l.body().map(next::FnBody::Expr)))
                 .nth(rank)
         }
         Body::Value => {

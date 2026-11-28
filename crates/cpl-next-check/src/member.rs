@@ -357,7 +357,7 @@ impl<'a> Cx<'a> {
     /// The bound of type parameter `i` whose trait gives the fn `name` that `pick` takes:
     /// two written traits are no choice (R08.1.4), and one trait at several arguments is left open
     /// for the bound it pushes, `T: Tr<..>`, to fix.
-    fn bound_giving(
+    pub(super) fn bound_giving(
         &mut self,
         i: usize,
         name: Called<'_>,
@@ -400,7 +400,7 @@ impl<'a> Cx<'a> {
     }
     /// `shown.m`, which traits `a` and `b` both give `ty`: the call names its trait,
     /// `a.m(args)` (R08.1.4).
-    fn two_traits_give(
+    pub(super) fn two_traits_give(
         &mut self,
         (a, b): (TraitId, TraitId),
         shown: &str,

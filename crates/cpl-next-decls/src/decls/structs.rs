@@ -159,6 +159,16 @@ pub(super) fn struct_body(d: &mut Decls, mid: ModId, item: &ItemId, id: StructId
         let fid = add_fn(d, mid, item.clone(), &f, within);
         methods.insert(f.name, fid);
     }
+    for l in &sd.laws {
+        let within = Within {
+            owner: Some(Owner::Struct(id)),
+            generics: &sd.generics,
+            sets: n_sets,
+            self_ty: Some(self_ty.clone()),
+            sig: None,
+        };
+        add_fn(d, mid, item.clone(), l, within);
+    }
     let ctor = d.member(&methods, "new");
     let cached = |f: &FieldForm| f.attrs.iter().any(|a| a.attr == Decorator::Cache);
     let sdecl = &mut d.structs[id.0];
@@ -247,7 +257,8 @@ pub(super) fn trait_body(d: &mut Decls, mid: ModId, item: &ItemId, id: TraitId, 
     d.traits[id.0].assoc_bounds = assoc_bounds;
     d.module_or_program_errors(mid, errors);
     let mut methods = HashMap::new();
-    for m in &t.methods {
+    let laws = t.laws.iter().map(|l| (l, true));
+    for (m, laws) in t.methods.iter().map(|m| (m, false)).chain(laws) {
         let within = Within {
             owner: Some(Owner::Trait(id)),
             generics: &tgen,
@@ -262,7 +273,9 @@ pub(super) fn trait_body(d: &mut Decls, mid: ModId, item: &ItemId, id: TraitId, 
             args: (1..tgen.len()).map(Ty::Param).collect(),
         };
         d.fns[fid.0].bounds.push((0, own));
-        methods.insert(m.name, fid);
+        if !laws {
+            methods.insert(m.name, fid);
+        }
     }
     d.traits[id.0].methods = methods;
     d.traits[id.0].supers = supers;

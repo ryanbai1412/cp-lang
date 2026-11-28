@@ -9702,6 +9702,28 @@ Reverse it by deleting `not_members` and the cases (R08.1.2).
 - **Why.** Decimal-to-binary rounding is a bignum algorithm a std parser would get wrong in the last bit; it is each back end's own library, like output, so it is a machine primitive. One op serves `read<F64>()` and `Str.parse<F64>()` alike, since both go through `Input`.
 - **Reverse.** Drop the row and write the parse in std over `I128` digits, accepting last-bit differences.
 
+## 684. A bare name in a trait's fn finds the trait's own members (check, 2026-11-28)
+
+`law assoc(a: T, b: T, c: T) = op(op(a, b), c) == ...` and a default
+`fn twice(a: T) -> T = op(a, a)` call the trait's own `op` bare. Old `cpl`
+accepted the law only because it never checked a law's body; cpl-next
+refused the default with E0201. Inside a fn a trait owns, a bare name is
+now looked up in the locals and parameters, then in the trait's own
+members without `self` (supertraits included) through its member table,
+as `Self.name`, then in the scopes around (R08.1.12). A module's `fn op`
+is hidden inside the trait. Reverse it by dropping `trait_own`; the
+bodies then write `Self.op`.
+
+## 683. A law body is checked like a trait default, once and generically (check, 2026-11-28)
+
+cpl-next parsed `law`s and dropped them, so `law comm(a: Int, b: Int) =
+self.mix(a, b)` was accepted. Decls now reads each law as a fn
+`(self, params) -> Bool` that is no member, and check checks it like a
+trait default: once, for every instance (R08.3.6). What a law needs of a
+type parameter it states, `law select(a: T, b: T) where T: Eq`, and `==`
+on an unbounded `T` is E0606, as in a default. Checking each impl's copy
+was turned down: it is an instance-time step, and laws stay never assumed.
+
 ## 682. `@on_destructure` says why a call's result can't be taken apart (check, 2026-11-28)
 
 `for (x, n) in runs(xs)` was accepted: cpl-next's tuple pattern opened

@@ -955,6 +955,31 @@ impl<'a> Cx<'a> {
             _ => None,
         };
         let unbound = |cx: &Self, n: &str| cx.lookup(n).is_none();
+        // Inside a fn a trait owns, a bare name of the trait's own member without `self`, a
+        // supertrait's included, is `Self.n`: past the locals, before the enclosing scopes
+        // (R08.1.12).
+        let owned = (self.b.decl)
+            .is_some_and(|f| matches!(self.items.f(f).owner, Some(decls::Owner::Trait(_))));
+        if let Some(n) = name.as_deref().filter(|n| owned && unbound(self, n)) {
+            let own = Called::written(self.syms, n, self.at(&callee));
+            let pick = |fd: &decls::FnDecl| {
+                fd.self_mode == SelfMode::None && super::member::takes(fd, Some(&args))
+            };
+            let found = own.sym.is_some_and(|sym| {
+                (self.bound_traits(0).into_iter()).any(|tr| {
+                    (self.items.t(tr.tr).methods.get(&sym)).is_some_and(|m| pick(self.items.f(*m)))
+                })
+            });
+            if found {
+                return match self.bound_giving(0, own, pick, span) {
+                    Ok(Some((tr, m))) => {
+                        self.static_call(Ty::Param(0), tr, m, own, Some(&args), span)
+                    }
+                    Ok(None) => Self::error_node(span),
+                    Err(two) => self.two_traits_give(two, n, &Ty::Param(0), own, "", span),
+                };
+            }
+        }
         match (&callee, name.as_deref()) {
             (next::Expr::Field(f), _) => {
                 let (Some(base), Some(m)) = (f.base(), f.name()) else {
