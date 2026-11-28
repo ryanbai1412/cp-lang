@@ -304,7 +304,6 @@ core-07/sorted-on-a-generator.cp	wrong-reject	check: std.seq:323:5: E0302: this 
 core-07/step-on-list.cp	wrong-reject	check: std.seq:2144:37: E0606: `S` does not implement `Indexed`
 core-07/str-from-char-seq.cp	wrong-reject	check: program:5:11: E0302: expected `List<Char>`, found `Filtered<Str, Char>`
 core-07/suffix-and-all-but-one-folds-are-scans.cp	wrong-reject	check: program:7:7: E0606: `D` does not implement `Sub`
-core-07/sum-prod-identity.cp	wrong-reject	check: std.seq:33:15: E0606: `T` does not implement `Domain`
 core-07/take-on-a-draining-generator-leaves-the-rest.cp	wrong-reject	check: program:7:10: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/take-on-generator.cp	wrong-reject	check: program:5:7: E0606: `Gen<Int>` does not implement `Indexed`
 core-07/take-on-infinite-generator-is-lazy.cp	wrong-reject	check: program:15:7: E0606: `Gen<Int>` does not implement `Indexed`
@@ -1096,7 +1095,6 @@ std-seq/seq-u16-rev-keeps-keys-cost.cp	wrong-reject	check: program:6:15: E0606: 
 std-seq/seq-u16-rev-keeps-keys.cp	wrong-reject	check: program:5:15: E0606: `Rev<Array<I, Int>>` does not implement `Keyed`
 std-seq/seq-u17-slices-are-views-cost.cp	wrong-reject	check: program:10:10: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 std-seq/seq-u17-slices-are-views.cp	wrong-reject	check: program:4:10: E0302: expected `List<Int>`, found `Slice<List<Int>>`
-std-seq/seq-u18-aggregates-every-shape.cp	wrong-reject	check: std.seq:33:15: E0606: `T` does not implement `Domain`
 std-seq/seq-u19-distinct-sorted.cp	wrong-reject	check: std.seq:497:16: E0201: unknown name `HashSet`
 std-seq/seq-u23-running-extreme.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `scan`
 std-seq/seq-u25-one-api-every-shape.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`

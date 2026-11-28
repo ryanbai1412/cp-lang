@@ -899,6 +899,7 @@ core-07/split-keeps-empty-pieces.cp
 core-07/step.cp
 core-07/str-count-takes-predicate.cp
 core-07/suffix-fold-is-not-a-name.cp
+core-07/sum-prod-identity.cp
 core-07/swap-with-one-index-past-the-end-traps.cp
 core-07/table-over-keys.cp
 core-07/view-blocks-a-write-to-its-source.cp
@@ -2380,6 +2381,7 @@ std-seq/seq-u05-monotone-transition.cp
 std-seq/seq-u11-group-by-key.cp
 std-seq/seq-u14-windows-and-pairs.cp
 std-seq/seq-u15-zip-and-items.cp
+std-seq/seq-u18-aggregates-every-shape.cp
 std-seq/seq-u20-first-some.cp
 std-seq/seq-u21-stack-top.cp
 std-seq/seq-u22-flat-map-concat.cp

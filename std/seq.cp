@@ -25,17 +25,6 @@ use std.raw.{check_key}
 @stress(perm)
 pub type Perm<V> = [V]V
 
-/// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`.
-///
-/// cost: \(O(n)\)
-/// empty: `let a: List<Int> = []; a.prod() == 1`
-/// traps: never (overflow wraps in release, traps in debug)
-/// example: `[2, 3, 4].prod() == 24`
-pub fn prod<S: Seq<T>, T>(self: S) -> T where T: One:
-    var out = T.one
-    for x in self: out *= x
-    out
-
 /// The average of `of` over the elements as `F64`; `None` when empty.
 ///
 /// cost: \(O(n)\)
@@ -1469,6 +1458,17 @@ pub trait Seq<T>:
     fn sum<U: Zero + Add>(self, of: T -> U = x => x) -> U:
         var out = U.zero
         for x in self: out += of(x)
+        out
+    /// Product of all elements of `self` (`T.one` when empty). Works on any `Seq` (`Str`, `List`, `[D]T`, `Range`, views) of `Int`, `Mod<P>`, `F64`.
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `let a: List<Int> = []; a.prod() == 1`
+    /// traps: never (overflow wraps in release, traps in debug)
+    /// example: `[2, 3, 4].prod() == 24`
+    @free_form
+    fn prod(self) -> T where T: One + Mul:
+        var out = T.one
+        for x in self: out *= x
         out
 
 /// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
