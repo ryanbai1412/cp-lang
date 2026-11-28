@@ -619,28 +619,27 @@ impl<'a> Cx<'a> {
             // A record pattern without `..` names every field (R02.5.5).
             next::Pattern::Record(r) => {
                 let parts = r.fields().map(|f| (f.name(), f.pattern())).collect();
-                self.let_parts(p, parts, !r.has_rest(), mutable, v, at, out)
+                self.let_parts(p, parts, mutable, v, at, out)
             }
             next::Pattern::Tuple(t) => {
                 let parts = t.patterns().map(|q| (None, Some(q))).collect();
-                self.let_parts(p, parts, false, mutable, v, at, out)
+                self.let_parts(p, parts, mutable, v, at, out)
             }
         }
     }
     /// `let (a, b) = v` or `let {x, y: q} = v`: `v` held once, then each part bound to its
     /// field. A tuple pattern reads a record's fields in order (R02.5.5): `let (tree, used) =
     /// kruskal(..)` of `-> (tree: Rooted<V, _, _>, used: [E]Bool)`.
-    #[allow(clippy::too_many_arguments)]
     fn let_parts(
         &mut self,
         p: &next::Pattern,
         parts: Vec<(Option<SyntaxToken>, Option<next::Pattern>)>,
-        exact: bool,
         mutable: bool,
         v: TExpr,
         at: Span,
         out: &mut Vec<TStmt>,
     ) {
+        let exact = matches!(p, next::Pattern::Record(r) if !r.has_rest());
         let span = self.at(p);
         let held = format!("$parts{}", span.start);
         let whole = self.temp(&held, v.ty.clone());
@@ -804,7 +803,7 @@ impl<'a> Cx<'a> {
             return;
         };
         if let Some(e) = l.else_clause() {
-            return self.let_else(pat, mutable, l.ty().as_ref(), &init, &e, at, out);
+            return self.let_else(l, pat, &init, &e, at, out);
         }
         let name = match pat {
             next::Pattern::Path(p) => super::pattern::bind_name(p),
@@ -922,17 +921,17 @@ impl<'a> Cx<'a> {
     }
     /// `let p = x else: leave`: the block runs when `x` does not match `p`, whose names are
     /// bound after it (R01.6.2).
-    #[allow(clippy::too_many_arguments)]
     fn let_else(
         &mut self,
+        l: &next::LetStmt,
         pat: &next::Pattern,
-        mutable: bool,
-        ty: Option<&next::Type>,
         init: &next::Expr,
         e: &next::ElseClause,
         at: Span,
         out: &mut Vec<TStmt>,
     ) {
+        let (mutable, ty) = (l.is_var(), l.ty());
+        let ty = ty.as_ref();
         let body = e.body();
         if !body.as_ref().is_some_and(|b| b.leaves(&|n| self.traps(n))) {
             let code = cpl_diag::codes::ELSE_FALLS_THROUGH;
