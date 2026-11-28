@@ -27,6 +27,7 @@ core-01/coalesce-needs-parens.cp
 core-01/coalesce-parenthesized.cp
 core-01/coalesce-runs-its-right-side-only-when-empty.cp
 core-01/collection-literals.cp
+core-01/colon-arm-writes-arrow.cp
 core-01/comment-mentioning-else-is-a-comment.cp
 core-01/compare-chain-stops-at-a-false-link.cp
 core-01/compound-assign-is-not-a-value.cp

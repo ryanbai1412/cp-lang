@@ -1770,10 +1770,7 @@ impl<'a> Parser<'a> {
             // The body is still read if it is there.
             if !(self.at(T::Newline) && self.peek_n(1) == T::Indent) {
                 self.skip_line();
-                return Block {
-                    stmts: Vec::new(),
-                    span: Span::point(self.prev_end()),
-                };
+                return Self::empty_block(Span::point(self.prev_end()));
             }
         }
         self.block(after)
@@ -1844,10 +1841,7 @@ impl<'a> Parser<'a> {
                 };
             }
             self.error(diag);
-            return Block {
-                stmts: Vec::new(),
-                span: Span::point(header_end),
-            };
+            return Self::empty_block(Span::point(header_end));
         }
         // One statement on the same line: `if x < 0: return none`.
         // `if c: a; b` keeps both in the block.

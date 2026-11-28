@@ -225,6 +225,14 @@ impl<'a> Parser<'a> {
 
     /// Where the previous token ended; after the first half of a `>>` that
     /// closes two type-argument lists, just past that half.
+    /// A block with no statements at `at`, for a body that recovery skipped.
+    fn empty_block(at: Span) -> Block {
+        Block {
+            stmts: Vec::new(),
+            span: at,
+        }
+    }
+
     fn prev_end(&self) -> u32 {
         if self.half_shr {
             if let Some(t) = self.tokens.get(self.pos) {

@@ -1599,21 +1599,18 @@ impl<'a> Parser<'a> {
             // (decision 4.1), and its block is still read.
             let body = if self.at(T::Colon) {
                 let span = self.span();
-                self.error(
-                    msgs::syntax::COLON_ARM
-                        .error(span, &[])
-                        .with_fix("replace `:` with `=>`", span, " =>"),
-                );
+                self.error(msgs::syntax::COLON_ARM.error(span, &[]).with_fix(
+                    "replace `:` with `=>`",
+                    span,
+                    " =>",
+                ));
                 self.bump();
                 self.block("`:`")
             } else if self.expect_token(T::FatArrow, "`=>` after the pattern") {
                 self.block("`=>`")
             } else {
                 self.skip_line();
-                Block {
-                    stmts: Vec::new(),
-                    span: Span::point(self.prev_end()),
-                }
+                Self::empty_block(Span::point(self.prev_end()))
             };
             self.end_stmt(start);
             arms.push(Arm { pat, guard, body });

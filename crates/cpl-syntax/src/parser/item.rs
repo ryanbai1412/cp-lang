@@ -108,10 +108,7 @@ impl<'a> Parser<'a> {
                     .error(at, &[&name.text, &found])
                     .with_help("use `:` for an indented body or `=` for a one-line expression"),
             );
-            FnBody::Block(Block {
-                stmts: Vec::new(),
-                span: at,
-            })
+            FnBody::Block(Self::empty_block(at))
         };
         let full_span = self.span_from(start);
         let decl = FnDecl {
@@ -927,10 +924,7 @@ impl<'a> Parser<'a> {
                 supers.push(self.ty());
             }
             let bounds = self.assoc_where_clause();
-            let body = Block {
-                stmts: Vec::new(),
-                span: Span::point(self.prev_end()),
-            };
+            let body = Self::empty_block(Span::point(self.prev_end()));
             return StmtKind::Trait {
                 name,
                 generics,
