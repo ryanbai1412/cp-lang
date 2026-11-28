@@ -1065,7 +1065,8 @@ impl<'a> Cx<'a> {
                             ExprKind::Name(n) => self.lookup(n).and_then(|(_, t)| self.cell_of(&t)),
                             _ => None,
                         };
-                        let value = self.hoist(value, cell.as_ref(), "$rhs", out);
+                        // The value is read whole before the cell is written (R01.6.4).
+                        let value = self.hoist(value, (cell.as_ref(), true), "$rhs", out);
                         let (op, span) = (*op, s.span);
                         if op == ast::AssignOp::Set {
                             if let Some(set) = self.index_set(base, &indices[0], &value, span) {

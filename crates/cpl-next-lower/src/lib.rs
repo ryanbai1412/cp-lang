@@ -790,8 +790,9 @@ impl Lw<'_> {
                 mk(EK::Inject(Box::new(v)))
             }
             TK::Elem(x) => self.expr(x, out),
-            // A part of a written tuple, read before any place is written (R01.6.4): a copy
-            // taken here, never a view, since the writes that follow change its place.
+            // A value read before any place is written (R01.6.4): a copy taken here, never a
+            // view, since the writes that follow change its place. A call's heap result may
+            // lend its arguments, so it is saved as a copy of the temp that holds it.
             TK::Owned(x) => match self.operand(x, out) {
                 Expr {
                     kind: EK::Pass(p, true, s),
@@ -802,6 +803,33 @@ impl Lw<'_> {
                     site,
                     ty,
                 },
+                v @ Expr {
+                    kind: EK::Call(..) | EK::Copy(_),
+                    ..
+                } if !x.ty.copied(&cpl_next_decls::fields::fields(self.d)) => {
+                    let (ty, site) = (v.ty.clone(), v.site);
+                    let p = match v.kind {
+                        EK::Copy(p) => p,
+                        _ => {
+                            let t = self.temp(ty.clone());
+                            out.push(Stmt::Let(t, v));
+                            Place::Local(t)
+                        }
+                    };
+                    let saved = self.temp(ty.clone());
+                    let kind = EK::Pass(p, false, site);
+                    let copy = Expr {
+                        site: 0,
+                        kind,
+                        ty: ty.clone(),
+                    };
+                    out.push(Stmt::Let(saved, copy));
+                    Expr {
+                        site,
+                        kind: EK::Copy(Place::Local(saved)),
+                        ty,
+                    }
+                }
                 v => v,
             },
             TK::Widen(x) => {

@@ -573,7 +573,7 @@ impl Cx<'_> {
                 ExprKind::Lambda { .. } => a.clone(),
                 _ if a.mutable => a.clone(),
                 _ => ast::Arg {
-                    value: self.hoist(&a.value, None, "$arg", out),
+                    value: self.hoist(&a.value, (None, false), "$arg", out),
                     ..a.clone()
                 },
             })
@@ -628,7 +628,7 @@ impl Cx<'_> {
                     let v = self.index_arg(b, v);
                     self.hold(v, "$idx", i.span, out)
                 }
-                _ => self.hoist(i, Some(&Ty::Int), "$idx", out),
+                _ => self.hoist(i, (Some(&Ty::Int), false), "$idx", out),
             })
             .collect();
         ast::Expr {
@@ -639,11 +639,12 @@ impl Cx<'_> {
             span: target.span,
         }
     }
-    /// `e` read once into a temporary, as a name for it.
+    /// `e` read once into a temporary, as a name for it; with `copy`, a copy of its own, so it
+    /// borrows no place a later write changes.
     pub(super) fn hoist(
         &mut self,
         e: &ast::Expr,
-        want: Option<&Ty>,
+        (want, copy): (Option<&Ty>, bool),
         what: &str,
         out: &mut Vec<TStmt>,
     ) -> ast::Expr {
@@ -659,6 +660,14 @@ impl Cx<'_> {
             return e.clone();
         }
         let v = self.expr(e, want);
+        let v = match copy {
+            true => {
+                let (ty, span) = (v.ty.clone(), v.span);
+                let kind = TK::Owned(Box::new(v));
+                TExpr { kind, ty, span }
+            }
+            false => v,
+        };
         self.hold(v, what, e.span, out)
     }
     /// `a[x1, ..., xn]` on an array keyed by a struct `K`: `a[K(x1, ..., xn)]`, K's ordinary
