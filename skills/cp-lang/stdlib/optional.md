@@ -8,6 +8,8 @@ Import: `use std.optional.{...}`.
 
 ## `struct Optional<T>`
 
+`?T`: a `T`, or `None` (R02.4).
+
 Fields: `val: T`.
 
 - `fn map<U>(self, f: T -> U) -> ?U` — one call of `f` when present; `f` of the value, kept `?`: `None` stays `None` (R02.4.1).

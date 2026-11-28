@@ -8,24 +8,48 @@ Import: `use std.tuple.{...}`.
 
 ## `struct Tuple1<A>`
 
+A tuple of one value, field `_0`.
+
 ## `struct Tuple2<A, B>`
+
+A tuple of two values, `(a, b)`, fields `_0` and `_1`.
 
 ## `struct Tuple3<A, B, C>`
 
+A tuple of three values, `(a, b, c)`, fields `_0` to `_2`.
+
 ## `struct Tuple4<A, B, C, E>`
+
+A tuple of 4 values, fields `_0` to `_3`.
 
 ## `struct Tuple5<A, B, C, E, F>`
 
+A tuple of 5 values, fields `_0` to `_4`.
+
 ## `struct Tuple6<A, B, C, E, F, G>`
+
+A tuple of 6 values, fields `_0` to `_5`.
 
 ## `struct Tuple7<A, B, C, E, F, G, H>`
 
+A tuple of 7 values, fields `_0` to `_6`.
+
 ## `struct Tuple8<A, B, C, E, F, G, H, J>`
+
+A tuple of 8 values, fields `_0` to `_7`.
 
 ## `struct Tuple9<A, B, C, E, F, G, H, J, K>`
 
+A tuple of 9 values, fields `_0` to `_8`.
+
 ## `struct Tuple10<A, B, C, E, F, G, H, J, K, L>`
+
+A tuple of 10 values, fields `_0` to `_9`.
 
 ## `struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>`
 
+A tuple of 11 values, fields `_0` to `_10`.
+
 ## `struct Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>`
+
+A tuple of 12 values, fields `_0` to `_11`.
