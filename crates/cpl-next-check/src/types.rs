@@ -145,13 +145,7 @@ impl TypeFacts for TypeView<'_> {
     }
 
     fn implements(&self, t: &TyId, tr: TraitId) -> bool {
-        self.ty(t).is_some_and(|(_, ty)| {
-            let r = TraitRef {
-                tr,
-                args: Vec::new(),
-            };
-            self.impls.impl_for(&r, ty).is_some()
-        })
+        (self.ty(t)).is_some_and(|(_, ty)| self.impls.impl_for(tr, &[], ty).is_some())
     }
 
     fn members(&self, t: &TyId) -> Vec<Sym> {

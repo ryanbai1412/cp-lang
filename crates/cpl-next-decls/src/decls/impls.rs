@@ -643,8 +643,12 @@ impl<'a> Choice<'a> {
 }
 
 impl ImplChoice for Choice<'_> {
-    fn impl_for(&self, r: &TraitRef, t: &Ty) -> Option<Chosen> {
-        if !known(t) || !r.args.iter().all(known) {
+    fn impl_for(&self, tr: TraitId, args: &[Ty], t: &Ty) -> Option<Chosen> {
+        let r = &TraitRef {
+            tr,
+            args: args.to_vec(),
+        };
+        if !known(t) || !args.iter().all(known) {
             return self.impls.choose(t, r);
         }
         let key = (r.clone(), t.clone());
@@ -661,13 +665,7 @@ impl ImplChoice for Choice<'_> {
         trs.sort();
         trs.dedup();
         trs.into_iter()
-            .filter_map(|tr| {
-                let r = TraitRef {
-                    tr,
-                    args: Vec::new(),
-                };
-                Some((tr, self.impl_for(&r, t)?))
-            })
+            .filter_map(|tr| Some((tr, self.impl_for(tr, &[], t)?)))
             .collect()
     }
 }
@@ -940,11 +938,11 @@ mod tests {
             rows: &[],
         });
         let into = trait_named(d, "Into");
-        let to_char = c.impl_for(&at(into, vec![Ty::Char]), &Ty::Int);
-        let to_u64 = c.impl_for(&at(into, vec![Ty::U64]), &Ty::Int);
+        let to_char = c.impl_for(into, &[Ty::Char], &Ty::Int);
+        let to_u64 = c.impl_for(into, &[Ty::U64], &Ty::Int);
         assert!(to_char.is_some() && to_u64.is_some());
         assert_ne!(to_char, to_u64);
-        assert_eq!(c.impl_for(&at(into, vec![]), &Ty::Int), None);
+        assert_eq!(c.impl_for(into, &[], &Ty::Int), None);
         assert!(c.impls.holds(&Ty::Int, &at(into, vec![])));
     }
 
@@ -969,7 +967,7 @@ mod tests {
                 rows: &[],
             });
             let mut got: Vec<_> = (order.into_iter())
-                .map(|i| (i, c.impl_for(&qs[i].0, &qs[i].1)))
+                .map(|i| (i, c.impl_for(qs[i].0.tr, &qs[i].0.args, &qs[i].1)))
                 .collect();
             got.sort_by_key(|g| g.0);
             got
@@ -997,7 +995,7 @@ mod tests {
         let every = |t: &Ty| -> Vec<(TraitId, Chosen)> {
             (0..d.traits.len())
                 .map(TraitId)
-                .filter_map(|tr| Some((tr, c.impl_for(&at(tr, vec![]), t)?)))
+                .filter_map(|tr| Some((tr, c.impl_for(tr, &[], t)?)))
                 .collect()
         };
         let mut tys = vec![

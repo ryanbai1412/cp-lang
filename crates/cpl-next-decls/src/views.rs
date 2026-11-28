@@ -5,7 +5,7 @@
 //! every fn.
 use crate::decls::{
     AliasDecl, AliasId, ConstId, Decls, FnDecl, ImplDecl, Impls, LibConst, ModId, Named, Role,
-    Roles, StructDecl, Sugar, TraitDecl, TraitRef,
+    Roles, StructDecl, Sugar, TraitDecl,
 };
 use crate::sym::Sym;
 use cpl_next_ir::ir::{Func, FuncKey};
@@ -240,13 +240,13 @@ pub struct Chosen {
     pub binds: Vec<Ty>,
 }
 
-/// `impl_for(TraitRef, Ty)`: which impl a type takes, as the checker chose it. Keyed by the trait
+/// `impl_for(TraitId, args, Ty)`: which impl a type takes, as the checker chose it. Keyed by the trait
 /// with its arguments (`Int` has `Into<Char>` and `Into<U64>`) and the type itself, compared by
 /// structure, so an instance's type that no item names has its answer too.
 pub trait ImplChoice {
     /// The impl of `r` that `t` takes: the head ranked first (R08.1.9), a domain's row as
     /// `ImplIdx::Row`. `None` when no impl's head fits, two do, or the chosen one's bounds fail.
-    fn impl_for(&self, r: &TraitRef, t: &Ty) -> Option<Chosen>;
+    fn impl_for(&self, tr: TraitId, args: &[Ty], t: &Ty) -> Option<Chosen>;
     /// Each trait `t` implements with the impl it takes, by `TraitId`, then `ImplIdx`.
     fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)>;
 }
