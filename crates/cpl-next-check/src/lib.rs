@@ -7,6 +7,7 @@ use cpl_diag::Span;
 use cpl_next_decls::decls::{
     self, Decls, ImplDecl, Impls, ModId, Named, Owner, SelfMode, TraitRef,
 };
+use cpl_next_decls::sym::Sym;
 use cpl_next_decls::views::{Items, Scope, Signatures, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, records};
 use cpl_next_ir::build::{Build, CheckName, Checks};
@@ -14,11 +15,11 @@ use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::{ir, ops, ty};
 use cpl_next_syntax::ast::{self as next, AstNode};
+use cpl_next_syntax::fall_through;
 use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
     TypeKind, UnOp,
 };
-use cpl_syntax::fall_through;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -509,6 +510,9 @@ struct Body {
     generics: Vec<Sym>,
     n_sets: usize,
     locals: Vec<Local>,
+    /// The names this body binds that no declaration gave, each a `Sym` past `d.syms`' last.
+    syms: Vec<String>,
+    sym_ids: HashMap<String, Sym>,
     scopes: Vec<HashMap<String, LocalId>>,
     self_local: Option<LocalId>,
     /// Bounds calls must meet, with where: a type, the trait it must implement, and why.
@@ -581,6 +585,8 @@ impl Body {
             generics: Vec::new(),
             n_sets: 0,
             locals: Vec::new(),
+            syms: Vec::new(),
+            sym_ids: HashMap::new(),
             scopes: vec![HashMap::new()],
             self_local: None,
             obligations: Vec::new(),
@@ -617,7 +623,7 @@ impl Body {
 struct CtxFrame {
     ctx: decls::ContextId,
     field: String,
-    value: ast::Expr,
+    value: next::Expr,
 }
 
 /// The values of constant expressions: the `const_value` query (`handbook/design/next/
@@ -852,8 +858,7 @@ pub fn check(
         if let Some(i) = cx.early.take() {
             let name = (d.top_doms.iter())
                 .find(|(_, t)| matches!(t, Ty::Dom(k) if *k == i))
-                .map(|(n, _)| n.clone())
-                .unwrap_or_default();
+                .map_or("", |(n, _)| d.text(*n));
             cx.err(
                 span,
                 Msg::verdict(
@@ -917,7 +922,7 @@ pub fn check(
         // A trait's fn whose body is an intrinsic is checked into that operation on `Self`.
         let of_trait = matches!(f.owner, Some(Owner::Trait(_)));
         let lowered_intrinsic = f.intrinsic.is_some() && !of_trait;
-        let undeclared = matches!(f.body, FnBody::None) && !of_trait;
+        let undeclared = matches!(f.body, decls::Body::None | decls::Body::Synth(_)) && !of_trait;
         if cx.fns.contains_key(&id) || lowered_intrinsic || undeclared {
             continue;
         }
@@ -1079,6 +1084,32 @@ pub fn check(
 
 impl<'a> Cx<'a> {
     /// Whether the `@!multitest` on `s` reads a count of cases: `(until_eof)` does not.
+    /// The id of name `text`: a declaration's, or else one of this body's own, which stays in
+    /// its answer.
+    pub(crate) fn sym(&mut self, text: &str) -> Sym {
+        if let Some(s) = (self.d.syms.get(text)).or_else(|| self.b.sym_ids.get(text).copied()) {
+            return s;
+        }
+        let s = Sym((self.d.syms.len() + self.b.syms.len()) as u32);
+        self.b.syms.push(text.to_string());
+        self.b.sym_ids.insert(text.to_string(), s);
+        s
+    }
+    /// The text of `s`, a declaration's id or one of this body's.
+    pub(crate) fn sym_text(&self, s: Sym) -> &str {
+        match (s.0 as usize).checked_sub(self.d.syms.len()) {
+            Some(k) => &self.b.syms[k],
+            None => self.d.syms.text(s),
+        }
+    }
+    /// The syntax of item `id`, its spans counted from its start.
+    fn item_syntax(&self, id: &ItemId) -> Option<next::Item> {
+        (self.src.modules.iter())
+            .filter(|m| m.name == *id.module)
+            .flat_map(|m| m.items.iter())
+            .find(|i| i.id == *id)
+            .map(|i| i.item.clone())
+    }
     fn case_count(&mut self, m: &next::Directive, span: Span) -> bool {
         let args: Vec<next::Arg> = m.args().map_or_else(Vec::new, |a| a.args().collect());
         match &args[..] {
@@ -1284,8 +1315,7 @@ impl<'a> Cx<'a> {
         tf.region = (tf.region.take()).map(|(l, t)| (l, self.zonk(&t)));
     }
     fn check_fn(&mut self, id: FnId, frames: Vec<CtxFrame>) -> TypedFn {
-        let lends_last =
-            |b: &ast::Block| matches!(b.stmts.last().map(|s| &s.kind), Some(StmtKind::Lend { .. }));
+        let lends_last = |b: &next::Block| matches!(b.stmts().last(), Some(next::Stmt::Lend(_)));
         let d = self.d;
         let f = d.f(id);
         self.b.decl = Some(id);
@@ -1298,6 +1328,7 @@ impl<'a> Cx<'a> {
         // A fn's result slots are set parameters after its own: each call passes its sets.
         self.b.n_sets = f.n_sets + f.n_ret_sets;
         self.b.locals = Vec::new();
+        (self.b.syms, self.b.sym_ids) = (Vec::new(), HashMap::new());
         self.b.scopes = vec![HashMap::new()];
         self.b.item = f.item.clone();
         self.b.self_local = None;
@@ -1325,14 +1356,21 @@ impl<'a> Cx<'a> {
         let refused =
             (f.errors.iter()).any(|e| e.refusal.is_some()) || d.rejected_bodies.contains(&id);
         // A body that can end without its value is that error, not a mismatch at its end.
+        let syntax = match f.body {
+            decls::Body::Written | decls::Body::Value => {
+                (self.item_syntax(&f.item)).and_then(|it| decls::body_of(d, id, &it))
+            }
+            decls::Body::Synth(_) | decls::Body::None => None,
+        };
+        let end = syntax.as_ref().and_then(next::FnBody::falls_through);
         let falls = !refused
             && f.region.is_none()
             && f.intrinsic.is_none()
-            && self.falls_through(&f.name, f.body.falls_through(), &ret);
-        let body = match &f.body {
+            && self.falls_through(&f.name, end, &ret);
+        let body = match &syntax {
             _ if refused => Self::error_node(Span::new(0, 0)),
-            FnBody::Block(b) if falls => self.block(b, Some(&Ty::Unit)),
-            FnBody::Expr(e) if falls => self.block(&one_stmt(e), Some(&Ty::Unit)),
+            Some(next::FnBody::Block(b)) if falls => self.block(b, Some(&Ty::Unit)),
+            Some(next::FnBody::Expr(e)) if falls => self.tail_block(&[], Some(e), Some(&Ty::Unit)),
             // A trait's fn whose body is an operation on `Self`, as `Domain`'s are.
             _ if f.intrinsic.is_some() => {
                 let span = Span::new(0, 0);
@@ -1363,7 +1401,7 @@ impl<'a> Cx<'a> {
             }
             // A block that reaches its end with no value gives `()`, not the result; a
             // generator's or lender's result is what it yields or lends.
-            FnBody::Block(b) => match self.block(b, Some(&ret)) {
+            Some(next::FnBody::Block(b)) => match self.block(b, Some(&ret)) {
                 v @ TExpr {
                     kind: TK::Block(_, None),
                     ..
@@ -1374,38 +1412,36 @@ impl<'a> Cx<'a> {
             },
             // A generator's one expression is the sequence it yields, or, when it yields itself
             // (`= match k: 0: yield 1 ...`), its body (R07.2.10).
-            FnBody::Expr(e) if matches!(f.region, Some((false, _))) => {
-                let body = if yields_in(e) {
-                    one_stmt(e)
+            Some(next::FnBody::Expr(e)) if matches!(f.region, Some((false, _))) => {
+                if yields_in(e) {
+                    self.tail_block(&[], Some(e), Some(&ret))
                 } else {
-                    yield_each(e)
-                };
-                self.block(&body, Some(&ret))
+                    let span = self.at(e);
+                    self.scoped_block(Some(&ret), |cx, out| cx.yield_all(e, span, out))
+                }
             }
             // An expression that never gives a value is the body, not its result (R01.6.7).
-            FnBody::Expr(e) if e.leaves() => self.block(&one_stmt(e), Some(&ret)),
+            Some(next::FnBody::Expr(e)) if e.leaves() => self.tail_block(&[], Some(e), Some(&ret)),
             // A `lends mut` fn's one expression is the place it lends (R05.6.3).
-            FnBody::Expr(e) if matches!(f.region, Some((true, _))) => {
-                let mut body = one_stmt(e);
-                body.stmts[0].kind = StmtKind::Lend {
-                    mutable: true,
-                    place: e.clone(),
-                };
-                self.block(&body, Some(&ret))
+            Some(next::FnBody::Expr(e)) if matches!(f.region, Some((true, _))) => {
+                let span = self.at(e);
+                self.scoped_block(Some(&ret), |cx, out| cx.lend_stmt(true, e, span, out))
             }
             // A `()` fn's one expression is a statement: its value is dropped, as it would be
             // last in a block (R06.1.1, R06.4.8).
-            FnBody::Expr(e) if e.bare_try().is_none() && self.shallow(&ret) == Ty::Unit => {
-                self.block(&one_stmt(e), Some(&ret))
+            Some(next::FnBody::Expr(e))
+                if e.bare_try().is_none() && self.shallow(&ret) == Ty::Unit =>
+            {
+                self.tail_block(&[], Some(e), Some(&ret))
             }
-            FnBody::Expr(e) => {
+            Some(next::FnBody::Expr(e)) => {
                 let v = match e.bare_try() {
                     Some(_) => self.extent(e, Some(&ret)),
                     None => self.expr(e, Some(&ret)),
                 };
                 self.coerce(v, &ret)
             }
-            FnBody::None => match f.owner {
+            None => match f.owner {
                 // A trait's fn as a value: the impl's fn of `Self`'s type.
                 Some(Owner::Trait(tr)) => self.trait_dispatch(id, tr, &params),
                 _ => {
@@ -1482,63 +1518,9 @@ fn multitest(m: &next::Directive) -> bool {
     mark == Some(cpl_next_syntax::grammar::Decorator::Multitest)
 }
 
-/// `for x in e: yield x`, the body of a generator written as one expression.
-/// The block of the one statement `e`.
-fn one_stmt(e: &ast::Expr) -> ast::Block {
-    ast::Block {
-        stmts: vec![ast::Stmt {
-            kind: StmtKind::Expr(e.clone()),
-            span: e.span,
-            decorators: Vec::new(),
-            public: false,
-        }],
-        span: e.span,
-    }
-}
 /// Whether `e` holds a `yield` of its own.
-fn yields_in(e: &ast::Expr) -> bool {
-    struct Yields(bool);
-    impl cpl_syntax::visit::Visitor for Yields {
-        fn stmt(&mut self, s: &ast::Stmt) {
-            self.0 |= matches!(s.kind, StmtKind::Yield { .. });
-        }
-    }
-    let mut v = Yields(false);
-    cpl_syntax::visit::walk_expr(e, &mut v);
-    v.0
-}
-fn yield_each(e: &ast::Expr) -> ast::Block {
-    let stmt = |kind| ast::Stmt {
-        kind,
-        span: e.span,
-        decorators: Vec::new(),
-        public: false,
-    };
-    let item = "$item".to_string();
-    let each = stmt(StmtKind::Yield {
-        value: ast::Expr {
-            kind: ExprKind::Name(item.clone()),
-            span: e.span,
-        },
-        from: false,
-    });
-    let walk = stmt(StmtKind::For {
-        label: None,
-        pat: ast::Pattern {
-            kind: PatternKind::Name(item),
-            span: e.span,
-        },
-        iter: e.clone(),
-        body: ast::Block {
-            stmts: vec![each],
-            span: e.span,
-        },
-        else_body: None,
-    });
-    ast::Block {
-        stmts: vec![walk],
-        span: e.span,
-    }
+fn yields_in(e: &next::Expr) -> bool {
+    (e.syntax().descendants()).any(|n| next::YieldStmt::cast(n).is_some())
 }
 
 impl Cx<'_> {
@@ -1691,21 +1673,10 @@ impl Cx<'_> {
 }
 
 /// A context value written out, so two `with` lines that set the same value make one copy.
-fn konst(e: &ast::Expr) -> String {
-    match &e.kind {
-        ast::ExprKind::Tuple(xs) => {
-            format!("({})", xs.iter().map(konst).collect::<Vec<_>>().join(","))
-        }
-        ast::ExprKind::Unary { op, expr } => format!("{op:?}{}", konst(expr)),
-        ast::ExprKind::Str(ps) => {
-            let t: String = (ps.iter())
-                .map(|p| match p {
-                    ast::StrPiece::Text(t) => t.as_str(),
-                    _ => "",
-                })
-                .collect();
-            format!("{t:?}")
-        }
-        k => format!("{k:?}"),
-    }
+fn konst(e: &next::Expr) -> String {
+    let words: Vec<String> = (e.syntax().tokens())
+        .filter(|t| !t.kind().is_trivia())
+        .map(|t| t.text().to_string())
+        .collect();
+    words.join(" ")
 }
