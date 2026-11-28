@@ -1045,7 +1045,7 @@ impl Cx<'_> {
     ) -> TExpr {
         // The caller's type parameters stay unnamed but still number a lambda's: `by: T -> K =
         // x => x` read in a generic fn is an instance per the caller's type arguments.
-        let blank = self.b.syms.intern(&self.syms, "");
+        let blank = self.b.syms.intern(self.syms, "");
         let unnamed = vec![blank; self.b.generics.len()];
         let module = std::mem::replace(&mut self.b.module, m);
         let item = std::mem::replace(&mut self.b.item, item);

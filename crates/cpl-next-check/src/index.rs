@@ -386,7 +386,7 @@ impl Cx<'_> {
         at: Span,
     ) -> Option<TExpr> {
         let (m, ts, ss) = self.set_method(&recv.ty)?;
-        let args = [k, v].map(|e| CallArg::plain(e));
+        let args = [k, v].map(CallArg::plain);
         let f = self.fnref(m, ts, ss);
         let recv = self.recv_arg(m, recv, at);
         Some(self.call_method(f, recv, false, Some(&args), at, None))
@@ -537,7 +537,7 @@ impl Cx<'_> {
         parts: &[next::Expr],
         span: Span,
     ) -> Option<TExpr> {
-        let args: Vec<CallArg> = parts.iter().map(|x| CallArg::plain(x)).collect();
+        let args: Vec<CallArg> = parts.iter().map(CallArg::plain).collect();
         if let Some(key) = self.ctor_key(s, &args, span) {
             return key;
         }

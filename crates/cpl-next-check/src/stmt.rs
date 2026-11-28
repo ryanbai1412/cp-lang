@@ -43,7 +43,7 @@ impl<'a> Cx<'a> {
                 synthetic: false,
             };
             // A top-level value (R02.10.3) fills the global made for it, found by item and Sym.
-            let sym = self.b.syms.of(&self.syms, name);
+            let sym = self.b.syms.of(self.syms, name);
             let item = &self.b.item;
             let top = self
                 .d
@@ -715,9 +715,9 @@ impl<'a> Cx<'a> {
             }
             // `tree.Pre` is the domain the whole value owns as its `tree.Pre`.
             if let (Some(n), Some(field)) = (bound, names.get(i)) {
-                let field = self.b.syms.intern(&self.syms, field);
-                let part = self.b.syms.intern(&self.syms, n.text());
-                let held = self.b.syms.intern(&self.syms, &held);
+                let field = self.b.syms.intern(self.syms, field);
+                let part = self.b.syms.intern(self.syms, n.text());
+                let held = self.b.syms.intern(self.syms, &held);
                 self.hand_down(held, field, part);
             }
         }
@@ -823,7 +823,7 @@ impl<'a> Cx<'a> {
                     let span = self.at(&init);
                     for (p, t) in ps.iter().zip(tys) {
                         let t = self.body_ty(&t, out);
-                        let args: Vec<CallArg> = args.iter().map(|a| CallArg::of(a)).collect();
+                        let args: Vec<CallArg> = args.iter().map(CallArg::of).collect();
                         let v = self.call_named(&n, &[], &args, span, Some(&t));
                         let v = self.coerce(v, &t);
                         self.let_pattern_at(p, mutable, v, at, out);
@@ -1427,7 +1427,7 @@ impl<'a> Cx<'a> {
         let axes = self.name_ranges(t, out);
         let mut generics = self.b.generics.clone();
         for h in holes {
-            let h = self.b.syms.intern(&self.syms, h);
+            let h = self.b.syms.intern(self.syms, h);
             generics.push(h);
         }
         let at = decls::BodyScope {

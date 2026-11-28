@@ -115,7 +115,7 @@ it owns is met:
 | old `tyconv` over `ast::Type` | deleted | deleted |
 | `cpl-syntax` in `cpl-next-check/Cargo.toml` | gone | gone |
 | G's `Lane-for` trailers | every commit | waiting on the confirmed table |
-| commit tier | green | red: the ratchet (case counts, `next_check_name_keys` 3, `unwrap_input` 4, `allow_attrs` 25, `dream_unverified` 18, the check to contract edge, `decls.rs` near its cap) and check's clippy |
+| commit tier | green | red: the ratchet (case counts, `next_check_name_keys` 3, `unwrap_input` 4, `allow_attrs` 25, `dream_unverified` 18, `decls.rs` near its cap) and check's clippy |
 
 ## Order
 
@@ -164,6 +164,9 @@ commit that keeps one.
   `impl<D: Domain> Sample for D`, so `samples_of<Color>()` fails there. It emits
   `for x in samples_of<T>():` for `x: T` (`samples_of<Int>()` when no type is
   written), with no type read, in the landing that moves `cpl test` onto cpl-next.
+- [ ] `crates/cpl-rt/src/lib.rs` keeps `pub use cpl_prim::PrimOp as Prim` only for the
+  frozen `cpl-ir` and `cpl-check`, which name the primitive operations `Prim`. Core's
+  `Prim` is `cpl-next-ir`'s; the alias goes with those crates (coordinator 22:22).
 - [ ] `tests/old-parser-accepts.txt` lists the rejected-form cases only
   the new parser reports (each citing its decision; coordinator 19:39).
   It is deleted with the old parser, and `next_old_parser_accepts`
