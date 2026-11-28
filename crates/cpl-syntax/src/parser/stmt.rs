@@ -3,7 +3,6 @@
 use super::*;
 use crate::words::{word, Word::Loop};
 use cpl_diag::msgs::stmt as msg;
-use cpl_diag::{habits::REPLACE_WITH, msgs::syntax::LOOP_KEYWORD};
 
 /// A `for` clause: its pattern, what it walks, and its `if` filter.
 type ForClause = (Pattern, Expr, Option<(u32, Cond)>);
@@ -648,11 +647,17 @@ impl<'a> Parser<'a> {
             }
             T::Ident if word(self.text()) == Some(Loop) && self.peek_n(1) == T::Colon => {
                 let span = self.span();
-                let fix = REPLACE_WITH.say(&[&"while true"]);
-                self.error_fix(LOOP_KEYWORD.error(span, &[]), fix, span, "while true");
                 self.bump();
-                self.colon_block("`while true`");
-                StmtKind::Error
+                let body = self.colon_block("`loop`");
+                let else_body = self.loop_else();
+                StmtKind::While {
+                    cond: Cond::Expr(Expr {
+                        kind: ExprKind::Bool(true),
+                        span,
+                    }),
+                    body,
+                    else_body,
+                }
             }
             T::Ident
                 if self.text() == "repeat"

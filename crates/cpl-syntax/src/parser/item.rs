@@ -2,7 +2,6 @@
 
 use super::*;
 use crate::words::{word, Word::Lazy};
-use cpl_diag::msgs::syntax::{AMP_MUT_PARAM, LAZY_PARAM};
 
 impl<'a> Parser<'a> {
     pub(super) fn fn_stmt(&mut self) -> StmtKind {
@@ -410,9 +409,6 @@ impl<'a> Parser<'a> {
         let variadic = self.eat(T::DotDot);
         let lazy = word(self.text()) == Some(Lazy) && self.peek_n(1) == T::Ident;
         if lazy {
-            let span = Span::new(start, self.span_n(1).start);
-            let err = LAZY_PARAM.error(self.span(), &[]);
-            self.error_fix(err, "delete `lazy`", span, "");
             self.bump();
         }
         let mut mutable = self.eat(T::Mut);
@@ -439,10 +435,6 @@ impl<'a> Parser<'a> {
         }
         let ty = self.eat(T::Colon).then(|| {
             if self.at(T::Amp) && self.peek_n(1) == T::Mut {
-                let amp = Span::new(self.start(), self.span_n(2).start);
-                let fix = vec![(amp, String::new()), (Span::point(start), "mut ".into())];
-                let err = AMP_MUT_PARAM.error(amp, &[]);
-                self.error(err.with_edits("write `mut x: T`", fix));
                 self.bump();
                 self.bump();
                 mutable = true;
@@ -776,23 +768,29 @@ impl<'a> Parser<'a> {
         };
         let name = self.expect_name("a variant name");
         let fields = if self.eat(T::LParen) {
-            let mut n = 0;
             self.comma_list(T::RParen, "the variant's fields", |p| {
-                n += 1;
-                if p.at(T::Ident) && p.peek_n(1) == T::Colon {
-                    let label = p.name();
+                // `Merge(a, b: Ship)`: several labels share one type.
+                let mut labels = Vec::new();
+                while p.at(T::Ident) && p.peek_n(1) == T::Comma && !p.name_is_type_like() {
+                    labels.push(p.name());
                     p.bump();
-                    return (Some(label), p.ty());
                 }
-                let (span, name) = (p.span(), if n == 1 { "v".into() } else { format!("v{n}") });
-                let mut err = cpl_diag::msgs::syntax::UNNAMED_PAYLOAD.error(span, &[]);
-                if p.name_is_type_like() {
-                    let at = Span::new(span.start, span.start);
-                    err = err.with_fix(format!("name it `{name}`"), at, format!("{name}: "));
+                if p.at(T::Ident) && p.peek_n(1) == T::Colon {
+                    labels.push(p.name());
+                    p.bump();
                 }
-                p.error(err);
-                (None, p.ty())
+                let ty = p.ty();
+                if labels.is_empty() {
+                    return vec![(None, ty)];
+                }
+                labels
+                    .into_iter()
+                    .map(|label| (Some(label), ty.clone()))
+                    .collect()
             })
+            .into_iter()
+            .flatten()
+            .collect()
         } else {
             Vec::new()
         };

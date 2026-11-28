@@ -401,7 +401,9 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
 - **A `match` arm is `pattern => body`, never `pattern: body`.** Syntax,
   4.1: the old parser also took a colon arm, a second spelling of one
   construct. The new parser reports it as a syntax error whose fix writes
-  `=>`, and std and conformance use `=>` arms only.
+  `=>`, and std and conformance use `=>` arms only. The old parser stays
+  frozen and still reads it (coordinator, 2026-11-27 20:17: a ruled form
+  is an error only in the new parser; `tests/old-parser-accepts.txt`).
 - **`lend mut place` is a statement.** Syntax, 5.12/16.9: R05.6.3 is
   normative; a block body lends with `lend mut place` (or `lend place`),
   and the code after it is write-back, which a tail expression can't
@@ -410,12 +412,13 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
 - **There is no `loop`.** Syntax, 4.1: the old parser took `loop:` by a
   text compare, a second spelling of `while true:` (R01.7.2). The new
   parser reports it with a fix writing `while true`, and std and
-  conformance use `while true:`.
+  conformance use `while true:`. The old parser still reads it (20:17).
 - **A variant's payload fields have names.** Syntax, 2.7: `fields` is
   `NAME ':' type`, for struct fields and variant payloads alike. The old
   parser also took a positional `One(T)` (a field with no label, a second
   answer) and a shared label `Merge(a, b: Ship)`, which `fields` doesn't
-  have. Both are E0503 now, with a fix naming a type payload `v`, `v2`, ....
+  have. Both are E0503 in the new parser, with a fix naming a type payload
+  `v`, `v2`, ...; the old parser still reads them (20:17).
   The two conformance cases that used `One(T)` name it.
 - **A variant has no value.** Syntax, 2.7 and 30.8: `variant` is
   `decorator* NAME ('(' fields ')')?`, so `Neg = -1` is E0504 (not in the
@@ -430,7 +433,8 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   the grammar nor R05 wrote down. `param` gains `('mut' | 'var')?` and
   R05.2.3 states it: the argument moves in, the caller marks nothing, and
   `mut` (the caller's place) doesn't combine with `var`. The old parser's
-  `lazy f: T` and `x: &mut T` had no spec and no uses; both are E0503, with
+  `lazy f: T` and `x: &mut T` had no spec and no uses; both are E0503 in the
+  new parser (the old one still reads them, 20:17), with
   fixes deleting `lazy` and writing `mut x: T` (R05 13a: no `&mut T`).
 - **`if T: Bound:` is a condition.** Syntax, 8 (decision 602): R08 §190's
   bound test was missing from `cond`. It is `NAME ':' bound` with a full
