@@ -168,7 +168,7 @@ impl Parser<'_> {
                 self.const_decl(at);
             }
             T::Return => self.keyword_stmt(NodeKind::ReturnStmt, true),
-            T::Yield => self.keyword_stmt(NodeKind::YieldStmt, true),
+            T::Yield => self.yield_stmt(),
             T::Break => self.keyword_stmt(NodeKind::BreakStmt, false),
             T::Continue => self.keyword_stmt(NodeKind::ContinueStmt, false),
             T::Ident
@@ -203,6 +203,25 @@ impl Parser<'_> {
         }
         if !value {
             self.eat(T::Label);
+        }
+        self.finish();
+    }
+
+    /// `yield x`, or `yield from xs` to yield each value of `xs`; `from`
+    /// followed by `.`, `(` or `[` is a value named `from`.
+    fn yield_stmt(&mut self) {
+        self.start(NodeKind::YieldStmt);
+        self.bump();
+        if self.word() == Some(Contextual::From)
+            && !matches!(
+                self.nth(1),
+                T::Newline | T::Eof | T::Dedent | T::Semi | T::Dot | T::LParen | T::LBracket
+            )
+        {
+            self.bump();
+        }
+        if !matches!(self.peek(), T::Newline | T::Eof | T::Dedent | T::Semi) {
+            self.expr();
         }
         self.finish();
     }
