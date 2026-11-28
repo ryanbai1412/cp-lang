@@ -425,9 +425,20 @@ impl Cx<'_> {
     /// `impl<S: Seq<T>, T> Into<List<T>> for S`; the bounds fix the impl's other parameters.
     fn param_impl(&self, i: usize, r: &TraitRef) -> Option<usize> {
         let have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
+        // Its trait's arguments fit too: `S: Seq<T>` converts to `List<T>` by
+        // `impl<S: Seq<T>, T> Into<List<T>> for S`, not by `Into<Str>`'s blanket.
+        let fit = |im: &decls::ImplDecl| {
+            let open = vec![Ty::Error; im.generics.len()];
+            let sub = Subst {
+                tys: &open,
+                sets: &[],
+            };
+            (im.trait_.args.iter().zip(&r.args)).all(|(a, b)| self.fits(&sub.ty(a), b))
+        };
         let mut found = (self.d.trait_impls(r.tr)).filter(|(_, im)| {
             !im.trait_.args.is_empty()
                 && matches!(im.for_, Ty::Param(_))
+                && fit(im)
                 && (im.bounds.iter())
                     .filter(|(k, _)| im.for_ == Ty::Param(*k))
                     .all(|(_, b)| have.contains(&b.tr))
