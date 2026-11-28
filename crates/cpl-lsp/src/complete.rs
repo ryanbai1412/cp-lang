@@ -1157,7 +1157,7 @@ fn std_methods(cursor: &Cursor, std: &mut StdLib) -> Vec<Entry> {
     out
 }
 
-/// The type std's `@range_literal` fn returns: what `a..b` builds, whose members
+/// The type the `@role(range_literal)` fn returns: what `a..b` builds, whose members
 /// the checker of today gives as `RANGE_MEMBERS`.
 fn range_type() -> Option<&'static str> {
     use cpl_syntax::ast::{StmtKind, TypeKind};

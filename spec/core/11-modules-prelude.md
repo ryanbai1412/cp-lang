@@ -142,6 +142,15 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `convert` | `Into<T>` | `T(x)` for a core type `T`: `x`'s impl of the trait at `T` (R04.2.28) |
 | `counted` | `Sized` | the trait whose one fn counts the positions of `domain V = xs` (R04.2.29) |
 | `range_bounds` | `RangeEnds<D>` | the trait whose first and second fns give the cuts `[r]T` covers (R04b.1.5) |
+| `tuple` | `Tuple1<A>`, `Tuple2<A, B>` and the rest | the struct an n-tuple of its field count is, one filler per field count |
+| `list` | `List<T>` | the struct `[a, b]` is, whatever a module names `List` |
+| `str` | `Str` | the struct `"s"` is |
+| `array` | `Array<D, T>` | the struct `[D]T` is |
+| `map` | `Map<K, V>` | the struct `[k: v]` is |
+| `cuts` | `Cut<D>` | the struct of a domain's cuts, `D.cuts` |
+| `str_literal` | `str_of` | the fn that builds a string literal from its characters |
+| `range_literal` | `range_of` | the fn that builds `lo..hi by k` |
+| `interpolation` | `put_piece` | the fn each piece of an interpolated string calls, with its width, zero fill and digits (R10.3.2) |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |
 
 The operator and literal markers of R06.4.12 (`@operator("op")`,

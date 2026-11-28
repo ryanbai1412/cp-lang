@@ -305,7 +305,7 @@ impl<T> Sized for Set<T>:
 /// and remove one. `m[k]` traps when `k` is absent (`m.get(k)` is the `?V`), `m[k] = v` inserts
 /// or replaces, and `m[k] op= v` starts an absent key at `V.default()` (R07.12.9). A map
 /// literal `[k: v]` builds one (R01.4.5).
-@map
+@role(map)
 pub struct Map<K, V>:
     var t: OrdTree<K, V> = OrdTree()
 

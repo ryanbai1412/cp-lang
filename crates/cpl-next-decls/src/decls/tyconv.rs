@@ -313,7 +313,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             }
         }
         TypeKind::Tuple(ts) if ts.is_empty() => Ty::Unit,
-        // `(A, B)` is core's `@tuple` struct with two fields.
+        // `(A, B)` is the `@role(tuple)` struct with two fields.
         TypeKind::Tuple(ts) if cx.env.tuple(ts.len()).is_some() => {
             let d = cx.env.tuple(ts.len()).unwrap_or(StructId(0));
             let a = ts.iter().map(|x| conv(cx, x, errors)).collect();
@@ -350,7 +350,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             let d = cx.env.roles().option.unwrap_or(StructId(0));
             Ty::Struct(d, vec![conv(cx, inner, errors)], Vec::new())
         }
-        // `[D]T` is std's `@array` struct `Array<D, T>`.
+        // `[D]T` is the `@role(array)` struct `Array<D, T>`.
         // `0..=CAP` with `const CAP = 2_000_000_000`: a const written as a literal is that literal.
         TypeKind::Range { lo, hi, inclusive } => match static_range_by(lo, hi, *inclusive, |e| {
             match &e.kind {
@@ -403,7 +403,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
             match cx.env.sugar().array {
                 Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
                 None => {
-                    errors.push(Msg::internal("`[D]T` needs std's `@array` struct"));
+                    errors.push(Msg::internal("`[D]T` needs the `@role(array)` struct"));
                     Ty::Error
                 }
             }

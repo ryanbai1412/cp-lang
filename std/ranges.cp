@@ -59,7 +59,7 @@ pub struct Range<D: Domain>:
         Range(lo, if k < n: k else: n, by)
 
 /// `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).
-@range_literal
+@role(range_literal)
 pub fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>:
     assert step > 0, "a range's step is positive"
     let n = if hi <= lo: 0 else: (hi - lo + step - 1) / step

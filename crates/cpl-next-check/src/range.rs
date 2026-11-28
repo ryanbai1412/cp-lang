@@ -714,7 +714,7 @@ impl Cx<'_> {
         }
         self.coerce(v, &Ty::Int)
     }
-    /// Std's `@range_literal` fn `(lo, hi, step)` over positions of `d`.
+    /// Std's `@role(range_literal)` fn `(lo, hi, step)` over positions of `d`.
     fn range_of(&mut self, args: Vec<TExpr>, d: Ty, span: Span) -> TExpr {
         let r = self.marked_call(self.d.sugar.range_literal, "range_literal", args, span);
         let want = match self.shallow(&r.ty) {
@@ -810,7 +810,7 @@ impl Cx<'_> {
         }
         (vec![lo, hi, int(TK::Int(1))], piece.unwrap_or(t))
     }
-    /// `D`, when `t` is core's `@cuts` struct of `D`.
+    /// `D`, when `t` is the `@role(cuts)` struct of `D`.
     pub(super) fn cut_domain(&self, t: &Ty) -> Option<Ty> {
         match self.shallow(t) {
             Ty::Struct(c, of, _) if Some(c) == self.d.roles().cut => {

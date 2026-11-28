@@ -35,9 +35,9 @@ pub trait TypeTables {
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>>;
     /// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
     fn by_arity(&self, s: StructId, n: usize) -> StructId;
-    /// Core's `@tuple` struct with `n` fields.
+    /// Core's `@role(tuple)` struct with `n` fields.
     fn tuple(&self, n: usize) -> Option<StructId>;
-    /// The most fields a core `@tuple` struct has: a longer tuple nests its last parts.
+    /// The most fields a the `@role(tuple)` struct has: a longer tuple nests its last parts.
     fn widest_tuple(&self) -> usize;
     /// The record struct with these field names.
     fn record(&self, fields: &[String]) -> Option<StructId>;

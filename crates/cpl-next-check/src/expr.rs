@@ -6,11 +6,11 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::FmtKind;
 
 impl<'a> Cx<'a> {
-    /// Std's `@list` struct, which literals, comprehensions and tables build.
+    /// Std's `@role(list)` struct, which literals, comprehensions and tables build.
     pub(super) fn list_struct(&mut self, span: Span) -> Option<StructId> {
         let list = self.d.sugar.list;
         if list.is_none() {
-            self.err(span, Msg::internal("no struct is marked `@list`"));
+            self.err(span, Msg::internal("no struct is filling `@role(list)`"));
         }
         list
     }
@@ -991,7 +991,7 @@ impl<'a> Cx<'a> {
                 let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
                 self.marked_call(self.d.sugar.str_literal, "str_literal", vec![raw, n], span)
             }
-            // `"a{x}b"` appends each piece in turn through core's `@interpolation` fn (R10.3.2).
+            // `"a{x}b"` appends each piece in turn through the `@role(interpolation)` fn (R10.3.2).
             ExprKind::Str(ps) if let Some(put) = self.d.roles().interpolate => {
                 let lit = |ps| ast::Expr {
                     kind: ExprKind::Str(ps),

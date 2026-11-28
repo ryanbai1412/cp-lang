@@ -81,15 +81,7 @@ marks! {
     SameKeys = "same_keys", "on a fn: its arguments that are arrays over domains share one domain (R04b.1.3)";
     Index = "index", "on a fn: what `s[r]` calls when `r` is not a key of `s` (R07.4.17)";
     Fast = "fast", "`@fast(op)` on a fn with a body: the operation the engines and C++ run for a call";
-    Tuple = "tuple", "on a struct: the struct an n-tuple of its field count is";
-    List = "list", "on a struct: the struct a list literal `[a, b]` builds";
-    Str = "str", "on a struct: the struct a string literal is";
     Role = "role", "on a declaration: the language role it fills (R11.6.1)";
-    Map = "map", "on a struct: the struct a map literal `[k: v]` builds";
-    Array = "array", "on a struct: the struct `[D]T` is";
-    StrLiteral = "str_literal", "on a fn: what builds a string literal from its characters";
-    RangeLiteral = "range_literal", "on a fn: what builds the range `lo..hi by step`";
-    Cuts = "cuts", "on a struct: the cuts of a domain, `D.cuts`";
     Operator = "operator", "`@operator(\"op\")` on a trait: the trait an operator calls";
     Literal = "literal", "`@literal(\"[]\")` on a trait: the trait a list literal builds through; `\"[;]\"` an array fill";
     Derive = "derive", "on a trait: every struct whose fields all have it gets it field by field";
@@ -98,7 +90,6 @@ marks! {
     VariantCheck = "variant_check", "on a fn: the check an `Int` converted to an enum goes through";
     DeriveFields = "derive_fields", "on a trait: every struct gets it through its fields packed as the `@pack` struct";
     Pack = "pack", "on a struct: the head-and-tail pair `@derive_fields` packs fields into";
-    Interpolation = "interpolation", "on a fn: what each piece of an interpolated string calls";
     Input = "input", "on a fn: a value it gives is input, so a range it fills is a contract";
     ]
     directives: [

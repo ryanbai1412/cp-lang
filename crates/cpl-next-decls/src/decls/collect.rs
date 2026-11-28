@@ -352,18 +352,24 @@ fn layer(
                             }
                             _ => _ = own[mi].insert(sd.name.text.clone(), Named::Struct(id)),
                         }
-                        let tuple = Mark::Tuple;
-                        if marked(s, tuple) {
-                            let n = sd.fields.len();
-                            match d.tuples.contains_key(&n) {
-                                true => d.errors.push(again(item, s, tuple.name())),
-                                false => _ = Arc::make_mut(&mut d.tuples).insert(n, id),
-                            }
-                        }
                         for (x, role) in super::role_marks(s) {
+                            // The tuple role takes one struct per field count (R02.5.1).
+                            if role == Some(Role::Tuple) {
+                                let n = sd.fields.len();
+                                match d.tuples.contains_key(&n) {
+                                    true => d.errors.push(again(item, s, "role(tuple)")),
+                                    false => _ = Arc::make_mut(&mut d.tuples).insert(n, id),
+                                }
+                                continue;
+                            }
                             let slot = match role {
                                 Some(Role::Option) => &mut d.roles.option,
                                 Some(Role::Recipe) => &mut d.roles.recipe,
+                                Some(Role::Cuts) => &mut d.roles.cut,
+                                Some(Role::List) => &mut d.sugar.list,
+                                Some(Role::Str) => &mut d.sugar.str,
+                                Some(Role::Map) => &mut d.sugar.map,
+                                Some(Role::Array) => &mut d.sugar.array,
                                 _ => {
                                     d.errors.push(misplaced_role(item, x, role, "struct"));
                                     continue;
@@ -372,17 +378,6 @@ fn layer(
                             let dup =
                                 again(item, s, &format!("role({})", role.map_or("", Role::name)));
                             once(slot, id, dup, &mut d.errors);
-                        }
-                        for (n, slot) in [
-                            (Mark::Cuts, &mut d.roles.cut),
-                            (Mark::List, &mut d.sugar.list),
-                            (Mark::Str, &mut d.sugar.str),
-                            (Mark::Map, &mut d.sugar.map),
-                            (Mark::Array, &mut d.sugar.array),
-                        ] {
-                            if marked(s, n) {
-                                once(slot, id, again(item, s, n.name()), &mut d.errors);
-                            }
                         }
                         if marked(s, Mark::Record) {
                             let names = sd.fields.iter().map(|f| f.name.text.clone()).collect();

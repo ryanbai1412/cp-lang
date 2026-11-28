@@ -3,29 +3,29 @@
 //!
 //! example: `(1, 2) < (1, 3) and (2, "a").clone() == (2, "a")`
 
-@tuple
+@role(tuple)
 pub struct Tuple1<A>:
     pub _0: A
 
-@tuple
+@role(tuple)
 pub struct Tuple2<A, B>:
     pub _0: A
     pub _1: B
 
-@tuple
+@role(tuple)
 pub struct Tuple3<A, B, C>:
     pub _0: A
     pub _1: B
     pub _2: C
 
-@tuple
+@role(tuple)
 pub struct Tuple4<A, B, C, E>:
     pub _0: A
     pub _1: B
     pub _2: C
     pub _3: E
 
-@tuple
+@role(tuple)
 pub struct Tuple5<A, B, C, E, F>:
     pub _0: A
     pub _1: B
@@ -33,7 +33,7 @@ pub struct Tuple5<A, B, C, E, F>:
     pub _3: E
     pub _4: F
 
-@tuple
+@role(tuple)
 pub struct Tuple6<A, B, C, E, F, G>:
     pub _0: A
     pub _1: B
@@ -42,7 +42,7 @@ pub struct Tuple6<A, B, C, E, F, G>:
     pub _4: F
     pub _5: G
 
-@tuple
+@role(tuple)
 pub struct Tuple7<A, B, C, E, F, G, H>:
     pub _0: A
     pub _1: B
@@ -52,7 +52,7 @@ pub struct Tuple7<A, B, C, E, F, G, H>:
     pub _5: G
     pub _6: H
 
-@tuple
+@role(tuple)
 pub struct Tuple8<A, B, C, E, F, G, H, J>:
     pub _0: A
     pub _1: B
@@ -63,7 +63,7 @@ pub struct Tuple8<A, B, C, E, F, G, H, J>:
     pub _6: H
     pub _7: J
 
-@tuple
+@role(tuple)
 pub struct Tuple9<A, B, C, E, F, G, H, J, K>:
     pub _0: A
     pub _1: B
@@ -75,7 +75,7 @@ pub struct Tuple9<A, B, C, E, F, G, H, J, K>:
     pub _7: J
     pub _8: K
 
-@tuple
+@role(tuple)
 pub struct Tuple10<A, B, C, E, F, G, H, J, K, L>:
     pub _0: A
     pub _1: B
@@ -88,7 +88,7 @@ pub struct Tuple10<A, B, C, E, F, G, H, J, K, L>:
     pub _8: K
     pub _9: L
 
-@tuple
+@role(tuple)
 pub struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
     pub _0: A
     pub _1: B
@@ -102,7 +102,7 @@ pub struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
     pub _9: L
     pub _10: M
 
-@tuple
+@role(tuple)
 pub struct Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
     pub _0: A
     pub _1: B

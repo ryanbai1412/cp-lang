@@ -1418,7 +1418,7 @@ fn run(
     globals: &[(String, bool)],
 ) -> Owned {
     // A literal the program wrote (`[a, b]` through the `@literal("[]")` impl, `"s"` through
-    // `@str_literal`) is the program's value, not a call's temporary (R07.5.10).
+    // `@role(str_literal)`) is the program's value, not a call's temporary (R07.5.10).
     let list = d.literal_trait("[]");
     let literals = (p.insts.iter().enumerate())
         .filter(|(_, f)| match &f.key {

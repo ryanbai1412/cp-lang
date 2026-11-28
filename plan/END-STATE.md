@@ -90,7 +90,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_name_compares` | 15 |
 | `next_not_passing` | 2,270 |
 | `next_old_parser_accepts` | 1 |
-| `next_old_syntax_analyses` | 105 |
+| `next_old_syntax_analyses` | 93 |
 | `next_reference_evaluator_lines` | 585 |
 | `next_refusal_kinds` | 60 |
 | `next_refused` | 687 |
@@ -98,10 +98,10 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_snapshot_keyed_queries` | 5 |
 | `next_source_text_guards` | 3 |
 | `next_split` | 2 |
-| `next_std_names` | 46 |
+| `next_std_names` | 42 |
 | `next_std_unchecked` | 35 |
 | `next_string_keyed_maps` | 79 |
-| `next_syntax_old_refs` | 837 |
+| `next_syntax_old_refs` | 825 |
 | `next_weak_oracle_passes` | 7 |
 | `next_whole_program_inputs` | 607 |
 | `next_wrong` | 1,454 |

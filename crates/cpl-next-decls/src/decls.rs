@@ -308,9 +308,9 @@ pub enum Owner {
     Impl(usize),
 }
 
-/// The declarations std marks as what a literal or a type's syntax is: `[a, b]` is a `@list`,
-/// `"s"` is a `@str` made by the `@str_literal` fn, `?T` is the `@optional` struct, `[D]T` the
-/// `@array` one, and `lo..hi` the `@range_literal` fn's result.
+/// The declarations std marks as what a literal or a type's syntax is: `[a, b]` is a `@role(list)`,
+/// `"s"` is a `@role(str)` made by the `@role(str_literal)` fn, `?T` is the `@optional` struct, `[D]T` the
+/// `@role(array)` one, and `lo..hi` the `@role(range_literal)` fn's result.
 #[derive(Default, Clone, Copy)]
 pub struct Sugar {
     pub list: Option<StructId>,
@@ -338,7 +338,7 @@ pub struct Roles {
     /// The `@role(recipe)` struct: the value of a `-> yields T` call made outside a `for`
     /// (R07.6.2). Its one field is the closure that walks the call.
     pub recipe: Option<StructId>,
-    /// The struct core marks `@cuts`: a half-open literal range of its values, where a
+    /// The struct core marks `@role(cuts)`: a half-open literal range of its values, where a
     /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
     pub cut: Option<StructId>,
     /// The `@role(positions)` trait: every domain's position type has it, and nothing else.
@@ -352,7 +352,7 @@ pub struct Roles {
     pub counted: Option<TraitId>,
     /// The `@role(range_bounds)` trait: the one whose fns give a range's first and past-the-end cuts (R04b.1.5).
     pub bounds: Option<TraitId>,
-    /// Core's `@interpolation` fn: `put(mut out, x)` appends each piece of an interpolated string.
+    /// Core's `@role(interpolation)` fn: `put(mut out, x)` appends each piece of an interpolated string.
     pub interpolate: Option<FnId>,
 }
 
@@ -373,10 +373,19 @@ pub enum Role {
     Convert,
     Counted,
     RangeBounds,
+    Tuple,
+    List,
+    Str,
+    Map,
+    Array,
+    Cuts,
+    StrLiteral,
+    RangeLiteral,
+    Interpolation,
 }
 
 impl Role {
-    pub const ALL: [Role; 14] = [
+    pub const ALL: [Role; 23] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -391,6 +400,15 @@ impl Role {
         Role::Convert,
         Role::Counted,
         Role::RangeBounds,
+        Role::Tuple,
+        Role::List,
+        Role::Str,
+        Role::Map,
+        Role::Array,
+        Role::Cuts,
+        Role::StrLiteral,
+        Role::RangeLiteral,
+        Role::Interpolation,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -409,6 +427,15 @@ impl Role {
             Role::Convert => "convert",
             Role::Counted => "counted",
             Role::RangeBounds => "range_bounds",
+            Role::Tuple => "tuple",
+            Role::List => "list",
+            Role::Str => "str",
+            Role::Map => "map",
+            Role::Array => "array",
+            Role::Cuts => "cuts",
+            Role::StrLiteral => "str_literal",
+            Role::RangeLiteral => "range_literal",
+            Role::Interpolation => "interpolation",
         }
     }
 }
@@ -447,7 +474,7 @@ pub struct Decls {
     /// A module's structs of one name, each with its count of type parameters, under the first
     /// declared, which the name means (R02.11.4).
     pub struct_arity: Arc<HashMap<StructId, Vec<(StructId, usize)>>>,
-    /// Core's `@tuple` structs by arity: `(A, B)` is the one with two fields.
+    /// Core's `@role(tuple)` structs by arity: `(A, B)` is the one with two fields.
     pub tuples: Arc<HashMap<usize, StructId>>,
     /// Core's `@member(m)` structs by `m`: `D.m` is the struct at `D` (R06).
     pub member_types: Arc<HashMap<Sym, StructId>>,
@@ -1630,9 +1657,6 @@ fn add_fn(
                 Mark::Coerce
                     | Mark::VariantCheck
                     | Mark::Pattern
-                    | Mark::StrLiteral
-                    | Mark::RangeLiteral
-                    | Mark::Interpolation
                     | Mark::Input
                     | Mark::Role
                     | Mark::Get
@@ -1690,14 +1714,6 @@ fn add_fn(
         d.pattern_fns.push(FnId(d.fns.len()));
     }
     let id = FnId(d.fns.len());
-    for (n, slot) in [
-        (Mark::StrLiteral, &mut d.sugar.str_literal),
-        (Mark::RangeLiteral, &mut d.sugar.range_literal),
-    ] {
-        if has(n) {
-            collect::once(slot, id, collect::again(&item, s, n.name()), &mut d.errors);
-        }
-    }
     for (x, role) in role_marks(s) {
         if let Some(Role::Trace) = role {
             d.roles.trace.push(id);
@@ -1706,6 +1722,9 @@ fn add_fn(
         let slot = match role {
             Some(Role::Print) => &mut d.roles.print,
             Some(Role::Write) => &mut d.roles.write,
+            Some(Role::StrLiteral) => &mut d.sugar.str_literal,
+            Some(Role::RangeLiteral) => &mut d.sugar.range_literal,
+            Some(Role::Interpolation) => &mut d.roles.interpolate,
             Some(_) => {
                 let name = x.name.text.clone();
                 errors.push(Msg::at(item.at(x.span), Unbuilt::Decorator { name }));
@@ -1727,9 +1746,6 @@ fn add_fn(
     }
     if has(Mark::Input) {
         d.input_fns.push(FnId(d.fns.len()));
-    }
-    if has(Mark::Interpolation) {
-        d.roles.interpolate = Some(FnId(d.fns.len()));
     }
     if getter && params.iter().any(|p| p.default.is_none()) {
         let msg = format!(

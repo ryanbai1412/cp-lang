@@ -1,6 +1,6 @@
 // expect: ok, output "5 3 ab"
 // rule: R06.4.12
-// `?T`, `[a, b]` and `"s"` are std's `@optional`, `@list` and `@str` structs, not whatever is
+// `?T`, `[a, b]` and `"s"` are std's `@optional`, `@role(list)` and `@role(str)` structs, not whatever is
 // named `Optional`, `List` or `Str` where they are written: the program's own structs of those
 // names change none of them, and `+` on strings is `Str`'s `Add` impl.
 struct Optional:

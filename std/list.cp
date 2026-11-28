@@ -8,7 +8,7 @@ use std.seq.{Seq, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
 
 fn out(text: Raw<Char>, n: Int) = @intrinsic("out")
 
-@list
+@role(list)
 pub struct List<T>:
     var buf: Raw<T>
     var n: Int
@@ -93,7 +93,7 @@ pub struct List<T>:
             raw_take(mut buf, i)
             raw_set(mut buf, i, x)
 
-@array
+@role(array)
 pub struct Array<D: Domain, T>:
     buf: Raw<T>
 
@@ -125,7 +125,7 @@ fn array_of_list<D: Domain, T>(xs: List<T>) -> [D]T:
     Array(xs.buf)
 
 // A flat sequence of `Char` (R02.3).
-@str
+@role(str)
 pub struct Str:
     pub var chars: List<Char>
 
@@ -152,7 +152,7 @@ pub struct Str:
 
 // A string literal: its characters and how many there are. The literal's storage is lent,
 // so the string gets its own.
-@str_literal
+@role(str_literal)
 fn str_of(text: Raw<Char>, n: Int) -> Str:
     var chars = List<Char>.new()
     for i in 0..n: chars.push(raw_get(text, i))

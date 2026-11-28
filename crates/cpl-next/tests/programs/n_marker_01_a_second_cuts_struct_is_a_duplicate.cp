@@ -1,8 +1,8 @@
 // expect: E0202
 // rule: R06.4.12
-// A marker names one declaration, whichever module writes it: core already marks its `Cut`,
-// so the program's own `@cuts` struct is a second one.
-@cuts // <- here
+// A role takes one declaration, whichever module fills it: std already fills `cuts` with `Cut`,
+// so the program's own `@role(cuts)` struct is a second one.
+@role(cuts) // <- here
 struct MyCut:
     k: Int
 print(1)

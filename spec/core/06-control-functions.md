@@ -199,9 +199,7 @@ library or by this spec:
 - `@member(name)` on a std struct `S<B>`: `D.name` is a domain whose
   positions are the values of `S<D>` (std's `@member(subsets)` on `Subset`,
   so `V.subsets` is the domain of `V`'s subsets).
-- Markers, each on the one declaration it names: `@tuple` (the struct an
-  n-tuple of its field count is), `@cuts` (the struct of a domain's cuts),
-  `@operator("op")` (the trait an operator calls,
+- Markers, each on the one declaration it names: `@operator("op")` (the trait an operator calls,
   through its first declared fn: `"=="` is `Eq`'s `eq`, `"<"` is `Ord`'s
   `lt`, `"[]"` is the read `s[k]` calls and `"[]="` the write `s[k] = v`),
   `@literal("[]")` and `@literal("[;]")` (the traits a list literal and an
@@ -211,15 +209,12 @@ library or by this spec:
   `Self` from a first parameter `x`, `x.f<F>()` at each field's type `F`,
   as `Read`'s `input.read<F>()`), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
   over its type calls), `@variant_check` (the check an `Int` converted to
-  an enum goes through), `@list`, `@str`, `@array` and `@map`
-  (the structs `[a, b]`, `"s"`, `[D]T` and `[k: v]` are, whatever a
-  module names `List`, `Str`, `Array` or `Map`; `?T` is the `option` role of §11.6), `@str_literal` (the fn that builds a
-  string literal), `@range_literal` (the fn that builds `lo..hi by k`),
-  `@derive_fields` (a trait every struct gets through its fields, packed
+  an enum goes through), `@derive_fields` (a trait every struct gets through its fields, packed
   as `@pack` pairs, unless it has its own impl: std's `Show`), `@pack` (the
-  head-and-tail struct those fields and a variadic pack walk through) and
-  `@interpolation` (the fn each piece of an interpolated string calls, with
-  its width, zero fill and digits).
+  head-and-tail struct those fields and a variadic pack walk through). The
+  structs and fns a literal or a type's syntax is, `(a, b)`, `[a, b]`, `"s"`,
+  `[D]T`, `[k: v]`, `lo..hi`, `"{x}"` and a domain's cuts among them, are
+  the roles of §11.6.
   Core declares each with them, and any module may: a
   second declaration of one marker, or of one `@operator` with the same
   method, is E0202. (R06.4.12)

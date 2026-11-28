@@ -273,7 +273,7 @@ fn comprehension_loop(body: &ast::Expr, clauses: &[ast::Clause], span: Span) -> 
 
 impl Cx<'_> {
     /// `[k: v, ..]`: a new map, of the struct `want` names when it has a `new()` and else of the
-    /// `@map` one, and each entry written through its `IndexSet` (R01.4.5).
+    /// `@role(map)` one, and each entry written through its `IndexSet` (R01.4.5).
     pub(super) fn map_literal(
         &mut self,
         entries: &[(ast::Expr, ast::Expr)],
@@ -298,7 +298,7 @@ impl Cx<'_> {
                     (d, targs, (0..m).map(|_| self.new_set()).collect())
                 }
                 None => {
-                    self.err(span, Msg::internal("no `@map` struct starts empty"));
+                    self.err(span, Msg::internal("no `@role(map)` struct starts empty"));
                     return Self::error_node(span);
                 }
             },

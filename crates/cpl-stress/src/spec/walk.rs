@@ -2000,7 +2000,7 @@ pub(super) fn std_decl(module: &str, name: &str) -> Option<(&'static str, u32, &
 }
 
 /// A std module's text and its parse, parsed once per thread.
-/// Whether `name` is std's range type: what its module's `@range_literal` fn returns.
+/// Whether `name` is std's range type: what its module's `@role(range_literal)` fn returns.
 fn is_range(name: &str) -> bool {
     let Some((_, parsed)) = cpl_facade::Std.module_of(name).and_then(std_file) else {
         return false;

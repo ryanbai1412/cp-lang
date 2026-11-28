@@ -117,7 +117,7 @@ pub struct MemoArray<K: Domain + Finite, V>:
 /// A cut of `D`: the place between two neighbouring positions, or at either end, with `k`
 /// positions before it. `D.cuts` names its type and, as a value, the domain of them (R04.2.5).
 @member(cuts)
-@cuts
+@role(cuts)
 pub struct Cut<D: Domain>:
     k: Int
 

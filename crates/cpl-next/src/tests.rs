@@ -467,14 +467,14 @@ fn a_refusal_prints_its_feature_text() {
     }
 }
 
-/// A `[libs]` module writes markers as core does: its second `@cuts` struct, beside core's
+/// A `[libs]` module fills roles as std does: its second `@role(cuts)` struct, beside core's
 /// `Cut`, is a duplicate (R06.4.12).
 #[test]
 fn a_library_second_marked_declaration_is_a_duplicate() {
     let dir = std::env::temp_dir().join(format!("cpl-marker-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("kit")).unwrap();
     std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
-    let lib = "@cuts\npub struct MyCut:\n    k: Int\npub fn one() -> Int = 1\n";
+    let lib = "@role(cuts)\npub struct MyCut:\n    k: Int\npub fn one() -> Int = 1\n";
     std::fs::write(dir.join("kit/m.cp"), lib).unwrap();
     let src = "use kit.m.{one}\nprint(one())\n";
     let got = compile(
@@ -494,7 +494,7 @@ fn a_library_second_marked_declaration_is_a_duplicate() {
         .collect();
     assert!(
         ds.iter()
-            .any(|d| d.contains("E0202: a second declaration marked `@cuts`")),
+            .any(|d| d.contains("E0202: a second declaration marked `@role(cuts)`")),
         "{ds:?}"
     );
 }

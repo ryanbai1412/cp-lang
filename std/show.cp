@@ -60,7 +60,7 @@ fn put_sep(mut out: Str, sep: ?Str):
 
 /// Each piece of an interpolated string, in turn, padded on the left to `width` with spaces or,
 /// after any sign, zeros (`"{x:6}"`, `"{x:04}"`, `"{x:.3}"`, R10.3.2).
-@interpolation
+@role(interpolation)
 fn put_piece<T: Show>(mut out: Str, x: T, width: Int, zero: Bool, digits: ?Int) uses io:
     let fmt = fmt_of(digits)
     if width == 0:

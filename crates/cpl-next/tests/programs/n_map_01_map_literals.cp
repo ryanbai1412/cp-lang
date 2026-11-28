@@ -1,5 +1,5 @@
 // expect: ok, output "3 20 0\n2 1\n5 7\n2 1"
-// `[k: v]` builds the `@map` struct, or the struct the slot names, empty and then each entry
+// `[k: v]` builds the `@role(map)` struct, or the struct the slot names, empty and then each entry
 // written through its `IndexSet`; `[:]` is an empty one.
 struct Pairs:
     var n: Int = 0
