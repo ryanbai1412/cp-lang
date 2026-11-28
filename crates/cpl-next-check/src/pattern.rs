@@ -284,7 +284,7 @@ impl Cx<'_> {
     }
     /// Whether `pat` is one name that binds, as `x` is and `None` or `E.V(..)` are not.
     pub(super) fn name_pattern(pat: &next::Pattern) -> bool {
-        matches!(pat, next::Pattern::Path(p) if matches!(Self::path_form(p), Some(PathForm::Bind(_))))
+        matches!(pat, next::Pattern::Path(p) if bind_name(p).is_some())
     }
     /// `pat` against the place `v`: the test that holds when it matches, `None` when it always
     /// does. `binds` gets the names it binds, read once the test holds.
@@ -1064,5 +1064,13 @@ pub(super) fn retag(t: &Ty, from: usize, to: usize) -> Ty {
         Ty::Struct(d, ts, ss) => Ty::Struct(*d, ts.iter().map(r).collect(), ss.clone()),
         Ty::Fn(ps, ret, s) => Ty::Fn(ps.iter().map(r).collect(), Box::new(r(ret)), s.clone()),
         other => other.clone(),
+    }
+}
+
+/// The name a path pattern binds, as `x`, `var x` and `self` do and `None` or `E.V(..)` do not.
+pub(super) fn bind_name(p: &next::PathPat) -> Option<SyntaxToken> {
+    match Cx::path_form(p) {
+        Some(PathForm::Bind(n)) => Some(n),
+        _ => None,
     }
 }
