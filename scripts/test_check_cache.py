@@ -238,7 +238,7 @@ class CheckCacheTest(unittest.TestCase):
         git("remote", "add", "origin", remote)
         return remote, work, git
 
-    def commit(self, git, work, name, body="docs: x\n\nDomain: infra"):
+    def commit(self, git, work, name, body="docs: x\n\nDomain: infra\nLane: G"):
         with open(os.path.join(work, name), "w", encoding="utf-8") as f:
             f.write(name + "\n")
         git("add", name)
@@ -343,7 +343,7 @@ class CheckCacheTest(unittest.TestCase):
                 with open(os.path.join(work, name), "w", encoding="utf-8") as f:
                     f.write("old\n")
             git("add", "scripts/regen.sh", "src.txt", "gen.txt")
-            git("commit", "-qm", "factory: regen\n\nDomain: infra")
+            git("commit", "-qm", "factory: regen\n\nDomain: infra\nLane: G")
             self.commit(git, work, "c.md")
             with open(os.path.join(work, "src.txt"), "w", encoding="utf-8") as f:
                 f.write("new\n")
