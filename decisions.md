@@ -9587,3 +9587,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 680. (reserved, A: A member is inherent or a trait method of an impl)
 
 ## 681. (reserved, B: `F64` reads through one machine primitive, `ParseF64`)
+
+## 682. (reserved, E: @on_destructure says why a call's result can't be taken apart)
