@@ -1,6 +1,5 @@
 //! Lists a program writes, literals and comprehensions (R01.8.1), and map literals (R01.4.5).
 use super::*;
-use crate::index::unparen;
 
 /// A list being filled: the local holding it, its element type, and the `@literal("[]")`
 /// trait and fn it is pushed onto through.
@@ -109,7 +108,7 @@ impl Cx<'_> {
     }
 
     /// `x` pushed onto the list being filled.
-    fn push_onto(&mut self, l: &Filling, x: &ast::Expr, span: Span) -> TExpr {
+    fn push_onto(&mut self, l: &Filling, x: &next::Expr, span: Span) -> TExpr {
         let v = self.expr(x, Some(&l.elem));
         // Every element flows into the list, so its fns share one set, not the first one's.
         if matches!(self.shallow(&l.elem), Ty::Var(_)) {
@@ -135,7 +134,7 @@ impl Cx<'_> {
     /// `[a, b]`: `with_room(2)` and a `push` per element (R01.8.8).
     pub(super) fn list_literal(
         &mut self,
-        xs: &[ast::Expr],
+        xs: &[next::Expr],
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
@@ -159,7 +158,7 @@ impl Cx<'_> {
 
     /// Where `[K]List<E>` is wanted a literal is one list per cell, unless each element could be
     /// an `E`, making it one `List<E>` that fills every cell (R04.8.10).
-    fn cells_wanted(&self, xs: &[ast::Expr], want: Option<&Ty>) -> Option<Ty> {
+    fn cells_wanted(&self, xs: &[next::Expr], want: Option<&Ty>) -> Option<Ty> {
         let (list, array) = (self.d.sugar.list?, self.array_id()?);
         let Ty::Struct(a, ts, _) = self.shallow(want?) else {
             return None;
@@ -174,13 +173,20 @@ impl Cx<'_> {
         (l == list && !fill).then(|| Ty::Struct(list, vec![cell], Vec::new()))
     }
     /// Whether `x` could be a `t`: a list literal is one only when `t` is a list or an array.
-    fn could_be(&self, x: &ast::Expr, t: &Ty) -> bool {
-        let ExprKind::List(ys) = &unparen(x).kind else {
+    fn could_be(&self, x: &next::Expr, t: &Ty) -> bool {
+        let mut x = x.clone();
+        while let next::Expr::Paren(p) = &x {
+            match p.inner() {
+                Some(inner) => x = inner,
+                None => return true,
+            }
+        }
+        let next::Expr::List(ys) = &x else {
             return true;
         };
         match self.shallow(t) {
             Ty::Struct(d, ts, _) if Some(d) == self.d.sugar.list || Some(d) == self.array_id() => {
-                (ys.iter()).all(|y| ts.last().is_none_or(|e| self.could_be(y, e)))
+                (ys.elems()).all(|y| ts.last().is_none_or(|e| self.could_be(&y, e)))
             }
             Ty::Struct(..) | Ty::Int | Ty::Dom(_) => false,
             _ => true,
@@ -188,27 +194,23 @@ impl Cx<'_> {
     }
 
     /// `[e for p in s if c, q in t]`: a new list, then the loop its clauses write, outermost
-    /// first, each condition an `if` around the rest, pushing `e` innermost (R01.8.1). With no
-    /// clauses left it is that innermost push, onto the list being filled.
+    /// first, each condition an `if` around the rest, pushing `e` innermost (R01.8.1).
     pub(super) fn comprehension(
         &mut self,
-        body: &ast::Expr,
-        clauses: &[ast::Clause],
+        c: &next::CompExpr,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
-        if clauses.is_empty() {
-            return match self.b.filling.last().cloned() {
-                Some(l) => self.push_onto(&l, body, span),
-                None => error(span),
-            };
-        }
+        let Some(body) = c.body() else {
+            return error(span);
+        };
+        let clauses: Vec<next::CompClause> = c.clauses().collect();
         self.b.scopes.push(HashMap::new());
         let e = match self.new_list("$comp", 0, want, span) {
             Some((l, init)) => {
                 let mut stmts = vec![init];
                 self.b.filling.push(l);
-                self.stmt(&comprehension_loop(body, clauses, span), &mut stmts);
+                self.comp_clauses(&body, &clauses, span, &mut stmts);
                 let l = self.b.filling.pop();
                 l.map_or_else(|| error(span), |l| filled(stmts, l, span))
             }
@@ -216,6 +218,53 @@ impl Cx<'_> {
         };
         self.b.scopes.pop();
         e
+    }
+    /// The loop of `clauses`, outermost first, whose innermost statement pushes `body` onto
+    /// the list being filled.
+    fn comp_clauses(
+        &mut self,
+        body: &next::Expr,
+        clauses: &[next::CompClause],
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) {
+        let Some((c, rest)) = clauses.split_first() else {
+            if let Some(l) = self.b.filling.last().cloned() {
+                let push = self.push_onto(&l, body, span);
+                out.push(TStmt::Expr(push));
+            }
+            return;
+        };
+        let (Some(pat), Some(iter)) = (c.pattern(), c.iter()) else {
+            return;
+        };
+        let conds: Vec<next::Condition> = c.filters().collect();
+        self.for_loop(
+            &pat,
+            &iter,
+            |cx, out| cx.comp_filters(&conds, body, rest, span, out),
+            span,
+            out,
+        );
+    }
+    /// A clause's conditions, each an `if` around the rest.
+    fn comp_filters(
+        &mut self,
+        conds: &[next::Condition],
+        body: &next::Expr,
+        rest: &[next::CompClause],
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) {
+        match conds.split_first() {
+            None => self.comp_clauses(body, rest, span, out),
+            Some((c, more)) => self.if_then(
+                c,
+                |cx, out| cx.comp_filters(more, body, rest, span, out),
+                span,
+                out,
+            ),
+        }
     }
 }
 
@@ -236,47 +285,12 @@ fn error(span: Span) -> TExpr {
     }
 }
 
-/// The loop of a comprehension's clauses, its innermost statement the comprehension with none.
-fn comprehension_loop(body: &ast::Expr, clauses: &[ast::Clause], span: Span) -> ast::Stmt {
-    let expr = |kind| ast::Expr { kind, span };
-    let stmt = |kind| ast::Stmt {
-        kind,
-        span,
-        decorators: Vec::new(),
-        public: false,
-    };
-    let block = |s: ast::Stmt| ast::Block {
-        stmts: vec![s],
-        span,
-    };
-    let mut inner = stmt(ast::StmtKind::Expr(expr(ExprKind::Comprehension {
-        body: Box::new(body.clone()),
-        clauses: Vec::new(),
-    })));
-    for c in clauses.iter().rev() {
-        for cond in c.conds.iter().rev() {
-            inner = stmt(ast::StmtKind::Expr(expr(ExprKind::If {
-                branches: vec![(cond.clone(), block(inner))],
-                otherwise: None,
-            })));
-        }
-        inner = stmt(ast::StmtKind::For {
-            label: None,
-            pat: c.pat.clone(),
-            iter: c.iter.clone(),
-            body: block(inner),
-            else_body: None,
-        });
-    }
-    inner
-}
-
 impl Cx<'_> {
     /// `[k: v, ..]`: a new map, of the struct `want` names when it has a `new()` and else of the
     /// `@role(map)` one, and each entry written through its `IndexSet` (R01.4.5).
     pub(super) fn map_literal(
         &mut self,
-        entries: &[(ast::Expr, ast::Expr)],
+        m: &next::MapExpr,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
@@ -327,18 +341,18 @@ impl Cx<'_> {
             VarRef::Global(g) => self.globals[g].mutable = true,
         }
         let mut stmts = vec![TStmt::Let(var, new)];
-        let map = ast::Expr {
-            kind: ExprKind::Name(name.to_string()),
-            span,
-        };
-        for (k, v) in entries {
-            let Some(set) = self.index_set(&map, k, v, span) else {
+        for entry in m.entries() {
+            let (Some(k), Some(v)) = (entry.key(), entry.value()) else {
+                continue;
+            };
+            let recv = mk(TK::Var(var), ty.clone());
+            let Some(set) = self.index_set(recv, &k, &v, span) else {
                 let t = self.show(&ty);
                 let text = format!("a map literal builds a `{t}`, which has no `[]=` write");
                 self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text));
                 break;
             };
-            self.stmt(&set, &mut stmts);
+            stmts.push(TStmt::Expr(set));
         }
         self.b.scopes.pop();
         mk(
