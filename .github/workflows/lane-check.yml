@@ -23,6 +23,8 @@ jobs:
       - uses: ./.github/actions/install-tools
         with:
           tools: just@1.59.0
+      - name: the tip builds, as a push to main must
+        run: cargo check -q --workspace --all-targets
       - name: cpl-next and cpl-doc tests against tests/lane-lib-reds.txt
         run: just lane-lib-tests
   # The shrink-only ratchet against the tip this push replaced (coordinator 02:38): a counter

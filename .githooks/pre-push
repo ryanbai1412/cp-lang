@@ -53,6 +53,12 @@ if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo fmt --all --check >/dev/null 2>&1 || fail "not formatted; run: cargo fmt --all"
 fi
 
+# 2b'. A lane-j-check tip that doesn't build blocks, so a bisect never meets one (37 such
+# first-parent commits cost D's 03:30 bisect): the same check as a push to main.
+if [ "$to_lane" = 1 ] && [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
+    cargo check -q --workspace --all-targets || fail "lane-j-check's tip doesn't build: cargo check --workspace --all-targets failed"
+fi
+
 # 2c. lane-j-check's landing gate: cpl-next's lib and integration tests and cpl-doc's lib tests, every red listed in
 # tests/lane-lib-reds.txt (shrink-only, target 0 before slice 1). CI's lane-check holds a
 # `--no-verify` push to it too.
