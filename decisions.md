@@ -9599,3 +9599,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 686. (reserved, I: core is deleted; record shapes live in the module @role marks record)
 
 ## 687. (reserved, C: `FromInt` is std's trait for Int to number conversion)
+
+## 688. (reserved, A: a constant type argument is `Ty::Const`, a type's value params are `const P: Int`)
