@@ -1401,7 +1401,7 @@ impl Cx<'_> {
             return self.text_value(text, span);
         }
         let Some(put) = self.rows.role_fn(Role::Interpolation) else {
-            let kind = "Str".to_string();
+            let kind = "string with holes and no `@role(interpolation)` fn".to_string();
             self.err(span, Unbuilt::Expression { kind });
             return Self::error_node(span);
         };
@@ -1873,7 +1873,7 @@ impl Cx<'_> {
                 Self::error_node(span)
             }
             _ => {
-                let kind = "Range".to_string();
+                let kind = "range with a step and no domain".to_string();
                 self.err(span, Unbuilt::Expression { kind });
                 Self::error_node(span)
             }

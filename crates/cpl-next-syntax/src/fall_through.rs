@@ -394,3 +394,6 @@ fn expr_breaks(e: &Expr, nested: bool, inner: &mut Vec<String>) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+mod tests;

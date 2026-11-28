@@ -33,6 +33,4 @@ pub use token::{arg_labels, removed_keyword, Token, TokenKind, KEYWORDS, LITERAL
 pub use tree::{GreenNode, GreenToken, SyntaxElement, SyntaxNode, SyntaxToken};
 
 #[cfg(test)]
-mod fall_through_tests;
-#[cfg(test)]
 mod tests;

@@ -385,7 +385,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
         Type::Optional(o) => match (cx.env.role_struct(Role::Option), o.inner()) {
             (_, _) if o.is_mut() => unbuilt("Mut", errors),
             (Some(d), Some(inner)) => Ty::Struct(d, vec![conv(cx, &inner, errors)], Vec::new()),
-            (None, _) => unbuilt("Optional", errors),
+            (None, _) => unbuilt("`?T` with no `@role(option)` struct", errors),
             (Some(_), None) => Ty::Error,
         },
         Type::Range(r) => match r.expr() {
@@ -553,7 +553,7 @@ fn conv_record(cx: &mut TyCx, r: &next::RecordType, errors: &mut Vec<Msg>) -> Ty
     let text = |t: Option<SyntaxToken>| t.map_or(String::new(), |t| t.text().to_string());
     if let Some(rest) = fields.iter().find(|f| f.is_rest()) {
         let Some(base) = rest.ty() else {
-            return unbuilt("Row", errors);
+            return unbuilt("record row with no base after `..`", errors);
         };
         let prefix: Vec<(String, Option<Type>)> = (fields.iter())
             .filter(|f| !f.is_rest())
@@ -756,7 +756,7 @@ fn conv_array(cx: &mut TyCx, a: &next::ArrayType, errors: &mut Vec<Msg>) -> Ty {
         })
         .collect();
     if axes.is_empty() || axes.len() != dims.len() {
-        return unbuilt("Array", errors);
+        return unbuilt("array whose axes do not match its keys", errors);
     }
     // `[0..2]T`: an axis over a constant range is keyed by that range type (R04.3.4).
     if let [Type::Range(r)] = &axes[..] {
