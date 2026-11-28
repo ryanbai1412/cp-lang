@@ -652,6 +652,20 @@ impl<'a> Cx<'a> {
         };
         self.static_call(t, r, m, name, Some(args), span)
     }
+    /// Each bound trait `tr`'s fn `m` states past `Self: tr`, its `where Self: X` too, as the
+    /// call's obligation over `tys`: through a bound `T: Thing`, `T` must meet them by its own
+    /// bounds (R08.1.4). `Self: tr` is the call's own, which the caller already obliges.
+    fn method_bounds(&mut self, tr: TraitId, m: FnId, tys: &[Ty], span: Span) {
+        let sub = Subst { tys, sets: &[] };
+        let own = |i: usize, r: &decls::TraitRef| i == 0 && r.tr == tr;
+        for (i, r) in (self.items.f(m).bounds.iter()).filter(|(i, r)| !own(*i, r)) {
+            let r = decls::TraitRef {
+                tr: r.tr,
+                args: r.args.iter().map(|a| sub.ty(a)).collect(),
+            };
+            (self.b.obligations).push((tys[*i].clone(), r, span, Origin::Bound));
+        }
+    }
     /// A call of trait `tr`'s fn `m` without `self`, its impl chosen by `self_ty`.
     pub(super) fn static_call(
         &mut self,
@@ -685,6 +699,7 @@ impl<'a> Cx<'a> {
             sets: &sets,
         };
         let formals = self.formals(&sub, fd);
+        self.method_bounds(tr.tr, m, &tys, span);
         let own: Box<[SetTy]> = sets[..fd.n_sets].into();
         let ret = self.trait_ret_in(m, tys.clone(), sets);
         let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
@@ -841,6 +856,7 @@ impl<'a> Cx<'a> {
             sets: &sets,
         };
         let formals = self.formals(&sub, fd);
+        self.method_bounds(tr.tr, m, &tys, span);
         let own: Box<[SetTy]> = sets[..fd.n_sets].into();
         let ret = self.trait_ret_in(m, tys.clone(), sets);
         let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
