@@ -125,8 +125,9 @@ fn every_lsp_feature_works_on_v03() {
     // Document 3: lint fixes (code actions) + formatting.
     let fix_uri = "file:///v03/fix.cp";
     let fix_src = concat!(
-        "let  n: Int=read::<Int>()\n", // 0: legacy turbofish lint + unformatted spacing
-        "print(n)\n",                  // 1
+        "let  n: Int=read<Int>()\n", // 0: unformatted spacing
+        "fn f(n: Int) -> Int = n\n", // 1
+        "print(f(n: n))\n",          // 2: redundant_arg_name's fix
     );
 
     let open = |uri: &str, text: &str| {
@@ -207,7 +208,7 @@ fn every_lsp_feature_works_on_v03() {
             "textDocument/codeAction",
             obj([
                 ("textDocument", obj([("uri", fix_uri.into())])),
-                ("range", obj([("start", pos(0, 0)), ("end", pos(0, 26))])),
+                ("range", obj([("start", pos(0, 0)), ("end", pos(2, 14))])),
                 ("context", obj([("diagnostics", Value::Array(vec![]))])),
             ]),
         ),
@@ -390,7 +391,7 @@ fn every_lsp_feature_works_on_v03() {
     );
     let formatted = fmt_edits[0].at(&["newText"]).as_str().unwrap_or("");
     assert!(
-        formatted.contains("let n: Int = read::<Int>()"),
+        formatted.contains("let n: Int = read<Int>()"),
         "unexpected formatted text: {formatted:?}"
     );
 }

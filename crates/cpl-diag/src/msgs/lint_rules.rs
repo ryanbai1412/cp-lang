@@ -59,7 +59,6 @@ super::msgs! {
     TRIAL_DIVISION = "L0561", "trial division by `{}` factors `{}` by hand";
     TRIAL_DIVISION_DIVISORS = "L0561", "trial division by `{}` walks the divisors of `{}` by hand";
     TUPLE_POINTS = "L0578", "`{}` and `{}` are the coordinates of one list of points";
-    TURBOFISH_TYPE_ARGS = "L0204", "generic calls use `<...>` without `::`";
     UNKNOWN_LINT = "L0001", "there is no lint called `{}`";
     UNPROVEN_LIST_INDEX = "L0414", "`{}[{}]` is bounds-checked on every pass of a nested loop";
     UNREACHABLE_CODE = "L0597", "this never runs: it comes after `{}` in the same block";

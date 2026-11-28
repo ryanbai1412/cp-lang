@@ -5,7 +5,6 @@ use crate::std_fn;
 use crate::walk::{unparen, Scope, Visitor};
 use crate::{
     File, Finding, DOMAIN_KEYED_MAP, IS_IN_COND_HEADER, POSITION_ARITHMETIC, REDUNDANT_ARG_NAME,
-    TURBOFISH_TYPE_ARGS,
 };
 use cpl_diag::msgs::lint_rules;
 use cpl_diag::Span;
@@ -425,45 +424,11 @@ impl Visitor for Types<'_> {
                     }
                 }
             }
-            // `Map<V, Int>()` in an expression, and `f::<T>(...)` turbofish.
-            ExprKind::Generic { base, args } => {
+            // `Map<V, Int>()` in an expression.
+            ExprKind::Generic { base, .. } => {
                 if let ExprKind::Name(_) = &base.kind {
                     let at = expr.span.shift(self.base);
                     self.keyed(self.facts.and_then(|f| f.type_of(at)), at);
-                    // Const-integer type arguments on lowercase calls (`f::<998244353>(x)`)
-                    // still need `::` so `<` is not parsed as less-than.
-                    let has_const_arg = args.iter().any(|t| {
-                        let at = t.span.shift(self.base);
-                        matches!(
-                            self.facts.and_then(|f| f.written_type(at)),
-                            Some(Ty::Const(_))
-                        )
-                    });
-                    let start = (self.base + base.span.end) as usize;
-                    let end = (self.base + expr.span.end) as usize;
-                    if !has_const_arg {
-                        if let Some(rest) = self.src.get(start..end) {
-                            if let Some(rel) = rest.find("::") {
-                                if rest[..rel].chars().all(|c| c.is_whitespace()) {
-                                    let cc_start = (start + rel) as u32;
-                                    let cc_span = Span::new(cc_start, cc_start + 2);
-                                    let mut diag = lint_rules::TURBOFISH_TYPE_ARGS
-                                        .warning(cc_span, &[])
-                                        .with_help(
-                                            "remove `::` to use the canonical `f<T>(...)` spelling",
-                                        );
-                                    diag.fixes.push(cpl_diag::Fix {
-                                        title: "remove `::`".into(),
-                                        edits: vec![(cc_span, String::new())],
-                                    });
-                                    self.findings.push(Finding {
-                                        lint: &TURBOFISH_TYPE_ARGS,
-                                        diag,
-                                    });
-                                }
-                            }
-                        }
-                    }
                 }
             }
             // `a.pow(e)` -> `a ** e`, `V(v.ord + 1)`, and `f(x: x)` -> `f(x:)`.

@@ -39,6 +39,7 @@ impl Parser<'_> {
                 self.finish();
             }
             T::LParen => self.paren_type(),
+            T::Fn if self.nth(1) == T::LParen => self.fn_keyword_type(),
             T::Domain => {
                 self.start(NodeKind::DomainBinder);
                 self.bump();
@@ -195,6 +196,41 @@ impl Parser<'_> {
             }
             self.want(T::RParen, "`)` after the removed fields");
         }
+    }
+
+    /// `fn(V) -> V`: E0503, fixed to `V -> V` (or `(A, B) -> C`); the
+    /// parameters still parse as the fn type's.
+    fn fn_keyword_type(&mut self) {
+        let word = self.span();
+        let (mut depth, mut commas, mut close) = (0i32, 0, None);
+        for n in 1.. {
+            match self.nth(n) {
+                T::LParen | T::LBracket | T::Lt => depth += 1,
+                T::Shr => depth -= 2,
+                T::RParen | T::RBracket | T::Gt => depth -= 1,
+                T::Comma if depth == 1 => commas += 1,
+                T::Eof | T::Newline => break,
+                _ => {}
+            }
+            if depth <= 0 {
+                close = Some(n);
+                break;
+            }
+        }
+        let open = self.nth_span(1);
+        let edits = match close {
+            Some(n) if commas == 0 && n > 2 && self.nth(n) == T::RParen => vec![
+                (Span::new(word.start, open.end), String::new()),
+                (self.nth_span(n), String::new()),
+            ],
+            _ => vec![(Span::new(word.start, open.start), String::new())],
+        };
+        let err = msgs::syntax::FN_TYPE_KEYWORD.error(word, &[]);
+        self.diagnostics.push(err.with_edits("delete `fn`", edits));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+        self.paren_type();
     }
 
     fn paren_type(&mut self) {

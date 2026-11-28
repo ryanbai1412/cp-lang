@@ -635,3 +635,32 @@ fn a_lowercase_generic_before_an_end_takes_type_arguments_and_a_comparison_stays
     let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
     assert_eq!(count(NodeKind::GenericExpr), 2, "{:?}", file.diagnostics);
 }
+
+#[test]
+fn turbofish_fn_keyword_types_and_bare_lends_are_reported_with_fixes() {
+    let cases = [
+        ("let g = id::<Int>\n", "let g = id<Int>\n"),
+        ("let x = read::<Int>()\n", "let x = read<Int>()\n"),
+        ("fn t(f: fn(Int) -> Int) = 0\n", "fn t(f: Int -> Int) = 0\n"),
+        (
+            "fn t(f: fn(Int, Int) -> Int) = 0\n",
+            "fn t(f: (Int, Int) -> Int) = 0\n",
+        ),
+        (
+            "fn t(xs: [V]Int, l: V) lends [V]Int = xs[l..]\n",
+            "fn t(xs: [V]Int, l: V) -> lends [V]Int = xs[l..]\n",
+        ),
+        (
+            "fn at(mut self, i: Int) lends mut Int = self.a[i]\n",
+            "fn at(mut self, i: Int) -> lends mut Int = self.a[i]\n",
+        ),
+    ];
+    for (src, want) in cases {
+        let file = crate::parse(src);
+        assert_eq!(file.root.text(), src, "lossless");
+        assert_eq!(file.diagnostics.len(), 1, "{src}: {:?}", file.diagnostics);
+        let (fixed, applied) = cpl_diag::splice_fixes(src, &file.diagnostics);
+        assert_eq!((fixed.as_str(), applied), (want, 1), "{src}");
+        assert!(crate::parse(want).diagnostics.is_empty(), "{want}");
+    }
+}

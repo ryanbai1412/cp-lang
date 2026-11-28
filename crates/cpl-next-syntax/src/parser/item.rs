@@ -331,11 +331,20 @@ impl Parser<'_> {
     /// `-> T`, `-> yields T`, `-> lends mut T`: a fn's result and a fn
     /// type's alike.
     pub(super) fn ret(&mut self) {
-        if !self.at(T::Arrow) {
+        let bare_lends = self.at(T::Lends);
+        if !self.at(T::Arrow) && !bare_lends {
             return;
         }
         self.start(NodeKind::RetType);
-        self.bump();
+        if bare_lends {
+            let at = self.span();
+            let err = msgs::syntax::LENDS_ARROW.error(at, &[]);
+            let fix = Span::new(at.start, at.start);
+            self.diagnostics
+                .push(err.with_fix("write `-> lends`", fix, "-> "));
+        } else {
+            self.bump();
+        }
         if self.word() == Some(W::Yields) {
             self.bump();
         } else if self.eat(T::Lends) {

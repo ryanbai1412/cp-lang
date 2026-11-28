@@ -3406,7 +3406,7 @@ The area's design is `spec/lib/flows.md`; these are its calls.
    Reason: zero AST/IR/codegen duplication; works identically with `read()` and any tuple expression. Reverse: remove `has_typed_tuple_pattern` in `cpl-syntax/src/parser/stmt.rs`.
 3. **Fieldless enum-indexed arrays `[Sign]T` lower to `DimSpec::Int(k)` and tag-checked indexing.**
    Reason: matches `[Bool]T` without new IR ops, interpreter changes, or C++ runtime types; evaluates the index expression once via a temp. Reverse: remove the `Sym::Enum` arm in `cpl-ir/src/lower/mod.rs` (`dim`) and `expr.rs` (`index_expr`).
-4. **Canonical generic call spelling is `f<T>(...)` without `::`; `f::<T>(...)` is warned by `L0204` (`turbofish_type_args`) with a `cpl fix` / `cpl lint --fix` codemod.**
+4. **(Superseded by 664: `::<` is E0503.) Canonical generic call spelling is `f<T>(...)` without `::`; `f::<T>(...)` is warned by `L0204` (`turbofish_type_args`) with a `cpl fix` / `cpl lint --fix` codemod.**
    Reason: eliminates two spellings for one idea (`read::<T>()` vs `read<T>()`, `topo::<V>(...)` vs `topo<V>(...)`) while preserving backwards compatibility during migration. Reverse: remove `TURBOFISH_TYPE_ARGS` from `cpl-lint` and `"fix"` from `cpl-cli`.
 5. **Typed lambda parameter annotations `(x: T) => body` are retained in `ExprKind::Lambda.param_tys` and typechecked in both `cpl-check` and `cpl-ir`, with `Ty::fits_in` checking `Ty::Fn` parameter/return compatibility.**
    Reason: parsed-but-ignored type annotations are a silent-wrongness trap. Reverse: revert `param_tys` checks.

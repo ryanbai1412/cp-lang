@@ -491,7 +491,17 @@ impl Parser<'_> {
                 self.start(NodeKind::NameRef);
                 self.bump();
                 self.finish();
-                if self.at(T::Lt) && self.type_args_ahead(upper) {
+                if self.at(T::ColonColon) && self.nth(1) == T::Lt {
+                    let cc = self.span();
+                    let err = msgs::syntax::TURBOFISH.error(cc, &[]);
+                    self.diagnostics.push(err.with_fix("delete `::`", cc, ""));
+                    self.start(NodeKind::Error);
+                    self.bump();
+                    self.finish();
+                    self.start_at(at, NodeKind::GenericExpr);
+                    self.generic_args();
+                    self.finish();
+                } else if self.at(T::Lt) && self.type_args_ahead(upper) {
                     self.start_at(at, NodeKind::GenericExpr);
                     self.generic_args();
                     self.finish();

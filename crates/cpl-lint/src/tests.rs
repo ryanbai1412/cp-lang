@@ -1014,17 +1014,6 @@ fn a_repeated_modulus_is_reported_once_by_the_rewrite_that_uses_it() {
 }
 
 #[test]
-fn turbofish_type_args_offers_plain_generic_fix() {
-    let src = "let x = read::<Int>()\nprint(x)\n";
-    let found = only(src);
-    assert_eq!(found.code, TURBOFISH_TYPE_ARGS.code);
-    let (fixed, applied) = cpl_diag::splice_fixes(src, &[found]);
-    assert_eq!(applied, 1);
-    assert_eq!(fixed, "let x = read<Int>()\nprint(x)\n");
-    assert!(lint(&fixed, &Config::default()).is_empty());
-}
-
-#[test]
 fn free_fold_becomes_a_method() {
     // proto/ports: `sum(a)`, `count(xs, p)`, `sort(mut xs, by:)` beside `xs.all(p)`.
     let src = "let xs = [3, 1, 4]\nvar ys = [2, 7]\nsort(mut ys, by: y => y % 5)\nprint(sum(xs), count(xs, x => x > 2), max(xs[1..]), sorted(xs + ys))\n";
