@@ -18,6 +18,7 @@ pub(crate) mod forms;
 mod impls;
 mod inherent;
 mod layer;
+mod names;
 mod tyconv;
 pub use collect::{collect, factor_name, prepare, Prepared};
 pub use impls::Impls;

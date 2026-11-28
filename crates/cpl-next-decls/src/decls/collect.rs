@@ -1628,12 +1628,12 @@ fn comparisons(all: &[&Form]) -> Vec<(Sym, Sym, bool)> {
 }
 
 /// The fn an `@operator` trait's operator calls: its first.
-fn operator_method(t: &super::forms::TraitForm) -> Option<Sym> {
+pub(super) fn operator_method(t: &super::forms::TraitForm) -> Option<Sym> {
     t.methods.first().map(|m| m.name)
 }
 
 /// What `@on_unimplemented("..", code: C)` says when a type lacks the trait's impl (R08.1.8).
-fn unimplemented(
+pub(super) fn unimplemented(
     item: &ItemId,
     attrs: &[super::forms::AttrForm],
     errors: &mut Vec<Msg>,
