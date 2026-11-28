@@ -7,7 +7,7 @@
   "edition_refs": 0,
   "ir_builtin_names": 108,
   "ir_builtin_derived": 13,
-  "prelude_privilege": 26,
+  "prelude_privilege": 21,
   "backend_std_names": 8,
   "lint_std_names": 0,
   "lint_name_matchers": 0,
@@ -246,7 +246,7 @@
   "dream_unverified": 0,
   "measure_broken": 0,
   "mono_unguarded": 0,
-  "std_shadowed": 19,
+  "std_shadowed": 16,
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
@@ -300,7 +300,7 @@
   "width_tables": 7,
   "judge_tables": 0,
   "editor_logic_lines": 0,
-  "std_names_outside_rt": 82,
+  "std_names_outside_rt": 75,
   "corpus_fmt_dirty": 0,
   "trap_text_outside_registry": 0,
   "foreign_outside_modules": 0,
@@ -406,7 +406,7 @@
   "next_error_typed": 34,
   "next_refused": 687,
   "next_syntax_old_refs": 819,
-  "old_parser_lines": 6546,
+  "old_parser_lines": 6515,
   "next_old_syntax_analyses": 88,
   "tool_old_syntax_uses": 2208,
   "next_check_set_facts": 11,
@@ -437,5 +437,5 @@
   "next_synthetic_name_tests": 0,
   "raw_int_range_alternation": 0,
   "catalogue_next_markers": 1,
-  "old_std_copy_lines": 33759
+  "old_std_copy_lines": 33106
 }

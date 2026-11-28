@@ -357,6 +357,10 @@ if [ -n "$fast" ] && [ -z "${CPL_LAND_INTEGRATOR:-}" ]; then
         exit 1
     fi
 fi
+# A wasm budget raise the coordinator signed in a `Budget-raise:` trailer of a commit
+# being landed is exact and outside the transfer rule (web/scripts/wasm-crates.mjs signedRaises).
+CPL_BUDGET_RAISES=$(git log --format='%(trailers:key=Budget-raise,valueonly)' "$main_base"..HEAD)
+export CPL_BUDGET_RAISES
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook
 # was cut before its wasm check and grew cpl_lsp 544 B gz past its budget. Held to

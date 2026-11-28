@@ -10,7 +10,7 @@
 //! over the caller's domains: a matching is `[L]?R`, a bounded flow is `[E]Int`.
 use std.graph.{Next}
 use std.heap.{MinHeap}
-use std.seq.{collect, next_permutation, all, any, sum}
+use std.seq.{collect, next_permutation, all, any}
 use std.math.{bit}
 use std.range.{Len}
 

@@ -5,7 +5,12 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Once, OnceLock};
+use std::time::SystemTime;
+
+/// The most the kept builds may take: past it the least recently used go, so
+/// the cache stays a cache and doesn't fill the disk (it grew 38 GB in a day).
+const MAX_BYTES: u64 = 8 << 30;
 
 /// A cached build: the binary, the C++ beside it, and what g++ printed
 /// while building it (kept, so a warning still shows on a later hit).
@@ -57,8 +62,15 @@ pub fn build(cpp: &[u8], flags: &[&str]) -> Result<(PathBuf, String), String> {
         cache.join(&key),
         cache.join(format!("{key}.stderr")),
     );
+    static EVICTED: Once = Once::new();
+    EVICTED.call_once(|| evict(&cache, MAX_BYTES));
     if binary.exists() && std::fs::read(&source).is_ok_and(|kept| kept == cpp) {
         if let Ok(warnings) = std::fs::read_to_string(&said) {
+            // A hit marks the build used, so eviction keeps it.
+            let _ = std::fs::File::options()
+                .append(true)
+                .open(&binary)
+                .and_then(|f| f.set_modified(SystemTime::now()));
             return Ok((binary, warnings));
         }
     }
@@ -93,4 +105,77 @@ pub fn build(cpp: &[u8], flags: &[&str]) -> Result<(PathBuf, String), String> {
     std::fs::rename(&tmp_source, &source).map_err(|e| e.to_string())?;
     std::fs::rename(&tmp_said, &said).map_err(|e| e.to_string())?;
     Ok((binary, warnings))
+}
+
+/// Drop the least recently used builds in `dir` (a build's binary, C++ and
+/// stderr go together) until what is kept fits in `max_bytes`. Run once per
+/// test process, so a run pays one listing, not one per build.
+fn evict(dir: &Path, max_bytes: u64) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut builds: std::collections::HashMap<String, (u64, SystemTime)> = Default::default();
+    for entry in entries.flatten() {
+        let Ok(meta) = entry.metadata() else { continue };
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let key = name.split('.').next().unwrap_or_default().to_owned();
+        let build = builds.entry(key).or_insert((0, SystemTime::UNIX_EPOCH));
+        build.0 += meta.len();
+        if !name.contains('.') {
+            build.1 = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        }
+    }
+    let mut total: u64 = builds.values().map(|b| b.0).sum();
+    let mut by_use: Vec<_> = builds.into_iter().collect();
+    by_use.sort_by_key(|(_, (_, used))| *used);
+    for (key, (bytes, _)) in by_use {
+        if total <= max_bytes {
+            break;
+        }
+        for name in [key.clone(), format!("{key}.cpp"), format!("{key}.stderr")] {
+            let _ = std::fs::remove_file(dir.join(name));
+        }
+        total -= bytes;
+    }
+}
+
+#[test]
+fn eviction_drops_the_least_recently_used_builds_first() {
+    let dir = std::env::temp_dir().join(format!("cpl-cxx-evict-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    for (i, key) in ["old", "mid", "new"].into_iter().enumerate() {
+        for name in [
+            key.to_owned(),
+            format!("{key}.cpp"),
+            format!("{key}.stderr"),
+        ] {
+            std::fs::write(dir.join(&name), [0u8; 100]).unwrap();
+        }
+        let used = SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1000 * (i as u64 + 1));
+        std::fs::File::options()
+            .append(true)
+            .open(dir.join(key))
+            .unwrap()
+            .set_modified(used)
+            .unwrap();
+    }
+    evict(&dir, 650);
+    let mut left: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    left.sort();
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(
+        left,
+        [
+            "mid",
+            "mid.cpp",
+            "mid.stderr",
+            "new",
+            "new.cpp",
+            "new.stderr"
+        ]
+    );
 }

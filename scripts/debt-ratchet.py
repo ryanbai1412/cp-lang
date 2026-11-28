@@ -2773,10 +2773,14 @@ def old_std_copy_lines(root: Path) -> list[str]:
 
 
 OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
-# The std the old pipeline reads, a copy of std/ at c7ac8761d^ (migration rule 9): stage 5 deletes it.
+# What frozen_edits refuses new lines in: the old pipeline, its parser (cpl-syntax, whose lexer
+# is cpl-next-syntax's, the one shared lexer) and cpl-facade over it (review-16 (3)). Only the
+# four above are what stage 5 deletes and old_pipeline_lines counts.
+FROZEN_CRATES = OLD_PIPELINE_CRATES + ("cpl-syntax", "cpl-facade")
+# The std the old pipeline reads, a copy of std/ at 6a31a3747^ (migration rule 9): stage 5 deletes it.
 FROZEN_STD = "crates/cpl-check/frozen/std"
-# `git rev-parse c7ac8761d^:std`: the tree FROZEN_STD has to stay.
-FROZEN_STD_TREE = "1756ac17a51327060833500752f12401ec8db076"
+# `git rev-parse 6a31a3747^:std`: the tree FROZEN_STD has to stay.
+FROZEN_STD_TREE = "918845f0fb5e8d8e69b121774d22d5b10ff88bba"
 
 
 def frozen_std_drift(root: Path, tree: str = FROZEN_STD_TREE) -> list[str]:
@@ -5136,7 +5140,7 @@ COUNTERS = {
                            "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
     "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
     "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses: `Unbuilt` variants (Core)", next_refusal_kinds, True),
-    "frozen_std_drift": ("files of the old pipeline's std that are not std/ at c7ac8761d^ (Core)", frozen_std_drift, True),
+    "frozen_std_drift": ("files of the old pipeline's std that are not std/ at 6a31a3747^ (Core)", frozen_std_drift, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "old_std_copy_lines": ("code lines of the pinned std copy the frozen old pipeline reads (Core)", old_std_copy_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
@@ -5614,7 +5618,7 @@ def unhidden_wrong(root: Path, ref: str) -> list[str]:
 
 
 # The commit whose std the old pipeline is pinned to (`crates/cpl-check/frozen/std`).
-FROZEN_PIN = "c7ac8761d^"
+FROZEN_PIN = "6a31a3747^"
 
 # Frozen-pipeline edits admitted one by one, by the patch id of what each changes in
 # `OLD_PIPELINE_CRATES` (`git show SHA -- crates/cpl-check ... | git patch-id --stable`), which a
@@ -5757,7 +5761,7 @@ def frozen_edits(root: Path, base: str) -> list[str]:
     it adds passes it; this sees each commit. No trailer excuses one: the only commits that may
     add lines put each old-crate file they touch back as it was at `FROZEN_PIN`, or vendor
     `FROZEN_STD`, the pinned std the old pipeline reads. A fix goes to a conformance case."""
-    paths = [f"crates/{c}" for c in OLD_PIPELINE_CRATES]
+    paths = [f"crates/{c}" for c in FROZEN_CRATES]
     def restores(sha: str) -> bool:
         touched = _git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", sha, "--", *paths)
         def blob(ref: str, f: str) -> str:
@@ -5765,7 +5769,12 @@ def frozen_edits(root: Path, base: str) -> list[str]:
         # The commit that vendors FROZEN_STD is the pin itself: it puts the crates back at
         # FROZEN_PIN, each fitted to the crates outside the freeze, and only one commit can.
         pins = bool(blob(sha, FROZEN_STD)) and not blob(f"{sha}^", FROZEN_STD)
-        return bool(touched) and (pins or all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched))
+        # A re-pin touches only FROZEN_STD, leaving it the tree its own FROZEN_STD_TREE names.
+        tree = re.search(r'^FROZEN_STD_TREE = "([0-9a-f]+)"$', "\n".join(
+            _git(root, "show", f"{sha}:scripts/debt-ratchet.py")), re.M)
+        repins = all(f.startswith(f"{FROZEN_STD}/") for f in touched) and bool(tree) \
+            and blob(sha, FROZEN_STD) == tree.group(1) != blob(f"{sha}^", FROZEN_STD)
+        return bool(touched) and (pins or repins or all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched))
     def admitted(sha: str) -> bool:
         diff = subprocess.run(["git", "-C", str(root), "show", sha, "--", *paths], capture_output=True).stdout
         pid = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()

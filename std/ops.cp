@@ -152,6 +152,16 @@ impl Rem for I128:
     fn rem(self, other: I128) -> I128 = self % other
 impl Neg for I128:
     fn neg(self) -> I128 = -self
+impl Add for F64:
+    fn add(self, other: F64) -> F64 = self + other
+impl Sub for F64:
+    fn sub(self, other: F64) -> F64 = self - other
+impl Mul for F64:
+    fn mul(self, other: F64) -> F64 = self * other
+impl Div for F64:
+    fn div(self, other: F64) -> F64 = self / other
+impl Neg for F64:
+    fn neg(self) -> F64 = -self
 impl BitXor for Int:
     fn bitxor(self, other: Int) -> Int = self ^ other
 impl BitOr for Int:

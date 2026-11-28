@@ -52,6 +52,25 @@ class StdModelsTest(unittest.TestCase):
         self.assertEqual(m.gaps(STD, [("c/q.cp", "// model: Q\n// model: Frozen\n// model: total\n// model: Nope\n")]),
                          ["c/q.cp: `// model: Nope` names no std type or pub std fn"])
 
+    def test_a_model_may_name_a_pub_traits_default_method_but_not_a_bare_signature(self):
+        walk = [("std/w.cp", """\
+pub trait Walk<T>:
+    fn iter(self) -> yields T
+    fn first(self, d: T = 0) -> T
+    fn total(self) -> Int:
+        0
+    fn twice(self, by: Int = 2) -> (Int, Int) = (by, by)
+
+trait Private:
+    fn quiet(self) -> Int = 0
+""")]
+        case = "// model: total\n// model: twice\n// model: iter\n// model: first\n// model: quiet\n"
+        self.assertEqual(m.gaps(walk, [("c/w.cp", case)]), [
+            "c/w.cp: `// model: first` names no std type or pub std fn",
+            "c/w.cp: `// model: iter` names no std type or pub std fn",
+            "c/w.cp: `// model: quiet` names no std type or pub std fn",
+        ])
+
     def test_shrink_finds_the_shortest_failing_prefix(self):
         self.assertEqual(m.shrink(lambda n: n >= 17, 300), 17)
         self.assertEqual(m.shrink(lambda n: True, 300), 1)

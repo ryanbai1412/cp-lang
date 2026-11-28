@@ -14,7 +14,7 @@
 //! `convexity_break`). A sliding-window optimum is `a.window_fold(k, op)` or `std.window.Window(op)`.
 use std.algebra.{Monoid}
 use std.math.{bit}
-use std.seq.{collect, all, sum}
+use std.seq.{collect, all}
 use std.range.{Len, first_true}
 
 /// \(O(1)\) per evaluation.

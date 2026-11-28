@@ -41,7 +41,7 @@ pub fn prod<S: Seq<T>, T>(self: S) -> T:
 /// empty: `let a: List<Int> = []; a.sum() == 0`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
-pub fn sum<S: Seq<T>, T, U: Zero + Add>(self: S, of: T -> U = x => x) -> U:
+pub fn sum<S: Seq<T>, T, U>(self: S, of: T -> U = x => x) -> U:
     var out = U.zero
     for x in self: out += of(x)
     out
@@ -91,7 +91,7 @@ pub enum Ties = First | Last
 @lint(sort_for_extreme, from: "self.sorted().first!", to: "self.min()!")
 @lint(sort_for_extreme, from: "self.sorted(by: by)[0]", to: "self.min(by: by)!")
 @lint(sort_for_extreme, from: "self.sorted(by: by).first!", to: "self.min(by: by)!")
-pub fn min<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+pub fn min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
@@ -121,7 +121,7 @@ pub fn min<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties
 @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y > x:\n        x = y", to: "let x = self.max()", holes: "v", when: "v <= -1000000000")
 @lint(sort_for_extreme, from: "self.sorted().last!", to: "self.max()!")
 @lint(sort_for_extreme, from: "self.sorted(by: by).last!", to: "self.max(by: by, ties: Ties.Last)!")
-pub fn max<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+pub fn max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
     let last = ties == Ties.Last
     var best: ?T = None
     for x in self:
@@ -192,7 +192,7 @@ pub fn all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool:
 /// empty: `let a: List<Int> = []; a.is_sorted() == true`
 /// traps: never
 /// example: `[1, 1, 2].is_sorted() == true`
-pub fn is_sorted<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> Bool:
+pub fn is_sorted<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Bool:
     var prev: ?K = None
     for x in self:
         let k = by(x)
@@ -270,7 +270,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// traps: never
 /// example: `[4, 5].last == Some(5)`
 @lint(peek_then_pop, from: "let x = self.last!\nself.pop()", to: "let x = self.pop()!")
-@get pub fn last<S: Bidir<T>, T>(self: S) -> ?T:
+@get pub fn last<S: Bidir, T>(self: S) -> ?T:
     for x in self.iter_rev(): return Some(x)
     None
 
@@ -283,7 +283,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// example: `[1, 4, 2, 5].rfind(x => x % 2 == 0) == Some(2)`
 @lint(sentinel_scalar, from: "var x = -1\nfor i in self:\n    if c:\n        x = i", to: "let x = self.rfind(i => c)", holes: "c")
 @lint(sentinel_scalar, from: "var x: Int = -1\nfor i in self:\n    if c:\n        x = i", to: "let x: ?Int = self.rfind(i => c)", holes: "c")
-pub fn rfind<S: Bidir<T>, T>(self: S, p: T -> Bool) -> ?T:
+pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
     for x in self.rev:
         if p(x): return Some(x)
     None
@@ -411,7 +411,7 @@ pub fn sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) 
 /// traps: never
 /// example: `[1, 2, 3].reversed() == [3, 2, 1]`
 @lint(reverse_index, from: "[self[self.len - 1 - i] for i in 0..self.len]", to: "self.reversed()")
-pub fn reversed<S: Bidir<T>, T>(self: S) -> List<T> = self.rev.collect()
+pub fn reversed<S: Bidir, T>(self: S) -> List<T> = self.rev.collect()
 
 /// \(O(n)\). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).
 /// Works on any `IndexedMut` (`List<T>`, `[D]T`, `MutView<T>`, `Str`).
@@ -1422,16 +1422,6 @@ pub trait Seq<T>:
     @lint(index_only_loop, from: "for i in self.indices:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
     fn iter(self) -> yields T
 
-/// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
-/// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the
-/// results with `List(g)`.
-@recipe pub struct Gen<T>:
-    run: () -> ()
-
-impl Seq<T> for Gen<T>:
-    fn iter(self) -> yields T:
-        for x in self: yield x
-
 /// A `Seq` whose elements carry keys: `s.items` walks `(key, x)`, and keys survive `filter`
 /// (R07.3.2).
 pub trait Keyed<D, T>: Seq<T>:
@@ -1447,13 +1437,6 @@ pub trait Sized:
 pub trait Bidir<T>: Seq<T>:
     /// Walks the sequence from its end.
     fn iter_rev(self) -> yields T
-
-/// `List(s)`: a new list of `s`'s elements in walk order. \(O(n)\) (R07.8.1).
-impl<S: Seq<T>, T> Into<List<T>> for S:
-    fn into(self) -> List<T>:
-        var xs = List<T>()
-        for x in self: xs.push(x)
-        xs
 
 impl Seq<T> for List<T>:
     fn iter(self) -> yields T:
@@ -1508,7 +1491,7 @@ impl Seq<T> for [D]T:
 
 impl Bidir<T> for [D]T:
     fn iter_rev(self) -> yields T:
-        for v in D.rev: yield self[v]
+        for x in self.rev: yield x
 
 impl Sized for [D]T:
     @get fn len(self) -> Int = self.len
@@ -1542,28 +1525,11 @@ pub trait Positional<T>: Seq<T> + Sized:
     /// The element `k` steps into the walk, 0-based; traps unless `0 <= k < len`.
     fn nth(self, k: Int) -> T
 
-/// `s[k]` read: the element at key `k`. A `List`, an array and a `Map` have it; a `Map`'s keys
-/// are not positions, so it is not `Indexed` (R12.4.5).
-pub trait IndexGet<K, T>:
-    /// The element at key `k`; traps when `s` holds none there.
-    fn at(self, k: K) -> T
-
-/// `s[k]` as a place: a write through it lands in `s`, in place (R12.4.6). A `Map`'s starts an
-/// absent key at the default of its values, so `m[k] += 1` counts (R07.12.9).
-pub trait IndexMut<K, T>: IndexGet<K, T>:
-    fn at(mut self, k: K) -> lends mut T
-/// An `Indexed` sequence whose cells are places: what `sort`, `reverse` and `swap` write
-/// (R12.4.6).
-pub trait IndexedMut<K, T>: Indexed<K, T> + IndexMut<K, T>
-/// `s[k] = v` as a write of `v` at `k`, not through a place: a `Map` inserts or replaces, and
-/// its values need no default (spec 12, W8).
-@operator("[]=")
-pub trait IndexSet<K, T>:
-    fn set(mut self, k: K, v: T)
-
 /// A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
-pub trait Indexed<D, T>: IndexGet<D, T> + Keyed<D, T> + Positional<T> + Bidir<T>:
+pub trait Indexed<D, T>: Keyed<D, T> + Positional<T> + Bidir<T>:
     type Taken = Slice<Self>
+    /// The element at key `i`.
+    fn at(self, i: D) -> T
     /// The keys, in walk order.
     @get fn keys(self) -> Range<D>
 
@@ -1623,9 +1589,8 @@ impl Bidir<U> for Mapped<S: Bidir<T>, T, U>:
 impl Positional<U> for Mapped<S: Indexed<D, T>, T, U>:
     fn nth(self, k: Int) -> U = f(src.nth(k))
 
-impl IndexGet<D, U> for Mapped<S: Indexed<D, T>, T, U>:
-    fn at(self, i: D) -> U = f(src.at(i))
 impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
+    fn at(self, i: D) -> U = f(src.at(i))
     @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. The view `zip(a, b)`: `a`'s elements paired with `b`'s by walk order, as many
@@ -1673,9 +1638,8 @@ impl Bidir<(T, U)> for Zipped<A: Positional<T>, B: Positional<U>, T, U>:
     fn iter_rev(self) -> yields (T, U):
         for k in (0..shorter(first.len, second.len)).rev: yield (first.nth(k), second.nth(k))
 
-impl IndexGet<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
-    fn at(self, i: D) -> (T, U) = (first.at(i), second.nth(i.ord - first.keys.start.ord))
 impl Indexed<D, (T, U)> for Zipped<A: Indexed<D, T>, B: Positional<U>, T, U>:
+    fn at(self, i: D) -> (T, U) = (first.at(i), second.nth(i.ord - first.keys.start.ord))
     @get fn keys(self) -> Range<D> = first.keys.take(shorter(first.len, second.len))
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
@@ -1778,9 +1742,8 @@ impl Positional<(D, T)> for Items<S: Indexed<D, T>>:
         let i = src.keys[k]
         (i, src.at(i))
 
-impl IndexGet<D, (D, T)> for Items<S: Indexed<D, T>>:
-    fn at(self, i: D) -> (D, T) = (i, src.at(i))
 impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
+    fn at(self, i: D) -> (D, T) = (i, src.at(i))
     @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. `s[r]`: a lent view of `s` over the range `r`. Every slice keeps its
@@ -1900,11 +1863,10 @@ impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Slice<S>:
     /// `(0..len)[k]` is `k`, read as a key so one outside the slice traps R0101 (R07.4.5).
     fn nth(self, k: Int) -> T = self.src.nth(self.lo + (0..self.len)[k])
 
-impl<S: Indexed<K, T>, K: Domain, T> IndexGet<K, T> for Slice<S>:
+impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
     /// `keys[i]` is `i`, checked: a key outside the slice traps R0101, never reading the source
     /// around it (R07.4.5).
     fn at(self, i: K) -> T = self.src.at(self.keys[i])
-impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
     /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
     ///
     /// cost: \(O(1)\)
@@ -1919,87 +1881,6 @@ impl<S: Indexed<K, T>, K: Domain, T> Indexed<K, T> for Slice<S>:
 /// traps: never
 /// example: `[5, 6, 7][1..].to_list() == [6, 7]`
 pub fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T> = self.collect()
-
-/// \(O(1)\) to make. `g[r]`: row `r` of a grid `[R, C]T`, a lent view keyed by the column
-/// domain, so its keys are `C`'s positions, not offsets from 0 (R04b.1.12).
-pub struct Row<R, C, T>(
-    /// The grid the row was cut from, lent: frozen while the row is alive.
-    src: [R, C]T,
-    /// Which row of `src` this is.
-    r: R,
-)
-
-/// `g[r]`: row `r` of `g`, keyed by `C` (R04b.1.12).
-@index fn row<R: Domain, C: Domain, T>(self: [R, C]T, r: R) -> Row<R, C, T> = Row(self, r)
-
-impl<R: Domain, C: Domain, T> Seq<T> for Row<R, C, T>:
-    fn iter(self) -> yields T:
-        for c in C: yield self.src[self.r, c]
-
-impl<R: Domain, C: Domain, T> Bidir<T> for Row<R, C, T>:
-    fn iter_rev(self) -> yields T:
-        for c in self.keys.rev: yield self.src[self.r, c]
-
-impl<R: Domain, C: Domain, T> Sized for Row<R, C, T>:
-    @get fn len(self) -> Int = C.count
-
-impl<R: Domain, C: Domain, T> Keyed<C, T> for Row<R, C, T>:
-    fn items(self) -> yields (C, T):
-        for c in C: yield (c, self.src[self.r, c])
-
-impl<R: Domain, C: Domain, T> Positional<T> for Row<R, C, T>:
-    fn nth(self, k: Int) -> T = self.src[self.r, C.nth((0..C.count)[k])]
-
-impl<R: Domain, C: Domain, T> IndexGet<C, T> for Row<R, C, T>:
-    fn at(self, c: C) -> T = self.src[self.r, c]
-impl<R: Domain, C: Domain, T> Indexed<C, T> for Row<R, C, T>:
-    @get fn keys(self) -> Range<C> = C
-
-/// `g[r, cs]`: the columns `cs` of row `r` of `g`, keyed by `C`; `g[r, ..]` is all of it
-/// (R04.4.11).
-@index fn row_piece<R: Domain, C: Domain, T>(
-    self: [R, C]T,
-    k: (R, Range<C>)
-) -> Slice<Row<R, C, T>> = Row(self, k._0)[k._1]
-
-/// \(O(1)\) to make. `g[.., c]`: column `c` of a grid `[R, C]T`, a lent view keyed by the row
-/// domain, so its keys are `R`'s positions, not offsets from 0 (R04b.1.12).
-pub struct Col<R, C, T>(
-    /// The grid the column was cut from, lent: frozen while the column is alive.
-    src: [R, C]T,
-    /// Which column of `src` this is.
-    c: C,
-)
-
-/// `g[rs, c]`: the rows `rs` of column `c` of `g`, keyed by `R`; `g[.., c]` is all of it
-/// (R04.4.11).
-@index fn col<R: Domain, C: Domain, T>(
-    self: [R, C]T,
-    k: (Range<R>, C)
-) -> Slice<Col<R, C, T>> = Col(self, k._1)[k._0]
-
-impl<R: Domain, C: Domain, T> Seq<T> for Col<R, C, T>:
-    fn iter(self) -> yields T:
-        for r in R: yield self.src[r, self.c]
-
-impl<R: Domain, C: Domain, T> Bidir<T> for Col<R, C, T>:
-    fn iter_rev(self) -> yields T:
-        for r in self.keys.rev: yield self.src[r, self.c]
-
-impl<R: Domain, C: Domain, T> Sized for Col<R, C, T>:
-    @get fn len(self) -> Int = R.count
-
-impl<R: Domain, C: Domain, T> Keyed<R, T> for Col<R, C, T>:
-    fn items(self) -> yields (R, T):
-        for r in R: yield (r, self.src[r, self.c])
-
-impl<R: Domain, C: Domain, T> Positional<T> for Col<R, C, T>:
-    fn nth(self, k: Int) -> T = self.src[R.nth((0..R.count)[k]), self.c]
-
-impl<R: Domain, C: Domain, T> IndexGet<R, T> for Col<R, C, T>:
-    fn at(self, r: R) -> T = self.src[r, self.c]
-impl<R: Domain, C: Domain, T> Indexed<R, T> for Col<R, C, T>:
-    @get fn keys(self) -> Range<R> = R
 
 /// \(O(1)\). `self` keyed by a fresh domain `0..len` of its own (`let t = w.rebase`, keys `t.Idx`),
 /// for 0-based arithmetic on a piece; its keys can't be mixed with the source's.
@@ -2033,9 +1914,8 @@ impl<S: Indexed<K, T>, K: Domain, T> Bidir<T> for Rebased<S>:
 impl<S: Indexed<K, T>, K: Domain, T> Positional<T> for Rebased<S>:
     fn nth(self, k: Int) -> T = self.src.nth(k)
 
-impl<S: Indexed<K, T>, K: Domain, T> IndexGet<Idx, T> for Rebased<S>:
-    fn at(self, i: Idx) -> T = self.src.nth(i.ord)
 impl<S: Indexed<K, T>, K: Domain, T> Indexed<Idx, T> for Rebased<S>:
+    fn at(self, i: Idx) -> T = self.src.nth(i.ord)
     @get fn keys(self) -> Range<Idx> = Idx.all
 
 /// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks
@@ -2132,13 +2012,12 @@ pub struct StepKeys(first: Int, n: Int, k: Int, from: Int):
     /// example: `[3, 1, 2, 4, 5].step(2).keys.len == 3`
     @get pub fn len(self) -> Int = if from >= n: 0 else: (n - from + k - 1) / k
 
-impl<K: Domain> Contains<K> for StepKeys:
     /// \(O(1)\). Whether the walk visits `i`: `i in s.keys`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[3, 1, 2, 4, 5].step(2).keys.contains(4)`
-    fn contains(self, i: K) -> Bool:
+    pub fn contains<K>(self, i: K) -> Bool:
         let o = i.ord - first - from
         0 <= o < n - from and o % k == 0
 
@@ -2509,12 +2388,12 @@ pub fn majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) ->
 /// traps: never
 /// example: `[(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)[1] == ['a', 'c']`
 @lint(group_into_map, from: "for x in self:\n    (m[k] ??= []).push(v)", to: "let m = self.group(by: x => k, of: x => v)", holes: "m, k, v")
-pub fn group<S: Seq<T>, T, K: Ord, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
+pub fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>:
     var out = Map<K, List<U>>()
     for x in self:
         let k = by(x)
-        if out.contains(k): out[k].push(of(x))
-        else: out[k] = [of(x)]
+        if out.get(k) == None: out[k] = []
+        out[k].push(of(x))
     out
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` smallest elements under `by:` (unordered; ties to earlier index).
@@ -2525,7 +2404,7 @@ pub fn group<S: Seq<T>, T, K: Ord, U>(self: S, by: T -> K, of: T -> U = x => x) 
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].min_k(2).sorted() == [1, 2]`
-pub fn min_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
+pub fn min_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
     keep_k(self, k, by, (p, q) => p.0 < q.0 or (p.0 == q.0 and p.1 < q.1))
 
 /// \(O(n)\) expected, \(O(k)\) memory. `k` largest elements under `by:` (unordered; ties to earlier index).
@@ -2536,7 +2415,7 @@ pub fn min_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List
 /// order: unspecified; sort it when order matters
 /// traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 /// example: `[5, 1, 4, 2].max_k(2).sorted() == [4, 5]`
-pub fn max_k<S: Seq<T>, T, K: Ord>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
+pub fn max_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>:
     keep_k(self, k, by, (p, q) => q.0 < p.0 or (p.0 == q.0 and p.1 < q.1))
 
 // the `k` first under `first` of `(key, index, element)`, in a buffer that never passes `2k`
@@ -3615,7 +3494,7 @@ fn cyclic_pairs_close_the_ring():
 /// traps: never
 /// example: `[3, 9, 2, 9].argmax() == Some(1)`
 /// example: `[3, 9, 2, 9].argmax(ties: Ties.Last) == Some(3)`
-pub fn argmax<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+pub fn argmax<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
     let last = ties == Ties.Last
     var best: ?D = None
     var high: ?K = None
@@ -3634,7 +3513,7 @@ pub fn argmax<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: 
 /// traps: never
 /// example: `[3, 1, 1].argmin() == Some(1)`
 /// example: `[3, 1, 1].argmin(ties: Ties.Last) == Some(2)`
-pub fn argmin<S: Keyed<D, T>, D, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+pub fn argmin<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
     let last = ties == Ties.Last
     var best: ?D = None
     var low: ?K = None
@@ -4473,22 +4352,6 @@ impl Show for Slice<S>:
     fn show(v):
         var out = ""
         for (_, x) in v.items:
-            if not out.is_empty: out += " "
-            out += "{x}"
-        out
-
-impl Show for Row<R, C, T>:
-    fn show(v):
-        var out = ""
-        for x in v:
-            if not out.is_empty: out += " "
-            out += "{x}"
-        out
-
-impl Show for Col<R, C, T>:
-    fn show(v):
-        var out = ""
-        for x in v:
             if not out.is_empty: out += " "
             out += "{x}"
         out

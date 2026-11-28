@@ -28,9 +28,10 @@ pub enum CTy {
     /// `lo..=hi` as a type argument: `MemoArray<0..=90, V>` is an instance of its own, whose
     /// `K.count` is 91. A value of it is an `Int`.
     Range(i64, i64),
-    /// `lo..=D.count + k` as a type argument: `Tree<V>`'s `[0..V.count - 1]` axis. Its count is
-    /// `D`'s plus `k - lo + 1`; a value of it is an `Int`.
-    RangeTo(Box<CTy>, i64, i64),
+    /// `lo..=D.m + k` as a type argument, `m` the `Domain` getter `Ty::RangeTo` names:
+    /// `Tree<V>`'s `[0..V.count - 1]` axis. Its count is `D`'s plus `k - lo + 1`; a value of it
+    /// is an `Int`.
+    RangeTo(Box<CTy>, FnId, i64, i64),
     Error,
 }
 impl CTy {

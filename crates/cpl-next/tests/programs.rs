@@ -89,9 +89,14 @@ fn run_within(mut cmd: Command, input: &[u8], limit: Duration) -> Ran {
 }
 
 /// The judge a case is built for, as `cpl-next --judge` takes it: the harness resolves it the
-/// way a build with no project config does, and the compiler only reads it.
+/// way a build does, from the `cp.toml` a `// file:` header put beside the case, or else as
+/// one with no project config; the compiler only reads it.
 fn judge(path: &Path) -> Option<String> {
-    let p = cpl_judge::of(&std::fs::read_to_string(path).ok()?)?;
+    let text = std::fs::read_to_string(path).ok()?;
+    let p = match path.parent().is_some_and(|d| d.join("cp.toml").is_file()) {
+        true => cpl_judge::resolve(path, &text, None).ok()?,
+        false => cpl_judge::of(&text)?,
+    };
     Some(format!("{}={}", p.name, p.memory_mb))
 }
 
@@ -461,7 +466,7 @@ fn verdict(path: &Path) -> (&'static str, String) {
             format!("exit {n}: the command line's own status"),
         );
     }
-    if matches!(&expect, Expect::Diag { code, .. } if code.starts_with('L')) {
+    if matches!(&expect, Expect::Diag { code, .. } if is_lint(code)) {
         return ("refused", "a lint".into());
     }
     let scratch = match beside_its_files(path, &text) {
@@ -520,6 +525,12 @@ fn verdict(path: &Path) -> (&'static str, String) {
         );
     }
     ("pass", String::new())
+}
+
+/// A lint's expectation: an `L` code or a named lint such as `prefix_totals_list`, which no
+/// cpl-next query reports yet.
+fn is_lint(code: &str) -> bool {
+    code.starts_with('L') || code.starts_with(|c: char| c.is_ascii_lowercase())
 }
 
 /// A case with `// file: PATH "TEXT"` lines runs from a scratch folder holding a copy of it
@@ -1360,6 +1371,34 @@ fn fast_ops_agree_with_their_bodies() {
             .0;
         agree(&format!("C++ {bodies:?}"), run_kept(&bin, b"", LIMIT));
     }
+}
+
+/// A named lint is a lint, as an `L` code is; an error or trap code is not
+/// (lints/std-declares-idiom-lints).
+#[test]
+fn a_named_lint_is_a_lint() {
+    assert!(is_lint("prefix_totals_list") && is_lint("L0101"));
+    assert!(!is_lint("E0902") && !is_lint("R0301") && !is_lint("W0101"));
+}
+
+/// A case's own `cp.toml`, written by `// file:`, defines its judge; without one only a
+/// built-in judge resolves (tools-judge/check-memory-over-the-judges-limit).
+#[test]
+fn a_case_judge_comes_from_its_own_cp_toml() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let dir = here.join("../../target/cpl-next/scratch/judge-of-a-case");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let case = dir.join("case.cp");
+    std::fs::write(&case, "// expect: exit 1\n// judge: small\nprint(1)\n").unwrap();
+    assert_eq!(judge(&case), None, "`small` is no built-in judge");
+    std::fs::write(
+        dir.join("cp.toml"),
+        "[judge.small]\nextends = \"generic\"\nmemory_mb = 1\n",
+    )
+    .unwrap();
+    assert_eq!(judge(&case).as_deref(), Some("small=1"));
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// Without `--trace` a trap names the line of the operation that trapped on every runner,

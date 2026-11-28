@@ -2854,6 +2854,13 @@ pub struct PointSet:
         for i in 0..alive.len:
             if alive[i]: yield i
 
+    /// Whether point `i` is still in the set.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `i` is not an index of the built list
+    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5)]); let _ = s.drain(0..2, 0..2); s.contains(0) == false and s.contains(1)`
+    pub fn contains(self, i: Int) -> Bool = alive[i]
+
     /// Remove point `i`; `false` when it was already gone.
     ///
     /// cost: \(O(1)\); later drains pass over it once per node it sits in
@@ -2908,14 +2915,6 @@ pub struct PointSet:
             a /= 2
             b /= 2
         out
-
-impl Contains<Int> for PointSet:
-    /// Whether point `i` is still in the set.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when `i` is not an index of the built list
-    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5)]); let _ = s.drain(0..2, 0..2); s.contains(0) == false and s.contains(1)`
-    fn contains(self, i: Int) -> Bool = alive[i]
 
 // ---- axis-aligned rectangles, planar subdivisions, and Delaunay / Voronoi
 

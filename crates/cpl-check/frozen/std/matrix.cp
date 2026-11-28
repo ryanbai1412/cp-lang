@@ -12,7 +12,7 @@ use std.algebra.{Monoid, Semiring}
 use std.math.{abs, mul_mod, bit, ceil_div}
 use std.mod.{Mod, Residue}
 use std.rand.{Rng}
-use std.seq.{collect, all, count}
+use std.seq.{collect, all}
 use std.spec.{berlekamp_massey}
 use std.range.{Len}
 
@@ -1339,7 +1339,7 @@ fn bit_rref(rows: Int, cols: Int, mut a: List<Int>) -> List<Int>:
 
 /// \(O(62)\) per push and query. Online prefix linear basis answering subarray XOR queries over any range `r`.
 pub struct PrefixXorBasis:
-    pub var len: Len
+    pub len: Len
     vecs: List<Int>
     from: List<Int>
 

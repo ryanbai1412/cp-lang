@@ -3,6 +3,7 @@
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::views::{Checked, Generics, Signatures, Summaries};
 use cpl_next_ir::ir::*;
+use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::ty::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::whole::{DomId, DomValue, GlobalId};
@@ -478,7 +479,7 @@ impl Link<'_> {
     fn targ(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
             Ty::Range(lo, hi) => CTy::Range(*lo, *hi),
-            Ty::RangeTo(d, _, lo, k) => CTy::RangeTo(Box::new(self.targ(d, env)), *lo, *k),
+            Ty::RangeTo(d, m, lo, k) => CTy::RangeTo(Box::new(self.targ(d, env)), *m, *lo, *k),
             Ty::Param(i) => env.targs.get(*i).cloned().unwrap_or(CTy::Error),
             t => self.ty(t, env),
         }
@@ -1107,7 +1108,17 @@ impl Link<'_> {
             // A range with constant ends is the domain of its integers (R04.2.18).
             EK::DomLen(t) => match self.targ(t, env) {
                 CTy::Range(lo, hi) => EK::Int((hi - lo + 1).max(0)),
-                CTy::RangeTo(d, lo, k) => {
+                CTy::RangeTo(d, m, lo, k) => {
+                    // Its count is `D.count`'s: `Domain` has no other getter a range may end at.
+                    if !matches!(
+                        self.d.f(m).intrinsic,
+                        Some(Intrinsic::Domain(DomainOp::Count))
+                    ) {
+                        let name = self.d.f(m).name.clone();
+                        self.errors.push(Msg::internal(format!(
+                            "a range type ends at `{name}`, which link has no count for"
+                        )));
+                    }
                     let int = |kind| Expr {
                         kind,
                         ty: CTy::Int,
@@ -1123,11 +1134,11 @@ impl Link<'_> {
                 t => EK::DomLen(t),
             },
             EK::DomLo(t) => match self.targ(t, env) {
-                CTy::Range(lo, _) | CTy::RangeTo(_, lo, _) => EK::Int(lo),
+                CTy::Range(lo, _) | CTy::RangeTo(_, _, lo, _) => EK::Int(lo),
                 t => EK::DomLo(t),
             },
             EK::DomHeld(t) => match self.targ(t, env) {
-                CTy::Range(lo, _) | CTy::RangeTo(_, lo, _) => EK::Int(lo),
+                CTy::Range(lo, _) | CTy::RangeTo(_, _, lo, _) => EK::Int(lo),
                 _ => EK::Int(0),
             },
             EK::DomCounted(t) => EK::Bool(match self.targ(t, env) {
@@ -1659,7 +1670,7 @@ fn fits_head(
         CTy::Int => Ty::Int,
         CTy::Range(lo, hi) => Ty::Range(*lo, *hi),
         // Only its kind matters to `head_fits`: a range's.
-        CTy::RangeTo(_, lo, _) => Ty::Range(*lo, *lo),
+        CTy::RangeTo(_, _, lo, _) => Ty::Range(*lo, *lo),
         _ => Ty::Unit,
     };
     d.impls().head_fits(im, &head) && fit_cty(&im.for_, t, binds)

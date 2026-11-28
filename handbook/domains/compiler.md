@@ -5,7 +5,7 @@
 | Kind | Domain charter |
 | Owner | compiler |
 | Status | Active |
-| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-ir`, `crates/cpl-interp`, `crates/cpl-prover`, `crates/cpl-rt` |
+| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-ir`, `crates/cpl-interp`, `crates/cpl-prover`, `crates/cpl-rt`, `crates/cpl-next-syntax`, `crates/cpl-prim` |
 
 The compiler domain decides what a CP Lang program means. It reads the
 text, checks names and types, lowers the program to one typed form, and

@@ -5,7 +5,7 @@
 | Kind | Domain charter |
 | Owner | tools |
 | Status | Active |
-| Describes | `crates/cpl-cli`, `crates/cpl-facade`, `crates/cpl-contest`, `crates/cpl-lsp`, `crates/cpl-doc`, `crates/cpl-json`, `crates/cpl-env`, `editors/`, `spec/tools/cli.md`, `spec/tools/bundle.md`, `spec/tools/explain.md` |
+| Describes | `crates/cpl-cli`, `crates/cpl-facade`, `crates/cpl-contract`, `crates/cpl-contest`, `crates/cpl-lsp`, `crates/cpl-doc`, `crates/cpl-json`, `crates/cpl-env`, `editors/`, `spec/tools/cli.md`, `spec/tools/bundle.md`, `spec/tools/explain.md` |
 
 The tools domain owns everything a contestant touches to drive CP Lang:
 the `cpl` command, the language server behind every editor, the editor

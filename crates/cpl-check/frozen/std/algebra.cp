@@ -226,7 +226,7 @@ impl<T> Acts<T, Bool> for FlipAction:
 /// `x` with its order reversed. Build it with `desc(x)`.
 pub struct Desc<T>(pub x: T)
 
-impl<T: Ord> Ord for Desc<T>:
+impl Ord for Desc<T>:
     fn lt(a, b) = b.x < a.x
 
 impl Show for Desc<T>:

@@ -68,11 +68,11 @@ pub fn is_none_or<T>(self: ?T, p: T -> Bool) -> Bool:
 /// cost: \(O(1)\)
 /// example: `Some(4).is_some == true`
 /// example: `let n: ?Int = None; n.is_some == false`
-@get pub fn is_some<T>(self: ?T) -> Bool = self != None
+pub fn is_some<T>(self: ?T) -> Bool = self != None
 
 /// Whether there is no value.
 ///
 /// cost: \(O(1)\)
 /// example: `Some(4).is_none == false`
 /// example: `let n: ?Int = None; n.is_none == true`
-@get pub fn is_none<T>(self: ?T) -> Bool = self == None
+pub fn is_none<T>(self: ?T) -> Bool = self == None
