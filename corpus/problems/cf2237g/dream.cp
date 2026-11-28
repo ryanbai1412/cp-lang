@@ -43,7 +43,7 @@ let powers = primes.map(top_power)
 let run: Run = read()
 for _ in 0..read<Int>():
     match run:
-        First:
+        First =>
             let a: List<0..=V> = read()
             let b = recut(
                 a,
@@ -53,7 +53,7 @@ for _ in 0..read<Int>():
             ).map(s => symbols[s]) + powers
             print(b.len)
             print(b)
-        Second:
+        Second =>
             let (n, k): (Int, Int) = read()
             fn ask(i: Int, j: Int) -> Int:
                 print("?", i + 1, j + 1)

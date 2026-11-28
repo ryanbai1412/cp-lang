@@ -9,7 +9,7 @@ var hit = 0
 for k in 0..7:
     if cnt.contains(k): hit += cnt[k]
     match cnt.get(k):
-        Some(v): print(k, v)
-        None: print(k, "none")
+        Some(v) => print(k, v)
+        None => print(k, "none")
 cnt.remove(0)
 print(hit, cnt.len, rows.len, rows[1], rows[3][1])

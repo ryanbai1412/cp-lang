@@ -48,8 +48,8 @@ var track = SegTree(then, [Piece] p => Rise(0, 0, piece[p].len), act: assign)
 
 for c in cmds:
     match c:
-        Set(a, b, d): track.apply(piece.covering(a..=b), d)
-        Ask(h):
+        Set(a, b, d) => track.apply(piece.covering(a..=b), d)
+        Ask(h) =>
             let stop = track.right_while(Piece.cuts.first!, x => x.peak <= h)
             if let p = stop.r:
                 let at = track.get(p)

@@ -61,8 +61,8 @@ while true:
     on[wire(r2, c2)] = true
     for g in gates:
         on.push(match g.op:
-            And: g.ins.all(i => on[i])
-            Or: g.ins.any(i => on[i])
-            Not: not on[g.ins[0]]
+            And => g.ins.all(i => on[i])
+            Or => g.ins.any(i => on[i])
+            Not => not on[g.ins[0]]
         )
     print(Int(on.last!))

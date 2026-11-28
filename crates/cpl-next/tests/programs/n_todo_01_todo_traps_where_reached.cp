@@ -9,8 +9,8 @@ fn half(n: Int) -> Int =
         todo // <- here
 fn pick(k: Int) -> Int:
     match k:
-        0: 10
-        _: todo
+        0 => 10
+        _ => todo
 let skip = false
 if skip: print(later())
 print(half(8), pick(0))

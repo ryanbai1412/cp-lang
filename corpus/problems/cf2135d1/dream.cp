@@ -29,7 +29,7 @@ fn ask(vals: List<Int>) -> Int:
 let resp1 = ask(List.filled(Q1, G))
 if resp1 == 0:
     let resp2 = ask(List.filled(Q02, 1))
-    print("!", first(ans for ans in 1..=Q02 if resp2 == ceil_div(Q02, ans))!)
+    print("!", (1..=Q02).find(ans => resp2 == ceil_div(Q02, ans))!)
     return
 
 let w_min = ceil_div(Q1, resp1) * G
