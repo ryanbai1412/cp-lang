@@ -18,7 +18,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
 /// The steps a constant may take (each fn entered and each jump taken back is one), the same
-/// on every machine.
+/// on every machine (R01.6.8).
 pub(crate) const BUDGET: u64 = 10_000_000;
 
 type Key = (ItemId, cpl_diag::Span);

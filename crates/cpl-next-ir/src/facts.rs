@@ -55,6 +55,8 @@ impl Lin {
 }
 
 /// How far a proof chains facts, each step cancelling one atom, and how many steps it tries.
+/// Running out only leaves a check in: it never changes whether a program is accepted or
+/// what it does, only that the check runs, so the bounds are the prover's own, not a rule.
 const DEPTH: usize = 6;
 const STEPS: usize = 4096;
 

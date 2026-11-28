@@ -405,6 +405,53 @@ fn facts_leave_out_only_the_checks_they_prove() {
     );
 }
 
+/// The prover gives up after its steps run out, and giving up only keeps a check: `r = a` needs
+/// `a >= 0`, and asserts on `width` other values tried first, `width` wide and 5 deep, leave
+/// that fact last. Narrow, both ends of the store's check go; wide, `a <= 100` still goes but
+/// `a >= 0` stays, and the program still compiles and runs the same.
+#[test]
+fn a_proof_past_the_provers_steps_keeps_its_check() {
+    use cpl_next_ir::ir::CheckKind::RangeStore;
+    let program = |width: usize| {
+        let names: Vec<Vec<String>> = (0..5)
+            .map(|d| (0..width).map(|k| format!("x{d}_{k}")).collect())
+            .collect();
+        let mut src = String::from("let a: Int = read()\n");
+        for n in names.iter().flatten() {
+            src += &format!("let {n}: Int = read()\n");
+        }
+        for b in &names[0] {
+            src += &format!("assert a >= {b}\n");
+        }
+        for w in names.windows(2) {
+            for (hi, lo) in w[0].iter().flat_map(|h| w[1].iter().map(move |l| (h, l))) {
+                src += &format!("assert {hi} >= {lo}\n");
+            }
+        }
+        src += "assert a >= 0\nassert a <= 100\nvar r: 0..=100 = 0\nr = a\nprint(r)\n";
+        let line = src.lines().count() as u32 - 1;
+        (src, line, 1 + 5 * width)
+    };
+    for (width, dropped) in [(1, 2), (8, 1)] {
+        let (src, line, reads) = program(width);
+        let at_store = (proved(&src).iter())
+            .filter(|p| **p == (RangeStore, line))
+            .count();
+        assert_eq!(at_store, dropped, "width {width}");
+        let c = compile(
+            &Std::read(),
+            &src,
+            &Roots::std(),
+            false,
+            None,
+            Checks::CHECKED,
+        )
+        .expect("compiles");
+        let input = vec!["7"; reads].join(" ");
+        assert_eq!(c.run(&input).output, "7\n", "width {width}");
+    }
+}
+
 /// A diagnostic's span is in the user's file, past the modules placed before it.
 #[test]
 fn diagnostic_is_placed_in_the_program() {

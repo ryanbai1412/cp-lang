@@ -266,6 +266,10 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   unless opted in for release (chapter 9). (R01.6.6)
 - `todo` is an expression of any type that traps when run; library
   stubs use it as a body. (R01.6.7)
+- Working out a `const` takes at most 10000000 steps, each fn entered
+  and each jump back to a loop's start being one, the same on every
+  machine; past that it is E0211, and `let` computes the value at run
+  time instead. (R01.6.8)
 
 ## 1.7 Control flow
 
