@@ -16,6 +16,8 @@ impl Session {
 fn syntax(file) -> SyntaxFile
 fn diagnostics(file, upto: Layer) -> List<Diagnostic>
 fn hover(pos) -> Hover               // type, target, doc, facts, cost
+fn type_at(pos) -> Option<Type>      // the type of the expression at pos
+fn types_in(file, span) -> List<(Span, Type)>   // each typed expression inside span
 fn complete(pos) -> List<Completion>
 fn definition(pos), references(pos), rename(pos, new) -> List<Edit>
 fn format(file) -> List<Edit>
@@ -38,6 +40,16 @@ fn replay(recording) -> Stream
 fn replay_call(recording, call: CallId, edited: Session) -> CallDiff   // one recorded call, rerun with edited code
 fn layout(type_: Type) -> Layout     // pure in a concrete type and the profile; usable on the typing path
 
+// A type as tools read it: opaque, and these queries are its whole API. Std's types are
+// ordinary declarations a tool reaches through `decl`.
+impl Type {
+    fn text() -> Str                                  // as a diagnostic writes it: the one type printer
+    fn range() -> Option<(Option<i64>, Option<i64>)>  // an integer's ends; None where the checker knows none
+    fn decl() -> Option<Definition>                   // the struct or enum it is an instance of
+    fn args() -> List<Type>                           // that declaration's type arguments
+    fn implements(trait_: Str) -> bool                // the checker's impl lookup, for the trait the program's scope names so
+    fn members() -> List<(Str, Definition)>           // what a `.` after a value of it can name
+}
 struct Diagnostic { code, layer, severity, at: SourceId, origin: List<Origin>, message, notes, fixes: List<Fix> }
 struct Fix { title, edits: List<Edit>, safe: bool }
 ```
@@ -45,6 +57,9 @@ struct Fix { title, edits: List<Edit>, safe: bool }
 ## Producer guarantees
 
 - Every query is a pure function of the snapshot.
+- A tool reads a type only through `Type`'s queries: it never matches
+  on what a type is made of, and never compares a std type's name.
+  Both facades answer them until the switch.
 - A `CostNote` never states an estimate as proven. `Proven` names
   the facts it rests on, so a click shows why.
 - `run` with `Entry::Call` is how the editor runs part of a program
