@@ -392,7 +392,7 @@
     "tools-judge/release-run-gets-the-judges-stack-and-crashes-like-it.cp"
   ],
   "next_library_gates": 24,
-  "next_name_compares": 28,
+  "next_name_compares": 23,
   "next_error_typed": 34,
   "next_refused": 687,
   "next_syntax_old_refs": 847,

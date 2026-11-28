@@ -232,8 +232,8 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
     }
     for id in std::mem::take(&mut lw.intrinsic_values) {
         let fd = d.f(id);
-        let name = fd.intrinsic.clone().unwrap_or_default();
-        let Some(op) = Intr::named(&name) else {
+        let Some(op) = fd.intrinsic.and_then(|i| i.op()) else {
+            let name = fd.intrinsic.map_or("", |i| i.id()).to_string();
             lw.errors.push(Unbuilt::Intrinsic { name }.into());
             continue;
         };
@@ -685,13 +685,12 @@ impl Lw<'_> {
                 // A trait's intrinsic fn was checked into a body (`Domain`'s), called as any fn.
                 let inline = fd
                     .intrinsic
-                    .as_ref()
                     .filter(|_| !self.typed.fns.contains_key(&f.decl));
                 let call = if let Some(n) = inline {
-                    let op = Intr::named(n).unwrap_or_else(|| {
+                    let op = n.op().unwrap_or_else(|| {
                         self.errors.push(
                             Unbuilt::Intrinsic {
-                                name: n.to_string(),
+                                name: n.id().to_string(),
                             }
                             .into(),
                         );

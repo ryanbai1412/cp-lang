@@ -186,9 +186,7 @@ impl Intr {
     /// The operation a std fn declared `= @intrinsic(name)` is (R12.14.1): its row of
     /// [`crate::ops::INTRINSICS`].
     pub fn named(name: &str) -> Option<Intr> {
-        (crate::ops::INTRINSICS.iter())
-            .find(|(n, _)| *n == name)
-            .map(|(_, op)| *op)
+        crate::ops::Intrinsic::named(name).and_then(crate::ops::Intrinsic::op)
     }
     /// The arguments it stores, so a caller's owned heap value passed there moves in (R05.2.2).
     pub fn keeps(self) -> &'static [usize] {

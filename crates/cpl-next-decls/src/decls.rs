@@ -66,8 +66,8 @@ pub struct FnDecl {
     /// A read `lends T` result: the parameters it borrows, receiver first (R05.6.1).
     pub lends: Option<Vec<usize>>,
     pub body: FnBody,
-    /// The name in `= @intrinsic(name)`, when that is its body.
-    pub intrinsic: Option<String>,
+    /// What `= @intrinsic(id)` is, when that is its body.
+    pub intrinsic: Option<cpl_next_ir::ops::Intrinsic>,
     /// `@fast(op)` on a fn with a CP body: the operation the engines and C++ run in place
     /// of a call to it; the reference interpreter runs the body.
     pub fast: Option<String>,
@@ -1683,6 +1683,19 @@ fn add_fn(
     if f.ret.as_ref().is_some_and(tyconv::has_hole) {
         d.ret_holes.push(FnId(d.fns.len()));
     }
+    let intrinsic = match &f.body {
+        FnBody::Expr(e) => match &e.kind {
+            cpl_syntax::ast::ExprKind::Intrinsic(n) => {
+                let known = cpl_next_ir::ops::Intrinsic::named(n);
+                if known.is_none() {
+                    errors.push(Unbuilt::Intrinsic { name: n.clone() }.into());
+                }
+                known
+            }
+            _ => None,
+        },
+        _ => None,
+    };
     d.fns.push(FnDecl {
         made: (0, 0),
         name: f.name.text.clone(),
@@ -1706,13 +1719,7 @@ fn add_fn(
         lends,
         uses: f.uses.iter().map(|n| n.text.clone()).collect(),
         body: f.body.clone(),
-        intrinsic: match &f.body {
-            FnBody::Expr(e) => match &e.kind {
-                cpl_syntax::ast::ExprKind::Intrinsic(n) => Some(n.clone()),
-                _ => None,
-            },
-            _ => None,
-        },
+        intrinsic,
         fast: words(Mark::Fast).into_iter().next(),
         getter,
         same_keys,

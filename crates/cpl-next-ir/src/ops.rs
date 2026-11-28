@@ -921,57 +921,109 @@ fn cpp_name(f: Fault) -> String {
     out
 }
 
+/// A `Domain` fn's operation on its `Self`, which the checker writes out in place (R04.2.15).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DomainOp {
+    Count,
+    Nth,
+    At,
+    Counted,
+    Ord,
+}
+
+/// What a std fn declared `= @intrinsic(id)` is: an IR operation, or a domain's.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Intrinsic {
+    Op(Intr),
+    Domain(DomainOp),
+}
+
+impl Intrinsic {
+    /// The row of [`INTRINSICS`] spelled `id`.
+    pub fn named(id: &str) -> Option<Intrinsic> {
+        INTRINSICS.iter().find(|(n, _)| *n == id).map(|(_, i)| *i)
+    }
+    /// How `@intrinsic` spells it.
+    pub fn id(self) -> &'static str {
+        INTRINSICS
+            .iter()
+            .find(|(_, i)| *i == self)
+            .map_or("", |(n, _)| n)
+    }
+    /// The IR operation it is, unless the checker writes it out.
+    pub fn op(self) -> Option<Intr> {
+        match self {
+            Intrinsic::Op(op) => Some(op),
+            Intrinsic::Domain(_) => None,
+        }
+    }
+}
+
 /// Every intrinsic id a std fn's `= @intrinsic(id)` may name, with the operation it is: the one
 /// table of them (R12.14.1). The primitives' ids are `cpl-prim`'s, which the old runtime shares.
-pub const INTRINSICS: &[(&str, Intr)] = &[
-    ("raw_empty", Intr::RawEmpty),
-    ("raw_new", Intr::RawNew),
-    ("raw_get", Intr::RawGet),
-    ("raw_set", Intr::RawSet),
-    ("move_out", Intr::RawTake),
-    ("unset_cells", Intr::RawCap),
-    ("key_check", Intr::CheckKey),
-    ("range_check", Intr::CheckRange),
-    ("value_check", Intr::CheckVariant),
-    ("char_of", Intr::CharOf),
-    ("rand_word", Intr::RandWord),
-    ("read_byte", Intr::ReadByte),
-    ("read_int", Intr::ReadInt),
-    ("input_peek", Intr::PeekByte),
-    ("token_check", Intr::CheckToken),
-    ("input_check", Intr::CheckInput),
-    ("input_left", Intr::InputLeft),
-    ("code_of", Intr::CodeOf),
-    ("u64_of", Intr::ToU64),
-    ("int_of_u64", Intr::FromU64),
-    ("i128_of", Intr::ToI128),
-    ("int_of_i128", Intr::FromI128),
-    ("f64_of_i128", Intr::F64OfI128),
-    ("i128_of_u64", Intr::I128OfU64),
-    ("u64_of_i128", Intr::U64OfI128),
-    ("f64_of", Intr::ToF64),
-    ("f64_bits", Intr::F64Bits),
-    ("out", Intr::Out),
-    (Prim::Popcount.id(), Intr::Popcount),
-    (Prim::Abs.id(), Intr::Abs),
-    (Prim::Ctz.id(), Intr::Ctz),
-    (Prim::Clz.id(), Intr::Clz),
-    (Prim::BitWidth.id(), Intr::BitWidth),
-    (Prim::BitCeil.id(), Intr::BitCeil),
-    (Prim::Sqrt.id(), Intr::Float(FloatFn::Sqrt)),
-    (Prim::Sin.id(), Intr::Float(FloatFn::Sin)),
-    (Prim::Cos.id(), Intr::Float(FloatFn::Cos)),
-    (Prim::Tan.id(), Intr::Float(FloatFn::Tan)),
-    (Prim::Asin.id(), Intr::Float(FloatFn::Asin)),
-    (Prim::Acos.id(), Intr::Float(FloatFn::Acos)),
-    (Prim::Atan2.id(), Intr::Float(FloatFn::Atan2)),
-    (Prim::Hypot.id(), Intr::Float(FloatFn::Hypot)),
-    (Prim::Exp.id(), Intr::Float(FloatFn::Exp)),
-    (Prim::Ln.id(), Intr::Float(FloatFn::Ln)),
-    (Prim::Floor.id(), Intr::ToInt(Rounding::Floor)),
-    (Prim::Ceil.id(), Intr::ToInt(Rounding::Ceil)),
-    (Prim::Round.id(), Intr::ToInt(Rounding::Round)),
-    (Prim::Trunc.id(), Intr::ToInt(Rounding::Trunc)),
+pub const INTRINSICS: &[(&str, Intrinsic)] = &[
+    ("raw_empty", Intrinsic::Op(Intr::RawEmpty)),
+    ("raw_new", Intrinsic::Op(Intr::RawNew)),
+    ("raw_get", Intrinsic::Op(Intr::RawGet)),
+    ("raw_set", Intrinsic::Op(Intr::RawSet)),
+    ("move_out", Intrinsic::Op(Intr::RawTake)),
+    ("unset_cells", Intrinsic::Op(Intr::RawCap)),
+    ("key_check", Intrinsic::Op(Intr::CheckKey)),
+    ("range_check", Intrinsic::Op(Intr::CheckRange)),
+    ("value_check", Intrinsic::Op(Intr::CheckVariant)),
+    ("char_of", Intrinsic::Op(Intr::CharOf)),
+    ("rand_word", Intrinsic::Op(Intr::RandWord)),
+    ("read_byte", Intrinsic::Op(Intr::ReadByte)),
+    ("read_int", Intrinsic::Op(Intr::ReadInt)),
+    ("input_peek", Intrinsic::Op(Intr::PeekByte)),
+    ("token_check", Intrinsic::Op(Intr::CheckToken)),
+    ("input_check", Intrinsic::Op(Intr::CheckInput)),
+    ("input_left", Intrinsic::Op(Intr::InputLeft)),
+    ("code_of", Intrinsic::Op(Intr::CodeOf)),
+    ("u64_of", Intrinsic::Op(Intr::ToU64)),
+    ("int_of_u64", Intrinsic::Op(Intr::FromU64)),
+    ("i128_of", Intrinsic::Op(Intr::ToI128)),
+    ("int_of_i128", Intrinsic::Op(Intr::FromI128)),
+    ("f64_of_i128", Intrinsic::Op(Intr::F64OfI128)),
+    ("i128_of_u64", Intrinsic::Op(Intr::I128OfU64)),
+    ("u64_of_i128", Intrinsic::Op(Intr::U64OfI128)),
+    ("f64_of", Intrinsic::Op(Intr::ToF64)),
+    ("f64_bits", Intrinsic::Op(Intr::F64Bits)),
+    ("out", Intrinsic::Op(Intr::Out)),
+    (Prim::Popcount.id(), Intrinsic::Op(Intr::Popcount)),
+    (Prim::Abs.id(), Intrinsic::Op(Intr::Abs)),
+    (Prim::Ctz.id(), Intrinsic::Op(Intr::Ctz)),
+    (Prim::Clz.id(), Intrinsic::Op(Intr::Clz)),
+    (Prim::BitWidth.id(), Intrinsic::Op(Intr::BitWidth)),
+    (Prim::BitCeil.id(), Intrinsic::Op(Intr::BitCeil)),
+    (Prim::Sqrt.id(), Intrinsic::Op(Intr::Float(FloatFn::Sqrt))),
+    (Prim::Sin.id(), Intrinsic::Op(Intr::Float(FloatFn::Sin))),
+    (Prim::Cos.id(), Intrinsic::Op(Intr::Float(FloatFn::Cos))),
+    (Prim::Tan.id(), Intrinsic::Op(Intr::Float(FloatFn::Tan))),
+    (Prim::Asin.id(), Intrinsic::Op(Intr::Float(FloatFn::Asin))),
+    (Prim::Acos.id(), Intrinsic::Op(Intr::Float(FloatFn::Acos))),
+    (Prim::Atan2.id(), Intrinsic::Op(Intr::Float(FloatFn::Atan2))),
+    (Prim::Hypot.id(), Intrinsic::Op(Intr::Float(FloatFn::Hypot))),
+    (Prim::Exp.id(), Intrinsic::Op(Intr::Float(FloatFn::Exp))),
+    (Prim::Ln.id(), Intrinsic::Op(Intr::Float(FloatFn::Ln))),
+    (
+        Prim::Floor.id(),
+        Intrinsic::Op(Intr::ToInt(Rounding::Floor)),
+    ),
+    (Prim::Ceil.id(), Intrinsic::Op(Intr::ToInt(Rounding::Ceil))),
+    (
+        Prim::Round.id(),
+        Intrinsic::Op(Intr::ToInt(Rounding::Round)),
+    ),
+    (
+        Prim::Trunc.id(),
+        Intrinsic::Op(Intr::ToInt(Rounding::Trunc)),
+    ),
+    ("dom_count", Intrinsic::Domain(DomainOp::Count)),
+    ("dom_nth", Intrinsic::Domain(DomainOp::Nth)),
+    ("dom_at", Intrinsic::Domain(DomainOp::At)),
+    ("dom_counted", Intrinsic::Domain(DomainOp::Counted)),
+    ("dom_ord", Intrinsic::Domain(DomainOp::Ord)),
 ];
 
 #[cfg(test)]

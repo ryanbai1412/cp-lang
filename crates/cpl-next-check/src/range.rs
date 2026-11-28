@@ -1,6 +1,7 @@
 //! Ranges and domains as values (R01.8.4, R04.2).
 use super::expr::block;
 use super::*;
+use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::unbuilt::Unbuilt;
 
 impl Cx<'_> {
@@ -99,7 +100,7 @@ impl Cx<'_> {
         if !super::member::takes(fd, call) || (call.is_none() && !fd.getter) {
             return None;
         }
-        let Some(op) = fd.intrinsic.clone() else {
+        let Some(op) = fd.intrinsic else {
             let r = decls::TraitRef {
                 tr,
                 args: Vec::new(),
@@ -114,35 +115,38 @@ impl Cx<'_> {
             }
             Some(_) => return None,
         };
-        self.domain_op(dty, &op, args, span)
+        let Intrinsic::Domain(op) = op else {
+            return None;
+        };
+        self.domain_op(dty, op, args, span)
     }
     /// The domain operation `op` of `D`, with its one `Int` argument if it takes one. The body
     /// of each of `Domain`'s fns that a domain meets without an impl.
     pub(super) fn domain_op(
         &mut self,
         dty: Ty,
-        op: &str,
+        op: DomainOp,
         arg: Option<TExpr>,
         span: Span,
     ) -> Option<TExpr> {
         Some(match (op, arg) {
-            ("dom_count", None) => TExpr {
+            (DomainOp::Count, None) => TExpr {
                 kind: TK::DomLen(dty),
                 ty: Ty::Int,
                 span,
             },
-            ("dom_nth", Some(k)) => TExpr {
+            (DomainOp::Nth, Some(k)) => TExpr {
                 kind: TK::DomNth(dty.clone(), Box::new(k)),
                 ty: dty,
                 span,
             },
-            ("dom_at", Some(x)) => self.domain_at(dty, x, span),
-            ("dom_counted", None) => TExpr {
+            (DomainOp::At, Some(x)) => self.domain_at(dty, x, span),
+            (DomainOp::Counted, None) => TExpr {
                 kind: TK::DomCounted(dty),
                 ty: Ty::Bool,
                 span,
             },
-            ("dom_ord", Some(v)) => TExpr {
+            (DomainOp::Ord, Some(v)) => TExpr {
                 kind: TK::Ordinal(Box::new(v)),
                 ty: Ty::Int,
                 span,
@@ -645,10 +649,10 @@ impl Cx<'_> {
         match self.shallow(t) {
             Ty::Dom(_) => Some(Ends::Dom),
             t @ Ty::Struct(..) if self.d.has_impl(&t, tr) => {
-                self.domain_method("dom_ord").map(Ends::Ord)
+                self.domain_method(DomainOp::Ord).map(Ends::Ord)
             }
             Ty::Param(p) if self.bound_traits(p).iter().any(|b| b.tr == tr) => {
-                self.domain_method("dom_ord").map(Ends::Ord)
+                self.domain_method(DomainOp::Ord).map(Ends::Ord)
             }
             _ => None,
         }
@@ -745,7 +749,7 @@ impl Cx<'_> {
     /// `D.count`.
     fn domain_len(&mut self, d: Ty, span: Span) -> TExpr {
         // A type parameter's count is its instance's: a product or library domain has its own.
-        match (&d, self.domain_method("dom_count")) {
+        match (&d, self.domain_method(DomainOp::Count)) {
             (Ty::Struct(..) | Ty::Param(_), Some(count)) => {
                 self.domain_count(d.clone(), count, span)
             }
@@ -838,7 +842,7 @@ impl Cx<'_> {
         d: Ty,
         span: Span,
     ) -> Option<TExpr> {
-        let ord = self.domain_method("dom_ord")?;
+        let ord = self.domain_method(DomainOp::Ord)?;
         if through {
             let t = (lo.iter().chain(&hi)).next().map(|e| e.ty.clone())?;
             self.closed_cuts(&t, span);
@@ -859,12 +863,12 @@ impl Cx<'_> {
         self.range_of(vec![lo, hi, int(TK::Int(1))], d, span)
     }
     /// The fn of core's `Domain` whose body is the intrinsic `op`.
-    fn domain_method(&self, op: &str) -> Option<DomainFn> {
+    fn domain_method(&self, op: DomainOp) -> Option<DomainFn> {
         let tr = self.d.roles().domain?;
         let ms = &self.d.t(tr).methods;
         let (n, &m) = ms
             .iter()
-            .find(|(_, &m)| self.d.f(m).intrinsic.as_deref() == Some(op))?;
+            .find(|(_, &m)| self.d.f(m).intrinsic == Some(Intrinsic::Domain(op)))?;
         let r = decls::TraitRef {
             tr,
             args: Vec::new(),
@@ -924,7 +928,7 @@ impl Cx<'_> {
             let d = self.d;
             let ord = (d.roles().domain.iter())
                 .flat_map(|tr| d.t(*tr).methods.values())
-                .find(|&&m| d.f(m).intrinsic.as_deref() == Some("dom_ord"));
+                .find(|&&m| d.f(m).intrinsic == Some(Intrinsic::Domain(DomainOp::Ord)));
             if let Some(&m) = ord {
                 self.reach(m);
             }

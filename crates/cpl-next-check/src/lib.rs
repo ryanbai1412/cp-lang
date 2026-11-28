@@ -1267,16 +1267,21 @@ impl<'a> Cx<'a> {
                     ty,
                     span,
                 });
-                let op = f.intrinsic.clone().unwrap_or_default();
-                self.domain_op(Ty::Param(0), &op, arg, span)
-                    .unwrap_or_else(|| {
-                        self.err(span, Unbuilt::TraitIntrinsic { op: op.to_string() });
-                        TExpr {
-                            kind: TK::Error,
-                            ty: Ty::Error,
-                            span,
-                        }
-                    })
+                let op = f.intrinsic.map_or("", |i| i.id());
+                let made = match f.intrinsic {
+                    Some(cpl_next_ir::ops::Intrinsic::Domain(dop)) => {
+                        self.domain_op(Ty::Param(0), dop, arg, span)
+                    }
+                    _ => None,
+                };
+                made.unwrap_or_else(|| {
+                    self.err(span, Unbuilt::TraitIntrinsic { op: op.to_string() });
+                    TExpr {
+                        kind: TK::Error,
+                        ty: Ty::Error,
+                        span,
+                    }
+                })
             }
             // A block that reaches its end with no value gives `()`, not the result; a
             // generator's or lender's result is what it yields or lends.

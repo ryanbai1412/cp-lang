@@ -973,7 +973,7 @@ impl Link<'_> {
                     Some(InstKey {
                         func: FuncKey::Decl(f),
                         ..
-                    }) => self.d.f(*f).intrinsic.as_deref().and_then(Intr::named),
+                    }) => self.d.f(*f).intrinsic.and_then(|i| i.op()),
                     _ => None,
                 };
                 match (intr, key) {
