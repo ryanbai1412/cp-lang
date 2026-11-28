@@ -107,7 +107,7 @@ impl<'a> Cx<'a> {
     }
     /// `w by k` on a walk that is not a range literal: `w`'s `@operator("by")` trait fn, whose
     /// result is a walk of `w`'s type (R01.8.4).
-    fn step_walk(&mut self, walk: &ast::Expr, step: &ast::Expr, span: Span) -> TExpr {
+    fn step_walk(&mut self, walk: &next::Expr, step: &next::Expr, span: Span) -> TExpr {
         let w = self.expr_as_typed(walk, None);
         if self.is_error(&w.ty) {
             return Self::error_node(span);
@@ -2298,5 +2298,85 @@ impl Cx<'_> {
             });
         }
         acc.unwrap_or(prev)
+    }
+
+    /// `()`, or `(a, b)` as its tuple struct's constructor.
+    pub(super) fn tuple(&mut self, t: &next::TupleExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let xs: Vec<next::Expr> = t.elems().collect();
+        if xs.is_empty() {
+            return TExpr {
+                kind: TK::Unit,
+                ty: Ty::Unit,
+                span,
+            };
+        }
+        let Some(d) = self.d.tuple(xs.len()) else {
+            let kind = "Tuple".to_string();
+            self.err(span, Unbuilt::Expression { kind });
+            return Self::error_node(span);
+        };
+        // `(R, C)` named as a value is the product domain's whole range (R04.2.11).
+        if let Some(p) = self.type_path(&next::Expr::Tuple(t.clone())) {
+            return self.domain_value(p, span);
+        }
+        let args: Vec<call::CallArg> = xs.iter().map(|x| call::CallArg::plain(self, x)).collect();
+        let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
+        let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
+        self.construct(d, targs, sets, &args, span, want)
+    }
+
+    /// `[a, b, c]`.
+    pub(super) fn list(&mut self, l: &next::ListExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let xs: Vec<next::Expr> = l.elems().collect();
+        self.list_literal(&xs, want, span)
+    }
+
+    /// `lo..hi`, `lo..=hi by s`, `..` in its place, and `w by s` on any walk.
+    pub(super) fn range(&mut self, r: &next::RangeExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        if let Some(walk) = r.walk() {
+            let Some(step) = r.step() else {
+                return Self::error_node(span);
+            };
+            if let next::Expr::Range(w) = &walk {
+                if let (Some(lo), Some(hi), None) = (w.lo(), w.hi(), w.step()) {
+                    let inclusive = w.is_inclusive();
+                    return self.range_value(
+                        Some(&lo),
+                        Some(&hi),
+                        inclusive,
+                        Some(&step),
+                        want,
+                        span,
+                    );
+                }
+            }
+            return self.step_walk(&walk, &step, span);
+        }
+        let (lo, hi, step) = (r.lo(), r.hi(), r.step());
+        if lo.is_some() || hi.is_some() {
+            let inclusive = r.is_inclusive();
+            return self.range_value(
+                lo.as_ref(),
+                hi.as_ref(),
+                inclusive,
+                step.as_ref(),
+                want,
+                span,
+            );
+        }
+        match self.whole_of(want) {
+            Some(d) if step.is_none() => self.domain_value(d, span),
+            // Its domain comes from its place: an index or a `Range<D>` slot (R04.8.6).
+            None if step.is_none() => {
+                let text = cpl_diag::msgs::check::TYPE_MISMATCH_FULL_RANGE.say(&[]);
+                self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text));
+                Self::error_node(span)
+            }
+            _ => {
+                let kind = "Range".to_string();
+                self.err(span, Unbuilt::Expression { kind });
+                Self::error_node(span)
+            }
+        }
     }
 }
