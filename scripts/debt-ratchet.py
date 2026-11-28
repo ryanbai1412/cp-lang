@@ -1376,6 +1376,15 @@ def next_std_unchecked(root: Path) -> list[str]:
     return [f"{m}: {n.strip()} diagnostics" for m, n in rows if n.strip() != "0"]
 
 
+def next_std_quiet_errors(root: Path) -> list[str]:
+    """Std check errors a program never says: an impl outside the program, reached through its
+    trait, is checked quietly (check/lib.rs `reach`) and its errors deferred. `tests/std_quiet.rs`
+    keeps `std-quiet.tsv` equal to what `print(1)` hides; at 0 the quiet branch is deleted."""
+    listed = root / NEXT_TESTS / "std-quiet.tsv"
+    rows = [l.split("\t") for l in _lines(listed) if l.strip()] if listed.is_file() else []
+    return [f"{m}: error {i + 1}" for m, n in rows for i in range(int(n))]
+
+
 def next_core_privilege(root: Path) -> list[str]:
     """Checks in the new pipeline that give core's module a power no other library has
     (`is_library`): core is a library like any other, so 0 is when its types and traits live
@@ -4962,6 +4971,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-next/tests/lowered.txt": ("next_lowered", "core", "deleted: programs.rs fails on any error only lowering finds"),
     "crates/cpl-next/tests/error-typed.txt": ("next_error_typed", "core", "deleted: the verifier refuses any instance holding an error type"),
     "crates/cpl-next/tests/std-unchecked.tsv": ("next_std_unchecked", "core", "deleted: std_modules.rs fails on any std module that does not compile"),
+    "crates/cpl-next/tests/std-quiet.tsv": ("next_std_quiet_errors", "core", "deleted: std_quiet.rs fails on any std error a program hides"),
     "crates/cpl-next/tests/wrong.tsv": ("next_wrong", "core", "deleted: programs.rs fails on any wrong case"),
     "crates/cpl-next/tests/masked.txt": ("next_masked", "core", "deleted: no refusal hides a verdict beside it"),
     "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
@@ -5206,6 +5216,7 @@ COUNTERS = {
     "next_old_parser_accepts_unruled": ("old-parser accepts citing no decision or not expecting E0503/E0504 (Core)", next_old_parser_accepts_unruled, True),
     "next_error_typed": ("programs cases linking an instance that holds an error type (Core)", next_error_typed, True),
     "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
+    "next_std_quiet_errors": ("std check errors a program hides by checking library impls quietly (Core)", next_std_quiet_errors, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "next_whole_program_inputs": ("new-pipeline params, fields, closures and holder-struct methods that hold a whole-program value (Core)", next_whole_program_inputs, True),
     "next_handoff_side_fields": ("fields reaching link beside the IR, through any struct or tuple of the handoff (Core)", next_handoff_side_fields, True),

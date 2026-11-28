@@ -425,6 +425,22 @@ pub(crate) fn read_missing(
 
 /// Each std module and the diagnostics it has when every one of its fns is checked, not
 /// only those a program reaches: std as a program (suite 4 of plan/end-state.toml).
+/// The deferred errors of `f`'s quiet fns but those of a record's derived impls, counted by
+/// the module each is in (`next_std_quiet_errors`).
+pub(crate) fn quiet_errors(f: &Front) -> Vec<(String, usize)> {
+    let d = &f.d;
+    let derived = |id: ty::FnId| {
+        matches!(d.f(id).owner, Some(decls::Owner::Impl(i))
+            if matches!(d.impls[i].for_, ty::Ty::Struct(s, ..) if d.s(s).record))
+    };
+    let mut by: std::collections::BTreeMap<String, usize> = Default::default();
+    for (id, ms) in f.t.deferred.iter().filter(|(id, _)| !derived(**id)) {
+        *by.entry(d.module_names[d.f(*id).module.0].clone())
+            .or_default() += ms.len();
+    }
+    by.into_iter().collect()
+}
+
 pub(crate) fn std_unchecked(
     std: &Std,
     judge: Option<&Judge>,

@@ -425,6 +425,12 @@ impl Session {
         (units, diags)
     }
 
+    /// The std check errors `file` reaches only through a trait, by module: an impl outside the
+    /// program is checked quietly (check/lib.rs `reach`), so a program never says them.
+    pub fn quiet_errors(&self, file: &str) -> Vec<(String, usize)> {
+        self.front(file).map_or_else(Vec::new, crate::quiet_errors)
+    }
+
     /// `file`'s checked front half, which hover, definition and types read.
     fn front(&self, file: &str) -> Option<&Front> {
         let (id, _, f) = self.file(file)?;
