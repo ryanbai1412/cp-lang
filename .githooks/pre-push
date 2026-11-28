@@ -53,6 +53,13 @@ if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo fmt --all --check >/dev/null 2>&1 || fail "not formatted; run: cargo fmt --all"
 fi
 
+# 2a. Only the landing queue (scripts/lane-queue.sh) pushes to lane-j-check, one push at a
+# time, so no lane loses a race to another's gate run (coordinator 04:34). A lane hands its
+# work in on a queue branch; the gates below run in the queue's push.
+if [ "$to_lane" = 1 ] && [ "${CPL_LANE_QUEUE:-}" != 1 ]; then
+    fail "hand lane-j-check work to the queue: git push origin HEAD:refs/heads/queue/<lane>-<name> (scripts/lane-queue.sh lands it)"
+fi
+
 # 2b'. A lane-j-check tip that doesn't build blocks, so a bisect never meets one (37 such
 # first-parent commits cost D's 03:30 bisect): the same check as a push to main. Clippy's
 # warnings block in each crate the push touches, so no lane's pre-commit fails on another
