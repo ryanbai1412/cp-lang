@@ -168,34 +168,11 @@ fn run(src: &str) -> Option<(Vec<(TokenKind, String)>, usize)> {
     (file.diagnostics.is_empty() && n > 0).then(|| (tokens(src), n))
 }
 
-/// Per token, whether it is a named argument's label (`from` in `f(from: x)`), never a hole.
-fn labels(kinds: &[TokenKind]) -> Vec<bool> {
-    use TokenKind as K;
-    let mut open = Vec::new();
-    (0..kinds.len())
-        .map(|i| {
-            let label = kinds[i] == K::Ident
-                && open.last() == Some(&Some(K::LParen))
-                && kinds.get(i + 1) == Some(&K::Colon)
-                && matches!(kinds[i - 1], K::LParen | K::Comma);
-            let params = i >= 2 && kinds[i - 1] == K::Ident && kinds[i - 2] == K::Fn;
-            match kinds[i] {
-                K::LParen if params => open.push(None),
-                K::LParen | K::LBracket | K::LBrace => open.push(Some(kinds[i])),
-                K::RParen | K::RBracket | K::RBrace => {
-                    open.pop();
-                }
-                _ => {}
-            }
-            label
-        })
-        .collect()
-}
 
 /// The names a pattern's tokens use, labels aside: what a hole can be.
 fn names(toks: &[(TokenKind, String)]) -> Vec<String> {
     let kinds: Vec<TokenKind> = toks.iter().map(|t| t.0).collect();
-    (toks.iter().zip(labels(&kinds)))
+    (toks.iter().zip(cpl_next_syntax::arg_labels(&kinds)))
         .filter(|((k, _), label)| matches!(k, TokenKind::Ident | TokenKind::SelfKw) && !label)
         .map(|((_, t), _)| t.clone())
         .collect()

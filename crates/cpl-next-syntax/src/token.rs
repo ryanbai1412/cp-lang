@@ -356,3 +356,29 @@ pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
 }
+
+/// Per token, whether it is a named argument's label (`from` in
+/// `f(from: x)`): it names the parameter, so it is never a hole. A `fn`'s
+/// own parameters (`fn go(u: Int)`) are names, not labels.
+pub fn arg_labels(kinds: &[TokenKind]) -> Vec<bool> {
+    use TokenKind as K;
+    let mut open = Vec::new();
+    (0..kinds.len())
+        .map(|i| {
+            let label = kinds[i] == K::Ident
+                && open.last() == Some(&Some(K::LParen))
+                && kinds.get(i + 1) == Some(&K::Colon)
+                && matches!(kinds[i - 1], K::LParen | K::Comma);
+            let params = i >= 2 && kinds[i - 1] == K::Ident && kinds[i - 2] == K::Fn;
+            match kinds[i] {
+                K::LParen if params => open.push(None),
+                K::LParen | K::LBracket | K::LBrace => open.push(Some(kinds[i])),
+                K::RParen | K::RBracket | K::RBrace => {
+                    open.pop();
+                }
+                _ => {}
+            }
+            label
+        })
+        .collect()
+}

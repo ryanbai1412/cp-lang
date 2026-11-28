@@ -9,6 +9,7 @@ use crate::ast::{
 use crate::ParsedItem;
 use crate::{Token, TokenKind};
 use cpl_diag::{msgs, Diagnostic, Span};
+use cpl_next_syntax::arg_labels as labels;
 use std::fmt::Display;
 
 /// One usable `@lint` declaration.
@@ -484,32 +485,6 @@ pub fn module_errors<'a>(
 /// A name, or `self`: what a hole can be.
 pub fn is_name(kind: TokenKind, text: &str) -> bool {
     kind == TokenKind::Ident || (kind == TokenKind::SelfKw && text == "self")
-}
-
-/// Per token, whether it is a named argument's label (`from` in
-/// `f(from: x)`): it names the parameter, so it is never a hole. A `fn`'s
-/// own parameters (`fn go(u: Int)`) are names, not labels.
-pub fn labels(kinds: &[TokenKind]) -> Vec<bool> {
-    use TokenKind as K;
-    let mut open = Vec::new();
-    (0..kinds.len())
-        .map(|i| {
-            let label = kinds[i] == K::Ident
-                && open.last() == Some(&Some(K::LParen))
-                && kinds.get(i + 1) == Some(&K::Colon)
-                && matches!(kinds[i - 1], K::LParen | K::Comma);
-            let params = i >= 2 && kinds[i - 1] == K::Ident && kinds[i - 2] == K::Fn;
-            match kinds[i] {
-                K::LParen if params => open.push(None),
-                K::LParen | K::LBracket | K::LBrace => open.push(Some(kinds[i])),
-                K::RParen | K::RBracket | K::RBrace => {
-                    open.pop();
-                }
-                _ => {}
-            }
-            label
-        })
-        .collect()
 }
 
 /// A pattern's tokens with their text.
