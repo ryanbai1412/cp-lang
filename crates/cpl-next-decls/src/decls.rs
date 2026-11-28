@@ -7,7 +7,6 @@ use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_syntax::ast::{self, StmtKind, TypeKind};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -1189,19 +1188,6 @@ fn domain_params(d: &mut Decls, from: usize, bodies: &HashMap<FnId, cpl_next_syn
     d.domain_params.retain(|_, ds| !ds.is_empty());
 }
 
-/// The name a top-level item declares, if it declares one.
-pub fn item_name(s: &ast::Stmt) -> Option<&str> {
-    match &s.kind {
-        StmtKind::Context { name, .. } => Some(&name.text),
-        StmtKind::Struct(sd) => Some(&sd.name.text),
-        StmtKind::Trait { name, .. } => Some(&name.text),
-        StmtKind::Fn(f) => Some(&f.name.text),
-        StmtKind::TypeAlias { name, .. } => Some(&name.text),
-        StmtKind::Const { name, .. } => Some(&name.text),
-        _ => None,
-    }
-}
-
 /// What each name means in module `mi`: the prelude's for the program, then the core's, then
 /// what its `use` lines import, then its own (R11.2.3). `errors` is `None` while fns are not
 /// declared yet, so a name not found is not yet known to be missing.
@@ -1943,80 +1929,6 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         errors,
     });
     FnId(d.fns.len() - 1)
-}
-
-/// The ends of a range type when both are literals, as an inclusive pair.
-pub fn static_range(
-    lo: &Option<Box<ast::Expr>>,
-    hi: &Option<Box<ast::Expr>>,
-    inclusive: bool,
-) -> Option<(i64, i64)> {
-    static_range_by(lo, hi, inclusive, ast::Expr::int_literal)
-}
-
-/// [`static_range`] with each end's integer worked out by `end`.
-pub fn static_range_by(
-    lo: &Option<Box<ast::Expr>>,
-    hi: &Option<Box<ast::Expr>>,
-    inclusive: bool,
-    end: impl Fn(&ast::Expr) -> Option<i64>,
-) -> Option<(i64, i64)> {
-    let lo = match lo {
-        Some(e) => end(e)?,
-        None => i64::MIN + 1,
-    };
-    let hi = match hi {
-        Some(e) if inclusive => end(e)?,
-        Some(e) => end(e)?.checked_sub(1)?,
-        None => i64::MAX,
-    };
-    Some((lo, hi))
-}
-
-/// `lo..=D.m + k`: a range type with a constant start whose end is a static getter of a type
-/// named `D`, give or take a constant (`0..=V.count`, `1..V.count + 1`). Gives `lo`, `D`, `m`
-/// and `k`.
-pub fn count_end<'e>(
-    lo: &Option<Box<ast::Expr>>,
-    hi: &'e Option<Box<ast::Expr>>,
-    inclusive: bool,
-) -> Option<(i64, &'e str, &'e str, i64)> {
-    use ast::{BinOp, ExprKind};
-    fn end(e: &ast::Expr) -> Option<(&str, &str, i64)> {
-        match &e.kind {
-            ExprKind::Paren(x) => end(x),
-            ExprKind::Field { base, name } => match &base.kind {
-                ExprKind::Name(d) => Some((d.as_str(), name.text.as_str(), 0)),
-                _ => None,
-            },
-            ExprKind::Binary { op, lhs, rhs, .. } if matches!(op, BinOp::Add | BinOp::Sub) => {
-                let ((d, m, k), j) = (end(lhs)?, rhs.int_literal()?);
-                let j = if *op == BinOp::Sub {
-                    j.checked_neg()?
-                } else {
-                    j
-                };
-                Some((d, m, k.checked_add(j)?))
-            }
-            _ => None,
-        }
-    }
-    let lo = lo.as_deref()?.int_literal()?;
-    let (d, m, k) = end(hi.as_deref()?)?;
-    let k = if inclusive { k } else { k.checked_sub(1)? };
-    Some((lo, d, m, k))
-}
-
-/// `lo..hi` with both ends constant, as an array's axis: its first and last integer.
-pub fn const_axis(t: &ast::Type) -> Option<(i64, i64)> {
-    match &t.kind {
-        TypeKind::Range {
-            lo: lo @ Some(_),
-            hi: hi @ Some(_),
-            inclusive,
-        } => static_range(lo, hi, *inclusive),
-        _ => None,
-    }
 }
 
 /// The parameters a bound that leaves its trait's arguments out takes for each, at `generics`'

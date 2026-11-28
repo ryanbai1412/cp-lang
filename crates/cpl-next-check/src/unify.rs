@@ -9,7 +9,7 @@ impl<'a> Cx<'a> {
     /// checked now, for its result. A call inside that body's own check, through a cycle of
     /// such fns, reads the result as declared.
     pub(super) fn decl_ret(&mut self, f: FnId) -> Ty {
-        let decl = self.d.f(f);
+        let decl = self.items.f(f);
         let checkable =
             !matches!(decl.body, cpl_next_decls::decls::Body::None) && decl.intrinsic.is_none();
         let fresh = !self.fns.contains_key(&f) && !self.ret_busy.contains(&f);
@@ -23,7 +23,7 @@ impl<'a> Cx<'a> {
             self.ret_busy.pop();
             self.fns.insert(f, tf);
         }
-        (self.found_ret.get(&f).cloned()).unwrap_or_else(|| self.d.f(f).ret.clone())
+        (self.found_ret.get(&f).cloned()).unwrap_or_else(|| self.items.f(f).ret.clone())
     }
     /// `t` with each `_` a variable its body solves.
     pub(super) fn open_holes(&mut self, t: &Ty) -> Ty {
@@ -101,7 +101,7 @@ impl<'a> Cx<'a> {
                         }
                     })
                     .collect();
-                while ss.len() < self.d.s(*d).n_sets {
+                while ss.len() < self.items.s(*d).n_sets {
                     ss.push(self.new_set());
                 }
                 Ty::Struct(*d, ts.iter().map(|p| self.fresh_sets(p)).collect(), ss)
@@ -365,7 +365,7 @@ impl<'a> Cx<'a> {
     pub(super) fn clo_sig(&mut self, c: &CloRef) -> (Vec<Ty>, Ty) {
         match c {
             CloRef::Item(f) => {
-                let fd = self.d.f(f.decl);
+                let fd = self.items.f(f.decl);
                 let sub = Subst {
                     tys: &f.targs,
                     sets: &f.sets,
@@ -397,7 +397,7 @@ impl<'a> Cx<'a> {
             tys: &f.targs,
             sets: &f.sets,
         };
-        let n = self.d.f(f.decl).n_sets;
+        let n = self.items.f(f.decl).n_sets;
         let at = |k| f.sets.get(n + k).cloned();
         let t = map_slots(&sub.ty(t), &|k| at(k).unwrap_or(SetTy::Closed(Vec::new())));
         self.fresh_sets(&t)
@@ -405,7 +405,7 @@ impl<'a> Cx<'a> {
     /// What trait fn `m` returns at `Self` and the trait's arguments `tys`: its fns are the ones
     /// the impl the type picks returns.
     pub(super) fn trait_ret(&mut self, m: FnId, tys: Vec<Ty>) -> Ty {
-        let fd = self.d.f(m);
+        let fd = self.items.f(m);
         let sets = (0..fd.n_sets + fd.n_ret_sets)
             .map(|_| self.new_set())
             .collect();
@@ -517,7 +517,7 @@ impl<'a> Cx<'a> {
             _ => None,
         };
         (self.d.coercions.iter().copied()).find(|f| {
-            let fd = self.d.f(*f);
+            let fd = self.items.f(*f);
             h != w
                 && kind(fd.params.first().map(|p| &p.ty)) == Some(*h)
                 && kind(Some(&fd.ret)) == Some(*w)
@@ -564,7 +564,7 @@ impl<'a> Cx<'a> {
                 tys: &f.targs,
                 sets: &f.sets,
             };
-            sub.ty(&self.d.f(decl).params[0].ty)
+            sub.ty(&self.items.f(decl).params[0].ty)
         };
         let n = self.literal_len(&e);
         let arg = self.coerce(e, &param);
@@ -578,7 +578,7 @@ impl<'a> Cx<'a> {
             );
         }
         if let Some(n) = n {
-            let fd = self.d.f(decl);
+            let fd = self.items.f(decl);
             let domain = self.d.roles().domain;
             for (i, t) in f.targs.iter().enumerate() {
                 let positions = fd
@@ -637,7 +637,7 @@ impl<'a> Cx<'a> {
         }
     }
     fn is_tuple(&self, s: StructId) -> bool {
-        self.d.tuple(self.d.s(s).fields.len()) == Some(s)
+        self.d.tuple(self.items.s(s).fields.len()) == Some(s)
     }
     /// Whether `t` is an array keyed by more than one axis, `[I, J]T` (R01.8.2).
     pub(super) fn is_table(&self, t: &Ty) -> bool {
@@ -655,7 +655,7 @@ impl<'a> Cx<'a> {
     /// runs the range type's own `Read`. The range type the call's value is held to, and
     /// whether that value is optional.
     pub(super) fn ranged_targ(&self, d: FnId, given: &mut [Ty]) -> Option<(usize, Ty, bool)> {
-        let fd = self.d.f(d);
+        let fd = self.items.f(d);
         let (i, opt) = (made_param(fd).map(|i| (i, false)))
             .or_else(|| self.made_optional(fd).map(|i| (i, true)))?;
         let t = self.shallow(given.get(i)?);
@@ -932,7 +932,7 @@ impl<'a> Cx<'a> {
                     span,
                 };
                 let (lo, k, m) = (*lo, *k, *m);
-                let text = self.d.f(m).name.clone();
+                let text = self.items.f(m).name.clone();
                 let name = Called {
                     text: &text,
                     sym: self.d.sym(&text),
@@ -1132,7 +1132,7 @@ impl<'a> Cx<'a> {
                 for (x, y) in t1.iter().zip(t2) {
                     self.unify(x, y);
                 }
-                let fields = self.d.s(*d1).fields.clone();
+                let fields = self.items.s(*d1).fields.clone();
                 let (from, to) = (Subst { tys: t1, sets: s1 }, Subst { tys: t2, sets: s2 });
                 self.b.scopes.push(HashMap::new());
                 let tmp = self.temp("$widen", have.clone());

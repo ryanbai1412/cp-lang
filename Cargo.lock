@@ -264,7 +264,6 @@ dependencies = [
  "cpl-next-lower",
  "cpl-next-own",
  "cpl-next-syntax",
- "cpl-syntax",
  "cpl-wait",
  "mimalloc",
 ]
@@ -277,7 +276,6 @@ dependencies = [
  "cpl-next-decls",
  "cpl-next-ir",
  "cpl-next-syntax",
- "cpl-syntax",
 ]
 
 [[package]]
@@ -307,7 +305,6 @@ dependencies = [
  "cpl-next-db",
  "cpl-next-ir",
  "cpl-next-syntax",
- "cpl-syntax",
 ]
 
 [[package]]
