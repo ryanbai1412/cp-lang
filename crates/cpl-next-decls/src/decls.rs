@@ -113,7 +113,7 @@ pub struct StructDecl {
     /// A record's struct, `(lo:, hi:)` (R02.5.2), shown and matched by its fields.
     pub record: bool,
     pub generics: Vec<String>,
-    pub fields: Vec<(String, Ty)>,
+    pub fields: Vec<(Sym, Ty)>,
     /// Per field: declared with `var`, so assignable after construction.
     pub var_fields: Vec<bool>,
     /// Per field: `@cache`, so a read-only method may write it (R05.10.10).
@@ -610,6 +610,16 @@ impl Decls {
         self.sym(word)
             .is_some_and(|w| self.memo_homes.contains_key(&w))
     }
+    /// Which of struct `s`'s fields is named `name`.
+    pub fn field(&self, s: StructId, name: &str) -> Option<usize> {
+        let name = self.sym(name)?;
+        (self.structs[s.0].fields.iter()).position(|(f, _)| *f == name)
+    }
+    /// The names of struct `s`'s fields, in order.
+    pub fn field_names(&self, s: StructId) -> Vec<String> {
+        let fields = self.structs[s.0].fields.iter();
+        fields.map(|(f, _)| self.text(*f).to_string()).collect()
+    }
     /// Which of enum `e`'s variants is named `name`.
     pub fn variant(&self, e: StructId, name: &str) -> Option<usize> {
         let name = self.sym(name)?;
@@ -948,7 +958,7 @@ fn domain_params(d: &mut Decls, from: usize) {
     }
     for k in from..d.fns.len() {
         let f = &d.fns[k];
-        let fields: &[(String, Ty)] = match f.owner {
+        let fields: &[(Sym, Ty)] = match f.owner {
             Some(Owner::Struct(s)) => &d.structs[s.0].fields,
             _ => &[],
         };

@@ -614,7 +614,7 @@ impl<'s> Type<'s> {
         if let ty::Ty::Struct(id, ..) = ty {
             let s = Signatures::s(&f.d, *id);
             for ((name, _), at) in s.fields.iter().zip(&s.field_at) {
-                out.push((name.clone(), item_of(f, at)));
+                out.push((f.d.text(*name).to_string(), item_of(f, at)));
             }
             out.extend(
                 s.methods

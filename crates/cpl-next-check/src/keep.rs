@@ -17,7 +17,7 @@ impl Cx<'_> {
                     let sd = self.d.s(sid);
                     cache |= sd.cached.get(*i).copied().unwrap_or(false);
                     if !cache && !sd.var_fields.get(*i).copied().unwrap_or(true) {
-                        let (st, f) = (sd.name.clone(), sd.fields[*i].0.clone());
+                        let (st, f) = (sd.name.clone(), self.d.text(sd.fields[*i].0).to_string());
                         self.err(
                             target.span,
                             Msg::verdict(

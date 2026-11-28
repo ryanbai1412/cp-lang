@@ -615,9 +615,7 @@ impl<'a> Cx<'a> {
         // A tuple pattern reads a record's fields in order (R02.5.5): `let (tree, used) =
         // kruskal(..)` of `-> (tree: Rooted<V, _, _>, used: [E]Bool)`.
         let fields = match self.lookup(&tmp).map(|(_, t)| self.shallow(&t)) {
-            Some(Ty::Struct(d, ..)) if self.d.s(d).record => (self.d.s(d).fields.iter())
-                .map(|(n, _)| n.clone())
-                .collect(),
+            Some(Ty::Struct(d, ..)) if self.d.s(d).record => self.d.field_names(d),
             _ => Vec::new(),
         };
         for (field, p) in parts {

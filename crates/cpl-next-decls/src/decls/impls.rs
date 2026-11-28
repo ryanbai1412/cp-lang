@@ -6,7 +6,7 @@ impl Decls {
     pub fn lookup_member(&self, recv: &Ty, name: &str) -> Option<Member> {
         if let Ty::Struct(d, targs, sets) = recv {
             let s = self.s(*d);
-            if let Some(i) = s.fields.iter().position(|(n, _)| n == name) {
+            if let Some(i) = self.field(*d, name) {
                 let sub = Subst { tys: targs, sets };
                 return Some(Member::Field(i, sub.ty(&s.fields[i].1)));
             }

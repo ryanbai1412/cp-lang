@@ -14,6 +14,9 @@ use std::collections::HashMap;
 /// The part of the signatures a written type is converted against, each table read by key.
 /// Decls reads it while it is still building the rest of the signatures.
 pub trait TypeTables {
+    /// The text a name was written with, for showing it.
+    fn text(&self, s: crate::sym::Sym) -> &str;
+
     fn alias(&self, id: AliasId) -> &AliasDecl;
     fn konst(&self, id: ConstId) -> &LibConst;
     /// Whether the program's top level binds `name` with `let`: a value, not an item.
@@ -116,6 +119,10 @@ impl Signatures for Decls {
 }
 
 impl TypeTables for Decls {
+    fn text(&self, s: crate::sym::Sym) -> &str {
+        self.syms.text(s)
+    }
+
     fn alias(&self, id: AliasId) -> &AliasDecl {
         &self.aliases[id.0]
     }

@@ -295,8 +295,7 @@ impl Cx<'_> {
                     self.mismatch(span, "a record pattern", &v.ty);
                     return None;
                 };
-                let names: Vec<String> =
-                    self.d.s(s).fields.iter().map(|(n, _)| n.clone()).collect();
+                let names: Vec<String> = self.d.field_names(s);
                 if !rest && fields.len() != names.len() {
                     let code = cpl_diag::codes::TYPE_MISMATCH;
                     let have = names.len();
@@ -589,7 +588,10 @@ impl Cx<'_> {
                     out.push((c, [path, &sd.generics[k..=k]].concat()));
                 }
                 a if sd.record => {
-                    let field = sd.fields.get(k).map_or(String::new(), |f| f.0.clone());
+                    let field = sd
+                        .fields
+                        .get(k)
+                        .map_or(String::new(), |f| self.d.text(f.0).to_string());
                     self.fresh_in(&a, &[path, &[field]].concat(), out);
                 }
                 _ => {}
@@ -706,7 +708,7 @@ impl Cx<'_> {
                 Some((s, tys)) => {
                     let mut parts = vec![Space::Any; tys.len()];
                     for (n, p) in fields {
-                        if let Some(k) = self.d.s(s).fields.iter().position(|(m, _)| *m == n.text) {
+                        if let Some(k) = self.d.field(s, &n.text) {
                             parts[k] = self.space(p, &tys[k]);
                         }
                     }

@@ -123,8 +123,8 @@ impl Cx<'_> {
         let named = super::expr::named_params(&s.generics, &sub);
         let formals: Vec<Formal> = (s.fields.iter().zip(&s.defaults))
             .map(|((n, t), e)| Formal {
-                label: n,
-                name: n,
+                label: self.d.text(*n),
+                name: self.d.text(*n),
                 written: None,
                 ty: sub.ty(t),
                 mutable: false,
@@ -218,7 +218,7 @@ impl Cx<'_> {
             );
             return error;
         };
-        let names: Vec<String> = self.d.s(s).fields.iter().map(|(n, _)| n.clone()).collect();
+        let names = self.d.field_names(s);
         let ty = b.ty.clone();
         let (mut pre, read) = self.held(b);
         let mut given: Vec<Option<TExpr>> = vec![None; names.len()];

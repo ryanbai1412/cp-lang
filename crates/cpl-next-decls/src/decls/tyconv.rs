@@ -558,6 +558,9 @@ impl Decls {
 }
 
 impl TypeTables for Tables {
+    fn text(&self, s: Sym) -> &str {
+        self.syms.text(s)
+    }
     fn alias(&self, id: AliasId) -> &AliasDecl {
         &self.aliases[id.0]
     }

@@ -1266,7 +1266,7 @@ impl Walk<'_> {
             };
             let sd = self.d.s(s);
             (q.root == Root::Local(me.0) && sd.cached.get(*i) == Some(&true))
-                .then(|| sd.fields[*i].0.clone())
+                .then(|| self.d.text(sd.fields[*i].0).to_string())
         };
         match &e.kind {
             EK::Copy(p) | EK::Lent(p) | EK::AddrOf(p) | EK::Pass(p, ..) => cached(p),

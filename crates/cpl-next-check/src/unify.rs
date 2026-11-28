@@ -1218,8 +1218,9 @@ pub fn show_ty(
             let n = &decls.s(d).name;
             if decls.s(d).record {
                 let fields = decls.s(d).fields.iter().zip(&ts);
-                let fs: Vec<String> =
-                    (fields.map(|((f, _), t)| format!("{f}: {}", show(t)))).collect();
+                let fs: Vec<String> = (fields
+                    .map(|((f, _), t)| format!("{}: {}", decls.text(*f), show(t))))
+                .collect();
                 return format!("({})", fs.join(", "));
             }
             if ts.is_empty() {

@@ -842,7 +842,7 @@ fn layer(
                         next_set: Some(0),
                     };
                     let mut errors = Vec::new();
-                    let fields: Vec<(String, Ty)> =
+                    let fields: Vec<_> =
                         sd.fields
                             .iter()
                             .map(|f| {
@@ -909,6 +909,9 @@ fn layer(
                             methods.insert(d.syms.intern(&f.name.text), fid);
                         }
                     }
+                    let fields = (fields.into_iter())
+                        .map(|(n, t)| (d.syms.intern(&n), t))
+                        .collect();
                     let ctor = d.member(&methods, "new");
                     let sdecl = &mut d.structs[id.0];
                     sdecl.fields = fields;
@@ -1279,7 +1282,7 @@ fn layer(
                             if tf.getter
                                 && matches!(tf.body, ast::FnBody::None)
                                 && !written(n)
-                                && d.s(*sid).fields.iter().any(|(f, _)| f == n)
+                                && d.field(*sid, n).is_some()
                             {
                                 filled.push(crate::synth::field_getter(n, s.span));
                             }

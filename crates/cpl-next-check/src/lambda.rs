@@ -625,7 +625,7 @@ impl Cx<'_> {
             return None;
         };
         let s = self.d.s(d);
-        let names: Vec<String> = s.fields.iter().map(|f| f.0.clone()).collect();
+        let names = self.d.field_names(d);
         let positional = (names.iter().enumerate()).all(|(k, n)| *n == format!("_{k}"));
         (positional || s.record).then_some(names)
     }
