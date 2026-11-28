@@ -7,7 +7,7 @@ use crate::db::{Db, DbError, Input, Query};
 use cpl_contract::FileId;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_syntax::ast::{self, AstNode};
-use cpl_next_syntax::{GreenNode, NodeKind, SyntaxNode};
+use cpl_next_syntax::{GreenNode, SyntaxNode};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
@@ -32,21 +32,50 @@ impl Input for ModuleFile {
     type Value = FileId;
 }
 
-/// The name an item's id carries: what it declares, an impl's head (`impl Ord for P`), or
-/// none for a block of top-level statements.
-fn item_name(item: &SyntaxNode) -> String {
-    let item = ast::Item::cast(item.clone());
-    if let Some(t) = item.as_ref().and_then(ast::Item::name) {
+/// The name an item's id carries: what it declares, an operator fn's operator, an impl's head
+/// (`impl Ord for Pair`), or none for a block of top-level statements.
+fn item_name(item: &ast::Item) -> String {
+    if let Some(t) = item.name() {
         return t.text().to_string();
     }
     let words = |n: SyntaxNode| n.text().split_whitespace().collect::<Vec<_>>().join(" ");
-    match item.and_then(|i| i.decl()) {
+    match item.decl() {
         Some(ast::Decl::Impl(d)) => match (d.trait_ref(), d.self_ty()) {
             (Some(t), Some(s)) => format!("impl {} for {}", words(t), words(s)),
             (None, Some(s)) => format!("impl {}", words(s)),
             _ => "impl".to_string(),
         },
+        Some(ast::Decl::Fn(f)) => {
+            (f.op_name().and_then(|o| o.op())).map_or_else(String::new, |t| t.text().to_string())
+        }
         _ => String::new(),
+    }
+}
+
+/// Each item of `items` with its id, and after an inline `mod m:` the items of its body, named
+/// `m.name`, as their own items of the file. Items of one name are told apart by how many of
+/// that name come before them.
+fn flatten(
+    items: impl Iterator<Item = ast::Item>,
+    module: &Arc<str>,
+    path: &str,
+    out: &mut Vec<(ItemId, SyntaxNode)>,
+) {
+    for it in items {
+        let name: Arc<str> = match path {
+            "" => item_name(&it).into(),
+            p => format!("{p}.{}", item_name(&it)).into(),
+        };
+        let nth = out.iter().filter(|(i, _)| i.name == name).count() as u32;
+        let id = ItemId {
+            module: module.clone(),
+            name: name.clone(),
+            nth,
+        };
+        out.push((id, it.syntax().clone()));
+        if let Some(ast::Decl::Mod(m)) = it.decl() {
+            flatten(m.items(), module, &name, out);
+        }
     }
 }
 
@@ -62,40 +91,36 @@ impl Query for Parse {
     }
 }
 
-/// The top-level item nodes of `file`, in order.
-fn item_nodes(db: &Db, file: &FileId) -> Result<Vec<SyntaxNode>, DbError> {
+/// The items of `file`, each with its id, in file order.
+fn item_nodes(db: &Db, file: &FileId) -> Result<Vec<(ItemId, SyntaxNode)>, DbError> {
     let Some(green) = db.get::<Parse>(file)? else {
         return Ok(Vec::new());
     };
+    let module = db
+        .input::<ModulePath>(file)?
+        .unwrap_or_else(|| file.path().into());
     let root = SyntaxNode::new_root(green);
-    Ok(root
-        .children()
-        .filter(|n| n.kind() == NodeKind::Item)
-        .collect())
+    let mut out = Vec::new();
+    flatten(
+        root.children().filter_map(ast::Item::cast),
+        &module,
+        "",
+        &mut out,
+    );
+    Ok(out)
 }
 
-/// `items(FileId)`: each top-level item's id, in file order. Items of one name are told apart
-/// by how many of that name come before them.
+/// `items(FileId)`: each item's id, in file order.
 pub struct Items;
 impl Query for Items {
     type Key = FileId;
     type Value = Vec<ItemId>;
     const NAME: &'static str = "items";
     fn compute(db: &Db, file: &FileId) -> Result<Self::Value, DbError> {
-        let module = db
-            .input::<ModulePath>(file)?
-            .unwrap_or_else(|| file.path().into());
-        let mut ids: Vec<ItemId> = Vec::new();
-        for n in item_nodes(db, file)? {
-            let name: Arc<str> = item_name(&n).into();
-            let nth = ids.iter().filter(|i| i.name == name).count() as u32;
-            ids.push(ItemId {
-                module: module.clone(),
-                name,
-                nth,
-            });
-        }
-        Ok(ids)
+        Ok(item_nodes(db, file)?
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect())
     }
 }
 
@@ -107,13 +132,19 @@ pub struct Item {
     pub hash: u64,
 }
 
-/// `id`'s node, if its module's file holds it.
+/// `id`'s node, if its module's file holds it. Reads `items` first, so an edit that leaves
+/// the file's ids as they were reaches only the items whose text changed.
 fn node(db: &Db, id: &ItemId) -> Result<Option<SyntaxNode>, DbError> {
     let Some(file) = db.input::<ModuleFile>(&id.module)? else {
         return Ok(None);
     };
-    let at = db.get::<Items>(&file)?.iter().position(|i| i == id);
-    Ok(at.and_then(|k| item_nodes(db, &file).ok()?.into_iter().nth(k)))
+    if !db.get::<Items>(&file)?.contains(id) {
+        return Ok(None);
+    }
+    Ok(item_nodes(db, &file)?
+        .into_iter()
+        .find(|(i, _)| i == id)
+        .map(|(_, n)| n))
 }
 
 /// `item(ItemId)`: the item's green node and its text's hash.

@@ -1660,4 +1660,3 @@ return [n, p.x]\nbest = f(3, P(x: 4), true)\nprint(best.len)\n";
         "ev set best 1 2\nev enter f 3 P\nev exit f 3 4\nev set best 3 4\n"
     );
 }
-

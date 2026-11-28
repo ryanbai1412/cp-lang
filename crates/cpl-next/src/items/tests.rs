@@ -80,3 +80,22 @@ fn a_line_added_above_moves_an_item_without_changing_it() {
     db.get::<Hashed>(&b).unwrap();
     assert_eq!(db.computed()["hashed"], 1);
 }
+
+#[test]
+fn consts_contexts_operators_and_inline_mod_items_are_keyed_by_name() {
+    let text = "const N = 3\n\ncontext io:\n    x: Int\n\nfn (a: P) + (b: P) -> P = a\n\nmod m:\n    fn g() -> Int = 1\n";
+    let (db, f) = db_with(text);
+    let ids = vec![
+        id("N", 0),
+        id("io", 0),
+        id("+", 0),
+        id("m", 0),
+        id("m.g", 0),
+    ];
+    assert_eq!(db.get::<Items>(&f), Ok(ids));
+    let g = db.get::<ItemOf>(&id("m.g", 0)).unwrap().unwrap();
+    assert_eq!(
+        SyntaxNode::new_root(g.green).text().trim(),
+        "fn g() -> Int = 1"
+    );
+}
