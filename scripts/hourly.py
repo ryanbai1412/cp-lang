@@ -170,6 +170,20 @@ def landings(hours):
     return out
 
 
+def lane_ratchet():
+    """Main's strict --check on lane-j-check, as its last pushed gate counted it (debt-ratchet.py's
+    lane mode keeps it): 0 before the slice-1 switch (coordinator 02:38)."""
+    git_dir = Path(git("rev-parse", "--git-common-dir") or ".git")
+    path = (ROOT / git_dir if not git_dir.is_absolute() else git_dir) / "cpl-lane-ratchet.json"
+    try:
+        row = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ["lane-j-check's full ratchet: no lane push from this clone has counted it yet."]
+    at = datetime.fromtimestamp(row["at"], timezone.utc)
+    return [f"lane-j-check's full ratchet (main's --check): {row['errors']} errors at `{row['sha'][:9]}` "
+            f"({at:%Y-%m-%d %H:%M} UTC); the slice-1 switch needs 0."]
+
+
 def forecast(names, total, before, hours, ref):
     rate = (before - total) / hours
     day_rev = git("rev-list", "-1", f"--before={int(time.time() - 6 * 3600)}", ref)
@@ -198,6 +212,7 @@ def main(argv):
            "", "## Commits", "", *churn(ref, since), "", "## Conformance", "", *conf,
            f"Regressions per hour: {per_hour:.1f}", "", "## Main CI", "", *ci(hours),
            "", "## End state", "", *end_state(), "", "## Landing", "", *landings(hours),
+           "", "## Lane ratchet", "", *lane_ratchet(),
            "", "## Forecast", "", *forecast(names, total, before, hours, ref)]
     print("\n".join(out))
     return 0

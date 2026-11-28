@@ -2042,6 +2042,82 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
         self.assertEqual(base["ir_reinfer"], 10)
 
+    def test_lane_holds_every_counter_at_the_tip_it_replaces(self):
+        committed = {"ir_reinfer": 20, "rs_file_size_allowlist": {"a.rs": 2100}}
+        tip = {"ir_reinfer": 12, "rs_file_size_allowlist": {"a.rs": 2000}}
+        eff = dr.lane_baseline(committed, tip)
+        self.assertEqual(dr.evaluate(dict(tip), eff)[0], [])
+        # Under the committed number but over the tip's: a rise, so it fails.
+        self.assertEqual(len(dr.evaluate({"ir_reinfer": 13, "rs_file_size_allowlist": {"a.rs": 2001}}, eff)[0]), 2)
+
+    def test_lane_check_is_shrink_only_against_the_tip_and_records_mains_count(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
+                                            env=dr._git_env())
+            git("init", "-q")
+            ratchet = root / "r.json"
+            ratchet.write_text(json.dumps({"ir_reinfer": 10, "rs_file_size_allowlist": {}}))
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+            tip = {"ir_reinfer": 12, "frozen_std_drift": 1, "rs_file_size_allowlist": {}}
+            bumps: list[str] = []
+            self.enterContext(mock.patch.object(dr, "measure_upstream", lambda *a, **k: dict(tip)))
+            self.enterContext(mock.patch.object(dr, "unexplained_bumps", lambda *a, **k: list(bumps)))
+            self.enterContext(mock.patch.object(dr, "hand_lowered", lambda *a, **k: []))
+            self.enterContext(mock.patch.dict(os.environ, {"CPL_RATCHET_LANE": "HEAD", "CPL_RATCHET_STRICT": ""}))
+            argv = ["--check", "--root", d, "--ratchet", str(ratchet)]
+
+            def check(**now) -> int:
+                with mock.patch.object(dr, "measure", lambda *a, **k: {**tip, **now}):
+                    return dr.main(argv)
+            # Debt the tip has, over the committed numbers or not, passes; main's count is kept.
+            self.assertEqual(check(), 0)
+            self.assertEqual(json.loads((root / ".git" / dr.LANE_COUNT).read_text())["errors"], 2)
+            # Any rise fails, a hard zero's too.
+            self.assertEqual(check(ir_reinfer=13), 1)
+            self.assertEqual(check(frozen_std_drift=2), 1)
+            self.assertEqual(check(ir_reinfer=11, frozen_std_drift=0), 0)
+            # A new commit with no Lane: trailer (or Skipped: ratchet) fails.
+            bumps.append("abc: touches the new pipeline or std with no `Lane:` trailer")
+            self.assertEqual(check(), 1)
+            bumps.clear()
+            # An unmeasured tip fails rather than waving the push through.
+            def unknown(*a, **k):
+                raise dr.UpstreamUnknown("no worktree")
+            with mock.patch.object(dr, "measure_upstream", unknown):
+                self.assertEqual(check(), 1)
+
+    def test_lane_trailers_are_judged_only_on_commits_since_the_tip(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
+                                            env=dr._git_env())
+            commit = lambda msg: git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-aqm", msg)
+            git("init", "-q")
+            (root / "crates/cpl-next/src").mkdir(parents=True)
+            src = root / "crates/cpl-next/src/lib.rs"
+            src.write_text("// 0\n")
+            git("add", ".")
+            commit("check: old, unlaned")
+            git("branch", "tip")
+            src.write_text("// 1\n")
+            commit("check: laned\n\nLane: J")
+            self.assertEqual(dr.unlaned(root, "tip") + dr.skipped_ratchet(root, "tip"), [])
+            src.write_text("// 2\n")
+            commit("check: skips\n\nLane: J\nSkipped: ratchet, in a hurry")
+            src.write_text("// 3\n")
+            commit("check: new, unlaned")
+            self.assertEqual(len(dr.skipped_ratchet(root, "tip")), 1)
+            self.assertEqual(len(dr.unlaned(root, "tip")), 1)
+            # The lane gate judges every commit since the tip, not only the pipeline's.
+            (root / "notes.md").write_text("x\n")
+            git("add", "notes.md")
+            commit("docs: off the pipeline, unlaned")
+            self.assertEqual(len(dr.lane_trailers(root, "tip")), 3)
+            git("update-ref", "refs/remotes/origin/main", "HEAD~1")
+            self.assertEqual(len(dr.lane_trailers(root, "tip")), 1)
+
     def test_check_fails_debt_already_on_main_unless_lowered(self):
         with tempfile.TemporaryDirectory() as d:
             ratchet = Path(d, "r.json")

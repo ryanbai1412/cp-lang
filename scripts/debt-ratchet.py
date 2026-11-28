@@ -43,6 +43,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from typing import Iterator
 import tomllib
 import zlib
@@ -5997,6 +5998,67 @@ def inherited_baseline(baseline: dict, upstream: dict) -> dict:
     return eff
 
 
+def lane_baseline(baseline: dict, upstream: dict) -> dict:
+    """lane-j-check's baseline: what the tip a push replaces measures, never a committed file an
+    edit could lower (coordinator 02:38). Each gated counter, file size and id set is held at the
+    tip's, so anything that rises fails; soundness counters included, with no "already on main"."""
+    eff = json.loads(json.dumps(baseline))
+    for name, (_, _, gated) in COUNTERS.items():
+        if gated and name in upstream:
+            eff[name] = int(upstream[name])
+    eff["rs_file_size_allowlist"] = dict(upstream.get("rs_file_size_allowlist", {}))
+    for key in ("crate_edges", "rs_near_cap", *ID_SETS):
+        if key in upstream:
+            eff[key] = sorted(upstream[key])
+    return eff
+
+
+LANE_COUNT = "cpl-lane-ratchet.json"
+
+
+def lane_verdict(root: Path, max_rs_lines: int, baseline: dict, actual: dict, full: list[str],
+                 lane: str) -> list[str]:
+    """lane-j-check's shrink-only gate against `lane`, the tip the push replaces: a counter above
+    the tip's fails, and so does any commit since it with no `Lane:` trailer or a
+    `Skipped: ratchet` one (`unexplained_bumps` over `lane..HEAD`). `full`, main's strict
+    --check here, is kept for scripts/hourly.py: it must reach 0 before the slice-1 switch."""
+    head = (_git(root, "rev-parse", "-q", "--verify", "HEAD", env=_git_env()) or [""])[0]
+    common = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir", env=_git_env())
+    if common:
+        Path(common[0], LANE_COUNT).write_text(json.dumps(
+            {"sha": head, "errors": len(full), "at": int(time.time())}) + "\n", encoding="utf-8")
+    try:
+        upstream = measure_upstream(root, max_rs_lines, ref=lane, only=set(actual))
+    except UpstreamUnknown as e:
+        return [f"could not measure {lane} ({e}), so nothing shows this push adds no debt"]
+    if upstream is None:
+        up = _git(root, "rev-parse", "-q", "--verify", lane, env=_git_env())
+        return [] if up and up[0] == head else [f"{lane} is not a commit here: fetch it"]
+    errors = evaluate(actual, lane_baseline(baseline, upstream))[0]
+    held = tuple(f"{COUNTERS[n][0]}: " for n in HARD_ZERO | set(HARD_FLOOR) | set(ZERO_WITH)
+                 if n in upstream and int(actual.get(n, 0)) <= int(upstream[n]))
+    errors = [e for e in errors if not e.startswith(held)] if held else errors
+    return (errors + lane_trailers(root, lane) + unexplained_bumps(root, baseline, lane, upstream)
+            + hand_lowered(root, baseline, actual, lane))
+
+
+def lane_trailers(root: Path, lane: str) -> list[str]:
+    """Every commit since `lane` that main does not already hold, whatever it touches: one
+    with no `Lane:` trailer, or one whose `Skipped:` names the ratchet, fails (coordinator 02:38).
+    A pushed commit takes its lane only from a protected signoff row, never a later trailer."""
+    main = ["--not", "origin/main"] if _git(root, "rev-parse", "-q", "--verify", "origin/main", env=_git_env()) else []
+    shas = _git(root, "rev-list", "--no-merges", f"{lane}..HEAD", *main, env=_git_env())
+    out = []
+    for sha in shas:
+        body = "\n".join(_git(root, "log", "-1", "--format=%B", sha, env=_git_env()))
+        lanes = _git(root, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", sha, env=_git_env())
+        if not any(l.strip() for l in lanes):
+            out.append(f"{sha[:9]}: no `Lane:` trailer; amend it in (or set CPL_LANE) before pushing")
+        if SKIPPED_RATCHET_RE.search(body):
+            out.append(f"{sha[:9]}: its `Skipped:` names the ratchet; lane-j-check never skips it")
+    return out
+
+
 class UpstreamUnknown(Exception):
     """`ref` exists but could not be checked out to measure."""
 
@@ -6177,9 +6239,14 @@ def main(argv: list[str] | None = None) -> int:
     # On main, HEAD is origin/main: CI names the tip it last saw instead.
     ref = os.environ.get("CPL_RATCHET_BASE") or "origin/main"
     bumps = unexplained_bumps(args.root, baseline, ref)
+    # A push to lane-j-check names the tip it replaces: the shrink-only gate, until slice 1.
+    if lane := os.environ.get("CPL_RATCHET_LANE"):
+        full = errors + bumps + hand_lowered(args.root, baseline, actual, ref)
+        errors, bumps, warnings = lane_verdict(args.root, max_lines, baseline, actual, full, lane), [], \
+            warnings + [f"main's --check finds {len(full)} errors here; 0 before the slice-1 switch"]
     # CI on main sets CPL_RATCHET_STRICT: there every counter over its baseline is main's own
     # debt and fails, rather than being waved through as "already on main".
-    if (errors or bumps) and not os.environ.get("CPL_RATCHET_STRICT"):
+    elif (errors or bumps) and not os.environ.get("CPL_RATCHET_STRICT"):
         try:
             # Only the counters over their baseline can be main's, not this change's.
             upstream = measure_upstream(args.root, max_lines, only=upstream_counters(actual, baseline, bumps))
@@ -6197,7 +6264,8 @@ def main(argv: list[str] | None = None) -> int:
                          for e in errors if e not in mine]
             errors = mine
             bumps = unexplained_bumps(args.root, baseline, ref, upstream)
-    errors += bumps + hand_lowered(args.root, baseline, actual, ref)
+    if not lane:
+        errors += bumps + hand_lowered(args.root, baseline, actual, ref)
 
     # Name the last commits to touch a grown file, so its owner is pinged
     # rather than whoever pushes next.

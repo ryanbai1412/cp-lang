@@ -274,6 +274,14 @@ status:
 gen *args:
     uv run python scripts/gen.py {{args}}
 
+# lane-j-check's landing gate: its tests, each red listed in tests/lane-lib-reds.txt.
+lane-lib-tests:
+    python3 scripts/lane-lib-tests.py
+
+# lane-j-check's shrink-only ratchet against `tip`, the lane tip a push replaces.
+lane-ratchet tip:
+    CPL_RATCHET_LANE={{tip}} uv run --quiet python scripts/debt-ratchet.py --check
+
 # Check the tech-debt ratchet (`--show` lists every counter).
 debt-ratchet *args:
     uv run python scripts/debt-ratchet.py --check {{args}}

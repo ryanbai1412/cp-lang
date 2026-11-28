@@ -1,7 +1,7 @@
 name: lane-check
 # lane-j-check's landing gate for the unit tests slice 1 needs green (coordinator, 11-28):
 # cpl-next's lib and integration tests and cpl-doc's lib tests, every red listed in tests/lane-lib-reds.txt or refused.
-# The pre-push hook runs the same script; this holds a `--no-verify` push to it too.
+# The pre-push hook runs the same checks; this holds a `--no-verify` push to them too.
 on:
   push:
     branches: [lane-j-check]
@@ -20,5 +20,32 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           shared-key: lane-check
+      - uses: ./.github/actions/install-tools
+        with:
+          tools: just@1.59.0
       - name: cpl-next and cpl-doc tests against tests/lane-lib-reds.txt
-        run: python3 scripts/lane-lib-tests.py
+        run: just lane-lib-tests
+  # The shrink-only ratchet against the tip this push replaced (coordinator 02:38): a counter
+  # that rises fails, and so does a new commit with no `Lane:` trailer or a `Skipped: ratchet`.
+  ratchet:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-rust
+        with:
+          shared-key: lane-check
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - name: cpl, which some counters run
+        run: cargo build -q -p cpl-cli
+      - uses: ./.github/actions/install-tools
+        with:
+          tools: just@1.59.0
+      - name: debt-ratchet against the tip before this push
+        run: just lane-ratchet "${{ github.event.before }}"
