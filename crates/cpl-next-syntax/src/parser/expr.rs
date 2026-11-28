@@ -3,7 +3,7 @@
 use super::*;
 use crate::grammar::{contextual, Contextual};
 use crate::literal::{self, FmtSpec, StrPart};
-use crate::ops::{self, Assoc, Level};
+use crate::ops::{self, Assoc, BinOp, Kind, Level};
 
 /// Tokens that can begin an operand.
 fn begins_operand(kind: TokenKind) -> bool {
@@ -36,7 +36,9 @@ impl Parser<'_> {
             }),
             T::Match => self.match_expr(),
             _ if self.lambda_ahead() => self.lambda(),
-            _ => self.expr_at(Level::Expr),
+            _ => {
+                self.expr_at(Level::Expr);
+            }
         }
     }
 
@@ -94,10 +96,12 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// An expression whose operators all bind at least as tight as `min`.
-    pub(super) fn expr_at(&mut self, min: Level) {
+    /// An expression whose operators all bind at least as tight as `min`; the operator of its
+    /// outermost node and where it is written, when that node is a binary one.
+    pub(super) fn expr_at(&mut self, min: Level) -> Option<(ops::Binary, Span)> {
         let at = self.checkpoint();
         let start = self.span().start;
+        let mut top = None;
         self.operand(min);
         loop {
             let kind = self.peek();
@@ -105,6 +109,7 @@ impl Parser<'_> {
                 self.start_at(at, NodeKind::RangeExpr);
                 self.range_rest();
                 self.finish();
+                top = None;
                 continue;
             }
             if let Some(word) = self.contextual() {
@@ -123,6 +128,7 @@ impl Parser<'_> {
                         self.expr_at(Level::Range);
                     }
                     self.finish();
+                    top = None;
                     continue;
                 }
                 if word == Contextual::By && min <= Level::Range {
@@ -130,6 +136,7 @@ impl Parser<'_> {
                     self.bump();
                     self.expr_at(Level::BitOr);
                     self.finish();
+                    top = None;
                     continue;
                 }
             }
@@ -145,31 +152,79 @@ impl Parser<'_> {
                         self.expr_at(Level::Range);
                     }
                     self.finish();
+                    top = None;
                 }
                 Assoc::Left | Assoc::Right => {
                     self.start_at(at, NodeKind::BinExpr);
-                    let three_way = self.at(T::Spaceship).then(|| self.span());
+                    let op_span = self.nth_span(0);
                     self.bump();
                     let rhs = match (op.assoc, op.level) {
                         (_, Level::Pow) => Level::Unary,
                         (Assoc::Right, l) => l,
                         (_, l) => l.tighter(),
                     };
-                    self.expr_at(rhs);
-                    if let Some(op) = three_way {
-                        self.three_way(start, op);
+                    let rhs_start = self.nth_span(0).start;
+                    let inner = self.expr_at(rhs);
+                    match op.kind {
+                        Kind::Bin(BinOp::Spaceship) => self.three_way(start, op_span),
+                        Kind::Bin(BinOp::Coalesce) => {
+                            self.coalesce_mixed(start, op_span, rhs_start, inner)
+                        }
+                        _ => {}
                     }
                     self.finish();
+                    top = Some((op, op_span));
                 }
             }
         }
+        top
+    }
+
+    /// The end of the last token read that is not trivia, or `or` when there is none.
+    fn written_end(&self, or: u32) -> u32 {
+        (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(or, |t| t.span.end)
+    }
+
+    /// `a ?? b + c` reads two ways, so it has to say which (R01.5.6). A way out on the right
+    /// (`o ?? return -1`) reads one way. The checker judges an operator on the left, since a
+    /// step along a domain (`i + 1 ?? I.last`) reads one way too.
+    fn coalesce_mixed(
+        &mut self,
+        start: u32,
+        op: Span,
+        rhs_start: u32,
+        inner: Option<(ops::Binary, Span)>,
+    ) {
+        let arithmetic = |b: &ops::Binary| {
+            matches!(
+                b.kind,
+                Kind::Bin(BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem)
+            )
+        };
+        let Some((mixed, at)) = inner.filter(|(b, _)| arithmetic(b)) else {
+            return;
+        };
+        let end = self.written_end(at.end);
+        let src = self.src;
+        let text = |from: u32, to: u32| src[from as usize..to as usize].trim();
+        let (lhs, side) = (text(start, op.start), text(rhs_start, end));
+        let (l, r) = (text(rhs_start, at.start), text(at.end, end));
+        let help = format!(
+            "write `({lhs} ?? {l}) {} {r}` to use whichever is taken, or `{lhs} ?? ({side})` for a default that is worked out",
+            mixed.spelling
+        );
+        self.diagnostics.push(
+            cpl_diag::msgs::syntax::COALESCE_MIXED
+                .error(Span::new(rhs_start, end), &[])
+                .with_help(help),
+        );
     }
 
     /// `a <=> b`, which CP Lang spells `cmp(a, b)` (decision 4.5).
     fn three_way(&mut self, start: u32, op: Span) {
-        let end = (self.tokens[..self.pos].iter().rev())
-            .find(|t| !t.kind.is_trivia())
-            .map_or(op.end, |t| t.span.end);
+        let end = self.written_end(op.end);
         let src = self.src;
         let l = src[start as usize..op.start as usize].trim_end();
         let r = src[op.end as usize..end as usize].trim_start();

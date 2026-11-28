@@ -1601,12 +1601,38 @@ impl Cx<'_> {
         }
     }
 
+    /// `a + b ?? 0` reads two ways, so it has to say which (R01.5.6), unless `a` is a position,
+    /// whose step (`i + 1 ?? I.last`) reads one way, or the right side is a way out
+    /// (`cur + 1 ?? continue`). The parser judges an operator on the right.
+    fn coalesce_mixed(&mut self, lhs: &next::Expr, rhs: &next::Expr, l: &TExpr) {
+        let next::Expr::Bin(b) = lhs else { return };
+        let arithmetic = matches!(
+            b.op_kind(),
+            Some(BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem)
+        );
+        let leaves = matches!(
+            rhs,
+            next::Expr::Return(_) | next::Expr::Break(_) | next::Expr::Continue(_)
+        );
+        // A position's step reads its integer (`position_arith`).
+        let step = matches!(&l.kind, TK::Bin(_, a, _) if matches!(a.kind, TK::DomOrd(_)));
+        if !arithmetic || leaves || step {
+            return;
+        }
+        let text = cpl_diag::msgs::syntax::COALESCE_MIXED.say(&[]);
+        let msg = Msg::verdict(cpl_diag::codes::UNPARENTHESIZED_COALESCE, text);
+        let help = "write `(a ?? 0) + b` for a default on `a` alone, or `(a + b) ?? 0` for a default on the sum";
+        let at = self.at(lhs);
+        self.err_help(at, msg, Some(help.to_string()));
+    }
+
     fn coalesce(&mut self, lhs: &next::Expr, rhs: &next::Expr, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let l = match lhs.bare_try() {
             Some(_) => self.extent(lhs, None),
             None => self.expr(lhs, None),
         };
+        self.coalesce_mixed(lhs, rhs, &l);
         let Some(inner) = self.optional_of(&l.ty) else {
             if !self.mentions_error(&l.ty) {
                 let t = self.show(&l.ty);

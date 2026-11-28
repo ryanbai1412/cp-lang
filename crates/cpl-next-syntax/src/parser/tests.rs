@@ -1231,3 +1231,33 @@ fn a_match_statement_is_an_expression_statement() {
     };
     assert!(matches!(s.expr(), Some(ast::Expr::Match(_))));
 }
+
+#[test]
+fn coalesce_beside_arithmetic_on_its_right_needs_parentheses() {
+    let file = parse_stmts("print(a ?? 0 + 1)\n");
+    assert_eq!(file.root.text(), "print(a ?? 0 + 1)\n", "lossless");
+    let [d] = &file.diagnostics[..] else {
+        panic!("{:#?}", file.diagnostics);
+    };
+    assert_eq!(d.code, cpl_diag::codes::UNPARENTHESIZED_COALESCE);
+    assert_eq!((d.span.start, d.span.end), (11, 16));
+    assert_eq!(
+        d.help.as_deref(),
+        Some("write `(a ?? 0) + 1` to use whichever is taken, or `a ?? (0 + 1)` for a default that is worked out")
+    );
+    for src in [
+        "print(a ?? (0 + 1))\n",
+        "print((a ?? 0) + 1)\n",
+        "print(a ?? b ?? 0)\n",
+        "print(a ?? -b)\n",
+        "print(a + 1 ?? 0)\n",
+        "let n = o ?? return -1\n",
+    ] {
+        let file = parse_stmts(src);
+        assert!(
+            file.diagnostics.is_empty(),
+            "{src}: {:#?}",
+            file.diagnostics
+        );
+    }
+}
