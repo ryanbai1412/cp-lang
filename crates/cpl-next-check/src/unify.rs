@@ -61,7 +61,25 @@ impl<'a> Cx<'a> {
                 None => break,
             }
         }
-        t
+        self.listed(t)
+    }
+    /// `[D]T` is `List<T>` once `D` is known to have no count (R04.8.11).
+    fn listed(&self, t: Ty) -> Ty {
+        match (&t, self.role_structs.role_struct(Role::List)) {
+            (Ty::Struct(a, ts, _), Some(list))
+                if Some(*a) == self.role_structs.role_struct(Role::Array) && ts.len() == 2 =>
+            {
+                let (walk, dom) = (
+                    self.rows.role_trait(Role::Discrete),
+                    self.rows.role_trait(Role::Positions),
+                );
+                if self.impls().uncounted(&self.shallow(&ts[0]), walk, dom) {
+                    return Ty::Struct(list, vec![ts[1].clone()], Vec::new());
+                }
+                t
+            }
+            _ => t,
+        }
     }
     pub(super) fn shallow_set(&self, s: &SetTy) -> SetTy {
         match s {
@@ -577,6 +595,7 @@ impl<'a> Cx<'a> {
             }
         }
         let f = self.fnref(decl, Vec::new(), Vec::new());
+        self.oblige(&f, span);
         let ty = self.ret_ty(&f);
         let param = {
             let sub = Subst {

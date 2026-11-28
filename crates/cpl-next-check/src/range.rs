@@ -100,6 +100,7 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<TExpr> {
         let core = [
+            self.rows.role_trait(Role::Discrete),
             self.rows.role_trait(Role::Positions),
             self.rows.role_trait(Role::Order),
         ];
@@ -117,6 +118,7 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<TExpr> {
         let core = [
+            self.rows.role_trait(Role::Discrete),
             self.rows.role_trait(Role::Positions),
             self.rows.role_trait(Role::Order),
         ];
@@ -172,9 +174,10 @@ impl Cx<'_> {
                 ty: dty,
                 span,
             },
+            (DomainOp::TryNth, Some(k)) => self.domain_try_nth(dty, k, span)?,
             (DomainOp::At, Some(x)) => self.domain_at(dty, x, span),
-            (DomainOp::Counted, None) => TExpr {
-                kind: TK::DomCounted(dty),
+            (DomainOp::FromCount, None) => TExpr {
+                kind: TK::DomFromCount(dty),
                 ty: Ty::Bool,
                 span,
             },
@@ -714,7 +717,7 @@ impl Cx<'_> {
     /// How a range's ends give their positions, when they are values of a domain: a declared
     /// domain's value is its ordinal, and any other type's comes from its `Domain` impl or bound.
     pub(super) fn ord_ends(&self, t: &Ty, step: Option<&next::Expr>) -> Option<Ends> {
-        let tr = self.rows.role_trait(Role::Positions)?;
+        let tr = self.rows.role_trait(Role::Discrete)?;
         if step.is_some() {
             return None;
         }
@@ -830,6 +833,57 @@ impl Cx<'_> {
             TK::Block(vec![TStmt::Let(tmp, x)], Some(Box::new(pick))),
             opt,
         )
+    }
+    /// `D.try_nth(k)`: `Some(D.nth(k))` when `0 <= k < D.count`, else `None` (R04.2.32). Both go
+    /// through `D`'s impls, so a product or library domain's own `count` and `nth` answer.
+    fn domain_try_nth(&mut self, d: Ty, k: TExpr, span: Span) -> Option<TExpr> {
+        let (count, nth) = (
+            self.domain_method(DomainOp::Count)?,
+            self.domain_method(DomainOp::Nth)?,
+        );
+        let opt = self.optional_ty(d.clone());
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let tmp = self.temp("$k", Ty::Int);
+        let read = || mk(TK::Var(tmp), Ty::Int);
+        let call = |cx: &mut Self, (r, method, m): DomainFn, args: Vec<TArg>, ty: Ty| {
+            cx.reach(m);
+            let ctx = cx.trait_ctx(r.tr, &method);
+            mk(
+                TK::CallTrait {
+                    ctx,
+                    tr: r,
+                    method,
+                    recv: None,
+                    self_ty: Box::new(d.clone()),
+                    targs: Box::default(),
+                    sets: Box::default(),
+                    args,
+                },
+                ty,
+            )
+        };
+        let len = call(self, count, Vec::new(), Ty::Int);
+        let pos = call(self, nth, vec![TArg::Value(read())], d.clone());
+        let cmp = |op, a, b| mk(TK::Cmp(op, Box::new(a), Box::new(b)), Ty::Bool);
+        let has = mk(
+            TK::Bin(
+                BinOp::And,
+                Box::new(cmp(CmpOp::Le, mk(TK::Int(0), Ty::Int), read())),
+                Box::new(cmp(CmpOp::Lt, read(), len)),
+            ),
+            Ty::Bool,
+        );
+        let yes = self.some(pos, opt.clone());
+        let none = vec![mk(TK::Bool(false), Ty::Bool), mk(TK::Unset, d)];
+        let no = mk(TK::Struct(none), opt.clone());
+        let pick = mk(
+            TK::If(Box::new(has), Box::new(yes), Box::new(no)),
+            opt.clone(),
+        );
+        Some(mk(
+            TK::Block(vec![TStmt::Let(tmp, k)], Some(Box::new(pick))),
+            opt,
+        ))
     }
     /// `D.count`.
     fn domain_len(&mut self, d: Ty, span: Span) -> TExpr {
@@ -947,13 +1001,18 @@ impl Cx<'_> {
         let hi = hi.unwrap_or_else(|| self.domain_len(d.clone(), span));
         self.range_of(vec![lo, hi, int(TK::Int(1))], d, span)
     }
-    /// The fn of core's `Domain` whose body is the intrinsic `op`.
+    /// The fn of core's `Discrete` or `Domain` whose body is the intrinsic `op`.
     fn domain_method(&self, op: DomainOp) -> Option<DomainFn> {
-        let tr = self.rows.role_trait(Role::Positions)?;
-        let ms = &self.items.t(tr).methods;
-        let (n, &m) = ms
-            .iter()
-            .find(|(_, &m)| self.items.f(m).intrinsic == Some(Intrinsic::Domain(op)))?;
+        let roles = [
+            self.rows.role_trait(Role::Discrete),
+            self.rows.role_trait(Role::Positions),
+        ];
+        let (tr, n, m) = (roles.into_iter().flatten()).find_map(|tr| {
+            let ms = &self.items.t(tr).methods;
+            (ms.iter())
+                .find(|(_, &m)| self.items.f(m).intrinsic == Some(Intrinsic::Domain(op)))
+                .map(|(n, &m)| (tr, n, m))
+        })?;
         let r = decls::TraitRef {
             tr,
             args: Vec::new(),
@@ -1006,7 +1065,7 @@ impl Cx<'_> {
         match self.shallow(t) {
             Ty::Dom(_) => true,
             Ty::Param(i) => (self.bound_traits(i).iter())
-                .any(|b| Some(b.tr) == self.rows.role_trait(Role::Positions)),
+                .any(|b| Some(b.tr) == self.rows.role_trait(Role::Discrete)),
             _ => false,
         }
     }
@@ -1015,7 +1074,7 @@ impl Cx<'_> {
     pub(super) fn position_int(&mut self, e: TExpr) -> TExpr {
         if matches!(self.shallow(&e.ty), Ty::Param(_)) {
             let items = self.items;
-            let ord = (self.rows.role_trait(Role::Positions).iter())
+            let ord = (self.rows.role_trait(Role::Discrete).iter())
                 .flat_map(|tr| items.t(*tr).methods.values())
                 .find(|&&m| items.f(m).intrinsic == Some(Intrinsic::Domain(DomainOp::Ord)));
             if let Some(&m) = ord {

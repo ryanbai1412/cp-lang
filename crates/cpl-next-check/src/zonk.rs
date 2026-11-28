@@ -75,7 +75,7 @@ impl<'a> Cx<'a> {
             | TK::ToI128(b)
             | TK::DomOrd(b)
             | TK::Ordinal(b) => self.zonk_expr(b),
-            TK::DomLen(t) | TK::DomCounted(t) => *t = self.zonk(t),
+            TK::DomLen(t) | TK::DomFromCount(t) => *t = self.zonk(t),
             TK::HasBound(t, r) => {
                 *t = self.zonk(t);
                 for a in &mut r.args {

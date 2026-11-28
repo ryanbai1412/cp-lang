@@ -1,9 +1,9 @@
 //! Contract 5: generic IR -> instances. The link step: it decides which
 //! instances exist and what each function-value set holds, from the whole program.
-use cpl_next_decls::decls::{Choice, ImplIdx, TraitRef};
+use cpl_next_decls::decls::{Choice, ImplIdx, Role, TraitRef};
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::sym::Sym;
-use cpl_next_decls::views::{Checked, Generics, ImplChoice, Items, Marks, Summaries};
+use cpl_next_decls::views::{Checked, Generics, ImplChoice, Items, Marks, RoleRows, Summaries};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::ty::*;
@@ -23,6 +23,7 @@ pub use events::add_events;
 
 struct Link<'a> {
     d: &'a dyn Items,
+    roles: &'a dyn RoleRows,
     /// The `trace` role's fns (contract 8).
     trace: &'a [FnId],
     /// Decls' one impl choice, each linked type asked as the checker's type it is (R08.1.2).
@@ -153,6 +154,8 @@ pub struct Inputs<'a> {
     pub items: &'a dyn Items,
     /// The `trace` role's fns, every one of which an events build instances.
     pub marks: &'a dyn Marks,
+    /// The structs and traits std marks with a role: `[D]T`'s list and array, `Discrete`.
+    pub roles: &'a dyn RoleRows,
     pub fns: &'a dyn Generics,
     pub sums: &'a dyn Summaries,
     pub checked: &'a dyn Checked,
@@ -171,6 +174,7 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
     let (d, c, generic) = (v.items, v.checked, v.fns);
     let mut l = Link {
         d,
+        roles: v.roles,
         trace: v.marks.role_fns(cpl_next_decls::decls::Role::Trace),
         choice: Choice::new(cpl_next_decls::decls::Impls {
             items: d,
@@ -554,6 +558,23 @@ impl Link<'_> {
             t => self.ty(t, env),
         }
     }
+    /// Whether `[D]T` at these arguments is the list: `D` has no count (R04.8.11).
+    fn listed(&mut self, d: StructId, ts: &[Ty], env: &Env) -> bool {
+        let array = self.roles.role_struct(Role::Array);
+        if Some(d) != array || ts.len() != 2 || self.roles.role_struct(Role::List).is_none() {
+            return false;
+        }
+        let key = match self.targ(&ts[0], env) {
+            CTy::Int => Ty::Int,
+            CTy::Struct(s, args, _) if args.is_empty() => Ty::Struct(s, Vec::new(), Vec::new()),
+            _ => return false,
+        };
+        let (walk, dom) = (
+            self.roles.role_trait(Role::Discrete),
+            self.roles.role_trait(Role::Positions),
+        );
+        self.choice.impls.uncounted(&key, walk, dom)
+    }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
             Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. } => {
@@ -622,6 +643,10 @@ impl Link<'_> {
                 t => t.cloned().unwrap_or(CTy::Error),
             },
             Ty::Dom(d) => CTy::Dom(*d),
+            Ty::Struct(d, ts, _) if self.listed(*d, ts, env) => {
+                let list = self.roles.role_struct(Role::List).unwrap_or(*d);
+                self.ty(&Ty::Struct(list, vec![ts[1].clone()], Vec::new()), env)
+            }
             Ty::Struct(d, ts, ss) => {
                 // A lend changes a struct only through a field that holds it: `Version<S>`
                 // keeps no `S`, so `Version<lent Arr>` is `Version<Arr>`.
@@ -1218,7 +1243,7 @@ impl Link<'_> {
                 CTy::Range(lo, _) | CTy::RangeTo(_, _, lo, _) => EK::Int(lo),
                 _ => EK::Int(0),
             },
-            EK::DomCounted(t) => EK::Bool(match self.targ(t, env) {
+            EK::DomFromCount(t) => EK::Bool(match self.targ(t, env) {
                 CTy::Dom(d) => self.c.domain(DomId(d)).counted,
                 _ => false,
             }),

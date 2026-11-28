@@ -80,7 +80,7 @@ impl TExpr {
         };
         match &self.kind {
             TK::Int(_) | TK::Float(_) | TK::Bool(_) | TK::Unit | TK::Var(_) | TK::FnItem(_) => {}
-            TK::Itself(_) | TK::ReadInt | TK::DomLen(_) | TK::DomCounted(_) => {}
+            TK::Itself(_) | TK::ReadInt | TK::DomLen(_) | TK::DomFromCount(_) => {}
             TK::HasBound(..) | TK::Text(_) | TK::Unset | TK::Error => {}
             TK::Call { recv, args, .. } | TK::CallTrait { recv, args, .. } => {
                 (recv.iter().map(|r| arg(r)))
@@ -214,8 +214,8 @@ pub enum TK {
     ReadInt,
     /// The size of a domain type: `D.count`.
     DomLen(Ty),
-    /// Whether a domain type is declared by a count alone: `D.counted` (R10.2.2).
-    DomCounted(Ty),
+    /// Whether a domain type is declared by a count alone: `D.from_count` (R10.2.2).
+    DomFromCount(Ty),
     /// `D(i)`: an Int becomes a value of the domain, checked.
     DomFrom(Ty, Box<TExpr>, CheckKind),
     /// An Int as a cut of the domain: how many positions come before it, checked (R04.4.25).

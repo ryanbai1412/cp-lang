@@ -120,38 +120,41 @@ pub struct Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
 /// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
 // A product domain walks row-major, the last factor fastest (R04.2.9); `P((x, y))` converts each part,
 // and `Int(p)` is `p`'s ordinal (R04.2.15).
-impl<A: Domain, B: Domain> Domain for Tuple2<A, B>:
-    @get fn count() -> Int = A.count * B.count
+impl<A: Domain, B: Domain> Discrete for Tuple2<A, B>:
     fn nth(k: Int) -> Tuple2<A, B> = (A.nth(k / B.count), B.nth(k % B.count))
     @get fn ord(self) -> Int = self._0.ord * B.count + self._1.ord
+impl<A: Domain, B: Domain> Domain for Tuple2<A, B>:
+    @get fn count() -> Int = A.count * B.count
 impl<A: Domain, B: Domain> Into<Tuple2<A, B>> for Tuple2<Int, Int>:
     fn into(self) -> Tuple2<A, B> = (A(self._0), B(self._1))
 impl<A: Domain, B: Domain> Into<Int> for Tuple2<A, B>:
     fn into(self) -> Int = self.ord
-impl<A: Ordered, B: Ordered> Ordered for Tuple2<A, B>
+impl<A: Ordered + Domain, B: Ordered + Domain> Ordered for Tuple2<A, B>
 
-impl<A: Domain, B: Domain, C: Domain> Domain for Tuple3<A, B, C>:
-    @get fn count() -> Int = A.count * B.count * C.count
+impl<A: Domain, B: Domain, C: Domain> Discrete for Tuple3<A, B, C>:
     fn nth(k: Int) -> Tuple3<A, B, C> =
         (A.nth(k / (B.count * C.count)), B.nth(k / C.count % B.count), C.nth(k % C.count))
     @get fn ord(self) -> Int = (self._0.ord * B.count + self._1.ord) * C.count + self._2.ord
+impl<A: Domain, B: Domain, C: Domain> Domain for Tuple3<A, B, C>:
+    @get fn count() -> Int = A.count * B.count * C.count
 impl<A: Domain, B: Domain, C: Domain> Into<Tuple3<A, B, C>> for Tuple3<Int, Int, Int>:
     fn into(self) -> Tuple3<A, B, C> = (A(self._0), B(self._1), C(self._2))
 impl<A: Domain, B: Domain, C: Domain> Into<Int> for Tuple3<A, B, C>:
     fn into(self) -> Int = self.ord
-impl<A: Ordered, B: Ordered, C: Ordered> Ordered for Tuple3<A, B, C>
-impl<A: Domain, B: Domain, C: Domain, E: Domain> Domain for Tuple4<A, B, C, E>:
-    @get fn count() -> Int = A.count * B.count * C.count * E.count
+impl<A: Ordered + Domain, B: Ordered + Domain, C: Ordered + Domain> Ordered for Tuple3<A, B, C>
+impl<A: Domain, B: Domain, C: Domain, E: Domain> Discrete for Tuple4<A, B, C, E>:
     fn nth(k: Int) -> Tuple4<A, B, C, E>:
         let (c, e) = (C.count, E.count)
         (A.nth(k / (B.count * c * e)), B.nth(k / (c * e) % B.count), C.nth(k / e % c), E.nth(k % e))
     @get fn ord(self) -> Int =
         ((self._0.ord * B.count + self._1.ord) * C.count + self._2.ord) * E.count + self._3.ord
+impl<A: Domain, B: Domain, C: Domain, E: Domain> Domain for Tuple4<A, B, C, E>:
+    @get fn count() -> Int = A.count * B.count * C.count * E.count
 impl<A: Domain, B: Domain, C: Domain, E: Domain> Into<Tuple4<A, B, C, E>> for Tuple4<Int, Int, Int, Int>:
     fn into(self) -> Tuple4<A, B, C, E> = (A(self._0), B(self._1), C(self._2), E(self._3))
 impl<A: Domain, B: Domain, C: Domain, E: Domain> Into<Int> for Tuple4<A, B, C, E>:
     fn into(self) -> Int = self.ord
-impl<A: Ordered, B: Ordered, C: Ordered, E: Ordered> Ordered for Tuple4<A, B, C, E>
+impl<A: Ordered + Domain, B: Ordered + Domain, C: Ordered + Domain, E: Ordered + Domain> Ordered for Tuple4<A, B, C, E>
 
 impl<A: Eq, B: Eq> Eq for Tuple2<A, B>:
     fn eq(a, b) = a._0 == b._0 and a._1 == b._1

@@ -9,9 +9,9 @@ pub use std.clone.{Clone}
 use std.convert.{Into}
 /// `T(x)` (R04.2.28).
 pub use std.convert.{Into}
-use std.domains.{Domain, Ordered, Index, Cut, RangeEnds}
+use std.domains.{Discrete, Domain, Ordered, Cyclic, Index, Cut, RangeEnds}
 /// Domains and their cuts (R04.2).
-pub use std.domains.{Domain, Ordered, Index, Cut, RangeEnds}
+pub use std.domains.{Discrete, Domain, Ordered, Cyclic, Index, Cut, RangeEnds}
 use std.seq.{IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed, Slice, Seq, Sized}
 /// The indexed writes and defaults every module names unimported (R12.4.6, R07.12.9).
 pub use std.seq.{IndexMut, IndexedMut, IndexSet}

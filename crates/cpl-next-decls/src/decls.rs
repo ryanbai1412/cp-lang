@@ -414,6 +414,8 @@ pub struct Roles {
     /// The struct core marks `@role(cuts)`: a half-open literal range of its values, where a
     /// `Range<D>` is wanted, is the piece of positions between them (R04.4.4).
     pub cut: Option<StructId>,
+    /// The `@role(discrete)` trait: positions in a walk, which `Int` and every domain have.
+    pub discrete: Option<TraitId>,
     /// The `@role(positions)` trait: every domain's position type has it, and nothing else.
     pub domain: Option<TraitId>,
     /// The `@role(order)` trait: stepping and order, which every domain the compiler declares
@@ -457,6 +459,7 @@ pub enum Role {
     Prelude,
     Recipe,
     Trace,
+    Discrete,
     Positions,
     Order,
     Convert,
@@ -479,7 +482,7 @@ pub enum Role {
 }
 
 impl Role {
-    pub const ALL: [Role; 28] = [
+    pub const ALL: [Role; 29] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -489,6 +492,7 @@ impl Role {
         Role::Prelude,
         Role::Recipe,
         Role::Trace,
+        Role::Discrete,
         Role::Positions,
         Role::Order,
         Role::Convert,
@@ -521,6 +525,7 @@ impl Role {
             Role::Prelude => "prelude",
             Role::Recipe => "recipe",
             Role::Trace => "trace",
+            Role::Discrete => "discrete",
             Role::Positions => "positions",
             Role::Order => "order",
             Role::Convert => "convert",

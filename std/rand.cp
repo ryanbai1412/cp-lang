@@ -101,7 +101,7 @@ pub struct Rng(var s: U64):
     /// example: `var r = Rng(1); r.pick([7]) == Some(7)`
     /// example: `var r = Rng(1); let x = r.pick([4, 5, 6])!; 4 <= x and x <= 6`
     /// example: `let e: List<Int> = []; var r = Rng(1); r.pick(e) == None`
-    pub fn pick<S: Indexed<D, T>, D: Domain, T>(mut self, xs: S) -> ?T:
+    pub fn pick<S: Indexed<D, T>, D: Discrete, T>(mut self, xs: S) -> ?T:
         if xs.len == 0: return None
         Some(xs.at(self.int(0, xs.len - 1)))
     /// Shuffle `a` in place, uniformly (Fisher-Yates).
@@ -143,7 +143,7 @@ pub struct Rng(var s: U64):
     /// example: `var r = Rng(9); r.sample(3, from: [5, 6, 7]).sorted() == [5, 6, 7]`
     /// example: `var r = Rng(9); r.sample(0, from: [5, 6, 7]) == []`
     /// example: `var r = Rng(9); r.sample(2, from: [1, 1, 1]) == [1, 1]`
-    pub fn sample<S: Indexed<D, T>, D: Domain, T>(mut self, k: Int, from: S) -> List<T>:
+    pub fn sample<S: Indexed<D, T>, D: Discrete, T>(mut self, k: Int, from: S) -> List<T>:
         let n = from.len
         assert 0 <= k <= n
         var pos = List(0..n)

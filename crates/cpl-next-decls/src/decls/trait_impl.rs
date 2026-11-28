@@ -161,10 +161,13 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
         }
     }
     // A range type is a domain with an order (R04.2.31), so `Self` in a `_..=_` impl's fns
-    // meets `Domain` and `Ordered`; the impl itself is not bound by them.
+    // meets `Discrete`, `Domain` and `Ordered`; the impl itself is not bound by them.
     let mut fn_bounds = ibounds.clone();
     if let Some(i) = range_param {
-        for tr in [d.roles.domain, d.roles.order].into_iter().flatten() {
+        for tr in [d.roles.discrete, d.roles.domain, d.roles.order]
+            .into_iter()
+            .flatten()
+        {
             let r = TraitRef {
                 tr,
                 args: Vec::new(),

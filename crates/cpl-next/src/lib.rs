@@ -373,6 +373,7 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
     let v = inst::Inputs {
         items: d,
         marks: d,
+        roles: d,
         fns,
         sums: &g.adds,
         checked: &checked,
