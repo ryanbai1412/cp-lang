@@ -272,11 +272,11 @@ impl<'a> Cx<'a> {
         // `(mut d, e) => d.unite(e.0, e.1)` drops `unite`'s `Bool` (R01.8.1, R06.4.8).
         let unit = self.shallow(&ret) == Ty::Unit && body.bare_try().is_none() && !body.is_block();
         // A nested `fn` whose body can end without its value is that error (E0409).
-        let falls = match (nested.as_ref(), body.falls_through()) {
+        let falls = match (nested.as_ref(), body.falls_through(&|n| self.traps(n))) {
             (Some(name), Some(end)) => self.falls_through(name, end, &ret),
             _ => false,
         };
-        let never = body.never_ends();
+        let never = body.never_ends(&|n| self.traps(n));
         let b = match unit || falls {
             true => self.lambda_effect(body, vals, &ret, span),
             false => self.lambda_value(body, vals, &ret),
@@ -661,18 +661,21 @@ impl LamBody<'_, '_> {
                 | LamBody::Fn(next::FnBody::Block(_) | next::FnBody::Expr(next::Expr::Block(_)))
         )
     }
-    fn falls_through(&self) -> Option<cpl_next_syntax::fall_through::End> {
+    fn falls_through(
+        &self,
+        todo: cpl_next_syntax::fall_through::Traps,
+    ) -> Option<cpl_next_syntax::fall_through::End> {
         match self {
-            LamBody::Arm(b) => Some(b.falls_through()),
-            LamBody::Fn(b) => Some(b.falls_through()),
+            LamBody::Arm(b) => Some(b.falls_through(todo)),
+            LamBody::Fn(b) => Some(b.falls_through(todo)),
             LamBody::Built(_) => None,
         }
     }
-    fn never_ends(&self) -> bool {
+    fn never_ends(&self, todo: cpl_next_syntax::fall_through::Traps) -> bool {
         match self {
-            LamBody::Arm(next::ArmBody::Expr(e)) => e.never_ends(),
-            LamBody::Arm(next::ArmBody::Block(b)) => b.never_ends(),
-            LamBody::Fn(b) => b.never_ends(),
+            LamBody::Arm(next::ArmBody::Expr(e)) => e.never_ends(todo),
+            LamBody::Arm(next::ArmBody::Block(b)) => b.never_ends(todo),
+            LamBody::Fn(b) => b.never_ends(todo),
             LamBody::Arm(next::ArmBody::Stmt(_)) | LamBody::Built(_) => false,
         }
     }

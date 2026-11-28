@@ -324,7 +324,7 @@ impl<'a> Cx<'a> {
         want: Option<&Ty>,
         out: &mut Vec<TStmt>,
     ) -> Option<TExpr> {
-        if e.leaves() {
+        if e.leaves(&|n| self.traps(n)) {
             self.expr_stmt(e, out);
             return None;
         }
@@ -930,7 +930,7 @@ impl<'a> Cx<'a> {
         out: &mut Vec<TStmt>,
     ) {
         let body = e.body();
-        if !body.as_ref().is_some_and(|b| b.leaves()) {
+        if !body.as_ref().is_some_and(|b| b.leaves(&|n| self.traps(n))) {
             let code = cpl_diag::codes::ELSE_FALLS_THROUGH;
             let text = "this `else` block can reach its end; end it with `return`, `break`, `continue` or a trap";
             self.err(at, Msg::verdict(code, text));
@@ -1661,8 +1661,8 @@ impl<'a> Cx<'a> {
 }
 
 /// Whether an arm's body leaves (returns, breaks, continues or traps) rather than giving a value.
-pub(super) fn arm_leaves(b: &next::ArmBody) -> bool {
-    b.leaves()
+pub(super) fn arm_leaves(b: &next::ArmBody, todo: cpl_next_syntax::fall_through::Traps) -> bool {
+    b.leaves(todo)
 }
 
 /// Whether `f` is a `@memo` fn: its table and clear are made around its body (R06.4.1).

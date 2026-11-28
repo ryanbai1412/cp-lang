@@ -230,6 +230,9 @@ impl std::fmt::Display for FmtSpec {
     }
 }
 
+/// The letters a format can end in after its width: `{x:08x}` hex, `{m:b}` binary (R01.4.4).
+const FMT_LETTERS: [(&str, FmtKind); 2] = [("x", FmtKind::Hex), ("b", FmtKind::Bin)];
+
 impl FmtSpec {
     /// The format `text` spells (what follows the `:`), if it is one.
     pub fn parse(text: &str) -> Option<FmtSpec> {
@@ -237,11 +240,11 @@ impl FmtSpec {
         let zero = text.starts_with('0') && text.len() > 1 && text.as_bytes()[1].is_ascii_digit();
         let rest = if zero { &text[1..] } else { text };
         let (width, rest) = rest.split_at(digits(rest));
-        let kind = match rest {
-            "" if !width.is_empty() => FmtKind::Dec,
-            "x" => FmtKind::Hex,
-            "b" => FmtKind::Bin,
-            _ => {
+        let lettered = FMT_LETTERS.iter().find(|(l, _)| *l == rest);
+        let kind = match lettered {
+            _ if rest.is_empty() && !width.is_empty() => FmtKind::Dec,
+            Some((_, k)) => *k,
+            None => {
                 let places = rest.strip_prefix('.')?;
                 let places = places.strip_suffix('f').unwrap_or(places);
                 if places.is_empty() || digits(places) != places.len() {

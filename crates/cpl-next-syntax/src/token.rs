@@ -164,6 +164,22 @@ pub const KEYWORDS: [&str; 33] = [
 /// Lowercase `none` is an ordinary name.
 pub const LITERAL_WORDS: &[&str] = &["true", "false", "None"];
 
+/// What a literal word is, in [`LITERAL_WORDS`]' order.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum LiteralWord {
+    True,
+    False,
+    None,
+}
+
+impl LiteralWord {
+    /// The literal word `text` spells, if it is one.
+    pub fn of(text: &str) -> Option<LiteralWord> {
+        let i = LITERAL_WORDS.iter().position(|w| *w == text)?;
+        Some([LiteralWord::True, LiteralWord::False, LiteralWord::None][i])
+    }
+}
+
 /// What to write instead of a word that v2.1 reserved and v2.2 does not.
 /// The word itself is an ordinary name now.
 pub fn removed_keyword(text: &str) -> Option<&'static str> {

@@ -84,7 +84,7 @@ pub fn program(args: &[String], usage: &str) -> Arc<Program> {
             for d in ds.iter() {
                 match has(args, "--json") {
                     true => println!("{}", d.json()),
-                    false => println!("{d}"),
+                    false => eprintln!("{d}"),
                 }
             }
             std::process::exit(code(session.verdict(path)));

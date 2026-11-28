@@ -1378,7 +1378,9 @@ impl NameRef {
 
     /// `None`, the empty optional: a literal word the parser reads as a name.
     pub fn is_none(&self) -> bool {
-        self.ident().is_some_and(|t| t.text() == "None")
+        self.ident().is_some_and(|t| {
+            crate::token::LiteralWord::of(t.text()) == Some(crate::token::LiteralWord::None)
+        })
     }
 }
 
