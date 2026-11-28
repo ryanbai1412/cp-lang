@@ -187,9 +187,9 @@ impl Cx<'_> {
             kind: ExprKind::Name(text),
             span: dom.span,
         };
-        let walk = match &dty {
+        let walk = match (&dty, &dom.kind) {
             // An anonymous range's cells take any `Int` (R04.3.4), so its keys walk as `Int`s.
-            Ty::Dom(i) if self.domains[*i].name.starts_with('$') => {
+            (Ty::Dom(i), _) if self.domains[*i].name.starts_with('$') => {
                 let (lo, len) = (self.domains[*i].lo, self.domains[*i].len);
                 let var = |r| TExpr {
                     kind: TK::Var(r),
@@ -216,24 +216,21 @@ impl Cx<'_> {
                     span: dom.span,
                 }
             }
-            Ty::Dom(i) if !self.domains[*i].name.is_empty() => named(self.domains[*i].name.clone()),
-            // And one ending at a domain's count: `[0..V.count - 1] i => ..` walks its written ends.
-            Ty::RangeTo(..) if matches!(dom.kind, TypeKind::Range { .. }) => {
-                let TypeKind::Range { lo, hi, inclusive } = &dom.kind else {
-                    unreachable!()
-                };
-                ast::Expr {
-                    kind: ExprKind::Range {
-                        lo: lo.clone(),
-                        hi: hi.clone(),
-                        inclusive: *inclusive,
-                        step: None,
-                    },
-                    span: dom.span,
-                }
+            (Ty::Dom(i), _) if !self.domains[*i].name.is_empty() => {
+                named(self.domains[*i].name.clone())
             }
+            // And one ending at a domain's count: `[0..V.count - 1] i => ..` walks its written ends.
+            (Ty::RangeTo(..), TypeKind::Range { lo, hi, inclusive }) => ast::Expr {
+                kind: ExprKind::Range {
+                    lo: lo.clone(),
+                    hi: hi.clone(),
+                    inclusive: *inclusive,
+                    step: None,
+                },
+                span: dom.span,
+            },
             // So do a constant range's: `[0..3] i => ..`.
-            Ty::Range(lo, hi) => {
+            (Ty::Range(lo, hi), _) => {
                 let int = |v: i64| {
                     Some(Box::new(ast::Expr {
                         kind: ExprKind::Int(i128::from(v)),
@@ -252,7 +249,9 @@ impl Cx<'_> {
             }
             // A type that implements `Domain` (`[V.cuts] c => ..`), or a parameter bound by it,
             // walks its positions too.
-            Ty::Struct(..) | Ty::Param(_) if self.is_domain(&dty) || self.domain_param(&dty) => {
+            (Ty::Struct(..) | Ty::Param(_), _)
+                if self.is_domain(&dty) || self.domain_param(&dty) =>
+            {
                 let all = self.domain_value(dty.clone(), dom.span);
                 let tmp = self.bind("$walk", all.ty.clone());
                 pre.push(TStmt::Let(tmp, all));
