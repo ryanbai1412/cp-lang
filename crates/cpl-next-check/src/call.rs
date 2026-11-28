@@ -152,8 +152,8 @@ impl Cx<'_> {
             }
         }
         let takes = match named {
-            Named::Fn(d) => self.d.f(d).generics.len(),
-            Named::Struct(d) => self.d.s(d).generics.len(),
+            Named::Fn(d) => self.items.f(d).generics.len(),
+            Named::Struct(d) => self.items.s(d).generics.len(),
             _ => 0,
         };
         if given.len() > takes {
@@ -174,14 +174,14 @@ impl Cx<'_> {
             _ => None,
         };
         let ctor = match named {
-            Named::Struct(d) => self.d.s(d).ctor.filter(|_| !match self
+            Named::Struct(d) => self.items.s(d).ctor.filter(|_| !match self
                 .b
                 .decl
-                .and_then(|f| self.d.f(f).owner)
+                .and_then(|f| self.items.f(f).owner)
             {
                 Some(decls::Owner::Struct(o)) => o == d,
                 Some(decls::Owner::Impl(i)) => {
-                    let im = self.d.imp(i);
+                    let im = self.items.imp(i);
                     im.derived && matches!(im.for_, Ty::Struct(o, ..) if o == d)
                 }
                 _ => false,
@@ -192,9 +192,10 @@ impl Cx<'_> {
             // `List(s)`: a `new` that takes nothing builds nothing from `s`, so `T(x)` is `x`'s
             // conversion to `T`, by its impl of the `@role(convert)` trait (R07.8.1, R04.2.28).
             (Some(new), Named::Struct(d))
-                if self.d.f(new).params.is_empty() && matches!(args, [a] if a.label.is_none()) =>
+                if self.items.f(new).params.is_empty()
+                    && matches!(args, [a] if a.label.is_none()) =>
             {
-                let (n, m) = (self.d.s(d).generics.len(), self.d.s(d).n_sets);
+                let (n, m) = (self.items.s(d).generics.len(), self.items.s(d).n_sets);
                 let mut targs = given;
                 while targs.len() < n {
                     targs.push(self.new_ty());
@@ -212,7 +213,7 @@ impl Cx<'_> {
             }
             (None, Named::Fn(d)) => {
                 let f = self.fnref(d, given, Vec::new());
-                let fd = self.d.f(d);
+                let fd = self.items.f(d);
                 let tests;
                 let args = match tests_form(fd, args) {
                     Some(t) => {
@@ -243,7 +244,7 @@ impl Cx<'_> {
                 if self
                     .plain_enum(&Ty::Struct(d, Vec::new(), Vec::new()))
                     .is_some()
-                    && self.d.s(d).generics.is_empty()
+                    && self.items.s(d).generics.is_empty()
                     && matches!(args, [a] if a.label.is_none()) =>
             {
                 let v = self.arg_expr(&args[0], None);
@@ -255,7 +256,7 @@ impl Cx<'_> {
                 )
             }
             (None, Named::Struct(d)) => {
-                let s = self.d.s(d);
+                let s = self.items.s(d);
                 let fresh = s.generics.len() - given.len();
                 let mut targs = given;
                 targs.extend((0..fresh).map(|_| self.new_ty()));
@@ -321,7 +322,7 @@ impl Cx<'_> {
     }
     pub(super) fn recv_arg(&mut self, m: FnId, recv: TExpr, span: Span) -> TArg {
         let place = matches!(recv.kind, TK::Var(_) | TK::Field(..));
-        if self.d.f(m).self_mode == SelfMode::Mut {
+        if self.items.f(m).self_mode == SelfMode::Mut {
             if !place && !self.is_error(&recv.ty) {
                 self.err(
                     span,
@@ -376,7 +377,7 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
-        let fd = self.d.f(f.decl);
+        let fd = self.items.f(f.decl);
         // A call of a fn refused as declared is downstream of that refusal: it is the error.
         if (fd.errors.iter()).any(|e| e.refusal.is_some()) {
             return Self::error_node(span);
@@ -478,12 +479,12 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         for tr in &self.bound_traits(p) {
-            let Some(m) = self.d.member(&self.d.t(tr.tr).methods, name) else {
+            let Some(m) = self.d.member(&self.items.t(tr.tr).methods, name) else {
                 continue;
             };
             // A lender is called only where its place is used (`for`, an assignment): elsewhere
             // the bound's reading fn of that name is meant (`IndexedMut.at` vs `Indexed.at`).
-            if self.d.f(m).region.is_some() && !self.b.allow_region {
+            if self.items.f(m).region.is_some() && !self.b.allow_region {
                 continue;
             }
             self.reach(m);
@@ -685,7 +686,7 @@ impl Cx<'_> {
             a.label.is_none() && matches!(a.written(), Some(next::Expr::Generator(_)))
         }) && matches!(
             self.d.named(self.b.module, n),
-            Some(decls::Named::Fn(f)) if self.d.f(f).self_ty.is_none()
+            Some(decls::Named::Fn(f)) if self.items.f(f).self_ty.is_none()
         )
     }
     /// The parts as one tuple: past the widest tuple, the last part is a tuple of the rest,
@@ -711,7 +712,9 @@ impl Cx<'_> {
             return Self::error_node(at);
         };
         let targs = (0..parts.len()).map(|_| self.new_ty()).collect();
-        let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
+        let sets = (0..self.items.s(d).n_sets)
+            .map(|_| self.new_set())
+            .collect();
         self.construct(d, targs, sets, &parts, at, None)
     }
     /// The arguments past the others gathered into the one `..xs` parameter takes: a
@@ -1042,7 +1045,7 @@ impl Cx<'_> {
     ) -> TExpr {
         // The caller's type parameters stay unnamed but still number a lambda's: `by: T -> K =
         // x => x` read in a generic fn is an instance per the caller's type arguments.
-        let blank = self.b.syms.intern(&self.d.syms, "");
+        let blank = self.b.syms.intern(&self.syms, "");
         let unnamed = vec![blank; self.b.generics.len()];
         let module = std::mem::replace(&mut self.b.module, m);
         let item = std::mem::replace(&mut self.b.item, item);
