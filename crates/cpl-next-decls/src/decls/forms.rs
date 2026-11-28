@@ -39,6 +39,45 @@ pub struct AttrForm {
     pub node: Option<ast::Decorator>,
 }
 
+impl AttrForm {
+    /// The decorator's one unlabelled argument, as `"+"` in `@operator("+")`.
+    pub fn arg(&self) -> Option<ast::Expr> {
+        let args: Vec<ast::Arg> = self.node.as_ref()?.args()?.args().collect();
+        match args.as_slice() {
+            [a] if a.label().is_none() => a.value(),
+            _ => None,
+        }
+    }
+
+    /// The argument as a plain string literal's text: `+` of `@operator("+")`.
+    pub fn str_arg(&self) -> Option<String> {
+        use cpl_next_syntax::literal::{string_parts, StrPart};
+        let ast::Expr::Literal(l) = self.arg()? else {
+            return None;
+        };
+        let tok = l
+            .token()
+            .filter(|t| t.kind() == cpl_next_syntax::TokenKind::Str)?;
+        let text = tok.text();
+        let mut out = String::new();
+        for p in string_parts(text) {
+            match p {
+                StrPart::Text(s) => out.push_str(&text[s.start as usize..s.end as usize]),
+                StrPart::Expr(_) => return None,
+            }
+        }
+        Some(out)
+    }
+
+    /// The argument as a bare name: `count` of `@member(count)`.
+    pub fn name_arg(&self) -> Option<String> {
+        match self.arg()? {
+            ast::Expr::Name(n) => Some(n.ident()?.text().to_string()),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum BodyForm {
     Written(ast::FnBody),
