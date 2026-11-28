@@ -8,7 +8,7 @@ use cpl_next_decls::modules;
 use cpl_next_ir::build::Judge;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 
 pub use cpl_next_ir::build::Checks;
 
@@ -83,20 +83,6 @@ impl Snapshot {
 
     pub fn world(&self) -> World {
         self.0.world
-    }
-
-    /// Where the libraries `file` uses are: the `cp.toml` at or above it on disk, or none
-    /// past std in a closed world.
-    fn roots(&self, file: &FileId) -> Roots {
-        match self.0.world {
-            World::Disk => {
-                let dir = Path::new(file.path())
-                    .parent()
-                    .filter(|d| !d.as_os_str().is_empty());
-                Roots::from(dir.unwrap_or(Path::new(".")))
-            }
-            World::Closed => Roots::std(),
-        }
     }
 
     /// Its runs report the semantic events, for trace.
@@ -205,79 +191,100 @@ struct PerFile {
     types: OnceLock<Vec<TypedAt>>,
 }
 
+/// Where the libraries `file` uses are: the `cp.toml` at or above it on disk, or none past
+/// std in a closed world.
+fn roots(world: World, file: &FileId) -> Roots {
+    match world {
+        World::Disk => {
+            let dir = Path::new(file.path())
+                .parent()
+                .filter(|d| !d.as_os_str().is_empty());
+            Roots::from(dir.unwrap_or(Path::new(".")))
+        }
+        World::Closed => Roots::std(),
+    }
+}
+
+/// What a session and every session [`Session::at`] makes from it share: one database, the
+/// snapshot files its inputs hold now, and the library files it read from disk.
+#[derive(Default)]
+struct Work {
+    db: Db,
+    files: Vec<(FileId, Text)>,
+    read: Vec<FileId>,
+}
+
 /// The answers for one snapshot, per file. A file the snapshot does not hold is no program and
 /// says nothing.
 pub struct Session {
     snapshot: Snapshot,
     /// In the order of the snapshot's files.
     files: Vec<PerFile>,
-    db: Db,
-    /// Whether the database took every input the snapshot holds.
-    inputs: Result<(), DbError>,
-    /// The library files the session read from disk because no file of the snapshot is them.
-    read: Mutex<Vec<FileId>>,
+    work: Arc<Mutex<Work>>,
 }
 
 impl Session {
     pub fn open(snapshot: Snapshot) -> Session {
-        Session::over(Db::default(), &[], Vec::new(), snapshot)
+        Session::with(snapshot, Arc::default())
     }
 
-    /// A session for `snapshot` that keeps this one's database. Only the inputs that differ
-    /// change (a file's text that changed, a file that went), so an answer whose inputs held
-    /// is reused.
-    pub fn at(self, snapshot: Snapshot) -> Session {
-        let read = self.read.into_inner().unwrap_or_else(|e| e.into_inner());
-        Session::over(self.db, &self.snapshot.0.files, read, snapshot)
+    /// A session for `snapshot` sharing this one's database: an answer whose inputs are the
+    /// same in both is computed once. This session still answers for its own snapshot.
+    pub fn at(&self, snapshot: Snapshot) -> Session {
+        Session::with(snapshot, self.work.clone())
     }
 
-    /// `db`, which last held the snapshot files `was` and the library files `read`, set to
-    /// `snapshot`: a library file is read again, as it is on disk now.
-    fn over(db: Db, was: &[(FileId, Text)], read: Vec<FileId>, snapshot: Snapshot) -> Session {
-        let h = &snapshot.0;
-        let held = |f: &FileId| h.files.binary_search_by(|(g, _)| g.cmp(f)).is_ok();
-        let mut still = Vec::new();
-        let mut inputs = Ok(());
-        for f in read.into_iter().filter(|f| !held(f)) {
-            inputs = inputs.and_then(|()| match std::fs::read_to_string(f.path()) {
-                Ok(text) => {
-                    still.push(f.clone());
-                    db.set::<Source>(f, text.into())
-                }
-                Err(_) => db.remove::<Source>(&f),
-            });
-        }
-        let inputs = inputs
-            .and_then(|()| {
-                (was.iter().map(|(f, _)| f).filter(|f| !held(f))).try_for_each(|f| {
-                    db.remove::<Source>(f)
-                        .and_then(|()| db.remove::<Libraries>(f))
-                })
-            })
-            .and_then(|()| {
-                (h.files.iter()).try_for_each(|(f, t)| {
-                    db.set::<Source>(f.clone(), t.clone()).and_then(|()| {
-                        db.set::<Libraries>(f.clone(), snapshot.roots(f).libraries())
-                    })
-                })
-            })
-            .and_then(|()| db.set::<StdLib>((), Shared(h.std.clone())));
-        let files = h.files.iter().map(|_| PerFile::default()).collect();
+    fn with(snapshot: Snapshot, work: Arc<Mutex<Work>>) -> Session {
+        let files = snapshot
+            .0
+            .files
+            .iter()
+            .map(|_| PerFile::default())
+            .collect();
         Session {
             snapshot,
             files,
-            db,
-            inputs,
-            read: Mutex::new(still),
+            work,
         }
     }
 
-    /// The database holding every file the program `root` uses that can be read.
-    fn ready(&self, root: &FileId) -> Result<(), DbError> {
-        self.inputs.clone()?;
-        let read = crate::read_missing(&self.db, &self.snapshot.0.std, root)?;
-        (self.read.lock().unwrap_or_else(|e| e.into_inner())).extend(read);
-        Ok(())
+    /// The shared database with its inputs this session's snapshot, holding every file the
+    /// program `root` uses that can be read. Only the inputs that differ from what it held
+    /// change: a file's text that changed, a file that went, a library file that changed on
+    /// disk.
+    fn work(&self, root: &FileId) -> Result<MutexGuard<'_, Work>, DbError> {
+        let mut w = self.work.lock().unwrap_or_else(|e| e.into_inner());
+        let h = &self.snapshot.0;
+        if w.files != h.files {
+            let held = |f: &FileId| h.files.binary_search_by(|(g, _)| g.cmp(f)).is_ok();
+            let mut read = Vec::new();
+            for f in std::mem::take(&mut w.read).into_iter().filter(|f| !held(f)) {
+                match std::fs::read_to_string(f.path()) {
+                    Ok(text) => w.db.set::<Source>(f.clone(), text.into())?,
+                    Err(_) => w.db.remove::<Source>(&f)?,
+                }
+                read.push(f);
+            }
+            for (f, _) in w.files.iter().filter(|(f, _)| !held(f)) {
+                w.db.remove::<Source>(f)?;
+                w.db.remove::<Libraries>(f)?;
+            }
+            for (f, t) in &h.files {
+                w.db.set::<Source>(f.clone(), t.clone())?;
+                (w.db).set::<Libraries>(f.clone(), roots(h.world, f).libraries())?;
+            }
+            (w.files, w.read) = (h.files.clone(), read);
+        }
+        w.db.set::<StdLib>((), Shared(h.std.clone()))?;
+        let lacks = || {
+            modules::load(&w.db, &h.std, root)
+                .missing
+                .into_iter()
+                .map(|(_, p)| p)
+        };
+        let read = crate::read_missing(&w.db, || lacks().collect())?;
+        w.read.extend(read);
+        Ok(w)
     }
 
     pub fn snapshot(&self) -> &Snapshot {
@@ -304,7 +311,7 @@ impl Session {
             judge: h.judge.clone(),
             checks: h.checks,
         };
-        match self.ready(id).and_then(|()| self.db.get::<Linked>(&job)) {
+        match self.work(id).and_then(|w| w.db.get::<Linked>(&job)) {
             Ok(Built(built)) => built,
             Err(e) => Err(Arc::from(vec![Diag::internal(&e)])),
         }
@@ -355,8 +362,8 @@ impl Session {
         };
         let (units, diags) = f.units.get_or_init(|| {
             let h = &self.snapshot.0;
-            match self.ready(id) {
-                Ok(()) => units(&self.db, &h.std, id, h.judge.as_ref(), h.checks),
+            match self.work(id) {
+                Ok(w) => units(&w.db, &h.std, id, h.judge.as_ref(), h.checks),
                 Err(e) => (Vec::new(), vec![Diag::internal(&e)]),
             }
         });
@@ -366,10 +373,13 @@ impl Session {
     /// `file`'s checked front half, which hover, definition and types read.
     fn front(&self, file: &str) -> Option<&Front> {
         let (id, _, f) = self.file(file)?;
-        self.ready(id).ok()?;
+        if let Some(front) = f.front.get() {
+            return Some(front);
+        }
+        let w = self.work(id).ok()?;
         Some(f.front.get_or_init(|| {
             let h = &self.snapshot.0;
-            crate::front(&self.db, &h.std, id, h.judge.as_ref(), h.checks)
+            crate::front(&w.db, &h.std, id, h.judge.as_ref(), h.checks)
         }))
     }
 
@@ -461,10 +471,13 @@ impl Session {
         let (id, _, _) = self.file(file)?;
         let path = match item.module.as_str() {
             modules::PROGRAM => file.to_string(),
-            m => match self.db.get::<ModuleFile>(&(id.clone(), m.into())) {
-                Ok(Some(f)) => f.path().to_string(),
-                _ => modules::std_path(m),
-            },
+            m => {
+                match (self.work(id)).and_then(|w| w.db.get::<ModuleFile>(&(id.clone(), m.into())))
+                {
+                    Ok(Some(f)) => f.path().to_string(),
+                    _ => modules::std_path(m),
+                }
+            }
         };
         Some(Definition {
             path,

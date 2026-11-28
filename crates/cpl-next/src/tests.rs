@@ -8,7 +8,8 @@ fn alone(std: &Std, src: &str, roots: &Roots) -> (Db, FileId) {
     let (db, root) = (Db::default(), FileId::new(PROGRAM));
     db.set::<Source>(root.clone(), src.into()).unwrap();
     (db.set::<cpl_next_db::items::Libraries>(root.clone(), roots.libraries())).unwrap();
-    read_missing(&db, std, &root).unwrap();
+    let lacks = || modules::load(&db, std, &root).missing.into_iter();
+    read_missing(&db, || lacks().map(|(_, p)| p).collect()).unwrap();
     (db, root)
 }
 

@@ -277,7 +277,7 @@ mod tests {
         assert_eq!(db.get::<Total>(&()), Ok(5));
         db.remove::<Num>(&2).unwrap();
         assert_eq!(db.get::<Total>(&()), Ok(5));
-        assert_eq!(db.computed().get("total"), Some(&2));
+        assert_eq!(db.computed().get(Total::NAME), Some(&2));
     }
 
     /// An answer is recomputed only when what it read changed, and one whose new answer equals

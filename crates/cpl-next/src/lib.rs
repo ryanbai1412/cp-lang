@@ -30,6 +30,7 @@ pub use diag::Kind;
 pub use diag::Unbuilt;
 pub use modules::{Roots, Std};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 pub use cpl_next_ir::run::{Outcome, Trap};
 
@@ -379,15 +380,18 @@ fn front(db: &Db, std: &Std, root: &FileId, judge: Option<&Judge>, checks: Check
     }
 }
 
-/// Reads into `db` each file the program `root` uses that `db` lacks, from disk, until a pass
-/// reads none: what is still missing then cannot be read, and the load says so. Each pass but
-/// the last reads a file `db` lacked, so there are at most as many passes as files. It sets
+/// Reads into `db` each file `missing` says a load lacks, from disk, until a pass reads
+/// none: what is still missing then cannot be read, and the load says so. Each pass but the
+/// last reads a file `db` lacked, so there are at most as many passes as files. It sets
 /// inputs, so no query calls it. Returns the files it read.
-pub(crate) fn read_missing(db: &Db, std: &Std, root: &FileId) -> Result<Vec<FileId>, DbError> {
+pub(crate) fn read_missing(
+    db: &Db,
+    missing: impl Fn() -> Vec<PathBuf>,
+) -> Result<Vec<FileId>, DbError> {
     let mut read = Vec::new();
     loop {
         let before = read.len();
-        for (_, path) in modules::load(db, std, root).missing {
+        for path in missing() {
             if let Ok(text) = std::fs::read_to_string(&path) {
                 let file = FileId::new(&path.display().to_string());
                 db.set::<Source>(file.clone(), text.into())?;
