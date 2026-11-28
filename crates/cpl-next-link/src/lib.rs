@@ -543,7 +543,8 @@ impl Link<'_> {
             CTy::Struct(s, args, _) if args.is_empty() => Ty::Struct(s, Vec::new(), Vec::new()),
             _ => return false,
         };
-        self.d.impls().uncounted(&key, self.d.roles())
+        let roles = self.d.roles();
+        (self.d.impls()).uncounted(&key, roles.discrete, roles.domain)
     }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {

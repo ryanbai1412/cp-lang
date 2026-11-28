@@ -69,10 +69,11 @@ impl<'a> Cx<'a> {
             (Ty::Struct(a, ts, _), Some(list))
                 if Some(*a) == self.d.sugar.array && ts.len() == 2 =>
             {
-                if self
-                    .impls()
-                    .uncounted(&self.shallow(&ts[0]), self.d.roles())
-                {
+                let (walk, dom) = (
+                    self.rows.role_trait(Role::Discrete),
+                    self.rows.role_trait(Role::Positions),
+                );
+                if self.impls().uncounted(&self.shallow(&ts[0]), walk, dom) {
                     return Ty::Struct(list, vec![ts[1].clone()], Vec::new());
                 }
                 t
@@ -594,6 +595,7 @@ impl<'a> Cx<'a> {
             }
         }
         let f = self.fnref(decl, Vec::new(), Vec::new());
+        self.oblige(&f, span);
         let ty = self.ret_ty(&f);
         let param = {
             let sub = Subst {
