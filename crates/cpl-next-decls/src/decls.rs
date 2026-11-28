@@ -26,7 +26,7 @@ pub use collect::{collect, factor_name, prepare, Prepared};
 pub use impls::Impls;
 pub use layer::Layer;
 use tyconv::*;
-pub use tyconv::{body_type, prim_type};
+pub use tyconv::{alias_type, body_type, prim_type, BodyScope};
 pub(crate) use tyconv::{by_arity, literal_int, unnamed};
 
 /// A module: the core, a library file or the program.
