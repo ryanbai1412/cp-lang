@@ -1410,7 +1410,7 @@ impl<'a> Cx<'a> {
                     self.tail_block(&[], Some(e), Some(&ret))
                 } else {
                     let span = self.at(e);
-                    self.scoped_block(Some(&ret), span, |cx, out| {
+                    self.scoped_block(span, |cx, out| {
                         cx.yield_all(e, span, out);
                         None
                     })
@@ -1421,7 +1421,7 @@ impl<'a> Cx<'a> {
             // A `lends mut` fn's one expression is the place it lends (R05.6.3).
             Some(next::FnBody::Expr(e)) if matches!(f.region, Some((true, _))) => {
                 let span = self.at(e);
-                self.scoped_block(Some(&ret), span, |cx, out| {
+                self.scoped_block(span, |cx, out| {
                     cx.lend_stmt(true, e, span, out);
                     None
                 })

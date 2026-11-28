@@ -71,6 +71,11 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) {
         let p = self.place(place);
+        self.lend_out_value(p, t, span, out);
+    }
+
+    /// `lend mut` of the checked place `p`, as `lend_out` and a lent cell (`lend mut s[k]`) do.
+    pub(super) fn lend_out_value(&mut self, p: TExpr, t: &Ty, span: Span, out: &mut Vec<TStmt>) {
         if !self.unify(&p.ty, t) {
             self.err(
                 span,
