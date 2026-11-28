@@ -1961,3 +1961,32 @@ fn a_lent_source_cannot_be_written_or_escaped() {
         );
     }
 }
+
+/// A lambda names the copy it is written in as its maker: a `uses` fn's copy under a context
+/// value makes its own lambda, and one at top level is made by it.
+#[test]
+fn a_lambda_names_the_copy_that_makes_it() {
+    let src = "fn add(n: Int) -> Int uses io:\n    let h = (k: Int) => k + n + io.base\n    h(1)\nlet t = (k: Int) => k * 2\nprint(add(2), t(3))\nwith io(base: 1):\n    print(add(2))\n";
+    let f = front(&Std::read(), src, &Roots::std(), None, Checks::CHECKED);
+    assert!(f.diags.is_empty(), "{:?}", f.diags);
+    let makers: Vec<ir::FuncKey> = (f.g.funcs.values())
+        .filter(|g| matches!(g.key, ir::FuncKey::Lambda(_)) && g.line != 0)
+        .filter(|g| {
+            f.g.funcs
+                .contains_key(g.maker.as_ref().expect("a lambda has a maker"))
+        })
+        .filter_map(|g| g.maker.clone())
+        .collect();
+    let add = (f.g.funcs.values())
+        .find(|g| g.name == "add" && g.line != 0)
+        .and_then(|g| g.key.decl())
+        .expect("add is lowered");
+    assert!(makers.contains(&ir::FuncKey::Main), "{makers:?}");
+    assert!(makers.contains(&ir::FuncKey::Decl(add)), "{makers:?}");
+    assert!(
+        makers
+            .iter()
+            .any(|k| matches!(k, ir::FuncKey::Ctx(g, _) if *g == add)),
+        "{makers:?}"
+    );
+}

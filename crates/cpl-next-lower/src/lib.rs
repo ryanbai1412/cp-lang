@@ -56,6 +56,8 @@ struct Lw<'a> {
     errors: Vec<Msg>,
     untyped: Vec<SourceId>,
     in_main: bool,
+    /// The fn copy, top level or case being lowered: the maker of each lambda written in it.
+    key: FuncKey,
     /// The code of one test case, once main's `Cases` is lowered.
     case: Option<Func<Ty>>,
     /// Where the item being lowered starts: spans are relative to it.
@@ -108,6 +110,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         errors: Vec::new(),
         untyped: Vec::new(),
         in_main: true,
+        key: FuncKey::Main,
         case: None,
         off: ItemId::file(cpl_next_decls::modules::PROGRAM.into()),
         src,
@@ -158,6 +161,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
     for (key, id, tf) in all {
         let before = lw.errors.len();
         let fd = d.f(*id);
+        lw.key = key.clone();
         lw.off = fd.item.clone();
         lw.sites[0] = fd.item.at(Span::default());
         lw.kept = typed.checks;
@@ -1352,7 +1356,9 @@ impl Lw<'_> {
                 let (outer, off) = (std::mem::take(&mut self.locals), self.off.clone());
                 let outer_sites = self.take_sites();
                 let mut b = Vec::new();
+                let outer_key = std::mem::replace(&mut self.key, FuncKey::Case);
                 body.iter().for_each(|s| self.stmt(s, &mut b));
+                self.key = outer_key;
                 let (sites, origins) = self.swap_sites(outer_sites);
                 self.case = Some(Func {
                     key: FuncKey::Case,
@@ -1565,7 +1571,7 @@ impl Lw<'_> {
             origins,
             views: Vec::new(),
             drops: Vec::new(),
-            maker: info.owner,
+            maker: Some(self.key.clone()),
             shown: "lambda".into(),
             guards: self.guards.clone(),
             fast: None,

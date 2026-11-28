@@ -1822,7 +1822,7 @@ fn escape(d: &dyn Signatures, p: &Program) -> Vec<Msg> {
         // A generator's frame ends with its walk, so a closure made in one outlives it anywhere.
         let made = |k: &InstKey| match (owner, &k.func) {
             (Some(g), FuncKey::Lambda(_)) => {
-                let o = (p.index.get(k)).and_then(|&i| p.insts.get(i)?.maker);
+                let o = (p.index.get(k)).and_then(|&i| p.insts.get(i)?.maker.as_ref()?.decl());
                 o == Some(g) || o.is_some_and(|o| matches!(d.f(o).region, Some((false, _))))
             }
             (Some(_), _) => false,

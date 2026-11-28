@@ -92,7 +92,7 @@ fn value_only(f: &Func<Ty>) -> Func<CTy> {
         origins: f.origins.clone(),
         views: Vec::new(),
         drops: Vec::new(),
-        maker: f.maker,
+        maker: f.maker.clone(),
         shown: f.shown.clone(),
         guards: Vec::new(),
         fast: None,
@@ -240,7 +240,7 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
             // has to be keyed by its binding for this to run; until then it is refused.
             let owner = match &key.func {
                 FuncKey::Decl(f) | FuncKey::Ctx(f, _) => Some(*f),
-                FuncKey::Lambda(_) => f.maker,
+                FuncKey::Lambda(_) => f.maker.as_ref().and_then(FuncKey::decl),
                 FuncKey::Main | FuncKey::Case => None,
             };
             let mut doms = Vec::new();
@@ -422,7 +422,7 @@ impl Link<'_> {
             origins: f.origins.clone(),
             views: Vec::new(),
             drops: Vec::new(),
-            maker: f.maker,
+            maker: f.maker.clone(),
             shown: f.shown.clone(),
             guards: Vec::new(),
             fast: f.fast,

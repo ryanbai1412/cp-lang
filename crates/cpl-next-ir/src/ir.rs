@@ -502,8 +502,8 @@ pub struct Func<T> {
     pub params: Vec<(usize, bool)>,
     /// For a lambda: how many leading params are captures.
     pub n_captures: usize,
-    /// For a lambda: the fn it is written in, `None` at top level.
-    pub maker: Option<FnId>,
+    /// For a lambda: the copy of the fn it is written in, or the top level or case.
+    pub maker: Option<FuncKey>,
     pub locals: Vec<T>,
     /// What a message calls each local: its name in the source, empty for a temp.
     pub names: Vec<String>,
