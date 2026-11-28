@@ -271,7 +271,7 @@ fn items_carry_their_decorators_and_members() {
         got[2]
     );
     assert!(
-        got[5].contains("LawDecl(law assoc ParamList("),
+        got[5].contains("LawDecl(law Name(assoc) ParamList("),
         "{}",
         got[5]
     );
@@ -288,16 +288,16 @@ fn a_broken_member_keeps_its_siblings_and_the_next_item() {
     assert!(errors >= 1, "{got:#?}");
     assert_eq!(got.len(), 2, "{got:#?}");
     assert!(
-        got[0].contains("FieldDecl(x : PathType(Int))"),
+        got[0].contains("FieldDecl(Name(x) : PathType(Int))"),
         "{}",
         got[0]
     );
     assert!(
-        got[0].contains("FieldDecl(z : PathType(Int))"),
+        got[0].contains("FieldDecl(Name(z) : PathType(Int))"),
         "{}",
         got[0]
     );
-    assert!(got[1].starts_with("FnDecl(fn f"), "{}", got[1]);
+    assert!(got[1].starts_with("FnDecl(fn Name(f)"), "{}", got[1]);
 }
 
 #[test]

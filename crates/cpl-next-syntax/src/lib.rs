@@ -5,11 +5,13 @@
 //!   `Newline`) made explicit; [`Lexed::lossless`] adds the trivia, so the
 //!   tokens' texts are the file, byte for byte;
 //! - [`split_items`] cuts the token list into top-level items;
-//! - [`parse`] builds the file's green tree and its red view.
+//! - [`parse`] builds the file's green tree and its red view;
+//! - [`ast`] reads typed nodes over it.
 //!
 //! None of them fails: any text gives a tree that holds every byte of it.
 //! Nothing here depends on the compiler.
 
+pub mod ast;
 pub mod doc;
 mod file;
 pub mod grammar;

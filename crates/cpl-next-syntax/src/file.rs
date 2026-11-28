@@ -2,6 +2,7 @@
 
 use crate::items::split_items;
 use crate::lexer::lex;
+use crate::parser::parse_item;
 use crate::token::{Token, TokenKind};
 use crate::tree::{GreenBuilder, SyntaxNode};
 use cpl_diag::Diagnostic;
@@ -18,6 +19,9 @@ pub enum NodeKind {
     Error,
     /// A required child that was not written: zero width, already reported.
     Missing,
+    /// A name a declaration introduces: a fn's, a type's, a field's, a
+    /// parameter's. Holds the `Ident`, or a `Missing` node.
+    Name,
     /// A number, string, raw string or char, `true` or `false`.
     Literal,
     /// A name used as a value: `x`, `self`.
@@ -199,7 +203,7 @@ impl SyntaxFile {
 /// before it: the comment lines directly above it, with no blank line
 /// between them or below the last. They move and format with the item, and
 /// its docs are read from them.
-fn attached_comments(src: &str, before: &[&Token]) -> usize {
+fn attached_comments(src: &str, before: &[Token]) -> usize {
     let mut k = before.len();
     while k >= 2
         && before[k - 1].kind == TokenKind::Whitespace
@@ -212,43 +216,44 @@ fn attached_comments(src: &str, before: &[&Token]) -> usize {
 }
 
 /// The tree of `src`. Total: any text gives a tree whose text is `src`.
+/// Each item is parsed on its own (`split_items`), and the file holds the
+/// trivia between items.
 pub fn parse(src: &str) -> SyntaxFile {
     let lexed = lex(src);
     let items = split_items(&lexed.tokens);
     let tokens = lexed.lossless(src);
+    let mut diagnostics = lexed.diagnostics;
     let mut b = GreenBuilder::default();
     b.start_node(NodeKind::File);
     let push = |b: &mut GreenBuilder, t: &Token| b.token(t.kind, t.span.text(src));
-    let mut all = tokens.iter().peekable();
-    // Index of the next non-trivia token, as `split_items` counts them.
-    let mut next = 0usize;
+    // `at` indexes the lossless tokens; `next` counts the significant ones
+    // before it, as `split_items` does.
+    let (mut at, mut next) = (0usize, 0usize);
+    let mut advance = |at: &mut usize, until: &dyn Fn(usize, &Token) -> bool| {
+        while *at < tokens.len() && !until(next, &tokens[*at]) {
+            next += usize::from(!tokens[*at].kind.is_trivia());
+            *at += 1;
+        }
+    };
     for item in &items {
         let (first, last) = item.tokens;
-        let mut before = Vec::new();
-        while let Some(t) = all.next_if(|t| next < first || t.kind.is_trivia()) {
-            next += usize::from(!t.kind.is_trivia());
-            before.push(t);
-        }
-        let docs = attached_comments(src, &before);
-        for t in &before[..docs] {
+        let start = at;
+        advance(&mut at, &|next, t| next >= first && !t.kind.is_trivia());
+        let docs = start + attached_comments(src, &tokens[start..at]);
+        for t in &tokens[start..docs] {
             push(&mut b, t);
         }
-        b.start_node(NodeKind::Item);
-        for t in &before[docs..] {
-            push(&mut b, t);
-        }
-        while let Some(t) = all.next_if(|_| next < last) {
-            next += usize::from(!t.kind.is_trivia());
-            push(&mut b, t);
-        }
-        b.finish_node();
+        advance(&mut at, &|next, _| next >= last);
+        let (green, errors) = parse_item(src, &tokens[docs..at]);
+        b.node(green);
+        diagnostics.extend(errors);
     }
-    for t in all {
+    for t in &tokens[at..] {
         push(&mut b, t);
     }
     b.finish_node();
     SyntaxFile {
         root: SyntaxNode::new_root(b.finish()),
-        diagnostics: lexed.diagnostics,
+        diagnostics,
     }
 }

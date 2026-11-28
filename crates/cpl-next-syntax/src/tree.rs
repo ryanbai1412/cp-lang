@@ -136,6 +136,11 @@ impl GreenBuilder {
             .push(GreenElement::Node(GreenNode::new(kind, children)));
     }
 
+    /// Adds a node built apart, as an item parsed on its own.
+    pub fn node(&mut self, node: GreenNode) {
+        self.children.push(GreenElement::Node(node));
+    }
+
     pub fn checkpoint(&self) -> Checkpoint {
         Checkpoint(self.children.len())
     }

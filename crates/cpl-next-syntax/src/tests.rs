@@ -1,4 +1,6 @@
+use crate::ast::{self, AstNode};
 use crate::*;
+use crate::{SyntaxFile, SyntaxNode};
 
 fn kinds(src: &str) -> Vec<(TokenKind, &str)> {
     lex(src)
@@ -101,4 +103,48 @@ fn any_bytes_round_trip() {
     ] {
         assert_eq!(parse(src).root.text(), src, "{src:?}");
     }
+}
+
+fn names(file: &SyntaxFile) -> Vec<Option<String>> {
+    file.items()
+        .filter_map(ast::Item::cast)
+        .map(|i| i.name().map(|t| t.text().to_string()))
+        .collect()
+}
+
+#[test]
+fn items_name_their_declarations_and_impls_list_their_methods() {
+    let src = "/// doc\nfn f(x: Int) -> Int:\n    x\nimpl Show for P:\n    fn show(self) -> Str = \"p\"\nimpl Q:\n    fn len(self) -> Int = 0\nlet y = 1\n";
+    let file = parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    assert_eq!(names(&file), [Some("f".to_string()), None, None, None]);
+    let impls: Vec<ast::ImplDecl> = file
+        .items()
+        .filter_map(|i| match ast::Item::cast(i)?.decl()? {
+            ast::Decl::Impl(d) => Some(d),
+            _ => None,
+        })
+        .collect();
+    let text = |n: Option<SyntaxNode>| n.map(|n| n.text());
+    assert_eq!(text(impls[0].trait_ref()).as_deref(), Some("Show"));
+    assert_eq!(text(impls[0].self_ty()).as_deref(), Some("P"));
+    assert_eq!(text(impls[1].trait_ref()), None);
+    assert_eq!(text(impls[1].self_ty()).as_deref(), Some("Q"));
+    let methods: Vec<String> = impls
+        .iter()
+        .filter_map(ast::ImplDecl::members)
+        .flat_map(|m| m.fns().collect::<Vec<_>>())
+        .filter_map(|f| f.name().map(|t| t.text().to_string()))
+        .collect();
+    assert_eq!(methods, ["show", "len"]);
+    assert_eq!(file.root.text(), src);
+}
+
+#[test]
+fn a_missing_name_reads_as_none_and_the_next_item_still_parses() {
+    let src = "fn = 1\nstruct S:\n    a: Int\n";
+    let file = parse(src);
+    assert_eq!(file.diagnostics.len(), 2, "{:?}", file.diagnostics);
+    assert_eq!(names(&file), [None, Some("S".to_string())]);
+    assert_eq!(file.root.text(), src);
 }

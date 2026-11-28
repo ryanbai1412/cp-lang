@@ -41,7 +41,11 @@ survives beside the new one (migration rules 5 and 10).
   both neighbours. So a node's range is today's span.
 - **File:** `File` holds one `Item` node per top-level item (today's
   `split_items` rule, round 5's column-0 keyword rule), trivia between
-  items, and the final `Eof`.
+  items, and the final `Eof`. Each item is parsed on its own, over its
+  own tokens, so an edit to one item re-parses only that item.
+- **Names:** a name a declaration introduces (a fn's, type's, field's,
+  variant's, law's, module's) sits in a `Name` node, so readers find it by
+  kind and a missing name is a `Name` holding `Missing`.
 - **What an item holds:** its decorators, and the comment lines directly
   above it: contiguous `//` lines with no blank line between them or below
   the last. So docs and hover read them from the item, and moving or
@@ -71,6 +75,11 @@ parse error already has its diagnostic, so the reader stays quiet. Desugarings t
 `??=` lead statement, unpacked parameters) are not in the tree: the tree says what was written. Every desugaring lives in one module,
 `desugar`, one fn per sugar over the typed node, which every reader calls;
 check and lower never desugar on their own.
+
+`src/ast.rs` holds the views. Its first slice is what ids need:
+`Item::decl` and `Item::name`, `ImplDecl::trait_ref`/`self_ty`/`members`,
+and `Members::fns`/`laws`. An impl, a `use`, an operator fn and a statement
+have no name.
 
 ## Error recovery
 

@@ -43,7 +43,7 @@ impl Parser<'_> {
             T::Domain => {
                 self.start_at(at, NodeKind::DomainDecl);
                 self.bump();
-                self.want(T::Ident, "the domain's name");
+                self.name("the domain's name");
                 if self.want(T::Eq, "`=` and the domain's size") {
                     self.expr();
                 }
@@ -53,7 +53,7 @@ impl Parser<'_> {
                 self.start_at(at, NodeKind::ExternDecl);
                 self.bump();
                 self.bump();
-                self.want(T::Ident, "the extern fn's name");
+                self.name("the extern fn's name");
                 self.params();
                 self.ret();
                 self.finish();
@@ -62,7 +62,7 @@ impl Parser<'_> {
                 self.start_at(at, NodeKind::ModDecl);
                 self.eat(T::Pub);
                 self.bump();
-                self.bump();
+                self.name("the module's name");
                 self.block();
                 self.finish();
             }
@@ -70,6 +70,13 @@ impl Parser<'_> {
             _ => return self.stmt(),
         }
         self.end_line();
+    }
+
+    /// A declared name, in a `Name` node, so readers find it by kind.
+    fn name(&mut self, what: &str) {
+        self.start(NodeKind::Name);
+        self.want(T::Ident, what);
+        self.finish();
     }
 
     fn nth_text(&self, n: usize) -> &str {
@@ -128,7 +135,7 @@ impl Parser<'_> {
             self.params();
             self.finish();
         } else {
-            self.want(T::Ident, "the fn's name");
+            self.name("the fn's name");
             if self.at(T::Lt) {
                 self.generics();
             }
@@ -163,7 +170,7 @@ impl Parser<'_> {
         self.start(NodeKind::Param);
         self.eat(T::Mut);
         if self.eat(T::DotDot) {
-            self.want(T::Ident, "the variadic parameter's name");
+            self.name("the variadic parameter's name");
         } else if self.at(T::SelfKw) {
             self.bump();
         } else {
@@ -192,7 +199,7 @@ impl Parser<'_> {
             self.bump();
         } else if self.eat(T::Lends) && self.at(T::LParen) {
             self.list(NodeKind::LendSrc, T::RParen, "the lent sources", |p| {
-                p.want(T::Ident, "a parameter's name");
+                p.name("a parameter's name");
             });
         }
         self.ty();
@@ -210,7 +217,7 @@ impl Parser<'_> {
                 if !constant {
                     p.eat(T::Domain);
                 }
-                p.want(T::Ident, "a generic parameter's name");
+                p.name("a generic parameter's name");
                 if p.eat(T::Colon) {
                     if constant {
                         p.ty();
@@ -286,7 +293,7 @@ impl Parser<'_> {
         self.start(NodeKind::FieldDecl);
         self.eat(T::Pub);
         self.eat(T::Var);
-        self.want(T::Ident, "a field's name");
+        self.name("a field's name");
         if self.want(T::Colon, "`:` and the field's type") {
             self.ty();
         }
@@ -316,7 +323,7 @@ impl Parser<'_> {
         self.start_at(at, NodeKind::StructDecl);
         self.eat(T::Pub);
         self.bump();
-        self.want(T::Ident, "the struct's name");
+        self.name("the struct's name");
         if self.at(T::Lt) {
             self.generics();
         }
@@ -336,7 +343,7 @@ impl Parser<'_> {
         self.start_at(at, NodeKind::EnumDecl);
         self.eat(T::Pub);
         self.bump();
-        self.want(T::Ident, "the enum's name");
+        self.name("the enum's name");
         if self.at(T::Lt) {
             self.generics();
         }
@@ -355,7 +362,7 @@ impl Parser<'_> {
 
     fn variant(&mut self) {
         self.start(NodeKind::Variant);
-        self.want(T::Ident, "a variant's name");
+        self.name("a variant's name");
         if self.at(T::LParen) {
             self.bump();
             while !matches!(self.peek(), T::RParen | T::Newline | T::Eof) {
@@ -373,7 +380,7 @@ impl Parser<'_> {
         self.start_at(at, NodeKind::TraitDecl);
         self.eat(T::Pub);
         self.bump();
-        self.want(T::Ident, "the trait's name");
+        self.name("the trait's name");
         if self.at(T::Lt) {
             self.generics();
         }
@@ -413,7 +420,7 @@ impl Parser<'_> {
         if self.word() == Some(W::Law) && self.nth(1) == T::Ident {
             self.start(NodeKind::LawDecl);
             self.bump();
-            self.bump();
+            self.name("the law's name");
             self.params();
             self.where_clause();
             if self.want(T::Eq, "`=` and the law's condition") {
@@ -429,7 +436,7 @@ impl Parser<'_> {
         self.start_at(at, node);
         self.eat(T::Pub);
         self.bump();
-        self.want(T::Ident, "the type's name");
+        self.name("the type's name");
         if self.at(T::Lt) {
             self.generics();
         }
@@ -466,7 +473,7 @@ impl Parser<'_> {
         self.bump();
         self.bump();
         self.bump();
-        self.want(T::Ident, "the domain's name");
+        self.name("the domain's name");
         while self.eat(T::Comma) {
             self.pattern();
         }

@@ -14,7 +14,7 @@ mod types;
 use crate::file::{NodeKind, SyntaxFile};
 use crate::lexer::lex;
 use crate::token::{Token, TokenKind};
-use crate::tree::{Checkpoint, GreenBuilder, SyntaxNode};
+use crate::tree::{Checkpoint, GreenBuilder, GreenNode, SyntaxNode};
 use cpl_diag::{codes, msgs, Code, Diagnostic, Span};
 use TokenKind as T;
 
@@ -72,6 +72,29 @@ pub fn parse_stmts(src: &str) -> SyntaxFile {
         root: SyntaxNode::new_root(p.b.finish()),
         diagnostics,
     }
+}
+
+/// One top-level item's tree, parsed apart from the rest of the file, so
+/// an edit elsewhere leaves it alone: `tokens` are the item's lossless
+/// tokens, the comment lines attached above it first. Total.
+pub(crate) fn parse_item(src: &str, tokens: &[Token]) -> (GreenNode, Vec<Diagnostic>) {
+    let mut p = Parser::new(src, tokens);
+    p.b.start_node(NodeKind::Item);
+    p.item();
+    while p.eat(T::Newline) {}
+    if !p.at(T::Eof) {
+        p.error_here(codes::UNEXPECTED_TOKEN, "the end of the item");
+        p.start(NodeKind::Error);
+        while !p.at(T::Eof) {
+            p.bump();
+        }
+        p.finish();
+    }
+    while p.pos < p.tokens.len() {
+        p.bump();
+    }
+    p.finish();
+    (p.b.finish(), p.diagnostics)
 }
 
 /// Tokens that end the construct being read for every enclosing one: a
