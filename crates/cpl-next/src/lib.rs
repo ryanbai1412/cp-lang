@@ -347,7 +347,8 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
         globals: tys,
     };
     let v = inst::Inputs {
-        sigs: d,
+        items: d,
+        roles: d,
         fns,
         sums: &g.adds,
         checked: &checked,

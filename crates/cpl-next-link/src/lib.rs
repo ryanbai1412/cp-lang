@@ -2,7 +2,8 @@
 //! instances exist and what each function-value set holds, from the whole program.
 use cpl_next_decls::decls::{Choice, ImplIdx, TraitRef};
 use cpl_next_decls::diag::Msg;
-use cpl_next_decls::views::{Checked, Generics, ImplChoice, Signatures, Summaries};
+use cpl_next_decls::sym::Sym;
+use cpl_next_decls::views::{Checked, Generics, ImplChoice, Items, RoleRows, Summaries};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::ty::*;
@@ -21,7 +22,9 @@ pub use canon::canonicalize;
 pub use events::add_events;
 
 struct Link<'a> {
-    d: &'a dyn Signatures,
+    d: &'a dyn Items,
+    /// The `trace` role's fns (contract 8).
+    trace: &'a [FnId],
     /// Decls' one impl choice, each linked type asked as the checker's type it is (R08.1.2).
     choice: Choice<'a>,
     c: &'a dyn Checked,
@@ -54,7 +57,12 @@ struct Env<'e> {
 const LIMIT: usize = 400;
 
 /// The type parameters of `s` that a field of it, or of one of its variants, holds.
-fn held_params(d: &dyn Signatures, s: StructId) -> BTreeSet<usize> {
+/// The member of `members` named `name`, the method an IR call names by its text.
+fn member(d: &dyn Items, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
+    (members.iter()).find_map(|(n, f)| (d.text(*n) == name).then_some(*f))
+}
+
+fn held_params(d: &dyn Items, s: StructId) -> BTreeSet<usize> {
     let sd = d.s(s);
     let mut out = BTreeSet::new();
     let payloads = sd.variants.iter().flat_map(|(_, p)| &d.s(*p).fields);
@@ -63,7 +71,7 @@ fn held_params(d: &dyn Signatures, s: StructId) -> BTreeSet<usize> {
 }
 
 /// A trait's fn as an item with no `Self` (`+` passed uncalled): it has no impl, and nothing runs it.
-fn selfless(d: &dyn Signatures, key: &InstKey) -> bool {
+fn selfless(d: &dyn Items, key: &InstKey) -> bool {
     let FuncKey::Decl(m) = key.func else {
         return false;
     };
@@ -71,7 +79,7 @@ fn selfless(d: &dyn Signatures, key: &InstKey) -> bool {
 }
 /// The key of a generic fn item as a value nothing calls (`type_of(max)`), one for every
 /// instance of the fn (R08.1.10): no body runs under it.
-fn item_value(d: &dyn Signatures, key: &InstKey) -> bool {
+fn item_value(d: &dyn Items, key: &InstKey) -> bool {
     let FuncKey::Decl(m) = key.func else {
         return false;
     };
@@ -127,7 +135,7 @@ fn unlowered(k: &FuncKey) -> Msg {
 
 /// A fn with one instance: no type parameters, sets or context of its own or its owner's,
 /// and no closure in its signature.
-fn closed_fn(d: &dyn Signatures, f: FnId) -> bool {
+fn closed_fn(d: &dyn Items, f: FnId) -> bool {
     let fd = d.f(f);
     let owner_open =
         matches!(&fd.self_ty, Some(Ty::Struct(_, ts, ss)) if !ts.is_empty() || !ss.is_empty());
@@ -141,7 +149,8 @@ fn closed_fn(d: &dyn Signatures, f: FnId) -> bool {
 /// What link reads, each answer by id: the views the query database serves per item.
 #[derive(Clone, Copy)]
 pub struct Inputs<'a> {
-    pub sigs: &'a dyn Signatures,
+    pub items: &'a dyn Items,
+    pub roles: &'a dyn RoleRows,
     pub fns: &'a dyn Generics,
     pub sums: &'a dyn Summaries,
     pub checked: &'a dyn Checked,
@@ -157,12 +166,13 @@ pub struct Roots {
 
 /// A closure in a signature takes its set from the calls that reach the fn.
 pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
-    let (d, c, generic) = (v.sigs, v.checked, v.fns);
+    let (d, c, generic) = (v.items, v.checked, v.fns);
     let mut l = Link {
         d,
+        trace: v.roles.role_fns(cpl_next_decls::decls::Role::Trace),
         choice: Choice::new(cpl_next_decls::decls::Impls {
+            items: d,
             rows: v.rows,
-            ..d.impls()
         }),
         c,
         generic,
@@ -331,7 +341,7 @@ impl Link<'_> {
     /// parameter takes it. A type no such fn takes gets none, and its events show no value; two
     /// that take one type are E0202.
     fn trace_instances(&mut self, insts: &[Func<CTy>]) {
-        let fillers = self.d.roles().trace.clone();
+        let fillers = self.trace.to_vec();
         if fillers.is_empty() {
             return;
         }
@@ -1003,7 +1013,7 @@ impl Link<'_> {
             } => {
                 let mut k = self.trait_key(tr, args, method, self_ty, env)?;
                 k.targs.extend(targs.iter().map(|t| self.targ(t, env)));
-                let tm = self.d.member_named(&self.d.t(*tr).methods, method);
+                let tm = member(self.d, &self.d.t(*tr).methods, method);
                 self.in_copy(&mut k, tm, *ctx);
                 if let (Some(g), Some(tm)) = (k.func.decl(), tm) {
                     // The picked fn's own sets follow its impl's, as the trait fn's do its own.
@@ -1099,7 +1109,7 @@ impl Link<'_> {
         // what an impl leaves to the default, and what a type meeting the trait without
         // an impl (a domain, for `Domain`) runs.
         let default = |trait_args: Vec<CTy>| {
-            (d.member_named(&d.t(*tr).methods, method))
+            (member(d, &d.t(*tr).methods, method))
                 .filter(|&tm| !d.f(tm).bodiless())
                 .map(|tm| InstKey {
                     func: FuncKey::Decl(tm),
@@ -1110,7 +1120,7 @@ impl Link<'_> {
         let found = match self.chosen(*tr, args, &st, env) {
             Some((k, binds)) => {
                 let im = self.choice.impls.imp(k);
-                match d.member_named(&im.methods, method) {
+                match member(d, &im.methods, method) {
                     Some(m) => Some(InstKey {
                         func: FuncKey::Decl(m),
                         targs: binds,
