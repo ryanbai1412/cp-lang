@@ -23,6 +23,8 @@ pub trait Domain:
     @get fn range() -> Range<Self> = Self.all
     /// `D.nth(k)`: the position `k` steps into its walk; traps past its end (R04.2.9).
     fn nth(k: Int) -> Self = @intrinsic("dom_nth")
+    /// `D.try_nth(k)`: the position `k` steps into its walk, or `None` past either end (R04.2.32).
+    fn try_nth(k: Int) -> ?Self = if 0 <= k and k < Self.count: Some(Self.nth(k)) else: None
     /// `D.mask(xs)`: a `[D]Bool` marking the positions `xs` yields (R04.2.1).
     fn mask<S: Seq<Self>>(xs: S) -> [Self]Bool:
         var m: [Self]Bool = false
@@ -41,9 +43,7 @@ pub trait Ordered(Domain):
     /// `D.wrap(k)`: the position `k` steps into its walk, Euclidean mod `D.count` (R04.2.13).
     fn wrap(k: Int) -> Self = Self.nth((k % Self.count + Self.count) % Self.count)
     /// `v.next(k)`: the position `k` after `v` in the walk, or `None` past its end (R04.3.1).
-    @get fn next(self, k: Int = 1) -> ?Self:
-        let o = self.ord + k
-        if 0 <= o and o < Self.count: Some(Self.nth(o)) else: None
+    @get fn next(self, k: Int = 1) -> ?Self = Self.try_nth(self.ord + k)
     /// `v.prev(k)`: the position `k` before `v` in the walk, or `None` past its start (R04.3.1).
     @get fn prev(self, k: Int = 1) -> ?Self = self.next(-k)
     /// `v.l`: the cut just before `v`; `v.l(k)`, the left cut of the `k` positions ending at `v`
@@ -77,8 +77,9 @@ impl<T: Index> Domain for T:
         check_range(0 <= k and k < T.count)
         k
 
-/// `Int` is a domain: its integers are its positions (R04.2.18).
-impl Domain for Int
+/// `Int` is a domain: its integers are its positions (R04.2.18), every one of them.
+impl Domain for Int:
+    fn try_nth(k: Int) -> ?Int = Some(k)
 
 impl Ordered for Int:
     fn at(x: Int) -> ?Int = x
@@ -127,11 +128,11 @@ pub struct Cut<D: Domain>:
 
     /// `c.l`: the position just before `c`, or `None` at the start (R04.3.2).
     @get pub fn l(self) -> ?D:
-        if k == 0: None else: Some(D.nth(k - 1))
+        D.try_nth(k - 1)
 
     /// `c.r`: the position just after `c`, or `None` at the end (R04.3.2).
     @get pub fn r(self) -> ?D:
-        if k == D.count: None else: Some(D.nth(k))
+        D.try_nth(k)
 
 /// A domain's cuts are a domain, one more than its positions, walked in order; a cut's integer
 /// is how many positions come before it, whatever the base (R04.2.5, R04.2.16, R04.2.17).

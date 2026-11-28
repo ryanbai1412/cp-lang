@@ -47,6 +47,7 @@ domain Letter = 'a'..='z'                 // so is a Char range: Letter(c), [Let
 | `V(x)` | integer to position, trapping outside `V` | \(O(1)\) (R04.2.7) |
 | `V.at(x)` | integer to position, `?V`: `None` outside `V` | \(O(1)\) (R04.2.8) |
 | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` decodes a flat 0-based cell number and `for (r, c) in P` visits rows in order | \(O(1)\) (R04.2.9) |
+| `V.try_nth(k)` | the position `k` steps into the walk, `?V`: `None` past either end, as `V.at(x)` is for an integer; `Int` has every integer as a position, so `Int.try_nth(k)` is `Some(k)`, and a cut's `l`/`r`, `v.next(k)` and `v.offset(k)` all bound through it | \(O(1)\) (R04.2.32) |
 | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to a position: `None` (or a trap) unless every part lies in its factor, so a neighbour that may fall off is `if let q = P.at((r - 1, c))` | \(O(1)\) (R04.2.10) |
 | `let (r, c) = p`, `p.0` | a position of a product domain is a tuple of factor positions: tuple patterns and `.0`/`.1` work on it, named factors too, and `g[p]` is the same access as `g[r, c]` (decision 16.5), so a neighbour from `p.adj4` indexes directly | \(O(1)\) (R04.2.10) |
 | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.after` walks the positions after `v`; each is a `Range<D>` and goes wherever one is taken | \(O(1)\) (R04.2.19) |

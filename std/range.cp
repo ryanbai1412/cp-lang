@@ -196,9 +196,7 @@ pub fn shift_saturating<D>(self: D, k: Int) -> D:
 /// cost: \(O(1)\)
 /// traps: never
 /// example: `domain V = 1..=6; V(5).offset(1) == Some(V(6)) and V(5).offset(2) == None and V(2).offset(-1) == Some(V(1))`
-pub fn offset<D>(self: D, k: Int) -> ?D:
-    let o = self.ord + k
-    if 0 <= o < D.count: Some(D.nth(o)) else: None
+pub fn offset<D>(self: D, k: Int) -> ?D = D.try_nth(self.ord + k)
 
 /// The position `k` steps after `self`, or `None` past the domain's last: `v.offset(k)`.
 ///
