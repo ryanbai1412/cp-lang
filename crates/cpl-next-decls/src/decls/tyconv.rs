@@ -85,7 +85,7 @@ pub(super) fn slot(cx: &mut TyCx) -> SetTy {
     }
 }
 
-pub(super) fn alias(cx: &mut TyCx, id: usize, n: Sym, a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
+pub(super) fn alias(cx: &mut TyCx, id: usize, name: &str, a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
     let env = cx.env;
     let decl = env.alias(AliasId(id));
     if a.len() != decl.generics.len() {
@@ -93,7 +93,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: Sym, a: Vec<Ty>, errors: &mut V
             cpl_diag::codes::WRONG_ARG_COUNT,
             format!(
                 "`{}` takes {} type arguments, found {}",
-                env.text(n),
+                name,
                 decl.generics.len(),
                 a.len()
             ),
@@ -473,7 +473,8 @@ pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>
     }
     let found = (cx.names)(n);
     if let Some(Named::Alias(id)) = found {
-        return alias(cx, id.0, n, a, errors);
+        let env = cx.env;
+        return alias(cx, id.0, env.text(n), a, errors);
     }
     if let Some(t) = cx.doms.get(&n).cloned().or_else(|| (cx.scoped)(n)) {
         return t;
@@ -800,24 +801,56 @@ pub fn body_type(
     scoped: &dyn Fn(Sym) -> Option<Ty>,
     t: &Type,
 ) -> (Ty, Vec<Msg>) {
-    let mut errors = Vec::new();
-    let mut cx = TyCx {
-        names: &|n: Sym| scope.named(m, sigs.text(n)),
-        env: sigs,
-        item: None,
+    let at = BodyScope {
+        sigs,
+        scope,
+        m,
         generics,
-        outer: generics,
-        args: None,
-        expanding: Vec::new(),
         doms,
         scoped,
-        self_ty: None,
-        rows: None,
-        ret_slots: None,
-        next_set: None,
     };
-    let t = conv(&mut cx, t, &mut errors);
-    (t, errors)
+    at.run(|cx, errors| conv(cx, t, errors))
+}
+
+/// Alias `id` given its arguments as types, as a call writes it: `AliasBox(42)` infers the
+/// parameters it doesn't write, so they arrive as the checker's fresh types, not as syntax.
+pub fn alias_type(at: &BodyScope, id: AliasId, args: Vec<Ty>) -> (Ty, Vec<Msg>) {
+    at.run(|cx, errors| alias(cx, id.0, &at.sigs.alias(id).name, args, errors))
+}
+
+/// What a type written in a body is read against: its module's names, the body's type
+/// parameters, and the domains it has in scope.
+pub struct BodyScope<'a> {
+    pub sigs: &'a dyn Signatures,
+    pub scope: &'a dyn Scope,
+    pub m: ModId,
+    pub generics: &'a [Sym],
+    pub doms: &'a HashMap<Sym, Ty>,
+    pub scoped: &'a dyn Fn(Sym) -> Option<Ty>,
+}
+
+impl BodyScope<'_> {
+    fn run<R>(&self, f: impl FnOnce(&mut TyCx, &mut Vec<Msg>) -> R) -> (R, Vec<Msg>) {
+        let mut errors = Vec::new();
+        let names = |n: Sym| self.scope.named(self.m, self.sigs.text(n));
+        let mut cx = TyCx {
+            names: &names,
+            env: self.sigs,
+            item: None,
+            generics: self.generics,
+            outer: self.generics,
+            args: None,
+            expanding: Vec::new(),
+            doms: self.doms,
+            scoped: self.scoped,
+            self_ty: None,
+            rows: None,
+            ret_slots: None,
+            next_set: None,
+        };
+        let r = f(&mut cx, &mut errors);
+        (r, errors)
+    }
 }
 
 /// The tables as decls has built them so far, for the types it converts while building the rest.
