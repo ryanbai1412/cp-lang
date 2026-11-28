@@ -5252,6 +5252,10 @@ def frozen_edits(root: Path, base: str) -> list[str]:
         return bool(touched) and all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched)
     out = []
     for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
+        # A shallow clone's oldest commit has no parent here, so `show` would count the whole
+        # tree as added (CI's ratchet at 55999d45b: "adds 204623 lines").
+        if not _git(root, "rev-parse", "-q", "--verify", f"{sha}^"):
+            continue
         rows = [l.split("\t") for l in _git(root, "show", "--numstat", "--format=", sha, "--", *paths)]
         added = sum(int(r[0]) for r in rows if r[0].isdigit())
         if added and not restores(sha):
