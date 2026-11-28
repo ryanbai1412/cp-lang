@@ -110,6 +110,10 @@ impl Cx<'_> {
     /// `x` pushed onto the list being filled.
     fn push_onto(&mut self, l: &Filling, x: &next::Expr, span: Span) -> TExpr {
         let v = self.expr(x, Some(&l.elem));
+        self.push_value(l, v, span)
+    }
+    /// The checked `v` pushed onto the list being filled.
+    fn push_value(&mut self, l: &Filling, v: TExpr, span: Span) -> TExpr {
         // Every element flows into the list, so its fns share one set, not the first one's.
         if matches!(self.shallow(&l.elem), Ty::Var(_)) {
             let j = self.join_ty(&v.ty);
@@ -209,10 +213,35 @@ impl Cx<'_> {
         let e = match self.new_list("$comp", 0, want, span) {
             Some((l, init)) => {
                 let mut stmts = vec![init];
-                self.b.filling.push(l);
-                self.comp_clauses(&body, &clauses, span, &mut stmts);
-                let l = self.b.filling.pop();
-                l.map_or_else(|| error(span), |l| filled(stmts, l, span))
+                self.comp_clauses(&l, &body, &clauses, span, &mut stmts);
+                filled(stmts, l, span)
+            }
+            None => error(span),
+        };
+        self.b.scopes.pop();
+        e
+    }
+    /// A table's fill, `[D] k => e`: a new list, then `body` pushed for each element of the
+    /// checked `walk`, its parts bound by `pats`, as a comprehension's one clause would.
+    pub(super) fn fill_over(
+        &mut self,
+        pats: &[next::Pattern],
+        walk: TExpr,
+        body: &next::ArmBody,
+        want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        self.b.scopes.push(HashMap::new());
+        let e = match self.new_list("$fill", 0, want, span) {
+            Some((l, init)) => {
+                let mut stmts = vec![init];
+                let each = |cx: &mut Self, out: &mut Vec<TStmt>| {
+                    let v = cx.arm_body(body, Some(&l.elem));
+                    let push = cx.push_value(&l, v, span);
+                    out.push(TStmt::Expr(push));
+                };
+                self.for_over(pats, walk, each, span, &mut stmts);
+                filled(stmts, l, span)
             }
             None => error(span),
         };
@@ -223,16 +252,15 @@ impl Cx<'_> {
     /// the list being filled.
     fn comp_clauses(
         &mut self,
+        l: &Filling,
         body: &next::Expr,
         clauses: &[next::CompClause],
         span: Span,
         out: &mut Vec<TStmt>,
     ) {
         let Some((c, rest)) = clauses.split_first() else {
-            if let Some(l) = self.b.filling.last().cloned() {
-                let push = self.push_onto(&l, body, span);
-                out.push(TStmt::Expr(push));
-            }
+            let push = self.push_onto(l, body, span);
+            out.push(TStmt::Expr(push));
             return;
         };
         let (Some(pat), Some(iter)) = (c.pattern(), c.iter()) else {
@@ -242,7 +270,7 @@ impl Cx<'_> {
         self.for_loop(
             &pat,
             &iter,
-            |cx, out| cx.comp_filters(&conds, body, rest, span, out),
+            |cx, out| cx.comp_filters(l, &conds, body, rest, span, out),
             span,
             out,
         );
@@ -250,6 +278,7 @@ impl Cx<'_> {
     /// A clause's conditions, each an `if` around the rest.
     fn comp_filters(
         &mut self,
+        l: &Filling,
         conds: &[next::Condition],
         body: &next::Expr,
         rest: &[next::CompClause],
@@ -257,10 +286,10 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) {
         match conds.split_first() {
-            None => self.comp_clauses(body, rest, span, out),
+            None => self.comp_clauses(l, body, rest, span, out),
             Some((c, more)) => self.if_then(
                 c,
-                |cx, out| cx.comp_filters(more, body, rest, span, out),
+                |cx, out| cx.comp_filters(l, more, body, rest, span, out),
                 span,
                 out,
             ),

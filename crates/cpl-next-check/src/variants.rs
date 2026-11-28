@@ -1,12 +1,15 @@
 //! Structs and enums as values: building them, their variants, and `match` (R02.6, R02.7).
+use super::call::CallArg;
 use super::expr::{block, Formal};
+use super::stmt::arm_leaves;
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::SyntaxToken;
 
 impl Cx<'_> {
     /// `T(x)` for a core type or a payload-free enum `T`: `x`'s impl of the `@role(convert)` trait at
     /// `T` (R04.2.28, R02.7); a position's `Int` is its integer.
-    pub(super) fn convert(&mut self, to: Ty, x: &ast::Expr, span: Span, why: Origin) -> TExpr {
+    pub(super) fn convert(&mut self, to: Ty, x: &next::Expr, span: Span, why: Origin) -> TExpr {
         let v = self.expr(x, None);
         self.convert_value(to, v, span, why)
     }
@@ -101,7 +104,7 @@ impl Cx<'_> {
         d: StructId,
         targs: Vec<Ty>,
         sets: Vec<SetTy>,
-        args: &[ast::Arg],
+        args: &[CallArg],
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
@@ -161,45 +164,39 @@ impl Cx<'_> {
     /// rest, met by each record with those fields (R08.4.1).
     pub(super) fn without(
         &mut self,
-        prefix: &[(ast::Name, ast::Expr)],
-        base: &ast::Expr,
-        removed: &[ast::Name],
+        prefix: &[next::RecordField],
+        rest: &next::RecordRest,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
+        let Some(base) = rest.expr() else {
+            return Self::error_node(span);
+        };
+        let fields: Vec<(SyntaxToken, Option<next::Expr>)> = (prefix.iter())
+            .filter_map(|f| Some((f.name()?, f.value())))
+            .collect();
+        let text =
+            |ts: &mut dyn Iterator<Item = &SyntaxToken>| ts.map(|t| t.text().to_string()).collect();
         let form = (
-            prefix.iter().map(|(n, _)| n.text.clone()).collect(),
-            removed.iter().map(|n| n.text.clone()).collect(),
+            text(&mut fields.iter().map(|(n, _)| n)),
+            text(&mut rest.removed().iter()),
         );
-        let name = ast::Name {
-            text: cpl_next_decls::records::without_member(&form),
-            span,
-        };
-        let callee = ast::Expr {
-            kind: ast::ExprKind::Field {
-                base: Box::new(base.clone()),
-                name,
-            },
-            span,
-        };
-        let args = (prefix.iter())
-            .map(|(_, e)| ast::Arg {
-                name: None,
+        let args: Vec<CallArg> = (fields.into_iter())
+            .map(|(n, value)| CallArg {
+                label: Some(n.text().to_string()),
+                at: value.as_ref().map_or_else(|| n.span(), |v| self.at(v)),
+                value,
                 mutable: false,
-                value: e.clone(),
             })
             .collect();
-        let kind = ast::ExprKind::Call {
-            callee: Box::new(callee),
-            args,
-        };
-        self.expr(&ast::Expr { kind, span }, want)
+        let name = cpl_next_decls::records::without_member(&form);
+        self.member(&base, &name, span, Some(&args), span, want, &[])
     }
 
     pub(super) fn record_update(
         &mut self,
-        base: &ast::Expr,
-        updates: &[(ast::Name, ast::Expr)],
+        base: &next::Expr,
+        updates: &[next::RecordField],
         span: Span,
     ) -> TExpr {
         let error = TExpr {
@@ -224,17 +221,22 @@ impl Cx<'_> {
         let ty = b.ty.clone();
         let (mut pre, read) = self.held(b);
         let mut given: Vec<Option<TExpr>> = vec![None; names.len()];
-        for (n, e) in updates {
-            let Some(k) = names.iter().position(|m| *m == n.text) else {
+        for f in updates {
+            let Some(n) = f.name() else { continue };
+            let Some(k) = names.iter().position(|m| *m == n.text()) else {
                 let code = cpl_diag::codes::UNKNOWN_FIELD;
                 let t = self.show(&ty);
                 self.err(
-                    n.span,
-                    Msg::verdict(code, format!("`{t}` has no field `{}`", n.text)),
+                    n.span(),
+                    Msg::verdict(code, format!("`{t}` has no field `{}`", n.text())),
                 );
                 continue;
             };
-            let v = self.expr(e, Some(&tys[k]));
+            // `f:` alone is `f: f`.
+            let v = match f.value() {
+                Some(e) => self.expr(&e, Some(&tys[k])),
+                None => self.name(n.text(), n.span()),
+            };
             let v = self.coerce(v, &tys[k]);
             let tmp = self.bind("$with", tys[k].clone());
             pre.push(TStmt::Let(tmp, v));
@@ -246,8 +248,8 @@ impl Cx<'_> {
             if given[k].replace(v).is_some() {
                 let code = cpl_diag::codes::DUPLICATE_DEFINITION;
                 self.err(
-                    n.span,
-                    Msg::verdict(code, format!("field `{}` is given twice", n.text)),
+                    n.span(),
+                    Msg::verdict(code, format!("field `{}` is given twice", n.text())),
                 );
             }
         }
@@ -276,7 +278,7 @@ impl Cx<'_> {
         e: StructId,
         i: usize,
         mut targs: Vec<Ty>,
-        args: &[ast::Arg],
+        args: &[CallArg],
         span: Span,
     ) -> TExpr {
         let s = self.d.s(e);
@@ -340,16 +342,13 @@ impl Cx<'_> {
 
     /// `match x: arms`: the first arm whose pattern `x` matches and whose guard holds, with the
     /// names it binds in scope; every value is met by an arm (R02.7.2, R02.7.4, R01.10).
-    pub(super) fn match_(
-        &mut self,
-        scrut: &ast::Expr,
-        arms: &[ast::Arm],
-        want: Option<&Ty>,
-        span: Span,
-    ) -> TExpr {
+    pub(super) fn match_(&mut self, m: &next::MatchExpr, want: Option<&Ty>, span: Span) -> TExpr {
         use super::pattern::Space;
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let x = self.expr(scrut, None);
+        let Some(scrut) = m.scrutinee() else {
+            return Self::error_node(span);
+        };
+        let x = self.expr(&scrut, None);
         let xt = self.shallow(&x.ty);
         self.b.scopes.push(HashMap::new());
         let (stmts, whole) = self.held(x);
@@ -360,14 +359,17 @@ impl Cx<'_> {
         let was_joining = self.b.joining;
         let mut rows: Vec<Vec<Space>> = Vec::new();
         let mut built: Vec<(Option<TExpr>, bool, TExpr)> = Vec::new();
-        for arm in arms {
+        for arm in m.arms() {
+            let (Some(pat), Some(arm_body)) = (arm.pattern(), arm.body()) else {
+                continue;
+            };
             self.b.scopes.push(HashMap::new());
             let mut binds = Vec::new();
             let seen = self.errors.len();
-            let test = self.refute(&arm.pat, &whole, false, &mut binds);
+            let test = self.refute(&pat, &whole, false, &mut binds);
             // A pattern in error says nothing of which values the arms meet.
             counted &= self.errors.len() == seen;
-            let space = self.space(&arm.pat, &xt);
+            let space = self.space(&pat, &xt);
             if known
                 && self
                     .useful(
@@ -378,19 +380,19 @@ impl Cx<'_> {
                     .is_none()
             {
                 self.err(
-                    arm.pat.span,
+                    self.at(&pat),
                     Msg::verdict(
                         cpl_diag::codes::UNREACHABLE_ARM,
                         "this arm never runs: the arms before it match everything it does",
                     ),
                 );
             }
-            let guard = arm.guard.as_ref().map(|g| self.bool_cond(g));
-            let body = self.block(&arm.body, ty.as_ref());
+            let guard = arm.guard().map(|g| self.bool_cond(&g));
+            let body = self.arm_body(&arm_body, ty.as_ref());
             self.b.scopes.pop();
             // An arm that leaves gives no value, so it says nothing of the match's type.
             let body = match &ty {
-                _ if arm.body.leaves() => body,
+                _ if arm_leaves(&arm_body) => body,
                 Some(t) if self.shallow(t) != Ty::Unit => self.coerce(body, t),
                 Some(_) => body,
                 // With no expected type, the arms meet in a type of their own, as an `if`'s do.

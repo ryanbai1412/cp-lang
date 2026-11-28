@@ -647,14 +647,15 @@ impl Cx<'_> {
     /// its ends read from `C`'s slot as the call returns (R02.9.3). `C` and `I`, if `t` is one.
     pub(super) fn bind_fresh(
         &mut self,
-        name: &str,
+        name: Sym,
         t: &Ty,
         span: Span,
         out: &mut Vec<TStmt>,
     ) -> Option<(usize, usize)> {
         let c = self.fresh_slot_of(t)?;
-        let i = self.fresh_from(name, c, span, out);
-        self.b.doms.insert(name.to_string(), Ty::Dom(i));
+        let shown = self.sym_text(name).to_string();
+        let i = self.fresh_from(&shown, c, span, out);
+        self.b.doms.insert(name, Ty::Dom(i));
         Some((c, i))
     }
     /// A domain of its own named `name`, its ends read from the fresh `C`'s slot.
@@ -721,8 +722,8 @@ impl Cx<'_> {
         self.owned_at(b.ident()?.text(), &[name.text().to_string()])
     }
     /// `t.Pre` written in a type: the domain the binding `t` owns as its `Pre`.
-    pub(super) fn owned_named(&self, n: &str) -> Option<Ty> {
-        let mut parts = n.split('.');
+    pub(super) fn owned_named(&self, n: Sym) -> Option<Ty> {
+        let mut parts = self.sym_text(n).split('.');
         let head = parts.next()?;
         let path: Vec<String> = parts.map(str::to_string).collect();
         self.owned_at(head, &path)
@@ -735,10 +736,12 @@ impl Cx<'_> {
         self.b.owned.get(&(v, path.to_vec())).map(|&i| Ty::Dom(i))
     }
     /// `let (tree, ..) = r`: what `r` owns under `tree` the new binding `tree` owns.
-    pub(super) fn hand_down(&mut self, whole: &str, field: &str, part: &str) {
+    pub(super) fn hand_down(&mut self, whole: Sym, field: Sym, part: Sym) {
+        let (whole, part) = (self.sym_text(whole), self.sym_text(part));
         let (Some((from, _)), Some((to, _))) = (self.lookup(whole), self.lookup(part)) else {
             return;
         };
+        let field = self.sym_text(field);
         let moved: Vec<_> = (self.b.owned.iter())
             .filter(|((v, path), _)| *v == from && path.first().is_some_and(|f| f == field))
             .map(|((_, path), &i)| ((to, path[1..].to_vec()), i))
