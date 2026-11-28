@@ -584,7 +584,7 @@ impl Cx<'_> {
         let sd = self.d.s(*s);
         for (k, a) in ts.iter().enumerate() {
             match self.shallow(a) {
-                Ty::Dom(c) if !sd.record && self.d.fresh_doms.iter().any(|f| f.0 == c) => {
+                Ty::Dom(c) if !sd.record && self.d.fresh_dom(c) => {
                     out.push((c, [path, &sd.generics[k..=k]].concat()));
                 }
                 a if sd.record => {
@@ -656,7 +656,7 @@ impl Cx<'_> {
         let r = self.range_struct()?;
         match self.shallow(t) {
             Ty::Struct(s, ts, _) if s == r && ts.len() == 1 => match self.shallow(&ts[0]) {
-                Ty::Dom(c) if self.d.fresh_doms.iter().any(|f| f.0 == c) => Some(c),
+                Ty::Dom(c) if self.d.fresh_dom(c) => Some(c),
                 _ => None,
             },
             _ => None,

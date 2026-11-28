@@ -76,6 +76,12 @@ pub trait Signatures: TypeTables {
     fn core_domain_trait(&self, tr: TraitId) -> bool;
     /// The fn of `members` named `name`.
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId>;
+    /// Whether `f` is written with a `_` result, found by checking its body.
+    fn ret_hole(&self, f: FnId) -> bool;
+    /// Core's `@coerce` fn from struct `have` to a different struct `want`.
+    fn coercion(&self, have: StructId, want: StructId) -> Option<FnId>;
+    /// Whether domain `d` is one a fn's result makes fresh at each call.
+    fn fresh_dom(&self, d: usize) -> bool;
 }
 
 /// `scope(ModId)`: what a name means in a module.
@@ -187,6 +193,23 @@ impl Signatures for Decls {
     }
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
         Decls::member(self, members, name)
+    }
+    fn ret_hole(&self, f: FnId) -> bool {
+        self.ret_holes.contains(&f)
+    }
+    fn coercion(&self, have: StructId, want: StructId) -> Option<FnId> {
+        let of = |t: &Ty| match t {
+            Ty::Struct(s, ..) => Some(*s),
+            _ => None,
+        };
+        (have != want).then_some(())?;
+        self.coercions.iter().copied().find(|f| {
+            let fd = &self.fns[f.0];
+            fd.params.first().and_then(|p| of(&p.ty)) == Some(have) && of(&fd.ret) == Some(want)
+        })
+    }
+    fn fresh_dom(&self, d: usize) -> bool {
+        self.fresh_doms.iter().any(|f| f.0 == d)
     }
     fn renamed(&self, name: &str) -> Vec<FnId> {
         let named = |f: &FnDecl| f.aka.iter().chain(&f.was).any(|n| n == name);

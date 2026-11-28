@@ -11,7 +11,7 @@ impl<'a> Cx<'a> {
         let decl = self.d.f(f);
         let checkable = !matches!(decl.body, FnBody::None) && decl.intrinsic.is_none();
         let fresh = !self.fns.contains_key(&f) && !self.ret_busy.contains(&f);
-        if self.d.ret_holes.contains(&f) && !self.found_ret.contains_key(&f) && checkable && fresh {
+        if self.d.ret_hole(f) && !self.found_ret.contains_key(&f) && checkable && fresh {
             self.ret_busy.push(f);
             let outer = std::mem::replace(&mut self.b, Body::new(self.d));
             let copy = std::mem::take(&mut self.copy);
@@ -510,16 +510,7 @@ impl<'a> Cx<'a> {
         let (Ty::Struct(h, ..), Ty::Struct(w, ..)) = (have, want) else {
             return None;
         };
-        let kind = |t: Option<&Ty>| match t {
-            Some(Ty::Struct(s, ..)) => Some(*s),
-            _ => None,
-        };
-        (self.d.coercions.iter().copied()).find(|f| {
-            let fd = self.d.f(*f);
-            h != w
-                && kind(fd.params.first().map(|p| &p.ty)) == Some(*h)
-                && kind(Some(&fd.ret)) == Some(*w)
-        })
+        self.d.coercion(*h, *w)
     }
     /// The element count of `e` when it is a list literal, as the checker builds one.
     fn literal_len(&self, e: &TExpr) -> Option<usize> {
@@ -799,7 +790,7 @@ impl<'a> Cx<'a> {
             .filter_map(|(x, y)| match (self.shallow(x), self.shallow(y)) {
                 (Ty::Dom(j), Ty::Dom(c))
                     if j != c
-                        && self.d.fresh_doms.iter().any(|f| f.0 == c)
+                        && self.d.fresh_dom(c)
                         && crate::pattern::holds_dom(&self.b.ret, c) =>
                 {
                     Some((j, c))
