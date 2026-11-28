@@ -2591,6 +2591,20 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-decls/src/lib.rs:{i}" for i in (19, 21)])
 
+    def test_synthetic_name_tests_count_only_dollar_prefix_tests_in_the_checker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-check/src"
+            src.mkdir(parents=True)
+            (src / "place.rs").write_text(
+                "let a = name.starts_with('$');\nlet b = !n.starts_with(\"$\");\n"
+                "let c = name.starts_with('_');\nlet d = local.synthetic;\n")
+            other = root / "crates/cpl-next-ir/src"
+            other.mkdir(parents=True)
+            (other / "lib.rs").write_text("let a = name.starts_with('$');\n")
+            self.assertEqual(dr.next_synthetic_name_tests(root),
+                             ["crates/cpl-next-check/src/place.rs:1", "crates/cpl-next-check/src/place.rs:2"])
+
     def test_a_view_keyed_by_a_concrete_type_value_is_a_view(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

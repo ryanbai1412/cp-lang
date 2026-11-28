@@ -1793,6 +1793,16 @@ def next_source_text_guards(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if pat.search(l)]
 
 
+def next_synthetic_name_tests(root: Path) -> list[str]:
+    """A test of a name's text for the `$` that marks a synthetic local or domain in cpl-next's
+    checker: whether a name is synthetic is a flag the item carries, not a spelling read back
+    (coordinator ruling; lane D's `Local.synthetic`), so this goes to 0 and stays there."""
+    pat = re.compile(r"""starts_with\(\s*(?:'\$'|"\$")\s*\)""")
+    src = root / "crates/cpl-next-check/src"
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, src)
+            for i, l in enumerate(_lines(p), 1) if pat.search(l)] if src.is_dir() else []
+
+
 def next_core_standin_lines(root: Path) -> list[str]:
     """Lines of `crates/cpl-next/std.cp`, the private stand-in for core: std loads like any
     library through the module loader, so this reaches 0 when core lives in std/."""
@@ -5084,6 +5094,7 @@ COUNTERS = {
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
     "next_standin_notes": ("new-pipeline lines saying the code beside them stands in for a designed component (Core)", next_standin_notes, True),
     "next_source_text_guards": ("new-pipeline guards that read Rust source as text through include_str! (Core)", next_source_text_guards, True),
+    "next_synthetic_name_tests": ("cpl-next checker tests of a name's text for the synthetic `$` (Core)", next_synthetic_name_tests, True),
     "next_op_arms_outside_ir": ("new-pipeline `Intr::` match arms outside cpl-next-ir that are not a back end's machine primitive, or a primitive a back end lacks (Core)", next_op_arms_outside_ir, True),
     "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),
