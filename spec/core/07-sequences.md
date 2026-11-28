@@ -349,8 +349,10 @@ Str(cs)
 
 `.collect()` and the constructors are one operation, \(O(n)\) and allocating;
 the postfix form is for chains, the prefix form for single values. So a
-`Seq<Char>` becomes a word as `Str(cs)` or `let w: Str = cs.collect()`,
-and `sep.join(parts)` is for joining `Str` parts. `List(s)` takes one
+`Seq<Char>` becomes a word as `Str(cs)` or `let w: Str = cs.collect()`.
+A `Char` is one character of text, so `Str(c)` is the one-character word
+(decision 678); a number's text is its `Show`, `"{x}"`, and `Str(5)` is
+E0302. And `sep.join(parts)` is for joining `Str` parts. `List(s)` takes one
 sequence and copies it; a list of given values is the literal `[a, b]`,
 and a list holding one list is `[xs]` (decision 348). (R07.8.1)
 

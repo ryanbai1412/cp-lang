@@ -2972,3 +2972,6 @@ next/n_intrinsic_has_its_entry_signature.cp
 next/n_named_arg_pack_lends_names.cp
 next/n_growing_type_through_two_fns.cp
 next/n_nested_fn_captures_borrowed_per_call.cp
+core-07/str-of-a-char-is-its-word.cp
+diagnostics/str-of-a-number-is-its-show.cp
+diagnostics/str-of-a-show-type-is-its-text.cp

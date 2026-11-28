@@ -189,7 +189,7 @@ pub fn rsearch<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K:
 /// traps: never
 /// example: `"AbC1".to_lower() == "abc1"`
 @aka(lower, toLowerCase, lowercase)
-pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
+pub fn to_lower(self: Str) -> Str = Str(c.lower for c in self)
 
 /// A copy of `self` with every ASCII lowercase letter replaced by its capital (`Char.upper`).
 ///
@@ -198,7 +198,7 @@ pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
 /// traps: never
 /// example: `"AbC1".to_upper() == "ABC1"`
 @aka(upper, toUpperCase, uppercase)
-pub fn to_upper(self: Str) -> Str = Str([c.upper for c in self])
+pub fn to_upper(self: Str) -> Str = Str(c.upper for c in self)
 
 /// A copy of `self` with leading and trailing whitespace (`Char.is_space`) removed; inner
 /// whitespace is kept.
@@ -221,7 +221,7 @@ pub fn trim(self: Str) -> Str = self.trim_start().trim_end()
 pub fn trim_start(self: Str) -> Str:
     var i = 0
     while i < self.len and self[i].is_space: i += 1
-    Str([self[j] for j in i..self.len])
+    Str(self[j] for j in i..self.len)
 
 /// A copy of `self` with trailing whitespace (`Char.is_space`) removed.
 ///
@@ -233,7 +233,7 @@ pub fn trim_start(self: Str) -> Str:
 pub fn trim_end(self: Str) -> Str:
     var n = self.len
     while n > 0 and self[n - 1].is_space: n -= 1
-    Str([self[j] for j in 0..n])
+    Str(self[j] for j in 0..n)
 
 /// `self` cut at the first `sep` into `(before, after)`, neither holding that `sep`; `None`
 /// when `sep` does not occur. Later separators stay in `after`.
@@ -246,7 +246,7 @@ pub fn trim_end(self: Str) -> Str:
 pub fn split_once(self: Str, sep: Char) -> ?(Str, Str):
     for i in 0..self.len:
         if self[i] == sep:
-            return Some((Str([self[j] for j in 0..i]), Str([self[j] for j in i + 1..self.len])))
+            return Some((Str(self[j] for j in 0..i), Str(self[j] for j in i + 1..self.len)))
     None
 
 /// The maximal runs of non-whitespace characters of `self` (`Char.is_space` separates), as
@@ -4023,7 +4023,7 @@ fn dynamic_aho_corasick_matches_brute_after_adds_and_removes():
 /// traps: when `lo > hi` or `alphabet` is empty
 /// example: `_gen_str("ab", 3, 3).len == 3`
 pub fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str =
-    Str([alphabet[rand(0, alphabet.len - 1)] for _ in 0..rand(lo, hi)])
+    Str(alphabet[rand(0, alphabet.len - 1)] for _ in 0..rand(lo, hi))
 
 /// Where `pat` first occurs in `s`, or last with `rev`; what `s.find(pat)` and `s.rfind(pat)`
 /// are for a `Str` pattern.

@@ -4,4 +4,4 @@
 use std.poly
 type Z = Mod<998244353>
 let a = [Z(1), Z(2), Z(3)]
-print(" ".join([Str(c.v) for c in poly.deriv(a)]), "|", floor(sqrt(4.0)))
+print(" ".join(["{c.v}" for c in poly.deriv(a)]), "|", floor(sqrt(4.0)))

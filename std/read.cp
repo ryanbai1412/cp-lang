@@ -261,7 +261,7 @@ impl Read for F64:
 impl Read for Str:
     fn read(mut input: Input) -> Str:
         input.skip_blank()
-        var s = Str(List.new())
+        var s = Str()
         while input.peek(0) != -1 and not blank(input.peek(0)): s.push(Char(input.byte()))
         input.end_token()
         s
@@ -326,7 +326,7 @@ impl<A: Read, B: Read, C: Read, E: Read> Read for Tuple4<A, B, C, E>:
 /// `read_line()`: the rest of the line, without its `\n` or a trailing `\r`; after a line's last
 /// token it is the next line (R10.2.3, R10.2.8).
 pub fn read_line() -> Str:
-    var s = Str(List.new())
+    var s = Str()
     var cr = false
     var c = stdin_byte()
     while c != -1 and c != 10:

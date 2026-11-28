@@ -745,7 +745,7 @@ pub fn to_str(self: Int, base: Int = 10) -> Str:
         cs.push(if d < 10: Char(48 + d) else: Char(87 + d))
         x = if x < 0 and r != 0: x / base + 1 else: x / base
     if self < 0: cs.push('-')
-    Str(List(cs.rev))
+    Str(cs.rev)
 
 /// Which side of zero a number is on, ordered `Neg < Zero < Pos`. `Int(s)` is -1, 0 or 1, so
 /// `x == Int(x.sign) * abs(x)`; `-s` flips it and `max(s, Sign.Zero)` clamps it.
@@ -1907,7 +1907,7 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
                 v /= 10
                 k += 1
         if self.neg: cs.push('-')
-        Str(List(cs.rev))
+        Str(cs.rev)
 
     /// The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < |d|`, as for `Int`.
     ///

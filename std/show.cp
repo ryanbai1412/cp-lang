@@ -18,7 +18,7 @@ pub trait Show:
     fn write_to(self, mut out: Str, sep: ?Str):
         out.append(self.show())
     fn show(self) -> Str:
-        var s = Str(List.new())
+        var s = Str()
         self.write_to(mut s, None)
         s
     /// What follows the value in a sequence printed without `sep:`: a space, or a line for a
@@ -49,7 +49,7 @@ fn fmt_none<N: Show>(digits: ?Int, none: N) -> Fmt uses io:
 
 /// `x` as `fmt` writes it.
 fn shown<T: Show>(x: T, fmt: Fmt) -> Str:
-    var s = Str(List.new())
+    var s = Str()
     x.write_fmt(mut s, None, fmt)
     s
 
@@ -66,7 +66,7 @@ fn put_piece<T: Show>(mut out: Str, x: T, width: Int, zero: Bool, digits: ?Int) 
     if width == 0:
         x.write_fmt(mut out, None, fmt)
         return
-    var s = Str(List.new())
+    var s = Str()
     x.write_fmt(mut s, None, fmt)
     let sign = zero and s.len > 0 and s.chars[0] == '-'
     if sign: out.push('-')
@@ -230,7 +230,7 @@ fn put_opt<T: Show>(mut out: Str, x: ?T, sep: ?Str, first: Bool, fmt: Fmt):
 
 /// The values joined by `sep`, then `end`, written to standard output.
 fn put_line<Ts: ShowAll<M>, M>(xs: Ts, sep: ?Str, end: Str, fmt: Fmt):
-    var line = Str(List.new())
+    var line = Str()
     xs.write_all(mut line, sep, true, fmt)
     line.append(end)
     line.write_out()

@@ -1414,22 +1414,22 @@ fn path_folds_keep_the_order_from_a_to_b():
     let adj = random_tree(V.first!)
     let r = Rooted(adj, V.first!)
     let words = Monoid<Word>(id: Word(""), op: (x, y) => Word(x.s + y.s), rev: x => x.rev())
-    let seg = SegTree(words, r.reorder([V] v => Word(Str(v.ord))))
+    let seg = SegTree(words, r.reorder([V] v => Word("{v.ord}")))
     for a in V:
         for b in V:
             let p = slow_path(r, a, b)
             var all = ""
             var cut = ""
             for v in p:
-                all = all + Str(v.ord)
-                if v != r.lca(a, b): cut = cut + Str(v.ord)
+                all = all + "{v.ord}"
+                if v != r.lca(a, b): cut = cut + "{v.ord}"
             assert r.fold_path(a, b, seg) == Word(all)
             assert r.fold_path(a, b, seg, edges: true) == Word(cut)
 
 struct Word(s: Str)
 
 impl Reversible for Word:
-    fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
+    fn rev(self) -> Word = Word(Str(s[s.len - 1 - i] for i in 0..s.len))
 
 @test
 fn path_updates_and_subtree_folds_over_one_lazy_tree():
@@ -1479,11 +1479,11 @@ fn excl_fold_folds_the_other_children():
     for v in V:
         let kids = r.children(v).collect()
         var i = 0
-        for e in r.excl_fold(v, words, c => Str(c.ord)):
+        for e in r.excl_fold(v, words, c => "{c.ord}"):
             assert e.c == kids[i]
             var want = ""
             for j in 0..kids.len:
-                if j != i: want = want + Str(kids[j].ord)
+                if j != i: want = want + "{kids[j].ord}"
             assert e.rest == want
             i += 1
         assert i == kids.len
@@ -1521,7 +1521,7 @@ fn orders_lifting_and_the_virtual_tree():
     domain V = 0..14
     let adj = random_tree(V.first!)
     let r = Rooted(adj, V.first!)
-    let up: [V]?(V, Word) = [V] v => if let p = r.parent(v): Some((p, Word(Str(v.ord)))) else: None
+    let up: [V]?(V, Word) = [V] v => if let p = r.parent(v): Some((p, Word("{v.ord}"))) else: None
     let l = Lift(up, op: (x, y) => Word(x.s + y.s), identity: Word(""))
     let cost: [V]?(V, Int) = [V] v => if let p = r.parent(v): Some((p, v.ord + 1)) else: None
     let lc = Lift(cost, op: (x, y) => x + y, identity: 0)
@@ -1537,7 +1537,7 @@ fn orders_lifting_and_the_virtual_tree():
                 for x in r.ancestors(a):
                     if lc.fold(a, up_to: x) <= lim: want = x
                 if lim >= 0: assert lc.climb_while(a, s => s <= lim) == want
-            word = word + Str(u.ord)
+            word = word + "{u.ord}"
             sum += u.ord + 1
         for t in 0..r.depth(a) + 1:
             let c = l.climb(a, u => r.depth(u) >= t)

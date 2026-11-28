@@ -730,7 +730,7 @@ fn desc_reverses_one_part_of_a_key():
 struct Word(s: Str)
 
 impl Reversible for Word:
-    fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
+    fn rev(self) -> Word = Word(Str(s[s.len - 1 - i] for i in 0..s.len))
 
 @test
 fn a_monoid_reverses_by_its_op():

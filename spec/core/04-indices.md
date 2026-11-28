@@ -99,7 +99,8 @@ Ordinal order is a walk order, not a successor: `V(x)`, `V.at(x)`, `Int(v)`,
 arithmetic stay with the ordered core domains, and naming one on a library
 domain is an error that says so. A library type that wants `Int(x)` or a
 printed form writes `impl Into<Int>` (`fn into(self) -> Int`) and `Show`, as
-`Subset` does with its mask (decisions 291, 390). An always-on precondition
+`Subset` does with its mask, and its text is then `"{x}"`, not `Str(x)`
+(decisions 291, 390, 678). An always-on precondition
 is an `assert` inside `with checks(asserts: on):` (R09.4.1). (R04.2.28)
 
 Counting and order are two capabilities. `Domain` is counting and positions:

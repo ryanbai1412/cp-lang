@@ -8211,7 +8211,7 @@ Formerly 382 (renumbered: the number was taken twice).
   `impl Into<Int>` / `impl Into<F64>` (`fn into(self) -> T`), dispatched
   through mono as `Show` is; the call stays explicit (R08.5.2). `Str(x)` is
   not an `Into` target: a word from a `Seq<Char>` is `Str(cs)` and a value's
-  text is its `Show`. A library precondition that must hold in the judge
+  text is its `Show`, `"{x}"`. (Amended by 678: a `Char` converts, `Str(c)`.) A library precondition that must hold in the judge
   build (a `Subset` over at most 25 values) is an `assert` inside
   `with checks(asserts: on):` (R09.4.1), so std has no private trap and the
   compiler's `MAX_SUBSET_BITS` goes.
@@ -9562,4 +9562,22 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 
 ## 677. (reserved, unknown)
 
-## 678. (reserved, A)
+## 678. `Str(x)` has one meaning: a word from characters (spec, 2026-11-28)
+
+- **Decision.** Amends 390. `Str(x)` makes a word from characters: a
+  `Seq<Char>` (`Str(cs)`, a conversion like `List(s)`) or one `Char`
+  (`Str(c)`, the one-character word). Both are ordinary std impls,
+  `impl<S: Seq<Char>> Into<Str> for S` and `impl Into<Str> for Char`, and
+  `Str` gains `new()`, the empty word, so `Str(x)` is a conversion by
+  R02.6.3 with no rule of its own. Any other value's text is its `Show`,
+  `"{x}"`: `Str(5)` or `Str(p)` for a `Show` type is E0302, with a
+  machine-applicable fix that writes `"{x}"`. Old cpl reads `Str(x)` as
+  `x`'s Show, so the reject cases are `// engines: next`.
+- **Why.** Old cpl accepts `Str(c)`, and contestants write `s + Str(c)` in
+  a fold, so dropping it would be a cut. Reading `Str(x)` as Show too would
+  need `impl<T: Show> Into<Str> for T`, which overlaps `Seq<Char>` for
+  `List<Char>`. Choosing between them would take a precedence rule in the
+  shared solver, and we don't add one. One meaning plus the fix-it costs a
+  contestant one edit.
+- **Reverse.** Drop the two impls and `Str.new`; `Str(cs)` goes back to
+  constructing from a `List<Char>` field.

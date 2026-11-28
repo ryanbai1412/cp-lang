@@ -27,10 +27,10 @@ for _ in 0..n:
     for x in xs:
         sum += x
         big = max(big, x)
-        word = word + Str(x)
+        word = word + "{x}"
         digits = digits * 10 + x
         diff = Some(if let d = diff: d - x else: x)
-    let words = [Str(x) for x in xs]
+    let words = ["{x}" for x in xs]
     if xs.fold(+) != sum: bad = "fold(+) on {xs}"
     elif xs.fold(max) != big: bad = "fold(max) on {xs}"
     elif words.fold(cat) != word: bad = "fold(cat) on {xs}"

@@ -129,6 +129,9 @@ fn array_of_list<D: Domain, T>(xs: List<T>) -> [D]T:
 pub struct Str:
     pub var chars: List<Char>
 
+    /// The empty string; `Str(x)` is `x`'s conversion to a word (R07.8.1).
+    pub fn new() -> Str = Str(List<Char>.new())
+
     @get pub fn len(self) -> Int:
         chars.len
 
@@ -154,9 +157,9 @@ pub struct Str:
 // so the string gets its own.
 @role(str_literal)
 fn str_of(text: Raw<Char>, n: Int) -> Str:
-    var chars = List<Char>.new()
-    for i in 0..n: chars.push(raw_get(text, i))
-    Str(chars)
+    var s = Str()
+    for i in 0..n: s.push(raw_get(text, i))
+    s
 
 /// `s + t`: a new string, `s`'s characters then `t`'s (R02.3.3).
 impl Add for Str:
@@ -172,7 +175,7 @@ impl<T: Clone, S: Seq<T>> Add<S> for List<T>:
         out
 
 fn str_concat(a: Str, b: Str) -> Str:
-    var out = Str(List.new())
+    var out = Str()
     for c in a: out.push(c)
     for c in b: out.push(c)
     out
@@ -216,7 +219,7 @@ impl<T: Clone> Clone for List<T>:
         for i in 1..a.n: raw_set(mut out.buf, i, raw_get(a.buf, i).clone())
         out
 impl Clone for Str:
-    fn clone(a) = Str(a.chars.clone())
+    fn clone(a) = Str(a.chars)
 impl<D: Domain, T: Clone> Clone for Array<D, T>:
     fn clone(a):
         if D.count == 0: return Array(raw_empty())
@@ -276,6 +279,20 @@ impl<D: Domain, T> IndexMut<D, T> for Array<D, T>:
     fn at(mut self, i: D) -> lends mut T:
         lend mut self.buf[i.ord]
 impl<D: Domain, T> IndexedMut<D, T> for Array<D, T>
+
+/// `Str(s)`: a new word of the characters `s` walks, in walk order. \(O(n)\) (R07.8.1).
+impl<S: Seq<Char>> Into<Str> for S:
+    fn into(self) -> Str:
+        var out = Str()
+        for c in self: out.push(c)
+        out
+
+/// `Str(c)`: the one-character word `c`; a `Char` is one character of text (R07.8.1).
+impl Into<Str> for Char:
+    fn into(self) -> Str:
+        var out = Str()
+        out.push(self)
+        out
 
 /// `List(s)`: a new list of `s`'s elements in walk order. \(O(n)\) (R07.8.1).
 impl<S: Seq<T>, T> Into<List<T>> for S:

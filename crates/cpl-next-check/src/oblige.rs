@@ -94,6 +94,28 @@ impl Cx<'_> {
                                 cpl_diag::codes::TYPE_MISMATCH,
                                 format!("expected `{to}`, found `{shown}`"),
                             );
+                            let to_text = matches!(self.shallow(&r.args[0]),
+                                Ty::Struct(s, ..) if Some(s) == self.d.sugar.str);
+                            // A value's text is its `Show`; the fix writes `"{x}"` (decision 678).
+                            if to_text {
+                                let at = self.b.item.at(span);
+                                let call = self.text(span);
+                                let arg = (call.find('(').zip(call.rfind(')')))
+                                    .map(|(a, b)| call[a + 1..b].trim())
+                                    .filter(|a| !a.is_empty() && !a.contains(['"', '{', '}']));
+                                let mut msg = Msg::at(at.clone(), msg);
+                                msg.help = Some(format!(
+                                    "`Str(x)` makes a word of characters; the text of a `{shown}` is its `Show`, `\"{{x}}\"`"
+                                ));
+                                if let Some(arg) = arg {
+                                    msg.fixes.push(cpl_next_ir::msg::Fix {
+                                        title: format!("write `\"{{{arg}}}\"`"),
+                                        edits: vec![(at, format!("\"{{{arg}}}\""))],
+                                    });
+                                }
+                                self.errors.push(msg);
+                                continue;
+                            }
                             let help = format!(
                                 "`{shown}` converts to `{to}` only by its own impl: write `impl {tr}<{to}> for {shown}`"
                             );
