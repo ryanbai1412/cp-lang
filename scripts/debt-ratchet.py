@@ -2539,6 +2539,8 @@ def next_std_names(root: Path) -> list[str]:
     # An id table's row binds an id std writes as `@intrinsic("id")` or `@fast(id)`; a row std writes no
     # binding for is a name the compiler knows, and counts.
     ids = {a or b for f in sources for a, b in NEXT_INTRINSIC_ID_RE.findall(f.read_text(encoding="utf-8"))}
+    # The check-name table's rows are R09.3's names, read from the spec itself.
+    bound = {rel: _spec_check_names(root) if rel == NEXT_CHECK_NAMES[0] else ids for rel in NEXT_INTRINSIC_TABLES}
     out: list[str] = []
     wrappers: dict[str, tuple[str, int]] = {}
     for rel, lines in files.items():
@@ -2548,7 +2550,7 @@ def next_std_names(root: Path) -> list[str]:
                 continue
             if (t := NEXT_INTRINSIC_TABLES.get(rel)) and re.match(rf"\s*pub const {t}\b", line):
                 table = t
-            hits = [n for n in RUST_STR_RE.findall(line) if n in names and not (table and n in ids)]
+            hits = [n for n in RUST_STR_RE.findall(line) if n in names and not (table and n in bound[rel])]
             if table and line.strip().startswith("];"):
                 table = None
             # A display arm naming its own variant (`Stage::Check => "check"`) is the compiler's label.
@@ -2583,8 +2585,20 @@ def next_std_names(root: Path) -> list[str]:
 NEXT_WRAPPER_LINES = 8
 # An id std binds: a body `= @intrinsic("id")`, or `@fast(id)` on a CP body the op computes.
 NEXT_INTRINSIC_ID_RE = re.compile(r'@intrinsic\("(\w+)"\)|@fast\((\w+)\)')
-# The one table of `@intrinsic` ids each file keeps, by its `const`'s name.
-NEXT_INTRINSIC_TABLES = {"crates/cpl-next-ir/src/ops.rs": "INTRINSICS", "crates/cpl-prim/src/lib.rs": "IDS"}
+# The one table of `@intrinsic` ids (in build.rs, of R09.3 check names) each file keeps, by its `const`'s name.
+NEXT_CHECK_NAMES = ("crates/cpl-next-ir/src/build.rs", "ALL")
+NEXT_INTRINSIC_TABLES = {"crates/cpl-next-ir/src/ops.rs": "INTRINSICS", "crates/cpl-prim/src/lib.rs": "IDS",
+                         NEXT_CHECK_NAMES[0]: NEXT_CHECK_NAMES[1]}
+NEXT_CHECK_NAMES_SPEC = "spec/core/09-contexts-checks.md"
+NEXT_CHECK_NAMES_RE = re.compile(r"Each row has one check name(.*?)This is the one list", re.S)
+
+
+def _spec_check_names(root: Path) -> set[str]:
+    """R09.3's check names (`bounds`, `div`, ..), the words `with checks(..)` takes."""
+    spec = root / NEXT_CHECK_NAMES_SPEC
+    m = NEXT_CHECK_NAMES_RE.search(spec.read_text(encoding="utf-8")) if spec.is_file() else None
+    return set(re.findall(r"`(\w+)`", m.group(1))) if m else set()
+
 NEXT_QUERY_NAME_RE = re.compile(r'^\s*const NAME: &\'static str = "[a-z_]+";\s*$')
 NEXT_LABEL_ARM_RE = re.compile(r'^\s*[A-Z]\w*::([A-Z]\w*)\s*=>\s*"[a-z_]+",?\s*$')
 NEXT_FN_RE = re.compile(r"^(\s*)(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s+([a-z_]\w*)")
