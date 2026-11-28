@@ -1161,6 +1161,8 @@ impl Fc<'_> {
                     elem,
                 });
             }
+            // The run's output is its `Written` text, which the host takes whole at exit.
+            Intr::Flush => {}
             Intr::Out => {
                 let (Some(r), Some(Arg::Value(n))) = (args.first(), args.get(1)) else {
                     return self.fail("output without storage and a count");

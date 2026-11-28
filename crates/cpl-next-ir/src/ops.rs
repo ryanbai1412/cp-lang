@@ -692,7 +692,7 @@ pub fn cell(i: i64, len: usize, write: bool) -> Result<usize, Fault> {
 /// guard model, not semantics. These are the only `Intr` arms a back end has; every fault,
 /// bound, input rule and guard result inside them comes from this module, and every other
 /// operation is computed from it (`on_scalars`, `scalar`, `cpp_text`).
-pub const MACHINE: [Intr; 18] = [
+pub const MACHINE: [Intr; 19] = [
     Intr::RawEmpty,
     Intr::RawNew,
     Intr::RawGet,
@@ -700,6 +700,7 @@ pub const MACHINE: [Intr; 18] = [
     Intr::RawTake,
     Intr::RawCap,
     Intr::Out,
+    Intr::Flush,
     Intr::InputLeft,
     Intr::ReadInt,
     Intr::ReadByte,
@@ -895,6 +896,7 @@ pub fn cpp_text(op: Intr, first: Operand) -> String {
         I::CheckInput => "cpl_check_input($0)".into(),
         I::RandWord => "cpl_rand_word()".into(),
         I::Out => "cpl_out($0, $1)".into(),
+        I::Flush => "(cpl_capture || fflush(stdout), cpl_unit{})".into(),
         // `cpp` and `cpp_wide` spell the rest, for operands of every kind they take.
         _ => "/* not an operation */".into(),
     }
@@ -1042,6 +1044,7 @@ pub const INTRINSICS: &[(&str, Intrinsic)] = &[
     ("f64_of", Intrinsic::Op(Intr::ToF64)),
     ("f64_bits", Intrinsic::Op(Intr::F64Bits)),
     ("out", Intrinsic::Op(Intr::Out)),
+    ("flush", Intrinsic::Op(Intr::Flush)),
     (Prim::Popcount.id(), Intrinsic::Op(Intr::Popcount)),
     (Prim::Abs.id(), Intrinsic::Op(Intr::Abs)),
     (Prim::Ctz.id(), Intrinsic::Op(Intr::Ctz)),

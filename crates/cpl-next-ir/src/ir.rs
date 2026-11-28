@@ -76,6 +76,8 @@ pub enum Intr {
     CheckInput,
     /// Writes the first `n` characters of storage to the output.
     Out,
+    /// Hands the output written so far to the host now, not at exit.
+    Flush,
     /// The next word of the program's one random stream (`ops::rand_word`).
     RandWord,
     /// The character with a code; traps R0201 outside `0..=127`.
@@ -213,6 +215,7 @@ impl Intr {
                 | Intr::ReadByte
                 | Intr::PeekByte
                 | Intr::Out
+                | Intr::Flush
                 | Intr::RandWord
         )
     }

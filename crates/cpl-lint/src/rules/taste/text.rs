@@ -1,7 +1,6 @@
 //! Text-level helpers shared by the taste rules: receivers, sequences and names.
 
 use cpl_syntax::ast::*;
-use std::collections::HashSet;
 
 pub(super) use crate::rules::shapes::mentions;
 
@@ -65,13 +64,4 @@ pub(super) fn numeric(init: &str) -> bool {
         || init
             .trim_start_matches('-')
             .starts_with(|c: char| c.is_ascii_digit())
-}
-
-pub(super) fn words(text: &str) -> impl Iterator<Item = &str> {
-    text.split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .filter(|w| !w.is_empty())
-}
-
-pub(super) fn idents(src: &str) -> HashSet<&str> {
-    words(src).collect()
 }

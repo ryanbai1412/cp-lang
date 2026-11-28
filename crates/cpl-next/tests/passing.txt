@@ -1086,6 +1086,7 @@ core-10/bool-var-not-print.cp
 core-10/crlf-input-tokens.cp
 core-10/crlf-read-line-drops-cr.cp
 core-10/float-precision.cp
+core-10/flush-keeps-the-output-bytes.cp
 core-10/grid-first-factor-is-row.cp
 core-10/grid-int-read-row-major.cp
 core-10/interpolated-optional-is-not-show.cp
@@ -2235,6 +2236,7 @@ std-math/splitmix64-at-zero.cp
 std-matrix/f64-identity-from-zero-and-one.cp
 std-matrix/get-outside-columns-traps.cp
 std-models/check-value.cp
+std-models/flush.cp
 std-models/hash.cp
 std-models/input.cp
 std-models/laws.cp

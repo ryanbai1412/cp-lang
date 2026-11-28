@@ -19,7 +19,8 @@ std.hash	0
 std.hashmap	0
 std.heap	3
 std.interval	32
-std.io	3
+std.io	0
+std.laws	0
 std.lazy	19
 std.list	0
 std.literal	0

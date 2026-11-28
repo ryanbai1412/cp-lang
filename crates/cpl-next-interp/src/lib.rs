@@ -594,7 +594,8 @@ impl<'a> Machine<'a> {
                 V::Int(self.input.peek(k))
             }
             Intr::RandWord => V::U64(ops::rand_word(&mut self.rand)),
-            Intr::Unset => V::Unit,
+            // A flush is a no-op: the run's output is its `Written` text, which the host takes whole at exit.
+            Intr::Unset | Intr::Flush => V::Unit,
             Intr::ReadInt => {
                 let t = self.input.token();
                 V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)
