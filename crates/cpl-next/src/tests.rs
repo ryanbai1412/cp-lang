@@ -30,6 +30,7 @@ fn compile(
     crate::compile(&db, std, &root, events, judge, checks)
 }
 
+mod reach;
 mod run_io;
 
 #[path = "../../cpl-cli/tests/support/cxx.rs"]
@@ -508,9 +509,9 @@ fn diagnostic_is_placed_in_the_program() {
 /// A fn refused as declared is that one refusal: its body and its calls say nothing more.
 #[test]
 fn a_refused_fn_is_one_refusal() {
-    let src = "@memo(map)\nfn f(n: Int) -> Int = n + nope\nprint(f(3) + 1, f(true).len)\n";
+    let src = "@cache\nfn f(n: Int) -> Int = n + nope\nprint(f(3) + 1, f(true).len)\n";
     let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
-    assert_eq!(ds, ["decls: program:1:1: slice: decorator `@memo`"]);
+    assert_eq!(ds, ["decls: program:1:1: slice: decorator `@cache`"]);
 }
 
 /// A diagnostic is data: its code, its place in its file and, for a refusal, the feature.
