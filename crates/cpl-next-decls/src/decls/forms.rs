@@ -316,17 +316,22 @@ impl Reader<'_> {
     ) -> (Vec<Sym>, Vec<Option<TyForm>>, Vec<BoundForm>) {
         let (mut names, mut defaults, mut bounds) = (Vec::new(), Vec::new(), Vec::new());
         for p in g.iter().flat_map(|g| g.params().collect::<Vec<_>>()) {
-            let name = self.sym(p.name());
-            for t in p.bound().iter().flat_map(|b| b.types().collect::<Vec<_>>()) {
-                bounds.push(BoundForm {
-                    param: name,
-                    tr: TyForm::Written(t),
-                });
-            }
-            names.push(name);
+            names.push(self.bounded(&p, &mut bounds));
             defaults.push(self.ty(p.default()));
         }
         (names, defaults, bounds)
+    }
+
+    /// A generic parameter's name, its bounds pushed onto `out`.
+    fn bounded(&mut self, p: &ast::GenericParam, out: &mut Vec<BoundForm>) -> Sym {
+        let name = self.sym(p.name());
+        for t in p.bound().iter().flat_map(|b| b.types().collect::<Vec<_>>()) {
+            out.push(BoundForm {
+                param: name,
+                tr: TyForm::Written(t),
+            });
+        }
+        name
     }
 
     pub fn where_bounds(&mut self, w: Option<ast::WhereClause>, out: &mut Vec<BoundForm>) {
@@ -580,7 +585,22 @@ impl Reader<'_> {
         im: &ast::ImplDecl,
         attrs: Vec<AttrForm>,
     ) -> Option<(ImplForm, Vec<ast::Decorator>)> {
-        let (generics, _, mut bounds) = self.generics(im.generics());
+        let (mut generics, _, mut bounds) = self.generics(im.generics());
+        // `impl Show for Bitset<D: Show>`: a parameter the head writes with its bounds (decision 460).
+        if let Some(ast::Type::Path(p)) = im.self_ty() {
+            for a in p
+                .generic_args()
+                .iter()
+                .flat_map(|g| g.args().collect::<Vec<_>>())
+            {
+                if let ast::GenericArg::Param(q) = a {
+                    let n = self.bounded(&q, &mut bounds);
+                    if !generics.contains(&n) {
+                        generics.push(n);
+                    }
+                }
+            }
+        }
         self.where_bounds(im.where_clause(), &mut bounds);
         let trait_ = self.bound_types(im.trait_ref()).into_iter().next();
         let members = im.members();

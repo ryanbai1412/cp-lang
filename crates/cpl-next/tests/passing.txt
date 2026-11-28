@@ -2966,3 +2966,7 @@ next/n_intrinsic_has_its_entry_signature.cp
 next/n_named_arg_pack_lends_names.cp
 next/n_growing_type_through_two_fns.cp
 next/n_nested_fn_captures_borrowed_per_call.cp
+next/c_if_01_last_line_value.cp
+next/c_fn_01_labels_only_overload.cp
+next/c_alias_01_value_calls_assoc_fn.cp
+next/c_impl_01_head_bounded_param.cp

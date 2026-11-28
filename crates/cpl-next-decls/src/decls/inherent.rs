@@ -21,14 +21,20 @@ pub(super) fn inherent_impl(d: &mut Decls, mid: ModId, item: ItemId, t: StructId
     let names = |n: Sym| view.get(&n).copied();
     let mut generics = Vec::new();
     for a in &args {
-        if let GenericArg::Type(a) = a {
-            unnamed(a, &names, &mut d.syms, &mut generics);
+        match a {
+            GenericArg::Type(a) => unnamed(a, &names, &mut d.syms, &mut generics),
+            GenericArg::Param(q) if !q.is_const() => {
+                let n = q.name().map(|n| d.syms.intern(n.text()));
+                generics.extend(n.filter(|n| !generics.contains(n)));
+            }
+            GenericArg::Param(_) => {}
         }
     }
     let bare = |a: &GenericArg| match a {
         GenericArg::Type(Type::Path(q)) => {
             q.generic_args().is_none_or(|g| g.args().next().is_none())
         }
+        GenericArg::Param(q) => !q.is_const(),
         _ => false,
     };
     if !args.iter().all(bare) || generics.len() != args.len() || args.len() != d.s(t).generics.len()
