@@ -829,6 +829,7 @@ core-07/find-first-match.cp
 core-07/first-last-pred.cp
 core-07/flatten.cp
 core-07/fold-a-generator.cp
+core-07/fold-from-folds-into-another-type.cp
 core-07/fold-identity-or-optional.cp
 core-07/fold-with-init.cp
 core-07/generator-expression-body-for.cp
