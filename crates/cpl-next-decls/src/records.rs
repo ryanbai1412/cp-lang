@@ -422,7 +422,9 @@ pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Struc
 /// `dom_count`, `dom_nth` and `dom_ord`: what a domain the compiler declares implements, with
 /// the `@role(order)` trait, whose members all have bodies.
 pub struct Positions {
-    /// The `@role(positions)` trait.
+    /// The `@role(discrete)` trait, which holds `nth` and `ord`.
+    pub discrete: Sym,
+    /// The `@role(positions)` trait, which holds `count`.
     pub tr: Sym,
     /// The `@role(order)` trait.
     pub order: Option<Sym>,
@@ -435,20 +437,23 @@ pub struct Positions {
 pub fn positions(forms: &[&crate::decls::forms::Form]) -> Option<Positions> {
     use crate::decls::forms::{intrinsic_name, BodyForm};
     use cpl_next_syntax::ast::{Expr, FnBody};
-    let (mut marks, mut order) = (None, None);
+    let (mut marks, mut walk, mut order) = (None, None, None);
     for f in forms {
         if let crate::decls::forms::Form::Trait(t) = f {
             if form_fills(&t.attrs, Role::Positions) {
                 marks = Some(t);
+            }
+            if form_fills(&t.attrs, Role::Discrete) {
+                walk = Some(t);
             }
             if form_fills(&t.attrs, Role::Order) {
                 order = Some(t.name);
             }
         }
     }
-    let t = marks?;
+    let (t, w) = (marks?, walk?);
     let member = |id: &str| {
-        t.methods.iter().find_map(|m| match &m.body {
+        (t.methods.iter().chain(&w.methods)).find_map(|m| match &m.body {
             BodyForm::Written(FnBody::Expr(Expr::Intrinsic(i)))
                 if intrinsic_name(i).as_deref() == Some(id) =>
             {
@@ -458,6 +463,7 @@ pub fn positions(forms: &[&crate::decls::forms::Form]) -> Option<Positions> {
         })
     };
     Some(Positions {
+        discrete: w.name,
         tr: t.name,
         order,
         count: member("dom_count")?,
@@ -481,7 +487,7 @@ pub fn domain_impls(
         return Vec::new();
     };
     let (count, nth, ord) = (p.count, p.nth, p.ord);
-    let tr = p.tr;
+    let (tr, walk) = (p.tr, p.discrete);
     let this = syms.intern("self");
     let int = syms.intern("Int");
     let k = syms.intern("k");
@@ -530,14 +536,14 @@ pub fn domain_impls(
                     span,
                 }
             };
+        let counts = vec![method(
+            true,
+            count,
+            Vec::new(),
+            TyForm::Named(int, Vec::new()),
+            SynthBody::ProductCount { count, n: fs.len() },
+        )];
         let methods = vec![
-            method(
-                true,
-                count,
-                Vec::new(),
-                TyForm::Named(int, Vec::new()),
-                SynthBody::ProductCount { count, n: fs.len() },
-            ),
             method(
                 false,
                 nth,
@@ -561,14 +567,16 @@ pub fn domain_impls(
                 },
             ),
         ];
-        // `impl<A: tr, ..> tr for (lo: A, ..)`.
-        let imp = |tr: Sym, methods: Vec<FnForm>| ImplForm {
+        // `impl<A: Domain + b, ..> tr for (lo: A, ..)`.
+        let imp = |tr: Sym, b: Option<Sym>, methods: Vec<FnForm>| ImplForm {
             attrs: Vec::new(),
             generics: generics.clone(),
             bounds: (generics.iter())
-                .map(|g| BoundForm {
-                    param: *g,
-                    tr: TyForm::Named(tr, Vec::new()),
+                .flat_map(|g| {
+                    (std::iter::once(p.tr).chain(b)).map(|tr| BoundForm {
+                        param: *g,
+                        tr: TyForm::Named(tr, Vec::new()),
+                    })
                 })
                 .collect(),
             trait_: Some(TyForm::Named(tr, Vec::new())),
@@ -582,9 +590,10 @@ pub fn domain_impls(
         // A record of ordered domains is ordered, as a tuple of them is (R04.2.31).
         if let Some(o) = &p.order {
             let o = *o;
-            out.push((name(fs), imp(o, Vec::new())));
+            out.push((name(fs), imp(o, Some(o), Vec::new())));
         }
-        out.push((name(fs), imp(tr, methods)));
+        out.push((name(fs), imp(walk, None, methods)));
+        out.push((name(fs), imp(tr, None, counts)));
     }
     out
 }

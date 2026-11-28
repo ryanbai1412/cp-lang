@@ -186,8 +186,8 @@ impl Input:
     /// The position of `D` an `Int` token names: a counted domain's token is its position plus
     /// the input's base, any other domain's is its integer, never shifted. Outside `D` a read
     /// from standard input traps R0502 and one from a string fails (R10.2.2).
-    fn position<D: Ordered>(mut self) -> D:
-        let shift = if D.counted: self.base else: 0
+    fn position<D: Ordered + Domain>(mut self) -> D:
+        let shift = if D.from_count: self.base else: 0
         if let v = D.at(self.int() - shift): return v
         self.holds(false)
         D.nth(0)
@@ -206,7 +206,7 @@ impl Read for Int:
 impl Read for _..=_:
     fn read(mut input: Input) -> Self = input.position<Self>()
 
-impl<D: Ordered> Read for D:
+impl<D: Ordered + Domain> Read for D:
     fn read(mut input: Input) -> D = input.position<D>()
 
 /// `I128` reads one whole number; one past `I128`'s range traps R0502 (R10.2.6).
@@ -297,7 +297,7 @@ impl<T: Read> Read for List<T>:
 
 /// `Range<D>` reads two ends `l r` as the inclusive `l..=r`, each a position of `D`, and checks
 /// `l <= r` (R10.2.3).
-impl<D: Ordered> Read for Range<D>:
+impl<D: Ordered + Domain> Read for Range<D>:
     fn read(mut input: Input) -> Range<D>:
         let lo = input.position<D>().ord
         let hi = input.position<D>().ord

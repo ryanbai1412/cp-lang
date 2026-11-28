@@ -447,7 +447,7 @@ impl<'a> Machine<'a> {
             EK::Bool(b) => V::Bool(*b),
             EK::Text(t) => V::Raw(Rc::new(Store::Any(t.bytes().map(V::Char).collect()))),
             EK::Unit => V::Unit,
-            EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) | EK::DomCounted(_) => {
+            EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) | EK::DomFromCount(_) => {
                 return broken("a domain value the link step did not resolve")
             }
             EK::HasBound(..) => return broken("a bound test the link step did not decide"),

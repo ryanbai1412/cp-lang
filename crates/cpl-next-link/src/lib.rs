@@ -533,6 +533,18 @@ impl Link<'_> {
             t => self.ty(t, env),
         }
     }
+    /// Whether `[D]T` at these arguments is the list: `D` has no count (R04.8.11).
+    fn listed(&mut self, d: StructId, ts: &[Ty], env: &Env) -> bool {
+        if Some(d) != self.d.sugar().array || ts.len() != 2 || self.d.sugar().list.is_none() {
+            return false;
+        }
+        let key = match self.targ(&ts[0], env) {
+            CTy::Int => Ty::Int,
+            CTy::Struct(s, args, _) if args.is_empty() => Ty::Struct(s, Vec::new(), Vec::new()),
+            _ => return false,
+        };
+        self.d.impls().uncounted(&key, self.d.roles())
+    }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
             Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. } => {
@@ -598,6 +610,10 @@ impl Link<'_> {
                 t => t.cloned().unwrap_or(CTy::Error),
             },
             Ty::Dom(d) => CTy::Dom(*d),
+            Ty::Struct(d, ts, _) if self.listed(*d, ts, env) => {
+                let list = self.d.sugar().list.unwrap_or(*d);
+                self.ty(&Ty::Struct(list, vec![ts[1].clone()], Vec::new()), env)
+            }
             Ty::Struct(d, ts, ss) => {
                 // A lend changes a struct only through a field that holds it: `Version<S>`
                 // keeps no `S`, so `Version<lent Arr>` is `Version<Arr>`.
@@ -1194,7 +1210,7 @@ impl Link<'_> {
                 CTy::Range(lo, _) | CTy::RangeTo(_, _, lo, _) => EK::Int(lo),
                 _ => EK::Int(0),
             },
-            EK::DomCounted(t) => EK::Bool(match self.targ(t, env) {
+            EK::DomFromCount(t) => EK::Bool(match self.targ(t, env) {
                 CTy::Dom(d) => self.c.domain(DomId(d)).counted,
                 _ => false,
             }),
