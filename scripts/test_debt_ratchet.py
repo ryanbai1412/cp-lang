@@ -2221,6 +2221,19 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_std_names(root),
                              ["crates/cpl-next-ir/src/ops.rs:3: ctz", "crates/cpl-next-ir/src/ops.rs:6: raw_get"])
 
+    def test_next_std_names_skips_only_the_check_names_the_spec_lists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/ratio.cp", "pub fn div(a, b) = a\npub fn odd(a) = a\n")
+            self._write(root, "spec/core/09-contexts-checks.md",
+                        "Each row has one check name, used by `with checks(...)`: `bounds`, `div`.\n"
+                        "This is the one list.\n")
+            self._write(root, "crates/cpl-next-ir/src/build.rs",
+                        'pub const ALL: [(&str, C); 2] = [\n    ("div", C::Div),\n    ("odd", C::Odd),\n];\n'
+                        'if n == "div" {}\n')
+            self.assertEqual(dr.next_std_names(root),
+                             ["crates/cpl-next-ir/src/build.rs:3: odd", "crates/cpl-next-ir/src/build.rs:5: div"])
+
     def test_next_std_names_skips_test_code(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
