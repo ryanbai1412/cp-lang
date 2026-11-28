@@ -307,8 +307,8 @@
   "dream_over_32kb": 3,
   "invariant_sites": 0,
   "domain_member_names": 0,
-  "next_wrong": 1460,
-  "next_not_passing": 2276,
+  "next_wrong": 1454,
+  "next_not_passing": 2270,
   "end_state_unmeasured": 23,
   "facade_today_uses": 101,
   "tool_compiler_deps": 0,
@@ -330,7 +330,7 @@
   "next_core_standin_lines": 43,
   "next_cpp_runtime_lines": 139,
   "link_reads_check": 0,
-  "next_split": 7,
+  "next_split": 2,
   "next_wrong_accepts": 20,
   "next_core_checks": 14,
   "next_ignored_settings": 0,
@@ -382,12 +382,6 @@
     "tools-judge/check-memory-over-the-judges-limit.cp"
   ],
   "next_split_ids": [
-    "core-07/generator-expression-body-generic.cp",
-    "core-07/map-view-drop-skips-dropped.cp",
-    "core-07/take-drop-clamped.cp",
-    "std-seq/drop-past-len-is-empty.cp",
-    "std-seq/seq-u44-take-drop-while.cp",
-    "std-seq/zip-rev-shorter-later-arg.cp",
     "tools-judge/release-run-gets-a-large-judge-stack.cp",
     "tools-judge/release-run-gets-the-judges-stack-and-crashes-like-it.cp"
   ],

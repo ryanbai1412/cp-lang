@@ -2920,3 +2920,9 @@ core-10/read-array-of-tagged-commands.cp
 core-10/read-enum-by-tag.cp
 next/n_checks_off_01_each_field.cp
 core-04/library-domain-generic-members.cp
+core-07/generator-expression-body-generic.cp
+core-07/map-view-drop-skips-dropped.cp
+core-07/take-drop-clamped.cp
+std-seq/drop-past-len-is-empty.cp
+std-seq/seq-u44-take-drop-while.cp
+std-seq/zip-rev-shorter-later-arg.cp
