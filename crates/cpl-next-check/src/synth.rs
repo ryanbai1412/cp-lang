@@ -170,7 +170,12 @@ impl<'a> Cx<'a> {
         match b {
             SynthBody::EnumCount(n) => lit(TK::Int(*n as i64), Ty::Int, span),
             SynthBody::ProductCount { count, .. } => {
-                let of = f.self_ty.clone().unwrap_or(Ty::Error);
+                let of = (f.self_ty.clone())
+                    .or_else(|| match f.owner {
+                        Some(Owner::Impl(k)) => Some(self.items.imp(k).for_.clone()),
+                        _ => None,
+                    })
+                    .unwrap_or(Ty::Error);
                 let tys = self.struct_field_tys(&of, span);
                 self.counts(&tys, *count, span)
             }
