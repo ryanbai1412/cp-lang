@@ -201,13 +201,13 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
         return use_completion(cursor, std, path, word);
     }
     if head.ends_with("@!") {
-        return cpl_syntax::decorators::DIRECTIVES
+        return cpl_next_syntax::grammar::DIRECTIVES
             .iter()
             .map(|(name, detail)| item_json(&plain(name, Kind::Keyword, (*detail).into(), ""), 0))
             .collect();
     }
     if head.ends_with('@') {
-        return cpl_syntax::decorators::DECORATORS
+        return cpl_next_syntax::grammar::DECORATORS
             .iter()
             .map(|(name, detail)| item_json(&plain(name, Kind::Keyword, (*detail).into(), ""), 0))
             .collect();
