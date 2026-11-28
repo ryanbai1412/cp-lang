@@ -3,9 +3,9 @@
 //! and types are, and fields, constructors, patterns and derived `Eq` and `Ord` are a struct's.
 use crate::decls::{fills, Role};
 use cpl_diag::Span;
+use cpl_next_syntax::ast::{self as next, AstNode as _};
 use cpl_syntax::ast::{self, ExprKind, FnDecl, StmtKind, TypeKind};
 use cpl_syntax::decorators::Mark;
-use cpl_syntax::visit::{self, Visitor};
 use std::collections::{BTreeSet, HashMap};
 
 /// The struct a record with these fields is: `(lo:, hi:)`.
@@ -26,30 +26,39 @@ pub fn row_name<S: AsRef<str>>(fields: &[S]) -> String {
 
 /// Every row bound any module writes, by its field names.
 pub fn rows(mods: &[crate::modules::Module]) -> Vec<Vec<String>> {
-    let mut v = Rows(BTreeSet::new());
-    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
-        stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
-    }
-    v.0.into_iter().collect()
-}
-
-struct Rows(BTreeSet<Vec<String>>);
-
-impl Visitor for Rows {
-    fn stmt(&mut self, s: &ast::Stmt) {
-        let bounds = match &s.kind {
-            StmtKind::Fn(f) => &f.bounds,
-            StmtKind::Struct(sd) => &sd.bounds,
-            StmtKind::Impl { bounds, .. } | StmtKind::Trait { bounds, .. } => bounds,
-            _ => return,
-        };
-        for t in bounds.iter().flat_map(|b| &b.traits) {
-            if let TypeKind::Row(fs) = &t.kind {
-                self.0
-                    .insert(fs.iter().map(|(n, _)| n.text.clone()).collect());
-            }
+    let mut out = BTreeSet::new();
+    for t in all_of::<next::RecordType>(mods) {
+        let fs: Vec<_> = t.fields().collect();
+        if fs.iter().any(|f| f.is_rest() && f.ty().is_none()) {
+            out.insert(field_names(&fs));
         }
     }
+    out.into_iter().collect()
+}
+
+/// Each node of kind `N` anywhere in `mods`' items, bodies too.
+fn all_of<N: next::AstNode>(mods: &[crate::modules::Module]) -> Vec<N> {
+    (mods.iter().flat_map(|m| m.items.iter()))
+        .flat_map(|it| {
+            it.item
+                .syntax()
+                .descendants()
+                .filter_map(N::cast)
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// A record type's written field names, in order; a rest and a `domain C` binder have none.
+fn field_names(fs: &[next::RecordTypeField]) -> Vec<String> {
+    (fs.iter().filter(|f| !f.is_rest()))
+        .filter_map(|f| f.name())
+        .map(|n| n.text().to_string())
+        .collect()
+}
+
+fn token_texts(ts: &[cpl_next_syntax::tree::SyntaxToken]) -> Vec<String> {
+    ts.iter().map(|t| t.text().to_string()).collect()
 }
 
 /// `pub trait (u:, w:, ..)<A, B>: @get fn u(self) -> A; @get fn w(self) -> B` for each row: a
@@ -119,20 +128,19 @@ pub(crate) fn marker(m: Mark, span: Span) -> ast::Decorator {
 /// arguments of a call by any other names are the record `xs` is (R06.1.5).
 pub fn variadics(mods: &[crate::modules::Module]) -> HashMap<String, Vec<String>> {
     let mut out: HashMap<String, Vec<String>> = HashMap::new();
-    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
-        for s in stmts {
-            let StmtKind::Fn(f) = &s.kind else {
-                continue;
-            };
-            if f.params.last().is_some_and(|p| p.variadic) {
-                let labels = f
-                    .params
-                    .iter()
-                    .map(|p| &p.label.as_ref().unwrap_or(&p.name).text);
-                out.entry(f.name.text.clone())
-                    .or_default()
-                    .extend(labels.cloned());
-            }
+    for it in mods.iter().flat_map(|m| m.items.iter()) {
+        let Some(next::Decl::Fn(f)) = it.item.decl() else {
+            continue;
+        };
+        let ps: Vec<next::Param> = f
+            .params()
+            .iter()
+            .flat_map(|l| l.params().collect::<Vec<_>>())
+            .collect();
+        if ps.last().is_some_and(|p| p.is_variadic()) {
+            let labels = (ps.iter()).filter_map(|p| p.label().or_else(|| p.name()));
+            let name = f.name().map_or(String::new(), |n| n.text().to_string());
+            (out.entry(name).or_default()).extend(labels.map(|t| t.text().to_string()));
         }
     }
     out
@@ -144,11 +152,42 @@ pub fn shapes(
     mods: &[crate::modules::Module],
     variadics: &HashMap<String, Vec<String>>,
 ) -> Vec<Vec<String>> {
-    let mut v = Shapes(BTreeSet::new(), variadics, BTreeSet::new());
-    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
-        stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
+    let mut out = BTreeSet::new();
+    for t in all_of::<next::RecordType>(mods) {
+        let fs: Vec<_> = t.fields().collect();
+        if !fs.iter().any(|f| f.is_rest()) {
+            out.insert(field_names(&fs));
+        }
     }
-    v.0.into_iter().collect()
+    for e in all_of::<next::RecordExpr>(mods) {
+        if e.rest().is_none() {
+            out.insert(
+                e.fields()
+                    .filter_map(|f| f.name())
+                    .map(|n| n.text().to_string())
+                    .collect(),
+            );
+        }
+    }
+    // The named arguments of a call to a variadic fn past its own labels are the record its
+    // `..xs` is (R06.1.5).
+    for c in all_of::<next::CallExpr>(mods) {
+        let Some(next::Expr::Name(n)) = c.callee() else {
+            continue;
+        };
+        let Some(fixed) = n.ident().and_then(|n| variadics.get(n.text())) else {
+            continue;
+        };
+        let named: Vec<String> = (c.args().iter().flat_map(|a| a.args().collect::<Vec<_>>()))
+            .filter_map(|a| a.label())
+            .map(|l| l.text().to_string())
+            .filter(|l| !fixed.contains(l))
+            .collect();
+        if !named.is_empty() {
+            out.insert(named);
+        }
+    }
+    out.into_iter().collect()
 }
 
 /// A `without` form, `(to: _, e: _, ..R without (u, v))`: the fields it adds, then those it drops.
@@ -156,12 +195,24 @@ pub type Form = (Vec<String>, Vec<String>);
 
 /// Every `without` form any module writes, in a type or a value.
 pub fn forms(mods: &[crate::modules::Module]) -> Vec<Form> {
-    let none = HashMap::new();
-    let mut v = Shapes(BTreeSet::new(), &none, BTreeSet::new());
-    for crate::modules::Item { id: _, stmts } in mods.iter().flat_map(|m| m.items.iter()) {
-        stmts.iter().for_each(|s| visit::walk_stmt(s, &mut v));
+    let mut out = BTreeSet::new();
+    for t in all_of::<next::RecordType>(mods) {
+        let fs: Vec<_> = t.fields().collect();
+        if let Some(rest) = fs.iter().find(|f| f.is_rest() && f.ty().is_some()) {
+            out.insert((field_names(&fs), token_texts(&rest.removed())));
+        }
     }
-    v.2.into_iter().collect()
+    for e in all_of::<next::RecordExpr>(mods) {
+        if let Some(rest) = e.rest() {
+            let added = e
+                .fields()
+                .filter_map(|f| f.name())
+                .map(|n| n.text().to_string())
+                .collect();
+            out.insert((added, token_texts(&rest.removed())));
+        }
+    }
+    out.into_iter().collect()
 }
 
 /// The trait a form is, `(to:, e:, ..without u, v)`: met by each record with the fields it drops
@@ -443,111 +494,6 @@ pub fn structs(shapes: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
             }
         })
         .collect()
-}
-
-struct Shapes<'v>(
-    BTreeSet<Vec<String>>,
-    &'v HashMap<String, Vec<String>>,
-    BTreeSet<Form>,
-);
-
-fn texts(ns: &[ast::Name]) -> Vec<String> {
-    ns.iter().map(|n| n.text.clone()).collect()
-}
-
-impl Shapes<'_> {
-    fn ty(&mut self, t: &ast::Type) {
-        match &t.kind {
-            TypeKind::Record(fs) => {
-                self.0
-                    .insert(fs.iter().map(|(n, _)| n.text.clone()).collect());
-                fs.iter().for_each(|(_, t)| self.ty(t));
-            }
-            TypeKind::Row(fs) => fs.iter().for_each(|(_, t)| self.ty(t)),
-            TypeKind::RowWithout {
-                prefix,
-                base,
-                removed,
-            } => {
-                let added = prefix.iter().map(|(n, _)| n.text.clone()).collect();
-                self.2.insert((added, texts(removed)));
-                prefix.iter().for_each(|(_, t)| self.ty(t));
-                self.ty(base);
-            }
-            TypeKind::Named { args: ts, .. } | TypeKind::Tuple(ts) => {
-                ts.iter().for_each(|t| self.ty(t))
-            }
-            TypeKind::Array { index, elem } => {
-                index.iter().for_each(|t| self.ty(t));
-                self.ty(elem);
-            }
-            TypeKind::Fn { params, ret } => {
-                params.iter().for_each(|t| self.ty(t));
-                self.ty(ret);
-            }
-            TypeKind::Optional(t) | TypeKind::Mut(t) | TypeKind::Yields(t) => self.ty(t),
-            _ => {}
-        }
-    }
-    fn fn_decl(&mut self, f: &FnDecl) {
-        let params = f.params.iter().filter_map(|p| p.ty.as_ref());
-        for t in params.chain(&f.ret).chain(f.lends.as_ref().map(|l| &l.ty)) {
-            self.ty(t);
-        }
-    }
-}
-
-impl Visitor for Shapes<'_> {
-    fn stmt(&mut self, s: &ast::Stmt) {
-        match &s.kind {
-            StmtKind::Let { ty: Some(t), .. } | StmtKind::Const { ty: Some(t), .. } => self.ty(t),
-            StmtKind::Fn(f) => self.fn_decl(f),
-            StmtKind::Struct(sd) => sd.fields.iter().for_each(|f| self.ty(&f.ty)),
-            StmtKind::TypeAlias { ty, .. } => self.ty(ty),
-            StmtKind::Impl { target, .. } => self.ty(target),
-            _ => {}
-        }
-    }
-    fn expr(&mut self, e: &ast::Expr) {
-        match &e.kind {
-            ExprKind::Record(fs) => {
-                self.0
-                    .insert(fs.iter().map(|(n, _)| n.text.clone()).collect());
-            }
-            ExprKind::Call { callee, args } => {
-                let ExprKind::Name(n) = &callee.kind else {
-                    return;
-                };
-                let Some(fixed) = self.1.get(n) else {
-                    return;
-                };
-                let named: Vec<String> = (args.iter())
-                    .filter_map(|a| a.name.as_ref().map(|n| &n.text))
-                    .filter(|n| !fixed.contains(n))
-                    .cloned()
-                    .collect();
-                if !named.is_empty() {
-                    self.0.insert(named);
-                }
-            }
-            ExprKind::Without {
-                prefix, removed, ..
-            } => {
-                let added = prefix.iter().map(|(n, _)| n.text.clone()).collect();
-                self.2.insert((added, texts(removed)));
-            }
-            ExprKind::Generic { args, .. } => args.iter().for_each(|t| self.ty(t)),
-            ExprKind::Table { domains, .. } => domains.iter().for_each(|t| self.ty(t)),
-            ExprKind::Lambda {
-                param_tys, ret_ty, ..
-            } => param_tys
-                .iter()
-                .flatten()
-                .chain(ret_ty)
-                .for_each(|t| self.ty(t)),
-            _ => {}
-        }
-    }
 }
 
 /// The `@role(positions)` trait, in whichever module declares it, and the names of its members marked
