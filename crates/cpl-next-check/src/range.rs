@@ -1,5 +1,5 @@
 //! Ranges and domains as values (R01.8.4, R04.2).
-use super::call::CallArg;
+use super::call::{ArgValue, CallArg};
 use super::expr::block;
 use super::member::Called;
 use super::*;
@@ -39,7 +39,7 @@ impl Cx<'_> {
                     Some(
                         [CallArg {
                             label: None,
-                            value: Some(v),
+                            value: ArgValue::Written(v),
                             ..
                         }],
                     ) => Some(self.convert(t, v, span, Origin::Convert)),
@@ -130,7 +130,7 @@ impl Cx<'_> {
             Some(
                 [CallArg {
                     label: None,
-                    value: Some(v),
+                    value: ArgValue::Written(v),
                     ..
                 }],
             ) => {

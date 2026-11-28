@@ -1,12 +1,13 @@
 //! Index syntax: `s[k]` reads through `Indexed`, `s[r]` calls the `@index` fn that cuts a view
 //! (R07.4.5, R07.4.17).
 use super::call::CallArg;
+use super::member::Called;
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::HashMap;
 
 /// What runs while a cell is lent: given the cell's name, it adds its statements.
-pub(super) type InCell<'a, C> = Box<dyn FnOnce(&mut C, ast::Expr, &mut Vec<TStmt>) + 'a>;
+pub(super) type InCell<'a, C> = Box<dyn FnOnce(&mut C, TExpr, &mut Vec<TStmt>) + 'a>;
 
 impl Cx<'_> {
     /// `recv.name(args)` with already-typed arguments: used for `get` and `set` behind indexing.
@@ -65,8 +66,11 @@ impl Cx<'_> {
     /// R07.4.5: a literal key into a view made by `s[r]` reads a key, so it must be proven one:
     /// inside the literal range the view was cut by. Anything else is E0305, as `w[0]` is meant
     /// as a position.
-    pub(super) fn literal_key(&mut self, base: &ast::Expr, key: &ast::Expr, ty: &Ty) {
-        let ExprKind::Int(v) = unparen(key).kind else {
+    pub(super) fn literal_key(&mut self, base: &next::Expr, key: &next::Expr, ty: &Ty) {
+        let next::Expr::Literal(_) = unparen(key.clone()) else {
+            return;
+        };
+        let Some(v) = decls::literal_int(key) else {
             return;
         };
         let Ty::Struct(sid, ..) = self.shallow(ty) else {
@@ -82,19 +86,21 @@ impl Cx<'_> {
         if !d.index_fns.iter().any(view) {
             return;
         }
-        let keys = match &unparen(base).kind {
-            ExprKind::Name(n) => {
-                (self.lookup(n)).and_then(|(var, _)| self.view_keys.get(&var).copied())
-            }
-            _ => literal_cut(base),
+        let keys = match unparen(base.clone()) {
+            next::Expr::Name(n) => (n.ident())
+                .and_then(|n| self.lookup(n.text()))
+                .and_then(|(var, _)| self.view_keys.get(&var).copied()),
+            b => literal_cut(&b),
         };
         // Only a view whose keys are known here can prove a literal outside them; any other
         // view's keys are checked as it runs (R07.4.5).
+        let v = i128::from(v);
         if keys.is_none_or(|(lo, hi)| lo <= v && v < hi) {
             return;
         }
+        let at = self.at(key);
         self.err(
-            key.span,
+            at,
             Msg::verdict(cpl_diag::codes::NOT_INDEXABLE, format!("`[{v}]` reads key {v}, which is not one of the view's keys: write `.nth({v})` for its element {v}, or index the source for its key {v}")),
         );
     }
@@ -253,8 +259,8 @@ impl Cx<'_> {
     }
     /// The key `s[(.., c)]` wants: its product key with each range part a range over that
     /// part's factor (R04.4.11).
-    pub(super) fn ranged_key(&mut self, s: &Ty, parts: &[ast::Expr]) -> Option<Ty> {
-        let ranged = |p: &ast::Expr| matches!(unparen(p).kind, ExprKind::Range { .. });
+    pub(super) fn ranged_key(&mut self, s: &Ty, parts: &[next::Expr]) -> Option<Ty> {
+        let ranged = |p: &next::Expr| matches!(unparen(p.clone()), next::Expr::Range(_));
         if !parts.iter().any(ranged) {
             return None;
         }
@@ -370,7 +376,8 @@ impl Cx<'_> {
         any
     }
     /// `s[k] = v` as `s.set(k, v)` when `s`'s type has an impl of core's `@operator("[]=")`
-    /// trait, `IndexSet`: a write that needs no place (spec 12, W8).
+    /// `recv[k] = v` as a call of the `[]=` method of `recv`'s impl, when it has one; `k` and `v`
+    /// are checked against its parameters.
     pub(super) fn index_set(
         &mut self,
         recv: TExpr,
@@ -378,34 +385,46 @@ impl Cx<'_> {
         v: &next::Expr,
         at: Span,
     ) -> Option<TExpr> {
-        let tr = self.d.operator_traits("[]=").next()?;
-        let name = self.d.operator_method(tr)?.0;
-        let rt = self.recv_ty(&recv.ty);
-        let d = &self.d;
-        let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
-        let found = (self.d.sym(name)).and_then(|sym| self.impls().impl_member_by(&rt, sym, of_tr));
-        let Some(decls::Member::Method(m, ts, ss)) = found else {
-            return None;
-        };
-        let args = [k, v].map(|e| CallArg {
-            label: None,
-            value: Some(e.clone()),
-            mutable: false,
-            at: self.at(e),
-        });
+        let (m, ts, ss) = self.set_method(&recv.ty)?;
+        let args = [k, v].map(|e| CallArg::plain(self, e));
         let f = self.fnref(m, ts, ss);
         let recv = self.recv_arg(m, recv, at);
         Some(self.call_method(f, recv, false, Some(&args), at, None))
     }
+    /// `recv[k] = v` through `[]=`, as [`Self::index_set`], with `k` and `v` already read.
+    pub(super) fn index_set_held(
+        &mut self,
+        recv: TExpr,
+        k: TExpr,
+        v: TExpr,
+        at: Span,
+    ) -> Option<TExpr> {
+        let m = self.set_method(&recv.ty)?;
+        let args = vec![TArg::Value(k), TArg::Value(v)];
+        Some(self.call_member(recv, m, args, at, false))
+    }
+    /// The `[]=` method of `t`'s impl of the trait that declares the operator.
+    fn set_method(&mut self, t: &Ty) -> Option<(FnId, Vec<Ty>, Vec<SetTy>)> {
+        let tr = self.d.operator_traits("[]=").next()?;
+        let name = self.d.operator_method(tr)?.0;
+        let rt = self.recv_ty(t);
+        let d = &self.d;
+        let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
+        let found = (self.d.sym(name)).and_then(|sym| self.impls().impl_member_by(&rt, sym, of_tr));
+        match found {
+            Some(decls::Member::Method(m, ts, ss)) => Some((m, ts, ss)),
+            _ => None,
+        }
+    }
     /// `t[i][j] = v` with `t` a table is E0503: its cell is `t[i, j]` (R01.8.5).
     fn table_point_again(
         &mut self,
-        t: &ast::Expr,
-        i: &ast::Expr,
-        j: &ast::Expr,
+        t: &next::Expr,
+        i: &next::Expr,
+        j: &next::Expr,
         span: Span,
     ) -> bool {
-        let point = |e: &ast::Expr| !matches!(unparen(e).kind, ExprKind::Range { .. });
+        let point = |e: &next::Expr| !matches!(unparen(e.clone()), next::Expr::Range(_));
         if !point(i) || !point(j) {
             return false;
         }
@@ -416,50 +435,168 @@ impl Cx<'_> {
         if !self.is_table(&probe.ty) {
             return false;
         }
-        let first = format!("{}[{}]", self.text(t.span), self.text(i.span));
+        let first = format!("{}[{}]", self.text(self.at(t)), self.text(self.at(i)));
         let text = cpl_diag::msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3
-            .say(&[&first, &self.text(j.span)]);
+            .say(&[&first, &self.text(self.at(j))]);
         let help = "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`";
         let code = cpl_diag::codes::REMOVED_SYNTAX;
         self.err_help(span, Msg::verdict(code, text), Some(help.to_string()));
         self.expr(j, None);
         true
     }
-    /// Runs `inner` while `base[idx]` is lent as a place, through the `at` of `base`'s
-    /// `IndexedMut` that lends one (R12.4.6). `inner` gets the lent cell as a name; `g[i][j]`
-    /// lends `g[i]` first, then its cell `j` inside that.
+    /// Runs `inner` while `root[k1][k2]..` is lent as a place: each level's cell through the
+    /// `at` of its container's `IndexedMut` that lends one (R12.4.6), inside the level before.
+    /// `inner` gets the innermost cell; `keys` come from [`Self::hoist_indices`].
     pub(super) fn through_cell(
         &mut self,
-        (base, idx): (&ast::Expr, &ast::Expr),
+        root: TExpr,
+        keys: Vec<Vec<TExpr>>,
         span: Span,
         out: &mut Vec<TStmt>,
         inner: InCell<'_, Self>,
     ) {
-        if let ExprKind::Index { base: b2, indices } = &unparen(base).kind {
-            if indices.len() == 1 {
-                if self.table_point_again(b2, &indices[0], idx, span) {
-                    return;
-                }
-                let i2 = indices[0].clone();
-                let idx = idx.clone();
-                return self.through_cell(
-                    (b2, &i2),
-                    span,
-                    out,
-                    Box::new(move |this, cell, out| {
-                        this.through_cell((&cell, &idx), span, out, inner)
-                    }),
-                );
+        let mut levels = keys.into_iter();
+        let Some(first) = levels.next() else {
+            return inner(self, root, out);
+        };
+        let rest: Vec<Vec<TExpr>> = levels.collect();
+        let Some(key) = self.level_key(&root.ty, first, span) else {
+            return;
+        };
+        self.lend_cell(
+            root,
+            key,
+            span,
+            out,
+            Box::new(move |this, cell, out| this.through_cell(cell, rest, span, out, inner)),
+        );
+    }
+    /// `root[k1]..[kn] = value` with `=`: the last container's `[]=` write when it has one
+    /// (spec 12, W8), run while the levels before are lent; otherwise its `IndexedMut` lends the
+    /// last cell too and `assign` writes it.
+    pub(super) fn cell_set(
+        &mut self,
+        root: TExpr,
+        mut keys: Vec<Vec<TExpr>>,
+        value: TExpr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+        assign: InCell<'_, Self>,
+    ) {
+        let Some(last) = keys.pop() else {
+            return;
+        };
+        let set = move |this: &mut Self, c: TExpr, out: &mut Vec<TStmt>| {
+            let Some(k) = this.level_key(&c.ty, last, span) else {
+                return;
+            };
+            if let Some(call) = this.index_set_held(c.clone(), k.clone(), value, span) {
+                return out.push(TStmt::Expr(call));
             }
+            this.lend_cell(c, k, span, out, assign)
+        };
+        self.through_cell(root, keys, span, out, Box::new(set));
+    }
+    /// One level's key from its parts: `a[x1, ..., xn]` is `a[K(x1, ..., xn)]` for an array
+    /// keyed by a struct `K` that takes `n` arguments (decision 409, R04.2.12), and the tuple of
+    /// them otherwise, as a product's key takes them (R04.2.11, decision 159).
+    pub(super) fn level_key(
+        &mut self,
+        base: &Ty,
+        mut parts: Vec<TExpr>,
+        span: Span,
+    ) -> Option<TExpr> {
+        if parts.len() == 1 {
+            return parts.pop();
         }
-        let b = self.place(base);
+        let args: Vec<CallArg> = (parts.iter().cloned())
+            .map(|p| {
+                let at = p.span;
+                CallArg::held(None, p, at)
+            })
+            .collect();
+        if let Some(key) = self.ctor_key(base, &args, span) {
+            return key;
+        }
+        let d = self.d.tuple(parts.len())?;
+        let tys = parts.iter().map(|p| p.ty.clone()).collect();
+        let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
+        Some(TExpr {
+            kind: TK::Struct(parts),
+            ty: Ty::Struct(d, tys, sets),
+            span,
+        })
+    }
+    /// `s[x1, ..., xn]` read: the key [`Self::level_key`] makes, each part checked against
+    /// the key's part (`..` parts a range over it, R04.4.11).
+    pub(super) fn index_parts(
+        &mut self,
+        s: &Ty,
+        parts: &[next::Expr],
+        span: Span,
+    ) -> Option<TExpr> {
+        let args: Vec<CallArg> = parts.iter().map(|x| CallArg::plain(self, x)).collect();
+        if let Some(key) = self.ctor_key(s, &args, span) {
+            return key;
+        }
+        let want = match self.ranged_key(s, parts) {
+            Some(Ty::Struct(_, fs, _)) => fs,
+            _ => Vec::new(),
+        };
+        let checked = (parts.iter().enumerate())
+            .map(|(i, x)| self.expr(x, Some(want.get(i).unwrap_or(&Ty::Int))))
+            .collect();
+        self.level_key(&Ty::Error, checked, span)
+    }
+    /// The key `K(args)` of an array keyed by a struct `K` that is not a tuple or record; E0303
+    /// when `K` takes another number of arguments. `None` for any other key; `Some(None)` when
+    /// the key is an error, already reported.
+    fn ctor_key(&mut self, s: &Ty, args: &[CallArg], span: Span) -> Option<Option<TExpr>> {
+        let k = self.key_of(s)?;
+        let Ty::Struct(sid, targs, sets) = self.shallow(&k) else {
+            return None;
+        };
+        let sd = self.d.s(sid);
+        if sd.record || self.d.tuple(sd.fields.len()) == Some(sid) {
+            return None;
+        }
+        let takes = (sd.ctor).map_or(sd.fields.len(), |c| self.d.f(c).params.len());
+        if takes != args.len() {
+            let (ks, n) = (self.show(&k), args.len());
+            let msg = format!(
+                "{n} indices into a `[{ks}]` array, whose key `{ks}` is built from {takes}"
+            );
+            self.err_help(
+                span,
+                Msg::verdict(cpl_diag::codes::WRONG_ARG_COUNT, msg),
+                Some(format!("index it with one key: `[{ks}(...)]`")),
+            );
+            return Some(None);
+        }
+        let key = match sd.ctor {
+            Some(new) => {
+                let f = self.fnref(new, targs, Vec::new());
+                self.call_fn(f, None, args, span, Some(&k))
+            }
+            None => self.construct(sid, targs, sets, args, span, Some(&k)),
+        };
+        Some((!self.is_error(&key.ty)).then_some(key))
+    }
+    /// Runs `inner` while cell `key` of `b` is lent, through the `at` of `b`'s `IndexedMut`
+    /// (R12.4.6).
+    fn lend_cell(
+        &mut self,
+        b: TExpr,
+        key: TExpr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+        inner: InCell<'_, Self>,
+    ) {
         // A cell of a place that was diagnosed is the error: its index is not fitted to it.
         if self.mentions_error(&b.ty) {
-            self.expr(idx, None);
             return;
         }
-        let i = self.expr(idx, Some(&Ty::Int));
-        let i = self.index_arg(&b.ty, i);
+        let i = self.index_arg(&b.ty, key);
         let rt = self.shallow(&b.ty);
         let lends = |f: &decls::FnDecl| matches!(f.region, Some((true, _)));
         // A type parameter's cell is lent by the method of its bound; anything else's by its impl.
@@ -508,19 +645,17 @@ impl Cx<'_> {
         let elem = sub.ty(&fd.region.as_ref().map_or(Ty::Error, |(_, t)| t.clone()));
         self.b.scopes.push(HashMap::new());
         let name = format!("$cell{}", out.len());
-        let var = self.bind(&name, elem);
+        let var = self.bind(&name, elem.clone());
         if let VarRef::Local(l) = var {
             self.b.locals[l].mutable = true;
         }
         let mut body = Vec::new();
-        inner(
-            self,
-            ast::Expr {
-                kind: ExprKind::Name(name),
-                span,
-            },
-            &mut body,
-        );
+        let cell = TExpr {
+            kind: TK::Var(var),
+            ty: elem,
+            span,
+        };
+        inner(self, cell, &mut body);
         self.b.scopes.pop();
         out.push(TStmt::Region {
             callee,
@@ -538,26 +673,27 @@ impl Cx<'_> {
     /// `g[i].m(args)` as a statement, `m` a method that writes its receiver: the indices, then
     /// the arguments, are read once; then `g`'s `IndexedMut` lends cell `i` and `m` runs on it
     /// (R12.4.6). False, with nothing done, for any other statement.
-    pub(super) fn cell_method(&mut self, e: &ast::Expr, out: &mut Vec<TStmt>) -> bool {
-        let ExprKind::Call { callee, args } = &e.kind else {
+    pub(super) fn cell_method(&mut self, e: &next::Expr, out: &mut Vec<TStmt>) -> bool {
+        let next::Expr::Call(c) = e else {
             return false;
         };
-        let ExprKind::Field { base, name } = &callee.kind else {
+        let Some(next::Expr::Field(callee)) = c.callee() else {
             return false;
         };
-        let base = unparen(base);
-        if !matches!(&base.kind, ExprKind::Index { indices, .. } if indices.len() == 1) {
+        let (Some(base), Some(name)) = (callee.base(), callee.name()) else {
+            return false;
+        };
+        let next::Expr::Index(ix) = unparen(base) else {
+            return false;
+        };
+        if ix.indices().count() != 1 {
             return false;
         }
         let seen = self.errors.len();
-        let probe = self.expr(base, None);
+        let probe = self.expr(&next::Expr::Index(ix.clone()), None);
         self.errors.truncate(seen);
         let rt = self.shallow(&probe.ty);
-        let writes = match self
-            .d
-            .sym(&name.text)
-            .and_then(|sym| self.impls().lookup_member(&rt, sym))
-        {
+        let writes = match self.member_named(&rt, name.text()) {
             Some(decls::Member::Method(m, ..)) => {
                 self.d.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
             }
@@ -566,99 +702,122 @@ impl Cx<'_> {
         if !writes {
             return false;
         }
-        let target = self.hoist_indices(base, out);
-        let args: Vec<ast::Arg> = (args.iter())
-            .map(|a| match a.value.kind {
-                ExprKind::Lambda { .. } => a.clone(),
-                _ if a.mutable => a.clone(),
-                _ => ast::Arg {
-                    value: self.hoist(&a.value, (None, false), "$arg", out),
-                    ..a.clone()
-                },
-            })
-            .collect();
-        let ExprKind::Index { base: b, indices } = &target.kind else {
-            return false;
+        let Some((root, keys)) = self.hoist_indices(&ix, out) else {
+            return true;
         };
-        let (name, span, callee_span) = (name.clone(), e.span, callee.span);
+        let written: Vec<next::Arg> = c.args().map(|l| l.args().collect()).unwrap_or_default();
+        let mut args = Vec::new();
+        for a in &written {
+            let a = CallArg::of(self, a);
+            let arg = match a.written() {
+                Some(next::Expr::Lambda(_)) | None => a,
+                Some(_) if a.mutable => a,
+                Some(v) => {
+                    let v = v.clone();
+                    let held = self.hoist(&v, (None, false), "$arg", out);
+                    CallArg::held(a.label, held, a.at)
+                }
+            };
+            args.push(arg);
+        }
+        let (name, name_at, span) = (name.text().to_string(), name.span(), self.at(e));
         self.through_cell(
-            (b, &indices[0]),
-            target.span,
+            root,
+            keys,
+            self.at(&ix),
             out,
             Box::new(move |this, cell, out| {
-                let call = ast::Expr {
-                    kind: ExprKind::Call {
-                        callee: Box::new(ast::Expr {
-                            kind: ExprKind::Field {
-                                base: Box::new(cell),
-                                name,
-                            },
-                            span: callee_span,
-                        }),
-                        args,
+                let v = this.method_on(
+                    cell,
+                    Called {
+                        text: &name,
+                        span: name_at,
                     },
+                    &args,
                     span,
-                };
-                let v = this.expr(&call, None);
+                );
                 out.push(TStmt::Expr(v));
             }),
         );
         true
     }
-    /// `target` with each of its indices, outer first, read once into a temporary before any
-    /// cell is lent, so `p[r] = p[p[r]]` reads `p` before writing it (R12.4.6).
-    pub(super) fn hoist_indices(&mut self, target: &ast::Expr, out: &mut Vec<TStmt>) -> ast::Expr {
-        let ExprKind::Index { base, indices } = &target.kind else {
-            return target.clone();
-        };
-        let base = match &unparen(base).kind {
-            ExprKind::Index { .. } => self.hoist_indices(unparen(base), out),
-            _ => (**base).clone(),
-        };
-        // A tuple written in place is fitted to a named array's key before it is held (R04.2.10).
-        let keyed = match &unparen(&base).kind {
-            ExprKind::Name(n) => self.lookup(n).map(|(_, t)| t),
-            _ => None,
-        };
-        let indices = (indices.iter())
-            .map(|i| match (&keyed, &unparen(i).kind) {
-                (Some(b), ExprKind::Tuple(_)) => {
-                    let v = self.expr(i, Some(&Ty::Int));
-                    let v = self.index_arg(b, v);
-                    self.hold(v, "$idx", i.span, out)
-                }
-                _ => self.hoist(i, (Some(&Ty::Int), false), "$idx", out),
-            })
-            .collect();
-        ast::Expr {
-            kind: ExprKind::Index {
-                base: Box::new(base),
-                indices,
-            },
-            span: target.span,
+    /// `recv.m(args)` on a checked receiver whose type declares `m`.
+    fn method_on(&mut self, recv: TExpr, name: Called, args: &[CallArg], span: Span) -> TExpr {
+        let rt = self.recv_ty(&recv.ty);
+        let found = self.member_named(&rt, name.text);
+        let module = self.b.module;
+        let hidden = (found.as_ref()).and_then(|x| self.d.hidden_member(x, &rt, name.text, module));
+        if let Some((msg, help)) = hidden {
+            self.err_help(name.span, msg, Some(help));
+            return Self::error_node(span);
         }
+        let Some(decls::Member::Method(m, ts, ss)) = found else {
+            return Self::error_node(span);
+        };
+        let f = self.fnref(m, ts, ss);
+        let recv = self.recv_arg(m, recv, span);
+        self.call_method(f, recv, false, Some(args), span, None)
     }
-    /// `e` read once into a temporary, as a name for it; with `copy`, a copy of its own, so it
-    /// borrows no place a later write changes.
+    /// The root of `target`, checked as a place, and each level's keys, outer first, each read
+    /// once into a temporary before any cell is lent, so `p[r] = p[p[r]]` reads `p` before
+    /// writing it (R12.4.6). `None` when `target` is diagnosed and nothing more is to be done.
+    pub(super) fn hoist_indices(
+        &mut self,
+        target: &next::IndexExpr,
+        out: &mut Vec<TStmt>,
+    ) -> Option<(TExpr, Vec<Vec<TExpr>>)> {
+        let span = self.at(target);
+        let base = unparen(target.base()?);
+        let idx: Vec<next::Expr> = target.indices().collect();
+        let (root, mut keys) = match &base {
+            next::Expr::Index(inner) => {
+                let i2: Vec<next::Expr> = inner.indices().collect();
+                if let (Some(t), [i2], [j]) = (inner.base(), &i2[..], &idx[..]) {
+                    if self.table_point_again(&t, i2, j, span) {
+                        return None;
+                    }
+                }
+                self.hoist_indices(inner, out)?
+            }
+            b => (self.place(b), Vec::new()),
+        };
+        // The root's own key is made and fitted to it before it is held: a tuple written in
+        // place (R04.2.10), or the parts of a struct key (decision 409).
+        let root_level = keys.is_empty() && !self.mentions_error(&root.ty);
+        let level = match &idx[..] {
+            [i] if root_level && matches!(unparen(i.clone()), next::Expr::Tuple(_)) => {
+                let v = self.expr(i, Some(&Ty::Int));
+                let v = self.index_arg(&root.ty, v);
+                vec![self.hold(v, "$idx", out)]
+            }
+            [_, _, ..] if root_level => {
+                let k = self.index_parts(&root.ty, &idx, span)?;
+                let k = self.index_arg(&root.ty, k);
+                vec![self.hold(k, "$key", out)]
+            }
+            _ => (idx.iter())
+                .map(|i| self.hoist(i, (Some(&Ty::Int), false), "$idx", out))
+                .collect(),
+        };
+        keys.push(level);
+        Some((root, keys))
+    }
+    /// `e` read once into a temporary; with `copy`, a copy of its own, so it borrows no place a
+    /// later write changes. A name or a literal reads the same later, so it is read where used.
     pub(super) fn hoist(
         &mut self,
-        e: &ast::Expr,
+        e: &next::Expr,
         (want, copy): (Option<&Ty>, bool),
         what: &str,
         out: &mut Vec<TStmt>,
-    ) -> ast::Expr {
-        // A name or a literal reads the same later; anything else runs now.
-        if matches!(
-            unparen(e).kind,
-            ExprKind::Name(_)
-                | ExprKind::Int(_)
-                | ExprKind::Bool(_)
-                | ExprKind::Char(_)
-                | ExprKind::Str(_)
-        ) {
-            return e.clone();
-        }
+    ) -> TExpr {
         let v = self.expr(e, want);
+        if matches!(
+            unparen(e.clone()),
+            next::Expr::Name(_) | next::Expr::Literal(_)
+        ) {
+            return v;
+        }
         let v = match copy {
             true => {
                 let (ty, span) = (v.ty.clone(), v.span);
@@ -667,96 +826,17 @@ impl Cx<'_> {
             }
             false => v,
         };
-        self.hold(v, what, e.span, out)
+        self.hold(v, what, out)
     }
-    /// `a[x1, ..., xn]` on an array keyed by a struct `K`: `a[K(x1, ..., xn)]`, K's ordinary
-    /// constructor call, held once, when it takes `n` arguments, and E0303 when it does not
-    /// (decision 409, R04.2.12). `Ok(None)` leaves the indices a tuple, as a product's key or a
-    /// record's takes them (decision 159).
-    pub(super) fn key_ctor(
-        &mut self,
-        e: &ast::Expr,
-        out: &mut Vec<TStmt>,
-    ) -> Result<Option<ast::Expr>, ()> {
-        let ExprKind::Index { base, indices } = &e.kind else {
-            return Ok(None);
-        };
-        let [first, .., last] = &indices[..] else {
-            return Ok(None);
-        };
-        let ExprKind::Name(n) = &unparen(base).kind else {
-            return Ok(None);
-        };
-        let Some((_, t)) = self.lookup(n) else {
-            return Ok(None);
-        };
-        let Some(k) = self.key_of(&t) else {
-            return Ok(None);
-        };
-        let Ty::Struct(sid, targs, sets) = self.shallow(&k) else {
-            return Ok(None);
-        };
-        let sd = self.d.s(sid);
-        if sd.record || self.d.tuple(sd.fields.len()) == Some(sid) {
-            return Ok(None);
-        }
-        let span = Span::new(first.span.start, last.span.end);
-        let takes = sd
-            .ctor
-            .map_or(sd.fields.len(), |c| self.d.f(c).params.len());
-        if takes != indices.len() {
-            let (ks, n) = (self.show(&k), indices.len());
-            self.err_help(
-                span,
-                Msg::verdict(
-                    cpl_diag::codes::WRONG_ARG_COUNT,
-                    format!(
-                        "{n} indices into a `[{ks}]` array, whose key `{ks}` is built from {takes}"
-                    ),
-                ),
-                Some(format!("index it with one key: `[{ks}(...)]`")),
-            );
-            return Err(());
-        }
-        let args: Vec<ast::Arg> = (indices.iter())
-            .map(|x| ast::Arg {
-                name: None,
-                mutable: false,
-                value: x.clone(),
-            })
-            .collect();
-        let key = match sd.ctor {
-            Some(new) => {
-                let f = self.fnref(new, targs, Vec::new());
-                self.call_fn(f, None, &args, span, Some(&k))
-            }
-            None => self.construct(sid, targs, sets, &args, span, Some(&k)),
-        };
-        if self.is_error(&key.ty) {
-            return Err(());
-        }
-        let key = self.hold(key, "$key", span, out);
-        Ok(Some(ast::Expr {
-            kind: ExprKind::Index {
-                base: base.clone(),
-                indices: vec![key],
-            },
-            span: e.span,
-        }))
-    }
-    /// `v` held in a new temporary, as a name for it.
-    pub(super) fn hold(
-        &mut self,
-        v: TExpr,
-        what: &str,
-        span: Span,
-        out: &mut Vec<TStmt>,
-    ) -> ast::Expr {
+    /// `v` held in a new temporary, read as that temporary.
+    pub(super) fn hold(&mut self, v: TExpr, what: &str, out: &mut Vec<TStmt>) -> TExpr {
         let name = format!("{what}{}", out.len());
-        let t = self.bind(&name, v.ty.clone());
+        let (ty, span) = (v.ty.clone(), v.span);
+        let t = self.bind(&name, ty.clone());
         out.push(TStmt::Let(t, v));
-        ast::Expr {
-            kind: ExprKind::Name(name),
+        TExpr {
+            kind: TK::Var(t),
+            ty,
             span,
         }
     }
@@ -765,13 +845,15 @@ impl Cx<'_> {
     pub(super) fn open_slice(
         &mut self,
         s: TExpr,
-        (lo, hi, through): (Option<&ast::Expr>, Option<&ast::Expr>, bool),
+        (lo, hi, through): (Option<&next::Expr>, Option<&next::Expr>, bool),
         span: Span,
     ) -> TExpr {
         let key = self.key_of(&s.ty).map(|k| self.shallow(&k));
         // `s[..hi]` with a literal `hi` ends at a cut, so `hi` may be the keys' end (R04.4.25).
         if let (None, Some(h), false, Some(k @ Ty::Dom(_))) = (lo, hi, through, &key) {
-            if matches!(unparen(h).kind, ExprKind::Int(_)) {
+            if matches!(unparen(h.clone()), next::Expr::Literal(_))
+                && decls::literal_int(h).is_some()
+            {
                 let f = self.index_fn_for(&s.ty, 1);
                 if let (Some(f), Some(rt)) = (f, self.range_over(k.clone())) {
                     let r = self.range_value(None, Some(h), false, None, Some(&rt), span);
@@ -834,11 +916,10 @@ impl Cx<'_> {
             let a = match a {
                 Some(a) => self.coerce(a, &pty),
                 None => {
-                    let none = ast::Expr {
-                        kind: ExprKind::None,
-                        span,
-                    };
-                    self.expr(&none, Some(&pty))
+                    let mk = |kind, ty| TExpr { kind, ty, span };
+                    let inner = self.optional_of(&pty).unwrap_or(Ty::Error);
+                    let no = mk(TK::Bool(false), Ty::Bool);
+                    mk(TK::Struct(vec![no, mk(TK::Unset, inner)]), pty)
                 }
             };
             out.push(TArg::Value(a));
@@ -891,25 +972,4 @@ pub(super) fn literal_cut(e: &next::Expr) -> Option<(i128, i128)> {
     let closed = re.is_inclusive() && hi.is_some();
     let (a, b) = (lit(re.lo(), i128::MIN)?, lit(hi, i128::MAX)?);
     Some((a, if closed { b + 1 } else { b }))
-}
-
-/// `a[x, y]` is `a[(x, y)]`: the parts of a product key index it one by one (R04.2.11).
-pub(super) fn packed(e: &ast::Expr) -> Option<ast::Expr> {
-    let ExprKind::Index { base, indices } = &e.kind else {
-        return None;
-    };
-    let [first, .., last] = &indices[..] else {
-        return None;
-    };
-    let key = ast::Expr {
-        kind: ExprKind::Tuple(indices.clone()),
-        span: Span::new(first.span.start, last.span.end),
-    };
-    Some(ast::Expr {
-        kind: ExprKind::Index {
-            base: base.clone(),
-            indices: vec![key],
-        },
-        span: e.span,
-    })
 }
