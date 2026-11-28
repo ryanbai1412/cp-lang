@@ -22,7 +22,7 @@ measured, by a mutation score or a matrix with no empty cell.
 | 1 | Spec conformance | unmeasured | `next_not_passing` 2,276 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
 | 2 | Feature-by-context matrix | unmeasured | no number yet for: cells of the feature-by-context matrix with no case |
 | 3 | Corpus | unmeasured | no number yet for: corpus programs not accepted on every engine |
-| 4 | Std as a program | measured | `ir_builtin_names` 105 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 38 → 0 |
+| 4 | Std as a program | measured | `ir_builtin_names` 105 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 37 → 0 |
 | 5 | Checker totality | measured | `silent_unknowns` 18,176 → 0, `ir_reinfer` 12 → 0, `next_lowered` 2 → 0 |
 | 6 | Ownership soundness | unmeasured | no number yet for: ownership cases wrong in either direction, written and generated |
 
@@ -99,7 +99,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_split` | 7 |
 | `next_standin_notes` | 1 |
 | `next_std_names` | 51 |
-| `next_std_unchecked` | 38 |
+| `next_std_unchecked` | 37 |
 | `next_string_keyed_maps` | 79 |
 | `next_syntax_old_refs` | 847 |
 | `next_weak_oracle_passes` | 7 |

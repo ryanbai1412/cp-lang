@@ -7,7 +7,7 @@
 //! \(O(r \cdot c)\), then answer any `.fold(...)`, `.cut(k)` or `.prefix(...)` query in \(O(1)\).
 //! Use `Diff<D, T>()` or `Diff<R, C, T>()` for \(O(1)\) offline range/rectangle adds and \(O(n)\) /
 //! \(O(r \cdot c)\) `finish()`.
-use std.algebra.{Monoid}
+use std.algebra.{Monoid, FromOp}
 use std.range.{Len, RingRange, ends, first_true}
 
 /// The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds everything left of cut
@@ -38,17 +38,15 @@ use std.range.{Len, RingRange, ends, first_true}
 @lint(hand_rolled_prefix_sum, from: "for i in r:\n    acc += xs[i]\n    out.push(acc)", advice: "let out = xs.scan(+)", holes: "r, xs, acc, out")
 @lint(hand_rolled_prefix_sum, from: "for x in xs:\n    out.push(out.last! + x)", advice: "let out = xs.scan(+)", holes: "xs, out")
 @lint(hand_rolled_prefix_sum, from: "for x in xs:\n    out.push(out[out.len - 1] + x)", advice: "let out = xs.scan(+)", holes: "xs, out")
-pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
+pub fn scan<D: Ordered, T, M: FromOp<T>>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
     Prefix<D, T>.of_scan(self, f, from)
 
-
-fn same<A, B>(a: A, b: B) -> Bool = a == b
 
 /// Fill direction for an append-only `Prefix.filling(...)` table.
 pub enum FillOrder = Forward | Reverse
 
 /// Append-only 1-D prefix/suffix sum table returned by `Prefix<D, T>.filling(...)`.
-pub struct FillPrefix<D, T: Add + Sub>:
+pub struct FillPrefix<D: Ordered, T: Add + Sub + Zero>:
     p: [D.cuts]T
     pub rev: Bool
     pub var next: Int
@@ -125,7 +123,7 @@ pub struct FillPrefix<D, T: Add + Sub>:
 /// `fold(rows, cols)`; it is never a 1-D table over the cells.
 @was(Prefix1, Prefix2, PrefixN)
 @word(prefix)
-pub struct Prefix<D, T: Add + Sub>:
+pub struct Prefix<D: Ordered, T>:
     p: [D.cuts]T
     sums: Bool
     rises: Bool
@@ -137,7 +135,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// empty: `domain D = 0..0; let p = Prefix<D, Int>([D] v => 1); p.all == 0 and p.fold(..) == 0`
     /// traps: never
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.all == 6`
-    pub fn new(a: [D]T) -> Prefix<D, T>:
+    pub fn new(a: [D]T) -> Prefix<D, T> where T: Add + Zero:
         var p: [D.cuts]T = T.zero
         var rises = true
         for i in D:
@@ -154,7 +152,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// cost: \(O(\lvert D \rvert)\) time and space
     /// traps: never
     /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 2); f.fold(0..1) == 2`
-    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>:
+    pub fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T> where T: Add + Sub + Zero:
         let rev = order == FillOrder.Reverse
         let p: [D.cuts]T = T.zero
         FillPrefix(p, rev, if rev: D.count - 1 else: 0)
@@ -177,7 +175,7 @@ pub struct Prefix<D, T: Add + Sub>:
         self.p[b]
 
     // Builds the table in place, so scan returns it without a copy.
-    fn of_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
+    fn of_scan<M: FromOp<T>>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
         let m = Monoid<T>.of(f)
         var p: [D.cuts]T = from ?? m.id
         var acc = from ?? m.id
@@ -191,7 +189,7 @@ pub struct Prefix<D, T: Add + Sub>:
             let c = a.cut_after(i)
             if c != i.r: forward = false
             p[c] = acc
-        Prefix(p, forward and same(f, +), forward and rises, not forward)
+        Prefix(p, forward and f.sums(), forward and rises, not forward)
 
     /// The suffix table of `a` under `f`, the table `a.rev.scan(f)` returns.
     ///
@@ -199,7 +197,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// empty: `domain D = 0..0; let a: [D]Int = [D] v => 1; Prefix<D, Int>.of_rev_scan(a, +, None).all == 0 and Prefix<D, Int>.of_rev_scan(a, +, Some(10)).all == 10`
     /// traps: never (beyond what `f` traps on)
     /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; Prefix<D, Int>.of_rev_scan(a, +, None).all == 8`
-    pub fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
+    pub fn of_rev_scan<M: FromOp<T>>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
         let m = Monoid<T>.of(f)
         var p: [D.cuts]T = from ?? m.id
         var acc = from ?? m.id
@@ -209,7 +207,7 @@ pub struct Prefix<D, T: Add + Sub>:
             let c = a.cut_before(i)
             if c != i.l: forward = false
             p[c] = acc
-        Prefix(p, forward and same(f, +), false, true)
+        Prefix(p, forward and f.sums(), false, true)
 
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
     ///
@@ -219,12 +217,12 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.fold(1..=2) == 5`
     /// trap: `[3, 1, 4].scan(min).fold(1..3)`
     @lint(sliding_sum_by_hand, from: "cur += a[i] - a[i - k]", advice: "Prefix(a).fold(i + 1 - k..i + 1)", holes: "cur, a, i, k")
-    pub fn fold(self, r: Range<D>) -> T:
+    pub fn fold(self, r: Range<D>) -> T where T: Sub + Zero:
         assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         if r.is_empty: return T.zero
         self.between(r.l, r.r)
 
-    fn between(self, l: Cut<D>, r: Cut<D>) -> T = if back: self.p[l] - self.p[r] else: self.p[r] - self.p[l]
+    fn between(self, l: Cut<D>, r: Cut<D>) -> T where T: Sub = if back: self.p[l] - self.p[r] else: self.p[r] - self.p[l]
 
     /// The sum over a wrapping run of positions, e.g. `a.ring.span(i, k)`: the part from `r.start`
     /// to `D.last` plus the part from `D.first` to `r.end` when it wraps.
@@ -233,7 +231,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// empty: `domain D = 0..3; let a: [D]Int = [D] v => 1 + Int(v); Prefix<D, Int>(a).cyclic_sum(a.ring.span(2, 0)) == 0`
     /// traps: on a table from `scan(f)` with `f` other than `+`
     /// example: `domain D = 0..3; let a: [D]Int = [D] v => 1 + Int(v); Prefix<D, Int>(a).cyclic_sum(a.ring.span(2, 2)) == 4`
-    pub fn cyclic_sum(self, r: RingRange<D>) -> T:
+    pub fn cyclic_sum(self, r: RingRange<D>) -> T where T: Add + Sub + Zero:
         assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         if r.len == 0: return T.zero
         let (s, e) = (r.start, r.end)
@@ -283,7 +281,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// traps: on a table from `scan(f)` with `f` other than `+`
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.suffix(1) == 5`
     /// trap: `[3, 1, 4].scan(max).suffix(1)`
-    pub fn suffix(self, b: Cut<D>) -> T:
+    pub fn suffix(self, b: Cut<D>) -> T where T: Sub:
         if back: return self.p[b]
         assert sums, "a range read subtracts prefix folds, which is only right for a `scan(+)` table"
         self.all - self.p[b]
@@ -310,7 +308,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// traps: when some element is negative
     /// example: `Int([2, 0, 3].scan(+).first_ge(2)!) == 1`
     /// example: `[2, 0, 3].scan(+).first_ge(6) == None`
-    pub fn first_ge(self, target: T) -> ?Cut<D>:
+    pub fn first_ge(self, target: T) -> ?Cut<D> where T: Ord:
         assert not back, "a suffix table falls left to right; search a forward `scan(+)` instead"
         assert rises, "this binary search needs the prefix never to fall, so no element may be negative"
         if self.all < target: return None
@@ -327,7 +325,7 @@ pub struct Prefix<D, T: Add + Sub>:
     /// traps: when some element is negative
     /// example: `Int([2, 0, 3].scan(+).first_gt(2)!) == 3`
     /// example: `[2, 0, 3].scan(+).first_gt(5) == None`
-    pub fn first_gt(self, target: T) -> ?Cut<D>:
+    pub fn first_gt(self, target: T) -> ?Cut<D> where T: Ord:
         assert not back, "a suffix table falls left to right; search a forward `scan(+)` instead"
         assert rises, "this binary search needs the prefix never to fall, so no element may be negative"
         if self.all <= target: return None
@@ -335,7 +333,7 @@ pub struct Prefix<D, T: Add + Sub>:
         Some(D.cuts.nth(lo))
 
 /// The append-only 2-D prefix/suffix sum table returned by `Prefix<R, C, T>.filling(...)`.
-pub struct FillPrefix<R, C, T: Add + Sub>:
+pub struct FillPrefix<R: Ordered, C: Ordered, T: Add + Sub + Zero>:
     p: [R.cuts, C.cuts]T
     pub rev: Bool
     pub var next: Int
@@ -404,7 +402,7 @@ pub struct FillPrefix<R, C, T: Add + Sub>:
         )
 
 /// 2-D prefix sums `Prefix<R, C, T>`, built by `Prefix(a)` or `Prefix<R, C, T>.filling(...)`.
-pub struct Prefix<R, C, T: Add + Sub>:
+pub struct Prefix<R: Ordered, C: Ordered, T: Add + Sub + Zero>:
     p: [R.cuts, C.cuts]T
 
     /// Build 2-D prefix sums over `a: [R, C]T`; `Prefix(a)` on a grid calls it.
@@ -459,7 +457,7 @@ pub struct Prefix<R, C, T: Add + Sub>:
         ]
 
 /// The append-only list prefix/suffix sum table returned by `Prefix<T>.filling(n, ...)`.
-pub struct FillPrefix<T: Add + Sub>:
+pub struct FillPrefix<T: Add + Sub + Zero>:
     p: List<T>
     pub rev: Bool
     pub var next: Int
@@ -497,15 +495,16 @@ pub struct FillPrefix<T: Add + Sub>:
     /// traps: when `r` is non-empty and reaches outside `0..n` or holds an index not yet written
     /// example: `var f = Prefix<Int>.filling(3, order: FillOrder.Reverse); f.set(2, 4); f.set(1, 1); f.fold(1..3) == 5`
     pub fn fold(self, r: Range<Int>) -> T:
-        if r.start >= r.end: return T.zero
+        let (lo, hi) = (Int(r.start), Int(r.end))
+        if lo >= hi: return T.zero
         if rev:
-            let in_filled = r.start > next
+            let in_filled = lo > next
             assert in_filled
-            return self.p[r.start] - self.p[r.end]
-        self.cut(r.end) - self.cut(r.start)
+            return self.p[lo] - self.p[hi]
+        self.cut(hi) - self.cut(lo)
 
 /// List prefix sums `Prefix<T>`, built by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
-pub struct Prefix<T: Sub>:
+pub struct Prefix<T: Add + Sub + Zero>:
     p: List<T>
 
     /// Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
@@ -548,8 +547,9 @@ pub struct Prefix<T: Sub>:
     /// example: `Prefix<Int>([3, 1, 4]).fold(1..3) == 5`
     /// example: `Prefix<Int>([3, 1, 4]).fold(2..2) == 0`
     pub fn fold(self, r: Range<Int>) -> T:
-        if r.start >= r.end: return T.zero
-        self.p[r.end] - self.p[r.start]
+        let (lo, hi) = (Int(r.start), Int(r.end))
+        if lo >= hi: return T.zero
+        self.p[hi] - self.p[lo]
 
     /// The sum of every value: `cut(n)`, zero for an empty list.
     ///
@@ -571,7 +571,7 @@ pub struct Prefix<T: Sub>:
 /// traps: never (beyond what `op` traps on)
 /// example: `prefix_fold(*, [2, 3, 4])[2] == 6`
 /// example: `prefix_fold(*, [2, 3, 4])[0] == 1`
-pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
+pub fn prefix_fold<D: Ordered, T, M: FromOp<T>>(op: M, a: [D]T) -> [D.cuts]T:
     let m = Monoid<T>.of(op)
     var p: [D.cuts]T = m.id
     var acc = m.id
@@ -583,7 +583,7 @@ pub fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T:
 /// Offline difference array: `Diff<D, T>()` for 1-D ranges or `Diff<R, C, T>()` for 2-D grids.
 /// \(O(1)\) range/rectangle `add`, \(O(\lvert D \rvert)\) or \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
 @was(Diff1, Diff2)
-pub struct Diff<D, T: Add + Sub>:
+pub struct Diff<D: Ordered, T: Add + Sub + Zero>:
     d: [D.cuts]T
 
     /// Create an all-zero 1-D difference array over `D`.
@@ -623,7 +623,7 @@ pub struct Diff<D, T: Add + Sub>:
         out
 
 /// The 2-D difference array `Diff<R, C, T>`: \(O(1)\) rectangle `add`, \(O(\lvert R \rvert \cdot \lvert C \rvert)\) `finish`.
-pub struct Diff<R, C, T: Add + Sub>:
+pub struct Diff<R: Ordered, C: Ordered, T: Add + Sub + Zero>:
     d: [R.cuts, C.cuts]T
 
     /// Create an all-zero 2-D difference array over `(R, C)`.
@@ -668,7 +668,7 @@ pub struct Diff<R, C, T: Add + Sub>:
 
 /// Online sweep-line difference accumulator: schedule future range adds in \(O(1)\) and advance a
 /// cursor through `D` in `order` in \(O(1)\) per position. \(O(\lvert D \rvert)\) space.
-pub struct SweepAdd<D, T: Add + Sub>:
+pub struct SweepAdd<D: Ordered, T: Add + Sub + Zero>:
     d: [D.cuts]T
     var cur: T
     pub rev: Bool
@@ -719,7 +719,7 @@ pub struct SweepAdd<D, T: Add + Sub>:
 
 /// \(O(\lvert D \rvert)\) space. Second-order offline difference array for arithmetic-progression range adds:
 /// \(O(1)\) `add_arith`, \(O(\lvert D \rvert)\) `finish`.
-pub struct ArithDiff<D, T: Add + Sub + Mul>:
+pub struct ArithDiff<D: Ordered, T: Add + Sub + Mul<Int> + Zero>:
     d: [D.cuts]T
     e: [D.cuts]T
 
@@ -776,16 +776,16 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
             val = val + s
         out
 
-impl Show for Prefix<D, T>:
+impl<D: Ordered, T: Show> Show for Prefix<D, T>:
     fn show(q): "{q.p}"
 
-impl Show for Diff<D, T>:
+impl<D: Ordered, T: Add + Sub + Zero + Show> Show for Diff<D, T>:
     /// The values `finish` would return now, in key order, space-separated.
     ///
     /// example: `domain D = 0..4; var d = Diff<D, Int>(); d.add(D(1)..D(3), 5); "{d}" == "0 5 5 0"`
     fn show(x): "{x.finish()}"
 
-impl Show for ArithDiff<D, T>:
+impl<D: Ordered, T: Add + Sub + Mul<Int> + Zero + Show> Show for ArithDiff<D, T>:
     /// The values `finish` would return now, in key order, space-separated.
     ///
     /// example: `domain D = 0..4; var d = ArithDiff<D, Int>(); d.add_arith(D(1)..=D(3), 1, 2); "{d}" == "0 1 3 5"`
@@ -964,5 +964,5 @@ fn rev_scan_folds_every_suffix():
             if d < c: continue
             assert s.fold(c..d) == sum(a[i] for i in V if c <= i.l and i.r <= d)
 
-impl Show for SweepAdd<D, T>:
+impl<D: Ordered, T: Add + Sub + Zero + Show> Show for SweepAdd<D, T>:
     fn show(s) = "{s.current}"

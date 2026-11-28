@@ -18,6 +18,7 @@ use std.math.{abs, popcount, bit}
 use std.prefix.{Prefix}
 use std.range.{Len, RingRange, ends, first_true, last_true}
 use std.rand.{shuffle}
+use std.raw.{check_key}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 @stress(perm)
@@ -1549,17 +1550,17 @@ impl<D: Domain> Sized for D:
 /// suffix table), in key order, so
 /// `a.scan(+).min()` is the least running total and `inversions(a.scan(+))` counts its
 /// inversions.
-impl Seq<T> for Prefix<D, T>:
+impl<D: Ordered, T> Seq<T> for Prefix<D, T>:
     fn iter(self) -> yields T:
         for v in D:
             yield self.through(v)
 
-impl Keyed<D, T> for Prefix<D, T>:
+impl<D: Ordered, T> Keyed<D, T> for Prefix<D, T>:
     fn items(self) -> yields (D, T):
         for v in D:
             yield (v, self.through(v))
 
-impl Bidir<T> for Prefix<D, T>:
+impl<D: Ordered, T> Bidir<T> for Prefix<D, T>:
     fn iter_rev(self) -> yields T:
         for v in D.rev:
             yield self.through(v)
@@ -1596,6 +1597,22 @@ pub trait Indexed<D, T>: IndexGet<D, T> + Keyed<D, T> + Positional<T> + Bidir<T>
     type Taken = Slice<Self>
     /// The keys, in walk order.
     @get fn keys(self) -> Range<D>
+    /// `s.cut_after(i)`: the cut after key `i` in walk order, `i.r` on a forward view; traps R0101
+    /// unless `i` is a key of `s` (R07.4.14).
+    ///
+    /// cost: \(O(1)\)
+    /// example: `domain V = 1..=4; let a = [V] v => Int(v); a.cut_after(V(2)) == V(2).r`
+    fn cut_after(self, i: D) -> Cut<D> where D: Ordered:
+        check_key(self.keys.contains(i))
+        i.r
+    /// `s.cut_before(i)`: the cut before key `i` in walk order, `i.l` on a forward view; traps R0101
+    /// unless `i` is a key of `s` (R07.4.14).
+    ///
+    /// cost: \(O(1)\)
+    /// example: `domain V = 1..=4; let a = [V] v => Int(v); a.cut_before(V(2)) == V(2).l`
+    fn cut_before(self, i: D) -> Cut<D> where D: Ordered:
+        check_key(self.keys.contains(i))
+        i.l
 
 /// \(O(1)\) to make. The view `s.filter(p)`: walks `s`, skipping elements that fail `p`, with
 /// `s`'s keys. A lent value (R07.1.5).
@@ -1723,6 +1740,20 @@ pub struct Rev<S>(base: S):
     /// traps: unless `0 <= k < self.len`
     /// example: `[1, 2, 3].rev.nth(0) == 3`
     pub fn nth<T>(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
+
+    /// \(O(1)\). The cut after key `i` in this walk: the source's cut before it (R07.4.14).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: unless `i` is a key of the source (R0101)
+    /// example: `domain V = 1..=4; let a = [V] v => Int(v); a.rev.cut_after(V(2)) == V(2).l`
+    pub fn cut_after<D: Ordered, T>(self, i: D) -> Cut<D> where S: Indexed<D, T> = self.src.cut_before(i)
+
+    /// \(O(1)\). The cut before key `i` in this walk: the source's cut after it (R07.4.14).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: unless `i` is a key of the source (R0101)
+    /// example: `domain V = 1..=4; let a = [V] v => Int(v); a.rev.cut_before(V(2)) == V(2).r`
+    pub fn cut_before<D: Ordered, T>(self, i: D) -> Cut<D> where S: Indexed<D, T> = self.src.cut_after(i)
 
     /// \(O(1)\). The first `min(k, len)` elements in walk order, as a reversed view:
     /// the source's last `k`, walked backwards.
@@ -3938,7 +3969,8 @@ impl Rev<[D]T>:
     /// example: `domain D = 0..3; let a = [D] d => d.ord + 2; a.rev.scan(+).all == 9`
     /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; a.rev.scan(+).suffix(D(1).l) == 5`
     /// example: `domain D = 0..3; let a: [D]Int = [3, 1, 4]; a.rev.scan(max).suffix(D(2).l) == 4`
-    pub fn scan<M>(self, f: M, from: ?T = None) -> Prefix<D, T> = Prefix<D, T>.of_rev_scan(self.src, f, from)
+    pub fn scan<M: FromOp<T>>(self, f: M, from: ?T = None) -> Prefix<D, T> where D: Ordered =
+        Prefix<D, T>.of_rev_scan(self.src, f, from)
 
 impl<T> Sep<T> for T -> Bool:
     fn is_sep(self, x: T) -> Bool = self(x)
