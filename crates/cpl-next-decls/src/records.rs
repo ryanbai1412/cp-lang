@@ -6,12 +6,10 @@ use crate::decls::forms::{
     AssocForm, AttrForm, BodyForm, BoundForm, FieldForm, FnForm, ImplForm, ParamForm, StructForm,
     TraitForm, TyForm,
 };
-use crate::decls::{fills, form_fills, Role};
+use crate::decls::{form_fills, Role};
 use crate::sym::{Sym, Syms};
 use cpl_diag::Span;
 use cpl_next_syntax::ast::{self as next, AstNode as _};
-use cpl_syntax::ast::{self, ExprKind, FnDecl, StmtKind, TypeKind};
-use cpl_syntax::decorators::Mark;
 use std::collections::{BTreeSet, HashMap};
 
 /// The struct a record with these fields is: `(lo:, hi:)`.
@@ -104,20 +102,6 @@ fn capitals(syms: &mut Syms, n: usize) -> Vec<Sym> {
         .take(n)
         .map(|c| syms.intern(&(c as char).to_string()))
         .collect()
-}
-
-/// The mark `@m` on a declaration the compiler writes.
-pub(crate) fn marker(m: Mark, span: Span) -> ast::Decorator {
-    ast::Decorator {
-        directive: false,
-        mark: Some(m),
-        name: ast::Name {
-            text: m.name().to_string(),
-            span,
-        },
-        args: Vec::new(),
-        span,
-    }
 }
 
 /// Each fn with a last `..xs` parameter, by name, with the labels of its other parameters: the
@@ -247,55 +231,6 @@ pub fn derived(forms: &[Form], shapes: &[Vec<String>]) -> Vec<Vec<String>> {
         fresh = next;
     }
     made.into_iter().collect()
-}
-
-fn gen_names(prefix: &str, n: usize) -> Vec<String> {
-    (0..n).map(|k| format!("{prefix}{k}")).collect()
-}
-
-fn self_param(n: &str, ty: Option<ast::Type>, span: Span) -> ast::Param {
-    ast::Param {
-        mutable: false,
-        variadic: false,
-        lazy: false,
-        named_only: false,
-        label: None,
-        name: ast::Name {
-            text: n.to_string(),
-            span,
-        },
-        ty,
-        default: None,
-        span,
-    }
-}
-
-fn member_fn(
-    name: &str,
-    params: Vec<ast::Param>,
-    ret: ast::Type,
-    body: ast::FnBody,
-    span: Span,
-) -> ast::Stmt {
-    ast::Stmt {
-        kind: StmtKind::Fn(FnDecl {
-            name: ast::Name {
-                text: name.to_string(),
-                span,
-            },
-            generics: Vec::new(),
-            bounds: Vec::new(),
-            params,
-            ret: Some(ret),
-            lends: None,
-            uses: Vec::new(),
-            body,
-            sig_span: span,
-        }),
-        span,
-        decorators: Vec::new(),
-        public: true,
-    }
 }
 
 /// `pub trait (to:, e:, ..without u, v)<P0, P1>: type R; fn R(self, to: P0, e: P1) -> Self.R`

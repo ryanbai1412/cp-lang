@@ -5,17 +5,11 @@ use crate::decls::forms::{
     AttrForm, BodyForm, FnForm, Form, ImplForm, ParamForm, TraitForm, TyForm,
 };
 use crate::decls::literal_int;
-use crate::decls::unnamed;
-use crate::decls::{fills, form_fills, Role};
+use crate::decls::{form_fills, Role};
 use crate::diag::Msg;
-use crate::records::marker;
 use crate::sym::Sym;
 use cpl_next_ir::ids::ItemId;
-use cpl_next_ir::ty::StructId;
-use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::ast::{self as next, AstNode as _};
-use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
-use cpl_syntax::decorators::Mark;
 use std::collections::HashMap;
 
 /// An enum's tag errors (R02.7.2): a variant whose token another one before it has (E0407), and
@@ -122,8 +116,9 @@ pub(crate) fn enum_structs(
 pub(crate) enum Derivable {
     /// `@derive`, with its one method.
     Each(Box<FnForm>),
-    /// `@role(derive_fields)`, with the `@role(pack)` struct and the trait's methods.
-    Fields(Sym, Vec<FnForm>),
+    /// `@role(derive_fields)`, with the trait's methods; the `@role(pack)` struct is read from
+    /// `Roles` where the body is built.
+    Fields(Vec<FnForm>),
 }
 
 /// Per struct a module declares, the impls it gets structurally (R08.1.6), made after every written
@@ -143,7 +138,7 @@ pub(crate) fn module_derived(
             Form::Enum(e) => {
                 for (tr, how) in each {
                     let fns = match how {
-                        Derivable::Fields(_, fns) => {
+                        Derivable::Fields(fns) => {
                             let variants: Vec<(Sym, String)> = e
                                 .variants
                                 .iter()
@@ -231,7 +226,7 @@ pub(crate) fn module_derived(
                                 true,
                             )
                         }
-                        Derivable::Fields(_, fns) => (
+                        Derivable::Fields(fns) => (
                             passing(fns, a, |m| SynthBody::PackFields {
                                 method: m,
                                 fields: uncached.clone(),
@@ -345,8 +340,8 @@ pub(crate) fn derive_each(forms: &[&Form]) -> Vec<(Sym, Derivable)> {
             };
             let how = match (&t.methods[..], pack) {
                 ([m], _) if derive(t) && t.assoc.is_empty() => Derivable::Each(Box::new(m.clone())),
-                (_, Some(p)) if form_fills(&t.attrs, Role::DeriveFields) => {
-                    Derivable::Fields(p, t.methods.clone())
+                (_, Some(_)) if form_fills(&t.attrs, Role::DeriveFields) => {
+                    Derivable::Fields(t.methods.clone())
                 }
                 _ => return None,
             };
@@ -777,43 +772,6 @@ pub fn memo_key(word: &str) -> String {
     format!("$memo({word})")
 }
 
-/// A `@memo` that does not spell its storage: the table is spelled, never picked (R06.4.1).
-pub fn unspelled_memo(x: &ast::Decorator) -> Option<cpl_next_ir::msg::Msg> {
-    (x.mark == Some(Mark::Memo) && x.args.is_empty()).then(|| {
-        cpl_next_ir::msg::Msg::verdict(
-            cpl_diag::codes::BAD_MEMO,
-            "`@memo` spells its table: write `@memo(array)` or `@memo(map)`",
-        )
-    })
-}
-
-fn memo_word(x: &ast::Decorator) -> Option<String> {
-    match &x.args[..] {
-        [a] => match &a.value.kind {
-            ast::ExprKind::Name(w) => Some(w.clone()),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-/// The table a `@memo(word)` fn keeps: one some struct is marked with, for a fn whose
-/// parameters and result are written.
-pub(crate) fn memo_table<'s>(
-    s: &'s ast::Stmt,
-    tables: &dyn Fn(&str) -> bool,
-) -> Option<(&'s ast::FnDecl, String)> {
-    let StmtKind::Fn(f) = &s.kind else {
-        return None;
-    };
-    let x = s.decorators.iter().find(|x| x.mark == Some(Mark::Memo))?;
-    let plain = |p: &ast::Param| p.ty.is_some() && !p.mutable && !p.variadic && !p.lazy;
-    let typed = f.ret.is_some() && !f.params.is_empty() && f.params.iter().all(plain);
-    (typed && f.generics.is_empty() && f.lends.is_none()).then_some(())?;
-    let w = memo_word(x).filter(|w| tables(w))?;
-    Some((f, memo_key(&w)))
-}
-
 /// The name `@memo` fn `f`'s clear is declared under, written `f.clear()` (R06.4.1).
 pub fn memo_clear_name(f: &str) -> String {
     format!("{f}.clear")
@@ -886,8 +844,6 @@ pub fn jagged(params: &[(String, Option<next::Type>)]) -> Vec<Option<((i64, i64)
     }
     out
 }
-
-/// A fn with each jagged parameter's type widened, and each one's written type by its name.
 
 /// A made fn's body: what lower builds its IR from, by variant, with no syntax in between. Each
 /// is one shape the language derives or desugars; check reads its signature, never a body.

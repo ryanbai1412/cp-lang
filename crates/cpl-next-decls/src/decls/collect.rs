@@ -1,18 +1,13 @@
 //! Collecting declarations: std's once, and each program's as a layer over them.
 use super::forms::{Form, ImplForm, Reader, TyForm, UseForm};
-use super::impls::{overlap, same_shape, supertraits_unmet};
+use super::impls::supertraits_unmet;
 use super::inherent::inherent_impl;
-use super::tyconv::input_bound;
-use super::Impls;
 use super::*;
 use crate::attrs::Decorator;
 use crate::synth::{enum_structs, module_derived};
-use cpl_diag::codes::FIELD_BOUND_FROM_INPUT;
-use cpl_diag::msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::ast::AstNode as _;
-use cpl_syntax::decorators::Mark;
 
 /// Std's declarations, collected once and never written after: the core's and every std
 /// module's. A program's declarations are a layer over them.
@@ -141,7 +136,7 @@ fn layer(
         public.push(HashSet::new());
     }
     let mut main = Vec::new();
-    let mut memos: Vec<(usize, String)> = Vec::new();
+    let memos: Vec<(usize, String)> = Vec::new();
     // Pass 1: names, so signatures can mention later declarations.
     let mut pending: Vec<(ModId, ItemId, &Form, Option<Named>)> = Vec::new();
     let mut op_methods: HashMap<TraitId, Sym> = HashMap::new();
@@ -932,10 +927,6 @@ pub fn factor_name(product: &str, i: usize) -> String {
     format!("{product}.{i}")
 }
 
-fn marked(s: &ast::Stmt, m: Mark) -> bool {
-    s.mark(m).is_some()
-}
-
 /// A marker names one declaration: a second, in any module, is a duplicate.
 pub(super) fn again(item: &ItemId, at: Span, n: &str) -> Msg {
     let code = cpl_diag::codes::DUPLICATE_DEFINITION;
@@ -1102,7 +1093,7 @@ pub(super) fn impl_names(
     for (n, span, init) in members {
         let n = d.text(n).to_string();
         let now = (d.traits[tref.tr.0].methods.iter())
-            .find(|(_, &tm)| d.f(tm).was.iter().any(|w| *w == n))
+            .find(|(_, &tm)| d.f(tm).was.contains(&n))
             .map(|(now, _)| d.text(*now).to_string());
         if let Some(now) = now {
             let msg = format!("`impl {tname}` names this member `{now}`; `{n}` was its old name");
@@ -1120,15 +1111,15 @@ pub(super) fn impl_names(
     }
 }
 
-/// Each item of `m` as its form, read once; and the decorators on them no attribute names, each
-/// with the item it is on, for E0107.
-fn read_forms(
-    syms: &mut crate::sym::Syms,
-    m: &crate::modules::Module,
-) -> (
+/// A module's items as forms, and the decorators on them no attribute names, by item.
+type ReadForms = (
     Vec<(ItemId, Form)>,
     Vec<(ItemId, cpl_next_syntax::ast::Decorator)>,
-) {
+);
+
+/// Each item of `m` as its form, read once; and the decorators on them no attribute names, each
+/// with the item it is on, for E0107.
+fn read_forms(syms: &mut crate::sym::Syms, m: &crate::modules::Module) -> ReadForms {
     let mut reader = Reader { syms };
     let (mut forms, mut unknown) = (Vec::new(), Vec::new());
     for it in m.items.iter() {
