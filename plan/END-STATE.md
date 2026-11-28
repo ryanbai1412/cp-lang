@@ -87,7 +87,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_library_gates` | 20 |
 | `next_lowered` | 2 |
 | `next_masked` | 129 |
-| `next_name_compares` | 15 |
+| `next_name_compares` | 25 |
 | `next_not_passing` | 2,270 |
 | `next_old_parser_accepts` | 1 |
 | `next_old_syntax_analyses` | 88 |

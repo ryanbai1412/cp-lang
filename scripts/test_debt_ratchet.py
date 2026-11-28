@@ -348,6 +348,14 @@ class DebtRatchetTest(unittest.TestCase):
             git("add", f"{dr.FROZEN_STD}/a.cp")
             self.assertEqual(dr.frozen_std_drift(root, pin), [f"{dr.FROZEN_STD}/c.cp: ??"])
 
+    def test_name_compares_count_a_std_prefix_and_a_named_constant(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-decls/src/lib.rs",
+                        'pub const PROGRAM: &str = "program";\nif m.starts_with("std.") {}\n'
+                        'if a == PROGRAM {}\nif mi == PROGRAM.0 {}\nmodules::PROGRAM => 1,\nlet p = PROGRAM;\n')
+            self.assertEqual(dr.next_name_compares(root), [f"crates/cpl-next-decls/src/lib.rs:{i}" for i in (2, 3, 5)])
+
     def test_name_compares_count_each_form(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
