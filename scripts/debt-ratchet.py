@@ -5566,6 +5566,28 @@ def skipped_ratchet(root: Path, base: str) -> list[str]:
             if SKIPPED_RATCHET_RE.search("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
 
 
+# A pushed commit with no `Lane:` gets its lane from a later commit's trailer, never a rewrite:
+# `Lane-for: <sha> <lane>, signed off by coordinator` (coordinator ruling 21:10, lane-j-check).
+LANE_FOR_RE = re.compile(r"^Lane-for:\s*(.*)$", re.MULTILINE)
+SIGNED_LANE_FOR_RE = re.compile(r"^([0-9a-f]{7,40})\s+(\w+)\s*,\s*signed off by\s+(\S+?)\.?\s*$")
+
+
+def lanes_for(root: Path, base: str) -> tuple[dict[str, str], list[str]]:
+    """The commits `Lane-for:` trailers in `base..HEAD` give a lane to, as {sha prefix: lane},
+    and each trailer refused: one not `<sha> <lane>, signed off by coordinator`, since only the
+    coordinator may name a lane for a commit that names none (the same rule as `Raise:`)."""
+    given, bad = {}, []
+    for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD"):
+        for m in LANE_FOR_RE.finditer("\n".join(_git(root, "log", "-1", "--format=%B", sha))):
+            s = SIGNED_LANE_FOR_RE.match(m.group(1).strip())
+            if s and s.group(3) == "coordinator":
+                given[s.group(1)] = s.group(2)
+            else:
+                bad.append(f"{sha[:9]}: `Lane-for: {m.group(1).strip()}` is not "
+                           "`Lane-for: <sha> <lane>, signed off by coordinator`")
+    return given, bad
+
+
 def unlaned(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that touch the new pipeline (`crates/cpl-next*`) or `std/` with no
     `Lane:` trailer. commit-msg adds or demands one, but a hook is skipped where it is not
@@ -5574,11 +5596,14 @@ def unlaned(root: Path, base: str) -> list[str]:
     paths = [str(p.relative_to(root)) for p in sorted((root / "crates").glob("cpl-next*"))]
     paths += ["std"] if (root / "std").is_dir() else []
     if not paths:
-        return []
-    return [f"{sha[:9]}: touches the new pipeline or std with no `Lane:` trailer; add the lane "
-            f"that lands it (`git commit --amend`, or set CPL_LANE)"
-            for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths)
-            if not any(l.strip() for l in _git(root, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", sha))]
+        return lanes_for(root, base)[1]
+    given, bad = lanes_for(root, base)
+    return bad + [f"{sha[:9]}: touches the new pipeline or std with no `Lane:` trailer; add the lane "
+                  f"that lands it (`git commit --amend`, or set CPL_LANE; a pushed one takes a "
+                  f"coordinator-signed `Lane-for: {sha[:9]} <lane>`)"
+                  for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths)
+                  if not any(sha.startswith(g) for g in given)
+                  and not any(l.strip() for l in _git(root, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", sha))]
 
 
 # Counters a programs run measures: a raise of one is the run's evidence, never a re-reading.

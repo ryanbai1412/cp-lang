@@ -531,6 +531,29 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(got), 2, got)
             self.assertTrue(all("no `Lane:` trailer" in g for g in got))
 
+    def test_lane_for_signed_by_the_coordinator_gives_a_pushed_commit_its_lane(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git, commit, head = self._repo(root)
+            self._write(root, "std/a.cp", "fn a() = 1\n")
+            git("add", "-A"); commit("base")
+            base = head()
+            self._write(root, "std/a.cp", "fn a() = 2\n")
+            commit("stdlib: a is 2\n\nDomain: stdlib")
+            given = head()
+            self._write(root, "std/a.cp", "fn a() = 3\n")
+            commit("stdlib: a is 3\n\nDomain: stdlib")
+            other = head()
+            self._write(root, "std/a.cp", "fn a() = 4\n")
+            commit(f"stdlib: a is 4\n\nDomain: stdlib\nLane: B\n"
+                   f"Lane-for: {given[:9]} D, signed off by coordinator\n"
+                   f"Lane-for: {other[:9]} D, signed off by B")
+            got = dr.unlaned(root, base)
+            self.assertEqual(len(got), 2, got)
+            self.assertTrue(any("signed off by coordinator`" in g and "signed off by B" in g for g in got), got)
+            self.assertTrue(any(g.startswith(other[:9]) and "no `Lane:` trailer" in g for g in got), got)
+            self.assertFalse(any(g.startswith(given[:9]) for g in got), got)
+
     def test_a_run_measured_raise_names_a_full_run_and_its_commit(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

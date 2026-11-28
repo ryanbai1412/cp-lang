@@ -52,12 +52,17 @@ if [ -z "${CPL_LAND_MAIN:-}" ] && git cat-file -e FETCH_HEAD:scripts/land.sh 2>/
     for f in land.sh retry.sh; do git show "FETCH_HEAD:scripts/$f" >"$dir/$f"; done
     CPL_LAND_MAIN=1 exec bash "$dir/land.sh" "$@"
 fi
+# A pushed commit with no Lane: takes one from a later commit's coordinator-signed
+# `Lane-for: <sha> <lane>, signed off by coordinator`; debt-ratchet.py refuses any other.
+granted=$(git log --format=%B "FETCH_HEAD..HEAD" |
+    sed -nE 's/^Lane-for: *([0-9a-f]{7,40}) +[A-Za-z0-9_]+ *, *signed off by coordinator\.? *$/\1/p')
+lane_for() { for g in $granted; do case "$1" in "$g"*) return 0 ;; esac; done; return 1; }
 for c in $(git rev-list "FETCH_HEAD..HEAD"); do
     git log -1 --format='%(trailers:key=Domain,valueonly)' "$c" | grep -q . ||
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Domain: trailer" >&2; exit 1; }
     # The commit-msg hook adds Lane:, but a commit made without the hooks has none, and a
     # counter or verdict traced to it then reaches no owner.
-    git log -1 --format='%(trailers:key=Lane,valueonly)' "$c" | grep -q . ||
+    git log -1 --format='%(trailers:key=Lane,valueonly)' "$c" | grep -q . || lane_for "$c" ||
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Lane: trailer (set CPL_LANE, or git commit --amend --trailer 'Lane: X')" >&2; exit 1; }
 done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
