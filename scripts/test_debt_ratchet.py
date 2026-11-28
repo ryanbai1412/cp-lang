@@ -1289,16 +1289,26 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertIn(f"{rel}:11: std.prelude", names)
             self.assertIn(f"{rel}:12: derive", names)
 
-    def test_a_harness_refusal_site_is_counted_where_the_pipeline_s_is_not(self) -> None:
+    def test_a_harness_refusal_counts_each_case_the_harness_refuses_itself(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            t = root / dr.NEXT_TESTS
-            t.mkdir(parents=True)
-            (t / "programs.rs").write_text(
-                'return ("refused", "a lint".into());\n'
-                'Unbuilt(e) => (if x { "refused" } else { "wrong" }, e),\n'
-            )
-            self.assertEqual(dr.next_harness_refusals(root), [f"{dr.NEXT_TESTS}/programs.rs:1"])
+            (root / dr.NEXT_TESTS).mkdir(parents=True)
+            (root / dr.NEXT_TESTS / "programs.rs").write_text("")
+            cases = {"ok.cp": "// expect: ok\nprint(1)\n", "run.cp": "// expect: ok\n// tool: run {case}\n",
+                     "build.cp": "// expect: ok\n// tool: build -o -\n", "pre.cp": "// expect: ok\n// before: fix\n",
+                     "ex2.cp": "// expect: exit 2\n", "ex3.cp": "// expect: exit 3\n", "ex4.cp": "// expect: exit 4\n",
+                     "lint.cp": "// expect: L0602\n", "named.cp": "// expect: prefix_totals_list\n",
+                     "err.cp": "// expect: E0602\n", "cp.cp": "// expect: ok\n// copies: 1\n",
+                     "late.cp": "// expect: ok\nprint(1)\n// tool: build\n"}
+            for n, t in cases.items():
+                self._write(root, f"spec/conformance/core-01/{n}", t)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True)
+            git("init", "-q")
+            git("add", "-A")
+            self.assertEqual(sorted(dr.next_harness_refusals(root)), [
+                "core-01/build.cp: tool:", "core-01/cp.cp: copies:", "core-01/ex2.cp: exit 2|4",
+                "core-01/ex4.cp: exit 2|4", "core-01/lint.cp: lint", "core-01/named.cp: lint",
+                "core-01/pre.cp: before:"])
 
     def test_zero_with_a_prefix_counts_only_the_counters_it_names(self) -> None:
         with tempfile.TemporaryDirectory() as d:

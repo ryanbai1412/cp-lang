@@ -1645,18 +1645,54 @@ def next_reference_evaluator_lines(root: Path) -> list[str]:
             for l in _next_file_lines(root, _rel(root, f))]
 
 
-# A verdict comes from the pipeline, never from the harness (shortcut audit S14).
-HARNESS_REFUSAL_RE = re.compile(r'\("refused",')
+# A verdict comes from the pipeline, never from the harness (shortcut audit S14). The forms of
+# `// tool:` and `// before:` the programs harness asks the pipeline for (`ask` in programs.rs).
+HARNESS_ASKS = (("run",), ("run", "--release"), ("check",))
+
+
+def _harness_refusal(text: str) -> str | None:
+    """Why the programs harness answers `refused` for a case itself, from its header the way
+    `programs.rs` reads it, or None when the verdict is the pipeline's."""
+    head = []
+    for l in text.split("\n"):
+        if not l.lstrip().startswith("//"):
+            break
+        head.append(l.lstrip()[2:].strip())
+    vals = lambda k: [h[len(k):].strip() for h in head if h.startswith(k)]
+    asked = lambda v: tuple(w for w in v.split() if w != "{case}") in HARNESS_ASKS
+    if any(not asked(b) for b in vals("before:")):
+        return "before:"
+    if (tool := vals("tool:")) and not asked(tool[0]):
+        return "tool:"
+    expect = (vals("expect:") or [""])[0] if head and head[0].startswith("expect:") else ""
+    if (m := re.fullmatch(r"exit\s+(-?\d+)", expect)) and (int(m[1]) == 2 or int(m[1]) >= 4):
+        return "exit 2|4"
+    code = expect.split()[0] if expect.split() else ""
+    if expect not in ("ok",) and not expect.startswith(("ok,", "exit ")) and code[:1] and (
+            code[0] == "L" or code[0].islower()):
+        return "lint"
+    if vals("copies:"):
+        return "copies:"
+    return None
 
 
 def next_harness_refusals(root: Path) -> list[str]:
-    """Sites in the new pipeline's programs harness that answer `refused` themselves, for a
-    header or exit code the harness does not judge, rather than from the pipeline's `Unbuilt`.
-    0 is every refusal the pipeline's own."""
-    rel = NEXT_TESTS + "/programs.rs"
-    if not (root / rel).is_file():
+    """Cases the new pipeline's programs harness answers `refused` for itself, for a header or
+    exit code it does not judge (`// tool:`/`// before:` it has no query for, `exit 2|4`, a lint,
+    `// copies:`), rather than from the pipeline's `Unbuilt`. Counts cases, not the harness's
+    sites, so a new case behind an old refusal counts (3 AM blind audit). 0 is every refusal the
+    pipeline's own."""
+    if not (root / NEXT_TESTS / "programs.rs").is_file():
         return []
-    return [f"{rel}:{i}" for i, l in enumerate(_lines(root / rel), 1) if HARNESS_REFUSAL_RE.search(l)]
+    files = [(r[len("spec/conformance/"):], r) for r in _git(root, "ls-files", "spec/conformance/*.cp")]
+    files += [("next/" + r.rsplit("/", 1)[-1], r) for r in _git(root, "ls-files", NEXT_TESTS + "/programs/*.cp")]
+    out = []
+    for case, rel in files:
+        f = root / rel
+        why = _harness_refusal(f.read_text(encoding="utf-8", errors="replace")) if f.is_file() else None
+        if why:
+            out.append(f"{case}: {why}")
+    return out
 
 
 # The tests' own harness binary: `--raw`, `--canonical` and `--all` run the oracle for them.
@@ -5314,7 +5350,7 @@ COUNTERS = {
     "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
     "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
-    "next_harness_refusals": ("sites in the new harness that answer refused themselves instead of the pipeline (Core; target 0)", next_harness_refusals, True),
+    "next_harness_refusals": ("cases the new harness answers refused for itself instead of the pipeline (Core; target 0)", next_harness_refusals, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
     "next_standin_notes": ("new-pipeline lines saying the code beside them stands in for a designed component (Core)", next_standin_notes, True),
