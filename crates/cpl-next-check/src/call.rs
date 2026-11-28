@@ -126,8 +126,9 @@ impl Cx<'_> {
             targs.extend((0..missing).map(|_| self.new_ty()));
             let scoped = |n| self.owned_named(n);
             let at = decls::BodyScope {
-                sigs: self.d,
-                scope: self.d,
+                tables: self.d,
+                names: self.d,
+                syms: &self.d.syms,
                 m: self.b.module,
                 generics: &self.b.generics,
                 doms: &self.b.doms,
@@ -1146,8 +1147,9 @@ impl Cx<'_> {
     pub(super) fn with_body_scope<R>(&self, f: impl FnOnce(&decls::BodyScope) -> R) -> R {
         let scoped = |n: Sym| self.owned_named(n);
         f(&decls::BodyScope {
-            sigs: self.d,
-            scope: self.d,
+            tables: self.d,
+            names: self.d,
+            syms: &self.d.syms,
             m: self.b.module,
             generics: &self.b.generics,
             doms: &self.b.doms,

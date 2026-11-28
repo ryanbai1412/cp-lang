@@ -4,7 +4,7 @@
 use super::forms::TyForm;
 use super::*;
 use crate::ops::{bin_intr, fold, un_intr};
-use crate::views::{RoleStructs, Scope, Shapes, Signatures, Texts, TypeTables};
+use crate::views::{Names, RoleStructs, Shapes, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::End;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -868,16 +868,18 @@ pub fn range_type(at: &BodyScope, re: &next::RangeExpr) -> (Ty, Vec<Msg>) {
 /// Whether a range axis `[lo..hi]T` is keyed by its range type, which decls makes: both ends
 /// constant, or ending at a domain's count. Any other the checker names in a body.
 pub fn static_axis(
-    sigs: &dyn Signatures,
-    scope: &dyn Scope,
+    tables: &dyn TypeTables,
+    names: &dyn Names,
+    syms: &crate::sym::Syms,
     m: ModId,
     generics: &[Sym],
     doms: &HashMap<Sym, Ty>,
     re: &next::RangeExpr,
 ) -> bool {
     let at = BodyScope {
-        sigs,
-        scope,
+        tables,
+        names,
+        syms,
         m,
         generics,
         doms,
@@ -902,14 +904,15 @@ pub fn struct_args(sigs: &dyn TypeTables, d: StructId, mut a: Vec<Ty>) -> (Struc
 /// Alias `id` given its arguments as types, as a call writes it: `AliasBox(42)` infers the
 /// parameters it doesn't write, so they arrive as the checker's fresh types, not as syntax.
 pub fn alias_type(at: &BodyScope, id: AliasId, args: Vec<Ty>) -> (Ty, Vec<Msg>) {
-    at.run(|cx, errors| alias(cx, id.0, &at.sigs.alias(id).name, args, errors))
+    at.run(|cx, errors| alias(cx, id.0, &at.tables.alias(id).name, args, errors))
 }
 
 /// What a type written in a body is read against: its module's names, the body's type
 /// parameters, and the domains it has in scope.
 pub struct BodyScope<'a> {
-    pub sigs: &'a dyn Signatures,
-    pub scope: &'a dyn Scope,
+    pub tables: &'a dyn TypeTables,
+    pub names: &'a dyn Names,
+    pub syms: &'a crate::sym::Syms,
     pub m: ModId,
     pub generics: &'a [Sym],
     pub doms: &'a HashMap<Sym, Ty>,
@@ -926,12 +929,12 @@ impl BodyScope<'_> {
         f: impl FnOnce(&mut TyCx, &mut Vec<Msg>) -> R,
     ) -> (R, Vec<Msg>) {
         let mut errors = Vec::new();
-        let names = |n: Sym| self.scope.named(self.m, self.sigs.text(n));
+        let names = |n: Sym| self.names.named(self.m, n);
         let mut cx = TyCx {
             axes,
             names: &names,
-            env: self.sigs,
-            syms: self.sigs.syms(),
+            env: self.tables,
+            syms: self.syms,
             item: None,
             generics: self.generics,
             outer: self.generics,

@@ -1431,8 +1431,9 @@ impl<'a> Cx<'a> {
             generics.push(h);
         }
         let at = decls::BodyScope {
-            sigs: self.d,
-            scope: self.d,
+            tables: self.d,
+            names: self.d,
+            syms: &self.d.syms,
             m: self.b.module,
             generics: &generics,
             doms: &self.b.doms,

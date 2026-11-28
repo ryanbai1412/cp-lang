@@ -72,8 +72,9 @@ impl Cx<'_> {
             if self.static_axis(re) {
                 let scoped = |n| self.owned_named(n);
                 let at = decls::BodyScope {
-                    sigs: self.d,
-                    scope: self.d,
+                    tables: self.d,
+                    names: self.d,
+                    syms: &self.d.syms,
                     m: self.b.module,
                     generics: &self.b.generics,
                     doms: &self.b.doms,
@@ -456,8 +457,9 @@ impl Cx<'_> {
         if let Some(decls::Named::Alias(id)) = self.d.named(self.b.module, n) {
             let scoped = |n| self.owned_named(n);
             let at = decls::BodyScope {
-                sigs: self.d,
-                scope: self.d,
+                tables: self.d,
+                names: self.d,
+                syms: &self.d.syms,
                 m: self.b.module,
                 generics: &self.b.generics,
                 doms: &self.b.doms,
