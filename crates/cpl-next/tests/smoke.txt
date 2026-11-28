@@ -3,11 +3,13 @@ core-01/case-grammar.cp
 core-01/match-exhaustive-enum.cp
 core-01/user-none-variant.cp
 core-02/enum-exhaustive-match.cp
+core-02/fresh-domain-struct-return.cp
 core-02/pascal-variant-pattern.cp
 core-02/variant-named-like-prelude-type.cp
 core-04/enum-is-seq-of-variants.cp
 core-04/g1-array-and-list-agree.cp
 core-04/grid-row-view-keys-are-columns.cp
+core-04/keys-of-domain-keyed-array.cp
 core-05/a-closure-in-an-optional-the-callee-only-calls-borrows-its-list.cp
 core-05/a-fn-copies-a-top-level-heap-value-with-clone.cp
 core-05/cache-field-method-call-grows.cp
@@ -47,3 +49,4 @@ next/o24_lender_nested_two_structs.cp
 next/t10_dsu.cp
 next/t18_lend.cp
 next/t27_cap_ref.cp
+std-graph/clique.cp
