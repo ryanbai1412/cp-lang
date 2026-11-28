@@ -4,6 +4,7 @@
 use crate::{check, diag::Msg, inst, lower, own};
 use check::ConstError;
 use cpl_diag::{codes, Code};
+use cpl_next_decls::views::Answers;
 use cpl_next_decls::{decls::Decls, modules::Loaded};
 use cpl_next_engine::Stop;
 use cpl_next_ir::build::{Build, Checks};
@@ -217,17 +218,26 @@ impl<'a> Evaluator<'a> {
         let names: Vec<(String, bool)> = (t.globals.iter())
             .map(|g| (g.name.clone(), g.mutable))
             .collect();
+        let d = self.d;
         let (mut prog, owned) = own::link(
-            self.d,
-            &low.whole,
-            own::Answered {
-                deferred: &low.deferred,
-                adds: &low.adds,
-            },
+            d,
             &mut low.funcs,
             &mut low.globals,
             &names,
-            false,
+            &|fns, tys, lend| {
+                let checked = Answers {
+                    whole: &low.whole,
+                    deferred: &low.deferred,
+                    globals: tys,
+                };
+                let v = inst::Inputs {
+                    sigs: d,
+                    fns,
+                    sums: &low.adds,
+                    checked: &checked,
+                };
+                inst::link(v, &crate::roots(fns, tys.len()), lend, false)
+            },
         );
         if !owned.errors.is_empty() {
             return Ran::Open;

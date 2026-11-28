@@ -13,6 +13,7 @@ pub mod trace;
 
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
+use cpl_next_decls::views::Answers;
 use cpl_next_decls::{decls, diag, modules};
 use cpl_next_ir::build::{Build, Checks, Judge};
 use cpl_next_ir::ids::{ItemId, SourceId};
@@ -293,6 +294,14 @@ fn staged(
         .collect()
 }
 
+/// A whole build's link roots: every fn of `fns` and the first `globals` globals.
+pub(crate) fn roots(fns: &HashMap<ir::FuncKey, ir::Func<ty::Ty>>, globals: usize) -> inst::Roots {
+    inst::Roots {
+        fns: fns.keys().cloned().collect(),
+        globals: (0..globals).map(cpl_next_ir::whole::GlobalId).collect(),
+    }
+}
+
 /// Link, then ownership on the linked instances (contract 4), where the program checked clean:
 /// the program, its copies settled, and ownership's diagnostics.
 fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
@@ -303,17 +312,26 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
         .map(|g| (g.name.clone(), g.mutable))
         .collect();
     let g = &mut f.g;
+    let d = &f.d;
     let (prog, owned) = own::link(
-        &f.d,
-        &g.whole,
-        own::Answered {
-            deferred: &g.deferred,
-            adds: &g.adds,
-        },
+        d,
         &mut g.funcs,
         &mut g.globals,
         &names,
-        events,
+        &|fns, tys, lend| {
+            let checked = Answers {
+                whole: &g.whole,
+                deferred: &g.deferred,
+                globals: tys,
+            };
+            let v = inst::Inputs {
+                sigs: d,
+                fns,
+                sums: &g.adds,
+                checked: &checked,
+            };
+            inst::link(v, &roots(fns, tys.len()), lend, events)
+        },
     );
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags))

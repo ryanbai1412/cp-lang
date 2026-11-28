@@ -10,7 +10,6 @@ use cpl_next_decls::views::Signatures;
 use cpl_next_ir::ir::{sets, Arg, Expr, Func, FuncKey, Place, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
-use cpl_next_ir::whole::Whole;
 use std::collections::{BTreeSet, HashMap};
 mod drops;
 pub use drops::expand_calls;
@@ -204,48 +203,34 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
     }
 }
 
-use cpl_next_decls::views::Answers;
 pub use inst::Owned;
 
-/// What the checker and lowering left for own to read beside the generic fns.
-pub struct Answered<'a> {
-    pub deferred: &'a cpl_next_ir::msg::Deferred,
-    pub adds: &'a SetAdds,
-}
+/// The lent-slot rule link reads to type an instance's slots: [`lent_slot`]'s shape.
+pub type Lend = dyn Fn(
+    CTy,
+    &dyn Fn(&CTy) -> Vec<CTy>,
+    &dyn Fn(&cpl_next_ir::prog::InstKey) -> Option<Vec<CTy>>,
+) -> CTy;
 
-/// Ownership around link (contract 4): marks what the generic fns lend (`lent`), links them,
-/// checks the linked instances and settles their passed places. `globals` names each
-/// top-level binding and whether it is a `var`.
+/// Links the generic fns by their lent marks and a lent-slot rule: the caller's link stage.
+pub type Linker<'a> = dyn Fn(&HashMap<FuncKey, Func<Ty>>, &[Ty], &Lend) -> Program + 'a;
+
+/// Ownership around link (contract 4): marks what the generic fns lend (`lent`), since link
+/// keys an instance by those marks, has `link` link them by those marks and [`lent_slot`], then
+/// checks the linked instances and settles their passed places. `globals` names each top-level
+/// binding and whether it is a `var`.
 pub fn link(
     d: &dyn Signatures,
-    whole: &Whole,
-    answered: Answered,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
     tys: &mut [Ty],
     globals: &[(String, bool)],
-    events: bool,
+    link: &Linker<'_>,
 ) -> (Program, Owned) {
     use cpl_next_ir::verify::{all, callees, instances, Stage};
-    let Answered { deferred, adds } = answered;
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
     lent::mark(d, funcs, tys, &mutable);
-    let roots = cpl_next_link::Roots {
-        fns: funcs.keys().cloned().collect(),
-        globals: (0..tys.len()).map(cpl_next_ir::whole::GlobalId).collect(),
-    };
-    let answers = Answers {
-        whole,
-        deferred,
-        globals: tys,
-    };
-    let inputs = cpl_next_link::Inputs {
-        sigs: d,
-        fns: &*funcs,
-        sums: adds,
-        checked: &answers,
-    };
-    let mut prog = cpl_next_link::link(inputs, &roots, &lent_slot, events);
+    let mut prog = link(funcs, tys, &lent_slot);
     let fast = callees(&prog.insts);
     prog.errors.extend(generic);
     prog.errors.extend(all(
