@@ -16,25 +16,27 @@ pub use drops::expand_calls;
 mod inst;
 mod lent;
 
+/// The variable a place starts at: a top-level one, or a local of the instance.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-enum Root {
+pub enum Root {
     Global(usize),
     Local(usize),
 }
 /// A variable and a path under it. An element at a computed key is the whole container; one at
 /// a literal key is apart from the container's other literal keys (R05.8.2).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
-struct Pl {
-    root: Root,
-    path: Vec<Step>,
+pub struct Pl {
+    pub root: Root,
+    pub path: Vec<Step>,
 }
 impl Pl {
     fn whole(root: Root) -> Pl {
         Pl { root, path: vec![] }
     }
 }
+/// One step under a variable: a field, or an element at a literal key.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-enum Step {
+pub enum Step {
     Field(usize),
     Key(i64),
 }

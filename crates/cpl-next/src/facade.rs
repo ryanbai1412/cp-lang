@@ -302,7 +302,13 @@ impl Session {
                 let (h, roots) = (&self.snapshot.0, self.snapshot.roots(id));
                 let mut f = crate::front(&h.std, text, &roots, h.judge.as_ref(), h.checks);
                 match crate::back(&mut f, false) {
-                    Some((_, _, binds)) => binds.iter().map(bound_line).collect(),
+                    Some((prog, _, binds)) => {
+                        let globals: Vec<String> =
+                            f.t.globals.iter().map(|g| g.name.clone()).collect();
+                        (binds.iter())
+                            .map(|b| bound_line(&prog, &globals, b))
+                            .collect()
+                    }
                     None => return Err(Arc::from(f.diags)),
                 }
             }

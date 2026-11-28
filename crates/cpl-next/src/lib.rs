@@ -727,13 +727,33 @@ pub struct Unit {
     pub lowered: bool,
 }
 
-/// `b` as `--dump-own` prints it: the fn and instance, the binding, its frozen and lent places.
-fn bound_line(b: &own::Bound) -> String {
-    let (fr, le) = (b.frozen.join(", "), b.lent.join(", "));
-    format!(
-        "{}#{} {}: frozen [{fr}] lent [{le}]\n",
-        b.fn_name, b.inst, b.local
-    )
+/// `b` as `--dump-own` prints it: the fn and instance, the binding, its frozen and lent places,
+/// each named by its variable (`$` and an index for a temp) and then its path.
+fn bound_line(p: &inst::Program, globals: &[String], b: &own::Bound) -> String {
+    let f = &p.insts[b.inst];
+    let place = |pl: &own::Pl| {
+        let mut out = match pl.root {
+            own::Root::Local(l) => match f.names.get(l) {
+                Some(n) if !n.is_empty() => n.clone(),
+                _ => format!("${l}"),
+            },
+            own::Root::Global(g) => (globals.get(g).cloned()).unwrap_or_else(|| format!("$g{g}")),
+        };
+        for s in &pl.path {
+            match s {
+                own::Step::Field(k) => out.push_str(&format!(".{k}")),
+                own::Step::Key(k) => out.push_str(&format!("[{k}]")),
+            }
+        }
+        out
+    };
+    let all = |ps: &[own::Pl]| ps.iter().map(place).collect::<Vec<_>>().join(", ");
+    let local = place(&own::Pl {
+        root: b.local,
+        path: Vec::new(),
+    });
+    let (fr, le) = (all(&b.frozen), all(&b.lent));
+    format!("{}#{} {local}: frozen [{fr}] lent [{le}]\n", f.name, b.inst)
 }
 
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
