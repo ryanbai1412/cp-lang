@@ -5,6 +5,7 @@
 //! sits in its file is `item_at(ItemId)`, the only answer a line added above it changes.
 use crate::db::{Db, DbError, Input, Query};
 use cpl_contract::{Definition, FileId};
+use cpl_diag::Diagnostic;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_syntax::ast::{self, AstNode};
 use cpl_next_syntax::{GreenNode, SyntaxNode};
@@ -79,21 +80,34 @@ fn flatten(
     }
 }
 
-/// `parse(FileId)`: the file's green tree.
+/// A file's syntax: its green tree and what was wrong with its text, in file positions.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Parsed {
+    pub green: GreenNode,
+    pub diagnostics: Arc<[Diagnostic]>,
+}
+
+/// `parse(FileId)`: the file's green tree and its syntax errors.
 pub struct Parse;
 impl Query for Parse {
     type Key = FileId;
-    type Value = Option<GreenNode>;
+    type Value = Option<Parsed>;
     const NAME: &'static str = "parse";
     fn compute(db: &Db, file: &FileId) -> Result<Self::Value, DbError> {
         let text = db.input::<Source>(file)?;
-        Ok(text.map(|t| cpl_next_syntax::parse(&t).root.green().clone()))
+        Ok(text.map(|t| {
+            let file = cpl_next_syntax::parse(&t);
+            Parsed {
+                green: file.root.green().clone(),
+                diagnostics: file.diagnostics.into(),
+            }
+        }))
     }
 }
 
 /// The items of `file`, each with its id, in file order.
 fn item_nodes(db: &Db, file: &FileId) -> Result<Vec<(ItemId, SyntaxNode)>, DbError> {
-    let Some(green) = db.get::<Parse>(file)? else {
+    let Some(Parsed { green, .. }) = db.get::<Parse>(file)? else {
         return Ok(Vec::new());
     };
     let module = db

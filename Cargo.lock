@@ -288,7 +288,9 @@ dependencies = [
  "cpl-config",
  "cpl-contract",
  "cpl-diag",
+ "cpl-next-db",
  "cpl-next-ir",
+ "cpl-next-syntax",
  "cpl-syntax",
 ]
 

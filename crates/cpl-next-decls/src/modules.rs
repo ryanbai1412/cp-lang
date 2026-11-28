@@ -6,18 +6,22 @@
 //! resolves on its receiver's type, wherever the program spells it (R11.3.4). Libraries get
 //! no prelude (R11.3.1).
 use crate::diag::Msg;
+use cpl_contract::FileId;
 use cpl_diag::Span;
+use cpl_next_db::db::Db;
+use cpl_next_db::items::{self as queries, ItemAt, ItemOf, ModuleFile, ModulePath, Parse, Source};
 use cpl_next_ir::ids::{ItemId, SourceId};
-use cpl_syntax::ast::{Stmt, StmtKind};
+use cpl_next_syntax::ast::{self, AstNode};
+use cpl_next_syntax::{NodeKind, SyntaxNode};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// An item as the parser split it: its path and its statements, whose spans count from the
-/// item's start.
+/// An item as the parser split it: its path and its syntax, rooted at the item so that its
+/// spans count from the item's start.
 pub struct Item {
     pub id: ItemId,
-    pub stmts: Vec<Stmt>,
+    pub item: ast::Item,
 }
 
 type Items = Vec<Item>;
@@ -106,13 +110,14 @@ impl Parsed {
         });
         inline.chain(std::iter::once((self.text.clone(), self.module())))
     }
-    fn new(name: &str, text: Arc<str>) -> Parsed {
+    /// Module `name`, whose text `file` holds, read through `db`'s item queries.
+    fn new(db: &Db, file: FileId, name: &str, text: Arc<str>) -> Parsed {
         let FileItems {
             items,
             starts,
             unread,
             inline,
-        } = parse(name, &text);
+        } = parse(db, file, name, text.clone());
         Parsed {
             text: Text::new(name, text, starts),
             items: Arc::new(items),
@@ -155,9 +160,13 @@ impl Std {
         files.sort();
         let placed = std::iter::once((CORE.to_string(), CORE_TEXT.to_string())).chain(files);
         // Each module is read alone, so they are parsed side by side.
+        let db = &Db::default();
         let modules: Vec<Parsed> = std::thread::scope(|scope| {
             let parsing: Vec<_> = placed
-                .map(|(name, text)| scope.spawn(move || Parsed::new(&name, text.into())))
+                .map(|(name, text)| {
+                    let file = FileId::new(&std_path(&name));
+                    scope.spawn(move || Parsed::new(db, file, &name, text.into()))
+                })
                 .collect();
             (parsing.into_iter())
                 .map(|p| p.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))
@@ -168,11 +177,9 @@ impl Std {
             .collect::<HashMap<_, _>>();
         let mut prelude = HashMap::new();
         if let Some(p) = index.get("std.prelude").map(|i| &modules[*i]) {
-            for (module, s, _) in uses(&p.items) {
-                if let StmtKind::Use { names, .. } = &s.kind {
-                    for n in names {
-                        prelude.insert(n.text.clone(), module.clone());
-                    }
+            for (module, u, _) in uses(&p.items) {
+                for n in u.names().iter().flat_map(ast::UseNames::names) {
+                    prelude.insert(n.text().to_string(), module.clone());
                 }
             }
         }
@@ -312,30 +319,26 @@ impl Roots {
         let (_, root) = self.0.iter().find(|(n, _)| n == lib)?;
         Some(root.join(format!("{}.{SOURCE_EXT}", rest.replace('.', "/"))))
     }
-    fn source(&self, name: &str) -> Option<String> {
-        std::fs::read_to_string(self.path(name)?).ok()
+    fn source(&self, name: &str) -> Option<(PathBuf, String)> {
+        let path = self.path(name)?;
+        let text = std::fs::read_to_string(&path).ok()?;
+        Some((path, text))
     }
 }
 
 /// Each `use` line's module, the line, and where it is written.
-fn uses(items: &[Item]) -> impl Iterator<Item = (String, &Stmt, SourceId)> {
-    items
-        .iter()
-        .flat_map(|it| it.stmts.iter().map(move |s| (&it.id, s)))
-        .filter_map(|(id, s)| match &s.kind {
-            StmtKind::Use { path, .. } => Some((
-                path.iter()
-                    .map(|n| n.text.as_str())
-                    .collect::<Vec<_>>()
-                    .join("."),
-                s,
-                SourceId {
-                    item: id.clone(),
-                    span: s.span,
-                },
-            )),
-            _ => None,
-        })
+fn uses(items: &[Item]) -> impl Iterator<Item = (String, ast::UseDecl, SourceId)> + '_ {
+    items.iter().filter_map(|it| match it.item.decl()? {
+        ast::Decl::Use(u) => {
+            let path = u.path().map(|t| t.text().to_string());
+            let at = SourceId {
+                item: it.id.clone(),
+                span: u.syntax().span(),
+            };
+            Some((path.collect::<Vec<_>>().join("."), u, at))
+        }
+        _ => None,
+    })
 }
 
 /// What [`parse`] reads from one file.
@@ -349,124 +352,127 @@ struct FileItems {
     inline: Vec<(String, String, Arc<Items>)>,
 }
 
-/// A module of the file whose statements [`parse`] has yet to read.
-struct Open {
-    /// The module's name.
-    at: String,
-    body: Vec<Stmt>,
-    /// An inline module's path within the file and the module it is written in.
-    path: Option<(String, String)>,
-}
-
-/// The items of module `module`, where each starts in `text`, each syntax error with its code
-/// and where it is, and the places the parser could not read.
-fn parse(module: &str, text: &str) -> FileItems {
-    let p = cpl_syntax::parse_file(text);
-    let file_name = module;
-    let module: Arc<str> = module.into();
-    let mut nth: HashMap<String, u32> = HashMap::new();
-    let (mut items, mut starts, mut poisoned) = (Vec::new(), Vec::new(), Vec::new());
-    let mut inline = Vec::new();
-    for (o, it) in p.items {
-        let mut stmts = it.stmts;
-        let mut id_of = |name: String| {
-            let n = nth.entry(name.clone()).or_default();
-            let id = ItemId {
-                module: module.clone(),
-                name: name.into(),
-                nth: *n,
+/// The items of module `module`, whose text `file` holds, where each starts in the text, each
+/// syntax error with its code and where it is, and the places the parser could not read. The
+/// items and their ids are `db`'s `items`, `item` and `item_at` answers.
+fn parse(db: &Db, file: FileId, module: &str, text: Arc<str>) -> FileItems {
+    let mut out = FileItems {
+        items: Vec::new(),
+        starts: HashMap::new(),
+        unread: (Vec::new(), Vec::new()),
+        inline: Vec::new(),
+    };
+    let read = || -> Result<_, cpl_next_db::db::DbError> {
+        db.set::<Source>(file.clone(), text)?;
+        db.set::<ModulePath>(file.clone(), module.into())?;
+        db.set::<ModuleFile>(module.into(), file.clone())?;
+        let mut items = Vec::new();
+        for id in db.get::<queries::Items>(&file)? {
+            let (Some(it), Some(at)) = (db.get::<ItemOf>(&id)?, db.get::<ItemAt>(&id)?) else {
+                continue;
             };
-            *n += 1;
-            starts.push((id.clone(), o));
-            id
-        };
-        // An inline `mod m:` is a module of its own (R11.1.3). Its items keep the file's
-        // places, so each is an item of the file whose path starts with the module's.
-        let mut open = vec![Open {
-            at: file_name.to_string(),
-            body: std::mem::take(&mut stmts),
-            path: None,
-        }];
-        let mut top = Vec::new();
-        while let Some(Open { at, body, path }) = open.pop() {
-            let mut own = Vec::new();
-            for mut s in body {
-                crate::synth::trait_fields(&mut s);
-                if let StmtKind::Mod { name, body } = &mut s.kind {
-                    let inner = match at == PROGRAM {
-                        true => name.text.clone(),
-                        false => format!("{at}.{}", name.text),
-                    };
-                    let path = (path.as_ref())
-                        .map_or(name.text.clone(), |(p, _)| format!("{p}.{}", name.text));
-                    open.push(Open {
-                        at: inner,
-                        body: std::mem::take(&mut body.stmts),
-                        path: Some((path, at.clone())),
-                    });
-                }
-                match &path {
-                    None => top.push(s),
-                    Some((p, _)) => {
-                        let name = path_name(text, o, std::slice::from_ref(&s));
-                        own.push(Item {
-                            id: id_of(format!("{p}.{name}")),
-                            stmts: vec![s],
-                        });
-                    }
-                }
-            }
-            if let Some((_, within)) = path {
-                inline.push((at, within, Arc::new(own)));
+            if let Some(item) = ast::Item::cast(SyntaxNode::new_root(it.green)) {
+                items.push((Item { id, item }, at));
             }
         }
-        let id = id_of(path_name(text, o, &top));
-        poisoned.extend((it.poisoned.iter()).map(|s| SourceId {
-            item: id.clone(),
-            span: *s,
-        }));
-        items.push(Item { id, stmts: top });
+        let diags = db.get::<Parse>(&file)?.map(|p| p.diagnostics);
+        Ok((items, diags.unwrap_or_default()))
+    };
+    let (items, diags) = match read() {
+        Ok(r) => r,
+        Err(e) => {
+            out.unread.0.push(Msg::internal(e.to_string()));
+            return out;
+        }
+    };
+    let mut starts: Vec<(ItemId, u32)> = items.iter().map(|(i, at)| (i.id.clone(), *at)).collect();
+    starts.sort_by_key(|(_, at)| *at);
+    for (it, _) in &items {
+        out.unread
+            .1
+            .extend(unread(it.item.syntax()).map(|span| it.id.at(span)));
     }
-    let file = ItemId::file(module);
+    // `items` is in the order `items(FileId)` gives: an inline `mod m:` (R11.1.3), then its
+    // body's items, named `m.name`, which are a module of their own.
+    let mut items = items.into_iter().map(|(i, _)| i);
+    let mut inline = Vec::new();
+    while let Some(it) = items.next() {
+        let inner = it.item.decl().and_then(|d| match d {
+            ast::Decl::Mod(m) => Some(m),
+            _ => None,
+        });
+        if let Some(m) = inner {
+            take_mod(&m, &mut items, module, &mut inline);
+        }
+        out.items.push(it);
+    }
+    out.inline = inline;
+    let file_id = ItemId::file(module.into());
     // A file's place, as the item it falls in.
     let within = |span: Span| match starts.iter().rev().find(|(_, o)| *o <= span.start) {
-        Some((id, o)) => SourceId {
-            item: id.clone(),
-            span: Span::new(span.start - o, span.end - o),
-        },
-        None => SourceId {
-            item: file.clone(),
-            span,
-        },
+        Some((id, o)) => id.at(Span::new(span.start - o, span.end - o)),
+        None => file_id.at(span),
     };
-    let diags = (p.diagnostics.into_iter())
-        .map(|d| Msg {
-            help: d.help,
-            ..Msg::at(within(d.span), Msg::verdict(d.code, d.message))
-        })
-        .collect();
-    FileItems {
-        items,
-        starts: starts.into_iter().collect(),
-        unread: (diags, poisoned),
-        inline,
-    }
+    out.unread.0.extend(diags.iter().map(|d| {
+        Msg {
+            help: d.help.clone(),
+            fixes: (d.fixes.iter())
+                .map(|f| cpl_next_ir::msg::Fix {
+                    title: f.title.clone(),
+                    edits: (f.edits.iter())
+                        .map(|(s, t)| (within(*s), t.clone()))
+                        .collect(),
+                })
+                .collect(),
+            ..Msg::at(within(d.span), Msg::verdict(d.code, d.message.clone()))
+        }
+    }));
+    out.starts = starts.into_iter().collect();
+    out
 }
 
-/// The name in an item's path: what it declares, an impl's head as written, or nothing for a
-/// top-level statement.
-fn path_name(text: &str, start: u32, stmts: &[Stmt]) -> String {
-    let head = |s: &Stmt| {
-        let line = text.get((start + s.span.start) as usize..).unwrap_or("");
-        let line = line.lines().next().unwrap_or("").trim_end();
-        line.strip_suffix(':').unwrap_or(line).to_string()
+/// The items of inline module `m`, written in module `at`: each next in `items`, with the
+/// modules inside it after it.
+fn take_mod(
+    m: &ast::ModDecl,
+    items: &mut impl Iterator<Item = Item>,
+    at: &str,
+    inline: &mut Vec<(String, String, Arc<Items>)>,
+) {
+    let name = m.name().map_or(String::new(), |t| t.text().to_string());
+    let module = match at == PROGRAM {
+        true => name,
+        false => format!("{at}.{name}"),
     };
-    (stmts.iter())
-        .find_map(|s| match &s.kind {
-            StmtKind::Impl { .. } => Some(head(s)),
-            _ => crate::decls::item_name(s).map(str::to_string),
-        })
-        .unwrap_or_default()
+    let slot = inline.len();
+    inline.push((module.clone(), at.to_string(), Arc::new(Vec::new())));
+    let mut own = Vec::new();
+    for _ in m.items() {
+        let Some(it) = items.next() else {
+            break;
+        };
+        if let Some(ast::Decl::Mod(inner)) = it.item.decl() {
+            take_mod(&inner, items, &module, inline);
+        }
+        own.push(it);
+    }
+    inline[slot].2 = Arc::new(own);
+}
+
+/// The places in `item` the parser could not read, item-relative, leaving out the items of an
+/// inline module's body, which are items of their own.
+fn unread(item: &SyntaxNode) -> impl Iterator<Item = Span> {
+    let mut out = Vec::new();
+    let mut stack: Vec<SyntaxNode> = item.children().collect();
+    while let Some(n) = stack.pop() {
+        match n.kind() {
+            NodeKind::Item => {}
+            NodeKind::Error => out.push(n.span()),
+            _ => stack.extend(n.children()),
+        }
+    }
+    out.sort_by_key(|s| (s.start, s.end));
+    out.into_iter()
 }
 
 pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
@@ -476,7 +482,8 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
     }
     let mut errors = Vec::new();
     let prelude = std.prelude.clone();
-    let program = Parsed::new(PROGRAM, user.into());
+    let db = &Db::default();
+    let program = Parsed::new(db, FileId::new(PROGRAM), PROGRAM, user.into());
     // A module and, for the program's own `use` lines, where it is named.
     let mut queue: VecDeque<(String, Option<SourceId>)> = uses(&program.items)
         .map(|(m, _, at)| (m, Some(at)))
@@ -520,7 +527,10 @@ pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
         }
         let g = match is_std(&m) {
             true => std.index.get(&m).copied().map(Got::Std),
-            false => (roots.source(&m)).map(|text| Got::Lib(Parsed::new(&m, text.into()))),
+            false => (roots.source(&m)).map(|(path, text)| {
+                let file = FileId::new(&path.display().to_string());
+                Got::Lib(Parsed::new(db, file, &m, text.into()))
+            }),
         };
         let Some(g) = g else {
             // `use std.rand.Rng` is an item of `std.rand`.
@@ -657,7 +667,8 @@ mod tests {
         let below = "struct S\nimpl Show for S:\n    fn show(self) -> Str: \"s\"\n\nfn g() -> Int:\n    let x = 2\n    x\n";
         let above = format!("fn f() -> Int: 1\n\n{below}");
         let items = |t: &str| {
-            let FileItems { items, starts, .. } = parse(PROGRAM, t);
+            let FileItems { items, starts, .. } =
+                parse(&Db::default(), FileId::new(PROGRAM), PROGRAM, t.into());
             (items.into_iter())
                 .filter(|i| &*i.id.name != "f")
                 .map(|i| {
@@ -671,7 +682,7 @@ mod tests {
         assert_eq!(&*a[1].0.id.name, "impl Show for S");
         for ((x, xs), (y, ys)) in a.iter().zip(&b) {
             assert_eq!(x.id, y.id);
-            assert_eq!(x.stmts, y.stmts);
+            assert_eq!(x.item.syntax().green(), y.item.syntax().green());
             assert_eq!(xs + 18, *ys);
         }
     }
@@ -682,7 +693,9 @@ mod tests {
         let heads = |t: &str| {
             let m = Module {
                 name: PROGRAM.into(),
-                items: Arc::new(parse(PROGRAM, t).items),
+                items: Arc::new(
+                    parse(&Db::default(), FileId::new(PROGRAM), PROGRAM, t.into()).items,
+                ),
                 within: None,
             };
             crate::items::items(&m)

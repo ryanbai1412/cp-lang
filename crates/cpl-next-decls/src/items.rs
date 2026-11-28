@@ -3,10 +3,9 @@
 //! item, leaves the answer equal, so nothing that reads it is redone.
 use crate::modules::Module;
 use cpl_next_ir::ids::ItemId;
-use cpl_syntax::ast::{Stmt, StmtKind};
+use cpl_next_syntax::ast;
 
-/// An item, by its path, and each declaration it holds: lines a blank line does not part are
-/// one item, so `fn floor`, `fn ceil` and `fn round` on three lines are one.
+/// An item, by its path, and the declaration it holds.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Head {
     pub id: ItemId,
@@ -32,7 +31,6 @@ pub enum Kind {
     Const,
     Context,
     Domain,
-    Law,
     Use,
     Mod,
     /// A top-level statement: a `let`, an expression, an assignment.
@@ -52,30 +50,30 @@ pub fn items(m: &Module) -> Vec<Head> {
     (m.items.iter())
         .map(|it| Head {
             id: it.id.clone(),
-            decls: it.stmts.iter().map(decl).collect(),
+            decls: vec![decl(&it.item)],
         })
         .collect()
 }
 
-fn decl(s: &Stmt) -> Decl {
-    let kind = match &s.kind {
-        StmtKind::Fn(_) => Kind::Fn,
-        StmtKind::Struct(_) => Kind::Struct,
-        StmtKind::Enum(_) => Kind::Enum,
-        StmtKind::Trait { .. } => Kind::Trait,
-        StmtKind::Impl { .. } => Kind::Impl,
-        StmtKind::TypeAlias { .. } => Kind::Alias,
-        StmtKind::Const { .. } => Kind::Const,
-        StmtKind::Context { .. } => Kind::Context,
-        StmtKind::Domain { .. } => Kind::Domain,
-        StmtKind::Law { .. } => Kind::Law,
-        StmtKind::Use { .. } => Kind::Use,
-        StmtKind::Mod { .. } => Kind::Mod,
-        _ => Kind::Stmt,
+fn decl(item: &ast::Item) -> Decl {
+    use ast::Decl as D;
+    let kind = match item.decl() {
+        Some(D::Fn(_) | D::Extern(_)) => Kind::Fn,
+        Some(D::Struct(_)) => Kind::Struct,
+        Some(D::Enum(_)) => Kind::Enum,
+        Some(D::Trait(_)) => Kind::Trait,
+        Some(D::Impl(_)) => Kind::Impl,
+        Some(D::TypeAlias(_)) => Kind::Alias,
+        Some(D::Const(_)) => Kind::Const,
+        Some(D::Context(_)) => Kind::Context,
+        Some(D::Domain(_)) => Kind::Domain,
+        Some(D::Use(_)) => Kind::Use,
+        Some(D::Mod(_)) => Kind::Mod,
+        None => Kind::Stmt,
     };
     Decl {
         kind,
-        name: crate::decls::item_name(s).map(str::to_string),
-        public: s.public,
+        name: item.name().map(|t| t.text().to_string()),
+        public: item.is_pub(),
     }
 }
