@@ -1584,7 +1584,7 @@ fn scope_completion(
             if !seen.insert(entry.name.clone()) {
                 continue;
             }
-            let (span, new_text) = cpl_facade::today::import_edit(text, module, name);
+            let (span, new_text) = cpl_diag::import_edit(text, module, name);
             let mut item = item_json(&entry, rank(&entry, 4));
             if let Value::Object(members) = &mut item {
                 members.insert(

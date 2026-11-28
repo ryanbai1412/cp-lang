@@ -314,7 +314,7 @@
   "next_wrong": 1454,
   "next_not_passing": 2270,
   "end_state_unmeasured": 23,
-  "facade_today_uses": 101,
+  "facade_today_uses": 100,
   "tool_compiler_deps": 0,
   "end_state_broken": 0,
   "next_cases_removed": 0,
