@@ -1,5 +1,13 @@
 // expect: ok, output "ok"
-use std.laws.{Sample}
+// model: samples_of
+use std.laws.{Sample, samples_of}
+
+enum Color:
+    Red
+    Green
+    Blue
+
+type Small = 1..=9
 
 fn all<T: Sample>() -> List<T> = T.samples()
 
@@ -24,4 +32,9 @@ for i in 0..small.len: assert small[i] == i
 assert all<Int>().len == 13 and all<Int>()[0] == 0
 assert all<Bool>().len == 2 and not all<Bool>()[0] and all<Bool>()[1]
 assert all<Char>()[0] == 'a' and all<Str>()[0] == "" and all<F64>()[5] == -3.25
+// A domain's samples are its positions, in walk order; a range's own impl wins over the domain's.
+let colors = samples_of<Color>()
+assert colors.len == 3 and colors[0] == Color.Red and colors[2] == Color.Blue
+assert samples_of<Small>().len == 9 and samples_of<Small>()[0] == 1
+assert samples_of<Int>().len == 13
 print("ok")

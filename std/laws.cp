@@ -40,3 +40,13 @@ impl Sample for _..=_:
         out.sort()
         out.dedup()
         out
+
+/// Every position of a domain, in its walk: an enum's variants, a declared domain's places.
+impl<D: Domain> Sample for D:
+    fn samples() -> List<D>:
+        var out = List<D>()
+        for k in 0..D.count: out.push(D.nth(k))
+        out
+
+/// `T.samples()` for a type written as an argument: what `cpl laws` walks `x: T` with.
+pub fn samples_of<T: Sample>() -> List<T> = T.samples()
