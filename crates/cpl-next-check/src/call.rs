@@ -1133,14 +1133,13 @@ impl Cx<'_> {
         }
         self.solve(false);
         let want = fd.params.first().map(|p| sub.ty(&p.ty));
-        let lam = super::lambda::Lam {
-            pats: vec![t.pat],
-            tys: vec![None],
-            muts: vec![false],
-            ret: None,
-            body: next::ArmBody::Expr(t.test),
+        let param = super::lambda::LamParam {
+            pat: Some(t.pat),
+            ty: None,
+            mutable: false,
         };
-        let test = self.lambda(lam, want.as_ref(), span);
+        let body = super::lambda::LamBody::Arm(next::ArmBody::Expr(t.test));
+        let test = self.lambda_of(vec![param], None, body, want.as_ref(), span);
         vec![
             CallArg::held(None, seq, iter_at),
             CallArg::held(None, test, span),

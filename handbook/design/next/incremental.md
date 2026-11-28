@@ -343,6 +343,11 @@ Order:
 1. The views and their map implementations in `cpl-next-decls`. Then
    `cycles`, `plain`, `fresh_dom`, `supertraits_unmet` and `body_type`
    read them. That takes the counter from 13 to 6.
+   `Decls` implementing a view is the stand-in until the database serves
+   it per query: `next_views_served_by_decls` counts those impls, shrinks
+   only, and reaches 0 at the incremental landing. The checker's `Cx`
+   holds only views (`Items`, `ImplChoice`, `Names`, `Shapes`, `RoleRows`,
+   `FnFacts`, `DomFacts`, `Consts`, `Bodies`) and `Syms`, never `&Decls`.
 2. `body(ItemId)` (step 3 below).
 3. `generic(ItemId)` and `lent(ItemId)`. `Whole` goes: `domain`,
    `global` and `diagnostics` replace its fields one by one, each
