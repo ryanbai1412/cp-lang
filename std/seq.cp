@@ -671,15 +671,6 @@ pub fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>:
         if let p = prev: yield (p, x)
         prev = Some(x)
 
-/// The sequence's elements from its start: `iter`, by the name the sequence types give it.
-///
-/// cost: what `iter` costs
-/// empty: `Heap<Int>().each().collect() == []`
-/// traps: never
-/// example: `Heap([3, 1, 2]).each().collect() == [1, 2, 3]`
-pub fn each<S: Seq<T>, T>(self: S) -> yields T:
-    for x in self.iter(): yield x
-
 /// Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`,
 /// `(20, 30)`. \(O(n^2)\) to walk; for adjacent pairs use `adjacent`.
 ///
@@ -1440,13 +1431,22 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 
 /// A sequence: `for x in s` walks it in order, and each `for` runs it from the start
 /// (R07.3.1). Generators, adapters, collections and ranges implement it (decision 509).
-/// It fills the iteration role (R11.6.1): `for` walks a value through its one method, `iter`.
+/// It fills the iteration role (R11.6.1): `for` walks a value through `each`, which a type may
+/// write itself and otherwise walks `iter`.
 @role(iteration)
 pub trait Seq<T>:
     /// Walks the sequence from its start.
     @lint(index_only_loop, from: "for i in 0..self.len:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
     @lint(index_only_loop, from: "for i in self.indices:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
     fn iter(self) -> yields T
+    /// The sequence's elements from its start: `iter`, unless the type writes its own walk.
+    ///
+    /// cost: what `iter` costs
+    /// empty: `Heap<Int>().each().collect() == []`
+    /// traps: never
+    /// example: `Heap([3, 1, 2]).each().collect() == [1, 2, 3]`
+    fn each(self) -> yields T:
+        for x in self.iter(): yield x
 
 /// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
 /// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the

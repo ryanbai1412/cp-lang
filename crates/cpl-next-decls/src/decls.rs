@@ -668,11 +668,12 @@ impl Decls {
                 .collect(),
         )
     }
-    /// The iteration role's walk (R11.6.1): the one yielding method of the trait filling it.
+    /// The iteration role's walk (R11.6.1): the yielding method of the trait filling it that
+    /// every impl writes, the one without a default body.
     pub fn iteration_walk(&self) -> Option<(&str, FnId)> {
         let tr = &self.traits[self.roles.iteration?.0];
         (tr.methods.iter())
-            .find(|(_, f)| self.f(**f).region.is_some())
+            .find(|(_, f)| self.f(**f).region.is_some() && matches!(self.f(**f).body, FnBody::None))
             .map(|(n, f)| (self.text(*n), *f))
     }
     /// The id of a name some declaration gave, or `None` when none did.
