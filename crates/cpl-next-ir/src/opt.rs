@@ -7,49 +7,104 @@
 use crate::facts::{self, Proved};
 use crate::ir::*;
 use crate::prog::{CTy, Program};
+use std::collections::HashSet;
 
-pub fn optimize(funcs: &[Func<CTy>], p: &Program) -> (Vec<Func<CTy>>, Vec<Proved>) {
-    let (mut out, proved) = facts::prove(funcs, p.main);
-    localize(&mut out, &p.globals, p.main);
-    for f in &mut out {
-        let mut uses = vec![0usize; f.locals.len()];
-        for (l, _) in &f.params {
-            uses[*l] = usize::MAX;
-        }
-        visit_places(&mut f.body, &mut |p| {
-            if let Place::Local(l) = p.root_mut() {
-                uses[*l] = uses[*l].saturating_add(1);
-            }
-        });
-        let flags: Vec<bool> = (f.locals.iter().zip(&uses))
-            .map(|(t, &n)| *t == CTy::Bool && n == 3)
-            .collect();
-        fold(&mut f.body, &flags);
-        let plain: Vec<bool> = f.locals.iter().map(|t| p.plain(t)).collect();
-        forward(&mut f.body, &uses, &plain);
-    }
-    (out, proved)
+/// What every instance's optimization reads of the whole program (`incremental.md`,
+/// `optimized(instance)`): the globals the proofs read, and the globals a fn other than the entry
+/// names, which stay globals. Each instance has its part; the program's is their join.
+#[derive(Default, Clone, PartialEq, Debug)]
+pub struct Shared {
+    pub facts: facts::Globals,
+    pub named: HashSet<usize>,
 }
-
-/// A scalar global no fn but the entry names is a local of the entry: the entry runs once, so
-/// its frame holds it as long as the program, and it starts zero as a global does. A global
-/// with storage stays one, as ownership places no release for it in the entry's frame.
-fn localize(funcs: &mut [Func<CTy>], globals: &[CTy], main: usize) {
-    let mut local: Vec<Option<usize>> = globals.iter().map(|_| None).collect();
-    let mut named: Vec<bool> = globals.iter().map(|t| !scalar(t)).collect();
-    for (i, f) in funcs.iter_mut().enumerate() {
+impl Shared {
+    /// Instance `i`'s part, `main` the entry.
+    pub fn of(i: usize, f: &Func<CTy>, main: usize) -> Shared {
+        let mut named = HashSet::new();
         if i != main {
-            visit_places(&mut f.body, &mut |p| {
+            visit_places(&mut f.body.clone(), &mut |p| {
                 if let Place::Global(g) = p.root_mut() {
-                    named[*g] = true;
+                    named.insert(*g);
                 }
             });
         }
+        Shared {
+            facts: facts::Globals::of(i, f, main),
+            named,
+        }
     }
-    let m = &mut funcs[main];
+    pub fn add(&mut self, o: &Shared) {
+        self.facts.add(&o.facts);
+        self.named.extend(&o.named);
+    }
+}
+
+/// What optimizing one instance reads, by name: the program's `Shared` part, the globals'
+/// types, the entry, and whether a type is plain.
+pub struct Inputs<'a> {
+    pub shared: &'a Shared,
+    pub globals: &'a [CTy],
+    pub main: usize,
+    pub plain: &'a dyn Fn(&CTy) -> bool,
+}
+
+/// Instance `i`'s optimized IR from its canonical IR `f`, and the checks it proves.
+pub fn optimize_one(i: usize, f: &Func<CTy>, v: &Inputs) -> (Func<CTy>, Vec<Proved>) {
+    let (mut f, proved) = facts::prove(i, f, &v.shared.facts);
+    if i == v.main {
+        localize(&mut f, v.globals, &v.shared.named);
+    }
+    let mut uses = vec![0usize; f.locals.len()];
+    for (l, _) in &f.params {
+        uses[*l] = usize::MAX;
+    }
+    visit_places(&mut f.body, &mut |p| {
+        if let Place::Local(l) = p.root_mut() {
+            uses[*l] = uses[*l].saturating_add(1);
+        }
+    });
+    let flags: Vec<bool> = (f.locals.iter().zip(&uses))
+        .map(|(t, &n)| *t == CTy::Bool && n == 3)
+        .collect();
+    fold(&mut f.body, &flags);
+    let plain: Vec<bool> = f.locals.iter().map(|t| (v.plain)(t)).collect();
+    forward(&mut f.body, &uses, &plain);
+    (f, proved)
+}
+
+/// Every instance of `p` optimized, each from its own canonical IR and the join of their
+/// `Shared` parts.
+pub fn optimize(funcs: &[Func<CTy>], p: &Program) -> (Vec<Func<CTy>>, Vec<Proved>) {
+    let mut shared = Shared::default();
+    for (i, f) in funcs.iter().enumerate() {
+        shared.add(&Shared::of(i, f, p.main));
+    }
+    let plain = |t: &CTy| p.plain(t);
+    let v = Inputs {
+        shared: &shared,
+        globals: &p.globals,
+        main: p.main,
+        plain: &plain,
+    };
+    let mut proved = Vec::new();
+    let out = (funcs.iter().enumerate())
+        .map(|(i, f)| {
+            let (o, mut pr) = optimize_one(i, f, &v);
+            proved.append(&mut pr);
+            o
+        })
+        .collect();
+    (out, proved)
+}
+
+/// A scalar global no fn but the entry names is a local of the entry `m`: the entry runs once,
+/// so its frame holds it as long as the program, and it starts zero as a global does. A global
+/// with storage stays one, as ownership places no release for it in the entry's frame.
+fn localize(m: &mut Func<CTy>, globals: &[CTy], named: &HashSet<usize>) {
+    let mut local: Vec<Option<usize>> = globals.iter().map(|_| None).collect();
     visit_places(&mut m.body, &mut |p| {
         if let Place::Global(g) = *p.root_mut() {
-            if named[g] {
+            if named.contains(&g) || !scalar(&globals[g]) {
                 return;
             }
             let l = *local[g].get_or_insert_with(|| {
@@ -174,6 +229,60 @@ mod tests {
     }
     fn set(f: usize, v: bool) -> Stmt<CTy> {
         Stmt::Assign(Place::Local(f), e(EK::Bool(v)))
+    }
+
+    fn func(body: Vec<Stmt<CTy>>) -> Func<CTy> {
+        Func {
+            key: FuncKey::Main,
+            name: String::new(),
+            params: vec![],
+            n_captures: 0,
+            maker: None,
+            locals: vec![CTy::Int],
+            names: vec![],
+            vars: vec![],
+            views: vec![],
+            drops: vec![],
+            body,
+            ret: CTy::Int,
+            region: None,
+            line: 0,
+            sites: vec![],
+            origins: vec![],
+            shown: String::new(),
+            fast: None,
+            guards: vec![],
+            declared: vec![],
+        }
+    }
+
+    #[test]
+    fn a_global_another_fn_names_stays_a_global_and_one_it_does_not_becomes_a_local() {
+        let int = |p: Place| Expr {
+            kind: EK::Copy(p),
+            ty: CTy::Int,
+            site: 0,
+        };
+        let main = func(vec![Stmt::Assign(Place::Global(0), int(Place::Local(0)))]);
+        for names in [false, true] {
+            let other = func(match names {
+                true => vec![Stmt::Expr(int(Place::Global(0)))],
+                false => vec![Stmt::Expr(int(Place::Local(0)))],
+            });
+            let mut shared = Shared::default();
+            for (i, f) in [&main, &other].into_iter().enumerate() {
+                shared.add(&Shared::of(i, f, 0));
+            }
+            let plain = |_: &CTy| true;
+            let v = Inputs {
+                shared: &shared,
+                globals: &[CTy::Int],
+                main: 0,
+                plain: &plain,
+            };
+            let (m, _) = optimize_one(0, &main, &v);
+            assert_eq!(m.locals.len() == 1, names, "{m:?}");
+        }
     }
 
     #[test]

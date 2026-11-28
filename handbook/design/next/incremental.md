@@ -187,7 +187,7 @@ took something from them.
 | Query | Reads | A change to it comes from |
 |---|---|---|
 | `owned(instance)` | the instance's raw IR, its callees' `Summaries` | its own body, or a callee's summary |
-| `optimized(instance)` | its canonical IR, and for each callee it inlined that callee's key and hash | its own body, or a body it inlined |
+| `optimized(instance)` | its canonical IR, the program's `opt::Shared` (the join of every instance's part: globals an `AddrOf` reaches, globals a fn other than the entry writes or names), and for each callee it inlined that callee's key and hash | its own body, a body it inlined, or an instance starting or stopping touching a global that way |
 | `bytecode(instance)` | `optimized(instance)` | the same as `optimized` |
 | `cpp_fn(instance)` | `optimized(instance)` | the same as `optimized` |
 | `program(Job)` | every instance's key, `owned` and `optimized` | any instance's key changing, or one added or gone |

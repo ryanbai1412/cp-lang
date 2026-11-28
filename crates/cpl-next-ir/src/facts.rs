@@ -448,7 +448,8 @@ impl Pass<'_> {
 }
 
 /// Places whose address is taken or that are lent as a value: `(Some(fn), local)` or `(None, global)`.
-fn escaped(funcs: &[Func<CTy>]) -> HashSet<(Option<usize>, usize)> {
+/// The places an `AddrOf` or lend in instance `f` reaches: its locals, and globals as `None`.
+fn escaped(f: usize, func: &Func<CTy>) -> HashSet<(Option<usize>, usize)> {
     fn ex(e: &Expr<CTy>, f: usize, out: &mut HashSet<(Option<usize>, usize)>) {
         match &e.kind {
             EK::AddrOf(p) | EK::Lent(p) => match root(p) {
@@ -517,39 +518,55 @@ fn escaped(funcs: &[Func<CTy>]) -> HashSet<(Option<usize>, usize)> {
         }
     }
     let mut out = HashSet::new();
-    for (i, f) in funcs.iter().enumerate() {
-        st(&f.body, i, &mut out);
-    }
+    st(&func.body, f, &mut out);
     out
 }
 
-/// Canonical IR less the checks the facts prove, and those checks. `main` is the entry,
-/// which nothing calls.
-pub fn prove(funcs: &[Func<CTy>], main: usize) -> (Vec<Func<CTy>>, Vec<Proved>) {
-    let escaped = escaped(funcs);
-    let mut w = Writes::default();
-    for (i, f) in funcs.iter().enumerate() {
+/// What every instance's proofs read of the whole program: the globals some `AddrOf` reaches
+/// (a write through one names no place, so they are no atoms) and the globals a fn other than
+/// the entry writes (what a call may change). Each instance has its part; the program's is
+/// their join.
+#[derive(Default, Clone, PartialEq, Debug)]
+pub struct Globals {
+    pub escaped: HashSet<usize>,
+    pub foreign: HashSet<usize>,
+}
+impl Globals {
+    /// Instance `i`'s part, `main` the entry.
+    pub fn of(i: usize, f: &Func<CTy>, main: usize) -> Globals {
+        let escaped = (escaped(i, f).into_iter())
+            .filter_map(|(f, g)| f.is_none().then_some(g))
+            .collect();
+        let mut w = Writes::default();
         if i != main {
             w.block(&f.body);
         }
+        let foreign = (w.places.iter())
+            .filter_map(|p| match p {
+                Place::Global(g) => Some(*g),
+                _ => None,
+            })
+            .collect();
+        Globals { escaped, foreign }
     }
-    let foreign = (w.places.iter())
-        .filter_map(|p| match p {
-            Place::Global(g) => Some(*g),
-            _ => None,
-        })
-        .collect();
-    let mut proved = Vec::new();
-    let mut out = funcs.to_vec();
-    for (i, f) in out.iter_mut().enumerate() {
-        let mut pass = Pass {
-            func: i,
-            escaped: &escaped,
-            foreign: &foreign,
-            proved: Vec::new(),
-        };
-        pass.block(&mut f.body, Known::default());
-        proved.append(&mut pass.proved);
+    pub fn add(&mut self, o: &Globals) {
+        self.escaped.extend(&o.escaped);
+        self.foreign.extend(&o.foreign);
     }
-    (out, proved)
+}
+
+/// Instance `i`'s canonical IR less the checks the facts prove, and those checks, from its own
+/// body and the program's `g`.
+pub fn prove(i: usize, f: &Func<CTy>, g: &Globals) -> (Func<CTy>, Vec<Proved>) {
+    let mut escaped = escaped(i, f);
+    escaped.extend(g.escaped.iter().map(|&x| (None, x)));
+    let mut out = f.clone();
+    let mut pass = Pass {
+        func: i,
+        escaped: &escaped,
+        foreign: &g.foreign,
+        proved: Vec::new(),
+    };
+    pass.block(&mut out.body, Known::default());
+    (out, pass.proved)
 }
