@@ -3,8 +3,8 @@
 //! leaves the checker through it, and a tool never matches a type's variants.
 use super::*;
 use cpl_contract::Prim;
-use cpl_next_decls::views::Items;
-use decls::Impls;
+use cpl_next_decls::views::{ImplChoice, Items};
+use decls::ImplIdx;
 
 /// A type in an item's table: `n` is its place in that item's walk, so it does not depend on
 /// the order anything is asked in.
@@ -73,11 +73,12 @@ pub trait TypeFacts {
     fn members(&self, t: &TyId) -> Vec<Sym>;
 }
 
-/// The view over the checked program's item tables.
+/// The view over the checked program's item tables: every part answers one key.
 pub struct TypeView<'a> {
-    pub d: &'a Decls,
-    /// Decls' impls with the checker's own rows, as its lookup reads them.
-    pub impls: Impls<'a>,
+    pub items: &'a dyn Items,
+    pub impls: &'a dyn ImplChoice,
+    /// The `?T` struct, which a type shows as `?T`.
+    pub option: Option<StructId>,
     pub domains: &'a [DomInfo],
     pub of: &'a dyn Fn(&ItemId) -> Option<&'a ItemTypes>,
 }
@@ -101,16 +102,17 @@ impl TypeFacts for TypeView<'_> {
     fn text(&self, t: &TyId) -> Option<String> {
         let (table, ty) = self.ty(t)?;
         let generics: Vec<String> = (table.generics.iter())
-            .map(|g| self.d.text(*g).to_string())
+            .map(|g| self.items.text(*g).to_string())
             .collect();
-        Some(show_ty(
-            self.d,
-            self.d.roles().option,
+        let shown = show_ty(
+            self.items,
+            self.option,
             self.domains,
             &generics,
             &|t| t.clone(),
             ty,
-        ))
+        );
+        Some(shown)
     }
 
     fn range(&self, t: &TyId) -> Option<(Option<i64>, Option<i64>)> {
@@ -136,40 +138,36 @@ impl TypeFacts for TypeView<'_> {
         let Some((table, _)) = self.ty(t) else {
             return Vec::new();
         };
-        (table.args(t.n).into_iter())
-            .map(|n| TyId {
-                item: t.item.clone(),
-                n,
-            })
-            .collect()
+        let id = |n| TyId {
+            item: t.item.clone(),
+            n,
+        };
+        table.args(t.n).into_iter().map(id).collect()
     }
 
     fn implements(&self, t: &TyId, tr: TraitId) -> bool {
         self.ty(t)
-            .is_some_and(|(_, ty)| self.impls.has_impl(ty, tr))
+            .is_some_and(|(_, ty)| self.impls.impl_for(tr, ty).is_some())
     }
 
     fn members(&self, t: &TyId) -> Vec<Sym> {
         let Some((_, ty)) = self.ty(t) else {
             return Vec::new();
         };
-        let d = self.d;
+        let items = self.items;
         let mut out = Vec::new();
         if let Ty::Struct(id, ..) = ty {
-            let s = Items::s(d, *id);
+            let s = items.s(*id);
             out.extend(s.fields.iter().map(|(name, _)| *name));
-            out.extend(s.methods.iter().map(|(name, _)| *name));
+            out.extend(s.methods.keys());
         }
-        let rows = (0..d.impls.len()).map(|i| Items::imp(d, i));
-        for im in rows.chain(self.impls.rows) {
-            if !im.replaced
-                && self.impls.impl_args(im, ty).is_some()
-                && self.impls.has_impl(ty, im.trait_.tr)
-            {
-                out.extend(im.methods.iter().map(|(name, _)| *name));
+        for (tr, chosen) in self.impls.impls_on(ty) {
+            out.extend(items.t(tr).methods.keys());
+            if let ImplIdx::Decl(i) = chosen.imp {
+                out.extend(items.imp(i).methods.keys());
             }
         }
-        out.sort_by(|a, b| d.text(*a).cmp(d.text(*b)));
+        out.sort_by(|a, b| items.text(*a).cmp(items.text(*b)));
         out.dedup();
         out
     }
