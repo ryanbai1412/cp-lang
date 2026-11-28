@@ -598,6 +598,9 @@ struct Body {
     /// Each call whose type argument was still unknown when the body was zonked, by where the
     /// call is, its fn and the parameter: nothing fixed it, so the call is E0806 (R01.3.4).
     unsolved: Vec<(cpl_next_ir::ids::SourceId, FnId, usize)>,
+    /// Each call that took a `@reject`ed default, by where it is: an error once the types it
+    /// names are known to hold (R06.4.17).
+    rejects: Vec<(cpl_next_ir::ids::SourceId, call::Rejected)>,
     /// The names of items the checker refused: a use of one is downstream of that refusal.
     refused_names: std::collections::HashSet<String>,
     /// Set while converting the branches of an `if` into their common type: sets are joined, never merged.
@@ -650,6 +653,7 @@ impl Body {
             ahead: Vec::new(),
             list_doms: Vec::new(),
             unsolved: Vec::new(),
+            rejects: Vec::new(),
             refused_names: Default::default(),
             nested: None,
             joining: false,
@@ -1041,6 +1045,7 @@ pub fn check(
     }
     let errs = cx.errors.len();
     cx.unfixed_targs(errs);
+    cx.rejected_defaults();
     ctx_fns.sort_by_key(|c| c.0);
     let mut globals = std::mem::take(&mut cx.globals);
     for g in &mut globals {
@@ -1512,6 +1517,7 @@ impl<'a> Cx<'a> {
         // Typed once checked: no later body changes this one's types (`SetTy::AddedAt`, `SetTy::Global`).
         self.zonk_fn(&mut out);
         self.unfixed_targs(errs);
+        self.rejected_defaults();
         self.b.decl = None;
         self.b.module = d.program;
         self.b.region = None;

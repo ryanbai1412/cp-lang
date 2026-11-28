@@ -234,6 +234,7 @@ decorators! {
     Derive = "derive", "R06.4.12", "on a trait: every struct whose fields all have it gets it field by field";
     Coerce = "coerce", "R06.4.12", "on a fn: an implicit conversion where its result type is wanted";
     Pattern = "pattern", "R06.4.12", "on a fn: what a pattern over its type calls";
+    Reject = "reject", "R06.4.17", "`@reject(when: T = Bool, \"..\", code: C)` on a defaulted parameter: a call taking the default where `when` holds is that error";
     Input = "input", "R06.4.12", "on a fn: a value it gives is input, so a range it fills is a contract";
     ]
     directives: [

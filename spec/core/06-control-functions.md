@@ -230,6 +230,14 @@ library or by this spec:
   body, which is what `op` must agree with (std's `@fast(popcount)`). Any
   module may use either, on any number of fns; an `op` the IR does not
   declare is refused when the fn is lowered. (R06.4.12)
+- `@reject(when: T = Type, "<message>", code: C)` before a parameter with a
+  default: a call that takes the default where each `when` type parameter,
+  as the call infers it, is that type is error `C` at the call, with the
+  message; nothing is lowered. `when` is one or more `T = Type`, joined by
+  `and`, each `T` a type parameter of the fn. Any library may guard a default
+  this way (std's `count`, chapter 7). A `@reject` on a parameter with no
+  default, without a message and code, or with any other `when`, and any
+  other decorator on a parameter, is E0505. (R06.4.17)
 - Documented where they act: `@bits` on a field and `@law` (chapter 5),
   `@on_unimplemented`, `@was(..)`, `@aka(..)` and `@stress(kind)` (chapter 12). Any
   other `@name` is E0107, naming the nearest decorator, so no later pass

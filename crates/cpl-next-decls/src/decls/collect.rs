@@ -1033,18 +1033,32 @@ pub(super) fn unimplemented(
     attrs: &[super::forms::AttrForm],
     errors: &mut Vec<Msg>,
 ) -> Unimplemented {
+    match (attrs.iter())
+        .find(|a| a.attr == crate::attrs::Decorator::OnUnimplemented)
+        .and_then(|a| a.node.as_ref())
+    {
+        Some(node) => said(item, node, "on_unimplemented", errors),
+        None => Unimplemented::default(),
+    }
+}
+
+/// The message and `code:` a library's diagnostic decorator gives, `@on_unimplemented`'s or
+/// `@reject`'s; `@reject`'s `when:` is read apart (R06.4.17).
+pub(super) fn said(
+    item: &ItemId,
+    node: &cpl_next_syntax::ast::Decorator,
+    name: &str,
+    errors: &mut Vec<Msg>,
+) -> Unimplemented {
     use cpl_next_syntax::literal::{string_parts, StrPart};
     use cpl_next_syntax::{ast as next, TokenKind};
     let mut out = Unimplemented::default();
-    let Some(node) = (attrs.iter())
-        .find(|a| a.attr == crate::attrs::Decorator::OnUnimplemented)
-        .and_then(|a| a.node.as_ref())
-    else {
-        return out;
-    };
     let args: Vec<next::Arg> = node.args().map(|l| l.args().collect()).unwrap_or_default();
     for a in args {
         let label = a.label().map(|l| l.text().to_string());
+        if name == "reject" && label.as_deref() == Some("when") {
+            continue;
+        }
         let value = a.value();
         // A message with a `{T}` hole is parsed into text pieces around it, so it is read whole.
         let message = match (&label, &value) {
@@ -1087,7 +1101,7 @@ pub(super) fn unimplemented(
                 item.at(span),
                 Msg::verdict(
                     cpl_diag::codes::UNRESOLVED_NAME,
-                    "`@on_unimplemented` takes a message and `code:` a diagnostic code",
+                    format!("`@{name}` takes a message and `code:` a diagnostic code"),
                 ),
             ));
         }

@@ -136,6 +136,8 @@ pub struct Param {
     pub variadic: bool,
     /// Read in the fn's module when a call leaves the parameter out (R06.1.5).
     pub default: Option<cpl_next_syntax::ast::Expr>,
+    /// `@reject(..)`: a call that takes the default where it holds is an error (R06.4.17).
+    pub reject: Option<Reject>,
     /// A jagged parameter's written range, whose ends name earlier parameters (`k: 0..=n`); `ty`
     /// is the range those ends reach. A call checks the argument into it (R06.4.1).
     pub written: Option<cpl_next_syntax::ast::Type>,
@@ -206,6 +208,16 @@ pub struct TraitDecl {
 pub struct Unimplemented {
     pub code: Option<cpl_diag::Code>,
     pub help: Option<String>,
+}
+
+/// `@reject(when: T = Bool, "..", code: E0303)` on a defaulted parameter: a call that takes the
+/// default where each `when` type parameter is its type is that error, said there (R06.4.17).
+#[derive(Clone, Debug)]
+pub struct Reject {
+    /// Each condition: the fn's type parameter, by index, and the type it is.
+    pub when: Vec<(usize, Ty)>,
+    pub code: cpl_diag::Code,
+    pub text: String,
 }
 
 impl TraitDecl {
@@ -1611,6 +1623,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
             named_only: p.named_only,
             variadic: p.variadic,
             default: p.default.clone(),
+            reject: reject(&mut cx, &item, p, &mut errors),
             written: jagged.map(|(_, t)| t),
         });
     }
@@ -2224,4 +2237,60 @@ pub fn overload(
         required_labels(items, f).iter().all(|l| given.contains(l)) && given.iter().all(has)
     };
     (std::iter::once(first).chain(rest.iter().copied())).find(|f| fits(*f))
+}
+
+/// A parameter's `@reject(when: T = Bool, "..", code: C)` (R06.4.17). Any other decorator on a
+/// parameter, or a `@reject` with no default to guard, no message or code, or a `when` that is
+/// not type parameters equal to types, is E0505.
+fn reject(
+    cx: &mut TyCx,
+    item: &ItemId,
+    p: &forms::ParamForm,
+    errors: &mut Vec<Msg>,
+) -> Option<Reject> {
+    use cpl_next_syntax::ast::AstNode;
+    let mut out = None;
+    for x in &p.decorators {
+        let at = item.at(x.syntax().span());
+        let bad = |why: &str| {
+            Msg::at(
+                at.clone(),
+                Msg::verdict(cpl_diag::codes::BAD_LIBRARY_LINT, why.to_string()),
+            )
+        };
+        if !x.name().is_some_and(|n| n.text() == "reject") {
+            errors.push(bad("only `@reject` goes on a parameter"));
+            continue;
+        }
+        let said = collect::said(item, x, "reject", errors);
+        let (mut when, mut typed) = (Vec::new(), true);
+        let args: Vec<_> = x.args().map(|l| l.args().collect()).unwrap_or_default();
+        for a in args
+            .iter()
+            .filter(|a| a.label().is_some_and(|l| l.text() == "when"))
+        {
+            let sides: Vec<_> = a.types().collect();
+            typed &= !sides.is_empty() && sides.len() % 2 == 0;
+            for pair in sides.chunks(2) {
+                let [l, r] = pair else { continue };
+                let l = conv_form(cx, &TyForm::Written(l.clone()), errors);
+                let r = conv_form(cx, &TyForm::Written(r.clone()), errors);
+                match l {
+                    Ty::Param(i) => when.push((i, r)),
+                    _ => typed = false,
+                }
+            }
+        }
+        match (said.code, said.help) {
+            _ if p.default.is_none() => {
+                errors.push(bad("`@reject` guards a parameter's default, and this one has none"))
+            }
+            _ if !typed || when.is_empty() => errors.push(bad(
+                "`@reject` takes `when: T = Type`, each `T` a type parameter of the fn, joined by `and`",
+            )),
+            (Some(code), Some(text)) => out = Some(Reject { when, code, text }),
+            _ => errors.push(bad("`@reject` takes a message and `code:` a diagnostic code")),
+        }
+    }
+    out
 }

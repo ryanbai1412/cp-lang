@@ -9701,3 +9701,18 @@ Reverse it by deleting `not_members` and the cases (R08.1.2).
 - **Call.** `impl Read for F64` is ordinary std (`std/read.cp`): it checks the token's syntax (R10.2.6: a sign, digits with at most one `.`, an optional exponent) with the same `Input` rules every read uses, then hands its characters to `@intrinsic("f64_parse")`, `Intr::ParseF64`, a new `ops::MACHINE` row (19 → 20). The interpreter and the engine read it through `ops::parse_f64` (Rust's `str::parse::<f64>`), the C++ through `strtod`, inline in its `cpp_text`; both round correctly, so the bits agree. `inf` and `nan` are bad tokens (R0501), where the old pipeline took them. `next_reference_evaluator_lines` goes 583 → 589 for the interpreter's arm and a `text` helper it shares with `Out`.
 - **Why.** Decimal-to-binary rounding is a bignum algorithm a std parser would get wrong in the last bit; it is each back end's own library, like output, so it is a machine primitive. One op serves `read<F64>()` and `Str.parse<F64>()` alike, since both go through `Input`.
 - **Reverse.** Drop the row and write the parse in std over `I128` digits, accepting last-bit differences.
+
+## 676. `@reject` guards a default that is wrong for some types (check, 2026-11-28)
+
+`[true, false].count()` counted the falses too and was accepted: old
+`cpl` named the call by a special case, cpl-next had none. Decision 378
+keeps `count()` and refuses it on bools. A second `count` for `Seq<Bool>`
+would be overloading by type (E0702) and a more specific impl would
+overlap (E0202), so the guard sits on the default it is about:
+`@reject(when: T = Bool, "..", code: E0303) p: T -> Bool = _ => true`. A
+call that takes that default where `T` is `Bool` once inferred is E0303 at
+the call with std's message; `count(p)` and `count(x for x in b)` pass
+`p`, so they are not refused. The condition is only `T = Type` joined by
+`and`, so it is typed and has no body; any library may use it, and
+misuse is E0505. It reuses `@on_unimplemented`'s message and `code:` (R06.4.17).
+Reverse it by deleting the decorator and `rejected_defaults`.

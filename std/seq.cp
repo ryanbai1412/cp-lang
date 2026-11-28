@@ -159,7 +159,11 @@ pub fn minmax<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> ?(T, T):
 /// traps: never
 /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
 /// example: `[1, 2, 3].pairs().count() == 3`
-pub fn count<S: Seq<T>, T>(self: S, p: T -> Bool = _ => true) -> Int:
+pub fn count<S: Seq<T>, T>(
+    self: S,
+    @reject(when: T = Bool, "`count()` counts every element, the falses too: the trues are `count(x => x)`, every element is `len`", code: E0303)
+    p: T -> Bool = _ => true,
+) -> Int:
     var n = 0
     for x in self:
         if p(x): n += 1

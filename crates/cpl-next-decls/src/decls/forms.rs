@@ -99,6 +99,8 @@ pub struct ParamForm {
     pub named_only: bool,
     pub variadic: bool,
     pub default: Option<ast::Expr>,
+    /// The decorators written before it: `@reject` (R06.4.17).
+    pub decorators: Vec<ast::Decorator>,
     pub span: Span,
     /// Where its name is written, for what is said of the parameter.
     pub name_span: Span,
@@ -364,6 +366,7 @@ impl Reader<'_> {
             named_only: p.is_named_only(),
             variadic: p.is_variadic(),
             default: p.default(),
+            decorators: p.decorators().collect(),
             span: p.syntax().span(),
             name_span: p.name().map_or(p.syntax().span(), |n| n.span()),
         }

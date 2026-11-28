@@ -134,6 +134,17 @@ impl Cx<'_> {
             self.errors.push(msg);
         }
     }
+    /// Each call zonked that took a `@reject`ed default where each `when` type is the one named:
+    /// that error, at the call (R06.4.17).
+    pub(super) fn rejected_defaults(&mut self) {
+        let mut taken = std::mem::take(&mut self.b.rejects);
+        taken.dedup_by(|a, b| a.0 == b.0);
+        for (at, r) in taken {
+            if r.when.iter().all(|(t, is)| self.zonk(t) == *is) {
+                self.errors.push(Msg::at(at, Msg::verdict(r.code, r.text)));
+            }
+        }
+    }
     /// The overload of `first`'s name the labels `args` give pick, or the named-argument error
     /// (E0310) when no overload takes them all (R06.1.6).
     pub(super) fn overload_for(
@@ -646,6 +657,7 @@ impl Cx<'_> {
                         named_only: false,
                         variadic: false,
                         default: None,
+                        reject: None,
                     }
                 })
                 .collect(),
@@ -682,6 +694,15 @@ pub(super) struct Formal<'d> {
     /// Its expression, read in the module and with spans from the item that declares it, and
     /// the types the declaration's type parameters stand for at this call.
     pub default: Option<DefaultAt<'d>>,
+    /// Its default's `@reject`, its `when` types as this call has them (R06.4.17).
+    pub reject: Option<Rejected>,
+}
+
+/// A `@reject`ed default a call took: the error it is when each type is the one named.
+pub(super) struct Rejected {
+    pub when: Vec<(Ty, Ty)>,
+    pub code: cpl_diag::Code,
+    pub text: String,
 }
 
 /// A default's expression, its module and item, and its type parameters' types at the call.
@@ -994,16 +1015,27 @@ impl Cx<'_> {
                     kind: TK::Pack(Box::new(v)),
                 }),
                 Some(a) => a,
-                None => TArg::Value(match f.default {
-                    Some((e, m, ref item, ref named)) => {
-                        self.default_arg((e, m, item.clone()), named, &f.ty)
+                None => {
+                    if let Some(r) = &f.reject {
+                        let at = self.b.item.at(span);
+                        let r = Rejected {
+                            when: r.when.clone(),
+                            code: r.code,
+                            text: r.text.clone(),
+                        };
+                        self.b.rejects.push((at, r));
                     }
-                    None => TExpr {
-                        kind: TK::Error,
-                        ty: Ty::Error,
-                        span,
-                    },
-                }),
+                    TArg::Value(match f.default {
+                        Some((e, m, ref item, ref named)) => {
+                            self.default_arg((e, m, item.clone()), named, &f.ty)
+                        }
+                        None => TExpr {
+                            kind: TK::Error,
+                            ty: Ty::Error,
+                            span,
+                        },
+                    })
+                }
             });
         }
         if formals.iter().any(|f| f.written.is_some()) {
@@ -1140,6 +1172,13 @@ impl Cx<'_> {
                 variadic: p.variadic,
                 default: (p.default.as_ref())
                     .map(|e| (e, fd.module, fd.item.clone(), named.clone())),
+                reject: p.reject.as_ref().map(|r| Rejected {
+                    when: (r.when.iter())
+                        .map(|(i, t)| (sub.ty(&Ty::Param(*i)), t.clone()))
+                        .collect(),
+                    code: r.code,
+                    text: r.text.clone(),
+                }),
             })
             .collect()
     }

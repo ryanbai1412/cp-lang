@@ -252,6 +252,7 @@ pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitF
                 named_only: false,
                 variadic: false,
                 default: None,
+                decorators: Vec::new(),
                 span,
                 name_span: span,
             };
@@ -331,6 +332,7 @@ pub fn without_impls(
                 named_only: false,
                 variadic: false,
                 default: None,
+                decorators: Vec::new(),
                 span,
                 name_span: span,
             };
@@ -500,6 +502,7 @@ pub fn domain_impls(
             named_only: false,
             variadic: false,
             default: None,
+            decorators: Vec::new(),
             span,
             name_span: span,
         };

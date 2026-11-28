@@ -118,7 +118,9 @@ impl Ord for Frac:
   implemented" and to each law, so `SegTree(f, a)` with a non-associative
   `f` says what to write. `@on_unimplemented(code: E0311, "...{T}...")`
   on a trait gives a missing impl that code in place of E0606 and the
-  message as its help, `{T}` the type shown; each part is optional.
+  message as its help, `{T}` the type shown; each part is optional. A
+  fn's `@reject(when: T = Type, "..", code: C)` on a defaulted parameter
+  says the same of a default that is wrong for some types (R06.4.17).
   (R08.1.8)
 - **An impl chooses each associated type** its trait declares, with
   `type Name = T` in its body, and impls of one trait for different kinds

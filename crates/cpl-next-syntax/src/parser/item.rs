@@ -180,15 +180,38 @@ impl Parser<'_> {
     fn decorator(&mut self) {
         self.start(NodeKind::Decorator);
         self.bump();
+        let reject = self.at(T::Ident) && self.text() == "reject";
         self.want(T::Ident, "the decorator's name");
         while self.at(T::Dot) && self.nth(1) == T::Ident {
             self.bump();
             self.bump();
         }
         if self.at(T::LParen) {
-            self.list(NodeKind::ArgList, T::RParen, "the argument list", Self::arg);
+            let arg = if reject { Self::reject_arg } else { Self::arg };
+            self.list(NodeKind::ArgList, T::RParen, "the argument list", arg);
         }
         self.eat(T::Newline);
+        self.finish();
+    }
+
+    /// `when: T = Bool and U = Int`, a `@reject` condition: pairs of types, not an expression
+    /// (R06.4.17). Any other argument is a call's.
+    fn reject_arg(&mut self) {
+        if !(self.at(T::Ident) && self.text() == "when" && self.nth(1) == T::Colon) {
+            return self.arg();
+        }
+        self.start(NodeKind::Arg);
+        self.bump();
+        self.bump();
+        loop {
+            self.ty();
+            if self.want(T::Eq, "`=` and the type") {
+                self.ty();
+            }
+            if !self.eat(T::And) {
+                break;
+            }
+        }
         self.finish();
     }
 
@@ -269,6 +292,9 @@ impl Parser<'_> {
     fn param(&mut self) {
         let start = self.span().start;
         self.start(NodeKind::Param);
+        while self.at(T::At) {
+            self.decorator();
+        }
         if self.word() == Some(W::Lazy) && self.nth(1) == T::Ident {
             self.lazy_param();
         }

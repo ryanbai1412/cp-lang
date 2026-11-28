@@ -273,6 +273,7 @@ fn plain(name: Sym, span: cpl_diag::Span) -> ParamForm {
         named_only: false,
         variadic: false,
         default: None,
+        decorators: Vec::new(),
         span,
         name_span: span,
     }
@@ -377,6 +378,7 @@ pub(crate) fn field_getter(
             named_only: false,
             variadic: false,
             default: None,
+            decorators: Vec::new(),
             span,
             name_span: span,
         }],
@@ -437,6 +439,7 @@ pub(crate) fn field_requirement(
             named_only: false,
             variadic: false,
             default: None,
+            decorators: Vec::new(),
             span,
             name_span: span,
         }],
@@ -609,6 +612,7 @@ pub(crate) fn enum_conversions(
             named_only: false,
             variadic: false,
             default: None,
+            decorators: Vec::new(),
             span,
             name_span: span,
         };

@@ -485,6 +485,7 @@ visible!(
 );
 generic!(FnDecl, StructDecl, EnumDecl, TraitDecl, ImplDecl, TypeAlias, AssocType);
 decorated!(
+    Param,
     FnDecl,
     StructDecl,
     EnumDecl,
@@ -586,6 +587,11 @@ impl Arg {
     /// `None` for `f(by:)`, which passes the variable the label names.
     pub fn value(&self) -> Option<Expr> {
         child(&self.0)
+    }
+
+    /// `T, Bool` of `@reject(when: T = Bool)`: each condition's two sides, in order (R06.4.17).
+    pub fn types(&self) -> impl Iterator<Item = Type> + '_ {
+        children(&self.0)
     }
 }
 
