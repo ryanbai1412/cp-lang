@@ -27,3 +27,8 @@ A conformance case or new-pipeline test leaves only with a line here naming it a
   visibility, so `a.rev.iter()` calls `Rev`'s `impl Seq` walk (coordinator ruling, option A).
   Replaced by `core-07/rev-iter-resolves-through-seq.cp` (`expect: ok`, `4 1 3` on all three
   runners).
+- `spec/conformance/core-08/concrete-extension-beats-std-generic.cp`: its verdict flips, so it
+  became `core-08/extension-hidden-by-trait-default.cp` (E0701, `engines: next`). Folds are
+  default methods of their trait (decision 486), so `Seq.sum` is a member of `1..4`, and a member
+  beats any extension fn (R08.1.4, decision 677): the concrete `fn sum(self: Range<Int>)` is
+  hidden, with help to call it as `sum(1..4)`. Old `cpl` still accepts it and prints `7`.
