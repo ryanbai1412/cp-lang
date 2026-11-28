@@ -6,6 +6,6 @@ fn go() -> Int:
     let v = xs.rev
     fn put(i: Int):
         xs[i] = i
-    put(0)
+    put(0)  // <- here
     v.len
 print(go())
