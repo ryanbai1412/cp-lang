@@ -7,24 +7,18 @@ impl Cx<'_> {
     /// A bare operator (`+`) wanted as a value of an open type a bound constrains, or of a struct
     /// with a `@from_op` fn: its trait's fn item. Wanted as a fn, or by an open type nothing
     /// bounds (R08.2.11), it stays the lambda it is written as.
-    pub(super) fn op_item(&mut self, e: &ast::Expr, want: Option<&Ty>) -> Option<TExpr> {
-        let ExprKind::Lambda { body, .. } = &e.kind else {
-            return None;
-        };
-        let ExprKind::Binary { op, op_span, .. } = &body.kind else {
-            return None;
-        };
+    pub(super) fn op_item(&mut self, op: BinOp, want: Option<&Ty>, span: Span) -> Option<TExpr> {
         let open = match want.map(|w| self.shallow(w)) {
             Some(Ty::Var(v)) => self.obliged(v),
             Some(Ty::Struct(s, ..)) => self.op_struct_fn(s).is_some(),
             _ => false,
         };
-        let m = (self.d.operator_fn(op.text(), true)).filter(|_| open && *op_span == e.span)?;
+        let m = (self.d.operator_fn(&op.to_string(), true)).filter(|_| open)?;
         let f = self.fnref(m, Vec::new(), Vec::new());
         Some(TExpr {
             kind: TK::FnItem(f.clone()),
             ty: Ty::Clo(Box::new(CloRef::Item(f))),
-            span: e.span,
+            span,
         })
     }
     /// The body of trait fn `m` with none of its own: the call of `Self`'s impl of it.

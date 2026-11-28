@@ -1,9 +1,13 @@
 //! Expressions: operators, calls, members, names.
 
+use super::call::CallArg;
+use super::lambda::{LamBody, LamParam};
+use super::member::Called;
 use super::*;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::literal::{self, FmtKind};
+use cpl_next_syntax::ops::Kind;
 use cpl_next_syntax::TokenKind;
 
 impl<'a> Cx<'a> {
@@ -107,7 +111,7 @@ impl<'a> Cx<'a> {
     }
     /// `w by k` on a walk that is not a range literal: `w`'s `@operator("by")` trait fn, whose
     /// result is a walk of `w`'s type (R01.8.4).
-    fn step_walk(&mut self, walk: &ast::Expr, step: &ast::Expr, span: Span) -> TExpr {
+    fn step_walk(&mut self, walk: &next::Expr, step: &next::Expr, span: Span) -> TExpr {
         let w = self.expr_as_typed(walk, None);
         if self.is_error(&w.ty) {
             return Self::error_node(span);
@@ -639,38 +643,6 @@ impl<'a> Cx<'a> {
         }
     }
     /// One `if` branch: its condition, its block checked against `want`, and whether it leaves.
-    fn if_arm(
-        &mut self,
-        (c, b): &(ast::Cond, ast::Block),
-        want: Option<&Ty>,
-    ) -> (TExpr, TExpr, bool) {
-        let narrows =
-            matches!(c, ast::Cond::Expr(e) if matches!(e.kind, ExprKind::HasBound { .. }));
-        let c = self.cond(c);
-        // The branch a bound test guards sees the bound (R08.2.9), so the bounds it obliges are
-        // met inside it, and those from before it outside it.
-        if narrows {
-            self.solve(false);
-        }
-        let n = self.b.assumed.len();
-        if let TK::HasBound(t, r) = &c.kind {
-            if let Ty::Param(i) = self.shallow(t) {
-                self.b.assumed.push((i, r.clone()));
-            }
-        }
-        // A bound test that failed to check is the error: the branch it narrows is downstream of it.
-        let b2 = if narrows && self.is_error(&c.ty) {
-            Self::error_node(c.span)
-        } else {
-            self.block(b, want)
-        };
-        if narrows {
-            self.solve(false);
-        }
-        self.b.assumed.truncate(n);
-        self.b.scopes.pop();
-        (c, b2, b.leaves())
-    }
     /// `a op b` for an ordering `op`: primitives and plain variants compare directly, any other
     /// type through its `Ord` impl.
     pub(super) fn ordered(&mut self, op: CmpOp, a: TExpr, b: TExpr, span: Span) -> TExpr {
@@ -945,798 +917,600 @@ impl<'a> Cx<'a> {
     }
 
     pub(super) fn expr(&mut self, e: &next::Expr, want: Option<&Ty>) -> TExpr {
-        if self.b.rhs_extent.take_if(|at| *at == e.span).is_some() {
+        let at = self.at(e);
+        if self.b.rhs_extent.take_if(|x| *x == at).is_some() {
             return self.extent(e, want);
         }
         let v = self.expr_as_typed(e, want);
         match self.shallow(&v.ty) {
-            have @ (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..))
-                if want.map(|w| self.shallow(w)).as_ref() != Some(&have) =>
+            have if have.is_int_range()
+                && want.map(|w| self.shallow(w)).as_ref() != Some(&have) =>
             {
                 TExpr { ty: Ty::Int, ..v }
             }
             _ => v,
         }
     }
-    /// `e` with the type its slot has: a range stays a range.
-    pub(super) fn expr_as_typed(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
-        let span = e.span;
-        let mk = |kind, ty| TExpr { kind, ty, span };
-        match &e.kind {
-            ExprKind::Int(i) => mk(TK::Int(*i as i64), Ty::Int),
-            // A literal with an exponent whose value is a whole number is an `Int` (R01.4.2).
-            ExprKind::Float(text) => match e.int_literal() {
-                Some(i) => mk(TK::Int(i), Ty::Int),
-                None => match text.parse::<f64>() {
-                    Ok(x) => mk(TK::Float(x.to_bits()), Ty::F64),
-                    Err(_) => {
-                        self.err(
-                            span,
-                            Unbuilt::FloatLiteral {
-                                text: text.to_string(),
-                            },
-                        );
-                        mk(TK::Error, Ty::Error)
-                    }
-                },
+    pub(super) fn expr_as_typed(&mut self, e: &next::Expr, want: Option<&Ty>) -> TExpr {
+        let span = self.at(e);
+        match e {
+            next::Expr::Literal(l) => self.literal(l, want, span),
+            next::Expr::Name(n) if n.is_none() => self.none_value(want, span),
+            next::Expr::Name(n) => match n.ident() {
+                Some(t) if t.kind() == TokenKind::SelfKw => self
+                    .self_expr(span)
+                    .unwrap_or_else(|| Self::error_node(span)),
+                Some(t) => self.name_value(t.text(), want, span),
+                None => Self::error_node(span),
             },
-            ExprKind::Bool(b) => mk(TK::Bool(*b), Ty::Bool),
-            ExprKind::Keep { target, max, value } => self.keep_expr(target, *max, value, span),
-            ExprKind::Str(ps) if ps.iter().all(|p| matches!(p, StrPiece::Text(_))) => {
-                let text: String = ps
-                    .iter()
-                    .map(|p| match p {
-                        StrPiece::Text(t) => t.as_str(),
-                        _ => "",
-                    })
-                    .collect();
-                if !text.is_ascii() {
-                    self.err(span, Unbuilt::NonAsciiString);
-                }
-                let n = mk(TK::Int(text.len() as i64), Ty::Int);
-                let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
-                self.marked_call(self.d.sugar.str_literal, "str_literal", vec![raw, n], span)
-            }
-            // `"a{x}b"` appends each piece in turn through the `@role(interpolation)` fn (R10.3.2).
-            ExprKind::Str(ps) if let Some(put) = self.d.roles().interpolate => {
-                let lit = |ps| ast::Expr {
-                    kind: ExprKind::Str(ps),
-                    span,
-                };
-                let empty = self.expr(&lit(Vec::new()), None);
-                let ty = empty.ty.clone();
-                let buf = self.temp("$str", ty.clone());
-                match buf {
-                    VarRef::Local(l) => self.b.locals[l].mutable = true,
-                    VarRef::Global(g) => self.globals[g].mutable = true,
-                }
-                let read = mk(TK::Var(buf), ty.clone());
-                let mut stmts = vec![TStmt::Let(buf, empty)];
-                for p in ps {
-                    let (v, width, zero, digits) = match p {
-                        StrPiece::Text(t) => {
-                            let v = self.expr(&lit(vec![StrPiece::Text(t.clone())]), None);
-                            (v, 0, false, None)
-                        }
-                        StrPiece::Expr(x) => (self.expr(x, None), 0, false, None),
-                        StrPiece::Spec(x, spec) => {
-                            let digits = match spec.kind {
-                                FmtKind::Dec => None,
-                                FmtKind::Fixed(d) => Some(d),
-                                FmtKind::Hex | FmtKind::Bin => {
-                                    self.err(span, Unbuilt::HexFormat);
-                                    continue;
-                                }
-                            };
-                            (self.expr(x, None), spec.width, spec.zero, digits)
-                        }
-                    };
-                    let f = self.fnref(put, Vec::new(), Vec::new());
-                    let formals = self.formals(
-                        &Subst {
-                            tys: &f.targs,
-                            sets: &f.sets,
-                        },
-                        self.d.f(put),
-                    );
-                    self.unify(&formals[0].ty, &ty);
-                    self.unify(&formals[1].ty, &v.ty);
-                    self.oblige(&f, span);
-                    // The layout a spec gives: its width, its zero fill and its decimals.
-                    let digits = match digits {
-                        Some(d) => ExprKind::Int(i128::from(d)),
-                        None => ExprKind::None,
-                    };
-                    let lay = [
-                        ExprKind::Int(i128::from(width)),
-                        ExprKind::Bool(zero),
-                        digits,
-                    ];
-                    let mut args = vec![TArg::Mut(read.clone()), TArg::Value(v)];
-                    for (k, kind) in lay.into_iter().enumerate() {
-                        let Some(want) = formals.get(2 + k).map(|p| p.ty.clone()) else {
-                            break;
-                        };
-                        let x = self.expr(&ast::Expr { kind, span }, Some(&want));
-                        args.push(TArg::Value(self.coerce(x, &want)));
-                    }
-                    let call = TK::Call {
-                        f,
-                        recv: None,
-                        args,
-                    };
-                    stmts.push(TStmt::Expr(mk(call, Ty::Unit)));
-                }
-                mk(TK::Block(stmts, Some(Box::new(read))), ty)
-            }
-            ExprKind::Char(c) if c.is_ascii() => {
-                let code = mk(TK::Int(i64::from(*c as u8)), Ty::Int);
-                mk(TK::CharOf(Box::new(code)), Ty::Char)
-            }
-            ExprKind::Paren(inner) => self.expr(inner, want),
-            ExprKind::None => {
-                let ty = match want.filter(|w| self.optional_of(w).is_some()) {
-                    Some(w) => w.clone(),
-                    // Wanted as the error, as beside an operand that is one: it is the error too.
-                    None if want.is_some_and(|w| self.shallow(w) == Ty::Error) => {
-                        return mk(TK::Error, Ty::Error);
-                    }
-                    None => {
-                        self.err(
-                            span,
-                            Msg::verdict(
-                                cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION,
-                                "nothing here says what `None` is an optional of; write the type",
-                            ),
-                        );
-                        return mk(TK::Error, Ty::Error);
-                    }
-                };
-                let no = mk(TK::Bool(false), Ty::Bool);
-                let inner = self.optional_of(&ty).unwrap_or(Ty::Error);
-                mk(TK::Struct(vec![no, mk(TK::Unset, inner)]), ty)
-            }
-            ExprKind::Unwrap(x) => {
-                let v = self.expr(x, None);
-                let Some(inner) = self.optional_of(&v.ty) else {
-                    if !self.mentions_error(&v.ty) {
-                        let t = self.show(&v.ty);
-                        self.err(span, Unbuilt::Unwrap { ty: t });
-                    }
-                    return mk(TK::Error, Ty::Error);
-                };
-                self.b.scopes.push(HashMap::new());
-                let (bind, flag, val) = self.opened(v, inner.clone());
-                self.b.scopes.pop();
-                let check = TStmt::Assert(
-                    flag,
-                    "the value is None".to_string(),
-                    span,
-                    CheckKind::Unwrap,
-                );
-                let mut stmts = bind;
-                stmts.push(check);
-                mk(TK::Block(stmts, Some(Box::new(val))), inner)
-            }
-            ExprKind::Binary {
-                op: BinOp::Coalesce,
-                lhs,
-                rhs,
-                ..
-            } => {
-                let l = match lhs.bare_try() {
-                    Some(_) => self.extent(lhs, None),
-                    None => self.expr(lhs, None),
-                };
-                let Some(inner) = self.optional_of(&l.ty) else {
-                    if !self.mentions_error(&l.ty) {
-                        let t = self.show(&l.ty);
-                        self.err(span, Unbuilt::Coalesce { ty: t });
-                    }
-                    return mk(TK::Error, Ty::Error);
-                };
-                // An optional right side keeps the result optional: `a ?? b ?? 9` (R01.8.6).
-                let r = self.expr(rhs, Some(&inner));
-                let opt = l.ty.clone();
-                let (r, out) = match self.optional_of(&r.ty) {
-                    Some(_) => (self.coerce(r, &opt), opt.clone()),
-                    None => (self.coerce(r, &inner), inner.clone()),
-                };
-                self.b.scopes.push(HashMap::new());
-                let (bind, flag, val) = self.opened(l, inner);
-                self.b.scopes.pop();
-                let val = if out == opt { self.some(val, opt) } else { val };
-                let pick = mk(
-                    TK::If(Box::new(flag), Box::new(val), Box::new(r)),
-                    out.clone(),
-                );
-                mk(TK::Block(bind, Some(Box::new(pick))), out)
-            }
-            ExprKind::Name(n) => match self.expected_variant(n, want) {
-                Some((e, i)) => self.variant(e, i, Vec::new(), &[], span),
-                None => match self.filled(n, want, span) {
-                    Some(e) => e,
-                    None => match self.defaulted_fn_value(n, e, want) {
-                        Some(v) => v,
-                        None => self.name(n, span),
-                    },
-                },
+            next::Expr::Paren(p) => match p.inner() {
+                Some(x) => self.expr(&x, want),
+                None => Self::error_node(span),
             },
-            ExprKind::SelfValue => self.self_expr(span).unwrap_or(mk(TK::Error, Ty::Error)),
-            ExprKind::Tuple(xs) if xs.is_empty() => mk(TK::Unit, Ty::Unit),
-            // `~x` flips every bit: `x ^ ones`.
-            ExprKind::Unary {
-                op: UnOp::BitNot,
-                expr,
-            } => {
-                let v = self.expr(expr, None);
-                let t = match self.shallow(&v.ty) {
-                    Ty::U64 => Ty::U64,
-                    _ => Ty::Int,
-                };
-                let v = self.coerce(v, &t);
-                let ones = mk(TK::Int(-1), Ty::Int);
-                let ones = match t {
-                    Ty::U64 => mk(TK::ToU64(Box::new(ones)), Ty::U64),
-                    _ => ones,
-                };
-                mk(TK::Bin(BinOp::BitXor, Box::new(v), Box::new(ones)), t)
-            }
-            ExprKind::Unary { op, expr } => {
-                let (want_t, kind): (Ty, fn(Box<TExpr>) -> TK) = match op {
-                    UnOp::Not => (Ty::Bool, TK::Not),
-                    UnOp::Neg => (Ty::Int, TK::Neg),
-                    _ => {
-                        self.err(span, Unbuilt::Operator);
-                        (Ty::Int, TK::Neg)
-                    }
-                };
-                let v = self.expr(expr, Some(&want_t));
-                if let Some(found) = (*op == UnOp::Neg)
-                    .then(|| self.operator_trait("-", false, &v.ty))
-                    .flatten()
-                {
-                    return self.operator_call(found, v, None, span);
+            next::Expr::Tuple(t) => self.tuple(t, want, span),
+            next::Expr::List(l) => self.list(l, want, span),
+            next::Expr::Map(m) => self.map_literal(m, want, span),
+            next::Expr::Comp(c) => self.comprehension(c, want, span),
+            next::Expr::Generator(g) => self.comp_of(g.body(), g.clauses().collect(), want, span),
+            next::Expr::Table(t) => self.table(t, span, want),
+            next::Expr::Record(r) => match r.rest() {
+                Some(rest) => {
+                    let prefix: Vec<next::RecordField> = r.fields().collect();
+                    self.without(&prefix, &rest, want, span)
                 }
-                let want_t = match self.shallow(&v.ty) {
-                    Ty::F64 if *op == UnOp::Neg => Ty::F64,
-                    Ty::I128 if *op == UnOp::Neg => Ty::I128,
-                    t if *op == UnOp::Neg && self.declares_operators(&t) => {
-                        let t = self.show(&t);
-                        self.err(span, Unbuilt::OperatorTrait { ty: t });
-                        return mk(TK::Error, Ty::Error);
-                    }
-                    _ => want_t,
-                };
-                let v = self.coerce(v, &want_t);
-                mk(kind(Box::new(v)), want_t)
-            }
-            ExprKind::Binary { op, lhs, rhs, .. } => {
-                let l = self.expr(lhs, None);
-                let r = self.expr(rhs, None);
-                self.binary(*op, l, r, span)
-            }
-            ExprKind::Compare { first, rest } => {
-                let up = |o: &CmpOp| matches!(o, CmpOp::Lt | CmpOp::Le);
-                let down = |o: &CmpOp| matches!(o, CmpOp::Gt | CmpOp::Ge);
-                if rest.iter().any(|(o, _)| up(o)) && rest.iter().any(|(o, _)| down(o)) {
-                    self.err(
-                        span,
-                        Msg::verdict(cpl_diag::codes::MIXED_COMPARISON_CHAIN, "a chain that goes both up and down; write the two comparisons with `and`"),
-                    );
-                }
-                // `None == x`: the `None` takes its type from the other side.
-                if let [(op @ (CmpOp::Eq | CmpOp::Ne), rhs)] = rest.as_slice() {
-                    if matches!(super::index::unparen(first).kind, ExprKind::None) {
-                        let r = self.expr(rhs, None);
-                        let l = self.expr(first, Some(&r.ty));
-                        if self.is_error(&l.ty) || self.is_error(&r.ty) {
-                            return Self::error_node(span);
-                        }
-                        if let Some(test) = self.presence(*op, &l, &r, span) {
-                            return test;
-                        }
-                        return self.ordered(*op, l, r, span);
-                    }
-                }
-                // `a <= b < c` is `a <= b and b < c` with `b` read once, and `c` not read
-                // when the first link is false (R01.5.3).
-                self.b.scopes.push(HashMap::new());
-                let mut prev = self.expr(first, None);
-                let mut links: Vec<(Vec<TStmt>, TExpr)> = Vec::new();
-                for (k, (op, rhs)) in rest.iter().enumerate() {
-                    // `in` stands alone (R01.5.3); its operands are not one type.
-                    if matches!(op, CmpOp::In | CmpOp::NotIn) {
-                        // `x in V` on a domain named as a type: is integer `x` a position (R04.2.6).
-                        let r = match self.type_path(rhs) {
-                            Some(d @ Ty::Dom(_)) => Err(d),
-                            _ => Ok(self.expr(rhs, None)),
-                        };
-                        self.b.scopes.pop();
-                        if rest.len() > 1 {
-                            let text = cpl_diag::msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN_IN.say(&[]);
-                            self.err(
-                                span,
-                                Msg::verdict(cpl_diag::codes::MIXED_COMPARISON_CHAIN, text),
-                            );
-                            return Self::error_node(span);
-                        }
-                        let found = match r {
-                            Ok(r) => self.membership(prev, r, span),
-                            Err(d) => {
-                                let x = self.coerce(prev, &Ty::Int);
-                                mk(TK::DomHas(d, Box::new(x)), Ty::Bool)
-                            }
-                        };
-                        return match op {
-                            CmpOp::NotIn => mk(TK::Not(Box::new(found)), Ty::Bool),
-                            _ => found,
-                        };
-                    }
-                    let r = self.expr(rhs, Some(&prev.ty));
-                    // Either operand fixes the type: `u != from` with `from: ?V` lifts `u` (R04.4.23).
-                    let lift =
-                        self.optional_of(&prev.ty).is_none() && self.optional_of(&r.ty).is_some();
-                    let r = if lift {
-                        prev = self.coerce(prev, &r.ty.clone());
-                        r
-                    } else {
-                        self.coerce(r, &prev.ty.clone())
-                    };
-                    // A comparison with an operand that is the error is the error, as `binary` is.
-                    if self.is_error(&prev.ty) || self.is_error(&r.ty) {
-                        self.b.scopes.pop();
-                        return Self::error_node(span);
-                    }
-                    if rest.len() == 1 {
-                        if let Some(test) = self.presence(*op, &prev, &r, span) {
-                            self.b.scopes.pop();
-                            return test;
-                        }
-                    }
-                    // An operand two links share is held, so it is read once.
-                    let mut hold = Vec::new();
-                    let r = if k + 1 < rest.len() {
-                        let tmp = self.temp("$link", r.ty.clone());
-                        let read = mk(TK::Var(tmp), r.ty.clone());
-                        hold.push(TStmt::Let(tmp, r));
-                        read
-                    } else {
-                        r
-                    };
-                    let c = self.ordered(*op, prev, r.clone(), span);
-                    links.push((hold, c));
-                    prev = r;
-                }
-                self.b.scopes.pop();
-                let mut acc: Option<TExpr> = None;
-                for (hold, c) in links.into_iter().rev() {
-                    let c = match acc {
-                        None => c,
-                        Some(rest) => mk(
-                            TK::If(
-                                Box::new(c),
-                                Box::new(rest),
-                                Box::new(mk(TK::Bool(false), Ty::Bool)),
-                            ),
-                            Ty::Bool,
-                        ),
-                    };
-                    acc = Some(if hold.is_empty() {
-                        c
-                    } else {
-                        mk(TK::Block(hold, Some(Box::new(c))), Ty::Bool)
-                    });
-                }
-                acc.unwrap_or(prev)
-            }
-            ExprKind::Tuple(xs) if self.d.tuple(xs.len()).is_some() => {
-                // `(R, C)` named as a value is the product domain's whole range (R04.2.11).
-                if let Some(p) = self.type_path(e) {
-                    return self.domain_value(p, span);
-                }
-                let Some(d) = self.d.tuple(xs.len()) else {
-                    return Self::error_node(span);
-                };
-                let args: Vec<ast::Arg> = (xs.iter())
-                    .map(|x| ast::Arg {
-                        name: None,
-                        mutable: false,
-                        value: x.clone(),
-                    })
-                    .collect();
-                let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
-                let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
-                self.construct(d, targs, sets, &args, span, want)
-            }
-            // `(lo: 2, hi: 7)` is its record struct's constructor, by field name (R02.5.2).
-            ExprKind::Record(fs) => {
-                let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
-                let callee = ast::Expr {
-                    kind: ExprKind::Name(crate::records::name(&names)),
-                    span,
-                };
-                let args = (fs.iter())
-                    .map(|(n, x)| ast::Arg {
-                        name: Some(n.clone()),
-                        mutable: false,
-                        value: x.clone(),
-                    })
-                    .collect();
-                let call = ExprKind::Call {
-                    callee: Box::new(callee),
-                    args,
-                };
-                self.expr(&ast::Expr { kind: call, span }, want)
-            }
-            ExprKind::Field { base, name } => match self.owned_domain(base, name) {
-                Some(d) => self.domain_value(d, span),
-                None => self.member(base, name, None, span, want, &[]),
+                None => self.record_value(r, want, span),
             },
-            ExprKind::Index { indices, .. } if indices.len() > 1 => {
-                let mut pre = Vec::new();
-                let one = match self.key_ctor(e, &mut pre) {
-                    Ok(Some(one)) => one,
-                    Ok(None) => match super::index::packed(e) {
-                        Some(one) => one,
-                        None => return Self::error_node(span),
-                    },
-                    Err(()) => return Self::error_node(span),
-                };
-                let v = self.expr(&one, want);
-                block(pre, v)
-            }
-            // A slice is contiguous, so its range takes no step (R01.8.5).
-            ExprKind::Index { base, indices }
-                if indices
-                    .iter()
-                    .any(|e| match &super::index::unparen(e).kind {
-                        ExprKind::Range { step, .. } => step.is_some(),
-                        ExprKind::By { walk, .. } => matches!(walk.kind, ExprKind::Range { .. }),
-                        _ => false,
-                    }) =>
-            {
-                let b = self.expr(base, None);
-                let text =
-                    cpl_diag::msgs::check::BAD_OPERANDS_STEPPED_SLICE.say(&[&self.show(&b.ty)]);
-                let help = "walk it instead: `a[i] for i in l..r by k`".to_string();
-                self.err_help(
-                    span,
-                    Msg::verdict(cpl_diag::codes::BAD_OPERANDS, text),
-                    Some(help),
-                );
-                Self::error_node(span)
-            }
-            ExprKind::Index { base, indices } if indices.len() == 1 => {
-                let again = self.b.indexed_again.take();
-                let point = |e: &ast::Expr| {
-                    !matches!(super::index::unparen(e).kind, ExprKind::Range { .. })
-                };
-                if point(&indices[0])
-                    && matches!(&super::index::unparen(base).kind,
-                        ExprKind::Index { indices: first, .. } if first.iter().all(point))
-                {
-                    self.b.indexed_again = Some((span, indices[0].span));
+            next::Expr::Generic(g) => self.generic_value(g, span),
+            next::Expr::OpValue(o) => self.op_value(o, want, span),
+            next::Expr::Block(b) => self.block_expr(b, want),
+            next::Expr::FieldFn(f) => self.field_fn(f, want, span),
+            next::Expr::With(w) => match w.base() {
+                Some(base) => {
+                    let updates: Vec<next::RecordField> = w.fields().collect();
+                    self.record_update(&base, &updates, span)
                 }
-                let b = self.expr(base, None);
-                self.b.indexed_again = None;
-                if self.is_error(&b.ty) {
-                    return Self::error_node(span);
-                }
-                // A point of a table's point is `g[r, c]`, never `g[r][c]` (R01.8.5).
-                if let Some((whole, j)) =
-                    again.filter(|_| point(&indices[0]) && self.is_table(&b.ty))
-                {
-                    let text = cpl_diag::msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3
-                        .say(&[&self.text(span), &self.text(j)]);
-                    let help = "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`";
-                    let code = cpl_diag::codes::REMOVED_SYNTAX;
-                    self.err_help(whole, Msg::verdict(code, text), Some(help.to_string()));
-                    return Self::error_node(span);
-                }
-                if let Ty::Raw(t) = self.shallow(&b.ty) {
-                    let i = self.expr(&indices[0], Some(&Ty::Int));
-                    let i = self.coerce(i, &Ty::Int);
-                    return TExpr {
-                        kind: TK::Slot(Box::new(b), Box::new(i)),
-                        ty: *t,
-                        span,
-                    };
-                }
-                if let ExprKind::Range {
-                    lo,
-                    hi,
-                    inclusive,
-                    step: None,
-                } = &super::index::unparen(&indices[0]).kind
-                {
-                    if lo.is_none() || hi.is_none() {
-                        let ends = (lo.as_deref(), hi.as_deref(), *inclusive);
-                        return self.open_slice(b, ends, span);
-                    }
-                }
-                let want = match &super::index::unparen(&indices[0]).kind {
-                    ExprKind::Range { .. } => (self.key_of(&b.ty)).and_then(|k| self.range_over(k)),
-                    ExprKind::Tuple(parts) => self.ranged_key(&b.ty, parts),
-                    _ => None,
-                };
-                let i = self.expr(&indices[0], Some(want.as_ref().unwrap_or(&Ty::Int)));
-                if self.is_error(&i.ty) {
-                    return Self::error_node(span);
-                }
-                if let Some(f) = self.index_fn(&b.ty, &i.ty) {
-                    self.index_call(f, b, vec![Some(i)], span)
-                } else {
-                    self.literal_key(base, &indices[0], &b.ty);
-                    let i = self.index_arg(&b.ty, i);
-                    self.elem(b, i, span)
-                }
-            }
-            ExprKind::Call { callee, args } => match &callee.kind {
-                ExprKind::Field { base, name } => {
-                    self.member(base, name, Some(args), span, want, &[])
-                }
-                ExprKind::Generic { base, args: targs }
-                    if matches!(base.kind, ExprKind::Field { .. }) =>
-                {
-                    self.generic_method(base, targs, args, span, want)
-                }
-                // `Int(c)`, `Char(k)`, `U64(x)`: a core type has no constructor, so this converts.
-                ExprKind::Name(n)
-                    if args.len() == 1
-                        && args[0].name.is_none()
-                        && self.lookup(n).is_none()
-                        && !self.declared(n)
-                        && decls::prim_type(n).is_some() =>
-                {
-                    let to = decls::prim_type(n).unwrap_or(Ty::Error);
-                    self.convert(to, &args[0].value, span, Origin::Convert)
-                }
-                // `D(x)` converts into a domain, unless `D`'s constructor takes one field, as a
-                // library domain's `Id(k)` does (R04.2.28).
-                ExprKind::Name(n)
-                    if self.lookup(n).is_none()
-                        && (self.domain_named(n)).is_some_and(|t| !self.built_from(&t, 1))
-                        && args.len() == 1 =>
-                {
-                    let dty = self.domain_named(n).unwrap_or(Ty::Error);
-                    self.domain_from(dty, &args[0].value, span)
-                }
-                ExprKind::Name(n) if self.bare_variant(n, want).is_some() => {
-                    match self.bare_variant(n, want) {
-                        Some((e, i)) => self.variant(e, i, Vec::new(), args, span),
-                        None => self.call_named(n, &[], args, span, want),
-                    }
-                }
-                // A generator argument to a fn that takes no sequence is the method fold of that
-                // sequence: `max(f(x) for x in xs)` is `(f(x) for x in xs).max()` (R01.10.1).
-                ExprKind::Name(n) if self.declared(n) && self.fold_form(n, args) => {
-                    let recv = ast::Expr {
-                        kind: ExprKind::Field {
-                            base: Box::new(args[0].value.clone()),
-                            name: ast::Name {
-                                text: n.clone(),
-                                span: callee.span,
-                            },
-                        },
-                        span,
-                    };
-                    let call = ast::Expr {
-                        kind: ExprKind::Call {
-                            callee: Box::new(recv),
-                            args: args[1..].to_vec(),
-                        },
-                        span,
-                    };
-                    self.expr(&call, want)
-                }
-                ExprKind::Name(n) if self.lookup(n).is_none() && self.names_io(n) => {
-                    let args = self.io_args(args);
-                    self.call_named(n, &[], &args, span, want)
-                }
-                ExprKind::Name(n) if self.declared(n) => self.call_named(n, &[], args, span, want),
-                // `Box<Int>(5)`, `List<Int>()`: the written type arguments come first.
-                ExprKind::Generic { base, args: targs } if matches!(&base.kind, ExprKind::Name(n) if self.declared(n)) => {
-                    match &base.kind {
-                        ExprKind::Name(n) => self.call_named(n, targs, args, span, want),
-                        _ => {
-                            let c = self.expr(callee, None);
-                            self.call_value(c, args, span)
-                        }
-                    }
-                }
-                ExprKind::Generic { base, args: targs }
-                    if targs.len() == 1 && self.returned_by(base).is_some() =>
-                {
-                    let mut pre = Vec::new();
-                    let t = self.body_ty(&targs[0], span, &mut pre);
-                    match self.returned_by(base) {
-                        Some((n, f)) => block(pre, self.call_by_return(t, f, &n, args, span)),
-                        None => Self::error_node(span),
-                    }
-                }
-                ExprKind::Name(_)
-                    if want.is_some_and(|w| !matches!(self.shallow(w), Ty::Var(_)))
-                        && self.returned_by(callee).is_some() =>
-                {
-                    let t = want.cloned().unwrap_or(Ty::Error);
-                    match self.returned_by(callee) {
-                        Some((n, f)) => self.call_by_return(t, f, &n, args, span),
-                        None => Self::error_node(span),
-                    }
-                }
-                _ => {
-                    let c = self.expr(callee, None);
-                    self.call_value(c, args, span)
-                }
+                None => Self::error_node(span),
             },
-            ExprKind::Lambda {
-                params,
-                param_tys,
-                param_mut,
-                ret_ty,
-                body,
-            } => match self.op_item(e, want) {
-                Some(item) => item,
-                None => {
-                    let sig = (&params[..], &param_tys[..], &param_mut[..]);
-                    self.lambda(sig, ret_ty.as_ref(), body, want, span)
-                }
+            next::Expr::Prefix(p) => self.prefix(p, want, span),
+            next::Expr::Bin(b) => self.bin_expr(b, want, span),
+            next::Expr::Compare(c) => self.compare(c, want, span),
+            next::Expr::Range(r) => self.range(r, want, span),
+            next::Expr::Call(c) => self.call_value_of(c, want, span),
+            next::Expr::Index(i) => self.index_value(i, span),
+            next::Expr::Field(f) => self.field_value(f, want, span),
+            next::Expr::Try(t) => match t.inner() {
+                Some(x) => self.question(&x, span),
+                None => Self::error_node(span),
             },
-            ExprKind::Generic { base, args } => self.generic_value(base, args, span),
-            ExprKind::List(xs) => self.list_literal(xs, want, span),
-            ExprKind::Map(entries) => self.map_literal(entries, want, span),
-            ExprKind::Comprehension { body, clauses } => {
-                self.comprehension(body, clauses, want, span)
-            }
-            ExprKind::Table {
-                domains,
-                params,
-                body,
-            } if !domains.is_empty() && (params.len() == 1 || params.len() == domains.len()) => {
-                // `[R, C] p => e` is a table over the product `(R, C)`, `p` the cell; `r, c`
-                // name its parts (R04.2.11).
-                let dom = match &domains[..] {
-                    [d] => d.clone(),
-                    ds => ast::Type {
-                        kind: TypeKind::Tuple(ds.to_vec()),
-                        span,
-                    },
-                };
-                let pat = match &params[..] {
-                    [p] => p.clone(),
-                    ps => ast::Pattern {
-                        kind: PatternKind::Tuple(ps.to_vec()),
-                        span,
-                    },
-                };
-                self.table(&dom, &pat, body, span, want)
-            }
-            ExprKind::Block(b) => self.block(b, want),
-            ExprKind::If {
-                branches,
-                otherwise,
-            } => {
-                let valued = otherwise.is_some();
-                let was_joining = self.b.joining;
-                self.b.joining = want.is_none() && valued;
-                // With no expected type, the branches meet in a type of their own: the `else`'s,
-                // or, when it is a bare `None`, that of the first branch giving a value. The rest
-                // are checked against it.
-                let mut ty = want.filter(|_| valued).cloned();
-                let mut arms: Vec<Option<(TExpr, TExpr, bool)>> =
-                    branches.iter().map(|_| None).collect();
-                let mut else_ = None;
-                if let (Some(o), None) = (otherwise, &ty) {
-                    if gives_none(o) {
-                        let first =
-                            (branches.iter()).position(|(_, b)| !b.leaves() && !gives_none(b));
-                        if let Some(i) = first {
-                            let arm = self.if_arm(&branches[i], None);
-                            ty = Some(self.join_ty(&arm.1.ty.clone()));
-                            arms[i] = Some(arm);
-                        }
-                    } else {
-                        self.b.joining = was_joining;
-                        let e = self.block(o, None);
-                        self.b.joining = want.is_none();
-                        let t = self.join_ty(&e.ty.clone());
-                        let e = if !o.leaves() && self.shallow(&t) != Ty::Unit {
-                            self.coerce(e, &t)
-                        } else {
-                            e
-                        };
-                        ty = Some(t);
-                        else_ = Some(e);
-                    }
-                }
-                for (arm, br) in arms.iter_mut().zip(branches) {
-                    if arm.is_none() {
-                        *arm = Some(self.if_arm(br, ty.as_ref()));
-                    }
-                }
-                self.b.joining = was_joining;
-                let checked = else_.is_some();
-                let else_ = match (else_, otherwise) {
-                    (Some(e), _) => e,
-                    (None, Some(o)) => self.block(o, ty.as_ref()),
-                    (None, None) => mk(TK::Unit, Ty::Unit),
-                };
-                let ty = match ty {
-                    _ if !valued => Ty::Unit,
-                    Some(t) => t,
-                    None => self.join_ty(&else_.ty.clone()),
-                };
-                let converts = valued && self.shallow(&ty) != Ty::Unit;
-                let else_leaves = otherwise.as_ref().is_some_and(|o| o.leaves());
-                let mut tail = if converts && !else_leaves && !checked {
-                    self.coerce(else_, &ty)
-                } else {
-                    else_
-                };
-                for (c, b, leaves) in arms.into_iter().flatten().rev() {
-                    // A branch that leaves gives no value to convert.
-                    let b = if converts && !leaves {
-                        self.coerce(b, &ty)
-                    } else {
-                        b
-                    };
-                    tail = mk(TK::If(Box::new(c), Box::new(b), Box::new(tail)), ty.clone());
-                }
-                tail
-            }
-            ExprKind::Match { scrutinee, arms } => self.match_(scrutinee, arms, want, span),
-            ExprKind::Range {
-                lo,
-                hi,
-                inclusive,
-                step,
-            } if lo.is_some() || hi.is_some() => {
-                let (lo, hi) = (lo.as_deref(), hi.as_deref());
-                self.range_value(lo, hi, *inclusive, step.as_deref(), want, span)
-            }
-            other @ ExprKind::Range { step: None, .. } => match self.whole_of(want) {
-                Some(d) => self.domain_value(d, span),
-                // Its domain comes from its place: an index or a `Range<D>` slot (R04.8.6).
-                None if matches!(
-                    other,
-                    ExprKind::Range {
-                        lo: None,
-                        hi: None,
-                        ..
-                    }
-                ) =>
-                {
-                    let text = cpl_diag::msgs::check::TYPE_MISMATCH_FULL_RANGE.say(&[]);
-                    self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text));
-                    Self::error_node(span)
-                }
-                None => self.unbuilt_expr(other, span),
+            next::Expr::Unwrap(u) => self.unwrap_expr(u, want, span),
+            next::Expr::Keep(k) => match (k.target(), k.value()) {
+                (Some(t), Some(v)) => self.keep_expr(&t, k.is_max(), &v, span),
+                _ => Self::error_node(span),
             },
-            ExprKind::By { walk, step } => match &walk.kind {
-                ExprKind::Range {
-                    lo: Some(lo),
-                    hi: Some(hi),
-                    inclusive,
-                    step: None,
-                } => self.range_value(Some(lo), Some(hi), *inclusive, Some(step), want, span),
-                _ => self.step_walk(walk, step, span),
-            },
-            ExprKind::With { base, updates } => self.record_update(base, updates, span),
-            ExprKind::Without {
-                prefix,
-                base,
-                removed,
-            } => self.without(prefix, base, removed, want, span),
-            ExprKind::Try(x) => self.question(x, span),
-            ExprKind::HasBound { param, bound } => self.has_bound(param, bound, span),
-            other => self.unbuilt_expr(other, span),
+            next::Expr::Lambda(l) => self.lambda_expr(l, want, span),
+            next::Expr::If(i) => self.if_expr(i, want, span),
+            next::Expr::Match(m) => self.match_(m, want, span),
+            // `else: return None` where a value goes: the statement, giving no value.
+            next::Expr::Return(r) => self.leaving(next::Stmt::Return(r.clone()), span),
+            next::Expr::Break(b) => self.leaving(next::Stmt::Break(b.clone()), span),
+            next::Expr::Continue(c) => self.leaving(next::Stmt::Continue(c.clone()), span),
+            next::Expr::Hole(_)
+            | next::Expr::Intrinsic(_)
+            | next::Expr::Mut(_)
+            | next::Expr::Is(_)
+            | next::Expr::Fill(_) => self.unbuilt_expr(e, span),
         }
     }
-    fn unbuilt_expr(&mut self, kind: &ExprKind, span: Span) -> TExpr {
-        let kind = crate::kind_name(kind);
+    fn leaving(&mut self, s: next::Stmt, span: Span) -> TExpr {
+        let mut out = Vec::new();
+        self.stmt(&s, &mut out);
+        TExpr {
+            kind: TK::Block(out, None),
+            ty: Ty::Unit,
+            span,
+        }
+    }
+    fn unbuilt_expr(&mut self, e: &next::Expr, span: Span) -> TExpr {
+        let kind = cpl_next_decls::kind_name(e);
         self.err(span, Unbuilt::Expression { kind });
         Self::error_node(span)
+    }
+    /// `(x, y) => e`, its parameters' and result's types as written.
+    fn lambda_expr(&mut self, l: &next::LambdaExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let Some(body) = l.body() else {
+            return Self::error_node(span);
+        };
+        let mut pre = Vec::new();
+        let mut params = Vec::new();
+        for p in l.params().map(|ps| ps.lambda_params()).unwrap_or_default() {
+            let ty = p.ty.map(|t| self.body_ty(&t, &mut pre));
+            params.push(LamParam {
+                pat: Some(p.pattern),
+                ty,
+                mutable: p.is_mut,
+            });
+        }
+        let ret = l.ret().map(|t| self.body_ty(&t, &mut pre));
+        let v = self.lambda_of(params, ret, LamBody::Arm(body), want, span);
+        block(pre, v)
+    }
+    /// A bare operator as a value (`fold(+, xs)`): its trait's fn item at a bound, else the
+    /// lambda `(a, b) => a op b`; `and`/`or` take `Bool`s.
+    fn op_value(&mut self, o: &next::OpValue, want: Option<&Ty>, span: Span) -> TExpr {
+        let kind = (o.op())
+            .and_then(|t| cpl_next_syntax::ops::binary(t.kind()))
+            .map(|b| b.kind);
+        let kind = match kind {
+            Some(
+                k @ (Kind::Bin(_)
+                | Kind::Cmp(
+                    CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne,
+                )),
+            ) => k,
+            _ => return self.unbuilt_expr(&next::Expr::OpValue(o.clone()), span),
+        };
+        if let Kind::Bin(op) = kind {
+            if let Some(item) = self.op_item(op, want, span) {
+                return item;
+            }
+        }
+        let logic = matches!(kind, Kind::Bin(BinOp::And | BinOp::Or));
+        let param = || LamParam {
+            pat: None,
+            ty: logic.then_some(Ty::Bool),
+            mutable: false,
+        };
+        let body = LamBody::Built(Box::new(move |cx: &mut Cx, args: Vec<TExpr>, _: &Ty| {
+            let mut args = args.into_iter();
+            let (Some(a), Some(b)) = (args.next(), args.next()) else {
+                return Self::error_node(span);
+            };
+            match kind {
+                Kind::Bin(op) => cx.binary(op, a, b, span),
+                Kind::Cmp(op) => match cx.presence(op, &a, &b, span) {
+                    Some(test) => test,
+                    None => cx.ordered(op, a, b, span),
+                },
+            }
+        }));
+        self.lambda_of(vec![param(), param()], None, body, want, span)
+    }
+    /// `.name` as a value: the lambda `it => it.name`.
+    fn field_fn(&mut self, f: &next::FieldFn, want: Option<&Ty>, span: Span) -> TExpr {
+        let Some(tok) = f.field() else {
+            return Self::error_node(span);
+        };
+        let (text, at) = (tok.text().to_string(), tok.span());
+        let param = LamParam {
+            pat: None,
+            ty: None,
+            mutable: false,
+        };
+        let body = LamBody::Built(Box::new(move |cx: &mut Cx, args: Vec<TExpr>, _: &Ty| {
+            let Some(it) = args.into_iter().next() else {
+                return Self::error_node(span);
+            };
+            let it = TExpr { span: at, ..it };
+            let name = Called {
+                text: &text,
+                span: at,
+            };
+            cx.member_on(it, name, None, span, None, &[])
+        }));
+        self.lambda_of(vec![param], None, body, want, span)
+    }
+    /// A name as a value: a variant the expected enum has, a declared fn filled to the fn
+    /// wanted, or what the name is bound to.
+    fn name_value(&mut self, n: &str, want: Option<&Ty>, span: Span) -> TExpr {
+        if let Some((e, i)) = self.expected_variant(n, want) {
+            return self.variant(e, i, Vec::new(), &[], span);
+        }
+        if let Some(e) = self.filled(n, want, span) {
+            return e;
+        }
+        match self.defaulted_fn_value(n, span, want) {
+            Some(v) => v,
+            None => self.name(n, span),
+        }
+    }
+    /// `(a: x, b: y)`: a call of the record type its field names make (R02.6.3).
+    fn record_value(&mut self, r: &next::RecordExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let fields: Vec<next::RecordField> = r.fields().collect();
+        let names: Vec<String> = (fields.iter())
+            .map(|f| f.name().map_or_else(String::new, |t| t.text().to_string()))
+            .collect();
+        let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+        let callee = crate::records::name(&refs);
+        let args: Vec<CallArg> = (fields.iter().zip(&names))
+            .map(|(f, n)| CallArg::labelled(self, Some(n.clone()), f.value(), self.at(f)))
+            .collect();
+        self.call_named(&callee, &[], &args, span, want)
+    }
+    /// `base.name`: a domain a type owns, or a member of the value.
+    fn field_value(&mut self, f: &next::FieldExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let (Some(base), Some(name)) = (f.base(), f.name()) else {
+            return Self::error_node(span);
+        };
+        match self.owned_domain(&base, &name) {
+            Some(d) => self.domain_value(d, span),
+            None => {
+                let at = name.span();
+                self.member(&base, name.text(), at, None, span, want, &[])
+            }
+        }
+    }
+    /// `s[i]`, `s[i, j]`, `s[l..r]`: an element through the type's index, a slot of a raw
+    /// buffer, or a slice (R01.8.5, R04.4.11).
+    fn index_value(&mut self, ix: &next::IndexExpr, span: Span) -> TExpr {
+        let Some(base) = ix.base() else {
+            return Self::error_node(span);
+        };
+        let indices: Vec<next::Expr> = ix.indices().collect();
+        let range_of = |e: &next::Expr| match super::index::unparen(e.clone()) {
+            next::Expr::Range(r) => Some(r),
+            _ => None,
+        };
+        // A slice is contiguous, so its range takes no step (R01.8.5).
+        if indices
+            .iter()
+            .any(|e| range_of(e).is_some_and(|r| r.step().is_some()))
+        {
+            let b = self.expr(&base, None);
+            let text = cpl_diag::msgs::check::BAD_OPERANDS_STEPPED_SLICE.say(&[&self.show(&b.ty)]);
+            let help = "walk it instead: `a[i] for i in l..r by k`".to_string();
+            let msg = Msg::verdict(cpl_diag::codes::BAD_OPERANDS, text);
+            self.err_help(span, msg, Some(help));
+            return Self::error_node(span);
+        }
+        if let [one] = &indices[..] {
+            return self.index_one(&base, one, span);
+        }
+        let b = self.expr(&base, None);
+        if self.is_error(&b.ty) {
+            return Self::error_node(span);
+        }
+        let Some(i) = self.index_parts(&b.ty, &indices, span) else {
+            return Self::error_node(span);
+        };
+        match self.index_fn(&b.ty, &i.ty) {
+            Some(f) => self.index_call(f, b, vec![Some(i)], span),
+            None => {
+                let i = self.index_arg(&b.ty, i);
+                self.elem(b, i, span)
+            }
+        }
+    }
+    fn index_one(&mut self, base: &next::Expr, key: &next::Expr, span: Span) -> TExpr {
+        let again = self.b.indexed_again.take();
+        let point =
+            |e: &next::Expr| !matches!(super::index::unparen(e.clone()), next::Expr::Range(_));
+        let inner_points = match super::index::unparen(base.clone()) {
+            next::Expr::Index(first) => first.indices().all(|e| point(&e)),
+            _ => false,
+        };
+        if point(key) && inner_points {
+            self.b.indexed_again = Some((span, self.at(key)));
+        }
+        let b = self.expr(base, None);
+        self.b.indexed_again = None;
+        if self.is_error(&b.ty) {
+            return Self::error_node(span);
+        }
+        // A point of a table's point is `g[r, c]`, never `g[r][c]` (R01.8.5).
+        if let Some((whole, j)) = again.filter(|_| point(key) && self.is_table(&b.ty)) {
+            let text = cpl_diag::msgs::check::REMOVED_SYNTAX_INDEXES_TWICE_0_3
+                .say(&[&self.text(span), &self.text(j)]);
+            let help = "all indices go in one pair of brackets: `g[r, c]`, never `g[r][c]`";
+            let code = cpl_diag::codes::REMOVED_SYNTAX;
+            self.err_help(whole, Msg::verdict(code, text), Some(help.to_string()));
+            return Self::error_node(span);
+        }
+        if let Ty::Raw(t) = self.shallow(&b.ty) {
+            let i = self.expr(key, Some(&Ty::Int));
+            let i = self.coerce(i, &Ty::Int);
+            return TExpr {
+                kind: TK::Slot(Box::new(b), Box::new(i)),
+                ty: *t,
+                span,
+            };
+        }
+        let k = super::index::unparen(key.clone());
+        if let next::Expr::Range(r) = &k {
+            if r.step().is_none() && (r.lo().is_none() || r.hi().is_none()) {
+                let (lo, hi) = (r.lo(), r.hi());
+                return self.open_slice(b, (lo.as_ref(), hi.as_ref(), r.is_inclusive()), span);
+            }
+        }
+        let want = match &k {
+            next::Expr::Range(_) => (self.key_of(&b.ty)).and_then(|k| self.range_over(k)),
+            next::Expr::Tuple(t) => {
+                let parts: Vec<next::Expr> = t.elems().collect();
+                self.ranged_key(&b.ty, &parts)
+            }
+            _ => None,
+        };
+        let i = self.expr(key, Some(want.as_ref().unwrap_or(&Ty::Int)));
+        if self.is_error(&i.ty) {
+            return Self::error_node(span);
+        }
+        match self.index_fn(&b.ty, &i.ty) {
+            Some(f) => self.index_call(f, b, vec![Some(i)], span),
+            None => {
+                self.literal_key(base, key, &b.ty);
+                let i = self.index_arg(&b.ty, i);
+                self.elem(b, i, span)
+            }
+        }
+    }
+    /// `callee(args)`: a method, a conversion into a core type or domain, a variant, a fold of
+    /// a generator, a declared fn, a fn chosen by the type it returns, or a fn value.
+    fn call_value_of(&mut self, c: &next::CallExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let Some(callee) = c.callee() else {
+            return Self::error_node(span);
+        };
+        let written: Vec<next::Arg> = c.args().map(|l| l.args().collect()).unwrap_or_default();
+        let args: Vec<CallArg> = written.iter().map(|a| CallArg::of(self, a)).collect();
+        let lone = match &written[..] {
+            [a] if a.label().is_none() => a.value(),
+            _ => None,
+        };
+        let name = match &callee {
+            next::Expr::Name(n) => n.ident().map(|t| t.text().to_string()),
+            _ => None,
+        };
+        let unbound = |cx: &Self, n: &str| cx.lookup(n).is_none();
+        match (&callee, name.as_deref()) {
+            (next::Expr::Field(f), _) => {
+                let (Some(base), Some(m)) = (f.base(), f.name()) else {
+                    return Self::error_node(span);
+                };
+                self.member(&base, m.text(), m.span(), Some(&args), span, want, &[])
+            }
+            (next::Expr::Generic(g), _) if matches!(g.base(), Some(next::Expr::Field(_))) => {
+                self.generic_method(g, &args, span, want)
+            }
+            // `Int(c)`, `Char(k)`, `U64(x)`: a core type has no constructor, so this converts.
+            (_, Some(n))
+                if lone.is_some()
+                    && unbound(self, n)
+                    && !self.declared(n)
+                    && decls::prim_type(n).is_some() =>
+            {
+                let to = decls::prim_type(n).unwrap_or(Ty::Error);
+                let x = lone.unwrap_or(callee.clone());
+                self.convert(to, &x, span, Origin::Convert)
+            }
+            // `D(x)` converts into a domain, unless `D`'s constructor takes one field, as a
+            // library domain's `Id(k)` does (R04.2.28).
+            (_, Some(n))
+                if unbound(self, n)
+                    && (self.domain_named(n)).is_some_and(|t| !self.built_from(&t, 1))
+                    && written.len() == 1 =>
+            {
+                let dty = self.domain_named(n).unwrap_or(Ty::Error);
+                match written[0].value() {
+                    Some(x) => self.domain_from(dty, &x, span),
+                    None => Self::error_node(span),
+                }
+            }
+            (_, Some(n)) if self.bare_variant(n, want).is_some() => {
+                match self.bare_variant(n, want) {
+                    Some((e, i)) => self.variant(e, i, Vec::new(), &args, span),
+                    None => self.call_named(n, &[], &args, span, want),
+                }
+            }
+            // A generator argument to a fn that takes no sequence is the method fold of that
+            // sequence: `max(f(x) for x in xs)` is `(f(x) for x in xs).max()` (R01.10.1).
+            (_, Some(n)) if self.declared(n) && self.fold_form(n, &args) => {
+                let Some(seq) = written[0].value() else {
+                    return Self::error_node(span);
+                };
+                let at = self.at(&callee);
+                self.member(&seq, n, at, Some(&args[1..]), span, want, &[])
+            }
+            (_, Some(n)) if unbound(self, n) && self.names_io(n) => {
+                let args = self.io_args(&args);
+                self.call_named(n, &[], &args, span, want)
+            }
+            (_, Some(n)) if self.declared(n) => self.call_named(n, &[], &args, span, want),
+            // `Box<Int>(5)`, `List<Int>()`: the written type arguments come first.
+            (next::Expr::Generic(g), _) if self.declared_base(g).is_some() => {
+                let n = self.declared_base(g).unwrap_or_default();
+                let targs: Vec<next::Type> = super::member::written_types(g);
+                self.call_named(&n, &targs, &args, span, want)
+            }
+            (next::Expr::Generic(g), _) if self.returned_by_generic(g).is_some() => {
+                let Some((t, n, f)) = self.returned_by_generic(g) else {
+                    return Self::error_node(span);
+                };
+                let mut pre = Vec::new();
+                let t = self.body_ty(&t, &mut pre);
+                let v = self.call_by_return(t, f, &n, &args, span);
+                block(pre, v)
+            }
+            (next::Expr::Name(_), _)
+                if want.is_some_and(|w| !matches!(self.shallow(w), Ty::Var(_)))
+                    && self.returned_by(&callee).is_some() =>
+            {
+                let t = want.cloned().unwrap_or(Ty::Error);
+                match self.returned_by(&callee) {
+                    Some((n, f)) => self.call_by_return(t, f, &n, &args, span),
+                    None => Self::error_node(span),
+                }
+            }
+            _ => {
+                let c = self.expr(&callee, None);
+                self.call_value(c, &args, span)
+            }
+        }
+    }
+    /// `n` of `n<T..>` when it is a declared name.
+    fn declared_base(&self, g: &next::GenericExpr) -> Option<String> {
+        let next::Expr::Name(n) = g.base()? else {
+            return None;
+        };
+        let n = n.ident()?.text().to_string();
+        self.declared(&n).then_some(n)
+    }
+    /// `f<T>(..)` of a fn chosen by the one type it returns: that type, and the fn.
+    fn returned_by_generic(
+        &self,
+        g: &next::GenericExpr,
+    ) -> Option<(next::Type, String, (TraitId, FnId))> {
+        let targs: Vec<next::Type> = super::member::written_types(g);
+        let [t] = &targs[..] else {
+            return None;
+        };
+        let (n, f) = self.returned_by(&g.base()?)?;
+        Some((t.clone(), n, f))
+    }
+    /// `if c: a elif d: b else: e`: with no expected type, the branches meet in a type of their
+    /// own: the `else`'s, or, when it is a bare `None`, that of the first branch giving a
+    /// value. The rest are checked against it.
+    pub(super) fn if_chain(
+        &mut self,
+        branches: Vec<(next::Condition, next::ArmBody)>,
+        otherwise: Option<next::ArmBody>,
+        want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let valued = otherwise.is_some();
+        let was_joining = self.b.joining;
+        self.b.joining = want.is_none() && valued;
+        let mut ty = want.filter(|_| valued).cloned();
+        let mut arms: Vec<Option<(TExpr, TExpr, bool)>> = branches.iter().map(|_| None).collect();
+        let mut else_ = None;
+        if let (Some(o), None) = (&otherwise, &ty) {
+            if gives_none(o) {
+                let first = (branches.iter()).position(|(_, b)| !b.leaves() && !gives_none(b));
+                if let Some(i) = first {
+                    let arm = self.if_arm(&branches[i], None);
+                    ty = Some(self.join_ty(&arm.1.ty.clone()));
+                    arms[i] = Some(arm);
+                }
+            } else {
+                self.b.joining = was_joining;
+                let e = self.arm_body(o, None);
+                self.b.joining = want.is_none();
+                let t = self.join_ty(&e.ty.clone());
+                let e = match !o.leaves() && self.shallow(&t) != Ty::Unit {
+                    true => self.coerce(e, &t),
+                    false => e,
+                };
+                ty = Some(t);
+                else_ = Some(e);
+            }
+        }
+        for (arm, br) in arms.iter_mut().zip(&branches) {
+            if arm.is_none() {
+                *arm = Some(self.if_arm(br, ty.as_ref()));
+            }
+        }
+        self.b.joining = was_joining;
+        let checked = else_.is_some();
+        let else_ = match (else_, &otherwise) {
+            (Some(e), _) => e,
+            (None, Some(o)) => self.arm_body(o, ty.as_ref()),
+            (None, None) => mk(TK::Unit, Ty::Unit),
+        };
+        let ty = match ty {
+            _ if !valued => Ty::Unit,
+            Some(t) => t,
+            None => self.join_ty(&else_.ty.clone()),
+        };
+        let converts = valued && self.shallow(&ty) != Ty::Unit;
+        let else_leaves = otherwise.as_ref().is_some_and(|o| o.leaves());
+        let mut tail = match converts && !else_leaves && !checked {
+            true => self.coerce(else_, &ty),
+            false => else_,
+        };
+        for (c, b, leaves) in arms.into_iter().flatten().rev() {
+            // A branch that leaves gives no value to convert.
+            let b = match converts && !leaves {
+                true => self.coerce(b, &ty),
+                false => b,
+            };
+            tail = mk(TK::If(Box::new(c), Box::new(b), Box::new(tail)), ty.clone());
+        }
+        tail
+    }
+    fn if_arm(
+        &mut self,
+        (c, b): &(next::Condition, next::ArmBody),
+        want: Option<&Ty>,
+    ) -> (TExpr, TExpr, bool) {
+        let parts: Vec<next::CondPart> = c.parts().collect();
+        let narrows = matches!(&parts[..], [next::CondPart::Bound(_)]);
+        let c = self.cond(c);
+        // The branch a bound test guards sees the bound (R08.2.9), so the bounds it obliges are
+        // met inside it, and those from before it outside it.
+        if narrows {
+            self.solve(false);
+        }
+        let n = self.b.assumed.len();
+        if let TK::HasBound(t, r) = &c.kind {
+            if let Ty::Param(i) = self.shallow(t) {
+                self.b.assumed.push((i, r.clone()));
+            }
+        }
+        // A bound test that failed to check is the error: the branch it narrows is downstream of it.
+        let b2 = match narrows && self.is_error(&c.ty) {
+            true => Self::error_node(c.span),
+            false => self.arm_body(b, want),
+        };
+        if narrows {
+            self.solve(false);
+        }
+        self.b.assumed.truncate(n);
+        self.b.scopes.pop();
+        (c, b2, b.leaves())
+    }
+    fn if_expr(&mut self, i: &next::IfExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        if i.is_const() {
+            self.err(
+                span,
+                Unbuilt::Statement {
+                    kind: "`if const`".to_string(),
+                },
+            );
+            return Self::error_node(span);
+        }
+        let mut branches: Vec<(next::Condition, next::ArmBody)> = Vec::new();
+        if let (Some(c), Some(b)) = (i.cond(), i.body()) {
+            branches.push((c, b));
+        }
+        for e in i.elifs() {
+            if let (Some(c), Some(b)) = (e.cond(), e.body()) {
+                branches.push((c, b));
+            }
+        }
+        let otherwise = i.else_clause().and_then(|e| e.body());
+        self.if_chain(branches, otherwise, want, span)
+    }
+    /// `if` written as a statement: its blocks give no value.
+    pub(super) fn if_stmt(&mut self, i: &next::IfStmt) -> TExpr {
+        let span = self.at(i);
+        if i.is_const() {
+            self.err(
+                span,
+                Unbuilt::Statement {
+                    kind: "`if const`".to_string(),
+                },
+            );
+            return Self::error_node(span);
+        }
+        let mut branches: Vec<(next::Condition, next::ArmBody)> = Vec::new();
+        if let (Some(c), Some(b)) = (i.cond(), i.body()) {
+            branches.push((c, next::ArmBody::Block(b)));
+        }
+        for e in i.elifs() {
+            if let (Some(c), Some(b)) = (e.cond(), e.body()) {
+                branches.push((c, b));
+            }
+        }
+        let otherwise = i.else_clause().and_then(|e| e.body());
+        self.if_chain(branches, otherwise, None, span)
     }
     pub(super) fn self_field(&self, n: &str) -> Option<usize> {
         let s = self.self_expr(Span::new(0, 0))?;
@@ -1844,9 +1618,19 @@ pub(super) fn block(pre: Vec<TStmt>, e: TExpr) -> TExpr {
 }
 
 /// Whether block `b` ends in a bare `None`, which takes its type from the other branches.
-fn gives_none(b: &ast::Block) -> bool {
-    matches!(b.stmts.last().map(|s| &s.kind),
-        Some(ast::StmtKind::Expr(e)) if matches!(super::index::unparen(e).kind, ExprKind::None))
+
+/// A branch whose value is a bare `None`.
+fn gives_none(b: &next::ArmBody) -> bool {
+    let none = |e: &next::Expr| matches!(super::index::unparen(e.clone()), next::Expr::Name(n) if n.is_none());
+    let stmt =
+        |s: &next::Stmt| matches!(s, next::Stmt::Expr(x) if x.expr().is_some_and(|e| none(&e)));
+    match b {
+        next::ArmBody::Expr(e) => none(e),
+        next::ArmBody::Stmt(s) => stmt(s),
+        next::ArmBody::Block(b) => {
+            matches!(b.entries().last(), Some(next::BlockEntry::Stmt(s)) if stmt(&s))
+        }
+    }
 }
 
 /// The `@role(todo)` fn read as a value: it traps where it is reached and gives no value (R01.6.7).
@@ -2298,5 +2082,85 @@ impl Cx<'_> {
             });
         }
         acc.unwrap_or(prev)
+    }
+
+    /// `()`, or `(a, b)` as its tuple struct's constructor.
+    pub(super) fn tuple(&mut self, t: &next::TupleExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let xs: Vec<next::Expr> = t.elems().collect();
+        if xs.is_empty() {
+            return TExpr {
+                kind: TK::Unit,
+                ty: Ty::Unit,
+                span,
+            };
+        }
+        let Some(d) = self.d.tuple(xs.len()) else {
+            let kind = "Tuple".to_string();
+            self.err(span, Unbuilt::Expression { kind });
+            return Self::error_node(span);
+        };
+        // `(R, C)` named as a value is the product domain's whole range (R04.2.11).
+        if let Some(p) = self.type_path(&next::Expr::Tuple(t.clone())) {
+            return self.domain_value(p, span);
+        }
+        let args: Vec<call::CallArg> = xs.iter().map(|x| call::CallArg::plain(self, x)).collect();
+        let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
+        let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
+        self.construct(d, targs, sets, &args, span, want)
+    }
+
+    /// `[a, b, c]`.
+    pub(super) fn list(&mut self, l: &next::ListExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        let xs: Vec<next::Expr> = l.elems().collect();
+        self.list_literal(&xs, want, span)
+    }
+
+    /// `lo..hi`, `lo..=hi by s`, `..` in its place, and `w by s` on any walk.
+    pub(super) fn range(&mut self, r: &next::RangeExpr, want: Option<&Ty>, span: Span) -> TExpr {
+        if let Some(walk) = r.walk() {
+            let Some(step) = r.step() else {
+                return Self::error_node(span);
+            };
+            if let next::Expr::Range(w) = &walk {
+                if let (Some(lo), Some(hi), None) = (w.lo(), w.hi(), w.step()) {
+                    let inclusive = w.is_inclusive();
+                    return self.range_value(
+                        Some(&lo),
+                        Some(&hi),
+                        inclusive,
+                        Some(&step),
+                        want,
+                        span,
+                    );
+                }
+            }
+            return self.step_walk(&walk, &step, span);
+        }
+        let (lo, hi, step) = (r.lo(), r.hi(), r.step());
+        if lo.is_some() || hi.is_some() {
+            let inclusive = r.is_inclusive();
+            return self.range_value(
+                lo.as_ref(),
+                hi.as_ref(),
+                inclusive,
+                step.as_ref(),
+                want,
+                span,
+            );
+        }
+        match self.whole_of(want) {
+            Some(d) if step.is_none() => self.domain_value(d, span),
+            // Its domain comes from its place: an index or a `Range<D>` slot (R04.8.6).
+            None if step.is_none() => {
+                let text = cpl_diag::msgs::check::TYPE_MISMATCH_FULL_RANGE.say(&[]);
+                self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text));
+                Self::error_node(span)
+            }
+            _ => {
+                let kind = "Range".to_string();
+                self.err(span, Unbuilt::Expression { kind });
+                Self::error_node(span)
+            }
+        }
     }
 }

@@ -1816,6 +1816,20 @@ def next_synthetic_name_tests(root: Path) -> list[str]:
     return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, src)
             for i, l in enumerate(_lines(p), 1) if pat.search(l)] if src.is_dir() else []
 
+RAW_INT_RANGE_RE = re.compile(
+    r"Ty::Range\([^)]*\)\s*\|\s*Ty::RangeOf\b|Ty::RangeOf\([^)]*\)\s*\|\s*Ty::Range\(")
+
+
+def raw_int_range_alternation(root: Path) -> list[str]:
+    """A `Ty::Range(..) | Ty::RangeOf(_)` alternation, either order, in a cpl-next crate other than
+    ir: whether a type is an integer range is `Ty::is_int_range()`, ir's one answer, so no layer
+    spells the variants out again (coordinator ruling; lane D's 064893a7e). A pattern that also
+    names `RangeEnds` is an exhaustive match's arm, which must name every variant (4f05a2b37)."""
+    return [f"{_rel(root, p)}:{i}"
+            for d in sorted((root / "crates").glob("cpl-next*")) if d.name != "cpl-next-ir"
+            for p in _rs_files(root, _rel(root, d / "src"))
+            for i, l in enumerate(_lines(p), 1) if RAW_INT_RANGE_RE.search(l) and "RangeEnds" not in l]
+
 
 DECLS_OP_ARM_RE = re.compile(r"\bTokenKind::(?:Plus|Minus|Star|StarStar|Slash|SlashSlash|Percent|Shl|Shr|"
                              r"Amp|Pipe|Caret|Tilde)\b[^=]*=>")
@@ -5133,6 +5147,11 @@ COUNTERS = {
     "next_source_text_guards": ("new-pipeline guards that read Rust source as text through include_str! (Core)", next_source_text_guards, True),
     "decls_const_op_arms": ("per-operator TokenKind arms in cpl-next-decls, which evaluates constants through ir's ops (Core)", decls_const_op_arms, True),
     "next_synthetic_name_tests": ("cpl-next checker tests of a name's text for the synthetic `$` (Core)", next_synthetic_name_tests, True),
+    "raw_int_range_alternation": (
+        "`Ty::Range(..) | Ty::RangeOf(_)` spelled out in cpl-next outside ir, not `is_int_range()` (Core)",
+        raw_int_range_alternation,
+        True,
+    ),
     "next_op_arms_outside_ir": ("new-pipeline `Intr::` match arms outside cpl-next-ir that are not a back end's machine primitive, or a primitive a back end lacks (Core)", next_op_arms_outside_ir, True),
     "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
     "next_core_standin_lines": ("lines of the new pipeline's private core stand-in std.cp (Core)", next_core_standin_lines, True),

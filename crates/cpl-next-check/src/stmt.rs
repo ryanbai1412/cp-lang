@@ -405,6 +405,13 @@ impl<'a> Cx<'a> {
         let span = self.at(b);
         self.scoped_block(span, |cx, out| cx.entries(&entries, want, true, out))
     }
+    /// `{ .. }` written where a value goes: its entries in a scope of their own.
+    pub(super) fn block_expr(&mut self, b: &next::BlockExpr, want: Option<&Ty>) -> TExpr {
+        let entries: Vec<next::BlockEntry> = b.entries().collect();
+        let span = self.at(b);
+        let valued = !b.ends_with_semi();
+        self.scoped_block(span, |cx, out| cx.entries(&entries, want, valued, out))
+    }
     /// `stmts` then `tail`, in a scope of their own: a fn's `= e` body is
     /// `tail_block(&[], Some(e), ..)`. With no `tail`, a last expression statement is the value.
     pub(super) fn tail_block(

@@ -343,7 +343,6 @@ dependencies = [
  "cpl-diag",
  "cpl-next-decls",
  "cpl-next-ir",
- "cpl-syntax",
 ]
 
 [[package]]
@@ -354,6 +353,7 @@ dependencies = [
  "cpl-next-check",
  "cpl-next-decls",
  "cpl-next-ir",
+ "cpl-next-syntax",
  "cpl-syntax",
 ]
 
