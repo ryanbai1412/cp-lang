@@ -1236,7 +1236,9 @@ pub(super) fn impl_names(
         })
         .flatten()
         .filter_map(|(is_var, p)| match p {
-            next::Pattern::Path(p) if p.is_var() || is_var => Some(p.segments().last()?.text().to_string()),
+            next::Pattern::Path(p) if p.is_var() || is_var => {
+                Some(p.segments().last()?.text().to_string())
+            }
             _ => None,
         })
         .collect();
