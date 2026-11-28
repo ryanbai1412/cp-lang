@@ -1511,4 +1511,7 @@ pub enum SynthBody {
     /// `@get fn name(self) = self.name`: a bodiless `@get` member met by the field of its name
     /// (R12.11.3, R08.1.7).
     Getter(Sym),
+    /// A `without` form's member on a record it fits: `fn R(self, to: P0) = (to: to, w: self.w)`,
+    /// its added fields from its parameters, then the kept ones from `self` (R08.4.1).
+    Without { added: Vec<Sym>, kept: Vec<Sym> },
 }

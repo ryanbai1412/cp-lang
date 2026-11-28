@@ -3,7 +3,8 @@
 //! and types are, and fields, constructors, patterns and derived `Eq` and `Ord` are a struct's.
 use crate::attrs::Attr;
 use crate::decls::forms::{
-    AssocForm, AttrForm, BodyForm, FieldForm, FnForm, ParamForm, StructForm, TraitForm, TyForm,
+    AssocForm, AttrForm, BodyForm, FieldForm, FnForm, ImplForm, ParamForm, StructForm, TraitForm,
+    TyForm,
 };
 use crate::decls::{fills, Role};
 use crate::sym::{Sym, Syms};
@@ -366,89 +367,76 @@ pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitF
 pub fn without_impls(
     forms: &[Form],
     shapes: &[Vec<String>],
+    syms: &mut Syms,
     span: Span,
-) -> Vec<(String, ast::Stmt)> {
-    let nm = |text: &str| ast::Name {
-        text: text.to_string(),
-        span,
-    };
-    let ex = |kind| ast::Expr { kind, span };
+) -> Vec<(String, ImplForm)> {
     let mut out = Vec::new();
+    let this = syms.intern("self");
     for form in forms {
-        let m = without_member(form);
-        let ps = gen_names("P", form.0.len());
+        let m = syms.intern(&without_member(form));
+        let tr = syms.intern(&without_name(form));
+        let np = form.0.len();
         for fs in shapes {
             let Some(made) = without_shape(form, fs) else {
                 continue;
             };
-            let fts = gen_names("F", fs.len());
+            // The impl's parameters: `P0..` for the form's added fields, then `F0..` for the
+            // record's own.
+            let mut generics: Vec<Sym> = (0..np).map(|i| syms.intern(&format!("P{i}"))).collect();
+            generics.extend((0..fs.len()).map(|i| syms.intern(&format!("F{i}"))));
             let ty_of = |f: &String| match form.0.iter().position(|p| p == f) {
-                Some(k) => ast::Type::named(&ps[k], span),
-                None => ast::Type::named(&fts[fs.iter().position(|x| x == f).unwrap_or(0)], span),
+                Some(k) => TyForm::Param(k),
+                None => TyForm::Param(np + fs.iter().position(|x| x == f).unwrap_or(0)),
             };
-            let made_ty = ast::Type {
-                kind: TypeKind::Record(made.iter().map(|f| (nm(f), ty_of(f))).collect()),
+            let made_ty = TyForm::Record(made.iter().map(|f| (syms.intern(f), ty_of(f))).collect());
+            let param = |name: Sym, ty: Option<TyForm>| ParamForm {
+                name,
+                label: name,
+                ty,
+                is_self: name == this,
+                mutable: false,
+                named_only: false,
+                variadic: false,
+                default: None,
                 span,
             };
-            let value = |f: &String| match form.0.contains(f) {
-                true => ex(ExprKind::Name(f.clone())),
-                false => ex(ExprKind::Field {
-                    base: Box::new(ex(ExprKind::Name("self".to_string()))),
-                    name: nm(f),
-                }),
-            };
-            let body = ex(ExprKind::Record(
-                made.iter().map(|f| (nm(f), value(f))).collect(),
-            ));
-            let mut params = vec![self_param("self", None, span)];
-            params.extend(
-                (form.0.iter().zip(&ps))
-                    .map(|(f, p)| self_param(f, Some(ast::Type::named(p, span)), span)),
-            );
-            let assoc = ast::Stmt {
-                kind: StmtKind::TypeAlias {
-                    name: nm(&m),
-                    generics: Vec::new(),
-                    ty: made_ty.clone(),
-                    bounds: Vec::new(),
-                },
-                span,
-                decorators: Vec::new(),
+            let mut params = vec![param(this, None)];
+            for (k, f) in form.0.iter().enumerate() {
+                params.push(param(syms.intern(f), Some(TyForm::Param(k))));
+            }
+            let added = form.0.iter().map(|f| syms.intern(f)).collect();
+            let kept = (made.iter())
+                .filter(|f| !form.0.contains(f))
+                .map(|f| syms.intern(f))
+                .collect();
+            let build = FnForm {
+                name: m,
                 public: true,
-            };
-            let build = member_fn(&m, params, made_ty, ast::FnBody::Expr(body), span);
-            let kind = StmtKind::Impl {
-                trait_name: Some(ast::Type {
-                    kind: TypeKind::Named {
-                        name: nm(&without_name(form)),
-                        args: ps.iter().map(|p| ast::Type::named(p, span)).collect(),
-                    },
-                    span,
-                }),
-                target: ast::Type {
-                    kind: TypeKind::Record(
-                        (fs.iter().zip(&fts))
-                            .map(|(f, t)| (nm(f), ast::Type::named(t, span)))
-                            .collect(),
-                    ),
-                    span,
-                },
-                bounds: (ps.iter().chain(&fts))
-                    .map(|p| ast::Bound {
-                        name: nm(p),
-                        traits: Vec::new(),
-                    })
-                    .collect(),
-                body: ast::Block {
-                    stmts: vec![assoc, build],
-                    span,
-                },
-            };
-            let imp = ast::Stmt {
-                kind,
+                attrs: Vec::new(),
+                generics: Vec::new(),
+                bounds: Vec::new(),
+                params,
+                ret: Some(made_ty.clone()),
+                yields: false,
+                lends: None,
+                uses: Vec::new(),
+                body: BodyForm::Synth(crate::synth::SynthBody::Without { added, kept }),
                 span,
-                decorators: Vec::new(),
-                public: false,
+            };
+            let imp = ImplForm {
+                attrs: Vec::new(),
+                generics,
+                bounds: Vec::new(),
+                trait_: Some(TyForm::Named(tr, (0..np).map(TyForm::Param).collect())),
+                self_ty: TyForm::Record(
+                    (fs.iter().enumerate())
+                        .map(|(k, f)| (syms.intern(f), TyForm::Param(np + k)))
+                        .collect(),
+                ),
+                assoc: vec![(m, made_ty)],
+                methods: vec![build],
+                derived: false,
+                span,
             };
             out.push((name(fs), imp));
         }
