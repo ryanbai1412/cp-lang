@@ -932,6 +932,7 @@ core-07/zip-pairs-by-walk.cp
 core-07/zip-takes-a-rev.cp
 core-08/a-callee-generic-is-not-the-receivers-of-the-same-name.cp
 core-08/a-fn-item-passes-for-its-own-type-of.cp
+core-08/a-range-type-impl-reads-each-list-item.cp
 core-08/a-std-struct-answers-its-static-trait-fns.cp
 core-08/a-tuple-meets-no-constant-trait.cp
 core-08/a-variant-named-like-a-trait-does-not-hide-it.cp
@@ -1094,6 +1095,7 @@ core-09/user-context-lexical-without-uses.cp
 core-09/uses-not-inferred-top-level.cp
 core-09/uses-through-a-bound.cp
 core-09/with-not-first.cp
+core-10/a-read-that-waits-hands-over-the-query-first.cp
 core-10/array-read-short-input.cp
 core-10/array-short-input.cp
 core-10/bad-token-trap.cp
