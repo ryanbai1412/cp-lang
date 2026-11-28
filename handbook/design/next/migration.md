@@ -100,7 +100,7 @@ overlaying the branch's crates on `main` and building the workspace:
 |---|---|---|
 | 0 | `cpl-next-syntax` (lossless tree, operator kinds, interpolation nodes, typed views), `cpl-next-db`'s item queries, `cpl-next-ir`'s ids and types, `cpl-diag` | 2 errors, both in `main`'s `cpl-next-decls/src/modules.rs` (`ItemId.file` and one call's arity), fitted in the slice |
 | 1 | decls on forms and the next tree (the `Mark` readers and `cpl-syntax` gone from decls), check on the next tree, the `Cx` views core and its views (Shapes, RoleRows), and `cpl-syntax`'s changes | yes, as one slice. Decls alone breaks `main`'s check in 158 places across 18 files, and fitting the old check to the new decls would be a second copy (rule: no old path survives) |
-| 2 | the driver on one tree (the `Front.main` old `Stmt` and `FnBody` reads deleted), lower, link, the tools' edits, and the driver's `cpl-syntax` dependency | to be probed on slice 1 |
+| 2 | the driver on one tree (the `Front.main` old `Stmt` and `FnBody` reads deleted), lower, link, the tools' edits, the driver's `cpl-syntax` dependency, and the old pipeline put back at the pin (the old parser's `Some` → `some` rewrite and the cpl-check lines of 9ad9cbbd1 and 002adfb47 reverted, so `FROZEN_ADMITTED` is empty) | to be probed on slice 1 |
 
 `std/` and `spec/` commits land on `main` on their own, ahead of the slices.
 
