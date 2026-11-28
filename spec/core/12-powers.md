@@ -325,7 +325,12 @@ A fn states other languages' names for it, `@aka(upper, toUpperCase)` above
 receiver type gets E0203 naming the fn, with the fix. `@aka` is an
 ordinary decorator: the checker reads it from std's declarations, so no
 compiler table spells a std name (decision 633). Status: checks
-(`core-12/aka-upper-names-to-upper.cp`, `core-12/aka-on-a-user-fn-runs.cp`). (R12.13.2)
+(`core-12/aka-upper-names-to-upper.cp`, `core-12/aka-on-a-user-fn-runs.cp`).
+On an `@operator` trait, `@aka` names other languages' names for the fn its
+operator calls: `@aka(pow)` above `trait Pow` makes `a.pow(e)`, where
+`pow` is found as `Pow`'s fn, E0203 with the fix `a ** e` (R01.11.1), while
+a type's own `pow` is still its method. Status: checks
+(`lints/pow-method.cp`, `core-12/aka-on-an-operator-trait-keeps-own-methods.cp`). (R12.13.2)
 `@stress(kind)` above a type alias says how `cpl stress` makes and shrinks
 its values: `perm`, `tree`, `simple`, `connected`, `dag` or `digraph`
 (decision 25.32). std writes it above `Perm`, `Tree` and the graph

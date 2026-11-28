@@ -204,6 +204,9 @@ pub struct TraitDecl {
     pub unimplemented: Unimplemented,
     /// A row bound's trait, `(to:, ..)`: met by every record with those fields (R08.4.1).
     pub row: bool,
+    /// `@aka(pow)` on an `@operator` trait: other languages' names for its operator, which a
+    /// call by that name is told to write as the operator (R12.13.2).
+    pub aka: Vec<String>,
 }
 /// `@on_unimplemented(code: E0311, "...{T}...")` on a trait: the code a missing impl reports in
 /// place of E0606, and the help it adds, `{T}` the type shown (R08.1.8).

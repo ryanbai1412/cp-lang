@@ -220,6 +220,14 @@ pub(super) fn name_trait(
         // A `without` form's trait is compiler-declared too, but met by its impls, not by fields.
         row: t.record
             && (t.methods.iter()).all(|f| f.attrs.iter().any(|a| a.attr == Decorator::Get)),
+        aka: (t.attrs.iter().filter(|x| x.attr == Decorator::Aka))
+            .filter_map(|x| x.node.as_ref()?.args())
+            .flat_map(|args| args.args().collect::<Vec<_>>())
+            .filter_map(|arg| match arg.value()? {
+                cpl_next_syntax::ast::Expr::Name(n) => Some(n.ident()?.text().to_string()),
+                _ => None,
+            })
+            .collect(),
     });
     id
 }

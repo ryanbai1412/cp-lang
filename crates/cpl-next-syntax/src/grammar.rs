@@ -223,7 +223,7 @@ decorators! {
     Member = "member", "R06.4.16", "`@member(name)` on a std struct: the domain member (`D.name`) whose positions it is";
     Lint = "lint", "R06.4.9", "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint";
     OnUnimplemented = "on_unimplemented", "R08.1.8", "on a trait: the message when a type lacks its impl";
-    Aka = "aka", "R12.13.2", "`@aka(name, ..)` on a fn: other languages' names for it, for their fix";
+    Aka = "aka", "R12.13.2", "`@aka(name, ..)` on a fn or an `@operator` trait: other languages' names for it, for their fix";
     Was = "was", "R12.13.1", "`@was(Old, ..)`: the names a declaration replaced, for their fix";
     SameKeys = "same_keys", "R04b.1.3", "on a fn: its arguments that are arrays over domains share one domain";
     Index = "index", "R07.4.17", "on a fn: what `s[r]` calls when `r` is not a key of `s`";

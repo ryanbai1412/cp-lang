@@ -62,6 +62,8 @@ pub trait RoleRows: RoleStructs {
     fn role_member(&self, m: RoleMember) -> Option<(Sym, FnId)>;
     /// Whether `tr` is an `@operator` trait.
     fn is_operator_trait(&self, tr: TraitId) -> bool;
+    /// The operator `tr`'s `@operator(op)` gives: `**` for `Pow`.
+    fn operator_of(&self, tr: TraitId) -> Option<Sym>;
 }
 
 /// The structs filling the language roles, which a written type converts through: `?T` the
@@ -515,6 +517,9 @@ impl RoleRows for Decls {
     }
     fn is_operator_trait(&self, tr: TraitId) -> bool {
         self.operators.iter().any(|&(_, t)| t == tr)
+    }
+    fn operator_of(&self, tr: TraitId) -> Option<Sym> {
+        (self.operators.iter()).find_map(|&(o, t)| (t == tr).then_some(o))
     }
 }
 

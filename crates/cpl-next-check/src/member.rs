@@ -214,6 +214,37 @@ impl<'a> Cx<'a> {
             written.join(", ")
         ))
     }
+    /// `a.pow(e)` where `pow` is the fn of an `@operator` trait whose `@aka` names it: the
+    /// operator is its one spelling, so the name is E0203 with the operator as the fix
+    /// (R12.13.2, R01.11.1).
+    fn operator_by_name(
+        &self,
+        found: &decls::Member,
+        base: Span,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
+    ) -> Option<(Msg, String)> {
+        let decls::Member::Method(m, ..) = found else {
+            return None;
+        };
+        let tr = match self.items.f(*m).owner? {
+            decls::Owner::Impl(i) => self.items.imp(i).trait_.tr,
+            decls::Owner::Trait(tr) => tr,
+            decls::Owner::Struct(_) => return None,
+        };
+        let op = self.syms.text(self.rows.operator_of(tr)?);
+        (self.rows.operator_method(tr)?.0 == name.sym?).then_some(())?;
+        (self.items.t(tr).aka.iter()).find(|a| *a == name.text)?;
+        let recv = self.text(base);
+        let fix = match call.unwrap_or(&[]) {
+            [] => format!("{op}{recv}"),
+            [a] => format!("{recv} {op} {}", self.text(a.at)),
+            _ => return None,
+        };
+        let text = format!("`{}` is what `{op}` calls: write the operator", name.text);
+        let msg = Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, text);
+        Some((msg, format!("write `{fix}`")))
+    }
     /// `x.m(..)` where a fn the receiver has declares `@aka(m)` or `@was(m)`: the call it means.
     /// The name `@was` gives back is said in an E0503 (R06.4.11).
     fn renamed(
@@ -1261,9 +1292,13 @@ impl<'a> Cx<'a> {
         }
         let found = self.member_named(&rt, name.sym);
         let at = self.b.module;
-        let hidden = found
-            .as_ref()
-            .and_then(|x| decls::hidden_member(self.items, self.names, x, &rt, name.text, at));
+        let hidden = (found.as_ref())
+            .and_then(|x| self.operator_by_name(x, recv.span, name, call))
+            .or_else(|| {
+                (found.as_ref()).and_then(|x| {
+                    decls::hidden_member(self.items, self.names, x, &rt, name.text, at)
+                })
+            });
         if let Some((msg, help)) = hidden {
             self.err_help(span, msg, Some(help));
             return Self::error_node(span);
