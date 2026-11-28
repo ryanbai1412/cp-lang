@@ -64,6 +64,8 @@ pub(super) struct TyCx<'a> {
     pub(super) names: &'a dyn Fn(Sym) -> Option<Named>,
     /// The signatures' tables, each read by key.
     pub(super) env: &'a dyn TypeTables,
+    /// The names' ids, for the names the type writes.
+    pub(super) syms: &'a crate::sym::Syms,
     /// Where the item being converted starts in the source, when known: its spans count from it.
     pub(super) item: Option<ItemId>,
     pub(super) generics: &'a [Sym],
@@ -133,6 +135,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, name: &str, a: Vec<Ty>, errors: &m
         axes: None,
         names: &|n: Sym| decl.names.get(&n).copied(),
         env,
+        syms: cx.syms,
         item: None,
         generics: &decl.generics,
         outer: cx.outer,
@@ -160,7 +163,7 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &TyForm, errors: &mut Vec<Msg>) -> Opt
         }
         TyForm::Written(Type::Path(p)) => {
             let text = path_text(p);
-            let tr = trait_named(cx, cx.env.sym(&text), text, errors)?;
+            let tr = trait_named(cx, cx.syms.get(&text), text, errors)?;
             let args = generic_args(p)
                 .iter()
                 .map(|a| conv_arg(cx, a, errors))
@@ -173,7 +176,7 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &TyForm, errors: &mut Vec<Msg>) -> Opt
             let names: Vec<String> = (fs.iter())
                 .map(|f| f.name().map_or(String::new(), |n| n.text().to_string()))
                 .collect();
-            let row = cx.env.sym(&crate::records::row_name(&names));
+            let row = cx.syms.get(&crate::records::row_name(&names));
             let Some(Named::Trait(tr)) = row.and_then(|s| (cx.names)(s)) else {
                 errors.push(Unbuilt::BoundNotNamed.into());
                 return None;
@@ -315,7 +318,7 @@ pub(super) fn conv_form(cx: &mut TyCx, t: &TyForm, errors: &mut Vec<Msg>) -> Ty 
             Ty::Error
         }),
         TyForm::SelfAssoc(a) => {
-            let s = cx.env.sym(&format!("Self.{}", cx.env.text(*a)));
+            let s = cx.syms.get(&format!("Self.{}", cx.env.text(*a)));
             match s.and_then(|s| cx.generics.iter().position(|g| *g == s)) {
                 Some(i) => param(cx, i),
                 None => {
@@ -415,7 +418,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
             Ty::Fn(ps, Box::new(r), set)
         }
         Type::TypeOf(o) => item_of(cx, o, errors),
-        Type::DomainBinder(b) => (b.name().and_then(|n| cx.env.sym(n.text())))
+        Type::DomainBinder(b) => (b.name().and_then(|n| cx.syms.get(n.text())))
             .and_then(|s| cx.doms.get(&s).cloned())
             .unwrap_or(Ty::Error),
         // A result's `_`, filled in once its struct's domain parameters are known (R02.9.3).
@@ -446,7 +449,7 @@ fn conv_arg(cx: &mut TyCx, a: &GenericArg, errors: &mut Vec<Msg>) -> Ty {
         GenericArg::Type(t) => conv(cx, t, errors),
         // `D` of `impl Show for Bitset<D: Show>`, its bounds read with the impl's.
         GenericArg::Param(p) if !p.is_const() => {
-            let s = p.name().and_then(|n| cx.env.sym(n.text()));
+            let s = p.name().and_then(|n| cx.syms.get(n.text()));
             match s.and_then(|s| cx.generics.iter().position(|g| *g == s)) {
                 Some(i) => param(cx, i),
                 None => unbuilt("GenericParam", errors),
@@ -481,7 +484,7 @@ fn conv_path(cx: &mut TyCx, segs: &[SyntaxToken], a: Vec<Ty>, errors: &mut Vec<M
     // `D.m`: the `@member(m)` struct at `D`, as `D.cuts` is `Cut<D>`.
     if let [base @ .., m] = segs {
         if !base.is_empty() {
-            if let Some(id) = cx.env.sym(m.text()).and_then(|m| cx.env.member(m)) {
+            if let Some(id) = cx.syms.get(m.text()).and_then(|m| cx.env.member(m)) {
                 let base = conv_path(cx, base, Vec::new(), errors);
                 let sets = (0..cx.env.n_sets(id)).map(|_| slot(cx)).collect();
                 return Ty::Struct(id, vec![base], sets);
@@ -489,7 +492,7 @@ fn conv_path(cx: &mut TyCx, segs: &[SyntaxToken], a: Vec<Ty>, errors: &mut Vec<M
         }
     }
     let text = segs.iter().map(|s| s.text()).collect::<Vec<_>>().join(".");
-    match cx.env.sym(&text) {
+    match cx.syms.get(&text) {
         Some(n) => named(cx, n, a, errors),
         None => unknown(&text, errors),
     }
@@ -611,7 +614,10 @@ fn conv_range(cx: &mut TyCx, re: &next::RangeExpr, errors: &mut Vec<Msg>) -> Ty 
     }
     // `0..=V.count`: its end is the domain's, where a struct's arguments name it.
     if let Some((lo, d, m, k)) = count_end(cx, lo.as_ref(), hi.as_ref(), re.is_inclusive()) {
-        if let (true, Some(m)) = (is_type_name(cx, &d), cx.env.getter(m.text())) {
+        if let (true, Some(m)) = (
+            is_type_name(cx, &d),
+            cx.syms.get(m.text()).and_then(|m| cx.env.getter(m)),
+        ) {
             let d = conv_path(cx, &[d], Vec::new(), errors);
             return Ty::RangeTo(Box::new(d), m, lo, k);
         }
@@ -633,11 +639,11 @@ fn end(cx: &TyCx, e: &Expr) -> Option<End> {
         return None;
     };
     let k = n.ident()?;
-    let s = cx.env.sym(k.text())?;
+    let s = cx.syms.get(k.text())?;
     if let Some(i) = cx.generics.iter().position(|g| *g == s) {
         return Some(End::Of(Box::new(param(cx, i))));
     }
-    let (id, v) = cx.env.top_value(k.text())?;
+    let (id, v) = cx.env.top_value(cx.syms.get(k.text())?)?;
     (!v.mutable).then_some(End::Global {
         id,
         within: v.within,
@@ -648,9 +654,12 @@ fn end(cx: &TyCx, e: &Expr) -> Option<End> {
 /// only a `let` may end one (R02.10.3).
 fn var_end(cx: &TyCx, ends: [Option<&Expr>; 2]) -> Option<Msg> {
     let k = ends.into_iter().flatten().find_map(|e| match e {
-        Expr::Name(n) => n
-            .ident()
-            .filter(|k| cx.env.top_value(k.text()).is_some_and(|(_, v)| v.mutable)),
+        Expr::Name(n) => n.ident().filter(|k| {
+            cx.syms
+                .get(k.text())
+                .and_then(|s| cx.env.top_value(s))
+                .is_some_and(|(_, v)| v.mutable)
+        }),
         _ => None,
     })?;
     let msg = format!(
@@ -667,7 +676,7 @@ pub(super) fn const_int(cx: &TyCx, e: &Expr) -> Option<i64> {
         Some(Named::Const(c)) => const_value(&cx.env.konst(c).init, &|_| None),
         _ => None,
     };
-    const_value(e, &|t: &SyntaxToken| konst(cx.env.sym(t.text())?))
+    const_value(e, &|t: &SyntaxToken| konst(cx.syms.get(t.text())?))
 }
 
 /// The integer a constant expression of literals is.
@@ -806,12 +815,19 @@ fn item_of(cx: &mut TyCx, o: &next::TypeOfType, errors: &mut Vec<Msg>) -> Ty {
             let Some(k) = n.ident() else {
                 return Ty::Error;
             };
-            match cx.env.sym(k.text()).and_then(|s| (cx.names)(s)) {
+            match cx.syms.get(k.text()).and_then(|s| (cx.names)(s)) {
                 Some(Named::Fn(f)) => return fn_ref(f),
-                None if cx.env.top_value(k.text()).is_none() => Msg::verdict(
-                    cpl_diag::codes::UNRESOLVED_NAME,
-                    format!("unknown name `{}`", k.text()),
-                ),
+                None if cx
+                    .syms
+                    .get(k.text())
+                    .and_then(|s| cx.env.top_value(s))
+                    .is_none() =>
+                {
+                    Msg::verdict(
+                        cpl_diag::codes::UNRESOLVED_NAME,
+                        format!("unknown name `{}`", k.text()),
+                    )
+                }
                 _ => not_fn(),
             }
         }
@@ -824,7 +840,7 @@ fn item_of(cx: &mut TyCx, o: &next::TypeOfType, errors: &mut Vec<Msg>) -> Ty {
                 })
                 .map(|t| t.text().to_string())
                 .collect();
-            match cx.env.operator(&k) {
+            match cx.syms.get(&k).and_then(|k| cx.env.operator(k)) {
                 Some(f) => return fn_ref(f),
                 None => Msg::verdict(
                     cpl_diag::codes::NOT_A_FN_ITEM,
@@ -915,6 +931,7 @@ impl BodyScope<'_> {
             axes,
             names: &names,
             env: self.sigs,
+            syms: self.sigs.syms(),
             item: None,
             generics: self.generics,
             outer: self.generics,
@@ -983,9 +1000,6 @@ impl Texts for Tables {
 }
 
 impl TypeTables for Tables {
-    fn sym(&self, text: &str) -> Option<Sym> {
-        self.syms.get(text)
-    }
     fn alias(&self, id: AliasId) -> &AliasDecl {
         &self.aliases[id.0]
     }
@@ -995,22 +1009,15 @@ impl TypeTables for Tables {
     fn core_type(&self, n: Sym) -> Option<CoreType> {
         self.core.get(&n).copied()
     }
-    fn top_value(&self, name: &str) -> Option<(TopValueId, TopValue)> {
-        let g = top_value(&self.values, self.syms.get(name)?)?;
+    fn top_value(&self, name: Sym) -> Option<(TopValueId, TopValue)> {
+        let g = top_value(&self.values, name)?;
         Some((g, self.values[g.0].clone()))
     }
-    fn operator(&self, op: &str) -> Option<FnId> {
-        let op = self.syms.get(op)?;
+    fn operator(&self, op: Sym) -> Option<FnId> {
         self.ops.iter().find(|(o, _)| *o == op).map(|&(_, f)| f)
     }
-    fn getter(&self, m: &str) -> Option<FnId> {
-        self.getters.get(&self.syms.get(m)?).copied()
-    }
-    fn sugar(&self) -> Sugar {
-        self.sugar
-    }
-    fn roles(&self) -> &Roles {
-        &self.roles
+    fn getter(&self, m: Sym) -> Option<FnId> {
+        self.getters.get(&m).copied()
     }
 }
 
@@ -1052,15 +1059,23 @@ impl Shapes for Tables {
 
 /// `[0..V.count - 1]T`: an axis ending at a domain's count, keyed by that range type (R04.3.4).
 fn count_axis(cx: &TyCx, re: &next::RangeExpr) -> bool {
-    count_end(cx, re.lo().as_ref(), re.hi().as_ref(), re.is_inclusive())
-        .is_some_and(|(_, d, m, _)| is_type_name(cx, &d) && cx.env.getter(m.text()).is_some())
+    count_end(cx, re.lo().as_ref(), re.hi().as_ref(), re.is_inclusive()).is_some_and(
+        |(_, d, m, _)| {
+            is_type_name(cx, &d)
+                && cx
+                    .syms
+                    .get(m.text())
+                    .and_then(|m| cx.env.getter(m))
+                    .is_some()
+        },
+    )
 }
 
 /// The record struct with fields written `names`: none when a name is one no declaration gave.
 fn record_named(cx: &TyCx, names: &[String]) -> Option<StructId> {
     let fields = names
         .iter()
-        .map(|n| cx.env.sym(n))
+        .map(|n| cx.syms.get(n))
         .collect::<Option<Vec<_>>>()?;
     cx.env.record(&fields)
 }
@@ -1120,7 +1135,7 @@ fn without(
                 cx.env.text(cx.outer[i]),
                 crate::records::without_member(form)
             );
-            match (cx.env.sym(&rest)).and_then(|r| cx.outer.iter().position(|g| *g == r)) {
+            match (cx.syms.get(&rest)).and_then(|r| cx.outer.iter().position(|g| *g == r)) {
                 Some(k) => {
                     if let Some(rows) = cx.rows {
                         let args = (prefix.iter())
@@ -1161,7 +1176,7 @@ pub(super) fn has_hole(t: &Type) -> bool {
 
 /// Whether `n` names a type where `cx` converts one: a generic or a declared name.
 fn is_type_name(cx: &TyCx, n: &SyntaxToken) -> bool {
-    cx.env
-        .sym(n.text())
+    cx.syms
+        .get(n.text())
         .is_some_and(|s| cx.generics.contains(&s) || (cx.names)(s).is_some())
 }

@@ -1535,6 +1535,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         axes: None,
         names: &named,
         env: &tables,
+        syms: &tables.syms,
         item: Some(item.clone()),
         generics: &generics,
         outer: &generics,

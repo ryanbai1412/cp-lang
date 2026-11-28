@@ -76,6 +76,7 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
         axes: None,
         names: &names,
         env: &tables,
+        syms: &tables.syms,
         item: Some(item.clone()),
         generics: &generics,
         outer: &generics,

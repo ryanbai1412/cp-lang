@@ -18,8 +18,6 @@ use std::collections::HashMap;
 /// The part of the signatures a written type is converted against, each table read by key.
 /// Decls reads it while it is still building the rest of the signatures.
 pub trait TypeTables: Texts + Shapes + RoleStructs {
-    /// The id of a name written `text`, if any table holds it.
-    fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
     fn alias(&self, id: AliasId) -> &AliasDecl;
     fn konst(&self, id: ConstId) -> &LibConst;
     /// The core type written `n`: `Int`, `Raw`.
@@ -27,14 +25,12 @@ pub trait TypeTables: Texts + Shapes + RoleStructs {
     /// The value the program's top level binds as `name`, when it binds one: a value, not an item.
     fn top_value(
         &self,
-        name: &str,
+        name: crate::sym::Sym,
     ) -> Option<(cpl_next_ir::ty::TopValueId, crate::decls::TopValue)>;
     /// Binary operator `op`'s fn, which `type_of(+)` names.
-    fn operator(&self, op: &str) -> Option<FnId>;
+    fn operator(&self, op: crate::sym::Sym) -> Option<FnId>;
     /// `Domain`'s getter `m`, which a range type's end `D.m` names.
-    fn getter(&self, m: &str) -> Option<FnId>;
-    fn sugar(&self) -> Sugar;
-    fn roles(&self) -> &Roles;
+    fn getter(&self, m: crate::sym::Sym) -> Option<FnId>;
 }
 
 /// The declarations filling the language roles (R11.6.1) and the rows `@operator`, `@literal`
@@ -144,6 +140,12 @@ pub trait Items: Texts {
 
 /// `signature(ItemId)`: what an item declares, never its body.
 pub trait Signatures: TypeTables + Items {
+    /// The id of a name written `text`, if any table holds it.
+    fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
+    /// The names' ids, which a type written in a body is read through.
+    fn syms(&self) -> &crate::sym::Syms;
+    fn sugar(&self) -> Sugar;
+    fn roles(&self) -> &Roles;
     /// The impl lookup over these signatures (`Impls`): the one place impl questions go.
     fn impls(&self) -> Impls<'_>;
     /// The trait `@literal(op)` marks: `"[]"` a list literal builds through.
@@ -339,6 +341,18 @@ impl Items for Decls {
 }
 
 impl Signatures for Decls {
+    fn sym(&self, text: &str) -> Option<crate::sym::Sym> {
+        self.syms.get(text)
+    }
+    fn syms(&self) -> &crate::sym::Syms {
+        &self.syms
+    }
+    fn sugar(&self) -> Sugar {
+        self.sugar
+    }
+    fn roles(&self) -> &Roles {
+        &self.roles
+    }
     fn literal_trait(&self, op: &str) -> Option<TraitId> {
         Decls::literal_trait(self, op)
     }
@@ -373,9 +387,6 @@ impl Texts for Decls {
 }
 
 impl TypeTables for Decls {
-    fn sym(&self, text: &str) -> Option<crate::sym::Sym> {
-        self.syms.get(text)
-    }
     fn core_type(&self, n: crate::sym::Sym) -> Option<crate::decls::CoreType> {
         self.core_types.get(&n).copied()
     }
@@ -388,23 +399,18 @@ impl TypeTables for Decls {
     }
     fn top_value(
         &self,
-        name: &str,
+        name: crate::sym::Sym,
     ) -> Option<(cpl_next_ir::ty::TopValueId, crate::decls::TopValue)> {
-        let g = crate::decls::top_value(&self.top_values, self.sym(name)?)?;
+        let g = crate::decls::top_value(&self.top_values, name)?;
         Some((g, self.top_values[g.0].clone()))
     }
-    fn operator(&self, op: &str) -> Option<FnId> {
-        self.operator_fn(op, true)
+    fn operator(&self, op: crate::sym::Sym) -> Option<FnId> {
+        self.operator_fn_of(op, true)
     }
-    fn getter(&self, m: &str) -> Option<FnId> {
+    fn getter(&self, m: crate::sym::Sym) -> Option<FnId> {
         let tr = self.roles.domain?;
-        (self.member(&self.traits[tr.0].methods, m)).filter(|f| self.fns[f.0].getter)
-    }
-    fn sugar(&self) -> Sugar {
-        self.sugar
-    }
-    fn roles(&self) -> &Roles {
-        &self.roles
+        (self.member(&self.traits[tr.0].methods, self.syms.text(m)))
+            .filter(|f| self.fns[f.0].getter)
     }
 }
 
