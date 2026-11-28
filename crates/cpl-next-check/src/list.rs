@@ -82,6 +82,7 @@ impl Cx<'_> {
             recv: None,
             self_ty: Box::new(lty.clone()),
             targs: Box::new([]),
+            sets: Box::default(),
             args: vec![TArg::Value(TExpr {
                 kind: TK::Int(room as i64),
                 ty: Ty::Int,
@@ -128,6 +129,7 @@ impl Cx<'_> {
                 recv: Some(Box::new(TArg::Mut(l.read.clone()))),
                 self_ty: Box::new(l.read.ty.clone()),
                 targs: Box::new([]),
+                sets: Box::default(),
                 args: vec![TArg::Value(v)],
             },
             ty: Ty::Unit,

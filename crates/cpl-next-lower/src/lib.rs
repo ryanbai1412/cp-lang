@@ -739,6 +739,7 @@ impl Lw<'_> {
                 recv,
                 self_ty,
                 targs,
+                sets,
                 args,
                 ctx,
             } => {
@@ -754,6 +755,7 @@ impl Lw<'_> {
                         method: method.clone(),
                         self_ty,
                         targs: targs.to_vec(),
+                        sets: sets.to_vec(),
                         ret: e.ty.clone(),
                         ctx: *ctx,
                     },
@@ -1032,6 +1034,7 @@ impl Lw<'_> {
                             self_ty: x.ty.clone(),
                             ret: Ty::Int,
                             targs: Vec::new(),
+                            sets: Vec::new(),
                             ctx: 0,
                         };
                         self.spill(int(EK::Call(ord, vec![Arg::Value(v)], site)), out)
@@ -1460,6 +1463,7 @@ impl Lw<'_> {
                         method: method.clone(),
                         self_ty: r.map_or(Ty::Error, Self::self_ty),
                         targs: Vec::new(),
+                        sets: Vec::new(),
                         ret: Ty::Unit,
                         ctx: 0,
                     },

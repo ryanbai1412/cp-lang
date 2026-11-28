@@ -668,12 +668,14 @@ impl<'a> Cx<'a> {
         while tys.len() < fd.generics.len() {
             tys.push(self.new_ty());
         }
+        let sets = self.trait_sets(m);
         let sub = Subst {
             tys: &tys,
-            sets: &[],
+            sets: &sets,
         };
         let formals = self.formals(&sub, fd);
-        let ret = self.trait_ret(m, tys.clone());
+        let own: Box<[SetTy]> = sets[..fd.n_sets].into();
+        let ret = self.trait_ret_in(m, tys.clone(), sets);
         let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
         let call = TExpr {
             kind: TK::CallTrait {
@@ -683,6 +685,7 @@ impl<'a> Cx<'a> {
                 recv: None,
                 self_ty: Box::new(self_ty),
                 targs: tys[outer..].into(),
+                sets: own,
                 args,
             },
             ty: ret,
@@ -818,12 +821,14 @@ impl<'a> Cx<'a> {
         while tys.len() < fd.generics.len() {
             tys.push(self.new_ty());
         }
+        let sets = self.trait_sets(m);
         let sub = Subst {
             tys: &tys,
-            sets: &[],
+            sets: &sets,
         };
         let formals = self.formals(&sub, fd);
-        let ret = self.trait_ret(m, tys.clone());
+        let own: Box<[SetTy]> = sets[..fd.n_sets].into();
+        let ret = self.trait_ret_in(m, tys.clone(), sets);
         let (pre, args) = self.args(call.unwrap_or(&[]), &formals, span);
         let recv = if fd.self_mode == SelfMode::Mut {
             self.mut_recv(recv, span)
@@ -838,6 +843,7 @@ impl<'a> Cx<'a> {
                 recv: Some(Box::new(recv)),
                 self_ty: Box::new(rt.clone()),
                 targs: tys[outer..].into(),
+                sets: own,
                 args,
             },
             ty: ret,

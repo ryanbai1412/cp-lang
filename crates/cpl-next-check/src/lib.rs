@@ -168,6 +168,9 @@ pub enum TK {
         self_ty: Box<Ty>,
         /// The fn's own type arguments, after `Self` and the trait's (`S` of `fn mask<S>`).
         targs: Box<[Ty]>,
+        /// The fn's own set arguments, the ones its function parameters' values are put in
+        /// (`of = x => x`); its result's travel in the call's type.
+        sets: Box<[SetTy]>,
         args: Vec<TArg>,
         /// The trait's fn's context copy the call makes, as `FnRef::ctx` (R09.1.3).
         ctx: u32,

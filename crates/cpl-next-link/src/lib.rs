@@ -936,16 +936,20 @@ impl Link<'_> {
                 method,
                 self_ty,
                 targs,
+                sets,
                 ret,
                 ctx,
             } => {
                 let mut k = self.trait_key(tr, args, method, self_ty, env)?;
                 k.targs.extend(targs.iter().map(|t| self.targ(t, env)));
-                self.in_copy(
-                    &mut k,
-                    self.d.member_named(&self.d.t(*tr).methods, method),
-                    *ctx,
-                );
+                let tm = self.d.member_named(&self.d.t(*tr).methods, method);
+                self.in_copy(&mut k, tm, *ctx);
+                if let (Some(g), Some(tm)) = (k.func.decl(), tm) {
+                    // The picked fn's own sets follow its impl's, as the trait fn's do its own.
+                    let impl_sets = self.d.f(g).n_sets.saturating_sub(self.d.f(tm).n_sets);
+                    k.sets.resize(impl_sets, CSet::default());
+                    k.sets.extend(sets.iter().map(|s| self.set(s, env)));
+                }
                 if let Some(g) = k.func.decl() {
                     let mut out = vec![None; self.d.f(g).n_ret_sets];
                     let c = self.ty(ret, env);

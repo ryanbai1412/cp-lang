@@ -1498,6 +1498,7 @@ impl<'a> Cx<'a> {
                     recv: None,
                     self_ty: Box::new(array.clone()),
                     targs: Box::new([]),
+                    sets: Box::default(),
                     args: vec![TArg::Value(v)],
                 };
                 TExpr {

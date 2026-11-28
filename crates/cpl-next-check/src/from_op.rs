@@ -45,6 +45,7 @@ impl Cx<'_> {
                 method: fd.name.clone(),
                 self_ty: Box::new(Ty::Param(0)),
                 targs: (n + 1..fd.generics.len()).map(Ty::Param).collect(),
+                sets: Box::default(),
                 recv,
                 args,
             },

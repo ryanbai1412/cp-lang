@@ -412,10 +412,19 @@ impl<'a> Cx<'a> {
     /// What trait fn `m` returns at `Self` and the trait's arguments `tys`: its fns are the ones
     /// the impl the type picks returns.
     pub(super) fn trait_ret(&mut self, m: FnId, tys: Vec<Ty>) -> Ty {
+        let sets = self.trait_sets(m);
+        self.trait_ret_in(m, tys, sets)
+    }
+    /// Fresh sets for each of trait fn `m`'s own and result sets, as a call of it passes.
+    pub(super) fn trait_sets(&mut self, m: FnId) -> Vec<SetTy> {
         let fd = self.items.f(m);
-        let sets = (0..fd.n_sets + fd.n_ret_sets)
+        (0..fd.n_sets + fd.n_ret_sets)
             .map(|_| self.new_set())
-            .collect();
+            .collect()
+    }
+    /// `m`'s result under `tys` and the call's `sets`, the ones its arguments are put in.
+    pub(super) fn trait_ret_in(&mut self, m: FnId, tys: Vec<Ty>, sets: Vec<SetTy>) -> Ty {
+        let fd = self.items.f(m);
         let f = FnRef {
             decl: m,
             targs: tys,

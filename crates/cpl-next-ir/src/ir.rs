@@ -444,6 +444,9 @@ pub enum Target<T> {
         self_ty: T,
         /// The fn's own type arguments, after `Self` and the trait's.
         targs: Vec<T>,
+        /// The fn's own set arguments, as `FnRef::sets` before its result's: the impl's fn
+        /// takes them after the impl's own.
+        sets: Vec<SetTy>,
         /// The call's result type, whose function types carry the sets it passes the impl.
         ret: T,
         /// The trait's fn's context copy, as `FnRef::ctx`: the impl's copy under the same values.

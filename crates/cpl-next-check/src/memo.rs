@@ -134,6 +134,7 @@ impl Cx<'_> {
                         recv: Some(Box::new(recv)),
                         self_ty: Box::new(table_ty.clone()),
                         targs: Box::new([]),
+                        sets: Box::default(),
                         args,
                         ctx,
                     };

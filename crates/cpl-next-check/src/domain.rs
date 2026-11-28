@@ -121,6 +121,7 @@ impl Cx<'_> {
             recv: Some(Box::new(TArg::Value(recv))),
             self_ty: Box::new(ty.clone()),
             targs: Box::new([]),
+            sets: Box::default(),
             args: vec![],
         };
         let ty = self.trait_ret(m, vec![ty]);
@@ -521,6 +522,7 @@ impl Cx<'_> {
                     recv: Some(Box::new(TArg::Value(read.clone()))),
                     self_ty: Box::new(r_ty.clone()),
                     targs: Box::new([]),
+                    sets: Box::default(),
                     args: vec![],
                 };
                 let r = decls::TraitRef {

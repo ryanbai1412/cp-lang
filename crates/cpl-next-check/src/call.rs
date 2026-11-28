@@ -662,6 +662,7 @@ impl Cx<'_> {
                     method: name.to_string(),
                     self_ty: Box::new(recv.ty.clone()),
                     targs: Box::default(),
+                    sets: Box::default(),
                     recv: Some(Box::new(TArg::Value(recv))),
                     args,
                 },
