@@ -1623,7 +1623,7 @@ fn calls_in<'b, T>(b: &'b [Stmt<T>], f: &mut Calls<'b, T>) {
 /// R05.10.12: a method holding a lend into a `@cache` field of `self` calls no fn value, which
 /// could reach the struct and write the field under that lend. A rule on the body as written, so
 /// it reads generic IR: an uncalled method has no instance.
-fn cache_calls(d: &dyn Signatures, generic: &HashMap<FuncKey, Func<Ty>>) -> Vec<Msg> {
+pub(crate) fn cache_calls(d: &dyn Signatures, generic: &HashMap<FuncKey, Func<Ty>>) -> Vec<Msg> {
     use cpl_next_decls::decls::{Owner, SelfMode};
     let mut keys: Vec<&FuncKey> = generic.keys().collect();
     keys.sort();
@@ -1707,19 +1707,20 @@ pub struct Owned {
     pub copies: BTreeSet<(usize, Site)>,
 }
 
-/// Ownership on the instances link made, before their passed places settle (and, for `@cache`,
-/// on generic IR).
+/// Ownership on the instances link made, before their passed places settle. `cache` is what
+/// `cache_calls` found on the generic fns before link.
 pub(crate) fn check(
     d: &dyn Signatures,
     generic: &HashMap<FuncKey, Func<Ty>>,
     p: &Program,
     globals: &[(String, bool)],
+    cache: Vec<Msg>,
 ) -> Owned {
     let mut owned = run(d, generic, p, globals);
-    owned.errors.extend(cache_calls(d, generic));
+    owned.errors.extend(cache);
     owned.errors.extend(lenders_lend(p));
     if p.errors.is_empty() {
-        owned.errors.extend(escape(d, generic, p));
+        owned.errors.extend(escape(d, p));
     }
     owned
 }
@@ -1788,7 +1789,7 @@ fn lenders_lend(p: &Program) -> Vec<Msg> {
 
 /// A closure that shares a `var` of the fn around it is lent: it cannot be returned (spec R05.10).
 /// Nor can it be stored through a `mut` parameter.
-fn escape(d: &dyn Signatures, generic: &HashMap<FuncKey, Func<Ty>>, p: &Program) -> Vec<Msg> {
+fn escape(d: &dyn Signatures, p: &Program) -> Vec<Msg> {
     // `made` keeps the closures the returning fn itself makes: one passed in through a
     // container's `new` or `at` captures what its maker's frame holds, which outlives them.
     fn holds_ref(
@@ -1820,8 +1821,8 @@ fn escape(d: &dyn Signatures, generic: &HashMap<FuncKey, Func<Ty>>, p: &Program)
         };
         // A generator's frame ends with its walk, so a closure made in one outlives it anywhere.
         let made = |k: &InstKey| match (owner, &k.func) {
-            (Some(g), FuncKey::Lambda(id)) => {
-                let o = generic.get(&FuncKey::Lambda(*id)).and_then(|l| l.maker);
+            (Some(g), FuncKey::Lambda(_)) => {
+                let o = (p.index.get(k)).and_then(|&i| p.insts.get(i)?.maker);
                 o == Some(g) || o.is_some_and(|o| matches!(d.f(o).region, Some((false, _))))
             }
             (Some(_), _) => false,

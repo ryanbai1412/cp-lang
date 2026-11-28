@@ -215,10 +215,11 @@ pub type Lend = dyn Fn(
 /// Links the generic fns by their lent marks and a lent-slot rule: the caller's link stage.
 pub type Linker<'a> = dyn Fn(&HashMap<FuncKey, Func<Ty>>, &[Ty], &Lend) -> Program + 'a;
 
-/// Ownership around link (contract 4): marks what the generic fns lend (`lent`), since link
-/// keys an instance by those marks, has `link` link them by those marks and [`lent_slot`], then
-/// checks the linked instances and settles their passed places. `globals` names each top-level
-/// binding and whether it is a `var`.
+/// Ownership around link (contract 4). Before link: marks what the generic fns lend (`lent`),
+/// since link keys an instance by those marks, and checks the `@cache` rule on the bodies as
+/// written. `link` links them by those marks and [`lent_slot`]. After link: checks the linked
+/// instances and settles their passed places. `globals` names each top-level binding and
+/// whether it is a `var`.
 pub fn link(
     d: &dyn Signatures,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
@@ -230,6 +231,7 @@ pub fn link(
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
     lent::mark(d, funcs, tys, &mutable);
+    let cache = inst::cache_calls(d, funcs);
     let mut prog = link(funcs, tys, &lent_slot);
     let fast = callees(&prog.insts);
     prog.errors.extend(generic);
@@ -239,7 +241,7 @@ pub fn link(
         &fast,
         prog.globals.len(),
     ));
-    let owned = inst::check(d, funcs, &prog, globals);
+    let owned = inst::check(d, funcs, &prog, globals, cache);
     place_copies(&mut prog, &owned.copies);
     let raw = instances(&prog.insts, Stage::Raw, prog.globals.len());
     prog.errors.extend(raw);
