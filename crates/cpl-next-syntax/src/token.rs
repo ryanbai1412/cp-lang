@@ -11,6 +11,10 @@ pub enum TokenKind {
     Str,
     /// `r"..."`.
     RawStr,
+    /// Text of an interpolating string around its holes, quotes included,
+    /// and a hole's format after its `:`. Only the parser makes these, when
+    /// it splits a `Str` into a `Literal` with `Interp` children.
+    StrText,
     Char,
     /// A loop label such as `'outer`.
     Label,
@@ -263,7 +267,7 @@ impl TokenKind {
         match self {
             Ident => "a name",
             Int | Float => "a number",
-            Str | RawStr => "a string",
+            Str | RawStr | StrText => "a string",
             Char => "a character",
             Label => "a label",
             Let => "`let`",

@@ -6,6 +6,7 @@
 
 use crate::file::NodeKind;
 use crate::grammar::{contextual, Contextual};
+use crate::literal::{self, FmtSpec};
 use crate::ops::{self, BinOp, CmpOp, UnOp};
 use crate::token::TokenKind;
 use crate::tree::{SyntaxElement, SyntaxNode, SyntaxToken};
@@ -152,6 +153,8 @@ nodes! {
     InferType,
     TypeOfType,
     Literal,
+    /// `{x}` or `{x:.2f}` in a string `Literal`: the value and its format.
+    Interp,
     NameRef,
     HoleExpr,
     ParenExpr,
@@ -1314,6 +1317,52 @@ impl Literal {
     pub fn token(&self) -> Option<SyntaxToken> {
         own_tokens(&self.0).next()
     }
+
+    /// A string's pieces in written order, escapes decoded; `None` when the
+    /// literal is not a string. A raw string is one piece, as written.
+    pub fn pieces(&self) -> Option<Vec<StrPiece>> {
+        let first = self.token()?;
+        match first.kind() {
+            TokenKind::RawStr => {
+                let text = &first.text()[2..];
+                let inner = text.strip_suffix('"').unwrap_or(text);
+                Some(vec![StrPiece::Text(inner.to_string())])
+            }
+            TokenKind::Str | TokenKind::StrText => {
+                let text = self.0.text();
+                let mut holes = children::<Interp>(&self.0);
+                let pieces = literal::string_parts(&text).into_iter().map(|p| match p {
+                    literal::StrPart::Text(s) => {
+                        Some(StrPiece::Text(literal::unescape(s.text(&text))))
+                    }
+                    literal::StrPart::Expr(_) => holes.next().map(StrPiece::Interp),
+                });
+                pieces.collect()
+            }
+            _ => None,
+        }
+    }
+}
+
+/// One piece of a string literal.
+#[derive(Clone, Debug)]
+pub enum StrPiece {
+    Text(String),
+    Interp(Interp),
+}
+
+impl Interp {
+    pub fn value(&self) -> Option<Expr> {
+        child(&self.0)
+    }
+
+    /// The format after the `:` (`{x:05}`), when it spells one; the parser
+    /// reported any other.
+    pub fn format(&self) -> Option<FmtSpec> {
+        own_tokens(&self.0)
+            .find(|t| t.kind() == TokenKind::StrText)
+            .and_then(|t| FmtSpec::parse(t.text()))
+    }
 }
 
 impl NameRef {
@@ -1743,8 +1792,8 @@ impl LetCond {
 }
 
 impl BoundCond {
-    /// The type parameter tested: `T` in `T: Ord`.
-    pub fn param(&self) -> Option<NameRef> {
+    /// The type tested: `T` in `T: Ord`, read as a type.
+    pub fn subject(&self) -> Option<Type> {
         child(&self.0)
     }
 

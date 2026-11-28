@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::grammar::{contextual, Contextual};
+use crate::literal::{self, FmtSpec, StrPart};
 use crate::ops::{self, Assoc, Level};
 
 /// Tokens that can begin an operand.
@@ -495,9 +496,53 @@ impl Parser<'_> {
         })
     }
 
+    /// A string literal. An interpolating one is split losslessly: the text
+    /// around its holes as `StrText` tokens, and each `{..}` an `Interp`
+    /// whose value is parsed as an expression (R10.3.2).
+    fn string(&mut self) {
+        let token = self.tokens[self.pos];
+        let text = token.span.text(self.src);
+        let holes: Vec<Span> = (literal::string_parts(text).into_iter())
+            .filter_map(|p| match p {
+                StrPart::Expr(s) => Some(s),
+                StrPart::Text(_) => None,
+            })
+            .collect();
+        self.start(NodeKind::Literal);
+        if holes.is_empty() {
+            self.bump();
+            self.finish();
+            return;
+        }
+        let mut found = Vec::new();
+        let mut at = 0;
+        for hole in holes {
+            let open = hole.start as usize - 1;
+            if open > at {
+                self.b.token(T::StrText, &text[at..open]);
+            }
+            let closed = text.as_bytes().get(hole.end as usize) == Some(&b'}');
+            let (node, diags) = interp(hole.text(text), closed);
+            self.b.node(node);
+            let by = token.span.start + hole.start;
+            found.extend(diags.into_iter().map(|d| d.shift(by)));
+            at = hole.end as usize + usize::from(closed);
+        }
+        if at < text.len() {
+            self.b.token(T::StrText, &text[at..]);
+        }
+        self.pos += 1;
+        self.emitted = self.pos;
+        self.skip_trivia();
+        self.finish();
+        // One string, one diagnostic.
+        self.diagnostics.extend(found.into_iter().next());
+    }
+
     fn primary(&mut self) {
         match self.peek() {
-            T::Int | T::Float | T::Str | T::RawStr | T::Char | T::True | T::False => {
+            T::Str => self.string(),
+            T::Int | T::Float | T::RawStr | T::Char | T::True | T::False => {
                 self.start(NodeKind::Literal);
                 self.bump();
                 self.finish();
@@ -784,4 +829,60 @@ pub(super) fn begins_pattern(kind: TokenKind) -> bool {
             | T::False
             | T::Minus
     )
+}
+
+/// One `{..}` of a string, from what its braces hold; the diagnostics'
+/// spans are relative to `inner`.
+fn interp(inner: &str, closed: bool) -> (GreenNode, Vec<Diagnostic>) {
+    let lexed = lex(inner);
+    let tokens = lexed.lossless(inner);
+    let mut p = Parser::new(inner, &tokens);
+    p.b.start_node(NodeKind::Interp);
+    p.b.token(T::LBrace, "{");
+    p.expr();
+    // The value ends at a `:`; the rest is how to write it, not code.
+    let colon = p.at(T::Colon).then(|| p.span());
+    if let Some(colon) = colon {
+        p.flush();
+        p.b.token(T::Colon, ":");
+        let written = &inner[colon.end as usize..];
+        if !written.is_empty() {
+            p.b.token(T::StrText, written);
+        }
+        if FmtSpec::parse(written).is_none() {
+            let at = Span::new(colon.start, inner.len() as u32);
+            let help = "a format is a width (`:5`, `:05`), digits after the point \
+                        (`:.3`, `:8.3f`), `:x` or `:b`";
+            (p.diagnostics).push(
+                msgs::syntax::BAD_NUMBER_FORMAT
+                    .error(at, &[&written])
+                    .with_help(help),
+            );
+        }
+        p.pos = p.tokens.len();
+        p.emitted = p.pos;
+    } else if !matches!(p.peek(), T::Newline | T::Eof) {
+        p.error_here(codes::UNEXPECTED_TOKEN, "`}` to end the interpolation");
+        p.start(NodeKind::Error);
+        while !matches!(p.peek(), T::Newline | T::Eof) {
+            p.bump();
+        }
+        p.finish();
+    }
+    // What is left is trivia and the end of `inner`'s file, which is no text.
+    for t in &p.tokens[p.emitted..] {
+        if t.span.start < t.span.end {
+            p.b.token(t.kind, t.span.text(inner));
+        }
+    }
+    if closed {
+        p.b.token(T::RBrace, "}");
+    }
+    p.b.finish_node();
+    let value_end = colon.map_or(u32::MAX, |c| c.start);
+    let mut diags: Vec<Diagnostic> = (lexed.diagnostics.into_iter())
+        .filter(|d| d.span.start < value_end)
+        .collect();
+    diags.extend(p.diagnostics);
+    (p.b.finish(), diags)
 }

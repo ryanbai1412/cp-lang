@@ -8,7 +8,7 @@ core-01/rb1-q09-lends-needs-arrow.cp  # decision 665
 core-01/second-for-in-a-comprehension-is-rejected.cp  # decision 660
 core-01/turbofish-is-rejected.cp  # decision 664
 core-02/a-variant-value-is-not-in-the-design.cp  # decision 13 (2.7)
-core-02/and-let-is-rejected.cp  # decision 656
+core-02/and-let-is-rejected.cp  # decision 670
 core-02/unnamed-payload-is-rejected.cp  # decision 13 (2.7)
 core-05/amp-mut-param-is-rejected.cp  # decision 13 (5.2)
 core-05/lazy-param-is-rejected.cp  # decision 13 (5.2)
