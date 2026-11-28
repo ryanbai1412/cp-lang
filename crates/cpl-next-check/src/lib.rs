@@ -1747,12 +1747,27 @@ impl BodySyms {
         self.ids.insert(text.to_string(), s);
         s
     }
+    /// The names a type written in this body finds: the declarations' and this body's own.
+    pub(crate) fn over<'s>(&'s self, syms: &'s Syms) -> BodyNames<'s> {
+        BodyNames { syms, body: self }
+    }
     /// The text of `s`, a declaration's id or one of this body's.
     pub(crate) fn text<'s>(&'s self, syms: &'s Syms, s: Sym) -> &'s str {
         match (s.0 as usize).checked_sub(syms.len()) {
             Some(k) => &self.texts[k],
             None => syms.text(s),
         }
+    }
+}
+
+pub(crate) struct BodyNames<'a> {
+    syms: &'a Syms,
+    body: &'a BodySyms,
+}
+
+impl cpl_next_decls::sym::SymLookup for BodyNames<'_> {
+    fn get(&self, text: &str) -> Option<Sym> {
+        self.body.of(self.syms, text)
     }
 }
 

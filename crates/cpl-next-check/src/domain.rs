@@ -603,7 +603,7 @@ impl Cx<'_> {
         decls::static_axis(
             self.d,
             self.d,
-            self.syms,
+            &self.b.syms.over(self.syms),
             self.b.module,
             &self.b.generics,
             &self.b.doms,

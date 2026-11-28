@@ -37,3 +37,15 @@ impl Syms {
         &self.texts[s.0 as usize]
     }
 }
+
+/// Where a type's names find their ids: the declarations', and in a body also its own names,
+/// such as a domain it declares.
+pub trait SymLookup {
+    fn get(&self, text: &str) -> Option<Sym>;
+}
+
+impl SymLookup for Syms {
+    fn get(&self, text: &str) -> Option<Sym> {
+        Syms::get(self, text)
+    }
+}

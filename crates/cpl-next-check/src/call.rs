@@ -293,7 +293,7 @@ impl Cx<'_> {
             let at = decls::BodyScope {
                 tables: self.d,
                 names: self.d,
-                syms: self.syms,
+                syms: &self.b.syms.over(self.syms),
                 m: self.b.module,
                 generics: &self.b.generics,
                 doms: &self.b.doms,
@@ -1359,7 +1359,7 @@ impl Cx<'_> {
         f(&decls::BodyScope {
             tables: self.d,
             names: self.d,
-            syms: self.syms,
+            syms: &self.b.syms.over(self.syms),
             m: self.b.module,
             generics: &self.b.generics,
             doms: &self.b.doms,

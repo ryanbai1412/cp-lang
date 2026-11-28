@@ -1437,7 +1437,7 @@ impl<'a> Cx<'a> {
         let at = decls::BodyScope {
             tables: self.d,
             names: self.d,
-            syms: &self.d.syms,
+            syms: &self.b.syms.over(self.syms),
             m: self.b.module,
             generics: &generics,
             doms: &self.b.doms,

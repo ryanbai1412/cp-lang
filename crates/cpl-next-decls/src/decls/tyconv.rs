@@ -65,7 +65,7 @@ pub(super) struct TyCx<'a> {
     /// The signatures' tables, each read by key.
     pub(super) env: &'a dyn TypeTables,
     /// The names' ids, for the names the type writes.
-    pub(super) syms: &'a crate::sym::Syms,
+    pub(super) syms: &'a dyn crate::sym::SymLookup,
     /// Where the item being converted starts in the source, when known: its spans count from it.
     pub(super) item: Option<ItemId>,
     pub(super) generics: &'a [Sym],
@@ -870,7 +870,7 @@ pub fn range_type(at: &BodyScope, re: &next::RangeExpr) -> (Ty, Vec<Msg>) {
 pub fn static_axis(
     tables: &dyn TypeTables,
     names: &dyn Names,
-    syms: &crate::sym::Syms,
+    syms: &dyn crate::sym::SymLookup,
     m: ModId,
     generics: &[Sym],
     doms: &HashMap<Sym, Ty>,
@@ -912,7 +912,7 @@ pub fn alias_type(at: &BodyScope, id: AliasId, args: Vec<Ty>) -> (Ty, Vec<Msg>) 
 pub struct BodyScope<'a> {
     pub tables: &'a dyn TypeTables,
     pub names: &'a dyn Names,
-    pub syms: &'a crate::sym::Syms,
+    pub syms: &'a dyn crate::sym::SymLookup,
     pub m: ModId,
     pub generics: &'a [Sym],
     pub doms: &'a HashMap<Sym, Ty>,
