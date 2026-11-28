@@ -600,6 +600,13 @@ fn beside_its_files(path: &Path, text: &str) -> Result<Option<PathBuf>, String> 
 }
 
 /// The verdict on the `// expect:` line alone, and what the run that decided it printed.
+/// A form killed at the limit ran out of time: it gave no answer to disagree with, so the case
+/// is a `timeout`, never a `split`.
+fn killed(form: &str, ran: &Ran, limit: Duration) -> Option<(&'static str, String)> {
+    let passed = format!("the {form} passed {} s", limit.as_secs());
+    ran.status.is_none().then_some(("timeout", passed))
+}
+
 fn judged(
     path: &Path,
     text: &str,
@@ -686,6 +693,9 @@ fn judged(
     }
     let forms = forms.unwrap_or_else(|| Forms::new(path, &input, limit));
     let canon = forms.form("canonical", &["--canonical", "--trace"]);
+    if let Some((v, d)) = killed("canonical IR", &canon, limit) {
+        return done(v, d);
+    }
     let same =
         |a: &Ran, b: &Ran| a.status == b.status && a.stdout == b.stdout && a.stderr == b.stderr;
     if !same(&raw, &canon) {
@@ -699,6 +709,9 @@ fn judged(
         );
     }
     let engine = forms.form("engine", &["--engine", "--trace"]);
+    if let Some((v, d)) = killed("engine", &engine, limit) {
+        return done(v, d);
+    }
     if !same(&canon, &engine) {
         return done(
             "split",
@@ -717,6 +730,9 @@ fn judged(
     };
     let judge = cpl_judge::resolve(path, text, None).ok();
     let built = run_kept_on(&bin, judge.as_ref(), &input, limit);
+    if let Some((v, d)) = killed("C++", &built, limit) {
+        return done(v, d);
+    }
     // A trap's call stack comes from the engines' events; generated C++ keeps no frames.
     fn judged(r: &Ran) -> (Option<i32>, &str, Vec<&str>) {
         let lines = r.stderr.lines().filter(|l| !l.starts_with("call stack: "));
@@ -775,6 +791,19 @@ fn finding(misplaced: &str) -> String {
     let (id, rest) = misplaced.split_once(": ").unwrap_or((misplaced, ""));
     let kind = rest.split([':', '(']).next().unwrap_or(rest).trim();
     format!("cpl-finding: every_case_is_where_the_lists_say {id} {kind} +1")
+}
+
+#[test]
+fn a_form_killed_at_the_limit_is_a_timeout() {
+    let ran = |status| Ran {
+        status,
+        stdout: String::new(),
+        stderr: String::new(),
+    };
+    let limit = Duration::from_secs(10);
+    let want = Some(("timeout", "the engine passed 10 s".to_string()));
+    assert_eq!(killed("engine", &ran(None), limit), want);
+    assert_eq!(killed("engine", &ran(Some(3)), limit), None);
 }
 
 #[test]
