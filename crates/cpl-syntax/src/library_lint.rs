@@ -7,9 +7,8 @@ use crate::ast::{
     BinOp, CmpOp, Cond, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, TypeKind,
 };
 use crate::ParsedItem;
-use crate::{Token, TokenKind};
+use crate::{arg_labels, Token, TokenKind};
 use cpl_diag::{msgs, Diagnostic, Span};
-use cpl_next_syntax::arg_labels as labels;
 use std::fmt::Display;
 
 /// One usable `@lint` declaration.
@@ -243,7 +242,7 @@ fn declared_on(
         };
         let names = |toks: &[(TokenKind, String)]| -> Vec<String> {
             let kinds: Vec<TokenKind> = toks.iter().map(|t| t.0).collect();
-            (toks.iter().zip(labels(&kinds)))
+            (toks.iter().zip(arg_labels(&kinds)))
                 .filter(|((k, t), label)| is_name(*k, t) && !label)
                 .map(|((_, t), _)| t.clone())
                 .collect()
@@ -585,7 +584,7 @@ mod tests {
         let src = "fn go(u: Int):\n    f(from: u, u)";
         let toks = crate::lex(src).tokens;
         let kinds: Vec<_> = toks.iter().map(|t| t.kind).collect();
-        let labelled: Vec<&str> = (toks.iter().zip(super::labels(&kinds)))
+        let labelled: Vec<&str> = (toks.iter().zip(super::arg_labels(&kinds)))
             .filter(|(_, l)| *l)
             .map(|(t, _)| &src[t.span.start as usize..t.span.end as usize])
             .collect();
