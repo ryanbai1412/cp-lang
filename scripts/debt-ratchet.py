@@ -1319,23 +1319,35 @@ OLD_PARSER_ACCEPTS = "tests/old-parser-accepts.txt"
 OLD_PARSER_ACCEPTS_CODES = ("E0503", "E0504")
 
 
-def _old_parser_accepts(root: Path) -> list[str]:
+def _old_parser_accept_rows(root: Path) -> list[tuple[str, str]]:
+    """(case, decision cited) per row of the list: `core-01/x.cp  # decision 662`."""
     listed = root / OLD_PARSER_ACCEPTS
-    return [l.strip() for l in _lines(listed) if l.strip()] if listed.is_file() else []
+    rows = []
+    for line in _lines(listed) if listed.is_file() else []:
+        case, _, note = line.partition("#")
+        if case.strip():
+            m = re.search(r"decision (\d+)", note)
+            rows.append((case.strip(), m.group(1) if m else ""))
+    return rows
+
+
+def _old_parser_accepts(root: Path) -> list[str]:
+    return [case for case, _ in _old_parser_accept_rows(root)]
 
 
 def next_old_parser_accepts(root: Path) -> list[str]:
     """Rejected-form cases cpl-next accepts only because it still reads the old parser, which
-    keeps a form the new parser reports (coordinator 18:03). They leave `next_not_passing` and
-    `next_refused`, not `next_wrong_accepts`. 0 at the landing that moves decls and check onto
-    the tree, which deletes the list."""
+    keeps a form only the new parser reports (coordinator 18:03; a ruled form is an error only in
+    the new parser, 19:39). Reported, not gated: the gate is `next_old_parser_accepts_unruled`.
+    They leave `next_not_passing` and `next_refused`, not `next_wrong_accepts`. The list is
+    deleted with the old parser in stage 5's switching landing (handbook/design/next/migration.md)."""
     return _old_parser_accepts(root)
 
 
 def next_old_parser_accepts_unruled(root: Path) -> list[str]:
-    """Listed old-parser accepts whose case expects no new-parser syntax error (E0503 or E0504),
-    so the list can't hold a real wrong-accept."""
-    out = []
+    """Listed old-parser accepts that cite no decision, or whose case expects no new-parser
+    syntax error (E0503 or E0504), so the list can't hold a real wrong-accept."""
+    out = [f"{case}: cites no decision" for case, decision in _old_parser_accept_rows(root) if not decision]
     for case in _old_parser_accepts(root):
         path = root / "spec/conformance" / case
         expect = next((m.group(1) for l in _lines(path) if (m := re.match(r"//\s*expect:\s*(\S+)", l))),
@@ -4851,7 +4863,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
     "crates/cpl-next/tests/smoke.txt": (None, "core", "data: the commit-tier smoke sample each backend runs"),
     "crates/cpl-next/tests/passing.txt": ("next_not_passing", "core", "every case listed: the landing that switches `cpl` to cpl-next deletes the list"),
-    "tests/old-parser-accepts.txt": ("next_old_parser_accepts", "core", "deleted: the decls and check move onto the tree, so cpl-next reads the new parser"),
+    "tests/old-parser-accepts.txt": ("next_old_parser_accepts", "core", "deleted in stage 5's switching landing, with the old parser that accepts these forms"),
     "crates/cpl-next/tests/lowered.txt": ("next_lowered", "core", "deleted: programs.rs fails on any error only lowering finds"),
     "crates/cpl-next/tests/error-typed.txt": ("next_error_typed", "core", "deleted: the verifier refuses any instance holding an error type"),
     "crates/cpl-next/tests/std-unchecked.tsv": ("next_std_unchecked", "core", "deleted: std_modules.rs fails on any std module that does not compile"),
@@ -5091,8 +5103,8 @@ COUNTERS = {
     "next_refused": ("cases the new pipeline (cpl-next) refuses: on no list (Core)", next_refused, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
     "next_lowered": ("programs cases whose error only lowering finds (Core)", next_lowered, True),
-    "next_old_parser_accepts": ("rejected-form cases cpl-next accepts through the old parser (Core)", next_old_parser_accepts, True),
-    "next_old_parser_accepts_unruled": ("old-parser accepts not expecting E0503/E0504 (Core)", next_old_parser_accepts_unruled, True),
+    "next_old_parser_accepts": ("rejected-form cases cpl-next accepts through the old parser, each ruled (Core; reported)", next_old_parser_accepts, False),
+    "next_old_parser_accepts_unruled": ("old-parser accepts citing no decision or not expecting E0503/E0504 (Core)", next_old_parser_accepts_unruled, True),
     "next_error_typed": ("programs cases linking an instance that holds an error type (Core)", next_error_typed, True),
     "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
