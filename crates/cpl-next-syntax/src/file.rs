@@ -78,7 +78,7 @@ pub enum NodeKind {
     OrPat,
     /// `: stmts` on its line, or `:` then an indented run of statements.
     Block,
-    /// `let p: T = e else: ...`, also `var` and `const`.
+    /// `let p: T = e else: ...`, also `var`.
     LetStmt,
     ExprStmt,
     /// `place = e`, `place += e`, `place f= e`.
@@ -171,6 +171,11 @@ pub enum NodeKind {
     TypeAlias,
     /// `domain N = e`, `let (domain N, ..) = e`.
     DomainDecl,
+    /// `pub const N: T = e`, at the top or in a body.
+    ConstDecl,
+    /// `context io:` and its fields.
+    ContextDecl,
+    /// `mod m:` and its items, each an `Item` as at the top level.
     ModDecl,
     /// `extern fn name(params) -> R`.
     ExternDecl,

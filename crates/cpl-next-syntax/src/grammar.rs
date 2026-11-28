@@ -95,6 +95,8 @@ pub enum Contextual {
     Yields,
     /// A trait's or impl's `law`; elsewhere `law` is a removed keyword.
     Law,
+    /// `context io:` declares a context.
+    Context,
 }
 
 /// Each contextual word and how it is spelled.
@@ -111,6 +113,7 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("where", Contextual::Where),
     ("yields", Contextual::Yields),
     ("law", Contextual::Law),
+    ("context", Contextual::Context),
 ];
 
 /// The contextual word `text` spells, if any.

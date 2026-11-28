@@ -11,13 +11,14 @@ impl Parser<'_> {
     pub(super) fn item_ahead(&self) -> bool {
         let k = usize::from(self.at(T::Pub));
         match self.nth(k) {
-            T::At | T::Fn | T::Struct | T::Enum | T::Trait | T::Impl | T::Use => true,
+            T::At | T::Fn | T::Struct | T::Enum | T::Trait | T::Impl | T::Use | T::Const => true,
             T::Type => self.nth(k + 1) == T::Ident,
             T::Domain => self.nth(k + 1) == T::Ident,
             T::Ident => {
                 let word = crate::grammar::contextual(self.nth_text(k));
                 matches!(word, Some(W::Mod) if self.nth(k + 1) == T::Ident)
                     || matches!(word, Some(W::Extern) if self.nth(k + 1) == T::Fn)
+                    || matches!(word, Some(W::Context) if self.nth(k + 1) == T::Ident)
             }
             _ => false,
         }
@@ -39,6 +40,7 @@ impl Parser<'_> {
             T::Trait => self.trait_decl(at),
             T::Impl => self.impl_decl(at),
             T::Use => self.use_decl(at),
+            T::Const => self.const_decl(at),
             T::Type => self.type_alias(at, NodeKind::TypeAlias),
             T::Domain => {
                 self.start_at(at, NodeKind::DomainDecl);
@@ -63,13 +65,64 @@ impl Parser<'_> {
                 self.eat(T::Pub);
                 self.bump();
                 self.name("the module's name");
-                self.block();
+                self.mod_items();
+                self.finish();
+            }
+            T::Ident if self.nth_word(k) == Some(W::Context) => {
+                self.start_at(at, NodeKind::ContextDecl);
+                self.eat(T::Pub);
+                self.bump();
+                self.name("the context's name");
+                if self.at(T::Colon) {
+                    self.members(Self::field);
+                }
                 self.finish();
             }
             // Decorators on a statement, such as `@law` or a decorated `let`.
             _ => return self.stmt(),
         }
         self.end_line();
+    }
+
+    /// `pub const N: T = e`.
+    pub(super) fn const_decl(&mut self, at: Checkpoint) {
+        self.start_at(at, NodeKind::ConstDecl);
+        self.eat(T::Pub);
+        self.bump();
+        self.name("the constant's name");
+        if self.eat(T::Colon) {
+            self.ty();
+        }
+        if self.want(T::Eq, "`=` and the constant's value") {
+            self.expr();
+        }
+        self.finish();
+    }
+
+    /// A mod's body: `:` then an indented run of items, each an `Item`
+    /// node as at the top level, so nested items read like top-level ones.
+    fn mod_items(&mut self) {
+        self.want(T::Colon, "`:` and the module's items");
+        if !(self.at(T::Newline) && self.nth(1) == T::Indent) {
+            return self.error_here(codes::EXPECTED_TOKEN, "an indented run of items");
+        }
+        self.bump();
+        self.bump();
+        while !matches!(self.peek(), T::Dedent | T::Eof) {
+            if self.eat(T::Newline) {
+                continue;
+            }
+            let before = self.pos;
+            self.start(NodeKind::Item);
+            self.item();
+            if self.pos == before {
+                self.start(NodeKind::Error);
+                self.bump();
+                self.finish();
+            }
+            self.finish();
+        }
+        self.want(T::Dedent, "the end of the module");
     }
 
     /// A declared name, in a `Name` node, so readers find it by kind.

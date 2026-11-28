@@ -117,7 +117,11 @@ impl Parser<'_> {
 
     fn simple(&mut self) {
         match self.peek() {
-            T::Let | T::Var | T::Const => self.let_stmt(),
+            T::Let | T::Var => self.let_stmt(),
+            T::Const => {
+                let at = self.checkpoint();
+                self.const_decl(at);
+            }
             T::Return => self.keyword_stmt(NodeKind::ReturnStmt, true),
             T::Yield => self.keyword_stmt(NodeKind::YieldStmt, true),
             T::Break => self.keyword_stmt(NodeKind::BreakStmt, false),

@@ -3,6 +3,7 @@
 //! missing or broken, so a parse error never reads as a valid node.
 
 use crate::file::NodeKind;
+use crate::ops;
 use crate::token::TokenKind;
 use crate::tree::{SyntaxNode, SyntaxToken};
 
@@ -42,6 +43,8 @@ nodes! {
     ImplDecl,
     TypeAlias,
     DomainDecl,
+    ConstDecl,
+    ContextDecl,
     ModDecl,
     ExternDecl,
     UseDecl,
@@ -60,6 +63,8 @@ pub enum Decl {
     Impl(ImplDecl),
     TypeAlias(TypeAlias),
     Domain(DomainDecl),
+    Const(ConstDecl),
+    Context(ContextDecl),
     Mod(ModDecl),
     Extern(ExternDecl),
     Use(UseDecl),
@@ -75,6 +80,8 @@ impl AstNode for Decl {
             NodeKind::ImplDecl => Decl::Impl(ImplDecl(node)),
             NodeKind::TypeAlias => Decl::TypeAlias(TypeAlias(node)),
             NodeKind::DomainDecl => Decl::Domain(DomainDecl(node)),
+            NodeKind::ConstDecl => Decl::Const(ConstDecl(node)),
+            NodeKind::ContextDecl => Decl::Context(ContextDecl(node)),
             NodeKind::ModDecl => Decl::Mod(ModDecl(node)),
             NodeKind::ExternDecl => Decl::Extern(ExternDecl(node)),
             NodeKind::UseDecl => Decl::Use(UseDecl(node)),
@@ -91,6 +98,8 @@ impl AstNode for Decl {
             Decl::Impl(n) => n.syntax(),
             Decl::TypeAlias(n) => n.syntax(),
             Decl::Domain(n) => n.syntax(),
+            Decl::Const(n) => n.syntax(),
+            Decl::Context(n) => n.syntax(),
             Decl::Mod(n) => n.syntax(),
             Decl::Extern(n) => n.syntax(),
             Decl::Use(n) => n.syntax(),
@@ -128,6 +137,22 @@ impl FnDecl {
 
     pub fn op_name(&self) -> Option<OpFnName> {
         self.0.children().find_map(OpFnName::cast)
+    }
+}
+
+impl OpFnName {
+    /// The operator: `+` in `fn (a: P) + (b: P)`.
+    pub fn op(&self) -> Option<SyntaxToken> {
+        self.0.tokens().find(|t| {
+            t.parent() == self.0 && (ops::binary(t.kind()).is_some() || t.kind() == TokenKind::In)
+        })
+    }
+}
+
+impl ModDecl {
+    /// The mod's items, each read like a top-level item.
+    pub fn items(&self) -> impl Iterator<Item = Item> + '_ {
+        self.0.children().filter_map(Item::cast)
     }
 }
 

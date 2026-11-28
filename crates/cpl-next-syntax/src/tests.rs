@@ -148,3 +148,30 @@ fn a_missing_name_reads_as_none_and_the_next_item_still_parses() {
     assert_eq!(names(&file), [None, Some("S".to_string())]);
     assert_eq!(file.root.text(), src);
 }
+
+#[test]
+fn consts_contexts_operator_fns_and_mod_items_are_named() {
+    let src = "const N = 3\npub const PI: F64 = 3.1\npub context io:\n    base: Int = 0\nfn (a: P) + (b: P) -> P = a\nmod m:\n    fn f() = 1\n    struct S:\n        x: Int\nlet k = N\n";
+    let file = parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let want = [Some("N"), Some("PI"), Some("io"), None, Some("m"), None];
+    assert_eq!(names(&file), want.map(|n| n.map(str::to_string)));
+    let decls: Vec<ast::Decl> = file
+        .items()
+        .filter_map(|i| ast::Item::cast(i)?.decl())
+        .collect();
+    let ast::Decl::Fn(op) = &decls[3] else {
+        panic!("not a fn: {decls:?}")
+    };
+    let op = op.op_name().and_then(|o| o.op());
+    assert_eq!(op.map(|t| t.text().to_string()).as_deref(), Some("+"));
+    let ast::Decl::Mod(m) = &decls[4] else {
+        panic!("not a mod: {decls:?}")
+    };
+    let inner: Vec<_> = m
+        .items()
+        .map(|i| i.name().map(|t| t.text().to_string()))
+        .collect();
+    assert_eq!(inner, [Some("f".to_string()), Some("S".to_string())]);
+    assert_eq!(file.root.text(), src);
+}

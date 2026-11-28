@@ -77,9 +77,11 @@ parse error already has its diagnostic, so the reader stays quiet. Desugarings t
 check and lower never desugar on their own.
 
 `src/ast.rs` holds the views. Its first slice is what ids need:
-`Item::decl` and `Item::name`, `ImplDecl::trait_ref`/`self_ty`/`members`,
-and `Members::fns`/`laws`. An impl, a `use`, an operator fn and a statement
-have no name.
+`Item::decl` and `Item::name` (fns, types, consts, contexts, mods),
+`ImplDecl::trait_ref`/`self_ty`/`members`, `Members::fns`/`laws`,
+`OpFnName::op`, and `ModDecl::items`: a mod's items are `Item` nodes, read
+like top-level ones. An impl, a `use`, an operator fn and a statement have
+no name. A `const` is a `ConstDecl` wherever it appears.
 
 ## Error recovery
 
