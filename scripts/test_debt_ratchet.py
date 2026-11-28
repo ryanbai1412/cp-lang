@@ -285,6 +285,16 @@ class DebtRatchetTest(unittest.TestCase):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text(text)
 
+    def test_next_snapshot_keyed_queries_counts_a_query_running_the_whole_pipeline(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next/src/facade.rs", "struct PerFile {\n    front: OnceLock<Front>,\n}\n")
+            self._write(root, "crates/cpl-next/src/linked.rs",
+                        "impl Query for Linked {\n    fn compute() {\n        let b = compile(&std);\n    }\n}\n"
+                        "fn other() {\n    compile(&std);\n}\n")
+            self.assertEqual(dr.next_snapshot_keyed_queries(root),
+                             ["crates/cpl-next/src/facade.rs:2", "crates/cpl-next/src/linked.rs:3"])
+
     def test_link_reads_check_counts_the_linkers_typed_tree_reads(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

@@ -110,7 +110,7 @@ fn real_main() {
     let c = match session.program(path) {
         Ok(c) => c,
         Err(ds) => {
-            for d in ds {
+            for d in ds.iter() {
                 match has("--json") {
                     true => println!("{}", d.json()),
                     false => println!("{d}"),
@@ -119,6 +119,7 @@ fn real_main() {
             std::process::exit(code(session.verdict(path)));
         }
     };
+    let c = &*c;
     if has("--check") {
         return;
     }
@@ -165,7 +166,7 @@ fn dump_ir(args: &[String]) {
         // A reader that stops early (`| head`) is not an error.
         Ok(text) => drop(std::io::stdout().write_all(text.as_bytes())),
         Err(ds) => {
-            for d in ds {
+            for d in ds.iter() {
                 println!("{d}");
             }
             std::process::exit(code(session.verdict(path)));
@@ -216,7 +217,7 @@ fn every_case(limit: Duration, events: bool, args: &[String]) {
         }
         let session = Session::open(snapshot);
         match session.program(path) {
-            Ok(c) => every_form(c, dir, limit.saturating_sub(started.elapsed()), &input),
+            Ok(c) => every_form(&c, dir, limit.saturating_sub(started.elapsed()), &input),
             Err(ds) => {
                 let out: String = (ds.iter()).map(|d| d.json() + "\n").collect();
                 write(dir, "compiled.out", &out);

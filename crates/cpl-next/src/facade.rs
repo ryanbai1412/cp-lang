@@ -7,14 +7,16 @@ use cpl_contract::{Hover, Typed};
 use cpl_next_decls::modules;
 use cpl_next_ir::build::Judge;
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::{Arc, OnceLock};
 
 pub use cpl_next_ir::build::Checks;
 
+use crate::db::{Db, DbError};
+use crate::items::Source;
+use crate::linked::{roots, Built, Job, Linked, Shared, StdLib, WorldOf};
 use crate::{
-    compile, dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage,
-    Item, Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
+    dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage, Item,
+    Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
 };
 
 /// The only input of every query (contract 0): the files, where the libraries they use are
@@ -83,15 +85,7 @@ impl Snapshot {
     /// Where the libraries `file` uses are: the `cp.toml` at or above it on disk, or none
     /// past std in a closed world.
     fn roots(&self, file: &FileId) -> Roots {
-        match self.0.world {
-            World::Disk => {
-                let dir = Path::new(file.path())
-                    .parent()
-                    .filter(|d| !d.as_os_str().is_empty());
-                Roots::from(dir.unwrap_or(Path::new(".")))
-            }
-            World::Closed => Roots::std(),
-        }
+        roots(self.0.world, file)
     }
 
     /// Its runs report the semantic events, for trace.
@@ -142,7 +136,7 @@ pub enum Verdict {
 }
 
 /// A checked and built program: what it runs and what it prints as C++.
-pub struct Program(Compiled);
+pub struct Program(pub(crate) Compiled);
 
 impl Program {
     /// Runs on the engine, on the calling thread.
@@ -183,7 +177,6 @@ impl Program {
 /// What a session answers for one file of its snapshot, each computed once.
 #[derive(Default)]
 struct PerFile {
-    built: OnceLock<Result<Program, Vec<Diag>>>,
     units: OnceLock<(Vec<Unit>, Vec<Diag>)>,
     front: OnceLock<Front>,
     items: OnceLock<HashMap<String, Item>>,
@@ -196,6 +189,9 @@ pub struct Session {
     snapshot: Snapshot,
     /// In the order of the snapshot's files.
     files: Vec<PerFile>,
+    db: Db,
+    /// Whether the database took every input the snapshot holds.
+    inputs: Result<(), DbError>,
 }
 
 impl Session {
@@ -206,7 +202,17 @@ impl Session {
             .iter()
             .map(|_| PerFile::default())
             .collect();
-        Session { snapshot, files }
+        let (db, h) = (Db::default(), &snapshot.0);
+        let inputs = (h.files.iter())
+            .try_for_each(|(f, t)| db.set::<Source>(f.clone(), t.clone()))
+            .and_then(|()| db.set::<StdLib>((), Shared(h.std.clone())))
+            .and_then(|()| db.set::<WorldOf>((), h.world));
+        Session {
+            snapshot,
+            files,
+            db,
+            inputs,
+        }
     }
 
     pub fn snapshot(&self) -> &Snapshot {
@@ -221,36 +227,32 @@ impl Session {
     }
 
     /// `file` as a program, or every diagnostic that stops it, in layer order.
-    pub fn program(&self, file: &str) -> Result<&Program, &[Diag]> {
-        let Some((id, text, f)) = self.file(file) else {
-            return Err(&[]);
+    pub fn program(&self, file: &str) -> Result<Arc<Program>, Arc<[Diag]>> {
+        let Some((id, _, _)) = self.file(file) else {
+            return Err(Arc::from(Vec::new()));
         };
-        let built = f.built.get_or_init(|| {
-            let h = &self.snapshot.0;
-            let roots = self.snapshot.roots(id);
-            let mut c = compile(
-                &h.std,
-                text,
-                &roots,
-                h.events,
-                h.judge.as_ref(),
-                Checks::CHECKED,
-            )?;
-            if h.bodies {
-                c.without_fast();
-            }
-            Ok(Program(c))
-        });
-        built.as_ref().map_err(Vec::as_slice)
+        let h = &self.snapshot.0;
+        let job = Job {
+            root: id.clone(),
+            events: h.events,
+            bodies: h.bodies,
+            judge: h.judge.clone(),
+            checks: Checks::CHECKED,
+        };
+        match (self.inputs.clone()).and_then(|()| self.db.get::<Linked>(&job)) {
+            Ok(Built(built)) => built,
+            Err(e) => Err(Arc::from(vec![Diag::internal(&e)])),
+        }
     }
 
     /// `file`'s IR at `stage`, for tracing a layer by eye (`cpl-next dump-ir`): lowering's
     /// fns the program instantiates, by name, and each later stage's in instance order, which
     /// is what a call names.
-    pub fn ir(&self, file: &str, stage: IrStage) -> Result<String, &[Diag]> {
-        let c = &self.program(file)?.0;
+    pub fn ir(&self, file: &str, stage: IrStage) -> Result<String, Arc<[Diag]>> {
+        let p = self.program(file)?;
+        let c = &p.0;
         let Some(front) = self.front(file) else {
-            return Err(&[]);
+            return Err(Arc::from(Vec::new()));
         };
         Ok(match stage {
             IrStage::Raw => {
@@ -269,11 +271,14 @@ impl Session {
     }
 
     /// Every diagnostic of `file`, up to `upto`.
-    pub fn diagnostics(&self, file: &str, upto: Layer) -> Vec<&Diag> {
-        let all = self.program(file).err().unwrap_or_default();
+    pub fn diagnostics(&self, file: &str, upto: Layer) -> Vec<Diag> {
+        let Err(all) = self.program(file) else {
+            return Vec::new();
+        };
         let whole = |d: &&Diag| matches!(d.stage, Stage::Own | Stage::Link);
         (all.iter())
             .filter(|d| upto == Layer::Program || !whole(d))
+            .cloned()
             .collect()
     }
 

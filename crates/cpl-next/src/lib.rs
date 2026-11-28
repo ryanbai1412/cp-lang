@@ -10,6 +10,7 @@ mod consts;
 pub mod db;
 pub mod facade;
 pub mod items;
+pub mod linked;
 
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
@@ -64,6 +65,22 @@ pub struct Diag {
 }
 
 impl Diag {
+    /// The query database could not answer: the pipeline is at fault, not the program.
+    pub(crate) fn internal(e: &crate::db::DbError) -> Diag {
+        Diag {
+            stage: Stage::Link,
+            kind: Kind::Verdict(cpl_diag::codes::INTERNAL),
+            at: None,
+            module: None,
+            layer: Some("db"),
+            message: e.to_string(),
+            help: None,
+            labels: Vec::new(),
+            fixes: Vec::new(),
+            src: None,
+        }
+    }
+
     /// The code this diagnostic carries, when it is a verdict.
     pub fn code(&self) -> Option<&'static str> {
         match self.kind {

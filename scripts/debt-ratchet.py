@@ -3858,13 +3858,30 @@ def next_check_set_facts(root: Path) -> list[str]:
 
 def next_snapshot_keyed_queries(root: Path) -> list[str]:
     """Facade answers memoized per whole `Snapshot` (shortcut audit S3): a `OnceLock` field of the
-    facade's per-snapshot state is recomputed in full by any edit. One query database keyed by
-    item path and input hash replaces them, so this reaches 0 (END-STATE #20)."""
+    facade's per-snapshot state is recomputed in full by any edit, and so is a database query
+    whose compute calls the whole pipeline (`compile`, `front`, `back`). One query database
+    keyed by item path and input hash, whose whole-program steps read per-item answers,
+    replaces them, so this reaches 0 (END-STATE #20)."""
+    out: list[str] = []
     p = root / "crates/cpl-next/src/facade.rs"
-    if not p.exists():
-        return []
-    rel = _rel(root, p)
-    return [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if re.match(r"\s*\w+:\s*OnceLock<", line)]
+    if p.exists():
+        rel = _rel(root, p)
+        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if re.match(r"\s*\w+:\s*OnceLock<", line)]
+    # A query of the database that answers by running the whole pipeline is the same cache
+    # under another name: it reruns everything when any input it read changes.
+    for q in _rs_files(root, "crates/cpl-next/src", tests=False):
+        rel, inside = _rel(root, q), False
+        for i, line in enumerate(_lines(q), 1):
+            if re.match(r"impl\b.*\bQuery for\b", line):
+                inside = True
+            elif line.startswith("}"):
+                inside = False
+            elif inside and NEXT_WHOLE_PIPELINE_RE.search(line):
+                out.append(f"{rel}:{i}")
+    return out
+
+
+NEXT_WHOLE_PIPELINE_RE = re.compile(r"(?<![\w.])(?:crate::)?(?:compile|front|back)\(")
 
 
 LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|typed)\b")
