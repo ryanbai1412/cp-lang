@@ -9,8 +9,10 @@ use cpl_next_ir::whole::{DomId, DomValue, Whole};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, CSet, CTy, InstKey, Program};
+use origins::number_origins;
 
 mod events;
+mod origins;
 mod share;
 pub use events::add_events;
 
@@ -83,7 +85,7 @@ fn value_only(f: &Func<Ty>) -> Func<CTy> {
         region: None,
         line: f.line,
         sites: f.sites.clone(),
-        lines: f.lines.clone(),
+        origins: f.origins.clone(),
         views: Vec::new(),
         drops: Vec::new(),
         maker: f.maker,
@@ -268,8 +270,10 @@ pub fn link(
         structs: l.structs,
         sums: l.sums,
         shares: HashMap::new(),
+        origins: Vec::new(),
         errors: l.errors,
     };
+    number_origins(&mut p);
     if p.errors.is_empty() {
         thread_values(&mut p, whole);
     }
@@ -306,7 +310,7 @@ impl Link<'_> {
             region: f.region.as_ref().map(|(lend, t)| (*lend, self.ty(t, env))),
             line: f.line,
             sites: f.sites.clone(),
-            lines: f.lines.clone(),
+            origins: f.origins.clone(),
             views: Vec::new(),
             drops: Vec::new(),
             maker: f.maker,

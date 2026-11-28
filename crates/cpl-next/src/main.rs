@@ -256,10 +256,7 @@ fn said(c: &cpl_next::facade::Program, o: &cpl_next::Outcome) -> String {
     let funcs = c.form(Form::Raw).1;
     let mut s: String = o.events.iter().map(|e| e.line(funcs) + "\n").collect();
     if let Some(t) = &o.trap {
-        s += &format!("trap: {}: line {}: {}\n", t.code(), t.line, t.msg);
-        if t.stack.len() > 1 {
-            s += &format!("call stack: {}\n", t.stack.join(" <- "));
-        }
+        s += &c.said(t);
     }
     s
 }

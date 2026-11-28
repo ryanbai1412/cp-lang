@@ -25,6 +25,12 @@ one place.
   from the stream**, by one fn in `cpl_next_ir::run`: the engines emit
   events in order and never count visits themselves, so every engine
   gives the same `At` by construction.
+- A trap names its **origin**: the number link gives each site of the
+  user's file in `Program::origins`, one per `SourceId` however many
+  instances hold it, so every engine names the same one. The engines
+  carry origins, never lines; the facade turns one into a line where it
+  shows the trap (`Program::said`, and later `Session::source`). The C++
+  prints its own trap, so `emit` takes each origin's line.
 
 ## The IR
 

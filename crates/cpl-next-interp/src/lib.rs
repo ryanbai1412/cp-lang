@@ -4,7 +4,7 @@
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::{CTy, Program};
-use cpl_next_ir::run::{call_stack, Fired, RunInput, Stack};
+use cpl_next_ir::run::{Fired, RunInput, Stack};
 pub use cpl_next_ir::run::{Outcome, Trap};
 use std::rc::Rc;
 
@@ -53,10 +53,10 @@ struct Region<'a> {
 }
 struct Frame<'a> {
     locals: Vec<V>,
-    /// Its fn, the frame that called it and the line of the call: a trap's call stack.
+    /// Its fn, the frame that called it and the origin of the call: a trap's call stack.
     f: usize,
     parent: Option<usize>,
-    line: u32,
+    origin: u32,
     region: Option<Region<'a>>,
     /// A lender whose region left early finishes its own code first, then leaves this way.
     pending: Option<Flow>,
@@ -71,7 +71,7 @@ struct Machine<'a> {
     pub events: Vec<Fired>,
     input: ops::Input,
     rand: u64,
-    /// The innermost line of the user's file that is running.
+    /// The origin of the innermost site of the user's file that is running.
     at: u32,
     /// The frame whose code is running: a region body runs in its caller's.
     cur: usize,
@@ -94,8 +94,8 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         stack: Stack::new(p, input.limits),
     };
     let trap = m.call(p.main, Vec::new(), None).err().map(|t| Trap {
-        line: m.at,
-        stack: m.call_stack(),
+        origin: m.at,
+        calls: m.calls(),
         ..t
     });
     Outcome {
@@ -105,7 +105,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
     }
 }
 
-/// The line is filled in where the run ends: it is `Machine::at` then.
+/// The origin is filled in where the run ends: it is `Machine::at` then.
 fn trap<T>(fault: Fault) -> R<T> {
     Err(fault.into())
 }
@@ -116,15 +116,15 @@ fn broken<T>(rule: &'static str) -> R<T> {
 }
 
 impl<'a> Machine<'a> {
-    /// The calls a trap left, innermost first: each frame's fn and the line running in it.
-    fn call_stack(&self) -> Vec<String> {
+    /// The calls a trap left, innermost first: each frame's fn and the origin running in it.
+    fn calls(&self) -> Vec<(usize, u32)> {
         let mut calls = Vec::new();
-        let (mut k, mut line) = (Some(self.cur), self.at);
+        let (mut k, mut o) = (Some(self.cur), self.at);
         while let Some(fr) = k.and_then(|i| self.frames.get(i)) {
-            calls.push((fr.f, line));
-            (k, line) = (fr.parent, fr.line);
+            calls.push((fr.f, o));
+            (k, o) = (fr.parent, fr.origin);
         }
-        call_stack(self.funcs, calls)
+        calls
     }
     /// Runs a fn. Returns its result, what its lent parameters hold now, and how a region body left, if it did.
     fn call(
@@ -145,7 +145,7 @@ impl<'a> Machine<'a> {
             locals,
             f,
             parent,
-            line: self.at,
+            origin: self.at,
             region,
             pending: None,
         });
@@ -498,11 +498,12 @@ impl<'a> Machine<'a> {
             }
         })
     }
-    /// A line of the user's file starts running; inside std (line 0) the line stays the caller's.
+    /// A site of the user's file starts running; inside std (origin 0) the origin stays the
+    /// caller's.
     fn enter(&mut self, site: Site) -> u32 {
-        let line = self.funcs[self.frames[self.cur].f].lines[site as usize];
-        if line != 0 {
-            self.at = line;
+        let o = self.funcs[self.frames[self.cur].f].origins[site as usize];
+        if o != 0 {
+            self.at = o;
         }
         self.at
     }

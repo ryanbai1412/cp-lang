@@ -198,7 +198,11 @@ fn a_fn_above_leaves_the_sites_of_those_below() {
         let body = (insts.iter().enumerate().rev()).fold(format!("{:?}", g.body), |b, (k, f)| {
             b.replace(&format!("Inst({k})"), &format!("Inst({})", f.name))
         });
-        (body, g.sites.clone(), g.lines.clone())
+        (
+            body,
+            g.sites.clone(),
+            g.origins.iter().map(|&o| c.line(o)).collect::<Vec<_>>(),
+        )
     };
     let ((body, sites, lines), (body2, sites2, lines2)) = (g(below), g(&above));
     assert!(sites.len() > 1);
@@ -347,7 +351,12 @@ fn proved(src: &str) -> Vec<(cpl_next_ir::ir::CheckKind, u32)> {
     let main = c.prog.main;
     (c.proved().iter())
         .filter(|p| p.func == main)
-        .map(|p| (p.kind, c.prog.insts[p.func].lines[p.site as usize]))
+        .map(|p| {
+            (
+                p.kind,
+                c.line(c.prog.insts[p.func].origins[p.site as usize]),
+            )
+        })
         .collect()
 }
 

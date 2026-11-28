@@ -1,13 +1,12 @@
 //! Runs engine code. Registers are words of one stack; storage is counted heap objects,
-//! copied when written while shared. Flows, lines and events follow the reference
+//! copied when written while shared. Flows, origins and events follow the reference
 //! interpreter's rules step for step.
 use crate::compile::*;
 use crate::layout::Lay;
 use crate::Stop;
-use cpl_next_ir::ir::{Func, Intr};
+use cpl_next_ir::ir::Intr;
 use cpl_next_ir::ops::{self, Fault};
-use cpl_next_ir::prog::CTy;
-use cpl_next_ir::run::{call_stack, Fired, Outcome, Trap};
+use cpl_next_ir::run::{Fired, Outcome, Trap};
 use cpl_next_ir::run::{Io, Limits, RunInput, Stack};
 
 struct Obj {
@@ -66,7 +65,6 @@ impl Loc {
 }
 
 struct M<'a> {
-    funcs: &'a [Func<CTy>],
     /// The frame whose code is running: a region body runs in its caller's.
     cur: usize,
     /// Each block run a trap left, innermost first: the block, its op, the frame and `at`.
@@ -98,14 +96,13 @@ fn broken<T>(rule: &'static str) -> R<T> {
     Err(Fault::Internal(rule).into())
 }
 
-fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<RunInput>, steps: u64) -> M<'a> {
+fn start(c: &Code, input: Option<RunInput>, steps: u64) -> M<'_> {
     let closed = input.is_none();
     let (io, limits) = input.map_or((Io::Fixed(Vec::new()), Limits::default()), |i| {
         (i.io, i.limits)
     });
     M {
         c,
-        funcs,
         cur: 0,
         trail: Vec::new(),
         stack: vec![0; c.globals as usize],
@@ -131,15 +128,15 @@ fn start<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: Option<RunInput>, steps
     }
 }
 
-pub(crate) fn run(c: &Code, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
-    let (m, trap) = ran(c, funcs, input);
+pub(crate) fn run(c: &Code, input: RunInput) -> Outcome {
+    let (m, trap) = ran(c, input);
     m.outcome(trap)
 }
 
 /// Runs the program, then releases its globals and its kept text constants if it ended: what
 /// it did, and how many storage objects are still held. Ownership releases every value it makes, so that is 0.
-pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: RunInput) -> (Outcome, usize) {
-    let (mut m, trap) = ran(c, funcs, input);
+pub(crate) fn run_held(c: &Code, input: RunInput) -> (Outcome, usize) {
+    let (mut m, trap) = ran(c, input);
     if trap.is_none() {
         for (&at, &lay) in c.global_at.iter().zip(&c.global_lays) {
             m.release(lay, Loc::stack(at as usize));
@@ -151,12 +148,12 @@ pub(crate) fn run_held(c: &Code, funcs: &[Func<CTy>], input: RunInput) -> (Outco
     (m.outcome(trap), held)
 }
 
-fn ran<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: RunInput) -> (M<'a>, Option<Trap>) {
-    let mut m = start(c, funcs, Some(input), u64::MAX);
+fn ran(c: &Code, input: RunInput) -> (M<'_>, Option<Trap>) {
+    let mut m = start(c, Some(input), u64::MAX);
     let fp = c.globals as usize;
     let trap = m.run_fn(c.main, fp, None).err().map(|t| Trap {
-        line: m.trail_lines().first().copied().unwrap_or(0),
-        stack: m.call_stack(),
+        origin: m.trail_origins().first().copied().unwrap_or(0),
+        calls: m.call_stack(),
         ..t
     });
     (m, trap)
@@ -164,13 +161,8 @@ fn ran<'a>(c: &'a Code, funcs: &'a [Func<CTy>], input: RunInput) -> (M<'a>, Opti
 
 /// Runs the program with no input for at most `steps` steps: the words global `g` holds when
 /// it ends. A read of input stops it.
-pub(crate) fn eval(
-    c: &Code,
-    funcs: &[Func<CTy>],
-    gs: &[usize],
-    steps: u64,
-) -> Result<Vec<Vec<u64>>, Stop> {
-    let mut m = start(c, funcs, None, steps);
+pub(crate) fn eval(c: &Code, gs: &[usize], steps: u64) -> Result<Vec<Vec<u64>>, Stop> {
+    let mut m = start(c, None, steps);
     match m.run_fn(c.main, c.globals as usize, None) {
         Ok(_) => Ok((gs.iter())
             .map(|&g| {
@@ -182,8 +174,8 @@ pub(crate) fn eval(
         Err(_) if m.read => Err(Stop::Input),
         Err(_) if m.steps == 0 => Err(Stop::Budget),
         Err(t) => Err(Stop::Trap(Trap {
-            line: m.trail_lines().first().copied().unwrap_or(0),
-            stack: m.call_stack(),
+            origin: m.trail_origins().first().copied().unwrap_or(0),
+            calls: m.call_stack(),
             ..t
         })),
     }
@@ -492,17 +484,17 @@ impl M<'_> {
         Ok(exit)
     }
     /// The calls a trap left, innermost first: each frame's fn, and each call inlined into
-    /// it, from the chain of the op it stopped at, with the line running in it.
-    fn call_stack(&self) -> Vec<String> {
-        let lines = self.trail_lines();
+    /// it, from the chain of the op it stopped at, with the origin running in it.
+    fn call_stack(&self) -> Vec<(usize, u32)> {
+        let origins = self.trail_origins();
         let mut calls = Vec::new();
         let (mut k, mut pos) = (Some(self.cur), 0);
         while let Some(fr) = k.and_then(|i| self.frames.get(i)) {
-            let mut line = 0;
+            let mut origin = 0;
             if let Some(i) = self.trail[pos..].iter().position(|t| Some(t.2) == k) {
                 let (b, pc, _, _) = self.trail[pos + i];
-                let outside = lines.get(pos + i + 1).copied().unwrap_or(0);
-                line = lines[pos + i];
+                let outside = origins.get(pos + i + 1).copied().unwrap_or(0);
+                origin = origins[pos + i];
                 pos += i + 1;
                 let marks = &self.c.marks[b as usize];
                 let at = marks
@@ -511,42 +503,42 @@ impl M<'_> {
                 let chain = marks
                     .get(at)
                     .map_or(&[][..], |m| &self.c.chains[m.1 as usize]);
-                let saved = self.c.lines[b as usize]
+                let saved = self.c.origins[b as usize]
                     .get(pc)
                     .map(|&(_, s)| &self.c.saved[s as usize]);
                 for (j, &(g, save)) in chain.iter().enumerate().rev() {
-                    calls.push((g as usize, line));
-                    line = match saved.map(|s| s[j]) {
+                    calls.push((g as usize, origin));
+                    origin = match saved.map(|s| s[j]) {
                         Some(SAVED) | None => self.stack[fr.fp + save as usize] as u32,
                         Some(l) => l,
                     };
-                    if line == INHERIT {
-                        line = outside;
+                    if origin == INHERIT {
+                        origin = outside;
                     }
                 }
             }
-            calls.push((fr.f as usize, line));
+            calls.push((fr.f as usize, origin));
             k = fr.parent;
         }
-        call_stack(self.funcs, calls)
+        calls
     }
-    /// The line each block run of the trail stopped at, innermost first: from the block's
-    /// table, or `at` for a block with none. A block that set none has the line outside it.
-    fn trail_lines(&self) -> Vec<u32> {
-        let mut lines = vec![0; self.trail.len()];
+    /// The origin each block run of the trail stopped at, innermost first: from the block's
+    /// table, or `at` for a block with none. A block that set none has the origin outside it.
+    fn trail_origins(&self) -> Vec<u32> {
+        let mut origins = vec![0; self.trail.len()];
         let mut outside = 0;
         for (i, &(b, pc, _, at)) in self.trail.iter().enumerate().rev() {
-            let own = self.c.lines[b as usize].get(pc).map_or(at, |&(l, _)| l);
+            let own = self.c.origins[b as usize].get(pc).map_or(at, |&(l, _)| l);
             if own != INHERIT {
                 outside = own;
             }
-            lines[i] = outside;
+            origins[i] = outside;
         }
-        lines
+        origins
     }
-    fn enter(&mut self, line: u32) -> u32 {
-        if line != 0 {
-            self.at = line;
+    fn enter(&mut self, origin: u32) -> u32 {
+        if origin != 0 {
+            self.at = origin;
         }
         self.at
     }
@@ -687,8 +679,8 @@ impl M<'_> {
                     };
                     self.stack[r(d)] = u64::from(ops::compare(op, x, y)?);
                 }
-                Op::At { line } => self.at = line,
-                Op::Enter { line, save } => self.stack[r(save)] = u64::from(self.enter(line)),
+                Op::At { origin } => self.at = origin,
+                Op::Enter { origin, save } => self.stack[r(save)] = u64::from(self.enter(origin)),
                 Op::Call { c: k } => {
                     self.call(k, fr, None)?;
                 }
@@ -699,7 +691,7 @@ impl M<'_> {
                     lend,
                     jumps,
                 } => {
-                    self.enter(c.calls[k as usize].line);
+                    self.enter(c.calls[k as usize].origin);
                     let exit = self.call(k, fr, Some(RegionAt { fr, body, var }))?;
                     let to = match exit {
                         None => continue,
@@ -789,11 +781,11 @@ impl M<'_> {
                 Op::Check {
                     c: x,
                     kind,
-                    line,
+                    origin,
                     msg,
                 } => {
                     if self.stack[r(x)] == 0 {
-                        self.enter(line);
+                        self.enter(origin);
                         return Err(Trap {
                             msg: c.msgs[msg as usize].clone(),
                             ..Fault::Check(kind).into()

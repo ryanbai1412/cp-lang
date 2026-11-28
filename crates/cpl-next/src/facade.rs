@@ -163,6 +163,11 @@ impl Program {
         self.0.cpp()
     }
 
+    /// What trap `t` of a run writes to stderr, its lines found from the source.
+    pub fn said(&self, t: &crate::Trap) -> String {
+        self.0.said(t)
+    }
+
     pub fn proved(&self) -> &[cpl_next_ir::facts::Proved] {
         self.0.proved()
     }

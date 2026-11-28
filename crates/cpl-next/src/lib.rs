@@ -237,6 +237,8 @@ fn dumped<'a, T: std::fmt::Debug + 'a>(fs: impl IntoIterator<Item = &'a ir::Func
 
 pub(crate) struct Compiled {
     prog: inst::Program,
+    /// The line of the user's file each of the program's origins is on (`Program::origins`).
+    lines: Vec<u32>,
     canon: Vec<ir::Func<inst::CTy>>,
     /// What the fast engine and the C++ run: canonical IR less the checks the facts prove.
     opt: Vec<ir::Func<inst::CTy>>,
@@ -421,8 +423,12 @@ pub(crate) fn compile(
             return Err(link(&bad));
         }
     }
+    let lines = (prog.origins.iter())
+        .map(|o| f.loaded.program_line(o))
+        .collect();
     Ok(Compiled {
         prog,
+        lines,
         canon,
         opt,
         proved,
@@ -742,8 +748,30 @@ impl Compiled {
         }
     }
 
+    /// The line of the user's file origin `o` is on; 0 for none.
+    pub fn line(&self, o: u32) -> u32 {
+        (o as usize).checked_sub(1).map_or(0, |i| self.lines[i])
+    }
+
+    /// What a trap writes to stderr: its code, line and message, then its call stack.
+    pub fn said(&self, t: &Trap) -> String {
+        let mut s = format!(
+            "trap: {}: line {}: {}\n",
+            t.code(),
+            self.line(t.origin),
+            t.msg
+        );
+        let stack = cpl_next_ir::run::call_stack(&self.prog.insts, t.calls.iter().copied(), |o| {
+            self.line(o)
+        });
+        if stack.len() > 1 {
+            s += &format!("call stack: {}\n", stack.join(" <- "));
+        }
+        s
+    }
+
     pub fn cpp(&self) -> String {
-        cpp::emit(&self.prog, &self.opt)
+        cpp::emit(&self.prog, &self.opt, &self.lines)
     }
 
     /// Every `@fast` fn runs its CP body instead of its op, which is what the fn means; the

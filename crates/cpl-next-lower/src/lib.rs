@@ -64,7 +64,7 @@ struct Lw<'a> {
     /// makes fails at the line that called it.
     made: bool,
     sites: Vec<SourceId>,
-    lines: Vec<u32>,
+    origins: Vec<u32>,
     /// The checks kept where the code being lowered is (`TStmt::Checks`, R09.4).
     kept: Checks,
 }
@@ -110,14 +110,14 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         src,
         made: false,
         sites: fresh_sites().0,
-        lines: fresh_sites().1,
+        origins: fresh_sites().1,
         kept: typed.checks,
     };
     let mut body = Vec::new();
     for s in &typed.main {
         lw.stmt(s, &mut body);
     }
-    let (sites, lines) = lw.take_sites();
+    let (sites, origins) = lw.take_sites();
     out.funcs.insert(
         FuncKey::Main,
         Func {
@@ -133,7 +133,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             region: None,
             line: 0,
             sites,
-            lines,
+            origins,
             views: Vec::new(),
             drops: Vec::new(),
             maker: None,
@@ -199,7 +199,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 .map(|e| e.from_layer(cpl_next_ir::msg::Stage::Lower.name()));
             out.deferred.add(*id, es);
         }
-        let (sites, lines) = lw.take_sites();
+        let (sites, origins) = lw.take_sites();
         out.funcs.insert(
             key.clone(),
             Func {
@@ -215,7 +215,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 region: tf.region.clone(),
                 line: lw.src.program_line(&fd.span),
                 sites,
-                lines,
+                origins,
                 views: Vec::new(),
                 drops: Vec::new(),
                 maker: None,
@@ -252,7 +252,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             ty: fd.ret.clone(),
             site: 0,
         };
-        let (sites, lines) = fresh_sites();
+        let (sites, origins) = fresh_sites();
         let key = FuncKey::Decl(id);
         out.funcs.insert(
             key.clone(),
@@ -270,7 +270,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 fast: None,
                 line: lw.src.program_line(&fd.span),
                 sites,
-                lines,
+                origins,
                 views: Vec::new(),
                 drops: Vec::new(),
                 maker: None,
@@ -349,8 +349,8 @@ impl Lw<'_> {
         self.swap_sites(fresh_sites())
     }
     fn swap_sites(&mut self, to: (Vec<SourceId>, Vec<u32>)) -> (Vec<SourceId>, Vec<u32>) {
-        let lines = std::mem::replace(&mut self.lines, to.1);
-        (std::mem::replace(&mut self.sites, to.0), lines)
+        let origins = std::mem::replace(&mut self.origins, to.1);
+        (std::mem::replace(&mut self.sites, to.0), origins)
     }
     /// `a / b` or `a % b` where `div` checks are off: by zero it is 0 (R09.3.6), as IR every
     /// backend runs alike. `b ^ b` is the zero of `b`'s type, and `b` itself the result then.
@@ -392,9 +392,13 @@ impl Lw<'_> {
     }
     fn site(&mut self, span: Span) -> Site {
         let at = self.off.at(span);
-        self.lines.push(self.line(span));
+        self.origins.push(u32::from(self.user(span)));
         self.sites.push(at);
         (self.sites.len() - 1) as Site
+    }
+    /// Whether a trap at `span` names it: it is in the user's file and not in a derived impl.
+    fn user(&self, span: Span) -> bool {
+        !self.made && &*self.off.at(span).item.module == cpl_next_decls::modules::PROGRAM
     }
     fn line(&self, span: Span) -> u32 {
         if self.made {
@@ -1307,7 +1311,7 @@ impl Lw<'_> {
                 let outer_sites = self.take_sites();
                 let mut b = Vec::new();
                 body.iter().for_each(|s| self.stmt(s, &mut b));
-                let (sites, lines) = self.swap_sites(outer_sites);
+                let (sites, origins) = self.swap_sites(outer_sites);
                 self.case = Some(Func {
                     key: FuncKey::Case,
                     name: "case".into(),
@@ -1321,7 +1325,7 @@ impl Lw<'_> {
                     region: None,
                     line: 0,
                     sites,
-                    lines,
+                    origins,
                     views: Vec::new(),
                     drops: Vec::new(),
                     maker: None,
@@ -1501,7 +1505,7 @@ impl Lw<'_> {
         let locals = std::mem::replace(&mut self.locals, outer_locals);
         self.by_addr = outer_by_addr;
         self.remap = saved_remap;
-        let (sites, lines) = self.swap_sites(outer_sites);
+        let (sites, origins) = self.swap_sites(outer_sites);
         self.lambdas.push(Func {
             key: FuncKey::Lambda(id),
             name: format!("lambda{}", id.0),
@@ -1515,7 +1519,7 @@ impl Lw<'_> {
             region: info.yields.clone().map(|t| (false, t)),
             line: self.line(body.span),
             sites,
-            lines,
+            origins,
             views: Vec::new(),
             drops: Vec::new(),
             maker: info.owner,

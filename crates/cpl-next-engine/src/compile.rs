@@ -10,9 +10,9 @@ use cpl_next_ir::run::{Limits, Stack};
 pub(crate) type Reg = u32;
 /// No jump target: the flow leaves the block.
 pub(crate) const LEAVE: u32 = u32::MAX;
-/// A line no op of the block set: the line of the block run outside it.
+/// An origin no op of the block set: the origin of the block run outside it.
 pub(crate) const INHERIT: u32 = u32::MAX;
-/// A call line kept in its chain register, set by a block outside.
+/// A call origin kept in its chain register, set by a block outside.
 pub(crate) const SAVED: u32 = u32::MAX - 1;
 
 /// How a word prints, compares and shows in an event.
@@ -141,11 +141,11 @@ pub(crate) enum Op {
         kind: Kind,
     },
     At {
-        line: u32,
+        origin: u32,
     },
-    /// A call's line starts running: `save` keeps the line to go back to after it.
+    /// A call's origin starts running: `save` keeps the origin to go back to after it.
     Enter {
-        line: u32,
+        origin: u32,
         save: Reg,
     },
     Call {
@@ -185,7 +185,7 @@ pub(crate) enum Op {
     Check {
         c: Reg,
         kind: CheckKind,
-        line: u32,
+        origin: u32,
         msg: u32,
     },
     Guard {
@@ -328,7 +328,7 @@ pub(crate) enum Op {
         d: Reg,
         n: u32,
     },
-    /// An inlined call is over: its line is the caller's again.
+    /// An inlined call is over: its origin is the caller's again.
     Restore {
         save: Reg,
     },
@@ -383,7 +383,7 @@ pub(crate) enum ArgCode {
 #[derive(Clone, Debug)]
 pub(crate) struct CallCode {
     pub f: u32,
-    pub line: u32,
+    pub origin: u32,
     pub args: Vec<ArgCode>,
     pub d: Reg,
 }
@@ -408,14 +408,14 @@ pub(crate) struct EventCode {
 
 pub(crate) struct Code {
     /// The inlined calls an op runs in, outermost first: the fn and the register holding the
-    /// line it was called from. Chain 0 is none.
+    /// origin it was called from. Chain 0 is none.
     pub chains: Vec<Vec<(u32, Reg)>>,
     /// Per block: from which op on each chain holds, in order.
     pub marks: Vec<Vec<(u32, u32)>>,
-    /// Per block whose lines every way through agrees on: each op's line and the call lines of
+    /// Per block whose origins every way through agrees on: each op's origin and the call origins of
     /// its chain (`saved`). A trap reads them here; a block with none sets `at` as it runs.
-    pub lines: Vec<Vec<(u32, u32)>>,
-    /// Call lines of a chain, outermost first: a line, `INHERIT`, or `SAVED`.
+    pub origins: Vec<Vec<(u32, u32)>>,
+    /// Call origins of a chain, outermost first: an origin, `INHERIT`, or `SAVED`.
     pub saved: Vec<Vec<u32>>,
     pub blocks: Vec<Vec<Op>>,
     pub funcs: Vec<FnCode>,
@@ -442,7 +442,7 @@ pub(crate) fn compile(p: &Program, funcs: &[Func<CTy>]) -> Code {
     let mut c = Code {
         chains: vec![Vec::new()],
         marks: Vec::new(),
-        lines: Vec::new(),
+        origins: Vec::new(),
         global_at: Vec::new(),
         global_lays: Vec::new(),
         saved: vec![Vec::new()],
@@ -791,7 +791,7 @@ impl Fc<'_> {
                 self.ops.push(Op::Check {
                     c,
                     kind: *kind,
-                    line: self.line(*site),
+                    origin: self.origin(*site),
                     msg: m,
                 });
             }
@@ -828,10 +828,10 @@ impl Fc<'_> {
                 };
                 if *lend && self.inlinable_with_body(*f, body) {
                     let var = self.off[*var];
-                    self.inline(*f, args, self.line(*site), 0, Some((var, body.clone())));
+                    self.inline(*f, args, self.origin(*site), 0, Some((var, body.clone())));
                     return;
                 }
-                let c = self.call(*f, args, self.line(*site), 0);
+                let c = self.call(*f, args, self.origin(*site), 0);
                 let block = self.region_body(body);
                 let at = self.ops.len();
                 self.ops.push(Op::Region {
@@ -1101,31 +1101,31 @@ impl Fc<'_> {
             }
             EK::HasBound(..) => self.fail("a bound test the link step did not decide"),
             EK::Call(Target::Inst(f), args, site) if let Some(op) = self.funcs[*f].fast => {
-                self.intr(op, args, self.line(*site), &e.ty, d)
+                self.intr(op, args, self.origin(*site), &e.ty, d)
             }
             EK::Call(Target::Inst(f), args, site) if self.inlinable(*f) => {
-                self.inline(*f, args, self.line(*site), d, None)
+                self.inline(*f, args, self.origin(*site), d, None)
             }
             EK::Call(Target::Inst(f), args, site) => {
-                // The call's line runs while its arguments are evaluated, as in the reference
-                // interpreter, and is the line again after the call.
+                // The call's origin runs while its arguments are evaluated, as in the reference
+                // interpreter, and is the origin again after the call.
                 let save = self.temp(1);
-                let line = self.line(*site);
-                self.ops.push(Op::Enter { line, save });
-                let c = self.call(*f, args, line, d);
+                let origin = self.origin(*site);
+                self.ops.push(Op::Enter { origin, save });
+                let c = self.call(*f, args, origin, d);
                 self.ops.push(Op::Call { c });
             }
             EK::Call(..) => self.fail("an unresolved call reached the engine"),
             EK::CallValue(..) => self.fail("a call through a function value in canonical IR"),
             EK::Pass(..) => self.fail("a place passed before ownership decided how"),
-            EK::Intr(op, args, site) => self.intr(*op, args, self.line(*site), &e.ty, d),
+            EK::Intr(op, args, site) => self.intr(*op, args, self.origin(*site), &e.ty, d),
         }
     }
-    /// The line of the user's file `site` is on; 0 for none.
-    fn line(&self, site: Site) -> u32 {
-        self.f.lines[site as usize]
+    /// The origin of the user's file `site` is on; 0 for none.
+    fn origin(&self, site: Site) -> u32 {
+        self.f.origins[site as usize]
     }
-    fn call(&mut self, f: usize, args: &[Arg<CTy>], line: u32, d: Reg) -> u32 {
+    fn call(&mut self, f: usize, args: &[Arg<CTy>], origin: u32, d: Reg) -> u32 {
         let mut codes = Vec::with_capacity(args.len());
         for a in args {
             codes.push(match a {
@@ -1150,15 +1150,15 @@ impl Fc<'_> {
         let c = self.c.calls.len() as u32;
         self.c.calls.push(CallCode {
             f: f as u32,
-            line,
+            origin,
             args: codes,
             d,
         });
         c
     }
-    fn intr(&mut self, op: Intr, args: &[Arg<CTy>], line: u32, ty: &CTy, d: Reg) {
-        if op.checked() && line != 0 {
-            self.ops.push(Op::At { line });
+    fn intr(&mut self, op: Intr, args: &[Arg<CTy>], origin: u32, ty: &CTy, d: Reg) {
+        if op.checked() && origin != 0 {
+            self.ops.push(Op::At { origin });
         }
         let first_ty = match args.first() {
             Some(Arg::Value(v)) => v.ty.unlent().clone(),
@@ -1590,7 +1590,7 @@ impl<'a> Fc<'a> {
         let at = self.spot(p);
         self.take(l.var, at, n);
         let save = self.temp(1);
-        self.ops.push(Op::Enter { line: 0, save });
+        self.ops.push(Op::Enter { origin: 0, save });
         let off = std::mem::replace(&mut self.off, std::mem::take(&mut l.off));
         let f = std::mem::replace(&mut self.f, l.f);
         let chain = std::mem::replace(&mut self.chain, l.chain);
@@ -1613,13 +1613,13 @@ impl<'a> Fc<'a> {
         self.lending = Some(l);
     }
     /// A call compiled into the caller: the callee's locals are registers of this frame, its
-    /// `return` a jump to the end, and its lines, events and drops those of the call. A
+    /// `return` a jump to the end, and its origins, events and drops those of the call. A
     /// lender gets the region body it lends to (`hand_out_in_place`).
     fn inline(
         &mut self,
         f: usize,
         args: &[Arg<CTy>],
-        line: u32,
+        origin: u32,
         d: Reg,
         lend: Option<(Reg, Vec<Stmt<CTy>>)>,
     ) {
@@ -1639,7 +1639,7 @@ impl<'a> Fc<'a> {
             None => (None, lent_to),
         };
         let save = self.temp(1);
-        self.ops.push(Op::Enter { line, save });
+        self.ops.push(Op::Enter { origin, save });
         let funcs: &'a [Func<CTy>] = self.funcs;
         let g = &funcs[f];
         let base = self.temp(self.c.funcs[f].locals);

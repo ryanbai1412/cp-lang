@@ -2,7 +2,7 @@
 //! with jumps to jumps and jumps to the next op. A jump goes straight to where its chain
 //! ends, `if !c goto next-but-one; goto t` becomes `if c goto t`, and ops nothing reaches
 //! and jumps to the next op go. Every target, table and mark is renumbered with them.
-//! A line kept and put back around ops that can neither trap nor change the line. A register a one-word move set is
+//! An origin kept and put back around ops that can neither trap nor change the origin. A register a one-word move set is
 //! read from its source while neither changes, and an op that only sets registers nothing
 //! reads again goes.
 use crate::compile::{Code, Kind, Op, PlaceCode, Reg, Root, Step, INHERIT, LEAVE, SAVED};
@@ -30,15 +30,21 @@ pub(crate) fn tidy(c: &mut Code) {
         leaving[f.block as usize] =
             Some([(0, f.ret)].into_iter().chain(lent).chain(drops).collect());
     }
-    c.lines = vec![Vec::new(); c.blocks.len()];
+    c.origins = vec![Vec::new(); c.blocks.len()];
     for b in 0..c.blocks.len() {
         let mut ops = std::mem::take(&mut c.blocks[b]);
-        let mut lines = Vec::new();
+        let mut origins = Vec::new();
         let keep = quiet(&ops, &c.tables, &chained);
-        renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
-        let fixed = fixed_lines(&ops, c, b, &outside);
-        // A block whose lines are a table reads no chain register but those set outside it.
-        let static_lines = fixed.is_some();
+        renumber(
+            &mut ops,
+            &mut c.marks[b],
+            &mut c.tables,
+            &keep,
+            &mut origins,
+        );
+        let fixed = fixed_origins(&ops, c, b, &outside);
+        // A block whose origins are a table reads no chain register but those set outside it.
+        let static_origins = fixed.is_some();
         if let Some(fixed) = fixed {
             let mut keep = vec![true; ops.len()];
             for (i, (op, f)) in ops.iter_mut().zip(&fixed).enumerate() {
@@ -59,14 +65,20 @@ pub(crate) fn tidy(c: &mut Code) {
                     c.saved.push(calls.clone());
                     n
                 });
-                lines.push((f.line, s));
+                origins.push((f.origin, s));
             }
-            renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
+            renumber(
+                &mut ops,
+                &mut c.marks[b],
+                &mut c.tables,
+                &keep,
+                &mut origins,
+            );
         }
         let pinned = |r: Reg| {
-            r >= addressed[b] || (!static_lines && chained.contains(&r)) || outside.contains(&r)
+            r >= addressed[b] || (!static_origins && chained.contains(&r)) || outside.contains(&r)
         };
-        jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut lines);
+        jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut origins);
         forward(&mut ops, &mut c.places, &c.lays, &c.tables, &pinned);
         let keep = unread(
             &ops,
@@ -76,10 +88,16 @@ pub(crate) fn tidy(c: &mut Code) {
             &pinned,
             leaving[b].as_deref(),
         );
-        renumber(&mut ops, &mut c.marks[b], &mut c.tables, &keep, &mut lines);
-        jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut lines);
+        renumber(
+            &mut ops,
+            &mut c.marks[b],
+            &mut c.tables,
+            &keep,
+            &mut origins,
+        );
+        jumps(&mut ops, &mut c.marks[b], &mut c.tables, &mut origins);
         c.blocks[b] = ops;
-        c.lines[b] = lines;
+        c.origins[b] = origins;
     }
 }
 
@@ -88,7 +106,7 @@ fn jumps(
     ops: &mut Vec<Op>,
     marks: &mut [(u32, u32)],
     tables: &mut [Vec<u32>],
-    lines: &mut Vec<(u32, u32)>,
+    origins: &mut Vec<(u32, u32)>,
 ) {
     loop {
         thread(ops, tables);
@@ -96,14 +114,14 @@ fn jumps(
         if keep.iter().all(|&k| k) {
             break;
         }
-        renumber(ops, marks, tables, &keep, lines);
+        renumber(ops, marks, tables, &keep, origins);
     }
 }
 
-/// The line at an op that ways setting different lines lead to.
+/// The origin at an op that ways setting different origins lead to.
 const MIXED: u32 = u32::MAX - 2;
 
-/// An op that may trap or run code that does: a trap in it reports the line it runs at. A
+/// An op that may trap or run code that does: a trap in it reports the origin it runs at. A
 /// place traps only at a cell's index.
 fn traps(op: &Op, places: &[PlaceCode]) -> bool {
     let indexes =
@@ -136,43 +154,43 @@ fn traps(op: &Op, places: &[PlaceCode]) -> bool {
         )
 }
 
-/// An op's line in a block whose lines every way through agrees on: the line a trap in it
-/// reports, the line after it and the call line of each call in its chain.
+/// An op's origin in a block whose origins every way through agrees on: the origin a trap in it
+/// reports, the origin after it and the call origin of each call in its chain.
 struct Fixed {
-    line: u32,
+    origin: u32,
     after: u32,
     calls: Vec<u32>,
 }
 
-/// The line, and the call lines kept in chain registers, when an op starts.
-type Lines = (u32, Vec<(Reg, u32)>);
+/// The origin, and the call origins kept in chain registers, when an op starts.
+type Origins = (u32, Vec<(Reg, u32)>);
 
-/// What `op` leaves the lines as, as it sets them when run; `None` for a line a block outside
+/// What `op` leaves the origins as, as it sets them when run; `None` for an origin a block outside
 /// keeps.
-fn step(op: &Op, c: &Code, (mut line, mut saves): Lines) -> Option<Lines> {
+fn step(op: &Op, c: &Code, (mut origin, mut saves): Origins) -> Option<Origins> {
     match *op {
-        Op::At { line: l } => line = l,
-        Op::Enter { line: l, save } => {
+        Op::At { origin: l } => origin = l,
+        Op::Enter { origin: l, save } => {
             if l != 0 {
-                line = l;
+                origin = l;
             }
             match saves.binary_search_by_key(&save, |s| s.0) {
-                Ok(i) => saves[i].1 = line,
-                Err(i) => saves.insert(i, (save, line)),
+                Ok(i) => saves[i].1 = origin,
+                Err(i) => saves.insert(i, (save, origin)),
             }
         }
-        Op::Restore { save } => line = saves.iter().find(|s| s.0 == save)?.1,
-        Op::Region { c: k, .. } if c.calls[k as usize].line != 0 => {
-            line = c.calls[k as usize].line;
+        Op::Restore { save } => origin = saves.iter().find(|s| s.0 == save)?.1,
+        Op::Region { c: k, .. } if c.calls[k as usize].origin != 0 => {
+            origin = c.calls[k as usize].origin;
         }
         _ => {}
     }
-    (line != SAVED).then_some((line, saves))
+    (origin != SAVED).then_some((origin, saves))
 }
 
-/// Each op's lines when every way to it sets the same ones, so a trap can read them from a
+/// Each op's origins when every way to it sets the same ones, so a trap can read them from a
 /// table and the ops that set them go; `None` when they depend on the way taken.
-fn fixed_lines(ops: &[Op], c: &Code, b: usize, outside: &[Reg]) -> Option<Vec<Fixed>> {
+fn fixed_origins(ops: &[Op], c: &Code, b: usize, outside: &[Reg]) -> Option<Vec<Fixed>> {
     let marks = &c.marks[b];
     let first = marks.first().map_or(0, |m| m.1);
     let mut start: Vec<(Reg, u32)> = c.chains[first as usize]
@@ -180,7 +198,7 @@ fn fixed_lines(ops: &[Op], c: &Code, b: usize, outside: &[Reg]) -> Option<Vec<Fi
         .map(|&(_, save)| (save, SAVED))
         .collect();
     start.sort_unstable();
-    let mut before: Vec<Option<Lines>> = vec![None; ops.len()];
+    let mut before: Vec<Option<Origins>> = vec![None; ops.len()];
     if let Some(b) = before.first_mut() {
         *b = Some((INHERIT, start));
     }
@@ -199,14 +217,14 @@ fn fixed_lines(ops: &[Op], c: &Code, b: usize, outside: &[Reg]) -> Option<Vec<Fi
             .map(|t| t as usize)
             .filter(|&t| t < ops.len())
         {
-            // Ways to an op that set different lines leave none an op that may trap can use.
+            // Ways to an op that set different origins leave none an op that may trap can use.
             let joined = match &before[t] {
                 None => after.clone(),
                 Some(o) if *o == after => continue,
                 Some(o) => {
-                    let line = if o.0 == after.0 { o.0 } else { MIXED };
+                    let origin = if o.0 == after.0 { o.0 } else { MIXED };
                     let saves = o.1.iter().filter(|s| after.1.contains(s)).copied();
-                    (line, saves.collect())
+                    (origin, saves.collect())
                 }
             };
             before[t] = Some(joined);
@@ -217,7 +235,7 @@ fn fixed_lines(ops: &[Op], c: &Code, b: usize, outside: &[Reg]) -> Option<Vec<Fi
     for (i, op) in ops.iter().enumerate() {
         let Some(at) = before[i].clone() else {
             out.push(Fixed {
-                line: INHERIT,
+                origin: INHERIT,
                 after: INHERIT,
                 calls: Vec::new(),
             });
@@ -231,19 +249,23 @@ fn fixed_lines(ops: &[Op], c: &Code, b: usize, outside: &[Reg]) -> Option<Vec<Fi
             .iter()
             .map(|&(_, save)| at.1.iter().find(|s| s.0 == save).map(|s| s.1))
             .collect::<Option<Vec<_>>>()?;
-        let (line, after) = (at.0, step(op, c, at)?.0);
+        let (origin, after) = (at.0, step(op, c, at)?.0);
         let kept = matches!(*op, Op::Enter { save, .. } if outside.contains(&save));
         if kept && (after == INHERIT || after == MIXED)
-            || traps(op, &c.places) && (line == MIXED || calls.contains(&MIXED))
+            || traps(op, &c.places) && (origin == MIXED || calls.contains(&MIXED))
         {
             return None;
         }
-        let line = match *op {
+        let origin = match *op {
             Op::Region { .. } => after,
-            Op::Check { line: l, .. } if l != 0 => l,
-            _ => line,
+            Op::Check { origin: l, .. } if l != 0 => l,
+            _ => origin,
         };
-        out.push(Fixed { line, after, calls });
+        out.push(Fixed {
+            origin,
+            after,
+            calls,
+        });
     }
     Some(out)
 }
@@ -313,7 +335,7 @@ fn thread(ops: &mut [Op], tables: &mut [Vec<u32>]) {
     }
 }
 
-/// The ops worth running: not an `Enter`/`Restore` pair with only quiet ops between and no jump into them. A trap's line
+/// The ops worth running: not an `Enter`/`Restore` pair with only quiet ops between and no jump into them. A trap's origin
 /// and call stack are read only when something traps, so a pair nothing in can trap at is
 /// never seen.
 /// `chained`: the saves a trap's call stack reads (`Code::chains`), kept where it can trap.
@@ -330,10 +352,10 @@ fn quiet(ops: &[Op], tables: &[Vec<u32>], chained: &[Reg]) -> Vec<bool> {
         }
     }
     // Innermost pairs first, so a pair around a quiet pair goes too. A pair goes when it
-    // leaves the line a trap reports as it was: what it encloses keeps the line, and the line
+    // leaves the origin a trap reports as it was: what it encloses keeps the origin, and the origin
     // it enters is the one already set, or none, or nothing it encloses can trap.
     for i in (0..ops.len()).rev() {
-        let Op::Enter { line, save } = ops[i] else {
+        let Op::Enter { origin, save } = ops[i] else {
             continue;
         };
         let mut j = i + 1;
@@ -344,7 +366,7 @@ fn quiet(ops: &[Op], tables: &[Vec<u32>], chained: &[Reg]) -> Vec<bool> {
         }
         let set = trapless
             || !chained.contains(&save)
-                && (line == 0 || line_at(ops, &keep, &aimed, i) == Some(line));
+                && (origin == 0 || origin_at(ops, &keep, &aimed, i) == Some(origin));
         // Every way to the restore passes the enter: no jump from outside lands between.
         let closed = || {
             edges
@@ -363,11 +385,13 @@ fn quiet(ops: &[Op], tables: &[Vec<u32>], chained: &[Reg]) -> Vec<bool> {
     keep
 }
 
-/// The line set when `ops[i]` starts, if every way to it sets the same one.
-fn line_at(ops: &[Op], keep: &[bool], aimed: &[bool], i: usize) -> Option<u32> {
+/// The origin set when `ops[i]` starts, if every way to it sets the same one.
+fn origin_at(ops: &[Op], keep: &[bool], aimed: &[bool], i: usize) -> Option<u32> {
     for k in (0..i).rev() {
         match ops[k] {
-            Op::At { line } | Op::Enter { line, .. } if line != 0 && keep[k] => return Some(line),
+            Op::At { origin } | Op::Enter { origin, .. } if origin != 0 && keep[k] => {
+                return Some(origin)
+            }
             op if keep[k] && !keeps_line(&op) => return None,
             _ if aimed[k] => return None,
             _ => {}
@@ -376,7 +400,7 @@ fn line_at(ops: &[Op], keep: &[bool], aimed: &[bool], i: usize) -> Option<u32> {
     None
 }
 
-/// An op that leaves the line a trap reports as it is, though it may trap at it.
+/// An op that leaves the origin a trap reports as it is, though it may trap at it.
 fn keeps_line(op: &Op) -> bool {
     !matches!(
         op,
@@ -390,7 +414,7 @@ fn keeps_line(op: &Op) -> bool {
     )
 }
 
-/// An op that cannot trap or change the line a trap reports.
+/// An op that cannot trap or change the origin a trap reports.
 fn still(op: &Op) -> bool {
     matches!(
         op,
@@ -665,7 +689,7 @@ fn aimed(ops: &[Op], tables: &[Vec<u32>]) -> Vec<bool> {
     aimed
 }
 
-/// After `d = s` of one word, the ops that run next in a line read `s` for `d` until either
+/// After `d = s` of one word, the ops that run next in an origin read `s` for `d` until either
 /// is set, so the move is left with no reader when they were all its readers. A place indexed
 /// by `d` becomes a new place indexed by `s`.
 fn forward(
@@ -1034,7 +1058,7 @@ fn renumber(
     marks: &mut [(u32, u32)],
     tables: &mut [Vec<u32>],
     keep: &[bool],
-    lines: &mut Vec<(u32, u32)>,
+    origins: &mut Vec<(u32, u32)>,
 ) {
     let mut at = Vec::with_capacity(keep.len() + 1);
     let mut n = 0u32;
@@ -1049,9 +1073,9 @@ fn renumber(
         i += 1;
         keep[i - 1]
     });
-    if !lines.is_empty() {
+    if !origins.is_empty() {
         let mut i = 0;
-        lines.retain(|_| {
+        origins.retain(|_| {
             i += 1;
             keep[i - 1]
         });
@@ -1153,7 +1177,7 @@ mod tests {
         assert!(keep.iter().all(|&k| k));
     }
 
-    /// A place traps only where it indexes a cell, so storing to a global needs no line.
+    /// A place traps only where it indexes a cell, so storing to a global needs no origin.
     #[test]
     fn only_an_index_traps_in_a_place() {
         let places = [
@@ -1172,7 +1196,7 @@ mod tests {
     }
 
     /// Releasing or retaining a value runs no code that can trap, so a block whose ways leave
-    /// different lines before its frame's releases still reads its lines from a table.
+    /// different origins before its frame's releases still reads its origins from a table.
     #[test]
     fn a_release_needs_no_line() {
         assert!(!traps(&Op::Drop { s: 1, lay: 0 }, &[]));
@@ -1321,18 +1345,18 @@ mod tests {
         assert_eq!(kept(&[(0, 1), (3, 1)]), [true, true, true]);
     }
 
-    /// A kept line around moves goes; around a `Take`, which can trap, it stays.
+    /// A kept origin around moves goes; around a `Take`, which can trap, it stays.
     #[test]
     fn a_line_nothing_can_trap_at_is_not_kept() {
         let ops = vec![
-            Op::Enter { line: 3, save: 9 },
+            Op::Enter { origin: 3, save: 9 },
             Op::Drop { s: 1, lay: 0 },
-            Op::Enter { line: 0, save: 8 },
+            Op::Enter { origin: 0, save: 8 },
             Op::Move { d: 1, s: 2, n: 1 },
             Op::Restore { save: 8 },
             Op::Take { d: 1, p: 0, n: 1 },
             Op::Restore { save: 9 },
-            Op::Enter { line: 0, save: 7 },
+            Op::Enter { origin: 0, save: 7 },
             Op::Move { d: 1, s: 2, n: 1 },
             Op::Restore { save: 7 },
         ];
@@ -1343,33 +1367,33 @@ mod tests {
         );
     }
 
-    /// Around a `Take`, which can trap, a pair entering no line goes, and so does one entering
-    /// the line already set; one entering another line stays, as does one whose set line is
+    /// Around a `Take`, which can trap, a pair entering no origin goes, and so does one entering
+    /// the origin already set; one entering another origin stays, as does one whose set origin is
     /// reached by a jump that may set another. A jump inside a pair keeps it from going only
     /// when it comes from outside. A pair whose save a call stack reads stays.
     #[test]
     fn a_line_already_set_is_not_entered_again() {
         let ops = vec![
-            Op::Enter { line: 0, save: 9 },
+            Op::Enter { origin: 0, save: 9 },
             Op::Take { d: 1, p: 0, n: 1 },
             Op::Restore { save: 9 },
-            Op::At { line: 5 },
-            Op::Enter { line: 5, save: 9 },
+            Op::At { origin: 5 },
+            Op::Enter { origin: 5, save: 9 },
             Op::Take { d: 1, p: 0, n: 1 },
             Op::Restore { save: 9 },
-            Op::Enter { line: 4, save: 9 },
+            Op::Enter { origin: 4, save: 9 },
             Op::Take { d: 1, p: 0, n: 1 },
             Op::Restore { save: 9 },
             Op::Imm { d: 1, v: 0 },
-            Op::Enter { line: 4, save: 9 },
+            Op::Enter { origin: 4, save: 9 },
             Op::Take { d: 1, p: 0, n: 1 },
             Op::Restore { save: 9 },
             Op::JumpIf { c: 1, t: 10 },
-            Op::Enter { line: 0, save: 9 },
+            Op::Enter { origin: 0, save: 9 },
             Op::JumpIf { c: 1, t: 18 },
             Op::Take { d: 1, p: 0, n: 1 },
             Op::Restore { save: 9 },
-            Op::Enter { line: 0, save: 9 },
+            Op::Enter { origin: 0, save: 9 },
             Op::Take { d: 1, p: 0, n: 1 },
             Op::Restore { save: 9 },
             Op::JumpIf { c: 1, t: 21 },

@@ -204,11 +204,14 @@ struct Emit<'a> {
     order: Vec<CTy>,
     /// The IR's layout table: field order, members and where the tag is.
     lays: Layouts,
-    /// The lines of the fn being printed (`Func::lines`).
-    lines: std::cell::Cell<&'a [u32]>,
+    /// The origins of the fn being printed (`Func::origins`).
+    origins: std::cell::Cell<&'a [u32]>,
+    /// The line of the user's file each origin is on: origin `o`'s is `lines[o - 1]`.
+    lines: &'a [u32],
 }
 
-pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
+/// The program as C++. A trap prints the line of `lines` its origin is on.
+pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32]) -> String {
     let mut e = Emit {
         p,
         funcs,
@@ -216,7 +219,8 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         names: HashMap::new(),
         order: Vec::new(),
         lays: Layouts::default(),
-        lines: std::cell::Cell::new(&[]),
+        origins: std::cell::Cell::new(&[]),
+        lines,
     };
     for f in funcs {
         for t in &f.locals {
@@ -293,7 +297,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
         } else {
             put_line!(s, "    {} cpl_ret{{}};", e.names[&f.ret]);
         }
-        e.lines.set(&f.lines);
+        e.origins.set(&f.origins);
         e.block(&f.body, 1, &mut s, &mut label, ctx);
         if f.region.is_some() {
             put_line!(s, "    return cpl_code;");
@@ -315,7 +319,10 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>]) -> String {
 
 impl Emit<'_> {
     fn line(&self, site: Site) -> u32 {
-        self.lines.get()[site as usize]
+        match self.origins.get()[site as usize] {
+            0 => 0,
+            o => self.lines[o as usize - 1],
+        }
     }
     /// The line of the first operation in `e` that can trap, or 0 if none can.
     fn trap_line(&self, e: &Expr<CTy>) -> u32 {

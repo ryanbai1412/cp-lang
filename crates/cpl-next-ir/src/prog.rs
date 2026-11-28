@@ -61,9 +61,16 @@ pub struct Program {
     /// Each type whose representation is an earlier type's, mapped to that type: link's
     /// canonicalization decides it once, and no backend tells the two apart.
     pub shares: HashMap<CTy, CTy>,
+    /// The sites of the user's file a trap can name, once each: origin `o` is `origins[o - 1]`,
+    /// and 0 is none (`Func::origins`).
+    pub origins: Vec<crate::ids::SourceId>,
     pub errors: Vec<Msg>,
 }
 impl Program {
+    /// Where origin `o` is; `None` for 0.
+    pub fn origin(&self, o: u32) -> Option<&crate::ids::SourceId> {
+        self.origins.get((o as usize).checked_sub(1)?)
+    }
     /// The type whose representation a value of `t` has.
     pub fn rep<'a>(&'a self, t: &'a CTy) -> &'a CTy {
         self.shares.get(t).unwrap_or(t)
