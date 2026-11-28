@@ -90,7 +90,7 @@ fn golden_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int, larger: Bool) -> F64
 /// example: `let f = [0, 1, 2, 2, 1]; ternary_max(0..5, i => f[i]) == Some(2)`
 /// example: `ternary_max(0..0, i => i) == None`
 @lint(ternary_search_by_hand, from: "let m1 = lo + (hi - lo) / 3\nlet m2 = hi - (hi - lo) / 3\nif f(m1) > f(m2):\n    body\nelse:\n    rest", advice: "ternary_max(lo..hi + 1, f)", holes: "lo, hi, body, rest")
-pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
+pub fn ternary_max<I, K: Ord>(r: Range<I>, f: I -> K) -> ?I:
     golden_pick(r, f, larger: true)
 
 /// The position of `r` where a discrete unimodal `f` is smallest, or `None` when `r` is empty.
@@ -108,7 +108,7 @@ pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
 /// example: `let f = [3, 1, 1, 2]; ternary_min(0..4, i => f[i]) == Some(1)`
 /// example: `ternary_min(5..5, i => i) == None`
 @lint(ternary_search_by_hand, from: "let m1 = lo + (hi - lo) / 3\nlet m2 = hi - (hi - lo) / 3\nif f(m1) < f(m2):\n    body\nelse:\n    rest", advice: "ternary_min(lo..hi + 1, f)", holes: "lo, hi, body, rest")
-pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
+pub fn ternary_min<I, K: Ord>(r: Range<I>, f: I -> K) -> ?I:
     golden_pick(r, f, larger: false)
 
 /// Many binary searches over one timeline `r` at once: `out[q]` is the first `t` of `r` such

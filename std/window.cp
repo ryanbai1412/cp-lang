@@ -21,7 +21,7 @@ use std.seq.{Track, Indexed, collect}
 /// traps: when `k < 1`
 /// example: `[3, 1, 4, 1, 5].window_fold(2, max).collect() == [3, 4, 4, 5]`
 /// example: `[1, 2, 3].window_fold(2, +).collect() == [3, 5]`
-pub fn window_fold<S: Indexed<D, T>, D: Domain, T, M: Op<T>>(self: S, k: 1.., op: M) -> yields T:
+pub fn window_fold<S: Indexed<D, T>, D: Domain, T: Eq, M: Op<T>>(self: S, k: 1.., op: M) -> yields T:
     assert k >= 1, "a window holds at least one element"
     var w = Window<T, M>.new(op)
     for i in 0..self.len:
@@ -166,7 +166,7 @@ pub struct Window<T, M: Op<T>>(op: M):
         head += 1
         front.pop()
 
-impl Show for Window<T, M>:
+impl<T, M: Op<T>> Show for Window<T, M>:
     fn show(w) = "{w.len} elements"
 
 /// `push(x)` and `pop(x)` are `Window`'s own `push(x)` and `pop(x)`.
@@ -182,7 +182,7 @@ impl Track<T> for Tracked<S, T>:
     fn pop(mut self, x: T) = self.pop(x)
 
 /// `push(x)` and `pop(x)` are the `Undoing`'s own `push(x)` and `pop(x)`.
-impl Track<T> for Undoing<S, T>:
+impl<S: Undo, T> Track<T> for Undoing<S, T>:
     fn push(mut self, x: T) = self.push(x)
     fn pop(mut self, x: T) = self.pop(x)
 
@@ -339,7 +339,7 @@ pub fn undoing<S: Undo, T>(state: S, add: (mut S, T) -> ()) -> Undoing<S, T> = U
 
 /// A movable range over `D` feeding a `Track`, for Mo and divide-and-conquer DP. Moving
 /// expands before shrinking. \(O(\lvert \mathit{change} \rvert)\) pushes and pops per move.
-pub struct Sweep<D, S>(pub state: S):
+pub struct Sweep<D: Domain, S: Track<D>>(pub state: S):
     var lo: Int
     var hi: Int
 
