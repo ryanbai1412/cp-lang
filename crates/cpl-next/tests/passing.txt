@@ -3116,3 +3116,7 @@ next/n_nested_fn_captures_borrowed_per_call.cp
 core-07/str-of-a-char-is-its-word.cp
 diagnostics/str-of-a-number-is-its-show.cp
 diagnostics/str-of-a-show-type-is-its-text.cp
+core-04/all-is-every-position-in-walk-order.cp
+core-04/an-ordered-bound-steps-a-domain.cp
+core-06/a-program-marks-its-own-derive.cp
+core-06/a-second-operator-for-one-method-is-refused.cp
