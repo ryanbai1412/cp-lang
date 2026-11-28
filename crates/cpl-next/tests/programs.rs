@@ -137,16 +137,22 @@ struct Worker {
     child: std::process::Child,
     ask: std::process::ChildStdin,
     done: std::sync::mpsc::Receiver<String>,
+    limit: Duration,
 }
 
 impl Worker {
     fn new() -> Worker {
+        Worker::within(LIMIT)
+    }
+
+    /// A worker whose runs stop at `limit`: [`TOOL_LIMIT`] where no case's time is judged.
+    fn within(limit: Duration) -> Worker {
         let mut child = Command::new(env!("CARGO_BIN_EXE_cpl-next-oracle"))
             .args([
                 "--trace",
                 "--all",
                 "--within",
-                &LIMIT.as_millis().to_string(),
+                &limit.as_millis().to_string(),
             ])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -163,7 +169,12 @@ impl Worker {
                 }
             }
         });
-        Worker { child, ask, done }
+        Worker {
+            child,
+            ask,
+            done,
+            limit,
+        }
     }
 
     /// Whether it finished the case: its three runs stop themselves, a compile is given the
@@ -171,7 +182,10 @@ impl Worker {
     fn finished(&mut self, path: &Path, dir: &Path) -> bool {
         let judge = judge(path).unwrap_or_default();
         writeln!(self.ask, "{}\t{}\t{judge}", path.display(), dir.display()).is_ok()
-            && self.done.recv_timeout(4 * LIMIT).is_ok_and(|l| l == "done")
+            && self
+                .done
+                .recv_timeout(4 * self.limit)
+                .is_ok_and(|l| l == "done")
     }
 }
 
@@ -1046,12 +1060,12 @@ fn a_case_in_the_worker_gives_what_it_gives_alone() {
         let runs: Vec<_> = (cases.iter().enumerate())
             .map(|(i, (_, path))| {
                 let dir = root.join(format!("alone-{i}"));
-                s.spawn(move || worker_files(&mut Worker::new(), path, &dir))
+                s.spawn(move || worker_files(&mut Worker::within(TOOL_LIMIT), path, &dir))
             })
             .collect();
         runs.into_iter().map(|r| r.join().unwrap()).collect()
     });
-    let mut shared = Worker::new();
+    let mut shared = Worker::within(TOOL_LIMIT);
     let mut differ = vec![];
     for (i, ((id, path), alone)) in cases.iter().zip(&alone).enumerate() {
         let inside = worker_files(&mut shared, path, &root.join(format!("shared-{i}")));
