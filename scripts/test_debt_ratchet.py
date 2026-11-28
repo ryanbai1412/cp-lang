@@ -1507,6 +1507,16 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertEqual(dr.inherited_baseline({name: 0}, {name: 3})[name], 0)
 
+    def test_a_zero_with_counter_is_hard_zero_once_its_dependency_is_zero(self) -> None:
+        for name, dep in dr.ZERO_WITH.items():
+            errs, _, _ = dr.evaluate({name: 1, dep: 3}, {name: 2, dep: 3})
+            self.assertEqual(errs, [])
+            errs, _, _ = dr.evaluate({name: 1, dep: 0}, {name: 2, dep: 3})
+            self.assertEqual(len(errs), 1)
+            self.assertIn(f"{dep} is 0", errs[0])
+            errs, _, _ = dr.evaluate({name: 0, dep: 0}, {name: 2, dep: 3})
+            self.assertEqual(errs, [])
+
     def test_an_unverified_dream_fails_the_ratchet(self) -> None:
         self.assertIn("dream_unverified", dr.HARD_ZERO)
         errs, _, _ = dr.evaluate({"dream_unverified": 1}, {"dream_unverified": 0})

@@ -330,7 +330,7 @@
   "old_pipeline_lines": 179938,
   "next_masked": 129,
   "next_refusal_kinds": 60,
-  "next_core_privilege": 16,
+  "next_core_privilege": 1,
   "next_whole_program_inputs": 602,
   "next_handoff_side_fields": 11,
   "next_reference_evaluator_lines": 583,
@@ -401,7 +401,7 @@
     "tools-judge/release-run-gets-a-large-judge-stack.cp",
     "tools-judge/release-run-gets-the-judges-stack-and-crashes-like-it.cp"
   ],
-  "next_library_gates": 20,
+  "next_library_gates": 2,
   "next_domain_fiat": 0,
   "next_name_compares": 15,
   "next_error_typed": 34,

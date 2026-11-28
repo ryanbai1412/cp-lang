@@ -5116,6 +5116,10 @@ HARD_ZERO = frozenset({"frozen_std_drift", "raw_int_range_alternation", "next_sy
 })
 # Paid down to the one place the thing lives: above the floor fails, with no baseline.
 HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
+# name -> the counter whose 0 makes it hard-zero: the library gate and core's privilege left
+# on lane-j-check (d2e40c3a7) are the LibraryBody refusal and is_library, which go once every
+# std module compiles (Lane A, coordinator 23:42).
+ZERO_WITH = {"next_library_gates": "next_std_unchecked", "next_core_privilege": "next_std_unchecked"}
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
@@ -5503,6 +5507,10 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
             continue
         if name in HARD_ZERO and int(actual.get(name, 0)) > 0:
             errors.append(f"{label}: {actual[name]} found; this debt is paid off and must stay at 0 "
+                          f"(`--list {name}` shows them)")
+            continue
+        if (dep := ZERO_WITH.get(name)) and dep in actual and int(actual[dep]) == 0 and int(actual.get(name, 0)) > 0:
+            errors.append(f"{label}: {actual[name]} found; {dep} is 0, so this must be 0 too "
                           f"(`--list {name}` shows them)")
             continue
         if not gated or name not in actual:
