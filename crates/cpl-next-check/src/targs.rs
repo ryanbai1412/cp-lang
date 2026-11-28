@@ -1,24 +1,24 @@
 //! Type arguments written on an expression: `id::<Int>`, `s.parse<Int>()` (R08.2.5).
 use super::call::CallArg;
 use super::expr::block;
-use super::member::{bare_name, Called};
+use super::member::{bare_name, written_types, Called};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
 impl Cx<'_> {
     /// `f<A>` named as a value: the closure that calls `f` with `A`, as `f` alone is.
-    pub(super) fn generic_value(
-        &mut self,
-        base: &next::Expr,
-        targs: &[next::Type],
-        span: Span,
-    ) -> TExpr {
+    pub(super) fn generic_value(&mut self, g: &next::GenericExpr, span: Span) -> TExpr {
+        let targs = &written_types(g);
         let err = TExpr {
             kind: TK::Error,
             ty: Ty::Error,
             span,
         };
-        let Some(n) = &bare_name(base) else {
+        let Some((base, n)) = g
+            .base()
+            .and_then(|b| Some((bare_name(&b)?, b)))
+            .map(|(n, b)| (b, n))
+        else {
             self.err(
                 span,
                 Unbuilt::Expression {
@@ -27,6 +27,7 @@ impl Cx<'_> {
             );
             return err;
         };
+        let n = n.as_str();
         let fd = (self.lookup(n).is_none())
             .then(|| self.d.fn_named(self.b.module, n))
             .flatten();
@@ -38,7 +39,7 @@ impl Cx<'_> {
                 // `Pair<V>` named as a value, as `for p in Pair<V>`: the domain of its
                 // positions, as a domain's name alone is (R04.2.27).
                 let mut pre = Vec::new();
-                if let Some(t) = self.struct_at(base, targs, span, &mut pre) {
+                if let Some(t) = self.struct_at(&base, g.args(), span, &mut pre) {
                     if self.is_domain(&t) {
                         let v = self.domain_value(t, span);
                         return block(pre, v);
@@ -49,7 +50,7 @@ impl Cx<'_> {
             }
             // Anything else is what the name alone is: unknown, the error, or a value that
             // takes no type arguments.
-            let alone = self.expr(base, None);
+            let alone = self.expr(&base, None);
             if self.is_error(&alone.ty) {
                 return err;
             }
@@ -73,14 +74,14 @@ impl Cx<'_> {
     /// `recv.m<A>(args)`: the written arguments are `m`'s own, after its owner's.
     pub(super) fn generic_method(
         &mut self,
-        callee: &next::Expr,
-        targs: &[next::Type],
+        g: &next::GenericExpr,
         args: &[CallArg],
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
-        let field = match callee {
-            next::Expr::Field(f) => f.base().zip(f.name()),
+        let targs = &written_types(g);
+        let field = match g.base() {
+            Some(next::Expr::Field(f)) => f.base().zip(f.name()),
             _ => None,
         };
         let Some((base, name)) = field else {

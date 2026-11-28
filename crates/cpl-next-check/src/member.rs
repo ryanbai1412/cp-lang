@@ -22,7 +22,7 @@ enum Clear {
     Declared(FnId),
 }
 
-fn written_types(g: &next::GenericExpr) -> Vec<next::Type> {
+pub(super) fn written_types(g: &next::GenericExpr) -> Vec<next::Type> {
     (g.args().iter().flat_map(|a| a.args()))
         .filter_map(|a| match a {
             next::GenericArg::Type(t) => Some(t),
@@ -273,7 +273,8 @@ impl<'a> Cx<'a> {
         if self.lookup(n).is_some() {
             return None;
         }
-        let i = self.b.generics.iter().position(|g| g == n)?;
+        let g = self.sym_of(n)?;
+        let i = self.b.generics.iter().position(|x| *x == g)?;
         let pick = |fd: &decls::FnDecl| fd.self_mode == SelfMode::None && takes(fd, call);
         let found = match self.bound_giving(i, &name.text, pick, span) {
             Ok(found) => found,
@@ -453,7 +454,7 @@ impl<'a> Cx<'a> {
             return None;
         }
         let t = match self.d.named(self.b.module, n) {
-            _ if self.b.generics.iter().any(|g| g == n) => return None,
+            _ if (self.sym_of(n)).is_some_and(|g| self.b.generics.contains(&g)) => return None,
             Some(decls::Named::Alias(id)) => {
                 let (t, errs) = self.with_body_scope(|at| decls::alias_type(at, id, Vec::new()));
                 if !errs.is_empty() {
@@ -462,7 +463,7 @@ impl<'a> Cx<'a> {
                 t
             }
             Some(_) => return None,
-            None => (self.b.doms.get(n).cloned())
+            None => (self.sym_of(n).and_then(|s| self.b.doms.get(&s).cloned()))
                 .or_else(|| self.owned_named(n))
                 .or_else(|| decls::prim_type(n))?,
         };
