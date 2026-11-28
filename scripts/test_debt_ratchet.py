@@ -50,7 +50,8 @@ class DebtRatchetTest(unittest.TestCase):
         )
         # stdlib var named todo is NOT a stub; std `= todo` IS a stub
         (root / "stdlib/dp.cp").write_text("var todo = [1]\ntodo.push(2)\n")
-        (root / "std/seq.cp").write_text("pub fn foo() = todo\nfn bar():\n    todo\n")
+        # std's `@role(todo)` filler is the trap, not a stub
+        (root / "std/seq.cp").write_text("pub fn foo() = todo\nfn bar():\n    todo\n@role(todo)\npub fn todo() = todo\n")
         (root / "crates/cpl-cli/tests/pending/case1.cp").write_text("print(1)\n")
 
     def test_corpus_test_files_counts_every_test_file(self) -> None:

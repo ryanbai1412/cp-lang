@@ -158,14 +158,16 @@ def stdlib_todo(root: Path) -> list[str]:
     for sub in ("std", "stdlib"):
         for path_str in sorted(glob.glob(str(root / sub / "*.cp"))):
             p = Path(path_str)
-            in_test = False
+            in_test = filler = False
             for i, line in enumerate(_lines(p), 1):
+                # The `@role(todo)` filler is the trap itself (R11.6), not a stub.
+                was_filler, filler = filler, line.strip() == "@role(todo)"
                 if line.strip() == "@test":
                     in_test = True
                     continue
                 if in_test and line.strip() and not line[0].isspace() and not line.startswith("fn "):
                     in_test = False
-                if TODO_STUB_RE.search(line):
+                if TODO_STUB_RE.search(line) and not was_filler:
                     out.append(f"{_rel(root, p)}:{i}" + (" @test" if in_test else ""))
     return out
 

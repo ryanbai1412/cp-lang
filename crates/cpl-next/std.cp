@@ -37,8 +37,6 @@ pub use std.show.{Show, Pack, print, write}
 pub use std.read.{Read, Input, read, read_line}
 pub use std.stream.{rand}
 pub use std.mem.{swap}
-/// `todo`, the trap a stub's body is (R01.6.7).
-pub use std.raw.{todo}
 
 /// `max(a, b, ..)` and `min(a, b, ..)`.
 pub use std.ops.{max, min, Alike}
