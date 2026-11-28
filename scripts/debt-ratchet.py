@@ -2536,9 +2536,9 @@ def next_std_names(root: Path) -> list[str]:
     # `cpl-prim` holds the `@intrinsic` ids the IR maps to its operations, so it is scanned too.
     files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), "crates/cpl-prim/src", tests=False)
              if _rel(root, p) != NEXT_GRAMMAR_TABLE}
-    # An id table's row binds an id std writes as `@intrinsic("id")`; a row std writes no
+    # An id table's row binds an id std writes as `@intrinsic("id")` or `@fast(id)`; a row std writes no
     # binding for is a name the compiler knows, and counts.
-    ids = {i for f in sources for i in NEXT_INTRINSIC_ID_RE.findall(f.read_text(encoding="utf-8"))}
+    ids = {a or b for f in sources for a, b in NEXT_INTRINSIC_ID_RE.findall(f.read_text(encoding="utf-8"))}
     out: list[str] = []
     wrappers: dict[str, tuple[str, int]] = {}
     for rel, lines in files.items():
@@ -2581,7 +2581,8 @@ def next_std_names(root: Path) -> list[str]:
 
 
 NEXT_WRAPPER_LINES = 8
-NEXT_INTRINSIC_ID_RE = re.compile(r'@intrinsic\("(\w+)"\)')
+# An id std binds: a body `= @intrinsic("id")`, or `@fast(id)` on a CP body the op computes.
+NEXT_INTRINSIC_ID_RE = re.compile(r'@intrinsic\("(\w+)"\)|@fast\((\w+)\)')
 # The one table of `@intrinsic` ids each file keeps, by its `const`'s name.
 NEXT_INTRINSIC_TABLES = {"crates/cpl-next-ir/src/ops.rs": "INTRINSICS", "crates/cpl-prim/src/lib.rs": "IDS"}
 NEXT_QUERY_NAME_RE = re.compile(r'^\s*const NAME: &\'static str = "[a-z_]+";\s*$')
