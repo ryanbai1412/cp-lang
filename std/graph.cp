@@ -977,7 +977,7 @@ fn bfs_over_a_stored_graph_and_over_a_lambda():
     let next = [V] v => [
         V.nth(x) for x in [v.ord + 1, v.ord * 2, v.ord - 3] if 0 <= x < 10
     ]
-    let es = [(v, w) for v in V for w in next[v]]
+    let es = [(v, w) for v in V, w in next[v]]
     let stored = bfs(Graph.directed(es), from: [V(1)])
     let lambda = bfs<V>(v => next[v], from: [V(1)])
     var dist: [V]?Int = None
@@ -2016,8 +2016,8 @@ fn bridges_are_the_edges_whose_removal_disconnects():
         let edges = [E] e => (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)))
         let bridge = bridges(Graph.undirected(edges))
         for e in E:
-            let rest = [V] v => [x.v for f in E if f != e for x in [edges[f]] if x.u == v] + [
-                x.u for f in E if f != e for x in [edges[f]] if x.v == v
+            let rest = [V] v => [x.v for f in E if f != e, x in [edges[f]] if x.u == v] + [
+                x.u for f in E if f != e, x in [edges[f]] if x.v == v
             ]
             let far = bfs<V>(v => rest[v], from: [edges[e].u])
             assert bridge[e] == (not far.reached(edges[e].v))

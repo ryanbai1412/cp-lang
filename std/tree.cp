@@ -948,7 +948,7 @@ pub struct Rooted<V, Pre: Ordered, A>:
     /// empty: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.sub_at(0, 2).count() == 1`
     /// order: increasing positions
     /// traps: when `v` and `root` are in different trees of a forest
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); [t.at[p] for r in t.sub_at(1, 3) for p in r] == [0, 1, 4, 2] and t.sub_at(1, 2).count() == 1`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); [t.at[p] for r in t.sub_at(1, 3), p in r] == [0, 1, 4, 2] and t.sub_at(1, 2).count() == 1`
     pub fn sub_at(self, v: V, root: V) -> yields Range<Pre>:
         if self.lca(v, root) != v:
             yield self.sub(v)
@@ -1680,7 +1680,7 @@ fn heavy_light_and_subtree_cover_the_children():
                 if a in r.light(p).collect(): lights += 1
         assert (1 << lights) <= V.count
         for root in V:
-            var got = [r.at[q] for g in r.sub_at(v, root) for q in g]
+            var got = [r.at[q] for g in r.sub_at(v, root), q in g]
             got.sort()
             var want = Rooted(adj, root).subtree(v).collect()
             want.sort()
@@ -1758,7 +1758,7 @@ fn shapes_match_the_canonical_string():
                 if r.depth(v) == d:
                     var kids = [enc[c] for c in r.children(v)]
                     kids.sort()
-                    enc[v] = [1] + [x for k in kids for x in k] + [0]
+                    enc[v] = [1] + [x for k in kids, x in k] + [0]
         var seen = Set<List<Int>>()
         for v in V: seen.insert(enc[v])
         assert S.count == seen.len
