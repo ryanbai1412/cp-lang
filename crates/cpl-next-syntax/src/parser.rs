@@ -128,6 +128,8 @@ pub(crate) struct Parser<'t> {
     half_gt: bool,
     /// Inside type arguments, where `>` closes the list.
     no_gt: bool,
+    /// Inside a `let` condition's value, where `and` ends it (it is `,`).
+    no_and: bool,
     b: GreenBuilder,
     diagnostics: Vec<Diagnostic>,
 }
@@ -141,6 +143,7 @@ impl<'t> Parser<'t> {
             emitted: 0,
             half_gt: false,
             no_gt: false,
+            no_and: false,
             b: GreenBuilder::default(),
             diagnostics: Vec::new(),
         };
@@ -288,6 +291,7 @@ impl<'t> Parser<'t> {
         what: &str,
         mut item: impl FnMut(&mut Self),
     ) {
+        let outer_and = std::mem::replace(&mut self.no_and, false);
         self.start(node);
         self.bump();
         while !self.at(close) && !matches!(self.peek(), T::Eof | T::Dedent | T::Newline) {
@@ -309,6 +313,7 @@ impl<'t> Parser<'t> {
         let closer = close.describe();
         self.want(close, &format!("{closer} to close {what}"));
         self.finish();
+        self.no_and = outer_and;
     }
 }
 #[cfg(test)]

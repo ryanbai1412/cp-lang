@@ -1469,7 +1469,7 @@ pub fn fixed_cost_paths<S, M, W: Add + Ord + Zero>(
         for j in 0..moves.len:
             while at[j] < order.len:
                 let s = order[at[j]]
-                if let t = step(moves[j], s) and dist[t] == None:
+                if let t = step(moves[j], s), dist[t] == None:
                     let d = dist[s]! + price[j]
                     if let b = best:
                         if d < b.d: best = (d:, j:, t:)

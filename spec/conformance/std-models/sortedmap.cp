@@ -90,7 +90,7 @@ for k in 0..n:
         if not o.is_empty: bad = "op {k}: absorb left other non-empty"
         for j in 0..17:
             if let w = b[j]:
-                want[j] = if let p = want[j] and join: Some(p + w) else: Some(w)
+                want[j] = if let p = want[j], join: Some(p + w) else: Some(w)
     else:
         let w = rng.int(0, 2)
         if w == 0:

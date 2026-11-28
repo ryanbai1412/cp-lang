@@ -494,3 +494,48 @@ fn a_lambda_param_and_its_return_are_types() {
         .count();
     assert_eq!(optionals, 2);
 }
+
+#[test]
+fn an_inline_if_continues_on_deeper_elif_and_else_lines() {
+    let src = "fn f(k: Int) -> Int:\n    let x = if k == 0: 1\n        elif k == 1: 2\n        else: 3\n    if k > 0: x\n    else: 0\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
+    assert_eq!(
+        (count(NodeKind::ElifClause), count(NodeKind::ElseClause)),
+        (1, 2)
+    );
+    let closed = "fn f(k: Int) -> Int:\n    let x = if k == 0: 1 else: 2\n        else: 3\n    x\n";
+    assert!(!crate::parse(closed).diagnostics.is_empty());
+}
+
+#[test]
+fn and_after_a_let_condition_is_reported_with_a_comma_fix() {
+    let src = "if let i = f(a and b) and i > 1: g()\nif a and b: g()\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    let (span, text) = file.diagnostics[0].fixes[0].edits[0].clone();
+    assert_eq!(
+        (&src[span.start as usize..span.end as usize], text.as_str()),
+        (" and", ",")
+    );
+    let conds = file
+        .root
+        .descendants()
+        .filter(|n| n.kind() == NodeKind::LetCond)
+        .count();
+    assert_eq!(conds, 1);
+}
+
+#[test]
+fn a_yields_param_is_reported_with_a_fix_that_deletes_it() {
+    let src = "fn f<S>(self: yields Slice<S>) -> yields Int:\n    0\n";
+    let file = crate::parse(src);
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    let (span, text) = file.diagnostics[0].fixes[0].edits[0].clone();
+    assert_eq!(
+        (&src[span.start as usize..span.end as usize], text.as_str()),
+        ("yields ", "")
+    );
+}

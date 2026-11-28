@@ -272,6 +272,9 @@ impl Parser<'_> {
             if self.at(T::Amp) && self.nth(1) == T::Mut {
                 self.amp_mut_param(start);
             }
+            if self.word() == Some(W::Yields) && self.nth(1) != T::Comma {
+                self.yields_param();
+            }
             self.ty();
         }
         if self.eat(T::Eq) {
@@ -287,6 +290,19 @@ impl Parser<'_> {
         let err = msgs::syntax::LAZY_PARAM.error(word, &[]);
         self.diagnostics
             .push(err.with_fix("delete `lazy`", to_name, ""));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+    }
+
+    /// `xs: yields T`: no such mode (R05.2.3), only a fn's result yields;
+    /// the fix deletes `yields`.
+    fn yields_param(&mut self) {
+        let word = self.span();
+        let to_ty = Span::new(word.start, self.nth_span(1).start);
+        let err = msgs::syntax::YIELDS_PARAM.error(word, &[]);
+        self.diagnostics
+            .push(err.with_fix("delete `yields`", to_ty, ""));
         self.start(NodeKind::Error);
         self.bump();
         self.finish();

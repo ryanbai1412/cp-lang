@@ -344,9 +344,15 @@ impl Parser<'_> {
                 self.bump();
                 self.pattern();
                 if self.want(T::Eq, "`=` and the value to match") {
+                    let outer = std::mem::replace(&mut self.no_and, true);
                     self.expr();
+                    self.no_and = outer;
                 }
                 self.finish();
+                if self.at(T::And) {
+                    self.and_after_let();
+                    continue;
+                }
             } else if self.bound_cond_ahead() {
                 self.start(NodeKind::BoundCond);
                 self.start(NodeKind::NameRef);
@@ -362,6 +368,21 @@ impl Parser<'_> {
                 break;
             }
         }
+        self.finish();
+    }
+
+    /// `if let p = e and c:`: a `let` joins what follows with `,` (01:505);
+    /// the fix writes `,`.
+    fn and_after_let(&mut self) {
+        let and = self.span();
+        let prev = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(and.start, |t| t.span.end);
+        let err = msgs::syntax::AND_LET.error(and, &[]);
+        let fix = Span::new(prev, and.end);
+        self.diagnostics.push(err.with_fix("write `,`", fix, ","));
+        self.start(NodeKind::Error);
+        self.bump();
         self.finish();
     }
 

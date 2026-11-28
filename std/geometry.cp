@@ -2690,14 +2690,14 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
         let id = ev.id
         if ev.kind == 1:
             if not strict:
-                if let v = last_vert_id and last_vert_x == cur_x and last_vert_hi >= lo[id].y:
+                if let v = last_vert_id, last_vert_x == cur_x and last_vert_hi >= lo[id].y:
                     return Some((min(v, id), max(v, id)))
                 if last_vert_id == None or last_vert_x != cur_x or hi[id].y > last_vert_hi:
                     last_vert_x = cur_x
                     last_vert_hi = hi[id].y
                     last_vert_id = Some(id)
             let above = sh_first_above_y(root, cur_x, lo[id].y, strict, left_ch, right_ch, lo, hi)
-            if let cand = above and segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict:):
+            if let cand = above, segments_meet(lo[id], hi[id], lo[cand], hi[cand], strict:):
                 return Some((min(id, cand), max(id, cand)))
         elif (not strict and ev.kind == 0) or (strict and ev.kind == 2):
             let lo_id = lo[id]
@@ -3171,7 +3171,7 @@ fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> Li
             out.push(None)
             continue
         var f = below[i].0
-        while let g = f and outer[g]: f = parent[g]
+        while let g = f, outer[g]: f = parent[g]
         out.push(f)
     out
 

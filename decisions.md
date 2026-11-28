@@ -9561,3 +9561,21 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `(to: e.v, ..e without (u, v))` builds a record from the new fields followed by `e`'s other fields in `e`'s order, without `u` and `v`. It is the value mirror of the row type `(to: V, ..R without (u, v))` (R12.11.4), next to record update `(..a, to: u)`. In the grammar, `rfield := NAME ':' expr? | '..' expr ('without' '(' NAME (',' NAME)* ')')?` (spec 01). The CST keeps the rest as a `RecordRest` node. Parentheses are read as a record when they hold a `name:` or a `without` at the top level, so `(..n, 3)` stays a tuple holding a range.
 - **Why.** Coordinator ruling of 2026-11-27, 18:35. A row-generic fn returning `(to: V, ..R without (u, v))` (n_row_02) had no way to build that value.
 - **Reverse.** Drop `without` from `rfield`; such fns would copy each field by hand, which a row-generic body can't do.
+
+## 655. An inline `if` continues on deeper `elif` and `else` lines (compiler, 2026-11-27)
+
+- **Call.** A line indented deeper than the logical line above, which does not end in `:`, continues it when it starts with `elif` or `else` and that line holds an inline `if` (one after its first token, outside brackets) that no `else` has closed. So `let ob = if k == 0: a` can take its `elif k == 1: b` and `else: c` on their own lines (R01.2.4). The shared lexer decides it, as it does for the other continuation lines.
+- **Why.** Coordinator ruling of 2026-11-27, 18:51. std-models/bitset.cp writes a five-way `if` value this way, and one long line is worse.
+- **Reverse.** Drop `elif`/`else` from the continuation list; such values go back to one line or a `match`.
+
+## 656. A `let` condition is joined with `,`, not `and` (compiler, 2026-11-27)
+
+- **Call.** `if let i = f() and i > 1:` and `if let i = f() and let j = g():` are E0503, with a fix that writes `,`: `cond` joins its parts with `,` (01:505). A `let` condition's value ends at a top-level `and`, so the error names the `and` and not the next part. An `and` inside brackets is unaffected, as is `and` between plain conditions.
+- **Why.** Coordinator ruling of 2026-11-27, 18:51. One spelling: `and` between a binding and a test reads as a Bool operator over the bound value.
+- **Reverse.** Let `and` join `let` conditions too, as a second spelling of `,`.
+
+## 657. A parameter can't be `yields` (compiler, 2026-11-27)
+
+- **Call.** `fn f(self: yields Slice<S>)` is E0503 and the fix deletes `yields`. A parameter is lent, `mut` or `var` (R05.2.3), and `yields` is a mode of a fn's result only. core-07's slice-receiver case now takes `self: Slice<S>` per window and keeps its 07.7.9 intent.
+- **Why.** Coordinator ruling of 2026-11-27, 18:51. No R-rule gave a `yields` parameter a meaning.
+- **Reverse.** Define a generator-parameter mode in R05.2.3.

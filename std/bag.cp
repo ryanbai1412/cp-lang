@@ -1718,11 +1718,11 @@ pub struct SortedMap<K: Ord, V>:
         let r = ks.rank(k)
         if r < ks.len - r:
             self.swap(mut out)
-            while let (x, v) = out.first and x < k:
+            while let (x, v) = out.first, x < k:
                 let _ = out.remove(x)
                 self.set(x, v)
         else:
-            while let (x, v) = self.last and not (x < k):
+            while let (x, v) = self.last, not (x < k):
                 let _ = self.remove(x)
                 out.set(x, v)
         out

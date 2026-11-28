@@ -1026,7 +1026,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// trap: `let (domain C, xs) = compress([30, 10]); xs.index_of(20)`
     pub fn index_of(self, val: T) -> D:
         let i = vals.first_ge(val)
-        if let k = i and vals[k] == val: return k
+        if let k = i, vals[k] == val: return k
         assert false, "`index_of` is for a value that was compressed"
         i!
 
@@ -4235,7 +4235,7 @@ pub struct Ring<D, T>(pub src: [D]T):
                 best = Some(l)
                 st.pop(src[D.nth(l % n)])
                 l += 1
-            if let b = best and n <= t < b + n:
+            if let b = best, n <= t < b + n:
                 out[D.nth(t - n)] = Some(RingSlice<D, T>(rr: self.span(D.nth(b % n), t - b + 1)))
         out
 

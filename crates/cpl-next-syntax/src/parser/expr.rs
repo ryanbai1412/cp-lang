@@ -164,6 +164,9 @@ impl Parser<'_> {
         if self.no_gt && matches!(self.peek(), T::Gt | T::Shr | T::GtEq) {
             return None;
         }
+        if self.no_and && self.at(T::And) {
+            return None;
+        }
         if self.at(T::Not) && self.nth(1) == T::In {
             return ops::binary(T::In);
         }

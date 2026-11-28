@@ -7,7 +7,7 @@ fn next_greater<K>(a: [K]Int) -> [K]?K:  // keyed like a
     var res: [K]?K = [a.keys].filled(None)
     var stack = List<K>()
     for i in a.keys:
-        while let j = stack.last and a[j] < a[i]:
+        while let j = stack.last, a[j] < a[i]:
             res[j] = i
             stack.pop()
         stack.push(i)
