@@ -1,7 +1,7 @@
 //! Pass one of collecting declarations, per form: the form gets its id and its name in its
 //! module, and fills the roles it is marked with.
 use super::collect::{again, misplaced_role, once, operator_method, unimplemented};
-use super::forms::{AttrForm, StructForm, TraitForm, TyForm};
+use super::forms::{AttrForm, StructForm, TraitForm};
 use super::*;
 use crate::attrs::Decorator;
 use cpl_next_ir::ids::ItemId;
@@ -98,10 +98,7 @@ pub(super) fn name_struct(
     let mut consts = HashMap::new();
     for (c, ty, init) in &sd.consts {
         consts.insert(*c, ConstId(d.consts.len()));
-        let ty = ty.as_ref().map(|t| match t {
-            TyForm::Written(t) => t.clone(),
-            _ => unreachable!("a const's type is written"),
-        });
+        let ty = ty.clone();
         d.consts.push(LibConst {
             module: mid,
             name: format!("{name}.{}", d.text(*c)),

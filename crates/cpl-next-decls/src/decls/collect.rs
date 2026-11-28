@@ -416,10 +416,7 @@ fn layer(
                     );
                     let generics = a.generics.clone();
                     let at = item.at(Span::new(a.span.start, a.span.start));
-                    let TyForm::Written(ty) = &a.ty else {
-                        unreachable!("an alias's type is written")
-                    };
-                    aliases.push((mid, at, name, generics, ty.clone()));
+                    aliases.push((mid, at, name, generics, a.ty.clone()));
                 }
                 Form::Fn(_) | Form::Impl(_) => pending.push((mid, item.clone(), f, None)),
                 Form::Const {
@@ -430,10 +427,7 @@ fn layer(
                 } if d.items_only(mid) => {
                     let name = d.text(*name).to_string();
                     own[mi].insert(name.clone(), Named::Const(ConstId(d.consts.len())));
-                    let ty = ty.as_ref().map(|t| match t {
-                        TyForm::Written(t) => t.clone(),
-                        _ => unreachable!("a const's type is written"),
-                    });
+                    let ty = ty.clone();
                     d.consts.push(LibConst {
                         module: mid,
                         name,

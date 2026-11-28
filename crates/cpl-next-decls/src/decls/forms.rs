@@ -145,7 +145,7 @@ pub struct StructForm {
     pub fields: Vec<FieldForm>,
     pub methods: Vec<FnForm>,
     pub lets: Vec<LetForm>,
-    pub consts: Vec<(Sym, Option<TyForm>, ast::Expr)>,
+    pub consts: Vec<(Sym, Option<ast::Type>, ast::Expr)>,
     pub span: Span,
 }
 
@@ -225,7 +225,7 @@ pub struct AliasForm {
     pub public: bool,
     pub attrs: Vec<AttrForm>,
     pub generics: Vec<Sym>,
-    pub ty: TyForm,
+    pub ty: ast::Type,
     pub span: Span,
 }
 
@@ -265,7 +265,7 @@ pub enum Form {
     Const {
         name: Sym,
         public: bool,
-        ty: Option<TyForm>,
+        ty: Option<ast::Type>,
         value: Option<ast::Expr>,
     },
     Context {
@@ -459,7 +459,7 @@ impl Reader<'_> {
             public: a.is_pub(),
             attrs,
             generics,
-            ty: TyForm::Written(a.ty()?),
+            ty: a.ty()?,
             span: a.syntax().span(),
         })
     }
@@ -561,7 +561,7 @@ impl Reader<'_> {
             })
             .collect();
         let consts = (members.iter().flat_map(|m| m.consts().collect::<Vec<_>>()))
-            .filter_map(|c| Some((self.sym(c.name()), c.ty().map(TyForm::Written), c.value()?)))
+            .filter_map(|c| Some((self.sym(c.name()), c.ty(), c.value()?)))
             .collect();
         let form = StructForm {
             name: self.sym(sd.name()),
@@ -721,7 +721,7 @@ impl Reader<'_> {
             Some(D::Const(c)) => Form::Const {
                 name: self.sym(c.name()),
                 public: c.is_pub(),
-                ty: c.ty().map(TyForm::Written),
+                ty: c.ty(),
                 value: c.value(),
             },
             Some(D::Context(c)) => Form::Context {
