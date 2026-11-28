@@ -273,7 +273,7 @@ fn lends(d: &Decls, f: FnId) -> BTreeSet<usize> {
         .collect();
     (tys.iter().enumerate())
         .filter(|(i, t)| match &fd.lends {
-            Some(ls) => ls.contains(i) && !cpl_next_decls::plain::plain(d, t, 0),
+            Some(ls) => ls.contains(i) && !t.copied(&cpl_next_decls::fields::fields(d)),
             None => match (t, &fd.ret) {
                 (Ty::Param(k), _) => held.contains(k),
                 (_, Ty::Param(k)) => {

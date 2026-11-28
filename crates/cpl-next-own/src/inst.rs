@@ -233,7 +233,7 @@ impl Walk<'_> {
             false => self.elems.remove(&temp),
         };
         let whole = match &e.kind {
-            EK::Copy(p) if !self.plain(&e.ty) => self.pl(p).filter(|q| {
+            EK::Copy(p) if !self.p.copied(&e.ty) => self.pl(p).filter(|q| {
                 q.path.is_empty() && !self.temp(q.root) && !self.borrowed.contains(&q.root)
             }),
             _ => None,
@@ -290,16 +290,6 @@ impl Walk<'_> {
             }
             _ => false,
         }
-    }
-    fn plain(&self, t: &CTy) -> bool {
-        fn go(w: &Walk, t: &CTy, depth: usize) -> bool {
-            match t {
-                CTy::Fn(_, _, _) | CTy::Clo(_) => true,
-                CTy::Struct(..) if depth < 8 => w.p.parts(t).iter().all(|f| go(w, f, depth + 1)),
-                _ => w.p.plain(t),
-            }
-        }
-        go(self, t, 0)
     }
     fn root_name(&self, r: Root) -> String {
         match r {
@@ -475,7 +465,7 @@ impl Walk<'_> {
         };
         let e = &*e;
         // A plain value (an `Int` field read among them) holds nothing; fn values hold captures.
-        if self.plain(&e.ty) && !self.holds_fn(&e.ty, 0) || self.captures_nothing(&e.ty) {
+        if self.p.copied(&e.ty) && !self.holds_fn(&e.ty, 0) || self.captures_nothing(&e.ty) {
             return BTreeSet::new();
         }
         let mut out = BTreeSet::new();
@@ -501,7 +491,7 @@ impl Walk<'_> {
                     // A fn value read out of a borrowed binding still holds what it borrows.
                     let fn_value = matches!(e.ty, CTy::Clo(_) | CTy::Fn(_, _, _));
                     let copy = matches!(e.kind, EK::Copy(_))
-                        && (self.plain(&e.ty) && !fn_value || self.generic_field(p));
+                        && (self.p.copied(&e.ty) && !fn_value || self.generic_field(p));
                     if self.temp(q.root) || copy {
                         return out;
                     }
@@ -517,7 +507,7 @@ impl Walk<'_> {
             // A plain field or a type parameter's is a copy, as read anywhere (`sources(x)`).
             EK::MakeStruct(xs) => xs.iter().for_each(|x| match &x.kind {
                 EK::Copy(p @ Place::Field(..))
-                    if fields_only(p) && !self.plain(&x.ty) && !self.generic_field(p) =>
+                    if fields_only(p) && !self.p.copied(&x.ty) && !self.generic_field(p) =>
                 {
                     if let Some(q) = self.pl(p) {
                         out.extend(self.lent.get(&q.root).into_iter().flatten().cloned());
@@ -541,7 +531,7 @@ impl Walk<'_> {
                             out.extend(self.sources(v));
                             // A binding passed whole where the result lends it is lent: a heap
                             // one, or any the signature says `lends` (a fixed-size grid).
-                            let heap = !self.plain(&v.ty) || self.declares_lends(*i);
+                            let heap = !self.p.copied(&v.ty) || self.declares_lends(*i);
                             if let (EK::Copy(p), true) = (&v.kind, heap) {
                                 out.extend(self.lent_pl(p));
                             }
@@ -649,7 +639,7 @@ impl Walk<'_> {
         if let (Root::Global(_), false, false, false) = (
             q.root,
             self.cur == self.p.main,
-            self.plain(&e.ty),
+            self.p.copied(&e.ty),
             self.temp(q.root),
         ) {
             let n = self.root_name(q.root);
@@ -665,7 +655,7 @@ impl Walk<'_> {
             && !generic
             && !self.borrowed.contains(&q.root)
             && !self.lent.contains_key(&q.root)
-            && !self.plain(&e.ty)
+            && !self.p.copied(&e.ty)
         {
             // R05.10.2: a value that still holds a lend of it can't outlive the move (E0602).
             let n = self.root_name(q.root);
@@ -801,7 +791,7 @@ impl Walk<'_> {
             else {
                 continue;
             };
-            if !self.plain(ty) && other.writes.iter().any(|w| overlap(w, p)) {
+            if !self.p.copied(ty) && other.writes.iter().any(|w| overlap(w, p)) {
                 copied[i] = true;
                 self.copies.insert((self.cur, *s));
             }
@@ -824,7 +814,7 @@ impl Walk<'_> {
             let twice = (places.iter().enumerate()).any(|(j, q)| {
                 // A plain value passed is a copy, not a second way in.
                 let copy = matches!(&args[j], Arg::Lend(_))
-                    || matches!(&args[j], Arg::Value(v) if self.plain(&v.ty))
+                    || matches!(&args[j], Arg::Value(v) if self.p.copied(&v.ty))
                     || copied[j];
                 j != i && !copy && q.as_ref().is_some_and(|q| overlap(p, q))
             });
@@ -987,13 +977,13 @@ impl Walk<'_> {
                 }
                 // A spill of a borrowed binding or of a field path is a lend of it; a spill of a
                 // whole owned binding is that value.
-                if let (true, EK::Copy(p)) = (temp && !self.plain(&e.ty), &e.kind) {
+                if let (true, EK::Copy(p)) = (temp && !self.p.copied(&e.ty), &e.kind) {
                     src.extend(
                         self.pl(p)
                             .filter(|q| !q.path.is_empty() || self.borrowed.contains(&q.root)),
                     );
                 }
-                if (!self.plain(&e.ty) || self.walks(&e.ty)) && !src.is_empty() {
+                if (!self.p.copied(&e.ty) || self.walks(&e.ty)) && !src.is_empty() {
                     self.frozen.insert(Root::Local(*l), src.clone());
                 }
                 src.extend(uses);
@@ -1020,7 +1010,8 @@ impl Walk<'_> {
                     if !self.walks(&e.ty) {
                         walked = self.through(&uses);
                     } else {
-                        let heap = |p: &&Pl| self.root_ty(p.root).is_some_and(|t| !self.plain(t));
+                        let heap =
+                            |p: &&Pl| self.root_ty(p.root).is_some_and(|t| !self.p.copied(t));
                         walked = uses.iter().filter(heap).cloned().collect();
                     }
                     if !uses.is_empty() {
@@ -1038,7 +1029,7 @@ impl Walk<'_> {
                     p,
                     matches!(p, Place::Local(l) if self.temp(Root::Local(*l))),
                 ) {
-                    if let (false, EK::Copy(q)) = (self.plain(&e.ty), &e.kind) {
+                    if let (false, EK::Copy(q)) = (self.p.copied(&e.ty), &e.kind) {
                         let held = self
                             .pl(q)
                             .filter(|q| !q.path.is_empty() || self.borrowed.contains(&q.root));
@@ -1070,7 +1061,7 @@ impl Walk<'_> {
                             .extend(walked.iter().cloned());
                     }
                     if q.path.is_empty()
-                        && (!self.plain(&e.ty) || self.walks(&e.ty))
+                        && (!self.p.copied(&e.ty) || self.walks(&e.ty))
                         && !what.is_empty()
                     {
                         self.frozen
@@ -1189,7 +1180,7 @@ impl Walk<'_> {
                 let frame = cs
                     .iter()
                     .any(|c| self.sums.get(c).is_some_and(|s| s.fx.yields_own));
-                if frame || !self.plain(&self.f().locals[*var]) && !self.of_param(*var) {
+                if frame || !self.p.copied(&self.f().locals[*var]) && !self.of_param(*var) {
                     self.borrowed.insert(Root::Local(*var));
                 }
                 let (at, before) = (self.next, self.moved.clone());
@@ -1415,7 +1406,7 @@ impl Walk<'_> {
         // A lambda's own params are its values, as in the fn it is written in; its captures are lent.
         let own = |k: usize| matches!(f.key, FuncKey::Lambda(_)) && k >= f.n_captures;
         self.borrowed = (f.params.iter().enumerate())
-            .filter(|(k, (l, _))| !own(*k) && !self.plain(&f.locals[*l]))
+            .filter(|(k, (l, _))| !own(*k) && !self.p.copied(&f.locals[*l]))
             .map(|(_, p)| p)
             .map(|(l, _)| Root::Local(*l))
             .collect();

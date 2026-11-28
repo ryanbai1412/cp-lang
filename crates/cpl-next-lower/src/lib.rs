@@ -166,7 +166,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         lw.mut_locals = tf
             .locals
             .iter()
-            .map(|l| l.mutable || !cpl_next_decls::plain::plain(d, &l.ty, 0))
+            .map(|l| l.mutable || !l.ty.copied(&cpl_next_decls::fields::fields(d)))
             .collect();
         lw.var_locals = tf.locals.iter().map(|l| l.mutable).collect();
         lw.remap.clear();
@@ -583,7 +583,7 @@ impl Lw<'_> {
         let generic = matches!(v.ty, Ty::Param(_));
         let viewable = matches!(v.kind, TK::Var(_) | TK::Field(..) | TK::Payload(..));
         if !(viewable || matches!(v.kind, TK::Slot(..)))
-            || !generic && cpl_next_decls::plain::plain(self.d, &v.ty, 0)
+            || !generic && v.ty.copied(&cpl_next_decls::fields::fields(self.d))
         {
             return self.expr(v, out);
         }

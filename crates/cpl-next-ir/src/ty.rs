@@ -1,5 +1,6 @@
 //! Contract "facts/types": one type representation for every layer.
 //! Var forms exist only inside the checker; `zonk` removes them.
+use crate::prog::Holds;
 
 /// A fn declaration: an index into `Decls::fns`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -62,6 +63,34 @@ pub enum Ty {
     Error,
 }
 impl Ty {
+    /// R1 before instancing (`prog::holds` after it): what a value of this type holds, where
+    /// `fields` gives a struct's field types. A fn value holds an address, as it captures heap
+    /// values by reference (R05.10.1-2); a type parameter could be a heap type.
+    pub fn holds(&self, fields: &dyn Fn(&Ty) -> Vec<Ty>, depth: usize) -> Holds {
+        match self {
+            Ty::Int
+            | Ty::Range(..)
+            | Ty::RangeOf(_)
+            | Ty::RangeTo(..)
+            | Ty::Bool
+            | Ty::Char
+            | Ty::U64
+            | Ty::I128
+            | Ty::F64
+            | Ty::Unit
+            | Ty::Dom(_) => Holds::Nothing,
+            Ty::Fn(..) | Ty::Clo(_) | Ty::Ref(_) | Ty::Lent(_) => Holds::Address,
+            Ty::Struct(..) if depth < 8 => (fields(self).iter())
+                .map(|f| f.holds(fields, depth + 1))
+                .max()
+                .unwrap_or(Holds::Nothing),
+            _ => Holds::Storage,
+        }
+    }
+    /// R1: using a value of this type copies it rather than moving it (`holds`).
+    pub fn copied(&self, fields: &dyn Fn(&Ty) -> Vec<Ty>) -> bool {
+        self.holds(fields, 0) != Holds::Storage
+    }
     /// The value a slot of this type holds: a lent mark applies to slots, not values.
     pub fn unlent(&self) -> &Ty {
         match self {
@@ -251,5 +280,28 @@ pub fn map_slots(t: &Ty, f: &dyn Fn(usize) -> SetTy) -> Ty {
             set(s),
         ),
         other => other.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_fn_value_holds_an_address_and_is_copied() {
+        let fields = |t: &Ty| match t {
+            Ty::Struct(StructId(0), ..) => {
+                vec![Ty::Int, Ty::Fn(vec![], Box::new(Ty::Int), SetTy::Var(0))]
+            }
+            Ty::Struct(..) => vec![Ty::Raw(Box::new(Ty::Int))],
+            _ => vec![],
+        };
+        let with_fn = Ty::Struct(StructId(0), vec![], vec![]);
+        let with_raw = Ty::Struct(StructId(1), vec![], vec![]);
+        assert_eq!(Ty::Int.holds(&fields, 0), Holds::Nothing);
+        assert_eq!(with_fn.holds(&fields, 0), Holds::Address);
+        assert!(with_fn.copied(&fields));
+        assert_eq!(with_raw.holds(&fields, 0), Holds::Storage);
+        assert!(!with_raw.copied(&fields) && !Ty::Param(0).copied(&fields));
     }
 }

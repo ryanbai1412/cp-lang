@@ -100,6 +100,11 @@ impl Program {
     pub fn plain(&self, t: &CTy) -> bool {
         self.holds(t) == Holds::Nothing
     }
+    /// R1: whether using a value of type `t` copies it rather than moving it: it owns no
+    /// storage, so a fn value that captures by reference is copied (R05.10.1-2).
+    pub fn copied(&self, t: &CTy) -> bool {
+        self.holds(t) != Holds::Storage
+    }
     /// The types of what closure `k` captures.
     pub fn captures(&self, k: &InstKey) -> Vec<CTy> {
         let f = &self.insts[self.index[k]];

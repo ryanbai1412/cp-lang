@@ -19,7 +19,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 1 | Spec conformance | unmeasured | `next_not_passing` 2,276 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
+| 1 | Spec conformance | unmeasured | `next_not_passing` 2,270 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
 | 2 | Feature-by-context matrix | unmeasured | no number yet for: cells of the feature-by-context matrix with no case |
 | 3 | Corpus | unmeasured | no number yet for: corpus programs not accepted on every engine |
 | 4 | Std as a program | measured | `ir_builtin_names` 105 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 37 → 0 |
@@ -30,7 +30,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 7 | Engine agreement | unmeasured | `next_wrong` 1,460 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
+| 7 | Engine agreement | unmeasured | `next_wrong` 1,454 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
 | 8 | Sanitized C++ | unmeasured | no number yet for: accepted cases whose C++ is not sanitizer-clean and warning-free on GCC and Clang |
 | 9 | IR stage contracts | unmeasured | no number yet for: cases a stage verifier rejects |
 | 10 | Traps | unmeasured | no number yet for: trap code by operation cells that differ between engines |
@@ -87,16 +87,15 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_lowered` | 2 |
 | `next_masked` | 129 |
 | `next_name_compares` | 23 |
-| `next_not_passing` | 2,276 |
+| `next_not_passing` | 2,270 |
 | `next_old_syntax_analyses` | 115 |
 | `next_reference_evaluator_lines` | 586 |
 | `next_refusal_kinds` | 61 |
 | `next_refused` | 687 |
-| `next_repr_second_defs` | 3 |
 | `next_run_api_unbuilt` | 75 |
 | `next_snapshot_keyed_queries` | 5 |
 | `next_source_text_guards` | 3 |
-| `next_split` | 7 |
+| `next_split` | 2 |
 | `next_standin_notes` | 1 |
 | `next_std_names` | 51 |
 | `next_std_unchecked` | 37 |
@@ -104,7 +103,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_syntax_old_refs` | 847 |
 | `next_weak_oracle_passes` | 7 |
 | `next_whole_program_inputs` | 597 |
-| `next_wrong` | 1,460 |
+| `next_wrong` | 1,454 |
 | `next_wrong_accepts` | 20 |
 | `next_wrong_outputs` | 14 |
 
