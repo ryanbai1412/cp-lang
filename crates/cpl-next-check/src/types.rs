@@ -1,0 +1,169 @@
+//! The types a tool reads (contract 9): each item's table of the types its body and signature
+//! hold, and the view that answers a tool's questions about one by its id alone. No `Ty`
+//! leaves the checker through it, and a tool never matches a type's variants.
+use super::*;
+use cpl_contract::Prim;
+use cpl_next_decls::views::Items;
+use decls::Impls;
+
+/// A type in an item's table: `n` is its place in that item's walk, so it does not depend on
+/// the order anything is asked in.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct TyId {
+    pub item: ItemId,
+    pub n: u32,
+}
+
+/// The types one item's body or signature holds, each once, in the order its walk meets them;
+/// a type's arguments come before it.
+#[derive(Clone, Default, Debug)]
+pub struct ItemTypes {
+    /// The item's own type parameters, which its types name.
+    pub generics: Vec<Sym>,
+    types: Vec<Ty>,
+}
+
+impl ItemTypes {
+    /// The place of `ty`, a solved type, adding it and each of its arguments the first time.
+    pub fn add(&mut self, ty: &Ty) -> u32 {
+        if let Ty::Struct(_, args, _) = ty {
+            for a in args {
+                self.add(a);
+            }
+        }
+        match self.types.iter().position(|t| t == ty) {
+            Some(n) => n as u32,
+            None => {
+                self.types.push(ty.clone());
+                (self.types.len() - 1) as u32
+            }
+        }
+    }
+
+    pub fn get(&self, n: u32) -> Option<&Ty> {
+        self.types.get(n as usize)
+    }
+
+    /// The places of type `n`'s arguments: the declaration's, for an instance of one.
+    pub fn args(&self, n: u32) -> Vec<u32> {
+        let Some(Ty::Struct(_, args, _)) = self.get(n).map(shown) else {
+            return Vec::new();
+        };
+        let at = |a: &Ty| self.types.iter().position(|t| t == a).map(|k| k as u32);
+        args.iter().filter_map(at).collect()
+    }
+}
+
+/// What a tool asks about a type, by its id.
+pub trait TypeFacts {
+    /// As a diagnostic writes it.
+    fn text(&self, t: &TyId) -> Option<String>;
+    /// An integer's ends, `None` for an end the checker does not know.
+    fn range(&self, t: &TyId) -> Option<(Option<i64>, Option<i64>)>;
+    /// The core primitive it is.
+    fn prim(&self, t: &TyId) -> Option<Prim>;
+    /// The struct or enum it is an instance of.
+    fn decl(&self, t: &TyId) -> Option<StructId>;
+    /// That declaration's type arguments.
+    fn args(&self, t: &TyId) -> Vec<TyId>;
+    /// Whether it implements trait `tr`, as the checker's impl lookup answers.
+    fn implements(&self, t: &TyId, tr: TraitId) -> bool;
+    /// What a `.` after a value of it can name: its fields, its own fns, and the fns of each
+    /// impl found for it, by name, each once.
+    fn members(&self, t: &TyId) -> Vec<Sym>;
+}
+
+/// The view over the checked program's item tables.
+pub struct TypeView<'a> {
+    pub d: &'a Decls,
+    /// Decls' impls with the checker's own rows, as its lookup reads them.
+    pub impls: Impls<'a>,
+    pub domains: &'a [DomInfo],
+    pub of: &'a dyn Fn(&ItemId) -> Option<&'a ItemTypes>,
+}
+
+/// A type past a lend, which a value's type does not show.
+fn shown(mut ty: &Ty) -> &Ty {
+    while let Ty::Lent(inner) = ty {
+        ty = inner;
+    }
+    ty
+}
+
+impl<'a> TypeView<'a> {
+    fn ty(&self, t: &TyId) -> Option<(&'a ItemTypes, &'a Ty)> {
+        let table = (self.of)(&t.item)?;
+        Some((table, shown(table.get(t.n)?)))
+    }
+}
+
+impl TypeFacts for TypeView<'_> {
+    fn text(&self, t: &TyId) -> Option<String> {
+        let (table, ty) = self.ty(t)?;
+        let generics: Vec<String> = (table.generics.iter())
+            .map(|g| self.d.text(*g).to_string())
+            .collect();
+        Some(show_ty(self.d, self.domains, &generics, &|t| t.clone(), ty))
+    }
+
+    fn range(&self, t: &TyId) -> Option<(Option<i64>, Option<i64>)> {
+        match self.ty(t)?.1 {
+            Ty::Range(lo, hi) => Some((Some(*lo), Some(*hi))),
+            Ty::Int | Ty::RangeOf(_) | Ty::AnyRange(_) | Ty::RangeTo(..) => Some((None, None)),
+            _ => None,
+        }
+    }
+
+    fn prim(&self, t: &TyId) -> Option<Prim> {
+        self.ty(t)?.1.prim()
+    }
+
+    fn decl(&self, t: &TyId) -> Option<StructId> {
+        match self.ty(t)?.1 {
+            Ty::Struct(id, ..) => Some(*id),
+            _ => None,
+        }
+    }
+
+    fn args(&self, t: &TyId) -> Vec<TyId> {
+        let Some((table, _)) = self.ty(t) else {
+            return Vec::new();
+        };
+        (table.args(t.n).into_iter())
+            .map(|n| TyId {
+                item: t.item.clone(),
+                n,
+            })
+            .collect()
+    }
+
+    fn implements(&self, t: &TyId, tr: TraitId) -> bool {
+        self.ty(t)
+            .is_some_and(|(_, ty)| self.impls.has_impl(ty, tr))
+    }
+
+    fn members(&self, t: &TyId) -> Vec<Sym> {
+        let Some((_, ty)) = self.ty(t) else {
+            return Vec::new();
+        };
+        let d = self.d;
+        let mut out = Vec::new();
+        if let Ty::Struct(id, ..) = ty {
+            let s = Items::s(d, *id);
+            out.extend(s.fields.iter().map(|(name, _)| *name));
+            out.extend(s.methods.iter().map(|(name, _)| *name));
+        }
+        let rows = (0..d.impls.len()).map(|i| Items::imp(d, i));
+        for im in rows.chain(self.impls.rows) {
+            if !im.replaced
+                && self.impls.impl_args(im, ty).is_some()
+                && self.impls.has_impl(ty, im.trait_.tr)
+            {
+                out.extend(im.methods.iter().map(|(name, _)| *name));
+            }
+        }
+        out.sort_by(|a, b| d.text(*a).cmp(d.text(*b)));
+        out.dedup();
+        out
+    }
+}

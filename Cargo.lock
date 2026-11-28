@@ -257,6 +257,7 @@ dependencies = [
 name = "cpl-next-check"
 version = "0.3.0"
 dependencies = [
+ "cpl-contract",
  "cpl-diag",
  "cpl-next-decls",
  "cpl-next-ir",
