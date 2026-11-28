@@ -9536,4 +9536,8 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Why.** The 15:00 blind audit's condition 6 (back ends generated from one op table): an operation matched in a back end is a second meaning that can disagree with the others. Storage and I/O are not meanings; the engine's flat heap, the interpreter's values and C++ vectors differ by design, so the arm is theirs while every rule inside it is shared.
 - **Reverse.** Delete `MACHINE` and the counter; back ends would again choose per operation.
 
-## 655. (reserved, B)
+## 655. A read that must wait for more input flushes first, in every mode (io, 2026-11-27)
+
+- **Call.** R10.4 no longer has an interactive mode that `Wire` switches on. In every program, a read that must wait for more input hands the judge the output written so far first; `flush()` and every exit do too, and a read the input already holds flushes nothing. `ops::Input` decides when a read must wait, and the reference interpreter and the engine follow it by writing to `RunInput::out`, the sink of a streamed run (`cpl-next` streams stdin and stdout through the facade's run API); in C++ it is `fflush(stdout)` before the `read()` syscall, which now reads the input in 64 KiB pieces. `Wire` stays ordinary std over `print`, `flush` and `read`. The output's bytes are the same as before; only when the judge gets them moves.
+- **Why.** Wire's mode was hidden state that only a std type could set. A read that waits is the one place a program can deadlock with an interactor, so flushing there is enough in every mode and needs no privilege. A batch program reads its input from a file or a pipe that is already full, so it waits only when a 64 KiB piece runs dry and pays one empty flush per piece; reading 10^6 Ints in C++ measured 69 ms before and 70 ms after.
+- **Reverse.** Restore the mode bit, set by `Wire()`, and flush at reads only when it is set.

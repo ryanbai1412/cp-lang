@@ -39,7 +39,8 @@ pub fn flush() = @intrinsic("flush")
 /// Interactive mode. Constructing one (`let wire = Wire()`) makes every read and the program's
 /// exit flush stdout first; a program that never builds one never flushes early. \(O(1)\).
 pub struct Wire():
-    /// A handle that puts the program in interactive mode (spec/core/10-io.md §10.4).
+    /// The handle for an interactive judge: `ask` prints a query, flushes and reads the answer
+    /// (spec/core/10-io.md §10.4).
     ///
     /// From construction on, every read and every exit flushes stdout first, so a query is never
     /// stuck in the buffer while the program waits for its answer. A program that never constructs a

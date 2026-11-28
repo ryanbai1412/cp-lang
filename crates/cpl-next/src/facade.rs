@@ -152,6 +152,20 @@ impl Program {
         self.0.run(input)
     }
 
+    /// Runs `input` on the engine, on the calling thread.
+    pub fn run_on(&self, input: cpl_next_ir::run::RunInput) -> Outcome {
+        self.0.run_on(input)
+    }
+
+    /// A run that reads `from` as the program reads and writes `to` as it flushes (R10.4).
+    pub fn streamed(
+        &self,
+        from: Box<dyn std::io::Read + Send>,
+        to: Box<dyn std::io::Write + Send>,
+    ) -> cpl_next_ir::run::RunInput {
+        self.0.streamed(from, to)
+    }
+
     /// What the reference interpreter runs in `form`: the tests' oracle, which nothing else runs.
     pub fn form(
         &self,

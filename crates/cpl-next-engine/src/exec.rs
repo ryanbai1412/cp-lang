@@ -98,8 +98,8 @@ fn broken<T>(rule: &'static str) -> R<T> {
 
 fn start(c: &Code, input: Option<RunInput>, steps: u64) -> M<'_> {
     let closed = input.is_none();
-    let (io, limits) = input.map_or((Io::Fixed(Vec::new()), Limits::default()), |i| {
-        (i.io, i.limits)
+    let (io, limits, out) = input.map_or((Io::Fixed(Vec::new()), Limits::default(), None), |i| {
+        (i.io, i.limits, i.out)
     });
     M {
         c,
@@ -114,7 +114,7 @@ fn start(c: &Code, input: Option<RunInput>, steps: u64) -> M<'_> {
         }],
         free: Vec::new(),
         frames: Vec::new(),
-        out: Written::default(),
+        out: Written::to(out),
         input: io.input(),
         rand: ops::RAND_SEED,
         at: 0,
@@ -183,11 +183,7 @@ pub(crate) fn eval(c: &Code, gs: &[usize], steps: u64) -> Result<Vec<Vec<u64>>, 
 
 impl M<'_> {
     fn outcome(self, trap: Option<Trap>) -> Outcome {
-        Outcome {
-            events: self.out.events,
-            output: self.out.text,
-            trap,
-        }
+        self.out.end(trap)
     }
     /// One step of the budget.
     fn step(&mut self) -> R<()> {
@@ -779,6 +775,7 @@ impl M<'_> {
                 }
                 Op::Showing { d } => self.stack[r(d)] = u64::from(self.out.showing()),
                 Op::Capture => self.out.mark(),
+                Op::Flush => self.out.flush(),
                 Op::Event { e } => {
                     let ev = &c.events[e as usize];
                     (self.out).fire(ev.kind.clone(), ev.func, ev.site, ev.vals);
@@ -858,16 +855,19 @@ impl M<'_> {
                     return broken("a read with no input");
                 }
                 Op::InputLeft { d } => {
-                    self.stack[r(d)] = u64::from(ops::Input::left(&mut self.input))
+                    self.stack[r(d)] = u64::from(ops::Input::left(&mut self.input, &mut self.out))
                 }
-                Op::ReadByte { d } => self.stack[r(d)] = ops::Input::byte(&mut self.input) as u64,
+                Op::ReadByte { d } => {
+                    self.stack[r(d)] = ops::Input::byte(&mut self.input, &mut self.out) as u64
+                }
                 Op::PeekByte { d, k } => {
                     self.stack[r(d)] =
-                        ops::Input::peek(&mut self.input, self.stack[r(k)] as i64) as u64;
+                        ops::Input::peek(&mut self.input, &mut self.out, self.stack[r(k)] as i64)
+                            as u64;
                 }
                 Op::RandWord { d } => self.stack[r(d)] = ops::rand_word(&mut self.rand),
                 Op::ReadInt { d } => {
-                    let t = ops::Input::token(&mut self.input);
+                    let t = ops::Input::token(&mut self.input, &mut self.out);
                     let v =
                         ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?;
                     self.stack[r(d)] = v as u64;
@@ -948,6 +948,7 @@ mod tests {
                 | Op::Out { .. }
                 | Op::Showing { .. }
                 | Op::Capture
+                | Op::Flush
                 | Op::Event { .. }
                 | Op::RawEmpty { .. }
                 | Op::InputLeft { .. }
@@ -1008,7 +1009,7 @@ mod tests {
         }
         let _typed: [fn(&Op) -> bool; 2] = [plumbing, not_an_op];
         let (plumbing, fail) = (named("plumbing"), named("not_an_op"));
-        assert_eq!((plumbing.len(), fail.len()), (32, 1), "read the matches");
+        assert_eq!((plumbing.len(), fail.len()), (33, 1), "read the matches");
         let variants = variants();
         assert!(variants.len() > 30, "found the Op enum: {variants:?}");
         for v in &variants {

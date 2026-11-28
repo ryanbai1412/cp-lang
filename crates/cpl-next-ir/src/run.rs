@@ -24,10 +24,14 @@ impl Trap {
         self.fault.code()
     }
 }
-/// What a run is given (contract 0's `RunInput`): its input and its limits.
+/// What a run is given (contract 0's `RunInput`): its input, its limits, and where its output
+/// goes as it is written.
 pub struct RunInput {
     pub io: Io,
     pub limits: Limits,
+    /// Where the output goes at each flush, at each read that must wait for more input, and at
+    /// exit (R10.4); `None` keeps it all for `Outcome::output`.
+    pub out: Option<Box<dyn std::io::Write + Send>>,
 }
 /// Where a run's input comes from (contract 0).
 pub enum Io {
@@ -159,6 +163,7 @@ impl RunInput {
         RunInput {
             io: Io::Fixed(input.as_bytes().to_vec()),
             limits: Limits::default(),
+            out: None,
         }
     }
 }
@@ -179,9 +184,42 @@ pub struct Written {
     pub events: Vec<Fired>,
     /// Where the text was at each value the next event has not yet taken.
     marks: Vec<usize>,
+    /// `RunInput::out`, and how much of the text it has been handed.
+    sink: Option<Box<dyn std::io::Write + Send>>,
+    sent: usize,
 }
 
 impl Written {
+    /// Output written to `sink` as the run flushes.
+    pub fn to(sink: Option<Box<dyn std::io::Write + Send>>) -> Written {
+        Written {
+            sink,
+            ..Written::default()
+        }
+    }
+    /// Hands the sink the text written so far, all but what an event is still taking as a value
+    /// (R10.4). A sink that has gone away, a judge that stopped reading, takes nothing more.
+    pub fn flush(&mut self) {
+        let Some(sink) = &mut self.sink else {
+            return;
+        };
+        let end = self.marks.first().copied().unwrap_or(self.text.len());
+        let sent =
+            (sink.write_all(&self.text.as_bytes()[self.sent..end])).and_then(|()| sink.flush());
+        self.sent = end;
+        if sent.is_err() {
+            self.sink = None;
+        }
+    }
+    /// How the run ended, with the whole output and its events; the sink gets the rest.
+    pub fn end(mut self, trap: Option<Trap>) -> Outcome {
+        self.flush();
+        Outcome {
+            events: self.events,
+            output: self.text,
+            trap,
+        }
+    }
     /// Whether an event is showing a value now.
     pub fn showing(&self) -> bool {
         !self.marks.is_empty()

@@ -67,9 +67,9 @@ fn real_main() {
         print!("{}", c.cpp());
         return;
     }
-    let o = c.run(&cli::stdin());
+    // Output goes to stdout as the program flushes and reads, so an interactor sees each query.
+    let o = c.run_on(c.streamed(Box::new(std::io::stdin()), Box::new(std::io::stdout())));
     let c = &*c;
-    print!("{}", o.output);
     eprint!("{}", said(c, &o));
     if o.trap.is_some() {
         std::process::exit(3);

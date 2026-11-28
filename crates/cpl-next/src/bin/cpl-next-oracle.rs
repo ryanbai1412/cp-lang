@@ -2,7 +2,7 @@
 //! and the C++ to.
 //!
 //! `cpl-next-oracle FILE --raw|--canonical [--json] [--trace] [--bodies] [--judge NAME=MB]
-//! [--std DIR]` runs FILE on stdin on the reference interpreter, over the raw or the
+//! [--std DIR]` runs FILE on stdin and stdout, streamed, on the reference interpreter, over the raw or the
 //! canonical instances; it exits as `cpl-next` does.
 //!
 //! `cpl-next-oracle --all --within MS [--trace]` reads std once and then, for each
@@ -49,8 +49,10 @@ fn real_main() {
         }
     };
     let c = cli::program(&args, USAGE);
-    let o = oracle(&c, form, &cli::stdin());
-    print!("{}", o.output);
+    let (p, fs) = c.form(form);
+    // Output goes to stdout as the program flushes and reads, as `cpl-next`'s does.
+    let input = c.streamed(Box::new(std::io::stdin()), Box::new(std::io::stdout()));
+    let o = cpl_next_interp::run(p, fs, input);
     eprint!("{}", said(&c, &o));
     if o.trap.is_some() {
         std::process::exit(3);

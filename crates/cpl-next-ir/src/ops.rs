@@ -7,6 +7,7 @@
 //! runner and they must agree.
 use crate::ir::{Arg, CheckKind, FloatFn, Intr, Rounding, EK};
 use crate::prog::CTy;
+use crate::run::Written;
 use cpl_diag::{codes, Code};
 use cpl_prim::Prim;
 
@@ -371,8 +372,9 @@ pub fn read_int(t: Option<&str>) -> Result<i64, Fault> {
     }
 }
 
-/// The program's input, read in one piece; token reads and line reads take from it in turn
-/// (R10.2.3). The C++ runtime's `cpl_read` and `cpl_read_byte` keep the same rules.
+/// The program's input; token reads and line reads take from it in turn (R10.2.3). A read
+/// that must wait for more of a stream flushes the run's output first (R10.4). The C++
+/// runtime's `cpl_has`, `cpl_read` and `cpl_read_byte` keep the same rules.
 pub struct Input {
     bytes: Vec<u8>,
     at: usize,
@@ -396,12 +398,14 @@ impl Input {
             more: Some(more),
         }
     }
-    /// Whether byte `i` is in the input, reading more until it is or the input ends.
-    fn has(&mut self, i: usize) -> bool {
+    /// Whether byte `i` is in the input, reading more until it is or the input ends. Before it
+    /// waits for more, `out` goes to the judge, which may be waiting for it to answer.
+    fn has(&mut self, out: &mut Written, i: usize) -> bool {
         while i >= self.bytes.len() {
             let Some(more) = &mut self.more else {
                 return false;
             };
+            out.flush();
             let mut chunk = [0; 1 << 16];
             match more.read(&mut chunk) {
                 Ok(0) => self.more = None,
@@ -415,20 +419,20 @@ impl Input {
     /// The next token, past any whitespace. When only spaces, tabs or `\r` follow it on its
     /// line, the line's end is taken too, so a `read_line()` after a line's last token reads the
     /// next line.
-    pub fn token(&mut self) -> Option<String> {
+    pub fn token(&mut self, out: &mut Written) -> Option<String> {
         let mut s = self.at;
-        while self.has(s) && is_space(self.bytes[s]) {
+        while self.has(out, s) && is_space(self.bytes[s]) {
             s += 1;
         }
         let mut e = s;
-        while self.has(e) && !is_space(self.bytes[e]) {
+        while self.has(out, e) && !is_space(self.bytes[e]) {
             e += 1;
         }
         let mut k = e;
-        while self.has(k) && matches!(self.bytes[k], b' ' | b'\t' | b'\r') {
+        while self.has(out, k) && matches!(self.bytes[k], b' ' | b'\t' | b'\r') {
             k += 1;
         }
-        self.at = match self.has(k).then(|| self.bytes[k]) {
+        self.at = match self.has(out, k).then(|| self.bytes[k]) {
             None => k,
             Some(b'\n') => k + 1,
             Some(_) => e,
@@ -436,9 +440,9 @@ impl Input {
         (s < e).then(|| String::from_utf8_lossy(&self.bytes[s..e]).into_owned())
     }
     /// Whether a token is left.
-    pub fn left(&mut self) -> bool {
+    pub fn left(&mut self, out: &mut Written) -> bool {
         let mut i = self.at;
-        while self.has(i) {
+        while self.has(out, i) {
             if !is_space(self.bytes[i]) {
                 return true;
             }
@@ -447,15 +451,15 @@ impl Input {
         false
     }
     /// The byte `k` past the next one, or `-1` past the end; nothing is taken.
-    pub fn peek(&mut self, k: i64) -> i64 {
+    pub fn peek(&mut self, out: &mut Written, k: i64) -> i64 {
         match usize::try_from(k).ok().and_then(|k| self.at.checked_add(k)) {
-            Some(i) if self.has(i) => i64::from(self.bytes[i]),
+            Some(i) if self.has(out, i) => i64::from(self.bytes[i]),
             _ => -1,
         }
     }
     /// The next byte, or `-1` at the end.
-    pub fn byte(&mut self) -> i64 {
-        let c = match self.has(self.at) {
+    pub fn byte(&mut self, out: &mut Written) -> i64 {
+        let c = match self.has(out, self.at) {
             true => i64::from(self.bytes[self.at]),
             false => -1,
         };

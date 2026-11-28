@@ -116,24 +116,24 @@ template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, cons
     return cpl_unit{};
 }
 static inline bool cpl_is_space(int c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
-// The input, read in one piece at the first read; `ops::Input` keeps the same rules.
-static inline std::string cpl_in_all() {
-    std::string s;
-    char b[1 << 16];
-    for (size_t n; (n = fread(b, 1, sizeof b, stdin)) > 0;) s.append(b, n);
-    return s;
+// The input so far, read as the program asks for it (`ops::Input` keeps the same rules).
+static std::string cpl_in;
+static size_t cpl_in_at = 0; static bool cpl_in_ended = false;
+// Whether byte `j` past the read position is in; waiting for it hands over the output (R10.4).
+static __attribute__((noinline)) bool cpl_fill(size_t j) {
+    static char b[1 << 16];
+    for (ssize_t n; !cpl_in_ended && cpl_in_at + j >= cpl_in.size();) {
+        fflush(stdout);
+        cpl_in.erase(0, cpl_in_at); cpl_in_at = 0;
+        do n = read(0, b, sizeof b); while (n < 0 && errno == EINTR);
+        if (n > 0) cpl_in.append(b, (size_t)n); else cpl_in_ended = true;
+    }
+    return cpl_in_at + j < cpl_in.size();
 }
-static size_t cpl_in_at = 0;
-static inline const std::string& cpl_in() { static const std::string s = cpl_in_all(); return s; }
-static inline int64_t cpl_peek_byte(int64_t k) {
-    return k >= 0 && (size_t)k < cpl_in().size() - cpl_in_at ? (int64_t)(unsigned char)cpl_in()[cpl_in_at + (size_t)k] : -1;
-}
-static inline bool cpl_input_left() {
-    int64_t k = 0;
-    while (cpl_peek_byte(k) >= 0 && cpl_is_space((int)cpl_peek_byte(k))) k++;
-    return cpl_peek_byte(k) >= 0;
-}
-static inline int64_t cpl_read_byte() { return cpl_in_at < cpl_in().size() ? (int64_t)(unsigned char)cpl_in()[cpl_in_at++] : -1; }
+static inline bool cpl_has(size_t j) { return __builtin_expect(cpl_in_at + j < cpl_in.size(), 1) || cpl_fill(j); }
+static inline int64_t cpl_peek_byte(int64_t k) { return k >= 0 && cpl_has((size_t)k) ? (int64_t)(unsigned char)cpl_in[cpl_in_at + (size_t)k] : -1; }
+static inline bool cpl_input_left() { int64_t k = 0; while (cpl_is_space((int)cpl_peek_byte(k))) k++; return cpl_peek_byte(k) >= 0; }
+static inline int64_t cpl_read_byte() { return cpl_has(0) ? (int64_t)(unsigned char)cpl_in[cpl_in_at++] : -1; }
 // The `Int` token `t` spells, as `ops::read_int` reads it.
 static inline int64_t cpl_int_token(const std::string& t) {
     size_t i = !t.empty() && (t[0] == '-' || t[0] == '+');
@@ -152,16 +152,16 @@ static inline int64_t cpl_int_token(const std::string& t) {
     return t[0] == '-' ? -(int64_t)v : (int64_t)v;
 }
 static inline int64_t cpl_read() {
-    const std::string& in = cpl_in();
-    size_t n = in.size(), s = cpl_in_at;
-    while (s < n && cpl_is_space(in[s])) s++;
-    size_t e = s;
-    while (e < n && !cpl_is_space(in[e])) e++;
-    size_t k = e;
-    while (k < n && (in[k] == ' ' || in[k] == '\t' || in[k] == '\r')) k++;
-    cpl_in_at = k == n ? n : in[k] == '\n' ? k + 1 : e;
+    size_t n, s, e, k;
+    do {
+        n = cpl_in.size();
+        for (s = cpl_in_at; s < n && cpl_is_space(cpl_in[s]); s++) {}
+        for (e = s; e < n && !cpl_is_space(cpl_in[e]); e++) {}
+        for (k = e; k < n && (cpl_in[k] == ' ' || cpl_in[k] == '\t' || cpl_in[k] == '\r'); k++) {}
+    } while (k == n && cpl_fill(n - cpl_in_at));
+    cpl_in_at = k == n ? n : cpl_in[k] == '\n' ? k + 1 : e;
     if (s == e) cpl_fail(CPL_BAD_INT_TOKEN);
-    return cpl_int_token(in.substr(s, e - s));
+    return cpl_int_token(cpl_in.substr(s, e - s));
 }
 // The caller's code handed to a generator or lender that calls itself: two words, not owning.
 // Used only there; elsewhere the callee is a template and the code is inlined.

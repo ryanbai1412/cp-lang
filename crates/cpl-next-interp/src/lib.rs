@@ -84,7 +84,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         funcs,
         globals: vec![V::Unit; p.globals.len()],
         frames: Vec::new(),
-        out: Written::default(),
+        out: Written::to(input.out),
         input: input.io.input(),
         rand: ops::RAND_SEED,
         at: 0,
@@ -96,11 +96,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         calls: m.calls(),
         ..t
     });
-    Outcome {
-        events: m.out.events,
-        output: m.out.text,
-        trap,
-    }
+    m.out.end(trap)
 }
 
 /// The origin is filled in where the run ends: it is `Machine::at` then.
@@ -566,15 +562,11 @@ impl<'a> Machine<'a> {
             Intr::RawSet => {
                 let i = self.int(&args[1], fp)?;
                 let x = self.arg(&args[2], fp)?;
-                let r = self.lent_raw(&args[0], fp)?;
-                let len = match &**r {
-                    Store::Ints(xs) => xs.len(),
-                    Store::Any(xs) => xs.len(),
-                };
-                let i = ops::cell(i, len, true)?;
-                match (Rc::make_mut(r), x) {
-                    (Store::Ints(xs), V::Int(x)) => xs[i] = x,
-                    (Store::Any(xs), x) => xs[i] = x,
+                match (Rc::make_mut(self.lent_raw(&args[0], fp)?), x) {
+                    (Store::Ints(xs), V::Int(x)) => {
+                        ops::cell(i, xs.len(), true).map(|i| xs[i] = x)?
+                    }
+                    (Store::Any(xs), x) => ops::cell(i, xs.len(), true).map(|i| xs[i] = x)?,
                     (Store::Ints(_), _) => return broken("a non-integer in integer storage"),
                 }
                 V::Unit
@@ -587,17 +579,20 @@ impl<'a> Machine<'a> {
                 ops::check(op, self.bool(&args[0], fp)?)?;
                 V::Unit
             }
-            Intr::InputLeft => V::Bool(self.input.left()),
-            Intr::ReadByte => V::Int(self.input.byte()),
+            Intr::InputLeft => V::Bool(self.input.left(&mut self.out)),
+            Intr::ReadByte => V::Int(self.input.byte(&mut self.out)),
             Intr::PeekByte => {
                 let k = self.int(&args[0], fp)?;
-                V::Int(self.input.peek(k))
+                V::Int(self.input.peek(&mut self.out, k))
             }
             Intr::RandWord => V::U64(ops::rand_word(&mut self.rand)),
-            // A flush is a no-op: the run's output is its `Written` text, which the host takes whole at exit.
-            Intr::Unset | Intr::Flush => V::Unit,
+            Intr::Flush => {
+                self.out.flush();
+                V::Unit
+            }
+            Intr::Unset => V::Unit,
             Intr::ReadInt => {
-                let t = self.input.token();
+                let t = self.input.token(&mut self.out);
                 V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)
             }
             _ => return broken("a scalar operation outside `ops::scalar`"),

@@ -66,16 +66,6 @@ pub fn program(args: &[String], usage: &str) -> Arc<Program> {
     }
 }
 
-/// All of stdin, the run's input.
-pub fn stdin() -> String {
-    let mut input = String::new();
-    if let Err(e) = std::io::Read::read_to_string(&mut std::io::stdin(), &mut input) {
-        eprintln!("cpl-next: stdin: {e}");
-        std::process::exit(2);
-    }
-    input
-}
-
 /// 1: the program is rejected. 4: refused, which says nothing about the program.
 pub fn code(v: Verdict) -> i32 {
     match v {

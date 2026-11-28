@@ -17,7 +17,7 @@ use cpl_next_decls::views::Answers;
 use cpl_next_decls::{decls, diag, modules};
 use cpl_next_ir::build::{Build, Checks, Judge};
 use cpl_next_ir::ids::{ItemId, SourceId};
-use cpl_next_ir::run::{Limits, RunInput};
+use cpl_next_ir::run::{Io, Limits, RunInput};
 use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
 use cpl_next_lower as lower;
@@ -804,7 +804,26 @@ impl Compiled {
 
     /// Runs on the engine, the one evaluator, on the calling thread.
     pub fn run(&self, input: &str) -> Outcome {
-        cpl_next_engine::run(&self.prog, &self.opt, self.input(input))
+        self.run_on(self.input(input))
+    }
+
+    /// Runs `input` on the engine, on the calling thread.
+    pub fn run_on(&self, input: RunInput) -> Outcome {
+        cpl_next_engine::run(&self.prog, &self.opt, input)
+    }
+
+    /// A run that reads `from` as the program reads and writes `to` as it flushes, under the
+    /// limits of the judge the program was built for: a terminal, a pipe or an interactor.
+    pub fn streamed(
+        &self,
+        from: Box<dyn std::io::Read + Send>,
+        to: Box<dyn std::io::Write + Send>,
+    ) -> RunInput {
+        RunInput {
+            io: Io::Stream(from),
+            limits: self.limits,
+            out: Some(to),
+        }
     }
 
     /// A run of all of `input` under the limits of the judge the program was built for.
