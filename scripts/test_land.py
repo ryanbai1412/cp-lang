@@ -1712,9 +1712,9 @@ done
 
     def test_a_rebase_onto_a_rule_change_restates_the_count_by_the_new_rule(self):
         ours, r = self.race(ours_changes_the_rule=False)
-        # The lower of 8 (new rule) and 3 (old rule) would be 3; the tip measures 6.
-        self.assertEqual(json.loads((ours / RATCHET).read_text())["lines"], 6)
-        self.assertIn("lines 3 -> 6", r.stderr)
+        # The lower of 8 (new rule) and 3 (old rule) would be 3; the tip measures 6, which the
+        # merge driver already gave (main's 8 less the lane's 2), so nothing is restated.
+        self.assertEqual(json.loads((ours / RATCHET).read_text())["lines"], 6, r.stderr)
         self.assertEqual(json.loads(git(ours, "show", f"origin/main:{RATCHET}"))["lines"], 6)
         self.assertEqual(git(ours, "status", "--porcelain"), "")
 

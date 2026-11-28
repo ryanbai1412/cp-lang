@@ -1942,7 +1942,7 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
         self.assertEqual(base["ir_reinfer"], 10)
 
-    def test_strict_check_fails_debt_already_on_main(self):
+    def test_check_fails_debt_already_on_main_unless_lowered(self):
         with tempfile.TemporaryDirectory() as d:
             ratchet = Path(d, "r.json")
             ratchet.write_text(json.dumps({"ir_reinfer": 10, "rs_file_size_allowlist": {}}))
@@ -1951,10 +1951,14 @@ class DebtRatchetTest(unittest.TestCase):
                                ("unexplained_bumps", lambda *a, **k: []), ("hand_lowered", lambda *a, **k: [])):
                 self.enterContext(mock.patch.object(dr, name, fake))
             argv = ["--check", "--root", d, "--ratchet", str(ratchet)]
+            # Main's debt fails a push that doesn't lower it, strict or not.
+            for strict in ("", "1"):
+                with mock.patch.dict(os.environ, {"CPL_RATCHET_STRICT": strict}):
+                    self.assertEqual(dr.main(argv), 1)
+            # A push that lowers it goes through off main.
+            self.enterContext(mock.patch.object(dr, "measure", lambda *a, **k: {**now, "ir_reinfer": 11}))
             with mock.patch.dict(os.environ, {"CPL_RATCHET_STRICT": ""}):
                 self.assertEqual(dr.main(argv), 0)
-            with mock.patch.dict(os.environ, {"CPL_RATCHET_STRICT": "1"}):
-                self.assertEqual(dr.main(argv), 1)
 
     def test_last_touched_never_blames_a_shallow_clones_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -2466,6 +2470,17 @@ class DebtRatchetTest(unittest.TestCase):
             )
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (2, 6, 9, 10, 11, 16, 18, 27)])
+
+    def test_debt_already_on_main_fails_a_push_that_does_not_lower_it(self) -> None:
+        label = lambda n: f"{dr.COUNTERS[n][0]}: increased"
+        hard = sorted(dr.HARD_ZERO)[0]
+        soft = "next_std_names"
+        case = "next_wrong_accepts"
+        errors = [label(hard), label(soft), label(case)]
+        self.assertEqual(dr.waived(errors, [], {hard: 1, soft: 54, case: 29}, {hard: 1, soft: 54, case: 29}),
+                         [label(hard), label(soft)])
+        self.assertEqual(dr.waived(errors, [], {hard: 1, soft: 53, case: 29}, {hard: 1, soft: 54, case: 29}),
+                         [label(hard)])
 
     def test_whole_program_inputs_count_dyn_views_failing_lane_is_key_rule(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

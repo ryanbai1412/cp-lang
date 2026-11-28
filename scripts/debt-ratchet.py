@@ -1636,7 +1636,10 @@ NEXT_OP_BACKENDS = ("crates/cpl-next-engine/src/", "crates/cpl-next-interp/src/"
 
 
 def _machine_ops(root: Path) -> set[str]:
-    text = (root / "crates/cpl-next-ir/src/ops.rs").read_text()
+    ops = root / "crates/cpl-next-ir/src/ops.rs"
+    if not ops.is_file():
+        return set()
+    text = ops.read_text()
     m = re.search(r"pub const MACHINE: \[Intr; \d+\] = \[(.*?)\];", text, re.S)
     return set(NEXT_INTR_RE.findall(m.group(1))) if m else set()
 
@@ -1661,6 +1664,8 @@ def next_op_arms_outside_ir(root: Path) -> list[str]:
     other operation's meaning is `ops` data that each back end reads, so a back end that
     matches one has a meaning of its own. Counts match patterns, not fn names. 0 is
     condition 6: the back ends are generated from one op table."""
+    if not (root / "crates/cpl-next-ir").is_dir():
+        return []
     machine, out = _machine_ops(root), []
     if not machine:
         out.append("crates/cpl-next-ir/src/ops.rs: no `MACHINE` table")
@@ -5399,6 +5404,26 @@ def upstream_counters(actual: dict, baseline: dict, bumps: list[str]) -> set[str
     return over | paid | ({b.partition(":")[0] for b in bumps} & set(COUNTERS))
 
 
+def waived(errors: list[str], mine: list[str], actual: dict, upstream: dict) -> list[str]:
+    """The errors main already has that still fail this push: one leak must not spread to every
+    lane (17:00 trend audit). A hard zero always fails; any other counter over its baseline on
+    main fails unless this change lowers it. A case counter measured by a full run is CI's on
+    main and never blocks a push (Ryan's 16:00 ruling)."""
+    def num(v) -> int:
+        return len(v) if isinstance(v, (list, tuple, set, dict)) else int(v)
+    out = []
+    for e in errors:
+        if e in mine:
+            continue
+        name = next((n for n in COUNTERS if e.startswith(f"{COUNTERS[n][0]}: ")), None)
+        if name is None or name in HARD_ZERO or name in HARD_FLOOR:
+            out.append(e)
+        elif name not in RUN_MEASURED + CASE_COUNTED and name not in CI_ONLY and name in upstream \
+                and num(actual[name]) >= num(upstream[name]):
+            out.append(e)
+    return out
+
+
 def mains_paid_debt(actual: dict, upstream: dict) -> set[str]:
     """Hard-zero (and hard-floor) counters over their limit here by no more than main already
     measures: main's red, which its owner fixes and CI on main still fails, not this change's.
@@ -5459,6 +5484,8 @@ def unlaned(root: Path, base: str) -> list[str]:
 RUN_MEASURED = ("next_wrong", "next_not_passing", "next_refused", "next_masked", "next_lowered",
                 "next_error_typed", "next_split", "next_wrong_accepts", "next_late_rejects",
                 "next_wrong_outputs")
+# Cases counted off a committed board rather than a run: also case regressions, so never a push's.
+CASE_COUNTED = ("conformance_failing",)
 RAISE_RE = re.compile(r"^Raise:\s*(\S+)\s*(.*)$", re.MULTILINE)
 FULL_RUN_RE = re.compile(r"\btarget/cpl-next/(?!only/)[\w.-]+")
 
@@ -5831,6 +5858,7 @@ def main(argv: list[str] | None = None) -> int:
             mine = evaluate(actual, inherited_baseline(baseline, upstream))[0]
             labels = tuple(f"{COUNTERS[n][0]}: " for n in mains_paid_debt(actual, upstream))
             mine = [e for e in mine if not e.startswith(labels)] if labels else mine
+            mine += waived(errors, mine, actual, upstream)
             warnings += [f"already on main, not from this change (infra fixes it): {e}"
                          for e in errors if e not in mine]
             errors = mine
