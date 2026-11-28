@@ -61,6 +61,18 @@ impl Cx<'_> {
                         self.poison(&r);
                         let tr = self.items.t(r.tr).name.clone();
                         let shown = self.show(&t);
+                        // A row trait no impl gives is met by a record's fields alone (R08.4.1).
+                        if self.items.t(r.tr).row {
+                            let text = self.row_missing(&t, &r, &shown);
+                            let msg = Msg::verdict(cpl_diag::codes::ROW_MISSING_FIELD, text);
+                            self.err_help_at(span, msg, None);
+                            continue;
+                        }
+                        if matches!(&t, Ty::Struct(d, ..) if self.items.s(*d).record) {
+                            let msg = Unbuilt::FieldwiseTrait { ty: shown, tr };
+                            self.err_help_at(span, msg, None);
+                            continue;
+                        }
                         // A type no impl converts to has no `T(x)` at all; one some impl converts to
                         // takes only what converts (`List(5)` is a mismatch, `Deque(xs)` is not a call).
                         let converts = why == Origin::Construct
@@ -249,6 +261,26 @@ impl Cx<'_> {
         }
     }
     /// Whether `t` meets `r`, or `None` while `t` is not known. `open` is `t` before zonking.
+    /// Why `t` misses the row trait `r`: the first field it lacks, or that it is no record.
+    fn row_missing(&self, t: &Ty, r: &TraitRef, shown: &str) -> String {
+        let tr = &self.items.t(r.tr).name;
+        let sd = match t {
+            Ty::Struct(d, ..) if self.items.s(*d).record => self.items.s(*d),
+            _ => return format!("`{tr}` needs a record, but this is `{shown}`"),
+        };
+        // The first in declaration order, so the message is the same each run.
+        let missing = (self.items.t(r.tr).methods.iter())
+            .filter(|(n, f)| self.items.f(**f).getter && sd.fields.iter().all(|(g, _)| g != *n))
+            .min_by_key(|(_, f)| **f);
+        match missing.map(|(n, _)| n) {
+            Some(n) => {
+                let n = self.syms.text(*n);
+                format!("`{tr}` needs a record with `{n}`, but `{shown}` has no `{n}`")
+            }
+            None => format!("`{shown}` does not have the fields `{tr}` needs"),
+        }
+    }
+
     fn meet(&mut self, t: &Ty, open: &Ty, r: &TraitRef, span: SourceId) -> Option<bool> {
         let tr = self.items.t(r.tr);
         if tr.alias {
@@ -312,8 +344,9 @@ impl Cx<'_> {
             };
             return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
         }
-        // A record meets a row trait by its fields, each field's type its argument (R08.4.1).
-        if self.items.t(r.tr).row && !matches!(t, Ty::Error) {
+        // A record meets a row trait with no impl for it by its fields, each field's type its
+        // argument (R08.4.1).
+        if self.items.t(r.tr).row && !matches!(t, Ty::Error) && self.fitting(t, r).is_empty() {
             let Some(fs) = self.impls().row_fields(t, r) else {
                 return Some(false);
             };
