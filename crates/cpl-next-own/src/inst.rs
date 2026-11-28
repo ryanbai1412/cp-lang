@@ -52,6 +52,8 @@ pub(crate) struct Walk<'a> {
     pub pending: Vec<(Root, u32, Code, String)>,
     /// Parameters of a type parameter's type the fn stores where they outlive the call.
     pub kept: BTreeSet<usize>,
+    /// The locals holding one of this fn's fn-valued parameters, which it can call but not keep.
+    pub closure_params: BTreeSet<usize>,
     /// A local bound to a closure: its instance and the places it captures, in order.
     pub caps: HashMap<Root, (usize, Vec<Place>)>,
     /// A temp the lowering spilled a whole binding into, and that binding.
@@ -914,6 +916,11 @@ impl Walk<'_> {
         }
         let mut kept = BTreeSet::new();
         for (i, a) in args.iter().enumerate() {
+            if keeps.contains(&i) && !lent.is_empty() && closure_param(&self.closure_params, a) {
+                let msg = "a closure argument is a parameter: the callee can call it but not \
+                           keep it in storage that outlives the call";
+                self.err(site, codes::LENT_ESCAPES, msg.into());
+            }
             // A copy holds nothing of the place it was made from.
             if !keeps.contains(&i) || copied[i] {
                 continue;
@@ -998,6 +1005,11 @@ impl Walk<'_> {
         (held, lent)
     }
     fn stmt(&mut self, s: &Stmt<CTy>, fx: &mut Fx) {
+        if let Stmt::Let(l, e) = s {
+            if copy_of(e).is_some_and(|m| self.closure_params.contains(&m)) {
+                self.closure_params.insert(*l);
+            }
+        }
         match s {
             // A passed place saved before a later operand runs, or a tuple's part read before
             // its places are written: a copy, or nothing if viewed. It borrows nothing.
@@ -1443,6 +1455,7 @@ fn run(
         consts: HashMap::new(),
         frozen: HashMap::new(),
         kept: BTreeSet::new(),
+        closure_params: BTreeSet::new(),
         caps: HashMap::new(),
         spilled: HashMap::new(),
         elems: BTreeSet::new(),
@@ -1493,6 +1506,12 @@ impl Walk<'_> {
         self.spilled.clear();
         self.elems.clear();
         self.made.clear();
+        self.closure_params.clear();
+        if let Some(g) = self.generic.get(&f.key) {
+            let fns = (f.params.iter().skip(f.n_captures).map(|p| p.0))
+                .filter(|l| matches!(g.locals.get(*l), Some(Ty::Fn(..) | Ty::Clo(_))));
+            self.closure_params.extend(fns);
+        }
         // A lambda's own params are its values, as in the fn it is written in; its captures are lent.
         let own = |k: usize| matches!(f.key, FuncKey::Lambda(_)) && k >= f.n_captures;
         self.borrowed = (f.params.iter().enumerate())
@@ -1898,4 +1917,23 @@ fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
         }
         Stmt::LendOut(_) | Stmt::Drop(_) | Stmt::Break | Stmt::Continue => None,
     })
+}
+
+/// The local a value is a copy of, through widening a fn value's closure set.
+fn copy_of(e: &Expr<CTy>) -> Option<usize> {
+    match &e.kind {
+        EK::Widen(x) => copy_of(x),
+        EK::Copy(Place::Local(l)) | EK::Pass(Place::Local(l), ..) => Some(*l),
+        _ => None,
+    }
+}
+
+/// Whether an argument is one of `params`, the locals holding the fn's own fn-valued
+/// parameters (R05.10.4).
+fn closure_param(params: &BTreeSet<usize>, a: &Arg<CTy>) -> bool {
+    match a {
+        Arg::Value(e) => copy_of(e).is_some_and(|l| params.contains(&l)),
+        Arg::View(Place::Local(l)) | Arg::Lend(Place::Local(l)) => params.contains(l),
+        _ => false,
+    }
 }

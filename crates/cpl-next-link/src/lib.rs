@@ -124,7 +124,6 @@ fn closed_fn(d: &dyn Signatures, f: FnId) -> bool {
     let owner_open =
         matches!(&fd.self_ty, Some(Ty::Struct(_, ts, ss)) if !ts.is_empty() || !ss.is_empty());
     fd.generics.is_empty()
-        && fd.n_sets == 0
         && fd.uses.is_empty()
         && fd.intrinsic.is_none()
         && !owner_open
