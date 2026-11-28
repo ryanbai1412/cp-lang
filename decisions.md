@@ -9559,3 +9559,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Reverse.** Drop the row and write the parse in std over `I128` digits, accepting last-bit differences.
 
 ## 676. (reserved, unknown)
+
+## 677. (reserved, unknown)
