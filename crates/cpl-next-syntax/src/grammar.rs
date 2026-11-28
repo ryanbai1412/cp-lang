@@ -117,3 +117,7 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
 pub fn contextual(text: &str) -> Option<Contextual> {
     CONTEXTUAL.iter().find(|(w, _)| *w == text).map(|(_, c)| *c)
 }
+
+/// The facts a doc comment states, each on its own `label: text` line, in the
+/// order std/README.md lists them.
+pub const DOC_FACTS: [&str; 5] = ["cost", "traps", "empty", "ties", "order"];

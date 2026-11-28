@@ -1100,10 +1100,10 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_facade::Hov
         .into_iter()
         .map(|(e, _)| e)
         .find(|e| e.name == text[start..end])?;
-    let cost = cpl_syntax::doc::Facts::parse(&entry.doc)
+    let cost = cpl_next_syntax::doc::Facts::parse(&entry.doc)
         .cost
         .map(|c| cpl_diag::plain::text(&c))
-        .filter(|c| cpl_syntax::doc::big_o(c).is_some());
+        .filter(|c| cpl_next_syntax::doc::big_o(c).is_some());
     Some(cpl_facade::Hover {
         typed: None,
         signature: false,

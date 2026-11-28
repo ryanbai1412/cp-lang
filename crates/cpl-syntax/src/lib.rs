@@ -12,9 +12,9 @@
 //! `Error` nodes and one diagnostic per root cause.
 
 pub mod ast;
+pub use cpl_next_syntax::doc;
 pub mod const_int;
 pub mod decorators;
-pub mod doc;
 pub mod fall_through;
 pub mod files;
 pub mod grammar;

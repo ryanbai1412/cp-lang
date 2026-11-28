@@ -10,6 +10,7 @@ name = "cpl-conform"
 path = "src/main.rs"
 
 [dependencies]
+cpl-next-syntax.workspace = true
 cpl-env.workspace = true
 cpl-corpus.workspace = true
 cpl-contest.workspace = true

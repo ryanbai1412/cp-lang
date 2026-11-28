@@ -30,6 +30,7 @@ cpl-syntax.workspace = true
 mimalloc = { workspace = true }
 
 [dev-dependencies]
+cpl-next-syntax.workspace = true
 cpl-conform.workspace = true
 cpl-corpus.workspace = true
 

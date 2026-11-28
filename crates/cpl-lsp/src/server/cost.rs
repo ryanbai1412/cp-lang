@@ -6,7 +6,7 @@ use super::*;
 /// A documented cost's value when its size `n` is `n`, logs base 2: `O(n
 /// log n)`, `O(n^2)`, `O(log^2 n)`; `None` for any other name in it.
 pub(super) fn steps_of(cost: &str, n: f64) -> Option<f64> {
-    let body = cpl_syntax::doc::big_o(cost)?;
+    let body = cpl_next_syntax::doc::big_o(cost)?;
     let mut tokens = Vec::new();
     let mut chars = body.chars().peekable();
     while let Some(&c) = chars.peek() {
@@ -264,7 +264,7 @@ fn fn_documented(
             Some(_) => "an unknown number of times".to_string(),
         };
         if let (Some(s), Some(r)) = (steps, run.map_or(Some(1), |r| r.times)) {
-            let inner = cpl_syntax::doc::big_o(&cost);
+            let inner = cpl_next_syntax::doc::big_o(&cost);
             let term = match (run.and_then(|r| r.count.as_deref()), inner) {
                 (_, None) => None,
                 (None, Some(i)) => Some(i.to_string()),
@@ -323,7 +323,7 @@ fn fn_extra(
         let hover = db.hover(uri, start)?;
         let cost = hover.cost.as_deref()?;
         if (hover.span.start, hover.span.end) != (start, end)
-            || cpl_syntax::doc::big_o(cost) != Some("1")
+            || cpl_next_syntax::doc::big_o(cost) != Some("1")
         {
             return None;
         }

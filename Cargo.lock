@@ -41,6 +41,7 @@ dependencies = [
  "cpl-judge",
  "cpl-lint",
  "cpl-lsp",
+ "cpl-next-syntax",
  "cpl-stress",
  "cpl-syntax",
  "cpl-wait",
@@ -77,6 +78,7 @@ dependencies = [
  "cpl-ir",
  "cpl-json",
  "cpl-lint",
+ "cpl-next-syntax",
  "cpl-stress",
  "cpl-syntax",
  "cpl-wait",
@@ -124,6 +126,7 @@ dependencies = [
  "cpl-diag",
  "cpl-facade",
  "cpl-json",
+ "cpl-next-syntax",
  "cpl-syntax",
 ]
 
@@ -218,6 +221,7 @@ dependencies = [
  "cpl-json",
  "cpl-judge",
  "cpl-lint",
+ "cpl-next-syntax",
  "cpl-syntax",
  "cpl-wait",
  "mimalloc",

@@ -476,13 +476,13 @@ fn every_builtin_cost_is_written_as_std_writes_one() {
     let mut wrong = Vec::new();
     for r in Receiver::ALL {
         for m in cpl_facade::today::builtin_members(r) {
-            let Some(cost) = cpl_syntax::doc::Facts::parse(m.doc).cost else {
+            let Some(cost) = cpl_next_syntax::doc::Facts::parse(m.doc).cost else {
                 continue;
             };
             let plain = cpl_diag::plain::text(&cost);
             if !cost.starts_with("\\(O(")
                 || cost.contains("log n") && !cost.contains("\\log n")
-                || cpl_syntax::doc::big_o(&plain).is_none()
+                || cpl_next_syntax::doc::big_o(&plain).is_none()
             {
                 wrong.push(format!("{}.{}: cost: {cost}", r.name(), m.name));
             }

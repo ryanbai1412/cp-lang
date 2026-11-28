@@ -243,7 +243,7 @@ impl Reader<'_> {
 
     /// The `///` lines above the declaration starting at `start`.
     fn doc_at(&self, start: u32) -> String {
-        cpl_syntax::doc::doc_above(self.text, (self.base + start) as usize)
+        cpl_next_syntax::doc::doc_above(self.text, (self.base + start) as usize)
     }
 
     /// The names a top-level `let (n, k) = ..` binds, each a value.

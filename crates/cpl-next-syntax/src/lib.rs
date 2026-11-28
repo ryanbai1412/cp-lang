@@ -10,6 +10,7 @@
 //! None of them fails: any text gives a tree that holds every byte of it.
 //! Nothing here depends on the compiler.
 
+pub mod doc;
 mod file;
 pub mod grammar;
 mod items;

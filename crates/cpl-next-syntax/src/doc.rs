@@ -92,32 +92,19 @@ pub fn big_o(cost: &str) -> Option<&str> {
 
 impl Facts {
     /// The labels, in the order std/README.md lists them.
-    pub const LABELS: [&'static str; 5] = ["cost", "traps", "empty", "ties", "order"];
-
-    /// `(label, text)` for each fact the doc states, in [`Self::LABELS`] order.
-    pub fn stated(&self) -> Vec<(&'static str, &str)> {
-        Self::LABELS
-            .into_iter()
-            .zip([
-                &self.cost,
-                &self.traps,
-                &self.empty,
-                &self.ties,
-                &self.order,
-            ])
-            .filter_map(|(label, text)| Some((label, text.as_deref()?)))
-            .collect()
-    }
+    pub const LABELS: [&'static str; 5] = crate::grammar::DOC_FACTS;
 
     fn slot(&mut self, label: &str) -> Option<&mut Option<String>> {
-        Some(match label {
-            "cost" => &mut self.cost,
-            "traps" => &mut self.traps,
-            "empty" => &mut self.empty,
-            "ties" => &mut self.ties,
-            "order" => &mut self.order,
-            _ => return None,
-        })
+        let i = Self::LABELS.iter().position(|l| *l == label)?;
+        [
+            &mut self.cost,
+            &mut self.traps,
+            &mut self.empty,
+            &mut self.ties,
+            &mut self.order,
+        ]
+        .into_iter()
+        .nth(i)
     }
 }
 
@@ -450,10 +437,6 @@ mod tests {
         assert_eq!(d.facts.order, None);
         assert_eq!(Facts::parse(doc), d.facts);
         assert!(d.prose.contains("\ntrap: `x`\n"));
-        assert_eq!(
-            d.facts.stated().iter().map(|f| f.0).collect::<Vec<_>>(),
-            ["cost", "traps", "ties"]
-        );
         assert_eq!(d.prose, "Sums it.\n\ntrap: `x`\n\n```cp\nlet a = 1\n    + 2\nassert(a == 3)\n```\n\nA sentence ending in\norder: is prose");
         assert_eq!(d.examples.len(), 4);
         assert_eq!(

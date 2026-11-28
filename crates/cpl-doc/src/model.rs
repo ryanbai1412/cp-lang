@@ -67,7 +67,7 @@ impl Kind {
     }
 }
 
-pub use cpl_syntax::doc::{DocText, Example, Facts};
+pub use cpl_next_syntax::doc::{DocText, Example, Facts};
 
 /// One documented declaration.
 #[derive(Clone, PartialEq, Eq, Debug)]

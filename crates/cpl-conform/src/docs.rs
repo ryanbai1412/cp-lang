@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 use cpl_check::Session;
-use cpl_syntax::doc::{self, DocText};
+use cpl_next_syntax::doc::{self, DocText};
 
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
@@ -184,7 +184,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
 }
 
 /// Splits `` `code` (stdin `x`) (traps R0401) `` into the code, its stdin and the expected
-/// trap or error code (`cpl_syntax::doc` reads it); `None` code when it is prose.
+/// trap or error code (`cpl_next_syntax::doc` reads it); `None` code when it is prose.
 pub fn parse_example_body(body: &str) -> (Option<String>, String, Option<String>) {
     let e = doc::Example::from_line(body);
     let stdin = e

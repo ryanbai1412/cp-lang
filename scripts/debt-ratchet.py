@@ -4160,9 +4160,11 @@ def config_schemas(root: Path) -> list[str]:
 
 
 def std_doc_parsers(root: Path) -> list[str]:
-    """`"///` literals outside cpl-syntax and cpl-doc: a second reader of std doc comments."""
+    """`"///` literals outside the syntax crates and cpl-doc: a second reader of std doc
+    comments. The one reader is `cpl_next_syntax::doc`."""
     return [f"{rel}:{i}" for rel, i, line in _src_lines(root)
-            if '"///' in line and _outside(rel, ("crates/cpl-syntax/", "crates/cpl-doc/"))]
+            if '"///' in line
+            and _outside(rel, ("crates/cpl-syntax/", "crates/cpl-next-syntax/", "crates/cpl-doc/"))]
 
 
 # A text edit engine: the fix appliers by name, any fn that takes a
