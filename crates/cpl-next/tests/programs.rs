@@ -461,13 +461,19 @@ fn place_file(word: &str) -> Option<&str> {
 /// A case that passes on its `// expect:` passes only if what the deciding run printed is
 /// its `// output:`, when it gives one.
 fn verdict(path: &Path) -> (&'static str, String) {
+    verdict_within(path, None)
+}
+
+/// [`verdict`], with runs stopped at `limit` rather than the case's own: [`TOOL_LIMIT`] where a
+/// test compares verdicts and judges no case's time.
+fn verdict_within(path: &Path, limit: Option<Duration>) -> (&'static str, String) {
     let text = std::fs::read_to_string(path).unwrap();
     let expect = match parse_header(&text) {
         Ok(e) => e,
         Err(e) => return ("bad-header", e),
     };
     let header = || text.lines().take_while(|l| l.starts_with("//"));
-    let limit = limit_of(&text);
+    let limit = limit.unwrap_or_else(|| limit_of(&text));
     // A `// before:` tool writes files only a later tool reads, so one cpl-next has is no step.
     if let Some(e) = (header_values(&text, "before:").into_iter()).find_map(|b| ask(Some(b)).err())
     {
@@ -1068,8 +1074,9 @@ fn a_case_in_the_worker_gives_what_it_gives_alone() {
 fn a_parallel_run_gives_what_a_serial_one_does() {
     let cases = all_cases();
     let sample: Vec<_> = cases.iter().step_by(cases.len() / 24 + 1).collect();
-    let parallel = parallel::parallel(&sample, |(_, p)| verdict(p));
-    let serial: Vec<_> = sample.iter().map(|(_, p)| verdict(p)).collect();
+    let wide = |p: &PathBuf| verdict_within(p, Some(TOOL_LIMIT));
+    let parallel = parallel::parallel(&sample, |(_, p)| wide(p));
+    let serial: Vec<_> = sample.iter().map(|(_, p)| wide(p)).collect();
     assert_eq!(parallel, serial);
 }
 
