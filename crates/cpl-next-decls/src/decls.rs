@@ -1193,7 +1193,7 @@ struct Scopes<'a> {
     own: &'a Layer<HashMap<String, Named>>,
     public: &'a Layer<HashSet<String>>,
     names: &'a [String],
-    imports: &'a [(ModId, &'a ast::Stmt)],
+    imports: &'a [(ModId, forms::UseForm)],
     prelude: &'a HashMap<String, String>,
     within: &'a [Option<ModId>],
 }
@@ -1247,25 +1247,17 @@ fn outer_view(
     }
     let mut imported: HashMap<String, Named> = HashMap::new();
     for (_, s) in imports.iter().filter(|(m, _)| m.0 == mi) {
-        let StmtKind::Use {
-            path,
-            names: ns,
-            glob,
-            alias,
-        } = &s.kind
-        else {
-            continue;
-        };
+        let (path, ns, glob, alias) = (&s.path, &s.names, &s.glob, &s.alias);
         let module = path
             .iter()
-            .map(|n| n.text.as_str())
+            .map(String::as_str)
             .collect::<Vec<_>>()
             .join(".");
         // `use std.rand.Rng` names one item of `std.rand` (R11.2.1).
         let (module, ns) = match (index(&module), path.split_last()) {
             (None, Some((last, init))) if ns.is_empty() && !*glob => (
                 init.iter()
-                    .map(|n| n.text.as_str())
+                    .map(String::as_str)
                     .collect::<Vec<_>>()
                     .join("."),
                 std::slice::from_ref(last),
@@ -1286,7 +1278,7 @@ fn outer_view(
         if ns.is_empty() {
             let m = alias
                 .as_ref()
-                .map_or(module.rsplit('.').next().unwrap_or(""), |a| a.text.as_str());
+                .map_or(module.rsplit('.').next().unwrap_or(""), |a| a.as_str());
             v.insert(m.to_string(), Named::Module(ModId(t)));
             for n in exports(sc, t) {
                 if let Some(x) = export(t, &n) {
@@ -1296,34 +1288,34 @@ fn outer_view(
             continue;
         }
         for n in ns {
-            match export(t, &n.text) {
-                Some(_) if own[mi].contains_key(&n.text) => {
+            match export(t, n) {
+                Some(_) if own[mi].contains_key(n) => {
                     if let Some(e) = errors.as_deref_mut() {
                         e.push(
                             Unbuilt::UseOfOwn {
-                                name: n.text.clone(),
+                                name: n.clone(),
                             }
                             .into(),
                         );
                     }
                 }
                 // Two imports of one name stay ambiguous where it is used (R08.1.4).
-                Some(x) if imported.get(&n.text).is_some_and(|y| *y != x) => {
-                    v.remove(&n.text);
+                Some(x) if imported.get(n).is_some_and(|y| *y != x) => {
+                    v.remove(n);
                     if let Some(a) = ambiguous.as_deref_mut() {
-                        a.insert(n.text.clone());
+                        a.insert(n.clone());
                     }
                 }
                 Some(x) => {
-                    v.insert(n.text.clone(), x);
-                    imported.insert(n.text.clone(), x);
+                    v.insert(n.clone(), x);
+                    imported.insert(n.clone(), x);
                 }
                 None => {
                     if let Some(e) = errors.as_deref_mut() {
                         e.push(
                             Unbuilt::UseMissing {
                                 module: module.to_string(),
-                                name: n.text.clone(),
+                                name: n.clone(),
                             }
                             .into(),
                         );
@@ -1364,9 +1356,7 @@ fn export_map(sc: &Scopes, t: usize) -> HashMap<String, (Named, bool)> {
 fn exports(sc: &Scopes, t: usize) -> Vec<String> {
     let mut out: Vec<String> = sc.public[t].iter().cloned().collect();
     for (_, s) in sc.imports.iter().filter(|(m, s)| m.0 == t && s.public) {
-        if let StmtKind::Use { names, .. } = &s.kind {
-            out.extend(names.iter().map(|n| n.text.clone()));
-        }
+        out.extend(s.names.iter().cloned());
     }
     out
 }
@@ -1388,18 +1378,13 @@ fn exported(sc: &Scopes, t: usize, n: &str) -> Option<Named> {
             .iter()
             .filter(|(m, s)| m.0 == t && s.public)
             .find_map(|(_, s)| {
-                let StmtKind::Use {
-                    path, names, glob, ..
-                } = &s.kind
-                else {
-                    return None;
-                };
+                let (path, names, glob) = (&s.path, &s.names, &s.glob);
                 let module = path
                     .iter()
-                    .map(|p| p.text.as_str())
+                    .map(String::as_str)
                     .collect::<Vec<_>>()
                     .join(".");
-                let named = *glob || names.iter().any(|x| x.text == n);
+                let named = *glob || names.iter().any(|x| x == n);
                 named
                     .then(|| sc.names.iter().position(|m| *m == module))
                     .flatten()
