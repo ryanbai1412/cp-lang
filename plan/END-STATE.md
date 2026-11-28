@@ -79,11 +79,10 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_core_standin_lines` | 43 |
 | `next_cpp_runtime_lines` | 147 |
 | `next_error_typed` | 34 |
-| `next_facade_split` | 61 |
+| `next_facade_split` | 52 |
 | `next_handoff_side_fields` | 11 |
 | `next_harness_refusals` | 4 |
 | `next_late_rejects` | 90 |
-| `next_layer_foreign_deps` | 1 |
 | `next_library_gates` | 24 |
 | `next_lowered` | 2 |
 | `next_masked` | 129 |

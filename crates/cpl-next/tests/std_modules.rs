@@ -6,12 +6,11 @@
 
 use cpl_next::facade::{Session, Snapshot};
 use std::path::Path;
-use std::sync::Arc;
 
 #[test]
 fn std_unchecked_is_what_checking_every_std_fn_finds() {
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let std = Snapshot::new(Arc::new(cpl_next::Std::read()), cpl_next::Roots::std(), "");
+    let std = Snapshot::new(cpl_next::facade::World::Closed);
     let found: String = (Session::open(std).std_unchecked().into_iter())
         .map(|(m, ds)| format!("{m}\t{}\n", ds.len()))
         .collect();

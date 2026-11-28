@@ -23,28 +23,33 @@ switching landing then puts `cpl_next::facade` behind `cpl-facade`'s
 
 ```rust
 struct Snapshot {                       // contract 0; cheap to clone, never changed in place
-    program: Text,                      // the user's file
-    roots: Roots,                       // the libraries cp.toml names, read by whoever builds it
-    std: Arc<Std>,                      // shared by every snapshot of a session or a worker
+    files: List<(FileId, Text)>,        // cpl-contract's types, the ones cpl-facade's API names
+    world: World,                       // Disk: a file's cp.toml names its libraries; Closed: std only
+    std: Arc<Std>,                      // built in, or read by whoever builds the snapshot
     events: bool,                       // a run reports semantic events (trace)
 }
 impl Snapshot {
-    fn new(std: Arc<Std>, roots: Roots, program: Text) -> Snapshot
-    fn with_program(&self, text: Text) -> Snapshot        // shares std and roots
+    fn new(world: World) -> Snapshot
+    fn with_file(&self, file: impl AsRef<str>, text: impl AsRef<str>) -> Snapshot
+    fn without_file(&self, file: &FileId) -> Snapshot
+    fn text(&self, file: &FileId) -> Option<&Text>
+    fn files(&self) -> impl Iterator<Item = (&FileId, &Text)>
+    fn world(&self) -> World
+    fn with_std_lib(&self, std: Arc<Std>) -> Snapshot   // `cpl-next --std DIR`
     fn traced(&self) -> Snapshot                         // runs report semantic events
     fn with_bodies(&self) -> Snapshot                    // `@fast` fns run their CP bodies
 }
 
-impl Session {
+impl Session {                                           // every answer is per file, computed once
     fn open(snapshot: Snapshot) -> Session              // computes nothing yet
     fn snapshot(&self) -> &Snapshot
     // typing path
-    fn diagnostics(&self, upto: Layer) -> List<&Diag>    // Layer::Typed | Layer::Program
-    fn units(&self) -> (&[Unit], &[Diag])                // the editor's view: each fn or statement
+    fn diagnostics(&self, file: &str, upto: Layer) -> List<&Diag>    // Layer::Typed | Layer::Program
+    fn units(&self, file: &str) -> (&[Unit], &[Diag])                // the editor's view
     fn std_unchecked(&self) -> List<(Module, usize)>     // every std fn checked (suite 4)
     // build and run
-    fn program(&self) -> Result<&Program, &[Diag]>
-    fn verdict(&self) -> Verdict                         // Accepted | Rejected | Refused: the exit rule
+    fn program(&self, file: &str) -> Result<&Program, &[Diag]>
+    fn verdict(&self, file: &str) -> Verdict             // Accepted | Rejected | Refused: the exit rule
 }
 impl Program {
     fn run(&self, backend: Backend, input: &str) -> Outcome   // Raw | Canonical | Engine
@@ -108,8 +113,8 @@ named type's arguments. The facade's `Type` answers them without naming a
 std type, since `List`, `Array` and `Optional` are ordinary declarations:
 
 ```rust
-fn type_at(&self, at: u32) -> Option<Type<'_>>
-fn types_in(&self, span: Span) -> Vec<(Span, Type<'_>)> // outermost first
+fn type_at(&self, file: &str, at: u32) -> Option<Type<'_>>
+fn types_in(&self, file: &str, span: Span) -> Vec<(Span, Type<'_>)> // outermost first
 struct Type<'s>(..)                      // opaque, borrows the session's typed tree
 impl Type<'_> {
     fn text(&self) -> String             // as a diagnostic writes it (show_ty)

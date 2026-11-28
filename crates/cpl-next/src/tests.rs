@@ -967,38 +967,30 @@ fn a_body_adding_to_a_global_set_leaves_its_readers_typed_the_same() {
 #[test]
 fn a_session_answers_from_its_snapshot() {
     use crate::facade::{Layer, Session, Snapshot, Verdict};
-    let ok = Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        "print(1 + 2)\n",
-    );
-    let bad = ok.with_program("print(nope)\n");
+    let ok = Snapshot::new(crate::facade::World::Closed).with_file("program.cp", "print(1 + 2)\n");
+    let bad = ok.with_file("program.cp", "print(nope)\n");
     let (ok, bad) = (Session::open(ok), Session::open(bad));
-    assert_eq!(ok.verdict(), Verdict::Accepted);
+    assert_eq!(ok.verdict("program.cp"), Verdict::Accepted);
     assert_eq!(
-        ok.program().map(|p| p.run("").output).ok(),
+        ok.program("program.cp").map(|p| p.run("").output).ok(),
         Some("3\n".into())
     );
-    assert_eq!(bad.verdict(), Verdict::Rejected);
-    let said: Vec<_> = (bad.diagnostics(Layer::Typed).iter())
+    assert_eq!(bad.verdict("program.cp"), Verdict::Rejected);
+    let said: Vec<_> = (bad.diagnostics("program.cp", Layer::Typed).iter())
         .map(|d| d.code())
         .collect();
     assert_eq!(said, [Some("E0201")]);
-    assert_eq!(ok.verdict(), Verdict::Accepted);
+    assert_eq!(ok.verdict("program.cp"), Verdict::Accepted);
 }
 
 #[test]
 fn hover_and_definition_read_the_scope_and_signatures() {
     use crate::facade::{Session, Snapshot};
     let src = "fn twice(n: Int) -> Int:\n    n * 2\n\nprint(twice(3))\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
     let call = src.rfind("twice").unwrap() as u32 + 2;
-    assert_eq!(s.hover(call), Some("fn twice(n: Int) -> Int"));
-    let d = s.definition(call).unwrap();
+    assert_eq!(s.hover("program.cp", call), Some("fn twice(n: Int) -> Int"));
+    let d = s.definition("program.cp", call).unwrap();
     assert_eq!(
         (
             d.line,
@@ -1007,8 +999,10 @@ fn hover_and_definition_read_the_scope_and_signatures() {
         (1, "fn")
     );
     let local = src.find("n * 2").unwrap() as u32;
-    assert_eq!(s.hover(local), None);
-    let print = s.definition(src.find("print").unwrap() as u32).unwrap();
+    assert_eq!(s.hover("program.cp", local), None);
+    let print = s
+        .definition("program.cp", src.find("print").unwrap() as u32)
+        .unwrap();
     assert_eq!(print.module, "std.show");
     assert!(print.head.starts_with("pub fn print<"), "{}", print.head);
 }
@@ -1149,35 +1143,34 @@ fn a_trait_argument_takes_the_marks_of_its_argument() {
 fn type_at_reads_the_typed_tree() {
     use crate::facade::{Session, Snapshot};
     let src = "fn twice(n: Int) -> Int:\n    n * 2\n\nlet b = 3 < 4\nlet c = twice(3)\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
-    assert!(s.program().is_ok());
-    let at = |text: &str| s.type_at(src.find(text).unwrap() as u32).map(|t| t.text());
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    assert!(s.program("program.cp").is_ok());
+    let at = |text: &str| {
+        s.type_at("program.cp", src.find(text).unwrap() as u32)
+            .map(|t| t.text())
+    };
     assert_eq!(at("n * 2").as_deref(), Some("Int"));
     assert_eq!(at("< 4").as_deref(), Some("Bool"));
     assert_eq!(at("twice(3)").as_deref(), Some("Int"));
-    assert!(s.type_at(src.len() as u32).is_none());
-    let int = s.type_at(src.find("twice(3)").unwrap() as u32).unwrap();
+    assert!(s.type_at("program.cp", src.len() as u32).is_none());
+    let int = s
+        .type_at("program.cp", src.find("twice(3)").unwrap() as u32)
+        .unwrap();
     assert_eq!(
         (int.range(), int.decl(), int.args().len()),
         (Some((None, None)), None, 0)
     );
     let whole = cpl_diag::Span::new(0, src.len() as u32);
-    let outermost: Vec<String> = (s.types_in(whole).iter())
+    let outermost: Vec<String> = (s.types_in("program.cp", whole).iter())
         .filter(|(span, _)| src[span.start as usize..].starts_with("3 < 4"))
         .map(|(_, t)| t.text())
         .collect();
     assert_eq!(outermost, ["Bool", "Int"]);
     let src = "struct P:\n    a: Int\nlet p = P(a: 1)\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
-    let p = s.type_at(src.find("P(a").unwrap() as u32).unwrap();
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    let p = s
+        .type_at("program.cp", src.find("P(a").unwrap() as u32)
+        .unwrap();
     let decl = p.decl().unwrap();
     assert_eq!(
         (p.text(), decl.line, decl.head.as_str()),
@@ -1196,13 +1189,9 @@ fn complete_lists_the_scope_names_a_prefix_starts() {
     use crate::facade::{Session, Snapshot};
     let src =
         "fn twice(n: Int) -> Int:\n    n * 2\n\nfn triple(n: Int) -> Int:\n    n * 3\n\nlet c = twi";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
     let names = |at: usize| -> Vec<String> {
-        s.complete(at as u32)
+        s.complete("program.cp", at as u32)
             .iter()
             .map(|(n, _)| n.to_string())
             .collect()
@@ -1214,7 +1203,7 @@ fn complete_lists_the_scope_names_a_prefix_starts() {
             && t.contains(&"twice".into())
             && t.iter().all(|n| n.starts_with('t'))
     );
-    let print = s.complete(src.find("fn twice").unwrap() as u32);
+    let print = s.complete("program.cp", src.find("fn twice").unwrap() as u32);
     assert!(print
         .iter()
         .any(|(n, i)| *n == "print" && i.module == "std.show"));
@@ -1224,12 +1213,8 @@ fn complete_lists_the_scope_names_a_prefix_starts() {
 fn assigning_a_let_offers_var() {
     use crate::facade::{Session, Snapshot};
     let src = "let total = 1\nfn bump() -> Int:\n    total = 2\n    total\nprint(bump())\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
-    let diags = s.program().err().expect("refused");
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    let diags = s.program("program.cp").err().expect("refused");
     let d = (diags.iter())
         .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::ASSIGN_TO_LET))
         .expect("E0405");
@@ -1246,12 +1231,8 @@ fn assigning_a_let_offers_var() {
 fn a_question_in_a_condition_offers_none_as_false() {
     use crate::facade::{Session, Snapshot};
     let src = "fn first(xs: List<Int>) -> ?Bool:\n    if xs.first()? > 0:\n        return true\n    false\nprint(first([1]))\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
-    let diags = s.program().err().expect("refused");
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    let diags = s.program("program.cp").err().expect("refused");
     let d = (diags.iter())
         .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::QUESTION_IN_CONDITION))
         .unwrap_or_else(|| panic!("{diags:?}"));
@@ -1267,12 +1248,8 @@ fn a_question_in_a_condition_offers_none_as_false() {
 fn an_unknown_std_name_offers_its_use_line() {
     use crate::facade::{Session, Snapshot};
     let src = "// mo\nprint(mo_order(3))\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
-    let diags = s.program().err().expect("refused");
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    let diags = s.program("program.cp").err().expect("refused");
     let d = (diags.iter())
         .find(
             |d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::UNRESOLVED_NAME),
@@ -1289,12 +1266,8 @@ fn an_unknown_std_name_offers_its_use_line() {
 fn an_unknown_name_offers_the_closest_in_scope() {
     use crate::facade::{Session, Snapshot};
     let src = "let total = 1\nprint(totl)\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
-    let diags = s.program().err().expect("refused");
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    let diags = s.program("program.cp").err().expect("refused");
     let d = (diags.iter())
         .find(
             |d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::UNRESOLVED_NAME),
@@ -1314,11 +1287,9 @@ fn an_unknown_name_offers_the_closest_in_scope() {
 #[test]
 fn dump_ir_prints_each_stage_and_a_rejections_diagnostics() {
     let open = |src: &str| {
-        facade::Session::open(facade::Snapshot::new(
-            std::sync::Arc::new(Std::read()),
-            Roots::std(),
-            src,
-        ))
+        facade::Session::open(
+            facade::Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src),
+        )
     };
     let s = open("fn twice(n: Int) -> Int = n * 2\nprint(twice(3))\n");
     for stage in [
@@ -1327,11 +1298,16 @@ fn dump_ir_prints_each_stage_and_a_rejections_diagnostics() {
         IrStage::Canonical,
         IrStage::Optimized,
     ] {
-        let text = s.ir(stage).unwrap();
+        let text = s.ir("program.cp", stage).unwrap();
         assert!(text.contains("\"twice\""), "{stage:?}: {text}");
     }
-    assert_ne!(s.ir(IrStage::Raw).unwrap(), s.ir(IrStage::Owned).unwrap());
-    assert!(open("print(nope)\n").ir(IrStage::Owned).is_err());
+    assert_ne!(
+        s.ir("program.cp", IrStage::Raw).unwrap(),
+        s.ir("program.cp", IrStage::Owned).unwrap()
+    );
+    assert!(open("print(nope)\n")
+        .ir("program.cp", IrStage::Owned)
+        .is_err());
     assert_eq!(IrStage::named("optimized"), Some(IrStage::Optimized));
     assert_eq!(IrStage::named("opt"), None);
 }
@@ -1340,12 +1316,8 @@ fn dump_ir_prints_each_stage_and_a_rejections_diagnostics() {
 fn a_lends_without_its_arrow_offers_to_insert_it() {
     use crate::facade::{Session, Snapshot};
     let src = "domain V = 1..=4\nvar a: [V]Int = 0\nfn get(xs: [V]Int, l: V) lends Int = xs[l]\nprint(get(a, 1))\n";
-    let s = Session::open(Snapshot::new(
-        std::sync::Arc::new(Std::read()),
-        Roots::std(),
-        src,
-    ));
-    let diags = s.program().err().expect("refused");
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    let diags = s.program("program.cp").err().expect("refused");
     let d = (diags.iter())
         .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::EXPECTED_TOKEN))
         .unwrap_or_else(|| panic!("{diags:?}"));
@@ -1364,9 +1336,10 @@ fn the_memory_limit_is_the_judge_the_snapshot_is_built_for() {
     use crate::facade::{Session, Snapshot};
     let src =
         "let n: 1..=1e9 = read()\ndomain V = 0..n\nlet a: [V]Int = [V].filled(0)\nprint(a[V(0)])\n";
-    let base = Snapshot::new(std::sync::Arc::new(Std::read()), Roots::std(), src);
-    let over =
-        |s: Snapshot| (Session::open(s).units().1.iter()).any(|d| d.json().contains("E0904"));
+    let base = Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src);
+    let over = |s: Snapshot| {
+        (Session::open(s).units("program.cp").1.iter()).any(|d| d.json().contains("E0904"))
+    };
     assert!(!over(base.clone()), "no judge, no memory limit");
     assert!(over(base.with_judge("test", 256)));
     assert!(!over(base.with_judge("test", 1 << 20)));

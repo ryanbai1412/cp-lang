@@ -1860,7 +1860,7 @@ def next_asks_refused(root: Path) -> list[str]:
 
 
 # `cpl-syntax` is counted on its own, by `next_syntax_old_refs`.
-NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config")
+NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config", "cpl-contract")
 
 
 def next_layer_foreign_deps(root: Path) -> list[str]:

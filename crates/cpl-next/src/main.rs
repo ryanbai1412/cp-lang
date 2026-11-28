@@ -12,8 +12,8 @@
 //! `cpl-next dump-ir --stage raw|owned|canonical|optimized FILE` prints FILE's IR at that stage
 //! through the facade: lowering's generic fns, the linked instances after ownership, then
 //! canonical and optimized IR.
-use cpl_next::facade::{Session, Snapshot, Verdict};
-use cpl_next::{Form, IrStage, Roots, Std};
+use cpl_next::facade::{Session, Snapshot, Verdict, World};
+use cpl_next::{Form, IrStage, Std};
 
 /// The `cpl-next` binary's allocator: malloc and free took a sixth of a worker's check.
 #[cfg(not(target_arch = "wasm32"))]
@@ -64,7 +64,7 @@ fn real_main() {
     }
     if has("--std-modules") {
         let std = judged(
-            Snapshot::new(Arc::new(std_in_use(&args)), Roots::std(), ""),
+            Snapshot::new(World::Closed).with_std_lib(Arc::new(std_in_use(&args))),
             &args,
         );
         // `--std-modules std.x` shows the diagnostics of the modules it begins; alone, each
@@ -96,7 +96,8 @@ fn real_main() {
         }
     };
     let mut snapshot = judged(
-        Snapshot::new(Arc::new(std_in_use(&args)), roots(path), &src),
+        (Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(&args))))
+            .with_file(path, &src),
         &args,
     );
     if has("--trace") {
@@ -106,7 +107,7 @@ fn real_main() {
         snapshot = snapshot.with_bodies();
     }
     let session = Session::open(snapshot);
-    let c = match session.program() {
+    let c = match session.program(path) {
         Ok(c) => c,
         Err(ds) => {
             for d in ds {
@@ -115,7 +116,7 @@ fn real_main() {
                     false => println!("{d}"),
                 }
             }
-            std::process::exit(code(session.verdict()));
+            std::process::exit(code(session.verdict(path)));
         }
     };
     if has("--check") {
@@ -157,25 +158,19 @@ fn dump_ir(args: &[String]) {
         std::process::exit(2);
     });
     let session = Session::open(judged(
-        Snapshot::new(Arc::new(std_in_use(args)), roots(path), &src),
+        (Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(args)))).with_file(path, &src),
         args,
     ));
-    match session.ir(stage) {
+    match session.ir(path, stage) {
         // A reader that stops early (`| head`) is not an error.
         Ok(text) => drop(std::io::stdout().write_all(text.as_bytes())),
         Err(ds) => {
             for d in ds {
                 println!("{d}");
             }
-            std::process::exit(code(session.verdict()));
+            std::process::exit(code(session.verdict(path)));
         }
     }
-}
-
-/// Where FILE's libraries are: the `cp.toml` at or above its folder says.
-fn roots(path: &str) -> Roots {
-    let dir = (Path::new(path).parent()).filter(|d| !d.as_os_str().is_empty());
-    Roots::from(dir.unwrap_or(Path::new(".")))
 }
 
 /// 1: the program is rejected. 4: refused, which says nothing about the program.
@@ -190,7 +185,7 @@ fn code(v: Verdict) -> i32 {
 /// `--all`: every case on stdin compiled against one read of std.
 fn every_case(limit: Duration, events: bool, args: &[String]) {
     let std = judged(
-        Snapshot::new(Arc::new(std_in_use(args)), Roots::std(), ""),
+        Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(args))),
         args,
     );
     for line in std::io::stdin().lock().lines() {
@@ -212,7 +207,7 @@ fn every_case(limit: Duration, events: bool, args: &[String]) {
                 std::process::exit(2);
             }
         };
-        let mut snapshot = std.with_program(&src).with_roots(roots(path));
+        let mut snapshot = std.with_file(path, &src);
         if let Some((name, mb)) = judge.and_then(judge_given) {
             snapshot = snapshot.with_judge(name, mb);
         }
@@ -220,12 +215,16 @@ fn every_case(limit: Duration, events: bool, args: &[String]) {
             snapshot = snapshot.traced();
         }
         let session = Session::open(snapshot);
-        match session.program() {
+        match session.program(path) {
             Ok(c) => every_form(c, dir, limit.saturating_sub(started.elapsed()), &input),
             Err(ds) => {
                 let out: String = (ds.iter()).map(|d| d.json() + "\n").collect();
                 write(dir, "compiled.out", &out);
-                write(dir, "compiled.code", &code(session.verdict()).to_string());
+                write(
+                    dir,
+                    "compiled.code",
+                    &code(session.verdict(path)).to_string(),
+                );
             }
         }
         let mut stdout = std::io::stdout().lock();
