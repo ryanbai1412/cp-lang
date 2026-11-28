@@ -450,7 +450,7 @@ impl<'a> Machine<'a> {
             EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) | EK::DomCounted(_) => {
                 return broken("a domain value the link step did not resolve")
             }
-            EK::HasBound(..) => return broken("a bound test the link step did not decide"),
+            EK::HasBound(..) | EK::TypeValue(_) => return broken("a node the link step removes"),
             EK::Pass(..) => return broken("a place passed before ownership decided how"),
             EK::Copy(p) | EK::Lent(p) => self.place(fp, p)?.clone(),
             EK::AddrOf(p) => match p {

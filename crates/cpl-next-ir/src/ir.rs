@@ -380,6 +380,9 @@ pub struct Expr<T> {
 #[derive(Clone, Debug)]
 pub enum EK<T> {
     Int(i64),
+    /// A body's read of a value parameter `P` of type `T` (`Mod<P>`'s modulus), an `Int`.
+    /// Link gives it the constant its instance's argument holds, so no instance keeps it.
+    TypeValue(T),
     /// An `F64` constant, by its bits.
     F64(u64),
     Bool(bool),
@@ -645,6 +648,7 @@ pub fn visit_places<T>(b: &mut [Stmt<T>], f: &mut impl FnMut(&mut Place)) {
             | EK::DomLo(_)
             | EK::DomHeld(_)
             | EK::DomCounted(_)
+            | EK::TypeValue(_)
             | EK::HasBound(..) => {}
         }
     }
@@ -795,6 +799,7 @@ pub fn pure<T>(e: &Expr<T>) -> bool {
         | EK::DomLo(_)
         | EK::DomHeld(_)
         | EK::DomCounted(_)
+        | EK::TypeValue(_)
         | EK::HasBound(..) => true,
         EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().all(pure),
         EK::Inject(x) | EK::MakeUnion(_, x) => pure(x),

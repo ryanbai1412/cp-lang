@@ -32,6 +32,8 @@ pub enum CTy {
     /// `Tree<V>`'s `[0..V.count - 1]` axis. Its count is `D`'s plus `k - lo + 1`; a value of it
     /// is an `Int`.
     RangeTo(Box<CTy>, FnId, i64, i64),
+    /// A value parameter's argument (`Ty::Const`): `Mod<998_244_353>` is an instance of its own.
+    Const(i64),
     Error,
 }
 impl CTy {
@@ -58,6 +60,7 @@ impl CTy {
             CTy::Dom(i) => Ty::Dom(*i),
             CTy::Range(lo, hi) => Ty::Range(*lo, *hi),
             CTy::RangeTo(d, m, lo, k) => Ty::RangeTo(Box::new(d.to_ty()), *m, *lo, *k),
+            CTy::Const(k) => Ty::Const(ConstArg::Int(*k)),
             CTy::Error => Ty::Error,
         }
     }
@@ -214,7 +217,8 @@ pub fn holds(
         | CTy::Unit
         | CTy::Dom(_)
         | CTy::Range(..)
-        | CTy::RangeTo(..) => Holds::Nothing,
+        | CTy::RangeTo(..)
+        | CTy::Const(_) => Holds::Nothing,
         CTy::Ref(_) | CTy::Lent(_) | CTy::Error => Holds::Address,
         CTy::Struct(..) => most(&parts(t)),
         CTy::Clo(k) => clo(k),
@@ -292,6 +296,11 @@ mod tests {
         }
         assert_eq!(ts[4], Ty::Struct(s, vec![Ty::Int], vec![]));
         assert_eq!(ts[10], Ty::RangeTo(Box::new(Ty::Dom(1)), FnId(4), 0, 1));
+        // A constant argument is a type of its own, never the singleton range of its value.
+        let k = CTy::Const(5).to_ty();
+        assert_eq!(k, Ty::Const(ConstArg::Int(5)));
+        assert_ne!(k, CTy::Range(5, 5).to_ty());
+        assert_ne!(k, CTy::Const(6).to_ty());
         assert_eq!(CTy::Lent(Box::new(CTy::Int)).to_ty(), Ty::Int);
     }
 

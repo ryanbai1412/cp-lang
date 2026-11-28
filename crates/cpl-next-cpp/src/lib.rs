@@ -515,7 +515,8 @@ impl Emit<'_> {
             CTy::U64 => "uint64_t".to_string(),
             CTy::I128 => "__int128".to_string(),
             CTy::F64 => "double".to_string(),
-            CTy::Unit => "cpl_unit".to_string(),
+            // A constant argument only names an instance: no value has it as its type.
+            CTy::Unit | CTy::Const(_) => "cpl_unit".to_string(),
             CTy::Raw(e) => format!("cpl_raw<{}>", self.name(e)),
             CTy::Ref(e) => format!("{}*", self.name(e)),
             CTy::Lent(e) => format!("{} const*", self.name(e)),
@@ -644,6 +645,7 @@ impl Emit<'_> {
                 "/* unresolved domain value */".to_string()
             }
             EK::HasBound(..) => "/* undecided bound test */".to_string(),
+            EK::TypeValue(_) => "/* ungiven value parameter */".to_string(),
             EK::Copy(p) => self.place(p),
             EK::Lent(p) => format!("(&{})", self.place(p)),
             EK::AddrOf(p) => format!("(&{})", self.place(p)),

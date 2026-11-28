@@ -6,7 +6,7 @@ use crate::facts::Proved;
 use crate::ir::*;
 use crate::msg::Msg;
 use crate::prog::CTy;
-use crate::ty::{params_in, End, SetTy, Ty};
+use crate::ty::{params_in, ConstArg, End, SetTy, Ty};
 
 /// What a call site may assume of the instance it calls: whether it is an operator
 /// (`Func::fast`), and which of its params it views (`Func::views`).
@@ -66,6 +66,7 @@ impl StageTy for Ty {
         let set = |s: &SetTy| matches!(s, SetTy::Var(_)).then_some("an unsolved set variable");
         match self {
             Ty::Var(_) => Some("an unsolved type variable"),
+            Ty::Const(ConstArg::At(_)) => Some("a constant argument check did not evaluate"),
             Ty::Lent(_) | Ty::Ref(_) => Some("a lend or reference chosen before ownership"),
             Ty::Raw(t) | Ty::Mut(t) | Ty::RangeTo(t, ..) => t.wrong(Stage::Generic),
             Ty::RangeEnds { lo, hi, .. } => {
@@ -457,6 +458,12 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
                 self.args(xs, "a call's argument");
             }
             EK::DomLen(t) | EK::DomLo(t) | EK::DomHeld(t) | EK::DomCounted(t) => self.ty(t),
+            EK::TypeValue(t) => {
+                if self.stage >= Stage::Instances {
+                    self.bad("a value parameter's read left for an instance".into());
+                }
+                self.ty(t);
+            }
             EK::HasBound(t, _, ts) => [t].into_iter().chain(ts).for_each(|t| self.ty(t)),
             EK::Int(_) | EK::F64(_) | EK::Bool(_) | EK::Unit | EK::Text(_) => {}
         }

@@ -43,6 +43,9 @@ pub enum Ty {
         hi: End,
         inclusive: bool,
     },
+    /// A constant as a value parameter's argument: `998_244_353` of `Mod<998_244_353>`, a
+    /// type of its own and never a range (R08.2.4).
+    Const(ConstArg),
     Bool,
     /// An ASCII character, `0..=127`, one byte.
     Char,
@@ -268,6 +271,14 @@ pub enum CloRef {
     Lambda(LambdaId, Vec<Ty>, Vec<SetTy>),
 }
 
+/// A value parameter's argument: its value, or before check resolves it, the constant
+/// expression written for it (`1e9 + 7`), evaluated once through `Consts::value`.
+#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum ConstArg {
+    Int(i64),
+    At(crate::ids::SourceId),
+}
+
 /// Substitution of type and set parameters.
 pub struct Subst<'a> {
     pub tys: &'a [Ty],
@@ -283,7 +294,10 @@ impl Subst<'_> {
             Ty::RangeEnds { lo, hi, inclusive } => {
                 let end = |e: &End| match e {
                     End::Lit(k) => End::Lit(*k),
-                    End::Of(t) => End::Of(Box::new(self.ty(t))),
+                    End::Of(t) => match self.ty(t) {
+                        Ty::Const(ConstArg::Int(k)) => End::Lit(k),
+                        t => End::Of(Box::new(t)),
+                    },
                     End::Global { id, within } => End::Global {
                         id: *id,
                         within: *within,
@@ -422,6 +436,25 @@ impl Ty {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `0..P` of `Mod<P>` instanced at `P = 7` is the range `0..=6`; an end still a parameter
+    /// keeps the other end's constant as a literal.
+    #[test]
+    fn a_constant_argument_ends_a_range_as_a_literal() {
+        let ends = |lo, hi| Ty::RangeEnds {
+            lo,
+            hi,
+            inclusive: false,
+        };
+        let p = |i| End::Of(Box::new(Ty::Param(i)));
+        let seven = [Ty::Const(ConstArg::Int(7)), Ty::Param(1)];
+        let sub = Subst {
+            tys: &seven,
+            sets: &[],
+        };
+        assert_eq!(sub.ty(&ends(End::Lit(0), p(0))), Ty::Range(0, 6));
+        assert_eq!(sub.ty(&ends(p(0), p(1))), ends(End::Lit(7), p(1)));
+    }
 
     #[test]
     fn a_fn_value_holds_an_address_and_is_copied() {

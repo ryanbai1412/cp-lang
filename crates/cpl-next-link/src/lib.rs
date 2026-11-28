@@ -547,6 +547,9 @@ impl Link<'_> {
             Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. } => {
                 CTy::Int
             }
+            // Check has evaluated every constant argument; one it left unresolved has no instance.
+            Ty::Const(ConstArg::Int(k)) => CTy::Const(*k),
+            Ty::Const(ConstArg::At(_)) => CTy::Error,
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
             Ty::U64 => CTy::U64,
@@ -1146,6 +1149,12 @@ impl Link<'_> {
         let ty = self.ty(&e.ty, env);
         let kind = match &e.kind {
             EK::Int(i) => EK::Int(*i),
+            // A value parameter's read is the constant its instance is for (verify refuses one
+            // left over).
+            EK::TypeValue(t) => match self.targ(t, env) {
+                CTy::Const(k) => EK::Int(k),
+                t => EK::TypeValue(t),
+            },
             EK::F64(b) => EK::F64(*b),
             EK::Bool(b) => EK::Bool(*b),
             EK::Text(t) => EK::Text(t.clone()),

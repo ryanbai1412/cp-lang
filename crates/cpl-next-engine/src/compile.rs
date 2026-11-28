@@ -1083,6 +1083,7 @@ impl Fc<'_> {
                 self.fail("a domain value the link step did not resolve")
             }
             EK::HasBound(..) => self.fail("a bound test the link step did not decide"),
+            EK::TypeValue(_) => self.fail("a value parameter's read the link step did not give"),
             EK::Call(Target::Inst(f), args, site) if let Some(op) = self.funcs[*f].fast => {
                 self.intr(op, args, self.origin(*site), &e.ty, d)
             }

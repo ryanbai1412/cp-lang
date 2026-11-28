@@ -64,7 +64,8 @@ impl Layouts {
             return l;
         }
         let (shape, size) = match t {
-            CTy::Unit | CTy::Error => (Shape::Zero, 0),
+            // A constant argument only names an instance: no value has it as its type.
+            CTy::Unit | CTy::Error | CTy::Const(_) => (Shape::Zero, 0),
             CTy::Int
             | CTy::Range(..)
             | CTy::RangeTo(..)

@@ -372,6 +372,7 @@ impl Lw<'_> {
             | EK::DomLo(_)
             | EK::DomHeld(_)
             | EK::DomCounted(_)
+            | EK::TypeValue(_)
             | EK::HasBound(..) => {}
         }
     }

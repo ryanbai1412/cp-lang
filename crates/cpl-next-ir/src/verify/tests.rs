@@ -283,3 +283,29 @@ fn instances_refuse_a_call_or_return_not_of_the_result_type() {
     wrong.ret = lent;
     assert_eq!(instances(&[wrong], Stage::Raw, 0).len(), 1);
 }
+
+/// `kept` with a value parameter's read first.
+fn read<T: Clone>(t: T) -> Func<T> {
+    let mut f = kept(t);
+    f.body.insert(
+        0,
+        Stmt::Expr(e(EK::TypeValue(f.ret.clone()), f.ret.clone())),
+    );
+    f
+}
+
+/// A value parameter's read is generic IR's until link gives it its constant; an instance
+/// keeping it, or a constant argument check left as written, is refused.
+#[test]
+fn a_value_parameters_read_is_gone_after_link() {
+    assert!(check(&read(Ty::Param(0)), Stage::Generic, &[], 0).is_empty());
+    assert!(!check(&read(CTy::Int), Stage::Instances, &[], 0).is_empty());
+    let at = ItemId::file(crate::ids::FileId::new("m"), "m".into()).at(cpl_diag::Span::new(0, 0));
+    let mut f = kept(Ty::Int);
+    f.locals[0] = Ty::Struct(
+        crate::ty::StructId(0),
+        vec![Ty::Const(ConstArg::At(at))],
+        vec![],
+    );
+    assert!(!check(&f, Stage::Generic, &[], 0).is_empty());
+}

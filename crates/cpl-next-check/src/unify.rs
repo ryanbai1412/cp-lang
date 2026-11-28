@@ -1359,6 +1359,8 @@ pub fn show_ty(
             };
             lo.to_string() + &format!("..={}.{}{k}", show(&d), items.f(m).name)
         }
+        Ty::Const(cpl_next_ir::ty::ConstArg::Int(k)) => k.to_string(),
+        Ty::Const(cpl_next_ir::ty::ConstArg::At(_)) => "a constant".into(),
         Ty::Bool => "Bool".into(),
         Ty::Char => "Char".into(),
         Ty::U64 => "U64".into(),
