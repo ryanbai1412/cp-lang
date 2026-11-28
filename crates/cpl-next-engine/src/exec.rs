@@ -6,6 +6,10 @@ use crate::layout::Lay;
 use crate::Stop;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::run::{Io, Limits, RunInput, Stack};
+
+/// Host stack a call may still take before [`SEGMENT`] more is mapped for it.
+const RED_ZONE: usize = 1 << 20;
+const SEGMENT: usize = 64 << 20;
 use cpl_next_ir::run::{Outcome, Trap, Written};
 
 struct Obj {
@@ -434,7 +438,12 @@ impl M<'_> {
         })
     }
     /// A call from frame `fr`: arguments to the new frame, the run, lent values back.
+    /// A call. Until the engine runs on its own frame stack it recurses natively here, so the
+    /// host stack grows in segments past the thread's and R0601 (`Stack::enter`) runs out first.
     fn call(&mut self, c: u32, fr: usize, region: Option<RegionAt>) -> R<Option<Flow>> {
+        stacker::maybe_grow(RED_ZONE, SEGMENT, || self.call_here(c, fr, region))
+    }
+    fn call_here(&mut self, c: u32, fr: usize, region: Option<RegionAt>) -> R<Option<Flow>> {
         let cc = &self.c.calls[c as usize];
         let fc = &self.c.funcs[cc.f as usize];
         let fp = self.frames[fr].fp;

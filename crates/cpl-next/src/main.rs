@@ -21,7 +21,8 @@ use std::io::Write;
 use std::sync::Arc;
 
 fn main() {
-    cli::on_big_stack(real_main)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    cli::on_run_stack(cli::limits(&args), real_main)
 }
 
 fn real_main() {

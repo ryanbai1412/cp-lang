@@ -121,48 +121,52 @@ impl<'a> Machine<'a> {
         calls
     }
     /// Runs a fn. Returns its result, what its lent parameters hold now, and how a region body left, if it did.
+    /// A call of `f`. It recurses natively, its host frames larger than the run's counted words,
+    /// so the host stack grows in segments (`stacker`) and R0601 (`Stack::enter`) runs out first.
     fn call(
         &mut self,
         f: usize,
         args: Vec<V>,
         region: Option<Region<'a>>,
     ) -> R<(V, Vec<V>, Option<Flow>)> {
-        let func: &'a Func<CTy> = &self.funcs[f];
-        let mut locals = vec![V::Unit; func.locals.len()];
-        for ((l, _), a) in func.params.iter().zip(args) {
-            locals[*l] = a;
-        }
-        // Spec 9.6: no depth counting in the language; the stack runs out at the run's limit.
-        self.room.stack.enter(f, self.frames.len())?;
-        let parent = (!self.frames.is_empty()).then_some(self.cur);
-        self.frames.push(Frame {
-            locals,
-            f,
-            parent,
-            origin: self.at,
-            region,
-            pending: None,
-        });
-        let fp = self.frames.len() - 1;
-        self.cur = fp;
-        let flow = self.block(&func.body, fp)?;
-        let Some(mut frame) = self.frames.pop() else {
-            return broken("a call returned with no frame");
-        };
-        self.cur = frame.parent.unwrap_or(0);
-        let (ret, exit) = match flow {
-            Flow::Return(v) => (v, frame.pending.take()),
-            Flow::Exit(f) => (V::Unit, Some(*f)),
-            _ => (V::Unit, frame.pending.take()),
-        };
-        // What the lent parameters hold now goes back to the caller's places.
-        let back = func
-            .params
-            .iter()
-            .filter(|(_, lent)| *lent)
-            .map(|(l, _)| std::mem::take(&mut frame.locals[*l]))
-            .collect();
-        Ok((ret, back, exit))
+        stacker::maybe_grow(1 << 20, 64 << 20, || {
+            let func: &'a Func<CTy> = &self.funcs[f];
+            let mut locals = vec![V::Unit; func.locals.len()];
+            for ((l, _), a) in func.params.iter().zip(args) {
+                locals[*l] = a;
+            }
+            // Spec 9.6: no depth counting in the language; the stack runs out at the run's limit.
+            self.room.stack.enter(f, self.frames.len())?;
+            let parent = (!self.frames.is_empty()).then_some(self.cur);
+            self.frames.push(Frame {
+                locals,
+                f,
+                parent,
+                origin: self.at,
+                region,
+                pending: None,
+            });
+            let fp = self.frames.len() - 1;
+            self.cur = fp;
+            let flow = self.block(&func.body, fp)?;
+            let Some(mut frame) = self.frames.pop() else {
+                return broken("a call returned with no frame");
+            };
+            self.cur = frame.parent.unwrap_or(0);
+            let (ret, exit) = match flow {
+                Flow::Return(v) => (v, frame.pending.take()),
+                Flow::Exit(f) => (V::Unit, Some(*f)),
+                _ => (V::Unit, frame.pending.take()),
+            };
+            // What the lent parameters hold now goes back to the caller's places.
+            let back = func
+                .params
+                .iter()
+                .filter(|(_, lent)| *lent)
+                .map(|(l, _)| std::mem::take(&mut frame.locals[*l]))
+                .collect();
+            Ok((ret, back, exit))
+        })
     }
     fn place(&mut self, fp: usize, p: &Place) -> R<&mut V> {
         Ok(match p {

@@ -11,7 +11,7 @@ Where everything lives: one line per top-level path.
 | `handbook/` | How we work: product, process, design, domain charters, RFCs. Start at `handbook/README.md`. |
 | `CHANGELOG.md` | User-visible changes per release. |
 | `LICENSE-MIT`, `LICENSE-APACHE` | Dual licence: MIT or Apache 2.0. |
-| `Cargo.toml`, `Cargo.lock` | Rust workspace. A third-party crate stays only if it adds little build time and clearly pays for itself, measured and logged in decisions.md; today: mimalloc and its build-time C toolchain (decision 318). |
+| `Cargo.toml`, `Cargo.lock` | Rust workspace. A third-party crate stays only if it adds little build time and clearly pays for itself, measured and logged in decisions.md; today: mimalloc and its build-time C toolchain (decision 318), and stacker for the interpreters' call recursion (decision 656). |
 | `mise.toml`, `rust-toolchain.toml` | Pinned toolchains: Rust, Python (uv), Node (pnpm). |
 | `pyproject.toml`, `uv.lock` | Python dependencies of the scripts. |
 | `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml` | JS workspace: `web/` and `editors/vscode/`. |

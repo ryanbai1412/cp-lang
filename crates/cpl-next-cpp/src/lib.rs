@@ -367,11 +367,12 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32], limits: &Limits) ->
         }
         put_line!(s, "}}");
     }
-    // Spec 9.6: `main` runs on a thread with a 1 GB stack.
+    // Spec 9.6: `main` runs on a thread with the judge's stack, the run's `Limits::stack`.
     put_line!(s, "static void* cpl_main(void*) {{ cpl_guard_stack(); f{}(); fflush(stdout); cpl_tflush(); return nullptr; }}", p.main);
     put_line!(
         s,
-        "int main() {{ pthread_attr_t a; pthread_t t; pthread_attr_init(&a); pthread_attr_setstacksize(&a, (size_t)1 << 30);\n    if (pthread_create(&t, &a, cpl_main, nullptr)) {{ cpl_main(nullptr); return 0; }}\n    pthread_join(t, nullptr); return 0; }}"
+        "int main() {{ pthread_attr_t a; pthread_t t; pthread_attr_init(&a); pthread_attr_setstacksize(&a, (size_t){}ULL);\n    if (pthread_create(&t, &a, cpl_main, nullptr)) {{ cpl_main(nullptr); return 0; }}\n    pthread_join(t, nullptr); return 0; }}",
+        limits.stack
     );
     s
 }

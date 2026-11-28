@@ -27,10 +27,6 @@ use std::time::Duration;
 const USAGE: &str = "cpl-next-oracle FILE --raw|--canonical [--json] [--trace] [--bodies] [--judge NAME=MB] [--std DIR] | --all --within MS [--trace]";
 
 fn main() {
-    cli::on_big_stack(real_main)
-}
-
-fn real_main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if has(&args, "--all") {
         let at = args.iter().position(|a| a == "--within");
@@ -40,7 +36,12 @@ fn real_main() {
         };
         return every_case(Duration::from_millis(ms), has(&args, "--trace"), &args);
     }
-    let form = match (has(&args, "--raw"), has(&args, "--canonical")) {
+    cli::on_run_stack(cli::limits(&args), || one(&args))
+}
+
+/// FILE run on the reference interpreter.
+fn one(args: &[String]) {
+    let form = match (has(args, "--raw"), has(args, "--canonical")) {
         (true, false) => Form::Raw,
         (false, true) => Form::Canonical,
         _ => {
@@ -48,7 +49,7 @@ fn real_main() {
             std::process::exit(2);
         }
     };
-    let c = cli::program(&args, USAGE);
+    let c = cli::program(args, USAGE);
     let (p, fs) = c.form(form);
     // Output goes to stdout as the program flushes and reads, as `cpl-next`'s does.
     let input = c.streamed(Box::new(std::io::stdin()), Box::new(std::io::stdout()));
@@ -90,26 +91,29 @@ fn every_case(limit: Duration, events: bool, args: &[String]) {
                 std::process::exit(2);
             }
         };
-        let mut snapshot = std.with_file(path, &src);
-        if let Some((name, mb)) = judge.and_then(judge_given) {
-            snapshot = snapshot.with_judge(name, mb);
-        }
-        if events {
-            snapshot = snapshot.traced();
-        }
-        let session = Session::open(snapshot);
-        match session.program(path) {
-            Ok(c) => every_form(&c, dir, limit.saturating_sub(started.elapsed()), &input),
-            Err(ds) => {
-                let out: String = (ds.iter()).map(|d| d.json() + "\n").collect();
-                write(dir, "compiled.out", &out);
-                write(
-                    dir,
-                    "compiled.code",
-                    &code(session.verdict(path)).to_string(),
-                );
+        let given = judge.and_then(judge_given);
+        cli::on_run_stack(cli::limits_on(given), || {
+            let mut snapshot = std.with_file(path, &src);
+            if let Some((name, mb)) = judge.and_then(judge_given) {
+                snapshot = snapshot.with_judge(name, mb);
             }
-        }
+            if events {
+                snapshot = snapshot.traced();
+            }
+            let session = Session::open(snapshot);
+            match session.program(path) {
+                Ok(c) => every_form(&c, dir, limit.saturating_sub(started.elapsed()), &input),
+                Err(ds) => {
+                    let out: String = (ds.iter()).map(|d| d.json() + "\n").collect();
+                    write(dir, "compiled.out", &out);
+                    write(
+                        dir,
+                        "compiled.code",
+                        &code(session.verdict(path)).to_string(),
+                    );
+                }
+            }
+        });
         let mut stdout = std::io::stdout().lock();
         if writeln!(stdout, "done")
             .and_then(|()| stdout.flush())
