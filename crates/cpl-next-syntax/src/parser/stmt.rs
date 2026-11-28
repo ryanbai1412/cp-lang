@@ -348,9 +348,9 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// A `for` clause's `if` filter (01:356): a condition, where a `,`
+    /// A clause's `if` filter (01:356): a condition, where a `,`
     /// before `p in e` starts the next clause instead.
-    fn filter(&mut self) {
+    pub(super) fn filter(&mut self) {
         self.start(NodeKind::Condition);
         self.cond_part();
         while self.at(T::Comma) && !self.clause_after_comma() {
@@ -361,7 +361,7 @@ impl Parser<'_> {
     }
 
     /// `, x in e` or `, (a, b) in e` at the cursor.
-    fn clause_after_comma(&self) -> bool {
+    pub(super) fn clause_after_comma(&self) -> bool {
         match self.nth(1) {
             T::Ident => self.nth(2) == T::In,
             T::LParen => {

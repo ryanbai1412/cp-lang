@@ -334,21 +334,30 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `for p in xs if c`, one or more: a comprehension's or generator's.
+    /// `for p in xs if c, q in ys`: a comprehension's or generator's clauses, the first
+    /// holding the `for` (01:298, 353). A `,` not before `p in e` ends them.
     fn clauses(&mut self) {
-        while self.at(T::For) {
-            self.start(NodeKind::CompClause);
-            self.bump();
+        self.start(NodeKind::CompClause);
+        self.bump();
+        loop {
             self.pattern();
             if self.want(T::In, "`in` and what to walk") {
                 self.expr_at(Level::Expr);
             }
             while self.eat(T::If) {
-                self.start(NodeKind::Condition);
-                self.cond_part();
-                self.finish();
+                self.filter();
             }
             self.finish();
+            if self.at(T::For) {
+                self.start(NodeKind::CompClause);
+                self.bump();
+                continue;
+            }
+            if !(self.at(T::Comma) && self.clause_after_comma()) {
+                break;
+            }
+            self.bump();
+            self.start(NodeKind::CompClause);
         }
     }
 

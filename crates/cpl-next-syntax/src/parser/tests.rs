@@ -555,10 +555,11 @@ fn guard_let_is_reported_and_the_let_else_kept() {
 
 #[test]
 fn a_clause_filter_takes_let_binders_and_commas() {
-    let src = "for s in 0..2 if let c = kid[s], c > 0, j in 0..c, (a, b) in ps:\n    print(j)\nlet q = [y for x in xs if let y = f(x) if y > 1]\n";
+    let src = "for s in 0..2 if let c = kid[s], c > 0, j in 0..c, (a, b) in ps:\n    print(j)\nlet q = [y for x in xs if let y = f(x) if y > 1]\nlet r = [(x, y) for x in xs if x > 2, x < 4, y in xs if y < 2]\nprint(sum(x for x in xs, (a, b) in ps), 3)\n";
     let file = crate::parse(src);
     assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
     let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
     assert_eq!(count(NodeKind::ForClause), 3);
+    assert_eq!(count(NodeKind::CompClause), 5);
     assert_eq!(count(NodeKind::LetCond), 2);
 }
