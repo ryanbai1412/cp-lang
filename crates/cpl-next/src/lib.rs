@@ -7,9 +7,7 @@
 //! what it replaces.
 
 mod consts;
-pub mod db;
 pub mod facade;
-pub mod items;
 pub mod linked;
 
 use cpl_next_check as check;
@@ -66,7 +64,7 @@ pub struct Diag {
 
 impl Diag {
     /// The query database could not answer: the pipeline is at fault, not the program.
-    pub(crate) fn internal(e: &crate::db::DbError) -> Diag {
+    pub(crate) fn internal(e: &cpl_next_db::db::DbError) -> Diag {
         Diag {
             stage: Stage::Link,
             kind: Kind::Verdict(cpl_diag::codes::INTERNAL),

@@ -3,11 +3,11 @@
 //! compute runs the whole pipeline (`compile`) until decls, check and lower answer per item;
 //! the `cpl-next` crate move makes it read `generic(ItemId)` and link's per-item answers, and
 //! `next_snapshot_keyed_queries` counts it until then.
-use crate::db::{Db, DbError, Input, Query};
 use crate::facade::Program;
-use crate::items::Source;
 use crate::{compile, Diag, Roots, Std};
 use cpl_contract::{FileId, World};
+use cpl_next_db::db::{Db, DbError, Input, Query};
+use cpl_next_db::items::Source;
 use cpl_next_ir::build::{Checks, Judge};
 use std::path::Path;
 use std::sync::Arc;

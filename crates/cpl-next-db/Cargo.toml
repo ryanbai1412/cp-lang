@@ -1,0 +1,11 @@
+[package]
+name = "cpl-next-db"
+description = "The new pipeline's query database and the item queries every layer keys on. Reachable from cpl-next only."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cpl-contract.workspace = true
+cpl-next-ir.workspace = true
+cpl-next-syntax.workspace = true

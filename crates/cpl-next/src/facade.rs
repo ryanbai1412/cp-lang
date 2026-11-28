@@ -11,13 +11,13 @@ use std::sync::{Arc, OnceLock};
 
 pub use cpl_next_ir::build::Checks;
 
-use crate::db::{Db, DbError};
-use crate::items::Source;
 use crate::linked::{roots, Built, Job, Linked, Shared, StdLib, WorldOf};
 use crate::{
     dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage, Item,
     Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
 };
+use cpl_next_db::db::{Db, DbError};
+use cpl_next_db::items::Source;
 
 /// The only input of every query (contract 0): the files, where the libraries they use are
 /// found, and std. Cheap to clone; equal snapshots give equal answers.
