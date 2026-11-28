@@ -100,7 +100,7 @@ pub struct Mat<T>:
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
     /// traps: when `rows < 0` or `rows >= 2^31` or `cols < 0` or `cols >= 2^31`
     /// example: `Mat<Int>.zeros(2, 3).get(1, 2) == 0`
-    pub fn zeros(rows: Len, cols: Len) -> Mat<T>:
+    pub fn zeros(rows: Len, cols: Len) -> Mat<T> where T: Zero:
         assert rows >= 0 and cols >= 0
         Mat(rows, cols, List.filled(rows * cols, T.zero))
 
@@ -109,7 +109,7 @@ pub struct Mat<T>:
     /// cost: \(O(n^2)\) time and space
     /// traps: when `n < 0` or `n >= 2^31`
     /// example: `let m = Mat<Int>.identity(3); m.get(1, 1) == 1 and m.get(1, 2) == 0`
-    pub fn identity(n: Len) -> Mat<T>:
+    pub fn identity(n: Len) -> Mat<T> where T: One + Zero:
         assert n >= 0
         var d = List.filled(n * n, T.zero)
         for i in 0..n: d[i * n + i] = T.one
@@ -127,11 +127,11 @@ pub struct Mat<T>:
         Mat(rows, cols, data.clone())
 
     fn unit(n: Int, r: ?Ring<T>) -> Mat<T>:
-        if T: Add:
-            if let g = r: return Mat<T>.eye_in(n, g)
-            Mat<T>.identity(n)
-        else:
-            Mat<T>.eye_in(n, r!)
+        if T: Zero:
+            if T: One:
+                if let g = r: return Mat<T>.eye_in(n, g)
+                return Mat<T>.identity(n)
+        Mat<T>.eye_in(n, r!)
 
     fn eye_in(n: Int, g: Ring<T>) -> Mat<T>:
         var d = List.filled(n * n, g.zero)
@@ -228,7 +228,7 @@ pub struct Mat<T>:
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
     /// traps: never
     /// example: `Mat<Int>.from_rows([[1, 2, 3], [4, 5, 6]]).transpose().get(2, 1) == 6`
-    pub fn transpose(self) -> Mat<T>:
+    pub fn transpose(self) -> Mat<T> where T: Zero:
         if self.sentinel: return Mat(rows, cols, self.data, ring).transpose()
         var d = List.filled(rows * cols, T.zero)
         // In 16 x 16 tiles, so the strided writes stay in cache.
@@ -282,9 +282,9 @@ pub struct Mat<T>:
         let r: ?Ring<T> = ring_of(over)
         Monoid(Mat<T>.unit(n, r), (x, y) => x * y)
 
-    fn mag(x: T) -> T = if x < T.zero: T.zero - x else: x
+    fn mag(x: T) -> T where T: Zero + Ord + Sub = if x < T.zero: T.zero - x else: x
 
-    fn negligible(x: T, eps: T) -> Bool:
+    fn negligible(x: T, eps: T) -> Bool where T: Zero + Eq:
         if T: Ord:
             return Mat<T>.mag(x) <= eps
         else:
@@ -293,7 +293,7 @@ pub struct Mat<T>:
     /// The pivot row for `col` among rows `lo..hi` of the flat table `m` with row length `stride`, or
     /// `hi` if there is none: the largest `abs` entry above `eps` for an ordered `T`, else the first
     /// nonzero.
-    fn pivot(m: List<T>, lo: Int, hi: Int, stride: Int, col: Int, eps: T) -> Int:
+    fn pivot(m: List<T>, lo: Int, hi: Int, stride: Int, col: Int, eps: T) -> Int where T: Zero + Eq:
         if T: Ord:
             var piv = lo
             for r in lo + 1..hi:
@@ -315,7 +315,7 @@ pub struct Mat<T>:
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).det() == Mod<7>(0)`
     /// example: `abs(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]).det(eps: 1e-9) - 2.0) < 1e-9`
     /// example: `abs(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).det(eps: 1e-9)) < 1e-9`
-    pub fn det(self, eps: ?T = None) -> T:
+    pub fn det(self, eps: ?T = None) -> T where T: One + Zero + Div + Mul + Sub:
         assert rows == cols, "det requires a square matrix"
         let n = rows
         var m = cells.collect()
@@ -345,7 +345,7 @@ pub struct Mat<T>:
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).rank() == 1`
     /// example: `Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).rank(eps: 1e-9) == 1`
     /// example: `Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1e-12]]).rank(eps: 1e-9) == 1`
-    pub fn rank(self, eps: ?T = None) -> Int:
+    pub fn rank(self, eps: ?T = None) -> Int where T: One + Zero + Div + Mul + Sub:
         let e = eps ?? T.zero
         var m = cells.collect()
         var r = 0
@@ -378,7 +378,7 @@ pub struct Mat<T>:
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve_space([1, 2]) == Some(([Mod<7>(1), Mod<7>(0)], [[Mod<7>(5), Mod<7>(1)]]))`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve_space([1, 0]) == None`
-    pub fn solve_space(self, b: List<T>, eps: ?T = None) -> ?(List<T>, List<List<T>>):
+    pub fn solve_space(self, b: List<T>, eps: ?T = None) -> ?(List<T>, List<List<T>>) where T: One + Zero + Div + Mul + Sub:
         assert b.len == rows
         let e = eps ?? T.zero
         let k = cols
@@ -433,7 +433,7 @@ pub struct Mat<T>:
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve([1, 0]) == None`
     /// example: `let x = Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]).solve([3.0, 7.0], eps: 1e-9)!; abs(x[0] - 1.0) < 1e-9 and abs(x[1] - 1.0) < 1e-9`
     /// example: `Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).solve([1.0, 0.0], eps: 1e-9) == None`
-    pub fn solve(self, b: List<T>, eps: ?T = None) -> ?List<T>:
+    pub fn solve(self, b: List<T>, eps: ?T = None) -> ?List<T> where T: One + Zero:
         let res = self.solve_space(b, eps)
         if res == None: return None
         res!.0
@@ -448,7 +448,7 @@ pub struct Mat<T>:
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).inverse() == None`
     /// example: `let inv = Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]).inverse(eps: 1e-9)!; abs(inv.get(0, 0) - 1.5) < 1e-9 and abs(inv.get(1, 0) + 2.0) < 1e-9`
     /// example: `Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).inverse(eps: 1e-9) == None`
-    pub fn inverse(self, eps: ?T = None) -> ?Mat<T>:
+    pub fn inverse(self, eps: ?T = None) -> ?Mat<T> where T: One + Zero + Div + Mul + Sub:
         assert rows == cols, "inverse requires a square matrix"
         let n = rows
         let stride = 2 * n
@@ -486,7 +486,7 @@ pub struct Mat<T>:
     /// order: pivot columns increasing
     /// traps: never for a field `T`
     /// example: `let (mat: e, rank: k, pivots: p) = Mat<Mod<7>>.from_rows([[2, 4], [1, 2]]).rref(); k == 1 and p == [0] and e.get(0, 1) == Mod<7>(2) and e.get(1, 1) == Mod<7>(0)`
-    pub fn rref(self) -> (mat: Mat<T>, rank: Int, pivots: List<Int>):
+    pub fn rref(self) -> (mat: Mat<T>, rank: Int, pivots: List<Int>) where T: One + Zero + Div + Eq + Mul + Sub:
         var m = cells.collect()
         var pivots = List<Int>()
         var r = 0
@@ -545,7 +545,7 @@ pub struct Mat<T>:
     /// order: coefficient of `x^0` first
     /// traps: when the matrix is not square
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).char_poly() == [Mod<7>(5), Mod<7>(2), Mod<7>(1)]`
-    pub fn char_poly(self) -> List<T>:
+    pub fn char_poly(self) -> List<T> where T: One + Zero + Add + Div + Eq + Mul + Sub:
         assert rows == cols, "char_poly requires a square matrix"
         let n = rows
         var h = cells.collect()
@@ -588,7 +588,7 @@ pub struct Mat<T>:
     /// empty: `Mat<Mod<7>>.zeros(0, 0).pfaffian() == Mod<7>(1)`
     /// traps: when the matrix is not square or `n` is odd
     /// example: `Mat<Mod<7>>.from_rows([[0, 3], [4, 0]]).pfaffian() == Mod<7>(3)`
-    pub fn pfaffian(self) -> T:
+    pub fn pfaffian(self) -> T where T: One + Zero + Div + Eq + Mul + Sub:
         assert rows == cols, "pfaffian requires a square matrix"
         let n = rows
         assert n % 2 == 0, "pfaffian requires an even order"
@@ -631,7 +631,7 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square
     /// example: `let a = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).adjugate(); a.get(0, 0) == Mod<7>(4) and a.get(0, 1) == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[5]]).adjugate().get(0, 0) == Mod<7>(1)`
-    pub fn adjugate(self) -> Mat<T> where T: Mul + Div + One + Zero:
+    pub fn adjugate(self) -> Mat<T> where T: Mul + Div + One + Zero + Eq + Sub:
         assert rows == cols, "adjugate requires a square matrix"
         let n = rows
         if n == 0: return Mat(0, 0, List<T>())
@@ -684,25 +684,26 @@ impl<T: Sub> Sub for Mat<T>:
         assert a.rows == b.rows and a.cols == b.cols
         Mat(a.rows, a.cols, [a.cells[i] - b.cells[i] for i in 0..a.cells.len])
 
-impl Mul for Mat<T: Zero>:
+impl Mul for Mat<T>:
     fn mul(a, b) -> Mat<T>:
         assert a.cols == b.rows, "matrix dimensions do not match for multiplication"
         let (r, m, c) = (a.rows, a.cols, b.cols)
         if T: Add:
             if T: Mul:
-                if a.ring == None:
-                    if T: Residue:
-                        if let out = residue_product(a.cells, b.cells, r, m, c): return Mat(r, c, out)
-                    var out = List.filled(r * c, T.zero)
-                    unchecked:
-                        for i in 0..r:
-                            let ai = i * m
-                            let oi = i * c
-                            for k in 0..m:
-                                let f = a.cells[ai + k]
-                                let bk = k * c
-                                for j in 0..c: out[oi + j] = out[oi + j] + f * b.cells[bk + j]
-                    return Mat(r, c, out)
+                if T: Zero:
+                    if a.ring == None:
+                        if T: Residue:
+                            if let out = residue_product(a.cells, b.cells, r, m, c): return Mat(r, c, out)
+                        var out = List.filled(r * c, T.zero)
+                        unchecked:
+                            for i in 0..r:
+                                let ai = i * m
+                                let oi = i * c
+                                for k in 0..m:
+                                    let f = a.cells[ai + k]
+                                    let bk = k * c
+                                    for j in 0..c: out[oi + j] = out[oi + j] + f * b.cells[bk + j]
+                        return Mat(r, c, out)
         let g = a.ring!
         if let flat = g.flat:
             if let out = flat(
@@ -1127,7 +1128,7 @@ pub struct MatPow<T>:
     /// cost: \(O(n^3 \log \mathit{max\_exp})\) time, \(O(n^2 \log \mathit{max\_exp})\) space
     /// traps: when `a` is not square or `max_exp < 0`
     /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(5, [1, 0]) == [8, 5]`
-    pub fn new(a: Mat<T>, max_exp: Int) -> MatPow<T>:
+    pub fn new(a: Mat<T>, max_exp: Int) -> MatPow<T> where T: Zero:
         assert a.rows == a.cols and max_exp >= 0
         var pw = List<Mat<T>>()
         var k = 1
@@ -1144,7 +1145,7 @@ pub struct MatPow<T>:
     /// order: indexed by row
     /// traps: when `e` is not in `0..=max_exp` or `v.len != n`
     /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(0, [1, 0]) == [1, 0]`
-    pub fn apply_pow(self, e: Int, v: List<T>) -> List<T>:
+    pub fn apply_pow(self, e: Int, v: List<T>) -> List<T> where T: Zero:
         assert 0 <= e and (e == 0 or e < (1 << _pw.len))
         var out = v.clone()
         for k in 0.._pw.len:

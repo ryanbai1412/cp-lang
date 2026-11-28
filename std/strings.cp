@@ -1283,8 +1283,8 @@ pub struct SuffixArray<T: Ord>:
     /// example: `SuffixArray("banana").lcp_of_ranks(1..3) == 3`
     /// example: `SuffixArray("banana").lcp_of_ranks(3..4) == 6`
     pub fn lcp_of_ranks(self, r: Range<Int>) -> Int:
-        assert 0 <= r.start and r.start < r.end and r.end <= sa.len, "`lcp_of_ranks(r)` needs a non-empty `r` within `0..len`"
-        if r.end - r.start == 1: sa.len - sa[r.start] else: self.lcp[self.arg_min(r.start, r.end - 1)]
+        assert 0 <= Int(r.start) and Int(r.start) < Int(r.end) and Int(r.end) <= sa.len, "`lcp_of_ranks(r)` needs a non-empty `r` within `0..len`"
+        if Int(r.end) - Int(r.start) == 1: sa.len - sa[Int(r.start)] else: self.lcp[self.arg_min(Int(r.start), Int(r.end) - 1)]
 
     /// Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose
     /// adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are
@@ -1297,8 +1297,8 @@ pub struct SuffixArray<T: Ord>:
     /// example: `SuffixArray("banana").split(0..3) == 1`
     /// example: `SuffixArray("banana").split(0..6) == 3`
     pub fn split(self, r: Range<Int>) -> Int:
-        assert 0 <= r.start and r.start + 2 <= r.end and r.end <= sa.len, "`split(r)` needs at least two ranks within `0..len`"
-        self.arg_min(r.start, r.end - 1) + 1
+        assert 0 <= Int(r.start) and Int(r.start) + 2 <= Int(r.end) and Int(r.end) <= sa.len, "`split(r)` needs at least two ranks within `0..len`"
+        self.arg_min(Int(r.start), Int(r.end) - 1) + 1
 
     /// The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the
     /// positions `l..r` of one occurrence, or `None` when `k >= distinct()`.

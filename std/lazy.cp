@@ -657,7 +657,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.apply(1..2, 10); t.to_list() == [1, 12]`
     pub fn apply(mut self, r: Range<Int>, f: F):
-        self.apply_range(r.start, r.start + r.len, f)
+        self.apply_range(Int(r.start), Int(r.start) + r.len, f)
 
     /// Reverse the order of the elements at positions `r`. Tags applied earlier keep their effect
     /// on the elements they reached; a later tag sees the new order.
@@ -667,7 +667,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.reverse(0..2); t.to_list() == [2, 1, 3]`
     pub fn reverse(mut self, r: Range<Int>):
-        let (lo, hi) = (r.start, r.start + r.len)
+        let (lo, hi) = (Int(r.start), Int(r.start) + r.len)
         assert 0 <= lo <= hi <= self.len, "`reverse` out of range"
         if lo == hi: return
         let (a, bc) = self.split_pos(root, lo)
@@ -697,7 +697,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.erase_range(0..2); t.to_list() == [3]`
     pub fn erase_range(mut self, r: Range<Int>):
-        let (lo, hi) = (r.start, r.start + r.len)
+        let (lo, hi) = (Int(r.start), Int(r.start) + r.len)
         assert 0 <= lo <= hi <= self.len, "`erase_range` out of range"
         if lo == hi: return
         let (a, bc) = self.split_pos(root, lo)
@@ -1316,7 +1316,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var s = SeqFold<Int>(+, [1, 2, 3, 4]); s.erase_range(1..3); s.items.collect() == [1, 4] and s.total == 5`
     pub fn erase_range(mut self, r: Range<Int>):
-        let (lo, hi) = (r.start, r.start + r.len)
+        let (lo, hi) = (Int(r.start), Int(r.start) + r.len)
         if lo == hi: return
         assert 0 <= lo <= hi <= self.len, "`erase_range` out of range"
         let (a, bc) = self.cut(root, lo)
@@ -1378,7 +1378,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c", "d"]); s.fold(1..3) == "bc"`
     pub fn fold(mut self, r: Range<Int>) -> T:
-        let (lo, hi) = (r.start, r.start + r.len)
+        let (lo, hi) = (Int(r.start), Int(r.start) + r.len)
         if lo == hi: return m.id
         assert 0 <= lo <= hi <= self.len, "`fold` out of range"
         let (a, bc) = self.cut(root, lo)
@@ -1395,7 +1395,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// example: `var s = SeqFold<Int, Int>(+, [1, 2, 3], act: Action<Int, Int>.of(add, +)); s.apply(1..3, 10); s.total == 26`
     pub fn apply(mut self, r: Range<Int>, f: F):
         assert act != None, "`apply` needs a sequence built with `act:`"
-        let (lo, hi) = (r.start, r.start + r.len)
+        let (lo, hi) = (Int(r.start), Int(r.start) + r.len)
         if lo == hi: return
         assert 0 <= lo <= hi <= self.len, "`apply` out of range"
         let (a, bc) = self.cut(root, lo)
@@ -1410,7 +1410,7 @@ pub struct SeqFold<T, F = Int, E = T>(m: Monoid<T>, act: ?Action<T, F>, mirror: 
     /// traps: when a non-empty `r` reaches outside `0..len`
     /// example: `var s = SeqFold<Str>(Monoid("", (a, b) => a + b), ["a", "b", "c", "d"]); s.reverse(1..4); s.total == "adcb"`
     pub fn reverse(mut self, r: Range<Int>):
-        let (lo, hi) = (r.start, r.start + r.len)
+        let (lo, hi) = (Int(r.start), Int(r.start) + r.len)
         if lo == hi: return
         assert 0 <= lo <= hi <= self.len, "`reverse` out of range"
         let (a, bc) = self.cut(root, lo)

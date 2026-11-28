@@ -53,7 +53,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// example: `LiChao(min, over: 0..=10).at(5) == None`
     pub fn new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>:
         assert over.len > 0, "`LiChao` needs a non-empty `over`"
-        LiChao(pick, over.start, over.start + over.len - 1, [None], [0], [0])
+        LiChao(pick, Int(over.start), Int(over.start) + over.len - 1, [None], [0], [0])
 
     /// Forget every line, keeping `pick` and `over`, so the tree can be reused (between test cases,
     /// say) without reallocating.

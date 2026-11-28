@@ -2228,6 +2228,7 @@ std-math/sieve-tables-at-one.cp
 std-math/sieve-tables-at-zero.cp
 std-math/sign-pow2.cp
 std-math/splitmix64-at-zero.cp
+std-matrix/f64-identity-from-zero-and-one.cp
 std-matrix/get-outside-columns-traps.cp
 std-models/check-value.cp
 std-models/input.cp

@@ -475,7 +475,7 @@ pub struct Sieve:
 /// traps: when `n < 0`
 /// example: `sieve_multiplicative(6, (p, e, pe) => e + 1) == [1, 1, 2, 2, 3, 2, 4]`
 /// example: `sieve_multiplicative(4, (p, e, pe) => pe - pe / p) == [1, 1, 1, 2, 2]`
-pub fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T>:
+pub fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T> where T: One:
     assert n >= 0
     var res = List.filled(n + 1, T.one)
     var spf = List.filled(n + 1, 0)

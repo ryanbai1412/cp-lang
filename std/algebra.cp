@@ -237,7 +237,7 @@ impl<T, F> Acts<T, F> for Action<T, F>:
     fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, F> = self
 
 impl<T> Acts<T, T> for AddAction:
-    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, T>:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, T> where T: Zero:
         if sums: return Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f * span, over, true)
         Action(T.zero, (nf, of) => nf + of, (f, v, span) => v + f, over, true)
 
@@ -248,7 +248,7 @@ impl<T> Acts<T, ?T> for AssignAction:
         Action(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, over, false, set)
 
 impl<T> Acts<T, (T, T)> for AffineAction:
-    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (T, T)> = Action(
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (T, T)> where T: One + Zero = Action(
         (T.one, T.zero),
         (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
         (f, v, span) => f.0 * v + f.1 * span,
@@ -256,7 +256,7 @@ impl<T> Acts<T, (T, T)> for AffineAction:
     )
 
 impl<T> Acts<T, (set: ?T, add: T)> for AssignAddAction:
-    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (set: ?T, add: T)>:
+    fn action(self, over: Monoid<T>, sums: Bool) -> Action<T, (set: ?T, add: T)> where T: Zero:
         let keep: ?T = None
         let id = (set: keep, add: T.zero)
         let set: ?((set: ?T, add: T) -> Bool) = Some(f => f.set != None)

@@ -2325,7 +2325,7 @@ pub struct BucketCount:
         // blocks of 2^sh >= sqrt(N) values, so a value's block is a shift, not a division
         var sh = 0
         while 1 << sh < ceil_sqrt(n): sh += 1
-        BucketCount(r.start, r.start + n, sh, 0, List.filled(n, 0), List.filled((n >> sh) + 1, 0))
+        BucketCount(Int(r.start), Int(r.start) + n, sh, 0, List.filled(n, 0), List.filled((n >> sh) + 1, 0))
 
     /// \(O(1)\). Add `delta` (default 1; may be negative) copies of `x`.
     ///

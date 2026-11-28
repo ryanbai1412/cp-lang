@@ -30,7 +30,7 @@ pub type Perm<V> = [V]V
 /// empty: `let a: List<Int> = []; a.prod() == 1`
 /// traps: never (overflow wraps in release, traps in debug)
 /// example: `[2, 3, 4].prod() == 24`
-pub fn prod<S: Seq<T>, T>(self: S) -> T:
+pub fn prod<S: Seq<T>, T>(self: S) -> T where T: One:
     var out = T.one
     for x in self: out *= x
     out

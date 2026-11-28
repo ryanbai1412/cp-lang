@@ -2877,7 +2877,7 @@ pub struct PointSet:
         r
 
     fn take(mut self, v: Int, y: Range<Int>, mut out: List<Int>):
-        var j = self.find((lo[v]..hi[v]).first_true(s => ys[s] >= y.start) ?? hi[v])
+        var j = self.find((lo[v]..hi[v]).first_true(s => ys[s] >= Int(y.start)) ?? hi[v])
         while j < hi[v] and ys[j] < y.end:
             let id = ids[j]
             if alive[id]:
@@ -2897,8 +2897,8 @@ pub struct PointSet:
     pub fn drain(mut self, x: Range<Int>, y: Range<Int>) -> List<Int>:
         var out: List<Int> = []
         let n = xs.len
-        var a = size + ((0..n).first_true(k => xs[k] >= x.start) ?? n)
-        var b = size + ((0..n).first_true(k => xs[k] >= x.end) ?? n)
+        var a = size + ((0..n).first_true(k => xs[k] >= Int(x.start)) ?? n)
+        var b = size + ((0..n).first_true(k => xs[k] >= Int(x.end)) ?? n)
         while a < b:
             if a % 2 == 1:
                 self.take(a, y, mut out)
@@ -2928,7 +2928,7 @@ pub struct Rect(pub x: Range<Int>, pub y: Range<Int>):
     /// traps: when the product overflows `Int`
     /// example: `Rect(0..3, 0..2).area == 6`
     /// example: `Rect(3..1, 0..2).area == 0`
-    @get pub fn area(self) -> Int = max(x.end - x.start, 0) * max(y.end - y.start, 0)
+    @get pub fn area(self) -> Int = max(Int(x.end) - Int(x.start), 0) * max(Int(y.end) - Int(y.start), 0)
 
     /// Whether either axis range is empty.
     ///
@@ -2947,7 +2947,7 @@ pub struct Rect(pub x: Range<Int>, pub y: Range<Int>):
     pub fn contains(
         self,
         p: Pt,
-    ) -> Bool = x.start <= p.x and p.x < x.end and y.start <= p.y and p.y < y.end
+    ) -> Bool = Int(x.start) <= p.x and p.x < Int(x.end) and Int(y.start) <= p.y and p.y < Int(y.end)
 
     /// The common part of two rectangles, or `None` when it is empty (including rectangles that only
     /// touch along an edge).
@@ -2977,8 +2977,8 @@ pub fn rects_union_area(rects: List<Rect>) -> Int:
     var ev: List<(x: Int, k: Int, lo: Int, hi: Int)> = []
     for r in rects:
         if r.is_empty: continue
-        ys.push(r.y.start)
-        ys.push(r.y.end)
+        ys.push(r.Int(y.start))
+        ys.push(r.Int(y.end))
     ys.sort()
     var u: List<Int> = []
     for y in ys:
@@ -2987,10 +2987,10 @@ pub fn rects_union_area(rects: List<Rect>) -> Int:
     if ys.len < 2: return 0
     for r in rects:
         if r.is_empty: continue
-        let lo = lower_idx(ys, r.y.start)
-        let hi = lower_idx(ys, r.y.end)
-        ev.push((x: r.x.start, k: 1, lo:, hi:))
-        ev.push((x: r.x.end, k: -1, lo:, hi:))
+        let lo = lower_idx(ys, r.Int(y.start))
+        let hi = lower_idx(ys, r.Int(y.end))
+        ev.push((x: r.Int(x.start), k: 1, lo:, hi:))
+        ev.push((x: r.Int(x.end), k: -1, lo:, hi:))
     ev.sort()
     let m = ys.len - 1
     var cnt = List.filled(4 * m, 0)

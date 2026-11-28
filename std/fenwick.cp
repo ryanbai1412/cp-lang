@@ -422,7 +422,7 @@ pub struct XorFenwick<D, T>:
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: never
     /// example: `XorFenwick([1, 2, 4]).xor(0..3) == 7`
-    pub fn new(a: ?[D]T = None) -> XorFenwick<D, T>:
+    pub fn new(a: ?[D]T = None) -> XorFenwick<D, T> where T: Zero:
         var t = List.filled(D.count + 1, T.zero)
         if let init = a:
             for i in D:
@@ -449,7 +449,7 @@ pub struct XorFenwick<D, T>:
     /// traps: never (`b` is a cut of `D` by type)
     /// example: `XorFenwick([1, 2, 4]).prefix((0..2).r) == 3`
     @lint(hand_rolled_range_tree, from: "while b > 0:\n    s += t[b]\n    b -= b & -b", to: "s += t.prefix(b)", holes: "s, t")
-    pub fn prefix(self, b: Cut<D>) -> T:
+    pub fn prefix(self, b: Cut<D>) -> T where T: Zero:
         var p = b.ord
         var acc = T.zero
         while p > 0:
@@ -564,12 +564,12 @@ pub struct SparseFenwick2D<T: Add + Sub>:
     pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T where T: Zero:
         assert built, "`fold` before `build`"
         if xs.start >= xs.end or ys.start >= ys.end: return T.zero
-        self.corner(xs.end, ys.end) - self.corner(xs.start, ys.end) - self.corner(
-            xs.end,
-            ys.start,
+        self.corner(Int(xs.end), Int(ys.end)) - self.corner(Int(xs.start), Int(ys.end)) - self.corner(
+            Int(xs.end),
+            Int(ys.start),
         ) + self.corner(
-            xs.start,
-            ys.start,
+            Int(xs.start),
+            Int(ys.start),
         )
 
 @test

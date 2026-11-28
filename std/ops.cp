@@ -71,6 +71,8 @@ impl Zero for Int:
     @get fn zero() -> Int = 0
 impl Zero for U64:
     @get fn zero() -> U64 = U64(0)
+impl Zero for F64:
+    @get fn zero() -> F64 = 0.0
 /// `T.one`: the identity of `T`'s `*`, where a product starts.
 pub trait One:
     @get fn one() -> Self
@@ -78,6 +80,8 @@ impl One for Int:
     @get fn one() -> Int = 1
 impl One for U64:
     @get fn one() -> U64 = U64(1)
+impl One for F64:
+    @get fn one() -> F64 = 1.0
 /// `T.MIN`, `T.MAX`: the least and greatest values of `T`, so `max` and `min` over it have an
 /// identity (R02.2.1, decision 580).
 pub trait Bounded:

@@ -773,7 +773,7 @@ pub struct DynBitset:
     /// example: `var d = DynBitset(10); d.add(1); d.add(3); d.add(8); d.count_range(1..8) == 2`
     /// example: `DynBitset(10).count_range(2..11) == 0` (traps R0401)
     pub fn count_range(self, r: Range<Int>) -> Int:
-        let (lo, hi) = (r.start, r.end)
+        let (lo, hi) = (Int(r.start), Int(r.end))
         if lo >= hi: return 0
         assert 0 <= lo and hi <= _cap
         let c = sum(popcount(_w[k] & span(k, lo, hi)) for k in lo / 64..=(hi - 1) / 64)

@@ -171,8 +171,8 @@ pub struct TimeTree<E>:
     /// example: `var tt = TimeTree<Str>(3); tt.add_range(1..3, "e"); tt.steps().len == 7`
     pub fn add_range(mut self, r: Range<Int>, ev: E):
         if r.start >= r.end: return
-        assert r.start >= 0 and r.end <= q, "the range reaches outside `0..q`"
-        self.add_interval(r.start, r.end, ev)
+        assert Int(r.start) >= 0 and Int(r.end) <= q, "the range reaches outside `0..q`"
+        self.add_interval(Int(r.start), Int(r.end), ev)
 
     /// The steps of `steps`, yielded one at a time without building the list.
     ///

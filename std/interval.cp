@@ -409,8 +409,8 @@ pub struct SparseIntervalSet:
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(-5..0); s.add(0..5); s.runs == 1 and s.covered == 10`
     pub fn add(mut self, r: Range<Int>):
-        var lo = r.start
-        var hi = r.end
+        var lo = Int(r.start)
+        var hi = Int(r.end)
         if lo >= hi: return
         if let (pl, ph) = segs.last_le(lo):
             if ph >= lo:
@@ -433,8 +433,8 @@ pub struct SparseIntervalSet:
     /// traps: never
     /// example: `var s = SparseIntervalSet(); s.add(0..10); s.remove(3..4); s.runs == 2 and s.covered == 9`
     pub fn remove(mut self, r: Range<Int>):
-        let lo = r.start
-        let hi = r.end
+        let lo = Int(r.start)
+        let hi = Int(r.end)
         if lo >= hi: return
         if let (pl, ph) = segs.last_lt(lo):
             if ph > lo:
@@ -634,7 +634,7 @@ pub struct SparseIntervalMap<T>:
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.assign(5..7, 1); m.runs == 3`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); var old: List<Int> = []; m.assign(4..6, 2, on_old: (_, v) => old.push(v)); old == [1, 0]`
     pub fn assign(mut self, r: Range<Int>, val: T, on_old: (Range<Int>, T) -> () = (_, _) => ()):
-        let (a, b) = (r.start, r.start + r.len)
+        let (a, b) = (Int(r.start), Int(r.start) + r.len)
         if a >= b: return
         assert lo <= a and b <= hi, "`assign` range outside the map"
         self.split(a)
@@ -658,7 +658,7 @@ pub struct SparseIntervalMap<T>:
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.update(0..4, v => v + 1); m.get(0) == 1 and m.get(3) == 2 and m.get(4) == 1`
     pub fn update(mut self, r: Range<Int>, f: T -> T):
-        let (a, b) = (r.start, r.start + r.len)
+        let (a, b) = (Int(r.start), Int(r.start) + r.len)
         if a >= b: return
         assert lo <= a and b <= hi, "`update` range outside the map"
         self.split(a)
@@ -681,7 +681,7 @@ pub struct SparseIntervalMap<T>:
     /// traps: when a non-empty `r` reaches outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.range(4..6).map(p => p.range).collect() == [4..5, 5..6]`
     pub fn range(self, r: Range<Int>) -> yields (range: Range<Int>, val: T):
-        let (a, b) = (r.start, r.start + r.len)
+        let (a, b) = (Int(r.start), Int(r.start) + r.len)
         if a >= b: return
         assert lo <= a and b <= hi, "`range` outside the map"
         var pos = a

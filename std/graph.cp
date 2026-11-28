@@ -3248,7 +3248,7 @@ pub fn de_bruijn(k: 1.., n: Int) -> List<Int>:
 pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(
     edges: [E]R,
     by: R -> K = e => e.w,
-) -> (total: W, take: [E]Bool):
+) -> (total: W, take: [E]Bool) where W: Zero:
     var order = E.collect()
     order.sort(by: e => by(edges[e]))
     var dsu = Dsu<V>()
@@ -3317,7 +3317,7 @@ pub fn prim<V, W: Ord + Zero>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
 /// ```
 pub fn boruvka<V, C, W>(
     cheapest: ([V]Int) -> List<?(u: V, v: V, w: W)>
-) -> (total: W, edges: List<(u: V, v: V)>):
+) -> (total: W, edges: List<(u: V, v: V)>) where W: Zero:
     var total = W.zero
     var edges = List<(u: V, v: V)>()
     if V.count <= 1: return (total:, edges:)
