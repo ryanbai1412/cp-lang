@@ -281,7 +281,7 @@ pub(crate) struct Front {
     d: decls::Decls,
     t: check::Typed,
     g: lower::Generic,
-    main: Vec<(ItemId, cpl_syntax::ast::Stmt)>,
+    main: Vec<ItemId>,
     diags: Vec<Diag>,
 }
 
@@ -593,7 +593,7 @@ pub(crate) struct TypedAt {
     pub(crate) span: cpl_diag::Span,
     ty: ty::Ty,
     /// The type parameters in scope where it is.
-    generics: Vec<String>,
+    generics: Vec<cpl_next_decls::sym::Sym>,
 }
 
 /// Each expression the program's own text holds.
@@ -601,7 +601,7 @@ pub(crate) fn types(f: &Front) -> Vec<TypedAt> {
     use cpl_next_decls::views::Items;
     let mut out = Vec::new();
     // A typed expression's span is from the start of the item it is in.
-    let mut add = |item: &ItemId, generics: &[String], e: &check::TExpr| {
+    let mut add = |item: &ItemId, generics: &[cpl_next_decls::sym::Sym], e: &check::TExpr| {
         let at = item.at(e.span);
         out.push(TypedAt {
             span: f.loaded.text_of(&at).span(&at),
@@ -634,7 +634,7 @@ pub(crate) fn types(f: &Front) -> Vec<TypedAt> {
 pub struct Type<'s> {
     front: &'s Front,
     ty: &'s ty::Ty,
-    generics: &'s [String],
+    generics: &'s [cpl_next_decls::sym::Sym],
 }
 
 impl<'s> Type<'s> {
@@ -660,7 +660,7 @@ impl<'s> Type<'s> {
         let f = self.front;
         check::show_ty(
             &f.d,
-            f.d.roles().option,
+            f.d.roles.option,
             &f.t.domains,
             self.generics,
             &|t| t.clone(),
@@ -702,10 +702,10 @@ impl<'s> Type<'s> {
     /// Whether it implements the trait the program's scope names `name`, as the checker's
     /// impl lookup answers (the Signatures view).
     pub fn implements(&self, name: &str) -> bool {
-        use cpl_next_decls::views::{Scope, Signatures};
+        use cpl_next_decls::views::{Names, Signatures};
         let d = &self.front.d;
-        match Scope::named(d, d.program, name) {
-            Some(decls::Named::Trait(tr)) => Signatures::has_impl(d, self.shown(), tr),
+        match d.syms.get(name).and_then(|s| Names::named(d, d.program, s)) {
+            Some(decls::Named::Trait(tr)) => d.impls().has_impl(self.shown(), tr),
             _ => false,
         }
     }
@@ -731,8 +731,8 @@ impl<'s> Type<'s> {
         for i in 0..f.d.impls.len() {
             let im = Items::imp(&f.d, i);
             if !im.replaced
-                && Signatures::impl_args(&f.d, im, ty).is_some()
-                && Signatures::has_impl(&f.d, ty, im.trait_.tr)
+                && f.d.impls().impl_args(im, ty).is_some()
+                && f.d.impls().has_impl(ty, im.trait_.tr)
             {
                 out.extend(
                     im.methods
@@ -797,20 +797,19 @@ pub(crate) fn units(
         let fd = f.d.f(*id);
         // A derived impl's methods are made, not written: they are the struct's.
         let derived = matches!(fd.owner, Some(decls::Owner::Impl(i)) if f.d.impls[i].derived);
-        f.d.of_program(fd.module)
-            && !derived
-            && fd.intrinsic.is_none()
-            && !matches!(fd.body, cpl_syntax::ast::FnBody::None)
+        f.d.of_program(fd.module) && !derived && fd.intrinsic.is_none() && !fd.bodiless()
     });
     let fns = fns.map(|id| {
         let fd = f.d.f(id);
         let lowered = f.g.funcs.contains_key(&ir::FuncKey::Decl(id));
         (Some(fd.name.clone()), fd.span.clone(), lowered)
     });
-    let statements = (f.main.iter()).map(|(off, s)| {
-        let span = off.at(s.span);
-        (None, span, f.g.funcs.contains_key(&ir::FuncKey::Main))
-    });
+    let statements = check::program_items(&f.loaded, &f.main)
+        .into_iter()
+        .map(|(off, s)| {
+            let span = off.at(cpl_next_syntax::ast::AstNode::syntax(&s).span());
+            (None, span, f.g.funcs.contains_key(&ir::FuncKey::Main))
+        });
     let units = (fns.chain(statements))
         .map(|(name, span, lowered)| {
             let local = f.loaded.text_of(&span).span(&span);
