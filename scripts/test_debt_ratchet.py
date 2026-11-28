@@ -2679,6 +2679,26 @@ class DebtRatchetTest(unittest.TestCase):
             )
             self.assertEqual(dr.next_whole_program_inputs(root), ["crates/cpl-next-decls/src/lib.rs:9"])
 
+    def test_a_view_keyed_by_a_role_decorator_or_key_slice_is_a_view(self) -> None:
+        ok = ["fn role_fns(&self, r: Role) -> Vec<FuncId>;",
+              "fn marked_fns(&self, d: attrs::Decorator) -> Vec<FuncId>;",
+              "fn record(&self, fields: &[Sym]) -> Option<StructId>;",
+              "fn with_defaults_of(&self, s: StructId, args: &[Ty]) -> Ty;",
+              "fn sized(&self, t: Ty) -> u32;",
+              "fn sized_at(&self, t: &'a ir::Ty) -> u32;"]
+        bad = ["fn role_fns(&self, r: Vec<Role>) -> Vec<FuncId>;",
+               "fn marked_fns(&self, d: &[Decorator]) -> Vec<FuncId>;",
+               "fn record(&self, fields: Vec<Sym>) -> Option<StructId>;",
+               "fn with_defaults_of(&self, s: StructId, args: &[TyTable]) -> Ty;",
+               "fn sized(&self, t: HashMap<Ty, u32>) -> u32;",
+               "fn named(&self, n: &str) -> Option<FuncId>;",
+               "fn flagged(&self, b: bool) -> Vec<FuncId>;",
+               "fn all_roles(&self, r: Role) -> Vec<FuncId>;"]
+        for sig in ok:
+            self.assertTrue(dr._view_method_ok(sig), sig)
+        for sig in bad:
+            self.assertFalse(dr._view_method_ok(sig), sig)
+
     def test_audit_counters_find_soundness_core_checks_ownership_and_foreign_deps(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
