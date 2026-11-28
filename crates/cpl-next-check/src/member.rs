@@ -184,7 +184,7 @@ impl<'a> Cx<'a> {
     }
     fn free_fn_help(
         &self,
-        base: &next::Expr,
+        base: Span,
         name: Called<'_>,
         call: Option<&[CallArg]>,
     ) -> Option<String> {
@@ -195,7 +195,7 @@ impl<'a> Cx<'a> {
         if self.d.f(f).self_ty.is_some() {
             return None;
         }
-        let mut written = vec![self.text(self.at(base)).to_string()];
+        let mut written = vec![self.text(base).to_string()];
         written.extend(args.iter().map(|a| self.text(a.at).to_string()));
         let m = &name.text;
         Some(format!(
@@ -208,7 +208,7 @@ impl<'a> Cx<'a> {
     fn renamed(
         &self,
         rt: &Ty,
-        base: &next::Expr,
+        base: Span,
         name: Called<'_>,
         call: Option<&[CallArg]>,
     ) -> Option<(Option<String>, String)> {
@@ -219,10 +219,7 @@ impl<'a> Cx<'a> {
         })?;
         let now = &f.name;
         // The call as written with the member's name replaced: `x.m(a)` reads `x.now(a)`.
-        let mut written = self
-            .text(Span::new(self.at(base).start, name.span.start))
-            .to_owned()
-            + now;
+        let mut written = self.text(Span::new(base.start, name.span.start)).to_owned() + now;
         if let Some(args) = call {
             let args: Vec<&str> = args.iter().map(|a| self.text(a.at)).collect();
             written = format!("{written}({})", args.join(", "));
@@ -234,7 +231,7 @@ impl<'a> Cx<'a> {
     }
     /// A fn this module declares with a `self` of the receiver's own type is never called when
     /// the type has a member of its name: the member is found first (R08.1.4).
-    fn hidden_by_member(&mut self, rt: &Ty, base: &next::Expr, name: Called<'_>) {
+    fn hidden_by_member(&mut self, rt: &Ty, base: Span, name: Called<'_>) {
         let Ty::Struct(s, ..) = rt else {
             return;
         };
@@ -250,7 +247,7 @@ impl<'a> Cx<'a> {
         if !mine {
             return;
         }
-        let shown = self.text(self.at(base));
+        let shown = self.text(base);
         let ty = &self.d.s(*s).name;
         self.err_help(
             name.span,
@@ -978,6 +975,20 @@ impl<'a> Cx<'a> {
         let walk = std::mem::take(&mut self.b.allow_region);
         let recv = self.expr(base, None);
         self.b.allow_region = walk;
+        self.member_on(recv, name, call, span, want, written_targs)
+    }
+
+    /// `name` read or called on `recv`, which is checked already: a field-fn value `.name`
+    /// reads it on its parameter this way.
+    pub(super) fn member_on(
+        &mut self,
+        recv: TExpr,
+        name: Called,
+        call: Option<&[CallArg]>,
+        span: Span,
+        want: Option<&Ty>,
+        written_targs: &[Ty],
+    ) -> TExpr {
         let rt = self.recv_ty(&recv.ty);
         if rt == Ty::Error {
             return Self::error_node(span);
@@ -1022,7 +1033,7 @@ impl<'a> Cx<'a> {
                 }
                 Ok(None) => {}
                 Err(two) => {
-                    let shown = self.text(self.at(base));
+                    let shown = self.text(recv.span);
                     return self.two_traits_give(two, shown, &rt, name, shown, span);
                 }
             }
@@ -1063,7 +1074,7 @@ impl<'a> Cx<'a> {
                     return e;
                 }
                 [a, b, ..] => {
-                    let shown = self.text(self.at(base));
+                    let shown = self.text(recv.span);
                     return self.two_traits_give((a, b), shown, &rt, name, shown, span);
                 }
                 _ => {}
@@ -1091,7 +1102,7 @@ impl<'a> Cx<'a> {
                 .or_else(|| self.d.method_for(&name.text, &rt).map(decls::Named::Fn)),
             Some(decls::Member::Method(m, ..)) if !self.d.f(m).getter && getter.is_some() => getter,
             Some(_) => {
-                self.hidden_by_member(&rt, base, name);
+                self.hidden_by_member(&rt, recv.span, name);
                 None
             }
         };
@@ -1181,7 +1192,7 @@ impl<'a> Cx<'a> {
                 self.held_to(v, ranged)
             }
             None => {
-                if let Some((was, help)) = self.renamed(&rt, base, name, call) {
+                if let Some((was, help)) = self.renamed(&rt, recv.span, name, call) {
                     let (code, text) = match was {
                         Some(now) => (
                             cpl_diag::codes::REMOVED_SYNTAX,
@@ -1203,7 +1214,7 @@ impl<'a> Cx<'a> {
                 if self.mentions_error(&rt) {
                     return Self::error_node(span);
                 }
-                let help = (self.free_fn_help(base, name, call))
+                let help = (self.free_fn_help(recv.span, name, call))
                     .or_else(|| self.lacked_trait_help(&rt, &name.text));
                 self.err_help(
                     span,
