@@ -6249,7 +6249,14 @@ def lane_verdict(root: Path, max_rs_lines: int, baseline: dict, actual: dict, fu
     if upstream is None:
         up = _git(root, "rev-parse", "-q", "--verify", lane, env=_git_env())
         return [] if up and up[0] == head else [f"{lane} is not a commit here: fetch it"]
-    errors = evaluate(actual, lane_baseline(baseline, upstream))[0]
+    eff = lane_baseline(baseline, upstream)
+    # A raise the coordinator signed in SIGNOFFS for a commit since the tip: `signed_raise`, the
+    # check main's raises take, with the tip's count as `old` (coordinator 10:00 11-28).
+    for n, (_, _, gated) in COUNTERS.items():
+        if gated and n in upstream and isinstance(actual.get(n), int) and actual[n] > int(upstream[n]) \
+                and signed_raise(root, lane, n, int(upstream[n]), actual[n]) is None:
+            eff[n] = actual[n]
+    errors = evaluate(actual, eff)[0]
     held = tuple(f"{COUNTERS[n][0]}: " for n in HARD_ZERO | set(HARD_FLOOR) | set(ZERO_WITH)
                  if n in upstream and int(actual.get(n, 0)) <= int(upstream[n]))
     errors = [e for e in errors if not e.startswith(held)] if held else errors

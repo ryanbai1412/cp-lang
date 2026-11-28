@@ -2116,6 +2116,11 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(json.loads((root / ".git" / dr.LANE_COUNT).read_text())["errors"], 2)
             # Any rise fails, a hard zero's too.
             self.assertEqual(check(ir_reinfer=13), 1)
+            # A rise the coordinator signed from the tip's count passes, through main's one check.
+            signed = lambda r, base, n, old, new: None if (n, old, new) == ("ir_reinfer", 12, 13) else "unsigned"
+            with mock.patch.object(dr, "signed_raise", signed):
+                self.assertEqual(check(ir_reinfer=13), 0)
+                self.assertEqual(check(ir_reinfer=14), 1)
             self.assertEqual(check(frozen_std_drift=2), 1)
             self.assertEqual(check(ir_reinfer=11, frozen_std_drift=0), 0)
             # A new commit with no Lane: trailer (or Skipped: ratchet) fails.
