@@ -941,7 +941,7 @@ core-08/bound-trait-method-yields-the-impl-types.cp
 core-08/bound-unmet.cp
 core-08/bounds-three-ways.cp
 core-08/call-gen-alias.cp
-core-08/concrete-extension-beats-std-generic.cp
+core-08/extension-hidden-by-trait-default.cp
 core-08/conditional-on-bound.cp
 core-08/default-arg-binds-generic-before-bounds.cp
 core-08/default-method-override-once.cp

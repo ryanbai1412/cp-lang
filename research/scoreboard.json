@@ -1457,7 +1457,7 @@
         "core-08/bounds-three-ways.cp": "pass",
         "core-08/call-gen-alias.cp": "pass",
         "core-08/chained-bounds-bind-struct-params.cp": "pass",
-        "core-08/concrete-extension-beats-std-generic.cp": "pass",
+        "core-08/extension-hidden-by-trait-default.cp": "pass",
         "core-08/concrete-self-beats-bounded-generic.cp": "pass",
         "core-08/conditional-on-bound.cp": "pass",
         "core-08/const-param-arithmetic.cp": "pass",

@@ -67,7 +67,7 @@ impl Ord for Frac:
   the other way, so `self: Range<Int>` beats `self: Range<D>` and
   `[V]List<V>` beats `[D]T`. A concrete `self` beats a bare `self: S`
   whose bounds it meets: `self: Str` beats `self: S` with
-  `S: Indexed<D, T>`, and `self: Range<Int>` beats std's `sum<S: Seq<T>>`.
+  `S: Indexed<D, T>`, and `self: Range<Int>` beats `self: S` with `S: Seq<T>`.
   Two bare `self: S` are never more or less specific. Two equally specific
   candidates are an ambiguity error in different modules (E0701); in one
   module the second declaration is E0702 when the two overlap, that is
@@ -75,8 +75,8 @@ impl Ord for Frac:
   by parameter after `self`, with every bound met (`x: T` with `T: Eq`
   takes no lambda, so it and `p: T -> Bool` don't overlap). The relation
   is the same within a module and across modules. One precedence order
-  picks among the candidates: a member of the receiver's type, declared
-  or catalog, beats any extension fn; at equal specificity, a fn the
+  picks among the candidates: a member of the receiver's type, inherent
+  or a method of a trait it has an impl of, beats any extension fn; at equal specificity, a fn the
   calling module declares beats an imported one, from std or any other
   library; two candidates that tie at one level are E0701. Members are found
   before extension fns, so an extension fn with a `self` of its own
@@ -84,9 +84,9 @@ impl Ord for Frac:
   called; that call is E0701, naming the member (`fn sum(self: List<Int>)`
   beside `List.sum`), with help to rename the fn or call it as a plain
   fn. The error belongs to the module that declares the fn: a file that
-  imports it calls the member with no error, and a fn a catalog member
-  stands for (std's own `first_gt` behind `List.first_gt`) hides nothing.
-  To give a type its own cost, override the trait method instead
+  imports it calls the member with no error. So `fn sum(self: Range<Int>)`
+  beside std's `Seq.sum` is E0701: a closed-form `Range` sum is the
+  `impl Seq` override of `Seq.sum`, not an extension fn. To give a type its own cost, override the trait method instead
   (decision 486). A `@free_form` method's plain call `f(x, ..)` is the
   method call `x.f(..)` and picks by these same rules (R01.10.1). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with

@@ -1,7 +1,8 @@
 // expect: ok, output "9 9\n6 6"
 // rule: 08.1.4
-// A type's own `sum` wins over std's generic one, and a type that writes none gets the
-// generic walk, through a `Seq` bound too.
+// `sum` is a default method of `Seq` (spec 07 "A fold costs what the receiver's type says"): a
+// type's own `sum` wins over it, and a type that writes none gets the default walk, through a
+// `Seq` bound too.
 use std.bag.{SortedBag}
 fn total<S: Seq<Int>>(s: S) -> Int = s.sum()
 let b = SortedBag.of([2, 2, 5])

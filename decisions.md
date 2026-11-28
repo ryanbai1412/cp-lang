@@ -9748,3 +9748,18 @@ Reverse it by deleting the decorator, `rejected_defaults` and `inherited_rejects
 - **Call.** `@role(memo_table) pub trait MemoTable<K, V>` (`get(self, k) -> ?V`, `set(mut self, k, v)`) lives in the leaf module `std.memo`, exported from the prelude. A `@memo_table(word)` struct is a table only through an ordinary `impl MemoTable<K, V> for T<K, V>`: `MemoArray` (std.domains) and `HashMap` (std.hash, now `@memo_table(map)`) have one, and a marked struct without one is E0327 at its `@memo_table`, whose help is the impl line. The checker builds a `@memo(word)` fn, in a block or at the top level, as R06.4.1's typed statements (`var $memo = T<K, R>()`, the body as `$body`, a wrapper calling `MemoTable.get`/`set` as trait calls, `f.clear()` assigning a fresh `T<K, R>()`), in `cpl-next-check/src/memo.rs` only. There is no `clear` member, no Memo row and no memo lowerer: lower, the engine and C++ see ordinary lambdas, trait calls and assignments, so they agree by construction. A bare `@memo` stays E0311 at its decorator.
 - **Why.** Coordinator ruling of 2026-11-27, 22:30–22:37, with lanes A and B: roles name their members, so the table is found by its role trait, never by the strings `get`/`set` or by shape. A top-level memo fn had stopped being collected, so it ran with no cache (lane C's fib(60)). The trait cannot sit in std.seq, since seq imports hash and HashMap's impl must name it.
 - **Reverse.** Give `MemoTable` a `clear` member and a Memo row read by a lowerer, if a table ever needs clearing in place.
+
+## 677. A member is inherent or a trait method of an impl; `Seq.sum` hides a concrete `sum` extension (spec, 2026-11-28)
+
+Amends decisions 486 and 636. Folds are default methods of their trait
+(486), so with `Seq.sum` a member of every `Seq`, `fn sum(self: Range<Int>)`
+is an extension a member always wins over: E0701
+(`core-08/extension-hidden-by-trait-default.cp`, formerly
+`concrete-extension-beats-std-generic.cp`, which printed 7). R08.1.4's
+member level no longer says "declared or catalog": a member is inherent or a
+trait method of an impl the type has, and nothing else. std's closed-form
+`Range` sum is the `impl Seq` override of `Seq.sum`, not the extension 636
+named. 636's own-module level stays for extension against extension. `sum`
+keeps its plain call `sum(e for x in s)` through `@free_form` (676).
+Reverse: move `sum` back to a free `pub fn sum<S: Seq<T>>` and restore the
+old case.
