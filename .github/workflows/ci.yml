@@ -598,6 +598,31 @@ jobs:
 
   # One `cpl` per tip for the acceptance and audit shards, which only run it:
   # each shard built its own, 85-150 s of runner time apiece.
+  # The freeze's behaviour half on every pushed change to the shared lexer (cpl-next-syntax) or
+  # a crate the old pipeline is built from: the commit tier runs it at land, CI on the tip.
+  old-same:
+    name: old pipeline behaves as before
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: dev
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      # A new branch's `before` is all zeros: compare with the tip's parent then.
+      - name: Old pipeline output against the pushed-over tip
+        run: |
+          base="${{ github.event.before }}"
+          git cat-file -e "$base^{commit}" 2>/dev/null || base=$(git rev-parse HEAD~1)
+          just old-same "$base"
+
   cpl-build:
     name: cpl (shared build)
     runs-on: ubuntu-latest

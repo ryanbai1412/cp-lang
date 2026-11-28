@@ -20,6 +20,11 @@ check-full:
 check-timing:
     scripts/check.sh --timing
 
+# The freeze's behaviour half, when a path since `base` reaches the old pipeline
+# (scripts/affected.py's old_same): its output on every case is as at `base`.
+old-same base:
+    if uv run --quiet python scripts/affected.py --base "{{base}}" | grep -qx 'old_same=1'; then uv run --quiet python scripts/old-pipeline-same.py --base "{{base}}"; else echo "old-same: no old-pipeline input changed since {{base}}"; fi
+
 # Run one normative spec gate, e.g. `just spec-gate mutants --n 12`.
 spec-gate *args:
     uv run --quiet python scripts/spec-gate.py {{args}}

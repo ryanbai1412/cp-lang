@@ -307,10 +307,9 @@ def run_slices(names, reds_base=None):
 
 # What `cpl build` on the old pipeline is built from: a change here must leave its output
 # byte-identical (scripts/old-pipeline-same.py, the freeze's behaviour half).
-OLD_PIPELINE_INPUTS = ("crates/cpl-cli/", "crates/cpl-check/", "crates/cpl-ir/", "crates/cpl-interp/",
-                       "crates/cpl-codegen/", "crates/cpl-syntax/", "crates/cpl-next-syntax/", "crates/cpl-diag/",
-                       "crates/cpl-prim/", "crates/cpl-config/", "crates/cpl-contract/", "crates/cpl-json/",
-                       "crates/cpl-rt/", "Cargo.lock")
+OLD_PIPELINE_INPUTS = ("crates/cpl-cli/", "Cargo.lock", *sorted({
+    f"crates/{c}/" for root in ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen", "cpl-facade")
+    for c in crate_deps(root)}))
 
 
 WRONG_ACCEPT_INPUTS = ("std/", "crates/cpl-next", "crates/cpl-syntax/", "crates/cpl-prim/", "crates/cpl-diag/",
@@ -337,6 +336,10 @@ def select(paths, dirs):
         # What cpl-next's verdicts read: its crates and the ones they use, std, the guarded suites.
         if path.startswith(WRONG_ACCEPT_INPUTS):
             sel["wrong_accepts"] = True
+        # The shared lexer (cpl-next-syntax) and the frozen crates may change only what the old
+        # pipeline's output doesn't show; c80eeda5b defined these inputs but never selected on them.
+        if path.startswith(OLD_PIPELINE_INPUTS):
+            sel["old_same"] = True
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
         if path.endswith(".rs"):
             sel["rust_files"].append(path)
