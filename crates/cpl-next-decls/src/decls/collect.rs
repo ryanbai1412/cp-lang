@@ -1,9 +1,9 @@
 //! Collecting declarations: std's once, and each program's as a layer over them.
 use super::forms::{Form, Reader, UseForm};
 use super::impls::{overlap, same_shape, supertraits_unmet};
-use super::Impls;
 use super::inherent::inherent_impl;
 use super::tyconv::input_bound;
+use super::Impls;
 use super::*;
 use crate::synth::{enum_structs, module_derived};
 use cpl_diag::codes::FIELD_BOUND_FROM_INPUT;
@@ -75,6 +75,9 @@ fn layer(
 ) -> (Prepared, Vec<(ItemId, ast::Stmt)>) {
     let from = base.map_or(0, |b| b.d.module_names.len());
     let mut d = base.map_or_else(Decls::default, |b| b.d.clone());
+    if base.is_none() {
+        d.core_types = Arc::new(super::tyconv::core_types(&mut d.syms));
+    }
     d.impls_ranked = None;
     let (fns_from, impls_from, aliases_from) = (d.fns.len(), d.impls.len(), d.aliases.len());
     let n = mods.len();
@@ -1180,9 +1183,11 @@ fn layer(
                         continue;
                     };
                     if let Some(Named::Struct(sid)) = id.filter(|_| !d.field_trait(tref.tr)) {
-                        let Some(asked) =
-                            Impls::of(&d).derived_bounds(sid, &tref, copying.contains(&(s as *const _)))
-                        else {
+                        let Some(asked) = Impls::of(&d).derived_bounds(
+                            sid,
+                            &tref,
+                            copying.contains(&(s as *const _)),
+                        ) else {
                             wait.push((mid, item, s, id));
                             continue;
                         };

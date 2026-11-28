@@ -1,10 +1,19 @@
 //! Types as written turned into types: names looked up in a module's view, aliases expanded,
-//! a struct's left-off arguments filled from its defaults, and a set for each fn type.
+//! a struct's left-off arguments filled from its defaults, and a set for each fn type. Every
+//! written type and every form decls makes reaches one conversion, keyed by `Sym`.
+use super::forms::TyForm;
 use super::*;
 use crate::views::{Scope, Signatures, TypeTables};
 use cpl_next_ir::ids::ItemId;
+use cpl_next_ir::ty::End;
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_syntax::decorators::Mark;
+use cpl_next_syntax::ast::{self as next, AstNode, Expr, GenericArg, Type};
+use cpl_next_syntax::literal::int_value;
+use cpl_next_syntax::tree::SyntaxToken;
+use cpl_next_syntax::TokenKind;
+
+/// Type arguments written but left off the end take their defaults, which may name the
+/// arguments before them (R08.2.5).
 
 /// Type arguments written but left off the end take their defaults, which may name the
 /// arguments before them (R08.2.5).
@@ -30,22 +39,24 @@ pub(super) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>)
 
 pub(super) struct TyCx<'a> {
     /// What a name means where the type is written.
-    pub(super) names: &'a dyn Fn(&str) -> Option<Named>,
+    pub(super) names: &'a dyn Fn(Sym) -> Option<Named>,
     /// The signatures' tables, each read by key.
     pub(super) env: &'a dyn TypeTables,
     /// Where the item being converted starts in the source, when known: its spans count from it.
     pub(super) item: Option<ItemId>,
-    pub(super) generics: &'a [String],
+    pub(super) generics: &'a [Sym],
     /// The signature's own generics, where an alias's expansion names them by position.
-    pub(super) outer: &'a [String],
+    pub(super) outer: &'a [Sym],
     /// What the generics stand for, when converting an alias's type.
     pub(super) args: Option<&'a [Ty]>,
     /// The aliases being expanded, to report one that names itself.
     pub(super) expanding: Vec<usize>,
     /// The types a body declares by name: its domains, and its ranges with run-time ends.
-    pub(super) doms: &'a HashMap<String, Ty>,
+    pub(super) doms: &'a HashMap<Sym, Ty>,
     /// `t.Pre`: a domain a binding in scope owns, found through that binding, not by spelling.
-    pub(super) scoped: &'a dyn Fn(&str) -> Option<Ty>,
+    pub(super) scoped: &'a dyn Fn(Sym) -> Option<Ty>,
+    /// `Self` of the trait or impl being converted, for a form's [`TyForm::SelfTy`].
+    pub(super) self_ty: Option<Ty>,
     /// When converting a result type: the next result slot.
     pub(super) ret_slots: Option<usize>,
     /// Next implicit set parameter; `None` where a fn type may not appear bare.
@@ -67,14 +78,16 @@ pub(super) fn slot(cx: &mut TyCx) -> SetTy {
         (None, None) => SetTy::Var(usize::MAX),
     }
 }
-pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
+
+pub(super) fn alias(cx: &mut TyCx, id: usize, n: Sym, a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
     let env = cx.env;
     let decl = env.alias(AliasId(id));
     if a.len() != decl.generics.len() {
         errors.push(Msg::verdict(
             cpl_diag::codes::WRONG_ARG_COUNT,
             format!(
-                "`{n}` takes {} type arguments, found {}",
+                "`{}` takes {} type arguments, found {}",
+                env.text(n),
                 decl.generics.len(),
                 a.len()
             ),
@@ -89,7 +102,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
     expanding.push(id);
     let none = HashMap::new();
     let mut inner = TyCx {
-        names: &|n: &str| env.sym(n).and_then(|s| decl.names.get(&s)).copied(),
+        names: &|n: Sym| decl.names.get(&n).copied(),
         env,
         item: None,
         generics: &decl.generics,
@@ -98,6 +111,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         expanding,
         doms: if decl.program { cx.doms } else { &none },
         scoped: if decl.program { cx.scoped } else { &unscoped },
+        self_ty: None,
         ret_slots: cx.ret_slots,
         next_set: cx.next_set,
     };
@@ -105,111 +119,135 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
     (cx.ret_slots, cx.next_set) = (inner.ret_slots, inner.next_set);
     t
 }
-/// Whether some type fits both impl headers.
-/// A decorator another tool reads (`cpl lint`, `cpl stress`, a diagnostic's suggestions): on a
-/// library item it changes nothing a run or a check of a program does (R06.4.11). A program's
-/// own is refused until the slice checks it.
-pub(super) fn read_elsewhere(m: Option<Mark>) -> bool {
-    matches!(m, Some(Mark::Lint | Mark::Stress | Mark::OnUnimplemented))
-}
 
 /// `Seq<T>` written where a trait is wanted.
-pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Option<TraitRef> {
-    // `(u: V, w: W, ..)`: the core trait of that row, over the field types (R08.4.1).
-    if let TypeKind::Row(fs) = &t.kind {
-        let names: Vec<&str> = fs.iter().map(|(n, _)| n.text.as_str()).collect();
-        let Some(Named::Trait(tr)) = (cx.names)(&crate::records::row_name(&names)) else {
+pub(super) fn trait_ref(cx: &mut TyCx, t: &TyForm, errors: &mut Vec<Msg>) -> Option<TraitRef> {
+    match t {
+        TyForm::Named(n, args) => {
+            let tr = trait_named(cx, Some(*n), cx.env.text(*n).to_string(), errors)?;
+            let args = args.iter().map(|a| conv_form(cx, a, errors)).collect();
+            Some(TraitRef { tr, args })
+        }
+        TyForm::Written(Type::Path(p)) => {
+            let text = path_text(p);
+            let tr = trait_named(cx, cx.env.sym(&text), text, errors)?;
+            let args = generic_args(p)
+                .iter()
+                .map(|a| conv_arg(cx, a, errors))
+                .collect();
+            Some(TraitRef { tr, args })
+        }
+        // `(u: V, w: W, ..)`: the core trait of that row, over the field types (R08.4.1).
+        TyForm::Written(Type::Record(r)) if r.fields().any(|f| f.is_rest() && f.ty().is_none()) => {
+            let fs: Vec<next::RecordTypeField> = r.fields().filter(|f| !f.is_rest()).collect();
+            let names: Vec<String> = (fs.iter())
+                .map(|f| f.name().map_or(String::new(), |n| n.text().to_string()))
+                .collect();
+            let row = cx.env.sym(&crate::records::row_name(&names));
+            let Some(Named::Trait(tr)) = row.and_then(|s| (cx.names)(s)) else {
+                errors.push(Unbuilt::BoundNotNamed.into());
+                return None;
+            };
+            let args = (fs.iter())
+                .map(|f| f.ty().map_or(Ty::Error, |t| conv(cx, &t, errors)))
+                .collect();
+            Some(TraitRef { tr, args })
+        }
+        _ => {
             errors.push(Unbuilt::BoundNotNamed.into());
-            return None;
-        };
-        let args = fs.iter().map(|(_, a)| conv(cx, a, errors)).collect();
-        return Some(TraitRef { tr, args });
+            None
+        }
     }
-    let TypeKind::Named { name, args } = &t.kind else {
-        errors.push(Unbuilt::BoundNotNamed.into());
-        return None;
-    };
-    let Some(Named::Trait(tr)) = (cx.names)(&name.text) else {
-        errors.push(Msg::verdict(
-            cpl_diag::codes::UNKNOWN_TYPE,
-            format!("unknown trait `{}`", name.text),
-        ));
-        return None;
-    };
-    let args = args.iter().map(|a| conv(cx, a, errors)).collect();
-    Some(TraitRef { tr, args })
 }
 
-/// The single capitals in an impl header that name nothing: its undeclared type parameters (R02.10.3).
-/// A range type with an end naming a value the program's top level binds, written out, and that
+fn trait_named(cx: &TyCx, n: Option<Sym>, text: String, errors: &mut Vec<Msg>) -> Option<TraitId> {
+    match n.and_then(|n| (cx.names)(n)) {
+        Some(Named::Trait(tr)) => Some(tr),
+        _ => {
+            errors.push(Msg::verdict(
+                cpl_diag::codes::UNKNOWN_TYPE,
+                format!("unknown trait `{text}`"),
+            ));
+            None
+        }
+    }
+}
+
+/// A range type with an end naming a value the program's top level binds, as written, and that
 /// value: a struct field's layout is fixed before input is read, so no field is bounded by one
 /// (R03.1.3).
 pub(super) fn input_bound(
-    t: &ast::Type,
+    t: &Type,
     values: &HashSet<Sym>,
     syms: &Syms,
 ) -> Option<(String, String)> {
-    struct Named<'a>(&'a HashSet<Sym>, &'a Syms, Option<String>);
-    impl cpl_syntax::visit::Visitor for Named<'_> {
-        fn expr(&mut self, e: &ast::Expr) {
-            match &e.kind {
-                ast::ExprKind::Name(n)
-                    if self.2.is_none() && self.1.get(n).is_some_and(|s| self.0.contains(&s)) =>
-                {
-                    self.2 = Some(n.clone())
-                }
-                _ => {}
-            }
+    match t {
+        Type::Range(r) => {
+            let n = (r.syntax().descendants())
+                .filter_map(next::NameRef::cast)
+                .filter_map(|n| n.ident())
+                .find(|n| syms.get(n.text()).is_some_and(|s| values.contains(&s)))?;
+            Some((r.syntax().text().trim().to_string(), n.text().to_string()))
         }
-    }
-    match &t.kind {
-        TypeKind::Range { lo, hi, inclusive } => {
-            let mut v = Named(values, syms, None);
-            for e in [lo, hi].into_iter().flatten() {
-                cpl_syntax::visit::walk_expr(e, &mut v);
-            }
-            let end = |e: &Option<Box<ast::Expr>>| match e.as_deref().map(|e| &e.kind) {
-                Some(ast::ExprKind::Int(k)) => k.to_string(),
-                Some(ast::ExprKind::Name(n)) => n.clone(),
-                Some(_) => "…".to_string(),
-                None => String::new(),
-            };
-            let dots = if *inclusive { "..=" } else { ".." };
-            v.2.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
-        }
-        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, values, syms)),
-        TypeKind::Optional(t) => input_bound(t, values, syms),
+        Type::Tuple(ts) => ts
+            .elems()
+            .iter()
+            .find_map(|(_, t)| input_bound(t, values, syms)),
+        Type::Optional(o) => input_bound(&o.inner()?, values, syms),
         _ => None,
     }
 }
 
-pub(crate) fn unnamed(t: &ast::Type, names: &dyn Fn(&str) -> Option<Named>, out: &mut Vec<String>) {
+/// The single capitals a type writes that name nothing: an impl header's undeclared type
+/// parameters (R02.10.3).
+pub(crate) fn unnamed(
+    t: &Type,
+    names: &dyn Fn(Sym) -> Option<Named>,
+    syms: &mut Syms,
+    out: &mut Vec<Sym>,
+) {
     let mut all = Vec::new();
     names_in(t, &mut all);
     for n in all {
-        let capital = n.len() == 1 && n.chars().all(|c| c.is_ascii_uppercase());
-        if capital && names(&n).is_none() && !out.contains(&n) {
-            out.push(n);
+        if n.len() == 1 && n.chars().all(|c| c.is_ascii_uppercase()) {
+            let s = syms.intern(&n);
+            if names(s).is_none() && !out.contains(&s) {
+                out.push(s);
+            }
         }
     }
 }
 
 /// Every bare name (no type arguments) a type writes, in order.
-pub(crate) fn names_in(t: &ast::Type, out: &mut Vec<String>) {
-    match &t.kind {
-        TypeKind::Named { name, args } => {
+pub(crate) fn names_in(t: &Type, out: &mut Vec<String>) {
+    match t {
+        Type::Path(p) => {
+            let args = generic_args(p);
             if args.is_empty() {
-                out.push(name.text.clone());
+                out.push(path_text(p));
             }
-            args.iter().for_each(|a| names_in(a, out));
+            for a in &args {
+                if let GenericArg::Type(t) = a {
+                    names_in(t, out);
+                }
+            }
         }
-        TypeKind::Optional(e) | TypeKind::Mut(e) | TypeKind::Yields(e) => names_in(e, out),
-        TypeKind::Tuple(ts) => ts.iter().for_each(|e| names_in(e, out)),
-        TypeKind::Array { index, elem } => {
-            index.iter().chain([&**elem]).for_each(|e| names_in(e, out))
+        Type::Optional(o) => o.inner().iter().for_each(|i| names_in(i, out)),
+        Type::Tuple(ts) => ts.elems().iter().for_each(|(_, t)| names_in(t, out)),
+        Type::Array(a) => {
+            for d in a.dims().iter().flat_map(|d| d.args().collect::<Vec<_>>()) {
+                if let GenericArg::Type(t) = d {
+                    names_in(&t, out);
+                }
+            }
+            a.elem().iter().for_each(|e| names_in(e, out));
         }
-        TypeKind::Fn { params, ret } => {
-            params.iter().chain([&**ret]).for_each(|e| names_in(e, out))
+        Type::Fn(f) => {
+            f.param().iter().for_each(|p| names_in(p, out));
+            f.ret()
+                .and_then(|r| r.ty())
+                .iter()
+                .for_each(|r| names_in(r, out));
         }
         _ => {}
     }
@@ -232,245 +270,511 @@ pub fn prim_type(n: &str) -> Option<Ty> {
     cpl_contract::Prim::named(n).map(Ty::of_prim)
 }
 
-pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
-    match &t.kind {
-        TypeKind::Named { name, args } => {
-            let n = name.text.as_str();
-            let mut a: Vec<Ty> = args.iter().map(|x| conv(cx, x, errors)).collect();
-            // `D.m`: the `@member(m)` struct at `D`, as `D.cuts` is `Cut<D>`.
-            if let Some((base, m)) = n.rsplit_once('.') {
-                if let Some(id) = cx.env.member(m) {
-                    let named = TypeKind::Named {
-                        name: ast::Name {
-                            text: base.to_string(),
-                            span: name.span,
-                        },
-                        args: Vec::new(),
-                    };
-                    let base = conv(
-                        cx,
-                        &ast::Type {
-                            kind: named,
-                            span: t.span,
-                        },
-                        errors,
-                    );
-                    let k = cx.env.n_sets(id);
-                    let sets = (0..k).map(|_| slot(cx)).collect();
-                    return Ty::Struct(id, vec![base], sets);
-                }
-            }
-            if let Some(i) = cx.generics.iter().position(|g| g == n) {
-                return match cx.args {
-                    Some(args) => args[i].clone(),
-                    None => Ty::Param(i),
-                };
-            }
-            if let Some(Named::Alias(id)) = (cx.names)(n) {
-                return alias(cx, id.0, n, a, errors);
-            }
-            if let Some(t) = cx.doms.get(n).cloned().or_else(|| (cx.scoped)(n)) {
-                return t;
-            }
-            if let Some(t) = prim_type(n) {
-                return t;
-            }
-            match n {
-                "Raw" if a.len() == 1 => Ty::Raw(Box::new(a.remove(0))),
-                _ => match (cx.names)(n).and_then(|x| match x {
-                    Named::Struct(s) => Some(s),
-                    _ => None,
-                }) {
-                    // Set arguments of a struct named in a signature are fresh parameters.
-                    Some(d) => {
-                        let d = cx.env.by_arity(d, a.len());
-                        fill_defaults(cx.env.struct_defaults(d), &mut a);
-                        let k = cx.env.n_sets(d);
-                        let sets = (0..k).map(|_| slot(cx)).collect();
-                        Ty::Struct(d, a, sets)
-                    }
-                    None => {
-                        errors.push(Msg::verdict(
-                            cpl_diag::codes::UNKNOWN_TYPE,
-                            format!("unknown type `{n}`"),
-                        ));
-                        Ty::Error
-                    }
-                },
-            }
-        }
-        TypeKind::Tuple(ts) if ts.is_empty() => Ty::Unit,
-        // `(A, B)` is the `@role(tuple)` struct with two fields.
-        TypeKind::Tuple(ts) if cx.env.tuple(ts.len()).is_some() => {
-            let d = cx.env.tuple(ts.len()).unwrap_or(StructId(0));
-            let a = ts.iter().map(|x| conv(cx, x, errors)).collect();
-            let k = cx.env.n_sets(d);
-            let sets = (0..k).map(|_| slot(cx)).collect();
-            Ty::Struct(d, a, sets)
-        }
-        // `(lo: A, hi: B)` is the record struct of those field names (R02.5.2).
-        TypeKind::Record(fs) if cx.env.record(&field_names(fs)).is_some() => {
-            let d = cx.env.record(&field_names(fs)).unwrap_or(StructId(0));
-            // `domain C` in a result is the fresh domain the fn names `C` (R02.9.3).
-            let a = (fs.iter())
-                .map(|(n, x)| match x.kind {
-                    TypeKind::NewDomain => cx.doms.get(&n.text).cloned().unwrap_or(Ty::Error),
-                    _ => conv(cx, x, errors),
-                })
-                .collect();
-            Ty::Struct(d, a, Vec::new())
-        }
-        TypeKind::RowWithout {
-            prefix,
-            base,
-            removed,
-        } => {
-            let form = (
-                prefix.iter().map(|(n, _)| n.text.clone()).collect(),
-                removed.iter().map(|n| n.text.clone()).collect(),
-            );
-            let base = conv(cx, base, errors);
-            without(cx, &form, prefix, base, t.span, errors)
-        }
-        // `?T` is the struct filling the `option` role.
-        TypeKind::Optional(inner) if cx.env.roles().option.is_some() => {
-            let d = cx.env.roles().option.unwrap_or(StructId(0));
-            Ty::Struct(d, vec![conv(cx, inner, errors)], Vec::new())
-        }
-        // `[D]T` is the `@role(array)` struct `Array<D, T>`.
-        // `0..=CAP` with `const CAP = 2_000_000_000`: a const written as a literal is that literal.
-        TypeKind::Range { lo, hi, inclusive } => match static_range_by(lo, hi, *inclusive, |e| {
-            match &e.kind {
-                ast::ExprKind::Name(n) => match (cx.names)(n.as_str()) {
-                    Some(Named::Const(c)) => cx.env.konst(c).init.int_literal(),
-                    _ => None,
-                },
-                _ => e.int_literal(),
-            }
-        }) {
-            Some((lo, hi)) => Ty::Range(lo, hi),
-            // `0..=V.count`: its end is the domain's, where a struct's arguments name it.
-            None if count_end(lo, hi, *inclusive)
-                .is_some_and(|(_, d, m, _)| is_type_name(cx, d) && cx.env.getter(m).is_some()) =>
-            {
-                let (lo, d, m, k) = count_end(lo, hi, *inclusive).unwrap_or_default();
-                let m = cx.env.getter(m).unwrap_or(FnId(0));
-                let d = conv(cx, &ast::Type::named(d, t.span), errors);
-                Ty::RangeTo(Box::new(d), m, lo, k)
-            }
-            None => {
-                errors.push(Unbuilt::RangeTypeOutsideBody.into());
-                Ty::Error
-            }
-        },
-        // `[0..2]T`: an axis over a constant range is keyed by that range type (R04.3.4).
-        TypeKind::Array { index, .. }
-            if index.len() == 1
-                && matches!(index[0].kind, TypeKind::Range { .. })
-                && const_axis(&index[0]).is_none()
-                && !count_axis(cx, &index[0]) =>
-        {
-            errors.push(Unbuilt::RangeIndexedArray.into());
+/// Each core type by its name, for a first layer's tables.
+pub(super) fn core_types(syms: &mut Syms) -> HashMap<Sym, CoreType> {
+    let mut out: HashMap<Sym, CoreType> = (cpl_contract::Prim::ALL.into_iter())
+        .map(|p| (syms.intern(p.name()), CoreType::Prim(p)))
+        .collect();
+    out.insert(syms.intern("Raw"), CoreType::Raw);
+    out
+}
+
+/// A type decls makes or reads as a form.
+pub(super) fn conv_form(cx: &mut TyCx, t: &TyForm, errors: &mut Vec<Msg>) -> Ty {
+    match t {
+        TyForm::Written(t) => conv(cx, t, errors),
+        TyForm::Param(i) => param(cx, *i),
+        TyForm::SelfTy => cx.self_ty.clone().unwrap_or_else(|| {
+            errors.push(Msg::internal("`Self` outside a trait or impl"));
             Ty::Error
-        }
-        // `[R, C]T` is `[(R, C)]T`: one array keyed by the product domain (R04.2.11).
-        TypeKind::Array { index, elem } if !index.is_empty() => {
-            let i = match &index[..] {
-                [i] => conv(cx, i, errors),
-                _ => conv(
-                    cx,
-                    &ast::Type {
-                        kind: TypeKind::Tuple(index.clone()),
-                        span: t.span,
-                    },
-                    errors,
-                ),
-            };
-            let e = conv(cx, elem, errors);
-            match cx.env.sugar().array {
-                Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
+        }),
+        TyForm::SelfAssoc(a) => {
+            let s = cx.env.sym(&format!("Self.{}", cx.env.text(*a)));
+            match s.and_then(|s| cx.generics.iter().position(|g| *g == s)) {
+                Some(i) => param(cx, i),
                 None => {
-                    errors.push(Msg::internal("`[D]T` needs the `@role(array)` struct"));
+                    errors.push(Msg::internal("`Self.R` outside its trait"));
                     Ty::Error
                 }
             }
         }
-        TypeKind::Fn { params, ret } => {
-            let ps = (params.iter())
-                .map(|x| match &x.kind {
-                    TypeKind::Mut(m) => Ty::Mut(Box::new(conv(cx, m, errors))),
-                    _ => conv(cx, x, errors),
+        TyForm::Named(n, args) => {
+            let a = args.iter().map(|x| conv_form(cx, x, errors)).collect();
+            named(cx, *n, a, errors)
+        }
+        TyForm::Record(fs) => {
+            let names: Vec<String> = fs
+                .iter()
+                .map(|(n, _)| cx.env.text(*n).to_string())
+                .collect();
+            let Some(d) = cx.env.record(&names) else {
+                return unbuilt("Record", errors);
+            };
+            let a = fs.iter().map(|(_, t)| conv_form(cx, t, errors)).collect();
+            Ty::Struct(d, a, Vec::new())
+        }
+    }
+}
+
+fn param(cx: &TyCx, i: usize) -> Ty {
+    cx.args.map_or(Ty::Param(i), |a| a[i].clone())
+}
+
+pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
+    match t {
+        Type::Path(p) => {
+            let segs: Vec<SyntaxToken> = p.segments().collect();
+            let a = generic_args(p)
+                .iter()
+                .map(|x| conv_arg(cx, x, errors))
+                .collect();
+            conv_path(cx, &segs, a, errors)
+        }
+        Type::Tuple(ts) => {
+            let elems = ts.elems();
+            if elems.is_empty() {
+                return Ty::Unit;
+            }
+            // `(A, B)` is the `@role(tuple)` struct with two fields.
+            let Some(d) = cx.env.tuple(elems.len()) else {
+                return unbuilt("Tuple", errors);
+            };
+            let a = (elems.iter())
+                .map(|(m, x)| match m {
+                    true => unbuilt("Mut", errors),
+                    false => conv(cx, x, errors),
                 })
                 .collect();
-            let r = conv(cx, ret, errors);
+            let sets = (0..cx.env.n_sets(d)).map(|_| slot(cx)).collect();
+            Ty::Struct(d, a, sets)
+        }
+        Type::Record(r) => conv_record(cx, r, errors),
+        // `?T` is the struct filling the `option` role.
+        Type::Optional(o) => match (cx.env.roles().option, o.inner()) {
+            (_, _) if o.is_mut() => unbuilt("Mut", errors),
+            (Some(d), Some(inner)) => Ty::Struct(d, vec![conv(cx, &inner, errors)], Vec::new()),
+            (None, _) => unbuilt("Optional", errors),
+            (Some(_), None) => Ty::Error,
+        },
+        Type::Range(r) => match r.expr() {
+            Some(Expr::Range(re)) => conv_range(cx, &re, errors),
+            Some(_) => unbuilt("Value", errors),
+            None => Ty::Error,
+        },
+        Type::Array(a) => conv_array(cx, a, errors),
+        Type::Fn(f) => {
+            let ps = match f.param() {
+                Some(Type::Tuple(ts)) => (ts.elems().into_iter())
+                    .map(|(m, x)| {
+                        let x = conv(cx, &x, errors);
+                        if m {
+                            Ty::Mut(Box::new(x))
+                        } else {
+                            x
+                        }
+                    })
+                    .collect(),
+                Some(p) => vec![conv(cx, &p, errors)],
+                None => Vec::new(),
+            };
+            let r = match f.ret() {
+                Some(r) if r.is_yields() => unbuilt("Yields", errors),
+                Some(r) => r.ty().map_or(Ty::Unit, |r| conv(cx, &r, errors)),
+                None => Ty::Unit,
+            };
             let set = slot(cx);
             Ty::Fn(ps, Box::new(r), set)
         }
-        // `type_of(f)`: the fn item's own type, one for a generic fn (R08.1.10).
-        TypeKind::ItemOf(e) => {
-            let item = cx.item.clone();
-            let at = |text: Msg| match &item {
-                Some(i) => Msg::at(i.at(e.span), text),
-                None => text,
-            };
-            let key = e.fn_item_key();
-            match key.as_deref().map(|k| (k, (cx.names)(k))) {
-                Some((_, Some(Named::Fn(f)))) => Ty::Clo(Box::new(CloRef::Item(FnRef {
-                    decl: f,
-                    targs: Vec::new(),
-                    sets: Vec::new(),
-                    ctx: 0,
-                }))),
-                Some((k, None))
-                    if matches!(e.kind, ast::ExprKind::Name(_)) && !cx.env.top_value(k) =>
-                {
-                    let code = cpl_diag::codes::UNRESOLVED_NAME;
-                    errors.push(at(Msg::verdict(code, format!("unknown name `{k}`"))));
+        Type::TypeOf(o) => item_of(cx, o, errors),
+        Type::DomainBinder(b) => (b.name().and_then(|n| cx.env.sym(n.text())))
+            .and_then(|s| cx.doms.get(&s).cloned())
+            .unwrap_or(Ty::Error),
+        // A result's `_`, filled in once its struct's domain parameters are known (R02.9.3).
+        Type::Infer(_) if cx.ret_slots.is_some() => Ty::Error,
+        Type::Infer(_) => unbuilt("Value", errors),
+        Type::Alphabet(_) => unbuilt("Alphabet", errors),
+        Type::Literal(_) => unbuilt("Literal", errors),
+    }
+}
+
+/// A type argument: a type, or a value, which is its singleton range type (`Mod<7>` is
+/// `Mod<7..=7>`, R03.5.1).
+fn conv_arg(cx: &mut TyCx, a: &GenericArg, errors: &mut Vec<Msg>) -> Ty {
+    match a {
+        GenericArg::Type(Type::Range(r)) => match r.expr() {
+            Some(Expr::Range(re)) => conv_range(cx, &re, errors),
+            Some(e) => match const_int(cx, &e) {
+                Some(k) => Ty::Range(k, k),
+                None => {
+                    let text = cpl_diag::msgs::ir::BAD_NUMBER_EXPECTED_A_COMPILE_TIME.say(&[]);
+                    let m = Msg::verdict(cpl_diag::codes::BAD_NUMBER, text);
+                    errors.push(at(cx, e.syntax().span(), m));
                     Ty::Error
                 }
-                Some((k, None)) if !matches!(e.kind, ast::ExprKind::Name(_)) => {
-                    match cx.env.operator(k) {
-                        Some(f) => Ty::Clo(Box::new(CloRef::Item(FnRef {
-                            decl: f,
-                            targs: Vec::new(),
-                            sets: Vec::new(),
-                            ctx: 0,
-                        }))),
-                        None => {
-                            let code = cpl_diag::codes::NOT_A_FN_ITEM;
-                            errors.push(at(Msg::verdict(
-                                code,
-                                format!("no `@operator` trait declares `{k}`, so it is no fn item"),
-                            )));
-                            Ty::Error
-                        }
-                    }
-                }
-                _ => {
-                    let code = cpl_diag::codes::NOT_A_FN_ITEM;
-                    errors.push(at(Msg::verdict(
-                        code,
-                        "`type_of` takes a `fn` declared by name, not this value",
-                    )));
-                    Ty::Error
-                }
+            },
+            None => Ty::Error,
+        },
+        GenericArg::Type(t) => conv(cx, t, errors),
+        GenericArg::Param(_) => unbuilt("GenericParam", errors),
+    }
+}
+
+fn at(cx: &TyCx, span: cpl_diag::Span, m: Msg) -> Msg {
+    match &cx.item {
+        Some(i) => Msg::at(i.at(span), m),
+        None => m,
+    }
+}
+
+fn generic_args(p: &next::PathType) -> Vec<GenericArg> {
+    p.generic_args()
+        .map(|a| a.args().collect())
+        .unwrap_or_default()
+}
+
+fn path_text(p: &next::PathType) -> String {
+    p.segments()
+        .map(|s| s.text().to_string())
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+/// `D.m`, `T`, `Alias`, `Int`, `Struct<..>`.
+fn conv_path(cx: &mut TyCx, segs: &[SyntaxToken], a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
+    // `D.m`: the `@member(m)` struct at `D`, as `D.cuts` is `Cut<D>`.
+    if let [base @ .., m] = segs {
+        if !base.is_empty() {
+            if let Some(id) = cx.env.member(m.text()) {
+                let base = conv_path(cx, base, Vec::new(), errors);
+                let sets = (0..cx.env.n_sets(id)).map(|_| slot(cx)).collect();
+                return Ty::Struct(id, vec![base], sets);
             }
         }
-        // The parser has said what is wrong with it.
-        TypeKind::Error => Ty::Error,
-        TypeKind::DomainBinder(n) => cx.doms.get(&n.text).cloned().unwrap_or(Ty::Error),
-        // A result's `_`, filled in once its struct's domain parameters are known (R02.9.3).
-        TypeKind::Value(_) if cx.ret_slots.is_some() && is_hole(t) => Ty::Error,
-        other => {
-            errors.push(
-                Unbuilt::Type {
-                    kind: crate::kind_name(other),
-                }
-                .into(),
-            );
+    }
+    let text = segs.iter().map(|s| s.text()).collect::<Vec<_>>().join(".");
+    match cx.env.sym(&text) {
+        Some(n) => named(cx, n, a, errors),
+        None => unknown(&text, errors),
+    }
+}
+
+/// The type a resolved name gives with its arguments: a parameter, an alias, a domain, a core
+/// type or a struct.
+pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>) -> Ty {
+    if let Some(i) = cx.generics.iter().position(|g| *g == n) {
+        return param(cx, i);
+    }
+    let found = (cx.names)(n);
+    if let Some(Named::Alias(id)) = found {
+        return alias(cx, id.0, n, a, errors);
+    }
+    if let Some(t) = cx.doms.get(&n).cloned().or_else(|| (cx.scoped)(n)) {
+        return t;
+    }
+    match cx.env.core_type(n) {
+        Some(CoreType::Prim(p)) => return Ty::of_prim(p),
+        Some(CoreType::Raw) if a.len() == 1 => return Ty::Raw(Box::new(a.remove(0))),
+        _ => {}
+    }
+    match found {
+        // Set arguments of a struct named in a signature are fresh parameters.
+        Some(Named::Struct(d)) => {
+            let d = cx.env.by_arity(d, a.len());
+            fill_defaults(cx.env.struct_defaults(d), &mut a);
+            let sets = (0..cx.env.n_sets(d)).map(|_| slot(cx)).collect();
+            Ty::Struct(d, a, sets)
+        }
+        _ => unknown(cx.env.text(n), errors),
+    }
+}
+
+fn unknown(n: &str, errors: &mut Vec<Msg>) -> Ty {
+    errors.push(Msg::verdict(
+        cpl_diag::codes::UNKNOWN_TYPE,
+        format!("unknown type `{n}`"),
+    ));
+    Ty::Error
+}
+
+fn unbuilt(kind: &str, errors: &mut Vec<Msg>) -> Ty {
+    errors.push(
+        Unbuilt::Type {
+            kind: kind.to_string(),
+        }
+        .into(),
+    );
+    Ty::Error
+}
+
+/// `(lo: A, hi: B)` is the record struct of those field names (R02.5.2); `(to: V, ..R without
+/// (u, v))` is what `without` makes of `R`. An open row `(u: V, ..)` is only a bound.
+fn conv_record(cx: &mut TyCx, r: &next::RecordType, errors: &mut Vec<Msg>) -> Ty {
+    let fields: Vec<next::RecordTypeField> = r.fields().collect();
+    let text = |t: Option<SyntaxToken>| t.map_or(String::new(), |t| t.text().to_string());
+    if let Some(rest) = fields.iter().find(|f| f.is_rest()) {
+        let Some(base) = rest.ty() else {
+            return unbuilt("Row", errors);
+        };
+        let prefix: Vec<(String, Option<Type>)> = (fields.iter())
+            .filter(|f| !f.is_rest())
+            .map(|f| (text(f.name()), f.ty()))
+            .collect();
+        let form = (
+            prefix.iter().map(|(n, _)| n.clone()).collect(),
+            rest.removed()
+                .into_iter()
+                .map(|t| t.text().to_string())
+                .collect(),
+        );
+        let base = conv(cx, &base, errors);
+        return without(cx, &form, &prefix, base, r.syntax().span(), errors);
+    }
+    // `domain C` in a result is the fresh domain the fn names `C` (R02.9.3).
+    let names: Vec<String> = (fields.iter())
+        .map(|f| match (f.name(), f.ty()) {
+            (Some(n), _) => n.text().to_string(),
+            (None, Some(Type::DomainBinder(b))) => text(b.name()),
+            (None, _) => String::new(),
+        })
+        .collect();
+    let Some(d) = cx.env.record(&names) else {
+        return unbuilt("Record", errors);
+    };
+    let a = (fields.iter())
+        .map(|f| f.ty().map_or(Ty::Error, |x| conv(cx, &x, errors)))
+        .collect();
+    Ty::Struct(d, a, Vec::new())
+}
+
+/// `lo..hi` as a type: constant ends give `Range`, an end naming a value parameter gives
+/// `RangeEnds` (`0..P`, R03.5.1), and `lo..=D.m + k` a range to a domain's getter.
+fn conv_range(cx: &mut TyCx, re: &next::RangeExpr, errors: &mut Vec<Msg>) -> Ty {
+    let (lo, hi) = (re.lo(), re.hi());
+    let lo_end = match &lo {
+        Some(e) => end(cx, e),
+        None => Some(End::Lit(i64::MIN + 1)),
+    };
+    let (hi_end, inclusive) = match &hi {
+        Some(e) => (end(cx, e), re.is_inclusive()),
+        None => (Some(End::Lit(i64::MAX)), true),
+    };
+    if let (Some(l), Some(h)) = (lo_end, hi_end) {
+        let t = Ty::range_ends(l, h, inclusive);
+        let unmade = matches!(
+            &t,
+            Ty::RangeEnds {
+                lo: End::Lit(_),
+                hi: End::Lit(_),
+                ..
+            }
+        );
+        if !unmade {
+            return t;
+        }
+    }
+    // `0..=V.count`: its end is the domain's, where a struct's arguments name it.
+    if let Some((lo, d, m, k)) = count_end(cx, lo.as_ref(), hi.as_ref(), re.is_inclusive()) {
+        if let (true, Some(m)) = (is_type_name(cx, &d), cx.env.getter(m.text())) {
+            let d = conv_path(cx, &[d], Vec::new(), errors);
+            return Ty::RangeTo(Box::new(d), m, lo, k);
+        }
+    }
+    errors.push(Unbuilt::RangeTypeOutsideBody.into());
+    Ty::Error
+}
+
+/// A range type's end: a constant, or a value parameter of the declaration.
+fn end(cx: &TyCx, e: &Expr) -> Option<End> {
+    if let Some(k) = const_int(cx, e) {
+        return Some(End::Lit(k));
+    }
+    let Expr::Name(n) = e else {
+        return None;
+    };
+    let s = cx.env.sym(n.ident()?.text())?;
+    let i = cx.generics.iter().position(|g| *g == s)?;
+    Some(End::Of(Box::new(param(cx, i))))
+}
+
+/// The integer a constant expression is: literals, `+ - *`, and a `const` written as one
+/// (`0..=CAP` with `const CAP = 2_000_000_000`).
+pub(super) fn const_int(cx: &TyCx, e: &Expr) -> Option<i64> {
+    let konst = |n: Sym| match (cx.names)(n) {
+        Some(Named::Const(c)) => const_value(&cx.env.konst(c).init, &|_| None),
+        _ => None,
+    };
+    const_value(e, &|t: &SyntaxToken| konst(cx.env.sym(t.text())?))
+}
+
+/// The integer `e` is, with each name's value from `name`.
+fn const_value(e: &Expr, name: &dyn Fn(&SyntaxToken) -> Option<i64>) -> Option<i64> {
+    match e {
+        Expr::Literal(l) => {
+            let t = l.token()?;
+            match t.kind() {
+                TokenKind::Int => i64::try_from(int_value(t.text())?).ok(),
+                _ => None,
+            }
+        }
+        Expr::Paren(p) => const_value(&p.inner()?, name),
+        Expr::Prefix(p) if p.op()?.kind() == TokenKind::Minus => {
+            const_value(&p.operand()?, name)?.checked_neg()
+        }
+        Expr::Bin(b) => {
+            let (x, y) = (const_value(&b.lhs()?, name)?, const_value(&b.rhs()?, name)?);
+            match b.op()?.kind() {
+                TokenKind::Plus => x.checked_add(y),
+                TokenKind::Minus => x.checked_sub(y),
+                TokenKind::Star => x.checked_mul(y),
+                _ => None,
+            }
+        }
+        Expr::Name(n) => name(&n.ident()?),
+        _ => None,
+    }
+}
+
+/// `lo..=D.m + k`: a range type with a constant start whose end is a static getter of a type
+/// named `D`, give or take a constant (`0..=V.count`, `1..V.count + 1`). Gives `lo`, `D`, `m`
+/// and `k`.
+fn count_end(
+    cx: &TyCx,
+    lo: Option<&Expr>,
+    hi: Option<&Expr>,
+    inclusive: bool,
+) -> Option<(i64, SyntaxToken, SyntaxToken, i64)> {
+    fn end(cx: &TyCx, e: &Expr) -> Option<(SyntaxToken, SyntaxToken, i64)> {
+        match e {
+            Expr::Paren(p) => end(cx, &p.inner()?),
+            Expr::Field(f) => match f.base()? {
+                Expr::Name(d) => Some((d.ident()?, f.name()?, 0)),
+                _ => None,
+            },
+            Expr::Bin(b) => {
+                let j = const_int(cx, &b.rhs()?)?;
+                let j = match b.op()?.kind() {
+                    TokenKind::Plus => j,
+                    TokenKind::Minus => j.checked_neg()?,
+                    _ => return None,
+                };
+                let (d, m, k) = end(cx, &b.lhs()?)?;
+                Some((d, m, k.checked_add(j)?))
+            }
+            _ => None,
+        }
+    }
+    let lo = const_int(cx, lo?)?;
+    let (d, m, k) = end(cx, hi?)?;
+    let k = if inclusive { k } else { k.checked_sub(1)? };
+    Some((lo, d, m, k))
+}
+
+/// `[D]T`, `[R, C]T` (one array keyed by the product, R04.2.11), `[domain S]T` (owns a fresh
+/// domain), `[0..2]T` keyed by a constant range (R04.3.4).
+fn conv_array(cx: &mut TyCx, a: &next::ArrayType, errors: &mut Vec<Msg>) -> Ty {
+    let dims: Vec<GenericArg> = a.dims().map(|d| d.args().collect()).unwrap_or_default();
+    let Some(elem) = a.elem() else {
+        return Ty::Error;
+    };
+    let axes: Vec<Type> = (dims.iter())
+        .filter_map(|d| match d {
+            GenericArg::Type(t) => Some(t.clone()),
+            GenericArg::Param(_) => None,
+        })
+        .collect();
+    if axes.is_empty() || axes.len() != dims.len() {
+        return unbuilt("Array", errors);
+    }
+    // `[0..2]T`: an axis over a constant range is keyed by that range type (R04.3.4).
+    if let [Type::Range(r)] = &axes[..] {
+        if let Some(Expr::Range(re)) = r.expr() {
+            let constant = re
+                .lo()
+                .zip(re.hi())
+                .is_some_and(|(l, h)| const_int(cx, &l).is_some() && const_int(cx, &h).is_some());
+            if !constant && !count_axis(cx, &re) {
+                errors.push(Unbuilt::RangeIndexedArray.into());
+                return Ty::Error;
+            }
+        }
+    }
+    let i = match &axes[..] {
+        [i] => conv(cx, i, errors),
+        // `[R, C]T` is keyed by `(R, C)`, the `@role(tuple)` struct of its axes.
+        is => {
+            let Some(d) = cx.env.tuple(is.len()) else {
+                return unbuilt("Tuple", errors);
+            };
+            let parts = is.iter().map(|x| conv(cx, x, errors)).collect();
+            let sets = (0..cx.env.n_sets(d)).map(|_| slot(cx)).collect();
+            Ty::Struct(d, parts, sets)
+        }
+    };
+    let e = conv(cx, &elem, errors);
+    match cx.env.sugar().array {
+        Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
+        None => {
+            errors.push(Msg::internal("`[D]T` needs the `@role(array)` struct"));
             Ty::Error
         }
     }
+}
+
+/// `type_of(f)`: the fn item's own type, one for a generic fn (R08.1.10).
+fn item_of(cx: &mut TyCx, o: &next::TypeOfType, errors: &mut Vec<Msg>) -> Ty {
+    let arg = o.arg();
+    let span = arg
+        .as_ref()
+        .map_or(o.syntax().span(), |e| e.syntax().span());
+    let fn_ref = |f: FnId| {
+        Ty::Clo(Box::new(CloRef::Item(FnRef {
+            decl: f,
+            targs: Vec::new(),
+            sets: Vec::new(),
+            ctx: 0,
+        })))
+    };
+    let not_fn = || {
+        Msg::verdict(
+            cpl_diag::codes::NOT_A_FN_ITEM,
+            "`type_of` takes a `fn` declared by name, not this value",
+        )
+    };
+    let msg = match arg {
+        Some(Expr::Name(n)) => {
+            let Some(k) = n.ident() else {
+                return Ty::Error;
+            };
+            match cx.env.sym(k.text()).and_then(|s| (cx.names)(s)) {
+                Some(Named::Fn(f)) => return fn_ref(f),
+                None if !cx.env.top_value(k.text()) => Msg::verdict(
+                    cpl_diag::codes::UNRESOLVED_NAME,
+                    format!("unknown name `{}`", k.text()),
+                ),
+                _ => not_fn(),
+            }
+        }
+        // `type_of(+)`: the fn of the `@operator` trait that declares it.
+        Some(Expr::OpValue(op)) => {
+            let k: String = (op.syntax().tokens())
+                .filter(|t| {
+                    !t.kind().is_trivia()
+                        && !matches!(t.kind(), TokenKind::LParen | TokenKind::RParen)
+                })
+                .map(|t| t.text().to_string())
+                .collect();
+            match cx.env.operator(&k) {
+                Some(f) => return fn_ref(f),
+                None => Msg::verdict(
+                    cpl_diag::codes::NOT_A_FN_ITEM,
+                    format!("no `@operator` trait declares `{k}`, so it is no fn item"),
+                ),
+            }
+        }
+        _ => not_fn(),
+    };
+    errors.push(at(cx, span, msg));
+    Ty::Error
 }
 
 /// Converts a type written in a body: fn types get a placeholder set the checker replaces. It
@@ -479,14 +783,14 @@ pub fn body_type(
     sigs: &dyn Signatures,
     scope: &dyn Scope,
     m: ModId,
-    generics: &[String],
-    doms: &HashMap<String, Ty>,
-    scoped: &dyn Fn(&str) -> Option<Ty>,
-    t: &ast::Type,
+    generics: &[Sym],
+    doms: &HashMap<Sym, Ty>,
+    scoped: &dyn Fn(Sym) -> Option<Ty>,
+    t: &Type,
 ) -> (Ty, Vec<Msg>) {
     let mut errors = Vec::new();
     let mut cx = TyCx {
-        names: &|n: &str| scope.named(m, n),
+        names: &|n: Sym| scope.named(m, sigs.text(n)),
         env: sigs,
         item: None,
         generics,
@@ -495,6 +799,7 @@ pub fn body_type(
         expanding: Vec::new(),
         doms,
         scoped,
+        self_ty: None,
         ret_slots: None,
         next_set: None,
     };
@@ -518,6 +823,7 @@ pub(super) struct Tables {
     roles: Roles,
     records: Arc<HashMap<Vec<String>, StructId>>,
     members: Arc<HashMap<Sym, StructId>>,
+    core: Arc<HashMap<Sym, CoreType>>,
 }
 
 impl Decls {
@@ -538,6 +844,7 @@ impl Decls {
             roles: self.roles.clone(),
             records: self.records.clone(),
             members: self.member_types.clone(),
+            core: self.core_types.clone(),
         }
     }
 }
@@ -554,6 +861,9 @@ impl TypeTables for Tables {
     }
     fn konst(&self, id: ConstId) -> &LibConst {
         &self.consts[id.0]
+    }
+    fn core_type(&self, n: Sym) -> Option<CoreType> {
+        self.core.get(&n).copied()
     }
     fn top_value(&self, name: &str) -> bool {
         self.syms
@@ -602,16 +912,13 @@ impl TypeTables for Tables {
 }
 
 /// `[0..V.count - 1]T`: an axis ending at a domain's count, keyed by that range type (R04.3.4).
-fn count_axis(cx: &TyCx, t: &ast::Type) -> bool {
-    let TypeKind::Range { lo, hi, inclusive } = &t.kind else {
-        return false;
-    };
-    count_end(lo, hi, *inclusive)
-        .is_some_and(|(_, d, m, _)| is_type_name(cx, d) && cx.env.getter(m).is_some())
+fn count_axis(cx: &TyCx, re: &next::RangeExpr) -> bool {
+    count_end(cx, re.lo().as_ref(), re.hi().as_ref(), re.is_inclusive())
+        .is_some_and(|(_, d, m, _)| is_type_name(cx, &d) && cx.env.getter(m.text()).is_some())
 }
 
 /// No binding is in scope where decls reads a type.
-pub(super) fn unscoped(_: &str) -> Option<Ty> {
+pub(super) fn unscoped(_: Sym) -> Option<Ty> {
     None
 }
 
@@ -621,44 +928,35 @@ pub(super) fn unscoped(_: &str) -> Option<Ty> {
 fn without(
     cx: &mut TyCx,
     form: &crate::records::Form,
-    prefix: &[(ast::Name, ast::Type)],
+    prefix: &[(String, Option<Type>)],
     base: Ty,
     span: cpl_diag::Span,
     errors: &mut Vec<Msg>,
 ) -> Ty {
-    let item = cx.item.clone();
-    let missing = |what: &str| {
+    let missing = |cx: &TyCx, what: &str| {
         let m = Msg::verdict(
             cpl_diag::codes::UNKNOWN_FIELD,
             format!("`without` drops a field {what} lacks (R08.4.4)"),
         );
-        match &item {
-            Some(i) => Msg::at(i.at(span), m),
-            None => m,
-        }
+        at(cx, span, m)
     };
     match base {
         Ty::Struct(s, args, _) => {
             let Some(fs) = cx.env.record_fields(s) else {
-                errors.push(missing("a type that is not a record"));
+                errors.push(missing(cx, "a type that is not a record"));
                 return Ty::Error;
             };
             let Some(made) = crate::records::without_shape(form, &fs) else {
-                errors.push(missing("the record"));
+                errors.push(missing(cx, "the record"));
                 return Ty::Error;
             };
             let Some(id) = cx.env.record(&made) else {
-                errors.push(
-                    Unbuilt::Type {
-                        kind: "RowWithout".to_string(),
-                    }
-                    .into(),
-                );
-                return Ty::Error;
+                return unbuilt("RowWithout", errors);
             };
             let a = (made.iter())
-                .map(|f| match prefix.iter().find(|(n, _)| n.text == *f) {
-                    Some((_, t)) => conv(cx, t, errors),
+                .map(|f| match prefix.iter().find(|(n, _)| n == f) {
+                    Some((_, Some(t))) => conv(cx, t, errors),
+                    Some((_, None)) => Ty::Error,
                     None => fs
                         .iter()
                         .position(|x| x == f)
@@ -668,40 +966,45 @@ fn without(
             Ty::Struct(id, a, Vec::new())
         }
         Ty::Param(i) => {
-            let rest = format!("{}.{}", cx.outer[i], crate::records::without_member(form));
-            match cx.outer.iter().position(|g| *g == rest) {
+            let rest = format!(
+                "{}.{}",
+                cx.env.text(cx.outer[i]),
+                crate::records::without_member(form)
+            );
+            match (cx.env.sym(&rest)).and_then(|r| cx.outer.iter().position(|g| *g == r)) {
                 Some(k) => Ty::Param(k),
                 None => {
-                    errors.push(missing("the row bound"));
+                    errors.push(missing(cx, "the row bound"));
                     Ty::Error
                 }
             }
         }
         Ty::Error => Ty::Error,
         _ => {
-            errors.push(missing("a type that is not a record"));
+            errors.push(missing(cx, "a type that is not a record"));
             Ty::Error
         }
     }
 }
 
-/// `_` as a type argument, `Rooted<V, _>`.
-fn is_hole(t: &ast::Type) -> bool {
-    matches!(&t.kind, TypeKind::Value(e) if matches!(&e.kind, ast::ExprKind::Name(n) if n == "_"))
-}
-
 /// `t` leaves some struct's parameter as `_`, directly or in an optional.
-pub(super) fn has_hole(t: &ast::Type) -> bool {
-    match &t.kind {
-        TypeKind::Named { args, .. } => args.iter().any(|a| is_hole(a) || has_hole(a)),
-        TypeKind::Optional(e) => has_hole(e),
-        TypeKind::Tuple(ts) => ts.iter().any(has_hole),
-        TypeKind::Record(fs) => fs.iter().any(|(_, t)| has_hole(t)),
+pub(super) fn has_hole(t: &Type) -> bool {
+    match t {
+        Type::Path(p) => generic_args(p).iter().any(|a| match a {
+            GenericArg::Type(Type::Infer(_)) => true,
+            GenericArg::Type(t) => has_hole(t),
+            GenericArg::Param(_) => false,
+        }),
+        Type::Optional(o) => o.inner().is_some_and(|i| has_hole(&i)),
+        Type::Tuple(ts) => ts.elems().iter().any(|(_, t)| has_hole(t)),
+        Type::Record(r) => r.fields().any(|f| f.ty().is_some_and(|t| has_hole(&t))),
         _ => false,
     }
 }
 
 /// Whether `n` names a type where `cx` converts one: a generic or a declared name.
-fn is_type_name(cx: &TyCx, n: &str) -> bool {
-    cx.generics.iter().any(|g| g == n) || (cx.names)(n).is_some()
+fn is_type_name(cx: &TyCx, n: &SyntaxToken) -> bool {
+    cx.env
+        .sym(n.text())
+        .is_some_and(|s| cx.generics.contains(&s) || (cx.names)(s).is_some())
 }

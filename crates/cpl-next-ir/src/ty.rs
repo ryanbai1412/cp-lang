@@ -35,7 +35,11 @@ pub enum Ty {
     /// `lo..hi` with an end that is a value parameter (`0..P` of `Mod<P>`, R03.5.1). Built only
     /// through [`Ty::range_ends`], which gives `Range` once both ends are singletons, so a fully
     /// substituted type never holds it.
-    RangeEnds { lo: End, hi: End, inclusive: bool },
+    RangeEnds {
+        lo: End,
+        hi: End,
+        inclusive: bool,
+    },
     Bool,
     /// An ASCII character, `0..=127`, one byte.
     Char,
@@ -94,7 +98,9 @@ impl Ty {
 
     /// The range `lo..hi` (`..=` when `inclusive`), as `Range` when both ends are known values.
     pub fn range_ends(lo: End, hi: End, inclusive: bool) -> Ty {
-        let hi_at = hi.value().and_then(|b| if inclusive { Some(b) } else { b.checked_sub(1) });
+        let hi_at = hi
+            .value()
+            .and_then(|b| if inclusive { Some(b) } else { b.checked_sub(1) });
         match (lo.value(), hi_at) {
             (Some(a), Some(b)) => Ty::Range(a, b),
             _ => Ty::RangeEnds { lo, hi, inclusive },
@@ -374,9 +380,12 @@ impl Ty {
     pub fn prim(&self) -> Option<cpl_contract::Prim> {
         use cpl_contract::Prim;
         Some(match self {
-            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::AnyRange(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. } => {
-                Prim::Int
-            }
+            Ty::Int
+            | Ty::Range(..)
+            | Ty::RangeOf(_)
+            | Ty::AnyRange(_)
+            | Ty::RangeTo(..)
+            | Ty::RangeEnds { .. } => Prim::Int,
             Ty::Bool => Prim::Bool,
             Ty::Char => Prim::Char,
             Ty::U64 => Prim::U64,

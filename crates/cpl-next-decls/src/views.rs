@@ -24,6 +24,8 @@ pub trait TypeTables {
 
     fn alias(&self, id: AliasId) -> &AliasDecl;
     fn konst(&self, id: ConstId) -> &LibConst;
+    /// The core type written `n`: `Int`, `Raw`.
+    fn core_type(&self, n: crate::sym::Sym) -> Option<crate::decls::CoreType>;
     /// Whether the program's top level binds `name` with `let`: a value, not an item.
     fn top_value(&self, name: &str) -> bool;
     /// Binary operator `op`'s fn, which `type_of(+)` names.

@@ -208,8 +208,16 @@ pub struct LibConst {
     pub module: ModId,
     pub name: String,
     pub item: ItemId,
-    pub ty: Option<ast::Type>,
-    pub init: ast::Expr,
+    pub ty: Option<cpl_next_syntax::ast::Type>,
+    pub init: cpl_next_syntax::ast::Expr,
+}
+
+/// A type core gives a name without a declaration: a primitive, or `Raw<T>`, storage with no CP
+/// body (R02.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CoreType {
+    Prim(cpl_contract::Prim),
+    Raw,
 }
 
 /// `context opt:` with its fields and their defaults (R09.1): values a `with` line sets for the
@@ -233,8 +241,8 @@ pub struct AliasDecl {
     pub module: ModId,
     /// Where it is declared.
     pub at: SourceId,
-    pub generics: Vec<String>,
-    pub ty: ast::Type,
+    pub generics: Vec<Sym>,
+    pub ty: cpl_next_syntax::ast::Type,
     pub names: View,
     /// Declared in the program, so `T` may name the program's domains (`type Cell = (Row, Col)`).
     pub program: bool,
@@ -583,6 +591,8 @@ pub struct Decls {
     pub impls_by_member: HashMap<Sym, Vec<usize>>,
     /// Every name a member of a struct, trait or impl has, as an id.
     pub syms: Syms,
+    /// Each core type by the name it is written with.
+    pub core_types: Arc<HashMap<Sym, CoreType>>,
     /// Each trait's live impls in the order a type takes them (`impls_of`), made once a
     /// program's impls are all known: a lookup walks them thousands of times.
     pub impls_ranked: Option<HashMap<TraitId, Vec<usize>>>,
