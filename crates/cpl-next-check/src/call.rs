@@ -443,7 +443,7 @@ impl Cx<'_> {
         }
         let recv = match recv {
             Some(TArg::Value(r)) if !pre.is_empty() && !pure(&r) => {
-                let tmp = self.bind("$recv", r.ty.clone());
+                let tmp = self.temp("$recv", r.ty.clone());
                 let read = TExpr {
                     kind: TK::Var(tmp),
                     ty: r.ty.clone(),

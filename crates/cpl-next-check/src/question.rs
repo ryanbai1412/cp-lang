@@ -67,7 +67,7 @@ impl Cx<'_> {
             return Self::error_node(span);
         };
         self.b.scopes.push(HashMap::new());
-        let t = self.bind("$q", v.ty.clone());
+        let t = self.temp("$q", v.ty.clone());
         self.b.scopes.pop();
         let read = TExpr {
             kind: TK::Var(t),

@@ -792,7 +792,7 @@ impl Cx<'_> {
     pub(super) fn domain_at(&mut self, d: Ty, x: TExpr, span: Span) -> TExpr {
         let opt = self.optional_ty(d.clone());
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let tmp = self.bind("$at", Ty::Int);
+        let tmp = self.temp("$at", Ty::Int);
         let read = || mk(TK::Var(tmp), Ty::Int);
         let has = mk(TK::DomHas(d.clone(), Box::new(read())), Ty::Bool);
         let pos = mk(

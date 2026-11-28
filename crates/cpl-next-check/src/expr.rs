@@ -405,7 +405,7 @@ impl<'a> Cx<'a> {
                         v => v,
                     };
                     let ty = v.ty.clone();
-                    let tmp = self.bind("$arg", ty.clone());
+                    let tmp = self.temp("$arg", ty.clone());
                     let read = TExpr {
                         kind: TK::Var(tmp),
                         ty,
@@ -464,7 +464,7 @@ impl<'a> Cx<'a> {
             };
             let ty = self.body_ty_open(w, &[], v.span, pre);
             let checked = self.coerce(v.clone(), &ty);
-            let tmp = self.bind("$jagged", ty);
+            let tmp = self.temp("$jagged", ty);
             pre.push(TStmt::Let(tmp, checked));
         }
         self.b.scopes.pop();
@@ -725,7 +725,7 @@ impl<'a> Cx<'a> {
         let swap = matches!(op, CmpOp::Gt | CmpOp::Le);
         let mut pre = Vec::new();
         let a = if swap && !matches!(a.kind, TK::Var(_)) {
-            let tmp = self.bind("$lhs", a.ty.clone());
+            let tmp = self.temp("$lhs", a.ty.clone());
             let read = mk(TK::Var(tmp), a.ty.clone());
             pre.push(TStmt::Let(tmp, a));
             read
@@ -906,12 +906,16 @@ impl<'a> Cx<'a> {
     }
     /// The name in scope that `n`, unknown, is most likely a slip for.
     fn closest_name(&self, n: &str) -> Option<String> {
-        let scoped = self.b.scopes.iter().flat_map(|s| s.keys());
+        let in_scope = |&(_, &id): &(&String, &usize)| match self.b.decl {
+            Some(_) => !self.b.locals[id].synthetic,
+            None => !self.globals[id].synthetic,
+        };
+        let scoped = self.b.scopes.iter().flat_map(|s| s.iter()).filter(in_scope);
+        let globals = (self.global_names.iter()).filter(|&(_, &g)| !self.globals[g].synthetic);
         let module = self.d.names(self.b.module);
         let names = (module.iter().map(|(name, _)| *name))
-            .chain(self.global_names.keys().map(String::as_str))
-            .chain(scoped.map(String::as_str))
-            .filter(|name| !name.starts_with('$'));
+            .chain(globals.map(|(name, _)| name.as_str()))
+            .chain(scoped.map(|(name, _)| name.as_str()));
         cpl_diag::closest(n, names)
     }
 
@@ -999,7 +1003,7 @@ impl<'a> Cx<'a> {
                 };
                 let empty = self.expr(&lit(Vec::new()), None);
                 let ty = empty.ty.clone();
-                let buf = self.bind("$str", ty.clone());
+                let buf = self.temp("$str", ty.clone());
                 match buf {
                     VarRef::Local(l) => self.b.locals[l].mutable = true,
                     VarRef::Global(g) => self.globals[g].mutable = true,
@@ -1291,7 +1295,7 @@ impl<'a> Cx<'a> {
                     // An operand two links share is held, so it is read once.
                     let mut hold = Vec::new();
                     let r = if k + 1 < rest.len() {
-                        let tmp = self.bind("$link", r.ty.clone());
+                        let tmp = self.temp("$link", r.ty.clone());
                         let read = mk(TK::Var(tmp), r.ty.clone());
                         hold.push(TStmt::Let(tmp, r));
                         read

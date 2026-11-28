@@ -81,7 +81,7 @@ impl Cx<'_> {
     /// Which variant an enum value is, from 0 in declaration order.
     pub(super) fn enum_tag(&mut self, x: TExpr) -> TExpr {
         let (span, ty) = (x.span, x.ty.clone());
-        let tmp = self.bind("$enum", ty.clone());
+        let tmp = self.temp("$enum", ty.clone());
         let var = TExpr {
             kind: TK::Var(tmp),
             ty,
@@ -236,7 +236,7 @@ impl Cx<'_> {
                 None => self.name(n.text(), n.span()),
             };
             let v = self.coerce(v, &tys[k]);
-            let tmp = self.bind("$with", tys[k].clone());
+            let tmp = self.temp("$with", tys[k].clone());
             pre.push(TStmt::Let(tmp, v));
             let v = TExpr {
                 kind: TK::Var(tmp),

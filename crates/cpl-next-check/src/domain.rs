@@ -102,7 +102,7 @@ impl Cx<'_> {
         let recv = match xs.kind {
             TK::Var(_) => xs,
             _ => {
-                let v = self.bind(&format!("$counted{}", self.domains.len()), ty.clone());
+                let v = self.temp(&format!("$counted{}", self.domains.len()), ty.clone());
                 out.push(TStmt::Let(v, xs));
                 TExpr {
                     kind: TK::Var(v),
@@ -360,7 +360,7 @@ impl Cx<'_> {
             }
             return;
         };
-        let whole = self.bind(&format!("$tuple{}", span.start), ty.clone());
+        let whole = self.temp(&format!("$tuple{}", span.start), ty.clone());
         out.push(TStmt::Let(whole, v));
         let read = |i: usize, ty: Ty| TExpr {
             kind: TK::Field(

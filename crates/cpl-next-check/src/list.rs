@@ -69,7 +69,7 @@ impl Cx<'_> {
             args: vec![elem.clone()],
         };
         (self.b.obligations).push((lty.clone(), tr.clone(), span, Origin::Bound));
-        let tmp = self.bind(name, lty.clone());
+        let tmp = self.temp(name, lty.clone());
         let read = TExpr {
             kind: TK::Var(tmp),
             ty: lty.clone(),
@@ -363,8 +363,7 @@ impl Cx<'_> {
             None => self.construct(sid, targs, sets, &[], span, None),
         };
         self.b.scopes.push(HashMap::new());
-        let name = "$map";
-        let var = self.bind(name, ty.clone());
+        let var = self.temp("$map", ty.clone());
         match var {
             VarRef::Local(l) => self.b.locals[l].mutable = true,
             VarRef::Global(g) => self.globals[g].mutable = true,

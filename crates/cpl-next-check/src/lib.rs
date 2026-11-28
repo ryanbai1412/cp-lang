@@ -306,6 +306,8 @@ pub struct Local {
     pub fixed: bool,
     /// The `let` that bound it, which a fix writes `var` over.
     pub let_at: Option<cpl_next_ir::ids::SourceId>,
+    /// Made by the checker, not named by the program: no suggestion or fix names it.
+    pub synthetic: bool,
 }
 pub struct TypedFn {
     pub self_local: Option<LocalId>,
@@ -743,6 +745,7 @@ pub fn check(
             mutable: true,
             fixed: false,
             let_at: None,
+            synthetic: true,
         });
         VarRef::Global(cx.globals.len() - 1)
     };
@@ -1707,6 +1710,7 @@ impl Cx<'_> {
             mutable: false,
             fixed: true,
             let_at: None,
+            synthetic: false,
         });
         let g = self.globals.len() - 1;
         out.push(TStmt::Let(VarRef::Global(g), e));

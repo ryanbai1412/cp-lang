@@ -24,7 +24,7 @@ impl Cx<'_> {
         let else_body = else_body.and_then(|e| e.block());
         let framed = label.is_some() || else_body.is_some();
         if framed {
-            let flag = self.bind(&format!("$broke{}", span.start), Ty::Bool);
+            let flag = self.temp(&format!("$broke{}", span.start), Ty::Bool);
             out.push(TStmt::Let(flag, boolean(false, span)));
             self.b.loop_frames.push(Frame {
                 label,

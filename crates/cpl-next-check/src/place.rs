@@ -55,11 +55,11 @@ impl Cx<'_> {
             root = b;
         }
         let TK::Var(v) = &root.kind else { return None };
-        let (fixed, name) = match v {
-            VarRef::Local(i) => (self.b.locals[*i].fixed, &self.b.locals[*i].name),
-            VarRef::Global(i) => (self.globals[*i].fixed, &self.globals[*i].name),
+        let local = match v {
+            VarRef::Local(i) => &self.b.locals[*i],
+            VarRef::Global(i) => &self.globals[*i],
         };
-        (fixed && !name.starts_with('$')).then(|| name.clone())
+        (local.fixed && !local.synthetic).then(|| local.name.clone())
     }
 
     /// `lend mut place` in a lender of `t`s: `place` is what its caller's body runs on.

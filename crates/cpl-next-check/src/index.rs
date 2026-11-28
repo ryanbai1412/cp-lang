@@ -645,7 +645,7 @@ impl Cx<'_> {
         let elem = sub.ty(&fd.region.as_ref().map_or(Ty::Error, |(_, t)| t.clone()));
         self.b.scopes.push(HashMap::new());
         let name = format!("$cell{}", out.len());
-        let var = self.bind(&name, elem.clone());
+        let var = self.temp(&name, elem.clone());
         if let VarRef::Local(l) = var {
             self.b.locals[l].mutable = true;
         }
@@ -828,11 +828,20 @@ impl Cx<'_> {
         };
         self.hold(v, what, out)
     }
+    /// A binding the checker makes for its own use: no suggestion or fix names it.
+    pub(super) fn temp(&mut self, role: &str, ty: Ty) -> VarRef {
+        let v = self.bind(role, ty);
+        match v {
+            VarRef::Local(l) => self.b.locals[l].synthetic = true,
+            VarRef::Global(g) => self.globals[g].synthetic = true,
+        }
+        v
+    }
     /// `v` held in a new temporary, read as that temporary.
     pub(super) fn hold(&mut self, v: TExpr, what: &str, out: &mut Vec<TStmt>) -> TExpr {
         let name = format!("{what}{}", out.len());
         let (ty, span) = (v.ty.clone(), v.span);
-        let t = self.bind(&name, ty.clone());
+        let t = self.temp(&name, ty.clone());
         out.push(TStmt::Let(t, v));
         TExpr {
             kind: TK::Var(t),

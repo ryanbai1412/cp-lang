@@ -56,7 +56,7 @@ impl Cx<'_> {
         let op = if max { CmpOp::Gt } else { CmpOp::Lt };
         let v = self.expr(value, Some(&place.ty));
         let v = self.coerce(v, &place.ty);
-        let tmp = self.bind("$keep", place.ty.clone());
+        let tmp = self.temp("$keep", place.ty.clone());
         let read = mk(TK::Var(tmp), place.ty.clone());
         let better = match self.optional_of(&place.ty) {
             Some(inner) => {
@@ -100,7 +100,7 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
-        let t = self.bind("$kept", Ty::Bool);
+        let t = self.temp("$kept", Ty::Bool);
         let mut out = vec![TStmt::Let(t, mk(TK::Bool(false), Ty::Bool))];
         self.b.kept = Some(t);
         self.write(target, span, &mut out, |cx, place| {

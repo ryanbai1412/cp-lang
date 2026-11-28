@@ -481,7 +481,7 @@ impl<'a> Cx<'a> {
         let (hold, read) = if place(&v) {
             (Vec::new(), v)
         } else {
-            let tmp = self.bind("$opt", v.ty.clone());
+            let tmp = self.temp("$opt", v.ty.clone());
             let read = TExpr {
                 kind: TK::Var(tmp),
                 ty: v.ty.clone(),
@@ -758,7 +758,7 @@ impl<'a> Cx<'a> {
         let input = self.is_input(&e);
         let ety = e.ty.clone();
         self.b.scopes.push(HashMap::new());
-        let tmp = self.bind("$parts", ety.clone());
+        let tmp = self.temp("$parts", ety.clone());
         if input {
             self.b.input_parts.insert(tmp);
         }
@@ -1101,7 +1101,7 @@ impl<'a> Cx<'a> {
                 let fields = self.d.s(*d1).fields.clone();
                 let (from, to) = (Subst { tys: t1, sets: s1 }, Subst { tys: t2, sets: s2 });
                 self.b.scopes.push(HashMap::new());
-                let tmp = self.bind("$widen", have.clone());
+                let tmp = self.temp("$widen", have.clone());
                 let read = TExpr {
                     kind: TK::Var(tmp),
                     ty: have.clone(),

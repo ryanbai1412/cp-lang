@@ -59,7 +59,7 @@ impl Cx<'_> {
                     || v.ty.copied(&cpl_next_decls::fields::fields(c.d)) =>
             {
                 let ty = v.ty.clone();
-                let t = c.bind("$arg", ty.clone());
+                let t = c.temp("$arg", ty.clone());
                 pre.push(TStmt::Let(t, v));
                 TArg::Value(TExpr {
                     kind: TK::Var(t),
@@ -72,7 +72,7 @@ impl Cx<'_> {
         let recv = recv.map(|r| Box::new(hold(self, *r)));
         let args = args.into_iter().map(|a| hold(self, a)).collect();
         self.b.scopes.push(HashMap::new());
-        let var = self.bind("$item", elem.clone());
+        let var = self.temp("$item", elem.clone());
         self.b.scopes.pop();
         let unit = |kind| TExpr {
             kind,
@@ -155,7 +155,7 @@ impl Cx<'_> {
         let mut ids = Vec::new();
         let mut args = Vec::new();
         for (i, t) in ps.iter().enumerate() {
-            let v = self.bind(&format!("$param{i}"), t.clone());
+            let v = self.temp(&format!("$param{i}"), t.clone());
             let (VarRef::Local(l) | VarRef::Global(l)) = v;
             ids.push(l);
             args.push(TArg::Value(TExpr {
