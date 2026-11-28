@@ -1,5 +1,6 @@
 //! Index syntax: `s[k]` reads through `Indexed`, `s[r]` calls the `@index` fn that cuts a view
 //! (R07.4.5, R07.4.17).
+use super::call::CallArg;
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::HashMap;
@@ -14,9 +15,10 @@ impl Cx<'_> {
     pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
         let at = self.index_read();
         let rt = self.recv_ty(&s.ty);
-        let read = self
-            .impls()
-            .impl_member_by(&rt, &at, |f| f.region.is_none());
+        let read = self.d.sym(&at).and_then(|sym| {
+            self.impls()
+                .impl_member_by(&rt, sym, |f| f.region.is_none())
+        });
         let call = match (&rt, read) {
             (Ty::Param(p), _) => self.bound_call(*p, s, &at, vec![TArg::Value(i)], span),
             (_, Some(decls::Member::Method(m, ts, ss))) => {
@@ -307,8 +309,9 @@ impl Cx<'_> {
     /// The key and cell types of `rt`'s `Indexed` read.
     fn read_sig(&self, rt: &Ty) -> Option<(Ty, Ty)> {
         match self
-            .impls()
-            .impl_member_by(rt, &self.index_read(), |f| f.region.is_none())
+            .d
+            .sym(&self.index_read())
+            .and_then(|sym| self.impls().impl_member_by(rt, sym, |f| f.region.is_none()))
         {
             Some(decls::Member::Method(m, ts, _)) => {
                 let sub = Subst {
@@ -370,45 +373,29 @@ impl Cx<'_> {
     /// trait, `IndexSet`: a write that needs no place (spec 12, W8).
     pub(super) fn index_set(
         &mut self,
-        base: &ast::Expr,
-        k: &ast::Expr,
-        v: &ast::Expr,
-        span: Span,
-    ) -> Option<ast::Stmt> {
+        recv: TExpr,
+        k: &next::Expr,
+        v: &next::Expr,
+        at: Span,
+    ) -> Option<TExpr> {
         let tr = self.d.operator_traits("[]=").next()?;
         let name = self.d.operator_method(tr)?.0;
-        let seen = self.errors.len();
-        let b = self.expr_as_typed(base, None);
-        self.errors.truncate(seen);
-        let rt = self.shallow(&b.ty);
+        let rt = self.recv_ty(&recv.ty);
         let d = &self.d;
         let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
-        self.impls().impl_member_by(&rt, name, of_tr)?;
-        let callee = ast::Expr {
-            kind: ExprKind::Field {
-                base: Box::new(base.clone()),
-                name: ast::Name {
-                    text: name.to_string(),
-                    span,
-                },
-            },
-            span,
+        let found = (self.d.sym(name)).and_then(|sym| self.impls().impl_member_by(&rt, sym, of_tr));
+        let Some(decls::Member::Method(m, ts, ss)) = found else {
+            return None;
         };
-        let args = [k, v].map(|e| ast::Arg {
-            name: None,
+        let args = [k, v].map(|e| CallArg {
+            label: None,
+            value: Some(e.clone()),
             mutable: false,
-            value: e.clone(),
+            at: self.at(e),
         });
-        let call = ExprKind::Call {
-            callee: Box::new(callee),
-            args: args.to_vec(),
-        };
-        Some(ast::Stmt {
-            kind: StmtKind::Expr(ast::Expr { kind: call, span }),
-            span,
-            decorators: Vec::new(),
-            public: false,
-        })
+        let f = self.fnref(m, ts, ss);
+        let recv = self.recv_arg(m, recv, at);
+        Some(self.call_method(f, recv, false, Some(&args), at, None))
     }
     /// `t[i][j] = v` with `t` a table is E0503: its cell is `t[i, j]` (R01.8.5).
     fn table_point_again(
@@ -491,8 +478,10 @@ impl Cx<'_> {
             tys.extend(tr.args.iter().cloned());
             (Callee::Trait(tr, read.to_string()), m, tys, Vec::new())
         } else {
-            let Some(decls::Member::Method(m, ts, ss)) =
-                self.impls().impl_member_by(&rt, read, lends)
+            let Some(decls::Member::Method(m, ts, ss)) = self
+                .d
+                .sym(read)
+                .and_then(|sym| self.impls().impl_member_by(&rt, sym, lends))
             else {
                 if !matches!(rt, Ty::Error) {
                     let shown = self.show(&rt);
@@ -564,7 +553,11 @@ impl Cx<'_> {
         let probe = self.expr(base, None);
         self.errors.truncate(seen);
         let rt = self.shallow(&probe.ty);
-        let writes = match self.impls().lookup_member(&rt, &name.text) {
+        let writes = match self
+            .d
+            .sym(&name.text)
+            .and_then(|sym| self.impls().lookup_member(&rt, sym))
+        {
             Some(decls::Member::Method(m, ..)) => {
                 self.d.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
             }
@@ -864,39 +857,40 @@ impl Cx<'_> {
     }
 }
 
-pub(super) fn unparen(mut e: &ast::Expr) -> &ast::Expr {
-    while let ExprKind::Paren(inner) = &e.kind {
-        e = inner;
+pub(super) fn unparen(mut e: next::Expr) -> next::Expr {
+    while let next::Expr::Paren(p) = &e {
+        match p.inner() {
+            Some(inner) => e = inner,
+            None => break,
+        }
     }
     e
 }
 
 /// The keys `lo..hi` of `s[lo..hi]` or `s[lo..=hi]` cut with literal or left-out ends.
-pub(super) fn literal_cut(e: &ast::Expr) -> Option<(i128, i128)> {
-    let ExprKind::Index { indices, .. } = &unparen(e).kind else {
+pub(super) fn literal_cut(e: &next::Expr) -> Option<(i128, i128)> {
+    let next::Expr::Index(ix) = unparen(e.clone()) else {
         return None;
     };
-    let [r] = indices.as_slice() else {
+    let keys: Vec<next::Expr> = ix.indices().collect();
+    let [r] = &keys[..] else {
         return None;
     };
-    let ExprKind::Range {
-        lo,
-        hi,
-        inclusive,
-        step: None,
-    } = &unparen(r).kind
-    else {
+    let next::Expr::Range(re) = unparen(r.clone()) else {
         return None;
     };
+    if re.step().is_some() || re.walk().is_some() {
+        return None;
+    }
     // An end left out is unbounded on that side: only the written end limits a literal key.
-    let lit = |e: &Option<Box<ast::Expr>>, open: i128| match e.as_deref().map(|e| &unparen(e).kind)
-    {
+    let lit = |e: Option<next::Expr>, open: i128| match e.map(unparen) {
         None => Some(open),
-        Some(ExprKind::Int(v)) => Some(*v),
-        Some(_) => None,
+        Some(e) => decls::literal_int(&e).map(i128::from),
     };
-    let (a, b) = (lit(lo, i128::MIN)?, lit(hi, i128::MAX)?);
-    Some((a, if *inclusive && hi.is_some() { b + 1 } else { b }))
+    let hi = re.hi();
+    let closed = re.is_inclusive() && hi.is_some();
+    let (a, b) = (lit(re.lo(), i128::MIN)?, lit(hi, i128::MAX)?);
+    Some((a, if closed { b + 1 } else { b }))
 }
 
 /// `a[x, y]` is `a[(x, y)]`: the parts of a product key index it one by one (R04.2.11).

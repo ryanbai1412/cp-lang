@@ -1,5 +1,7 @@
 //! Ranges and domains as values (R01.8.4, R04.2).
+use super::call::CallArg;
 use super::expr::block;
+use super::member::Called;
 use super::*;
 use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -75,13 +77,13 @@ impl Cx<'_> {
     pub(super) fn domain_fn(
         &mut self,
         dty: Ty,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        name: Called,
+        call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
         let core = [self.d.roles().domain, self.d.roles().order];
         let m = (core.iter().flatten())
-            .find_map(|tr| self.d.member(&self.d.t(*tr).methods, &name.text))?;
+            .find_map(|tr| self.d.member(&self.d.t(*tr).methods, name.text))?;
         self.domain_fn_of(dty, m, name, call, span)
     }
     /// `D.m`, `m` being one of `Domain`'s or `Ordered`'s fns, which the program calls `name`.
@@ -89,8 +91,8 @@ impl Cx<'_> {
         &mut self,
         dty: Ty,
         m: FnId,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        name: Called,
+        call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
         let core = [self.d.roles().domain, self.d.roles().order];
@@ -109,8 +111,14 @@ impl Cx<'_> {
         };
         let args = match call {
             None => None,
-            Some([a]) => {
-                let x = self.expr(&a.value, Some(&Ty::Int));
+            Some(
+                [CallArg {
+                    label: None,
+                    value: Some(v),
+                    ..
+                }],
+            ) => {
+                let x = self.expr(v, Some(&Ty::Int));
                 Some(self.coerce(x, &Ty::Int))
             }
             Some(_) => return None,
@@ -163,116 +171,89 @@ impl Cx<'_> {
     }
     /// `[D] k => e`: one cell per position of `D` in its walk order, which is the list
     /// `[e for k in D]` where a `[D]T` is wanted (R02.8.2).
-    pub(super) fn table(
-        &mut self,
-        dom: &ast::Type,
-        pat: &ast::Pattern,
-        body: &ast::Expr,
-        span: Span,
-        want: Option<&Ty>,
-    ) -> TExpr {
+    pub(super) fn table(&mut self, t: &next::TableExpr, span: Span, want: Option<&Ty>) -> TExpr {
         let mut pre = Vec::new();
-        let hole = ast::Type {
-            kind: TypeKind::Tuple(Vec::new()),
-            span,
-        };
-        let shape = ast::Type {
-            kind: TypeKind::Array {
-                index: vec![dom.clone()],
-                elem: Box::new(hole),
+        let dims: Vec<next::GenericArg> = t.dims().map(|d| d.args().collect()).unwrap_or_default();
+        let mut parts = Vec::new();
+        for d in &dims {
+            let next::GenericArg::Type(ix) = d else {
+                return self.refuse(span, Unbuilt::TableOverIndex);
+            };
+            let ty = match self.array_axis(ix, &mut pre) {
+                Some(ty) => ty,
+                None => self.body_ty(ix, &mut pre),
+            };
+            parts.push(ty);
+        }
+        // Several domains are their product, the patterns naming its parts (R04.2.11).
+        let dty = match &parts[..] {
+            [d] => d.clone(),
+            ds if ds.len() > 1 => match self.d.tuple(ds.len()) {
+                Some(tu) => Ty::Struct(tu, parts.clone(), Vec::new()),
+                None => return self.refuse(span, Unbuilt::TableOverIndex),
             },
-            span,
-        };
-        let (array, dty, sets) = match self.body_ty(&shape, span, &mut pre) {
-            Ty::Struct(a, ts, sets) => (a, ts[0].clone(), sets),
             _ => return self.refuse(span, Unbuilt::TableOverIndex),
         };
-        let named = |text: String| ast::Expr {
-            kind: ExprKind::Name(text),
-            span: dom.span,
+        let Some(array) = self.d.sugar().array else {
+            return self.refuse(span, Unbuilt::TableOverIndex);
         };
-        let walk = match (&dty, &dom.kind) {
+        let sets = (0..self.d.n_sets(array)).map(|_| self.new_set()).collect();
+        let pats: Vec<next::Pattern> = (t
+            .params()
+            .map(|p| p.lambda_params())
+            .unwrap_or_default()
+            .into_iter())
+        .map(|p| p.pattern)
+        .collect();
+        let Some(body) = t.body() else {
+            return self.refuse(span, Unbuilt::TableOverIndex);
+        };
+        let int = |v: i64| TExpr {
+            kind: TK::Int(v),
+            ty: Ty::Int,
+            span,
+        };
+        let written_range = match &dims[..] {
+            [next::GenericArg::Type(next::Type::Range(r))] => match r.expr() {
+                Some(next::Expr::Range(re)) => Some(re),
+                _ => None,
+            },
+            _ => None,
+        };
+        let walk = match &dty {
             // An anonymous range's cells take any `Int` (R04.3.4), so its keys walk as `Int`s.
-            (Ty::Dom(i), _) if self.domains[*i].name.starts_with('$') => {
+            Ty::Dom(i) if self.domains[*i].name.starts_with('$') => {
                 let (lo, len) = (self.domains[*i].lo, self.domains[*i].len);
                 let var = |r| TExpr {
                     kind: TK::Var(r),
                     ty: Ty::Int,
-                    span: dom.span,
+                    span,
                 };
                 let hi = TExpr {
                     kind: TK::Bin(BinOp::Add, Box::new(var(lo)), Box::new(var(len))),
                     ty: Ty::Int,
-                    span: dom.span,
+                    span,
                 };
-                for (n, e) in [("$walk_lo", var(lo)), ("$walk_hi", hi)] {
-                    let v = self.bind(n, Ty::Int);
-                    pre.push(TStmt::Let(v, e));
-                }
-                let ends = ExprKind::Range {
-                    lo: Some(Box::new(named("$walk_lo".to_string()))),
-                    hi: Some(Box::new(named("$walk_hi".to_string()))),
-                    inclusive: false,
-                    step: None,
-                };
-                ast::Expr {
-                    kind: ends,
-                    span: dom.span,
-                }
-            }
-            (Ty::Dom(i), _) if !self.domains[*i].name.is_empty() => {
-                named(self.domains[*i].name.clone())
+                self.range_of(vec![var(lo), hi, int(1)], Ty::Int, span)
             }
             // And one ending at a domain's count: `[0..V.count - 1] i => ..` walks its written ends.
-            (Ty::RangeTo(..), TypeKind::Range { lo, hi, inclusive }) => ast::Expr {
-                kind: ExprKind::Range {
-                    lo: lo.clone(),
-                    hi: hi.clone(),
-                    inclusive: *inclusive,
-                    step: None,
-                },
-                span: dom.span,
+            Ty::RangeTo(..) => match written_range {
+                Some(re) => {
+                    let (lo, hi) = (re.lo(), re.hi());
+                    let inclusive = re.is_inclusive();
+                    self.range_value(lo.as_ref(), hi.as_ref(), inclusive, None, None, span)
+                }
+                None => return self.refuse(span, Unbuilt::TableOverIndex),
             },
             // So do a constant range's: `[0..3] i => ..`.
-            (Ty::Range(lo, hi), _) => {
-                let int = |v: i64| {
-                    Some(Box::new(ast::Expr {
-                        kind: ExprKind::Int(i128::from(v)),
-                        span: dom.span,
-                    }))
-                };
-                ast::Expr {
-                    kind: ExprKind::Range {
-                        lo: int(*lo),
-                        hi: int(*hi),
-                        inclusive: true,
-                        step: None,
-                    },
-                    span: dom.span,
-                }
-            }
-            // A type that implements `Domain` (`[V.cuts] c => ..`), or a parameter bound by it,
-            // walks its positions too.
-            (Ty::Struct(..) | Ty::Param(_), _)
-                if self.is_domain(&dty) || self.domain_param(&dty) =>
-            {
-                let all = self.domain_value(dty.clone(), dom.span);
-                let tmp = self.bind("$walk", all.ty.clone());
-                pre.push(TStmt::Let(tmp, all));
-                named("$walk".to_string())
+            Ty::Range(lo, hi) => self.range_of(vec![int(*lo), int(*hi + 1), int(1)], Ty::Int, span),
+            // A domain, a type that implements `Domain` (`[V.cuts] c => ..`), or a parameter
+            // bound by it, walks its positions.
+            Ty::Dom(_) => self.domain_value(dty.clone(), span),
+            Ty::Struct(..) | Ty::Param(_) if self.is_domain(&dty) || self.domain_param(&dty) => {
+                self.domain_value(dty.clone(), span)
             }
             _ => return self.refuse(span, Unbuilt::TableOverIndex),
-        };
-        let comp = ast::Expr {
-            kind: ExprKind::Comprehension {
-                body: Box::new(body.clone()),
-                clauses: vec![ast::Clause {
-                    pat: pat.clone(),
-                    iter: walk,
-                    conds: Vec::new(),
-                }],
-            },
-            span,
         };
         // The cells' type, when the table is written where an array is expected.
         let cell = match want.map(|w| self.shallow(w)) {
@@ -285,7 +266,7 @@ impl Cx<'_> {
                 .map(|l| Ty::Struct(l, vec![c], Vec::new())),
             None => None,
         };
-        let list = self.expr(&comp, want_list.as_ref());
+        let list = self.fill_over(&pats, walk, &body, want_list.as_ref(), span);
         let elem = match self.shallow(&list.ty) {
             Ty::Struct(_, ts, _) if ts.len() == 1 => ts[0].clone(),
             _ => Ty::Error,
@@ -324,28 +305,44 @@ impl Cx<'_> {
     }
     /// A type named in an expression: a domain, a type parameter, or `D.m` for a `@member(m)`
     /// struct, as `V.cuts` is `Cut<V>`.
-    pub(super) fn type_path(&self, e: &ast::Expr) -> Option<Ty> {
-        match &e.kind {
-            ExprKind::Name(n) if self.lookup(n).is_none() => self.domain_named(n),
-            ExprKind::Field { base, name } => {
-                let b = self.type_path(base)?;
-                self.member_type(&b, &name.text)
+    pub(super) fn type_path(&self, e: &next::Expr) -> Option<Ty> {
+        match e {
+            next::Expr::Name(n) => {
+                let n = n.ident()?;
+                match self.lookup(n.text()) {
+                    None => self.domain_named(n.text()),
+                    Some(_) => None,
+                }
+            }
+            next::Expr::Paren(p) => self.type_path(&p.inner()?),
+            next::Expr::Field(f) => {
+                let b = self.type_path(&f.base()?)?;
+                self.member_type(&b, f.name()?.text())
             }
             // An inline tuple of domains is the product domain (R04.2.11).
-            ExprKind::Tuple(xs) if xs.len() > 1 => {
+            next::Expr::Tuple(t) => {
+                let xs: Vec<next::Expr> = t.elems().collect();
+                if xs.len() < 2 {
+                    return None;
+                }
                 let tuple = self.d.tuple(xs.len())?;
-                let parts = xs
-                    .iter()
+                let parts = (xs.iter())
                     .map(|x| self.type_path(x))
                     .collect::<Option<Vec<_>>>()?;
                 Some(Ty::Struct(tuple, parts, Vec::new())).filter(|t| self.is_domain(t))
             }
             // So is a record of them, its factors named (R04.2.10).
-            ExprKind::Record(fs) => {
-                let names: Vec<String> = fs.iter().map(|(n, _)| n.text.clone()).collect();
+            next::Expr::Record(r) => {
+                let fs: Vec<next::RecordField> = r.fields().collect();
+                let names = (fs.iter())
+                    .map(|f| f.name().map(|n| n.text().to_string()))
+                    .collect::<Option<Vec<String>>>()?;
                 let record = self.d.record(&names)?;
-                let parts = (fs.iter())
-                    .map(|(_, x)| self.type_path(x))
+                let parts = (fs.iter().zip(&names))
+                    .map(|(f, n)| match f.value() {
+                        Some(x) => self.type_path(&x),
+                        None => self.domain_named(n),
+                    })
                     .collect::<Option<Vec<_>>>()?;
                 Some(Ty::Struct(record, parts, Vec::new())).filter(|t| self.is_domain(t))
             }
@@ -355,40 +352,42 @@ impl Cx<'_> {
     /// `Subset<V>` written as a value: the struct type at the written arguments.
     pub(super) fn written_struct(
         &mut self,
-        e: &ast::Expr,
+        e: &next::Expr,
         span: Span,
         pre: &mut Vec<TStmt>,
     ) -> Option<Ty> {
-        let ExprKind::Generic { base, args } = &e.kind else {
+        let next::Expr::Generic(g) = e else {
             return None;
         };
-        self.struct_at(base, args, span, pre)
+        self.struct_at(&g.base()?, g.args(), span, pre)
     }
-    /// The struct `base` names at the type arguments `args`.
+    /// The struct `base` names at the type arguments `args`, as decls gives it when written.
     pub(super) fn struct_at(
         &mut self,
-        base: &ast::Expr,
-        args: &[ast::Type],
-        span: Span,
+        base: &next::Expr,
+        args: Option<next::GenericArgs>,
+        _span: Span,
         pre: &mut Vec<TStmt>,
     ) -> Option<Ty> {
-        let ExprKind::Name(n) = &base.kind else {
+        let next::Expr::Name(n) = base else {
             return None;
         };
-        if self.lookup(n).is_some() || self.d.struct_named(self.b.module, n).is_none() {
+        let n = n.ident()?;
+        if self.lookup(n.text()).is_some() {
             return None;
         }
-        let t = ast::Type {
-            kind: TypeKind::Named {
-                name: ast::Name {
-                    text: n.clone(),
-                    span: base.span,
-                },
-                args: args.to_vec(),
-            },
-            span: base.span,
-        };
-        Some(self.body_ty(&t, span, pre)).filter(|t| matches!(t, Ty::Struct(..)))
+        let d = self.d.struct_named(self.b.module, n.text())?;
+        let written: Vec<next::GenericArg> = args.map(|g| g.args().collect()).unwrap_or_default();
+        let mut a = Vec::new();
+        for t in written {
+            let next::GenericArg::Type(t) = t else {
+                return None;
+            };
+            a.push(self.body_ty(&t, pre));
+        }
+        let (d, a) = decls::struct_args(self.d, d, a);
+        let sets = (0..self.d.n_sets(d)).map(|_| self.new_set()).collect();
+        Some(Ty::Struct(d, a, sets))
     }
     /// A struct type whose constructor takes `n` fields.
     pub(super) fn built_from(&self, t: &Ty, n: usize) -> bool {
@@ -401,7 +400,7 @@ impl Cx<'_> {
     }
     /// `D(x)`: the position of `x`, checked; a library domain (`Cell((0, 2))` of a product)
     /// converts by its `Into` impl.
-    pub(super) fn domain_from(&mut self, dty: Ty, x: &ast::Expr, span: Span) -> TExpr {
+    pub(super) fn domain_from(&mut self, dty: Ty, x: &next::Expr, span: Span) -> TExpr {
         if let Ty::Struct(..) = dty {
             return self.convert(dty, x, span, Origin::Convert);
         }
@@ -428,35 +427,26 @@ impl Cx<'_> {
     }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
+        let sym = self.sym_of(n);
         // A fn's own type parameter is nearer than any domain declared outside it.
-        if let Some(p) = self.b.generics.iter().position(|g| g == n) {
+        if let Some(p) = sym.and_then(|s| self.b.generics.iter().position(|g| *g == s)) {
             return Some(Ty::Param(p));
         }
-        if let Some(t @ Ty::Struct(..)) = self.b.doms.get(n) {
+        if let Some(t @ Ty::Struct(..)) = sym.and_then(|s| self.b.doms.get(&s)) {
             return Some(t.clone());
         }
         // `type Cell = (Row, Col)` names the product domain too (R04.2.10).
-        if let Some(decls::Named::Alias(_)) = self.d.named(self.b.module, n) {
-            let written = ast::Type {
-                kind: ast::TypeKind::Named {
-                    name: ast::Name {
-                        text: n.to_string(),
-                        span: Span::default(),
-                    },
-                    args: Vec::new(),
-                },
-                span: Span::default(),
+        if let Some(decls::Named::Alias(id)) = self.d.named(self.b.module, n) {
+            let scoped = |n| self.owned_named(n);
+            let at = decls::BodyScope {
+                sigs: self.d,
+                scope: self.d,
+                m: self.b.module,
+                generics: &self.b.generics,
+                doms: &self.b.doms,
+                scoped: &scoped,
             };
-            let (gs, doms) = (&self.b.generics, &self.b.doms);
-            let (t, _) = decls::body_type(
-                self.d,
-                self.d,
-                self.b.module,
-                gs,
-                doms,
-                &|n: &str| self.owned_named(n),
-                &written,
-            );
+            let (t, _) = decls::alias_type(&at, id, Vec::new());
             return Some(t).filter(|t| self.is_domain(t));
         }
         // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).
@@ -466,7 +456,7 @@ impl Cx<'_> {
                 return Some(t);
             }
         }
-        if let Some(&Ty::Dom(i)) = self.b.doms.get(n) {
+        if let Some(&Ty::Dom(i)) = sym.and_then(|s| self.b.doms.get(&s)) {
             if self.b.decl.is_none() && self.domains[i].name.is_empty() {
                 self.early.set(Some(i));
             }
@@ -477,10 +467,10 @@ impl Cx<'_> {
     /// `lo..hi`, `lo..=hi` and `lo..hi by k` as a value: core's `Range` (R01.8.4).
     pub(super) fn range_value(
         &mut self,
-        lo: Option<&ast::Expr>,
-        hi: Option<&ast::Expr>,
+        lo: Option<&next::Expr>,
+        hi: Option<&next::Expr>,
         inclusive: bool,
-        step: Option<&ast::Expr>,
+        step: Option<&next::Expr>,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
@@ -518,9 +508,9 @@ impl Cx<'_> {
     pub(super) fn range_from(
         &mut self,
         first: TExpr,
-        hi: &ast::Expr,
+        hi: &next::Expr,
         inclusive: bool,
-        step: Option<&ast::Expr>,
+        step: Option<&next::Expr>,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
@@ -542,10 +532,10 @@ impl Cx<'_> {
     /// starts at 0 or the domain's first value (R01.8.4, R04.4.8, R04.4.10).
     fn open_ends(
         &mut self,
-        lo: Option<&ast::Expr>,
-        hi: Option<&ast::Expr>,
+        lo: Option<&next::Expr>,
+        hi: Option<&next::Expr>,
         inclusive: bool,
-        step: Option<&ast::Expr>,
+        step: Option<&next::Expr>,
         want: Option<&Ty>,
         span: Span,
     ) -> Result<(Vec<TExpr>, Ty), Box<TExpr>> {
@@ -641,7 +631,7 @@ impl Cx<'_> {
     }
     /// How a range's ends give their positions, when they are values of a domain: a declared
     /// domain's value is its ordinal, and any other type's comes from its `Domain` impl or bound.
-    pub(super) fn ord_ends(&self, t: &Ty, step: Option<&ast::Expr>) -> Option<Ends> {
+    pub(super) fn ord_ends(&self, t: &Ty, step: Option<&next::Expr>) -> Option<Ends> {
         let tr = self.d.roles().domain?;
         if step.is_some() {
             return None;
@@ -672,9 +662,9 @@ impl Cx<'_> {
     fn int_ends(
         &mut self,
         first: TExpr,
-        hi: &ast::Expr,
+        hi: &next::Expr,
         inclusive: bool,
-        step: Option<&ast::Expr>,
+        step: Option<&next::Expr>,
         span: Span,
     ) -> Vec<TExpr> {
         let lo = self.int_end(first);
@@ -770,7 +760,7 @@ impl Cx<'_> {
     fn domain_range(
         &mut self,
         lo: TExpr,
-        hi: &ast::Expr,
+        hi: &next::Expr,
         inclusive: bool,
         want: Option<&Ty>,
         ord: Ends,
@@ -903,8 +893,8 @@ impl Cx<'_> {
         self.b
             .obligations
             .push((d.clone(), r.clone(), span, Origin::Bound));
-        let name = ast::Name { text: n, span };
-        self.static_call(d, r, m, &name, None, span)
+        let name = Called { text: &n, span };
+        self.static_call(d, r, m, name, None, span)
     }
 }
 /// A fn of core's `Domain`: the trait, the fn's name in it, and the fn.

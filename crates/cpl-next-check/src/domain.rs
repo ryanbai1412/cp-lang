@@ -1,14 +1,16 @@
 //! Domain declarations: their ends, factors and named ranges.
 
 use super::*;
+use cpl_next_syntax::SyntaxToken;
+use std::collections::HashMap;
 
 impl Cx<'_> {
     /// The start of a domain `lo..hi` or `lo..=hi`, the integer after its last position, and
     /// what the types of the two ends say every position lies within.
     pub(super) fn domain_ends(
         &mut self,
-        lo: &ast::Expr,
-        hi: &ast::Expr,
+        lo: &next::Expr,
+        hi: &next::Expr,
         inclusive: bool,
     ) -> (TExpr, TExpr, (Option<i64>, Option<i64>), bool) {
         // An end keeps the range type it was written with.
@@ -38,10 +40,11 @@ impl Cx<'_> {
     pub(super) fn counted_domain(
         &mut self,
         name: &str,
-        def: &ast::Expr,
+        def: &next::Expr,
         span: Span,
         out: &mut Vec<TStmt>,
     ) -> bool {
+        let def_at = self.at(def);
         let (diagnosed, owed) = (self.errors.len(), self.b.obligations.len());
         let v = self.expr_as_typed(def, None);
         let t = self.shallow(&v.ty);
@@ -63,7 +66,7 @@ impl Cx<'_> {
         let at = |kind, ty| TExpr {
             kind,
             ty,
-            span: def.span,
+            span: def_at,
         };
         let count = match (&t, self.d.roles().counted) {
             (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), _) => Some(v),
@@ -76,12 +79,13 @@ impl Cx<'_> {
                  domain, not `{}`",
                 self.show(&t)
             );
-            self.err(def.span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
+            self.err(def_at, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
+            let sym = self.sym(name);
             // A top-level domain decls set aside is declared here, though it has no positions.
-            if let Some(&Ty::Dom(i)) = self.b.doms.get(name) {
+            if let Some(&Ty::Dom(i)) = self.b.doms.get(&sym) {
                 self.domains[i].name = name.to_string();
             }
-            self.b.doms.insert(name.to_string(), Ty::Error);
+            self.b.doms.insert(sym, Ty::Error);
             return true;
         };
         let (lo, end, within) = self.typed_ends(at(TK::Int(0), Ty::Int), count, false);
@@ -122,7 +126,7 @@ impl Cx<'_> {
         let ty = self.trait_ret(m, vec![ty]);
         Some(TExpr { kind, ty, span })
     }
-    fn typed_ends(
+    pub(super) fn typed_ends(
         &mut self,
         lo: TExpr,
         hi: TExpr,
@@ -172,7 +176,8 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) -> usize {
         let info = self.domain_info(name, lo, end, within, span, out);
-        let i = match (self.b.decl, self.d.top_doms.get(name)) {
+        let sym = self.sym(name);
+        let i = match (self.b.decl, self.d.top_doms.get(&sym)) {
             (None, Some(&Ty::Dom(i))) if self.domains[i].name.is_empty() => {
                 self.domains[i] = info;
                 i
@@ -185,7 +190,7 @@ impl Cx<'_> {
                 i
             }
         };
-        self.b.doms.insert(name.to_string(), Ty::Dom(i));
+        self.b.doms.insert(sym, Ty::Dom(i));
         self.b.block_doms.push(i);
         i
     }
@@ -252,71 +257,190 @@ impl Cx<'_> {
             counted: false,
         }
     }
-    /// A product's range factor is a domain of its own, declared here; the product then names it.
-    pub(super) fn declare_factors(
+    /// `domain N = e` and `let (domain N, i) = e`, at the top level or in a block: `N`'s
+    /// positions, declared in `out`.
+    pub(super) fn domain_stmt(&mut self, d: &next::DomainDecl, out: &mut Vec<TStmt>) {
+        let span = self.at(d);
+        let Some(name) = d.name() else {
+            return;
+        };
+        let name = name.text().to_string();
+        let pats: Vec<next::Pattern> = d.patterns().collect();
+        let Some(def) = d.size() else {
+            return self.refuse_domain(&name, span, "a domain with no size".to_string());
+        };
+        if !pats.is_empty() {
+            return self.domain_let(&name, &def, &pats, span, out);
+        }
+        match &def {
+            next::Expr::Tuple(_) | next::Expr::Record(_) => {
+                let Some(p) = self.declare_factors(&name, &def, span, out) else {
+                    let at = self.at(&def);
+                    let msg = "a product domain's parts are domains";
+                    return self.err(at, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, msg));
+                };
+                let sym = self.sym(&name);
+                self.b.doms.insert(sym, p);
+            }
+            // `domain V = [n]` counts `0..n` (R04.2.29).
+            next::Expr::List(l) => match <[_; 1]>::try_from(l.elems().collect::<Vec<_>>()) {
+                Ok([count]) => {
+                    let hi = self.expr_as_typed(&count, None);
+                    let lo = TExpr {
+                        kind: TK::Int(0),
+                        ty: Ty::Int,
+                        span: hi.span,
+                    };
+                    let (lo, end, within) = self.typed_ends(lo, hi, false);
+                    let i = self.declare_domain(&name, lo, end, within, span, out);
+                    self.domains[i].counted = true;
+                }
+                Err(_) => self.other_domain(&name, &def, span, out),
+            },
+            next::Expr::Range(r) if r.step().is_none() && r.walk().is_none() => {
+                match (r.lo(), r.hi()) {
+                    (Some(lo), Some(hi)) => {
+                        let (lo, end, within, chars) = self.domain_ends(&lo, &hi, r.is_inclusive());
+                        let i = self.declare_domain(&name, lo, end, within, span, out);
+                        self.domains[i].chars = chars;
+                    }
+                    _ => self.other_domain(&name, &def, span, out),
+                }
+            }
+            _ => self.other_domain(&name, &def, span, out),
+        }
+    }
+    /// `domain V = e` for an `e` that is not a range or a product.
+    fn other_domain(&mut self, name: &str, def: &next::Expr, span: Span, out: &mut Vec<TStmt>) {
+        if !self.counted_domain(name, def, span, out) {
+            self.refuse_domain(name, span, crate::kind_name(def));
+        }
+    }
+    /// A domain form not built yet: `N` names nothing a later use can trip on.
+    fn refuse_domain(&mut self, name: &str, span: Span, kind: String) {
+        self.err(span, Unbuilt::DomainKind { kind });
+        let sym = self.sym(name);
+        self.b.doms.insert(sym, Ty::Error);
+        self.b.refused_names.insert(sym);
+    }
+    /// `let (domain N, i) = e`: `e` is held whole, `N` names its fresh domain afresh, and each
+    /// other pattern binds the field in its position (R02.5.5).
+    fn domain_let(
         &mut self,
-        product: &str,
-        def: &ast::Expr,
+        name: &str,
+        def: &next::Expr,
+        pats: &[next::Pattern],
         span: Span,
         out: &mut Vec<TStmt>,
-    ) -> ast::Expr {
-        let xs: Vec<&ast::Expr> = match &def.kind {
-            ExprKind::Tuple(xs) => xs.iter().collect(),
-            ExprKind::Record(fs) => fs.iter().map(|(_, x)| x).collect(),
-            _ => return def.clone(),
+    ) {
+        let v = self.expr(def, None);
+        let ty = self.zonk(&v.ty);
+        let Some((d, fields)) = self.field_tys(&ty) else {
+            self.refuse_domain(name, span, "an untyped domain binding".to_string());
+            for p in pats {
+                self.bind_unknown(p, false, out);
+            }
+            return;
+        };
+        let whole = self.bind(&format!("$tuple{}", span.start), ty.clone());
+        out.push(TStmt::Let(whole, v));
+        let read = |i: usize, ty: Ty| TExpr {
+            kind: TK::Field(
+                Box::new(TExpr {
+                    kind: TK::Var(whole),
+                    ty: ty.clone(),
+                    span,
+                }),
+                i,
+            ),
+            ty,
+            span,
+        };
+        let first = read(0, fields.first().cloned().unwrap_or(Ty::Error));
+        match self.bind_fresh(self.sym(name), &first.ty, span, out) {
+            Some((c, i)) => {
+                let t = crate::pattern::retag(&ty, c, i);
+                if let VarRef::Local(k) | VarRef::Global(k) = whole {
+                    match self.b.decl.is_none() {
+                        true => self.globals[k].ty = t,
+                        false => self.b.locals[k].ty = t,
+                    }
+                }
+            }
+            None => self.err(span, Unbuilt::DomainPattern),
+        }
+        let names = match self.d.s(d).record {
+            true => self.d.field_names(d),
+            false => Vec::new(),
+        };
+        let whole_name = self.var_name(whole).to_string();
+        for (k, p) in pats.iter().enumerate().map(|(k, p)| (k + 1, p)) {
+            let field = names.get(k).cloned().unwrap_or_else(|| k.to_string());
+            let part = read(k, fields.get(k).cloned().unwrap_or(Ty::Error));
+            self.let_pattern(p, false, part, out);
+            // `tree.Pre` is the domain the whole value owns as its `tree.Pre`.
+            if let Some(n) = pattern_name(p) {
+                let (w, f, n) = (self.sym(&whole_name), self.sym(&field), self.sym(&n));
+                self.hand_down(w, f, n);
+            }
+        }
+    }
+    /// A product's range factor is a domain of its own, declared here; the product is the
+    /// tuple or record of its factors (R04.2.10, R04.2.11).
+    fn declare_factors(
+        &mut self,
+        product: &str,
+        def: &next::Expr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> Option<Ty> {
+        // A punned field `x:` names the domain `x`.
+        let (names, xs): (Option<Vec<String>>, Vec<Result<next::Expr, String>>) = match def {
+            next::Expr::Tuple(t) => (None, t.elems().map(Ok).collect()),
+            next::Expr::Record(r) => {
+                let fs: Vec<next::RecordField> = r.fields().collect();
+                let names: Option<Vec<String>> = (fs.iter())
+                    .map(|f| f.name().map(|n| n.text().to_string()))
+                    .collect();
+                let names = names?;
+                let xs = (fs.iter().zip(&names))
+                    .map(|(f, n)| f.value().ok_or_else(|| n.clone()))
+                    .collect();
+                (Some(names), xs)
+            }
+            _ => return self.type_path(def),
         };
         let mut parts = Vec::new();
-        for (i, &x) in xs.iter().enumerate() {
-            let ExprKind::Range {
-                lo: Some(lo),
-                hi: Some(hi),
-                inclusive,
-                step: None,
-            } = &x.kind
-            else {
-                parts.push(x.clone());
+        for (i, x) in xs.iter().enumerate() {
+            let x = match x {
+                Ok(x) => x,
+                Err(n) => {
+                    parts.push(self.domain_named(n)?);
+                    continue;
+                }
+            };
+            let range = match x {
+                next::Expr::Range(r) if r.step().is_none() && r.walk().is_none() => {
+                    (r.lo().zip(r.hi())).map(|(lo, hi)| (lo, hi, r.is_inclusive()))
+                }
+                _ => None,
+            };
+            let Some((lo, hi, inclusive)) = range else {
+                parts.push(self.type_path(x)?);
                 continue;
             };
             let name = decls::factor_name(product, i);
-            let (lo, end, within, chars) = self.domain_ends(lo, hi, *inclusive);
-            let i = self.declare_domain(&name, lo, end, within, span, out);
-            self.domains[i].chars = chars;
-            parts.push(ast::Expr {
-                kind: ExprKind::Name(name),
-                span: x.span,
-            });
+            let (lo, end, within, chars) = self.domain_ends(&lo, &hi, inclusive);
+            let d = self.declare_domain(&name, lo, end, within, span, out);
+            self.domains[d].chars = chars;
+            parts.push(Ty::Dom(d));
         }
-        let kind = match &def.kind {
-            ExprKind::Record(fs) => {
-                ExprKind::Record(fs.iter().map(|(n, _)| n.clone()).zip(parts).collect())
-            }
-            _ => ExprKind::Tuple(parts),
+        let t = match names {
+            Some(names) => Ty::Struct(self.d.record(&names)?, parts, Vec::new()),
+            None if parts.len() > 1 => Ty::Struct(self.d.tuple(parts.len())?, parts, Vec::new()),
+            None => return None,
         };
-        ast::Expr {
-            kind,
-            span: def.span,
-        }
-    }
-    pub(super) fn plus_one(e: &ast::Expr) -> ast::Expr {
-        Self::and_one(e, BinOp::Add)
-    }
-    pub(super) fn minus_one(e: &ast::Expr) -> ast::Expr {
-        Self::and_one(e, BinOp::Sub)
-    }
-    fn and_one(e: &ast::Expr, op: BinOp) -> ast::Expr {
-        let one = ast::Expr {
-            kind: ExprKind::Int(1),
-            span: e.span,
-        };
-        ast::Expr {
-            kind: ExprKind::Binary {
-                op,
-                op_span: e.span,
-                lhs: Box::new(e.clone()),
-                rhs: Box::new(one),
-            },
-            span: e.span,
-        }
+        Some(t).filter(|t| self.is_domain(t))
     }
     fn int_range(&mut self, t: &Ty) -> bool {
         self.is_range(t)
@@ -390,171 +514,164 @@ impl Cx<'_> {
         let lo = end(self, lo, out);
         (lo, end(self, hi, out))
     }
-    /// `lo..D.m + k` with a constant `lo`, `D` a domain in view and `m` its getter: a range type
-    /// ending at the domain's count.
-    fn count_ended(
-        &self,
-        lo: &Option<Box<ast::Expr>>,
-        hi: &Option<Box<ast::Expr>>,
-        inclusive: bool,
-    ) -> bool {
-        decls::static_range(lo, hi, inclusive).is_none()
-            && decls::count_end(lo, hi, inclusive).is_some_and(|(_, d, m, _)| {
-                (self.b.generics.iter().any(|g| g == d) || self.b.doms.contains_key(d))
-                    && self.d.domain_getter(m).is_some()
-            })
-    }
-    /// `[lo..hi]T` and `[n]T` index by a range with no name: each gets a domain of its own, declared in `out`.
+    /// `[lo..hi]T`, `[n]T` and a range type with value ends: each such axis's domain or range,
+    /// declared in `out` and keyed by the axis's item-relative span, for `decls::body_type` to
+    /// read in place of the axis. A constant axis or one ending at a domain's count is decls'.
     pub(super) fn name_ranges(
         &mut self,
-        t: &ast::Type,
-        span: Span,
+        t: &next::Type,
         out: &mut Vec<TStmt>,
-    ) -> ast::Type {
-        let mut t = t.clone();
-        match &mut t.kind {
-            TypeKind::Array { index, elem } => {
-                **elem = self.name_ranges(elem, span, out);
-                for ix in index.iter_mut() {
-                    // A constant axis stays a range type: `[0..2]T` is `Array<0..=1, T>`.
-                    if decls::const_axis(ix).is_some() {
+    ) -> HashMap<Span, Ty> {
+        let mut axes = HashMap::new();
+        self.axes_in(t, out, &mut axes);
+        axes
+    }
+    fn axes_in(&mut self, t: &next::Type, out: &mut Vec<TStmt>, axes: &mut HashMap<Span, Ty>) {
+        match t {
+            next::Type::Array(a) => {
+                if let Some(e) = a.elem() {
+                    self.axes_in(&e, out, axes);
+                }
+                let dims: Vec<next::GenericArg> =
+                    a.dims().map(|d| d.args().collect()).unwrap_or_default();
+                for d in dims {
+                    let next::GenericArg::Type(ix) = d else {
                         continue;
-                    }
-                    // So does one ending at a domain's count: `[0..V.count - 1]T` (R04.3.4).
-                    if let TypeKind::Range { lo, hi, inclusive } = &ix.kind {
-                        if self.count_ended(lo, hi, *inclusive) {
-                            *ix = self.name_ranges(ix, span, out);
-                            continue;
-                        }
-                    }
-                    let zero = || ast::Expr {
-                        kind: ExprKind::Int(0),
-                        span,
                     };
-                    let ends = match &ix.kind {
-                        TypeKind::Range {
-                            lo: Some(lo),
-                            hi: Some(hi),
-                            inclusive,
-                        } => {
-                            // Its cells count from a number; one from a value is a domain (R04.3.4).
-                            if lo.int_literal().is_none() {
-                                self.err(
-                                    span,
-                                    Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, "an array over a range that starts at a value: name it as a domain, `domain D = lo..hi`, then `[D]T`"),
-                                );
-                            }
-                            Some(((**lo).clone(), (**hi).clone(), *inclusive))
-                        }
-                        TypeKind::Named { name, args }
-                            if args.is_empty()
-                                && self.lookup(&name.text).is_some()
-                                && self.domain_named(&name.text).is_none() =>
-                        {
-                            Some((
-                                zero(),
-                                ast::Expr {
-                                    kind: ExprKind::Name(name.text.clone()),
-                                    span: name.span,
-                                },
-                                false,
-                            ))
-                        }
-                        _ => None,
-                    };
-                    if let Some((lo, hi, inclusive)) = ends {
-                        let (lo, hi) =
-                            (self.expr_as_typed(&lo, None), self.expr_as_typed(&hi, None));
-                        let (lo, hi) = match (&lo.kind, inclusive) {
-                            (TK::Int(0), false) if self.int_range(&hi.ty) => self.key_run(hi, out),
-                            _ => (lo, hi),
-                        };
-                        let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
-                        let name = format!("$range{}", self.domains.len());
-                        self.declare_domain(&name, lo, end, within, span, out);
-                        *ix = ast::Type {
-                            kind: TypeKind::Named {
-                                name: ast::Name {
-                                    text: name,
-                                    span: ix.span,
-                                },
-                                args: Vec::new(),
-                            },
-                            span: ix.span,
-                        };
+                    if let Some(ty) = self.array_axis(&ix, out) {
+                        axes.insert(self.at(&ix), ty);
                     }
                 }
             }
-            TypeKind::Named { args, .. } => {
-                for a in args.iter_mut() {
-                    *a = self.name_ranges(a, span, out);
+            next::Type::Path(p) => {
+                let args: Vec<next::GenericArg> = p
+                    .generic_args()
+                    .map(|g| g.args().collect())
+                    .unwrap_or_default();
+                for a in args {
+                    if let next::GenericArg::Type(a) = a {
+                        self.axes_in(&a, out, axes);
+                    }
                 }
             }
-            // The ends are values: they are worked out once, here, and the range gets a name.
-            // `0..=V.count`: its end is the domain's, so a field of that type holds it.
-            TypeKind::Range { lo, hi, inclusive } if self.count_ended(lo, hi, *inclusive) => {
-                let (lo, d, m, k) = decls::count_end(lo, hi, *inclusive).unwrap_or_default();
-                let Some(m) = self.d.domain_getter(m) else {
-                    return t.clone();
-                };
-                let dt = ast::Type::named(d, t.span);
-                let (dt, errs) = decls::body_type(
-                    self.d,
-                    self.d,
-                    self.b.module,
-                    &self.b.generics,
-                    &self.b.doms,
-                    &|n: &str| self.owned_named(n),
-                    &dt,
-                );
-                for e in errs {
-                    self.err(span, e);
+            // The ends are values: they are worked out once, here, and the type is their range.
+            next::Type::Range(r) => {
+                if let Some(next::Expr::Range(re)) = r.expr() {
+                    if !self.static_axis(&re) {
+                        let ty = self.value_range(&re, out);
+                        axes.insert(self.at(t), ty);
+                    }
                 }
-                let name = format!("$to{}", self.b.doms.len());
-                let ty = Ty::RangeTo(Box::new(dt), m, lo, k);
-                self.b.doms.insert(name.clone(), ty);
-                t.kind = TypeKind::Named {
-                    name: ast::Name {
-                        text: name,
-                        span: t.span,
-                    },
-                    args: Vec::new(),
-                };
-            }
-            TypeKind::Range { lo, hi, inclusive }
-                if decls::static_range(lo, hi, *inclusive).is_none() =>
-            {
-                let name = format!("$ends{}", self.ranges.len());
-                let mut end = |cx: &mut Self, e: &Option<Box<ast::Expr>>, open: bool| {
-                    e.as_ref().map(|b| {
-                        let b = if open {
-                            Self::minus_one(b)
-                        } else {
-                            (**b).clone()
-                        };
-                        let b = cx.expr(&b, Some(&Ty::Int));
-                        let b = cx.coerce(b, &Ty::Int);
-                        let v = cx.slot(Ty::Int, "$end");
-                        out.push(TStmt::Let(v, b));
-                        v
-                    })
-                };
-                let lo = end(self, lo, false);
-                let hi = end(self, hi, !*inclusive);
-                let i = self.id(super::Table::Range, self.ranges.len());
-                super::put(&mut self.ranges, i, RangeInfo { lo, hi });
-                self.b.doms.insert(name.clone(), Ty::RangeOf(i));
-                t.kind = TypeKind::Named {
-                    name: ast::Name {
-                        text: name,
-                        span: t.span,
-                    },
-                    args: Vec::new(),
-                };
             }
             _ => {}
         }
-        t
+    }
+    fn static_axis(&self, re: &next::RangeExpr) -> bool {
+        decls::static_axis(
+            self.d,
+            self.d,
+            self.b.module,
+            &self.b.generics,
+            &self.b.doms,
+            re,
+        )
+    }
+    /// An array axis over a range with a value end, or over a count `n`: a domain of its own.
+    pub(super) fn array_axis(&mut self, ix: &next::Type, out: &mut Vec<TStmt>) -> Option<Ty> {
+        let span = self.at(ix);
+        let zero = TExpr {
+            kind: TK::Int(0),
+            ty: Ty::Int,
+            span,
+        };
+        let (lo, hi, inclusive) = match ix {
+            next::Type::Range(r) => match r.expr()? {
+                next::Expr::Range(re) => {
+                    if self.static_axis(&re) {
+                        return None;
+                    }
+                    let (lo, hi) = (re.lo()?, re.hi()?);
+                    // Its cells count from a number; one from a value is a domain (R04.3.4).
+                    if decls::literal_int(&lo).is_none() {
+                        let msg = "an array over a range that starts at a value: name it as a \
+                                   domain, `domain D = lo..hi`, then `[D]T`";
+                        self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, msg));
+                    }
+                    let lo = self.expr_as_typed(&lo, None);
+                    (lo, self.expr_as_typed(&hi, None), re.is_inclusive())
+                }
+                e => (zero, self.expr_as_typed(&e, None), false),
+            },
+            next::Type::Path(p) => {
+                let segs: Vec<SyntaxToken> = p.segments().collect();
+                let [n] = &segs[..] else {
+                    return None;
+                };
+                let n = n.text();
+                if p.generic_args().is_some()
+                    || self.lookup(n).is_none()
+                    || self.domain_named(n).is_some()
+                {
+                    return None;
+                }
+                (zero, self.name(n, span), false)
+            }
+            _ => return None,
+        };
+        let (lo, hi) = match (&lo.kind, inclusive) {
+            (TK::Int(0), false) if self.int_range(&hi.ty) => self.key_run(hi, out),
+            _ => (lo, hi),
+        };
+        let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
+        let name = format!("$range{}", self.domains.len());
+        Some(Ty::Dom(
+            self.declare_domain(&name, lo, end, within, span, out),
+        ))
+    }
+    /// A range type `lo..hi` with value ends: each end held once in a slot, the type their range.
+    fn value_range(&mut self, re: &next::RangeExpr, out: &mut Vec<TStmt>) -> Ty {
+        let mut end = |cx: &mut Self, e: Option<next::Expr>, open: bool| {
+            e.map(|e| {
+                let b = cx.expr(&e, Some(&Ty::Int));
+                let b = cx.coerce(b, &Ty::Int);
+                let span = b.span;
+                let b = match open {
+                    true => {
+                        let one = TExpr {
+                            kind: TK::Int(1),
+                            ty: Ty::Int,
+                            span,
+                        };
+                        TExpr {
+                            kind: TK::Bin(BinOp::Sub, Box::new(b), Box::new(one)),
+                            ty: Ty::Int,
+                            span,
+                        }
+                    }
+                    false => b,
+                };
+                let v = cx.slot(Ty::Int, "$end");
+                out.push(TStmt::Let(v, b));
+                v
+            })
+        };
+        let lo = end(self, re.lo(), false);
+        let hi = end(self, re.hi(), !re.is_inclusive());
+        let i = self.id(super::Table::Range, self.ranges.len());
+        super::put(&mut self.ranges, i, RangeInfo { lo, hi });
+        Ty::RangeOf(i)
+    }
+}
+
+/// The name a pattern binds when it is a bare name.
+fn pattern_name(p: &next::Pattern) -> Option<String> {
+    let next::Pattern::Path(pp) = p else {
+        return None;
+    };
+    let segs: Vec<SyntaxToken> = pp.segments().collect();
+    match (&segs[..], pp.args()) {
+        ([n], None) => Some(n.text().to_string()),
+        _ => None,
     }
 }
 
