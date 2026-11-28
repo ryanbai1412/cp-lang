@@ -557,9 +557,16 @@ impl Link<'_> {
             Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) | Ty::RangeEnds { .. } => {
                 CTy::Int
             }
-            // Check has evaluated every constant argument; one it left unresolved has no instance.
+            // Check has evaluated every constant argument; one it left unresolved (a struct
+            // field's, which link still reads from decls) has no instance.
             Ty::Const(ConstArg::Int(k)) => CTy::Const(*k),
-            Ty::Const(ConstArg::At(_)) => CTy::Error,
+            Ty::Const(ConstArg::At(_)) => {
+                let what = "a constant argument check did not evaluate reached link (a struct field's type, which check does not resolve yet)";
+                if !self.errors.iter().any(|m| m.text == what) {
+                    self.errors.push(Msg::internal(what));
+                }
+                CTy::Error
+            }
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
             Ty::U64 => CTy::U64,
