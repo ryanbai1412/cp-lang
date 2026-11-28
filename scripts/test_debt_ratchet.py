@@ -1300,6 +1300,40 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
                              ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
 
+    def test_only_the_coordinator_signs_a_raise_and_it_gives_its_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, capture_output=True, env=dr._git_env())
+            git("init", "-q", "-b", "main")
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"external_crates": 5}))
+            self._write(root, "decisions.md", "# Decisions\n")
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("checkout", "-q", "-b", "lane")
+            bump = lambda raise_: mock.patch.dict(os.environ, {"CPL_RAISE": raise_} if raise_ else {})
+            said = lambda: dr.unexplained_bumps(root, {"external_crates": 6}, ref="main")
+            with bump(""):
+                self.assertIn("signed off by coordinator", said()[0])
+            with bump("external_crates 5 -> 6, signed off by E"):
+                self.assertIn("only the coordinator signs a raise", said()[0])
+            with bump("external_crates 5 -> 6, signed off by coordinator"):
+                self.assertIn("gives no reason", said()[0])
+            self._write(root, "decisions.md", "# Decisions\nexternal_crates goes 5 -> 6: why.\n")
+            with bump("external_crates 5 -> 7, signed off by coordinator"):
+                self.assertIn("does not match the baseline's 5 -> 6", said()[0])
+            with bump("external_crates 5 -> 6, signed off by coordinator"):
+                self.assertEqual(said(), [])
+            self._write(root, "decisions.md", "# Decisions\n")
+            git("commit", "-q", "--allow-empty", "-m", "x: y\n\nexternal_crates grows: why.\n\nRaise: external_crates 5 -> 6, signed off by coordinator")
+            self.assertEqual(said(), [])
+            self.assertEqual(dr.raises(root, "main"), [(git("rev-parse", "--short=9", "HEAD").stdout.decode().strip(),
+                                                        "external_crates", "5 -> 6, signed off by coordinator")])
+
+    def test_a_hard_zero_counter_is_never_raised_even_signed(self) -> None:
+        with mock.patch.dict(os.environ, {"CPL_RAISE": "frozen_std_drift 0 -> 1, signed off by coordinator"}):
+            self.assertIn("hard-zero", dr.signed_raise(Path("."), "HEAD", "frozen_std_drift", 0, 1))
+
     def test_main_lowering_a_baseline_mid_land_is_not_this_changes_raise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -5596,6 +5596,46 @@ def raise_evidence(root: Path, base: str, name: str) -> str | None:
             f"<why>, full run target/cpl-next/<list> at <sha>`, never from a CPL_NEXT_ONLY run")
 
 
+SIGNED_RAISE_RE = re.compile(r"^(\d+)\s*->\s*(\d+),\s*signed off by\s+(\S+?)\.?\s*$")
+
+
+def raises(root: Path, base: str) -> list[tuple[str, str, str]]:
+    """Each `Raise: <name> <rest>` in `base..HEAD`, as (commit, name, rest), and the commit
+    being made's from CPL_RAISE (`;`-separated): pre-commit runs before its message exists, and
+    commit-msg writes them as trailers."""
+    out = [(sha[:9], m.group(1).rstrip(":"), m.group(2).strip())
+           for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD")
+           for m in RAISE_RE.finditer("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
+    given = [r.strip().split(None, 1) for r in os.environ.get("CPL_RAISE", "").split(";") if r.strip()]
+    return out + [("this commit", r[0].rstrip(":"), r[1] if len(r) > 1 else "") for r in given]
+
+
+def signed_raise(root: Path, base: str, name: str, old: int, new: int) -> str | None:
+    """None when `Raise: <name> <old> -> <new>, signed off by coordinator` is in `base..HEAD` (or
+    CPL_RAISE) and the change gives its reason: decisions.md lines it adds, or the commit's body,
+    name the counter. Only the coordinator signs a raise, so no lane admits its own debt, and a
+    hard-zero counter is never raised. Else what is missing."""
+    if name in HARD_ZERO or name in HARD_FLOOR:
+        return f"{name} is hard-zero; it is never raised (remove the debt)"
+    given = [(w, rest) for w, n, rest in raises(root, base) if n == name]
+    if not given:
+        return (f"remove the new debt instead, or have the coordinator sign it: "
+                f"`Raise: {name} {old} -> {new}, signed off by coordinator`, with its reason")
+    added = [l for l in _git(root, "diff", base, "--", "decisions.md") if l.startswith("+")]
+    for w, rest in given:
+        m = SIGNED_RAISE_RE.match(rest)
+        if not m:
+            return f"`Raise: {name} {rest}` must read `{old} -> {new}, signed off by coordinator`"
+        if m.group(3) != "coordinator":
+            return f"`Raise: {name}` is signed off by {m.group(3)}; only the coordinator signs a raise"
+        if (int(m.group(1)), int(m.group(2))) != (old, new):
+            return f"`Raise: {name} {m.group(1)} -> {m.group(2)}` does not match the baseline's {old} -> {new}"
+        body = [] if w == "this commit" else _git(root, "log", "-1", "--format=%B", w)
+        if not any(name in l for l in added + [l for l in body if not RAISE_RE.match(l)]):
+            return f"`Raise: {name}` gives no reason: name {name} in the change's decisions.md entry or body"
+    return None
+
+
 def frozen_edits(root: Path, base: str) -> list[str]:
     """Commits in `base..HEAD` that add lines to the frozen old pipeline (migration rule 9: no
     fixes, no features). `old_pipeline_lines` only sees the net, so a fix that deletes more than
@@ -5664,7 +5704,8 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     that entry (a new definition of the count, re-measured), when putting the old crates back
     at `FROZEN_PIN` adds all of it (`measured_without_restore`), or when `ref`
     itself measures at least the raised number (`upstream`): that restores a
-    number lowered by hand, it admits no debt. `next_not_passing` may also rise by
+    number lowered by hand, it admits no debt, or when the coordinator signs it
+    (`signed_raise`). `next_not_passing` may also rise by
     the number of conformance cases the change adds, and `next_wrong` only by the cases a
     `Regressed:` trailer names, a refusal lifted (`unhidden_wrong`) too. Never on a decisions.md
     line or a Skipped: trailer. New debt is removed, not admitted.
@@ -5721,7 +5762,9 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
             f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); {need}"
             for n, key in raised
             for need in [raise_evidence(root, base, n) if n in RUN_MEASURED
-                         else None if remeasured(root, base, key) else stale] if need]
+                         else None if remeasured(root, base, key)
+                         else signed_raise(root, base, n, old[n], baseline[n]) if n in COUNTERS
+                         else stale] if need]
 
 
 def hand_lowered(root: Path, baseline: dict, actual: dict, ref: str = "origin/main") -> list[str]:
@@ -5970,6 +6013,9 @@ def main(argv: list[str] | None = None) -> int:
 
     for w in warnings:
         print(f"debt-ratchet: WARNING: {w}", file=sys.stderr)
+    # Every raise is shown, so the coordinator and the audits check each one against a ruling.
+    for at, n, rest in raises(args.root, (_git(args.root, "merge-base", ref, "HEAD") or [ref])[0]):
+        print(f"debt-ratchet: RAISE {at}: {n} {rest}", file=sys.stderr)
     for e in errors:
         print(f"debt-ratchet: ERROR: {e}", file=sys.stderr)
     counts = ", ".join(

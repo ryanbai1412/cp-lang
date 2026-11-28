@@ -42,3 +42,11 @@ if [ -n "${CPL_REGRESSED:-}" ]; then
             git interpret-trailers --in-place --trailer "Regressed: $r" "$1"
     done
 fi
+# A coordinator-signed baseline raise: the Raise: trailers pre-commit's ratchet admitted.
+if [ -n "${CPL_RAISE:-}" ]; then
+    printf '%s\n' "$CPL_RAISE" | tr ';' '\n' | while read -r r; do
+        [ -n "$r" ] || continue
+        git interpret-trailers --parse "$1" | grep -qxF "Raise: $r" ||
+            git interpret-trailers --in-place --trailer "Raise: $r" "$1"
+    done
+fi
