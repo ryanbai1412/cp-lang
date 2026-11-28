@@ -857,7 +857,8 @@ impl<'a> Cx<'a> {
             Some(d) => self.domain_value(d, span),
             None => {
                 let at = name.span();
-                self.member(&base, name.text(), at, None, span, want, &[])
+                let name = Called::written(self.syms, name.text(), at);
+                self.member(&base, name, None, span, want, &[])
             }
         }
     }
@@ -986,7 +987,8 @@ impl<'a> Cx<'a> {
                 let (Some(base), Some(m)) = (f.base(), f.name()) else {
                     return Self::error_node(span);
                 };
-                self.member(&base, m.text(), m.span(), Some(&args), span, want, &[])
+                let name = Called::written(self.syms, m.text(), m.span());
+                self.member(&base, name, Some(&args), span, want, &[])
             }
             (next::Expr::Generic(g), _) if matches!(g.base(), Some(next::Expr::Field(_))) => {
                 self.generic_method(g, &args, span, want)
@@ -1031,7 +1033,8 @@ impl<'a> Cx<'a> {
                 let Some(recv) = written[0].value() else {
                     return Self::error_node(span);
                 };
-                self.member(&recv, n, at, Some(&args[1..]), span, want, &[])
+                let name = Called::written(self.syms, n, at);
+                self.member(&recv, name, Some(&args[1..]), span, want, &[])
             }
             // A generator argument to a fn that takes no sequence is the method fold of that
             // sequence: `max(f(x) for x in xs)` is `(f(x) for x in xs).max()` (R01.10.1).
@@ -1040,7 +1043,8 @@ impl<'a> Cx<'a> {
                     return Self::error_node(span);
                 };
                 let at = self.at(&callee);
-                self.member(&seq, n, at, Some(&args[1..]), span, want, &[])
+                let name = Called::written(self.syms, n, at);
+                self.member(&seq, name, Some(&args[1..]), span, want, &[])
             }
             (_, Some(n)) if unbound(self, n) && self.names_io(n) => {
                 let args = self.io_args(&args);
