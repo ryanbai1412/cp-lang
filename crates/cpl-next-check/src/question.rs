@@ -10,7 +10,7 @@ pub(super) struct Extent {
 
 impl Cx<'_> {
     /// `e` as an extent wanting `want`: an optional, `None` when any `?` in it found `None`.
-    pub(super) fn extent(&mut self, e: &ast::Expr, want: Option<&Ty>) -> TExpr {
+    pub(super) fn extent(&mut self, e: &next::Expr, want: Option<&Ty>) -> TExpr {
         let inner = want.map(|w| self.optional_of(w).unwrap_or_else(|| w.clone()));
         let depth = self.b.scopes.len();
         self.b.tries.push(Extent {
@@ -49,11 +49,11 @@ impl Cx<'_> {
     }
 
     /// `x?` inside an extent: `x`'s value, held so the extent can test it first.
-    pub(super) fn question(&mut self, x: &ast::Expr, span: Span) -> TExpr {
+    pub(super) fn question(&mut self, x: &next::Expr, span: Span) -> TExpr {
         let open = self.b.tries.last().map(|t| t.depth);
         if open != Some(self.b.scopes.len()) {
             // A `?` with no extent of its own around it, or under a name the extent can't see.
-            let kind = crate::kind_name(&ExprKind::Try(Box::new(x.clone())));
+            let kind = "Try".to_string();
             self.err(span, Unbuilt::Expression { kind });
             return Self::error_node(span);
         }
@@ -85,15 +85,16 @@ impl Cx<'_> {
     }
 
     /// A `?` a condition tests directly gives it no value (R02.4.7).
-    pub(super) fn question_in_cond(&mut self, e: &ast::Expr) -> bool {
+    pub(super) fn question_in_cond(&mut self, e: &next::Expr) -> bool {
         let Some(at) = e.bare_try() else { return false };
+        let span = self.at(e);
         let text = cpl_diag::msgs::check::CANNOT_USED_DIRECTLY_CONDITION.say(&[]);
         let mut msg = Msg::verdict(cpl_diag::codes::QUESTION_IN_CONDITION, text);
         msg.fixes.push(cpl_next_ir::msg::Fix {
             title: "treat `None` as false".to_string(),
             edits: vec![(
-                self.b.item.at(e.span),
-                format!("({}) ?? false", self.text(e.span)),
+                self.b.item.at(span),
+                format!("({}) ?? false", self.text(span)),
             )],
         });
         self.err(at, msg);
@@ -101,16 +102,14 @@ impl Cx<'_> {
     }
 
     /// `x?` as a statement: its result, the only thing `?` makes, is dropped (R02.4.7).
-    pub(super) fn dropped_question(&mut self, e: &ast::Expr) -> bool {
-        if !matches!(e.kind, ExprKind::Try(_)) {
+    pub(super) fn dropped_question(&mut self, e: &next::Expr) -> bool {
+        if !matches!(e, next::Expr::Try(_)) {
             return false;
         }
-        let q = self.text(e.span).to_string();
+        let span = self.at(e);
+        let q = self.text(span).to_string();
         let text = cpl_diag::msgs::check::DROPPED_QUESTION_THE_RESULT_OF_IS.say(&[&q]);
-        self.err(
-            e.span,
-            Msg::verdict(cpl_diag::codes::DROPPED_QUESTION, text),
-        );
+        self.err(span, Msg::verdict(cpl_diag::codes::DROPPED_QUESTION, text));
         true
     }
 }

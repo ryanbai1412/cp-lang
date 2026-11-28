@@ -202,7 +202,7 @@ impl Cx<'_> {
         elem: Ty,
         g: TExpr,
         name: &str,
-        body: &ast::Block,
+        body: &next::Block,
         out: &mut Vec<TStmt>,
     ) {
         let Ty::Struct(s, targs, sets) = self.shallow(&g.ty) else {
