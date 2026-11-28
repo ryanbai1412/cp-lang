@@ -552,6 +552,25 @@ impl Parser<'_> {
             }
             self.want(T::RParen, "`)` to close the variant's fields");
         }
+        if self.at(T::Eq) {
+            self.variant_value();
+        }
+        self.finish();
+    }
+
+    /// `Neg = -1`: a variant's value is outside the design (decision 30.8).
+    /// The value goes in an `Error` node, so the variant reads as one with
+    /// none; it stops before `|`, which separates `=` variants.
+    fn variant_value(&mut self) {
+        let feature = "a variant's value, `Neg = -1`";
+        let err = msgs::syntax::PLANNED_UNDESIGNED.error(self.span(), &[&feature]);
+        self.diagnostics.push(err.with_help(
+            "leave the value out: a variant's `Int` is its position; for other numbers \
+             write `impl Into<Int>` for the enum, as std.math's `Sign` does",
+        ));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.expr_at(crate::ops::Level::BitXor);
         self.finish();
     }
 

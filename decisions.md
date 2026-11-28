@@ -417,6 +417,14 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   answer) and a shared label `Merge(a, b: Ship)`, which `fields` doesn't
   have. Both are E0503 now, with a fix naming a type payload `v`, `v2`, ....
   The two conformance cases that used `One(T)` name it.
+- **A variant has no value.** Syntax, 2.7 and 30.8: `variant` is
+  `decorator* NAME ('(' fields ')')?`, so `Neg = -1` is E0504 (not in the
+  design) in the new parser, with help: a payload-free variant's `Int` is
+  its position, and other numbers come from an `Into<Int>` impl, as
+  std.math's `Sign` (03430ccc1). The variant is kept and its value is an
+  `Error` node. The old parser still reads values until the switch
+  (`tests/old-parser-accepts.txt`), and the four cpl-next programs that
+  wrote them use positions.
 - **A parameter is lent, `mut` or `var`.** Syntax and ownership, 5.2: std
   (bag.cp) and core-05 take `var xs: T`, an owned parameter, which neither
   the grammar nor R05 wrote down. `param` gains `('mut' | 'var')?` and

@@ -457,3 +457,27 @@ fn var_params_parse_and_lazy_and_amp_mut_are_reported() {
     let w = src.find("w:").unwrap() as u32;
     assert_eq!((fixes[1][1].0.start, fixes[1][1].1.as_str()), (w, "mut "));
 }
+
+#[test]
+fn a_variant_value_is_reported_and_the_variant_kept() {
+    use crate::ast::{self, AstNode};
+    let src = "enum C:\n    Red = 2\n    Green\n    @tag(\"b\") Blue = -7\nenum D = A = 1 | B\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    let codes: Vec<_> = file.diagnostics.iter().map(|d| d.code).collect();
+    assert_eq!(
+        codes,
+        [cpl_diag::codes::NOT_IMPLEMENTED; 3],
+        "{:#?}",
+        file.diagnostics
+    );
+    let at = |d: &cpl_diag::Diagnostic| &src[d.span.start as usize..d.span.end as usize];
+    assert!(file.diagnostics.iter().all(|d| at(d) == "="));
+    let names: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::Variant::cast)
+        .map(|v| v.name().unwrap().text().to_string())
+        .collect();
+    assert_eq!(names, ["Red", "Green", "Blue", "A", "B"]);
+}

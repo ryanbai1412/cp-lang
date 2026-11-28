@@ -359,6 +359,8 @@
   "next_run_api_unbuilt": 74,
   "next_std_unchecked": 35,
   "next_lowered": 2,
+  "next_old_parser_accepts": 1,
+  "next_old_parser_accepts_unruled": 0,
   "next_wrong_accepts_ids": [
     "core-01/a-leave-inside-an-operand-is-rejected.cp",
     "core-01/lowercase-generic-needs-expected-type.cp",

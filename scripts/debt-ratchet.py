@@ -1315,6 +1315,36 @@ def next_lowered(root: Path) -> list[str]:
     return [l.strip() for l in _lines(listed) if l.strip()] if listed.is_file() else []
 
 
+OLD_PARSER_ACCEPTS = "tests/old-parser-accepts.txt"
+OLD_PARSER_ACCEPTS_CODES = ("E0503", "E0504")
+
+
+def _old_parser_accepts(root: Path) -> list[str]:
+    listed = root / OLD_PARSER_ACCEPTS
+    return [l.strip() for l in _lines(listed) if l.strip()] if listed.is_file() else []
+
+
+def next_old_parser_accepts(root: Path) -> list[str]:
+    """Rejected-form cases cpl-next accepts only because it still reads the old parser, which
+    keeps a form the new parser reports (coordinator 18:03). They leave `next_not_passing` and
+    `next_refused`, not `next_wrong_accepts`. 0 at the landing that moves decls and check onto
+    the tree, which deletes the list."""
+    return _old_parser_accepts(root)
+
+
+def next_old_parser_accepts_unruled(root: Path) -> list[str]:
+    """Listed old-parser accepts whose case expects no new-parser syntax error (E0503 or E0504),
+    so the list can't hold a real wrong-accept."""
+    out = []
+    for case in _old_parser_accepts(root):
+        path = root / "spec/conformance" / case
+        expect = next((m.group(1) for l in _lines(path) if (m := re.match(r"//\s*expect:\s*(\S+)", l))),
+                      None) if path.is_file() else None
+        if expect not in OLD_PARSER_ACCEPTS_CODES:
+            out.append(f"{case}: expects {expect}")
+    return out
+
+
 def next_error_typed(root: Path) -> list[str]:
     """Programs cases that link an instance holding an error type: the checker passed a program
     whose instances it did not type, where it should have refused or resolved them (contract 5).
@@ -2412,7 +2442,8 @@ def next_not_passing(root: Path) -> list[str]:
     passing = {l.strip() for l in _lines(listed)}
     cases = [r[len("spec/conformance/"):] for r in _git(root, "ls-files", "spec/conformance/*.cp")]
     cases += ["next/" + r.rsplit("/", 1)[-1] for r in _git(root, "ls-files", NEXT_TESTS + "/programs/*.cp")]
-    return [c for c in cases if c not in passing]
+    accepted = set(_old_parser_accepts(root))
+    return [c for c in cases if c not in passing and c not in accepted]
 
 
 def next_refused(root: Path) -> list[str]:
@@ -4714,6 +4745,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
     "crates/cpl-next/tests/passing.txt": ("next_not_passing", "core", "every case listed: the landing that switches `cpl` to cpl-next deletes the list"),
+    "tests/old-parser-accepts.txt": ("next_old_parser_accepts", "core", "deleted: the decls and check move onto the tree, so cpl-next reads the new parser"),
     "crates/cpl-next/tests/lowered.txt": ("next_lowered", "core", "deleted: programs.rs fails on any error only lowering finds"),
     "crates/cpl-next/tests/error-typed.txt": ("next_error_typed", "core", "deleted: the verifier refuses any instance holding an error type"),
     "crates/cpl-next/tests/std-unchecked.tsv": ("next_std_unchecked", "core", "deleted: std_modules.rs fails on any std module that does not compile"),
@@ -4816,7 +4848,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"frozen_std_drift", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"frozen_std_drift", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
@@ -4952,6 +4984,8 @@ COUNTERS = {
     "next_refused": ("cases the new pipeline (cpl-next) refuses: on no list (Core)", next_refused, True),
     "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
     "next_lowered": ("programs cases whose error only lowering finds (Core)", next_lowered, True),
+    "next_old_parser_accepts": ("rejected-form cases cpl-next accepts through the old parser (Core)", next_old_parser_accepts, True),
+    "next_old_parser_accepts_unruled": ("old-parser accepts not expecting E0503/E0504 (Core)", next_old_parser_accepts_unruled, True),
     "next_error_typed": ("programs cases linking an instance that holds an error type (Core)", next_error_typed, True),
     "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),

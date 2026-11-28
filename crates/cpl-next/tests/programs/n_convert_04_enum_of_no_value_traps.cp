@@ -1,10 +1,10 @@
 // expect: R0102
 // rule: R02.7
-// input: "3"
-// `E(x)` traps where no variant has the value `x`, in both engines.
+// input: "1"
+// `E(x)` traps where no variant is at position `x`, in both engines.
 enum Color:
-    Red = 2
-    Green = 5
+    Red
+    Green
 let k = read<Int>()
-print(Int(Color(k + 2)))
-print(Int(Color(k))) // <- here
+print(Int(Color(k - 1)))
+print(Int(Color(k + 1))) // <- here

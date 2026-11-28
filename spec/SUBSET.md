@@ -174,7 +174,7 @@ documented.
 | std-tree | library: tree | supported |  |
 | std-window | library: window | supported |  |
 | Rstress | Stress, shrinking and laws | supported |  |
-| Rtrace | Traces, the debugger and runtime errors | supported |  |
+| Rtrace | 11.6 Language roles | supported |  |
 
 ## Known gaps
 
