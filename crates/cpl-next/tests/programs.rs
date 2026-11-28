@@ -807,17 +807,32 @@ fn list(path: &Path) -> BTreeMap<String, String> {
 /// next_wrong_accepts from 20 to 62 with no commit-tier test failing).
 const GUARDED_SUITES: [&str; 3] = ["core-05/", "core-06/", "std-seq/"];
 
+/// The ids of `tests/old-parser-accepts.txt`: ruled forms (decision 13) the old parser still
+/// accepts on main, so cpl-next on main accepts them too until slice 2 parses with its own.
+fn old_parser_accepts(here: &Path) -> std::collections::BTreeSet<String> {
+    let root = here.parent().and_then(Path::parent).unwrap();
+    let text =
+        std::fs::read_to_string(root.join("tests/old-parser-accepts.txt")).unwrap_or_default();
+    (text.lines())
+        .filter_map(|l| l.split('#').next().map(str::trim))
+        .filter(|id| !id.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
 /// The commit tier's wrong-accept guard: every `// expect: E…` case of [`GUARDED_SUITES`] that
-/// passing.txt lists is checked by cpl-next's checker alone, nothing run, and none may be accepted. A
-/// wrong error is the full run's to judge, as is a case the lists already hold as wrong.
+/// passing.txt lists, bar the old parser's ruled accepts, is checked by cpl-next's checker alone,
+/// nothing run, and none may be accepted. A wrong error is the full run's to judge, as is a case
+/// the lists already hold as wrong.
 #[test]
 fn guarded_rejections_stay_rejected() {
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
     let passing = list(&here.join("tests/passing.txt"));
+    let accepted = old_parser_accepts(here);
     let cases: Vec<(String, PathBuf)> = all_cases()
         .into_iter()
         .filter(|(id, _)| GUARDED_SUITES.iter().any(|s| id.starts_with(s)))
-        .filter(|(id, _)| passing.contains_key(id))
+        .filter(|(id, _)| passing.contains_key(id) && !accepted.contains(id))
         .filter(|(_, path)| {
             let text = std::fs::read_to_string(path).unwrap_or_default();
             matches!(parse_header(&text), Ok(Expect::Diag { code, .. }) if !code.starts_with('L'))
