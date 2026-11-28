@@ -131,6 +131,11 @@ commit that keeps one.
   `cpl` has no `Input`, so `read<Mod<P>>(from: s)` reads standard
   input. It becomes `fn read(mut input: Input)`, reading
   `input.read<Str>()`, with a `read(from:)` case for `Mod`.
+- [ ] `crates/cpl-cli/src/laws.rs` reads each law argument's type through
+  `cpl_facade::today::Ty` to pick its samples: the old checker does not resolve
+  `impl<D: Domain> Sample for D`, so `samples_of<Color>()` fails there. It emits
+  `for x in samples_of<T>():` for `x: T` (`samples_of<Int>()` when no type is
+  written), with no type read, in the landing that moves `cpl test` onto cpl-next.
 
 **Switching `cpl` onto cpl-next.** The shipped `cpl` runs only the old
 pipeline. It moves by putting cpl-next behind `cpl-facade`'s queries,
