@@ -15,14 +15,14 @@ use std.range.{Len}
 use std.seq.{each, Seq}
 use std.hash.{Hash, HashMap}
 
-/// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
-/// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the
-/// smallest distance first and, among equals, the largest vertex.
 impl<T: Ord> Seq<T> for Heap<T>:
     fn iter(self) -> yields T:
         var rest = self
         for x in rest.drain(): yield x
 
+/// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
+/// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the
+/// smallest distance first and, among equals, the largest vertex.
 pub struct Heap<T: Ord>:
     var xs: List<T>
     lt: ?((T, T) -> Bool)
@@ -86,13 +86,6 @@ pub struct Heap<T: Ord>:
     @get pub fn is_empty(self) -> Bool:
         self.xs.len == 0
 
-    /// Visit every element in pop order; `for x in h` uses this.
-    ///
-    /// cost: \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged
-    /// empty: `Heap<Int>().each().collect() == []`
-    /// order: ascending key order, the order `pop` would return them; equal keys in no promised order
-    /// traps: never
-    /// example: `let h = Heap.of([3, 1, 2]); h.each().collect() == [1, 2, 3] and h.len == 3`
     /// The smallest element, or `None` if the heap is empty.
     ///
     /// With `by: desc` the smallest key is the largest element.
