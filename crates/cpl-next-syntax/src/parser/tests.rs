@@ -1075,3 +1075,89 @@ fn operator_kinds_come_from_the_table() {
     ));
     assert_eq!(ast::AssignOp::Op(Shl).to_string(), "<<=");
 }
+
+#[test]
+fn an_interpolating_string_parses_its_holes_and_keeps_every_byte() {
+    use crate::literal::{FmtKind, FmtSpec};
+    let src = r#""a {x + 1} b {{c}} {y:05} {z:.2f}""#;
+    let file = parse_expr(src);
+    assert_eq!(file.root.text(), src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let lit = file
+        .root
+        .descendants()
+        .find_map(ast::Literal::cast)
+        .unwrap();
+    let pieces = lit.pieces().unwrap();
+    let text = |i: usize| match &pieces[i] {
+        ast::StrPiece::Text(t) => t.clone(),
+        ast::StrPiece::Interp(_) => panic!("piece {i} is a hole"),
+    };
+    let hole = |i: usize| match &pieces[i] {
+        ast::StrPiece::Interp(h) => h.clone(),
+        ast::StrPiece::Text(_) => panic!("piece {i} is text"),
+    };
+    assert_eq!(pieces.len(), 6);
+    assert_eq!(
+        (text(0), text(2), text(4)),
+        ("a ".into(), " b {c} ".into(), " ".into())
+    );
+    assert!(matches!(hole(1).value(), Some(ast::Expr::Bin(_))));
+    assert_eq!(hole(1).format(), None);
+    let zero5 = FmtSpec {
+        zero: true,
+        width: 5,
+        kind: FmtKind::Dec,
+    };
+    assert_eq!(hole(3).format(), Some(zero5));
+    let fixed2 = FmtSpec {
+        zero: false,
+        width: 0,
+        kind: FmtKind::Fixed(2),
+    };
+    assert_eq!(hole(5).format(), Some(fixed2));
+}
+
+#[test]
+fn a_broken_hole_is_one_error_and_keeps_its_bytes() {
+    for (src, errors) in [
+        (r#""{x:q}""#, 1),
+        (r#""{x y}""#, 1),
+        // A hole is lexed as its own line, as the old parser did: a leading space is an indent.
+        (r#""{ x }""#, 1),
+        (r#""{x }""#, 0),
+        (r#""{f("}")}""#, 0),
+        (r#""{x""#, 1),
+        (r#""{x:q} {y z}""#, 1),
+    ] {
+        let file = parse_expr(src);
+        assert_eq!(file.root.text(), src);
+        assert_eq!(
+            file.diagnostics.len(),
+            errors,
+            "{src}: {:?}",
+            file.diagnostics
+        );
+    }
+    let bad = parse_expr(r#""{x:q}""#);
+    assert_eq!(bad.diagnostics[0].span, cpl_diag::Span::new(3, 5));
+}
+
+#[test]
+fn plain_and_raw_strings_are_one_text_piece() {
+    for (src, want) in [(r#""a\n{{""#, "a\n{"), (r#"r"a{b}\n""#, r"a{b}\n")] {
+        let file = parse_expr(src);
+        let lit = file
+            .root
+            .descendants()
+            .find_map(ast::Literal::cast)
+            .unwrap();
+        match lit.pieces().unwrap().as_slice() {
+            [ast::StrPiece::Text(t)] => assert_eq!(t, want),
+            other => panic!("{src}: {other:?}"),
+        }
+    }
+    let int = parse_expr("1");
+    let lit = int.root.descendants().find_map(ast::Literal::cast).unwrap();
+    assert!(lit.pieces().is_none());
+}

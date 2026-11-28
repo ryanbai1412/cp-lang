@@ -25,6 +25,8 @@ pub enum NodeKind {
     Name,
     /// A number, string, raw string or char, `true` or `false`.
     Literal,
+    /// `{x}` or `{x:.2f}` in a string `Literal`: the value and its format.
+    Interp,
     /// A name used as a value: `x`, `self`.
     /// `_` where a value goes: an end of `_..=_`.
     HoleExpr,
