@@ -36,7 +36,7 @@ impl Cx<'_> {
                 None => Ty::Error,
             },
         };
-        let table_v = self.bind(
+        let table_v = self.temp(
             &format!("{name}.memo"),
             Ty::Struct(table, vec![key_ty, value.clone()], sets),
         );
