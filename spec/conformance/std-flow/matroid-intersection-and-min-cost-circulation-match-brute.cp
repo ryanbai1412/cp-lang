@@ -54,7 +54,7 @@ fn min_cost_circulations_match_brute_force():
     domain V = 0..4
     domain E = 0..5
     for _ in 0..150:
-        let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [E] _ => do:
+        let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [E] _ =>
             let lo = rand(0, 1)
             (
                 u: V.nth(rand(0, 3)),

@@ -2231,7 +2231,7 @@ pub fn edge_coloring<L, R, E>(edges: [E](l: L, r: R)) -> (colors: Int, color: [E
     (colors: k, color:)
 
 fn random_prefs<A, B>() -> [A]List<B>:
-    [A] _ => do:
+    [A] _ =>
         var p = [b for b in B if rand(0, 3) > 0]
         for i in 1..p.len:
             let j = rand(0, i)
@@ -2272,7 +2272,7 @@ fn stable_matchings_are_stable_and_proposer_optimal():
         assert is_stable(m, rl, rr)
         let base = R.count + 1
         for code in 0..base ** L.count:
-            let other: [L]?R = [L] l => do:
+            let other: [L]?R = [L] l =>
                 let d = code / base ** l.ord % base
                 if d == R.count: None else: Some(R.nth(d))
             if not is_stable(other, rl, rr): continue
@@ -2587,7 +2587,7 @@ fn min_cost_circulations_match_brute_force():
     domain V = 0..4
     domain E = 0..5
     for _ in 0..150:
-        let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [E] _ => do:
+        let es: [E](u: V, v: V, lo: Int, hi: Int, cost: Int) = [E] _ =>
             let lo = rand(0, 1)
             (
                 u: V.nth(rand(0, 3)),
