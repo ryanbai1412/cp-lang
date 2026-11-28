@@ -9591,3 +9591,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 682. (reserved, E: @on_destructure says why a call's result can't be taken apart)
 
 ## 683. (reserved, E: a law body is checked like a trait default, once and generically)
+
+## 684. (reserved, E: a bare name in a trait's fn finds the trait's own members)
