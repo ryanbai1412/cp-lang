@@ -7,7 +7,6 @@
 //! reads again goes.
 use crate::compile::{Code, Kind, Op, PlaceCode, Reg, Root, Step, INHERIT, LEAVE, SAVED};
 use crate::layout::{Lay, Layouts};
-use cpl_next_ir::ir::Intr;
 
 pub(crate) fn tidy(c: &mut Code) {
     let chained: Vec<Reg> = c.chains.iter().flatten().map(|&(_, save)| save).collect();
@@ -424,8 +423,7 @@ fn still(op: &Op) -> bool {
             | Op::Zero { .. }
             | Op::GetG { .. }
             | Op::PutG { .. }
-            | Op::Not { .. }
-    )
+    ) || matches!(op, Op::Unary { op, .. } if !op.checked())
 }
 
 /// The ops something reaches from the start of the block, less the jumps to the op after.
@@ -530,35 +528,16 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         Op::Int { d, a, b, .. }
         | Op::Word { d, a, b, .. }
         | Op::Float { d, a, b, .. }
-        | Op::FloatFn { d, a, b, .. }
         | Op::Cmp { d, a, b, .. } => (vec![one(a), one(b)], vec![one(d)]),
-        Op::Wide { op, d, a, b } => {
-            let n = if matches!(op, Intr::Shl | Intr::Shr) {
-                1
-            } else {
-                2
-            };
-            (vec![(a, 2), (b, n)], vec![(d, 2)])
-        }
+        Op::Wide {
+            d, a, b, narrow, ..
+        } => (vec![(a, 2), (b, if narrow { 1 } else { 2 })], vec![(d, 2)]),
         Op::WideCmp { d, a, b, .. } => (vec![(a, 2), (b, 2)], vec![one(d)]),
-        Op::Widen { op, d, a } => match op {
-            Intr::ToI128 | Intr::I128OfU64 => (vec![one(a)], vec![(d, 2)]),
-            Intr::FromI128 | Intr::U64OfI128 | Intr::F64OfI128 => (vec![(a, 2)], vec![one(d)]),
-            _ => (vec![(a, 2)], vec![(d, 2)]),
-        },
-        Op::Neg { d, a }
-        | Op::Abs { d, a }
-        | Op::Not { d, a }
-        | Op::ToU64 { d, a }
-        | Op::BitCount { d, a, .. }
-        | Op::FromU64 { d, a }
-        | Op::ToF64 { d, a }
-        | Op::ToInt { d, a, .. }
-        | Op::FNeg { d, a }
-        | Op::FAbs { d, a }
-        | Op::CharOf { d, a }
-        | Op::CodeOf { d, a }
-        | Op::RawCap { d, n: a, .. } => (vec![one(a)], vec![one(d)]),
+        Op::Unary { sig, d, a, .. } => (
+            vec![(a, sig.args[0].words() as u32)],
+            vec![(d, sig.res.words() as u32)],
+        ),
+        Op::RawCap { d, n: a, .. } => (vec![one(a)], vec![one(d)]),
         Op::Zero { d, n } | Op::GetG { d, n, .. } => (vec![], vec![(d, n)]),
         Op::PutG { s, n, .. } => (vec![(s, n)], vec![]),
         Op::Retain { s, lay } | Op::Drop { s, lay } => (vec![(s, size(lay))], vec![]),
@@ -612,9 +591,9 @@ fn pure(op: &Op) -> bool {
         | Op::Move { .. }
         | Op::Zero { .. }
         | Op::GetG { .. }
-        | Op::Not { .. }
         | Op::Take { .. }
         | Op::Peek { .. } => true,
+        Op::Unary { op, .. } => !op.checked(),
         Op::Cmp { kind, .. } => *kind != Kind::F64,
         _ => false,
     }
@@ -624,24 +603,10 @@ fn pure(op: &Op) -> bool {
 fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
     let one = |l: Lay| lays.size[l as usize] == 1;
     match op {
-        Op::Int { a, b, .. }
-        | Op::Word { a, b, .. }
-        | Op::Float { a, b, .. }
-        | Op::FloatFn { a, b, .. } => vec![a, b],
+        Op::Int { a, b, .. } | Op::Word { a, b, .. } | Op::Float { a, b, .. } => vec![a, b],
         Op::Cmp { a, b, .. } => vec![a, b],
-        Op::Neg { a, .. }
-        | Op::Abs { a, .. }
-        | Op::Not { a, .. }
-        | Op::ToU64 { a, .. }
-        | Op::BitCount { a, .. }
-        | Op::FromU64 { a, .. }
-        | Op::ToF64 { a, .. }
-        | Op::ToInt { a, .. }
-        | Op::FNeg { a, .. }
-        | Op::FAbs { a, .. }
-        | Op::CharOf { a, .. }
-        | Op::CodeOf { a, .. }
-        | Op::RawCap { n: a, .. }
+        Op::Unary { a, sig, .. } if sig.args[0].words() == 1 => vec![a],
+        Op::RawCap { n: a, .. }
         | Op::Check { c: a, .. }
         | Op::Guard { c: a, .. }
         | Op::JumpUnless { c: a, .. }
@@ -909,17 +874,7 @@ fn dest(op: &mut Op) -> Option<&mut Reg> {
         | Op::Word { d, .. }
         | Op::Float { d, .. }
         | Op::Cmp { d, .. }
-        | Op::Neg { d, .. }
-        | Op::Abs { d, .. }
-        | Op::Not { d, .. }
-        | Op::ToU64 { d, .. }
-        | Op::BitCount { d, .. }
-        | Op::FromU64 { d, .. }
-        | Op::ToF64 { d, .. }
-        | Op::FNeg { d, .. }
-        | Op::FAbs { d, .. }
-        | Op::CharOf { d, .. }
-        | Op::CodeOf { d, .. }
+        | Op::Unary { d, .. }
         | Op::RawCap { d, .. }
         | Op::RawNew { d, .. }
         | Op::RawGet { d, .. }
@@ -1104,6 +1059,18 @@ fn renumber(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cpl_next_ir::ir::Intr;
+    use cpl_next_ir::ops;
+
+    fn not(d: Reg, a: Reg) -> Op {
+        let sig = ops::sig(Intr::Not, ops::Operand::Bool);
+        Op::Unary {
+            op: Intr::Not,
+            sig,
+            d,
+            a,
+        }
+    }
 
     /// A loop head as statements compile it: `if !c goto 3; goto 4; goto 6; body; goto 0`.
     #[test]
@@ -1146,7 +1113,7 @@ mod tests {
         let ops = vec![
             Op::Imm { d: 1, v: 5 },
             Op::Move { d: 2, s: 1, n: 1 },
-            Op::Not { d: 3, a: 2 },
+            not(3, 2),
             Op::Move { d: 4, s: 3, n: 1 },
             Op::Peek { d: 6, p: 0 },
             Op::JumpIf { c: 6, t: 7 },
@@ -1168,12 +1135,18 @@ mod tests {
             )
         };
         let (not, keep) = run(&|_| false, Some(&[(0, 1)]));
-        assert_eq!(not, "Not { d: 3, a: 1 } [Slot { i: 3, stride: 1 }]");
+        assert_eq!(
+            not,
+            format!("{:?} [Slot {{ i: 3, stride: 1 }}]", self::not(3, 1))
+        );
         assert_eq!(keep, [true, false, true, false, true, true, false, true]);
         let (_, keep) = run(&|_| false, None);
         assert!(keep.iter().all(|&k| k));
         let (not, keep) = run(&|_| true, Some(&[(0, 1)]));
-        assert_eq!(not, "Not { d: 3, a: 2 } [Slot { i: 4, stride: 1 }]");
+        assert_eq!(
+            not,
+            format!("{:?} [Slot {{ i: 4, stride: 1 }}]", self::not(3, 2))
+        );
         assert!(keep.iter().all(|&k| k));
     }
 
@@ -1263,10 +1236,10 @@ mod tests {
                 Op::Move { d: 2, s: 1, n: 1 },
                 Op::JumpUnless { c: 5, t: 3 },
                 Op::Imm { d: 6, v: 1 },
-                Op::Not { d: 3, a: 2 },
+                not(3, 2),
                 Op::JumpIf { c: 5, t: 6 },
                 Op::Imm { d: 7, v: 0 },
-                Op::Not { d: 4, a: 2 },
+                not(4, 2),
                 if back {
                     Op::Jump { t: 6 }
                 } else {
@@ -1281,8 +1254,8 @@ mod tests {
             forward(&mut ops, &mut Vec::new(), &lays, &[], &|_| false);
             format!("{:?} {:?}", ops[3], ops[6])
         };
-        assert_eq!(run(false), "Not { d: 3, a: 1 } Not { d: 4, a: 1 }");
-        assert_eq!(run(true), "Not { d: 3, a: 1 } Not { d: 4, a: 2 }");
+        assert_eq!(run(false), format!("{:?} {:?}", not(3, 1), not(4, 1)));
+        assert_eq!(run(true), format!("{:?} {:?}", not(3, 1), not(4, 2)));
     }
 
     /// A drop of a register still zero on every way in becomes a zero, and both go when

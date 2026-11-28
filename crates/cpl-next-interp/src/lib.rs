@@ -411,12 +411,6 @@ impl<'a> Machine<'a> {
             _ => broken("storage written without a lend"),
         }
     }
-    fn float(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<f64> {
-        match self.arg(a, fp)? {
-            V::F64(x) => Ok(x),
-            _ => broken("an F64 operand of another kind"),
-        }
-    }
     fn int(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<i64> {
         match self.arg(a, fp)? {
             V::Int(i) => Ok(i),
@@ -602,7 +596,6 @@ impl<'a> Machine<'a> {
             }
             Intr::RandWord => V::U64(ops::rand_word(&mut self.rand)),
             Intr::Unset => V::Unit,
-            Intr::F64Bits => V::U64(self.float(&args[0], fp)?.to_bits()),
             Intr::ReadInt => {
                 let t = self.input.token();
                 V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)

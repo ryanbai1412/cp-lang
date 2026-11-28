@@ -6,6 +6,7 @@
 //! body, which is what the fn means: `fast_ops_agree_with_their_bodies` runs both on every
 //! runner and they must agree.
 use crate::ir::{CheckKind, FloatFn, Intr, Rounding};
+use crate::prog::CTy;
 use cpl_diag::{codes, Code};
 use cpl_prim::Prim;
 
@@ -257,6 +258,7 @@ pub fn float(op: Intr, a: f64, b: f64) -> Result<f64, Fault> {
         Intr::Sub => a - b,
         Intr::Mul => a * b,
         Intr::Div => a / b,
+        Intr::Float(f) => return float_fn(f, a, b),
         _ => return Err(Fault::Internal("not an F64 operation")),
     })
 }
@@ -514,7 +516,85 @@ pub fn on_scalars(op: Intr) -> bool {
             | I::F64OfI128
             | I::I128OfU64
             | I::U64OfI128
+            | I::F64Bits
     )
+}
+
+/// Whether `op` compares two values.
+pub fn compares(op: Intr) -> bool {
+    use Intr as I;
+    matches!(op, I::Eq | I::Ne | I::Lt | I::Le | I::Gt | I::Ge | I::Below)
+}
+
+/// The kinds of a scalar operation's operands and of its result.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Sig {
+    pub args: [Operand; 2],
+    pub res: Operand,
+}
+
+/// The signature of the scalar operation `op` whose first operand is of kind `first`.
+pub fn sig(op: Intr, first: Operand) -> Sig {
+    use Intr as I;
+    use Operand as O;
+    let res = match op {
+        _ if compares(op) => O::Bool,
+        I::Not => O::Bool,
+        I::ToU64 | I::U64OfI128 | I::F64Bits => O::U64,
+        I::ToF64 | I::F64OfI128 | I::Float(_) => O::F64,
+        I::FromU64
+        | I::FromI128
+        | I::ToInt(_)
+        | I::CodeOf
+        | I::Popcount
+        | I::Ctz
+        | I::Clz
+        | I::BitWidth
+        | I::BitCeil => O::Int,
+        I::ToI128 | I::I128OfU64 => O::I128,
+        I::CharOf => O::Char,
+        _ => first,
+    };
+    let second = if matches!(op, I::Shl | I::Shr) {
+        O::Int
+    } else {
+        first
+    };
+    Sig {
+        args: [first, second],
+        res,
+    }
+}
+
+/// The value of kind `k` that register words `w` hold.
+pub fn load(k: Operand, w: [u64; 2]) -> Option<Scalar> {
+    Some(match k {
+        Operand::Int => Scalar::Int(w[0] as i64),
+        Operand::U64 => Scalar::U64(w[0]),
+        Operand::I128 => Scalar::I128((u128::from(w[0]) | (u128::from(w[1]) << 64)) as i128),
+        Operand::F64 => Scalar::F64(w[0]),
+        Operand::Bool => Scalar::Bool(w[0] != 0),
+        Operand::Char => Scalar::Char(u8::try_from(w[0]).ok()?),
+        Operand::Other => return None,
+    })
+}
+
+/// The register words that hold `s`.
+pub fn words(s: Scalar) -> [u64; 2] {
+    match s {
+        Scalar::Int(i) => [i as u64, 0],
+        Scalar::U64(u) | Scalar::F64(u) => [u, 0],
+        Scalar::I128(w) => [w as u64, ((w as u128) >> 64) as u64],
+        Scalar::Bool(b) => [u64::from(b), 0],
+        Scalar::Char(c) => [u64::from(c), 0],
+    }
+}
+
+/// A scalar operation of one operand, on the register words that hold it.
+pub fn unary(op: Intr, sig: Sig, a: [u64; 2]) -> Result<[u64; 2], Fault> {
+    let other = || Fault::Internal("an operand of another kind");
+    let x = load(sig.args[0], a).ok_or_else(other)?;
+    scalar(op, &[x]).ok_or_else(other)?.map(words)
 }
 
 /// The one meaning of an operation on scalars, for an evaluator that holds values by kind;
@@ -531,12 +611,11 @@ pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
         S::Bool(b) => Some(i128::from(b)),
         _ => None,
     };
-    let cmp = matches!(op, I::Eq | I::Ne | I::Lt | I::Le | I::Gt | I::Ge | I::Below);
+    let cmp = compares(op);
     let counts = matches!(op, I::Popcount | I::Ctz | I::Clz | I::BitWidth | I::BitCeil);
     Some(match (op, xs) {
         (_, &[S::F64(a), S::F64(b)]) if cmp => compare_float(op, f(a), f(b)).map(S::Bool),
         (_, &[a, b]) if cmp => compare(op, whole(a)?, whole(b)?).map(S::Bool),
-        (I::Float(g), &[S::F64(a), S::F64(b)]) => fl(float_fn(g, f(a), f(b))),
         (_, &[S::F64(a), S::F64(b)]) => fl(float(op, f(a), f(b))),
         (I::Shl | I::Shr, &[S::U64(a), S::Int(b)]) => word(op, a, b as u64).map(S::U64),
         (_, &[S::U64(a), S::U64(b)]) => word(op, a, b).map(S::U64),
@@ -559,6 +638,7 @@ pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
         (I::ToF64, &[S::Int(i)]) => fl(Ok(f64_of_int(i))),
         (I::FromU64, &[S::U64(u)]) => int_of_u64(u).map(S::Int),
         (I::Float(g), &[S::F64(a)]) => fl(float_fn(g, f(a), 0.0)),
+        (I::F64Bits, &[S::F64(x)]) => Ok(S::U64(x)),
         (I::ToInt(r), &[S::F64(x)]) => to_int(r, f(x)).map(S::Int),
         (_, &[S::U64(w)]) if counts => bit_count(op, w).map(S::Int),
         (_, &[S::Int(i)]) if counts => bit_count(op, u64_of_int(i)).map(S::Int),
@@ -690,7 +770,32 @@ pub enum Operand {
     U64,
     I128,
     F64,
+    Bool,
+    Char,
     Other,
+}
+impl Operand {
+    /// The kind of a value of type `t`.
+    pub fn of(t: &CTy) -> Operand {
+        match t {
+            CTy::Int | CTy::Dom(_) => Operand::Int,
+            CTy::U64 => Operand::U64,
+            CTy::I128 => Operand::I128,
+            CTy::F64 => Operand::F64,
+            CTy::Bool => Operand::Bool,
+            CTy::Char => Operand::Char,
+            CTy::Lent(t) => Operand::of(t),
+            _ => Operand::Other,
+        }
+    }
+    /// The register words a value of this kind takes.
+    pub fn words(self) -> usize {
+        if self == Operand::I128 {
+            2
+        } else {
+            1
+        }
+    }
 }
 
 /// The C++ expression for `op`: `$0`, `$1` and `$2` stand for its operands, `$*` for all of
@@ -872,6 +977,35 @@ pub const INTRINSICS: &[(&str, Intr)] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_intrinsic_has_its_cpp() {
+        for &(name, op) in INTRINSICS {
+            let text = cpp_text(op, Operand::Int);
+            assert!(!text.contains("not an operation"), "{name}: {text}");
+        }
+    }
+
+    #[test]
+    fn a_one_operand_op_reads_and_writes_its_words() {
+        let at = |op, k| sig(op, k);
+        let neg = unary(
+            Intr::Neg,
+            at(Intr::Neg, Operand::I128),
+            words(Scalar::I128(-5)),
+        );
+        assert_eq!(neg, Ok(words(Scalar::I128(5))));
+        let widened = unary(Intr::ToI128, at(Intr::ToI128, Operand::Int), [u64::MAX, 0]);
+        assert_eq!(widened, Ok(words(Scalar::I128(-1))));
+        assert_eq!(at(Intr::ToI128, Operand::Int).res.words(), 2);
+        let bits = 1.5f64.to_bits();
+        let read = unary(Intr::F64Bits, at(Intr::F64Bits, Operand::F64), [bits, 0]);
+        assert_eq!(read, Ok([bits, 0]));
+        let low = unary(Intr::Neg, at(Intr::Neg, Operand::Int), [i64::MIN as u64, 0]);
+        assert!(low.is_err());
+        let wrong = unary(Intr::CodeOf, at(Intr::CodeOf, Operand::Char), [300, 0]);
+        assert!(matches!(wrong, Err(Fault::Internal(_))));
+    }
 
     #[test]
     fn a_token_read_splits_at_ascii_whitespace_only() {

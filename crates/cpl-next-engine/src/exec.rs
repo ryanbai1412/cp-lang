@@ -4,7 +4,6 @@
 use crate::compile::*;
 use crate::layout::Lay;
 use crate::Stop;
-use cpl_next_ir::ir::Intr;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::run::{Fired, Outcome, Trap};
 use cpl_next_ir::run::{Io, Limits, RunInput, Stack};
@@ -591,10 +590,17 @@ impl M<'_> {
                 Op::Word { op, d, a, b } => {
                     self.stack[r(d)] = ops::word(op, self.stack[r(a)], self.stack[r(b)])?;
                 }
-                Op::Wide { op, d, a, b } => {
-                    let y = match op {
-                        Intr::Shl | Intr::Shr => i128::from(self.stack[r(b)] as i64),
-                        _ => wide(&self.stack, r(b)),
+                Op::Wide {
+                    op,
+                    d,
+                    a,
+                    b,
+                    narrow,
+                } => {
+                    let y = if narrow {
+                        i128::from(self.stack[r(b)] as i64)
+                    } else {
+                        wide(&self.stack, r(b))
                     };
                     let v = ops::wide(op, wide(&self.stack, r(a)), y)?;
                     set_wide(&mut self.stack, r(d), v);
@@ -603,30 +609,15 @@ impl M<'_> {
                     let (x, y) = (wide(&self.stack, r(a)), wide(&self.stack, r(b)));
                     self.stack[r(d)] = u64::from(ops::compare(op, x, y)?);
                 }
-                Op::Widen { op, d, a } => {
-                    let s = self.stack[r(a)];
-                    match op {
-                        Intr::ToI128 => set_wide(&mut self.stack, r(d), ops::i128_of(s as i64)?),
-                        Intr::I128OfU64 => set_wide(&mut self.stack, r(d), ops::i128_of_u64(s)?),
-                        Intr::FromI128 => {
-                            self.stack[r(d)] = ops::int_of_i128(wide(&self.stack, r(a)))? as u64
-                        }
-                        Intr::F64OfI128 => {
-                            self.stack[r(d)] = ops::f64_of_i128(wide(&self.stack, r(a))).to_bits()
-                        }
-                        Intr::U64OfI128 => {
-                            self.stack[r(d)] = ops::u64_of_i128(wide(&self.stack, r(a)))?
-                        }
-                        Intr::Neg => {
-                            let v = ops::wneg(wide(&self.stack, r(a)))?;
-                            set_wide(&mut self.stack, r(d), v)
-                        }
-                        Intr::Abs => {
-                            let v = ops::wabs(wide(&self.stack, r(a)))?;
-                            set_wide(&mut self.stack, r(d), v)
-                        }
-                        _ => return broken("not an I128 conversion"),
-                    }
+                Op::Unary { op, sig, d, a } => {
+                    let hi = if sig.args[0].words() == 2 {
+                        self.stack[r(a) + 1]
+                    } else {
+                        0
+                    };
+                    let v = ops::unary(op, sig, [self.stack[r(a)], hi])?;
+                    let n = sig.res.words();
+                    self.stack[r(d)..r(d) + n].copy_from_slice(&v[..n]);
                 }
                 Op::Float { op, d, a, b } => {
                     let (x, y) = (
@@ -635,29 +626,6 @@ impl M<'_> {
                     );
                     self.stack[r(d)] = ops::float(op, x, y)?.to_bits();
                 }
-                Op::FNeg { d, a } => {
-                    self.stack[r(d)] = ops::neg_float(f64::from_bits(self.stack[r(a)])).to_bits()
-                }
-                Op::ToF64 { d, a } => {
-                    self.stack[r(d)] = ops::f64_of_int(self.stack[r(a)] as i64).to_bits()
-                }
-                Op::FloatFn { f, d, a, b } => {
-                    let (x, y) = (
-                        f64::from_bits(self.stack[r(a)]),
-                        f64::from_bits(self.stack[r(b)]),
-                    );
-                    self.stack[r(d)] = ops::float_fn(f, x, y)?.to_bits()
-                }
-                Op::ToInt { round, d, a } => {
-                    let x = f64::from_bits(self.stack[r(a)]);
-                    self.stack[r(d)] = ops::to_int(round, x)? as u64
-                }
-                Op::Neg { d, a } => self.stack[r(d)] = ops::neg(self.stack[r(a)] as i64)? as u64,
-                Op::Abs { d, a } => self.stack[r(d)] = ops::abs(self.stack[r(a)] as i64)? as u64,
-                Op::FAbs { d, a } => {
-                    self.stack[r(d)] = ops::abs_f64(f64::from_bits(self.stack[r(a)])).to_bits()
-                }
-                Op::Not { d, a } => self.stack[r(d)] = u64::from(ops::not(self.stack[r(a)] != 0)),
                 Op::Cmp {
                     op,
                     d,
@@ -915,19 +883,6 @@ impl M<'_> {
                     let v =
                         ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?;
                     self.stack[r(d)] = v as u64;
-                }
-                Op::ToU64 { d, a } => self.stack[r(d)] = ops::u64_of_int(self.stack[r(a)] as i64),
-                Op::BitCount { op, d, a } => {
-                    self.stack[r(d)] = ops::bit_count(op, self.stack[r(a)])? as u64
-                }
-                Op::FromU64 { d, a } => {
-                    self.stack[r(d)] = ops::int_of_u64(self.stack[r(a)])? as u64
-                }
-                Op::CharOf { d, a } => {
-                    self.stack[r(d)] = u64::from(ops::char_of(self.stack[r(a)] as i64)?)
-                }
-                Op::CodeOf { d, a } => {
-                    self.stack[r(d)] = ops::code_of(byte(self.stack[r(a)])?) as u64
                 }
                 Op::Fail { rule } => return broken(rule),
                 Op::GetG { d, a, n } => {

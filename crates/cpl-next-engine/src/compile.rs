@@ -3,6 +3,7 @@
 //! own, run in the frame of the fn it is written in.
 use crate::layout::{Lay, Layouts};
 use cpl_next_ir::ir::*;
+use cpl_next_ir::ops;
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::run::{Limits, Stack};
 
@@ -102,11 +103,20 @@ pub(crate) enum Op {
     },
     /// An `I128` operation. `I128`s are two words, low first: `d`, `a`, and `b` unless `op`
     /// is a shift, whose amount is an `Int`.
+    /// `b` is one word when `narrow` (a shift count).
     Wide {
         op: Intr,
         d: Reg,
         a: Reg,
         b: Reg,
+        narrow: bool,
+    },
+    /// A scalar operation of one operand, which `ops::unary` computes.
+    Unary {
+        op: Intr,
+        sig: ops::Sig,
+        d: Reg,
+        a: Reg,
     },
     /// A comparison of two `I128`s.
     WideCmp {
@@ -114,24 +124,6 @@ pub(crate) enum Op {
         d: Reg,
         a: Reg,
         b: Reg,
-    },
-    /// `-a`, `abs`, or a conversion, with an `I128` on one side or both.
-    Widen {
-        op: Intr,
-        d: Reg,
-        a: Reg,
-    },
-    Neg {
-        d: Reg,
-        a: Reg,
-    },
-    Abs {
-        d: Reg,
-        a: Reg,
-    },
-    Not {
-        d: Reg,
-        a: Reg,
     },
     Cmp {
         op: Intr,
@@ -252,57 +244,11 @@ pub(crate) enum Op {
     RandWord {
         d: Reg,
     },
-    ToU64 {
-        d: Reg,
-        a: Reg,
-    },
-    /// `popcount`, `ctz`, `clz` or `bit_width` of a word.
-    BitCount {
-        op: Intr,
-        d: Reg,
-        a: Reg,
-    },
-    FromU64 {
-        d: Reg,
-        a: Reg,
-    },
-    ToF64 {
-        d: Reg,
-        a: Reg,
-    },
-    /// `sqrt`, `atan2`, ..: `b` is `a` for a fn of one operand.
-    FloatFn {
-        f: FloatFn,
-        d: Reg,
-        a: Reg,
-        b: Reg,
-    },
-    ToInt {
-        round: Rounding,
-        d: Reg,
-        a: Reg,
-    },
-    FNeg {
-        d: Reg,
-        a: Reg,
-    },
-    FAbs {
-        d: Reg,
-        a: Reg,
-    },
     Float {
         op: Intr,
         d: Reg,
         a: Reg,
         b: Reg,
-    },
-    CharOf {
-        d: Reg,
-        a: Reg,
-    },
-    CodeOf {
-        d: Reg,
-        a: Reg,
     },
     Fail {
         rule: &'static str,
@@ -1169,116 +1115,10 @@ impl Fc<'_> {
             CTy::Raw(e) => Some(fc.lay(e)),
             _ => None,
         };
+        if ops::on_scalars(op) {
+            return self.scalar(op, args, d, &first_ty);
+        }
         match op {
-            Intr::Add
-            | Intr::Sub
-            | Intr::Mul
-            | Intr::Div
-            | Intr::Rem
-            | Intr::BitAnd
-            | Intr::BitOr
-            | Intr::BitXor
-            | Intr::Pow
-            | Intr::Shl
-            | Intr::Shr
-            | Intr::AddWrap
-            | Intr::SubWrap
-            | Intr::MulWrap
-            | Intr::PowWrap
-            | Intr::ShlWrap
-            | Intr::Eq
-            | Intr::Ne
-            | Intr::Lt
-            | Intr::Le
-            | Intr::Gt
-            | Intr::Ge
-            | Intr::Below => {
-                let Some(&[a, b]) = self.operands(args).as_deref() else {
-                    return self.fail("a lent operand");
-                };
-                let cmp = matches!(
-                    op,
-                    Intr::Eq | Intr::Ne | Intr::Lt | Intr::Le | Intr::Gt | Intr::Ge | Intr::Below
-                );
-                let kind = kind(&first_ty);
-                let wide = first_ty == CTy::I128;
-                self.ops.push(match (cmp, kind) {
-                    (true, _) if wide => Op::WideCmp { op, d, a, b },
-                    (false, _) if wide => Op::Wide { op, d, a, b },
-                    (true, Kind::Int | Kind::Bool | Kind::U64 | Kind::F64) => {
-                        Op::Cmp { op, d, a, b, kind }
-                    }
-                    (true, _) => Op::Fail {
-                        rule: "comparison of a value of another kind",
-                    },
-                    (false, Kind::U64) => Op::Word { op, d, a, b },
-                    (false, Kind::F64) => Op::Float { op, d, a, b },
-                    (false, _) => Op::Int { op, d, a, b },
-                });
-            }
-            Intr::Neg
-            | Intr::Abs
-            | Intr::Not
-            | Intr::ToU64
-            | Intr::FromU64
-            | Intr::Popcount
-            | Intr::Ctz
-            | Intr::Clz
-            | Intr::BitWidth
-            | Intr::BitCeil
-            | Intr::ToF64
-            | Intr::CharOf
-            | Intr::CodeOf
-            | Intr::ToI128
-            | Intr::FromI128
-            | Intr::I128OfU64
-            | Intr::U64OfI128
-            | Intr::F64OfI128 => {
-                let Some(&[a]) = self.operands(args).as_deref() else {
-                    return self.fail("a lent operand");
-                };
-                self.ops.push(match op {
-                    Intr::Neg | Intr::Abs if first_ty == CTy::I128 => Op::Widen { op, d, a },
-                    Intr::ToI128
-                    | Intr::FromI128
-                    | Intr::I128OfU64
-                    | Intr::U64OfI128
-                    | Intr::F64OfI128 => Op::Widen { op, d, a },
-                    Intr::Neg if kind(&first_ty) == Kind::F64 => Op::FNeg { d, a },
-                    Intr::Neg => Op::Neg { d, a },
-                    Intr::Abs if kind(&first_ty) == Kind::F64 => Op::FAbs { d, a },
-                    Intr::Abs => Op::Abs { d, a },
-                    Intr::ToF64 => Op::ToF64 { d, a },
-                    Intr::Not => Op::Not { d, a },
-                    Intr::ToU64 => Op::ToU64 { d, a },
-                    Intr::FromU64 => Op::FromU64 { d, a },
-                    Intr::Popcount | Intr::Ctz | Intr::Clz | Intr::BitWidth | Intr::BitCeil => {
-                        Op::BitCount { op, d, a }
-                    }
-                    Intr::CharOf => Op::CharOf { d, a },
-                    _ => Op::CodeOf { d, a },
-                });
-            }
-            // A register holds an `F64` by its bits.
-            Intr::F64Bits => {
-                let Some(&[s]) = self.operands(args).as_deref() else {
-                    return self.fail("a lent operand");
-                };
-                self.ops.push(Op::Move { d, s, n: 1 });
-            }
-            Intr::Float(f) => {
-                let Some(rs) = self.operands(args) else {
-                    return self.fail("a lent operand");
-                };
-                let (a, b) = (rs[0], *rs.get(1).unwrap_or(&rs[0]));
-                self.ops.push(Op::FloatFn { f, d, a, b });
-            }
-            Intr::ToInt(round) => {
-                let Some(&[a]) = self.operands(args).as_deref() else {
-                    return self.fail("a lent operand");
-                };
-                self.ops.push(Op::ToInt { round, d, a });
-            }
             Intr::CheckRange
             | Intr::CheckKey
             | Intr::CheckVariant
@@ -1406,7 +1246,46 @@ impl Fc<'_> {
                 let n = self.size(ty);
                 self.ops.push(Op::Zero { d, n });
             }
+            _ => self.fail("a scalar operation outside `ops::on_scalars`"),
         }
+    }
+    /// An operation on scalars: `ops` gives what it computes; this picks only how its
+    /// registers are read.
+    fn scalar(&mut self, op: Intr, args: &[Arg<CTy>], d: Reg, first_ty: &CTy) {
+        let sig = ops::sig(op, ops::Operand::of(first_ty));
+        let Some(rs) = self.operands(args) else {
+            return self.fail("a lent operand");
+        };
+        let wide = sig.args[0] == ops::Operand::I128;
+        let code = match *rs.as_slice() {
+            [a] => Op::Unary { op, sig, d, a },
+            [a, b] => {
+                let kind = kind(first_ty);
+                match (ops::compares(op), kind) {
+                    (true, _) if wide => Op::WideCmp { op, d, a, b },
+                    (false, _) if wide => Op::Wide {
+                        op,
+                        d,
+                        a,
+                        b,
+                        narrow: sig.args[1].words() == 1,
+                    },
+                    (true, Kind::Int | Kind::Bool | Kind::U64 | Kind::F64) => {
+                        Op::Cmp { op, d, a, b, kind }
+                    }
+                    (true, _) => Op::Fail {
+                        rule: "comparison of a value of another kind",
+                    },
+                    (false, Kind::U64) => Op::Word { op, d, a, b },
+                    (false, Kind::F64) => Op::Float { op, d, a, b },
+                    (false, _) => Op::Int { op, d, a, b },
+                }
+            }
+            _ => Op::Fail {
+                rule: "a scalar operation of another arity",
+            },
+        };
+        self.ops.push(code);
     }
     /// A place's root, its steps and its type.
     fn walk(&mut self, p: &Place) -> (Root, Vec<Step>, CTy) {

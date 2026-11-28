@@ -622,13 +622,7 @@ impl Emit<'_> {
             EK::Intr(op, args, _) => {
                 let a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
                 let first = match args.first() {
-                    Some(Arg::Value(x)) => match x.ty {
-                        CTy::Int => ops::Operand::Int,
-                        CTy::U64 => ops::Operand::U64,
-                        CTy::I128 => ops::Operand::I128,
-                        CTy::F64 => ops::Operand::F64,
-                        _ => ops::Operand::Other,
-                    },
+                    Some(Arg::Value(x)) => ops::Operand::of(&x.ty),
                     _ => ops::Operand::Other,
                 };
                 let mut text = ops::cpp_text(*op, first).replace("$*", &a.join(", "));
