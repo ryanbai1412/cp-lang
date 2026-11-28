@@ -9,6 +9,7 @@ pub mod layout;
 pub mod msg;
 pub mod ops;
 pub mod opt;
+pub mod prim;
 pub mod prog;
 pub mod run;
 pub mod ty;

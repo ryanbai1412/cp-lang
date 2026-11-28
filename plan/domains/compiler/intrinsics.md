@@ -21,10 +21,10 @@ cpl-interp    TABLE[p].vm (scalar fn over RtVal)     cpl-codegen   TABLE[p].cpp 
 - `@intrinsic("id")` is a body form like `@cpp("...")`, usable by any library
   (Small core, no privileged stdlib): a user module copied from std emits the
   same C++ (no-privilege test).
-- `cpl-rt` holds `Prim` (one Rust enum) and `TABLE: [Entry]`: stable id, type
+- `cpl-prim` holds `PrimOp` (one Rust enum; `cpl-rt` re-exports it) and `TABLE: [Entry]`: stable id, type
   signature, VM implementation, C++ snippet, the runtime helper it needs.
   `table_count` test pins the length; growing it needs a decision entry.
-- The compiler matches `Prim` values, never std names. The name-ban gate
+- The compiler matches `PrimOp` values, never std names. The name-ban gate
   (debt-ratchet `std_names_outside_rt`) counts public std names used as string
   literals in compiler source outside `cpl-rt`; it only shrinks.
 - In-place storage primitives (`sort_by_key`, `sort_by_less`) take their `mut`

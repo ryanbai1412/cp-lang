@@ -251,7 +251,7 @@ pub struct LibConst {
 /// body (R02.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CoreType {
-    Prim(cpl_contract::Prim),
+    Prim(cpl_next_ir::prim::Prim),
     Raw,
 }
 

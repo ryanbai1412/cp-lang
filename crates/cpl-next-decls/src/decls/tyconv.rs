@@ -293,12 +293,12 @@ pub(super) fn shift_down(t: &Ty) -> Ty {
 
 /// A core type written by its name.
 pub fn prim_type(n: &str) -> Option<Ty> {
-    cpl_contract::Prim::named(n).map(Ty::of_prim)
+    cpl_next_ir::prim::Prim::named(n).map(Ty::of_prim)
 }
 
 /// Each core type by its name, for a first layer's tables.
 pub(super) fn core_types(syms: &mut Syms) -> HashMap<Sym, CoreType> {
-    let mut out: HashMap<Sym, CoreType> = (cpl_contract::Prim::ALL.into_iter())
+    let mut out: HashMap<Sym, CoreType> = (cpl_next_ir::prim::Prim::ALL.into_iter())
         .map(|p| (syms.intern(p.name()), CoreType::Prim(p)))
         .collect();
     out.insert(syms.intern("Raw"), CoreType::Raw);

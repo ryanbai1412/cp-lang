@@ -387,8 +387,8 @@ pub fn map_slots(t: &Ty, f: &dyn Fn(usize) -> SetTy) -> Ty {
 
 impl Ty {
     /// The core type `p` is.
-    pub fn of_prim(p: cpl_contract::Prim) -> Ty {
-        use cpl_contract::Prim;
+    pub fn of_prim(p: crate::prim::Prim) -> Ty {
+        use crate::prim::Prim;
         match p {
             Prim::Int => Ty::Int,
             Prim::Bool => Ty::Bool,
@@ -400,8 +400,8 @@ impl Ty {
     }
 
     /// The core type this is, if it is one: `Int` for an integer of any range.
-    pub fn prim(&self) -> Option<cpl_contract::Prim> {
-        use cpl_contract::Prim;
+    pub fn prim(&self) -> Option<crate::prim::Prim> {
+        use crate::prim::Prim;
         Some(match self {
             Ty::Int
             | Ty::Range(..)

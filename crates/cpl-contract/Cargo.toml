@@ -8,3 +8,4 @@ license.workspace = true
 
 [dependencies]
 cpl-diag.workspace = true
+cpl-next-ir.workspace = true

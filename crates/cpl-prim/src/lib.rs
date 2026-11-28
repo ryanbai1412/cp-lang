@@ -1,5 +1,5 @@
 //! The primitive operations `@intrinsic("id")` names (spec R12.14): each one's id and its
-//! stable number. The compiler matches [`Prim`] values, never the names libraries give them;
+//! stable number. The compiler matches [`PrimOp`] values, never the names libraries give them;
 //! what each computes and the C++ it emits live with the engines that read this.
 
 /// A scalar type a primitive takes or gives, as its table cells write it.
@@ -21,15 +21,15 @@ impl Kind {
             Kind::F64 => "F64",
         }
     }
-    /// The kinds a cell of [`Prim::params`] or [`Prim::result`] allows, `|` between them.
+    /// The kinds a cell of [`PrimOp::params`] or [`PrimOp::result`] allows, `|` between them.
     pub fn in_cell(cell: &str) -> impl Iterator<Item = Kind> + '_ {
         (Kind::ALL.into_iter()).filter(move |k| cell.split('|').any(|w| w == k.name()))
     }
 }
 
-/// One primitive of the table. Its index in [`Prim::ALL`] is its stable number.
+/// One primitive of the table. Its index in [`PrimOp::ALL`] is its stable number.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
-pub enum Prim {
+pub enum PrimOp {
     Popcount,
     Abs,
     Sqrt,
@@ -52,29 +52,29 @@ pub enum Prim {
     Ln,
 }
 
-impl Prim {
+impl PrimOp {
     /// The table: each primitive, at its stable number.
-    pub const ALL: [Prim; 20] = [
-        Prim::Popcount,
-        Prim::Abs,
-        Prim::Sqrt,
-        Prim::Floor,
-        Prim::Ceil,
-        Prim::Round,
-        Prim::Trunc,
-        Prim::Ctz,
-        Prim::Clz,
-        Prim::BitWidth,
-        Prim::BitCeil,
-        Prim::Acos,
-        Prim::Asin,
-        Prim::Atan2,
-        Prim::Cos,
-        Prim::Sin,
-        Prim::Tan,
-        Prim::Hypot,
-        Prim::Exp,
-        Prim::Ln,
+    pub const ALL: [PrimOp; 20] = [
+        PrimOp::Popcount,
+        PrimOp::Abs,
+        PrimOp::Sqrt,
+        PrimOp::Floor,
+        PrimOp::Ceil,
+        PrimOp::Round,
+        PrimOp::Trunc,
+        PrimOp::Ctz,
+        PrimOp::Clz,
+        PrimOp::BitWidth,
+        PrimOp::BitCeil,
+        PrimOp::Acos,
+        PrimOp::Asin,
+        PrimOp::Atan2,
+        PrimOp::Cos,
+        PrimOp::Sin,
+        PrimOp::Tan,
+        PrimOp::Hypot,
+        PrimOp::Exp,
+        PrimOp::Ln,
     ];
 
     /// Each primitive's name, as `@intrinsic("...")` writes it.
@@ -158,13 +158,13 @@ impl Prim {
     }
 
     /// The primitive `@intrinsic(id)` names.
-    pub fn from_id(id: &str) -> Option<Prim> {
-        let at = Prim::IDS.iter().position(|i| *i == id)?;
-        Prim::ALL.get(at).copied()
+    pub fn from_id(id: &str) -> Option<PrimOp> {
+        let at = PrimOp::IDS.iter().position(|i| *i == id)?;
+        PrimOp::ALL.get(at).copied()
     }
 
     /// The name `@intrinsic("...")` writes.
     pub const fn id(self) -> &'static str {
-        Prim::IDS[self as usize]
+        PrimOp::IDS[self as usize]
     }
 }

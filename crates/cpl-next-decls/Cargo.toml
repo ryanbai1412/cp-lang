@@ -12,4 +12,3 @@ cpl-diag.workspace = true
 cpl-next-ir.workspace = true
 cpl-next-db.workspace = true
 cpl-next-syntax.workspace = true
-cpl-contract.workspace = true
