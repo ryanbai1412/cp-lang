@@ -1,5 +1,6 @@
 //! A file's tree: its items, the trivia between them and its end.
 
+use crate::ast::{self, AstNode};
 use crate::items::split_items;
 use crate::lexer::lex;
 use crate::parser::parse_item;
@@ -262,6 +263,17 @@ impl SyntaxFile {
     /// The file's items, in order.
     pub fn items(&self) -> impl Iterator<Item = SyntaxNode> + '_ {
         self.root.children().filter(|n| n.kind() == NodeKind::Item)
+    }
+
+    /// The module's decorators, such as `@role(prelude)` (R11.6): those at
+    /// the file's top, above its first `use`. A `use` takes no decorator of
+    /// its own, so the ones it holds are the module's.
+    pub fn decorators(&self) -> Vec<ast::Decorator> {
+        let first = self.items().next().and_then(ast::Item::cast);
+        match first.and_then(|i| i.decl()) {
+            Some(ast::Decl::Use(u)) => u.decorators().collect(),
+            _ => Vec::new(),
+        }
     }
 }
 

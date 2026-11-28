@@ -699,3 +699,18 @@ fn prefix_op_fns_struct_lets_value_type_args_and_layout_in_braces_parse() {
         .unwrap();
     assert!(!op.is_prefix());
 }
+
+#[test]
+fn a_modules_role_sits_above_its_first_use() {
+    let file = crate::parse("//! The prelude.\n@role(prelude)\nuse std.io\n\nfn f() -> Int = 1\n");
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let roles: Vec<_> = file
+        .decorators()
+        .iter()
+        .map(|d| d.syntax().text())
+        .collect();
+    assert_eq!(roles, ["@role(prelude)"]);
+    assert!(crate::parse("@role(convert)\ntrait T:\n    fn f(self)\n")
+        .decorators()
+        .is_empty());
+}
