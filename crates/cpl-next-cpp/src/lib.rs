@@ -76,7 +76,7 @@ static void cpl_segv(int) {
     _exit(3);
 }
 #ifdef __SANITIZE_ADDRESS__
-extern "C" const char* __asan_default_options() { return "handle_segv=0:handle_sigbus=0"; }
+extern "C" const char* __asan_default_options() { return "handle_segv=0:handle_sigbus=0:use_sigaltstack=0"; }
 #endif
 static void cpl_guard_stack() {
     stack_t ss; ss.ss_sp = cpl_altstack; ss.ss_size = sizeof cpl_altstack; ss.ss_flags = 0;

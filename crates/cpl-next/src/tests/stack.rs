@@ -78,3 +78,34 @@ fn the_sanitized_cpp_runs_out_of_stack_with_r0601() {
         assert!(err.contains("trap: R0601: line 1"), "{sanitized}: {err}");
     }
 }
+
+/// A run that ends normally exits 0 in the C++ built with the sanitizers, with nothing on
+/// stderr: the sanitizer keeps no signal stack of its own beside the runtime's guard.
+#[test]
+fn the_sanitized_cpp_ends_cleanly() {
+    let c = compile(
+        &Std::read(),
+        "print(1 + 2)\n",
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let flags = [
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-w",
+        "-pthread",
+        "-x",
+        "c++",
+    ];
+    let (bin, _) = cxx::build(c.cpp().as_bytes(), &flags).expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    let err = String::from_utf8_lossy(&ran.stderr);
+    assert_eq!(ran.status.code(), Some(0), "{err}");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "3\n");
+    assert!(err.is_empty(), "{err}");
+}
