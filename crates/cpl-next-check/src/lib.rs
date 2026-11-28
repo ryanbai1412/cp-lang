@@ -1519,7 +1519,8 @@ fn yields_in(e: &ast::Expr) -> bool {
     cpl_syntax::visit::walk_expr(e, &mut v);
     v.0
 }
-fn yield_each(e: &ast::Expr) -> ast::Block {
+/// `for $item in e: yield $item`: what a generator yields of `e`, one value at a time.
+pub(crate) fn yield_each(e: &ast::Expr) -> ast::Block {
     let stmt = |kind| ast::Stmt {
         kind,
         span: e.span,
