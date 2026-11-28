@@ -739,6 +739,7 @@ fn layer(
                 scoped: &tyconv::unscoped,
                 ret_slots: None,
                 next_set: Some(0),
+                top_ranges: None,
             };
             let mut errors = Vec::new();
             for f in &sd.fields {
@@ -778,6 +779,7 @@ fn layer(
             scoped: &tyconv::unscoped,
             ret_slots: None,
             next_set: None,
+            top_ranges: None,
         };
         let mut errors = Vec::new();
         let tys = (sd.generic_defaults.iter())
@@ -845,6 +847,7 @@ fn layer(
                         scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: Some(0),
+                        top_ranges: None,
                     };
                     let mut errors = Vec::new();
                     let fields: Vec<_> =
@@ -973,6 +976,7 @@ fn layer(
                         scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: None,
+                        top_ranges: None,
                     };
                     d.traits[id.0].defaults = (generic_defaults.iter())
                         .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
@@ -1081,6 +1085,7 @@ fn layer(
                         scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: Some(0),
+                        top_ranges: None,
                     };
                     let for_ = match range_param {
                         Some(i) => Ty::Param(i),

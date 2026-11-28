@@ -729,7 +729,7 @@ pub fn check(
         fresh_eq: Vec::new(),
         as_body: Default::default(),
         none_lets: HashSet::new(),
-        ranges: Vec::new(),
+        ranges: vec![RangeInfo { lo: None, hi: None }; d.top_ranges.len()],
         found_ret: HashMap::new(),
         ret_busy: Vec::new(),
         fns: HashMap::new(),
@@ -816,6 +816,7 @@ pub fn check(
             cx.stmt(s, &mut main_out);
         }
     }
+    let mut top_ranges: Vec<usize> = (0..d.top_ranges.len()).collect();
     // A bare `with` line comes before the program's first statement (R09.1.1).
     let mut begun = false;
     // Statements a `let p = mut a[i]` above holds ran inside its lend.
@@ -859,6 +860,15 @@ pub fn check(
             Some((_, body)) => body,
             None => &mut main_out,
         };
+        let ready: Vec<usize> = (top_ranges.iter().copied())
+            .filter(|&r| (d.top_ranges[r].reads.iter()).all(|n| cx.global_names.contains_key(n)))
+            .collect();
+        top_ranges.retain(|r| !ready.contains(r));
+        for r in ready {
+            cx.b.item = d.top_ranges[r].at.item.clone();
+            cx.name_ranges(&d.top_ranges[r].ty, s.span, into);
+        }
+        cx.b.item = off.clone();
         let bare_with = matches!(&s.kind, ast::StmtKind::With { body: None, .. });
         if bare_with && begun {
             let code = cpl_diag::codes::WITH_NOT_FIRST;
