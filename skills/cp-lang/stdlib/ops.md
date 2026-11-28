@@ -16,7 +16,7 @@ In prelude (no `use` needed): `Bounded`.
 
 ## `trait Add<Rhs = Self>`
 
-`a + b` on a type that is not a number (R08.1.5); `-`, `*`, `/`, `%` and `-a` likewise.
+`a + b` on a type that is not a number (R08.1.5); `-`, `*`, `/`, `%`, `**` and `-a` likewise.
 
 ## `trait Sub<Rhs = Self>`
 
@@ -25,6 +25,10 @@ In prelude (no `use` needed): `Bounded`.
 ## `trait Div<Rhs = Self>`
 
 ## `trait Rem<Rhs = Self>`
+
+## `trait Pow<Rhs = Int>`
+
+`a ** e`: `a` to the power `e`, an `Int` unless the impl says otherwise.
 
 ## `trait Neg`
 
