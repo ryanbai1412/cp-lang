@@ -9561,3 +9561,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 676. (reserved, unknown)
 
 ## 677. (reserved, unknown)
+
+## 678. (reserved, A)
