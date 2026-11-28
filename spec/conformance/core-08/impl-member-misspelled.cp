@@ -1,7 +1,7 @@
-// expect: E0707
+// expect: E0203
 // rule: 08.1.2
 // tool: check
-// has: "`totl` is not a member of `Sized`"
+// has: "`Sized` has no fn `totl`"
 // has: "`Sized`'s member is `total`"
 // A misspelled member would be a helper no call reaches while the default runs, so it is an error.
 trait Sized:

@@ -1,7 +1,7 @@
-// expect: E0707
+// expect: E0203
 // rule: 08.1.2
 // tool: check
-// has: "`twice` is not a member of `Scaled`"
+// has: "`Scaled` has no fn `twice`"
 // has: "a helper of the type's own goes in the type's own `impl`"
 // A blanket impl's body holds only the trait's members too.
 trait Base:

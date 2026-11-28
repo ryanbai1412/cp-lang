@@ -9685,14 +9685,14 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `Domain` gains `fn try_nth(k: Int) -> ?Self`, the position `k` steps into the walk or `None` past either end (R04.2.32), by default `if 0 <= k and k < Self.count: Some(Self.nth(k)) else: None`. `impl Domain for Int` overrides it as `Some(k)`. `Cut.l`/`Cut.r`, `Ordered.next` and `offset` call it, so the bounds check is written once.
 - **Why.** Coordinator ruling of 2026-11-27, 23:47. `Cut.r` read `D.count`, which `Int` doesn't have, so `(0..100).bsearch(..).r` (a `Cut<Int>`) was rejected. `Cut.l` also gave `None` at cut 0 of `Int`, which has position -1. The name follows `try_at`/`try_index_of`, and `nth_at` would read as `Ordered.at`'s integer key.
 - **Reverse.** Inline the bounds check back into `Cut.l`/`Cut.r`, `next` and `offset`, and give `Int` a count or no cuts.
-## 673. An `impl Trait for T` body holds only the trait's members (check, 2026-11-27)
+## 675. An `impl Trait for T` body holds only the trait's members (check, 2026-11-27)
 
 `impl Seq<Int> for Hundred` with an extra `fn sum` was accepted, and a
 misspelled member (`sm` for `sum`) became a helper no call reaches while
 the trait's default ran: a P0 bug class with no message. An `impl Trait
 for T` body now holds only the members of the trait and its supertraits
-(fns, getters and associated types). Any other name is E0707, naming the
-trait, with help naming the closest member when one is a typo away, else
+(fns, getters and associated types). Any other name is E0203, as old `cpl`
+says it (`` `Sized` has no fn `totl` ``), with help naming the closest member when one is a typo away, else
 moving the helper to `impl T:`. Decls checks it once, where it makes the
 impl; derived impls are made from the trait, so they never trip it.
 Reverse it by deleting `not_members` and the cases (R08.1.2).

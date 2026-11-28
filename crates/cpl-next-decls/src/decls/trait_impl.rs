@@ -350,7 +350,7 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
 }
 
 /// An `impl Trait for T` body holds only the trait's members and its supertraits' (R08.1.2):
-/// any other name is E0707, with the member it is closest to or a move to `impl T:`.
+/// any other name is E0203, with the member it is closest to or a move to `impl T:`.
 fn not_members(
     d: &mut Decls,
     (mid, item): (ModId, &ItemId),
@@ -375,12 +375,16 @@ fn not_members(
         members.extend(td.assoc.iter().cloned());
         todo.extend(td.supers.iter().map(|r| r.tr));
     }
-    let written = (form.methods.iter().map(|m| (m.name, m.span)))
-        .chain(form.lets.iter().map(|l| (l.name, l.span)))
-        .chain(form.assoc.iter().map(|(n, sp, _)| (*n, *sp)));
+    let written = (form.methods.iter().map(|m| (m.name, m.span, "fn")))
+        .chain(form.lets.iter().map(|l| (l.name, l.span, "member")))
+        .chain(
+            form.assoc
+                .iter()
+                .map(|(n, sp, _)| (*n, *sp, "associated type")),
+        );
     let tname = &d.traits[tr.0].name;
     let mut out = Vec::new();
-    for (name, span) in written {
+    for (name, span, kind) in written {
         let name = d.text(name);
         if members.iter().chain(&olds).any(|m| m == name) {
             continue;
@@ -395,10 +399,8 @@ fn not_members(
                 _ => "a helper of the type's own goes in the type's own `impl`".to_string(),
             },
         };
-        let text = format!(
-            "`{name}` is not a member of `{tname}`, and an `impl {tname}` body holds only its members"
-        );
-        let verdict = Msg::verdict(cpl_diag::codes::NOT_A_TRAIT_MEMBER, text);
+        let text = format!("`{tname}` has no {kind} `{name}`");
+        let verdict = Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, text);
         out.push(Msg {
             help: Some(help),
             ..Msg::at(item.at(Span::new(span.start, span.start)), verdict)

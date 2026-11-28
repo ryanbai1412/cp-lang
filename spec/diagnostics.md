@@ -98,7 +98,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0704 | row_missing_field | the record lacks field `w` required by `(w: W, ..)` |
 | E0705 | law_unsupported_specialization | `Fenwick` (or any type without an `act` parameter) takes no `act:`; use `SegTree(op, a, act:)` |
 | E0706 | empty_fold_no_identity | folding with `Op` gives `?T`; unwrap or pass a `Monoid` |
-| E0707 | not_a_trait_member *(next)* | `side` is not a member of `Area`, and an `impl Area` body holds only its members; correct the name or move it to `impl T:` (R08.1.2) |
+| E0707 | not_a_trait_member *(retired)* | never shipped: a name an `impl Trait` body has that the trait lacks is E0203 (R08.1.2) |
 | E0801 | context_not_constant | `with` needs a compile-time value; for a runtime modulus use `type Z = Mod(p)` |
 | E0802 | with_not_first | a bare `with` line must come first in its block |
 | E0803 | question_in_condition | `x?` in a condition; write `... ?? false` |

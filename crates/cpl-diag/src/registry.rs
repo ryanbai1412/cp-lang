@@ -1192,16 +1192,6 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
-        code: Code("E0707"),
-        title: "Not a member of the trait",
-        summary: "An `impl Trait for T` body names something the trait does not declare.",
-        explanation: "An `impl Trait for T` body holds only the trait's members and its supertraits': fns, getters and associated types. Any other name would be a helper no call through the trait reaches, and a misspelled member would leave the trait's default running. Correct the name, or move a helper to the type's own `impl T:`.",
-        trigger: "trait Area:\n    fn area(self) -> Int\nstruct Sq(n: Int)\nimpl Area for Sq:\n    fn area(self) -> Int = n * n\n    fn side(self) -> Int = n\nprint(Sq(3).area())\n",
-        fix: "trait Area:\n    fn area(self) -> Int\nstruct Sq(n: Int)\nimpl Area for Sq:\n    fn area(self) -> Int = n * n\nimpl Sq:\n    fn side(self) -> Int = n\nprint(Sq(3).area())\n",
-        mode: "check",
-        input: "",
-    },
-    CodeInfo {
         code: Code("E0902"),
         title: "Range store not provable",
         summary: "A value stored into a range type may lie outside it.",

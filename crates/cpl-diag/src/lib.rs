@@ -280,8 +280,6 @@ pub mod codes {
     /// An argument a law-specialized structure does not take (`Fenwick(act:)`).
     pub const LAW_UNSUPPORTED_SPECIALIZATION: Code = Code("E0705");
     pub const EMPTY_FOLD_NO_IDENTITY: Code = Code("E0706");
-    /// A name in an `impl Trait for T` body that is no member of the trait (R08.1.2).
-    pub const NOT_A_TRAIT_MEMBER: Code = Code("E0707");
 
     pub const LENT_TWICE: Code = Code("E0601");
     pub const USED_WHILE_LENT: Code = Code("E0602");
