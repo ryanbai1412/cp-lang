@@ -579,7 +579,8 @@ impl Cx<'_> {
             let shown = self.show(&t);
             let what = if inclusive { "`..=`" } else { "`by`" };
             let code = cpl_diag::codes::TYPE_MISMATCH;
-            let msg = format!("a range of `{shown}` ends has no positions, so it cannot take {what}");
+            let msg =
+                format!("a range of `{shown}` ends has no positions, so it cannot take {what}");
             self.err(span, Msg::verdict(code, msg));
             return Self::error_node(span);
         }
