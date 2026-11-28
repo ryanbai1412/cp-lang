@@ -115,6 +115,11 @@ def merged(counts, name, sides, moved, measured):
     restate each side the rule moved under, and keep the lower."""
     if "before" not in moved:
         return measured["tip"]
+    if "upstream" not in moved:
+        # Main brought the rule, and its baseline already covers what main added under it: a
+        # lane whose commit predates 7fd97e1e2 restated old_pipeline_lines back to 179917 under
+        # main's 213697. The lane's own payoff comes back with the tip's tighten.
+        return int(counts["upstream"][name])
     return max(0, min(restate(int(counts[s][name]), measured[s], measured["tip"]) if s in moved
                       else int(counts[s][name]) for s in sides))
 

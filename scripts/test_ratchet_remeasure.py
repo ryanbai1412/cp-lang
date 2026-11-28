@@ -71,6 +71,11 @@ class RestateTest(unittest.TestCase):
         got = rr.merged(counts, "c", ["before", "upstream"], ["before"], {"before": 155, "tip": 147})
         self.assertEqual(got, 147)
 
+    def test_a_rule_main_brought_keeps_mains_baseline(self):
+        counts = {"before": {"old": 179917}, "upstream": {"old": 213697}}
+        got = rr.merged(counts, "old", ["before", "upstream"], ["before"], {"before": 213697, "tip": 213697})
+        self.assertEqual(got, 213697)
+
     def test_a_hard_zero_counter_at_zero_everywhere_is_not_remeasured(self):
         tip = types.SimpleNamespace(HARD_ZERO={"z"})
         counts = {"before": {"z": 0, "n": 0}, "upstream": {"z": 0, "n": 0}}
