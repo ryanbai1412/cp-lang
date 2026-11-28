@@ -12,7 +12,7 @@ In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `acos`,
 
 ## `struct Sieve`
 
-The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality bitset of \(n / 16\) bytes, the list `primes` and the smallest prime factor table `spf` of \(4n\) bytes, which `factor`, `phi`, `mobius`, `divisors` and the `*_table` methods read.
+The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality bitset of \(n / 16\) bytes, the list `primes` and the smallest prime factor table `spf` of \(4n\) bytes, which `factor`, `phi`, `mobius`, `divisors` and the four table methods read.
 
 Fields: `top: Int`, `odd_composite: List<U64>`.
 

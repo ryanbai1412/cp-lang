@@ -199,7 +199,7 @@ pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
 
 /// The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality
 /// bitset of \(n / 16\) bytes, the list `primes` and the smallest prime factor table `spf` of
-/// \(4n\) bytes, which `factor`, `phi`, `mobius`, `divisors` and the `*_table` methods read.
+/// \(4n\) bytes, which `factor`, `phi`, `mobius`, `divisors` and the four table methods read.
 pub struct Sieve:
     /// The primes in `2..=n`, ascending.
     pub primes: List<SieveVal>
