@@ -4,6 +4,7 @@ use super::call::Formal;
 use super::expr::block;
 use super::stmt::arm_leaves;
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::SyntaxToken;
 
@@ -20,9 +21,8 @@ impl Cx<'_> {
         if to == Ty::Int {
             // Until `Domain` is a trait type parameters meet by bounds, a parameter is a domain.
             let bounded = match self.shallow(&v.ty) {
-                Ty::Param(i) => {
-                    (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.roles().convert)
-                }
+                Ty::Param(i) => (self.bound_traits(i).iter())
+                    .any(|b| Some(b.tr) == self.rows.role_trait(Role::Convert)),
                 _ => false,
             };
             if !bounded && matches!(self.shallow(&v.ty), Ty::Dom(_) | Ty::Param(_)) {
@@ -39,7 +39,7 @@ impl Cx<'_> {
             t if t.is_int_range() => self.coerce(v, &Ty::Int),
             _ => v,
         };
-        let conv = self.d.roles().convert.and_then(|tr| {
+        let conv = self.rows.role_trait(Role::Convert).and_then(|tr| {
             let (m, f) = self.items.t(tr).methods.iter().next()?;
             Some((tr, self.items.text(*m).to_string(), *f))
         });
@@ -221,7 +221,7 @@ impl Cx<'_> {
             );
             return error;
         };
-        let names = self.d.field_names(s);
+        let names = self.field_names(s);
         let ty = b.ty.clone();
         let (mut pre, read) = self.held(b);
         let mut given: Vec<Option<TExpr>> = vec![None; names.len()];
@@ -316,7 +316,7 @@ impl Cx<'_> {
         let Some(Ty::Struct(e, ..)) = want.map(|t| self.shallow(t)) else {
             return None;
         };
-        let i = self.d.variant(e, n)?;
+        let i = self.variant_named(e, n)?;
         (!self.nearer(n)).then_some((e, i))
     }
     pub(super) fn scoped_variant(&self, n: &str) -> Option<(StructId, usize)> {
@@ -334,7 +334,7 @@ impl Cx<'_> {
                 .into_iter()
                 .map(|(_, x)| x))
             .filter_map(|x| match x {
-                decls::Named::Struct(e) => Some((e, self.d.variant(e, n)?)),
+                decls::Named::Struct(e) => Some((e, self.variant_named(e, n)?)),
                 _ => None,
             })
             .collect();

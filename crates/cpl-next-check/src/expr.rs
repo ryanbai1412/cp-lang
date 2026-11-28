@@ -4,6 +4,7 @@ use super::call::CallArg;
 use super::lambda::{LamBody, LamParam};
 use super::member::Called;
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::literal::{self, FmtKind};
 use cpl_next_syntax::ops::Kind;
@@ -12,7 +13,7 @@ use cpl_next_syntax::TokenKind;
 impl<'a> Cx<'a> {
     /// Std's `@role(list)` struct, which literals, comprehensions and tables build.
     pub(super) fn list_struct(&mut self, span: Span) -> Option<StructId> {
-        let list = self.d.sugar.list;
+        let list = self.role_structs.role_struct(Role::List);
         if list.is_none() {
             self.err(span, Msg::internal("no struct is filling `@role(list)`"));
         }
@@ -95,9 +96,11 @@ impl<'a> Cx<'a> {
     /// The `@operator(text)` trait, binary or prefix, and its fn, when `t`'s operator is that
     /// trait's: `t` is a struct, or a type parameter bound by the trait.
     fn operator_trait(&self, text: &str, binary: bool, t: &Ty) -> Option<(TraitId, String, FnId)> {
-        let found = self.d.operator_traits(text).find_map(|tr| {
-            let (n, m) = self.d.operator_method(tr)?;
-            (self.items.f(m).params.len() == usize::from(binary)).then(|| (tr, n.to_string(), m))
+        let traits = self.rows.operator_traits(self.syms.get(text)?);
+        let found = traits.into_iter().find_map(|tr| {
+            let (n, m) = self.rows.operator_method(tr)?;
+            let n = self.syms.text(n).to_string();
+            (self.items.f(m).params.len() == usize::from(binary)).then_some((tr, n, m))
         })?;
         let applies = match self.shallow(t) {
             // An unbounded parameter's `+` is a missing bound, unless it is a position (R08.2.2).
@@ -127,9 +130,11 @@ impl<'a> Cx<'a> {
         if self.is_error(&x.ty) || self.is_error(&s.ty) {
             return Self::error_node(span);
         }
-        let found = self.d.operator_traits("in").find_map(|tr| {
-            let (n, m) = self.d.operator_method(tr)?;
-            Some((tr, n.to_string(), m))
+        let traits =
+            (self.syms.get("in")).map_or_else(Vec::new, |op| self.rows.operator_traits(op));
+        let found = traits.into_iter().find_map(|tr| {
+            let (n, m) = self.rows.operator_method(tr)?;
+            Some((tr, self.syms.text(n).to_string(), m))
         });
         let Some(found) = found else {
             self.err(span, Unbuilt::Membership);
@@ -315,9 +320,10 @@ impl<'a> Cx<'a> {
             CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge => "<",
             CmpOp::In | CmpOp::NotIn => return mk(TK::Error, Ty::Error),
         };
-        let ops: Vec<TraitId> = self.d.operator_traits(token).collect();
-        let named = (ops.iter().copied()).find(|&tr| self.d.seen(self.items.t(tr).module));
-        let Some((named, method)) = named.and_then(|tr| Some((tr, self.d.operator_method(tr)?.0)))
+        let ops = (self.syms.get(token)).map_or_else(Vec::new, |op| self.rows.operator_traits(op));
+        let named = (ops.iter().copied()).find(|&tr| self.doms.seen(self.items.t(tr).module));
+        let Some((named, method)) =
+            named.and_then(|tr| Some((tr, self.syms.text(self.rows.operator_method(tr)?.0))))
         else {
             let msg = format!("`{}` needs an `@operator(\"{token}\")` trait (R08.1.5)", op);
             self.err(span, Msg::verdict(cpl_diag::codes::MISSING_IMPL, msg));
@@ -346,7 +352,7 @@ impl<'a> Cx<'a> {
                     })
                 });
             tr.map(|tr| {
-                if let Some(m) = self.d.member(&self.items.t(tr.tr).methods, method) {
+                if let Some(m) = self.method_in(&self.items.t(tr.tr).methods, method) {
                     self.reach(m);
                 }
                 let arg = self.coerce(arg, &rt);
@@ -439,7 +445,8 @@ impl<'a> Cx<'a> {
         let Some(t) = n.ident() else { return false };
         let n = t.text();
         !self.hidden(n)
-            && (self.fn_named(self.b.module, n)).is_some_and(|d| self.d.roles.todo == Some(d))
+            && (self.fn_named(self.b.module, n))
+                .is_some_and(|d| self.rows.role_fn(Role::Todo) == Some(d))
     }
     /// Whether bare name `n` is the empty optional: the word `None`, unless a binding or a const
     /// of that name is nearer, in [`Cx::name`]'s order.
@@ -483,7 +490,7 @@ impl<'a> Cx<'a> {
             return self.const_read(c, span);
         }
         if let Some(d) = self.fn_named(self.b.module, n) {
-            if self.d.roles.todo == Some(d) {
+            if self.rows.role_fn(Role::Todo) == Some(d) {
                 return todo_trap(span);
             }
             let f = self.fnref(d, Vec::new(), Vec::new());
@@ -548,9 +555,8 @@ impl<'a> Cx<'a> {
     /// The `use` line that brings in `n`, unknown at `span`, from the first std module that
     /// exports it as `pub`.
     fn import_fix(&self, n: &str, span: Span) -> Option<cpl_next_ir::msg::Fix> {
-        let module = (self.d.module_names.iter().enumerate())
-            .find(|(i, m)| m.starts_with("std.") && self.export(ModId(*i), n).is_some_and(|e| e.1))
-            .map(|(_, m)| m.as_str())?;
+        let at = *self.names.exporters(self.syms.get(n)?).first()?;
+        let module = self.names.module_name(at);
         let text = self.bodies.source(&self.b.item.at(span));
         let (point, edit) = cpl_diag::import_edit(&text.text, module.strip_prefix("std.")?, n);
         Some(cpl_next_ir::msg::Fix {
@@ -1286,8 +1292,22 @@ impl Cx<'_> {
     pub(super) fn is_ambiguous(&self, m: ModId, n: &str) -> bool {
         (self.syms.get(n)).is_some_and(|s| self.names.is_ambiguous(m, s))
     }
-    pub(super) fn export(&self, m: ModId, n: &str) -> Option<(Named, bool)> {
-        self.names.export(m, self.syms.get(n)?)
+    pub(super) fn variant_named(&self, e: StructId, n: &str) -> Option<usize> {
+        self.shapes.variant(e, self.syms.get(n)?)
+    }
+
+    pub(super) fn field_index(&self, s: StructId, n: &str) -> Option<usize> {
+        let n = self.syms.get(n)?;
+        (self.items.s(s).fields.iter()).position(|(f, _)| *f == n)
+    }
+
+    pub(super) fn field_names(&self, s: StructId) -> Vec<String> {
+        let fields = self.shapes.field_names(s).into_iter();
+        fields.map(|f| self.shapes.text(f).to_string()).collect()
+    }
+
+    pub(super) fn method_in(&self, members: &HashMap<Sym, FnId>, n: &str) -> Option<FnId> {
+        members.get(&self.syms.get(n)?).copied()
     }
     /// `42`, `1e9`, `2.5`, `true`, `'a'`, or a string and its holes.
     pub(super) fn literal(&mut self, l: &next::Literal, _want: Option<&Ty>, span: Span) -> TExpr {
@@ -1351,7 +1371,7 @@ impl Cx<'_> {
                 .collect();
             return self.text_value(text, span);
         }
-        let Some(put) = self.d.roles().interpolate else {
+        let Some(put) = self.rows.role_fn(Role::Interpolation) else {
             let kind = "Str".to_string();
             self.err(span, Unbuilt::Expression { kind });
             return Self::error_node(span);
@@ -1429,7 +1449,12 @@ impl Cx<'_> {
         }
         let n = mk(TK::Int(text.len() as i64), Ty::Int);
         let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
-        self.marked_call(self.d.sugar.str_literal, "str_literal", vec![raw, n], span)
+        self.marked_call(
+            self.rows.role_fn(Role::StrLiteral),
+            "str_literal",
+            vec![raw, n],
+            span,
+        )
     }
 
     /// `None`, an optional of the type its place wants.
@@ -1728,7 +1753,7 @@ impl Cx<'_> {
                 span,
             };
         }
-        let Some(d) = self.d.tuple(xs.len()) else {
+        let Some(d) = self.shapes.tuple(xs.len()) else {
             let kind = "Tuple".to_string();
             self.err(span, Unbuilt::Expression { kind });
             return Self::error_node(span);

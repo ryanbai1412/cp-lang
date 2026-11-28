@@ -2,6 +2,7 @@
 //! impl, and meeting it fixes the trait's arguments, so `sorted<S: Seq<T>, T>` learns `T`.
 use super::*;
 use cpl_next_decls::decls::ImplIdx;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
 use decls::TraitRef;
 
@@ -206,7 +207,7 @@ impl Cx<'_> {
         let t = self.shallow(t);
         matches!(t, Ty::Var(_))
             && (self.b.obligations.iter()).any(|(o, r, ..)| {
-                (Some(r.tr) == self.d.roles().domain && self.shallow(o) == t)
+                (Some(r.tr) == self.rows.role_trait(Role::Positions) && self.shallow(o) == t)
                     || (r.args.iter().enumerate())
                         .any(|(j, a)| self.shallow(a) == t && self.facts.arg_may_be_domain(r.tr, j))
             })
@@ -410,8 +411,9 @@ impl Cx<'_> {
     }
     /// The one impl of `r` for a struct whose arguments are still open, by its head alone.
     fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(ImplIdx, Vec<Ty>)> {
-        let mut found = (self.d.impls.iter().enumerate())
-            .filter(|(_, im)| im.trait_.tr == r.tr && !im.blanket())
+        let mut found = (self.items.impls_by_trait(r.tr).iter())
+            .map(|&k| (k, self.items.imp(k)))
+            .filter(|(_, im)| !im.blanket())
             .filter_map(|(k, im)| Some((ImplIdx::Decl(k), self.impls().fits_impl(im, t)?)));
         let one = found.next()?;
         found.next().is_none().then_some(one)
@@ -422,10 +424,10 @@ impl Cx<'_> {
     pub(super) fn blanket(&self, i: usize, tr: TraitId) -> bool {
         let mut have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
         if (self.b.decl).is_some_and(|f| self.facts.domain_params(f).contains(&i)) {
-            have.extend(self.d.roles().domain);
+            have.extend(self.rows.role_trait(Role::Positions));
         }
         if (self.b.decl).is_some_and(|f| self.facts.ordered_params(f).contains(&i)) {
-            have.extend(self.d.roles().order);
+            have.extend(self.rows.role_trait(Role::Order));
         }
         // Blankets chain: `impl<D: Domain + Eq> Ord for D` holds once `impl<D: Domain> Eq for D`
         // has given `Eq`.
@@ -495,7 +497,7 @@ impl Cx<'_> {
             };
             args.push(self.body_ty(&a, &mut pre));
         }
-        let r = self.d.with_defaults(TraitRef { tr, args }, &t);
+        let r = decls::with_defaults(self.items, TraitRef { tr, args }, &t);
         if t == Ty::Error {
             return error;
         }
@@ -521,8 +523,8 @@ impl Cx<'_> {
         let dom = implied && self.facts.domain_params(decl).contains(&i);
         let ordered = implied && self.facts.ordered_params(decl).contains(&i);
         let implied = [
-            self.d.roles().domain.filter(|_| dom),
-            self.d.roles().order.filter(|_| ordered),
+            self.rows.role_trait(Role::Positions).filter(|_| dom),
+            self.rows.role_trait(Role::Order).filter(|_| ordered),
         ];
         for tr in implied.into_iter().flatten() {
             let r = TraitRef {

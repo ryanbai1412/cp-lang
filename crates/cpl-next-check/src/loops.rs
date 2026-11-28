@@ -1,6 +1,7 @@
 //! Loops: `for` over a value, an iterator, a walk or a bound, and `yield from` (R06.3).
 
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_syntax::SyntaxToken;
 
 impl<'a> Cx<'a> {
@@ -44,14 +45,11 @@ impl<'a> Cx<'a> {
                 return self.bound_walk(p, call, pats, body, span, out);
             }
             self.b.allow_region = true;
-            let own = (self.d.iteration_own_walk()).filter(|(n, _)| {
-                self.d
-                    .sym(n)
-                    .and_then(|sym| self.impls().lookup_member(&rt, sym))
-                    .is_some()
-            });
-            let walk = (own.or_else(|| self.d.iteration_walk()))
-                .map_or_else(String::new, |(n, _)| n.to_string());
+            let iteration = self.rows.role_trait(Role::Iteration);
+            let own = (iteration.and_then(|tr| self.rows.own_walk(tr)))
+                .filter(|&(n, _)| self.impls().lookup_member(&rt, n).is_some());
+            let walk = (own.or_else(|| iteration.and_then(|tr| self.rows.walk(tr))))
+                .map_or_else(String::new, |(n, _)| self.syms.text(n).to_string());
             call = self.method_call(call, &walk, vec![], span, false);
             self.b.allow_region = false;
         }
@@ -88,7 +86,7 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) {
-        let Some(m) = self.d.member(&self.items.t(tr.tr).methods, &method) else {
+        let Some(m) = self.method_in(&self.items.t(tr.tr).methods, &method) else {
             return self.err(
                 span,
                 Msg::internal("a bound's walk names no fn of its trait"),
@@ -132,9 +130,11 @@ impl<'a> Cx<'a> {
         span: Span,
         out: &mut Vec<TStmt>,
     ) {
-        let walk = self.d.iteration_walk().map(|(n, m)| (n.to_string(), m));
+        let walk = (self.rows.role_trait(Role::Iteration))
+            .and_then(|tr| self.rows.walk(tr))
+            .map(|(n, m)| (self.syms.text(n).to_string(), m));
         let found = (self.bound_traits(p).into_iter())
-            .find(|tr| Some(tr.tr) == self.d.roles.iteration)
+            .find(|tr| Some(tr.tr) == self.rows.role_trait(Role::Iteration))
             .zip(walk);
         let Some((tr, (walk, m))) = found else {
             let shown = self.show(&recv.ty);

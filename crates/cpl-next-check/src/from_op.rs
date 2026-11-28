@@ -2,6 +2,7 @@
 //! trait's fn item, and an item passed where a struct with a `@from_op` fn is wanted, or at a
 //! bound the item has no impl of but such a struct has, is that fn's call on the item.
 use super::*;
+use cpl_next_syntax::grammar::Decorator;
 
 impl Cx<'_> {
     /// A bare operator (`+`) wanted as a value of an open type a bound constrains, or of a struct
@@ -13,7 +14,9 @@ impl Cx<'_> {
             Some(Ty::Struct(s, ..)) => self.op_struct_fn(s).is_some(),
             _ => false,
         };
-        let m = (self.d.operator_fn(&op.to_string(), true)).filter(|_| open)?;
+        let m = (self.syms.get(&op.to_string()))
+            .and_then(|op| self.rows.binary_operator(op))
+            .filter(|_| open)?;
         let f = self.fnref(m, Vec::new(), Vec::new());
         Some(TExpr {
             kind: TK::FnItem(f.clone()),
@@ -54,7 +57,7 @@ impl Cx<'_> {
         }
     }
     fn op_struct_fn(&self, s: StructId) -> Option<FnId> {
-        (self.d.from_op.iter().copied())
+        (self.rows.marked_fns(Decorator::FromOp).iter().copied())
             .find(|f| self.items.f(*f).owner == Some(decls::Owner::Struct(s)))
     }
     /// Whether some impl of `tr` is for `t`'s own type.
@@ -73,8 +76,7 @@ impl Cx<'_> {
     fn is_operator(&self, t: &Ty) -> bool {
         let Ty::Clo(c) = t else { return false };
         let CloRef::Item(f) = &**c else { return false };
-        (self.d.operators.iter())
-            .any(|(_, tr)| self.items.f(f.decl).owner == Some(decls::Owner::Trait(*tr)))
+        matches!(self.items.f(f.decl).owner, Some(decls::Owner::Trait(tr)) if self.rows.is_operator_trait(tr))
     }
     /// The `@from_op` fn whose struct has an impl of a bound on `v` that `item` has none of (any
     /// bound, for a bare operator, which always takes the struct's impl), and whose bounds on its
@@ -84,7 +86,7 @@ impl Cx<'_> {
         let missing: Vec<TraitId> = (self.bounds_on(v).into_iter())
             .filter(|tr| op || !self.has_impl(item, *tr))
             .collect();
-        (self.d.from_op.iter().copied()).find(|&m| {
+        (self.rows.marked_fns(Decorator::FromOp).iter().copied()).find(|&m| {
             let fd = self.items.f(m);
             let Some(decls::Owner::Struct(s)) = fd.owner else {
                 return false;

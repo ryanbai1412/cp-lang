@@ -2,6 +2,7 @@
 //! it, which reruns it from the start (R07.6.2).
 use super::expr::block;
 use super::*;
+use cpl_next_decls::decls::Role;
 
 impl Cx<'_> {
     /// `gen(args)` as a value: the `@role(recipe)` struct around a closure whose body walks
@@ -9,7 +10,7 @@ impl Cx<'_> {
     /// what it names as long as it is held.
     pub(super) fn recipe(&mut self, mut pre: Vec<TStmt>, call: TExpr) -> TExpr {
         let span = call.span;
-        let Some(gen) = self.d.roles().recipe else {
+        let Some(gen) = self.role_structs.role_struct(Role::Recipe) else {
             return block(pre, call);
         };
         let (callee, recv, args, elem) = match call.kind {
@@ -34,7 +35,7 @@ impl Cx<'_> {
                 args,
                 ..
             } => {
-                let m = self.d.member(&self.items.t(tr.tr).methods, &method);
+                let m = self.method_in(&self.items.t(tr.tr).methods, &method);
                 let Some((false, elem)) = m.and_then(|m| self.items.f(m).region.clone()) else {
                     return TExpr {
                         kind: TK::Error,
@@ -136,7 +137,7 @@ impl Cx<'_> {
         let generator = matches!(self.items.f(f.decl).region, Some((false, _)));
         let (ps, _) = self.clo_sig(&CloRef::Item(f.clone()));
         if !generator
-            || self.d.roles().recipe.is_none()
+            || self.role_structs.role_struct(Role::Recipe).is_none()
             || ps.iter().any(|p| matches!(p, Ty::Mut(_)))
         {
             return TExpr {
@@ -193,7 +194,9 @@ impl Cx<'_> {
     /// The element a `for` over a generator value walks.
     pub(super) fn recipe_walk(&mut self, e: &TExpr) -> Option<Ty> {
         match self.shallow(&e.ty) {
-            Ty::Struct(s, targs, _) if Some(s) == self.d.roles().recipe => targs.first().cloned(),
+            Ty::Struct(s, targs, _) if Some(s) == self.role_structs.role_struct(Role::Recipe) => {
+                targs.first().cloned()
+            }
             _ => None,
         }
     }

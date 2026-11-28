@@ -1,5 +1,6 @@
 //! Lists a program writes, literals and comprehensions (R01.8.1), and map literals (R01.4.5).
 use super::*;
+use cpl_next_decls::decls::Role;
 
 /// A list being filled: the local holding it, its element type, and the `@literal("[]")`
 /// trait and fn it is pushed onto through.
@@ -24,8 +25,8 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<(Filling, TStmt)> {
         let list = self.list_struct(span)?;
-        let tr = self.d.literal_trait("[]");
-        let fns = tr.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
+        let tr = (self.syms.get("[]")).and_then(|op| self.rows.literal_trait(op));
+        let fns = tr.map(|tr| self.methods.trait_fns(tr)).unwrap_or_default();
         let (Some(tr), [(new, nf), (push, pf), ..]) = (tr, &fns[..]) else {
             self.err(
                 span,
@@ -180,7 +181,7 @@ impl Cx<'_> {
     /// Where `[K]List<E>` is wanted a literal is one list per cell, unless each element could be
     /// an `E`, making it one `List<E>` that fills every cell (R04.8.10).
     fn cells_wanted(&self, xs: &[next::Expr], want: Option<&Ty>) -> Option<Ty> {
-        let (list, array) = (self.d.sugar.list?, self.array_id()?);
+        let (list, array) = (self.role_structs.role_struct(Role::List)?, self.array_id()?);
         let Ty::Struct(a, ts, _) = self.shallow(want?) else {
             return None;
         };
@@ -206,7 +207,10 @@ impl Cx<'_> {
             return true;
         };
         match self.shallow(t) {
-            Ty::Struct(d, ts, _) if Some(d) == self.d.sugar.list || Some(d) == self.array_id() => {
+            Ty::Struct(d, ts, _)
+                if Some(d) == self.role_structs.role_struct(Role::List)
+                    || Some(d) == self.array_id() =>
+            {
                 (ys.elems()).all(|y| ts.last().is_none_or(|e| self.could_be(&y, e)))
             }
             Ty::Struct(..) | Ty::Int | Ty::Dom(_) => false,
@@ -351,7 +355,11 @@ impl Cx<'_> {
         };
         let (sid, targs, sets) = match want.map(|w| self.shallow(w)) {
             Some(Ty::Struct(d, ts, ss)) if empty(d) => (d, ts, ss),
-            _ => match self.d.sugar.map.filter(|&d| empty(d)) {
+            _ => match self
+                .role_structs
+                .role_struct(Role::Map)
+                .filter(|&d| empty(d))
+            {
                 Some(d) => {
                     let sd = self.items.s(d);
                     let (n, m) = (sd.generics.len(), sd.n_sets);

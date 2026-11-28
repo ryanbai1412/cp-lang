@@ -60,6 +60,8 @@ pub trait RoleRows: RoleStructs {
     fn own_walk(&self, tr: TraitId) -> Option<(Sym, FnId)>;
     /// Role member `m`'s name and fn in its role's trait: `MemoTable`'s `get` and `set`.
     fn role_member(&self, m: RoleMember) -> Option<(Sym, FnId)>;
+    /// Whether `tr` is an `@operator` trait.
+    fn is_operator_trait(&self, tr: TraitId) -> bool;
 }
 
 /// The structs filling the language roles, which a written type converts through: `?T` the
@@ -194,6 +196,8 @@ pub trait Names {
     /// The std modules that export `name` as `pub`, in module order: where a `use` fix
     /// finds it.
     fn exporters(&self, name: Sym) -> Vec<ModId>;
+    /// Module `m`'s dotted name (`std.seq`).
+    fn module_name(&self, m: ModId) -> &str;
 }
 
 /// What a fn's signature says beyond its decl, keyed by the fn.
@@ -210,6 +214,8 @@ pub trait FnFacts {
     fn memo_clear(&self, f: FnId) -> Option<FnId>;
     /// Whether `f`'s return type has holes its body fills.
     fn ret_hole(&self, f: FnId) -> bool;
+    /// Whether fn `f` was refused as declared, so a call of it is downstream of that error.
+    fn refused(&self, f: FnId) -> bool;
     /// Whether trait `tr`'s argument `j` may be a domain in some impl.
     fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool;
 }
@@ -499,6 +505,9 @@ impl RoleRows for Decls {
     fn role_member(&self, m: RoleMember) -> Option<(Sym, FnId)> {
         self.role_members.get(&m).copied()
     }
+    fn is_operator_trait(&self, tr: TraitId) -> bool {
+        self.operators.iter().any(|&(_, t)| t == tr)
+    }
 }
 
 impl Shapes for Decls {
@@ -550,6 +559,9 @@ impl FnFacts for Decls {
     fn ret_hole(&self, f: FnId) -> bool {
         self.ret_holes.contains(&f)
     }
+    fn refused(&self, f: FnId) -> bool {
+        self.refused_fns.contains(&f)
+    }
     fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool {
         self.arg_may_be_domain(tr, j)
     }
@@ -592,6 +604,9 @@ impl Names for Decls {
             })
             .map(|(i, _)| ModId(i))
             .collect()
+    }
+    fn module_name(&self, m: ModId) -> &str {
+        &self.module_names[m.0]
     }
 }
 

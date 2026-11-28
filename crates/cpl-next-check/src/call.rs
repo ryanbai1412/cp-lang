@@ -1,7 +1,9 @@
 //! A call of a name: a fn, a type's constructor, a conversion, or an alias of a type (R02.6.3).
 use super::expr::{block, named_params, pure};
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::grammar::Decorator;
 use cpl_next_syntax::TokenKind;
 use std::collections::BTreeSet;
 
@@ -103,7 +105,7 @@ impl Cx<'_> {
     /// (R01.3.4), where `collect`'s `T` is its `S: Seq<T>`'s. A `@coerce` fn is no written
     /// call: the list a `[D]T` is wanted for keys a domain of its own (R04.8.10).
     pub(super) fn only_in_result(&self, f: FnId, i: usize) -> bool {
-        if self.d.coercions.contains(&f) {
+        if self.rows.marked_fns(Decorator::Coerce).contains(&f) {
             return false;
         }
         let fd = self.items.f(f);
@@ -246,7 +248,7 @@ impl Cx<'_> {
         span: Span,
     ) -> Option<FnId> {
         let given: Vec<&str> = (args.iter()).filter_map(|a| a.label.as_deref()).collect();
-        let found = self.d.overload(first, &given);
+        let found = decls::overload(self.items, self.facts, first, &given);
         if found.is_none() {
             let labels: Vec<String> = given.iter().map(|l| format!("`{l}:`")).collect();
             let text = format!(
@@ -277,14 +279,14 @@ impl Cx<'_> {
         }
         // `Pair<A, B>(..)`: the struct of that name with as many parameters (R02.11.4).
         if let Named::Struct(d) = named {
-            named = Named::Struct(self.d.by_arity(d, written.len()));
+            named = Named::Struct(self.shapes.by_arity(d, written.len()));
         }
         let mut pre = Vec::new();
         let mut given: Vec<Ty> = written.iter().map(|t| self.body_ty(t, &mut pre)).collect();
         // `type Z = Mod<7>`: `Z(x)` is a call of the type the alias names, as `Mod<7>(x)` is.
         if let Named::Alias(id) = named {
             // A parameter not written is inferred, as a struct's is: `AliasBox(42)`.
-            let missing = (self.d.alias(id).generics.len()).saturating_sub(written.len());
+            let missing = (self.tables.alias(id).generics.len()).saturating_sub(written.len());
             let mut targs = given.clone();
             targs.extend((0..missing).map(|_| self.new_ty()));
             let scoped = |n| self.owned_named(n);
@@ -331,7 +333,7 @@ impl Cx<'_> {
         }
         given.truncate(takes);
         if let Named::Struct(d) = named {
-            given = self.d.with_defaults_of(d, given);
+            given = self.shapes.with_defaults_of(d, &given);
         }
         let ranged = match named {
             Named::Fn(d) => self.ranged_targ(d, &mut given),
@@ -543,7 +545,7 @@ impl Cx<'_> {
     ) -> TExpr {
         let fd = self.items.f(f.decl);
         // A call of a fn refused as declared is downstream of that refusal: it is the error.
-        if self.d.refused_fns.contains(&f.decl) {
+        if self.facts.refused(f.decl) {
             return Self::error_node(span);
         }
         let sub = Subst {
@@ -582,8 +584,9 @@ impl Cx<'_> {
             p.ty = self.fresh_sets(&p.ty);
         }
         let held = fd.region.is_some() && !std::mem::take(&mut self.b.allow_region);
-        let unbuilt =
-            held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.roles().recipe.is_none());
+        let unbuilt = held
+            && (fd.region.as_ref().is_some_and(|r| r.0)
+                || self.role_structs.role_struct(Role::Recipe).is_none());
         if unbuilt {
             self.err(
                 span,
@@ -628,7 +631,7 @@ impl Cx<'_> {
             ty,
             span,
         };
-        if held && self.d.roles().recipe.is_some() {
+        if held && self.role_structs.role_struct(Role::Recipe).is_some() {
             return self.recipe(pre, call);
         }
         block(pre, call)
@@ -643,7 +646,7 @@ impl Cx<'_> {
         span: Span,
     ) -> TExpr {
         for tr in &self.bound_traits(p) {
-            let Some(m) = self.d.member(&self.items.t(tr.tr).methods, name) else {
+            let Some(m) = self.method_in(&self.items.t(tr.tr).methods, name) else {
                 continue;
             };
             // A lender is called only where its place is used (`for`, an assignment): elsewhere
@@ -880,14 +883,18 @@ impl Cx<'_> {
                 span: at,
             };
         }
-        let widest = || (2..parts.len()).rev().find(|&n| self.d.tuple(n).is_some());
-        if let Some(wide) = self.d.tuple(parts.len()).map_or_else(widest, |_| None) {
+        let widest = || {
+            (2..parts.len())
+                .rev()
+                .find(|&n| self.shapes.tuple(n).is_some())
+        };
+        if let Some(wide) = self.shapes.tuple(parts.len()).map_or_else(widest, |_| None) {
             let rest = parts.split_off(wide - 1);
             let rest_at = Span::new(rest[0].at.start, rest[rest.len() - 1].at.end);
             let nested = self.nest_parts(rest, rest_at);
             parts.push(CallArg::held(None, nested, rest_at));
         }
-        let Some(d) = self.d.tuple(parts.len()) else {
+        let Some(d) = self.shapes.tuple(parts.len()) else {
             let kind = "Tuple".to_string();
             self.err(at, Unbuilt::Expression { kind });
             return Self::error_node(at);
@@ -1288,8 +1295,8 @@ impl Cx<'_> {
     }
     /// Whether `n` names the fn filling the `print` or `write` role here (R11.6.1).
     pub(super) fn names_io(&self, n: &str) -> bool {
-        let r = &self.d.roles;
-        matches!(self.named(self.b.module, n), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
+        let io = [Role::Print, Role::Write].map(|r| self.rows.role_fn(r));
+        matches!(self.named(self.b.module, n), Some(Named::Fn(f)) if io.contains(&Some(f)))
     }
     /// `print`'s `sep:` and `precision:` from the innermost `with io` where it is written, unless
     /// the call names them (R09.1.2, R10.3.4).

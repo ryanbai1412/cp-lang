@@ -2,7 +2,9 @@
 
 use super::member::Called;
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::grammar::Decorator;
 
 impl<'a> Cx<'a> {
     /// What `f` returns, with the `_`s its body fixed (R02.9.3): a body not checked yet is
@@ -13,7 +15,7 @@ impl<'a> Cx<'a> {
         let checkable =
             !matches!(decl.body, cpl_next_decls::decls::Body::None) && decl.intrinsic.is_none();
         let fresh = !self.fns.contains_key(&f) && !self.ret_busy.contains(&f);
-        if self.d.ret_holes.contains(&f) && !self.found_ret.contains_key(&f) && checkable && fresh {
+        if self.facts.ret_hole(f) && !self.found_ret.contains_key(&f) && checkable && fresh {
             self.ret_busy.push(f);
             let outer = std::mem::replace(&mut self.b, Body::new(self.d));
             let copy = std::mem::take(&mut self.copy);
@@ -361,7 +363,7 @@ impl<'a> Cx<'a> {
     pub(super) fn show(&self, t: &Ty) -> String {
         show_ty(
             self.d,
-            self.d.roles().option,
+            self.role_structs.role_struct(Role::Option),
             &self.domains,
             &self.b.generics,
             &|t| self.shallow(t),
@@ -439,7 +441,7 @@ impl<'a> Cx<'a> {
     }
     /// `T` when `t` is `?T`.
     fn optional_id(&self) -> Option<StructId> {
-        self.d.roles.option
+        self.role_structs.role_struct(Role::Option)
     }
     /// `?t`.
     pub(super) fn optional_ty(&self, t: Ty) -> Ty {
@@ -532,7 +534,7 @@ impl<'a> Cx<'a> {
             Some(Ty::Struct(s, ..)) => Some(*s),
             _ => None,
         };
-        (self.d.coercions.iter().copied()).find(|f| {
+        (self.rows.marked_fns(Decorator::Coerce).iter().copied()).find(|f| {
             let fd = self.items.f(*f);
             h != w
                 && kind(fd.params.first().map(|p| &p.ty)) == Some(*h)
@@ -556,7 +558,7 @@ impl<'a> Cx<'a> {
         let span = e.span;
         // A literal whose length differs from a constant count is wrong before it runs (R04.8.10).
         if let (Some(n), Ty::Struct(a, ts, _)) = (self.literal_len(&e), want) {
-            let array = Some(*a) == self.d.sugar.array;
+            let array = Some(*a) == self.role_structs.role_struct(Role::Array);
             let count = ts.iter().find_map(|t| match self.shallow(t) {
                 Ty::Dom(i) => self.domains[i].count,
                 Ty::Range(lo, hi) if array => Some(hi - lo + 1),
@@ -595,7 +597,7 @@ impl<'a> Cx<'a> {
         }
         if let Some(n) = n {
             let fd = self.items.f(decl);
-            let domain = self.d.roles().domain;
+            let domain = self.rows.role_trait(Role::Positions);
             for (i, t) in f.targs.iter().enumerate() {
                 let positions = fd
                     .bounds
@@ -624,7 +626,7 @@ impl<'a> Cx<'a> {
             return false;
         };
         // An array's key is its domain, never a cell: `[0..=3]T` does not narrow to `[0..=2]T`.
-        let keyed = Some(h) == self.d.sugar.array;
+        let keyed = Some(h) == self.role_structs.role_struct(Role::Array);
         if keyed && (hs.first().map(|t| self.shallow(t)) != ws.first().map(|t| self.shallow(t))) {
             return false;
         }
@@ -653,12 +655,12 @@ impl<'a> Cx<'a> {
         }
     }
     fn is_tuple(&self, s: StructId) -> bool {
-        self.d.tuple(self.items.s(s).fields.len()) == Some(s)
+        self.shapes.tuple(self.items.s(s).fields.len()) == Some(s)
     }
     /// Whether `t` is an array keyed by more than one axis, `[I, J]T` (R01.8.2).
     pub(super) fn is_table(&self, t: &Ty) -> bool {
         match self.shallow(t) {
-            Ty::Struct(a, args, _) if Some(a) == self.d.sugar.array => {
+            Ty::Struct(a, args, _) if Some(a) == self.role_structs.role_struct(Role::Array) => {
                 matches!(args.first().map(|k| self.shallow(k)), Some(Ty::Struct(k, ..)) if self.is_tuple(k))
             }
             _ => false,
@@ -901,7 +903,7 @@ impl<'a> Cx<'a> {
             .filter_map(|(x, y)| match (self.shallow(x), self.shallow(y)) {
                 (Ty::Dom(j), Ty::Dom(c))
                     if j != c
-                        && self.d.fresh_doms.iter().any(|f| f.0 == c)
+                        && self.doms.fresh_dom(c)
                         && crate::pattern::holds_dom(&self.b.ret, c) =>
                 {
                     Some((j, c))

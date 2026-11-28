@@ -2,6 +2,7 @@
 //! covers a type (R02.7.4).
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::grammar::Decorator;
 use cpl_next_syntax::literal::{char_value, int_value};
 use cpl_next_syntax::{SyntaxToken, TokenKind};
 
@@ -203,7 +204,7 @@ impl Cx<'_> {
         }
     }
     fn present_pattern(&self, head: &str) -> bool {
-        (self.d.pattern_fns.iter()).any(|f| self.items.f(*f).name == head)
+        (self.rows.marked_fns(Decorator::Pattern).iter()).any(|f| self.items.f(*f).name == head)
     }
     fn mismatch(&mut self, span: Span, what: &str, t: &Ty) {
         if self.shallow(t) == Ty::Error {
@@ -355,7 +356,7 @@ impl Cx<'_> {
             }
             next::Pattern::Tuple(tp) => {
                 let ps: Vec<next::Pattern> = tp.patterns().collect();
-                let tuple = self.d.tuple(ps.len());
+                let tuple = self.shapes.tuple(ps.len());
                 match self.field_tys(&v.ty) {
                     Some((s, tys))
                         if Some(s) == tuple
@@ -375,7 +376,7 @@ impl Cx<'_> {
                     self.mismatch(span, "a record pattern", &v.ty);
                     return None;
                 };
-                let names: Vec<String> = self.d.field_names(s);
+                let names: Vec<String> = self.field_names(s);
                 let fields: Vec<(SyntaxToken, Option<next::Pattern>)> = (r.fields())
                     .filter_map(|f| Some((f.name()?, f.pattern())))
                     .collect();
@@ -418,7 +419,7 @@ impl Cx<'_> {
         binds: &mut Vec<TStmt>,
     ) -> Option<TExpr> {
         if let Some((e, _)) = self.enum_of(&v.ty) {
-            if let Some(i) = self.d.variant(e, n) {
+            if let Some(i) = self.variant_named(e, n) {
                 return Some(Self::tag_is(v, i, span));
             }
         }
@@ -488,7 +489,7 @@ impl Cx<'_> {
             self.mismatch(span, &format!("`{head}`"), &v.ty);
             return None;
         };
-        let Some(i) = self.d.variant(e, head) else {
+        let Some(i) = self.variant_named(e, head) else {
             let en = self.items.s(e).name.clone();
             let code = cpl_diag::codes::UNKNOWN_FIELD;
             self.err(
@@ -709,7 +710,7 @@ impl Cx<'_> {
         let sd = self.items.s(*s);
         for (k, a) in ts.iter().enumerate() {
             match self.shallow(a) {
-                Ty::Dom(c) if !sd.record && self.d.fresh_doms.iter().any(|f| f.0 == c) => {
+                Ty::Dom(c) if !sd.record && self.doms.fresh_dom(c) => {
                     out.push((c, [path, &sd.generics[k..=k]].concat()));
                 }
                 a if sd.record => {
@@ -786,7 +787,7 @@ impl Cx<'_> {
         let r = self.range_struct()?;
         match self.shallow(t) {
             Ty::Struct(s, ts, _) if s == r && ts.len() == 1 => match self.shallow(&ts[0]) {
-                Ty::Dom(c) if self.d.fresh_doms.iter().any(|f| f.0 == c) => Some(c),
+                Ty::Dom(c) if self.doms.fresh_dom(c) => Some(c),
                 _ => None,
             },
             _ => None,
@@ -821,7 +822,7 @@ impl Cx<'_> {
                     let mut parts = vec![Space::Any; tys.len()];
                     for f in r.fields() {
                         let Some(n) = f.name() else { continue };
-                        if let Some(k) = self.d.field(s, n.text()) {
+                        if let Some(k) = self.field_index(s, n.text()) {
                             parts[k] = match f.pattern() {
                                 Some(p) => self.space(&p, &tys[k]),
                                 None => self.name_space(n.text(), &tys[k]),
@@ -842,7 +843,7 @@ impl Cx<'_> {
         let Some((e, ts)) = self.enum_of(t) else {
             return Space::Any;
         };
-        match self.d.variant(e, n) {
+        match self.variant_named(e, n) {
             Some(i) => {
                 let arity = self.variant_tys(e, &ts, i).1.len();
                 Space::Ctor(i, vec![Space::Any; arity])
@@ -864,7 +865,7 @@ impl Cx<'_> {
         let Some((e, ts)) = self.enum_of(t) else {
             return Space::Any;
         };
-        match self.d.variant(e, head) {
+        match self.variant_named(e, head) {
             Some(i) => {
                 let tys = self.variant_tys(e, &ts, i).1;
                 let parts = (tys.iter().enumerate())

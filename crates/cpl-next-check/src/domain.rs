@@ -1,6 +1,7 @@
 //! Domain declarations: their ends, factors and named ranges.
 
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_syntax::SyntaxToken;
 use std::collections::HashMap;
 
@@ -68,7 +69,7 @@ impl Cx<'_> {
             ty,
             span: def_at,
         };
-        let count = match (&t, self.d.roles().counted) {
+        let count = match (&t, self.rows.role_trait(Role::Counted)) {
             (t, _) if *t == Ty::Int || t.is_int_range() => Some(v),
             (_, Some(tr)) if self.has_impl(&t, tr) => self.count_of(tr, v, out),
             _ => None,
@@ -96,7 +97,7 @@ impl Cx<'_> {
     /// `xs`'s count through its impl of the `@role(counted)` trait `tr`, `xs` read once in `out`.
     fn count_of(&mut self, tr: TraitId, xs: TExpr, out: &mut Vec<TStmt>) -> Option<TExpr> {
         let (span, ty) = (xs.span, xs.ty.clone());
-        let &(n, m) = self.d.trait_fns(tr).first()?;
+        let &(n, m) = self.methods.trait_fns(tr).first()?;
         let method = self.items.text(n);
         // A variable is read where it is; any other value is held first, so it runs once.
         let recv = match xs.kind {
@@ -178,7 +179,7 @@ impl Cx<'_> {
     ) -> usize {
         let info = self.domain_info(name, lo, end, within, span, out);
         let sym = self.b.syms.intern(self.syms, name);
-        let i = match (self.b.decl, self.d.top_doms.get(&sym)) {
+        let i = match (self.b.decl, self.doms.top_dom(sym)) {
             (None, Some(&Ty::Dom(i))) if self.domains[i].name.is_empty() => {
                 self.domains[i] = info;
                 i
@@ -208,7 +209,7 @@ impl Cx<'_> {
     fn add_domain(&mut self, info: DomInfo, span: Span) -> usize {
         let i = self.id(super::Table::Domain, self.domains.len());
         super::put(&mut self.domains, i, info);
-        let rows = self.d.domain_rows(i, self.b.item.at(span), self.b.module);
+        let rows = decls::domain_rows(self.rows, i, self.b.item.at(span), self.b.module);
         self.dom_rows.extend(rows);
         i
     }
@@ -389,7 +390,7 @@ impl Cx<'_> {
             None => self.err(span, Unbuilt::DomainPattern),
         }
         let names = match self.items.s(d).record {
-            true => self.d.field_names(d),
+            true => self.field_names(d),
             false => Vec::new(),
         };
         let whole_name = self.var_name(whole).to_string();
@@ -461,10 +462,12 @@ impl Cx<'_> {
         let t = match names {
             Some(names) => {
                 let fields = names.iter().map(|n| self.syms.get(n));
-                let record = self.d.record(&fields.collect::<Option<Vec<_>>>()?)?;
+                let record = self.shapes.record(&fields.collect::<Option<Vec<_>>>()?)?;
                 Ty::Struct(record, parts, Vec::new())
             }
-            None if parts.len() > 1 => Ty::Struct(self.d.tuple(parts.len())?, parts, Vec::new()),
+            None if parts.len() > 1 => {
+                Ty::Struct(self.shapes.tuple(parts.len())?, parts, Vec::new())
+            }
             None => return None,
         };
         Some(t).filter(|t| self.is_domain(t))
@@ -486,8 +489,10 @@ impl Cx<'_> {
             ty: r_ty.clone(),
             span,
         };
-        let bounds = self.d.roles().bounds;
-        let fns = bounds.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
+        let bounds = self.rows.role_trait(Role::RangeBounds);
+        let fns = bounds
+            .map(|tr| self.methods.trait_fns(tr))
+            .unwrap_or_default();
         let (Some(tr), [lo, hi, ..]) = (bounds, &fns[..]) else {
             self.err(
                 span,

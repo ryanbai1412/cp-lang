@@ -3,6 +3,7 @@
 use super::call::CallArg;
 use super::member::Called;
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::HashMap;
 
@@ -109,9 +110,8 @@ impl Cx<'_> {
     pub(super) fn is_domain(&self, t: &Ty) -> bool {
         match t {
             Ty::Dom(_) => true,
-            Ty::Struct(..) => {
-                (self.d.roles().domain).is_some_and(|tr| self.impls().has_impl(t, tr))
-            }
+            Ty::Struct(..) => (self.rows.role_trait(Role::Positions))
+                .is_some_and(|tr| self.impls().has_impl(t, tr)),
             _ => false,
         }
     }
@@ -160,7 +160,7 @@ impl Cx<'_> {
     fn fit_key(&mut self, k: &Ty, array: bool, mut i: TExpr) -> TExpr {
         let dty = self.shallow(k);
         if let (Ty::Struct(t, fs, _), Ty::Struct(u, _, sets)) = (&dty, self.shallow(&i.ty)) {
-            let tuple = u == *t && self.d.tuple(fs.len()).as_ref() == Some(t);
+            let tuple = u == *t && self.shapes.tuple(fs.len()).as_ref() == Some(t);
             if let TK::Struct(ps) = &mut i.kind {
                 if tuple && ps.len() == fs.len() {
                     let ps: Vec<TExpr> = (std::mem::take(ps).into_iter().zip(fs))
@@ -268,7 +268,7 @@ impl Cx<'_> {
         let Ty::Struct(t, fs, sets) = self.shallow(&k) else {
             return None;
         };
-        if self.d.tuple(parts.len()) != Some(t) || fs.len() != parts.len() {
+        if self.shapes.tuple(parts.len()) != Some(t) || fs.len() != parts.len() {
             return None;
         }
         let fs = (parts.iter().zip(fs))
@@ -308,9 +308,14 @@ impl Cx<'_> {
     }
     /// What `s[i]` calls: the method of std's `@operator("[]")` trait (R12.4.5).
     fn index_read(&self) -> String {
-        let tr = self.d.operator_traits("[]").next();
-        tr.and_then(|tr| self.d.operator_method(tr).map(|(n, _)| n.to_string()))
-            .unwrap_or_default()
+        let tr =
+            (self.syms.get("[]")).and_then(|op| self.rows.operator_traits(op).first().copied());
+        tr.and_then(|tr| {
+            self.rows
+                .operator_method(tr)
+                .map(|(n, _)| self.syms.text(n).to_string())
+        })
+        .unwrap_or_default()
     }
     /// The key and cell types of `rt`'s `Indexed` read.
     fn read_sig(&self, rt: &Ty) -> Option<(Ty, Ty)> {
@@ -405,8 +410,8 @@ impl Cx<'_> {
     }
     /// The `[]=` method of `t`'s impl of the trait that declares the operator.
     fn set_method(&mut self, t: &Ty) -> Option<(FnId, Vec<Ty>, Vec<SetTy>)> {
-        let tr = self.d.operator_traits("[]=").next()?;
-        let name = self.d.operator_method(tr)?.0;
+        let tr = *self.rows.operator_traits(self.syms.get("[]=")?).first()?;
+        let name = self.syms.text(self.rows.operator_method(tr)?.0);
         let rt = self.recv_ty(t);
         let d = &self.d;
         let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
@@ -519,7 +524,7 @@ impl Cx<'_> {
         if let Some(key) = self.ctor_key(base, &args, span) {
             return key;
         }
-        let d = self.d.tuple(parts.len())?;
+        let d = self.shapes.tuple(parts.len())?;
         let tys = parts.iter().map(|p| p.ty.clone()).collect();
         let sets = (0..self.items.s(d).n_sets)
             .map(|_| self.new_set())
@@ -560,7 +565,7 @@ impl Cx<'_> {
             return None;
         };
         let sd = self.items.s(sid);
-        if sd.record || self.d.tuple(sd.fields.len()) == Some(sid) {
+        if sd.record || self.shapes.tuple(sd.fields.len()) == Some(sid) {
             return None;
         }
         let takes = (sd.ctor).map_or(sd.fields.len(), |c| self.items.f(c).params.len());
@@ -750,7 +755,8 @@ impl Cx<'_> {
         let rt = self.recv_ty(&recv.ty);
         let found = self.member_named(&rt, name.sym);
         let module = self.b.module;
-        let hidden = (found.as_ref()).and_then(|x| self.d.hidden_member(x, &rt, name.text, module));
+        let hidden = (found.as_ref())
+            .and_then(|x| decls::hidden_member(self.items, self.names, x, &rt, name.text, module));
         if let Some((msg, help)) = hidden {
             self.err_help(name.span, msg, Some(help));
             return Self::error_node(span);

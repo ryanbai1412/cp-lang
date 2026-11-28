@@ -3,6 +3,7 @@ use super::call::{ArgValue, CallArg};
 use super::expr::block;
 use super::member::Called;
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::unbuilt::Unbuilt;
 
@@ -54,10 +55,10 @@ impl Cx<'_> {
         let [index] = &l.elems().collect::<Vec<_>>()[..] else {
             return None;
         };
-        let array = self.d.sugar().array?;
+        let array = self.role_structs.role_struct(Role::Array)?;
         let mut pre = Vec::new();
         let axis = self.axis_of(index, span, &mut pre)?;
-        let m = self.d.member(&self.items.s(array).methods, name.text)?;
+        let m = self.method_in(&self.items.s(array).methods, name.text)?;
         let given = vec![axis, self.new_ty()];
         let f = self.fnref(m, given, Vec::new());
         let call = self.call_fn(f, None, args, span, want);
@@ -98,9 +99,12 @@ impl Cx<'_> {
         call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let core = [self.d.roles().domain, self.d.roles().order];
+        let core = [
+            self.rows.role_trait(Role::Positions),
+            self.rows.role_trait(Role::Order),
+        ];
         let m = (core.iter().flatten())
-            .find_map(|tr| self.d.member(&self.items.t(*tr).methods, name.text))?;
+            .find_map(|tr| self.method_in(&self.items.t(*tr).methods, name.text))?;
         self.domain_fn_of(dty, m, name, call, span)
     }
     /// `D.m`, `m` being one of `Domain`'s or `Ordered`'s fns, which the program calls `name`.
@@ -112,7 +116,10 @@ impl Cx<'_> {
         call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let core = [self.d.roles().domain, self.d.roles().order];
+        let core = [
+            self.rows.role_trait(Role::Positions),
+            self.rows.role_trait(Role::Order),
+        ];
         let tr = (core.into_iter().flatten())
             .find(|tr| self.items.t(*tr).methods.values().any(|&f| f == m))?;
         let fd = self.items.f(m);
@@ -184,7 +191,7 @@ impl Cx<'_> {
         let Ty::Param(i) = t else {
             return false;
         };
-        (self.bound_traits(*i).iter()).any(|r| Some(r.tr) == self.d.roles().domain)
+        (self.bound_traits(*i).iter()).any(|r| Some(r.tr) == self.rows.role_trait(Role::Positions))
     }
     /// `[D] k => e`: one cell per position of `D` in its walk order, which is the list
     /// `[e for k in D]` where a `[D]T` is wanted (R02.8.2).
@@ -205,16 +212,18 @@ impl Cx<'_> {
         // Several domains are their product, the patterns naming its parts (R04.2.11).
         let dty = match &parts[..] {
             [d] => d.clone(),
-            ds if ds.len() > 1 => match self.d.tuple(ds.len()) {
+            ds if ds.len() > 1 => match self.shapes.tuple(ds.len()) {
                 Some(tu) => Ty::Struct(tu, parts.clone(), Vec::new()),
                 None => return self.refuse(span, Unbuilt::TableOverIndex),
             },
             _ => return self.refuse(span, Unbuilt::TableOverIndex),
         };
-        let Some(array) = self.d.sugar().array else {
+        let Some(array) = self.role_structs.role_struct(Role::Array) else {
             return self.refuse(span, Unbuilt::TableOverIndex);
         };
-        let sets = (0..self.d.n_sets(array)).map(|_| self.new_set()).collect();
+        let sets = (0..self.shapes.n_sets(array))
+            .map(|_| self.new_set())
+            .collect();
         let pats: Vec<next::Pattern> = (t
             .params()
             .map(|p| p.lambda_params())
@@ -342,7 +351,7 @@ impl Cx<'_> {
                 if xs.len() < 2 {
                     return None;
                 }
-                let tuple = self.d.tuple(xs.len())?;
+                let tuple = self.shapes.tuple(xs.len())?;
                 let parts = (xs.iter())
                     .map(|x| self.type_path(x))
                     .collect::<Option<Vec<_>>>()?;
@@ -355,7 +364,7 @@ impl Cx<'_> {
                     .map(|f| f.name().map(|n| n.text().to_string()))
                     .collect::<Option<Vec<String>>>()?;
                 let fields = names.iter().map(|n| self.syms.get(n));
-                let record = self.d.record(&fields.collect::<Option<Vec<_>>>()?)?;
+                let record = self.shapes.record(&fields.collect::<Option<Vec<_>>>()?)?;
                 let parts = (fs.iter().zip(&names))
                     .map(|(f, n)| match f.value() {
                         Some(x) => self.type_path(&x),
@@ -404,7 +413,7 @@ impl Cx<'_> {
             a.push(self.body_ty(&t, pre));
         }
         let (d, a) = decls::struct_args(self.d, d, a);
-        let sets = (0..self.d.n_sets(d)).map(|_| self.new_set()).collect();
+        let sets = (0..self.shapes.n_sets(d)).map(|_| self.new_set()).collect();
         Some(Ty::Struct(d, a, sets))
     }
     /// A struct type whose constructor takes `n` fields.
@@ -413,7 +422,7 @@ impl Cx<'_> {
     }
     /// `D.m`: the `@member(m)` struct at `D` (R06).
     fn member_type(&self, d: &Ty, m: &str) -> Option<Ty> {
-        let &id = self.d.member_types.get(&self.syms.get(m)?)?;
+        let id = self.shapes.member(self.syms.get(m)?)?;
         (self.items.s(id).n_sets == 0).then(|| Ty::Struct(id, vec![d.clone()], Vec::new()))
     }
     /// `D(x)`: the position of `x`, checked; a library domain (`Cell((0, 2))` of a product)
@@ -550,7 +559,7 @@ impl Cx<'_> {
     /// `@role(endpoint)` impl (decision 456). `None` for `Int` ends and a domain's positions,
     /// which take `range_literal`.
     fn endpoint_struct(&self, t: &Ty) -> Option<Ty> {
-        let tr = self.d.roles().endpoint?;
+        let tr = self.rows.role_trait(Role::Endpoint)?;
         let t = self.shallow(t);
         let int_like = matches!(t, Ty::Int | Ty::Range(..) | Ty::Dom(_));
         if int_like || matches!(t, Ty::Error | Ty::Var(_) | Ty::Param(_)) {
@@ -702,7 +711,7 @@ impl Cx<'_> {
     /// How a range's ends give their positions, when they are values of a domain: a declared
     /// domain's value is its ordinal, and any other type's comes from its `Domain` impl or bound.
     pub(super) fn ord_ends(&self, t: &Ty, step: Option<&next::Expr>) -> Option<Ends> {
-        let tr = self.d.roles().domain?;
+        let tr = self.rows.role_trait(Role::Positions)?;
         if step.is_some() {
             return None;
         }
@@ -769,7 +778,7 @@ impl Cx<'_> {
     fn int_end(&mut self, v: TExpr) -> TExpr {
         if !matches!(self.shallow(&v.ty), Ty::Int | Ty::Range(..) | Ty::Error) {
             let t = self.show(&v.ty);
-            match self.d.roles().endpoint {
+            match self.rows.role_trait(Role::Endpoint) {
                 // Ends whose type has no `@role(endpoint)` impl make no range.
                 Some(_) => {
                     let code = cpl_diag::codes::TYPE_MISMATCH;
@@ -784,7 +793,12 @@ impl Cx<'_> {
     }
     /// Std's `@role(range_literal)` fn `(lo, hi, step)` over positions of `d`.
     fn range_of(&mut self, args: Vec<TExpr>, d: Ty, span: Span) -> TExpr {
-        let r = self.marked_call(self.d.sugar.range_literal, "range_literal", args, span);
+        let r = self.marked_call(
+            self.rows.role_fn(Role::RangeLiteral),
+            "range_literal",
+            args,
+            span,
+        );
         let want = match self.shallow(&r.ty) {
             Ty::Struct(id, _, sets) => Ty::Struct(id, vec![d], sets),
             t => t,
@@ -881,7 +895,7 @@ impl Cx<'_> {
     /// `D`, when `t` is the `@role(cuts)` struct of `D`.
     pub(super) fn cut_domain(&self, t: &Ty) -> Option<Ty> {
         match self.shallow(t) {
-            Ty::Struct(c, of, _) if Some(c) == self.d.roles().cut => {
+            Ty::Struct(c, of, _) if Some(c) == self.role_structs.role_struct(Role::Cuts) => {
                 of.first().map(|d| self.shallow(d))
             }
             _ => None,
@@ -932,7 +946,7 @@ impl Cx<'_> {
     }
     /// The fn of core's `Domain` whose body is the intrinsic `op`.
     fn domain_method(&self, op: DomainOp) -> Option<DomainFn> {
-        let tr = self.d.roles().domain?;
+        let tr = self.rows.role_trait(Role::Positions)?;
         let ms = &self.items.t(tr).methods;
         let (n, &m) = ms
             .iter()
@@ -988,9 +1002,8 @@ impl Cx<'_> {
     pub(super) fn is_position(&self, t: &Ty) -> bool {
         match self.shallow(t) {
             Ty::Dom(_) => true,
-            Ty::Param(i) => {
-                (self.bound_traits(i).iter()).any(|b| Some(b.tr) == self.d.roles().domain)
-            }
+            Ty::Param(i) => (self.bound_traits(i).iter())
+                .any(|b| Some(b.tr) == self.rows.role_trait(Role::Positions)),
             _ => false,
         }
     }

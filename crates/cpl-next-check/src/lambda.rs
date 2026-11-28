@@ -625,7 +625,7 @@ impl<'a> Cx<'a> {
             return None;
         };
         let s = self.items.s(d);
-        let names = self.d.field_names(d);
+        let names = self.field_names(d);
         let positional = (names.iter().enumerate()).all(|(k, n)| *n == format!("_{k}"));
         (positional || s.record).then_some(names)
     }

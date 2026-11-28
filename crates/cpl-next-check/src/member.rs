@@ -3,6 +3,7 @@
 use super::call::CallArg;
 use super::expr::block;
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
 
 /// Whether a call with these arguments could be of `f`: `D.count(pred)` is not a call of the
@@ -66,7 +67,7 @@ impl<'a> Cx<'a> {
         let at = self.b.module;
         let hidden = found
             .as_ref()
-            .and_then(|x| self.d.hidden_member(x, &rt, name, at));
+            .and_then(|x| decls::hidden_member(self.items, self.names, x, &rt, name, at));
         if let Some((msg, help)) = hidden {
             self.err_help(span, msg, Some(help));
             return Self::error_node(span);
@@ -180,7 +181,7 @@ impl<'a> Cx<'a> {
             Ty::Param(p) => self.bound_traits(*p).iter().any(|b| extends(b.tr, tr)),
             t => !matches!(t, Ty::Var(_) | Ty::Error) && self.impls().has_impl(t, tr),
         };
-        let mut lacked = (self.d.traits_with(sym).into_iter())
+        let mut lacked = (self.methods.traits_declaring(sym).into_iter())
             .filter(|&tr| !has(tr) && self.items.t(tr).supers.iter().any(|s| has(s.tr)));
         let tr = lacked.next().filter(|_| lacked.next().is_none())?;
         let (tn, shown) = (&self.items.t(tr).name, self.show(rt));
@@ -223,11 +224,15 @@ impl<'a> Cx<'a> {
         call: Option<&[CallArg]>,
     ) -> Option<(Option<String>, String)> {
         let m = &name.text;
-        let f = self.d.renamed(m).into_iter().find_map(|id| {
-            let f = self.items.f(id);
-            (self.member_named(rt, self.syms.get(&f.name)).is_some() || self.d.self_fits(id, rt))
+        let f = (self.syms.get(m))
+            .map_or_else(Vec::new, |s| self.methods.renamed_from(s))
+            .into_iter()
+            .find_map(|id| {
+                let f = self.items.f(id);
+                (self.member_named(rt, self.syms.get(&f.name)).is_some()
+                    || decls::self_fits(self.items, id, rt))
                 .then_some(f)
-        })?;
+            })?;
         let now = &f.name;
         // The call as written with the member's name replaced: `x.m(a)` reads `x.now(a)`.
         let mut written = self.text(Span::new(base.start, name.span.start)).to_owned() + now;
@@ -419,7 +424,7 @@ impl<'a> Cx<'a> {
     fn unbound_static(&mut self, t: &str, name: Called<'_>, span: Span) -> Option<TExpr> {
         let mut givers: Vec<&str> = (name
             .sym
-            .map_or_else(Vec::new, |s| self.d.traits_with(s))
+            .map_or_else(Vec::new, |s| self.methods.traits_declaring(s))
             .into_iter())
         .map(|tr| self.items.t(tr))
         .filter(|tr| !tr.alias)
@@ -525,8 +530,8 @@ impl<'a> Cx<'a> {
         let mut pre = Vec::new();
         let given = (written.iter())
             .map(|t| self.body_ty(t, &mut pre))
-            .collect();
-        let given = self.d.with_defaults_of(d, given);
+            .collect::<Vec<_>>();
+        let given = self.shapes.with_defaults_of(d, &given);
         self.is_domain(&Ty::Struct(d, given, Vec::new()))
     }
     pub(super) fn type_static(
@@ -538,7 +543,7 @@ impl<'a> Cx<'a> {
     ) -> Option<TExpr> {
         let found: Vec<(TraitId, FnId)> = (name
             .sym
-            .map_or_else(Vec::new, |s| self.d.traits_with(s))
+            .map_or_else(Vec::new, |s| self.methods.traits_declaring(s))
             .into_iter())
         .filter_map(|tr| {
             let td = self.items.t(tr);
@@ -556,7 +561,7 @@ impl<'a> Cx<'a> {
         let rank = |tr: TraitId| {
             (self.impls().trait_impls(tr))
                 .filter(|(_, im)| self.impls().fits_impl(im, &t).is_some())
-                .map(|(_, im)| self.d.impl_rank(im))
+                .map(|(_, im)| decls::impl_rank(self.items, im))
                 .min()
                 .unwrap_or(0)
         };
@@ -624,7 +629,8 @@ impl<'a> Cx<'a> {
         args: &[CallArg],
         span: Span,
     ) -> TExpr {
-        let r = self.d.with_defaults(
+        let r = decls::with_defaults(
+            self.items,
             decls::TraitRef {
                 tr,
                 args: Vec::new(),
@@ -808,7 +814,10 @@ impl<'a> Cx<'a> {
         self.reach(m);
         let fd = self.items.f(m);
         let held = fd.region.is_some() && !std::mem::take(&mut self.b.allow_region);
-        if held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.roles().recipe.is_none()) {
+        if held
+            && (fd.region.as_ref().is_some_and(|r| r.0)
+                || self.role_structs.role_struct(Role::Recipe).is_none())
+        {
             let what = Unbuilt::GeneratorAsValue {
                 name: fd.name.clone(),
             };
@@ -849,7 +858,7 @@ impl<'a> Cx<'a> {
             ty: ret,
             span,
         };
-        if held && self.d.roles().recipe.is_some() {
+        if held && self.role_structs.role_struct(Role::Recipe).is_some() {
             return self.recipe(pre, call);
         }
         block(pre, call)
@@ -934,13 +943,13 @@ impl<'a> Cx<'a> {
                 self.struct_named(self.b.module, n),
                 self.lookup(n).is_none(),
             ) {
-                if let Some(i) = self.d.variant(e, name.text) {
+                if let Some(i) = self.variant_named(e, name.text) {
                     self.no_targs(name, written_targs, span);
                     let mut pre = Vec::new();
                     let given: Vec<Ty> = (written.iter())
                         .map(|t| self.body_ty(t, &mut pre))
                         .collect();
-                    let given = self.d.with_defaults_of(e, given);
+                    let given = self.shapes.with_defaults_of(e, &given);
                     let v = self.variant(e, i, given, call.unwrap_or(&[]), span);
                     return block(pre, v);
                 }
@@ -975,8 +984,8 @@ impl<'a> Cx<'a> {
                     let mut pre = Vec::new();
                     let given = (written.iter().take(s.generics.len()))
                         .map(|t| self.body_ty(t, &mut pre))
-                        .collect();
-                    let t = Ty::Struct(d, self.d.with_defaults_of(d, given), Vec::new());
+                        .collect::<Vec<_>>();
+                    let t = Ty::Struct(d, self.shapes.with_defaults_of(d, &given), Vec::new());
                     if let Some(e) = self.type_static(t, name, Some(args), span) {
                         return block(pre, e);
                     }
@@ -1010,7 +1019,7 @@ impl<'a> Cx<'a> {
                 let given: Vec<Ty> = (written.iter().take(s.generics.len()))
                     .map(|t| self.body_ty(t, &mut pre))
                     .collect();
-                let given = self.d.with_defaults_of(d, given);
+                let given = self.shapes.with_defaults_of(d, &given);
                 let f = self.fnref(m, given, Vec::new());
                 let call = self.call_fn(f, None, args, span, want);
                 return block(pre, call);
@@ -1060,7 +1069,10 @@ impl<'a> Cx<'a> {
             .flatten()
             .or_else(|| {
                 (call.is_none() && !walked)
-                    .then(|| self.d.method_for(name.text, &rt))
+                    .then(|| {
+                        (self.syms.get(name.text))
+                            .and_then(|n| decls::method_for(self.items, self.methods, n, &rt))
+                    })
                     .flatten()
                     .map(decls::Named::Fn)
             })
@@ -1136,14 +1148,20 @@ impl<'a> Cx<'a> {
         }
         // A free fn whose `self` the receiver fits extends it; members are found first (R08.1.4).
         let ext = match self.member_named(&rt, name.sym) {
-            None => (self.d.shaped_member(&rt, name.text).map(decls::Named::Fn))
-                .or_else(|| {
-                    // A free fn with no `self` in view does not hide the method a module declares.
-                    (self.named(self.b.module, name.text)).filter(
-                        |n| !matches!(n, decls::Named::Fn(f) if self.items.f(*f).self_ty.is_none()),
-                    )
-                })
-                .or_else(|| self.d.method_for(name.text, &rt).map(decls::Named::Fn)),
+            None => ((self.syms.get(name.text))
+                .and_then(|n| decls::shaped_member(self.items, self.methods, &rt, n))
+                .map(decls::Named::Fn))
+            .or_else(|| {
+                // A free fn with no `self` in view does not hide the method a module declares.
+                (self.named(self.b.module, name.text)).filter(
+                    |n| !matches!(n, decls::Named::Fn(f) if self.items.f(*f).self_ty.is_none()),
+                )
+            })
+            .or_else(|| {
+                (self.syms.get(name.text))
+                    .and_then(|n| decls::method_for(self.items, self.methods, n, &rt))
+                    .map(decls::Named::Fn)
+            }),
             Some(decls::Member::Method(m, ..)) if !self.items.f(m).getter && getter.is_some() => {
                 getter
             }
@@ -1206,7 +1224,7 @@ impl<'a> Cx<'a> {
         let at = self.b.module;
         let hidden = found
             .as_ref()
-            .and_then(|x| self.d.hidden_member(x, &rt, name.text, at));
+            .and_then(|x| decls::hidden_member(self.items, self.names, x, &rt, name.text, at));
         if let Some((msg, help)) = hidden {
             self.err_help(span, msg, Some(help));
             return Self::error_node(span);
@@ -1302,7 +1320,7 @@ impl<'a> Cx<'a> {
                 let Some(decls::Named::Fn(w)) = self.named(self.b.module, f) else {
                     return None;
                 };
-                let c = *self.d.memo_clears.get(&w)?;
+                let c = self.facts.memo_clear(w)?;
                 (Clear::Declared(c), &self.items.f(c).name)
             }
         };

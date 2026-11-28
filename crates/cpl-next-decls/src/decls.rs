@@ -23,7 +23,10 @@ mod tyconv;
 use crate::views::Shapes;
 pub use collect::{body_of, collect, factor_name, prepare, Prepared};
 pub use forms::TyForm;
-pub use impls::{Choice, ImplIdx, Impls};
+pub use impls::{
+    domain_rows, hidden_member, impl_rank, method_for, self_fits, shaped_member, with_defaults,
+    Choice, ImplIdx, Impls,
+};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{
@@ -835,22 +838,7 @@ impl Decls {
         name: &str,
         at: ModId,
     ) -> Option<(Msg, String)> {
-        let s = match (m, rt) {
-            (Member::Field(i, _), Ty::Struct(s, ..)) if !self.structs[s.0].pub_fields[*i] => *s,
-            (Member::Method(f, ..), _) => match self.fns[f.0].owner {
-                Some(Owner::Struct(s)) if !self.fns[f.0].public => s,
-                _ => return None,
-            },
-            _ => return None,
-        };
-        let home = self.structs[s.0].module;
-        if at == home {
-            return None;
-        }
-        let m = &self.module_names[home.0];
-        let text = format!("`{name}` is private to module `{m}`");
-        let msg = Msg::verdict(cpl_diag::codes::PRIVATE_NAME, text);
-        Some((msg, format!("mark `{name}` `pub` in `mod {m}`")))
+        hidden_member(self, self, m, rt, name, at)
     }
     pub fn named(&self, m: ModId, name: &str) -> Option<Named> {
         look(&self.syms, &self.views[m.0], name)

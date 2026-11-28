@@ -31,19 +31,8 @@ pub enum ImplIdx {
 
 impl Decls {
     /// `r` with each parameter it leaves out given its default, for `self_ty` as `Self` (R08.1.1).
-    pub fn with_defaults(&self, mut r: TraitRef, self_ty: &Ty) -> TraitRef {
-        let defaults = &self.traits[r.tr.0].defaults;
-        while let Some(Some(t)) = defaults.get(r.args.len()) {
-            let mut tys = vec![self_ty.clone()];
-            tys.extend(r.args.iter().cloned());
-            let t = Subst {
-                tys: &tys,
-                sets: &[],
-            }
-            .ty(t);
-            r.args.push(t);
-        }
-        r
+    pub fn with_defaults(&self, r: TraitRef, self_ty: &Ty) -> TraitRef {
+        with_defaults(self, r, self_ty)
     }
     /// A trait made only of bodiless `@get` members, met by fields of those names (R12.11.3).
     pub(super) fn field_trait(&self, tr: TraitId) -> bool {
@@ -54,24 +43,7 @@ impl Decls {
     /// The impls every domain has, `Domain` and `Ordered`, for domain `dom` declared at `at`:
     /// they write no members, so each member is the trait's default (R04.2, R04.2.31).
     pub fn domain_rows(&self, dom: usize, at: SourceId, module: ModId) -> Vec<ImplDecl> {
-        let traits = [self.roles.domain, self.roles.order];
-        (traits.into_iter().flatten())
-            .map(|tr| ImplDecl {
-                trait_: TraitRef {
-                    tr,
-                    args: Vec::new(),
-                },
-                generics: Vec::new(),
-                bounds: Vec::new(),
-                for_: Ty::Dom(dom),
-                methods: HashMap::new(),
-                at: at.clone(),
-                assoc_at: Vec::new(),
-                module,
-                derived: false,
-                replaced: false,
-            })
-            .collect()
+        domain_rows(self, dom, at, module)
     }
     /// The rows of each domain decls declared since the last call (`domain_rows`).
     fn add_domain_rows(&mut self) {
@@ -905,6 +877,78 @@ pub fn self_fits(items: &dyn Items, f: FnId, recv: &Ty) -> bool {
         (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
         (None, _) => false,
     }
+}
+
+/// `r` with its trait's defaulted arguments filled in for `self_ty`.
+pub fn with_defaults(items: &dyn Items, mut r: TraitRef, self_ty: &Ty) -> TraitRef {
+    let defaults = &items.t(r.tr).defaults;
+    while let Some(Some(t)) = defaults.get(r.args.len()) {
+        let mut tys = vec![self_ty.clone()];
+        tys.extend(r.args.iter().cloned());
+        let t = Subst {
+            tys: &tys,
+            sets: &[],
+        }
+        .ty(t);
+        r.args.push(t);
+    }
+    r
+}
+
+/// The impls every domain has, `Domain` and `Ordered`, for domain `dom` declared at `at`:
+/// they write no members, so each member is the trait's default (R04.2, R04.2.31).
+pub fn domain_rows(
+    rows: &dyn crate::views::RoleRows,
+    dom: usize,
+    at: SourceId,
+    module: ModId,
+) -> Vec<ImplDecl> {
+    let traits = [Role::Positions, Role::Order].map(|r| rows.role_trait(r));
+    (traits.into_iter().flatten())
+        .map(|tr| ImplDecl {
+            trait_: TraitRef {
+                tr,
+                args: Vec::new(),
+            },
+            generics: Vec::new(),
+            bounds: Vec::new(),
+            for_: Ty::Dom(dom),
+            methods: HashMap::new(),
+            at: at.clone(),
+            assoc_at: Vec::new(),
+            module,
+            derived: false,
+            replaced: false,
+        })
+        .collect()
+}
+
+/// E0207 and its fix, when member `m` (named `name`) of a struct is private to a module
+/// other than `at` (R11.1.4).
+pub fn hidden_member(
+    items: &dyn Items,
+    names: &dyn crate::views::Names,
+    m: &Member,
+    rt: &Ty,
+    name: &str,
+    at: ModId,
+) -> Option<(Msg, String)> {
+    let s = match (m, rt) {
+        (Member::Field(i, _), Ty::Struct(s, ..)) if !items.s(*s).pub_fields[*i] => *s,
+        (Member::Method(f, ..), _) => match items.f(*f).owner {
+            Some(Owner::Struct(s)) if !items.f(*f).public => s,
+            _ => return None,
+        },
+        _ => return None,
+    };
+    let home = items.s(s).module;
+    if at == home {
+        return None;
+    }
+    let m = names.module_name(home);
+    let text = format!("`{name}` is private to module `{m}`");
+    let msg = Msg::verdict(cpl_diag::codes::PRIVATE_NAME, text);
+    Some((msg, format!("mark `{name}` `pub` in `mod {m}`")))
 }
 
 #[cfg(test)]
