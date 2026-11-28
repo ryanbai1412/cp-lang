@@ -1304,14 +1304,6 @@ def next_cases_removed(root: Path, ref: str = "origin/main") -> list[str]:
     return [g for g in gone if f"`{g}`" not in named]
 
 
-def next_masked(root: Path) -> list[str]:
-    """Cases the new pipeline refuses although it also gave a coded verdict on the program:
-    the refusal hides whether that verdict is right. `tests/programs.rs` keeps `masked.txt`
-    equal to what it finds; it reaches 0 as refused constructs stop hiding verdicts beside them."""
-    masked = root / NEXT_TESTS / "masked.txt"
-    return [l.strip() for l in _lines(masked) if l.strip()] if masked.is_file() else []
-
-
 def next_lowered(root: Path) -> list[str]:
     """Programs cases whose error only lowering finds: the checker passed what lowering then
     refuses, so the checker is not the one source of the program's errors (suite 5).
@@ -2657,7 +2649,7 @@ def regressed_named(root: Path, ref: str) -> set[str]:
 
 
 def set_swaps(root: Path, ref: str) -> list[str]:
-    """Case ids new to a bad set (`next_wrong`, `next_masked`, `next_wrong_accepts`) that `ref`
+    """Case ids new to a bad set (`next_wrong`, `masked.txt`, `next_wrong_accepts`) that `ref`
     had in a better one: a count holds when one case is fixed and another breaks, so each set is
     compared by id, and a case leaving `passing.txt` for any bucket is one, read from a fresh run
     when there is one (`_run_list_path`), so a lost pass the lists never recorded still fails;
@@ -2703,12 +2695,14 @@ def next_not_passing(root: Path) -> list[str]:
 
 
 def next_refused(root: Path) -> list[str]:
-    """Cases the new pipeline refuses: not passing, and on neither `wrong.tsv` nor `masked.txt`.
-    Gated apart from `next_not_passing`, so lifting one refusal never pays for another."""
+    """Cases the new pipeline refuses: not passing and not on `wrong.tsv`. A refusal beside a
+    coded verdict (`masked.txt`) is one too: counting it apart let masking a case pay for a
+    refusal (3 AM blind audit). Gated apart from `next_not_passing`, so lifting one refusal never
+    pays for another."""
     def ids(name: str) -> set[str]:
         path = root / NEXT_TESTS / name
         return {l.split("\t")[0].strip() for l in _lines(path) if l.strip()} if path.is_file() else set()
-    answered = ids("wrong.tsv") | ids("masked.txt")
+    answered = ids("wrong.tsv")
     return [c for c in next_not_passing(root) if c not in answered]
 
 
@@ -5100,7 +5094,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-next/tests/std-unchecked.tsv": ("next_std_unchecked", "core", "deleted: std_modules.rs fails on any std module that does not compile"),
     "crates/cpl-next/tests/std-quiet.tsv": ("next_std_quiet_errors", "core", "deleted: std_quiet.rs fails on any std error a program hides"),
     "crates/cpl-next/tests/wrong.tsv": ("next_wrong", "core", "deleted: programs.rs fails on any wrong case"),
-    "crates/cpl-next/tests/masked.txt": ("next_masked", "core", "deleted: no refusal hides a verdict beside it"),
+    "crates/cpl-next/tests/masked.txt": ("next_not_passing", "core", "deleted: no refusal hides a verdict beside it"),
     "crates/cpl-stress/tests/generate-gaps.txt": ("generate_gaps", "stress", "deleted: readable_shapes.rs fails on any shape stress can't generate"),
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
     "scripts/std-lint-baseline.txt": ("std_lint_findings", "stdlib", "deleted: std-lint-ratchet.py fails on any hit"),
@@ -5337,7 +5331,6 @@ COUNTERS = {
     "old_std_copy_lines": ("code lines of the pinned std copy the frozen old pipeline reads (Core)", old_std_copy_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
     "next_refused": ("cases the new pipeline (cpl-next) refuses: on no list (Core)", next_refused, True),
-    "next_masked": ("cases the new pipeline (cpl-next) refuses beside a coded verdict on the program (Core)", next_masked, True),
     "next_lowered": ("programs cases whose error only lowering finds (Core)", next_lowered, True),
     "next_old_parser_accepts": ("rejected-form cases cpl-next accepts through the old parser, each ruled (Core; reported)", next_old_parser_accepts, False),
     "next_old_parser_accepts_unruled": ("old-parser accepts citing no decision or not expecting E0503/E0504 (Core)", next_old_parser_accepts_unruled, True),
@@ -5890,7 +5883,7 @@ def unlaned(root: Path, base: str) -> list[str]:
 
 
 # Counters a programs run measures: a raise of one is the run's evidence, never a re-reading.
-RUN_MEASURED = ("next_wrong", "next_not_passing", "next_refused", "next_masked", "next_lowered",
+RUN_MEASURED = ("next_wrong", "next_not_passing", "next_refused", "next_lowered",
                 "next_error_typed", "next_split", "next_wrong_accepts", "next_late_rejects",
                 "next_wrong_outputs")
 # Cases counted off a committed board rather than a run: also case regressions, so never a push's.
