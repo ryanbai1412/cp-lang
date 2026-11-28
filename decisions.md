@@ -9696,7 +9696,7 @@ says it (`` `Sized` has no fn `totl` ``), with help naming the closest member wh
 moving the helper to `impl T:`. Decls checks it once, where it makes the
 impl; derived impls are made from the trait, so they never trip it.
 Reverse it by deleting `not_members` and the cases (R08.1.2).
-## 658. `F64` reads through one machine primitive, `ParseF64` (io, 2026-11-27)
+## 681. `F64` reads through one machine primitive, `ParseF64` (io, 2026-11-27)
 
 - **Call.** `impl Read for F64` is ordinary std (`std/read.cp`): it checks the token's syntax (R10.2.6: a sign, digits with at most one `.`, an optional exponent) with the same `Input` rules every read uses, then hands its characters to `@intrinsic("f64_parse")`, `Intr::ParseF64`, a new `ops::MACHINE` row (19 → 20). The interpreter and the engine read it through `ops::parse_f64` (Rust's `str::parse::<f64>`), the C++ through `strtod`, inline in its `cpp_text`; both round correctly, so the bits agree. `inf` and `nan` are bad tokens (R0501), where the old pipeline took them. `next_reference_evaluator_lines` goes 583 → 589 for the interpreter's arm and a `text` helper it shares with `Out`.
 - **Why.** Decimal-to-binary rounding is a bignum algorithm a std parser would get wrong in the last bit; it is each back end's own library, like output, so it is a machine primitive. One op serves `read<F64>()` and `Str.parse<F64>()` alike, since both go through `Input`.
@@ -9774,7 +9774,7 @@ Reverse it by deleting the decorator, `rejected_defaults` and `inherited_rejects
 - **Why.** Coordinator ruling of 2026-11-27, 22:30–22:37, with lanes A and B: roles name their members, so the table is found by its role trait, never by the strings `get`/`set` or by shape. A top-level memo fn had stopped being collected, so it ran with no cache (lane C's fib(60)). The trait cannot sit in std.seq, since seq imports hash and HashMap's impl must name it.
 - **Reverse.** Give `MemoTable` a `clear` member and a Memo row read by a lowerer, if a table ever needs clearing in place.
 
-## 677. A member is inherent or a trait method of an impl; `Seq.sum` hides a concrete `sum` extension (spec, 2026-11-28)
+## 680. A member is inherent or a trait method of an impl; `Seq.sum` hides a concrete `sum` extension (spec, 2026-11-28)
 
 Amends decisions 486 and 636. Folds are default methods of their trait
 (486), so with `Seq.sum` a member of every `Seq`, `fn sum(self: Range<Int>)`
