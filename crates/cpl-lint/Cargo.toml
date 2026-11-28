@@ -12,6 +12,7 @@ cpl-facade.workspace = true
 cpl-diag.workspace = true
 cpl-json.workspace = true
 cpl-syntax.workspace = true
+cpl-next-syntax.workspace = true
 
 [dev-dependencies]
 cpl-env.workspace = true

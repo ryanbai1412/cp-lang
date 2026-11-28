@@ -7,9 +7,8 @@ use crate::ast::{
     BinOp, CmpOp, Cond, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, TypeKind,
 };
 use crate::ParsedItem;
-use crate::{arg_labels, Token, TokenKind};
+use crate::{Token, TokenKind};
 use cpl_diag::{msgs, Diagnostic, Span};
-use cpl_next_syntax::grammar::LintArg;
 use std::fmt::Display;
 
 /// One usable `@lint` declaration.
@@ -157,7 +156,7 @@ fn declared_on(
             );
             continue;
         };
-        let text = |key: LintArg| arg_text(d, key);
+        let text = |key: &str| arg_text(d, key);
         let name = d
             .args
             .iter()
@@ -166,12 +165,12 @@ fn declared_on(
                 ExprKind::Name(n) => Some(n.clone()),
                 _ => None,
             });
-        let to = match (text(LintArg::To), text(LintArg::Advice)) {
+        let to = match (text("to"), text("advice")) {
             (Some(to), None) => Some((to, false)),
             (None, Some(advice)) => Some((advice, true)),
             _ => None,
         };
-        let (Some(name), Some(from), Some((to, advice))) = (name, text(LintArg::From), to) else {
+        let (Some(name), Some(from), Some((to, advice))) = (name, text("from"), to) else {
             error(
                 &msgs::syntax::LINT_ARGS,
                 &[],
@@ -182,13 +181,13 @@ fn declared_on(
         };
         let mut holes: Vec<String> = f.params.iter().map(|p| p.name.text.clone()).collect();
         let params = holes.len();
-        for h in text(LintArg::Holes).unwrap_or_default().split(',') {
+        for h in text("holes").unwrap_or_default().split(',') {
             if !h.trim().is_empty() {
                 holes.push(h.trim().to_string());
             }
         }
-        let also = text(LintArg::Also).unwrap_or_default();
-        let reads = text(LintArg::Reads).unwrap_or_default();
+        let also = text("also").unwrap_or_default();
+        let reads = text("reads").unwrap_or_default();
         let read = (reads.split_once("->")).map(|(r, w)| (code(r.trim()), code(w.trim())));
         let read_toks = match read {
             None if reads.is_empty() => Vec::new(),
@@ -203,7 +202,7 @@ fn declared_on(
                 continue;
             }
         };
-        let each = text(LintArg::Each).unwrap_or_default();
+        let each = text("each").unwrap_or_default();
         let each_ok = each.is_empty()
             || each.split_once(" in ").is_some_and(|(x, xs)| {
                 let x_in_to = tokens(&to)
@@ -243,7 +242,7 @@ fn declared_on(
         };
         let names = |toks: &[(TokenKind, String)]| -> Vec<String> {
             let kinds: Vec<TokenKind> = toks.iter().map(|t| t.0).collect();
-            (toks.iter().zip(arg_labels(&kinds)))
+            (toks.iter().zip(labels(&kinds)))
                 .filter(|((k, t), label)| is_name(*k, t) && !label)
                 .map(|((_, t), _)| t.clone())
                 .collect()
@@ -273,7 +272,7 @@ fn declared_on(
             );
             continue;
         }
-        let when = text(LintArg::When).map_or(Some(Vec::new()), |w| bounds(&w));
+        let when = text("when").map_or(Some(Vec::new()), |w| bounds(&w));
         let Some(when) = when.filter(|w| {
             w.iter()
                 .all(|b| in_from.contains(&b.hole) && holes.contains(&b.hole))
@@ -286,7 +285,7 @@ fn declared_on(
             );
             continue;
         };
-        let suggests = text(LintArg::Builtin).unwrap_or_else(|| f.name.text.clone());
+        let suggests = text("builtin").unwrap_or_else(|| f.name.text.clone());
         let calls = |toks: &[(TokenKind, String)], name: &str| {
             toks.windows(2).any(|w| {
                 (w[0].0 == TokenKind::Ident && w[0].1 == name && w[1].0 == TokenKind::LParen)
@@ -336,12 +335,11 @@ fn declared_on(
 /// The plain string a decorator's `key:` argument gives. Not inlined:
 /// `declared_on` reads seven of them.
 #[inline(never)]
-fn arg_text(d: &crate::ast::Decorator, key: LintArg) -> Option<String> {
-    let a = d.args.iter().find(|a| {
-        a.name
-            .as_ref()
-            .is_some_and(|n| LintArg::of(&n.text) == Some(key))
-    })?;
+fn arg_text(d: &crate::ast::Decorator, key: &str) -> Option<String> {
+    let a = d
+        .args
+        .iter()
+        .find(|a| a.name.as_ref().is_some_and(|n| n.text == key))?;
     match &a.value.kind {
         ExprKind::Str(pieces) => match pieces.as_slice() {
             [StrPiece::Text(t)] => Some(t.clone()),
@@ -488,6 +486,32 @@ pub fn is_name(kind: TokenKind, text: &str) -> bool {
     kind == TokenKind::Ident || (kind == TokenKind::SelfKw && text == "self")
 }
 
+/// Per token, whether it is a named argument's label (`from` in
+/// `f(from: x)`): it names the parameter, so it is never a hole. A `fn`'s
+/// own parameters (`fn go(u: Int)`) are names, not labels.
+pub fn labels(kinds: &[TokenKind]) -> Vec<bool> {
+    use TokenKind as K;
+    let mut open = Vec::new();
+    (0..kinds.len())
+        .map(|i| {
+            let label = kinds[i] == K::Ident
+                && open.last() == Some(&Some(K::LParen))
+                && kinds.get(i + 1) == Some(&K::Colon)
+                && matches!(kinds[i - 1], K::LParen | K::Comma);
+            let params = i >= 2 && kinds[i - 1] == K::Ident && kinds[i - 2] == K::Fn;
+            match kinds[i] {
+                K::LParen if params => open.push(None),
+                K::LParen | K::LBracket | K::LBrace => open.push(Some(kinds[i])),
+                K::RParen | K::RBracket | K::RBrace => {
+                    open.pop();
+                }
+                _ => {}
+            }
+            label
+        })
+        .collect()
+}
+
 /// A pattern's tokens with their text.
 pub type Tokens = Vec<(TokenKind, String)>;
 
@@ -586,7 +610,7 @@ mod tests {
         let src = "fn go(u: Int):\n    f(from: u, u)";
         let toks = crate::lex(src).tokens;
         let kinds: Vec<_> = toks.iter().map(|t| t.kind).collect();
-        let labelled: Vec<&str> = (toks.iter().zip(super::arg_labels(&kinds)))
+        let labelled: Vec<&str> = (toks.iter().zip(super::labels(&kinds)))
             .filter(|(_, l)| *l)
             .map(|(t, _)| &src[t.span.start as usize..t.span.end as usize])
             .collect();

@@ -1084,15 +1084,14 @@ impl<'a> Parser<'a> {
                 // whose arguments parse and close, so `INF < x` stays a
                 // comparison.
                 // A lowercase fn takes them when they are all types and a
-                // call or the expression's end follows: `read<(Int, Int)>()`,
-                // `let g = id<Int>` (R01.3.4).
+                // call follows: `read<(Int, Int)>()`.
                 self.empty_type_args();
                 if self.at(T::Lt) {
                     let args = self.speculate(|p| {
                         let args = p.type_args();
-                        let after = matches!(p.peek(), T::Dot | T::ColonColon | T::Colon | T::If);
-                        p.speculation_failed |=
-                            !type_like && (after || !args.iter().all(names_a_type));
+                        if !type_like && (p.peek() != T::LParen || !args.iter().all(names_a_type)) {
+                            p.speculation_failed = true;
+                        }
                         if args.is_empty()
                             || !matches!(
                                 p.peek(),
@@ -1749,7 +1748,39 @@ fn shift_signed(mut diag: Diagnostic, delta: i64) -> Diagnostic {
     diag
 }
 
-pub(crate) use crate::literal::unescape;
+/// Processes backslash escapes and doubled braces in string text.
+pub(crate) fn unescape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => match chars.next() {
+                Some('n') => out.push('\n'),
+                Some('t') => out.push('\t'),
+                Some('r') => out.push('\r'),
+                Some('0') => out.push('\0'),
+                Some('x') => {
+                    let hex: String = chars.clone().take(2).collect();
+                    match u8::from_str_radix(&hex, 16) {
+                        Ok(b) if hex.len() == 2 => {
+                            chars.nth(1);
+                            out.push(char::from(b));
+                        }
+                        _ => out.push('x'),
+                    }
+                }
+                Some(other) => out.push(other),
+                None => out.push('\\'),
+            },
+            '{' | '}' if chars.peek() == Some(&c) => {
+                chars.next();
+                out.push(c);
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
 
 pub(super) const BINARY_OPS: &[TokenKind] = &[
     T::Plus,

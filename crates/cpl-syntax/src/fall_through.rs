@@ -84,7 +84,15 @@ impl Expr {
     }
 }
 
-pub use cpl_next_syntax::fall_through::help;
+/// The help for a fn `name` giving `value` (with its article) whose body ends as `how` says.
+pub fn help(name: &str, value: &str, how: &str) -> String {
+    let fix = if how.contains("`if`") {
+        format!("give `{name}` {value} on every path: an `else:` for the other case, or a value after the `if`")
+    } else {
+        format!("give `{name}` {value} for when the loop ends, after it")
+    };
+    format!("{fix}; `todo` stands for a value not written yet")
+}
 
 /// `while true`; `while True:` already has its error, so it reads as the `true` it means.
 fn forever(cond: &Cond) -> bool {
