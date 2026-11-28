@@ -262,13 +262,42 @@ fn fnv(bytes: &[u8]) -> u64 {
 /// input itself, compared before a hit; written under a name of its own and renamed, so
 /// concurrent suites never read half a run. A run killed at the limit is not kept.
 fn run_kept(bin: &Path, input: &[u8], limit: Duration) -> Ran {
+    run_kept_on(bin, None, input, limit)
+}
+
+/// [`run_kept`] on the judge's stack (`ulimit -s`), as a release run gets it (judge.8).
+fn run_kept_on(
+    bin: &Path,
+    judge: Option<&cpl_judge::Profile>,
+    input: &[u8],
+    limit: Duration,
+) -> Ran {
     let runs = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/cpl-next/runs");
     let binary = std::fs::read(bin).expect("the built binary is readable");
-    let kept = runs.join(format!("{:016x}-{:016x}", fnv(&binary), fnv(input)));
+    let stack = judge.map(|j| j.ulimit()).unwrap_or_default();
+    let kept = runs.join(format!(
+        "{:016x}-{:016x}{}",
+        fnv(&binary),
+        fnv(input),
+        if stack.is_empty() {
+            String::new()
+        } else {
+            format!("-s{stack}")
+        }
+    ));
     if let Some(ran) = std::fs::read(&kept).ok().and_then(|b| unkeep(&b, input)) {
         return ran;
     }
-    let ran = run_within(Command::new(bin), input, limit);
+    let cmd = match judge {
+        Some(j) => {
+            let words = j.on_stack(bin.display().to_string());
+            let mut cmd = Command::new(&words[0]);
+            cmd.args(&words[1..]);
+            cmd
+        }
+        None => Command::new(bin),
+    };
+    let ran = run_within(cmd, input, limit);
     if let Some(code) = ran.status {
         let mut b = format!("{code} {} {}\n", input.len(), ran.stdout.len()).into_bytes();
         b.extend_from_slice(input);
@@ -629,7 +658,8 @@ fn judged(
         Ok((bin, _)) => bin,
         Err(e) => return done("no-cxx", e.lines().take(4).collect::<Vec<_>>().join(" | ")),
     };
-    let built = run_kept(&bin, &input, limit);
+    let judge = cpl_judge::resolve(path, text, None).ok();
+    let built = run_kept_on(&bin, judge.as_ref(), &input, limit);
     // A trap's call stack comes from the engines' events; generated C++ keeps no frames.
     fn judged(r: &Ran) -> (Option<i32>, &str, Vec<&str>) {
         let lines = r.stderr.lines().filter(|l| !l.starts_with("call stack: "));
