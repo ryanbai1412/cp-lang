@@ -57,6 +57,8 @@ take() {  # $1 = queue branch name, e.g. queue/c-clippy
     return 1
 }
 
+factory() { git diff --quiet "origin/lane-j-check...origin/queue/$1" -- . ':!scripts'; }
+
 while :; do
     git fetch -q --prune origin lane-j-check '+refs/heads/queue/*:refs/remotes/origin/queue/*'
     # Below 5 GB free the gates fail for want of disk, not of a branch (D lost 40 min to it).
@@ -65,7 +67,10 @@ while :; do
         low=1; sleep 30; continue
     fi
     low=0
-    branches=$(git for-each-ref --sort=committerdate --format='%(refname:lstrip=3)' refs/remotes/origin/queue/)
+    all=$(git for-each-ref --sort=committerdate --format='%(refname:lstrip=3)' refs/remotes/origin/queue/)
+    # A branch that changes only scripts/ (the queue's own tools) goes first: it gates in
+    # minutes and can unblock every branch behind it.
+    branches=$(for b in $all; do factory "$b" && echo "$b"; done; for b in $all; do factory "$b" || echo "$b"; done)
     for b in $branches; do take "$b"; done
     [ "$once" = 1 ] && exit 0
     sleep 30
