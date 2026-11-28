@@ -738,7 +738,10 @@ impl<'a> Cx<'a> {
         if !mutable && self.is_none_value(&v) {
             self.none_lets.insert(var);
         }
-        if let (false, Some(r)) = (mutable, super::unify::known_range(&self.b.let_ranges, &v)) {
+        if let (false, Some(r)) = (
+            mutable,
+            super::unify::known_range(&self.b.let_ranges, &|v| self.var_ty(v), &v),
+        ) {
             self.b.let_ranges.insert(var, r);
         }
         let let_at = (!mutable).then(|| self.let_keyword(span)).flatten();

@@ -719,13 +719,38 @@ impl<'a> Cx<'a> {
         );
         mk(TK::Block(hold, Some(Box::new(pick))), opt)
     }
+    /// A store of `e` into a range whose least value lies in `least` and greatest in `most`,
+    /// decided when checked: a constant outside every value the range can take is E0902, and a
+    /// value inside every one needs no check (R03.1.10). `None` leaves it to run time.
+    fn proved_store(
+        &mut self,
+        e: &TExpr,
+        least: Option<(i64, i64)>,
+        most: Option<(i64, i64)>,
+        want: &Ty,
+        span: Span,
+    ) -> Option<TExpr> {
+        let (i, j) = known_range(&self.b.let_ranges, &|v| self.var_ty(v), e)?;
+        if i == j && (least.is_some_and(|l| i < l.0) || most.is_some_and(|m| i > m.1)) {
+            self.const_out_of_range(e, i, want, span);
+        } else if !(least.is_some_and(|l| l.1 <= i) && most.is_some_and(|m| j <= m.0)) {
+            return None;
+        }
+        Some(TExpr {
+            ty: want.clone(),
+            ..e.clone()
+        })
+    }
     /// E0902 for a constant `i` (or a `let` that keeps it) stored where `want` cannot hold it.
     fn const_out_of_range(&mut self, e: &TExpr, i: i64, want: &Ty, span: Span) {
         let what = match &e.kind {
             TK::Var(v) => format!("`{}`", self.var_name(*v)),
             _ => i.to_string(),
         };
-        let range = self.show(want);
+        let range = match want {
+            Ty::RangeOf(r) => self.text(self.ranges[*r].at).to_string(),
+            _ => self.show(want),
+        };
         self.err(
             span,
             Msg::verdict(
@@ -978,7 +1003,17 @@ impl<'a> Cx<'a> {
                         span,
                     })
                 };
-                let (lo, hi) = (end(self.ranges[*r].lo), end(self.ranges[*r].hi));
+                // Each end's slot keeps what it can be, so a store is proved as with fixed ends.
+                let held = |v: Option<VarRef>, open: i64| match v {
+                    Some(v) => self.b.let_ranges.get(&v).copied(),
+                    None => Some((open, open)),
+                };
+                let (lo, hi) = (self.ranges[*r].lo, self.ranges[*r].hi);
+                let (least, most) = (held(lo, i64::MIN), held(hi, i64::MAX));
+                if let Some(done) = self.proved_store(&e, least, most, &want_s, span) {
+                    return done;
+                }
+                let (lo, hi) = (end(lo), end(hi));
                 let v = TExpr { ty: Ty::Int, ..e };
                 let v = self.checked_between(v, lo, hi, span);
                 TExpr { ty: want_s, ..v }
@@ -995,21 +1030,8 @@ impl<'a> Cx<'a> {
                     true => (a, b),
                     false => (a.saturating_sub(1), b.saturating_sub(1)),
                 });
-                match known_range(&self.b.let_ranges, &e) {
-                    Some((i, j))
-                        if i == j
-                            && (least.is_some_and(|l| i < l.0)
-                                || most.is_some_and(|m| i > m.1)) =>
-                    {
-                        self.const_out_of_range(&e, i, &want_s, span);
-                        return TExpr { ty: want_s, ..e };
-                    }
-                    Some((i, j))
-                        if least.is_some_and(|l| l.1 <= i) && most.is_some_and(|m| j <= m.0) =>
-                    {
-                        return TExpr { ty: want_s, ..e };
-                    }
-                    _ => {}
+                if let Some(done) = self.proved_store(&e, least, most, &want_s, span) {
+                    return done;
                 }
                 let lo = self.range_end(&lo, false, span);
                 let hi = self.range_end(&hi, !inclusive, span);
@@ -1023,13 +1045,10 @@ impl<'a> Cx<'a> {
                 // A constant is checked here, not when the program runs (R03.1.10), and so is
                 // arithmetic on the `let`s that keep one (R02.10.2); a value known to fit needs
                 // no check.
-                match known_range(&self.b.let_ranges, &e) {
-                    Some((i, j)) if i == j && (i < lo || i > hi) => {
-                        self.const_out_of_range(&e, i, &want_s, span);
-                        return TExpr { ty: want_s, ..e };
-                    }
-                    Some((i, j)) if lo <= i && j <= hi => return TExpr { ty: want_s, ..e },
-                    _ => {}
+                if let Some(done) =
+                    self.proved_store(&e, Some((lo, lo)), Some((hi, hi)), &want_s, span)
+                {
+                    return done;
                 }
                 let int = |i| TExpr {
                     kind: TK::Int(i),
@@ -1346,18 +1365,29 @@ pub fn show_ty(
     }
 }
 
-/// The range an `Int` expression is known to lie in: a literal, a `let` that keeps one, and
+/// The range an `Int` expression is known to lie in: a literal, a `let` that keeps one, a
+/// variable of a range type, and
 /// `+`, `-` and `*` of those (R02.10.2); no loop or call is followed.
-pub(super) fn known_range(lets: &HashMap<VarRef, (i64, i64)>, e: &TExpr) -> Option<(i64, i64)> {
+pub(super) fn known_range(
+    lets: &HashMap<VarRef, (i64, i64)>,
+    declared: &dyn Fn(VarRef) -> Ty,
+    e: &TExpr,
+) -> Option<(i64, i64)> {
     match &e.kind {
         TK::Int(k) => Some((*k, *k)),
         TK::Neg(x) => {
-            let (a, b) = known_range(lets, x)?;
+            let (a, b) = known_range(lets, declared, x)?;
             Some((b.checked_neg()?, a.checked_neg()?))
         }
-        TK::Var(v) => lets.get(v).copied(),
+        TK::Var(v) => lets.get(v).copied().or(match declared(*v) {
+            Ty::Range(lo, hi) => Some((lo, hi)),
+            _ => None,
+        }),
         TK::Bin(op, l, r) => {
-            let ((a, b), (c, d)) = (known_range(lets, l)?, known_range(lets, r)?);
+            let ((a, b), (c, d)) = (
+                known_range(lets, declared, l)?,
+                known_range(lets, declared, r)?,
+            );
             match op {
                 BinOp::Add => Some((a.checked_add(c)?, b.checked_add(d)?)),
                 BinOp::Sub => Some((a.checked_sub(d)?, b.checked_sub(c)?)),

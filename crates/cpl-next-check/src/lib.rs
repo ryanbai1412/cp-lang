@@ -347,6 +347,8 @@ pub struct LambdaInfo {
 struct RangeInfo {
     lo: Option<VarRef>,
     hi: Option<VarRef>,
+    /// Where the type is written.
+    at: Span,
 }
 #[derive(Clone)]
 pub struct DomInfo {
@@ -1362,6 +1364,8 @@ impl<'a> Cx<'a> {
         // A fn's result slots are set parameters after its own: each call passes its sets.
         self.b.n_sets = f.n_sets + f.n_ret_sets;
         self.b.locals = Vec::new();
+        // What a local was known to hold belongs to the body that bound it (R02.10.2).
+        (self.b.let_ranges).retain(|v, _| matches!(v, VarRef::Global(_)));
         self.b.syms = BodySyms::default();
         self.b.scopes = vec![HashMap::new()];
         self.b.item = f.item.clone();
@@ -1700,6 +1704,8 @@ impl Cx<'_> {
         }
         self.const_busy[c.0] = true;
         // Checked as top-level code of its module, whatever body first read it.
+        let mut ranges = self.b.let_ranges.clone();
+        (self.b.let_ranges).retain(|v, _| matches!(v, VarRef::Global(_)));
         let body = (
             self.b.decl.take(),
             std::mem::take(&mut self.b.generics),
@@ -1746,6 +1752,12 @@ impl Cx<'_> {
         ) = (body.8, body.9);
         ((self.b.selves, self.b.group), (self.b.ahead, self.b.nested)) = (body.10, body.11);
         (self.b.joining, self.b.item, self.b.module) = (body.12, body.13, body.14);
+        let tops = std::mem::take(&mut self.b.let_ranges);
+        ranges.extend(
+            tops.into_iter()
+                .filter(|(v, _)| matches!(v, VarRef::Global(_))),
+        );
+        self.b.let_ranges = ranges;
         self.globals.push(Local {
             name: k.name.clone(),
             ty: e.ty.clone(),

@@ -1300,7 +1300,7 @@ impl<'a> Cx<'a> {
         (name.rsplit_once('.').map(|(_, m)| m) == Some(member)).then_some(clear)
     }
     /// The type a binding was given.
-    fn var_ty(&self, v: VarRef) -> Ty {
+    pub(super) fn var_ty(&self, v: VarRef) -> Ty {
         match v {
             VarRef::Local(k) => self.b.locals[k].ty.clone(),
             VarRef::Global(k) => self.globals[k].ty.clone(),

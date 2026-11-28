@@ -684,6 +684,7 @@ impl Cx<'_> {
         let mut end = |cx: &mut Self, e: Option<next::Expr>, open: bool| {
             e.map(|e| {
                 let b = cx.expr(&e, Some(&Ty::Int));
+                let known = super::unify::known_range(&cx.b.let_ranges, &|v| cx.var_ty(v), &b);
                 let b = cx.coerce(b, &Ty::Int);
                 let span = b.span;
                 let b = match open {
@@ -702,6 +703,13 @@ impl Cx<'_> {
                     false => b,
                 };
                 let v = cx.slot(Ty::Int, "$end");
+                let known = known.and_then(|(a, b)| match open {
+                    true => Some((a.checked_sub(1)?, b.checked_sub(1)?)),
+                    false => Some((a, b)),
+                });
+                if let Some(k) = known {
+                    cx.b.let_ranges.insert(v, k);
+                }
                 out.push(TStmt::Let(v, b));
                 v
             })
@@ -709,7 +717,8 @@ impl Cx<'_> {
         let lo = end(self, re.lo(), false);
         let hi = end(self, re.hi(), !re.is_inclusive());
         let i = self.id(super::Table::Range, self.ranges.len());
-        super::put(&mut self.ranges, i, RangeInfo { lo, hi });
+        let at = self.at(re);
+        super::put(&mut self.ranges, i, RangeInfo { lo, hi, at });
         Ty::RangeOf(i)
     }
 }
