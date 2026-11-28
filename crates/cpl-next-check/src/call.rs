@@ -33,12 +33,19 @@ impl CallArg {
 }
 
 impl Cx<'_> {
+    /// The value an argument gives; one the parser found missing is already its error.
+    pub(super) fn arg_expr(&mut self, a: &CallArg, want: Option<&Ty>) -> TExpr {
+        match &a.value {
+            Some(x) => self.expr(x, want),
+            None => Self::error_node(a.at),
+        }
+    }
     /// A call of a declared fn or struct, with the type arguments written at the call.
     pub(super) fn call_named(
         &mut self,
         n: &str,
-        written: &[ast::Type],
-        args: &[ast::Arg],
+        written: &[next::Type],
+        args: &[CallArg],
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
@@ -58,16 +65,14 @@ impl Cx<'_> {
         &mut self,
         n: &str,
         mut named: Named,
-        written: &[ast::Type],
-        args: &[ast::Arg],
+        written: &[next::Type],
+        args: &[CallArg],
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         if let Named::Fn(first) = named {
-            let given: Vec<&str> = (args.iter())
-                .filter_map(|a| Some(a.name.as_ref()?.text.as_str()))
-                .collect();
+            let given: Vec<&str> = (args.iter()).filter_map(|a| a.label.as_deref()).collect();
             named = Named::Fn(self.d.overload(first, &given));
         }
         // `Pair<A, B>(..)`: the struct of that name with as many parameters (R02.11.4).
@@ -75,44 +80,35 @@ impl Cx<'_> {
             named = Named::Struct(self.d.by_arity(d, written.len()));
         }
         let mut pre = Vec::new();
-        let mut given: Vec<Ty> = written
-            .iter()
-            .map(|t| self.body_ty(t, span, &mut pre))
-            .collect();
+        let mut given: Vec<Ty> = written.iter().map(|t| self.body_ty(t, &mut pre)).collect();
         // `type Z = Mod<7>`: `Z(x)` is a call of the type the alias names, as `Mod<7>(x)` is.
         if let Named::Alias(id) = named {
             // A parameter not written is inferred, as a struct's is: `AliasBox(42)`.
             let missing = (self.d.alias(id).generics.len()).saturating_sub(written.len());
-            let holes: Vec<String> = (0..missing).map(|k| format!("$alias{k}")).collect();
-            let mut targs = written.to_vec();
-            targs.extend(holes.iter().map(|h| ast::Type {
-                kind: ast::TypeKind::Named {
-                    name: ast::Name {
-                        text: h.clone(),
-                        span,
-                    },
-                    args: Vec::new(),
-                },
-                span,
-            }));
-            let t = ast::Type {
-                kind: ast::TypeKind::Named {
-                    name: ast::Name {
-                        text: n.to_string(),
-                        span,
-                    },
-                    args: targs,
-                },
-                span,
+            let mut targs = given.clone();
+            targs.extend((0..missing).map(|_| self.new_ty()));
+            let scoped = |n| self.owned_named(n);
+            let at = decls::BodyScope {
+                sigs: self.d,
+                scope: self.d,
+                m: self.b.module,
+                generics: &self.b.generics,
+                doms: &self.b.doms,
+                scoped: &scoped,
             };
-            match self.body_ty_open(&t, &holes, span, &mut pre) {
+            let (t, errs) = decls::alias_type(&at, id, targs);
+            for e in errs {
+                self.err(span, e);
+            }
+            match self.fresh_sets(&t) {
                 Ty::Struct(d, targs, _) => {
                     named = Named::Struct(d);
                     given = targs;
                 }
                 Ty::Error => return mk(TK::Error, Ty::Error),
-                to if matches!(args, [a] if a.name.is_none()) && decls::prim_type(n).is_none() => {
-                    let v = self.convert(to, &args[0].value, span, Origin::Convert);
+                to if matches!(args, [a] if a.label.is_none()) && decls::prim_type(n).is_none() => {
+                    let v = self.arg_expr(&args[0], None);
+                    let v = self.convert_value(to, v, span, Origin::Convert);
                     return block(pre, v);
                 }
                 _ => {}
@@ -159,7 +155,7 @@ impl Cx<'_> {
             // `List(s)`: a `new` that takes nothing builds nothing from `s`, so `T(x)` is `x`'s
             // conversion to `T`, by its impl of the `@role(convert)` trait (R07.8.1, R04.2.28).
             (Some(new), Named::Struct(d))
-                if self.d.f(new).params.is_empty() && matches!(args, [a] if a.name.is_none()) =>
+                if self.d.f(new).params.is_empty() && matches!(args, [a] if a.label.is_none()) =>
             {
                 let (n, m) = (self.d.s(d).generics.len(), self.d.s(d).n_sets);
                 let mut targs = given;
@@ -167,12 +163,10 @@ impl Cx<'_> {
                     targs.push(self.new_ty());
                 }
                 let sets = (0..m).map(|_| self.new_set()).collect();
-                self.convert(
-                    Ty::Struct(d, targs, sets),
-                    &args[0].value,
-                    span,
-                    Origin::Construct,
-                )
+                {
+                    let v = self.arg_expr(&args[0], None);
+                    self.convert_value(Ty::Struct(d, targs, sets), v, span, Origin::Construct)
+                }
             }
             // R02.6.3: outside its own body, `T(args)` calls `T`'s static `new` when it has one.
             (Some(new), _) => {
@@ -191,7 +185,7 @@ impl Cx<'_> {
                     None => args,
                 };
                 // A free fn's `self` is its first argument when called by name (R08.1.4).
-                let first = args.first().filter(|a| a.name.is_none());
+                let first = args.first().filter(|a| a.label.is_none());
                 match (fd.owner, fd.self_ty.clone(), first) {
                     (None, Some(st), Some(a)) if fd.self_mode != SelfMode::None => {
                         let sub = Subst {
@@ -200,7 +194,7 @@ impl Cx<'_> {
                         };
                         let st = sub.ty(&st);
                         let st = self.fresh_sets(&st);
-                        let e = self.expr(&a.value, Some(&st));
+                        let e = self.arg_expr(a, Some(&st));
                         let e = self.coerce(e, &st);
                         let recv = self.recv_arg(d, e, span);
                         self.call_fn(f, Some(recv), &args[1..], span, want)
@@ -213,11 +207,12 @@ impl Cx<'_> {
                     .plain_enum(&Ty::Struct(d, Vec::new(), Vec::new()))
                     .is_some()
                     && self.d.s(d).generics.is_empty()
-                    && matches!(args, [a] if a.name.is_none()) =>
+                    && matches!(args, [a] if a.label.is_none()) =>
             {
-                self.convert(
+                let v = self.arg_expr(&args[0], None);
+                self.convert_value(
                     Ty::Struct(d, Vec::new(), Vec::new()),
-                    &args[0].value,
+                    v,
                     span,
                     Origin::Convert,
                 )
@@ -262,7 +257,7 @@ impl Cx<'_> {
         f: FnRef,
         recv: TArg,
         getter: bool,
-        call: Option<&[ast::Arg]>,
+        call: Option<&[CallArg]>,
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
@@ -340,7 +335,7 @@ impl Cx<'_> {
         &mut self,
         f: FnRef,
         recv: Option<TArg>,
-        args: &[ast::Arg],
+        args: &[CallArg],
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
@@ -488,7 +483,7 @@ impl Cx<'_> {
             span,
         }
     }
-    pub(super) fn call_value(&mut self, callee: TExpr, args: &[ast::Arg], span: Span) -> TExpr {
+    pub(super) fn call_value(&mut self, callee: TExpr, args: &[CallArg], span: Span) -> TExpr {
         let (ps, r) = match self.shallow(&callee.ty) {
             Ty::Fn(ps, r, _) => (ps, *r),
             Ty::Clo(c) => self.clo_sig(&c),
