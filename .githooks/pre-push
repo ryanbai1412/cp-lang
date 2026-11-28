@@ -12,8 +12,10 @@ fail() { echo "pre-push: $*" >&2; exit 1; }
 # The build and ratchet gate only pushes to main; a branch push (shared WIP such as
 # lane-j-decls) runs only the cheap checks, no heavier than the commit hook.
 to_main=0
+to_lane=0
 while read -r _ _ remote_ref _; do
     [ "$remote_ref" = refs/heads/main ] && to_main=1
+    [ "$remote_ref" = refs/heads/lane-j-check ] && to_lane=1
 done
 
 # 1. Merge conflict markers anywhere in tracked files.
@@ -48,6 +50,13 @@ fi
 # 2b. Formatting, which land.sh checks but a direct push skips (about 1 s).
 if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo fmt --all --check >/dev/null 2>&1 || fail "not formatted; run: cargo fmt --all"
+fi
+
+# 2c. lane-j-check's landing gate: cpl-next's and cpl-doc's lib tests, every red listed in
+# tests/lane-lib-reds.txt (shrink-only, target 0 before slice 1). CI's lane-check holds a
+# `--no-verify` push to it too.
+if [ "$to_lane" = 1 ] && [ -f scripts/lane-lib-tests.py ]; then
+    python3 scripts/lane-lib-tests.py || fail "lane-j-check's lib tests (above); fix the red or, if it is not yours, name its owner"
 fi
 
 [ "$to_main" = 1 ] || exit 0

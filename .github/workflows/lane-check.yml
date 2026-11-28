@@ -1,0 +1,24 @@
+name: lane-check
+# lane-j-check's landing gate for the unit tests slice 1 needs green (coordinator, 11-28):
+# cpl-next's and cpl-doc's lib tests, every red listed in tests/lane-lib-reds.txt or refused.
+# The pre-push hook runs the same script; this holds a `--no-verify` push to it too.
+on:
+  push:
+    branches: [lane-j-check]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: lane-check-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  lib-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-rust
+        with:
+          shared-key: lane-check
+      - name: cpl-next and cpl-doc lib tests against tests/lane-lib-reds.txt
+        run: python3 scripts/lane-lib-tests.py

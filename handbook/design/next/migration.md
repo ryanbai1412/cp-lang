@@ -115,6 +115,7 @@ it owns is met:
 | old `tyconv` over `ast::Type` | deleted | deleted |
 | `cpl-syntax` in `cpl-next-check/Cargo.toml` | gone | gone |
 | G's `Lane-for` trailers | every commit | waiting on the confirmed table |
+| `cpl-next` and `cpl-doc` lib tests (`scripts/lane-lib-tests.py`, pre-push and CI lane-check) | every test passes, `tests/lane-lib-reds.txt` empty | 10 listed reds |
 | commit tier | green | red: the ratchet (case counts, `next_check_name_keys` 3, `unwrap_input` 4, `allow_attrs` 25, `dream_unverified` 18, `decls.rs` near its cap) and check's clippy |
 
 ## Order
