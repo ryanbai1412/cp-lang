@@ -1,15 +1,15 @@
 //! Contract 8's event points, placed on instance IR after the link step.
 use cpl_next_decls::modules::PROGRAM;
+use cpl_next_decls::views::Checked;
 use cpl_next_ir::ids::SourceId;
 use cpl_next_ir::ir::*;
 use cpl_next_ir::prog::{CTy, Program};
-use cpl_next_ir::whole::Whole;
 
 /// Contract 8: event points, placed on instance IR after the link step, only when asked for.
 /// They are not in generic IR and are not uses for ownership. Reported here: entering and
 /// leaving a fn of the user's file, and each write the user's file makes to one of its
 /// top-level bindings.
-pub fn add_events(p: &mut Program, whole: &Whole) {
+pub fn add_events(p: &mut Program, checked: &dyn Checked) {
     fn shown(t: &CTy) -> bool {
         matches!(t, CTy::Int | CTy::Bool | CTy::Char | CTy::U64 | CTy::Dom(_))
     }
@@ -17,9 +17,9 @@ pub fn add_events(p: &mut Program, whole: &Whole) {
         b: Vec<Stmt<CTy>>,
         user: bool,
         func: u32,
-        cx: (&Whole, &[SourceId]),
+        cx: (&dyn Checked, &[SourceId]),
     ) -> Vec<Stmt<CTy>> {
-        let (whole, sites) = cx;
+        let (checked, sites) = cx;
         let point = |kind, site, vals| {
             Stmt::Event(EventPoint {
                 kind,
@@ -42,7 +42,7 @@ pub fn add_events(p: &mut Program, whole: &Whole) {
                     out.push(Stmt::Return(e));
                 }
                 Stmt::Assign(Place::Global(g), e) => {
-                    let global = whole.global(cpl_next_ir::whole::GlobalId(g));
+                    let global = checked.global(cpl_next_ir::whole::GlobalId(g));
                     let (top, name, ty, site) = (
                         global.is_some_and(|x| x.top),
                         global.map(|x| x.name.clone()).unwrap_or_default(),
@@ -105,12 +105,12 @@ pub fn add_events(p: &mut Program, whole: &Whole) {
         let func = i as u32;
         let user_fn = match &f.key {
             FuncKey::Decl(id) | FuncKey::Ctx(id, _) => {
-                whole.program_fns.contains(id) && f.region.is_none()
+                checked.in_program(*id) && f.region.is_none()
             }
             _ => false,
         };
         let body = std::mem::take(&mut f.body);
-        let mut body = block(body, user_fn, func, (whole, &f.sites));
+        let mut body = block(body, user_fn, func, (checked, &f.sites));
         if user_fn {
             let args = f.params[f.n_captures..]
                 .iter()

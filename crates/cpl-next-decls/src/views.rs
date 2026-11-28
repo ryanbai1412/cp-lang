@@ -7,8 +7,11 @@ use crate::decls::{
     AliasDecl, AliasId, ConstId, Decls, FnDecl, ImplDecl, LibConst, ModId, Named, Roles,
     StructDecl, Sugar, TraitDecl,
 };
+use crate::sym::Sym;
 use cpl_next_ir::ir::{Func, FuncKey};
-use cpl_next_ir::ty::{FnId, SetAdds, SetTy, StructId, TraitId, Ty};
+use cpl_next_ir::msg::{Deferred, Msg};
+use cpl_next_ir::ty::{FnId, FnRef, SetAdds, SetTy, StructId, TraitId, Ty};
+use cpl_next_ir::whole::{Dom, DomId, Global, GlobalId, Whole};
 use std::collections::HashMap;
 
 /// The part of the signatures a written type is converted against, each table read by key.
@@ -63,6 +66,14 @@ pub trait Signatures: TypeTables {
     fn traits_with(&self, name: &str) -> Vec<TraitId>;
     /// The fns that `@aka` or `@was` give `name`, by id.
     fn renamed(&self, name: &str) -> Vec<FnId>;
+    /// Which impl a type takes when several fit, lowest first (R08.1.2).
+    fn impl_rank(&self, im: &ImplDecl) -> u8;
+    /// Whether `im` is for `t` as far as a range type and `Int` go.
+    fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool;
+    /// Whether `tr` is one every domain meets with no impl.
+    fn core_domain_trait(&self, tr: TraitId) -> bool;
+    /// The fn of `members` named `name`.
+    fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId>;
 }
 
 /// `scope(ModId)`: what a name means in a module.
@@ -76,6 +87,35 @@ pub trait Scope {
 pub trait Summaries {
     /// What `f`'s body adds to its `slot`-th set parameter, if anything.
     fn adds(&self, f: FnId, slot: usize) -> Option<&SetTy>;
+    /// What the top level puts in the `k`-th set of global `g`'s type.
+    fn global_set(&self, g: GlobalId, k: usize) -> Option<&SetTy>;
+    /// The call and result slot whose sets a `SetTy::AddedAt(c)` names; none for a call in
+    /// code that never runs.
+    fn added_at(&self, c: usize) -> Option<&(FnRef, usize)>;
+}
+
+/// `checked(ItemId)`: what the checker answered about one item that link reads by id. No
+/// method lists a whole table, so link reads only the items it instantiates.
+pub trait Checked {
+    /// `diagnostics(FnId)`: what the checker leaves to say once `f` is instantiated.
+    fn deferred(&self, f: FnId) -> &[Msg];
+    /// `domain(DomId)`.
+    fn domain(&self, d: DomId) -> &Dom;
+    /// `global(GlobalId)`.
+    fn global(&self, g: GlobalId) -> Option<&Global>;
+    /// The type of global `g`.
+    fn global_ty(&self, g: GlobalId) -> &Ty;
+    /// Whether `f` is written in the user's file.
+    fn in_program(&self, f: FnId) -> bool;
+    /// The context copy of `f` that runs under context copy `ctx` of a trait's fn.
+    fn ctx_impl(&self, ctx: u32, f: FnId) -> Option<u32>;
+}
+
+/// The lowered program's checker answers, until the query database answers each per item.
+pub struct Answers<'a> {
+    pub whole: &'a Whole,
+    pub deferred: &'a Deferred,
+    pub globals: &'a [Ty],
 }
 
 /// `generic(ItemId)`: one fn's generic IR.
@@ -97,7 +137,7 @@ impl Signatures for Decls {
         &self.impls[i]
     }
     fn impls_of(&self, tr: TraitId) -> Vec<usize> {
-        self.trait_impls(tr).map(|(k, _)| k).collect()
+        self.ranked_impls(tr).map(|(k, _)| k).collect()
     }
     fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
         Decls::impl_args(self, im, t)
@@ -110,6 +150,18 @@ impl Signatures for Decls {
             .map(TraitId)
             .filter(|tr| self.member(&self.traits[tr.0].methods, name).is_some())
             .collect()
+    }
+    fn impl_rank(&self, im: &ImplDecl) -> u8 {
+        Decls::impl_rank(self, im)
+    }
+    fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool {
+        Decls::head_fits(self, im, t)
+    }
+    fn core_domain_trait(&self, tr: TraitId) -> bool {
+        Decls::core_domain_trait(self, tr)
+    }
+    fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
+        Decls::member(self, members, name)
     }
     fn renamed(&self, name: &str) -> Vec<FnId> {
         let named = |f: &FnDecl| f.aka.iter().chain(&f.was).any(|n| n == name);
@@ -193,6 +245,37 @@ impl Scope for Decls {
 impl Summaries for SetAdds {
     fn adds(&self, f: FnId, slot: usize) -> Option<&SetTy> {
         self.params.get(&(f, slot))
+    }
+    fn global_set(&self, g: GlobalId, k: usize) -> Option<&SetTy> {
+        self.globals.get(&(g.0, k))
+    }
+    fn added_at(&self, c: usize) -> Option<&(FnRef, usize)> {
+        self.live
+            .get(c)
+            .copied()
+            .unwrap_or(true)
+            .then(|| &self.calls[c])
+    }
+}
+
+impl Checked for Answers<'_> {
+    fn deferred(&self, f: FnId) -> &[Msg] {
+        self.deferred.of(f)
+    }
+    fn domain(&self, d: DomId) -> &Dom {
+        self.whole.dom(d)
+    }
+    fn global(&self, g: GlobalId) -> Option<&Global> {
+        self.whole.global(g)
+    }
+    fn global_ty(&self, g: GlobalId) -> &Ty {
+        &self.globals[g.0]
+    }
+    fn in_program(&self, f: FnId) -> bool {
+        self.whole.program_fns.contains(&f)
+    }
+    fn ctx_impl(&self, ctx: u32, f: FnId) -> Option<u32> {
+        self.whole.ctx_impls.get(&(ctx, f)).copied()
     }
 }
 

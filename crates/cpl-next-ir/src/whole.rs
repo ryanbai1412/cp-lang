@@ -67,15 +67,4 @@ impl Whole {
     pub fn global(&self, g: GlobalId) -> Option<&Global> {
         self.globals.get(g.0)
     }
-    /// Every run-time value of every domain.
-    pub fn dom_values(&self) -> impl Iterator<Item = DomValue> {
-        (0..self.domains.len()).flat_map(|d| [DomValue::Len(DomId(d)), DomValue::Lo(DomId(d))])
-    }
-    /// The variable that holds `v`, and the fn its domain is declared in.
-    pub fn dom_var(&self, v: DomValue) -> (VarRef, Option<FnId>) {
-        match v {
-            DomValue::Len(d) => (self.dom(d).len, self.dom(d).owner),
-            DomValue::Lo(d) => (self.dom(d).lo, self.dom(d).owner),
-        }
-    }
 }

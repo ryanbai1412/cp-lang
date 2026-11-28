@@ -293,6 +293,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.link_reads_check(root),
                              ["crates/cpl-next-link/src/lib.rs:1", "crates/cpl-next-link/src/lib.rs:3"])
 
+    def test_link_reads_check_follows_checker_data_through_holders(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-decls/src/views.rs",
+                        "pub struct Answers<'a> {\n    pub whole: &'a Whole,\n}\n")
+            self._write(root, "crates/cpl-next-link/src/lib.rs",
+                        "fn a(adds: &SetAdds) {}\nfn b(c: &dyn Checked) {}\nstruct L<'a> {\n    x: &'a views::Answers<'a>,\n}\n"
+                        "fn c(d: Deferred) {}\n")
+            self.assertEqual(dr.link_reads_check(root), [f"crates/cpl-next-link/src/lib.rs:{i}" for i in (1, 4, 6)])
+
     def test_name_compares_count_each_form(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

@@ -259,10 +259,16 @@ holding a table and shrinks to 0. A field is lowering's own answer only
 if it is its fns (`funcs`) or the messages lowering itself makes
 (`errors`).
 
-`link` and `own::link` stay whole-program, keyed by the job, because
-closing sets and making instances need every reached fn. They stay on
-the counter until they take the views instead of `&Decls` and maps of
-every fn. At that point an edit to one body redoes only that body's
+`link` and `own::link` stay per build, keyed by the job, because
+closing sets and making instances need every reached fn. `link` takes
+only `Inputs` (the `Signatures`, `Generics`, `Summaries` and `Checked`
+views) and `Roots`, the ids of the build's fns and globals. Each view
+answers one item by id and none lists a whole table, so the database
+serves it unchanged; until then `Decls`, the lowered map, `SetAdds` and
+`Answers` implement them. `link_reads_check` follows the data: a line of
+cpl-next-link holding `Whole`, `Deferred`, `SetAdds` or a whole-program
+value, directly or through a holder struct, counts. `own::link` stays on
+`next_whole_program_inputs` until it takes the views too. At that point an edit to one body redoes only that body's
 `body`, `generic` and `lent`, its instances and their `owned`, and then
 link. The count gate checks this.
 

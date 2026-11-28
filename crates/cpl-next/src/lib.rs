@@ -404,7 +404,12 @@ pub(crate) fn compile(
         return Err(link(&prog.errors));
     }
     if events {
-        inst::add_events(&mut prog, &f.g.whole);
+        let answers = cpl_next_decls::views::Answers {
+            whole: &f.g.whole,
+            deferred: &f.g.deferred,
+            globals: &f.g.globals,
+        };
+        inst::add_events(&mut prog, &answers);
     }
     let canon =
         inst::canonicalize(&mut prog, &cpl_next_own::expand_calls).map_err(|es| link(&es))?;

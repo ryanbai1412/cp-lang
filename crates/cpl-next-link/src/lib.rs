@@ -1,12 +1,12 @@
 //! Contract 5: generic IR -> instances. The link step: it decides which
 //! instances exist and what each function-value set holds, from the whole program.
-use cpl_next_decls::decls::Decls;
 use cpl_next_decls::diag::Msg;
+use cpl_next_decls::views::{Checked, Generics, Signatures, Summaries};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_next_ir::whole::{DomId, DomValue, Whole};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use cpl_next_ir::whole::{DomId, DomValue, GlobalId};
+use std::collections::{BTreeSet, HashMap};
 
 pub use cpl_next_ir::prog::{parts, CSet, CTy, InstKey, Program};
 use origins::number_origins;
@@ -19,10 +19,10 @@ pub use events::add_events;
 struct Link<'a> {
     /// The type of a slot a value of a type is lent in: ownership's rule (`cpl_next_own`).
     lent: &'a Lend,
-    d: &'a Decls,
-    whole: &'a Whole,
-    generic: &'a HashMap<FuncKey, Func<Ty>>,
-    adds: &'a SetAdds,
+    d: &'a dyn Signatures,
+    c: &'a dyn Checked,
+    generic: &'a dyn Generics,
+    adds: &'a dyn Summaries,
     keys: Vec<InstKey>,
     index: HashMap<InstKey, usize>,
     structs: HashMap<CTy, Vec<CTy>>,
@@ -46,7 +46,7 @@ struct Env<'e> {
 const LIMIT: usize = 400;
 
 /// The type parameters of `s` that a field of it, or of one of its variants, holds.
-fn held_params(d: &Decls, s: StructId) -> BTreeSet<usize> {
+fn held_params(d: &dyn Signatures, s: StructId) -> BTreeSet<usize> {
     let sd = d.s(s);
     let mut out = BTreeSet::new();
     let payloads = sd.variants.iter().flat_map(|(_, p)| &d.s(*p).fields);
@@ -55,7 +55,7 @@ fn held_params(d: &Decls, s: StructId) -> BTreeSet<usize> {
 }
 
 /// A trait's fn as an item with no `Self` (`+` passed uncalled): it has no impl, and nothing runs it.
-fn selfless(d: &Decls, key: &InstKey) -> bool {
+fn selfless(d: &dyn Signatures, key: &InstKey) -> bool {
     let FuncKey::Decl(m) = key.func else {
         return false;
     };
@@ -64,7 +64,7 @@ fn selfless(d: &Decls, key: &InstKey) -> bool {
 }
 /// The key of a generic fn item as a value nothing calls (`type_of(max)`), one for every
 /// instance of the fn (R08.1.10): no body runs under it.
-fn item_value(d: &Decls, key: &InstKey) -> bool {
+fn item_value(d: &dyn Signatures, key: &InstKey) -> bool {
     let FuncKey::Decl(m) = key.func else {
         return false;
     };
@@ -111,9 +111,14 @@ fn doms_of(t: &CTy, out: &mut Vec<usize>) {
     }
 }
 
+/// A key link reached that lowering gave no fn: lowering and link disagree on the program.
+fn unlowered(k: &FuncKey) -> Msg {
+    Msg::internal(format!("link reached {k:?}, which has no lowered fn"))
+}
+
 /// A fn with one instance: no type parameters, sets or context of its own or its owner's,
 /// and no closure in its signature.
-fn closed_fn(d: &Decls, f: FnId) -> bool {
+fn closed_fn(d: &dyn Signatures, f: FnId) -> bool {
     let fd = d.f(f);
     let owner_open =
         matches!(&fd.self_ty, Some(Ty::Struct(_, ts, ss)) if !ts.is_empty() || !ss.is_empty());
@@ -128,22 +133,30 @@ fn closed_fn(d: &Decls, f: FnId) -> bool {
 /// Given a type and how to read its parts, the type of a slot a value of it is lent in.
 pub type Lend = dyn Fn(CTy, &dyn Fn(&CTy) -> Vec<CTy>) -> CTy;
 
+/// What link reads, each answer by id: the views the query database serves per item.
+#[derive(Clone, Copy)]
+pub struct Inputs<'a> {
+    pub sigs: &'a dyn Signatures,
+    pub fns: &'a dyn Generics,
+    pub sums: &'a dyn Summaries,
+    pub checked: &'a dyn Checked,
+}
+
+/// The items one build links: every lowered fn, and the program's globals in order.
+pub struct Roots {
+    pub fns: Vec<FuncKey>,
+    pub globals: Vec<GlobalId>,
+}
+
 /// A closure in a signature takes its set from the calls that reach the fn.
-pub fn link(
-    d: &Decls,
-    whole: &Whole,
-    deferred: &cpl_next_ir::msg::Deferred,
-    generic: &HashMap<FuncKey, Func<Ty>>,
-    globals: &[Ty],
-    adds: &SetAdds,
-    lent: &Lend,
-) -> Program {
+pub fn link(v: Inputs, roots: &Roots, lent: &Lend) -> Program {
+    let (d, c, generic) = (v.sigs, v.checked, v.fns);
     let mut l = Link {
         d,
-        whole,
+        c,
         lent,
         generic,
-        adds,
+        adds: v.sums,
         keys: Vec::new(),
         index: HashMap::new(),
         structs: HashMap::new(),
@@ -160,9 +173,8 @@ pub fn link(
         targs: &[],
         sets: &[],
     };
-    l.globals = globals
-        .iter()
-        .map(|t| l.ty(t, &none).unlent().clone())
+    l.globals = (roots.globals.iter())
+        .map(|g| l.ty(c.global_ty(*g), &none).unlent().clone())
         .collect();
     let main = l.intern(InstKey {
         func: FuncKey::Main,
@@ -171,9 +183,10 @@ pub fn link(
     });
     // Every closed fn of the program is an instance too, called or not, so ownership checks
     // each one once; a backend emits only what main reaches.
-    let mut closed: Vec<FuncKey> = (generic.iter())
-        .filter(|(k, g)| g.line != 0 && matches!(k, FuncKey::Decl(f) if closed_fn(d, *f)))
-        .map(|(k, _)| k.clone())
+    let mut closed: Vec<FuncKey> = (roots.fns.iter())
+        .filter(|k| generic.generic(k).is_some_and(|g| g.line != 0))
+        .filter(|k| matches!(k, FuncKey::Decl(f) if closed_fn(d, *f)))
+        .cloned()
         .collect();
     closed.sort();
     // Uncalled, a fn's result sets are what its own body puts there.
@@ -196,14 +209,18 @@ pub fn link(
     let mut next = 0;
     let mut said = std::collections::HashSet::new();
     while next < l.keys.len() {
+        let key = l.keys[next].clone();
+        let Some(f) = generic.generic(&key.func) else {
+            l.errors.push(unlowered(&key.func));
+            break;
+        };
         if l.keys.len() > LIMIT {
-            l.errors.push(Msg::verdict(cpl_diag::codes::GROWING_INSTANTIATION, format!("instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", generic[&l.keys[next].func].name)));
+            l.errors.push(Msg::verdict(cpl_diag::codes::GROWING_INSTANTIATION, format!("instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", f.name)));
             break;
         }
-        let key = l.keys[next].clone();
-        if let Some(f) = key.func.decl() {
-            if said.insert(f) {
-                l.errors.extend(deferred.of(f).iter().cloned());
+        if let Some(g) = key.func.decl() {
+            if said.insert(g) {
+                l.errors.extend(c.deferred(g).iter().cloned());
             }
         }
         // A fn used at a domain declared in its own body: inside that instance the type
@@ -211,25 +228,24 @@ pub fn link(
         // has to be keyed by its binding for this to run; until then it is refused.
         let owner = match &key.func {
             FuncKey::Decl(f) | FuncKey::Ctx(f, _) => Some(*f),
-            FuncKey::Lambda(_) => generic[&key.func].maker,
+            FuncKey::Lambda(_) => f.maker,
             FuncKey::Main | FuncKey::Case => None,
         };
         let mut doms = Vec::new();
         key.targs.iter().for_each(|t| doms_of(t, &mut doms));
         if let Some(d) = doms
             .iter()
-            .find(|d| owner.is_some() && whole.dom(DomId(**d)).owner == owner)
+            .find(|d| owner.is_some() && c.domain(DomId(**d)).owner == owner)
         {
             l.errors.push(
                 Unbuilt::DomainTypeArg {
-                    func: generic[&key.func].name.clone(),
-                    domain: Some(whole.dom(DomId(*d)).name.clone()),
+                    func: f.name.clone(),
+                    domain: Some(c.domain(DomId(*d)).name.clone()),
                 }
                 .into(),
             );
             break;
         }
-        let f = &generic[&key.func];
         let env = Env {
             targs: &key.targs,
             sets: &key.sets,
@@ -248,7 +264,10 @@ pub fn link(
     // Instances made while typing the globals.
     while insts.len() < l.keys.len() && l.keys.len() <= LIMIT {
         let key = l.keys[insts.len()].clone();
-        let f = &generic[&key.func];
+        let Some(f) = generic.generic(&key.func) else {
+            l.errors.push(unlowered(&key.func));
+            break;
+        };
         let env = Env {
             targs: &key.targs,
             sets: &key.sets,
@@ -275,7 +294,7 @@ pub fn link(
     };
     number_origins(&mut p);
     if p.errors.is_empty() {
-        thread_values(&mut p, whole);
+        thread_values(&mut p, c);
     }
     if p.errors.is_empty() {
         check_finite(&mut p);
@@ -457,7 +476,7 @@ impl Link<'_> {
         }
         let text = self
             .generic
-            .get(&k)
+            .generic(&k)
             .map(|f| format!("{:?} {:?} {:?}", f.locals, f.ret, f.body))
             .unwrap_or_default();
         self.named_busy.insert(k.clone());
@@ -582,7 +601,7 @@ impl Link<'_> {
         let FuncKey::Decl(g) = k.func else { return };
         let copy = match Some(g) == trait_fn {
             true => Some(ctx),
-            false => self.whole.ctx_impls.get(&(ctx, g)).copied(),
+            false => self.c.ctx_impl(ctx, g),
         };
         if let (Some(c), true) = (copy, ctx != 0) {
             k.func = FuncKey::Ctx(g, c);
@@ -590,7 +609,7 @@ impl Link<'_> {
     }
     /// What `f`'s body adds to its set `slot`.
     fn adds(&self, f: FnId, slot: usize) -> Option<SetTy> {
-        self.adds.params.get(&(f, slot)).cloned()
+        self.adds.adds(f, slot).cloned()
     }
     /// An impl's fn takes the sets its caller passes for its result after the impl's own.
     fn with_ret_sets(&self, k: &mut InstKey, ret: Vec<CSet>) {
@@ -618,13 +637,14 @@ impl Link<'_> {
                     }
                 }
             }
-            SetTy::AddedAt(c) if !self.adds.live.get(*c).copied().unwrap_or(true) => {}
             SetTy::AddedAt(c) => {
+                let Some((f, slot)) = self.adds.added_at(*c).cloned() else {
+                    return;
+                };
                 // A call met again inside its own arguments' sets adds nothing more.
                 if !self.add_busy.insert(*c) {
                     return;
                 }
-                let (f, slot) = self.adds.calls[*c].clone();
                 if let Some(k) = self.callee_key(&f, env) {
                     if let Some(decl) = k.func.decl() {
                         // A trait's result slot is the impl's, after the impl's own sets.
@@ -649,7 +669,7 @@ impl Link<'_> {
                 if !self.global_busy.insert((*g, *k)) {
                     return;
                 }
-                if let Some(s) = self.adds.globals.get(&(*g, *k)).cloned() {
+                if let Some(s) = self.adds.global_set(GlobalId(*g), *k).cloned() {
                     let top = Env {
                         targs: &[],
                         sets: &[],
@@ -771,7 +791,7 @@ impl Link<'_> {
                 k.targs.extend(targs.iter().map(|t| self.targ(t, env)));
                 self.in_copy(
                     &mut k,
-                    self.d.member(&self.d.traits[tr.0].methods, method),
+                    self.d.member_named(&self.d.t(*tr).methods, method),
                     *ctx,
                 );
                 if let Some(g) = k.func.decl() {
@@ -794,14 +814,14 @@ impl Link<'_> {
     /// meets the trait without one (a domain, for `Domain`).
     fn has_bound(&mut self, t: &Ty, tr: TraitId, args: &[Ty], env: &Env) -> bool {
         let st = self.targ(t, env).unlent().clone();
-        let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
+        let want: Vec<CTy> = (self.d.t(tr).inputs(args).iter())
             .map(|a| self.targ(a, env))
             .collect();
         let d = self.d;
-        let by_impl = d.impls_of(tr).any(|im| {
+        let by_impl = d.impls_of(tr).into_iter().map(|k| d.imp(k)).any(|im| {
             let mut binds = vec![None; im.generics.len()];
             fits_head(d, im, &st, &mut binds)
-                && (d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
+                && (d.t(tr).inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 && blanket_met(d, im, &binds)
         });
@@ -820,7 +840,7 @@ impl Link<'_> {
         if st == CTy::Error {
             return None;
         }
-        let want: Vec<CTy> = (self.d.traits[tr.0].inputs(args).iter())
+        let want: Vec<CTy> = (self.d.t(*tr).inputs(args).iter())
             .map(|a| self.targ(a, env))
             .collect();
         // The impl's sets are its target's: a struct's, or a fn type's own set.
@@ -834,7 +854,7 @@ impl Link<'_> {
         // what an impl leaves to the default, and what a type meeting the trait without
         // an impl (a domain, for `Domain`) runs.
         let default = |trait_args: Vec<CTy>| {
-            (d.member(&d.traits[tr.0].methods, method))
+            (d.member_named(&d.t(*tr).methods, method))
                 .filter(|&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
                 .map(|tm| InstKey {
                     func: FuncKey::Decl(tm),
@@ -844,13 +864,13 @@ impl Link<'_> {
         };
         // The checker let exactly one impl of the most specific rank fit (R08.1.2).
         let (mut found, mut rank) = (None, None);
-        for im in d.impls_of(*tr) {
+        for im in d.impls_of(*tr).into_iter().map(|k| d.imp(k)) {
             if rank.is_some_and(|r| d.impl_rank(im) > r) {
                 break;
             }
             let mut binds = vec![None; im.generics.len()];
             if !fits_head(d, im, &st, &mut binds)
-                || !(d.traits[tr.0].inputs(&im.trait_.args).iter().zip(&want))
+                || !(d.t(*tr).inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
                 || !blanket_met(d, im, &binds)
             {
@@ -859,14 +879,14 @@ impl Link<'_> {
             if rank.is_some() {
                 self.errors.push(Msg::internal(format!(
                     "two impls of `{}` give `{method}` for one type",
-                    d.traits[tr.0].name
+                    d.t(*tr).name
                 )));
                 break;
             }
             rank = Some(d.impl_rank(im));
             self.bound_only(im, &mut binds);
             let binds: Vec<CTy> = binds.into_iter().map(|b| b.unwrap_or(CTy::Error)).collect();
-            found = match self.d.member(&im.methods, method) {
+            found = match self.d.member_named(&im.methods, method) {
                 Some(m) => Some(InstKey {
                     func: FuncKey::Decl(m),
                     targs: binds,
@@ -941,7 +961,7 @@ impl Link<'_> {
                 _ => EK::Int(0),
             },
             EK::DomCounted(t) => EK::Bool(match self.targ(t, env) {
-                CTy::Dom(d) => self.whole.dom(DomId(d)).counted,
+                CTy::Dom(d) => self.c.domain(DomId(d)).counted,
                 _ => false,
             }),
             EK::HasBound(t, tr, args) => EK::Bool(self.has_bound(t, *tr, args, env)),
@@ -1362,16 +1382,21 @@ fn canon_expr(bad: &mut Vec<String>, e: Expr<CTy>) -> Expr<CTy> {
 /// A function that needs the size of a domain it did not declare gets a hidden
 /// leading parameter for it; a closure captures it when it is made. Which
 /// functions need which is a whole-program question, so the link step answers it.
-fn thread_values(p: &mut Program, whole: &Whole) {
-    use cpl_next_ir::whole::{GlobalId, VarRef};
+fn thread_values(p: &mut Program, c: &dyn Checked) {
+    use cpl_next_ir::whole::VarRef;
     let n = p.insts.len();
     // Where an instance can read a domain's value without being handed it.
-    let own = |f: &Func<CTy>, v: DomValue| -> Option<Place> {
-        let (var, owner) = whole.dom_var(v);
-        match (var, &f.key, owner) {
+    let own = |key: &FuncKey, v: DomValue| -> Option<Place> {
+        let (DomValue::Len(d) | DomValue::Lo(d)) = v;
+        let dom = c.domain(d);
+        let var = match v {
+            DomValue::Len(_) => dom.len,
+            DomValue::Lo(_) => dom.lo,
+        };
+        match (var, key, dom.owner) {
             (VarRef::Global(g), FuncKey::Main | FuncKey::Case, None) => Some(Place::Global(g)),
             // A top-level domain of the file is one shared variable. One inside a block is not: a loop makes a new one.
-            (VarRef::Global(g), _, None) if whole.global(GlobalId(g)).is_some_and(|x| x.top) => {
+            (VarRef::Global(g), _, None) if c.global(GlobalId(g)).is_some_and(|x| x.top) => {
                 Some(Place::Global(g))
             }
             (VarRef::Local(l), FuncKey::Decl(k), Some(o)) if *k == o => Some(Place::Local(l)),
@@ -1489,7 +1514,7 @@ fn thread_values(p: &mut Program, whole: &Whole) {
             for j in &calls[i] {
                 want.extend(needs[*j].iter().copied());
             }
-            want.retain(|d| own(&p.insts[i], *d).is_none());
+            want.retain(|d| own(&p.insts[i].key, *d).is_none());
             if want != needs[i] {
                 needs[i] = want;
                 changed = true;
@@ -1523,7 +1548,7 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         hidden: &'a [Vec<(DomValue, usize)>],
         index: &'a HashMap<InstKey, usize>,
         me: usize,
-        own: BTreeMap<DomValue, Option<Place>>,
+        own: &'a dyn Fn(DomValue) -> Option<Place>,
         /// Set when a size is asked for and neither handed in nor declared here.
         no_source: std::cell::Cell<bool>,
     }
@@ -1531,7 +1556,7 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         fn size(&self, d: DomValue) -> Expr<CTy> {
             let place = match self.hidden[self.me].iter().find(|(x, _)| *x == d) {
                 Some((_, l)) => Some(Place::Local(*l)),
-                None => self.own.get(&d).cloned().flatten(),
+                None => (self.own)(d),
             };
             let kind = place.map(EK::Copy).unwrap_or_else(|| {
                 self.no_source.set(true);
@@ -1636,14 +1661,13 @@ fn thread_values(p: &mut Program, whole: &Whole) {
         }
     }
     for i in 0..n {
-        let own_places = (whole.dom_values())
-            .map(|v| (v, own(&p.insts[i], v)))
-            .collect();
+        let key = p.insts[i].key.clone();
+        let own_place = |v| own(&key, v);
         let rw = Rw {
             hidden: &hidden,
             index: &p.index,
             me: i,
-            own: own_places,
+            own: &own_place,
             no_source: std::cell::Cell::new(false),
         };
         let mut body = std::mem::take(&mut p.insts[i].body);
@@ -1675,7 +1699,7 @@ impl Link<'_> {
                 // The one impl of the most specific rank that fits fixes them: coherence and
                 // the checker leave no second (R08.1.2), so one is a checker bug.
                 let (mut one, mut rank) = (None, None);
-                for m in d.impls_of(r.tr) {
+                for m in d.impls_of(r.tr).into_iter().map(|k| d.imp(k)) {
                     if rank.is_some_and(|k| d.impl_rank(m) > k) {
                         break;
                     }
@@ -1686,7 +1710,7 @@ impl Link<'_> {
                     if rank.is_some() {
                         self.errors.push(Msg::internal(format!(
                             "two impls of `{}` fit one bound at one rank",
-                            d.traits[r.tr.0].name
+                            d.t(r.tr).name
                         )));
                         one = None;
                         break;
@@ -1719,15 +1743,19 @@ impl Link<'_> {
 
 /// Whether a blanket impl's bounds hold of the types it binds, as the checker asked
 /// (`Decls::fits_impl`); an impl for a written type is taken as found.
-fn blanket_met(d: &Decls, im: &cpl_next_decls::decls::ImplDecl, binds: &[Option<CTy>]) -> bool {
+fn blanket_met(
+    d: &dyn Signatures,
+    im: &cpl_next_decls::decls::ImplDecl,
+    binds: &[Option<CTy>],
+) -> bool {
     !im.blanket()
         || (im.bounds.iter()).all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
 }
-fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
+fn cty_meets(d: &dyn Signatures, t: &CTy, tr: TraitId) -> bool {
     if d.core_domain_trait(tr) && matches!(t, CTy::Dom(_)) {
         return true;
     }
-    d.impls_of(tr).any(|im| {
+    d.impls_of(tr).into_iter().map(|k| d.imp(k)).any(|im| {
         let mut b = vec![None; im.generics.len()];
         fits_head(d, im, t, &mut b)
             && (im.bounds.iter()).all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, a, r.tr)))
@@ -1735,7 +1763,7 @@ fn cty_meets(d: &Decls, t: &CTy, tr: TraitId) -> bool {
 }
 /// Whether an impl is for `t`, as `Decls::head_fits` says of a range type and `Int`.
 fn fits_head(
-    d: &Decls,
+    d: &dyn Signatures,
     im: &cpl_next_decls::decls::ImplDecl,
     t: &CTy,
     binds: &mut [Option<CTy>],

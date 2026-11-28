@@ -217,14 +217,18 @@ impl Decls {
     }
     /// The impls of `tr`, in the order a type takes them (`impl_rank`).
     pub fn impls_of(&self, tr: TraitId) -> impl Iterator<Item = &ImplDecl> {
+        self.ranked_impls(tr).map(|(_, im)| im)
+    }
+    /// `impls_of`, each with its index.
+    pub fn ranked_impls(&self, tr: TraitId) -> impl Iterator<Item = (usize, &ImplDecl)> {
         let ranked =
             (self.impls_ranked.as_ref()).map(|r| r.get(&tr).map_or(&[][..], Vec::as_slice));
         let unranked = ranked.is_none().then(|| {
             (0..3).flat_map(move |r| {
-                (self.trait_impls(tr).map(|(_, im)| im)).filter(move |im| self.impl_rank(im) == r)
+                (self.trait_impls(tr)).filter(move |(_, im)| self.impl_rank(im) == r)
             })
         });
-        (ranked.into_iter().flatten().map(|&k| &self.impls[k]))
+        (ranked.into_iter().flatten().map(|&k| (k, &self.impls[k])))
             .chain(unranked.into_iter().flatten())
     }
     /// Fills `impls_ranked` from the impls a lookup may find now.

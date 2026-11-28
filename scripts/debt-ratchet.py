@@ -1336,13 +1336,7 @@ def next_core_privilege(root: Path) -> list[str]:
     return hits
 
 
-NEXT_WHOLE_PROGRAM_RE = re.compile(r"&(?:'\w+\s+)?(?:mut\s+)?(?:\w+::)*(?:Decls|Typed|Loaded|Whole|Generic)\b")
-
-
 NEXT_WHOLE_PROGRAM_TYPES = ("Decls", "Typed", "Loaded", "Whole", "Generic")
-NEXT_OWNED_WHOLE_RE = re.compile(
-    r"\b\w+\s*(?<!:):(?!:)\s*(?:[\w:]+<\s*)*(?:\w+::)*(?:%s)\b(?!\s*(?:::|\{|\())"
-    % "|".join(NEXT_WHOLE_PROGRAM_TYPES))
 NEXT_STRUCT_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?struct\s+(\w+)")
 NEXT_IMPL_RE = re.compile(r"^\s*impl\b(?:\s*<[^{]*?>)?\s+(?:[\w:<>,' &]+?\s+for\s+)?(?:\w+::)*(\w+)\b")
 NEXT_FN_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:const\s+|async\s+|unsafe\s+)*fn\s+\w+")
@@ -1362,6 +1356,12 @@ def _block(lines: list[str], start: int) -> int:
     return len(lines) - 1
 
 
+def _whole_res(types: tuple[str, ...]) -> tuple[re.Pattern, re.Pattern]:
+    names = "|".join(types)
+    return (re.compile(r"&(?:'\w+\s+)?(?:mut\s+)?(?:\w+::)*(?:%s)\b" % names),
+            re.compile(r"\b\w+\s*(?<!:):(?!:)\s*(?:[\w:]+<\s*)*(?:\w+::)*(?:%s)\b(?!\s*(?:::|\{|\())" % names))
+
+
 def next_whole_program_inputs(root: Path) -> list[str]:
     """Each place the new pipeline holds a whole-program value (shortcut audit S2, condition 2
     of the 15:00 review): `Decls`, `Typed`, `Loaded`, `Whole` or `Generic` by reference
@@ -1371,6 +1371,13 @@ def next_whole_program_inputs(root: Path) -> list[str]:
     methods are the value itself, not a reader of it, and a fn returning one produces it. The
     incremental core (handbook/design/next/incremental.md) calls every layer per item over
     small views, so this reaches 0: a context that holds views instead stops counting."""
+    return _holding_lines(root, NEXT_WHOLE_PROGRAM_TYPES, "")
+
+
+def _holding_lines(root: Path, types: tuple[str, ...], within: str) -> list[str]:
+    """`next_whole_program_inputs`'s rule for the values `types`, counted in files under
+    `within`; holders are found in every cpl-next* crate."""
+    by_ref, owned = _whole_res(types)
     files = {}
     for p in _rs_files(root, *_next_srcs(root), tests=False):
         files[_rel(root, p)] = list(_lines(p))
@@ -1393,7 +1400,7 @@ def next_whole_program_inputs(root: Path) -> list[str]:
         return {Path(rel).stem, krate, krate.removeprefix("cpl_next_"), "crate", "self", "super"}
     def holds(line: str) -> bool:
         text = code(line)
-        if NEXT_WHOLE_PROGRAM_RE.search(line) and text.strip() or NEXT_OWNED_WHOLE_RE.search(text):
+        if by_ref.search(line) and text.strip() or owned.search(text):
             return True
         at = re.search(r"(?<!:):(?!:)", text)
         if not holders or not at:
@@ -1410,12 +1417,12 @@ def next_whole_program_inputs(root: Path) -> list[str]:
     while grew:
         grew = False
         for name, rel, i, j in structs:
-            if name in holders or name in NEXT_WHOLE_PROGRAM_TYPES:
+            if name in holders or name in types:
                 continue
             if any(holds(line) for line in files[rel][i + 1:j + 1]) or tuple_holds(files[rel][i]):
                 holders.setdefault(name, set()).update(paths(rel))
                 grew = True
-    own = {(rel, k) for name, rel, i, j in structs + impls if name in NEXT_WHOLE_PROGRAM_TYPES
+    own = {(rel, k) for name, rel, i, j in structs + impls if name in types
            for k in range(i, j + 1)}
     out = {(rel, k) for rel, lines in files.items() for k, line in enumerate(lines)
            if (rel, k) not in own and holds(line)}
@@ -1434,7 +1441,7 @@ def next_whole_program_inputs(root: Path) -> list[str]:
                     break
             if re.search(r"\bself\b", sig):
                 out.add((rel, k))
-    return [f"{rel}:{k + 1}" for rel, k in sorted(out)]
+    return [f"{rel}:{k + 1}" for rel, k in sorted(out) if rel.startswith(within)]
 
 
 def _next_file_lines(root: Path, rel: str) -> list[str]:
@@ -3690,12 +3697,17 @@ def next_snapshot_keyed_queries(root: Path) -> list[str]:
 LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|typed)\b")
 
 
+LINK_CHECKED_TYPES = NEXT_WHOLE_PROGRAM_TYPES + ("Deferred", "SetAdds")
+
+
 def link_reads_check(root: Path) -> list[str]:
-    """Lines of the linker (cpl-next-link) that read the checker's typed tree: the one edge in the
-    new pipeline that skips a layer (`cpl-next-link -> cpl-next-check`). Link should consume the
-    generic IR only: lowering hands the program-wide facts it needs on as `cpl-next-ir`'s
-    `whole::Whole`, so this stays 0 and the edge stays gone."""
-    out = []
+    """Where checker data reaches the linker (cpl-next-link) other than as a per-item answer
+    (shortcut audit S18). By data: each line of cpl-next-link that holds the checker's tables
+    (`Whole`, `Deferred`, `SetAdds`) or a whole-program value, directly or through a struct
+    holding one, by `next_whole_program_inputs`'s rule. Link reads them through the `Checked`,
+    `Summaries` and `Signatures` views, by id, so this is 0. By name: lines naming the typed tree.
+    By crate: no crate past lowering may reach the checker, through however many crates."""
+    out = _holding_lines(root, LINK_CHECKED_TYPES, "crates/cpl-next-link/")
     for p in _rs_files(root, "crates/cpl-next-link/src", tests=False):
         rel = _rel(root, p)
         out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if LINK_READS_CHECK_RE.search(line)]

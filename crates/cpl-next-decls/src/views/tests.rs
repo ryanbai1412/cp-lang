@@ -9,6 +9,12 @@ impl Summaries for OneSummary {
     fn adds(&self, f: FnId, slot: usize) -> Option<&SetTy> {
         self.0.get(&(f, slot))
     }
+    fn global_set(&self, _: GlobalId, _: usize) -> Option<&SetTy> {
+        None
+    }
+    fn added_at(&self, _: usize) -> Option<&(FnRef, usize)> {
+        None
+    }
 }
 
 /// What a caller reads of a callee: whether its body adds to a set parameter.

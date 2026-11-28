@@ -204,6 +204,7 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
     }
 }
 
+use cpl_next_decls::views::Answers;
 pub use inst::Owned;
 
 /// Ownership around link (contract 4): marks what the generic fns lend (`lent`), links them,
@@ -227,7 +228,22 @@ pub fn link(
         Vec::new()
     };
     lent::mark(d, funcs, tys, &mutable);
-    let mut prog = cpl_next_link::link(d, whole, deferred, funcs, tys, adds, &lent_slot);
+    let roots = cpl_next_link::Roots {
+        fns: funcs.keys().cloned().collect(),
+        globals: (0..tys.len()).map(cpl_next_ir::whole::GlobalId).collect(),
+    };
+    let answers = Answers {
+        whole,
+        deferred,
+        globals: tys,
+    };
+    let inputs = cpl_next_link::Inputs {
+        sigs: d,
+        fns: &*funcs,
+        sums: adds,
+        checked: &answers,
+    };
+    let mut prog = cpl_next_link::link(inputs, &roots, &lent_slot);
     if debug {
         let fast = callees(&prog.insts);
         prog.errors.extend(generic);
