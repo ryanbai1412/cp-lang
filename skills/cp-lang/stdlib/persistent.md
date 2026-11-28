@@ -61,7 +61,7 @@ Fields: `vals: List<T>`, `nodes: List<KthNode>`.
 - `fn kth(self, r: Range<D>, k: 0..) -> T` — \(O(\log n)\); The `k`-th smallest element (0-based) of `a` over `r`, counting repeats.; traps: when `k < 0` or `k >= r.len`, or `r` reaches outside `D`
 - `fn count_le(self, r: Range<D>, x: T) -> Int` — \(O(\log n)\); The number of elements of `a` over `r` that are at most `x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_lt(self, r: Range<D>, x: T) -> Int` — \(O(\log n)\); The number of elements of `a` over `r` that are less than `x`.; traps: when a non-empty `r` reaches outside `D`
-- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int` — \(O(\log n)\); The number of elements of `a` over `r` in `lo_v ..= hi_v` (both ends inclusive); 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
+- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int where T: Ord` — \(O(\log n)\); The number of elements of `a` over `r` in `lo_v ..= hi_v` (both ends inclusive); 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
 
 ## `struct PersistentLazySegTree<D, T, F>(act: Action<T, F>)`
 

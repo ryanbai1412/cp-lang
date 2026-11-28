@@ -54,7 +54,7 @@ Fields: `n: Len`, `mask: List<U64>`, `nb: Int`, `top: List<Int>`, `keys: Range<D
 
 ## Functions
 
-- `fn idempotent<T>(op: (T, T) -> T, xs: List<T>) -> Bool` — \(O(n)\) calls of `op`; Whether `op(x, x) == x` for every sample `x` in `xs`: the law a sparse table needs on top of associativity.; traps: never (`op` may trap)
+- `fn idempotent<T: Eq>(op: (T, T) -> T, xs: List<T>) -> Bool` — \(O(n)\) calls of `op`; Whether `op(x, x) == x` for every sample `x` in `xs`: the law a sparse table needs on top of associativity.; traps: never (`op` may trap)
 
 ## Example
 

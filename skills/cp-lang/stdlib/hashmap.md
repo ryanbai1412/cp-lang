@@ -38,15 +38,15 @@ Fields: `m: HashMap<K, V>`, `init: V`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of keys with a stored entry.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no keys are stored.
 - `fn get(self, k: K) -> V` — \(O(1)\) expected; Value stored for `k`, or `init` if absent (does not insert).
-- `fn set(mut self, k: K, v: V)` — \(O(1)\) expected amortized; Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`).
-- `fn add(mut self, k: K, delta: V)` — \(O(1)\) expected amortized; Add `delta` to `k`'s value, removing `k` if the result equals `init`.; traps: never (overflow wraps in release, traps in debug)
+- `fn set(mut self, k: K, v: V) where V: Eq` — \(O(1)\) expected amortized; Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`).
+- `fn add(mut self, k: K, delta: V) where V: Eq` — \(O(1)\) expected amortized; Add `delta` to `k`'s value, removing `k` if the result equals `init`.; traps: never (overflow wraps in release, traps in debug)
 - `fn remove(mut self, k: K) -> ?V` — \(O(1)\) expected; Remove `k` and return its previous value, or `None` if absent.
 - `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the table grows, \(O(1)\) otherwise; Reserve space for at least `cap` keys.
 - `fn clear(mut self)` — \(O(n)\); Remove all entries.
 - `fn take(mut self) -> Counter<K, V>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 - `fn absorb(mut self, mut other: Counter<K, V>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\) expected; Merge all entries from `other` into `self` by adding values (emptying `other`).; traps: never (overflow wraps in release, traps in debug)
 - `fn total(self) -> V` — \(O(n)\); Sum of all stored values.; traps: never (overflow wraps in release, traps in debug)
-- `fn most_common(self, k: Len) -> List<(K, V)>` — \(O(n \log n)\); Top `k` entries sorted by descending value.; traps: when `k < 0` or `k >= 2^31`
+- `fn most_common(self, k: Len) -> List<(K, V)> where K: Ord, V: Ord` — \(O(n \log n)\); Top `k` entries sorted by descending value.; traps: when `k < 0` or `k >= 2^31`
 - `@get fn items(self) -> yields (K, V)` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
 - `@get fn keys(self) -> yields K` — \(O(1)\) to make, \(O(1)\) per step; The keys, one per distinct element.
 - `@get fn values(self) -> yields V` — \(O(1)\) to make, \(O(1)\) per step; The counts, one per key.

@@ -8,8 +8,8 @@ Import: `use std.spec.{...}`.
 
 ## Functions
 
-- `fn decrease<T>(xs: List<T>) -> ?Int` — \(O(n)\); The first position whose element is below the one before it: `Some(i)` for the smallest `i >= 1` with `xs[i] < xs[i - 1]`, or `None` when `xs` never decreases.
-- `fn increase<T>(xs: List<T>) -> ?Int` — \(O(n)\); The first position whose element is above the one before it: `Some(i)` for the smallest `i >= 1` with `xs[i] > xs[i - 1]`, or `None` when `xs` never increases.
+- `fn decrease<T: Ord>(xs: List<T>) -> ?Int` — \(O(n)\); The first position whose element is below the one before it: `Some(i)` for the smallest `i >= 1` with `xs[i] < xs[i - 1]`, or `None` when `xs` never decreases.
+- `fn increase<T: Ord>(xs: List<T>) -> ?Int` — \(O(n)\); The first position whose element is above the one before it: `Some(i)` for the smallest `i >= 1` with `xs[i] > xs[i - 1]`, or `None` when `xs` never increases.
 - `fn convexity_break(xs: List<Int>) -> ?Int` — \(O(n)\); The first position where `xs` is not convex: `Some(i)` for the smallest `i` with `xs[i - 1] + xs[i + 1] < 2 * xs[i]`, or `None` when every second difference is at least 0.; traps: never (overflow wraps in release, traps in debug)
 - `fn concavity_break(xs: List<Int>) -> ?Int` — \(O(n)\); The first position where `xs` is not concave: `Some(i)` for the smallest `i` with `xs[i - 1] + xs[i + 1] > 2 * xs[i]`, or `None` when every second difference is at most 0.; traps: never (overflow wraps in release, traps in debug)
 - `fn unimodality_break(xs: List<Int>) -> ?Int` — \(O(n)\); The first position where `xs` stops having the shape `ternary_max` needs: strictly rising, then a plateau only at the maximum, then strictly falling.

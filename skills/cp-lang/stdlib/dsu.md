@@ -73,7 +73,7 @@ Fields: `g: Group<W>`, `up: [V]V`, `pot: [V]W`, `log: List<(V, Bool)>`.
 
 - `fn new<G>(op: G = (+)) -> PotentialDsu<V, W>` — \(O(n)\); three `[V]` arrays; A potential union-find over `V` with every position alone at the identity potential.
 - `fn find(self, v: V) -> (root: V, offset: W)` — \(O(\log n)\); The representative of `v`'s set and `val[v] - val[root]`.
-- `fn unite(mut self, a: V, b: V, diff: W) -> Bool` — \(O(\log n)\), plus one log entry when it merges or contradicts; Records `val[b] - val[a] == diff`.
+- `fn unite(mut self, a: V, b: V, diff: W) -> Bool where W: Eq` — \(O(\log n)\), plus one log entry when it merges or contradicts; Records `val[b] - val[a] == diff`.
 - `fn diff(self, a: V, b: V) -> ?W` — \(O(\log n)\); `val[b] - val[a]` when `a` and `b` are in the same set, else `None`.
 - `fn same(self, a: V, b: V) -> Bool` — \(O(\log n)\); Whether `a` and `b` are in the same set, so that their difference is known.
 - `fn size(self, v: V) -> Int` — \(O(\log n)\); The number of positions in `v`'s set, `v` included.

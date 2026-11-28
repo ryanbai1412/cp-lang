@@ -26,7 +26,7 @@ The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope of lines over
 
 \(O(1)\) per step; the next cut's optimum after \(O(1)\) amortized calls of `cost`.
 
-- `fn next(mut self) -> (val: K, prev: Int)` — \(O(1)\) amortized calls of `cost`; Reach the next node: return the optimum at node `len` and the index of the node before it, then grow `len` by one.; traps: when every node has been reached (`len == nodes.len`)
+- `fn next(mut self) -> (val: K, prev: Int) where K: Ord` — \(O(1)\) amortized calls of `cost`; Reach the next node: return the optimum at node `len` and the index of the node before it, then grow `len` by one.; traps: when every node has been reached (`len == nodes.len`)
 - `fn val(self, i: 0..) -> K` — \(O(1)\); The optimum at node `i`, which must already be reached; `val(0)` is 0.; traps: when `i < 0` or `i >= len`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Never: the first node is reached before any `next()`.
@@ -71,7 +71,7 @@ One state reached by `backtrack`.
 - `fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: Int)` — \(O(n)\) calls of `cost` (online LARSCH), \(O(n)\) memory, for n = `nodes.len`; The shortest path from `nodes.first` to `nodes.last` along increasing edges `nodes[j] -> nodes[i]`, `j < i`, of weight `cost(nodes[j], nodes[i])`: its total and its number of edges.; traps: when `nodes` is empty
 - `fn monge_paths<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: List<K>, prev: List<Int>)` — \(O(n)\) calls of `cost` (online LARSCH), \(O(n)\) memory, for n = `nodes.len`; Every shortest path from `nodes.first`: `val[i]` is the least total weight to `nodes[i]` and `prev[i]` the index before it on that path (`val[0] == 0`, `prev[0] == 0`).; traps: when `nodes` is empty
 - `fn smawk(rows: 0.., cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: Int)>` — \(O(\mathit{rows} + \mathit{cols})\) calls of `f`; For each row of the implicit `rows` x `cols` matrix `f`, the least `f(row, col)` and its leftmost `col`.; traps: when `rows < 0`, or `cols <= 0` with `rows > 0`
-- `fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int` — \(O(n \log n)\) time, \(O(n)\) memory, one `by` call per element; The length of the longest increasing subsequence ending at each position, compared by `by`; `strict: false` allows equal neighbours (non-decreasing).
+- `fn lis_ends<D, T, K: Ord>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int` — \(O(n \log n)\) time, \(O(n)\) memory, one `by` call per element; The length of the longest increasing subsequence ending at each position, compared by `by`; `strict: false` allows equal neighbours (non-decreasing).
 - `fn supermasks(m: Int, bits: 0..) -> yields Int` — \(O(2^(\mathit{bits} - \mathit{popcount}(m)))\); Every mask of `bits` bits containing `m`, increasing from `m` to `2^bits - 1`.; traps: when `bits < 0` or `m` is not in `0..2^bits`
 - `fn masks_of_size(bits: 0.., k: Int) -> yields Int` — \(O(C(\mathit{bits}, k))\); Every mask of `bits` bits with exactly `k` bits set, increasing (Gosper's hack).; traps: when `bits < 0` or `k < 0`
 - `fn subset_folds<T, M: FromOp<T>>(xs: List<T>, op: M) -> List<T>` — \(O(2^n)\) time and memory, one `op` call per non-empty mask, for n = `xs.len`; `out[mask]` is the fold under `op` of `xs[i]` for `i` in `mask`, in increasing `i`; `out[0]` is `op`'s identity (W10).

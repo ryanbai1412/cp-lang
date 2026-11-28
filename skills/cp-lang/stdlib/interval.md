@@ -13,11 +13,11 @@ A total partition of domain `D` into maximal contiguous half-open runs, each car
 Fields: `segs: Map<Int, (hi: Int, val: T)>`.
 
 - `fn new(init: T) -> IntervalMap<D, T>` — \(O(1)\); A map that gives every position of `D` the value `init`: one run, or None when `D` is empty.
-- `fn from(a: [D]T) -> IntervalMap<D, T>` — \(O(\lvert D \rvert)\); The map holding `a[i]` at every position `i`, stored as maximal runs of equal values.
+- `fn from(a: [D]T) -> IntervalMap<D, T> where T: Eq` — \(O(\lvert D \rvert)\); The map holding `a[i]` at every position `i`, stored as maximal runs of equal values.
 - `@get fn runs(self) -> Int` — \(O(1)\); The number of maximal runs, i.e.
 - `fn get(self, i: D) -> T` — \(O(\log \mathit{runs})\); The value at position `i`.; traps: when `i` is outside `D`
 - `fn run_at(self, i: D) -> (range: Range<D>, val: T)` — \(O(\log \mathit{runs})\); The maximal run containing position `i` and its value.; traps: when `i` is outside `D`
-- `fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())` — \(O((1 + \mathit{overwritten}) \log \mathit{runs})\) amortized; Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all runs stay maximal.; traps: when a non-empty `r` reaches outside `D`
+- `fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ()) where T: Eq` — \(O((1 + \mathit{overwritten}) \log \mathit{runs})\) amortized; Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all runs stay maximal.; traps: when a non-empty `r` reaches outside `D`
 - `fn assign_point(mut self, i: D, val: T) -> T` — \(O(\log \mathit{runs})\); Give position `i` the value `val` and return the value it had.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, val: T)` — \(O(\log \mathit{runs})\); Give position `i` the value `val`; `assign_point` without the old value, and the write-through place for `m[i] = val`.; traps: when `i` is outside `D`
 - `fn range(self, r: Range<D>) -> yields (range: Range<D>, val: T)` — \(O(\log \mathit{runs} + k)\) for `k` pieces; Every run overlapping `r`, clipped to `r`, with its value.; traps: when a non-empty `r` reaches outside `D`

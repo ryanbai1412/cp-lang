@@ -40,14 +40,14 @@ Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 
 Fields: `data: List<T>`, `size: Len`.
 
-- `fn new(a: [D]T) -> MergeSortTree<D, T>` — \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory; A static tree over `a` whose nodes hold their values sorted, for counting values in a range.
+- `fn new(a: [D]T) -> MergeSortTree<D, T> where T: Ord` — \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory; A static tree over `a` whose nodes hold their values sorted, for counting values in a range.
 - `fn count_lt(self, r: Range<D>, x: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value is `< x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_le(self, r: Range<D>, x: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value is `<= x`.; traps: when a non-empty `r` reaches outside `D`
-- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
+- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int where T: Ord` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_gt(self, r: Range<D>, x: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value is `> x`.; traps: when a non-empty `r` reaches outside `D`
 - `fn count_ge(self, r: Range<D>, x: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value is `>= x`.; traps: when a non-empty `r` reaches outside `D`
-- `fn first_ge(self, r: Range<D>, x: T) -> ?T` — \(O(\log^2 \lvert D \rvert)\); The smallest value in `r` that is `>= x`, or `None`.; traps: when a non-empty `r` reaches outside `D`
-- `fn last_le(self, r: Range<D>, x: T) -> ?T` — \(O(\log^2 \lvert D \rvert)\); The largest value in `r` that is `<= x`, or `None`.; traps: when a non-empty `r` reaches outside `D`
+- `fn first_ge(self, r: Range<D>, x: T) -> ?T where T: Ord` — \(O(\log^2 \lvert D \rvert)\); The smallest value in `r` that is `>= x`, or `None`.; traps: when a non-empty `r` reaches outside `D`
+- `fn last_le(self, r: Range<D>, x: T) -> ?T where T: Ord` — \(O(\log^2 \lvert D \rvert)\); The largest value in `r` that is `<= x`, or `None`.; traps: when a non-empty `r` reaches outside `D`
 
 ## `struct SegTree2D<R, C, T>(m: Monoid<T>)`
 
@@ -83,12 +83,12 @@ Fields: `bits: Int`, `n: Len`, `zs: List<Int>`, `words: List<U64>`, `before: Lis
 
 Fields: `n: Len`.
 
-- `fn new(a: [D]T, values: ?List<T> = None) -> DynamicOrderTree<D, T>` — \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) time and memory; with `values: vs`, \(O(\lvert vs \rvert \log \lvert vs \rvert + \lvert D \rvert \log \lvert D \rvert \log \lvert vs \rvert)\) time and \(O(\lvert vs \rvert + \lvert D \rvert \log \lvert vs \rvert)\) memory; A structure over `a` answering value counts and order statistics on ranges while positions are reassigned.; traps: with `values:`, when `a` holds a value not in it
+- `fn new(a: [D]T, values: ?List<T> = None) -> DynamicOrderTree<D, T> where T: Ord` — \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) time and memory; with `values: vs`, \(O(\lvert vs \rvert \log \lvert vs \rvert + \lvert D \rvert \log \lvert D \rvert \log \lvert vs \rvert)\) time and \(O(\lvert vs \rvert + \lvert D \rvert \log \lvert vs \rvert)\) memory; A structure over `a` answering value counts and order statistics on ranges while positions are reassigned.; traps: with `values:`, when `a` holds a value not in it
 - `fn set(mut self, i: D, x: T)` — \(O(\log^2 \lvert D \rvert)\); Make position `i` hold `x`.; traps: when `i` is outside `D`
 - `fn get(self, i: D) -> T` — \(O(1)\); The value at position `i`.; traps: when `i` is outside `D`
 - `fn count_lt(self, r: Range<D>, x: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value is `< x`.; traps: when a non-empty `r` reaches outside `D`
-- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
-- `fn kth(self, r: Range<D>, k: 0..) -> ?T` — \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`; with `values: vs`, \(O(\log \lvert D \rvert \log \lvert vs \rvert)\), one descent of the rank tree; The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
+- `fn count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int where T: Ord` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value lies in `lo_v..=hi_v`; 0 when `lo_v > hi_v`.; traps: when a non-empty `r` reaches outside `D`
+- `fn kth(self, r: Range<D>, k: 0..) -> ?T where T: Ord` — \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`; with `values: vs`, \(O(\log \lvert D \rvert \log \lvert vs \rvert)\), one descent of the rank tree; The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
 
 ## `struct MergeSeg<D>`
 
