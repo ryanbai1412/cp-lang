@@ -305,10 +305,15 @@ def run_slices(names, reds_base=None):
     return run.returncode
 
 
+WRONG_ACCEPT_INPUTS = ("std/", "crates/cpl-next", "crates/cpl-syntax/", "crates/cpl-prim/", "crates/cpl-diag/",
+                       "crates/cpl-config/", "crates/cpl-json/", "crates/cpl-contract/", "spec/conformance/core-05/",
+                       "spec/conformance/core-06/", "spec/conformance/std-seq/")
+
+
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
-           "check_files": [], "audit": False, "idioms_catalog": False, "spec_traits": False, "dreams": False, "slices": [], "steps": []}
+           "check_files": [], "audit": False, "idioms_catalog": False, "spec_traits": False, "dreams": False, "wrong_accepts": False, "slices": [], "steps": []}
     packages, tests, data, steps = set(), set(), [], set()
     step_scripts = ci.step_scripts()
     for path in paths:
@@ -321,6 +326,9 @@ def select(paths, dirs):
         # An E05xx rename or a std change lands with every dream's migration.
         if path.startswith(("std/", "crates/cpl-check/")):
             sel["dreams"] = True
+        # What cpl-next's verdicts read: its crates and the ones they use, std, the guarded suites.
+        if path.startswith(WRONG_ACCEPT_INPUTS):
+            sel["wrong_accepts"] = True
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
         if path.endswith(".rs"):
             sel["rust_files"].append(path)
@@ -523,6 +531,7 @@ def main(argv):
     print(f"idioms_catalog={int(sel['idioms_catalog'])}")
     print(f"spec_traits={int(sel['spec_traits'])}")
     print(f"dreams={int(sel['dreams'])}")
+    print(f"wrong_accepts={int(sel['wrong_accepts'])}")
     print("slices=" + " ".join(sel["slices"]))
     print("steps=" + " ".join(sel["steps"]))
     print("slice_filter=" + slice_filter(sel["slices"]))

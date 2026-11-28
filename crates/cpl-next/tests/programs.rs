@@ -25,11 +25,16 @@ mod parallel;
 use cpl_conform::conformance::{
     discover, header_input, header_values, parse_header, unquote, Expect,
 };
+use cpl_next::facade::{Session, Snapshot, Verdict, World};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
+
+// The allocator cpl-next ships with: the in-process checks run on it as the binaries do.
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 const LIMIT: Duration = Duration::from_secs(10);
 const CXX_FLAGS: [&str; 8] = [
@@ -784,6 +789,74 @@ fn list(path: &Path) -> BTreeMap<String, String> {
         );
     }
     cases
+}
+
+/// The suites whose rejections the commit tier guards: their borrow, escape and sequence
+/// errors are the ones a checker change most often stops reporting (12be3511f took
+/// next_wrong_accepts from 20 to 62 with no commit-tier test failing).
+const GUARDED_SUITES: [&str; 3] = ["core-05/", "core-06/", "std-seq/"];
+
+/// The commit tier's wrong-accept guard: every `// expect: E…` case of [`GUARDED_SUITES`] that
+/// passing.txt lists is checked by cpl-next's checker alone, nothing run, and none may be accepted. A
+/// wrong error is the full run's to judge, as is a case the lists already hold as wrong.
+#[test]
+fn guarded_rejections_stay_rejected() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let passing = list(&here.join("tests/passing.txt"));
+    let cases: Vec<(String, PathBuf)> = all_cases()
+        .into_iter()
+        .filter(|(id, _)| GUARDED_SUITES.iter().any(|s| id.starts_with(s)))
+        .filter(|(id, _)| passing.contains_key(id))
+        .filter(|(_, path)| {
+            let text = std::fs::read_to_string(path).unwrap_or_default();
+            matches!(parse_header(&text), Ok(Expect::Diag { code, .. }) if !code.starts_with('L'))
+                && header_values(&text, "tool:").is_empty()
+        })
+        .collect();
+    assert!(!cases.is_empty(), "no guarded rejection was found");
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get().min(8));
+    let std = std::sync::Arc::new(cpl_next::Std::read());
+    let snapshot = (cases.iter()).fold(
+        Snapshot::new(World::Disk).with_std_lib(std),
+        |s, (_, path)| {
+            let text = std::fs::read_to_string(path).expect("the case is read");
+            s.with_file(path.to_string_lossy(), text)
+        },
+    );
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let accepted = std::sync::Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            let (cases, snapshot, next, accepted) = (&cases, &snapshot, &next, &accepted);
+            // A session per thread over every case: std is checked once a thread, and a case's
+            // verdict reads only its own file and std.
+            let ours = move || {
+                let session = Session::open(snapshot.clone());
+                loop {
+                    let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some((id, path)) = cases.get(i) else {
+                        break;
+                    };
+                    if session.verdict(&path.to_string_lossy()) == Verdict::Accepted {
+                        accepted.lock().unwrap().push(id.clone());
+                    }
+                }
+            };
+            std::thread::Builder::new()
+                .stack_size(1 << 30)
+                .spawn_scoped(scope, ours)
+                .expect("a checker thread starts");
+        }
+    });
+    let mut accepted = accepted.into_inner().unwrap();
+    accepted.sort();
+    assert!(
+        accepted.is_empty(),
+        "cpl-next now accepts {} case(s) that expect an error, of {} guarded: {}",
+        accepted.len(),
+        cases.len(),
+        accepted.join(", ")
+    );
 }
 
 /// A kept build or run is never returned for other bytes: changed C++ is built again, a

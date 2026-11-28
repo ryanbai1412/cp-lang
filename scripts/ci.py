@@ -753,6 +753,13 @@ class Tail:
             if self.call([sys.executable, "scripts/spec-gate.py", "traits"]):
                 raise Failed("a std impl's trait method has no spec/conformance/traits.toml case; write the case it names"
                              " (or regenerate: scripts/spec-gate.py traits --write)")
+        if sel.get("wrong_accepts") == "1" and self.wants("wrong_accepts"):
+            # 12be3511f took next_wrong_accepts from 20 to 62 with every commit-tier test green.
+            self.step("no core-05/core-06/std-seq case passing.txt holds rejected is accepted (cpl-next checker only)")
+            test = "test(=guarded_rejections_stay_rejected)"
+            if self.call([*NEW_REDS, "cargo", "nextest", "run", "-p", "cpl-next", "--test", "programs", "-E", test]):
+                raise Failed("cpl-next now accepts a case that expects an error (named above); rerun: "
+                             f"cargo nextest run -p cpl-next --test programs -E '{test}'")
         if sel.get("dreams") == "1" and self.wants("dreams"):
             # A std/ or checker change (an E05xx rename) lands with every dream's migration;
             # one step per mode keeps each under the 20 s slice budget.
@@ -1220,7 +1227,7 @@ AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only h
 # The commit tier refuses only the reds a change brings: a test that fails at
 # the base too is main's, reported with its owner (scripts/new_reds.py).
 NEW_REDS = [sys.executable, str(ROOT / "scripts" / "new_reds.py"), "--"]
-COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits", "dreams",
+COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits", "wrong_accepts", "dreams",
                 "touched_steps", "script_tests", "site")
 
 
