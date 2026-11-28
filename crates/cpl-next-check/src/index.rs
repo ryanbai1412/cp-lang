@@ -16,7 +16,7 @@ impl Cx<'_> {
     pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
         let at = self.index_read();
         let rt = self.recv_ty(&s.ty);
-        let read = self.d.sym(&at).and_then(|sym| {
+        let read = self.syms.get(&at).and_then(|sym| {
             self.impls()
                 .impl_member_by(&rt, sym, |f| f.region.is_none())
         });
@@ -410,7 +410,8 @@ impl Cx<'_> {
         let rt = self.recv_ty(t);
         let d = &self.d;
         let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
-        let found = (self.d.sym(name)).and_then(|sym| self.impls().impl_member_by(&rt, sym, of_tr));
+        let found =
+            (self.syms.get(name)).and_then(|sym| self.impls().impl_member_by(&rt, sym, of_tr));
         match found {
             Some(decls::Member::Method(m, ts, ss)) => Some((m, ts, ss)),
             _ => None,
@@ -695,9 +696,9 @@ impl Cx<'_> {
         let probe = self.expr(&next::Expr::Index(ix.clone()), None);
         self.errors.truncate(seen);
         let rt = self.shallow(&probe.ty);
-        let writes = match self.member_named(&rt, self.d.sym(name.text())) {
+        let writes = match self.member_named(&rt, self.syms.get(name.text())) {
             Some(decls::Member::Method(m, ..)) => {
-                self.items.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
+                self.items.f(m).self_mode == SelfMode::Mut || self.facts.writes_cache(m)
             }
             _ => false,
         };

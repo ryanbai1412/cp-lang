@@ -74,7 +74,7 @@ impl Cx<'_> {
                 let at = decls::BodyScope {
                     tables: self.d,
                     names: self.d,
-                    syms: &self.d.syms,
+                    syms: self.syms,
                     m: self.b.module,
                     generics: &self.b.generics,
                     doms: &self.b.doms,
@@ -354,7 +354,7 @@ impl Cx<'_> {
                 let names = (fs.iter())
                     .map(|f| f.name().map(|n| n.text().to_string()))
                     .collect::<Option<Vec<String>>>()?;
-                let fields = names.iter().map(|n| self.d.sym(n));
+                let fields = names.iter().map(|n| self.syms.get(n));
                 let record = self.d.record(&fields.collect::<Option<Vec<_>>>()?)?;
                 let parts = (fs.iter().zip(&names))
                     .map(|(f, n)| match f.value() {
@@ -394,7 +394,7 @@ impl Cx<'_> {
         if self.lookup(n.text()).is_some() {
             return None;
         }
-        let d = self.d.struct_named(self.b.module, n.text())?;
+        let d = self.struct_named(self.b.module, n.text())?;
         let written: Vec<next::GenericArg> = args.map(|g| g.args().collect()).unwrap_or_default();
         let mut a = Vec::new();
         for t in written {
@@ -413,7 +413,7 @@ impl Cx<'_> {
     }
     /// `D.m`: the `@member(m)` struct at `D` (R06).
     fn member_type(&self, d: &Ty, m: &str) -> Option<Ty> {
-        let &id = self.d.member_types.get(&self.d.sym(m)?)?;
+        let &id = self.d.member_types.get(&self.syms.get(m)?)?;
         (self.items.s(id).n_sets == 0).then(|| Ty::Struct(id, vec![d.clone()], Vec::new()))
     }
     /// `D(x)`: the position of `x`, checked; a library domain (`Cell((0, 2))` of a product)
@@ -454,12 +454,12 @@ impl Cx<'_> {
             return Some(t.clone());
         }
         // `type Cell = (Row, Col)` names the product domain too (R04.2.10).
-        if let Some(decls::Named::Alias(id)) = self.d.named(self.b.module, n) {
+        if let Some(decls::Named::Alias(id)) = self.named(self.b.module, n) {
             let scoped = |n| self.owned_named(n);
             let at = decls::BodyScope {
                 tables: self.d,
                 names: self.d,
-                syms: &self.d.syms,
+                syms: self.syms,
                 m: self.b.module,
                 generics: &self.b.generics,
                 doms: &self.b.doms,
@@ -469,7 +469,7 @@ impl Cx<'_> {
             return Some(t).filter(|t| self.is_domain(t));
         }
         // So does a struct that is a domain by its impl: a payload-free enum (R04.2.22).
-        if let Some(decls::Named::Struct(s)) = self.d.named(self.b.module, n) {
+        if let Some(decls::Named::Struct(s)) = self.named(self.b.module, n) {
             let t = Ty::Struct(s, Vec::new(), Vec::new());
             if self.items.s(s).generics.is_empty() && self.is_domain(&t) {
                 return Some(t);
@@ -973,7 +973,7 @@ impl Cx<'_> {
             .push((d.clone(), r.clone(), span, Origin::Bound));
         let name = Called {
             text: &n,
-            sym: self.d.sym(&n),
+            sym: self.syms.get(&n),
             span,
         };
         self.static_call(d, r, m, name, None, span)

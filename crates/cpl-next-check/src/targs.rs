@@ -29,12 +29,12 @@ impl Cx<'_> {
         };
         let n = n.as_str();
         let fd = (self.lookup(n).is_none())
-            .then(|| self.d.fn_named(self.b.module, n))
+            .then(|| self.fn_named(self.b.module, n))
             .flatten();
         let Some(d) = fd.filter(|d| !self.items.f(*d).generics.is_empty()) else {
             if fd.is_none()
                 && self.lookup(n).is_none()
-                && self.d.struct_named(self.b.module, n).is_some()
+                && self.struct_named(self.b.module, n).is_some()
             {
                 // `Pair<V>` named as a value, as `for p in Pair<V>`: the domain of its
                 // positions, as a domain's name alone is (R04.2.27).

@@ -544,7 +544,7 @@ impl<'a> Cx<'a> {
         let Some(Ty::Fn(ps, ..)) = want.map(|w| self.shallow(w)) else {
             return None;
         };
-        let f = (self.d.fn_named(self.b.module, n)).filter(|_| self.lookup(n).is_none())?;
+        let f = (self.fn_named(self.b.module, n)).filter(|_| self.lookup(n).is_none())?;
         let fd = self.items.f(f);
         if fd.params.len() <= ps.len() || fd.params[ps.len()..].iter().any(|p| p.default.is_none())
         {

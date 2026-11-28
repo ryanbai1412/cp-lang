@@ -992,7 +992,7 @@ impl<'a> Cx<'a> {
                 let text = self.items.f(m).name.clone();
                 let name = Called {
                     text: &text,
-                    sym: self.d.sym(&text),
+                    sym: self.syms.get(&text),
                     span,
                 };
                 let Some(end) = self.domain_fn_of((**d).clone(), m, name, None, span) else {

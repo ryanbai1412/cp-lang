@@ -62,7 +62,7 @@ impl<'a> Cx<'a> {
         if rt == Ty::Error {
             return Self::error_node(span);
         }
-        let found = self.member_named(&rt, self.d.sym(name));
+        let found = self.member_named(&rt, self.syms.get(name));
         let at = self.b.module;
         let hidden = found
             .as_ref()
@@ -129,7 +129,7 @@ impl<'a> Cx<'a> {
             .collect();
         let recv = if mutates || fd.self_mode == SelfMode::Mut {
             self.mut_recv(recv, span)
-        } else if self.d.writes_cache(m) {
+        } else if self.facts.writes_cache(m) {
             TArg::Mut(recv)
         } else {
             TArg::Value(recv)
@@ -199,7 +199,7 @@ impl<'a> Cx<'a> {
         call: Option<&[CallArg]>,
     ) -> Option<String> {
         let args = call?;
-        let Some(decls::Named::Fn(f)) = self.d.named(self.b.module, name.text) else {
+        let Some(decls::Named::Fn(f)) = self.named(self.b.module, name.text) else {
             return None;
         };
         if self.items.f(f).self_ty.is_some() {
@@ -225,7 +225,7 @@ impl<'a> Cx<'a> {
         let m = &name.text;
         let f = self.d.renamed(m).into_iter().find_map(|id| {
             let f = self.items.f(id);
-            (self.member_named(rt, self.d.sym(&f.name)).is_some() || self.d.self_fits(id, rt))
+            (self.member_named(rt, self.syms.get(&f.name)).is_some() || self.d.self_fits(id, rt))
                 .then_some(f)
         })?;
         let now = &f.name;
@@ -247,7 +247,7 @@ impl<'a> Cx<'a> {
             return;
         };
         let m = &name.text;
-        let mine = match self.d.named(self.b.module, m) {
+        let mine = match self.named(self.b.module, m) {
             Some(decls::Named::Fn(f)) => {
                 let fd = self.items.f(f);
                 fd.module == self.b.module
@@ -385,7 +385,7 @@ impl<'a> Cx<'a> {
         if first.label.is_some() || self.lookup(n).is_some() {
             return None;
         }
-        let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, n) else {
+        let Some(decls::Named::Trait(tr)) = self.named(self.b.module, n) else {
             return None;
         };
         let recv = self.arg_expr(first, None);
@@ -463,13 +463,13 @@ impl<'a> Cx<'a> {
         };
         if self.lookup(n).is_some()
             || !matches!(
-                self.d.named(self.b.module, n),
+                self.named(self.b.module, n),
                 None | Some(decls::Named::Alias(_))
             )
         {
             return None;
         }
-        let t = match self.d.named(self.b.module, n) {
+        let t = match self.named(self.b.module, n) {
             _ if (self.b.syms.of(self.syms, n)).is_some_and(|g| self.b.generics.contains(&g)) => {
                 return None
             }
@@ -596,10 +596,10 @@ impl<'a> Cx<'a> {
         let Some(n) = &bare_name(callee) else {
             return None;
         };
-        if self.lookup(n).is_some() || self.d.named(self.b.module, n).is_some() {
+        if self.lookup(n).is_some() || self.named(self.b.module, n).is_some() {
             return None;
         }
-        let sym = self.d.sym(n)?;
+        let sym = self.syms.get(n)?;
         let found = (cpl_next_decls::views::Names::names(self.d, self.b.module)
             .into_iter()
             .map(|(_, x)| x))
@@ -636,7 +636,7 @@ impl<'a> Cx<'a> {
             .push((t.clone(), r.clone(), span, Origin::Bound));
         let name = Called {
             text: n,
-            sym: self.d.sym(n),
+            sym: self.syms.get(n),
             span,
         };
         self.static_call(t, r, m, name, Some(args), span)
@@ -867,7 +867,7 @@ impl<'a> Cx<'a> {
         };
         let name = Called {
             text,
-            sym: self.d.sym(text),
+            sym: self.syms.get(text),
             span: name_at,
         };
         if let Some(e) = self.ctx_read(base, name, span) {
@@ -925,7 +925,7 @@ impl<'a> Cx<'a> {
         // `Enum.Variant(args)`, or `Enum.Variant` with no payload (R02.7.1).
         if let Some(n) = ty_name {
             if let (Some(e), true) = (
-                self.d.struct_named(self.b.module, n),
+                self.struct_named(self.b.module, n),
                 self.lookup(n).is_none(),
             ) {
                 if let Some(i) = self.d.variant(e, name.text) {
@@ -942,10 +942,12 @@ impl<'a> Cx<'a> {
         }
         let named = ty_name
             .filter(|n| self.lookup(n).is_none())
-            .and_then(|n| Some((n, self.d.struct_named(self.b.module, n)?)));
+            .and_then(|n| Some((n, self.struct_named(self.b.module, n)?)));
         // `Dir4.up`: a struct's const.
         if let (Some((_, d)), None) = (named, call) {
-            if let Some(&c) = (self.d.sym(name.text)).and_then(|n| self.items.s(d).consts.get(&n)) {
+            if let Some(&c) =
+                (self.syms.get(name.text)).and_then(|n| self.items.s(d).consts.get(&n))
+            {
                 self.no_targs(name, written_targs, span);
                 return self.const_read(c, span);
             }
@@ -1048,7 +1050,7 @@ impl<'a> Cx<'a> {
         // name; walked by a `for`, it names the yielding method.
         let walked = call.is_none() && self.b.allow_region;
         let getter = (call.is_none() && !walked)
-            .then(|| self.d.named(self.b.module, name.text))
+            .then(|| self.named(self.b.module, name.text))
             .flatten()
             .or_else(|| {
                 (call.is_none() && !walked)
@@ -1078,7 +1080,7 @@ impl<'a> Cx<'a> {
         // Members are found before extension fns: two impls that give `name` leave the call to
         // say which (R08.1.2, R08.1.4).
         if !matches!(rt, Ty::Param(_)) && self.member_named(&rt, name.sym).is_none() {
-            let choices = (self.d.sym(name.text)).map_or_else(Vec::new, |sym| {
+            let choices = (self.syms.get(name.text)).map_or_else(Vec::new, |sym| {
                 self.impls().impl_choices(&rt, sym, None, |_| true)
             });
             let mut trs: Vec<TraitId> = choices.iter().map(|c| c.0.tr).collect();
@@ -1117,8 +1119,7 @@ impl<'a> Cx<'a> {
                 _ => {}
             }
         }
-        if self.d.is_ambiguous(self.b.module, name.text)
-            && self.member_named(&rt, name.sym).is_none()
+        if self.is_ambiguous(self.b.module, name.text) && self.member_named(&rt, name.sym).is_none()
         {
             self.two_imports(name.text, name.span);
             return TExpr {
@@ -1132,7 +1133,7 @@ impl<'a> Cx<'a> {
             None => (self.d.shaped_member(&rt, name.text).map(decls::Named::Fn))
                 .or_else(|| {
                     // A free fn with no `self` in view does not hide the method a module declares.
-                    (self.d.named(self.b.module, name.text)).filter(
+                    (self.named(self.b.module, name.text)).filter(
                         |n| !matches!(n, decls::Named::Fn(f) if self.items.f(*f).self_ty.is_none()),
                     )
                 })
@@ -1292,7 +1293,7 @@ impl<'a> Cx<'a> {
                 (Clear::Bound(c), name)
             }
             None => {
-                let Some(decls::Named::Fn(w)) = self.d.named(self.b.module, f) else {
+                let Some(decls::Named::Fn(w)) = self.named(self.b.module, f) else {
                     return None;
                 };
                 let c = *self.d.memo_clears.get(&w)?;

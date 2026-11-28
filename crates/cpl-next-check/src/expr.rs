@@ -437,7 +437,7 @@ impl<'a> Cx<'a> {
         let Some(t) = n.ident() else { return false };
         let n = t.text();
         !self.hidden(n)
-            && (self.d.fn_named(self.b.module, n)).is_some_and(|d| self.d.roles.todo == Some(d))
+            && (self.fn_named(self.b.module, n)).is_some_and(|d| self.d.roles.todo == Some(d))
     }
     /// Whether bare name `n` is the empty optional: the word `None`, unless a binding or a const
     /// of that name is nearer, in [`Cx::name`]'s order.
@@ -450,7 +450,7 @@ impl<'a> Cx<'a> {
         self.lookup(n).is_some()
             || self.itself(n, Span::new(0, 0)).is_some()
             || self.self_field(n).is_some()
-            || matches!(self.d.named(self.b.module, n), Some(decls::Named::Const(_)))
+            || matches!(self.named(self.b.module, n), Some(decls::Named::Const(_)))
     }
     pub(super) fn name(&mut self, n: &str, span: Span) -> TExpr {
         if let Some(e) = self.itself(n, span) {
@@ -477,10 +477,10 @@ impl<'a> Cx<'a> {
                 };
             }
         }
-        if let Some(decls::Named::Const(c)) = self.d.named(self.b.module, n) {
+        if let Some(decls::Named::Const(c)) = self.named(self.b.module, n) {
             return self.const_read(c, span);
         }
-        if let Some(d) = self.d.fn_named(self.b.module, n) {
+        if let Some(d) = self.fn_named(self.b.module, n) {
             if self.d.roles.todo == Some(d) {
                 return todo_trap(span);
             }
@@ -504,7 +504,7 @@ impl<'a> Cx<'a> {
                 span,
             };
         }
-        if self.d.is_ambiguous(self.b.module, n) {
+        if self.is_ambiguous(self.b.module, n) {
             self.two_imports(n, span);
         } else if !self.b.refused_names.contains(n) {
             let mut msg = Msg::verdict(
@@ -537,7 +537,7 @@ impl<'a> Cx<'a> {
         let scoped = self.b.scopes.iter().flat_map(|s| s.iter()).filter(in_scope);
         let globals = (self.global_names.iter()).filter(|&(_, &g)| !self.globals[g].synthetic);
         let module = cpl_next_decls::views::Names::names(self.d, self.b.module);
-        let names = (module.iter().map(|(name, _)| self.d.syms.text(*name)))
+        let names = (module.iter().map(|(name, _)| self.syms.text(*name)))
             .chain(globals.map(|(name, _)| name.as_str()))
             .chain(scoped.map(|(name, _)| name.as_str()));
         cpl_diag::closest(n, names)
@@ -547,9 +547,7 @@ impl<'a> Cx<'a> {
     /// exports it as `pub`.
     fn import_fix(&self, n: &str, span: Span) -> Option<cpl_next_ir::msg::Fix> {
         let module = (self.d.module_names.iter().enumerate())
-            .find(|(i, m)| {
-                m.starts_with("std.") && self.d.export(ModId(*i), n).is_some_and(|e| e.1)
-            })
+            .find(|(i, m)| m.starts_with("std.") && self.export(ModId(*i), n).is_some_and(|e| e.1))
             .map(|(_, m)| m.as_str())?;
         let text = self.bodies.source(&self.b.item.at(span));
         let (point, edit) = cpl_diag::import_edit(&text.text, module.strip_prefix("std.")?, n);
@@ -1189,7 +1187,7 @@ impl<'a> Cx<'a> {
         self.lookup(n).is_none()
             && self.itself(n, Span::new(0, 0)).is_none()
             && self.self_field(n).is_none()
-            && self.d.named(self.b.module, n).is_some()
+            && self.named(self.b.module, n).is_some()
     }
 }
 
@@ -1264,6 +1262,22 @@ pub(super) fn none_word(tok: &cpl_next_syntax::SyntaxToken) -> bool {
 }
 
 impl Cx<'_> {
+    /// What module `m` names the source name `n`: the `Names` view, by its interned symbol.
+    pub(super) fn named(&self, m: ModId, n: &str) -> Option<Named> {
+        self.names.named(m, self.syms.get(n)?)
+    }
+    pub(super) fn fn_named(&self, m: ModId, n: &str) -> Option<FnId> {
+        self.names.fn_named(m, self.syms.get(n)?)
+    }
+    pub(super) fn struct_named(&self, m: ModId, n: &str) -> Option<StructId> {
+        self.names.struct_named(m, self.syms.get(n)?)
+    }
+    pub(super) fn is_ambiguous(&self, m: ModId, n: &str) -> bool {
+        (self.syms.get(n)).is_some_and(|s| self.names.is_ambiguous(m, s))
+    }
+    pub(super) fn export(&self, m: ModId, n: &str) -> Option<(Named, bool)> {
+        self.names.export(m, self.syms.get(n)?)
+    }
     /// `42`, `1e9`, `2.5`, `true`, `'a'`, or a string and its holes.
     pub(super) fn literal(&mut self, l: &next::Literal, _want: Option<&Ty>, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };

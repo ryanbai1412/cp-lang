@@ -87,7 +87,7 @@ impl Cx<'_> {
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
-        let Some(named) = self.d.named(self.b.module, n) else {
+        let Some(named) = self.named(self.b.module, n) else {
             self.err(
                 span,
                 Msg::internal(format!(
@@ -188,7 +188,7 @@ impl Cx<'_> {
             let at = decls::BodyScope {
                 tables: self.d,
                 names: self.d,
-                syms: &self.d.syms,
+                syms: self.syms,
                 m: self.b.module,
                 generics: &self.b.generics,
                 doms: &self.b.doms,
@@ -394,7 +394,7 @@ impl Cx<'_> {
                 );
             }
             self.mut_recv(recv, span)
-        } else if self.d.writes_cache(m) && place {
+        } else if self.facts.writes_cache(m) && place {
             TArg::Mut(recv)
         } else {
             TArg::Value(recv)
@@ -746,7 +746,7 @@ impl Cx<'_> {
         args.first().is_some_and(|a| {
             a.label.is_none() && matches!(a.written(), Some(next::Expr::Generator(_)))
         }) && matches!(
-            self.d.named(self.b.module, n),
+            self.named(self.b.module, n),
             Some(decls::Named::Fn(f)) if self.items.f(f).self_ty.is_none()
         )
     }
@@ -1146,13 +1146,13 @@ impl Cx<'_> {
     /// Whether `n` names the fn filling the `print` or `write` role here (R11.6.1).
     pub(super) fn names_io(&self, n: &str) -> bool {
         let r = &self.d.roles;
-        matches!(self.d.named(self.b.module, n), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
+        matches!(self.named(self.b.module, n), Some(Named::Fn(f)) if [r.print, r.write].contains(&Some(f)))
     }
     /// `print`'s `sep:` and `precision:` from the innermost `with io` where it is written, unless
     /// the call names them (R09.1.2, R10.3.4).
     pub(super) fn io_args(&self, args: &[CallArg]) -> Vec<CallArg> {
         let mut out = args.to_vec();
-        let Some(Named::Context(io)) = self.d.named(self.b.module, "io") else {
+        let Some(Named::Context(io)) = self.named(self.b.module, "io") else {
             return out;
         };
         for field in ["sep", "precision"] {
@@ -1209,7 +1209,7 @@ impl Cx<'_> {
         f(&decls::BodyScope {
             tables: self.d,
             names: self.d,
-            syms: &self.d.syms,
+            syms: self.syms,
             m: self.b.module,
             generics: &self.b.generics,
             doms: &self.b.doms,

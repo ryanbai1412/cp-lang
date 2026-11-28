@@ -459,7 +459,7 @@ impl Cx<'_> {
         }
         let t = match names {
             Some(names) => {
-                let fields = names.iter().map(|n| self.d.sym(n));
+                let fields = names.iter().map(|n| self.syms.get(n));
                 let record = self.d.record(&fields.collect::<Option<Vec<_>>>()?)?;
                 Ty::Struct(record, parts, Vec::new())
             }
@@ -596,7 +596,7 @@ impl Cx<'_> {
         decls::static_axis(
             self.d,
             self.d,
-            &self.d.syms,
+            self.syms,
             self.b.module,
             &self.b.generics,
             &self.b.doms,
