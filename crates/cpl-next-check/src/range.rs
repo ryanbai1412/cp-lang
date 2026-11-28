@@ -443,7 +443,7 @@ impl Cx<'_> {
     }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
-        let sym = self.sym_of(n);
+        let sym = self.b.syms.of(&self.d.syms, n);
         // A fn's own type parameter is nearer than any domain declared outside it.
         if let Some(p) = sym.and_then(|s| self.b.generics.iter().position(|g| *g == s)) {
             return Some(Ty::Param(p));

@@ -80,7 +80,7 @@ impl Cx<'_> {
                 self.show(&t)
             );
             self.err(def_at, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
-            let sym = self.sym(name);
+            let sym = self.b.syms.intern(&self.d.syms, name);
             // A top-level domain decls set aside is declared here, though it has no positions.
             if let Some(&Ty::Dom(i)) = self.b.doms.get(&sym) {
                 self.domains[i].name = name.to_string();
@@ -176,7 +176,7 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) -> usize {
         let info = self.domain_info(name, lo, end, within, span, out);
-        let sym = self.sym(name);
+        let sym = self.b.syms.intern(&self.d.syms, name);
         let i = match (self.b.decl, self.d.top_doms.get(&sym)) {
             (None, Some(&Ty::Dom(i))) if self.domains[i].name.is_empty() => {
                 self.domains[i] = info;
@@ -279,7 +279,7 @@ impl Cx<'_> {
                     let msg = "a product domain's parts are domains";
                     return self.err(at, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, msg));
                 };
-                let sym = self.sym(&name);
+                let sym = self.b.syms.intern(&self.d.syms, &name);
                 self.b.doms.insert(sym, p);
             }
             // `domain V = [n]` counts `0..n` (R04.2.29).
@@ -319,7 +319,7 @@ impl Cx<'_> {
     /// A domain form not built yet: `N` names nothing a later use can trip on.
     fn refuse_domain(&mut self, name: &str, span: Span, kind: String) {
         self.err(span, Unbuilt::DomainKind { kind });
-        let sym = self.sym(name);
+        let sym = self.b.syms.intern(&self.d.syms, name);
         self.b.doms.insert(sym, Ty::Error);
         self.b.refused_names.insert(name.to_string());
     }
@@ -357,7 +357,7 @@ impl Cx<'_> {
             span,
         };
         let first = read(0, fields.first().cloned().unwrap_or(Ty::Error));
-        match self.bind_fresh(self.sym(name), &first.ty, span, out) {
+        match self.bind_fresh(self.b.syms.intern(&self.d.syms, name), &first.ty, span, out) {
             Some((c, i)) => {
                 let t = crate::pattern::retag(&ty, c, i);
                 if let VarRef::Local(k) | VarRef::Global(k) = whole {
@@ -380,7 +380,11 @@ impl Cx<'_> {
             self.let_pattern(p, false, part, out);
             // `tree.Pre` is the domain the whole value owns as its `tree.Pre`.
             if let Some(n) = pattern_name(p) {
-                let (w, f, n) = (self.sym(&whole_name), self.sym(&field), self.sym(&n));
+                let (w, f, n) = (
+                    self.b.syms.intern(&self.d.syms, &whole_name),
+                    self.b.syms.intern(&self.d.syms, &field),
+                    self.b.syms.intern(&self.d.syms, &n),
+                );
                 self.hand_down(w, f, n);
             }
         }
