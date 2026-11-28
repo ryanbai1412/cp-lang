@@ -664,21 +664,28 @@ impl Decls {
     }
     /// The fn a bare operator names: its core `@operator` trait's fn of that many operands.
     pub fn operator_fn(&self, text: &str, binary: bool) -> Option<FnId> {
-        self.operator_traits(text).find_map(|tr| {
-            let (_, m) = self.operator_method(tr)?;
+        self.operator_fn_of(self.sym(text)?, binary)
+    }
+    pub(crate) fn operator_fn_of(&self, op: Sym, binary: bool) -> Option<FnId> {
+        self.operator_traits_of(op).find_map(|tr| {
+            let (_, m) = self.operator_method_of(tr)?;
             (self.f(m).params.len() == usize::from(binary)).then_some(m)
         })
     }
     /// The trait `@literal(op)` marks: `"[]"` a list literal builds through, `"[;]"` an array fill.
     pub fn literal_trait(&self, op: &str) -> Option<TraitId> {
-        let op = self.sym(op)?;
+        self.literal_trait_of(self.sym(op)?)
+    }
+    pub(crate) fn literal_trait_of(&self, op: Sym) -> Option<TraitId> {
         (self.literals.iter()).find_map(|(o, tr)| (*o == op).then_some(*tr))
     }
     /// The `@operator(text)` traits, in the order core declares them.
     pub fn operator_traits(&self, text: &str) -> impl Iterator<Item = TraitId> + '_ {
-        let op = self.sym(text);
+        (self.sym(text).into_iter()).flat_map(|op| self.operator_traits_of(op))
+    }
+    pub(crate) fn operator_traits_of(&self, op: Sym) -> impl Iterator<Item = TraitId> + '_ {
         (self.operators.iter())
-            .filter(move |(o, _)| Some(*o) == op)
+            .filter(move |(o, _)| *o == op)
             .map(|&(_, tr)| tr)
     }
     /// The `Domain` getter `m` a range type's end `D.m` names.
@@ -696,9 +703,12 @@ impl Decls {
     /// The fn an `@operator` trait's operator calls: its first declared, `lt` of `Ord`'s
     /// `lt` and `cmp` (R06.4.12).
     pub fn operator_method(&self, tr: TraitId) -> Option<(&str, FnId)> {
+        (self.operator_method_of(tr)).map(|(n, m)| (self.text(n), m))
+    }
+    pub(crate) fn operator_method_of(&self, tr: TraitId) -> Option<(Sym, FnId)> {
         (self.traits[tr.0].methods.iter())
             .min_by_key(|&(_, &m)| m)
-            .map(|(n, &m)| (self.text(*n), m))
+            .map(|(&n, &m)| (n, m))
     }
     /// Each binary operator's fn, for `type_of(+)`.
     /// `Domain`'s getters by name, which a range type's end `D.m` names.
@@ -727,19 +737,20 @@ impl Decls {
     /// The iteration role's walk (R11.6.1): the yielding method of the trait filling it that
     /// every impl writes, the one without a default body.
     pub fn iteration_walk(&self) -> Option<(&str, FnId)> {
-        let tr = &self.traits[self.roles.iteration?.0];
-        (tr.methods.iter())
-            .find(|(_, f)| self.f(**f).region.is_some() && self.f(**f).bodiless())
-            .map(|(n, f)| (self.text(*n), *f))
+        (self.walk_of(self.roles.iteration?, false)).map(|(n, f)| (self.text(n), f))
+    }
+    /// Trait `tr`'s yielding method every impl writes, or with `own` the one with a default
+    /// body that an impl may write its own of.
+    pub(crate) fn walk_of(&self, tr: TraitId, own: bool) -> Option<(Sym, FnId)> {
+        (self.traits[tr.0].methods.iter())
+            .find(|(_, f)| self.f(**f).region.is_some() && self.f(**f).bodiless() != own)
+            .map(|(&n, &f)| (n, f))
     }
 
     /// The iteration role's yielding method with a default body (`each`), which a type may
     /// write its own of; a type without one walks through `iteration_walk`.
     pub fn iteration_own_walk(&self) -> Option<(&str, FnId)> {
-        let tr = &self.traits[self.roles.iteration?.0];
-        (tr.methods.iter())
-            .find(|(_, f)| self.f(**f).region.is_some() && !self.f(**f).bodiless())
-            .map(|(n, f)| (self.text(*n), *f))
+        (self.walk_of(self.roles.iteration?, true)).map(|(n, f)| (self.text(n), f))
     }
     /// The id of a name some declaration gave, or `None` when none did.
     pub fn sym(&self, text: &str) -> Option<Sym> {

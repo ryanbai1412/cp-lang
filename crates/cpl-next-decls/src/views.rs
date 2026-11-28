@@ -4,14 +4,15 @@
 //! test can with a map. A layer fn whose step is done takes these, never `&Decls` or a map of
 //! every fn.
 use crate::decls::{
-    AliasDecl, AliasId, ConstId, Decls, FnDecl, ImplDecl, Impls, LibConst, ModId, Named, Roles,
-    StructDecl, Sugar, TraitDecl,
+    AliasDecl, AliasId, ConstId, Decls, FnDecl, ImplDecl, Impls, LibConst, ModId, Named, Role,
+    Roles, StructDecl, Sugar, TraitDecl,
 };
 use crate::sym::Sym;
 use cpl_next_ir::ir::{Func, FuncKey};
 use cpl_next_ir::msg::{Deferred, Msg};
 use cpl_next_ir::ty::{FnId, FnRef, SetAdds, SetTy, StructId, TraitId, Ty};
 use cpl_next_ir::whole::{Dom, DomId, Global, GlobalId, Whole};
+use cpl_next_syntax::grammar::Decorator;
 use std::collections::HashMap;
 
 /// The part of the signatures a written type is converted against, each table read by key.
@@ -34,6 +35,35 @@ pub trait TypeTables: Texts + Shapes {
     fn getter(&self, m: &str) -> Option<FnId>;
     fn sugar(&self) -> Sugar;
     fn roles(&self) -> &Roles;
+}
+
+/// The declarations filling the language roles (R11.6.1) and the rows `@operator`, `@literal`
+/// and the fn marks add, each read by key.
+pub trait RoleRows {
+    /// The struct filling role `r`: `Optional`, `List`, the `@role(cuts)` struct.
+    fn role_struct(&self, r: Role) -> Option<StructId>;
+    /// The trait filling role `r`: iteration, positions, order, convert.
+    fn role_trait(&self, r: Role) -> Option<TraitId>;
+    /// The fn filling role `r`: `print`, `todo`, the string literal's builder.
+    fn role_fn(&self, r: Role) -> Option<FnId>;
+    /// The fns filling a role many fns fill: `@role(trace)`'s.
+    fn role_fns(&self, r: Role) -> &[FnId];
+    /// The fns marked `@d`: `@input`, `@index`, `@pattern`, `@from_op` or `@coerce`.
+    fn marked_fns(&self, d: Decorator) -> &[FnId];
+    /// Binary operator `op`'s fn, its `@operator` trait's fn of two operands.
+    fn binary_operator(&self, op: Sym) -> Option<FnId>;
+    /// Unary operator `op`'s fn, its `@operator` trait's fn of one operand.
+    fn unary_operator(&self, op: Sym) -> Option<FnId>;
+    /// The `@operator(op)` traits, in the order core declares them.
+    fn operator_traits(&self, op: Sym) -> Vec<TraitId>;
+    /// The fn an `@operator` trait's operator calls: its first declared (R06.4.12).
+    fn operator_method(&self, tr: TraitId) -> Option<(Sym, FnId)>;
+    /// The trait `@literal(op)` marks: `[]` a list literal builds through, `[;]` an array fill.
+    fn literal_trait(&self, op: Sym) -> Option<TraitId>;
+    /// Trait `tr`'s yielding method every impl writes: the iteration role's walk.
+    fn walk(&self, tr: TraitId) -> Option<(Sym, FnId)>;
+    /// Trait `tr`'s yielding method with a default body (`each`), which an impl may write.
+    fn own_walk(&self, tr: TraitId) -> Option<(Sym, FnId)>;
 }
 
 /// The shapes of the structs, each read by key: a struct's sets, defaults, fields and variants,
@@ -355,6 +385,84 @@ impl TypeTables for Decls {
     }
     fn roles(&self) -> &Roles {
         &self.roles
+    }
+}
+
+impl RoleRows for Decls {
+    fn role_struct(&self, r: Role) -> Option<StructId> {
+        match r {
+            Role::Option => self.roles.option,
+            Role::Recipe => self.roles.recipe,
+            Role::Cuts => self.roles.cut,
+            Role::Pack => self.roles.pack,
+            Role::List => self.sugar.list,
+            Role::Str => self.sugar.str,
+            Role::Map => self.sugar.map,
+            Role::Array => self.sugar.array,
+            _ => None,
+        }
+    }
+    fn role_trait(&self, r: Role) -> Option<TraitId> {
+        match r {
+            Role::Iteration => self.roles.iteration,
+            Role::Positions => self.roles.domain,
+            Role::Order => self.roles.order,
+            Role::Convert => self.roles.convert,
+            Role::Counted => self.roles.counted,
+            Role::RangeBounds => self.roles.bounds,
+            Role::Endpoint => self.roles.endpoint,
+            Role::DeriveFields => self.roles.derive_fields,
+            _ => None,
+        }
+    }
+    fn role_fn(&self, r: Role) -> Option<FnId> {
+        match r {
+            Role::Print => self.roles.print,
+            Role::Write => self.roles.write,
+            Role::Todo => self.roles.todo,
+            Role::Interpolation => self.roles.interpolate,
+            Role::VariantCheck => self.roles.variant_check,
+            Role::StrLiteral => self.sugar.str_literal,
+            Role::RangeLiteral => self.sugar.range_literal,
+            _ => None,
+        }
+    }
+    fn role_fns(&self, r: Role) -> &[FnId] {
+        match r {
+            Role::Trace => &self.roles.trace,
+            _ => &[],
+        }
+    }
+    fn marked_fns(&self, d: Decorator) -> &[FnId] {
+        match d {
+            Decorator::Input => &self.input_fns,
+            Decorator::Index => &self.index_fns,
+            Decorator::Pattern => &self.pattern_fns,
+            Decorator::FromOp => &self.from_op,
+            Decorator::Coerce => &self.coercions,
+            _ => &[],
+        }
+    }
+    fn binary_operator(&self, op: Sym) -> Option<FnId> {
+        self.operator_fn_of(op, true)
+    }
+    fn unary_operator(&self, op: Sym) -> Option<FnId> {
+        self.operator_fn_of(op, false)
+    }
+    fn operator_traits(&self, op: Sym) -> Vec<TraitId> {
+        self.operator_traits_of(op).collect()
+    }
+    fn operator_method(&self, tr: TraitId) -> Option<(Sym, FnId)> {
+        self.operator_method_of(tr)
+    }
+    fn literal_trait(&self, op: Sym) -> Option<TraitId> {
+        self.literal_trait_of(op)
+    }
+    fn walk(&self, tr: TraitId) -> Option<(Sym, FnId)> {
+        self.walk_of(tr, false)
+    }
+    fn own_walk(&self, tr: TraitId) -> Option<(Sym, FnId)> {
+        self.walk_of(tr, true)
     }
 }
 
