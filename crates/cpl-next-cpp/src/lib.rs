@@ -75,10 +75,10 @@ static void cpl_segv(int) {
     cpl_tflush();
     _exit(3);
 }
-static void cpl_guard_stack() {
 #ifdef __SANITIZE_ADDRESS__
-    return; // the sanitizer owns the signal stack
+extern "C" const char* __asan_default_options() { return "handle_segv=0:handle_sigbus=0"; }
 #endif
+static void cpl_guard_stack() {
     stack_t ss; ss.ss_sp = cpl_altstack; ss.ss_size = sizeof cpl_altstack; ss.ss_flags = 0;
     sigaltstack(&ss, nullptr);
     struct sigaction sa; memset(&sa, 0, sizeof sa); sa.sa_handler = cpl_segv; sa.sa_flags = SA_ONSTACK;
