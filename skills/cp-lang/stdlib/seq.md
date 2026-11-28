@@ -227,7 +227,7 @@ Fields: `k: Int,`.
 
 ## Functions
 
-- `fn prod<S: Seq<T>, T>(self: S) -> T` — \(O(n)\); Product of all elements of `self` (`T.one` when empty).; traps: never (overflow wraps in release, traps in debug)
+- `fn prod<S: Seq<T>, T>(self: S) -> T where T: One` — \(O(n)\); Product of all elements of `self` (`T.one` when empty).; traps: never (overflow wraps in release, traps in debug)
 - `fn sum<S: Seq<T>, T, U: Zero + Add>(self: S, of: T -> U = x => x) -> U` — \(O(n)\); Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each element first (`xs.sum(of: x => x * x)`).; traps: never (overflow wraps in release, traps in debug)
 - `fn mean<S: Seq<T>, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64` — \(O(n)\); The average of `of` over the elements as `F64`; `None` when empty.
 - `fn min<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T` — \(O(n)\); The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.

@@ -94,7 +94,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); `(g, x, y)` with `a * x + b * y == g == gcd(a, b)`.; traps: when `g` is `2^63`
 - `fn ceil_div(self: Int, b: Int) -> Int` — \(O(1)\); `ceil(self / b)` for any non-zero `b`; `n.ceil_div(k)` or `ceil_div(n, k)`.; traps: when `b == 0`, or on overflow (`ceil_div(Int.MIN, -1)`)
 - `fn divmod(self: Int, d: Int) -> (Int, Int)` — \(O(1)\); The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < \|d\|` and `self == q * d + r`.; traps: when `d == 0`, or on overflow (`Int.MIN.divmod(-1)`)
-- `fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T>` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
+- `fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T> where T: One` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
 - `fn popcount<W: Word>(x: W) -> Int` — \(O(1)\); The number of 1 bits in `x`'s 64-bit word, one `popcnt`: a negative `Int` counts its two's complement.
 - `fn ctz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits below the lowest 1 bit of `x`'s 64-bit word; `ctz(0) == 64`.
 - `fn clz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits above the highest 1 bit of `x`'s 64-bit word; `clz(0) == 64`.

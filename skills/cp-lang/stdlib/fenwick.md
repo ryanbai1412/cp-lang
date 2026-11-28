@@ -67,9 +67,9 @@ Point xor and range xor: `XorFenwick<D, T>()` starts at zero and `XorFenwick<D, 
 
 Fields: `t: List<T>`.
 
-- `fn new(a: ?[D]T = None) -> XorFenwick<D, T>` — \(O(\lvert D \rvert)\) time; memory |D| + 1 values; A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
+- `fn new(a: ?[D]T = None) -> XorFenwick<D, T> where T: Zero` — \(O(\lvert D \rvert)\) time; memory |D| + 1 values; A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
 - `fn add(mut self, i: D, x: T)` — \(O(\log \lvert D \rvert)\); Xor `x` into the value at position `i`: `a[i] ^= x`.; traps: when `i` is outside `D`
-- `fn prefix(self, b: Cut<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor of every position left of the cut `b`.; traps: never (`b` is a cut of `D` by type)
+- `fn prefix(self, b: Cut<D>) -> T where T: Zero` — \(O(\log \lvert D \rvert)\); The xor of every position left of the cut `b`.; traps: never (`b` is a cut of `D` by type)
 - `fn xor(self, r: Range<D>) -> T` — \(O(\log \lvert D \rvert)\); The xor over the positions of `r`.; traps: when a non-empty `r` reaches outside `D`
 
 ## `struct SparseFenwick2D<T: Add + Sub>`
