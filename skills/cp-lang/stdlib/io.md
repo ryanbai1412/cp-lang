@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Wire`, `flush`, `io`, `read_all`, `yes`.
 
 Interactive mode.
 
-- `fn new() -> Wire` — \(O(1)\); A handle that puts the program in interactive mode (spec/core/10-io.md §10.4).
+- `fn new() -> Wire` — \(O(1)\); The handle for an interactive judge: `ask` prints a query, flushes and reads the answer (spec/core/10-io.md §10.4).
 - `fn ask<T: Read>(self, query: Str) -> T` — \(O(\lvert \mathit{query} \rvert)\) plus the read of one `T`; Print `query` and a newline, flush, then read one answer as the `T` the call site expects.; traps: when input ends before an answer, or the answer is not a valid `T`
 
 ## Functions
