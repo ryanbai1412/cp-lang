@@ -1172,6 +1172,7 @@ core-10/show-impl-enum.cp
 core-10/show-impl-struct.cp
 core-10/spec-block-multitest-sieve.cp
 core-10/test-position-kept-below-multitest.cp
+core-10/test-position-stored-above-multitest.cp
 core-10/token-read-skips-blank-lines.cp
 core-10/top-level-return.cp
 core-10/tuple-dependent-bound-in-block.cp

@@ -22,6 +22,7 @@ use std::collections::HashSet;
 
 mod assign;
 mod call;
+mod cases;
 mod domain;
 mod expr;
 mod free;
@@ -871,6 +872,8 @@ pub fn check(
     }
     // A bare `with` line comes before the program's first statement (R09.1.1).
     let mut begun = false;
+    // The domains declared from here on are a test case's own.
+    let mut case_doms = 0;
     // Statements a `let p = mut a[i]` above holds ran inside its lend.
     let mut placed = 0;
     for (k, ((off, s), hoisted)) in main.iter().zip(&lifted).enumerate() {
@@ -883,6 +886,7 @@ pub fn check(
         // `@!multitest`: the count is read once and everything below runs once per case.
         let counted = s.directive().filter(multitest);
         if let (None, Some(m)) = (&cases, &counted) {
+            case_doms = cx.b.block_doms.len();
             main_out.push(TStmt::Item(off.clone()));
             let reads = case_count(m).unwrap_or_else(|| {
                 cx.err(span, Unbuilt::MultitestArg);
@@ -960,6 +964,39 @@ pub fn check(
     }
     cx.solve(true);
     if let Some((count, body)) = cases {
+        let doms: Vec<(usize, String)> = (cx.b.block_doms[case_doms..].iter())
+            .map(|&k| (k, cx.domains[k].name.clone()))
+            .collect();
+        let above: Vec<(VarRef, String, Ty)> = (main_out.iter())
+            .filter_map(|s| match s {
+                TStmt::Let(VarRef::Global(g), _) => Some(*g),
+                _ => None,
+            })
+            .map(|g| {
+                (
+                    VarRef::Global(g),
+                    cx.globals[g].name.clone(),
+                    cx.zonk(&cx.globals[g].ty),
+                )
+            })
+            .collect();
+        for leak in cases::per_test_leaks(&above, &doms, &body) {
+            let cases::Leak {
+                item,
+                span,
+                name,
+                dom,
+            } = leak;
+            let text = format!(
+                "`{name}` is declared above `@!multitest`, so a `{dom}` stored in it would outlive its test case"
+            );
+            let msg = Msg::verdict(cpl_diag::codes::FRESH_TYPE_LEAKS_TEST, text);
+            let help =
+                format!("declare `{name}` below `@!multitest`, so each test case has its own");
+            let outer = std::mem::replace(&mut cx.b.item, item);
+            cx.err_help(span, msg, Some(help));
+            cx.b.item = outer;
+        }
         main_out.push(TStmt::Cases(count, body));
     }
     cx.own_global_sets();
