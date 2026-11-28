@@ -96,7 +96,9 @@ impl Program {
     pub fn stores(&self, t: &CTy) -> bool {
         self.holds(t) == Holds::Storage
     }
-    /// R1: whether a value of type `t` is plain.
+    /// R1: whether a value of type `t` is plain: it holds neither storage nor an address, so
+    /// using it lends nothing. A view, or a closure over a heap local, is copied but lends its
+    /// source (R05.10.1-2), so ownership asks this, not `copied`, for what a value borrows.
     pub fn plain(&self, t: &CTy) -> bool {
         self.holds(t) == Holds::Nothing
     }
@@ -219,5 +221,18 @@ mod tests {
         let one = CTy::Fn(vec![], Box::new(CTy::Int), vec![ints]);
         assert!(plain(&parts, &caps, &one) && !stores(&parts, &caps, &one));
         assert_eq!(at(&CTy::Ref(Box::new(CTy::Int))), Holds::Address);
+    }
+
+    /// A view holds its source's address: copied, not moved, yet not plain, as it lends it.
+    #[test]
+    fn a_view_is_copied_but_lends() {
+        let caps = |_: &InstKey| None;
+        let view = CTy::Struct(StructId(0), vec![], vec![]);
+        let parts = |t: &CTy| match t {
+            CTy::Struct(..) => vec![CTy::Ref(Box::new(CTy::Raw(Box::new(CTy::Int)))), CTy::Int],
+            _ => Vec::new(),
+        };
+        assert_eq!(holds(&parts, &caps, &view, 0), Holds::Address);
+        assert!(!plain(&parts, &caps, &view) && !stores(&parts, &caps, &view));
     }
 }
