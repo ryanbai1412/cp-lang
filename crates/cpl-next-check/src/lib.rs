@@ -1134,7 +1134,7 @@ impl<'a> Cx<'a> {
     /// The impl lookup: decls' impls and the rows of the domains this check declares.
     pub(crate) fn impls(&self) -> Impls<'_> {
         Impls {
-            d: self.d,
+            items: self.d,
             rows: &self.dom_rows,
         }
     }
