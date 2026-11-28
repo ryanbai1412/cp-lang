@@ -1,7 +1,12 @@
 //! Records `(lo: Int, hi: V)` (R02.5.2). Each list of field names, in order, is one generic core
 //! struct `(lo:, hi:)<A, B>`, so two record types are equal exactly when their field names, order
 //! and types are, and fields, constructors, patterns and derived `Eq` and `Ord` are a struct's.
+use crate::attrs::Attr;
+use crate::decls::forms::{
+    AssocForm, AttrForm, BodyForm, FieldForm, FnForm, ParamForm, StructForm, TraitForm, TyForm,
+};
 use crate::decls::{fills, Role};
+use crate::sym::{Sym, Syms};
 use cpl_diag::Span;
 use cpl_next_syntax::ast::{self as next, AstNode as _};
 use cpl_syntax::ast::{self, ExprKind, FnDecl, StmtKind, TypeKind};
@@ -63,51 +68,48 @@ fn token_texts(ts: &[cpl_next_syntax::tree::SyntaxToken]) -> Vec<String> {
 
 /// `pub trait (u:, w:, ..)<A, B>: @get fn u(self) -> A; @get fn w(self) -> B` for each row: a
 /// trait of `@get` members only, so each record shape with those fields meets it by its fields.
-pub fn row_traits(rows: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
-    let nm = |text: String| ast::Name { text, span };
+pub fn row_traits(rows: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<TraitForm> {
     (rows.iter())
         .filter(|fs| fs.len() <= 26)
         .map(|fs| {
-            let generics: Vec<ast::Name> = (b'A'..)
-                .take(fs.len())
-                .map(|c| nm((c as char).to_string()))
+            let generics = capitals(syms, fs.len());
+            let methods = (fs.iter().enumerate())
+                .map(|(i, f)| {
+                    let f = syms.intern(f);
+                    crate::synth::field_requirement(f, TyForm::Param(i), span, syms)
+                })
                 .collect();
-            let getters = (fs.iter().zip(&generics)).map(|(f, g)| {
-                let ty = ast::Type {
-                    kind: TypeKind::Named {
-                        name: g.clone(),
-                        args: Vec::new(),
-                    },
-                    span,
-                };
-                let mut get = crate::synth::field_requirement(f, ty, span);
-                get.public = true;
-                get
-            });
-            ast::Stmt {
-                kind: StmtKind::Trait {
-                    name: nm(row_name(fs)),
-                    generic_defaults: vec![None; fs.len()],
-                    generics: generics.clone(),
-                    supers: Vec::new(),
-                    body: ast::Block {
-                        stmts: getters.collect(),
-                        span,
-                    },
-                    alias: false,
-                    bounds: Vec::new(),
-                },
-                span,
-                decorators: vec![record_mark(span)],
+            TraitForm {
+                name: syms.intern(&row_name(fs)),
                 public: true,
+                attrs: vec![record_mark()],
+                alias: false,
+                generic_defaults: vec![None; fs.len()],
+                generics,
+                supers: Vec::new(),
+                assoc: Vec::new(),
+                methods,
+                span,
             }
         })
         .collect()
 }
 
+/// `A`, `B`, ..: a made declaration's type parameters, single capitals as the derived impls'
+/// bounds expect.
+fn capitals(syms: &mut Syms, n: usize) -> Vec<Sym> {
+    (b'A'..)
+        .take(n)
+        .map(|c| syms.intern(&(c as char).to_string()))
+        .collect()
+}
+
 /// The mark a record's synthesized struct carries, which no source can write (E0107).
-fn record_mark(span: Span) -> ast::Decorator {
-    marker(Mark::Record, span)
+fn record_mark() -> AttrForm {
+    AttrForm {
+        attr: Attr::Record,
+        node: None,
+    }
 }
 
 /// The mark `@m` on a declaration the compiler writes.
@@ -304,52 +306,56 @@ fn member_fn(
 
 /// `pub trait (to:, e:, ..without u, v)<P0, P1>: type R; fn R(self, to: P0, e: P1) -> Self.R`
 /// for each form, `R` its `without_member`.
-pub fn without_traits(forms: &[Form], span: Span) -> Vec<ast::Stmt> {
-    let nm = |text: &str| ast::Name {
-        text: text.to_string(),
-        span,
-    };
+pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitForm> {
     (forms.iter())
         .map(|form| {
-            let m = without_member(form);
-            let ps = gen_names("P", form.0.len());
-            let mut params = vec![self_param("self", None, span)];
-            params.extend(
-                (form.0.iter().zip(&ps))
-                    .map(|(f, p)| self_param(f, Some(ast::Type::named(p, span)), span)),
-            );
-            let assoc = ast::Stmt {
-                kind: StmtKind::TypeAlias {
-                    name: nm(&m),
-                    generics: Vec::new(),
-                    ty: ast::Type {
-                        kind: TypeKind::Error,
-                        span,
-                    },
-                    bounds: Vec::new(),
-                },
+            let m = syms.intern(&without_member(form));
+            let this = syms.intern("self");
+            let self_param = |name: Sym, ty: Option<TyForm>| ParamForm {
+                name,
+                label: name,
+                ty,
+                is_self: name == this,
+                mutable: false,
+                named_only: false,
+                variadic: false,
+                default: None,
                 span,
-                decorators: Vec::new(),
-                public: true,
             };
-            let ret = ast::Type::named(&format!("Self.{m}"), span);
-            let build = member_fn(&m, params, ret, ast::FnBody::None, span);
-            ast::Stmt {
-                kind: StmtKind::Trait {
-                    name: nm(&without_name(form)),
-                    generic_defaults: vec![None; ps.len()],
-                    generics: ps.iter().map(|p| nm(p)).collect(),
-                    supers: Vec::new(),
-                    body: ast::Block {
-                        stmts: vec![assoc, build],
-                        span,
-                    },
-                    alias: false,
-                    bounds: Vec::new(),
-                },
-                span,
-                decorators: vec![record_mark(span)],
+            let mut params = vec![self_param(this, None)];
+            for (i, f) in form.0.iter().enumerate() {
+                params.push(self_param(syms.intern(f), Some(TyForm::Param(i))));
+            }
+            let build = FnForm {
+                name: m,
                 public: true,
+                attrs: Vec::new(),
+                generics: Vec::new(),
+                bounds: Vec::new(),
+                params,
+                ret: Some(TyForm::SelfAssoc(m)),
+                yields: false,
+                lends: None,
+                uses: Vec::new(),
+                body: BodyForm::None,
+                span,
+            };
+            let n = form.0.len();
+            TraitForm {
+                name: syms.intern(&without_name(form)),
+                public: true,
+                attrs: vec![record_mark()],
+                alias: false,
+                generics: (0..n).map(|i| syms.intern(&format!("P{i}"))).collect(),
+                generic_defaults: vec![None; n],
+                supers: Vec::new(),
+                assoc: vec![AssocForm {
+                    name: m,
+                    bounds: Vec::new(),
+                    default: None,
+                }],
+                methods: vec![build],
+                span,
             }
         })
         .collect()
@@ -451,46 +457,34 @@ pub fn without_impls(
 }
 
 /// `pub struct (lo:, hi:)<A, B>: pub lo: A, pub hi: B` for each shape.
-pub fn structs(shapes: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
-    let nm = |text: String| ast::Name { text, span };
+pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<StructForm> {
     (shapes.iter())
         .filter(|fs| fs.len() <= 26)
         .map(|fs| {
-            // Type parameters are single capitals, as the derived impls' bounds expect.
-            let generics: Vec<ast::Name> = (b'A'..)
-                .take(fs.len())
-                .map(|c| nm((c as char).to_string()))
-                .collect();
-            let fields = (fs.iter().zip(&generics))
-                .map(|(f, g)| ast::FieldDecl {
-                    name: nm(f.clone()),
-                    ty: ast::Type {
-                        kind: TypeKind::Named {
-                            name: g.clone(),
-                            args: Vec::new(),
-                        },
-                        span,
-                    },
-                    default: None,
-                    // A record's fields are assignable through a `var` that holds it (R02.1.1).
-                    mutable: true,
-                    cached: false,
-                    bits: false,
+            let generics = capitals(syms, fs.len());
+            let fields = (fs.iter().enumerate())
+                .map(|(i, f)| FieldForm {
+                    name: syms.intern(f),
+                    ty: TyForm::Param(i),
                     public: true,
+                    // A record's fields are assignable through a `var` that holds it (R02.1.1).
+                    var: true,
+                    attrs: Vec::new(),
+                    default: None,
+                    span,
                 })
                 .collect();
-            ast::Stmt {
-                kind: StmtKind::Struct(ast::StructDecl {
-                    name: nm(name(fs)),
-                    generic_defaults: vec![None; fs.len()],
-                    generics,
-                    bounds: Vec::new(),
-                    fields,
-                    methods: Vec::new(),
-                }),
-                span,
-                decorators: vec![record_mark(span)],
+            StructForm {
+                name: syms.intern(&name(fs)),
                 public: true,
+                attrs: vec![record_mark()],
+                generic_defaults: vec![None; fs.len()],
+                generics,
+                bounds: Vec::new(),
+                fields,
+                methods: Vec::new(),
+                consts: Vec::new(),
+                span,
             }
         })
         .collect()

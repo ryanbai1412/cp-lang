@@ -17,6 +17,8 @@ pub enum TyForm {
     Param(usize),
     /// `Self` of the trait or impl the declaration is in.
     SelfTy,
+    /// `Self.R`: an associated type of the trait the declaration is in.
+    SelfAssoc(Sym),
     /// A resolved name with its arguments: `Bool`, `Eq<T>`, a record shape's struct.
     Named(Sym, Vec<TyForm>),
     /// `(lo: A, hi: B)` by its field names.
@@ -398,6 +400,20 @@ impl Reader<'_> {
                 self.func(&f, attrs)
             })
             .collect();
+        // `trait HasW: w: Int` is the member it means, `@get fn w(self) -> Int` (R08.1.7).
+        let mut methods: Vec<FnForm> = methods;
+        for f in t.fields() {
+            if let Some(ty) = f.ty() {
+                let name = self.sym(f.name());
+                let span = f.syntax().span();
+                methods.push(crate::synth::field_requirement(
+                    name,
+                    TyForm::Written(ty),
+                    span,
+                    self.syms,
+                ));
+            }
+        }
         let alias = t.alias().is_some();
         let supers = match t.alias() {
             Some(b) => self.bound_types(Some(b)),

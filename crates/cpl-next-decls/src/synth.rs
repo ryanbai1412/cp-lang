@@ -1,5 +1,7 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
+use crate::attrs::Attr;
+use crate::decls::forms::{AttrForm, BodyForm, FnForm, ParamForm, TyForm};
 use crate::decls::unnamed;
 use crate::decls::{fills, Role};
 use crate::diag::Msg;
@@ -613,13 +615,40 @@ pub(crate) fn impl_value(m: &ast::Stmt) -> Option<ast::Stmt> {
 }
 
 /// `@get fn name(self) -> T` with no body: a field requirement, met by a field `name` (R08.1.7).
-pub(crate) fn field_requirement(field: &str, ty: ast::Type, span: cpl_diag::Span) -> ast::Stmt {
-    let mut get = field_getter(field, span);
-    if let StmtKind::Fn(f) = &mut get.kind {
-        f.body = FnBody::None;
-        f.ret = Some(ty);
+pub(crate) fn field_requirement(
+    field: Sym,
+    ty: TyForm,
+    span: cpl_diag::Span,
+    syms: &mut crate::sym::Syms,
+) -> FnForm {
+    let this = syms.intern("self");
+    FnForm {
+        name: field,
+        public: true,
+        attrs: vec![AttrForm {
+            attr: Attr::Get,
+            node: None,
+        }],
+        generics: Vec::new(),
+        bounds: Vec::new(),
+        params: vec![ParamForm {
+            name: this,
+            label: this,
+            ty: None,
+            is_self: true,
+            mutable: false,
+            named_only: false,
+            variadic: false,
+            default: None,
+            span,
+        }],
+        ret: Some(ty),
+        yields: false,
+        lends: None,
+        uses: Vec::new(),
+        body: BodyForm::None,
+        span,
     }
-    get
 }
 
 /// `trait HasW: w: Int` as the member it means, `@get fn w(self) -> Int` (R08.1.7).
