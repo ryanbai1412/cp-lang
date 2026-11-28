@@ -648,7 +648,7 @@ impl Cx<'_> {
         }
         match self.shallow(t) {
             Ty::Dom(_) => Some(Ends::Dom),
-            t @ Ty::Struct(..) if self.d.has_impl(&t, tr) => {
+            t @ Ty::Struct(..) if self.impls().has_impl(&t, tr) => {
                 self.domain_method(DomainOp::Ord).map(Ends::Ord)
             }
             Ty::Param(p) if self.bound_traits(p).iter().any(|b| b.tr == tr) => {

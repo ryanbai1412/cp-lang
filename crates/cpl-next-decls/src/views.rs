@@ -4,7 +4,7 @@
 //! test can with a map. A layer fn whose step is done takes these, never `&Decls` or a map of
 //! every fn.
 use crate::decls::{
-    AliasDecl, AliasId, ConstId, Decls, FnDecl, ImplDecl, LibConst, ModId, Named, Roles,
+    AliasDecl, AliasId, ConstId, Decls, FnDecl, ImplDecl, Impls, LibConst, ModId, Named, Roles,
     StructDecl, Sugar, TraitDecl,
 };
 use crate::sym::Sym;
@@ -72,8 +72,6 @@ pub trait Signatures: TypeTables {
     fn impl_rank(&self, im: &ImplDecl) -> u8;
     /// Whether `im` is for `t` as far as a range type and `Int` go.
     fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool;
-    /// Whether `tr` is one every domain meets with no impl.
-    fn core_domain_trait(&self, tr: TraitId) -> bool;
     /// The fn of `members` named `name`.
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId>;
 }
@@ -142,13 +140,13 @@ impl Signatures for Decls {
         &self.impls[i]
     }
     fn impls_of(&self, tr: TraitId) -> Vec<usize> {
-        self.ranked_impls(tr).map(|(k, _)| k).collect()
+        Impls::of(self).ranked_impls(tr).map(|(k, _)| k).collect()
     }
     fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
-        Decls::impl_args(self, im, t)
+        Impls::of(self).impl_args(im, t)
     }
     fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
-        Decls::has_impl(self, t, tr)
+        Impls::of(self).has_impl(t, tr)
     }
     fn traits_with(&self, name: &str) -> Vec<TraitId> {
         (0..self.traits.len())
@@ -160,10 +158,7 @@ impl Signatures for Decls {
         Decls::impl_rank(self, im)
     }
     fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool {
-        Decls::head_fits(self, im, t)
-    }
-    fn core_domain_trait(&self, tr: TraitId) -> bool {
-        Decls::core_domain_trait(self, tr)
+        Impls::of(self).head_fits(im, t)
     }
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
         Decls::member(self, members, name)

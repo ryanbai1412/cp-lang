@@ -146,7 +146,7 @@ impl<'a> Cx<'a> {
             }
             self.b.allow_region = true;
             let own = "each";
-            let walk = match self.d.lookup_member(&rt, own) {
+            let walk = match self.impls().lookup_member(&rt, own) {
                 Some(_) => own.to_string(),
                 None => (self.d.iteration_walk()).map_or_else(String::new, |(n, _)| n.to_string()),
             };

@@ -14,7 +14,9 @@ impl Cx<'_> {
     pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
         let at = self.index_read();
         let rt = self.recv_ty(&s.ty);
-        let read = self.d.impl_member_by(&rt, &at, |f| f.region.is_none());
+        let read = self
+            .impls()
+            .impl_member_by(&rt, &at, |f| f.region.is_none());
         let call = match (&rt, read) {
             (Ty::Param(p), _) => self.bound_call(*p, s, &at, vec![TArg::Value(i)], span),
             (_, Some(decls::Member::Method(m, ts, ss))) => {
@@ -99,7 +101,9 @@ impl Cx<'_> {
     pub(super) fn is_domain(&self, t: &Ty) -> bool {
         match t {
             Ty::Dom(_) => true,
-            Ty::Struct(..) => (self.d.roles().domain).is_some_and(|tr| self.d.has_impl(t, tr)),
+            Ty::Struct(..) => {
+                (self.d.roles().domain).is_some_and(|tr| self.impls().has_impl(t, tr))
+            }
             _ => false,
         }
     }
@@ -558,7 +562,7 @@ impl Cx<'_> {
         let probe = self.expr(base, None);
         self.errors.truncate(seen);
         let rt = self.shallow(&probe.ty);
-        let writes = match self.d.lookup_member(&rt, &name.text) {
+        let writes = match self.impls().lookup_member(&rt, &name.text) {
             Some(decls::Member::Method(m, ..)) => {
                 self.d.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
             }

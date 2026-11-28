@@ -20,6 +20,7 @@ mod inherent;
 mod layer;
 mod tyconv;
 pub use collect::{collect, factor_name, prepare, Prepared};
+pub use impls::Impls;
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{body_type, prim_type};
@@ -533,6 +534,8 @@ pub struct Decls {
     /// Each domain decls makes, keyed by the item that declares it and which of that item's
     /// domains it is: its place here is its `Ty::Dom`, so a domain's id never reads the others.
     pub dom_ids: HashMap<(ItemId, u32), usize>,
+    /// How many of `dom_ids` have their `Domain` and `Ordered` rows in `impls`.
+    pub dom_rows_made: usize,
     /// How many domains each item has made.
     dom_made: HashMap<ItemId, u32>,
     /// The fns whose result's slots are `domain C`s, till those slots are made `Range<C>`s.
@@ -859,7 +862,7 @@ impl Decls {
                 if im.bounds.iter().any(|(b, r)| b == i && r.tr == dom))
         })
     }
-    fn push_impl(&mut self, im: ImplDecl) {
+    pub(crate) fn push_impl(&mut self, im: ImplDecl) {
         self.impls_ranked = None;
         let k = self.impls.len();
         self.impls_by_trait.entry(im.trait_.tr).or_default().push(k);

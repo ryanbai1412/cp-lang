@@ -36,6 +36,8 @@ pub struct Dom {
     pub owner: Option<FnId>,
     /// It is declared by a count alone, so `io.base` shifts it (R10.2.2).
     pub counted: bool,
+    /// The traits its impl rows are of, `Domain` and `Ordered` (S11): what link reads for it.
+    pub impls: Vec<TraitId>,
 }
 
 /// A global's name, and whether it is a top-level binding of the file rather than one inside

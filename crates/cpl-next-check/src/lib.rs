@@ -4,7 +4,9 @@ use crate::diag::Msg;
 use crate::ir::CheckKind;
 use crate::ty::*;
 use cpl_diag::Span;
-use cpl_next_decls::decls::{self, Decls, ModId, Named, Owner, SelfMode, TraitRef};
+use cpl_next_decls::decls::{
+    self, Decls, ImplDecl, Impls, ModId, Named, Owner, SelfMode, TraitRef,
+};
 use cpl_next_decls::views::{Scope, Signatures, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, records};
 use cpl_next_ir::build::{Build, CheckName, Checks};
@@ -354,6 +356,8 @@ pub struct Typed {
     /// The checks the build keeps where no `with checks(..)` says otherwise (contract 0).
     pub checks: Checks,
     pub domains: Vec<DomInfo>,
+    /// The `Domain` and `Ordered` impls of each domain the check declared (decls' own aside).
+    pub dom_rows: Vec<ImplDecl>,
     pub fns: HashMap<FnId, TypedFn>,
     /// The copies of `uses` fns checked under context values a call gave them: `FnRef::ctx`
     /// `k` is the `k`-th (R09.1.4).
@@ -419,6 +423,8 @@ pub struct Ids {
 
 struct Cx<'a> {
     d: &'a Decls,
+    /// The `Domain` and `Ordered` impls of each domain this check declares (R04.2).
+    dom_rows: Vec<ImplDecl>,
     /// What a constant expression's value is, worked out by the driver's evaluator.
     values: &'a dyn Consts,
     /// The loaded modules the spans index, offset by `item`.
@@ -656,6 +662,7 @@ pub fn check(
         ctx_pending: Vec::new(),
         ctx_impls: HashMap::new(),
         d,
+        dom_rows: Vec::new(),
         src,
         tys: Vec::new(),
         sets: Vec::new(),
@@ -1046,6 +1053,7 @@ pub fn check(
     Typed {
         checks,
         domains: std::mem::take(&mut cx.domains),
+        dom_rows: std::mem::take(&mut cx.dom_rows),
         fns: std::mem::take(&mut cx.fns),
         ctx_fns: ctx_fns.into_iter().map(|(_, id, tf)| (id, tf)).collect(),
         ctx_impls: std::mem::take(&mut cx.ctx_impls),
@@ -1120,6 +1128,13 @@ impl<'a> Cx<'a> {
         match self.d.member(&self.d.t(tr).methods, method) {
             Some(m) => self.ctx_copy(m),
             None => 0,
+        }
+    }
+    /// The impl lookup: decls' impls and the rows of the domains this check declares.
+    pub(crate) fn impls(&self) -> Impls<'_> {
+        Impls {
+            d: self.d,
+            rows: &self.dom_rows,
         }
     }
     /// A trait's fn's copy has each impl's under the same values, which link picks (`ctx_impls`).

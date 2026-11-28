@@ -982,9 +982,9 @@ impl Link<'_> {
             fits_head(d, im, &st, &mut binds)
                 && (d.t(tr).inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
-                && blanket_met(d, im, &binds)
+                && blanket_met(d, self.c, im, &binds)
         });
-        by_impl || (want.is_empty() && cty_meets(d, &st, tr))
+        by_impl || (want.is_empty() && cty_meets(d, self.c, &st, tr))
     }
     fn trait_key(
         &mut self,
@@ -1031,7 +1031,7 @@ impl Link<'_> {
             if !fits_head(d, im, &st, &mut binds)
                 || !(d.t(*tr).inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
-                || !blanket_met(d, im, &binds)
+                || !blanket_met(d, self.c, im, &binds)
             {
                 continue;
             }
@@ -1060,7 +1060,7 @@ impl Link<'_> {
                 }
             };
         }
-        if found.is_none() && cty_meets(d, &st, *tr) {
+        if found.is_none() && cty_meets(d, self.c, &st, *tr) {
             found = default(args.iter().map(|t| self.ty(t, env)).collect());
         }
         if found.is_none() {
@@ -1561,7 +1561,7 @@ impl Link<'_> {
                         break;
                     }
                     let mut b = vec![None; m.generics.len()];
-                    if !fit_cty(&m.for_, &bt, &mut b) || !blanket_met(d, m, &b) {
+                    if !fit_cty(&m.for_, &bt, &mut b) || !blanket_met(d, self.c, m, &b) {
                         continue;
                     }
                     if rank.is_some() {
@@ -1602,20 +1602,26 @@ impl Link<'_> {
 /// (`Decls::fits_impl`); an impl for a written type is taken as found.
 fn blanket_met(
     d: &dyn Signatures,
+    c: &dyn Checked,
     im: &cpl_next_decls::decls::ImplDecl,
     binds: &[Option<CTy>],
 ) -> bool {
     !im.blanket()
-        || (im.bounds.iter()).all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
+        || (im.bounds.iter())
+            .all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, c, t, r.tr)))
 }
-fn cty_meets(d: &dyn Signatures, t: &CTy, tr: TraitId) -> bool {
-    if d.core_domain_trait(tr) && matches!(t, CTy::Dom(_)) {
-        return true;
+fn cty_meets(d: &dyn Signatures, c: &dyn Checked, t: &CTy, tr: TraitId) -> bool {
+    // A domain's impl rows travel with it in `Whole` (S11).
+    if let CTy::Dom(i) = t {
+        if c.domain(DomId(*i)).impls.contains(&tr) {
+            return true;
+        }
     }
     d.impls_of(tr).into_iter().map(|k| d.imp(k)).any(|im| {
         let mut b = vec![None; im.generics.len()];
         fits_head(d, im, t, &mut b)
-            && (im.bounds.iter()).all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, a, r.tr)))
+            && (im.bounds.iter())
+                .all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, c, a, r.tr)))
     })
 }
 /// Whether an impl is for `t`, as `Decls::head_fits` says of a range type and `Int`.

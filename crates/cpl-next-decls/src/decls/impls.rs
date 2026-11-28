@@ -3,19 +3,6 @@ use super::*;
 use crate::views::Signatures;
 
 impl Decls {
-    pub fn lookup_member(&self, recv: &Ty, name: &str) -> Option<Member> {
-        if let Ty::Struct(d, targs, sets) = recv {
-            let s = self.s(*d);
-            if let Some(i) = self.field(*d, name) {
-                let sub = Subst { tys: targs, sets };
-                return Some(Member::Field(i, sub.ty(&s.fields[i].1)));
-            }
-            if let Some(m) = self.member(&s.methods, name) {
-                return Some(Member::Method(m, targs.clone(), sets.clone()));
-            }
-        }
-        self.impl_member(recv, name, None)
-    }
     /// `r` with each parameter it leaves out given its default, for `self_ty` as `Self` (R08.1.1).
     pub fn with_defaults(&self, mut r: TraitRef, self_ty: &Ty) -> TraitRef {
         let defaults = &self.traits[r.tr.0].defaults;
@@ -30,6 +17,141 @@ impl Decls {
             r.args.push(t);
         }
         r
+    }
+    /// A trait made only of bodiless `@get` members, met by fields of those names (R12.11.3).
+    pub(super) fn field_trait(&self, tr: TraitId) -> bool {
+        let t = &self.traits[tr.0];
+        let bodiless = |m: &FnId| self.f(*m).getter && self.f(*m).bodiless();
+        !t.alias && !t.methods.is_empty() && t.methods.values().all(bodiless)
+    }
+    /// The impls every domain has, `Domain` and `Ordered`, for domain `dom` declared at `at`:
+    /// they write no members, so each member is the trait's default (R04.2, R04.2.31).
+    pub fn domain_rows(&self, dom: usize, at: SourceId, module: ModId) -> Vec<ImplDecl> {
+        let traits = [self.roles.domain, self.roles.order];
+        (traits.into_iter().flatten())
+            .map(|tr| ImplDecl {
+                trait_: TraitRef {
+                    tr,
+                    args: Vec::new(),
+                },
+                generics: Vec::new(),
+                bounds: Vec::new(),
+                for_: Ty::Dom(dom),
+                methods: HashMap::new(),
+                at: at.clone(),
+                assoc_at: Vec::new(),
+                module,
+                derived: false,
+                replaced: false,
+            })
+            .collect()
+    }
+    /// The rows of each domain decls declared since the last call (`domain_rows`).
+    fn add_domain_rows(&mut self) {
+        let mut doms: Vec<(usize, ItemId)> = (self.dom_ids.iter())
+            .map(|((item, _), &i)| (i, item.clone()))
+            .collect();
+        doms.sort_by_key(|(i, _)| *i);
+        for (i, item) in doms.into_iter().skip(self.dom_rows_made) {
+            let module = (self.module_names.iter())
+                .position(|m| **m == *item.module)
+                .map_or(self.program, ModId);
+            for im in self.domain_rows(i, item.at(Span::default()), module) {
+                self.push_impl(im);
+            }
+        }
+        self.dom_rows_made = self.dom_ids.len();
+    }
+    /// Fills `impls_ranked` from the impls a lookup may find now, each domain's rows with them.
+    pub fn rank_impls(&mut self) {
+        self.add_domain_rows();
+        let rank = |ks: &[usize]| {
+            let mut ks: Vec<usize> = (ks.iter().copied())
+                .filter(|&k| self.live(&self.impls[k]))
+                .collect();
+            ks.sort_by_key(|&k| self.impl_rank(&self.impls[k]));
+            ks
+        };
+        let by_trait = (self.impls_by_trait.iter())
+            .map(|(tr, ks)| (*tr, rank(ks)))
+            .collect();
+        self.impls_ranked = Some(by_trait);
+    }
+    /// The library method `name` whose `self` can be `recv`, from any std module whether the
+    /// program loads it or not: a method call needs no import (R11.3.4).
+    pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
+        (self.methods.get(&self.sym(name)?)?.iter().copied()).find(|f| self.self_fits(*f, recv))
+    }
+    /// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
+    /// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).
+    pub fn shaped_member(&self, recv: &Ty, name: &str) -> Option<FnId> {
+        let Ty::Struct(s, ..) = recv else {
+            return None;
+        };
+        (self.s(*s).shaped.get(&self.sym(name)?)?.iter().copied()).find(|f| {
+            let f = self.f(*f);
+            let mut binds = vec![None; f.generics.len()];
+            f.self_ty
+                .as_ref()
+                .is_some_and(|st| fit(st, recv, &mut binds))
+        })
+    }
+    /// Whether `recv` has the shape of `f`'s `self`: a struct whose arguments fit it, or the same kind of type.
+    pub fn self_fits(&self, f: FnId, recv: &Ty) -> bool {
+        let f = self.f(f);
+        match (f.self_ty.as_ref(), recv) {
+            (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
+            (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
+            // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
+            (Some(Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)), Ty::Int) => true,
+            // A fn-typed `self` takes a closure's own type, coerced in as an argument is.
+            (Some(Ty::Fn(..)), Ty::Clo(_)) => true,
+            (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
+            (None, _) => false,
+        }
+    }
+}
+
+/// The one impl lookup (R08.1.2): decls' impls, then the rows the layer checking a body adds,
+/// the `Domain` and `Ordered` impls of each domain it declares.
+#[derive(Clone, Copy)]
+pub struct Impls<'a> {
+    pub d: &'a Decls,
+    pub rows: &'a [ImplDecl],
+}
+
+impl<'a> Impls<'a> {
+    /// Decls' impls alone.
+    pub fn of(d: &'a Decls) -> Impls<'a> {
+        Impls { d, rows: &[] }
+    }
+    /// The impls of `tr` a lookup may find, decls' in order and then the rows.
+    pub fn trait_impls(&self, tr: TraitId) -> impl Iterator<Item = (usize, &'a ImplDecl)> + Clone {
+        let n = self.d.impls.len();
+        let rows = (self.rows.iter().enumerate())
+            .filter(move |(_, im)| im.trait_.tr == tr)
+            .map(move |(j, im)| (n + j, im));
+        self.d.trait_impls(tr).chain(rows)
+    }
+    /// Impl `k`: decls' by index, then the rows.
+    pub fn imp(&self, k: usize) -> &'a ImplDecl {
+        match k.checked_sub(self.d.impls.len()) {
+            Some(j) => &self.rows[j],
+            None => &self.d.impls[k],
+        }
+    }
+    pub fn lookup_member(&self, recv: &Ty, name: &str) -> Option<Member> {
+        if let Ty::Struct(d, targs, sets) = recv {
+            let s = self.d.s(*d);
+            if let Some(i) = self.d.field(*d, name) {
+                let sub = Subst { tys: targs, sets };
+                return Some(Member::Field(i, sub.ty(&s.fields[i].1)));
+            }
+            if let Some(m) = self.d.member(&s.methods, name) {
+                return Some(Member::Method(m, targs.clone(), sets.clone()));
+            }
+        }
+        self.impl_member(recv, name, None)
     }
     /// The fn `name` of an impl for `recv`, of trait `trait_` when one is given,
     /// or the trait's default when the impl does not write it (R08.1.2).
@@ -57,18 +179,7 @@ impl Decls {
         if choices.len() > 1 {
             return None;
         }
-        if let Some((_, m)) = choices.pop() {
-            return Some(m);
-        }
-        // A declared domain meets `Domain` and `Ordered` with no impl: its members are the
-        // traits' defaults.
-        let core = [self.roles.domain, self.roles.order];
-        let mut core = (core.into_iter().flatten()).filter(|_| matches!(recv, Ty::Dom(_)));
-        core.find_map(|id| {
-            let tr = &self.traits[id.0];
-            let tm = (self.member(&tr.methods, name)).filter(|_| trait_.is_none_or(|t| t == id))?;
-            pick(self.f(tm)).then(|| Member::Method(tm, vec![recv.clone()], Vec::new()))
-        })
+        choices.pop().map(|(_, m)| m)
     }
     /// Each fn `name` an impl for `recv` gives, of trait `trait_` when one is given,
     /// with the trait the impl is of: the fitting impls of the most specific rank, so an impl
@@ -84,12 +195,17 @@ impl Decls {
         // A value's member has a `self`: `Domain.at(x)` is not `Int`'s `at`.
         let pick = |f: &FnDecl| f.self_mode != SelfMode::None && pick(f);
         let named = self
+            .d
             .syms
             .get(name)
-            .and_then(|n| self.impls_by_member.get(&n));
+            .and_then(|n| self.d.impls_by_member.get(&n));
         let live = (named.into_iter().flatten())
-            .map(|&k| &self.impls[k])
-            .filter(|im| self.live(im));
+            .map(|&k| &self.d.impls[k])
+            .filter(|im| self.d.live(im))
+            .chain((self.rows.iter()).filter(|im| {
+                let tr = &self.d.traits[im.trait_.tr.0];
+                self.d.member(&tr.methods, name).is_some()
+            }));
         let mut found: Vec<(u8, TraitRef, Member)> = Vec::new();
         for im in live {
             let sets = match recv {
@@ -103,7 +219,7 @@ impl Decls {
             let Some(member) = self.impl_gives(im, recv, name, trait_, &pick, &sets) else {
                 continue;
             };
-            let rank = self.impl_rank(im);
+            let rank = self.d.impl_rank(im);
             match found.first().map(|f| f.0) {
                 Some(best) if best < rank => continue,
                 Some(best) if best > rank => found.clear(),
@@ -123,16 +239,20 @@ impl Decls {
         pick: &impl Fn(&FnDecl) -> bool,
         sets: &[SetTy],
     ) -> Option<Member> {
-        let tr = &self.traits[im.trait_.tr.0];
+        let tr = &self.d.traits[im.trait_.tr.0];
         if trait_.is_some_and(|t| t != im.trait_.tr) {
             return None;
         }
-        if let Some(m) = self.member(&im.methods, name).filter(|&m| pick(self.f(m))) {
+        if let Some(m) = self
+            .d
+            .member(&im.methods, name)
+            .filter(|&m| pick(self.d.f(m)))
+        {
             let targs = self.fits_impl(im, recv)?;
             return Some(Member::Method(m, targs, sets.to_vec()));
         }
-        let tm = self.member(&tr.methods, name)?;
-        if self.f(tm).bodiless() || !pick(self.f(tm)) {
+        let tm = self.d.member(&tr.methods, name)?;
+        if self.d.f(tm).bodiless() || !pick(self.d.f(tm)) {
             return None;
         }
         let binds = self.fits_impl(im, recv)?;
@@ -154,7 +274,7 @@ impl Decls {
         r: &TraitRef,
         caches: bool,
     ) -> Option<Vec<(usize, TraitRef)>> {
-        let sd = self.s(s);
+        let sd = self.d.s(s);
         let mut out = Vec::new();
         for ((_, t), cached) in sd.fields.iter().zip(&sd.cached) {
             if (caches || !*cached) && !self.needs(t, r, &mut out, 32) {
@@ -183,7 +303,6 @@ impl Decls {
                 return true;
             }
             Ty::Var(_) | Ty::Error => return true,
-            Ty::Dom(_) if self.core_domain_trait(r.tr) => return true,
             _ if cap == 0 => return false,
             _ => {}
         }
@@ -209,41 +328,24 @@ impl Decls {
             met
         })
     }
-    /// A trait made only of bodiless `@get` members, met by fields of those names (R12.11.3).
-    pub(super) fn field_trait(&self, tr: TraitId) -> bool {
-        let t = &self.traits[tr.0];
-        let bodiless = |m: &FnId| self.f(*m).getter && self.f(*m).bodiless();
-        !t.alias && !t.methods.is_empty() && t.methods.values().all(bodiless)
-    }
     /// The impls of `tr`, in the order a type takes them (`impl_rank`).
-    pub fn impls_of(&self, tr: TraitId) -> impl Iterator<Item = &ImplDecl> {
+    pub fn impls_of(&self, tr: TraitId) -> impl Iterator<Item = &'a ImplDecl> {
         self.ranked_impls(tr).map(|(_, im)| im)
     }
     /// `impls_of`, each with its index.
-    pub fn ranked_impls(&self, tr: TraitId) -> impl Iterator<Item = (usize, &ImplDecl)> {
-        let ranked =
-            (self.impls_ranked.as_ref()).map(|r| r.get(&tr).map_or(&[][..], Vec::as_slice));
+    pub fn ranked_impls(&self, tr: TraitId) -> impl Iterator<Item = (usize, &'a ImplDecl)> {
+        let d = self.d;
+        let n = d.impls.len();
+        let rows = (self.rows.iter().enumerate())
+            .filter(move |(_, im)| im.trait_.tr == tr)
+            .map(move |(j, im)| (n + j, im));
+        let ranked = (d.impls_ranked.as_ref()).map(|r| r.get(&tr).map_or(&[][..], Vec::as_slice));
         let unranked = ranked.is_none().then(|| {
-            (0..3).flat_map(move |r| {
-                (self.trait_impls(tr)).filter(move |(_, im)| self.impl_rank(im) == r)
-            })
+            (0..3)
+                .flat_map(move |r| (d.trait_impls(tr)).filter(move |(_, im)| d.impl_rank(im) == r))
         });
-        (ranked.into_iter().flatten().map(|&k| (k, &self.impls[k])))
+        rows.chain(ranked.into_iter().flatten().map(move |&k| (k, &d.impls[k])))
             .chain(unranked.into_iter().flatten())
-    }
-    /// Fills `impls_ranked` from the impls a lookup may find now.
-    pub fn rank_impls(&mut self) {
-        let rank = |ks: &[usize]| {
-            let mut ks: Vec<usize> = (ks.iter().copied())
-                .filter(|&k| self.live(&self.impls[k]))
-                .collect();
-            ks.sort_by_key(|&k| self.impl_rank(&self.impls[k]));
-            ks
-        };
-        let by_trait = (self.impls_by_trait.iter())
-            .map(|(tr, ks)| (*tr, rank(ks)))
-            .collect();
-        self.impls_ranked = Some(by_trait);
     }
     /// The impl's type arguments for `t`; a blanket impl only where `t` meets its bounds.
     pub fn fits_impl(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
@@ -252,10 +354,6 @@ impl Decls {
     }
     fn bounds_met(&self, im: &ImplDecl, targs: &[Ty]) -> bool {
         (im.bounds.iter()).all(|(i, b)| targs.get(*i).is_none_or(|a| self.has_impl(a, b.tr)))
-    }
-    /// `Domain` or `Ordered`: what every domain the compiler declares meets with no impl.
-    pub fn core_domain_trait(&self, tr: TraitId) -> bool {
-        Some(tr) == self.roles.domain || Some(tr) == self.roles.order
     }
     /// The bound at the root of `t` not meeting `r`: `Tuple1<List<?Int>>` misses `ShowAll`
     /// because `?Int` misses `Show`. It goes down while one impl alone of the most specific
@@ -269,12 +367,12 @@ impl Decls {
             let heads: Vec<(&ImplDecl, Vec<Ty>)> = (self.impls_of(r.tr))
                 .filter_map(|im| Some((im, self.impl_args_for(im, &t, &r.args)?)))
                 .collect();
-            let Some(best) = heads.iter().map(|(im, _)| self.impl_rank(im)).min() else {
+            let Some(best) = heads.iter().map(|(im, _)| self.d.impl_rank(im)).min() else {
                 break;
             };
             let mut heads = heads
                 .into_iter()
-                .filter(|(im, _)| self.impl_rank(im) == best);
+                .filter(|(im, _)| self.d.impl_rank(im) == best);
             let (Some((im, targs)), None) = (heads.next(), heads.next()) else {
                 break;
             };
@@ -313,9 +411,6 @@ impl Decls {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
             return true;
         }
-        if self.core_domain_trait(r.tr) && matches!(t, Ty::Dom(_)) {
-            return true;
-        }
         (self.impls_of(r.tr)).any(|im| {
             self.impl_args_for(im, t, &r.args)
                 .is_some_and(|targs| self.bounds_met(im, &targs))
@@ -326,46 +421,10 @@ impl Decls {
         if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
             return true;
         }
-        if self.core_domain_trait(tr) && matches!(t, Ty::Dom(_)) {
-            return true;
-        }
         (self.impls_of(tr)).any(|im| {
             self.impl_args(im, t)
                 .is_some_and(|targs| self.bounds_met(im, &targs))
         })
-    }
-    /// The library method `name` whose `self` can be `recv`, from any std module whether the
-    /// program loads it or not: a method call needs no import (R11.3.4).
-    pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
-        (self.methods.get(&self.sym(name)?)?.iter().copied()).find(|f| self.self_fits(*f, recv))
-    }
-    /// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
-    /// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).
-    pub fn shaped_member(&self, recv: &Ty, name: &str) -> Option<FnId> {
-        let Ty::Struct(s, ..) = recv else {
-            return None;
-        };
-        (self.s(*s).shaped.get(&self.sym(name)?)?.iter().copied()).find(|f| {
-            let f = self.f(*f);
-            let mut binds = vec![None; f.generics.len()];
-            f.self_ty
-                .as_ref()
-                .is_some_and(|st| fit(st, recv, &mut binds))
-        })
-    }
-    /// Whether `recv` has the shape of `f`'s `self`: a struct whose arguments fit it, or the same kind of type.
-    pub fn self_fits(&self, f: FnId, recv: &Ty) -> bool {
-        let f = self.f(f);
-        match (f.self_ty.as_ref(), recv) {
-            (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
-            (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
-            // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
-            (Some(Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)), Ty::Int) => true,
-            // A fn-typed `self` takes a closure's own type, coerced in as an argument is.
-            (Some(Ty::Fn(..)), Ty::Clo(_)) => true,
-            (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
-            (None, _) => false,
-        }
     }
     /// An impl for `_..=_` is for every range type and never `Int`; one for `Int` is for a range
     /// type only when its trait has none for `_..=_`.
@@ -395,8 +454,8 @@ impl Decls {
         }
         let mut binds = vec![None; im.generics.len()];
         if !fit(&im.for_, t, &mut binds)
-            || !(self.traits[im.trait_.tr.0].inputs(&im.trait_.args).iter())
-                .zip(self.traits[im.trait_.tr.0].inputs(trait_args))
+            || !(self.d.traits[im.trait_.tr.0].inputs(&im.trait_.args).iter())
+                .zip(self.d.traits[im.trait_.tr.0].inputs(trait_args))
                 .all(|(p, a)| fit(p, a, &mut binds))
         {
             return None;
@@ -418,7 +477,7 @@ impl Decls {
                     let b = self.fits_impl(m, &bt)?;
                     let sub = Subst { tys: &b, sets: &[] };
                     let args: Vec<Ty> = m.trait_.args.iter().map(|a| sub.ty(a)).collect();
-                    Some((self.impl_rank(m), args))
+                    Some((self.d.impl_rank(m), args))
                 });
                 let Some((rank, args)) = fits.next() else {
                     continue;

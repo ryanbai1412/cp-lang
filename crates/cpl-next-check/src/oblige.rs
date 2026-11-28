@@ -67,7 +67,7 @@ impl Cx<'_> {
                         // A type no impl converts to has no `T(x)` at all; one some impl converts to
                         // takes only what converts (`List(5)` is a mismatch, `Deque(xs)` is not a call).
                         let converts = why == Origin::Construct
-                            && (self.d.impls_of(r.tr)).any(|im| {
+                            && (self.impls().impls_of(r.tr)).any(|im| {
                                 matches!((&im.trait_.args[..], self.shallow(&r.args[0])),
                                     ([Ty::Struct(a, ..)], Ty::Struct(b, ..)) if *a == b)
                             });
@@ -102,7 +102,7 @@ impl Cx<'_> {
                         }
                         // Named at its root: `print(xs)` on a `List<?Int>` is `?Int` lacking
                         // `Show`, not the pack of arguments lacking `ShowAll` (R10.3.7).
-                        let (root, rr) = self.d.unmet_root(&t, &r);
+                        let (root, rr) = self.impls().unmet_root(&t, &r);
                         let (shown, tr) = (self.show(&root), &self.d.t(rr.tr).name);
                         let said = &self.d.t(rr.tr).unimplemented;
                         let code = said.code.unwrap_or(cpl_diag::codes::MISSING_IMPL);
@@ -145,10 +145,10 @@ impl Cx<'_> {
         let want: Vec<Ty> = (self.d.t(r.tr).inputs(&r.args).iter())
             .map(|a| self.zonk(a))
             .collect();
-        let mut found: Vec<(usize, Vec<Ty>)> = (self.d.trait_impls(r.tr))
-            .filter_map(|(k, im)| Some((k, self.d.impl_args_for(im, t, &want)?)))
+        let mut found: Vec<(usize, Vec<Ty>)> = (self.impls().trait_impls(r.tr))
+            .filter_map(|(k, im)| Some((k, self.impls().impl_args_for(im, t, &want)?)))
             .filter(|(k, _)| {
-                !self.d.imp(*k).blanket() || self.d.fits_impl(self.d.imp(*k), t).is_some()
+                !self.d.imp(*k).blanket() || self.impls().fits_impl(self.d.imp(*k), t).is_some()
             })
             .collect();
         let rank = |k: &usize| self.d.impl_rank(self.d.imp(*k));
@@ -321,10 +321,6 @@ impl Cx<'_> {
             };
             return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
         }
-        // Every declared domain meets `Domain` and `Ordered`; any other type by an impl.
-        if self.d.core_domain_trait(r.tr) && matches!(t, Ty::Dom(_)) {
-            return Some(true);
-        }
         match t {
             Ty::Error => Some(true),
             _ => {
@@ -345,8 +341,8 @@ impl Cx<'_> {
                 };
                 // The impl's arguments are `open`'s own parts where it has them, so a fn set
                 // still filling (a call's result) stays the bound's set, not a copy of it now.
-                let live =
-                    (self.d.impl_args(self.d.imp(k), &self.followed(open))).unwrap_or_default();
+                let live = (self.impls().impl_args(self.d.imp(k), &self.followed(open)))
+                    .unwrap_or_default();
                 for (a, l) in targs.iter_mut().zip(live) {
                     if l != Ty::Error {
                         *a = l;
@@ -403,7 +399,7 @@ impl Cx<'_> {
     /// `impl<S: Seq<T>, T> Into<List<T>> for S`; the bounds fix the impl's other parameters.
     fn param_impl(&self, i: usize, r: &TraitRef) -> Option<usize> {
         let have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
-        let mut found = (self.d.trait_impls(r.tr)).filter(|(_, im)| {
+        let mut found = (self.impls().trait_impls(r.tr)).filter(|(_, im)| {
             !im.trait_.args.is_empty()
                 && matches!(im.for_, Ty::Param(_))
                 && (im.bounds.iter())
@@ -417,7 +413,7 @@ impl Cx<'_> {
     fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(usize, Vec<Ty>)> {
         let mut found = (self.d.impls.iter().enumerate())
             .filter(|(_, im)| im.trait_.tr == r.tr && !im.blanket())
-            .filter_map(|(k, im)| Some((k, self.d.fits_impl(im, t)?)));
+            .filter_map(|(k, im)| Some((k, self.impls().fits_impl(im, t)?)));
         let one = found.next()?;
         found.next().is_none().then_some(one)
     }

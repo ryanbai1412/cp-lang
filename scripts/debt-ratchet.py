@@ -1973,6 +1973,17 @@ def next_name_compares(root: Path) -> list[str]:
             if not l.lstrip().startswith("//") and pat.search(l)]
 
 
+def next_domain_fiat(root: Path) -> list[str]:
+    """Places new-pipeline code lets a domain meet a trait with no impl: `core_domain_trait`, or a
+    `Ty::Dom(_)`/`CTy::Dom(_)` guard that answers an impl question by the type's kind. Every
+    domain has real `Domain` and `Ordered` rows (S11), so the target is 0."""
+    pat = re.compile(r"\bcore_domain_trait\b|matches!\([^)]*\bC?Ty::Dom\(_\)\)\s*(?:\{|&&|\|\|)"
+                     r"|C?Ty::Dom\(_\)\s+if\b")
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            for i, l in enumerate(_lines(p), 1)
+            if not l.lstrip().startswith("//") and pat.search(l)]
+
+
 def next_library_gates(root: Path) -> list[str]:
     """Places new-pipeline code asks whether a module is a library (`is_library`), or wraps that
     question (`items_only`): a decorator or rule only std may use is std privilege under a new
@@ -4869,7 +4880,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"frozen_std_drift", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"frozen_std_drift", "next_domain_fiat", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
@@ -5035,6 +5046,7 @@ COUNTERS = {
     "event_labels": ("new-pipeline events named by a label string instead of a typed point (Core)", event_labels, True),
     "trace_old_interp_uses": ("tool and facade lines reading the old interpreter's trace (Core)", trace_old_interp_uses, True),
     "next_name_compares": ("new-pipeline comparisons of source text against a fixed identifier: names known by text (Core)", next_name_compares, True),
+    "next_domain_fiat": ("new-pipeline code letting a domain meet a trait with no impl row (Core)", next_domain_fiat, True),
     "next_library_gates": ("new-pipeline checks of whether a module is a library: std-only rules (Core)", next_library_gates, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
     "next_weak_oracle_passes": ("new-pipeline passing cases whose oracle is exit 1 or ok without output (Core)", next_weak_oracle_passes, True),

@@ -50,7 +50,7 @@ impl Cx<'_> {
         let unmet = (self.b.obligations[owed..].iter()).any(|(t, r, ..)| {
             let t = self.shallow(t);
             !matches!(t, Ty::Var(_))
-                && !(self.d.impls_of(r.tr)).any(|im| self.d.fits_impl(im, &t).is_some())
+                && !(self.impls().impls_of(r.tr)).any(|im| self.impls().fits_impl(im, &t).is_some())
         });
         if self.errors.len() > diagnosed
             || unmet
@@ -180,6 +180,8 @@ impl Cx<'_> {
             _ => {
                 let i = self.id(super::Table::Domain, self.domains.len());
                 super::put(&mut self.domains, i, info);
+                let rows = self.d.domain_rows(i, self.b.item.at(span), self.b.module);
+                self.dom_rows.extend(rows);
                 i
             }
         };

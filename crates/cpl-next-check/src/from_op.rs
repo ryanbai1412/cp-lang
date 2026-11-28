@@ -64,7 +64,8 @@ impl Cx<'_> {
     }
     /// Whether some impl of `tr` is for `t`'s own type.
     pub(super) fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
-        (self.d.impls_of(tr)).any(|im| !im.blanket() && self.d.fits_impl(im, t).is_some())
+        (self.impls().impls_of(tr))
+            .any(|im| !im.blanket() && self.impls().fits_impl(im, t).is_some())
     }
     /// The traits open type `v` is bound by so far.
     fn bounds_on(&self, v: usize) -> Vec<TraitId> {
@@ -101,7 +102,8 @@ impl Cx<'_> {
             };
             meets
                 && missing.iter().any(|tr| {
-                    (self.d.impls_of(*tr)).any(|im| matches!(im.for_, Ty::Struct(d, ..) if d == s))
+                    (self.impls().impls_of(*tr))
+                        .any(|im| matches!(im.for_, Ty::Struct(d, ..) if d == s))
                 })
         })
     }

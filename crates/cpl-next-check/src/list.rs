@@ -44,7 +44,7 @@ impl Cx<'_> {
             Some(t @ Ty::Struct(s, ..))
                 if s != list
                     && Some(s) != self.array_id()
-                    && (self.d.trait_impls(tr))
+                    && (self.impls().trait_impls(tr))
                         .any(|(_, im)| matches!(&im.for_, Ty::Struct(f, ..) if *f == s)) =>
             {
                 Some(t)
