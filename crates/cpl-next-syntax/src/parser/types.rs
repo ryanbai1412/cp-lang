@@ -45,6 +45,22 @@ impl Parser<'_> {
                 self.name("the domain's name");
                 self.finish();
             }
+            T::Ident if self.word() == Some(Contextual::TypeOf) && self.nth(1) == T::LParen => {
+                self.start(NodeKind::TypeOfType);
+                self.bump();
+                self.bump();
+                self.expr();
+                self.want(T::RParen, "`)` to close `type_of(..)`");
+                self.finish();
+            }
+            T::Ident
+                if self.word() == Some(Contextual::Wildcard)
+                    && !ops::RANGE.contains(&self.nth(1)) =>
+            {
+                self.start(NodeKind::InferType);
+                self.bump();
+                self.finish();
+            }
             T::Ident if ops::RANGE.contains(&self.nth(1)) => self.range_type(),
             T::Ident | T::SelfKw => self.path_type(),
             T::Int | T::Float | T::Minus | T::DotDot | T::DotDotEq => self.range_type(),
@@ -167,6 +183,20 @@ impl Parser<'_> {
     }
 
     /// `()`, `(A, B)`, `(A) -> B`, or a record type `(lo: Int, ..R)`.
+    /// `without (u, v)` after a row's rest `..R`.
+    fn row_without(&mut self) {
+        self.bump();
+        if self.want(T::LParen, "`(` and the fields it removes") {
+            loop {
+                self.want(T::Ident, "a field name");
+                if !self.eat(T::Comma) || self.at(T::RParen) {
+                    break;
+                }
+            }
+            self.want(T::RParen, "`)` after the removed fields");
+        }
+    }
+
     fn paren_type(&mut self) {
         let record = self.nth(1) == T::Ident && self.nth(2) == T::Colon || self.nth(1) == T::DotDot;
         if record {
@@ -175,6 +205,9 @@ impl Parser<'_> {
                 if p.eat(T::DotDot) {
                     if !matches!(p.peek(), T::RParen | T::Comma) {
                         p.ty();
+                        if p.word() == Some(Contextual::Without) {
+                            p.row_without();
+                        }
                     }
                 } else {
                     p.want(T::Ident, "a field name");

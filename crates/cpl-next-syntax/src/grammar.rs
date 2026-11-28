@@ -107,6 +107,10 @@ pub enum Contextual {
     Lend,
     /// `loop:`, reported: write `while true:`.
     Loop,
+    /// `..R without (u, v)`: a row with fields removed.
+    Without,
+    /// `type_of(f)`: the type of a fn or an operator.
+    TypeOf,
     /// `lazy f: T`, reported: a param is lent, `mut` or `var` (R05.2.3).
     Lazy,
 }
@@ -134,6 +138,8 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("lend", Contextual::Lend),
     ("loop", Contextual::Loop),
     ("lazy", Contextual::Lazy),
+    ("without", Contextual::Without),
+    ("type_of", Contextual::TypeOf),
 ];
 
 /// The contextual word `text` spells, if any.

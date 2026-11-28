@@ -374,3 +374,68 @@ fn types_read_through_their_views() {
     let rest: Vec<_> = u.fields().map(|f| f.is_rest()).collect();
     assert_eq!(rest, [false, true]);
 }
+
+#[test]
+fn a_row_without_and_an_inferred_type_read() {
+    use crate::ast::{self, AstNode};
+    let src =
+        "type A<R> = (to: Int, ..R without (u, v))\nfn f(x: List<_>) -> (..R without (q)) = x\nimpl Read for _..=_:\n    fn read() = 1\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let rests: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::RecordTypeField::cast)
+        .filter(|f| f.is_rest())
+        .collect();
+    let read = |f: &ast::RecordTypeField| {
+        let removed: Vec<_> = f.removed().iter().map(|t| t.text().to_string()).collect();
+        (
+            f.name().is_none(),
+            f.ty().unwrap().syntax().text().trim().to_string(),
+            removed,
+        )
+    };
+    assert_eq!(
+        read(&rests[0]),
+        (
+            true,
+            "R".to_string(),
+            vec!["u".to_string(), "v".to_string()]
+        )
+    );
+    assert_eq!(
+        read(&rests[1]),
+        (true, "R".to_string(), vec!["q".to_string()])
+    );
+    let infers = file
+        .root
+        .descendants()
+        .filter_map(ast::Type::cast)
+        .filter(|t| matches!(t, ast::Type::Infer(_)));
+    assert_eq!(infers.count(), 1);
+}
+
+#[test]
+fn type_of_and_a_domain_binder_read() {
+    use crate::ast::{self, AstNode};
+    let src = "type F = type_of(+)\ntype G = type_of(max)\nfn f() -> (domain P, [P]Int) = todo\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let args: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::TypeOfType::cast)
+        .map(|t| t.arg().unwrap())
+        .collect();
+    assert!(
+        matches!(args[..], [ast::Expr::OpValue(_), ast::Expr::Name(_)]),
+        "{args:?}"
+    );
+    let binder = file
+        .root
+        .descendants()
+        .find_map(ast::DomainBinder::cast)
+        .unwrap();
+    assert_eq!(binder.name().unwrap().text(), "P");
+}

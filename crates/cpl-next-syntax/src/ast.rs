@@ -145,6 +145,8 @@ nodes! {
     RangeType,
     /// `'+' | '-'`, `1 | 2`, `7`.
     LiteralType,
+    InferType,
+    TypeOfType,
     Literal,
     NameRef,
     ParenExpr,
@@ -236,6 +238,8 @@ category! {
         DomainBinder(DomainBinder),
         Range(RangeType),
         Literal(LiteralType),
+        Infer(InferType),
+        TypeOf(TypeOfType),
     }
 }
 
@@ -1038,7 +1042,7 @@ impl PathType {
         child(&self.0)
     }
 
-    /// `(len: 1..=n)` in `Str(len: 1..=n)`, `(max)` in `type_of(max)`.
+    /// `(len: 1..=n)` in `Str(len: 1..=n)`.
     pub fn args(&self) -> Option<ArgList> {
         child(&self.0)
     }
@@ -1104,7 +1108,19 @@ impl RecordType {
 impl RecordTypeField {
     /// `None` for a rest `..R`.
     pub fn name(&self) -> Option<SyntaxToken> {
+        if self.is_rest() {
+            return None;
+        }
         own_token(&self.0, TokenKind::Ident)
+    }
+
+    /// `u`, `v` in `..R without (u, v)`: the fields the rest drops.
+    pub fn removed(&self) -> Vec<SyntaxToken> {
+        own_tokens(&self.0)
+            .skip_while(|t| !is_word(t, Contextual::Without))
+            .skip(1)
+            .filter(|t| t.kind() == TokenKind::Ident)
+            .collect()
     }
 
     /// `..` or `..R`: the open rest of a row.
@@ -1142,6 +1158,13 @@ impl AlphabetType {
 impl RangeType {
     /// A `RangeExpr` for a range, any other expression for a value.
     pub fn expr(&self) -> Option<Expr> {
+        child(&self.0)
+    }
+}
+
+impl TypeOfType {
+    /// `f` or `+` in `type_of(f)`, `type_of(+)`.
+    pub fn arg(&self) -> Option<Expr> {
         child(&self.0)
     }
 }

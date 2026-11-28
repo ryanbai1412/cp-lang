@@ -183,6 +183,10 @@ pub enum NodeKind {
     RangeType,
     /// `1 | 2 | 3`, `"a" | "b"`.
     LiteralType,
+    /// `_` as a type: the checker infers it.
+    InferType,
+    /// `type_of(f)`, `type_of(+)`: the type of a fn or an operator.
+    TypeOfType,
     /// `@!name(args)` on its own line.
     Directive,
     /// `@name(args)` before an item; part of that item.
