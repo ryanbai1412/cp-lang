@@ -1,10 +1,30 @@
 //! Types (spec §1.10 `type`).
 
 use super::*;
+use crate::grammar::Contextual;
 use crate::ops::{self, Level};
 
 impl Parser<'_> {
+    /// A type; `A -> B` after any type is a fn type, and `Str of "ab"` a
+    /// string over an alphabet.
     pub(super) fn ty(&mut self) {
+        let at = self.checkpoint();
+        self.ty_atom();
+        if self.word() == Some(Contextual::Of) && self.nth(1) == T::Str {
+            self.start_at(at, NodeKind::AlphabetType);
+            self.bump();
+            self.bump();
+            self.finish();
+        }
+        if self.at(T::Arrow) {
+            self.start_at(at, NodeKind::FnType);
+            self.bump();
+            self.ty();
+            self.finish();
+        }
+    }
+
+    fn ty_atom(&mut self) {
         match self.peek() {
             T::Question => {
                 self.start(NodeKind::OptionalType);
@@ -19,6 +39,12 @@ impl Parser<'_> {
                 self.finish();
             }
             T::LParen => self.paren_type(),
+            T::Domain => {
+                self.start(NodeKind::DomainBinder);
+                self.bump();
+                self.name("the domain's name");
+                self.finish();
+            }
             T::Ident if ops::RANGE.contains(&self.nth(1)) => self.range_type(),
             T::Ident | T::SelfKw => self.path_type(),
             T::Int | T::Float | T::Minus | T::DotDot | T::DotDotEq => self.range_type(),
@@ -69,15 +95,12 @@ impl Parser<'_> {
 
     /// `<T, 3, ?U>`. A `>>` closes two lists: the inner one takes the token,
     /// and the outer one closes on it too.
-    fn generic_args(&mut self) {
+    pub(super) fn generic_args(&mut self) {
         self.start(NodeKind::GenericArgs);
         self.bump();
         loop {
-            match self.peek() {
-                T::Int | T::Float | T::Minus => self.expr_at(Level::BitOr),
-                _ => self.ty(),
-            }
-            if !self.eat(T::Comma) || matches!(self.peek(), T::Gt | T::Shr) {
+            self.ty();
+            if self.half_gt || !self.eat(T::Comma) || matches!(self.peek(), T::Gt | T::Shr) {
                 break;
             }
         }
@@ -99,7 +122,9 @@ impl Parser<'_> {
             return self.list(NodeKind::RecordType, T::RParen, "the record type", |p| {
                 p.start(NodeKind::RecordTypeField);
                 if p.eat(T::DotDot) {
-                    p.ty();
+                    if !matches!(p.peek(), T::RParen | T::Comma) {
+                        p.ty();
+                    }
                 } else {
                     p.want(T::Ident, "a field name");
                     p.want(T::Colon, "`:` and the field's type");
@@ -108,13 +133,9 @@ impl Parser<'_> {
                 p.finish();
             });
         }
-        let at = self.checkpoint();
-        self.list(NodeKind::TupleType, T::RParen, "the tuple type", |p| p.ty());
-        if self.at(T::Arrow) {
-            self.start_at(at, NodeKind::FnType);
-            self.bump();
-            self.ty();
-            self.finish();
-        }
+        self.list(NodeKind::TupleType, T::RParen, "the tuple type", |p| {
+            p.eat(T::Mut);
+            p.ty();
+        });
     }
 }

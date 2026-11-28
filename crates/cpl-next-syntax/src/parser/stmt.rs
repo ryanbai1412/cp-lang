@@ -46,13 +46,20 @@ impl Parser<'_> {
             T::Ident if self.word() == Some(Contextual::Repeat) && self.nth(1) != T::Eq => {
                 self.headed(NodeKind::RepeatStmt, |p| p.expr())
             }
-            T::Ident if self.word() == Some(Contextual::With) && self.nth(1) == T::Ident => self
-                .headed(NodeKind::WithStmt, |p| {
-                    p.expr();
-                    while p.eat(T::Comma) {
-                        p.expr();
-                    }
-                }),
+            // `with io(base: 1)` with no block covers the rest of the file.
+            T::Ident if self.word() == Some(Contextual::With) && self.nth(1) == T::Ident => {
+                self.start(NodeKind::WithStmt);
+                self.bump();
+                self.expr();
+                while self.eat(T::Comma) {
+                    self.expr();
+                }
+                if self.at(T::Colon) {
+                    self.block();
+                }
+                self.finish();
+                self.end_line();
+            }
             _ => {
                 self.simple();
                 while self.eat(T::Semi) {
@@ -115,7 +122,7 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn simple(&mut self) {
+    pub(super) fn simple(&mut self) {
         match self.peek() {
             T::Let | T::Var => self.let_stmt(),
             T::Const => {

@@ -32,6 +32,32 @@ pub enum NodeKind {
     TupleExpr,
     /// `[a, b]`.
     ListExpr,
+    /// `[k: v, ...]`, `[:]`.
+    MapExpr,
+    /// `k: v` in a map.
+    MapEntry,
+    /// `[body for p in xs if c]`.
+    CompExpr,
+    /// `for p in xs if c` in a comprehension or a generator.
+    CompClause,
+    /// `f(x) for x in xs`, a call's argument.
+    GeneratorExpr,
+    /// `[D, E] (d, e) => body`.
+    TableExpr,
+    /// `[n] value`: a table of `n` cells, each `value`.
+    TableFill,
+    /// `(name: e, ...)`.
+    RecordExpr,
+    /// `name: e`, or `name:` for the variable `name`.
+    RecordField,
+    /// `Name<T>`: a name with type arguments, as a value.
+    GenericExpr,
+    /// `+` where a value goes: the fn `(a, b) => a + b`.
+    OpValue,
+    /// `@intrinsic("name")`, `@cpp("code")`.
+    IntrinsicExpr,
+    /// `{ s; s; value }`.
+    BlockExpr,
     /// `-x`, `not x`, `~x`.
     PrefixExpr,
     /// `a + b`, with the operator from `ops::BINARY`.
@@ -130,6 +156,14 @@ pub enum NodeKind {
     RecordTypeField,
     /// `(A, B) -> C`.
     FnType,
+    /// `uses io, rng` after a fn's signature.
+    UsesClause,
+    /// `(a: T, b: U)` after a struct's name.
+    FieldList,
+    /// `Str of "ab"`.
+    AlphabetType,
+    /// `domain I` in a type: a domain the value brings with it.
+    DomainBinder,
     /// `0..n`, `..=9` as a type.
     RangeType,
     /// `1 | 2 | 3`, `"a" | "b"`.

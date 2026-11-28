@@ -172,3 +172,9 @@ language, and the new crate owns it.
   a token's leading trivia are its preceding trivia siblings.
 - No `rowan`: the tree is small, and a new third-party crate is a
   reviewed decision for little gain.
+
+**`<` after a name.** `Name<..>` in an expression is type arguments when the
+`<..>` closes on the line and what follows can follow a value; a lowercase
+name takes them only before a call and only when no argument is a bare
+lowercase name, so `a < b > (c)` stays a comparison. No other expression
+form looks ahead past its own brackets except a table, `[D] d => body`.

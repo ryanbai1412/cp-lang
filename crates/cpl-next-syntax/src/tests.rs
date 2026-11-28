@@ -175,3 +175,17 @@ fn consts_contexts_operator_fns_and_mod_items_are_named() {
     assert_eq!(inner, [Some("f".to_string()), Some("S".to_string())]);
     assert_eq!(file.root.text(), src);
 }
+
+#[test]
+fn a_one_line_enum_after_a_colon_is_an_error_that_keeps_its_variants() {
+    let src = "enum Dir: N, E\nlet x = 1\n";
+    let file = parse(src);
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    let enum_ = file.items().next().unwrap();
+    let variants = enum_
+        .descendants()
+        .filter(|n| n.kind() == NodeKind::Variant)
+        .count();
+    assert_eq!(variants, 2);
+    assert_eq!(file.root.text(), src);
+}

@@ -97,6 +97,16 @@ pub enum Contextual {
     Law,
     /// `context io:` declares a context.
     Context,
+    /// `Str of "ab"`: a string over an alphabet.
+    Of,
+    /// `-> T uses io`: the contexts a fn reads.
+    Uses,
+    /// `use a.b as c`.
+    As,
+    /// `@intrinsic("name")`.
+    Intrinsic,
+    /// `@cpp("code")`.
+    Cpp,
 }
 
 /// Each contextual word and how it is spelled.
@@ -114,6 +124,11 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("yields", Contextual::Yields),
     ("law", Contextual::Law),
     ("context", Contextual::Context),
+    ("of", Contextual::Of),
+    ("uses", Contextual::Uses),
+    ("as", Contextual::As),
+    ("intrinsic", Contextual::Intrinsic),
+    ("cpp", Contextual::Cpp),
 ];
 
 /// The contextual word `text` spells, if any.

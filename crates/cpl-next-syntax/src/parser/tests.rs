@@ -266,7 +266,7 @@ fn items_carry_their_decorators_and_members() {
         got[2]
     );
     assert!(
-        got[2].contains("WhereClause(where WherePred(T : Bound(PathType(Copy))))"),
+        got[2].contains("WhereClause(where WherePred(PathType(T) : Bound(PathType(Copy))))"),
         "{}",
         got[2]
     );
@@ -276,7 +276,9 @@ fn items_carry_their_decorators_and_members() {
         got[5]
     );
     assert!(
-        got[5].contains("WhereClause(where WherePred(T : Bound(PathType(Eq)))) = CompareExpr("),
+        got[5].contains(
+            "WhereClause(where WherePred(PathType(T) : Bound(PathType(Eq)))) = CompareExpr("
+        ),
         "{}",
         got[5]
     );
@@ -330,4 +332,37 @@ fn a_stray_indent_among_arms_ends() {
         got.last().map(String::as_str),
         Some("AssignStmt(NameRef(z) = Literal(1))")
     );
+}
+
+#[test]
+fn collection_record_generic_and_operator_forms_parse() {
+    let src = "let a = [x * x for x in xs if x > 0]\nlet m = [1: 10, 2: 20]\nlet e = [:]\nlet r = (g: 1, x)\nvar q = Deque<T>.new()\nlet s = fold(+, xs)\nlet t = [R, C] (r, c) => r\nlet f = [n]0\nlet k = sum(f(x) for x in xs)\nlet v = @intrinsic(\"popcount\")\nlet w = { domain V = 0..3; Int(V(1)) }\n";
+    let (got, errors) = stmts(src);
+    assert_eq!(errors, 0, "{got:#?}");
+    for (i, want) in [
+        "CompExpr([ BinExpr(",
+        "MapExpr([ MapEntry(Literal(1) : Literal(10))",
+        "MapExpr([ : ])",
+        "RecordExpr(( RecordField(g : Literal(1)) , NameRef(x) ))",
+        "GenericExpr(NameRef(Deque) GenericArgs(< PathType(T) >))",
+        "Arg(OpValue(+))",
+        "TableExpr(Dims([ PathType(R) , PathType(C) ]) ParamList(",
+        "TableFill(ListExpr([ NameRef(n) ]) Literal(0))",
+        "GeneratorExpr(CallExpr(",
+        "IntrinsicExpr(@ intrinsic ( \"popcount\" ))",
+        "BlockExpr({ DomainDecl(",
+    ]
+    .iter()
+    .enumerate()
+    {
+        assert!(got[i].contains(want), "{}: {}", want, got[i]);
+    }
+}
+
+#[test]
+fn a_lowercase_name_takes_type_arguments_only_before_a_call() {
+    let (got, errors) = stmts("let c = a < b > (d)\nlet n = read<Int>()\n");
+    assert_eq!(errors, 0, "{got:#?}");
+    assert!(!got[0].contains("GenericExpr"), "{}", got[0]);
+    assert!(got[1].contains("GenericExpr(NameRef(read)"), "{}", got[1]);
 }

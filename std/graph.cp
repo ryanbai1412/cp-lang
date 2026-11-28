@@ -2223,7 +2223,7 @@ pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
 
 /// \(O(1)\): one event of `dfs`, the same shape as `Rooted.tour` yields: `via` is the arc that
 /// discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
-pub enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)
+pub enum Visit<V, A> = Enter(v: V, via: ?A) | Exit(v: V, via: ?A) | Again(from: V, via: A)
 
 /// Shortest distances for integer weights in `0..=max_w` with a bucket queue (Dial), from
 /// every vertex of `from` at distance 0. Same result shape as `dijkstra`; `until: f` stops

@@ -26,7 +26,13 @@ impl Parser<'_> {
 
     pub(super) fn item(&mut self) {
         if self.at(T::At) && self.nth(1) == T::Bang && self.glued(1) {
-            return self.directive();
+            // A directive heads the item written below it.
+            self.directive();
+            while self.eat(T::Newline) {}
+            if !matches!(self.peek(), T::Eof | T::Dedent) {
+                self.item();
+            }
+            return;
         }
         let at = self.checkpoint();
         while self.at(T::At) {
@@ -42,15 +48,7 @@ impl Parser<'_> {
             T::Use => self.use_decl(at),
             T::Const => self.const_decl(at),
             T::Type => self.type_alias(at, NodeKind::TypeAlias),
-            T::Domain => {
-                self.start_at(at, NodeKind::DomainDecl);
-                self.bump();
-                self.name("the domain's name");
-                if self.want(T::Eq, "`=` and the domain's size") {
-                    self.expr();
-                }
-                self.finish();
-            }
+            T::Domain => self.domain_decl(at),
             T::Ident if self.nth_word(k) == Some(W::Extern) => {
                 self.start_at(at, NodeKind::ExternDecl);
                 self.bump();
@@ -82,6 +80,17 @@ impl Parser<'_> {
             _ => return self.stmt(),
         }
         self.end_line();
+    }
+
+    /// `domain N = e`.
+    pub(super) fn domain_decl(&mut self, at: Checkpoint) {
+        self.start_at(at, NodeKind::DomainDecl);
+        self.bump();
+        self.name("the domain's name");
+        if self.want(T::Eq, "`=` and the domain's size") {
+            self.expr();
+        }
+        self.finish();
     }
 
     /// `pub const N: T = e`.
@@ -126,7 +135,7 @@ impl Parser<'_> {
     }
 
     /// A declared name, in a `Name` node, so readers find it by kind.
-    fn name(&mut self, what: &str) {
+    pub(super) fn name(&mut self, what: &str) {
         self.start(NodeKind::Name);
         self.want(T::Ident, what);
         self.finish();
@@ -137,7 +146,7 @@ impl Parser<'_> {
             .map_or("", |i| self.tokens[i].span.text(self.src))
     }
 
-    fn nth_word(&self, n: usize) -> Option<W> {
+    pub(super) fn nth_word(&self, n: usize) -> Option<W> {
         if self.nth(n) == T::Ident {
             crate::grammar::contextual(self.nth_text(n))
         } else {
@@ -195,11 +204,29 @@ impl Parser<'_> {
             self.params();
         }
         self.ret();
+        if self.word() == Some(W::Uses) {
+            self.start(NodeKind::UsesClause);
+            self.bump();
+            self.want(T::Ident, "a context's name");
+            while self.eat(T::Comma) {
+                self.want(T::Ident, "a context's name");
+            }
+            self.finish();
+        }
         self.where_clause();
         if self.at(T::Colon) {
             self.block();
         } else if self.eat(T::Eq) {
-            self.expr();
+            // `= ` then the value on an indented line of its own.
+            if self.at(T::Newline) && self.nth(1) == T::Indent {
+                self.bump();
+                self.bump();
+                self.expr();
+                while self.eat(T::Newline) {}
+                self.want(T::Dedent, "the end of the fn's value");
+            } else {
+                self.expr();
+            }
         }
         self.finish();
     }
@@ -250,40 +277,56 @@ impl Parser<'_> {
         self.bump();
         if self.word() == Some(W::Yields) {
             self.bump();
-        } else if self.eat(T::Lends) && self.at(T::LParen) {
-            self.list(NodeKind::LendSrc, T::RParen, "the lent sources", |p| {
-                p.name("a parameter's name");
-            });
+        } else if self.eat(T::Lends) {
+            if self.at(T::LParen) {
+                self.list(NodeKind::LendSrc, T::RParen, "the lent sources", |p| {
+                    p.name("a parameter's name");
+                });
+            }
+            self.eat(T::Mut);
         }
         self.ty();
         self.finish();
     }
 
+    /// `<T: Bound, const N: Int, U = Int>`. A `>>` that closes a bound's
+    /// type arguments closes the list too.
     fn generics(&mut self) {
-        self.list(
-            NodeKind::GenericParams,
-            T::Gt,
-            "the generic parameters",
-            |p| {
-                p.start(NodeKind::GenericParam);
-                let constant = p.eat(T::Const);
-                if !constant {
-                    p.eat(T::Domain);
-                }
-                p.name("a generic parameter's name");
-                if p.eat(T::Colon) {
-                    if constant {
-                        p.ty();
-                    } else {
-                        p.bound();
-                    }
-                }
-                if p.eat(T::Eq) {
-                    p.ty();
-                }
-                p.finish();
-            },
-        );
+        self.start(NodeKind::GenericParams);
+        self.bump();
+        while !matches!(self.peek(), T::Gt | T::Newline | T::Eof) && !self.half_gt {
+            let before = self.pos;
+            self.generic_param();
+            if self.pos == before || self.half_gt || !self.eat(T::Comma) {
+                break;
+            }
+        }
+        if self.half_gt {
+            self.half_gt = false;
+        } else {
+            self.want(T::Gt, "`>` to close the generic parameters");
+        }
+        self.finish();
+    }
+
+    fn generic_param(&mut self) {
+        self.start(NodeKind::GenericParam);
+        let constant = self.eat(T::Const);
+        if !constant {
+            self.eat(T::Domain);
+        }
+        self.name("a generic parameter's name");
+        if self.eat(T::Colon) {
+            if constant {
+                self.ty();
+            } else {
+                self.bound();
+            }
+        }
+        if self.eat(T::Eq) {
+            self.ty();
+        }
+        self.finish();
     }
 
     fn bound(&mut self) {
@@ -304,7 +347,7 @@ impl Parser<'_> {
         self.bump();
         loop {
             self.start(NodeKind::WherePred);
-            self.want(T::Ident, "a type parameter");
+            self.ty();
             if self.want(T::Colon, "`:` and a bound") {
                 self.bound();
             }
@@ -347,8 +390,11 @@ impl Parser<'_> {
         self.eat(T::Pub);
         self.eat(T::Var);
         self.name("a field's name");
-        if self.want(T::Colon, "`:` and the field's type") {
+        // `var top = 0`: the default gives the type.
+        if self.eat(T::Colon) {
             self.ty();
+        } else if !self.at(T::Eq) {
+            self.want(T::Colon, "`:` and the field's type");
         }
         if self.eat(T::Eq) {
             self.expr();
@@ -380,6 +426,14 @@ impl Parser<'_> {
         if self.at(T::Lt) {
             self.generics();
         }
+        if self.at(T::LParen) {
+            self.list(
+                NodeKind::FieldList,
+                T::RParen,
+                "the struct's fields",
+                Self::field,
+            );
+        }
         if self.at(T::Colon) && self.nth(1) != T::Newline {
             self.bump();
             self.field();
@@ -407,6 +461,14 @@ impl Parser<'_> {
                     break;
                 }
             }
+        } else if self.at(T::Colon) && self.nth(1) != T::Newline {
+            // `enum Dir: N, E` is not derived (R01.10.2); keep the variants.
+            self.error_here(codes::EXPECTED_TOKEN, "`=` before variants on one line");
+            self.bump();
+            self.variant();
+            while self.eat(T::Comma) || self.eat(T::Pipe) {
+                self.variant();
+            }
         } else {
             self.members(|p| p.fn_or(Self::variant));
         }
@@ -415,6 +477,9 @@ impl Parser<'_> {
 
     fn variant(&mut self) {
         self.start(NodeKind::Variant);
+        while self.at(T::At) {
+            self.decorator();
+        }
         self.name("a variant's name");
         if self.at(T::LParen) {
             self.bump();
@@ -437,11 +502,28 @@ impl Parser<'_> {
         if self.at(T::Lt) {
             self.generics();
         }
+        // `trait Both = A + B where ...`: an alias.
+        if self.eat(T::Eq) {
+            self.bound();
+            self.where_clause();
+            return self.finish();
+        }
         if self.eat(T::LParen) {
             self.bound();
             self.want(T::RParen, "`)` to close the supertraits");
+        } else if self.at(T::Colon) && self.nth(1) == T::Ident && self.nth(2) != T::Colon {
+            self.bump();
+            self.bound();
         }
-        self.members(|p| p.assoc_member(Self::field));
+        if self.at(T::Colon) && self.nth(1) == T::Ident && self.nth(2) == T::Colon {
+            self.bump();
+            self.field();
+            while self.eat(T::Comma) {
+                self.field();
+            }
+        } else {
+            self.members(|p| p.assoc_member(Self::field));
+        }
         self.finish();
     }
 
@@ -516,6 +598,13 @@ impl Parser<'_> {
             self.list(NodeKind::UseNames, T::RBrace, "the imported names", |p| {
                 p.want(T::Ident, "a name");
             });
+        } else if self.at(T::Dot) && self.nth(1) == T::Star {
+            self.bump();
+            self.bump();
+        }
+        if self.word() == Some(W::As) {
+            self.bump();
+            self.name("the module's local name");
         }
         self.finish();
     }

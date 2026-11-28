@@ -2953,7 +2953,7 @@ fn euler_tour_trees_match_a_brute_forest():
 pub enum PermKind = Leaf | Incr | Decr | Partial | Full
 /// A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`, or
 /// `Inner(l, r, kind)` with its two children and how they join.
-pub enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)
+pub enum PermNode<I, N> = Leaf(i: I) | Inner(l: N, r: N, kind: PermKind)
 
 /// The binary permutation (interval-decomposition) tree of a bijection `p: [I]V`: every node
 /// covers a run of positions, leaves are single positions, a node's children split its run in

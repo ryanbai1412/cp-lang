@@ -763,7 +763,10 @@ pub fn to_str(self: Int, base: Int = 10) -> Str:
 
 /// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
 /// `-s` flips it and `max(s, Sign.Zero)` clamps it.
-pub enum Sign: Neg = -1, Zero = 0, Pos = 1
+pub enum Sign:
+    Neg = -1
+    Zero = 0
+    Pos = 1
 
 /// The side of zero `self` is on: `Neg`, `Zero` or `Pos`. `(b - a).sign` compares two values.
 ///
