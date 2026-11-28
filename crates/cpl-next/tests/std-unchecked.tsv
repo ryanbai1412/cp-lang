@@ -1,7 +1,7 @@
 std.algebra	55
 std.bag	11
 std.beats	0
-std.bitset	15
+std.bitset	13
 std.clone	0
 std.convert	0
 std.default	0
@@ -13,7 +13,7 @@ std.dsu	0
 std.fenwick	63
 std.flow	28
 std.geometry	19
-std.graph	90
+std.graph	68
 std.grid	0
 std.hash	0
 std.hashmap	0
@@ -56,6 +56,6 @@ std.stream	0
 std.strings	35
 std.subset	1
 std.timetree	0
-std.tree	45
+std.tree	38
 std.tuple	0
 std.window	0
