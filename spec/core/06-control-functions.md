@@ -222,7 +222,9 @@ library or by this spec:
   the roles of §11.6.
   Core declares each with them, and any module may: a
   second declaration of one marker, or of one `@operator` with the same
-  method, is E0202. (R06.4.12)
+  method, is E0202. A `@coerce` fn applies only where its parameter's type is
+  a struct or an enum: from a built-in type, such as `Int` to a unit struct,
+  the use stays E0302 and converts explicitly (decision 692). (R06.4.12)
 - `@input` on a fn: a value it gives is input, so a range type it fills
   is the input's contract, R0502 when broken, not a range store (std's
   `read`, R10.2.2). `@fast(op)` on a fn with a body: the engines and C++ run

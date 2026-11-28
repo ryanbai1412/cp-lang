@@ -740,6 +740,7 @@ core-05/walk-body-cannot-touch-mut-source.cp
 core-05/walk-body-cannot-write-source.cp
 core-05/walk-body-reads-source.cp
 core-05/windows-walk-lends-parent.cp
+core-06/a-coerce-from-a-built-in-type-stays-a-mismatch.cp
 core-06/a-documented-decorator-is-accepted.cp
 core-06/a-loop-over-a-fn-that-builds-a-list-builds-none.cp
 core-06/alt-main-is-removed.cp

@@ -9608,7 +9608,11 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 
 ## 691. (reserved, E: the lawful role `Lawful<S>`: laws are a derived member, `laws_hold` is an ordinary std fn)
 
-## 692. (reserved, D: a @coerce fn applies only from a struct or enum parameter; a built-in source converts explicitly)
+## 692. A `@coerce` fn applies only from a struct or enum parameter; a built-in source converts explicitly (check, 2026-11-28)
+
+- **Call.** R06.4.12's `@coerce` fn is an implicit conversion only where its parameter's type is a struct or an enum the program or a library declares. A `@coerce` fn from a built-in type (`Int`, `F64`, `Str`, ..) to a struct is never applied implicitly: `get(700)` where `get` takes a `Meters` stays E0302 at the use, and the author writes `meters(700)`. Cases: `core-06/a-coerce-from-a-built-in-type-stays-a-mismatch.cp` (E0302 on frozen cpl and next) and, on the next tree, `core-06/a-programs-coercion-runs-its-fn.cp` (struct to struct, prints 7).
+- **Why.** Coordinator ruling of 2026-11-28, 09:22. Both pipelines already reject `Int` to a struct, and filling a unit newtype implicitly from a bare number would undo what the newtype is for: a `Meters` is never a stray `Int`.
+- **Reverse.** Let `@coerce` apply from any parameter type, flip the reject case to an accept case, and drop R06.4.12's sentence.
 
 ## 693. Until the switch, the site and docs document and run the pinned std (site, 2026-11-28)
 
