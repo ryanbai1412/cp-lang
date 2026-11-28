@@ -357,7 +357,7 @@ impl<'a> Cx<'a> {
         let found = (self.syms.get(method))
             .and_then(|sym| self.impls().impl_member(&rt, sym, Some(named)))
             .and_then(|found| match found {
-                decls::Member::Method(m, ts, ss) => self.listed_too(m, &ts, &ss, key, span),
+                decls::Member::Method(m, ts, ss) => self.listed_too(&rt, m, (&ts, &ss), key, span),
                 decls::Member::Field(..) => None,
             });
         let Some(tr) = found else {

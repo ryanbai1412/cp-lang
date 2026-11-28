@@ -952,7 +952,8 @@ impl<'a> Cx<'a> {
         (!self.bounds_of(i, false).iter().any(|r| r.tr == dom)).then_some(i)
     }
     /// `a.len` on an open `[D]T` (`open_key`): a member of a trait `List` implements too, called
-    /// through the trait so each instance picks its impl (R04.8.11).
+    /// through the trait so each instance picks its impl (R04.8.11). A name no member gives is an
+    /// extension fn's, as `max` is `Seq`'s, found as on any receiver.
     fn open_array_member(
         &mut self,
         recv: TExpr,
@@ -963,9 +964,8 @@ impl<'a> Cx<'a> {
         span: Span,
     ) -> TExpr {
         let through = match self.member_named(rt, name.sym) {
-            Some(decls::Member::Method(m, ts, ss)) => self.listed_too(m, &ts, &ss, key, span),
-            Some(decls::Member::Field(..)) => None,
-            None => return self.method_call(recv, name.text, Vec::new(), span, false),
+            Some(decls::Member::Method(m, ts, ss)) => self.listed_too(rt, m, (&ts, &ss), key, span),
+            Some(decls::Member::Field(..)) | None => None,
         };
         let Some(tr) = through else {
             return self.open_refusal(key, name.text, span);
@@ -998,15 +998,29 @@ impl<'a> Cx<'a> {
     /// too: the obligation that `List<T>` does is the impl's bounds on `T`.
     pub(super) fn listed_too(
         &mut self,
+        rt: &Ty,
         m: FnId,
-        ts: &[Ty],
-        ss: &[SetTy],
+        (ts, ss): (&[Ty], &[SetTy]),
         key: usize,
         span: Span,
     ) -> Option<decls::TraitRef> {
-        let Some(decls::Owner::Impl(k)) = self.items.f(m).owner else {
-            return None;
+        // A trait's default method, as `Indexed`'s `cut_after`, is `Array`'s through the impl
+        // of that trait it has, at that impl's arguments.
+        let (k, ts) = match self.items.f(m).owner {
+            Some(decls::Owner::Impl(k)) => (k, ts.to_vec()),
+            Some(decls::Owner::Trait(tr)) => {
+                let any = decls::TraitRef {
+                    tr,
+                    args: Vec::new(),
+                };
+                match self.impls().best(rt, &any)[..] {
+                    [(decls::ImplIdx::Decl(k), ref binds)] => (k, binds.clone()),
+                    _ => return None,
+                }
+            }
+            _ => return None,
         };
+        let ts = &ts[..];
         let (list, im) = (
             self.role_structs.role_struct(decls::Role::List)?,
             self.items.imp(k),
@@ -1275,11 +1289,13 @@ impl<'a> Cx<'a> {
             }
         }
         if let Some(k) = self.open_key(&rt) {
-            let e = self.open_array_member(recv, &rt, k, name, call, span);
-            if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {
-                self.unify(&e.ty, w);
+            if self.member_named(&rt, name.sym).is_some() {
+                let e = self.open_array_member(recv, &rt, k, name, call, span);
+                if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {
+                    self.unify(&e.ty, w);
+                }
+                return e;
             }
-            return e;
         }
         // Members are found before extension fns: two impls that give `name` leave the call to
         // say which (R08.1.2, R08.1.4).
