@@ -18,7 +18,7 @@ use std.range.{Len}
 /// `+ - *` are \(O(1)\); `/` and `inv` are \(O(\log P)\) and need `gcd(x, P) == 1`.
 pub struct Mod<P>(pub v: 0..P):
     /// The modulus: `Z.MOD`.
-    let MOD = P
+    const MOD = P
 
     /// Any `Int`, reduced into `0..P` by Euclidean remainder: `Mod<7>(-1)` is 6.
     ///

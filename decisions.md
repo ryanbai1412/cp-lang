@@ -9609,3 +9609,9 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `x => do:` with a block is E0503, and the fix deletes ` do:`, leaving `=>` at the end of the line and the block indented below it (01:536, decision 4.5). std/flow.cp and three conformance cases are rewritten in a commit before the rejection.
 - **Why.** Coordinator ruling of 2026-11-27, 18:31: deleted by 4.5.
 - **Reverse.** Accept `do:` as a spelling of an indented block.
+
+## 663. `Mod<P>`'s modulus is `const MOD = P` (stdlib, 2026-11-27)
+
+- **Call.** std/mod.cp and spec/lib/math.md declare `const MOD = P`, not `let MOD = P`: `P` is a compile-time parameter, so the associated value is a `const` (decision 3.8); `let K = n` stays for a size frozen from a run-time value.
+- **Why.** Coordinator ruling of 2026-11-27, 18:35 (item 1).
+- **Reverse.** Spell it `let` again, and give the new parser a struct-body `let`.

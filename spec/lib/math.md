@@ -193,7 +193,7 @@ An `Int` operand of `+`, `-` or `*` beside a `Mod<P>` converts to it
 <!-- signatures: std/mod.cp -->
 ```cp
 struct Mod<P>(v: 0..P):
-    let MOD = P
+    const MOD = P
     let zero = Mod(0)
     let one = Mod(1 % P)
     fn new(x: Int) -> Mod<P>  // O(1); Euclidean reduction into 0..P
