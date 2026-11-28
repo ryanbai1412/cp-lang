@@ -3,31 +3,65 @@ use super::expr::{block, pure, Formal};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
-/// One argument of a call: written (`f(x)`, `f(k: x)`, `f(mut x)`), or given by a form that
-/// calls a member for the program, as `..r without (u, v)` does.
+/// One argument of a call: written (`f(x)`, `f(k: x)`, `f(mut x)`), given by a form that
+/// calls a member for the program, as `..r without (u, v)` does, or checked already, as
+/// `g[i].m(x)` checks `x` before it lends the cell.
 pub(super) struct CallArg {
     pub label: Option<String>,
-    pub value: Option<next::Expr>,
+    pub value: ArgValue,
     pub mutable: bool,
     pub at: Span,
 }
 
+/// What an argument gives.
+pub(super) enum ArgValue {
+    Written(next::Expr),
+    Checked(TExpr),
+    /// The parser found it missing and has said so.
+    Missing,
+}
+
 impl CallArg {
     pub(super) fn of(cx: &Cx, a: &next::Arg) -> CallArg {
+        let label = a.label().map(|t| t.text().to_string());
         CallArg {
-            label: a.label().map(|t| t.text().to_string()),
-            value: a.value(),
             mutable: a.is_mut(),
-            at: cx.at(a),
+            ..CallArg::labelled(cx, label, a.value(), cx.at(a))
         }
     }
     /// An argument written without a label: `x` of `f(x)`.
     pub(super) fn plain(cx: &Cx, x: &next::Expr) -> CallArg {
+        CallArg::labelled(cx, None, Some(x.clone()), cx.at(x))
+    }
+    /// An argument a form gives with `label`, the parser's missing value as `None`.
+    pub(super) fn labelled(
+        _cx: &Cx,
+        label: Option<String>,
+        value: Option<next::Expr>,
+        at: Span,
+    ) -> CallArg {
+        let value = value.map_or(ArgValue::Missing, ArgValue::Written);
         CallArg {
-            label: None,
-            value: Some(x.clone()),
+            label,
+            value,
             mutable: false,
-            at: cx.at(x),
+            at,
+        }
+    }
+    /// An argument checked already, which the callee coerces as it does any other.
+    pub(super) fn held(label: Option<String>, v: TExpr, at: Span) -> CallArg {
+        CallArg {
+            label,
+            value: ArgValue::Checked(v),
+            mutable: false,
+            at,
+        }
+    }
+    /// Its expression, when it was written: what a test of an argument's shape reads.
+    pub(super) fn written(&self) -> Option<&next::Expr> {
+        match &self.value {
+            ArgValue::Written(x) => Some(x),
+            ArgValue::Checked(_) | ArgValue::Missing => None,
         }
     }
 }
@@ -36,8 +70,9 @@ impl Cx<'_> {
     /// The value an argument gives; one the parser found missing is already its error.
     pub(super) fn arg_expr(&mut self, a: &CallArg, want: Option<&Ty>) -> TExpr {
         match &a.value {
-            Some(x) => self.expr(x, want),
-            None => Self::error_node(a.at),
+            ArgValue::Written(x) => self.expr(x, want),
+            ArgValue::Checked(v) => v.clone(),
+            ArgValue::Missing => Self::error_node(a.at),
         }
     }
     /// A call of a declared fn or struct, with the type arguments written at the call.
