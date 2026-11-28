@@ -358,6 +358,19 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-check/src/pattern.rs:3", "crates/cpl-next-decls/src/collect.rs:1",
                 "crates/cpl-next-decls/src/collect.rs:2"])
 
+    def test_until_notes_count_a_wait_on_a_component_not_an_algorithm_s_until(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-check/src/lib.rs",
+                        '/// `Loaded` serves it until the db answers per query.\n'
+                        '// Until the engine runs on its own frame stack it recurses here.\n'
+                        'f(); // until then it is refused\n'
+                        '/// Storage is shared until written, so a copy costs nothing until then.\n'
+                        '/// meets both until `?U` is known.\n'
+                        'let until = answers;\n'
+                        '/// a stand-in until the stage lands\n')
+            self.assertEqual(dr.next_until_notes(root), [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 2, 3)])
+
     def test_library_gates_count_each_call_and_its_wrapper(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

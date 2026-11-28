@@ -417,6 +417,7 @@
   "next_snapshot_keyed_queries": 5,
   "next_late_rejects": 93,
   "next_harness_refusals": 188,
+  "next_until_notes": 13,
   "next_listed_twice": 0,
   "next_wrong_outputs": 14,
   "next_wrong_outputs_ids": [

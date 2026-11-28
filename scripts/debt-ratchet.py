@@ -1843,6 +1843,23 @@ def next_standin_notes(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if NEXT_STANDIN_RE.search(l)]
 
 
+# A comment that says the code beside it waits on a component: "until the db answers", "until
+# the engine runs on its own frame stack", "until then it is refused" (3 AM blind audit). An
+# algorithm's own "until" ("shared until written", "until `?U` is known") is not one.
+NEXT_UNTIL_RE = re.compile(
+    r"\b[Uu]ntil\b(?:(?!\b[Uu]ntil\b).)*?\b(?:answers?|lands?|loads?|runs on its own|writes them|checks\b"
+    r"|accepts every|is a trait|does,|optional passes)|\b[Uu]ntil then\b.*\b(?:refused|refuses)|\bcounts? it until then")
+
+
+def next_until_notes(root: Path) -> list[str]:
+    """Non-test comment lines in the new pipeline that say the code beside them holds only until
+    a component lands, the "until ..." phrasing `next_standin_notes` (hard zero) does not catch.
+    Shrink-only from its first count; 0 is no code waiting on a component its comment names."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False) if p.name != "tests.rs"
+            for i, l in enumerate(_lines(p), 1)
+            if "//" in l and NEXT_UNTIL_RE.search(l.split("//", 1)[1]) and not NEXT_STANDIN_RE.search(l)]
+
+
 def next_source_text_guards(root: Path) -> list[str]:
     """`include_str!` of a Rust source file in the new pipeline: an architecture guard that
     reads code as text passes vacuously once a marker moves; it becomes a structural (IR-level
@@ -5343,6 +5360,7 @@ COUNTERS = {
     "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
     "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),
     "next_reference_evaluator_lines": ("code lines of the new pipeline's reference interpreter (Core)", next_reference_evaluator_lines, True),
+    "next_until_notes": ("comment lines in the new pipeline whose code holds until a component lands (Core; target 0)", next_until_notes, True),
     "next_harness_refusals": ("cases the new harness answers refused for itself instead of the pipeline (Core; target 0)", next_harness_refusals, True),
     "next_oracle_callers": ("non-test callers of the new pipeline's reference interpreter, the tests' oracle (Core)", next_oracle_callers, True),
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
