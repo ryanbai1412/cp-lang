@@ -79,23 +79,6 @@ pub fn minmax<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x) -> ?(T, T):
         else: best = Some((x, x))
     best
 
-/// How many elements satisfy `p` (every element without `p`).
-///
-/// cost: \(O(n)\)
-/// empty: `let a: List<Int> = []; a.count() == 0`
-/// traps: never
-/// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
-/// example: `[1, 2, 3].pairs().count() == 3`
-pub fn count<S: Seq<T>, T>(
-    self: S,
-    @reject(when: T = Bool, "`count()` counts every element, the falses too: the trues are `count(x => x)`, every element is `len`", code: E0303)
-    p: T -> Bool = _ => true,
-) -> Int:
-    var n = 0
-    for x in self:
-        if p(x): n += 1
-    n
-
 /// Whether some element satisfies `p`; stops at the first.
 ///
 /// cost: \(O(n)\), stopping at the first match
@@ -1469,6 +1452,23 @@ pub trait Seq<T>:
                 if by(x) < by(b) or (last and by(x) == by(b)): best = Some(x)
             else: best = Some(x)
         best
+    /// How many elements satisfy `p` (every element without `p`).
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `let a: List<Int> = []; a.count() == 0`
+    /// traps: never
+    /// example: `[1, 2, 3, 4].count(x => x % 2 == 0) == 2`
+    /// example: `[1, 2, 3].pairs().count() == 3`
+    @free_form
+    fn count(
+        self,
+        @reject(when: T = Bool, "`count()` counts every element, the falses too: the trues are `count(x => x)`, every element is `len`", code: E0303)
+        p: T -> Bool = _ => true,
+    ) -> Int:
+        var n = 0
+        for x in self:
+            if p(x): n += 1
+        n
 
 /// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
 /// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the
