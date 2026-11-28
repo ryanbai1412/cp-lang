@@ -92,7 +92,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_reference_evaluator_lines` | 586 |
 | `next_refusal_kinds` | 60 |
 | `next_refused` | 687 |
-| `next_run_api_unbuilt` | 75 |
+| `next_run_api_unbuilt` | 74 |
 | `next_snapshot_keyed_queries` | 5 |
 | `next_source_text_guards` | 3 |
 | `next_split` | 2 |

@@ -286,8 +286,25 @@ impl Cx<'_> {
         if let Ty::Param(i) = t {
             let tr = self.d.t(r.tr);
             let mut have = self.bound_traits(*i).into_iter().filter(|h| h.tr == r.tr);
-            let fitting = self.stated(*i, r);
-            let Some(h) = fitting.first().cloned().or_else(|| have.next()) else {
+            let mut fitting = self.stated(*i, r);
+            fitting.dedup();
+            if fitting.len() > 1 {
+                // Two stated bounds fit: wait while the bound's own arguments are open, then
+                // it is ambiguous, never the first one written.
+                if tr.inputs(&r.args).iter().any(|a| self.unknown(a)) {
+                    return None;
+                }
+                let (name, shown) = (tr.name.clone(), self.show(t));
+                let text = format!(
+                    "`{shown}` has {} bounds of `{name}` that fit here",
+                    fitting.len()
+                );
+                let help = "write the trait's arguments, or keep one of the bounds".to_string();
+                let msg = Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, text);
+                self.err_help(span, msg, Some(help));
+                return Some(true);
+            }
+            let Some(h) = fitting.pop().or_else(|| have.next()) else {
                 let i = *i;
                 return Some(match self.param_impl(i, r) {
                     Some(k) => {
@@ -302,9 +319,6 @@ impl Cx<'_> {
                     None => self.blanket(i, r.tr),
                 });
             };
-            if fitting.len() > 1 && tr.inputs(&r.args).iter().any(|a| self.unknown(a)) {
-                return None;
-            }
             return Some(h.args.iter().zip(&r.args).all(|(a, b)| self.unify(a, b)));
         }
         // Every declared domain meets `Domain` and `Ordered`; any other type by an impl.

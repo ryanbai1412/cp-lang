@@ -1742,6 +1742,7 @@ next/n_gen_02_lent_then_mutated.cp
 next/n_gen_04_recursive_break.cp
 next/n_gen_05_expression_body.cp
 next/n_generator_through_bound.cp
+next/n_generic_03_two_stated_bounds_fit.cp
 next/n_grid_col.cp
 next/n_grid_rect.cp
 next/n_grid_row.cp
