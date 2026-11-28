@@ -446,6 +446,9 @@ pub struct Decls {
     pub errors: Vec<Msg>,
     /// Declarations the program gets wrong: where, the code, what is wrong.
     pub misdeclared: Vec<(SourceId, cpl_diag::Code, String)>,
+    /// The fns whose body decls rejected, as an intrinsic not in the table: its error is said,
+    /// and check reads no body for them.
+    pub rejected_bodies: std::collections::BTreeSet<FnId>,
     /// Each module's public free fns with a `self`, by name: a method call finds them with no
     /// import (R11.3.4).
     pub methods: HashMap<Sym, Vec<FnId>>,
@@ -1729,8 +1732,32 @@ fn add_fn(
         FnBody::Expr(e) => match &e.kind {
             cpl_syntax::ast::ExprKind::Intrinsic(n) => {
                 let known = cpl_next_ir::ops::Intrinsic::named(n);
+                // The table grows only by a decision entry; a program names one of its ids
+                // (R12.14.1, R12.14.5).
                 if known.is_none() {
-                    errors.push(Unbuilt::Intrinsic { name: n.clone() }.into());
+                    let ids: Vec<&str> =
+                        (cpl_next_ir::ops::INTRINSICS.iter()).map(|e| e.0).collect();
+                    let msg = cpl_diag::msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE
+                        .say(&[n, &ids.join(", ")]);
+                    let code = cpl_diag::codes::UNKNOWN_INTRINSIC;
+                    d.misdeclared.push((item.at(e.span), code, msg));
+                    d.rejected_bodies.insert(FnId(d.fns.len()));
+                }
+                // A type parameter stands for the entry's types; each call's are checked.
+                let fits = |ty: &Ty, want: &str| {
+                    matches!(ty, Ty::Param(_)) || cpl_next_ir::ops::entry_fits(ty, want)
+                };
+                if let Some((want, res)) = cpl_next_ir::ops::entry_sig(n) {
+                    let receiver = self_ty.iter().filter(|_| self_mode != SelfMode::None);
+                    let taken: Vec<&Ty> = receiver.chain(params.iter().map(|p| &p.ty)).collect();
+                    let params_fit = taken.len() == want.len()
+                        && (taken.iter().zip(want)).all(|(t, w)| fits(t, w));
+                    if !params_fit || !fits(&ret, res) {
+                        let msg = cpl_diag::msgs::check::UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT
+                            .say(&[n, &want.join(", "), &res, &f.name.text]);
+                        let code = cpl_diag::codes::UNKNOWN_INTRINSIC;
+                        d.misdeclared.push((item.at(e.span), code, msg));
+                    }
                 }
                 known
             }

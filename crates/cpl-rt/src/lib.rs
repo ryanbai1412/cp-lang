@@ -73,8 +73,6 @@ const TO_INT: &str = "narrow";
 
 /// What each primitive takes, costs, computes and emits; one row of the table per [`Prim`].
 pub trait Row {
-    fn params(self) -> &'static [&'static str];
-    fn result(self) -> &'static str;
     fn cost(self) -> &'static str;
     fn explain(self) -> &'static str;
     fn forms(self) -> &'static [Cpp];
@@ -84,62 +82,6 @@ pub trait Row {
 }
 
 impl Row for Prim {
-    /// The parameter types, `|` between the types one accepts.
-    fn params(self) -> &'static [&'static str] {
-        const REAL: &[&str] = &["Int|F64"];
-        const REALS: &[&str] = &["Int|F64", "Int|F64"];
-        const PARAMS: [&[&str]; 20] = [
-            &["Int|U64"],
-            &["Int|I128|F64"],
-            &["Int|F64"],
-            &["F64"],
-            &["F64"],
-            &["F64"],
-            &["F64"],
-            &["Int|U64"],
-            &["Int|U64"],
-            &["Int|U64"],
-            &["Int"],
-            REAL,
-            REAL,
-            REALS,
-            REAL,
-            REAL,
-            REAL,
-            REALS,
-            REAL,
-            REAL,
-        ];
-        PARAMS[self as usize]
-    }
-
-    /// The result type, `|` between the types it may be.
-    fn result(self) -> &'static str {
-        const RESULTS: [&str; 20] = [
-            "Int",
-            "Int|I128|F64",
-            "F64",
-            "Int",
-            "Int",
-            "Int",
-            "Int",
-            "Int",
-            "Int",
-            "Int",
-            "Int",
-            "F64",
-            "F64",
-            "F64",
-            "F64",
-            "F64",
-            "F64",
-            "F64",
-            "F64",
-            "F64",
-        ];
-        RESULTS[self as usize]
-    }
-
     /// The cost as `cpl explain` and docs show it (R09 form).
     fn cost(self) -> &'static str {
         "\\(O(1)\\)"

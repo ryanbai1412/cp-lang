@@ -996,6 +996,25 @@ impl Intrinsic {
     }
 }
 
+/// The parameter and result types an `@intrinsic(id)` fn must have, `|` between the types one
+/// accepts, when `id` is one of the table's primitives (R12.14.2).
+pub fn entry_sig(id: &str) -> Option<(&'static [&'static str], &'static str)> {
+    Prim::from_id(id).map(|p| (p.params(), p.result()))
+}
+
+/// Whether `ty` is one of `want`, a cell of an entry's signature.
+pub fn entry_fits(ty: &crate::ty::Ty, want: &str) -> bool {
+    use crate::ty::Ty;
+    cpl_prim::Kind::in_cell(want).any(|k| {
+        *ty == match k {
+            cpl_prim::Kind::Int => Ty::Int,
+            cpl_prim::Kind::U64 => Ty::U64,
+            cpl_prim::Kind::I128 => Ty::I128,
+            cpl_prim::Kind::F64 => Ty::F64,
+        }
+    })
+}
+
 /// Every intrinsic id a std fn's `= @intrinsic(id)` may name, with the operation it is: the one
 /// table of them (R12.14.1). The primitives' ids are `cpl-prim`'s, which the old runtime shares.
 pub const INTRINSICS: &[(&str, Intrinsic)] = &[

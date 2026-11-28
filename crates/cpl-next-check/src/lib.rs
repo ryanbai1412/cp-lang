@@ -1248,9 +1248,10 @@ impl<'a> Cx<'a> {
         let ret = if holes { self.open_holes(&ret) } else { ret };
         self.b.ret = map_slots(&ret, &|k| SetTy::Param(n + k));
         let ret = self.b.ret.clone();
-        // A fn refused as declared (a decorator the slice lacks) is that refusal: its body,
-        // written for the meaning the slice does not build, is not checked.
-        let refused = (f.errors.iter()).any(|e| e.refusal.is_some());
+        // A fn refused as declared (a decorator the slice lacks) is that refusal, and one rejected
+        // as declared is that error: its body is not checked.
+        let refused =
+            (f.errors.iter()).any(|e| e.refusal.is_some()) || d.rejected_bodies.contains(&id);
         // A body that can end without its value is that error, not a mismatch at its end.
         let falls = !refused
             && f.region.is_none()

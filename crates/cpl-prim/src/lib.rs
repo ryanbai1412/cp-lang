@@ -2,6 +2,31 @@
 //! stable number. The compiler matches [`Prim`] values, never the names libraries give them;
 //! what each computes and the C++ it emits live with the engines that read this.
 
+/// A scalar type a primitive takes or gives, as its table cells write it.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Kind {
+    Int,
+    U64,
+    I128,
+    F64,
+}
+impl Kind {
+    pub const ALL: [Kind; 4] = [Kind::Int, Kind::U64, Kind::I128, Kind::F64];
+    /// How a cell of the table writes it.
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Int => "Int",
+            Kind::U64 => "U64",
+            Kind::I128 => "I128",
+            Kind::F64 => "F64",
+        }
+    }
+    /// The kinds a cell of [`Prim::params`] or [`Prim::result`] allows, `|` between them.
+    pub fn in_cell(cell: &str) -> impl Iterator<Item = Kind> + '_ {
+        (Kind::ALL.into_iter()).filter(move |k| cell.split('|').any(|w| w == k.name()))
+    }
+}
+
 /// One primitive of the table. Its index in [`Prim::ALL`] is its stable number.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Prim {
@@ -75,6 +100,62 @@ impl Prim {
         "exp",
         "ln",
     ];
+
+    /// The parameter types, `|` between the types one accepts.
+    pub fn params(self) -> &'static [&'static str] {
+        const REAL: &[&str] = &["Int|F64"];
+        const REALS: &[&str] = &["Int|F64", "Int|F64"];
+        const PARAMS: [&[&str]; 20] = [
+            &["Int|U64"],
+            &["Int|I128|F64"],
+            &["Int|F64"],
+            &["F64"],
+            &["F64"],
+            &["F64"],
+            &["F64"],
+            &["Int|U64"],
+            &["Int|U64"],
+            &["Int|U64"],
+            &["Int"],
+            REAL,
+            REAL,
+            REALS,
+            REAL,
+            REAL,
+            REAL,
+            REALS,
+            REAL,
+            REAL,
+        ];
+        PARAMS[self as usize]
+    }
+
+    /// The result type, `|` between the types it may be.
+    pub fn result(self) -> &'static str {
+        const RESULTS: [&str; 20] = [
+            "Int",
+            "Int|I128|F64",
+            "F64",
+            "Int",
+            "Int",
+            "Int",
+            "Int",
+            "Int",
+            "Int",
+            "Int",
+            "Int",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+            "F64",
+        ];
+        RESULTS[self as usize]
+    }
 
     /// The primitive `@intrinsic(id)` names.
     pub fn from_id(id: &str) -> Option<Prim> {
