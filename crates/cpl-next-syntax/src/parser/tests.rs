@@ -481,3 +481,16 @@ fn a_variant_value_is_reported_and_the_variant_kept() {
         .collect();
     assert_eq!(names, ["Red", "Green", "Blue", "A", "B"]);
 }
+
+#[test]
+fn a_lambda_param_and_its_return_are_types() {
+    let src = "let f = (a: ?W, b: [V]Int) -> ?W => a\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let kinds: Vec<_> = file.root.descendants().map(|n| n.kind()).collect();
+    let optionals = kinds
+        .iter()
+        .filter(|k| **k == crate::NodeKind::OptionalType)
+        .count();
+    assert_eq!(optionals, 2);
+}

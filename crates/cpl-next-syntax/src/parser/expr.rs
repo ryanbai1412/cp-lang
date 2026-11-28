@@ -74,12 +74,12 @@ impl Parser<'_> {
                     p.eat(T::Mut);
                     p.pattern();
                     if p.eat(T::Colon) {
-                        p.expr_at(Level::Range);
+                        p.ty();
                     }
                 },
             );
             if self.eat(T::Arrow) {
-                self.expr_at(Level::Range);
+                self.ty();
             }
         } else {
             self.start(NodeKind::ParamList);
