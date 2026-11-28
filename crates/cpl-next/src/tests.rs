@@ -996,6 +996,7 @@ fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
         let t = check::check(
             &d,
             &main,
+            &[],
             &loaded,
             &values,
             &[],
@@ -1052,6 +1053,7 @@ fn a_body_adding_to_a_global_set_leaves_its_readers_typed_the_same() {
         let t = check::check(
             &d,
             &main,
+            &[],
             &loaded,
             &values,
             &[],

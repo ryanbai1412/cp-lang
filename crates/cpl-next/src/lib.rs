@@ -357,6 +357,7 @@ fn front(db: &Db, std: &Std, root: &FileId, judge: Option<&Judge>, checks: Check
     let t = check::check(
         &d,
         &main,
+        &[],
         &loaded,
         &values,
         &[],
@@ -430,6 +431,7 @@ pub(crate) fn std_unchecked(
             let t = check::check(
                 &d,
                 &main,
+                &[],
                 &loaded,
                 &values,
                 &at.into_iter().collect::<Vec<_>>(),

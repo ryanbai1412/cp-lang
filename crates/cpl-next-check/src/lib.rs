@@ -18,7 +18,6 @@ use cpl_syntax::ast::{
     self, AssignOp, BinOp, CmpOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece,
     TypeKind, UnOp,
 };
-use cpl_syntax::decorators::Mark;
 use cpl_syntax::fall_through;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -498,7 +497,7 @@ struct Cx<'a> {
 }
 
 struct Body {
-    doms: HashMap<String, Ty>,
+    doms: HashMap<Sym, Ty>,
     /// The domains declared in the blocks being checked, innermost last (R02.9.2).
     block_doms: Vec<usize>,
     /// The domains a binding owns, by the binding and the path to each in its value: `t`'s
@@ -507,7 +506,7 @@ struct Body {
     /// A block's `@memo` fn's `f.clear`, by the fn's binding (R06.4.1).
     memo_clears: HashMap<VarRef, VarRef>,
     decl: Option<FnId>,
-    generics: Vec<String>,
+    generics: Vec<Sym>,
     n_sets: usize,
     locals: Vec<Local>,
     scopes: Vec<HashMap<String, LocalId>>,
@@ -627,7 +626,7 @@ struct CtxFrame {
 pub trait Consts {
     /// The value of `e`, written in program item `item`, when nothing it reads is decided at
     /// run time: `None` for a value that is not a scalar.
-    fn value(&self, item: &ItemId, e: &ast::Expr) -> Result<Option<ops::Scalar>, ConstError>;
+    fn value(&self, item: &ItemId, e: &next::Expr) -> Result<Option<ops::Scalar>, ConstError>;
 }
 
 /// Why an expression has no value at compile time.
@@ -647,7 +646,8 @@ pub enum ConstError {
 /// the bodies it does not touch typed the same (`Ids::default()` for a first check).
 pub fn check(
     d: &Decls,
-    main: &[(ItemId, ast::Stmt)],
+    main: &[ItemId],
+    values: &[(ItemId, String, next::Expr)],
     src: &crate::modules::Loaded,
     consts: &dyn Consts,
     roots: &[ModId],
@@ -771,17 +771,18 @@ pub fn check(
     let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
     // A `const` with a scalar value, and a domain whose ends have values, hoist; one read at
     // run time runs where it is written (R11.1.1).
-    let lifted: Vec<Option<ast::Stmt>> = (main.iter())
+    let main = program_items(src, main);
+    let lifted: Vec<Option<Option<ops::Scalar>>> = (main.iter())
         .map(|(off, s)| {
             cx.b.item = off.clone();
             cx.hoisted(s)
         })
         .collect();
-    for ((off, _), s) in main.iter().zip(&lifted) {
-        if let Some(s) = s {
+    for ((off, s), known) in main.iter().zip(&lifted) {
+        if let Some(known) = known {
             cx.b.item = off.clone();
             main_out.push(TStmt::Item(off.clone()));
-            cx.stmt(s, &mut main_out);
+            cx.top_item(s, *known, &mut main_out);
         }
     }
     // A bare `with` line comes before the program's first statement (R09.1.1).
@@ -794,30 +795,27 @@ pub fn check(
             continue;
         }
         cx.b.item = off.clone();
+        let span = cx.at(s);
         // `@!multitest`: the count is read once and everything below runs once per case.
-        if cases.is_none()
-            && s.decorators
-                .iter()
-                .any(|d| d.directive && d.mark == Some(Mark::Multitest))
-        {
+        let counted = s.directive().filter(multitest);
+        if let (None, Some(m)) = (&cases, &counted) {
             main_out.push(TStmt::Item(off.clone()));
-            let count = cx.case_count(s).then_some(TExpr {
+            let count = cx.case_count(m, span).then_some(TExpr {
                 kind: TK::ReadInt,
                 ty: Ty::Int,
-                span: s.span,
+                span,
             });
             cx.b.scopes.push(HashMap::new());
             cases = Some((count, Vec::new()));
         }
-        for x in &s.decorators {
-            if !(x.directive && x.mark == Some(Mark::Multitest)) {
-                cx.err(
-                    s.span,
-                    Unbuilt::Decorator {
-                        name: x.name.text.clone(),
-                    },
-                );
-            }
+        let unbuilt: Vec<String> = (s.directive().filter(|x| !multitest(x)))
+            .and_then(|x| x.name())
+            .into_iter()
+            .chain(s.decorators().iter().filter_map(next::Decorator::name))
+            .map(|t| t.text().to_string())
+            .collect();
+        for name in unbuilt {
+            cx.err(span, Unbuilt::Decorator { name });
         }
         // A hoisted item ran above; `@!multitest` on it still divides the file here.
         if hoisted.is_some() {
@@ -827,43 +825,50 @@ pub fn check(
             Some((_, body)) => body,
             None => &mut main_out,
         };
-        let bare_with = matches!(&s.kind, ast::StmtKind::With { body: None, .. });
+        let bare_with = matches!(s.stmt(), Some(next::Stmt::With(w)) if w.body().is_none());
         if bare_with && begun {
             let code = cpl_diag::codes::WITH_NOT_FIRST;
             cx.err(
-                s.span,
+                span,
                 Msg::verdict(code, "a bare `with` line comes first in its block"),
             );
             continue;
         }
         begun |= !bare_with;
         into.push(TStmt::Item(off.clone()));
-        if let Some((p, _)) = place::place_binding(s) {
-            let items: Vec<(ItemId, ast::Stmt)> = (main[k..].iter().zip(&lifted[k..]))
+        if let Some((p, _)) = s.stmt().as_ref().and_then(place::place_binding) {
+            let items: Vec<(ItemId, next::Item)> = (main[k..].iter().zip(&lifted[k..]))
                 .filter(|(_, l)| l.is_none())
-                .map(|((off, s), _)| (off.clone(), s.clone()))
+                .map(|(x, _)| x.clone())
                 .collect();
-            let stmts: Vec<ast::Stmt> = items[1..].iter().map(|(_, s)| s.clone()).collect();
-            let held = place::place_held(&p, &stmts);
+            let rest: Vec<next::Item> = items[1..].iter().map(|(_, s)| s.clone()).collect();
+            let held = place::place_held(&p, &rest);
             placed = held;
             into.pop();
             cx.items_placed(&items[..=held], into);
             continue;
         }
-        cx.stmt(s, into);
+        cx.top_item(s, None, into);
         if let Some(i) = cx.early.take() {
             let name = (d.top_doms.iter())
                 .find(|(_, t)| matches!(t, Ty::Dom(k) if *k == i))
                 .map(|(n, _)| n.clone())
                 .unwrap_or_default();
             cx.err(
-                s.span,
+                span,
                 Msg::verdict(
                     cpl_diag::codes::USED_BEFORE_SET,
                     format!("domain `{name}` is used above the line that declares it (R11.1.1)"),
                 ),
             );
         }
+    }
+    // Each value a constant's run works out is a top-level `let` after the program's items.
+    for (item, name, e) in values {
+        cx.b.item = item.clone();
+        main_out.push(TStmt::Item(item.clone()));
+        let span = cx.at(e);
+        cx.let_name(name, e, span, &mut main_out);
     }
     cx.solve(true);
     if let Some((count, body)) = cases {
@@ -1074,22 +1079,19 @@ pub fn check(
 
 impl<'a> Cx<'a> {
     /// Whether the `@!multitest` on `s` reads a count of cases: `(until_eof)` does not.
-    fn case_count(&mut self, s: &ast::Stmt) -> bool {
-        let args = s
-            .decorators
-            .iter()
-            .find(|d| d.directive && d.mark == Some(Mark::Multitest))
-            .map_or(&[][..], |d| &d.args[..]);
-        match args {
+    fn case_count(&mut self, m: &next::Directive, span: Span) -> bool {
+        let args: Vec<next::Arg> = m.args().map_or_else(Vec::new, |a| a.args().collect());
+        match &args[..] {
             [] => true,
-            [a] if a.name.is_none()
-                && !a.mutable
-                && matches!(&a.value.kind, ast::ExprKind::Name(n) if n == "until_eof") =>
+            [a] if a.label().is_none()
+                && !a.is_mut()
+                && matches!(a.value(), Some(next::Expr::Name(n))
+                    if n.ident().is_some_and(|t| t.text() == "until_eof")) =>
             {
                 false
             }
             _ => {
-                self.err(s.span, Unbuilt::MultitestArg);
+                self.err(span, Unbuilt::MultitestArg);
                 true
             }
         }
@@ -1449,6 +1451,37 @@ impl<'a> Cx<'a> {
     }
 }
 
+/// The syntax of each of the program's top-level items `main`, in order.
+pub fn program_items(src: &crate::modules::Loaded, main: &[ItemId]) -> Vec<(ItemId, next::Item)> {
+    let syntax: HashMap<&ItemId, &next::Item> = (src.modules.iter())
+        .flat_map(|m| m.items.iter())
+        .map(|i| (&i.id, &i.item))
+        .collect();
+    (main.iter())
+        .filter_map(|id| Some((id.clone(), (*syntax.get(id)?).clone())))
+        .collect()
+}
+
+/// The one name pattern `p` binds when it is a bare name, as `x` in `let x = ..`.
+pub fn plain_name(p: &next::Pattern) -> Option<String> {
+    let next::Pattern::Path(p) = p else {
+        return None;
+    };
+    let mut seg = p.segments();
+    let (Some(name), None, None) = (seg.next(), seg.next(), p.args()) else {
+        return None;
+    };
+    Some(name.text().to_string())
+}
+
+/// Whether directive `m` is `@!multitest`.
+fn multitest(m: &next::Directive) -> bool {
+    let mark = m
+        .name()
+        .and_then(|n| cpl_next_syntax::grammar::Decorator::of(n.text()));
+    mark == Some(cpl_next_syntax::grammar::Decorator::Multitest)
+}
+
 /// `for x in e: yield x`, the body of a generator written as one expression.
 /// The block of the one statement `e`.
 fn one_stmt(e: &ast::Expr) -> ast::Block {
@@ -1525,7 +1558,7 @@ impl Cx<'_> {
     /// `e`'s value at compile time, worked out by the driver (`Consts`): `None` when it reads
     /// something decided at run time or working it out failed, which is said; `Some(None)` for
     /// a value that is not a scalar.
-    fn const_value(&mut self, e: &ast::Expr) -> Option<Option<ops::Scalar>> {
+    fn const_value(&mut self, e: &next::Expr) -> Option<Option<ops::Scalar>> {
         match self.values.value(&self.b.item, e) {
             Ok(v) => Some(v),
             Err(ConstError::Open) => None,
@@ -1537,41 +1570,44 @@ impl Cx<'_> {
             }
         }
     }
-    /// `s` as it runs above the program, if it hoists: a `const` with a scalar value, an `Int`
-    /// written in as its literal, or a domain whose ends have values.
-    fn hoisted(&mut self, s: &ast::Stmt) -> Option<ast::Stmt> {
-        match &s.kind {
-            ast::StmtKind::Const {
-                generics,
-                init: Some(init),
-                ..
-            } if generics.is_empty() => {
-                let v = self.const_value(init)??;
-                let mut s = s.clone();
-                if let (ops::Scalar::Int(i), ast::StmtKind::Const { init: Some(e), .. }) =
-                    (v, &mut s.kind)
-                {
-                    e.kind = ast::ExprKind::Int(i128::from(i));
-                }
-                Some(s)
+    /// Whether item `s` runs above the program, and the value it is known to have: a `const`
+    /// with a scalar value (an `Int` is written in as its literal), or a domain whose ends have
+    /// values.
+    fn hoisted(&mut self, s: &next::Item) -> Option<Option<ops::Scalar>> {
+        match s.decl()? {
+            next::Decl::Const(c) => {
+                let v = self.const_value(&c.value()?)??;
+                Some(matches!(v, ops::Scalar::Int(_)).then_some(v))
             }
-            ast::StmtKind::Domain { def, .. } => {
-                let ends: Vec<&ast::Expr> = match &def.kind {
-                    ast::ExprKind::Range {
-                        lo: Some(lo),
-                        hi: Some(hi),
-                        step: None,
-                        ..
-                    } => vec![lo, hi],
-                    ast::ExprKind::List(xs) if xs.len() == 1 => vec![&xs[0]],
+            next::Decl::Domain(dom) => {
+                let ends: Vec<next::Expr> = match dom.size()? {
+                    next::Expr::Range(r) if r.step().is_none() => vec![r.lo()?, r.hi()?],
+                    next::Expr::List(l) => {
+                        let xs: Vec<next::Expr> = l.elems().collect();
+                        if xs.len() != 1 {
+                            return None;
+                        }
+                        xs
+                    }
                     _ => return None,
                 };
-                for e in ends {
+                for e in &ends {
                     self.const_value(e)??;
                 }
-                Some(s.clone())
+                Some(None)
             }
             _ => None,
+        }
+    }
+    /// One item of the program's top level, `known` the value a hoisted `const` has.
+    fn top_item(&mut self, s: &next::Item, known: Option<ops::Scalar>, out: &mut Vec<TStmt>) {
+        if let Some(st) = s.stmt() {
+            return self.stmt(&st, out);
+        }
+        match s.decl() {
+            Some(next::Decl::Const(c)) => self.const_stmt(&c, known, out),
+            Some(next::Decl::Domain(dom)) => self.domain_stmt(&dom, out),
+            _ => {}
         }
     }
     fn library_const(&mut self, c: decls::ConstId, span: Span) -> Option<(VarRef, Ty)> {
@@ -1618,7 +1654,7 @@ impl Cx<'_> {
             std::mem::replace(&mut self.b.module, k.module),
         );
         let mut out = vec![TStmt::Item(k.item.clone())];
-        let want = (k.ty.as_ref()).map(|t| self.body_ty(t, k.init.span, &mut out));
+        let want = (k.ty.as_ref()).map(|t| self.body_ty(t, &mut out));
         let mut e = self.expr(&k.init, want.as_ref());
         if let Some(t) = &want {
             e = self.coerce(e, t);

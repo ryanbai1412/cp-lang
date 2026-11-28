@@ -12,8 +12,7 @@ use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ops::{Fault, Scalar};
 use cpl_next_ir::prog::CTy;
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_syntax::ast;
-use cpl_syntax::visit::{walk_expr, Visitor};
+use cpl_next_syntax::ast::{self as next, AstNode};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
@@ -28,7 +27,7 @@ type Value = Result<Option<Scalar>, ConstError>;
 pub(crate) struct Evaluator<'a> {
     d: &'a Decls,
     loaded: &'a Loaded,
-    main: &'a [(ItemId, ast::Stmt)],
+    main: Vec<(ItemId, next::Item)>,
     done: RefCell<HashMap<Key, Value>>,
     busy: RefCell<HashSet<Key>>,
     /// The expressions read while they were being worked out.
@@ -40,11 +39,11 @@ pub(crate) struct Evaluator<'a> {
 }
 
 impl<'a> Evaluator<'a> {
-    pub(crate) fn new(d: &'a Decls, loaded: &'a Loaded, main: &'a [(ItemId, ast::Stmt)]) -> Self {
+    pub(crate) fn new(d: &'a Decls, loaded: &'a Loaded, main: &[ItemId]) -> Self {
         Evaluator {
             d,
             loaded,
-            main,
+            main: check::program_items(loaded, main),
             done: RefCell::default(),
             busy: RefCell::default(),
             cyclic: RefCell::default(),
@@ -59,57 +58,63 @@ impl<'a> Evaluator<'a> {
     fn batch(&self) -> HashMap<Key, Value> {
         let mut bound = HashSet::new();
         let mut consts = HashSet::new();
-        for (_, s) in self.main {
-            match &s.kind {
-                ast::StmtKind::Let { pat, .. } => {
-                    if let ast::PatternKind::Name(n) = &pat.kind {
-                        bound.insert(n.as_str());
+        for (_, s) in &self.main {
+            match (s.stmt(), s.decl()) {
+                (Some(next::Stmt::Let(l)), _) => {
+                    let mut pats = l.patterns();
+                    if let (Some(p), None) = (pats.next(), pats.next()) {
+                        bound.extend(check::plain_name(&p));
                     }
                 }
-                ast::StmtKind::Domain { name, .. } => {
-                    bound.insert(name.text.as_str());
+                (_, Some(next::Decl::Domain(dom))) => {
+                    bound.extend(dom.name().map(|n| n.text().to_string()));
                 }
-                ast::StmtKind::Const { name, .. } => {
-                    consts.insert(name.text.as_str());
+                (_, Some(next::Decl::Const(c))) => {
+                    consts.extend(c.name().map(|n| n.text().to_string()));
                 }
                 _ => {}
             }
         }
-        let mut admitted = HashSet::new();
+        let mut admitted: HashSet<String> = HashSet::new();
         let mut stmts = Vec::new();
         let mut keys = Vec::new();
-        for (k, s) in self.main {
-            let closed = |e: &ast::Expr, admitted: &HashSet<&str>| {
-                (names(e).iter()).all(|n| {
-                    admitted.contains(n.as_str())
-                        || !(bound.contains(n.as_str()) || consts.contains(n.as_str()))
-                })
+        for (k, s) in &self.main {
+            let closed = |e: &next::Expr, admitted: &HashSet<String>| {
+                (names(e).iter())
+                    .all(|n| admitted.contains(n) || !(bound.contains(n) || consts.contains(n)))
             };
-            match &s.kind {
-                ast::StmtKind::Const {
-                    name,
-                    generics,
-                    init: Some(init),
-                    ..
-                } if generics.is_empty() && closed(init, &admitted) => {
-                    stmts.push((k.clone(), binding(&name.text, init)));
-                    keys.push((k.clone(), init.span));
-                    admitted.insert(name.text.as_str());
+            match s.decl() {
+                Some(next::Decl::Const(c)) => {
+                    let (Some(name), Some(init)) = (c.name(), c.value()) else {
+                        continue;
+                    };
+                    if closed(&init, &admitted) {
+                        keys.push((k.clone(), init.syntax().span()));
+                        stmts.push((k.clone(), name.text().to_string(), init));
+                        admitted.insert(name.text().to_string());
+                    }
                 }
-                ast::StmtKind::Domain { def, .. } => {
-                    let ends: Vec<&ast::Expr> = match &def.kind {
-                        ast::ExprKind::Range {
-                            lo: Some(lo),
-                            hi: Some(hi),
-                            step: None,
-                            ..
-                        } => vec![lo, hi],
-                        ast::ExprKind::List(xs) if xs.len() == 1 => vec![&xs[0]],
+                Some(next::Decl::Domain(dom)) => {
+                    let ends: Vec<next::Expr> = match dom.size() {
+                        Some(next::Expr::Range(r)) if r.step().is_none() => {
+                            match (r.lo(), r.hi()) {
+                                (Some(lo), Some(hi)) => vec![lo, hi],
+                                _ => vec![],
+                            }
+                        }
+                        Some(next::Expr::List(l)) => {
+                            let xs: Vec<next::Expr> = l.elems().collect();
+                            if xs.len() == 1 {
+                                xs
+                            } else {
+                                vec![]
+                            }
+                        }
                         _ => vec![],
                     };
                     for e in ends.into_iter().filter(|e| closed(e, &admitted)) {
-                        stmts.push((k.clone(), binding("$value", e)));
-                        keys.push((k.clone(), e.span));
+                        keys.push((k.clone(), e.syntax().span()));
+                        stmts.push((k.clone(), "$value".to_string(), e));
                     }
                 }
                 _ => {}
@@ -119,7 +124,7 @@ impl<'a> Evaluator<'a> {
             return HashMap::new();
         }
         self.batching.set(true);
-        let ran = self.execute(&stmts, stmts.len());
+        let ran = self.execute(&[], &stmts, stmts.len());
         self.batching.set(false);
         match ran {
             Ran::Values(vs) => keys.into_iter().zip(vs.into_iter().map(Ok)).collect(),
@@ -129,33 +134,30 @@ impl<'a> Evaluator<'a> {
 
     /// `e` checked, lowered and linked as the value of a program of its own, after the
     /// program's constants it names that have values, then run on the engine.
-    fn run(&self, item: &ItemId, e: &ast::Expr) -> Value {
+    fn run(&self, item: &ItemId, e: &next::Expr) -> Value {
         let named = names(e);
-        let mut stmts = Vec::new();
-        for (k, s) in self.main {
-            if let ast::StmtKind::Const {
-                name,
-                generics,
-                init: Some(init),
-                ..
-            } = &s.kind
-            {
-                if generics.is_empty()
-                    && named.contains(&name.text)
-                    && matches!(check::Consts::value(self, k, init), Ok(Some(_)))
+        let mut items = Vec::new();
+        for (k, s) in &self.main {
+            let Some(next::Decl::Const(c)) = s.decl() else {
+                continue;
+            };
+            if let (Some(name), Some(init)) = (c.name(), c.value()) {
+                if named.contains(name.text())
+                    && matches!(check::Consts::value(self, k, &init), Ok(Some(_)))
                 {
-                    stmts.push((k.clone(), s.clone()));
+                    items.push(k.clone());
                 }
             }
         }
-        stmts.push((item.clone(), binding("$value", e)));
+        let span = e.syntax().span();
+        let value = [(item.clone(), "$value".to_string(), e.clone())];
         let failed = |code, text: String| {
             Err(ConstError::Failed(Box::new(Msg::at(
-                item.at(e.span),
+                item.at(span),
                 Msg::verdict(code, text),
             ))))
         };
-        match self.execute(&stmts, 1) {
+        match self.execute(&items, &value, 1) {
             Ran::Values(mut vs) => Ok(vs.pop().flatten()),
             // What the engine cannot run yet runs at start-up instead.
             Ran::Open | Ran::Stop(Stop::Input) => Err(ConstError::Open),
@@ -182,12 +184,18 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    /// Runs the program `stmts` on the engine: the values of the globals its last `lets`
-    /// top-level `let`s bind.
-    fn execute(&self, stmts: &[(ItemId, ast::Stmt)], lets: usize) -> Ran {
+    /// Runs the program of items `main` then `values`, each bound by a top-level `let`, on the
+    /// engine: the values of the globals its last `lets` top-level `let`s bind.
+    fn execute(
+        &self,
+        main: &[ItemId],
+        values: &[(ItemId, String, next::Expr)],
+        lets: usize,
+    ) -> Ran {
         let t = check::check(
             self.d,
-            stmts,
+            main,
+            values,
             self.loaded,
             self,
             &[],
@@ -283,11 +291,11 @@ fn scalar(ty: Option<&CTy>, w: &[u64]) -> Option<Scalar> {
 }
 
 impl check::Consts for Evaluator<'_> {
-    fn value(&self, item: &ItemId, e: &ast::Expr) -> Value {
+    fn value(&self, item: &ItemId, e: &next::Expr) -> Value {
         if self.batching.get() {
             return Err(ConstError::Open);
         }
-        let key = (item.clone(), e.span);
+        let key = (item.clone(), e.syntax().span());
         if let Some(v) = self.done.borrow().get(&key) {
             return v.clone();
         }
@@ -309,44 +317,18 @@ impl check::Consts for Evaluator<'_> {
                 codes::DEFINITION_CYCLE,
                 "this constant reads itself while it is worked out, so it has no value",
             );
-            v = Err(ConstError::Failed(Box::new(Msg::at(item.at(e.span), msg))));
+            v = Err(ConstError::Failed(Box::new(Msg::at(item.at(key.1), msg))));
         }
         self.done.borrow_mut().insert(key, v.clone());
         v
     }
 }
 
-/// `let name = e`: a statement whose value a run reads.
-fn binding(name: &str, e: &ast::Expr) -> ast::Stmt {
-    ast::Stmt {
-        kind: ast::StmtKind::Let {
-            mutable: false,
-            pat: ast::Pattern {
-                kind: ast::PatternKind::Name(name.to_string()),
-                span: e.span,
-            },
-            ty: None,
-            init: Some(e.clone()),
-            otherwise: None,
-            guard: None,
-        },
-        span: e.span,
-        decorators: Vec::new(),
-        public: false,
-    }
-}
-
 /// The names `e` reads.
-fn names(e: &ast::Expr) -> HashSet<String> {
-    struct Names(HashSet<String>);
-    impl Visitor for Names {
-        fn expr(&mut self, e: &ast::Expr) {
-            if let ast::ExprKind::Name(n) = &e.kind {
-                self.0.insert(n.clone());
-            }
-        }
-    }
-    let mut v = Names(HashSet::new());
-    walk_expr(e, &mut v);
-    v.0
+fn names(e: &next::Expr) -> HashSet<String> {
+    (e.syntax().descendants())
+        .filter_map(next::NameRef::cast)
+        .filter_map(|n| n.ident())
+        .map(|t| t.text().to_string())
+        .collect()
 }
