@@ -8,5 +8,4 @@ cpl-next tests::a_tuple_pattern_reads_a_record  # triage: link reached Decl, no 
 cpl-next tests::derived_impls_declare_parameters_of_any_name  # triage: link reached Decl, no lowered fn
 cpl-next tests::facts_leave_out_only_the_checks_they_prove  # triage: RangeStore 3 facts gone
 cpl-next tests::types_told_apart_by_domains_share_a_representation  # triage: E0606 `t.P` does not implement Domain
-cpl-doc tests::every_std_module_opens_with_an_outline  # A (seq start: sum, 7cdff50f8); core std modules without start: (589e688c7 and 8 more, unlabelled)
-cpl-doc tests::every_std_doc_states_each_fact_once_outside_its_prose  # A, e9aad9fb6 dropped Heap.each and left its doc above peek
+cpl-doc tests::every_std_module_opens_with_an_outline  # core std modules without start: (589e688c7 and 8 more, unlabelled); laws, subset, default, raw

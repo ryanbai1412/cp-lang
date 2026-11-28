@@ -1,6 +1,6 @@
 //! Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.
 //!
-//! start: `sum`, `max`, `runs`, `compress`, `min`
+//! start: `count`, `max`, `runs`, `compress`, `min`
 //! example: `[1, 2, 3].sum(of: x => x * x) == 14`
 //!
 //! - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`).
