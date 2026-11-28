@@ -10,6 +10,7 @@ use cpl_diag::codes::FIELD_BOUND_FROM_INPUT;
 use cpl_diag::msgs::check::FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::ast::AstNode as _;
 use cpl_syntax::decorators::Mark;
 
 /// Std's declarations, collected once and never written after: the core's and every std
@@ -1604,123 +1605,135 @@ pub(super) fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Ms
     }
 }
 
-/// An `@operator` trait's method: `-` marks both `Sub.sub` and `Neg.neg`.
-fn operator_method(s: &ast::Stmt) -> Option<String> {
-    match &s.kind {
-        StmtKind::Trait { body, .. } => body.stmts.iter().find_map(|x| match &x.kind {
-            StmtKind::Fn(f) => Some(f.name.text.clone()),
-            _ => None,
-        }),
-        _ => None,
-    }
+/// The fn an `@operator` trait's operator calls: its first.
+fn operator_method(t: &super::forms::TraitForm) -> Option<Sym> {
+    t.methods.first().map(|m| m.name)
 }
 
-/// A trait's `@on_unimplemented(code: C, "help")`, each part optional (R08.1.8).
-fn unimplemented(item: &ItemId, s: &ast::Stmt, errors: &mut Vec<Msg>) -> Unimplemented {
+/// What `@on_unimplemented("..", code: C)` says when a type lacks the trait's impl (R08.1.8).
+fn unimplemented(
+    item: &ItemId,
+    attrs: &[super::forms::AttrForm],
+    errors: &mut Vec<Msg>,
+) -> Unimplemented {
+    use cpl_next_syntax::literal::{string_parts, StrPart};
+    use cpl_next_syntax::{ast as next, TokenKind};
     let mut out = Unimplemented::default();
-    let Some(x) = s
-        .decorators
-        .iter()
-        .find(|x| x.mark == Some(Mark::OnUnimplemented))
+    let Some(node) = (attrs.iter())
+        .find(|a| a.attr == crate::attrs::Decorator::OnUnimplemented)
+        .and_then(|a| a.node.as_ref())
     else {
         return out;
     };
-    for a in &x.args {
-        match (a.name.as_ref().map(|n| n.text.as_str()), &a.value.kind) {
-            (None, ast::ExprKind::Str(pieces)) => {
-                let text = (pieces.iter()).map(|p| match p {
-                    ast::StrPiece::Text(t) => t.clone(),
-                    ast::StrPiece::Expr(e) | ast::StrPiece::Spec(e, _) => match &e.kind {
-                        ast::ExprKind::Name(n) => format!("{{{n}}}"),
-                        _ => String::new(),
-                    },
-                });
-                out.help = Some(text.collect());
+    let args: Vec<next::Arg> = node.args().map(|l| l.args().collect()).unwrap_or_default();
+    for a in args {
+        let label = a.label().map(|l| l.text().to_string());
+        let value = a.value();
+        let message = match (&label, &value) {
+            (None, Some(next::Expr::Literal(l))) => {
+                l.token().filter(|t| t.kind() == TokenKind::Str)
             }
-            (Some("code"), ast::ExprKind::Name(c)) if cpl_diag::registry::lookup(c).is_some() => {
-                out.code = cpl_diag::registry::lookup(c).map(|i| i.code);
-            }
-            _ => errors.push(Msg::at(
-                item.at(a.value.span),
+            _ => None,
+        };
+        let code = match (label.as_deref(), &value) {
+            (Some("code"), Some(next::Expr::Name(n))) => n.ident(),
+            _ => None,
+        };
+        if let Some(t) = message {
+            let text = t.text();
+            let piece = |r: cpl_diag::Span| &text[r.start as usize..r.end as usize];
+            let help = string_parts(text).into_iter().map(|p| match p {
+                StrPart::Text(r) => piece(r).to_string(),
+                StrPart::Expr(r) => {
+                    let n = piece(r).split(':').next().unwrap_or("").trim();
+                    let ident = n
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_alphabetic() || c == '_')
+                        && n.chars().all(|c| c.is_alphanumeric() || c == '_');
+                    match ident {
+                        true => format!("{{{n}}}"),
+                        false => String::new(),
+                    }
+                }
+            });
+            out.help = Some(help.collect());
+        } else if let Some(info) = code
+            .as_ref()
+            .and_then(|c| cpl_diag::registry::lookup(c.text()))
+        {
+            out.code = Some(info.code);
+        } else {
+            let span = value.map_or(a.syntax().span(), |v| v.syntax().span());
+            errors.push(Msg::at(
+                item.at(span),
                 Msg::verdict(
                     cpl_diag::codes::UNRESOLVED_NAME,
                     "`@on_unimplemented` takes a message and `code:` a diagnostic code",
                 ),
-            )),
+            ));
         }
     }
     out
 }
 
 /// `_..=_` or `_.._` as an impl's type: every range type.
-fn any_range(t: &ast::Type) -> bool {
-    let hole = |e: &Option<Box<ast::Expr>>| matches!(e.as_deref().map(|e| &e.kind), Some(ast::ExprKind::Name(n)) if n == "_");
-    matches!(&t.kind, TypeKind::Range { lo, hi, .. } if hole(lo) && hole(hi))
+fn any_range(t: &super::forms::TyForm) -> bool {
+    use cpl_next_syntax::ast as next;
+    let super::forms::TyForm::Written(next::Type::Range(r)) = t else {
+        return false;
+    };
+    let Some(next::Expr::Range(re)) = r.expr() else {
+        return false;
+    };
+    let hole = |e: Option<next::Expr>| matches!(e, Some(next::Expr::Hole(_)));
+    hole(re.lo()) && hole(re.hi())
 }
 
 /// An impl's members are its trait's names: one under the name a member `@was` is E0605, which
 /// says the name now (decision 504). An impl's `let` is frozen where the impl is declared, so it
 /// reads no `var` (R04.2.26).
-fn impl_names<'a>(
+fn impl_names(
     d: &mut Decls,
-    top: impl Iterator<Item = &'a ast::Stmt>,
+    top: &[(ItemId, Form)],
     item: &ItemId,
     tref: &TraitRef,
-    body: &ast::Block,
+    form: &super::forms::ImplForm,
 ) {
-    let vars: HashSet<&str> = top
-        .filter_map(|s| match &s.kind {
-            StmtKind::Let {
-                mutable: true,
-                pat:
-                    ast::Pattern {
-                        kind: ast::PatternKind::Name(n),
-                        ..
-                    },
-                ..
-            } => Some(n.as_str()),
+    use cpl_next_syntax::ast as next;
+    let vars: HashSet<String> = (top.iter())
+        .filter_map(|(_, f)| match f {
+            Form::Stmt(next::Stmt::Let(l)) => Some(l.patterns().collect::<Vec<_>>()),
+            _ => None,
+        })
+        .flatten()
+        .filter_map(|p| match p {
+            next::Pattern::Path(p) if p.is_var() => Some(p.segments().last()?.text().to_string()),
             _ => None,
         })
         .collect();
     let code = cpl_diag::codes::BAD_INDEX_IMPL;
     let tname = d.traits[tref.tr.0].name.clone();
-    for m in &body.stmts {
-        let (n, span) = match &m.kind {
-            StmtKind::Fn(f) => (f.name.text.as_str(), f.name.span),
-            StmtKind::Let { pat, .. } => match pat.let_name() {
-                Some(n) => (n, pat.span),
-                None => continue,
-            },
-            _ => continue,
-        };
+    let members = (form.methods.iter().map(|f| (f.name, f.span, None)))
+        .chain(form.lets.iter().map(|l| (l.name, l.span, l.value.as_ref())));
+    let members: Vec<_> = members.collect();
+    for (n, span, init) in members {
+        let n = d.text(n).to_string();
         let now = (d.traits[tref.tr.0].methods.iter())
-            .find(|(_, &tm)| d.f(tm).was.iter().any(|w| w == n))
-            .map(|(now, _)| d.text(*now));
+            .find(|(_, &tm)| d.f(tm).was.iter().any(|w| *w == n))
+            .map(|(now, _)| d.text(*now).to_string());
         if let Some(now) = now {
             let msg = format!("`impl {tname}` names this member `{now}`; `{n}` was its old name");
             d.misdeclared.push((item.at(span), code, msg));
         }
-        if let StmtKind::Let { init: Some(e), .. } = &m.kind {
-            let mut reads = Reads(Vec::new());
-            cpl_syntax::visit::walk_expr(e, &mut reads);
-            for (v, span) in reads
-                .0
-                .into_iter()
-                .filter(|(v, _)| vars.contains(v.as_str()))
-            {
-                let msg = format!("an impl's `let` is frozen where the impl is declared, and `{v}` is a `var`: freeze it first with `let`");
-                d.misdeclared.push((item.at(span), code, msg));
-            }
-        }
-    }
-}
-
-/// The names an expression reads.
-struct Reads(Vec<(String, Span)>);
-impl cpl_syntax::visit::Visitor for Reads {
-    fn expr(&mut self, e: &ast::Expr) {
-        if let ast::ExprKind::Name(n) = &e.kind {
-            self.0.push((n.clone(), e.span));
+        let reads = (init.into_iter())
+            .flat_map(|e| e.syntax().descendants().filter_map(next::NameRef::cast));
+        for r in reads {
+            let Some(v) = r.ident().filter(|v| vars.contains(v.text())) else {
+                continue;
+            };
+            let msg = format!("an impl's `let` is frozen where the impl is declared, and `{}` is a `var`: freeze it first with `let`", v.text());
+            d.misdeclared.push((item.at(r.syntax().span()), code, msg));
         }
     }
 }
