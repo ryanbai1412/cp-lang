@@ -70,6 +70,16 @@ still took shortcuts and so we still get cooked."
   --check`, then push. Process stays under 5% of your time; lane G
   owns CI and full runs.
 
+## What blocks a push and what doesn't
+
+Velocity wins over CI only where the cost can be paid later at the
+same price. A broken case can: lane G's runs on main attribute each
+case regression to its commit and the owning lane fixes it in a batch,
+so case regressions never block a push. Rework can't: a shortcut, a
+second answer or a missing counter costs more every day it stays. So
+the debt and structure counters block every push, and a wrong-accept
+that comes from a shortcut is fixed at once, not batched.
+
 ## When the design doesn't cover it
 
 Make the call within the contracts. If a contract is missing or wrong,
