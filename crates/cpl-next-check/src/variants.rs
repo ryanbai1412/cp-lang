@@ -142,7 +142,7 @@ impl Cx<'_> {
                 variadic: false,
                 default: e
                     .as_ref()
-                    .map(|e| (e, s.module, s.item.clone(), named.clone())),
+                    .map(|e| (e, s.module, s.item.clone(), named.clone(), Some(d))),
                 reject: None,
             })
             .collect();

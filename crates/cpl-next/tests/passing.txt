@@ -1941,6 +1941,8 @@ next/n_slice_08_range_cut_outside_traps.cp
 next/n_slice_09_lent_field_walks_its_source.cp
 next/n_slice_10_literal_key_of_unknown_view_is_checked_at_run_time.cp
 next/n_static_01_generic_type_names_its_static_fns.cp
+next/n_struct_default_02_open_in_own_new.cp
+next/n_struct_default_03_open_without_default_arg.cp
 next/n_struct_default_type_arg.cp
 next/n_table_01_one_cell_per_position.cp
 next/n_table_01_over_a_domain_parameter.cp

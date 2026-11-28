@@ -635,6 +635,9 @@ struct Body {
     /// Each call whose type argument was still unknown when the body was zonked, by where the
     /// call is, its fn and the parameter: nothing fixed it, so the call is E0806 (R01.3.4).
     unsolved: Vec<(cpl_next_ir::ids::SourceId, FnId, usize)>,
+    /// Each call of a struct's own fn, by the struct and the call's type arguments: those the
+    /// body leaves open take the struct's defaults before it is zonked (R08.2.5).
+    defaulted: Vec<(StructId, Vec<Ty>)>,
     /// Each call that took a `@reject`ed default, by where it is: an error once the types it
     /// names are known to hold (R06.4.17).
     rejects: Vec<(cpl_next_ir::ids::SourceId, call::Rejected)>,
@@ -690,6 +693,7 @@ impl Body {
             ahead: Vec::new(),
             list_doms: Vec::new(),
             unsolved: Vec::new(),
+            defaulted: Vec::new(),
             rejects: Vec::new(),
             refused_names: Default::default(),
             nested: None,
@@ -1732,6 +1736,10 @@ impl<'a> Cx<'a> {
                 }
             },
         };
+        self.solve(false);
+        for (s, targs) in std::mem::take(&mut self.b.defaulted) {
+            self.settle_defaults(s, &targs);
+        }
         self.solve(true);
         if holes {
             let fixed = self.zonk(&ret);

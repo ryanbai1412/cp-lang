@@ -603,6 +603,11 @@ impl Cx<'_> {
                 },
             );
         }
+        if let Some(decls::Owner::Struct(s)) = fd.owner {
+            if self.shapes.struct_defaults(s).is_some() {
+                self.b.defaulted.push((s, f.targs.clone()));
+            }
+        }
         self.oblige(&f, span);
         self.solve(false);
         let seen = self.errors.len();
@@ -812,8 +817,15 @@ pub(super) struct Rejected {
     pub text: String,
 }
 
-/// A default's expression, its module and item, and its type parameters' types at the call.
-pub(super) type DefaultAt<'d> = (&'d next::Expr, ModId, ItemId, Vec<(Sym, Ty)>);
+/// A default's expression, its module and item, its type parameters' types at the call, and
+/// the struct whose own fn it is, whose type parameters' defaults settle what the call left open.
+pub(super) type DefaultAt<'d> = (
+    &'d next::Expr,
+    ModId,
+    ItemId,
+    Vec<(Sym, Ty)>,
+    Option<StructId>,
+);
 
 /// `all(x > 1 for x in xs)` as the call it means: what is walked, and the test of each `x`.
 pub(super) struct TestsForm {
@@ -1188,7 +1200,11 @@ impl Cx<'_> {
                         self.b.rejects.push((at, r));
                     }
                     TArg::Value(match f.default {
-                        Some((e, m, ref item, ref named)) => {
+                        Some((e, m, ref item, ref named, owner)) => {
+                            if let Some(s) = owner {
+                                let targs: Vec<Ty> = named.iter().map(|n| n.1.clone()).collect();
+                                self.settle_defaults(s, &targs);
+                            }
                             self.default_arg((e, m, item.clone()), named, &f.ty)
                         }
                         None => TExpr {
@@ -1318,6 +1334,23 @@ impl Cx<'_> {
         }
         TArg::Mut(p)
     }
+    /// Each of struct `s`'s type parameters a call of its own fn left open, settled to the
+    /// parameter's default, as on a constructor (R08.2.5).
+    pub(super) fn settle_defaults(&mut self, s: StructId, targs: &[Ty]) {
+        let Some(ds) = self.shapes.struct_defaults(s) else {
+            return;
+        };
+        for (i, d) in ds.iter().enumerate().take(targs.len()) {
+            if let (Some(d), Ty::Var(_)) = (d, self.shallow(&targs[i])) {
+                let d = Subst {
+                    tys: targs,
+                    sets: &[],
+                }
+                .ty(d);
+                self.unify(&targs[i], &d);
+            }
+        }
+    }
     /// A default is read where its fn or struct is declared: none of the caller's names are seen,
     /// and the declaration's type parameters name this call's types (`id: F = F.zero`).
     fn default_arg(
@@ -1351,6 +1384,10 @@ impl Cx<'_> {
     /// The parameters of a fn as a call binds them.
     pub(super) fn formals<'d>(&self, sub: &Subst, fd: &'d decls::FnDecl) -> Vec<Formal<'d>> {
         let named = named_params(&fd.generics, sub);
+        let owner = match fd.owner {
+            Some(decls::Owner::Struct(s)) => Some(s),
+            _ => None,
+        };
         (fd.params.iter())
             .map(|p| Formal {
                 label: &p.label,
@@ -1361,7 +1398,7 @@ impl Cx<'_> {
                 named_only: p.named_only,
                 variadic: p.variadic,
                 default: (p.default.as_ref())
-                    .map(|e| (e, fd.module, fd.item.clone(), named.clone())),
+                    .map(|e| (e, fd.module, fd.item.clone(), named.clone(), owner)),
                 reject: p.reject.as_ref().map(|r| Rejected {
                     when: (r.when.iter())
                         .map(|(i, t)| (sub.ty(&Ty::Param(*i)), t.clone()))
