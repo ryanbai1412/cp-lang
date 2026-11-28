@@ -94,6 +94,7 @@ pub(crate) fn enum_structs(
         public: e.public,
         fields,
         methods,
+        laws: Vec::new(),
         lets: Vec::new(),
         consts: Vec::new(),
         span: e.span,

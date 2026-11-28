@@ -1,11 +1,12 @@
 // expect: ok, output "1 0 1 2 0"
 // rule: 08.2.9
+// engines: next
 // `if M: Tr<T>:` tests a bound with its trait args, per instance at compile time: the branch taken
 // sees `M: Tr<T>` (`m.choose`), and an impl at other args (`Chooser<F64>` for `Lo`) doesn't count.
 trait Op<T>:
     fn op(self, a: T, b: T) -> T
 trait Selective<T>: Op<T>:
-    law select(a: T, b: T) = self.op(a, b) == a or self.op(a, b) == b
+    law select(a: T, b: T) where T: Eq = self.op(a, b) == a or self.op(a, b) == b
 trait Chooser<T>: Op<T>:
     fn choose(self, a: T, b: T) -> Bool
 struct Mx

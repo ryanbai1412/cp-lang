@@ -146,6 +146,8 @@ pub struct StructForm {
     pub bounds: Vec<BoundForm>,
     pub fields: Vec<FieldForm>,
     pub methods: Vec<FnForm>,
+    /// Its `law`s, each a fn giving `Bool` that is checked and never a member (R08.3.1).
+    pub laws: Vec<FnForm>,
     pub lets: Vec<LetForm>,
     pub consts: Vec<(Sym, Option<ast::Type>, ast::Expr)>,
     pub span: Span,
@@ -192,6 +194,8 @@ pub struct TraitForm {
     pub supers: Vec<TyForm>,
     pub assoc: Vec<AssocForm>,
     pub methods: Vec<FnForm>,
+    /// Its `law`s, each a fn giving `Bool` that is checked and never a member (R08.3.1).
+    pub laws: Vec<FnForm>,
     pub span: Span,
 }
 
@@ -417,6 +421,51 @@ impl Reader<'_> {
         }
     }
 
+    /// Each `law name(params) = test` as `fn name(self, params) -> Bool = test`: its body is
+    /// checked like any fn's, and the law is no member (R08.3.1).
+    pub fn laws(&mut self, members: &Option<ast::Members>) -> Vec<FnForm> {
+        let laws = members.iter().flat_map(|m| m.laws().collect::<Vec<_>>());
+        laws.filter_map(|l| {
+            let body = l.body()?;
+            let span = l.syntax().span();
+            let mut bounds = Vec::new();
+            self.where_bounds(l.where_clause(), &mut bounds);
+            let this = self.syms.intern("self");
+            let me = ParamForm {
+                name: this,
+                label: this,
+                ty: None,
+                is_self: true,
+                mutable: false,
+                named_only: false,
+                variadic: false,
+                default: None,
+                decorators: Vec::new(),
+                span,
+                name_span: span,
+            };
+            let written = l.params();
+            let written = written.iter().flat_map(|p| p.params().collect::<Vec<_>>());
+            let params: Vec<ParamForm> = written.map(|p| self.param(&p)).collect();
+            let bool_ = self.syms.intern("Bool");
+            Some(FnForm {
+                name: self.sym(l.name()),
+                public: false,
+                attrs: Vec::new(),
+                generics: Vec::new(),
+                bounds,
+                params: std::iter::once(me).chain(params).collect(),
+                ret: Some(TyForm::Named(bool_, Vec::new())),
+                yields: false,
+                lends: None,
+                uses: Vec::new(),
+                body: BodyForm::Written(ast::FnBody::Expr(body)),
+                span,
+            })
+        })
+        .collect()
+    }
+
     /// Each decorator on a node as the attribute it is; the unknown and removed ones come back
     /// apart, for the item to report at their nodes.
     pub fn attrs(
@@ -515,6 +564,7 @@ impl Reader<'_> {
             supers,
             assoc,
             methods,
+            laws: self.laws(&members),
             span: t.syntax().span(),
         }
     }
@@ -576,6 +626,7 @@ impl Reader<'_> {
             bounds,
             fields,
             methods,
+            laws: self.laws(&members),
             consts,
             lets: self.lets(&members),
             span: sd.syntax().span(),

@@ -993,6 +993,7 @@ core-08/inherent-outside-module.cp
 core-08/lambda-to-type-param-beside-a-seq-stays-a-fn.cp
 core-08/law-declared.cp
 core-08/law-must-be-bool.cp
+core-08/law-unbounded-eq-is-refused.cp
 core-08/laws-not-assumed.cp
 core-08/lazy-method-sig.cp
 core-08/list-built-struct-keeps-its-domain-through-a-bound.cp
@@ -1039,7 +1040,11 @@ core-08/supertrait-required.cp
 core-08/trait-alias-no-impl.cp
 core-08/trait-alias.cp
 core-08/trait-assoc-type-bound.cp
+core-08/trait-bare-name-finds-a-supertrait-fn.cp
+core-08/trait-bare-name-hides-module-fn.cp
+core-08/trait-bare-name-param-wins.cp
 core-08/trait-default-method.cp
+core-08/trait-default-calls-its-own-fn-bare.cp
 core-08/trait-default-overridden-through-generic.cp
 core-08/trait-impl-for-f64-is-found-by-a-bound.cp
 core-08/trait-message-bound-holds.cp

@@ -156,6 +156,13 @@ impl Ord for Frac:
   the fn itself is passed at a bound, its impl is the one chosen, while a
   closure or another fn of the same type is not. Two impls of one trait
   for one item are E0202. (R08.1.11)
+- **Inside a fn a trait owns**, a default, a law or one without `self`, a
+  bare name is looked up in the locals and parameters first, then in the
+  trait's own members without `self`, a supertrait's included, as
+  `Self.name` would find them, then in the scopes around the trait. So a
+  law or default writes `op(a, b)` for `Self.op(a, b)`, a parameter named
+  `op` is still the parameter, and a module's `fn op` is hidden inside the
+  trait (decision 684). (R08.1.12)
 
 `cmp(a, b)` is the three-way comparison of two `Ord` values, an
 `Ordering` (`Less`, `Equal`, `Greater`); `desc(x)` flips an order.
@@ -236,6 +243,11 @@ trait Commutative<T>: Op<T>:
   the impl's args and calls the impl's fns: `impl Op<Int> for S` gives
   `S(0).laws` over `List<Int>`. A struct or impl that writes its own `laws`
   keeps it. (R08.3.5)
+- Laws are never assumed, but each law's body is type-checked like a trait
+  default: once, for every instance, as a `Bool`. What it needs of a type
+  parameter it states, `law select(a: T, b: T) where T: Eq = ...`, so `==`
+  on a `T` with no `Eq` bound is E0606, and a body that is not a `Bool` is
+  E0302 (decision 683). (R08.3.6)
 
 ## 8.4 Record row types (trial)
 
