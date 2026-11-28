@@ -16,9 +16,7 @@ use std::collections::HashMap;
 
 /// The part of the signatures a written type is converted against, each table read by key.
 /// Decls reads it while it is still building the rest of the signatures.
-pub trait TypeTables {
-    /// The text a name was written with, for showing it.
-    fn text(&self, s: crate::sym::Sym) -> &str;
+pub trait TypeTables: Texts {
     /// The id of a name written `text`, if any table holds it.
     fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
 
@@ -48,13 +46,22 @@ pub trait TypeTables {
     fn roles(&self) -> &Roles;
 }
 
-/// `signature(ItemId)`: what an item declares, never its body.
-pub trait Signatures: TypeTables {
+/// `text(Sym)`: the text a name was written with, for showing it.
+pub trait Texts {
+    fn text(&self, s: Sym) -> &str;
+}
+
+/// One declared item by its id: a layer that reads only these holds no whole-program value.
+pub trait Items: Texts {
     fn f(&self, id: FnId) -> &FnDecl;
     fn s(&self, id: StructId) -> &StructDecl;
     fn t(&self, id: TraitId) -> &TraitDecl;
     /// Impl `i`, an index into the program's impls.
     fn imp(&self, i: usize) -> &ImplDecl;
+}
+
+/// `signature(ItemId)`: what an item declares, never its body.
+pub trait Signatures: TypeTables + Items {
     /// The impls of `tr` a lookup may find, by index, in order (`impls(TraitId)`).
     fn impls_of(&self, tr: TraitId) -> Vec<usize>;
     /// The impl's type arguments when it is for `t`.
@@ -151,10 +158,7 @@ pub trait Generics {
     fn generic(&self, key: &FuncKey) -> Option<&Func<Ty>>;
 }
 
-impl Signatures for Decls {
-    fn literal_trait(&self, op: &str) -> Option<TraitId> {
-        Decls::literal_trait(self, op)
-    }
+impl Items for Decls {
     fn f(&self, id: FnId) -> &FnDecl {
         &self.fns[id.0]
     }
@@ -166,6 +170,12 @@ impl Signatures for Decls {
     }
     fn imp(&self, i: usize) -> &ImplDecl {
         &self.impls[i]
+    }
+}
+
+impl Signatures for Decls {
+    fn literal_trait(&self, op: &str) -> Option<TraitId> {
+        Decls::literal_trait(self, op)
     }
     fn impls_of(&self, tr: TraitId) -> Vec<usize> {
         self.ranked_impls(tr).map(|(k, _)| k).collect()
@@ -220,10 +230,13 @@ impl Signatures for Decls {
     }
 }
 
-impl TypeTables for Decls {
-    fn text(&self, s: crate::sym::Sym) -> &str {
+impl Texts for Decls {
+    fn text(&self, s: Sym) -> &str {
         self.syms.text(s)
     }
+}
+
+impl TypeTables for Decls {
     fn sym(&self, text: &str) -> Option<crate::sym::Sym> {
         self.syms.get(text)
     }
