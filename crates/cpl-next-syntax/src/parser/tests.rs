@@ -299,3 +299,33 @@ fn a_broken_member_keeps_its_siblings_and_the_next_item() {
     );
     assert!(got[1].starts_with("FnDecl(fn f"), "{}", got[1]);
 }
+
+#[test]
+fn leading_trivia_is_inside_the_file() {
+    for src in ["//! docs\n", "  // c\nx = 1\n", "\n\nf(x)"] {
+        assert_eq!(parse_stmts(src).root.text(), src);
+    }
+    assert_eq!(parse_expr("  a + b").root.text(), "  a + b");
+}
+
+#[test]
+fn match_arms_take_a_block_after_colon() {
+    let (got, errors) = stmts("match k:\n    0: yield 1\n    _:\n        yield k\n");
+    assert_eq!(errors, 0, "{got:#?}");
+    assert!(
+        got[0].contains("MatchArm(LiteralPat(0) Block(: YieldStmt(yield Literal(1))))"),
+        "{}",
+        got[0]
+    );
+}
+
+#[test]
+fn a_stray_indent_among_arms_ends() {
+    // No arm can start at the indent, so the arm loop must still advance.
+    let (got, errors) = stmts("match k:\n    _ x\n        y\nz = 1\n");
+    assert!(errors >= 1, "{got:#?}");
+    assert_eq!(
+        got.last().map(String::as_str),
+        Some("AssignStmt(NameRef(z) = Literal(1))")
+    );
+}

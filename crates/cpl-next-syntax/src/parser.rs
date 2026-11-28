@@ -25,7 +25,7 @@ pub fn parse_expr(src: &str) -> SyntaxFile {
     let lexed = lex(src);
     let tokens = lexed.lossless(src);
     let mut p = Parser::new(src, &tokens);
-    p.start(NodeKind::File);
+    p.b.start_node(NodeKind::File);
     p.expr();
     if !matches!(p.peek(), T::Eof | T::Newline) {
         p.error_here(codes::UNEXPECTED_TOKEN, "the end of the expression");
@@ -53,8 +53,15 @@ pub fn parse_stmts(src: &str) -> SyntaxFile {
     let lexed = lex(src);
     let tokens = lexed.lossless(src);
     let mut p = Parser::new(src, &tokens);
-    p.start(NodeKind::File);
+    p.b.start_node(NodeKind::File);
     p.stmts_until(T::Eof);
+    // A `Dedent` the layout lexer balanced against no indent of ours.
+    while p.at(T::Dedent) {
+        p.start(NodeKind::Error);
+        p.bump();
+        p.finish();
+        p.stmts_until(T::Eof);
+    }
     while p.pos < p.tokens.len() {
         p.bump();
     }

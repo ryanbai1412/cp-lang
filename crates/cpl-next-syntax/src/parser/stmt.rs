@@ -29,7 +29,7 @@ impl Parser<'_> {
     pub(super) fn stmt(&mut self) {
         match self.peek() {
             T::Newline => self.bump(),
-            T::Indent => self.stray_indent(),
+            T::Indent => self.stray_indent(|p| p.stmts_until(T::Dedent)),
             _ if self.item_ahead() => self.item(),
             T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
             T::While => self.while_stmt(),
@@ -71,14 +71,14 @@ impl Parser<'_> {
 
     /// An indented run where a statement was wanted: one diagnostic, and
     /// its statements are kept.
-    fn stray_indent(&mut self) {
+    fn stray_indent(&mut self, inner: fn(&mut Self)) {
         self.diagnostics.push(
             msgs::stmt::STRAY_INDENT
                 .error(Span::point(self.span().start), &[])
                 .with_help("remove the extra indentation, or end the line above with `:`"),
         );
         self.bump();
-        self.stmts_until(T::Dedent);
+        inner(self);
         self.eat(T::Dedent);
     }
 
@@ -339,12 +339,7 @@ impl Parser<'_> {
         if self.at(T::Newline) && self.nth(1) == T::Indent {
             self.bump();
             self.bump();
-            while !matches!(self.peek(), T::Dedent | T::Eof) {
-                if !self.eat(T::Newline) {
-                    self.arm();
-                    self.end_line();
-                }
-            }
+            self.arm_lines();
             self.want(T::Dedent, "the end of the arms");
         } else {
             self.arm();
@@ -355,6 +350,28 @@ impl Parser<'_> {
         self.finish();
     }
 
+    /// One arm per line up to the `Dedent`; a stray indented run is one
+    /// diagnostic and its lines are arms too.
+    fn arm_lines(&mut self) {
+        while !matches!(self.peek(), T::Dedent | T::Eof) {
+            if self.eat(T::Newline) {
+                continue;
+            }
+            if self.at(T::Indent) {
+                self.stray_indent(Self::arm_lines);
+                continue;
+            }
+            let before = self.pos;
+            self.arm();
+            self.end_line();
+            if self.pos == before {
+                self.start(NodeKind::Error);
+                self.bump();
+                self.finish();
+            }
+        }
+    }
+
     fn arm(&mut self) {
         self.start(NodeKind::MatchArm);
         self.pattern();
@@ -362,7 +379,10 @@ impl Parser<'_> {
         if self.eat(T::If) {
             self.expr_at(crate::ops::Level::Expr);
         }
-        if self.want(T::FatArrow, "`=>` and the arm's value") {
+        // `p => value`, or `p:` and a block of statements.
+        if self.at(T::Colon) {
+            self.block();
+        } else if self.want(T::FatArrow, "`=>` and the arm's value") {
             self.arm_body();
         }
         self.finish();
