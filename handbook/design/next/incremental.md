@@ -285,6 +285,30 @@ Order:
 Each step lands with `next_whole_program_inputs` lowered in the same
 commit.
 
+### `body(ItemId)`: what one body reads and answers
+
+A body is checked in its own type and set variables (`Cx::enter_store`),
+after the top level has written out its bindings' types. What it reads
+from outside itself is one of these answers, never another body's
+variables:
+
+| Reads | Answer |
+|---|---|
+| a fn's signature, a type, a trait or impl | `Signatures`, `TypeTables`, `Resolve`, `Roles` |
+| what a name means in its module | `Scope`, by `Sym` |
+| a top-level binding's type, a top domain | `global(ItemId)`, `domain(ItemId)`: the top level's own answers |
+| a callee's `_` result | `ret(FnId)`: the callee's `body` read for its result; a cycle reads the result as declared |
+| a library `const`'s value and type | `const_value(SourceId)` (consts.md), keyed by the const, not by which body met it first |
+
+What it answers, each keyed by the fn and its context copy, so no
+answer depends on the order bodies are checked in: its typed tree and
+locals; the lambdas, domains, ranges and set calls it makes, by their
+place among the copy's (`Ids`); what it adds to its own set parameters
+(`summary`); what it puts in a global's set; the context copies and the
+fns it reaches; and its diagnostics (`diagnostics(ItemId)`). A library
+`const` becomes its own item with its own global, not a global
+appended when a body first reads it.
+
 ## Order of work
 
 1. Item paths and item-relative spans, with the `spans` query. This is
