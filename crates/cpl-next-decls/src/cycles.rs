@@ -1,8 +1,9 @@
 //! Declarations that need themselves: an alias defined through its own name, a struct stored
 //! inside itself.
 use crate::decls::{AliasId, Named};
+use crate::sym::Syms;
 use crate::ty::*;
-use crate::views::Signatures;
+use crate::views::{Items, TypeTables};
 use cpl_next_syntax::ast::{GenericArg, Type};
 
 /// The types a written type is built from, read through the typed view.
@@ -53,17 +54,18 @@ pub(crate) fn path_text(p: &cpl_next_syntax::ast::PathType) -> String {
 }
 
 /// Whether alias `root`'s type needs `root` itself, through its own name or other aliases (E0323).
-pub fn alias_cycle(d: &dyn Signatures, root: AliasId) -> bool {
+pub fn alias_cycle(d: &dyn TypeTables, syms: &Syms, root: AliasId) -> bool {
     fn needs(
-        d: &dyn Signatures,
+        d: &dyn TypeTables,
+        syms: &Syms,
         at: AliasId,
         t: &Type,
         root: AliasId,
         seen: &mut Vec<AliasId>,
     ) -> bool {
         if let Type::Path(p) = t {
-            let named = d
-                .sym(&path_text(p))
+            let named = syms
+                .get(&path_text(p))
                 .and_then(|s| d.alias(at).names.get(&s).copied());
             if let Some(Named::Alias(b)) = named {
                 if b == root {
@@ -71,21 +73,21 @@ pub fn alias_cycle(d: &dyn Signatures, root: AliasId) -> bool {
                 }
                 if !seen.contains(&b) {
                     seen.push(b);
-                    if needs(d, b, &d.alias(b).ty, root, seen) {
+                    if needs(d, syms, b, &d.alias(b).ty, root, seen) {
                         return true;
                     }
                 }
             }
         }
-        parts(t).iter().any(|t| needs(d, at, t, root, seen))
+        parts(t).iter().any(|t| needs(d, syms, at, t, root, seen))
     }
-    needs(d, root, &d.alias(root).ty, root, &mut vec![root])
+    needs(d, syms, root, &d.alias(root).ty, root, &mut vec![root])
 }
 
 /// The first field of struct `root` that stores a `root` inline, however deep (R03.2.9).
 /// Storage (`Raw`), references and function values end the walk: they hold their contents elsewhere.
-pub fn field_holding_itself(d: &dyn Signatures, root: StructId) -> Option<usize> {
-    fn holds(d: &dyn Signatures, t: &Ty, root: StructId, stack: &mut Vec<StructId>) -> bool {
+pub fn field_holding_itself(d: &dyn Items, root: StructId) -> Option<usize> {
+    fn holds(d: &dyn Items, t: &Ty, root: StructId, stack: &mut Vec<StructId>) -> bool {
         let Ty::Struct(id, tys, sets) = t else {
             return false;
         };

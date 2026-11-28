@@ -572,7 +572,7 @@ fn layer(
         .collect();
     made.into_iter().for_each(|a| d.aliases.push(a));
     for (i, a) in d.aliases.iter().enumerate().skip(aliases_from) {
-        if d.is_library(a.module) && alias_cycle(&d, AliasId(i)) {
+        if d.is_library(a.module) && alias_cycle(&d, &d.syms, AliasId(i)) {
             d.module_errors[a.module.0].push(Msg::internal(format!(
                 "type alias `{}` is defined by itself",
                 a.name

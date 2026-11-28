@@ -827,7 +827,7 @@ pub fn check(
         }
     }
     for (i, a) in d.aliases.iter().enumerate() {
-        if d.of_program(a.module) && decls::alias_cycle(d, decls::AliasId(i)) {
+        if d.of_program(a.module) && decls::alias_cycle(d, &d.syms, decls::AliasId(i)) {
             cx.errors.push(Msg::at(
                 a.at.clone(),
                 Msg::verdict(
