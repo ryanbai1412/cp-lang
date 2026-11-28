@@ -19,9 +19,9 @@ cpl-next-link.workspace = true
 cpl-next-cpp.workspace = true
 cpl-next-interp.workspace = true
 cpl-next-engine.workspace = true
+cpl-json.workspace = true
 
 [dev-dependencies]
-cpl-json.workspace = true
 cpl-env.workspace = true
 cpl-judge.workspace = true
 cpl-conform.workspace = true

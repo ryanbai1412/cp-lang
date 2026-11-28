@@ -347,6 +347,26 @@ impl Session {
         }
     }
 
+    /// `file` run on `input` with its events reported (contract 8): the one trace query every
+    /// tool reads, or every diagnostic that stops the program.
+    pub fn trace(&self, file: &str, input: &str) -> Result<crate::trace::Recording, Arc<[Diag]>> {
+        let Some((id, _, _)) = self.file(file) else {
+            return Err(Arc::from(Vec::new()));
+        };
+        let h = &self.snapshot.0;
+        let job = Job {
+            root: id.clone(),
+            events: true,
+            bodies: h.bodies,
+            judge: h.judge.clone(),
+            checks: h.checks,
+        };
+        match self.work(id) {
+            Ok(w) => crate::trace::trace(&w.db, &job, input),
+            Err(e) => Err(Arc::from(vec![Diag::internal(&e)])),
+        }
+    }
+
     /// `file`'s IR at `stage`, for tracing a layer by eye (`cpl-next dump-ir`): lowering's
     /// fns the program instantiates, by name, and each later stage's in instance order, which
     /// is what a call names.

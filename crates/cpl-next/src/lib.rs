@@ -290,6 +290,8 @@ pub(crate) struct Compiled {
     proved: Vec<cpl_next_ir::facts::Proved>,
     /// What a run may use, from the snapshot's judge.
     limits: Limits,
+    /// The `option` role's struct, which a trace shows as `null` or the value it holds.
+    option: Option<cpl_next_ir::ty::StructId>,
 }
 
 /// Every layer through lowering, each run whatever an earlier one found (contracts 1-3).
@@ -576,6 +578,7 @@ pub(crate) fn compile(
         opt,
         proved,
         limits: Limits::of(judge),
+        option: f.d.roles.option,
     })
 }
 

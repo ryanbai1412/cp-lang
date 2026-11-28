@@ -2473,6 +2473,7 @@ tools-cli/exit-0-no-errors.cp
 tools-cli/exit-1-on-errors.cp
 tools-cli/exit-3-trap.cp
 tools-fmt-lint/lint-never-blocks-run.cp
+tools-trace/trace-keeps-only-the-watched-variable.cp
 traits/Add/List--add.cp
 traits/Add/MaxSub--add.cp
 traits/Add/Pt--add.cp

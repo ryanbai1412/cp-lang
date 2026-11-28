@@ -94,3 +94,27 @@ fn a_program_that_does_not_build_gives_its_diagnostics() {
     let ds = trace(&db, &job, "").err().expect("does not build");
     assert!(!ds.is_empty());
 }
+
+#[test]
+fn a_trace_document_types_its_values_and_keeps_the_watched_writes() {
+    let src = "var b = false\nvar o: ?Int = None\nvar n = 0\nfor i in 0..2:\n    b = i == 1\n    o = Some(i)\n    n += i\nprint(n)\n";
+    let (db, job) = db_with(src);
+    let r = trace(&db, &job, "").unwrap_or_else(|ds| panic!("{ds:?}"));
+    let all = r.json("main.cp", src, &[]);
+    for has in [
+        "\"b\":false",
+        "\"b\":true",
+        "\"o\":null",
+        "\"o\":1",
+        "\"label\":\"o = Some(i)\"",
+        "\"line\":6",
+    ] {
+        assert!(all.contains(has), "{has} in {all}");
+    }
+    let watched = r.json("main.cp", src, &["o".into()]);
+    assert!(
+        watched.contains("\"o\":0") && !watched.contains("\"b\":"),
+        "{watched}"
+    );
+    assert!(!watched.contains("\"label\":\"n += i\""), "{watched}");
+}

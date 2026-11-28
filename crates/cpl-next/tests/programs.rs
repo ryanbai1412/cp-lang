@@ -390,11 +390,33 @@ fn limit_of(text: &str) -> Duration {
         .fold(LIMIT, Duration::max)
 }
 
-/// What a case asks cpl-next for: a run, or only the checks.
-#[derive(Clone, Copy, PartialEq)]
+/// What a case asks cpl-next for: a run, only the checks, or a run's trace as JSON keeping
+/// the steps that write the watched names (all of them when none is named).
+#[derive(Clone, PartialEq)]
 enum Ask {
     Run,
     Check,
+    Trace(Vec<String>),
+}
+
+impl Ask {
+    fn runs(&self) -> bool {
+        matches!(self, Ask::Run | Ask::Trace(_))
+    }
+}
+
+/// `--trace --format json` with any `--watch NAMES`, each a comma-separated list.
+fn trace_ask(flags: &[&str]) -> Option<Ask> {
+    let (mut json, mut watch) = (false, Vec::new());
+    let mut it = flags.iter();
+    while let Some(f) = it.next() {
+        match *f {
+            "--format" => json = it.next() == Some(&"json"),
+            "--watch" => watch.extend(it.next()?.split(',').map(String::from)),
+            _ => return None,
+        }
+    }
+    json.then_some(Ask::Trace(watch))
 }
 
 /// `// tool: run` and `check`, each on the case, are the pipeline's own queries; every other
@@ -409,6 +431,9 @@ fn ask(tool: Option<&str>) -> Result<Ask, String> {
         // A release run is the C++ build, which every run is compared with.
         ["run"] | ["run", "--release"] => Ok(Ask::Run),
         ["check"] => Ok(Ask::Check),
+        ["run", "--trace", rest @ ..] => {
+            trace_ask(rest).ok_or_else(|| format!("`cpl {args}`: no facade query for it yet"))
+        }
         ["lint", ..] => Err("`cpl lint`: no lint query yet".into()),
         _ => Err(format!("`cpl {args}`: no facade query for it yet")),
     }
@@ -511,7 +536,21 @@ fn verdict_within(path: &Path, limit: Option<Duration>) -> (&'static str, String
     let run_at = scratch
         .as_ref()
         .map_or(path.to_path_buf(), |d| d.join(path.file_name().unwrap()));
-    let (verdict, detail, printed, stdout) = judged(&run_at, &text, expect, ask, limit);
+    let watch = match &ask {
+        Ask::Trace(w) => Some(w.clone()),
+        _ => None,
+    };
+    let (verdict, detail, mut printed, stdout) = judged(&run_at, &text, expect, ask, limit);
+    // The trace is the facade's query on the run every form agreed on, events included.
+    if let (Some(watch), "pass") = (watch, verdict) {
+        let file = run_at.to_string_lossy();
+        let session = Session::open(Snapshot::new(World::Disk).with_file(&*file, &text));
+        let input = String::from_utf8_lossy(&header_input(&text)).into_owned();
+        match session.trace(&file, &input) {
+            Ok(r) => printed = r.json(&file, &text, &watch),
+            Err(ds) => return ("crash", format!("the trace query failed: {:?}", ds.first())),
+        }
+    }
     if let Some(d) = scratch {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -608,7 +647,7 @@ fn judged(
     limit: Duration,
 ) -> (&'static str, String, String, String) {
     let input = header_input(text);
-    let forms = (ask == Ask::Run).then(|| Forms::new(path, &input, limit));
+    let forms = ask.runs().then(|| Forms::new(path, &input, limit));
     let raw = match &forms {
         Some(forms) => forms.raw(),
         None => next(path, &["--check", "--json"], &input, limit),
@@ -675,13 +714,13 @@ fn judged(
             )
         }
         Expect::Exit(1) => return done("wrong-accept", "wanted exit 1".into()),
-        Expect::Trap { .. } | Expect::Exit(3) if ask != Ask::Run => {
+        Expect::Trap { .. } | Expect::Exit(3) if !ask.runs() => {
             return done(
                 "wrong-output",
                 "a trap asked of a command that runs nothing".into(),
             )
         }
-        Expect::Ok | Expect::Exit(0) if ask != Ask::Run => return pass(),
+        Expect::Ok | Expect::Exit(0) if !ask.runs() => return pass(),
         _ => {}
     }
     let forms = forms.unwrap_or_else(|| Forms::new(path, &input, limit));
