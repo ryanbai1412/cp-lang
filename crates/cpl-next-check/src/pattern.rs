@@ -206,7 +206,7 @@ impl Cx<'_> {
     fn present_pattern(&self, head: &str) -> bool {
         (self.rows.marked_fns(Decorator::Pattern).iter()).any(|f| self.items.f(*f).name == head)
     }
-    fn mismatch(&mut self, span: Span, what: &str, t: &Ty) {
+    pub(super) fn mismatch(&mut self, span: Span, what: &str, t: &Ty) {
         if self.shallow(t) == Ty::Error {
             return;
         }

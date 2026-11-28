@@ -154,7 +154,9 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   `(u:, v:)` is shorthand for `(u: u, v: v)`, in `let`, `for`, `match`
   and parameters. Fields not named must be written as `..`:
   `(u:, ..)`. A tuple pattern reads a record's fields in order:
-  `let (r, f) = d.find(v)` binds `root` and `flip`. (R02.5.5)
+  `let (r, f) = d.find(v)` binds `root` and `flip`. A tuple pattern opens
+  a tuple or a record and nothing else: on a list, a slice or another
+  struct it is E0302. (R02.5.5)
 
 ## 2.6 Structs
 

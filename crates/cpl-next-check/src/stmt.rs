@@ -657,6 +657,15 @@ impl<'a> Cx<'a> {
         };
         let names = self.d.field_names(s);
         let record = self.items.s(s).record;
+        // A tuple pattern opens a tuple or a record, not another type's fields (R02.5.5).
+        if matches!(p, next::Pattern::Tuple(_))
+            && !record
+            && self.shapes.tuple(parts.len()) != Some(s)
+        {
+            let what = format!("a tuple pattern of {}", parts.len());
+            self.mismatch(span, &what, &read.ty);
+            return self.bind_unknown(p, mutable, out);
+        }
         if exact && record && names.len() != parts.len() {
             let (n, have) = (parts.len(), names.len());
             let code = cpl_diag::codes::TYPE_MISMATCH;
