@@ -25,21 +25,6 @@ use std.raw.{check_key}
 @stress(perm)
 pub type Perm<V> = [V]V
 
-/// The average of `of` over the elements as `F64`; `None` when empty.
-///
-/// cost: \(O(n)\)
-/// empty: `let a: List<Int> = []; a.mean() == None`
-/// traps: never
-/// example: `[1, 2].mean() == Some(1.5)`
-pub fn mean<S: Seq<T>, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64:
-    var total = 0.0
-    var n = 0
-    for x in self:
-        total += of(x)
-        n += 1
-    if n == 0: return None
-    Some(total / F64(n))
-
 /// Which of several equal best elements an extreme returns: `Ties.First` or `Ties.Last` in
 /// sequence order. `a.max(by: f, ties: Ties.Last)` is the rightmost maximum.
 pub enum Ties = First | Last
@@ -1470,6 +1455,21 @@ pub trait Seq<T>:
         var out = T.one
         for x in self: out *= x
         out
+    /// The average of `of` over the elements as `F64`; `None` when empty.
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `let a: List<Int> = []; a.mean() == None`
+    /// traps: never
+    /// example: `[1, 2].mean() == Some(1.5)`
+    @free_form
+    fn mean(self, of: T -> F64 = x => F64(x)) -> ?F64:
+        var total = 0.0
+        var n = 0
+        for x in self:
+            total += of(x)
+            n += 1
+        if n == 0: return None
+        Some(total / F64(n))
 
 /// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
 /// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the
