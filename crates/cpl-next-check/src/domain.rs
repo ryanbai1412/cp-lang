@@ -459,7 +459,11 @@ impl Cx<'_> {
             parts.push(Ty::Dom(d));
         }
         let t = match names {
-            Some(names) => Ty::Struct(self.d.record(&names)?, parts, Vec::new()),
+            Some(names) => {
+                let fields = names.iter().map(|n| self.d.sym(n));
+                let record = self.d.record(&fields.collect::<Option<Vec<_>>>()?)?;
+                Ty::Struct(record, parts, Vec::new())
+            }
             None if parts.len() > 1 => Ty::Struct(self.d.tuple(parts.len())?, parts, Vec::new()),
             None => return None,
         };

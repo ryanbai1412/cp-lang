@@ -21,6 +21,7 @@ mod names;
 mod structs;
 mod trait_impl;
 mod tyconv;
+use crate::views::Shapes;
 pub use collect::{body_of, collect, factor_name, prepare, Prepared};
 pub use forms::TyForm;
 pub use impls::{ImplIdx, Impls};
@@ -29,7 +30,7 @@ use tyconv::*;
 pub use tyconv::{
     alias_type, body_type, literal_int, prim_type, range_type, static_axis, struct_args, BodyScope,
 };
-pub(crate) use tyconv::{by_arity, unnamed};
+pub(crate) use tyconv::{by_arity, fields_of_record, fill_defaults, record_of, unnamed};
 
 /// A module: the core, a library file or the program.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
@@ -643,12 +644,8 @@ pub enum Member {
 
 impl Decls {
     /// `Tagged<Str>` written in a body: its arguments, the defaults filling those left off.
-    pub fn with_defaults_of(&self, d: StructId, mut given: Vec<Ty>) -> Vec<Ty> {
-        if given.is_empty() {
-            return given;
-        }
-        fill_defaults(self.struct_defaults.get(&d), &mut given);
-        given
+    pub fn with_defaults_of(&self, d: StructId, given: Vec<Ty>) -> Vec<Ty> {
+        Shapes::with_defaults_of(self, d, &given)
     }
     /// The domains a declaration in module `m` may name.
     fn doms_in(&self, m: ModId) -> HashMap<Sym, Ty> {
@@ -765,13 +762,12 @@ impl Decls {
     }
     /// The names of struct `s`'s fields, in order.
     pub fn field_names(&self, s: StructId) -> Vec<String> {
-        let fields = self.structs[s.0].fields.iter();
-        fields.map(|(f, _)| self.text(*f).to_string()).collect()
+        let fields = Shapes::field_names(self, s).into_iter();
+        fields.map(|f| self.text(f).to_string()).collect()
     }
     /// Which of enum `e`'s variants is named `name`.
     pub fn variant(&self, e: StructId, name: &str) -> Option<usize> {
-        let name = self.sym(name)?;
-        (self.structs[e.0].variants.iter()).position(|(v, _)| *v == name)
+        Shapes::variant(self, e, self.sym(name)?)
     }
     pub fn member(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
         members.get(&self.sym(name)?).copied()

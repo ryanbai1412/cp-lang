@@ -353,7 +353,8 @@ impl Cx<'_> {
                 let names = (fs.iter())
                     .map(|f| f.name().map(|n| n.text().to_string()))
                     .collect::<Option<Vec<String>>>()?;
-                let record = self.d.record(&names)?;
+                let fields = names.iter().map(|n| self.d.sym(n));
+                let record = self.d.record(&fields.collect::<Option<Vec<_>>>()?)?;
                 let parts = (fs.iter().zip(&names))
                     .map(|(f, n)| match f.value() {
                         Some(x) => self.type_path(&x),

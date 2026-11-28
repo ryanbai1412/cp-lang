@@ -703,8 +703,8 @@ impl Cx<'_> {
                 span: at,
             };
         }
-        let wide = self.d.widest_tuple();
-        if wide >= 2 && parts.len() > wide {
+        let widest = || (2..parts.len()).rev().find(|&n| self.d.tuple(n).is_some());
+        if let Some(wide) = self.d.tuple(parts.len()).map_or_else(widest, |_| None) {
             let rest = parts.split_off(wide - 1);
             let rest_at = Span::new(rest[0].at.start, rest[rest.len() - 1].at.end);
             let nested = self.tuple_of(rest, rest_at);
