@@ -771,21 +771,12 @@ pub fn rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = Non
 /// traps: never
 /// example: `[1, 2, 3].rotated_left(-1) == [3, 1, 2]`
 pub fn rotated_left<S: Seq<T>, T>(self: S, k: Int) -> List<T>:
-    let n = self.len
-    if n <= 1: return self.collect()
+    let a: List<T> = self.collect()
+    let n = a.len
+    if n <= 1: return a
     let s = k % n
-    if s == 0: return self.collect()
-    var out: List<T> = []
-    out.reserve(n)
-    var head: List<T> = []
-    head.reserve(s)
-    var idx = 0
-    for x in self:
-        if idx < s: head.push(x)
-        else: out.push(x)
-        idx += 1
-    for x in head: out.push(x)
-    out
+    if s == 0: return a
+    [a.nth((i + s) % n) for i in 0..n]
 
 /// A new list rotated right by `k`. Works on any `Seq`.
 ///
@@ -1026,7 +1017,7 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// order: increasing values, indexed by the fresh domain `C`
 /// traps: never
 /// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.index_of(30) == C.last!`
-pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
+pub fn compress<S: Seq<T>, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
     var raw: List<T> = self.collect()
     raw.sort()
     var uniq: List<T> = []
@@ -1762,7 +1753,7 @@ pub struct Rev<S>(base: S):
     /// cost: \(O(1)\)
     /// traps: unless `0 <= k < self.len`
     /// example: `[1, 2, 3].rev.nth(0) == 3`
-    pub fn nth<T>(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
+    pub fn nth<D, T>(self, k: Int) -> T where S: Indexed<D, T> = self.src.nth(self.src.len - 1 - k)
 
     /// \(O(1)\). The cut after key `i` in this walk: the source's cut before it (R07.4.14).
     ///
@@ -2304,13 +2295,13 @@ pub fn keyed<S: Seq<T>, I: Indexed, T, K>(
 ) -> Keys<S, I, T, K> = Keys(self, keys, by)
 
 /// The view `keyed` returns.
-pub struct Keys<S, I, T, K>(pub src: S, pub keys: I, by: ?(T -> K))
+pub struct Keys<S: Seq<T>, I, T, K>(pub src: S, pub keys: I, by: ?(T -> K))
 
-impl Seq<T> for Keys<S, I, T, K>:
+impl<S: Seq<T>, I, T, K> Seq<T> for Keys<S, I, T, K>:
     fn iter(self) -> yields T:
         for x in src: yield x
 
-impl Keyed<K, T> for Keys<S, I, T, K>:
+impl<S: Seq<T>, I, T, K> Keyed<K, T> for Keys<S, I, T, K>:
     fn items(self) -> yields (K, T):
         var j = 0
         for x in src:
