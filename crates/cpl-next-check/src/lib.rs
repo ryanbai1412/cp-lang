@@ -565,8 +565,6 @@ struct Body {
     rhs_extent: Option<Span>,
     /// The fields `with` lines set around the code being checked, innermost last (R09.1.2).
     frames: Vec<CtxFrame>,
-    /// The lists comprehensions being checked fill, innermost last.
-    filling: Vec<list::Filling>,
 }
 
 impl Body {
@@ -576,7 +574,6 @@ impl Body {
             assumed: Vec::new(),
             rhs_extent: None,
             frames: Vec::new(),
-            filling: Vec::new(),
             doms: d.top_doms.clone(),
             block_doms: Vec::new(),
             owned: HashMap::new(),
@@ -1087,13 +1084,17 @@ impl<'a> Cx<'a> {
     /// The id of name `text`: a declaration's, or else one of this body's own, which stays in
     /// its answer.
     pub(crate) fn sym(&mut self, text: &str) -> Sym {
-        if let Some(s) = (self.d.syms.get(text)).or_else(|| self.b.sym_ids.get(text).copied()) {
+        if let Some(s) = self.sym_of(text) {
             return s;
         }
         let s = Sym((self.d.syms.len() + self.b.syms.len()) as u32);
         self.b.syms.push(text.to_string());
         self.b.sym_ids.insert(text.to_string(), s);
         s
+    }
+    /// The id `text` already has, a declaration's or this body's, without making one.
+    pub(crate) fn sym_of(&self, text: &str) -> Option<Sym> {
+        (self.d.syms.get(text)).or_else(|| self.b.sym_ids.get(text).copied())
     }
     /// The text of `s`, a declaration's id or one of this body's.
     pub(crate) fn sym_text(&self, s: Sym) -> &str {
