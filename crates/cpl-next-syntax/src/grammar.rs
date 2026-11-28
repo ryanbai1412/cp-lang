@@ -57,10 +57,6 @@ pub const REMOVED_KEYWORDS: &[(&str, &str)] = &[
         "inline",
         "drop it: closures and `lends` bodies are always inlined",
     ),
-    (
-        "lend",
-        "end the `lends` body with the place itself: `mut self.data[i]`",
-    ),
     ("law", "write `@law name(args) = condition`"),
 ];
 
@@ -107,6 +103,10 @@ pub enum Contextual {
     Intrinsic,
     /// `@cpp("code")`.
     Cpp,
+    /// `lend mut place`: a `lends` body hands out a place (R05.6.3).
+    Lend,
+    /// `loop:`, reported: write `while true:`.
+    Loop,
 }
 
 /// Each contextual word and how it is spelled.
@@ -129,6 +129,8 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("as", Contextual::As),
     ("intrinsic", Contextual::Intrinsic),
     ("cpp", Contextual::Cpp),
+    ("lend", Contextual::Lend),
+    ("loop", Contextual::Loop),
 ];
 
 /// The contextual word `text` spells, if any.

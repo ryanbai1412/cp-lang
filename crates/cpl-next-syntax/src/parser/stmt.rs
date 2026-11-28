@@ -46,6 +46,20 @@ impl Parser<'_> {
             T::Ident if self.word() == Some(Contextual::Repeat) && self.nth(1) != T::Eq => {
                 self.headed(NodeKind::RepeatStmt, |p| p.expr())
             }
+            T::Ident if self.word() == Some(Contextual::Loop) && self.nth(1) == T::Colon => {
+                let span = self.span();
+                self.diagnostics
+                    .push(msgs::syntax::LOOP_KEYWORD.error(span, &[]).with_fix(
+                        cpl_diag::habits::REPLACE_WITH.say(&[&"while true"]),
+                        span,
+                        "while true",
+                    ));
+                self.start(NodeKind::WhileStmt);
+                self.bump();
+                self.block();
+                self.loop_else();
+                self.finish();
+            }
             // `with io(base: 1)` with no block covers the rest of the file.
             T::Ident if self.word() == Some(Contextual::With) && self.nth(1) == T::Ident => {
                 self.start(NodeKind::WithStmt);
@@ -133,6 +147,16 @@ impl Parser<'_> {
             T::Yield => self.keyword_stmt(NodeKind::YieldStmt, true),
             T::Break => self.keyword_stmt(NodeKind::BreakStmt, false),
             T::Continue => self.keyword_stmt(NodeKind::ContinueStmt, false),
+            T::Ident
+                if self.word() == Some(Contextual::Lend)
+                    && matches!(self.nth(1), T::Mut | T::Ident | T::SelfKw) =>
+            {
+                self.start(NodeKind::LendStmt);
+                self.bump();
+                self.eat(T::Mut);
+                self.expr();
+                self.finish();
+            }
             T::Assert => {
                 self.start(NodeKind::AssertStmt);
                 self.bump();
@@ -269,6 +293,44 @@ impl Parser<'_> {
     }
 
     /// `c, let p = e, d`.
+    /// `T: Ord + Hash<K>:`, a bound test (R08), told from a one-line
+    /// `if ok: x` by the `:` that ends the bound.
+    fn bound_cond_ahead(&self) -> bool {
+        if !(self.at(T::Ident) && self.nth(1) == T::Colon) {
+            return false;
+        }
+        let mut n = 2;
+        loop {
+            if self.nth(n) != T::Ident {
+                return false;
+            }
+            n += 1;
+            while self.nth(n) == T::Dot && self.nth(n + 1) == T::Ident {
+                n += 2;
+            }
+            if self.nth(n) == T::Lt {
+                let mut depth = 0i32;
+                loop {
+                    match self.nth(n) {
+                        T::Lt => depth += 1,
+                        T::Gt => depth -= 1,
+                        T::Shr => depth -= 2,
+                        T::Newline | T::Eof => return false,
+                        _ => {}
+                    }
+                    n += 1;
+                    if depth <= 0 {
+                        break;
+                    }
+                }
+            }
+            if self.nth(n) != T::Plus {
+                return self.nth(n) == T::Colon;
+            }
+            n += 1;
+        }
+    }
+
     pub(super) fn cond(&mut self) {
         self.start(NodeKind::Condition);
         loop {
@@ -279,6 +341,14 @@ impl Parser<'_> {
                 if self.want(T::Eq, "`=` and the value to match") {
                     self.expr();
                 }
+                self.finish();
+            } else if self.bound_cond_ahead() {
+                self.start(NodeKind::BoundCond);
+                self.start(NodeKind::NameRef);
+                self.bump();
+                self.finish();
+                self.bump();
+                self.bound();
                 self.finish();
             } else {
                 self.expr();

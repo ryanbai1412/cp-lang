@@ -1587,7 +1587,7 @@ pub fn simplex(
     fn run(phase: Int) -> Bool:
         // Bland's rule breaks exact ties by index, as kactl's LPSolver does.
         let x = m + phase - 1
-        loop:
+        while true:
             var pick: ?Int = None
             for j in 0..=n:
                 if nn[j] != -phase:

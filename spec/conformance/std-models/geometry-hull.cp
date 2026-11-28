@@ -49,7 +49,7 @@ fn wrap(pts: List<Pt>, coll: Bool) -> List<Pt>:
     if pts.all(p => cr(hi - lo, p - lo) == 0): return if lo == hi: [lo] else: [lo, hi]
     var out = [lo]
     var cur = lo
-    loop:
+    while true:
         var best: ?Pt = None
         for q in pts:
             if q == cur or pts.any(r => cr(q - cur, r - cur) < 0): continue

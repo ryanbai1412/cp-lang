@@ -113,7 +113,7 @@ for k in 0..n:
             if used.any(e => e == (v0, w0)): continue
             var cyc: List<Int> = []
             var (u, v) = (v0, w0)
-            loop:
+            while true:
                 used.push((u, v))
                 cyc.push(u)
                 // The next neighbour of `v` clockwise after `u`: the largest angle below `u`'s.

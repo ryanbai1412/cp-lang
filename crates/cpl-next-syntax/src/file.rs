@@ -62,6 +62,11 @@ pub enum NodeKind {
     FieldFn,
     /// `mut a[i]`: a place, named for writing (R05.3.4).
     MutExpr,
+    /// `lend mut place`, `lend place`: a `lends` body's place; code after
+    /// it is write-back (R05.6.3).
+    LendStmt,
+    /// `T: Ord` in an `if`: true where `T` meets the bound (R08 §190).
+    BoundCond,
     /// `x with f: v, g: w`: `x` with those fields replaced.
     WithExpr,
     /// `-x`, `not x`, `~x`.

@@ -100,6 +100,7 @@ core-01/lone-cr-in-comment-is-error.cp
 core-01/lone-cr-in-string-is-error.cp
 core-01/lone-cr-is-error.cp
 core-01/loop-else.cp
+core-01/loop-is-rejected.cp
 core-01/lowercase-binds.cp
 core-01/lowercase-const.cp
 core-01/lowercase-none-is-a-name.cp

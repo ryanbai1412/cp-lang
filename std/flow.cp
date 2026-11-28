@@ -485,7 +485,7 @@ pub struct CostFlow<V>:
         let n = head.len
         if n == 0: return 0
         var total = 0
-        loop:
+        while true:
             var dist: [V]Int = [V] _ => 0
             var par_v: [V]?V = [V] _ => None
             var par_a: [V]Int = [V] _ => -1
@@ -510,7 +510,7 @@ pub struct CostFlow<V>:
             var cyc: List<Int> = []
             var f = 1 << 60
             var c = 0
-            loop:
+            while true:
                 let aid = par_a[cur]
                 cyc.push(aid)
                 f min= left[aid]
@@ -2330,7 +2330,7 @@ pub fn matroid_intersection<E, A: Matroid<E>, B: Matroid<E> > (
 ) -> [E]Bool:
     var (ma, mb) = (a, b)
     var take: [E]Bool = false
-    loop:
+    while true:
         ma.rebuild(take)
         mb.rebuild(take)
         // Vertex cost: `-weight(x)` to bring `x` in, `weight(y)` to take `y` out; shortest by (cost, length).

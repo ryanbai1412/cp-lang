@@ -13,6 +13,7 @@ super::msgs! {
     FIELD_NEEDS_NAME = EXPECTED_EXPR, "a record field needs a name: write `name: value`";
     ELSE_IF = REMOVED_SYNTAX, "use `elif`, not `else if`";
     COLON_ARM = REMOVED_SYNTAX, "a `match` arm takes `=>` after its pattern, not `:`";
+    LOOP_KEYWORD = REMOVED_SYNTAX, "CP Lang has no `loop`; the loop that exits in the middle is `while true:`";
     MATCH_NEEDS_ARMS = EXPECTED_BLOCK, "expected indented `pattern => value` arms after `match`";
     BAD_NUMBER_FORMAT = UNEXPECTED_TOKEN, "`:{}` is not a number format";
     OPTIONAL_MARK_FIRST = EXPECTED_TYPE, "an optional type puts its `?` first in CP Lang";

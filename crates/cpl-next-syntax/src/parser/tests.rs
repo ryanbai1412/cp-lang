@@ -387,3 +387,22 @@ fn places_punning_field_fns_with_and_record_patterns_parse() {
         assert!(got[i].contains(want), "{}: {}", want, got[i]);
     }
 }
+
+#[test]
+fn lend_statements_and_bound_conditions_parse() {
+    let src = "lend mut self.buf[i]\nlend data[k]\nif M: Selective<T> + Eq:\n    x\nif ok: x\n";
+    let (got, errors) = stmts(src);
+    assert_eq!(errors, 0, "{got:#?}");
+    assert!(
+        got[0].starts_with("LendStmt(lend mut IndexExpr("),
+        "{}",
+        got[0]
+    );
+    assert!(got[1].starts_with("LendStmt(lend IndexExpr("), "{}", got[1]);
+    assert!(
+        got[2].contains("Condition(BoundCond(NameRef(M) : Bound("),
+        "{}",
+        got[2]
+    );
+    assert!(!got[3].contains("BoundCond"), "{}", got[3]);
+}

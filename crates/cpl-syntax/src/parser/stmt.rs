@@ -2,6 +2,8 @@
 
 use super::*;
 use cpl_diag::msgs::stmt as msg;
+use cpl_diag::{habits::REPLACE_WITH, msgs::syntax::LOOP_KEYWORD};
+use cpl_next_syntax::grammar::{contextual, Contextual::Loop};
 
 /// A `for` clause: its pattern, what it walks, and its `if` filter.
 type ForClause = (Pattern, Expr, Option<(u32, Cond)>);
@@ -644,19 +646,17 @@ impl<'a> Parser<'a> {
                 }
                 StmtKind::Error
             }
-            T::Ident if self.text() == "loop" && self.peek_n(1) == T::Colon => {
+            T::Ident if contextual(self.text()) == Some(Loop) && self.peek_n(1) == T::Colon => {
                 let span = self.span();
+                let fix = REPLACE_WITH.say(&[&"while true"]);
+                self.error(
+                    LOOP_KEYWORD
+                        .error(span, &[])
+                        .with_fix(fix, span, "while true"),
+                );
                 self.bump();
-                let body = self.colon_block("`loop`");
-                let else_body = self.loop_else();
-                StmtKind::While {
-                    cond: Cond::Expr(Expr {
-                        kind: ExprKind::Bool(true),
-                        span,
-                    }),
-                    body,
-                    else_body,
-                }
+                self.colon_block("`while true`");
+                StmtKind::Error
             }
             T::Ident
                 if self.text() == "repeat"

@@ -198,3 +198,14 @@ fn a_decorator_on_the_item_line_heads_only_that_item() {
     assert_eq!(file.items().count(), 7);
     assert_eq!(file.root.text(), src);
 }
+
+#[test]
+fn loop_is_reported_with_a_fix_and_parses_as_while() {
+    let src = "loop:\n    break\n";
+    let file = parse(src);
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    assert!(format!("{:?}", file.diagnostics[0]).contains("while true"));
+    let stmt = file.items().next().unwrap();
+    assert!(stmt.descendants().any(|n| n.kind() == NodeKind::WhileStmt));
+    assert_eq!(file.root.text(), src);
+}

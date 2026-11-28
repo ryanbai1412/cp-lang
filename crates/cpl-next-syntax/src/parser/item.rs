@@ -329,7 +329,7 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn bound(&mut self) {
+    pub(super) fn bound(&mut self) {
         self.start(NodeKind::Bound);
         self.ty();
         while self.eat(T::Plus) {

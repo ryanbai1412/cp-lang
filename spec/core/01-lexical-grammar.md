@@ -114,7 +114,7 @@ in match return break continue and or not assert mut self unchecked
 true false trait impl lends yield
 ```
 
-`todo` is a primary expression and `context`, `marker` and `uses` are
+`todo` is a primary expression and `context`, `marker`, `uses` and `lend` are
 contextual words (R11.1.2, R09.1.3): each is a keyword only where the
 grammar expects it and an ordinary name elsewhere.
 
@@ -488,6 +488,7 @@ stmt        := simple_stmts NL | compound
 simple_stmts:= simple (';' simple)*
 simple      := let | assign | expr | 'return' expr? | 'break' LABEL?
              | 'continue' LABEL? | 'assert' expr (',' expr)?
+             | 'lend' 'mut'? place               // a `lends` body's place (R05.6.3)
 let         := ('let' | 'var' | 'const') pattern (',' NAME)* (':' type)?
                '=' expr ('else' block)?
 assign      := place ('=' | ASSIGN_OP | NAME '=') expr     // `x min= y`, `x f= y`
@@ -496,6 +497,7 @@ compound    := if_stmt | for_stmt | while_stmt | match_stmt | with_stmt
 if_stmt     := 'if' cond block ('elif' cond block)* ('else' block)?
 cond        := 'let' pattern '=' expr (',' cond)* | expr (',' cond)*
              | place ('min=' | 'max=') expr      // true when improved (R01.6.4)
+             | NAME ':' bound                    // `if M: Selective<T>:` (R08, decision 602)
 for_stmt    := (LABEL ':')? 'for' clause (',' clause)* block ('else' block)?
 clause      := pattern 'in' expr ('if' expr)?
 while_stmt  := (LABEL ':')? 'while' cond block ('else' block)?
@@ -578,4 +580,5 @@ Each of these gets an error with a machine-applicable fix: (R01.11.1)
 | `(let a = ...; e)` | a block lambda or `{ let a = ...; e }` | 135 |
 | `fn f() -> T =` then an indented block | `fn f() -> T:` | 136 |
 | `--- multitest ---` | `@!multitest` | 93 |
+| `loop:` | `while true:` | 4.1 |
 | `defer` and other v2.1 words | as the error says | 19 |

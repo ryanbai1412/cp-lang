@@ -124,7 +124,7 @@ G7, G8):
 | 5.9 | `@memo` control | Revised 2026-11-20 (v2.2) | Bare `@memo` only (`@memo(flat)`/`@memo(hash)` deleted): auto-dispatches flat niche-packed `[Params]?R` for any value return type up to `2^24` (`2^26` for `?Bool`/`Bool`), else salted flat hash; nested `@memo` scoped to enclosing fn/loop iteration; permits `ask(...)` and deterministic extern `@grader fn` oracles (exact 1 call per arg tuple); forbids mutated captured `var`s and `read()`/`print()` | 2.16 | §16, §19.3, §19.9 |
 | 5.10 | Nested `fn` mutation (`mut fn` deleted) | Revised 2026-11-20 (v2) | **`mut fn` deleted.** Any nested `fn` declared after a `var` reads/writes it directly; the compiler tracks captured borrows automatically and forbids escaping | 5.3 | §16, research/archive/audits/subtraction-audit-1.md Cut 3 |
 | 5.11 | Keeping the borrow rules understandable | Settled 2026-11-19 (the method; the rules stay open to change) | fresh agents repeatedly search for the smallest programs where a borrow rule surprises; each one changes the rule or its error message and is kept as a test | 5.3 | plan/agent-context.md |
-| 5.12 | Projections: `lends` (tail expression) | Revised 2026-11-20 (v2.2) | `fn row(self, r: A) lends mut [B]T` lends via its tail expression or `return mut place` (`lend` keyword deleted). Post-lend write-back lets `SegTree`/`LazySegTree` repair invariants after mutations | 5.3, 5.4 | §16, §19.1 |
+| 5.12 | Projections: `lends` | Revised 2026-11-27 | `fn row(self, r: A) lends mut [B]T` lends via its tail expression, `return mut place`, or a block body's `lend mut place` statement, whose following code is write-back (how `SegTree`/`LazySegTree` repair ancestors); superseded in detail by 16.9 and R05.6.3 | 5.3, 5.4, 16.9 | §16, §19.1 |
 | 5.13 | `@law disjoint` | Revised 2026-11-20 (v2.2) | `law` demoted from hard keyword to `@law` (`@law disjoint(i, j) = i != j`); trivial single-index forwarding (`mut self.data[i.to_idx]`) auto-derives `disjoint`. Two live lends of one projection on one receiver, one `mut`, need the law proven from flow facts (`if`, `while`, `assert`, value ranges) | 3.4, 5.12 | §19.1, plan/19-index-and-lends.md §3.6 |
 | 5.14 | Lent values are second-class | Settled 2026-11-20 | a value built from lent parts is lent and lives only in the block that made it: it may be passed, bound by `let`, iterated and lent onward; not put in a `var`, a field or a container, captured by a non-`inline` lambda, or returned. Borrowed-ness is a mode of the binding, not a type, so there is no `view` keyword | 5.3 | plan/19-index-and-lends.md §3.5 |
 
@@ -402,6 +402,18 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   4.1: the old parser also took a colon arm, a second spelling of one
   construct. The new parser reports it as a syntax error whose fix writes
   `=>`, and std and conformance use `=>` arms only.
+- **`lend mut place` is a statement.** Syntax, 5.12/16.9: R05.6.3 is
+  normative; a block body lends with `lend mut place` (or `lend place`),
+  and the code after it is write-back, which a tail expression can't
+  express. The grammar gains `'lend' 'mut'? place`, `lend` is a contextual
+  word, and the 5.12 row no longer says the keyword is deleted.
+- **There is no `loop`.** Syntax, 4.1: the old parser took `loop:` by a
+  text compare, a second spelling of `while true:` (R01.7.2). The new
+  parser reports it with a fix writing `while true`, and std and
+  conformance use `while true:`.
+- **`if T: Bound:` is a condition.** Syntax, 8 (decision 602): R08 §190's
+  bound test was missing from `cond`. It is `NAME ':' bound` with a full
+  trait ref, told from a one-line `if ok: x` by the `:` that ends the bound.
 - **`e?` works inside an expression.** Syntax, widening 4.1: `?` was only
   allowed on a whole `let`. Now `i.ord + on_foot[line[i]]?` leaves the fn
   with `none` when the operand is `none`. The operands before it are still
