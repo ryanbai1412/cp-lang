@@ -311,6 +311,12 @@ fn layer(
     synth[CORE.0].extend(records.iter().cloned());
     for mi in from..mods.len() {
         for (k, (item, f)) in read[mi].iter().enumerate() {
+            let mut placed = Vec::new();
+            super::attr_rules::check_form(f, item, &mut placed);
+            match ModId(mi) == d.program {
+                true => d.errors.extend(placed),
+                false => d.module_errors[mi].extend(placed),
+            }
             let Form::Enum(e) = f else {
                 continue;
             };

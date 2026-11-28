@@ -1,7 +1,7 @@
 //! The rules a decorator follows beyond its name: what each `@name` may sit on and what its
 //! arguments are. Collect calls `check` once per decorator, where forms reads it (R11.6).
 use crate::attrs::{DeclKind, Decorator};
-use crate::decls::forms::AttrForm;
+use crate::decls::forms::{AttrForm, FieldForm, Form};
 use crate::decls::Role;
 use crate::diag::Msg;
 use cpl_diag::{codes, msgs};
@@ -28,6 +28,39 @@ pub fn check(attr: &AttrForm, on: DeclKind, item: &ItemId, errors: &mut Vec<Msg>
         _ => None,
     };
     errors.extend(msg.map(|m| Msg::at(item.at(node.syntax().span()), m)));
+}
+
+/// The errors of the decorators on a declaration other than a fn, and on its fields and
+/// variants; a fn's are checked where its signature is read.
+pub fn check_form(form: &Form, item: &ItemId, errors: &mut Vec<Msg>) {
+    let mut on = |attrs: &[AttrForm], kind: DeclKind| {
+        for a in attrs {
+            check(a, kind, item, errors);
+        }
+    };
+    let fields = |fs: &[FieldForm], on: &mut dyn FnMut(&[AttrForm], DeclKind)| {
+        for f in fs {
+            on(&f.attrs, DeclKind::Field);
+        }
+    };
+    match form {
+        Form::Struct(s) => {
+            on(&s.attrs, DeclKind::Struct);
+            fields(&s.fields, &mut on);
+        }
+        Form::Enum(e) => {
+            on(&e.attrs, DeclKind::Enum);
+            for v in &e.variants {
+                on(&v.attrs, DeclKind::Variant);
+                fields(&v.fields, &mut on);
+            }
+        }
+        Form::Trait(t) => on(&t.attrs, DeclKind::Trait),
+        Form::Impl(i) => on(&i.attrs, DeclKind::Impl),
+        Form::Alias(a) => on(&a.attrs, DeclKind::Alias),
+        Form::Context { fields: fs, .. } => fields(fs, &mut on),
+        _ => {}
+    }
 }
 
 fn args(node: &ast::Decorator) -> Vec<ast::Arg> {
