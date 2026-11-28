@@ -253,7 +253,7 @@ impl<'a> Cx<'a> {
                 }
                 next::BlockEntry::Decl(next::Decl::Fn(f)) => {
                     let name = f.name().map_or_else(String::new, |t| t.text().to_string());
-                    self.nested_fn(f, &name, out);
+                    self.nested_fn(f, Some(&name), out);
                     continue;
                 }
                 next::BlockEntry::Decl(next::Decl::Domain(d)) => {

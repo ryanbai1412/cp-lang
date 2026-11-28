@@ -580,7 +580,7 @@ struct Body {
     selves: Vec<(String, LambdaId, usize)>,
     /// The nested `fn`s of the blocks being checked, by the offset of their statement; and the
     /// one whose lambda is being made.
-    group: Vec<(u32, String, LambdaId)>,
+    group: Vec<(u32, Option<String>, LambdaId)>,
     /// Each use of a nested `fn` above its statement, with the names set at that point: every
     /// capture of the fn must be among them (R06.1.7).
     ahead: Vec<(LambdaId, String, Span, std::collections::BTreeSet<VarRef>)>,

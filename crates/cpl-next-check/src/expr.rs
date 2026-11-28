@@ -475,7 +475,9 @@ impl<'a> Cx<'a> {
         if let Some((e, i)) = self.scoped_variant(n) {
             return self.variant(e, i, Vec::new(), &[], span);
         }
-        if let Some(&(_, _, id)) = (self.b.group.iter()).find(|g| g.1 == n && g.0 > span.start) {
+        if let Some(&(_, _, id)) =
+            (self.b.group.iter()).find(|g| g.1.as_deref() == Some(n) && g.0 > span.start)
+        {
             let set = self.names_set();
             self.b.ahead.push((id, n.to_string(), span, set));
             return TExpr {
