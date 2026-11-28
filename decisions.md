@@ -9702,6 +9702,19 @@ Reverse it by deleting `not_members` and the cases (R08.1.2).
 - **Why.** Decimal-to-binary rounding is a bignum algorithm a std parser would get wrong in the last bit; it is each back end's own library, like output, so it is a machine primitive. One op serves `read<F64>()` and `Str.parse<F64>()` alike, since both go through `Input`.
 - **Reverse.** Drop the row and write the parse in std over `I128` digits, accepting last-bit differences.
 
+## 682. `@on_destructure` says why a call's result can't be taken apart (check, 2026-11-28)
+
+`for (x, n) in runs(xs)` was accepted: cpl-next's tuple pattern opened
+any struct's fields, and old `cpl` caught it only by naming `runs` in the
+checker. A tuple pattern now opens a tuple or a record and nothing else
+(R02.5.5), and the advice that each run is a slice, with the fix
+`.map(r => (r.first!, r.len))`, comes from std's own
+`@on_destructure("..{n}..", fix: "..")` on `runs`, found through the
+callee's declaration, never its name. It shares `@on_unimplemented`'s
+message and `code:` parse and its `{..}` holes; any library may use it,
+and misuse is E0505. Reverse it by deleting the decorator and
+`destructure_said`; the plain E0302 stays.
+
 ## 679. Std is read from `std/` when a snapshot is made, as database sources (check, 2026-11-28)
 
 `cpl-next-decls/build.rs` baked every `std/*.cp` into the binary with `include!`,

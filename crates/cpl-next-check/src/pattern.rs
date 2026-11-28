@@ -206,6 +206,40 @@ impl Cx<'_> {
     fn present_pattern(&self, head: &str) -> bool {
         (self.rows.marked_fns(Decorator::Pattern).iter()).any(|f| self.items.f(*f).name == head)
     }
+    /// A tuple pattern of `n` at `at` that can't open `t`, what `callee` gives (its call ends
+    /// at `end`): `callee`'s `@on_destructure` says why, with its fix (R02.5.5). Whether it did.
+    pub(super) fn destructure_said(
+        &mut self,
+        callee: FnId,
+        n: usize,
+        t: &Ty,
+        at: Span,
+        end: u32,
+    ) -> bool {
+        let Some(said) = self.items.f(callee).on_destructure.clone() else {
+            return false;
+        };
+        let opens = match self.field_tys(t) {
+            Some((s, _)) => self.items.s(s).record || self.shapes.tuple(n) == Some(s),
+            None => true,
+        };
+        if opens || self.mentions_error(t) {
+            return false;
+        }
+        let text = (said.help.unwrap_or_default()).replace("{n}", &n.to_string());
+        let code = said.code.unwrap_or(cpl_diag::codes::TYPE_MISMATCH);
+        let mut msg = Msg::verdict(code, text);
+        if let Some(fix) = said.fix {
+            let write = cpl_diag::habits::WRITE.say(&[&fix]);
+            msg.help = Some(write.clone());
+            msg.fixes.push(cpl_next_ir::msg::Fix {
+                title: write,
+                edits: vec![(self.b.item.at(Span::new(end, end)), fix)],
+            });
+        }
+        self.err(at, msg);
+        true
+    }
     pub(super) fn mismatch(&mut self, span: Span, what: &str, t: &Ty) {
         if self.shallow(t) == Ty::Error {
             return;

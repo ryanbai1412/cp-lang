@@ -52,6 +52,7 @@ impl<'a> Cx<'a> {
             call = self.method_call(call, &walk, vec![], span, false);
             self.b.allow_region = false;
         }
+        let end = call.span.end;
         let TK::Call { f, recv, args } = call.kind else {
             return;
         };
@@ -64,7 +65,17 @@ impl<'a> Cx<'a> {
                 ),
             );
         };
-        let elem = self.result_of(&f, &elem);
+        let mut elem = self.result_of(&f, &elem);
+        let parts = match pats {
+            [next::Pattern::Tuple(t)] => Some((t.patterns().count(), self.at(&pats[0]))),
+            [p, _, ..] => Some((pats.len(), self.at(p))),
+            _ => None,
+        };
+        if let Some((n, at)) = parts {
+            if self.destructure_said(f.decl, n, &elem, at, end) {
+                elem = Ty::Error;
+            }
+        }
         let (var, body) = self.walk_each(pats, elem, body, span);
         out.push(TStmt::Region {
             callee: Callee::Fn(f),

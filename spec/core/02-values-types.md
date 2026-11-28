@@ -156,7 +156,14 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   `(u:, ..)`. A tuple pattern reads a record's fields in order:
   `let (r, f) = d.find(v)` binds `root` and `flip`. A tuple pattern opens
   a tuple or a record and nothing else: on a list, a slice or another
-  struct it is E0302. (R02.5.5)
+  struct it is E0302. A fn or generator says why its result or item
+  can't be taken apart with `@on_destructure("<message>", fix: "<text>")`:
+  a tuple pattern of `n` over it that can't open it is that error, E0302
+  unless `code:` names another, with the message, `{n}` the count, and the
+  fix writes `<text>` after the call (std's `runs`). The checker finds it
+  through the callee's declaration; any library may use it. On anything
+  but a fn with a result or a generator, or without a message, it is
+  E0505 (decision 682). (R02.5.5)
 
 ## 2.6 Structs
 

@@ -1142,36 +1142,41 @@ pub(super) fn unimplemented(
     }
 }
 
-/// The message and `code:` a library's diagnostic decorator gives, `@on_unimplemented`'s or
-/// `@reject`'s; `@reject`'s `when:` is read apart (R06.4.17).
+/// The message and `code:` a library's diagnostic decorator gives, `@on_unimplemented`'s,
+/// `@reject`'s or `@on_destructure`'s, with the last's `fix:`; `@reject`'s `when:` is read
+/// apart (R06.4.17).
 pub(super) fn said(
     item: &ItemId,
     node: &cpl_next_syntax::ast::Decorator,
     d: Decorator,
     errors: &mut Vec<Msg>,
 ) -> Unimplemented {
+    use cpl_next_syntax::grammar::SaidArg;
     use cpl_next_syntax::literal::{string_parts, StrPart};
     use cpl_next_syntax::{ast as next, TokenKind};
     let mut out = Unimplemented::default();
     let args: Vec<next::Arg> = node.args().map(|l| l.args().collect()).unwrap_or_default();
     for a in args {
         let label = a.label().map(|l| l.text().to_string());
-        if d == Decorator::Reject && label.as_deref() == Some("when") {
+        let arg = label.as_deref().map(SaidArg::of);
+        if d == Decorator::Reject && arg == Some(Some(SaidArg::When)) {
             continue;
         }
         let value = a.value();
         // A message with a `{T}` hole is parsed into text pieces around it, so it is read whole.
-        let message = match (&label, &value) {
-            (None, Some(next::Expr::Literal(l))) => (l.token())
+        let text = match &value {
+            Some(next::Expr::Literal(l)) => (l.token())
                 .filter(|t| matches!(t.kind(), TokenKind::Str | TokenKind::StrText))
                 .map(|_| l.syntax().text()),
             _ => None,
         };
-        let code = match (label.as_deref(), &value) {
-            (Some("code"), Some(next::Expr::Name(n))) => n.ident(),
+        let message = text.clone().filter(|_| label.is_none());
+        let code = match (arg, &value) {
+            (Some(Some(SaidArg::Code)), Some(next::Expr::Name(n))) => n.ident(),
             _ => None,
         };
-        if let Some(text) = message {
+        let fix = text.filter(|_| d == Decorator::OnDestructure && arg == Some(Some(SaidArg::Fix)));
+        if let Some(text) = message.or(fix.clone()) {
             let text = text.as_str();
             let piece = |r: cpl_diag::Span| &text[r.start as usize..r.end as usize];
             let help = string_parts(text).into_iter().map(|p| match p {
@@ -1189,7 +1194,10 @@ pub(super) fn said(
                     }
                 }
             });
-            out.help = Some(help.collect());
+            match fix {
+                Some(_) => out.fix = Some(help.collect()),
+                None => out.help = Some(help.collect()),
+            }
         } else if let Some(info) = code
             .as_ref()
             .and_then(|c| cpl_diag::registry::lookup(c.text()))

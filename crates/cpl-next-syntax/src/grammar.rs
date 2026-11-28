@@ -223,6 +223,7 @@ decorators! {
     Member = "member", "R06.4.16", "`@member(name)` on a std struct: the domain member (`D.name`) whose positions it is";
     Lint = "lint", "R06.4.9", "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint";
     OnUnimplemented = "on_unimplemented", "R08.1.8", "on a trait: the message when a type lacks its impl";
+    OnDestructure = "on_destructure", "R02.5.5", "on a fn or generator: the message when a tuple pattern can't open its result or item";
     Aka = "aka", "R12.13.2", "`@aka(name, ..)` on a fn or an `@operator` trait: other languages' names for it, for their fix";
     Was = "was", "R12.13.1", "`@was(Old, ..)`: the names a declaration replaced, for their fix";
     SameKeys = "same_keys", "R04b.1.3", "on a fn: its arguments that are arrays over domains share one domain";
@@ -381,6 +382,32 @@ pub enum LintArg {
     When,
     /// The call the fix suggests when it is not the fn's own.
     Builtin,
+}
+
+/// A labelled argument of a library's diagnostic decorator, `@on_unimplemented`'s,
+/// `@reject`'s or `@on_destructure`'s; the message is the one without a label.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SaidArg {
+    /// The diagnostic code it reports.
+    Code,
+    /// `@reject`'s condition on the call's types.
+    When,
+    /// `@on_destructure`'s text written after the call.
+    Fix,
+}
+
+impl SaidArg {
+    /// Each row: the variant, its spelling and the spec rule that defines it.
+    pub const ROWS: [(SaidArg, &'static str, &'static str); 3] = [
+        (SaidArg::Code, "code", "R08.1.8"),
+        (SaidArg::When, "when", "R06.4.17"),
+        (SaidArg::Fix, "fix", "R02.5.5"),
+    ];
+
+    /// The argument the label `word:` is, if any.
+    pub fn of(word: &str) -> Option<SaidArg> {
+        Self::ROWS.iter().find(|r| r.1 == word).map(|r| r.0)
+    }
 }
 
 impl LintArg {

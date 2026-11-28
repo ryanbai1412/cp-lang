@@ -106,6 +106,9 @@ pub struct FnDecl {
     pub aka: Vec<String>,
     /// `@was(..)`: names it had before a release renamed it; a call by one is E0503.
     pub was: Vec<String>,
+    /// `@on_destructure("..{n}..", fix: "..")`: what a tuple pattern of `n` that can't open
+    /// its result or item is told, `{n}` the pattern's count (R02.5.5).
+    pub on_destructure: Option<Unimplemented>,
     pub item: ItemId,
     /// Where it is written.
     pub span: SourceId,
@@ -214,6 +217,8 @@ pub struct TraitDecl {
 pub struct Unimplemented {
     pub code: Option<cpl_diag::Code>,
     pub help: Option<String>,
+    /// `@on_destructure`'s `fix:`: the text written after the call (R02.5.5).
+    pub fix: Option<String>,
 }
 
 /// `@reject(when: T = Bool, "..", code: E0303)` on a defaulted parameter: a call that takes the
@@ -1755,6 +1760,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
                 | Decorator::Lint
                 | Decorator::Stress
                 | Decorator::OnUnimplemented
+                | Decorator::OnDestructure
                 | Decorator::Memo
                 | Decorator::FreeForm
         )
@@ -1942,6 +1948,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
             }
             _ => None,
         };
+    let on_destructure = on_destructure(&item, f, &ret, &region, &mut errors);
     let fns = d.item_fns.entry(item.clone()).or_default();
     let at = fns.len() as u32;
     fns.push(FnId(d.fns.len()));
@@ -1980,6 +1987,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         same_keys,
         aka: words(Decorator::Aka),
         was: words(Decorator::Was),
+        on_destructure,
         span: item.at(f.span),
         item,
         module: m,
@@ -2275,6 +2283,36 @@ pub fn overload(
     (std::iter::once(first).chain(rest.iter().copied())).find(|f| fits(*f))
 }
 
+/// A fn's `@on_destructure("..", fix: "..")` (R02.5.5): a message, an optional `code:` and
+/// `fix:`. On a fn with no result to take apart, or without a message, it is E0505.
+fn on_destructure(
+    item: &ItemId,
+    f: &forms::FnForm,
+    ret: &Ty,
+    region: &Option<(bool, Ty)>,
+    errors: &mut Vec<Msg>,
+) -> Option<Unimplemented> {
+    use cpl_next_syntax::ast::AstNode;
+    let x = (f.attrs.iter()).find(|a| a.attr == crate::attrs::Decorator::OnDestructure)?;
+    let node = x.node.as_ref()?;
+    let bad = |why: &str| {
+        Msg::at(
+            item.at(node.syntax().span()),
+            Msg::verdict(cpl_diag::codes::BAD_LIBRARY_LINT, why.to_string()),
+        )
+    };
+    let said = collect::said(item, node, crate::attrs::Decorator::OnDestructure, errors);
+    let gives = !matches!(ret, Ty::Unit) || matches!(region, Some((false, _)));
+    match said.help {
+        _ if !gives => errors.push(bad(
+            "`@on_destructure` sits on a fn with a result or a generator: a pattern takes apart what it gives",
+        )),
+        Some(_) => return Some(said),
+        None => errors.push(bad("`@on_destructure` takes a message")),
+    }
+    None
+}
+
 /// A parameter's `@reject(when: T = Bool, "..", code: C)` (R06.4.17). Any other decorator on a
 /// parameter, or a `@reject` with no default to guard, no message or code, or a `when` that is
 /// not type parameters equal to types, is E0505.
@@ -2285,6 +2323,7 @@ fn reject(
     errors: &mut Vec<Msg>,
 ) -> Option<Reject> {
     use cpl_next_syntax::ast::AstNode;
+    use cpl_next_syntax::grammar::SaidArg;
     let mut out = None;
     for x in &p.decorators {
         let at = item.at(x.syntax().span());
@@ -2305,7 +2344,7 @@ fn reject(
         let args: Vec<_> = x.args().map(|l| l.args().collect()).unwrap_or_default();
         for a in args
             .iter()
-            .filter(|a| a.label().is_some_and(|l| l.text() == "when"))
+            .filter(|a| a.label().and_then(|l| SaidArg::of(l.text())) == Some(SaidArg::When))
         {
             let sides: Vec<_> = a.types().collect();
             typed &= !sides.is_empty() && sides.len() % 2 == 0;

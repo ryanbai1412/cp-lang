@@ -27,6 +27,13 @@ pub fn check(attr: &AttrForm, on: DeclKind, item: &ItemId, errors: &mut Vec<Msg>
             )
         }),
         Decorator::FreeForm if !matches!(on, DeclKind::Fn { .. }) => Some(free_form_misplaced()),
+        Decorator::OnDestructure if !matches!(on, DeclKind::Fn { .. }) => Some(Msg {
+            help: Some("put it on the fn or generator whose result a pattern takes apart".to_string()),
+            ..Msg::verdict(
+                codes::BAD_LIBRARY_LINT,
+                "`@on_destructure` sits on a fn or a generator: it says why a pattern can't take apart what the fn gives",
+            )
+        }),
         _ => None,
     };
     errors.extend(msg.map(|m| Msg::at(item.at(node.syntax().span()), m)));

@@ -863,6 +863,7 @@ pub fn prev_permutation<S: IndexedMut<D, T>, D: Domain, T: Ord>(mut self: S) -> 
 /// traps: never
 /// example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
 /// example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [2, 3]`
+@on_destructure("each run is a slice, so it can't be taken apart into {n} names", fix: ".map(r => (r.first!, r.len))")
 pub fn runs<S: Indexed<D, T>, D: Domain, T, K: Eq>(
     self: S,
     by: T -> K = x => x,

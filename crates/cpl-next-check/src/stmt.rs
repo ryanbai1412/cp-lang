@@ -648,6 +648,10 @@ impl<'a> Cx<'a> {
             ty: v.ty.clone(),
             span,
         };
+        let callee = match &v.kind {
+            TK::Call { f, .. } => Some((f.decl, v.span.end)),
+            _ => None,
+        };
         out.push(TStmt::Let(whole, v));
         let Some((s, tys)) = self.field_tys(&read.ty) else {
             if !self.mentions_error(&read.ty) {
@@ -662,8 +666,12 @@ impl<'a> Cx<'a> {
             && !record
             && self.shapes.tuple(parts.len()) != Some(s)
         {
-            let what = format!("a tuple pattern of {}", parts.len());
-            self.mismatch(span, &what, &read.ty);
+            let said = callee
+                .is_some_and(|(f, end)| self.destructure_said(f, parts.len(), &read.ty, span, end));
+            if !said {
+                let what = format!("a tuple pattern of {}", parts.len());
+                self.mismatch(span, &what, &read.ty);
+            }
             return self.bind_unknown(p, mutable, out);
         }
         if exact && record && names.len() != parts.len() {
