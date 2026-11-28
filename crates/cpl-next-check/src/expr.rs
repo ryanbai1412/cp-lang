@@ -723,6 +723,7 @@ impl<'a> Cx<'a> {
             let it = TExpr { span: at, ..it };
             let name = Called {
                 text: &text,
+                sym: cx.d.sym(&text),
                 span: at,
             };
             cx.member_on(it, name, None, span, None, &[])

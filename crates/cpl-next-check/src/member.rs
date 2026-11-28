@@ -11,7 +11,14 @@ use cpl_next_ir::unbuilt::Unbuilt;
 #[derive(Clone, Copy)]
 pub(super) struct Called<'n> {
     pub text: &'n str,
+    /// Its id, when a declaration has the name: what members are looked up by.
+    pub sym: Option<Sym>,
     pub span: Span,
+}
+
+/// The fn of `members` that `name` names.
+fn member_of(members: &HashMap<Sym, FnId>, name: Called<'_>) -> Option<FnId> {
+    members.get(&name.sym?).copied()
 }
 
 /// The name an expression is, when it is only a name: `x`, not `x.y` or `f(x)`.
@@ -155,7 +162,8 @@ impl<'a> Cx<'a> {
     /// (R06.1.2).
     /// The one trait that declares `name` and extends a trait `rt` has while `rt` lacks it, as
     /// `Ordered` extends `Domain` with `.next` (R04.2.31): naming it says what to bound or impl.
-    fn lacked_trait_help(&self, rt: &Ty, name: &str) -> Option<String> {
+    fn lacked_trait_help(&self, rt: &Ty, name: Called<'_>) -> Option<String> {
+        let sym = name.sym?;
         let extends = |a: TraitId, b: TraitId| {
             let mut todo = vec![a];
             let mut seen = HashSet::new();
@@ -173,13 +181,16 @@ impl<'a> Cx<'a> {
             Ty::Param(p) => self.bound_traits(*p).iter().any(|b| extends(b.tr, tr)),
             t => !matches!(t, Ty::Var(_) | Ty::Error) && self.impls().has_impl(t, tr),
         };
-        let mut lacked = (self.d.traits_with(name).into_iter())
+        let mut lacked = (self.d.traits_with(sym).into_iter())
             .filter(|&tr| !has(tr) && self.d.t(tr).supers.iter().any(|s| has(s.tr)));
         let tr = lacked.next().filter(|_| lacked.next().is_none())?;
         let (tn, shown) = (&self.d.t(tr).name, self.show(rt));
         Some(match rt {
-            Ty::Param(_) => format!("`{name}` is `{tn}`'s: bound `{shown}: {tn}`"),
-            _ => format!("`{name}` is `{tn}`'s, and `{shown}` does not implement `{tn}`"),
+            Ty::Param(_) => format!("`{}` is `{tn}`'s: bound `{shown}: {tn}`", name.text),
+            _ => format!(
+                "`{}` is `{tn}`'s, and `{shown}` does not implement `{tn}`",
+                name.text
+            ),
         })
     }
     fn free_fn_help(
@@ -273,12 +284,12 @@ impl<'a> Cx<'a> {
         let g = self.b.syms.of(&self.d.syms, n)?;
         let i = self.b.generics.iter().position(|x| *x == g)?;
         let pick = |fd: &decls::FnDecl| fd.self_mode == SelfMode::None && takes(fd, call);
-        let found = match self.bound_giving(i, &name.text, pick, span) {
+        let found = match self.bound_giving(i, name, pick, span) {
             Ok(found) => found,
             Err(two) => return Some(self.two_traits_give(two, n, &Ty::Param(i), name, "", span)),
         };
         let Some((tr, m)) = found else {
-            if let Some(help) = self.lacked_trait_help(&Ty::Param(i), &name.text) {
+            if let Some(help) = self.lacked_trait_help(&Ty::Param(i), name) {
                 let text = format!("`{n}` has no member `{}`", name.text);
                 let msg = Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, text);
                 self.err_help(span, msg, Some(help));
@@ -297,13 +308,13 @@ impl<'a> Cx<'a> {
     fn bound_giving(
         &mut self,
         i: usize,
-        name: &str,
+        name: Called<'_>,
         pick: impl Fn(&decls::FnDecl) -> bool,
         span: Span,
     ) -> Result<Option<(decls::TraitRef, FnId)>, (TraitId, TraitId)> {
         let gives: Vec<(decls::TraitRef, FnId)> = (self.bound_traits(i).into_iter())
             .filter_map(|tr| {
-                let m = self.d.member(&self.d.t(tr.tr).methods, name)?;
+                let m = member_of(&self.d.t(tr.tr).methods, name)?;
                 pick(self.d.f(m)).then_some((tr, m))
             })
             .collect();
@@ -406,15 +417,17 @@ impl<'a> Cx<'a> {
     /// bounds alone (R08.2.2), so the error names the bound to write. None when no trait has a
     /// self-less fn `name`.
     fn unbound_static(&mut self, t: &str, name: Called<'_>, span: Span) -> Option<TExpr> {
-        let mut givers: Vec<&str> = (self.d.traits_with(&name.text).into_iter())
-            .map(|tr| self.d.t(tr))
-            .filter(|tr| !tr.alias)
-            .filter(|tr| {
-                (self.d.member(&tr.methods, &name.text))
-                    .is_some_and(|m| self.d.f(m).self_mode == SelfMode::None)
-            })
-            .map(|tr| tr.name.as_str())
-            .collect();
+        let mut givers: Vec<&str> = (name
+            .sym
+            .map_or_else(Vec::new, |s| self.d.traits_with(s))
+            .into_iter())
+        .map(|tr| self.d.t(tr))
+        .filter(|tr| !tr.alias)
+        .filter(|tr| {
+            (member_of(&tr.methods, name)).is_some_and(|m| self.d.f(m).self_mode == SelfMode::None)
+        })
+        .map(|tr| tr.name.as_str())
+        .collect();
         givers.sort_unstable();
         givers.dedup();
         let shown = givers
@@ -488,7 +501,7 @@ impl<'a> Cx<'a> {
         }
         // `type P = Pair<Int>` then `P.new(..)`: the struct's own fn before a trait's.
         if let (Ty::Struct(d, given, _), Some(args)) = (&t, call) {
-            if let Some(m) = self.d.member(&self.d.s(*d).methods, &name.text) {
+            if let Some(m) = member_of(&self.d.s(*d).methods, name) {
                 let f = self.fnref(m, given.clone(), Vec::new());
                 return Some(self.call_fn(f, None, args, span, None));
             }
@@ -498,16 +511,16 @@ impl<'a> Cx<'a> {
     /// `T.f(args)` on a type that is not a parameter, as `V.cuts.count`: a fn without `self` of
     /// a trait it implements.
     /// `D.find(p)` on a domain struct with no fn `find`: its walk of positions answers (R04.2.20).
-    fn walks_for(&self, d: StructId, name: &str) -> bool {
+    fn walks_for(&self, d: StructId, name: Called<'_>) -> bool {
         let s = self.d.s(d);
-        self.d.member(&s.methods, name).is_none()
+        member_of(&s.methods, name).is_none()
             && s.generics.is_empty()
             && self.is_domain(&Ty::Struct(d, Vec::new(), Vec::new()))
     }
     /// `Pair<V>.count(p)`: a member a generic domain type lacks is its walk's, as `Two.count(p)`
     /// is for one with no type parameters (R04.2.27).
-    fn walks_at(&mut self, d: StructId, written: &[next::Type], name: &str) -> bool {
-        if written.is_empty() || self.d.member(&self.d.s(d).methods, name).is_some() {
+    fn walks_at(&mut self, d: StructId, written: &[next::Type], name: Called<'_>) -> bool {
+        if written.is_empty() || member_of(&self.d.s(d).methods, name).is_some() {
             return false;
         }
         let mut pre = Vec::new();
@@ -524,18 +537,21 @@ impl<'a> Cx<'a> {
         call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let found: Vec<(TraitId, FnId)> = (self.d.traits_with(&name.text).into_iter())
-            .filter_map(|tr| {
-                let td = self.d.t(tr);
-                let m = self.d.member(&td.methods, &name.text)?;
-                let fd = self.d.f(m);
-                (fd.self_mode == SelfMode::None
-                    && takes(fd, call)
-                    && td.defaults.is_empty()
-                    && self.impls().has_impl(&t, tr))
-                .then_some((tr, m))
-            })
-            .collect();
+        let found: Vec<(TraitId, FnId)> = (name
+            .sym
+            .map_or_else(Vec::new, |s| self.d.traits_with(s))
+            .into_iter())
+        .filter_map(|tr| {
+            let td = self.d.t(tr);
+            let m = member_of(&td.methods, name)?;
+            let fd = self.d.f(m);
+            (fd.self_mode == SelfMode::None
+                && takes(fd, call)
+                && td.defaults.is_empty()
+                && self.impls().has_impl(&t, tr))
+            .then_some((tr, m))
+        })
+        .collect();
         // An impl for a written type beats a blanket one of another trait (R08.1.4): `Cut<D>`'s
         // `Domain.count` over `Positions`' `impl<D: Domain> .. for D`.
         let rank = |tr: TraitId| {
@@ -584,13 +600,14 @@ impl<'a> Cx<'a> {
         if self.lookup(n).is_some() || self.d.named(self.b.module, n).is_some() {
             return None;
         }
+        let sym = self.d.sym(n)?;
         let found = (self.d.names(self.b.module).into_iter().map(|(_, x)| x))
             .filter_map(|x| match x {
                 decls::Named::Trait(tr) => Some(tr),
                 _ => None,
             })
             .filter_map(|tr| {
-                let m = self.d.member(&self.d.t(tr).methods, n)?;
+                let m = *self.d.t(tr).methods.get(&sym)?;
                 let fd = self.d.f(m);
                 (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
             })
@@ -616,7 +633,11 @@ impl<'a> Cx<'a> {
         self.b
             .obligations
             .push((t.clone(), r.clone(), span, Origin::Bound));
-        let name = Called { text: n, span };
+        let name = Called {
+            text: n,
+            sym: self.d.sym(n),
+            span,
+        };
         self.static_call(t, r, m, name, Some(args), span)
     }
     /// A call of trait `tr`'s fn `m` without `self`, its impl chosen by `self_ty`.
@@ -839,11 +860,13 @@ impl<'a> Cx<'a> {
     ) -> TExpr {
         // A tuple's `.1` is its field `_1`, read or called (R02.5).
         let digit = format!("_{name}");
+        let text = match name.starts_with(|c: char| c.is_ascii_digit()) {
+            true => &digit,
+            false => name,
+        };
         let name = Called {
-            text: match name.starts_with(|c: char| c.is_ascii_digit()) {
-                true => &digit,
-                false => name,
-            },
+            text,
+            sym: self.d.sym(text),
             span: name_at,
         };
         if let Some(e) = self.ctx_read(base, name, span) {
@@ -928,17 +951,17 @@ impl<'a> Cx<'a> {
         }
         // `Subset<B>.empty`: a self-less `@get` fn of the type, read without `()`.
         let get = named.filter(|_| call.is_none()).is_some_and(|(_, d)| {
-            (self.d.member(&self.d.s(d).methods, &name.text)).is_some_and(|m| {
+            (member_of(&self.d.s(d).methods, name)).is_some_and(|m| {
                 let f = self.d.f(m);
                 f.getter && f.self_mode == SelfMode::None
             })
         });
         let call = call.or(get.then_some(&[][..]));
-        let walks = named.is_some_and(|(_, d)| self.walks_at(d, &written, name.text));
+        let walks = named.is_some_and(|(_, d)| self.walks_at(d, &written, name));
         if let (Some(n), Some(args)) = (ty_name, call) {
-            if let Some((_, d)) = named.filter(|&(_, d)| !walks && !self.walks_for(d, &name.text)) {
+            if let Some((_, d)) = named.filter(|&(_, d)| !walks && !self.walks_for(d, name)) {
                 let s = self.d.s(d);
-                let Some(m) = self.d.member(&s.methods, &name.text) else {
+                let Some(m) = member_of(&s.methods, name) else {
                     // `Str.default()`: a self-less fn of a trait the struct implements.
                     let mut pre = Vec::new();
                     let given = (written.iter().take(s.generics.len()))
@@ -1036,7 +1059,7 @@ impl<'a> Cx<'a> {
         // A method of a bound on a type parameter.
         if let Ty::Param(i) = &rt {
             let pick = |fd: &decls::FnDecl| getter.is_none() || fd.getter;
-            match self.bound_giving(*i, &name.text, pick, span) {
+            match self.bound_giving(*i, name, pick, span) {
                 Ok(Some((tr, m))) => {
                     let e = self.bound_trait_call(recv, &rt, (&tr, m), name, call, span);
                     if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {
@@ -1072,7 +1095,7 @@ impl<'a> Cx<'a> {
                     self.b
                         .obligations
                         .push((rt.clone(), r.clone(), span, Origin::Bound));
-                    let Some(m) = self.d.member(&self.d.t(tr).methods, &name.text) else {
+                    let Some(m) = member_of(&self.d.t(tr).methods, name) else {
                         self.err(
                             span,
                             Msg::internal("an impl gives a member its trait lacks"),
@@ -1228,7 +1251,7 @@ impl<'a> Cx<'a> {
                     return Self::error_node(span);
                 }
                 let help = (self.free_fn_help(recv.span, name, call))
-                    .or_else(|| self.lacked_trait_help(&rt, &name.text));
+                    .or_else(|| self.lacked_trait_help(&rt, name));
                 self.err_help(
                     span,
                     Msg::verdict(

@@ -968,7 +968,11 @@ impl Cx<'_> {
         self.b
             .obligations
             .push((d.clone(), r.clone(), span, Origin::Bound));
-        let name = Called { text: &n, span };
+        let name = Called {
+            text: &n,
+            sym: self.d.sym(&n),
+            span,
+        };
         self.static_call(d, r, m, name, None, span)
     }
 }

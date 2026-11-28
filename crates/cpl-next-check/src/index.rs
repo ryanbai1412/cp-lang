@@ -731,6 +731,7 @@ impl Cx<'_> {
                     cell,
                     Called {
                         text: &name,
+                        sym: this.d.sym(&name),
                         span: name_at,
                     },
                     &args,
