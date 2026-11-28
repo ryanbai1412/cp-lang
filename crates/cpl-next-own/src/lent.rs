@@ -535,7 +535,6 @@ fn through(p: &mut Place, lent: &[usize]) {
     }
 }
 
-/// Whether an argument is read where the caller has it, not made fresh for the call.
 /// A local passed whole where it is read for the last time, owned by this fn.
 fn moves_in(fr: &Fr, a: &Arg<Ty>) -> bool {
     let Arg::Value(Expr {
@@ -550,6 +549,7 @@ fn moves_in(fr: &Fr, a: &Arg<Ty>) -> bool {
         && !fr.packs.contains(l)
         && !matches!(fr.locals.get(*l), Some(Ty::Lent(_)))
 }
+/// Whether an argument is read where the caller has it, not made fresh for the call.
 fn placed<T>(a: &Arg<T>) -> bool {
     match a {
         Arg::View(_) | Arg::Lend(_) => true,

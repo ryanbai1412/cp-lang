@@ -342,14 +342,27 @@ impl Last {
         if let Stmt::Let(l, _) = s {
             self.at.insert(*l, self.depth);
         }
-        if matches!(
-            s,
-            Stmt::If(..) | Stmt::Loop(..) | Stmt::Switch(..) | Stmt::Region { .. }
-        ) {
+        // A compound statement's own reads, not its blocks', which are walked one by one.
+        let head = match s {
+            Stmt::If(c, ..) | Stmt::Switch(c, _) => Some(Stmt::Expr(c.clone())),
+            Stmt::Region { .. } => {
+                let mut h = s.clone();
+                if let Stmt::Region { body, .. } = &mut h {
+                    body.clear();
+                }
+                Some(h)
+            }
+            Stmt::Loop(..) => return,
+            _ => None,
+        };
+        let mut here = HashMap::new();
+        uses(std::slice::from_ref(head.as_ref().unwrap_or(s)), &mut here);
+        if head.is_some() {
+            for (l, n) in here {
+                *self.seen.entry(l).or_default() += n;
+            }
             return;
         }
-        let mut here = HashMap::new();
-        uses(std::slice::from_ref(s), &mut here);
         let ret = matches!(s, Stmt::Return(_));
         for (l, n) in here {
             let seen = self.seen.entry(l).or_default();
