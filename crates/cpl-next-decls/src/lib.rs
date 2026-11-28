@@ -14,7 +14,7 @@ pub mod records;
 pub mod sym;
 mod synth;
 pub mod views;
-pub use synth::{jagged, memo_block, unspelled_memo, Jagged};
+pub use synth::{jagged, unspelled_memo};
 
 /// The name of a syntax node's kind, for saying which one is not implemented.
 pub fn kind_name(kind: &impl std::fmt::Debug) -> String {

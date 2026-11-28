@@ -1475,7 +1475,7 @@ fn trait_typed(
 }
 
 fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: Within) -> FnId {
-    use crate::attrs::{Attr, DeclKind};
+    use crate::attrs::{DeclKind, Decorator};
     use forms::{BodyForm, TyForm};
     let Within {
         owner,
@@ -1710,24 +1710,24 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
     let kind = DeclKind::Fn {
         params: f.params.len(),
     };
-    let built = |a: Attr| {
+    let built = |a: Decorator| {
         matches!(
             a,
-            Attr::Coerce
-                | Attr::Pattern
-                | Attr::Input
-                | Attr::Role
-                | Attr::Get
-                | Attr::SameKeys
-                | Attr::Index
-                | Attr::Aka
-                | Attr::Was
-                | Attr::FromOp
-                | Attr::Fast
-                | Attr::Lint
-                | Attr::Stress
-                | Attr::OnUnimplemented
-                | Attr::Memo
+            Decorator::Coerce
+                | Decorator::Pattern
+                | Decorator::Input
+                | Decorator::Role
+                | Decorator::Get
+                | Decorator::SameKeys
+                | Decorator::Index
+                | Decorator::Aka
+                | Decorator::Was
+                | Decorator::FromOp
+                | Decorator::Fast
+                | Decorator::Lint
+                | Decorator::Stress
+                | Decorator::OnUnimplemented
+                | Decorator::Memo
         )
     };
     let attr_at = |x: &forms::AttrForm| {
@@ -1736,7 +1736,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
     };
     for x in &f.attrs {
         attr_rules::check(x, kind, &item, &mut errors);
-        if x.attr == Attr::Lint {
+        if x.attr == Decorator::Lint {
             let body = match &f.body {
                 BodyForm::Written(cpl_next_syntax::ast::FnBody::Expr(e)) => {
                     use cpl_next_syntax::ast::AstNode;
@@ -1770,11 +1770,11 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         errors.retain(|e| e.refusal.is_some());
         errors
     };
-    let has = |a: Attr| f.attrs.iter().any(|x| x.attr == a);
+    let has = |a: Decorator| f.attrs.iter().any(|x| x.attr == a);
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
-    let getter = has(Attr::Get);
-    let same_keys = has(Attr::SameKeys);
-    let words = |a: Attr| -> Vec<String> {
+    let getter = has(Decorator::Get);
+    let same_keys = has(Decorator::SameKeys);
+    let words = |a: Decorator| -> Vec<String> {
         use cpl_next_syntax::ast::Expr;
         (f.attrs.iter().filter(|x| x.attr == a))
             .filter_map(|x| x.node.as_ref()?.args())
@@ -1785,21 +1785,21 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
             })
             .collect()
     };
-    if has(Attr::Index) {
+    if has(Decorator::Index) {
         d.index_fns.push(FnId(d.fns.len()));
     }
-    if has(Attr::FromOp) {
+    if has(Decorator::FromOp) {
         d.from_op.push(FnId(d.fns.len()));
     }
-    let coerce = has(Attr::Coerce);
+    let coerce = has(Decorator::Coerce);
     if coerce {
         d.coercions.push(FnId(d.fns.len()));
     }
-    if has(Attr::Pattern) {
+    if has(Decorator::Pattern) {
         d.pattern_fns.push(FnId(d.fns.len()));
     }
     let id = FnId(d.fns.len());
-    for x in f.attrs.iter().filter(|x| x.attr == Attr::Role) {
+    for x in f.attrs.iter().filter(|x| x.attr == Decorator::Role) {
         let role = form_role(x);
         if let Some(Role::Trace) = role {
             d.roles.trace.push(id);
@@ -1833,7 +1833,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         );
         collect::once(slot, id, dup, &mut d.errors);
     }
-    if has(Attr::Input) {
+    if has(Decorator::Input) {
         d.input_fns.push(FnId(d.fns.len()));
     }
     if getter && params.iter().any(|p| p.default.is_none()) {
@@ -1931,12 +1931,12 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         uses: f.uses.iter().map(|n| d.syms.text(*n).to_string()).collect(),
         body,
         intrinsic,
-        fast: words(Attr::Fast).into_iter().next(),
+        fast: words(Decorator::Fast).into_iter().next(),
         getter,
         public: f.public,
         same_keys,
-        aka: words(Attr::Aka),
-        was: words(Attr::Was),
+        aka: words(Decorator::Aka),
+        was: words(Decorator::Was),
         span: item.at(f.span),
         item,
         module: m,

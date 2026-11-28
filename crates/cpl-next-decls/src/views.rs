@@ -160,6 +160,9 @@ impl Signatures for Decls {
 }
 
 impl TypeTables for Decls {
+    fn core_type(&self, n: crate::sym::Sym) -> Option<crate::decls::CoreType> {
+        self.core_types.get(&n).copied()
+    }
     fn text(&self, s: crate::sym::Sym) -> &str {
         self.syms.text(s)
     }

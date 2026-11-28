@@ -1605,6 +1605,28 @@ pub(super) fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Ms
     }
 }
 
+/// The traits `==` and `<` call, with the method each calls and whether it is `==`: the
+/// comparisons a struct derives field by field (R05.2.2).
+fn comparisons(all: &[&Form]) -> Vec<(Sym, Sym, bool)> {
+    (all.iter())
+        .filter_map(|f| match f {
+            Form::Trait(t) => Some(t),
+            _ => None,
+        })
+        .filter_map(|t| {
+            let op = (t.attrs.iter())
+                .find(|a| a.attr == crate::attrs::Decorator::Operator)?
+                .str_arg()?;
+            let eq = match op.as_str() {
+                "==" => true,
+                "<" => false,
+                _ => return None,
+            };
+            Some((t.name, operator_method(t)?, eq))
+        })
+        .collect()
+}
+
 /// The fn an `@operator` trait's operator calls: its first.
 fn operator_method(t: &super::forms::TraitForm) -> Option<Sym> {
     t.methods.first().map(|m| m.name)
