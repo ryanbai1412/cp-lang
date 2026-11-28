@@ -124,7 +124,7 @@ G7, G8):
 | 5.9 | `@memo` control | Revised 2026-11-20 (v2.2) | Bare `@memo` only (`@memo(flat)`/`@memo(hash)` deleted): auto-dispatches flat niche-packed `[Params]?R` for any value return type up to `2^24` (`2^26` for `?Bool`/`Bool`), else salted flat hash; nested `@memo` scoped to enclosing fn/loop iteration; permits `ask(...)` and deterministic extern `@grader fn` oracles (exact 1 call per arg tuple); forbids mutated captured `var`s and `read()`/`print()` | 2.16 | §16, §19.3, §19.9 |
 | 5.10 | Nested `fn` mutation (`mut fn` deleted) | Revised 2026-11-20 (v2) | **`mut fn` deleted.** Any nested `fn` declared after a `var` reads/writes it directly; the compiler tracks captured borrows automatically and forbids escaping | 5.3 | §16, research/archive/audits/subtraction-audit-1.md Cut 3 |
 | 5.11 | Keeping the borrow rules understandable | Settled 2026-11-19 (the method; the rules stay open to change) | fresh agents repeatedly search for the smallest programs where a borrow rule surprises; each one changes the rule or its error message and is kept as a test | 5.3 | plan/agent-context.md |
-| 5.12 | Projections: `lends` | Revised 2026-11-27 | `fn row(self, r: A) lends mut [B]T` lends via its tail expression, `return mut place`, or a block body's `lend mut place` statement, whose following code is write-back (how `SegTree`/`LazySegTree` repair ancestors); superseded in detail by 16.9 and R05.6.3 | 5.3, 5.4, 16.9 | §16, §19.1 |
+| 5.12 | Projections: `lends` | Revised 2026-11-27 | `fn row(self, r: A) -> lends mut [B]T` lends via its tail expression, `return mut place`, or a block body's `lend mut place` statement, whose following code is write-back (how `SegTree`/`LazySegTree` repair ancestors); superseded in detail by 16.9 and R05.6.3 | 5.3, 5.4, 16.9 | §16, §19.1 |
 | 5.13 | `@law disjoint` | Revised 2026-11-20 (v2.2) | `law` demoted from hard keyword to `@law` (`@law disjoint(i, j) = i != j`); trivial single-index forwarding (`mut self.data[i.to_idx]`) auto-derives `disjoint`. Two live lends of one projection on one receiver, one `mut`, need the law proven from flow facts (`if`, `while`, `assert`, value ranges) | 3.4, 5.12 | §19.1, plan/19-index-and-lends.md §3.6 |
 | 5.14 | Lent values are second-class | Settled 2026-11-20 | a value built from lent parts is lent and lives only in the block that made it: it may be passed, bound by `let`, iterated and lent onward; not put in a `var`, a field or a container, captured by a non-`inline` lambda, or returned. Borrowed-ness is a mode of the binding, not a type, so there is no `view` keyword | 5.3 | plan/19-index-and-lends.md §3.5 |
 
@@ -9615,3 +9615,15 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** std/mod.cp and spec/lib/math.md declare `const MOD = P`, not `let MOD = P`: `P` is a compile-time parameter, so the associated value is a `const` (decision 3.8); `let K = n` stays for a size frozen from a run-time value.
 - **Why.** Coordinator ruling of 2026-11-27, 18:35 (item 1).
 - **Reverse.** Spell it `let` again, and give the new parser a struct-body `let`.
+
+## 664. One generic spelling: `name<T>`, also before an expression's end; `::<` is E0503 (syntax, 2026-11-27)
+
+- **Call.** R01.3.4 opens a lowercase `name<` as type arguments when the matching `>` (or a split `>>`) is followed by `(` or by the end of the expression (`)`, `]`, `}`, `,`, the line's end) and no argument is a bare lowercase name, so `let g = id<Int>` names a generic fn's instance (R08.2.5, now written `id<Int>`) and `a < b > c` stays a comparison. `f::<T>` is E0503 in the new parser, with a fix that deletes `::`; L0204 (`turbofish_type_args`) is deleted, since the parser's fix replaces it, and decision 3409's two-spelling migration ends. E0302 still reports type arguments on a non-generic value (`n<Int>`). Both parsers read the widened rule, so the rewritten corpus runs on the shipped `cpl`.
+- **Why.** Coordinator ruling of 2026-11-27, 18:31 (turbofish), amended 19:14 after R08.2.5 named `id::<Int>` as its only spelling.
+- **Reverse.** Restore `::<` on uncalled lowercase values, and L0204.
+
+## 665. `fn(V) -> V` and `) lends T` without `->` are E0503 (syntax, 2026-11-27)
+
+- **Call.** A fn type is `V -> V` or `(A, B) -> C`; `fn(V) -> V` is E0503, with a fix to `V -> V`. A projection's result is `-> lends T` / `-> lends mut T` (`ret`, R05.3), and `) lends T` with no `->` is E0503, with a fix that inserts `-> `; the rb1-q09 case moves from E0103 to it. std/seq.cp's `update`, the std-api snapshot, decision 5.12's row and four cpl-next programs are rewritten first.
+- **Why.** Coordinator ruling of 2026-11-27, 18:31.
+- **Reverse.** Accept the two spellings as sugar.

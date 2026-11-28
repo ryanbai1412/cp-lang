@@ -384,9 +384,9 @@ impl Parser<'_> {
     }
 
     /// `Name<..>` reads as type arguments when they close and what follows
-    /// can follow a value. A lowercase fn takes them only before a call,
-    /// and only when no argument is a bare lowercase name, so `a < b > (c)`
-    /// stays a comparison.
+    /// can follow a value. A lowercase fn takes them before a call or an
+    /// expression's end (R01.3.4), and only when no argument is a bare
+    /// lowercase name, so `a < b > (c)` and `a < b > c` stay comparisons.
     fn type_args_ahead(&self, upper: bool) -> bool {
         let (mut depth, mut nest) = (0i32, 0i32);
         let (mut seg, mut lower) = (0usize, false);
@@ -446,7 +446,18 @@ impl Parser<'_> {
                             | T::Eq
                     )
                 } else {
-                    next == T::LParen
+                    matches!(
+                        next,
+                        T::LParen
+                            | T::RParen
+                            | T::RBracket
+                            | T::RBrace
+                            | T::Comma
+                            | T::Newline
+                            | T::Eof
+                            | T::Dedent
+                            | T::Semi
+                    )
                 };
             }
         }

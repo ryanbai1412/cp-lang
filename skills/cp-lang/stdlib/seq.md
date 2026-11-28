@@ -265,7 +265,7 @@ Fields: `k: Int,`.
 - `fn zip<A: Seq<T>, B: Positional<U>, T, U>(a: A, b: B) -> Zipped<A, B, T, U>` — \(O(\min(\lvert a \rvert, \lvert b \rvert))\); The pairs `(x, b.nth(i))` for the `i`th `x` that `a` walks, as many as the shorter sequence has.
 - `fn unzip<S: Seq<(A, B)>, A, B>(self: S) -> (List<A>, List<B>)` — \(O(n)\), two new lists; The first and second halves of each pair, as two lists: the inverse of `zip`.
 - `fn get_or_insert<K: Ord, V>(mut self: Map<K, V>, k: K, v: V) -> V` — \(O(\log n)\); The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)` gives each new name the next id.
-- `fn update<K: Ord, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)` — \(O(\log n)\), plus one call of `f`; Replace the value under `k` by `f` of it, starting from `init` when `m` holds none: `cnt.update(x, 0, c => c + 1)`.
+- `fn update<K: Ord, V>(mut self: Map<K, V>, k: K, init: V, f: V -> V)` — \(O(\log n)\), plus one call of `f`; Replace the value under `k` by `f` of it, starting from `init` when `m` holds none: `cnt.update(x, 0, c => c + 1)`.
 - `fn union<T: Ord>(mut self: Set<T>, o: Set<T>)` — \(O(m \log(n + m))\) for `m` elements in `o`; Add every element of `o` to `self` in place: `self \| o`, named as on `Bitset`.
 - `fn intersect<T: Ord>(mut self: Set<T>, o: Set<T>)` — \(O(n \log m)\) for `m` elements in `o`; Keep only the elements of `self` that are also in `o`, in place: `self & o`, named as on `Bitset`.
 - `fn subtract<T: Ord>(mut self: Set<T>, o: Set<T>)` — \(O(m \log n)\) for `m` elements in `o`; Take every element of `o` out of `self` in place: `self - o`, named as on `Bitset`.

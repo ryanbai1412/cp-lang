@@ -1084,12 +1084,18 @@ impl<'a> Parser<'a> {
                 // whose arguments parse and close, so `INF < x` stays a
                 // comparison.
                 // A lowercase fn takes them when they are all types and a
-                // call follows: `read<(Int, Int)>()`.
+                // call or the expression's end follows: `read<(Int, Int)>()`,
+                // `let g = id<Int>` (R01.3.4).
                 self.empty_type_args();
                 if self.at(T::Lt) {
                     let args = self.speculate(|p| {
                         let args = p.type_args();
-                        if !type_like && (p.peek() != T::LParen || !args.iter().all(names_a_type)) {
+                        let ends = p.at_line_end()
+                            || matches!(
+                                p.peek(),
+                                T::LParen | T::RParen | T::RBracket | T::RBrace | T::Comma
+                            );
+                        if !type_like && (!ends || !args.iter().all(names_a_type)) {
                             p.speculation_failed = true;
                         }
                         if args.is_empty()

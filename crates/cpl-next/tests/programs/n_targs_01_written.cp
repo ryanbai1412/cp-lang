@@ -7,8 +7,8 @@ struct Acc<T>:
     var base: T
     fn plus<U>(self, v: U, f: (T, U) -> T) -> T = f(base, v)
 fn twice(f: Int -> Int, x: Int) -> Int = f(f(x))
-let g = id::<Int>
-let h = id::<Str>
-let k = first::<Int, Bool>
+let g = id<Int>
+let h = id<Str>
+let k = first<Int, Bool>
 let a = Acc(5)
 print(g(3), h("x"), twice(x => g(x) * 2, 2), a.plus<Int>(4, (b, v) => b + v * 2), k(7, true))

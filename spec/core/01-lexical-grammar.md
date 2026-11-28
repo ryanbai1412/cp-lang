@@ -98,10 +98,12 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
   variant; `match h: big => ...` binds `big`. (R01.3.3)
 - In an expression, `Name<` opens type arguments when `Name` is
   capitalized and what follows parses as type arguments closed by `>`,
-  and `name<` (lowercase) when the closing `>` is immediately followed by
-  `(`, as in `s.parse<Mod<P>>()`.
-  So `a < b` is a comparison and `SegTree<0..=4e9>(+, a)` needs no
-  turbofish. A lowercase generic function takes its type arguments from
+  and `name<` (lowercase) when the closing `>` (or a split `>>`) is
+  immediately followed by `(` or by the end of the expression (`)`, `]`,
+  `}`, `,`, or the line's end), as in `s.parse<Mod<P>>()` and
+  `let g = id<Int>`, and no argument is a bare lowercase name.
+  So `a < b` and `a < b > c` are comparisons, and there is one spelling,
+  with no `::`. A lowercase generic function takes its type arguments from
   the expected type, or explicitly as `read<[n]Int>()`. (R01.3.4)
 - `_` is the discard name in patterns and parameters. (R01.3.5)
 

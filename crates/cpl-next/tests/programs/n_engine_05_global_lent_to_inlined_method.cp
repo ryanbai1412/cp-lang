@@ -5,7 +5,7 @@ struct Acc:
     var xs: List<Int>
     fn add(mut self, x: Int):
         xs.push(x)
-    fn at(mut self, i: Int) lends mut Int:
+    fn at(mut self, i: Int) -> lends mut Int:
         var cell = xs[i]
         lend cell
         xs[i] = cell

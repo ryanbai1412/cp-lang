@@ -626,3 +626,12 @@ fn do_before_a_block_is_reported_with_a_fix_that_deletes_it() {
     let fixed = "let f = x =>\n    let y = x\n    y\nprint(g(m =>\n    m\n))\n";
     assert!(crate::parse(fixed).diagnostics.is_empty());
 }
+
+#[test]
+fn a_lowercase_generic_before_an_end_takes_type_arguments_and_a_comparison_stays() {
+    let src = "let g = id<Int>\nlet h = f(id<Str>, 1)\nlet c = a < b > c\nlet d = x < y\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
+    assert_eq!(count(NodeKind::GenericExpr), 2, "{:?}", file.diagnostics);
+}

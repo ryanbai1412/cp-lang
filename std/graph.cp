@@ -524,7 +524,7 @@ impl<V: Domain, A: Target<V>> Next<V> for Graph<V, A>:
 /// `ready`, a vertex is removable when `ready(v)` holds instead: the queue starts with the
 /// ready vertices in vertex order, and after removing `u` each arc `a` calls
 /// `on_remove(u, a)` and then appends `a.to` if it is ready and not yet queued. Each vertex
-/// is removed at most once. For a vertexless closure graph, pass the domain: `peel::<V>(u =>
+/// is removed at most once. For a vertexless closure graph, pass the domain: `peel<V>(u =>
 /// ...)`.
 ///
 /// Ties go FIFO: the initial vertices in vertex order, later ones in the order their last arc is walked.
@@ -576,7 +576,7 @@ pub fn peel<V, G: Next<V>>(
 
 /// A topological order (every arc goes forward in it), or `None` if there is a directed
 /// cycle: a `peel` that removed every vertex. For a vertexless closure graph, pass the
-/// domain: `topo::<V>(u => ...)`.
+/// domain: `topo<V>(u => ...)`.
 ///
 /// Ties are those of `peel` (FIFO, in-degree-zero vertices in vertex order); `smallest_topo` gives the least order.
 ///
@@ -1153,7 +1153,7 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
             for (u, v) in es: assert side[u] != side[v]
 
 @test
-fn vertexless_closure_graphs_with_turbofish():
+fn vertexless_closure_graphs_with_type_args():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure
     let order = peel<V>(
@@ -2543,10 +2543,10 @@ pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, 
 /// `None` if the graph has a cycle anywhere.
 ///
 /// cost: \(O(n + m)\)
-/// empty: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; count_paths::<Int>(g, from: List<V>()) == Some([0, 0, 0])`
+/// empty: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; count_paths<Int>(g, from: List<V>()) == Some([0, 0, 0])`
 /// order: keyed by `V`
 /// traps: on overflow of `T`, as its arithmetic does
-/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; count_paths::<Int>(g, from: [V(0)]) == Some([1, 1, 1, 2])`
+/// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; count_paths<Int>(g, from: [V(0)]) == Some([1, 1, 1, 2])`
 pub fn count_paths<T: Add + Zero + One, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
     let ord = topo(g) ?? return None
     var dp: [V]T = T.zero

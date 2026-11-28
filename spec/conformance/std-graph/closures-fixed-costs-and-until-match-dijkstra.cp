@@ -1,6 +1,6 @@
 // expect: ok, output "YES"
 use std.graph.{fixed_cost_paths}
-fn vertexless_closure_graphs_with_turbofish():
+fn vertexless_closure_graphs_with_type_args():
     domain V = 0..6
     // arcs u -> u + 1 and u -> u + 2, given only as a closure
     let order = peel<V>(
@@ -96,7 +96,7 @@ fn blocks_of_a_small_graph():
         for e in E:
             for f in E: assert (block[e] == block[f]) == same.same(e, f)
         assert B.count == same.components
-vertexless_closure_graphs_with_turbofish()
+vertexless_closure_graphs_with_type_args()
 blocks_of_a_small_graph()
 fixed_cost_paths_match_dijkstra_on_the_same_moves()
 until_stops_at_the_target_with_its_exact_distance()

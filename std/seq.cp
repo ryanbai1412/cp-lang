@@ -764,7 +764,7 @@ pub fn get_or_insert<K: Ord, V>(mut self: Map<K, V>, k: K, v: V) -> V:
 /// cost: \(O(\log n)\), plus one call of `f`
 /// traps: never
 /// example: `var c: Map<Char, Int> = Map(); c.update('x', 0, v => v + 1); c['x'] == 1`
-pub fn update<K: Ord, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V):
+pub fn update<K: Ord, V>(mut self: Map<K, V>, k: K, init: V, f: V -> V):
     self[k] = f(self.get(k) ?? init)
 
 /// Add every element of `o` to `self` in place: `self | o`, named as on `Bitset`.
