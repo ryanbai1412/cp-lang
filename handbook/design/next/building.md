@@ -67,8 +67,11 @@ still took shortcuts and so we still get cooked."
 - Did any counter rise? Does a new kind of debt have its counter?
 - Did I delete what this replaces?
 - Focused tests, `uv run --quiet python scripts/debt-ratchet.py
-  --check`, then push. Process stays under 5% of your time; lane G
-  owns CI and full runs.
+  --check`, then land with `CPL_LANE=<lane> scripts/land.sh` (fast
+  default, under a minute: its remote lock takes turns so no push race
+  is lost, and CI's regen job rewrites generated files). Never push
+  around it. Process stays under 5% of your time; lane G owns CI and
+  full runs.
 
 ## What blocks a push and what doesn't
 
