@@ -624,10 +624,9 @@ impl Cx<'_> {
                 e => self.value_axis(&e, span, out),
             },
             next::Type::Path(p) => {
+                // A count `[n]`, or a value's member `[w.keys]`: the path read as a value.
                 let segs: Vec<SyntaxToken> = p.segments().collect();
-                let [n] = &segs[..] else {
-                    return None;
-                };
+                let (n, members) = segs.split_first()?;
                 let n = n.text();
                 if p.generic_args().is_some()
                     || self.lookup(n).is_none()
@@ -640,7 +639,12 @@ impl Cx<'_> {
                     ty: Ty::Int,
                     span,
                 };
-                let count = self.name(n, span);
+                let mut count = self.name(n, span);
+                for m in members {
+                    let (text, sym) = (m.text(), self.syms.get(m.text()));
+                    let name = super::member::Called { text, sym, span };
+                    count = self.member_on(count, name, None, span, None, &[]);
+                }
                 Some(self.axis_domain(zero, count, false, span, out))
             }
             _ => None,
