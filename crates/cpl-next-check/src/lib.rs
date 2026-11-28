@@ -470,7 +470,6 @@ struct Cx<'a> {
     /// What a constant expression's value is, worked out by the driver's evaluator.
     values: &'a dyn Consts,
     /// The loaded modules the spans index, offset by `item`.
-    src: &'a crate::modules::Loaded,
     tys: Vec<Option<Ty>>,
     sets: Vec<SetVar>,
     /// Set variables being written out, to catch a set that contains itself.
@@ -729,7 +728,6 @@ pub fn check(
         bodies: src,
         syms: &d.syms,
         dom_rows: Vec::new(),
-        src,
         tys: Vec::new(),
         sets: Vec::new(),
         zonking: Default::default(),

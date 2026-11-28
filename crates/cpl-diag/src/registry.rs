@@ -842,6 +842,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0211"),
+        title: "`const` over its step budget",
+        summary: "Working out a `const` took more steps than the compiler spends on one.",
+        explanation: "A `const` is worked out while compiling, within a fixed budget of steps, so a build never hangs on one. A value that needs more is computed at run time: bind it with `let`.",
+        trigger: "fn spin(n: Int) -> Int:\n    var s = 0\n    for i in 0..n: s += i % 7\n    return s\nconst X = spin(100_000_000)\nprint(X)\n",
+        fix: "fn spin(n: Int) -> Int:\n    var s = 0\n    for i in 0..n: s += i % 7\n    return s\nlet x = spin(100_000_000)\nprint(x)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0326"),
         title: "Range type ends at a `var`",
         summary: "A range type ends at a top-level `var`, which may change while the type is in use.",
