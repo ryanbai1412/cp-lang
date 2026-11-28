@@ -181,19 +181,13 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> 
 /// A range type with an end naming a value the program's top level binds, written out, and that
 /// value: a struct field's layout is fixed before input is read, so no field is bounded by one
 /// (R03.1.3).
-pub(super) fn input_bound(
-    t: &ast::Type,
-    values: &HashSet<Sym>,
-    syms: &Syms,
-) -> Option<(String, String)> {
-    struct Named<'a>(&'a HashSet<Sym>, &'a Syms, Option<String>);
+pub(super) fn input_bound(t: &ast::Type, bound: &dyn Fn(&str) -> bool) -> Option<(String, String)> {
+    struct Named<'a>(&'a dyn Fn(&str) -> bool, Option<String>);
     impl cpl_syntax::visit::Visitor for Named<'_> {
         fn expr(&mut self, e: &ast::Expr) {
             match &e.kind {
-                ast::ExprKind::Name(n)
-                    if self.2.is_none() && self.1.get(n).is_some_and(|s| self.0.contains(&s)) =>
-                {
-                    self.2 = Some(n.clone())
+                ast::ExprKind::Name(n) if self.1.is_none() && (self.0)(n) => {
+                    self.1 = Some(n.clone())
                 }
                 _ => {}
             }
@@ -201,7 +195,7 @@ pub(super) fn input_bound(
     }
     match &t.kind {
         TypeKind::Range { lo, hi, inclusive } => {
-            let mut v = Named(values, syms, None);
+            let mut v = Named(bound, None);
             for e in [lo, hi].into_iter().flatten() {
                 cpl_syntax::visit::walk_expr(e, &mut v);
             }
@@ -212,10 +206,10 @@ pub(super) fn input_bound(
                 None => String::new(),
             };
             let dots = if *inclusive { "..=" } else { ".." };
-            v.2.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
+            v.1.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
         }
-        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, values, syms)),
-        TypeKind::Optional(t) => input_bound(t, values, syms),
+        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, bound)),
+        TypeKind::Optional(t) => input_bound(t, bound),
         _ => None,
     }
 }
@@ -396,7 +390,22 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 Ty::RangeTo(Box::new(d), m, lo, k)
             }
             None => {
-                errors.push(Unbuilt::RangeTypeOutsideBody.into());
+                errors.push(match input_bound(t, &|n| cx.env.top_var(n)) {
+                    Some((_, n)) => {
+                        let m = Msg {
+                            help: Some(format!("freeze it first: `let {n}` in place of `var {n}`")),
+                            ..Msg::verdict(
+                                cpl_diag::codes::RANGE_END_VAR,
+                                format!("a range type can't end at the top-level `var` `{n}`: it may change while the type is in use"),
+                            )
+                        };
+                        match &cx.item {
+                            Some(i) => Msg::at(i.at(t.span), m),
+                            None => m,
+                        }
+                    }
+                    None => Unbuilt::RangeTypeOutsideBody.into(),
+                });
                 Ty::Error
             }
         },
@@ -544,6 +553,7 @@ pub(super) struct Tables {
     aliases: Layer<AliasDecl>,
     consts: Layer<LibConst>,
     pub(super) values: Arc<HashSet<Sym>>,
+    pub(super) vars: Arc<HashSet<Sym>>,
     pub(super) syms: Syms,
     ops: Arc<Vec<(Sym, FnId)>>,
     getters: Arc<HashMap<Sym, FnId>>,
@@ -564,6 +574,7 @@ impl Decls {
             aliases: self.aliases.clone(),
             consts: self.consts.clone(),
             values: self.top_values.clone(),
+            vars: self.top_vars.clone(),
             syms: self.syms.clone(),
             ops: self.operator_fns(),
             getters: self.domain_getters(),
@@ -596,6 +607,9 @@ impl TypeTables for Tables {
         self.syms
             .get(name)
             .is_some_and(|s| self.values.contains(&s))
+    }
+    fn top_var(&self, name: &str) -> bool {
+        self.syms.get(name).is_some_and(|s| self.vars.contains(&s))
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         let op = self.syms.get(op)?;

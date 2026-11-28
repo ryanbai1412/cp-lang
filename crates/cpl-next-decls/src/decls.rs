@@ -557,6 +557,8 @@ pub struct Decls {
     pub ret_holes: Vec<FnId>,
     /// The names the program's top level binds with `let`.
     pub top_values: Arc<HashSet<Sym>>,
+    /// The names the program's top level binds with `var`, which no type may end at (R02.10.3).
+    pub top_vars: Arc<HashSet<Sym>>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
     pub operators: Vec<(Sym, TraitId)>,
