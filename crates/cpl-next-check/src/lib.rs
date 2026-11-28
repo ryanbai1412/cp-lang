@@ -587,7 +587,7 @@ struct Body {
     scopes: Vec<HashMap<String, LocalId>>,
     self_local: Option<LocalId>,
     /// Bounds calls must meet, with where: a type, the trait it must implement, and why.
-    obligations: Vec<(Ty, decls::TraitRef, Span, Origin)>,
+    obligations: Vec<(Ty, decls::TraitRef, cpl_next_ir::ids::SourceId, Origin)>,
     /// Temporaries holding an input value whose parts are held to their types one by one.
     input_parts: std::collections::HashSet<VarRef>,
     /// The range each `let` keeps from its initializer, where it is known (R02.10.2).
@@ -1293,7 +1293,15 @@ impl<'a> Cx<'a> {
         self.err_help(span, msg, None);
     }
     fn err_help(&mut self, span: Span, msg: impl Into<Msg>, help: Option<String>) {
-        let mut msg = Msg::at(self.b.item.at(span), msg);
+        self.err_help_at(self.b.item.at(span), msg, help);
+    }
+    fn err_help_at(
+        &mut self,
+        at: cpl_next_ir::ids::SourceId,
+        msg: impl Into<Msg>,
+        help: Option<String>,
+    ) {
+        let mut msg = Msg::at(at, msg);
         if help.is_some() {
             msg.help = help;
         }

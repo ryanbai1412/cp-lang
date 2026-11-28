@@ -77,7 +77,12 @@ impl Cx<'_> {
             .into_iter()
             .any(|t| matches!(t, Ty::Struct(s, ..) if *s == table))
         {
-            (self.b.obligations).push((table_ty.clone(), tref.clone(), span, Origin::Bound));
+            (self.b.obligations).push((
+                table_ty.clone(),
+                tref.clone(),
+                self.b.item.at(span),
+                Origin::Bound,
+            ));
         }
         self.reach(get);
         self.reach(set);

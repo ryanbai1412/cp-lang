@@ -506,6 +506,16 @@ fn diagnostic_is_placed_in_the_program() {
     );
 }
 
+/// A bound a default's expression leaves is placed in the default, not by the caller's item
+/// (R06.1.5).
+#[test]
+fn a_defaults_bound_is_placed_in_the_default() {
+    let src = "fn g<T>(xs: List<T>, of: T -> F64 = x => F64(x)) -> F64 = 0.0\nprint(g([\"a\"]))\n";
+    let d = &diags(src)[0];
+    let at = d.at.as_ref().expect("placed");
+    assert_eq!((at.file.as_str(), at.line, at.col), (PROGRAM, 1, 42), "{d}");
+}
+
 /// A fn refused as declared is that one refusal: its body and its calls say nothing more.
 #[test]
 fn a_refused_fn_is_one_refusal() {

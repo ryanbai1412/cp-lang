@@ -54,7 +54,7 @@ impl Cx<'_> {
         };
         self.b
             .obligations
-            .push((v.ty.clone(), r.clone(), span, why));
+            .push((v.ty.clone(), r.clone(), self.b.item.at(span), why));
         mk(
             TK::CallTrait {
                 ctx: self.trait_ctx(r.tr, &method),

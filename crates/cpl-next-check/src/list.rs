@@ -69,7 +69,7 @@ impl Cx<'_> {
             tr,
             args: vec![elem.clone()],
         };
-        (self.b.obligations).push((lty.clone(), tr.clone(), span, Origin::Bound));
+        (self.b.obligations).push((lty.clone(), tr.clone(), self.b.item.at(span), Origin::Bound));
         let tmp = self.temp(name, lty.clone());
         let read = TExpr {
             kind: TK::Var(tmp),

@@ -964,7 +964,7 @@ impl Cx<'_> {
         self.reach(m);
         self.b
             .obligations
-            .push((v.ty.clone(), r.clone(), span, Origin::Bound));
+            .push((v.ty.clone(), r.clone(), self.b.item.at(span), Origin::Bound));
         TExpr {
             kind: TK::CallTrait {
                 ctx: self.trait_ctx(r.tr, &method),
@@ -985,7 +985,7 @@ impl Cx<'_> {
         let (r, n, m) = count;
         self.b
             .obligations
-            .push((d.clone(), r.clone(), span, Origin::Bound));
+            .push((d.clone(), r.clone(), self.b.item.at(span), Origin::Bound));
         let name = Called {
             text: &n,
             sym: self.syms.get(&n),

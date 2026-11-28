@@ -159,7 +159,12 @@ impl<'a> Cx<'a> {
             tr,
             args: r.iter().map(|r| r.ty.clone()).collect(),
         };
-        (self.b.obligations).push((self_ty.clone(), tr.clone(), span, Origin::Bound));
+        (self.b.obligations).push((
+            self_ty.clone(),
+            tr.clone(),
+            self.b.item.at(span),
+            Origin::Bound,
+        ));
         TExpr {
             kind: TK::CallTrait {
                 ctx: self.trait_ctx(tr.tr, &method),
@@ -391,7 +396,12 @@ impl<'a> Cx<'a> {
                         tr: im.trait_.tr,
                         args: im.trait_.args.iter().map(|a| sub.ty(a)).collect(),
                     };
-                    (self.b.obligations).push((recv.ty.clone(), tr, span, Origin::Bound));
+                    (self.b.obligations).push((
+                        recv.ty.clone(),
+                        tr,
+                        self.b.item.at(span),
+                        Origin::Bound,
+                    ));
                 }
             }
             let arg = self.coerce(arg, &param);

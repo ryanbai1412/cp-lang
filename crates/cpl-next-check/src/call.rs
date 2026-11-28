@@ -602,7 +602,8 @@ impl Cx<'_> {
         // A call its arguments do not fit was diagnosed there, and one not built is refused:
         // its value is the error, and the bounds its type arguments would have met are not asked.
         if unbuilt || self.errors.len() > seen {
-            self.b.obligations.retain(|o| o.2 != span);
+            let at = self.b.item.at(span);
+            self.b.obligations.retain(|o| o.2 != at);
             return Self::error_node(span);
         }
         self.solve(false);
@@ -1040,7 +1041,8 @@ impl Cx<'_> {
         }
         // Arguments that do not fit the parameters make the call the error: its bounds are not asked.
         if self.errors.len() > seen {
-            self.b.obligations.retain(|o| o.2 != span);
+            let at = self.b.item.at(span);
+            self.b.obligations.retain(|o| o.2 != at);
         }
         // A lambda with unwritten parameter types is checked after the other arguments, whose
         // types and bounds may fix the ones it takes (R06.1.2).

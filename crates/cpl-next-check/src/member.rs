@@ -353,7 +353,7 @@ impl<'a> Cx<'a> {
         };
         self.b
             .obligations
-            .push((Ty::Param(i), r.clone(), span, Origin::Bound));
+            .push((Ty::Param(i), r.clone(), self.b.item.at(span), Origin::Bound));
         Ok(Some((r, m)))
     }
     /// `shown.m`, which traits `a` and `b` both give `ty`: the call names its trait,
@@ -596,7 +596,7 @@ impl<'a> Cx<'a> {
         };
         self.b
             .obligations
-            .push((t.clone(), r.clone(), span, Origin::Bound));
+            .push((t.clone(), r.clone(), self.b.item.at(span), Origin::Bound));
         Some(self.static_call(t, r, m, name, call, span))
     }
     /// `gen` named where no fn or value is: the self-less fn of that name a trait in view
@@ -642,7 +642,7 @@ impl<'a> Cx<'a> {
         );
         self.b
             .obligations
-            .push((t.clone(), r.clone(), span, Origin::Bound));
+            .push((t.clone(), r.clone(), self.b.item.at(span), Origin::Bound));
         let name = Called {
             text: n,
             sym: self.syms.get(n),
@@ -661,7 +661,7 @@ impl<'a> Cx<'a> {
                 tr: r.tr,
                 args: r.args.iter().map(|a| sub.ty(a)).collect(),
             };
-            (self.b.obligations).push((tys[*i].clone(), r, span, Origin::Bound));
+            (self.b.obligations).push((tys[*i].clone(), r, self.b.item.at(span), Origin::Bound));
         }
     }
     /// A call of trait `tr`'s fn `m` without `self`, its impl chosen by `self_ty`.
@@ -1149,9 +1149,12 @@ impl<'a> Cx<'a> {
                             .map(|_| self.new_ty())
                             .collect(),
                     };
-                    self.b
-                        .obligations
-                        .push((rt.clone(), r.clone(), span, Origin::Bound));
+                    self.b.obligations.push((
+                        rt.clone(),
+                        r.clone(),
+                        self.b.item.at(span),
+                        Origin::Bound,
+                    ));
                     let Some(m) = member_of(&self.items.t(tr).methods, name) else {
                         self.err(
                             span,

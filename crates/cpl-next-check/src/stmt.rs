@@ -1489,7 +1489,12 @@ impl<'a> Cx<'a> {
                     tr,
                     args: vec![elem],
                 };
-                let o = (array.clone(), tr.clone(), span, Origin::Bound);
+                let o = (
+                    array.clone(),
+                    tr.clone(),
+                    self.b.item.at(span),
+                    Origin::Bound,
+                );
                 self.b.obligations.push(o);
                 let kind = TK::CallTrait {
                     ctx: self.trait_ctx(tr.tr, n),

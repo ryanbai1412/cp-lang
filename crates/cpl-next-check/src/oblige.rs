@@ -3,6 +3,7 @@
 use super::*;
 use cpl_next_decls::decls::ImplIdx;
 use cpl_next_decls::decls::Role;
+use cpl_next_ir::ids::SourceId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use decls::TraitRef;
 
@@ -21,7 +22,7 @@ impl Cx<'_> {
             };
             self.b
                 .obligations
-                .push((f.targs[*i].clone(), r, span, Origin::Bound));
+                .push((f.targs[*i].clone(), r, self.b.item.at(span), Origin::Bound));
         }
     }
     /// Meets each bound whose type is known by now; `last` drops those never known.
@@ -49,11 +50,11 @@ impl Cx<'_> {
                     // Its arguments are `open`'s own, not the zonked `t`'s: an open part of it
                     // stays open, with its sets.
                     let targs = vec![Ty::Error; self.impls().imp(k).generics.len()];
-                    if self.take_impl(k, targs, &r, span, Some(&open)) {
+                    if self.take_impl(k, targs, &r, span.clone(), Some(&open)) {
                         continue;
                     }
                 }
-                match self.meet(&t, &open, &r, span) {
+                match self.meet(&t, &open, &r, span.clone()) {
                     Some(true) => {}
                     Some(false) if self.mentions_error(&t) => self.poison(&r),
                     Some(false) => {
@@ -79,7 +80,7 @@ impl Cx<'_> {
                             let help = format!(
                                 "`{to}`'s `new` takes nothing, and `{shown}` has no `impl {tr}<{to}>` to convert it"
                             );
-                            self.err_help(span, msg, Some(help));
+                            self.err_help_at(span.clone(), msg, Some(help));
                             continue;
                         }
                         if matches!(why, Origin::Convert | Origin::Construct) {
@@ -93,7 +94,7 @@ impl Cx<'_> {
                             let help = format!(
                                 "`{shown}` converts to `{to}` only by its own impl: write `impl {tr}<{to}> for {shown}`"
                             );
-                            self.err_help(span, msg, Some(help));
+                            self.err_help_at(span.clone(), msg, Some(help));
                             continue;
                         }
                         // Named at its root: `print(xs)` on a `List<?Int>` is `?Int` lacking
@@ -105,7 +106,7 @@ impl Cx<'_> {
                         let help = (said.help.as_ref()).map(|h| h.replace("{T}", &shown));
                         let msg =
                             Msg::verdict(code, format!("`{shown}` does not implement `{tr}`"));
-                        self.err_help(span, msg, help);
+                        self.err_help_at(span.clone(), msg, help);
                     }
                     None => {
                         self.b.obligations.push((t, r, span, why));
@@ -155,13 +156,13 @@ impl Cx<'_> {
             })
             .collect()
     }
-    fn ambiguous(&mut self, t: &Ty, r: &TraitRef, n: usize, span: Span) {
+    fn ambiguous(&mut self, t: &Ty, r: &TraitRef, n: usize, span: SourceId) {
         let (tr, shown) = (self.items.t(r.tr).name.clone(), self.show(t));
         let msg = Msg::verdict(
             cpl_diag::codes::AMBIGUOUS_METHOD,
             format!("`{shown}` has {n} impls of `{tr}` that fit here: write the trait's arguments"),
         );
-        self.err(span, msg);
+        self.err_help_at(span, msg, None);
     }
     /// The fn type a lambda of `arity` parameters given for `v` is: the one impl of a trait
     /// bounding `v` that targets a fn type of that arity (`impl<T> Op<T> for (T, T) -> T`), its
@@ -248,7 +249,7 @@ impl Cx<'_> {
         }
     }
     /// Whether `t` meets `r`, or `None` while `t` is not known. `open` is `t` before zonking.
-    fn meet(&mut self, t: &Ty, open: &Ty, r: &TraitRef, span: Span) -> Option<bool> {
+    fn meet(&mut self, t: &Ty, open: &Ty, r: &TraitRef, span: SourceId) -> Option<bool> {
         let tr = self.items.t(r.tr);
         if tr.alias {
             let sub = Subst {
@@ -265,7 +266,7 @@ impl Cx<'_> {
             self.b.obligations.extend(
                 needs
                     .into_iter()
-                    .map(|n| (t.clone(), n, span, Origin::Bound)),
+                    .map(|n| (t.clone(), n, span.clone(), Origin::Bound)),
             );
             return Some(true);
         }
@@ -289,7 +290,7 @@ impl Cx<'_> {
                 );
                 let help = "write the trait's arguments, or keep one of the bounds".to_string();
                 let msg = Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, text);
-                self.err_help(span, msg, Some(help));
+                self.err_help_at(span, msg, Some(help));
                 return Some(true);
             }
             let Some(h) = fitting.pop().or_else(|| have.next()) else {
@@ -360,7 +361,7 @@ impl Cx<'_> {
         k: ImplIdx,
         targs: Vec<Ty>,
         r: &TraitRef,
-        span: Span,
+        span: SourceId,
         open: Option<&Ty>,
     ) -> bool {
         // A parameter the type does not fix (`impl Keyed<Int, T> for Str`) is fixed by the bound.
@@ -383,9 +384,11 @@ impl Cx<'_> {
             })
             .collect();
         let for_ = sub.ty(&im.for_);
-        self.b
-            .obligations
-            .extend(needs.into_iter().map(|(t, b)| (t, b, span, Origin::Bound)));
+        self.b.obligations.extend(
+            needs
+                .into_iter()
+                .map(|(t, b)| (t, b, span.clone(), Origin::Bound)),
+        );
         let open = match (open.map(|t| self.shallow(t)), for_) {
             (Some(Ty::Struct(_, have, _)), Ty::Struct(_, want, _)) => {
                 have.into_iter().zip(want).collect()
