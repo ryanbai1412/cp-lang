@@ -65,6 +65,9 @@ nodes! {
     Item,
     /// `@name(args)` on the line above a declaration, field or variant.
     Decorator,
+    /// `@!multitest`, `@!interactive(...)`: a directive heading the item
+    /// below it, or misplaced in a block.
+    Directive,
     ArgList,
     /// `label: value`, `mut place` or a value.
     Arg,
@@ -497,6 +500,22 @@ impl Item {
 
     pub fn is_pub(&self) -> bool {
         self.decl().is_some_and(|d| has(d.syntax(), TokenKind::Pub))
+    }
+
+    /// The `@!name` heading the item.
+    pub fn directive(&self) -> Option<Directive> {
+        child(&self.0)
+    }
+}
+
+impl Directive {
+    /// `multitest` in `@!multitest`.
+    pub fn name(&self) -> Option<SyntaxToken> {
+        own_tokens(&self.0).find(|t| t.kind() == TokenKind::Ident)
+    }
+
+    pub fn args(&self) -> Option<ArgList> {
+        child(&self.0)
     }
 }
 
@@ -1016,6 +1035,11 @@ impl LawDecl {
 
 impl Block {
     pub fn stmts(&self) -> impl Iterator<Item = Stmt> + '_ {
+        children(&self.0)
+    }
+
+    /// The `@!name` lines written in the block, which belong above an item.
+    pub fn directives(&self) -> impl Iterator<Item = Directive> + '_ {
         children(&self.0)
     }
 }

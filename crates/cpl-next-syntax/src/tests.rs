@@ -533,3 +533,25 @@ fn an_if_value_takes_blocks_and_an_arm_may_leave() {
         2
     );
 }
+
+fn first<N: AstNode>(n: &SyntaxNode) -> Option<N> {
+    N::cast(n.clone()).or_else(|| n.children().find_map(|c| first(&c)))
+}
+
+#[test]
+fn a_directive_heads_its_item_and_one_in_a_block_is_kept() {
+    let src = "@!multitest\nfn main():\n    @!interactive(flush: true)\n    print(1)\n";
+    let file = parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let item = file.items().find_map(ast::Item::cast).unwrap();
+    let d = item.directive().unwrap();
+    assert_eq!(d.name().unwrap().text(), "multitest");
+    assert!(d.args().is_none());
+    assert!(matches!(item.decl(), Some(ast::Decl::Fn(_))));
+    let block: ast::Block = first(item.syntax()).unwrap();
+    let inner: Vec<_> = block.directives().collect();
+    assert_eq!(inner.len(), 1);
+    assert_eq!(inner[0].name().unwrap().text(), "interactive");
+    assert_eq!(inner[0].args().unwrap().args().count(), 1);
+    assert_eq!(block.stmts().count(), 1);
+}

@@ -154,7 +154,7 @@ impl Parser<'_> {
         }
     }
 
-    fn directive(&mut self) {
+    pub(super) fn directive(&mut self) {
         self.start(NodeKind::Directive);
         self.bump();
         self.bump();

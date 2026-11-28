@@ -30,6 +30,8 @@ impl Parser<'_> {
         match self.peek() {
             T::Newline => self.bump(),
             T::Indent => self.stray_indent(|p| p.stmts_until(T::Dedent)),
+            // Kept whole so that decls says where a directive belongs.
+            T::At if self.nth(1) == T::Bang && self.glued(1) => self.directive(),
             _ if self.item_ahead() => self.item(),
             T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
             T::While => self.while_stmt(),
