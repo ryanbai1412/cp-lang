@@ -65,9 +65,9 @@ impl<'a> Cx<'a> {
     }
     /// `[D]T` is `List<T>` once `D` is known to have no count (R04.8.11).
     fn listed(&self, t: Ty) -> Ty {
-        match (&t, self.d.sugar.list) {
+        match (&t, self.role_structs.role_struct(Role::List)) {
             (Ty::Struct(a, ts, _), Some(list))
-                if Some(*a) == self.d.sugar.array && ts.len() == 2 =>
+                if Some(*a) == self.role_structs.role_struct(Role::Array) && ts.len() == 2 =>
             {
                 let (walk, dom) = (
                     self.rows.role_trait(Role::Discrete),
