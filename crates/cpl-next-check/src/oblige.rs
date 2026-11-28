@@ -46,7 +46,7 @@ impl Cx<'_> {
                     };
                     // Its arguments are `open`'s own, not the zonked `t`'s: an open part of it
                     // stays open, with its sets.
-                    let targs = vec![Ty::Error; self.d.imp(k).generics.len()];
+                    let targs = vec![Ty::Error; self.impls().imp(k).generics.len()];
                     if self.take_impl(k, targs, &r, span, Some(&open)) {
                         continue;
                     }
@@ -148,10 +148,11 @@ impl Cx<'_> {
         let mut found: Vec<(usize, Vec<Ty>)> = (self.impls().trait_impls(r.tr))
             .filter_map(|(k, im)| Some((k, self.impls().impl_args_for(im, t, &want)?)))
             .filter(|(k, _)| {
-                !self.d.imp(*k).blanket() || self.impls().fits_impl(self.d.imp(*k), t).is_some()
+                !self.impls().imp(*k).blanket()
+                    || self.impls().fits_impl(self.impls().imp(*k), t).is_some()
             })
             .collect();
-        let rank = |k: &usize| self.d.impl_rank(self.d.imp(*k));
+        let rank = |k: &usize| self.d.impl_rank(self.impls().imp(*k));
         if let Some(best) = found.iter().map(|(k, _)| rank(k)).min() {
             found.retain(|(k, _)| rank(k) == best);
         }
@@ -308,7 +309,7 @@ impl Cx<'_> {
                 let i = *i;
                 return Some(match self.param_impl(i, r) {
                     Some(k) => {
-                        let im = self.d.imp(k);
+                        let im = self.impls().imp(k);
                         let mut targs: Vec<Ty> =
                             im.generics.iter().map(|_| self.new_ty()).collect();
                         if let Ty::Param(p) = im.for_ {
@@ -341,8 +342,10 @@ impl Cx<'_> {
                 };
                 // The impl's arguments are `open`'s own parts where it has them, so a fn set
                 // still filling (a call's result) stays the bound's set, not a copy of it now.
-                let live = (self.impls().impl_args(self.d.imp(k), &self.followed(open)))
-                    .unwrap_or_default();
+                let live = (self
+                    .impls()
+                    .impl_args(self.impls().imp(k), &self.followed(open)))
+                .unwrap_or_default();
                 for (a, l) in targs.iter_mut().zip(live) {
                     if l != Ty::Error {
                         *a = l;
@@ -366,7 +369,7 @@ impl Cx<'_> {
         let targs: Vec<Ty> = (targs.into_iter())
             .map(|a| if a == Ty::Error { self.new_ty() } else { a })
             .collect();
-        let im = self.d.imp(k);
+        let im = self.impls().imp(k);
         let sub = Subst {
             tys: &targs,
             sets: &[],

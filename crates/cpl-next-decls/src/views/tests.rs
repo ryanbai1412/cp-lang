@@ -40,7 +40,12 @@ fn the_declarations_are_the_signatures_and_scope_views() {
     let names = HashMap::from([(f, Named::Fn(FnId(0)))]);
     d.views.push(std::sync::Arc::new(names));
     let (sigs, scope): (&dyn Signatures, &dyn Scope) = (&d, &d);
-    assert!(sigs.impls_of(TraitId(0)).is_empty());
+    assert!(sigs
+        .impls()
+        .ranked_impls(TraitId(0))
+        .map(|(k, _)| k)
+        .collect::<Vec<_>>()
+        .is_empty());
     assert_eq!(scope.named(ModId(0), "f"), Some(Named::Fn(FnId(0))));
     assert_eq!(scope.named(ModId(0), "g"), None);
 }

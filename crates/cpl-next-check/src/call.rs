@@ -119,7 +119,7 @@ impl Cx<'_> {
             {
                 Some(decls::Owner::Struct(o)) => o == d,
                 Some(decls::Owner::Impl(i)) => {
-                    let im = self.d.imp(i);
+                    let im = self.impls().imp(i);
                     im.derived && matches!(im.for_, Ty::Struct(o, ..) if o == d)
                 }
                 _ => false,

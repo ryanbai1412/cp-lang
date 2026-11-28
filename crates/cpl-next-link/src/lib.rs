@@ -977,13 +977,20 @@ impl Link<'_> {
             .map(|a| self.targ(a, env))
             .collect();
         let d = self.d;
-        let by_impl = d.impls_of(tr).into_iter().map(|k| d.imp(k)).any(|im| {
-            let mut binds = vec![None; im.generics.len()];
-            fits_head(d, im, &st, &mut binds)
-                && (d.t(tr).inputs(&im.trait_.args).iter().zip(&want))
-                    .all(|(p, w)| fit_cty(p, w, &mut binds))
-                && blanket_met(d, self.c, im, &binds)
-        });
+        let by_impl = d
+            .impls()
+            .ranked_impls(tr)
+            .map(|(k, _)| k)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|k| d.imp(k))
+            .any(|im| {
+                let mut binds = vec![None; im.generics.len()];
+                fits_head(d, im, &st, &mut binds)
+                    && (d.t(tr).inputs(&im.trait_.args).iter().zip(&want))
+                        .all(|(p, w)| fit_cty(p, w, &mut binds))
+                    && blanket_met(d, self.c, im, &binds)
+            });
         by_impl || (want.is_empty() && cty_meets(d, self.c, &st, tr))
     }
     fn trait_key(
@@ -1023,7 +1030,14 @@ impl Link<'_> {
         };
         // The checker let exactly one impl of the most specific rank fit (R08.1.2).
         let (mut found, mut rank) = (None, None);
-        for im in d.impls_of(*tr).into_iter().map(|k| d.imp(k)) {
+        for im in d
+            .impls()
+            .ranked_impls(*tr)
+            .map(|(k, _)| k)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|k| d.imp(k))
+        {
             if rank.is_some_and(|r| d.impl_rank(im) > r) {
                 break;
             }
@@ -1556,7 +1570,14 @@ impl Link<'_> {
                 // The one impl of the most specific rank that fits fixes them: coherence and
                 // the checker leave no second (R08.1.2), so one is a checker bug.
                 let (mut one, mut rank) = (None, None);
-                for m in d.impls_of(r.tr).into_iter().map(|k| d.imp(k)) {
+                for m in d
+                    .impls()
+                    .ranked_impls(r.tr)
+                    .map(|(k, _)| k)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .map(|k| d.imp(k))
+                {
                     if rank.is_some_and(|k| d.impl_rank(m) > k) {
                         break;
                     }
@@ -1617,12 +1638,18 @@ fn cty_meets(d: &dyn Signatures, c: &dyn Checked, t: &CTy, tr: TraitId) -> bool 
             return true;
         }
     }
-    d.impls_of(tr).into_iter().map(|k| d.imp(k)).any(|im| {
-        let mut b = vec![None; im.generics.len()];
-        fits_head(d, im, t, &mut b)
-            && (im.bounds.iter())
-                .all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, c, a, r.tr)))
-    })
+    d.impls()
+        .ranked_impls(tr)
+        .map(|(k, _)| k)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|k| d.imp(k))
+        .any(|im| {
+            let mut b = vec![None; im.generics.len()];
+            fits_head(d, im, t, &mut b)
+                && (im.bounds.iter())
+                    .all(|(i, r)| b[*i].as_ref().is_none_or(|a| cty_meets(d, c, a, r.tr)))
+        })
 }
 /// Whether an impl is for `t`, as `Decls::head_fits` says of a range type and `Int`.
 fn fits_head(
@@ -1638,7 +1665,7 @@ fn fits_head(
         CTy::RangeTo(_, lo, _) => Ty::Range(*lo, *lo),
         _ => Ty::Unit,
     };
-    d.head_fits(im, &head) && fit_cty(&im.for_, t, binds)
+    d.impls().head_fits(im, &head) && fit_cty(&im.for_, t, binds)
 }
 fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
     match (p, t) {

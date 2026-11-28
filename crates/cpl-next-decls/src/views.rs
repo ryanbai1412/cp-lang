@@ -55,12 +55,8 @@ pub trait Signatures: TypeTables {
     fn t(&self, id: TraitId) -> &TraitDecl;
     /// Impl `i`, an index into the program's impls.
     fn imp(&self, i: usize) -> &ImplDecl;
-    /// The impls of `tr` a lookup may find, by index, in order (`impls(TraitId)`).
-    fn impls_of(&self, tr: TraitId) -> Vec<usize>;
-    /// The impl's type arguments when it is for `t`.
-    fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>>;
-    /// Whether `t` has an impl of `tr`.
-    fn has_impl(&self, t: &Ty, tr: TraitId) -> bool;
+    /// The impl lookup over these signatures (`Impls`): the one place impl questions go.
+    fn impls(&self) -> Impls<'_>;
     /// The trait `@literal(op)` marks: `"[]"` a list literal builds through.
     fn literal_trait(&self, op: &str) -> Option<TraitId>;
     /// The traits that declare a method `name`, by id (`traits(name)`, indexed from the
@@ -70,8 +66,6 @@ pub trait Signatures: TypeTables {
     fn renamed(&self, name: &str) -> Vec<FnId>;
     /// Which impl a type takes when several fit, lowest first (R08.1.2).
     fn impl_rank(&self, im: &ImplDecl) -> u8;
-    /// Whether `im` is for `t` as far as a range type and `Int` go.
-    fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool;
     /// The fn of `members` named `name`.
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId>;
 }
@@ -139,14 +133,8 @@ impl Signatures for Decls {
     fn imp(&self, i: usize) -> &ImplDecl {
         &self.impls[i]
     }
-    fn impls_of(&self, tr: TraitId) -> Vec<usize> {
-        Impls::of(self).ranked_impls(tr).map(|(k, _)| k).collect()
-    }
-    fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
-        Impls::of(self).impl_args(im, t)
-    }
-    fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
-        Impls::of(self).has_impl(t, tr)
+    fn impls(&self) -> Impls<'_> {
+        Impls::of(self)
     }
     fn traits_with(&self, name: &str) -> Vec<TraitId> {
         (0..self.traits.len())
@@ -156,9 +144,6 @@ impl Signatures for Decls {
     }
     fn impl_rank(&self, im: &ImplDecl) -> u8 {
         Decls::impl_rank(self, im)
-    }
-    fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool {
-        Impls::of(self).head_fits(im, t)
     }
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
         Decls::member(self, members, name)
