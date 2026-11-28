@@ -208,11 +208,10 @@ library or by this spec:
   field: its one fn on each field, as `Clone`'s; or, for a fn that makes a
   `Self` from a first parameter `x`, `x.f<F>()` at each field's type `F`,
   as `Read`'s `input.read<F>()`), `@coerce` (an implicit conversion fn), `@pattern` (the fn a pattern
-  over its type calls), `@variant_check` (the check an `Int` converted to
-  an enum goes through), `@derive_fields` (a trait every struct gets through its fields, packed
-  as `@pack` pairs, unless it has its own impl: std's `Show`), `@pack` (the
-  head-and-tail struct those fields and a variadic pack walk through). The
-  structs and fns a literal or a type's syntax is, `(a, b)`, `[a, b]`, `"s"`,
+  over its type calls). The check an `Int` converted to an enum goes
+  through, the trait every struct gets through its fields, the
+  head-and-tail struct those fields pack into, and the structs and fns a
+  literal or a type's syntax is, `(a, b)`, `[a, b]`, `"s"`,
   `[D]T`, `[k: v]`, `lo..hi`, `"{x}"` and a domain's cuts among them, are
   the roles of §11.6.
   Core declares each with them, and any module may: a

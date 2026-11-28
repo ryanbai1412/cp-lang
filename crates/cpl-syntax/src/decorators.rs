@@ -87,9 +87,6 @@ marks! {
     Derive = "derive", "on a trait: every struct whose fields all have it gets it field by field";
     Coerce = "coerce", "on a fn: an implicit conversion where its result type is wanted";
     Pattern = "pattern", "on a fn: what a pattern over its type calls";
-    VariantCheck = "variant_check", "on a fn: the check an `Int` converted to an enum goes through";
-    DeriveFields = "derive_fields", "on a trait: every struct gets it through its fields packed as the `@pack` struct";
-    Pack = "pack", "on a struct: the head-and-tail pair `@derive_fields` packs fields into";
     Input = "input", "on a fn: a value it gives is input, so a range it fills is a contract";
     ]
     directives: [

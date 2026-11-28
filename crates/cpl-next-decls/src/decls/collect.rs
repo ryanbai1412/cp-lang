@@ -370,6 +370,7 @@ fn layer(
                                 Some(Role::Str) => &mut d.sugar.str,
                                 Some(Role::Map) => &mut d.sugar.map,
                                 Some(Role::Array) => &mut d.sugar.array,
+                                Some(Role::Pack) => &mut d.roles.pack,
                                 _ => {
                                     d.errors.push(misplaced_role(item, x, role, "struct"));
                                     continue;
@@ -447,6 +448,7 @@ fn layer(
                                 Some(Role::Convert) => &mut d.roles.convert,
                                 Some(Role::Counted) => &mut d.roles.counted,
                                 Some(Role::RangeBounds) => &mut d.roles.bounds,
+                                Some(Role::DeriveFields) => &mut d.roles.derive_fields,
                                 _ => {
                                     d.errors.push(misplaced_role(item, x, role, "trait"));
                                     continue;

@@ -128,7 +128,7 @@ enum Derive<'a> {
     Cmp(ast::CmpOp, &'a str),
     /// A core trait marked `@derive`: its one method builds a struct from that method on each field.
     Each(&'a ast::FnDecl),
-    /// A core trait marked `@derive_fields`: each method is that method on the `@pack` of the
+    /// The `@role(derive_fields)` trait: each method is that method on the `@role(pack)` of the
     /// fields.
     Fields(&'a str, &'a [ast::FnDecl]),
     /// A `@derive` method making a `Self`, for an enum: the variant its first parameter's
@@ -142,7 +142,7 @@ enum Derive<'a> {
 pub(crate) enum Derivable {
     /// `@derive`, with its one method.
     Each(Box<ast::FnDecl>),
-    /// `@derive_fields`, with core's `@pack` struct and the trait's methods.
+    /// `@role(derive_fields)`, with the `@role(pack)` struct and the trait's methods.
     Fields(String, Vec<ast::FnDecl>),
 }
 
@@ -515,15 +515,15 @@ fn derived_impl(s: &ast::Stmt, sd: &ast::StructDecl, derive: Derive, tr: &str) -
     })
 }
 
-/// The traits marked `@derive`, with their one method, and those marked `@derive_fields`,
-/// with their methods and the `@pack` struct: every struct whose fields all have one gets it field by
+/// The traits marked `@derive`, with their one method, and the `@role(derive_fields)` trait,
+/// with its methods and the `@role(pack)` struct: every struct whose fields all have one gets it field by
 /// field (R08.1.6).
 pub(crate) fn derive_each<'a, I: Iterator<Item = &'a ast::Stmt>>(
     stmts: impl Fn() -> I,
 ) -> Vec<(String, Derivable)> {
     let marked = |s: &ast::Stmt, m: Mark| s.mark(m).is_some();
     let pack = stmts().find_map(|s| match &s.kind {
-        StmtKind::Struct(sd) if marked(s, Mark::Pack) => Some(sd.name.text.clone()),
+        StmtKind::Struct(sd) if fills(s, Role::Pack) => Some(sd.name.text.clone()),
         _ => None,
     });
     stmts()
@@ -539,7 +539,7 @@ pub(crate) fn derive_each<'a, I: Iterator<Item = &'a ast::Stmt>>(
                 ([_], _) if marked(s, Mark::Derive) => {
                     Derivable::Each(Box::new(fns.clone().next()?))
                 }
-                (_, Some(p)) if marked(s, Mark::DeriveFields) => {
+                (_, Some(p)) if fills(s, Role::DeriveFields) => {
                     Derivable::Fields(p.clone(), fns.collect())
                 }
                 _ => return None,
@@ -774,12 +774,11 @@ fn writable(t: &ast::Type) -> bool {
     }
 }
 
-/// The `@role(convert)` trait with its one method, and the fn marked `@variant_check`: what a
+/// The `@role(convert)` trait with its one method, and the `@role(variant_check)` fn: what a
 /// payload-free enum's conversions are written with.
 pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
     stmts: impl Fn() -> I,
 ) -> Option<(String, String, String)> {
-    let marked = |s: &ast::Stmt, m: Mark| s.mark(m).is_some();
     let (tr, method) =
         (stmts().filter(|s| fills(s, Role::Convert))).find_map(|s| match &s.kind {
             StmtKind::Trait { name, body, .. } => match &body.stmts[..] {
@@ -792,7 +791,7 @@ pub(crate) fn convert_marked<'a, I: Iterator<Item = &'a ast::Stmt>>(
             _ => None,
         })?;
     let check =
-        (stmts().filter(|s| marked(s, Mark::VariantCheck))).find_map(|s| match &s.kind {
+        (stmts().filter(|s| fills(s, Role::VariantCheck))).find_map(|s| match &s.kind {
             StmtKind::Fn(f) => Some(f.name.text.clone()),
             _ => None,
         })?;

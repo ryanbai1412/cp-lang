@@ -354,6 +354,14 @@ pub struct Roles {
     pub bounds: Option<TraitId>,
     /// Core's `@role(interpolation)` fn: `put(mut out, x)` appends each piece of an interpolated string.
     pub interpolate: Option<FnId>,
+    /// The `@role(pack)` struct: the head-and-tail pair a `@role(derive_fields)` trait's derived
+    /// impl packs a struct's fields into (R08.1.6).
+    pub pack: Option<StructId>,
+    /// The `@role(derive_fields)` trait: every struct without its own impl gets it through its
+    /// fields packed as `pack` pairs.
+    pub derive_fields: Option<TraitId>,
+    /// The `@role(variant_check)` fn: the check an `Int` converted to an enum goes through.
+    pub variant_check: Option<FnId>,
 }
 
 /// A language role of R11.6.1.
@@ -382,10 +390,13 @@ pub enum Role {
     StrLiteral,
     RangeLiteral,
     Interpolation,
+    Pack,
+    DeriveFields,
+    VariantCheck,
 }
 
 impl Role {
-    pub const ALL: [Role; 23] = [
+    pub const ALL: [Role; 26] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -409,6 +420,9 @@ impl Role {
         Role::StrLiteral,
         Role::RangeLiteral,
         Role::Interpolation,
+        Role::Pack,
+        Role::DeriveFields,
+        Role::VariantCheck,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -436,6 +450,9 @@ impl Role {
             Role::StrLiteral => "str_literal",
             Role::RangeLiteral => "range_literal",
             Role::Interpolation => "interpolation",
+            Role::Pack => "pack",
+            Role::DeriveFields => "derive_fields",
+            Role::VariantCheck => "variant_check",
         }
     }
 }
@@ -1655,7 +1672,6 @@ fn add_fn(
             x.mark,
             Some(
                 Mark::Coerce
-                    | Mark::VariantCheck
                     | Mark::Pattern
                     | Mark::Input
                     | Mark::Role
@@ -1725,6 +1741,7 @@ fn add_fn(
             Some(Role::StrLiteral) => &mut d.sugar.str_literal,
             Some(Role::RangeLiteral) => &mut d.sugar.range_literal,
             Some(Role::Interpolation) => &mut d.roles.interpolate,
+            Some(Role::VariantCheck) => &mut d.roles.variant_check,
             Some(_) => {
                 let name = x.name.text.clone();
                 errors.push(Msg::at(item.at(x.span), Unbuilt::Decorator { name }));

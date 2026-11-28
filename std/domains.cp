@@ -6,7 +6,7 @@ use std.ranges.{Range, range_of}
 use std.raw.{check_range}
 use std.seq.{Seq}
 
-@variant_check
+@role(variant_check)
 pub fn check_value(ok: Bool) = @intrinsic("value_check")
 
 /// The positions of a domain (R04.2): `D: Domain` takes any domain, and every domain has it.

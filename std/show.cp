@@ -12,7 +12,7 @@ use std.io.{io}
 /// How a value prints, and how an interpolated string formats it (R10.3). `Bool` and `?T` are
 /// not `Show` (R10.3.3, R10.3.7). Records and structs whose fields all have it print their fields
 /// joined, unless they write their own (R10.3.5).
-@derive_fields
+@role(derive_fields)
 pub trait Show:
     /// Appends the value to `out`; `sep`, when the caller gives one, joins a sequence's elements.
     fn write_to(self, mut out: Str, sep: ?Str):
@@ -78,7 +78,7 @@ fn put_piece<T: Show>(mut out: Str, x: T, width: Int, zero: Bool, digits: ?Int) 
 
 /// Values walked one at a time: the first, and a pack of the rest or `()`; a struct's fields
 /// and a variadic tuple's parts show through it.
-@pack
+@role(pack)
 pub struct Pack<H, T>:
     head: H
     tail: T
