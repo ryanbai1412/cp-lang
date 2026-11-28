@@ -1272,7 +1272,7 @@ impl<'a> Cx<'a> {
         }
     }
     /// An expression run for its effects.
-    fn expr_stmt(&mut self, e: &next::Expr, out: &mut Vec<TStmt>) {
+    pub(super) fn expr_stmt(&mut self, e: &next::Expr, out: &mut Vec<TStmt>) {
         if self.dropped_question(e) || self.cell_method(e, out) {
             return;
         }
@@ -2244,7 +2244,7 @@ pub(super) fn arm_leaves(b: &next::ArmBody) -> bool {
 }
 
 /// Whether `f` is a `@memo` fn: its table and clear are made around its body (R06.4.1).
-fn is_memo(f: &next::FnDecl) -> bool {
+pub(super) fn is_memo(f: &next::FnDecl) -> bool {
     (f.decorators()).any(|x| {
         x.name()
             .and_then(|n| cpl_next_syntax::grammar::Decorator::of(n.text()))

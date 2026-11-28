@@ -1,10 +1,11 @@
 //! Lambdas: pattern parameters, unpacking a tuple or record argument, generators of tests (R06.1).
+use super::call::CallArg;
 use super::expr::block;
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::BTreeSet;
 
-impl Cx<'_> {
+impl<'a> Cx<'a> {
     /// The id of the next entry of `t`, which holds `len`: the one the whole program's check
     /// gives it, whatever else is checked.
     pub(super) fn id(&mut self, t: super::Table, len: usize) -> usize {
@@ -90,11 +91,13 @@ impl Cx<'_> {
         super::put(&mut self.lambdas, id, info);
         LambdaId(id)
     }
-    pub(super) fn lambda(
+    /// A lambda made from its parameters, result and body (R06.1): a written `(a, b) => e`, a
+    /// nested `fn`, or a fn value the checker makes (`xs.map(bump)`).
+    pub(super) fn lambda_of(
         &mut self,
-        (params, param_tys, param_mut): (&[ast::Pattern], &[Option<ast::Type>], &[bool]),
-        ret_ty: Option<&ast::Type>,
-        body: &ast::Expr,
+        params: Vec<LamParam>,
+        ret_ty: Option<Ty>,
+        body: LamBody<'_, 'a>,
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
@@ -123,20 +126,22 @@ impl Cx<'_> {
             _ if open => (Some(vec![Ty::Int; params.len()]), None),
             _ => (None, None),
         };
-        // `(a, b) => ..` passed as a fn of one tuple or record means `((a, b)) => ..` (R06.1.4).
-        let whole;
-        let (params, param_tys) = match eps.as_deref() {
-            Some([one]) if params.len() > 1 && param_tys.iter().all(Option::is_none) => {
+        // `(a, b) => ..` passed as a fn of one tuple or record means `((a, b)) => ..` (R06.1.4):
+        // one parameter, whose parts the patterns take.
+        let mut params = params;
+        let mut parts_of_one = None;
+        if let Some([one]) = eps.as_deref() {
+            if params.len() > 1 && params.iter().all(|p| p.ty.is_none() && p.pat.is_some()) {
                 match self.parts(one) {
                     Some(fields) if fields.len() == params.len() => {
-                        let fields = fields.into_iter().zip(params.iter().cloned());
-                        let kind = PatternKind::Record {
-                            fields: (fields.map(|(text, p)| (ast::Name { text, span: p.span }, p)))
-                                .collect(),
-                            rest: false,
-                        };
-                        whole = [ast::Pattern { kind, span }];
-                        (&whole[..], &[][..])
+                        let pats: Vec<next::Pattern> =
+                            params.drain(..).filter_map(|p| p.pat).collect();
+                        parts_of_one = Some(pats);
+                        params = vec![LamParam {
+                            pat: None,
+                            ty: None,
+                            mutable: false,
+                        }];
                     }
                     Some(fields) => {
                         let code = cpl_diag::codes::WRONG_ARG_COUNT;
@@ -144,39 +149,40 @@ impl Cx<'_> {
                         self.err(span, Msg::verdict(code, format!("this lambda takes {k} parameters; the value it is passed has {n} parts")));
                         return mk(TK::Error, Ty::Error);
                     }
-                    None => (params, param_tys),
+                    None => {}
                 }
             }
-            _ => (params, param_tys),
-        };
+        }
         self.b.scopes.push(HashMap::new());
-        let mut ids = Vec::new();
-        let mut ptys = Vec::new();
-        // A pattern parameter binds a fresh name; the body opens with `let pattern = name` (R06.1.3).
+        let (mut ids, mut ptys, mut vals) = (Vec::new(), Vec::new(), Vec::new());
+        // A pattern parameter is a slot of its own; the body opens by taking it apart (R06.1.3).
         let mut opens = Vec::new();
         for (i, p) in params.iter().enumerate() {
-            let tmp;
-            let (name, shown) = match &p.kind {
-                PatternKind::Name(name) => (name, name.as_str()),
-                PatternKind::Wildcard | PatternKind::Tuple(_) | PatternKind::Record { .. } => {
-                    tmp = format!("$param{}", p.span.start);
-                    if !matches!(p.kind, PatternKind::Wildcard) {
-                        opens.push((tmp.clone(), p));
+            let at = p.pat.as_ref().map_or(span, |q| self.at(q));
+            let (name, opened) = match &p.pat {
+                Some(next::Pattern::Path(pp)) => match super::pattern::bind_name(pp) {
+                    Some(n) => (Some(n.text().to_string()), None),
+                    None => {
+                        self.err(span, Unbuilt::LambdaParam);
+                        continue;
                     }
-                    (&tmp, "_")
-                }
-                _ => {
+                },
+                Some(next::Pattern::Wildcard(_)) | None => (None, None),
+                Some(
+                    q @ (next::Pattern::Tuple(_)
+                    | next::Pattern::Record(_)
+                    | next::Pattern::Paren(_)),
+                ) => (None, Some(q.clone())),
+                Some(_) => {
                     self.err(span, Unbuilt::LambdaParam);
                     continue;
                 }
             };
-            let ty = match (
-                param_tys.get(i).and_then(|t| t.as_ref()),
-                eps.as_ref().and_then(|ps| ps.get(i)),
-            ) {
-                (Some(t), _) => self.written_ty(t, span),
+            let ty = match (p.ty.clone(), eps.as_ref().and_then(|ps| ps.get(i))) {
+                (Some(t), _) => t,
                 (None, Some(t)) => t.clone(),
                 (None, None) => {
+                    let shown = name.as_deref().unwrap_or("_");
                     self.err(
                         span,
                         Msg::verdict(cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION, format!("the type of `{shown}` is not known here; write `({shown}: T) => ...`")),
@@ -189,20 +195,33 @@ impl Cx<'_> {
                 Ty::Mut(t) => *t,
                 _ => ty,
             };
-            ptys.push(match param_mut.get(i) {
-                Some(true) => Ty::Mut(Box::new(ty.clone())),
-                _ => ty.clone(),
+            ptys.push(match p.mutable {
+                true => Ty::Mut(Box::new(ty.clone())),
+                false => ty.clone(),
             });
-            match self.bind(name, ty) {
+            let var = match &name {
+                Some(n) => self.bind(n, ty.clone()),
+                None => self.temp("$param", ty.clone()),
+            };
+            match var {
                 VarRef::Local(id) | VarRef::Global(id) => ids.push(id),
             }
+            let read = TExpr {
+                kind: TK::Var(var),
+                ty,
+                span: at,
+            };
+            if let Some(q) = opened {
+                opens.push((q, read.clone()));
+            }
+            vals.push(read);
         }
         let saved_ret = self.b.ret.clone();
         // A lambda is not part of the generator or lender around it: no `yield` or `lend` inside.
         let saved_region = self.b.region.take();
         let saved_loops = std::mem::take(&mut self.b.loops);
         let ret = match ret_ty {
-            Some(t) => self.written_ty(t, span),
+            Some(t) => t,
             None => er.unwrap_or_else(|| self.new_ty()),
         };
         self.b.ret = ret.clone();
@@ -233,46 +252,38 @@ impl Cx<'_> {
             }
         }
         let mut pre = Vec::new();
-        for (tmp, pat) in opens {
-            let open = ast::Stmt {
-                kind: StmtKind::Let {
-                    mutable: false,
-                    pat: pat.clone(),
-                    ty: None,
-                    init: Some(ast::Expr {
-                        kind: ExprKind::Name(tmp),
-                        span: pat.span,
-                    }),
-                    otherwise: None,
-                    guard: None,
-                },
-                span: pat.span,
-                decorators: Vec::new(),
-                public: false,
-            };
-            self.stmt(&open, &mut pre);
+        for (q, read) in opens {
+            self.let_pattern(&q, false, read, &mut pre);
+        }
+        if let (Some(pats), Some(whole)) = (parts_of_one, vals.first().cloned()) {
+            let tys = self
+                .field_tys(&whole.ty)
+                .map(|(_, t)| t)
+                .unwrap_or_default();
+            for (k, q) in pats.iter().enumerate() {
+                let ty = tys.get(k).cloned().unwrap_or(Ty::Error);
+                let kind = TK::Field(Box::new(whole.clone()), k);
+                let at = self.at(q);
+                self.let_pattern(q, false, TExpr { kind, ty, span: at }, &mut pre);
+            }
         }
         // A body that ends in `return` has no value of its own to give the result.
         // Where a `()` result is wanted the body is a statement, as a `fn`'s is:
         // `(mut d, e) => d.unite(e.0, e.1)` drops `unite`'s `Bool` (R01.8.1, R06.4.8).
-        let unit = self.shallow(&ret) == Ty::Unit
-            && body.bare_try().is_none()
-            && !matches!(body.kind, ExprKind::Block(_));
+        let unit = self.shallow(&ret) == Ty::Unit && body.bare_try().is_none() && !body.is_block();
         // A nested `fn` whose body can end without its value is that error (E0409).
-        let falls = (nested.as_ref())
-            .is_some_and(|name| self.falls_through(name, body.falls_through(), &ret));
-        let b = match (unit, falls) {
-            (_, true) => self.block(&super::one_stmt(body), Some(&Ty::Unit)),
-            (true, _) => self.block(&super::one_stmt(body), Some(&ret)),
-            _ => self.expr(body, Some(&ret)),
+        let falls = match (nested.as_ref(), body.falls_through()) {
+            (Some(name), Some(end)) => self.falls_through(name, end, &ret),
+            _ => false,
+        };
+        let never = body.never_ends();
+        let b = match unit || falls {
+            true => self.lambda_effect(body, vals, &ret, span),
+            false => self.lambda_value(body, vals, &ret),
         };
         let b = match &b.kind {
             _ if unit || falls => b,
-            TK::Block(ss, None)
-                if matches!(ss.last(), Some(TStmt::Return(_))) || body.never_ends() =>
-            {
-                b
-            }
+            TK::Block(ss, None) if matches!(ss.last(), Some(TStmt::Return(_))) || never => b,
             _ => self.coerce(b, &ret),
         };
         let b = block(pre, b);
@@ -298,67 +309,99 @@ impl Cx<'_> {
             self.lambda_ty(id),
         )
     }
-
-    /// A type written on a lambda's parameter or result.
-    fn written_ty(&mut self, t: &ast::Type, span: Span) -> Ty {
-        let (t, errs) = decls::body_type(
-            self.d,
-            self.d,
-            self.b.module,
-            &self.b.generics,
-            &self.b.doms,
-            &|n: &str| self.owned_named(n),
-            t,
-        );
-        for e in errs {
-            self.err(span, e);
-        }
-        self.fresh_sets(&t)
+    /// A lambda's body run for its effects, its value dropped.
+    fn lambda_effect(
+        &mut self,
+        body: LamBody<'_, 'a>,
+        vals: Vec<TExpr>,
+        ret: &Ty,
+        span: Span,
+    ) -> TExpr {
+        self.scoped_block(span, |cx, out| {
+            match body {
+                LamBody::Arm(next::ArmBody::Expr(e)) | LamBody::Fn(next::FnBody::Expr(e)) => {
+                    cx.expr_stmt(&e, out)
+                }
+                LamBody::Arm(next::ArmBody::Stmt(s)) => cx.stmt(&s, out),
+                LamBody::Arm(next::ArmBody::Block(b)) | LamBody::Fn(next::FnBody::Block(b)) => {
+                    let e = cx.block(&b, None);
+                    out.push(TStmt::Expr(e));
+                }
+                LamBody::Built(f) => {
+                    let e = f(cx, vals, ret);
+                    out.push(TStmt::Expr(e));
+                }
+            }
+            None
+        })
     }
-
-    /// A block's runs of `fn` statements: each fn is a lambda its `let` binds, made before the
-    /// block is checked so the fns of one run can call each other (R05.10.5).
-    pub(super) fn declare_nested(&mut self, stmts: &[ast::Stmt]) {
+    /// A lambda's body checked as its result.
+    fn lambda_value(&mut self, body: LamBody<'_, 'a>, vals: Vec<TExpr>, ret: &Ty) -> TExpr {
+        match body {
+            LamBody::Arm(b) => self.arm_body(&b, Some(ret)),
+            LamBody::Fn(next::FnBody::Block(b)) => self.block(&b, Some(ret)),
+            LamBody::Fn(next::FnBody::Expr(e)) => self.expr(&e, Some(ret)),
+            LamBody::Built(f) => f(self, vals, ret),
+        }
+    }
+    /// A nested `fn`'s parameter types, each jagged one its reach (R06.4.1), and its result,
+    /// reporting nothing: its types are reported once, where its lambda is made.
+    pub(super) fn nested_sig(&mut self, fd: &next::FnDecl) -> (Vec<Ty>, Ty) {
+        let seen = self.errors.len();
+        let sig = self.fn_sig(fd, &mut Vec::new());
+        self.errors.truncate(seen);
+        sig
+    }
+    fn fn_sig(&mut self, fd: &next::FnDecl, out: &mut Vec<TStmt>) -> (Vec<Ty>, Ty) {
+        let ps = nested_params(fd);
+        let jag = cpl_next_decls::jagged(&written_params(&ps));
+        let mut tys = Vec::new();
+        for (p, j) in ps.iter().zip(&jag) {
+            tys.push(match (j, p.ty()) {
+                (Some(((lo, hi), _)), _) => Ty::Range(*lo, *hi),
+                (None, Some(t)) => self.body_ty(&t, out),
+                (None, None) => Ty::Error,
+            });
+        }
+        let ret = match fd.ret().and_then(|r| r.ty()) {
+            Some(t) => self.body_ty(&t, out),
+            None => Ty::Unit,
+        };
+        (tys, ret)
+    }
+    /// A block's runs of `fn`s: each fn is a lambda, made before the block is checked so the
+    /// fns of one run can call each other (R05.10.5). A `@memo fn`'s body is one of its own,
+    /// under the name only its wrapper reaches.
+    pub(super) fn declare_nested(&mut self, entries: &[next::BlockEntry]) {
         let mut run: Vec<LambdaId> = Vec::new();
-        for s in stmts.iter().map(Some).chain([None]) {
-            let fd = match s.map(|s| (&s.kind, s)) {
-                Some((StmtKind::Fn(fd), s)) if nested_gap(fd, s).is_none() => fd,
+        let end_run = |cx: &mut Self, run: &mut Vec<LambdaId>| {
+            for id in run.iter() {
+                cx.lambdas[id.0].group = run.clone();
+            }
+            run.clear();
+        };
+        for e in entries {
+            let fd = match e {
+                next::BlockEntry::Decl(next::Decl::Fn(fd)) => fd,
                 _ => {
-                    for id in &run {
-                        self.lambdas[id.0].group = run.clone();
-                    }
-                    run.clear();
+                    end_run(self, &mut run);
                     continue;
                 }
             };
-            // Its types are reported once, where its lambda is made.
-            let quiet = |c: &mut Self, t: &ast::Type| {
-                let (t, _) = decls::body_type(
-                    c.d,
-                    c.d,
-                    c.b.module,
-                    &c.b.generics,
-                    &c.b.doms,
-                    &|n: &str| c.owned_named(n),
-                    t,
-                );
-                c.fresh_sets(&t)
-            };
-            let (fd, written) = cpl_next_decls::jagged(fd);
-            let fd = &*fd;
-            let written = match written.is_empty() {
+            let memo = super::stmt::is_memo(fd);
+            if !memo && nested_gap(fd).is_some() {
+                end_run(self, &mut run);
+                continue;
+            }
+            let (params, ret) = self.nested_sig(fd);
+            let ps = written_params(&nested_params(fd));
+            let jag = cpl_next_decls::jagged(&ps);
+            let written = match jag.iter().all(Option::is_none) {
                 true => Vec::new(),
-                false => (fd.params.iter())
-                    .map(|p| {
-                        let w = written.iter().find(|w| w.0 == p.name.text);
-                        (p.name.text.clone(), w.map(|w| w.1.clone()))
-                    })
+                false => (ps.into_iter().zip(jag))
+                    .map(|((n, _), j)| (n, j.map(|(_, t)| t)))
                     .collect(),
             };
-            let params = (fd.params.iter())
-                .map(|p| p.ty.as_ref().map_or(Ty::Error, |t| quiet(self, t)))
-                .collect();
-            let ret = fd.ret.as_ref().map_or(Ty::Unit, |t| quiet(self, t));
             let id = self.new_lambda(LambdaInfo {
                 params,
                 ret,
@@ -367,83 +410,58 @@ impl Cx<'_> {
                 yields: None,
                 written,
             });
-            let at = s.map_or(0, |s| s.span.start);
-            self.b.group.push((at, fd.name.text.clone(), id));
+            let own = fd.name().map_or_else(String::new, |t| t.text().to_string());
+            let at = self.at(fd).start;
+            if memo {
+                end_run(self, &mut run);
+                self.b.group.push((at, format!("{own}.body"), id));
+                run.push(id);
+                end_run(self, &mut run);
+                continue;
+            }
+            self.b.group.push((at, own, id));
             run.push(id);
         }
+        end_run(self, &mut run);
     }
-
-    /// `fn f(x: T) -> R: body` in a block is `let f = (x: T) -> R => body` (R05.10).
-    pub(super) fn nested_fn(&mut self, fd: &ast::FnDecl, s: &ast::Stmt, out: &mut Vec<TStmt>) {
-        let unspelled = s
-            .decorators
-            .iter()
-            .find_map(|x| Some((x.span, cpl_next_decls::unspelled_memo(x)?)));
-        if let Some((span, msg)) = unspelled {
-            self.err(span, msg);
-            self.bind(&fd.name.text, Ty::Error);
-            return;
+    /// `fn f(x: T) -> R: body` in a block is a lambda bound to `name` (R05.10): its own name,
+    /// or for a `@memo fn` the name of the body its wrapper calls.
+    pub(super) fn nested_fn(
+        &mut self,
+        fd: &next::FnDecl,
+        name: &str,
+        out: &mut Vec<TStmt>,
+    ) -> Option<VarRef> {
+        let span = self.at(fd);
+        if let Some(what) = nested_gap(fd) {
+            let what = what.to_string();
+            self.err(span, Unbuilt::NestedFn { what });
+            return Some(self.bind(name, Ty::Error));
         }
-        if let Some(what) = nested_gap(fd, s) {
-            self.err(
-                s.span,
-                Unbuilt::NestedFn {
-                    what: what.to_string(),
-                },
-            );
-            self.bind(&fd.name.text, Ty::Error);
-            return;
-        }
-        let Some(&(_, _, id)) = self.b.group.iter().rev().find(|g| g.0 == s.span.start) else {
-            return;
-        };
-        let name = |text: &str, span| ast::Pattern {
-            kind: PatternKind::Name(text.to_string()),
-            span,
-        };
-        let fd = &*cpl_next_decls::jagged(fd).0;
-        let body = match &fd.body {
-            FnBody::Block(b) => ast::Expr {
-                kind: ExprKind::Block(b.clone()),
-                span: b.span,
-            },
-            FnBody::Expr(e) => e.clone(),
-            FnBody::None => return,
-        };
-        let unit = ast::Type {
-            kind: TypeKind::Tuple(Vec::new()),
-            span: fd.sig_span,
-        };
-        let lambda = ast::Expr {
-            kind: ExprKind::Lambda {
-                params: (fd.params.iter())
-                    .map(|p| name(&p.name.text, p.span))
-                    .collect(),
-                param_tys: fd.params.iter().map(|p| p.ty.clone()).collect(),
-                param_mut: Vec::new(),
-                ret_ty: Some(fd.ret.clone().unwrap_or(unit)),
-                body: Box::new(body),
-            },
-            span: s.span,
-        };
-        let bind = ast::Stmt {
-            kind: StmtKind::Let {
+        let &(_, _, id) = self.b.group.iter().rev().find(|g| g.0 == span.start)?;
+        let body = LamBody::Fn(fd.body()?);
+        let (tys, ret) = self.fn_sig(fd, out);
+        let params = (nested_params(fd).into_iter().zip(tys))
+            .map(|(p, ty)| LamParam {
+                pat: p.pattern(),
+                ty: Some(ty),
                 mutable: false,
-                pat: name(&fd.name.text, fd.name.span),
-                ty: None,
-                init: Some(lambda),
-                otherwise: None,
-                guard: None,
-            },
-            span: s.span,
-            decorators: Vec::new(),
-            public: false,
-        };
+            })
+            .collect();
         self.b.nested = Some(id);
-        self.stmt(&bind, out);
+        self.b.recur = Some(name.to_string());
+        let v = self.lambda_of(params, Some(ret), body, None, span);
         self.b.nested = None;
+        self.b.recur = None;
+        let var = self.let_bind(name, false, v.ty.clone(), v, span, out);
+        if fd.name().is_none_or(|t| t.text() != name) {
+            match var {
+                VarRef::Local(l) => self.b.locals[l].synthetic = true,
+                VarRef::Global(g) => self.globals[g].synthetic = true,
+            }
+        }
+        Some(var)
     }
-
     /// The variables bound where the code being checked is.
     pub(super) fn names_set(&self) -> BTreeSet<VarRef> {
         let top = self.b.decl.is_none();
@@ -523,26 +541,25 @@ impl Cx<'_> {
         {
             return None;
         }
-        let names: Vec<String> = (0..ps.len()).map(|i| format!("${i}")).collect();
-        let at = |kind| ast::Expr { kind, span };
-        let call = at(ExprKind::Call {
-            callee: Box::new(at(ExprKind::Name(n.to_string()))),
-            args: (names.iter())
-                .map(|x| ast::Arg {
-                    name: None,
-                    mutable: false,
-                    value: at(ExprKind::Name(x.clone())),
-                })
-                .collect(),
-        });
-        let params: Vec<ast::Pattern> = (names.into_iter())
-            .map(|x| ast::Pattern {
-                kind: PatternKind::Name(x),
-                span,
+        Some(self.forwarding(n, ps.len(), want, span))
+    }
+    /// `(a, ..) => n(a, ..)`: a lambda of `k` parameters that calls the fn `n` with them.
+    fn forwarding(&mut self, n: &str, k: usize, want: Option<&Ty>, span: Span) -> TExpr {
+        let params = (0..k)
+            .map(|_| LamParam {
+                pat: None,
+                ty: None,
+                mutable: false,
             })
             .collect();
-        let tys = vec![None; params.len()];
-        Some(self.lambda((&params, &tys, &[]), None, &call, want, span))
+        let name = n.to_string();
+        let body = move |cx: &mut Cx<'a>, xs: Vec<TExpr>, ret: &Ty| {
+            let args: Vec<CallArg> = (xs.into_iter())
+                .map(|x| CallArg::held(None, x, span))
+                .collect();
+            cx.call_named(&name, &[], &args, span, Some(ret))
+        };
+        self.lambda_of(params, None, LamBody::Built(Box::new(body)), want, span)
     }
 
     pub(super) fn lambda_ty(&self, id: LambdaId) -> Ty {
@@ -570,7 +587,7 @@ impl Cx<'_> {
     pub(super) fn defaulted_fn_value(
         &mut self,
         n: &str,
-        callee: &ast::Expr,
+        span: Span,
         want: Option<&Ty>,
     ) -> Option<TExpr> {
         let Ty::Fn(ps, ..) = self.shallow(want?) else {
@@ -587,35 +604,7 @@ impl Cx<'_> {
         {
             return None;
         }
-        let span = callee.span;
-        let names: Vec<String> = (0..ps.len()).map(|i| format!("$arg{i}")).collect();
-        let pat = |n: &String| ast::Pattern {
-            kind: PatternKind::Name(n.clone()),
-            span,
-        };
-        let arg = |n: &String| ast::Arg {
-            name: None,
-            mutable: false,
-            value: ast::Expr {
-                kind: ExprKind::Name(n.clone()),
-                span,
-            },
-        };
-        let body = ast::Expr {
-            kind: ExprKind::Call {
-                callee: Box::new(callee.clone()),
-                args: names.iter().map(arg).collect(),
-            },
-            span,
-        };
-        let params: Vec<ast::Pattern> = names.iter().map(pat).collect();
-        Some(self.lambda(
-            (&params, &vec![None; ps.len()], &[]),
-            None,
-            &body,
-            want,
-            span,
-        ))
+        Some(self.forwarding(n, ps.len(), want, span))
     }
 
     /// The fields a lambda's parameters take apart when it is passed as a fn of one value of
@@ -662,28 +651,98 @@ pub(super) fn tests_form(fd: &decls::FnDecl, args: &[ast::Arg]) -> Option<Vec<as
     ])
 }
 
-/// What a nested `fn` has that a lambda cannot carry yet.
-fn nested_gap(fd: &ast::FnDecl, s: &ast::Stmt) -> Option<&'static str> {
-    let odd = |p: &ast::Param| p.variadic || p.lazy || p.named_only || p.label.is_some();
-    Some(if !s.decorators.is_empty() {
+/// One parameter of a lambda being made: what binds it (`None` for a slot only a made body
+/// reads), its type when it is known, and whether it is `mut`.
+pub(super) struct LamParam {
+    pub pat: Option<next::Pattern>,
+    pub ty: Option<Ty>,
+    pub mutable: bool,
+}
+
+/// A lambda's body: a written arm (`x => e`), a nested fn's, or one the checker makes from
+/// the parameters' values and the result wanted.
+pub(super) enum LamBody<'b, 'a> {
+    Arm(next::ArmBody),
+    Fn(next::FnBody),
+    Built(Box<dyn FnOnce(&mut Cx<'a>, Vec<TExpr>, &Ty) -> TExpr + 'b>),
+}
+
+impl LamBody<'_, '_> {
+    fn bare_try(&self) -> Option<Span> {
+        match self {
+            LamBody::Arm(next::ArmBody::Expr(e)) | LamBody::Fn(next::FnBody::Expr(e)) => {
+                e.bare_try()
+            }
+            _ => None,
+        }
+    }
+    fn is_block(&self) -> bool {
+        matches!(
+            self,
+            LamBody::Arm(next::ArmBody::Block(_) | next::ArmBody::Expr(next::Expr::Block(_)))
+                | LamBody::Fn(next::FnBody::Block(_) | next::FnBody::Expr(next::Expr::Block(_)))
+        )
+    }
+    fn falls_through(&self) -> Option<cpl_next_syntax::fall_through::End> {
+        match self {
+            LamBody::Arm(b) => Some(b.falls_through()),
+            LamBody::Fn(b) => Some(b.falls_through()),
+            LamBody::Built(_) => None,
+        }
+    }
+    fn never_ends(&self) -> bool {
+        match self {
+            LamBody::Arm(next::ArmBody::Expr(e)) => e.never_ends(),
+            LamBody::Arm(next::ArmBody::Block(b)) => b.never_ends(),
+            LamBody::Fn(b) => b.never_ends(),
+            LamBody::Arm(next::ArmBody::Stmt(_)) | LamBody::Built(_) => false,
+        }
+    }
+}
+
+fn nested_params(fd: &next::FnDecl) -> Vec<next::Param> {
+    fd.params()
+        .map(|l| l.params().collect())
+        .unwrap_or_default()
+}
+
+/// Each parameter's name and written type, as `jagged` reads them.
+fn written_params(ps: &[next::Param]) -> Vec<(String, Option<next::Type>)> {
+    (ps.iter())
+        .map(|p| {
+            (
+                p.name().map_or_else(String::new, |t| t.text().to_string()),
+                p.ty(),
+            )
+        })
+        .collect()
+}
+
+/// What a nested `fn` has that a lambda cannot carry yet. `@memo` is its wrapper's.
+fn nested_gap(fd: &next::FnDecl) -> Option<&'static str> {
+    use cpl_next_syntax::grammar::Decorator;
+    let ps = nested_params(fd);
+    let odd = |p: &next::Param| p.is_variadic() || p.is_named_only() || p.label().is_some();
+    let memo = |x: &next::Decorator| {
+        x.name().and_then(|n| Decorator::of(n.text())) == Some(Decorator::Memo)
+    };
+    let ret = fd.ret();
+    Some(if fd.decorators().any(|x| !memo(&x)) {
         "a decorator"
-    } else if !fd.generics.is_empty() || !fd.bounds.is_empty() {
+    } else if fd.generics().is_some() || fd.where_clause().is_some() {
         "type parameters"
-    } else if fd.lends.is_some()
-        || matches!(fd.ret.as_ref().map(|t| &t.kind), Some(TypeKind::Yields(_)))
-    {
+    } else if ret.as_ref().is_some_and(|r| r.is_yields() || r.lends()) {
         "a `yields` or `lends` result"
-    } else if !fd.uses.is_empty() {
+    } else if fd.uses().is_some() {
         "`uses`"
-    } else if fd.params.iter().any(|p| p.mutable) {
+    } else if ps.iter().any(|p| p.is_mut()) {
         "a `mut` parameter"
-    } else if fd
-        .params
+    } else if ps
         .iter()
-        .any(|p| odd(p) || p.ty.is_none() || p.default.is_some())
+        .any(|p| odd(p) || p.ty().is_none() || p.default().is_some())
     {
         "a parameter a lambda cannot take"
-    } else if matches!(fd.body, FnBody::None) {
+    } else if fd.body().is_none() {
         "no body"
     } else {
         return None;
