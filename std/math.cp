@@ -761,12 +761,23 @@ pub fn to_str(self: Int, base: Int = 10) -> Str:
     if self < 0: cs.push('-')
     Str(List(cs.rev))
 
-/// Which side of zero a number is on. `Int(s)` is -1, 0 or 1, so `x == Int(x.sign) * abs(x)`;
-/// `-s` flips it and `max(s, Sign.Zero)` clamps it.
-pub enum Sign:
-    Neg = -1
-    Zero = 0
-    Pos = 1
+/// Which side of zero a number is on, ordered `Neg < Zero < Pos`. `Int(s)` is -1, 0 or 1, so
+/// `x == Int(x.sign) * abs(x)`; `-s` flips it and `max(s, Sign.Zero)` clamps it.
+pub enum Sign = Neg | Zero | Pos
+
+/// `Int(s)`: -1, 0 or 1.
+impl Into<Int> for Sign:
+    fn into(self) -> Int = match self:
+        Neg => -1
+        Zero => 0
+        Pos => 1
+
+/// `-s`: the other side of zero, and `Zero` for `Zero`.
+impl Neg for Sign:
+    fn neg(self) -> Sign = match self:
+        Neg => Sign.Pos
+        Zero => Sign.Zero
+        Pos => Sign.Neg
 
 /// The side of zero `self` is on: `Neg`, `Zero` or `Pos`. `(b - a).sign` compares two values.
 ///
