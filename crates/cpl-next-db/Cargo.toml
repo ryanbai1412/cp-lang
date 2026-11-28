@@ -9,3 +9,6 @@ publish.workspace = true
 cpl-contract.workspace = true
 cpl-next-ir.workspace = true
 cpl-next-syntax.workspace = true
+
+[dev-dependencies]
+cpl-diag.workspace = true

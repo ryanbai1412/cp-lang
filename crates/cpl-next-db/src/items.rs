@@ -192,10 +192,9 @@ impl Query for SourceOf {
         let Some(file) = db.input::<ModuleFile>(&site.item.module)? else {
             return Ok(None);
         };
-        let span = cpl_diag::Span {
-            start: at + site.span.start,
-            end: at + site.span.end,
-        };
+        let mut span = site.span;
+        span.start += at;
+        span.end += at;
         Ok(Some(Definition {
             path: file.path().into(),
             span,
