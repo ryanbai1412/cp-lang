@@ -1423,6 +1423,10 @@ fn dump_own_shows_what_each_binding_freezes_and_lends() {
     // A view freezes and lends its source; a nested fn lends its captures but freezes none.
     assert!(text.contains(" v: frozen [xs] lent [xs]"), "{text}");
     assert!(text.contains(" put: frozen [] lent [xs]"), "{text}");
+    // A file body's `let` is a global, shown where it is first written.
+    let top = open("var xs = [1, 2]\nlet v = xs.rev\nprint(v.len)\n");
+    let text = top.ir("program.cp", IrStage::Borrows).unwrap();
+    assert!(text.contains(" v: frozen [xs] lent [xs]"), "{text}");
     assert!(open("print(nope)\n")
         .ir("program.cp", IrStage::Borrows)
         .is_err());

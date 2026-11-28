@@ -1082,11 +1082,14 @@ impl Walk<'_> {
                 }
                 if self.report {
                     let r = Root::Local(*l);
-                    let (frozen, lent) = (self.frozen.get(&r), self.lent.get(&r));
-                    if frozen.is_some() || lent.is_some() {
-                        let b = bound(self.cur, self.f(), self.globals, r, frozen, lent);
-                        self.binds.push(b);
-                    }
+                    (self.binds).extend(bound(
+                        self.cur,
+                        self.f(),
+                        self.globals,
+                        r,
+                        &self.frozen,
+                        &self.lent,
+                    ));
                 }
             }
             Stmt::Assign(p, e) => {
@@ -1160,6 +1163,18 @@ impl Walk<'_> {
                             .extend(what.iter().cloned());
                     }
                     self.store(e.site, q.root, what);
+                    // The file body's `let`s are globals, bound where first written.
+                    if self.report && q.path.is_empty() && matches!(q.root, Root::Global(_)) {
+                        let r = q.root;
+                        (self.binds).extend(bound(
+                            self.cur,
+                            self.f(),
+                            self.globals,
+                            r,
+                            &self.frozen,
+                            &self.lent,
+                        ));
+                    }
                     fx.writes.insert(q);
                 }
             }
@@ -1720,27 +1735,31 @@ pub struct Owned {
     pub binds: Vec<Bound>,
 }
 
-/// `r`'s `--dump-own` line where `f`, instance `inst`, binds it.
+/// `r`'s `--dump-own` line where `f`, instance `inst`, binds it, if it freezes or lends any place.
 fn bound(
     inst: usize,
     f: &cpl_next_ir::ir::Func<CTy>,
     globals: &[(String, bool)],
     r: Root,
-    frozen: Option<&BTreeSet<Pl>>,
-    lent: Option<&BTreeSet<Pl>>,
-) -> Bound {
+    frozen: &HashMap<Root, BTreeSet<Pl>>,
+    lent: &HashMap<Root, BTreeSet<Pl>>,
+) -> Option<Bound> {
+    let (frozen, lent) = (frozen.get(&r), lent.get(&r));
+    if frozen.is_none() && lent.is_none() {
+        return None;
+    }
     let show = |ps: Option<&BTreeSet<Pl>>| -> Vec<String> {
         (ps.into_iter().flatten())
             .map(|p| dump_pl(f, globals, p))
             .collect()
     };
-    Bound {
+    Some(Bound {
         inst,
         fn_name: f.name.clone(),
         local: dump_pl(f, globals, &Pl::whole(r)),
         frozen: show(frozen),
         lent: show(lent),
-    }
+    })
 }
 
 /// `p` as `--dump-own` shows it: its root's name, `$` and an index for a temp, then its path.
