@@ -277,7 +277,7 @@
   "habit_matchers": 0,
   "unchecked_fix_paths": 0,
   "stress_engines": 0,
-  "conformance_failing": 16,
+  "conformance_failing": 15,
   "conformance_wrong_output": 0,
   "rust_idiom_lints": 14,
   "scaling_mismatches": 0,

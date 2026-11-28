@@ -3109,3 +3109,5 @@ next/n_nested_fn_captures_borrowed_per_call.cp
 core-07/str-of-a-char-is-its-word.cp
 diagnostics/str-of-a-number-is-its-show.cp
 diagnostics/str-of-a-show-type-is-its-text.cp
+traits/Zero/MinCount--zero.cp
+traits/Zero/MaxCount--zero.cp
