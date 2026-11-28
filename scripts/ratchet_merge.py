@@ -23,6 +23,11 @@ def merge(base, ours, theirs):
     if GONE in (ours, theirs):
         return ours if ours is not GONE and base is GONE else theirs if base is GONE else GONE
     if type(ours) is int and type(theirs) is int:
+        # `ours` is main in a rebase (the driver's %A, land.sh's stage 2): a number main raised
+        # landed through main's own check and stays, less what the lane paid off; 768cb11b6
+        # took the lower and set old_pipeline_lines back under main's own pinned std.
+        if type(base) is int and ours > base:
+            return ours + min(0, theirs - base)
         return min(ours, theirs)
     if isinstance(ours, dict) and isinstance(theirs, dict):
         b = base if isinstance(base, dict) else {}

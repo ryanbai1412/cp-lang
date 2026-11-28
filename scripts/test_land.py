@@ -1784,8 +1784,14 @@ done
         self.assertEqual(merge(base, ours, theirs),
                          {"n": 3, "allow": {"f.rs": 2300}, "edges": ["a", "c"], "new": 1})
         raised = {"n": 9, "allow": {"f.rs": 2500, "g.rs": 2100}, "edges": ["a", "b"]}
-        for merged in (merge(base, raised, base), merge(base, base, raised)):
-            self.assertEqual(merged, base)
+        self.assertEqual(merge(base, base, raised), base)
+
+    def test_the_ratchet_merge_keeps_a_number_main_raised(self):
+        sys.path.insert(0, str(HERE))
+        from ratchet_merge import merge
+        base = {"old": 179917, "n": 5}
+        self.assertEqual(merge(base, {"old": 213697, "n": 5}, {"old": 179917, "n": 4}), {"old": 213697, "n": 4})
+        self.assertEqual(merge(base, {"old": 213697, "n": 5}, {"old": 179907, "n": 5}), {"old": 213687, "n": 5})
 
     def test_a_rebase_merges_the_ratchet_through_its_driver(self):
         repo = self.tmp / "drv"
