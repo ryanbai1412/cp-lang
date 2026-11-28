@@ -168,6 +168,16 @@ pub struct AliasForm {
     pub span: Span,
 }
 
+/// `use std.rand.Rng`, `use m.{a, b}`, `use m.*`, `use m as n` (R11.2.1).
+#[derive(Clone, Debug)]
+pub struct UseForm {
+    pub public: bool,
+    pub path: Vec<String>,
+    pub names: Vec<String>,
+    pub glob: bool,
+    pub alias: Option<String>,
+}
+
 /// What one item declares, as its form.
 #[derive(Clone, Debug)]
 pub enum Form {
@@ -188,7 +198,7 @@ pub enum Form {
         fields: Vec<FieldForm>,
     },
     Domain(ast::DomainDecl),
-    Use(ast::UseDecl),
+    Use(UseForm),
     /// A top-level statement: a `let`, an expression, an assignment.
     Stmt(ast::Stmt),
     /// A declaration decls reads no form of (an `extern`, a `mod`), or one the parser could
@@ -556,7 +566,15 @@ impl Reader<'_> {
                     .collect(),
             },
             Some(D::Domain(dd)) => Form::Domain(dd),
-            Some(D::Use(u)) => Form::Use(u),
+            Some(D::Use(u)) => Form::Use(UseForm {
+                public: it.is_pub(),
+                path: u.path().map(|t| t.text().to_string()).collect(),
+                names: (u.names().iter())
+                    .flat_map(|n| n.names().map(|t| t.text().to_string()).collect::<Vec<_>>())
+                    .collect(),
+                glob: u.is_glob(),
+                alias: u.alias().map(|t| t.text().to_string()),
+            }),
             Some(D::Mod(_) | D::Extern(_)) => Form::Other(it.clone()),
             None => match it.stmt() {
                 Some(s) => Form::Stmt(s),
