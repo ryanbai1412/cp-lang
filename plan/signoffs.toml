@@ -1,0 +1,71 @@
+# What the gates take on the coordinator's word, and nothing else does (audit #18 (2)).
+# scripts/debt-ratchet.py reads this file as origin/main holds it. Only a PR its code owner
+# (.github/CODEOWNERS) approves may change it: debt-ratchet's signoff_edits fails any other commit
+# to it, on every branch. No commit-message trailer signs a raise, a lane or an edit.
+#
+# [[lane_for]]     a pushed commit with no `Lane:` trailer: sha, lane, why.
+# [[raise]]        a counter raise: counter, old, new, why.
+# [[frozen]]       an edit to the frozen old-pipeline crates, by `git patch-id --stable` of
+#                  `git show SHA -- crates/<FROZEN_CRATES>`, which a rebase keeps: patch_id, sha, why.
+# [[budget_raise]] a cpl.wasm crate budget raise (web/scripts/wasm-crates.mjs); never a frozen
+#                  crate's: crate, old, new, why.
+
+[[lane_for]]
+sha = "b625db05e"
+lane = "J"
+why = "check(decls) alias/const types; coordinator 02:39 11-28"
+
+[[lane_for]]
+sha = "3b33aca09"
+lane = "J"
+why = "syntax one-line if/while/for body; coordinator 02:39 11-28"
+
+[[frozen]]
+patch_id = "910ad35fff394684a3ace2a84930b6cc54a2d8df"
+sha = "9c099f408"
+why = "restores shipped cpl after 9ad9cbbd1 changed cpl-syntax; old pipeline must keep working until the switch (coordinator, 18:47)"
+
+[[frozen]]
+patch_id = "432f878dd7b09e2e7f410ae1556e879f0295c19e"
+sha = "25e709fde"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "a731fa8784324410ac7ee424a889113c813049d7"
+sha = "32e772b22"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "9a8d2b13353570de5f678d8d6bda61620b289d88"
+sha = "1ef236668"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); labels moved verbatim to arg_labels; alone it fails E0603, fixed by A's f5e32946c; old-pipeline-same of f5e32946c against 1ef236668^: 3907 same, 6 with other C++ but the same run; coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "8425f6c4b54f869d9becd699b51a682c0b56d0df"
+sha = "7f9d65faf"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "39fe60ed9c7e768f803906ec082629eea347e463"
+sha = "f5e32946c"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "f3f7c4eb645f44e4728f4c478f866d96595acfec"
+sha = "70145624c"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "e09c33ad24346f5a2f80df86a228f3263f9994b2"
+sha = "c8e1b1bab"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); FmtSpec/FmtKind moved verbatim; old-pipeline-same against its parent: 3935 cases byte-identical; coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "ba5927012730231ec50dd8a4af4aec6f31e9ee91"
+sha = "13142d2ec"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); coordinator 03:32 11-28"
+
+[[frozen]]
+patch_id = "2acc6195d58dc02b47b8c7513e965dfe157ad73b"
+sha = "fb18097c7"
+why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); doc comment only (R02.10.3 -> R02.10.4); coordinator 03:32 11-28"

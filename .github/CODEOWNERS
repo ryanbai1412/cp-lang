@@ -1,0 +1,3 @@
+# plan/signoffs.toml is the gates' one authority (audit #18 (2)): a code owner approves each change.
+/plan/signoffs.toml @ryanbai1412
+/.github/CODEOWNERS @ryanbai1412

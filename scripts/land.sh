@@ -52,10 +52,18 @@ if [ -z "${CPL_LAND_MAIN:-}" ] && git cat-file -e FETCH_HEAD:scripts/land.sh 2>/
     for f in land.sh retry.sh; do git show "FETCH_HEAD:scripts/$f" >"$dir/$f"; done
     CPL_LAND_MAIN=1 exec bash "$dir/land.sh" "$@"
 fi
-# A pushed commit with no Lane: takes one from a later commit's coordinator-signed
-# `Lane-for: <sha> <lane>, signed off by coordinator`; debt-ratchet.py refuses any other.
-granted=$(git log --format=%B "FETCH_HEAD..HEAD" |
-    sed -nE 's/^Lane-for: *([0-9a-f]{7,40}) +[A-Za-z0-9_]+ *, *signed off by coordinator\.? *$/\1/p')
+# The rows main's plan/signoffs.toml holds of one kind, one per line, formatted by `fmt`: the
+# gates' one authority (audit #18 (2)), never a commit message's text.
+signoff_rows() {
+    local rows
+    rows=$(git show "FETCH_HEAD:plan/signoffs.toml" 2>/dev/null) || return 0
+    printf '%s\n' "$rows" | uv run --quiet python -c '
+import sys, tomllib
+for r in tomllib.loads(sys.stdin.read()).get(sys.argv[1], []):
+    print(sys.argv[2].format(**r))' "$1" "$2"
+}
+# A pushed commit with no Lane: takes one only from a [[lane_for]] row.
+granted=$(signoff_rows lane_for '{sha}')
 lane_for() { for g in $granted; do case "$1" in "$g"*) return 0 ;; esac; done; return 1; }
 for c in $(git rev-list "FETCH_HEAD..HEAD"); do
     git log -1 --format='%(trailers:key=Domain,valueonly)' "$c" | grep -q . ||
@@ -357,9 +365,9 @@ if [ -n "$fast" ] && [ -z "${CPL_LAND_INTEGRATOR:-}" ]; then
         exit 1
     fi
 fi
-# A wasm budget raise the coordinator signed in a `Budget-raise:` trailer of a commit
-# being landed is exact and outside the transfer rule (web/scripts/wasm-crates.mjs signedRaises).
-CPL_BUDGET_RAISES=$(git log --format='%(trailers:key=Budget-raise,valueonly)' "$main_base"..HEAD)
+# A wasm budget raise plan/signoffs.toml holds is exact and outside the transfer rule
+# (web/scripts/wasm-crates.mjs signedRaises); no commit message signs one (audit #18 (2)).
+CPL_BUDGET_RAISES=$(signoff_rows budget_raise '{crate} {old}->{new}')
 export CPL_BUDGET_RAISES
 # The touched crates' cpl.wasm budgets, from the named build .githooks/post-commit
 # started (scripts/wasm-warm.sh), never waiting on one: 849a0be7d's commit hook

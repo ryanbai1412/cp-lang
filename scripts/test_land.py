@@ -1987,36 +1987,39 @@ done
         self.assertIn("no wasm build measured the moved code", r.stderr)
         self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
-    def _raise(self, trailer):
+    def _raise(self, rows):
         """A land raising cpl_y's wasm budget 100 -> 150 with no build measuring a transfer,
-        its commit carrying `trailer`."""
+        main's plan/signoffs.toml holding `rows`."""
         theirs, ours = self.clone("theirs"), self.clone("ours")
         web = theirs / "web" / "scripts"
         web.mkdir(parents=True)
         shutil.copy(HERE.parent / "web" / "scripts" / "wasm-crates.mjs", web)
         (web / "wasm-crate-budgets.json").write_text('{"cpl_x": 100, "cpl_y": 100}')
+        (theirs / "plan").mkdir()
+        (theirs / "plan" / "signoffs.toml").write_text(rows)
         self.commit(theirs, "theirs")
         git(theirs, "push", "-q", "origin", "HEAD:main")
         git(ours, "pull", "-q", "--rebase", "origin", "main")
         (ours / "web" / "scripts" / "wasm-crate-budgets.json").write_text('{"cpl_x": 100, "cpl_y": 150}')
         git(ours, "add", "-A")
-        git(ours, "commit", "-q", "--no-verify", "-m", "ours", "-m", f"Domain: infra\nLane: G\n{trailer}")
+        git(ours, "commit", "-q", "--no-verify", "-m", "ours", "-m",
+            "Domain: infra\nLane: G\nBudget-raise: cpl_y 100->150, signed off by coordinator")
         env = self._wasm(ours, 0)
         (self.tmp / "bin" / "node").unlink()
         return self.land(ours, **env)
 
-    def test_a_budget_raise_the_coordinator_signed_lands(self):
-        r = self._raise("Budget-raise: cpl_y 100->150, signed off by coordinator")
+    def test_a_budget_raise_main_signoffs_hold_lands(self):
+        r = self._raise('[[budget_raise]]\ncrate = "cpl_y"\nold = 100\nnew = 150\nwhy = "w"\n')
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
-    def test_a_budget_raise_without_the_coordinators_sign_off_refuses(self):
-        r = self._raise("Budget-raise: cpl_y 100->150")
+    def test_a_budget_raise_only_a_commit_message_signs_refuses(self):
+        r = self._raise("")
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("no wasm build measured the moved code", r.stderr)
 
-    def test_a_signed_budget_raise_to_another_number_refuses(self):
-        r = self._raise("Budget-raise: cpl_y 100->140, signed off by coordinator")
+    def test_a_budget_raise_to_another_number_than_the_signoff_refuses(self):
+        r = self._raise('[[budget_raise]]\ncrate = "cpl_y"\nold = 100\nnew = 140\nwhy = "w"\n')
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("no wasm build measured the moved code", r.stderr)
 
