@@ -3,7 +3,8 @@
 use super::*;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_syntax::ast::FmtKind;
+use cpl_next_syntax::literal::{self, FmtKind};
+use cpl_next_syntax::TokenKind;
 
 impl<'a> Cx<'a> {
     /// Std's `@role(list)` struct, which literals, comprehensions and tables build.
@@ -52,7 +53,7 @@ impl<'a> Cx<'a> {
         // `+` and the rest on a struct, or on a type parameter bound by the operator's trait,
         // are that trait's fn (R08.1.5).
         if let Some(found) = (!logic)
-            .then(|| self.operator_trait(op.text(), true, &l.ty))
+            .then(|| self.operator_trait(&op.to_string(), true, &l.ty))
             .flatten()
         {
             return self.operator_call(found, l, Some(r), span);
@@ -173,7 +174,8 @@ impl<'a> Cx<'a> {
             false => format!("a {t}"),
         };
         let (l, r) = (a(self.show(l)), a(self.show(r)));
-        let text = cpl_diag::msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AND.say(&[&op.text(), &l, &r]);
+        let text =
+            cpl_diag::msgs::check::BAD_OPERANDS_CAN_T_COMBINE_AND.say(&[&op.to_string(), &l, &r]);
         let help = match op {
             BinOp::BitXor => cpl_diag::habits::BAD_OPERANDS_3.say(&[]),
             BinOp::BitAnd => "on `Bool`s, `&` is `and`".to_string(),
@@ -716,7 +718,7 @@ impl<'a> Cx<'a> {
         else {
             let msg = format!(
                 "`{}` needs an `@operator(\"{token}\")` trait (R08.1.5)",
-                op.text()
+                op.to_string()
             );
             self.err(span, Msg::verdict(cpl_diag::codes::MISSING_IMPL, msg));
             return mk(TK::Error, Ty::Error);
@@ -816,7 +818,7 @@ impl<'a> Cx<'a> {
                         cpl_diag::codes::MISSING_IMPL,
                         format!(
                             "`{shown}` has no `impl {trait_name}`, which `{}` needs (R08.1.5)",
-                            op.text()
+                            op.to_string()
                         ),
                     ),
                 );
@@ -1867,4 +1869,434 @@ fn todo_trap(span: Span) -> TExpr {
 pub(super) fn none_word(tok: &cpl_next_syntax::SyntaxToken) -> bool {
     tok.kind() == cpl_next_syntax::TokenKind::Ident
         && cpl_next_syntax::LITERAL_WORDS.contains(&tok.text())
+}
+
+impl Cx<'_> {
+    /// `42`, `1e9`, `2.5`, `true`, `'a'`, or a string and its holes.
+    pub(super) fn literal(&mut self, l: &next::Literal, _want: Option<&Ty>, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        if let Some(pieces) = l.pieces() {
+            return self.string(pieces, span);
+        }
+        let Some(tok) = l.token() else {
+            return Self::error_node(span);
+        };
+        let text = tok.text();
+        match tok.kind() {
+            TokenKind::Int => match literal::int_value(text) {
+                Some(i) => mk(TK::Int(i as i64), Ty::Int),
+                None => Self::error_node(span),
+            },
+            // A literal with an exponent whose value is a whole number is an `Int` (R01.4.2).
+            TokenKind::Float => match (text.contains(['e', 'E']))
+                .then(|| literal::int_value(text))
+                .flatten()
+                .and_then(|i| i64::try_from(i).ok())
+            {
+                Some(i) => mk(TK::Int(i), Ty::Int),
+                None => match text.parse::<f64>() {
+                    Ok(x) => mk(TK::Float(x.to_bits()), Ty::F64),
+                    Err(_) => {
+                        let text = text.to_string();
+                        self.err(span, Unbuilt::FloatLiteral { text });
+                        mk(TK::Error, Ty::Error)
+                    }
+                },
+            },
+            TokenKind::True => mk(TK::Bool(true), Ty::Bool),
+            TokenKind::False => mk(TK::Bool(false), Ty::Bool),
+            TokenKind::Char => match literal::char_value(text) {
+                Some(c) if c.is_ascii() => {
+                    let code = mk(TK::Int(i64::from(c as u8)), Ty::Int);
+                    mk(TK::CharOf(Box::new(code)), Ty::Char)
+                }
+                Some(_) => {
+                    let kind = "Char".to_string();
+                    self.err(span, Unbuilt::Expression { kind });
+                    Self::error_node(span)
+                }
+                None => Self::error_node(span),
+            },
+            _ => Self::error_node(span),
+        }
+    }
+
+    /// A string: its text alone, or each piece appended in turn through the
+    /// `@role(interpolation)` fn (R10.3.2).
+    fn string(&mut self, pieces: Vec<next::StrPiece>, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        if pieces.iter().all(|p| matches!(p, next::StrPiece::Text(_))) {
+            let text = (pieces.into_iter())
+                .map(|p| match p {
+                    next::StrPiece::Text(t) => t,
+                    next::StrPiece::Interp(_) => String::new(),
+                })
+                .collect();
+            return self.text_value(text, span);
+        }
+        let Some(put) = self.d.roles().interpolate else {
+            let kind = "Str".to_string();
+            self.err(span, Unbuilt::Expression { kind });
+            return Self::error_node(span);
+        };
+        let empty = self.text_value(String::new(), span);
+        let ty = empty.ty.clone();
+        let buf = self.temp("$str", ty.clone());
+        match buf {
+            VarRef::Local(l) => self.b.locals[l].mutable = true,
+            VarRef::Global(g) => self.globals[g].mutable = true,
+        }
+        let read = mk(TK::Var(buf), ty.clone());
+        let mut stmts = vec![TStmt::Let(buf, empty)];
+        for p in pieces {
+            let (v, width, zero, digits) = match p {
+                next::StrPiece::Text(t) => (self.text_value(t, span), 0, false, None),
+                next::StrPiece::Interp(h) => {
+                    let spec = h.format();
+                    let digits = match spec.map(|s| s.kind) {
+                        None | Some(FmtKind::Dec) => None,
+                        Some(FmtKind::Fixed(d)) => Some(d),
+                        Some(FmtKind::Hex | FmtKind::Bin) => {
+                            self.err(span, Unbuilt::HexFormat);
+                            continue;
+                        }
+                    };
+                    let v = match h.value() {
+                        Some(x) => self.expr(&x, None),
+                        None => Self::error_node(span),
+                    };
+                    let (width, zero) = spec.map_or((0, false), |s| (s.width, s.zero));
+                    (v, width, zero, digits)
+                }
+            };
+            let f = self.fnref(put, Vec::new(), Vec::new());
+            let formals = self.formals(
+                &Subst {
+                    tys: &f.targs,
+                    sets: &f.sets,
+                },
+                self.d.f(put),
+            );
+            self.unify(&formals[0].ty, &ty);
+            self.unify(&formals[1].ty, &v.ty);
+            self.oblige(&f, span);
+            // The layout a spec gives: its width, its zero fill and its decimals.
+            let mut args = vec![TArg::Mut(read.clone()), TArg::Value(v)];
+            for k in 0..3 {
+                let Some(want) = formals.get(2 + k).map(|p| p.ty.clone()) else {
+                    break;
+                };
+                let x = match (k, digits) {
+                    (0, _) => mk(TK::Int(i64::from(width)), Ty::Int),
+                    (1, _) => mk(TK::Bool(zero), Ty::Bool),
+                    (_, Some(d)) => mk(TK::Int(i64::from(d)), Ty::Int),
+                    (_, None) => self.none_value(Some(&want), span),
+                };
+                args.push(TArg::Value(self.coerce(x, &want)));
+            }
+            let call = TK::Call {
+                f,
+                recv: None,
+                args,
+            };
+            stmts.push(TStmt::Expr(mk(call, Ty::Unit)));
+        }
+        mk(TK::Block(stmts, Some(Box::new(read))), ty)
+    }
+
+    /// A string with no holes, through `@sugar(str_literal)`.
+    fn text_value(&mut self, text: String, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        if !text.is_ascii() {
+            self.err(span, Unbuilt::NonAsciiString);
+        }
+        let n = mk(TK::Int(text.len() as i64), Ty::Int);
+        let raw = mk(TK::Text(text), Ty::Raw(Box::new(Ty::Char)));
+        self.marked_call(self.d.sugar.str_literal, "str_literal", vec![raw, n], span)
+    }
+
+    /// `None`, an optional of the type its place wants.
+    pub(super) fn none_value(&mut self, want: Option<&Ty>, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let ty = match want.filter(|w| self.optional_of(w).is_some()) {
+            Some(w) => w.clone(),
+            // Wanted as the error, as beside an operand that is one: it is the error too.
+            None if want.is_some_and(|w| self.shallow(w) == Ty::Error) => {
+                return mk(TK::Error, Ty::Error);
+            }
+            None => {
+                self.err(
+                    span,
+                    Msg::verdict(
+                        cpl_diag::codes::INFERENCE_NEEDS_ANNOTATION,
+                        "nothing here says what `None` is an optional of; write the type",
+                    ),
+                );
+                return mk(TK::Error, Ty::Error);
+            }
+        };
+        let no = mk(TK::Bool(false), Ty::Bool);
+        let inner = self.optional_of(&ty).unwrap_or(Ty::Error);
+        mk(TK::Struct(vec![no, mk(TK::Unset, inner)]), ty)
+    }
+
+    /// `x!`: the value, checked present.
+    pub(super) fn unwrap_expr(
+        &mut self,
+        u: &next::UnwrapExpr,
+        _want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let Some(x) = u.inner() else {
+            return Self::error_node(span);
+        };
+        let v = self.expr(&x, None);
+        let Some(inner) = self.optional_of(&v.ty) else {
+            if !self.mentions_error(&v.ty) {
+                let t = self.show(&v.ty);
+                self.err(span, Unbuilt::Unwrap { ty: t });
+            }
+            return mk(TK::Error, Ty::Error);
+        };
+        self.b.scopes.push(HashMap::new());
+        let (bind, flag, val) = self.opened(v, inner.clone());
+        self.b.scopes.pop();
+        let check = TStmt::Assert(
+            flag,
+            "the value is None".to_string(),
+            span,
+            CheckKind::Unwrap,
+        );
+        let mut stmts = bind;
+        stmts.push(check);
+        mk(TK::Block(stmts, Some(Box::new(val))), inner)
+    }
+
+    /// `-x`, `not x` and `~x`.
+    pub(super) fn prefix(&mut self, p: &next::PrefixExpr, _want: Option<&Ty>, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let (Some(op), Some(x)) = (p.op_kind(), p.operand()) else {
+            return Self::error_node(span);
+        };
+        // `~x` flips every bit: `x ^ ones`.
+        if op == UnOp::BitNot {
+            let v = self.expr(&x, None);
+            let t = match self.shallow(&v.ty) {
+                Ty::U64 => Ty::U64,
+                _ => Ty::Int,
+            };
+            let v = self.coerce(v, &t);
+            let ones = mk(TK::Int(-1), Ty::Int);
+            let ones = match t {
+                Ty::U64 => mk(TK::ToU64(Box::new(ones)), Ty::U64),
+                _ => ones,
+            };
+            return mk(TK::Bin(BinOp::BitXor, Box::new(v), Box::new(ones)), t);
+        }
+        let (want_t, kind): (Ty, fn(Box<TExpr>) -> TK) = match op {
+            UnOp::Not => (Ty::Bool, TK::Not),
+            UnOp::Neg => (Ty::Int, TK::Neg),
+            _ => {
+                self.err(span, Unbuilt::Operator);
+                (Ty::Int, TK::Neg)
+            }
+        };
+        let v = self.expr(&x, Some(&want_t));
+        if let Some(found) = (op == UnOp::Neg)
+            .then(|| self.operator_trait(&op.to_string(), false, &v.ty))
+            .flatten()
+        {
+            return self.operator_call(found, v, None, span);
+        }
+        let want_t = match self.shallow(&v.ty) {
+            Ty::F64 if op == UnOp::Neg => Ty::F64,
+            Ty::I128 if op == UnOp::Neg => Ty::I128,
+            t if op == UnOp::Neg && self.declares_operators(&t) => {
+                let t = self.show(&t);
+                self.err(span, Unbuilt::OperatorTrait { ty: t });
+                return mk(TK::Error, Ty::Error);
+            }
+            _ => want_t,
+        };
+        let v = self.coerce(v, &want_t);
+        mk(kind(Box::new(v)), want_t)
+    }
+
+    /// `a + b` and the other binary operators; `a ?? b` takes `b` when `a` is `None`.
+    pub(super) fn bin_expr(&mut self, b: &next::BinExpr, _want: Option<&Ty>, span: Span) -> TExpr {
+        let (Some(op), Some(lhs), Some(rhs)) = (b.op_kind(), b.lhs(), b.rhs()) else {
+            return Self::error_node(span);
+        };
+        match op {
+            BinOp::Coalesce => self.coalesce(&lhs, &rhs, span),
+            // The parser reports `<=>`: it is `cmp(a, b)` (decision 4.5).
+            BinOp::Spaceship => Self::error_node(span),
+            _ => {
+                let l = self.expr(&lhs, None);
+                let r = self.expr(&rhs, None);
+                self.binary(op, l, r, span)
+            }
+        }
+    }
+
+    fn coalesce(&mut self, lhs: &next::Expr, rhs: &next::Expr, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let l = match lhs.bare_try() {
+            Some(_) => self.extent(lhs, None),
+            None => self.expr(lhs, None),
+        };
+        let Some(inner) = self.optional_of(&l.ty) else {
+            if !self.mentions_error(&l.ty) {
+                let t = self.show(&l.ty);
+                self.err(span, Unbuilt::Coalesce { ty: t });
+            }
+            return mk(TK::Error, Ty::Error);
+        };
+        // An optional right side keeps the result optional: `a ?? b ?? 9` (R01.8.6).
+        let r = self.expr(rhs, Some(&inner));
+        let opt = l.ty.clone();
+        let (r, out) = match self.optional_of(&r.ty) {
+            Some(_) => (self.coerce(r, &opt), opt.clone()),
+            None => (self.coerce(r, &inner), inner.clone()),
+        };
+        self.b.scopes.push(HashMap::new());
+        let (bind, flag, val) = self.opened(l, inner);
+        self.b.scopes.pop();
+        let val = if out == opt { self.some(val, opt) } else { val };
+        let pick = mk(
+            TK::If(Box::new(flag), Box::new(val), Box::new(r)),
+            out.clone(),
+        );
+        mk(TK::Block(bind, Some(Box::new(pick))), out)
+    }
+
+    /// `a < b`, a chain `a <= b < c`, and `x in xs`.
+    pub(super) fn compare(
+        &mut self,
+        c: &next::CompareExpr,
+        _want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let mut operands = c.operands();
+        let Some(first) = operands.next() else {
+            return Self::error_node(span);
+        };
+        let rest: Vec<(CmpOp, next::Expr)> = c.ops().into_iter().zip(operands).collect();
+        let up = |o: &CmpOp| matches!(o, CmpOp::Lt | CmpOp::Le);
+        let down = |o: &CmpOp| matches!(o, CmpOp::Gt | CmpOp::Ge);
+        if rest.iter().any(|(o, _)| up(o)) && rest.iter().any(|(o, _)| down(o)) {
+            self.err(
+                span,
+                Msg::verdict(
+                    cpl_diag::codes::MIXED_COMPARISON_CHAIN,
+                    "a chain that goes both up and down; write the two comparisons with `and`",
+                ),
+            );
+        }
+        // `None == x`: the `None` takes its type from the other side.
+        if let [(op @ (CmpOp::Eq | CmpOp::Ne), rhs)] = rest.as_slice() {
+            if matches!(super::index::unparen(first.clone()), next::Expr::Name(n) if n.is_none()) {
+                let r = self.expr(rhs, None);
+                let l = self.none_value(Some(&r.ty), span);
+                if self.is_error(&l.ty) || self.is_error(&r.ty) {
+                    return Self::error_node(span);
+                }
+                if let Some(test) = self.presence(*op, &l, &r, span) {
+                    return test;
+                }
+                return self.ordered(*op, l, r, span);
+            }
+        }
+        // `a <= b < c` is `a <= b and b < c` with `b` read once, and `c` not read
+        // when the first link is false (R01.5.3).
+        self.b.scopes.push(HashMap::new());
+        let mut prev = self.expr(&first, None);
+        let mut links: Vec<(Vec<TStmt>, TExpr)> = Vec::new();
+        for (k, (op, rhs)) in rest.iter().enumerate() {
+            // `in` stands alone (R01.5.3); its operands are not one type.
+            if matches!(op, CmpOp::In | CmpOp::NotIn) {
+                // `x in V` on a domain named as a type: is integer `x` a position (R04.2.6).
+                let r = match self.type_path(rhs) {
+                    Some(d @ Ty::Dom(_)) => Err(d),
+                    _ => Ok(self.expr(rhs, None)),
+                };
+                self.b.scopes.pop();
+                if rest.len() > 1 {
+                    let text = cpl_diag::msgs::check::MIXED_COMPARISON_CHAIN_CHAINED_COMPARISONS_CANNOT_CONTAIN_IN.say(&[]);
+                    self.err(
+                        span,
+                        Msg::verdict(cpl_diag::codes::MIXED_COMPARISON_CHAIN, text),
+                    );
+                    return Self::error_node(span);
+                }
+                let found = match r {
+                    Ok(r) => self.membership(prev, r, span),
+                    Err(d) => {
+                        let x = self.coerce(prev, &Ty::Int);
+                        mk(TK::DomHas(d, Box::new(x)), Ty::Bool)
+                    }
+                };
+                return match op {
+                    CmpOp::NotIn => mk(TK::Not(Box::new(found)), Ty::Bool),
+                    _ => found,
+                };
+            }
+            let r = self.expr(rhs, Some(&prev.ty));
+            // Either operand fixes the type: `u != from` with `from: ?V` lifts `u` (R04.4.23).
+            let lift = self.optional_of(&prev.ty).is_none() && self.optional_of(&r.ty).is_some();
+            let r = if lift {
+                prev = self.coerce(prev, &r.ty.clone());
+                r
+            } else {
+                self.coerce(r, &prev.ty.clone())
+            };
+            // A comparison with an operand that is the error is the error, as `binary` is.
+            if self.is_error(&prev.ty) || self.is_error(&r.ty) {
+                self.b.scopes.pop();
+                return Self::error_node(span);
+            }
+            if rest.len() == 1 {
+                if let Some(test) = self.presence(*op, &prev, &r, span) {
+                    self.b.scopes.pop();
+                    return test;
+                }
+            }
+            // An operand two links share is held, so it is read once.
+            let mut hold = Vec::new();
+            let r = if k + 1 < rest.len() {
+                let tmp = self.temp("$link", r.ty.clone());
+                let read = mk(TK::Var(tmp), r.ty.clone());
+                hold.push(TStmt::Let(tmp, r));
+                read
+            } else {
+                r
+            };
+            let c = self.ordered(*op, prev, r.clone(), span);
+            links.push((hold, c));
+            prev = r;
+        }
+        self.b.scopes.pop();
+        let mut acc: Option<TExpr> = None;
+        for (hold, c) in links.into_iter().rev() {
+            let c = match acc {
+                None => c,
+                Some(rest) => mk(
+                    TK::If(
+                        Box::new(c),
+                        Box::new(rest),
+                        Box::new(mk(TK::Bool(false), Ty::Bool)),
+                    ),
+                    Ty::Bool,
+                ),
+            };
+            acc = Some(if hold.is_empty() {
+                c
+            } else {
+                mk(TK::Block(hold, Some(Box::new(c))), Ty::Bool)
+            });
+        }
+        acc.unwrap_or(prev)
+    }
 }

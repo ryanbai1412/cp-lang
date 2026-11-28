@@ -1028,8 +1028,8 @@ impl Cx<'_> {
             _ => {
                 let v = if lp { &l } else { &r };
                 let name = self.show(&v.ty);
-                let text =
-                    cpl_diag::msgs::check::BAD_OPERANDS_ON_A_POSITION.say(&[&op.text(), &name]);
+                let text = cpl_diag::msgs::check::BAD_OPERANDS_ON_A_POSITION
+                    .say(&[&op.to_string(), &name]);
                 self.err(span, Msg::verdict(cpl_diag::codes::BAD_OPERANDS, text));
                 Ok(Self::error_node(span))
             }

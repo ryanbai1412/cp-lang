@@ -9,7 +9,7 @@ use cpl_next_ir::ids::{FileId, ItemId, SourceId};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_syntax::ast::{BinOp, CmpOp};
+use cpl_next_syntax::ops::{BinOp, CmpOp};
 use std::collections::{BTreeSet, HashMap};
 
 pub struct Generic {
