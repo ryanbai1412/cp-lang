@@ -127,8 +127,12 @@ impl<'a> Lexer<'a> {
             .filter(|t| t.span.end as usize == start);
         let place =
             target.is_some_and(|t| matches!(t.kind, TokenKind::Ident | TokenKind::RBracket));
-        let line = &self.src[self.src[..start].rfind('\n').map_or(0, |i| i + 1)..start];
-        let c_for = line.trim_start().starts_with("for") && line.contains(';');
+        let line_start = self.src[..start].rfind('\n').map_or(0, |i| i + 1);
+        let line = &self.src[line_start..start];
+        let first = (self.out.tokens.iter().rev())
+            .take_while(|t| t.span.start as usize >= line_start)
+            .last();
+        let c_for = first.is_some_and(|t| t.kind == TokenKind::For) && line.contains(';');
         let prefix = after.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_');
         let postfix = place && after.trim_start().starts_with(')');
         let (op, msg, ours) = match &self.src[start..start + 2] {

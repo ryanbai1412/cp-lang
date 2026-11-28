@@ -77,7 +77,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0409 | fn_falls_through | `f` gives an `Int`, but this `if` has no `else`: a path through the body ends without a value |
 | E0410 | leaves_a_part | `return` leaves from a statement, or from the `if`, `match` or block that is a statement's whole value; give an `if` used inside an argument its own `let` first |
 | E0501 | unsupported | `yield` outside a generator |
-| E0502 | non_ascii | `é` is not ASCII; a Str literal holds single-byte ASCII characters only |
+| E0502 | non_ascii | `é` is not ASCII; a string literal holds single-byte ASCII characters only |
 | E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`, `@allow(x)` is `with lint(x: allow)`) |
 | E0504 | not_implemented | planned syntax this version reads but does not implement yet; the help names today's spelling |
 | E0505 | bad_library_lint | an `@lint` that cannot be used: `from` is not an expression or a run of statements, `to` is not an expression or a run of statements, `to` drops or invents a parameter, `holes:` names a name `from` does not use, `when:` is not holes `from` uses compared with integers, neither `to` (calling the fn or writing its body's operators) nor `from` calls the fn, or the module declares the name twice with the same `from` (R06.4.9) |
