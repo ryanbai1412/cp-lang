@@ -7,13 +7,31 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
+/// Why the database could not answer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DbError {
+    /// A query met its own key while computing it and defines no answer for that cycle.
+    Cycle { query: &'static str, key: String },
+    /// A table held answers of another type than its query's.
+    Table { of: &'static str },
+}
+
+impl std::fmt::Display for DbError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DbError::Cycle { query, key } => write!(f, "query {query}({key}) reads its own answer"),
+            DbError::Table { of } => write!(f, "the table of {of} holds another type"),
+        }
+    }
+}
+
 /// A query: a pure fn from a key to an answer, computed through `Db::get` alone.
 pub trait Query: 'static {
     type Key: Clone + Eq + Hash + std::fmt::Debug + Send + Sync + 'static;
     type Value: Clone + Eq + Send + Sync + 'static;
     /// The name a count of recomputations reports.
     const NAME: &'static str;
-    fn compute(db: &Db, key: &Self::Key) -> Self::Value;
+    fn compute(db: &Db, key: &Self::Key) -> Result<Self::Value, DbError>;
     /// The answer for a key met again while it is being computed; `None` for a query whose
     /// answers never depend on themselves.
     fn recover(_key: &Self::Key) -> Option<Self::Value> {
@@ -27,6 +45,7 @@ pub trait Input: 'static {
     type Value: Clone + Eq + Send + Sync + 'static;
 }
 
+/// The revision a read answer last changed in; `u64::MAX` when it can no longer be read.
 type Dep = Arc<dyn Fn(&Db) -> u64 + Send + Sync>;
 
 struct Memo<V> {
@@ -54,6 +73,8 @@ pub struct Db {
 
 struct InputMarker<I>(std::marker::PhantomData<I>);
 
+type Answer<Q> = Result<<Q as Query>::Value, DbError>;
+
 impl Db {
     fn lock(&self) -> std::sync::MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
@@ -62,54 +83,55 @@ impl Db {
     fn table<K: Eq + Hash + Send + 'static, V: Send + 'static>(
         st: &mut State,
         t: TypeId,
-    ) -> &mut HashMap<K, Memo<V>> {
-        (st.memos
-            .entry(t)
-            .or_insert_with(|| Box::new(HashMap::<K, Memo<V>>::new())))
-        .downcast_mut()
-        .expect("a type's table holds that type's keys and answers")
+    ) -> Result<&mut HashMap<K, Memo<V>>, DbError> {
+        (st.memos.entry(t))
+            .or_insert_with(|| Box::new(HashMap::<K, Memo<V>>::new()))
+            .downcast_mut()
+            .ok_or(DbError::Table {
+                of: std::any::type_name::<V>(),
+            })
     }
 
     /// Sets input `key`. A value equal to the one held changes nothing.
-    pub fn set<I: Input>(&self, key: I::Key, value: I::Value) {
+    pub fn set<I: Input>(&self, key: I::Key, value: I::Value) -> Result<(), DbError> {
         let mut st = self.lock();
         let t = TypeId::of::<InputMarker<I>>();
         let rev = st.revision + 1;
-        let table = Self::table::<I::Key, I::Value>(&mut st, t);
+        let table = Self::table::<I::Key, I::Value>(&mut st, t)?;
         if table.get(&key).is_some_and(|m| m.value == value) {
-            return;
+            return Ok(());
         }
-        table.insert(
-            key,
-            Memo {
-                value,
-                deps: Vec::new(),
-                verified: rev,
-                changed: rev,
-            },
-        );
+        let memo = Memo {
+            value,
+            deps: Vec::new(),
+            verified: rev,
+            changed: rev,
+        };
+        table.insert(key, memo);
         st.revision = rev;
+        Ok(())
     }
 
     /// Input `key`'s value, read by the query being computed.
-    pub fn input<I: Input>(&self, key: &I::Key) -> Option<I::Value> {
+    pub fn input<I: Input>(&self, key: &I::Key) -> Result<Option<I::Value>, DbError> {
         let t = TypeId::of::<InputMarker<I>>();
         let mut st = self.lock();
-        let value = (Self::table::<I::Key, I::Value>(&mut st, t).get(key)).map(|m| m.value.clone());
+        let value =
+            (Self::table::<I::Key, I::Value>(&mut st, t)?.get(key)).map(|m| m.value.clone());
         let k = key.clone();
         let dep: Dep = Arc::new(move |db: &Db| {
             let mut st = db.lock();
-            (Self::table::<I::Key, I::Value>(&mut st, TypeId::of::<InputMarker<I>>()).get(&k))
-                .map_or(u64::MAX, |m| m.changed)
+            let table = Self::table::<I::Key, I::Value>(&mut st, TypeId::of::<InputMarker<I>>());
+            (table.ok().and_then(|t| t.get(&k))).map_or(u64::MAX, |m| m.changed)
         });
         if let Some(f) = st.frames.last_mut() {
             f.push(dep);
         }
-        value
+        Ok(value)
     }
 
     /// Query `Q`'s answer for `key`, recomputed only if something it read changed.
-    pub fn get<Q: Query>(&self, key: &Q::Key) -> Q::Value {
+    pub fn get<Q: Query>(&self, key: &Q::Key) -> Answer<Q> {
         let (value, _) = self.fetch::<Q>(key);
         let k = key.clone();
         let dep: Dep = Arc::new(move |db: &Db| db.fetch::<Q>(&k).1);
@@ -125,19 +147,24 @@ impl Db {
     }
 
     /// The answer and the revision it last changed in.
-    fn fetch<Q: Query>(&self, key: &Q::Key) -> (Q::Value, u64) {
+    fn fetch<Q: Query>(&self, key: &Q::Key) -> (Answer<Q>, u64) {
         let t = TypeId::of::<Q>();
         let (rev, held) = {
             let mut st = self.lock();
             if (st.active.iter()).any(|(a, k)| *a == t && k.downcast_ref::<Q::Key>() == Some(key)) {
                 drop(st);
-                let value = Q::recover(key)
-                    .unwrap_or_else(|| panic!("query {}({key:?}) reads its own answer", Q::NAME));
-                return (value, u64::MAX);
+                let cycle = DbError::Cycle {
+                    query: Q::NAME,
+                    key: format!("{key:?}"),
+                };
+                return (Q::recover(key).ok_or(cycle), u64::MAX);
             }
             let rev = st.revision;
-            let held = (Self::table::<Q::Key, Q::Value>(&mut st, t).get(key))
-                .map(|m| (m.value.clone(), m.deps.clone(), m.verified, m.changed));
+            let held = match Self::table::<Q::Key, Answer<Q>>(&mut st, t) {
+                Ok(table) => (table.get(key))
+                    .map(|m| (m.value.clone(), m.deps.clone(), m.verified, m.changed)),
+                Err(e) => return (Err(e), u64::MAX),
+            };
             (rev, held)
         };
         if let Some((value, deps, verified, changed)) = &held {
@@ -149,7 +176,9 @@ impl Db {
             self.lock().active.pop();
             if fresh {
                 let mut st = self.lock();
-                if let Some(m) = Self::table::<Q::Key, Q::Value>(&mut st, t).get_mut(key) {
+                if let Ok(Some(m)) =
+                    Self::table::<Q::Key, Answer<Q>>(&mut st, t).map(|t| t.get_mut(key))
+                {
                     m.verified = rev;
                 }
                 return (value.clone(), *changed);
@@ -169,15 +198,17 @@ impl Db {
             Some((old, _, _, changed)) if *old == value => *changed,
             _ => rev,
         };
-        Self::table::<Q::Key, Q::Value>(&mut st, t).insert(
-            key.clone(),
-            Memo {
-                value: value.clone(),
-                deps,
-                verified: rev,
-                changed,
-            },
-        );
+        let memo = Memo {
+            value: value.clone(),
+            deps,
+            verified: rev,
+            changed,
+        };
+        if let Err(e) =
+            Self::table::<Q::Key, Answer<Q>>(&mut st, t).map(|t| t.insert(key.clone(), memo))
+        {
+            return (Err(e), u64::MAX);
+        }
         (value, changed)
     }
 }
@@ -196,8 +227,8 @@ mod tests {
         type Key = ();
         type Value = i64;
         const NAME: &'static str = "total";
-        fn compute(db: &Db, _: &()) -> i64 {
-            db.input::<Num>(&1).unwrap_or(0) + db.input::<Num>(&2).unwrap_or(0)
+        fn compute(db: &Db, _: &()) -> Result<i64, DbError> {
+            Ok(db.input::<Num>(&1)?.unwrap_or(0) + db.input::<Num>(&2)?.unwrap_or(0))
         }
     }
     struct Twice;
@@ -205,8 +236,8 @@ mod tests {
         type Key = ();
         type Value = i64;
         const NAME: &'static str = "twice";
-        fn compute(db: &Db, _: &()) -> i64 {
-            db.get::<Total>(&()) * 2
+        fn compute(db: &Db, _: &()) -> Result<i64, DbError> {
+            Ok(db.get::<Total>(&())? * 2)
         }
     }
     struct Loop;
@@ -214,11 +245,12 @@ mod tests {
         type Key = u32;
         type Value = u32;
         const NAME: &'static str = "loop";
-        fn compute(db: &Db, k: &u32) -> u32 {
-            db.get::<Loop>(&(1 - k)) + 1
+        fn compute(db: &Db, k: &u32) -> Result<u32, DbError> {
+            Ok(db.get::<Loop>(&(k ^ 1))? + 1)
         }
-        fn recover(_: &u32) -> Option<u32> {
-            Some(0)
+        /// Keys 0 and 1 meet each other with an answer for the cycle; 2 and 3 with none.
+        fn recover(k: &u32) -> Option<u32> {
+            (*k < 2).then_some(0)
         }
     }
 
@@ -227,21 +259,21 @@ mod tests {
     #[test]
     fn a_query_reruns_only_when_what_it_read_changed() {
         let db = Db::default();
-        db.set::<Num>(1, 2);
-        db.set::<Num>(2, 3);
-        assert_eq!(db.get::<Twice>(&()), 10);
-        assert_eq!(db.get::<Twice>(&()), 10);
+        assert_eq!(db.set::<Num>(1, 2), Ok(()));
+        assert_eq!(db.set::<Num>(2, 3), Ok(()));
+        assert_eq!(db.get::<Twice>(&()), Ok(10));
+        assert_eq!(db.get::<Twice>(&()), Ok(10));
         let n = |db: &Db, q| db.computed().get(q).copied().unwrap_or(0);
         assert_eq!((n(&db, "total"), n(&db, "twice")), (1, 1));
-        db.set::<Num>(1, 2);
-        assert_eq!(db.get::<Twice>(&()), 10);
+        assert_eq!(db.set::<Num>(1, 2), Ok(()));
+        assert_eq!(db.get::<Twice>(&()), Ok(10));
         assert_eq!((n(&db, "total"), n(&db, "twice")), (1, 1));
-        db.set::<Num>(1, 3);
-        db.set::<Num>(2, 2);
-        assert_eq!(db.get::<Twice>(&()), 10);
+        assert_eq!(db.set::<Num>(1, 3), Ok(()));
+        assert_eq!(db.set::<Num>(2, 2), Ok(()));
+        assert_eq!(db.get::<Twice>(&()), Ok(10));
         assert_eq!((n(&db, "total"), n(&db, "twice")), (2, 1));
-        db.set::<Num>(2, 4);
-        assert_eq!(db.get::<Twice>(&()), 14);
+        assert_eq!(db.set::<Num>(2, 4), Ok(()));
+        assert_eq!(db.get::<Twice>(&()), Ok(14));
         assert_eq!((n(&db, "total"), n(&db, "twice")), (3, 2));
     }
 
@@ -249,6 +281,17 @@ mod tests {
     #[test]
     fn a_cycle_takes_the_recovery_answer() {
         let db = Db::default();
-        assert_eq!(db.get::<Loop>(&0), 2);
+        assert_eq!(db.get::<Loop>(&0), Ok(2));
+    }
+
+    /// A cycle through a query that defines no answer for one is an error, not a stop.
+    #[test]
+    fn a_cycle_without_a_recovery_answer_is_an_error() {
+        let db = Db::default();
+        let cycle = DbError::Cycle {
+            query: "loop",
+            key: "2".into(),
+        };
+        assert_eq!(db.get::<Loop>(&2), Err(cycle));
     }
 }
