@@ -3629,7 +3629,7 @@ engines = "next"
 [case."Ordered/Cut/l"]
 code = """
 domain P = 0..4
-fn left<D: Domain>(d: D) -> Cut<D> = d.l
+fn left<D: Ordered>(d: D) -> Cut<D> = d.l
 print(left(P.cuts.nth(2)).ord)
 """
 out = "2"
@@ -3658,7 +3658,7 @@ out = "2"
 [case."Ordered/Cut/r"]
 code = """
 domain P = 0..4
-fn right<D: Domain>(d: D) -> Cut<D> = d.r
+fn right<D: Ordered>(d: D) -> Cut<D> = d.r
 print(right(P.cuts.nth(2)).ord)
 """
 out = "3"
@@ -4069,6 +4069,7 @@ input = "hi there\\n"
 
 [case."Filled/Array/filled"]
 code = """
+use std.literal.{Filled}
 fn mk<A: Filled<Int>>() -> A = A.filled(7)
 domain P = 0..3
 let a: [P]Int = mk()
@@ -4078,6 +4079,7 @@ out = "7 3"
 
 [case."ListLiteral/List/with_room"]
 code = """
+use std.literal.{ListLiteral}
 fn mk<A: ListLiteral<Int>>() -> A = A.with_room(3)
 let xs: List<Int> = mk()
 print(xs.len)
@@ -4086,6 +4088,7 @@ out = "0"
 
 [case."ListLiteral/List/push"]
 code = """
+use std.literal.{ListLiteral}
 fn mk<A: ListLiteral<Int>>() -> A:
     var a = A.with_room(0)
     a.push(4)
@@ -4165,3 +4168,947 @@ code = """
 print(min(6, 2, 7, 9, 1, 3), min(3, 1, 9, 7, 2, 6))
 """
 out = "1 1"
+
+# Required cases for std's claims that the gate found uncovered: each trait method with no
+# default, or a default the impl rewrites. Outputs agree on cpl-next-oracle --raw and cpl-next --engine.
+
+[case."Bidir/Col/iter_rev"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+for x in k.iter_rev(): print(x)
+"""
+out = "4\n1"
+
+[case."Bidir/Row/iter_rev"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+for x in w.iter_rev(): print(x)
+"""
+out = "5\n4\n3"
+
+[case."Clone/Tuple2/clone"]
+code = """
+let a = ([1, 2], 3)
+var b = a.clone()
+b._0.push(9)
+print(a._0.len, b._0.len, b._1)
+"""
+out = "2 3 3"
+
+[case."Clone/Tuple3/clone"]
+code = """
+let a = ([1], "x", 4)
+var b = a.clone()
+b._0.push(2)
+print(a._0.len, b._0.len, b._1, b._2)
+"""
+out = "1 2 x 4"
+
+[case."Clone/Tuple4/clone"]
+code = """
+let a = (1, [2], 'c', true)
+var b = a.clone()
+b._1.push(3)
+print(a._1.len, b._1.len, b._0, b._2, if b._3: "t" else: "f")
+"""
+out = "1 2 1 c t"
+
+[case."Contains/AugSortedSet/contains"]
+code = """
+use std.bag.{AugSortedSet}
+var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: s.add(x)
+print(yes(s.contains(3)), yes(s.contains(2)))
+"""
+out = "YES NO"
+
+[case."Contains/DynBitset/contains"]
+code = """
+use std.bitset.{DynBitset}
+var b = DynBitset(4)
+b.set(1)
+b.set(3)
+print(yes(b.contains(3)), yes(b.contains(2)))
+"""
+out = "YES NO"
+
+[case."Contains/FlatMap/contains"]
+code = """
+use std.hashmap.{FlatMap}
+var m = FlatMap(0)
+m.set(7, 70)
+m.set(-2, 5)
+print(yes(m.contains(-2)), yes(m.contains(3)))
+"""
+out = "YES NO"
+
+[case."Contains/HashMap/contains"]
+code = """
+var m: HashMap<Int, Int> = HashMap()
+m[5] = 1
+print(yes(m.contains(5)), yes(m.contains(6)))
+"""
+out = "YES NO"
+
+[case."Contains/HashSet/contains"]
+code = """
+var h: HashSet<Int> = HashSet()
+h.add(4)
+print(yes(h.contains(4)), yes(h.contains(1)))
+"""
+out = "YES NO"
+
+[case."Contains/IndexedHeap/contains"]
+code = """
+use std.heap.{IndexedHeap}
+domain V = 0..4
+var h: IndexedHeap<V, Int> = IndexedHeap()
+h.set(V(2), 5)
+h.set(V(0), 9)
+print(yes(h.contains(V(2))), yes(h.contains(V(1))))
+"""
+out = "YES NO"
+
+[case."Contains/IntervalSet/contains"]
+code = """
+use std.interval.{IntervalSet}
+var s = IntervalSet<0..8>()
+s.add(4..6)
+print(yes(s.contains(5)), yes(s.contains(6)))
+"""
+out = "YES NO"
+
+[case."Contains/MarkMap/contains"]
+code = """
+use std.marks.{MarkMap}
+var m = MarkMap<0..5, Int>(0)
+m.set(3, 7)
+print(yes(m.contains(3)), yes(m.contains(1)))
+"""
+out = "YES NO"
+
+[case."Contains/Marks/contains"]
+code = """
+use std.marks.{Marks}
+var m = Marks<0..5>()
+m.add(3)
+m.add(1)
+print(yes(m.contains(3)), yes(m.contains(2)))
+"""
+out = "YES NO"
+
+[case."Contains/PointSet/contains"]
+code = """
+use std.geometry.{PointSet, Pt}
+var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)])
+s.remove(1)
+print(yes(s.contains(2)), yes(s.contains(1)))
+"""
+out = "YES NO"
+
+[case."Contains/SortedBag/contains"]
+code = """
+use std.bag.{SortedBag}
+let b = SortedBag.of([3, 1, 3])
+print(yes(b.contains(3)), yes(b.contains(2)))
+"""
+out = "YES NO"
+
+[case."Contains/SortedMap/contains"]
+code = """
+var m: SortedMap<Int, Str> = SortedMap()
+m.set(3, "c")
+print(yes(m.contains(3)), yes(m.contains(1)))
+"""
+out = "YES NO"
+
+[case."Contains/SortedSet/contains"]
+code = """
+use std.bag.{SortedSet}
+let s = SortedSet.of([5, 2, 5])
+print(yes(s.contains(5)), yes(s.contains(3)))
+"""
+out = "YES NO"
+
+[case."Contains/SparseIntervalSet/contains"]
+code = """
+use std.interval.{SparseIntervalSet}
+var s = SparseIntervalSet()
+s.add(4..6)
+print(yes(s.contains(5)), yes(s.contains(6)))
+"""
+out = "YES NO"
+
+[case."Contains/SparseSet/contains"]
+code = """
+use std.marks.{SparseSet}
+var s = SparseSet<0..5>()
+s.add(2)
+s.add(0)
+print(yes(s.contains(2)), yes(s.contains(1)))
+"""
+out = "YES NO"
+
+[case."Contains/Subset/contains"]
+code = """
+domain V = 0..4
+let s = Subset<V>.single(V(0)) | Subset<V>.single(V(2))
+print(yes(s.contains(V(2))), yes(s.contains(V(1))))
+"""
+out = "YES NO"
+
+[case."Contains/XorTrie/contains"]
+code = """
+use std.bitset.{XorTrie}
+var t = XorTrie(3)
+t.add(5)
+t.add(1)
+t.xor_all(1)
+print(yes(t.contains(4)), yes(t.contains(5)))
+"""
+out = "YES NO"
+
+[case."Domain/Tuple2/count"]
+code = """
+domain A = 0..2
+domain B = 0..3
+print((A, B).count)
+"""
+out = "6"
+
+[case."Domain/Tuple2/nth"]
+code = """
+domain A = 0..2
+domain B = 0..3
+let p = (A, B).nth(4)
+print(Int(p._0), Int(p._1))
+"""
+out = "1 1"
+
+[case."Domain/Tuple2/ord"]
+code = """
+domain A = 0..2
+domain B = 0..3
+let p: (A, B) = (A(1), B(2))
+print(p.ord)
+"""
+out = "5"
+
+[case."Domain/Tuple3/count"]
+code = """
+domain A = 0..2
+domain B = 0..3
+domain C = 0..5
+print((A, B, C).count)
+"""
+out = "30"
+
+[case."Domain/Tuple3/nth"]
+code = """
+domain A = 0..2
+domain B = 0..3
+domain C = 0..5
+let p = (A, B, C).nth(17)
+print(Int(p._0), Int(p._1), Int(p._2))
+"""
+out = "1 0 2"
+
+[case."Domain/Tuple3/ord"]
+code = """
+domain A = 0..2
+domain B = 0..3
+domain C = 0..5
+let p: (A, B, C) = (A(1), B(0), C(2))
+print(p.ord)
+"""
+out = "17"
+
+[case."Domain/Tuple4/count"]
+code = """
+domain A = 0..2
+domain B = 0..3
+print((A, B, A, B).count)
+"""
+out = "36"
+
+[case."Domain/Tuple4/nth"]
+code = """
+domain A = 0..2
+domain B = 0..3
+let p = (A, B, A, B).nth(23)
+print(Int(p._0), Int(p._1), Int(p._2), Int(p._3))
+"""
+out = "1 0 1 2"
+
+[case."Domain/Tuple4/ord"]
+code = """
+domain A = 0..2
+domain B = 0..3
+let p: (A, B, A, B) = (A(1), B(2), A(0), B(1))
+print(p.ord)
+"""
+out = "31"
+
+[case."Eq/HashMap/eq"]
+code = """
+var a: HashMap<Int, Int> = HashMap()
+var b: HashMap<Int, Int> = HashMap()
+a[1] = 10
+a[2] = 20
+b[2] = 20
+b[1] = 10
+let same = a == b
+b[1] = 11
+print(yes(same), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Eq/HashSet/eq"]
+code = """
+var a: HashSet<Int> = HashSet()
+var b: HashSet<Int> = HashSet()
+for x in [1, 2, 3]: a.add(x)
+for x in [3, 2, 1]: b.add(x)
+let same = a == b
+b.add(4)
+print(yes(same), yes(a == b))
+"""
+out = "YES NO"
+
+[case."Eq/Tuple2/eq"]
+code = """
+print(if (1, "a") == (1, "a"): "eq" else: "ne", if (1, "a") == (1, "b"): "eq" else: "ne")
+"""
+out = "eq ne"
+
+[case."Eq/Tuple3/eq"]
+code = """
+print(if (1, 'x', true) == (1, 'x', true): "eq" else: "ne", if (1, 'x', true) == (1, 'x', false): "eq" else: "ne")
+"""
+out = "eq ne"
+
+[case."Eq/Tuple4/eq"]
+code = """
+print(if (1, 2, 3, 4) == (1, 2, 3, 4): "eq" else: "ne", if (1, 2, 3, 4) == (1, 2, 3, 5): "eq" else: "ne")
+"""
+out = "eq ne"
+
+[case."FromOp/Comm/monoid"]
+code = """
+let m = Monoid<Int>(1, (a, b) => a * b).commutative()
+print(m.monoid().op(4, 5), m.monoid().id)
+"""
+out = "20 1"
+
+[case."FromOp/Monoid/monoid"]
+code = """
+let m = Monoid<Int>(0, (a, b) => a + b)
+print(m.monoid().op(2, 3), m.monoid().id)
+"""
+out = "5 0"
+
+[case."GroupOp/Group/group"]
+code = """
+let g = Group<Int>(0, (a, b) => a + b, a => -a)
+print(g.group().inv(2), g.group().op(2, 3))
+"""
+out = "-2 5"
+
+[case."Hash/Str/hash"]
+code = """
+fn same<T: Hash>(a: T, b: T) -> Str = if a.hash() == b.hash(): "same" else: "differ"
+print(same("ab", "ab"), same("ab", "ba"))
+"""
+out = "same differ"
+
+[case."Hash/Tuple1/hash"]
+code = """
+let a = Tuple1(5)
+print(if a.hash() == Tuple1(5).hash(): "same" else: "differ", if a.hash() == Tuple1(6).hash(): "same" else: "differ")
+"""
+out = "same differ"
+
+[case."Hash/Tuple2/hash"]
+code = """
+print(if (1, 2).hash() == (1, 2).hash(): "same" else: "differ", if (1, 2).hash() == (2, 1).hash(): "same" else: "differ")
+"""
+out = "same differ"
+
+[case."Hash/Tuple3/hash"]
+code = """
+print(if (1, "a", 'c').hash() == (1, "a", 'c').hash(): "same" else: "differ", if (1, "a", 'c').hash() == (1, "b", 'c').hash(): "same" else: "differ")
+"""
+out = "same differ"
+
+[case."Hash/Tuple4/hash"]
+code = """
+print(if (1, 2, 3, 4).hash() == (1, 2, 3, 4).hash(): "same" else: "differ", if (1, 2, 3, 4).hash() == (4, 3, 2, 1).hash(): "same" else: "differ")
+"""
+out = "same differ"
+
+[case."IndexGet/Col/at"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+print(k[R(1)])
+"""
+out = "4"
+
+[case."IndexGet/HashMap/at"]
+code = """
+var m: HashMap<Int, Int> = HashMap()
+m[5] = 7
+print(m[5])
+"""
+out = "7"
+
+[case."IndexGet/Row/at"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+print(w[C(2)])
+"""
+out = "5"
+
+[case."IndexMut/HashMap/at"]
+code = """
+var m: HashMap<Int, Int> = HashMap()
+m[5] = 7
+m[5] += 3
+print(m[5])
+"""
+out = "10"
+
+[case."IndexSet/HashMap/set"]
+code = """
+var m: HashMap<Int, Int> = HashMap()
+m[5] = 7
+m[5] = 9
+print(m[5], m.len)
+"""
+out = "9 1"
+
+[case."Indexed/Col/keys"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+for r in k.keys: print(r)
+"""
+out = "0\n1"
+
+[case."Indexed/Row/keys"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+for c in w.keys: print(c)
+"""
+out = "0\n1\n2"
+
+[case."Into/Sign/into"]
+code = """
+print(Int(Sign.Neg), Int(Sign.Zero), Int(Sign.Pos), Int((-4).sign) * 4)
+"""
+out = "-1 0 1 -4"
+
+[case."Into/Tuple2/into"]
+code = """
+domain A = 0..2
+domain B = 0..3
+let p: (A, B) = (1, 2).into()
+print(Int(p._0), Int(p._1), Int(p))
+"""
+out = "1 2 5"
+
+[case."Into/Tuple3/into"]
+code = """
+domain A = 0..2
+domain B = 0..3
+let p: (A, B, A) = (1, 0, 1).into()
+print(Int(p))
+"""
+out = "7"
+
+[case."Into/Tuple4/into"]
+code = """
+domain A = 0..2
+let p: (A, A, A, A) = (1, 0, 1, 1).into()
+print(Int(p))
+"""
+out = "11"
+
+[case."Keyed/Col/items"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+for (r, x) in k.items(): print(r, x)
+"""
+out = "0 1\n1 4"
+
+[case."Keyed/Rect/items"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let q = g[R(0)..=R(1), C(1)..=C(2)]
+for ((r, c), x) in q.items(): print(r, c, x)
+"""
+out = "0 1 1\n0 2 2\n1 1 4\n1 2 5"
+
+[case."Keyed/Row/items"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+for (c, x) in w.items(): print(c, x)
+"""
+out = "0 3\n1 4\n2 5"
+
+[case."Neg/Sign/neg"]
+code = """
+print(Int(-Sign.Neg), Int(-Sign.Zero), Int(-Sign.Pos))
+"""
+out = "1 0 -1"
+
+[case."Ord/Tuple2/lt"]
+code = """
+print([(1, 5), (2, 0), (1, 4)].sorted())
+"""
+out = "1 4\n1 5\n2 0"
+
+[case."Ord/Tuple3/lt"]
+code = """
+print(if (1, 2, 9) < (1, 3, 0): "lt" else: "ge", if (1, 2, 3) < (1, 2, 3): "lt" else: "ge")
+"""
+out = "lt ge"
+
+[case."Ord/Tuple4/lt"]
+code = """
+print(if (0, 0, 0, 1) < (0, 0, 1, 0): "lt" else: "ge", if (2, 0, 0, 0) < (1, 9, 9, 9): "lt" else: "ge")
+"""
+out = "lt ge"
+
+[case."Positional/Col/nth"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+print(k.nth(0), k.nth(1))
+"""
+out = "1 4"
+
+[case."Positional/Row/nth"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+print(w.nth(0), w.nth(2))
+"""
+out = "3 5"
+
+[case."Sample/Str/samples"]
+code = """
+use std.laws.{Sample}
+print(Str.samples().len, Str.samples()[3])
+"""
+out = "6 ab"
+
+[case."Seq/AugSortedBag/iter"]
+code = """
+use std.bag.{AugSortedBag}
+var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: b.add(x)
+for x in b: print(x)
+"""
+out = "1\n3\n3"
+
+[case."Seq/AugSortedSet/iter"]
+code = """
+use std.bag.{AugSortedSet}
+var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: s.add(x)
+for x in s: print(x)
+"""
+out = "1\n3"
+
+[case."Seq/Bitset/iter"]
+code = """
+use std.bitset.{Bitset}
+domain D = 0..10
+for d in Bitset<D>.of([D(5), D(1), D(3)]): print(d)
+"""
+out = "1\n3\n5"
+
+[case."Seq/BucketCount/iter"]
+code = """
+use std.bag.{BucketCount}
+var c = BucketCount(0..10)
+c.add(7, 2)
+c.add(3)
+for x in c: print(x)
+"""
+out = "3\n7\n7"
+
+[case."Seq/Col/iter"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+for x in k: print(x)
+"""
+out = "1\n4"
+
+[case."Seq/DynBitset/iter"]
+code = """
+use std.bitset.{DynBitset}
+var b = DynBitset(4)
+b.set(1)
+b.set(3)
+for i in b: print(i)
+"""
+out = "1\n3"
+
+[case."Seq/ErasableHeap/iter"]
+code = """
+use std.heap.{ErasableHeap}
+var h: ErasableHeap<Int> = ErasableHeap()
+for x in [3, 1, 2]: h.push(x)
+h.remove(2)
+for x in h: print(x)
+"""
+out = "1\n3"
+
+[case."Seq/HashMap/iter"]
+code = """
+var m: HashMap<Int, Int> = HashMap()
+for i in 1..4: m[i] = i * 10
+var s = 0
+for (k, v) in m: s += k * v
+print(s)
+"""
+out = "140"
+
+[case."Seq/HashSet/iter"]
+code = """
+var h: HashSet<Int> = HashSet()
+for x in [4, 1, 4]: h.add(x)
+var s = 0
+for x in h: s += x
+print(s)
+"""
+out = "5"
+
+[case."Seq/Heap/iter"]
+code = """
+use std.heap.{Heap}
+let h = Heap.of([3, 1, 2])
+for x in h: print(x)
+"""
+out = "1\n2\n3"
+
+[case."Seq/LineContainer/iter"]
+code = """
+use std.dp.{LineContainer, Line}
+var c = LineContainer(max)
+c.add(Line(1, 0))
+c.add(Line(-1, 4))
+for l in c: print(l)
+"""
+out = "-1 4\n1 0"
+
+[case."Seq/Marks/iter"]
+code = """
+use std.marks.{Marks}
+var m = Marks<0..5>()
+m.add(3)
+m.add(1)
+for x in m: print(x)
+"""
+out = "1\n3"
+
+[case."Seq/MaxHeap/iter"]
+code = """
+use std.heap.{MaxHeap}
+let h = MaxHeap.of([1, 3, 2])
+for x in h: print(x)
+"""
+out = "3\n2\n1"
+
+[case."Seq/MinMaxHeap/iter"]
+code = """
+use std.heap.{MinMaxHeap}
+let h = MinMaxHeap.of([2, 7, 4])
+for x in h: print(x)
+"""
+out = "2\n4\n7"
+
+[case."Seq/PMultisetWithin/iter"]
+code = """
+use std.persistent.{PArena, PMultiset}
+var ar = PArena<PMultiset<0..10>>()
+let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7)
+for x in s.within(ar): print(x)
+"""
+out = "2\n7\n7"
+
+[case."Seq/PointSet/iter"]
+code = """
+use std.geometry.{PointSet, Pt}
+var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)])
+s.remove(1)
+for i in s: print(i)
+"""
+out = "0\n2"
+
+[case."Seq/Rect/iter"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let q = g[R(0)..=R(1), C(1)..=C(2)]
+for x in q: print(x)
+"""
+out = "1\n2\n4\n5"
+
+[case."Seq/Row/iter"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+for x in w: print(x)
+"""
+out = "3\n4\n5"
+
+[case."Seq/SortedBag/iter"]
+code = """
+use std.bag.{SortedBag}
+let b = SortedBag.of([3, 1, 3])
+for x in b: print(x)
+"""
+out = "1\n3\n3"
+
+[case."Seq/SortedSet/iter"]
+code = """
+use std.bag.{SortedSet}
+let s = SortedSet.of([5, 2, 5])
+for x in s: print(x)
+"""
+out = "2\n5"
+
+[case."Seq/SparseSet/iter"]
+code = """
+use std.marks.{SparseSet}
+var s = SparseSet<0..5>()
+s.add(2)
+s.add(0)
+for x in s: print(x)
+"""
+out = "2\n0"
+
+[case."Seq/Subset/iter"]
+code = """
+domain V = 0..4
+let s = Subset<V>.single(V(0)) | Subset<V>.single(V(2))
+for v in s: print(v)
+"""
+out = "0\n2"
+
+[case."Seq/VersionWithin/iter"]
+code = """
+use std.persistent.{PersistentArray}
+domain P = 0..3
+var p = PersistentArray<P, Int>(a: [P] i => i.ord + 1)
+let v = p.set(p.base, P(2), 7)
+for x in v.within(p): print(x)
+"""
+out = "1\n2\n7"
+
+[case."Seq/XorTrie/iter"]
+code = """
+use std.bitset.{XorTrie}
+var t = XorTrie(3)
+t.add(5)
+t.add(1)
+t.xor_all(1)
+for x in t: print(x)
+"""
+out = "0\n4"
+
+[case."Show/Col/show"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+print(k, "{k}")
+"""
+out = "1 4 1 4"
+
+[case."Show/Rect/show"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let q = g[R(0)..=R(1), C(1)..=C(2)]
+print(q)
+"""
+out = "1 2 4 5"
+
+[case."Show/Row/show"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+print(w, "{w}")
+"""
+out = "3 4 5 3 4 5"
+
+[case."Sized/Col/len"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let k = g[.., C(1)]
+print(k.len)
+"""
+out = "2"
+
+[case."Sized/GridCols/len"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+print(g.cols.len)
+"""
+out = "3"
+
+[case."Sized/GridRows/len"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+print(g.rows.len)
+"""
+out = "2"
+
+[case."Sized/HashMap/len"]
+code = """
+var m: HashMap<Int, Int> = HashMap()
+for i in [1, 2, 1]: m[i] = i
+print(m.len)
+"""
+out = "2"
+
+[case."Sized/HashSet/len"]
+code = """
+var h: HashSet<Int> = HashSet()
+for x in [4, 1, 4]: h.add(x)
+print(h.len)
+"""
+out = "2"
+
+[case."Sized/Rect/len"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let q = g[R(0)..=R(1), C(1)..=C(2)]
+print(q.len)
+"""
+out = "4"
+
+[case."Sized/Row/len"]
+code = """
+domain R = 0..2
+domain C = 0..3
+let g: [R, C]Int = [R, C] (r, c) => Int(r) * 3 + Int(c)
+let w = g[R(1)]
+print(w.len)
+"""
+out = "3"
+
+[case."Contains/Interner/contains"]
+code = """
+use std.marks.{Interner}
+var t = Interner<Str>()
+t.id("b")
+t.id("a")
+t.id("b")
+print(yes(t.contains("a")), yes(t.contains("c")))
+"""
+out = "YES NO"
+
+[case."Seq/Interner/iter"]
+code = """
+use std.marks.{Interner}
+var t = Interner<Str>()
+t.id("b")
+t.id("a")
+t.id("b")
+for w in t: print(w)
+"""
+out = "b\na"
+
+[case."Zero/MaxSub/zero"]
+code = """
+use std.algebra.{MaxSub}
+fn z<T: Zero>() -> T = T.zero
+let m: MaxSub = z()
+print(m.try_best ?? -1, m.total)
+"""
+out = "-1 0"
+
+# One case each for a default body that every claimer keeps.
+
+[case."FromOp/Monoid/sums"]
+code = """
+let m = Monoid<Int>(0, (a, b) => a + b)
+print(yes(m.sums()), m.monoid().id)
+"""
+out = "NO 0"
+
+[case."Indexed/List/cut_after"]
+code = """
+let a = [5, 6, 7, 8]
+let c = a.cut_after(1)
+print(c.ord, yes(c == (1).r))
+"""
+out = "2 YES"
+
+[case."Indexed/List/cut_before"]
+code = """
+let a = [5, 6, 7, 8]
+let c = a.cut_before(1)
+print(c.ord, yes(c == (1).l))
+"""
+out = "1 YES"
+
+[case."Seq/AugSortedBag/each"]
+code = """
+use std.bag.{AugSortedBag}
+var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: b.add(x)
+for x in b.each(): print(x)
+"""
+out = "1\n3\n3"
