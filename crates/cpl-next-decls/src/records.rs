@@ -75,7 +75,8 @@ pub fn row_traits(rows: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Trai
             let methods = (fs.iter().enumerate())
                 .map(|(i, f)| {
                     let f = syms.intern(f);
-                    crate::synth::field_requirement(f, TyForm::Param(i), span, syms)
+                    // A trait's parameter 0 is `Self`, so its own start at 1.
+                    crate::synth::field_requirement(f, TyForm::Param(i + 1), span, syms)
                 })
                 .collect();
             TraitForm {
@@ -258,7 +259,7 @@ pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitF
             };
             let mut params = vec![self_param(this, None)];
             for (i, f) in form.0.iter().enumerate() {
-                params.push(self_param(syms.intern(f), Some(TyForm::Param(i))));
+                params.push(self_param(syms.intern(f), Some(TyForm::Param(i + 1))));
             }
             let build = FnForm {
                 name: m,

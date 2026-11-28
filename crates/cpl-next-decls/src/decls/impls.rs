@@ -465,8 +465,9 @@ impl<'a> Impls<'a> {
         let mut out = Vec::new();
         for (name, f) in &self.items.t(r.tr).methods {
             let (_, ft) = sd.fields.iter().find(|(n, _)| n == name)?;
-            if let Ty::Param(i) = self.items.f(*f).ret {
-                out.push((i, sub.ty(ft)));
+            // The trait's parameter 0 is `Self`; argument `i` of `r` is its parameter `i + 1`.
+            if let Ty::Param(i @ 1..) = self.items.f(*f).ret {
+                out.push((i - 1, sub.ty(ft)));
             }
         }
         out.sort_by_key(|f| f.0);
