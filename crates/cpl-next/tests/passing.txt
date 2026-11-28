@@ -922,8 +922,10 @@ core-07/zip-pairs-by-walk.cp
 core-07/zip-takes-a-rev.cp
 core-08/a-callee-generic-is-not-the-receivers-of-the-same-name.cp
 core-08/a-fn-item-passes-for-its-own-type-of.cp
+core-08/a-std-struct-answers-its-static-trait-fns.cp
 core-08/a-tuple-meets-no-constant-trait.cp
 core-08/a-variant-named-like-a-trait-does-not-hide-it.cp
+core-08/an-alias-answers-its-types-static-fns.cp
 core-08/assoc-default-names-trait-param.cp
 core-08/assoc-projects-through-a-domain-blanket-impl.cp
 core-08/assoc-type-bound-and-alias-where.cp
