@@ -217,6 +217,7 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
     let mut next = 0;
     let mut said = std::collections::HashSet::new();
     let mut traced = !events;
+    let mut made = std::collections::HashMap::new();
     loop {
         while next < l.keys.len() {
             let key = l.keys[next].clone();
@@ -224,8 +225,9 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
                 l.errors.push(unlowered(&key.func));
                 break;
             };
-            if l.keys.len() > LIMIT {
-                l.errors.push(Msg::verdict(cpl_diag::codes::GROWING_INSTANTIATION, format!("instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", f.name)));
+            *made.entry(key.func.decl()).or_insert(0usize) += 1;
+            if made[&key.func.decl()] > LIMIT {
+                l.errors.push(Msg::internal(format!("instantiation does not end: `{}` makes a new copy of itself at every level, which the checker's growing-type rule (R08.2.10) does not see (a function passed to its own recursive call, wrapped in a new closure)", f.name)));
                 break;
             }
             if let Some(g) = key.func.decl() {
@@ -278,7 +280,7 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
     }
     let globals = l.globals.clone();
     // Instances made while typing the globals.
-    while insts.len() < l.keys.len() && l.keys.len() <= LIMIT {
+    while insts.len() < l.keys.len() && made.values().all(|n| *n <= LIMIT) {
         let key = l.keys[insts.len()].clone();
         let Some(f) = generic.generic(&key.func) else {
             l.errors.push(unlowered(&key.func));

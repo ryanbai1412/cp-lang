@@ -983,6 +983,54 @@ pub fn check(
             (k, cx.zonk_set(&v))
         })
         .collect();
+    // R08.2.10: each call passes its caller's type parameters to the callee's, as themselves or
+    // inside a larger type. A cycle of calls through a larger one makes a new instance on every
+    // round, so its first such call is E0319.
+    let mut callers: Vec<FnId> = cx.fns.keys().copied().collect();
+    callers.sort();
+    let mut edges = Vec::new();
+    for caller in callers {
+        cx.fns[&caller].body.each(&mut |e| {
+            let TK::Call { f, .. } = &e.kind else { return };
+            for (j, t) in f.targs.iter().enumerate() {
+                let mut ps = std::collections::BTreeSet::new();
+                cpl_next_ir::ty::params_in(t, &mut ps);
+                for i in ps {
+                    let grows = *t != Ty::Param(i);
+                    edges.push(((caller, i), (f.decl, j), grows, e.span, t.clone()));
+                }
+            }
+        });
+    }
+    let mut grown = HashSet::new();
+    for (from, to, grows, span, t) in &edges {
+        if !grows || grown.contains(&from.0) {
+            continue;
+        }
+        let mut seen = HashSet::from([*to]);
+        let mut stack = vec![*to];
+        while let Some(n) = stack.pop() {
+            for (a, b, ..) in &edges {
+                if *a == n && seen.insert(*b) {
+                    stack.push(*b);
+                }
+            }
+        }
+        if !seen.contains(from) {
+            continue;
+        }
+        grown.insert(from.0);
+        let (caller, callee) = (d.f(from.0), d.f(to.0));
+        cx.b.item = caller.item.clone();
+        cx.b.generics = caller.generics.clone();
+        let (outer, inner) = (cx.show(&Ty::Param(from.1)), cx.show(t));
+        let name = &callee.name;
+        let text = cpl_diag::msgs::ir::GROWING_INSTANTIATION_CALLS_ITSELF_AT_A
+            .say(&[name, name, &outer, name, &inner]);
+        let help = "a generic fn is compiled once per type: recurse at the same type, or keep the growing part in a value of one fixed type (R08.2.10)";
+        let code = cpl_diag::codes::GROWING_INSTANTIATION;
+        cx.err_help(*span, Msg::verdict(code, text), Some(help.to_string()));
+    }
     if cx.domains.iter().any(|d| d.name.is_empty()) {
         cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
     }

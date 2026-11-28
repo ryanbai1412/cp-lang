@@ -1801,10 +1801,9 @@ def next_wrong_accepts(root: Path) -> list[str]:
     return _wrong_ids(root, "wrong-accept")
 
 
-# Codes link and own may still say on their own, the closed list beside decision 31
-# (`handbook/design/next/representation.md`): a fn value that would contain itself; E9999
-# is an internal error, counted by `next_wrong`, not a user code.
-NEXT_LATE_CODES_ALLOWED = {"E0319", "E9999"}
+# Codes link and own may say: none is a user code, since the checker owns every verdict
+# (building.md rule 5). E9999 is an internal error, counted by `next_wrong`.
+NEXT_LATE_CODES_ALLOWED = {"E9999"}
 NEXT_LATE_REJECT_RE = re.compile(r"^(link|own): .*?\b(E\d{4})\b")
 
 

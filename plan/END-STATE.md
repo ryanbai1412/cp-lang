@@ -83,7 +83,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_handoff_side_fields` | 11 |
 | `next_harness_refusals` | 4 |
 | `next_hidden_const_evaluators` | 2 |
-| `next_late_rejects` | 90 |
+| `next_late_rejects` | 93 |
 | `next_library_gates` | 20 |
 | `next_lowered` | 2 |
 | `next_masked` | 129 |
