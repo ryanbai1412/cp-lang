@@ -492,6 +492,8 @@ struct Cx<'a> {
 
 struct Body {
     doms: HashMap<String, Ty>,
+    /// The domains declared in the blocks being checked, innermost last (R02.9.2).
+    block_doms: Vec<usize>,
     /// The domains a binding owns, by the binding and the path to each in its value: `t`'s
     /// `Pre`, or `r`'s `tree.Pre` (R02.9.1).
     owned: HashMap<(VarRef, Vec<String>), usize>,
@@ -566,6 +568,7 @@ impl Body {
             frames: Vec::new(),
             filling: Vec::new(),
             doms: d.top_doms.clone(),
+            block_doms: Vec::new(),
             owned: HashMap::new(),
             memo_clears: HashMap::new(),
             decl: None,

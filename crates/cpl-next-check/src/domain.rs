@@ -184,6 +184,7 @@ impl Cx<'_> {
             }
         };
         self.b.doms.insert(name.to_string(), Ty::Dom(i));
+        self.b.block_doms.push(i);
         i
     }
     /// A domain's slots, set from its ends; `name` is what a message and the trace call it.
@@ -552,5 +553,16 @@ impl Cx<'_> {
             _ => {}
         }
         t
+    }
+}
+
+/// The domains `t` mentions.
+pub(super) fn doms_in(t: &Ty, out: &mut Vec<usize>) {
+    match t {
+        Ty::Dom(d) => out.push(*d),
+        Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => doms_in(e, out),
+        Ty::Struct(_, ts, _) => ts.iter().for_each(|t| doms_in(t, out)),
+        Ty::Fn(ps, r, _) => ps.iter().chain([&**r]).for_each(|t| doms_in(t, out)),
+        _ => {}
     }
 }

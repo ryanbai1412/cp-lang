@@ -285,6 +285,8 @@ impl<'a> Cx<'a> {
         let mut out = Vec::new();
         let mut value = None;
         let outer = self.b.group.len();
+        let (doms_at, locals_at) = (self.b.block_doms.len(), self.b.locals.len());
+        let globals_at = self.globals.len();
         let checks_kept = self.checks_kept;
         let frames = self.b.frames.len();
         let memo = cpl_next_decls::memo_block(&b.stmts, &|w| self.d.memo_word(w));
@@ -390,6 +392,32 @@ impl<'a> Cx<'a> {
             .as_ref()
             .map(|v: &TExpr| v.ty.clone())
             .unwrap_or(Ty::Unit);
+        let mine = self.b.block_doms.split_off(doms_at);
+        if !mine.is_empty() {
+            // R02.9.2: a value whose type mentions a domain declared here leaves neither as
+            // the block's value nor in a binding made before the block.
+            let local = |t: &Ty| {
+                let mut ds = Vec::new();
+                super::domain::doms_in(t, &mut ds);
+                ds.into_iter().find(|d| mine.contains(d))
+            };
+            let mut found = local(&self.zonk(&ty)).map(|d| (d, "as the block's value".to_string()));
+            let before = self.b.locals[..locals_at]
+                .iter()
+                .chain(&self.globals[..globals_at]);
+            for l in before {
+                if found.is_some() {
+                    break;
+                }
+                found = local(&self.zonk(&l.ty))
+                    .map(|d| (d, format!("in `{}`, made before it", l.name)));
+            }
+            if let Some((d, how)) = found {
+                let msg = cpl_diag::msgs::check::DOMAIN_ESCAPES_A_VALUE_OF_FRESH;
+                let text = msg.say(&[&self.domains[d].name, &how]);
+                self.err(b.span, Msg::verdict(cpl_diag::codes::DOMAIN_ESCAPES, text));
+            }
+        }
         TExpr {
             kind: TK::Block(out, value.map(Box::new)),
             ty,
