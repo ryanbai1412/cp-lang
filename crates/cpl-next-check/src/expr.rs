@@ -436,11 +436,21 @@ impl<'a> Cx<'a> {
     pub(super) fn traps(&self, n: &next::NameRef) -> bool {
         let Some(t) = n.ident() else { return false };
         let n = t.text();
-        let nearer = self.lookup(n).is_some()
+        !self.hidden(n)
+            && (self.d.fn_named(self.b.module, n)).is_some_and(|d| self.d.roles.todo == Some(d))
+    }
+    /// Whether bare name `n` is the empty optional: the word `None`, unless a binding or a const
+    /// of that name is nearer, in [`Cx::name`]'s order.
+    pub(super) fn names_none(&self, n: &next::NameRef) -> bool {
+        n.is_none() && n.ident().is_some_and(|t| !self.hidden(t.text()))
+    }
+    /// Whether a name `n` resolves before the module's fns: a local or parameter, the fn
+    /// itself, a field of `self`, or a const.
+    fn hidden(&self, n: &str) -> bool {
+        self.lookup(n).is_some()
             || self.itself(n, Span::new(0, 0)).is_some()
             || self.self_field(n).is_some()
-            || matches!(self.d.named(self.b.module, n), Some(decls::Named::Const(_)));
-        !nearer && (self.d.fn_named(self.b.module, n)).is_some_and(|d| self.d.roles.todo == Some(d))
+            || matches!(self.d.named(self.b.module, n), Some(decls::Named::Const(_)))
     }
     pub(super) fn name(&mut self, n: &str, span: Span) -> TExpr {
         if let Some(e) = self.itself(n, span) {
@@ -575,7 +585,7 @@ impl<'a> Cx<'a> {
         let span = self.at(e);
         match e {
             next::Expr::Literal(l) => self.literal(l, want, span),
-            next::Expr::Name(n) if n.is_none() => self.none_value(want, span),
+            next::Expr::Name(n) if self.names_none(n) => self.none_value(want, span),
             next::Expr::Name(n) => match n.ident() {
                 Some(t) if t.kind() == TokenKind::SelfKw => self
                     .self_expr(span)
@@ -1027,9 +1037,10 @@ impl<'a> Cx<'a> {
         let mut arms: Vec<Option<(TExpr, TExpr, bool)>> = branches.iter().map(|_| None).collect();
         let mut else_ = None;
         if let (Some(o), None) = (&otherwise, &ty) {
-            if gives_none(o) {
+            let none = |n: &next::NameRef| self.names_none(n);
+            if gives_none(o, &none) {
                 let first = (branches.iter())
-                    .position(|(_, b)| !b.leaves(&|n| self.traps(n)) && !gives_none(b));
+                    .position(|(_, b)| !b.leaves(&|n| self.traps(n)) && !gives_none(b, &none));
                 if let Some(i) = first {
                     let arm = self.if_arm(&branches[i], None);
                     ty = Some(self.join_ty(&arm.1.ty.clone()));
@@ -1216,9 +1227,9 @@ pub(super) fn block(pre: Vec<TStmt>, e: TExpr) -> TExpr {
     }
 }
 
-/// A branch whose value is a bare `None`.
-fn gives_none(b: &next::ArmBody) -> bool {
-    let none = |e: &next::Expr| matches!(super::index::unparen(e.clone()), next::Expr::Name(n) if n.is_none());
+/// A branch whose value is a bare `None`, as `is_none` resolves a name.
+fn gives_none(b: &next::ArmBody, is_none: &dyn Fn(&next::NameRef) -> bool) -> bool {
+    let none = |e: &next::Expr| matches!(super::index::unparen(e.clone()), next::Expr::Name(n) if is_none(&n));
     let stmt =
         |s: &next::Stmt| matches!(s, next::Stmt::Expr(x) if x.expr().is_some_and(|e| none(&e)));
     match b {
@@ -1578,7 +1589,8 @@ impl Cx<'_> {
         }
         // `None == x`: the `None` takes its type from the other side.
         if let [(op @ (CmpOp::Eq | CmpOp::Ne), rhs)] = rest.as_slice() {
-            if matches!(super::index::unparen(first.clone()), next::Expr::Name(n) if n.is_none()) {
+            if matches!(super::index::unparen(first.clone()), next::Expr::Name(n) if self.names_none(&n))
+            {
                 let r = self.expr(rhs, None);
                 let l = self.none_value(Some(&r.ty), span);
                 if self.is_error(&l.ty) || self.is_error(&r.ty) {
