@@ -141,8 +141,6 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> 
 }
 
 /// The single capitals in an impl header that name nothing: its undeclared type parameters (R02.10.3).
-/// `@get`: a member read like a field (R02.6.6).
-pub(crate) const GETTER: &str = "get";
 /// A range type with an end naming a value the program's top level binds, written out, and that
 /// value: a struct field's layout is fixed before input is read, so no field is bounded by one
 /// (R03.1.3).

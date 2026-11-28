@@ -191,11 +191,11 @@ mod tests {
         type Key = u32;
         type Value = i64;
     }
-    struct Sum;
-    impl Query for Sum {
+    struct Total;
+    impl Query for Total {
         type Key = ();
         type Value = i64;
-        const NAME: &'static str = "sum";
+        const NAME: &'static str = "total";
         fn compute(db: &Db, _: &()) -> i64 {
             db.input::<Num>(&1).unwrap_or(0) + db.input::<Num>(&2).unwrap_or(0)
         }
@@ -206,7 +206,7 @@ mod tests {
         type Value = i64;
         const NAME: &'static str = "twice";
         fn compute(db: &Db, _: &()) -> i64 {
-            db.get::<Sum>(&()) * 2
+            db.get::<Total>(&()) * 2
         }
     }
     struct Loop;
@@ -232,17 +232,17 @@ mod tests {
         assert_eq!(db.get::<Twice>(&()), 10);
         assert_eq!(db.get::<Twice>(&()), 10);
         let n = |db: &Db, q| db.computed().get(q).copied().unwrap_or(0);
-        assert_eq!((n(&db, "sum"), n(&db, "twice")), (1, 1));
+        assert_eq!((n(&db, "total"), n(&db, "twice")), (1, 1));
         db.set::<Num>(1, 2);
         assert_eq!(db.get::<Twice>(&()), 10);
-        assert_eq!((n(&db, "sum"), n(&db, "twice")), (1, 1));
+        assert_eq!((n(&db, "total"), n(&db, "twice")), (1, 1));
         db.set::<Num>(1, 3);
         db.set::<Num>(2, 2);
         assert_eq!(db.get::<Twice>(&()), 10);
-        assert_eq!((n(&db, "sum"), n(&db, "twice")), (2, 1));
+        assert_eq!((n(&db, "total"), n(&db, "twice")), (2, 1));
         db.set::<Num>(2, 4);
         assert_eq!(db.get::<Twice>(&()), 14);
-        assert_eq!((n(&db, "sum"), n(&db, "twice")), (3, 2));
+        assert_eq!((n(&db, "total"), n(&db, "twice")), (3, 2));
     }
 
     /// A key met again while it is computed takes the query's recovery answer.

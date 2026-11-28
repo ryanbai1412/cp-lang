@@ -352,10 +352,11 @@ fn layer(
                             }
                             _ => _ = own[mi].insert(sd.name.text.clone(), Named::Struct(id)),
                         }
-                        if marked(s, Mark::Tuple) {
+                        let tuple = Mark::Tuple;
+                        if marked(s, tuple) {
                             let n = sd.fields.len();
                             match d.tuples.contains_key(&n) {
-                                true => d.errors.push(again(item, s, "tuple")),
+                                true => d.errors.push(again(item, s, tuple.name())),
                                 false => _ = Arc::make_mut(&mut d.tuples).insert(n, id),
                             }
                         }
@@ -372,10 +373,8 @@ fn layer(
                             }
                             d.errors.push(misplaced_role(item, x, role, "struct"));
                         }
-                        if marked(s, Mark::Cuts) {
-                            once(&mut d.roles.cut, id, again(item, s, "cuts"), &mut d.errors);
-                        }
                         for (n, slot) in [
+                            (Mark::Cuts, &mut d.roles.cut),
                             (Mark::List, &mut d.sugar.list),
                             (Mark::Str, &mut d.sugar.str),
                             (Mark::Map, &mut d.sugar.map),
@@ -452,29 +451,16 @@ fn layer(
                             }
                             d.errors.push(misplaced_role(item, x, role, "trait"));
                         }
-                        if marked(s, Mark::Positions) {
-                            let e = again(item, s, "positions");
-                            once(&mut d.roles.domain, id, e, &mut d.errors);
-                        }
-                        if marked(s, Mark::Order) {
-                            let e = again(item, s, "order");
-                            once(&mut d.roles.order, id, e, &mut d.errors);
-                        }
-                        if marked(s, Mark::Convert) {
-                            once(
-                                &mut d.roles.convert,
-                                id,
-                                again(item, s, "convert"),
-                                &mut d.errors,
-                            );
-                        }
-                        if marked(s, Mark::Counted) {
-                            let e = again(item, s, "counted");
-                            once(&mut d.roles.counted, id, e, &mut d.errors);
-                        }
-                        if marked(s, Mark::RangeBounds) {
-                            let e = again(item, s, "range_bounds");
-                            once(&mut d.roles.bounds, id, e, &mut d.errors);
+                        for (n, slot) in [
+                            (Mark::Positions, &mut d.roles.domain),
+                            (Mark::Order, &mut d.roles.order),
+                            (Mark::Convert, &mut d.roles.convert),
+                            (Mark::Counted, &mut d.roles.counted),
+                            (Mark::RangeBounds, &mut d.roles.bounds),
+                        ] {
+                            if marked(s, n) {
+                                once(slot, id, again(item, s, n.name()), &mut d.errors);
+                            }
                         }
                         let lit = s.decorators.iter().find(|x| x.mark == Some(Mark::Literal));
                         if let Some(ast::ExprKind::Str(text)) =
@@ -483,7 +469,11 @@ fn layer(
                             if let [ast::StrPiece::Text(t)] = text.as_slice() {
                                 let t = d.syms.intern(t);
                                 match d.literals.iter().any(|(o, _)| *o == t) {
-                                    true => d.errors.push(again(item, s, "literal")),
+                                    true => d.errors.push(again(
+                                        item,
+                                        s,
+                                        lit.map_or("", |x| &x.name.text),
+                                    )),
                                     false => d.literals.push((t, id)),
                                 }
                             }
@@ -506,7 +496,11 @@ fn layer(
                                 let taken =
                                     (d.operators.iter()).any(|(o, tr)| *o == t && method(tr) == m);
                                 match taken {
-                                    true => d.errors.push(again(item, s, "operator")),
+                                    true => d.errors.push(again(
+                                        item,
+                                        s,
+                                        op.map_or("", |x| &x.name.text),
+                                    )),
                                     false => {
                                         d.operators.push((t, id));
                                         op_methods.extend(m.map(|m| (id, m)));

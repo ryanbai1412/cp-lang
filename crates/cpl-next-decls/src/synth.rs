@@ -1,7 +1,8 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
-use crate::decls::{unnamed, GETTER};
+use crate::decls::unnamed;
 use crate::diag::Msg;
+use crate::records::marker;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
@@ -565,13 +566,7 @@ pub(crate) fn field_getter(field: &str, span: cpl_diag::Span) -> ast::Stmt {
     ast::Stmt {
         kind: StmtKind::Fn(f),
         span,
-        decorators: vec![ast::Decorator {
-            mark: Some(Mark::Get),
-            directive: false,
-            name: name(GETTER),
-            args: Vec::new(),
-            span,
-        }],
+        decorators: vec![marker(Mark::Get, span)],
         public: false,
     }
 }
@@ -1017,15 +1012,9 @@ pub(crate) fn enum_conversions(
                     sig_span: span,
                 }),
                 span,
-                decorators: (getter.then(|| ast::Decorator {
-                    mark: Some(Mark::Get),
-                    directive: false,
-                    name: name(crate::decls::GETTER),
-                    args: Vec::new(),
-                    span,
-                }))
-                .into_iter()
-                .collect(),
+                decorators: (getter.then(|| marker(Mark::Get, span)))
+                    .into_iter()
+                    .collect(),
                 public: false,
             };
             let body = vec![

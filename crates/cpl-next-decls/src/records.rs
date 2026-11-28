@@ -88,16 +88,7 @@ pub fn row_traits(rows: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
                     bounds: Vec::new(),
                 },
                 span,
-                decorators: vec![ast::Decorator {
-                    directive: false,
-                    mark: Some(Mark::Record),
-                    name: ast::Name {
-                        text: RECORD.to_string(),
-                        span,
-                    },
-                    args: Vec::new(),
-                    span,
-                }],
+                decorators: vec![record_mark(span)],
                 public: true,
             }
         })
@@ -105,7 +96,23 @@ pub fn row_traits(rows: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
 }
 
 /// The mark a record's synthesized struct carries, which no source can write (E0107).
-pub const RECORD: &str = "record";
+fn record_mark(span: Span) -> ast::Decorator {
+    marker(Mark::Record, span)
+}
+
+/// The mark `@m` on a declaration the compiler writes.
+pub(crate) fn marker(m: Mark, span: Span) -> ast::Decorator {
+    ast::Decorator {
+        directive: false,
+        mark: Some(m),
+        name: ast::Name {
+            text: m.name().to_string(),
+            span,
+        },
+        args: Vec::new(),
+        span,
+    }
+}
 
 /// Each fn with a last `..xs` parameter, by name, with the labels of its other parameters: the
 /// arguments of a call by any other names are the record `xs` is (R06.1.5).
@@ -289,13 +296,7 @@ pub fn without_traits(forms: &[Form], span: Span) -> Vec<ast::Stmt> {
                     bounds: Vec::new(),
                 },
                 span,
-                decorators: vec![ast::Decorator {
-                    directive: false,
-                    mark: Some(Mark::Record),
-                    name: nm(RECORD),
-                    args: Vec::new(),
-                    span,
-                }],
+                decorators: vec![record_mark(span)],
                 public: true,
             }
         })
@@ -436,13 +437,7 @@ pub fn structs(shapes: &[Vec<String>], span: Span) -> Vec<ast::Stmt> {
                     methods: Vec::new(),
                 }),
                 span,
-                decorators: vec![ast::Decorator {
-                    mark: Some(Mark::Record),
-                    directive: false,
-                    name: nm(RECORD.to_string()),
-                    args: Vec::new(),
-                    span,
-                }],
+                decorators: vec![record_mark(span)],
                 public: true,
             }
         })
@@ -657,13 +652,7 @@ pub fn domain_impls<'a>(
         default: None,
         span,
     };
-    let get = || ast::Decorator {
-        mark: Some(Mark::Get),
-        directive: false,
-        name: nm(crate::decls::GETTER),
-        args: Vec::new(),
-        span,
-    };
+    let get = || marker(Mark::Get, span);
     let method = |getter: bool, name: &str, params, ret, body| ast::Stmt {
         kind: StmtKind::Fn(FnDecl {
             name: nm(name),
