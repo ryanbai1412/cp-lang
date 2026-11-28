@@ -25,24 +25,19 @@ pub(super) enum ArgValue {
 }
 
 impl CallArg {
-    pub(super) fn of(cx: &Cx, a: &next::Arg) -> CallArg {
+    pub(super) fn of(a: &next::Arg) -> CallArg {
         let label = a.label().map(|t| t.text().to_string());
         CallArg {
             mutable: a.is_mut(),
-            ..CallArg::labelled(cx, label, a.value(), cx.at(a))
+            ..CallArg::labelled(label, a.value(), a.syntax().span())
         }
     }
     /// An argument written without a label: `x` of `f(x)`.
-    pub(super) fn plain(cx: &Cx, x: &next::Expr) -> CallArg {
-        CallArg::labelled(cx, None, Some(x.clone()), cx.at(x))
+    pub(super) fn plain(x: &next::Expr) -> CallArg {
+        CallArg::labelled(None, Some(x.clone()), x.syntax().span())
     }
     /// An argument a form gives with `label`, the parser's missing value as `None`.
-    pub(super) fn labelled(
-        _cx: &Cx,
-        label: Option<String>,
-        value: Option<next::Expr>,
-        at: Span,
-    ) -> CallArg {
+    pub(super) fn labelled(label: Option<String>, value: Option<next::Expr>, at: Span) -> CallArg {
         let value = value.map_or(ArgValue::Missing, ArgValue::Written);
         CallArg {
             label,
@@ -59,6 +54,10 @@ impl CallArg {
             mutable: false,
             at,
         }
+    }
+    /// Where its value is written: the value, else the whole argument.
+    fn value_at(&self) -> Span {
+        self.written().map_or(self.at, |x| x.syntax().span())
     }
     /// Its expression, when it was written: what a test of an argument's shape reads.
     pub(super) fn written(&self) -> Option<&next::Expr> {
@@ -689,13 +688,9 @@ impl Cx<'_> {
             Some(decls::Named::Fn(f)) if self.d.f(f).self_ty.is_none()
         )
     }
-    /// Where an argument's value is written: the value, else the whole argument.
-    fn value_at(&self, a: &CallArg) -> Span {
-        a.written().map_or(a.at, |x| self.at(x))
-    }
     /// The parts as one tuple: past the widest tuple, the last part is a tuple of the rest,
     /// nested as far as needed.
-    fn tuple_of(&mut self, mut parts: Vec<CallArg>, at: Span) -> TExpr {
+    fn nest_parts(&mut self, mut parts: Vec<CallArg>, at: Span) -> TExpr {
         if parts.is_empty() {
             return TExpr {
                 kind: TK::Unit,
@@ -707,7 +702,7 @@ impl Cx<'_> {
         if wide >= 2 && parts.len() > wide {
             let rest = parts.split_off(wide - 1);
             let rest_at = Span::new(rest[0].at.start, rest[rest.len() - 1].at.end);
-            let nested = self.tuple_of(rest, rest_at);
+            let nested = self.nest_parts(rest, rest_at);
             parts.push(CallArg::held(None, nested, rest_at));
         }
         let Some(d) = self.d.tuple(parts.len()) else {
@@ -744,11 +739,11 @@ impl Cx<'_> {
             }
         }
         let at = (tuple.iter().chain(&record))
-            .map(|a| self.value_at(a))
+            .map(CallArg::value_at)
             .reduce(|a, b| Span::new(a.start, b.end))
             .unwrap_or(span);
         let packed = match (tuple.is_empty(), record.is_empty()) {
-            (_, true) => self.tuple_of(tuple, at),
+            (_, true) => self.nest_parts(tuple, at),
             (true, false) => {
                 let names: Vec<&str> = record.iter().filter_map(|a| a.label.as_deref()).collect();
                 let callee = crate::records::name(&names);
@@ -765,7 +760,7 @@ impl Cx<'_> {
                         ),
                     ),
                 );
-                self.tuple_of(tuple, at)
+                self.nest_parts(tuple, at)
             }
         };
         out.push(CallArg::held(Some(v.label.to_string()), packed, at));
@@ -806,7 +801,7 @@ impl Cx<'_> {
                     let at = formals.iter().position(|f| f.label == n);
                     if at.is_none() {
                         self.err(
-                            self.value_at(a),
+                            a.value_at(),
                             Msg::verdict(
                                 cpl_diag::codes::UNKNOWN_ARG_NAME,
                                 format!("no parameter named `{n}`"),
@@ -819,7 +814,7 @@ impl Cx<'_> {
             match at {
                 Some(i) if slot[i].is_none() => slot[i] = Some(k),
                 Some(i) => self.err(
-                    self.value_at(a),
+                    a.value_at(),
                     Msg::verdict(
                         cpl_diag::codes::WRONG_ARG_COUNT,
                         format!("`{}` is given twice", formals[i].label),
@@ -1102,7 +1097,6 @@ impl Cx<'_> {
             if let (false, Some(x)) = (args.iter().any(named), set) {
                 let at = self.at(&x.value);
                 out.push(CallArg::labelled(
-                    self,
                     Some(field.into()),
                     Some(x.value.clone()),
                     at,

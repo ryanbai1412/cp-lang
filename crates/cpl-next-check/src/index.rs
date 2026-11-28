@@ -386,7 +386,7 @@ impl Cx<'_> {
         at: Span,
     ) -> Option<TExpr> {
         let (m, ts, ss) = self.set_method(&recv.ty)?;
-        let args = [k, v].map(|e| CallArg::plain(self, e));
+        let args = [k, v].map(|e| CallArg::plain(e));
         let f = self.fnref(m, ts, ss);
         let recv = self.recv_arg(m, recv, at);
         Some(self.call_method(f, recv, false, Some(&args), at, None))
@@ -535,7 +535,7 @@ impl Cx<'_> {
         parts: &[next::Expr],
         span: Span,
     ) -> Option<TExpr> {
-        let args: Vec<CallArg> = parts.iter().map(|x| CallArg::plain(self, x)).collect();
+        let args: Vec<CallArg> = parts.iter().map(|x| CallArg::plain(x)).collect();
         if let Some(key) = self.ctor_key(s, &args, span) {
             return key;
         }
@@ -708,7 +708,7 @@ impl Cx<'_> {
         let written: Vec<next::Arg> = c.args().map(|l| l.args().collect()).unwrap_or_default();
         let mut args = Vec::new();
         for a in &written {
-            let a = CallArg::of(self, a);
+            let a = CallArg::of(a);
             let arg = match a.written() {
                 Some(next::Expr::Lambda(_)) | None => a,
                 Some(_) if a.mutable => a,

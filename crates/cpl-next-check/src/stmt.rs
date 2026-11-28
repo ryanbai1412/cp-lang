@@ -816,8 +816,7 @@ impl<'a> Cx<'a> {
                     let span = self.at(&init);
                     for (p, t) in ps.iter().zip(tys) {
                         let t = self.body_ty(&t, out);
-                        let args: Vec<CallArg> =
-                            args.iter().map(|a| CallArg::of(self, a)).collect();
+                        let args: Vec<CallArg> = args.iter().map(|a| CallArg::of(a)).collect();
                         let v = self.call_named(&n, &[], &args, span, Some(&t));
                         let v = self.coerce(v, &t);
                         self.let_pattern_at(p, mutable, v, at, out);
