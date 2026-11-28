@@ -2977,8 +2977,8 @@ pub fn rects_union_area(rects: List<Rect>) -> Int:
     var ev: List<(x: Int, k: Int, lo: Int, hi: Int)> = []
     for r in rects:
         if r.is_empty: continue
-        ys.push(r.Int(y.start))
-        ys.push(r.Int(y.end))
+        ys.push(Int(r.y.start))
+        ys.push(Int(r.y.end))
     ys.sort()
     var u: List<Int> = []
     for y in ys:
@@ -2987,10 +2987,10 @@ pub fn rects_union_area(rects: List<Rect>) -> Int:
     if ys.len < 2: return 0
     for r in rects:
         if r.is_empty: continue
-        let lo = lower_idx(ys, r.Int(y.start))
-        let hi = lower_idx(ys, r.Int(y.end))
-        ev.push((x: r.Int(x.start), k: 1, lo:, hi:))
-        ev.push((x: r.Int(x.end), k: -1, lo:, hi:))
+        let lo = lower_idx(ys, Int(r.y.start))
+        let hi = lower_idx(ys, Int(r.y.end))
+        ev.push((x: Int(r.x.start), k: 1, lo:, hi:))
+        ev.push((x: Int(r.x.end), k: -1, lo:, hi:))
     ev.sort()
     let m = ys.len - 1
     var cnt = List.filled(4 * m, 0)

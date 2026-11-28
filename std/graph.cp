@@ -2185,7 +2185,7 @@ fn dfs_walk<V, G: Next<V>>(
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; reachable(g, from: [V(0)]).collect() == [0, 1, 3, 2]`
 /// example: `domain V = 0..5; let g: [V]List<V> = [[1], [0, 2], [1], [], []]; reachable(complement(g), from: [V(0)]).collect() == [0, 2, 3, 4, 1]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[], [0], []]; reachable(g, from: [V(1), V(2)]).collect() == [1, 0, 2]`
-pub fn reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V:
+pub fn reachable<V, G: Next<V>, S: Seq<V>>(g: G, from: S) -> yields V:
     var seen: [V]Bool = false
     if G: ReachesUnvisited:
         var unvisited = V.collect()

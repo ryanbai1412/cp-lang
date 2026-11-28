@@ -808,7 +808,7 @@ std/graph.cp: only<V, G: Next<V>>(self: G, keep: V -> Bool = v => true, from: V 
 std/graph.cp: peel<V, G: Next<V>>(g: G, ready: ?(V -> Bool) = None, on_remove: ?((V, G.Arc) -> ()) = None) -> List<V>
 std/graph.cp: prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V)
 std/graph.cp: reach_sets<V>(g: Next<V>) -> [V]Bitset<V>
-std/graph.cp: reachable<V, G: Next<V>, S: Seq>(g: G, from: S) -> yields V
+std/graph.cp: reachable<V, G: Next<V>, S: Seq<V>>(g: G, from: S) -> yields V
 std/graph.cp: scc<V>(g: Next<V>) -> (domain C, comp: [V]C)
 std/graph.cp: scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int
 std/graph.cp: smallest_topo<V>(g: Next<V>) -> ?List<V>
@@ -1687,7 +1687,7 @@ std/seq.cp: inverse<I, V>(self: [I]V) -> [V]I
 std/seq.cp: inversions<S: Seq<T>, T>(self: S) -> Int
 std/seq.cp: is_permutation<A: Seq<T>, B: Seq<T>, T>(self: A, b: B) -> Bool
 std/seq.cp: is_sorted<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Bool
-std/seq.cp: is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool
+std/seq.cp: is_subsequence<S: Seq<T>, N: Indexed<K, T>, K, T: Eq>(self: S, of: N) -> Bool
 std/seq.cp: items<S: Keyed<K, T>, K, T>(self: S) -> Items<S>
 std/seq.cp: iterate<T>(from: ?T, step: T -> ?T) -> yields T
 std/seq.cp: keyed<S: Seq<T>, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, T, K>
@@ -1695,7 +1695,7 @@ std/seq.cp: keys<T>(self: List<T>) -> Range<Int>
 std/seq.cp: kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>
 std/seq.cp: last<S: Bidir, T>(self: S) -> ?T
 std/seq.cp: last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D
-std/seq.cp: lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>
+std/seq.cp: lcs<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Eq>(a: A, b: B) -> List<(Int, Int)>
 std/seq.cp: lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>
 std/seq.cp: majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)
 std/seq.cp: map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U>
@@ -1755,9 +1755,9 @@ std/seq.cp: runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) 
 std/seq.cp: select<S: IndexedMut, T, K>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)
 std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)
 std/seq.cp: sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None) -> List<T>
-std/seq.cp: sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
-std/seq.cp: sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
-std/seq.cp: sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
+std/seq.cp: sorted_diff<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Ord>(self: A, b: B) -> List<T>
+std/seq.cp: sorted_intersect<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Ord>(self: A, b: B) -> List<T>
+std/seq.cp: sorted_union<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Ord>(self: A, b: B) -> List<T>
 std/seq.cp: span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>
 std/seq.cp: spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>
 std/seq.cp: split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>
@@ -1856,38 +1856,38 @@ std/spec.cp: poly_at(xs: List<Int>, n: Int) -> Int
 std/spec.cp: poly_degree(xs: List<Int>) -> ?Int
 std/spec.cp: recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: 0..) -> Mod<P>
 std/spec.cp: unimodality_break(xs: List<Int>) -> ?Int
-std/strings.cp: AhoCorasick.counts<S: Seq>(self, text: S) -> List<Int>
+std/strings.cp: AhoCorasick.counts<S: Seq<A>>(self, text: S) -> List<Int>
 std/strings.cp: AhoCorasick.exit_link(self, state: Int) -> ?Int
 std/strings.cp: AhoCorasick.fail_order(self) -> List<Int>
-std/strings.cp: AhoCorasick.find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int)
+std/strings.cp: AhoCorasick.find_all<S: Seq<A>>(self, text: S) -> yields (at: Int, pattern: Int)
 std/strings.cp: AhoCorasick.hit(self, state: Int) -> Bool
 std/strings.cp: AhoCorasick.len(self) -> Int
 std/strings.cp: AhoCorasick.link(self, state: Int) -> Int
-std/strings.cp: AhoCorasick.new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>
+std/strings.cp: AhoCorasick.new<S: Seq<A>>(patterns: List<S>) -> AhoCorasick<A>
 std/strings.cp: AhoCorasick.pattern_state(self, pattern: Int) -> Int
 std/strings.cp: AhoCorasick.root(self) -> Int
 std/strings.cp: AhoCorasick.step(self, state: Int, a: A) -> Int
 std/strings.cp: AhoCorasick.words_at(self, state: Int) -> List<Int>
-std/strings.cp: DynamicAhoCorasick.add<S: Seq>(mut self, pattern: S)
-std/strings.cp: DynamicAhoCorasick.count_matches<S: Seq>(self, text: S) -> Int
+std/strings.cp: DynamicAhoCorasick.add<S: Seq<A>>(mut self, pattern: S)
+std/strings.cp: DynamicAhoCorasick.count_matches<S: Seq<A>>(self, text: S) -> Int
 std/strings.cp: DynamicAhoCorasick.is_empty(self) -> Bool
 std/strings.cp: DynamicAhoCorasick.len(self) -> Int
 std/strings.cp: DynamicAhoCorasick.new() -> DynamicAhoCorasick<A>
-std/strings.cp: DynamicAhoCorasick.remove<S: Seq>(mut self, pattern: S)
+std/strings.cp: DynamicAhoCorasick.remove<S: Seq<A>>(mut self, pattern: S)
 std/strings.cp: DynamicHash.all(self) -> HashVal
 std/strings.cp: DynamicHash.get(self, r: Range<D>) -> HashVal
 std/strings.cp: DynamicHash.is_empty(self) -> Bool
 std/strings.cp: DynamicHash.is_palindrome(self, r: Range<D>) -> Bool
 std/strings.cp: DynamicHash.len(self) -> Int
-std/strings.cp: DynamicHash.new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>
+std/strings.cp: DynamicHash.new<S: Indexed<K, T>, K, T: Hashable>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>
 std/strings.cp: DynamicHash.rev_get(self, r: Range<D>) -> HashVal
 std/strings.cp: DynamicHash.set<T: Hashable>(mut self, i: D, x: T)
 std/strings.cp: Hash2D.new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>
 std/strings.cp: Hash2D.rect(self, rows: Range<R>, cols: Range<C>) -> HashVal
-std/strings.cp: KmpAutomaton.find_all<S: Seq>(self, text: S) -> yields Int
+std/strings.cp: KmpAutomaton.find_all<S: Seq<A>>(self, text: S) -> yields Int
 std/strings.cp: KmpAutomaton.len(self) -> Int
 std/strings.cp: KmpAutomaton.link(self, state: Int) -> Int
-std/strings.cp: KmpAutomaton.new<S: Seq>(pat: S) -> KmpAutomaton<A>
+std/strings.cp: KmpAutomaton.new<S: Seq<A>>(pat: S) -> KmpAutomaton<A>
 std/strings.cp: KmpAutomaton.step(self, state: Int, a: A) -> Int
 std/strings.cp: Palindromes.count(self) -> Int
 std/strings.cp: Palindromes.is_empty(self) -> Bool
@@ -1898,7 +1898,7 @@ std/strings.cp: Palindromes.longest(self) -> (l: Int, r: Int)
 std/strings.cp: Palindromes.longest_at<K>(self, i: K) -> Int
 std/strings.cp: Palindromes.longest_between(self, i: Int) -> Int
 std/strings.cp: PalindromicTree.at(self, i: Int) -> A
-std/strings.cp: PalindromicTree.contains<S: Seq>(self, word: S) -> Bool
+std/strings.cp: PalindromicTree.contains<S: Seq<A>>(self, word: S) -> Bool
 std/strings.cp: PalindromicTree.diff(self, state: Int) -> Int
 std/strings.cp: PalindromicTree.distinct(self) -> Int
 std/strings.cp: PalindromicTree.last_state(self) -> Int
@@ -1907,7 +1907,7 @@ std/strings.cp: PalindromicTree.link(self, state: Int) -> Int
 std/strings.cp: PalindromicTree.min_palindrome_partition(self) -> List<Int>
 std/strings.cp: PalindromicTree.new() -> PalindromicTree<A>
 std/strings.cp: PalindromicTree.occ_counts(self) -> List<Int>
-std/strings.cp: PalindromicTree.of<S: Seq>(s: S) -> PalindromicTree<A>
+std/strings.cp: PalindromicTree.of<S: Seq<A>>(s: S) -> PalindromicTree<A>
 std/strings.cp: PalindromicTree.pal_len(self, state: Int) -> Int
 std/strings.cp: PalindromicTree.pop(mut self)
 std/strings.cp: PalindromicTree.push(mut self, a: A) -> Int
@@ -1918,12 +1918,12 @@ std/strings.cp: RollingHash.all(self) -> HashVal
 std/strings.cp: RollingHash.combine(self, a: HashVal, b: HashVal, b_len: Len) -> HashVal
 std/strings.cp: RollingHash.concat(self, parts: List<(hash: HashVal, len: Int)>) -> HashVal
 std/strings.cp: RollingHash.get<R>(self, r: R) -> HashVal
-std/strings.cp: RollingHash.hash_of<S: Seq>(self, seq: S) -> HashVal
+std/strings.cp: RollingHash.hash_of<S: Seq<T>, T: Hashable>(self, seq: S) -> HashVal
 std/strings.cp: RollingHash.is_empty(self) -> Bool
 std/strings.cp: RollingHash.lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int
 std/strings.cp: RollingHash.lcs(self, a: Int, b: Int) -> Int
 std/strings.cp: RollingHash.len(self) -> Int
-std/strings.cp: RollingHash.new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash
+std/strings.cp: RollingHash.new<S: Seq<T>, T: Hashable>(seq: S, bases: ?(Int, Int) = None) -> RollingHash
 std/strings.cp: RollingHash.pop(mut self)
 std/strings.cp: RollingHash.push<T: Hashable>(mut self, x: T)
 std/strings.cp: RollingHash.slice(self, l: Int, r: Int) -> HashVal
@@ -1934,7 +1934,7 @@ std/strings.cp: RollingHash61.is_empty(self) -> Bool
 std/strings.cp: RollingHash61.lcp(self, a: Int, b: Int, of: ?RollingHash61 = None) -> Int
 std/strings.cp: RollingHash61.lcs(self, a: Int, b: Int) -> Int
 std/strings.cp: RollingHash61.len(self) -> Int
-std/strings.cp: RollingHash61.new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61
+std/strings.cp: RollingHash61.new<S: Seq<T>, T: Hashable>(seq: S, base: ?U64 = None) -> RollingHash61
 std/strings.cp: RollingHash61.pop(mut self)
 std/strings.cp: RollingHash61.push<T: Hashable>(mut self, x: T)
 std/strings.cp: SuffixArray.compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int
@@ -1952,20 +1952,20 @@ std/strings.cp: SuffixArray.len(self) -> Int
 std/strings.cp: SuffixArray.new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>
 std/strings.cp: SuffixArray.rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>
 std/strings.cp: SuffixArray.split(self, r: Range<Int>) -> Int
-std/strings.cp: SuffixAutomaton.add_word<S: Seq>(mut self, word: S)
-std/strings.cp: SuffixAutomaton.contains<S: Seq>(self, word: S) -> Bool
+std/strings.cp: SuffixAutomaton.add_word<S: Seq<A>>(mut self, word: S)
+std/strings.cp: SuffixAutomaton.contains<S: Seq<A>>(self, word: S) -> Bool
 std/strings.cp: SuffixAutomaton.distinct(self) -> Int
 std/strings.cp: SuffixAutomaton.endpos_tree(self) -> List<List<Int>>
-std/strings.cp: SuffixAutomaton.find<S: Seq>(self, word: S) -> ?Int
+std/strings.cp: SuffixAutomaton.find<S: Seq<A>>(self, word: S) -> ?Int
 std/strings.cp: SuffixAutomaton.first_pos(self, state: Int) -> ?Int
 std/strings.cp: SuffixAutomaton.kth_substring(self, k: 0.., distinct: Bool = true) -> ?List<A>
-std/strings.cp: SuffixAutomaton.lcs<S: Seq>(self, other: S) -> (len: Int, end: Int)
+std/strings.cp: SuffixAutomaton.lcs<S: Seq<A>>(self, other: S) -> (len: Int, end: Int)
 std/strings.cp: SuffixAutomaton.len(self) -> Int
 std/strings.cp: SuffixAutomaton.link(self, state: Int) -> ?Int
 std/strings.cp: SuffixAutomaton.longest(self, state: Int) -> Int
 std/strings.cp: SuffixAutomaton.new() -> SuffixAutomaton<A>
 std/strings.cp: SuffixAutomaton.occ_counts(self) -> List<Int>
-std/strings.cp: SuffixAutomaton.of<S: Seq>(s: S) -> SuffixAutomaton<A>
+std/strings.cp: SuffixAutomaton.of<S: Seq<A>>(s: S) -> SuffixAutomaton<A>
 std/strings.cp: SuffixAutomaton.push(mut self, a: A)
 std/strings.cp: SuffixAutomaton.reset(mut self)
 std/strings.cp: SuffixAutomaton.root(self) -> Int
@@ -1973,51 +1973,51 @@ std/strings.cp: SuffixAutomaton.shortest(self, state: Int) -> Int
 std/strings.cp: SuffixAutomaton.states(self) -> yields Int
 std/strings.cp: SuffixAutomaton.step(self, state: Int, a: A) -> ?Int
 std/strings.cp: SuffixAutomaton.topo_order(self) -> List<Int>
-std/strings.cp: Trie.add<S: Seq>(mut self, word: S) -> Int
+std/strings.cp: Trie.add<S: Seq<A>>(mut self, word: S) -> Int
 std/strings.cp: Trie.clear(mut self)
-std/strings.cp: Trie.contains<S: Seq>(self, word: S) -> Bool
-std/strings.cp: Trie.count<S: Seq>(self, word: S) -> Int
-std/strings.cp: Trie.count_less<S: Seq>(self, word: S) -> Int
-std/strings.cp: Trie.count_prefix<S: Seq>(self, prefix: S) -> Int
+std/strings.cp: Trie.contains<S: Seq<A>>(self, word: S) -> Bool
+std/strings.cp: Trie.count<S: Seq<A>>(self, word: S) -> Int
+std/strings.cp: Trie.count_less<S: Seq<A>>(self, word: S) -> Int
+std/strings.cp: Trie.count_prefix<S: Seq<A>>(self, prefix: S) -> Int
 std/strings.cp: Trie.each(self) -> yields List<A>
 std/strings.cp: Trie.ends_at(self, node: Int) -> Int
-std/strings.cp: Trie.find<S: Seq>(self, word: S) -> ?Int
+std/strings.cp: Trie.find<S: Seq<A>>(self, word: S) -> ?Int
 std/strings.cp: Trie.is_empty(self) -> Bool
 std/strings.cp: Trie.kth(self, k: 0..) -> ?List<A>
 std/strings.cp: Trie.len(self) -> Int
 std/strings.cp: Trie.new() -> Trie<A>
 std/strings.cp: Trie.nodes(self) -> Int
 std/strings.cp: Trie.pass_at(self, node: Int) -> Int
-std/strings.cp: Trie.remove<S: Seq>(mut self, word: S) -> Bool
+std/strings.cp: Trie.remove<S: Seq<A>>(mut self, word: S) -> Bool
 std/strings.cp: Trie.root(self) -> Int
 std/strings.cp: Trie.step(self, node: Int, a: A) -> ?Int
 std/strings.cp: _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str
-std/strings.cp: borders<S: Indexed>(s: S) -> yields Int
-std/strings.cp: common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int
-std/strings.cp: common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int
+std/strings.cp: borders<S: Indexed<K, T>, K, T: Eq>(s: S) -> yields Int
+std/strings.cp: common_prefix_len<A: Indexed<K, T>, B: Seq<T>, K, T: Eq>(self: A, other: B) -> Int
+std/strings.cp: common_suffix_len<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Eq>(self: A, other: B) -> Int
 std/strings.cp: digit(self: Char) -> Int
-std/strings.cp: ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool
+std/strings.cp: ends_with<S: Indexed<KS, T>, P: Indexed<KP, T>, KS, KP, T: Eq>(self: S, pat: P) -> Bool
 std/strings.cp: find_all<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K
 std/strings.cp: find_all_wildcard<S: Indexed<K, Char>, P: Indexed<L, Char>, K, L>(self: S, pat: P, wildcard: Char = '?') -> yields K
 std/strings.cp: is_alnum(self: Char) -> Bool
 std/strings.cp: is_alpha(self: Char) -> Bool
 std/strings.cp: is_digit(self: Char) -> Bool
 std/strings.cp: is_lower(self: Char) -> Bool
-std/strings.cp: is_palindrome<S: Indexed>(s: S) -> Bool
+std/strings.cp: is_palindrome<S: Indexed<K, T>, K, T: Eq>(s: S) -> Bool
 std/strings.cp: is_space(self: Char) -> Bool
 std/strings.cp: is_upper(self: Char) -> Bool
 std/strings.cp: join<S: Seq>(self: Str, parts: S) -> Str
-std/strings.cp: lcs_all<A, S: Seq<A>>(words: List<S>) -> Int
+std/strings.cp: lcs_all<A: Hashable, S: Seq<A>>(words: List<S>) -> Int
 std/strings.cp: lower(self: Char) -> Char
 std/strings.cp: lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>
-std/strings.cp: lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>
-std/strings.cp: manacher<S: Indexed>(s: S) -> Palindromes
+std/strings.cp: lyndon_runs<S: Indexed<K, T>, K, T: Ord>(s: S) -> List<(l: Int, r: Int, period: Int)>
+std/strings.cp: manacher<S: Indexed<K, T>, K, T: Eq>(s: S) -> Palindromes
 std/strings.cp: max_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K
 std/strings.cp: min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K
-std/strings.cp: overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
+std/strings.cp: overlap<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Eq>(a: A, b: B) -> Int
 std/strings.cp: parse<T: Read>(self: Str) -> ?T
 std/strings.cp: parse_int(self: Str, base: Int = 10) -> ?Int
-std/strings.cp: period<S: Indexed>(s: S) -> Int
+std/strings.cp: period<S: Indexed<K, T>, K, T: Eq>(s: S) -> Int
 std/strings.cp: prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int
 std/strings.cp: prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
 std/strings.cp: repeat(self: Str, n: Len) -> Str
@@ -2027,9 +2027,9 @@ std/strings.cp: search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K
 std/strings.cp: shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K
 std/strings.cp: split_once(self: Str, sep: Char) -> ?(Str, Str)
 std/strings.cp: split_whitespace(self: Str) -> List<Str>
-std/strings.cp: starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
+std/strings.cp: starts_with<S: Indexed<KS, T>, P: Indexed<KP, T>, KS, KP, T: Eq>(self: S, pat: P, at: Int = 0) -> Bool
 std/strings.cp: suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>
-std/strings.cp: suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>
+std/strings.cp: suffix_tree_edges<S: Indexed<K, T>, K, T: Ord>(s: S) -> List<SuffixTreeEdge>
 std/strings.cp: to_lower(self: Str) -> Str
 std/strings.cp: to_upper(self: Str) -> Str
 std/strings.cp: trim(self: Str) -> Str

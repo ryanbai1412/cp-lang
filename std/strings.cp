@@ -42,7 +42,7 @@ pub fn repeat(self: Str, n: Len) -> Str:
 @lint(manual_starts_with, from: "self[0..pat.len] == pat", to: "self.starts_with(pat)")
 @lint(manual_starts_with, from: "at + pat.len <= self.len and self[at..at + pat.len] == pat", to: "self.starts_with(pat, at: at)")
 @lint(manual_starts_with, from: "self[at..at + pat.len] == pat", to: "self.starts_with(pat, at: at)")
-pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool:
+pub fn starts_with<S: Indexed<KS, T>, P: Indexed<KP, T>, KS, KP, T: Eq>(self: S, pat: P, at: Int = 0) -> Bool:
     assert 0 <= at <= self.len, "`starts_with` needs `at` in `0..=self.len`"
     if at + pat.len > self.len: return false
     for i in 0..pat.len:
@@ -60,7 +60,7 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
 /// example: `"banana".ends_with("nab") == false`
 @lint(manual_starts_with, from: "pat.len <= self.len and self[self.len - pat.len..] == pat", to: "self.ends_with(pat)")
 @lint(manual_starts_with, from: "self[self.len - pat.len..] == pat", to: "self.ends_with(pat)")
-pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
+pub fn ends_with<S: Indexed<KS, T>, P: Indexed<KP, T>, KS, KP, T: Eq>(self: S, pat: P) -> Bool:
     let d = self.len - pat.len
     if d < 0: return false
     for i in 0..pat.len:
@@ -401,7 +401,7 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
 pub fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
     return failure_lengths(s).rekey(s.keys)
 
-fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
+fn failure_lengths<S: Indexed<K, T>, K, T: Eq>(s: S) -> List<Int>:
     var p = List.filled(s.len, 0)
     for i in 1..s.len:
         var k = p[i - 1]
@@ -445,7 +445,7 @@ pub fn find_all<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P
 /// traps: never
 /// example: `"abcd".common_prefix_len("abxd") == 2`
 /// example: `"abcx".common_prefix_len("xcba".rev) == 4`
-pub fn common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int:
+pub fn common_prefix_len<A: Indexed<K, T>, B: Seq<T>, K, T: Eq>(self: A, other: B) -> Int:
     var i = 0
     for y in other:
         if i == self.len or self.nth(i) != y: break
@@ -459,7 +459,7 @@ pub fn common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int:
 /// empty: `("".common_suffix_len("ab"), "ab".common_suffix_len("")) == (0, 0)`
 /// traps: never
 /// example: `"xbcd".common_suffix_len("abcd") == 3`
-pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
+pub fn common_suffix_len<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Eq>(self: A, other: B) -> Int:
     let (na, nb) = (self.len, other.len)
     let lim = min(na, nb)
     var i = 0
@@ -475,7 +475,7 @@ pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
 /// example: `period("abcabca") == 3`
 /// example: `period("aaaa") == 1`
 /// example: `period("abc") == 3`
-pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_lengths(s).last
+pub fn period<S: Indexed<K, T>, K, T: Eq>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_lengths(s).last
 
 /// True when `s` reads the same forwards and backwards. Works on any `Indexed` sequence.
 ///
@@ -486,7 +486,7 @@ pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_
 /// example: `is_palindrome([1, 2]) == false`
 @lint(palindrome_by_hand, from: "var ok = true\nfor i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        ok = false\n        break", advice: "is_palindrome(s)", holes: "n")
 @lint(palindrome_by_hand, from: "for i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        body", advice: "is_palindrome(s)", holes: "n, body")
-pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
+pub fn is_palindrome<S: Indexed<K, T>, K, T: Eq>(s: S) -> Bool:
     let n = s.len
     for i in 0..n / 2:
         if s.nth(i) != s.nth(n - 1 - i): return false
@@ -501,7 +501,7 @@ pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
 /// traps: never
 /// example: `borders("abacaba").collect() == [3, 1]`
 /// example: `borders("aaa").collect() == [2, 1]`
-pub fn borders<S: Indexed>(s: S) -> yields Int:
+pub fn borders<S: Indexed<K, T>, K, T: Eq>(s: S) -> yields Int:
     if s.is_empty: return
     let pi = failure_lengths(s)
     var k = pi[s.len - 1]
@@ -540,7 +540,7 @@ pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, 
 /// traps: never
 /// example: `overlap("abcab", "abd") == 2`
 /// example: `overlap("abc", "abc") == 3`
-pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
+pub fn overlap<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Eq>(a: A, b: B) -> Int:
     let keep = min(a.len, b.len)
     if keep == 0: return 0
     let pi = failure_lengths([b.nth(i) for i in 0..keep])
@@ -644,7 +644,7 @@ pub struct KmpAutomaton<A>:
     /// empty: `let k = KmpAutomaton<Char>(""); (k.len, k.find_all("ab").collect()) == (1, [0, 1, 2])`
     /// traps: when an element of `pat` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").len == 4`
-    pub fn new<S: Seq>(pat: S) -> KmpAutomaton<A>:
+    pub fn new<S: Seq<A>>(pat: S) -> KmpAutomaton<A>:
         let k = A.count
         var p: List<Int> = []
         for a in pat:
@@ -707,7 +707,7 @@ pub struct KmpAutomaton<A>:
     /// order: increasing start
     /// traps: when an element of `text` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").find_all("ababa").collect() == [0, 2]`
-    pub fn find_all<S: Seq>(self, text: S) -> yields Int:
+    pub fn find_all<S: Seq<A>>(self, text: S) -> yields Int:
         let m = pi.len - 1
         if m == 0:
             var pos = 0
@@ -901,7 +901,7 @@ pub struct Palindromes(pub odd: List<Len>, even: List<Len>, first: Int = 0):
 /// traps: never
 /// example: `manacher("abba").count() == 6`
 /// example: `manacher("aba").odd == [1, 2, 1]`
-pub fn manacher<S: Indexed>(s: S) -> Palindromes:
+pub fn manacher<S: Indexed<K, T>, K, T: Eq>(s: S) -> Palindromes:
     let n = s.len
     var odd: List<Len> = List.filled(n, 0)
     var even: List<Len> = List.filled(n, 0)
@@ -1026,7 +1026,7 @@ fn lower_in<T: Ord>(a: List<T>, x: T) -> Int:
             if a[mid] < x: lo = mid + 1 else: hi = mid
     lo
 
-fn sa_order<S: Indexed>(s: S) -> List<Int>:
+fn sa_order<S: Indexed<K, T>, K, T: Ord>(s: S) -> List<Int>:
     let n = s.len
     if n == 0: return []
     var vec = List.filled(n + 1, 0)
@@ -1076,7 +1076,7 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
     sa
 
 // The suffix array of `s`, its inverse and Kasai's adjacent LCP array.
-fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
+fn sa_rank_lcp<S: Indexed<K, T>, K, T: Ord>(s: S) -> (List<Int>, List<Int>, List<Int>):
     let n = s.len
     let sa = sa_order(s)
     var rank = List.filled(n, 0)
@@ -1349,7 +1349,7 @@ pub struct SuffixTreeEdge(
 /// order: bottom-up: each edge comes after every edge below it, subtrees in rank order
 /// traps: never
 /// example: `suffix_tree_edges("aa") == [SuffixTreeEdge(0, 1, 1, 1, 1..2), SuffixTreeEdge(1, 2, 0, 1, 0..2)]`
-pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
+pub fn suffix_tree_edges<S: Indexed<K, T>, K, T: Ord>(s: S) -> List<SuffixTreeEdge>:
     let n = s.len
     let (sa, _, lcp) = sa_rank_lcp(s)
     var out: List<SuffixTreeEdge> = []
@@ -1384,7 +1384,7 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
 /// traps: never
 /// example: `lyndon_runs("aabaab") == [(0, 2, 1), (0, 6, 3), (3, 5, 1)]`
 /// example: `lyndon_runs("abc") == []`
-pub fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>:
+pub fn lyndon_runs<S: Indexed<K, T>, K, T: Ord>(s: S) -> List<(l: Int, r: Int, period: Int)>:
     let n = s.len
     if n < 2: return []
     let fwd = [s.nth(i) for i in 0..n]
@@ -1480,7 +1480,7 @@ pub struct RollingHash:
     /// example: `let h = RollingHash("abab"); h.get(0..2) == h.get(2..4)`
     @lint(hand_rolled_string_algo, from: "for i in 0..n:\n    h[i + 1] = (h[i] * b + Int(seq[i])) % m\n    pw[i + 1] = (pw[i] * b) % m", to: "let h = RollingHash.new(seq)", holes: "n, h, pw, b, m")
     @lint(hand_rolled_string_algo, from: "for c in seq:\n    h = (h * b + w) % m", to: "let h = RollingHash.new(seq)", holes: "h, b, m, w")
-    pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash:
+    pub fn new<S: Seq<T>, T: Hashable>(seq: S, bases: ?(Int, Int) = None) -> RollingHash:
         let bs = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         var h = RollingHash(bs, [(0, 0)], [(1, 1)])
         for x in seq: h.push(x)
@@ -1519,7 +1519,7 @@ pub struct RollingHash:
     /// empty: `RollingHash("ab").hash_of("") == HashVal(0, 0)`
     /// traps: never
     /// example: `let h = RollingHash("xab"); h.hash_of("ab") == h.get(1..3)`
-    pub fn hash_of<S: Seq>(self, seq: S) -> HashVal:
+    pub fn hash_of<S: Seq<T>, T: Hashable>(self, seq: S) -> HashVal:
         let (b1, b2) = bases
         var (h1, h2) = (0, 0)
         for x in seq:
@@ -1782,7 +1782,7 @@ pub struct RollingHash61:
     /// empty: `var h = RollingHash61(""); let n = h.len; h.push('a'); (n, h.all) == (0, RollingHash61("a", base: h.base).all)`
     /// traps: when a given base is outside `2..2^61 - 1`
     /// example: `let h = RollingHash61("abab"); h.get(0..2) == h.get(2..4)`
-    pub fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61:
+    pub fn new<S: Seq<T>, T: Hashable>(seq: S, base: ?U64 = None) -> RollingHash61:
         let b = base ?? U64(rand(1 << 20, 1 << 29))
         assert U64(2) <= b < RH61_MOD, "RollingHash61: base must be in 2..2^61 - 1"
         var pre: List<U64> = [U64(0)]
@@ -1927,7 +1927,7 @@ pub struct DynamicHash<D>:
     /// empty: `DynamicHash("").len == 0`
     /// traps: when a given base is outside `2..M`
     /// example: `let h = DynamicHash("abab"); h.get(0..2) == h.get(2..4)`
-    pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>:
+    pub fn new<S: Indexed<K, T>, K, T: Hashable>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>:
         let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
         assert 2 <= b1 and b1 < RH_M1 and 2 <= b2 and b2 < RH_M2, "`DynamicHash` bases must be in `2..M`"
         let n = seq.len
@@ -2089,7 +2089,7 @@ pub struct SuffixAutomaton<A>:
     /// empty: `SuffixAutomaton<Char>.of("").len == 1`
     /// traps: when an element of `s` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
-    pub fn of<S: Seq>(s: S) -> SuffixAutomaton<A>:
+    pub fn of<S: Seq<A>>(s: S) -> SuffixAutomaton<A>:
         var sam = SuffixAutomaton<A>.new()
         for a in s: sam.push(a)
         sam
@@ -2229,7 +2229,7 @@ pub struct SuffixAutomaton<A>:
     /// ties: `let m = SuffixAutomaton<Char>.of("abab"); m.find("ab") == m.find("b")`
     /// traps: when an element of `word` is not in `A`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.find("bb") == Some(3) and m.find("ba") == None`
-    pub fn find<S: Seq>(self, word: S) -> ?Int:
+    pub fn find<S: Seq<A>>(self, word: S) -> ?Int:
         var at = 0
         for a in word:
             let t = next[at * alpha + a.ord]
@@ -2243,7 +2243,7 @@ pub struct SuffixAutomaton<A>:
     /// empty: `SuffixAutomaton<Char>.of("ab").contains("") == true`
     /// traps: when an element of `word` is not in `A`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.contains("ab") and not m.contains("ba")`
-    pub fn contains<S: Seq>(self, word: S) -> Bool = self.find(word) != None
+    pub fn contains<S: Seq<A>>(self, word: S) -> Bool = self.find(word) != None
 
     /// The number of distinct non-empty substrings: the sum of `longest(v) - shortest(v) + 1`
     /// over the states other than the root.
@@ -2304,7 +2304,7 @@ pub struct SuffixAutomaton<A>:
     /// ties: `SuffixAutomaton<Char>.of("ab").lcs("ba") == (1, 1)`
     /// traps: when an element of `other` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").lcs("xbbx") == (2, 3)`
-    pub fn lcs<S: Seq>(self, other: S) -> (len: Int, end: Int):
+    pub fn lcs<S: Seq<A>>(self, other: S) -> (len: Int, end: Int):
         var (v, l, best_len, best_end, i) = (0, 0, 0, 0, 0)
         for a in other:
             let c = a.ord
@@ -2337,7 +2337,7 @@ pub struct SuffixAutomaton<A>:
     /// empty: `var m = SuffixAutomaton<Char>.of("ab"); m.add_word(""); m.push('c'); (m.contains("c"), m.contains("bc")) == (true, false)`
     /// traps: when an element of `word` is not in `A`
     /// example: `var m = SuffixAutomaton<Char>(); m.add_word("ab"); m.add_word("b"); m.distinct() == 3`
-    pub fn add_word<S: Seq>(mut self, word: S):
+    pub fn add_word<S: Seq<A>>(mut self, word: S):
         last = 0
         for a in word: self.push(a)
 
@@ -2420,7 +2420,7 @@ pub struct SuffixAutomaton<A>:
 /// empty: `(lcs_all(List<Str>()), lcs_all(["abc"])) == (0, 3)`
 /// traps: never
 /// example: `lcs_all(["abcd", "xbcy", "bcz"]) == 2`
-pub fn lcs_all<A, S: Seq<A>>(words: List<S>) -> Int:
+pub fn lcs_all<A: Hashable, S: Seq<A>>(words: List<S>) -> Int:
     if words.is_empty: return 0
     let b1 = rand(1 << 20, 1 << 29)
     let b2 = rand(1 << 20, 1 << 29)
@@ -2504,7 +2504,7 @@ pub struct PalindromicTree<A>:
     /// empty: `PalindromicTree<Char>.of("").len == 2`
     /// traps: when an element of `s` is not in `A`
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
-    pub fn of<S: Seq>(s: S) -> PalindromicTree<A>:
+    pub fn of<S: Seq<A>>(s: S) -> PalindromicTree<A>:
         var pt = PalindromicTree<A>.new()
         for a in s: let _ = pt.push(a)
         pt
@@ -2719,7 +2719,7 @@ pub struct PalindromicTree<A>:
     /// empty: `PalindromicTree<Char>.of("ab").contains("") == true`
     /// traps: never
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.contains("aba") and not t.contains("ab")`
-    pub fn contains<S: Seq>(self, word: S) -> Bool:
+    pub fn contains<S: Seq<A>>(self, word: S) -> Bool:
         let w = word.collect()
         let m = w.len
         if m == 0: return true
@@ -2844,7 +2844,7 @@ pub struct Trie<A>:
     /// ties: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.find("ab") == Some(2)`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.find("a") == Some(1) and t.find("b") == None`
-    pub fn find<S: Seq>(self, word: S) -> ?Int:
+    pub fn find<S: Seq<A>>(self, word: S) -> ?Int:
         var at = 0
         for a in word:
             let t = next[at * alpha + a.ord]
@@ -2859,7 +2859,7 @@ pub struct Trie<A>:
     /// empty: `var t = Trie<Char>(); t.add("") == 0`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab") == 2`
-    pub fn add<S: Seq>(mut self, word: S) -> Int:
+    pub fn add<S: Seq<A>>(mut self, word: S) -> Int:
         var at = 0
         pass[0] += 1
         for a in word:
@@ -2882,7 +2882,7 @@ pub struct Trie<A>:
     /// empty: `var t = Trie<Char>(); t.add(""); (t.remove(""), t.remove("")) == (true, false)`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.remove("ab") and not t.remove("ab")`
-    pub fn remove<S: Seq>(mut self, word: S) -> Bool:
+    pub fn remove<S: Seq<A>>(mut self, word: S) -> Bool:
         let node = self.find(word)
         if node == None or ends[node!] == 0: return false
         var at = 0
@@ -2899,7 +2899,7 @@ pub struct Trie<A>:
     /// empty: `var t = Trie<Char>(); t.add(""); t.add(""); t.count("") == 2`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.count("ab") == 2 and t.count("a") == 0`
-    pub fn count<S: Seq>(self, word: S) -> Int:
+    pub fn count<S: Seq<A>>(self, word: S) -> Int:
         let node = self.find(word)
         if node == None: 0 else: ends[node!]
 
@@ -2909,7 +2909,7 @@ pub struct Trie<A>:
     /// empty: `var t = Trie<Char>(); t.add("a"); t.add("b"); t.count_prefix("") == 2`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.count_prefix("a") == 2`
-    pub fn count_prefix<S: Seq>(self, prefix: S) -> Int:
+    pub fn count_prefix<S: Seq<A>>(self, prefix: S) -> Int:
         let node = self.find(prefix)
         if node == None: 0 else: pass[node!]
 
@@ -2935,7 +2935,7 @@ pub struct Trie<A>:
     /// empty: `var t = Trie<Char>(); t.add("a"); let before = t.contains(""); t.add(""); (before, t.contains("")) == (false, true)`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.contains("ab") and not t.contains("a")`
-    pub fn contains<S: Seq>(self, word: S) -> Bool:
+    pub fn contains<S: Seq<A>>(self, word: S) -> Bool:
         if let node = self.find(word): ends[node] > 0 else: false
 
     /// Removes every word and node, leaving just the root.
@@ -2980,7 +2980,7 @@ pub struct Trie<A>:
     /// empty: `var t = Trie<Char>(); t.add("a"); t.count_less("") == 0`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.count_less("b") == 2`
-    pub fn count_less<S: Seq>(self, word: S) -> Int:
+    pub fn count_less<S: Seq<A>>(self, word: S) -> Int:
         var total = 0
         var at = 0
         unchecked:
@@ -3020,7 +3020,7 @@ pub struct AhoCorasick<A>:
     /// empty: `(AhoCorasick<Char>(List<Str>()).len, AhoCorasick<Char>([""]).find_all("ab").collect()) == (1, [(0, 0), (1, 0), (2, 0)])`
     /// traps: when an element of a pattern is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
-    pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
+    pub fn new<S: Seq<A>>(patterns: List<S>) -> AhoCorasick<A>:
         let k = A.count
         var used: List<Bool> = List.filled(k, false)
         for pat in patterns:
@@ -3159,7 +3159,7 @@ pub struct AhoCorasick<A>:
     /// order: by end position
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).find_all("ab").collect() == [(0, 0), (0, 1), (1, 2)]`
-    pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
+    pub fn find_all<S: Seq<A>>(self, text: S) -> yields (at: Int, pattern: Int):
         var root = first[0]
         while root != -1:
             yield (at: 0, pattern: root)
@@ -3185,7 +3185,7 @@ pub struct AhoCorasick<A>:
     /// order: keyed by pattern index
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).counts("abb") == [1, 1, 2]`
-    pub fn counts<S: Seq>(self, text: S) -> List<Int>:
+    pub fn counts<S: Seq<A>>(self, text: S) -> List<Int>:
         var visits = List.filled(fail.len, 0)
         visits[0] = 1
         var state = 0
@@ -3270,7 +3270,7 @@ pub struct DynamicAhoCorasick<A>:
     /// empty: `var d = DynamicAhoCorasick<Char>(); d.add(""); d.count_matches("ab") == 3`
     /// traps: when an element of `pattern` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.len == 1`
-    pub fn add<S: Seq>(mut self, pattern: S):
+    pub fn add<S: Seq<A>>(mut self, pattern: S):
         let word: List<A> = pattern.collect()
         let _ = stored.add(word)
         added.add(word)
@@ -3282,7 +3282,7 @@ pub struct DynamicAhoCorasick<A>:
     /// empty: `var d = DynamicAhoCorasick<Char>(); d.add(""); d.add(""); d.remove(""); d.count_matches("a") == 2`
     /// traps: when no copy of `pattern` is stored
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.remove("ab"); d.count_matches("ab") == 0`
-    pub fn remove<S: Seq>(mut self, pattern: S):
+    pub fn remove<S: Seq<A>>(mut self, pattern: S):
         let word: List<A> = pattern.collect()
         assert stored.remove(word), "`remove(pattern)` needs a stored copy of `pattern`"
         removed.add(word)
@@ -3295,7 +3295,7 @@ pub struct DynamicAhoCorasick<A>:
     /// empty: `var d = DynamicAhoCorasick<Char>(); d.add("a"); let n = d.count_matches(""); d.add(""); (n, d.count_matches("")) == (0, 1)`
     /// traps: when an element of `text` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.add("b"); d.count_matches("abb") == 3`
-    pub fn count_matches<S: Seq>(self, text: S) -> Int = added.count(text) - removed.count(text)
+    pub fn count_matches<S: Seq<A>>(self, text: S) -> Int = added.count(text) - removed.count(text)
 
 struct AcBuckets<A>:
     pats: List<List<List<A>>>
@@ -3321,7 +3321,7 @@ struct AcBuckets<A>:
         acs.push(ac)
         hits.push(hit)
 
-    fn count<S: Seq>(self, text: S) -> Int:
+    fn count<S: Seq<A>>(self, text: S) -> Int:
         var total = 0
         for b in 0..acs.len:
             var state = 0

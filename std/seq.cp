@@ -2780,7 +2780,7 @@ pub fn count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int:
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 3].sorted_union([2, 3]) == [1, 2, 3]`
-pub fn sorted_union<A: Indexed, B: Indexed, T: Eq>(self: A, b: B) -> List<T>:
+pub fn sorted_union<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Ord>(self: A, b: B) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
     while i < self.len or j < b.len:
@@ -2799,7 +2799,7 @@ pub fn sorted_union<A: Indexed, B: Indexed, T: Eq>(self: A, b: B) -> List<T>:
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 2, 3].sorted_intersect([2, 2, 4]) == [2, 2]`
-pub fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
+pub fn sorted_intersect<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Ord>(self: A, b: B) -> List<T>:
     var out: List<T> = []
     var (i, j) = (0, 0)
     while i < self.len and j < b.len:
@@ -2820,7 +2820,7 @@ pub fn sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
 /// order: increasing; a new `List`, keyed from 0
 /// traps: never
 /// example: `[1, 2, 2, 3].sorted_diff([2]) == [1, 2, 3]`
-pub fn sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>:
+pub fn sorted_diff<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Ord>(self: A, b: B) -> List<T>:
     var out: List<T> = []
     var j = 0
     for i in 0..self.len:
@@ -2945,7 +2945,7 @@ pub fn is_permutation<A: Seq<T>, B: Seq<T>, T: Hash + Eq>(self: A, b: B) -> Bool
 /// empty: `"".is_subsequence("abc") == true`
 /// traps: never
 /// example: `"ace".is_subsequence("abcde") == true`
-pub fn is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool:
+pub fn is_subsequence<S: Seq<T>, N: Indexed<K, T>, K, T: Eq>(self: S, of: N) -> Bool:
     var j = 0
     for x in self:
         while j < of.len and of.nth(j) != x: j += 1
@@ -3206,7 +3206,7 @@ pub fn lis<D, T, K: Ord>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -
 /// order: increasing `(i, j)`
 /// traps: never
 /// example: `lcs("abc", "acb").len == 2`
-pub fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>:
+pub fn lcs<A: Indexed<KA, T>, B: Indexed<KB, T>, KA, KB, T: Eq>(a: A, b: B) -> List<(Int, Int)>:
     let (n, m) = (a.len, b.len)
     var f: [n + 1, m + 1]Int = 0
     for i in 0..n:
