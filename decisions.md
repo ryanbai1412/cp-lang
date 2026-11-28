@@ -9825,3 +9825,9 @@ named. 636's own-module level stays for extension against extension. `sum`
 keeps its plain call `sum(e for x in s)` through `@free_form` (676).
 Reverse: move `sum` back to a free `pub fn sum<S: Seq<T>>` and restore the
 old case.
+
+## 686. A view method keyed by a closed enum alone that answers a list counts as a whole-program input (factory, 2026-11-28)
+
+- **Call.** `next_whole_program_inputs` exempts a `&dyn` view only when each of its methods answers its key alone. A method whose keys are all closed enums (`Role`, `RoleMember`, `Decorator`) and that answers a list (`&[_]`, `Vec`, a set, `impl Iterator`) answers every item the mark names, so it fails the rule, and so does every holder of its trait. `marked_fns(Decorator) -> &[FnId]` and `role_fns(Role) -> &[FnId]` fail. `role_trait`/`role_fn`/`role_struct(Role) -> Option<_>`, `role_member(RoleMember)`, `record(&[Sym])` and `impl_for(tr, &[Ty], t)` pass. Each of those reads one row that one declaration fills, or the impls of the one trait it names (`impls_by_trait(tr)`). This is a counting correction, not new debt. The tree is unchanged: lane-j-check's tip measured 227 under the 22:07 rule and measures 764 under this one. The baseline file read 602, unlowered since b03b4d4d0.
+- **Why.** Coordinator ruling 07:17 on trend audit review-20, after lane J's audit of the 22:07 view-key exemption: a key kind whose answer is a scan of all items stays counted. `RoleRows` holds both kinds, so every checker `Cx` and link `Inputs` holding it counts until the split that follows moves the list methods to their own counted view.
+- **Reverse.** Exempt list answers again only when each is served by an index keyed by more than the enum (index fns by shape, coercions by target type, from_op fns by operator).

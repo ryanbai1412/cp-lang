@@ -2937,10 +2937,11 @@ class DebtRatchetTest(unittest.TestCase):
             )
             self.assertEqual(dr.next_whole_program_inputs(root), ["crates/cpl-next-decls/src/lib.rs:9"])
 
-    def test_a_view_keyed_by_a_role_decorator_or_key_slice_is_a_view(self) -> None:
-        ok = ["fn role_fns(&self, r: Role) -> Vec<FuncId>;",
+    def test_a_view_keyed_by_a_role_decorator_or_key_slice_is_a_view_unless_it_lists_every_marked_item(self) -> None:
+        ok = ["fn role_trait(&self, r: Role) -> Option<TraitId>;",
               "fn role_member(&self, m: RoleMember) -> Option<(Sym, FuncId)>;",
-              "fn marked_fns(&self, d: attrs::Decorator) -> Vec<FuncId>;",
+              "fn marked(&self, f: FnId, d: attrs::Decorator) -> bool;",
+              "fn marked_at(&self, f: FnId, d: Decorator) -> &[usize];",
               "fn record(&self, fields: &[Sym]) -> Option<StructId>;",
               "fn with_defaults_of(&self, s: StructId, args: &[Ty]) -> Ty;",
               "fn sized(&self, t: Ty) -> u32;",
@@ -2952,7 +2953,11 @@ class DebtRatchetTest(unittest.TestCase):
                "fn sized(&self, t: HashMap<Ty, u32>) -> u32;",
                "fn named(&self, n: &str) -> Option<FuncId>;",
                "fn flagged(&self, b: bool) -> Vec<FuncId>;",
-               "fn all_roles(&self, r: Role) -> Vec<FuncId>;"]
+               "fn all_roles(&self, r: Role) -> Vec<FuncId>;",
+               "fn role_fns(&self, r: Role) -> Vec<FuncId>;",
+               "fn role_fns(&self, r: Role) -> &[FnId];",
+               "fn marked_fns(&self, d: attrs::Decorator) -> &'a [FnId];",
+               "fn marked_iter(&self, d: Decorator) -> impl Iterator<Item = FnId>;"]
         for sig in ok:
             self.assertTrue(dr._view_method_ok(sig), sig)
         for sig in bad:

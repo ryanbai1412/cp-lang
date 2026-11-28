@@ -1438,6 +1438,9 @@ NEXT_TRAIT_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?trait\s+(\w+)(?:<[^{:]
 NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|Ty|Role|RoleMember|Decorator|usize|u32|u16|u8)$")
 NEXT_VIEW_SLICE_KEY_RE = re.compile(r"^&(?:'\w+\s+)?\[(?:\w+::)*(?:Sym|Ty)\]$")
 NEXT_VIEW_TABLE_RE = re.compile(r"\b(?:str|String|HashMap|BTreeMap|HashSet|Vec|Decls|Typed|Loaded|Whole|Generic|Deferred|SetAdds)\b|\[")
+# A closed enum of keys alone, and the list answer that makes such a method every marked item.
+NEXT_VIEW_ENUM_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:Role|RoleMember|Decorator)$")
+NEXT_VIEW_LIST_RE = re.compile(r"^\s*(?:&(?:'\w+\s+)?\[|(?:\w+::)*(?:Vec|HashSet|BTreeSet)\b|impl\s+Iterator\b)")
 
 
 def _params(sig: str) -> list[str]:
@@ -1469,12 +1472,17 @@ def _params(sig: str) -> list[str]:
 def _view_method_ok(sig: str) -> bool:
     """Lane I's rule for one view method: it takes at least one key, every key is an id, a
     `Sym`, a concrete `Ty`, a `Role`, `RoleMember` or `Decorator`, or a slice of `Sym`s or `Ty`s (never text
-    or a table), and it answers that key alone, never every item of a kind."""
+    or a table), and it answers that key alone, never every item of a kind. A method keyed by a
+    closed enum alone that answers a list (`marked_fns(Decorator) -> &[FnId]`, `role_fns(Role)`)
+    is every item a mark names, a scan of all items in a key's dress, so it fails (coordinator
+    ruling 07:17, review-20); `marked(f, d) -> bool` and `role_trait(r) -> Option<_>` pass."""
     name = re.search(r"fn\s+(\w+)", sig).group(1)
     if re.match(r"(?:all|every)(?:_|$)", name) or name.endswith("_all"):
         return False
     keys = _params(sig)
     ret = sig.split("->", 1)[1] if "->" in sig else ""
+    if keys and all(NEXT_VIEW_ENUM_KEY_RE.match(k) for k in keys) and NEXT_VIEW_LIST_RE.search(ret):
+        return False
     return bool(keys) and all(NEXT_VIEW_SLICE_KEY_RE.match(k)
                               or NEXT_VIEW_KEY_RE.match(k) and not NEXT_VIEW_TABLE_RE.search(k) for k in keys) \
         and not re.search(r"\b(?:%s)\b" % "|".join(NEXT_WHOLE_PROGRAM_TYPES), ret)
