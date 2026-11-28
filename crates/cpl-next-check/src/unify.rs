@@ -502,8 +502,7 @@ impl<'a> Cx<'a> {
             (Ty::Raw(p), Ty::Raw(q)) | (Ty::Ref(p), Ty::Ref(q)) | (Ty::Mut(p), Ty::Mut(q)) => {
                 self.fits(&p, &q)
             }
-            (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Int)
-            | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)) => true,
+            (r, Ty::Int) | (Ty::Int, r) if r.is_int_range() => true,
             (p, q) => p == q,
         }
     }
@@ -628,7 +627,7 @@ impl<'a> Cx<'a> {
     /// is an `Int`, checked into the range as it is stored (R03.1.4).
     pub(super) fn int_parts(&self, t: &Ty) -> Option<Ty> {
         match self.shallow(t) {
-            Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => Some(Ty::Int),
+            t if t.is_int_range() => Some(Ty::Int),
             Ty::Struct(s, ts, sets) => {
                 let parts = (ts.iter().map(|t| self.int_parts(t))).collect::<Option<Vec<Ty>>>()?;
                 (parts == ts || self.is_tuple(s)).then_some(Ty::Struct(s, parts, sets))
@@ -858,7 +857,7 @@ impl<'a> Cx<'a> {
                 self.position(want_s.clone(), e, CheckKind::Domain)
             }
             // An `Int` where an `I128` is expected widens to it (R02.1).
-            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_), Ty::I128) => TExpr {
+            (h, Ty::I128) if *h == Ty::Int || h.is_int_range() => TExpr {
                 kind: TK::ToI128(Box::new(e)),
                 ty: Ty::I128,
                 span,
@@ -896,14 +895,9 @@ impl<'a> Cx<'a> {
                 self.held_parts(e, &want_s)
             }
             // Loads widen, stores check (R03.1.4).
-            (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Int) => {
-                TExpr { ty: Ty::Int, ..e }
-            }
+            (r, Ty::Int) if r.is_int_range() => TExpr { ty: Ty::Int, ..e },
             (Ty::RangeOf(a), Ty::RangeOf(b)) if a == b => e,
-            (
-                Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..),
-                Ty::RangeTo(d, m, lo, k),
-            ) => {
+            (h, Ty::RangeTo(d, m, lo, k)) if *h == Ty::Int || h.is_int_range() => {
                 let int = |i| TExpr {
                     kind: TK::Int(i),
                     ty: Ty::Int,
@@ -931,7 +925,7 @@ impl<'a> Cx<'a> {
                 let v = self.checked_between(v, Some(int(lo)), Some(end), span);
                 TExpr { ty: want_s, ..v }
             }
-            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::RangeOf(r)) => {
+            (h, Ty::RangeOf(r)) if *h == Ty::Int || h.is_int_range() => {
                 let end = |v: Option<VarRef>| {
                     v.map(|v| TExpr {
                         kind: TK::Var(v),
@@ -945,7 +939,7 @@ impl<'a> Cx<'a> {
                 TExpr { ty: want_s, ..v }
             }
             (Ty::Range(a, b), Ty::Range(lo, hi)) if lo <= a && b <= hi => TExpr { ty: want_s, ..e },
-            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Range(lo, hi)) => {
+            (h, Ty::Range(lo, hi)) if *h == Ty::Int || h.is_int_range() => {
                 let (lo, hi) = (*lo, *hi);
                 // A constant is checked here, not when the program runs (R03.1.10), and so is
                 // arithmetic on the `let`s that keep one (R02.10.2); a value known to fit needs

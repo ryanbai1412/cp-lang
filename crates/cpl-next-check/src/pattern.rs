@@ -323,7 +323,7 @@ impl Cx<'_> {
             next::Pattern::Literal(l) => {
                 let e = l.value()?;
                 let t = match self.shallow(&v.ty) {
-                    Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => Ty::Int,
+                    t if t.is_int_range() => Ty::Int,
                     t @ (Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64) => t,
                     Ty::Error => return None,
                     // Any other literal, such as a string, matches what its type's `Eq` says
@@ -465,10 +465,8 @@ impl Cx<'_> {
                 );
                 return None;
             };
-            if !matches!(
-                self.shallow(&v.ty),
-                Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)
-            ) {
+            let t = self.shallow(&v.ty);
+            if t != Ty::Int && !t.is_int_range() {
                 self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
                 return None;
             }

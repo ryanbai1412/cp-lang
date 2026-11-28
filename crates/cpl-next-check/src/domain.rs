@@ -69,7 +69,7 @@ impl Cx<'_> {
             span: def_at,
         };
         let count = match (&t, self.d.roles().counted) {
-            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), _) => Some(v),
+            (t, _) if *t == Ty::Int || t.is_int_range() => Some(v),
             (_, Some(tr)) if self.has_impl(&t, tr) => self.count_of(tr, v, out),
             _ => None,
         };

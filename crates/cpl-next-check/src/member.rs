@@ -1107,13 +1107,9 @@ impl<'a> Cx<'a> {
                 let st = sub.ty(&st);
                 let st = self.fresh_sets(&st);
                 // `self: 0..` takes an integer as a parameter of that type does: checked in.
-                let scalar = matches!(
-                    self.shallow(&st),
-                    Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)
-                ) && matches!(
-                    self.shallow(&recv.ty),
-                    Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)
-                );
+                let recv_ty = self.shallow(&recv.ty);
+                let scalar = self.shallow(&st).is_int_range()
+                    && (recv_ty == Ty::Int || recv_ty.is_int_range());
                 // A closure's own type meets a fn-typed `self` as an argument does: coerced in.
                 let clo = match (self.shallow(&recv.ty), self.shallow(&st)) {
                     (Ty::Clo(c), Ty::Fn(ps, ..)) => self.clo_sig(&c).0.len() == ps.len(),

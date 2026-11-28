@@ -404,9 +404,7 @@ impl Cx<'_> {
                 Ty::Range(..) if made => {
                     self.unify(&ty, &w);
                 }
-                _ if matches!(orig, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..))
-                    && matches!(fd.ret, Ty::Param(_)) =>
-                {
+                _ if orig.is_int_range() && matches!(fd.ret, Ty::Param(_)) => {
                     self.unify(&ty, &Ty::Int);
                 }
                 _ => {}
