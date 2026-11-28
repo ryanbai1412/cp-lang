@@ -441,6 +441,14 @@ fn conv_arg(cx: &mut TyCx, a: &GenericArg, errors: &mut Vec<Msg>) -> Ty {
             None => Ty::Error,
         },
         GenericArg::Type(t) => conv(cx, t, errors),
+        // `D` of `impl Show for Bitset<D: Show>`, its bounds read with the impl's.
+        GenericArg::Param(p) if !p.is_const() => {
+            let s = p.name().and_then(|n| cx.env.sym(n.text()));
+            match s.and_then(|s| cx.generics.iter().position(|g| *g == s)) {
+                Some(i) => param(cx, i),
+                None => unbuilt("GenericParam", errors),
+            }
+        }
         GenericArg::Param(_) => unbuilt("GenericParam", errors),
     }
 }

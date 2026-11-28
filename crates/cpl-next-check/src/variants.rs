@@ -127,7 +127,7 @@ impl Cx<'_> {
             sets: &sets,
         };
         let generics: Vec<Sym> = (s.generics.iter())
-            .map(|g| self.b.syms.intern(&self.syms, g))
+            .map(|g| self.b.syms.intern(self.syms, g))
             .collect();
         let named = super::expr::named_params(&generics, &sub);
         let formals: Vec<Formal> = (s.fields.iter().zip(&s.defaults))
