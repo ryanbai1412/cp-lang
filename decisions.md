@@ -9726,7 +9726,7 @@ spelling (R01.10.1). Making every trait method a free name would change
 name resolution for all code to serve a few folds; writing each fold twice
 is debt. A trait's method with `self` marked `@free_form` is instead also
 callable as `f(x, ..)`, which is `x.f(..)` by ordinary member lookup
-(R08.1.4, decision 9500), so overrides apply. The name is in scope where the
+(R08.1.4, decision 636), so overrides apply. The name is in scope where the
 trait is, as a glob import of it would bring it: the module's own names
 shadow it, and two traits' free names of one spelling are ambiguous
 (E0701). Any library may use it; on anything else it is E0505. Decls keeps
