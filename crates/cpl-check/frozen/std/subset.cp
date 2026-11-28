@@ -46,6 +46,13 @@ pub struct Subset<B>(bits: U64):
         for b in xs: s = s.with(b)
         s
 
+    /// Whether `b` is a member; `b in s` calls it and `b not in s` negates it.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain B = 0..4; let s = Subset<B>.single(B(1)); B(1) in s and B(2) not in s`
+    pub fn contains(self, b: B) -> Bool = (bits >> b.ord) & U64(1) == U64(1)
+
     /// The number of members (a popcount).
     ///
     /// cost: \(O(1)\)
@@ -173,14 +180,6 @@ pub struct Subset<B>(bits: U64):
             yield Subset(g)
             if g == all: break
             g = (g + U64(1)) | bits
-
-impl<B: Domain> Contains<B> for Subset<B>:
-    /// Whether `b` is a member; `b in s` calls it and `b not in s` negates it.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `domain B = 0..4; let s = Subset<B>.single(B(1)); B(1) in s and B(2) not in s`
-    fn contains(self, b: B) -> Bool = (bits >> b.ord) & U64(1) == U64(1)
 
 impl BitOr for Subset<B>:
     fn bitor(a, b) = Subset(a.bits | b.bits)

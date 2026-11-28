@@ -285,6 +285,16 @@ pub struct IntervalSet<D>:
                 segs[hi] = nh
                 total += nh - hi
 
+    /// Whether position `i` is in the set.
+    ///
+    /// cost: \(O(\log \mathit{runs})\)
+    /// traps: when `i` is outside `D`
+    /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.contains(3) and not s.contains(4)`
+    pub fn contains(self, i: D) -> Bool:
+        let x = i.ord
+        if let (_, h) = segs.last_le(x): return x < h
+        false
+
     /// Whether every position of `r` is in the set, i.e. one run covers `r`.
     ///
     /// cost: \(O(\log \mathit{runs})\)
@@ -363,17 +373,6 @@ pub struct IntervalSet<D>:
     pub fn each(self) -> yields Range<D>:
         for (l, h) in segs.items: yield D.nth(l).l..D.nth(h - 1).r
 
-impl<D: Domain> Contains<D> for IntervalSet<D>:
-    /// Whether position `i` is in the set.
-    ///
-    /// cost: \(O(\log \mathit{runs})\)
-    /// traps: when `i` is outside `D`
-    /// example: `var s = IntervalSet<0..10>(); s.add(2..4); s.contains(3) and not s.contains(4)`
-    fn contains(self, i: D) -> Bool:
-        let x = i.ord
-        if let (_, h) = segs.last_le(x): return x < h
-        false
-
 /// Dynamic union of disjoint half-open integer intervals `[lo, hi)` over unbounded `Int`
 /// coordinates. \(O(\mathit{runs})\) space.
 pub struct SparseIntervalSet:
@@ -437,6 +436,15 @@ pub struct SparseIntervalSet:
                 segs[hi] = nh
                 total += nh - hi
 
+    /// Whether the coordinate `x` is in the set.
+    ///
+    /// cost: \(O(\log \mathit{runs})\)
+    /// traps: never
+    /// example: `var s = SparseIntervalSet(); s.add(10..20); s.contains(19) and not s.contains(20)`
+    pub fn contains(self, x: Int) -> Bool:
+        if let (_, h) = segs.last_le(x): return x < h
+        false
+
     /// The least coordinate `>= x` that is not in the set; always exists, since the set is finite.
     ///
     /// cost: \(O(\log \mathit{runs})\)
@@ -473,16 +481,6 @@ pub struct SparseIntervalSet:
     /// example: `var s = SparseIntervalSet(); s.add(10..12); s.add(0..3); s.each().collect() == [0..3, 10..12]`
     pub fn each(self) -> yields Range<Int>:
         for (l, h) in segs.items: yield l..h
-
-impl Contains<Int> for SparseIntervalSet:
-    /// Whether the coordinate `x` is in the set.
-    ///
-    /// cost: \(O(\log \mathit{runs})\)
-    /// traps: never
-    /// example: `var s = SparseIntervalSet(); s.add(10..20); s.contains(19) and not s.contains(20)`
-    fn contains(self, x: Int) -> Bool:
-        if let (_, h) = segs.last_le(x): return x < h
-        false
 
 @test
 fn interval_map_basic_and_coalescing():

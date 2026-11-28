@@ -15,13 +15,13 @@ use std.seq.{Seq, Track}
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
 /// `get`, `contains`, `set`, `remove`, and `get_or_insert` are \(O(1)\) expected.
 pub struct FlatMap<V>:
-    var ks: List<Int>
-    var vs: List<V>
-    var state: List<Int>
+    ks: List<Int>
+    vs: List<V>
+    state: List<Int>
     default_val: V
     salt: U64
-    var live: Int
-    var used: Int
+    live: Int
+    used: Int
 
     /// [rename] Create an empty `FlatMap<V>` sized for at least `cap` entries (replaces `with_capacity`).
     ///
@@ -101,6 +101,13 @@ pub struct FlatMap<V>:
                 if state[i] == 1 and ks[i] == k: return vs[i]
                 i = (i + 1) & mask
         None
+
+    /// Whether `k` is currently present.
+    ///
+    /// cost: \(O(1)\) expected
+    /// traps: never
+    /// example: `var m = FlatMap(0); m.set(-3, 1); m.contains(-3) and not m.contains(3)`
+    pub fn contains(self, k: Int) -> Bool = self.get(k) != None
 
     /// Insert or overwrite `k -> v`.
     ///
@@ -256,14 +263,6 @@ pub struct FlatMap<V>:
                 else: self.set(k, v)
         other.clear()
 
-impl<V> Contains<Int> for FlatMap<V>:
-    /// Whether `k` is currently present.
-    ///
-    /// cost: \(O(1)\) expected
-    /// traps: never
-    /// example: `var m = FlatMap(0); m.set(-3, 1); m.contains(-3) and not m.contains(3)`
-    fn contains(self, k: Int) -> Bool = self.get(k) != None
-
 /// Default-valued frequency / weight map over hashable keys `K`. `Counter<K>` counts with `Int`
 /// (`V = Int`) and is a `Track<K>` (`std.window`): `push(k)` adds 1, `pop(k)` takes 1 away.
 /// `c[k]` reads `init` without inserting; `add`, `get`, `set`, `remove`, and `contains` are \(O(1)\) expected.
@@ -330,6 +329,14 @@ pub struct Counter<K, V: Add = Int>:
     pub fn get(self, k: K) -> V:
         if let v = m.get(k): return v
         init
+
+    /// Whether `k` currently has a stored entry.
+    ///
+    /// cost: \(O(1)\) expected
+    /// traps: never
+    /// example: `let c = Counter.of([5]); c.contains(5) and not c.contains(6)`
+    pub fn contains(self, k: K) -> Bool:
+        m.get(k) != None
 
     /// Set `k` to `v` (W8 `IndexSet` backing `c[k] = v`).
     ///
@@ -481,15 +488,6 @@ pub struct Counter<K, V: Add = Int>:
     /// example: `Counter.of([2, 1, 2]).values.sorted() == [1, 2]`
     @get pub fn values(self) -> yields V:
         for (_, v) in m.items: yield v
-
-impl<K, V: Add> Contains<K> for Counter<K, V>:
-    /// Whether `k` currently has a stored entry.
-    ///
-    /// cost: \(O(1)\) expected
-    /// traps: never
-    /// example: `let c = Counter.of([5]); c.contains(5) and not c.contains(6)`
-    fn contains(self, k: K) -> Bool:
-        m.get(k) != None
 
 /// Count one more `x`: `c.add(x, 1)`, so a `Counter` fills like a bag.
 ///

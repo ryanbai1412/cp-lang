@@ -2733,10 +2733,10 @@ def old_std_copy_lines(root: Path) -> list[str]:
 
 
 OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
-# The std the old pipeline reads, a copy of std/ at c7ac8761d^ (migration rule 9): stage 5 deletes it.
+# The std the old pipeline reads, a copy of std/ at 6a31a3747^ (migration rule 9): stage 5 deletes it.
 FROZEN_STD = "crates/cpl-check/frozen/std"
-# `git rev-parse c7ac8761d^:std`: the tree FROZEN_STD has to stay.
-FROZEN_STD_TREE = "1756ac17a51327060833500752f12401ec8db076"
+# `git rev-parse 6a31a3747^:std`: the tree FROZEN_STD has to stay.
+FROZEN_STD_TREE = "918845f0fb5e8d8e69b121774d22d5b10ff88bba"
 
 
 def frozen_std_drift(root: Path, tree: str = FROZEN_STD_TREE) -> list[str]:
@@ -5096,7 +5096,7 @@ COUNTERS = {
                            "spec/conformance/REMOVED.md (Core)", next_cases_removed, True),
     "next_std_names": ("library declarations the new pipeline (cpl-next) knows by name (Core)", next_std_names, True),
     "next_refusal_kinds": ("kinds of feature the new pipeline (cpl-next) refuses: `Unbuilt` variants (Core)", next_refusal_kinds, True),
-    "frozen_std_drift": ("files of the old pipeline's std that are not std/ at c7ac8761d^ (Core)", frozen_std_drift, True),
+    "frozen_std_drift": ("files of the old pipeline's std that are not std/ at 6a31a3747^ (Core)", frozen_std_drift, True),
     "old_pipeline_lines": ("code lines in the frozen old checker, lowering, interpreter and emitter (Core)", old_pipeline_lines, True),
     "old_std_copy_lines": ("code lines of the pinned std copy the frozen old pipeline reads (Core)", old_std_copy_lines, True),
     "next_not_passing": ("cases the new pipeline (cpl-next) does not pass yet: wrong or refused (Core)", next_not_passing, True),
@@ -5563,7 +5563,7 @@ def unhidden_wrong(root: Path, ref: str) -> list[str]:
 
 
 # The commit whose std the old pipeline is pinned to (`crates/cpl-check/frozen/std`).
-FROZEN_PIN = "c7ac8761d^"
+FROZEN_PIN = "6a31a3747^"
 
 # Frozen-pipeline edits admitted one by one, by the patch id of what each changes in
 # `OLD_PIPELINE_CRATES` (`git show SHA -- crates/cpl-check ... | git patch-id --stable`), which a

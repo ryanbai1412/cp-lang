@@ -10,11 +10,11 @@ use std.seq.{Bidir, Seq}
 /// `push_front` / `pop_front` at the front, all amortized \(O(1)\); `q[i]` is the `i`-th element
 /// from the front in \(O(1)\). Memory is a ring of at most twice the largest length.
 pub struct Deque<T>:
-    var buf: List<T>
-    var head: Int
-    var n: Len
-    var mask: Int
-    var want: Int
+    buf: List<T>
+    head: Int
+    n: Len
+    mask: Int
+    want: Int
 
     /// Create an empty `Deque<T>`.
     ///

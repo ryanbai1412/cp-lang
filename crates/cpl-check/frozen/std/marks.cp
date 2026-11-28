@@ -51,6 +51,13 @@ pub struct Marks<D>:
         cnt -= 1
         true
 
+    /// Whether `v` is marked; also spelled `v in m`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `v` is outside `D`
+    /// example: `var m = Marks<0..5>(); m.add(1); m.contains(1) and not m.contains(0)`
+    pub fn contains(self, v: D) -> Bool = stamp[v] == gen
+
     /// Unmark everything by moving to a new generation, without touching the stamp array. Once the
     /// generation counter reaches `2_000_000_000` the array is reset to zero, so the cost stays \(O(1)\)
     /// amortized over the calls.
@@ -92,14 +99,6 @@ pub struct Marks<D>:
     pub fn each(self) -> yields D:
         for v in D:
             if stamp[v] == gen: yield v
-
-impl<D: Domain> Contains<D> for Marks<D>:
-    /// Whether `v` is marked; also spelled `v in m`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when `v` is outside `D`
-    /// example: `var m = Marks<0..5>(); m.add(1); m.contains(1) and not m.contains(0)`
-    fn contains(self, v: D) -> Bool = stamp[v] == gen
 
 /// Epoch-stamped map over domain `D` with \(O(1)\) `get`, `set`, `contains`, `remove`, and `clear()`.
 pub struct MarkMap<D, T>:
@@ -146,6 +145,13 @@ pub struct MarkMap<D, T>:
         for v in D:
             if stamp[v] == gen: yield (v, vals[v])
 
+    /// Whether `v` has a value. A key set to `default_val` is present.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `v` is outside `D`
+    /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 0); m.contains(2) and not m.contains(3)`
+    pub fn contains(self, v: D) -> Bool = stamp[v] == gen
+
     /// The value at `v`, or `None` when `v` is absent.
     ///
     /// cost: \(O(1)\)
@@ -188,14 +194,6 @@ pub struct MarkMap<D, T>:
         else:
             gen += 1
         cnt = 0
-
-impl<D: Domain, T> Contains<D> for MarkMap<D, T>:
-    /// Whether `v` has a value. A key set to `default_val` is present.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when `v` is outside `D`
-    /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 0); m.contains(2) and not m.contains(3)`
-    fn contains(self, v: D) -> Bool = stamp[v] == gen
 
 /// Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 /// `id`, `get`, and `key` are \(O(1)\) expected; `len`, `is_empty`, `clear` are \(O(1)\).
@@ -272,6 +270,14 @@ pub struct Interner<K>:
     /// example: `var t = Interner<Str>(); t.id("x"); t.id("y"); t.key(1) == "y"`
     pub fn key(self, i: Int) -> K = keys[i]
 
+    /// Whether `k` has been interned; `get(k) != None`.
+    ///
+    /// cost: \(O(1)\) expected
+    /// traps: never
+    /// example: `var t = Interner<Int>(); t.id(40); t.contains(40) and not t.contains(41)`
+    pub fn contains(self, k: K) -> Bool:
+        to_id.get(k) != None
+
     /// Allocate room for at least `cap` distinct keys, so the next `cap - len` new keys do not
     /// reallocate. Changes no ids.
     ///
@@ -281,15 +287,6 @@ pub struct Interner<K>:
     pub fn reserve(mut self, cap: Len):
         assert cap >= 0
         keys.reserve(cap)
-
-impl<K> Contains<K> for Interner<K>:
-    /// Whether `k` has been interned; `get(k) != None`.
-    ///
-    /// cost: \(O(1)\) expected
-    /// traps: never
-    /// example: `var t = Interner<Int>(); t.id(40); t.contains(40) and not t.contains(41)`
-    fn contains(self, k: K) -> Bool:
-        to_id.get(k) != None
 
 /// Briggs-Torczon sparse set over domain `D`.
 /// \(O(1)\) `add`, `remove`, `contains`, `clear` AND O(`len`) iteration over active elements.
@@ -322,6 +319,15 @@ pub struct SparseSet<D>:
     /// example: `var s = SparseSet<0..5>(); s.add(1); s.remove(1); s.is_empty`
     @get pub fn is_empty(self) -> Bool:
         _len == 0
+
+    /// Whether `v` is in the set.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `v` is outside `D`
+    /// example: `var s = SparseSet<0..5>(); s.add(3); s.contains(3) and not s.contains(2)`
+    pub fn contains(self, v: D) -> Bool:
+        let p = pos[v]
+        0 <= p < _len and dense[p] == v
 
     /// Add `v` at the end of the dense order. Returns `true` when `v` was absent, `false` when it
     /// was present (and nothing changes).
@@ -370,16 +376,6 @@ pub struct SparseSet<D>:
     /// example: `var s = SparseSet<0..5>(); s.add(2); s.add(0); s.add(4); s.each().collect() == [2, 0, 4]`
     pub fn each(self) -> yields D:
         for i in 0.._len: yield dense[i]
-
-impl<D: Domain> Contains<D> for SparseSet<D>:
-    /// Whether `v` is in the set.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: when `v` is outside `D`
-    /// example: `var s = SparseSet<0..5>(); s.add(3); s.contains(3) and not s.contains(2)`
-    fn contains(self, v: D) -> Bool:
-        let p = pos[v]
-        0 <= p < _len and dense[p] == v
 
 /// Compact 4-byte typed handle into an `Arena<T>`.
 pub struct Id<T>(pub raw: 0..=2_000_000_000)

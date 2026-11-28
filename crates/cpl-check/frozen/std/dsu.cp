@@ -19,10 +19,10 @@ pub struct Mark(at: 0..=2_000_000_000)
 /// operation is \(O(\log n)\) and each `unite` costs one entry of memory until it is undone.
 pub struct Dsu<V>:
     @cache p: List<-2_147_483_648..=2_147_483_647>
-    pub var parts: Int
+    pub parts: Int
     /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
     pub joined: List<-2_147_483_648..=2_147_483_647>
-    var marked: Bool
+    marked: Bool
 
     /// A union-find over `V` with every position in its own set. Pass `rollback: true` to switch
     /// path shortening off from the start, as the first `mark()` would.
@@ -199,13 +199,13 @@ pub struct DsuOf<V, T>:
     @cache p: List<-2_147_483_648..=2_147_483_647>
     val: [V]T
     join: (T, T) -> T
-    var parts: Int
+    parts: Int
     /// Since the first `mark`, one entry per change: the root that went under another (the
     /// root itself for a `set`), the root whose value changed, and that value before.
     pub log: List<(V, V, T)>
     /// The old `p` of each root that went under another, one per merge in `log`.
     gone: List<-2_147_483_648..=2_147_483_647>
-    var marked: Bool
+    marked: Bool
 
     /// A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and
     /// `join` combining the values of two sets when they merge.
