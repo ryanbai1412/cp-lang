@@ -6065,7 +6065,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     raised = [(n, n) for n, v in baseline.items()
               if n in old and isinstance(v, int) and isinstance(old[n], int) and v > old[n]
               and not (isinstance(mine.get(n), int) and v <= mine[n])
-              and not (upstream and isinstance(upstream.get(n), int) and v <= upstream[n])
+              and not (upstream and isinstance(upstream.get(n), int) and v <= upstream[n] and not _gated_next(n))
               and not ((w := measured_without_restore(root, base, n)) is not None
                        and v - old[n] <= _count(n, root) - w)]
     old_allow, mine_allow = old.get("rs_file_size_allowlist", {}), mine.get("rs_file_size_allowlist", {})
@@ -6100,9 +6100,52 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
             f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); {need}"
             for n, key in raised
             for need in [raise_evidence(root, base, n) if n in RUN_MEASURED
+                         else redefinition_raise(root, base, n, baseline[n]) if remeasured(root, base, key)
+                         and _gated_next(n)
                          else None if remeasured(root, base, key)
                          else signed_raise(root, base, n, old[n], baseline[n]) if n in COUNTERS
                          else stale] if need]
+
+
+def _gated_next(n: str) -> bool:
+    return n.startswith("next_") and n in COUNTERS and COUNTERS[n][2]
+
+
+def _count_by(root: Path, rev: str, name: str) -> int | None:
+    """What `rev`'s definition of counter `name` measures on this tree, or None if `rev` has none."""
+    src = "\n".join(_git(root, "show", f"{rev}:scripts/debt-ratchet.py"))
+    if f'"{name}"' not in src:
+        return None
+    import importlib.util
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "old_ratchet.py"
+        f.write_text(src + "\n", encoding="utf-8")
+        spec = importlib.util.spec_from_file_location("old_ratchet", f)
+        mod = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(mod)
+            counter = mod.COUNTERS.get(name)
+            return None if counter is None else len(counter[1](root))
+        except Exception:
+            return None
+
+
+REDEFINED_RAISE_RE = re.compile(r"^(\d+)\s*->\s*(\d+)\b")
+
+
+def redefinition_raise(root: Path, base: str, name: str, new: int) -> str | None:
+    """None when a gated `next_*` counter whose definition this change rewrites carries
+    `Raise: <name> <old> -> <new>: <why>`, with <old> what `base`'s definition measures on this
+    tree and <new> what this one does: both counts on the same tree, so a redefinition never
+    hides new debt in the count it renames (3 AM blind audit: ~39 of 45 raises had no trailer)."""
+    old, now = _count_by(root, base, name), _count(name, root)
+    for _, n, rest in raises(root, base):
+        m = REDEFINED_RAISE_RE.match(rest)
+        if n == name and m and int(m[2]) == now and (old is None or int(m[1]) == old) and int(m[2]) >= new:
+            return None
+    return (f"{name}'s definition changed: add `Raise: {name} {old if old is not None else '<old>'} -> {now}: "
+            f"<why>`, both counts on this tree ({base[:9]}'s definition, then this one)")
 
 
 def hand_lowered(root: Path, baseline: dict, actual: dict, ref: str = "origin/main") -> list[str]:

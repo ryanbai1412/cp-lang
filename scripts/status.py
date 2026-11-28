@@ -114,15 +114,29 @@ def render():
 
 
 def raises_since(since: str | None) -> list[str]:
-    """Each `Raise:` trailer in `since..HEAD`, by default since plan/STATUS.md was last written:
-    a baseline raised by the coordinator's sign-off, for the coordinator and the audits to check
-    against a ruling."""
+    """Each counter baseline `scripts/debt-ratchet.json` raises in `since..HEAD` (by default
+    since 2026-11-26, the gated next_* counters' start), with the commit's `Raise:` trailer for
+    it or `NO TRAILER`: the trailers alone missed every raise made without one (3 AM blind
+    audit, ~39 of 45)."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=False).stdout
-    since = since or git("log", "-1", "--format=%H", "--", "plan/STATUS.md").strip()
-    log = git("log", "--no-merges", "--format=%h%x1f%(trailers:key=Raise,valueonly,separator=%x1e)",
-              f"{since}..HEAD" if since else "HEAD")
-    return [f"{sha} Raise: {r.strip()}" for sha, _, rs in (l.partition("\x1f") for l in log.splitlines())
-            for r in rs.split("\x1e") if r.strip()]
+    rng = f"{since}..HEAD" if since else "HEAD"
+    shas = git("log", "--no-merges", "--format=%H", *([] if since else ["--since=2026-11-26"]), rng,
+               "--", "scripts/debt-ratchet.json").split()
+    out = []
+    for sha in reversed(shas):
+        try:
+            new = json.loads(git("show", f"{sha}:scripts/debt-ratchet.json") or "{}")
+            old = json.loads(git("show", f"{sha}^:scripts/debt-ratchet.json") or "{}")
+        except json.JSONDecodeError:
+            continue
+        # Read as the ratchet reads them (`raises`): a `Raise:` line anywhere in the message.
+        trailers = {m[1].rstrip(":"): f"{m[1]} {m[2]}".strip()
+                    for m in re.finditer(r"(?m)^Raise:\s*(\S+)\s*(.*)$", git("log", "-1", "--format=%B", sha))}
+        for n, v in new.items():
+            if isinstance(v, int) and isinstance(old.get(n), int) and v > old[n]:
+                why = trailers.get(n)
+                out.append(f"{sha[:9]} {n} {old[n]} -> {v}: " + (f"Raise: {why}" if why else "NO TRAILER"))
+    return out
 
 
 def main(argv):

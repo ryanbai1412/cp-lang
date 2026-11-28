@@ -371,6 +371,16 @@ class DebtRatchetTest(unittest.TestCase):
                         '/// a stand-in until the stage lands\n')
             self.assertEqual(dr.next_until_notes(root), [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 2, 3)])
 
+    def test_a_redefinition_raise_prints_both_counts_on_the_same_tree(self) -> None:
+        root = Path(".")
+        with mock.patch.object(dr, "_count_by", lambda r, rev, n: 14), \
+                mock.patch.object(dr, "_count", lambda n, r: 31):
+            for given, ok in [([], False), ([("a", "next_x", "14 -> 31: wider")], True),
+                              ([("a", "next_x", "15 -> 31: wider")], False), ([("a", "next_x", "14 -> 30")], False),
+                              ([("a", "next_y", "14 -> 31")], False)]:
+                with mock.patch.object(dr, "raises", lambda r, b: given):
+                    self.assertEqual(dr.redefinition_raise(root, "base", "next_x", 31) is None, ok, given)
+
     def test_library_gates_count_each_call_and_its_wrapper(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
