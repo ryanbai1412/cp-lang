@@ -1,12 +1,44 @@
 //! Members: a field read or a method call on a receiver, found on its type, a bound or an
 //! extension fn (R08.1.4).
+use super::call::CallArg;
 use super::expr::block;
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
 /// Whether a call with these arguments could be of `f`: `D.count(pred)` is not a call of the
 /// getter `Domain.count`, which takes none, so a member that takes them is looked for instead.
-pub(super) fn takes(f: &decls::FnDecl, call: Option<&[ast::Arg]>) -> bool {
+/// A member's name and where it is written: `m` of `x.m`, or one a form calls for the program.
+#[derive(Clone, Copy)]
+pub(super) struct Called<'n> {
+    pub text: &'n str,
+    pub span: Span,
+}
+
+/// The name an expression is, when it is only a name: `x`, not `x.y` or `f(x)`.
+/// What `f.clear` of a `@memo` fn calls: a clear bound beside a local or global `f`, or the
+/// fn decls declared beside a declared one.
+enum Clear {
+    Bound(VarRef),
+    Declared(FnId),
+}
+
+fn written_types(g: &next::GenericExpr) -> Vec<next::Type> {
+    (g.args().iter().flat_map(|a| a.args()))
+        .filter_map(|a| match a {
+            next::GenericArg::Type(t) => Some(t),
+            next::GenericArg::Param(_) => None,
+        })
+        .collect()
+}
+
+pub(super) fn bare_name(e: &next::Expr) -> Option<String> {
+    match e {
+        next::Expr::Name(r) => Some(r.ident()?.text().to_string()),
+        _ => None,
+    }
+}
+
+pub(super) fn takes(f: &decls::FnDecl, call: Option<&[CallArg]>) -> bool {
     call.is_none_or(|args| args.len() <= f.params.len())
 }
 
@@ -147,9 +179,9 @@ impl<'a> Cx<'a> {
     }
     fn free_fn_help(
         &self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
     ) -> Option<String> {
         let args = call?;
         let Some(decls::Named::Fn(f)) = self.d.named(self.b.module, &name.text) else {
@@ -158,8 +190,8 @@ impl<'a> Cx<'a> {
         if self.d.f(f).self_ty.is_some() {
             return None;
         }
-        let mut written = vec![self.text(base.span).to_string()];
-        written.extend(args.iter().map(|a| self.text(a.value.span).to_string()));
+        let mut written = vec![self.text(self.at(base)).to_string()];
+        written.extend(args.iter().map(|a| self.text(a.at).to_string()));
         let m = &name.text;
         Some(format!(
             "`{m}` is a free fn, not a method: `{m}({})`",
@@ -171,9 +203,9 @@ impl<'a> Cx<'a> {
     fn renamed(
         &self,
         rt: &Ty,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
     ) -> Option<(Option<String>, String)> {
         let m = &name.text;
         let f = self.d.renamed(m).into_iter().find_map(|id| {
@@ -184,21 +216,21 @@ impl<'a> Cx<'a> {
         let now = &f.name;
         // The call as written with the member's name replaced: `x.m(a)` reads `x.now(a)`.
         let mut written = self
-            .text(Span::new(base.span.start, name.span.start))
+            .text(Span::new(self.at(base).start, name.span.start))
             .to_owned()
             + now;
         if let Some(args) = call {
-            let args: Vec<&str> = args.iter().map(|a| self.text(a.value.span)).collect();
+            let args: Vec<&str> = args.iter().map(|a| self.text(a.at)).collect();
             written = format!("{written}({})", args.join(", "));
         }
-        match f.was.contains(m) {
+        match f.was.iter().any(|w| w == m) {
             true => Some((Some(now.clone()), format!("write `{written}`"))),
             false => Some((None, format!("`{m}` is spelled `{now}`: `{written}`"))),
         }
     }
     /// A fn this module declares with a `self` of the receiver's own type is never called when
     /// the type has a member of its name: the member is found first (R08.1.4).
-    fn hidden_by_member(&mut self, rt: &Ty, base: &ast::Expr, name: &ast::Name) {
+    fn hidden_by_member(&mut self, rt: &Ty, base: &next::Expr, name: Called<'_>) {
         let Ty::Struct(s, ..) = rt else {
             return;
         };
@@ -214,7 +246,7 @@ impl<'a> Cx<'a> {
         if !mine {
             return;
         }
-        let shown = self.text(base.span);
+        let shown = self.text(self.at(base));
         let ty = &self.d.s(*s).name;
         self.err_help(
             name.span,
@@ -226,12 +258,12 @@ impl<'a> Cx<'a> {
     /// chosen per instance by `T`.
     fn bound_static(
         &mut self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let ExprKind::Name(n) = &base.kind else {
+        let Some(n) = &bare_name(base) else {
             return None;
         };
         if self.lookup(n).is_some() {
@@ -308,7 +340,7 @@ impl<'a> Cx<'a> {
         (a, b): (TraitId, TraitId),
         shown: &str,
         ty: &Ty,
-        name: &ast::Name,
+        name: Called<'_>,
         args: &str,
         span: Span,
     ) -> TExpr {
@@ -328,22 +360,22 @@ impl<'a> Cx<'a> {
     /// an `m` (R08.1.4).
     fn trait_call(
         &mut self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
         span: Span,
         want: Option<&Ty>,
     ) -> Option<TExpr> {
-        let (ExprKind::Name(n), Some([first, rest @ ..])) = (&base.kind, call) else {
+        let (Some(n), Some([first, rest @ ..])) = (&bare_name(base), call) else {
             return None;
         };
-        if first.name.is_some() || self.lookup(n).is_some() {
+        if first.label.is_some() || self.lookup(n).is_some() {
             return None;
         }
         let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, n) else {
             return None;
         };
-        let recv = self.expr(&first.value, None);
+        let recv = self.arg_expr(first, None);
         let rt = self.shallow(&recv.ty);
         let Some(decls::Member::Method(m, ts, ss)) =
             self.impls().impl_member(&rt, &name.text, Some(tr))
@@ -369,7 +401,7 @@ impl<'a> Cx<'a> {
     /// `T.MIN` where no bound of `T` gives `MIN` but a trait does: a body is checked against its
     /// bounds alone (R08.2.2), so the error names the bound to write. None when no trait has a
     /// self-less fn `name`.
-    fn unbound_static(&mut self, t: &str, name: &ast::Name, span: Span) -> Option<TExpr> {
+    fn unbound_static(&mut self, t: &str, name: Called<'_>, span: Span) -> Option<TExpr> {
         let mut givers: Vec<&str> = (self.d.traits_with(&name.text).into_iter())
             .map(|tr| self.d.t(tr))
             .filter(|tr| !tr.alias)
@@ -403,29 +435,33 @@ impl<'a> Cx<'a> {
     /// trait the named type implements. None for a name that is a value, a struct or no type.
     fn named_type_static(
         &mut self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
-        let ExprKind::Name(n) = &base.kind else {
+        let Some(n) = &bare_name(base) else {
             return None;
         };
         if self.lookup(n).is_some() || self.d.named(self.b.module, n).is_some() {
             return None;
         }
-        let t = ast::Type::named(n, base.span);
-        let (t, errs) = decls::body_type(
-            self.d,
-            self.d,
-            self.b.module,
-            &self.b.generics,
-            &self.b.doms,
-            &|n: &str| self.owned_named(n),
-            &t,
-        );
+        let t = match self.d.named(self.b.module, n) {
+            _ if self.b.generics.iter().any(|g| g == n) => return None,
+            Some(decls::Named::Alias(id)) => {
+                let (t, errs) = self.with_body_scope(|at| decls::alias_type(at, id, Vec::new()));
+                if !errs.is_empty() {
+                    return None;
+                }
+                t
+            }
+            Some(_) => return None,
+            None => (self.b.doms.get(n).cloned())
+                .or_else(|| self.owned_named(n))
+                .or_else(|| decls::prim_type(n))?,
+        };
         let t = self.shallow(&t);
-        if !errs.is_empty() || matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_)) {
+        if matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_)) {
             return None;
         }
         self.type_static(t, name, call, span)
@@ -441,13 +477,13 @@ impl<'a> Cx<'a> {
     }
     /// `Pair<V>.count(p)`: a member a generic domain type lacks is its walk's, as `Two.count(p)`
     /// is for one with no type parameters (R04.2.27).
-    fn walks_at(&mut self, d: StructId, written: &[ast::Type], name: &str, span: Span) -> bool {
+    fn walks_at(&mut self, d: StructId, written: &[next::Type], name: &str) -> bool {
         if written.is_empty() || self.d.member(&self.d.s(d).methods, name).is_some() {
             return false;
         }
         let mut pre = Vec::new();
         let given = (written.iter())
-            .map(|t| self.body_ty(t, span, &mut pre))
+            .map(|t| self.body_ty(t, &mut pre))
             .collect();
         let given = self.d.with_defaults_of(d, given);
         self.is_domain(&Ty::Struct(d, given, Vec::new()))
@@ -455,8 +491,8 @@ impl<'a> Cx<'a> {
     pub(super) fn type_static(
         &mut self,
         t: Ty,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
         let found: Vec<(TraitId, FnId)> = (self.d.traits_with(&name.text).into_iter())
@@ -512,8 +548,8 @@ impl<'a> Cx<'a> {
     /// `gen` named where no fn or value is: the self-less fn of that name a trait in view
     /// declares returning `Self`, which a written type argument or the expected type picks the
     /// impl of (R08.2.8).
-    pub(super) fn returned_by(&self, callee: &ast::Expr) -> Option<(String, (TraitId, FnId))> {
-        let ExprKind::Name(n) = &callee.kind else {
+    pub(super) fn returned_by(&self, callee: &next::Expr) -> Option<(String, (TraitId, FnId))> {
+        let Some(n) = &bare_name(callee) else {
             return None;
         };
         if self.lookup(n).is_some() || self.d.named(self.b.module, n).is_some() {
@@ -538,7 +574,7 @@ impl<'a> Cx<'a> {
         t: Ty,
         (tr, m): (TraitId, FnId),
         n: &str,
-        args: &[ast::Arg],
+        args: &[CallArg],
         span: Span,
     ) -> TExpr {
         let r = self.d.with_defaults(
@@ -551,11 +587,8 @@ impl<'a> Cx<'a> {
         self.b
             .obligations
             .push((t.clone(), r.clone(), span, Origin::Bound));
-        let name = ast::Name {
-            text: n.to_string(),
-            span,
-        };
-        self.static_call(t, r, m, &name, Some(args), span)
+        let name = Called { text: n, span };
+        self.static_call(t, r, m, name, Some(args), span)
     }
     /// A call of trait `tr`'s fn `m` without `self`, its impl chosen by `self_ty`.
     pub(super) fn static_call(
@@ -563,8 +596,8 @@ impl<'a> Cx<'a> {
         self_ty: Ty,
         tr: decls::TraitRef,
         m: FnId,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
         span: Span,
     ) -> TExpr {
         self.reach(m);
@@ -595,7 +628,7 @@ impl<'a> Cx<'a> {
             kind: TK::CallTrait {
                 ctx: self.trait_ctx(tr.tr, &name.text),
                 tr,
-                method: name.text.clone(),
+                method: name.text.to_string(),
                 recv: None,
                 self_ty: Box::new(self_ty),
                 targs: tys[outer..].into(),
@@ -607,8 +640,8 @@ impl<'a> Cx<'a> {
         block(pre, call)
     }
     /// `opt.k`: what the innermost `with` around it set, else the field's default (R09.1.2).
-    fn ctx_read(&mut self, base: &ast::Expr, name: &ast::Name, span: Span) -> Option<TExpr> {
-        let ExprKind::Name(n) = &base.kind else {
+    fn ctx_read(&mut self, base: &next::Expr, name: Called<'_>, span: Span) -> Option<TExpr> {
+        let Some(n) = &bare_name(base) else {
             return None;
         };
         let d = self.d;
@@ -619,7 +652,7 @@ impl<'a> Cx<'a> {
             return None;
         };
         let c = &d.contexts[id.0];
-        let Some(f) = c.fields.iter().find(|f| f.name.text == name.text) else {
+        let Some(f) = c.fields.iter().find(|f| d.sym(name.text) == Some(f.name)) else {
             let code = cpl_diag::codes::UNKNOWN_FIELD;
             self.err(
                 span,
@@ -637,7 +670,14 @@ impl<'a> Cx<'a> {
             None => (f.default.clone()?, c.module),
         };
         let m = std::mem::replace(&mut self.b.module, m);
-        let ty = self.body_ty(&f.ty, span, &mut Vec::new());
+        let ty = match &f.ty {
+            decls::TyForm::Written(t) => self.body_ty(t, &mut Vec::new()),
+            _ => {
+                let msg = format!("context `{n}`'s field `{}` has no written type", name.text);
+                self.err(span, Msg::internal(msg));
+                Ty::Error
+            }
+        };
         let v = self.expr(&value, Some(&ty));
         self.b.module = m;
         Some(self.coerce(v, &ty))
@@ -646,13 +686,13 @@ impl<'a> Cx<'a> {
     /// `m.f` of an inline `mod m:`: what `m` declares `pub` as `f` (R11.1.3, R11.1.2).
     fn module_member(
         &mut self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
         span: Span,
         want: Option<&Ty>,
     ) -> Option<TExpr> {
-        let ExprKind::Name(m) = &base.kind else {
+        let Some(m) = &bare_name(base) else {
             return None;
         };
         let d = self.d;
@@ -707,8 +747,8 @@ impl<'a> Cx<'a> {
         recv: TExpr,
         rt: &Ty,
         (tr, m): (&decls::TraitRef, FnId),
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
         span: Span,
     ) -> TExpr {
         self.reach(m);
@@ -743,7 +783,7 @@ impl<'a> Cx<'a> {
             kind: TK::CallTrait {
                 ctx: self.trait_ctx(tr.tr, &name.text),
                 tr: tr.clone(),
-                method: name.text.clone(),
+                method: name.text.to_string(),
                 recv: Some(Box::new(recv)),
                 self_ty: Box::new(rt.clone()),
                 targs: tys[outer..].into(),
@@ -760,21 +800,22 @@ impl<'a> Cx<'a> {
 
     pub(super) fn member(
         &mut self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: &str,
+        name_at: Span,
+        call: Option<&[CallArg]>,
         span: Span,
         want: Option<&Ty>,
         written_targs: &[Ty],
     ) -> TExpr {
         // A tuple's `.1` is its field `_1`, read or called (R02.5).
-        let digit = ast::Name {
-            text: format!("_{}", name.text),
-            span: name.span,
-        };
-        let name = match name.text.starts_with(|c: char| c.is_ascii_digit()) {
-            true => &digit,
-            false => name,
+        let digit = format!("_{name}");
+        let name = Called {
+            text: match name.starts_with(|c: char| c.is_ascii_digit()) {
+                true => &digit,
+                false => name,
+            },
+            span: name_at,
         };
         if let Some(e) = self.ctx_read(base, name, span) {
             self.no_targs(name, written_targs, span);
@@ -785,23 +826,23 @@ impl<'a> Cx<'a> {
             return e;
         }
         // `f.clear()` of a `@memo` fn: the fn declared beside it as its clear (R06.4.1).
-        let clear = match (&base.kind, call) {
-            (ExprKind::Name(n), Some(args)) => self.memo_clear(n, &name.text).map(|c| (c, args)),
-            _ => None,
-        };
-        if let Some((clear, args)) = clear {
-            let callee = ast::Expr {
-                kind: ExprKind::Name(clear),
-                span,
-            };
-            let e = ast::Expr {
-                kind: ExprKind::Call {
-                    callee: Box::new(callee),
-                    args: args.to_vec(),
-                },
-                span,
-            };
-            return self.expr(&e, want);
+        if let (Some(f), Some(args)) = (bare_name(base), call) {
+            match self.memo_clear(&f, name.text) {
+                Some(Clear::Bound(v)) => {
+                    let ty = self.var_ty(v);
+                    let clear = TExpr {
+                        kind: TK::Var(v),
+                        ty,
+                        span,
+                    };
+                    return self.call_value(clear, args, span);
+                }
+                Some(Clear::Declared(c)) => {
+                    let n = self.d.f(c).name.clone();
+                    return self.call_of(&n, decls::Named::Fn(c), &[], args, span, want);
+                }
+                None => {}
+            }
         }
         if let Some(e) = self.domain_member(base, name, call, span, want) {
             self.no_targs(name, written_targs, span);
@@ -820,14 +861,14 @@ impl<'a> Cx<'a> {
             return e;
         }
         // `Type.f(args)` or `Type<A>.f(args)`: a fn of the type with no receiver.
-        let (ty_name, written) = match &base.kind {
-            ExprKind::Name(n) => (Some(n), &[][..]),
-            ExprKind::Generic { base, args } => match &base.kind {
-                ExprKind::Name(n) => (Some(n), &args[..]),
-                _ => (None, &[][..]),
+        let (ty_name, written) = match base {
+            next::Expr::Generic(g) => match g.base().as_ref().and_then(bare_name) {
+                Some(n) => (Some(n), written_types(g)),
+                None => (None, Vec::new()),
             },
-            _ => (None, &[][..]),
+            _ => (bare_name(base), Vec::new()),
         };
+        let ty_name = ty_name.as_ref();
         // `Enum.Variant(args)`, or `Enum.Variant` with no payload (R02.7.1).
         if let Some(n) = ty_name {
             if let (Some(e), true) = (
@@ -838,7 +879,7 @@ impl<'a> Cx<'a> {
                     self.no_targs(name, written_targs, span);
                     let mut pre = Vec::new();
                     let given: Vec<Ty> = (written.iter())
-                        .map(|t| self.body_ty(t, span, &mut pre))
+                        .map(|t| self.body_ty(t, &mut pre))
                         .collect();
                     let given = self.d.with_defaults_of(e, given);
                     let v = self.variant(e, i, given, call.unwrap_or(&[]), span);
@@ -864,7 +905,7 @@ impl<'a> Cx<'a> {
             })
         });
         let call = call.or(get.then_some(&[][..]));
-        let walks = named.is_some_and(|(_, d)| self.walks_at(d, written, &name.text, span));
+        let walks = named.is_some_and(|(_, d)| self.walks_at(d, &written, name.text));
         if let (Some(n), Some(args)) = (ty_name, call) {
             if let Some((_, d)) = named.filter(|&(_, d)| !walks && !self.walks_for(d, &name.text)) {
                 let s = self.d.s(d);
@@ -897,7 +938,7 @@ impl<'a> Cx<'a> {
                 }
                 let mut pre = Vec::new();
                 let given: Vec<Ty> = (written.iter().take(s.generics.len()))
-                    .map(|t| self.body_ty(t, span, &mut pre))
+                    .map(|t| self.body_ty(t, &mut pre))
                     .collect();
                 let given = self.d.with_defaults_of(d, given);
                 let f = self.fnref(m, given, Vec::new());
@@ -953,7 +994,7 @@ impl<'a> Cx<'a> {
                 }
                 Ok(None) => {}
                 Err(two) => {
-                    let shown = self.text(base.span);
+                    let shown = self.text(self.at(base));
                     return self.two_traits_give(two, shown, &rt, name, shown, span);
                 }
             }
@@ -992,7 +1033,7 @@ impl<'a> Cx<'a> {
                     return e;
                 }
                 [a, b, ..] => {
-                    let shown = self.text(base.span);
+                    let shown = self.text(self.at(base));
                     return self.two_traits_give((a, b), shown, &rt, name, shown, span);
                 }
                 _ => {}
@@ -1157,19 +1198,31 @@ impl<'a> Cx<'a> {
 
     /// The name `@memo` fn `f`'s clear is bound under, found through `f`'s binding (R06.4.1).
     /// The clear `@memo` gave `f`, when `member` is the name its expansion gave it.
-    fn memo_clear(&self, f: &str, member: &str) -> Option<String> {
-        let clear = match self.lookup(f) {
-            Some((v, _)) => match *self.b.memo_clears.get(&v)? {
-                VarRef::Local(k) => self.b.locals[k].name.clone(),
-                VarRef::Global(k) => self.globals[k].name.clone(),
-            },
+    fn memo_clear(&self, f: &str, member: &str) -> Option<Clear> {
+        let (clear, name) = match self.lookup(f) {
+            Some((v, _)) => {
+                let c = *self.b.memo_clears.get(&v)?;
+                let name = match c {
+                    VarRef::Local(k) => &self.b.locals[k].name,
+                    VarRef::Global(k) => &self.globals[k].name,
+                };
+                (Clear::Bound(c), name)
+            }
             None => {
                 let Some(decls::Named::Fn(w)) = self.d.named(self.b.module, f) else {
                     return None;
                 };
-                self.d.f(*self.d.memo_clears.get(&w)?).name.clone()
+                let c = *self.d.memo_clears.get(&w)?;
+                (Clear::Declared(c), &self.d.f(c).name)
             }
         };
-        (clear.rsplit_once('.').map(|(_, m)| m) == Some(member)).then_some(clear)
+        (name.rsplit_once('.').map(|(_, m)| m) == Some(member)).then_some(clear)
+    }
+    /// The type a binding was given.
+    fn var_ty(&self, v: VarRef) -> Ty {
+        match v {
+            VarRef::Local(k) => self.b.locals[k].ty.clone(),
+            VarRef::Global(k) => self.globals[k].ty.clone(),
+        }
     }
 }

@@ -1,5 +1,7 @@
 //! Type arguments written on an expression: `id::<Int>`, `s.parse<Int>()` (R08.2.5).
+use super::call::CallArg;
 use super::expr::block;
+use super::member::{bare_name, Called};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
@@ -7,8 +9,8 @@ impl Cx<'_> {
     /// `f<A>` named as a value: the closure that calls `f` with `A`, as `f` alone is.
     pub(super) fn generic_value(
         &mut self,
-        base: &ast::Expr,
-        targs: &[ast::Type],
+        base: &next::Expr,
+        targs: &[next::Type],
         span: Span,
     ) -> TExpr {
         let err = TExpr {
@@ -16,7 +18,7 @@ impl Cx<'_> {
             ty: Ty::Error,
             span,
         };
-        let ExprKind::Name(n) = &base.kind else {
+        let Some(n) = &bare_name(base) else {
             self.err(
                 span,
                 Unbuilt::Expression {
@@ -61,9 +63,7 @@ impl Cx<'_> {
             return err;
         };
         let mut pre = Vec::new();
-        let given: Vec<Ty> = (targs.iter())
-            .map(|t| self.body_ty(t, span, &mut pre))
-            .collect();
+        let given: Vec<Ty> = (targs.iter()).map(|t| self.body_ty(t, &mut pre)).collect();
         let given = self.written_targs(d, Vec::new(), &given, span);
         let f = self.fnref(d, given, Vec::new());
         let v = self.fn_item_value(f, span);
@@ -73,13 +73,17 @@ impl Cx<'_> {
     /// `recv.m<A>(args)`: the written arguments are `m`'s own, after its owner's.
     pub(super) fn generic_method(
         &mut self,
-        callee: &ast::Expr,
-        targs: &[ast::Type],
-        args: &[ast::Arg],
+        callee: &next::Expr,
+        targs: &[next::Type],
+        args: &[CallArg],
         span: Span,
         want: Option<&Ty>,
     ) -> TExpr {
-        let ExprKind::Field { base, name } = &callee.kind else {
+        let field = match callee {
+            next::Expr::Field(f) => f.base().zip(f.name()),
+            _ => None,
+        };
+        let Some((base, name)) = field else {
             self.err(
                 span,
                 Unbuilt::Expression {
@@ -93,17 +97,23 @@ impl Cx<'_> {
             };
         };
         let mut pre = Vec::new();
-        let given: Vec<Ty> = (targs.iter())
-            .map(|t| self.body_ty(t, span, &mut pre))
-            .collect();
-        let v = self.member(base, name, Some(args), span, want, &given);
+        let given: Vec<Ty> = (targs.iter()).map(|t| self.body_ty(t, &mut pre)).collect();
+        let v = self.member(
+            &base,
+            name.text(),
+            name.span(),
+            Some(args),
+            span,
+            want,
+            &given,
+        );
         block(pre, v)
     }
 
     /// The type arguments of `m` with the written ones after those already fixed (`ts`).
     /// Type arguments written on a member that has no type parameters of its own: a field, a
     /// variant, a domain's member.
-    pub(super) fn no_targs(&mut self, name: &ast::Name, written: &[Ty], span: Span) {
+    pub(super) fn no_targs(&mut self, name: Called<'_>, written: &[Ty], span: Span) {
         if !written.is_empty() {
             self.err(
                 span,
