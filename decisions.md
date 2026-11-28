@@ -9492,3 +9492,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** The syntax that needs a declaration (`?T` and its patterns, `Show`, `print`/`write`, `for`/`each`/`iter`, `todo`, the prelude, and the R06.4.12 operator and literal markers) is a fixed set of roles in spec §11.6. A library fills a role with an ordinary `@role(name)` declaration, marked where it is declared, and `std/prelude.cp` exports all of std's fillers. A program has one filler per role (E0202 for a second). The compiler reads a role ID from that table and never compares a declaration's name. This replaces the separate `@prelude` marker with `@role(prelude)`.
 - **Why.** The 11 AM blind audit found std's privilege had moved from type names to decorator names and name dispatch (`print`, `each`, `iter`, `Some`). One public table makes every remaining power something any library can hold, and makes it countable (`next_name_compares`).
 - **Reverse.** Drop §11.6 and restore per-name dispatch; std keeps the names it fills today.
+
+## 653. (reserved, F)
