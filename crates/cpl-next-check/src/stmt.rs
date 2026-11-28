@@ -703,14 +703,15 @@ impl<'a> Cx<'a> {
                 Some(_) => None,
                 None => label.clone(),
             };
-            match &q {
-                Some(q) => self.let_pattern_at(q, mutable, part, at, out),
-                None => {
-                    let l = label
-                        .as_ref()
-                        .expect("a record field without a pattern names it");
+            match (&q, &label) {
+                (Some(q), _) => self.let_pattern_at(q, mutable, part, at, out),
+                (None, Some(l)) => {
                     let ty = part.ty.clone();
                     self.let_bind(l.text(), mutable, ty, part, l.span(), out);
+                }
+                (None, None) => {
+                    let text = "a record pattern's field has neither a pattern nor a name";
+                    self.err(part_at, Msg::internal(text));
                 }
             }
             // `tree.Pre` is the domain the whole value owns as its `tree.Pre`.
