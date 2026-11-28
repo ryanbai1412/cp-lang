@@ -97,6 +97,7 @@ impl Parser<'_> {
     /// An expression whose operators all bind at least as tight as `min`.
     pub(super) fn expr_at(&mut self, min: Level) {
         let at = self.checkpoint();
+        let start = self.span().start;
         self.operand(min);
         loop {
             let kind = self.peek();
@@ -147,6 +148,7 @@ impl Parser<'_> {
                 }
                 Assoc::Left | Assoc::Right => {
                     self.start_at(at, NodeKind::BinExpr);
+                    let three_way = self.at(T::Spaceship).then(|| self.span());
                     self.bump();
                     let rhs = match (op.assoc, op.level) {
                         (_, Level::Pow) => Level::Unary,
@@ -154,10 +156,34 @@ impl Parser<'_> {
                         (_, l) => l.tighter(),
                     };
                     self.expr_at(rhs);
+                    if let Some(op) = three_way {
+                        self.three_way(start, op);
+                    }
                     self.finish();
                 }
             }
         }
+    }
+
+    /// `a <=> b`, which CP Lang spells `cmp(a, b)` (decision 4.5).
+    fn three_way(&mut self, start: u32, op: Span) {
+        let end = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(op.end, |t| t.span.end);
+        let src = self.src;
+        let l = src[start as usize..op.start as usize].trim_end();
+        let r = src[op.end as usize..end as usize].trim_start();
+        let ours = format!("cmp({l}, {r})");
+        self.diagnostics.push(
+            cpl_diag::msgs::foreign::THREE_WAY
+                .error(op, &[])
+                .with_help(cpl_diag::habits::THREE_WAY.say(&[]))
+                .with_fix(
+                    cpl_diag::habits::THREE_WAY_2.say(&[&l, &r]),
+                    Span::new(start, end),
+                    &ours,
+                ),
+        );
     }
 
     /// The binary operator here: `ops::BINARY`'s, or `not in`.
