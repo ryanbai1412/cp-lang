@@ -1,6 +1,6 @@
 // ioi20p5's shape: a payload enum matched per element of a list, n masks
 // over a 12-slot query, under `cpl run`.
-enum Slot: Known(0..=1) | Unknown(Int)
+enum Slot = Known(t: 0..=1) | Unknown(i: Int)
 
 fn species(s: Slot, mask: Int) -> Int:
     match s:
