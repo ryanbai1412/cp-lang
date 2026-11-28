@@ -1041,4 +1041,37 @@ fn operator_kinds_come_from_the_table() {
         .unwrap();
     assert_eq!(cmp.ops(), [CmpOp::Lt, CmpOp::Le, CmpOp::NotIn]);
     assert_eq!(cmp.operands().count(), 4);
+    for op in [
+        Add, Sub, Mul, Div, Rem, Pow, BitAnd, BitOr, BitXor, Shl, Shr, And, Or, Coalesce, Spaceship,
+    ] {
+        assert_eq!(BinOp::from_spelling(&op.to_string()), Some(op));
+    }
+    for op in [
+        CmpOp::Eq,
+        CmpOp::Ne,
+        CmpOp::Lt,
+        CmpOp::Le,
+        CmpOp::Gt,
+        CmpOp::Ge,
+        CmpOp::In,
+        CmpOp::NotIn,
+    ] {
+        assert_eq!(CmpOp::from_spelling(&op.to_string()), Some(op));
+    }
+    for op in [UnOp::Pos, UnOp::Neg, UnOp::Not, UnOp::BitNot] {
+        assert_eq!(UnOp::from_spelling(&op.to_string()), Some(op));
+    }
+    assert_eq!(BinOp::Add.to_string(), "+");
+    assert_eq!(CmpOp::NotIn.to_string(), "not in");
+    assert_eq!(BinOp::from_spelling("<"), None, "a comparison is a CmpOp");
+    assert_eq!(CmpOp::from_spelling("not <"), None);
+    assert!(matches!(
+        ast::AssignOp::from_spelling("**="),
+        Some(ast::AssignOp::Op(Pow))
+    ));
+    assert!(matches!(
+        ast::AssignOp::from_spelling("="),
+        Some(ast::AssignOp::Set)
+    ));
+    assert_eq!(ast::AssignOp::Op(Shl).to_string(), "<<=");
 }

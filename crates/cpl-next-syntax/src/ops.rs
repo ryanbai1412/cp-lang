@@ -233,12 +233,13 @@ pub const BINARY: &[Binary] = &[
 /// The range operators, at [`Level::Range`].
 pub const RANGE: &[TokenKind] = &[DotDot, DotDotEq];
 
-/// Prefix operators, the level of their operand, and what they compute.
-pub const PREFIX: &[(TokenKind, Level, UnOp)] = &[
-    (Not, Level::Not, UnOp::Not),
-    (Minus, Level::Unary, UnOp::Neg),
-    (Plus, Level::Unary, UnOp::Pos),
-    (Tilde, Level::Unary, UnOp::BitNot),
+/// Prefix operators, how they are written, the level of their operand, and what they
+/// compute.
+pub const PREFIX: &[(TokenKind, &str, Level, UnOp)] = &[
+    (Not, "not", Level::Not, UnOp::Not),
+    (Minus, "-", Level::Unary, UnOp::Neg),
+    (Plus, "+", Level::Unary, UnOp::Pos),
+    (Tilde, "~", Level::Unary, UnOp::BitNot),
 ];
 
 /// Postfix operators that take no operand (`x?`, `x!`).
@@ -254,7 +255,7 @@ pub fn prefix(token: TokenKind) -> Option<Level> {
     PREFIX
         .iter()
         .find(|(t, ..)| *t == token)
-        .map(|(_, l, _)| *l)
+        .map(|(_, _, l, _)| *l)
 }
 
 /// What `token` computes as a prefix operator, if it is one.
@@ -265,13 +266,75 @@ pub fn prefix_op(token: TokenKind) -> Option<UnOp> {
         .map(|(.., op)| *op)
 }
 
+impl BinOp {
+    /// The operator written `text`: `@operator("+")` names [`BinOp::Add`].
+    pub fn from_spelling(text: &str) -> Option<BinOp> {
+        BINARY.iter().find_map(|b| match b.kind {
+            Kind::Bin(op) if b.spelling == text => Some(op),
+            _ => None,
+        })
+    }
+}
+
+impl CmpOp {
+    /// The comparison written `text`; `not in` is the prefix `not` before `in`.
+    pub fn from_spelling(text: &str) -> Option<CmpOp> {
+        if let Some(rest) = text.strip_prefix(UnOp::Not.spelling()) {
+            return match CmpOp::from_spelling(rest.strip_prefix(' ')?)? {
+                CmpOp::In => Some(CmpOp::NotIn),
+                _ => None,
+            };
+        }
+        BINARY.iter().find_map(|b| match b.kind {
+            Kind::Cmp(op) if b.spelling == text => Some(op),
+            _ => None,
+        })
+    }
+}
+
+impl UnOp {
+    /// The prefix operator written `text`.
+    pub fn from_spelling(text: &str) -> Option<UnOp> {
+        PREFIX
+            .iter()
+            .find(|(_, spelling, ..)| *spelling == text)
+            .map(|(.., op)| *op)
+    }
+
+    fn spelling(self) -> &'static str {
+        PREFIX
+            .iter()
+            .find(|(.., op)| *op == self)
+            .map_or("", |(_, spelling, ..)| spelling)
+    }
+}
+
+impl std::fmt::Display for BinOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let row = BINARY.iter().find(|b| b.kind == Kind::Bin(*self));
+        f.write_str(row.map_or("", |b| b.spelling))
+    }
+}
+
+impl std::fmt::Display for CmpOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if *self == CmpOp::NotIn {
+            return write!(f, "{} {}", UnOp::Not, CmpOp::In);
+        }
+        let row = BINARY.iter().find(|b| b.kind == Kind::Cmp(*self));
+        f.write_str(row.map_or("", |b| b.spelling))
+    }
+}
+
+impl std::fmt::Display for UnOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.spelling())
+    }
+}
+
 /// The binary operator a compound assignment's `OpEq` token applies: `+` in `+=`.
 pub fn compound(op_eq: &str) -> Option<BinOp> {
-    let spelled = op_eq.strip_suffix('=')?;
-    BINARY.iter().find_map(|b| match b.kind {
-        Kind::Bin(op) if b.spelling == spelled => Some(op),
-        _ => None,
-    })
+    BinOp::from_spelling(op_eq.strip_suffix('=')?)
 }
 
 /// Every level `token` is an operator at: `-` is both `Add` and `Unary`.

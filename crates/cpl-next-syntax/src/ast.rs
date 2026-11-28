@@ -1620,6 +1620,27 @@ pub enum AssignOp {
     Fn(SyntaxToken),
 }
 
+impl AssignOp {
+    /// The assignment written `text`: `=` or a compound `+=`. A `p f= e` names its fn, so
+    /// it has no fixed spelling.
+    pub fn from_spelling(text: &str) -> Option<AssignOp> {
+        match text {
+            "=" => Some(AssignOp::Set),
+            _ => ops::compound(text).map(AssignOp::Op),
+        }
+    }
+}
+
+impl std::fmt::Display for AssignOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AssignOp::Set => f.write_str("="),
+            AssignOp::Op(op) => write!(f, "{op}="),
+            AssignOp::Fn(name) => write!(f, "{}=", name.text()),
+        }
+    }
+}
+
 impl AssignStmt {
     pub fn op(&self) -> Option<AssignOp> {
         let mut tokens = own_tokens(&self.0).peekable();
