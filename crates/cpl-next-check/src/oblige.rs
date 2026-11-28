@@ -469,10 +469,10 @@ impl Cx<'_> {
             span,
         };
         let mut pre = Vec::new();
-        let Some(param) = c.param() else {
+        let Some(subject) = c.subject() else {
             return error;
         };
-        let t = self.name_ty(&param, &mut pre);
+        let t = self.body_ty(&subject, &mut pre);
         let mut bounds = c
             .bound()
             .into_iter()

@@ -17,9 +17,7 @@ use cpl_next_ir::{ir, ops, ty};
 use cpl_next_syntax::ast::{self as next, AstNode};
 use cpl_next_syntax::fall_through;
 use cpl_next_syntax::ops::{BinOp, CmpOp, UnOp};
-use cpl_syntax::ast::{
-    self, AssignOp, Cond, ExprKind, FnBody, PatternKind, StmtKind, StrPiece, TypeKind,
-};
+use cpl_syntax::ast::{self, ExprKind, PatternKind, StrPiece, TypeKind};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
