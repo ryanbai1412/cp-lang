@@ -1,6 +1,7 @@
 //! Trait bounds a call must meet (R08.1.2): each is met by the caller's own bounds or by one
 //! impl, and meeting it fixes the trait's arguments, so `sorted<S: Seq<T>, T>` learns `T`.
 use super::*;
+use cpl_next_decls::decls::ImplIdx;
 use cpl_next_ir::unbuilt::Unbuilt;
 use decls::TraitRef;
 
@@ -141,18 +142,18 @@ impl Cx<'_> {
     /// The impls of `r` that fit `t`, of the most specific rank: one written for the type
     /// beats a blanket one (R08.1.2). `Int` has `Into<Char>` and `Into<U64>`: the trait's
     /// arguments, where known, choose among them.
-    fn fitting(&self, t: &Ty, r: &TraitRef) -> Vec<(usize, Vec<Ty>)> {
+    fn fitting(&self, t: &Ty, r: &TraitRef) -> Vec<(ImplIdx, Vec<Ty>)> {
         let want: Vec<Ty> = (self.d.t(r.tr).inputs(&r.args).iter())
             .map(|a| self.zonk(a))
             .collect();
-        let mut found: Vec<(usize, Vec<Ty>)> = (self.impls().trait_impls(r.tr))
+        let mut found: Vec<(ImplIdx, Vec<Ty>)> = (self.impls().trait_impls(r.tr))
             .filter_map(|(k, im)| Some((k, self.impls().impl_args_for(im, t, &want)?)))
             .filter(|(k, _)| {
                 !self.impls().imp(*k).blanket()
                     || self.impls().fits_impl(self.impls().imp(*k), t).is_some()
             })
             .collect();
-        let rank = |k: &usize| self.d.impl_rank(self.impls().imp(*k));
+        let rank = |k: &ImplIdx| self.d.impl_rank(self.impls().imp(*k));
         if let Some(best) = found.iter().map(|(k, _)| rank(k)).min() {
             found.retain(|(k, _)| rank(k) == best);
         }
@@ -359,7 +360,7 @@ impl Cx<'_> {
     /// are the bound's, as its type is `open`'s when that is still open.
     fn take_impl(
         &mut self,
-        k: usize,
+        k: ImplIdx,
         targs: Vec<Ty>,
         r: &TraitRef,
         span: Span,
@@ -400,7 +401,7 @@ impl Cx<'_> {
     /// The one blanket impl of `r` with trait arguments whose bounds on its target parameter
     /// `i`'s own bounds name: `S: Seq<T>` meets `Into<List<T>>` by
     /// `impl<S: Seq<T>, T> Into<List<T>> for S`; the bounds fix the impl's other parameters.
-    fn param_impl(&self, i: usize, r: &TraitRef) -> Option<usize> {
+    fn param_impl(&self, i: usize, r: &TraitRef) -> Option<ImplIdx> {
         let have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
         let mut found = (self.impls().trait_impls(r.tr)).filter(|(_, im)| {
             !im.trait_.args.is_empty()
@@ -413,7 +414,7 @@ impl Cx<'_> {
         found.next().is_none().then_some(k)
     }
     /// The one impl of `r` for a struct whose arguments are still open, by its head alone.
-    fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(usize, Vec<Ty>)> {
+    fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(ImplIdx, Vec<Ty>)> {
         let mut found = (self.d.impls.iter().enumerate())
             .filter(|(_, im)| im.trait_.tr == r.tr && !im.blanket())
             .filter_map(|(k, im)| Some((k, self.impls().fits_impl(im, t)?)));
