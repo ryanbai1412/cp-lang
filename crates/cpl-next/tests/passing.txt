@@ -3124,3 +3124,7 @@ core-04/all-is-every-position-in-walk-order.cp
 core-04/an-ordered-bound-steps-a-domain.cp
 core-06/a-program-marks-its-own-derive.cp
 core-06/a-second-operator-for-one-method-is-refused.cp
+core-05/an-attribute-off-the-trust-list-is-rejected.cp
+core-05/plain-mut-and-var-parameters.cp
+core-06/laws-sample-leaves-a-run-unchanged.cp
+std-derive/structural-hash-skips-f64.cp
