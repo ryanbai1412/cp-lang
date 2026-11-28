@@ -77,7 +77,7 @@ impl Cx<'_> {
         };
         let w = w.ident()?.text().to_string();
         match self.d.named(self.b.module, &cpl_next_decls::memo_key(&w))? {
-            decls::Named::Struct(s) => Some((self.sym(&w), s)),
+            decls::Named::Struct(s) => Some((self.b.syms.intern(&self.d.syms, &w), s)),
             _ => None,
         }
     }

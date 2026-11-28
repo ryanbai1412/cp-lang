@@ -7,7 +7,7 @@ use cpl_diag::Span;
 use cpl_next_decls::decls::{
     self, Decls, ImplDecl, Impls, ModId, Named, Owner, SelfMode, TraitRef,
 };
-use cpl_next_decls::sym::Sym;
+use cpl_next_decls::sym::{Sym, Syms};
 use cpl_next_decls::views::{Items, Scope, Signatures, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, records};
 use cpl_next_ir::build::{Build, CheckName, Checks};
@@ -529,9 +529,8 @@ struct Body {
     generics: Vec<Sym>,
     n_sets: usize,
     locals: Vec<Local>,
-    /// The names this body binds that no declaration gave, each a `Sym` past `d.syms`' last.
-    syms: Vec<String>,
-    sym_ids: HashMap<String, Sym>,
+    /// The names this body binds that no declaration gave.
+    syms: BodySyms,
     scopes: Vec<HashMap<String, LocalId>>,
     self_local: Option<LocalId>,
     /// Bounds calls must meet, with where: a type, the trait it must implement, and why.
@@ -601,8 +600,7 @@ impl Body {
             generics: Vec::new(),
             n_sets: 0,
             locals: Vec::new(),
-            syms: Vec::new(),
-            sym_ids: HashMap::new(),
+            syms: BodySyms::default(),
             scopes: vec![HashMap::new()],
             self_local: None,
             obligations: Vec::new(),
@@ -823,7 +821,11 @@ pub fn check(
         let counted = s.directive().filter(multitest);
         if let (None, Some(m)) = (&cases, &counted) {
             main_out.push(TStmt::Item(off.clone()));
-            let count = cx.case_count(m, span).then_some(TExpr {
+            let reads = case_count(m).unwrap_or_else(|| {
+                cx.err(span, Unbuilt::MultitestArg);
+                true
+            });
+            let count = reads.then_some(TExpr {
                 kind: TK::ReadInt,
                 ty: Ty::Int,
                 span,
@@ -1102,28 +1104,6 @@ pub fn check(
 
 impl<'a> Cx<'a> {
     /// Whether the `@!multitest` on `s` reads a count of cases: `(until_eof)` does not.
-    /// The id of name `text`: a declaration's, or else one of this body's own, which stays in
-    /// its answer.
-    pub(crate) fn sym(&mut self, text: &str) -> Sym {
-        if let Some(s) = self.sym_of(text) {
-            return s;
-        }
-        let s = Sym((self.d.syms.len() + self.b.syms.len()) as u32);
-        self.b.syms.push(text.to_string());
-        self.b.sym_ids.insert(text.to_string(), s);
-        s
-    }
-    /// The id `text` already has, a declaration's or this body's, without making one.
-    pub(crate) fn sym_of(&self, text: &str) -> Option<Sym> {
-        (self.d.syms.get(text)).or_else(|| self.b.sym_ids.get(text).copied())
-    }
-    /// The text of `s`, a declaration's id or one of this body's.
-    pub(crate) fn sym_text(&self, s: Sym) -> &str {
-        match (s.0 as usize).checked_sub(self.d.syms.len()) {
-            Some(k) => &self.b.syms[k],
-            None => self.d.syms.text(s),
-        }
-    }
     /// The syntax of item `id`, its spans counted from its start.
     fn item_syntax(&self, id: &ItemId) -> Option<next::Item> {
         (self.src.modules.iter())
@@ -1131,23 +1111,6 @@ impl<'a> Cx<'a> {
             .flat_map(|m| m.items.iter())
             .find(|i| i.id == *id)
             .map(|i| i.item.clone())
-    }
-    fn case_count(&mut self, m: &next::Directive, span: Span) -> bool {
-        let args: Vec<next::Arg> = m.args().map_or_else(Vec::new, |a| a.args().collect());
-        match &args[..] {
-            [] => true,
-            [a] if a.label().is_none()
-                && !a.is_mut()
-                && matches!(a.value(), Some(next::Expr::Name(n))
-                    if n.ident().is_some_and(|t| t.text() == "until_eof")) =>
-            {
-                false
-            }
-            _ => {
-                self.err(span, Unbuilt::MultitestArg);
-                true
-            }
-        }
     }
     /// What an expression that was diagnosed or refused becomes. An operation on it is the
     /// error node again and says nothing more, so one fault is one diagnostic.
@@ -1350,7 +1313,7 @@ impl<'a> Cx<'a> {
         // A fn's result slots are set parameters after its own: each call passes its sets.
         self.b.n_sets = f.n_sets + f.n_ret_sets;
         self.b.locals = Vec::new();
-        (self.b.syms, self.b.sym_ids) = (Vec::new(), HashMap::new());
+        self.b.syms = BodySyms::default();
         self.b.scopes = vec![HashMap::new()];
         self.b.item = f.item.clone();
         self.b.self_local = None;
@@ -1530,6 +1493,55 @@ pub fn plain_name(p: &next::Pattern) -> Option<String> {
         return None;
     };
     Some(name.text().to_string())
+}
+
+/// Whether the `@!multitest` `m` reads a count of cases: `(until_eof)` does not. `None` for
+/// arguments it does not take.
+fn case_count(m: &next::Directive) -> Option<bool> {
+    let args: Vec<next::Arg> = m.args().map_or_else(Vec::new, |a| a.args().collect());
+    match &args[..] {
+        [] => Some(true),
+        [a] if a.label().is_none()
+            && !a.is_mut()
+            && matches!(a.value(), Some(next::Expr::Name(n))
+                if n.ident().is_some_and(|t| t.text() == "until_eof")) =>
+        {
+            Some(false)
+        }
+        _ => None,
+    }
+}
+
+/// The names a body binds that no declaration gave, each a `Sym` past the declarations' last, so
+/// a body's ids follow its walk and never leave its answer.
+#[derive(Default)]
+pub(crate) struct BodySyms {
+    texts: Vec<String>,
+    ids: HashMap<String, Sym>,
+}
+
+impl BodySyms {
+    /// The id `text` already has, a declaration's or this body's, without making one.
+    pub(crate) fn of(&self, syms: &Syms, text: &str) -> Option<Sym> {
+        syms.get(text).or_else(|| self.ids.get(text).copied())
+    }
+    /// The id of `text`: a declaration's, or else one of this body's own.
+    pub(crate) fn intern(&mut self, syms: &Syms, text: &str) -> Sym {
+        if let Some(s) = self.of(syms, text) {
+            return s;
+        }
+        let s = Sym((syms.len() + self.texts.len()) as u32);
+        self.texts.push(text.to_string());
+        self.ids.insert(text.to_string(), s);
+        s
+    }
+    /// The text of `s`, a declaration's id or one of this body's.
+    pub(crate) fn text<'s>(&'s self, syms: &'s Syms, s: Sym) -> &'s str {
+        match (s.0 as usize).checked_sub(syms.len()) {
+            Some(k) => &self.texts[k],
+            None => syms.text(s),
+        }
+    }
 }
 
 /// Whether directive `m` is `@!multitest`.
