@@ -161,6 +161,13 @@ impl Parser<'_> {
         self.start(NodeKind::Directive);
         self.bump();
         self.bump();
+        if self.at(T::Ident)
+            && crate::grammar::Decorator::of(self.nth_text(0))
+                == Some(crate::grammar::Decorator::Interactive)
+        {
+            let err = msgs::syntax::INTERACTIVE_DIRECTIVE.error(self.span(), &[]);
+            self.diagnostics.push(err);
+        }
         self.want(T::Ident, "the directive's name");
         if self.at(T::LParen) {
             self.list(NodeKind::ArgList, T::RParen, "the argument list", Self::arg);

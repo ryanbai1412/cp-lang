@@ -22,6 +22,7 @@ super::msgs! {
     TURBOFISH = REMOVED_SYNTAX, "type arguments follow the name directly, `f<T>`, with no `::`";
     FN_TYPE_KEYWORD = REMOVED_SYNTAX, "a fn type is written `A -> B` or `(A, B) -> C`, with no `fn`";
     LENDS_ARROW = REMOVED_SYNTAX, "a lent result follows `->`: `-> lends T`";
+    INTERACTIVE_DIRECTIVE = REMOVED_SYNTAX, "`@!multitest` is the one file directive: interactive mode is `let wire = Wire()` (R10.4)";
     SECOND_FOR = REMOVED_SYNTAX, "a comprehension's clauses are joined with `,`: `for x in xs, y in ys`";
     AND_LET = REMOVED_SYNTAX, "a `let` condition is joined to the next one with `,`, not `and`";
     AMP_MUT_PARAM = REMOVED_SYNTAX, "CP Lang has no `&mut` types; a parameter that changes the caller's place is `mut x: T`";

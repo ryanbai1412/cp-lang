@@ -1,6 +1,7 @@
 core-01/do-block-is-rejected.cp  # decision 662
 core-01/fn-keyword-type-is-rejected.cp  # decision 665
 core-01/guard-let-is-rejected.cp  # decision 658
+core-01/interactive-directive-is-rejected.cp  # decision 667
 core-01/rb1-q09-lends-needs-arrow.cp  # decision 665
 core-01/second-for-in-a-comprehension-is-rejected.cp  # decision 660
 core-01/turbofish-is-rejected.cp  # decision 664

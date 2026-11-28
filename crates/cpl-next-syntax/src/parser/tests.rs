@@ -734,3 +734,14 @@ fn every_decorator_row_cites_a_rule_the_spec_defines() {
     assert_eq!(Decorator::Multitest.kind(), DecoratorKind::Directive);
     assert_eq!(Decorator::of("record"), None);
 }
+
+#[test]
+fn interactive_is_no_directive() {
+    let file = crate::parse("@!interactive\nlet wire = Wire()\n");
+    let codes: Vec<_> = file.diagnostics.iter().map(|d| d.message.clone()).collect();
+    assert_eq!(codes.len(), 1, "{codes:?}");
+    assert!(codes[0].contains("Wire"), "{codes:?}");
+    assert!(crate::parse("@!multitest\nlet n: Int = read()\n")
+        .diagnostics
+        .is_empty());
+}

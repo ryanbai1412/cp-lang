@@ -540,7 +540,7 @@ fn first<N: AstNode>(n: &SyntaxNode) -> Option<N> {
 
 #[test]
 fn a_directive_heads_its_item_and_one_in_a_block_is_kept() {
-    let src = "@!multitest\nfn main():\n    @!interactive(flush: true)\n    print(1)\n";
+    let src = "@!multitest\nfn main():\n    @!multitest(flush: true)\n    print(1)\n";
     let file = parse(src);
     assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
     let item = file.items().find_map(ast::Item::cast).unwrap();
@@ -551,7 +551,7 @@ fn a_directive_heads_its_item_and_one_in_a_block_is_kept() {
     let block: ast::Block = first(item.syntax()).unwrap();
     let inner: Vec<_> = block.directives().collect();
     assert_eq!(inner.len(), 1);
-    assert_eq!(inner[0].name().unwrap().text(), "interactive");
+    assert_eq!(inner[0].name().unwrap().text(), "multitest");
     assert_eq!(inner[0].args().unwrap().args().count(), 1);
     assert_eq!(block.stmts().count(), 1);
 }
