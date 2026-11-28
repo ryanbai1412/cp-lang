@@ -93,6 +93,8 @@ Fields: `f: T -> U,`.
 
 - `@get fn src(self) -> S` — \(O(1)\)
 - `fn nth<T>(self, k: Int) -> T` — \(O(1)\); traps: unless `0 <= k < self.len`
+- `fn cut_after<D: Ordered, T>(self, i: D) -> Cut<D> where S: Indexed<D, T>` — \(O(1)\); traps: unless `i` is a key of the source (R0101)
+- `fn cut_before<D: Ordered, T>(self, i: D) -> Cut<D> where S: Indexed<D, T>` — \(O(1)\); traps: unless `i` is a key of the source (R0101)
 - `fn take(self, k: Len) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
 - `fn drop(self, k: Len = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
 - `fn take_last(self, k: Len) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
