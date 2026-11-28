@@ -4,7 +4,7 @@
 struct Bag:
     id: List<Int>
     xs: List<Int>
-    fn pick(self, k: Int) -> List<Int>:
+    fn pick(self, k: Int) -> lends List<Int>:
         if k == 0: return self.id
         self.xs + [k]
 let b = Bag(id: [7, 8], xs: [1])
