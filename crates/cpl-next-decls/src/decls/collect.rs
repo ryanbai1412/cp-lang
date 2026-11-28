@@ -830,7 +830,7 @@ fn remake_views(d: &mut Decls, sc: &Scopes, from: usize, core_too: bool, first: 
         d.module_errors[mi].extend(missed);
         let mut v: View = v.into_iter().map(|(n, x)| (d.syms.intern(&n), x)).collect();
         let mut ambiguous: HashSet<Sym> = ambiguous.iter().map(|n| d.syms.intern(n)).collect();
-        free_names(d, &mut v, &mut ambiguous);
+        free_names(d, sc, mi, &mut v, &mut ambiguous);
         let exports = export_map(sc, mi).into_iter();
         let exports = Arc::new(exports.map(|(n, x)| (d.syms.intern(&n), x)).collect());
         d.exports
@@ -857,28 +857,57 @@ fn remake_views(d: &mut Decls, sc: &Scopes, from: usize, core_too: bool, first: 
     }
 }
 
-/// A view gains each `@free_form` method of a trait it has, under the method's name, as a glob
-/// import of the trait would bring it: a name the module declares or imports shadows it, and
-/// two traits' methods of one name are ambiguous (R01.10.1, R11.2.3).
-fn free_names(d: &Decls, v: &mut View, ambiguous: &mut HashSet<Sym>) {
-    let traits: HashSet<TraitId> = (v.values())
-        .filter_map(|x| match x {
-            Named::Trait(t) => Some(*t),
-            _ => None,
-        })
-        .collect();
-    let mut found: BTreeMap<Sym, Vec<FnId>> = BTreeMap::new();
-    for (f, (t, name)) in &d.free_forms {
-        if traits.contains(t) && !v.contains_key(name) {
-            found.entry(*name).or_default().push(*f);
+/// A view gains each `@free_form` method of a trait it has, under the method's name, at the
+/// trait's own level: a trait the module declares gives a name no import hides, an imported
+/// one an imported name, and a prelude one a prelude name. At its level an ordinary name of
+/// the spelling wins, except that two explicit imports of it, or two traits' methods, are
+/// ambiguous (R01.10.1, R11.2.3).
+fn free_names(d: &Decls, sc: &Scopes, mi: usize, v: &mut View, ambiguous: &mut HashSet<Sym>) {
+    const OWN: u8 = 3;
+    const IMPORTED: u8 = 2;
+    let level = |n: Sym| {
+        let n = d.syms.text(n);
+        let named = |s: &UseForm| match (s.glob, s.names.is_empty()) {
+            (false, false) => s.names.iter().any(|x| x == n),
+            (false, true) => s.path.last().is_some_and(|x| x == n),
+            (true, _) => false,
+        };
+        if sc.own[mi].contains_key(n) {
+            OWN
+        } else if (sc.imports.iter()).any(|(m, s)| m.0 == mi && named(s)) {
+            IMPORTED
+        } else {
+            1
+        }
+    };
+    let mut traits: HashMap<TraitId, u8> = HashMap::new();
+    for (n, x) in v.iter() {
+        if let Named::Trait(t) = x {
+            let l = traits.entry(*t).or_default();
+            *l = (*l).max(level(*n));
         }
     }
-    for (name, fs) in found {
-        match fs[..] {
-            [f] => {
-                v.insert(name, Named::Fn(f));
+    let mut found: BTreeMap<Sym, (u8, Vec<FnId>)> = BTreeMap::new();
+    for (f, (t, name)) in &d.free_forms {
+        let Some(&l) = traits.get(t) else { continue };
+        let at = found.entry(*name).or_default();
+        if l > at.0 {
+            *at = (l, Vec::new());
+        }
+        if l == at.0 {
+            at.1.push(*f);
+        }
+    }
+    for (name, (l, fs)) in found {
+        let have = (v.contains_key(&name) || ambiguous.contains(&name)).then(|| level(name));
+        match (have, &fs[..]) {
+            (Some(h), _) if h > l || (h == l && h != IMPORTED) => {}
+            (_, [f]) if have.is_none_or(|h| h < l) => {
+                ambiguous.remove(&name);
+                v.insert(name, Named::Fn(*f));
             }
             _ => {
+                v.remove(&name);
                 ambiguous.insert(name);
             }
         }

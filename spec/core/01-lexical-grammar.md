@@ -576,9 +576,11 @@ as the fix. A trait's method with `self` marked `@free_form` has the plain
 spelling too: `f(x, ..)` is `x.f(..)`, found by method lookup on `x`
 (R08.1.4), so a type's own override is the call and a generator `x` is the
 sequence. The name `f` is in scope wherever the trait is, by `use` or the
-prelude (R11.2.3), as if a glob import of the trait brought it: a name the
-module declares or imports shadows it, and two traits in scope with a
-`@free_form` method of one name make `f` ambiguous (E0701). `@free_form` on
+prelude (R11.2.3), at the trait's level: a trait the module declares gives
+a name no import hides, an imported trait an imported name, a prelude trait
+a prelude name. At that level a fn of the name the module declares wins,
+while an explicit import of the name, or another trait's `@free_form`
+method of it, makes `f` ambiguous (E0701). `@free_form` on
 anything else is E0505. A `mut`
 parameter is marked `mut` at the call too (`link(mut d, a, b)`), except
 for the receiver of a method call. (R01.10.1)
