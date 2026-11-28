@@ -375,7 +375,8 @@ impl Cx<'_> {
             span,
         };
         let first = read(0, fields.first().cloned().unwrap_or(Ty::Error));
-        match self.bind_fresh(self.b.syms.intern(&self.d.syms, name), &first.ty, span, out) {
+        let fresh = self.b.syms.intern(&self.d.syms, name);
+        match self.bind_fresh(fresh, &first.ty, span, out) {
             Some((c, i)) => {
                 let t = crate::pattern::retag(&ty, c, i);
                 if let VarRef::Local(k) | VarRef::Global(k) = whole {
