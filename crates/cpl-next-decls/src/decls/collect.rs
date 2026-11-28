@@ -531,12 +531,18 @@ fn layer(
                             (s.decorators.iter()).filter(|x| !(library && read_elsewhere(x.mark)))
                         {
                             let at = item.at(x.span);
-                            let e = Msg::at(
-                                at,
-                                Unbuilt::Decorator {
-                                    name: x.name.text.clone(),
+                            let e = match is_stress(x) {
+                                true => match stress_misuse(x, true) {
+                                    Some(m) => Msg::at(at, m),
+                                    None => continue,
                                 },
-                            );
+                                false => Msg::at(
+                                    at,
+                                    Unbuilt::Decorator {
+                                        name: x.name.text.clone(),
+                                    },
+                                ),
+                            };
                             match d.is_library(mid) {
                                 true => d.module_errors[mi].push(e),
                                 false => d.errors.push(e),

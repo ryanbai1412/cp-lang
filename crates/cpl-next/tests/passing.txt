@@ -3129,3 +3129,4 @@ core-05/plain-mut-and-var-parameters.cp
 core-06/laws-sample-leaves-a-run-unchanged.cp
 std-derive/structural-hash-skips-f64.cp
 core-06/yield-from-delegates-to-a-generator.cp
+core-12/stress-on-an-alias-is-ignored-by-run.cp

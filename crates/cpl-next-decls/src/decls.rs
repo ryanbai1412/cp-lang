@@ -1710,6 +1710,10 @@ fn add_fn(
             continue;
         }
         let elsewhere = d.is_library(m) && read_elsewhere(x.mark);
+        if !elsewhere && is_stress(x) {
+            errors.extend(stress_misuse(x, false).map(|e| Msg::at(item.at(x.span), e)));
+            continue;
+        }
         let built = matches!(
             x.mark,
             Some(

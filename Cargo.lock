@@ -304,6 +304,7 @@ dependencies = [
  "cpl-contract",
  "cpl-diag",
  "cpl-next-ir",
+ "cpl-next-syntax",
  "cpl-syntax",
 ]
 

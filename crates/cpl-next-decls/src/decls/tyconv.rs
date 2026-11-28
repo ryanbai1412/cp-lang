@@ -113,6 +113,43 @@ pub(super) fn read_elsewhere(m: Option<Mark>) -> bool {
     matches!(m, Some(Mark::Lint | Mark::Stress | Mark::OnUnimplemented))
 }
 
+/// Whether `x` is `@stress`, by grammar's decorator table.
+pub(super) fn is_stress(x: &ast::Decorator) -> bool {
+    use cpl_next_syntax::grammar::Decorator;
+    !x.directive && matches!(Decorator::of(&x.name.text), Some(Decorator::Stress))
+}
+
+/// What is wrong with a program's `@stress`, if anything: it names one bare kind above a type
+/// alias, and `cpl run` reads nothing else of it (R12.13.3).
+pub(super) fn stress_misuse(x: &ast::Decorator, alias: bool) -> Option<Msg> {
+    use cpl_next_syntax::grammar::StressKind;
+    let kind = match x.args.as_slice() {
+        [a] => match (&a.name, &a.value.kind) {
+            (None, ast::ExprKind::Name(w)) => StressKind::of(w),
+            _ => None,
+        },
+        _ => None,
+    };
+    let (text, help) = match (alias, kind) {
+        (true, Some(_)) => return None,
+        (false, _) => (
+            "`@stress` decorates a type alias".to_string(),
+            "put it on a `type` alias, as in `@stress(tree) type T = [0..n - 1](u: V, v: V)`",
+        ),
+        (true, None) => {
+            let kinds = StressKind::ROWS.map(|r| format!("`{}`", r.1)).join(", ");
+            (
+                format!("`@stress` takes one of {kinds}"),
+                "write one bare kind, as in `@stress(tree)`",
+            )
+        }
+    };
+    Some(Msg {
+        help: Some(help.to_string()),
+        ..Msg::verdict(cpl_diag::codes::BAD_STRESS, text)
+    })
+}
+
 /// `Seq<T>` written where a trait is wanted.
 pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Option<TraitRef> {
     // `(u: V, w: W, ..)`: the core trait of that row, over the field types (R08.4.1).
