@@ -18,6 +18,7 @@ fn diagnostics(file, upto: Layer) -> List<Diagnostic>
 fn hover(pos) -> Hover               // type, target, doc, facts, cost
 fn type_at(pos) -> Option<Type>      // the type of the expression at pos
 fn types_in(file, span) -> List<(Span, Type)>   // each typed expression inside span
+fn trait_at(path: Str) -> Option<TraitId>  // a trait by its std or library path, `std.laws.Sample`: resolved once, never compared as text
 fn complete(pos) -> List<Completion>
 fn definition(pos), references(pos), rename(pos, new) -> List<Edit>
 fn format(file) -> List<Edit>
@@ -47,7 +48,7 @@ impl Type {
     fn range() -> Option<(Option<i64>, Option<i64>)>  // an integer's ends; None where the checker knows none
     fn decl() -> Option<Definition>                   // the struct or enum it is an instance of
     fn args() -> List<Type>                           // that declaration's type arguments
-    fn implements(trait_: Str) -> bool                // the checker's impl lookup, for the trait the program's scope names so
+    fn implements(trait_: TraitId) -> bool            // the checker's impl lookup: how a tool asks what a type can do
     fn members() -> List<(Str, Definition)>           // what a `.` after a value of it can name
 }
 struct Diagnostic { code, layer, severity, at: SourceId, origin: List<Origin>, message, notes, fixes: List<Fix> }
