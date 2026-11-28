@@ -209,8 +209,9 @@ impl<'a> Cx<'a> {
         let parts: Vec<TExpr> = match super::index::unparen(value.clone()) {
             next::Expr::Tuple(t) if t.elems().count() == places.len() => {
                 let mut parts = Vec::new();
-                for (k, e) in t.elems().enumerate() {
-                    let v = self.expr(&e, None);
+                for (k, (e, place)) in t.elems().zip(&places).enumerate() {
+                    let want = self.named_place_ty(place);
+                    let v = self.expr(&e, want.as_ref());
                     parts.push(held(self, k, v, out));
                 }
                 parts
@@ -243,6 +244,17 @@ impl<'a> Cx<'a> {
             let at = self.at(place);
             self.set_place(place, v, at, out);
         }
+    }
+    /// The type of a place written as a name, a local or a field of `self`: what its part of
+    /// `(lines, left) = ([None], [0])` is built as, before any place is written.
+    fn named_place_ty(&mut self, place: &next::Expr) -> Option<Ty> {
+        let n = super::member::bare_name(place)?;
+        if let Some((_, ty)) = self.lookup(&n) {
+            return Some(ty);
+        }
+        let i = self.self_field(&n)?;
+        let s = self.self_expr(Span::new(0, 0))?;
+        self.field_tys(&s.ty)?.1.get(i).cloned()
     }
     /// The place an assignment writes, after checking that it may be written.
     pub(super) fn assign_place(&mut self, target: &next::Expr) -> TExpr {
