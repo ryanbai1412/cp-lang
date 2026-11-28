@@ -534,6 +534,8 @@ struct Cx<'a> {
     /// Fns a reference reached, to be checked; and the library places already reported.
     reached: Vec<FnId>,
     reported: HashSet<(u8, usize)>,
+    /// The leaves from inside a part of a value already reported (E0410).
+    left_parts: HashSet<cpl_next_ir::ids::SourceId>,
     /// Library fns reached only as a trait's impl, or from one: what they use that the slice
     /// does not build refuses only a program whose instances run them.
     through_trait: Vec<FnId>,
@@ -815,6 +817,7 @@ pub fn check(
         unnamed: HashMap::new(),
         held: HashMap::new(),
         reported: HashSet::new(),
+        left_parts: HashSet::new(),
         consts: vec![None; d.consts.len()],
         const_busy: vec![false; d.consts.len()],
         const_init: Vec::new(),
@@ -943,6 +946,9 @@ pub fn check(
             continue;
         }
         begun |= !bare_with;
+        if let Some(st) = s.stmt() {
+            cx.leaves_from_parts(st.syntax());
+        }
         into.push(TStmt::Item(off.clone()));
         if let Some((p, _)) = s.stmt().as_ref().and_then(place::place_binding) {
             let items: Vec<(ItemId, next::Item)> = (main[k..].iter().zip(&lifted[k..]))
@@ -1546,6 +1552,11 @@ impl<'a> Cx<'a> {
             }
             decls::Body::Synth(_) | decls::Body::None => None,
         };
+        match &syntax {
+            Some(next::FnBody::Block(b)) => self.leaves_from_parts(b.syntax()),
+            Some(next::FnBody::Expr(e)) => self.leaves_from_parts(e.syntax()),
+            None => {}
+        }
         let end = (syntax.as_ref()).and_then(|b| b.falls_through(&|n| self.traps(n)));
         let falls = !refused
             && f.region.is_none()

@@ -47,6 +47,70 @@ fn binds(word: &SyntaxToken) -> bool {
     word.kind() == TokenKind::SelfKw || !word.text().starts_with(|c: char| c.is_ascii_uppercase())
 }
 
+/// Each `return`, `break` or `continue`, with its word, that leaves from an `if`, `match` or
+/// block under `root` that is part of a value: an argument, an operand or a condition. A leave
+/// belongs to a statement, or to the `if`, `match` or block that is a statement's whole value,
+/// whose arms run as statements (R01.7.6).
+pub fn leaves_from_parts(root: &SyntaxNode) -> Vec<(Span, &'static str)> {
+    let mut out: Vec<(Span, &'static str)> = Vec::new();
+    let parts = (root.descendants())
+        .filter(|n| {
+            matches!(
+                n.kind(),
+                NodeKind::IfExpr | NodeKind::MatchExpr | NodeKind::BlockExpr
+            )
+        })
+        .filter(|n| !whole(n));
+    for top in parts {
+        for n in top.descendants().filter(|n| leaves_out(n, &top)) {
+            let word = match n.kind() {
+                NodeKind::ReturnStmt => "return",
+                NodeKind::BreakStmt => "break",
+                _ => "continue",
+            };
+            let at = written_span(&n);
+            if !out.iter().any(|(s, _)| *s == at) {
+                out.push((at, word));
+            }
+        }
+    }
+    out.sort_by_key(|(s, _)| s.start);
+    out
+}
+
+/// Whether `if`, `match` or block `n` is a statement's whole value: a `let`'s (with no `else`),
+/// an assignment's, a returned one, a block's own line, a fn's or lambda's body, or an arm of a
+/// whole one.
+fn whole(n: &SyntaxNode) -> bool {
+    let mut n = n.clone();
+    let Some(mut up) = n.parent() else {
+        return false;
+    };
+    while up.kind() == NodeKind::ParenExpr {
+        n = up;
+        let Some(p) = n.parent() else { return false };
+        up = p;
+    }
+    match up.kind() {
+        NodeKind::LetStmt => !up.children().any(|c| c.kind() == NodeKind::ElseClause),
+        // A block's own line: an `if` or `match` written as a statement.
+        NodeKind::Block
+        | NodeKind::ExprStmt
+        | NodeKind::AssignStmt
+        | NodeKind::ReturnStmt
+        | NodeKind::FnDecl
+        | NodeKind::LambdaExpr => true,
+        // An `if`'s branch; a `match`'s own child is what it matches, a part.
+        NodeKind::IfExpr => whole(&up),
+        // An arm, of an `if` or `match` value or of a statement (`let .. else:`, an `if` line).
+        NodeKind::ElifClause | NodeKind::ElseClause | NodeKind::MatchArm => match up.parent() {
+            Some(of) if matches!(of.kind(), NodeKind::IfExpr | NodeKind::MatchExpr) => whole(&of),
+            _ => true,
+        },
+        _ => false,
+    }
+}
+
 /// Every `return`, and every `break` or `continue` aimed at a loop outside `e`, that leaves
 /// `e`, in order: ones inside a nested fn or lambda leave that instead.
 pub fn leaves_out_of(e: &Expr) -> Vec<Span> {

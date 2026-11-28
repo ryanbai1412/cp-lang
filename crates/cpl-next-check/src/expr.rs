@@ -661,6 +661,25 @@ impl<'a> Cx<'a> {
             | next::Expr::Fill(_) => self.unbuilt_expr(e, span),
         }
     }
+    /// E0410 for each leave under `node` from inside a part of a value (R01.7.6), once each
+    /// though a body is checked once per copy.
+    pub(super) fn leaves_from_parts(&mut self, node: &cpl_next_syntax::tree::SyntaxNode) {
+        for (at, word) in cpl_next_syntax::visit::leaves_from_parts(node) {
+            let site = self.b.item.at(at);
+            if !self.left_parts.insert(site) {
+                continue;
+            }
+            let text = cpl_diag::msgs::check::LEAVES_A_PART_OF_A_VALUE.say(&[&word]);
+            let help = format!(
+                "give the `if` or `match` its own `let` first, then use the name: `let v = if ..: .. else: {word}`"
+            );
+            self.err_help(
+                at,
+                Msg::verdict(cpl_diag::codes::LEAVES_A_PART, text),
+                Some(help),
+            );
+        }
+    }
     fn leaving(&mut self, s: next::Stmt, span: Span) -> TExpr {
         let mut out = Vec::new();
         self.stmt(&s, &mut out);

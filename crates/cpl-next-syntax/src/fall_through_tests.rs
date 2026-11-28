@@ -1,6 +1,6 @@
 use crate::ast::{self, AstNode};
 use crate::file::NodeKind;
-use crate::visit::{leaves_out_of, mentions_any, pattern_names};
+use crate::visit::{leaves_from_parts, leaves_out_of, mentions_any, pattern_names};
 
 fn first<N: AstNode>(src: &str, kind: NodeKind) -> (crate::SyntaxFile, N) {
     let file = crate::parse(src);
@@ -118,4 +118,38 @@ fn visit_reads_names_and_leaves_off_descendants() {
         !mentions_any(m.syntax(), &["i", "zz"]),
         "a pattern binds, it doesn't mention"
     );
+}
+
+/// A leave inside an operand, argument or condition is from a part of a value; one in an arm of
+/// a statement's whole `if` or `match`, or of a lambda's body, is the statement's own.
+#[test]
+fn leaves_from_parts_are_found_and_whole_values_are_not() {
+    let src = "\
+for i in 0..3:
+    print(i + (if i == 1:
+        continue
+    else:
+        i
+    ))
+    let a = if i == 0: break else: i
+    let b = match i:
+        0 => continue
+        _ => i
+    f(x => if x: return 1 else: 2)
+    while (if i > 1: break else: true):
+        a
+    match i:
+        0 => continue
+        _ => print(i)
+    let v = x else:
+        match x:
+            None => break
+";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let found: Vec<_> = leaves_from_parts(&file.root)
+        .into_iter()
+        .map(|(s, w)| (&src[s.start as usize..s.end as usize], w))
+        .collect();
+    assert_eq!(found, [("continue", "continue"), ("break", "break")]);
 }
