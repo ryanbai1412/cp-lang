@@ -969,6 +969,20 @@ impl<'a> Cx<'a> {
                 return self.some(v, want_s);
             }
         }
+        // A list value where `[D]T` is wanted with `D` still open fixes `D = Int`: the value is
+        // the list itself, not a list for a counted array (R04.8.11).
+        if let (Ty::Struct(l, _, _), Ty::Struct(a, ts, _)) = (&have, &want_s) {
+            let list = Some(*l) == self.role_structs.role_struct(Role::List);
+            let array = Some(*a) == self.role_structs.role_struct(Role::Array);
+            if list && array && self.literal_len(&e).is_none() {
+                if let Ty::Var(_) = self.shallow(&ts[0]) {
+                    if self.unify(&ts[0], &Ty::Int) {
+                        let as_list = self.listed(want_s.clone());
+                        return self.coerce(e, &as_list);
+                    }
+                }
+            }
+        }
         if let Some(f) = self.coercion(&have, &want_s) {
             return self.coerce_by(f, e, &want_s);
         }
