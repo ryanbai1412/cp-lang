@@ -415,7 +415,7 @@ pub fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>:
 /// traps: never
 /// example: `convex_hull_idx([Pt(1, 1), Pt(0, 0), Pt(2, 0), Pt(0, 0)]) == [1, 2, 0]`
 pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
-    var order = D.collect()
+    var order = pts.keys.collect()
     if order.len <= 1: return order
     order.sort(by: i => pts[i])
     var uniq: List<D> = []
@@ -458,7 +458,7 @@ pub fn convex_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
     var h: List<D> = []
     var prev: ?D = None
-    for i in D:
+    for i in pts.keys:
         let p = pts[i]
         if prev != None:
             let q = pts[prev!]
@@ -484,7 +484,7 @@ pub fn lower_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
 pub fn upper_hull_idx<D>(pts: [D]Pt, collinear: Bool = false) -> List<D>:
     var h: List<D> = []
     var prev: ?D = None
-    for i in D:
+    for i in pts.keys:
         let p = pts[i]
         if prev != None:
             let q = pts[prev!]
@@ -1323,7 +1323,7 @@ pub fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
     var ids: List<D> = []
     var ord: List<(x: Int, y: Int, id: Int)> = []
     var k = 0
-    for i in D:
+    for i in pts.keys:
         ids.push(i)
         let p = pts[i]
         ord.push((x: p.x, y: p.y, id: k))
@@ -1398,7 +1398,7 @@ fn last_where(from: Int, span: Int, ok: Int -> Bool) -> Int:
 /// traps: when `pts` has fewer than 2 points, or a distance overflows `Int`
 /// example: `farthest_pair([Pt(0, 0), Pt(1, 1), Pt(3, 0)]) == (0, 2, 9)`
 pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
-    let keys = D.collect()
+    let keys = pts.keys.collect()
     assert keys.len >= 2, "farthest_pair requires at least 2 points"
     let h = convex_hull_idx(pts)
     if h.len == 1: return (keys[0], keys[1], 0)
@@ -1442,7 +1442,7 @@ pub fn farthest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int):
 /// example: `manhattan_mst([Pt(0, 0), Pt(1, 1), Pt(5, 5)]).any(e => e.u == 0 and e.v == 1 and e.w == 2)`
 /// example: `manhattan_mst([Pt(0, 0), Pt(2, 0)]) == [(0, 1, 2)]`
 pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)>:
-    let keys = D.collect()
+    let keys = pts.keys.collect()
     let n = keys.len
     var xs = [pts[k].x for k in keys]
     var ys = [pts[k].y for k in keys]
@@ -2760,7 +2760,7 @@ pub fn any_segments_meet(segs: List<(a: Pt, b: Pt)>, strict: Bool = false) -> ?(
 /// traps: never
 /// example: `any_segments_meet_idx([(Pt(0, 0), Pt(1, 1)), (Pt(1, 1), Pt(2, 0))]) == Some((0, 1))`
 pub fn any_segments_meet_idx<D>(segs: [D](a: Pt, b: Pt), strict: Bool = false) -> ?(D, D):
-    let keys = D.collect()
+    let keys = segs.keys.collect()
     if let (i, j) = any_segments_meet([segs[k] for k in keys], strict:):
         return Some((keys[i], keys[j]))
     None
@@ -3390,9 +3390,9 @@ struct DelQuads:
 /// example: `voronoi_cells([Pt(0, 0)], 1.0)[0] == [Vec(-1.0, -1.0), Vec(1.0, -1.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)]`
 pub fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>:
     assert bound > 0.0, "`voronoi_cells` needs `bound > 0.0`"
-    let keys = D.collect()
+    let keys = pts.keys.collect()
     let cells = voronoi_idx([pts[k] for k in keys], bound)
-    var out: [D]List<Vec> = []
+    var out: [D]List<Vec> = [pts.keys].filled([])
     for i in 0..keys.len: out[keys[i]] = cells[i]
     out
 
@@ -3706,7 +3706,7 @@ fn hull2_strict(vs: List<Int>, proj: (Int) -> Pt) -> List<Int>:
 /// traps: never
 /// example: `convex_hull_3d_idx([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0), Pt3(0, 0, 1)]) == [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)]`
 pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)>:
-    let keys = D.collect()
+    let keys = pts.keys.collect()
     [(keys[a], keys[b], keys[c]) for (a, b, c) in convex_hull_3d([pts[k] for k in keys])]
 
 /// Six times the signed volume of the closed triangulated surface `faces` over `pts`: the sum of

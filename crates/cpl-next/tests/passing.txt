@@ -3017,3 +3017,4 @@ core-06/a-programs-coercion-runs-its-fn.cp
 core-04/a-table-over-a-params-keys-is-shaped-like-it.cp
 std-seq/domain-receivers-shape-results-like-the-domain.cp
 std-seq/list-receivers-shape-results-like-the-list.cp
+std-geometry/hull-and-voronoi-walk-the-input-keys.cp
