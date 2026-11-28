@@ -310,6 +310,14 @@ fn layer(
     let mut synth: Vec<Vec<(ItemId, Form)>> = vec![Vec::new(); mods.len()];
     synth[CORE.0].extend(records.iter().cloned());
     for mi in from..mods.len() {
+        let mut twice = Vec::new();
+        super::attr_rules::form_lints(&read[mi], &d.syms, &mut twice);
+        match ModId(mi) == d.program {
+            true => d.errors.extend(twice),
+            false => d.module_errors[mi].extend(twice),
+        }
+    }
+    for mi in from..mods.len() {
         for (k, (item, f)) in read[mi].iter().enumerate() {
             let mut placed = Vec::new();
             super::attr_rules::check_form(f, item, &mut placed);

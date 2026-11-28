@@ -1,9 +1,10 @@
 //! The rules a decorator follows beyond its name: what each `@name` may sit on and what its
 //! arguments are. Collect calls `check` once per decorator, where forms reads it (R11.6).
 use crate::attrs::{DeclKind, Decorator};
-use crate::decls::forms::{AttrForm, FieldForm, Form};
+use crate::decls::forms::{AttrForm, FieldForm, FnForm, Form, TyForm};
 use crate::decls::Role;
 use crate::diag::Msg;
+use crate::sym::{Sym, Syms};
 use cpl_diag::{codes, msgs};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_syntax::ast::{self, AstNode};
@@ -363,6 +364,42 @@ fn lint_error(node: &ast::Decorator, f: &LintedFn) -> Option<(String, &'static s
             "a library lint suggests the fn it decorates, or drops a needless call of it",
         )
     })
+}
+
+/// The `@lint`s on a module's fns and methods, checked by [`module_lints`]; a method's
+/// receiver is the type whose body or impl it is in.
+pub fn form_lints(forms: &[(ItemId, Form)], syms: &Syms, errors: &mut Vec<Msg>) {
+    fn push<'a>(
+        sites: &mut Vec<(&'a ItemId, &'a AttrForm, Option<String>)>,
+        item: &'a ItemId,
+        fns: &'a [FnForm],
+        receiver: Option<String>,
+    ) {
+        for f in fns {
+            for a in f.attrs.iter().filter(|a| a.attr == Decorator::Lint) {
+                sites.push((item, a, receiver.clone()));
+            }
+        }
+    }
+    let mut sites = Vec::new();
+    for (item, form) in forms {
+        let named = |n: Sym| Some(syms.text(n).to_string());
+        match form {
+            Form::Fn(f) => push(&mut sites, item, std::slice::from_ref(f), None),
+            Form::Struct(s) => push(&mut sites, item, &s.methods, named(s.name)),
+            Form::Enum(e) => push(&mut sites, item, &e.methods, named(e.name)),
+            Form::Trait(t) => push(&mut sites, item, &t.methods, named(t.name)),
+            Form::Impl(i) => {
+                let receiver = match &i.self_ty {
+                    TyForm::Written(t) => Some(t.syntax().text().trim().to_string()),
+                    _ => None,
+                };
+                push(&mut sites, item, &i.methods, receiver);
+            }
+            _ => {}
+        }
+    }
+    module_lints(sites.iter().map(|(i, a, r)| (*i, *a, r.as_deref())), errors);
 }
 
 /// A module's `@lint`s, each with its item and the type whose method it is on: one name may
