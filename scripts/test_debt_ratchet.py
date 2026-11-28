@@ -2505,6 +2505,29 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (2, 6, 9, 10, 11, 16, 18, 27, 33, 34)])
 
+    def test_whole_program_inputs_count_a_bare_holder_name_only_where_it_resolves(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            files = {
+                "cpl-next/src/lib.rs": "pub struct Type<'s> {\n    d: Decls,\n}\npub use cpl_next_decls::modules::Std;\n",
+                "cpl-next-decls/src/modules.rs": "pub struct Std {\n    d: Decls,\n}\n",
+                # Imported through a multi-line `use crate::{..}` of this crate's re-export.
+                "cpl-next/src/facade.rs": "use crate::{\n    Std,\n};\nstruct Held {\n    s: Std,\n}\n",
+                # Another crate's `Type`.
+                "cpl-next-decls/src/cycles.rs": "use cpl_next_syntax::ast::{GenericArg, Type};\nfn parts(t: &Type) {}\n",
+                "cpl-next-check/src/a.rs": "use cpl_next::{\n    Type,\n};\nfn f(t: &Type) {}\n",
+                "cpl-next-link/src/lib.rs": "struct Env<'e> {\n    d: Decls,\n}\nfn k(env: &Env) {}\n",
+                # A fn-local struct of the same name.
+                "cpl-next-decls/src/decls.rs": "fn g() {\n    struct Env {\n        n: usize,\n    }\n    fn h(env: &Env) {}\n}\n",
+            }
+            for rel, text in files.items():
+                (root / "crates" / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / "crates" / rel).write_text(text)
+            self.assertEqual(dr.next_whole_program_inputs(root), sorted([
+                "crates/cpl-next/src/lib.rs:2", "crates/cpl-next-decls/src/modules.rs:2",
+                "crates/cpl-next/src/facade.rs:5", "crates/cpl-next-check/src/a.rs:4",
+                "crates/cpl-next-link/src/lib.rs:2", "crates/cpl-next-link/src/lib.rs:4"]))
+
     def test_debt_already_on_main_fails_a_push_that_does_not_lower_it(self) -> None:
         label = lambda n: f"{dr.COUNTERS[n][0]}: increased"
         hard = sorted(dr.HARD_ZERO)[0]

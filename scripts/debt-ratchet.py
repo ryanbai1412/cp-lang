@@ -1512,12 +1512,33 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
                 impls.append((m.group(1), rel, i, _block(lines, i)))
     holders: dict[str, set[str]] = {}
     crates: dict[str, set[str]] = {}
+    # Each file's `use` items, as (words, globs, pub); a multi-line `use a::{b, c};` is one.
+    uses = {rel: [(set(re.findall(r"\w+", u)), "*" in u, bool(v))
+                  for v, u in re.findall(r"^\s*(pub(?:\([^)]*\))?\s+)?use\s+([^;]*);", "\n".join(lines), re.M)]
+            for rel, lines in files.items()}
+    local = {"crate", "self", "super"}
+    def seen(name: str, rel: str) -> bool:
+        """Whether a bare `name` in `rel` can be the holder: its crate defines one, or a `use`
+        item imports it (or globs) from a path naming the holder's module or crate, directly or
+        through a `pub use` re-export of it in this crate."""
+        krate = rel.split("/")[1]
+        if krate in crates[name]:
+            return True
+        where = holders[name] - local
+        def brings(items, only_pub=False):
+            return [words for words, glob, pub in items
+                    if (name in words or glob) and (pub or not only_pub)]
+        if any(words & where for words in brings(uses[rel])):
+            return True
+        return any(words & local for words in brings(uses[rel])) and any(
+            words & where for r, items in uses.items() if r.split("/")[1] == krate
+            for words in brings(items, only_pub=True))
     def paths(rel: str) -> set[str]:
         """The path segments that may qualify a struct defined in `rel`: its file's module, its
         crate's name and the short name the pipeline imports it by."""
         krate = rel.split("/")[1].replace("-", "_")
         return {Path(rel).stem, krate, krate.removeprefix("cpl_next_"), "crate", "self", "super"}
-    def holds(line: str) -> bool:
+    def holds(line: str, rel: str) -> bool:
         text = code(line)
         if by_ref.search(line) and text.strip() or owned.search(text):
             return True
@@ -1525,28 +1546,29 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
         if not holders or not at:
             return False
         names = "|".join(sorted(holders))
-        return any(m.group(1) is None or m.group(1) in holders[m.group(2)] for m in re.finditer(
-            r"(?:(\w+)::)?\b(%s)\b(?!\s*(?:::|\{|\())" % names, text[at.end():]))
-    def tuple_holds(first: str) -> bool:
+        return any(m.group(1) in holders[m.group(2)] if m.group(1) else seen(m.group(2), rel)
+                   for m in re.finditer(r"(?:(\w+)::)?\b(%s)\b(?!\s*(?:::|\{|\())" % names,
+                                        text[at.end():]))
+    def tuple_holds(first: str, rel: str) -> bool:
         if "(" not in first or "{" in first:
             return False
         inner = first[first.index("(") + 1:first.rindex(")") if ")" in first else None]
-        return any(holds("x: " + f.strip().removeprefix("pub ")) for f in inner.split(","))
+        return any(holds("x: " + f.strip().removeprefix("pub "), rel) for f in inner.split(","))
     grew = True
     while grew:
         grew = False
         for name, rel, i, j in structs:
             if name in holders or name in types:
                 continue
-            if any(holds(line) for line in files[rel][i + 1:j + 1]) or tuple_holds(files[rel][i]):
+            if any(holds(line, rel) for line in files[rel][i + 1:j + 1]) or tuple_holds(files[rel][i], rel):
                 holders.setdefault(name, set()).update(paths(rel))
                 crates.setdefault(name, set()).add(rel.split("/")[1])
                 grew = True
     own = {(rel, k) for name, rel, i, j in structs + impls if name in types
            for k in range(i, j + 1)}
     out = {(rel, k) for rel, lines in files.items() for k, line in enumerate(lines)
-           if (rel, k) not in own and holds(line)}
-    out |= {(rel, i) for name, rel, i, j in structs if name in holders and tuple_holds(files[rel][i])}
+           if (rel, k) not in own and holds(line, rel)}
+    out |= {(rel, i) for name, rel, i, j in structs if name in holders and tuple_holds(files[rel][i], rel)}
     held = sorted(set(types) | set(holders))
     for name, rel, i, j in impls:
         # A builder returning its own struct with one more plain setting reads nothing.
