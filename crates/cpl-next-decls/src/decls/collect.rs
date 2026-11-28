@@ -728,11 +728,11 @@ fn layer(
     d.errors.extend(errors);
     // Each written fn's body, matched to its fn by the item's fns in the order they were made.
     let mut bodies = HashMap::new();
-    for (item, f) in forms_of[from..].iter().flat_map(|fs| fs.iter()) {
-        let made = (d.item_fns.get(item).into_iter().flatten())
-            .filter(|id| matches!(d.fns[id.0].body, Body::Written));
-        for (id, b) in made.zip(written_bodies(f)) {
-            bodies.insert(*id, b.clone());
+    for it in mods[from..].iter().flat_map(|m| m.items.iter()) {
+        for &id in d.fns_of(&it.id) {
+            if let (Body::Written, Some(b)) = (&d.f(id).body, body_of(&d, id, &it.item)) {
+                bodies.insert(id, b);
+            }
         }
     }
     domain_params(&mut d, fns_from, &bodies);
@@ -868,21 +868,63 @@ fn product(
 }
 
 /// The bodies form `f` writes, in the order its fns are made.
-fn written_bodies(f: &Form) -> Vec<&cpl_next_syntax::ast::FnBody> {
-    let fns: Vec<&super::forms::FnForm> = match f {
-        Form::Fn(f) => vec![f],
-        Form::Struct(s) => s.methods.iter().collect(),
-        Form::Enum(e) => e.methods.iter().collect(),
-        Form::Trait(t) => t.methods.iter().collect(),
-        Form::Impl(i) => i.methods.iter().collect(),
-        _ => Vec::new(),
+/// The fns an item declares, in the order its form registers them.
+fn member_fns(item: &cpl_next_syntax::ast::Item) -> Vec<cpl_next_syntax::ast::FnDecl> {
+    use cpl_next_syntax::ast::Decl as D;
+    let members = match item.decl() {
+        Some(D::Fn(f)) => return vec![f],
+        Some(D::Struct(s)) => s.members(),
+        Some(D::Enum(e)) => e.members(),
+        Some(D::Trait(t)) => t.members(),
+        Some(D::Impl(i)) => i.members(),
+        _ => None,
     };
-    (fns.into_iter())
-        .filter_map(|f| match &f.body {
-            super::forms::BodyForm::Written(b) => Some(b),
-            _ => None,
-        })
+    (members.iter())
+        .flat_map(|m| m.fns().collect::<Vec<_>>())
         .collect()
+}
+
+/// The body `f` checks, read from `item`, the item that declares it: the written body in the
+/// place `f` holds among the item's written fns, or the value of the impl's `let` it is the
+/// getter of (R04.2.26). A generated or bodiless fn has none.
+pub fn body_of(
+    d: &Decls,
+    f: FnId,
+    item: &cpl_next_syntax::ast::Item,
+) -> Option<cpl_next_syntax::ast::FnBody> {
+    use cpl_next_syntax::ast as next;
+    let decl = d.f(f);
+    match decl.body {
+        Body::Written => {
+            let rank = (d.fns_of(&decl.item).iter())
+                .take_while(|g| **g != f)
+                .filter(|g| matches!(d.f(**g).body, Body::Written))
+                .count();
+            (member_fns(item).into_iter())
+                .filter_map(|g| g.body())
+                .nth(rank)
+        }
+        Body::Value => {
+            let name = d.text(decl.name);
+            let members = match item.decl() {
+                Some(next::Decl::Impl(i)) => i.members(),
+                _ => None,
+            };
+            let one_name = |l: &next::LetStmt| match &l.patterns().collect::<Vec<_>>()[..] {
+                [next::Pattern::Path(p)] => match &p.segments().collect::<Vec<_>>()[..] {
+                    [n] => n.text() == name,
+                    _ => false,
+                },
+                _ => false,
+            };
+            (members.iter())
+                .flat_map(|m| m.lets().collect::<Vec<_>>())
+                .find(|l| one_name(l))
+                .and_then(|l| l.value())
+                .map(next::FnBody::Expr)
+        }
+        Body::Synth(_) | Body::None => None,
+    }
 }
 
 /// The name of product `P`'s `i`th factor when it is written as a range.
