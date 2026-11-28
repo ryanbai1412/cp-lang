@@ -3,7 +3,7 @@
 //! written type and every form decls makes reaches one conversion, keyed by `Sym`.
 use super::forms::TyForm;
 use super::*;
-use crate::ops::{bin_intr, bin_op, fold, un_intr};
+use crate::ops::{bin_intr, fold, un_intr};
 use crate::views::{Scope, Signatures, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::End;
@@ -639,12 +639,12 @@ fn const_value(e: &Expr, name: &dyn Fn(&SyntaxToken) -> Option<i64>) -> Option<i
         }
         Expr::Paren(p) => const_value(&p.inner()?, name),
         Expr::Prefix(p) => {
-            let op = cpl_next_syntax::ops::prefix_op(p.op()?.kind())?;
+            let op = p.op_kind()?;
             fold(un_intr(op)?, &[const_value(&p.operand()?, name)?])
         }
         Expr::Bin(b) => {
             let (x, y) = (const_value(&b.lhs()?, name)?, const_value(&b.rhs()?, name)?);
-            fold(bin_intr(bin_op(b)?)?, &[x, y])
+            fold(bin_intr(b.op_kind()?)?, &[x, y])
         }
         Expr::Name(n) => name(&n.ident()?),
         _ => None,
@@ -669,7 +669,9 @@ fn count_end(
             },
             // An offset from the getter: `+ k` or `- k`.
             Expr::Bin(b) => {
-                let op = bin_op(b).filter(|op| matches!(op, BinOp::Add | BinOp::Sub))?;
+                let op = b
+                    .op_kind()
+                    .filter(|op| matches!(op, BinOp::Add | BinOp::Sub))?;
                 let j = const_int(cx, &b.rhs()?)?;
                 let (d, m, k) = end(cx, &b.lhs()?)?;
                 Some((d, m, fold(bin_intr(op)?, &[k, j])?))

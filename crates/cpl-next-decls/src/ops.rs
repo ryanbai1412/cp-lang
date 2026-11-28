@@ -3,8 +3,7 @@
 
 use cpl_next_ir::ir::Intr;
 use cpl_next_ir::ops::{self, Operand};
-use cpl_next_syntax::ast::BinExpr;
-use cpl_next_syntax::ops::{BinOp, Kind, UnOp};
+use cpl_next_syntax::ops::{BinOp, UnOp};
 
 /// The checked operation a binary operator on scalars is; `None` for one that is not a
 /// single scalar operation (`and`, `or`, `??`, `<=>`).
@@ -31,14 +30,6 @@ pub fn un_intr(op: UnOp) -> Option<Intr> {
         UnOp::Neg => Some(Intr::Neg),
         UnOp::Not => Some(Intr::Not),
         UnOp::Pos | UnOp::BitNot => None,
-    }
-}
-
-/// What a binary operator computes, when it computes a value rather than a comparison.
-pub fn bin_op(b: &BinExpr) -> Option<BinOp> {
-    match cpl_next_syntax::ops::binary(b.op()?.kind())?.kind {
-        Kind::Bin(op) => Some(op),
-        Kind::Cmp(_) => None,
     }
 }
 
