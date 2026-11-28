@@ -565,7 +565,8 @@ pub fn sig(op: Intr, first: Operand) -> Sig {
         I::CharOf => O::Char,
         _ => first,
     };
-    let second = if matches!(op, I::Shl | I::Shr) {
+    // A shift's count and a power's exponent are `Int`s (R02.1, `Pow`'s `Rhs = Int`).
+    let second = if matches!(op, I::Shl | I::Shr | I::Pow) {
         O::Int
     } else {
         first
@@ -627,10 +628,12 @@ pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
         (_, &[S::F64(a), S::F64(b)]) if cmp => compare_float(op, f(a), f(b)).map(S::Bool),
         (_, &[a, b]) if cmp => compare(op, whole(a)?, whole(b)?).map(S::Bool),
         (_, &[S::F64(a), S::F64(b)]) => fl(float(op, f(a), f(b))),
-        (I::Shl | I::Shr, &[S::U64(a), S::Int(b)]) => word(op, a, b as u64).map(S::U64),
+        (I::Shl | I::Shr | I::Pow, &[S::U64(a), S::Int(b)]) => word(op, a, b as u64).map(S::U64),
         (_, &[S::U64(a), S::U64(b)]) => word(op, a, b).map(S::U64),
         (_, &[S::Int(a), S::Int(b)]) => int(op, a, b).map(S::Int),
-        (I::Shl | I::Shr, &[S::I128(a), S::Int(b)]) => wide(op, a, i128::from(b)).map(S::I128),
+        (I::Shl | I::Shr | I::Pow, &[S::I128(a), S::Int(b)]) => {
+            wide(op, a, i128::from(b)).map(S::I128)
+        }
         (_, &[S::I128(a), S::I128(b)]) => wide(op, a, b).map(S::I128),
         (I::Neg, &[S::I128(w)]) => wneg(w).map(S::I128),
         (I::Abs, &[S::I128(w)]) => wabs(w).map(S::I128),

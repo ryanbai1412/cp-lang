@@ -78,8 +78,14 @@ impl<'a> Cx<'a> {
                 span,
             };
         }
+        // The right side is the operator trait's for `want`: `U64 ** e` takes `Pow`'s
+        // `Rhs = Int`, as a shift's count is an `Int` (R08.1.5).
+        let rhs = match shift {
+            true => Ty::Int,
+            false => self.op_rhs(op, &want).unwrap_or_else(|| want.clone()),
+        };
         let l = self.coerce(l, &want);
-        let r = self.coerce(r, if shift { &Ty::Int } else { &want });
+        let r = self.coerce(r, &rhs);
         if op == BinOp::Coalesce {
             self.err(span, Unbuilt::Operator);
         }
@@ -88,6 +94,27 @@ impl<'a> Cx<'a> {
             ty: want,
             span,
         }
+    }
+    /// The right side the impl of `op`'s binary trait for `t` takes, as its first trait argument.
+    fn op_rhs(&self, op: BinOp, t: &Ty) -> Option<Ty> {
+        let binary = |tr: &TraitId| {
+            (self.rows.operator_method(*tr)).is_some_and(|(_, m)| self.items.f(m).params.len() == 1)
+        };
+        let ops = self.rows.operator_traits(self.syms.get(&op.to_string())?);
+        let tr = *ops.iter().find(|tr| binary(tr))?;
+        let any = decls::TraitRef {
+            tr,
+            args: Vec::new(),
+        };
+        let impls = self.impls();
+        let [(k, binds)] = &impls.best(t, &any)[..] else {
+            return None;
+        };
+        let sub = Subst {
+            tys: binds,
+            sets: &[],
+        };
+        Some(sub.ty(impls.imp(*k).trait_.args.first()?))
     }
     /// A struct, whose operators are its impls of the operator traits (R08.1.5).
     fn declares_operators(&self, t: &Ty) -> bool {

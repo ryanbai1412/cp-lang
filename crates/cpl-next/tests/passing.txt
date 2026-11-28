@@ -1017,6 +1017,8 @@ core-08/operator-missing.cp
 core-08/own-module-fn-beats-equal-imported.cp
 core-08/pow-is-an-operator-trait.cp
 core-08/pow-on-i128-past-int.cp
+core-08/pow-on-i128-takes-an-int-exponent.cp
+core-08/pow-on-u64-takes-an-int-exponent.cp
 core-08/pow-without-impl-is-an-error.cp
 core-08/record-exact-fields.cp
 core-08/recursion-at-the-same-type-is-fine.cp
