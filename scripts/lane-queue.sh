@@ -22,7 +22,13 @@ take() {  # $1 = queue branch name, e.g. queue/c-clippy
     git fetch -q origin lane-j-check "+refs/heads/$branch:refs/remotes/origin/$branch" || return 1
     head=$(git rev-parse "origin/$branch")
     [ "$(cat "$out.head" 2>/dev/null)" = "$head" ] && return 1  # failed before, unchanged
-    git checkout -q --detach origin/lane-j-check || return 1
+    # A gate or cherry-pick stopped partway leaves the tree dirty, and then no checkout works.
+    if ! git checkout -q --detach origin/lane-j-check 2>>target/lane-queue/queue.log; then
+        log "$branch ($head): the runner's tree was dirty; forcing it back to lane-j-check"
+        git cherry-pick --abort >/dev/null 2>&1
+        git checkout -q --force --detach origin/lane-j-check && git clean -fdxq -e target/ \
+            || { log "$branch ($head): checkout still fails; see queue.log"; return 1; }
+    fi
     if ! git cherry-pick --empty=drop $(git rev-list --reverse --no-merges "origin/lane-j-check..$head") >"$out" 2>&1; then
         git cherry-pick --abort >/dev/null 2>&1
         echo "$head" >"$out.head"
@@ -53,6 +59,12 @@ take() {  # $1 = queue branch name, e.g. queue/c-clippy
 
 while :; do
     git fetch -q --prune origin lane-j-check '+refs/heads/queue/*:refs/remotes/origin/queue/*'
+    # Below 5 GB free the gates fail for want of disk, not of a branch (D lost 40 min to it).
+    if [ "$(df --output=avail -k . | tail -1)" -lt 5000000 ]; then
+        [ "${low:-0}" = 1 ] || log "under 5 GB free; waiting for disk before the next gate"
+        low=1; sleep 30; continue
+    fi
+    low=0
     branches=$(git for-each-ref --sort=committerdate --format='%(refname:lstrip=3)' refs/remotes/origin/queue/)
     for b in $branches; do take "$b"; done
     [ "$once" = 1 ] && exit 0
