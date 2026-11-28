@@ -101,10 +101,10 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_standin_notes` | 1 |
 | `next_std_names` | 46 |
 | `next_std_unchecked` | 35 |
-| `next_string_keyed_maps` | 79 |
+| `next_string_keyed_maps` | 77 |
 | `next_syntax_old_refs` | 846 |
 | `next_weak_oracle_passes` | 7 |
-| `next_whole_program_inputs` | 608 |
+| `next_whole_program_inputs` | 607 |
 | `next_wrong` | 1,454 |
 | `next_wrong_accepts` | 20 |
 | `next_wrong_outputs` | 14 |
