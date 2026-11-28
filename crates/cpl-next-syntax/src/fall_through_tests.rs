@@ -15,9 +15,11 @@ fn first<N: AstNode>(src: &str, kind: NodeKind) -> (crate::SyntaxFile, N) {
     (file, n)
 }
 
-/// The prelude's `todo`, as the checker resolves it.
+/// The name these tests' `@role(todo)` fn has; the checker resolves it.
+const TODO: &str = "todo";
+
 fn todo(n: &ast::NameRef) -> bool {
-    n.ident().is_some_and(|t| t.text() == "todo")
+    n.ident().is_some_and(|t| t.text() == TODO)
 }
 
 fn end(src: &str) -> Option<(String, &'static str)> {

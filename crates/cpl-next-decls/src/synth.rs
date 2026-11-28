@@ -84,21 +84,22 @@ pub(crate) fn enum_structs(
     syms: &mut crate::sym::Syms,
 ) -> Vec<crate::decls::forms::StructForm> {
     use crate::decls::forms::{FieldForm, StructForm};
-    let one = |name: Sym, public: bool, attrs: Vec<AttrForm>, fields: Vec<FieldForm>| StructForm {
+    let one = |name: Sym, attrs: Vec<AttrForm>, fields: Vec<FieldForm>, methods| StructForm {
         name,
-        public,
         attrs,
         record: false,
         generics: e.generics.clone(),
         generic_defaults: vec![None; e.generics.len()],
         bounds: Vec::new(),
+        public: e.public,
         fields,
-        methods: Vec::new(),
+        methods,
         lets: Vec::new(),
         consts: Vec::new(),
         span: e.span,
     };
-    let mut out = vec![one(e.name, e.public, e.attrs.clone(), Vec::new())];
+    // The enum's own struct has the methods its body declares (R02.7.4).
+    let mut out = vec![one(e.name, e.attrs.clone(), Vec::new(), e.methods.clone())];
     for v in &e.variants {
         let name = syms.intern(&format!("{}.{}", syms.text(e.name), syms.text(v.name)));
         let fields = (v.fields.iter())
@@ -107,7 +108,7 @@ pub(crate) fn enum_structs(
                 ..f.clone()
             })
             .collect();
-        out.push(one(name, e.public, Vec::new(), fields));
+        out.push(one(name, Vec::new(), fields, Vec::new()));
     }
     out
 }
