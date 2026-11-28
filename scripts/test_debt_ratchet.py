@@ -471,11 +471,21 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-check/src/a.rs", "fn a() {}\nfn b() {}\nfn c() {}\nfn pinned() {}\nfn d() {}\n")
             self._write(root, dr.FROZEN_STD + "/seq.cp", "pub fn f() = 0\npub fn g() = 0\n")
             git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "check: after the pin")
+            # Re-pinning std to the tree the commit's own FROZEN_STD_TREE names keeps the freeze.
+            self._write(root, dr.FROZEN_STD + "/seq.cp", "pub fn f() = 1\npub fn g() = 0\npub fn h() = 0\n")
+            git("add", "-A")
+            tree = subprocess.run(["git", "write-tree", f"--prefix={dr.FROZEN_STD}/"], cwd=root, env=env,
+                                  capture_output=True, text=True).stdout.strip()
+            self._write(root, "scripts/debt-ratchet.py", f'FROZEN_STD_TREE = "{tree}"\n')
+            git("add", "-A"); git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "check: re-pin std")
+            # Editing the pinned std after, to a tree no FROZEN_STD_TREE names, breaks it.
+            self._write(root, dr.FROZEN_STD + "/seq.cp", "pub fn f() = 2\npub fn g() = 0\npub fn h() = 0\n")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "check: edit the pinned std")
             with mock.patch.object(dr, "FROZEN_PIN", base):
                 got = dr.frozen_edits(root, base)
             # No trailer excuses a commit, whoever signs it.
-            self.assertEqual(len(got), 4)
-            self.assertTrue(all("adds 1 lines to the frozen old pipeline" in g for g in got[1:]))
+            self.assertEqual(len(got), 5, got)
+            self.assertTrue(all("adds 1 lines to the frozen old pipeline" in g for g in got[:1] + got[2:]), got)
 
     def test_skipped_ratchet_flags_new_pipeline_commits_that_skip_it(self) -> None:
         with tempfile.TemporaryDirectory() as d:

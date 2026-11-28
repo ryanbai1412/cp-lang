@@ -5714,7 +5714,12 @@ def frozen_edits(root: Path, base: str) -> list[str]:
         # The commit that vendors FROZEN_STD is the pin itself: it puts the crates back at
         # FROZEN_PIN, each fitted to the crates outside the freeze, and only one commit can.
         pins = bool(blob(sha, FROZEN_STD)) and not blob(f"{sha}^", FROZEN_STD)
-        return bool(touched) and (pins or all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched))
+        # A re-pin touches only FROZEN_STD, leaving it the tree its own FROZEN_STD_TREE names.
+        tree = re.search(r'^FROZEN_STD_TREE = "([0-9a-f]+)"$', "\n".join(
+            _git(root, "show", f"{sha}:scripts/debt-ratchet.py")), re.M)
+        repins = all(f.startswith(f"{FROZEN_STD}/") for f in touched) and bool(tree) \
+            and blob(sha, FROZEN_STD) == tree.group(1) != blob(f"{sha}^", FROZEN_STD)
+        return bool(touched) and (pins or repins or all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched))
     def admitted(sha: str) -> bool:
         diff = subprocess.run(["git", "-C", str(root), "show", sha, "--", *paths], capture_output=True).stdout
         pid = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()
