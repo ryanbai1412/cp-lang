@@ -1403,8 +1403,10 @@ def _whole_res(types: tuple[str, ...], traits: tuple[str, ...] = ()) -> tuple[re
 
 
 NEXT_TRAIT_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?trait\s+(\w+)(?:<[^{:]*>)?\s*(?::\s*([^{]+))?\{")
-# A view method's key: an item id, a `Sym`, or an impl or call index (lane I's rule).
-NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|usize|u32|u16|u8)$")
+# A view method's key: an item id, a `Sym`, an impl or call index (lane I's rule), or a
+# concrete `Ty` by value, which belongs to no item and is compared by structure, never an
+# arena index or an interner's first-asked order (coordinator ruling 20:52, link's `impl_for`).
+NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|Ty|usize|u32|u16|u8)$")
 NEXT_VIEW_TABLE_RE = re.compile(r"\b(?:str|String|HashMap|BTreeMap|HashSet|Vec|Decls|Typed|Loaded|Whole|Generic|Deferred|SetAdds)\b|\[")
 
 
@@ -1435,8 +1437,9 @@ def _params(sig: str) -> list[str]:
 
 
 def _view_method_ok(sig: str) -> bool:
-    """Lane I's rule for one view method: it takes at least one key, every key is an id or a
-    `Sym` (never text or a table), and it answers that key alone, never every item of a kind."""
+    """Lane I's rule for one view method: it takes at least one key, every key is an id, a
+    `Sym` or a concrete `Ty` (never text or a table), and it answers that key alone, never
+    every item of a kind."""
     name = re.search(r"fn\s+(\w+)", sig).group(1)
     if re.match(r"(?:all|every)(?:_|$)", name) or name.endswith("_all"):
         return False
@@ -1485,8 +1488,8 @@ def next_whole_program_inputs(root: Path) -> list[str]:
     methods are the value itself, not a reader of it, and a fn returning one produces it. The
     incremental core (handbook/design/next/incremental.md) calls every layer per item over
     small views, so this reaches 0: a context that holds views instead stops counting. A
-    `&dyn T` view is such a value unless every method of T and its supertraits takes an id
-    or `Sym` key and answers that key alone (`_view_method_ok`, lane I's rule)."""
+    `&dyn T` view is such a value unless every method of T and its supertraits takes an id,
+    `Sym` or concrete `Ty` key and answers that key alone (`_view_method_ok`, lane I's rule)."""
     return _holding_lines(root, NEXT_WHOLE_PROGRAM_TYPES, "", views=True)
 
 

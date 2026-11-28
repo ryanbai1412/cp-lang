@@ -2591,6 +2591,19 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-decls/src/lib.rs:{i}" for i in (19, 21)])
 
+    def test_a_view_keyed_by_a_concrete_type_value_is_a_view(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-decls/src"
+            src.mkdir(parents=True)
+            (src / "lib.rs").write_text(
+                "pub trait ImplChoice {\n    fn impl_for(&self, tr: TraitId, t: &Ty) -> Option<Chosen>;\n"
+                "    fn impls_on(&self, t: &ir::Ty) -> Vec<(TraitId, Chosen)>;\n}\n"
+                "pub trait Tabled {\n    fn on(&self, t: &TyTable) -> Option<Chosen>;\n    fn of(&self, ts: &[Ty]) -> usize;\n}\n"
+                "fn a(c: &dyn ImplChoice, t: &dyn Tabled) {}\n"
+            )
+            self.assertEqual(dr.next_whole_program_inputs(root), ["crates/cpl-next-decls/src/lib.rs:9"])
+
     def test_audit_counters_find_soundness_core_checks_ownership_and_foreign_deps(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
