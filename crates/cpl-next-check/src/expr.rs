@@ -853,6 +853,9 @@ impl<'a> Cx<'a> {
             return self.const_read(c, span);
         }
         if let Some(d) = self.d.fn_named(self.b.module, n) {
+            if self.d.roles.todo == Some(d) {
+                return todo_trap(span);
+            }
             let f = self.fnref(d, Vec::new(), Vec::new());
             return self.fn_item_value(f, span);
         }
@@ -861,20 +864,6 @@ impl<'a> Cx<'a> {
         }
         if let Some((e, i)) = self.scoped_variant(n) {
             return self.variant(e, i, Vec::new(), &[], span);
-        }
-        // `todo` traps where it is reached and gives no value (R01.6.7).
-        if n == "todo" {
-            let never = TExpr {
-                kind: TK::Bool(false),
-                ty: Ty::Bool,
-                span,
-            };
-            let trap = TStmt::Assert(never, "`todo` reached".into(), span, CheckKind::Todo);
-            return TExpr {
-                kind: TK::Block(vec![trap], None),
-                ty: Ty::Unit,
-                span,
-            };
         }
         if let Some(&(_, _, id)) = (self.b.group.iter()).find(|g| g.1 == n && g.0 > span.start) {
             let set = self.names_set();
@@ -1837,4 +1826,19 @@ pub(super) fn block(pre: Vec<TStmt>, e: TExpr) -> TExpr {
 fn gives_none(b: &ast::Block) -> bool {
     matches!(b.stmts.last().map(|s| &s.kind),
         Some(ast::StmtKind::Expr(e)) if matches!(super::index::unparen(e).kind, ExprKind::None))
+}
+
+/// The `@role(todo)` fn read as a value: it traps where it is reached and gives no value (R01.6.7).
+fn todo_trap(span: Span) -> TExpr {
+    let never = TExpr {
+        kind: TK::Bool(false),
+        ty: Ty::Bool,
+        span,
+    };
+    let trap = TStmt::Assert(never, "`todo` reached".into(), span, CheckKind::Todo);
+    TExpr {
+        kind: TK::Block(vec![trap], None),
+        ty: Ty::Unit,
+        span,
+    }
 }

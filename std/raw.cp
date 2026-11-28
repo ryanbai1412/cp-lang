@@ -17,3 +17,8 @@ pub fn raw_cap<T>(n: Int) -> Raw<T> = @intrinsic("unset_cells")
 pub fn check_key(ok: Bool) = @intrinsic("key_check")
 /// Traps unless `ok`: a range that is not inside the sequence it slices.
 pub fn check_range(ok: Bool) = @intrinsic("range_check")
+
+/// `todo`: a stub's body, of any type, that traps R0402 where it is reached (R01.6.7). Read as
+/// a value it is that trap, so its own body is the trap too.
+@role(todo)
+pub fn todo() = todo
