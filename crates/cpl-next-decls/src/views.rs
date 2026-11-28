@@ -17,8 +17,8 @@ use std::collections::HashMap;
 /// The part of the signatures a written type is converted against, each table read by key.
 /// Decls reads it while it is still building the rest of the signatures.
 pub trait TypeTables: Texts {
-    /// The id of a name written `text`, if any table holds it.
     fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
+    /// The id of a name written `text`, if any table holds it.
 
     fn alias(&self, id: AliasId) -> &AliasDecl;
     fn konst(&self, id: ConstId) -> &LibConst;
@@ -60,6 +60,14 @@ pub trait Items: Texts {
     fn t(&self, id: TraitId) -> &TraitDecl;
     /// Impl `i`, an index into the program's impls.
     fn imp(&self, i: usize) -> &ImplDecl;
+    /// The impls of `tr`, by index, in order, found or not (see `live`).
+    fn impls_by_trait(&self, tr: TraitId) -> &[usize];
+    /// The impls of `tr` in the order a type takes them, once they are ranked.
+    fn ranked(&self, tr: TraitId) -> Option<&[usize]>;
+    /// The impls that write a fn named `name`, by index.
+    fn impls_named(&self, name: Sym) -> &[usize];
+    /// Whether a lookup may find impl `i` (R11.3.4).
+    fn live(&self, i: usize) -> bool;
 }
 
 /// `signature(ItemId)`: what an item declares, never its body.
@@ -139,6 +147,18 @@ impl Items for Decls {
     fn imp(&self, i: usize) -> &ImplDecl {
         &self.impls[i]
     }
+    fn impls_by_trait(&self, tr: TraitId) -> &[usize] {
+        self.impls_by_trait.get(&tr).map_or(&[], Vec::as_slice)
+    }
+    fn ranked(&self, tr: TraitId) -> Option<&[usize]> {
+        (self.impls_ranked.as_ref()).map(|r| r.get(&tr).map_or(&[][..], Vec::as_slice))
+    }
+    fn impls_named(&self, name: Sym) -> &[usize] {
+        self.impls_by_member.get(&name).map_or(&[], Vec::as_slice)
+    }
+    fn live(&self, i: usize) -> bool {
+        Decls::live(self, &self.impls[i])
+    }
 }
 
 impl Signatures for Decls {
@@ -176,11 +196,11 @@ impl Texts for Decls {
 }
 
 impl TypeTables for Decls {
-    fn core_type(&self, n: crate::sym::Sym) -> Option<crate::decls::CoreType> {
-        self.core_types.get(&n).copied()
-    }
     fn sym(&self, text: &str) -> Option<crate::sym::Sym> {
         self.syms.get(text)
+    }
+    fn core_type(&self, n: crate::sym::Sym) -> Option<crate::decls::CoreType> {
+        self.core_types.get(&n).copied()
     }
 
     fn alias(&self, id: AliasId) -> &AliasDecl {

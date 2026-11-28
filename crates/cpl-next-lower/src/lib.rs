@@ -304,11 +304,11 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
 /// checker's for the rest.
 fn dom_impls(d: &Decls, typed: &Typed, i: usize) -> Vec<cpl_next_ir::ty::TraitId> {
     let impls = cpl_next_decls::decls::Impls {
-        d,
+        items: d,
         rows: &typed.dom_rows,
     };
     let dom = cpl_next_ir::ty::Ty::Dom(i);
-    (impls.d.roles.domain.into_iter().chain(impls.d.roles.order))
+    (d.roles.domain.into_iter().chain(d.roles.order))
         .filter(|&tr| impls.trait_impls(tr).any(|(_, im)| im.for_ == dom))
         .collect()
 }

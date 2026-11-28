@@ -149,6 +149,8 @@ pub struct Std {
     decls: crate::decls::Prepared,
     /// Each prelude name and the module it is from.
     prelude: HashMap<String, String>,
+    /// The module marked `@role(prelude)`, whose `use`s every program has (R11.6).
+    pub prelude_module: Option<String>,
 }
 
 impl Std {
@@ -202,23 +204,21 @@ impl Std {
             }
         }
         let decls = crate::decls::prepare(&modules.iter().map(Parsed::module).collect::<Vec<_>>());
+        let prelude_module = (modules.iter())
+            .find(|p| is_prelude(&p.items))
+            .map(|p| p.text.name.clone());
         Std {
             modules,
             index,
             decls,
             prelude,
+            prelude_module,
         }
     }
     pub fn decls(&self) -> &crate::decls::Prepared {
         &self.decls
     }
     /// Std's modules by name, the core not among them.
-    /// The module marked `@role(prelude)`, whose `use`s every program has (R11.6).
-    pub fn prelude_module(&self) -> Option<&str> {
-        (self.modules.iter())
-            .find(|p| is_prelude(&p.items))
-            .map(|p| p.text.name.as_str())
-    }
     pub fn module_names(&self) -> impl Iterator<Item = &str> {
         self.modules[1..].iter().map(|p| p.text.name.as_str())
     }

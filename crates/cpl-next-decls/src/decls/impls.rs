@@ -1,6 +1,32 @@
 //! Which impl a type has of a trait, and which member a receiver reaches through one.
 use super::*;
-use crate::views::Signatures;
+use crate::views::{Items, Signatures};
+
+/// Which impl a type takes when several fit: one for its written type (0) before one for
+/// every record with some fields (1), before any other blanket one (2) (R08.1.2, R08.4.5).
+pub fn impl_rank(items: &dyn Items, im: &ImplDecl) -> u8 {
+    rank_of(items, &im.for_, &im.bounds)
+}
+/// `impl_rank` of an impl for `for_` with `bounds`.
+pub fn rank_of(items: &dyn Items, for_: &Ty, bounds: &[(usize, TraitRef)]) -> u8 {
+    let Ty::Param(i) = *for_ else { return 0 };
+    match (bounds.iter()).any(|(k, b)| *k == i && items.t(b.tr).row) {
+        true => 1,
+        false => 2,
+    }
+}
+/// Which of struct `s`'s fields is named `name`.
+fn field(items: &dyn Items, s: StructId, name: Sym) -> Option<usize> {
+    (items.s(s).fields.iter()).position(|(f, _)| *f == name)
+}
+
+/// An impl's place in one lookup: decls' impl `i`, or row `i` of the layer checking a body. It
+/// keys one answer, never a stored table.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum ImplIdx {
+    Decl(usize),
+    Row(usize),
+}
 
 impl Decls {
     /// `r` with each parameter it leaves out given its default, for `self_ty` as `Self` (R08.1.1).
@@ -116,38 +142,44 @@ impl Decls {
 /// the `Domain` and `Ordered` impls of each domain it declares.
 #[derive(Clone, Copy)]
 pub struct Impls<'a> {
-    pub d: &'a Decls,
+    pub items: &'a dyn Items,
     pub rows: &'a [ImplDecl],
 }
 
 impl<'a> Impls<'a> {
     /// Decls' impls alone.
-    pub fn of(d: &'a Decls) -> Impls<'a> {
-        Impls { d, rows: &[] }
+    pub fn of(items: &'a dyn Items) -> Impls<'a> {
+        Impls { items, rows: &[] }
     }
     /// The impls of `tr` a lookup may find, decls' in order and then the rows.
-    pub fn trait_impls(&self, tr: TraitId) -> impl Iterator<Item = (usize, &'a ImplDecl)> + Clone {
-        let n = self.d.impls.len();
+    pub fn trait_impls(
+        &self,
+        tr: TraitId,
+    ) -> impl Iterator<Item = (ImplIdx, &'a ImplDecl)> + Clone {
+        let items = self.items;
         let rows = (self.rows.iter().enumerate())
             .filter(move |(_, im)| im.trait_.tr == tr)
-            .map(move |(j, im)| (n + j, im));
-        self.d.trait_impls(tr).chain(rows)
+            .map(|(j, im)| (ImplIdx::Row(j), im));
+        (items.impls_by_trait(tr).iter())
+            .filter(move |&&k| items.live(k))
+            .map(move |&k| (ImplIdx::Decl(k), items.imp(k)))
+            .chain(rows)
     }
     /// Impl `k`: decls' by index, then the rows.
-    pub fn imp(&self, k: usize) -> &'a ImplDecl {
-        match k.checked_sub(self.d.impls.len()) {
-            Some(j) => &self.rows[j],
-            None => &self.d.impls[k],
+    pub fn imp(&self, k: ImplIdx) -> &'a ImplDecl {
+        match k {
+            ImplIdx::Decl(i) => self.items.imp(i),
+            ImplIdx::Row(j) => &self.rows[j],
         }
     }
-    pub fn lookup_member(&self, recv: &Ty, name: &str) -> Option<Member> {
+    pub fn lookup_member(&self, recv: &Ty, name: Sym) -> Option<Member> {
         if let Ty::Struct(d, targs, sets) = recv {
-            let s = self.d.s(*d);
-            if let Some(i) = self.d.field(*d, name) {
+            let s = self.items.s(*d);
+            if let Some(i) = field(self.items, *d, name) {
                 let sub = Subst { tys: targs, sets };
                 return Some(Member::Field(i, sub.ty(&s.fields[i].1)));
             }
-            if let Some(m) = self.d.member(&s.methods, name) {
+            if let Some(m) = s.methods.get(&name).copied() {
                 return Some(Member::Method(m, targs.clone(), sets.clone()));
             }
         }
@@ -155,7 +187,7 @@ impl<'a> Impls<'a> {
     }
     /// The fn `name` of an impl for `recv`, of trait `trait_` when one is given,
     /// or the trait's default when the impl does not write it (R08.1.2).
-    pub fn impl_member(&self, recv: &Ty, name: &str, trait_: Option<TraitId>) -> Option<Member> {
+    pub fn impl_member(&self, recv: &Ty, name: Sym, trait_: Option<TraitId>) -> Option<Member> {
         self.impl_member_with(recv, name, trait_, |_| true)
     }
     /// The fn `name` of an impl for `recv` whose declaration `pick` takes: the `at` that reads
@@ -163,7 +195,7 @@ impl<'a> Impls<'a> {
     pub fn impl_member_by(
         &self,
         recv: &Ty,
-        name: &str,
+        name: Sym,
         pick: impl Fn(&FnDecl) -> bool,
     ) -> Option<Member> {
         self.impl_member_with(recv, name, None, pick)
@@ -171,7 +203,7 @@ impl<'a> Impls<'a> {
     pub(super) fn impl_member_with(
         &self,
         recv: &Ty,
-        name: &str,
+        name: Sym,
         trait_: Option<TraitId>,
         pick: impl Fn(&FnDecl) -> bool,
     ) -> Option<Member> {
@@ -188,24 +220,19 @@ impl<'a> Impls<'a> {
     pub fn impl_choices(
         &self,
         recv: &Ty,
-        name: &str,
+        name: Sym,
         trait_: Option<TraitId>,
         pick: impl Fn(&FnDecl) -> bool,
     ) -> Vec<(TraitRef, Member)> {
         // A value's member has a `self`: `Domain.at(x)` is not `Int`'s `at`.
         let pick = |f: &FnDecl| f.self_mode != SelfMode::None && pick(f);
-        let named = self
-            .d
-            .syms
-            .get(name)
-            .and_then(|n| self.d.impls_by_member.get(&n));
-        let live = (named.into_iter().flatten())
-            .map(|&k| &self.d.impls[k])
-            .filter(|im| self.d.live(im))
-            .chain((self.rows.iter()).filter(|im| {
-                let tr = &self.d.traits[im.trait_.tr.0];
-                self.d.member(&tr.methods, name).is_some()
-            }));
+        let live = (self.items.impls_named(name).iter())
+            .filter(|&&k| self.items.live(k))
+            .map(|&k| self.items.imp(k))
+            .chain(
+                (self.rows.iter())
+                    .filter(|im| (self.items.t(im.trait_.tr).methods).contains_key(&name)),
+            );
         let mut found: Vec<(u8, TraitRef, Member)> = Vec::new();
         for im in live {
             let sets = match recv {
@@ -219,7 +246,7 @@ impl<'a> Impls<'a> {
             let Some(member) = self.impl_gives(im, recv, name, trait_, &pick, &sets) else {
                 continue;
             };
-            let rank = self.d.impl_rank(im);
+            let rank = impl_rank(self.items, im);
             match found.first().map(|f| f.0) {
                 Some(best) if best < rank => continue,
                 Some(best) if best > rank => found.clear(),
@@ -234,25 +261,26 @@ impl<'a> Impls<'a> {
         &self,
         im: &ImplDecl,
         recv: &Ty,
-        name: &str,
+        name: Sym,
         trait_: Option<TraitId>,
         pick: &impl Fn(&FnDecl) -> bool,
         sets: &[SetTy],
     ) -> Option<Member> {
-        let tr = &self.d.traits[im.trait_.tr.0];
+        let tr = self.items.t(im.trait_.tr);
         if trait_.is_some_and(|t| t != im.trait_.tr) {
             return None;
         }
-        if let Some(m) = self
-            .d
-            .member(&im.methods, name)
-            .filter(|&m| pick(self.d.f(m)))
+        if let Some(m) = im
+            .methods
+            .get(&name)
+            .copied()
+            .filter(|&m| pick(self.items.f(m)))
         {
             let targs = self.fits_impl(im, recv)?;
             return Some(Member::Method(m, targs, sets.to_vec()));
         }
-        let tm = self.d.member(&tr.methods, name)?;
-        if self.d.f(tm).bodiless() || !pick(self.d.f(tm)) {
+        let tm = tr.methods.get(&name).copied()?;
+        if self.items.f(tm).bodiless() || !pick(self.items.f(tm)) {
             return None;
         }
         let binds = self.fits_impl(im, recv)?;
@@ -274,7 +302,7 @@ impl<'a> Impls<'a> {
         r: &TraitRef,
         caches: bool,
     ) -> Option<Vec<(usize, TraitRef)>> {
-        let sd = self.d.s(s);
+        let sd = self.items.s(s);
         let mut out = Vec::new();
         for ((_, t), cached) in sd.fields.iter().zip(&sd.cached) {
             if (caches || !*cached) && !self.needs(t, r, &mut out, 32) {
@@ -333,19 +361,24 @@ impl<'a> Impls<'a> {
         self.ranked_impls(tr).map(|(_, im)| im)
     }
     /// `impls_of`, each with its index.
-    pub fn ranked_impls(&self, tr: TraitId) -> impl Iterator<Item = (usize, &'a ImplDecl)> {
-        let d = self.d;
-        let n = d.impls.len();
+    pub fn ranked_impls(&self, tr: TraitId) -> impl Iterator<Item = (ImplIdx, &'a ImplDecl)> {
+        let items = self.items;
         let rows = (self.rows.iter().enumerate())
             .filter(move |(_, im)| im.trait_.tr == tr)
-            .map(move |(j, im)| (n + j, im));
-        let ranked = (d.impls_ranked.as_ref()).map(|r| r.get(&tr).map_or(&[][..], Vec::as_slice));
+            .map(|(j, im)| (ImplIdx::Row(j), im));
+        let ranked = items.ranked(tr);
         let unranked = ranked.is_none().then(|| {
-            (0..3)
-                .flat_map(move |r| (d.trait_impls(tr)).filter(move |(_, im)| d.impl_rank(im) == r))
+            (0..3).flat_map(move |r| {
+                (Impls::of(items).trait_impls(tr)).filter(move |(_, im)| impl_rank(items, im) == r)
+            })
         });
-        rows.chain(ranked.into_iter().flatten().map(move |&k| (k, &d.impls[k])))
-            .chain(unranked.into_iter().flatten())
+        rows.chain(
+            ranked
+                .into_iter()
+                .flatten()
+                .map(move |&k| (ImplIdx::Decl(k), items.imp(k))),
+        )
+        .chain(unranked.into_iter().flatten())
     }
     /// The impl's type arguments for `t`; a blanket impl only where `t` meets its bounds.
     pub fn fits_impl(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>> {
@@ -367,12 +400,12 @@ impl<'a> Impls<'a> {
             let heads: Vec<(&ImplDecl, Vec<Ty>)> = (self.impls_of(r.tr))
                 .filter_map(|im| Some((im, self.impl_args_for(im, &t, &r.args)?)))
                 .collect();
-            let Some(best) = heads.iter().map(|(im, _)| self.d.impl_rank(im)).min() else {
+            let Some(best) = heads.iter().map(|(im, _)| impl_rank(self.items, im)).min() else {
                 break;
             };
             let mut heads = heads
                 .into_iter()
-                .filter(|(im, _)| self.d.impl_rank(im) == best);
+                .filter(|(im, _)| impl_rank(self.items, im) == best);
             let (Some((im, targs)), None) = (heads.next(), heads.next()) else {
                 break;
             };
@@ -454,8 +487,8 @@ impl<'a> Impls<'a> {
         }
         let mut binds = vec![None; im.generics.len()];
         if !fit(&im.for_, t, &mut binds)
-            || !(self.d.traits[im.trait_.tr.0].inputs(&im.trait_.args).iter())
-                .zip(self.d.traits[im.trait_.tr.0].inputs(trait_args))
+            || !(self.items.t(im.trait_.tr).inputs(&im.trait_.args).iter())
+                .zip(self.items.t(im.trait_.tr).inputs(trait_args))
                 .all(|(p, a)| fit(p, a, &mut binds))
         {
             return None;
@@ -477,7 +510,7 @@ impl<'a> Impls<'a> {
                     let b = self.fits_impl(m, &bt)?;
                     let sub = Subst { tys: &b, sets: &[] };
                     let args: Vec<Ty> = m.trait_.args.iter().map(|a| sub.ty(a)).collect();
-                    Some((self.d.impl_rank(m), args))
+                    Some((impl_rank(self.items, m), args))
                 });
                 let Some((rank, args)) = fits.next() else {
                     continue;
@@ -516,14 +549,18 @@ pub(super) fn supertraits_unmet(
                     .map(|(k, _)| k)
                     .collect::<Vec<_>>()
                     .into_iter())
-                .any(|o| d.impls().impl_args(d.imp(o), &Ty::Range(0, 0)).is_some()),
+                .any(|o| {
+                    d.impls()
+                        .impl_args(d.impls().imp(o), &Ty::Range(0, 0))
+                        .is_some()
+                }),
                 t => (d
                     .impls()
                     .ranked_impls(sup.tr)
                     .map(|(k, _)| k)
                     .collect::<Vec<_>>()
                     .into_iter())
-                .any(|o| d.impls().impl_args(d.imp(o), t).is_some()),
+                .any(|o| d.impls().impl_args(d.impls().imp(o), t).is_some()),
             };
             if !met {
                 out.push((
@@ -553,8 +590,8 @@ pub(super) fn supertraits_unmet(
                             .map(|(k, _)| k)
                             .collect::<Vec<_>>()
                             .into_iter())
-                        .any(|o| match d.imp(o).for_ {
-                            Ty::Param(k) => (d.imp(o).bounds.iter())
+                        .any(|o| match d.impls().imp(o).for_ {
+                            Ty::Param(k) => (d.impls().imp(o).bounds.iter())
                                 .filter(|(j, _)| *j == k)
                                 .all(|(_, r)| has(r.tr)),
                             _ => false,
