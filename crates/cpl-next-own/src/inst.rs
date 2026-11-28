@@ -47,7 +47,10 @@ pub(crate) struct Walk<'a> {
     /// value's captures are not frozen, R10).
     pub frozen: HashMap<Root, BTreeSet<Pl>>,
     /// A write to what a binding borrows, said if that binding is used later (E0602).
-    pub pending: Vec<(Root, u32, Code, String)>,
+    pub pending: Vec<(Root, u32, Msg)>,
+    /// A binding built as a struct from fields of a lent binding, and each such field with the
+    /// site it is passed at: the struct borrows them (R05.4.4), which E0602 says.
+    pub built: HashMap<Root, Vec<(Pl, u32)>>,
     /// Parameters of a type parameter's type the fn stores where they outlive the call.
     pub kept: BTreeSet<usize>,
     /// The locals holding one of this fn's fn-valued parameters, which it can call but not keep.
@@ -316,11 +319,14 @@ impl Walk<'_> {
         }
     }
     fn err(&mut self, site: u32, code: Code, msg: String) {
+        self.say(site, Msg::verdict(code, msg))
+    }
+    fn say(&mut self, site: u32, m: Msg) {
         if !self.report {
             return;
         }
         let at = self.f().sites[site as usize].clone();
-        let e = Msg::at(at, Msg::verdict(code, msg));
+        let e = Msg::at(at, m);
         // One message per source node, however many instances of a generic fn reach it.
         if !self.errors.contains(&e) {
             self.errors.push(e);
@@ -330,6 +336,7 @@ impl Walk<'_> {
     fn bind(&mut self, r: Root) {
         self.pending.retain(|x| x.0 != r);
         self.frozen.remove(&r);
+        self.built.remove(&r);
         self.next += 1;
         self.decl.insert(r, (self.scopes.clone(), self.next));
     }
@@ -362,9 +369,9 @@ impl Walk<'_> {
     /// A use of `p`: an error if it was moved out, or if a write froze it while borrowed.
     fn live(&mut self, site: u32, p: &Pl) {
         if let Some(i) = self.pending.iter().position(|x| x.0 == p.root) {
-            let (_, at, code, msg) = self.pending.remove(i);
+            let (_, at, m) = self.pending.remove(i);
             self.pending.retain(|x| x.0 != p.root);
-            self.err(at, code, msg);
+            self.say(at, m);
         }
         if let Some(m) = self.moved.iter().find(|m| overlap(m, p)).cloned() {
             let n = self.root_name(m.root);
@@ -391,7 +398,19 @@ impl Walk<'_> {
         for b in hit {
             let bn = self.root_name(b);
             let msg = format!("{n} is written here while {bn}, which borrows it, is still used");
-            self.pending.push((b, site, codes::USED_WHILE_LENT, msg));
+            let mut m = Msg::verdict(codes::USED_WHILE_LENT, msg);
+            let fields = self.built.get(&b).map_or(&[][..], Vec::as_slice);
+            let field = (fields.iter().find(|(q, _)| overlap(q, p)))
+                .or_else(|| fields.iter().find(|(q, _)| q.root == p.root));
+            if let Some((_, at)) = field {
+                let at = self.f().sites[*at as usize].clone();
+                m.labels.push((
+                    at,
+                    format!("{bn} is built from this field of {n}, so it borrows it"),
+                ));
+                m.help = Some("move the field out with `.take()`, which leaves it empty".into());
+            }
+            self.pending.push((b, site, m));
         }
     }
     /// An unnamed temporary holding storage a call made, not a lend: it dies at the end of its
@@ -727,7 +746,7 @@ impl Walk<'_> {
                     Some(CTy::Clo(_) | CTy::Fn(_, _, _)) => codes::MOVED_WHILE_CAPTURED,
                     _ => codes::USED_WHILE_LENT,
                 };
-                self.pending.push((b, e.site, code, msg));
+                self.pending.push((b, e.site, Msg::verdict(code, msg)));
             }
             // A binding moved out holds no loans any more.
             if q.path.is_empty() {
@@ -1045,6 +1064,24 @@ impl Walk<'_> {
                 }
                 let uses = self.closure_bound(Root::Local(*l), e);
                 self.bind(Root::Local(*l));
+                if let EK::MakeStruct(xs) = &e.kind {
+                    let lent: Vec<(Pl, u32)> = (xs.iter())
+                        .filter_map(|x| match &x.kind {
+                            EK::Copy(p @ Place::Field(..))
+                                if fields_only(p)
+                                    && !self.p.plain(&x.ty)
+                                    && !self.generic_field(p) =>
+                            {
+                                let q = self.pl(p)?;
+                                self.borrowed.contains(&q.root).then_some((q, x.site))
+                            }
+                            _ => None,
+                        })
+                        .collect();
+                    if !lent.is_empty() {
+                        self.built.insert(Root::Local(*l), lent);
+                    }
+                }
                 let mut src = self.sources(e);
                 if self.var(Root::Local(*l)) && self.elem_read(e) {
                     src.retain(|p| {
@@ -1477,6 +1514,7 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
         copies: BTreeSet::new(),
         last: crate::Last::default(),
         pending: vec![],
+        built: HashMap::new(),
         report: false,
         errors: vec![],
         binds: vec![],
@@ -1517,6 +1555,7 @@ impl Walk<'_> {
         self.scopes.clear();
         self.pending.clear();
         self.frozen.clear();
+        self.built.clear();
         self.kept.clear();
         self.caps.clear();
         self.spilled.clear();

@@ -2036,3 +2036,24 @@ fn the_snapshot_says_which_checks_a_build_keeps() {
         ("", true)
     );
 }
+
+#[test]
+fn a_struct_built_from_a_lent_field_points_at_it() {
+    use crate::facade::{Session, Snapshot};
+    let src = "struct W<T>:\n    pub var buf: List<T>\n    pub var n: Int\n\nimpl<T> W<T>:\n    pub fn take(mut self) -> W<T>:\n        let out = W(buf, n)\n        buf = []\n        out\n\nvar q = W([1, 2], 2)\nprint(q.take().n)\n";
+    let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
+    let diags = s.program("program.cp").err().expect("refused");
+    let d = (diags.iter())
+        .find(
+            |d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::USED_WHILE_LENT),
+        )
+        .expect("E0602");
+    let at: Vec<_> = (d.labels.iter())
+        .map(|l| &src[l.span.start as usize..l.span.end as usize])
+        .collect();
+    assert_eq!(at, ["buf"], "{d:?}");
+    assert!(
+        d.help.as_deref().is_some_and(|h| h.contains("`.take()`")),
+        "{d:?}"
+    );
+}
