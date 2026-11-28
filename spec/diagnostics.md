@@ -42,7 +42,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0208 | value_name_case | `let N = 5`: values are lowercase; `N` would read as a type |
 | E0209 | definition_cycle | `f`'s parameter types depend on `f` itself: a domain sized by a call of `f` is a parameter type of `f` |
 | E0210 | unknown_intrinsic | no intrinsic `no_such`; the table has popcount |
-| E0211 | const_budget | working out `const N = f(10 ** 9)` took more than 10000000 steps; compute it at run time with `let` |
+| E0211 | const_budget *(next)* | working out `const N = f(10 ** 9)` took more than 10000000 steps; compute it at run time with `let` |
 | E0301 | wrong_domain | `deg` is indexed by `V`, but `e` is an `E` |
 | E0302 | type_mismatch | `x` is declared an Int, but `"abc"` is a Str |
 | E0303 | wrong_arg_count | `add` takes 2 arguments (a, b), but `b` is missing |
@@ -141,6 +141,7 @@ page.
 | R0301 | `x!` on `None` | `!` on `None`: there is no value here |
 | R0401 | assertion failed | assertion failed: k > 2 |
 | R0402 | `todo` reached | `todo` reached |
+| R0403 | a part with a type error ran *(reserved)*: a build that reaches it reports that part's type error instead, so no program sees this trap | a part with a type error ran |
 | R0501 | bad input token (position and expected type) | expected a number, found `abc` (input line 1, column 1) |
 | R0502 | input out of its read contract | 9 is outside `1..=5` (input line 1, column 1) |
 | R0601 | stack exhausted | the stack ran out: `f` never stops calling itself? |
