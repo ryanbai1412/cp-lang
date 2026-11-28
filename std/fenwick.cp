@@ -682,7 +682,7 @@ fn dual_and_range_fenwick_match_brute():
         let i = seed / 100000 % 23
         assert f.get(V(i)) == a[i]
 
-impl Show for Fenwick<D: Ordered, T: Show>:
+impl Show for Fenwick<D: Ordered + Domain, T: Show>:
     /// The current values in key order, space-separated.
     ///
     /// example: `"{Fenwick([1, 2, 3])}" == "1 2 3"`
@@ -693,7 +693,7 @@ impl Show for Fenwick<D: Ordered, T: Show>:
             out += "{f.get(i)}"
         out
 
-impl Show for Fenwick2D<R, C, T: Show>:
+impl Show for Fenwick2D<R: Ordered + Domain, C: Ordered + Domain, T: Show>:
     /// The current grid, one row of values per line.
     ///
     /// example: `domain R = 0..2; domain C = 0..2; var f = Fenwick2D<R, C, Int>(); f.add(R(1), C(0), 5); "{f}" == "0 0\n5 0"`
@@ -708,7 +708,7 @@ impl Show for Fenwick2D<R, C, T: Show>:
             out += row
         out
 
-impl Show for DualFenwick<D, T: Show>:
+impl Show for DualFenwick<D: Ordered + Domain, T: Show>:
     /// The current values in key order, space-separated.
     ///
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(1..3, 5); "{d}" == "1 7 8"`
@@ -719,7 +719,7 @@ impl Show for DualFenwick<D, T: Show>:
             out += "{f.get(i)}"
         out
 
-impl Show for RangeFenwick<D>:
+impl Show for RangeFenwick<D: Ordered + Domain>:
     /// The current values in key order, space-separated.
     ///
     /// example: `var f = RangeFenwick([1, 2, 3]); f.add(0..2, 4); "{f}" == "5 6 3"`
@@ -730,7 +730,7 @@ impl Show for RangeFenwick<D>:
             out += "{f.fold(i..=i)}"
         out
 
-impl Show for XorFenwick<D, T>:
+impl Show for XorFenwick<D: Ordered + Domain, T>:
     /// The current values in key order, space-separated.
     ///
     /// example: `var f = XorFenwick([1, 2, 3]); f.add(2, 1); "{f}" == "1 2 2"`

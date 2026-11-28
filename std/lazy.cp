@@ -1670,7 +1670,7 @@ fn flip_action_toggles_ranges():
     st.apply(I(0)..I(3), true)
     assert st.all.now == 2
 
-impl Show for Rope<D, T: Show>:
+impl Show for Rope<D: Domain, T: Show>:
     /// The current values in position order, space-separated, read through `to_array` without
     /// pushing any tag down.
     ///
