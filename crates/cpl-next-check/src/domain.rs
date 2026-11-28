@@ -80,7 +80,7 @@ impl Cx<'_> {
                 self.show(&t)
             );
             self.err(def_at, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
-            let sym = self.b.syms.intern(&self.d.syms, name);
+            let sym = self.b.syms.intern(&self.syms, name);
             // A top-level domain decls set aside is declared here, though it has no positions.
             if let Some(&Ty::Dom(i)) = self.b.doms.get(&sym) {
                 self.domains[i].name = name.to_string();
@@ -97,7 +97,7 @@ impl Cx<'_> {
     fn count_of(&mut self, tr: TraitId, xs: TExpr, out: &mut Vec<TStmt>) -> Option<TExpr> {
         let (span, ty) = (xs.span, xs.ty.clone());
         let &(n, m) = self.d.trait_fns(tr).first()?;
-        let method = self.d.text(n);
+        let method = self.items.text(n);
         // A variable is read where it is; any other value is held first, so it runs once.
         let recv = match xs.kind {
             TK::Var(_) => xs,
@@ -176,7 +176,7 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) -> usize {
         let info = self.domain_info(name, lo, end, within, span, out);
-        let sym = self.b.syms.intern(&self.d.syms, name);
+        let sym = self.b.syms.intern(&self.syms, name);
         let i = match (self.b.decl, self.d.top_doms.get(&sym)) {
             (None, Some(&Ty::Dom(i))) if self.domains[i].name.is_empty() => {
                 self.domains[i] = info;
@@ -297,7 +297,7 @@ impl Cx<'_> {
                     let msg = "a product domain's parts are domains";
                     return self.err(at, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, msg));
                 };
-                let sym = self.b.syms.intern(&self.d.syms, &name);
+                let sym = self.b.syms.intern(&self.syms, &name);
                 self.b.doms.insert(sym, p);
             }
             // `domain V = [n]` counts `0..n` (R04.2.29).
@@ -337,7 +337,7 @@ impl Cx<'_> {
     /// A domain form not built yet: `N` names nothing a later use can trip on.
     fn refuse_domain(&mut self, name: &str, span: Span, kind: String) {
         self.err(span, Unbuilt::DomainKind { kind });
-        let sym = self.b.syms.intern(&self.d.syms, name);
+        let sym = self.b.syms.intern(&self.syms, name);
         self.b.doms.insert(sym, Ty::Error);
         self.b.refused_names.insert(name.to_string());
     }
@@ -375,7 +375,7 @@ impl Cx<'_> {
             span,
         };
         let first = read(0, fields.first().cloned().unwrap_or(Ty::Error));
-        let fresh = self.b.syms.intern(&self.d.syms, name);
+        let fresh = self.b.syms.intern(&self.syms, name);
         match self.bind_fresh(fresh, &first.ty, span, out) {
             Some((c, i)) => {
                 let t = crate::pattern::retag(&ty, c, i);
@@ -388,7 +388,7 @@ impl Cx<'_> {
             }
             None => self.err(span, Unbuilt::DomainPattern),
         }
-        let names = match self.d.s(d).record {
+        let names = match self.items.s(d).record {
             true => self.d.field_names(d),
             false => Vec::new(),
         };
@@ -400,9 +400,9 @@ impl Cx<'_> {
             // `tree.Pre` is the domain the whole value owns as its `tree.Pre`.
             if let Some(n) = pattern_name(p) {
                 let (w, f, n) = (
-                    self.b.syms.intern(&self.d.syms, &whole_name),
-                    self.b.syms.intern(&self.d.syms, &field),
-                    self.b.syms.intern(&self.d.syms, &n),
+                    self.b.syms.intern(&self.syms, &whole_name),
+                    self.b.syms.intern(&self.syms, &field),
+                    self.b.syms.intern(&self.syms, &n),
                 );
                 self.hand_down(w, f, n);
             }
@@ -507,7 +507,7 @@ impl Cx<'_> {
         // Each end is the bound's fn on `r`, held in a local that `Int(..)` reads (R04b.1.5).
         let end =
             |cx: &mut Self, &(n, m): &(cpl_next_decls::sym::Sym, FnId), out: &mut Vec<TStmt>| {
-                let n = cx.d.text(n);
+                let n = cx.items.text(n);
                 cx.reach(m);
                 let mut tys = vec![r_ty.clone()];
                 tys.extend(args.iter().cloned());
