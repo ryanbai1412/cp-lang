@@ -120,6 +120,8 @@ describe('wasm crate budgets', () => {
     const was = { cpl_ir: 445500, cpl_rt: 500 };
     const signed = signedRaises('cpl_ir 445500->470872, signed off by coordinator\ncpl_rt 500->900\n');
     expect(signed).toEqual({ cpl_ir: [445500, 470872] });
+    expect(signedRaises('data (std source, strings) 206300->209300, signed off by coordinator'))
+      .toEqual({ 'data (std source, strings)': [206300, 209300] });
     expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 500 }, was, {}, signed)).toEqual([]);
     expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 900 }, was, {}, signed)).not.toEqual([]);
     expect(budgetTransfer({ cpl_ir: 471000, cpl_rt: 500 }, was, {}, signed)).not.toEqual([]);

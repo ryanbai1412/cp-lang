@@ -522,13 +522,15 @@ export function ratchet(rows, budgets, map, growth) {
 export function signedRaises(text) {
   const out = {};
   for (const line of text.split('\n')) {
-    const m = line.trim().match(/^(\S+) (\d+)->(\d+), signed off by coordinator$/);
+    const m = line.trim().match(/^(.+?) (\d+)->(\d+), signed off by coordinator$/);
     if (m) out[m[1]] = [Number(m[2]), Number(m[3])];
   }
   return out;
 }
 
 /** The old pipeline's frozen crates: they only shrink, so a lowered budget has no room. */
+// The old pipeline's crates only shrink, so their budgets sit at the measured size; their
+// rows are deleted with the old pipeline at the switch.
 export const FROZEN_CRATES = new Set(['cpl_ir', 'cpl_check', 'cpl_interp']);
 
 /** A lowered budget for a crate measured at `gz`: 1% or 256 B of room, to the next 100. */
