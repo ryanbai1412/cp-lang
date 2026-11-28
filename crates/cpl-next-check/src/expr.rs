@@ -1857,3 +1857,10 @@ fn todo_trap(span: Span) -> TExpr {
         span,
     }
 }
+
+/// Whether `tok` is the word `None`, which always means the empty optional, whatever is in scope:
+/// the one literal word the lexer leaves a name (`true` and `false` are tokens of their own).
+pub(super) fn none_word(tok: &cpl_next_syntax::SyntaxToken) -> bool {
+    tok.kind() == cpl_next_syntax::TokenKind::Ident
+        && cpl_next_syntax::LITERAL_WORDS.contains(&tok.text())
+}

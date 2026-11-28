@@ -491,14 +491,16 @@ impl<'a> Cx<'a> {
     }
     /// A condition, in a scope of its own that holds the names its `let`s bind: the caller
     /// checks what the condition guards, then pops the scope.
-    pub(super) fn cond(&mut self, c: &Cond) -> TExpr {
+    pub(super) fn cond(&mut self, c: &next::Condition) -> TExpr {
         self.b.scopes.push(HashMap::new());
-        self.cond_in(c)
+        let parts: Vec<next::CondPart> = c.parts().collect();
+        let span = self.at(c);
+        self.cond_in(&parts, span)
     }
     /// An expression a condition tests: a `Bool`, never an integer or optional read as one (R02.11.1).
-    pub(super) fn bool_cond(&mut self, e: &ast::Expr) -> TExpr {
+    pub(super) fn bool_cond(&mut self, e: &next::Expr) -> TExpr {
         if self.question_in_cond(e) {
-            return Self::error_node(e.span);
+            return Self::error_node(self.at(e));
         }
         let v = self.expr(e, Some(&Ty::Bool));
         let t = self.shallow(&v.ty);
@@ -518,86 +520,127 @@ impl<'a> Cx<'a> {
             span: v.span,
         }
     }
-    fn cond_in(&mut self, c: &Cond) -> TExpr {
-        match c {
-            // `let p = e`: holds when `e` matches `p`, whose names then name its parts; on an
-            // optional `e`, a pattern of no optional matches the value it has (R01.7.1).
-            Cond::Let { pat, value, and } => {
-                let span = value.span;
-                let v = self.expr(value, None);
-                let mk = |kind| TExpr {
-                    kind,
-                    ty: Ty::Bool,
+    /// `parts`, each tested once those before it hold.
+    fn cond_in(&mut self, parts: &[next::CondPart], span: Span) -> TExpr {
+        let mk = |kind, span| TExpr {
+            kind,
+            ty: Ty::Bool,
+            span,
+        };
+        let Some((part, more)) = parts.split_first() else {
+            return mk(TK::Bool(true), span);
+        };
+        let t = match part {
+            next::CondPart::Let(l) => return self.let_cond(l, more, span),
+            next::CondPart::Expr(e) => self.bool_cond(e),
+            next::CondPart::Bound(b) => {
+                let at = self.at(b);
+                self.has_bound(b, at)
+            }
+        };
+        if more.is_empty() {
+            return t;
+        }
+        let rest = self.cond_in(more, span);
+        let span = t.span;
+        mk(
+            TK::If(
+                Box::new(t),
+                Box::new(rest),
+                Box::new(mk(TK::Bool(false), span)),
+            ),
+            span,
+        )
+    }
+    /// `let p = e`: holds when `e` matches `p`, whose names then name its parts; on an
+    /// optional `e`, a pattern of no optional matches the value it has (R01.7.1).
+    fn let_cond(&mut self, l: &next::LetCond, more: &[next::CondPart], span: Span) -> TExpr {
+        let (Some(pat), Some(value)) = (l.pattern(), l.value()) else {
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Bool,
+                span,
+            };
+        };
+        let span = self.at(&value);
+        let v = self.expr(&value, None);
+        let mk = |kind| TExpr {
+            kind,
+            ty: Ty::Bool,
+            span,
+        };
+        let inner = (self.optional_of(&v.ty)).filter(|_| !self.optional_pattern(&pat));
+        if inner.is_none() && Self::name_pattern(&pat) {
+            if !self.mentions_error(&v.ty) {
+                let t = self.show(&v.ty);
+                self.err(span, Unbuilt::IfLet { ty: t });
+            }
+            // Its names are the error, so their uses say nothing more.
+            self.bind_unknown(&pat, false, &mut Vec::new());
+            return TExpr {
+                kind: TK::Error,
+                ty: Ty::Error,
+                span,
+            };
+        }
+        let (hold, read) = self.held(v);
+        let mut binds = Vec::new();
+        let test = match inner {
+            Some(inner) => {
+                let flag = mk(TK::Field(Box::new(read.clone()), 0));
+                let val = TExpr {
+                    kind: TK::Field(Box::new(read), 1),
+                    ty: inner,
                     span,
                 };
-                let inner = (self.optional_of(&v.ty)).filter(|_| !self.optional_pattern(pat));
-                if inner.is_none() && matches!(pat.kind, PatternKind::Name(_)) {
-                    if !self.mentions_error(&v.ty) {
-                        let t = self.show(&v.ty);
-                        self.err(span, Unbuilt::IfLet { ty: t });
-                    }
-                    // Its names are the error, so their uses say nothing more.
-                    self.bind_unknown(pat, false, &mut Vec::new());
-                    return TExpr {
-                        kind: TK::Error,
-                        ty: Ty::Error,
-                        span,
-                    };
-                }
-                let (hold, read) = self.held(v);
-                let mut binds = Vec::new();
-                let test = match inner {
-                    Some(inner) => {
-                        let flag = mk(TK::Field(Box::new(read.clone()), 0));
-                        let val = TExpr {
-                            kind: TK::Field(Box::new(read), 1),
-                            ty: inner,
-                            span,
-                        };
-                        let rest = self.refute(pat, &val, false, &mut binds);
-                        Self::both(Some(flag), rest)
-                    }
-                    None => self.refute(pat, &read, false, &mut binds),
-                };
-                let rest = match and {
-                    Some(more) => self.cond_in(more),
-                    None => mk(TK::Bool(true)),
-                };
-                let then = mk(TK::Block(binds, Some(Box::new(rest))));
-                let body = match test {
-                    Some(t) => mk(TK::If(
-                        Box::new(t),
-                        Box::new(then),
-                        Box::new(mk(TK::Bool(false))),
-                    )),
-                    None => then,
-                };
-                mk(TK::Block(hold, Some(Box::new(body))))
+                let rest = self.refute(&pat, &val, false, &mut binds);
+                Self::both(Some(flag), rest)
             }
-            Cond::Guard { test, and } => {
-                let t = self.bool_cond(test);
-                let rest = self.cond_in(and);
-                let span = t.span;
-                let no = TExpr {
-                    kind: TK::Bool(false),
-                    ty: Ty::Bool,
-                    span,
-                };
-                TExpr {
-                    kind: TK::If(Box::new(t), Box::new(rest), Box::new(no)),
-                    ty: Ty::Bool,
-                    span,
-                }
-            }
-            Cond::Expr(e) => self.bool_cond(e),
-            _ => {
-                self.errors.push(Unbuilt::Condition.into());
-                TExpr {
-                    kind: TK::Error,
-                    ty: Ty::Bool,
-                    span: Span::new(0, 0),
-                }
-            }
+            None => self.refute(&pat, &read, false, &mut binds),
+        };
+        let rest = self.cond_in(more, span);
+        let then = mk(TK::Block(binds, Some(Box::new(rest))));
+        let body = match test {
+            Some(t) => mk(TK::If(
+                Box::new(t),
+                Box::new(then),
+                Box::new(mk(TK::Bool(false))),
+            )),
+            None => then,
+        };
+        mk(TK::Block(hold, Some(Box::new(body))))
+    }
+    /// `if cond:` around what `then` checks, with the names the condition binds in scope.
+    pub(super) fn if_then(
+        &mut self,
+        cond: &next::Condition,
+        then: impl FnOnce(&mut Self, &mut Vec<TStmt>),
+        at: Span,
+        out: &mut Vec<TStmt>,
+    ) {
+        let test = self.cond(cond);
+        let mut body = Vec::new();
+        then(self, &mut body);
+        self.b.scopes.pop();
+        let unit = |kind| TExpr {
+            kind,
+            ty: Ty::Unit,
+            span: at,
+        };
+        let then = unit(TK::Block(body, None));
+        let none = unit(TK::Block(Vec::new(), None));
+        out.push(TStmt::Expr(unit(TK::If(
+            Box::new(test),
+            Box::new(then),
+            Box::new(none),
+        ))));
+    }
+    /// The body of a match arm, a lambda, a table or an `if` value's branch.
+    pub(super) fn arm_body(&mut self, b: &next::ArmBody, want: Option<&Ty>) -> TExpr {
+        match b {
+            next::ArmBody::Block(b) => self.block(b, want),
+            next::ArmBody::Expr(e) => self.expr(e, want),
+            next::ArmBody::Stmt(s) => self.tail_block(std::slice::from_ref(s), None, want),
         }
     }
     /// `let (a, b) = e` or `let (u:, v:) = e`: binds the whole value, then each part by its field.
@@ -1954,4 +1997,9 @@ impl<'a> Cx<'a> {
             span,
         }
     }
+}
+
+/// Whether an arm's body leaves (returns, breaks, continues or traps) rather than giving a value.
+pub(super) fn arm_leaves(b: &next::ArmBody) -> bool {
+    b.leaves()
 }

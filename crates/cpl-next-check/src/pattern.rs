@@ -282,6 +282,10 @@ impl Cx<'_> {
         }
         matches!(t, Ty::Error | Ty::Var(_))
     }
+    /// Whether `pat` is one name that binds, as `x` is and `None` or `E.V(..)` are not.
+    pub(super) fn name_pattern(pat: &next::Pattern) -> bool {
+        matches!(pat, next::Pattern::Path(p) if matches!(Self::path_form(p), Some(PathForm::Bind(_))))
+    }
     /// `pat` against the place `v`: the test that holds when it matches, `None` when it always
     /// does. `binds` gets the names it binds, read once the test holds.
     pub(super) fn refute(

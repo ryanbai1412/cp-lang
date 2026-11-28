@@ -182,11 +182,9 @@ impl Cx<'_> {
             text(&mut rest.removed().iter()),
         );
         let args: Vec<CallArg> = (fields.into_iter())
-            .map(|(n, value)| CallArg {
-                label: Some(n.text().to_string()),
-                at: value.as_ref().map_or_else(|| n.span(), |v| self.at(v)),
-                value,
-                mutable: false,
+            .map(|(n, value)| {
+                let at = value.as_ref().map_or_else(|| n.span(), |v| self.at(v));
+                CallArg::labelled(self, Some(n.text().to_string()), value, at)
             })
             .collect();
         let name = cpl_next_decls::records::without_member(&form);
