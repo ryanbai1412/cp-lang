@@ -1792,8 +1792,8 @@ impl LetCond {
 }
 
 impl BoundCond {
-    /// The type parameter tested: `T` in `T: Ord`.
-    pub fn param(&self) -> Option<NameRef> {
+    /// The type tested: `T` in `T: Ord`, read as a type.
+    pub fn subject(&self) -> Option<Type> {
         child(&self.0)
     }
 

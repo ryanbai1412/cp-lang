@@ -455,7 +455,7 @@ impl Parser<'_> {
             }
         } else if self.bound_cond_ahead() {
             self.start(NodeKind::BoundCond);
-            self.start(NodeKind::NameRef);
+            self.start(NodeKind::PathType);
             self.bump();
             self.finish();
             self.bump();

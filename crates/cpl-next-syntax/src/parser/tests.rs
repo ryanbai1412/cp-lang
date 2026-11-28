@@ -401,7 +401,7 @@ fn lend_statements_and_bound_conditions_parse() {
     );
     assert!(got[1].starts_with("LendStmt(lend IndexExpr("), "{}", got[1]);
     assert!(
-        got[2].contains("Condition(BoundCond(NameRef(M) : Bound("),
+        got[2].contains("Condition(BoundCond(PathType(M) : Bound("),
         "{}",
         got[2]
     );
@@ -818,7 +818,8 @@ fn statement_and_expression_views_read_their_children() {
     let [ast::CondPart::Bound(b)] = &parts[..] else {
         panic!("{parts:?}")
     };
-    assert_eq!(b.param().unwrap().ident().unwrap().text(), "T");
+    assert!(matches!(b.subject(), Some(ast::Type::Path(_))));
+    assert_eq!(b.subject().unwrap().syntax().text(), "T");
     assert!(b.bound().is_some());
     assert!(matches!(elifs[0].body(), Some(ast::ArmBody::Block(_))));
     assert!(i.else_clause().unwrap().block().is_some());
