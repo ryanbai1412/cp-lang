@@ -400,6 +400,9 @@ impl Role {
 #[derive(Default, Clone)]
 pub struct Decls {
     pub fns: Layer<FnDecl>,
+    /// The fns each item writes, so a per-item query finds them: a struct's item holds its
+    /// methods, and `FnDecl::item` is the way back.
+    pub item_fns: HashMap<ItemId, Vec<FnId>>,
     pub structs: Layer<StructDecl>,
     pub traits: Layer<TraitDecl>,
     pub impls: Layer<ImplDecl>,
@@ -639,6 +642,10 @@ impl Decls {
     }
     pub fn member(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId> {
         members.get(&self.sym(name)?).copied()
+    }
+    /// The fns item `item` writes, in the order they were declared.
+    pub fn fns_of(&self, item: &ItemId) -> &[FnId] {
+        self.item_fns.get(item).map_or(&[], Vec::as_slice)
     }
     pub fn f(&self, d: FnId) -> &FnDecl {
         &self.fns[d.0]
@@ -1731,6 +1738,10 @@ fn add_fn(
         },
         _ => None,
     };
+    d.item_fns
+        .entry(item.clone())
+        .or_default()
+        .push(FnId(d.fns.len()));
     d.fns.push(FnDecl {
         made: (0, 0),
         name: f.name.text.clone(),

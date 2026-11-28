@@ -1740,3 +1740,26 @@ return [n, p.x]\nbest = f(3, P(x: 4), true)\nprint(best.len)\n";
         "ev set best 1 2\nev enter f 3 P\nev exit f 3 4\nev set best 3 4\n"
     );
 }
+
+/// Each fn is listed under the item that writes it, a struct's methods under the struct's
+/// item, so a per-item query finds an item's fns and each fn's item.
+#[test]
+fn each_item_lists_the_fns_it_writes() {
+    use cpl_next_ir::ty::FnId;
+    let src = "struct P:\n    x: Int\n    fn get(self) -> Int = self.x\nfn twice(p: P) -> Int = p.get() * 2\nprint(twice(P(3)))\n";
+    let f = front(&Std::read(), src, &Roots::std(), None, Checks::CHECKED);
+    assert!(f.diags.is_empty(), "{:?}", f.diags);
+    let d = &f.d;
+    let named = |n: &str| {
+        let mut ids = (0..d.fns.len()).map(FnId);
+        ids.find(|&i| d.f(i).name == n && d.f(i).module == d.program)
+            .unwrap()
+    };
+    let (get, twice) = (named("get"), named("twice"));
+    assert!(d.fns_of(&d.f(get).item).contains(&get));
+    assert!(d.fns_of(&d.f(twice).item).contains(&twice));
+    assert_ne!(d.f(get).item, d.f(twice).item);
+    for (item, fs) in &d.item_fns {
+        fs.iter().for_each(|&i| assert_eq!(&d.f(i).item, item));
+    }
+}
