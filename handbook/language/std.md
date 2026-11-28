@@ -80,8 +80,8 @@ keeps names that already read the same everywhere, such as `first_ge` and
 `last_le`, and `Mod<P>`, over respellings the core can't express without
 overloading on argument labels (decision 26).
 
-**The element type picks the algorithm, never a suffix.** Real-valued
-searches are the integer ones on a `Range<F64>`:
+**The range's type picks the algorithm, never a suffix.** Real-valued
+searches are the integer ones on a `RealRange`, what `lo..hi` over `F64` is:
 `(0.0..1e9).bsearch(ok, steps: 100)`, `.peak(by: f, steps:)`,
 `.valley(by: f, steps:)`. `bsearch_real` and `ternary_*_real` lost because a
 type-named variant is three more names for the same idea (decision 419).

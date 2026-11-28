@@ -4,6 +4,13 @@
 //! start: `first_true`, `last_true`, `bsearch`, `ends`, `RingRange`
 //! example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
 
+/// `lo..hi` over reals, what `0.0..8.0` is (decision 456). It has no positions to walk, so it is
+/// searched by halving (`bsearch(ok, steps:)`) and golden section (`peak`, `valley`).
+///
+/// example: `let r = RealRange(0.0, 2.0); r.lo == 0.0 and r.hi == 2.0`
+pub struct RealRange(pub lo: F64, pub hi: F64)
+
+
 /// A size: a count, length or capacity. Every `.len` is below `2^31`, so a size is too.
 ///
 /// example: `let n: Len = 5; n == 5`
@@ -135,70 +142,24 @@ fn flip_at(n: Int, ok: Int -> Bool, wrong_way: Str) -> Int:
         assert not at_start, wrong_way
     lo
 
-/// What `bsearch` searches over, and what it finds: the cut where `ok` flips on a domain or an
-/// `Int` range, the flip point within `steps` halvings on a `Range<F64>` (decisions 419, 456).
-pub trait Search:
-    type Found
-    fn flip(r: Range<Self>, ok: Self -> Bool, last: Bool, steps: ?Int) -> Self.Found
-
-impl<D: Domain> Search for D:
-    type Found = Cut<D>
-    fn flip(r: Range<D>, ok: D -> Bool, last: Bool, steps: ?Int) -> Cut<D> = discrete_flip(r, ok, last, steps)
-
-impl Search for Int:
-    type Found = Cut<Int>
-    fn flip(r: Range<Int>, ok: Int -> Bool, last: Bool, steps: ?Int) -> Cut<Int> = discrete_flip(r, ok, last, steps)
-
-impl Search for F64:
-    type Found = ?F64
-    fn flip(r: Range<F64>, ok: F64 -> Bool, last: Bool, steps: ?Int) -> ?F64:
-        let n = steps ?? 100
-        assert r.start <= r.end and n >= 0
-        let edge = if last: r.start else: r.end
-        if not ok(edge): return None
-        var a = r.start
-        var b = r.end
-        for _ in 0..n:
-            let m = (a + b) / 2.0
-            if ok(m) != last: b = m
-            else: a = m
-        Some(if last: a else: b)
-
-fn discrete_flip<D>(r: Range<D>, ok: D -> Bool, last: Bool, steps: ?Int) -> Cut<D>:
-    assert steps == None, "`steps:` is for a `Range<F64>`; a discrete range finds its exact cut"
-    let n = r.len
-    let wrong_way = if last: "`ok` is false at the start and true at the end, but `last: true` wants true then false; drop `last: true` for false then true" else: "`ok` is true at the start and false at the end, but `bsearch` wants false then true; pass `last: true` for true then false"
-    let lo = flip_at(n, m => ok(r.nth(m)) != last, wrong_way)
-    if lo < n: (r.nth(lo)..r.nth(lo)).l else: r.r
-
-/// Where `ok` flips: false then true along `self` by default, true then false with `last: true`.
-/// A monotone `ok` has one flip. What it returns is the element type's [`Search`] `Found`.
+/// Where `ok` flips along `self`: false then true by default, true then false with `last: true`.
+/// A monotone `ok` has one flip, and the result is its cut: `r.l` when `ok` always holds and
+/// `r.r` when it never does (with `last: true`, `r.r` when it always holds). `first_true(ok)` is
+/// `.r` of it; `last_true(ok)` is `bsearch(ok, last: true).l`. A `RealRange` has its own
+/// `bsearch`, which halves `steps` times.
 ///
-/// On a domain or `Int` range it is the cut: `r.l` when `ok` always holds and `r.r` when it
-/// never does (with `last: true`, `r.r` when it always holds). `first_true(ok)` is `.r` of it;
-/// `last_true(ok)` is `bsearch(ok, last: true).l`.
-///
-/// On a `Range<F64>` it is the flip point to within `(hi - lo) / 2^steps` (`steps` defaults to
-/// 100), on the side where `ok` holds, or `None` when `ok` fails at `hi` (at `lo` with
-/// `last: true`). It first tests that end, then `steps` midpoints, keeping the half that holds
-/// the flip.
-///
-/// cost: \(O(\log n)\) calls of `ok` on \(n\) positions, plus one when the cut is an end; exactly
-/// `steps + 1` calls on a `Range<F64>`
+/// cost: \(O(\log n)\) calls of `ok` on \(n\) positions, plus one when the cut is an end
 /// empty: `(3..3).bsearch(x => true) == (3..3).l`
 /// ties: `(0..5).bsearch(x => x >= 2).r == 2`
 /// traps: when `ok` flips the other way (true then false by default, false then true with
-/// `last: true`); on a `Range<F64>` when it is written backwards or `steps < 0`; on a discrete
-/// range when `steps:` is given
+/// `last: true`)
 /// example: `(0..100).bsearch(x => x * x >= 50).r == 8`
 /// example: `domain V = 0..10; (V.first!..=V.last!).bsearch(v => v.ord >= 4).r!.ord == 4`
-/// example: `abs((0.0..2.0).bsearch(x => x * x >= 2.0, steps: 100)! - 1.4142135623730951) <= 1e-9`
-/// example: `(0.0..8.0).bsearch(x => x >= 3.0, steps: 3) == Some(3.0)`
-/// example: `(0.0..8.0).bsearch(x => x <= 3.0, last: true, steps: 3) == Some(3.0)`
-/// example: `(0.0..1.0).bsearch(x => x > 2.0) == None`
-/// example: `(2.0..2.0).bsearch(x => true, steps: 5) == Some(2.0)`
-pub fn bsearch<D: Search>(self: Range<D>, ok: D -> Bool, last: Bool = false, steps: ?Int = None) -> D.Found =
-    D.flip(self, ok, last, steps)
+pub fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>:
+    let n = self.len
+    let wrong_way = if last: "`ok` is false at the start and true at the end, but `last: true` wants true then false; drop `last: true` for false then true" else: "`ok` is true at the start and false at the end, but `bsearch` wants false then true; pass `last: true` for true then false"
+    let lo = flip_at(n, m => ok(self.nth(m)) != last, wrong_way)
+    if lo < n: (self.nth(lo)..self.nth(lo)).l else: self.r
 
 /// The elements at distances `r` after `self`, clipped to its domain and possibly empty. One
 /// definition for positions and cuts, since `V.cuts` is a domain: the chords of length `lo..=hi`

@@ -7,6 +7,7 @@ use std.seq.{IndexGet, Keyed, Positional, Indexed, Slice}
 use std.raw.{check_key, check_range}
 use std.ops.{By}
 use std.show.{Fmt}
+use std.range.{RealRange}
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
 /// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `by`
@@ -74,6 +75,9 @@ pub trait Endpoint:
 
 impl<D: Domain> Endpoint for D:
     type Range = Range<D>
+
+impl Endpoint for F64:
+    type Range = RealRange
 
 /// `r by k` is `r.step(k)`: every `k`-th value from its first, so `V by 2` and `r.rev by 3` are
 /// ranges again (R01.8.4).

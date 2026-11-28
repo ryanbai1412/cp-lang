@@ -1494,7 +1494,7 @@ std/range.cp: RingRange.is_empty(self) -> Bool
 std/range.cp: RingRange.keys(self) -> yields D
 std/range.cp: RingRange.len(self) -> Int
 std/range.cp: RingRange.start(self) -> D
-std/range.cp: bsearch<D: Search>(self: Range<D>, ok: D -> Bool, last: Bool = false, steps: ?Int = None) -> D.Found
+std/range.cp: bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>
 std/range.cp: clip<D>(self: Range<D>, other: Range<D>) -> Range<D>
 std/range.cp: ends<D>(self: Range<D>) -> (Int, Int)
 std/range.cp: first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D
@@ -1506,14 +1506,15 @@ std/range.cp: r<D>(self: Range<D>) -> Cut<D>
 std/range.cp: shift<D>(self: D, r: Range<Int>) -> Range<D>
 std/range.cp: shift_saturating<D>(self: D, k: Int) -> D
 std/range.cp: splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)
+std/search.cp: bsearch(self: RealRange, ok: F64 -> Bool, last: Bool = false, steps: Int = 100) -> ?F64
 std/search.cp: dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64
 std/search.cp: gallop_first<I: Add>(from: I, ok: I -> Bool) -> ?I
 std/search.cp: parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (), apply: I -> (), ok: Int -> Bool) -> List<?I>
-std/search.cp: peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64
+std/search.cp: peak(self: RealRange, by: F64 -> F64, steps: Int = 100) -> F64
 std/search.cp: split_best<G, D, T: Ord>(groups: Seq<G>, range: G -> Range<D>, best: (G, Range<D>) -> (T, D)) -> yields T
 std/search.cp: ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I
 std/search.cp: ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I
-std/search.cp: valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64
+std/search.cp: valley(self: RealRange, by: F64 -> F64, steps: Int = 100) -> F64
 std/segtree.cp: DynamicOrderTree.count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int
 std/segtree.cp: DynamicOrderTree.count_lt(self, r: Range<D>, x: T) -> Int
 std/segtree.cp: DynamicOrderTree.get(self, i: D) -> T

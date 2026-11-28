@@ -4,7 +4,7 @@
 //! example: `[1, 2, 3].sum(of: x => x * x) == 14`
 //!
 //! - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`).
-//! - Binary & unimodal search: moved to `std.search` (`ternary_max`/`ternary_min`, `Range<F64>.bsearch`/`peak`/`valley`, `parallel_bsearch`).
+//! - Binary & unimodal search: moved to `std.search` (`ternary_max`/`ternary_min`, `RealRange.bsearch`/`peak`/`valley`, `parallel_bsearch`).
 //! - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`.
 //! - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`.
 //! - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`.
