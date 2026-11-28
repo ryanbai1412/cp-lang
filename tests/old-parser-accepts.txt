@@ -1,9 +1,9 @@
-core-01/do-block-is-rejected.cp
-core-01/fn-keyword-type-is-rejected.cp
-core-01/guard-let-is-rejected.cp
-core-01/rb1-q09-lends-needs-arrow.cp
-core-01/second-for-in-a-comprehension-is-rejected.cp
-core-01/turbofish-is-rejected.cp
-core-02/a-variant-value-is-not-in-the-design.cp
-core-02/and-let-is-rejected.cp
-core-05/yields-param-is-rejected.cp
+core-01/do-block-is-rejected.cp  # decision 662
+core-01/fn-keyword-type-is-rejected.cp  # decision 665
+core-01/guard-let-is-rejected.cp  # decision 658
+core-01/rb1-q09-lends-needs-arrow.cp  # decision 665
+core-01/second-for-in-a-comprehension-is-rejected.cp  # decision 660
+core-01/turbofish-is-rejected.cp  # decision 664
+core-02/a-variant-value-is-not-in-the-design.cp  # decision 13
+core-02/and-let-is-rejected.cp  # decision 656
+core-05/yields-param-is-rejected.cp  # decision 657

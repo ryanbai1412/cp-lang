@@ -131,6 +131,10 @@ commit that keeps one.
   `cpl` has no `Input`, so `read<Mod<P>>(from: s)` reads standard
   input. It becomes `fn read(mut input: Input)`, reading
   `input.read<Str>()`, with a `read(from:)` case for `Mod`.
+- [ ] `tests/old-parser-accepts.txt` lists the rejected-form cases only
+  the new parser reports (each citing its decision; coordinator 19:39).
+  It is deleted with the old parser, and `next_old_parser_accepts`
+  goes with it.
 
 **Switching `cpl` onto cpl-next.** The shipped `cpl` runs only the old
 pipeline. It moves by putting cpl-next behind `cpl-facade`'s queries,

@@ -12,3 +12,5 @@ A conformance case or new-pipeline test leaves only with a line here naming it a
 - `spec/conformance/diagnostics/definition-cycle.cp`: kept, but it expected E0209, which no spec
   rule states: only the frozen `cpl`'s lowering sized `S<V>` while it typed `f`'s signature. A
   domain's count is read lazily, so nothing cycles; the case runs on `cpl-next` and prints `1`.
+- `spec/conformance/lints/turbofish-call.cp`: L0204 is deleted (decision 664), since `::<` is now
+  E0503 in the parser with the same fix. The case moved to `core-01/turbofish-is-rejected.cp`.
