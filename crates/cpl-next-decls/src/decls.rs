@@ -781,30 +781,10 @@ impl Decls {
     }
     /// Its required labels: those of the named-only parameters with no default, sorted.
     pub fn required_labels(&self, d: FnId) -> Vec<&str> {
-        let ps = &self.f(d).params;
-        // A parameter after `..xs` is given only by its label, like one after `;`.
-        let after = ps
-            .iter()
-            .position(|p| p.variadic)
-            .map_or(ps.len(), |i| i + 1);
-        let mut ls: Vec<&str> = (ps.iter().enumerate())
-            .filter(|(i, p)| (p.named_only || *i >= after) && p.default.is_none())
-            .map(|(_, p)| p.label.as_str())
-            .collect();
-        ls.sort_unstable();
-        ls
+        required_labels(self, d)
     }
-    /// The fn of `first`'s name a call giving the labels `given` takes: the one whose required
-    /// labels it gives and that has every label it gives (R06.1.6).
     pub fn overload(&self, first: FnId, given: &[&str]) -> FnId {
-        let rest = self.overloads.get(&first).map_or(&[][..], Vec::as_slice);
-        let fits = |f: FnId| {
-            let has = |l: &&str| self.f(f).params.iter().any(|p| p.label == *l);
-            self.required_labels(f).iter().all(|l| given.contains(l)) && given.iter().all(has)
-        };
-        (std::iter::once(first).chain(rest.iter().copied()))
-            .find(|f| fits(*f))
-            .unwrap_or(first)
+        overload(self, self, first, given)
     }
     pub fn s(&self, d: StructId) -> &StructDecl {
         &self.structs[d.0]
@@ -2292,4 +2272,37 @@ pub(crate) fn form_role(x: &forms::AttrForm) -> Option<Role> {
 /// Whether a declaration with these attributes fills role `r`.
 pub(crate) fn form_fills(attrs: &[forms::AttrForm], r: Role) -> bool {
     attrs.iter().any(|x| form_role(x) == Some(r))
+}
+
+pub fn required_labels(items: &dyn crate::views::Items, d: FnId) -> Vec<&str> {
+    let ps = &items.f(d).params;
+    // A parameter after `..xs` is given only by its label, like one after `;`.
+    let after = ps
+        .iter()
+        .position(|p| p.variadic)
+        .map_or(ps.len(), |i| i + 1);
+    let mut ls: Vec<&str> = (ps.iter().enumerate())
+        .filter(|(i, p)| (p.named_only || *i >= after) && p.default.is_none())
+        .map(|(_, p)| p.label.as_str())
+        .collect();
+    ls.sort_unstable();
+    ls
+}
+
+/// The fn of `first`'s name a call giving the labels `given` takes: the one whose required
+/// labels it gives and that has every label it gives (R06.1.6).
+pub fn overload(
+    items: &dyn crate::views::Items,
+    facts: &dyn crate::views::FnFacts,
+    first: FnId,
+    given: &[&str],
+) -> FnId {
+    let rest = facts.overloads(first);
+    let fits = |f: FnId| {
+        let has = |l: &&str| items.f(f).params.iter().any(|p| p.label == *l);
+        required_labels(items, f).iter().all(|l| given.contains(l)) && given.iter().all(has)
+    };
+    (std::iter::once(first).chain(rest.iter().copied()))
+        .find(|f| fits(*f))
+        .unwrap_or(first)
 }

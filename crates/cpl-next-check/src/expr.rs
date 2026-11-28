@@ -723,6 +723,7 @@ impl<'a> Cx<'a> {
             let it = TExpr { span: at, ..it };
             let name = Called {
                 text: &text,
+                sym: cx.d.sym(&text),
                 span: at,
             };
             cx.member_on(it, name, None, span, None, &[])
@@ -752,7 +753,7 @@ impl<'a> Cx<'a> {
         let refs: Vec<&str> = names.iter().map(String::as_str).collect();
         let callee = crate::records::name(&refs);
         let args: Vec<CallArg> = (fields.iter().zip(&names))
-            .map(|(f, n)| CallArg::labelled(self, Some(n.clone()), f.value(), self.at(f)))
+            .map(|(f, n)| CallArg::labelled(Some(n.clone()), f.value(), self.at(f)))
             .collect();
         self.call_named(&callee, &[], &args, span, want)
     }
@@ -879,7 +880,7 @@ impl<'a> Cx<'a> {
             return Self::error_node(span);
         };
         let written: Vec<next::Arg> = c.args().map(|l| l.args().collect()).unwrap_or_default();
-        let args: Vec<CallArg> = written.iter().map(|a| CallArg::of(self, a)).collect();
+        let args: Vec<CallArg> = written.iter().map(|a| CallArg::of(a)).collect();
         let lone = match &written[..] {
             [a] if a.label().is_none() => a.value(),
             _ => None,
@@ -1683,7 +1684,7 @@ impl Cx<'_> {
         if let Some(p) = self.type_path(&next::Expr::Tuple(t.clone())) {
             return self.domain_value(p, span);
         }
-        let args: Vec<call::CallArg> = xs.iter().map(|x| call::CallArg::plain(self, x)).collect();
+        let args: Vec<call::CallArg> = xs.iter().map(|x| call::CallArg::plain(x)).collect();
         let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
         let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
         self.construct(d, targs, sets, &args, span, want)

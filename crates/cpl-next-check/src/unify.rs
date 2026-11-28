@@ -933,7 +933,11 @@ impl<'a> Cx<'a> {
                 };
                 let (lo, k, m) = (*lo, *k, *m);
                 let text = self.d.f(m).name.clone();
-                let name = Called { text: &text, span };
+                let name = Called {
+                    text: &text,
+                    sym: self.d.sym(&text),
+                    span,
+                };
                 let Some(end) = self.domain_fn_of((**d).clone(), m, name, None, span) else {
                     let what = format!("`{}` has no `{}`", self.show(d), text);
                     self.err(span, Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, what));

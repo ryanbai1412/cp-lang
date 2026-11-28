@@ -976,7 +976,7 @@ impl Link<'_> {
             .map(|(k, _)| k)
             .collect::<Vec<_>>()
             .into_iter()
-            .map(|k| d.imp(k))
+            .map(|k| d.impls().imp(k))
             .any(|im| {
                 let mut binds = vec![None; im.generics.len()];
                 fits_head(d, im, &st, &mut binds)
@@ -1033,7 +1033,7 @@ impl Link<'_> {
             .map(|(k, _)| k)
             .collect::<Vec<_>>()
             .into_iter()
-            .map(|k| d.imp(k))
+            .map(|k| d.impls().imp(k))
         {
             if rank.is_some_and(|r| d.impl_rank(im) > r) {
                 break;
@@ -1573,7 +1573,7 @@ impl Link<'_> {
                     .map(|(k, _)| k)
                     .collect::<Vec<_>>()
                     .into_iter()
-                    .map(|k| d.imp(k))
+                    .map(|k| d.impls().imp(k))
                 {
                     if rank.is_some_and(|k| d.impl_rank(m) > k) {
                         break;
@@ -1640,7 +1640,7 @@ fn cty_meets(d: &dyn Signatures, c: &dyn Checked, t: &CTy, tr: TraitId) -> bool 
         .map(|(k, _)| k)
         .collect::<Vec<_>>()
         .into_iter()
-        .map(|k| d.imp(k))
+        .map(|k| d.impls().imp(k))
         .any(|im| {
             let mut b = vec![None; im.generics.len()];
             fits_head(d, im, t, &mut b)
