@@ -1720,12 +1720,13 @@ impl<'a> Cx<'a> {
                             return;
                         };
                         let inner = move |cx: &mut Self, cell: TExpr, out: &mut Vec<TStmt>| {
-                            cx.lend_out_value(cell, &t, span, out)
+                            cx.lend_out(cell, &t, span, out)
                         };
                         return self.through_cell(root, keys, span, out, Box::new(inner));
                     }
                 }
-                self.lend_out(place, &t, span, out);
+                let p = self.place(place);
+                self.lend_out(p, &t, span, out);
             }
             None if (self.b.decl).is_some_and(|f| self.d.f(f).lends.is_some()) => {
                 let ret = self.b.ret.clone();
