@@ -42,6 +42,7 @@ impl Snapshot {
 
 impl Session {                                           // every answer is per file, computed once
     fn open(snapshot: Snapshot) -> Session              // computes nothing yet
+    fn at(self, snapshot: Snapshot) -> Session          // keeps the database; sets only what changed
     fn snapshot(&self) -> &Snapshot
     // typing path
     fn diagnostics(&self, file: &str, upto: Layer) -> List<&Diag>    // Layer::Typed | Layer::Program

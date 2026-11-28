@@ -11,8 +11,11 @@ pub mod facade;
 pub mod linked;
 pub mod trace;
 
+use cpl_contract::FileId;
 use cpl_next_check as check;
 use cpl_next_cpp as cpp;
+use cpl_next_db::db::{Db, DbError};
+use cpl_next_db::items::Source;
 use cpl_next_decls::views::Answers;
 use cpl_next_decls::{decls, diag, modules};
 use cpl_next_ir::build::{Build, Checks, Judge};
@@ -338,8 +341,8 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
 }
 
 /// `judge` is the judge the snapshot is built for; it is the tool's to resolve (contract 0).
-fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>, checks: Checks) -> Front {
-    let loaded = modules::load(&cpl_next_db::db::Db::default(), std, user_src, roots);
+fn front(db: &Db, std: &Std, root: &FileId, judge: Option<&Judge>, checks: Checks) -> Front {
+    let loaded = modules::load(db, std, root);
     // What the parser could not read is checked as error nodes; a later layer says nothing
     // on what the parser rejected, and every other unit is checked as if it were alone.
     let rejected: Vec<SourceId> = (loaded.poisoned.iter().cloned())
@@ -376,6 +379,27 @@ fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>, checks
     }
 }
 
+/// Reads into `db` each file the program `root` uses that `db` lacks, from disk, until a pass
+/// reads none: what is still missing then cannot be read, and the load says so. Each pass but
+/// the last reads a file `db` lacked, so there are at most as many passes as files. It sets
+/// inputs, so no query calls it. Returns the files it read.
+pub(crate) fn read_missing(db: &Db, std: &Std, root: &FileId) -> Result<Vec<FileId>, DbError> {
+    let mut read = Vec::new();
+    loop {
+        let before = read.len();
+        for (_, path) in modules::load(db, std, root).missing {
+            if let Ok(text) = std::fs::read_to_string(&path) {
+                let file = FileId::new(&path.display().to_string());
+                db.set::<Source>(file.clone(), text.into())?;
+                read.push(file);
+            }
+        }
+        if read.len() == before {
+            return Ok(read);
+        }
+    }
+}
+
 /// Each std module and the diagnostics it has when every one of its fns is checked, not
 /// only those a program reaches: std as a program (suite 4 of plan/end-state.toml).
 pub(crate) fn std_unchecked(
@@ -383,11 +407,16 @@ pub(crate) fn std_unchecked(
     judge: Option<&Judge>,
     checks: Checks,
 ) -> Vec<(String, Vec<Diag>)> {
-    let db = &cpl_next_db::db::Db::default();
+    let db = &Db::default();
     (std.module_names())
         .filter(|m| *m != "std.prelude")
         .map(|m| {
-            let loaded = modules::load(db, std, &format!("use {m}\n"), &Roots::std());
+            // The program that only uses `m`, in a file named for it.
+            let root = FileId::new(m);
+            let loaded = match db.set::<Source>(root.clone(), format!("use {m}\n").into()) {
+                Ok(()) => modules::load(db, std, &root),
+                Err(e) => return (m.to_string(), vec![Diag::internal(&e)]),
+            };
             let (d, main) =
                 decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
             let at = (d.module_names.iter())
@@ -425,14 +454,14 @@ pub(crate) fn std_unchecked(
 
 /// `events` adds the semantic events to the program, for both the interpreter and the C++.
 pub(crate) fn compile(
+    db: &Db,
     std: &Std,
-    user_src: &str,
-    roots: &Roots,
+    root: &FileId,
     events: bool,
     judge: Option<&Judge>,
     checks: Checks,
 ) -> Result<Compiled, Vec<Diag>> {
-    let mut f = front(std, user_src, roots, judge, checks);
+    let mut f = front(db, std, root, judge, checks);
     let Some((mut prog, own)) = back(&mut f, events) else {
         return Err(f.diags);
     };
@@ -733,13 +762,13 @@ pub struct Unit {
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
 pub(crate) fn units(
+    db: &Db,
     std: &Std,
-    user_src: &str,
-    roots: &Roots,
+    root: &FileId,
     judge: Option<&Judge>,
     checks: Checks,
 ) -> (Vec<Unit>, Vec<Diag>) {
-    let mut f = front(std, user_src, roots, judge, checks);
+    let mut f = front(db, std, root, judge, checks);
     if let Some((_, own)) = back(&mut f, false) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);

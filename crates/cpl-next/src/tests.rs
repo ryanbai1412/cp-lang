@@ -3,6 +3,32 @@ use cpl_next_ir::ir::{Place, Stmt};
 use cpl_next_ir::prog::CTy;
 use modules::PROGRAM;
 
+/// `src` as the program, alone in a database with the libraries `roots` names.
+fn alone(std: &Std, src: &str, roots: &Roots) -> (Db, FileId) {
+    let (db, root) = (Db::default(), FileId::new(PROGRAM));
+    db.set::<Source>(root.clone(), src.into()).unwrap();
+    (db.set::<cpl_next_db::items::Libraries>(root.clone(), roots.libraries())).unwrap();
+    read_missing(&db, std, &root).unwrap();
+    (db, root)
+}
+
+fn front(std: &Std, src: &str, roots: &Roots, judge: Option<&Judge>, checks: Checks) -> Front {
+    let (db, root) = alone(std, src, roots);
+    crate::front(&db, std, &root, judge, checks)
+}
+
+fn compile(
+    std: &Std,
+    src: &str,
+    roots: &Roots,
+    events: bool,
+    judge: Option<&Judge>,
+    checks: Checks,
+) -> Result<Compiled, Vec<Diag>> {
+    let (db, root) = alone(std, src, roots);
+    crate::compile(&db, std, &root, events, judge, checks)
+}
+
 #[path = "../../cpl-cli/tests/support/cxx.rs"]
 mod cxx;
 
@@ -962,7 +988,8 @@ fn types_told_apart_by_domains_share_a_representation() {
 fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
     let std = Std::read();
     let typed = |src: &str, prior: &check::Ids| {
-        let loaded = modules::load(&cpl_next_db::db::Db::default(), &std, src, &Roots::std());
+        let (db, root) = alone(&std, src, &Roots::std());
+        let loaded = modules::load(&db, &std, &root);
         let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
         let values = consts::Evaluator::new(&d, &loaded, &main);
         let t = check::check(
@@ -1017,7 +1044,8 @@ fn a_body_adding_to_a_global_set_leaves_its_readers_typed_the_same() {
         )
     };
     let top = |src: &str| {
-        let loaded = modules::load(&cpl_next_db::db::Db::default(), &std, src, &Roots::std());
+        let (db, root) = alone(&std, src, &Roots::std());
+        let loaded = modules::load(&db, &std, &root);
         let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
         let values = consts::Evaluator::new(&d, &loaded, &main);
         let t = check::check(

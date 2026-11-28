@@ -1,6 +1,6 @@
 //! A trace is one run over the db's build: calls, places and steps from its event stream.
 use super::*;
-use crate::linked::{Shared, StdLib, WorldOf};
+use crate::linked::{Shared, StdLib};
 use crate::Std;
 use cpl_contract::{FileId, World};
 use cpl_next_db::items::Source;
@@ -14,7 +14,6 @@ fn db_with(text: &str) -> (Db, Job) {
     let f = FileId::new("main.cp");
     db.set::<Source>(f.clone(), text.into()).unwrap();
     db.set::<StdLib>((), Shared(Arc::new(Std::read()))).unwrap();
-    db.set::<WorldOf>((), World::Closed).unwrap();
     let job = Job {
         root: f,
         events: false,

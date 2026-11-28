@@ -112,6 +112,19 @@ impl Db {
         Ok(())
     }
 
+    /// Removes input `key`: a query that read it reads it as absent.
+    pub fn remove<I: Input>(&self, key: &I::Key) -> Result<(), DbError> {
+        let mut st = self.lock();
+        let t = TypeId::of::<InputMarker<I>>();
+        if Self::table::<I::Key, I::Value>(&mut st, t)?
+            .remove(key)
+            .is_some()
+        {
+            st.revision += 1;
+        }
+        Ok(())
+    }
+
     /// Input `key`'s value, read by the query being computed.
     pub fn input<I: Input>(&self, key: &I::Key) -> Result<Option<I::Value>, DbError> {
         let t = TypeId::of::<InputMarker<I>>();
@@ -252,6 +265,19 @@ mod tests {
         fn recover(k: &u32) -> Option<u32> {
             (*k < 2).then_some(0)
         }
+    }
+
+    #[test]
+    fn a_removed_input_is_read_as_absent() {
+        let db = Db::default();
+        db.set::<Num>(1, 5).unwrap();
+        db.set::<Num>(2, 7).unwrap();
+        assert_eq!(db.get::<Total>(&()), Ok(12));
+        db.remove::<Num>(&2).unwrap();
+        assert_eq!(db.get::<Total>(&()), Ok(5));
+        db.remove::<Num>(&2).unwrap();
+        assert_eq!(db.get::<Total>(&()), Ok(5));
+        assert_eq!(db.computed().get("total"), Some(&2));
     }
 
     /// An answer is recomputed only when what it read changed, and one whose new answer equals
