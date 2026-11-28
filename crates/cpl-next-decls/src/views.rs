@@ -40,10 +40,8 @@ pub trait RoleRows: RoleStructs {
     fn role_trait(&self, r: Role) -> Option<TraitId>;
     /// The fn filling role `r`: `print`, `todo`, the string literal's builder.
     fn role_fn(&self, r: Role) -> Option<FnId>;
-    /// The fns filling a role many fns fill: `@role(trace)`'s.
-    fn role_fns(&self, r: Role) -> &[FnId];
-    /// The fns marked `@d`: `@input`, `@index`, `@pattern`, `@from_op` or `@coerce`.
-    fn marked_fns(&self, d: Decorator) -> &[FnId];
+    /// Whether fn `f` is marked `@d`: `@input`, `@index`, `@pattern`, `@from_op` or `@coerce`.
+    fn marked(&self, f: FnId, d: Decorator) -> bool;
     /// Binary operator `op`'s fn, its `@operator` trait's fn of two operands.
     fn binary_operator(&self, op: Sym) -> Option<FnId>;
     /// Unary operator `op`'s fn, its `@operator` trait's fn of one operand.
@@ -64,6 +62,16 @@ pub trait RoleRows: RoleStructs {
     fn is_operator_trait(&self, tr: TraitId) -> bool;
     /// The operator `tr`'s `@operator(op)` gives: `**` for `Pow`.
     fn operator_of(&self, tr: TraitId) -> Option<Sym>;
+}
+
+/// Every fn a mark or a many-fn role names: a scan of all such items, so a holder of it is a
+/// whole-program input until each search it serves has an index keyed by more than the mark
+/// (decisions.md 686).
+pub trait Marks {
+    /// The fns filling a role many fns fill: `@role(trace)`'s.
+    fn role_fns(&self, r: Role) -> &[FnId];
+    /// The fns marked `@d`: `@input`, `@index`, `@pattern`, `@from_op` or `@coerce`.
+    fn marked_fns(&self, d: Decorator) -> &[FnId];
 }
 
 /// The structs filling the language roles, which a written type converts through: `?T` the
@@ -488,21 +496,8 @@ impl RoleRows for Decls {
             _ => None,
         }
     }
-    fn role_fns(&self, r: Role) -> &[FnId] {
-        match r {
-            Role::Trace => &self.roles.trace,
-            _ => &[],
-        }
-    }
-    fn marked_fns(&self, d: Decorator) -> &[FnId] {
-        match d {
-            Decorator::Input => &self.input_fns,
-            Decorator::Index => &self.index_fns,
-            Decorator::Pattern => &self.pattern_fns,
-            Decorator::FromOp => &self.from_op,
-            Decorator::Coerce => &self.coercions,
-            _ => &[],
-        }
+    fn marked(&self, f: FnId, d: Decorator) -> bool {
+        Marks::marked_fns(self, d).contains(&f)
     }
     fn binary_operator(&self, op: Sym) -> Option<FnId> {
         self.operator_fn_of(op, true)
@@ -533,6 +528,25 @@ impl RoleRows for Decls {
     }
     fn operator_of(&self, tr: TraitId) -> Option<Sym> {
         (self.operators.iter()).find_map(|&(o, t)| (t == tr).then_some(o))
+    }
+}
+
+impl Marks for Decls {
+    fn role_fns(&self, r: Role) -> &[FnId] {
+        match r {
+            Role::Trace => &self.roles.trace,
+            _ => &[],
+        }
+    }
+    fn marked_fns(&self, d: Decorator) -> &[FnId] {
+        match d {
+            Decorator::Input => &self.input_fns,
+            Decorator::Index => &self.index_fns,
+            Decorator::Pattern => &self.pattern_fns,
+            Decorator::FromOp => &self.from_op,
+            Decorator::Coerce => &self.coercions,
+            _ => &[],
+        }
     }
 }
 

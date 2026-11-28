@@ -57,7 +57,7 @@ impl Cx<'_> {
         }
     }
     fn op_struct_fn(&self, s: StructId) -> Option<FnId> {
-        (self.rows.marked_fns(Decorator::FromOp).iter().copied())
+        (self.marks.marked_fns(Decorator::FromOp).iter().copied())
             .find(|f| self.items.f(*f).owner == Some(decls::Owner::Struct(s)))
     }
     /// Whether some impl of `tr` is for `t`'s own type.
@@ -86,7 +86,7 @@ impl Cx<'_> {
         let missing: Vec<TraitId> = (self.bounds_on(v).into_iter())
             .filter(|tr| op || !self.has_impl(item, *tr))
             .collect();
-        (self.rows.marked_fns(Decorator::FromOp).iter().copied()).find(|&m| {
+        (self.marks.marked_fns(Decorator::FromOp).iter().copied()).find(|&m| {
             let fd = self.items.f(m);
             let Some(decls::Owner::Struct(s)) = fd.owner else {
                 return false;

@@ -60,7 +60,7 @@ impl Cx<'_> {
     /// The `Range` struct: the key of the `@index` fn that cuts any indexed `S` (R07.4.17).
     pub(super) fn range_struct(&self) -> Option<StructId> {
         let items = self.items;
-        let mut index = self.rows.marked_fns(Decorator::Index).iter();
+        let mut index = self.marks.marked_fns(Decorator::Index).iter();
         index.find_map(|f| match (&items.f(*f).self_ty, &items.f(*f).params[..]) {
             (Some(Ty::Param(_)), [p]) => match p.ty {
                 Ty::Struct(r, ..) => Some(r),
@@ -89,7 +89,7 @@ impl Cx<'_> {
             matches!(items.f(*f).ret, Ty::Struct(s, ..) if s == sid)
                 && !matches!(items.f(*f).self_ty, Some(Ty::Struct(s, ..)) if s == sid)
         };
-        if !self.rows.marked_fns(Decorator::Index).iter().any(view) {
+        if !self.marks.marked_fns(Decorator::Index).iter().any(view) {
             return;
         }
         let keys = match unparen(base.clone()) {
@@ -234,8 +234,8 @@ impl Cx<'_> {
         if self.key_of(s).is_none_or(|k| self.fits(&k, i)) {
             return None;
         }
-        let (rows, items) = (self.rows, self.items);
-        (rows.marked_fns(Decorator::Index).iter().copied()).find(|&f| {
+        let (marks, items) = (self.marks, self.items);
+        (marks.marked_fns(Decorator::Index).iter().copied()).find(|&f| {
             let fd = items.f(f);
             let mut binds = HashMap::new();
             fd.params.len() == 1
@@ -358,7 +358,7 @@ impl Cx<'_> {
             Ty::Struct(sid, ..) => Some(sid),
             _ => None,
         };
-        let (rows, items) = (self.rows, self.items);
+        let (marks, items) = (self.marks, self.items);
         let range = self.range_struct();
         let ends = |f: &FnId| {
             let ps = &items.f(*f).params;
@@ -369,7 +369,11 @@ impl Cx<'_> {
             ps.len() == arity && first.is_some() && (arity > 1 || first == range)
         };
         let mut any = None;
-        for &f in rows.marked_fns(Decorator::Index).iter().filter(|f| ends(f)) {
+        for &f in marks
+            .marked_fns(Decorator::Index)
+            .iter()
+            .filter(|f| ends(f))
+        {
             match &items.f(f).self_ty {
                 Some(Ty::Struct(sid, ..)) => {
                     if Some(*sid) == own {

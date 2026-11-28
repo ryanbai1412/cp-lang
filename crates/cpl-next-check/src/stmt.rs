@@ -1571,7 +1571,7 @@ impl<'a> Cx<'a> {
     /// Whether `v` is input: a value an `@input` fn gives, or a part of one (R10.2.2).
     pub(super) fn is_input(&self, v: &TExpr) -> bool {
         match &v.kind {
-            TK::Call { f, .. } => (self.rows.marked_fns(Decorator::Input)).contains(&f.decl),
+            TK::Call { f, .. } => self.rows.marked(f.decl, Decorator::Input),
             TK::Field(b, _) => matches!(&b.kind, TK::Var(t) if self.b.input_parts.contains(t)),
             _ => false,
         }

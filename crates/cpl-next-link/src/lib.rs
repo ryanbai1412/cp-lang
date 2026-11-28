@@ -3,7 +3,7 @@
 use cpl_next_decls::decls::{Choice, ImplIdx, TraitRef};
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::sym::Sym;
-use cpl_next_decls::views::{Checked, Generics, ImplChoice, Items, RoleRows, Summaries};
+use cpl_next_decls::views::{Checked, Generics, ImplChoice, Items, Marks, Summaries};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{DomainOp, Intrinsic};
 use cpl_next_ir::ty::*;
@@ -151,7 +151,8 @@ fn closed_fn(d: &dyn Items, f: FnId) -> bool {
 #[derive(Clone, Copy)]
 pub struct Inputs<'a> {
     pub items: &'a dyn Items,
-    pub roles: &'a dyn RoleRows,
+    /// The `trace` role's fns, every one of which an events build instances.
+    pub marks: &'a dyn Marks,
     pub fns: &'a dyn Generics,
     pub sums: &'a dyn Summaries,
     pub checked: &'a dyn Checked,
@@ -170,7 +171,7 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
     let (d, c, generic) = (v.items, v.checked, v.fns);
     let mut l = Link {
         d,
-        trace: v.roles.role_fns(cpl_next_decls::decls::Role::Trace),
+        trace: v.marks.role_fns(cpl_next_decls::decls::Role::Trace),
         choice: Choice::new(cpl_next_decls::decls::Impls {
             items: d,
             rows: v.rows,

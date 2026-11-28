@@ -535,7 +535,7 @@ impl<'a> Cx<'a> {
             Some(Ty::Struct(s, ..)) => Some(*s),
             _ => None,
         };
-        (self.rows.marked_fns(Decorator::Coerce).iter().copied()).find(|f| {
+        (self.marks.marked_fns(Decorator::Coerce).iter().copied()).find(|f| {
             let fd = self.items.f(*f);
             h != w
                 && kind(fd.params.first().map(|p| &p.ty)) == Some(*h)

@@ -113,7 +113,7 @@ impl Cx<'_> {
     /// (R01.3.4), where `collect`'s `T` is its `S: Seq<T>`'s. A `@coerce` fn is no written
     /// call: the list a `[D]T` is wanted for keys a domain of its own (R04.8.10).
     pub(super) fn only_in_result(&self, f: FnId, i: usize) -> bool {
-        if self.rows.marked_fns(Decorator::Coerce).contains(&f) {
+        if self.rows.marked(f, Decorator::Coerce) {
             return false;
         }
         let fd = self.items.f(f);

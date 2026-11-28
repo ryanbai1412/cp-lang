@@ -252,7 +252,7 @@ impl<'a> Evaluator<'a> {
         };
         let v = inst::Inputs {
             items: d,
-            roles: d,
+            marks: d,
             fns,
             sums: &low.adds,
             checked: &checked,

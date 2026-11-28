@@ -475,6 +475,9 @@ struct Cx<'a> {
     facts: &'a dyn views::FnFacts,
     bodies: &'a dyn views::Bodies,
     rows: &'a dyn views::RoleRows,
+    /// Every fn a mark names, which the `@index`, `@coerce` and `@from_op` searches and the
+    /// trace seeding scan (decisions.md 686).
+    marks: &'a dyn views::Marks,
     role_structs: &'a dyn views::RoleStructs,
     shapes: &'a dyn views::Shapes,
     methods: &'a dyn views::Methods,
@@ -771,6 +774,7 @@ impl<'a> Checker<'a> {
             facts: d,
             bodies,
             rows: d,
+            marks: d,
             role_structs: d,
             shapes: d,
             methods: d,
@@ -1097,7 +1101,7 @@ impl<'a> Checker<'a> {
         cx.own_global_sets();
         let mut todo = todo;
         // The trace role's fns are reached by events, which a build adds after checking (contract 8).
-        todo.extend(cx.rows.role_fns(decls::Role::Trace).iter().copied());
+        todo.extend(cx.marks.role_fns(decls::Role::Trace).iter().copied());
         // In the order the collector made them, so a program over std checks as one collection would.
         todo.sort_by_key(|id| std::cmp::Reverse((items.f(*id).made, *id)));
         cx.name_types(&main_out);
