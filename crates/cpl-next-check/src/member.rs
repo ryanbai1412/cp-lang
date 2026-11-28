@@ -55,7 +55,7 @@ impl<'a> Cx<'a> {
         if rt == Ty::Error {
             return Self::error_node(span);
         }
-        let found = self.impls().lookup_member(&rt, name);
+        let found = self.member_named(&rt, name);
         let at = self.b.module;
         let hidden = found
             .as_ref()
@@ -79,6 +79,11 @@ impl<'a> Cx<'a> {
             };
         };
         self.call_member(recv, (m, ts, ss), args, span, mutates)
+    }
+    /// `rt`'s member named `name`; none when nothing anywhere declares that name.
+    pub(super) fn member_named(&self, rt: &Ty, name: &str) -> Option<decls::Member> {
+        let sym = self.d.sym(name)?;
+        self.impls().lookup_member(rt, sym)
     }
     /// A receiver's type with its arguments resolved, so an impl's other parameters follow from
     /// them (`K` of `Slice<S>` from `S`'s impl of `Indexed<K, T>`).
@@ -210,8 +215,7 @@ impl<'a> Cx<'a> {
         let m = &name.text;
         let f = self.d.renamed(m).into_iter().find_map(|id| {
             let f = self.d.f(id);
-            (self.impls().lookup_member(rt, &f.name).is_some() || self.d.self_fits(id, rt))
-                .then_some(f)
+            (self.member_named(rt, &f.name).is_some() || self.d.self_fits(id, rt)).then_some(f)
         })?;
         let now = &f.name;
         // The call as written with the member's name replaced: `x.m(a)` reads `x.now(a)`.
@@ -377,8 +381,10 @@ impl<'a> Cx<'a> {
         };
         let recv = self.arg_expr(first, None);
         let rt = self.shallow(&recv.ty);
-        let Some(decls::Member::Method(m, ts, ss)) =
-            self.impls().impl_member(&rt, &name.text, Some(tr))
+        let Some(decls::Member::Method(m, ts, ss)) = self
+            .d
+            .sym(name.text)
+            .and_then(|sym| self.impls().impl_member(&rt, sym, Some(tr)))
         else {
             if !self.is_error(&rt) {
                 let ty = self.show(&rt);
@@ -957,10 +963,10 @@ impl<'a> Cx<'a> {
         // A closure's own type has no members: the impls of its fn type give them, as at a
         // bound (`impl Named for (Int, Int) -> Int` gives `f.name()`).
         let (recv, rt) = match &rt {
-            Ty::Clo(c) if self.impls().lookup_member(&rt, &name.text).is_none() => {
+            Ty::Clo(c) if self.member_named(&rt, &name.text).is_none() => {
                 let (ps, r) = self.clo_sig(c);
                 let ft = Ty::Fn(ps, Box::new(r), self.new_set());
-                if self.impls().lookup_member(&ft, &name.text).is_some() {
+                if self.member_named(&ft, &name.text).is_some() {
                     (self.coerce(recv, &ft), ft)
                 } else {
                     (recv, rt)
@@ -1001,8 +1007,10 @@ impl<'a> Cx<'a> {
         }
         // Members are found before extension fns: two impls that give `name` leave the call to
         // say which (R08.1.2, R08.1.4).
-        if !matches!(rt, Ty::Param(_)) && self.impls().lookup_member(&rt, &name.text).is_none() {
-            let choices = self.impls().impl_choices(&rt, &name.text, None, |_| true);
+        if !matches!(rt, Ty::Param(_)) && self.member_named(&rt, &name.text).is_none() {
+            let choices = (self.d.sym(name.text)).map_or_else(Vec::new, |sym| {
+                self.impls().impl_choices(&rt, sym, None, |_| true)
+            });
             let mut trs: Vec<TraitId> = choices.iter().map(|c| c.0.tr).collect();
             trs.sort_by_key(|t| t.0);
             trs.dedup();
@@ -1040,7 +1048,7 @@ impl<'a> Cx<'a> {
             }
         }
         if self.d.is_ambiguous(self.b.module, &name.text)
-            && self.impls().lookup_member(&rt, &name.text).is_none()
+            && self.member_named(&rt, &name.text).is_none()
         {
             self.two_imports(&name.text, name.span);
             return TExpr {
@@ -1050,7 +1058,7 @@ impl<'a> Cx<'a> {
             };
         }
         // A free fn whose `self` the receiver fits extends it; members are found first (R08.1.4).
-        let ext = match self.impls().lookup_member(&rt, &name.text) {
+        let ext = match self.member_named(&rt, &name.text) {
             None => (self.d.shaped_member(&rt, &name.text).map(decls::Named::Fn))
                 .or_else(|| {
                     // A free fn with no `self` in view does not hide the method a module declares.
@@ -1112,7 +1120,7 @@ impl<'a> Cx<'a> {
                 }
             }
         }
-        let found = self.impls().lookup_member(&rt, &name.text);
+        let found = self.member_named(&rt, &name.text);
         let at = self.b.module;
         let hidden = found
             .as_ref()
