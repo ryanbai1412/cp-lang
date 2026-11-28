@@ -14,7 +14,7 @@ use cpl_next_syntax::ast::AstNode as _;
 pub struct Prepared {
     /// Each std module's forms, which a program's layer reads its derives and roles from too.
     pub read: Arc<Vec<Vec<(ItemId, Form)>>>,
-    d: Decls,
+    pub(crate) d: Decls,
     own: Layer<HashMap<String, Named>>,
     public: Layer<HashSet<String>>,
     /// The record shapes std writes, sorted.
@@ -677,9 +677,9 @@ fn layer(
                         d.methods.entry(f.name).or_default().push(fid);
                     }
                     if let Some(Named::Fn(first)) = before {
-                        // Free fns of one name whose required labels differ are overloads: the
-                        // first stands for the name (R06.1.6).
-                        let free = d.f(first).self_ty.is_none() && d.f(fid).self_ty.is_none();
+                        // Fns of one name whose required labels differ are overloads, free fns
+                        // or methods alike: the first stands for the name (R06.1.6).
+                        let free = d.f(first).self_ty.is_some() == d.f(fid).self_ty.is_some();
                         let rest = d.overloads.get(&first).map_or(&[][..], Vec::as_slice);
                         let clash = (std::iter::once(&first).chain(rest))
                             .any(|o| d.required_labels(*o) == d.required_labels(fid));
@@ -689,8 +689,9 @@ fn layer(
                             d.overloads.entry(first).or_default().push(fid);
                             continue;
                         }
-                        // Two with a `self` are one method's overloads unless one call could take
-                        // both (R08.1.4); that test isn't built.
+                        // Two with a `self` and the same required labels are one method's
+                        // overloads unless one call could take both (R08.1.4); that test isn't
+                        // built.
                         if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {
                             d.errors.push(Unbuilt::MethodsOfOneName { name }.into());
                             continue;

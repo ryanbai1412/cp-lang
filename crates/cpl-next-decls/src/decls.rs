@@ -23,7 +23,7 @@ mod tyconv;
 use crate::views::Shapes;
 pub use collect::{body_of, collect, factor_name, prepare, Prepared};
 pub use forms::TyForm;
-pub use impls::{ImplIdx, Impls};
+pub use impls::{Choice, ImplIdx, Impls};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{
@@ -793,7 +793,7 @@ impl Decls {
     pub fn required_labels(&self, d: FnId) -> Vec<&str> {
         required_labels(self, d)
     }
-    pub fn overload(&self, first: FnId, given: &[&str]) -> FnId {
+    pub fn overload(&self, first: FnId, given: &[&str]) -> Option<FnId> {
         overload(self, self, first, given)
     }
     pub fn s(&self, d: StructId) -> &StructDecl {
@@ -2214,19 +2214,18 @@ pub fn required_labels(items: &dyn crate::views::Items, d: FnId) -> Vec<&str> {
 }
 
 /// The fn of `first`'s name a call giving the labels `given` takes: the one whose required
-/// labels it gives and that has every label it gives (R06.1.6).
+/// labels it gives and that has every label it gives (R06.1.6). None when no overload fits:
+/// the call is the named-argument error (E0310).
 pub fn overload(
     items: &dyn crate::views::Items,
     facts: &dyn crate::views::FnFacts,
     first: FnId,
     given: &[&str],
-) -> FnId {
+) -> Option<FnId> {
     let rest = facts.overloads(first);
     let fits = |f: FnId| {
         let has = |l: &&str| items.f(f).params.iter().any(|p| p.label == *l);
         required_labels(items, f).iter().all(|l| given.contains(l)) && given.iter().all(has)
     };
-    (std::iter::once(first).chain(rest.iter().copied()))
-        .find(|f| fits(*f))
-        .unwrap_or(first)
+    (std::iter::once(first).chain(rest.iter().copied())).find(|f| fits(*f))
 }

@@ -1,6 +1,7 @@
 //! Which impl a type has of a trait, and which member a receiver reaches through one.
 use super::*;
-use crate::views::{Items, Methods, Signatures};
+use crate::views::{Chosen, ImplChoice, Items, Methods, Signatures};
+use std::cell::RefCell;
 
 /// Which impl a type takes when several fit: one for its written type (0) before one for
 /// every record with some fields (1), before any other blanket one (2) (R08.1.2, R08.4.5).
@@ -374,7 +375,80 @@ impl<'a> Impls<'a> {
         (!im.blanket() || self.bounds_met(im, &targs)).then_some(targs)
     }
     fn bounds_met(&self, im: &ImplDecl, targs: &[Ty]) -> bool {
-        (im.bounds.iter()).all(|(i, b)| targs.get(*i).is_none_or(|a| self.has_impl(a, b.tr)))
+        self.bounds_hold(im, targs, CAP)
+    }
+    /// The impls of `r` whose head and trait arguments fit `t`, of the most specific rank
+    /// (R08.1.9): one is the choice, more than one is no choice, none is no impl. A headed
+    /// impl's bounds are not asked here, so an unmet one on the choice is E0606 and never a fall
+    /// back to an impl of a later rank. A blanket impl's bounds are all its head says, so one
+    /// applies only where they hold.
+    pub fn best(&self, t: &Ty, r: &TraitRef) -> Vec<(ImplIdx, Vec<Ty>)> {
+        self.best_in(t, r, CAP)
+    }
+    fn best_in(&self, t: &Ty, r: &TraitRef, cap: usize) -> Vec<(ImplIdx, Vec<Ty>)> {
+        let want = self.items.t(r.tr).inputs(&r.args);
+        let mut found: Vec<(u8, ImplIdx, Vec<Ty>)> = (self.trait_impls(r.tr))
+            .filter_map(|(k, im)| {
+                let binds = self.impl_args_for(im, t, want)?;
+                let applies = !im.blanket() || (cap > 0 && self.bounds_hold(im, &binds, cap - 1));
+                applies.then(|| (impl_rank(self.items, im), k, binds))
+            })
+            .collect();
+        if let Some(top) = found.iter().map(|f| f.0).min() {
+            found.retain(|f| f.0 == top);
+        }
+        found.sort_by_key(|f| f.1);
+        found.into_iter().map(|(_, k, b)| (k, b)).collect()
+    }
+    /// The impl of `r` that `t` takes: the one `best` gives, with its bounds met.
+    pub fn choose(&self, t: &Ty, r: &TraitRef) -> Option<Chosen> {
+        self.choose_in(t, r, CAP)
+    }
+    fn choose_in(&self, t: &Ty, r: &TraitRef, cap: usize) -> Option<Chosen> {
+        let mut best = self.best_in(t, r, cap);
+        let (imp, binds) = best.pop().filter(|_| best.is_empty() && cap > 0)?;
+        (self.bounds_hold(self.imp(imp), &binds, cap - 1)).then_some(Chosen { imp, binds })
+    }
+    /// Whether `t` meets `r`: by an impl of the most specific rank that fits, with its bounds
+    /// met; trait arguments left out are any (`Int` meets `Into`). A parameter or a type not
+    /// known yet is taken to meet it, and an alias trait is met by each of its supertraits.
+    pub fn holds(&self, t: &Ty, r: &TraitRef) -> bool {
+        self.holds_in(t, r, CAP)
+    }
+    fn holds_in(&self, t: &Ty, r: &TraitRef, cap: usize) -> bool {
+        if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
+            return true;
+        }
+        let tr = self.items.t(r.tr);
+        if tr.alias {
+            let sub = Subst {
+                tys: &r.args,
+                sets: &[],
+            };
+            return (tr.supers.iter()).all(|s| {
+                let s = TraitRef {
+                    tr: s.tr,
+                    args: s.args.iter().map(|a| sub.ty(a)).collect(),
+                };
+                cap > 0 && self.holds_in(t, &s, cap - 1)
+            });
+        }
+        (self.best_in(t, r, cap).iter())
+            .any(|(k, binds)| cap > 0 && self.bounds_hold(self.imp(*k), binds, cap - 1))
+    }
+    /// Whether impl `im`'s bounds hold at its type arguments `targs` (`holds`).
+    fn bounds_hold(&self, im: &ImplDecl, targs: &[Ty], cap: usize) -> bool {
+        let sub = Subst {
+            tys: targs,
+            sets: &[],
+        };
+        (im.bounds.iter()).all(|(i, b)| {
+            let b = TraitRef {
+                tr: b.tr,
+                args: b.args.iter().map(|x| sub.ty(x)).collect(),
+            };
+            targs.get(*i).is_none_or(|a| self.holds_in(a, &b, cap))
+        })
     }
     /// The bound at the root of `t` not meeting `r`: `Tuple1<List<?Int>>` misses `ShowAll`
     /// because `?Int` misses `Show`. It goes down while one impl alone of the most specific
@@ -429,23 +503,16 @@ impl<'a> Impls<'a> {
     /// Whether `t` has an impl of `r` with its trait arguments, its bounds met as `has_impl`
     /// meets them.
     fn meets(&self, t: &Ty, r: &TraitRef) -> bool {
-        if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
-            return true;
-        }
-        (self.impls_of(r.tr)).any(|im| {
-            self.impl_args_for(im, t, &r.args)
-                .is_some_and(|targs| self.bounds_met(im, &targs))
-        })
+        self.holds(t, r)
     }
-    /// Whether `t` has an impl of `tr`, its parameters taken to meet the impl's bounds.
+    /// Whether `t` has an impl of `tr` at any arguments, its parameters taken to meet the
+    /// impl's bounds.
     pub fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
-        if matches!(t, Ty::Param(_) | Ty::Var(_) | Ty::Error) {
-            return true;
-        }
-        (self.impls_of(tr)).any(|im| {
-            self.impl_args(im, t)
-                .is_some_and(|targs| self.bounds_met(im, &targs))
-        })
+        let r = TraitRef {
+            tr,
+            args: Vec::new(),
+        };
+        self.holds(t, &r)
     }
     /// An impl for `_..=_` is for every range type and never `Int`; one for `Int` is for a range
     /// type only when its trait has none for `_..=_`.
@@ -515,6 +582,65 @@ impl<'a> Impls<'a> {
             }
         }
         Some(binds.into_iter().map(|b| b.unwrap_or(Ty::Error)).collect())
+    }
+}
+
+/// How deep an impl's bounds are followed: each bound names a part of the impl's type, so each
+/// step is a smaller type, and the cap only guards a blanket impl bounded by its own trait.
+const CAP: usize = 32;
+
+/// `Impls::choose`, each answer kept by the trait reference and the type it was asked at. An
+/// answer is `choose`'s, which reads only the impls, so the order of the questions never changes
+/// one (R08.1.9). A type with a part not known yet is asked afresh each time.
+pub struct Choice<'a> {
+    pub impls: Impls<'a>,
+    memo: RefCell<HashMap<(TraitRef, Ty), Option<Chosen>>>,
+}
+
+impl<'a> Choice<'a> {
+    pub fn new(impls: Impls<'a>) -> Choice<'a> {
+        Choice {
+            impls,
+            memo: RefCell::new(HashMap::new()),
+        }
+    }
+}
+
+impl ImplChoice for Choice<'_> {
+    fn impl_for(&self, r: &TraitRef, t: &Ty) -> Option<Chosen> {
+        if !known(t) || !r.args.iter().all(known) {
+            return self.impls.choose(t, r);
+        }
+        let key = (r.clone(), t.clone());
+        if let Some(a) = self.memo.borrow().get(&key) {
+            return a.clone();
+        }
+        let a = self.impls.choose(t, r);
+        self.memo.borrow_mut().insert(key, a.clone());
+        a
+    }
+    fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)> {
+        (0..self.impls.items.traits())
+            .map(TraitId)
+            .filter_map(|tr| {
+                let r = TraitRef {
+                    tr,
+                    args: Vec::new(),
+                };
+                Some((tr, self.impl_for(&r, t)?))
+            })
+            .collect()
+    }
+}
+
+/// Whether `t` has no part a check has yet to fix: no variable, parameter or error.
+fn known(t: &Ty) -> bool {
+    match t {
+        Ty::Var(_) | Ty::Param(_) | Ty::Error => false,
+        Ty::RangeTo(t, ..) | Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) | Ty::Mut(t) => known(t),
+        Ty::Struct(_, ts, _) => ts.iter().all(known),
+        Ty::Fn(ps, r, _) => ps.iter().all(known) && known(r),
+        _ => true,
     }
 }
 
@@ -739,5 +865,86 @@ pub fn self_fits(items: &dyn Items, f: FnId, recv: &Ty) -> bool {
         (Some(Ty::Fn(..)), Ty::Clo(_)) => true,
         (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
         (None, _) => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn trait_named(d: &Decls, name: &str) -> TraitId {
+        TraitId(d.traits.iter().position(|t| t.name == name).expect(name))
+    }
+
+    fn list_of(d: &Decls, t: Ty) -> Ty {
+        let s = d
+            .structs
+            .iter()
+            .position(|s| s.name == "List")
+            .expect("List");
+        Ty::Struct(StructId(s), vec![t], vec![])
+    }
+
+    fn at(tr: TraitId, args: Vec<Ty>) -> TraitRef {
+        TraitRef { tr, args }
+    }
+
+    /// `Int` has `Into<Char>` and `Into<U64>`: the trait's arguments pick one, and with none
+    /// given the two fit alike, so neither is the choice.
+    #[test]
+    fn a_traits_arguments_pick_its_impl() {
+        let std = crate::modules::Std::read();
+        let d = &std.decls().d;
+        let c = Choice::new(Impls {
+            items: d,
+            rows: &[],
+        });
+        let into = trait_named(d, "Into");
+        let to_char = c.impl_for(&at(into, vec![Ty::Char]), &Ty::Int);
+        let to_u64 = c.impl_for(&at(into, vec![Ty::U64]), &Ty::Int);
+        assert!(to_char.is_some() && to_u64.is_some());
+        assert_ne!(to_char, to_u64);
+        assert_eq!(c.impl_for(&at(into, vec![]), &Ty::Int), None);
+        assert!(c.impls.holds(&Ty::Int, &at(into, vec![])));
+    }
+
+    /// The memo keeps `choose`'s answers, so asking in another order gives the same ones.
+    #[test]
+    fn choices_do_not_depend_on_the_order_they_are_asked() {
+        let std = crate::modules::Std::read();
+        let d = &std.decls().d;
+        let (show, into) = (trait_named(d, "Show"), trait_named(d, "Into"));
+        let qs = [
+            (at(show, vec![]), list_of(d, list_of(d, Ty::Int))),
+            (at(show, vec![]), list_of(d, Ty::Int)),
+            (at(show, vec![]), Ty::Int),
+            (at(into, vec![Ty::Char]), Ty::Int),
+            (at(into, vec![Ty::U64]), Ty::Int),
+            (at(into, vec![]), Ty::Int),
+            (at(show, vec![]), list_of(d, Ty::Bool)),
+        ];
+        let ask = |order: Vec<usize>| {
+            let c = Choice::new(Impls {
+                items: d,
+                rows: &[],
+            });
+            let mut got: Vec<_> = (order.into_iter())
+                .map(|i| (i, c.impl_for(&qs[i].0, &qs[i].1)))
+                .collect();
+            got.sort_by_key(|g| g.0);
+            got
+        };
+        let fwd = ask((0..qs.len()).collect());
+        assert_eq!(fwd, ask((0..qs.len()).rev().collect()));
+        let found: Vec<bool> = fwd.iter().map(|g| g.1.is_some()).collect();
+        // `Bool` has no `Show`, so `List<Bool>` takes no impl rather than a later one.
+        assert_eq!(found, [true, true, true, true, true, false, false]);
+        let fresh = Impls {
+            items: d,
+            rows: &[],
+        };
+        assert!(fwd
+            .iter()
+            .all(|(i, a)| fresh.choose(&qs[*i].1, &qs[*i].0) == *a));
     }
 }
