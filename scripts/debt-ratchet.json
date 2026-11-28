@@ -436,5 +436,6 @@
   "decls_const_op_arms": 0,
   "next_synthetic_name_tests": 0,
   "raw_int_range_alternation": 1,
+  "catalogue_next_markers": 1,
   "old_std_copy_lines": 33759
 }
