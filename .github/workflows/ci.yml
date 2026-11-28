@@ -41,6 +41,7 @@ jobs:
     permissions:
       contents: read
       actions: write  # scripts/ci_cache_prune.py deletes superseded caches
+      pull-requests: read  # debt-ratchet.py's owner_approved reads a signoff PR's reviews
     steps:
       # The ratchet checks each pushed commit (the freeze's frozen_edits), so it needs their
       # parents: a depth-1 clone gave 14960b972 and 0288f1c15 no parent, and they passed unseen.
@@ -118,6 +119,7 @@ jobs:
         # ratchet part about 10 and a lists@ part (a sixteenth of cpl-next's cases) about 8.
         timeout-minutes: ${{ (matrix.part == 'ratchet' || startsWith(matrix.part, 'lists@')) && 18 || 12 }}
         env:
+          GH_TOKEN: ${{ github.token }}
           CPL_GATE_PART: ${{ matrix.part }}
           CPL_RATCHET_BASE: ${{ steps.before.outputs.sha }}
           CPL_CONFORM_PREV: ${{ startsWith(matrix.part, 'conform:') && 'target/conform-prev.json' || '' }}

@@ -2744,11 +2744,11 @@ def old_std_copy_lines(root: Path) -> list[str]:
     return out
 
 
-OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
-# What frozen_edits refuses new lines in: the old pipeline, its parser (cpl-syntax, whose lexer
-# is cpl-next-syntax's, the one shared lexer) and cpl-facade over it (review-16 (3)). Only the
-# four above are what stage 5 deletes and old_pipeline_lines counts.
-FROZEN_CRATES = OLD_PIPELINE_CRATES + ("cpl-syntax", "cpl-facade")
+# The old pipeline: its checker, lowering, interpreter and C++ emitter, its parser (cpl-syntax,
+# whose lexer is cpl-next-syntax's, the one shared lexer) and cpl-facade over them (audit #18
+# (3)). All six are frozen, and old_pipeline_lines counts them.
+OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen", "cpl-syntax", "cpl-facade")
+FROZEN_CRATES = OLD_PIPELINE_CRATES
 # The std the old pipeline reads, a copy of std/ at 6a31a3747^ (migration rule 9): stage 5 deletes it.
 FROZEN_STD = "crates/cpl-check/frozen/std"
 # `git rev-parse 6a31a3747^:std`: the tree FROZEN_STD has to stay.
@@ -5643,14 +5643,86 @@ def unhidden_wrong(root: Path, ref: str) -> list[str]:
 # The commit whose std the old pipeline is pinned to (`crates/cpl-check/frozen/std`).
 FROZEN_PIN = "6a31a3747^"
 
-# Frozen-pipeline edits admitted one by one, by the patch id of what each changes in
-# `OLD_PIPELINE_CRATES` (`git show SHA -- crates/cpl-check ... | git patch-id --stable`), which a
-# rebase keeps; each with the coordinator's reason. No path or trailer admits one.
-FROZEN_ADMITTED = {
-    # 9c099f408, "check: name Some a prelude value for the pinned std" (coordinator, 18:47).
-    "910ad35fff394684a3ace2a84930b6cc54a2d8df":
-        "restores shipped cpl after 9ad9cbbd1 changed cpl-syntax; old pipeline must keep working until the switch",
-}
+# The one authority for what a gate takes on someone's word (audit #18 (2)): a lane for a pushed
+# commit (`lane_for`), a counter raise (`raise`), a frozen-crate edit by its patch id (`frozen`)
+# and a wasm budget raise (`budget_raise`). Read as origin/main holds it, which only a PR its
+# CODEOWNERS approve may change (`signoff_edits`); no commit message signs anything.
+SIGNOFFS = "plan/signoffs.toml"
+SIGNOFF_PATHS = (SIGNOFFS, ".github/CODEOWNERS")
+
+
+def signoffs(root: Path) -> dict:
+    """`SIGNOFFS` as origin/main holds it, so no branch admits its own rows; HEAD's only in a
+    clone with no origin/main."""
+    ref = "origin/main" if _git(root, "rev-parse", "-q", "--verify", "origin/main", env=_git_env()) else "HEAD"
+    shown = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{SIGNOFFS}"], capture_output=True,
+                           text=True, env=_git_env())
+    return tomllib.loads(shown.stdout) if shown.returncode == 0 else {}
+
+
+SIGNOFF_FIELDS = {"lane_for": {"sha": str, "lane": str, "why": str},
+                  "raise": {"counter": str, "old": int, "new": int, "why": str},
+                  "frozen": {"patch_id": str, "sha": str, "why": str},
+                  "budget_raise": {"crate": str, "old": int, "new": int, "why": str}}
+
+
+def signoffs_malformed(root: Path) -> list[str]:
+    """What is wrong with this tree's `SIGNOFFS`: TOML that doesn't parse, a table no gate reads,
+    or a row missing a field or holding the wrong type. A PR is checked here, before main holds
+    it, because every land reads main's copy and stops at a broken one."""
+    path = root / SIGNOFFS
+    if not path.is_file():
+        return []
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as e:
+        return [f"{SIGNOFFS}: {e}"]
+    out = [f"{SIGNOFFS}: [[{k}]] is no table a gate reads" for k in data if k not in SIGNOFF_FIELDS]
+    for kind, fields in SIGNOFF_FIELDS.items():
+        rows = data.get(kind, [])
+        for n, row in enumerate(rows if isinstance(rows, list) else [rows], 1):
+            bad = [f for f, t in fields.items() if not isinstance(row, dict) or not isinstance(row.get(f), t)
+                   or (t is str and not row[f].strip())]
+            if bad:
+                out.append(f"{SIGNOFFS}: [[{kind}]] row {n} lacks or mistypes {', '.join(bad)}")
+    return out
+
+
+def owner_approved(sha: str) -> bool:
+    """Whether GitHub merged `sha` in a PR a code owner of `SIGNOFFS` approved: CI on main asks,
+    with its token; anywhere else nothing can tell, so nothing is."""
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    if not (os.environ.get("CI") and repo):
+        return False
+    owners = {o.lstrip("@").lower() for l in (ROOT / ".github/CODEOWNERS").read_text().splitlines()
+              if l.split() and l.split()[0] == f"/{SIGNOFFS}" for o in l.split()[1:]} \
+        if (ROOT / ".github/CODEOWNERS").is_file() else set()
+    def gh(path: str) -> list:
+        got = subprocess.run(["gh", "api", path], capture_output=True, text=True)
+        if got.returncode:
+            print(f"debt-ratchet: gh api {path} failed, so no approval is seen: {got.stderr.strip()}",
+                  file=sys.stderr)
+        return json.loads(got.stdout or "[]") if got.returncode == 0 else []
+    try:
+        return any(pr.get("merged_at") and any(r.get("state") == "APPROVED" and
+                                               (r.get("user") or {}).get("login", "").lower() in owners
+                                               for r in gh(f"repos/{repo}/pulls/{pr['number']}/reviews"))
+                   for pr in gh(f"repos/{repo}/commits/{sha}/pulls"))
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return False
+
+
+def signoff_edits(root: Path, base: str) -> list[str]:
+    """Commits in `base..HEAD` that main doesn't hold and that edit `SIGNOFF_PATHS`, on any
+    branch: only a PR a code owner approves changes them (`owner_approved`), so a lane never
+    signs its own debt off."""
+    # CI on main has origin/main at the pushed tip, so there it would hide the push itself.
+    main = ["--not", "origin/main"] if os.environ.get("GITHUB_REF") != "refs/heads/main" and \
+        _git(root, "rev-parse", "-q", "--verify", "origin/main", env=_git_env()) else []
+    return [f"{sha[:9]}: edits {SIGNOFFS} or its CODEOWNERS; only a PR its code owner approves may, "
+            f"so send the row to the coordinator"
+            for sha in _git(root, "rev-list", f"{base}..HEAD", *main, "--", *SIGNOFF_PATHS, env=_git_env())
+            if not owner_approved(sha)]
 
 
 SKIPPED_RATCHET_RE = re.compile(r"^Skipped:.*\b(ratchet|debt-ratchet|full suite|lists?)\b", re.M | re.I)
@@ -5669,25 +5741,19 @@ def skipped_ratchet(root: Path, base: str) -> list[str]:
             if SKIPPED_RATCHET_RE.search("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
 
 
-# A pushed commit with no `Lane:` gets its lane from a later commit's trailer, never a rewrite:
-# `Lane-for: <sha> <lane>, signed off by coordinator` (coordinator ruling 21:10, lane-j-check).
+# A pushed commit with no `Lane:` gets its lane from a `[[lane_for]]` row in `SIGNOFFS`, never a
+# rewrite or a trailer (audit #18 (2)).
 LANE_FOR_RE = re.compile(r"^Lane-for:\s*(.*)$", re.MULTILINE)
-SIGNED_LANE_FOR_RE = re.compile(r"^([0-9a-f]{7,40})\s+(\w+)\s*,\s*signed off by\s+(\S+?)\.?\s*$")
 
 
 def lanes_for(root: Path, base: str) -> tuple[dict[str, str], list[str]]:
-    """The commits `Lane-for:` trailers in `base..HEAD` give a lane to, as {sha prefix: lane},
-    and each trailer refused: one not `<sha> <lane>, signed off by coordinator`, since only the
-    coordinator may name a lane for a commit that names none (the same rule as `Raise:`)."""
-    given, bad = {}, []
-    for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD"):
-        for m in LANE_FOR_RE.finditer("\n".join(_git(root, "log", "-1", "--format=%B", sha))):
-            s = SIGNED_LANE_FOR_RE.match(m.group(1).strip())
-            if s and s.group(3) == "coordinator":
-                given[s.group(1)] = s.group(2)
-            else:
-                bad.append(f"{sha[:9]}: `Lane-for: {m.group(1).strip()}` is not "
-                           "`Lane-for: <sha> <lane>, signed off by coordinator`")
+    """The commits `SIGNOFFS` gives a lane to, as {sha prefix: lane}, and each `Lane-for:`
+    trailer in `base..HEAD` refused: a commit message is no authority."""
+    given = {str(r["sha"]): str(r["lane"]) for r in signoffs(root).get("lane_for", [])}
+    bad = [f"{sha[:9]}: `Lane-for: {m.group(1).strip()}` in a commit message gives no lane; the "
+           f"coordinator adds a [[lane_for]] row to {SIGNOFFS}"
+           for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD")
+           for m in LANE_FOR_RE.finditer("\n".join(_git(root, "log", "-1", "--format=%B", sha)))]
     return given, bad
 
 
@@ -5703,7 +5769,7 @@ def unlaned(root: Path, base: str) -> list[str]:
     given, bad = lanes_for(root, base)
     return bad + [f"{sha[:9]}: touches the new pipeline or std with no `Lane:` trailer; add the lane "
                   f"that lands it (`git commit --amend`, or set CPL_LANE; a pushed one takes a "
-                  f"coordinator-signed `Lane-for: {sha[:9]} <lane>`)"
+                  f"[[lane_for]] row in {SIGNOFFS})"
                   for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths)
                   if not any(sha.startswith(g) for g in given)
                   and not any(l.strip() for l in _git(root, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", sha))]
@@ -5738,9 +5804,6 @@ def raise_evidence(root: Path, base: str, name: str) -> str | None:
             f"<why>, full run target/cpl-next/<list> at <sha>`, never from a CPL_NEXT_ONLY run")
 
 
-SIGNED_RAISE_RE = re.compile(r"^(\d+)\s*->\s*(\d+),\s*signed off by\s+(\S+?)\.?\s*$")
-
-
 def raises(root: Path, base: str) -> list[tuple[str, str, str]]:
     """Each `Raise: <name> <rest>` in `base..HEAD`, as (commit, name, rest), and the commit
     being made's from CPL_RAISE (`;`-separated): pre-commit runs before its message exists, and
@@ -5752,29 +5815,56 @@ def raises(root: Path, base: str) -> list[tuple[str, str, str]]:
     return out + [("this commit", r[0].rstrip(":"), r[1] if len(r) > 1 else "") for r in given]
 
 
-def signed_raise(root: Path, base: str, name: str, old: int, new: int) -> str | None:
-    """None when `Raise: <name> <old> -> <new>, signed off by coordinator` is in `base..HEAD` (or
-    CPL_RAISE) and the change gives its reason: decisions.md lines it adds, or the commit's body,
-    name the counter. Only the coordinator signs a raise, so no lane admits its own debt, and a
-    hard-zero counter is never raised. Else what is missing."""
+def raising_commit(root: Path, base: str, row: dict) -> bool:
+    """Whether the commit a `[[raise]]` row names is in `base..HEAD`: by `sha`, or by `patch_id`
+    (`git patch-id --stable` of the whole commit), which a rebase onto a new base keeps."""
+    shas = _git(root, "rev-list", "--no-merges", f"{base}..HEAD")
+    sha, pid = str(row.get("sha", "")).strip(), str(row.get("patch_id", "")).strip()
+    if sha and any(s.startswith(sha) for s in shas):
+        return True
+    for s in shas if pid else []:
+        diff = subprocess.run(["git", "-C", str(root), "show", s], capture_output=True).stdout
+        got = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()
+        if got and got[0].decode() == pid:
+            return True
+    return False
+
+
+def signed_raise(root: Path, base: str, name: str, old: int, new: int, pending: bool = False) -> str | None:
+    """None when a `[[raise]]` row of `SIGNOFFS` raises `name` from `old` to `new` with its
+    reason (`why`), for a commit in `base..HEAD` (`raising_commit`). The one check for main
+    (`old` its baseline) and lane-j-check (`old` the lane tip's count). Only the coordinator's
+    rows count, so no lane admits its own debt: a `Raise:` that signs itself in a commit message
+    is refused, and a hard-zero counter is never raised. The commit being made is not in
+    `base..HEAD` yet, so pre-commit (CPL_PRE_COMMIT) and `--update` (`pending`) only warn that
+    its raise is pending; the push and the queue gate check it. Else what is missing."""
     if name in HARD_ZERO or name in HARD_FLOOR:
         return f"{name} is hard-zero; it is never raised (remove the debt)"
-    given = [(w, rest) for w, n, rest in raises(root, base) if n == name]
-    if not given:
-        return (f"remove the new debt instead, or have the coordinator sign it: "
-                f"`Raise: {name} {old} -> {new}, signed off by coordinator`, with its reason")
-    added = [l for l in _git(root, "diff", base, "--", "decisions.md") if l.startswith("+")]
-    for w, rest in given:
-        m = SIGNED_RAISE_RE.match(rest)
-        if not m:
-            return f"`Raise: {name} {rest}` must read `{old} -> {new}, signed off by coordinator`"
-        if m.group(3) != "coordinator":
-            return f"`Raise: {name}` is signed off by {m.group(3)}; only the coordinator signs a raise"
-        if (int(m.group(1)), int(m.group(2))) != (old, new):
-            return f"`Raise: {name} {m.group(1)} -> {m.group(2)}` does not match the baseline's {old} -> {new}"
-        body = [] if w == "this commit" else _git(root, "log", "-1", "--format=%B", w)
-        if not any(name in l for l in added + [l for l in body if not RAISE_RE.match(l)]):
-            return f"`Raise: {name}` gives no reason: name {name} in the change's decisions.md entry or body"
+    selfsigned = [w for w, n, rest in raises(root, base) if n == name and "signed off" in rest]
+    if selfsigned:
+        return (f"`Raise: {name}` signs itself in {selfsigned[0]}'s message; a raise is valid only as "
+                f"a [[raise]] row in {SIGNOFFS}")
+    rows = [r for r in signoffs(root).get("raise", []) if r.get("counter") == name]
+    if not rows:
+        return (f"remove the new debt instead, or ask the coordinator for a [[raise]] row in {SIGNOFFS}: "
+                f'counter = "{name}", old = {old}, new = {new}, why = "<reason>"')
+    signed = [r for r in rows if (int(r.get("old", -1)), int(r.get("new", -1))) == (old, new)]
+    # Two changes may each be signed for the same numbers: the one this change holds counts.
+    row = next((r for r in signed if raising_commit(root, base, r)), signed[0] if signed else None)
+    if row is None:
+        said = ", ".join(f"{r.get('old')} -> {r.get('new')}" for r in rows)
+        return f"{SIGNOFFS} raises {name} only {said}, not {old} -> {new}"
+    if not str(row.get("why", "")).strip():
+        return f"{SIGNOFFS}'s raise of {name} gives no reason (`why`)"
+    if not (str(row.get("sha", "")).strip() or str(row.get("patch_id", "")).strip()):
+        return f"{SIGNOFFS}'s raise of {name} names no commit (`sha` or `patch_id`)"
+    if not raising_commit(root, base, row):
+        if pending or os.environ.get("CPL_PRE_COMMIT"):
+            print(f"debt-ratchet: WARNING: unsigned raise pending: {name} {old} -> {new} is signed for "
+                  f"{row.get('sha') or row.get('patch_id')}, checked at push", file=sys.stderr)
+            return None
+        return (f"{SIGNOFFS}'s raise of {name} {old} -> {new} is for "
+                f"{row.get('sha') or row.get('patch_id')}, which is not in {base[:9]}..HEAD")
     return None
 
 
@@ -5801,7 +5891,7 @@ def frozen_edits(root: Path, base: str) -> list[str]:
     def admitted(sha: str) -> bool:
         diff = subprocess.run(["git", "-C", str(root), "show", sha, "--", *paths], capture_output=True).stdout
         pid = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()
-        return bool(pid) and pid[0].decode() in FROZEN_ADMITTED
+        return bool(pid) and pid[0].decode() in {str(r["patch_id"]) for r in signoffs(root).get("frozen", [])}
     out = []
     for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
         # A shallow clone's oldest commit has no parent here, so `show` would count the whole
@@ -5844,7 +5934,7 @@ def measured_without_restore(root: Path, base: str, name: str) -> int | None:
 
 
 def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
-                      upstream: dict | None = None) -> list[str]:
+                      upstream: dict | None = None, pending: bool = False) -> list[str]:
     """Baseline entries raised above `ref`'s.
 
     A raise passes only when the same change rewrites the code that measures
@@ -5865,6 +5955,11 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
     moved = [f"{c}: wrong on {ref}, refused here: fix its verdict, or name it in decisions.md"
              for c in wrong_to_refused(root, ref)]
     moved += frozen_edits(root, base)
+    # A PR branch carries a signoffs edit to its code owner; main's and the lane's tips, CI or a
+    # push (pre-push `--authority`), refuse one that no approved PR merged.
+    if os.environ.get("GITHUB_REF") in ("refs/heads/main", "refs/heads/lane-j-check"):
+        moved += signoff_edits(root, base)
+    moved += signoffs_malformed(root)
     moved += skipped_ratchet(root, base)
     moved += unlaned(root, base)
     moved += set_swaps(root, ref)
@@ -5910,7 +6005,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
             for n, key in raised
             for need in [raise_evidence(root, base, n) if n in RUN_MEASURED
                          else None if remeasured(root, base, key)
-                         else signed_raise(root, base, n, old[n], baseline[n]) if n in COUNTERS
+                         else signed_raise(root, base, n, old[n], baseline[n], pending) if n in COUNTERS
                          else stale] if need]
 
 
@@ -6029,6 +6124,12 @@ def main(argv: list[str] | None = None) -> int:
                        help="--check, then lower each improved entry to its measured value (land.sh runs it).")
     group.add_argument("--show", nargs="*", metavar="NAME", help="Print `name count` for counters.")
     group.add_argument("--list", metavar="NAME", help="Print the offenders behind one counter.")
+    group.add_argument("--authority", metavar="BASE",
+                       help="Fail on a commit since BASE that edits the frozen crates or the signoffs "
+                            "unadmitted: pre-push runs it on a push to main or lane-j-check.")
+    group.add_argument("--frozen", metavar="BASE",
+                       help="Fail on a commit since BASE that edits the frozen crates unadmitted: pre-push "
+                            "runs it on a push to a PR branch, where the signoffs may change for review.")
     group.add_argument("--zero", action="store_true",
                        help="Fail while any gated counter is above 0: main's own debt, reported red.")
     parser.add_argument("--prefix", default="", metavar="PREFIX",
@@ -6047,6 +6148,13 @@ def main(argv: list[str] | None = None) -> int:
             return [f"{k} {v}" for k, v in rs_over_cap(args.root, max_lines).items()]
         return COUNTERS[name][1](args.root)
 
+    if args.authority is not None or args.frozen is not None:
+        since = args.authority or args.frozen
+        base = (_git(args.root, "merge-base", since, "HEAD") or [since])[0]
+        bad = frozen_edits(args.root, base) + (signoff_edits(args.root, base) if args.authority else [])
+        for e in bad:
+            print(f"debt-ratchet: ERROR: {e}", file=sys.stderr)
+        return 1 if bad else 0
     if args.zero:
         left, failed = {}, 0
         for n in ["rs_over_cap", *(n for n, (_, _, gated) in COUNTERS.items() if gated)]:
@@ -6097,7 +6205,8 @@ def main(argv: list[str] | None = None) -> int:
                 base[keys.get(n, n)] = data[keys.get(n, n)]
             data = base
         # A stale local baseline must not carry main's tightening back up.
-        bumps = unexplained_bumps(args.root, data, os.environ.get("CPL_RATCHET_BASE") or "origin/main")
+        # The raising commit isn't made yet when its baseline is written.
+        bumps = unexplained_bumps(args.root, data, os.environ.get("CPL_RATCHET_BASE") or "origin/main", pending=True)
         if bumps:
             print("debt-ratchet: refusing to write a baseline above origin/main (pull first, or remove the debt):\n  "
                   + "\n  ".join(bumps), file=sys.stderr)

@@ -466,13 +466,13 @@ export function shrunk(fns, parent) {
  * raise a bucket's budget only by what it lowers others (the total never rises), and
  * only by what the lowered buckets' normalized code dropped (`drops`, from shrunk), so
  * a budget follows moved code and can't hide new growth. No drops measured: no raise.
- * A raise the coordinator signed (`signed`, from signedRaises) is exact and outside the
- * transfer: a bucket over a budget its code never fit, or code moved before the parent.
+ * A raise plan/signoffs.toml holds (`signed`, from signedRaises) is exact and outside the
+ * transfer, never a frozen crate's: a bucket over a budget its code never fit, or code moved before the parent.
  */
 export function budgetTransfer(budgets, was, drops = {}, signed = {}) {
   const b = (n) => n.toLocaleString('en-US');
   const raised = Object.entries(budgets).map(([c, n]) => [c, n - (was[c] ?? 0)])
-    .filter(([c, d]) => d > 0 && !(signed[c] && signed[c][0] === (was[c] ?? 0) && signed[c][1] === budgets[c]));
+    .filter(([c, d]) => d > 0 && !(signed[c] && !FROZEN_CRATES.has(c) && signed[c][0] === (was[c] ?? 0) && signed[c][1] === budgets[c]));
   if (!raised.length) return [];
   const cuts = Object.entries(was).map(([c, n]) => [c, n - (budgets[c] ?? 0)]).filter(([, d]) => d > 0);
   const total = (xs) => xs.reduce((s, [, d]) => s + d, 0);
@@ -515,15 +515,15 @@ export function ratchet(rows, budgets, map, growth) {
 }
 
 /**
- * The coordinator-signed budget raises in commit trailers' values, one per line:
- * `Budget-raise: cpl_ir 445500->470872, signed off by coordinator` -> {cpl_ir: [445500, 470872]}.
- * A row without the sign-off is no raise.
+ * The budget raises plan/signoffs.toml holds, one `crate old->new` per line
+ * (`debt-ratchet.py --budget-raises`): `cpl_lsp 67500->68000` -> {cpl_lsp: [67500, 68000]}.
+ * A frozen crate's budget is never raised, signed or not.
  */
 export function signedRaises(text) {
   const out = {};
   for (const line of text.split('\n')) {
-    const m = line.trim().match(/^(.+?) (\d+)->(\d+), signed off by coordinator$/);
-    if (m) out[m[1]] = [Number(m[2]), Number(m[3])];
+    const m = line.trim().match(/^(.+?) (\d+)->(\d+)$/);
+    if (m && !FROZEN_CRATES.has(m[1])) out[m[1]] = [Number(m[2]), Number(m[3])];
   }
   return out;
 }
@@ -531,7 +531,7 @@ export function signedRaises(text) {
 /** The old pipeline's frozen crates: they only shrink, so a lowered budget has no room. */
 // The old pipeline's crates only shrink, so their budgets sit at the measured size; their
 // rows are deleted with the old pipeline at the switch.
-export const FROZEN_CRATES = new Set(['cpl_ir', 'cpl_check', 'cpl_interp']);
+export const FROZEN_CRATES = new Set(['cpl_ir', 'cpl_check', 'cpl_interp', 'cpl_codegen', 'cpl_syntax', 'cpl_facade']);
 
 /** A lowered budget for a crate measured at `gz`: 1% or 256 B of room, to the next 100. */
 export const lowerTo = (gz) => Math.ceil((gz + Math.max(gz * 0.01, 256)) / 100) * 100;

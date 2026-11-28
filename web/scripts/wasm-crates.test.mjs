@@ -116,16 +116,15 @@ describe('wasm crate budgets', () => {
     expect(budgetTransfer({ cpl_ir: 440000, cpl_rt: 600 }, was)).toHaveLength(1);
   });
 
-  test('a raise the coordinator signed lands exactly, and an unsigned or inexact one refuses', () => {
-    const was = { cpl_ir: 445500, cpl_rt: 500 };
-    const signed = signedRaises('cpl_ir 445500->470872, signed off by coordinator\ncpl_rt 500->900\n');
-    expect(signed).toEqual({ cpl_ir: [445500, 470872] });
-    expect(signedRaises('data (std source, strings) 206300->209300, signed off by coordinator'))
-      .toEqual({ 'data (std source, strings)': [206300, 209300] });
-    expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 500 }, was, {}, signed)).toEqual([]);
-    expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 900 }, was, {}, signed)).not.toEqual([]);
-    expect(budgetTransfer({ cpl_ir: 471000, cpl_rt: 500 }, was, {}, signed)).not.toEqual([]);
-    expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 500 }, { ...was, cpl_ir: 445000 }, {}, signed)).not.toEqual([]);
+  test('a raise plan/signoffs.toml holds lands exactly, a frozen crate never rises, and an inexact one refuses', () => {
+    const was = { cpl_lsp: 67500, cpl_rt: 500, cpl_ir: 445500 };
+    const signed = signedRaises('cpl_lsp 67500->68000\ncpl_ir 445500->470872\ncpl_rt 500->900, signed off by coordinator\n');
+    expect(signed).toEqual({ cpl_lsp: [67500, 68000] });
+    expect(signedRaises('data (std source, strings) 206300->209300')).toEqual({ 'data (std source, strings)': [206300, 209300] });
+    expect(budgetTransfer({ ...was, cpl_lsp: 68000 }, was, {}, signed)).toEqual([]);
+    expect(budgetTransfer({ ...was, cpl_lsp: 68000, cpl_rt: 900 }, was, {}, signed)).not.toEqual([]);
+    expect(budgetTransfer({ ...was, cpl_lsp: 68100 }, was, {}, signed)).not.toEqual([]);
+    expect(budgetTransfer({ ...was, cpl_ir: 470872 }, was, {}, { cpl_ir: [445500, 470872] })).not.toEqual([]);
   });
 
   test("a frozen crate's budget lowers to its measurement, with no room", () => {

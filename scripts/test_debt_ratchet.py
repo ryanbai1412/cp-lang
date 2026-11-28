@@ -584,7 +584,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(got), 2, got)
             self.assertTrue(all("no `Lane:` trailer" in g for g in got))
 
-    def test_lane_for_signed_by_the_coordinator_gives_a_pushed_commit_its_lane(self) -> None:
+    def test_only_a_signoffs_row_gives_a_pushed_commit_its_lane(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             git, commit, head = self._repo(root)
@@ -599,13 +599,34 @@ class DebtRatchetTest(unittest.TestCase):
             other = head()
             self._write(root, "std/a.cp", "fn a() = 4\n")
             commit(f"stdlib: a is 4\n\nDomain: stdlib\nLane: B\n"
-                   f"Lane-for: {given[:9]} D, signed off by coordinator\n"
-                   f"Lane-for: {other[:9]} D, signed off by B")
+                   f"Lane-for: {other[:9]} D, signed off by coordinator")
             got = dr.unlaned(root, base)
-            self.assertEqual(len(got), 2, got)
-            self.assertTrue(any("signed off by coordinator`" in g and "signed off by B" in g for g in got), got)
+            # The trailer gives no lane, whoever it says signed it.
+            self.assertTrue(any("gives no lane" in g for g in got), got)
             self.assertTrue(any(g.startswith(other[:9]) and "no `Lane:` trailer" in g for g in got), got)
+            self.assertTrue(any(g.startswith(given[:9]) for g in got), got)
+            rows = f'[[lane_for]]\nsha = "{given[:9]}"\nlane = "D"\nwhy = "w"\n'
+            with mock.patch.object(dr, "signoffs", lambda r: __import__("tomllib").loads(rows)):
+                got = dr.unlaned(root, base)
             self.assertFalse(any(g.startswith(given[:9]) for g in got), got)
+
+    def test_the_signoffs_are_read_as_main_holds_them_and_only_a_pr_edits_them(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git, commit, head = self._repo(root)
+            self._write(root, "plan/signoffs.toml", '[[lane_for]]\nsha = "a"\nlane = "J"\nwhy = "w"\n')
+            git("add", "-A"); commit("plan: signoffs")
+            git("update-ref", "refs/remotes/origin/main", "HEAD")
+            base = head()
+            self._write(root, "plan/signoffs.toml", '[[lane_for]]\nsha = "b"\nlane = "K"\nwhy = "mine"\n')
+            commit("plan: sign my own\n\nLane: K")
+            self.assertEqual(dr.signoffs(root)["lane_for"][0]["lane"], "J")
+            with mock.patch.dict(os.environ, {"CI": ""}):
+                got = dr.signoff_edits(root, base)
+            self.assertEqual(len(got), 1, got)
+            self.assertIn("only a PR its code owner approves", got[0])
+            git("update-ref", "refs/remotes/origin/main", "HEAD")
+            self.assertEqual(dr.signoff_edits(root, base), [])
 
     def test_a_run_measured_raise_names_a_full_run_and_its_commit(self) -> None:
         with tempfile.TemporaryDirectory() as d:
@@ -1376,35 +1397,65 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
                              ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
 
-    def test_only_the_coordinator_signs_a_raise_and_it_gives_its_reason(self) -> None:
+    def test_a_malformed_signoffs_file_is_caught_before_main_holds_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.assertEqual(dr.signoffs_malformed(root), [])
+            self._write(root, "plan/signoffs.toml", "[[lane_for]\n")
+            self.assertEqual(len(dr.signoffs_malformed(root)), 1)
+            self._write(root, "plan/signoffs.toml", '[[lane_for]]\nsha = "a"\nlane = "J"\nwhy = " "\n'
+                                                    '[[raise]]\ncounter = "x"\nold = "5"\nnew = 6\nwhy = "w"\n'
+                                                    '[[other]]\nx = 1\n')
+            got = dr.signoffs_malformed(root)
+            self.assertEqual(len(got), 3, got)
+            self.assertTrue(any("row 1 lacks or mistypes why" in g for g in got), got)
+            self.assertTrue(any("lacks or mistypes old" in g for g in got), got)
+            self._write(root, "plan/signoffs.toml", '[[frozen]]\npatch_id = "p"\nsha = "s"\nwhy = "w"\n')
+            self.assertEqual(dr.signoffs_malformed(root), [])
+
+    def test_only_a_signoffs_row_raises_a_counter_and_it_gives_its_reason(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
                                             check=True, capture_output=True, env=dr._git_env())
             git("init", "-q", "-b", "main")
             self._write(root, "scripts/debt-ratchet.json", json.dumps({"external_crates": 5}))
-            self._write(root, "decisions.md", "# Decisions\n")
             git("add", "-A")
             git("commit", "-qm", "base")
             git("checkout", "-q", "-b", "lane")
-            bump = lambda raise_: mock.patch.dict(os.environ, {"CPL_RAISE": raise_} if raise_ else {})
+            rows = lambda text: mock.patch.object(dr, "signoffs", lambda r: __import__("tomllib").loads(text))
             said = lambda: dr.unexplained_bumps(root, {"external_crates": 6}, ref="main")
-            with bump(""):
-                self.assertIn("signed off by coordinator", said()[0])
-            with bump("external_crates 5 -> 6, signed off by E"):
-                self.assertIn("only the coordinator signs a raise", said()[0])
-            with bump("external_crates 5 -> 6, signed off by coordinator"):
+            with rows(""):
+                self.assertIn("[[raise]] row", said()[0])
+            with rows('[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 7\nwhy = "w"\n'):
+                self.assertIn("only 5 -> 7, not 5 -> 6", said()[0])
+            with rows('[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = ""\n'):
                 self.assertIn("gives no reason", said()[0])
-            self._write(root, "decisions.md", "# Decisions\nexternal_crates goes 5 -> 6: why.\n")
-            with bump("external_crates 5 -> 7, signed off by coordinator"):
-                self.assertIn("does not match the baseline's 5 -> 6", said()[0])
-            with bump("external_crates 5 -> 6, signed off by coordinator"):
+            with rows('[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\n'):
+                self.assertIn("names no commit", said()[0])
+            git("commit", "-q", "--allow-empty", "-m", "x: raise")
+            sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+            diff = subprocess.run(["git", "show", "HEAD"], cwd=root, capture_output=True).stdout
+            pid = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()
+            with rows('[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "0000000"\n'):
+                self.assertIn("which is not in", said()[0])
+                # The commit being made isn't in the range yet: pre-commit only warns.
+                with mock.patch.dict(os.environ, {"CPL_PRE_COMMIT": "1"}):
+                    self.assertEqual(said(), [])
+            if pid:
+                with rows(f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\npatch_id = "{pid[0].decode()}"\n'):
+                    self.assertEqual(said(), [])
+            with rows(f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "{sha[:9]}"\n'):
                 self.assertEqual(said(), [])
-            self._write(root, "decisions.md", "# Decisions\n")
-            git("commit", "-q", "--allow-empty", "-m", "x: y\n\nexternal_crates grows: why.\n\nRaise: external_crates 5 -> 6, signed off by coordinator")
-            self.assertEqual(said(), [])
-            self.assertEqual(dr.raises(root, "main"), [(git("rev-parse", "--short=9", "HEAD").stdout.decode().strip(),
-                                                        "external_crates", "5 -> 6, signed off by coordinator")])
+            # A second row for the same numbers signs this change though the first names another.
+            with rows(f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "0000000"\n'
+                      f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "{sha[:9]}"\n'):
+                self.assertEqual(said(), [])
+                # A raise that signs itself in a commit message is refused, even with the row.
+                with mock.patch.dict(os.environ, {"CPL_RAISE": "external_crates 5 -> 6, signed off by coordinator"}):
+                    self.assertIn("signs itself", said()[0])
+                git("commit", "-q", "--allow-empty", "-m", "x: y\n\nRaise: external_crates 5 -> 6, signed off by coordinator")
+                self.assertIn("signs itself", said()[0])
 
     def test_a_hard_zero_counter_is_never_raised_even_signed(self) -> None:
         with mock.patch.dict(os.environ, {"CPL_RAISE": "frozen_std_drift 0 -> 1, signed off by coordinator"}):
