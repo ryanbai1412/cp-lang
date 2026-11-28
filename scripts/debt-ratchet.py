@@ -1479,7 +1479,9 @@ def next_whole_program_inputs(root: Path) -> list[str]:
     of the 15:00 review): `Decls`, `Typed`, `Loaded`, `Whole` or `Generic` by reference
     anywhere, or owned as a fn parameter, closure parameter or struct field; a field or
     parameter whose type is a struct holding one (transitively); and each method taking `self`
-    of such a struct, which reaches the whole program through `self`. The five types' own
+    of such a struct, which reaches the whole program through `self`, except a builder that
+    returns its own struct and takes none: a snapshot setter of a plain setting (coordinator
+    ruling on audit #14's S16). The five types' own
     methods are the value itself, not a reader of it, and a fn returning one produces it. The
     incremental core (handbook/design/next/incremental.md) calls every layer per item over
     small views, so this reaches 0: a context that holds views instead stops counting. A
@@ -1545,7 +1547,10 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
     out = {(rel, k) for rel, lines in files.items() for k, line in enumerate(lines)
            if (rel, k) not in own and holds(line)}
     out |= {(rel, i) for name, rel, i, j in structs if name in holders and tuple_holds(files[rel][i])}
+    held = sorted(set(types) | set(holders))
     for name, rel, i, j in impls:
+        # A builder returning its own struct with one more plain setting reads nothing.
+        handed = re.compile(r"\b(?:%s)\b" % "|".join(t for t in held if t != name))
         # An impl is of the struct its own crate defines under that name.
         if rel.split("/")[1] not in crates.get(name, ()):
             continue
@@ -1555,10 +1560,15 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
                 continue
             sig = ""
             for line in lines[k:j + 1]:
-                sig += code(line)
+                sig += "" if line.lstrip().startswith("//") else line.split("//")[0]
                 if "{" in line or line.rstrip().endswith(";"):
                     break
-            if re.search(r"\bself\b", sig):
+            head = sig.split("{")[0]
+            if not re.search(r"\bself\b", head.split("->")[0]):
+                continue
+            ret = head.split("->", 1)[1] if "->" in head else ""
+            builds = re.fullmatch(r"\s*(?:Self|%s)(?:<[^>]*>)?\s*" % name, ret)
+            if any(handed.search(t) for t in _params(head)) or not builds:
                 out.add((rel, k))
     return [f"{rel}:{k + 1}" for rel, k in sorted(out) if rel.startswith(within)]
 
@@ -2261,14 +2271,19 @@ def _facade_queries(files: list[Path]) -> set[str]:
 
 
 def next_facade_split(root: Path) -> list[str]:
-    """Contract 9 has one API (audit S9): each `Session`/`Snapshot` query of cpl-facade or of
-    cpl-next's facade with no identical signature on the other, and each second `pub struct
-    Session` or `Snapshot` outside cpl-facade. Hard zero at the switch, when cpl-next's
-    facade is cpl-facade's implementation."""
+    """Contract 9 has one API (audit S9): each `Session`/`Snapshot` query of cpl-facade with no
+    identical signature on cpl-next's facade, each cpl-next query of the same name with
+    another signature, and each second `pub struct Session` or `Snapshot` outside cpl-facade.
+    A cpl-next query with no old-side half is the one facade's own, not a split (coordinator
+    ruling on audit #14's S16). Hard zero at the switch, when cpl-next's facade is
+    cpl-facade's implementation."""
     old = _facade_queries(sorted((root / "crates/cpl-facade/src").glob("*.rs")))
     new_file = root / "crates/cpl-next/src/facade.rs"
     new = _facade_queries([new_file] if new_file.is_file() else [])
-    out = [f"cpl-facade {q}" for q in sorted(old - new)] + [f"cpl-next {q}" for q in sorted(new - old)]
+    named = lambda q: re.match(r"(\w+::)pub fn (\w+)", q).group(1, 2)
+    old_names = {named(q) for q in old}
+    out = [f"cpl-facade {q}" for q in sorted(old - new)] + \
+        [f"cpl-next {q}" for q in sorted(new - old) if named(q) in old_names]
     for rs in sorted((root / "crates").glob("*/src/**/*.rs")):
         rel = rs.relative_to(root).as_posix()
         if rel.startswith("crates/cpl-facade/"):

@@ -1990,3 +1990,27 @@ fn a_lambda_names_the_copy_that_makes_it() {
         "{makers:?}"
     );
 }
+
+/// The checks a program is built with come from its snapshot (contract 0): the same file is
+/// a release build in one snapshot and a checked one in the other.
+#[test]
+fn the_snapshot_says_which_checks_a_build_keeps() {
+    use crate::facade::{Session, Snapshot};
+    let src = "let z = 0\nprint(7 / z)\nprint(1)\n";
+    let file = Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src);
+    let ran = |s: &Snapshot| {
+        Session::open(s.clone())
+            .program("program.cp")
+            .map(|p| p.run(""))
+    };
+    let release = ran(&file.with_checks(Checks::NONE)).expect("compiles");
+    assert_eq!(
+        (release.output.as_str(), release.trap.is_none()),
+        ("0\n1\n", true)
+    );
+    let checked = ran(&file).expect("compiles");
+    assert_eq!(
+        (checked.output.as_str(), checked.trap.is_some()),
+        ("", true)
+    );
+}

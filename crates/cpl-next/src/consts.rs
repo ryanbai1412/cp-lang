@@ -191,6 +191,8 @@ impl<'a> Evaluator<'a> {
             self.loaded,
             self,
             &[],
+            // A constant is worked out in the compiler, so each check costs nothing there and
+            // one that fails is a compile error, whatever checks the build keeps at run time.
             Build {
                 judge: None,
                 checks: Checks::CHECKED,

@@ -2467,9 +2467,11 @@ class DebtRatchetTest(unittest.TestCase):
                 "use cpl_next_decls::decls::Decls;\n"
                 "struct Pair(Generic);\n"
                 "struct Sig {\n    ret: ast::Front,\n}\n"
+                "impl Front {\n    fn with_checks(&self, c: Checks) -> Front {}\n    fn cx(&self) -> Cx<'_> {}\n"
+                "    fn take(&mut self, d: Decls) {}\n}\n"
             )
             self.assertEqual(dr.next_whole_program_inputs(root),
-                             [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (2, 6, 9, 10, 11, 16, 18, 27)])
+                             [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (2, 6, 9, 10, 11, 16, 18, 27, 33, 34)])
 
     def test_debt_already_on_main_fails_a_push_that_does_not_lower_it(self) -> None:
         label = lambda n: f"{dr.COUNTERS[n][0]}: increased"
@@ -2583,13 +2585,15 @@ class DebtRatchetTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write(root, "crates/cpl-facade/src/session.rs",
-                        "impl Session {\n    pub fn a(&self) -> u32 {\n    pub fn b(&self) {\n}\n")
+                        "impl Session {\n    pub fn a(&self) -> u32 {\n    pub fn b(&self) {\n"
+                        "    pub fn d(&self) -> u8 {\n}\n")
+            # `c` is cpl-next's alone, with no old-side half: the one facade's own, not a split.
             self._write(root, "crates/cpl-next/src/facade.rs",
                         "impl Session {\n    pub fn a(&self) -> u32 {\n    pub fn c(\n        &self,\n"
-                        "    ) -> u8 {\n}\npub struct Snapshot(u8);\n")
+                        "    ) -> u8 {\n    pub fn d(&self) -> u16 {\n}\npub struct Snapshot(u8);\n")
             self.assertEqual(dr.next_facade_split(root), [
-                "cpl-facade Session::pub fn b(&self)", "cpl-next Session::pub fn c( &self, ) -> u8",
-                "crates/cpl-next/src/facade.rs:7"])
+                "cpl-facade Session::pub fn b(&self)", "cpl-facade Session::pub fn d(&self) -> u8",
+                "cpl-next Session::pub fn d(&self) -> u16", "crates/cpl-next/src/facade.rs:8"])
 
     def test_lent_outside_own_and_asks_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

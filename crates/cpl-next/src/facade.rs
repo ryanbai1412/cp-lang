@@ -33,6 +33,7 @@ struct Held {
     events: bool,
     bodies: bool,
     judge: Option<Judge>,
+    checks: Checks,
 }
 
 impl Snapshot {
@@ -45,6 +46,7 @@ impl Snapshot {
             events: false,
             bodies: false,
             judge: None,
+            checks: Checks::CHECKED,
         }))
     }
 
@@ -106,6 +108,12 @@ impl Snapshot {
             memory_mb,
         };
         self.changed(|h| h.judge = Some(judge))
+    }
+
+    /// This snapshot built keeping `checks`: a checked build keeps all, release what
+    /// `with checks(..: on)` and the judge's `release_checks:` keep (contract 0).
+    pub fn with_checks(&self, checks: Checks) -> Snapshot {
+        self.changed(|h| h.checks = checks)
     }
 
     fn changed(&self, change: impl FnOnce(&mut Held)) -> Snapshot {
@@ -242,7 +250,7 @@ impl Session {
             events: h.events,
             bodies: h.bodies,
             judge: h.judge.clone(),
-            checks: Checks::CHECKED,
+            checks: h.checks,
         };
         match (self.inputs.clone()).and_then(|()| self.db.get::<Linked>(&job)) {
             Ok(Built(built)) => built,
@@ -296,7 +304,7 @@ impl Session {
         let (units, diags) = f.units.get_or_init(|| {
             let h = &self.snapshot.0;
             let roots = self.snapshot.roots(id);
-            units(&h.std, text, &roots, h.judge.as_ref(), Checks::CHECKED)
+            units(&h.std, text, &roots, h.judge.as_ref(), h.checks)
         });
         (units, diags)
     }
@@ -307,7 +315,7 @@ impl Session {
         Some(f.front.get_or_init(|| {
             let h = &self.snapshot.0;
             let roots = self.snapshot.roots(id);
-            crate::front(&h.std, text, &roots, h.judge.as_ref(), Checks::CHECKED)
+            crate::front(&h.std, text, &roots, h.judge.as_ref(), h.checks)
         }))
     }
 
@@ -412,7 +420,7 @@ impl Session {
     /// a program reaches (suite 4).
     pub fn std_unchecked(&self) -> Vec<(String, Vec<Diag>)> {
         let h = &self.snapshot.0;
-        std_unchecked(&h.std, h.judge.as_ref())
+        std_unchecked(&h.std, h.judge.as_ref(), h.checks)
     }
 
     pub fn verdict(&self, file: &str) -> Verdict {
