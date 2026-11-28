@@ -539,7 +539,13 @@ impl Cx<'_> {
                 };
                 let lo = end(self, lo, false);
                 let hi = end(self, hi, !*inclusive);
-                let i = self.id(super::Table::Range, self.ranges.len());
+                // A signature's range ending at a top-level `let` has its slot by where it is
+                // written; the top level fills it once, after the `let` (R02.10.3).
+                let at = self.b.item.at(t.span);
+                let i = match self.d.top_ranges.iter().position(|r| r.at == at) {
+                    Some(i) => i,
+                    None => self.id(super::Table::Range, self.ranges.len()),
+                };
                 super::put(&mut self.ranges, i, RangeInfo { lo, hi });
                 self.b.doms.insert(name.clone(), Ty::RangeOf(i));
                 t.kind = TypeKind::Named {

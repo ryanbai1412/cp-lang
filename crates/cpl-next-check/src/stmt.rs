@@ -1489,6 +1489,12 @@ impl<'a> Cx<'a> {
                 self.domains[i].chars = chars;
                 self.domains[i].counted = *counted;
             }
+            // `yield from e` is `for x in e: yield x` (R06.3.6).
+            StmtKind::Yield { value, from: true } => {
+                for s in &super::yield_each(value).stmts {
+                    self.stmt(s, out);
+                }
+            }
             StmtKind::Yield { value, from: false } => match self.b.region.clone() {
                 Some((false, t)) => {
                     let v = self.expr(value, Some(&t));

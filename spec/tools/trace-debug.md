@@ -15,7 +15,7 @@ Status: draft for 0.3.0. Sources: `plan/50-debugging.md`, decisions 41,
   `--last n` a window, and `--test spec` some multitest cases (Rtrace.2).
 - **Values in a trace** are shown as `write` writes them, through std's
   `@role(trace)` fns (§11.6). A `Bool` or a `?T`, which are not `Show`
-  (R10.3), still show: `true` or `false`, and `none` or the value held;
+  (see R10.3), still show: `true` or `false`, and `none` or the value held;
   a `HashMap` or `HashSet`, not `Show` since its order is undefined
   (R10.3.8), shows as a `Map` or `Set` writes, in its table's order
   (Rtrace.7).

@@ -50,6 +50,8 @@ pub(super) struct TyCx<'a> {
     pub(super) ret_slots: Option<usize>,
     /// Next implicit set parameter; `None` where a fn type may not appear bare.
     pub(super) next_set: Option<usize>,
+    /// Where a signature keeps its ranges that end at top-level `let`s; `None` where none may.
+    pub(super) top_ranges: Option<&'a std::cell::RefCell<Vec<TopRange>>>,
 }
 
 /// The set for one function type written here: a parameter of the signature, a result slot, or a
@@ -100,6 +102,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         scoped: if decl.program { cx.scoped } else { &unscoped },
         ret_slots: cx.ret_slots,
         next_set: cx.next_set,
+        top_ranges: cx.top_ranges,
     };
     let t = conv(&mut inner, &decl.ty, errors);
     (cx.ret_slots, cx.next_set) = (inner.ret_slots, inner.next_set);
@@ -111,6 +114,43 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
 /// own is refused until the slice checks it.
 pub(super) fn read_elsewhere(m: Option<Mark>) -> bool {
     matches!(m, Some(Mark::Lint | Mark::Stress | Mark::OnUnimplemented))
+}
+
+/// Whether `x` is `@stress`, by grammar's decorator table.
+pub(super) fn is_stress(x: &ast::Decorator) -> bool {
+    use cpl_next_syntax::grammar::Decorator;
+    !x.directive && matches!(Decorator::of(&x.name.text), Some(Decorator::Stress))
+}
+
+/// What is wrong with a program's `@stress`, if anything: it names one bare kind above a type
+/// alias, and `cpl run` reads nothing else of it (R12.13.3).
+pub(super) fn stress_misuse(x: &ast::Decorator, alias: bool) -> Option<Msg> {
+    use cpl_next_syntax::grammar::StressKind;
+    let kind = match x.args.as_slice() {
+        [a] => match (&a.name, &a.value.kind) {
+            (None, ast::ExprKind::Name(w)) => StressKind::of(w),
+            _ => None,
+        },
+        _ => None,
+    };
+    let (text, help) = match (alias, kind) {
+        (true, Some(_)) => return None,
+        (false, _) => (
+            "`@stress` decorates a type alias".to_string(),
+            "put it on a `type` alias, as in `@stress(tree) type T = [0..n - 1](u: V, v: V)`",
+        ),
+        (true, None) => {
+            let kinds = StressKind::ROWS.map(|r| format!("`{}`", r.1)).join(", ");
+            (
+                format!("`@stress` takes one of {kinds}"),
+                "write one bare kind, as in `@stress(tree)`",
+            )
+        }
+    };
+    Some(Msg {
+        help: Some(help.to_string()),
+        ..Msg::verdict(cpl_diag::codes::BAD_STRESS, text)
+    })
 }
 
 /// `Seq<T>` written where a trait is wanted.
@@ -144,30 +184,10 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> 
 /// A range type with an end naming a value the program's top level binds, written out, and that
 /// value: a struct field's layout is fixed before input is read, so no field is bounded by one
 /// (R03.1.3).
-pub(super) fn input_bound(
-    t: &ast::Type,
-    values: &HashSet<Sym>,
-    syms: &Syms,
-) -> Option<(String, String)> {
-    struct Named<'a>(&'a HashSet<Sym>, &'a Syms, Option<String>);
-    impl cpl_syntax::visit::Visitor for Named<'_> {
-        fn expr(&mut self, e: &ast::Expr) {
-            match &e.kind {
-                ast::ExprKind::Name(n)
-                    if self.2.is_none() && self.1.get(n).is_some_and(|s| self.0.contains(&s)) =>
-                {
-                    self.2 = Some(n.clone())
-                }
-                _ => {}
-            }
-        }
-    }
+pub(super) fn input_bound(t: &ast::Type, bound: &dyn Fn(&str) -> bool) -> Option<(String, String)> {
     match &t.kind {
         TypeKind::Range { lo, hi, inclusive } => {
-            let mut v = Named(values, syms, None);
-            for e in [lo, hi].into_iter().flatten() {
-                cpl_syntax::visit::walk_expr(e, &mut v);
-            }
+            let named = end_names(t).into_iter().find(|n| bound(n));
             let end = |e: &Option<Box<ast::Expr>>| match e.as_deref().map(|e| &e.kind) {
                 Some(ast::ExprKind::Int(k)) => k.to_string(),
                 Some(ast::ExprKind::Name(n)) => n.clone(),
@@ -175,12 +195,31 @@ pub(super) fn input_bound(
                 None => String::new(),
             };
             let dots = if *inclusive { "..=" } else { ".." };
-            v.2.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
+            named.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
         }
-        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, values, syms)),
-        TypeKind::Optional(t) => input_bound(t, values, syms),
+        TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, bound)),
+        TypeKind::Optional(t) => input_bound(t, bound),
         _ => None,
     }
+}
+
+/// The names a range type's ends read, in the order written.
+fn end_names(t: &ast::Type) -> Vec<String> {
+    struct Names(Vec<String>);
+    impl cpl_syntax::visit::Visitor for Names {
+        fn expr(&mut self, e: &ast::Expr) {
+            if let ast::ExprKind::Name(n) = &e.kind {
+                self.0.push(n.clone());
+            }
+        }
+    }
+    let mut v = Names(Vec::new());
+    if let TypeKind::Range { lo, hi, .. } = &t.kind {
+        for e in [lo, hi].into_iter().flatten() {
+            cpl_syntax::visit::walk_expr(e, &mut v);
+        }
+    }
+    v.0
 }
 
 pub(crate) fn unnamed(t: &ast::Type, names: &dyn Fn(&str) -> Option<Named>, out: &mut Vec<String>) {
@@ -359,7 +398,52 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 Ty::RangeTo(Box::new(d), m, lo, k)
             }
             None => {
-                errors.push(Unbuilt::RangeTypeOutsideBody.into());
+                let names = end_names(t);
+                let var = names.iter().find(|n| cx.env.top_var(n)).cloned();
+                let reads: Vec<String> = names
+                    .iter()
+                    .filter(|n| cx.env.top_value(n))
+                    .cloned()
+                    .collect();
+                let top = (cx.item.as_ref().zip(cx.top_ranges)).filter(|_| {
+                    var.is_none()
+                        && !reads.is_empty()
+                        && names
+                            .iter()
+                            .all(|n| cx.env.top_value(n) || (cx.names)(n).is_some())
+                });
+                if let Some((item, cell)) = top {
+                    let at = item.at(t.span);
+                    let mut rows = cell.borrow_mut();
+                    let i = match rows.iter().position(|r| r.at == at) {
+                        Some(i) => i,
+                        None => {
+                            rows.push(TopRange {
+                                at,
+                                ty: t.clone(),
+                                reads,
+                            });
+                            rows.len() - 1
+                        }
+                    };
+                    return Ty::RangeOf(i);
+                }
+                errors.push(match var {
+                    Some(n) => {
+                        let m = Msg {
+                            help: Some(format!("freeze it first: `let {n}` in place of `var {n}`")),
+                            ..Msg::verdict(
+                                cpl_diag::codes::RANGE_END_VAR,
+                                format!("a range type can't end at the top-level `var` `{n}`: it may change while the type is in use"),
+                            )
+                        };
+                        match &cx.item {
+                            Some(i) => Msg::at(i.at(t.span), m),
+                            None => m,
+                        }
+                    }
+                    None => Unbuilt::RangeTypeOutsideBody.into(),
+                });
                 Ty::Error
             }
         },
@@ -497,6 +581,7 @@ pub fn body_type(
         scoped,
         ret_slots: None,
         next_set: None,
+        top_ranges: None,
     };
     let t = conv(&mut cx, t, &mut errors);
     (t, errors)
@@ -507,6 +592,7 @@ pub(super) struct Tables {
     aliases: Layer<AliasDecl>,
     consts: Layer<LibConst>,
     pub(super) values: Arc<HashSet<Sym>>,
+    pub(super) vars: Arc<HashSet<Sym>>,
     pub(super) syms: Syms,
     ops: Arc<Vec<(Sym, FnId)>>,
     getters: Arc<HashMap<Sym, FnId>>,
@@ -527,6 +613,7 @@ impl Decls {
             aliases: self.aliases.clone(),
             consts: self.consts.clone(),
             values: self.top_values.clone(),
+            vars: self.top_vars.clone(),
             syms: self.syms.clone(),
             ops: self.operator_fns(),
             getters: self.domain_getters(),
@@ -559,6 +646,9 @@ impl TypeTables for Tables {
         self.syms
             .get(name)
             .is_some_and(|s| self.values.contains(&s))
+    }
+    fn top_var(&self, name: &str) -> bool {
+        self.syms.get(name).is_some_and(|s| self.vars.contains(&s))
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         let op = self.syms.get(op)?;

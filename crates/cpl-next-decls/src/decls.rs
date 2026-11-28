@@ -265,6 +265,16 @@ impl Decls {
         }
     }
 }
+/// A signature's range type with an end that is a top-level `let` (R02.10.3): one range for the
+/// whole run, whose ends the top level evaluates once, after the `let`s they read have run.
+#[derive(Clone)]
+pub struct TopRange {
+    /// Where the type is written: the key its `Ty::RangeOf` index is found by.
+    pub at: SourceId,
+    pub ty: ast::Type,
+    /// The top-level `let`s its ends read.
+    pub reads: Vec<String>,
+}
 #[derive(Clone)]
 pub struct ImplDecl {
     pub trait_: TraitRef,
@@ -549,6 +559,8 @@ pub struct Decls {
     /// Each domain decls makes, keyed by the item that declares it and which of that item's
     /// domains it is: its place here is its `Ty::Dom`, so a domain's id never reads the others.
     pub dom_ids: HashMap<(ItemId, u32), usize>,
+    /// The signatures' ranges ending at top-level `let`s: `Ty::RangeOf(i)` is the `i`-th.
+    pub top_ranges: Arc<Vec<TopRange>>,
     /// How many domains each item has made.
     dom_made: HashMap<ItemId, u32>,
     /// The fns whose result's slots are `domain C`s, till those slots are made `Range<C>`s.
@@ -557,6 +569,8 @@ pub struct Decls {
     pub ret_holes: Vec<FnId>,
     /// The names the program's top level binds with `let`.
     pub top_values: Arc<HashSet<Sym>>,
+    /// The names the program's top level binds with `var`, which no type may end at (R02.10.3).
+    pub top_vars: Arc<HashSet<Sym>>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).
     pub operators: Vec<(Sym, TraitId)>,
@@ -1037,7 +1051,7 @@ fn domain_params(d: &mut Decls, from: usize) {
         /// `[V]`: a parameter that indexes a table or an array written in the body is a domain.
         fn index(&mut self, ts: &[ast::Type]) {
             for t in ts {
-                let ast::TypeKind::Named { name, args } = &t.kind else {
+                let TypeKind::Named { name, args } = &t.kind else {
                     continue;
                 };
                 let i = self.generics.iter().position(|g| *g == name.text);
@@ -1049,10 +1063,10 @@ fn domain_params(d: &mut Decls, from: usize) {
     }
     impl cpl_syntax::visit::Visitor for DomUse<'_> {
         fn stmt(&mut self, s: &ast::Stmt) {
-            if let ast::StmtKind::Let {
+            if let StmtKind::Let {
                 ty:
                     Some(ast::Type {
-                        kind: ast::TypeKind::Array { index, .. },
+                        kind: TypeKind::Array { index, .. },
                         ..
                     }),
                 ..
@@ -1540,6 +1554,7 @@ fn add_fn(
     let hidden = hidden_params(d, &named, &f.bounds, &mut generics);
     let doms = d.doms_in(m);
     let tables = d.tables();
+    let top_ranges = std::cell::RefCell::new((*d.top_ranges).clone());
     let mut cx = TyCx {
         names: &named,
         env: &tables,
@@ -1552,6 +1567,7 @@ fn add_fn(
         scoped: &tyconv::unscoped,
         ret_slots: None,
         next_set: Some(outer_sets),
+        top_ranges: Some(&top_ranges),
     };
     let mut errors = Vec::new();
     let mut self_mode = SelfMode::None;
@@ -1710,6 +1726,10 @@ fn add_fn(
             continue;
         }
         let elsewhere = d.is_library(m) && read_elsewhere(x.mark);
+        if !elsewhere && is_stress(x) {
+            errors.extend(stress_misuse(x, false).map(|e| Msg::at(item.at(x.span), e)));
+            continue;
+        }
         let built = matches!(
             x.mark,
             Some(
@@ -1901,6 +1921,7 @@ fn add_fn(
     if !errors.is_empty() {
         d.item_errors.fns.insert(id, errors);
     }
+    d.top_ranges = Arc::new(top_ranges.into_inner());
     id
 }
 

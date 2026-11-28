@@ -37,5 +37,16 @@ class WrittenSkippedTableTest(unittest.TestCase):
         self.assertEqual(status.written_skipped_table(f"{status.SKIPPED_HEAD}\n\nNone.\n"), ["None."])
 
 
+class RatchetRisesTest(unittest.TestCase):
+    def test_lists_each_number_that_rose(self) -> None:
+        old = '{"next_wrong": 998, "std_shadowed": 18, "gone": 1, "ids": ["a"]}'
+        new = '{"next_wrong": 1518, "std_shadowed": 17, "added": 4, "ids": ["a", "b"]}'
+        self.assertEqual(status.ratchet_rises(old, new), [("next_wrong", 998, 1518)])
+
+    def test_unreadable_text_lists_nothing(self) -> None:
+        self.assertEqual(status.ratchet_rises("", '{"a": 1}'), [])
+        self.assertEqual(status.ratchet_rises("{", '{"a": 1}'), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -106,16 +106,17 @@ fn layer(
         d.member_types = Arc::new(kept.map(|(m, s)| (*m, *s)).collect());
     }
     if base.is_some() {
-        let values = (mods[n - 1].items.iter().flat_map(|it| &it.stmts))
+        let bound: Vec<(Sym, bool)> = (mods[n - 1].items.iter().flat_map(|it| &it.stmts))
             .filter_map(|s| match &s.kind {
-                StmtKind::Let { pat, .. } => match &pat.kind {
-                    ast::PatternKind::Name(x) => Some(d.syms.intern(x)),
+                StmtKind::Let { mutable, pat, .. } => match &pat.kind {
+                    ast::PatternKind::Name(x) => Some((d.syms.intern(x), *mutable)),
                     _ => None,
                 },
                 _ => None,
             })
             .collect();
-        d.top_values = Arc::new(values);
+        d.top_values = Arc::new(bound.iter().map(|b| b.0).collect());
+        d.top_vars = Arc::new(bound.iter().filter(|b| b.1).map(|b| b.0).collect());
     }
     let (mut own, mut public) = match base {
         Some(b) => (b.own.clone(), b.public.clone()),
@@ -531,12 +532,18 @@ fn layer(
                             (s.decorators.iter()).filter(|x| !(library && read_elsewhere(x.mark)))
                         {
                             let at = item.at(x.span);
-                            let e = Msg::at(
-                                at,
-                                Unbuilt::Decorator {
-                                    name: x.name.text.clone(),
+                            let e = match is_stress(x) {
+                                true => match stress_misuse(x, true) {
+                                    Some(m) => Msg::at(at, m),
+                                    None => continue,
                                 },
-                            );
+                                false => Msg::at(
+                                    at,
+                                    Unbuilt::Decorator {
+                                        name: x.name.text.clone(),
+                                    },
+                                ),
+                            };
                             match d.is_library(mid) {
                                 true => d.module_errors[mi].push(e),
                                 false => d.errors.push(e),
@@ -732,6 +739,7 @@ fn layer(
                 scoped: &tyconv::unscoped,
                 ret_slots: None,
                 next_set: Some(0),
+                top_ranges: None,
             };
             let mut errors = Vec::new();
             for f in &sd.fields {
@@ -771,6 +779,7 @@ fn layer(
             scoped: &tyconv::unscoped,
             ret_slots: None,
             next_set: None,
+            top_ranges: None,
         };
         let mut errors = Vec::new();
         let tys = (sd.generic_defaults.iter())
@@ -838,6 +847,7 @@ fn layer(
                         scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: Some(0),
+                        top_ranges: None,
                     };
                     let mut errors = Vec::new();
                     let fields: Vec<_> =
@@ -845,7 +855,9 @@ fn layer(
                             .iter()
                             .map(|f| {
                                 let ty =
-                                    match input_bound(&f.ty, &tables.values, &tables.syms) {
+                                    match input_bound(&f.ty, &|n| {
+                                        crate::views::TypeTables::top_value(&tables, n)
+                                    }) {
                                         Some((written, name)) => {
                                             let text = FIELD_BOUND_FROM_INPUT_A_FIELD_S_BOUNDS
                                                 .say(&[&f.name.text, &written, &name]);
@@ -964,6 +976,7 @@ fn layer(
                         scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: None,
+                        top_ranges: None,
                     };
                     d.traits[id.0].defaults = (generic_defaults.iter())
                         .map(|t| t.as_ref().map(|t| conv(&mut cx, t, &mut errors)))
@@ -1072,6 +1085,7 @@ fn layer(
                         scoped: &tyconv::unscoped,
                         ret_slots: None,
                         next_set: Some(0),
+                        top_ranges: None,
                     };
                     let for_ = match range_param {
                         Some(i) => Ty::Param(i),

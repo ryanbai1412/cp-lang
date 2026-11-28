@@ -932,6 +932,7 @@ core-07/zip-pairs-by-walk.cp
 core-07/zip-takes-a-rev.cp
 core-08/a-callee-generic-is-not-the-receivers-of-the-same-name.cp
 core-08/a-fn-item-passes-for-its-own-type-of.cp
+core-08/a-range-type-impl-reads-each-list-item.cp
 core-08/a-std-struct-answers-its-static-trait-fns.cp
 core-08/a-tuple-meets-no-constant-trait.cp
 core-08/a-variant-named-like-a-trait-does-not-hide-it.cp
@@ -1094,6 +1095,7 @@ core-09/user-context-lexical-without-uses.cp
 core-09/uses-not-inferred-top-level.cp
 core-09/uses-through-a-bound.cp
 core-09/with-not-first.cp
+core-10/a-read-that-waits-hands-over-the-query-first.cp
 core-10/array-read-short-input.cp
 core-10/array-short-input.cp
 core-10/bad-token-trap.cp
@@ -3097,6 +3099,7 @@ diagnostics/definition-cycle.cp
 core-02/enum-field-runtime-domain.cp
 core-02/payload-free-variant-tags-read-and-print.cp
 core-02/token-set-is-an-enum.cp
+core-02/top-level-let-ends-a-signature-range.cp
 core-10/parse-enum-command.cp
 core-10/range-field-in-variant-reads-two-ends.cp
 core-10/read-array-of-tagged-commands.cp
@@ -3124,3 +3127,9 @@ core-04/all-is-every-position-in-walk-order.cp
 core-04/an-ordered-bound-steps-a-domain.cp
 core-06/a-program-marks-its-own-derive.cp
 core-06/a-second-operator-for-one-method-is-refused.cp
+core-05/an-attribute-off-the-trust-list-is-rejected.cp
+core-05/plain-mut-and-var-parameters.cp
+core-06/laws-sample-leaves-a-run-unchanged.cp
+std-derive/structural-hash-skips-f64.cp
+core-06/yield-from-delegates-to-a-generator.cp
+core-12/stress-on-an-alias-is-ignored-by-run.cp

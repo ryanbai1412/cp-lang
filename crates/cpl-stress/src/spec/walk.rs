@@ -2000,15 +2000,17 @@ pub(super) fn std_decl(module: &str, name: &str) -> Option<(&'static str, u32, &
 }
 
 /// A std module's text and its parse, parsed once per thread.
-/// Whether `name` is std's range type: what its module's `@role(range_literal)` fn returns.
+/// Whether `name` is the range type: what the checker types `a..b` as.
 fn is_range(name: &str) -> bool {
-    let Some((_, parsed)) = cpl_facade::Std.module_of(name).and_then(std_file) else {
-        return false;
-    };
-    (parsed.items.iter().flat_map(|(_, item)| &item.stmts)).any(|s| {
-        s.decorators.iter().any(|d| d.name.text == "range_literal")
-            && matches!(&s.kind, StmtKind::Fn(f) if matches!(&f.ret, Some(Type { kind: TypeKind::Named { name: n, .. }, .. }) if n.text == name))
-    })
+    static RANGE: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    let range = RANGE.get_or_init(|| {
+        let (src, literal) = ("let r = 0..1\n", Span::new(8, 12));
+        let mut db = cpl_facade::Session::default();
+        db.set_file("input.cp", src);
+        let ty = db.facts("input.cp")?.type_of(literal)?.to_string();
+        Some(ty.split('<').next()?.to_string())
+    });
+    range.as_deref() == Some(name)
 }
 
 pub(super) fn std_file(module: &str) -> Option<(&'static str, &'static cpl_syntax::ParsedFile)> {

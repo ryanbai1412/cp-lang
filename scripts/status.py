@@ -113,16 +113,37 @@ def render():
     return "\n".join(out) + "\n"
 
 
+def ratchet_rises(old: str, new: str) -> list[tuple[str, int, int]]:
+    """Each number `scripts/debt-ratchet.json` text `new` has above `old`, as (name, old, new)."""
+    try:
+        a, b = json.loads(old or "{}"), json.loads(new or "{}")
+    except ValueError:
+        return []
+    return [(n, a[n], v) for n, v in b.items()
+            if isinstance(v, int) and isinstance(a.get(n), int) and v > a[n]]
+
+
 def raises_since(since: str | None) -> list[str]:
-    """Each `Raise:` trailer in `since..HEAD`, by default since plan/STATUS.md was last written:
-    a baseline raised by the coordinator's sign-off, for the coordinator and the audits to check
-    against a ruling."""
+    """Each baseline raise in `since..HEAD` (by default the last day): every `Raise:` trailer,
+    and every number `scripts/debt-ratchet.json` rose by with no `Raise:` naming it, so a raise
+    the gate admitted another way (a rewritten counter, main's measure) still reaches the
+    coordinator and the audits. Not since plan/STATUS.md was last written: it is rewritten
+    often, so that window hid most raises."""
     git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=False).stdout
-    since = since or git("log", "-1", "--format=%H", "--", "plan/STATUS.md").strip()
-    log = git("log", "--no-merges", "--format=%h%x1f%(trailers:key=Raise,valueonly,separator=%x1e)",
-              f"{since}..HEAD" if since else "HEAD")
-    return [f"{sha} Raise: {r.strip()}" for sha, _, rs in (l.partition("\x1f") for l in log.splitlines())
-            for r in rs.split("\x1e") if r.strip()]
+    window = [f"{since}..HEAD"] if since else ["--since=24 hours ago", "HEAD"]
+    log = git("log", "--no-merges", "--format=%h%x1f%(trailers:key=Raise,valueonly,separator=%x1e)"
+              "%x1f%(trailers:key=Lane,valueonly,separator=%x20)", *window)
+    out = []
+    for sha, rs, lane in (l.split("\x1f") for l in log.splitlines() if l.count("\x1f") == 2):
+        named = [r.strip() for r in rs.split("\x1e") if r.strip()]
+        out += [f"{sha} Raise: {r}" for r in named]
+        if not subprocess.run(["git", "diff", "--quiet", f"{sha}^", sha, "--", "scripts/debt-ratchet.json"],
+                              cwd=ROOT).returncode:
+            continue
+        rises = ratchet_rises(git("show", f"{sha}^:scripts/debt-ratchet.json"), git("show", f"{sha}:scripts/debt-ratchet.json"))
+        out += [f"{sha} unsigned raise ({lane.strip() or 'no Lane'}): {n} {a} -> {b}" for n, a, b in rises
+                if not any(r.split()[0].rstrip(":") == n for r in named)]
+    return out
 
 
 def main(argv):
