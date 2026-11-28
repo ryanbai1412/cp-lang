@@ -355,7 +355,7 @@
   "next_weak_oracle_passes": 7,
   "syntax_std_names": 29,
   "next_check_name_keys": 0,
-  "next_impl_solvers": 10,
+  "next_impl_solvers": 1,
   "next_string_keyed_maps": 79,
   "next_backend_owns_reads": 0,
   "next_asks_refused": 7,
