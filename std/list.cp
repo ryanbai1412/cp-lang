@@ -73,6 +73,17 @@ pub struct List<T>:
         n -= 1
         Some(raw_get(buf, n))
 
+    /// The list, moved out, with `[]` left in its place (R05.2): `xs[i].take()` moves an element
+    /// out of a place that stays alive.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var xs = [1, 2]; let ys = xs.take(); xs.len == 0 and ys == [1, 2]`
+    pub fn take(mut self) -> List<T>:
+        var out = List<T>.new()
+        swap(mut out, mut self)
+        out
+
     pub fn truncate(mut self, k: Int):
         check_key(0 <= k)
         if k < n: n = k
@@ -149,6 +160,13 @@ pub struct Str:
 
     pub fn append(mut self, s: Str):
         for c in s.chars: chars.push(c)
+
+    /// The string, moved out, with `""` left in its place (R05.2).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var s = "ab"; let t = s.take(); s.len == 0 and t == "ab"`
+    pub fn take(mut self) -> Str = Str(chars.take())
 
 // A string literal: its characters and how many there are. The literal's storage is lent,
 // so the string gets its own.

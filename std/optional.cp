@@ -18,6 +18,16 @@ pub struct Optional<T>:
     /// example: `Some(3).map(x => x * 2) == Some(6)`
     pub fn map<U>(self, f: T -> U) -> ?U = if some: Some(f(val)) else: None
 
+    /// The value, moved out, with `None` left in its place (R05.2).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var a: ?Int = Some(3); let b = a.take(); a == None and b == Some(3)`
+    pub fn take(mut self) -> ?T:
+        var out: ?T = None
+        swap(mut out, mut self)
+        out
+
 /// `Some(v)`: `v`, present (R01.5.6); `Some(p)` matches it (R01.7.1).
 @pattern
 pub fn Some<T>(v: T) -> ?T = v

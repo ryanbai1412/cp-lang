@@ -92,8 +92,7 @@ pub struct Deque<T>:
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); let r = q.take(); q.len == 0 and r.to_list() == [1, 2]`
     pub fn take(mut self) -> Deque<T>:
-        let out = Deque(buf, head, n, mask, want)
-        buf = []
+        let out = Deque(buf.take(), head, n, mask, want)
         head = 0
         n = 0
         mask = -1

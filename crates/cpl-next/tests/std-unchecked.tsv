@@ -1,5 +1,5 @@
 std.algebra	55
-std.bag	25
+std.bag	11
 std.beats	0
 std.bitset	15
 std.clone	0
@@ -47,7 +47,7 @@ std.raw	0
 std.read	0
 std.search	6
 std.segtree	37
-std.seq	60
+std.seq	59
 std.show	0
 std.slope	0
 std.sparse	0

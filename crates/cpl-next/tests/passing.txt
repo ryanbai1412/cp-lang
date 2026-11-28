@@ -719,6 +719,7 @@ core-05/store-in-top-level-var.cp
 core-05/store-into-mut-param.cp
 core-05/struct-lent-field-unused-after.cp
 core-05/struct-with-lent-field.cp
+core-05/take-leaves-the-empty-value.cp
 core-05/top-level-not-captured.cp
 core-05/value-param-beside-a-written-mut-param.cp
 core-05/var-mutates.cp

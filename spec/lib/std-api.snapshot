@@ -1080,6 +1080,8 @@ std/lazy.cp: SeqFold.splice(mut self, pos: 0.., mut other: SeqFold<T, F, E>)
 std/lazy.cp: SeqFold.split_at(mut self, k: 0..) -> SeqFold<T, F, E>
 std/lazy.cp: SeqFold.total(self) -> T
 std/lazy.cp: flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>
+std/list.cp: List.take(mut self) -> List<T>
+std/list.cp: Str.take(mut self) -> Str
 std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
 std/marks.cp: Arena.at(mut self, id: Id<T>) -> lends mut T
 std/marks.cp: Arena.clear(mut self)
@@ -1320,6 +1322,7 @@ std/ntt.cp: subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>
 std/opt.cp: and_then<T, U>(self: ?T, f: T -> ?U) -> ?U
 std/opt.cp: is_none_or<T>(self: ?T, p: T -> Bool) -> Bool
 std/opt.cp: is_some_and<T>(self: ?T, p: T -> Bool) -> Bool
+std/optional.cp: Optional.take(mut self) -> ?T
 std/pair.cp: Pair.at(u: V, v: V) -> ?Pair<V>
 std/pair.cp: Pair.new(u: V, v: V) -> Pair<V>
 std/pair.cp: Pair.other(self, v: V) -> V
