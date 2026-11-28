@@ -186,6 +186,13 @@ struct Ctx {
     /// The fn being printed is a generator or a lender.
     fn_region: bool,
 }
+/// What a jump leaves: the innermost loop or region body, or the fn.
+#[derive(Clone, Copy)]
+enum Leave {
+    Break,
+    Continue,
+    Return,
+}
 #[derive(Clone, Copy)]
 enum Inner {
     None,
@@ -634,18 +641,18 @@ impl Emit<'_> {
             }
         }
     }
-    fn leave(&self, what: &str, ctx: Ctx) -> String {
+    fn leave(&self, what: Leave, ctx: Ctx) -> String {
         match (what, ctx.inner) {
-            ("break", Inner::Loop(_)) => "break;".to_string(),
-            ("break", Inner::Region(_)) => "return 1;".to_string(),
-            ("continue", Inner::Loop(l)) => format!("goto next{l};"),
-            ("continue", Inner::Region(false)) => "return 0;".to_string(),
-            ("continue", Inner::Region(true)) => "return 3;".to_string(),
+            (Leave::Break, Inner::Loop(_)) => "break;".to_string(),
+            (Leave::Break, Inner::Region(_)) => "return 1;".to_string(),
+            (Leave::Continue, Inner::Loop(l)) => format!("goto next{l};"),
+            (Leave::Continue, Inner::Region(false)) => "return 0;".to_string(),
+            (Leave::Continue, Inner::Region(true)) => "return 3;".to_string(),
             // A `return` that was carried out of a region body.
-            ("return", _) if ctx.in_lambda => "return 2;".to_string(),
-            ("return", _) if ctx.fn_region => "return cpl_code;".to_string(),
-            ("return", _) => "return cpl_ret;".to_string(),
-            _ => "/* nothing to leave */;".to_string(),
+            (Leave::Return, _) if ctx.in_lambda => "return 2;".to_string(),
+            (Leave::Return, _) if ctx.fn_region => "return cpl_code;".to_string(),
+            (Leave::Return, _) => "return cpl_ret;".to_string(),
+            (Leave::Break | Leave::Continue, Inner::None) => "/* nothing to leave */;".to_string(),
         }
     }
     fn block(&self, b: &[Stmt<CTy>], depth: usize, s: &mut String, label: &mut usize, ctx: Ctx) {
@@ -732,14 +739,14 @@ impl Emit<'_> {
                         put_line!(s, "{pad}}}");
                     }
                 }
-                Stmt::Break => put_line!(s, "{pad}{}", self.leave("break", ctx)),
-                Stmt::Continue => put_line!(s, "{pad}{}", self.leave("continue", ctx)),
+                Stmt::Break => put_line!(s, "{pad}{}", self.leave(Leave::Break, ctx)),
+                Stmt::Continue => put_line!(s, "{pad}{}", self.leave(Leave::Continue, ctx)),
                 Stmt::Return(e) => {
                     if ctx.in_lambda || ctx.fn_region {
                         if let (Some(e), false) = (e, ctx.fn_region) {
                             put_line!(s, "{pad}cpl_ret = {};", self.expr(e));
                         }
-                        put_line!(s, "{pad}{}", self.leave("return", ctx));
+                        put_line!(s, "{pad}{}", self.leave(Leave::Return, ctx));
                     } else {
                         match e {
                             Some(e) => put_line!(s, "{pad}return {};", self.expr(e)),
@@ -777,10 +784,10 @@ impl Emit<'_> {
                     a.push("code".to_string());
                     put_line!(s, "{pad}    int c = f{f}({});", a.join(", "));
                     put_line!(s, "{pad}    cpl_at = cpl_was;");
-                    put_line!(s, "{pad}    if (c == 2) {}", self.leave("return", ctx));
+                    put_line!(s, "{pad}    if (c == 2) {}", self.leave(Leave::Return, ctx));
                     if *lend && !matches!(ctx.inner, Inner::None) {
-                        put_line!(s, "{pad}    if (c == 1) {}", self.leave("break", ctx));
-                        put_line!(s, "{pad}    if (c == 3) {}", self.leave("continue", ctx));
+                        put_line!(s, "{pad}    if (c == 1) {}", self.leave(Leave::Break, ctx));
+                        put_line!(s, "{pad}    if (c == 3) {}", self.leave(Leave::Continue, ctx));
                     }
                     put_line!(s, "{pad}}}");
                 }
