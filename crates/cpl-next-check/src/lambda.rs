@@ -638,12 +638,15 @@ pub(super) struct LamParam {
     pub mutable: bool,
 }
 
+/// A lambda body the checker makes from its parameters' values and the result wanted.
+pub(super) type Builder<'b, 'a> = Box<dyn FnOnce(&mut Cx<'a>, Vec<TExpr>, &Ty) -> TExpr + 'b>;
+
 /// A lambda's body: a written arm (`x => e`), a nested fn's, or one the checker makes from
 /// the parameters' values and the result wanted.
 pub(super) enum LamBody<'b, 'a> {
     Arm(next::ArmBody),
     Fn(next::FnBody),
-    Built(Box<dyn FnOnce(&mut Cx<'a>, Vec<TExpr>, &Ty) -> TExpr + 'b>),
+    Built(Builder<'b, 'a>),
     /// A body built before its lambda, which reads none of its parameters.
     Ready(TExpr),
 }
