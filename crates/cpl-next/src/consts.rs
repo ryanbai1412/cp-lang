@@ -207,11 +207,13 @@ impl<'a> Evaluator<'a> {
     ) -> Ran {
         let t = check::check(
             self.d,
-            main,
-            values,
+            check::Program {
+                main,
+                values,
+                roots: &[],
+            },
             self.loaded,
             self,
-            &[],
             // A constant is worked out in the compiler, so each check costs nothing there and
             // one that fails is a compile error, whatever checks the build keeps at run time.
             Build {
