@@ -11,7 +11,7 @@ use std.math.{bit_ceil}
 /// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in \(O(n)\).
 /// `add`, `prefix` and `sum` are \(O(\log n)\); memory is n + 1 values.
 /// A range is one prefix minus another, so there is no "Fenwick on max": that is a `SegTree`.
-pub struct Fenwick<D, T: Add + Sub>:
+pub struct Fenwick<D: Ordered, T: Add + Sub>:
     t: List<T>
 
     /// A Fenwick tree over `D`: all zeros, or holding the values of `a` when given. The values
@@ -682,7 +682,7 @@ fn dual_and_range_fenwick_match_brute():
         let i = seed / 100000 % 23
         assert f.get(V(i)) == a[i]
 
-impl Show for Fenwick<D, T: Show>:
+impl Show for Fenwick<D: Ordered, T: Show>:
     /// The current values in key order, space-separated.
     ///
     /// example: `"{Fenwick([1, 2, 3])}" == "1 2 3"`

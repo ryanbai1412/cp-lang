@@ -3249,7 +3249,7 @@ pub struct Layers<V, B: Ordered>:
 
 /// The enter and exit events of a `Rooted` tree's `tour` over their own domain `P` of 2n
 /// members, for Mo's algorithm on trees.
-pub struct Events<V, P>:
+pub struct Events<V, P: Ordered>:
     pub at: [P]Visit<V, V>
     ent: [V]P
     ext: [V]P
@@ -3299,7 +3299,7 @@ pub struct Events<V, P>:
 /// The long-path decomposition of a `Rooted` tree: each vertex continues the path of its
 /// tallest child, so a DP indexed by depth below `v` lives in one shared buffer over `L`,
 /// inheriting `deep[v]`'s values is free, and merging the other children costs their heights.
-pub struct LongPaths<V, L>:
+pub struct LongPaths<V, L: Ordered>:
     /// The child with the tallest subtree; `None` at a leaf.
     pub deep: [V]?V
     /// The number of edges on the longest path down from `v`.

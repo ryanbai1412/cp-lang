@@ -7,7 +7,7 @@ use std.rand.{Rng}
 use std.range.{ends}
 use std.seq.{each, Seq}
 
-impl<D, T> Seq<(range: Range<D>, val: T)> for IntervalMap<D, T>:
+impl<D: Ordered, T> Seq<(range: Range<D>, val: T)> for IntervalMap<D, T>:
     /// Every maximal run with its value.
     ///
     /// cost: \(O(1)\) per run
@@ -25,7 +25,7 @@ impl<D, T> Seq<(range: Range<D>, val: T)> for IntervalMap<D, T>:
 /// `new` is \(O(1)\); `from` is \(O(D.count)\); `at`, `run_at`, and `assign_point` are
 /// \(O(\log \mathit{runs})\); `assign` is amortized \(O((1 + \mathit{overwritten}) \log \mathit{runs})\);
 /// `each` is \(O(\mathit{runs})\); `runs` is \(O(1)\).
-pub struct IntervalMap<D, T>:
+pub struct IntervalMap<D: Ordered, T>:
     segs: Map<Int, (hi: Int, val: T)>
 
     /// A map that gives every position of `D` the value `init`: one run, or None when `D` is empty.
@@ -226,7 +226,7 @@ pub struct IntervalMap<D, T>:
             pos = seg.hi
         None
 
-impl<D> Seq<Range<D>> for IntervalSet<D>:
+impl<D: Ordered> Seq<Range<D>> for IntervalSet<D>:
     /// Every maximal run.
     ///
     /// cost: \(O(1)\) per run
@@ -239,7 +239,7 @@ impl<D> Seq<Range<D>> for IntervalSet<D>:
 
 /// Dynamic union of disjoint maximal half-open intervals over domain `D` (KACTL
 /// `IntervalContainer`). Maintains total `covered` length in \(O(1)\). \(O(\mathit{runs})\) space.
-pub struct IntervalSet<D>:
+pub struct IntervalSet<D: Ordered>:
     segs: Map<Int, Int>
     var total: Int
 
@@ -366,7 +366,7 @@ pub struct IntervalSet<D>:
     @get pub fn runs(self) -> Int:
         segs.len
 
-impl<D: Domain> Contains<D> for IntervalSet<D>:
+impl<D: Ordered + Domain> Contains<D> for IntervalSet<D>:
     /// Whether position `i` is in the set.
     ///
     /// cost: \(O(\log \mathit{runs})\)
@@ -710,7 +710,7 @@ impl Show for SparseIntervalMap<T: Show>:
             out += "{run.range.l}..{run.range.r}={run.val}"
         out
 
-impl Show for IntervalMap<D, T: Show>:
+impl Show for IntervalMap<D: Ordered, T: Show>:
     /// Each run as `range: value`, comma-separated, in key order; `empty` for an empty `D`.
     ///
     /// example: `var m = IntervalMap<0..5, Int>(0); m.assign(1..3, 7); "{m}" == "0..1: 0, 1..3: 7, 3..5: 0"`
@@ -721,7 +721,7 @@ impl Show for IntervalMap<D, T: Show>:
             out += "{run.range.start}..{run.range.end}: {run.val}"
         if out.is_empty: "empty" else: out
 
-impl Show for IntervalSet<D>:
+impl Show for IntervalSet<D: Ordered>:
     /// Its runs in key order, comma-separated; `empty` when nothing is covered.
     ///
     /// example: `var s = IntervalSet<0..10>(); s.add(1..3); s.add(5..7); "{s}" == "1..3, 5..7"`
