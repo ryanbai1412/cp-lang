@@ -351,6 +351,24 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_library_gates(root), ["crates/cpl-next-decls/src/lib.rs:1",
                                                            "crates/cpl-next-decls/src/lib.rs:3"])
 
+    def test_library_gates_follow_a_renamed_helper_and_count_origin_tests(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-check/src/lib.rs",
+                        "pub fn of_program(&self, m: ModId) -> bool {\n    walk(m)\n}\n"
+                        "fn quiet(d: &D, m: ModId) -> bool {\n    let x = 1;\n    !d.of_program(m)\n}\n"
+                        "fn hush(d: &D, m: ModId) -> bool { quiet(d, m) }\n"
+                        "if hush(d, m) {}\n"
+                        "let lib = |m: &str| m.split_once('.').is_some_and(|(l, _)| l == \"std\");\n"
+                        "if lib(m) {}\n"
+                        "match at == PROGRAM {}\n"
+                        "if p.starts_with(\"std.\") {}\n"
+                        "let p = \"std.prelude\";\n"
+                        "fn total(d: &D) -> u32 { 3 }\n"
+                        "let s = \"stdin\";\n")
+            self.assertEqual([int(x.rsplit(":", 1)[1]) for x in dr.next_library_gates(root)],
+                             [6, 8, 9, 10, 11, 12, 13, 14])
+
     def test_crate_deps_see_renamed_and_table_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

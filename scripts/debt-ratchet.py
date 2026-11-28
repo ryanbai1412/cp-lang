@@ -2084,14 +2084,35 @@ def next_domain_fiat(root: Path) -> list[str]:
             if not l.lstrip().startswith("//") and pat.search(l)]
 
 
+# Predicates that ask where a module came from (a library, the program, the prelude, std).
+LIBRARY_GATE_SEEDS = ("is_library", "items_only", "of_program", "is_prelude", "is_std", "is_std_module",
+                      "from_std", "in_std")
+# Asking it without a predicate: a module path against PROGRAM, or a dotted std literal.
+LIBRARY_ORIGIN_RE = re.compile(r"[=!]=\s*PROGRAM\b|\bPROGRAM\s*[=!]=|\"std(?:\.[\w.]*)?\"|starts_with\(\"std")
+LIBRARY_HELPER_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?fn\s+(\w+)[^{;]*->\s*bool\b|^\s*let\s+(\w+)\s*=\s*(?:move\s*)?\|")
+
+
 def next_library_gates(root: Path) -> list[str]:
-    """Places new-pipeline code asks whether a module is a library (`is_library`), or wraps that
-    question (`items_only`): a decorator or rule only std may use is std privilege under a new
-    name (09:00 blind audit). Each call counts, so renaming the gate or hiding it in a helper keeps
-    the count; it drops only as callers go."""
-    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
-            for i, l in enumerate(_lines(p), 1)
-            if not l.lstrip().startswith("//") and re.search(r"\b(?:is_library|items_only)\b", l)]
+    """Places new-pipeline code asks where a module came from: a call to a module-origin predicate
+    (`LIBRARY_GATE_SEEDS`), a `bool` helper or closure whose body asks one (found to a fixpoint, so
+    hiding the question in a helper or renaming it keeps the count), a module compared with
+    `PROGRAM`, or a dotted std literal (`"std.prelude"`, `starts_with("std.")`). A rule only std
+    may use is std privilege under a new name (09:00 blind audit; audit #18): this drops only as
+    the questions go. A predicate's own `fn` line doesn't count; each line asking does."""
+    files = {_rel(root, p): [l.split("//")[0] for l in _lines(p)]
+             for p in _rs_files(root, *_next_srcs(root), tests=False)}
+    gates = set(LIBRARY_GATE_SEEDS)
+    asks = lambda l: LIBRARY_ORIGIN_RE.search(l) or any(re.search(rf"(?<![\w:])\.?{g}\s*\(", l)
+                                                        and not re.search(rf"\bfn\s+{g}\b", l) for g in gates)
+    while True:
+        found = {m.group(1) or m.group(2)
+                 for lines in files.values() for i, l in enumerate(lines)
+                 if (m := LIBRARY_HELPER_RE.match(l)) and (m.group(1) or m.group(2)) not in gates
+                 and any(asks(x) for x in lines[i:_block(lines, i) + 1])}
+        if not found:
+            break
+        gates |= found
+    return [f"{rel}:{i}" for rel, lines in files.items() for i, l in enumerate(lines, 1) if asks(l)]
 
 
 NEXT_OWN_DECIDERS_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))? )?fn (\w*(?:lend|drop)\w*)")

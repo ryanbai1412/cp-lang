@@ -402,7 +402,7 @@
     "tools-judge/release-run-gets-a-large-judge-stack.cp",
     "tools-judge/release-run-gets-the-judges-stack-and-crashes-like-it.cp"
   ],
-  "next_library_gates": 2,
+  "next_library_gates": 23,
   "next_domain_fiat": 0,
   "next_name_compares": 15,
   "next_error_typed": 34,
