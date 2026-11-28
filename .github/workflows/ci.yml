@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [checks, corpus, fmt, "conform:conformance+spec-blocks", "conform:diff@1/5", "conform:diff@2/5", "conform:diff@3/5", "conform:diff@4/5", "conform:diff@5/5", "conform:corpus+docs", "tests:doc", ratchet, "lists@1/8", "lists@2/8", "lists@3/8", "lists@4/8", "lists@5/8", "lists@6/8", "lists@7/8", "lists@8/8"]
+        part: [checks, corpus, fmt, "conform:conformance+spec-blocks", "conform:diff@1/5", "conform:diff@2/5", "conform:diff@3/5", "conform:diff@4/5", "conform:diff@5/5", "conform:corpus+docs", "tests:doc", ratchet, "lists@1/16", "lists@2/16", "lists@3/16", "lists@4/16", "lists@5/16", "lists@6/16", "lists@7/16", "lists@8/16", "lists@9/16", "lists@10/16", "lists@11/16", "lists@12/16", "lists@13/16", "lists@14/16", "lists@15/16", "lists@16/16"]
     timeout-minutes: 20
     permissions:
       contents: read
@@ -115,7 +115,7 @@ jobs:
           fi
       - name: Fast gate
         # A hung test holds main's only run slot; a shard takes about 5 min, the
-        # ratchet part about 10 and a lists@ part (an eighth of cpl-next's cases) about 8.
+        # ratchet part about 10 and a lists@ part (a sixteenth of cpl-next's cases) about 8.
         timeout-minutes: ${{ (matrix.part == 'ratchet' || startsWith(matrix.part, 'lists@')) && 18 || 12 }}
         env:
           CPL_GATE_PART: ${{ matrix.part }}
