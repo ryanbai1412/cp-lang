@@ -263,12 +263,17 @@ impl<'a> Cx<'a> {
         if !mine {
             return;
         }
-        let shown = self.text(base);
+        let inner = self.text(base);
+        // `(0..3).sum` keeps the parentheses a member call on it needs; `sum(0..3)` needs none.
+        let shown = match postfix_safe(inner) {
+            true => inner.to_string(),
+            false => format!("({inner})"),
+        };
         let ty = &self.items.s(*s).name;
         self.err_help(
             name.span,
             Msg::verdict(cpl_diag::codes::AMBIGUOUS_METHOD, format!("`{shown}.{m}` never calls the `fn {m}` that takes it: `{ty}.{m}` is the type's own member, and members are found before extension fns")),
-            Some(format!("rename the fn, or call it as a plain fn: `{m}({shown})`")),
+            Some(format!("rename the fn, or call it as a plain fn: `{m}({inner})`")),
         );
     }
     /// `T.zero` or `T.f(args)` on a type parameter: a fn without `self` of one of its bounds,
@@ -1333,4 +1338,28 @@ impl<'a> Cx<'a> {
             VarRef::Global(k) => self.globals[k].ty.clone(),
         }
     }
+}
+
+/// Whether source text `e` takes `.m` as written: no operator, space or prefix at its top level,
+/// so `0..3` and `-x` are not, and `[1, 2]` and `f(a, b).c` are.
+fn postfix_safe(e: &str) -> bool {
+    let mut depth = 0usize;
+    let mut quote = None;
+    let mut prev = None;
+    for c in e.chars() {
+        match (quote, c) {
+            (Some(q), _) if c == q && prev != Some('\\') => quote = None,
+            (Some(_), _) => {}
+            (None, '"' | '\'') => quote = Some(c),
+            (None, '(' | '[' | '{') => depth += 1,
+            (None, ')' | ']' | '}') => depth = depth.saturating_sub(1),
+            (None, '.') if depth == 0 && prev == Some('.') => return false,
+            (None, c) if depth == 0 && (c.is_whitespace() || "+-*/%<>=!&|^?:~".contains(c)) => {
+                return false;
+            }
+            _ => {}
+        }
+        prev = Some(c);
+    }
+    true
 }
