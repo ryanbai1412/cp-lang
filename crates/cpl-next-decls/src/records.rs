@@ -6,7 +6,7 @@ use crate::decls::forms::{
     AssocForm, AttrForm, BodyForm, BoundForm, FieldForm, FnForm, ImplForm, ParamForm, StructForm,
     TraitForm, TyForm,
 };
-use crate::decls::{fills, Role};
+use crate::decls::{fills, form_fills, Role};
 use crate::sym::{Sym, Syms};
 use cpl_diag::Span;
 use cpl_next_syntax::ast::{self as next, AstNode as _};
@@ -481,39 +481,43 @@ pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Struc
 /// `dom_count`, `dom_nth` and `dom_ord`: what a domain the compiler declares implements, with
 /// the `@role(order)` trait, whose members all have bodies.
 pub struct Positions {
-    pub tr: String,
-    pub order: Option<String>,
-    pub count: String,
-    pub nth: String,
-    pub ord: String,
+    /// The `@role(positions)` trait.
+    pub tr: Sym,
+    /// The `@role(order)` trait.
+    pub order: Option<Sym>,
+    pub count: Sym,
+    pub nth: Sym,
+    pub ord: Sym,
 }
 
-pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<Positions> {
+/// The positions trait's members, by the intrinsic each one's body is (R04.2.11).
+pub fn positions(forms: &[&crate::decls::forms::Form]) -> Option<Positions> {
+    use crate::decls::forms::{intrinsic_name, BodyForm};
+    use cpl_next_syntax::ast::{Expr, FnBody};
     let (mut marks, mut order) = (None, None);
-    for s in stmts {
-        if fills(s, Role::Positions) {
-            marks = Some(s);
-        }
-        if let (true, StmtKind::Trait { name, .. }) = (fills(s, Role::Order), &s.kind) {
-            order = Some(name.text.clone());
+    for f in forms {
+        if let crate::decls::forms::Form::Trait(t) = f {
+            if form_fills(&t.attrs, Role::Positions) {
+                marks = Some(t);
+            }
+            if form_fills(&t.attrs, Role::Order) {
+                order = Some(t.name);
+            }
         }
     }
-    let Some(StmtKind::Trait { name: tr, body, .. }) = marks.map(|s| &s.kind) else {
-        return None;
-    };
+    let t = marks?;
     let member = |id: &str| {
-        body.stmts.iter().find_map(|s| match &s.kind {
-            StmtKind::Fn(f) => match &f.body {
-                ast::FnBody::Expr(e) if matches!(&e.kind, ExprKind::Intrinsic(i) if i == id) => {
-                    Some(f.name.text.clone())
-                }
-                _ => None,
-            },
+        t.methods.iter().find_map(|m| match &m.body {
+            BodyForm::Written(FnBody::Expr(Expr::Intrinsic(i)))
+                if intrinsic_name(i).as_deref() == Some(id) =>
+            {
+                Some(m.name)
+            }
             _ => None,
         })
     };
     Some(Positions {
-        tr: tr.text.clone(),
+        tr: t.name,
         order,
         count: member("dom_count")?,
         nth: member("dom_nth")?,
@@ -535,12 +539,8 @@ pub fn domain_impls(
     let Some(p) = positions else {
         return Vec::new();
     };
-    let (count, nth, ord) = (
-        syms.intern(&p.count),
-        syms.intern(&p.nth),
-        syms.intern(&p.ord),
-    );
-    let tr = syms.intern(&p.tr);
+    let (count, nth, ord) = (p.count, p.nth, p.ord);
+    let tr = p.tr;
     let this = syms.intern("self");
     let int = syms.intern("Int");
     let k = syms.intern("k");
@@ -639,7 +639,7 @@ pub fn domain_impls(
         };
         // A record of ordered domains is ordered, as a tuple of them is (R04.2.31).
         if let Some(o) = &p.order {
-            let o = syms.intern(o);
+            let o = *o;
             out.push((name(fs), imp(o, Vec::new())));
         }
         out.push((name(fs), imp(tr, methods)));

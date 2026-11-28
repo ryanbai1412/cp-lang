@@ -240,6 +240,21 @@ pub enum Form {
     Other(ast::Item),
 }
 
+/// The id an intrinsic body names: `intrinsic("dom_count")` names `dom_count` (R12.14.1).
+pub fn intrinsic_name(e: &ast::IntrinsicExpr) -> Option<String> {
+    use cpl_next_syntax::literal::{string_parts, StrPart};
+    let tok = e.id()?;
+    let text = tok.text();
+    Some(
+        (string_parts(text).into_iter())
+            .filter_map(|p| match p {
+                StrPart::Text(s) => Some(&text[s.start as usize..s.end as usize]),
+                StrPart::Expr(_) => None,
+            })
+            .collect(),
+    )
+}
+
 /// Reads a written item into its form: each name interned once, here, at the token.
 pub struct Reader<'a> {
     pub syms: &'a mut crate::sym::Syms,

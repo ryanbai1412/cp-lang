@@ -691,11 +691,7 @@ pub(crate) fn enum_conversions(
         let Some(p) = positions else {
             continue;
         };
-        let (count, nth, ord) = (
-            syms.intern(&p.count),
-            syms.intern(&p.nth),
-            syms.intern(&p.ord),
-        );
+        let (count, nth, ord) = (p.count, p.nth, p.ord);
         let methods = vec![
             func(
                 true,
@@ -722,7 +718,7 @@ pub(crate) fn enum_conversions(
                 SynthBody::EnumToInt(variants.clone()),
             ),
         ];
-        let domain = syms.intern(&p.tr);
+        let domain = p.tr;
         out.push((
             item.clone(),
             name.clone(),
@@ -730,7 +726,7 @@ pub(crate) fn enum_conversions(
         ));
         // An enum's variants are in declaration order (R04.2.31).
         if let Some(o) = &p.order {
-            let o = syms.intern(o);
+            let o = *o;
             out.push((
                 item.clone(),
                 name.clone(),
