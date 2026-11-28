@@ -208,7 +208,7 @@ impl<T: Show> ShowPart<WithNone> for List<?T>:
 
 impl<D: Domain, T: Show> ShowPart<WithNone> for Array<D, ?T>:
     fn write_part(self, mut out: Str, sep: ?Str, fmt: Fmt):
-        for i in 0..D.count: put_opt(mut out, raw_get(self.buf, i), sep, i == 0, fmt)
+        for i in 0..D.count: put_opt(mut out, self.nth(i), sep, i == 0, fmt)
 
 /// One element of a `?T` sequence, after `sep` or its gap unless it is the first.
 fn put_opt<T: Show>(mut out: Str, x: ?T, sep: ?Str, first: Bool, fmt: Fmt):
@@ -432,7 +432,7 @@ impl<D: Domain, T: Show> Show for Array<D, T>:
     fn write_to(self, mut out: Str, sep: ?Str) = self.write_fmt(mut out, sep, Fmt(None, 0, None))
     fn write_fmt(self, mut out: Str, sep: ?Str, fmt: Fmt):
         for i in 0..D.count:
-            let x = raw_get(self.buf, i)
+            let x = self.nth(i)
             if i > 0:
                 if let s = sep: out.append(s)
                 else: x.gap(mut out)

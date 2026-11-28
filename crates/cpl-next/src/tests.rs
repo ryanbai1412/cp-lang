@@ -542,7 +542,7 @@ fn a_build_reaching_an_untyped_library_body_reports_it() {
     let dir = std::env::temp_dir().join(format!("cpl-untyped-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("kit")).unwrap();
     std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
-    let lib = "pub struct W:\n    v: Int\n\nimpl Show for W:\n    fn write_to(self, mut out: Str, sep: ?Str):\n        out.append(nope)\n";
+    let lib = "pub struct W:\n    pub v: Int\n\nimpl Show for W:\n    fn write_to(self, mut out: Str, sep: ?Str):\n        out.append(nope)\n";
     std::fs::write(dir.join("kit/m.cp"), lib).unwrap();
     let run = |src: &str| {
         compile(
