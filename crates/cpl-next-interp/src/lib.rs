@@ -413,20 +413,13 @@ impl<'a> Machine<'a> {
     }
     /// The first `args[1]` characters of the storage `args[0]` (`ops::out_len`).
     fn text(&mut self, args: &'a [Arg<CTy>], fp: usize) -> R<String> {
-        let n = self.int(&args[1], fp)?;
-        let V::Raw(r) = self.arg(&args[0], fp)? else {
+        let (n, V::Raw(r)) = (self.int(&args[1], fp)?, self.arg(&args[0], fp)?) else {
             return broken("text of non-storage");
         };
         let Store::Any(cs) = &*r else {
             return broken("text of storage of another kind");
         };
-        let chars = cs.iter().take(ops::out_len(n, cs.len()));
-        chars
-            .map(|c| match c {
-                V::Char(c) => Ok(char::from(*c)),
-                _ => broken("text of a non-character"),
-            })
-            .collect()
+        Ok(ops::text(n, cs.iter().map(scalar))?)
     }
     fn int(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<i64> {
         match self.arg(a, fp)? {

@@ -91,7 +91,7 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_not_passing` | 2,270 |
 | `next_old_parser_accepts` | 1 |
 | `next_old_syntax_analyses` | 88 |
-| `next_reference_evaluator_lines` | 589 |
+| `next_reference_evaluator_lines` | 582 |
 | `next_refusal_kinds` | 60 |
 | `next_refused` | 687 |
 | `next_run_api_unbuilt` | 74 |
