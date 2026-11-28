@@ -134,6 +134,9 @@ pub trait Names {
     fn top_value(&self, m: ModId, name: Sym) -> Option<cpl_next_ir::ty::TopValueId>;
     /// Module `m`'s names, for closest-name candidates: one module's answer.
     fn names(&self, m: ModId) -> Vec<(Sym, Named)>;
+    /// The std modules that export `name` as `pub`, in module order: where a `use` fix
+    /// finds it.
+    fn exporters(&self, name: Sym) -> Vec<ModId>;
 }
 
 /// What a fn's signature says beyond its decl, keyed by the fn.
@@ -197,6 +200,22 @@ pub trait ImplChoice {
     fn impl_for(&self, tr: TraitId, t: &Ty) -> Option<Chosen>;
     /// Each trait `t` implements with the impl it takes, by `TraitId`, then `ImplIdx`.
     fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)>;
+}
+
+/// Methods by name, each keyed by its `Sym`: the candidates a member call picks among. It lists
+/// candidates only, never fits or ranks them; which one a receiver takes is `ImplChoice`'s.
+pub trait Methods {
+    /// The library methods named `name`, from any std module: a method call needs no import
+    /// (R11.3.4).
+    fn methods_named(&self, name: Sym) -> &[FnId];
+    /// The fns named `name` of impls over a shape of struct `s` (`impl Rev<[D]T>:`, R08.1.3).
+    fn shaped(&self, s: StructId, name: Sym) -> &[FnId];
+    /// The traits that declare a fn named `name`.
+    fn traits_declaring(&self, name: Sym) -> Vec<TraitId>;
+    /// The fns once, or also, called `name` (`@aka`, `@was`).
+    fn renamed_from(&self, name: Sym) -> Vec<FnId>;
+    /// Trait `tr`'s fns in the order it declares them (R01.8.8).
+    fn trait_fns(&self, tr: TraitId) -> Vec<(Sym, FnId)>;
 }
 
 /// `item(ItemId)` and the module text a `SourceId` lies in: what a body's checker reads of the
@@ -423,6 +442,14 @@ impl Names for Decls {
     fn names(&self, m: ModId) -> Vec<(Sym, Named)> {
         self.views[m.0].iter().map(|(n, x)| (*n, *x)).collect()
     }
+    fn exporters(&self, name: Sym) -> Vec<ModId> {
+        (self.module_names.iter().enumerate())
+            .filter(|(i, m)| {
+                m.starts_with("std.") && self.exports[*i].get(&name).is_some_and(|e| e.1)
+            })
+            .map(|(i, _)| ModId(i))
+            .collect()
+    }
 }
 
 impl Bodies for crate::modules::Loaded {
@@ -438,6 +465,27 @@ impl Bodies for crate::modules::Loaded {
     }
     fn text(&self, at: &cpl_next_ir::ids::SourceId) -> &str {
         self.text(at)
+    }
+}
+
+impl Methods for Decls {
+    fn methods_named(&self, name: Sym) -> &[FnId] {
+        self.methods.get(&name).map_or(&[], Vec::as_slice)
+    }
+    fn shaped(&self, s: StructId, name: Sym) -> &[FnId] {
+        self.structs[s.0]
+            .shaped
+            .get(&name)
+            .map_or(&[], Vec::as_slice)
+    }
+    fn traits_declaring(&self, name: Sym) -> Vec<TraitId> {
+        Signatures::traits_with(self, name)
+    }
+    fn renamed_from(&self, name: Sym) -> Vec<FnId> {
+        Signatures::renamed(self, self.syms.text(name))
+    }
+    fn trait_fns(&self, tr: TraitId) -> Vec<(Sym, FnId)> {
+        self.trait_fns(tr)
     }
 }
 

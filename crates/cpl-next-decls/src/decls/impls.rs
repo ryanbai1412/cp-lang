@@ -1,6 +1,6 @@
 //! Which impl a type has of a trait, and which member a receiver reaches through one.
 use super::*;
-use crate::views::{Items, Signatures};
+use crate::views::{Items, Methods, Signatures};
 
 /// Which impl a type takes when several fit: one for its written type (0) before one for
 /// every record with some fields (1), before any other blanket one (2) (R08.1.2, R08.4.5).
@@ -103,38 +103,16 @@ impl Decls {
             .collect();
         self.impls_ranked = Some(by_trait);
     }
-    /// The library method `name` whose `self` can be `recv`, from any std module whether the
-    /// program loads it or not: a method call needs no import (R11.3.4).
+    /// The library method `name` whose `self` can be `recv` ([`method_for`]).
     pub fn method_for(&self, name: &str, recv: &Ty) -> Option<FnId> {
-        (self.methods.get(&self.sym(name)?)?.iter().copied()).find(|f| self.self_fits(*f, recv))
+        method_for(self, self, self.sym(name)?, recv)
     }
-    /// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
-    /// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).
+    /// [`shaped_member`], by text.
     pub fn shaped_member(&self, recv: &Ty, name: &str) -> Option<FnId> {
-        let Ty::Struct(s, ..) = recv else {
-            return None;
-        };
-        (self.s(*s).shaped.get(&self.sym(name)?)?.iter().copied()).find(|f| {
-            let f = self.f(*f);
-            let mut binds = vec![None; f.generics.len()];
-            f.self_ty
-                .as_ref()
-                .is_some_and(|st| fit(st, recv, &mut binds))
-        })
+        shaped_member(self, self, recv, self.sym(name)?)
     }
-    /// Whether `recv` has the shape of `f`'s `self`: a struct whose arguments fit it, or the same kind of type.
     pub fn self_fits(&self, f: FnId, recv: &Ty) -> bool {
-        let f = self.f(f);
-        match (f.self_ty.as_ref(), recv) {
-            (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
-            (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
-            // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
-            (Some(st), Ty::Int) if st.is_int_range() => true,
-            // A fn-typed `self` takes a closure's own type, coerced in as an argument is.
-            (Some(Ty::Fn(..)), Ty::Clo(_)) => true,
-            (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
-            (None, _) => false,
-        }
+        self_fits(self, f, recv)
     }
 }
 
@@ -726,4 +704,40 @@ fn head_sets(head: &Ty, recv: &Ty, out: &mut Vec<SetTy>) {
         head_sets(h, r, out);
     }
     head_sets(hr, rr, out);
+}
+
+/// The library method `name` whose `self` can be `recv`, from any std module whether the
+/// program loads it or not: a method call needs no import (R11.3.4).
+pub fn method_for(items: &dyn Items, m: &dyn Methods, name: Sym, recv: &Ty) -> Option<FnId> {
+    (m.methods_named(name).iter().copied()).find(|f| self_fits(items, *f, recv))
+}
+
+/// The fn of an impl over a shape of `recv`'s struct (`impl Rev<[D]T>:`) named `name` whose
+/// `self` `recv` fits, as a trait impl's header is matched (R08.1.3).
+pub fn shaped_member(items: &dyn Items, m: &dyn Methods, recv: &Ty, name: Sym) -> Option<FnId> {
+    let Ty::Struct(s, ..) = recv else {
+        return None;
+    };
+    (m.shaped(*s, name).iter().copied()).find(|f| {
+        let f = items.f(*f);
+        let mut binds = vec![None; f.generics.len()];
+        f.self_ty
+            .as_ref()
+            .is_some_and(|st| fit(st, recv, &mut binds))
+    })
+}
+
+/// Whether `recv` has the shape of `f`'s `self`: a struct whose arguments fit it, or the same kind of type.
+pub fn self_fits(items: &dyn Items, f: FnId, recv: &Ty) -> bool {
+    let f = items.f(f);
+    match (f.self_ty.as_ref(), recv) {
+        (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
+        (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
+        // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
+        (Some(st), Ty::Int) if st.is_int_range() => true,
+        // A fn-typed `self` takes a closure's own type, coerced in as an argument is.
+        (Some(Ty::Fn(..)), Ty::Clo(_)) => true,
+        (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
+        (None, _) => false,
+    }
 }
