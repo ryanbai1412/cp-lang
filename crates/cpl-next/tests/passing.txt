@@ -338,6 +338,7 @@ core-03/rb1-q30-const-range-store.cp
 core-03/rb1-q31-range-store-traps-checked.cp
 core-03/read-int-just-above-spare.cp
 core-03/read-rejects-spare.cp
+core-03/runtime-mod-per-case.cp
 core-03/separately-bounded-table-is-not-over.cp
 core-03/spare-value-overflow.cp
 core-03/spec-block-niche-layout.cp
@@ -1289,6 +1290,7 @@ core-13/enum-payloads.cp
 core-13/flagged-optional.cp
 core-13/fresh-slot-reentry.cp
 core-13/growable-buffers.cp
+core-13/mod-runtime.cp
 core-13/mutually-recursive-generators-break.cp
 core-13/narrow-storage-wide-locals.cp
 core-13/output-flushed-at-exit.cp

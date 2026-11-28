@@ -1082,6 +1082,10 @@ impl<'a> Cx<'a> {
                 let args = self.io_args(&args);
                 self.call_named(n, &[], &args, span, want)
             }
+            // `Z(10)` of `type Z = Mod(p)`: the type that statement made (R03.5.1).
+            (_, Some(n)) if unbound(self, n) && self.scoped_type(n).is_some() => {
+                self.call_named(n, &[], &args, span, want)
+            }
             (_, Some(n)) if self.declared(n) => self.call_named(n, &[], &args, span, want),
             // `Box<Int>(5)`, `List<Int>()`: the written type arguments come first.
             (next::Expr::Generic(g), _) if self.declared_base(g).is_some() => {

@@ -335,6 +335,69 @@ impl Cx<'_> {
             _ => self.other_domain(&name, &def, span, out),
         }
     }
+    /// `type Z = Mod(p)`: a type taking values, made where it is written (R11.1.1). Each value
+    /// is a fresh singleton domain `p..=p`, declared as any domain is, its value in that
+    /// domain's `$lo` slot: `Z` is `Mod<Dom(i)>`, and a body's `P` reads the slot (R03.5.1,
+    /// R13.2.12).
+    pub(super) fn type_stmt(&mut self, a: &next::TypeAlias, out: &mut Vec<TStmt>) {
+        let span = self.at(a);
+        let (Some(name), Some(next::Type::Path(p))) = (a.name(), a.ty()) else {
+            return;
+        };
+        let name = name.text().to_string();
+        let sym = self.b.syms.intern(self.syms, &name);
+        let path: Vec<String> = p.segments().map(|t| t.text().to_string()).collect();
+        let found = (path.last()).and_then(|n| self.struct_named(self.b.module, n));
+        let Some(d) = found else {
+            let msg = format!("unknown type `{}`", path.join("."));
+            self.err(span, Msg::verdict(cpl_diag::codes::UNKNOWN_TYPE, msg));
+            self.b.types.insert(sym, Ty::Error);
+            return;
+        };
+        let values: Vec<next::Expr> = (p.args().iter())
+            .flat_map(|l| l.args().collect::<Vec<_>>())
+            .filter_map(|x| x.value())
+            .collect();
+        let generics = self.items.s(d).generics.clone();
+        if values.len() != generics.len() {
+            let msg = format!(
+                "`{}` takes {} values, found {}",
+                path.join("."),
+                generics.len(),
+                values.len()
+            );
+            self.err(span, Msg::verdict(cpl_diag::codes::WRONG_ARG_COUNT, msg));
+            self.b.types.insert(sym, Ty::Error);
+            return;
+        }
+        let mut given = Vec::new();
+        for (v, g) in values.iter().zip(&generics) {
+            let v = self.expr_as_typed(v, Some(&Ty::Int));
+            let at = v.span;
+            let held = self.slot(Ty::Int, "$value");
+            out.push(TStmt::Let(held, v));
+            let int = |kind| TExpr {
+                kind,
+                ty: Ty::Int,
+                span: at,
+            };
+            let one_past = TK::Bin(
+                BinOp::Add,
+                Box::new(int(TK::Var(held))),
+                Box::new(int(TK::Int(1))),
+            );
+            let shown = format!("{name}.{g}");
+            let lo = int(TK::Var(held));
+            let i = self.declare_domain(&shown, lo, int(one_past), (None, None), span, out);
+            given.push(Ty::Dom(i));
+        }
+        self.b.types.insert(sym, Ty::Struct(d, given, Vec::new()));
+    }
+    /// The type `type Z = Mod(p)` made, by its name `n`.
+    pub(super) fn scoped_type(&self, n: &str) -> Option<Ty> {
+        let sym = self.b.syms.of(self.syms, n)?;
+        self.b.types.get(&sym).cloned()
+    }
     /// `domain V = e` for an `e` that is not a range or a product.
     fn other_domain(&mut self, name: &str, def: &next::Expr, span: Span, out: &mut Vec<TStmt>) {
         if !self.counted_domain(name, def, span, out) {

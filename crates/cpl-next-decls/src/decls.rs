@@ -34,7 +34,7 @@ pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{
     alias_type, body_type, literal_int, prim_type, range_type, static_axis, struct_args,
-    targ_kinds, BodyScope,
+    takes_values, targ_kinds, BodyScope,
 };
 pub(crate) use tyconv::{by_arity, fields_of_record, fill_defaults, record_of, unnamed};
 

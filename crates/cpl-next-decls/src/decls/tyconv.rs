@@ -434,6 +434,16 @@ pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
     }
 }
 
+/// `Mod(p)`: a type taking values, which a `type` declaration makes where it is written, not
+/// above the program (R11.1.1, R03.5.1). `Str(len: 1..=n)`'s labelled refinement is not one.
+pub fn takes_values(t: &Type) -> bool {
+    let Type::Path(p) = t else {
+        return false;
+    };
+    p.args()
+        .is_some_and(|l| l.args().all(|a| a.label().is_none()))
+}
+
 /// A type argument: a type, or a constant (R08.2.4).
 fn conv_arg(cx: &mut TyCx, a: &GenericArg, errors: &mut Vec<Msg>) -> Ty {
     match a {
@@ -611,9 +621,10 @@ pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>
 pub fn targ_kinds(name: &str, values: &[usize], a: &[Ty]) -> Vec<Msg> {
     let mut errors = Vec::new();
     for (i, t) in a.iter().enumerate() {
-        if matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_))
-            || values.contains(&i) == matches!(t, Ty::Const(_))
-        {
+        // A value's argument is a constant, or the fresh singleton domain `type Z = Mod(p)`
+        // holds a runtime value in (R03.5.1).
+        let value = matches!(t, Ty::Const(_)) || (values.contains(&i) && matches!(t, Ty::Dom(_)));
+        if matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_)) || values.contains(&i) == value {
             continue;
         }
         let text = match values.contains(&i) {

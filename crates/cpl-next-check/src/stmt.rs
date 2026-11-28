@@ -257,6 +257,12 @@ impl<'a> Cx<'a> {
                     self.domain_stmt(d, out);
                     continue;
                 }
+                next::BlockEntry::Decl(next::Decl::TypeAlias(a))
+                    if a.ty().is_some_and(|t| decls::takes_values(&t)) =>
+                {
+                    self.type_stmt(a, out);
+                    continue;
+                }
                 next::BlockEntry::Decl(d) => {
                     self.local_decl(d);
                     continue;

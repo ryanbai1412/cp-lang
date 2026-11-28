@@ -1170,6 +1170,8 @@ impl Link<'_> {
             // left over).
             EK::TypeValue(t) => match self.targ(t, env) {
                 CTy::Const(k) => EK::Int(k),
+                // `type Z = Mod(p)`'s fresh singleton domain: its value is its `$lo` slot.
+                CTy::Dom(d) => EK::DomLo(CTy::Dom(d)),
                 t => EK::TypeValue(t),
             },
             EK::F64(b) => EK::F64(*b),

@@ -773,8 +773,12 @@ impl Cx<'_> {
         };
         self.owned_at(b.ident()?.text(), &[name.text().to_string()])
     }
-    /// `t.Pre` written in a type: the domain the binding `t` owns as its `Pre`.
+    /// `t.Pre` written in a type: the domain the binding `t` owns as its `Pre`; or `Z`, the
+    /// type `type Z = Mod(p)` made (R03.5.1).
     pub(super) fn owned_named(&self, n: Sym) -> Option<Ty> {
+        if let Some(t) = self.b.types.get(&n) {
+            return Some(t.clone());
+        }
         let mut parts = self.b.syms.text(self.syms, n).split('.');
         let head = parts.next()?;
         let path: Vec<String> = parts.map(str::to_string).collect();

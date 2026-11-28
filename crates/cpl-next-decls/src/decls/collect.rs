@@ -402,6 +402,10 @@ fn layer(
                     );
                     pending.push((mid, item.clone(), f, Some(Named::Trait(id))));
                 }
+                // `type Z = Mod(p)` runs where the program writes it (R11.1.1).
+                Form::Alias(a) if mid == d.program && super::tyconv::takes_values(&a.ty) => {
+                    main.push(item.clone())
+                }
                 Form::Alias(a) => {
                     for x in a.attrs.iter().filter(|x| {
                         !matches!(

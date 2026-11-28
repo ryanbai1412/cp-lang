@@ -98,6 +98,9 @@ impl Cx<'_> {
         want: Option<&Ty>,
     ) -> TExpr {
         let Some(named) = self.named(self.b.module, n) else {
+            if let Some(Ty::Struct(d, given, _)) = self.scoped_type(n) {
+                return self.call_given(n, Named::Struct(d), given, args, span, want);
+            }
             self.err(
                 span,
                 Msg::internal(format!(
@@ -334,6 +337,21 @@ impl Cx<'_> {
                 _ => {}
             }
         }
+        let v = self.call_given(n, named, given, args, span, want);
+        block(pre, v)
+    }
+    /// `n` called as `named` at the type arguments `given`: written, an alias's, or those of the
+    /// type `type Z = Mod(p)` made (R03.5.1).
+    fn call_given(
+        &mut self,
+        n: &str,
+        named: Named,
+        mut given: Vec<Ty>,
+        args: &[CallArg],
+        span: Span,
+        want: Option<&Ty>,
+    ) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
         let takes = match named {
             Named::Fn(d) => self.items.f(d).generics.len(),
             Named::Struct(d) => self.items.s(d).generics.len(),
@@ -462,13 +480,7 @@ impl Cx<'_> {
                 mk(TK::Error, Ty::Error)
             }
         };
-        let v = self.held_to(v, ranged);
-        if pre.is_empty() {
-            v
-        } else {
-            let ty = v.ty.clone();
-            mk(TK::Block(pre, Some(Box::new(v))), ty)
-        }
+        self.held_to(v, ranged)
     }
     /// How a method takes its receiver: a `mut self` (or a cache it fills) needs a place.
     /// A method call; a getter with nothing to pass is read like a field, so `()` after it calls

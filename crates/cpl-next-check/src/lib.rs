@@ -584,6 +584,8 @@ struct Cx<'a> {
 
 struct Body {
     doms: HashMap<Sym, Ty>,
+    /// `type Z = Mod(p)`: each type a statement made from values, by its name (R03.5.1).
+    types: HashMap<Sym, Ty>,
     /// The domains declared in the blocks being checked, innermost last (R02.9.2).
     block_doms: Vec<usize>,
     /// The domains a binding owns, by the binding and the path to each in its value: `t`'s
@@ -665,6 +667,7 @@ impl Body {
             rhs_extent: None,
             frames: Vec::new(),
             doms,
+            types: HashMap::new(),
             block_doms: Vec::new(),
             owned: HashMap::new(),
             memo_clears: HashMap::new(),
@@ -1939,6 +1942,7 @@ impl Cx<'_> {
         match s.decl() {
             Some(next::Decl::Const(c)) => self.const_stmt(&c, known, out),
             Some(next::Decl::Domain(dom)) => self.domain_stmt(&dom, out),
+            Some(next::Decl::TypeAlias(a)) => self.type_stmt(&a, out),
             // Decls lists a top-level fn here only when it is a `@memo` fn (R06.4.1).
             Some(next::Decl::Fn(fd)) if stmt::is_memo(&fd) => {
                 let me = s.syntax().span();
