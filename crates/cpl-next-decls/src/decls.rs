@@ -372,6 +372,8 @@ pub struct Roles {
     pub derive_fields: Option<TraitId>,
     /// The `@role(variant_check)` fn: the check an `Int` converted to an enum goes through.
     pub variant_check: Option<FnId>,
+    /// The `@role(todo)` fn: the expression `todo`, of any type, is a trap through it (R01.6.7).
+    pub todo: Option<FnId>,
 }
 
 /// A language role of R11.6.1.
@@ -403,10 +405,11 @@ pub enum Role {
     Pack,
     DeriveFields,
     VariantCheck,
+    Todo,
 }
 
 impl Role {
-    pub const ALL: [Role; 26] = [
+    pub const ALL: [Role; 27] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -433,6 +436,7 @@ impl Role {
         Role::Pack,
         Role::DeriveFields,
         Role::VariantCheck,
+        Role::Todo,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -463,6 +467,7 @@ impl Role {
             Role::Pack => "pack",
             Role::DeriveFields => "derive_fields",
             Role::VariantCheck => "variant_check",
+            Role::Todo => "todo",
         }
     }
 }
@@ -1735,6 +1740,7 @@ fn add_fn(
             Some(Role::RangeLiteral) => &mut d.sugar.range_literal,
             Some(Role::Interpolation) => &mut d.roles.interpolate,
             Some(Role::VariantCheck) => &mut d.roles.variant_check,
+            Some(Role::Todo) => &mut d.roles.todo,
             Some(_) => {
                 let name = x.name.text.clone();
                 errors.push(Msg::at(item.at(x.span), Unbuilt::Decorator { name }));
