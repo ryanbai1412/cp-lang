@@ -188,6 +188,29 @@ pub(crate) fn module_derived(
     out
 }
 
+/// Each variant whose token another variant already has: tags are distinct within the enum
+/// (R02.7.2, E0407).
+pub(crate) fn duplicate_tags(item: &ItemId, e: &ast::EnumDecl) -> Vec<Msg> {
+    let mut seen: HashMap<String, &str> = HashMap::new();
+    let mut out = Vec::new();
+    for v in &e.variants {
+        let t = token(v);
+        match seen.get(t.as_str()) {
+            Some(first) => out.push(Msg::at(
+                item.at(v.name.span),
+                Msg::verdict(
+                    cpl_diag::codes::DUPLICATE_VARIANT_TAG,
+                    format!("`{}` reads and prints as `{t}`, as `{first}` does: tags are distinct within an enum", v.name.text),
+                ),
+            )),
+            None => {
+                seen.insert(t, &v.name.text);
+            }
+        }
+    }
+    out
+}
+
 /// The token a variant reads and prints as: its `@tag`'s literal, else its name (R02.7.2).
 fn token(v: &ast::Variant) -> String {
     use ast::ExprKind;
