@@ -619,12 +619,23 @@ impl FnDecl {
 }
 
 impl OpFnName {
-    /// The operator: `+` in `fn (a: P) + (b: P)`.
+    /// The operator: `+` in `fn (a: P) + (b: P)`, `-` in `fn -(a: P)`.
     pub fn op(&self) -> Option<SyntaxToken> {
-        own_tokens(&self.0).find(|t| ops::binary(t.kind()).is_some() || t.kind() == TokenKind::In)
+        own_tokens(&self.0).find(|t| {
+            let k = t.kind();
+            ops::binary(k).is_some() || ops::prefix(k).is_some() || k == TokenKind::In
+        })
     }
 
-    /// The operands' parameter lists, left then right.
+    /// `fn -(a: P)`: the operator comes before its one operand.
+    pub fn is_prefix(&self) -> bool {
+        match (self.op(), self.params().next()) {
+            (Some(op), Some(lhs)) => op.span().start < lhs.syntax().span().start,
+            _ => false,
+        }
+    }
+
+    /// The operands' parameter lists, left then right (one for a prefix).
     pub fn params(&self) -> impl Iterator<Item = ParamList> + '_ {
         children(&self.0)
     }

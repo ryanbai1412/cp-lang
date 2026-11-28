@@ -308,9 +308,31 @@ impl Parser<'_> {
                 } else {
                     self.recover(codes::EXPECTED_TOKEN, "a field name after `.`");
                 }
+                self.finish();
+                // `"1 2".parse<[2]Int>()`: a method's type arguments.
+                self.type_args_after(at, false);
+                continue;
             }
             self.finish();
         }
+    }
+
+    /// `<T>` after a name or a method, when [`Self::type_args_ahead`]; a
+    /// `::<T>` is E0503 and its fix deletes `::` (R01.3.4).
+    fn type_args_after(&mut self, at: Checkpoint, upper: bool) {
+        if self.at(T::ColonColon) && self.nth(1) == T::Lt {
+            let cc = self.span();
+            let err = msgs::syntax::TURBOFISH.error(cc, &[]);
+            self.diagnostics.push(err.with_fix("delete `::`", cc, ""));
+            self.start(NodeKind::Error);
+            self.bump();
+            self.finish();
+        } else if !(self.at(T::Lt) && self.type_args_ahead(upper)) {
+            return;
+        }
+        self.start_at(at, NodeKind::GenericExpr);
+        self.generic_args();
+        self.finish();
     }
 
     pub(super) fn arg(&mut self) {
@@ -491,21 +513,7 @@ impl Parser<'_> {
                 self.start(NodeKind::NameRef);
                 self.bump();
                 self.finish();
-                if self.at(T::ColonColon) && self.nth(1) == T::Lt {
-                    let cc = self.span();
-                    let err = msgs::syntax::TURBOFISH.error(cc, &[]);
-                    self.diagnostics.push(err.with_fix("delete `::`", cc, ""));
-                    self.start(NodeKind::Error);
-                    self.bump();
-                    self.finish();
-                    self.start_at(at, NodeKind::GenericExpr);
-                    self.generic_args();
-                    self.finish();
-                } else if self.at(T::Lt) && self.type_args_ahead(upper) {
-                    self.start_at(at, NodeKind::GenericExpr);
-                    self.generic_args();
-                    self.finish();
-                }
+                self.type_args_after(at, upper);
             }
             k if self.op_value_ahead() => {
                 debug_assert!(ops::binary(k).is_some() || ops::prefix(k).is_some());
@@ -552,7 +560,12 @@ impl Parser<'_> {
             } else {
                 self.simple();
             }
-            if !self.eat(T::Semi) {
+            // `{ if c:\n return 1\n n }`: a statement whose indented block
+            // closed ends there, as `;` ends one (R01.7.6).
+            let closed = (self.tokens[..self.pos].iter().rev())
+                .find(|t| !t.kind.is_trivia())
+                .is_some_and(|t| t.kind == T::Dedent);
+            if !self.eat(T::Semi) && !closed {
                 break;
             }
         }

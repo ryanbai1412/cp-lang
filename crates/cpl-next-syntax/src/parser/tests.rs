@@ -641,6 +641,7 @@ fn turbofish_fn_keyword_types_and_bare_lends_are_reported_with_fixes() {
     let cases = [
         ("let g = id::<Int>\n", "let g = id<Int>\n"),
         ("let x = read::<Int>()\n", "let x = read<Int>()\n"),
+        ("let s = xs.sum::<Int>()\n", "let s = xs.sum<Int>()\n"),
         ("fn t(f: fn(Int) -> Int) = 0\n", "fn t(f: Int -> Int) = 0\n"),
         (
             "fn t(f: fn(Int, Int) -> Int) = 0\n",
@@ -663,4 +664,38 @@ fn turbofish_fn_keyword_types_and_bare_lends_are_reported_with_fixes() {
         assert_eq!((fixed.as_str(), applied), (want, 1), "{src}");
         assert!(crate::parse(want).diagnostics.is_empty(), "{want}");
     }
+}
+
+#[test]
+fn prefix_op_fns_struct_lets_value_type_args_and_layout_in_braces_parse() {
+    let srcs = [
+        "fn -(a: V) -> V = V(-a.x, -a.y)\n",
+        "struct K:\n    x: Int\n    let BASE = 5\n    fn base(self) -> Int = BASE\n",
+        "type Z = Mod<1e9 + 7>\n",
+        "fn f(n: Int) -> [2 * n, 2 * n]1..=n = g()\n",
+        "let xs: List<?0..=255> = [Some(255), None]\n",
+        "let g = \"ab cd\".parse<[2, 2]Char>()!\n",
+        "fn blk(n: Int) -> Int:\n    let v = {\n        if n > 5:\n            return 99\n        n * 2\n    }\n    v\n",
+        "let w = match i % 3:\n    0 => continue\n    _ => {\n        if i == 5:\n            break\n        i * 100\n    }\n",
+    ];
+    for src in srcs {
+        let file = crate::parse(src);
+        assert_eq!(file.root.text(), src, "lossless");
+        assert!(file.diagnostics.is_empty(), "{src}: {:?}", file.diagnostics);
+    }
+    let file = crate::parse(srcs[0]);
+    let op = file
+        .root
+        .descendants()
+        .find_map(crate::ast::OpFnName::cast)
+        .unwrap();
+    assert!(op.is_prefix());
+    assert_eq!(op.op().map(|t| t.kind()), Some(crate::TokenKind::Minus));
+    let bin = crate::parse("fn (a: V) - (b: V) -> V = a\n");
+    let op = bin
+        .root
+        .descendants()
+        .find_map(crate::ast::OpFnName::cast)
+        .unwrap();
+    assert!(!op.is_prefix());
 }

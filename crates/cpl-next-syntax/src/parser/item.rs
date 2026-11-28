@@ -189,7 +189,13 @@ impl Parser<'_> {
         self.start_at(at, NodeKind::FnDecl);
         self.eat(T::Pub);
         self.bump();
-        if self.at(T::LParen) {
+        if ops::prefix(self.peek()).is_some() && self.nth(1) == T::LParen {
+            // `fn -(a: V) -> V`: a prefix operator (R12).
+            self.start(NodeKind::OpFnName);
+            self.bump();
+            self.params();
+            self.finish();
+        } else if self.at(T::LParen) {
             self.start(NodeKind::OpFnName);
             self.params();
             if ops::binary(self.peek()).is_some() || self.at(T::In) {
@@ -705,10 +711,12 @@ impl Parser<'_> {
     }
 
     /// A struct member other than a fn: a field, `const zero = e` (R12),
-    /// `domain Idx = 0..src.len` (R04) or a `law` the struct states (R08.3).
+    /// `let BASE = 5` (R02.6), `domain Idx = 0..src.len` (R04) or a `law`
+    /// the struct states (R08.3).
     fn struct_member(&mut self, at: Checkpoint) {
         match self.nth(usize::from(self.at(T::Pub))) {
             T::Const => self.const_decl(at),
+            T::Let => self.let_stmt(at),
             T::Domain if self.nth(1) == T::Ident => self.domain_decl(at),
             _ if self.law_ahead() => self.law_decl(at),
             _ => self.field_at(at),

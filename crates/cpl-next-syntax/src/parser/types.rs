@@ -83,7 +83,10 @@ impl Parser<'_> {
 
     /// `0..n`, `..=9`, `-1e9..=1e9`, and a literal union `1 | 2`.
     fn range_type(&mut self) {
-        if self.at(T::Int) && !ops::RANGE.contains(&self.nth(1)) {
+        let next = self.nth(1);
+        let arith = matches!(next, T::Plus | T::Minus | T::Star | T::Slash | T::Percent);
+        let alone = !ops::RANGE.contains(&next) && !arith;
+        if self.at(T::Int) && alone {
             self.start(NodeKind::LiteralType);
             self.bump();
             while self.eat(T::Pipe) {
@@ -133,6 +136,9 @@ impl Parser<'_> {
 
     /// An arithmetic operator before the argument ends.
     fn value_ahead(&self) -> bool {
+        if self.at(T::Question) {
+            return false;
+        }
         let mut depth = 0usize;
         for n in 0.. {
             match self.nth(n) {
