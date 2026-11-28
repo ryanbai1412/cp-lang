@@ -6,6 +6,7 @@
 //! each of those carries exactly one diagnostic.
 
 mod expr;
+mod item;
 mod pattern;
 mod stmt;
 mod types;

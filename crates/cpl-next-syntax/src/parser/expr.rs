@@ -262,7 +262,7 @@ impl Parser<'_> {
         }
     }
 
-    fn arg(&mut self) {
+    pub(super) fn arg(&mut self) {
         self.start(NodeKind::Arg);
         if self.nth(1) == T::Colon && (self.at(T::Ident) || self.peek().spelling().is_some()) {
             self.bump();

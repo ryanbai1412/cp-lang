@@ -18,7 +18,7 @@ impl Parser<'_> {
         }
     }
 
-    fn word(&self) -> Option<Contextual> {
+    pub(super) fn word(&self) -> Option<Contextual> {
         if self.at(T::Ident) {
             contextual(self.text())
         } else {
@@ -30,6 +30,7 @@ impl Parser<'_> {
         match self.peek() {
             T::Newline => self.bump(),
             T::Indent => self.stray_indent(),
+            _ if self.item_ahead() => self.item(),
             T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
             T::While => self.while_stmt(),
             T::For => self.for_stmt(),
@@ -83,8 +84,8 @@ impl Parser<'_> {
 
     /// The end of a simple statement's line. Anything left on it is one
     /// `Error` node with one diagnostic.
-    fn end_line(&mut self) {
-        if matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
+    pub(super) fn end_line(&mut self) {
+        if matches!(self.peek(), T::Newline | T::Eof | T::Dedent) || self.after_line_end() {
             return;
         }
         self.error_here(codes::UNEXPECTED_TOKEN, "the end of the line");
@@ -93,6 +94,16 @@ impl Parser<'_> {
             self.bump();
         }
         self.finish();
+    }
+
+    /// Whether the last token taken ended a line: a construct whose block
+    /// closed with its `Dedent` has nothing left on its line.
+    fn after_line_end(&self) -> bool {
+        self.tokens[..self.pos]
+            .iter()
+            .rev()
+            .find(|t| !t.kind.is_trivia())
+            .is_none_or(|t| matches!(t.kind, T::Newline | T::Dedent))
     }
 
     /// `keyword header block`.
@@ -138,6 +149,9 @@ impl Parser<'_> {
     }
 
     fn let_stmt(&mut self) {
+        if self.at(T::Let) && self.nth(1) == T::LParen && self.nth(2) == T::Domain {
+            return self.domain_let();
+        }
         self.start(NodeKind::LetStmt);
         self.bump();
         self.pattern();

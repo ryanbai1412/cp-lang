@@ -130,6 +130,54 @@ pub enum NodeKind {
     RangeType,
     /// `1 | 2 | 3`, `"a" | "b"`.
     LiteralType,
+    /// `@!name(args)` on its own line.
+    Directive,
+    /// `@name(args)` before an item; part of that item.
+    Decorator,
+    /// `fn name<G>(params) -> R where ..: body`, or a signature without one.
+    FnDecl,
+    /// `(a: T) + (b: T)`: an operator fn's name.
+    OpFnName,
+    /// `name: T = default`, `while ok: K`, `..rest: T`, `self`.
+    Param,
+    /// `-> yields T`, `-> lends (a) T`.
+    RetType,
+    /// `(a, b)` after `lends`.
+    LendSrc,
+    /// `<T: Bound = D, const N: Int>`.
+    GenericParams,
+    GenericParam,
+    /// `A + B`.
+    Bound,
+    /// `where T: A, U: B`.
+    WhereClause,
+    /// `T: A` in a where clause.
+    WherePred,
+    StructDecl,
+    /// `pub var name: T = e`.
+    FieldDecl,
+    EnumDecl,
+    /// `Name(fields)` in an enum.
+    Variant,
+    TraitDecl,
+    /// `type Name: Bound` in a trait, `type Name = T` in an impl.
+    AssocType,
+    ImplDecl,
+    /// `type Name<G> = T`.
+    TypeAlias,
+    /// `domain N = e`, `let (domain N, ..) = e`.
+    DomainDecl,
+    ModDecl,
+    /// `extern fn name(params) -> R`.
+    ExternDecl,
+    /// `use a.b.{c, d}`.
+    UseDecl,
+    /// `{c, d}` in a use.
+    UseNames,
+    /// `law name(params) where ..= condition` in a trait or impl.
+    LawDecl,
+    /// An item's indented members: fields, variants, fns, laws.
+    Members,
 }
 
 /// One file's syntax.

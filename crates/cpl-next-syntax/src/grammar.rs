@@ -88,6 +88,13 @@ pub enum Contextual {
     Repeat,
     /// `with ctx(..):` runs its block in a context.
     With,
+    Mod,
+    Extern,
+    Where,
+    /// `-> yields T`: a generator.
+    Yields,
+    /// A trait's or impl's `law`; elsewhere `law` is a removed keyword.
+    Law,
 }
 
 /// Each contextual word and how it is spelled.
@@ -99,6 +106,11 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("_", Contextual::Wildcard),
     ("repeat", Contextual::Repeat),
     ("with", Contextual::With),
+    ("mod", Contextual::Mod),
+    ("extern", Contextual::Extern),
+    ("where", Contextual::Where),
+    ("yields", Contextual::Yields),
+    ("law", Contextual::Law),
 ];
 
 /// The contextual word `text` spells, if any.

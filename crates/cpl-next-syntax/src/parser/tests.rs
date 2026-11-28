@@ -234,3 +234,68 @@ fn a_broken_statement_keeps_its_block_and_neighbours() {
     );
     assert_eq!(got[2], "AssignStmt(NameRef(v) = Literal(4))");
 }
+
+#[test]
+fn items_carry_their_decorators_and_members() {
+    let src = "@!fast_io\nuse std.algebra.{Monoid, Group}\n@inline\n@cache(size: 4)\npub fn gcd<T: Eq + Ord, const N: Int>(a: T, b: T; mut k = 1) -> T where T: Copy = a\nstruct P:\n    x: Int\n    pub var y: ?Int = none\n    fn norm(self) -> Int: return self.x\nenum Dir = Left | Right\ntrait Op<T>(Eq):\n    type Out: Eq\n    law assoc(a: T, b: T) where T: Eq = a == b\n    fn op(self, other: T) -> T\nimpl Op<Int> for P where P: Eq:\n    type Out = Int\n    fn op(self, other: Int) -> Int = other\ndomain N = n + 1\nlet (domain M, i) = f()\nextern fn sqrt(x: Float) -> Float\nfn gen(n: Int) -> yields Int:\n    yield n\n";
+    let (got, errors) = stmts(src);
+    assert_eq!(errors, 0, "{got:#?}");
+    let kinds: Vec<&str> = got
+        .iter()
+        .map(|s| s.split('(').next().unwrap_or(""))
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            "Directive",
+            "UseDecl",
+            "FnDecl",
+            "StructDecl",
+            "EnumDecl",
+            "TraitDecl",
+            "ImplDecl",
+            "DomainDecl",
+            "DomainDecl",
+            "ExternDecl",
+            "FnDecl"
+        ]
+    );
+    assert!(
+        got[2].starts_with("FnDecl(Decorator(@ inline) Decorator(@ cache ArgList("),
+        "{}",
+        got[2]
+    );
+    assert!(
+        got[2].contains("WhereClause(where WherePred(T : Bound(PathType(Copy))))"),
+        "{}",
+        got[2]
+    );
+    assert!(
+        got[5].contains("LawDecl(law assoc ParamList("),
+        "{}",
+        got[5]
+    );
+    assert!(
+        got[5].contains("WhereClause(where WherePred(T : Bound(PathType(Eq)))) = CompareExpr("),
+        "{}",
+        got[5]
+    );
+}
+
+#[test]
+fn a_broken_member_keeps_its_siblings_and_the_next_item() {
+    let (got, errors) = stmts("struct P:\n    x: Int\n    y: )\n    z: Int\nfn f() = 1\n");
+    assert!(errors >= 1, "{got:#?}");
+    assert_eq!(got.len(), 2, "{got:#?}");
+    assert!(
+        got[0].contains("FieldDecl(x : PathType(Int))"),
+        "{}",
+        got[0]
+    );
+    assert!(
+        got[0].contains("FieldDecl(z : PathType(Int))"),
+        "{}",
+        got[0]
+    );
+    assert!(got[1].starts_with("FnDecl(fn f"), "{}", got[1]);
+}
