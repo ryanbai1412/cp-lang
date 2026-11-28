@@ -12,6 +12,7 @@ use cpl_syntax::decorators::Mark;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+pub mod attr_rules;
 mod collect;
 pub(crate) mod forms;
 mod impls;
