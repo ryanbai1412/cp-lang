@@ -222,6 +222,10 @@ conform *args:
 conformance *args:
     cargo run -p cpl-conform -- {{args}}
 
+# Write cpl-next's case lists from one CI run's 16 lists@ shards (the run id names the regen).
+next-lists-from-run run:
+    uv run python scripts/next-lists-from-run.py {{run}}
+
 # Install local git pre-commit and commit-msg hooks.
 hooks:
     scripts/install-hooks.sh
