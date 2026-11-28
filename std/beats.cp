@@ -866,7 +866,7 @@ fn beats_segtree_chmin_chmax_add_matches_brute():
     for i in I:
         assert st.get(i) == ref[i]
 
-impl Show for BeatsSegTree<D>:
+impl Show for BeatsSegTree<D: Domain>:
     /// Every position's value, space-separated in position order.
     ///
     /// example: `var t = BeatsSegTree([5, 1, 7]); t.chmin(0..3, 4); "{t}" == "4 1 4"`
@@ -877,7 +877,7 @@ impl Show for BeatsSegTree<D>:
             out += "{t.get(i)}"
         out
 
-impl Show for HistoricBeatsSegTree<D>:
+impl Show for HistoricBeatsSegTree<D: Domain>:
     /// The current values in position order, space-separated, read through `to_array` without
     /// pushing any tag down.
     ///

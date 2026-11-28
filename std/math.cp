@@ -475,7 +475,7 @@ pub struct Sieve:
 /// traps: when `n < 0`
 /// example: `sieve_multiplicative(6, (p, e, pe) => e + 1) == [1, 1, 2, 2, 3, 2, 4]`
 /// example: `sieve_multiplicative(4, (p, e, pe) => pe - pe / p) == [1, 1, 1, 2, 2]`
-pub fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T> where T: One:
+pub fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T> where T: One + Mul:
     assert n >= 0
     var res = List.filled(n + 1, T.one)
     var spf = List.filled(n + 1, 0)
@@ -1431,7 +1431,7 @@ pub fn dirichlet_convolve<T: Add + Mul + Zero>(a: List<T>, b: List<T>, n: 0..) -
 /// order: `b[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 /// example: `dirichlet_inv([0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, -1, -1, 0, -1, 1]`
-pub fn dirichlet_inv<T: Sub + Mul + Div + Zero + One>(a: List<T>, n: 0..) -> List<T>:
+pub fn dirichlet_inv<T: Sub + Mul + Div + Zero + One>(a: List<T>, n: 0..) -> List<T> where T: Add + Eq:
     assert n >= 0, "dirichlet_inv requires n >= 0"
     var b = List.filled(n + 1, T.zero)
     if n == 0: return b
@@ -1491,7 +1491,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     /// traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(0) == 0`
-    pub fn sum(mut self, m: Int) -> T where T: One:
+    pub fn sum(mut self, m: Int) -> T where T: One + Eq:
         assert 0 <= m <= self.n, "DirichletSum.sum requires m in 0..=n"
         if m < self.pre.len: return self.pre[m]
         if let v = self.memo.get(m): return v

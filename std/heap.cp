@@ -1476,13 +1476,13 @@ pub struct Settle<K, P>(best: (P, P) -> P = min):
         let (x, y) = (q[a].0, q[b].0)
         x != y and best(x, y) == x
 
-    fn sift_up(mut self, i0: Int):
+    fn sift_up(mut self, i0: Int) where P: Eq:
         var i = i0
         while i > 0 and self.better(i, (i - 1) / 2):
             q.swap(i, (i - 1) / 2)
             i = (i - 1) / 2
 
-    fn sift_down(mut self):
+    fn sift_down(mut self) where P: Eq:
         var i = 0
         while true:
             var c = 2 * i + 1
@@ -1498,7 +1498,7 @@ pub struct Settle<K, P>(best: (P, P) -> P = min):
     /// cost: \(O(\log n)\) amortized, `n` the offers so far
     /// traps: never
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('a', 2); s.offer('a', 4); s.get('a') == Some(2)`
-    pub fn offer(mut self, k: K, p: P):
+    pub fn offer(mut self, k: K, p: P) where P: Eq:
         if done.get(k) != None: return
         if let old = cur.get(k):
             let b = best(old, p)
@@ -1520,7 +1520,7 @@ pub struct Settle<K, P>(best: (P, P) -> P = min):
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('b', 3); s.pop() == Some(('b', 3)) and s.settled('b')`
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('b', 3); s.pop(); s.offer('b', 1); s.pop() == None`
     /// example: `var s: Settle<Char, Int> = Settle(best: max); s.offer('a', 5); s.offer('b', 3); s.pop() == Some(('a', 5))`
-    pub fn pop(mut self) -> ?(K, P):
+    pub fn pop(mut self) -> ?(K, P) where P: Eq:
         while q.len > 0:
             let (p, k) = q[0]
             q.swap(0, q.len - 1)

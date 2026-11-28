@@ -162,7 +162,7 @@ impl Dir for Dir8:
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).up == Some((R(0), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(2)).up == None`
-@get pub fn up<R, C>(self: (R, C)) -> ?(R, C):
+@get pub fn up<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C):
     if let r = self.0.prev: (r, self.1) else: None
 
 /// The cell one row down from `self`, or `None` on the bottom row. A getter, like `r.next`.
@@ -171,7 +171,7 @@ impl Dir for Dir8:
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).down == Some((R(2), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(2), C(2)).down == None`
-@get pub fn down<R, C>(self: (R, C)) -> ?(R, C):
+@get pub fn down<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C):
     if let r = self.0.next: (r, self.1) else: None
 
 /// The cell one column left of `self`, or `None` in the first column. A getter, like `r.prev`.
@@ -180,7 +180,7 @@ impl Dir for Dir8:
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).left == Some((R(1), C(1)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(0)).left == None`
-@get pub fn left<R, C>(self: (R, C)) -> ?(R, C):
+@get pub fn left<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C):
     if let c = self.1.prev: (self.0, c) else: None
 
 /// The cell one column right of `self`, or `None` in the last column. A getter, like `r.next`.
@@ -189,7 +189,7 @@ impl Dir for Dir8:
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).right == Some((R(1), C(2)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(2)).right == None`
-@get pub fn right<R, C>(self: (R, C)) -> ?(R, C):
+@get pub fn right<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C):
     if let c = self.1.next: (self.0, c) else: None
 
 /// The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that
@@ -407,7 +407,7 @@ impl<R: Domain, C: Domain, T> IndexGet<C, Slice<Col<R, C, T>>> for GridCols<R, C
 impl<R: Domain, C: Domain, T> Indexed<C, Slice<Col<R, C, T>>> for GridCols<R, C, T>:
     @get fn keys(self) -> Range<C> = C
 
-impl Show for GridRows<R, C, T>:
+impl Show for GridRows<R, C, T: Show>:
     fn show(v):
         var out = ""
         for x in v.each():

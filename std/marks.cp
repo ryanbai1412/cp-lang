@@ -73,7 +73,7 @@ pub struct Marks<D>:
     /// example: `var m = Marks<0..5>(); m.add(1); m.add(3); m.clear(); m.is_empty and not (1 in m)`
     pub fn clear(mut self):
         if gen == MAX_GEN:
-            stamp.fill(0)
+            for v in D: stamp[v] = 0
             gen = 1
         else:
             gen += 1
@@ -185,7 +185,7 @@ pub struct MarkMap<D, T>:
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 9); m.clear(); m.get(2) == None and m.is_empty`
     pub fn clear(mut self):
         if gen == MAX_GEN:
-            stamp.fill(0)
+            for v in D: stamp[v] = 0
             gen = 1
         else:
             gen += 1
