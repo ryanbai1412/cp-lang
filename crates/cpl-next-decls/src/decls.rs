@@ -554,8 +554,8 @@ pub struct Decls {
     /// is ambiguous (R08.1.4).
     pub ambiguous: Vec<HashSet<Sym>>,
     pub module_names: Vec<String>,
-    /// How many modules std's layer declares, the core first: the ones a `use std.` line names.
-    pub std_modules: usize,
+    /// Per module, whether std's own layer declares it: the modules a `use std.` line names.
+    pub of_std: Vec<bool>,
     /// Per module, the module an inline `mod` of it sits in (R11.1.3).
     pub within: Vec<Option<ModId>>,
     /// Per module, what each name it declares or exports means, and whether it is

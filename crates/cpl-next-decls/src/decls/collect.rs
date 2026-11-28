@@ -87,9 +87,15 @@ fn layer(
         None => usize::MAX,
     });
     d.module_names = mods.iter().map(|m| m.name.clone()).collect();
-    if base.is_none() {
-        d.std_modules = n;
-    }
+    d.of_std = match base {
+        None => vec![true; n],
+        Some(b) => {
+            let std: HashSet<&str> = (b.d.module_names.iter().zip(&b.d.of_std))
+                .filter_map(|(m, &s)| s.then_some(m.as_str()))
+                .collect();
+            mods.iter().map(|m| std.contains(m.name.as_str())).collect()
+        }
+    };
     d.within = (mods.iter())
         .map(|m| {
             let w = m.within.as_ref()?;

@@ -596,6 +596,41 @@ fn a_library_second_marked_declaration_is_a_duplicate() {
     );
 }
 
+/// The modules std's own layer declares are std's, whatever else loads beside them: a `use`
+/// fix offers a std module that exports a name, never a library's or the program's.
+#[test]
+fn std_modules_are_those_of_std_layer() {
+    use cpl_next_decls::views::Names;
+    let dir = std::env::temp_dir().join(format!("cpl-of-std-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("kit")).unwrap();
+    std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
+    std::fs::write(dir.join("kit/m.cp"), "pub fn one() -> Int = 1\n").unwrap();
+    let std = Std::read();
+    let (db, root) = alone(
+        &std,
+        "use kit.m.{one}\npub fn two() -> Int = 2\nprint(one())\n",
+        &Roots::from(&dir),
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+    let loaded = modules::load(&db, &std, &root);
+    let (d, _) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+    let of = |name: &str| {
+        let i = (d.module_names.iter()).position(|m| m == name);
+        d.of_std[i.unwrap_or_else(|| panic!("{name}: {:?}", d.module_names))]
+    };
+    assert!(of("std.seq") && of("std.mo"));
+    assert!(!of("kit.m") && !of(PROGRAM));
+    let at = |n: &str| d.exporters(d.sym(n).expect(n));
+    let names = |n: &str| {
+        at(n)
+            .iter()
+            .map(|m| d.module_name(*m).to_string())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(names("mo_order"), ["std.mo"]);
+    assert!(at("one").is_empty() && at("two").is_empty());
+}
+
 /// A library's misdeclarations are a program's errors, said at once: two fns of one name and
 /// one label set (R06.1.6), and a `@get` fn with a parameter that has no default (R02.6.6).
 #[test]
