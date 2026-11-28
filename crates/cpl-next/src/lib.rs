@@ -598,7 +598,7 @@ pub(crate) struct TypedAt {
 
 /// Each expression the program's own text holds.
 pub(crate) fn types(f: &Front) -> Vec<TypedAt> {
-    use cpl_next_decls::views::Signatures;
+    use cpl_next_decls::views::Items;
     let mut out = Vec::new();
     // A typed expression's span is from the start of the item it is in.
     let mut add = |item: &ItemId, generics: &[String], e: &check::TExpr| {
@@ -620,7 +620,7 @@ pub(crate) fn types(f: &Front) -> Vec<TypedAt> {
         }
     }
     for (id, typed) in &f.t.fns {
-        let fd = Signatures::f(&f.d, *id);
+        let fd = Items::f(&f.d, *id);
         if let Some(it) = ours(&fd.span.item) {
             typed.body.each(&mut |e| add(&it, &fd.generics, e));
         }
@@ -682,10 +682,10 @@ impl<'s> Type<'s> {
 
     /// The struct or enum it is an instance of.
     pub fn decl(&self) -> Option<Item> {
-        use cpl_next_decls::views::Signatures;
+        use cpl_next_decls::views::Items;
         match self.shown() {
             ty::Ty::Struct(id, ..) => {
-                let s = Signatures::s(&self.front.d, *id);
+                let s = Items::s(&self.front.d, *id);
                 Some(item_of(self.front, &item_start(&s.item), false))
             }
             _ => None,
@@ -706,12 +706,12 @@ impl<'s> Type<'s> {
     /// What a `.` after a value of this type can name: its fields, its own fns, and the fns of
     /// each impl the checker's lookup finds for it, by name.
     pub fn members(&self) -> Vec<(String, Item)> {
-        use cpl_next_decls::views::Signatures;
+        use cpl_next_decls::views::{Items, Signatures};
         let (f, ty) = (self.front, self.shown());
         let mut out = Vec::new();
-        let fn_item = |id| item_of(f, &Signatures::f(&f.d, id).span, true);
+        let fn_item = |id| item_of(f, &Items::f(&f.d, id).span, true);
         if let ty::Ty::Struct(id, ..) = ty {
-            let s = Signatures::s(&f.d, *id);
+            let s = Items::s(&f.d, *id);
             for ((name, _), at) in s.fields.iter().zip(&s.field_at) {
                 out.push((f.d.text(*name).to_string(), item_of(f, at, false)));
             }
@@ -722,7 +722,7 @@ impl<'s> Type<'s> {
             );
         }
         for i in 0..f.d.impls.len() {
-            let im = Signatures::imp(&f.d, i);
+            let im = Items::imp(&f.d, i);
             if !im.replaced
                 && Signatures::impl_args(&f.d, im, ty).is_some()
                 && Signatures::has_impl(&f.d, ty, im.trait_.tr)

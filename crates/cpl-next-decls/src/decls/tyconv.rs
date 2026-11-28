@@ -3,7 +3,7 @@
 //! written type and every form decls makes reaches one conversion, keyed by `Sym`.
 use super::forms::TyForm;
 use super::*;
-use crate::views::{Scope, Signatures, TypeTables};
+use crate::views::{Scope, Signatures, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::End;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -895,10 +895,13 @@ impl Decls {
     }
 }
 
-impl TypeTables for Tables {
+impl Texts for Tables {
     fn text(&self, s: Sym) -> &str {
         self.syms.text(s)
     }
+}
+
+impl TypeTables for Tables {
     fn sym(&self, text: &str) -> Option<Sym> {
         self.syms.get(text)
     }
