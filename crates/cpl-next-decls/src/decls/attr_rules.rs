@@ -402,7 +402,7 @@ mod tests {
             &mut out,
         );
         out.into_iter()
-            .map(|m| format!("{}: {}", m.code, m.text))
+            .map(|m| format!("{}: {}", m.code.0, m.text))
             .collect()
     }
 
