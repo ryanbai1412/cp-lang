@@ -321,7 +321,7 @@ impl Decls {
         let nth = self.dom_made.entry(item.clone()).or_default();
         let key = (item.clone(), *nth);
         *nth += 1;
-        let next = self.dom_ids.len();
+        let next = DomId::Decl(self.dom_ids.len() as u32);
         Ty::Dom(*self.dom_ids.entry(key).or_insert(next))
     }
 }
@@ -615,10 +615,10 @@ pub struct Decls {
     pub top_doms: HashMap<Sym, Ty>,
     /// The `domain C` a fn's result binds, `-> (domain C, [C]T)`: each is a domain of its own
     /// among `top_doms`, with the name the trace shows (R02.9.3).
-    pub fresh_doms: Vec<(usize, String)>,
+    pub fresh_doms: Vec<(DomId, String)>,
     /// Each domain decls makes, keyed by the item that declares it and which of that item's
     /// domains it is: its place here is its `Ty::Dom`, so a domain's id never reads the others.
-    pub dom_ids: HashMap<(ItemId, u32), usize>,
+    pub dom_ids: HashMap<(ItemId, u32), DomId>,
     /// How many of `dom_ids` have their `Domain` and `Ordered` rows in `impls`.
     pub dom_rows_made: usize,
     /// How many domains each item has made.

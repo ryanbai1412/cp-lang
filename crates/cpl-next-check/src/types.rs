@@ -79,7 +79,7 @@ pub struct TypeView<'a> {
     pub impls: &'a dyn ImplChoice,
     /// The `?T` struct, which a type shows as `?T`.
     pub option: Option<StructId>,
-    pub domains: &'a [DomInfo],
+    pub domains: &'a ById<DomId, DomInfo>,
     pub of: &'a dyn Fn(&ItemId) -> Option<&'a ItemTypes>,
 }
 

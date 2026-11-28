@@ -114,7 +114,7 @@ impl Shares<'_> {
 /// representations apart.
 fn erased(t: &CTy) -> CTy {
     match t {
-        CTy::Dom(_) => CTy::Dom(0),
+        CTy::Dom(_) => CTy::Dom(cpl_next_ir::ty::DomId::Decl(0)),
         CTy::Range(..) | CTy::RangeTo(..) => CTy::Int,
         CTy::Raw(e) => CTy::Raw(Box::new(erased(e))),
         CTy::Ref(e) => CTy::Ref(Box::new(erased(e))),

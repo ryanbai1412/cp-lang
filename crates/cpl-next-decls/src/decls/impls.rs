@@ -42,12 +42,12 @@ impl Decls {
     }
     /// The impls every domain has, `Domain` and `Ordered`, for domain `dom` declared at `at`:
     /// they write no members, so each member is the trait's default (R04.2, R04.2.31).
-    pub fn domain_rows(&self, dom: usize, at: SourceId, module: ModId) -> Vec<ImplDecl> {
+    pub fn domain_rows(&self, dom: DomId, at: SourceId, module: ModId) -> Vec<ImplDecl> {
         domain_rows(self, dom, at, module)
     }
     /// The rows of each domain decls declared since the last call (`domain_rows`).
     fn add_domain_rows(&mut self) {
-        let mut doms: Vec<(usize, ItemId)> = (self.dom_ids.iter())
+        let mut doms: Vec<(DomId, ItemId)> = (self.dom_ids.iter())
             .map(|((item, _), &i)| (i, item.clone()))
             .collect();
         doms.sort_by_key(|(i, _)| *i);
@@ -913,7 +913,7 @@ pub fn with_defaults(items: &dyn Items, mut r: TraitRef, self_ty: &Ty) -> TraitR
 /// they write no members, so each member is the trait's default (R04.2, R04.2.31).
 pub fn domain_rows(
     rows: &dyn crate::views::RoleRows,
-    dom: usize,
+    dom: DomId,
     at: SourceId,
     module: ModId,
 ) -> Vec<ImplDecl> {

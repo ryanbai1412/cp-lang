@@ -17,7 +17,7 @@ pub(super) struct Leak {
 /// (R10.1.1). Each is said where the case `body` first uses it.
 pub(super) fn per_test_leaks(
     above: &[(VarRef, String, Ty)],
-    doms: &[(usize, String)],
+    doms: &[(DomId, String)],
     body: &[TStmt],
 ) -> Vec<Leak> {
     let mut out = Vec::new();

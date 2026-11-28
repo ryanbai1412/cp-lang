@@ -741,7 +741,7 @@ impl<'s> Type<'s> {
     /// The domain it is a position of, by name.
     pub fn domain(&self) -> Option<&'s str> {
         match self.shown() {
-            ty::Ty::Dom(d) => (self.front.t.domains.get(*d)).map(|d| d.name.as_str()),
+            ty::Ty::Dom(d) => (self.front.t.domains.get(d)).map(|d| d.name.as_str()),
             _ => None,
         }
     }

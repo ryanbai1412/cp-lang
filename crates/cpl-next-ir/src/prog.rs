@@ -24,7 +24,7 @@ pub enum CTy {
     /// One closure: its captures.
     Clo(Box<InstKey>),
     /// A domain declared in a body. Its values are positions; its size is a run-time value.
-    Dom(usize),
+    Dom(DomId),
     /// `lo..=hi` as a type argument: `MemoArray<0..=90, V>` is an instance of its own, whose
     /// `K.count` is 91. A value of it is an `Int`.
     Range(i64, i64),
@@ -282,11 +282,11 @@ mod tests {
             CTy::Struct(s, vec![CTy::Int], vec![]),
             CTy::Struct(s, vec![CTy::Bool], vec![]),
             CTy::Fn(vec![CTy::Int], Box::new(CTy::Bool), vec![]),
-            CTy::Dom(2),
+            CTy::Dom(DomId::Decl(2)),
             CTy::Range(0, 5),
             CTy::Range(0, 6),
-            CTy::RangeTo(Box::new(CTy::Dom(1)), FnId(4), 0, 1),
-            CTy::RangeTo(Box::new(CTy::Dom(1)), FnId(5), 0, 1),
+            CTy::RangeTo(Box::new(CTy::Dom(DomId::Decl(1))), FnId(4), 0, 1),
+            CTy::RangeTo(Box::new(CTy::Dom(DomId::Decl(1))), FnId(5), 0, 1),
         ];
         let ts: Vec<Ty> = cs.iter().map(CTy::to_ty).collect();
         for (i, a) in ts.iter().enumerate() {
@@ -295,7 +295,10 @@ mod tests {
             }
         }
         assert_eq!(ts[4], Ty::Struct(s, vec![Ty::Int], vec![]));
-        assert_eq!(ts[10], Ty::RangeTo(Box::new(Ty::Dom(1)), FnId(4), 0, 1));
+        assert_eq!(
+            ts[10],
+            Ty::RangeTo(Box::new(Ty::Dom(DomId::Decl(1))), FnId(4), 0, 1)
+        );
         // A constant argument is a type of its own, never the singleton range of its value.
         let k = CTy::Const(5).to_ty();
         assert_eq!(k, Ty::Const(ConstArg::Int(5)));

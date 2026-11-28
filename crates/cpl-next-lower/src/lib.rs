@@ -301,7 +301,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
 
 /// The traits domain `i` has impl rows of: decls' rows for the domains it declares, the
 /// checker's for the rest.
-fn dom_impls(d: &Decls, typed: &Typed, i: usize) -> Vec<cpl_next_ir::ty::TraitId> {
+fn dom_impls(d: &Decls, typed: &Typed, i: cpl_next_ir::ty::DomId) -> Vec<cpl_next_ir::ty::TraitId> {
     let impls = cpl_next_decls::decls::Impls {
         items: d,
         rows: &typed.dom_rows,
@@ -315,14 +315,19 @@ fn dom_impls(d: &Decls, typed: &Typed, i: usize) -> Vec<cpl_next_ir::ty::TraitId
 fn whole(d: &Decls, typed: &Typed) -> cpl_next_ir::whole::Whole {
     use cpl_next_ir::whole::{Dom, Global, Whole};
     Whole {
-        domains: (typed.domains.iter().enumerate())
-            .map(|(i, x)| Dom {
-                name: x.name.clone(),
-                len: x.len,
-                lo: x.lo,
-                owner: x.owner,
-                counted: x.counted,
-                impls: dom_impls(d, typed, i),
+        domains: (typed.domains.iter())
+            .map(|(&i, x)| {
+                (
+                    i,
+                    Dom {
+                        name: x.name.clone(),
+                        len: x.len,
+                        lo: x.lo,
+                        owner: x.owner,
+                        counted: x.counted,
+                        impls: dom_impls(d, typed, i),
+                    },
+                )
             })
             .collect(),
         globals: (typed.globals.iter())

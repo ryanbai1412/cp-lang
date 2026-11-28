@@ -52,6 +52,28 @@ impl std::str::FromStr for LambdaId {
     }
 }
 
+/// A domain. One the declarations make (a `domain V = ...` item or statement, a result's fresh
+/// `domain C`) is decls' number for it, the same however bodies are checked; one a body's check
+/// makes (an array axis's or a list's range, `domain V = 0..n` in a body) is named as a lambda
+/// is: by the fn it sits in, the context copy, and which of that body's domains it is.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub enum DomId {
+    Decl(u32),
+    Made {
+        owner: Option<FnId>,
+        copy: u32,
+        n: u32,
+    },
+}
+
+/// A range type written in a body with a run-time end, named as a lambda is.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+pub struct RangeId {
+    pub owner: Option<FnId>,
+    pub copy: u32,
+    pub n: u32,
+}
+
 /// A call passing sets, named as a lambda is: by the fn it sits in, the context copy, and
 /// which of that body's set-passing calls it is.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -69,7 +91,7 @@ pub enum Ty {
     Range(i64, i64),
     /// A range written in a body with an end that is a run-time value: `1..=n`. Each one written
     /// is a type of its own; its ends are values held where it is written (`check::RangeInfo`).
-    RangeOf(usize),
+    RangeOf(RangeId),
     /// `_..=_` as an impl's type: every range type and never `Int`. It binds the impl's
     /// parameter `i`, which its body names `Self`, to the range type it is for.
     AnyRange(usize),
@@ -114,7 +136,7 @@ pub enum Ty {
     Clo(Box<CloRef>),
     Param(usize),
     /// A domain declared in a body: `domain V = 0..n`. Its size is a run-time value.
-    Dom(usize),
+    Dom(DomId),
     Var(usize),
     Error,
 }

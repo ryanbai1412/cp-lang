@@ -83,15 +83,19 @@ impl Cx<'_> {
             self.err(def_at, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, what));
             let sym = self.b.syms.intern(self.syms, name);
             // A top-level domain decls set aside is declared here, though it has no positions.
-            if let Some(&Ty::Dom(i)) = self.b.doms.get(&sym) {
-                self.domains[i].name = name.to_string();
+            if let Some(Ty::Dom(i)) = self.b.doms.get(&sym) {
+                if let Some(d) = self.domains.get_mut(i) {
+                    d.name = name.to_string();
+                }
             }
             self.b.doms.insert(sym, Ty::Error);
             return true;
         };
         let (lo, end, within) = self.typed_ends(at(TK::Int(0), Ty::Int), count, false);
         let i = self.declare_domain(name, lo, end, within, span, out);
-        self.domains[i].counted = true;
+        if let Some(d) = self.domains.get_mut(&i) {
+            d.counted = true;
+        }
         true
     }
     /// `xs`'s count through its impl of the `@role(counted)` trait `tr`, `xs` read once in `out`.
@@ -103,7 +107,10 @@ impl Cx<'_> {
         let recv = match xs.kind {
             TK::Var(_) => xs,
             _ => {
-                let v = self.temp(&format!("$counted{}", self.domains.len()), ty.clone());
+                let v = self.temp(
+                    &format!("$counted{}", self.made[super::Table::Domain as usize]),
+                    ty.clone(),
+                );
                 out.push(TStmt::Let(v, xs));
                 TExpr {
                     kind: TK::Var(v),
@@ -176,12 +183,12 @@ impl Cx<'_> {
         within: (Option<i64>, Option<i64>),
         span: Span,
         out: &mut Vec<TStmt>,
-    ) -> usize {
+    ) -> DomId {
         let info = self.domain_info(name, lo, end, within, span, out);
         let sym = self.b.syms.intern(self.syms, name);
         let i = match (self.b.decl, self.doms.top_dom(sym)) {
             (None, Some(&Ty::Dom(i))) if self.domains[i].name.is_empty() => {
-                self.domains[i] = info;
+                self.domains.insert(i, info);
                 i
             }
             _ => self.add_domain(info, span),
@@ -198,8 +205,8 @@ impl Cx<'_> {
         within: (Option<i64>, Option<i64>),
         span: Span,
         out: &mut Vec<TStmt>,
-    ) -> usize {
-        let shown = format!("$range{}", self.domains.len());
+    ) -> DomId {
+        let shown = format!("$range{}", self.made[super::Table::Domain as usize]);
         let mut info = self.domain_info(&shown, lo, end, within, span, out);
         info.anonymous = true;
         let i = self.add_domain(info, span);
@@ -208,10 +215,11 @@ impl Cx<'_> {
     }
     /// Adds domain `info` with the impls every domain has (`domain_rows`), so a body's domain,
     /// a range's and a binding's own fresh one are domains through the same rows.
-    pub(super) fn add_domain(&mut self, info: DomInfo, span: Span) -> usize {
-        let i = self.id(super::Table::Domain, self.domains.len());
-        super::put(&mut self.domains, i, info);
-        // An id names one domain however often its body is checked, as `put` keeps one entry.
+    pub(super) fn add_domain(&mut self, info: DomInfo, span: Span) -> DomId {
+        let (owner, copy, n) = self.next_made(super::Table::Domain);
+        let i = DomId::Made { owner, copy, n };
+        // An id names one domain however often its body is checked: a check again replaces it.
+        self.domains.insert(i, info);
         if !self.dom_rows.iter().any(|r| r.for_ == Ty::Dom(i)) {
             let rows = decls::domain_rows(self.rows, i, self.b.item.at(span), self.b.module);
             self.dom_rows.extend(rows);
@@ -318,7 +326,9 @@ impl Cx<'_> {
                     };
                     let (lo, end, within) = self.typed_ends(lo, hi, false);
                     let i = self.declare_domain(&name, lo, end, within, span, out);
-                    self.domains[i].counted = true;
+                    if let Some(d) = self.domains.get_mut(&i) {
+                        d.counted = true;
+                    }
                 }
                 Err(_) => self.other_domain(&name, &def, span, out),
             },
@@ -327,7 +337,9 @@ impl Cx<'_> {
                     (Some(lo), Some(hi)) => {
                         let (lo, end, within, chars) = self.domain_ends(&lo, &hi, r.is_inclusive());
                         let i = self.declare_domain(&name, lo, end, within, span, out);
-                        self.domains[i].chars = chars;
+                        if let Some(d) = self.domains.get_mut(&i) {
+                            d.chars = chars;
+                        }
                     }
                     _ => self.other_domain(&name, &def, span, out),
                 }
@@ -461,7 +473,9 @@ impl Cx<'_> {
             let name = decls::factor_name(product, i);
             let (lo, end, within, chars) = self.domain_ends(&lo, &hi, inclusive);
             let d = self.declare_domain(&name, lo, end, within, span, out);
-            self.domains[d].chars = chars;
+            if let Some(d) = self.domains.get_mut(&d) {
+                d.chars = chars;
+            }
             parts.push(Ty::Dom(d));
         }
         let t = match names {
@@ -485,7 +499,7 @@ impl Cx<'_> {
     /// are `r`'s, with `r` read once, in `out`.
     fn key_run(&mut self, r: TExpr, out: &mut Vec<TStmt>) -> (TExpr, TExpr) {
         let span = r.span;
-        let name = format!("$keys{}", self.domains.len());
+        let name = format!("$keys{}", self.made[super::Table::Domain as usize]);
         let r_ty = r.ty.clone();
         let v = self.bind(&name, r_ty.clone());
         out.push(TStmt::Let(v, r));
@@ -728,9 +742,10 @@ impl Cx<'_> {
         };
         let lo = end(self, re.lo(), false);
         let hi = end(self, re.hi(), !re.is_inclusive());
-        let i = self.id(super::Table::Range, self.ranges.len());
+        let (owner, copy, n) = self.next_made(super::Table::Range);
+        let i = RangeId { owner, copy, n };
         let at = self.at(re);
-        super::put(&mut self.ranges, i, RangeInfo { lo, hi, at });
+        self.ranges.insert(i, RangeInfo { lo, hi, at });
         Ty::RangeOf(i)
     }
 }
@@ -748,7 +763,7 @@ fn pattern_name(p: &next::Pattern) -> Option<String> {
 }
 
 /// The domains `t` mentions.
-pub(super) fn doms_in(t: &Ty, out: &mut Vec<usize>) {
+pub(super) fn doms_in(t: &Ty, out: &mut Vec<DomId>) {
     match t {
         Ty::Dom(d) => out.push(*d),
         Ty::Raw(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::Mut(e) | Ty::RangeTo(e, ..) => doms_in(e, out),

@@ -893,7 +893,7 @@ impl<'a> Cx<'a> {
     }
     /// `J` where a result's fresh `C` is wanted, each in the same place of one struct: `Range<J>`
     /// for a `domain C` slot, `Rooted<V, J, A>` for a `Rooted<V, _, A>`.
-    fn fresh_pairs(&self, have: &Ty, want: &Ty) -> Vec<(usize, usize)> {
+    fn fresh_pairs(&self, have: &Ty, want: &Ty) -> Vec<(DomId, DomId)> {
         let (Ty::Struct(s1, a, _), Ty::Struct(s2, b, _)) = (have, want) else {
             return Vec::new();
         };
@@ -915,7 +915,7 @@ impl<'a> Cx<'a> {
     }
     /// Returning `J` as the result's fresh `C`: `C` takes `J`'s ends, and in this body `J`
     /// stands for `C`, so `[J]T` is the result's `[C]T` (R02.9.3).
-    fn return_fresh(&mut self, pairs: Vec<(usize, usize)>, e: TExpr, want: Ty) -> TExpr {
+    fn return_fresh(&mut self, pairs: Vec<(DomId, DomId)>, e: TExpr, want: Ty) -> TExpr {
         let span = e.span;
         let var = |r| TExpr {
             kind: TK::Var(r),
@@ -1330,7 +1330,7 @@ pub(super) fn ground(t: &Ty) -> bool {
 pub fn show_ty(
     items: &dyn cpl_next_decls::views::Items,
     option: Option<StructId>,
-    domains: &[DomInfo],
+    domains: &ById<DomId, DomInfo>,
     generics: &[Sym],
     resolve: &dyn Fn(&Ty) -> Ty,
     t: &Ty,

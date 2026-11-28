@@ -1,7 +1,7 @@
 //! What link reads of the program as a whole beyond its fns and their set adds (`SetAdds`), which lowering hands on from
 //! the checker so link reads no typed tree.
 use crate::ty::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum VarRef {
@@ -9,9 +9,7 @@ pub enum VarRef {
     Global(LocalId),
 }
 
-/// A domain's place in `Whole::domains`: what a `Ty::Dom` names.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
-pub struct DomId(pub usize);
+pub use crate::ty::{DomId, RangeId};
 
 /// A global's place in `Whole::globals`: what a `Place::Global` names.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -51,8 +49,7 @@ pub struct Global {
 /// The facts of the program as a whole that link reads beside its fns (contract 4).
 #[derive(Clone, Debug, Default)]
 pub struct Whole {
-    /// By `DomId`.
-    pub domains: Vec<Dom>,
+    pub domains: BTreeMap<DomId, Dom>,
     /// By `GlobalId`.
     pub globals: Vec<Global>,
     /// The fns written in the user's program: where event points report entering and leaving.
@@ -64,7 +61,7 @@ pub struct Whole {
 
 impl Whole {
     pub fn dom(&self, d: DomId) -> &Dom {
-        &self.domains[d.0]
+        &self.domains[&d]
     }
     pub fn global(&self, g: GlobalId) -> Option<&Global> {
         self.globals.get(g.0)

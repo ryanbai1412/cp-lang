@@ -111,7 +111,7 @@ fn value_only(f: &Func<Ty>) -> Func<CTy> {
         declared: Vec::new(),
     }
 }
-fn doms_of(t: &CTy, out: &mut Vec<usize>) {
+fn doms_of(t: &CTy, out: &mut Vec<DomId>) {
     match t {
         CTy::Dom(d) => out.push(*d),
         CTy::Raw(e) | CTy::Ref(e) => doms_of(e, out),
@@ -263,12 +263,12 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
             key.targs.iter().for_each(|t| doms_of(t, &mut doms));
             if let Some(d) = doms
                 .iter()
-                .find(|d| owner.is_some() && c.domain(DomId(**d)).owner == owner)
+                .find(|d| owner.is_some() && c.domain(**d).owner == owner)
             {
                 l.errors.push(
                     Unbuilt::DomainTypeArg {
                         func: f.name.clone(),
-                        domain: Some(c.domain(DomId(*d)).name.clone()),
+                        domain: Some(c.domain(*d).name.clone()),
                     }
                     .into(),
                 );
@@ -1074,7 +1074,7 @@ impl Link<'_> {
     }
     /// Whether `t` is a domain meeting `tr` with no impl: its rows travel with it in `Whole` (S11).
     fn dom_row(&self, t: &CTy, tr: TraitId) -> bool {
-        matches!(t, CTy::Dom(i) if self.c.domain(DomId(*i)).impls.contains(&tr))
+        matches!(t, CTy::Dom(i) if self.c.domain(*i).impls.contains(&tr))
     }
     /// Whether `t` meets trait `tr` at `args` in this instance: an impl applies, or the type
     /// meets the trait without one (a domain, for `Domain`).
@@ -1219,7 +1219,7 @@ impl Link<'_> {
                 _ => EK::Int(0),
             },
             EK::DomCounted(t) => EK::Bool(match self.targ(t, env) {
-                CTy::Dom(d) => self.c.domain(DomId(d)).counted,
+                CTy::Dom(d) => self.c.domain(d).counted,
                 _ => false,
             }),
             EK::HasBound(t, tr, args) => EK::Bool(self.has_bound(t, *tr, args, env)),
@@ -1379,10 +1379,10 @@ fn thread_values(p: &mut Program, c: &dyn Checked) {
         ) {
             match &e.kind {
                 EK::DomLen(CTy::Dom(d)) => {
-                    doms.insert(DomValue::Len(DomId(*d)));
+                    doms.insert(DomValue::Len(*d));
                 }
                 EK::DomLo(CTy::Dom(d)) => {
-                    doms.insert(DomValue::Lo(DomId(*d)));
+                    doms.insert(DomValue::Lo(*d));
                 }
                 EK::DomLen(_) => *bad = true,
                 EK::MakeStruct(xs) => xs.iter().for_each(|x| ex(x, doms, calls, p, bad)),
@@ -1534,8 +1534,8 @@ fn thread_values(p: &mut Program, c: &dyn Checked) {
         fn ex(&self, e: &mut Expr<CTy>) {
             let ty = e.ty.clone();
             match &mut e.kind {
-                EK::DomLen(CTy::Dom(d)) => *e = self.size(DomValue::Len(DomId(*d))),
-                EK::DomLo(CTy::Dom(d)) => *e = self.size(DomValue::Lo(DomId(*d))),
+                EK::DomLen(CTy::Dom(d)) => *e = self.size(DomValue::Len(*d)),
+                EK::DomLo(CTy::Dom(d)) => *e = self.size(DomValue::Lo(*d)),
                 // A type that is not a domain is its own integers.
                 EK::DomLo(_) => e.kind = EK::Int(0),
                 EK::MakeStruct(xs) => xs.iter_mut().for_each(|x| self.ex(x)),

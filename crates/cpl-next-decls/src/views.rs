@@ -250,7 +250,7 @@ pub trait DomFacts {
     /// The domain a top-level `domain` line names `name`.
     fn top_dom(&self, name: Sym) -> Option<&Ty>;
     /// Whether domain `c` is one a record's field makes fresh per value.
-    fn fresh_dom(&self, c: usize) -> bool;
+    fn fresh_dom(&self, c: DomId) -> bool;
     /// Whether module `m` is reached by the program.
     fn seen(&self, m: ModId) -> bool;
 }
@@ -614,7 +614,7 @@ impl DomFacts for Decls {
     fn top_dom(&self, name: Sym) -> Option<&Ty> {
         self.top_doms.get(&name)
     }
-    fn fresh_dom(&self, c: usize) -> bool {
+    fn fresh_dom(&self, c: DomId) -> bool {
         self.fresh_doms.iter().any(|f| f.0 == c)
     }
     fn seen(&self, m: ModId) -> bool {

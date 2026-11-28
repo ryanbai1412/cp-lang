@@ -515,7 +515,7 @@ impl Cx<'_> {
     }
     /// `@same_keys`: arrays over two different domains are not paired by position (R04b.1.3).
     fn same_keys(&mut self, args: &[TArg], span: Span) {
-        let mut first: Option<usize> = None;
+        let mut first: Option<DomId> = None;
         for a in args {
             let (TArg::Value(e) | TArg::Mut(e)) = a;
             let Ty::Struct(d, ts, _) = self.shallow(&e.ty) else {

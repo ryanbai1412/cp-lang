@@ -402,7 +402,7 @@ pub struct DomInfo {
 pub struct Typed {
     /// The checks the build keeps where no `with checks(..)` says otherwise (contract 0).
     pub checks: Checks,
-    pub domains: Vec<DomInfo>,
+    pub domains: ById<DomId, DomInfo>,
     /// The `Domain` and `Ordered` impls of each domain the check declared (decls' own aside).
     pub dom_rows: Vec<ImplDecl>,
     pub fns: HashMap<FnId, TypedFn>,
@@ -448,13 +448,36 @@ enum Table {
     Added,
 }
 
-/// `t` with `x` at `i`, the id `Cx::id` gave it. An id an earlier check gave and this one
-/// does not make holds a copy of `x`, which nothing names.
-fn put<T: Clone>(t: &mut Vec<T>, i: usize, x: T) {
-    if t.len() <= i {
-        t.resize(i + 1, x.clone());
+/// A table by id, which `t[id]` reads and writes.
+#[derive(Clone, Debug)]
+pub struct ById<K, V>(pub std::collections::BTreeMap<K, V>);
+
+impl<K, V> Default for ById<K, V> {
+    fn default() -> Self {
+        ById(Default::default())
     }
-    t[i] = x;
+}
+impl<K: Ord, V> std::ops::Index<K> for ById<K, V> {
+    type Output = V;
+    fn index(&self, k: K) -> &V {
+        &self.0[&k]
+    }
+}
+impl<K: Ord, V> FromIterator<(K, V)> for ById<K, V> {
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(it: I) -> Self {
+        ById(it.into_iter().collect())
+    }
+}
+impl<K, V> std::ops::Deref for ById<K, V> {
+    type Target = std::collections::BTreeMap<K, V>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<K, V> std::ops::DerefMut for ById<K, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 /// The ids a check gave what bodies make, kept for the check of an edited program
@@ -462,8 +485,6 @@ fn put<T: Clone>(t: &mut Vec<T>, i: usize, x: T) {
 /// and context copies as before.
 #[derive(Clone, Default)]
 pub struct Ids {
-    keyed: HashMap<(Option<FnId>, u32, Table, u32), usize>,
-    next: [usize; 4],
     ctx: HashMap<(FnId, Vec<CtxSetting>), u32>,
 }
 
@@ -502,7 +523,7 @@ struct Cx<'a> {
     zonking: std::cell::RefCell<Vec<usize>>,
     cyclic: std::cell::Cell<bool>,
     /// A top-level domain a top-level statement named before the line declaring it.
-    early: std::cell::Cell<Option<usize>>,
+    early: std::cell::Cell<Option<DomId>>,
     /// The keys of a `let w = s[lo..hi]` with literal ends, which prove a literal `w[k]` (R07.4.5).
     view_keys: HashMap<VarRef, (i128, i128)>,
     /// The judge the build is for, for its memory limit (R03.1.9).
@@ -530,13 +551,13 @@ struct Cx<'a> {
     global_adds: HashMap<(usize, usize), Vec<Member>>,
     /// `SetTy::AddedAt(i)`'s call and the slot of the set it passes there.
     added: std::collections::BTreeMap<AddedId, (FnRef, usize)>,
-    domains: Vec<DomInfo>,
+    domains: ById<DomId, DomInfo>,
     /// A body domain and the result's `domain C` it was returned as, which it then stands for;
     /// or a result's `domain C` and the domain its caller bound it to (R02.9.3).
-    fresh_eq: Vec<(usize, usize)>,
+    fresh_eq: Vec<(DomId, DomId)>,
     /// The `let`s bound to the `None` value: comparing one with a `?T` tests presence (R02.4.5).
     none_lets: HashSet<VarRef>,
-    ranges: Vec<RangeInfo>,
+    ranges: ById<RangeId, RangeInfo>,
     /// The results whose `_`s an earlier check of their bodies fixed (R02.9.3), and the ones
     /// this check fixes.
     found_ret: HashMap<FnId, Ty>,
@@ -585,10 +606,10 @@ struct Cx<'a> {
 struct Body {
     doms: HashMap<Sym, Ty>,
     /// The domains declared in the blocks being checked, innermost last (R02.9.2).
-    block_doms: Vec<usize>,
+    block_doms: Vec<DomId>,
     /// The domains a binding owns, by the binding and the path to each in its value: `t`'s
     /// `Pre`, or `r`'s `tree.Pre` (R02.9.1).
-    owned: HashMap<(VarRef, Vec<String>), usize>,
+    owned: HashMap<(VarRef, Vec<String>), DomId>,
     /// A block's `@memo` fn's `f.clear`, by the fn's binding (R06.4.1).
     memo_clears: HashMap<VarRef, VarRef>,
     decl: Option<FnId>,
@@ -808,22 +829,27 @@ impl<'a> Checker<'a> {
             global_adds: HashMap::new(),
             added: Default::default(),
             // A top-level domain's place is kept for it until its statement runs.
-            domains: (0..d.dom_ids.len())
-                .map(|_| DomInfo {
-                    name: String::new(),
-                    len: VarRef::Global(usize::MAX),
-                    lo: VarRef::Global(usize::MAX),
-                    within: (None, None),
-                    owner: None,
-                    count: None,
-                    chars: false,
-                    counted: false,
-                    anonymous: false,
+            domains: (d.dom_ids.values())
+                .map(|&i| {
+                    (
+                        i,
+                        DomInfo {
+                            name: String::new(),
+                            len: VarRef::Global(usize::MAX),
+                            lo: VarRef::Global(usize::MAX),
+                            within: (None, None),
+                            owner: None,
+                            count: None,
+                            chars: false,
+                            counted: false,
+                            anonymous: false,
+                        },
+                    )
                 })
                 .collect(),
             fresh_eq: Vec::new(),
             none_lets: HashSet::new(),
-            ranges: Vec::new(),
+            ranges: ById::default(),
             found_ret: HashMap::new(),
             ret_busy: Vec::new(),
             fns: HashMap::new(),
@@ -855,17 +881,20 @@ impl<'a> Checker<'a> {
         };
         for (i, name) in &d.fresh_doms {
             let (lo, len) = (slot(&mut cx, "$lo"), slot(&mut cx, "$len"));
-            cx.domains[*i] = DomInfo {
-                name: name.clone(),
-                len,
-                lo,
-                within: (None, None),
-                owner: None,
-                count: None,
-                chars: false,
-                counted: false,
-                anonymous: false,
-            };
+            cx.domains.insert(
+                *i,
+                DomInfo {
+                    name: name.clone(),
+                    len,
+                    lo,
+                    within: (None, None),
+                    owner: None,
+                    count: None,
+                    chars: false,
+                    counted: false,
+                    anonymous: false,
+                },
+            );
         }
         for (at, code, msg) in &d.misdeclared {
             cx.errors
@@ -1063,7 +1092,7 @@ impl<'a> Checker<'a> {
         }
         cx.solve(true);
         if let Some((count, body)) = cases {
-            let doms: Vec<(usize, String)> = (cx.b.block_doms[case_doms..].iter())
+            let doms: Vec<(DomId, String)> = (cx.b.block_doms[case_doms..].iter())
                 .map(|&k| (k, cx.domains[k].name.clone()))
                 .collect();
             let above: Vec<(VarRef, String, Ty)> = (main_out.iter())
@@ -1314,7 +1343,7 @@ impl<'a> Checker<'a> {
             let code = cpl_diag::codes::GROWING_INSTANTIATION;
             cx.err_help(*span, Msg::verdict(code, text), Some(help.to_string()));
         }
-        if cx.domains.iter().any(|d| d.name.is_empty()) {
+        if cx.domains.values().any(|d| d.name.is_empty()) {
             cx.errors.push(Unbuilt::UndeclaredTopDomain.into());
         }
         if cx.cyclic.get() {

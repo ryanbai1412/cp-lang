@@ -6,36 +6,19 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use std::collections::BTreeSet;
 
 impl<'a> Cx<'a> {
-    /// The id of the next entry of `t`, which holds `len`: the one the whole program's check
-    /// gives it, whatever else is checked.
-    pub(super) fn id(&mut self, t: super::Table, len: usize) -> usize {
-        let key = (self.b.decl, self.copy, t, self.made[t as usize]);
+    /// What names the next entry this body makes in table `t`: its fn, its context copy, and
+    /// which of that body's entries of `t` it is, whatever order bodies are checked in.
+    pub(super) fn next_made(&mut self, t: super::Table) -> (Option<FnId>, u32, u32) {
+        let n = self.made[t as usize];
         self.made[t as usize] += 1;
-        self.id_at(key, len)
-    }
-    /// The id `key` names in its table, which holds `len`.
-    pub(super) fn id_at(
-        &mut self,
-        key: (Option<FnId>, u32, super::Table, u32),
-        len: usize,
-    ) -> usize {
-        let k = key.2 as usize;
-        let next = self.ids.next[k].max(len);
-        let id = *self.ids.keyed.entry(key).or_insert(next);
-        self.ids.next[k] = self.ids.next[k].max(id + 1);
-        id
+        (self.b.decl, self.copy, n)
     }
     /// A call passing sets: each set it passes also holds what the callee adds to it, which
     /// the callee's summary (`param_adds`) says and link reads per instance.
     pub(super) fn set_call(&mut self, f: &FnRef) {
         for (slot, s) in f.sets.iter().enumerate() {
-            let n = self.made[super::Table::Added as usize];
-            self.made[super::Table::Added as usize] += 1;
-            let at = AddedId {
-                owner: self.b.decl,
-                copy: self.copy,
-                n,
-            };
+            let (owner, copy, n) = self.next_made(super::Table::Added);
+            let at = AddedId { owner, copy, n };
             self.added.insert(at, (f.clone(), slot));
             let m = Member::Sub(SetTy::AddedAt(at));
             match self.shallow_set(s) {
@@ -93,13 +76,8 @@ impl<'a> Cx<'a> {
         }
     }
     pub(super) fn new_lambda(&mut self, info: LambdaInfo) -> LambdaId {
-        let n = self.made[super::Table::Lambda as usize];
-        self.made[super::Table::Lambda as usize] += 1;
-        let id = LambdaId {
-            owner: self.b.decl,
-            copy: self.copy,
-            n,
-        };
+        let (owner, copy, n) = self.next_made(super::Table::Lambda);
+        let id = LambdaId { owner, copy, n };
         self.lambdas.insert(id, info);
         id
     }
