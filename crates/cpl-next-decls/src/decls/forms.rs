@@ -112,6 +112,8 @@ pub struct FnForm {
     pub public: bool,
     pub attrs: Vec<AttrForm>,
     pub generics: Vec<Sym>,
+    /// Its `const N: Int` parameters (R08.2.4).
+    pub value_params: Vec<Sym>,
     pub bounds: Vec<BoundForm>,
     pub params: Vec<ParamForm>,
     pub ret: Option<TyForm>,
@@ -142,6 +144,8 @@ pub struct StructForm {
     /// A record's struct or row trait, which the compiler declares; no source writes it.
     pub record: bool,
     pub generics: Vec<Sym>,
+    /// Its `const P: Int` parameters, each one value (`Mod<const P: Int>`, R08.2.4).
+    pub value_params: Vec<Sym>,
     pub generic_defaults: Vec<Option<TyForm>>,
     pub bounds: Vec<BoundForm>,
     pub fields: Vec<FieldForm>,
@@ -328,6 +332,14 @@ impl Reader<'_> {
         (names, defaults, bounds)
     }
 
+    /// The `const N: Int` parameters of `g`.
+    fn value_params(&mut self, g: Option<ast::GenericParams>) -> Vec<Sym> {
+        (g.iter().flat_map(|g| g.params().collect::<Vec<_>>()))
+            .filter(|p| p.is_const())
+            .map(|p| self.sym(p.name()))
+            .collect()
+    }
+
     /// A generic parameter's name, its bounds pushed onto `out`.
     fn bounded(&mut self, p: &ast::GenericParam, out: &mut Vec<BoundForm>) -> Sym {
         let name = self.sym(p.name());
@@ -410,6 +422,7 @@ impl Reader<'_> {
             public: f.is_pub(),
             attrs,
             generics,
+            value_params: self.value_params(f.generics()),
             bounds,
             params,
             yields: ret.as_ref().is_some_and(|r| r.is_yields()),
@@ -453,6 +466,7 @@ impl Reader<'_> {
                 public: false,
                 attrs: Vec::new(),
                 generics: Vec::new(),
+                value_params: Vec::new(),
                 bounds,
                 params: std::iter::once(me).chain(params).collect(),
                 ret: Some(TyForm::Named(bool_, Vec::new())),
@@ -622,6 +636,7 @@ impl Reader<'_> {
             attrs,
             record: false,
             generics,
+            value_params: self.value_params(sd.generics()),
             generic_defaults,
             bounds,
             fields,
@@ -844,5 +859,24 @@ impl Form {
             Form::Stmt(_) => "statement",
             Form::Other(_) => "item",
         }
+    }
+}
+
+/// The `domain C` slots of a result `(domain C, [C]T)` or `(domain C, comp: [V]C)`: each one's
+/// place and name.
+pub(super) fn fresh_binders(ret: Option<&TyForm>) -> Vec<(usize, String)> {
+    use cpl_next_syntax::ast::Type;
+    let binder = |t: Option<Type>| match t {
+        Some(Type::DomainBinder(b)) => b.name().map(|n| n.text().to_string()),
+        _ => None,
+    };
+    match ret {
+        Some(TyForm::Written(Type::Record(r))) => (r.fields().enumerate())
+            .filter_map(|(k, x)| Some((k, binder(x.ty())?)))
+            .collect(),
+        Some(TyForm::Written(Type::Tuple(ts))) => (ts.elems().into_iter().enumerate())
+            .filter_map(|(k, (_, t))| Some((k, binder(Some(t))?)))
+            .collect(),
+        _ => Vec::new(),
     }
 }

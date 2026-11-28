@@ -1232,7 +1232,7 @@ struct BitTrieNode:
 /// and two optional children. Tries are root handles into it, so `absorb` links one trie's
 /// nodes under another's instead of copying them. Pass it to every trie call, as `PArena` is
 /// passed to `PMultiset`.
-pub struct BitTrieArena<W>:
+pub struct BitTrieArena<const W: Int>:
     nodes: List<BitTrieNode>
 
     /// An empty arena with room for `cap` nodes before it reallocates. The room is allocated,
@@ -1265,7 +1265,7 @@ impl Show for BitTrieArena<W>:
 /// trie's counts into this one, so tries kept per group of indices (DSU, small-to-large over a
 /// tree, runs of equal keys) combine as the groups do. Layout: a root handle into a
 /// `BitTrieArena<W>`, which every call that reads or adds nodes takes. \(O(W)\) per op.
-pub struct BitTrie<W>:
+pub struct BitTrie<const W: Int>:
     var root: ?Int
 
     /// An empty `BitTrie<W>`; it holds no node until the first `add`.

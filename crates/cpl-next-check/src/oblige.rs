@@ -556,7 +556,7 @@ impl Cx<'_> {
                 self.err(span, Unbuilt::BoundNotNamed);
                 return error;
             };
-            args.push(self.body_ty(&a, &mut pre));
+            args.push(self.body_targ(&a, &mut pre));
         }
         let r = decls::with_defaults(self.items, TraitRef { tr, args }, &t);
         if t == Ty::Error {

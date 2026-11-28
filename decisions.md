@@ -92,7 +92,7 @@ G7, G8):
 | 3.7 | Structural field bounds | Leaning | `A has to: V` as a general feature, not graph-specific | | plan/13-abstraction.md G9 |
 | 3.8 | Associated types, consts and frozen lets | Settled 2026-11-20 | yes. Associated types (`Indexed.Elem`, `Seq.bounds`). An associated size is `const K = 10` when known at compile time and **`let K = n`** when frozen from a run-time value where the impl is declared; **`const K = n` with a run-time `n` is an error**, so `const` stays strictly compile-time (7.10). Sizing by a `var` is an error | 7.10 | plan/19-index-and-lends.md §3.1 |
 | 3.9 | Coherence (who may `impl` what) | Settled 2026-11-19 | orphan rule relaxed inside one program, strict for libraries | 6.4 | §8 |
-| 3.10 | `Mod<P>` (unified moduli) | Revised 2026-11-20 (v2.2) | **One `Mod<P>` type** accepting both `const` and runtime-frozen `let` `Int` moduli via 3.8 (`ModR` retired). Works for any `P >= 1` (incl. composite; `.try_inv() -> ?Z`); 4-byte `uint32_t` when `P <= 2^31 - 1`, `I128` widen above; one-way `Int` reduction; constant-divisor inverse lowering; `T.zero`-seeded `sum`; immutable `let comb = Comb<P>()` with interior-mutability lazy growth | 3.8 | §16, §17.5, §18.7, §19.10 |
+| 3.10 | `Mod<P>` (unified moduli) | Revised 2026-11-20 (v2.2); runtime spelling superseded by 232 (688) | **One `Mod<P>` type** accepting both `const` and runtime-frozen `let` `Int` moduli via 3.8 (`ModR` retired; a runtime modulus is now `type Z = Mod(p)`, 232). Works for any `P >= 1` (incl. composite; `.try_inv() -> ?Z`); 4-byte `uint32_t` when `P <= 2^31 - 1`, `I128` widen above; one-way `Int` reduction; constant-divisor inverse lowering; `T.zero`-seeded `sum`; immutable `let comb = Comb<P>()` with interior-mutability lazy growth | 3.8 | §16, §17.5, §18.7, §19.10 |
 | 3.11 | Decorators (`@`) | Revised 2026-11-20 (v2.2) | User-defined `decorator` macros deleted. **8 contestant decorators** (`@memo`, `@multitest`, `@brute`, `@tags`, `@gen`, `@checker`, `@interactor`, `@grader`) + **3 library-author** (`@get`, `@test`, `@law` replacing hard keyword `law`). Parameter grammars `@memo(flat\|hash)`, `@multitest(count:)`, and `@grader const` deleted. **0.2.2:** the test-case divider is the file-level directive `@!multitest` (§20), not a decorator; `@` always decorates the one item below it | | §16, §19.1, §19.3, §20 |
 
 ## 4. Control and iteration
@@ -883,7 +883,8 @@ writing the library against the spec, where the spec left room:
   (`use std.grid.{adj4}`); `Dir4` / `Dir8` are small structs, since an enum
   cannot carry methods yet.
 - **17.5 `ModR` is gone.** A run-time modulus is `let P = p` then
-  `Mod<P>`, the same type as a constant one.
+  `Mod<P>`, the same type as a constant one. (Superseded by 232: a run-time
+  modulus is `type Z = Mod(p)`, and `Mod<p>` takes a constant only, 688.)
 - **17.6 Moved out of `std`, into `examples/local-lib/`:** the structures
   listed in T13 (`Rope`, `RangeKth`, `LiChao`, `PotentialDsu`, `Cover`,
   `Hom`, `TwoStackFold`, `mo`, NTT, `XorBasis`, `Frac`, `Powers`,
@@ -9831,3 +9832,30 @@ old case.
 - **Call.** `std.ops` declares `pub trait FromInt: fn from_int(n: Int) -> Self` beside `Zero` and `One`, and the core re-exports it. `Int`, `U64`, `I128`, `F64`, `Mod<P>`, `Ratio`, `BigInt` and `Poly<T>` (where `T: FromInt`) implement it, each with its one `from_int` in that impl: the inherent `from_int` on `Mod`, `Ratio` and `BigInt` moved into it. A generic body writes `T.from_int(n)` only with `T: FromInt`; Poly's `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt` and `Div` say so. An unbounded `T.from_int` is E0606 naming the missing bound (R08.2.2, `core-12/from-int-needs-its-bound.cp`), not a `Domain` error. W1 (12-powers.md) names `FromInt` and the operator traits instead of the nonexistent `Num`; R04.4.28's `Int` to `Mod<P>` is `Mod<P>`'s `FromInt` impl.
 - **Why.** Old cpl accepted `T.from_int` on any `T` by its name, and cpl-next found no bound that gives it, so std.poly reported a `Domain` error at every use. A trait is how every other static member (`T.zero`, `T.one`) reaches a generic body.
 - **Reverse.** Drop the trait and give each number an inherent `from_int`, if no generic body needs it.
+
+## 688. A constant type argument is `Ty::Const`; a type's value parameters are `const P: Int` (spec, 2026-11-28)
+
+- **Decision.** A value argument (`Mod<998_244_353>`, `Mod<P1>`, `Mod<1e9 + 7>`)
+  is one kind of type argument, `Ty::Const`, carried from decls through check,
+  instances, ownership and link to every backend. Check resolves it once,
+  through the same constant evaluator as E0902, so `targ(to_ty(c)) == c`, and
+  nothing re-evaluates it later. A type writes its value parameters,
+  `struct Mod<const P: Int>`. A fn's or an impl's is inferred from where it is
+  passed, as the domain kind is. A body reads the parameter as its `Int`, and
+  a field's `0..P` is `0..k` in `Mod<k>`. A runtime value, a range type
+  (`Mod<5..=5>`) or a type in a value parameter's place is E0302, and a
+  runtime value has a fix that writes `type Z = Mod(p)`. Those cases are
+  `// engines: next`: old cpl reads `Mod<5..=5>` as a type, and it accepts a
+  runtime `Mod<p>` outside a signature, the second spelling 232 logs. Rows
+  3.10 and 17.5 (`let P = p` then `Mod<P>`) are superseded by 232 for the
+  runtime modulus. A range type's end and a jagged parameter's reach still
+  fold in decls; `next_const_evaluators` counts the files that evaluate a
+  constant (3 today, the shared one among them) until they read `Consts`
+  too (target 1).
+- **Why.** A singleton range `k..=k` standing in for `k` would make `Mod<5>`
+  and `Mod<5..=5>` the same type, and it needs a side table to tell value
+  parameters apart. Inferring them from range ends would read a type's
+  intent off its fields. One representation and one evaluator keep the
+  interpreter, the engine and C++ in agreement.
+- **Reverse.** Drop `Ty::Const`, and read a value parameter as the range
+  `k..=k` again.

@@ -6,7 +6,7 @@ use super::*;
 use crate::ops::{bin_intr, fold, un_intr};
 use crate::views::{Names, RoleStructs, Shapes, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
-use cpl_next_ir::ty::End;
+use cpl_next_ir::ty::{ConstArg, End};
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::ast::{self as next, AstNode, Expr, GenericArg, Type};
 use cpl_next_syntax::literal::int_value;
@@ -328,7 +328,12 @@ pub(super) fn conv_form(cx: &mut TyCx, t: &TyForm, errors: &mut Vec<Msg>) -> Ty 
             }
         }
         TyForm::Named(n, args) => {
-            let a = args.iter().map(|x| conv_form(cx, x, errors)).collect();
+            let a = (args.iter())
+                .map(|x| match x {
+                    TyForm::Written(t) => conv_targ(cx, t, errors),
+                    x => conv_form(cx, x, errors),
+                })
+                .collect();
             named(cx, *n, a, errors)
         }
         TyForm::Record(fs) => {
@@ -429,24 +434,10 @@ pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
     }
 }
 
-/// A type argument: a type, or a value, which is its singleton range type (`Mod<7>` is
-/// `Mod<7..=7>`, R03.5.1).
+/// A type argument: a type, or a constant (R08.2.4).
 fn conv_arg(cx: &mut TyCx, a: &GenericArg, errors: &mut Vec<Msg>) -> Ty {
     match a {
-        GenericArg::Type(Type::Range(r)) => match r.expr() {
-            Some(Expr::Range(re)) => conv_range(cx, &re, errors),
-            Some(e) => match const_int(cx, &e) {
-                Some(k) => Ty::Range(k, k),
-                None => {
-                    let text = cpl_diag::msgs::ir::BAD_NUMBER_EXPECTED_A_COMPILE_TIME.say(&[]);
-                    let m = Msg::verdict(cpl_diag::codes::BAD_NUMBER, text);
-                    errors.push(at(cx, e.syntax().span(), m));
-                    Ty::Error
-                }
-            },
-            None => Ty::Error,
-        },
-        GenericArg::Type(t) => conv(cx, t, errors),
+        GenericArg::Type(t) => conv_targ(cx, t, errors),
         // `D` of `impl Show for Bitset<D: Show>`, its bounds read with the impl's.
         GenericArg::Param(p) if !p.is_const() => {
             let s = p.name().and_then(|n| cx.syms.get(n.text()));
@@ -459,8 +450,93 @@ fn conv_arg(cx: &mut TyCx, a: &GenericArg, errors: &mut Vec<Msg>) -> Ty {
     }
 }
 
-fn at(cx: &TyCx, span: cpl_diag::Span, m: Msg) -> Msg {
-    match &cx.item {
+/// A type argument: a literal (`Mod<998_244_353>`) is that constant, and a `const`'s name
+/// (`Mod<P1>`) or a constant expression (`Mod<1e9 + 7>`) is where it is written, for check to
+/// work out once (decision 688). A value read as the program runs is not a constant.
+fn conv_targ(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
+    let konst = |s: Option<Sym>| matches!(s.and_then(|s| (cx.names)(s)), Some(Named::Const(_)));
+    let run_time = |s: Option<Sym>| {
+        s.is_some_and(|s| {
+            !cx.generics.contains(&s) && (cx.names)(s).is_none() && cx.env.top_value(s).is_some()
+        })
+    };
+    match t {
+        Type::Literal(l) => {
+            if let Some(k) = int_literal(l) {
+                return Ty::Const(ConstArg::Int(k));
+            }
+        }
+        Type::Path(p) if p.generic_args().is_none() => {
+            if let [seg] = &p.segments().collect::<Vec<_>>()[..] {
+                let s = cx.syms.get(seg.text());
+                if let Some(Named::Const(c)) = s.and_then(|s| (cx.names)(s)) {
+                    let k = cx.env.konst(c);
+                    return Ty::Const(ConstArg::At(k.item.at(k.init.syntax().span())));
+                }
+                if run_time(s) {
+                    errors.push(at(cx.item.as_ref(), seg.span(), run_time_value(seg.text())));
+                    return Ty::Error;
+                }
+            }
+        }
+        // `Mod<1e9 + 7>`: the expression, when each name it reads is a `const`.
+        Type::Range(r) => match r.expr() {
+            Some(Expr::Range(_)) | None => {}
+            Some(e) => {
+                let names =
+                    (e.syntax().descendants().filter_map(Expr::cast)).filter_map(|e| match e {
+                        Expr::Name(n) => n.ident(),
+                        _ => None,
+                    });
+                for n in names {
+                    let s = cx.syms.get(n.text());
+                    if konst(s) {
+                        continue;
+                    }
+                    let m = if run_time(s) {
+                        run_time_value(n.text())
+                    } else {
+                        let text = format!(
+                            "`{}` is not a `const`, so it can't be in a type's value argument",
+                            n.text()
+                        );
+                        Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text)
+                    };
+                    errors.push(at(cx.item.as_ref(), n.span(), m));
+                    return Ty::Error;
+                }
+                return match &cx.item {
+                    Some(i) => Ty::Const(ConstArg::At(i.at(e.syntax().span()))),
+                    None => unbuilt("constant type argument outside an item", errors),
+                };
+            }
+        },
+        _ => {}
+    }
+    conv(cx, t, errors)
+}
+
+/// `Mod<p>` with `p` a value the top level reads as the program runs: a type's value argument
+/// is a constant, and a modulus read from input is a type of its own (decision 232).
+fn run_time_value(p: &str) -> Msg {
+    let text = format!(
+        "`{p}` is read as the program runs, so it is not a constant and can't be a type's value argument; for a modulus read from input write `type Z = Mod({p})`"
+    );
+    Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text)
+}
+
+/// The integer a type argument written as one literal is (`998_244_353`).
+fn int_literal(l: &next::LiteralType) -> Option<i64> {
+    let [t] = &l.literals().collect::<Vec<_>>()[..] else {
+        return None;
+    };
+    (t.kind() == TokenKind::Int)
+        .then(|| i64::try_from(int_value(t.text())?).ok())
+        .flatten()
+}
+
+fn at(item: Option<&ItemId>, span: cpl_diag::Span, m: Msg) -> Msg {
+    match item {
         Some(i) => Msg::at(i.at(span), m),
         None => m,
     }
@@ -521,11 +597,38 @@ pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>
         // Set arguments of a struct named in a signature are fresh parameters.
         Some(Named::Struct(d)) => {
             let (d, a) = struct_args(cx.env, d, a);
+            errors.extend(targ_kinds(cx.env.text(n), cx.env.value_params(d), &a));
             let sets = (0..cx.env.n_sets(d)).map(|_| slot(cx)).collect();
             Ty::Struct(d, a, sets)
         }
         _ => unknown(cx.env.text(n), errors),
     }
+}
+
+/// What is wrong with `name`'s arguments `a`, each of the kind its parameter takes: a constant
+/// for a value parameter (`Mod<5>`), else a type, so `Mod<5..=5>`, a range type, is not
+/// `Mod<5>` (R08.2.4).
+pub fn targ_kinds(name: &str, values: &[usize], a: &[Ty]) -> Vec<Msg> {
+    let mut errors = Vec::new();
+    for (i, t) in a.iter().enumerate() {
+        if matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_))
+            || values.contains(&i) == matches!(t, Ty::Const(_))
+        {
+            continue;
+        }
+        let text = match values.contains(&i) {
+            true => format!(
+                "`{name}`'s parameter {} is a value, so its argument is a constant, as in `{name}<5>`, not a type",
+                i + 1
+            ),
+            false => format!(
+                "`{name}`'s parameter {} is a type, so its argument can't be a constant",
+                i + 1
+            ),
+        };
+        errors.push(Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, text));
+    }
+    errors
 }
 
 fn unknown(n: &str, errors: &mut Vec<Msg>) -> Ty {
@@ -850,14 +953,23 @@ fn item_of(cx: &mut TyCx, o: &next::TypeOfType, errors: &mut Vec<Msg>) -> Ty {
         }
         _ => not_fn(),
     };
-    errors.push(at(cx, span, msg));
+    errors.push(at(cx.item.as_ref(), span, msg));
     Ty::Error
 }
 
 /// Converts a type written in a body: fn types get a placeholder set the checker replaces. It
-/// reads the module's scope and the signatures, and gives the type with what is wrong in it.
-pub fn body_type(at: &BodyScope, axes: &HashMap<cpl_diag::Span, Ty>, t: &Type) -> (Ty, Vec<Msg>) {
-    at.run_at(Some(axes), |cx, errors| conv(cx, t, errors))
+/// reads the module's scope and the signatures, and gives the type with what is wrong in it. A
+/// type argument (`arg`) that is a literal or a `const` is that value: `Mod<P1>(5)`.
+pub fn body_type(
+    at: &BodyScope,
+    axes: &HashMap<cpl_diag::Span, Ty>,
+    t: &Type,
+    arg: bool,
+) -> (Ty, Vec<Msg>) {
+    at.run_at(Some(axes), |cx, errors| match arg {
+        true => conv_targ(cx, t, errors),
+        false => conv(cx, t, errors),
+    })
 }
 
 /// The range type `lo..hi` is when decls makes it (see [`static_axis`]), read in a body.
@@ -884,6 +996,7 @@ pub fn static_axis(
         generics,
         doms,
         scoped: &unscoped,
+        item: None,
     };
     at.run(|cx, _| static_range(cx, re)).0
 }
@@ -917,6 +1030,8 @@ pub struct BodyScope<'a> {
     pub generics: &'a [Sym],
     pub doms: &'a HashMap<Sym, Ty>,
     pub scoped: &'a dyn Fn(Sym) -> Option<Ty>,
+    /// The item the body is in, where a constant type argument it writes is found.
+    pub item: Option<ItemId>,
 }
 
 impl BodyScope<'_> {
@@ -935,7 +1050,7 @@ impl BodyScope<'_> {
             names: &names,
             env: self.tables,
             syms: self.syms,
-            item: None,
+            item: self.item.clone(),
             generics: self.generics,
             outer: self.generics,
             args: None,
@@ -1034,6 +1149,9 @@ impl Shapes for Tables {
     fn n_sets(&self, s: StructId) -> usize {
         self.struct_sets.get(&s).copied().unwrap_or(0)
     }
+    fn value_params(&self, s: StructId) -> &[usize] {
+        &self.structs[s.0].value_params
+    }
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>> {
         self.struct_defaults.get(&s)
     }
@@ -1104,7 +1222,7 @@ fn without(
             cpl_diag::codes::UNKNOWN_FIELD,
             format!("`without` drops a field {what} lacks (R08.4.4)"),
         );
-        at(cx, span, m)
+        at(cx.item.as_ref(), span, m)
     };
     match base {
         Ty::Struct(s, args, _) => {

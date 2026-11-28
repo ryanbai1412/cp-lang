@@ -1432,11 +1432,24 @@ impl<'a> Cx<'a> {
     }
     /// `t` read with `holes` as type parameters past the fn's own, each then a fresh variable
     /// for the checker to infer.
+    /// A written type argument: as [`Self::body_ty`], and a literal or a `const` is that value.
+    pub(super) fn body_targ(&mut self, t: &next::Type, out: &mut Vec<TStmt>) -> Ty {
+        self.body_ty_as(t, &[], out, true)
+    }
     pub(super) fn body_ty_open(
         &mut self,
         t: &next::Type,
         holes: &[String],
         out: &mut Vec<TStmt>,
+    ) -> Ty {
+        self.body_ty_as(t, holes, out, false)
+    }
+    fn body_ty_as(
+        &mut self,
+        t: &next::Type,
+        holes: &[String],
+        out: &mut Vec<TStmt>,
+        arg: bool,
     ) -> Ty {
         let span = self.at(t);
         let axes = self.name_ranges(t, out);
@@ -1453,11 +1466,13 @@ impl<'a> Cx<'a> {
             generics: &generics,
             doms: &self.b.doms,
             scoped: &|n| self.owned_named(n),
+            item: Some(self.b.item.clone()),
         };
-        let (ty, errs) = decls::body_type(&at, &axes, t);
+        let (ty, errs) = decls::body_type(&at, &axes, t, arg);
         for e in errs {
             self.err(span, e);
         }
+        self.const_errors(&ty);
         let ty = self.fresh_sets(&ty);
         if holes.is_empty() {
             return ty;

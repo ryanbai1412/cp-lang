@@ -263,6 +263,7 @@ pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitF
                 params.push(self_param(syms.intern(f), Some(TyForm::Param(i + 1))));
             }
             let build = FnForm {
+                value_params: Vec::new(),
                 name: m,
                 public: true,
                 attrs: Vec::new(),
@@ -349,6 +350,7 @@ pub fn without_impls(
                 .map(|f| syms.intern(f))
                 .collect();
             let build = FnForm {
+                value_params: Vec::new(),
                 name: m,
                 public: true,
                 attrs: Vec::new(),
@@ -403,6 +405,7 @@ pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Struc
                 })
                 .collect();
             StructForm {
+                value_params: Vec::new(),
                 name: syms.intern(&name(fs)),
                 public: true,
                 attrs: Vec::new(),
@@ -513,6 +516,7 @@ pub fn domain_impls(
         let method =
             |getter: bool, name: Sym, params: Vec<ParamForm>, ret: TyForm, body: SynthBody| {
                 FnForm {
+                    value_params: Vec::new(),
                     name,
                     public: false,
                     attrs: match getter {

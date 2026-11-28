@@ -533,6 +533,9 @@ impl<'a> Cx<'a> {
             let f = self.fnref(d, Vec::new(), Vec::new());
             return self.fn_item_value(f, span);
         }
+        if let Some(e) = self.value_param(n, span) {
+            return e;
+        }
         if let Some(d) = self.domain_named(n) {
             return self.domain_value(d, span);
         }

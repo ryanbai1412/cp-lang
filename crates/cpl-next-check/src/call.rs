@@ -290,7 +290,15 @@ impl Cx<'_> {
             named = Named::Struct(self.shapes.by_arity(d, written.len()));
         }
         let mut pre = Vec::new();
-        let mut given: Vec<Ty> = written.iter().map(|t| self.body_ty(t, &mut pre)).collect();
+        let mut given: Vec<Ty> = written
+            .iter()
+            .map(|t| self.body_targ(t, &mut pre))
+            .collect();
+        if let Named::Struct(d) = named {
+            for m in decls::targ_kinds(n, self.shapes.value_params(d), &given) {
+                self.err(span, m);
+            }
+        }
         // `type Z = Mod<7>`: `Z(x)` is a call of the type the alias names, as `Mod<7>(x)` is.
         if let Named::Alias(id) = named {
             // A parameter not written is inferred, as a struct's is: `AliasBox(42)`.
@@ -306,6 +314,7 @@ impl Cx<'_> {
                 generics: &self.b.generics,
                 doms: &self.b.doms,
                 scoped: &scoped,
+                item: Some(self.b.item.clone()),
             };
             let (t, errs) = decls::alias_type(&at, id, targs);
             for e in errs {
@@ -1443,6 +1452,7 @@ impl Cx<'_> {
             generics: &self.b.generics,
             doms: &self.b.doms,
             scoped: &scoped,
+            item: Some(self.b.item.clone()),
         })
     }
 }

@@ -80,7 +80,7 @@ impl TExpr {
         };
         match &self.kind {
             TK::Int(_) | TK::Float(_) | TK::Bool(_) | TK::Unit | TK::Var(_) | TK::FnItem(_) => {}
-            TK::Itself(_) | TK::ReadInt | TK::DomLen(_) | TK::DomCounted(_) => {}
+            TK::Itself(_) | TK::ReadInt | TK::DomLen(_) | TK::DomCounted(_) | TK::TypeValue(_) => {}
             TK::HasBound(..) | TK::Text(_) | TK::Unset | TK::Error => {}
             TK::Call { recv, args, .. } | TK::CallTrait { recv, args, .. } => {
                 (recv.iter().map(|r| arg(r)))
@@ -214,6 +214,8 @@ pub enum TK {
     ReadInt,
     /// The size of a domain type: `D.count`.
     DomLen(Ty),
+    /// `P` of `Mod<P>`, a value parameter, read as a value: link gives it its instance's constant.
+    TypeValue(Ty),
     /// Whether a domain type is declared by a count alone: `D.counted` (R10.2.2).
     DomCounted(Ty),
     /// `D(i)`: an Int becomes a value of the domain, checked.
@@ -726,6 +728,9 @@ pub trait Consts {
 pub enum ConstError {
     /// It reads something decided at run time.
     Open,
+    /// It is asked for by a check run to work out a constant, before it has a value: the outer
+    /// check that asked says whether it has one.
+    Pending,
     /// Working it out trapped, ran past its step budget or read itself: the error, said where
     /// the expression is.
     Failed(Box<Msg>),
@@ -1182,7 +1187,7 @@ impl<'a> Checker<'a> {
         // explain it is a checker ordering bug, reported rather than read as `Error`.
         if cx.errors.is_empty() {
             for ((item, name), &g) in cx.top_keys.iter().zip(&cx.top_slots) {
-                if cx.globals[g].ty == Ty::Error {
+                if cx.globals[g].ty == Ty::Error && main.iter().any(|(i, _)| i == item) {
                     let what = format!(
                         "`{}`'s global was never filled by its `let`",
                         items.text(*name)
@@ -1592,6 +1597,9 @@ impl<'a> Cx<'a> {
             self.b.self_local = Some(self.add_local(&f.self_name, ty));
         }
         let mut params = Vec::new();
+        for t in (f.params.iter().map(|p| &p.ty)).chain([&f.ret]) {
+            self.const_errors(t);
+        }
         for p in &f.params {
             let ty = self.fresh_sets(&p.ty);
             params.push(self.add_local(&p.name, ty));
@@ -1885,7 +1893,7 @@ impl Cx<'_> {
     fn const_value(&mut self, e: &next::Expr) -> Option<Option<ops::Scalar>> {
         match self.values.value(self.b.item.at(e.syntax().span())) {
             Ok(v) => Some(v),
-            Err(ConstError::Open) => None,
+            Err(ConstError::Open | ConstError::Pending) => None,
             Err(ConstError::Failed(m)) => {
                 if !self.errors.iter().any(|x| x.at == m.at && x.code == m.code) {
                     self.errors.push(*m);

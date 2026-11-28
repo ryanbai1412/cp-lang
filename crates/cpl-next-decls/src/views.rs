@@ -93,6 +93,8 @@ pub(crate) fn role_struct_of(roles: &Roles, sugar: &Sugar, r: Role) -> Option<St
 pub trait Shapes: Texts {
     /// How many set parameters struct `s` has, so a struct named in a type gets its own.
     fn n_sets(&self, s: StructId) -> usize;
+    /// Struct `s`'s `const P: Int` parameters, each given a constant (R08.2.4).
+    fn value_params(&self, s: StructId) -> &[usize];
     /// Each of struct `s`'s type parameters' default, when it declares any.
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>>;
     /// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
@@ -223,6 +225,8 @@ pub trait FnFacts {
     fn overloads(&self, first: FnId) -> &[FnId];
     /// The params of `f` whose type is a domain.
     fn domain_params(&self, f: FnId) -> &[usize];
+    /// The params of `f` that are one value each, read as an `Int` (`P` of `Mod<P>`).
+    fn value_params(&self, f: FnId) -> &[usize];
     /// The params of `f` whose type is ordered.
     fn ordered_params(&self, f: FnId) -> &[usize];
     /// The `.clear` of `@memo` fn `f`.
@@ -540,6 +544,9 @@ impl Shapes for Decls {
     fn n_sets(&self, s: StructId) -> usize {
         self.struct_sets.get(&s).copied().unwrap_or(0)
     }
+    fn value_params(&self, s: StructId) -> &[usize] {
+        &self.structs[s.0].value_params
+    }
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>> {
         self.struct_defaults.get(&s)
     }
@@ -575,6 +582,9 @@ impl FnFacts for Decls {
     }
     fn domain_params(&self, f: FnId) -> &[usize] {
         self.domain_params.get(&f).map_or(&[], Vec::as_slice)
+    }
+    fn value_params(&self, f: FnId) -> &[usize] {
+        &self.fns[f.0].value_params
     }
     fn ordered_params(&self, f: FnId) -> &[usize] {
         self.ordered_params.get(&f).map_or(&[], Vec::as_slice)

@@ -999,6 +999,7 @@ impl Lw<'_> {
                 v
             }
             TK::DomLen(t) => mk(EK::DomLen(t.clone())),
+            TK::TypeValue(t) => mk(EK::TypeValue(t.clone())),
             TK::DomCounted(t) => mk(EK::DomCounted(t.clone())),
             TK::HasBound(t, r) => mk(EK::HasBound(t.clone(), r.tr, r.args.clone())),
             TK::Ordinal(x) => {
