@@ -1364,10 +1364,84 @@ def _block(lines: list[str], start: int) -> int:
     return len(lines) - 1
 
 
-def _whole_res(types: tuple[str, ...]) -> tuple[re.Pattern, re.Pattern]:
-    names = "|".join(types)
-    return (re.compile(r"&(?:'\w+\s+)?(?:mut\s+)?(?:\w+::)*(?:%s)\b" % names),
-            re.compile(r"\b\w+\s*(?<!:):(?!:)\s*(?:[\w:]+<\s*)*(?:\w+::)*(?:%s)\b(?!\s*(?:::|\{|\())" % names))
+def _whole_res(types: tuple[str, ...], traits: tuple[str, ...] = ()) -> tuple[re.Pattern, re.Pattern]:
+    names = r"(?:\w+::)*(?:%s)" % "|".join(types)
+    if traits:
+        names = r"(?:%s|dyn\s+(?:\w+::)*(?:%s))" % (names, "|".join(traits))
+    return (re.compile(r"&(?:'\w+\s+)?(?:mut\s+)?%s\b" % names),
+            re.compile(r"\b\w+\s*(?<!:):(?!:)\s*(?:[\w:]+<\s*)*%s\b(?!\s*(?:::|\{|\())" % names))
+
+
+NEXT_TRAIT_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?trait\s+(\w+)(?:<[^{:]*>)?\s*(?::\s*([^{]+))?\{")
+# A view method's key: an item id, a `Sym`, or an impl or call index (lane I's rule).
+NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|usize|u32|u16|u8)$")
+NEXT_VIEW_TABLE_RE = re.compile(r"\b(?:str|String|HashMap|BTreeMap|HashSet|Vec|Decls|Typed|Loaded|Whole|Generic|Deferred|SetAdds)\b|\[")
+
+
+def _params(sig: str) -> list[str]:
+    """The types of a fn signature's parameters after `self`, split at top-level commas."""
+    start = sig.find("(")
+    depth, cur, out = 0, "", []
+    for ch in sig[start + 1:]:
+        if ch in "(<[":
+            depth += 1
+        elif ch in ")>]":
+            if depth == 0 and ch == ")":
+                break
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    out.append(cur)
+    types = []
+    for p in (x.strip() for x in out):
+        if not p or re.fullmatch(r"&?(?:'\w+\s+)?(?:mut\s+)?self", p):
+            continue
+        at = re.search(r"(?<!:):(?!:)", p)
+        types.append(p[at.end():].strip() if at else p)
+    return types
+
+
+def _view_method_ok(sig: str) -> bool:
+    """Lane I's rule for one view method: it takes at least one key, every key is an id or a
+    `Sym` (never text or a table), and it answers that key alone, never every item of a kind."""
+    name = re.search(r"fn\s+(\w+)", sig).group(1)
+    if re.match(r"(?:all|every)(?:_|$)", name) or name.endswith("_all"):
+        return False
+    keys = _params(sig)
+    ret = sig.split("->", 1)[1] if "->" in sig else ""
+    return bool(keys) and all(NEXT_VIEW_KEY_RE.match(k) and not NEXT_VIEW_TABLE_RE.search(k) for k in keys) \
+        and not re.search(r"\b(?:%s)\b" % "|".join(NEXT_WHOLE_PROGRAM_TYPES), ret)
+
+
+def _view_traits(files: dict[str, list[str]]) -> dict[str, bool]:
+    """Each cpl-next* trait and whether a `&dyn` holder of it goes uncounted: every method of
+    it and of its supertraits passes `_view_method_ok`."""
+    found: dict[str, tuple[list[str], bool]] = {}
+    for lines in files.values():
+        for i, line in enumerate(lines):
+            if not (m := NEXT_TRAIT_RE.match(line)):
+                continue
+            j, ok, k = _block(lines, i), True, i + 1
+            while k <= j:
+                if NEXT_FN_RE.match(lines[k]):
+                    sig = ""
+                    for l in lines[k:j + 1]:
+                        sig += l.split("//")[0]
+                        if "{" in l or l.rstrip().endswith(";"):
+                            break
+                    ok = ok and _view_method_ok(sig)
+                k += 1
+            supers = [x.strip().split("<")[0].split("::")[-1] for x in (m.group(2) or "").split("+")]
+            found[m.group(1)] = ([x for x in supers if x[:1].isupper()], ok)
+    def passes(t: str, seen: frozenset = frozenset()) -> bool:
+        if t not in found or t in seen:
+            return True
+        supers, ok = found[t]
+        return ok and all(passes(x, seen | {t}) for x in supers)
+    return {t: passes(t) for t in found}
 
 
 def next_whole_program_inputs(root: Path) -> list[str]:
@@ -1378,17 +1452,21 @@ def next_whole_program_inputs(root: Path) -> list[str]:
     of such a struct, which reaches the whole program through `self`. The five types' own
     methods are the value itself, not a reader of it, and a fn returning one produces it. The
     incremental core (handbook/design/next/incremental.md) calls every layer per item over
-    small views, so this reaches 0: a context that holds views instead stops counting."""
-    return _holding_lines(root, NEXT_WHOLE_PROGRAM_TYPES, "")
+    small views, so this reaches 0: a context that holds views instead stops counting. A
+    `&dyn T` view is such a value unless every method of T and its supertraits takes an id
+    or `Sym` key and answers that key alone (`_view_method_ok`, lane I's rule)."""
+    return _holding_lines(root, NEXT_WHOLE_PROGRAM_TYPES, "", views=True)
 
 
-def _holding_lines(root: Path, types: tuple[str, ...], within: str) -> list[str]:
+def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool = False) -> list[str]:
     """`next_whole_program_inputs`'s rule for the values `types`, counted in files under
-    `within`; holders are found in every cpl-next* crate."""
-    by_ref, owned = _whole_res(types)
+    `within`; holders are found in every cpl-next* crate. With `views`, a `&dyn` of a trait
+    failing lane I's view rule is such a value too."""
     files = {}
     for p in _rs_files(root, *_next_srcs(root), tests=False):
         files[_rel(root, p)] = list(_lines(p))
+    failing = tuple(sorted(t for t, ok in _view_traits(files).items() if not ok)) if views else ()
+    by_ref, owned = _whole_res(types, failing)
     def code(line: str) -> str:
         return "" if line.lstrip().startswith("//") else line.split("->")[0]
     structs, impls = [], []

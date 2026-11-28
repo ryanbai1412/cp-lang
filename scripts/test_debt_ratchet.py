@@ -2457,6 +2457,24 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (2, 6, 9, 10, 11, 16, 18, 27)])
 
+    def test_whole_program_inputs_count_dyn_views_failing_lane_is_key_rule(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-decls/src"
+            src.mkdir(parents=True)
+            (src / "lib.rs").write_text(
+                "pub trait Keyed {\n    fn f(&self, id: FnId) -> &FnDecl;\n    fn s(&self, s: Sym, i: usize) -> Vec<FnId>;\n}\n"
+                "pub trait Texty: Keyed {\n    fn named(&self, m: ModId, name: &str) -> Option<Named>;\n}\n"
+                "pub trait Keyless {\n    fn widest(&self) -> usize;\n}\n"
+                "pub trait Inherits: Keyless {\n    fn g(&self, g: GlobalId) -> &Ty;\n}\n"
+                "pub trait Every {\n    fn all_fns(&self, m: ModId) -> Vec<FnId>;\n}\n"
+                "struct Cx<'a> {\n    k: &'a dyn Keyed,\n    t: &'a dyn Texty,\n}\n"
+                "fn a(k: &dyn Keyed, i: &dyn Inherits, e: &dyn Every, b: Box<dyn Keyless>) {}\n"
+                "fn b(s: &impl Texty) {}\n"
+            )
+            self.assertEqual(dr.next_whole_program_inputs(root),
+                             [f"crates/cpl-next-decls/src/lib.rs:{i}" for i in (19, 21)])
+
     def test_audit_counters_find_soundness_core_checks_ownership_and_foreign_deps(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
