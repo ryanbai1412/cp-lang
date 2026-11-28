@@ -12,9 +12,7 @@ use cpl_next_syntax::ast::AstNode as _;
 
 /// The domains module `m`'s types may name, by name.
 pub(super) fn doms(d: &mut Decls, m: ModId) -> HashMap<Sym, Ty> {
-    (d.doms_in(m).into_iter())
-        .map(|(n, t)| (d.syms.intern(&n), t))
-        .collect()
+    d.doms_in(m)
 }
 
 /// Where type `t` is written, or `at` for one the compiler made.

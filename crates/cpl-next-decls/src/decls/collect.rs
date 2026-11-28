@@ -515,9 +515,10 @@ fn layer(
             };
             let name = name.text().to_string();
             let t = dd.size().and_then(|def| product(&mut d, id, &name, &def));
-            if !d.top_doms.contains_key(&name) {
+            let k = d.syms.intern(&name);
+            if !d.top_doms.contains_key(&k) {
                 let t = t.unwrap_or_else(|| d.new_dom(id));
-                d.top_doms.insert(name, t);
+                d.top_doms.insert(k, t);
             }
         }
     }
@@ -846,18 +847,19 @@ fn product(
     };
     let fits = |x: &Expr| match x {
         Expr::Range(_) => true,
-        _ => dom(x).is_some_and(|n| d.top_doms.contains_key(&n)),
+        _ => (dom(x).and_then(|n| d.syms.get(&n))).is_some_and(|n| d.top_doms.contains_key(&n)),
     };
     if !xs.iter().all(fits) {
         return None;
     }
     let mut parts = Vec::new();
     for (i, x) in xs.iter().enumerate() {
-        parts.push(match dom(x) {
+        parts.push(match dom(x).and_then(|n| d.syms.get(&n)) {
             Some(n) => d.top_doms[&n].clone(),
             None => {
                 let t = d.new_dom(item);
-                d.top_doms.insert(factor_name(name, i), t.clone());
+                let k = d.syms.intern(&factor_name(name, i));
+                d.top_doms.insert(k, t.clone());
                 t
             }
         });

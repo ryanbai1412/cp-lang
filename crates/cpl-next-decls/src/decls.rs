@@ -552,7 +552,7 @@ pub struct Decls {
     pub overloads: HashMap<FnId, Vec<FnId>>,
     /// The program's top-level domains, which its declarations may name: each is the
     /// `Ty::Dom` of its place among them, filled when its statement runs (R02.9).
-    pub top_doms: HashMap<String, Ty>,
+    pub top_doms: HashMap<Sym, Ty>,
     /// The `domain C` a fn's result binds, `-> (domain C, [C]T)`: each is a domain of its own
     /// among `top_doms`, with the name the trace shows (R02.9.3).
     pub fresh_doms: Vec<(usize, String)>,
@@ -630,7 +630,7 @@ impl Decls {
         given
     }
     /// The domains a declaration in module `m` may name.
-    fn doms_in(&self, m: ModId) -> HashMap<String, Ty> {
+    fn doms_in(&self, m: ModId) -> HashMap<Sym, Ty> {
         match m == self.program {
             true => self.top_doms.clone(),
             false => HashMap::new(),
@@ -1013,8 +1013,8 @@ fn fill_holes(d: &mut Decls, f: FnId, t: &mut Ty, domain: TraitId) {
                 let name = format!("{}.{}", d.fns[f.0].name, d.structs[s.0].generics[k]);
                 d.fresh_doms.push((i, name));
             }
-            d.top_doms
-                .insert(format!("${}", d.fresh_doms.len()), c.clone());
+            let k = d.syms.intern(&format!("${}", d.fresh_doms.len()));
+            d.top_doms.insert(k, c.clone());
             *a = c;
         }
     }
@@ -1528,9 +1528,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         }
     }
     let hidden = hidden_params(d, &heads, &mut generics);
-    let doms: HashMap<Sym, Ty> = (d.doms_in(m).into_iter())
-        .map(|(n, t)| (d.syms.intern(&n), t))
-        .collect();
+    let doms: HashMap<Sym, Ty> = d.doms_in(m);
     let jag_in: Vec<(String, Option<cpl_next_syntax::ast::Type>)> = (f.params.iter())
         .map(|p| {
             let t = match &p.ty {
@@ -1632,8 +1630,8 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         if let Ty::Dom(i) = t {
             d.fresh_doms.push((i, format!("{fname}.{c}")));
         }
-        d.top_doms
-            .insert(format!("${}", d.fresh_doms.len()), t.clone());
+        let k = d.syms.intern(&format!("${}", d.fresh_doms.len()));
+        d.top_doms.insert(k, t.clone());
         ret_doms.insert(d.syms.intern(c), t);
     }
     cx.doms = &ret_doms;
