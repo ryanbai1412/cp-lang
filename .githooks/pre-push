@@ -66,10 +66,8 @@ fi
 # lane's warning (fe900547d and ba676477a held D's push, 04:12).
 if [ "$to_lane" = 1 ] && [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo check -q --workspace --all-targets || fail "lane-j-check's tip doesn't build: cargo check --workspace --all-targets failed"
-    touched=$(scripts/touched-crates.sh "$lane_tip")
-    # shellcheck disable=SC2086  # one word per cargo argument
-    [ -z "$touched" ] || cargo clippy -q $touched --all-targets -- -D warnings ||
-        fail "clippy warns in a crate this push touches: cargo clippy $touched --all-targets -- -D warnings"
+    just lane-clippy "$lane_tip" ||
+        fail "clippy warns in a crate this push touches: just lane-clippy $lane_tip"
 fi
 
 # 2c. lane-j-check's landing gate: cpl-next's lib and integration tests and cpl-doc's lib tests, every red listed in

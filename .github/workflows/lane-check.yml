@@ -28,10 +28,7 @@ jobs:
       - name: the tip builds, as a push to main must
         run: cargo check -q --workspace --all-targets
       - name: clippy warns in no crate this push touches
-        run: |
-          touched=$(scripts/touched-crates.sh "${{ github.event.before }}")
-          # shellcheck disable=SC2086  # one word per cargo argument
-          [ -z "$touched" ] || cargo clippy -q $touched --all-targets -- -D warnings
+        run: just lane-clippy "${{ github.event.before }}"
       - name: cpl-next and cpl-doc tests against tests/lane-lib-reds.txt
         run: just lane-lib-tests
   # The shrink-only ratchet against the tip this push replaced (coordinator 02:38): a counter

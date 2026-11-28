@@ -278,6 +278,15 @@ gen *args:
 lane-lib-tests:
     python3 scripts/lane-lib-tests.py
 
+# Clippy -D warnings on the crates a change since `base` touches (the whole workspace when
+# `base` is no commit here or the change touches Cargo's own files).
+lane-clippy base:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    touched=$(scripts/touched-crates.sh "{{base}}")
+    # shellcheck disable=SC2086  # one word per cargo argument
+    [ -z "$touched" ] || cargo clippy -q $touched --all-targets -- -D warnings
+
 # lane-j-check's shrink-only ratchet against `tip`, the lane tip a push replaces.
 lane-ratchet tip:
     CPL_RATCHET_LANE={{tip}} uv run --quiet python scripts/debt-ratchet.py --check
