@@ -629,7 +629,11 @@ impl<'a> Cx<'a> {
         let narrows =
             matches!(c, ast::Cond::Expr(e) if matches!(e.kind, ExprKind::HasBound { .. }));
         let c = self.cond(c);
-        // The branch a bound test guards sees the bound (R08.2.9).
+        // The branch a bound test guards sees the bound (R08.2.9), so the bounds it obliges are
+        // met inside it, and those from before it outside it.
+        if narrows {
+            self.solve(false);
+        }
         let n = self.assumed.len();
         if let TK::HasBound(t, r) = &c.kind {
             if let Ty::Param(i) = self.shallow(t) {
@@ -642,6 +646,9 @@ impl<'a> Cx<'a> {
         } else {
             self.block(b, want)
         };
+        if narrows {
+            self.solve(false);
+        }
         self.assumed.truncate(n);
         self.scopes.pop();
         (c, b2, b.leaves())
