@@ -403,6 +403,9 @@
     "tools-judge/release-run-gets-the-judges-stack-and-crashes-like-it.cp"
   ],
   "next_library_gates": 23,
+  "next_debug_text_logic": 5,
+  "next_host_stack_grow": 2,
+  "next_std_eager_errors": 804,
   "next_domain_fiat": 0,
   "next_name_compares": 15,
   "next_error_typed": 34,

@@ -369,6 +369,28 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual([int(x.rsplit(":", 1)[1]) for x in dr.next_library_gates(root)],
                              [6, 8, 9, 10, 11, 12, 13, 14])
 
+    def test_debug_text_logic_counts_debug_text_read_back_not_shown(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-ir/src/lib.rs",
+                        "fn name(f: F) -> String {\n    let text = format!(\"{f:?}\");\n    let end = text.find(' ');\n}\n"
+                        "for c in format!(\"{f:?}\").chars() {}\n"
+                        "fs.sort_by_cached_key(|f| format!(\"{:?}\", f.key));\n"
+                        "let e = Error::Cycle {\n    key: format!(\"{key:?}\"),\n};\nreturn (r.ok_or(e), 1);\n"
+                        "panic!(\"bad {x:?}\");\n"
+                        "let t = x.map(|f| format!(\"{:?}\", f.body));\nlet t = self.kept_text(&t);\n")
+            self.assertEqual([int(x.rsplit(":", 1)[1]) for x in dr.next_debug_text_logic(root)], [2, 5, 6, 12])
+
+    def test_host_stack_grow_and_std_eager_errors_count_each(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-engine/src/lib.rs",
+                        "stacker::maybe_grow(1, 2, || f())\n// stacker::grow\nlet g = grow(3);\n")
+            self._write(root, "crates/cpl-next/tests/std-unchecked.tsv", "std.a\t2\nstd.b\t0\nstd.c\t1\n")
+            self.assertEqual(dr.next_host_stack_grow(root), ["crates/cpl-next-engine/src/lib.rs:1"])
+            self.assertEqual(dr.next_std_eager_errors(root),
+                             ["std.a: diagnostic 1", "std.a: diagnostic 2", "std.c: diagnostic 1"])
+
     def test_crate_deps_see_renamed_and_table_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

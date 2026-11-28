@@ -2115,6 +2115,54 @@ def next_library_gates(root: Path) -> list[str]:
     return [f"{rel}:{i}" for rel, lines in files.items() for i, l in enumerate(lines, 1) if asks(l)]
 
 
+DEBUG_FMT_RE = re.compile(r"\b(?:format|write)!\([^;]*:#?\?\}")
+# What code does to a String when it reads it rather than shows it.
+DEBUG_READ_RE = r"\.(?:find|rfind|chars|split\w*|starts_with|ends_with|contains|strip_\w+|trim\w*)\(|\[\.\.|\bkept_text\(|[=!]="
+
+
+def next_debug_text_logic(root: Path) -> list[str]:
+    """Places new-pipeline code reads `{:?}` text back as data: slices a variant name out of it,
+    walks its chars, compares it, sorts or keys by it (link's kept-text identity, `kind_name`,
+    `Unbuilt::variant`). Debug output is for a person (a message, a panic, a dump); logic reads an
+    id, a field or a table (audit #18 (2)). Counts the formatting line when that line, or the
+    next few lines using the String it binds, reads it."""
+    out = []
+    for p in _rs_files(root, *_next_srcs(root), tests=False):
+        lines = [l.split("//")[0] for l in _lines(p)]
+        for i, l in enumerate(lines):
+            if not DEBUG_FMT_RE.search(l):
+                continue
+            if re.search(DEBUG_READ_RE + r"|sort_by(?:_cached)?_key", l.split("format!")[-1].split(")")[-1]) \
+                    or re.search(r"sort_by(?:_cached)?_key|\)\s*\.(?:chars|find|split)", l):
+                out.append(f"{_rel(root, p)}:{i + 1}")
+                continue
+            start = next((j for j in range(i, max(i - 4, -1), -1) if re.match(r"\s*let\s", lines[j])), None)
+            bound = start is not None and re.match(r"\s*let\s+(?:mut\s+)?(\w+)", lines[start])
+            if bound and any(re.search(rf"\b{bound.group(1)}\s*(?:{DEBUG_READ_RE})|kept_text\(&?{bound.group(1)}\)|\b{bound.group(1)}\[",
+                                       x) for x in lines[i + 1:i + 7]):
+                out.append(f"{_rel(root, p)}:{i + 1}")
+    return out
+
+
+def next_host_stack_grow(root: Path) -> list[str]:
+    """Calls that grow the host stack (`stacker::maybe_grow`/`grow`) in the new pipeline: a run
+    that recurses on Rust's stack has a depth the program can't see. The engine's frames live on
+    its own stack (F's engine frame stack), so each call goes."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+            for i, l in enumerate(_lines(p), 1)
+            if not l.lstrip().startswith("//") and re.search(r"\bstacker::(?:maybe_)?grow\b|\bmaybe_grow\(", l)]
+
+
+def next_std_eager_errors(root: Path) -> list[str]:
+    """Each diagnostic checking every std fn finds (`std-unchecked.tsv`, kept equal to the run by
+    `tests/std_modules.rs`): std checks as an ordinary library only when this is 0.
+    `next_std_unchecked` counts the modules; this counts what is wrong in them, so fixing one of a
+    module's 53 errors shows."""
+    listed = root / NEXT_TESTS / "std-unchecked.tsv"
+    rows = [l.split("\t") for l in _lines(listed) if l.strip()] if listed.is_file() else []
+    return [f"{m}: diagnostic {k + 1}" for m, n in rows for k in range(int(n.strip() or 0))]
+
+
 NEXT_OWN_DECIDERS_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))? )?fn (\w*(?:lend|drop)\w*)")
 
 
@@ -5281,6 +5329,9 @@ COUNTERS = {
     "next_name_compares": ("new-pipeline comparisons of source text against a fixed identifier: names known by text (Core)", next_name_compares, True),
     "next_domain_fiat": ("new-pipeline code letting a domain meet a trait with no impl row (Core)", next_domain_fiat, True),
     "next_library_gates": ("new-pipeline checks of whether a module is a library: std-only rules (Core)", next_library_gates, True),
+    "next_debug_text_logic": ("new-pipeline logic reading `{:?}` text as data (Core)", next_debug_text_logic, True),
+    "next_host_stack_grow": ("new-pipeline host-stack growth calls (Core)", next_host_stack_grow, True),
+    "next_std_eager_errors": ("diagnostics checking every std fn finds (Core)", next_std_eager_errors, True),
     "next_ownership_outside_own": ("new-pipeline fns outside cpl-next-own deciding a lend or drop (Core)", next_ownership_outside_own, True),
     "next_weak_oracle_passes": ("new-pipeline passing cases whose oracle is exit 1 or ok without output (Core)", next_weak_oracle_passes, True),
     "syntax_std_names": ("string literals in cpl-syntax and cpl-next-syntax naming a std type (Core)", syntax_std_names, True),
