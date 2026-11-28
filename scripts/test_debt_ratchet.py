@@ -2614,6 +2614,22 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-decls/src/lib.rs:{i}" for i in (19, 21)])
 
+    def test_decls_const_op_arms_count_operator_arms_not_literal_kinds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-decls/src/decls"
+            src.mkdir(parents=True)
+            (src / "tyconv.rs").write_text(
+                "match t.kind() {\n    TokenKind::Int => i64::try_from(v).ok(),\n    _ => None,\n}\n"
+                "Expr::Prefix(p) if p.op()?.kind() == TokenKind::Minus => neg(),\n"
+                "match b.op()?.kind() {\n    TokenKind::Plus => x.checked_add(y),\n"
+                "    TokenKind::StarStar => x.checked_pow(y),\n}\n"
+                "let m = k == TokenKind::Minus;\n")
+            self.assertEqual(dr.decls_const_op_arms(root), [
+                "crates/cpl-next-decls/src/decls/tyconv.rs:5", "crates/cpl-next-decls/src/decls/tyconv.rs:7",
+                "crates/cpl-next-decls/src/decls/tyconv.rs:8"])
+            self.assertIn("decls_const_op_arms", dr.HARD_ZERO)
+
     def test_synthetic_name_tests_count_only_dollar_prefix_tests_in_the_checker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

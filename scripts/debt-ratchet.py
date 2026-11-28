@@ -1803,6 +1803,18 @@ def next_synthetic_name_tests(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if pat.search(l)] if src.is_dir() else []
 
 
+DECLS_OP_ARM_RE = re.compile(r"\bTokenKind::(?:Plus|Minus|Star|StarStar|Slash|SlashSlash|Percent|Shl|Shr|"
+                             r"Amp|Pipe|Caret|Tilde)\b[^=]*=>")
+
+
+def decls_const_op_arms(root: Path) -> list[str]:
+    """Per-operator `TokenKind::` match arms in cpl-next-decls: a constant in a type (a range's
+    end, an array length) is evaluated by ir's operator table, the one the run uses, so no layer
+    keeps a second copy of `+`'s meaning (coordinator ruling; lane D's tyconv.rs `const_value`)."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-next-decls/src", tests=False)
+            for i, l in enumerate(_lines(p), 1) if DECLS_OP_ARM_RE.search(l)]
+
+
 def next_core_standin_lines(root: Path) -> list[str]:
     """Lines of `crates/cpl-next/std.cp`, the private stand-in for core: std loads like any
     library through the module loader, so this reaches 0 when core lives in std/."""
@@ -4942,7 +4954,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"frozen_std_drift", "next_standin_notes", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
+HARD_ZERO = frozenset({"frozen_std_drift", "decls_const_op_arms", "next_standin_notes", "next_old_parser_accepts_unruled", "next_listed_twice", "next_repr_second_defs", "next_op_arms_outside_ir", "next_ownership_outside_own", "next_layer_foreign_deps",
     "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
@@ -5094,6 +5106,7 @@ COUNTERS = {
     "next_layout_outside_table": ("lines in the new engine or C++ emitter that read struct fields or union members around the IR's one layout table (Core)", next_layout_outside_table, True),
     "next_standin_notes": ("new-pipeline lines saying the code beside them stands in for a designed component (Core)", next_standin_notes, True),
     "next_source_text_guards": ("new-pipeline guards that read Rust source as text through include_str! (Core)", next_source_text_guards, True),
+    "decls_const_op_arms": ("per-operator TokenKind arms in cpl-next-decls, which evaluates constants through ir's ops (Core)", decls_const_op_arms, True),
     "next_synthetic_name_tests": ("cpl-next checker tests of a name's text for the synthetic `$` (Core)", next_synthetic_name_tests, True),
     "next_op_arms_outside_ir": ("new-pipeline `Intr::` match arms outside cpl-next-ir that are not a back end's machine primitive, or a primitive a back end lacks (Core)", next_op_arms_outside_ir, True),
     "next_repr_second_defs": ("new-pipeline definitions of a representation predicate (unlent, plain, stores) outside the IR's one classifier (Core)", next_repr_second_defs, True),
