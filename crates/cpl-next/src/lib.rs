@@ -231,15 +231,18 @@ pub enum IrStage {
     Owned,
     Canonical,
     Optimized,
+    /// Not IR: each binding's frozen and lent places, from ownership's reporting walk.
+    Borrows,
 }
 
 impl IrStage {
     /// Each stage, by the name `--stage` takes.
-    const NAMES: [(&str, IrStage); 4] = [
+    const NAMES: [(&str, IrStage); 5] = [
         ("raw", IrStage::Raw),
         ("owned", IrStage::Owned),
         ("canonical", IrStage::Canonical),
         ("optimized", IrStage::Optimized),
+        ("borrows", IrStage::Borrows),
     ];
 
     pub fn named(name: &str) -> Option<IrStage> {
@@ -304,7 +307,7 @@ pub(crate) fn roots(fns: &HashMap<ir::FuncKey, ir::Func<ty::Ty>>, globals: usize
 
 /// Link, then ownership on the linked instances (contract 4), where the program checked clean:
 /// the program, its copies settled, and ownership's diagnostics.
-fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
+fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<own::Bound>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
@@ -334,7 +337,7 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
         },
     );
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
-    Some((prog, diags))
+    Some((prog, diags, owned.binds))
 }
 
 /// `judge` is the judge the snapshot is built for; it is the tool's to resolve (contract 0).
@@ -432,7 +435,7 @@ pub(crate) fn compile(
     checks: Checks,
 ) -> Result<Compiled, Vec<Diag>> {
     let mut f = front(std, user_src, roots, judge, checks);
-    let Some((mut prog, own)) = back(&mut f, events) else {
+    let Some((mut prog, own, _)) = back(&mut f, events) else {
         return Err(f.diags);
     };
     f.diags.extend(own);
@@ -729,6 +732,15 @@ pub struct Unit {
     pub lowered: bool,
 }
 
+/// `b` as `--dump-own` prints it: the fn and instance, the binding, its frozen and lent places.
+fn bound_line(b: &own::Bound) -> String {
+    let (fr, le) = (b.frozen.join(", "), b.lent.join(", "));
+    format!(
+        "{}#{} {}: frozen [{fr}] lent [{le}]\n",
+        b.fn_name, b.inst, b.local
+    )
+}
+
 /// What `compile` checks and lowers, unit by unit, and every diagnostic: the editor's view of a
 /// program that need not compile.
 pub(crate) fn units(
@@ -739,7 +751,7 @@ pub(crate) fn units(
     checks: Checks,
 ) -> (Vec<Unit>, Vec<Diag>) {
     let mut f = front(std, user_src, roots, judge, checks);
-    if let Some((_, own)) = back(&mut f, false) {
+    if let Some((_, own, _)) = back(&mut f, false) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);
     }

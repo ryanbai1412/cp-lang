@@ -203,7 +203,7 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
     }
 }
 
-pub use inst::Owned;
+pub use inst::{Bound, Owned};
 
 /// The lent-slot rule link reads to type an instance's slots: [`lent_slot`]'s shape.
 pub type Lend = dyn Fn(

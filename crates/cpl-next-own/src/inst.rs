@@ -68,6 +68,8 @@ pub(crate) struct Walk<'a> {
     pub last: crate::Last,
     pub report: bool,
     pub errors: Vec<Msg>,
+    /// Each binding's sources where the reporting walk binds it (`cpl-next --dump-own`).
+    pub binds: Vec<Bound>,
 }
 
 impl Walk<'_> {
@@ -1071,6 +1073,14 @@ impl Walk<'_> {
                     self.lent.remove(&Root::Local(*l));
                     self.keep(e.site, Root::Local(*l), &src);
                 }
+                if self.report {
+                    let r = Root::Local(*l);
+                    let (frozen, lent) = (self.frozen.get(&r), self.lent.get(&r));
+                    if frozen.is_some() || lent.is_some() {
+                        let b = bound(self.cur, self.f(), self.globals, r, frozen, lent);
+                        self.binds.push(b);
+                    }
+                }
             }
             Stmt::Assign(p, e) => {
                 self.reads(e, fx);
@@ -1460,6 +1470,7 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
         pending: vec![],
         report: false,
         errors: vec![],
+        binds: vec![],
     };
     let order = w.order();
     // Summaries only grow, so a recursive group settles; then one reporting walk.
@@ -1481,6 +1492,7 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
     Owned {
         errors: w.errors,
         copies: w.copies,
+        binds: w.binds,
     }
 }
 
@@ -1698,6 +1710,63 @@ fn holding<T>(b: &[Stmt<T>], lent: &dyn Fn(&Place) -> bool, out: &mut Vec<u32>) 
 pub struct Owned {
     pub errors: Vec<Msg>,
     pub copies: BTreeSet<(usize, Site)>,
+    pub binds: Vec<Bound>,
+}
+
+/// `r`'s `--dump-own` line where `f`, instance `inst`, binds it.
+fn bound(
+    inst: usize,
+    f: &cpl_next_ir::ir::Func<CTy>,
+    globals: &[(String, bool)],
+    r: Root,
+    frozen: Option<&BTreeSet<Pl>>,
+    lent: Option<&BTreeSet<Pl>>,
+) -> Bound {
+    let show = |ps: Option<&BTreeSet<Pl>>| -> Vec<String> {
+        (ps.into_iter().flatten())
+            .map(|p| dump_pl(f, globals, p))
+            .collect()
+    };
+    Bound {
+        inst,
+        fn_name: f.name.clone(),
+        local: dump_pl(f, globals, &Pl::whole(r)),
+        frozen: show(frozen),
+        lent: show(lent),
+    }
+}
+
+/// `p` as `--dump-own` shows it: its root's name, `$` and an index for a temp, then its path.
+fn dump_pl(f: &cpl_next_ir::ir::Func<CTy>, globals: &[(String, bool)], p: &Pl) -> String {
+    let mut out = match p.root {
+        Root::Local(l) => match f.names.get(l) {
+            Some(n) if !n.is_empty() => n.clone(),
+            _ => format!("${l}"),
+        },
+        Root::Global(g) => match globals.get(g) {
+            Some((n, _)) => n.clone(),
+            None => format!("$g{g}"),
+        },
+    };
+    for s in &p.path {
+        match s {
+            Step::Field(k) => out.push_str(&format!(".{k}")),
+            Step::Key(k) => out.push_str(&format!("[{k}]")),
+        }
+    }
+    out
+}
+
+/// A local where it is bound, in the instance `inst` (named `fn_name`): the places a write to
+/// which conflicts with it while it is used (`frozen`, E0602) and the places it lends (`lent`,
+/// R8), as own holds them. A temp is `$` and its index.
+#[derive(Debug)]
+pub struct Bound {
+    pub inst: usize,
+    pub fn_name: String,
+    pub local: String,
+    pub frozen: Vec<String>,
+    pub lent: Vec<String>,
 }
 
 /// Ownership on the instances link made, before their passed places settle. `cache` is what

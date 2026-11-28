@@ -13,8 +13,8 @@ pub use cpl_next_ir::build::Checks;
 
 use crate::linked::{roots, Built, Job, Linked, Shared, StdLib, WorldOf};
 use crate::{
-    dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage, Item,
-    Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
+    bound_line, dumped, items, std_unchecked, types, units, Compiled, Diag, Form, Front, IrStage,
+    Item, Outcome, Roots, Stage, Std, Type, TypedAt, Unit,
 };
 use cpl_next_db::db::{Db, DbError};
 use cpl_next_db::items::Source;
@@ -262,24 +262,36 @@ impl Session {
     /// fns the program instantiates, by name, and each later stage's in instance order, which
     /// is what a call names.
     pub fn ir(&self, file: &str, stage: IrStage) -> Result<String, Arc<[Diag]>> {
-        let p = self.program(file)?;
-        let c = &p.0;
-        let Some(front) = self.front(file) else {
-            return Err(Arc::from(Vec::new()));
-        };
+        let program = || self.program(file);
         Ok(match stage {
             IrStage::Raw => {
+                let p = program()?;
+                let Some(front) = self.front(file) else {
+                    return Err(Arc::from(Vec::new()));
+                };
                 let reached: std::collections::HashSet<_> =
-                    c.prog.insts.iter().map(|f| &f.key).collect();
+                    p.0.prog.insts.iter().map(|f| &f.key).collect();
                 let mut fs: Vec<_> = (front.g.funcs.values())
                     .filter(|f| reached.contains(&f.key))
                     .collect();
                 fs.sort_by_cached_key(|f| (f.name.clone(), format!("{:?}", f.key)));
                 dumped(fs)
             }
-            IrStage::Owned => dumped(&c.prog.insts),
-            IrStage::Canonical => dumped(&c.canon),
-            IrStage::Optimized => dumped(&c.opt),
+            IrStage::Owned => dumped(&program()?.0.prog.insts),
+            IrStage::Canonical => dumped(&program()?.0.canon),
+            IrStage::Optimized => dumped(&program()?.0.opt),
+            // Ownership's own record, so also for a program ownership rejects.
+            IrStage::Borrows => {
+                let Some((id, text, _)) = self.file(file) else {
+                    return Err(Arc::from(Vec::new()));
+                };
+                let (h, roots) = (&self.snapshot.0, self.snapshot.roots(id));
+                let mut f = crate::front(&h.std, text, &roots, h.judge.as_ref(), h.checks);
+                match crate::back(&mut f, false) {
+                    Some((_, _, binds)) => binds.iter().map(bound_line).collect(),
+                    None => return Err(Arc::from(f.diags)),
+                }
+            }
         })
     }
 

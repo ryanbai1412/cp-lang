@@ -1412,6 +1412,23 @@ fn dump_ir_prints_each_stage_and_a_rejections_diagnostics() {
 }
 
 #[test]
+fn dump_own_shows_what_each_binding_freezes_and_lends() {
+    let open = |src: &str| {
+        facade::Session::open(
+            facade::Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src),
+        )
+    };
+    let src = "fn f(n: Int) -> Int:\n    var xs = [n, 2]\n    let v = xs.rev\n    fn put(i: Int):\n        xs[i] = i\n    put(0)\n    xs.len\nprint(f(1))\n";
+    let text = open(src).ir("program.cp", IrStage::Borrows).unwrap();
+    // A view freezes and lends its source; a nested fn lends its captures but freezes none.
+    assert!(text.contains(" v: frozen [xs] lent [xs]"), "{text}");
+    assert!(text.contains(" put: frozen [] lent [xs]"), "{text}");
+    assert!(open("print(nope)\n")
+        .ir("program.cp", IrStage::Borrows)
+        .is_err());
+}
+
+#[test]
 fn a_lends_without_its_arrow_offers_to_insert_it() {
     use crate::facade::{Session, Snapshot};
     let src = "domain V = 1..=4\nvar a: [V]Int = 0\nfn get(xs: [V]Int, l: V) lends Int = xs[l]\nprint(get(a, 1))\n";

@@ -6,6 +6,10 @@
 //! through the facade: lowering's generic fns, the linked instances after ownership, then
 //! canonical and optimized IR.
 //!
+//! `cpl-next --dump-own FILE` (`dump-ir --stage borrows`) prints, for each binding ownership's
+//! reporting walk binds, the places a write to which conflicts with it (`frozen`) and the places
+//! it lends (`lent`), even when ownership rejects the program.
+//!
 //! The reference interpreter, the oracle the tests hold the engine and the C++ to, is not in
 //! this binary: the tests run it through `cpl-next-oracle`.
 mod cli;
@@ -29,6 +33,9 @@ fn real_main() {
     let has = |f: &str| has(&args, f);
     if args.first().is_some_and(|a| a == "dump-ir") {
         return dump_ir(&args[1..]);
+    }
+    if has("--dump-own") {
+        return dump_own(&args);
     }
     if has("--std-modules") {
         let std = judged(
@@ -69,6 +76,36 @@ fn real_main() {
     }
 }
 
+/// A session over FILE as it is on disk, with `--std` and `--judge` applied.
+fn disk_session(args: &[String], path: &str) -> Session {
+    let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
+        eprintln!("{path}: {e}");
+        std::process::exit(2);
+    });
+    Session::open(judged(
+        (Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(args)))).with_file(path, &src),
+        args,
+    ))
+}
+
+/// `--dump-own FILE`: each binding's frozen and lent places, from ownership's own walk.
+fn dump_own(args: &[String]) {
+    let Some(path) = file(args) else {
+        eprintln!("usage: {USAGE}");
+        std::process::exit(2);
+    };
+    let session = disk_session(args, path);
+    match session.ir(path, IrStage::Borrows) {
+        Ok(text) => drop(std::io::stdout().write_all(text.as_bytes())),
+        Err(ds) => {
+            for d in ds.iter() {
+                println!("{d}");
+            }
+            std::process::exit(code(session.verdict(path)));
+        }
+    }
+}
+
 /// `dump-ir --stage STAGE FILE`.
 fn dump_ir(args: &[String]) {
     let at = args.iter().position(|a| a == "--stage");
@@ -79,14 +116,7 @@ fn dump_ir(args: &[String]) {
         eprintln!("usage: cpl-next dump-ir --stage raw|owned|canonical|optimized FILE");
         std::process::exit(2);
     };
-    let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
-        eprintln!("{path}: {e}");
-        std::process::exit(2);
-    });
-    let session = Session::open(judged(
-        (Snapshot::new(World::Disk).with_std_lib(Arc::new(std_in_use(args)))).with_file(path, &src),
-        args,
-    ));
+    let session = disk_session(args, path);
     match session.ir(path, stage) {
         // A reader that stops early (`| head`) is not an error.
         Ok(text) => drop(std::io::stdout().write_all(text.as_bytes())),
@@ -99,10 +129,10 @@ fn dump_ir(args: &[String]) {
     }
 }
 
-const USAGE: &str = "cpl-next FILE [--engine] [--cpp] [--check] [--json] [--trace] [--bodies] [--judge NAME=MB] [--std DIR] | --std-modules [MODULE] | dump-ir --stage STAGE FILE";
+const USAGE: &str = "cpl-next FILE [--engine] [--cpp] [--check] [--json] [--trace] [--bodies] [--judge NAME=MB] [--std DIR] | --std-modules [MODULE] | --dump-own FILE | dump-ir --stage STAGE FILE";
 
 /// The flags `cpl-next` takes; any other is refused, never ignored.
-const FLAGS: [&str; 10] = [
+const FLAGS: [&str; 11] = [
     "--engine",
     "--cpp",
     "--check",
@@ -113,4 +143,5 @@ const FLAGS: [&str; 10] = [
     "--std",
     "--std-modules",
     "--stage",
+    "--dump-own",
 ];
