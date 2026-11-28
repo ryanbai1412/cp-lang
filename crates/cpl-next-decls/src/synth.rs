@@ -4,6 +4,7 @@ use crate::attrs::Attr;
 use crate::decls::forms::{
     AttrForm, BodyForm, FnForm, Form, ImplForm, ParamForm, TraitForm, TyForm,
 };
+use crate::decls::literal_int;
 use crate::decls::unnamed;
 use crate::decls::{fills, form_fills, Role};
 use crate::diag::Msg;
@@ -74,8 +75,8 @@ pub(crate) fn enum_tags(
             .map(|(a, v)| Some(format!("@tag({:?}) {}", tag(a)?, syms.text(v.name))))
             .collect::<Option<Vec<_>>>()
             .filter(|w| !w.is_empty());
-        let name = syms.text(e.name);
-        m.help = each.map(|w| cpl_diag::habits::ENUM_TAGS.say(&[name, w.join(" | ").as_str()]));
+        let name = syms.text(e.name).to_string();
+        m.help = each.map(|w| cpl_diag::habits::ENUM_TAGS.say(&[&name, &w.join(" | ")]));
         Some(m)
     };
     out.extend(level());
@@ -276,6 +277,7 @@ fn plain(name: Sym, span: cpl_diag::Span) -> ParamForm {
         variadic: false,
         default: None,
         span,
+        name_span: span,
     }
 }
 
@@ -439,6 +441,7 @@ pub(crate) fn field_requirement(
             variadic: false,
             default: None,
             span,
+            name_span: span,
         }],
         ret: Some(ty),
         yields: false,
@@ -609,6 +612,7 @@ pub(crate) fn enum_conversions(
             variadic: false,
             default: None,
             span,
+            name_span: span,
         };
         let func =
             |getter: bool, name: Sym, params: Vec<ParamForm>, ret: TyForm, body: SynthBody| {
@@ -1046,77 +1050,73 @@ pub fn memo_block<'s>(
         })
 }
 
-/// `fn c(n: 0..=30, k: 0..=n)`: a range parameter whose ends name earlier parameters, so a
-/// `@memo(array)` table over it is jagged (R06.4.1). Its type is the range those ends reach over
-/// the earlier parameters' ranges, `0..=30`; a call checks its argument into the written range,
-/// where an ordinary range parameter's is checked (R04.3.4).
-pub fn jagged(f: &ast::FnDecl) -> Jagged<'_> {
-    use ast::{BinOp, ExprKind};
-    fn reach(e: &ast::Expr, known: &HashMap<&str, (i64, i64)>) -> Option<(i64, i64)> {
-        match &e.kind {
-            ExprKind::Paren(x) => reach(x, known),
-            ExprKind::Name(n) => known.get(n.as_str()).copied(),
-            ExprKind::Binary { op, lhs, rhs, .. } if matches!(op, BinOp::Add | BinOp::Sub) => {
-                let ((a, b), k) = (reach(lhs, known)?, rhs.int_literal()?);
-                let k = if *op == BinOp::Sub {
-                    k.checked_neg()?
-                } else {
-                    k
+/// Each parameter's reach when it is jagged, with its range as written: `k: 0..=n` of `n: 0..=9`
+/// reaches `0..=9` (R06.4.1). `None` for every other parameter. A fn's parameters and a nested
+/// fn's read it alike.
+pub fn jagged(params: &[(String, Option<next::Type>)]) -> Vec<Option<((i64, i64), next::Type)>> {
+    use cpl_next_syntax::TokenKind;
+    use next::Expr;
+    fn reach(e: &Expr, known: &HashMap<String, (i64, i64)>) -> Option<(i64, i64)> {
+        match e {
+            Expr::Paren(p) => reach(&p.inner()?, known),
+            Expr::Name(n) => known.get(n.ident()?.text()).copied(),
+            Expr::Bin(b) if matches!(b.op()?.kind(), TokenKind::Plus | TokenKind::Minus) => {
+                let ((a, c), k) = (reach(&b.lhs()?, known)?, literal_int(&b.rhs()?)?);
+                let k = match b.op()?.kind() {
+                    TokenKind::Minus => k.checked_neg()?,
+                    _ => k,
                 };
-                Some((a.checked_add(k)?, b.checked_add(k)?))
+                Some((a.checked_add(k)?, c.checked_add(k)?))
             }
-            _ => e.int_literal().map(|v| (v, v)),
+            _ => literal_int(e).map(|v| (v, v)),
         }
     }
     let mut known = HashMap::new();
-    let (mut params, mut written) = (f.params.clone(), Vec::new());
-    for p in &mut params {
-        let Some(TypeKind::Range { lo, hi, inclusive }) = p.ty.as_ref().map(|t| &t.kind) else {
-            continue;
-        };
-        if let Some(r) = crate::decls::static_range(lo, hi, *inclusive) {
-            known.insert(p.name.text.as_str(), r);
-            continue;
-        }
-        let ends = |e: &Option<Box<ast::Expr>>| e.as_deref().map(|e| reach(e, &known));
-        let (Some(Some((a, _))), Some(Some((_, b)))) = (ends(lo), ends(hi)) else {
-            continue;
-        };
-        let Some(b) = b.checked_sub(i64::from(!*inclusive)) else {
-            continue;
-        };
-        let span = p.name.span;
-        let int = |v: i64| {
-            Some(Box::new(ast::Expr {
-                kind: ExprKind::Int(i128::from(v)),
-                span,
-            }))
-        };
-        let wide = ast::Type {
-            kind: TypeKind::Range {
-                lo: int(a),
-                hi: int(b),
-                inclusive: true,
+    let mut out = Vec::new();
+    for (name, ty) in params {
+        let range = match ty {
+            Some(next::Type::Range(r)) => match r.expr() {
+                Some(Expr::Range(re)) => Some(re),
+                _ => None,
             },
-            span,
+            _ => None,
         };
-        if let Some(t) = p.ty.replace(wide) {
-            written.push((p.name.text.clone(), t));
+        let Some(re) = range else {
+            out.push(None);
+            continue;
+        };
+        let (lo, hi, inclusive) = (re.lo(), re.hi(), re.is_inclusive());
+        let lit = |e: &Option<Expr>, open: i64| match e {
+            Some(e) => literal_int(e),
+            None => Some(open),
+        };
+        if let (Some(a), Some(b)) = (lit(&lo, i64::MIN + 1), lit(&hi, i64::MAX)) {
+            let b = match (inclusive, &hi) {
+                (false, Some(_)) => b.checked_sub(1),
+                _ => Some(b),
+            };
+            if let Some(b) = b {
+                known.insert(name.clone(), (a, b));
+            }
+            out.push(None);
+            continue;
         }
-        known.insert(p.name.text.as_str(), (a, b));
+        let ends = |e: &Option<Expr>| e.as_ref().map(|e| reach(e, &known));
+        let (Some(Some((a, _))), Some(Some((_, b)))) = (ends(&lo), ends(&hi)) else {
+            out.push(None);
+            continue;
+        };
+        let Some(b) = b.checked_sub(i64::from(!inclusive)) else {
+            out.push(None);
+            continue;
+        };
+        known.insert(name.clone(), (a, b));
+        out.push(ty.clone().map(|t| ((a, b), t)));
     }
-    if written.is_empty() {
-        return (std::borrow::Cow::Borrowed(f), written);
-    }
-    let f = ast::FnDecl {
-        params,
-        ..f.clone()
-    };
-    (std::borrow::Cow::Owned(f), written)
+    out
 }
 
 /// A fn with each jagged parameter's type widened, and each one's written type by its name.
-pub type Jagged<'f> = (std::borrow::Cow<'f, ast::FnDecl>, Vec<(String, ast::Type)>);
 
 /// A made fn's body: what lower builds its IR from, by variant, with no syntax in between. Each
 /// is one shape the language derives or desugars; check reads its signature, never a body.

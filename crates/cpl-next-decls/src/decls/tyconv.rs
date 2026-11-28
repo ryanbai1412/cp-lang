@@ -37,6 +37,9 @@ pub(super) fn fill_defaults(defaults: Option<&Vec<Option<Ty>>>, a: &mut Vec<Ty>)
     }
 }
 
+/// A `without` met over a parameter: the parameter, the form, the added fields' types.
+pub(super) type Row = (usize, crate::records::Form, Vec<Ty>);
+
 pub(super) struct TyCx<'a> {
     /// What a name means where the type is written.
     pub(super) names: &'a dyn Fn(Sym) -> Option<Named>,
@@ -57,6 +60,9 @@ pub(super) struct TyCx<'a> {
     pub(super) scoped: &'a dyn Fn(Sym) -> Option<Ty>,
     /// `Self` of the trait or impl being converted, for a form's [`TyForm::SelfTy`].
     pub(super) self_ty: Option<Ty>,
+    /// Each `(to: X, ..R without (u, v))` met over a row-bound parameter `R`: its index, its form
+    /// and the added fields' types, for the bound it puts on `R` (R08.4.1).
+    pub(super) rows: Option<&'a std::cell::RefCell<Vec<Row>>>,
     /// When converting a result type: the next result slot.
     pub(super) ret_slots: Option<usize>,
     /// Next implicit set parameter; `None` where a fn type may not appear bare.
@@ -112,6 +118,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: Sym, a: Vec<Ty>, errors: &mut V
         doms: if decl.program { cx.doms } else { &none },
         scoped: if decl.program { cx.scoped } else { &unscoped },
         self_ty: None,
+        rows: cx.rows,
         ret_slots: cx.ret_slots,
         next_set: cx.next_set,
     };
@@ -606,6 +613,11 @@ pub(super) fn const_int(cx: &TyCx, e: &Expr) -> Option<i64> {
     const_value(e, &|t: &SyntaxToken| konst(cx.env.sym(t.text())?))
 }
 
+/// The integer a constant expression of literals is.
+pub(crate) fn literal_int(e: &Expr) -> Option<i64> {
+    const_value(e, &|_| None)
+}
+
 /// The integer `e` is, with each name's value from `name`.
 fn const_value(e: &Expr, name: &dyn Fn(&SyntaxToken) -> Option<i64>) -> Option<i64> {
     match e {
@@ -800,6 +812,7 @@ pub fn body_type(
         doms,
         scoped,
         self_ty: None,
+        rows: None,
         ret_slots: None,
         next_set: None,
     };
@@ -972,7 +985,15 @@ fn without(
                 crate::records::without_member(form)
             );
             match (cx.env.sym(&rest)).and_then(|r| cx.outer.iter().position(|g| *g == r)) {
-                Some(k) => Ty::Param(k),
+                Some(k) => {
+                    if let Some(rows) = cx.rows {
+                        let args = (prefix.iter())
+                            .map(|(_, t)| t.as_ref().map_or(Ty::Error, |t| conv(cx, t, errors)))
+                            .collect();
+                        rows.borrow_mut().push((i, form.clone(), args));
+                    }
+                    Ty::Param(k)
+                }
                 None => {
                     errors.push(missing(cx, "the row bound"));
                     Ty::Error

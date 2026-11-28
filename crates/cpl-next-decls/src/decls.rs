@@ -7,7 +7,7 @@ use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
-use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
+use cpl_syntax::ast::{self, StmtKind, TypeKind};
 use cpl_syntax::decorators::Mark;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -24,7 +24,7 @@ pub use impls::Impls;
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{body_type, prim_type};
-pub(crate) use tyconv::{by_arity, unnamed};
+pub(crate) use tyconv::{by_arity, literal_int, unnamed};
 
 /// A module: the core, a library file or the program.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
@@ -40,6 +40,19 @@ pub enum SelfMode {
     Mut,
 }
 
+/// The body a fn has. The body itself is its item's, read per item, so an edit to one body leaves
+/// every signature as it was.
+#[derive(Clone, Debug)]
+pub enum Body {
+    Written,
+    /// An impl's `let count = e`: the value its getter gives (R04.2.26).
+    Value,
+    /// A made fn's body, built as IR by lower from its variant.
+    Synth(crate::synth::SynthBody),
+    /// A trait's member with no default.
+    None,
+}
+
 #[derive(Clone)]
 pub struct FnDecl {
     pub name: String,
@@ -52,7 +65,7 @@ pub struct FnDecl {
     /// The type of `self`, in `generics`, when it has one.
     pub self_ty: Option<Ty>,
     /// Type parameters: the owner's first, then its own.
-    pub generics: Vec<String>,
+    pub generics: Vec<Sym>,
     pub bounds: Vec<(usize, TraitRef)>,
     /// Without `self`.
     pub params: Vec<Param>,
@@ -68,7 +81,7 @@ pub struct FnDecl {
     pub region: Option<(bool, Ty)>,
     /// A read `lends T` result: the parameters it borrows, receiver first (R05.6.1).
     pub lends: Option<Vec<usize>>,
-    pub body: FnBody,
+    pub body: Body,
     /// What `= @intrinsic(id)` is, when that is its body.
     pub intrinsic: Option<cpl_next_ir::ops::Intrinsic>,
     /// `@fast(op)` on a fn with a CP body: the operation the engines and C++ run in place
@@ -92,6 +105,9 @@ pub struct FnDecl {
     /// When the collector made it: the round, then the pass (traits, fns and types, impls,
     /// derived impls). Std's and a program's together are checked in this order.
     pub made: (u32, u8),
+    /// Its place among the fns its item writes, in written order: how `body(ItemId)` finds its
+    /// body.
+    pub at: u32,
     /// What its signature uses that the slice does not build, said only when a call reaches it.
     pub errors: Vec<Msg>,
 }
@@ -99,7 +115,7 @@ pub struct FnDecl {
 impl FnDecl {
     /// Whether it is declared without a body, as a trait's required method is.
     pub fn bodiless(&self) -> bool {
-        matches!(self.body, FnBody::None)
+        matches!(self.body, Body::None)
     }
 }
 #[derive(Clone)]
@@ -114,10 +130,10 @@ pub struct Param {
     /// `..xs: Ts`: the arguments past the others, as a tuple, or a record when named (R06.1.5).
     pub variadic: bool,
     /// Read in the fn's module when a call leaves the parameter out (R06.1.5).
-    pub default: Option<ast::Expr>,
+    pub default: Option<cpl_next_syntax::ast::Expr>,
     /// A jagged parameter's written range, whose ends name earlier parameters (`k: 0..=n`); `ty`
     /// is the range those ends reach. A call checks the argument into it (R06.4.1).
-    pub written: Option<ast::Type>,
+    pub written: Option<cpl_next_syntax::ast::Type>,
 }
 #[derive(Clone)]
 pub struct StructDecl {
@@ -1002,94 +1018,78 @@ fn fill_holes(d: &mut Decls, f: FnId, t: &mut Ty, domain: TraitId) {
 /// one (`S: Indexed<D, T>`, whose `keys` is a `Range<D>`), and the `Self` of an `impl for _..=_`,
 /// which only range types meet. A caller is not held to `Domain`,
 /// since a list keyed by `Int` passes as `[Int]T`.
-fn domain_params(d: &mut Decls, from: usize) {
+fn domain_params(d: &mut Decls, from: usize, bodies: &HashMap<FnId, cpl_next_syntax::ast::FnBody>) {
     let Some(domain) = d.roles.domain else {
         return;
     };
     // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`), or indexes a table
     // or an array by it (`[V] v => e`, `var s: [V]Int`), is one (R04.4.30).
     // One that names one of `Ordered`'s steps on it (`D.at(x)`) is ordered too (R04.2.31).
-    struct DomUse<'a> {
-        generics: &'a [String],
-        fns: Vec<&'a str>,
-        steps: Vec<&'a str>,
-        found: Vec<usize>,
-        ordered: Vec<usize>,
-    }
-    impl DomUse<'_> {
-        /// `[V]`: a parameter that indexes a table or an array written in the body is a domain.
-        fn index(&mut self, ts: &[ast::Type]) {
-            for t in ts {
-                let ast::TypeKind::Named { name, args } = &t.kind else {
+    use cpl_next_syntax::ast::{self as next, AstNode, GenericArg, Type};
+    let dom_fns: Vec<Sym> = d.traits[domain.0].methods.keys().copied().collect();
+    let steps: Vec<Sym> = (d.roles.order.iter())
+        .flat_map(|tr| d.traits[tr.0].methods.keys().copied())
+        .collect();
+    let syms = &d.syms;
+    let uses = |f: &FnDecl, body: Option<&next::FnBody>| -> (Vec<usize>, Vec<usize>) {
+        let (mut found, mut ordered) = (Vec::new(), Vec::new());
+        let Some(body) = body else {
+            return (found, ordered);
+        };
+        let node = match body {
+            next::FnBody::Block(b) => b.syntax().clone(),
+            next::FnBody::Expr(e) => e.syntax().clone(),
+        };
+        let generic = |t: &cpl_next_syntax::tree::SyntaxToken| {
+            let s = syms.get(t.text())?;
+            f.generics.iter().position(|g| *g == s)
+        };
+        // `[V]`: a parameter that indexes a table or an array written in the body is a domain.
+        let index = |dims: Option<next::Dims>, found: &mut Vec<usize>| {
+            for a in dims.iter().flat_map(|d| d.args().collect::<Vec<_>>()) {
+                let GenericArg::Type(Type::Path(p)) = a else {
                     continue;
                 };
-                let i = self.generics.iter().position(|g| *g == name.text);
-                if let Some(i) = i.filter(|i| args.is_empty() && !self.found.contains(i)) {
-                    self.found.push(i);
+                if p.generic_args().is_some_and(|g| g.args().next().is_some()) {
+                    continue;
+                }
+                let segs: Vec<_> = p.segments().collect();
+                let [seg] = &segs[..] else {
+                    continue;
+                };
+                if let Some(i) = generic(seg).filter(|i| !found.contains(i)) {
+                    found.push(i);
+                }
+            }
+        };
+        for n in node.descendants() {
+            if let Some(l) = next::LetStmt::cast(n.clone()) {
+                if let Some(Type::Array(a)) = l.ty() {
+                    index(a.dims(), &mut found);
+                }
+            } else if let Some(t) = next::TableExpr::cast(n.clone()) {
+                index(t.syntax().children().find_map(next::Dims::cast), &mut found);
+            } else if let Some(fe) = next::FieldExpr::cast(n) {
+                let (Some(next::Expr::Name(b)), Some(m)) = (fe.base(), fe.name()) else {
+                    continue;
+                };
+                let Some(i) = b.ident().as_ref().and_then(generic) else {
+                    continue;
+                };
+                let m = syms.get(m.text());
+                let step = m.is_some_and(|m| steps.contains(&m));
+                if (step || m.is_some_and(|m| dom_fns.contains(&m))) && !found.contains(&i) {
+                    found.push(i);
+                }
+                if step && !ordered.contains(&i) {
+                    ordered.push(i);
                 }
             }
         }
-    }
-    impl cpl_syntax::visit::Visitor for DomUse<'_> {
-        fn stmt(&mut self, s: &ast::Stmt) {
-            if let ast::StmtKind::Let {
-                ty:
-                    Some(ast::Type {
-                        kind: ast::TypeKind::Array { index, .. },
-                        ..
-                    }),
-                ..
-            } = &s.kind
-            {
-                self.index(index);
-            }
-        }
-        fn expr(&mut self, e: &ast::Expr) {
-            if let ast::ExprKind::Table { domains, .. } = &e.kind {
-                self.index(domains);
-            }
-            let ast::ExprKind::Field { base, name } = &e.kind else {
-                return;
-            };
-            let ast::ExprKind::Name(n) = &base.kind else {
-                return;
-            };
-            let i = self.generics.iter().position(|g| g == n);
-            let Some(i) = i else {
-                return;
-            };
-            let step = self.steps.contains(&name.text.as_str());
-            if (step || self.fns.contains(&name.text.as_str())) && !self.found.contains(&i) {
-                self.found.push(i);
-            }
-            if step && !self.ordered.contains(&i) {
-                self.ordered.push(i);
-            }
-        }
-    }
-    let dom_fns: Vec<&str> = (d.traits[domain.0].methods.keys())
-        .map(|n| d.text(*n))
-        .collect();
-    let steps: Vec<&str> = (d.roles.order.iter())
-        .flat_map(|tr| d.traits[tr.0].methods.keys())
-        .map(|n| d.text(*n))
-        .collect();
-    let (used, ordered): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (d.fns.iter().skip(from))
-        .map(|f| {
-            let mut v = DomUse {
-                generics: &f.generics,
-                fns: dom_fns.clone(),
-                steps: steps.clone(),
-                found: Vec::new(),
-                ordered: Vec::new(),
-            };
-            match &f.body {
-                FnBody::Block(b) => cpl_syntax::visit::walk_block(b, &mut v),
-                FnBody::Expr(e) => cpl_syntax::visit::walk_expr(e, &mut v),
-                _ => {}
-            }
-            (v.found, v.ordered)
-        })
+        (found, ordered)
+    };
+    let (used, ordered): (Vec<Vec<usize>>, Vec<Vec<usize>>) = (from..d.fns.len())
+        .map(|k| uses(&d.fns[k], bodies.get(&FnId(k))))
         .unzip();
     // A parameter written with bounds has the order they give it, and no more.
     for (k, mut os) in ordered.into_iter().enumerate() {
@@ -1406,7 +1406,7 @@ fn exported(sc: &Scopes, t: usize, n: &str) -> Option<Named> {
 /// The item a method sits in: its type parameters and set parameters come first.
 struct Within<'a> {
     owner: Option<Owner>,
-    generics: &'a [String],
+    generics: &'a [Sym],
     sets: usize,
     /// The type of `self` in what it sits in, in `generics`.
     self_ty: Option<Ty>,
@@ -1427,54 +1427,56 @@ const FREE: Within = Within {
     self_ty: None,
 };
 
+/// The trait a bound names, with how many arguments it writes.
+fn bound_trait(syms: &Syms, t: &forms::TyForm) -> Option<(Sym, usize)> {
+    use cpl_next_syntax::ast::Type;
+    match t {
+        forms::TyForm::Named(n, args) => Some((*n, args.len())),
+        forms::TyForm::Written(Type::Path(p)) => {
+            let text: Vec<_> = p.segments().map(|s| s.text().to_string()).collect();
+            let n = p.generic_args().map_or(0, |a| a.args().count());
+            Some((syms.get(&text.join("."))?, n))
+        }
+        _ => None,
+    }
+}
+
 /// A parameter typed by a trait (`b: Big<Int>`) has a type parameter of its own bounded by it, as
 /// `<B: Big<Int>>` would be (R08.2.1); its name `b.impl` can't be written.
 fn trait_typed(
-    f: &ast::FnDecl,
-    outer: &[String],
-    names: &dyn Fn(&str) -> Option<Named>,
-) -> Option<ast::FnDecl> {
-    let mut out: Option<ast::FnDecl> = None;
-    for (k, p) in f.params.iter().enumerate() {
-        let Some(t) = &p.ty else { continue };
-        let TypeKind::Named { name, .. } = &t.kind else {
+    f: &forms::FnForm,
+    outer: &[Sym],
+    names: &dyn Fn(Sym) -> Option<Named>,
+    syms: &mut Syms,
+) -> Option<forms::FnForm> {
+    use cpl_next_syntax::ast::Type;
+    let mut out: Option<forms::FnForm> = None;
+    for k in 0..f.params.len() {
+        let Some(t @ forms::TyForm::Written(Type::Path(_))) = &f.params[k].ty else {
             continue;
         };
-        let shadowed = outer.contains(&name.text) || f.generics.iter().any(|g| g.text == name.text);
-        if shadowed || !matches!(names(&name.text), Some(Named::Trait(_))) {
+        let Some((n, _)) = bound_trait(syms, t) else {
+            continue;
+        };
+        let shadowed = outer.contains(&n) || f.generics.contains(&n);
+        if shadowed || !matches!(names(n), Some(Named::Trait(_))) {
             continue;
         }
-        let g = out.get_or_insert_with(|| f.clone());
-        let n = ast::Name {
-            text: format!("{}.impl", p.name.text),
-            span: name.span,
-        };
-        g.generics.push(n.clone());
-        g.bounds.push(ast::Bound {
-            name: n.clone(),
-            traits: vec![t.clone()],
+        let g = syms.intern(&format!("{}.impl", syms.text(f.params[k].name)));
+        let o = out.get_or_insert_with(|| f.clone());
+        o.generics.push(g);
+        o.bounds.push(forms::BoundForm {
+            param: g,
+            tr: t.clone(),
         });
-        g.params[k].ty = Some(ast::Type {
-            kind: TypeKind::Named {
-                name: n,
-                args: Vec::new(),
-            },
-            span: t.span,
-        });
+        o.params[k].ty = Some(forms::TyForm::Named(g, Vec::new()));
     }
     out
 }
 
-fn add_fn(
-    d: &mut Decls,
-    m: ModId,
-    item: ItemId,
-    s: &ast::Stmt,
-    f: &ast::FnDecl,
-    within: Within,
-) -> FnId {
-    let (jag, written) = crate::synth::jagged(f);
-    let f = &*jag;
+fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: Within) -> FnId {
+    use crate::attrs::{Attr, DeclKind};
+    use forms::{BodyForm, TyForm};
     let Within {
         owner,
         generics: outer,
@@ -1483,26 +1485,56 @@ fn add_fn(
         sig,
     } = within;
     let names = d.views[m.0].clone();
-    let syms = d.syms.clone();
-    let named = |n: &str| look(&syms, &names, n);
-    let desugared = trait_typed(f, outer, &named);
+    let named = |n: Sym| names.get(&n).copied();
+    let desugared = trait_typed(f, outer, &named, &mut d.syms);
     let f = desugared.as_ref().unwrap_or(f);
+    let fname = d.syms.text(f.name).to_string();
     let mut generics = outer.to_vec();
-    generics.extend(f.generics.iter().map(|g| g.text.clone()));
-    let rests = without_bounds(d, &names, f);
-    let with_rests;
-    let f = match rests.is_empty() {
-        true => f,
-        false => {
-            let mut g = f.clone();
-            g.bounds.extend(rests);
-            with_rests = g;
-            &with_rests
-        }
+    generics.extend(f.generics.iter().copied());
+    // The bounds' traits, each the `j`th of its parameter's, then each `without` a row-bound
+    // parameter's record takes, whose trait's associated type is a parameter too (R08.4.1).
+    let mut heads: Vec<(Sym, usize, TraitId, usize)> = Vec::new();
+    let nth = |p: Sym, heads: &Vec<(Sym, usize, TraitId, usize)>| {
+        heads.iter().filter(|h| h.0 == p).count()
     };
-    let hidden = hidden_params(d, &named, &f.bounds, &mut generics);
-    let doms = d.doms_in(m);
+    for b in &f.bounds {
+        if let Some((n, k)) = bound_trait(&d.syms, &b.tr) {
+            if let Some(Named::Trait(tr)) = named(n) {
+                let j = nth(b.param, &heads);
+                heads.push((b.param, j, tr, k));
+            }
+        }
+    }
+    let written_heads = heads.len();
+    let rests = rest_forms(d, &names, f);
+    let mut rest_traits = Vec::new();
+    for (r, form) in &rests {
+        let tr = d
+            .syms
+            .get(&crate::records::without_name(form))
+            .and_then(named);
+        if let Some(Named::Trait(tr)) = tr {
+            let j = nth(*r, &heads);
+            heads.push((*r, j, tr, form.0.len()));
+            rest_traits.push(((*r, form.clone()), (tr, j)));
+        }
+    }
+    let hidden = hidden_params(d, &heads, &mut generics);
+    let doms: HashMap<Sym, Ty> = (d.doms_in(m).into_iter())
+        .map(|(n, t)| (d.syms.intern(&n), t))
+        .collect();
+    let jag_in: Vec<(String, Option<cpl_next_syntax::ast::Type>)> = (f.params.iter())
+        .map(|p| {
+            let t = match &p.ty {
+                Some(TyForm::Written(t)) => Some(t.clone()),
+                _ => None,
+            };
+            (d.syms.text(p.name).to_string(), t)
+        })
+        .collect();
+    let jag = crate::synth::jagged(&jag_in);
     let tables = d.tables();
+    let rows = std::cell::RefCell::new(Vec::new());
     let mut cx = TyCx {
         names: &named,
         env: &tables,
@@ -1513,18 +1545,21 @@ fn add_fn(
         expanding: Vec::new(),
         doms: &doms,
         scoped: &tyconv::unscoped,
+        self_ty: outer_self.clone(),
+        rows: Some(&rows),
         ret_slots: None,
         next_set: Some(outer_sets),
     };
     let mut errors = Vec::new();
     let mut self_mode = SelfMode::None;
-    let mut self_name = "self".to_string();
+    let mut self_name = d.syms.intern("self");
     let mut self_ty = None;
     let mut params = Vec::new();
+    let mut param_syms = Vec::new();
     let sig_takes_self = sig.as_ref().is_some_and(|s| s.self_mode != SelfMode::None);
     for (k, p) in f.params.iter().enumerate() {
-        if p.name.text == "self" || (k == 0 && sig_takes_self) {
-            self_name = p.name.text.clone();
+        if p.is_self || (k == 0 && sig_takes_self) {
+            self_name = p.name;
             self_mode = if p.mutable || sig.as_ref().is_some_and(|s| s.self_mode == SelfMode::Mut) {
                 SelfMode::Mut
             } else {
@@ -1533,10 +1568,10 @@ fn add_fn(
             // A free fn's `self` says what it extends (R08.1.4).
             self_ty = match (&outer_self, &p.ty) {
                 (Some(t), _) => Some(t.clone()),
-                (None, Some(t)) => Some(conv(&mut cx, t, &mut errors)),
+                (None, Some(t)) => Some(conv_form(&mut cx, t, &mut errors)),
                 (None, None) => {
                     errors.push(Msg::at(
-                        item.at(p.name.span),
+                        item.at(p.name_span),
                         Msg::verdict(
                             cpl_diag::codes::UNKNOWN_TYPE,
                             "`self` of a free fn needs a type",
@@ -1548,37 +1583,33 @@ fn add_fn(
             continue;
         }
         let from_trait = (sig.as_ref()).and_then(|s| s.params.get(params.len()).cloned());
-        let ty = match (&p.ty, from_trait) {
-            (Some(t), _) => conv(&mut cx, t, &mut errors),
-            (None, Some(t)) => t,
-            (None, None) => {
+        let jagged = jag.get(k).cloned().flatten();
+        let ty = match (&p.ty, from_trait, &jagged) {
+            // `k: 0..=n`: the range its ends reach over the earlier parameters' (R06.4.1).
+            (_, _, Some(((lo, hi), _))) => Ty::Range(*lo, *hi),
+            (Some(t), _, None) => conv_form(&mut cx, t, &mut errors),
+            (None, Some(t), None) => t,
+            (None, None, None) => {
                 errors.push(Msg::at(
-                    item.at(p.name.span),
+                    item.at(p.name_span),
                     Msg::verdict(
                         cpl_diag::codes::UNKNOWN_TYPE,
-                        format!("parameter `{}` needs a type", p.name.text),
+                        format!("parameter `{}` needs a type", d.syms.text(p.name)),
                     ),
                 ));
                 Ty::Error
             }
         };
-        if p.lazy {
-            errors.push(
-                Unbuilt::LazyParam {
-                    name: p.name.text.clone(),
-                }
-                .into(),
-            );
-        }
+        param_syms.push(p.name);
         params.push(Param {
-            name: p.name.text.clone(),
-            label: p.label.as_ref().unwrap_or(&p.name).text.clone(),
+            name: d.syms.text(p.name).to_string(),
+            label: d.syms.text(p.label).to_string(),
             ty,
             mutable: p.mutable,
             named_only: p.named_only,
             variadic: p.variadic,
             default: p.default.clone(),
-            written: (written.iter()).find_map(|(n, t)| (*n == p.name.text).then(|| t.clone())),
+            written: jagged.map(|(_, t)| t),
         });
     }
     let n_sets = cx.next_set.unwrap_or(0);
@@ -1591,113 +1622,144 @@ fn add_fn(
     for (_, c) in &binders {
         let t = d.new_dom(&item);
         if let Ty::Dom(i) = t {
-            d.fresh_doms.push((i, format!("{}.{c}", f.name.text)));
+            d.fresh_doms.push((i, format!("{fname}.{c}")));
         }
         d.top_doms
             .insert(format!("${}", d.fresh_doms.len()), t.clone());
-        ret_doms.insert(c.clone(), t);
+        ret_doms.insert(d.syms.intern(c), t);
     }
     cx.doms = &ret_doms;
-    if let Some(at) = f.lends.as_ref().and_then(|l| l.bare) {
-        let text = cpl_diag::msgs::check::EXPECTED_TOKEN_EXPECTED_BEFORE_LENDS_A.say(&[]);
-        let mut msg = Msg::verdict(cpl_diag::codes::EXPECTED_TOKEN, text);
-        msg.help = Some("write `-> lends T`".into());
-        msg.fixes.push(cpl_next_ir::msg::Fix {
-            title: "insert `->`".into(),
-            edits: vec![(
-                item.at(cpl_diag::Span::new(at.start, at.start)),
-                "-> ".into(),
-            )],
-        });
-        errors.push(Msg::at(item.at(at), msg));
-    }
     let mut region = None;
     let mut lends = None;
     let ret = match (&f.ret, &f.lends) {
-        (_, Some(l)) if l.mutable => {
-            region = Some((true, conv(&mut cx, &l.ty, &mut errors)));
+        (Some(t), Some((true, _))) => {
+            region = Some((true, conv_form(&mut cx, t, &mut errors)));
             Ty::Unit
         }
         // A read lend is the fn's value, which borrows every source it names, or every parameter.
-        (_, Some(l)) => {
-            let receiver = (self_mode != SelfMode::None).then_some(self_name.as_str());
-            let names: Vec<&str> = (receiver.into_iter())
-                .chain(params.iter().map(|p| p.name.as_str()))
+        (Some(t), Some((false, sources))) => {
+            let receiver = (self_mode != SelfMode::None).then_some(self_name);
+            let names: Vec<Sym> = receiver
+                .into_iter()
+                .chain(param_syms.iter().copied())
                 .collect();
             let mut from = Vec::new();
-            for s in &l.sources {
-                match names.iter().position(|n| *n == s.text) {
+            for (s, at) in sources {
+                match names.iter().position(|n| n == s) {
                     Some(i) => from.push(i),
                     None => errors.push(Msg::at(
-                        item.at(s.span),
+                        item.at(*at),
                         Msg::verdict(
                             cpl_diag::codes::UNRESOLVED_NAME,
-                            format!("`{}` is not a parameter", s.text),
+                            format!("`{}` is not a parameter", d.syms.text(*s)),
                         ),
                     )),
                 }
             }
-            if l.sources.is_empty() {
+            if sources.is_empty() {
                 from = (0..names.len()).collect();
             }
             lends = Some(from);
-            conv(&mut cx, &l.ty, &mut errors)
+            conv_form(&mut cx, t, &mut errors)
         }
-        (Some(t), None) => match &t.kind {
-            TypeKind::Yields(inner) => {
-                region = Some((false, conv(&mut cx, inner, &mut errors)));
-                Ty::Unit
-            }
-            _ => conv(&mut cx, t, &mut errors),
-        },
-        (None, None) => sig.as_ref().map_or(Ty::Unit, |s| s.ret.clone()),
+        (Some(t), None) if f.yields => {
+            region = Some((false, conv_form(&mut cx, t, &mut errors)));
+            Ty::Unit
+        }
+        (Some(t), None) => conv_form(&mut cx, t, &mut errors),
+        (None, _) => sig.as_ref().map_or(Ty::Unit, |s| s.ret.clone()),
     };
     let n_ret_sets = cx.ret_slots.unwrap_or(0);
     let mut bounds = Vec::new();
+    let mut counted: Vec<Sym> = Vec::new();
     for b in &f.bounds {
-        let Some(i) = generics.iter().position(|g| *g == b.name.text) else {
+        let j = counted.iter().filter(|p| **p == b.param).count();
+        counted.push(b.param);
+        let Some(i) = generics.iter().position(|g| *g == b.param) else {
             continue;
         };
-        for (j, t) in b.traits.iter().enumerate() {
-            if let Some(r) = trait_ref(&mut cx, t, &mut errors) {
-                bound_ref(d, r, i, (b.name.text.clone(), j), &hidden, &mut bounds);
-            }
+        if let Some(r) = trait_ref(&mut cx, &b.tr, &mut errors) {
+            bound_ref(d, r, i, (b.param, j), &hidden, &mut bounds);
         }
     }
-    // A decorator changes meaning, so one the slice does not implement refuses the program; it is
-    // never skipped. A library's `@lint` declares a rewrite for the linter, which the slice does not
-    // run, so the program's own is refused: its expected result may be that lint (R06.4.9).
-    for x in &s.decorators {
-        if let Some(msg) = crate::synth::unspelled_memo(x) {
-            errors.push(Msg::at(item.at(x.span), msg));
+    // Each `without` the signature takes of a row-bound parameter bounds it by that form's trait.
+    let mut seen_rows = Vec::new();
+    for (i, form, args) in rows.take() {
+        let Some(((r, _), (tr, j))) = rest_traits
+            .iter()
+            .find(|((r, g), _)| generics.get(i) == Some(r) && *g == form)
+        else {
+            continue;
+        };
+        if seen_rows.contains(&(*r, *j)) {
             continue;
         }
-        let elsewhere = d.is_library(m) && read_elsewhere(x.mark);
-        let built = matches!(
-            x.mark,
-            Some(
-                Mark::Coerce
-                    | Mark::Pattern
-                    | Mark::Input
-                    | Mark::Role
-                    | Mark::Get
-                    | Mark::Multitest
-                    | Mark::SameKeys
-                    | Mark::Index
-                    | Mark::Aka
-                    | Mark::Was
-                    | Mark::FromOp
-                    | Mark::Fast
-            )
+        seen_rows.push((*r, *j));
+        bound_ref(
+            d,
+            TraitRef { tr: *tr, args },
+            i,
+            (*r, *j),
+            &hidden,
+            &mut bounds,
         );
-        if !elsewhere && !built {
-            let at = item.at(x.span);
-            errors.push(Msg::at(
-                at,
-                Unbuilt::Decorator {
-                    name: x.name.text.clone(),
-                },
-            ));
+    }
+    debug_assert!(written_heads <= heads.len());
+    // A decorator changes meaning, so one the slice does not implement refuses the program; it is
+    // never skipped.
+    let kind = DeclKind::Fn {
+        params: f.params.len(),
+    };
+    let built = |a: Attr| {
+        matches!(
+            a,
+            Attr::Coerce
+                | Attr::Pattern
+                | Attr::Input
+                | Attr::Role
+                | Attr::Get
+                | Attr::SameKeys
+                | Attr::Index
+                | Attr::Aka
+                | Attr::Was
+                | Attr::FromOp
+                | Attr::Fast
+                | Attr::Lint
+                | Attr::Stress
+                | Attr::OnUnimplemented
+                | Attr::Memo
+        )
+    };
+    let attr_at = |x: &forms::AttrForm| {
+        use cpl_next_syntax::ast::AstNode;
+        item.at(x.node.as_ref().map_or(f.span, |n| n.syntax().span()))
+    };
+    for x in &f.attrs {
+        attr_rules::check(x, kind, &item, &mut errors);
+        if x.attr == Attr::Lint {
+            let body = match &f.body {
+                BodyForm::Written(cpl_next_syntax::ast::FnBody::Expr(e)) => {
+                    use cpl_next_syntax::ast::AstNode;
+                    let toks = e.syntax().tokens().filter(|t| !t.kind().is_trivia());
+                    Some(toks.map(|t| (t.kind(), t.text().to_string())).collect())
+                }
+                _ => None,
+            };
+            let receiver = (self_mode != SelfMode::None).then_some(self_name);
+            let lint_params = (receiver.into_iter().chain(param_syms.iter().copied()))
+                .map(|p| d.syms.text(p).to_string())
+                .collect();
+            let lf = attr_rules::LintedFn {
+                name: &fname,
+                params: lint_params,
+                yields: f.yields,
+                body,
+            };
+            attr_rules::lint(x, &lf, &item, &mut errors);
+        }
+        if !built(x.attr) {
+            let name = x.attr.name().to_string();
+            errors.push(Msg::at(attr_at(x), Unbuilt::Decorator { name }));
         }
     }
     // A program's are said now; its refusals stay on the fn, which is then the error.
@@ -1708,34 +1770,37 @@ fn add_fn(
         errors.retain(|e| e.refusal.is_some());
         errors
     };
-    let has = |m: Mark| s.mark(m).is_some();
+    let has = |a: Attr| f.attrs.iter().any(|x| x.attr == a);
     // A getter is read like a field, so nothing but `self` may need an argument (R02.6.6).
-    let getter = has(Mark::Get);
-    let same_keys = has(Mark::SameKeys);
-    let words = |m: Mark| -> Vec<String> {
-        (s.decorators.iter().filter(|x| x.mark == Some(m)))
-            .flat_map(|x| &x.args)
-            .filter_map(|a| match &a.value.kind {
-                cpl_syntax::ast::ExprKind::Name(w) => Some(w.clone()),
+    let getter = has(Attr::Get);
+    let same_keys = has(Attr::SameKeys);
+    let words = |a: Attr| -> Vec<String> {
+        use cpl_next_syntax::ast::Expr;
+        (f.attrs.iter().filter(|x| x.attr == a))
+            .filter_map(|x| x.node.as_ref()?.args())
+            .flat_map(|args| args.args().collect::<Vec<_>>())
+            .filter_map(|arg| match arg.value()? {
+                Expr::Name(n) => Some(n.ident()?.text().to_string()),
                 _ => None,
             })
             .collect()
     };
-    if has(Mark::Index) {
+    if has(Attr::Index) {
         d.index_fns.push(FnId(d.fns.len()));
     }
-    if has(Mark::FromOp) {
+    if has(Attr::FromOp) {
         d.from_op.push(FnId(d.fns.len()));
     }
-    let coerce = has(Mark::Coerce);
+    let coerce = has(Attr::Coerce);
     if coerce {
         d.coercions.push(FnId(d.fns.len()));
     }
-    if has(Mark::Pattern) {
+    if has(Attr::Pattern) {
         d.pattern_fns.push(FnId(d.fns.len()));
     }
     let id = FnId(d.fns.len());
-    for (x, role) in role_marks(s) {
+    for x in f.attrs.iter().filter(|x| x.attr == Attr::Role) {
+        let role = form_role(x);
         if let Some(Role::Trace) = role {
             d.roles.trace.push(id);
             continue;
@@ -1749,17 +1814,18 @@ fn add_fn(
             Some(Role::VariantCheck) => &mut d.roles.variant_check,
             Some(Role::Todo) => &mut d.roles.todo,
             Some(_) => {
-                let name = x.name.text.clone();
-                errors.push(Msg::at(item.at(x.span), Unbuilt::Decorator { name }));
+                let name = x.attr.name().to_string();
+                errors.push(Msg::at(attr_at(x), Unbuilt::Decorator { name }));
                 continue;
             }
             None => {
-                d.errors.push(collect::misplaced_role(&item, x, None, "fn"));
+                d.errors
+                    .push(collect::misplaced_role(&item, attr_at(x), None, "fn"));
                 continue;
             }
         };
         let dup = Msg::at(
-            item.at(s.span),
+            item.at(f.span),
             Msg::verdict(
                 cpl_diag::codes::DUPLICATE_DEFINITION,
                 "a second declaration filling one `@role`",
@@ -1767,97 +1833,111 @@ fn add_fn(
         );
         collect::once(slot, id, dup, &mut d.errors);
     }
-    if has(Mark::Input) {
+    if has(Attr::Input) {
         d.input_fns.push(FnId(d.fns.len()));
     }
     if getter && params.iter().any(|p| p.default.is_none()) {
         let msg = format!(
-            "getter `{}` is read like a field, so each parameter but `self` needs a default",
-            f.name.text
+            "getter `{fname}` is read like a field, so each parameter but `self` needs a default"
         );
         let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS;
         d.misdeclared
-            .push((item.at(Span::new(s.span.start, s.span.start)), code, msg));
+            .push((item.at(Span::new(f.span.start, f.span.start)), code, msg));
     }
     if !binders.is_empty() {
         let slots = binders.iter().map(|b| b.0).collect();
         d.fresh_slots.push((FnId(d.fns.len()), slots));
     }
-    if f.ret.as_ref().is_some_and(tyconv::has_hole) {
+    if matches!(&f.ret, Some(TyForm::Written(t)) if tyconv::has_hole(t)) {
         d.ret_holes.push(FnId(d.fns.len()));
     }
-    let intrinsic = match &f.body {
-        FnBody::Expr(e) => match &e.kind {
-            cpl_syntax::ast::ExprKind::Intrinsic(n) => {
-                let known = cpl_next_ir::ops::Intrinsic::named(n);
+    let intrinsic =
+        match &f.body {
+            BodyForm::Written(cpl_next_syntax::ast::FnBody::Expr(
+                cpl_next_syntax::ast::Expr::Intrinsic(e),
+            )) => {
+                use cpl_next_syntax::ast::AstNode;
+                use cpl_next_syntax::literal::{string_parts, StrPart};
+                let tok = e.id();
+                let text = tok.as_ref().map_or("", |t| t.text());
+                let n: String = (string_parts(text).into_iter())
+                    .filter_map(|p| match p {
+                        StrPart::Text(s) => Some(&text[s.start as usize..s.end as usize]),
+                        StrPart::Expr(_) => None,
+                    })
+                    .collect();
+                let span = e.syntax().span();
+                let known = cpl_next_ir::ops::Intrinsic::named(&n);
                 // The table grows only by a decision entry; a program names one of its ids
                 // (R12.14.1, R12.14.5).
                 if known.is_none() {
                     let ids: Vec<&str> =
                         (cpl_next_ir::ops::INTRINSICS.iter()).map(|e| e.0).collect();
                     let msg = cpl_diag::msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE
-                        .say(&[n, &ids.join(", ")]);
+                        .say(&[&n, &ids.join(", ")]);
                     let code = cpl_diag::codes::UNKNOWN_INTRINSIC;
-                    d.misdeclared.push((item.at(e.span), code, msg));
+                    d.misdeclared.push((item.at(span), code, msg));
                     d.rejected_bodies.insert(FnId(d.fns.len()));
                 }
                 // A type parameter stands for the entry's types; each call's are checked.
                 let fits = |ty: &Ty, want: &str| {
                     matches!(ty, Ty::Param(_)) || cpl_next_ir::ops::entry_fits(ty, want)
                 };
-                if let Some((want, res)) = cpl_next_ir::ops::entry_sig(n) {
+                if let Some((want, res)) = cpl_next_ir::ops::entry_sig(&n) {
                     let receiver = self_ty.iter().filter(|_| self_mode != SelfMode::None);
                     let taken: Vec<&Ty> = receiver.chain(params.iter().map(|p| &p.ty)).collect();
                     let params_fit = taken.len() == want.len()
                         && (taken.iter().zip(want)).all(|(t, w)| fits(t, w));
                     if !params_fit || !fits(&ret, res) {
                         let msg = cpl_diag::msgs::check::UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT
-                            .say(&[n, &want.join(", "), &res, &f.name.text]);
+                            .say(&[&n, &want.join(", "), &res, &fname]);
                         let code = cpl_diag::codes::UNKNOWN_INTRINSIC;
-                        d.misdeclared.push((item.at(e.span), code, msg));
+                        d.misdeclared.push((item.at(span), code, msg));
                     }
                 }
                 known
             }
             _ => None,
-        },
-        _ => None,
+        };
+    let fns = d.item_fns.entry(item.clone()).or_default();
+    let at = fns.len() as u32;
+    fns.push(FnId(d.fns.len()));
+    let body = match &f.body {
+        BodyForm::Written(_) => Body::Written,
+        BodyForm::Value(_) => Body::Value,
+        BodyForm::Synth(b) => Body::Synth(b.clone()),
+        BodyForm::None => Body::None,
     };
-    d.item_fns
-        .entry(item.clone())
-        .or_default()
-        .push(FnId(d.fns.len()));
     d.fns.push(FnDecl {
         made: (0, 0),
-        name: f.name.text.clone(),
+        at,
+        name: fname.clone(),
         owner,
         self_mode,
-        self_name,
+        self_name: d.syms.text(self_name).to_string(),
         self_ty,
         generics,
         bounds,
         params,
-        labels: f
-            .params
-            .iter()
+        labels: (f.params.iter())
             .filter(|p| p.named_only)
-            .map(|p| p.label.as_ref().unwrap_or(&p.name).text.clone())
+            .map(|p| d.syms.text(p.label).to_string())
             .collect(),
         ret,
         n_sets,
         n_ret_sets,
         region,
         lends,
-        uses: f.uses.iter().map(|n| n.text.clone()).collect(),
-        body: f.body.clone(),
+        uses: f.uses.iter().map(|n| d.syms.text(*n).to_string()).collect(),
+        body,
         intrinsic,
-        fast: words(Mark::Fast).into_iter().next(),
+        fast: words(Attr::Fast).into_iter().next(),
         getter,
-        public: s.public,
+        public: f.public,
         same_keys,
-        aka: words(Mark::Aka),
-        was: words(Mark::Was),
-        span: item.at(s.span),
+        aka: words(Attr::Aka),
+        was: words(Attr::Was),
+        span: item.at(f.span),
         item,
         module: m,
         errors,
@@ -1943,168 +2023,181 @@ pub fn const_axis(t: &ast::Type) -> Option<(i64, i64)> {
 /// end, by bound and trait. An associated type is named through the bounded parameter: `G.Arc` of
 /// `G: Next<V>` (R08.2.3); any other is `S.1`, which can't be written, fixed when the bound is met
 /// (R08.1.2). An associated type's default is the impl's to take, never the bound's.
-type Hidden = Vec<((String, usize), std::ops::Range<usize>)>;
-/// `R: (to:, ..without u, v)<X>` for each `(to: X, ..R without (u, v))` the signature writes,
-/// through its aliases, of a parameter `R` whose row bound has those fields: the record it names
-/// is then a parameter of the signature (R08.4.1).
-fn without_bounds(d: &Decls, names: &View, f: &ast::FnDecl) -> Vec<ast::Bound> {
+type Hidden = Vec<((Sym, usize), std::ops::Range<usize>)>;
+
+/// The `(to: X, ..R without (u, v))` a signature writes, through its aliases, of a parameter `R`
+/// whose row bound has those fields: `R`'s record without them is then a parameter of the
+/// signature, bounded by that form's trait (R08.4.1).
+fn rest_forms(d: &Decls, names: &View, f: &forms::FnForm) -> Vec<(Sym, crate::records::Form)> {
+    use cpl_next_syntax::ast::{GenericArg, Type};
+    /// What an alias's parameters stand for while its body is walked: each one's argument,
+    /// with where that argument is written.
+    struct Env<'e> {
+        names: &'e View,
+        sub: HashMap<Sym, (Type, &'e Env<'e>)>,
+    }
+    fn bare(d: &Decls, t: &Type) -> Option<Sym> {
+        let Type::Path(p) = t else { return None };
+        if p.generic_args().is_some_and(|a| a.args().next().is_some()) {
+            return None;
+        }
+        let text: Vec<_> = p.segments().map(|s| s.text().to_string()).collect();
+        d.syms.get(&text.join("."))
+    }
+    fn walk(
+        d: &Decls,
+        f: &forms::FnForm,
+        env: &Env,
+        t: &Type,
+        out: &mut Vec<(Sym, crate::records::Form)>,
+    ) {
+        let types = |args: Vec<GenericArg>| -> Vec<Type> {
+            (args.into_iter())
+                .filter_map(|a| match a {
+                    GenericArg::Type(t) => Some(t),
+                    GenericArg::Param(_) => None,
+                })
+                .collect()
+        };
+        match t {
+            Type::Path(p) => {
+                let args = types(
+                    p.generic_args()
+                        .map(|a| a.args().collect())
+                        .unwrap_or_default(),
+                );
+                args.iter().for_each(|a| walk(d, f, env, a, out));
+                let text: Vec<_> = p.segments().map(|s| s.text().to_string()).collect();
+                let Some(n) = d.syms.get(&text.join(".")) else {
+                    return;
+                };
+                if env.sub.contains_key(&n) || f.generics.contains(&n) {
+                    return;
+                }
+                if let Some(Named::Alias(id)) = env.names.get(&n).copied() {
+                    let a = &d.aliases[id.0];
+                    if a.generics.len() == args.len() {
+                        let sub = (a.generics.iter().copied())
+                            .zip(args.iter().map(|t| (t.clone(), env)))
+                            .collect();
+                        walk(
+                            d,
+                            f,
+                            &Env {
+                                names: &a.names,
+                                sub,
+                            },
+                            &a.ty,
+                            out,
+                        );
+                    }
+                }
+            }
+            Type::Record(r) => {
+                let fields: Vec<_> = r.fields().collect();
+                fields
+                    .iter()
+                    .filter_map(|x| x.ty())
+                    .for_each(|t| walk(d, f, env, &t, out));
+                let Some(rest) = fields.iter().find(|x| x.is_rest()) else {
+                    return;
+                };
+                let Some(mut base) = rest.ty() else { return };
+                // `R`, through the aliases that pass it on.
+                let mut at = env;
+                let r = loop {
+                    let Some(n) = bare(d, &base) else { return };
+                    match at.sub.get(&n) {
+                        Some((t, outer)) => {
+                            base = t.clone();
+                            at = outer;
+                        }
+                        None => break n,
+                    }
+                };
+                let row = (f.bounds.iter().filter(|b| b.param == r)).find_map(|b| match &b.tr {
+                    forms::TyForm::Written(Type::Record(rr))
+                        if rr.fields().any(|x| x.is_rest() && x.ty().is_none()) =>
+                    {
+                        Some(
+                            (rr.fields().filter_map(|x| x.name()))
+                                .map(|t| t.text().to_string())
+                                .collect::<Vec<_>>(),
+                        )
+                    }
+                    _ => None,
+                });
+                let removed: Vec<String> = rest
+                    .removed()
+                    .iter()
+                    .map(|t| t.text().to_string())
+                    .collect();
+                if !row.is_some_and(|row| removed.iter().all(|n| row.contains(n))) {
+                    return;
+                }
+                let prefix = (fields.iter().filter(|x| !x.is_rest()))
+                    .map(|x| x.name().map_or(String::new(), |t| t.text().to_string()))
+                    .collect();
+                let form = (prefix, removed);
+                if !out.iter().any(|(x, g)| *x == r && *g == form) {
+                    out.push((r, form));
+                }
+            }
+            Type::Array(a) => {
+                let dims = types(a.dims().map(|x| x.args().collect()).unwrap_or_default());
+                dims.iter()
+                    .chain(a.elem().iter())
+                    .for_each(|t| walk(d, f, env, t, out));
+            }
+            Type::Optional(o) => o.inner().iter().for_each(|t| walk(d, f, env, t, out)),
+            Type::Tuple(ts) => ts.elems().iter().for_each(|(_, t)| walk(d, f, env, t, out)),
+            Type::Fn(ft) => {
+                ft.param().iter().for_each(|t| walk(d, f, env, t, out));
+                ft.ret()
+                    .and_then(|r| r.ty())
+                    .iter()
+                    .for_each(|t| walk(d, f, env, t, out));
+            }
+            _ => {}
+        }
+    }
+    let env = Env {
+        names,
+        sub: HashMap::new(),
+    };
     let mut out = Vec::new();
-    let sig = f.params.iter().filter_map(|p| p.ty.as_ref()).chain(&f.ret);
-    sig.for_each(|t| rest_bounds(d, names, f, t, &mut out));
+    let sig = (f.params.iter().filter_map(|p| p.ty.as_ref())).chain(f.ret.as_ref());
+    for t in sig {
+        if let forms::TyForm::Written(t) = t {
+            walk(d, f, &env, t, &mut out);
+        }
+    }
     out
 }
 
-fn rest_bounds(d: &Decls, names: &View, f: &ast::FnDecl, t: &ast::Type, out: &mut Vec<ast::Bound>) {
-    let mut go = |t: &ast::Type| rest_bounds(d, names, f, t, out);
-    match &t.kind {
-        TypeKind::Named { name, args } => {
-            args.iter().for_each(&mut go);
-            let generic = f.generics.iter().any(|g| g.text == name.text);
-            if let (Some(Named::Alias(id)), false) = (look(&d.syms, names, &name.text), generic) {
-                let a = &d.aliases[id.0];
-                if a.generics.len() == args.len() {
-                    let sub = a.generics.iter().map(String::as_str).zip(args).collect();
-                    rest_bounds(d, &a.names, f, &subst(&a.ty, &sub), out);
-                }
-            }
-        }
-        TypeKind::RowWithout {
-            prefix,
-            base,
-            removed,
-        } => {
-            prefix.iter().for_each(|(_, t)| go(t));
-            go(base);
-            let TypeKind::Named { name: r, args } = &base.kind else {
-                return;
-            };
-            let row = (f.bounds.iter())
-                .filter(|b| b.name.text == r.text)
-                .flat_map(|b| &b.traits)
-                .find_map(|t| match &t.kind {
-                    TypeKind::Row(fs) => Some(fs),
-                    _ => None,
-                });
-            let fits = |row: &Vec<(ast::Name, ast::Type)>| {
-                (removed.iter()).all(|n| row.iter().any(|(f, _)| f.text == n.text))
-            };
-            if !args.is_empty() || !row.is_some_and(fits) {
-                return;
-            }
-            let form = (
-                prefix.iter().map(|(n, _)| n.text.clone()).collect(),
-                removed.iter().map(|n| n.text.clone()).collect(),
-            );
-            let tr = crate::records::without_name(&form);
-            let known = |b: &ast::Bound| {
-                b.name.text == r.text
-                    && matches!(&b.traits[..], [ast::Type { kind: TypeKind::Named { name, .. }, .. }] if name.text == tr)
-            };
-            if out.iter().any(known) {
-                return;
-            }
-            let kind = TypeKind::Named {
-                name: ast::Name {
-                    text: tr,
-                    span: t.span,
-                },
-                args: prefix.iter().map(|(_, t)| t.clone()).collect(),
-            };
-            out.push(ast::Bound {
-                name: r.clone(),
-                traits: vec![ast::Type { kind, span: t.span }],
-            });
-        }
-        TypeKind::Array { index, elem } => index.iter().chain([&**elem]).for_each(go),
-        TypeKind::OwnDomain { elem: x, .. }
-        | TypeKind::Optional(x)
-        | TypeKind::Mut(x)
-        | TypeKind::Yields(x) => go(x),
-        TypeKind::Tuple(ts) => ts.iter().for_each(go),
-        TypeKind::Record(fs) | TypeKind::Row(fs) => fs.iter().for_each(|(_, t)| go(t)),
-        TypeKind::Fn { params, ret } => params.iter().chain([&**ret]).for_each(go),
-        _ => {}
-    }
-}
-
-/// `t` with each bare name `sub` has replaced by its type: an alias's body at its arguments.
-fn subst(t: &ast::Type, sub: &HashMap<&str, &ast::Type>) -> ast::Type {
-    let s = |x: &ast::Type| subst(x, sub);
-    let b = |x: &ast::Type| Box::new(subst(x, sub));
-    let fs = |v: &[(ast::Name, ast::Type)]| -> Vec<(ast::Name, ast::Type)> {
-        v.iter().map(|(n, x)| (n.clone(), subst(x, sub))).collect()
-    };
-    let kind = match &t.kind {
-        TypeKind::Named { name, args } if args.is_empty() => match sub.get(name.text.as_str()) {
-            Some(x) => return (*x).clone(),
-            None => t.kind.clone(),
-        },
-        TypeKind::Named { name, args } => TypeKind::Named {
-            name: name.clone(),
-            args: args.iter().map(s).collect(),
-        },
-        TypeKind::Array { index, elem } => TypeKind::Array {
-            index: index.iter().map(s).collect(),
-            elem: b(elem),
-        },
-        TypeKind::OwnDomain { name, elem } => TypeKind::OwnDomain {
-            name: name.clone(),
-            elem: b(elem),
-        },
-        TypeKind::Optional(x) => TypeKind::Optional(b(x)),
-        TypeKind::Mut(x) => TypeKind::Mut(b(x)),
-        TypeKind::Yields(x) => TypeKind::Yields(b(x)),
-        TypeKind::Tuple(ts) => TypeKind::Tuple(ts.iter().map(s).collect()),
-        TypeKind::Record(v) => TypeKind::Record(fs(v)),
-        TypeKind::Row(v) => TypeKind::Row(fs(v)),
-        TypeKind::Fn { params, ret } => TypeKind::Fn {
-            params: params.iter().map(s).collect(),
-            ret: b(ret),
-        },
-        TypeKind::RowWithout {
-            prefix,
-            base,
-            removed,
-        } => TypeKind::RowWithout {
-            prefix: fs(prefix),
-            base: b(base),
-            removed: removed.clone(),
-        },
-        other => other.clone(),
-    };
-    ast::Type { kind, span: t.span }
-}
-
+/// The parameters each bound that leaves its trait's arguments out takes, at `generics`' end:
+/// `heads` holds each bound's parameter, its place among that parameter's bounds, its trait and
+/// how many arguments it writes.
 fn hidden_params(
-    d: &Decls,
-    names: &dyn Fn(&str) -> Option<Named>,
-    bounds: &[ast::Bound],
-    generics: &mut Vec<String>,
+    d: &mut Decls,
+    heads: &[(Sym, usize, TraitId, usize)],
+    generics: &mut Vec<Sym>,
 ) -> Hidden {
     let mut hidden = Vec::new();
-    for b in bounds {
-        for (j, t) in b.traits.iter().enumerate() {
-            let TypeKind::Named { name, args } = &t.kind else {
-                continue;
-            };
-            let Some(Named::Trait(tr)) = names(&name.text) else {
-                continue;
-            };
-            let n = d.traits[tr.0].defaults.len();
-            let first_assoc = n - d.traits[tr.0].assoc.len();
-            if args.len() < n
-                && (args.len() >= first_assoc || d.traits[tr.0].defaults[args.len()].is_none())
-            {
-                let k = generics.len();
-                let assoc = &d.traits[tr.0].assoc;
-                generics.extend(
-                    (args.len()..n).map(|p| match p.checked_sub(n - assoc.len()) {
-                        Some(a) => format!("{}.{}", b.name.text, assoc[a]),
-                        None => format!("{}.hidden", k + p - args.len()),
-                    }),
-                );
-                hidden.push(((b.name.text.clone(), j), k..generics.len()));
+    for &(param, j, tr, written) in heads {
+        let n = d.traits[tr.0].defaults.len();
+        let first_assoc = n - d.traits[tr.0].assoc.len();
+        if written < n && (written >= first_assoc || d.traits[tr.0].defaults[written].is_none()) {
+            let k = generics.len();
+            let assoc = d.traits[tr.0].assoc.clone();
+            for p in written..n {
+                let name = match p.checked_sub(n - assoc.len()) {
+                    Some(a) => format!("{}.{}", d.syms.text(param), assoc[a]),
+                    None => format!("{}.hidden", k + p - written),
+                };
+                generics.push(d.syms.intern(&name));
             }
+            hidden.push(((param, j), k..generics.len()));
         }
     }
     hidden
@@ -2117,7 +2210,7 @@ fn bound_ref(
     d: &Decls,
     mut r: TraitRef,
     i: usize,
-    key: (String, usize),
+    key: (Sym, usize),
     hidden: &Hidden,
     out: &mut Vec<(usize, TraitRef)>,
 ) {
@@ -2145,17 +2238,18 @@ fn bound_ref(
 
 /// The `domain C` slots of a result `(domain C, [C]T)` or `(domain C, comp: [V]C)`: each one's
 /// place and name.
-fn fresh_binders(ret: Option<&ast::Type>) -> Vec<(usize, String)> {
-    match ret.map(|t| &t.kind) {
-        Some(TypeKind::Record(fs)) => (fs.iter().enumerate())
-            .filter(|(_, (_, t))| t.kind == TypeKind::NewDomain)
-            .map(|(k, (n, _))| (k, n.text.clone()))
+fn fresh_binders(ret: Option<&forms::TyForm>) -> Vec<(usize, String)> {
+    use cpl_next_syntax::ast::Type;
+    let binder = |t: Option<Type>| match t {
+        Some(Type::DomainBinder(b)) => b.name().map(|n| n.text().to_string()),
+        _ => None,
+    };
+    match ret {
+        Some(forms::TyForm::Written(Type::Record(r))) => (r.fields().enumerate())
+            .filter_map(|(k, x)| Some((k, binder(x.ty())?)))
             .collect(),
-        Some(TypeKind::Tuple(ts)) => (ts.iter().enumerate())
-            .filter_map(|(k, t)| match &t.kind {
-                TypeKind::DomainBinder(n) => Some((k, n.text.clone())),
-                _ => None,
-            })
+        Some(forms::TyForm::Written(Type::Tuple(ts))) => (ts.elems().into_iter().enumerate())
+            .filter_map(|(k, (_, t))| Some((k, binder(Some(t))?)))
             .collect(),
         _ => Vec::new(),
     }

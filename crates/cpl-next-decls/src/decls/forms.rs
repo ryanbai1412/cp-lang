@@ -61,6 +61,8 @@ pub struct ParamForm {
     pub variadic: bool,
     pub default: Option<ast::Expr>,
     pub span: Span,
+    /// Where its name is written, for what is said of the parameter.
+    pub name_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -74,7 +76,7 @@ pub struct FnForm {
     pub ret: Option<TyForm>,
     pub yields: bool,
     /// `-> lends T` / `-> lends mut T`, with the parameters it borrows from.
-    pub lends: Option<(bool, Vec<Sym>)>,
+    pub lends: Option<(bool, Vec<(Sym, Span)>)>,
     pub uses: Vec<Sym>,
     pub body: BodyForm,
     pub span: Span,
@@ -287,6 +289,7 @@ impl Reader<'_> {
             variadic: p.is_variadic(),
             default: p.default(),
             span: p.syntax().span(),
+            name_span: p.name().map_or(p.syntax().span(), |n| n.span()),
         }
     }
 
@@ -308,7 +311,9 @@ impl Reader<'_> {
                 .collect::<Vec<_>>();
             (
                 r.lends_mut(),
-                srcs.into_iter().map(|t| self.sym(Some(t))).collect(),
+                srcs.into_iter()
+                    .map(|t| (self.sym(Some(t.clone())), t.span()))
+                    .collect(),
             )
         });
         let uses = (f

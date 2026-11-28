@@ -1576,21 +1576,14 @@ fn marked(s: &ast::Stmt, m: Mark) -> bool {
 }
 
 /// A marker names one declaration: a second, in any module, is a duplicate.
-pub(super) fn again(item: &ItemId, s: &ast::Stmt, n: &str) -> Msg {
+pub(super) fn again(item: &ItemId, at: Span, n: &str) -> Msg {
     let code = cpl_diag::codes::DUPLICATE_DEFINITION;
     Msg::at(
-        item.at(s.span),
+        item.at(at),
         Msg::verdict(code, format!("a second declaration marked `@{n}`")),
     )
 }
-
-/// A `@role` on a declaration of a kind that doesn't fill it, or naming no role of R11.6.1.
-pub(super) fn misplaced_role(
-    item: &ItemId,
-    x: &ast::Decorator,
-    role: Option<Role>,
-    kind: &str,
-) -> Msg {
+pub(super) fn misplaced_role(item: &ItemId, at: SourceId, role: Option<Role>, kind: &str) -> Msg {
     let msg = match role {
         Some(r) => Msg::verdict(
             cpl_diag::codes::TYPE_MISMATCH,
@@ -1601,9 +1594,9 @@ pub(super) fn misplaced_role(
             "`@role` names one of the roles of R11.6.1".to_string(),
         ),
     };
-    Msg::at(item.at(x.span), msg)
+    let _ = item;
+    Msg::at(at, msg)
 }
-
 pub(super) fn once<T>(slot: &mut Option<T>, id: T, dup: Msg, errors: &mut Vec<Msg>) {
     match slot {
         Some(_) => errors.push(dup),
