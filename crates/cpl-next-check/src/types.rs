@@ -167,3 +167,21 @@ impl TypeFacts for TypeView<'_> {
         out
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_type_follows_its_args_once_each_in_walk_order() {
+        let pair = |a: Ty, b: Ty| Ty::Struct(StructId(0), vec![a, b], Vec::new());
+        let mut t = ItemTypes::default();
+        let outer = pair(Ty::Int, pair(Ty::Bool, Ty::Int));
+        assert_eq!(t.add(&outer), 3);
+        assert_eq!(t.get(0), Some(&Ty::Int));
+        assert_eq!(t.get(1), Some(&Ty::Bool));
+        assert_eq!(t.args(3), vec![0, 2]);
+        assert_eq!(t.args(2), vec![1, 0]);
+        assert_eq!(t.add(&Ty::Bool), 1);
+    }
+}

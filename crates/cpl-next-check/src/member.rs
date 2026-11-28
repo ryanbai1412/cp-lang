@@ -464,7 +464,7 @@ impl<'a> Cx<'a> {
             }
             Some(_) => return None,
             None => (self.sym_of(n).and_then(|s| self.b.doms.get(&s).cloned()))
-                .or_else(|| self.owned_named(n))
+                .or_else(|| self.sym_of(n).and_then(|s| self.owned_named(s)))
                 .or_else(|| decls::prim_type(n))?,
         };
         let t = self.shallow(&t);
