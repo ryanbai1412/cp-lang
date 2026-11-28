@@ -1002,18 +1002,19 @@ pub(super) fn unimplemented(
     for a in args {
         let label = a.label().map(|l| l.text().to_string());
         let value = a.value();
+        // A message with a `{T}` hole is parsed into text pieces around it, so it is read whole.
         let message = match (&label, &value) {
-            (None, Some(next::Expr::Literal(l))) => {
-                l.token().filter(|t| t.kind() == TokenKind::Str)
-            }
+            (None, Some(next::Expr::Literal(l))) => (l.token())
+                .filter(|t| matches!(t.kind(), TokenKind::Str | TokenKind::StrText))
+                .map(|_| l.syntax().text()),
             _ => None,
         };
         let code = match (label.as_deref(), &value) {
             (Some("code"), Some(next::Expr::Name(n))) => n.ident(),
             _ => None,
         };
-        if let Some(t) = message {
-            let text = t.text();
+        if let Some(text) = message {
+            let text = text.as_str();
             let piece = |r: cpl_diag::Span| &text[r.start as usize..r.end as usize];
             let help = string_parts(text).into_iter().map(|p| match p {
                 StrPart::Text(r) => piece(r).to_string(),
