@@ -119,6 +119,12 @@ def merged(counts, name, sides, moved, measured):
                       else int(counts[s][name]) for s in sides))
 
 
+def settled(mods, counts, name, sides):
+    """A hard-zero counter at 0 on every side restates to 0 by any rule, and the tip's own check
+    still measures it: re-measuring corpus_fmt_dirty here rebuilt cpl, 60 s of a land."""
+    return name in getattr(mods["tip"], "HARD_ZERO", ()) and all(int(counts[s][name]) == 0 for s in sides)
+
+
 def measure_all(mods, jobs, root):
     """`measure` for each job, in forked processes: serially a rule change reaching a shared
     helper re-measured dozens of counters one by one. A refusal comes back as its exception."""
@@ -158,7 +164,7 @@ def main(argv):
     for name, (_, _, gated) in mods["tip"].COUNTERS.items():
         sides = [s for s in SIDES if name in counts[s] and name in mods[s].COUNTERS]
         moved = [s for s in sides if rule(mods[s], name) != rule(mods["tip"], name)]
-        if gated and name in current and moved and name not in ci_only:
+        if gated and name in current and moved and name not in ci_only and not settled(mods, counts, name, sides):
             jobs.append((name, sides, moved))
     for (name, sides, moved), measured in zip(jobs, measure_all(mods, jobs, root)):
         if isinstance(measured, Refused):

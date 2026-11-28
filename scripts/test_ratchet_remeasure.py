@@ -60,9 +60,6 @@ class RestateTest(unittest.TestCase):
         self.assertEqual(rr.restate(147, 155, 140), 140)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
     def test_a_commit_bringing_the_rule_takes_the_tips_measure(self):
         counts = {"before": {"c": 597}, "upstream": {"c": 59}}
         sides = ["before", "upstream"]
@@ -73,3 +70,14 @@ if __name__ == "__main__":
         counts = {"before": {"c": 150}, "upstream": {"c": 147}}
         got = rr.merged(counts, "c", ["before", "upstream"], ["before"], {"before": 155, "tip": 147})
         self.assertEqual(got, 147)
+
+    def test_a_hard_zero_counter_at_zero_everywhere_is_not_remeasured(self):
+        tip = types.SimpleNamespace(HARD_ZERO={"z"})
+        counts = {"before": {"z": 0, "n": 0}, "upstream": {"z": 0, "n": 0}}
+        self.assertTrue(rr.settled({"tip": tip}, counts, "z", ["before", "upstream"]))
+        self.assertFalse(rr.settled({"tip": tip}, counts, "n", ["before", "upstream"]))
+        self.assertFalse(rr.settled({"tip": tip}, {**counts, "before": {"z": 1}}, "z", ["before", "upstream"]))
+
+
+if __name__ == "__main__":
+    unittest.main()
