@@ -9727,6 +9727,21 @@ from them, so an edited std file is parsed again and nothing else. Test:
 `crates/cpl-next/std.cp` until it is an ordinary std module (audit #17, S2).
 Reverse by restoring `build.rs` and `Std::read` over `STD_FILES`.
 
+## 685. `and` and `or` as values are std fns marked `@operator` (stdlib, 2026-11-28)
+
+`xs.fold(and)` was E0606: `FromOp` had no impl for `type_of(and)`, since no
+trait gives `and` and `or`. They cannot be traits: written `a and b` must not
+evaluate `b` when `a` is false (R01.5.7), and a trait method takes both
+operands evaluated. They cannot be std fns named `and` and `or` either, since
+both are keywords. So `@operator("op")` also marks a fn, only for an operator
+no trait gives: std's `logical_and` and `logical_or` (`std.ops`), with
+`FromOp<Bool>` impls whose identities are `true` and `false` (`std.algebra`).
+A bare `and` is that fn through the same operator registry `+` goes through
+(`operator_fn`), with no name test in the checker; the written expression
+keeps short-circuiting. `@operator("+")` on a fn is E0505, so `+` keeps one
+path, and a second fn for one operator is E0702, overloading by type. Reverse
+it by deleting `Decls::op_fns`, the two fns and their impls.
+
 ## 677. `@reject` guards a default that is wrong for some types (check, 2026-11-28)
 
 `[true, false].count()` counted the falses too and was accepted: old

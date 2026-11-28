@@ -230,7 +230,10 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   either reading is a common slip. (R01.5.6)
 - `and` and `or` short-circuit: they evaluate their right side only when the left side does
   not decide the result, like `??`: `j < m and a[j] > 0` never reads
-  `a[j]` when `j == m`. (R01.5.7, permits)
+  `a[j]` when `j == m`. As a value (R01.5.5) each is std's eager fn of two
+  `Bool`s, `logical_and` or `logical_or` (`@operator("and")`, R06.4.12), so
+  `xs.fold(and)` evaluates every element; only the written `a and b`
+  short-circuits. (R01.5.7, permits)
 
 ## 1.6 Statements
 

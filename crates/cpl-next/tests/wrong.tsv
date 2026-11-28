@@ -236,10 +236,8 @@ core-07/cut-after-and-before-follow-walk-order.cp	wrong-reject	check: program:7:
 core-07/cyclic-pairs.cp	wrong-reject	check: program:3:7: E0203: `cyclic_pairs` is a method: call it with `()`
 core-07/domain-map-sorted-is-list.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 core-07/domain-slice-past-its-keys-traps.cp	wrong-reject	check: program:7:15: E0302: expected `V`, found `Int`
-core-07/fold-from-folds-into-another-type.cp	wrong-reject	check: program:4:86: E0302: expected `List<Char>`, found `Char`
 core-07/fold-method-and-free-forms.cp	wrong-reject	check: program:5:62: E0606: `a function` does not implement `FromOp`
 core-07/fold-no-identity-is-optional.cp	wrong-error	wanted E0706 on line 4, got: check: program:4:21: E0806: the type of `x` is not known here; write `(x: T) => ...`
-core-07/fold-of-and-or-over-empty-uses-identity.cp	wrong-reject	check: program:5:33: E0302: this function does not fit `(Int, Int) -> Int`
 core-07/for-over-views-of-temporary.cp	wrong-reject	check: std.seq:951:25: E0606: `K` has no `impl Eq`, which `==` needs (R08.1.5)
 core-07/for-walks-every-sequence.cp	wrong-reject	check: program:9:14: E0302: expected `OrdTree<_, ()>`, found `List<Int>`
 core-07/forwarding-generator-stops-early.cp	wrong-reject	check: program:19:7: E0606: `Gen<Int>` does not implement `Indexed`

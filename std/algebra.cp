@@ -110,6 +110,12 @@ impl<T: BitOr + Zero> FromOp<T> for type_of(|):
 impl<T: BitAnd + Ones> FromOp<T> for type_of(&):
     fn monoid(self) -> Monoid<T> = Monoid(T.ones, (a, b) => a & b, x => x)
 
+impl FromOp<Bool> for type_of(and):
+    fn monoid(self) -> Monoid<Bool> = Monoid(true, (a, b) => a and b, x => x)
+
+impl FromOp<Bool> for type_of(or):
+    fn monoid(self) -> Monoid<Bool> = Monoid(false, (a, b) => a or b, x => x)
+
 impl FromOp<Int> for type_of(gcd):
     fn monoid(self) -> Monoid<Int> = Monoid(0, (a, b) => gcd(a, b), x => x)
 

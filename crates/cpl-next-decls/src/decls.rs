@@ -647,6 +647,9 @@ pub struct Decls {
     pub memo_clears: HashMap<FnId, FnId>,
     /// Static fns marked `@from_op`: what a bare operator becomes where their struct is wanted (R08.1.9).
     pub from_op: Vec<FnId>,
+    /// The fns marked `@operator(op)`, by the operator they give as a value: only one with no
+    /// `@operator` trait, `and` and `or` (R06.4.12).
+    pub op_fns: Vec<(Sym, FnId)>,
     /// Core's `@pattern` fns: `f(p)` as a pattern matches the optional `f` makes when it is
     /// present and its value matches `p` (R01.7.1).
     pub pattern_fns: Vec<FnId>,
@@ -707,6 +710,9 @@ impl Decls {
         self.operator_fn_of(self.sym(text)?, binary)
     }
     pub(crate) fn operator_fn_of(&self, op: Sym, binary: bool) -> Option<FnId> {
+        if let Some(&(_, f)) = self.op_fns.iter().find(|(o, _)| *o == op) {
+            return (self.f(f).params.len() == usize::from(binary) + 1).then_some(f);
+        }
         self.operator_traits_of(op).find_map(|tr| {
             let (_, m) = self.operator_method_of(tr)?;
             (self.f(m).params.len() == usize::from(binary)).then_some(m)
@@ -771,6 +777,7 @@ impl Decls {
         Arc::new(
             (self.operators.iter())
                 .filter_map(|(o, _)| Some((*o, self.operator_fn(self.text(*o), true)?)))
+                .chain(self.op_fns.iter().copied())
                 .collect(),
         )
     }
@@ -1756,6 +1763,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
                 | Decorator::Aka
                 | Decorator::Was
                 | Decorator::FromOp
+                | Decorator::Operator
                 | Decorator::Fast
                 | Decorator::Lint
                 | Decorator::Stress
@@ -1839,6 +1847,32 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
     }
     if has(Decorator::FromOp) {
         d.from_op.push(FnId(d.fns.len()));
+    }
+    for x in f.attrs.iter().filter(|x| x.attr == Decorator::Operator) {
+        let Some(text) = x.str_arg() else {
+            continue;
+        };
+        let op = d.syms.intern(&text);
+        let msg = if d.operators.iter().any(|(o, _)| *o == op) {
+            Some(Msg {
+                help: Some(format!(
+                    "`{text}` is its `@operator` trait's: impl that trait"
+                )),
+                ..Msg::verdict(
+                    cpl_diag::codes::BAD_LIBRARY_LINT,
+                    format!("`@operator(\"{text}\")` on a fn, but a trait already gives `{text}`"),
+                )
+            })
+        } else if d.op_fns.iter().any(|(o, _)| *o == op) {
+            Some(Msg::verdict(
+                cpl_diag::codes::OVERLOAD_BY_TYPE,
+                format!("a second fn marked `@operator(\"{text}\")`"),
+            ))
+        } else {
+            d.op_fns.push((op, FnId(d.fns.len())));
+            None
+        };
+        errors.extend(msg.map(|m| Msg::at(attr_at(x), m)));
     }
     let coerce = has(Decorator::Coerce);
     if coerce {

@@ -1,6 +1,7 @@
 core-01/a-literal-builds-a-programs-own-type.cp
 core-01/a-walk-inside-a-comprehension-runs-each-turn.cp
 core-01/an-arm-of-a-whole-value-leaves.cp
+core-01/and-as-a-value-is-an-eager-fn.cp
 core-01/and-or-short-circuit.cp
 core-01/and-skips-the-check-on-its-right.cp
 core-01/assert-holds.cp
@@ -733,6 +734,7 @@ core-05/walk-body-reads-source.cp
 core-05/windows-walk-lends-parent.cp
 core-06/a-documented-decorator-is-accepted.cp
 core-06/a-loop-over-a-fn-that-builds-a-list-builds-none.cp
+core-06/a-second-fn-for-one-operator.cp
 core-06/alt-main-is-removed.cp
 core-06/an-unknown-decorator-is-rejected.cp
 core-06/brute-fn-is-removed.cp
@@ -787,6 +789,7 @@ core-06/nested-generator-walks-restart.cp
 core-06/no-mut-fn-marker.cp
 core-06/no-overload-by-type.cp
 core-06/operator-is-fn.cp
+core-06/operator-on-a-fn-for-a-trait-operator.cp
 core-06/overloads-by-label-set-one-label-set-twice-clashes.cp
 core-06/pattern-params.cp
 core-06/rb1-q06-closure-mutates-capture.cp
@@ -832,6 +835,8 @@ core-07/flatten.cp
 core-07/fold-a-generator.cp
 core-07/fold-from-folds-into-another-type.cp
 core-07/fold-identity-or-optional.cp
+core-07/fold-of-and-or-over-a-nonempty-list.cp
+core-07/fold-of-and-or-over-empty-uses-identity.cp
 core-07/fold-with-init.cp
 core-07/generator-expression-body-for.cp
 core-07/generator-expression-body.cp
@@ -2265,6 +2270,7 @@ std-models/hash.cp
 std-models/input.cp
 std-models/laws.cp
 std-models/list-str-array-cut.cp
+std-models/logical.cp
 std-models/map.cp
 std-models/memo-array.cp
 std-models/print-read.cp

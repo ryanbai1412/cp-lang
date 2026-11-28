@@ -367,7 +367,7 @@ since the second walk reruns against what the first wrote.
 | Form | Result | Cost |
 |---|---|---|
 | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\) (R07.9.1) |
-| `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bounded type, `gcd`, a `Monoid`), and a plain fn is E0706 with a fix to `reduce` | \(O(n)\) (R07.9.2) |
+| `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bounded type, `gcd`, `and` (identity `true`) and `or` (`false`), a `Monoid`), and a plain fn is E0706 with a fix to `reduce` | \(O(n)\) (R07.9.2) |
 | `s.reduce(f)` | `?T`: a fold by a fn without an identity, `None` when empty | \(O(n)\) (R07.9.2) |
 | `s.fold_from(a, f)` | `Acc`: a left fold into any accumulator, init first, `a` when empty; `cpl fix` rewrites the old `s.fold(f, init: a)` | \(O(n)\) (R07.9.2) |
 | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty; first on ties, the last with `ties: Ties.Last` | \(O(n)\) (R07.9.3) |

@@ -234,7 +234,12 @@ library or by this spec:
   the roles of §11.6.
   Core declares each with them, and any module may: a
   second declaration of one marker, or of one `@operator` with the same
-  method, is E0202. (R06.4.12)
+  method, is E0202. `@operator("op")` on a fn makes it the value of an
+  operator no trait gives, today `and` and `or` (std's `logical_and`,
+  `logical_or`): bare `and` is that fn, while written `a and b` short-circuits
+  (R01.5.7). On a fn for an operator a trait gives, such as `"+"`, it is
+  E0505, so `+` has one path; a second fn for one operator is E0702.
+  (R06.4.12)
 - `@free_form` on a trait's method with `self` (std's `Seq.sum`): `f(x, ..)`
   is a call of `x.f(..)` wherever the trait is in scope (R01.10.1).
 - `@input` on a fn: a value it gives is input, so a range type it fills

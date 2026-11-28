@@ -69,6 +69,13 @@ pub trait Contains<T>:
 pub trait By<Rhs = Int>:
     fn by(self, k: Rhs) -> Self
 
+/// `and` and `or` as values, for a fold or a structure to take: `xs.fold(and)` (R06.4.12).
+/// Both operands are evaluated; written `a and b` and `a or b` short-circuit (R03.4).
+@operator("and")
+pub fn logical_and(a: Bool, b: Bool) -> Bool = a and b
+@operator("or")
+pub fn logical_or(a: Bool, b: Bool) -> Bool = a or b
+
 /// The numbers' own operators, so `T: Add` holds of them.
 /// `T.zero`: the identity of `T`'s `+`, where a sum starts (R08.1.5).
 pub trait Zero:
