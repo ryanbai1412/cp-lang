@@ -21,7 +21,8 @@ cd "$(git rev-parse --show-toplevel)"
 remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=${CPL_LAND_T0:-$(date +%s)}
-# By default a land is fast: rebase, conflict markers, fmt and the case-list rule, push,
+# By default a land is fast: rebase, conflict markers, fmt, the case-list rule and the
+# ratchet (check, then lower what improved), push,
 # in under a minute. A lane ran its focused tests and `debt-ratchet --check` before
 # it; CI gates every main tip, culprit.yml names the commit that turned it red, and
 # the infra lane runs the suites. CPL_LAND_FULL=1 also reruns the gates, the slices,
@@ -388,14 +389,15 @@ if [ -n "$(git diff --name-only "$main_base" HEAD -- 'std/*.cp')" ] && [ -x "$ne
     rm -rf "$std_dir"
 fi
 # The rebase rewrote main's crate files: corpus_fmt_dirty refuses a stale cpl, so build it.
-[ -n "$fast" ] || [ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
+# A fast land runs the ratchet too (about 30 s): it is what holds main's counters and lists.
+[ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
     { echo "land: cargo build -p cpl-cli failed at the rebased tip; the ratchet runs that cpl" >&2; exit 1; }
 # A counter that improved is lowered to its number in the commit that improved it.
 tighten=--check
 [ -z "$(git rev-list "$main_base"..HEAD)" ] || ! git diff --quiet HEAD -- "$ratchet" || tighten=--tighten
-[ -n "$fast" ] || [ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py $tighten >/dev/null ||
+[ ! -f scripts/debt-ratchet.py ] || uv run --quiet python scripts/debt-ratchet.py $tighten >/dev/null ||
     { uv run --quiet python scripts/debt-ratchet.py --check >&2; exit 1; }
-[ -n "$fast" ] || [ "$tighten" = --check ] || git diff --quiet -- "$ratchet" ||
+[ "$tighten" = --check ] || git diff --quiet -- "$ratchet" ||
     { git commit -q --amend --no-edit --no-verify -- "$ratchet" &&
         echo "land: lowered the ratchet's improved counters in $(git rev-parse --short HEAD)" >&2; }
 # A decision number is taken once it is on main (decision 505): a heading

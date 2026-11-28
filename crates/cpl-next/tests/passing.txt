@@ -2919,3 +2919,4 @@ core-10/range-field-in-variant-reads-two-ends.cp
 core-10/read-array-of-tagged-commands.cp
 core-10/read-enum-by-tag.cp
 next/n_checks_off_01_each_field.cp
+core-04/library-domain-generic-members.cp

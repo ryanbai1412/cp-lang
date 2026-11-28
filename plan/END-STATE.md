@@ -19,10 +19,10 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 1 | Spec conformance | unmeasured | `next_not_passing` 2,481 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
+| 1 | Spec conformance | unmeasured | `next_not_passing` 2,276 → 0, `conformance_failing` 16 → 0; no number yet for: cases short of 6,000; cases the other engines of the new pipeline do not pass |
 | 2 | Feature-by-context matrix | unmeasured | no number yet for: cells of the feature-by-context matrix with no case |
 | 3 | Corpus | unmeasured | no number yet for: corpus programs not accepted on every engine |
-| 4 | Std as a program | measured | `ir_builtin_names` 105 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 40 → 0 |
+| 4 | Std as a program | measured | `ir_builtin_names` 105 → 0, `prelude_privilege` 32 → 0, `std_names_outside_rt` 109 → 0, `backend_std_names` 8 → 0, `next_std_unchecked` 38 → 0 |
 | 5 | Checker totality | measured | `silent_unknowns` 18,176 → 0, `ir_reinfer` 12 → 0, `next_lowered` 2 → 0 |
 | 6 | Ownership soundness | unmeasured | no number yet for: ownership cases wrong in either direction, written and generated |
 
@@ -30,7 +30,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 7 | Engine agreement | unmeasured | `next_wrong` 1,518 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
+| 7 | Engine agreement | unmeasured | `next_wrong` 1,460 → 0; no number yet for: splits on generated programs each night; engines beyond the interpreter and the C++ |
 | 8 | Sanitized C++ | unmeasured | no number yet for: accepted cases whose C++ is not sanitizer-clean and warning-free on GCC and Clang |
 | 9 | IR stage contracts | unmeasured | no number yet for: cases a stage verifier rejects |
 | 10 | Traps | unmeasured | no number yet for: trap code by operation cells that differ between engines |
@@ -50,7 +50,7 @@ measured, by a mutation score or a matrix with no empty cell.
 
 | # | Suite | State | Numbers, now → target |
 |---|---|---|---|
-| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 207 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
+| 17 | Facade parity | unmeasured | `tool_compiler_deps` 0 → 0, `facade_today_uses` 101 → 0; no number yet for: tools whose diagnostics or output differ from another's for one snapshot |
 | 18 | Events, trace and debugger | unmeasured | `trace_budget_gap` 141 → 0; no number yet for: corpus programs whose event streams differ between engines |
 | 19 | Lossless syntax | unmeasured | no number yet for: files the lossless tree does not print back byte for byte |
 | 20 | Editor under edits | unmeasured | `next_snapshot_keyed_queries` 5 → 0; no number yet for: edit sequences whose incremental answer differs from a fresh one; units recomputed after a one-item edit beyond the edited unit (until that harness exists, next_snapshot_keyed_queries counts the facade answers memoized per whole snapshot) |
@@ -74,8 +74,8 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 |---|---|
 | `next_asks_refused` | 7 |
 | `next_check_set_facts` | 11 |
-| `next_core_checks` | 21 |
-| `next_core_privilege` | 21 |
+| `next_core_checks` | 14 |
+| `next_core_privilege` | 20 |
 | `next_core_standin_lines` | 43 |
 | `next_cpp_runtime_lines` | 147 |
 | `next_error_typed` | 34 |
@@ -84,29 +84,30 @@ list is empty (`handbook/design/next/migration.md` rule 14); `debt-ratchet.py --
 | `next_harness_refusals` | 4 |
 | `next_late_rejects` | 90 |
 | `next_layer_foreign_deps` | 1 |
-| `next_library_gates` | 25 |
+| `next_library_gates` | 24 |
 | `next_lowered` | 2 |
-| `next_masked` | 165 |
-| `next_name_compares` | 74 |
-| `next_not_passing` | 2,481 |
+| `next_masked` | 129 |
+| `next_name_compares` | 28 |
+| `next_not_passing` | 2,276 |
 | `next_old_syntax_analyses` | 116 |
-| `next_reference_evaluator_lines` | 597 |
-| `next_refusal_kinds` | 62 |
-| `next_refused` | 731 |
+| `next_reference_evaluator_lines` | 593 |
+| `next_refusal_kinds` | 61 |
+| `next_refused` | 687 |
 | `next_repr_second_defs` | 3 |
-| `next_run_api_unbuilt` | 78 |
+| `next_run_api_unbuilt` | 75 |
 | `next_snapshot_keyed_queries` | 5 |
 | `next_source_text_guards` | 3 |
 | `next_split` | 7 |
-| `next_standin_notes` | 4 |
+| `next_standin_notes` | 1 |
 | `next_std_names` | 51 |
-| `next_std_unchecked` | 40 |
+| `next_std_unchecked` | 38 |
 | `next_string_keyed_maps` | 79 |
 | `next_syntax_old_refs` | 846 |
 | `next_weak_oracle_passes` | 7 |
 | `next_whole_program_inputs` | 59 |
-| `next_wrong` | 1,518 |
+| `next_wrong` | 1,460 |
 | `next_wrong_accepts` | 20 |
+| `next_wrong_outputs` | 14 |
 
 ## What each suite must be
 

@@ -1576,9 +1576,33 @@ def _wrong_ids(root: Path, kind: str) -> list[str]:
             if l.count("\t") >= 1 and l.split("\t")[1] == kind] if wrong.is_file() else []
 
 
+def next_wrong_outputs(root: Path) -> list[str]:
+    """Cases that run and print what the reference interpreter and C++ agree on, but not the
+    expected output, a `has:`/`lacks:` note or a trap note: the answer a contestant submits is
+    wrong, so each case is gated like a wrong accept."""
+    return _wrong_ids(root, "wrong-output")
+
+
+def next_listed_twice(root: Path) -> list[str]:
+    """Cases on two of the committed passing, wrong and masked lists. One run writes them, so a
+    case is on one at most; a second listing is a hand edit or a merge, and the lists then say
+    two things about it."""
+    seen: dict[str, str] = {}
+    out = []
+    for name in ("passing.txt", "wrong.tsv", "masked.txt"):
+        path = root / NEXT_TESTS / name
+        for l in _lines(path) if path.is_file() else []:
+            i = l.split("\t")[0].strip()
+            if i and i in seen and seen[i] != name:
+                out.append(f"{i}: {seen[i]} and {name}")
+            seen.setdefault(i, name)
+    return out
+
+
 # Counters gated by case, not count: one fixed and one newly broken keep the count,
 # and for a soundness hole or a split run that swap is the regression (07:00 trend audit).
-ID_SETS = {"next_wrong_accepts_ids": next_wrong_accepts, "next_split_ids": next_split}
+ID_SETS = {"next_wrong_accepts_ids": next_wrong_accepts, "next_split_ids": next_split,
+           "next_wrong_outputs_ids": next_wrong_outputs}
 
 
 def next_core_checks(root: Path) -> list[str]:
@@ -4471,7 +4495,8 @@ def rust_idiom_lints(root: Path) -> list[str]:
     return out
 
 
-HARD_ZERO = frozenset({"next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
+HARD_ZERO = frozenset({"next_listed_twice", "next_ownership_outside_own",
+    "next_oracle_callers", "next_ignored_settings", "event_labels","next_layout_outside_table", 
     "fast_unchecked", "next_lent_outside_own", "next_backend_owns_reads", "next_check_name_keys",
     "unreferenced_scripts", "explain_copy_mismatches", "link_reads_check", "tool_compiler_deps", "end_state_broken", "next_cases_removed",
     "cpp_deep_copies", "conformance_wrong_output", "cpp_sunk_copies",
@@ -4623,6 +4648,8 @@ COUNTERS = {
     "next_cpp_runtime_lines": ("lines of hand-written C++ runtime in the new emitter (Core)", next_cpp_runtime_lines, True),
     "next_split": ("cases whose interpreter, engine and C++ runs disagree: one source of semantics broken (Core)", next_split, True),
     "next_wrong_accepts": ("cases the new pipeline accepts that must be rejected: soundness holes (Core)", next_wrong_accepts, True),
+    "next_wrong_outputs": ("cases that run but print a wrong answer or miss a note: wrong answers judged as accepted (Core)", next_wrong_outputs, True),
+    "next_listed_twice": ("cases on two committed verdict lists: the lists contradict themselves (Core)", next_listed_twice, True),
     "next_late_rejects": ("cases the spec accepts that link or own rejects with a user code: unbuilt features said as errors (Core)", next_late_rejects, True),
     "next_core_checks": ("new-pipeline code singling out core or a std module by id or name (Core)", next_core_checks, True),
     "next_ignored_settings": ("new-pipeline settings accepted and then ignored: an empty arm over source names (Core)", next_ignored_settings, True),
@@ -5071,7 +5098,8 @@ def unlaned(root: Path, base: str) -> list[str]:
 
 # Counters a programs run measures: a raise of one is the run's evidence, never a re-reading.
 RUN_MEASURED = ("next_wrong", "next_not_passing", "next_refused", "next_masked", "next_lowered",
-                "next_error_typed", "next_split", "next_wrong_accepts", "next_late_rejects")
+                "next_error_typed", "next_split", "next_wrong_accepts", "next_late_rejects",
+                "next_wrong_outputs")
 RAISE_RE = re.compile(r"^Raise:\s*(\S+)\s*(.*)$", re.MULTILINE)
 FULL_RUN_RE = re.compile(r"\btarget/cpl-next/(?!only/)[\w.-]+")
 

@@ -333,6 +333,18 @@ class DebtRatchetTest(unittest.TestCase):
             os.utime(run, (0, 0))
             self.assertEqual(dr.next_wrong_accepts(root), ["a.cp"])
 
+    def test_a_case_on_two_lists_is_counted_once_per_extra_list(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next/tests/passing.txt", "a.cp\nb.cp\n")
+            self._write(root, "crates/cpl-next/tests/wrong.tsv", "b.cp\twrong-output\tx\nc.cp\twrong-accept\ty\n")
+            self._write(root, "crates/cpl-next/tests/masked.txt", "c.cp\n")
+            self.assertEqual(dr.next_listed_twice(root),
+                             ["b.cp: passing.txt and wrong.tsv", "c.cp: wrong.tsv and masked.txt"])
+            self.assertEqual(dr.next_wrong_outputs(root), ["b.cp"])
+            self.assertIn("next_listed_twice", dr.HARD_ZERO)
+            self.assertIn("next_wrong_outputs_ids", dr.ID_SETS)
+
     def test_link_reads_check_follows_the_dependency_graph(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

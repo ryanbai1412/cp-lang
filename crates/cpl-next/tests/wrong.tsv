@@ -1391,7 +1391,6 @@ traits/Versioned/PersistentSegTree--get.cp	wrong-reject	check: std.persistent:15
 core-04/library-domain-nth-out-of-range.cp	timeout	wanted R0001, ran its impl's nth unbounded: `Two.nth(k)` takes `Index`'s impl over `Domain`'s blanket (R08.1.4), so the R04.2.27 check is skipped
 core-04/second-position-of-a-user-index-is-checked-too.cp	wrong-output	wanted R0001: `T.nth(k)` takes `Index`'s impl over `Domain`'s blanket (R08.1.4), so the R04.2.27 check is skipped
 core-04/domain-through-a-value-is-a-domain.cp	wrong-reject	check: program:7:7: E0203: `all` is a method: call it with `()`
-core-04/library-domain-generic-members.cp	wrong-reject	check: program:14:38: E0606: `Optional<Sub<V>>` does not implement `Seq`
 core-04/pieces-of-a-domain-take-its-cuts.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
 core-04/product-result-indexed-by-parts.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 core-04/tuple-with-subset-is-a-domain.cp	wrong-reject	check: program:11:7: E0305: `Paths<Tuple2<R, Subset<T>>, Int, Int>` is not indexed: it has no `Indexed` impl
