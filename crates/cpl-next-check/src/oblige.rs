@@ -8,7 +8,7 @@ use decls::TraitRef;
 impl Cx<'_> {
     /// The bounds `f`'s type arguments must meet at this call.
     pub(super) fn oblige(&mut self, f: &FnRef, span: Span) {
-        let fd = self.d.f(f.decl);
+        let fd = self.items.f(f.decl);
         let sub = Subst {
             tys: &f.targs,
             sets: &f.sets,
@@ -57,9 +57,9 @@ impl Cx<'_> {
                     Some(false) if self.mentions_error(&t) => self.poison(&r),
                     Some(false) => {
                         self.poison(&r);
-                        let tr = self.d.t(r.tr).name.clone();
+                        let tr = self.items.t(r.tr).name.clone();
                         let shown = self.show(&t);
-                        let record = matches!(&t, Ty::Struct(d, ..) if self.d.s(*d).record);
+                        let record = matches!(&t, Ty::Struct(d, ..) if self.items.s(*d).record);
                         if record {
                             let msg = Unbuilt::FieldwiseTrait { ty: shown, tr };
                             self.err(span, msg);
@@ -74,7 +74,7 @@ impl Cx<'_> {
                             });
                         if why == Origin::Construct && !converts {
                             let to = match self.shallow(&r.args[0]) {
-                                Ty::Struct(d, ..) => self.d.s(d).name.clone(),
+                                Ty::Struct(d, ..) => self.items.s(d).name.clone(),
                                 t => self.show(&t),
                             };
                             let msg = Msg::verdict(
@@ -104,8 +104,8 @@ impl Cx<'_> {
                         // Named at its root: `print(xs)` on a `List<?Int>` is `?Int` lacking
                         // `Show`, not the pack of arguments lacking `ShowAll` (R10.3.7).
                         let (root, rr) = self.impls().unmet_root(&t, &r);
-                        let (shown, tr) = (self.show(&root), &self.d.t(rr.tr).name);
-                        let said = &self.d.t(rr.tr).unimplemented;
+                        let (shown, tr) = (self.show(&root), &self.items.t(rr.tr).name);
+                        let said = &self.items.t(rr.tr).unimplemented;
                         let code = said.code.unwrap_or(cpl_diag::codes::MISSING_IMPL);
                         let help = (said.help.as_ref()).map(|h| h.replace("{T}", &shown));
                         let msg =
@@ -143,7 +143,7 @@ impl Cx<'_> {
     /// beats a blanket one (R08.1.2). `Int` has `Into<Char>` and `Into<U64>`: the trait's
     /// arguments, where known, choose among them.
     fn fitting(&self, t: &Ty, r: &TraitRef) -> Vec<(ImplIdx, Vec<Ty>)> {
-        let want: Vec<Ty> = (self.d.t(r.tr).inputs(&r.args).iter())
+        let want: Vec<Ty> = (self.items.t(r.tr).inputs(&r.args).iter())
             .map(|a| self.zonk(a))
             .collect();
         let mut found: Vec<(ImplIdx, Vec<Ty>)> = (self.impls().trait_impls(r.tr))
@@ -162,7 +162,7 @@ impl Cx<'_> {
     /// The bounds type parameter `i` states for `r`'s trait whose arguments fit `r`'s:
     /// `T: Cv<Int> + Cv<Bool>` meets `T: Cv<?U>` by both until `?U` is known.
     fn stated(&self, i: usize, r: &TraitRef) -> Vec<TraitRef> {
-        let tr = self.d.t(r.tr);
+        let tr = self.items.t(r.tr);
         (self.bound_traits(i).into_iter())
             .filter(|h| h.tr == r.tr)
             .filter(|h| {
@@ -171,7 +171,7 @@ impl Cx<'_> {
             .collect()
     }
     fn ambiguous(&mut self, t: &Ty, r: &TraitRef, n: usize, span: Span) {
-        let (tr, shown) = (self.d.t(r.tr).name.clone(), self.show(t));
+        let (tr, shown) = (self.items.t(r.tr).name.clone(), self.show(t));
         let msg = Msg::verdict(
             cpl_diag::codes::AMBIGUOUS_METHOD,
             format!("`{shown}` has {n} impls of `{tr}` that fit here: write the trait's arguments"),
@@ -224,7 +224,7 @@ impl Cx<'_> {
             && (self.b.obligations.iter()).any(|(o, r, ..)| {
                 (Some(r.tr) == self.d.roles().domain && self.shallow(o) == t)
                     || (r.args.iter().enumerate())
-                        .any(|(j, a)| self.shallow(a) == t && self.d.arg_may_be_domain(r.tr, j))
+                        .any(|(j, a)| self.shallow(a) == t && self.facts.arg_may_be_domain(r.tr, j))
             })
     }
     /// Whether a pending bound is on the inference variable `v`: it, not a default, fixes `v`.
@@ -263,7 +263,7 @@ impl Cx<'_> {
     }
     /// Whether `t` meets `r`, or `None` while `t` is not known. `open` is `t` before zonking.
     fn meet(&mut self, t: &Ty, open: &Ty, r: &TraitRef, span: Span) -> Option<bool> {
-        let tr = self.d.t(r.tr);
+        let tr = self.items.t(r.tr);
         if tr.alias {
             let sub = Subst {
                 tys: &r.args,
@@ -286,7 +286,7 @@ impl Cx<'_> {
         // A bound the fn states is met as stated; otherwise a parameter meets a trait through a
         // blanket impl whose bounds it meets (`impl<D: Domain> Eq for D`), like any other type.
         if let Ty::Param(i) = t {
-            let tr = self.d.t(r.tr);
+            let tr = self.items.t(r.tr);
             let mut have = self.bound_traits(*i).into_iter().filter(|h| h.tr == r.tr);
             let mut fitting = self.stated(*i, r);
             fitting.dedup();
@@ -333,7 +333,7 @@ impl Cx<'_> {
                 if found.len() > 1 {
                     // `want` is zonked, an open argument read as an error: the bound's own
                     // arguments say whether it is still open.
-                    let inputs = self.d.t(r.tr).inputs(&r.args);
+                    let inputs = self.items.t(r.tr).inputs(&r.args);
                     if self.unknown(t) || inputs.iter().any(|a| self.unknown(a)) {
                         return None;
                     }
@@ -428,12 +428,10 @@ impl Cx<'_> {
     /// A domain parameter (`Decls::domain_params`) meets `Domain` and what `Domain` gives.
     pub(super) fn blanket(&self, i: usize, tr: TraitId) -> bool {
         let mut have: Vec<TraitId> = self.bound_traits(i).iter().map(|h| h.tr).collect();
-        let dom = (self.b.decl).and_then(|f| self.d.domain_params.get(&f));
-        if dom.is_some_and(|ds| ds.contains(&i)) {
+        if (self.b.decl).is_some_and(|f| self.facts.domain_params(f).contains(&i)) {
             have.extend(self.d.roles().domain);
         }
-        let ordered = (self.b.decl).and_then(|f| self.d.ordered_params.get(&f));
-        if ordered.is_some_and(|ds| ds.contains(&i)) {
+        if (self.b.decl).is_some_and(|f| self.facts.ordered_params(f).contains(&i)) {
             have.extend(self.d.roles().order);
         }
         // Blankets chain: `impl<D: Domain + Eq> Ord for D` holds once `impl<D: Domain> Eq for D`
@@ -483,7 +481,11 @@ impl Cx<'_> {
         };
         let name: Vec<String> = bound.segments().map(|s| s.text().to_string()).collect();
         let name = name.join(".");
-        let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, &name) else {
+        let found = self
+            .syms
+            .get(&name)
+            .and_then(|n| self.names.named(self.b.module, n));
+        let Some(decls::Named::Trait(tr)) = found else {
             let code = cpl_diag::codes::UNKNOWN_TYPE;
             let at = self.at(&bound);
             self.err(at, Msg::verdict(code, format!("unknown trait `{name}`")));
@@ -519,13 +521,12 @@ impl Cx<'_> {
         let Some(decl) = self.b.decl else {
             return Vec::new();
         };
-        let mut traits: Vec<TraitRef> = (self.d.f(decl).bounds.iter())
+        let mut traits: Vec<TraitRef> = (self.items.f(decl).bounds.iter())
             .filter(|(pi, _)| *pi == i)
             .map(|(_, r)| r.clone())
             .collect();
-        let dom = implied && (self.d.domain_params.get(&decl)).is_some_and(|ds| ds.contains(&i));
-        let ordered =
-            implied && (self.d.ordered_params.get(&decl)).is_some_and(|ds| ds.contains(&i));
+        let dom = implied && self.facts.domain_params(decl).contains(&i);
+        let ordered = implied && self.facts.ordered_params(decl).contains(&i);
         let implied = [
             self.d.roles().domain.filter(|_| dom),
             self.d.roles().order.filter(|_| ordered),
@@ -547,7 +548,7 @@ impl Cx<'_> {
         let mut k = 0;
         while k < traits.len() {
             let r = traits[k].clone();
-            for sup in &self.d.t(r.tr).supers {
+            for sup in &self.items.t(r.tr).supers {
                 let sub = Subst {
                     tys: &r.args,
                     sets: &[],

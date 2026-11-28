@@ -181,6 +181,17 @@ pub trait ImplChoice {
     fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)>;
 }
 
+/// `item(ItemId)` and the module text a `SourceId` lies in: what a body's checker reads of the
+/// source. `Loaded` serves it until the db answers `ItemOf`/`Parse` per query.
+pub trait Bodies {
+    /// Item `id`'s syntax, its spans counted from its start.
+    fn item(&self, id: &cpl_next_ir::ids::ItemId) -> Option<cpl_next_syntax::ast::Item>;
+    /// The text of the module `at` lies in.
+    fn source(&self, at: &cpl_next_ir::ids::SourceId) -> &crate::modules::Text;
+    /// The source text `at` covers.
+    fn text(&self, at: &cpl_next_ir::ids::SourceId) -> &str;
+}
+
 /// `checked(ItemId)`: what the checker answered about one item that link reads by id. No
 /// method lists a whole table, so link reads only the items it instantiates.
 pub trait Checked {
@@ -389,6 +400,22 @@ impl Names for Decls {
     }
     fn names(&self, m: ModId) -> Vec<(Sym, Named)> {
         self.views[m.0].iter().map(|(n, x)| (*n, *x)).collect()
+    }
+}
+
+impl Bodies for crate::modules::Loaded {
+    fn item(&self, id: &cpl_next_ir::ids::ItemId) -> Option<cpl_next_syntax::ast::Item> {
+        (self.modules.iter())
+            .filter(|m| m.name == *id.module)
+            .flat_map(|m| m.items.iter())
+            .find(|i| i.id == *id)
+            .map(|i| i.item.clone())
+    }
+    fn source(&self, at: &cpl_next_ir::ids::SourceId) -> &crate::modules::Text {
+        self.text_of(at)
+    }
+    fn text(&self, at: &cpl_next_ir::ids::SourceId) -> &str {
+        self.text(at)
     }
 }
 

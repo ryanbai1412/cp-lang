@@ -10,7 +10,7 @@ impl Cx<'_> {
     /// `near` was written.
     pub(super) fn let_keyword(&self, near: Span) -> Option<cpl_next_ir::ids::SourceId> {
         let at = self.b.item.at(near);
-        let text = self.src.text_of(&at);
+        let text = self.bodies.source(&at);
         let abs = text.span(&at);
         let end = (abs.start as usize + 3).min(text.text.len());
         let head = text.text.get(..end)?;
