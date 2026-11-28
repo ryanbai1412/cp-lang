@@ -992,10 +992,13 @@ impl<'a> Cx<'a> {
             // A `@free_form` trait method's plain call is the method call on its first argument,
             // so a type's own member or override is the call, as `x.n(..)` would pick (R01.10.1).
             (_, Some(n)) if unbound(self, n) && self.free_form_call(n, &args) => {
+                let at = self.at(&callee);
+                if let Some(v) = self.free_form_tests(n, &args, at, span, want) {
+                    return v;
+                }
                 let Some(recv) = written[0].value() else {
                     return Self::error_node(span);
                 };
-                let at = self.at(&callee);
                 self.member(&recv, n, at, Some(&args[1..]), span, want, &[])
             }
             // A generator argument to a fn that takes no sequence is the method fold of that

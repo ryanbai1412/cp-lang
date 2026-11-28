@@ -867,6 +867,50 @@ impl Cx<'_> {
             .is_some_and(|a| a.label.is_none() && a.written().is_some())
             && (self.syms.get(n)).is_some_and(|s| self.names.free_form(self.b.module, s).is_some())
     }
+    /// `count(c == x for c in cs)` where `count` is a `@free_form` member whose next parameter is
+    /// a test: `cs.count(c => c == x)`, the member `cs`'s type has, as the plain fn's call reads
+    /// it (R01.10.1, decision 323).
+    pub(super) fn free_form_tests(
+        &mut self,
+        n: &str,
+        args: &[CallArg],
+        at: Span,
+        span: Span,
+        want: Option<&Ty>,
+    ) -> Option<TExpr> {
+        let Some(decls::Named::Fn(f)) = self.named(self.b.module, n) else {
+            return None;
+        };
+        let t = tests_form(self.items.f(f), args)?;
+        let name = super::member::Called {
+            text: n,
+            sym: self.syms.get(n),
+            span: at,
+        };
+        let seq = self.expr(&t.iter, None);
+        self.solve(false);
+        let rt = self.recv_ty(&seq.ty);
+        let test_ty = match self.member_named(&rt, name.sym) {
+            Some(decls::Member::Method(m, ts, ss)) => {
+                let f = self.fnref(m, ts, ss);
+                let sub = Subst {
+                    tys: &f.targs,
+                    sets: &f.sets,
+                };
+                self.items.f(m).params.first().map(|p| sub.ty(&p.ty))
+            }
+            _ => None,
+        };
+        let param = super::lambda::LamParam {
+            pat: Some(t.pat),
+            ty: None,
+            mutable: false,
+        };
+        let body = super::lambda::LamBody::Arm(next::ArmBody::Expr(t.test));
+        let test = self.lambda_of(vec![param], None, body, test_ty.as_ref(), span);
+        let test = [CallArg::held(None, test, span)];
+        Some(self.member_on(seq, name, Some(&test), span, want, &[]))
+    }
     /// `n(x for x in xs, ..)` where `n` is a free fn with no `self`.
     pub(super) fn fold_form(&self, n: &str, args: &[CallArg]) -> bool {
         args.first().is_some_and(|a| {
