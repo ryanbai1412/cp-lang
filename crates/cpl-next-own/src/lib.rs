@@ -69,7 +69,7 @@ impl Fx {
 /// turn where ownership found the call also writes it (R4), else a view from the call's start
 /// (R11) or a read. Then marks the params each instance reads in place (`Func::views`), and
 /// places every release (`Func::drops`, `Stmt::Drop`).
-fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
+pub(crate) fn place_copies(p: &mut Program, copies: &BTreeSet<(usize, Site)>) {
     for (i, f) in p.insts.iter_mut().enumerate() {
         Settle {
             locals: &mut f.locals,
@@ -203,42 +203,30 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
     }
 }
 
-pub use inst::{Bound, Owned};
+pub use inst::{after, Bound, Owned};
 
-/// Links the generic fns by their lent marks and a lent-slot rule: the caller's link stage.
-pub type Linker<'a> = dyn Fn(&HashMap<FuncKey, Func<Ty>>, &[Ty]) -> Program + 'a;
+/// What ownership found before link that its check after link reports: the generic fns'
+/// verify errors and the `@cache` rule's findings on the bodies as written.
+pub struct Before {
+    pub(crate) generic: Vec<cpl_next_ir::msg::Msg>,
+    pub(crate) cache: Vec<cpl_next_ir::msg::Msg>,
+}
 
-/// Ownership around link (contract 4). Before link: marks what the generic fns lend (`lent`),
-/// since link keys an instance by those marks, and checks the `@cache` rule on the bodies as
-/// written. `link` links them by those marks. After link: checks the linked
-/// instances and settles their passed places. `globals` names each top-level binding and
-/// whether it is a `var`.
-pub fn link(
+/// Ownership before link (contract 4): marks what the generic fns lend (`lent`), since link
+/// keys an instance by those marks, and checks the `@cache` rule on the bodies as written.
+/// `globals` names each top-level binding and whether it is a `var`.
+pub fn before(
     d: &dyn Signatures,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
     tys: &mut [Ty],
     globals: &[(String, bool)],
-    link: &Linker<'_>,
-) -> (Program, Owned) {
-    use cpl_next_ir::verify::{all, callees, instances, Stage};
+) -> Before {
+    use cpl_next_ir::verify::{all, Stage};
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
     let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
     lent::mark(d, funcs, tys, &mutable);
     let cache = inst::cache_calls(d, funcs);
-    let mut prog = link(funcs, tys);
-    let fast = callees(&prog.insts);
-    prog.errors.extend(generic);
-    prog.errors.extend(all(
-        &prog.insts,
-        Stage::Instances,
-        &fast,
-        prog.globals.len(),
-    ));
-    let owned = inst::check(d, &prog, globals, cache);
-    place_copies(&mut prog, &owned.copies);
-    let raw = instances(&prog.insts, Stage::Raw, prog.globals.len());
-    prog.errors.extend(raw);
-    (prog, owned)
+    Before { generic, cache }
 }
 
 /// The parameters a call to `f` lends to its result, receiver first, from its signature: the

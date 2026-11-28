@@ -1795,20 +1795,28 @@ pub struct Bound {
     pub lent: Vec<String>,
 }
 
-/// Ownership on the instances link made, before their passed places settle. `cache` is what
-/// `cache_calls` found on the generic fns before link.
-pub(crate) fn check(
+/// Ownership after link (contract 4): checks the instances link made, reporting what
+/// [`crate::before`] found on the generic fns too, then settles their passed places.
+pub fn after(
     d: &dyn Signatures,
-    p: &Program,
+    p: &mut Program,
     globals: &[(String, bool)],
-    cache: Vec<Msg>,
+    before: crate::Before,
 ) -> Owned {
+    use cpl_next_ir::verify::{all, callees, instances, Stage};
+    let fast = callees(&p.insts);
+    p.errors.extend(before.generic);
+    p.errors
+        .extend(all(&p.insts, Stage::Instances, &fast, p.globals.len()));
     let mut owned = run(d, p, globals);
-    owned.errors.extend(cache);
+    owned.errors.extend(before.cache);
     owned.errors.extend(lenders_lend(p));
     if p.errors.is_empty() {
         owned.errors.extend(escape(d, p));
     }
+    crate::place_copies(p, &owned.copies);
+    let raw = instances(&p.insts, Stage::Raw, p.globals.len());
+    p.errors.extend(raw);
     owned
 }
 
