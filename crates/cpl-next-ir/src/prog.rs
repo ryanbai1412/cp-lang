@@ -190,6 +190,19 @@ pub fn plain(
     holds(parts, captures, t, 0) == Holds::Nothing
 }
 
+/// R1: the type of the slot a value of `t` is lent in, in an instance: a plain value lent is copied,
+/// as nothing it holds can be kept past the lend. A fn value is plain when what it captures is.
+pub fn lent_slot(
+    t: CTy,
+    parts: &dyn Fn(&CTy) -> Vec<CTy>,
+    captures: &dyn Fn(&InstKey) -> Option<Vec<CTy>>,
+) -> CTy {
+    match plain(parts, captures, &t) {
+        true => t,
+        false => CTy::Lent(Box::new(t)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -236,5 +249,34 @@ mod tests {
         };
         assert_eq!(holds(&parts, &caps, &view, 0), Holds::Address);
         assert!(!plain(&parts, &caps, &view) && !stores(&parts, &caps, &view));
+    }
+}
+
+#[cfg(test)]
+mod lent_slot_tests {
+    use super::*;
+    use crate::ir::FuncKey;
+
+    /// A fn value lent is copied when what it captures is plain, and lent in a slot when it
+    /// captures an address or storage (R05.10.1-2): its real captures decide, not a stub.
+    #[test]
+    fn a_fn_value_lent_is_copied_when_its_captures_are_plain() {
+        let key = |n: i64| InstKey {
+            func: FuncKey::Main,
+            targs: vec![CTy::Range(0, n)],
+            sets: vec![],
+        };
+        let caps = |k: &InstKey| match k.targs[0] {
+            CTy::Range(0, 0) => Some(vec![CTy::Int, CTy::Bool]),
+            _ => Some(vec![CTy::Ref(Box::new(CTy::Int))]),
+        };
+        let none = |_: &CTy| Vec::new();
+        let plain = CTy::Clo(Box::new(key(0)));
+        let lending = CTy::Clo(Box::new(key(1)));
+        assert_eq!(lent_slot(plain.clone(), &none, &caps), plain);
+        assert_eq!(
+            lent_slot(lending.clone(), &none, &caps),
+            CTy::Lent(Box::new(lending))
+        );
     }
 }

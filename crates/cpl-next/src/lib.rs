@@ -316,26 +316,20 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
         .collect();
     let g = &mut f.g;
     let d = &f.d;
-    let (prog, owned) = own::link(
-        d,
-        &mut g.funcs,
-        &mut g.globals,
-        &names,
-        &|fns, tys, lend| {
-            let checked = Answers {
-                whole: &g.whole,
-                deferred: &g.deferred,
-                globals: tys,
-            };
-            let v = inst::Inputs {
-                sigs: d,
-                fns,
-                sums: &g.adds,
-                checked: &checked,
-            };
-            inst::link(v, &roots(fns, tys.len()), lend, events)
-        },
-    );
+    let (prog, owned) = own::link(d, &mut g.funcs, &mut g.globals, &names, &|fns, tys| {
+        let checked = Answers {
+            whole: &g.whole,
+            deferred: &g.deferred,
+            globals: tys,
+        };
+        let v = inst::Inputs {
+            sigs: d,
+            fns,
+            sums: &g.adds,
+            checked: &checked,
+        };
+        inst::link(v, &roots(fns, tys.len()), events)
+    });
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags, owned.binds))
 }

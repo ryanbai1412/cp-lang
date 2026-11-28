@@ -221,12 +221,8 @@ impl<'a> Evaluator<'a> {
             .map(|g| (g.name.clone(), g.mutable))
             .collect();
         let d = self.d;
-        let (mut prog, owned) = own::link(
-            d,
-            &mut low.funcs,
-            &mut low.globals,
-            &names,
-            &|fns, tys, lend| {
+        let (mut prog, owned) =
+            own::link(d, &mut low.funcs, &mut low.globals, &names, &|fns, tys| {
                 let checked = Answers {
                     whole: &low.whole,
                     deferred: &low.deferred,
@@ -238,9 +234,8 @@ impl<'a> Evaluator<'a> {
                     sums: &low.adds,
                     checked: &checked,
                 };
-                inst::link(v, &crate::roots(fns, tys.len()), lend, false)
-            },
-        );
+                inst::link(v, &crate::roots(fns, tys.len()), false)
+            });
         if !owned.errors.is_empty() {
             return Ran::Open;
         }

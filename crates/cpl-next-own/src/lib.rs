@@ -205,19 +205,12 @@ impl<C: Fn(Site) -> bool> Settle<'_, C> {
 
 pub use inst::{Bound, Owned};
 
-/// The lent-slot rule link reads to type an instance's slots: [`lent_slot`]'s shape.
-pub type Lend = dyn Fn(
-    CTy,
-    &dyn Fn(&CTy) -> Vec<CTy>,
-    &dyn Fn(&cpl_next_ir::prog::InstKey) -> Option<Vec<CTy>>,
-) -> CTy;
-
 /// Links the generic fns by their lent marks and a lent-slot rule: the caller's link stage.
-pub type Linker<'a> = dyn Fn(&HashMap<FuncKey, Func<Ty>>, &[Ty], &Lend) -> Program + 'a;
+pub type Linker<'a> = dyn Fn(&HashMap<FuncKey, Func<Ty>>, &[Ty]) -> Program + 'a;
 
 /// Ownership around link (contract 4). Before link: marks what the generic fns lend (`lent`),
 /// since link keys an instance by those marks, and checks the `@cache` rule on the bodies as
-/// written. `link` links them by those marks and [`lent_slot`]. After link: checks the linked
+/// written. `link` links them by those marks. After link: checks the linked
 /// instances and settles their passed places. `globals` names each top-level binding and
 /// whether it is a `var`.
 pub fn link(
@@ -232,7 +225,7 @@ pub fn link(
     let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
     lent::mark(d, funcs, tys, &mutable);
     let cache = inst::cache_calls(d, funcs);
-    let mut prog = link(funcs, tys, &lent_slot);
+    let mut prog = link(funcs, tys);
     let fast = callees(&prog.insts);
     prog.errors.extend(generic);
     prog.errors.extend(all(
@@ -246,19 +239,6 @@ pub fn link(
     let raw = instances(&prog.insts, Stage::Raw, prog.globals.len());
     prog.errors.extend(raw);
     (prog, owned)
-}
-
-/// The type of the slot a value of `t` is lent in, in an instance: a plain value lent is copied,
-/// as nothing it holds can be kept past the lend. A fn value is plain when what it captures is.
-fn lent_slot(
-    t: CTy,
-    parts: &dyn Fn(&CTy) -> Vec<CTy>,
-    captures: &dyn Fn(&cpl_next_ir::prog::InstKey) -> Option<Vec<CTy>>,
-) -> CTy {
-    match cpl_next_ir::prog::plain(parts, captures, &t) {
-        true => t,
-        false => CTy::Lent(Box::new(t)),
-    }
 }
 
 /// The parameters a call to `f` lends to its result, receiver first, from its signature: the
@@ -290,35 +270,6 @@ fn lends(d: &dyn Signatures, f: FnId) -> BTreeSet<usize> {
         })
         .map(|(i, _)| i)
         .collect()
-}
-
-#[cfg(test)]
-mod lent_slot_tests {
-    use super::*;
-    use cpl_next_ir::prog::InstKey;
-
-    /// A fn value lent is copied when what it captures is plain, and lent in a slot when it
-    /// captures an address or storage (R05.10.1-2): its real captures decide, not a stub.
-    #[test]
-    fn a_fn_value_lent_is_copied_when_its_captures_are_plain() {
-        let key = |n: i64| InstKey {
-            func: FuncKey::Main,
-            targs: vec![CTy::Range(0, n)],
-            sets: vec![],
-        };
-        let caps = |k: &InstKey| match k.targs[0] {
-            CTy::Range(0, 0) => Some(vec![CTy::Int, CTy::Bool]),
-            _ => Some(vec![CTy::Ref(Box::new(CTy::Int))]),
-        };
-        let none = |_: &CTy| Vec::new();
-        let plain = CTy::Clo(Box::new(key(0)));
-        let lending = CTy::Clo(Box::new(key(1)));
-        assert_eq!(lent_slot(plain.clone(), &none, &caps), plain);
-        assert_eq!(
-            lent_slot(lending.clone(), &none, &caps),
-            CTy::Lent(Box::new(lending))
-        );
-    }
 }
 
 /// Where each local is read for the last time (R05.5.3): the statement that names it once,
