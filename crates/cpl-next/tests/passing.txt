@@ -1758,6 +1758,7 @@ next/n_grid_col.cp
 next/n_grid_rect.cp
 next/n_grid_row.cp
 next/n_grid_views.cp
+next/n_i128_pow_past_int.cp
 next/n_if_01_none_branch_takes_the_other_type.cp
 next/n_impl_01_inherent_outside_its_module.cp
 next/n_impl_03_trait_args_pick_the_impl.cp
