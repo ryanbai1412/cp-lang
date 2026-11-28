@@ -265,8 +265,7 @@ fn entries(&self) -> Vec<(Role, Item)>        // Role: Test, Alt, Check, Interac
   each turn counts against `peer_turns`. `Transcript` replays a recorded
   exchange.
 - **Limits are the snapshot's, not constants.** Time is a deadline that
-  the step counter checks, beside `Stop`'s cancel. Memory is the live
-  heap words; it replaces `ops::MAX_STORAGE` (audit S16). Stack is the
+  the step counter checks, beside `Stop`'s cancel. Memory is `Limits::memory`, the judge's: each storage a run makes is checked against it by one rule (`ops::storage_size`, cells of `Layouts::cell_bytes`), which replaced `ops::MAX_STORAGE`; counting the live heap words waits for its ruling. Stack is the
   frame words; it replaces the engine's frame-count constant. Output is
   the bytes written. Each limit hit is `Outcome::Limit`, never a trap.
 - **Frames at a failure.** `Failed::origin` is the calls the check left,

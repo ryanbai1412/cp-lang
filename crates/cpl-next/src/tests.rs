@@ -1383,6 +1383,68 @@ fn a_lends_without_its_arrow_offers_to_insert_it() {
     );
 }
 
+/// A storage past the judge's memory fails, by one rule on the interpreter, the engine and the
+/// C++: `n` cells of `Layouts::cell_bytes` each, a `Bool` taking one byte and an `Int` eight.
+#[test]
+fn a_storage_past_the_judges_memory_fails_alike_everywhere() {
+    let judge = Judge {
+        name: "test".into(),
+        memory_mb: 1,
+    };
+    let past = cpl_next_ir::ops::Fault::PastMemoryLimit.code();
+    for (fill, n, fails) in [
+        ("0", 100_000, false),
+        ("0", 200_000, true),
+        ("false", 200_000, false),
+    ] {
+        let src = format!("let a = List.filled(read(), {fill})\nprint(a.len)\n");
+        let c = compile(
+            &Std::read(),
+            &src,
+            &Roots::std(),
+            false,
+            Some(&judge),
+            Checks::CHECKED,
+        )
+        .expect("compiles");
+        let input = n.to_string();
+        let (p, fs) = c.form(Form::Raw);
+        for o in [cpl_next_interp::run(p, fs, c.input(&input)), c.run(&input)] {
+            assert_eq!(
+                o.trap.as_ref().map(|t| t.code()),
+                fails.then_some(past),
+                "{fill} {n}"
+            );
+        }
+        let (bin, _) = cxx::build(
+            c.cpp().as_bytes(),
+            &["-std=c++17", "-O1", "-w", "-x", "c++"],
+        )
+        .expect("g++ builds it");
+        let mut run = std::process::Command::new(bin);
+        let ran = (run
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped()))
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut ch| {
+            use std::io::Write;
+            ch.stdin
+                .take()
+                .expect("stdin")
+                .write_all(input.as_bytes())?;
+            ch.wait_with_output()
+        })
+        .expect("runs");
+        let err = String::from_utf8_lossy(&ran.stderr);
+        assert_eq!(
+            err.starts_with(&format!("trap: {past}")),
+            fails,
+            "{fill} {n}: {err}"
+        );
+    }
+}
+
 #[test]
 fn the_memory_limit_is_the_judge_the_snapshot_is_built_for() {
     use crate::facade::{Session, Snapshot};
@@ -1466,7 +1528,10 @@ fn the_stack_runs_out_at_the_runs_limit() {
     for (stack, out) in [(1 << 10, true), (64 << 10, false)] {
         let input = || RunInput {
             io: Io::Fixed(Vec::new()),
-            limits: Limits { stack },
+            limits: Limits {
+                stack,
+                ..Limits::default()
+            },
         };
         let raw = cpl_next_interp::run(p, fs, input());
         let fast = cpl_next_engine::run(&c.prog, &c.opt, input());

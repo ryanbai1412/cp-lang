@@ -60,7 +60,7 @@ fn real_main() {
 /// The reference interpreter's run of `c`'s `form`.
 fn oracle(c: &Program, form: Form, input: &str) -> cpl_next::Outcome {
     let (p, fs) = c.form(form);
-    cpl_next_interp::run(p, fs, cpl_next_ir::run::RunInput::fixed(input))
+    cpl_next_interp::run(p, fs, c.input(input))
 }
 
 /// `--all`: every case on stdin compiled against one read of std.

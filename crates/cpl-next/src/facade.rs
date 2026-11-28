@@ -159,6 +159,11 @@ impl Program {
         self.0.cpp()
     }
 
+    /// A run of all of `input` under the judge's limits, for any engine.
+    pub fn input(&self, input: &str) -> cpl_next_ir::run::RunInput {
+        self.0.input(input)
+    }
+
     /// What trap `t` of a run writes to stderr, its lines found from the source.
     pub fn said(&self, t: &crate::Trap) -> String {
         self.0.said(t)

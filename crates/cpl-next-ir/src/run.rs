@@ -1,10 +1,11 @@
 //! What a run of a program comes to, the same for every engine: its output, its events and
 //! how it stopped (contract 7).
+use crate::build::Judge;
 use crate::ids::SourceId;
 use crate::ir::{EventKind, Func, FuncKey, Site};
 use crate::layout::Layouts;
 use crate::ops::{Fault, Input};
-use crate::prog::Program;
+use crate::prog::{CTy, Program};
 use std::collections::HashMap;
 
 pub struct Trap {
@@ -87,17 +88,54 @@ impl Stack {
         Ok(())
     }
 }
+/// What a run takes against its `Limits`: the stack of its calls, and each storage it makes
+/// against `Limits::memory`.
+pub struct Room {
+    pub stack: Stack,
+    memory: i64,
+    lays: Layouts,
+}
+impl Room {
+    pub fn new(p: &Program, limits: Limits) -> Room {
+        Room {
+            stack: Stack::new(p, limits),
+            memory: i64::try_from(limits.memory).unwrap_or(i64::MAX),
+            lays: Layouts::default(),
+        }
+    }
+    /// The cells of a new storage of type `t`, `n` of them asked for (`ops::storage_size`).
+    pub fn cells(&mut self, p: &Program, t: &CTy, n: i64) -> Result<usize, Fault> {
+        let CTy::Raw(elem) = t else {
+            return Err(Fault::Internal("storage of a type that is not storage"));
+        };
+        let l = self.lays.of(p, elem);
+        crate::ops::storage_size(n, self.lays.cell_bytes(l), self.memory)
+    }
+}
 /// What a run may use (contract 0's `Limits`).
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
     /// Bytes of stack. A call takes its frame's words (`layout::Layouts::frame_words`) and two
     /// more, the return address and frame link a native call keeps.
     pub stack: u64,
+    /// Bytes of memory: one storage of `n` cells takes `n` times its cell's
+    /// `Layouts::cell_bytes`, and `ops::storage_size` refuses one past this.
+    pub memory: u64,
+}
+impl Limits {
+    /// A run on `judge`: its memory, and a stack as large; with no judge, the generic judge's
+    /// 256 MB. The snapshot names the judge (contract 0), so every backend reads it from there.
+    pub fn of(judge: Option<&Judge>) -> Limits {
+        let bytes = judge.map_or(256, |j| j.memory_mb) << 20;
+        Limits {
+            stack: bytes,
+            memory: bytes,
+        }
+    }
 }
 impl Default for Limits {
-    /// The generic judge's: a stack as large as its 256 MB of memory.
     fn default() -> Limits {
-        Limits { stack: 256 << 20 }
+        Limits::of(None)
     }
 }
 impl RunInput {

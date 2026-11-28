@@ -83,6 +83,8 @@ struct M<'a> {
     /// Steps left: each fn entered and each jump taken back is one.
     steps: u64,
     room: Stack,
+    /// `Limits::memory`, which each storage is made under.
+    memory: i64,
     /// No input: a read stops the run, its value being decided at run time.
     closed: bool,
     /// Whether a run with no input tried to read.
@@ -120,6 +122,7 @@ fn start(c: &Code, input: Option<RunInput>, steps: u64) -> M<'_> {
         scratch: Vec::new(),
         steps,
         room: (c.stack).with(limits),
+        memory: i64::try_from(limits.memory).unwrap_or(i64::MAX),
         closed,
         read: false,
     }
@@ -784,7 +787,8 @@ impl M<'_> {
                     self.stack[r(d)] = u64::from(self.alloc(elem, 0, Vec::new()))
                 }
                 Op::RawNew { d, n, fill, elem } => {
-                    let len = ops::storage_size(self.stack[r(n)] as i64)?;
+                    let cell = self.c.lays.cell_bytes(elem);
+                    let len = ops::storage_size(self.stack[r(n)] as i64, cell, self.memory)?;
                     let stride = self.size(elem);
                     let cell = &self.stack[r(fill)..r(fill) + stride];
                     let words = if stride == 1 {
@@ -844,7 +848,8 @@ impl M<'_> {
                     self.heap[h as usize].words[at..at + size].fill(0);
                 }
                 Op::RawCap { d, n, elem } => {
-                    let len = ops::storage_size(self.stack[r(n)] as i64)?;
+                    let cell = self.c.lays.cell_bytes(elem);
+                    let len = ops::storage_size(self.stack[r(n)] as i64, cell, self.memory)?;
                     let words = vec![0; len * self.size(elem)];
                     self.stack[r(d)] = u64::from(self.alloc(elem, len, words));
                 }

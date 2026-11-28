@@ -69,10 +69,6 @@ pub const FAULTS: [Fault; 20] = [
     Fault::F64PastInt,
 ];
 
-/// The largest storage one `raw_new` may make: a stand-in for the run's memory limit
-/// (contract 0, `Limits`).
-pub const MAX_STORAGE: i64 = 1 << 28;
-
 /// The code a failure is reported with when the fault is in the compiler.
 pub const INTERNAL: &str = "internal";
 
@@ -883,11 +879,11 @@ pub fn cpp_text(op: Intr, first: Operand) -> String {
         I::CharOf => "cpl_char_of($0)".into(),
         I::CodeOf => "((int64_t)($0).code)".into(),
         I::RawEmpty | I::Unset => "$T{}".into(),
-        I::RawNew => "cpl_raw_new($0, $1)".into(),
+        I::RawNew => "cpl_raw_new($0, $1, $W)".into(),
         I::RawGet => "cpl_get($0, $1)".into(),
         I::RawSet => "cpl_set($0, $1, $2)".into(),
         I::RawTake => "cpl_take($0, $1)".into(),
-        I::RawCap => "cpl_raw_cap<$T>($0)".into(),
+        I::RawCap => "cpl_raw_cap<$T>($0, $W)".into(),
         I::CheckKey => "cpl_check_key($0)".into(),
         I::CheckVariant => "cpl_check_variant($0)".into(),
         I::CheckRange => "cpl_check_range($0)".into(),

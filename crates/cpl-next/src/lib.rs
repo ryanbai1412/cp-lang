@@ -16,6 +16,7 @@ use cpl_next_cpp as cpp;
 use cpl_next_decls::{decls, diag, modules};
 use cpl_next_ir::build::{Build, Checks, Judge};
 use cpl_next_ir::ids::{ItemId, SourceId};
+use cpl_next_ir::run::{Limits, RunInput};
 use cpl_next_ir::{ir, ty};
 use cpl_next_link as inst;
 use cpl_next_lower as lower;
@@ -260,6 +261,8 @@ pub(crate) struct Compiled {
     /// What the fast engine and the C++ run: canonical IR less the checks the facts prove.
     opt: Vec<ir::Func<inst::CTy>>,
     proved: Vec<cpl_next_ir::facts::Proved>,
+    /// What a run may use, from the snapshot's judge.
+    limits: Limits,
 }
 
 /// Every layer through lowering, each run whatever an earlier one found (contracts 1-3).
@@ -457,6 +460,7 @@ pub(crate) fn compile(
         canon,
         opt,
         proved,
+        limits: Limits::of(judge),
     })
 }
 
@@ -766,11 +770,15 @@ impl Compiled {
 
     /// Runs on the engine, the one evaluator, on the calling thread.
     pub fn run(&self, input: &str) -> Outcome {
-        cpl_next_engine::run(
-            &self.prog,
-            &self.opt,
-            cpl_next_engine::RunInput::fixed(input),
-        )
+        cpl_next_engine::run(&self.prog, &self.opt, self.input(input))
+    }
+
+    /// A run of all of `input` under the limits of the judge the program was built for.
+    pub fn input(&self, input: &str) -> RunInput {
+        RunInput {
+            limits: self.limits,
+            ..RunInput::fixed(input)
+        }
     }
 
     /// The program and fns the reference interpreter runs in `form`; only a test runs it.
@@ -804,7 +812,7 @@ impl Compiled {
     }
 
     pub fn cpp(&self) -> String {
-        cpp::emit(&self.prog, &self.opt, &self.lines)
+        cpp::emit(&self.prog, &self.opt, &self.lines, &self.limits)
     }
 
     /// Every `@fast` fn runs its CP body instead of its op, which is what the fn means; the

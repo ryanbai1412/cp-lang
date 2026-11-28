@@ -144,6 +144,14 @@ impl Layouts {
         let size = 1 + ls.iter().map(|l| self.size[*l as usize]).max().unwrap_or(0);
         (Shape::Union(ls), size)
     }
+    /// The bytes one storage cell of layout `l` takes against `Limits::memory`: a `Bool` or a
+    /// `Char` takes one, as the C++ stores it, and every other value its words.
+    pub fn cell_bytes(&self, l: Lay) -> i64 {
+        match (&self.shape[l as usize], &self.ty[l as usize]) {
+            (Shape::Word, CTy::Bool | CTy::Char) | (Shape::Zero, _) => 1,
+            _ => 8 * i64::from(self.size[l as usize]),
+        }
+    }
     /// The layout made for `t`, if one was.
     pub fn get(&self, t: &CTy) -> Option<Lay> {
         self.of.get(t).copied()

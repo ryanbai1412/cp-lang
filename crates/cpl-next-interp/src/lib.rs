@@ -5,7 +5,7 @@ use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::{CTy, Program};
 pub use cpl_next_ir::run::{Outcome, Trap};
-use cpl_next_ir::run::{RunInput, Stack, Written};
+use cpl_next_ir::run::{Room, RunInput, Written};
 use std::rc::Rc;
 
 /// What a `Raw<T>` holds. Integers are stored flat, so storage of a hundred million of them
@@ -74,7 +74,7 @@ struct Machine<'a> {
     at: u32,
     /// The frame whose code is running: a region body runs in its caller's.
     cur: usize,
-    stack: Stack,
+    room: Room,
 }
 type R<T> = Result<T, Trap>;
 
@@ -89,7 +89,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         rand: ops::RAND_SEED,
         at: 0,
         cur: 0,
-        stack: Stack::new(p, input.limits),
+        room: Room::new(p, input.limits),
     };
     let trap = m.call(p.main, Vec::new(), None).err().map(|t| Trap {
         origin: m.at,
@@ -137,7 +137,7 @@ impl<'a> Machine<'a> {
             locals[*l] = a;
         }
         // Spec 9.6: no depth counting in the language; the stack runs out at the run's limit.
-        self.stack.enter(f, self.frames.len())?;
+        self.room.stack.enter(f, self.frames.len())?;
         let parent = (!self.frames.is_empty()).then_some(self.cur);
         self.frames.push(Frame {
             locals,
@@ -488,7 +488,7 @@ impl<'a> Machine<'a> {
                 if op.checked() {
                     self.enter(*site);
                 }
-                self.intr(*op, args, fp)?
+                self.intr(*op, args, fp, &e.ty)?
             }
         })
     }
@@ -501,7 +501,7 @@ impl<'a> Machine<'a> {
         }
         self.at
     }
-    fn intr(&mut self, op: Intr, args: &'a [Arg<CTy>], fp: usize) -> R<V> {
+    fn intr(&mut self, op: Intr, args: &'a [Arg<CTy>], fp: usize, ty: &CTy) -> R<V> {
         if ops::on_scalars(op) {
             let mut xs = [ops::Scalar::Bool(false); 2];
             for (x, a) in xs.iter_mut().zip(args) {
@@ -515,18 +515,17 @@ impl<'a> Machine<'a> {
         }
         Ok(match op {
             Intr::RawEmpty => V::Raw(Rc::new(Store::Any(Vec::new()))),
-            Intr::RawNew => {
+            Intr::RawNew | Intr::RawCap => {
                 let n = self.int(&args[0], fp)?;
-                let fill = self.arg(&args[1], fp)?;
-                let n = ops::storage_size(n)?;
+                let fill = match op {
+                    Intr::RawNew => self.arg(&args[1], fp)?,
+                    _ => V::Unit,
+                };
+                let n = self.room.cells(self.p, ty, n)?;
                 V::Raw(Rc::new(match fill {
                     V::Int(x) => Store::Ints(vec![x; n]),
                     fill => Store::Any(vec![fill; n]),
                 }))
-            }
-            Intr::RawCap => {
-                let n = ops::storage_size(self.int(&args[0], fp)?)?;
-                V::Raw(Rc::new(Store::Any(vec![V::Unit; n])))
             }
             Intr::RawTake => {
                 let i = self.int(&args[1], fp)?;

@@ -4,6 +4,7 @@ use cpl_next_ir::ir::*;
 use cpl_next_ir::layout::{Layouts, Shape};
 use cpl_next_ir::ops;
 use cpl_next_ir::prog::{CTy, Program};
+use cpl_next_ir::run::Limits;
 use std::collections::{HashMap, HashSet};
 
 /// Appends formatted text to a `String`.
@@ -86,13 +87,14 @@ static void cpl_guard_stack() {
 "#;
 
 /// The runtime's storage and input, after the rows `ops::cpp_runtime` writes.
-fn runtime() -> String {
+fn runtime(limits: &Limits) -> String {
     let (table, rows, rand) = (ops::cpp_trap_table(), ops::cpp_runtime(), ops::cpp_rand());
-    format!("{RUNTIME_HEAD}{table}{rand}{RUNTIME}{rows}{RUNTIME_STORAGE}")
+    let memory = format!("static const int64_t CPL_MEMORY = {}LL;\n", limits.memory);
+    format!("{RUNTIME_HEAD}{memory}{table}{rand}{RUNTIME}{rows}{RUNTIME_STORAGE}")
 }
 
-const RUNTIME_STORAGE: &str = r#"template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill) {
-    return cpl_raw<T>(cpl_storage_size(n), fill);
+const RUNTIME_STORAGE: &str = r#"template <class T> static inline cpl_raw<T> cpl_raw_new(int64_t n, const T& fill, int64_t cell) {
+    return cpl_raw<T>(cpl_storage_size(n, cell, CPL_MEMORY), fill);
 }
 static inline cpl_raw<cpl_char> cpl_raw_text(const char* s, size_t n) {
     cpl_raw<cpl_char> r(n);
@@ -106,8 +108,8 @@ template <class T> static inline T cpl_get(const cpl_raw<T>& r, int64_t i) {
 template <class T> static inline T cpl_take(cpl_raw<T>& r, int64_t i) {
     return std::move(r[cpl_read_cell(i, (int64_t)r.size())]);
 }
-template <class R> static inline R cpl_raw_cap(int64_t n) {
-    return R(cpl_storage_size(n));
+template <class R> static inline R cpl_raw_cap(int64_t n, int64_t cell) {
+    return R(cpl_storage_size(n, cell, CPL_MEMORY));
 }
 template <class T> static inline cpl_unit cpl_set(cpl_raw<T>& r, int64_t i, const T& x) {
     r[cpl_write_cell(i, (int64_t)r.size())] = x;
@@ -207,6 +209,8 @@ struct Emit<'a> {
     order: Vec<CTy>,
     /// The IR's layout table: field order, members and where the tag is.
     lays: Layouts,
+    /// The bytes a cell of each storage type takes (`Layouts::cell_bytes`).
+    cells: HashMap<CTy, i64>,
     /// The origins of the fn being printed (`Func::origins`).
     origins: std::cell::Cell<&'a [u32]>,
     /// The line of the user's file each origin is on: origin `o`'s is `lines[o - 1]`.
@@ -214,7 +218,7 @@ struct Emit<'a> {
 }
 
 /// The program as C++. A trap prints the line of `lines` its origin is on.
-pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32]) -> String {
+pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32], limits: &Limits) -> String {
     let mut e = Emit {
         p,
         funcs,
@@ -222,6 +226,7 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32]) -> String {
         names: HashMap::new(),
         order: Vec::new(),
         lays: Layouts::default(),
+        cells: HashMap::new(),
         origins: std::cell::Cell::new(&[]),
         lines,
     };
@@ -239,7 +244,18 @@ pub fn emit(p: &Program, funcs: &[Func<CTy>], lines: &[u32]) -> String {
         e.name(t);
     }
     e.order = e.by_value_order();
-    let mut s = runtime();
+    let raws: Vec<CTy> = (e.names.keys())
+        .filter(|t| matches!(t, CTy::Raw(_)))
+        .cloned()
+        .collect();
+    for t in raws {
+        if let CTy::Raw(elem) = &t {
+            let l = e.lays.of(p, elem);
+            let bytes = e.lays.cell_bytes(l);
+            e.cells.insert(t, bytes);
+        }
+    }
+    let mut s = runtime(limits);
     for t in &e.order {
         put_line!(s, "struct {};", e.names[t]);
     }
@@ -632,6 +648,9 @@ impl Emit<'_> {
                 for (k, x) in a.iter().enumerate().rev() {
                     text = text.replace(&format!("${k}"), x);
                 }
+                if let Some(cell) = self.cells.get(&e.ty) {
+                    text = text.replace("$W", &format!("INT64_C({cell})"));
+                }
                 match self.names.get(&e.ty) {
                     Some(t) => text.replace("$T", t),
                     None => text,
@@ -942,6 +961,7 @@ mod tests {
 
     #[test]
     fn runtime_agrees_with_ops() {
+        let memory = Limits::default().memory as i64;
         let ints = [
             -i64::MAX,
             -64,
@@ -988,8 +1008,10 @@ mod tests {
                 expect(ops::neg(a)),
             );
             case(
-                format!("printf(\"%zu\\n\", cpl_raw_new(INT64_C({a}), INT64_C(0)).size());"),
-                expect(ops::storage_size(a)),
+                format!(
+                    "printf(\"%zu\\n\", cpl_raw_new(INT64_C({a}), INT64_C(0), INT64_C(8)).size());"
+                ),
+                expect(ops::storage_size(a, 8, memory)),
             );
             case(
                 format!("printf(\"%d\\n\", (int)cpl_get(cpl_raw<int64_t>(3, 7), INT64_C({a})));"),
@@ -1211,7 +1233,7 @@ mod tests {
                 format!("{b}\n"),
             );
         }
-        let mut cpp = runtime();
+        let mut cpp = runtime(&Limits::default());
         cpp.push_str("#include <sys/wait.h>\nint main() {\n");
         for c in &cases {
             put_line!(

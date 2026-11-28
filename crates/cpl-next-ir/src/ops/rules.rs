@@ -2,7 +2,7 @@
 //! condition and the fault it raises) are written once, in Rust that the C++ emitter prints
 //! as C++. Its kernel, what it computes once the guards pass, is written once per language,
 //! side by side, and `cpp::tests::runtime_agrees_with_ops` runs the two against each other.
-use super::{cpp_name, value, Fault, MAX_STORAGE};
+use super::{cpp_name, value, Fault};
 use std::fmt::Write;
 
 /// `Int`'s largest value, as a `U64`.
@@ -116,7 +116,7 @@ kernels! {
     cell(i: i64, len: i64) -> usize { debug_assert!(i < len); Ok(i as usize) } "return (size_t)i;"
     int_of(u: u64) -> i64 { Ok(u as i64) } "return (int64_t)u;"
     char_of(x: i64) -> u8 { Ok(x as u8) } "return cpl_char{(uint8_t)x};"
-    size(n: i64) -> usize { Ok(n as usize) } "return (size_t)n;"
+    size(n: i64, cell: i64, memory: i64) -> usize { let _ = (cell, memory); Ok(n as usize) } "return (size_t)n;"
     pass(ok: bool) -> Unit { let _ = ok; Ok(()) } "return {};"
     // The `F64` fns are the C library's in both languages: Rust's `f64` methods call it too.
     sqrt(a: f64) -> f64 { Ok(a.sqrt()) } "return __builtin_sqrt(a);"
@@ -198,8 +198,8 @@ rows! {
     int_of_u64(u: u64) -> i64 [u > INT_LAST => U64PastInt] int_of;
     /// The character with code `x`, an ASCII one.
     char_of(x: i64) -> u8 [(x >> 7) != 0 => CharPastAscii] char_of;
-    /// The number of cells `raw_new(n, _)` makes.
-    storage_size(n: i64) -> usize [n < 0 => NegativeSize, n > MAX_STORAGE => PastMemoryLimit] size;
+    /// The number of cells `raw_new(n, _)` makes, each of `cell` bytes, under `memory` bytes.
+    storage_size(n: i64, cell: i64, memory: i64) -> usize [n < 0 => NegativeSize, n > memory / cell => PastMemoryLimit] size;
     /// Cell `i` of storage with `len` cells, for a read and for a write.
     read_cell(i: i64, len: i64) -> usize [(i < 0) | (i >= len) => ReadOutside] cell;
     write_cell(i: i64, len: i64) -> usize [(i < 0) | (i >= len) => WriteOutside] cell;
@@ -285,7 +285,6 @@ pub fn cpp() -> String {
     let mut s = format!(
         "static const uint64_t INT_LAST = {INT_LAST}ULL;\n\
          static const int64_t BIT_CEIL_LAST = {BIT_CEIL_LAST}LL;\n\
-         static const int64_t MAX_STORAGE = {MAX_STORAGE};\n\
          static const double INT_SPAN = {INT_SPAN:?};\n\
          static const __int128 WIDE_INT_LAST = (__int128)INT64_MAX;\n\
          static const __int128 WIDE_U64_LAST = (__int128)UINT64_MAX;\n\
