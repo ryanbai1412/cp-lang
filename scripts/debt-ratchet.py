@@ -4178,6 +4178,45 @@ def next_check_name_keys(root: Path) -> list[str]:
             for i, l in enumerate(_lines(p), 1) if not l.lstrip().startswith("//") and NEXT_NAME_KEY_RE.search(l)]
 
 
+# S11: a walk of one trait's impls, a fit of an impl's head against a type, and a keep of one.
+IMPL_WALK_RE = re.compile(r"\b(?:trait_impls|impls_of|ranked_impls)\(|\.impls\.iter\(\)")
+IMPL_ASKS_RE = re.compile(r"\.(?:any|all|count)\(")
+IMPL_FIT_RE = re.compile(r"\b(?:fits_impl|impl_args_for|impl_args|head_fits|fit|fit_cty)\(|"
+                         r"matches!\(&?\w+\.for_, Ty::(?:Fn|Param)\b")
+IMPL_KEEP_RE = re.compile(r"\.(?:find|find_map|min|max|min_by_key|max_by_key|position)\(|\.next\(\)|"
+                          r"\blet \[|\bbreak;")
+
+
+def _walk_chain(text: str, at: int) -> str:
+    """The method chain a walk starts at `at`: up to its statement's `;` or a loop's `{`."""
+    depth = 0
+    for i in range(at, len(text)):
+        c = text[i]
+        depth += {"(": 1, "[": 1, ")": -1, "]": -1}.get(c, 0)
+        if depth <= 0 and c in ";{":
+            return text[at:i]
+        if c == "{" or c == "}":
+            depth += 1 if c == "{" else -1
+    return text[at:]
+
+
+def next_impl_solvers(root: Path) -> list[str]:
+    """Non-test cpl-next fns that walk a trait's impls, fit their heads against a type and keep
+    one (S11): each is a second answer to "which impl applies" beside decls `Impls::best_in`,
+    free to disagree with it on rank, blankets or bounds. A walk whose chain ends in `.any`,
+    `.all` or `.count` asks only whether one exists. 1 is every choice made by `best_in`."""
+    out = []
+    for p, line, name, body in _fn_bodies(root):
+        rel = _rel(root, p)
+        if not rel.startswith("crates/cpl-next") or p.name.endswith("_tests.rs"):
+            continue
+        text = "\n".join(body)
+        if not (IMPL_FIT_RE.search(text) and IMPL_KEEP_RE.search(text)):
+            continue
+        if any(not IMPL_ASKS_RE.search(_walk_chain(text, m.start())) for m in IMPL_WALK_RE.finditer(text)):
+            out.append(f"{rel}:{line} {name}")
+    return out
+
 NEXT_TEXT_KEYED_RE = re.compile(
     r"\b(?:HashMap|HashSet|BTreeMap|BTreeSet)<\s*(?:String|&(?:'\w+\s+)?str|Box<str>|Arc<str>|Rc<str>)\s*[,>]"
     r"|\bVec<\(\s*(?:String|&(?:'\w+\s+)?str)\s*,")
@@ -5212,6 +5251,7 @@ COUNTERS = {
     "own_databases": ("Database built outside cpl-check", own_databases, True),
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "next_check_name_keys": ("checker keys built by formatting another name, not an id (Core)", next_check_name_keys, True),
+    "next_impl_solvers": ("cpl-next fns that walk impls and fit heads to pick one, beside Impls::best_in (Core)", next_impl_solvers, True),
     "next_string_keyed_maps": ("new-pipeline tables keyed by a name's text after resolution, not an id (S4, Core)", next_string_keyed_maps, True),
     "link_reads_check": ("lines of the new pipeline's linker reading the typed tree, not the IR (Core)", link_reads_check, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),

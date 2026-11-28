@@ -2853,6 +2853,46 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-engine/src/compile.rs:2", "crates/cpl-next-engine/src/compile.rs:4",
                 "crates/cpl-next-engine/src/exec.rs:1", "crates/cpl-next-cpp/src/emit.rs:1"])
 
+    def test_impl_solvers_are_walks_that_fit_heads_and_keep_one(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "crates/cpl-next-decls/src/impls.rs",
+                        "fn best_in(&self, t: &Ty) -> Vec<u8> {\n"
+                        "    let found: Vec<_> = (self.trait_impls(r.tr))\n"
+                        "        .filter_map(|(k, im)| self.impl_args_for(im, t, w)).collect();\n"
+                        "    found.iter().min();\n"
+                        "}\n"
+                        "fn has(&self, t: &Ty) -> bool {\n"
+                        "    let one = self.d.from_op.iter().find(|m| m.ok);\n"
+                        "    (self.impls_of(tr)).any(|im| self.fits_impl(im, t).is_some())\n"
+                        "}\n")
+            self._write(root, "crates/cpl-next-link/src/lib.rs",
+                        "fn bound_only(&mut self, bt: &CTy) {\n"
+                        "    for m in d.impls().ranked_impls(r.tr).map(|(k, _)| d.imp(k)) {\n"
+                        "        if !fit_cty(&m.for_, bt, &mut b) {\n"
+                        "            continue;\n"
+                        "        }\n"
+                        "        break;\n"
+                        "    }\n"
+                        "}\n"
+                        "fn reach(&mut self, t: TraitId) {\n"
+                        "    for (_, im) in d.trait_impls(t) {\n"
+                        "        self.reached.push(im.methods[0]);\n"
+                        "    }\n"
+                        "}\n")
+            self._write(root, "crates/cpl-next-check/src/oblige.rs",
+                        "fn param_impl(&self, r: &TraitRef) -> Option<ImplIdx> {\n"
+                        "    let mut found = (self.impls().trait_impls(r.tr))\n"
+                        "        .filter(|(_, im)| matches!(im.for_, Ty::Param(_)));\n"
+                        "    found.next()\n"
+                        "}\n")
+            self._write(root, "crates/cpl-next-check/src/oblige_tests.rs",
+                        "fn picks(&self) {\n    self.trait_impls(t).find(|im| fit(&im.for_, t));\n}\n")
+            self.assertEqual(dr.next_impl_solvers(root), [
+                "crates/cpl-next-check/src/oblige.rs:1 param_impl",
+                "crates/cpl-next-decls/src/impls.rs:1 best_in",
+                "crates/cpl-next-link/src/lib.rs:1 bound_only"])
+
     def test_name_keys_and_structural_link_edge(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
