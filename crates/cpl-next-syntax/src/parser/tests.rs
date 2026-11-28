@@ -1207,3 +1207,13 @@ fn a_record_rest_first_is_an_update_and_otherwise_a_without_form() {
         .collect();
     assert_eq!(got, [true, false, false, false]);
 }
+
+#[test]
+fn a_one_line_body_may_be_an_if_while_or_for() {
+    let (got, errors) =
+        stmts("for i in 0..n: if i % 2 == 0: yield i\nwhile a: for x in xs: s += x\n");
+    assert_eq!(errors, 0, "{got:#?}");
+    assert!(got[0].contains("Block(: IfStmt(if "), "{}", got[0]);
+    assert!(got[0].contains("YieldStmt(yield"), "{}", got[0]);
+    assert!(got[1].contains("Block(: ForStmt(for "), "{}", got[1]);
+}

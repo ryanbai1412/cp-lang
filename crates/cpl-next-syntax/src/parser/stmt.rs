@@ -290,14 +290,25 @@ impl Parser<'_> {
             self.stmts_until(T::Dedent);
             self.want(T::Dedent, "the end of the block");
         } else if colon && !matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
-            self.simple();
+            self.inline_stmt();
             while self.eat(T::Semi) {
-                self.simple();
+                self.inline_stmt();
             }
         } else if colon {
             self.error_here(codes::EXPECTED_TOKEN, "a statement after `:`");
         }
         self.finish();
+    }
+
+    /// A one-line body's statement (R01.2.3): a simple one, or an `if`, `while` or `for`
+    /// whose body is one line too (`for i in xs: if c: yield i`).
+    fn inline_stmt(&mut self) {
+        match self.peek() {
+            T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
+            T::While => self.while_stmt(),
+            T::For => self.for_stmt(),
+            _ => self.simple(),
+        }
     }
 
     /// `if c <body> (elif c <body>)* (else <body>)?`, as a statement with
