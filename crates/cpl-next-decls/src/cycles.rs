@@ -16,13 +16,16 @@ pub fn alias_cycle(d: &dyn Signatures, root: AliasId) -> bool {
     ) -> bool {
         let inner: Vec<&ast::Type> = match &t.kind {
             TypeKind::Named { name, args } => {
-                if let Some(Named::Alias(b)) = d.alias(at).names.get(&name.text) {
-                    if *b == root {
+                if let Some(Named::Alias(b)) = d
+                    .sym(&name.text)
+                    .and_then(|s| d.alias(at).names.get(&s).copied())
+                {
+                    if b == root {
                         return true;
                     }
-                    if !seen.contains(b) {
-                        seen.push(*b);
-                        if needs(d, *b, &d.alias(*b).ty, root, seen) {
+                    if !seen.contains(&b) {
+                        seen.push(b);
+                        if needs(d, b, &d.alias(b).ty, root, seen) {
                             return true;
                         }
                     }

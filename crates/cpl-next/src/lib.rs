@@ -470,7 +470,7 @@ fn item_start(item: &ItemId) -> SourceId {
 
 /// Each name the program's module scope gives an item with a declaration, and that item.
 pub(crate) fn items(f: &Front) -> HashMap<String, Item> {
-    use cpl_next_decls::views::{Scope, TypeTables};
+    use cpl_next_decls::views::TypeTables;
     let declared = |named: decls::Named| -> Option<SourceId> {
         Some(match named {
             decls::Named::Fn(id) => f.d.f(id).span.clone(),
@@ -481,10 +481,10 @@ pub(crate) fn items(f: &Front) -> HashMap<String, Item> {
         })
     };
     let program = f.d.program;
-    (f.d.views[program.0].keys())
-        .filter_map(|name| {
-            let at = declared(Scope::named(&f.d, program, name)?)?;
-            Some((name.clone(), item_of(f, &at)))
+    (f.d.views[program.0].iter())
+        .filter_map(|(name, x)| {
+            let at = declared(*x)?;
+            Some((f.d.text(*name).to_string(), item_of(f, &at)))
         })
         .collect()
 }

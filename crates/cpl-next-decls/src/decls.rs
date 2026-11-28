@@ -221,7 +221,7 @@ pub struct AliasDecl {
     pub at: SourceId,
     pub generics: Vec<String>,
     pub ty: ast::Type,
-    pub names: HashMap<String, Named>,
+    pub names: View,
     /// Declared in the program, so `T` may name the program's domains (`type Cell = (Row, Col)`).
     pub program: bool,
 }
@@ -393,16 +393,16 @@ pub struct Decls {
     pub impls: Layer<ImplDecl>,
     /// Per module, what each name means there: the core's names, then the prelude's (the
     /// program only, R11.3.1), then its own and what its `use` lines import (R11.2.3).
-    pub views: Layer<Arc<HashMap<String, Named>>>,
+    pub views: Layer<Arc<View>>,
     /// Per module, the names two of its `use` lines import as different items: a use of one
     /// is ambiguous (R08.1.4).
-    pub ambiguous: Vec<HashSet<String>>,
+    pub ambiguous: Vec<HashSet<Sym>>,
     pub module_names: Vec<String>,
     /// Per module, the module an inline `mod` of it sits in (R11.1.3).
     pub within: Vec<Option<ModId>>,
     /// Per module, what each name it declares or exports means, and whether it is
     /// `pub`: `m.f` outside it.
-    pub exports: Vec<Arc<HashMap<String, (Named, bool)>>>,
+    pub exports: Vec<Arc<HashMap<Sym, (Named, bool)>>>,
     pub program: ModId,
     /// Per library module, what it uses outside its fns that the slice does not build.
     pub module_errors: Vec<Vec<Msg>>,
@@ -662,7 +662,16 @@ impl Decls {
         &self.structs[d.0]
     }
     pub fn named(&self, m: ModId, name: &str) -> Option<Named> {
-        self.views[m.0].get(name).copied()
+        look(&self.syms, &self.views[m.0], name)
+    }
+    /// What module `m` exports as `name`, and whether it is `pub`.
+    pub fn export(&self, m: ModId, name: &str) -> Option<(Named, bool)> {
+        self.exports[m.0].get(&self.sym(name)?).copied()
+    }
+    /// Whether two of module `m`'s `use` lines import `name` as different items (R08.1.4).
+    pub fn is_ambiguous(&self, m: ModId, name: &str) -> bool {
+        self.sym(name)
+            .is_some_and(|s| self.ambiguous[m.0].contains(&s))
     }
     pub fn fn_named(&self, m: ModId, name: &str) -> Option<FnId> {
         match self.named(m, name) {
@@ -671,7 +680,10 @@ impl Decls {
         }
     }
     pub fn struct_named(&self, m: ModId, name: &str) -> Option<StructId> {
-        struct_named(&self.views[m.0], name)
+        match self.named(m, name) {
+            Some(Named::Struct(s)) => Some(s),
+            _ => None,
+        }
     }
     /// A read-only method that may still write its receiver's `@cache` fields, so a call
     /// lends the receiver for writing (R05.10.10).
@@ -748,11 +760,12 @@ fn field_names(fs: &[(ast::Name, ast::Type)]) -> Vec<String> {
     fs.iter().map(|(n, _)| n.text.clone()).collect()
 }
 
-fn struct_named(names: &HashMap<String, Named>, name: &str) -> Option<StructId> {
-    match names.get(name) {
-        Some(Named::Struct(s)) => Some(*s),
-        _ => None,
-    }
+/// What each name means in one module, by the name's id.
+pub type View = HashMap<Sym, Named>;
+
+/// What `name` means in view `v`.
+pub(crate) fn look(syms: &Syms, v: &View, name: &str) -> Option<Named> {
+    v.get(&syms.get(name)?).copied()
 }
 
 /// A result's `domain C` slot holds the fresh domain's positions, a `Range<C>` (R02.9.3).
@@ -1306,7 +1319,7 @@ const FREE: Within = Within {
 fn trait_typed(
     f: &ast::FnDecl,
     outer: &[String],
-    names: &HashMap<String, Named>,
+    names: &dyn Fn(&str) -> Option<Named>,
 ) -> Option<ast::FnDecl> {
     let mut out: Option<ast::FnDecl> = None;
     for (k, p) in f.params.iter().enumerate() {
@@ -1315,7 +1328,7 @@ fn trait_typed(
             continue;
         };
         let shadowed = outer.contains(&name.text) || f.generics.iter().any(|g| g.text == name.text);
-        if shadowed || !matches!(names.get(&name.text), Some(Named::Trait(_))) {
+        if shadowed || !matches!(names(&name.text), Some(Named::Trait(_))) {
             continue;
         }
         let g = out.get_or_insert_with(|| f.clone());
@@ -1357,7 +1370,9 @@ fn add_fn(
         sig,
     } = within;
     let names = d.views[m.0].clone();
-    let desugared = trait_typed(f, outer, &names);
+    let syms = d.syms.clone();
+    let named = |n: &str| look(&syms, &names, n);
+    let desugared = trait_typed(f, outer, &named);
     let f = desugared.as_ref().unwrap_or(f);
     let mut generics = outer.to_vec();
     generics.extend(f.generics.iter().map(|g| g.text.clone()));
@@ -1372,11 +1387,11 @@ fn add_fn(
             &with_rests
         }
     };
-    let hidden = hidden_params(d, &names, &f.bounds, &mut generics);
+    let hidden = hidden_params(d, &named, &f.bounds, &mut generics);
     let doms = d.doms_in(m);
     let tables = d.tables();
     let mut cx = TyCx {
-        names: &|n: &str| names.get(n).copied(),
+        names: &named,
         env: &tables,
         item: Some(item.clone()),
         generics: &generics,
@@ -1793,26 +1808,20 @@ type Hidden = Vec<((String, usize), std::ops::Range<usize>)>;
 /// `R: (to:, ..without u, v)<X>` for each `(to: X, ..R without (u, v))` the signature writes,
 /// through its aliases, of a parameter `R` whose row bound has those fields: the record it names
 /// is then a parameter of the signature (R08.4.1).
-fn without_bounds(d: &Decls, names: &HashMap<String, Named>, f: &ast::FnDecl) -> Vec<ast::Bound> {
+fn without_bounds(d: &Decls, names: &View, f: &ast::FnDecl) -> Vec<ast::Bound> {
     let mut out = Vec::new();
     let sig = f.params.iter().filter_map(|p| p.ty.as_ref()).chain(&f.ret);
     sig.for_each(|t| rest_bounds(d, names, f, t, &mut out));
     out
 }
 
-fn rest_bounds(
-    d: &Decls,
-    names: &HashMap<String, Named>,
-    f: &ast::FnDecl,
-    t: &ast::Type,
-    out: &mut Vec<ast::Bound>,
-) {
+fn rest_bounds(d: &Decls, names: &View, f: &ast::FnDecl, t: &ast::Type, out: &mut Vec<ast::Bound>) {
     let mut go = |t: &ast::Type| rest_bounds(d, names, f, t, out);
     match &t.kind {
         TypeKind::Named { name, args } => {
             args.iter().for_each(&mut go);
             let generic = f.generics.iter().any(|g| g.text == name.text);
-            if let (Some(Named::Alias(id)), false) = (names.get(&name.text), generic) {
+            if let (Some(Named::Alias(id)), false) = (look(&d.syms, names, &name.text), generic) {
                 let a = &d.aliases[id.0];
                 if a.generics.len() == args.len() {
                     let sub = a.generics.iter().map(String::as_str).zip(args).collect();
@@ -1929,7 +1938,7 @@ fn subst(t: &ast::Type, sub: &HashMap<&str, &ast::Type>) -> ast::Type {
 
 fn hidden_params(
     d: &Decls,
-    names: &HashMap<String, Named>,
+    names: &dyn Fn(&str) -> Option<Named>,
     bounds: &[ast::Bound],
     generics: &mut Vec<String>,
 ) -> Hidden {
@@ -1939,7 +1948,7 @@ fn hidden_params(
             let TypeKind::Named { name, args } = &t.kind else {
                 continue;
             };
-            let Some(Named::Trait(tr)) = names.get(&name.text).copied() else {
+            let Some(Named::Trait(tr)) = names(&name.text) else {
                 continue;
             };
             let n = d.traits[tr.0].defaults.len();

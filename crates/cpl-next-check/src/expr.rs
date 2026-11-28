@@ -869,7 +869,7 @@ impl<'a> Cx<'a> {
                 span,
             };
         }
-        if self.d.ambiguous[self.b.module.0].contains(n) {
+        if self.d.is_ambiguous(self.b.module, n) {
             self.two_imports(n, span);
         } else if !self.b.refused_names.contains(n) {
             let mut msg = Msg::verdict(
@@ -908,7 +908,9 @@ impl<'a> Cx<'a> {
     /// exports it as `pub`.
     fn import_fix(&self, n: &str, span: Span) -> Option<cpl_next_ir::msg::Fix> {
         let module = (self.d.module_names.iter().enumerate())
-            .find(|(i, m)| m.starts_with("std.") && self.d.exports[*i].get(n).is_some_and(|e| e.1))
+            .find(|(i, m)| {
+                m.starts_with("std.") && self.d.export(ModId(*i), n).is_some_and(|e| e.1)
+            })
             .map(|(_, m)| m.as_str())?;
         let text = self.src.text_of(&self.b.item.at(span));
         let (point, edit) = cpl_diag::import_edit(&text.text, module.strip_prefix("std.")?, n);

@@ -19,7 +19,7 @@ pub(super) fn inherent_impl(
     let TypeKind::Named { args, .. } = &target.kind else {
         return;
     };
-    let names = &d.views[mid.0];
+    let names = &|n: &str| d.named(mid, n);
     let mut generics = Vec::new();
     for a in args {
         unnamed(a, names, &mut generics);
@@ -36,7 +36,7 @@ pub(super) fn inherent_impl(
         let mut named = vec![b.name.text.clone()];
         b.traits.iter().for_each(|t| unnamed(t, names, &mut named));
         for n in named {
-            if !generics.contains(&n) && !only_bounds.contains(&n) && !names.contains_key(&n) {
+            if !generics.contains(&n) && !only_bounds.contains(&n) && names(&n).is_none() {
                 only_bounds.push(n);
             }
         }
@@ -89,7 +89,7 @@ fn shaped_impl(
     body: &ast::Block,
 ) {
     let mut generics = Vec::new();
-    unnamed(target, &d.views[mid.0], &mut generics);
+    unnamed(target, &|n: &str| d.named(mid, n), &mut generics);
     for m in &body.stmts {
         let StmtKind::Fn(f) = &m.kind else {
             continue;

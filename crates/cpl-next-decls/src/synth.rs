@@ -675,7 +675,7 @@ pub(crate) fn field_trait_impls(
         };
         let mut taken: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
         for (_, t) in &members {
-            unnamed(t, &HashMap::new(), &mut taken);
+            unnamed(t, &|_| None, &mut taken);
         }
         let fresh: Vec<String> = (b'A'..=b'Z')
             .map(|c| (c as char).to_string())

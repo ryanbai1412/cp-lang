@@ -89,7 +89,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
     expanding.push(id);
     let none = HashMap::new();
     let mut inner = TyCx {
-        names: &|n: &str| decl.names.get(n).copied(),
+        names: &|n: &str| env.sym(n).and_then(|s| decl.names.get(&s)).copied(),
         env,
         item: None,
         generics: &decl.generics,
@@ -185,12 +185,12 @@ pub(super) fn input_bound(
     }
 }
 
-pub(crate) fn unnamed(t: &ast::Type, names: &HashMap<String, Named>, out: &mut Vec<String>) {
+pub(crate) fn unnamed(t: &ast::Type, names: &dyn Fn(&str) -> Option<Named>, out: &mut Vec<String>) {
     let mut all = Vec::new();
     names_in(t, &mut all);
     for n in all {
         let capital = n.len() == 1 && n.chars().all(|c| c.is_ascii_uppercase());
-        if capital && !names.contains_key(&n) && !out.contains(&n) {
+        if capital && names(&n).is_none() && !out.contains(&n) {
             out.push(n);
         }
     }
@@ -560,6 +560,9 @@ impl Decls {
 impl TypeTables for Tables {
     fn text(&self, s: Sym) -> &str {
         self.syms.text(s)
+    }
+    fn sym(&self, text: &str) -> Option<Sym> {
+        self.syms.get(text)
     }
     fn alias(&self, id: AliasId) -> &AliasDecl {
         &self.aliases[id.0]

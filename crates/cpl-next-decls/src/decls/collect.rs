@@ -693,6 +693,7 @@ fn layer(
             if let Some(x) = outside {
                 v.insert(name.clone(), x);
             }
+            let v = v.into_iter().map(|(n, x)| (d.syms.intern(&n), x)).collect();
             AliasDecl {
                 name,
                 module: m,
@@ -723,9 +724,10 @@ fn layer(
             let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
             let doms = d.doms_in(*mid);
             let names = d.views[mid.0].clone();
+            let syms = d.syms.clone();
             let tables = d.tables();
             let mut cx = TyCx {
-                names: &|n: &str| names.get(n).copied(),
+                names: &|n: &str| look(&syms, &names, n),
                 env: &tables,
                 item: None,
                 generics: &generics,
@@ -761,9 +763,10 @@ fn layer(
         let generics: Vec<String> = sd.generics.iter().map(|g| g.text.clone()).collect();
         let doms = d.doms_in(*mid);
         let names = d.views[mid.0].clone();
+        let syms = d.syms.clone();
         let tables = d.tables();
         let mut cx = TyCx {
-            names: &|n: &str| names.get(n).copied(),
+            names: &|n: &str| look(&syms, &names, n),
             env: &tables,
             item: None,
             generics: &generics,
@@ -827,9 +830,10 @@ fn layer(
                         sd.generics.iter().map(|g| g.text.clone()).collect();
                     let doms = d.doms_in(ModId(mi));
                     let names = d.views[mi].clone();
+                    let syms = d.syms.clone();
                     let tables = d.tables();
                     let mut cx = TyCx {
-                        names: &|n: &str| names.get(n).copied(),
+                        names: &|n: &str| look(&syms, &names, n),
                         env: &tables,
                         item: None,
                         generics: &generics,
@@ -872,8 +876,8 @@ fn layer(
                                 _ => None,
                             })
                         })
-                        .filter_map(|(i, name)| match d.views[mi].get(&name.text) {
-                            Some(Named::Trait(tr)) => Some((i, *tr)),
+                        .filter_map(|(i, name)| match look(&d.syms, &d.views[mi], &name.text) {
+                            Some(Named::Trait(tr)) => Some((i, tr)),
                             _ => None,
                         })
                         .collect();
@@ -950,10 +954,11 @@ fn layer(
                     tgen.extend(assoc.iter().map(|(a, ..)| format!("Self.{a}")));
                     let mut errors = Vec::new();
                     let names = d.views[mi].clone();
+                    let syms = d.syms.clone();
                     let doms = d.doms_in(ModId(mi));
                     let tables = d.tables();
                     let mut cx = TyCx {
-                        names: &|n: &str| names.get(n).copied(),
+                        names: &|n: &str| look(&syms, &names, n),
                         env: &tables,
                         item: None,
                         generics: &tgen,
@@ -1037,6 +1042,7 @@ fn layer(
                     _,
                 ) => {
                     let names = d.views[mi].clone();
+                    let syms = d.syms.clone();
                     // The impl's own type parameters: its bounds' names, then what its header and
                     // bounds write that names nothing (`K` of `impl<S: Indexed<K, T>, K, T>`).
                     let mut generics: Vec<String> =
@@ -1045,9 +1051,10 @@ fn layer(
                         .into_iter()
                         .chain(bounds.iter().flat_map(|b| &b.traits))
                     {
-                        unnamed(t, &names, &mut generics);
+                        unnamed(t, &|n: &str| look(&syms, &names, n), &mut generics);
                     }
-                    let hidden = hidden_params(&d, &names, bounds, &mut generics);
+                    let hidden =
+                        hidden_params(&d, &|n: &str| look(&syms, &names, n), bounds, &mut generics);
                     // `_..=_`: a parameter of the impl's own that only a range type meets, which
                     // its body names `Self`.
                     let ranges_only = any_range(target);
@@ -1059,7 +1066,7 @@ fn layer(
                     let mut errors = Vec::new();
                     let tables = d.tables();
                     let mut cx = TyCx {
-                        names: &|n: &str| names.get(n).copied(),
+                        names: &|n: &str| look(&syms, &names, n),
                         env: &tables,
                         item: Some(item.clone()),
                         generics: &generics,
@@ -1348,7 +1355,8 @@ fn layer(
                 (StmtKind::Fn(f), _) => {
                     let fid = add_fn(&mut d, mid, item.clone(), s, f, FREE);
                     let before = own[mi].insert(f.name.text.clone(), Named::Fn(fid));
-                    Arc::make_mut(&mut d.views[mi]).insert(f.name.text.clone(), Named::Fn(fid));
+                    let k = d.syms.intern(&f.name.text);
+                    Arc::make_mut(&mut d.views[mi]).insert(k, Named::Fn(fid));
                     if d.is_library(mid)
                         && public[mi].contains(&f.name.text)
                         && d.f(fid).self_ty.is_some()
@@ -1365,8 +1373,8 @@ fn layer(
                             .any(|o| d.required_labels(*o) == d.required_labels(fid));
                         if free && !clash {
                             own[mi].insert(f.name.text.clone(), Named::Fn(first));
-                            Arc::make_mut(&mut d.views[mi])
-                                .insert(f.name.text.clone(), Named::Fn(first));
+                            let k = d.syms.intern(&f.name.text);
+                            Arc::make_mut(&mut d.views[mi]).insert(k, Named::Fn(first));
                             d.overloads.entry(first).or_default().push(fid);
                             continue;
                         }
@@ -1411,7 +1419,7 @@ fn layer(
                     let TypeKind::Named { name, .. } = &target.kind else {
                         continue;
                     };
-                    let Some(t) = struct_named(&d.views[mi], &name.text) else {
+                    let Some(t) = d.struct_named(ModId(mi), &name.text) else {
                         continue;
                     };
                     if d.s(t).module != mid {
@@ -1500,7 +1508,10 @@ fn remake_views(
         };
         let mut ambiguous = HashSet::new();
         let v = view(sc, mi, d.of_program(ModId(mi)), e, &mut ambiguous);
-        let exports = Arc::new(export_map(sc, mi));
+        let v = v.into_iter().map(|(n, x)| (d.syms.intern(&n), x)).collect();
+        let ambiguous = ambiguous.iter().map(|n| d.syms.intern(n)).collect();
+        let exports = export_map(sc, mi).into_iter();
+        let exports = Arc::new(exports.map(|(n, x)| (d.syms.intern(&n), x)).collect());
         d.exports
             .resize(d.exports.len().max(mi + 1), Arc::default());
         d.exports[mi] = exports;
@@ -1518,7 +1529,7 @@ fn remake_views(
             let name = d.syms.text(*name);
             let t = (*home < sc.own.len()).then(|| sc.own[*home].get(name).copied());
             if let Some(t) = t.flatten() {
-                let key = crate::synth::memo_key(d.syms.text(*w));
+                let key = d.syms.intern(&crate::synth::memo_key(d.syms.text(*w)));
                 Arc::make_mut(&mut d.views[mi]).insert(key, t);
             }
         }

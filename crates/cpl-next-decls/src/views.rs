@@ -16,6 +16,8 @@ use std::collections::HashMap;
 pub trait TypeTables {
     /// The text a name was written with, for showing it.
     fn text(&self, s: crate::sym::Sym) -> &str;
+    /// The id of a name written `text`, if any table holds it.
+    fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
 
     fn alias(&self, id: AliasId) -> &AliasDecl;
     fn konst(&self, id: ConstId) -> &LibConst;
@@ -122,6 +124,9 @@ impl TypeTables for Decls {
     fn text(&self, s: crate::sym::Sym) -> &str {
         self.syms.text(s)
     }
+    fn sym(&self, text: &str) -> Option<crate::sym::Sym> {
+        self.syms.get(text)
+    }
 
     fn alias(&self, id: AliasId) -> &AliasDecl {
         &self.aliases[id.0]
@@ -175,12 +180,12 @@ impl TypeTables for Decls {
 
 impl Scope for Decls {
     fn named(&self, m: ModId, name: &str) -> Option<Named> {
-        self.views[m.0].get(name).copied()
+        self.named(m, name)
     }
     fn names(&self, m: ModId) -> Vec<(&str, Named)> {
         self.views[m.0]
             .iter()
-            .map(|(n, x)| (n.as_str(), *x))
+            .map(|(n, x)| (self.syms.text(*n), *x))
             .collect()
     }
 }

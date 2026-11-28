@@ -656,8 +656,8 @@ impl<'a> Cx<'a> {
             ty: Ty::Error,
             span,
         };
-        let x = match d.exports[t.0].get(&name.text) {
-            Some((x, true)) => *x,
+        let x = match d.export(t, &name.text) {
+            Some((x, true)) => x,
             Some((_, false)) => {
                 let code = cpl_diag::codes::PRIVATE_NAME;
                 let text = format!("`{}` is private to module `{m}`", name.text);
@@ -987,7 +987,7 @@ impl<'a> Cx<'a> {
                 _ => {}
             }
         }
-        if self.d.ambiguous[self.b.module.0].contains(&name.text)
+        if self.d.is_ambiguous(self.b.module, &name.text)
             && self.d.lookup_member(&rt, &name.text).is_none()
         {
             self.two_imports(&name.text, name.span);
