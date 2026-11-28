@@ -1,7 +1,7 @@
 //! What a run of a program comes to, the same for every engine: its output, its events and
 //! how it stopped (contract 7).
 use crate::ids::SourceId;
-use crate::ir::{EventKind, EventPoint, Func, FuncKey, Site};
+use crate::ir::{EventKind, Func, FuncKey, Site};
 use crate::layout::Layouts;
 use crate::ops::{Fault, Input};
 use crate::prog::Program;
@@ -118,17 +118,45 @@ pub struct Fired {
     pub vals: Vec<String>,
 }
 
-impl Fired {
-    /// `p` firing with its values shown.
-    pub fn of<T>(p: &EventPoint<T>, vals: Vec<String>) -> Fired {
-        let (kind, func, site) = (p.kind.clone(), p.func, p.site);
-        Fired {
+/// What a run writes: its output and its events. While an event shows a value, what is
+/// written goes to that value, and the code that shows it places no events (contract 8).
+#[derive(Default)]
+pub struct Written {
+    pub text: String,
+    pub events: Vec<Fired>,
+    /// Where the text was at each value the next event has not yet taken.
+    marks: Vec<usize>,
+}
+
+impl Written {
+    /// Whether an event is showing a value now.
+    pub fn showing(&self) -> bool {
+        !self.marks.is_empty()
+    }
+    /// The next value an event shows starts here.
+    pub fn mark(&mut self) {
+        self.marks.push(self.text.len());
+    }
+    /// An event with the `n` values written since its marks, which leave the output.
+    pub fn fire(&mut self, kind: EventKind, func: u32, site: Site, n: usize) {
+        let marks = self.marks.split_off(self.marks.len() - n);
+        let ends = marks.iter().skip(1).copied().chain([self.text.len()]);
+        let vals = (marks.iter().zip(ends))
+            .map(|(&a, b)| String::from(&self.text[a..b]))
+            .collect();
+        if let Some(&m) = marks.first() {
+            self.text.truncate(m);
+        }
+        self.events.push(Fired {
             kind,
             func,
             site,
             vals,
-        }
+        });
     }
+}
+
+impl Fired {
     /// Its trace line: `ev enter f 3`.
     pub fn line<T>(&self, funcs: &[Func<T>]) -> String {
         let mut s = format!("ev {}", self.kind.label(&funcs[self.func as usize].name));

@@ -385,7 +385,8 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
                 }
             }
             Stmt::Event(crate::ir::EventPoint { vals: es, .. }) => {
-                es.iter().for_each(|e| self.expr(e, "an event"))
+                // Each value is a call run as a statement of its own, its writes kept.
+                es.iter().for_each(|e| self.expr(e, ""))
             }
         }
     }

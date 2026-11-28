@@ -333,7 +333,7 @@
   "next_op_arms_outside_ir": 0,
   "next_repr_second_defs": 0,
   "next_core_standin_lines": 43,
-  "next_cpp_runtime_lines": 145,
+  "next_cpp_runtime_lines": 143,
   "link_reads_check": 0,
   "next_split": 2,
   "next_wrong_accepts": 20,

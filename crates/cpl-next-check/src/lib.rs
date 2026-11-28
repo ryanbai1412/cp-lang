@@ -871,6 +871,8 @@ pub fn check(
                 && !matches!(f.owner, Some(Owner::Impl(i)) if later(d.imp(i)))
         })
         .collect();
+    // The trace role's fn is reached by events, which a build adds after checking (contract 8).
+    todo.extend(d.roles.trace);
     // In the order the collector made them, so a program over std checks as one collection would.
     todo.sort_by_key(|id| std::cmp::Reverse((d.f(*id).made, *id)));
     let mut deferred: HashMap<FnId, Vec<Msg>> = HashMap::new();

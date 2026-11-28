@@ -169,11 +169,9 @@ template <class T> struct cpl_body {
     template <class L> cpl_body(L& l) : env(&l), fn([](void* e, T x) -> int { return (*static_cast<L*>(e))(static_cast<T>(x)); }) {}
     int operator()(T x) const { return fn(env, static_cast<T>(x)); }
 };
-// A scalar as `ops::show` writes it in an event.
-static inline void cpl_ev(cpl_char c) { char b[2] = {' ', (char)c.code}; cpl_tput(b, 2); }
-static inline void cpl_ev(bool b) { cpl_tput(b ? " true" : " false", b ? 5 : 6); }
-template <class T, std::enable_if_t<std::is_integral_v<T>, int> = 0> static inline void cpl_ev(T x) { std::string t = " " + std::to_string(x); cpl_tput(t.data(), t.size()); }
-static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) { fwrite(r.data(), 1, (size_t)(n < 0 ? 0 : n < (int64_t)r.size() ? n : (int64_t)r.size()), stdout); return {}; }
+// While an event shows a value, what is written goes to the event instead of stdout.
+static std::string* cpl_capture = nullptr;
+static inline cpl_unit cpl_out(const cpl_raw<cpl_char>& r, int64_t n) { size_t k = (size_t)(n < 0 ? 0 : n < (int64_t)r.size() ? n : (int64_t)r.size()); if (cpl_capture) cpl_capture->append((const char*)r.data(), k); else fwrite(r.data(), 1, k, stdout); return {}; }
 "#;
 
 /// What `break`, `continue` and `return` mean at a point in the output.
@@ -804,12 +802,14 @@ impl Emit<'_> {
                 ),
                 // Events go to the trace stream in order (`cpl_tput`).
                 Stmt::Event(ev) => {
+                    // The code that shows an event's value places no events of its own.
                     let label = format!("ev {}", ev.label(self.funcs));
-                    put_line!(s, "{pad}cpl_tput({label:?}, {});", label.len());
+                    put_line!(s, "{pad}if (!cpl_capture) {{ cpl_tput({label:?}, {});", label.len());
                     for v in &ev.vals {
-                        put_line!(s, "{pad}cpl_ev({});", self.expr(v));
+                        let v = self.expr(v);
+                        put_line!(s, "{pad}{{ std::string cpl_s; cpl_capture = &cpl_s; {v}; cpl_capture = nullptr; cpl_tput(\" \", 1); cpl_tput(cpl_s.data(), cpl_s.size()); }}");
                     }
-                    put_line!(s, "{pad}cpl_tput(\"\\n\", 1);");
+                    put_line!(s, "{pad}cpl_tput(\"\\n\", 1); }}");
                 }
                 // A lender finishes its own code first; the caller leaves after it.
                 Stmt::LendOut(p) => put_line!(s, "{pad}cpl_code = body({});", self.place(p)),
@@ -1210,28 +1210,6 @@ mod tests {
                 format!("double x; uint64_t b = UINT64_C({b}); memcpy(&x, &b, 8); printf(\"%llu\\n\", (unsigned long long)cpl_f64_bits(x));"),
                 format!("{b}\n"),
             );
-        }
-        let mut shown = |v: ops::Scalar, cpp: &str| {
-            let mut out = String::new();
-            ops::show(v, &mut out);
-            case(
-                format!(
-                    "printf(\"[\"); fflush(stdout); cpl_ev({cpp}); cpl_tflush(); printf(\"]\\n\");"
-                ),
-                format!("[ {out}]\n"),
-            );
-        };
-        for b in [false, true] {
-            shown(ops::Scalar::Bool(b), &b.to_string());
-        }
-        for c in *b"aZ0~!" {
-            shown(ops::Scalar::Char(c), &format!("cpl_char{{{c}}}"));
-        }
-        for a in [-i64::MAX, -1, 0, 7, i64::MAX] {
-            shown(ops::Scalar::Int(a), &format!("INT64_C({a})"));
-        }
-        for a in [0, 1 << 63, u64::MAX] {
-            shown(ops::Scalar::U64(a), &format!("UINT64_C({a})"));
         }
         let mut cpp = runtime();
         cpp.push_str("#include <sys/wait.h>\nint main() {\n");

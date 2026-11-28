@@ -4,7 +4,7 @@
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::{CTy, Program};
-use cpl_next_ir::run::{Fired, RunInput, Stack};
+use cpl_next_ir::run::{RunInput, Stack, Written};
 pub use cpl_next_ir::run::{Outcome, Trap};
 use std::rc::Rc;
 
@@ -67,8 +67,7 @@ struct Machine<'a> {
     funcs: &'a [Func<CTy>],
     globals: Vec<V>,
     frames: Vec<Frame<'a>>,
-    out: String,
-    pub events: Vec<Fired>,
+    out: Written,
     input: ops::Input,
     rand: u64,
     /// The origin of the innermost site of the user's file that is running.
@@ -85,8 +84,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         funcs,
         globals: vec![V::Unit; p.globals.len()],
         frames: Vec::new(),
-        out: String::new(),
-        events: Vec::new(),
+        out: Written::default(),
         input: input.io.input(),
         rand: ops::RAND_SEED,
         at: 0,
@@ -99,8 +97,8 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         ..t
     });
     Outcome {
-        events: m.events,
-        output: m.out,
+        events: m.out.events,
+        output: m.out.text,
         trap,
     }
 }
@@ -376,12 +374,14 @@ impl<'a> Machine<'a> {
                         self.frames[fp].pending = Some(flow);
                     }
                 }
+                Stmt::Event(_) if self.out.showing() => {}
                 Stmt::Event(ev) => {
-                    let mut vals = Vec::with_capacity(ev.vals.len());
                     for v in &ev.vals {
-                        vals.push(ops::shown(scalar(&self.expr(v, fp)?)));
+                        self.out.mark();
+                        self.expr(v, fp)?;
                     }
-                    self.events.push(Fired::of(ev, vals));
+                    let n = ev.vals.len();
+                    self.out.fire(ev.kind.clone(), ev.func, ev.site, n);
                 }
             }
         }
@@ -560,7 +560,7 @@ impl<'a> Machine<'a> {
                     let V::Char(c) = c else {
                         return broken("output of a value that is not a character");
                     };
-                    self.out.push(char::from(*c));
+                    self.out.text.push(char::from(*c));
                 }
                 V::Unit
             }

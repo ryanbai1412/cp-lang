@@ -1610,3 +1610,54 @@ fn a_trace_shows_only_the_users_writes() {
         .collect();
     assert_eq!(written, ["t 1", "t 2"]);
 }
+
+/// An event shows a value as `write` gives it, through std's `traced`: a struct by its own
+/// `Show`, a list by std's, and a `Bool`, which is not `Show` (R10.3), by nothing. The `Show`
+/// it runs places no events, alike on the interpreter, the engine and the C++.
+#[test]
+fn an_event_shows_a_value_as_write_does() {
+    use cpl_next_ir::ir::EventKind;
+    let src = "struct P:\n    x: Int\nimpl Show for P:\n    fn write_to(self, mut out: Str, sep: ?Str):\n        \
+out.push('P')\nvar best = [1, 2]\nfn f(n: Int, p: P, ok: Bool) -> List<Int>:\n    \
+return [n, p.x]\nbest = f(3, P(x: 4), true)\nprint(best.len)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let shown = |o: &Outcome| -> Vec<String> {
+        (o.events.iter())
+            .map(|e| match &e.kind {
+                EventKind::Enter => format!("enter {:?}", e.vals),
+                EventKind::Exit => format!("exit {:?}", e.vals),
+                EventKind::Write { shown, .. } => format!("set {shown} {:?}", e.vals),
+            })
+            .collect()
+    };
+    let want = [
+        r#"set best ["1 2"]"#,
+        r#"enter ["3", "P"]"#,
+        r#"exit ["3 4"]"#,
+        r#"set best ["3 4"]"#,
+    ];
+    for o in [raw(&c), c.run("")] {
+        assert_eq!(o.output, "2\n");
+        assert_eq!(shown(&o), want);
+    }
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "2\n");
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stderr),
+        "ev set best 1 2\nev enter f 3 P\nev exit f 3 4\nev set best 3 4\n"
+    );
+}
+

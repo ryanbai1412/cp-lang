@@ -276,7 +276,7 @@ fn staged(
 
 /// Link, then ownership on the linked instances (contract 4), where the program checked clean:
 /// the program, its copies settled, and ownership's diagnostics.
-fn back(f: &mut Front) -> Option<(inst::Program, Vec<Diag>)> {
+fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
@@ -292,6 +292,7 @@ fn back(f: &mut Front) -> Option<(inst::Program, Vec<Diag>)> {
         &mut g.globals,
         &g.adds,
         &names,
+        events,
     );
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags))
@@ -388,7 +389,7 @@ pub(crate) fn compile(
     checks: Checks,
 ) -> Result<Compiled, Vec<Diag>> {
     let mut f = front(std, user_src, roots, judge, checks);
-    let Some((mut prog, own)) = back(&mut f) else {
+    let Some((mut prog, own)) = back(&mut f, events) else {
         return Err(f.diags);
     };
     f.diags.extend(own);
@@ -410,7 +411,7 @@ pub(crate) fn compile(
             deferred: &f.g.deferred,
             globals: &f.g.globals,
         };
-        inst::add_events(&mut prog, &answers);
+        inst::add_events(&mut prog, &answers, f.d.roles.trace);
     }
     let canon =
         inst::canonicalize(&mut prog, &cpl_next_own::expand_calls).map_err(|es| link(&es))?;
@@ -694,7 +695,7 @@ pub(crate) fn units(
     checks: Checks,
 ) -> (Vec<Unit>, Vec<Diag>) {
     let mut f = front(std, user_src, roots, judge, checks);
-    if let Some((_, own)) = back(&mut f) {
+    if let Some((_, own)) = back(&mut f, false) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);
     }

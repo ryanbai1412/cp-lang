@@ -134,6 +134,7 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `print` | `print` | `print(...)`: shows its values and ends the line, reading `io`'s `sep` and `precision` |
 | `write` | `write` | `write(...)`: the same without the line end |
 | `iteration` | `Seq`, with `iter` and `each` | `for x in s`, `s.each(f)` and `s.iter()` |
+| `trace` | `traced` | what a trace event (contract 8) shows of a value: the text the fn writes, kept in the event instead of the output |
 | `todo` | `todo` | the expression `todo`, of any type, that traps when run (R01.6.7) |
 | `recipe` | `Gen<T>` | the value of a `-> yields T` call made outside a `for` head, which a `for` over it runs (R07.6.2) |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |

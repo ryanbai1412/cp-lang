@@ -189,6 +189,12 @@ pub(crate) enum Op {
         n: Reg,
         owned: bool,
     },
+    /// Whether an event is showing a value now: the code that shows it places no events.
+    Showing {
+        d: Reg,
+    },
+    /// Where the output is now: the next event keeps what is written after it.
+    Capture,
     Event {
         e: u32,
     },
@@ -349,7 +355,8 @@ pub(crate) struct EventCode {
     pub kind: cpl_next_ir::ir::EventKind,
     pub func: u32,
     pub site: cpl_next_ir::ir::Site,
-    pub vals: Vec<(Reg, Kind, Lay)>,
+    /// How many values it shows, each the text written since its `Capture`.
+    pub vals: usize,
 }
 
 pub(crate) struct Code {
@@ -586,7 +593,7 @@ impl Fc<'_> {
     }
     fn patch(&mut self, at: usize, t: u32) {
         match &mut self.ops[at] {
-            Op::Jump { t: x } | Op::JumpUnless { t: x, .. } => *x = t,
+            Op::Jump { t: x } | Op::JumpUnless { t: x, .. } | Op::JumpIf { t: x, .. } => *x = t,
             _ => {
                 self.ops[at] = Op::Fail {
                     rule: "the engine patched a jump that is not one",
@@ -742,22 +749,26 @@ impl Fc<'_> {
                 });
             }
             Stmt::Event(ev) => {
-                let mut regs = Vec::with_capacity(ev.vals.len());
+                let busy = self.temp(1);
+                self.ops.push(Op::Showing { d: busy });
+                let skip = self.ops.len();
+                self.ops.push(Op::JumpIf { c: busy, t: 0 });
                 for v in &ev.vals {
+                    self.ops.push(Op::Capture);
                     let n = self.size(&v.ty);
                     let d = self.temp(n);
                     self.expr(v, d);
-                    let lay = self.lay(&v.ty);
-                    regs.push((d, kind(&v.ty), lay));
                 }
                 let e = self.c.events.len() as u32;
                 self.c.events.push(EventCode {
                     kind: ev.kind.clone(),
                     func: ev.func,
                     site: ev.site,
-                    vals: regs,
+                    vals: ev.vals.len(),
                 });
                 self.ops.push(Op::Event { e });
+                let end = self.here();
+                self.patch(skip, end);
             }
             Stmt::Region {
                 target,

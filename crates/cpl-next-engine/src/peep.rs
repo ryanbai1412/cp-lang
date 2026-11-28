@@ -141,6 +141,8 @@ fn traps(op: &Op, places: &[PlaceCode]) -> bool {
                 | Op::Switch { .. }
                 | Op::Leave(_)
                 | Op::Out { .. }
+                | Op::Showing { .. }
+                | Op::Capture
                 | Op::Event { .. }
                 | Op::Text { .. }
                 | Op::InputLeft { .. }
@@ -574,6 +576,8 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         | Op::Yield { .. }
         | Op::LendOut { .. }
         | Op::Leave(_)
+        | Op::Showing { .. }
+        | Op::Capture
         | Op::Event { .. }
         | Op::Fail { .. } => return None,
     })

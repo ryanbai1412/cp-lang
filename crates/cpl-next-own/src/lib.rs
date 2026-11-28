@@ -218,6 +218,7 @@ pub fn link(
     tys: &mut [Ty],
     adds: &SetAdds,
     globals: &[(String, bool)],
+    events: bool,
 ) -> (Program, Owned) {
     use cpl_next_ir::verify::{all, callees, instances, Stage};
     let debug = cfg!(debug_assertions);
@@ -243,7 +244,7 @@ pub fn link(
         sums: adds,
         checked: &answers,
     };
-    let mut prog = cpl_next_link::link(inputs, &roots, &lent_slot);
+    let mut prog = cpl_next_link::link(inputs, &roots, &lent_slot, events);
     if debug {
         let fast = callees(&prog.insts);
         prog.errors.extend(generic);

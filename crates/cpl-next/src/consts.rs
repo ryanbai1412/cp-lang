@@ -225,6 +225,7 @@ impl<'a> Evaluator<'a> {
             &mut low.globals,
             &low.adds,
             &names,
+            false,
         );
         if !owned.errors.is_empty() {
             return Ran::Open;

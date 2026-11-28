@@ -659,17 +659,6 @@ pub enum Scalar {
     Bool(bool),
     Char(u8),
 }
-/// `v` as an event shows it.
-/// A value as a trace shows it: `?` for one that is not a scalar.
-pub fn shown(v: Option<Scalar>) -> String {
-    let mut out = String::new();
-    match v {
-        Some(v) => show(v, &mut out),
-        None => out.push('?'),
-    }
-    out
-}
-
 pub fn show(v: Scalar, out: &mut String) {
     use std::fmt::Write;
     let _ = match v {

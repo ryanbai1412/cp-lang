@@ -5,7 +5,7 @@ use crate::compile::*;
 use crate::layout::Lay;
 use crate::Stop;
 use cpl_next_ir::ops::{self, Fault};
-use cpl_next_ir::run::{Fired, Outcome, Trap};
+use cpl_next_ir::run::{Outcome, Trap, Written};
 use cpl_next_ir::run::{Io, Limits, RunInput, Stack};
 
 struct Obj {
@@ -74,8 +74,7 @@ struct M<'a> {
     heap: Vec<Obj>,
     free: Vec<u32>,
     frames: Vec<Frame>,
-    out: String,
-    events: Vec<Fired>,
+    out: Written,
     input: ops::Input,
     rand: u64,
     at: u32,
@@ -113,8 +112,7 @@ fn start(c: &Code, input: Option<RunInput>, steps: u64) -> M<'_> {
         }],
         free: Vec::new(),
         frames: Vec::new(),
-        out: String::new(),
-        events: Vec::new(),
+        out: Written::default(),
         input: io.input(),
         rand: ops::RAND_SEED,
         at: 0,
@@ -183,8 +181,8 @@ pub(crate) fn eval(c: &Code, gs: &[usize], steps: u64) -> Result<Vec<Vec<u64>>, 
 impl M<'_> {
     fn outcome(self, trap: Option<Trap>) -> Outcome {
         Outcome {
-            events: self.events,
-            output: self.out,
+            events: self.out.events,
+            output: self.out.text,
             trap,
         }
     }
@@ -770,32 +768,17 @@ impl M<'_> {
                     let o = &self.heap[h as usize];
                     let n = ops::out_len(self.stack[r(n)] as i64, o.len);
                     for &w in o.words.iter().step_by(stride).take(n) {
-                        self.out.push(char::from(byte(w)?));
+                        self.out.text.push(char::from(byte(w)?));
                     }
                     if owned {
                         self.dec(vec![h]);
                     }
                 }
+                Op::Showing { d } => self.stack[r(d)] = u64::from(self.out.showing()),
+                Op::Capture => self.out.mark(),
                 Op::Event { e } => {
                     let ev = &c.events[e as usize];
-                    let mut vals = Vec::with_capacity(ev.vals.len());
-                    for &(s, kind, lay) in &ev.vals {
-                        let mut shown = String::new();
-                        match scalar(self.stack[r(s)], kind) {
-                            Some(v) => ops::show(v, &mut shown),
-                            None => {
-                                shown.push('?');
-                                self.release(lay, Loc::stack(r(s)));
-                            }
-                        }
-                        vals.push(shown);
-                    }
-                    self.events.push(Fired {
-                        kind: ev.kind.clone(),
-                        func: ev.func,
-                        site: ev.site,
-                        vals,
-                    });
+                    (self.out).fire(ev.kind.clone(), ev.func, ev.site, ev.vals);
                 }
                 Op::RawEmpty { d, elem } => {
                     self.stack[r(d)] = u64::from(self.alloc(elem, 0, Vec::new()))
@@ -908,17 +891,6 @@ impl M<'_> {
     }
 }
 
-/// A word of a value of `kind` as the scalar it holds.
-fn scalar(w: u64, kind: Kind) -> Option<ops::Scalar> {
-    Some(match kind {
-        Kind::Int => ops::Scalar::Int(w as i64),
-        Kind::U64 => ops::Scalar::U64(w),
-        Kind::F64 => ops::Scalar::F64(w),
-        Kind::Bool => ops::Scalar::Bool(w != 0),
-        Kind::Char => ops::Scalar::Char(byte(w).ok()?),
-        Kind::Other => return None,
-    })
-}
 /// A `Char`'s word as its byte.
 /// The `I128` at `r`: two words, low first.
 fn wide(s: &[u64], r: usize) -> i128 {
@@ -936,7 +908,7 @@ fn byte(w: u64) -> R<u8> {
 mod tests {
     use crate::compile::Op;
 
-    /// Ops that only move words, jump or reach the heap; every other op computes a value or
+    /// Ops that only move words, jump, reach the heap or mark the output an event keeps; every other op computes a value or
     /// decides a trap, and takes that from `ops`, so the engine never writes an operation the
     /// reference interpreter and the C++ read from there.
     fn plumbing(op: &Op) -> bool {
@@ -969,6 +941,9 @@ mod tests {
                 | Op::Leave { .. }
                 | Op::Check { .. }
                 | Op::Out { .. }
+                | Op::Showing { .. }
+                | Op::Capture
+                | Op::Event { .. }
                 | Op::RawEmpty { .. }
                 | Op::InputLeft { .. }
         )
@@ -1008,7 +983,7 @@ mod tests {
     fn every_op_that_computes_takes_its_meaning_from_ops() {
         let src = include_str!("exec.rs");
         let start = src.find("fn exec(").unwrap_or(0);
-        let end = src.find("/// A word of a value of").unwrap_or(src.len());
+        let end = src.find("\n#[cfg(test)]").unwrap_or(src.len());
         let body = &src[start..end];
         let arm_start = "                Op::";
         let mut arms = std::collections::HashMap::new();
@@ -1028,7 +1003,7 @@ mod tests {
         }
         let _typed: [fn(&Op) -> bool; 2] = [plumbing, not_an_op];
         let (plumbing, fail) = (named("plumbing"), named("not_an_op"));
-        assert_eq!((plumbing.len(), fail.len()), (29, 1), "read the matches");
+        assert_eq!((plumbing.len(), fail.len()), (32, 1), "read the matches");
         let variants = variants();
         assert!(variants.len() > 30, "found the Op enum: {variants:?}");
         for v in &variants {

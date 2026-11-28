@@ -326,6 +326,8 @@ pub struct Roles {
     pub print: Option<FnId>,
     /// `write(...)`: `print` without the line end.
     pub write: Option<FnId>,
+    /// What an event shows of a value (contract 8): the text the fn writes to `out`.
+    pub trace: Option<FnId>,
     /// `for x in s`: the trait whose one yielding method walks `s`.
     pub iteration: Option<TraitId>,
     /// The `@role(recipe)` struct: the value of a `-> yields T` call made outside a `for`
@@ -360,10 +362,11 @@ pub enum Role {
     Todo,
     Prelude,
     Recipe,
+    Trace,
 }
 
 impl Role {
-    pub const ALL: [Role; 8] = [
+    pub const ALL: [Role; 9] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -372,6 +375,7 @@ impl Role {
         Role::Todo,
         Role::Prelude,
         Role::Recipe,
+        Role::Trace,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -384,6 +388,7 @@ impl Role {
             Role::Todo => "todo",
             Role::Prelude => "prelude",
             Role::Recipe => "recipe",
+            Role::Trace => "trace",
         }
     }
 }
@@ -1641,6 +1646,7 @@ fn add_fn(
         let slot = match role {
             Some(Role::Print) => &mut d.roles.print,
             Some(Role::Write) => &mut d.roles.write,
+            Some(Role::Trace) => &mut d.roles.trace,
             Some(_) => {
                 let name = x.name.text.clone();
                 errors.push(Msg::at(item.at(x.span), Unbuilt::Decorator { name }));

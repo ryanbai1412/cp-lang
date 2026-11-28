@@ -206,7 +206,7 @@ impl Placer<'_> {
         let copy = Expr {
             kind: EK::Copy(Place::Local(t)),
             ty: e.ty.clone(),
-            site: 0,
+            site: e.site,
         };
         out.push(Stmt::Let(t, e));
         out.push(Stmt::Drop(p.clone()));

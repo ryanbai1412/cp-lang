@@ -190,6 +190,11 @@ pub fn print<Ts: ShowAll<WithNone>, N: Show>(
 pub fn write<Ts: ShowAll<Bare>>(..xs: Ts, sep: ?Str = None, precision: ?Int = None) uses io:
     put_line(xs, sep, "", fmt_of(precision))
 
+/// What a trace shows of a value: the text `write(x)` gives, which each event keeps instead
+/// of printing it (contract 8).
+@role(trace)
+fn traced<T: Show>(x: T) uses io = write(x)
+
 /// `write(xs, none: d)`, as `print(xs, none: d)` without the line's end.
 pub fn write<Ts: ShowAll<WithNone>, N: Show>(..xs: Ts, sep: ?Str = None, none: N, precision: ?Int = None) uses io:
     put_line(xs, sep, "", fmt_none(precision, none))

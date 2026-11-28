@@ -150,7 +150,7 @@ pub struct Roots {
 }
 
 /// A closure in a signature takes its set from the calls that reach the fn.
-pub fn link(v: Inputs, roots: &Roots, lent: &Lend) -> Program {
+pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
     let (d, c, generic) = (v.sigs, v.checked, v.fns);
     let mut l = Link {
         d,
@@ -209,57 +209,65 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend) -> Program {
     let mut insts: Vec<Func<CTy>> = Vec::new();
     let mut next = 0;
     let mut said = std::collections::HashSet::new();
-    while next < l.keys.len() {
-        let key = l.keys[next].clone();
-        let Some(f) = generic.generic(&key.func) else {
-            l.errors.push(unlowered(&key.func));
-            break;
-        };
-        if l.keys.len() > LIMIT {
-            l.errors.push(Msg::verdict(cpl_diag::codes::GROWING_INSTANTIATION, format!("instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", f.name)));
-            break;
-        }
-        if let Some(g) = key.func.decl() {
-            if said.insert(g) {
-                l.errors.extend(c.deferred(g).iter().cloned());
+    let mut traced = !events;
+    loop {
+        while next < l.keys.len() {
+            let key = l.keys[next].clone();
+            let Some(f) = generic.generic(&key.func) else {
+                l.errors.push(unlowered(&key.func));
+                break;
+            };
+            if l.keys.len() > LIMIT {
+                l.errors.push(Msg::verdict(cpl_diag::codes::GROWING_INSTANTIATION, format!("instantiation does not end: `{}` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)", f.name)));
+                break;
             }
-        }
-        // A fn used at a domain declared in its own body: inside that instance the type
-        // argument and the local domain would be one type with two sizes. A run-time value
-        // has to be keyed by its binding for this to run; until then it is refused.
-        let owner = match &key.func {
-            FuncKey::Decl(f) | FuncKey::Ctx(f, _) => Some(*f),
-            FuncKey::Lambda(_) => f.maker,
-            FuncKey::Main | FuncKey::Case => None,
-        };
-        let mut doms = Vec::new();
-        key.targs.iter().for_each(|t| doms_of(t, &mut doms));
-        if let Some(d) = doms
-            .iter()
-            .find(|d| owner.is_some() && c.domain(DomId(**d)).owner == owner)
-        {
-            l.errors.push(
-                Unbuilt::DomainTypeArg {
-                    func: f.name.clone(),
-                    domain: Some(c.domain(DomId(*d)).name.clone()),
+            if let Some(g) = key.func.decl() {
+                if said.insert(g) {
+                    l.errors.extend(c.deferred(g).iter().cloned());
                 }
-                .into(),
-            );
+            }
+            // A fn used at a domain declared in its own body: inside that instance the type
+            // argument and the local domain would be one type with two sizes. A run-time value
+            // has to be keyed by its binding for this to run; until then it is refused.
+            let owner = match &key.func {
+                FuncKey::Decl(f) | FuncKey::Ctx(f, _) => Some(*f),
+                FuncKey::Lambda(_) => f.maker,
+                FuncKey::Main | FuncKey::Case => None,
+            };
+            let mut doms = Vec::new();
+            key.targs.iter().for_each(|t| doms_of(t, &mut doms));
+            if let Some(d) = doms
+                .iter()
+                .find(|d| owner.is_some() && c.domain(DomId(**d)).owner == owner)
+            {
+                l.errors.push(
+                    Unbuilt::DomainTypeArg {
+                        func: f.name.clone(),
+                        domain: Some(c.domain(DomId(*d)).name.clone()),
+                    }
+                    .into(),
+                );
+                break;
+            }
+            let env = Env {
+                targs: &key.targs,
+                sets: &key.sets,
+            };
+            let mut inst = match item_value(d, &key) {
+                true => value_only(f),
+                false => l.instance(f, &env),
+            };
+            if selfless(d, &key) {
+                inst.body.clear();
+            }
+            insts.push(inst);
+            next += 1;
+        }
+        if traced || !l.errors.is_empty() {
             break;
         }
-        let env = Env {
-            targs: &key.targs,
-            sets: &key.sets,
-        };
-        let mut inst = match item_value(d, &key) {
-            true => value_only(f),
-            false => l.instance(f, &env),
-        };
-        if selfless(d, &key) {
-            inst.body.clear();
-        }
-        insts.push(inst);
-        next += 1;
+        traced = true;
+        l.trace_instances(&insts);
     }
     let globals = l.globals.clone();
     // Instances made while typing the globals.
@@ -304,6 +312,46 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend) -> Program {
 }
 
 impl Link<'_> {
+    /// Contract 8: the `trace` role's fn for the type of each value an event can show, a
+    /// parameter or result of a fn of the user's file or a top-level binding. A type without
+    /// the fn's bound gets none, and its events show no value.
+    fn trace_instances(&mut self, insts: &[Func<CTy>]) {
+        let Some(f) = self.d.roles().trace else {
+            return;
+        };
+        let fd = self.d.f(f);
+        let (Some(param), Some((_, bound))) = (fd.params.first(), fd.bounds.first()) else {
+            return;
+        };
+        let (param, bound) = (param.ty.clone(), bound.clone());
+        let mut tys = BTreeSet::new();
+        for i in insts {
+            let mine = matches!(&i.key, FuncKey::Decl(g) | FuncKey::Ctx(g, _)
+                if self.c.in_program(*g));
+            if mine && i.region.is_none() {
+                let params = i.params[i.n_captures..].iter().map(|(l, _)| &i.locals[*l]);
+                tys.extend(params.chain([&i.ret]).map(|t| t.unlent().clone()));
+            }
+        }
+        let top =
+            |g: usize| (self.c.global(GlobalId(g))).is_some_and(|x| x.top && !x.name.contains('$'));
+        let tops = (self.globals.iter().enumerate()).filter(|(g, _)| top(*g));
+        tys.extend(tops.map(|(_, t)| t.clone()));
+        for t in tys {
+            let targs = [t];
+            let env = Env {
+                targs: &targs,
+                sets: &[],
+            };
+            if self.has_bound(&param, bound.tr, &bound.args, &env) {
+                self.intern(InstKey {
+                    func: FuncKey::Decl(f),
+                    targs: targs.to_vec(),
+                    sets: vec![],
+                });
+            }
+        }
+    }
     fn parts(&self, t: &CTy) -> Vec<CTy> {
         parts(&self.structs, &self.sums, t)
     }
