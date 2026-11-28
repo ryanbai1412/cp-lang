@@ -349,6 +349,23 @@ fn derived_impls_declare_parameters_of_any_name() {
     assert_eq!(c.run("").output, "1\n");
 }
 
+/// An impl `let`'s value is read for the domain parameters its fn needs, as a written body is:
+/// `let count = 1 << B.count` makes `B` a domain parameter, so `B.count` needs no written bound.
+#[test]
+fn an_impl_lets_value_gives_its_parameter_an_implied_domain() {
+    let src = "struct Sub<B>(bits: Int)\nimpl Index for Sub<B>:\n    let count = 1 << B.count\n    @get fn ord(self) -> Int = bits\n    fn nth(k: Int) -> Sub<B> = Sub(k)\ndomain V = 0..3\nprint(Sub<V>.count)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    assert_eq!(raw(&c).output, "8\n");
+}
+
 /// Std read once is a value no program changes: programs compiled one after another
 /// against it each get what they get against a std of their own.
 #[test]
