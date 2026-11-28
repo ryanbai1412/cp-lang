@@ -1,4 +1,4 @@
-std.algebra	53
+std.algebra	49
 std.bag	11
 std.beats	0
 std.bitset	13
@@ -10,7 +10,7 @@ std.derive	8
 std.domains	0
 std.dp	26
 std.dsu	0
-std.fenwick	48
+std.fenwick	46
 std.flow	29
 std.geometry	14
 std.graph	49
@@ -18,10 +18,10 @@ std.grid	0
 std.hash	0
 std.hashmap	0
 std.heap	0
-std.interval	32
+std.interval	6
 std.io	0
 std.laws	0
-std.lazy	14
+std.lazy	13
 std.list	0
 std.literal	0
 std.map	2
@@ -53,9 +53,9 @@ std.slope	0
 std.sparse	0
 std.spec	0
 std.stream	0
-std.strings	31
+std.strings	26
 std.subset	0
 std.timetree	0
-std.tree	25
+std.tree	17
 std.tuple	0
 std.window	0
