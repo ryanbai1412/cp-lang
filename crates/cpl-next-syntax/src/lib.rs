@@ -13,6 +13,7 @@
 
 pub mod ast;
 pub mod doc;
+pub mod fall_through;
 mod file;
 pub mod grammar;
 mod items;
@@ -22,6 +23,7 @@ pub mod ops;
 mod parser;
 mod token;
 pub mod tree;
+pub mod visit;
 
 pub use file::{parse, NodeKind, SyntaxFile};
 pub use items::{split_items, ItemRange};
@@ -30,5 +32,7 @@ pub use parser::{parse_expr, parse_stmts};
 pub use token::{arg_labels, removed_keyword, Token, TokenKind, KEYWORDS, LITERAL_WORDS};
 pub use tree::{GreenNode, GreenToken, SyntaxElement, SyntaxNode, SyntaxToken};
 
+#[cfg(test)]
+mod fall_through_tests;
 #[cfg(test)]
 mod tests;
