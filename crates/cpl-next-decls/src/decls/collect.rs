@@ -197,65 +197,68 @@ fn layer(
     let convert = crate::synth::convert_marked(all);
     let positions = crate::records::positions(all());
     // Only a derive that rebuilds its value copies the `@cache` fields.
-    let none_copy =
-        |v: Vec<(ItemId, String, ast::Stmt)>| v.into_iter().map(|(i, n, s)| (i, n, s, false));
-    let derived: Vec<Vec<(ItemId, String, ast::Stmt, bool)>> = (mods.iter().enumerate())
-        .map(|(mi, m)| {
-            // Std's modules get only what a program's records add.
-            let ours = mi >= from;
-            let mut made = match (mi == CORE.0, ours) {
-                (true, _) => module_derived(&records, &each),
-                (false, true) => module_derived(&m.items, &each),
-                (false, false) => Vec::new(),
-            };
-            if let (true, Some(it)) = (mi == CORE.0, records.first()) {
-                if let Some(at) = it.stmts.first() {
-                    let impls = crate::records::domain_impls(all(), &new_shapes, at.span);
-                    made.extend(
-                        impls
-                            .into_iter()
-                            .map(|(n, imp)| (it.id.clone(), n, imp, false)),
-                    );
-                    // Each new row over every shape, and std's rows over the new shapes.
-                    let rows_of = |rs: &[Vec<String>]| crate::modules::Item {
-                        id: it.id.clone(),
-                        stmts: crate::records::row_traits(rs, at.span),
-                    };
-                    made.extend(none_copy(crate::synth::field_trait_impls(
-                        &[rows_of(&new_rows)],
-                        &shapes,
-                    )));
-                    if !new_shapes.is_empty() {
-                        let old = [rows_of(&old_rows)];
+    let none_copy = |v: Vec<(ItemId, String, ast::Stmt)>| {
+        (v.into_iter()).map(|(i, n, s)| (i, n, s, Asks::Fields { caches: false }))
+    };
+    let fields = |v: Vec<(ItemId, String, ast::Stmt, bool)>| {
+        (v.into_iter()).map(|(i, n, s, caches)| (i, n, s, Asks::Fields { caches }))
+    };
+    let derived: Vec<Vec<(ItemId, String, ast::Stmt, Asks)>> =
+        (mods.iter().enumerate())
+            .map(|(mi, m)| {
+                // Std's modules get only what a program's records add.
+                let ours = mi >= from;
+                let mut made = match (mi == CORE.0, ours) {
+                    (true, _) => fields(module_derived(&records, &each)).collect(),
+                    (false, true) => fields(module_derived(&m.items, &each)).collect(),
+                    (false, false) => Vec::new(),
+                };
+                if let (true, Some(it)) = (mi == CORE.0, records.first()) {
+                    if let Some(at) = it.stmts.first() {
+                        let impls = crate::records::domain_impls(all(), &new_shapes, at.span);
+                        made.extend(impls.into_iter().map(|(n, imp)| {
+                            (it.id.clone(), n, imp, Asks::Fields { caches: false })
+                        }));
+                        // Each new row over every shape, and std's rows over the new shapes.
+                        let rows_of = |rs: &[Vec<String>]| crate::modules::Item {
+                            id: it.id.clone(),
+                            stmts: crate::records::row_traits(rs, at.span),
+                        };
                         made.extend(none_copy(crate::synth::field_trait_impls(
-                            &old,
-                            &new_shapes,
+                            &[rows_of(&new_rows)],
+                            &shapes,
                         )));
+                        if !new_shapes.is_empty() {
+                            let old = [rows_of(&old_rows)];
+                            made.extend(none_copy(crate::synth::field_trait_impls(
+                                &old,
+                                &new_shapes,
+                            )));
+                        }
+                        let without = (crate::records::without_impls(&new_forms, &shapes, at.span))
+                            .into_iter()
+                            .chain(crate::records::without_impls(
+                                &old_forms,
+                                &new_shapes,
+                                at.span,
+                            ));
+                        made.extend(without.map(|(n, imp)| (it.id.clone(), n, imp, Asks::Written)));
                     }
-                    let without = (crate::records::without_impls(&new_forms, &shapes, at.span))
-                        .into_iter()
-                        .chain(crate::records::without_impls(
-                            &old_forms,
-                            &new_shapes,
-                            at.span,
-                        ));
-                    made.extend(without.map(|(n, imp)| (it.id.clone(), n, imp, false)));
                 }
-            }
-            if ours || !new_shapes.is_empty() {
-                let shapes = if ours { &shapes } else { &new_shapes };
-                made.extend(none_copy(crate::synth::field_trait_impls(&m.items, shapes)));
-            }
-            if let Some(c) = convert.as_ref().filter(|_| ours) {
-                made.extend(none_copy(crate::synth::enum_conversions(
-                    &m.items,
-                    c,
-                    positions.as_ref(),
-                )));
-            }
-            made
-        })
-        .collect();
+                if ours || !new_shapes.is_empty() {
+                    let shapes = if ours { &shapes } else { &new_shapes };
+                    made.extend(none_copy(crate::synth::field_trait_impls(&m.items, shapes)));
+                }
+                if let Some(c) = convert.as_ref().filter(|_| ours) {
+                    made.extend(none_copy(crate::synth::enum_conversions(
+                        &m.items,
+                        c,
+                        positions.as_ref(),
+                    )));
+                }
+                made
+            })
+            .collect();
     for (w, (home, name)) in crate::synth::memo_tables(mods) {
         let (w, name) = (d.syms.intern(&w), d.syms.intern(&name));
         d.memo_homes.insert(w, (home, name));
@@ -610,10 +613,14 @@ fn layer(
     }
     // The derived impls that read their struct's `@cache` fields, by the impl they are.
     let mut copying: HashSet<*const ast::Stmt> = HashSet::new();
+    // The made impls that ask only their written bounds.
+    let mut stated: HashSet<*const ast::Stmt> = HashSet::new();
     for (mi, made) in derived.iter().enumerate() {
-        for (item, name, s, caches) in made {
-            if *caches {
-                copying.insert(s);
+        for (item, name, s, asks) in made {
+            match asks {
+                Asks::Fields { caches: true } => _ = copying.insert(s),
+                Asks::Fields { caches: false } => {}
+                Asks::Written => _ = stated.insert(s),
             }
             // A record is core's struct wherever its impl is written.
             let record = |n: &Named| matches!(n, Named::Struct(s) if d.structs[s.0].record);
@@ -1168,7 +1175,8 @@ fn layer(
                         d.module_or_program_errors(mid, errors);
                         continue;
                     };
-                    if let Some(Named::Struct(sid)) = id.filter(|_| !d.field_trait(tref.tr)) {
+                    let asks_fields = !d.field_trait(tref.tr) && !stated.contains(&(s as *const _));
+                    if let Some(Named::Struct(sid)) = id.filter(|_| asks_fields) {
                         let Some(asked) =
                             d.derived_bounds(sid, &tref, copying.contains(&(s as *const _)))
                         else {
@@ -1714,4 +1722,15 @@ impl cpl_syntax::visit::Visitor for Reads {
             self.0.push((n.clone(), e.span));
         }
     }
+}
+
+/// What a made impl asks of its struct's parameters.
+#[derive(Clone, Copy)]
+enum Asks {
+    /// What each field's type takes the impl's trait by, its `@cache` fields too when it
+    /// copies them (R08.1.6).
+    Fields { caches: bool },
+    /// Only its written bounds: a `without` form's impl reads the record's field names, not
+    /// their types (R08.4.1).
+    Written,
 }
