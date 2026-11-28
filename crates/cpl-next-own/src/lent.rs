@@ -9,7 +9,9 @@
 use crate::lends;
 use cpl_next_decls::decls::SelfMode;
 use cpl_next_decls::views::Signatures;
-use cpl_next_ir::ir::{visit_places, Arg, Expr, Func, FuncKey, Place, Stmt, Target, EK};
+use cpl_next_ir::ir::{
+    visit_places, visit_types, Arg, Expr, Func, FuncKey, Place, Stmt, Target, EK,
+};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
 
@@ -68,6 +70,106 @@ pub(crate) fn mark(
     for k in rest {
         w.func(&k, Vec::new());
     }
+    // The fields of each struct a fn builds, for the values settled into them.
+    let mut built = BTreeSet::new();
+    for f in funcs.values() {
+        visit_types(
+            f,
+            &mut |t| {
+                if let Ty::Struct(s, ..) = t.unlent() {
+                    built.insert(*s);
+                }
+            },
+            &mut |_| {},
+        );
+    }
+    let fields: HashMap<StructId, Vec<Ty>> = (built.into_iter())
+        .map(|s| (s, d.s(s).fields.iter().map(|(_, t)| t.clone()).collect()))
+        .collect();
+    settle(&fields, funcs, globals);
+}
+
+/// Gives each value put in a binding the marks the binding took from another, back through
+/// the temps it was built in: a `None` it starts as is an option of the view a loop later
+/// puts there (R05.7.6), so all its values have one form.
+fn settle(
+    fields: &HashMap<StructId, Vec<Ty>>,
+    funcs: &mut HashMap<FuncKey, Func<Ty>>,
+    globals: &[Ty],
+) {
+    while (funcs.values_mut())
+        .map(|f| settle_block(fields, &mut f.body, &mut f.locals, &f.names, globals))
+        .fold(false, |a, b| a | b)
+    {}
+}
+
+fn settle_block(
+    fields: &HashMap<StructId, Vec<Ty>>,
+    b: &mut [Stmt<Ty>],
+    locals: &mut [Ty],
+    names: &[String],
+    globals: &[Ty],
+) -> bool {
+    let mut changed = false;
+    for s in b {
+        changed |= match s {
+            Stmt::Let(l, v) | Stmt::Assign(Place::Local(l), v) => match locals.get(*l).cloned() {
+                Some(t) => settle_value(fields, v, &t, false, locals, names),
+                None => false,
+            },
+            Stmt::Assign(Place::Global(g), v) => match globals.get(*g) {
+                Some(t) => settle_value(fields, v, t, false, locals, names),
+                None => false,
+            },
+            Stmt::If(_, a, b) | Stmt::Loop(a, b, _) => {
+                settle_block(fields, a, locals, names, globals)
+                    | settle_block(fields, b, locals, names, globals)
+            }
+            Stmt::Switch(_, arms) => (arms.iter_mut())
+                .map(|a| settle_block(fields, a, locals, names, globals))
+                .fold(false, |a, b| a | b),
+            Stmt::Region { body, .. } => settle_block(fields, body, locals, names, globals),
+            _ => false,
+        };
+    }
+    changed
+}
+
+/// Gives `v` the marks of `slot` where it is built, not read from a named place: a temp it
+/// copies takes them in turn. `field` when `slot` is a struct's field, which may be lent whole.
+fn settle_value(
+    fields: &HashMap<StructId, Vec<Ty>>,
+    v: &mut Expr<Ty>,
+    slot: &Ty,
+    field: bool,
+    locals: &mut [Ty],
+    names: &[String],
+) -> bool {
+    let t = mark_lent(&v.ty, slot);
+    if t == v.ty || strip_lent(&v.ty) != strip_lent(slot) {
+        return false;
+    }
+    let whole = matches!(t, Ty::Lent(_)) && !matches!(v.ty, Ty::Lent(_));
+    match &mut v.kind {
+        EK::Copy(Place::Local(x)) if !whole && names.get(*x).is_none_or(String::is_empty) => {
+            if let Some(l) = locals.get_mut(*x) {
+                *l = mark_lent(l, slot);
+            }
+        }
+        EK::MakeStruct(xs) if !whole => {
+            let Ty::Struct(s, ts, ss) = &t else {
+                return false;
+            };
+            let sub = Subst { tys: ts, sets: ss };
+            for (x, f) in xs.iter_mut().zip(fields.get(s).into_iter().flatten()) {
+                settle_value(fields, x, &sub.ty(f), true, locals, names);
+            }
+        }
+        EK::Intr(op, ..) if op.untyped() && (field || !whole) => {}
+        _ => return false,
+    }
+    v.ty = t;
+    true
 }
 
 struct Lw<'a> {
@@ -192,9 +294,14 @@ impl Lw<'_> {
             }
             Stmt::Assign(p, v) => {
                 self.expr(fr, v);
-                // A top-level binding takes the marks of the value it is bound to.
-                if let Place::Global(g) = p {
-                    if let Some(t) = self.globals.get_mut(*g) {
+                // A binding takes the marks of each value put in it.
+                let slot = match p {
+                    Place::Global(g) => self.globals.get_mut(*g),
+                    Place::Local(l) => fr.locals.get_mut(*l),
+                    _ => None,
+                };
+                {
+                    if let Some(t) = slot {
                         if v.ty != *t && strip_lent(&v.ty) == *t && strip_lent(t) == *t {
                             *t = v.ty.clone();
                         }

@@ -303,3 +303,29 @@ fn a_walk_binds_what_its_generator_yields_lent() {
     assert_eq!(ran.status.code(), Some(0));
     assert_eq!(String::from_utf8_lossy(&ran.stdout), o.output);
 }
+
+/// A binding that starts as `None` and is later given a view keeps one form: its first value
+/// takes the view's marks, so the C++ builds and runs as the engine does (R05.7.6).
+#[test]
+fn an_optional_view_starts_as_the_views_none() {
+    let src = "domain V = 1..=4\nvar a: [V]Int = 0\nvar c = 0\nfor v in V:\n    c += 1\n    a[v] = c\nlet queries = [(V.first!, V.first!), (V.first!, V.last!)]\nvar best: ?Slice<[V]Int> = None\nfor (l, r) in queries:\n    best = a[l..r]\nfn kept() -> Int:\n    var mine: ?Slice<[V]Int> = None\n    for (l, r) in queries:\n        mine = a[l..r]\n    mine!.sum()\nprint(best!.sum(), kept())\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let o = c.run("");
+    assert_eq!((o.output.as_str(), o.trap.is_none()), ("6 6\n", true));
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-pthread", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(ran.status.code(), Some(0));
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), o.output);
+}
