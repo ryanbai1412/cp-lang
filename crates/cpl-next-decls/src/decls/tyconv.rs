@@ -4,7 +4,7 @@
 use super::forms::TyForm;
 use super::*;
 use crate::ops::{bin_intr, fold, un_intr};
-use crate::views::{Scope, Shapes, Signatures, Texts, TypeTables};
+use crate::views::{RoleStructs, Scope, Shapes, Signatures, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::End;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -379,7 +379,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
         }
         Type::Record(r) => conv_record(cx, r, errors),
         // `?T` is the struct filling the `option` role.
-        Type::Optional(o) => match (cx.env.roles().option, o.inner()) {
+        Type::Optional(o) => match (cx.env.role_struct(Role::Option), o.inner()) {
             (_, _) if o.is_mut() => unbuilt("Mut", errors),
             (Some(d), Some(inner)) => Ty::Struct(d, vec![conv(cx, &inner, errors)], Vec::new()),
             (None, _) => unbuilt("Optional", errors),
@@ -772,7 +772,7 @@ fn conv_array(cx: &mut TyCx, a: &next::ArrayType, errors: &mut Vec<Msg>) -> Ty {
         }
     };
     let e = conv(cx, &elem, errors);
-    match cx.env.sugar().array {
+    match cx.env.role_struct(Role::Array) {
         Some(array) => Ty::Struct(array, vec![i, e], Vec::new()),
         None => {
             errors.push(Msg::internal("`[D]T` needs the `@role(array)` struct"));
@@ -1011,6 +1011,12 @@ impl TypeTables for Tables {
     }
     fn roles(&self) -> &Roles {
         &self.roles
+    }
+}
+
+impl RoleStructs for Tables {
+    fn role_struct(&self, r: Role) -> Option<StructId> {
+        crate::views::role_struct_of(&self.roles, &self.sugar, r)
     }
 }
 

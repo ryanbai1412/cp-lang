@@ -17,7 +17,7 @@ use std::collections::HashMap;
 
 /// The part of the signatures a written type is converted against, each table read by key.
 /// Decls reads it while it is still building the rest of the signatures.
-pub trait TypeTables: Texts + Shapes {
+pub trait TypeTables: Texts + Shapes + RoleStructs {
     /// The id of a name written `text`, if any table holds it.
     fn sym(&self, text: &str) -> Option<crate::sym::Sym>;
     fn alias(&self, id: AliasId) -> &AliasDecl;
@@ -39,9 +39,7 @@ pub trait TypeTables: Texts + Shapes {
 
 /// The declarations filling the language roles (R11.6.1) and the rows `@operator`, `@literal`
 /// and the fn marks add, each read by key.
-pub trait RoleRows {
-    /// The struct filling role `r`: `Optional`, `List`, the `@role(cuts)` struct.
-    fn role_struct(&self, r: Role) -> Option<StructId>;
+pub trait RoleRows: RoleStructs {
     /// The trait filling role `r`: iteration, positions, order, convert.
     fn role_trait(&self, r: Role) -> Option<TraitId>;
     /// The fn filling role `r`: `print`, `todo`, the string literal's builder.
@@ -64,6 +62,28 @@ pub trait RoleRows {
     fn walk(&self, tr: TraitId) -> Option<(Sym, FnId)>;
     /// Trait `tr`'s yielding method with a default body (`each`), which an impl may write.
     fn own_walk(&self, tr: TraitId) -> Option<(Sym, FnId)>;
+}
+
+/// The structs filling the language roles, which a written type converts through: `?T` the
+/// option role's, `[D]T` the array role's.
+pub trait RoleStructs {
+    /// The struct filling role `r`: `Optional`, `List`, the `@role(cuts)` struct.
+    fn role_struct(&self, r: Role) -> Option<StructId>;
+}
+
+/// The struct `roles` and `sugar` say fills role `r`.
+pub(crate) fn role_struct_of(roles: &Roles, sugar: &Sugar, r: Role) -> Option<StructId> {
+    match r {
+        Role::Option => roles.option,
+        Role::Recipe => roles.recipe,
+        Role::Cuts => roles.cut,
+        Role::Pack => roles.pack,
+        Role::List => sugar.list,
+        Role::Str => sugar.str,
+        Role::Map => sugar.map,
+        Role::Array => sugar.array,
+        _ => None,
+    }
 }
 
 /// The shapes of the structs, each read by key: a struct's sets, defaults, fields and variants,
@@ -388,20 +408,13 @@ impl TypeTables for Decls {
     }
 }
 
-impl RoleRows for Decls {
+impl RoleStructs for Decls {
     fn role_struct(&self, r: Role) -> Option<StructId> {
-        match r {
-            Role::Option => self.roles.option,
-            Role::Recipe => self.roles.recipe,
-            Role::Cuts => self.roles.cut,
-            Role::Pack => self.roles.pack,
-            Role::List => self.sugar.list,
-            Role::Str => self.sugar.str,
-            Role::Map => self.sugar.map,
-            Role::Array => self.sugar.array,
-            _ => None,
-        }
+        role_struct_of(&self.roles, &self.sugar, r)
     }
+}
+
+impl RoleRows for Decls {
     fn role_trait(&self, r: Role) -> Option<TraitId> {
         match r {
             Role::Iteration => self.roles.iteration,
