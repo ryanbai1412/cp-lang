@@ -430,6 +430,55 @@ impl Link<'_> {
                 .collect(),
         }
     }
+    /// `e.v` through a row bound `R: (u: V, v: V, ..)`: a record meets the row trait by its
+    /// fields (R08.4.1), so at this instance's record the getter is the read of field `v`.
+    fn row_read(
+        &mut self,
+        t: &Target<Ty>,
+        args: &[Arg<CTy>],
+        at: Site,
+        env: &Env,
+    ) -> Option<EK<CTy>> {
+        let Target::Trait {
+            tr,
+            method,
+            self_ty,
+            ..
+        } = t
+        else {
+            return None;
+        };
+        if !self.d.t(*tr).row {
+            return None;
+        }
+        let CTy::Struct(s, ..) = self.targ(self_ty, env).unlent().clone() else {
+            return None;
+        };
+        let sd = self.d.s(s);
+        if !sd.record {
+            return None;
+        }
+        let i = (sd.fields.iter()).position(|(n, _)| self.d.text(*n) == method)?;
+        let Some(Arg::Value(Expr {
+            kind: EK::Copy(p) | EK::Pass(p, ..),
+            ..
+        })) = args.first()
+        else {
+            self.errors.push(Msg::internal(format!(
+                "a row getter `{method}` reads a record that is no place"
+            )));
+            return Some(EK::Intr(Intr::Unset, Vec::new(), at));
+        };
+        let base = match self.place_ty(p) {
+            Some(CTy::Lent(_)) => Place::Through(Box::new(p.clone())),
+            _ => p.clone(),
+        };
+        let f = Place::Field(Box::new(base), i);
+        Some(EK::Copy(match self.place_ty(&f) {
+            Some(CTy::Lent(_)) => Place::Through(Box::new(f)),
+            _ => f,
+        }))
+    }
     /// `p` read through each lent slot on its path.
     fn place(&self, p: &Place) -> Place {
         let sub = |b: &Place| Box::new(self.place(b));
@@ -993,7 +1042,7 @@ impl Link<'_> {
                         binds[*i].as_ref().is_none_or(|t| cty_meets(d, self.c, t, r.tr))
                     })
             });
-        by_impl || (want.is_empty() && cty_meets(d, self.c, &st, tr))
+        by_impl || ((want.is_empty() || d.t(tr).row) && cty_meets(d, self.c, &st, tr))
     }
     fn trait_key(
         &mut self,
@@ -1169,20 +1218,24 @@ impl Link<'_> {
             ),
             EK::Call(t, args, at) => {
                 let args: Vec<Arg<CTy>> = args.iter().map(|a| self.arg(a, env)).collect();
-                // A method an impl gives as an intrinsic is that operation.
-                let key = self.key(t, env);
-                let intr = match &key {
-                    Some(InstKey {
-                        func: FuncKey::Decl(f),
-                        ..
-                    }) => self.d.f(*f).intrinsic.and_then(|i| i.op()),
-                    _ => None,
-                };
-                match (intr, key) {
-                    (Some(op), _) => EK::Intr(op, args, *at),
-                    (None, Some(k)) => EK::Call(Target::Inst(self.intern(k)), args, *at),
-                    // A call nothing runs (a method of a type nothing fixes) still has its type.
-                    (None, None) => EK::Intr(Intr::Unset, Vec::new(), *at),
+                if let Some(read) = self.row_read(t, &args, *at, env) {
+                    read
+                } else {
+                    // A method an impl gives as an intrinsic is that operation.
+                    let key = self.key(t, env);
+                    let intr = match &key {
+                        Some(InstKey {
+                            func: FuncKey::Decl(f),
+                            ..
+                        }) => self.d.f(*f).intrinsic.and_then(|i| i.op()),
+                        _ => None,
+                    };
+                    match (intr, key) {
+                        (Some(op), _) => EK::Intr(op, args, *at),
+                        (None, Some(k)) => EK::Call(Target::Inst(self.intern(k)), args, *at),
+                        // A call nothing runs (a method of a type nothing fixes) still has its type.
+                        (None, None) => EK::Intr(Intr::Unset, Vec::new(), *at),
+                    }
                 }
             }
         };
@@ -1644,6 +1697,14 @@ fn blanket_met(
             .all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, c, t, r.tr)))
 }
 fn cty_meets(d: &dyn Signatures, c: &dyn Checked, t: &CTy, tr: TraitId) -> bool {
+    // A record meets a row trait by having each field its getters read (R08.4.1).
+    if d.t(tr).row {
+        let CTy::Struct(s, ..) = t else {
+            return false;
+        };
+        let sd = d.s(*s);
+        return sd.record && (d.t(tr).methods.keys()).all(|m| sd.fields.iter().any(|f| f.0 == *m));
+    }
     // A domain's impl rows travel with it in `Whole` (S11).
     if let CTy::Dom(i) = t {
         if c.domain(DomId(*i)).impls.contains(&tr) {
