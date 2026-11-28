@@ -514,16 +514,16 @@ impl<'a> Impls<'a> {
     fn meets(&self, t: &Ty, r: &TraitRef) -> bool {
         self.holds(t, r)
     }
-    /// Whether `t` has an impl of `tr` at any arguments, its parameters taken to meet the
-    /// impl's bounds.
-    /// Whether `t` is `Discrete` but not a `Domain`: positions with no count, as `Int`'s are. An
+    /// Whether `t` is `discrete` but not a `domain`: positions with no count, as `Int`'s are. An
     /// array over one is the list, whose length is the value's own (R04.8.11).
-    pub fn uncounted(&self, t: &Ty, roles: &crate::decls::Roles) -> bool {
-        let (Some(walk), Some(dom)) = (roles.discrete, roles.domain) else {
+    pub fn uncounted(&self, t: &Ty, discrete: Option<TraitId>, domain: Option<TraitId>) -> bool {
+        let (Some(walk), Some(dom)) = (discrete, domain) else {
             return false;
         };
         matches!(t, Ty::Int | Ty::Struct(..)) && self.has_impl(t, walk) && !self.has_impl(t, dom)
     }
+    /// Whether `t` has an impl of `tr` at any arguments, its parameters taken to meet the
+    /// impl's bounds.
     pub fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
         let r = TraitRef {
             tr,
