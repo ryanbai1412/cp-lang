@@ -693,7 +693,7 @@ impl Cx<'_> {
         let probe = self.expr(&next::Expr::Index(ix.clone()), None);
         self.errors.truncate(seen);
         let rt = self.shallow(&probe.ty);
-        let writes = match self.member_named(&rt, name.text()) {
+        let writes = match self.member_named(&rt, self.d.sym(name.text())) {
             Some(decls::Member::Method(m, ..)) => {
                 self.d.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
             }
@@ -745,7 +745,7 @@ impl Cx<'_> {
     /// `recv.m(args)` on a checked receiver whose type declares `m`.
     fn method_on(&mut self, recv: TExpr, name: Called, args: &[CallArg], span: Span) -> TExpr {
         let rt = self.recv_ty(&recv.ty);
-        let found = self.member_named(&rt, name.text);
+        let found = self.member_named(&rt, name.sym);
         let module = self.b.module;
         let hidden = (found.as_ref()).and_then(|x| self.d.hidden_member(x, &rt, name.text, module));
         if let Some((msg, help)) = hidden {
