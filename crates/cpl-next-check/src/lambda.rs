@@ -433,11 +433,13 @@ impl<'a> Cx<'a> {
         out: &mut Vec<TStmt>,
     ) -> Option<VarRef> {
         let span = self.at(fd);
-        let bound = name.unwrap_or("$body");
         if let Some(what) = nested_gap(fd) {
             let what = what.to_string();
             self.err(span, Unbuilt::NestedFn { what });
-            return Some(self.bind(bound, Ty::Error));
+            return Some(match name {
+                Some(n) => self.bind(n, Ty::Error),
+                None => self.temp("$body", Ty::Error),
+            });
         }
         let &(_, _, id) = self.b.group.iter().rev().find(|g| g.0 == span.start)?;
         let body = LamBody::Fn(fd.body()?);
@@ -454,8 +456,14 @@ impl<'a> Cx<'a> {
         let v = self.lambda_of(params, Some(ret), body, None, span);
         self.b.nested = None;
         self.b.recur = None;
-        let var = self.let_bind(bound, false, v.ty.clone(), v, span, out);
-        if fd.name().is_none_or(|t| Some(t.text()) != name) {
+        // A body no name reaches (a `@memo` fn's) is the checker's own binding.
+        let Some(name) = name else {
+            let var = self.temp("$body", v.ty.clone());
+            out.push(TStmt::Let(var, v));
+            return Some(var);
+        };
+        let var = self.let_bind(name, false, v.ty.clone(), v, span, out);
+        if fd.name().is_none_or(|t| t.text() != name) {
             match var {
                 VarRef::Local(l) => self.b.locals[l].synthetic = true,
                 VarRef::Global(g) => self.globals[g].synthetic = true,
