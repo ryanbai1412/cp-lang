@@ -256,16 +256,20 @@ pub enum IrStage {
     Optimized,
     /// Not IR: each binding's frozen and lent places, from ownership's reporting walk.
     Borrows,
+    /// Not IR: each instance link made, with the instance that named it and the set read that
+    /// held it.
+    Instances,
 }
 
 impl IrStage {
     /// Each stage, by the name `--stage` takes.
-    const NAMES: [(&str, IrStage); 5] = [
+    const NAMES: [(&str, IrStage); 6] = [
         ("raw", IrStage::Raw),
         ("owned", IrStage::Owned),
         ("canonical", IrStage::Canonical),
         ("optimized", IrStage::Optimized),
         ("borrows", IrStage::Borrows),
+        ("instances", IrStage::Instances),
     ];
 
     pub fn named(name: &str) -> Option<IrStage> {
@@ -356,7 +360,12 @@ pub(crate) fn roots(fns: &HashMap<ir::FuncKey, ir::Func<ty::Ty>>, globals: usize
 
 /// Link, then ownership on the linked instances (contract 4), where the program checked clean:
 /// the program, its copies settled, and ownership's diagnostics.
-fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<own::Bound>)> {
+/// `made` keeps why link made each instance (`Program::made`).
+fn back(
+    f: &mut Front,
+    events: bool,
+    made: bool,
+) -> Option<(inst::Program, Vec<Diag>, Vec<own::Bound>)> {
     if !(f.loaded.errors.is_empty() && f.t.errors.is_empty() && f.d.errors.is_empty()) {
         return None;
     }
@@ -380,7 +389,7 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
         checked: &checked,
         rows: &f.t.dom_rows,
     };
-    let mut prog = inst::link(v, &roots(fns, tys.len()), events);
+    let mut prog = inst::link(v, &roots(fns, tys.len()), events, made);
     let owned = own::after(d, &mut prog, &names, before);
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags, owned.binds))
@@ -527,7 +536,7 @@ pub(crate) fn compile(
     checks: Checks,
 ) -> Result<Compiled, Vec<Diag>> {
     let mut f = front(db, std, root, judge, checks);
-    let Some((mut prog, own, _)) = back(&mut f, events) else {
+    let Some((mut prog, own, _)) = back(&mut f, events, false) else {
         return Err(f.diags);
     };
     f.diags.extend(own);
@@ -871,7 +880,7 @@ pub(crate) fn units(
     checks: Checks,
 ) -> (Vec<Unit>, Vec<Diag>) {
     let mut f = front(db, std, root, judge, checks);
-    if let Some((_, own, _)) = back(&mut f, false) {
+    if let Some((_, own, _)) = back(&mut f, false, false) {
         f.diags.extend(own);
         f.diags.sort_by_key(|d| d.stage);
     }

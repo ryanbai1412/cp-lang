@@ -10,6 +10,9 @@
 //! reporting walk binds, the places a write to which conflicts with it (`frozen`) and the places
 //! it lends (`lent`), even when ownership rejects the program.
 //!
+//! `cpl-next dump-ir --stage instances FILE` prints each instance link made, the instance whose
+//! body named it (`by #j`, or `root`) and the set read that held it, for a set bug.
+//!
 //! The reference interpreter, the oracle the tests hold the engine and the C++ to, is not in
 //! this binary: the tests run it through `cpl-next-oracle`.
 mod cli;
@@ -110,7 +113,9 @@ fn dump_ir(args: &[String]) {
         .and_then(|i| args.get(i + 1))
         .and_then(|s| IrStage::named(s));
     let (Some(stage), Some(path)) = (stage, file(args)) else {
-        eprintln!("usage: cpl-next dump-ir --stage raw|owned|canonical|optimized FILE");
+        eprintln!(
+            "usage: cpl-next dump-ir --stage raw|owned|canonical|optimized|borrows|instances FILE"
+        );
         std::process::exit(2);
     };
     let session = disk_session(args, path);

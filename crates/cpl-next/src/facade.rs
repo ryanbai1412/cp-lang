@@ -400,12 +400,34 @@ impl Session {
                 let h = &self.snapshot.0;
                 let std = w.std(h).map_err(|e| Arc::from(vec![Diag::internal(&e)]))?;
                 let mut f = crate::front(&w.db, &std, id, h.judge.as_ref(), h.checks);
-                match crate::back(&mut f, false) {
+                match crate::back(&mut f, false, false) {
                     Some((prog, _, binds)) => {
                         let globals: Vec<String> =
                             f.t.globals.iter().map(|g| g.name.clone()).collect();
                         (binds.iter())
                             .map(|b| bound_line(&prog, &globals, b))
+                            .collect()
+                    }
+                    None => return Err(Arc::from(f.diags)),
+                }
+            }
+            // Link's record, so also for a program ownership rejects.
+            IrStage::Instances => {
+                let Some((id, _, _)) = self.file(file) else {
+                    return Err(Arc::from(Vec::new()));
+                };
+                let Ok(mut w) = self.work(id) else {
+                    return Err(Arc::from(Vec::new()));
+                };
+                let h = &self.snapshot.0;
+                let std = w.std(h).map_err(|e| Arc::from(vec![Diag::internal(&e)]))?;
+                let mut f = crate::front(&w.db, &std, id, h.judge.as_ref(), h.checks);
+                match crate::back(&mut f, false, true) {
+                    Some((prog, _, _)) => {
+                        let mut keys: Vec<_> = prog.index.iter().map(|(k, i)| (*i, k)).collect();
+                        keys.sort_by_key(|(i, _)| *i);
+                        (keys.iter().zip(&prog.made))
+                            .map(|((i, k), m)| made_line(*i, &prog.insts[*i].name, k, m))
                             .collect()
                     }
                     None => return Err(Arc::from(f.diags)),
@@ -604,3 +626,13 @@ fn word_at(text: &str, at: usize) -> Option<(usize, &str)> {
 
 #[cfg(test)]
 mod tests;
+
+/// `#i NAME KEY`, then who named it (`by #j`, or `root`) and the set read that held it, if one did.
+fn made_line(i: usize, name: &str, key: &crate::inst::InstKey, m: &crate::inst::Made) -> String {
+    let by = m.by.map_or("root".to_string(), |j| format!("by #{j}"));
+    let read = m
+        .read
+        .as_ref()
+        .map_or(String::new(), |r| format!(" read {r}"));
+    format!("#{i} {name} {key:?} {by}{read}\n")
+}

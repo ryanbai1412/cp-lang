@@ -1542,6 +1542,36 @@ fn dump_own_shows_what_each_binding_freezes_and_lends() {
 }
 
 #[test]
+fn dump_instances_shows_who_made_each_and_the_set_read_that_held_it() {
+    let open = |src: &str| {
+        facade::Session::open(
+            facade::Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src),
+        )
+    };
+    let src = "fn ap(f: Int -> Int, x: Int) -> Int = f(x)\nprint(ap(x => x + 1, 2))\n";
+    let text = open(src).ir("program.cp", IrStage::Instances).unwrap();
+    let first = text.lines().next().unwrap_or_default();
+    assert!(
+        first.starts_with("#0 ")
+            && first.contains("InstKey { func: Main")
+            && first.ends_with(" root"),
+        "{text}"
+    );
+    let lambda = (text.lines())
+        .find(|l| l.contains("func: Lambda"))
+        .unwrap_or_else(|| panic!("{text}"));
+    assert!(
+        lambda.contains(" by #") && lambda.contains(" read "),
+        "{text}"
+    );
+    let ap = (text.lines())
+        .find(|l| l.contains("func: Decl") && l.contains(" by #0"))
+        .unwrap_or_else(|| panic!("{text}"));
+    assert!(!ap.contains(" read "), "{text}");
+    assert_eq!(IrStage::named("instances"), Some(IrStage::Instances));
+}
+
+#[test]
 fn a_lends_without_its_arrow_offers_to_insert_it() {
     use crate::facade::{Session, Snapshot};
     let src = "domain V = 1..=4\nvar a: [V]Int = 0\nfn get(xs: [V]Int, l: V) lends Int = xs[l]\nprint(get(a, 1))\n";

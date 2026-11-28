@@ -258,7 +258,7 @@ impl<'a> Evaluator<'a> {
             checked: &checked,
             rows: &t.dom_rows,
         };
-        let mut prog = inst::link(v, &crate::roots(fns, tys.len()), false);
+        let mut prog = inst::link(v, &crate::roots(fns, tys.len()), false, false);
         let owned = own::after(d, &mut prog, &names, before);
         if !owned.errors.is_empty() {
             return Ran::Open;

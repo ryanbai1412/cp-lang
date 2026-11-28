@@ -11,7 +11,7 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::whole::{DomId, DomValue, GlobalId};
 use std::collections::{BTreeSet, HashMap};
 
-pub use cpl_next_ir::prog::{parts, CSet, CTy, InstKey, Program};
+pub use cpl_next_ir::prog::{parts, CSet, CTy, InstKey, Made, Program};
 use origins::number_origins;
 
 mod canon;
@@ -54,6 +54,11 @@ struct Link<'a> {
     shown: HashMap<CTy, InstKey>,
     /// The closures whose captures are being read, so one met inside itself is not entered.
     captures_busy: BTreeSet<InstKey>,
+    /// Why each key was made, when asked (`Program::made`): the instance being made and the
+    /// set being read when it was interned.
+    made: Option<Vec<Made>>,
+    making: Option<usize>,
+    reading: Option<String>,
 }
 /// A set grown to a fixpoint: what call `c` adds under one instance's values, or a global's.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -191,7 +196,8 @@ const UNSETTLED: &str =
     "a closure's set does not settle: each round of growing it names it under a larger set";
 
 /// A closure in a signature takes its set from the calls that reach the fn.
-pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
+/// `made` records why each instance was made (`Program::made`).
+pub fn link(v: Inputs, roots: &Roots, events: bool, made: bool) -> Program {
     let (d, c, generic) = (v.items, v.checked, v.fns);
     let mut l = Link {
         d,
@@ -219,6 +225,9 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
         frame: Vec::new(),
         shown: HashMap::new(),
         captures_busy: BTreeSet::new(),
+        made: made.then(Vec::new),
+        making: None,
+        reading: None,
     };
     let none = Env {
         targs: &[],
@@ -326,6 +335,7 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
                 targs: &key.targs,
                 sets: &key.sets,
             };
+            l.making = Some(next);
             let mut inst = match item_value(d, &key) {
                 true => value_only(f),
                 false => l.instance(f, &env),
@@ -340,6 +350,7 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
             break;
         }
         traced = true;
+        l.making = None;
         l.trace_instances(&insts);
     }
     let globals = l.globals.clone();
@@ -354,6 +365,7 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
             targs: &key.targs,
             sets: &key.sets,
         };
+        l.making = Some(insts.len());
         let mut inst = match item_value(d, &key) {
             true => value_only(f),
             false => l.instance(f, &env),
@@ -373,6 +385,7 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
         sums: l.sums,
         shares: HashMap::new(),
         origins: Vec::new(),
+        made: l.made.unwrap_or_default(),
         errors: l.errors,
     };
     number_origins(&mut p);
@@ -588,6 +601,12 @@ impl Link<'_> {
     fn intern(&mut self, k: InstKey) -> usize {
         if let Some(i) = self.index.get(&k) {
             return *i;
+        }
+        if let Some(made) = &mut self.made {
+            made.push(Made {
+                by: self.making,
+                read: self.reading.clone(),
+            });
         }
         self.keys.push(k.clone());
         self.index.insert(k, self.keys.len() - 1);
@@ -878,9 +897,14 @@ impl Link<'_> {
     fn set(&mut self, s: &SetTy, env: &Env) -> CSet {
         let v = self.set_of(s, env);
         if self.depth == 0 {
+            let was = match self.made.is_some() {
+                true => self.reading.replace(format!("{s:?} under {:?}", env.sets)),
+                false => None,
+            };
             for k in &v {
                 self.intern(k.clone());
             }
+            self.reading = was;
         }
         v
     }

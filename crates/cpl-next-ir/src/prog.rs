@@ -119,7 +119,15 @@ pub struct Program {
     /// The sites of the user's file a trap can name, once each: origin `o` is `origins[o - 1]`,
     /// and 0 is none (`Func::origins`).
     pub origins: Vec<crate::ids::SourceId>,
+    /// Why each instance was made, `insts[i]`'s at `made[i]`; empty unless link was asked.
+    pub made: Vec<Made>,
     pub errors: Vec<Msg>,
+}
+/// What made an instance: the instance whose body named it, and the set read that held it.
+#[derive(Clone, Debug, Default)]
+pub struct Made {
+    pub by: Option<usize>,
+    pub read: Option<String>,
 }
 impl Program {
     /// Where origin `o` is; `None` for 0.
