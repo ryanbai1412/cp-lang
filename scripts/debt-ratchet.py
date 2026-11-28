@@ -4216,6 +4216,27 @@ def check_program_params(root: Path) -> list[str]:
     return out
 
 
+def next_check_relay_sites(root: Path) -> list[str]:
+    """Lines of the new pipeline that hold back or relay the checker's diagnostics: each naming
+    the `deferred` store (`Typed::deferred`, `Deferred`, `Answers::deferred`, link's
+    `c.deferred(g)`), and each of the checker's quiet branch (`quiet`, `quiet_fns`,
+    `through_trait`), which decides whose errors are deferred. Each `body(FnId)` answer is to
+    carry its own diagnostics and the driver to pick which answers it reports, so link says only
+    link errors and this reaches 0 (per-item checker S4)."""
+    store = re.compile(r"\b(?:deferred|Deferred)\b")
+    branch = re.compile(r"\b(?:quiet|quiet_fns|through_trait)\b")
+    out = []
+    for src in sorted(root.glob("crates/cpl-next*/src")):
+        check = src.parent.name == "cpl-next-check"
+        for p in _rs_files(root, _rel(root, src), tests=False):
+            rel = _rel(root, p)
+            for i, line in enumerate(_lines(p), 1):
+                code = line.split("//", 1)[0]
+                if store.search(code) or (check and branch.search(code)):
+                    out.append(f"{rel}:{i}")
+    return out
+
+
 def next_check_set_facts(root: Path) -> list[str]:
     """Sites in the checker that build a function-value set fact, `SetTy::Global` or
     `SetTy::AddedAt` (shortcut audit S25): which closures a set holds is a link-time fact
@@ -5378,6 +5399,7 @@ COUNTERS = {
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "next_whole_program_inputs": ("new-pipeline params, fields, closures and holder-struct methods that hold a whole-program value (Core)", next_whole_program_inputs, True),
     "next_handoff_side_fields": ("fields reaching link beside the IR, through any struct or tuple of the handoff (Core)", next_handoff_side_fields, True),
+    "next_check_relay_sites": ("lines holding back or relaying checker diagnostics: the deferred store and the quiet branch (Core)", next_check_relay_sites, True),
     "check_program_params": ("checker pub params, fields and types holding a whole program's items: Program, a list of ids, an ItemId beside a String (Core)", check_program_params, True),
     "next_check_set_facts": ("checker sites building a function-value set fact link should own (Core)", next_check_set_facts, True),
     "next_snapshot_keyed_queries": ("facade answers memoized per whole snapshot, not per item (Core)", next_snapshot_keyed_queries, True),

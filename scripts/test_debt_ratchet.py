@@ -2723,6 +2723,27 @@ class DebtRatchetTest(unittest.TestCase):
                              [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 4, 7, 12, 15)])
             self.assertEqual(len(dr.next_cpp_runtime_lines(root)), 2)
 
+    def test_check_relay_sites_count_the_deferred_store_and_the_checkers_quiet_branch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for c, text in {
+                "cpl-next-check": "pub deferred: HashMap<FnId, Vec<Msg>>,\nlet quiet = !of_program;\n"
+                "through_trait: Vec<FnId>,\n// deferred in a comment\nlet deferred_count = 0;\n",
+                "cpl-next-link": "l.errors.extend(c.deferred(g).iter().cloned());\nlet quiet = 1;\n",
+                "cpl-next-ir": "pub struct Deferred(Vec<Msg>);\n",
+                "cpl-check": "pub deferred: Vec<Msg>,\n",
+            }.items():
+                (root / f"crates/{c}/src").mkdir(parents=True)
+                (root / f"crates/{c}/src/lib.rs").write_text(text)
+            (root / "crates/cpl-next-check/src/tests.rs").write_text("let deferred = 1;\n")
+            self.assertEqual(dr.next_check_relay_sites(root), [
+                "crates/cpl-next-check/src/lib.rs:1",
+                "crates/cpl-next-check/src/lib.rs:2",
+                "crates/cpl-next-check/src/lib.rs:3",
+                "crates/cpl-next-ir/src/lib.rs:1",
+                "crates/cpl-next-link/src/lib.rs:1",
+            ])
+
     def test_check_program_params_count_each_shape_in_the_checkers_pub_signatures(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
