@@ -14,7 +14,7 @@ impl Cx<'_> {
         };
         let (callee, recv, args, elem) = match call.kind {
             TK::Call { f, recv, args } => {
-                let Some((false, elem)) = self.d.f(f.decl).region.clone() else {
+                let Some((false, elem)) = self.items.f(f.decl).region.clone() else {
                     return block(
                         pre,
                         TExpr {
@@ -34,8 +34,8 @@ impl Cx<'_> {
                 args,
                 ..
             } => {
-                let m = self.d.member(&self.d.t(tr.tr).methods, &method);
-                let Some((false, elem)) = m.and_then(|m| self.d.f(m).region.clone()) else {
+                let m = self.d.member(&self.items.t(tr.tr).methods, &method);
+                let Some((false, elem)) = m.and_then(|m| self.items.f(m).region.clone()) else {
                     return TExpr {
                         kind: TK::Error,
                         ty: Ty::Error,
@@ -109,12 +109,14 @@ impl Cx<'_> {
             ty: self.lambda_ty(id),
             span,
         };
-        let sets: Vec<SetTy> = (0..self.d.s(gen).n_sets).map(|_| self.new_set()).collect();
+        let sets: Vec<SetTy> = (0..self.items.s(gen).n_sets)
+            .map(|_| self.new_set())
+            .collect();
         let field = Subst {
             tys: std::slice::from_ref(&elem),
             sets: &sets,
         }
-        .ty(&self.d.s(gen).fields[0].1);
+        .ty(&self.items.s(gen).fields[0].1);
         let ty = Ty::Struct(gen, vec![elem], sets);
         let field = self.fresh_sets(&field);
         let run = self.coerce(lambda, &field);
@@ -131,7 +133,7 @@ impl Cx<'_> {
     /// Fn item `f` as a value. A `-> yields T` fn's is the fn that gives the value of a call
     /// held, `(ps) => f(ps)`, so calling it makes a generator value (R07.6.2).
     pub(super) fn fn_item_value(&mut self, f: FnRef, span: Span) -> TExpr {
-        let generator = matches!(self.d.f(f.decl).region, Some((false, _)));
+        let generator = matches!(self.items.f(f.decl).region, Some((false, _)));
         let (ps, _) = self.clo_sig(&CloRef::Item(f.clone()));
         if !generator
             || self.d.roles().recipe.is_none()
@@ -211,7 +213,7 @@ impl Cx<'_> {
             tys: &targs,
             sets: &sets,
         }
-        .ty(&self.d.s(s).fields[0].1);
+        .ty(&self.items.s(s).fields[0].1);
         let span = g.span;
         let run = TExpr {
             kind: TK::Field(Box::new(g), 0),
