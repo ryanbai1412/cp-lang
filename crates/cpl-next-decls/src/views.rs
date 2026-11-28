@@ -92,6 +92,61 @@ pub trait Signatures: TypeTables + Items {
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId>;
 }
 
+/// `names(ModId)`: what a module-level name means, keyed by the module and the interned name
+/// (C's name resolution reads it; text becomes a `Sym` only through `Syms`). Every answer is an
+/// id, rendered through `Texts` for display only.
+pub trait Names {
+    fn named(&self, m: ModId, name: Sym) -> Option<Named>;
+    /// What module `m` exports as `name`, and whether it is `pub`.
+    fn export(&self, m: ModId, name: Sym) -> Option<(Named, bool)>;
+    /// Whether two of module `m`'s `use` lines import `name` as different items (R08.1.4).
+    fn is_ambiguous(&self, m: ModId, name: Sym) -> bool;
+    fn fn_named(&self, m: ModId, name: Sym) -> Option<FnId> {
+        match self.named(m, name) {
+            Some(Named::Fn(f)) => Some(f),
+            _ => None,
+        }
+    }
+    fn struct_named(&self, m: ModId, name: Sym) -> Option<StructId> {
+        match self.named(m, name) {
+            Some(Named::Struct(s)) => Some(s),
+            _ => None,
+        }
+    }
+    /// The program's top-level value `name` binds, the last one bound under it.
+    fn top_value(&self, m: ModId, name: Sym) -> Option<cpl_next_ir::ty::TopValueId>;
+    /// Module `m`'s names, for closest-name candidates: one module's answer.
+    fn names(&self, m: ModId) -> Vec<(Sym, Named)>;
+}
+
+/// What a fn's signature says beyond its decl, keyed by the fn.
+pub trait FnFacts {
+    /// A read-only method that may still write its receiver's `@cache` fields.
+    fn writes_cache(&self, f: FnId) -> bool;
+    /// Of `first` and its overloads, the one whose labels `given` fit.
+    fn overload(&self, first: FnId, given: &[Sym]) -> FnId;
+    /// The params of `f` whose type is a domain.
+    fn domain_params(&self, f: FnId) -> &[usize];
+    /// The params of `f` whose type is ordered.
+    fn ordered_params(&self, f: FnId) -> &[usize];
+    /// The `.clear` of `@memo` fn `f`.
+    fn memo_clear(&self, f: FnId) -> Option<FnId>;
+    /// Whether `f`'s return type has holes its body fills.
+    fn ret_hole(&self, f: FnId) -> bool;
+    /// Whether trait `tr`'s argument `j` may be a domain in some impl.
+    fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool;
+}
+
+/// What the program's domains are, keyed by name or id.
+pub trait DomFacts {
+    /// The domain a top-level `domain` line names `name`.
+    fn top_dom(&self, name: Sym) -> Option<&Ty>;
+    /// Whether domain `c` is one a record's field makes fresh per value.
+    fn fresh_dom(&self, c: usize) -> bool;
+    /// Whether module `m` is reached by the program.
+    fn seen(&self, m: ModId) -> bool;
+}
+
 /// `scope(ModId)`: what a name means in a module.
 pub trait Scope {
     fn named(&self, m: ModId, name: &str) -> Option<Named>;
@@ -279,6 +334,63 @@ impl TypeTables for Decls {
     }
     fn roles(&self) -> &Roles {
         &self.roles
+    }
+}
+
+impl FnFacts for Decls {
+    fn writes_cache(&self, f: FnId) -> bool {
+        self.writes_cache(f)
+    }
+    fn overload(&self, first: FnId, given: &[Sym]) -> FnId {
+        let given: Vec<&str> = given.iter().map(|s| self.syms.text(*s)).collect();
+        self.overload(first, &given)
+    }
+    fn domain_params(&self, f: FnId) -> &[usize] {
+        self.domain_params.get(&f).map_or(&[], Vec::as_slice)
+    }
+    fn ordered_params(&self, f: FnId) -> &[usize] {
+        self.ordered_params.get(&f).map_or(&[], Vec::as_slice)
+    }
+    fn memo_clear(&self, f: FnId) -> Option<FnId> {
+        self.memo_clears.get(&f).copied()
+    }
+    fn ret_hole(&self, f: FnId) -> bool {
+        self.ret_holes.contains(&f)
+    }
+    fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool {
+        self.arg_may_be_domain(tr, j)
+    }
+}
+
+impl DomFacts for Decls {
+    fn top_dom(&self, name: Sym) -> Option<&Ty> {
+        self.top_doms.get(&name)
+    }
+    fn fresh_dom(&self, c: usize) -> bool {
+        self.fresh_doms.iter().any(|f| f.0 == c)
+    }
+    fn seen(&self, m: ModId) -> bool {
+        self.seen(m)
+    }
+}
+
+impl Names for Decls {
+    fn named(&self, m: ModId, name: Sym) -> Option<Named> {
+        self.views[m.0].get(&name).copied()
+    }
+    fn export(&self, m: ModId, name: Sym) -> Option<(Named, bool)> {
+        self.exports[m.0].get(&name).copied()
+    }
+    fn is_ambiguous(&self, m: ModId, name: Sym) -> bool {
+        self.ambiguous[m.0].contains(&name)
+    }
+    fn top_value(&self, m: ModId, name: Sym) -> Option<cpl_next_ir::ty::TopValueId> {
+        (m == self.program)
+            .then(|| crate::decls::top_value(&self.top_values, name))
+            .flatten()
+    }
+    fn names(&self, m: ModId) -> Vec<(Sym, Named)> {
+        self.views[m.0].iter().map(|(n, x)| (*n, *x)).collect()
     }
 }
 
