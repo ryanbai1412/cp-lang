@@ -89,6 +89,34 @@ deleted for the VM and both remain. These rules are the guard.
     at 0 (`--zero` over them), so no shortcut survives into the end
     state as "fix it after".
 
+## The joint landing
+
+lane-j-check (the syntax tree, decls and check on it, and the driver) lands on `main` in
+slices, not as one batch. Each slice builds alone on the `main` it lands on, deletes the
+old-tree reads it replaces, and passes `scripts/land.sh`'s full gate. The seams were found by
+overlaying the branch's crates on `main` and building the workspace:
+
+| Slice | What lands | Builds alone on `main` |
+|---|---|---|
+| 0 | `cpl-next-syntax` (lossless tree, operator kinds, interpolation nodes, typed views), `cpl-next-db`'s item queries, `cpl-next-ir`'s ids and types, `cpl-diag` | 2 errors, both in `main`'s `cpl-next-decls/src/modules.rs` (`ItemId.file` and one call's arity), fitted in the slice |
+| 1 | decls on forms and the next tree (the `Mark` readers and `cpl-syntax` gone from decls), check on the next tree, the `Cx` views core and its views (Shapes, RoleRows), and `cpl-syntax`'s changes | yes, as one slice. Decls alone breaks `main`'s check in 158 places across 18 files, and fitting the old check to the new decls would be a second copy (rule: no old path survives) |
+| 2 | the driver on one tree (the `Front.main` old `Stmt` and `FnBody` reads deleted), lower, link, the tools' edits, and the driver's `cpl-syntax` dependency | to be probed on slice 1 |
+
+`std/` and `spec/` commits land on `main` on their own, ahead of the slices.
+
+The landing gate. Each item gives its value on lane-j-check. A slice lands only when every item
+it owns is met:
+
+| Item | Target | Now |
+|---|---|---|
+| `next_syntax_old_refs` | 0 | 0 |
+| `next_old_syntax_analyses` | 0 | 0 |
+| `next_whole_program_inputs` | at most 602 | 748 |
+| old `tyconv` over `ast::Type` | deleted | deleted |
+| `cpl-syntax` in `cpl-next-check/Cargo.toml` | gone | gone |
+| G's `Lane-for` trailers | every commit | waiting on the confirmed table |
+| commit tier | green | red: the ratchet (case counts, `next_check_name_keys` 3, `unwrap_input` 4, `allow_attrs` 25, `dream_unverified` 18, the check to contract edge, `decls.rs` near its cap) and check's clippy |
+
 ## Order
 
 | Stage | Work | Second copy? | Exit |
