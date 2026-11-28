@@ -325,8 +325,8 @@ impl Cx<'_> {
     /// The key and cell types of `rt`'s `Indexed` read.
     fn read_sig(&self, rt: &Ty) -> Option<(Ty, Ty)> {
         match self
-            .d
-            .sym(&self.index_read())
+            .syms
+            .get(&self.index_read())
             .and_then(|sym| self.impls().impl_member_by(rt, sym, |f| f.region.is_none()))
         {
             Some(decls::Member::Method(m, ts, _)) => {
@@ -631,8 +631,8 @@ impl Cx<'_> {
             (Callee::Trait(tr, read.to_string()), m, tys, Vec::new())
         } else {
             let Some(decls::Member::Method(m, ts, ss)) = self
-                .d
-                .sym(read)
+                .syms
+                .get(read)
                 .and_then(|sym| self.impls().impl_member_by(&rt, sym, lends))
             else {
                 if !matches!(rt, Ty::Error) {

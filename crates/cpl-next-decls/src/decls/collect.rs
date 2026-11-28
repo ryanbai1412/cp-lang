@@ -1027,7 +1027,7 @@ fn member_fns(item: &cpl_next_syntax::ast::Item) -> Vec<cpl_next_syntax::ast::Fn
 /// place `f` holds among the item's written fns, or the value of the impl's `let` it is the
 /// getter of (R04.2.26). A generated or bodiless fn has none.
 pub fn body_of(
-    d: &Decls,
+    d: &dyn crate::views::Items,
     f: FnId,
     item: &cpl_next_syntax::ast::Item,
 ) -> Option<cpl_next_syntax::ast::FnBody> {

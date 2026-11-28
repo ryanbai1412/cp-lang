@@ -144,6 +144,8 @@ pub trait Items: Texts {
     fn impls_named(&self, name: Sym) -> &[usize];
     /// Whether a lookup may find impl `i` (R11.3.4).
     fn live(&self, i: usize) -> bool;
+    /// The fns item `item` writes, in the order they were declared.
+    fn fns_of(&self, item: &cpl_next_ir::ids::ItemId) -> &[FnId];
     /// The traits with an impl whose head may fit `t`, ascending, each once: a struct's own
     /// impls and the impls headed by anything else (a type not known yet may fit every impl).
     fn impl_traits(&self, t: &Ty) -> Vec<TraitId>;
@@ -205,6 +207,10 @@ pub trait Names {
     fn exporters(&self, name: Sym) -> Vec<ModId>;
     /// Module `m`'s dotted name (`std.seq`).
     fn module_name(&self, m: ModId) -> &str;
+    /// Whether `m` is the program or an inline module inside it.
+    fn of_program(&self, m: ModId) -> bool;
+    /// What module `m` says of itself, once wherever its items are reached.
+    fn module_errors(&self, m: ModId) -> &[Msg];
 }
 
 /// What a fn's signature says beyond its decl, keyed by the fn.
@@ -223,6 +229,8 @@ pub trait FnFacts {
     fn ret_hole(&self, f: FnId) -> bool;
     /// Whether fn `f` was refused as declared, so a call of it is downstream of that error.
     fn refused(&self, f: FnId) -> bool;
+    /// Whether fn `f` was rejected as declared, so its body is not checked.
+    fn body_rejected(&self, f: FnId) -> bool;
     /// Whether trait `tr`'s argument `j` may be a domain in some impl.
     fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool;
 }
@@ -352,6 +360,9 @@ impl Items for Decls {
     }
     fn live(&self, i: usize) -> bool {
         Decls::live(self, &self.impls[i])
+    }
+    fn fns_of(&self, item: &cpl_next_ir::ids::ItemId) -> &[FnId] {
+        Decls::fns_of(self, item)
     }
     fn impl_traits(&self, t: &Ty) -> Vec<TraitId> {
         let mut out: Vec<TraitId> = match t {
@@ -575,6 +586,9 @@ impl FnFacts for Decls {
     fn refused(&self, f: FnId) -> bool {
         self.refused_fns.contains(&f)
     }
+    fn body_rejected(&self, f: FnId) -> bool {
+        self.rejected_bodies.contains(&f)
+    }
     fn arg_may_be_domain(&self, tr: TraitId, j: usize) -> bool {
         self.arg_may_be_domain(tr, j)
     }
@@ -622,6 +636,12 @@ impl Names for Decls {
     }
     fn module_name(&self, m: ModId) -> &str {
         &self.module_names[m.0]
+    }
+    fn of_program(&self, m: ModId) -> bool {
+        Decls::of_program(self, m)
+    }
+    fn module_errors(&self, m: ModId) -> &[Msg] {
+        &self.module_errors[m.0]
     }
 }
 

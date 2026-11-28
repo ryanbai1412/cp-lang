@@ -17,7 +17,8 @@ impl<'a> Cx<'a> {
         let fresh = !self.fns.contains_key(&f) && !self.ret_busy.contains(&f);
         if self.facts.ret_hole(f) && !self.found_ret.contains_key(&f) && checkable && fresh {
             self.ret_busy.push(f);
-            let outer = std::mem::replace(&mut self.b, Body::new(self.d));
+            let outer =
+                std::mem::replace(&mut self.b, Body::new(self.top_doms.clone(), self.program));
             let copy = std::mem::take(&mut self.copy);
             let kept = std::mem::replace(&mut self.checks_kept, self.checks);
             let tf = self.check_fn(f, Vec::new());

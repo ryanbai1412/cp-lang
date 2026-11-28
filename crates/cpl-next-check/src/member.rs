@@ -432,8 +432,8 @@ impl<'a> Cx<'a> {
         let recv = self.arg_expr(first, None);
         let rt = self.shallow(&recv.ty);
         let Some(decls::Member::Method(m, ts, ss)) = self
-            .d
-            .sym(name.text)
+            .syms
+            .get(name.text)
             .and_then(|sym| self.impls().impl_member(&rt, sym, Some(tr)))
         else {
             if !self.is_error(&rt) {

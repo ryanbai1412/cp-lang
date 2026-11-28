@@ -57,7 +57,7 @@ impl Cx<'_> {
         let mut hold = |c: &mut Self, a: TArg| match a {
             TArg::Value(v)
                 if !matches!(v.kind, TK::Var(_))
-                    || v.ty.copied(&cpl_next_decls::fields::fields(c.d)) =>
+                    || v.ty.copied(&cpl_next_decls::fields::fields(c.items)) =>
             {
                 let ty = v.ty.clone();
                 let t = c.temp("$arg", ty.clone());

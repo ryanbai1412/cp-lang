@@ -605,7 +605,6 @@ impl<'a> Cx<'a> {
             return None;
         };
         let d = self
-            .d
             .fn_named(self.b.module, n)
             .filter(|_| self.declared(n))?;
         let fd = self.items.f(d);

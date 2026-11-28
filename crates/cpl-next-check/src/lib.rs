@@ -8,7 +8,7 @@ use cpl_next_decls::decls::{
     self, Decls, ImplDecl, Impls, ModId, Named, Owner, SelfMode, TraitRef,
 };
 use cpl_next_decls::sym::{Sym, Syms};
-use cpl_next_decls::views::{self as views, Items, Shapes, TypeTables};
+use cpl_next_decls::views::{self as views, Items, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, records};
 use cpl_next_ir::build::{Build, CheckName, Checks};
 use cpl_next_ir::ids::ItemId;
@@ -312,6 +312,12 @@ pub struct Local {
     /// Made by the checker, not named by the program: no suggestion or fix names it.
     pub synthetic: bool,
 }
+/// Trait `tr`'s impls the program keeps, in decls.
+fn live_impls<'a>(items: &'a dyn Items, tr: TraitId) -> impl Iterator<Item = &'a ImplDecl> + 'a {
+    (items.impls_by_trait(tr).iter())
+        .filter(move |&&k| items.live(k))
+        .map(move |&k| items.imp(k))
+}
 /// The global a top-level value's `let` binds, before its type is known.
 fn top_global(d: &Decls, t: &cpl_next_decls::decls::TopValue) -> Local {
     Local {
@@ -463,7 +469,6 @@ pub struct Ids {
 }
 
 struct Cx<'a> {
-    d: &'a Decls,
     /// The program's views, each read by key (incremental.md): `d` and `src` go once every
     /// read is on them.
     items: &'a dyn Items,
@@ -477,6 +482,12 @@ struct Cx<'a> {
     doms: &'a dyn views::DomFacts,
     tables: &'a dyn TypeTables,
     syms: &'a Syms,
+    /// The program's module.
+    program: ModId,
+    /// The domains top-level `domain` lines declare, by name: each body starts from them.
+    top_doms: HashMap<Sym, Ty>,
+    /// Each top-level value's item and name, in `top_values` order: the global a `let` fills.
+    top_keys: Vec<(ItemId, Sym)>,
     /// Each block's `@memo` fn checked so far.
     /// The `Domain` and `Ordered` impls of each domain this check declares (R04.2).
     dom_rows: Vec<ImplDecl>,
@@ -645,13 +656,13 @@ struct Body {
 }
 
 impl Body {
-    fn new(d: &Decls) -> Body {
+    fn new(doms: HashMap<Sym, Ty>, module: ModId) -> Body {
         Body {
             tries: Vec::new(),
             assumed: Vec::new(),
             rhs_extent: None,
             frames: Vec::new(),
-            doms: d.top_doms.clone(),
+            doms,
             block_doms: Vec::new(),
             owned: HashMap::new(),
             memo_clears: HashMap::new(),
@@ -688,7 +699,7 @@ impl Body {
                 cpl_next_ir::ids::FileId::new(crate::modules::PROGRAM),
                 crate::modules::PROGRAM.into(),
             ),
-            module: d.program,
+            module,
         }
     }
 }
@@ -757,7 +768,6 @@ pub fn check(
         ctx_made: HashSet::new(),
         ctx_pending: Vec::new(),
         ctx_impls: HashMap::new(),
-        d,
         items: d,
         names: d,
         facts: d,
@@ -769,6 +779,11 @@ pub fn check(
         doms: d,
         tables: d,
         syms: &d.syms,
+        program: d.program,
+        top_doms: d.top_doms.clone(),
+        top_keys: (d.top_values.iter())
+            .map(|t| (t.item.clone(), t.name))
+            .collect(),
         dom_rows: Vec::new(),
         tys: Vec::new(),
         sets: Vec::new(),
@@ -821,7 +836,7 @@ pub fn check(
         consts: vec![None; d.consts.len()],
         const_busy: vec![false; d.consts.len()],
         const_init: Vec::new(),
-        b: Body::new(d),
+        b: Body::new(d.top_doms.clone(), d.program),
     };
     // A result's `domain C` keeps its ends in one static slot per declaration site (R02.9.4).
     let slot = |cx: &mut Cx, role: &str| {
@@ -1317,7 +1332,7 @@ impl<'a> Cx<'a> {
     /// call, else the one checked under the values set (R09.1.3, R09.1.4).
     /// The copy a call of trait `tr`'s fn `method` makes.
     pub(crate) fn trait_ctx(&mut self, tr: TraitId, method: &str) -> u32 {
-        match self.d.member(&self.items.t(tr).methods, method) {
+        match self.method_in(&self.items.t(tr).methods, method) {
             Some(m) => self.ctx_copy(m),
             None => 0,
         }
@@ -1325,7 +1340,7 @@ impl<'a> Cx<'a> {
     /// The impl lookup: decls' impls and the rows of the domains this check declares.
     pub(crate) fn impls(&self) -> Impls<'_> {
         Impls {
-            items: self.d,
+            items: self.items,
             rows: &self.dom_rows,
         }
     }
@@ -1333,11 +1348,10 @@ impl<'a> Cx<'a> {
     pub(crate) fn ctx_copy(&mut self, id: FnId) -> u32 {
         let around: Vec<CtxFrame> = self.b.frames.iter().rev().cloned().collect();
         let k = self.copy_under(id, &around);
-        let d = self.d;
-        let f = d.f(id);
+        let f = self.items.f(id);
         if let (Some(Owner::Trait(t)), true) = (f.owner, k != 0) {
-            for (_, im) in d.trait_impls(t) {
-                if let Some(m) = d.member(&im.methods, &f.name) {
+            for im in live_impls(self.items, t) {
+                if let Some(m) = self.method_in(&im.methods, &f.name) {
                     let km = self.copy_under(m, &around);
                     if km != 0 {
                         self.ctx_impls.insert((k, m), km);
@@ -1349,10 +1363,9 @@ impl<'a> Cx<'a> {
     }
     /// The copy of `id` checked under the innermost of `around` that it `uses`, or 0 for none.
     fn copy_under(&mut self, id: FnId, around: &[CtxFrame]) -> u32 {
-        let d = self.d;
-        let f = d.f(id);
+        let f = self.items.f(id);
         let used: Vec<decls::ContextId> = (f.uses.iter())
-            .filter_map(|n| match d.named(f.module, n) {
+            .filter_map(|n| match self.named(f.module, n) {
                 Some(decls::Named::Context(c)) => Some(c),
                 _ => None,
             })
@@ -1404,14 +1417,14 @@ impl<'a> Cx<'a> {
         }
     }
     pub(crate) fn reach(&mut self, id: FnId) {
-        let d = self.d;
+        let (d, names) = (self.items, self.names);
         let f = d.f(id);
         self.reached.push(id);
         if let Some(Owner::Trait(t)) = f.owner.filter(|_| self.fanned_out.insert(id)) {
-            for (_, im) in d.trait_impls(t) {
-                if let Some(m) = d.member(&im.methods, &f.name) {
+            for im in live_impls(d, t) {
+                if let Some(m) = self.method_in(&im.methods, &f.name) {
                     let made = matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record);
-                    let quiet = !d.of_program(im.module) || made;
+                    let quiet = !names.of_program(im.module) || made;
                     match im.for_ {
                         Ty::Struct(s, ..)
                             if matches!(d.f(m).body, decls::Body::Synth(_))
@@ -1425,7 +1438,7 @@ impl<'a> Cx<'a> {
                 }
             }
         }
-        let module = &d.module_names[f.module.0];
+        let module = names.module_name(f.module);
         let mut said = Vec::new();
         if self.reported.insert((0, id.0)) {
             said.extend(f.errors.iter().cloned());
@@ -1444,7 +1457,7 @@ impl<'a> Cx<'a> {
             said.extend(d.t(t).errors.iter().cloned());
         }
         if self.reported.insert((2, f.module.0)) {
-            said.extend(d.module_errors[f.module.0].iter().cloned());
+            said.extend(names.module_errors(f.module).iter().cloned());
         }
         self.errors
             .extend(said.into_iter().map(|e| e.in_module(module)));
@@ -1470,7 +1483,7 @@ impl<'a> Cx<'a> {
     /// Holds the types quiet fn `id`'s body named after the first `before` until the type
     /// `id` is a member of is named, when that is a struct not named yet.
     fn hold_names(&mut self, id: FnId, before: usize) {
-        let d = self.d;
+        let d = self.items;
         let of = match d.f(id).owner {
             Some(Owner::Struct(s)) => Some(s),
             Some(Owner::Impl(k)) => match d.imp(k).for_ {
@@ -1513,7 +1526,7 @@ impl<'a> Cx<'a> {
     fn check_fn(&mut self, id: FnId, frames: Vec<CtxFrame>) -> TypedFn {
         let errs = self.errors.len();
         let lends_last = |b: &next::Block| matches!(b.stmts().last(), Some(next::Stmt::Lend(_)));
-        let d = self.d;
+        let d = self.items;
         let f = d.f(id);
         self.b.decl = Some(id);
         self.made = [0; 4];
@@ -1546,13 +1559,13 @@ impl<'a> Cx<'a> {
         self.b.region =
             (f.region.clone()).map(|(l, t)| (l, map_slots(&t, &|k| SetTy::Param(n + k))));
         let ret = (self.found_ret.get(&id).cloned()).unwrap_or_else(|| d.f(id).ret.clone());
-        let holes = d.ret_holes.contains(&id) && !unify::ground(&ret);
+        let holes = self.facts.ret_hole(id) && !unify::ground(&ret);
         let ret = if holes { self.open_holes(&ret) } else { ret };
         self.b.ret = map_slots(&ret, &|k| SetTy::Param(n + k));
         let ret = self.b.ret.clone();
         // A fn refused as declared (a decorator the slice lacks) is that refusal, and one rejected
         // as declared is that error: its body is not checked.
-        let refused = d.refused_fns.contains(&id) || d.rejected_bodies.contains(&id);
+        let refused = self.facts.refused(id) || self.facts.body_rejected(id);
         // A body that can end without its value is that error, not a mismatch at its end.
         let syntax = match f.body {
             decls::Body::Written | decls::Body::Value => {
@@ -1690,7 +1703,7 @@ impl<'a> Cx<'a> {
         self.unfixed_targs(errs);
         self.rejected_defaults();
         self.b.decl = None;
-        self.b.module = d.program;
+        self.b.module = self.program;
         self.b.region = None;
         self.b.doms = top_doms;
         self.b.owned = top_owned;
@@ -1887,8 +1900,7 @@ impl Cx<'_> {
         if let Some(g) = self.consts[c.0] {
             return Some((VarRef::Global(g), self.globals[g].ty.clone()));
         }
-        let d = self.d;
-        let k = &d.consts[c.0];
+        let k = self.tables.konst(c);
         if self.const_busy[c.0] {
             let code = cpl_diag::codes::DEFINITION_CYCLE;
             let msg = Msg::verdict(

@@ -2,7 +2,6 @@
 
 use super::lambda::{LamBody, LamParam};
 use super::*;
-use cpl_next_decls::views::RoleRows;
 use cpl_next_syntax::grammar::RoleMember;
 
 impl Cx<'_> {
@@ -43,13 +42,13 @@ impl Cx<'_> {
             self.declare_nested(&[next::BlockEntry::Decl(next::Decl::Fn(fd.clone()))]);
         }
         let table = memo_table(fd, self.syms, self.names, self.b.module);
-        let role = self.d.role_trait(decls::Role::MemoTable);
+        let role = self.rows.role_trait(decls::Role::MemoTable);
         let (Some(table), Some(tr)) = (table, role) else {
             self.nested_fn(fd, Some(&name), out);
             return;
         };
         let (key, value) = self.nested_sig(fd);
-        let member = |m| self.d.role_member(m);
+        let member = |m| self.rows.role_member(m);
         let (get, set) = (member(RoleMember::MemoGet), member(RoleMember::MemoSet));
         let (Some((get_name, get)), Some((set_name, set))) = (get, set) else {
             self.nested_fn(fd, Some(&name), out);
@@ -57,7 +56,7 @@ impl Cx<'_> {
         };
         let key_ty = match &key[..] {
             [k] => k.clone(),
-            _ => match self.d.tuple(key.len()) {
+            _ => match self.shapes.tuple(key.len()) {
                 Some(t) => Ty::Struct(t, key.clone(), Vec::new()),
                 None => Ty::Error,
             },
@@ -71,8 +70,8 @@ impl Cx<'_> {
             args: targs.clone(),
         };
         // A table without the impl is said at its `@memo_table`, E0327, not again here.
-        let rows = self.d.impls_by_trait.get(&tr).into_iter().flatten();
-        let filled = rows.map(|k| &self.d.impls[*k].for_);
+        let items = self.items;
+        let filled = (items.impls_by_trait(tr).iter()).map(|&k| &items.imp(k).for_);
         if filled
             .into_iter()
             .any(|t| matches!(t, Ty::Struct(s, ..) if *s == table))

@@ -5,6 +5,7 @@ use super::call::CallArg;
 use super::place::{place_binding, place_held, InPlace};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::grammar::Decorator;
 use cpl_next_syntax::SyntaxToken;
 
 impl<'a> Cx<'a> {
@@ -45,11 +46,7 @@ impl<'a> Cx<'a> {
             // A top-level value (R02.10.3) fills the global made for it, found by item and Sym.
             let sym = self.b.syms.of(self.syms, name);
             let item = &self.b.item;
-            let top = self
-                .d
-                .top_values
-                .iter()
-                .position(|t| t.item == *item && Some(t.name) == sym);
+            let top = (self.top_keys.iter()).position(|(i, n)| i == item && Some(*n) == sym);
             let g = match top {
                 Some(i) => {
                     self.globals[self.top_slots[i]] = local;
@@ -115,7 +112,7 @@ impl<'a> Cx<'a> {
             }
         }
         // A field of `self` is nearer than a top-level binding, and only the program sees its own.
-        if self.self_field(name).is_some() || self.b.module != self.d.program {
+        if self.self_field(name).is_some() || self.b.module != self.program {
             return None;
         }
         self.global_names
@@ -659,7 +656,7 @@ impl<'a> Cx<'a> {
             }
             return self.bind_unknown(p, mutable, out);
         };
-        let names = self.d.field_names(s);
+        let names = self.field_names(s);
         let record = self.items.s(s).record;
         // A tuple pattern opens a tuple or a record, not another type's fields (R02.5.5).
         if matches!(p, next::Pattern::Tuple(_))
@@ -1051,7 +1048,6 @@ impl<'a> Cx<'a> {
         };
         let n = super::member::bare_name(&base)?;
         let f = self
-            .d
             .fn_named(self.b.module, &n)
             .filter(|_| self.declared(&n))?;
         let fd = self.items.f(f);
@@ -1401,11 +1397,10 @@ impl<'a> Cx<'a> {
     /// `with ctx(f: v, ..)`: the fields it sets, each to a constant (R09.1.2); `None` when `ctx`
     /// names no context.
     fn ctx_frames(&mut self, ctx: &str, args: &[next::Arg]) -> Option<Vec<super::CtxFrame>> {
-        let d = self.d;
-        let Some(decls::Named::Context(id)) = d.named(self.b.module, ctx) else {
+        let Some(decls::Named::Context(id)) = self.named(self.b.module, ctx) else {
             return None;
         };
-        let c = &d.contexts[id.0];
+        let c = self.items.context(id);
         let mut fs = Vec::new();
         for a in args {
             let Some(value) = a.value() else {
@@ -1451,8 +1446,8 @@ impl<'a> Cx<'a> {
             generics.push(h);
         }
         let at = decls::BodyScope {
-            tables: self.d,
-            names: self.d,
+            tables: self.tables,
+            names: self.names,
             syms: &self.b.syms.over(self.syms),
             m: self.b.module,
             generics: &generics,
@@ -1479,7 +1474,7 @@ impl<'a> Cx<'a> {
     }
     /// A domain's size is a hidden variable next to its declaration.
     pub(super) fn array_id(&self) -> Option<StructId> {
-        self.d.sugar.array
+        self.role_structs.role_struct(decls::Role::Array)
     }
     /// `Array.filled(v)` through the trait marked `@literal("[;]")`: `var a: [V]Int = 0` (R01.6.1).
     fn fill(&mut self, v: TExpr, array: Ty, span: Span) -> TExpr {
@@ -1495,8 +1490,8 @@ impl<'a> Cx<'a> {
             _ => v,
         };
         let v = self.coerce(v, &elem);
-        let tr = self.d.literal_trait("[;]");
-        let fns = tr.map(|tr| self.d.trait_fns(tr)).unwrap_or_default();
+        let tr = (self.syms.get("[;]")).and_then(|op| self.rows.literal_trait(op));
+        let fns = tr.map(|tr| self.methods.trait_fns(tr)).unwrap_or_default();
         match (tr, fns.first()) {
             (Some(tr), Some(&(n, m))) => {
                 let n = self.items.text(n);
@@ -1576,7 +1571,7 @@ impl<'a> Cx<'a> {
     /// Whether `v` is input: a value an `@input` fn gives, or a part of one (R10.2.2).
     pub(super) fn is_input(&self, v: &TExpr) -> bool {
         match &v.kind {
-            TK::Call { f, .. } => self.d.input_fns.contains(&f.decl),
+            TK::Call { f, .. } => (self.rows.marked_fns(Decorator::Input)).contains(&f.decl),
             TK::Field(b, _) => matches!(&b.kind, TK::Var(t) if self.b.input_parts.contains(t)),
             _ => false,
         }

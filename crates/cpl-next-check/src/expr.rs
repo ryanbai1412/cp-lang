@@ -376,8 +376,8 @@ impl<'a> Cx<'a> {
                 )
             })
         } else if let Some(decls::Member::Method(m, ts, ss)) = self
-            .d
-            .sym(method)
+            .syms
+            .get(method)
             .and_then(|sym| self.impls().impl_member(&rt, sym, Some(named)))
         {
             let f = self.fnref(m, ts, ss);
@@ -485,8 +485,8 @@ impl<'a> Cx<'a> {
         // A field of `self`, written bare inside a method.
         if let Some(s) = self.self_expr(span) {
             if let Some(decls::Member::Field(i, ty)) = self
-                .d
-                .sym(n)
+                .syms
+                .get(n)
                 .and_then(|sym| self.impls().lookup_member(&s.ty, sym))
             {
                 return TExpr {
@@ -1227,8 +1227,8 @@ impl<'a> Cx<'a> {
     pub(super) fn self_field(&self, n: &str) -> Option<usize> {
         let s = self.self_expr(Span::new(0, 0))?;
         match self
-            .d
-            .sym(n)
+            .syms
+            .get(n)
             .and_then(|sym| self.impls().lookup_member(&s.ty, sym))
         {
             Some(decls::Member::Field(i, _)) => Some(i),
