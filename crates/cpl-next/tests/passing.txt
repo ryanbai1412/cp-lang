@@ -948,6 +948,7 @@ core-08/derived-impl-meets-its-supertrait-bounds.cp
 core-08/domain-kind-param.cp
 core-08/duplicate-impl.cp
 core-08/explicit-conversion.cp
+core-08/f64-operators-are-trait-impls.cp
 core-08/field-trait-struct-opt-in.cp
 core-08/fn-item-type-takes-its-own-impl.cp
 core-08/fn-items-still-coerce-to-their-fn-type.cp
