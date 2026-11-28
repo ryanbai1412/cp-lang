@@ -453,18 +453,18 @@ impl Cx<'_> {
             span,
         }
     }
-    /// A name that is a domain: one declared in a body, or a type parameter used as one.
     /// `P` of `Mod<P>`, a value parameter, read as a value (R08.2.4).
     pub(super) fn value_param(&self, n: &str, span: Span) -> Option<TExpr> {
         let s = self.b.syms.of(self.syms, n)?;
         let p = self.b.generics.iter().position(|g| *g == s)?;
         let f = self.b.decl?;
-        self.facts.value_params(f).contains(&p).then(|| TExpr {
+        self.facts.value_params(f).contains(&p).then_some(TExpr {
             kind: TK::TypeValue(Ty::Param(p)),
             ty: Ty::Int,
             span,
         })
     }
+    /// A name that is a domain: one declared in a body, or a type parameter used as one.
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
         let sym = self.b.syms.of(self.syms, n);
         // A fn's own type parameter is nearer than any domain declared outside it.
