@@ -235,7 +235,10 @@ library or by this spec:
 - `@reject(when: T = Type, "<message>", code: C)` before a parameter with a
   default: a call that takes the default where each `when` type parameter,
   as the call infers it, is that type is error `C` at the call, with the
-  message; nothing is lowered. `when` is one or more `T = Type`, joined by
+  message; nothing is lowered. A generic fn that takes the default where its
+  own type parameters leave `when` open inherits the rejection: each call to
+  it decides `when` with the call's types, and a generic caller inherits it
+  in turn. `when` is one or more `T = Type`, joined by
   `and`, each `T` a type parameter of the fn. Any library may guard a default
   this way (std's `count`, chapter 7). A `@reject` on a parameter with no
   default, without a message and code, or with any other `when`, and any

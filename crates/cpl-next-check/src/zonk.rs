@@ -96,6 +96,10 @@ impl<'a> Cx<'a> {
                     self.b.unsolved.push((at, f.decl, i));
                 }
                 *f = self.zonk_fnref(f);
+                if !f.targs.is_empty() {
+                    let at = self.b.item.at(e.span);
+                    (self.generic_calls).push((self.b.decl, at, f.decl, f.targs.clone()));
+                }
                 if let Some(r) = recv {
                     self.zonk_arg(r);
                 }

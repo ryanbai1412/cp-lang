@@ -9702,7 +9702,7 @@ Reverse it by deleting `not_members` and the cases (R08.1.2).
 - **Why.** Decimal-to-binary rounding is a bignum algorithm a std parser would get wrong in the last bit; it is each back end's own library, like output, so it is a machine primitive. One op serves `read<F64>()` and `Str.parse<F64>()` alike, since both go through `Input`.
 - **Reverse.** Drop the row and write the parse in std over `I128` digits, accepting last-bit differences.
 
-## 676. `@reject` guards a default that is wrong for some types (check, 2026-11-28)
+## 677. `@reject` guards a default that is wrong for some types (check, 2026-11-28)
 
 `[true, false].count()` counted the falses too and was accepted: old
 `cpl` named the call by a special case, cpl-next had none. Decision 378
@@ -9733,3 +9733,12 @@ shadow it, and two traits' free names of one spelling are ambiguous
 the marked methods by `FnId` and adds them to each view that has the trait.
 Reverse it by deleting `Decorator::FreeForm`, `free_forms` and the
 `core-01/free-form-*` cases.
+A generic fn whose body takes the default with `T` still its own parameter
+(`fn all_of<T>(xs: List<T>) = xs.count()`) cannot decide it, so it is part
+of that fn's checked summary, `TypedFn::requires`: each call substitutes its
+inferred type arguments and is the error, labelled at the inner call, or,
+still generic, the caller's own requirement, transitively. It is per item in
+check, with no instance or link step, and member where-clauses share the
+same `Requirement` list. The frozen `cpl` misses this case (it prints the
+count), so its cases are `// engines: next`.
+Reverse it by deleting the decorator, `rejected_defaults` and `inherited_rejects`.

@@ -327,6 +327,21 @@ pub struct TypedFn {
     pub ret: Ty,
     /// What it yields or lends, with the sets its body gives a fn-typed result.
     pub region: Option<(bool, Ty)>,
+    /// What each call must meet, over its own type parameters, that its body could not decide.
+    pub requires: Vec<Requirement>,
+}
+
+/// What a generic fn's body asks of its type parameters and leaves to each call to decide.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Requirement {
+    /// A `@reject`ed default the body takes (`origin`): a call where every `when` type is
+    /// the one named is that error (R06.4.17).
+    Rejected {
+        when: Vec<(Ty, Ty)>,
+        code: cpl_diag::Code,
+        text: String,
+        origin: cpl_next_ir::ids::SourceId,
+    },
 }
 #[derive(Clone)]
 pub struct LambdaInfo {
@@ -498,6 +513,10 @@ struct Cx<'a> {
     /// any body is checked so a fn's range type may end at it wherever the fn is (R02.10.3).
     top_slots: Vec<LocalId>,
     param_adds: HashMap<(FnId, usize), Vec<Member>>,
+    /// Each fn's requirements its calls decide (`TypedFn::requires`).
+    requires: HashMap<FnId, Vec<Requirement>>,
+    /// Each call of a generic fn: the fn it sits in, where, the callee, its type arguments.
+    generic_calls: Vec<(Option<FnId>, cpl_next_ir::ids::SourceId, FnId, Vec<Ty>)>,
     /// What the top level and each body put in a global's set (`SetTy::Global`).
     global_adds: HashMap<(usize, usize), Vec<Member>>,
     /// `SetTy::AddedAt(i)`'s call and the slot of the set it passes there.
@@ -754,6 +773,8 @@ pub fn check(
         global_names: HashMap::new(),
         top_slots: (0..d.top_values.len()).collect(),
         param_adds: HashMap::new(),
+        requires: HashMap::new(),
+        generic_calls: Vec::new(),
         global_adds: HashMap::new(),
         added: Vec::new(),
         // A top-level domain's place is kept for it until its statement runs.
@@ -1046,6 +1067,17 @@ pub fn check(
     let errs = cx.errors.len();
     cx.unfixed_targs(errs);
     cx.rejected_defaults();
+    for (caller, m) in cx.inherited_rejects() {
+        match caller.filter(|g| quiet_fns.contains(g)) {
+            Some(g) => deferred.entry(g).or_default().push(m),
+            None => cx.errors.push(m),
+        }
+    }
+    for (g, rs) in &cx.requires {
+        if let Some(tf) = cx.fns.get_mut(g) {
+            tf.requires = rs.clone();
+        }
+    }
     ctx_fns.sort_by_key(|c| c.0);
     let mut globals = std::mem::take(&mut cx.globals);
     for g in &mut globals {
@@ -1513,6 +1545,7 @@ impl<'a> Cx<'a> {
             body,
             ret,
             region: self.b.region.take(),
+            requires: Vec::new(),
         };
         // Typed once checked: no later body changes this one's types (`SetTy::AddedAt`, `SetTy::Global`).
         self.zonk_fn(&mut out);

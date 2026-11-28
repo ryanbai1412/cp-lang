@@ -136,14 +136,94 @@ impl Cx<'_> {
     }
     /// Each call zonked that took a `@reject`ed default where each `when` type is the one named:
     /// that error, at the call (R06.4.17).
+    /// One the enclosing fn's type parameters leave open is that fn's requirement.
     pub(super) fn rejected_defaults(&mut self) {
         let mut taken = std::mem::take(&mut self.b.rejects);
         taken.dedup_by(|a, b| a.0 == b.0);
         for (at, r) in taken {
-            if r.when.iter().all(|(t, is)| self.zonk(t) == *is) {
-                self.errors.push(Msg::at(at, Msg::verdict(r.code, r.text)));
+            let when: Vec<(Ty, Ty)> = (r.when.iter())
+                .map(|(t, is)| (self.zonk(t), is.clone()))
+                .collect();
+            match rejects(&when) {
+                Some(true) => self.errors.push(Msg::at(at, Msg::verdict(r.code, r.text))),
+                Some(false) => {}
+                None => {
+                    if let Some(g) = self.b.decl {
+                        let r = Requirement::Rejected {
+                            when,
+                            code: r.code,
+                            text: r.text,
+                            origin: at,
+                        };
+                        let rs = self.requires.entry(g).or_default();
+                        if !rs.contains(&r) {
+                            rs.push(r);
+                        }
+                    }
+                }
             }
         }
+    }
+    /// Each generic call of a fn that requires a rejection decides it with the call's type
+    /// arguments: the error at the call, labelled where the default is taken, when each `when`
+    /// holds, and else the caller's own requirement while its parameters leave it open, until
+    /// no fn learns one more. A requirement only grows its types through a call at a growing
+    /// type, which is its own error (R08.2.10), so the rounds stop there.
+    pub(super) fn inherited_rejects(&mut self) -> Vec<(Option<FnId>, Msg)> {
+        let calls = std::mem::take(&mut self.generic_calls);
+        let mut said = HashSet::new();
+        let mut out = Vec::new();
+        for _ in 0..=calls.len() {
+            let mut grew = false;
+            for (caller, at, callee, targs) in &calls {
+                let Some(reqs) = self.requires.get(callee).cloned() else {
+                    continue;
+                };
+                let sub = Subst {
+                    tys: targs,
+                    sets: &[],
+                };
+                for Requirement::Rejected {
+                    when,
+                    code,
+                    text,
+                    origin,
+                } in reqs
+                {
+                    let when: Vec<(Ty, Ty)> = (when.iter())
+                        .map(|(t, is)| (sub.ty(t), is.clone()))
+                        .collect();
+                    match rejects(&when) {
+                        Some(true) if said.insert((at.clone(), origin.clone())) => {
+                            let m = Msg {
+                                labels: vec![(origin, "the default refused here".to_string())],
+                                ..Msg::at(at.clone(), Msg::verdict(code, text))
+                            };
+                            out.push((*caller, m));
+                        }
+                        Some(_) => {}
+                        None => {
+                            let Some(g) = caller else { continue };
+                            let r = Requirement::Rejected {
+                                when,
+                                code,
+                                text,
+                                origin,
+                            };
+                            let rs = self.requires.entry(*g).or_default();
+                            if !rs.contains(&r) {
+                                rs.push(r);
+                                grew = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if !grew {
+                break;
+            }
+        }
+        out
     }
     /// The overload of `first`'s name the labels `args` give pick, or the named-argument error
     /// (E0310) when no overload takes them all (R06.1.6).
@@ -1254,5 +1334,26 @@ impl Cx<'_> {
             doms: &self.b.doms,
             scoped: &scoped,
         })
+    }
+}
+
+/// Whether a rejection holds: each `when` type is the one named; it cannot, one is not and no
+/// type parameter of the fn it sits in could make it so; `None` when those leave it open.
+fn rejects(when: &[(Ty, Ty)]) -> Option<bool> {
+    fn could_be(t: &Ty, is: &Ty) -> bool {
+        match (t, is) {
+            (Ty::Param(_), _) => true,
+            (Ty::Struct(a, ts, _), Ty::Struct(b, us, _)) => {
+                a == b && ts.len() == us.len() && ts.iter().zip(us).all(|(t, u)| could_be(t, u))
+            }
+            _ => t == is,
+        }
+    }
+    if when.iter().all(|(t, is)| t == is) {
+        Some(true)
+    } else if when.iter().all(|(t, is)| could_be(t, is)) {
+        None
+    } else {
+        Some(false)
     }
 }
