@@ -13,6 +13,17 @@ pub(super) enum Made {
     Wait,
 }
 
+/// What a made impl asks of its struct's parameters.
+#[derive(Clone, Copy)]
+pub(super) enum Asks {
+    /// What each field's type takes the impl's trait by, its `@cache` fields too when it
+    /// copies them (R08.1.6).
+    Fields { caches: bool },
+    /// Only its written bounds: a `without` form's impl reads the record's field names, not
+    /// their types (R08.4.1).
+    Written,
+}
+
 /// A trait impl to make, and where.
 pub(super) struct Of<'a> {
     pub mid: ModId,
@@ -21,8 +32,8 @@ pub(super) struct Of<'a> {
     pub tr: &'a TyForm,
     /// The struct a derived impl is made for.
     pub derived_for: Option<Named>,
-    /// Whether the derived impl copies its struct's `@cache` fields.
-    pub copies: bool,
+    /// What a made impl asks of its struct's parameters.
+    pub asks: Asks,
     /// The first impl this layer makes: those before are std's.
     pub impls_from: usize,
     /// The module's written forms, which an impl's `let` may not read a `var` of.
@@ -36,7 +47,7 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
         form,
         tr,
         derived_for: id,
-        copies,
+        asks,
         impls_from,
         top,
     } = of;
@@ -185,8 +196,13 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
         d.module_or_program_errors(mid, errors);
         return Made::Done;
     };
-    if let Some(Named::Struct(sid)) = id.filter(|_| !d.field_trait(tref.tr)) {
-        let Some(asked) = Impls::of(d).derived_bounds(sid, &tref, copies) else {
+    let fields = match asks {
+        Asks::Fields { caches } => Some(caches),
+        Asks::Written => None,
+    };
+    let derives = id.filter(|_| !d.field_trait(tref.tr)).zip(fields);
+    if let Some((Named::Struct(sid), caches)) = derives {
+        let Some(asked) = Impls::of(d).derived_bounds(sid, &tref, caches) else {
             return Made::Wait;
         };
         for b in asked {

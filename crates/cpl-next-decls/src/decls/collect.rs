@@ -2,6 +2,7 @@
 use super::forms::{Form, ImplForm, Reader, TyForm, UseForm};
 use super::impls::supertraits_unmet;
 use super::inherent::inherent_impl;
+use super::trait_impl::Asks;
 use super::*;
 use crate::attrs::Decorator;
 use crate::synth::{enum_structs, module_derived};
@@ -236,9 +237,9 @@ fn layer(
     // Only a derive that rebuilds its value copies the `@cache` fields.
     let impl_of = |v: Vec<(ItemId, String, ImplForm)>, caches: bool| {
         v.into_iter()
-            .map(move |(i, n, s)| (i, n, Form::Impl(s), caches))
+            .map(move |(i, n, s)| (i, n, Form::Impl(s), Asks::Fields { caches }))
     };
-    let mut derived: Vec<Vec<(ItemId, String, Form, bool)>> = Vec::new();
+    let mut derived: Vec<Vec<(ItemId, String, Form, Asks)>> = Vec::new();
     for (mi, fs) in forms_of.iter().enumerate() {
         // Std's modules get only what a program's records add.
         let ours = mi >= from;
@@ -247,17 +248,20 @@ fn layer(
             (false, true) => module_derived(fs, &each, &cmp, &mut d.syms),
             (false, false) => Vec::new(),
         };
-        let mut made: Vec<(ItemId, String, Form, bool)> = (made_here.into_iter())
-            .map(|(i, n, s, c)| (i, n, Form::Impl(s), c))
+        let mut made: Vec<(ItemId, String, Form, Asks)> = (made_here.into_iter())
+            .map(|(i, n, s, caches)| (i, n, Form::Impl(s), Asks::Fields { caches }))
             .collect();
         if let (true, Some((id, _))) = (mi == CORE.0, records.first()) {
             let syms = &mut d.syms;
             let impls = crate::records::domain_impls(positions.as_ref(), &new_shapes, syms, at);
-            made.extend(
-                impls
-                    .into_iter()
-                    .map(|(n, imp)| (id.clone(), n, Form::Impl(imp), false)),
-            );
+            made.extend(impls.into_iter().map(|(n, imp)| {
+                (
+                    id.clone(),
+                    n,
+                    Form::Impl(imp),
+                    Asks::Fields { caches: false },
+                )
+            }));
             // Each new row over every shape, and std's rows over the new shapes.
             let rows_of =
                 |rs: &[Vec<String>], syms: &mut crate::sym::Syms| -> Vec<(ItemId, Form)> {
@@ -287,7 +291,7 @@ fn layer(
             made.extend(
                 without
                     .into_iter()
-                    .map(|(n, imp)| (id.clone(), n, Form::Impl(imp), false)),
+                    .map(|(n, imp)| (id.clone(), n, Form::Impl(imp), Asks::Written)),
             );
         }
         if ours || !new_shapes.is_empty() {
@@ -470,13 +474,11 @@ fn layer(
             .collect();
         d.structs[id.0].variants = vs;
     }
-    // The derived impls that read their struct's `@cache` fields, by the impl they are.
-    let mut copying: HashSet<*const Form> = HashSet::new();
+    // What each made impl asks of its struct's parameters, by the impl it is.
+    let mut asking: HashMap<*const Form, Asks> = HashMap::new();
     for (mi, made) in derived.iter().enumerate() {
-        for (item, name, s, caches) in made {
-            if *caches {
-                copying.insert(s);
-            }
+        for (item, name, s, asks) in made {
+            asking.insert(s, *asks);
             // A record is core's struct wherever its impl is written.
             let record = |n: &Named| matches!(n, Named::Struct(s) if d.structs[s.0].record);
             let found = own[mi]
@@ -641,7 +643,8 @@ fn layer(
                             form,
                             tr,
                             derived_for: id,
-                            copies: copying.contains(&(s as *const _)),
+                            asks: (asking.get(&(s as *const _)).copied())
+                                .unwrap_or(Asks::Fields { caches: false }),
                             impls_from,
                             top: forms_of[mi],
                         };
