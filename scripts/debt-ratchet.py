@@ -1423,7 +1423,7 @@ NEXT_TRAIT_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?trait\s+(\w+)(?:<[^{:]
 # A closed enum of keys, decls' `Role` or attrs' `Decorator`, is a key like an id, and a slice
 # of `Sym`s or `Ty`s is one compound key (`record(&[Sym])`), never a table (lanes I and J,
 # coordinator ruling 22:07). A `Vec`, a map, a `bool` or text is not a key.
-NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|Ty|Role|Decorator|usize|u32|u16|u8)$")
+NEXT_VIEW_KEY_RE = re.compile(r"^&?(?:'\w+\s+)?(?:\w+::)*(?:\w+Id|FuncKey|Sym|Ty|Role|RoleMember|Decorator|usize|u32|u16|u8)$")
 NEXT_VIEW_SLICE_KEY_RE = re.compile(r"^&(?:'\w+\s+)?\[(?:\w+::)*(?:Sym|Ty)\]$")
 NEXT_VIEW_TABLE_RE = re.compile(r"\b(?:str|String|HashMap|BTreeMap|HashSet|Vec|Decls|Typed|Loaded|Whole|Generic|Deferred|SetAdds)\b|\[")
 
@@ -1456,7 +1456,7 @@ def _params(sig: str) -> list[str]:
 
 def _view_method_ok(sig: str) -> bool:
     """Lane I's rule for one view method: it takes at least one key, every key is an id, a
-    `Sym`, a concrete `Ty`, a `Role` or `Decorator`, or a slice of `Sym`s or `Ty`s (never text
+    `Sym`, a concrete `Ty`, a `Role`, `RoleMember` or `Decorator`, or a slice of `Sym`s or `Ty`s (never text
     or a table), and it answers that key alone, never every item of a kind."""
     name = re.search(r"fn\s+(\w+)", sig).group(1)
     if re.match(r"(?:all|every)(?:_|$)", name) or name.endswith("_all"):

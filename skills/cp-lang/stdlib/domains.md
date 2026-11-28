@@ -26,9 +26,6 @@ A type with finitely many values, so a dense table over it has an end (R06.4.1):
 
 The table `@memo(array)` keeps: a slot for each position of `K`, made on the first `set` (R06.4.1).
 
-- `fn get(self, k: K) -> ?V`
-- `fn set(mut self, k: K, v: V)`
-
 ## `struct Cut<D: Domain>`
 
 A cut of `D`: the place between two neighbouring positions, or at either end, with `k` positions before it.

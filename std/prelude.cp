@@ -229,6 +229,7 @@ use std.search.{
 }
 use std.segtree.{SegTree}
 use std.window.{Sweep, Undo, Undoing, Window, track, undoing, window_fold}
+use std.memo.{MemoTable}
 use std.seq.{
     Bidir,
     Compressed,

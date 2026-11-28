@@ -331,6 +331,7 @@ impl<'a> Cx<'a> {
                     let e = f(cx, vals, ret);
                     out.push(TStmt::Expr(e));
                 }
+                LamBody::Ready(e) => out.push(TStmt::Expr(e)),
             }
             None
         })
@@ -342,6 +343,7 @@ impl<'a> Cx<'a> {
             LamBody::Fn(next::FnBody::Block(b)) => self.block(&b, Some(ret)),
             LamBody::Fn(next::FnBody::Expr(e)) => self.expr(&e, Some(ret)),
             LamBody::Built(f) => f(self, vals, ret),
+            LamBody::Ready(e) => e,
         }
     }
     /// A nested `fn`'s parameter types, each jagged one its reach (R06.4.1), and its result,
@@ -643,6 +645,8 @@ pub(super) enum LamBody<'b, 'a> {
     Arm(next::ArmBody),
     Fn(next::FnBody),
     Built(Box<dyn FnOnce(&mut Cx<'a>, Vec<TExpr>, &Ty) -> TExpr + 'b>),
+    /// A body built before its lambda, which reads none of its parameters.
+    Ready(TExpr),
 }
 
 impl LamBody<'_, '_> {
@@ -668,7 +672,7 @@ impl LamBody<'_, '_> {
         match self {
             LamBody::Arm(b) => Some(b.falls_through(todo)),
             LamBody::Fn(b) => Some(b.falls_through(todo)),
-            LamBody::Built(_) => None,
+            LamBody::Built(_) | LamBody::Ready(_) => None,
         }
     }
     fn never_ends(&self, todo: cpl_next_syntax::fall_through::Traps) -> bool {
@@ -676,7 +680,7 @@ impl LamBody<'_, '_> {
             LamBody::Arm(next::ArmBody::Expr(e)) => e.never_ends(todo),
             LamBody::Arm(next::ArmBody::Block(b)) => b.never_ends(todo),
             LamBody::Fn(b) => b.never_ends(todo),
-            LamBody::Arm(next::ArmBody::Stmt(_)) | LamBody::Built(_) => false,
+            LamBody::Arm(next::ArmBody::Stmt(_)) | LamBody::Built(_) | LamBody::Ready(_) => false,
         }
     }
 }

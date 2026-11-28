@@ -6,6 +6,7 @@ use super::*;
 use crate::attrs::Decorator;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_syntax::ast::AstNode as _;
+use cpl_next_syntax::grammar::RoleMember;
 
 /// Where decorator `x` is written, or `at` for one the compiler made.
 pub(super) fn attr_at(x: &AttrForm, at: Span) -> Span {
@@ -153,6 +154,7 @@ pub(super) fn name_trait(
             Some(Role::RangeBounds) => &mut d.roles.bounds,
             Some(Role::Endpoint) => &mut d.roles.endpoint,
             Some(Role::DeriveFields) => &mut d.roles.derive_fields,
+            Some(Role::MemoTable) => &mut d.roles.memo_table,
             _ => {
                 let at = item.at(attr_at(x, t.span));
                 d.errors.push(misplaced_role(item, at, role, "trait"));
@@ -161,6 +163,17 @@ pub(super) fn name_trait(
         };
         let dup = again(item, t.span, "role(..)");
         once(slot, id, dup, &mut d.errors);
+        let role = role.map_or("", Role::name);
+        let members = RoleMember::ALL.into_iter().map(RoleMember::spelling);
+        for (_, m) in members.filter(|(r, _)| *r == role) {
+            if !t.methods.iter().any(|f| d.syms.text(f.name) == m) {
+                let msg = Msg::verdict(
+                    cpl_diag::codes::UNRESOLVED_NAME,
+                    format!("`@role({role})` is a trait declaring `{m}`, which this one lacks"),
+                );
+                d.errors.push(Msg::at(item.at(attr_at(x, t.span)), msg));
+            }
+        }
     }
     let lit = t.attrs.iter().find(|x| x.attr == Decorator::Literal);
     if let Some(text) = lit.and_then(AttrForm::str_arg) {

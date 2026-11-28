@@ -9,6 +9,7 @@ use crate::synth::{enum_structs, module_derived};
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::ast::AstNode as _;
+use cpl_next_syntax::grammar::RoleMember;
 
 /// Std's declarations, collected once and never written after: the core's and every std
 /// module's. A program's declarations are a layer over them.
@@ -145,7 +146,6 @@ fn layer(
         public.push(HashSet::new());
     }
     let mut main = Vec::new();
-    let memos: Vec<(usize, String)> = Vec::new();
     // Pass 1: names, so signatures can mention later declarations.
     let mut pending: Vec<(ModId, ItemId, &Form, Option<Named>)> = Vec::new();
     let mut op_methods: HashMap<TraitId, Sym> = HashMap::new();
@@ -315,8 +315,10 @@ fn layer(
         }
         derived.push(made);
     }
-    for (w, home) in crate::synth::memo_tables(&forms_of, &mut d.syms) {
+    let mut tables_at = Vec::new();
+    for (w, home, at) in crate::synth::memo_tables(&forms_of, &mut d.syms) {
         d.memo_homes.insert(w, home);
+        tables_at.push((home, at));
     }
     // Each enum as structs: its own and one per variant (R02.7).
     let mut synth: Vec<Vec<(ItemId, Form)>> = vec![Vec::new(); mods.len()];
@@ -412,6 +414,11 @@ fn layer(
                     let generics = a.generics.clone();
                     let at = item.at(Span::new(a.span.start, a.span.start));
                     aliases.push((mid, at, name, generics, a.ty.clone()));
+                }
+                // A program's `@memo(word)` fn is a statement of its top level, whose table
+                // lives per test case; check makes the fn that answers from it (R06.4.1).
+                Form::Fn(f) if mid == d.program && memo_keyed(f, &d.memo_homes, &mut d.syms) => {
+                    main.push(item.clone())
                 }
                 Form::Fn(_) | Form::Impl(_) => pending.push((mid, item.clone(), f, None)),
                 Form::Const {
@@ -762,11 +769,37 @@ fn layer(
             ks.retain(|k| live[*k]);
         }
     }
-    // `f.clear()` of a `@memo` fn reaches its clear through the fn, not by a spelling (R06.4.1).
-    for (mi, f) in memos {
-        let clear = crate::synth::memo_clear_name(&f);
-        if let (Some(Named::Fn(w)), Some(Named::Fn(c))) = (own[mi].get(&f), own[mi].get(&clear)) {
-            d.memo_clears.insert(*w, *c);
+    // A `@memo_table` struct is the table through its impl of `MemoTable` (R06.4.1).
+    for ((home, name), at) in tables_at
+        .into_iter()
+        .filter(|((h, _), _)| *h >= from && d.roles.memo_table.is_some())
+    {
+        let Some(Named::Struct(t)) = own[home].get(d.syms.text(name)).copied() else {
+            continue;
+        };
+        let rows = d.roles.memo_table.and_then(|tr| d.impls_by_trait.get(&tr));
+        let filled = (rows.into_iter().flatten())
+            .any(|k| matches!(d.impls[*k].for_, Ty::Struct(s, ..) if s == t));
+        if !filled {
+            let n = d.syms.text(name);
+            d.misdeclared.push((
+                at,
+                cpl_diag::codes::MEMO_TABLE_WITHOUT_IMPL,
+                format!(
+                    "`@memo_table` struct `{n}` has no impl of `MemoTable`; write `impl MemoTable<K, R> for {n}<K, R>:` holding its `get` and `set`"
+                ),
+            ));
+        }
+    }
+    // Each role trait's members, which check reaches by `RoleMember`, not by their text.
+    for m in RoleMember::ALL {
+        let (role, name) = m.spelling();
+        let role = Role::ALL.into_iter().find(|r| r.name() == role);
+        let tr = role.and_then(|r| crate::views::RoleRows::role_trait(&d, r));
+        let found = (tr.zip(d.syms.get(name)))
+            .and_then(|(tr, s)| d.traits[tr.0].methods.get(&s).map(|f| (s, *f)));
+        if let Some(found) = found {
+            d.role_members.insert(m, found);
         }
     }
     // The program's own declaration errors are said at once; every other module's stay with
@@ -1312,4 +1345,26 @@ mod tests {
         assert_eq!(d.traits[tr.0].assoc.len(), 1);
         assert!(d.trait_impls(tr).count() >= 1);
     }
+}
+
+/// Whether `f` is a `@memo(word)` fn `word`'s table can key: its word names a `@memo_table`, its
+/// parameters and result are written, none `mut`, `self` or variadic, and it has no type
+/// parameters, yield or lend (R06.4.1).
+fn memo_keyed(
+    f: &super::forms::FnForm,
+    homes: &HashMap<Sym, (usize, Sym)>,
+    syms: &mut crate::sym::Syms,
+) -> bool {
+    let word = (f.attrs.iter())
+        .find(|x| x.attr == crate::attrs::Decorator::Memo)
+        .and_then(|x| crate::synth::attr_word(x, syms));
+    let plain =
+        |p: &super::forms::ParamForm| p.ty.is_some() && !p.mutable && !p.variadic && !p.is_self;
+    word.is_some_and(|w| homes.contains_key(&w))
+        && !f.params.is_empty()
+        && f.params.iter().all(plain)
+        && f.ret.is_some()
+        && f.generics.is_empty()
+        && f.lends.is_none()
+        && !f.yields
 }

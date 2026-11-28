@@ -427,6 +427,9 @@ pub struct Roles {
     pub variant_check: Option<FnId>,
     /// The `@role(todo)` fn: the expression `todo`, of any type, is a trap through it (R01.6.7).
     pub todo: Option<FnId>,
+    /// The `@role(memo_table)` trait: a `@memo_table(word)` struct's impl of it is the table a
+    /// `@memo(word)` fn reads with `get` and keeps results in with `set` (R06.4.1).
+    pub memo_table: Option<TraitId>,
 }
 
 /// A language role of R11.6.1.
@@ -459,10 +462,11 @@ pub enum Role {
     Pack,
     DeriveFields,
     VariantCheck,
+    MemoTable,
 }
 
 impl Role {
-    pub const ALL: [Role; 27] = [
+    pub const ALL: [Role; 28] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -490,6 +494,7 @@ impl Role {
         Role::Pack,
         Role::DeriveFields,
         Role::VariantCheck,
+        Role::MemoTable,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -521,6 +526,8 @@ impl Role {
             Role::Pack => "pack",
             Role::DeriveFields => "derive_fields",
             Role::VariantCheck => "variant_check",
+            // The role is named for the decorator that marks its tables.
+            Role::MemoTable => crate::attrs::Decorator::MemoTable.name(),
         }
     }
 }
@@ -621,6 +628,8 @@ pub struct Decls {
     /// Each `@memo_table(word)` struct's module and name there, by word: the table `@memo(word)`
     /// keeps (R06.4.1).
     pub memo_homes: HashMap<Sym, (usize, Sym)>,
+    /// Each role trait's members, by the grammar's role-member table (R11.6.1).
+    pub role_members: HashMap<cpl_next_syntax::grammar::RoleMember, (Sym, FnId)>,
     /// Each `@memo` fn's `f.clear`, by the fn (R06.4.1).
     pub memo_clears: HashMap<FnId, FnId>,
     /// Static fns marked `@from_op`: what a bare operator becomes where their struct is wanted (R08.1.9).
@@ -1762,6 +1771,20 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         item.at(x.node.as_ref().map_or(f.span, |n| n.syntax().span()))
     };
     for x in &f.attrs {
+        // `@memo` spells its table: the word names which, never picked for it (R06.4.1).
+        let bare = x
+            .node
+            .as_ref()
+            .and_then(|n| n.args())
+            .is_none_or(|a| a.args().next().is_none());
+        if x.attr == Decorator::Memo && bare {
+            let msg = Msg::verdict(
+                cpl_diag::codes::BAD_MEMO,
+                "`@memo` spells its table: write `@memo(array)` or `@memo(map)`",
+            );
+            errors.push(Msg::at(attr_at(x), msg));
+            continue;
+        }
         attr_rules::check(x, kind, &item, &mut errors);
         if x.attr == Decorator::Lint {
             let body = match &f.body {

@@ -182,10 +182,22 @@ library or by this spec:
   has an impl of, becomes a call of the fn (R08.1.9).
 - `@memo_table(word)` on a struct (std's `HashMap`): the table a
   `@memo(word)` fn keeps, `T<K, R>` for key `K` (the one parameter's type,
-  else the tuple of them) and result `R`, built by `T<K, R>()`. `@memo`
-  reads it with `get(k) -> ?R` and keeps a result with `set(k, r)`; its
+  else the tuple of them) and result `R`, built by `T<K, R>()`. It is a
+  table through an ordinary `impl MemoTable<K, R>` (std's `@role(memo_table)`
+  trait, in the prelude); a `@memo_table` struct without one is an error at
+  the struct. `@memo` reads it with the trait's `get(k) -> ?R` and keeps a
+  result with its `set(k, r)`; its
   bounds on `K` are the key's (R06.4.1). `f.clear()` empties
   it by building a fresh `T<K, R>()`.
+  A block's or the top level's `@memo(word) fn f(params) -> R: body` is,
+  by definition, these statements in its place, each diagnosed at `f`'s
+  declaration: `var $memo = T<K, R>()`; `fn $body(params) -> R: body`, its
+  calls of `f` being calls of the `f` below; `fn f(params) -> R:` that runs
+  `let $got = MemoTable.get($memo, key)` and gives `$got`'s value if it is
+  `Some`, else `let $r = $body(params)`, `MemoTable.set(mut $memo, key, $r)`,
+  `$r`; and `fn f.clear(): $memo = T<K, R>()`. Here `key` is the one argument,
+  else the tuple of them, and `$memo`, `$body`, `$got` and `$r` are names no
+  program can write (R06.4.1).
 - `@same_keys` on a fn (std's `zip`): its arguments that are arrays over
   domains must share one domain, so arrays over two domains are a type
   error at the call (R04b.1.3).

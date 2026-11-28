@@ -250,6 +250,26 @@ decorators! {
     ]
 }
 
+/// A member a language role's trait declares, which the compiler reaches by this variant, its
+/// spelling kept here once (R11.6.1): `@role(memo_table)`'s `get` and `set` (R06.4.1).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum RoleMember {
+    MemoGet,
+    MemoSet,
+}
+
+impl RoleMember {
+    pub const ALL: [RoleMember; 2] = [RoleMember::MemoGet, RoleMember::MemoSet];
+
+    /// The `@role(name)` whose trait declares it, and its name there.
+    pub fn spelling(self) -> (&'static str, &'static str) {
+        match self {
+            RoleMember::MemoGet => ("memo_table", "get"),
+            RoleMember::MemoSet => ("memo_table", "set"),
+        }
+    }
+}
+
 /// Whether a decorator is live, a file directive or a removed spelling.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DecoratorKind {

@@ -229,6 +229,9 @@ pub mod codes {
     pub const FIELD_BOUND_FROM_INPUT: Code = Code("E0316");
     /// `fn f(c: 1..=m)` with `var m`: only a top-level `let` may end a type (R02.10.3).
     pub const RANGE_END_VAR: Code = Code("E0326");
+    /// A `@memo_table(word)` struct with no impl of `MemoTable`: nothing fills the table's `get`
+    /// and `set` (R06.4.1).
+    pub const MEMO_TABLE_WITHOUT_IMPL: Code = Code("E0327");
     /// `@get fn f(self, k: Int)`: a getter's parameters all need defaults (R02.6.6).
     pub const GETTER_NEEDS_DEFAULTS: Code = Code("E0317");
     /// A `match` arm after one that matches everything (R01.7.3).

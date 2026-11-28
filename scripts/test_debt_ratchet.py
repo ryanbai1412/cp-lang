@@ -2723,6 +2723,7 @@ class DebtRatchetTest(unittest.TestCase):
 
     def test_a_view_keyed_by_a_role_decorator_or_key_slice_is_a_view(self) -> None:
         ok = ["fn role_fns(&self, r: Role) -> Vec<FuncId>;",
+              "fn role_member(&self, m: RoleMember) -> Option<(Sym, FuncId)>;",
               "fn marked_fns(&self, d: attrs::Decorator) -> Vec<FuncId>;",
               "fn record(&self, fields: &[Sym]) -> Option<StructId>;",
               "fn with_defaults_of(&self, s: StructId, args: &[Ty]) -> Ty;",

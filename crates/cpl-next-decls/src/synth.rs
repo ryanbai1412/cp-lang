@@ -741,26 +741,26 @@ pub(crate) fn enum_conversions(
 pub(crate) fn memo_tables(
     forms: &[&[(ItemId, Form)]],
     syms: &mut crate::sym::Syms,
-) -> Vec<(Sym, (usize, Sym))> {
+) -> Vec<(Sym, (usize, Sym), cpl_next_ir::ids::SourceId)> {
+    use cpl_next_syntax::ast::AstNode;
     let mut out = Vec::new();
     for (mi, items) in forms.iter().enumerate() {
-        for (_, form) in items.iter() {
+        for (item, form) in items.iter() {
             let Form::Struct(sd) = form else {
                 continue;
             };
-            let word = sd
-                .attrs
-                .iter()
-                .find(|a| a.attr == Decorator::MemoTable)
-                .and_then(|a| attr_word(a, syms));
-            out.extend(word.map(|w| (w, (mi, sd.name))));
+            let Some(x) = sd.attrs.iter().find(|a| a.attr == Decorator::MemoTable) else {
+                continue;
+            };
+            let at = item.at(x.node.as_ref().map_or(sd.span, |n| n.syntax().span()));
+            out.extend(attr_word(x, syms).map(|w| (w, (mi, sd.name), at)));
         }
     }
     out
 }
 
 /// The one bare word a `@memo(word)` or `@memo_table(word)` names.
-fn attr_word(x: &AttrForm, syms: &mut crate::sym::Syms) -> Option<Sym> {
+pub(crate) fn attr_word(x: &AttrForm, syms: &mut crate::sym::Syms) -> Option<Sym> {
     let args: Vec<next::Arg> = x.node.as_ref()?.args()?.args().collect();
     match &args[..] {
         [a] => match a.value()? {

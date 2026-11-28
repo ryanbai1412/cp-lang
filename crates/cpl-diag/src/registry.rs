@@ -862,6 +862,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "3",
     },
     CodeInfo {
+        code: Code("E0327"),
+        title: "`@memo_table` struct without a `MemoTable` impl",
+        summary: "A struct marked `@memo_table(word)` has no impl of `MemoTable`, so no `get` or `set` fills the table.",
+        explanation: "A `@memo(word)` fn reads its table through the table's impl of `MemoTable<K, R>`: `get(k) -> ?R` answers a key it holds, and `set(k, r)` keeps a result. Fns written on the struct itself are not that impl (R06.4.1).",
+        trigger: "@memo_table(slow)\nstruct Slow<K: Eq, V>:\n    var ks: List<K> = []\n    var vs: List<V> = []\n@memo(slow)\nfn sq(n: Int) -> Int = n * n\nprint(sq(2))\n",
+        fix: "@memo_table(slow)\nstruct Slow<K: Eq, V>:\n    var ks: List<K> = []\n    var vs: List<V> = []\nimpl<K: Eq, V> MemoTable<K, V> for Slow<K, V>:\n    fn get(self, k: K) -> ?V:\n        for i in 0..ks.len:\n            if ks[i] == k: return vs[i]\n        None\n    fn set(mut self, k: K, v: V):\n        ks.push(k)\n        vs.push(v)\n@memo(slow)\nfn sq(n: Int) -> Int = n * n\nprint(sq(2))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

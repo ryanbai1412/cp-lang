@@ -12,7 +12,7 @@ use cpl_next_ir::ir::{Func, FuncKey};
 use cpl_next_ir::msg::{Deferred, Msg};
 use cpl_next_ir::ty::{FnId, FnRef, SetAdds, SetTy, StructId, TraitId, Ty};
 use cpl_next_ir::whole::{Dom, DomId, Global, GlobalId, Whole};
-use cpl_next_syntax::grammar::Decorator;
+use cpl_next_syntax::grammar::{Decorator, RoleMember};
 use std::collections::HashMap;
 
 /// The part of the signatures a written type is converted against, each table read by key.
@@ -58,6 +58,8 @@ pub trait RoleRows: RoleStructs {
     fn walk(&self, tr: TraitId) -> Option<(Sym, FnId)>;
     /// Trait `tr`'s yielding method with a default body (`each`), which an impl may write.
     fn own_walk(&self, tr: TraitId) -> Option<(Sym, FnId)>;
+    /// Role member `m`'s name and fn in its role's trait: `MemoTable`'s `get` and `set`.
+    fn role_member(&self, m: RoleMember) -> Option<(Sym, FnId)>;
 }
 
 /// The structs filling the language roles, which a written type converts through: `?T` the
@@ -441,6 +443,7 @@ impl RoleRows for Decls {
             Role::RangeBounds => self.roles.bounds,
             Role::Endpoint => self.roles.endpoint,
             Role::DeriveFields => self.roles.derive_fields,
+            Role::MemoTable => self.roles.memo_table,
             _ => None,
         }
     }
@@ -492,6 +495,9 @@ impl RoleRows for Decls {
     }
     fn own_walk(&self, tr: TraitId) -> Option<(Sym, FnId)> {
         self.walk_of(tr, true)
+    }
+    fn role_member(&self, m: RoleMember) -> Option<(Sym, FnId)> {
+        self.role_members.get(&m).copied()
     }
 }
 

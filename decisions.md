@@ -9742,3 +9742,9 @@ check, with no instance or link step, and member where-clauses share the
 same `Requirement` list. The frozen `cpl` misses this case (it prints the
 count), so its cases are `// engines: next`.
 Reverse it by deleting the decorator, `rejected_defaults` and `inherited_rejects`.
+
+## 678. `@memo` is an ordinary `MemoTable` impl and a typed wrapper (check, 2026-11-27)
+
+- **Call.** `@role(memo_table) pub trait MemoTable<K, V>` (`get(self, k) -> ?V`, `set(mut self, k, v)`) lives in the leaf module `std.memo`, exported from the prelude. A `@memo_table(word)` struct is a table only through an ordinary `impl MemoTable<K, V> for T<K, V>`: `MemoArray` (std.domains) and `HashMap` (std.hash, now `@memo_table(map)`) have one, and a marked struct without one is E0327 at its `@memo_table`, whose help is the impl line. The checker builds a `@memo(word)` fn, in a block or at the top level, as R06.4.1's typed statements (`var $memo = T<K, R>()`, the body as `$body`, a wrapper calling `MemoTable.get`/`set` as trait calls, `f.clear()` assigning a fresh `T<K, R>()`), in `cpl-next-check/src/memo.rs` only. There is no `clear` member, no Memo row and no memo lowerer: lower, the engine and C++ see ordinary lambdas, trait calls and assignments, so they agree by construction. A bare `@memo` stays E0311 at its decorator.
+- **Why.** Coordinator ruling of 2026-11-27, 22:30–22:37, with lanes A and B: roles name their members, so the table is found by its role trait, never by the strings `get`/`set` or by shape. A top-level memo fn had stopped being collected, so it ran with no cache (lane C's fib(60)). The trait cannot sit in std.seq, since seq imports hash and HashMap's impl must name it.
+- **Reverse.** Give `MemoTable` a `clear` member and a Memo row read by a lowerer, if a table ever needs clearing in place.

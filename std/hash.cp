@@ -6,6 +6,8 @@
 //! start: `HashMap`, `HashSet`, `Hash`
 //! example: `var h = HashMap<Int, Int>(); h[1] = 10; h.get(1) == Some(10) and h.get(2) == None`
 
+use std.memo.{MemoTable}
+
 /// A value's 64-bit hash: equal values hash equal. `Int`, `I128`, `U64`, `Char`, `Bool` and
 /// `Str` have it here (splitmix64, decision 28.8); a struct gets it from `hash_fields`, and
 /// `@structural` gives a tuple, record, optional or array it when each part has it.
@@ -81,6 +83,7 @@ fn home(h: U64, mask: Int) -> Int = Int(splitmix64(h ^ U64(0x5bd1e995)) & U64(ma
 /// (linear probing, load at most 1/2, backward-shift removal) points at them. `m[k]` traps when
 /// `k` is absent (`m.get(k)` is the `?V`), `m[k] = v` inserts or replaces, and `m[k] op= v`
 /// starts an absent key at `V.default()`.
+@memo_table(map)
 pub struct HashMap<K, V>:
     var ks: List<K> = []
     var vs: List<V> = []
@@ -229,6 +232,12 @@ impl<K: Hash + Eq, V: Default> IndexMut<K, V> for HashMap<K, V>:
 impl<K: Hash + Eq, V> IndexSet<K, V> for HashMap<K, V>:
     fn set(mut self, k: K, v: V):
         let _ = self.put(k, v)
+
+/// The table `@memo(map)` keeps (R06.4.1).
+impl<K: Hash + Eq, V> MemoTable<K, V> for HashMap<K, V>:
+    fn get(self, k: K) -> ?V = self.get(k)
+    fn set(mut self, k: K, v: V):
+        self[k] = v
 
 impl<K: Hash + Eq, V: Eq> Eq for HashMap<K, V>:
     /// The same keys, each with an equal value, whatever order they went in.

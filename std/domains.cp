@@ -4,6 +4,7 @@
 //! example: `Int.nth(3) == 3 and 5.next! == 6`
 use std.ranges.{Range, range_of}
 use std.raw.{check_range}
+use std.memo.{MemoTable}
 use std.seq.{Seq}
 
 @role(variant_check)
@@ -110,8 +111,10 @@ impl<A: Finite, B: Finite, C: Finite, E: Finite> Finite for (A, B, C, E)
 pub struct MemoArray<K: Domain + Finite, V>:
     /// Each position's result by its ordinal, once one is kept; empty until the first `set`.
     pub var slots: List<?V> = []
-    pub fn get(self, k: K) -> ?V = if slots.len == 0: None else: slots[k.ord]
-    pub fn set(mut self, k: K, v: V):
+
+impl<K: Domain + Finite, V> MemoTable<K, V> for MemoArray<K, V>:
+    fn get(self, k: K) -> ?V = if slots.len == 0: None else: slots[k.ord]
+    fn set(mut self, k: K, v: V):
         if slots.len == 0: slots = List.filled(K.count, None)
         slots[k.ord] = Some(v)
 

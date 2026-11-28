@@ -4,7 +4,7 @@
 
 `Raw<T>`: a run of cells with no length or bounds, what `List`, `Str` and `Array` store their values in. Each fn is one machine operation; the checked types build on them.
 
-Import: `use std.raw.{...}`.
+In prelude (no `use` needed): `todo`.
 
 ## Functions
 
@@ -16,3 +16,4 @@ Import: `use std.raw.{...}`.
 - `fn raw_cap<T>(n: Int) -> Raw<T>` — Storage of `n` unset cells; each is filled by `raw_set` before it is read.
 - `fn check_key(ok: Bool)` — Traps R0101 unless `ok`: a read at a key the sequence doesn't have (R07.2.17).
 - `fn check_range(ok: Bool)` — Traps unless `ok`: a range that is not inside the sequence it slices.
+- `fn todo()` — `todo`: a stub's body, of any type, that traps R0402 where it is reached (R01.6.7).

@@ -153,6 +153,7 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `range_literal` | `range_of` | the fn that builds `lo..hi by k` |
 | `interpolation` | `put_piece` | the fn each piece of an interpolated string calls, with its width, zero fill and digits (R10.3.2) |
 | `derive_fields` | `Show` | the trait every struct without its own impl gets through its fields, packed as `pack` pairs (R08.1.6) |
+| `memo_table` | `MemoTable` | the trait a `@memo_table(word)` struct's impl fills: `@memo(word)` reads with its `get` and keeps results with its `set` (R06.4.1) |
 | `pack` | `Pack<H, T>` | the head-and-tail struct those fields and a variadic pack walk through |
 | `variant_check` | `check_value` | the check an `Int` converted to an enum goes through |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |

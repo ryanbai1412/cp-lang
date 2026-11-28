@@ -5,6 +5,7 @@
 struct Slow<K: Eq, V>:
     var ks: List<K> = []
     var vs: List<V> = []
+impl<K: Eq, V> MemoTable<K, V> for Slow<K, V>:
     fn get(self, k: K) -> ?V:
         for i in 0..ks.len:
             if ks[i] == k: return vs[i]

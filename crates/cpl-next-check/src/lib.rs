@@ -388,18 +388,6 @@ pub struct DomInfo {
     /// `Int`s (R04.3.4).
     pub anonymous: bool,
 }
-/// A block's `@memo` fn, which lower builds from: `f` answers from `table` when it holds the
-/// key and else runs `body` and keeps its result; `clear` empties the table (R06.4.1).
-#[derive(Clone, Debug)]
-pub struct Memo {
-    pub f: VarRef,
-    pub body: VarRef,
-    pub table: VarRef,
-    pub clear: VarRef,
-    pub key: Vec<Ty>,
-    pub value: Ty,
-    pub word: Sym,
-}
 
 pub struct Typed {
     /// The checks the build keeps where no `with checks(..)` says otherwise (contract 0).
@@ -430,8 +418,6 @@ pub struct Typed {
     /// The library fns reached only through a trait: what is wrong in one is said if it runs.
     pub quiet: HashSet<FnId>,
     pub ids: Ids,
-    /// Each block's `@memo` fn, in the order they were checked.
-    pub memos: Vec<Memo>,
 }
 
 enum SetVar {
@@ -482,7 +468,6 @@ struct Cx<'a> {
     bodies: &'a dyn views::Bodies,
     syms: &'a Syms,
     /// Each block's `@memo` fn checked so far.
-    memos: Vec<Memo>,
     /// The `Domain` and `Ordered` impls of each domain this check declares (R04.2).
     dom_rows: Vec<ImplDecl>,
     /// What a constant expression's value is, worked out by the driver's evaluator.
@@ -754,7 +739,6 @@ pub fn check(
     } = program;
     let Build { judge, checks } = build;
     let mut cx = Cx {
-        memos: Vec::new(),
         values: consts,
         checks_kept: checks,
         checks,
@@ -911,10 +895,12 @@ pub fn check(
             });
             cases = Some((count, Vec::new()));
         }
+        let memo_item = matches!(s.decl(), Some(next::Decl::Fn(fd)) if stmt::is_memo(&fd));
         let unbuilt: Vec<String> = (s.directive().filter(|x| !multitest(x)))
             .and_then(|x| x.name())
             .into_iter()
             .chain(s.decorators().iter().filter_map(next::Decorator::name))
+            .filter(|n| !(memo_item && n.text() == "memo"))
             .map(|t| t.text().to_string())
             .collect();
         for name in unbuilt {
@@ -1229,7 +1215,6 @@ pub fn check(
         deferred,
         quiet: quiet_fns,
         ids: cx.ids,
-        memos: cx.memos,
     }
 }
 
@@ -1798,6 +1783,17 @@ impl Cx<'_> {
         match s.decl() {
             Some(next::Decl::Const(c)) => self.const_stmt(&c, known, out),
             Some(next::Decl::Domain(dom)) => self.domain_stmt(&dom, out),
+            // Decls lists a top-level fn here only when it is a `@memo` fn (R06.4.1).
+            Some(next::Decl::Fn(fd)) if stmt::is_memo(&fd) => {
+                let me = s.syntax().span();
+                let file = s.syntax().parent();
+                let later = file.iter().flat_map(|f| f.children().collect::<Vec<_>>());
+                let later = later.filter(|n| n.span().start > me.start);
+                let rest: Vec<next::Stmt> = (later.filter_map(next::Item::cast))
+                    .filter_map(|i| i.stmt())
+                    .collect();
+                self.memo_fn(&fd, &rest, out)
+            }
             _ => {}
         }
     }

@@ -24,6 +24,10 @@ Fields: `lo: Int`, `n: Int`, `by: Int`.
 - `fn step(self, k: 1..) -> Range<D>` — Every `k`-th value, from the first: a range again, so `(3..m).step(2).sum()` is O(1).
 - `fn take(self, k: Int) -> Range<D>` — Its first `k` values: a range again (R07.4.11).
 
+## `trait Endpoint`
+
+The type of a range's ends picks what `lo..hi` is (decision 456): `Range<D>` over a domain's positions, `RealRange` over reals.
+
 ## Functions
 
 - `fn range_of<D: Domain>(lo: Int, hi: Int, step: Int) -> Range<D>` — `lo..hi by step`; empty when `lo` is past `hi` (R04.4.29).

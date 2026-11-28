@@ -1841,6 +1841,7 @@ next/n_memo_04_clear_empties_the_cache.cp
 next/n_memo_05_bare_memo_is_an_error.cp
 next/n_memo_06_array_table_per_range_type.cp
 next/n_memo_07_block_clear_through_the_fn.cp
+next/n_memo_08_table_without_impl_is_an_error.cp
 next/n_method_01_range_self_takes_an_int.cp
 next/n_method_02_range_self_checks_the_receiver.cp
 next/n_mod_01_inline_modules.cp
