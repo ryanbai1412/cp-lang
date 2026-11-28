@@ -9633,3 +9633,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Reverse.** Drop the `defaulted` field (cpl-next-check `lib.rs`), its loop at the top of `solve`'s last round (`oblige.rs`), and its push in `expr.rs`'s default-argument arm.
 
 ## 696. (reserved, D: a signature may name its parameter's range in its result, substituted by the call's argument)
+
+## 697. (reserved, C: an Int where a FromInt struct is expected is its from_int)
