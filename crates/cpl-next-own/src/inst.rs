@@ -3,7 +3,7 @@
 //! of its parameters and of globals (`Fx`), and which parameters it keeps. A call names its
 //! instance (`Target::Inst`), and a call through a fn value calls each closure of its set, so
 //! nothing here widens a set or folds a trait's impls.
-use crate::escape::{escape, lenders_lend};
+use crate::escape::escape;
 use crate::lends;
 use crate::{overlap, Fx, Pl, Root, Step};
 use cpl_diag::codes;
@@ -1854,7 +1854,6 @@ pub fn after(
         .extend(all(&p.insts, Stage::Instances, &fast, p.globals.len()));
     let mut owned = run(d, p, globals);
     owned.errors.extend(before.cache);
-    owned.errors.extend(lenders_lend(p));
     if p.errors.is_empty() {
         owned.errors.extend(escape(d, p));
     }

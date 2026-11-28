@@ -644,6 +644,7 @@ core-05/lambda-return-is-local.cp
 core-05/lazy-param-is-rejected.cp
 core-05/lend-statement-returns-a-place.cp
 core-05/lends-mut-block-without-lend.cp
+core-05/lends-mut-block-without-lend-uncalled.cp
 core-05/lends-named-source-only.cp
 core-05/lends-optional-projection.cp
 core-05/lent-optional-unwrap-ends-at-last-use.cp

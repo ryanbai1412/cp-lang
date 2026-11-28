@@ -301,7 +301,7 @@ fn pick(a: List<Int>, b: List<Int>) -> lends(a) List<Int> = a   // borrows only 
   `at` when `at` lends mut, even beside a `get`. A one-expression body
   lends that expression; a block body lends with `lend mut place`, which
   every path through it reaches once, so a block that ends in a plain
-  place lends nothing and is E0501. Code after the `lend` runs when the
+  place lends nothing and is E0604. Code after the `lend` runs when the
   caller is done (write-back: a `SegTree` repairs ancestors). (R05.6.3)
 - **Indexing, slicing, `.rev`, `.map`, `.filter` are all `lends` fns.** So
   `let row = rows[i]` and `let w = a[l..r]` are lent values by this rule,

@@ -1,18 +1,18 @@
-//! Checks over the linked instances as a whole, once own has walked them: every path
-//! through a lender lends (R05.6.3), and no closure that shares a `var` outlives its frame
-//! (R05.10).
+//! Every path through a lender lends (R05.6.3), checked on each generic fn before link, and
+//! no closure that shares a `var` outlives its frame (R05.10), checked over the linked
+//! instances once own has walked them.
 
 use cpl_diag::codes;
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::views::Signatures;
-use cpl_next_ir::ir::{Arg, Expr, FuncKey, Stmt, Target, EK};
+use cpl_next_ir::ir::{Arg, Expr, Func, FuncKey, Stmt, Target, EK};
 use cpl_next_ir::prog::{CTy, InstKey, Program};
 
 /// A lender lends one place on every path through it: its one expression, or a `lend mut`
 /// (R05.6.3). A path that leaves without one would lose the caller's write.
-pub(crate) fn lenders_lend(p: &Program) -> Vec<Msg> {
+pub(crate) fn lenders_lend<'a, T: 'a>(funcs: impl IntoIterator<Item = &'a Func<T>>) -> Vec<Msg> {
     /// Whether a path through `b` reaches its end, and whether one leaves the fn, unlent.
-    fn gap(b: &[Stmt<CTy>]) -> (bool, bool) {
+    fn gap<T>(b: &[Stmt<T>]) -> (bool, bool) {
         let (mut on, mut left) = (true, false);
         for s in b {
             if !on {
@@ -45,14 +45,14 @@ pub(crate) fn lenders_lend(p: &Program) -> Vec<Msg> {
         (on, left)
     }
     let mut bad = Vec::new();
-    for f in &p.insts {
+    for f in funcs {
         if !matches!(f.region, Some((true, _))) || gap(&f.body) == (false, false) {
             continue;
         }
         let last = f.body.last().map(std::slice::from_ref).unwrap_or_default();
         let site = site_of(last, &|_| true).or_else(|| site_of(&f.body, &|_| true));
         let m = Msg::verdict(
-            codes::UNSUPPORTED,
+            codes::BAD_PROJECTION,
             format!(
                 "`{}` is declared `lends mut`, so every path through it ends in `lend mut place`; \
                  a body that leaves without one would lose the caller's write (R05.6.3)",
@@ -148,12 +148,12 @@ pub(crate) fn escape(d: &dyn Signatures, p: &Program) -> Vec<Msg> {
 }
 
 /// The site of the first expression of `b` that `hit` takes, outermost first.
-fn site_of(b: &[Stmt<CTy>], hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
-    fn ex(e: &Expr<CTy>, hit: &dyn Fn(&Expr<CTy>) -> bool) -> Option<usize> {
+fn site_of<T>(b: &[Stmt<T>], hit: &dyn Fn(&Expr<T>) -> bool) -> Option<usize> {
+    fn ex<T>(e: &Expr<T>, hit: &dyn Fn(&Expr<T>) -> bool) -> Option<usize> {
         if hit(e) {
             return Some(e.site as usize);
         }
-        let args = |xs: &[Arg<CTy>]| {
+        let args = |xs: &[Arg<T>]| {
             xs.iter().find_map(|a| match a {
                 Arg::Value(v) => ex(v, hit),
                 Arg::View(_) | Arg::Lend(_) => None,

@@ -1,4 +1,4 @@
-// expect: E0501
+// expect: E0604
 // A `lends mut` fn lends one place on every path through it: its one expression, or a
 // `lend mut place` in a block. A block ending in a plain place lends nothing, so the
 // caller's write would be lost (R05.6.3).
