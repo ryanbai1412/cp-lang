@@ -112,7 +112,7 @@ One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1)
 
 A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
 
-- `fn new() -> MergeTrees<D, Z>` — \(O(1)\); An empty pool.
+- `fn new() -> MergeTrees<D, Z> where Z: Zero + One` — \(O(1)\); An empty pool.
 - `fn reserve(mut self, sets: Len)` — \(O(\mathit{sets} \log \lvert D \rvert)\); Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool: a `set` and the `merge`s that later split its position off add at most \(\lceil \log_2 \lvert D \rvert \rceil + 1\) nodes for it, and `scale` and the queries add none.; traps: when `sets < 0` or `sets >= 2^31`
 - `fn set(mut self, mut t: MergeTree<D>, x: D, v: Z)` — \(O(\log \lvert D \rvert)\) time and new nodes; Sets position `x` of `t` to `v`.
 - `fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z` — \(O(\log \lvert D \rvert)\); The sum of `t` over the positions in `r`.

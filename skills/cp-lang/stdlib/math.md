@@ -42,7 +42,7 @@ A 64-bit machine word whose bits `popcount` counts: an `Int` as its two's comple
 
 ## `enum Sign`
 
-Which side of zero a number is on.
+Which side of zero a number is on, ordered `Neg < Zero < Pos`.
 
 ## `struct Exp(pub v: Int, pub m: Int)`
 
@@ -56,8 +56,8 @@ An exponent `e >= 0` kept small enough to reduce: `v` is `e` itself when `e < m`
 
 Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: Map<Int, T>`.
 
-- `fn new(n: 0.., f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>` — \(O(\mathit{f\_small}.\mathit{len})\) to build; queries as `sum`; A Du's-sieve cache for the prefix sums `F(m) = sum_{k=1..=m} f(k)` of a multiplicative `f`, up to `n`.; traps: when `n < 0`
-- `fn sum(mut self, m: Int) -> T` — \(O(1)\) cached; \(O(n^{2/3})\) total across all `n / i` queries; The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.; traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
+- `fn new(n: 0.., f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T> where T: Zero` — \(O(\mathit{f\_small}.\mathit{len})\) to build; queries as `sum`; A Du's-sieve cache for the prefix sums `F(m) = sum_{k=1..=m} f(k)` of a multiplicative `f`, up to `n`.; traps: when `n < 0`
+- `fn sum(mut self, m: Int) -> T where T: One` — \(O(1)\) cached; \(O(n^{2/3})\) total across all `n / i` queries; The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.; traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
 
 ## `struct Ratio(pub p: Int, q: Int)`
 
@@ -144,11 +144,11 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn each_divisor(x: 1..) -> yields Int` — \(O(x^{1/4} + d(x))\) expected; Each positive divisor of `x >= 1`, from `factor(x)`, without building a list.; traps: when `x < 1`
 - `fn submasks(mask: 0..) -> yields Int` — \(O(2^\mathit{popcount}(\mathit{mask}))\); Every submask of `mask`, in descending order, ending with 0.; traps: when `mask < 0`
 - `fn bit_subsets(n: 0.., k: Int) -> yields Int` — \(O(C(n, k))\); Every subset of `0..n` with exactly `k` elements, as a bitmask, in ascending order (Gosper's hack).; traps: when `n < 0`, `k < 0` or `n > 62`
-- `fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet convolution `(a * b)[k] = sum_{d \| k} a[d] * b[k / d]` for `k` in `1..=n`.; traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
-- `fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet inverse of `a` on `1..=n`: the `b` with `a * b` the unit (1 at 1, 0 elsewhere).; traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
+- `fn dirichlet_convolve<T: Add + Mul + Zero>(a: List<T>, b: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet convolution `(a * b)[k] = sum_{d \| k} a[d] * b[k / d]` for `k` in `1..=n`.; traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
+- `fn dirichlet_inv<T: Sub + Mul + Div + Zero + One>(a: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet inverse of `a` on `1..=n`: the `b` with `a * b` the unit (1 at 1, 0 elsewhere).; traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 - `fn sum_phi(n: Int) -> Int` — \(O(n^{2/3})\) time and memory; The totient summatory function `sum_{k=1..=n} phi(k)`; 0 for `n <= 0`.; traps: when the sum overflows `Int`
 - `fn sum_mobius(n: Int) -> Int` — \(O(n^{2/3})\) time and memory; The Mertens function `sum_{k=1..=n} mu(k)`; 0 for `n <= 0`.
-- `fn sum_multiplicative<T: Add + Sub + Mul>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T` — \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory; The prefix sum `sum_{k=1..=n} f(k)` of a multiplicative `f` (Min_25 sieve).; traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
+- `fn sum_multiplicative<T: Add + Sub + Mul + Zero + One>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T` — \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory; The prefix sum `sum_{k=1..=n} f(k)` of a multiplicative `f` (Min_25 sieve).; traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
 - `fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x: Int, step_y: Int)` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); Every integer solution of `a*x + b*y = c` as `x = x0 + k * step_x`, `y = y0 - k * step_y`, or `None` if `gcd(a, b)` does not divide `c`.; traps: when `a == b == 0` (the solutions are not one family), or `y0` overflows
 - `fn linear_congruence(a: Int, b: Int, m: 1..) -> ?(r: Int, step: Int)` — \(O(\log m)\); The solutions of `a * x = b (mod m)` as `x = r (mod step)`: the least `r` in `0..step` and the period `step = m / gcd(a, m)`, or `None` if `gcd(a, m)` does not divide `b`.; traps: when `m < 1`
 - `fn mod_kth_root(a: Int, k: Int, p: Int) -> ?Int` — \(O(p^{1/4} + \sqrt p)\) expected to find one root, plus \(O(\mathit{gcd}(k, p - 1))\) to pick the least; The least `x` in `0..p` with `x^k = a (mod p)` for prime `p` and `k >= 1`, or `None`.; traps: when `p` is not prime or `k < 1`

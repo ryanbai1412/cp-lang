@@ -58,7 +58,7 @@ An ordered multiset (bag) of `K` backed by an order-statistic B+tree over flat a
 - `fn split_at(mut self, k: K) -> SortedBag<K>` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Split off and return all elements `>= k`, keeping `< k` in `self`.
 - `fn join(mut self, var other: SortedBag<K>)` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.; traps: when both are non-empty and `self.last >= other.first`
 - `fn absorb(mut self, mut other: SortedBag<K>)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all elements of `other` into `self` (small-to-large, emptying `other`).
-- `fn sum(self) -> K` — \(O(n)\); Sum of all elements (for additive `K`).; traps: never (overflow wraps in release, traps in debug)
+- `fn sum(self) -> K where K: Add + Zero` — \(O(n)\); Sum of all elements (for additive `K`).; traps: never (overflow wraps in release, traps in debug)
 
 ## `struct SortedSet<K: Ord>`
 

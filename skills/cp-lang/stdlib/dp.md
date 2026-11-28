@@ -26,8 +26,8 @@ The lower (`LiChao(min, over: 0..=1e9)`) or upper (`max`) envelope of lines over
 
 \(O(1)\) per step; the next cut's optimum after \(O(1)\) amortized calls of `cost`.
 
-- `fn next(mut self) -> (val: K, prev: Int) where K: Ord` — \(O(1)\) amortized calls of `cost`; Reach the next node: return the optimum at node `len` and the index of the node before it, then grow `len` by one.; traps: when every node has been reached (`len == nodes.len`)
-- `fn val(self, i: 0..) -> K` — \(O(1)\); The optimum at node `i`, which must already be reached; `val(0)` is 0.; traps: when `i < 0` or `i >= len`
+- `fn next(mut self) -> (val: K, prev: Int) where K: Ord + Zero` — \(O(1)\) amortized calls of `cost`; Reach the next node: return the optimum at node `len` and the index of the node before it, then grow `len` by one.; traps: when every node has been reached (`len == nodes.len`)
+- `fn val(self, i: 0..) -> K where K: Zero` — \(O(1)\); The optimum at node `i`, which must already be reached; `val(0)` is 0.; traps: when `i < 0` or `i >= len`
 - `@get fn len(self) -> Int` — \(O(1)\); The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Never: the first node is reached before any `next()`.
 - `@get fn items(self) -> yields (Int, K)` — \(O(\mathit{len})\)

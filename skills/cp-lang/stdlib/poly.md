@@ -13,26 +13,26 @@ In prelude (no `use` needed): `binomial_transform`, `eval`.
 - `fn new(c: List<T>) -> Poly<T>` — \(O(n)\); A polynomial with coefficients `c`, lowest degree first, stored as given (trailing zeros kept, so `len` is `c.len`).
 - `fn from_int(v: Int) -> Poly<T>` — \(O(1)\); The constant polynomial `v`, with one coefficient `T.from_int(v)`.
 - `@get fn zero() -> Poly<T>` — \(O(1)\); The zero polynomial `0`, with no coefficients.
-- `@get fn one() -> Poly<T>` — \(O(1)\); The constant polynomial `1`.
-- `@get fn x() -> Poly<T>` — \(O(1)\); The indeterminate `x`: coefficients `[0, 1]`.
+- `@get fn one() -> Poly<T> where T: One` — \(O(1)\); The constant polynomial `1`.
+- `@get fn x() -> Poly<T> where T: Zero + One` — \(O(1)\); The indeterminate `x`: coefficients `[0, 1]`.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of stored coefficients, trailing zeros included.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no coefficient is stored; `Poly.new([])` is the zero polynomial.
 - `@get fn items(self) -> yields (Int, T)` — \(O(\mathit{len})\)
-- `fn deg(self) -> ?Int` — \(O(1)\) plus the number of stored trailing zeros; The degree: the highest index with a nonzero coefficient, `None` for the zero polynomial.
+- `fn deg(self) -> ?Int where T: Zero` — \(O(1)\) plus the number of stored trailing zeros; The degree: the highest index with a nonzero coefficient, `None` for the zero polynomial.
 - `fn is_zero(self) -> Bool` — \(O(1)\) plus the number of stored trailing zeros; Whether all coefficients are zero (including when there are None).
-- `fn at(self, i: 0..) -> T` — \(O(1)\); Read coefficient `i` (0 when `i >= self.len`).; traps: when `i < 0`
-- `fn set(mut self, i: 0.., v: T)` — \(O(1)\), or \(O(i)\) when it grows; Write coefficient `i`, growing with zeros if needed.; traps: when `i < 0`
+- `fn at(self, i: 0..) -> T where T: Zero` — \(O(1)\); Read coefficient `i` (0 when `i >= self.len`).; traps: when `i < 0`
+- `fn set(mut self, i: 0.., v: T) where T: Zero` — \(O(1)\), or \(O(i)\) when it grows; Write coefficient `i`, growing with zeros if needed.; traps: when `i < 0`
 - `fn deriv(self) -> Poly<T>` — \(O(n)\); The formal derivative `f'(x)`, as the free `deriv` does on the coefficients.
-- `fn integral(self) -> Poly<T>` — \(O(n)\); The formal integral with zero constant term, as the free `integral` (the zero polynomial stays `[]`).; traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
+- `fn integral(self) -> Poly<T> where T: Zero` — \(O(n)\); The formal integral with zero constant term, as the free `integral` (the zero polynomial stays `[]`).; traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
 - `fn transposed_mul(self, b: Poly<T>) -> Poly<T>` — one `*`, which is `convolve`'s product: \(O((n + m) \log (n + m))\) for a `FastProduct` `T` (as `Mod<P>`, `Int`), else \(O(n m)\); The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums; `[]` when `b` is empty).
 - `fn truncated(self, n: Len) -> Poly<T>` — \(O(n)\); Truncate or zero-pad to exactly `n` coefficients (mod `x^n`).; traps: when `n < 0` or `n >= 2^31`
-- `fn inv(self, n: Int) -> Poly<T>` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.; traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
-- `fn log(self, n: Int) -> Poly<T>` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.; traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
-- `fn exp(self, n: Int) -> Poly<T>` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.; traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
+- `fn inv(self, n: Int) -> Poly<T> where T: Zero + One` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.; traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
+- `fn log(self, n: Int) -> Poly<T> where T: One` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.; traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
+- `fn exp(self, n: Int) -> Poly<T> where T: Zero` — Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\); The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.; traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
 - `fn pow(self, k: Int, n: Int) -> Poly<T>` — \(O(n \log n \log k)\) for a `FastProduct` `T` (\(O(\log k)\) truncated `*`), else \(O(n^2 \log k)\); the free `pow` on `List<Mod<P>>` is \(O(n \log n)\) by `exp(k log)`; The formal power `self(x)^k mod x^n`, as the free `pow`.; traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
-- `fn sqrt(self, n: Len) -> ?Poly<T>` — Newton doubling over `*` and `inv`: \(O(n \log n)\) for a `FastProduct` `T`, else \(O(n^2 \log n)\), plus one `T.sqrt()`; The formal square root mod `x^n`, or `None`, as the free `sqrt`.; traps: when `n < 0` or `n >= 2^31`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
-- `fn eval(self, x: T) -> T` — \(O(n)\); The value at `x` by Horner's rule.
-- `fn shift(self, c: T) -> Poly<T>` — \(O(n \log^2 n)\) for a `FastProduct` `T`, else \(O(n^2)\); The Taylor shift `self(x + c)`, as `taylor_shift`.; traps: over `Int`, when a coefficient of some `(x + c)^m` or a partial sum overflows, even if
+- `fn sqrt(self, n: Len) -> ?Poly<T> where T: Zero + One` — Newton doubling over `*` and `inv`: \(O(n \log n)\) for a `FastProduct` `T`, else \(O(n^2 \log n)\), plus one `T.sqrt()`; The formal square root mod `x^n`, or `None`, as the free `sqrt`.; traps: when `n < 0` or `n >= 2^31`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
+- `fn eval(self, x: T) -> T where T: Zero` — \(O(n)\); The value at `x` by Horner's rule.
+- `fn shift(self, c: T) -> Poly<T> where T: One` — \(O(n \log^2 n)\) for a `FastProduct` `T`, else \(O(n^2)\); The Taylor shift `self(x + c)`, as `taylor_shift`.; traps: over `Int`, when a coefficient of some `(x + c)^m` or a partial sum overflows, even if
 
 ## `struct SubproductTree<P>`
 

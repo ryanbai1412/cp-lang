@@ -45,7 +45,7 @@ Fields: `m: HashMap<K, V>`, `init: V`.
 - `fn clear(mut self)` — \(O(n)\); Remove all entries.
 - `fn take(mut self) -> Counter<K, V>` — \(O(1)\); Move contents out in \(O(1)\), leaving `self` empty.
 - `fn absorb(mut self, mut other: Counter<K, V>)` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\) expected; Merge all entries from `other` into `self` by adding values (emptying `other`).; traps: never (overflow wraps in release, traps in debug)
-- `fn total(self) -> V` — \(O(n)\); Sum of all stored values.; traps: never (overflow wraps in release, traps in debug)
+- `fn total(self) -> V where V: Zero` — \(O(n)\); Sum of all stored values.; traps: never (overflow wraps in release, traps in debug)
 - `fn most_common(self, k: Len) -> List<(K, V)> where K: Ord, V: Ord` — \(O(n \log n)\); Top `k` entries sorted by descending value.; traps: when `k < 0` or `k >= 2^31`
 - `@get fn items(self) -> yields (K, V)` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
 - `@get fn keys(self) -> yields K` — \(O(1)\) to make, \(O(1)\) per step; The keys, one per distinct element.

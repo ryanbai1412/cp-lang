@@ -19,11 +19,11 @@ A dense `rows x cols` matrix stored flat in row-major order.
 - `fn from_flat(rows: Len, cols: Len, data: List<T>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a `rows x cols` matrix from a flat row-major list of length `rows * cols`: entry `(r, c)` is `data[r * cols + c]`.; traps: when `rows < 0` or `rows >= 2^31`, `cols < 0` or `cols >= 2^31` or `data.len != rows * cols`
 - `fn from_rows(grid: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.; traps: when the rows differ in length
 - `fn get(self, r: Int, c: Int) -> T` — \(O(1)\); The entry at `(r, c)`, 0-based.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
-- `fn sum(self) -> T` — \(O(\mathit{rows} \cdot \mathit{cols})\); Every entry added up under the matrix's own `+` (the `over:` semiring's add): the number of walks a power counts, or the best entry under `Semiring(max, +)`.
+- `fn sum(self) -> T where T: Zero` — \(O(\mathit{rows} \cdot \mathit{cols})\); Every entry added up under the matrix's own `+` (the `over:` semiring's add): the number of walks a power counts, or the best entry under `Semiring(max, +)`.
 - `fn set(mut self, r: Int, c: Int, val: T)` — \(O(1)\); Set the entry at `(r, c)` to `val`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn at(mut self, r: Int, c: Int) -> lends mut T` — \(O(1)\); The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn transpose(self) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.
-- `fn mul_vec(self, v: List<T>) -> List<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time, \(O(\mathit{rows})\) space; The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds `get(r, c) * v[c]` over `c` with the semiring's addition.; traps: when `v.len != cols`
+- `fn mul_vec(self, v: List<T>) -> List<T> where T: Zero` — \(O(\mathit{rows} \cdot \mathit{cols})\) time, \(O(\mathit{rows})\) space; The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds `get(r, c) * v[c]` over `c` with the semiring's addition.; traps: when `v.len != cols`
 - `fn product<S>(n: 0.., over: S = Semiring(+, *)) -> Monoid<Mat<T>>` — \(O(n^2)\) time and space (for the identity); The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`): identity the semiring's identity matrix, op `*`, which is associative but not commutative.; traps: when `n < 0`
 - `fn det(self, eps: ?T = None) -> T` — \(O(n^3)\) time, \(O(n^2)\) space; The determinant over a field, by Gaussian elimination.; traps: when the matrix is not square, or an inverse it needs does not exist (a non-field `T`)
 - `fn rank(self, eps: ?T = None) -> Int` — \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space; The rank over a field: the number of pivots elimination finds, pivoting as `det` does.; traps: never for a field `T`
@@ -34,7 +34,7 @@ A dense `rows x cols` matrix stored flat in row-major order.
 - `fn det_mod(self, m: Int) -> Int` — \(O(n^3 \log m)\); The determinant modulo any (possibly composite) `m >= 1`, in `0..m`, by Euclidean (gcd-style) row elimination, so no inverse is needed.; traps: when the matrix is not square or `m < 1`
 - `fn char_poly(self) -> List<T>` — \(O(n^3)\) time, \(O(n^2)\) space; The characteristic polynomial `det(xI - self)`, lowest degree first, via Hessenberg reduction: `n + 1` coefficients, the last one `T.one`.; traps: when the matrix is not square
 - `fn pfaffian(self) -> T` — \(O(n^3)\) time, \(O(n^2)\) space; The Pfaffian of an even-order skew-symmetric matrix over a field, with the sign convention `pf([[0, a], [-a, 0]]) == a`; `pf(A)^2 == det(A)`.; traps: when the matrix is not square or `n` is odd
-- `fn adjugate(self) -> Mat<T> where T: Mul + Div` — \(O(n^3)\) time, \(O(n^2)\) space; The adjugate matrix `adj(self)`, the transpose of the cofactor matrix, so `self * adj(self) == det(self) * I`.; traps: when the matrix is not square
+- `fn adjugate(self) -> Mat<T> where T: Mul + Div + One + Zero` — \(O(n^3)\) time, \(O(n^2)\) space; The adjugate matrix `adj(self)`, the transpose of the cofactor matrix, so `self * adj(self) == det(self) * I`.; traps: when the matrix is not square
 
 ## `trait TropicalProduct`
 
