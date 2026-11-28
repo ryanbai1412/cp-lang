@@ -6,6 +6,7 @@ only one side added is kept (a new counter or a decided edge), and the
 raise check against main still judges it.
 
     uv run --quiet python scripts/ratchet_merge.py PATH   # in a conflicted rebase
+    python3 scripts/ratchet_merge.py --driver %O %A %B    # git's merge driver (.gitattributes)
 """
 
 import json
@@ -46,7 +47,24 @@ def stage(path, n):
     return json.loads(r.stdout) if r.returncode == 0 else {}
 
 
+def driver(base, ours, theirs):
+    """git's merge driver: every merge and rebase, a lane's own included, merges the ratchet
+    mechanically instead of leaving conflict markers in it."""
+    def read(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {}
+    merged = merge(read(base), read(ours), read(theirs))
+    with open(ours, "w", encoding="utf-8") as f:
+        f.write(json.dumps(merged, indent=2) + "\n")
+    return 0
+
+
 def main(argv):
+    if argv[1:2] == ["--driver"]:
+        return driver(*argv[2:5])
     path = argv[1]
     # In a rebase, stage 2 is the upstream being rebased onto, stage 3 the commit replayed.
     merged = merge(stage(path, 1), stage(path, 2), stage(path, 3))

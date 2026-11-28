@@ -6,3 +6,9 @@
 decisions.md merge=union
 plan/QUESTIONS.md merge=union
 plan/domains/*/worklog.md merge=union
+
+# Generated files every landing moves merge mechanically, never by hand: the ratchet by
+# scripts/ratchet_merge.py, END-STATE.md by keeping one side for land.sh to regenerate.
+# scripts/install-hooks.sh and land.sh register the drivers.
+scripts/debt-ratchet.json merge=cpl-ratchet
+plan/END-STATE.md merge=cpl-regen

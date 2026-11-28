@@ -1787,6 +1787,29 @@ done
         for merged in (merge(base, raised, base), merge(base, base, raised)):
             self.assertEqual(merged, base)
 
+    def test_a_rebase_merges_the_ratchet_through_its_driver(self):
+        repo = self.tmp / "drv"
+        repo.mkdir()
+        git(repo, "init", "-q", "-b", "main")
+        (repo / "scripts").mkdir()
+        for name in ("ratchet_merge.py", "merge-drivers.sh"):
+            shutil.copy(HERE / name, repo / "scripts" / name)
+        shutil.copy(HERE.parent / ".gitattributes", repo / ".gitattributes")
+        subprocess.run(["bash", "scripts/merge-drivers.sh"], cwd=repo, check=True)
+        ratchet = repo / "scripts" / "debt-ratchet.json"
+        ratchet.write_text(json.dumps({"a": 5, "b": 5}, indent=2) + "\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-qm", "base")
+        git(repo, "checkout", "-qb", "lane")
+        ratchet.write_text(json.dumps({"a": 3, "b": 5}, indent=2) + "\n")
+        git(repo, "commit", "-qam", "lane tightens a")
+        git(repo, "checkout", "-q", "main")
+        ratchet.write_text(json.dumps({"a": 5, "b": 4}, indent=2) + "\n")
+        git(repo, "commit", "-qam", "main tightens b")
+        git(repo, "checkout", "-q", "lane")
+        git(repo, "rebase", "-q", "main")
+        self.assertEqual(json.loads(ratchet.read_text()), {"a": 3, "b": 4})
+
     def test_the_ratchet_merge_keeps_both_moves_of_not_passing(self):
         sys.path.insert(0, str(HERE))
         from ratchet_merge import merge

@@ -18,6 +18,8 @@ set -euo pipefail
 self_blob=$(git hash-object "${BASH_SOURCE[0]}")
 land_args=("$@")
 cd "$(git rev-parse --show-toplevel)"
+# A rebase merges the generated ratchet and END-STATE.md itself (.gitattributes).
+[ ! -x scripts/merge-drivers.sh ] || scripts/merge-drivers.sh
 remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=${CPL_LAND_T0:-$(date +%s)}
