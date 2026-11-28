@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-rust
         with:
           shared-key: lane-check
@@ -25,6 +27,11 @@ jobs:
           tools: just@1.59.0
       - name: the tip builds, as a push to main must
         run: cargo check -q --workspace --all-targets
+      - name: clippy warns in no crate this push touches
+        run: |
+          touched=$(scripts/touched-crates.sh "${{ github.event.before }}")
+          # shellcheck disable=SC2086  # one word per cargo argument
+          [ -z "$touched" ] || cargo clippy -q $touched --all-targets -- -D warnings
       - name: cpl-next and cpl-doc tests against tests/lane-lib-reds.txt
         run: just lane-lib-tests
   # The shrink-only ratchet against the tip this push replaced (coordinator 02:38): a counter

@@ -54,9 +54,15 @@ if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
 fi
 
 # 2b'. A lane-j-check tip that doesn't build blocks, so a bisect never meets one (37 such
-# first-parent commits cost D's 03:30 bisect): the same check as a push to main.
+# first-parent commits cost D's 03:30 bisect): the same check as a push to main. Clippy's
+# warnings block in each crate the push touches, so no lane's pre-commit fails on another
+# lane's warning (fe900547d and ba676477a held D's push, 04:12).
 if [ "$to_lane" = 1 ] && [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo check -q --workspace --all-targets || fail "lane-j-check's tip doesn't build: cargo check --workspace --all-targets failed"
+    touched=$(scripts/touched-crates.sh "$lane_tip")
+    # shellcheck disable=SC2086  # one word per cargo argument
+    [ -z "$touched" ] || cargo clippy -q $touched --all-targets -- -D warnings ||
+        fail "clippy warns in a crate this push touches: cargo clippy $touched --all-targets -- -D warnings"
 fi
 
 # 2c. lane-j-check's landing gate: cpl-next's lib and integration tests and cpl-doc's lib tests, every red listed in
