@@ -1,10 +1,9 @@
 std.algebra	12
 std.bag	4
 std.dp	2
-std.fenwick	24
+std.fenwick	22
 std.graph	7
-std.interval	8
-std.lazy	2
+std.lazy	1
 std.math	1
 std.matrix	32
 std.mod	31

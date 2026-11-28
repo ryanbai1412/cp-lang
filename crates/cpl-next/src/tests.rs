@@ -920,7 +920,7 @@ fn a_lowered_walk_keeps_its_body_site() {
 /// domain comes through the bound's supertraits.
 #[test]
 fn a_cell_of_a_type_parameter_is_written_through_its_bound() {
-    let src = "fn w<S: IndexedMut<D, T>, D: Domain, T>(mut s: S, i: Int, x: T):\n    s[s.keys.nth(i)] = x\nvar q = [1, 2, 3]\nw(mut q, 1, 9)\nprint(q[1])\n";
+    let src = "fn w<S: IndexedMut<D, T>, D: Discrete, T>(mut s: S, i: Int, x: T):\n    s[s.keys.nth(i)] = x\nvar q = [1, 2, 3]\nw(mut q, 1, 9)\nprint(q[1])\n";
     let f = front(&Std::read(), src, &Roots::std(), None, Checks::CHECKED);
     assert!(f.diags.is_empty(), "{:?}", f.diags);
 }
