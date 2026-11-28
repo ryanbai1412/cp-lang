@@ -1804,8 +1804,17 @@ pub fn after(
     before: crate::Before,
 ) -> Owned {
     use cpl_next_ir::verify::{all, callees, instances, Stage};
-    let fast = callees(&p.insts);
+    // A program link rejected can be partial (it stops at an instantiation that does not
+    // end), so ownership has nothing sound to walk; link's error is the answer.
+    let linked = p.errors.is_empty();
     p.errors.extend(before.generic);
+    if !linked {
+        return Owned {
+            errors: before.cache,
+            ..Owned::default()
+        };
+    }
+    let fast = callees(&p.insts);
     p.errors
         .extend(all(&p.insts, Stage::Instances, &fast, p.globals.len()));
     let mut owned = run(d, p, globals);

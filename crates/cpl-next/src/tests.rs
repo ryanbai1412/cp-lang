@@ -455,6 +455,16 @@ fn a_proof_past_the_provers_steps_keeps_its_check() {
 }
 
 /// A diagnostic's span is in the user's file, past the modules placed before it.
+/// Link stops at an instantiation that does not end, leaving a partial program; ownership
+/// walks none of it, so link's error is the program's one diagnostic.
+#[test]
+fn an_instantiation_that_does_not_end_is_links_one_error() {
+    let src = include_str!("../tests/programs/t05_recursive_closure.cp");
+    let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+    assert_eq!(ds.len(), 1, "{ds:#?}");
+    assert!(ds[0].contains("instantiation does not end"), "{ds:#?}");
+}
+
 #[test]
 fn diagnostic_is_placed_in_the_program() {
     let src = "let a = 1\nlet b = 2\nprint(a +  zz)\n";
