@@ -307,7 +307,7 @@ impl Cx<'_> {
     /// The key and cell types of `rt`'s `Indexed` read.
     fn read_sig(&self, rt: &Ty) -> Option<(Ty, Ty)> {
         match self
-            .d
+            .impls()
             .impl_member_by(rt, &self.index_read(), |f| f.region.is_none())
         {
             Some(decls::Member::Method(m, ts, _)) => {
@@ -383,7 +383,7 @@ impl Cx<'_> {
         let rt = self.shallow(&b.ty);
         let d = &self.d;
         let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
-        d.impl_member_by(&rt, name, of_tr)?;
+        self.impls().impl_member_by(&rt, name, of_tr)?;
         let callee = ast::Expr {
             kind: ExprKind::Field {
                 base: Box::new(base.clone()),
@@ -491,7 +491,9 @@ impl Cx<'_> {
             tys.extend(tr.args.iter().cloned());
             (Callee::Trait(tr, read.to_string()), m, tys, Vec::new())
         } else {
-            let Some(decls::Member::Method(m, ts, ss)) = d.impl_member_by(&rt, read, lends) else {
+            let Some(decls::Member::Method(m, ts, ss)) =
+                self.impls().impl_member_by(&rt, read, lends)
+            else {
                 if !matches!(rt, Ty::Error) {
                     let shown = self.show(&rt);
                     let why = Msg::verdict(

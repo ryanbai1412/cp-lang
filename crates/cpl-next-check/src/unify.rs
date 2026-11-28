@@ -9,7 +9,8 @@ impl<'a> Cx<'a> {
     /// such fns, reads the result as declared.
     pub(super) fn decl_ret(&mut self, f: FnId) -> Ty {
         let decl = self.d.f(f);
-        let checkable = !matches!(decl.body, FnBody::None) && decl.intrinsic.is_none();
+        let checkable =
+            !matches!(decl.body, cpl_next_decls::decls::Body::None) && decl.intrinsic.is_none();
         let fresh = !self.fns.contains_key(&f) && !self.ret_busy.contains(&f);
         if self.d.ret_holes.contains(&f) && !self.found_ret.contains_key(&f) && checkable && fresh {
             self.ret_busy.push(f);
@@ -1220,6 +1221,14 @@ pub fn show_ty(
         Ty::Range(lo, hi) => format!("{lo}..={hi}"),
         Ty::RangeOf(_) => "a range with run-time ends".into(),
         Ty::AnyRange(_) => "_..=_".into(),
+        Ty::RangeEnds { lo, hi, inclusive } => {
+            let end = |e: &cpl_next_ir::ty::End| match e {
+                cpl_next_ir::ty::End::Lit(k) => k.to_string(),
+                cpl_next_ir::ty::End::Of(t) => show(t),
+            };
+            let dots = if inclusive { "..=" } else { ".." };
+            format!("{}{dots}{}", end(&lo), end(&hi))
+        }
         Ty::RangeTo(d, m, lo, k) => {
             let k = match k {
                 0 => String::new(),
