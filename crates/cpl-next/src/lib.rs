@@ -190,6 +190,25 @@ fn overlaps(a: cpl_diag::Span, b: cpl_diag::Span) -> bool {
     a.start < b.end.max(b.start + 1) && b.start < a.end.max(a.start + 1)
 }
 
+/// A fn's unit: from its signature, whose place `at` is, to the end of its body.
+fn fn_extent(db: &Db, at: &SourceId) -> SourceId {
+    use cpl_next_syntax::ast::{self, AstNode};
+    let item = db
+        .get::<cpl_next_db::items::ItemOf>(&at.item)
+        .ok()
+        .flatten();
+    let end = item.and_then(|i| {
+        (cpl_next_syntax::SyntaxNode::new_root(i.green).descendants())
+            .filter_map(ast::FnDecl::cast)
+            .find(|f| f.signature_span().start == at.span.start)
+            .map(|f| f.syntax().span().end)
+    });
+    at.item.at(cpl_diag::Span::new(
+        at.span.start,
+        end.unwrap_or(at.span.end),
+    ))
+}
+
 /// Whether two places share a byte of one item.
 fn overlaps_in(a: &SourceId, b: &SourceId) -> bool {
     a.item == b.item && overlaps(a.span, b.span)
@@ -825,7 +844,7 @@ pub(crate) fn units(
     let fns = fns.map(|id| {
         let fd = f.d.f(id);
         let lowered = f.g.funcs.contains_key(&ir::FuncKey::Decl(id));
-        (Some(fd.name.clone()), fd.span.clone(), lowered)
+        (Some(fd.name.clone()), fn_extent(db, &fd.span), lowered)
     });
     let statements = check::program_items(&f.loaded, &f.main)
         .into_iter()
@@ -835,7 +854,13 @@ pub(crate) fn units(
         });
     let units = (fns.chain(statements))
         .map(|(name, span, lowered)| {
-            let local = f.loaded.text_of(&span).span(&span);
+            let module = f.loaded.text_of(&span);
+            let mut local = module.span(&span);
+            // A statement owns its line's end, where what it is missing is said.
+            let at_end = module.text.as_bytes().get(local.end as usize);
+            if name.is_none() && at_end == Some(&b'\n') {
+                local.end += 1;
+            }
             let diags = (f.diags.iter())
                 .filter(|d| {
                     (d.at.as_ref())

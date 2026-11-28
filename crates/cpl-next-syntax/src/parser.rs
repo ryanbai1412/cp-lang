@@ -200,6 +200,18 @@ impl<'t> Parser<'t> {
             .map_or(Span::point(self.src.len() as u32), |t| t.span)
     }
 
+    /// Where what was wanted is missing: the token found, or, at a line's end, the point after
+    /// the line's last token, so the diagnostic is on the construct and not past its comment.
+    fn found_span(&self) -> Span {
+        let ends = matches!(self.peek(), T::Newline | T::Dedent | T::Eof);
+        match self.tokens[..self.pos.min(self.tokens.len())].last() {
+            Some(t) if ends && !matches!(t.kind, T::Newline | T::Indent | T::Dedent) => {
+                Span::point(t.span.end)
+            }
+            _ => self.span(),
+        }
+    }
+
     fn nth_span(&self, n: usize) -> Span {
         self.nth_index(n)
             .map_or(Span::point(self.src.len() as u32), |i| self.tokens[i].span)
@@ -250,8 +262,8 @@ impl<'t> Parser<'t> {
     }
 
     fn error_here(&mut self, code: Code, wanted: &str) {
-        let mut diag =
-            msgs::syntax::EXPECTED_FOUND.error(self.span(), &[&wanted, &self.peek().describe()]);
+        let mut diag = msgs::syntax::EXPECTED_FOUND
+            .error(self.found_span(), &[&wanted, &self.peek().describe()]);
         diag.code = code;
         self.diagnostics.push(diag);
     }
