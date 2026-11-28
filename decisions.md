@@ -9601,3 +9601,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 687. (reserved, C: `FromInt` is std's trait for Int to number conversion)
 
 ## 688. (reserved, A: a constant type argument is `Ty::Const`, a type's value params are `const P: Int`)
+
+## 689. (reserved, G: D: an unwritten domain parameter's implied bound is the unique weakest trait holding what its body reads)
