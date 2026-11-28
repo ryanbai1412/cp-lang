@@ -2,7 +2,7 @@
 //! a written item and directly by synth and records for a made one (R02.5.2, R08.1.6). The kind
 //! builders and the type conversion read only forms, so a made declaration is never written as
 //! syntax and parsed back.
-use crate::attrs::Attr;
+use crate::attrs::Decorator;
 use crate::sym::Sym;
 use crate::synth::SynthBody;
 use cpl_diag::Span;
@@ -35,7 +35,7 @@ pub struct BoundForm {
 /// A decorator read once, at its node: what it is and the node, for its arguments and span.
 #[derive(Clone, Debug)]
 pub struct AttrForm {
-    pub attr: Attr,
+    pub attr: Decorator,
     pub node: Option<ast::Decorator>,
 }
 
@@ -98,6 +98,8 @@ pub struct StructForm {
     pub name: Sym,
     pub public: bool,
     pub attrs: Vec<AttrForm>,
+    /// A record's struct or row trait, which the compiler declares; no source writes it.
+    pub record: bool,
     pub generics: Vec<Sym>,
     pub generic_defaults: Vec<Option<TyForm>>,
     pub bounds: Vec<BoundForm>,
@@ -141,6 +143,8 @@ pub struct TraitForm {
     pub name: Sym,
     pub public: bool,
     pub attrs: Vec<AttrForm>,
+    /// A record's struct or row trait, which the compiler declares; no source writes it.
+    pub record: bool,
     pub alias: bool,
     pub generics: Vec<Sym>,
     pub generic_defaults: Vec<Option<TyForm>>,
@@ -357,7 +361,7 @@ impl Reader<'_> {
     ) -> (Vec<AttrForm>, Vec<ast::Decorator>) {
         let (mut known, mut other) = (Vec::new(), Vec::new());
         for x in ds {
-            match x.name().and_then(|n| Attr::of(n.text())) {
+            match x.name().and_then(|n| Decorator::live(n.text())) {
                 Some(attr) => known.push(AttrForm {
                     attr,
                     node: Some(x),
@@ -440,6 +444,7 @@ impl Reader<'_> {
             name: self.sym(t.name()),
             public: t.is_pub(),
             attrs,
+            record: false,
             alias,
             generics,
             generic_defaults,
@@ -500,6 +505,7 @@ impl Reader<'_> {
             name: self.sym(sd.name()),
             public: sd.is_pub(),
             attrs,
+            record: false,
             generics,
             generic_defaults,
             bounds,

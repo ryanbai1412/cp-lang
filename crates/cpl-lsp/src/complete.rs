@@ -201,7 +201,7 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
         return use_completion(cursor, std, path, word);
     }
     if head.ends_with("@!") {
-        return DIRECTIVES
+        return cpl_syntax::decorators::DIRECTIVES
             .iter()
             .map(|(name, detail)| item_json(&plain(name, Kind::Keyword, (*detail).into(), ""), 0))
             .collect();
@@ -248,17 +248,6 @@ pub fn completion(cursor: &Cursor, std: &mut StdLib, trigger: Option<char>) -> V
 
 /// `xs.sorted(b|`: each parameter of the open call that no argument gives
 /// yet, offered as `name:`, the named-only ones first.
-/// The file-level directives, `@!name`, in force from their line down.
-const DIRECTIVES: &[(&str, &str)] = &[
-    (
-        "multitest",
-        "file directive: loop over t test cases below, with fresh scope",
-    ),
-    (
-        "interactive",
-        "file directive: every print is flushed, for an interactive judge",
-    ),
-];
 
 /// The text after `with lint(` while the cursor is inside its parentheses.
 fn lint_args(line: &str) -> Option<&str> {

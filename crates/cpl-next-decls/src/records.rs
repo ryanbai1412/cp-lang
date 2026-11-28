@@ -1,7 +1,7 @@
 //! Records `(lo: Int, hi: V)` (R02.5.2). Each list of field names, in order, is one generic core
 //! struct `(lo:, hi:)<A, B>`, so two record types are equal exactly when their field names, order
 //! and types are, and fields, constructors, patterns and derived `Eq` and `Ord` are a struct's.
-use crate::attrs::Attr;
+use crate::attrs::Decorator;
 use crate::decls::forms::{
     AssocForm, AttrForm, BodyForm, BoundForm, FieldForm, FnForm, ImplForm, ParamForm, StructForm,
     TraitForm, TyForm,
@@ -83,7 +83,8 @@ pub fn row_traits(rows: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Trai
             TraitForm {
                 name: syms.intern(&row_name(fs)),
                 public: true,
-                attrs: vec![record_mark()],
+                attrs: Vec::new(),
+                record: true,
                 alias: false,
                 generic_defaults: vec![None; fs.len()],
                 generics,
@@ -103,14 +104,6 @@ fn capitals(syms: &mut Syms, n: usize) -> Vec<Sym> {
         .take(n)
         .map(|c| syms.intern(&(c as char).to_string()))
         .collect()
-}
-
-/// The mark a record's synthesized struct carries, which no source can write (E0107).
-fn record_mark() -> AttrForm {
-    AttrForm {
-        attr: Attr::Record,
-        node: None,
-    }
 }
 
 /// The mark `@m` on a declaration the compiler writes.
@@ -346,7 +339,8 @@ pub fn without_traits(forms: &[Form], syms: &mut Syms, span: Span) -> Vec<TraitF
             TraitForm {
                 name: syms.intern(&without_name(form)),
                 public: true,
-                attrs: vec![record_mark()],
+                attrs: Vec::new(),
+                record: true,
                 alias: false,
                 generics: (0..n).map(|i| syms.intern(&format!("P{i}"))).collect(),
                 generic_defaults: vec![None; n],
@@ -468,7 +462,8 @@ pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Struc
             StructForm {
                 name: syms.intern(&name(fs)),
                 public: true,
-                attrs: vec![record_mark()],
+                attrs: Vec::new(),
+                record: true,
                 generic_defaults: vec![None; fs.len()],
                 generics,
                 bounds: Vec::new(),
@@ -577,7 +572,7 @@ pub fn domain_impls(
                     public: false,
                     attrs: match getter {
                         true => vec![AttrForm {
-                            attr: Attr::Get,
+                            attr: Decorator::Get,
                             node: None,
                         }],
                         false => Vec::new(),

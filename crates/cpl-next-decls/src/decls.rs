@@ -2276,7 +2276,7 @@ fn role_of(x: &ast::Decorator) -> Option<Role> {
 /// The role a `@role(name)` attribute names, when `name` is one of R11.6.1's.
 pub(crate) fn form_role(x: &forms::AttrForm) -> Option<Role> {
     use cpl_next_syntax::ast::Expr;
-    if x.attr != crate::attrs::Attr::Role {
+    if x.attr != crate::attrs::Decorator::Role {
         return None;
     }
     let arg = x.node.as_ref()?.args()?.args().next()?.value()?;

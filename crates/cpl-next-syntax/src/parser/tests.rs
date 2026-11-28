@@ -714,3 +714,23 @@ fn a_modules_role_sits_above_its_first_use() {
         .decorators()
         .is_empty());
 }
+
+#[test]
+fn every_decorator_row_cites_a_rule_the_spec_defines() {
+    use crate::grammar::{Decorator, DecoratorKind};
+    let core = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/core");
+    let spec: String = std::fs::read_dir(core)
+        .unwrap()
+        .map(|e| std::fs::read_to_string(e.unwrap().path()).unwrap_or_default())
+        .collect();
+    for rule in Decorator::rules() {
+        assert!(
+            spec.contains(&format!("({rule})")) || spec.contains(&format!("({rule},")),
+            "{rule}"
+        );
+    }
+    assert_eq!(Decorator::of("memo"), Some(Decorator::Memo));
+    assert_eq!(Decorator::live("tags"), None);
+    assert_eq!(Decorator::Multitest.kind(), DecoratorKind::Directive);
+    assert_eq!(Decorator::of("record"), None);
+}

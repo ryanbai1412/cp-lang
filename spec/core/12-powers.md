@@ -310,7 +310,7 @@ A std item states the names it replaced, `@was(Prefix1, PrefixN)` above
 `pub struct Prefix`; a program writing an old one gets E0201 or E0204
 naming the new one, with the fix (and a word built on the type, the
 snake-case forms: `prefix_n`). Status: checks
-(`std-prefix/was-diff1-names-diff.cp`).
+(`std-prefix/was-diff1-names-diff.cp`). (R12.13.1)
 A fn states its older names the same way, `@was(bsearch_last)` above
 `pub fn last_true`; a program calling `r.bsearch_last(..)` gets E0503
 naming the fn, with the fix. Status: checks
@@ -325,7 +325,7 @@ A fn states other languages' names for it, `@aka(upper, toUpperCase)` above
 receiver type gets E0203 naming the fn, with the fix. `@aka` is an
 ordinary decorator: the checker reads it from std's declarations, so no
 compiler table spells a std name (decision 633). Status: checks
-(`core-12/aka-upper-names-to-upper.cp`, `core-12/aka-on-a-user-fn-runs.cp`).
+(`core-12/aka-upper-names-to-upper.cp`, `core-12/aka-on-a-user-fn-runs.cp`). (R12.13.2)
 `@stress(kind)` above a type alias says how `cpl stress` makes and shrinks
 its values: `perm`, `tree`, `simple`, `connected`, `dag` or `digraph`
 (decision 25.32). std writes it above `Perm`, `Tree` and the graph
@@ -334,7 +334,7 @@ aliases; stress reads it on the declaration a written type resolves to, so
 not, and a weighted tree is `@stress(tree) type Tree = [0..n - 1](u: V,
 v: V, w: W)`. Anything but one bare kind, or `@stress` on anything but a
 type alias, is E0325. `cpl run` and `cpl build` ignore it. Status: checks
-(`core-12/stress-not-on-a-type.cp`, `core-12/stress-unknown-kind.cp`).
+(`core-12/stress-not-on-a-type.cp`, `core-12/stress-unknown-kind.cp`). (R12.13.3)
 
 ## W14. Inline C++ (P14)
 

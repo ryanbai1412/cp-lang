@@ -845,7 +845,7 @@ fn completion_after_an_at_sign_offers_decorators_and_after_at_bang_directives() 
     }
     assert!(!labels(&decorators).contains(&"domain"), "{decorators:?}");
     let directives = completions("@!|\nlet n: Int = read()\n");
-    assert_eq!(labels(&directives), ["multitest", "interactive"]);
+    assert_eq!(labels(&directives), ["multitest"]);
     // `!` and `@` trigger completion only where an attribute name goes.
     let context = obj([(
         "context",

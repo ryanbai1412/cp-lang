@@ -353,7 +353,9 @@ fn is_prelude(items: &[Item]) -> bool {
         return false;
     };
     let marked = u.decorators().any(|x| {
-        let attr = x.name().and_then(|n| crate::attrs::Attr::of(n.text()));
+        let attr = x
+            .name()
+            .and_then(|n| crate::attrs::Decorator::live(n.text()));
         attr.and_then(|attr| {
             crate::decls::form_role(&crate::decls::forms::AttrForm {
                 attr,

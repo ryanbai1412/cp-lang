@@ -1,6 +1,6 @@
 //! The rules a decorator follows beyond its name: what each `@name` may sit on and what its
 //! arguments are. Collect calls `check` once per decorator, where forms reads it (R11.6).
-use crate::attrs::{Attr, DeclKind};
+use crate::attrs::{DeclKind, Decorator};
 use crate::decls::forms::AttrForm;
 use crate::decls::Role;
 use crate::diag::Msg;
@@ -18,9 +18,9 @@ pub fn check(attr: &AttrForm, on: DeclKind, item: &ItemId, errors: &mut Vec<Msg>
         return;
     };
     let msg = match attr.attr {
-        Attr::Stress => stress(node, on),
-        Attr::Role => role(node, on),
-        Attr::Lint if !matches!(on, DeclKind::Fn { .. }) => Some(Msg {
+        Decorator::Stress => stress(node, on),
+        Decorator::Role => role(node, on),
+        Decorator::Lint if !matches!(on, DeclKind::Fn { .. }) => Some(Msg {
             help: Some("put it on the fn whose call the lint suggests".to_string()),
             ..Msg::verdict(
                 codes::BAD_LIBRARY_LINT,
@@ -388,7 +388,7 @@ mod tests {
         let node = (file.root.descendants())
             .find_map(ast::Decorator::cast)
             .expect("a decorator");
-        let attr = Attr::of(node.name().expect("a name").text()).expect("an attribute");
+        let attr = Decorator::live(node.name().expect("a name").text()).expect("an attribute");
         let mut out = Vec::new();
         let form = AttrForm {
             attr,

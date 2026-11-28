@@ -9627,3 +9627,15 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** A fn type is `V -> V` or `(A, B) -> C`; `fn(V) -> V` is E0503, with a fix to `V -> V`. A projection's result is `-> lends T` / `-> lends mut T` (`ret`, R05.3), and `) lends T` with no `->` is E0503, with a fix that inserts `-> `; the rb1-q09 case moves from E0103 to it. std/seq.cp's `update`, the std-api snapshot, decision 5.12's row and four cpl-next programs are rewritten first.
 - **Why.** Coordinator ruling of 2026-11-27, 18:31.
 - **Reverse.** Accept the two spellings as sugar.
+
+## 666. One decorator table, `grammar::Decorator`, each row citing its rule (syntax, 2026-11-27)
+
+- **Call.** The decorator vocabulary is one table in cpl-next-syntax's grammar.rs, beside the keywords: each row is a variant, its spelling, the spec rule that defines it and what it does. cpl-syntax's `decorators` reads it (`Mark` is `Decorator`), and so do decls and the LSP's completion; decls' second copy (`Attr`, `Directive`, `Removed`) is gone. Nine decorators the spec defined by bullets with no id get one, with the prose unchanged: `@laws` R06.4.13, `@structural` R06.4.14, `@word` R06.4.15, `@member` R06.4.16, `@law` R05.1.1, `@was` R12.13.1, `@aka` R12.13.2 and `@stress` R12.13.3, each cited from an existing case. `record` is no decorator: a record's struct and row trait carry `record: true` in their forms. `@!interactive` is a removed row (decision 667). `next_std_names` skips the table, as it skips the keywords.
+- **Why.** Coordinator ruling of 2026-11-27, 19:48 and 19:51: decls' copy was 30 of `next_std_names`' rise and a second copy of the old table.
+- **Reverse.** Give each consumer its own word list again.
+
+## 667. `@!interactive` goes; `Wire` is interactive mode (syntax, 2026-11-27)
+
+- **Call.** `@!interactive` was a second spelling of R10.4's `Wire`, so `@!multitest` stays the one file directive (R01.9.1). The table lists `interactive` as removed; the corpus and the stress case move to `let wire = Wire()` and `wire.ask(..)` in their own commit, and the new parser's E0503 lands after them.
+- **Why.** Coordinator ruling of 2026-11-27, 19:54 and 19:57.
+- **Reverse.** Spec `@!interactive` as a file directive beside `@!multitest`.

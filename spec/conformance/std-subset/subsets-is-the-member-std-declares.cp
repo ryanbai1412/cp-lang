@@ -1,4 +1,5 @@
 // expect: ok, output "8\n5\n3\n8"
+// rule: 06.4.16
 // rule: std.subset.Subset
 // `V.subsets` is the domain std declares with `@member(subsets)` above
 // `pub struct Subset<B>`: a `[V.subsets]T` table is indexed by a `Subset<V>`,

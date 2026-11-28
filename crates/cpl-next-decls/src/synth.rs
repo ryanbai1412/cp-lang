@@ -1,6 +1,6 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
-use crate::attrs::Attr;
+use crate::attrs::Decorator;
 use crate::decls::forms::{
     AttrForm, BodyForm, FnForm, Form, ImplForm, ParamForm, TraitForm, TyForm,
 };
@@ -43,8 +43,7 @@ pub(crate) fn enum_tags(
         .collect();
     let level = || -> Option<Msg> {
         let tags = |x: &next::Decorator| {
-            x.name().and_then(|n| crate::attrs::Removed::of(n.text()))
-                == Some(crate::attrs::Removed::Tags)
+            x.name().and_then(|n| Decorator::of(n.text())) == Some(Decorator::Tags)
         };
         let x = it.decorators().into_iter().find(tags)?;
         let text = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.say(&[]);
@@ -95,6 +94,7 @@ pub(crate) fn enum_structs(
         name,
         public,
         attrs,
+        record: false,
         generics: e.generics.clone(),
         generic_defaults: vec![None; e.generics.len()],
         bounds: Vec::new(),
@@ -174,7 +174,7 @@ pub(crate) fn module_derived(
             }
             Form::Struct(sd) => {
                 let cached = |f: &&crate::decls::forms::FieldForm| {
-                    f.attrs.iter().any(|x| x.attr == Attr::Cache)
+                    f.attrs.iter().any(|x| x.attr == Decorator::Cache)
                 };
                 let all: Vec<Sym> = sd.fields.iter().map(|f| f.name).collect();
                 let uncached: Vec<Sym> = sd
@@ -336,7 +336,7 @@ pub(crate) fn derive_each(forms: &[&Form]) -> Vec<(Sym, Derivable)> {
         Form::Struct(sd) if form_fills(&sd.attrs, Role::Pack) => Some(sd.name),
         _ => None,
     });
-    let derive = |t: &TraitForm| t.attrs.iter().any(|a| a.attr == Attr::Derive);
+    let derive = |t: &TraitForm| t.attrs.iter().any(|a| a.attr == Decorator::Derive);
     forms
         .iter()
         .filter_map(|f| {
@@ -428,7 +428,7 @@ pub(crate) fn field_requirement(
         name: field,
         public: true,
         attrs: vec![AttrForm {
-            attr: Attr::Get,
+            attr: Decorator::Get,
             node: None,
         }],
         generics: Vec::new(),
@@ -470,7 +470,7 @@ pub(crate) fn field_trait_impls(
         if t.alias || !t.supers.is_empty() || t.methods.is_empty() {
             continue;
         }
-        let getter = |f: &FnForm| f.attrs.iter().any(|a| a.attr == Attr::Get);
+        let getter = |f: &FnForm| f.attrs.iter().any(|a| a.attr == Decorator::Get);
         let member = |f: &FnForm| match (&f.body, &f.ret) {
             (BodyForm::None, Some(TyForm::Written(ty)))
                 if f.params.len() <= 1 && getter(f) && writable(ty) =>
@@ -598,7 +598,7 @@ pub(crate) fn enum_conversions(
             continue;
         };
         let plain = (e.variants.iter())
-            .all(|v| v.fields.is_empty() && v.attrs.iter().all(|a| a.attr != Attr::Tag));
+            .all(|v| v.fields.is_empty() && v.attrs.iter().all(|a| a.attr != Decorator::Tag));
         if !e.generics.is_empty() || e.variants.is_empty() || !plain {
             continue;
         }
@@ -624,7 +624,7 @@ pub(crate) fn enum_conversions(
                     public: false,
                     attrs: match getter {
                         true => vec![AttrForm {
-                            attr: Attr::Get,
+                            attr: Decorator::Get,
                             node: None,
                         }],
                         false => Vec::new(),
@@ -756,7 +756,7 @@ pub(crate) fn memo_tables(
             let word = sd
                 .attrs
                 .iter()
-                .find(|a| a.attr == Attr::MemoTable)
+                .find(|a| a.attr == Decorator::MemoTable)
                 .and_then(|a| attr_word(a, syms));
             out.extend(word.map(|w| (w, (mi, sd.name))));
         }
@@ -1194,7 +1194,7 @@ fn token(v: &crate::decls::forms::VariantForm, syms: &crate::sym::Syms) -> Strin
     let tag = v
         .attrs
         .iter()
-        .find(|a| a.attr == Attr::Tag)
+        .find(|a| a.attr == Decorator::Tag)
         .and_then(|a| a.node.as_ref());
     let lit = tag
         .and_then(|x| x.args()?.args().next()?.value())

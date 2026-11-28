@@ -58,7 +58,7 @@ Anything the compiler trusts without proof is an `@` attribute from this
 closed list, so `grep -E '@(cache|law|trusted|cpp)'` finds all of it, and
 adding to the list takes a decision entry. Codegen never optimizes on a
 promise (no `__restrict` from a `disjoint` law), which is what keeps a
-broken promise from becoming undefined behaviour.
+broken promise from becoming undefined behaviour. (R05.1.1)
 
 ### The picture
 
