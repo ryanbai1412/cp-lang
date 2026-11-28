@@ -9566,13 +9566,13 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Why.** Coordinator ruling of 2026-11-27, 18:35. A row-generic fn returning `(to: V, ..R without (u, v))` (n_row_02) had no way to build that value.
 - **Reverse.** Drop `without` from `rfield`; such fns would copy each field by hand, which a row-generic body can't do.
 
-## 655. An inline `if` continues on deeper `elif` and `else` lines (compiler, 2026-11-27)
+## 669. An inline `if` continues on deeper `elif` and `else` lines (compiler, 2026-11-27)
 
 - **Call.** A line indented deeper than the logical line above, which does not end in `:`, continues it when it starts with `elif` or `else` and that line holds an inline `if` (one after its first token, outside brackets) that no `else` has closed. So `let ob = if k == 0: a` can take its `elif k == 1: b` and `else: c` on their own lines (R01.2.4). The parser reads it, for an `if` value only; the shared lexer is unchanged, so the frozen `cpl fmt` keeps such lines as written.
 - **Why.** Coordinator ruling of 2026-11-27, 18:51. std-models/bitset.cp writes a five-way `if` value this way, and one long line is worse.
 - **Reverse.** Drop `elif`/`else` from the continuation list; such values go back to one line or a `match`.
 
-## 656. A `let` condition is joined with `,`, not `and` (compiler, 2026-11-27)
+## 670. A `let` condition is joined with `,`, not `and` (compiler, 2026-11-27)
 
 - **Call.** `if let i = f() and i > 1:` and `if let i = f() and let j = g():` are E0503, with a fix that writes `,`: `cond` joins its parts with `,` (01:505). A `let` condition's value ends at a top-level `and`, so the error names the `and` and not the next part. An `and` inside brackets is unaffected, as is `and` between plain conditions.
 - **Why.** Coordinator ruling of 2026-11-27, 18:51. One spelling: `and` between a binding and a test reads as a Bool operator over the bound value.
