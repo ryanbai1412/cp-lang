@@ -12,7 +12,7 @@ impl Summaries for OneSummary {
     fn global_set(&self, _: GlobalId, _: usize) -> Option<&SetTy> {
         None
     }
-    fn added_at(&self, _: usize) -> Option<&(FnRef, usize)> {
+    fn added_at(&self, _: cpl_next_ir::ty::AddedId) -> Option<&(FnRef, usize)> {
         None
     }
 }

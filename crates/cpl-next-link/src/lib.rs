@@ -34,7 +34,8 @@ struct Link<'a> {
     index: HashMap<InstKey, usize>,
     structs: HashMap<CTy, Vec<CTy>>,
     sums: HashMap<CTy, Vec<CTy>>,
-    add_busy: BTreeSet<usize>,
+    /// The `AddedAt` calls being resolved, innermost last.
+    add_busy: Vec<cpl_next_ir::ty::AddedId>,
     /// The globals' sets being read, so one met inside itself adds nothing more.
     global_busy: BTreeSet<(usize, usize)>,
     /// The lambdas whose named sets are being read, so one met inside itself keeps all.
@@ -181,7 +182,7 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
         index: HashMap::new(),
         structs: HashMap::new(),
         sums: HashMap::new(),
-        add_busy: BTreeSet::new(),
+        add_busy: Vec::new(),
         global_busy: BTreeSet::new(),
         named_busy: std::collections::HashSet::new(),
         named: HashMap::new(),
@@ -712,18 +713,21 @@ impl Link<'_> {
         while let Some(p) = rest.find(AT) {
             let (head, tail) = rest.split_at(p + AT.len());
             out.push_str(head);
-            let digits: String = tail.chars().take_while(char::is_ascii_digit).collect();
             let lists = (tail.find('['))
                 .and_then(|a| Some((a, closing(tail, a)?)))
                 .and_then(|(a, b)| {
                     let c = b + tail[b..].find('[')?;
                     Some((a, c, closing(tail, c)?))
                 });
-            let (Ok(id), Some((_, c, d))) = (digits.parse::<usize>(), lists) else {
+            let (Some(id), Some((_, c, d))) = (
+                tail.split_once(')')
+                    .and_then(|(id, _)| id.parse::<LambdaId>().ok()),
+                lists,
+            ) else {
                 rest = tail;
                 continue;
             };
-            let key = FuncKey::Lambda(LambdaId(id));
+            let key = FuncKey::Lambda(id);
             let used = (!self.named_busy.contains(&key)).then(|| self.params_named(key));
             out.push_str(&self.kept_text(&tail[..=c]));
             let kept: Vec<String> = (top_level(&tail[c + 1..d]).into_iter().enumerate())
@@ -865,9 +869,10 @@ impl Link<'_> {
                     return;
                 };
                 // A call met again inside its own arguments' sets adds nothing more.
-                if !self.add_busy.insert(*c) {
+                if self.add_busy.contains(c) {
                     return;
                 }
+                self.add_busy.push(*c);
                 if let Some(k) = self.callee_key(&f, env) {
                     if let Some(decl) = k.func.decl() {
                         // A trait's result slot is the impl's, after the impl's own sets.
@@ -885,7 +890,7 @@ impl Link<'_> {
                         }
                     }
                 }
-                self.add_busy.remove(c);
+                self.add_busy.pop();
             }
             // A global is the top level's: what the program puts in it names no fn's parameters.
             SetTy::Global(g, k) => {

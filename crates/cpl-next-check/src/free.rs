@@ -1,11 +1,11 @@
 //! What a nested fn reads from around it, on the typed tree.
 use super::*;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// What each nested fn a block binds reads from around it, together with what its siblings do:
 /// a sibling's value is rebuilt from the same captures (R05.10.5).
 pub fn group_free(
-    lambdas: &[LambdaInfo],
+    lambdas: &BTreeMap<LambdaId, LambdaInfo>,
     top: bool,
     ss: &[TStmt],
 ) -> HashMap<LambdaId, BTreeSet<VarRef>> {
@@ -19,7 +19,7 @@ pub fn group_free(
             },
         ) = s
         {
-            if lambdas[id.0].group.is_empty() {
+            if lambdas[id].group.is_empty() {
                 continue;
             }
             let (mut used, mut bound) = (BTreeSet::new(), BTreeSet::new());
@@ -33,7 +33,7 @@ pub fn group_free(
     }
     (own.keys())
         .map(|id| {
-            let all = (lambdas[id.0].group.iter())
+            let all = (lambdas[id].group.iter())
                 .filter_map(|s| own.get(s))
                 .flatten()
                 .copied()

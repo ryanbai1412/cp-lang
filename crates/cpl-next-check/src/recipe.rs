@@ -179,7 +179,9 @@ impl Cx<'_> {
         };
         let body = self.recipe(Vec::new(), call);
         self.b.scopes.pop();
-        self.lambdas[id.0].ret = body.ty.clone();
+        if let Some(l) = self.lambdas.get_mut(&id) {
+            l.ret = body.ty.clone();
+        }
         TExpr {
             kind: TK::Lambda {
                 id,

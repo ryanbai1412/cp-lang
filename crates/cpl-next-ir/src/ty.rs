@@ -15,9 +15,51 @@ pub struct StructId(pub usize);
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct TraitId(pub usize);
 pub type LocalId = usize;
-/// A lambda is named by the unit it sits in and its span there.
+/// A lambda is named by the fn it sits in (`None` for the top level), the context copy of that
+/// fn, and which of that body's lambdas it is: what checks it, not the order bodies are checked.
+/// Printed `LambdaId(owner:copy:n)`, the owner blank at the top level, and read back by
+/// [`str::parse`] from the part inside the parentheses.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct LambdaId {
+    pub owner: Option<FnId>,
+    pub copy: u32,
+    pub n: u32,
+}
+
+impl std::fmt::Debug for LambdaId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let owner = self.owner.map(|o| o.0.to_string()).unwrap_or_default();
+        write!(f, "LambdaId({owner}:{}:{})", self.copy, self.n)
+    }
+}
+
+impl std::str::FromStr for LambdaId {
+    type Err = ();
+    /// `owner:copy:n` as [`LambdaId`]'s `Debug` prints it inside the parentheses.
+    fn from_str(s: &str) -> Result<Self, ()> {
+        let mut parts = s.split(':');
+        let mut next = || parts.next().ok_or(());
+        let owner = match next()? {
+            "" => None,
+            o => Some(FnId(o.parse().map_err(|_| ())?)),
+        };
+        let copy = next()?.parse().map_err(|_| ())?;
+        let n = next()?.parse().map_err(|_| ())?;
+        match parts.next() {
+            None => Ok(LambdaId { owner, copy, n }),
+            Some(_) => Err(()),
+        }
+    }
+}
+
+/// A call passing sets, named as a lambda is: by the fn it sits in, the context copy, and
+/// which of that body's set-passing calls it is.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
-pub struct LambdaId(pub usize);
+pub struct AddedId {
+    pub owner: Option<FnId>,
+    pub copy: u32,
+    pub n: u32,
+}
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Ty {
@@ -197,7 +239,7 @@ pub enum SetTy {
     Param(usize),
     /// "Whatever the fn a call reaches adds to its `slot`-th set argument": `call_adds[i]` is
     /// that call and slot (`SetAdds`), a fn's result slots after its own sets. Resolved per instance.
-    AddedAt(usize),
+    AddedAt(AddedId),
     /// In a signature: the k-th function type of the result. A call passes its set for it after
     /// the fn's own, so the body sees `Param(n_sets + k)`.
     RetSlot(usize),
@@ -213,10 +255,9 @@ pub enum SetTy {
 pub struct SetAdds {
     /// What `f`'s body adds to its `slot`-th set.
     pub params: std::collections::HashMap<(FnId, usize), SetTy>,
-    /// `AddedAt(i)`'s call and slot.
-    pub calls: Vec<(FnRef, usize)>,
-    /// Whether `AddedAt(i)`'s callee may add anything there; one that cannot adds nothing.
-    pub live: Vec<bool>,
+    /// Each `AddedAt`'s call and slot, for a call whose callee may add anything there; one that
+    /// cannot is left out and adds nothing.
+    pub calls: std::collections::BTreeMap<AddedId, (FnRef, usize)>,
     /// What the program puts in `Global(g, k)`.
     pub globals: std::collections::HashMap<(usize, usize), SetTy>,
 }

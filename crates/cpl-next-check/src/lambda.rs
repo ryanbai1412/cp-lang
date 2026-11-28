@@ -29,8 +29,14 @@ impl<'a> Cx<'a> {
     /// the callee's summary (`param_adds`) says and link reads per instance.
     pub(super) fn set_call(&mut self, f: &FnRef) {
         for (slot, s) in f.sets.iter().enumerate() {
-            let at = self.id(super::Table::Added, self.added.len());
-            put(&mut self.added, at, (f.clone(), slot));
+            let n = self.made[super::Table::Added as usize];
+            self.made[super::Table::Added as usize] += 1;
+            let at = AddedId {
+                owner: self.b.decl,
+                copy: self.copy,
+                n,
+            };
+            self.added.insert(at, (f.clone(), slot));
             let m = Member::Sub(SetTy::AddedAt(at));
             match self.shallow_set(s) {
                 SetTy::Var(v) => {
@@ -87,9 +93,15 @@ impl<'a> Cx<'a> {
         }
     }
     pub(super) fn new_lambda(&mut self, info: LambdaInfo) -> LambdaId {
-        let id = self.id(super::Table::Lambda, self.lambdas.len());
-        super::put(&mut self.lambdas, id, info);
-        LambdaId(id)
+        let n = self.made[super::Table::Lambda as usize];
+        self.made[super::Table::Lambda as usize] += 1;
+        let id = LambdaId {
+            owner: self.b.decl,
+            copy: self.copy,
+            n,
+        };
+        self.lambdas.insert(id, info);
+        id
     }
     /// A lambda made from its parameters, result and body (R06.1): a written `(a, b) => e`, a
     /// nested `fn`, or a fn value the checker makes (`xs.map(bump)`).
@@ -228,7 +240,7 @@ impl<'a> Cx<'a> {
         // The body sees its own signature, so a lambda bound by `let` can call itself (R06.2.3).
         // A nested `fn` was made before its block was checked; it also sees its siblings.
         let (id, group) = match pre {
-            Some(id) => (id, self.lambdas[id.0].group.clone()),
+            Some(id) => (id, self.lambdas[&id].group.clone()),
             None => {
                 let id = self.new_lambda(LambdaInfo {
                     params: ptys.clone(),
@@ -292,14 +304,19 @@ impl<'a> Cx<'a> {
         self.b.loops = saved_loops;
         self.b.scopes.pop();
         self.b.selves.truncate(outer_selves);
-        self.lambdas[id.0] = LambdaInfo {
-            params: ptys,
-            ret,
-            owner: self.b.decl,
-            group,
-            yields: None,
-            written: std::mem::take(&mut self.lambdas[id.0].written),
-        };
+        let written =
+            (self.lambdas.get_mut(&id)).map_or_else(Vec::new, |l| std::mem::take(&mut l.written));
+        self.lambdas.insert(
+            id,
+            LambdaInfo {
+                params: ptys,
+                ret,
+                owner: self.b.decl,
+                group,
+                yields: None,
+                written,
+            },
+        );
         mk(
             TK::Lambda {
                 id,
@@ -378,7 +395,9 @@ impl<'a> Cx<'a> {
         let mut run: Vec<LambdaId> = Vec::new();
         let end_run = |cx: &mut Self, run: &mut Vec<LambdaId>| {
             for id in run.iter() {
-                cx.lambdas[id.0].group = run.clone();
+                if let Some(l) = cx.lambdas.get_mut(id) {
+                    l.group = run.clone();
+                }
             }
             run.clear();
         };
@@ -515,7 +534,7 @@ impl<'a> Cx<'a> {
             caps.insert(*id, free.collect());
         }
         for (id, name, span, set) in mine {
-            let group = match &self.lambdas[id.0].group {
+            let group = match &self.lambdas[&id].group {
                 g if g.is_empty() => vec![id],
                 g => g.clone(),
             };

@@ -390,8 +390,8 @@ impl<'a> Cx<'a> {
                 (ps, r)
             }
             CloRef::Lambda(id, ..) => (
-                self.lambdas[id.0].params.clone(),
-                self.lambdas[id.0].ret.clone(),
+                self.lambdas[id].params.clone(),
+                self.lambdas[id].ret.clone(),
             ),
         }
     }

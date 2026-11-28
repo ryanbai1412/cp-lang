@@ -109,7 +109,9 @@ impl Cx<'_> {
             written: Vec::new(),
         });
         for id in [body_id, wrap_id] {
-            self.lambdas[id.0].group = vec![body_id, wrap_id];
+            if let Some(l) = self.lambdas.get_mut(&id) {
+                l.group = vec![body_id, wrap_id];
+            }
         }
         self.b.group.insert(k, (at, Some(name.clone()), wrap_id));
         let Some(body) = self.nested_fn(fd, None, out) else {

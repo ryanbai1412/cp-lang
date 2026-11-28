@@ -1909,7 +1909,12 @@ fn escape(d: &dyn Signatures, p: &Program) -> Vec<Msg> {
             });
         };
         if holds_ref(p, &f.ret, &mut Vec::new(), &made) {
-            at(&mut bad, format!("`{}` returns a function that uses a `var` of the fn that made it; the variable is gone by then", f.name));
+            // A lambda's lowered name is no name the program wrote.
+            let who = match f.key {
+                FuncKey::Lambda(_) => "this lambda".to_string(),
+                _ => format!("`{}`", f.name),
+            };
+            at(&mut bad, format!("{who} returns a function that uses a `var` of the fn that made it; the variable is gone by then"));
         }
         // What a `mut` parameter holds is the caller's, so a closure stored there outlives this fn too.
         let stored = (f.params.iter().filter(|(_, m)| *m)).any(|(l, _)| {

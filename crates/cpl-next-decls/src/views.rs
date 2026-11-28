@@ -255,7 +255,7 @@ pub trait Summaries {
     fn global_set(&self, g: GlobalId, k: usize) -> Option<&SetTy>;
     /// The call and result slot whose sets a `SetTy::AddedAt(c)` names; none for a call in
     /// code that never runs.
-    fn added_at(&self, c: usize) -> Option<&(FnRef, usize)>;
+    fn added_at(&self, c: cpl_next_ir::ty::AddedId) -> Option<&(FnRef, usize)>;
 }
 
 /// The impl one trait's call takes at one type: its index and the type arguments its head binds.
@@ -697,12 +697,8 @@ impl Summaries for SetAdds {
     fn global_set(&self, g: GlobalId, k: usize) -> Option<&SetTy> {
         self.globals.get(&(g.0, k))
     }
-    fn added_at(&self, c: usize) -> Option<&(FnRef, usize)> {
-        self.live
-            .get(c)
-            .copied()
-            .unwrap_or(true)
-            .then(|| &self.calls[c])
+    fn added_at(&self, c: cpl_next_ir::ty::AddedId) -> Option<&(FnRef, usize)> {
+        self.calls.get(&c)
     }
 }
 

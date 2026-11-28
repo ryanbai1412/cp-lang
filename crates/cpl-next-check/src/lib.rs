@@ -413,15 +413,14 @@ pub struct Typed {
     pub ctx_impls: HashMap<(u32, FnId), u32>,
     pub globals: Vec<Local>,
     pub main: Vec<TStmt>,
-    pub lambdas: Vec<LambdaInfo>,
+    pub lambdas: std::collections::BTreeMap<LambdaId, LambdaInfo>,
     /// The closures a fn's body adds to its i-th set parameter, a callee's adds included.
     pub param_adds: HashMap<(FnId, usize), SetTy>,
     /// What the program puts in each global's set, `SetTy::Global(g, k)`.
     pub global_adds: HashMap<(usize, usize), SetTy>,
-    /// Each call passing a set argument, and that argument's slot (`SetTy::AddedAt`).
-    pub call_adds: Vec<(FnRef, usize)>,
-    /// Whether each of `call_adds`' callees may add to that slot.
-    pub call_live: Vec<bool>,
+    /// Each call passing a set argument whose callee may add to it, and that argument's slot
+    /// (`SetTy::AddedAt`). A call whose callee cannot add anything there is left out.
+    pub call_adds: std::collections::BTreeMap<AddedId, (FnRef, usize)>,
     pub errors: Vec<Msg>,
     /// The errors of each library fn reached only through a trait, said if an instance runs it.
     pub deferred: HashMap<FnId, Vec<Msg>>,
@@ -506,7 +505,7 @@ struct Cx<'a> {
     /// The judge the build is for, for its memory limit (R03.1.9).
     judge: Option<cpl_next_ir::build::Judge>,
     errors: Vec<Msg>,
-    lambdas: Vec<LambdaInfo>,
+    lambdas: std::collections::BTreeMap<LambdaId, LambdaInfo>,
     /// Each lambda's, local domain's and range's id, by the copy of the fn it sits in and its
     /// place among that copy's: a body checked alone names them as the whole program's does.
     ids: Ids,
@@ -527,7 +526,7 @@ struct Cx<'a> {
     /// What the top level and each body put in a global's set (`SetTy::Global`).
     global_adds: HashMap<(usize, usize), Vec<Member>>,
     /// `SetTy::AddedAt(i)`'s call and the slot of the set it passes there.
-    added: Vec<(FnRef, usize)>,
+    added: std::collections::BTreeMap<AddedId, (FnRef, usize)>,
     domains: Vec<DomInfo>,
     /// A body domain and the result's `domain C` it was returned as, which it then stands for;
     /// or a result's `domain C` and the domain its caller bound it to (R02.9.3).
@@ -788,7 +787,7 @@ impl<'a> Checker<'a> {
             view_keys: HashMap::new(),
             judge,
             errors: Vec::new(),
-            lambdas: Vec::new(),
+            lambdas: Default::default(),
             ids: prior.clone(),
             made: [0; 4],
             copy: 0,
@@ -799,7 +798,7 @@ impl<'a> Checker<'a> {
             requires: HashMap::new(),
             generic_calls: Vec::new(),
             global_adds: HashMap::new(),
-            added: Vec::new(),
+            added: Default::default(),
             // A top-level domain's place is kept for it until its statement runs.
             domains: (0..d.dom_ids.len())
                 .map(|_| DomInfo {
@@ -1222,19 +1221,21 @@ impl<'a> Checker<'a> {
             g.ty = cx.zonk(&g.ty);
         }
         let mut lambdas = std::mem::take(&mut cx.lambdas);
-        for l in &mut lambdas {
+        for l in lambdas.values_mut() {
             l.params = l.params.iter().map(|t| cx.zonk(t)).collect();
             l.ret = cx.zonk(&l.ret);
             l.yields = l.yields.as_ref().map(|t| cx.zonk(t));
         }
         let call_adds = (call_adds.into_iter())
-            .map(|(f, k)| {
+            .zip(call_live)
+            .filter_map(|(call, live)| live.then_some(call))
+            .map(|(at, (f, k))| {
                 let f = FnRef {
                     targs: f.targs.iter().map(|t| cx.zonk(t)).collect(),
                     sets: f.sets.iter().map(|s| cx.zonk_set(s)).collect(),
                     ..f
                 };
-                (f, k)
+                (at, (f, k))
             })
             .collect();
         // Each through a variable, so its closures' own types are written out as any set's are.
@@ -1323,7 +1324,6 @@ impl<'a> Checker<'a> {
             param_adds,
             global_adds,
             call_adds,
-            call_live,
             errors: cx.errors,
             deferred,
             quiet: quiet_fns,
@@ -1437,20 +1437,30 @@ impl<'a> Cx<'a> {
     /// Which calls' callees may add to the set they are passed there, read from the summaries
     /// alone (`param_adds`): no body is checked again.
     fn adds_live(&self) -> Vec<bool> {
-        let callee_adds = |live: &[bool], (f, slot): &(FnRef, usize)| {
-            let fd = self.items.f(f.decl);
-            let by_impl = matches!(fd.owner, Some(Owner::Trait(_))) && *slot >= fd.n_sets;
-            by_impl
-                || (self.param_adds.get(&(f.decl, *slot))).is_some_and(|ms| {
-                    ms.iter().any(|m| match m {
-                        Member::Sub(SetTy::AddedAt(c)) => live[*c],
-                        _ => true,
-                    })
-                })
-        };
-        let mut live = vec![false; self.added.len()];
+        // Each call, in `added`'s order: `None` if its callee always may add, else the calls
+        // whose liveness makes it live.
+        let keys: Vec<AddedId> = self.added.keys().copied().collect();
+        let deps: Vec<Option<Vec<usize>>> = (self.added.values())
+            .map(|(f, slot)| {
+                let fd = self.items.f(f.decl);
+                if matches!(fd.owner, Some(Owner::Trait(_))) && *slot >= fd.n_sets {
+                    return None;
+                }
+                let mut on = Vec::new();
+                for m in self.param_adds.get(&(f.decl, *slot)).into_iter().flatten() {
+                    match m {
+                        Member::Sub(SetTy::AddedAt(c)) => on.extend(keys.binary_search(c).ok()),
+                        _ => return None,
+                    }
+                }
+                Some(on)
+            })
+            .collect();
+        let mut live = vec![false; keys.len()];
         loop {
-            let next: Vec<bool> = self.added.iter().map(|c| callee_adds(&live, c)).collect();
+            let next: Vec<bool> = (deps.iter())
+                .map(|d| d.as_ref().is_none_or(|d| d.iter().any(|&i| live[i])))
+                .collect();
             if next == live {
                 return live;
             }

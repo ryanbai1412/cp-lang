@@ -82,7 +82,6 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         adds: cpl_next_ir::ty::SetAdds {
             params: typed.param_adds.clone(),
             calls: typed.call_adds.clone(),
-            live: typed.call_live.clone(),
             globals: typed.global_adds.clone(),
         },
         whole: whole(d, typed),
@@ -1482,7 +1481,7 @@ impl Lw<'_> {
     }
     /// Lifts a lambda to a function of its own. Returns the locals it captures, by value.
     fn lambda(&mut self, id: LambdaId, params: &[usize], body: &TExpr) -> Vec<Expr<Ty>> {
-        let info = &self.typed.lambdas[id.0];
+        let info = &self.typed.lambdas[&id];
         let mut used = BTreeSet::new();
         let mut bound: BTreeSet<VarRef> = BTreeSet::new();
         free_vars(body, self.in_main, &mut used, &mut bound);
@@ -1579,7 +1578,10 @@ impl Lw<'_> {
         let (sites, origins) = self.swap_sites(outer_sites);
         self.lambdas.push(Func {
             key: FuncKey::Lambda(id),
-            name: format!("lambda{}", id.0),
+            name: match id.owner {
+                Some(f) => format!("lambda{}_{}_{}", f.0, id.copy, id.n),
+                None => format!("lambda_{}_{}", id.copy, id.n),
+            },
             params: fparams,
             n_captures: caps.len(),
             names,

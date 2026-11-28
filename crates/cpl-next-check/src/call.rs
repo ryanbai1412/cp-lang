@@ -724,7 +724,7 @@ impl Cx<'_> {
         };
         let sig = match self.shallow(&callee.ty) {
             Ty::Clo(c) => match &*c {
-                CloRef::Lambda(id, ..) => self.lambdas[id.0].written.clone(),
+                CloRef::Lambda(id, ..) => self.lambdas[id].written.clone(),
                 CloRef::Item(_) => Vec::new(),
             },
             _ => Vec::new(),

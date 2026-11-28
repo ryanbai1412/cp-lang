@@ -1105,11 +1105,12 @@ fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
         assert_eq!(was[f], now[f], "{f}");
     }
     assert_ne!(was["edited"], now["edited"]);
-    // Numbered afresh, the edit's new lambda and call move the others' ids.
+    // Lambdas and set-passing calls are named by the body that makes them, so even a check
+    // that starts with no prior numbering leaves the others' ids alone.
     let (fresh, _) = typed(&after, &check::Ids::default());
-    assert!(["apply_twice", "left", "right"]
-        .iter()
-        .any(|f| was[*f] != fresh[*f]));
+    for f in ["apply_twice", "left", "right"] {
+        assert_eq!(was[f], fresh[f], "{f}");
+    }
 }
 
 /// A body that puts a function in a global's set leaves a body that reads the global typed the
