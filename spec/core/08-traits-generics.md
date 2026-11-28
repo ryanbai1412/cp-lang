@@ -39,7 +39,12 @@ impl Ord for Frac:
 ```
 
 - A trait declares methods (with optional default bodies), associated
-  types, field requirements and laws. Supertraits go in parentheses. (R08.1.1)
+  types, field requirements and laws. Supertraits go in parentheses. An
+  impl may define its supertraits' members, and it then also serves as the
+  type's impl of each supertrait with no impl of its own; each member of a
+  supertrait it serves has a body there or a default, else E0606 names the
+  member, and one that writes a supertrait's members beside another impl of
+  that supertrait is E0202. (R08.1.1)
 - `impl Trait for T` implements it; `impl A + B for T` is shorthand for
   two impls. One impl per (trait, type), declared with the trait or the
   type. Blanket impls are allowed (`impl<T: Add> Add for ?T`). (R08.1.2)
