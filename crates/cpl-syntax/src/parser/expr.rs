@@ -1090,14 +1090,9 @@ impl<'a> Parser<'a> {
                 if self.at(T::Lt) {
                     let args = self.speculate(|p| {
                         let args = p.type_args();
-                        let ends = p.at_line_end()
-                            || matches!(
-                                p.peek(),
-                                T::LParen | T::RParen | T::RBracket | T::RBrace | T::Comma
-                            );
-                        if !type_like && (!ends || !args.iter().all(names_a_type)) {
-                            p.speculation_failed = true;
-                        }
+                        let after = matches!(p.peek(), T::Dot | T::ColonColon | T::Colon | T::If);
+                        p.speculation_failed |=
+                            !type_like && (after || !args.iter().all(names_a_type));
                         if args.is_empty()
                             || !matches!(
                                 p.peek(),
