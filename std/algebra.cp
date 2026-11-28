@@ -16,8 +16,8 @@ use std.math.{gcd}
 /// `op(a, b)` folds `a` on the left of `b`, which matters when it does not commute.
 /// The laws are checked by `laws_hold(m, samples)`.
 pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreversed):
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
-    law ident(a: T) = op(id, a) == a and op(a, id) == a
+    law assoc(a: T, b: T, c: T) where T: Eq = op(op(a, b), c) == op(a, op(b, c))
+    law ident(a: T) where T: Eq = op(id, a) == a and op(a, id) == a
 
     /// The monoid a structure was handed: what its [`FromOp`] impl gives. A `Monoid` is itself,
     /// and a bare operator brings its identity: zero for `+`, `^`, `|` and `gcd`, one for `*`,
@@ -52,7 +52,7 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
 
 /// A monoid whose `op(a, b) == op(b, a)` is stated; [`Monoid.commutative`] makes one.
 pub struct Comm<T>(pub m: Monoid<T>):
-    law comm(a: T, b: T) = m.op(a, b) == m.op(b, a)
+    law comm(a: T, b: T) where T: Eq = m.op(a, b) == m.op(b, a)
 
 
 impl<T> Op<T> for Comm<T>:
@@ -183,12 +183,12 @@ pub struct Action<T, F>(
     pub replaces: ?(F -> Bool) = None,
     pub compose_in: ?((mut F, F) -> ()) = None,
 ):
-    law ident(a: T) = apply(id, a, 1) == a
-    law replace(f: F, a: T, b: T) = not (replaces ?? (_ => false))(f) or apply(f, a, 1) == apply(f, b, 1)
-    law commute(f: F, g: F, a: T) = not commutes or apply(compose(f, g), a, 1) == apply(compose(g, f), a, 1)
+    law ident(a: T) where T: Eq = apply(id, a, 1) == a
+    law replace(f: F, a: T, b: T) where T: Eq = not (replaces ?? (_ => false))(f) or apply(f, a, 1) == apply(f, b, 1)
+    law commute(f: F, g: F, a: T) where T: Eq = not commutes or apply(compose(f, g), a, 1) == apply(compose(g, f), a, 1)
     // `compose(f, g)` applies `g` first, then `f`.
-    law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
-    law composes_in_place(f: F, g: F, a: T) = apply(self.composed_in(f, g), a, 1) == apply(compose(f, g), a, 1)
+    law composes(f: F, g: F, a: T) where T: Eq = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
+    law composes_in_place(f: F, g: F, a: T) where T: Eq = apply(self.composed_in(f, g), a, 1) == apply(compose(f, g), a, 1)
 
     /// A lazy action of tags `F` on values `T` folded with `over`.
     ///
@@ -513,7 +513,7 @@ fn wider_best<D>(s: Int, r: Range<D>, t: Int, q: Range<D>) -> Bool =
 /// \(O(1)\) construction. Associative operation without an identity, for non-empty folds
 /// (`SparseTable`, `DisjointSparseTable`, `SegTree.try_fold`).
 pub struct Semigroup<T>(pub op: (T, T) -> T):
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
+    law assoc(a: T, b: T, c: T) where T: Eq = op(op(a, b), c) == op(a, op(b, c))
 
     /// \(O(1)\). The op on `?T` with `None` as identity: a `Monoid` any structure takes.
     ///
@@ -525,9 +525,9 @@ pub struct Semigroup<T>(pub op: (T, T) -> T):
 /// \(O(1)\) construction. Associative operation with identity and inverse (`inv`),
 /// for generalized Fenwick trees and difference structures.
 pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T):
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
-    law ident(a: T) = op(id, a) == a and op(a, id) == a
-    law inverse(a: T) = op(a, inv(a)) == id and op(inv(a), a) == id
+    law assoc(a: T, b: T, c: T) where T: Eq = op(op(a, b), c) == op(a, op(b, c))
+    law ident(a: T) where T: Eq = op(id, a) == a and op(a, id) == a
+    law inverse(a: T) where T: Eq = op(a, inv(a)) == id and op(inv(a), a) == id
 
     /// The group a structure was handed: a `Group` is itself, `+` brings zero and negation, `^`
     /// brings zero and itself as inverse. Any other fn needs `Group(id, op, inv)`.
@@ -852,15 +852,15 @@ pub trait HasInv<T>:
 
 /// Law: `op(a, b) == op(b, a)`. Lets folds reorder and tags skip push-down.
 pub trait Commutative<T>: Op<T>:
-    law comm(a: T, b: T) = self.op(a, b) == self.op(b, a)
+    law comm(a: T, b: T) where T: Eq = self.op(a, b) == self.op(b, a)
 
 /// Law: `op(a, a) == a`. Lets `SparseTable` overlap halves.
 pub trait Idempotent<T>: Op<T>:
-    law idem(a: T) = self.op(a, a) == a
+    law idem(a: T) where T: Eq = self.op(a, a) == a
 
 /// Law: `op(a, b)` is `a` or `b`. Lets sliding folds use a monotone deque.
 pub trait Selective<T>: Idempotent<T>:
-    law select(a: T, b: T) = self.op(a, b) == a or self.op(a, b) == b
+    law select(a: T, b: T) where T: Eq = self.op(a, b) == a or self.op(a, b) == b
 
 /// One operation per component of a tuple (positional) or record (named): `op((a0, a1),
 /// (b0, b1)) == (m0(a0, b0), m1(a1, b1))`. The identity is the tuple of identities, and the

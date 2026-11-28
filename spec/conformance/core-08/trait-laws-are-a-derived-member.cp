@@ -4,7 +4,7 @@
 // the impl's fns, so `-` fails the associativity that `+` and `max` keep.
 trait Op<T>:
     fn op(a: T, b: T) -> T
-    law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
+    law assoc(a: T, b: T, c: T) where T: Eq = op(op(a, b), c) == op(a, op(b, c))
 struct Plus
 impl Op<Int> for Plus:
     fn op(a: Int, b: Int) -> Int = a + b
