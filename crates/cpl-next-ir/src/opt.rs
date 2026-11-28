@@ -1,19 +1,16 @@
 //! Canonical IR to optimized IR (contract 06), which the fast engine and the C++ run: the
 //! checks the facts prove left out (`facts`), each scalar global only the entry names made
-//! one of its locals, then each scalar temporary that only carries a value to the next
-//! statement forwarded into it. The reference interpreter runs canonical
+//! one of its locals, each flag a branch sets only for the next branch to test folded into the
+//! first, then each plain temporary that only carries a value to the next statement forwarded
+//! into it. The reference interpreter runs canonical
 //! IR, so the suite compares the two on every case.
 use crate::facts::{self, Proved};
 use crate::ir::*;
-use crate::prog::CTy;
+use crate::prog::{CTy, Program};
 
-pub fn optimize(
-    funcs: &[Func<CTy>],
-    globals: &[CTy],
-    main: usize,
-) -> (Vec<Func<CTy>>, Vec<Proved>) {
-    let (mut out, proved) = facts::prove(funcs, main);
-    localize(&mut out, globals, main);
+pub fn optimize(funcs: &[Func<CTy>], p: &Program) -> (Vec<Func<CTy>>, Vec<Proved>) {
+    let (mut out, proved) = facts::prove(funcs, p.main);
+    localize(&mut out, &p.globals, p.main);
     for f in &mut out {
         let mut uses = vec![0usize; f.locals.len()];
         for (l, _) in &f.params {
@@ -24,8 +21,12 @@ pub fn optimize(
                 uses[*l] = uses[*l].saturating_add(1);
             }
         });
-        let scalar: Vec<bool> = f.locals.iter().map(scalar).collect();
-        forward(&mut f.body, &uses, &scalar);
+        let flags: Vec<bool> = (f.locals.iter().zip(&uses))
+            .map(|(t, &n)| *t == CTy::Bool && n == 3)
+            .collect();
+        fold(&mut f.body, &flags);
+        let plain: Vec<bool> = f.locals.iter().map(|t| p.plain(t)).collect();
+        forward(&mut f.body, &uses, &plain);
     }
     (out, proved)
 }
@@ -67,23 +68,68 @@ fn scalar(t: &CTy) -> bool {
     )
 }
 
+/// `if c: A; f = a else: B; f = !a` then `if f: X else: Y` becomes `if c: A; X else: B; Y`
+/// (or `Y`, `X` when `a` is false): `f` is a `Bool` named only by the two sets and the test.
+fn fold(b: &mut Vec<Stmt<CTy>>, flags: &[bool]) {
+    let set = |s: Option<&Stmt<CTy>>| match s {
+        Some(Stmt::Assign(
+            Place::Local(f),
+            Expr {
+                kind: EK::Bool(v), ..
+            },
+        )) if flags[*f] => Some((*f, *v)),
+        _ => None,
+    };
+    let mut i = 0;
+    while i < b.len() {
+        let (head, tail) = b.split_at_mut(i + 1);
+        if let (Stmt::If(_, x, y), Some(Stmt::If(t, xx, yy))) = (&mut head[i], tail.first_mut()) {
+            if let (Some((f, a)), Some((g, z)), EK::Copy(Place::Local(h))) =
+                (set(x.last()), set(y.last()), &t.kind)
+            {
+                if f == g && f == *h && a != z {
+                    let (xx, yy) = (std::mem::take(xx), std::mem::take(yy));
+                    let (to_x, to_y) = if a { (xx, yy) } else { (yy, xx) };
+                    x.pop();
+                    y.pop();
+                    x.extend(to_x);
+                    y.extend(to_y);
+                    b.remove(i + 1);
+                    continue;
+                }
+            }
+        }
+        match &mut b[i] {
+            Stmt::If(_, x, y) | Stmt::Loop(x, y, _) => {
+                fold(x, flags);
+                fold(y, flags);
+            }
+            Stmt::Switch(_, arms) => arms.iter_mut().for_each(|a| fold(a, flags)),
+            Stmt::Region { body, .. } => fold(body, flags),
+            _ => {}
+        }
+        i += 1;
+    }
+}
+
 /// `Let(t, e)` and a next statement that only reads `t` once become that statement on `e`,
-/// evaluated where `t` was: `t` is a scalar named nowhere else, and the place assigned is
+/// evaluated where `t` was: `t` is plain (it holds neither storage nor an address, so no count
+/// or lend is lost) and named nowhere else, and the place assigned is
 /// reached by fields alone, so finding it reads nothing `e` could change.
-fn forward(b: &mut Vec<Stmt<CTy>>, uses: &[usize], scalar: &[bool]) {
+fn forward(b: &mut Vec<Stmt<CTy>>, uses: &[usize], plain: &[bool]) {
     let once = |e: &Expr<CTy>| match &e.kind {
-        EK::Copy(Place::Local(t)) if uses[*t] == 2 && scalar[*t] => Some(*t),
+        EK::Copy(Place::Local(t)) if uses[*t] == 2 && plain[*t] => Some(*t),
         _ => None,
     };
     let mut i = 0;
     while i < b.len() {
         match &mut b[i] {
             Stmt::If(_, x, y) | Stmt::Loop(x, y, _) => {
-                forward(x, uses, scalar);
-                forward(y, uses, scalar);
+                forward(x, uses, plain);
+                forward(y, uses, plain);
             }
-            Stmt::Switch(_, arms) => arms.iter_mut().for_each(|a| forward(a, uses, scalar)),
-            Stmt::Region { body, .. } => forward(body, uses, scalar),
+            Stmt::Switch(_, arms) => arms.iter_mut().for_each(|a| forward(a, uses, plain)),
+            Stmt::Region { body, .. } => forward(body, uses, plain),
             _ => {}
         }
         let fixed = match b.get(i + 1) {
@@ -112,5 +158,56 @@ fn by_fields(p: &Place) -> bool {
         Place::Local(_) | Place::Global(_) => true,
         Place::Field(b, _) | Place::Through(b) => by_fields(b),
         Place::Variant(..) | Place::Deref(_) | Place::Slot(..) => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn e(kind: EK<CTy>) -> Expr<CTy> {
+        Expr {
+            kind,
+            ty: CTy::Bool,
+            site: 0,
+        }
+    }
+    fn set(f: usize, v: bool) -> Stmt<CTy> {
+        Stmt::Assign(Place::Local(f), e(EK::Bool(v)))
+    }
+
+    #[test]
+    fn a_flag_set_for_the_next_branch_folds_into_the_first() {
+        let mut b = vec![
+            Stmt::If(
+                e(EK::Copy(Place::Local(0))),
+                vec![set(1, false)],
+                vec![set(1, true)],
+            ),
+            Stmt::If(
+                e(EK::Copy(Place::Local(1))),
+                vec![Stmt::Break],
+                vec![Stmt::Continue],
+            ),
+        ];
+        fold(&mut b, &[false, true]);
+        let [Stmt::If(_, x, y)] = &b[..] else {
+            panic!("not folded: {b:?}")
+        };
+        assert!(matches!(&x[..], [Stmt::Continue]) && matches!(&y[..], [Stmt::Break]));
+    }
+
+    #[test]
+    fn a_flag_read_elsewhere_stays() {
+        let mut b = vec![
+            Stmt::If(
+                e(EK::Copy(Place::Local(0))),
+                vec![set(1, true)],
+                vec![set(1, false)],
+            ),
+            Stmt::If(e(EK::Copy(Place::Local(1))), vec![Stmt::Break], vec![]),
+        ];
+        fold(&mut b, &[false, false]);
+        assert_eq!(b.len(), 2);
     }
 }

@@ -458,7 +458,7 @@ pub(crate) fn compile(
     }
     let canon =
         inst::canonicalize(&mut prog, &cpl_next_own::expand_calls).map_err(|es| link(&es))?;
-    let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog.globals, prog.main);
+    let (opt, proved) = cpl_next_ir::opt::optimize(&canon, &prog);
     {
         use cpl_next_ir::verify::{accounted, instances, Stage};
         let g = prog.globals.len();
