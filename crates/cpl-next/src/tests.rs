@@ -28,6 +28,43 @@ fn a_method_call_loads_no_module() {
     assert_eq!(called, seen(&format!("{g}print(g[R(1), C(2)])\n")));
 }
 
+/// A payload a pattern binds is its copy (R05.3.2): writing the scrutinee in the arm, directly
+/// or as a `mut` param, leaves it as it was, the same on every runner. One of a lent param
+/// returned still borrows it (E0603).
+#[test]
+fn a_payload_a_pattern_binds_outlives_a_write_of_its_scrutinee() {
+    let src = "enum Q = Ask(s: Str) | Skip\nvar q = Q.Ask(\"ab\")\nlet u = match q:\n    Ask(s) =>\n        q = Q.Skip\n        s\n    Skip => \"none\"\nfn go(mut r: Q) -> Int:\n    match r:\n        Ask(s) =>\n            r = Q.Skip\n            print(s)\n            1\n        Skip => 0\nvar g = Q.Ask(\"cd\")\nprint(u, go(mut g), match g: Skip => \"skip\", Ask(_) => \"ask\")\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let want = "cd\nab 1 skip\n";
+    assert_eq!(raw(&c).output, want);
+    assert_eq!(c.run("").output, want);
+    let flags = ["-std=c++17", "-O1", "-w", "-x", "c++"];
+    let (bin, _) = cxx::build(c.cpp().as_bytes(), &flags).expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), want);
+
+    use crate::facade::{Session, Snapshot};
+    let lent = "enum Q = Ask(s: Str) | Skip\nfn get(x: Q) -> Str:\n    match x:\n        Ask(s) => s\n        Skip => \"none\"\nprint(get(Q.Ask(\"ab\")))\n";
+    let s =
+        Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", lent));
+    let diags = s.program("program.cp").err().expect("refused");
+    assert!(
+        (diags.iter()).any(|d| matches!(
+            d.kind,
+            crate::Kind::Verdict(c) if c == cpl_diag::codes::LENT_ESCAPES
+        )),
+        "{diags:?}"
+    );
+}
+
 /// Ownership marks a heap param nothing writes as read where the caller has it; a plain
 /// one is copied, and one the body writes is its own.
 #[test]

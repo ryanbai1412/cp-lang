@@ -12,6 +12,7 @@ use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
 mod drops;
+mod escape;
 pub use drops::expand_calls;
 mod inst;
 mod lent;
