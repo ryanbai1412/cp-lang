@@ -170,6 +170,11 @@ pub(crate) fn module_derived(
             }
             for (tr, how) in each {
                 let derive = match how {
+                    // A made value needs every field, and a derive gives no `@cache` field
+                    // (R05.10.13): a struct with one makes itself by hand.
+                    Derivable::Each(m) if made(m) && sd.fields.iter().any(|f| f.cached) => {
+                        continue;
+                    }
                     Derivable::Each(m) => Derive::Each(m),
                     Derivable::Fields(pack, fns) => Derive::Fields(pack, fns),
                 };
