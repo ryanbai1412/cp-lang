@@ -61,9 +61,10 @@ static void cpl_tput(const char* p, size_t n) { if (cpl_tn + n > sizeof cpl_tb) 
 "#;
 
 /// The rest of the runtime, after the trap table `ops::cpp_trap_table` writes.
+/// `cpl_segv` runs uninstrumented: ASan would warn that its `_exit` leaves from the signal stack.
 const RUNTIME: &str = r#"[[noreturn]] static void cpl_fail(int f) { cpl_trap(cpl_faults[f][0], cpl_faults[f][1]); }
 static char cpl_altstack[1 << 16];
-static void cpl_segv(int) {
+__attribute__((no_sanitize_address)) static void cpl_segv(int) {
     // Only `write` is safe here: the line goes after the trace through its buffer (`cpl_tput`), by hand.
     const char* code = cpl_faults[CPL_STACK_EXHAUSTED][0];
     const char* msg = cpl_faults[CPL_STACK_EXHAUSTED][1];

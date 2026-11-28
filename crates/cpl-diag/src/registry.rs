@@ -1122,6 +1122,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0211"),
+        title: "Constant past its step budget",
+        summary: "Working out a `const` took more than 10000000 steps.",
+        explanation: "A `const` is worked out as the program compiles, within 10000000 steps, each fn entered and each jump back to a loop's start being one, the same on every machine (R01.6.8). Compute a value that needs more at run time with `let`.",
+        trigger: "fn tri(n: Int) -> Int:\n    var s = 0\n    for i in 1..=n:\n        s += i\n    s\nconst T = tri(20000000)\nprint(T)\n",
+        fix: "fn tri(n: Int) -> Int:\n    var s = 0\n    for i in 1..=n:\n        s += i\n    s\nconst T = tri(1000)\nprint(T)\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0405"),
         title: "Assigning a fixed field",
         summary: "A field not declared `var` is assigned.",

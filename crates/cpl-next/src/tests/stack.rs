@@ -41,7 +41,8 @@ fn the_stack_runs_out_at_the_runs_limit() {
 }
 
 /// A recursion past the host's stack traps R0601 in the C++ built with the sanitizers too, as it
-/// does in a plain build and on the engine: the sanitizer leaves the stack's guard to the runtime.
+/// does in a plain build and on the engine, with nothing else on stderr: the sanitizer leaves the
+/// stack's guard to the runtime.
 #[test]
 fn the_sanitized_cpp_runs_out_of_stack_with_r0601() {
     let src = "fn f(k: Int) -> Int = if k == 0: 0 else: 1 + f(k - 1)\nprint(f(100_000_000))\n";
@@ -75,7 +76,10 @@ fn the_sanitized_cpp_runs_out_of_stack_with_r0601() {
         let ran = std::process::Command::new(bin).output().expect("runs");
         let err = String::from_utf8_lossy(&ran.stderr);
         assert_eq!(ran.status.code(), Some(3), "{sanitized}: {err}");
-        assert!(err.contains("trap: R0601: line 1"), "{sanitized}: {err}");
+        assert_eq!(
+            err, "trap: R0601: line 1: the stack ran out\n",
+            "{sanitized}"
+        );
     }
 }
 
