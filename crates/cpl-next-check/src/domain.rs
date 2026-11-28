@@ -206,11 +206,16 @@ impl Cx<'_> {
         self.b.block_doms.push(i);
         i
     }
-    fn add_domain(&mut self, info: DomInfo, span: Span) -> usize {
+    /// Adds domain `info` with the impls every domain has (`domain_rows`), so a body's domain,
+    /// a range's and a binding's own fresh one are domains through the same rows.
+    pub(super) fn add_domain(&mut self, info: DomInfo, span: Span) -> usize {
         let i = self.id(super::Table::Domain, self.domains.len());
         super::put(&mut self.domains, i, info);
-        let rows = decls::domain_rows(self.rows, i, self.b.item.at(span), self.b.module);
-        self.dom_rows.extend(rows);
+        // An id names one domain however often its body is checked, as `put` keeps one entry.
+        if !self.dom_rows.iter().any(|r| r.for_ == Ty::Dom(i)) {
+            let rows = decls::domain_rows(self.rows, i, self.b.item.at(span), self.b.module);
+            self.dom_rows.extend(rows);
+        }
         i
     }
     /// A domain's slots, set from its ends; `name` is what a message and the trace call it.
