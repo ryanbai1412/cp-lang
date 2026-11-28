@@ -158,7 +158,7 @@ static inline int64_t cpl_read() {
         for (s = cpl_in_at; s < n && cpl_is_space(cpl_in[s]); s++) {}
         for (e = s; e < n && !cpl_is_space(cpl_in[e]); e++) {}
         for (k = e; k < n && (cpl_in[k] == ' ' || cpl_in[k] == '\t' || cpl_in[k] == '\r'); k++) {}
-    } while (k == n && cpl_fill(n - cpl_in_at));
+    } while (k == n && !cpl_in_ended && (cpl_fill(n - cpl_in_at), true));
     cpl_in_at = k == n ? n : cpl_in[k] == '\n' ? k + 1 : e;
     if (s == e) cpl_fail(CPL_BAD_INT_TOKEN);
     return cpl_int_token(cpl_in.substr(s, e - s));
