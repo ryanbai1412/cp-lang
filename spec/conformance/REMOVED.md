@@ -14,3 +14,6 @@ A conformance case or new-pipeline test leaves only with a line here naming it a
   domain's count is read lazily, so nothing cycles; the case runs on `cpl-next` and prints `1`.
 - `spec/conformance/lints/turbofish-call.cp`: L0204 is deleted (decision 664), since `::<` is now
   E0503 in the parser with the same fix. The case moved to `core-01/turbofish-is-rejected.cp`.
+- `spec/conformance/traits/Domain/Cut--after.cp`, `spec/conformance/traits/Domain/Cut--at.cp`, `spec/conformance/traits/Domain/Cut--before.cp`, `spec/conformance/traits/Domain/Cut--l.cp`, `spec/conformance/traits/Domain/Cut--next.cp`, `spec/conformance/traits/Domain/Cut--prev.cp`, `spec/conformance/traits/Domain/Cut--r.cp`, `spec/conformance/traits/Domain/Cut--wrap.cp`: each renamed to `traits/Ordered/Cut--<method>.cp`, with the same code and
+  output. Lane D's Discrete/Domain/Ordered split moved these methods from `Domain` to
+  `Ordered`, and a generated case follows the trait that declares its method.
