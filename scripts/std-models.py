@@ -31,7 +31,8 @@ TYPE = re.compile(r"^pub (?:struct|enum) ([A-Za-z]\w*)")
 IMPL = re.compile(r"^impl(?:<[^>]*>)? (?:[\w<>, ]+ for )?([A-Za-z]\w*)")
 METHOD = re.compile(r"^\s+(?:@\w+ )*pub fn \w+")
 ENGINES = {"interp": ["run"], "native": ["run", "--release"]}
-NEXT_ENGINES = {"raw": ["--raw"], "engine": ["--engine"]}
+# The reference interpreter is the tests' `cpl-next-oracle`, beside `cpl-next`.
+NEXT_ENGINES = {"raw": ("cpl-next-oracle", ["--raw"]), "engine": ("cpl-next", ["--engine"])}
 COMPARE = re.compile(r"^// compare: stdout\s*$", re.MULTILINE)
 ON_NEXT = re.compile(r"^// engines: next\s*$", re.MULTILINE)
 
@@ -112,7 +113,7 @@ def shrink(fails, n):
 
 
 def run_once(cmd, path, flags, stdin):
-    if cmd[0].endswith("cpl-next"):
+    if Path(cmd[0]).name.startswith("cpl-next"):
         argv = [*cmd, str(path), *flags]
     else:
         argv = [*cmd, *flags, str(path)]
@@ -146,8 +147,10 @@ def check(cpl, cpl_next, path, seeds, ops):
     rel = path.relative_to(ROOT)
     text = path.read_text(encoding="utf-8")
     compare = bool(COMPARE.search(text))
-    cmd, engines = ([cpl_next], NEXT_ENGINES) if ON_NEXT.search(text) else ([cpl], ENGINES)
-    for engine, flags in engines.items():
+    on_next = bool(ON_NEXT.search(text))
+    engines = NEXT_ENGINES if on_next else {e: (None, f) for e, f in ENGINES.items()}
+    for engine, (binary, flags) in engines.items():
+        cmd = [str(Path(cpl_next).with_name(binary))] if on_next else [cpl]
         for seed in range(1, seeds + 1):
             if run_case(cmd, path, flags, seed, ops, compare) is None:
                 continue

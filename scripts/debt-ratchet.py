@@ -1564,7 +1564,7 @@ def next_harness_refusals(root: Path) -> list[str]:
 
 
 # The tests' own harness binary: `--raw`, `--canonical` and `--all` run the oracle for them.
-NEXT_ORACLE_HOST = "crates/cpl-next/src/main.rs"
+NEXT_ORACLE_HOST = "crates/cpl-next/src/bin/cpl-next-oracle.rs"
 
 
 def next_oracle_callers(root: Path) -> list[str]:

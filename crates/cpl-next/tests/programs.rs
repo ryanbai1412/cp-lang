@@ -90,8 +90,14 @@ fn judge(path: &Path) -> Option<String> {
     Some(format!("{}={}", p.name, p.memory_mb))
 }
 
+/// `cpl-next`, or for a reference interpreter's run (`--raw`, `--canonical`) the tests'
+/// `cpl-next-oracle`.
 fn next(path: &Path, flags: &[&str], input: &[u8], limit: Duration) -> Ran {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpl-next"));
+    let bin = match flags.iter().any(|f| matches!(*f, "--raw" | "--canonical")) {
+        true => env!("CARGO_BIN_EXE_cpl-next-oracle"),
+        false => env!("CARGO_BIN_EXE_cpl-next"),
+    };
+    let mut cmd = Command::new(bin);
     cmd.arg(path).args(flags);
     if let Some(j) = judge(path) {
         cmd.args(["--judge", &j]);
@@ -99,7 +105,7 @@ fn next(path: &Path, flags: &[&str], input: &[u8], limit: Duration) -> Ran {
     run_within(cmd, input, limit)
 }
 
-/// A case's runs from a `cpl-next --all` worker, which reads std once and compiles each case
+/// A case's runs from a `cpl-next-oracle --all` worker, which reads std once and compiles each case
 /// it is given against it, then runs every form in turn, each within what [`LIMIT`] leaves
 /// after the compile, as a process of its own would. A run it did not finish (a crash, the
 /// limit) ends the worker and is run again alone, so sharing never changes what a run gives.
@@ -113,7 +119,7 @@ struct Forms<'a> {
     compiled: Ran,
 }
 
-/// A `cpl-next --all` process and its `done` lines.
+/// A `cpl-next-oracle --all` process and its `done` lines.
 struct Worker {
     child: std::process::Child,
     ask: std::process::ChildStdin,
@@ -122,7 +128,7 @@ struct Worker {
 
 impl Worker {
     fn new() -> Worker {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_cpl-next"))
+        let mut child = Command::new(env!("CARGO_BIN_EXE_cpl-next-oracle"))
             .args([
                 "--trace",
                 "--all",
@@ -133,7 +139,7 @@ impl Worker {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
-            .expect("cpl-next starts");
+            .expect("cpl-next-oracle starts");
         let ask = child.stdin.take().unwrap();
         let out = std::io::BufReader::new(child.stdout.take().unwrap());
         let (said, done) = std::sync::mpsc::channel();
