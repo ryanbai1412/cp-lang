@@ -2631,6 +2631,15 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-decls/src/decls/tyconv.rs:8"])
             self.assertIn("decls_const_op_arms", dr.HARD_ZERO)
 
+    def test_catalogue_next_markers_count_marked_codes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "spec").mkdir()
+            (root / "spec/diagnostics.md").write_text(
+                "A *(next)* code is emitted by cpl-next only.\n| E0325 | a | b |\n"
+                "| E0326 | range_end_var *(next)* | c |\n| E0327 | d *next* | e |\n")
+            self.assertEqual(dr.catalogue_next_markers(root), ["spec/diagnostics.md:3"])
+
     def test_raw_int_range_alternation_counts_either_order_outside_ir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

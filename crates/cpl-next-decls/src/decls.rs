@@ -229,10 +229,12 @@ pub struct TopValue {
     pub name: Sym,
     pub item: ItemId,
     pub mutable: bool,
+    /// The range its written type declares; all of `Int` when it writes none.
+    pub within: (i64, i64),
 }
 /// The top-level value `name` is, the last one bound under it.
-pub fn top_value(values: &[TopValue], name: Sym) -> Option<GlobalId> {
-    values.iter().rposition(|v| v.name == name).map(GlobalId)
+pub fn top_value(values: &[TopValue], name: Sym) -> Option<TopValueId> {
+    values.iter().rposition(|v| v.name == name).map(TopValueId)
 }
 
 /// A library's `const NAME[: T] = init`.
@@ -587,7 +589,7 @@ pub struct Decls {
     pub fresh_slots: Vec<(FnId, Vec<usize>)>,
     /// The fns whose result leaves a struct's parameter as `_`, `-> Rooted<V, _, _>` (R02.9.3).
     pub ret_holes: Vec<FnId>,
-    /// What the program's top level binds under one name, in order: `GlobalId` indexes it.
+    /// What the program's top level binds under one name, in order: `TopValueId` indexes it.
     pub top_values: Arc<Vec<TopValue>>,
     /// Core's `@operator("+")` traits by the operator they give: `a + b` on a type that is not
     /// a number is its impl's fn (R08.1.5).

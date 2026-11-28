@@ -842,6 +842,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0326"),
+        title: "Range type ends at a `var`",
+        summary: "A range type ends at a top-level `var`, which may change while the type is in use.",
+        explanation: "A range type may end at a value the program's top level binds with `let`: it is fixed before any fn runs, so the type means one range for the whole run. A `var` can change after a value of the type is made, so it can't end one (R02.10.3).",
+        trigger: "var m: 1..=10 = read()\nfn f(c: 1..=m) -> Int = c\nprint(f(1))\n",
+        fix: "let m: 1..=10 = read()\nfn f(c: 1..=m) -> Int = c\nprint(f(1))\n",
+        mode: "check",
+        input: "3",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

@@ -24,8 +24,11 @@ pub trait TypeTables: Texts {
     fn konst(&self, id: ConstId) -> &LibConst;
     /// The core type written `n`: `Int`, `Raw`.
     fn core_type(&self, n: crate::sym::Sym) -> Option<crate::decls::CoreType>;
-    /// Whether the program's top level binds `name` with `let`: a value, not an item.
-    fn top_value(&self, name: &str) -> bool;
+    /// The value the program's top level binds as `name`, when it binds one: a value, not an item.
+    fn top_value(
+        &self,
+        name: &str,
+    ) -> Option<(cpl_next_ir::ty::TopValueId, crate::decls::TopValue)>;
     /// Binary operator `op`'s fn, which `type_of(+)` names.
     fn operator(&self, op: &str) -> Option<FnId>;
     /// `Domain`'s getter `m`, which a range type's end `D.m` names.
@@ -60,6 +63,8 @@ pub trait Items: Texts {
     fn t(&self, id: TraitId) -> &TraitDecl;
     /// Impl `i`, an index into the program's impls.
     fn imp(&self, i: usize) -> &ImplDecl;
+    /// The name of top-level value `g`, for showing a range type that ends at it.
+    fn top_name(&self, g: cpl_next_ir::ty::TopValueId) -> Sym;
     /// The impls of `tr`, by index, in order, found or not (see `live`).
     fn impls_by_trait(&self, tr: TraitId) -> &[usize];
     /// The impls of `tr` in the order a type takes them, once they are ranked.
@@ -155,6 +160,9 @@ impl Items for Decls {
     fn f(&self, id: FnId) -> &FnDecl {
         &self.fns[id.0]
     }
+    fn top_name(&self, g: cpl_next_ir::ty::TopValueId) -> Sym {
+        self.top_values[g.0].name
+    }
     fn s(&self, id: StructId) -> &StructDecl {
         &self.structs[id.0]
     }
@@ -226,8 +234,12 @@ impl TypeTables for Decls {
     fn konst(&self, id: ConstId) -> &LibConst {
         &self.consts[id.0]
     }
-    fn top_value(&self, name: &str) -> bool {
-        (self.sym(name)).is_some_and(|s| crate::decls::top_value(&self.top_values, s).is_some())
+    fn top_value(
+        &self,
+        name: &str,
+    ) -> Option<(cpl_next_ir::ty::TopValueId, crate::decls::TopValue)> {
+        let g = crate::decls::top_value(&self.top_values, self.sym(name)?)?;
+        Some((g, self.top_values[g.0].clone()))
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         self.operator_fn(op, true)

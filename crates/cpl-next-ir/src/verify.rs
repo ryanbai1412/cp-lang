@@ -71,11 +71,12 @@ impl StageTy for Ty {
             Ty::RangeEnds { lo, hi, .. } => {
                 let ends = [lo, hi].map(|e| match e {
                     End::Of(t) => Some(&**t),
-                    End::Lit(_) => None,
+                    End::Lit(_) | End::Global { .. } => None,
                 });
+                let global = [lo, hi].iter().any(|e| matches!(e, End::Global { .. }));
                 let mut ps = std::collections::BTreeSet::new();
                 ends.iter().flatten().for_each(|t| params_in(t, &mut ps));
-                if ps.is_empty() {
+                if ps.is_empty() && !global {
                     return Some("a range whose ends are known values, not made `Range`");
                 }
                 ends.iter().flatten().find_map(|t| t.wrong(Stage::Generic))

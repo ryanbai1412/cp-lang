@@ -201,7 +201,7 @@
   "rs_near_cap": [],
   "skip_lists": 0,
   "dead_code_allows": 0,
-  "external_crates": 5,
+  "external_crates": 14,
   "corpus_test_files": 0,
   "corpus_no_max": 0,
   "corpus_no_limits": 0,
@@ -436,5 +436,6 @@
   "decls_const_op_arms": 0,
   "next_synthetic_name_tests": 0,
   "raw_int_range_alternation": 1,
+  "catalogue_next_markers": 1,
   "old_std_copy_lines": 33759
 }
