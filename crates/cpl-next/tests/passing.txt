@@ -1622,6 +1622,7 @@ next/d15_domain_below_its_start.cp
 next/d16_empty_domain_cast.cp
 next/d17_literal_never_a_position.cp
 next/d_dom_01_fresh_domain_is_a_domain.cp
+next/d_dom_02_walked_param_is_a_domain.cp
 next/d_index_01_branching_key.cp
 next/d_range_01_anonymous_key_reads_as_int.cp
 next/d_range_02_anonymous_key_into_int_cell.cp

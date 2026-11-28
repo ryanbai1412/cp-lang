@@ -1075,7 +1075,7 @@ fn domain_params(d: &mut Decls, from: usize, bodies: &HashMap<FnId, cpl_next_syn
         return;
     };
     // A parameter whose body names one of `Domain`'s fns on it (`D.nth(k)`), or indexes a table
-    // or an array by it (`[V] v => e`, `var s: [V]Int`), is one (R04.4.30).
+    // or an array by it (`[V] v => e`, `var s: [V]Int`), or walks it (`for v in V`), is one (R04.4.30).
     // One that names one of `Ordered`'s steps on it (`D.at(x)`) is ordered too (R04.2.31).
     use cpl_next_syntax::ast::{self as next, AstNode, GenericArg, Type};
     let dom_fns: Vec<Sym> = d.traits[domain.0].methods.keys().copied().collect();
@@ -1121,6 +1121,19 @@ fn domain_params(d: &mut Decls, from: usize, bodies: &HashMap<FnId, cpl_next_syn
                 }
             } else if let Some(t) = next::TableExpr::cast(n.clone()) {
                 index(t.syntax().children().find_map(next::Dims::cast), &mut found);
+            } else if let Some(next::Expr::Name(w)) = (next::ForClause::cast(n.clone()))
+                .and_then(|c| c.iter())
+                .or_else(|| next::CompClause::cast(n.clone()).and_then(|c| c.iter()))
+            {
+                // `for v in V`: a parameter walked as a value is a domain.
+                if let Some(i) = w
+                    .ident()
+                    .as_ref()
+                    .and_then(generic)
+                    .filter(|i| !found.contains(i))
+                {
+                    found.push(i);
+                }
             } else if let Some(fe) = next::FieldExpr::cast(n) {
                 let (Some(next::Expr::Name(b)), Some(m)) = (fe.base(), fe.name()) else {
                     continue;
