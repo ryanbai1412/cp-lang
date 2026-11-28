@@ -5,7 +5,7 @@
 //! nothing here widens a set or folds a trait's impls.
 use crate::lends;
 use crate::{overlap, Fx, Pl, Root, Step};
-use cpl_diag::{codes, Code};
+use cpl_diag::codes;
 use cpl_next_decls::decls::{Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
 use cpl_next_decls::views::Signatures;
@@ -318,10 +318,7 @@ impl Walk<'_> {
             },
         }
     }
-    fn err(&mut self, site: u32, code: Code, msg: String) {
-        self.say(site, Msg::verdict(code, msg))
-    }
-    fn say(&mut self, site: u32, m: Msg) {
+    fn err(&mut self, site: u32, m: Msg) {
         if !self.report {
             return;
         }
@@ -371,14 +368,18 @@ impl Walk<'_> {
         if let Some(i) = self.pending.iter().position(|x| x.0 == p.root) {
             let (_, at, m) = self.pending.remove(i);
             self.pending.retain(|x| x.0 != p.root);
-            self.say(at, m);
+            self.err(at, m);
         }
         if let Some(m) = self.moved.iter().find(|m| overlap(m, p)).cloned() {
             let n = self.root_name(m.root);
             self.err(
                 site,
-                codes::USE_AFTER_MOVE,
-                format!("{n} was moved into another binding; use `.clone()` there to keep both"),
+                Msg::verdict(
+                    codes::USE_AFTER_MOVE,
+                    format!(
+                        "{n} was moved into another binding; use `.clone()` there to keep both"
+                    ),
+                ),
             );
         }
     }
@@ -437,7 +438,7 @@ impl Walk<'_> {
                 "{n} keeps a view of a temporary, which dies at the end of its statement; \
                  copy it with List(...)"
             );
-            self.err(site, codes::LENT_ESCAPES, m);
+            self.err(site, Msg::verdict(codes::LENT_ESCAPES, m));
         }
         let home = self.decl.get(&storage).cloned();
         let roots: BTreeSet<Root> = (what.iter().map(|p| p.root))
@@ -454,8 +455,10 @@ impl Walk<'_> {
                 let (a, b) = (self.root_name(storage), self.root_name(r));
                 self.err(
                     site,
-                    codes::LENT_ESCAPES,
-                    format!("a value that borrows {b} is stored in {a}, which outlives {b}"),
+                    Msg::verdict(
+                        codes::LENT_ESCAPES,
+                        format!("a value that borrows {b} is stored in {a}, which outlives {b}"),
+                    ),
                 );
             }
         }
@@ -718,11 +721,7 @@ impl Walk<'_> {
             self.temp(q.root),
         ) {
             let n = self.root_name(q.root);
-            return self.err(
-                e.site,
-                codes::USE_AFTER_MOVE,
-                format!("{n} is top-level state this fn reads lent; binding it would move it out, so `.clone()` it"),
-            );
+            return self.err(e.site, Msg::verdict(codes::USE_AFTER_MOVE, format!("{n} is top-level state this fn reads lent; binding it would move it out, so `.clone()` it")));
         }
         // A value of a type parameter's type is copied by each instance that must (R05.2.2).
         let generic = matches!(q.root, Root::Local(l) if self.of_param(l));
@@ -906,7 +905,7 @@ impl Walk<'_> {
                 let (n, who) = (self.root_name(p.root), self.p.insts[*c].name.clone());
                 let msg =
                     format!("{n} is passed to `{who}` and lent to it for writing in the same call");
-                self.err(site, codes::LENT_TWICE, msg);
+                self.err(site, Msg::verdict(codes::LENT_TWICE, msg));
             }
         }
         let (mut lent, mut held): (BTreeSet<Pl>, BTreeSet<Pl>) = Default::default();
@@ -921,8 +920,10 @@ impl Walk<'_> {
                         let n = self.root_name(q.root);
                         self.err(
                             site,
-                            codes::LENT_TWICE,
-                            format!("{n} is lent for writing twice in the same call"),
+                            Msg::verdict(
+                                codes::LENT_TWICE,
+                                format!("{n} is lent for writing twice in the same call"),
+                            ),
                         );
                     }
                     lent.insert(p.clone());
@@ -945,8 +946,10 @@ impl Walk<'_> {
             let n = self.root_name(p.root);
             self.err(
                 site,
-                codes::USED_WHILE_LENT,
-                format!("{n} is lent for writing, and the call also reaches it another way"),
+                Msg::verdict(
+                    codes::USED_WHILE_LENT,
+                    format!("{n} is lent for writing, and the call also reaches it another way"),
+                ),
             );
         }
         let mut kept = BTreeSet::new();
@@ -954,7 +957,7 @@ impl Walk<'_> {
             if keeps.contains(&i) && !lent.is_empty() && closure_param(&self.closure_params, a) {
                 let msg = "a closure argument is a parameter: the callee can call it but not \
                            keep it in storage that outlives the call";
-                self.err(site, codes::LENT_ESCAPES, msg.into());
+                self.err(site, Msg::verdict(codes::LENT_ESCAPES, msg));
             }
             // A copy holds nothing of the place it was made from.
             if !keeps.contains(&i) || copied[i] {
@@ -1337,8 +1340,10 @@ impl Walk<'_> {
                     };
                     self.err(
                         at,
-                        codes::USED_WHILE_LENT,
-                        format!("{n} is lent to {who} {span}, and {user} writes it"),
+                        Msg::verdict(
+                            codes::USED_WHILE_LENT,
+                            format!("{n} is lent to {who} {span}, and {user} writes it"),
+                        ),
                     );
                 }
                 if let Some(p) = hit(&lent, &inner.writes).or_else(|| hit(&lent, &inner.reads)) {
@@ -1346,8 +1351,10 @@ impl Walk<'_> {
                     let at = self.first_use(body, p.root).unwrap_or(*body_site);
                     self.err(
                         at,
-                        codes::USED_WHILE_LENT,
-                        format!("{n} is lent to {who} for writing {span}, and {user} uses it"),
+                        Msg::verdict(
+                            codes::USED_WHILE_LENT,
+                            format!("{n} is lent to {who} for writing {span}, and {user} uses it"),
+                        ),
                     );
                 }
                 fx.add(&inner);
@@ -1407,7 +1414,7 @@ impl Walk<'_> {
             let msg = format!(
                 "this lends `@cache` field `{n}`, which a later read may change (R05.10.9)"
             );
-            return self.err(e.site, codes::BAD_PROJECTION, msg);
+            return self.err(e.site, Msg::verdict(codes::BAD_PROJECTION, msg));
         }
         let ps: Vec<usize> = self.f().params.iter().map(|p| p.0).collect();
         let lent = self.lends(self.cur);
@@ -1432,8 +1439,10 @@ impl Walk<'_> {
             };
             self.err(
                 e.site,
-                codes::LENT_ESCAPES,
-                format!("this returns a value that borrows {n}: {why}"),
+                Msg::verdict(
+                    codes::LENT_ESCAPES,
+                    format!("this returns a value that borrows {n}: {why}"),
+                ),
             );
         }
     }
@@ -1447,8 +1456,12 @@ impl Walk<'_> {
             let n = self.root_name(p.root);
             self.err(
                 site,
-                codes::USE_AFTER_MOVE,
-                format!("{n} is moved inside a loop, so the next turn would use it after the move"),
+                Msg::verdict(
+                    codes::USE_AFTER_MOVE,
+                    format!(
+                        "{n} is moved inside a loop, so the next turn would use it after the move"
+                    ),
+                ),
             );
         }
     }
