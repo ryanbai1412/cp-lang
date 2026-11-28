@@ -3,8 +3,8 @@
 //! and types are, and fields, constructors, patterns and derived `Eq` and `Ord` are a struct's.
 use crate::attrs::Attr;
 use crate::decls::forms::{
-    AssocForm, AttrForm, BodyForm, FieldForm, FnForm, ImplForm, ParamForm, StructForm, TraitForm,
-    TyForm,
+    AssocForm, AttrForm, BodyForm, BoundForm, FieldForm, FnForm, ImplForm, ParamForm, StructForm,
+    TraitForm, TyForm,
 };
 use crate::decls::{fills, Role};
 use crate::sym::{Sym, Syms};
@@ -526,149 +526,122 @@ pub fn positions<'a>(stmts: impl IntoIterator<Item = &'a ast::Stmt>) -> Option<P
 /// field fastest, as core's tuples are (R04.2.10): per shape, `impl<A: Domain, ..> Domain for
 /// (lo: A, ..)` giving the members the `@role(positions)` trait marks `dom_count`, `dom_nth` and
 /// `dom_ord`.
-pub fn domain_impls<'a>(
-    stmts: impl IntoIterator<Item = &'a ast::Stmt>,
+pub fn domain_impls(
+    positions: Option<&Positions>,
     shapes: &[Vec<String>],
+    syms: &mut Syms,
     span: Span,
-) -> Vec<(String, ast::Stmt)> {
-    let Some(Positions {
-        tr,
-        order,
-        count,
-        nth,
-        ord,
-    }) = positions(stmts)
-    else {
+) -> Vec<(String, ImplForm)> {
+    use crate::synth::SynthBody;
+    let Some(p) = positions else {
         return Vec::new();
     };
-    let tr = ast::Name { text: tr, span };
-    let nm = |text: &str| ast::Name {
-        text: text.to_string(),
-        span,
-    };
-    let named = |text: &str| ast::Type {
-        kind: TypeKind::Named {
-            name: nm(text),
-            args: Vec::new(),
-        },
-        span,
-    };
-    let ex = |kind| ast::Expr { kind, span };
-    let field = |base: ast::Expr, f: &str| {
-        ex(ExprKind::Field {
-            base: Box::new(base),
-            name: nm(f),
-        })
-    };
-    let bin = |op, lhs, rhs| {
-        ex(ExprKind::Binary {
-            op,
-            op_span: span,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-        })
-    };
-    let size = |g: &str| field(ex(ExprKind::Name(g.to_string())), &count);
-    let param = |n: &str, ty: Option<ast::Type>| ast::Param {
-        mutable: false,
-        variadic: false,
-        lazy: false,
-        named_only: false,
-        label: None,
-        name: nm(n),
-        ty,
-        default: None,
-        span,
-    };
-    let get = || marker(Mark::Get, span);
-    let method = |getter: bool, name: &str, params, ret, body| ast::Stmt {
-        kind: StmtKind::Fn(FnDecl {
-            name: nm(name),
-            generics: Vec::new(),
-            bounds: Vec::new(),
-            params,
-            ret: Some(ret),
-            lends: None,
-            uses: Vec::new(),
-            body: ast::FnBody::Expr(body),
-            sig_span: span,
-        }),
-        span,
-        decorators: if getter { vec![get()] } else { Vec::new() },
-        public: false,
-    };
+    let (count, nth, ord) = (
+        syms.intern(&p.count),
+        syms.intern(&p.nth),
+        syms.intern(&p.ord),
+    );
+    let tr = syms.intern(&p.tr);
+    let this = syms.intern("self");
+    let int = syms.intern("Int");
+    let k = syms.intern("k");
     let mut out = Vec::new();
     for fs in shapes.iter().filter(|fs| !fs.is_empty() && fs.len() <= 26) {
-        let gs: Vec<String> = (b'A'..)
-            .take(fs.len())
-            .map(|c| (c as char).to_string())
-            .collect();
-        let record = ast::Type {
-            kind: TypeKind::Record(fs.iter().zip(&gs).map(|(f, g)| (nm(f), named(g))).collect()),
+        let generics = capitals(syms, fs.len());
+        let fields: Vec<Sym> = fs.iter().map(|f| syms.intern(f)).collect();
+        let record = TyForm::Record(
+            (fields.iter().enumerate())
+                .map(|(i, f)| (*f, TyForm::Param(i)))
+                .collect(),
+        );
+        let param = |name: Sym, ty: Option<TyForm>| ParamForm {
+            name,
+            label: name,
+            ty,
+            is_self: name == this,
+            mutable: false,
+            named_only: false,
+            variadic: false,
+            default: None,
             span,
         };
-        let total = (gs.iter().map(|g| size(g))).reduce(|a, b| bin(ast::BinOp::Mul, a, b));
-        // Field `i` is `k / (the sizes after it) % its size`.
-        let parts = (fs.iter().enumerate()).map(|(i, f)| {
-            let after =
-                (gs[i + 1..].iter().map(|g| size(g))).reduce(|a, b| bin(ast::BinOp::Mul, a, b));
-            let k = ex(ExprKind::Name("k".to_string()));
-            let k = after.map_or(k.clone(), |a| bin(ast::BinOp::Div, k, a));
-            let k = if i == 0 {
-                k
-            } else {
-                bin(ast::BinOp::Rem, k, size(&gs[i]))
+        let method =
+            |getter: bool, name: Sym, params: Vec<ParamForm>, ret: TyForm, body: SynthBody| {
+                FnForm {
+                    name,
+                    public: false,
+                    attrs: match getter {
+                        true => vec![AttrForm {
+                            attr: Attr::Get,
+                            node: None,
+                        }],
+                        false => Vec::new(),
+                    },
+                    generics: Vec::new(),
+                    bounds: Vec::new(),
+                    params,
+                    ret: Some(ret),
+                    yields: false,
+                    lends: None,
+                    uses: Vec::new(),
+                    body: BodyForm::Synth(body),
+                    span,
+                }
             };
-            let at = ex(ExprKind::Call {
-                callee: Box::new(field(ex(ExprKind::Name(gs[i].clone())), &nth)),
-                args: vec![ast::Arg {
-                    name: None,
-                    mutable: false,
-                    value: k,
-                }],
-            });
-            (nm(f), at)
-        });
-        let parts = ex(ExprKind::Record(parts.collect()));
-        let ord_of = |f: &str| field(field(ex(ExprKind::Name("self".to_string())), f), &ord);
-        let rank = (fs.iter().zip(&gs).skip(1)).fold(ord_of(&fs[0]), |o, (f, g)| {
-            bin(ast::BinOp::Add, bin(ast::BinOp::Mul, o, size(g)), ord_of(f))
-        });
-        let Some(total) = total else { continue };
-        let body = vec![
-            method(true, &count, Vec::new(), named("Int"), total),
+        let methods = vec![
+            method(
+                true,
+                count,
+                Vec::new(),
+                TyForm::Named(int, Vec::new()),
+                SynthBody::ProductCount { count, n: fs.len() },
+            ),
             method(
                 false,
-                &nth,
-                vec![param("k", Some(named("Int")))],
+                nth,
+                vec![param(k, Some(TyForm::Named(int, Vec::new())))],
                 record.clone(),
-                parts,
+                SynthBody::ProductNth {
+                    nth,
+                    count,
+                    fields: fields.clone(),
+                },
             ),
-            method(true, &ord, vec![param("self", None)], named("Int"), rank),
+            method(
+                true,
+                ord,
+                vec![param(this, None)],
+                TyForm::Named(int, Vec::new()),
+                SynthBody::ProductOrd {
+                    ord,
+                    count,
+                    fields: fields.clone(),
+                },
+            ),
         ];
         // `impl<A: tr, ..> tr for (lo: A, ..)`.
-        let imp = |tr: &str, body| ast::Stmt {
-            kind: StmtKind::Impl {
-                trait_name: Some(named(tr)),
-                target: record.clone(),
-                bounds: (gs.iter())
-                    .map(|g| ast::Bound {
-                        name: nm(g),
-                        traits: vec![named(tr)],
-                    })
-                    .collect(),
-                body: ast::Block { stmts: body, span },
-            },
+        let imp = |tr: Sym, methods: Vec<FnForm>| ImplForm {
+            attrs: Vec::new(),
+            generics: generics.clone(),
+            bounds: (generics.iter())
+                .map(|g| BoundForm {
+                    param: *g,
+                    tr: TyForm::Named(tr, Vec::new()),
+                })
+                .collect(),
+            trait_: Some(TyForm::Named(tr, Vec::new())),
+            self_ty: record.clone(),
+            assoc: Vec::new(),
+            methods,
+            derived: false,
             span,
-            decorators: Vec::new(),
-            public: false,
         };
         // A record of ordered domains is ordered, as a tuple of them is (R04.2.31).
-        if let Some(o) = &order {
+        if let Some(o) = &p.order {
+            let o = syms.intern(o);
             out.push((name(fs), imp(o, Vec::new())));
         }
-        let imp = imp(&tr.text, body);
-        out.push((name(fs), imp));
+        out.push((name(fs), imp(tr, methods)));
     }
     out
 }
