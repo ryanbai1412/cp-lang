@@ -2,6 +2,8 @@
 //! covers a type (R02.7.4).
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::literal::{char_value, int_value};
+use cpl_next_syntax::{SyntaxToken, TokenKind};
 
 /// A pattern as far as covering goes: what it matches of a value's shape.
 #[derive(Clone, Debug)]
@@ -14,6 +16,31 @@ pub(super) enum Space {
     /// A literal of a type with no end of values; `None` is one equal to no other.
     Lit(Option<i128>),
     Or(Vec<Space>),
+}
+
+/// What a path pattern is, read as the old grammar did (R01.7): a lowercase word binds, `None`
+/// is the empty optional, and anything else names a constructor.
+enum PathForm {
+    /// `x`, `var x`, `self`.
+    Bind(SyntaxToken),
+    /// `None`.
+    None,
+    /// `V`, `E.V(p, q)`, `some(p)`: the path's words and the fields' patterns.
+    Ctor(Vec<SyntaxToken>, Vec<next::Pattern>),
+}
+
+/// One part of a tuple, record or variant against its field: a pattern, or a record field's
+/// name alone (`u:`), which binds `u`.
+#[derive(Clone, Copy)]
+enum Part<'p> {
+    Pat(&'p next::Pattern),
+    Name(&'p SyntaxToken),
+}
+
+impl<'p> Part<'p> {
+    fn of(n: &'p SyntaxToken, p: Option<&'p next::Pattern>) -> Self {
+        p.map_or(Part::Name(n), Part::Pat)
+    }
 }
 
 impl Cx<'_> {
@@ -83,56 +110,90 @@ impl Cx<'_> {
         let fields = self.d.s(p).fields.iter().map(|(_, t)| sub.ty(t)).collect();
         (p, fields)
     }
-    /// Whether `head(p)` names a core fn a pattern may be headed by, whose result is the
-    /// optional it is a present value of (`some(p)`).
+    /// What the path pattern `p` is; `None` when it is broken.
+    fn path_form(p: &next::PathPat) -> Option<PathForm> {
+        let segs: Vec<SyntaxToken> = p.segments().collect();
+        let args: Option<Vec<next::Pattern>> = p.args().map(|a| a.patterns().collect());
+        Some(match (&segs[..], args) {
+            ([], _) => return None,
+            ([one], None) if super::expr::none_word(one) => PathForm::None,
+            ([one], None)
+                if one.kind() == TokenKind::SelfKw
+                    || !one.text().starts_with(|c: char| c.is_ascii_uppercase()) =>
+            {
+                PathForm::Bind(one.clone())
+            }
+            (_, args) => PathForm::Ctor(segs, args.unwrap_or_default()),
+        })
+    }
     /// Whether `pat` is written against an optional itself (`Some(p)`, `None`), not its value.
     pub(super) fn optional_pattern(&self, pat: &next::Pattern) -> bool {
-        match &pat.kind {
-            PatternKind::Wildcard | PatternKind::Error => true,
-            PatternKind::Literal(e) => matches!(e.kind, ExprKind::None),
-            PatternKind::Variant { path, .. } => {
-                path.len() == 1 && self.present_pattern(&path[0].text)
-            }
-            PatternKind::Or(alts) => alts.iter().any(|p| self.optional_pattern(p)),
-            PatternKind::Var(p) => self.optional_pattern(p),
-            _ => false,
+        match pat {
+            next::Pattern::Wildcard(_) => true,
+            next::Pattern::Paren(p) => p.pattern().is_none_or(|p| self.optional_pattern(&p)),
+            next::Pattern::Literal(l) => l.value().is_none(),
+            next::Pattern::Path(p) => match Self::path_form(p) {
+                None | Some(PathForm::None) => true,
+                Some(PathForm::Ctor(path, _)) => {
+                    path.len() == 1 && self.present_pattern(path[0].text())
+                }
+                Some(PathForm::Bind(_)) => false,
+            },
+            next::Pattern::Or(o) => o.alternatives().any(|p| self.optional_pattern(&p)),
+            next::Pattern::Tuple(_) | next::Pattern::Record(_) => false,
         }
+    }
+    /// `n`, bound to no type's value.
+    fn bind_error(&mut self, n: &str, mutable: bool, span: Span, binds: &mut Vec<TStmt>) {
+        let l = self.bind_as(n, Ty::Error, mutable, span);
+        let e = TExpr {
+            kind: TK::Error,
+            ty: Ty::Error,
+            span,
+        };
+        binds.push(TStmt::Let(l, e));
     }
     /// The names `pat` binds, of no type, for a value the checker could not type.
     pub(super) fn bind_unknown(
         &mut self,
-        pat: &ast::Pattern,
+        pat: &next::Pattern,
         mutable: bool,
         binds: &mut Vec<TStmt>,
     ) {
-        let span = pat.span;
-        match &pat.kind {
-            PatternKind::Name(n) => {
-                let l = self.bind_as(n, Ty::Error, mutable, span);
-                let e = TExpr {
-                    kind: TK::Error,
-                    ty: Ty::Error,
-                    span,
-                };
-                binds.push(TStmt::Let(l, e));
-            }
-            PatternKind::Var(p) => self.bind_unknown(p, true, binds),
-            PatternKind::Tuple(ps) | PatternKind::Variant { args: ps, .. } => {
-                ps.iter().for_each(|p| self.bind_unknown(p, mutable, binds))
-            }
-            PatternKind::Record { fields, .. } => {
-                (fields.iter()).for_each(|(_, p)| self.bind_unknown(p, mutable, binds))
-            }
-            PatternKind::Or(alts) => {
-                if let Some(p) = alts.first() {
-                    self.bind_unknown(p, mutable, binds)
+        let span = self.at(pat);
+        match pat {
+            next::Pattern::Path(p) => match Self::path_form(p) {
+                Some(PathForm::Bind(n)) => {
+                    self.bind_error(n.text(), mutable || p.is_var(), span, binds)
+                }
+                Some(PathForm::Ctor(_, args)) => {
+                    (args.iter()).for_each(|a| self.bind_unknown(a, mutable, binds))
+                }
+                None | Some(PathForm::None) => {}
+            },
+            next::Pattern::Paren(p) => {
+                if let Some(p) = p.pattern() {
+                    self.bind_unknown(&p, mutable, binds)
                 }
             }
-            PatternKind::Domain(d) => {
-                self.b.doms.insert(d.text.clone(), Ty::Error);
-                self.b.refused_names.insert(d.text.clone());
+            next::Pattern::Tuple(t) => {
+                (t.patterns()).for_each(|p| self.bind_unknown(&p, mutable, binds))
             }
-            PatternKind::Wildcard | PatternKind::Literal(_) | PatternKind::Error => {}
+            next::Pattern::Record(r) => {
+                for f in r.fields() {
+                    match (f.pattern(), f.name()) {
+                        (Some(p), _) => self.bind_unknown(&p, mutable, binds),
+                        (None, Some(n)) => self.bind_error(n.text(), mutable, n.span(), binds),
+                        (None, None) => {}
+                    }
+                }
+            }
+            next::Pattern::Or(o) => {
+                if let Some(p) = o.alternatives().next() {
+                    self.bind_unknown(&p, mutable, binds)
+                }
+            }
+            next::Pattern::Wildcard(_) | next::Pattern::Literal(_) => {}
         }
     }
     fn present_pattern(&self, head: &str) -> bool {
@@ -206,50 +267,57 @@ impl Cx<'_> {
             _ => false,
         }
     }
+    /// The test that `v` is variant `i` of its enum.
+    fn tag_is(v: &TExpr, i: usize, span: Span) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let tag = mk(TK::Tag(Box::new(v.clone())), Ty::Int);
+        let i = mk(TK::Int(i as i64), Ty::Int);
+        mk(TK::Cmp(CmpOp::Eq, Box::new(tag), Box::new(i)), Ty::Bool)
+    }
+    /// Whether `v`'s type is not known, so a pattern against it only binds its names.
+    fn untyped(&mut self, v: &TExpr, span: Span) -> bool {
+        let t = self.shallow(&v.ty);
+        if matches!(t, Ty::Var(_)) {
+            self.err(span, Unbuilt::PatternOnUnknownType);
+        }
+        matches!(t, Ty::Error | Ty::Var(_))
+    }
     /// `pat` against the place `v`: the test that holds when it matches, `None` when it always
     /// does. `binds` gets the names it binds, read once the test holds.
     pub(super) fn refute(
         &mut self,
-        pat: &ast::Pattern,
+        pat: &next::Pattern,
         v: &TExpr,
         mutable: bool,
         binds: &mut Vec<TStmt>,
     ) -> Option<TExpr> {
-        let span = pat.span;
+        let span = self.at(pat);
         let mk = |kind, ty| TExpr { kind, ty, span };
-        if let t @ (Ty::Error | Ty::Var(_)) = self.shallow(&v.ty) {
-            if matches!(t, Ty::Var(_)) {
-                self.err(span, Unbuilt::PatternOnUnknownType);
-            }
+        if self.untyped(v, span) {
             self.bind_unknown(pat, mutable, binds);
             return None;
         }
-        let tag_is = |v: &TExpr, i: usize| {
-            let tag = mk(TK::Tag(Box::new(v.clone())), Ty::Int);
-            let i = mk(TK::Int(i as i64), Ty::Int);
-            mk(TK::Cmp(CmpOp::Eq, Box::new(tag), Box::new(i)), Ty::Bool)
-        };
-        match &pat.kind {
-            PatternKind::Wildcard | PatternKind::Error => None,
-            PatternKind::Name(n) => {
-                if let Some((e, _)) = self.enum_of(&v.ty) {
-                    if let Some(i) = self.d.variant(e, n) {
-                        return Some(tag_is(v, i));
+        match pat {
+            next::Pattern::Wildcard(_) => None,
+            next::Pattern::Paren(p) => p.pattern().and_then(|p| self.refute(&p, v, mutable, binds)),
+            next::Pattern::Path(p) => {
+                let mutable = mutable || p.is_var();
+                match Self::path_form(p)? {
+                    PathForm::Bind(n) => self.refute_name(n.text(), span, v, mutable, binds),
+                    PathForm::None => {
+                        if self.optional_of(&v.ty).is_none() {
+                            self.mismatch(span, "`None`", &v.ty);
+                            return None;
+                        }
+                        Some(Self::absent(v.clone(), span))
+                    }
+                    PathForm::Ctor(path, args) => {
+                        self.refute_ctor(&path, &args, span, v, mutable, binds)
                     }
                 }
-                let l = self.bind_as(n, v.ty.clone(), mutable, pat.span);
-                binds.push(TStmt::Let(l, v.clone()));
-                None
             }
-            PatternKind::Var(p) => self.refute(p, v, true, binds),
-            PatternKind::Literal(e) if matches!(e.kind, ExprKind::None) => {
-                if self.optional_of(&v.ty).is_none() {
-                    self.mismatch(span, "`None`", &v.ty);
-                    return None;
-                }
-                Some(Self::absent(v.clone(), span))
-            }
-            PatternKind::Literal(e) => {
+            next::Pattern::Literal(l) => {
+                let e = l.value()?;
                 let t = match self.shallow(&v.ty) {
                     Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => Ty::Int,
                     t @ (Ty::Int | Ty::Bool | Ty::Char | Ty::U64 | Ty::F64) => t,
@@ -257,7 +325,7 @@ impl Cx<'_> {
                     // Any other literal, such as a string, matches what its type's `Eq` says
                     // is equal (R01.7).
                     t @ Ty::Struct(..) => {
-                        let lit = self.expr(e, Some(&t));
+                        let lit = self.expr(&e, Some(&t));
                         let lit = self.coerce(lit, &t);
                         return Some(self.op_call(CmpOp::Eq, v.clone(), lit, span));
                     }
@@ -268,20 +336,21 @@ impl Cx<'_> {
                     }
                 };
                 let here = self.coerce(v.clone(), &t);
-                let lit = self.expr(e, Some(&t));
+                let lit = self.expr(&e, Some(&t));
                 let lit = self.coerce(lit, &t);
                 Some(mk(
                     TK::Cmp(CmpOp::Eq, Box::new(here), Box::new(lit)),
                     Ty::Bool,
                 ))
             }
-            PatternKind::Tuple(ps) => {
+            next::Pattern::Tuple(tp) => {
+                let ps: Vec<next::Pattern> = tp.patterns().collect();
                 let tuple = self.d.tuple(ps.len());
                 match self.field_tys(&v.ty) {
                     Some((s, tys))
                         if Some(s) == tuple || (tys.len() == ps.len() && self.d.s(s).record) =>
                     {
-                        self.pat_parts(ps.iter().zip(0..), v, &tys, mutable, binds)
+                        self.pat_parts(ps.iter().map(Part::Pat).zip(0..), v, &tys, mutable, binds)
                     }
                     _ => {
                         let what = format!("a tuple pattern of {}", ps.len());
@@ -290,126 +359,161 @@ impl Cx<'_> {
                     }
                 }
             }
-            PatternKind::Record { fields, rest } => {
+            next::Pattern::Record(r) => {
                 let Some((s, tys)) = self.field_tys(&v.ty) else {
                     self.mismatch(span, "a record pattern", &v.ty);
                     return None;
                 };
                 let names: Vec<String> = self.d.field_names(s);
-                if !rest && fields.len() != names.len() {
+                let fields: Vec<(SyntaxToken, Option<next::Pattern>)> = (r.fields())
+                    .filter_map(|f| Some((f.name()?, f.pattern())))
+                    .collect();
+                if !r.has_rest() && fields.len() != names.len() {
                     let code = cpl_diag::codes::TYPE_MISMATCH;
                     let have = names.len();
                     let n = fields.len();
                     self.err(span, Msg::verdict(code, format!("this names {n} of the record's {have} fields; write `..` for the rest")));
                 }
                 let mut at = Vec::new();
-                for (n, p) in fields {
-                    match names.iter().position(|m| *m == n.text) {
-                        Some(k) => at.push((p, k)),
+                for (n, p) in &fields {
+                    match names.iter().position(|m| *m == n.text()) {
+                        Some(k) => at.push((Part::of(n, p.as_ref()), k)),
                         None => {
                             let code = cpl_diag::codes::UNKNOWN_FIELD;
                             let t = self.show(&v.ty);
                             self.err(
-                                n.span,
-                                Msg::verdict(code, format!("`{t}` has no field `{}`", n.text)),
+                                n.span(),
+                                Msg::verdict(code, format!("`{t}` has no field `{}`", n.text())),
                             );
                         }
                     }
                 }
                 self.pat_parts(at.into_iter(), v, &tys, mutable, binds)
             }
-            PatternKind::Variant { path, args } => {
-                let head = &path[path.len() - 1].text;
-                if path.len() == 1 && self.present_pattern(head) {
-                    let Some(inner) = self.optional_of(&v.ty) else {
-                        self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
-                        return None;
-                    };
-                    let [p] = &args[..] else {
-                        let code = cpl_diag::codes::WRONG_ARG_COUNT;
-                        self.err(
-                            span,
-                            Msg::verdict(
-                                code,
-                                format!("`{head}(..)` takes 1 pattern, found {}", args.len()),
-                            ),
-                        );
-                        return None;
-                    };
-                    let flag = mk(TK::Field(Box::new(v.clone()), 0), Ty::Bool);
-                    let val = mk(TK::Field(Box::new(v.clone()), 1), inner);
-                    let rest = self.refute(p, &val, mutable, binds);
-                    return Self::both(Some(flag), rest);
-                }
-                // `V(j)` is the pattern form of `V.at(x)`: an `Int` inside `V` (R04.2.14).
-                if let (1, Some(dty)) = (path.len(), self.domain_named(head)) {
-                    let [p] = &args[..] else {
-                        let code = cpl_diag::codes::WRONG_ARG_COUNT;
-                        self.err(
-                            span,
-                            Msg::verdict(
-                                code,
-                                format!("`{head}(..)` takes 1 pattern, found {}", args.len()),
-                            ),
-                        );
-                        return None;
-                    };
-                    if !matches!(
-                        self.shallow(&v.ty),
-                        Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)
-                    ) {
-                        self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
-                        return None;
-                    }
-                    let x = self.coerce(v.clone(), &Ty::Int);
-                    let at = self.domain_at(dty.clone(), x, span);
-                    let flag = mk(TK::Field(Box::new(at.clone()), 0), Ty::Bool);
-                    let val = mk(TK::Field(Box::new(at), 1), dty);
-                    let rest = self.refute(p, &val, mutable, binds);
-                    return Self::both(Some(flag), rest);
-                }
-                let Some((e, targs)) = self.enum_of(&v.ty) else {
-                    self.mismatch(span, &format!("`{head}`"), &v.ty);
-                    return None;
-                };
-                let Some(i) = self.d.variant(e, head) else {
-                    let en = self.d.s(e).name.clone();
-                    let code = cpl_diag::codes::UNKNOWN_FIELD;
-                    self.err(
-                        span,
-                        Msg::verdict(code, format!("`{en}` has no variant `{head}`")),
-                    );
-                    return None;
-                };
-                let (p, tys) = self.variant_tys(e, &targs, i);
-                if !args.is_empty() && args.len() != tys.len() {
-                    let code = cpl_diag::codes::WRONG_ARG_COUNT;
-                    let msg = Msg::verdict(
-                        code,
-                        format!("`{head}` has {} fields, found {}", tys.len(), args.len()),
-                    );
-                    self.err(span, msg);
-                }
-                let payload = mk(
-                    TK::Payload(Box::new(v.clone()), i),
-                    Ty::Struct(p, targs, Vec::new()),
-                );
-                let rest = self.pat_parts(args.iter().zip(0..), &payload, &tys, mutable, binds);
-                Self::both(Some(tag_is(v, i)), rest)
-            }
-            PatternKind::Or(alts) => self.alternatives(alts, v, mutable, binds),
-            // `domain I` binds a result's `domain C` to a domain of its own, its ends read from
-            // `C`'s slot as the call returns (R02.9.3).
-            PatternKind::Domain(_) => {
-                self.err(span, Unbuilt::DomainPattern);
-                None
+            next::Pattern::Or(o) => {
+                let alts: Vec<next::Pattern> = o.alternatives().collect();
+                self.alternatives(&alts, v, mutable, binds)
             }
         }
+    }
+    /// The name `n` against `v`: the test that `v` is the variant `n`, if its enum has one,
+    /// else `n` bound to `v`.
+    fn refute_name(
+        &mut self,
+        n: &str,
+        span: Span,
+        v: &TExpr,
+        mutable: bool,
+        binds: &mut Vec<TStmt>,
+    ) -> Option<TExpr> {
+        if let Some((e, _)) = self.enum_of(&v.ty) {
+            if let Some(i) = self.d.variant(e, n) {
+                return Some(Self::tag_is(v, i, span));
+            }
+        }
+        let l = self.bind_as(n, v.ty.clone(), mutable, span);
+        binds.push(TStmt::Let(l, v.clone()));
+        None
+    }
+    /// `E.V(p, q)`, `some(p)` or the domain pattern `V(j)` against `v`.
+    fn refute_ctor(
+        &mut self,
+        path: &[SyntaxToken],
+        args: &[next::Pattern],
+        span: Span,
+        v: &TExpr,
+        mutable: bool,
+        binds: &mut Vec<TStmt>,
+    ) -> Option<TExpr> {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let head = path[path.len() - 1].text();
+        if path.len() == 1 && self.present_pattern(head) {
+            let Some(inner) = self.optional_of(&v.ty) else {
+                self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
+                return None;
+            };
+            let [p] = args else {
+                let code = cpl_diag::codes::WRONG_ARG_COUNT;
+                self.err(
+                    span,
+                    Msg::verdict(
+                        code,
+                        format!("`{head}(..)` takes 1 pattern, found {}", args.len()),
+                    ),
+                );
+                return None;
+            };
+            let flag = mk(TK::Field(Box::new(v.clone()), 0), Ty::Bool);
+            let val = mk(TK::Field(Box::new(v.clone()), 1), inner);
+            let rest = self.refute(p, &val, mutable, binds);
+            return Self::both(Some(flag), rest);
+        }
+        // `V(j)` is the pattern form of `V.at(x)`: an `Int` inside `V` (R04.2.14).
+        if let (1, Some(dty)) = (path.len(), self.domain_named(head)) {
+            let [p] = args else {
+                let code = cpl_diag::codes::WRONG_ARG_COUNT;
+                self.err(
+                    span,
+                    Msg::verdict(
+                        code,
+                        format!("`{head}(..)` takes 1 pattern, found {}", args.len()),
+                    ),
+                );
+                return None;
+            };
+            if !matches!(
+                self.shallow(&v.ty),
+                Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)
+            ) {
+                self.mismatch(span, &format!("`{head}(..)`"), &v.ty);
+                return None;
+            }
+            let x = self.coerce(v.clone(), &Ty::Int);
+            let at = self.domain_at(dty.clone(), x, span);
+            let flag = mk(TK::Field(Box::new(at.clone()), 0), Ty::Bool);
+            let val = mk(TK::Field(Box::new(at), 1), dty);
+            let rest = self.refute(p, &val, mutable, binds);
+            return Self::both(Some(flag), rest);
+        }
+        let Some((e, targs)) = self.enum_of(&v.ty) else {
+            self.mismatch(span, &format!("`{head}`"), &v.ty);
+            return None;
+        };
+        let Some(i) = self.d.variant(e, head) else {
+            let en = self.d.s(e).name.clone();
+            let code = cpl_diag::codes::UNKNOWN_FIELD;
+            self.err(
+                span,
+                Msg::verdict(code, format!("`{en}` has no variant `{head}`")),
+            );
+            return None;
+        };
+        let (p, tys) = self.variant_tys(e, &targs, i);
+        if !args.is_empty() && args.len() != tys.len() {
+            let code = cpl_diag::codes::WRONG_ARG_COUNT;
+            let msg = Msg::verdict(
+                code,
+                format!("`{head}` has {} fields, found {}", tys.len(), args.len()),
+            );
+            self.err(span, msg);
+        }
+        let payload = mk(
+            TK::Payload(Box::new(v.clone()), i),
+            Ty::Struct(p, targs, Vec::new()),
+        );
+        let rest = self.pat_parts(
+            args.iter().map(Part::Pat).zip(0..),
+            &payload,
+            &tys,
+            mutable,
+            binds,
+        );
+        Self::both(Some(Self::tag_is(v, i, span)), rest)
     }
     /// The parts of `v` (its fields `k`, of types `tys`) against their patterns.
     fn pat_parts<'p>(
         &mut self,
-        ps: impl Iterator<Item = (&'p ast::Pattern, usize)>,
+        ps: impl Iterator<Item = (Part<'p>, usize)>,
         v: &TExpr,
         tys: &[Ty],
         mutable: bool,
@@ -418,12 +522,23 @@ impl Cx<'_> {
         let mut test = None;
         for (p, k) in ps {
             let Some(t) = tys.get(k) else { continue };
+            let span = match p {
+                Part::Pat(p) => self.at(p),
+                Part::Name(n) => n.span(),
+            };
             let part = TExpr {
                 kind: TK::Field(Box::new(v.clone()), k),
                 ty: t.clone(),
-                span: p.span,
+                span,
             };
-            let t = self.refute(p, &part, mutable, binds);
+            let t = match p {
+                Part::Pat(p) => self.refute(p, &part, mutable, binds),
+                Part::Name(n) if self.untyped(&part, span) => {
+                    self.bind_error(n.text(), mutable, span, binds);
+                    None
+                }
+                Part::Name(n) => self.refute_name(n.text(), span, &part, mutable, binds),
+            };
             test = Self::both(test, t);
         }
         test
@@ -432,7 +547,7 @@ impl Cx<'_> {
     /// The alternatives are bound last to first, so the names in scope are the first's.
     fn alternatives(
         &mut self,
-        alts: &[ast::Pattern],
+        alts: &[next::Pattern],
         v: &TExpr,
         mutable: bool,
         binds: &mut Vec<TStmt>,
@@ -599,11 +714,11 @@ impl Cx<'_> {
         }
     }
     /// `t.Pre`: the domain `t` owns as its result's fresh `Pre`, if `t` is such a binding.
-    pub(super) fn owned_domain(&self, base: &ast::Expr, name: &ast::Name) -> Option<Ty> {
-        let ExprKind::Name(b) = &base.kind else {
+    pub(super) fn owned_domain(&self, base: &next::Expr, name: &SyntaxToken) -> Option<Ty> {
+        let next::Expr::Name(b) = base else {
             return None;
         };
-        self.owned_at(b, std::slice::from_ref(&name.text))
+        self.owned_at(b.ident()?.text(), &[name.text().to_string()])
     }
     /// `t.Pre` written in a type: the domain the binding `t` owns as its `Pre`.
     pub(super) fn owned_named(&self, n: &str) -> Option<Ty> {
@@ -663,85 +778,114 @@ impl Cx<'_> {
         }
     }
     pub(super) fn space(&self, pat: &next::Pattern, t: &Ty) -> Space {
-        match &pat.kind {
-            PatternKind::Wildcard | PatternKind::Error | PatternKind::Domain(_) => Space::Any,
-            PatternKind::Name(n) => match self.enum_of(t) {
-                Some((e, ts)) => match self.d.variant(e, n) {
-                    Some(i) => {
-                        let arity = self.variant_tys(e, &ts, i).1.len();
-                        Space::Ctor(i, vec![Space::Any; arity])
-                    }
-                    None => Space::Any,
-                },
+        match pat {
+            next::Pattern::Wildcard(_) => Space::Any,
+            next::Pattern::Paren(p) => p.pattern().map_or(Space::Any, |p| self.space(&p, t)),
+            next::Pattern::Path(p) => match Self::path_form(p) {
                 None => Space::Any,
+                Some(PathForm::Bind(n)) => self.name_space(n.text(), t),
+                Some(PathForm::None) => Space::Ctor(0, Vec::new()),
+                Some(PathForm::Ctor(path, args)) => self.ctor_space(&path, &args, t),
             },
-            PatternKind::Var(p) => self.space(p, t),
-            PatternKind::Literal(e) => match (&e.kind, self.shallow(t)) {
-                (ExprKind::None, _) => Space::Ctor(0, Vec::new()),
-                (ExprKind::Bool(b), Ty::Bool) => Space::Ctor(usize::from(*b), Vec::new()),
-                (ExprKind::Int(i), _) => Space::Lit(Some(*i)),
-                (ExprKind::Char(c), _) => Space::Lit(Some(i128::from(u32::from(*c)))),
-                (
-                    ExprKind::Unary {
-                        op: ast::UnOp::Neg,
-                        expr,
-                    },
-                    _,
-                ) => match expr.kind {
-                    ExprKind::Int(i) => Space::Lit(Some(-i)),
-                    _ => Space::Lit(None),
-                },
-                _ => Space::Lit(None),
-            },
-            PatternKind::Tuple(ps) => {
+            next::Pattern::Literal(l) => {
+                l.value().map_or(Space::Any, |e| self.literal_space(&e, t))
+            }
+            next::Pattern::Tuple(tp) => {
                 let tys = self.field_tys(t).map(|f| f.1).unwrap_or_default();
                 let at = |k: usize| tys.get(k).cloned().unwrap_or(Ty::Error);
                 Space::Ctor(
                     0,
-                    ps.iter()
+                    tp.patterns()
                         .enumerate()
-                        .map(|(k, p)| self.space(p, &at(k)))
+                        .map(|(k, p)| self.space(&p, &at(k)))
                         .collect(),
                 )
             }
-            PatternKind::Record { fields, .. } => match self.field_tys(t) {
+            next::Pattern::Record(r) => match self.field_tys(t) {
                 Some((s, tys)) => {
                     let mut parts = vec![Space::Any; tys.len()];
-                    for (n, p) in fields {
-                        if let Some(k) = self.d.field(s, &n.text) {
-                            parts[k] = self.space(p, &tys[k]);
+                    for f in r.fields() {
+                        let Some(n) = f.name() else { continue };
+                        if let Some(k) = self.d.field(s, n.text()) {
+                            parts[k] = match f.pattern() {
+                                Some(p) => self.space(&p, &tys[k]),
+                                None => self.name_space(n.text(), &tys[k]),
+                            };
                         }
                     }
                     Space::Ctor(0, parts)
                 }
                 None => Space::Any,
             },
-            PatternKind::Variant { path, args } => {
-                let head = &path[path.len() - 1].text;
-                if let (Some(inner), [p]) = (self.optional_of(t), &args[..]) {
-                    if path.len() == 1 && self.present_pattern(head) {
-                        return Space::Ctor(1, vec![self.space(p, &inner)]);
-                    }
-                }
-                // A domain pattern tests membership, which no other pattern covers.
-                if path.len() == 1 && self.domain_named(head).is_some() {
-                    return Space::Lit(None);
-                }
-                let Some((e, ts)) = self.enum_of(t) else {
-                    return Space::Any;
-                };
-                match self.d.variant(e, head) {
-                    Some(i) => {
-                        let tys = self.variant_tys(e, &ts, i).1;
-                        let parts = (tys.iter().enumerate())
-                            .map(|(k, t)| args.get(k).map_or(Space::Any, |p| self.space(p, t)))
-                            .collect();
-                        Space::Ctor(i, parts)
-                    }
-                    None => Space::Any,
-                }
+            next::Pattern::Or(o) => {
+                Space::Or(o.alternatives().map(|a| self.space(&a, t)).collect())
             }
-            PatternKind::Or(alts) => Space::Or(alts.iter().map(|a| self.space(a, t)).collect()),
+        }
+    }
+    /// What the name `n` covers: the variant it names, else anything.
+    fn name_space(&self, n: &str, t: &Ty) -> Space {
+        let Some((e, ts)) = self.enum_of(t) else {
+            return Space::Any;
+        };
+        match self.d.variant(e, n) {
+            Some(i) => {
+                let arity = self.variant_tys(e, &ts, i).1.len();
+                Space::Ctor(i, vec![Space::Any; arity])
+            }
+            None => Space::Any,
+        }
+    }
+    fn ctor_space(&self, path: &[SyntaxToken], args: &[next::Pattern], t: &Ty) -> Space {
+        let head = path[path.len() - 1].text();
+        if let (Some(inner), [p]) = (self.optional_of(t), args) {
+            if path.len() == 1 && self.present_pattern(head) {
+                return Space::Ctor(1, vec![self.space(p, &inner)]);
+            }
+        }
+        // A domain pattern tests membership, which no other pattern covers.
+        if path.len() == 1 && self.domain_named(head).is_some() {
+            return Space::Lit(None);
+        }
+        let Some((e, ts)) = self.enum_of(t) else {
+            return Space::Any;
+        };
+        match self.d.variant(e, head) {
+            Some(i) => {
+                let tys = self.variant_tys(e, &ts, i).1;
+                let parts = (tys.iter().enumerate())
+                    .map(|(k, t)| args.get(k).map_or(Space::Any, |p| self.space(p, t)))
+                    .collect();
+                Space::Ctor(i, parts)
+            }
+            None => Space::Any,
+        }
+    }
+    /// What a literal pattern covers: `false`/`true` of a `Bool`, else the one value it is.
+    fn literal_space(&self, e: &next::Expr, t: &Ty) -> Space {
+        let token = |e: &next::Expr| match e {
+            next::Expr::Literal(l) => l.token(),
+            _ => None,
+        };
+        if let next::Expr::Prefix(p) = e {
+            let neg = p.op().is_some_and(|o| o.kind() == TokenKind::Minus);
+            return match p.operand().as_ref().and_then(token) {
+                Some(n) if neg && n.kind() == TokenKind::Int => {
+                    Space::Lit(int_value(n.text()).map(|i| -i))
+                }
+                _ => Space::Lit(None),
+            };
+        }
+        let Some(tok) = token(e) else {
+            return Space::Lit(None);
+        };
+        match (tok.kind(), self.shallow(t)) {
+            (TokenKind::True, Ty::Bool) => Space::Ctor(1, Vec::new()),
+            (TokenKind::False, Ty::Bool) => Space::Ctor(0, Vec::new()),
+            (TokenKind::Int, _) => Space::Lit(int_value(tok.text())),
+            (TokenKind::Char, _) => {
+                Space::Lit(char_value(tok.text()).map(|c| i128::from(u32::from(c))))
+            }
+            _ => Space::Lit(None),
         }
     }
     /// The constructors of `t` with the types of their parts, when it has a closed list of them.
