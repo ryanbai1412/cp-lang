@@ -31,7 +31,7 @@ TYPE = re.compile(r"^pub (?:struct|enum) ([A-Za-z]\w*)")
 IMPL = re.compile(r"^impl(?:<[^>]*>)? (?:[\w<>, ]+ for )?([A-Za-z]\w*)")
 METHOD = re.compile(r"^\s+(?:@\w+ )*pub fn \w+")
 TRAIT = re.compile(r"^(?:@\w+(?:\([^)]*\))? )*pub trait ([A-Za-z]\w*)")
-DEFAULT = re.compile(r"^    (?:@\w+ )*fn ([a-zA-Z]\w*).*(?::| = .*)$")
+DEFAULT = re.compile(r"^    (?:@\w+ )*fn ([a-zA-Z]\w*)")
 ENGINES = {"interp": ["run"], "native": ["run", "--release"]}
 # The reference interpreter is the tests' `cpl-next-oracle`, beside `cpl-next`.
 NEXT_ENGINES = {"raw": ("cpl-next-oracle", ["--raw"]), "engine": ("cpl-next", ["--engine"])}
@@ -79,6 +79,18 @@ def public_fns(texts):
     return found
 
 
+def has_body(sig):
+    """Whether a trait `fn` line has a body: a block (`:`) or `= expr` past its parameter list,
+    whose own defaults (`of: T -> U = x => x`) are not one."""
+    depth, i = 0, sig.find("(")
+    for i in range(max(i, 0), len(sig)):
+        depth += {"(": 1, ")": -1}.get(sig[i], 0)
+        if depth == 0 and sig[i] == ")":
+            break
+    rest = sig[i + 1:].rstrip()
+    return rest.endswith(":") or " = " in rest
+
+
 def trait_defaults(texts):
     """The default methods of pub std traits (`Seq.sum`): std code every implementing type runs."""
     found = set()
@@ -87,7 +99,7 @@ def trait_defaults(texts):
         for line in text.splitlines():
             if line and not line[0].isspace() and not line.startswith(("///", "@")):
                 trait = bool(TRAIT.match(line))
-            elif trait and (m := DEFAULT.match(line)):
+            elif trait and (m := DEFAULT.match(line)) and has_body(line):
                 found.add(m.group(1))
     return found
 
