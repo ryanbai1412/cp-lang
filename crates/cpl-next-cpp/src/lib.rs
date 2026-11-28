@@ -612,103 +612,23 @@ impl Emit<'_> {
             EK::Call(..) | EK::CallValue(..) | EK::Pass(..) => "/* not canonical */".to_string(),
             EK::Intr(op, args, _) => {
                 let a: Vec<String> = args.iter().map(|a| self.arg(a)).collect();
-                let bin = |o: &str| format!("({} {o} {})", a[0], a[1]);
-                let unsigned = matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::U64);
-                // `F64` arithmetic is IEEE in both engines (R02.1).
-                if matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::F64) {
-                    match op {
-                        Intr::Add => return bin("+"),
-                        Intr::Sub => return bin("-"),
-                        Intr::Mul => return bin("*"),
-                        Intr::Div => return bin("/"),
-                        Intr::Neg => return format!("(-{})", a[0]),
-                        Intr::Abs => return format!("__builtin_fabs({})", a[0]),
-                        _ => {}
-                    }
+                let first = match args.first() {
+                    Some(Arg::Value(x)) => match x.ty {
+                        CTy::Int => ops::Operand::Int,
+                        CTy::U64 => ops::Operand::U64,
+                        CTy::I128 => ops::Operand::I128,
+                        CTy::F64 => ops::Operand::F64,
+                        _ => ops::Operand::Other,
+                    },
+                    _ => ops::Operand::Other,
+                };
+                let mut text = ops::cpp_text(*op, first).replace("$*", &a.join(", "));
+                for (k, x) in a.iter().enumerate().rev() {
+                    text = text.replace(&format!("${k}"), x);
                 }
-                let wide = matches!(args.first(), Some(Arg::Value(e)) if e.ty == CTy::I128)
-                    || matches!(
-                        op,
-                        Intr::ToI128
-                            | Intr::I128OfU64
-                            | Intr::FromI128
-                            | Intr::U64OfI128
-                            | Intr::F64OfI128
-                    );
-                match ops::cpp_wide(*op).filter(|_| wide) {
-                    Some(ops::Cpp::Infix(o)) => return bin(o),
-                    Some(ops::Cpp::Call(f)) => return format!("{f}({})", a.join(", ")),
-                    None => {}
-                }
-                match ops::cpp(*op, unsigned) {
-                    Some(ops::Cpp::Infix(o)) => return bin(o),
-                    Some(ops::Cpp::Call(f)) => return format!("{f}({})", a.join(", ")),
-                    None => {}
-                }
-                match op {
-                    Intr::ToU64 => format!("((uint64_t)({}))", a[0]),
-                    Intr::ToF64 => format!("((double)({}))", a[0]),
-                    Intr::F64Bits => format!("cpl_f64_bits({})", a[0]),
-                    Intr::Float(f) => format!("{}({})", f.cpp(), a.join(", ")),
-                    Intr::ToInt(r) => format!("cpl_int_of_f64({}({}))", r.cpp(), a[0]),
-                    Intr::FromU64 => format!("cpl_int_of_u64({})", a[0]),
-                    Intr::Popcount => format!("cpl_popcount((uint64_t)({}))", a[0]),
-                    Intr::Ctz => format!("cpl_ctz((uint64_t)({}))", a[0]),
-                    Intr::Clz => format!("cpl_clz((uint64_t)({}))", a[0]),
-                    Intr::BitWidth => format!("cpl_bit_width((uint64_t)({}))", a[0]),
-                    Intr::BitCeil => format!("cpl_bit_ceil((int64_t)({}))", a[0]),
-                    Intr::Neg => format!("cpl_neg({})", a[0]),
-                    Intr::Abs => format!("cpl_abs({})", a[0]),
-                    Intr::Below => format!("((uint64_t)({}) < (uint64_t)({}))", a[0], a[1]),
-                    Intr::Not => format!("(!{})", a[0]),
-                    Intr::CharOf => format!("cpl_char_of({})", a[0]),
-                    Intr::CodeOf => format!("((int64_t)({}).code)", a[0]),
-                    Intr::RawEmpty => format!("{}{{}}", self.names[&e.ty]),
-                    Intr::RawNew => format!("cpl_raw_new({}, {})", a[0], a[1]),
-                    Intr::RawGet => format!("cpl_get({}, {})", a[0], a[1]),
-                    Intr::RawSet => format!("cpl_set({}, {}, {})", a[0], a[1], a[2]),
-                    Intr::RawTake => format!("cpl_take({}, {})", a[0], a[1]),
-                    Intr::RawCap => format!("cpl_raw_cap<{}>({})", self.names[&e.ty], a[0]),
-                    Intr::CheckKey => format!("cpl_check_key({})", a[0]),
-                    Intr::CheckVariant => format!("cpl_check_variant({})", a[0]),
-                    Intr::CheckRange => format!("cpl_check_range({})", a[0]),
-                    Intr::ReadInt => "cpl_read()".to_string(),
-                    Intr::InputLeft => "cpl_input_left()".to_string(),
-                    Intr::ReadByte => "cpl_read_byte()".to_string(),
-                    Intr::PeekByte => format!("cpl_peek_byte({})", a[0]),
-                    Intr::CheckToken => format!("cpl_check_token({})", a[0]),
-                    Intr::CheckInput => format!("cpl_check_input({})", a[0]),
-                    Intr::RandWord => "cpl_rand_word()".to_string(),
-                    Intr::Out => format!("cpl_out({}, {})", a[0], a[1]),
-                    Intr::Unset => format!("{}{{}}", self.names[&e.ty]),
-                    // `ops::cpp` spells these, for operands of every kind.
-                    Intr::Add
-                    | Intr::Sub
-                    | Intr::Mul
-                    | Intr::Div
-                    | Intr::Rem
-                    | Intr::Pow
-                    | Intr::Shl
-                    | Intr::Shr
-                    | Intr::AddWrap
-                    | Intr::SubWrap
-                    | Intr::MulWrap
-                    | Intr::PowWrap
-                    | Intr::ShlWrap
-                    | Intr::BitAnd
-                    | Intr::BitOr
-                    | Intr::BitXor
-                    | Intr::Eq
-                    | Intr::Ne
-                    | Intr::Lt
-                    | Intr::Le
-                    | Intr::Gt
-                    | Intr::Ge
-                    | Intr::ToI128
-                    | Intr::FromI128
-                    | Intr::I128OfU64
-                    | Intr::U64OfI128
-                    | Intr::F64OfI128 => "/* not an operation */".to_string(),
+                match self.names.get(&e.ty) {
+                    Some(t) => text.replace("$T", t),
+                    None => text,
                 }
             }
         }

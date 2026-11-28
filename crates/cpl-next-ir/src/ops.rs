@@ -673,6 +673,85 @@ pub fn cpp(op: Intr, unsigned: bool) -> Option<Cpp> {
     })
 }
 
+/// The kind of an operation's first operand, which picks its C++ (`cpp_text`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Operand {
+    Int,
+    U64,
+    I128,
+    F64,
+    Other,
+}
+
+/// The C++ expression for `op`: `$0`, `$1` and `$2` stand for its operands, `$*` for all of
+/// them joined by commas, and `$T` for the C++ name of its result type.
+pub fn cpp_text(op: Intr, first: Operand) -> String {
+    use Intr as I;
+    let text = |c: Cpp| match c {
+        Cpp::Infix(o) => format!("($0 {o} $1)"),
+        Cpp::Call(f) => format!("{f}($*)"),
+    };
+    let wide = first == Operand::I128
+        || matches!(
+            op,
+            I::ToI128 | I::I128OfU64 | I::FromI128 | I::U64OfI128 | I::F64OfI128
+        );
+    // `F64` arithmetic is IEEE in every engine (R02.1).
+    let float = match (first, op) {
+        (Operand::F64, I::Add) => Some(Cpp::Infix("+")),
+        (Operand::F64, I::Sub) => Some(Cpp::Infix("-")),
+        (Operand::F64, I::Mul) => Some(Cpp::Infix("*")),
+        (Operand::F64, I::Div) => Some(Cpp::Infix("/")),
+        (Operand::F64, I::Neg) => return "(-$0)".into(),
+        (Operand::F64, I::Abs) => return "__builtin_fabs($0)".into(),
+        _ => None,
+    };
+    let picked = float
+        .or_else(|| cpp_wide(op).filter(|_| wide))
+        .or_else(|| cpp(op, first == Operand::U64));
+    if let Some(c) = picked {
+        return text(c);
+    }
+    match op {
+        I::ToU64 => "((uint64_t)($0))".into(),
+        I::ToF64 => "((double)($0))".into(),
+        I::F64Bits => "cpl_f64_bits($0)".into(),
+        I::Float(f) => format!("{}($*)", f.cpp()),
+        I::ToInt(r) => format!("cpl_int_of_f64({}($0))", r.cpp()),
+        I::FromU64 => "cpl_int_of_u64($0)".into(),
+        I::Popcount => "cpl_popcount((uint64_t)($0))".into(),
+        I::Ctz => "cpl_ctz((uint64_t)($0))".into(),
+        I::Clz => "cpl_clz((uint64_t)($0))".into(),
+        I::BitWidth => "cpl_bit_width((uint64_t)($0))".into(),
+        I::BitCeil => "cpl_bit_ceil((int64_t)($0))".into(),
+        I::Neg => "cpl_neg($0)".into(),
+        I::Abs => "cpl_abs($0)".into(),
+        I::Below => "((uint64_t)($0) < (uint64_t)($1))".into(),
+        I::Not => "(!$0)".into(),
+        I::CharOf => "cpl_char_of($0)".into(),
+        I::CodeOf => "((int64_t)($0).code)".into(),
+        I::RawEmpty | I::Unset => "$T{}".into(),
+        I::RawNew => "cpl_raw_new($0, $1)".into(),
+        I::RawGet => "cpl_get($0, $1)".into(),
+        I::RawSet => "cpl_set($0, $1, $2)".into(),
+        I::RawTake => "cpl_take($0, $1)".into(),
+        I::RawCap => "cpl_raw_cap<$T>($0)".into(),
+        I::CheckKey => "cpl_check_key($0)".into(),
+        I::CheckVariant => "cpl_check_variant($0)".into(),
+        I::CheckRange => "cpl_check_range($0)".into(),
+        I::ReadInt => "cpl_read()".into(),
+        I::InputLeft => "cpl_input_left()".into(),
+        I::ReadByte => "cpl_read_byte()".into(),
+        I::PeekByte => "cpl_peek_byte($0)".into(),
+        I::CheckToken => "cpl_check_token($0)".into(),
+        I::CheckInput => "cpl_check_input($0)".into(),
+        I::RandWord => "cpl_rand_word()".into(),
+        I::Out => "cpl_out($0, $1)".into(),
+        // `cpp` and `cpp_wide` spell the rest, for operands of every kind they take.
+        _ => "/* not an operation */".into(),
+    }
+}
+
 /// The state the program's one random stream starts from, so every engine draws the same words.
 pub const RAND_SEED: u64 = 0x9e37_79b9_7f4a_7c15;
 const RAND_STEP: u64 = 0x9e37_79b9_7f4a_7c15;
