@@ -6,7 +6,7 @@
 // `?T`: `T` or `None`. `val` is read only when `some`.
 @role(option)
 pub struct Optional<T>:
-    some: Bool
+    pub some: Bool
     val: T
 
     /// `f` of the value, kept `?`: `None` stays `None` (R02.4.1). A member, so it is found before

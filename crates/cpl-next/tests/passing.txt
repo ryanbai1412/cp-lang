@@ -2220,6 +2220,7 @@ std-math/splitmix64-at-zero.cp
 std-matrix/get-outside-columns-traps.cp
 std-models/check-value.cp
 std-models/input.cp
+std-models/list-str-array-cut.cp
 std-models/map.cp
 std-models/memo-array.cp
 std-models/print-read.cp

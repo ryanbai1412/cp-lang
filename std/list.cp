@@ -6,37 +6,39 @@ use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key}
 use std.literal.{ListLiteral, Filled}
 use std.seq.{Seq, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
 
+fn out(text: Raw<Char>, n: Int) = @intrinsic("out")
+
 @list
 pub struct List<T>:
     var buf: Raw<T>
     var n: Int
     var cap: Int
 
-    fn new() -> List<T>:
+    pub fn new() -> List<T>:
         List(raw_empty(), 0, 0)
 
-    fn filled(n: Int, x: T) -> List<T>:
+    pub fn filled(n: Int, x: T) -> List<T>:
         List(raw_new(n, x), n, n)
 
-    @get fn len(self) -> Int:
+    @get pub fn len(self) -> Int:
         n
 
-    fn get(self, i: Int) -> T:
+    pub fn get(self, i: Int) -> T:
         check_key(0 <= i and i < n)
         raw_get(buf, i)
 
-    fn each(self) -> yields T:
+    pub fn each(self) -> yields T:
         for i in 0..n: yield raw_get(buf, i)
 
     /// Room for `k` elements without another move of the ones held.
-    fn reserve(mut self, k: Int):
+    pub fn reserve(mut self, k: Int):
         if k > cap:
             var nb = raw_cap(k)
             for i in 0..n: raw_set(mut nb, i, raw_take(mut buf, i))
             buf = nb
             cap = k
 
-    fn swap(mut self, i: Int, j: Int):
+    pub fn swap(mut self, i: Int, j: Int):
         check_key(0 <= i and i < n and 0 <= j and j < n)
         if i != j:
             let x = raw_take(mut buf, i)
@@ -44,7 +46,7 @@ pub struct List<T>:
             raw_set(mut buf, j, x)
 
     /// `x` at position `i`, the elements from `i` on one later.
-    fn insert(mut self, i: Int, x: T):
+    pub fn insert(mut self, i: Int, x: T):
         assert 0 <= i and i <= n, "insert: a position past the end"
         self.push(x)
         var k = n - 1
@@ -53,40 +55,40 @@ pub struct List<T>:
             k -= 1
 
     /// The element at `i`, the ones after it one earlier.
-    fn remove(mut self, i: Int) -> T:
+    pub fn remove(mut self, i: Int) -> T:
         check_key(0 <= i and i < n)
         for k in i..n - 1: self.swap(k, k + 1)
         n -= 1
         raw_take(mut buf, n)
 
-    fn extend(mut self, xs: List<T>):
+    pub fn extend(mut self, xs: List<T>):
         self.reserve(n + xs.len)
         for x in xs: self.push(x)
 
-    @get fn is_empty(self) -> Bool:
+    @get pub fn is_empty(self) -> Bool:
         n == 0
 
-    fn pop(mut self) -> ?T:
+    pub fn pop(mut self) -> ?T:
         if n == 0: return None
         n -= 1
         Some(raw_get(buf, n))
 
-    fn truncate(mut self, k: Int):
+    pub fn truncate(mut self, k: Int):
         check_key(0 <= k)
         if k < n: n = k
 
-    fn clear(mut self):
+    pub fn clear(mut self):
         n = 0
 
     /// `k` elements: the first ones kept, any new ones `x` (seq/U58).
-    fn resize(mut self, k: Int, x: T):
+    pub fn resize(mut self, k: Int, x: T):
         check_key(0 <= k)
         self.reserve(k)
         while n < k: self.push(x)
         self.truncate(k)
 
     /// Every element `x` (seq/U58).
-    fn fill(mut self, x: T):
+    pub fn fill(mut self, x: T):
         for i in 0..n:
             raw_take(mut buf, i)
             raw_set(mut buf, i, x)
@@ -95,16 +97,18 @@ pub struct List<T>:
 pub struct Array<D: Domain, T>:
     buf: Raw<T>
 
-    @get fn len(self) -> Int:
+    @get pub fn len(self) -> Int:
         D.count
 
-    fn filled(x: T) -> Array<D, T>:
+    @get pub fn is_empty(self) -> Bool = D.count == 0
+
+    pub fn filled(x: T) -> Array<D, T>:
         Array(raw_new(D.count, x))
 
-    fn get(self, i: D) -> T:
+    pub fn get(self, i: D) -> T:
         raw_get(buf, i.ord)
 
-    fn each(self) -> yields T:
+    pub fn each(self) -> yields T:
         for i in 0..D.count: yield raw_get(buf, i)
 
 /// Cell by cell, in walk order (R08.1.6).
@@ -123,24 +127,27 @@ fn array_of_list<D: Domain, T>(xs: List<T>) -> [D]T:
 // A flat sequence of `Char` (R02.3).
 @str
 pub struct Str:
-    var chars: List<Char>
+    pub var chars: List<Char>
 
-    @get fn len(self) -> Int:
+    @get pub fn len(self) -> Int:
         chars.len
 
-    @get fn is_empty(self) -> Bool:
+    @get pub fn is_empty(self) -> Bool:
         chars.is_empty
 
-    fn get(self, i: Int) -> Char:
+    pub fn get(self, i: Int) -> Char:
         chars.get(i)
 
-    fn each(self) -> yields Char:
+    pub fn each(self) -> yields Char:
         for c in chars: yield c
 
-    fn push(mut self, c: Char):
+    pub fn push(mut self, c: Char):
         chars.push(c)
 
-    fn append(mut self, s: Str):
+    /// Writes the text to standard output as it is.
+    pub fn write_out(self) = out(chars.buf, chars.n)
+
+    pub fn append(mut self, s: Str):
         for c in s.chars: chars.push(c)
 
 // A string literal: its characters and how many there are. The literal's storage is lent,

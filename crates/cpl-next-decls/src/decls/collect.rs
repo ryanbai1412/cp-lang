@@ -424,6 +424,7 @@ fn layer(
                             generics: sd.generics.iter().map(|g| g.text.clone()).collect(),
                             fields: Vec::new(),
                             var_fields: Vec::new(),
+                            pub_fields: Vec::new(),
                             cached: Vec::new(),
                             field_at: Vec::new(),
                             defaults: Vec::new(),
@@ -914,6 +915,7 @@ fn layer(
                     let sdecl = &mut d.structs[id.0];
                     sdecl.fields = fields;
                     sdecl.var_fields = sd.fields.iter().map(|f| f.mutable).collect();
+                    sdecl.pub_fields = sd.fields.iter().map(|f| f.public).collect();
                     sdecl.cached = sd.fields.iter().map(|f| f.cached).collect();
                     sdecl.defaults = sd.fields.iter().map(|f| f.default.clone()).collect();
                     sdecl.field_at = sd

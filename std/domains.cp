@@ -122,15 +122,15 @@ pub struct Cut<D: Domain>:
     k: Int
 
     /// A cut prints as its integer (R04.2.16).
-    fn write(self):
+    pub fn write(self):
         write(k)
 
     /// `c.l`: the position just before `c`, or `None` at the start (R04.3.2).
-    @get fn l(self) -> ?D:
+    @get pub fn l(self) -> ?D:
         if k == 0: None else: Some(D.nth(k - 1))
 
     /// `c.r`: the position just after `c`, or `None` at the end (R04.3.2).
-    @get fn r(self) -> ?D:
+    @get pub fn r(self) -> ?D:
         if k == D.count: None else: Some(D.nth(k))
 
 /// A domain's cuts are a domain, one more than its positions, walked in order; a cut's integer

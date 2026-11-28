@@ -72,6 +72,8 @@ pub struct FnDecl {
     /// of a call to it; the reference interpreter runs the body.
     pub fast: Option<String>,
     pub getter: bool,
+    /// Declared `pub`: a struct's method named outside its module needs it (R11.1.4).
+    pub public: bool,
     /// `uses io, opt`: contexts its caller's values flow into (R09.1.3).
     pub uses: Vec<String>,
     /// `@same_keys`: its arguments that are arrays over domains share one domain (R04b.1.3).
@@ -116,6 +118,8 @@ pub struct StructDecl {
     pub fields: Vec<(Sym, Ty)>,
     /// Per field: declared with `var`, so assignable after construction.
     pub var_fields: Vec<bool>,
+    /// Per field: declared `pub`, so it may be named outside `module` (R11.1.4).
+    pub pub_fields: Vec<bool>,
     /// Per field: `@cache`, so a read-only method may write it (R05.10.10).
     pub cached: Vec<bool>,
     /// Per field: where its type is written, as an offset into the source.
@@ -668,6 +672,32 @@ impl Decls {
     }
     pub fn s(&self, d: StructId) -> &StructDecl {
         &self.structs[d.0]
+    }
+    /// E0207 and its fix, when member `m` (named `name`) of a struct is private to a module
+    /// other than `at` (R11.1.4).
+    pub fn hidden_member(
+        &self,
+        m: &Member,
+        rt: &Ty,
+        name: &str,
+        at: ModId,
+    ) -> Option<(Msg, String)> {
+        let s = match (m, rt) {
+            (Member::Field(i, _), Ty::Struct(s, ..)) if !self.structs[s.0].pub_fields[*i] => *s,
+            (Member::Method(f, ..), _) => match self.fns[f.0].owner {
+                Some(Owner::Struct(s)) if !self.fns[f.0].public => s,
+                _ => return None,
+            },
+            _ => return None,
+        };
+        let home = self.structs[s.0].module;
+        if at == home {
+            return None;
+        }
+        let m = &self.module_names[home.0];
+        let text = format!("`{name}` is private to module `{m}`");
+        let msg = Msg::verdict(cpl_diag::codes::PRIVATE_NAME, text);
+        Some((msg, format!("mark `{name}` `pub` in `mod {m}`")))
     }
     pub fn named(&self, m: ModId, name: &str) -> Option<Named> {
         look(&self.syms, &self.views[m.0], name)
@@ -1727,6 +1757,7 @@ fn add_fn(
         intrinsic,
         fast: words(Mark::Fast).into_iter().next(),
         getter,
+        public: s.public,
         same_keys,
         aka: words(Mark::Aka),
         was: words(Mark::Was),

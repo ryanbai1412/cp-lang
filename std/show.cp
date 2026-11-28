@@ -8,7 +8,6 @@ use std.tuple.{Tuple1, Tuple2, Tuple3, Tuple4, Tuple5, Tuple6, Tuple7, Tuple8, T
 use std.raw.{raw_get, check_range}
 use std.io.{io}
 /// Writes the first `n` characters of `text` to standard output.
-fn out(text: Raw<Char>, n: Int) = @intrinsic("out")
 
 /// How a value prints, and how an interpolated string formats it (R10.3). `Bool` and `?T` are
 /// not `Show` (R10.3.3, R10.3.7). Records and structs whose fields all have it print their fields
@@ -225,7 +224,7 @@ fn put_line<Ts: ShowAll<M>, M>(xs: Ts, sep: ?Str, end: Str, fmt: Fmt):
     var line = Str(List.new())
     xs.write_all(mut line, sep, true, fmt)
     line.append(end)
-    out(line.chars.buf, line.len)
+    line.write_out()
 
 impl Show for Int:
     fn write_to(self, mut out: Str, sep: ?Str):

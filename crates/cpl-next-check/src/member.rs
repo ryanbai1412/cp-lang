@@ -23,7 +23,16 @@ impl<'a> Cx<'a> {
         if rt == Ty::Error {
             return Self::error_node(span);
         }
-        let Some(decls::Member::Method(m, ts, ss)) = self.d.lookup_member(&rt, name) else {
+        let found = self.d.lookup_member(&rt, name);
+        let at = self.b.module;
+        let hidden = found
+            .as_ref()
+            .and_then(|x| self.d.hidden_member(x, &rt, name, at));
+        if let Some((msg, help)) = hidden {
+            self.err_help(span, msg, Some(help));
+            return Self::error_node(span);
+        }
+        let Some(decls::Member::Method(m, ts, ss)) = found else {
             self.err(
                 span,
                 Msg::verdict(
@@ -1060,7 +1069,16 @@ impl<'a> Cx<'a> {
                 }
             }
         }
-        match self.d.lookup_member(&rt, &name.text) {
+        let found = self.d.lookup_member(&rt, &name.text);
+        let at = self.b.module;
+        let hidden = found
+            .as_ref()
+            .and_then(|x| self.d.hidden_member(x, &rt, &name.text, at));
+        if let Some((msg, help)) = hidden {
+            self.err_help(span, msg, Some(help));
+            return Self::error_node(span);
+        }
+        match found {
             Some(decls::Member::Field(i, ty)) => {
                 self.no_targs(name, written_targs, span);
                 let f = TExpr {

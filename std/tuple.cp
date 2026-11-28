@@ -5,117 +5,117 @@
 
 @tuple
 pub struct Tuple1<A>:
-    _0: A
+    pub _0: A
 
 @tuple
 pub struct Tuple2<A, B>:
-    _0: A
-    _1: B
+    pub _0: A
+    pub _1: B
 
 @tuple
 pub struct Tuple3<A, B, C>:
-    _0: A
-    _1: B
-    _2: C
+    pub _0: A
+    pub _1: B
+    pub _2: C
 
 @tuple
 pub struct Tuple4<A, B, C, E>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
 
 @tuple
 pub struct Tuple5<A, B, C, E, F>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
 
 @tuple
 pub struct Tuple6<A, B, C, E, F, G>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
-    _5: G
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
+    pub _5: G
 
 @tuple
 pub struct Tuple7<A, B, C, E, F, G, H>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
-    _5: G
-    _6: H
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
+    pub _5: G
+    pub _6: H
 
 @tuple
 pub struct Tuple8<A, B, C, E, F, G, H, J>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
-    _5: G
-    _6: H
-    _7: J
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
+    pub _5: G
+    pub _6: H
+    pub _7: J
 
 @tuple
 pub struct Tuple9<A, B, C, E, F, G, H, J, K>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
-    _5: G
-    _6: H
-    _7: J
-    _8: K
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
+    pub _5: G
+    pub _6: H
+    pub _7: J
+    pub _8: K
 
 @tuple
 pub struct Tuple10<A, B, C, E, F, G, H, J, K, L>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
-    _5: G
-    _6: H
-    _7: J
-    _8: K
-    _9: L
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
+    pub _5: G
+    pub _6: H
+    pub _7: J
+    pub _8: K
+    pub _9: L
 
 @tuple
 pub struct Tuple11<A, B, C, E, F, G, H, J, K, L, M>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
-    _5: G
-    _6: H
-    _7: J
-    _8: K
-    _9: L
-    _10: M
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
+    pub _5: G
+    pub _6: H
+    pub _7: J
+    pub _8: K
+    pub _9: L
+    pub _10: M
 
 @tuple
 pub struct Tuple12<A, B, C, E, F, G, H, J, K, L, M, N>:
-    _0: A
-    _1: B
-    _2: C
-    _3: E
-    _4: F
-    _5: G
-    _6: H
-    _7: J
-    _8: K
-    _9: L
-    _10: M
-    _11: N
+    pub _0: A
+    pub _1: B
+    pub _2: C
+    pub _3: E
+    pub _4: F
+    pub _5: G
+    pub _6: H
+    pub _7: J
+    pub _8: K
+    pub _9: L
+    pub _10: M
+    pub _11: N
 
 /// Tuples compare field by field, lexicographically for `Ord` (R08.1.6).
 // A product domain walks row-major, the last factor fastest (R04.2.9); `P((x, y))` converts each part,

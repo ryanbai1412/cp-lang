@@ -25,7 +25,9 @@ STRUCT = re.compile(r"((?:^///[^\n]*\n)*)^pub struct (\w+)(?:<[^>]*>)?[^\n]*\n((
 
 
 def matrix(root=ROOT):
-    for path in sorted(glob.glob(os.path.join(root, "std", "*.cp"))):
+    paths = sorted(glob.glob(os.path.join(root, "std", "*.cp")))
+    every = "\n".join(open(p).read() for p in paths)
+    for path in paths:
         text = open(path).read()
         rel = os.path.relpath(path, root)
         for m in STRUCT.finditer(text):
@@ -36,7 +38,7 @@ def matrix(root=ROOT):
             missing = []
             view = re.search(r"pub fn within\(self, [^)]*\) -> lends (\w+)", body)
             viewed = view and re.search(rf"^pub struct {view.group(1)}\b", text, re.M)
-            if not viewed and not re.search(rf"^impl(?:<[^>]*>)? Show for {name}\b", text, re.M):
+            if not viewed and not re.search(rf"^impl(?:<[^>]*>)? Show for {name}\b", every, re.M):
                 missing.append("Show")
             walks = re.search(r"pub fn (?:each|iter|items)(?:<[^>]*>)?\(self\)[^\n]*yields", body) or re.search(
                 rf"^impl\b[^\n]* Seq<[^\n]*> for {name}\b", text, re.M)

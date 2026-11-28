@@ -1000,7 +1000,7 @@ pub(crate) fn keeps_len(method: &str) -> bool {
     use cpl_facade::today::{builtin_members, Receiver};
     // The catalog only says whether a method mutates; these only move or
     // overwrite elements.
-    const IN_PLACE: [&str; 4] = [std_fn::SORT, std_fn::REVERSE, std_fn::SWAP, "fill"];
+    const IN_PLACE: [&str; 4] = [std_fn::SORT, std_fn::REVERSE, std_fn::SWAP, std_fn::FILL];
     let mut members = [Receiver::List, Receiver::Str]
         .into_iter()
         .flat_map(builtin_members)
