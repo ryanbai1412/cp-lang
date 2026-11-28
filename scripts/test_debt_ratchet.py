@@ -2213,12 +2213,13 @@ class DebtRatchetTest(unittest.TestCase):
     def test_next_std_names_skips_only_the_ids_std_binds_in_an_id_table(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self._write(root, "std/raw.cp", 'pub fn raw_get() = @intrinsic("raw_get")\npub fn ctz() = 0\n')
+            self._write(root, "std/raw.cp", 'pub fn raw_get() = @intrinsic("raw_get")\npub fn ctz() = 0\n'
+                        '@fast(clz)\npub fn clz() = 0\n')
             self._write(root, "crates/cpl-next-ir/src/ops.rs",
-                        'pub const INTRINSICS: &[(&str, I)] = &[\n    ("raw_get", I::Get),\n    ("ctz", I::Ctz),\n];\n'
-                        'if n == "raw_get" {}\n')
+                        'pub const INTRINSICS: &[(&str, I)] = &[\n    ("raw_get", I::Get),\n    ("ctz", I::Ctz),\n'
+                        '    ("clz", I::Clz),\n];\nif n == "raw_get" {}\n')
             self.assertEqual(dr.next_std_names(root),
-                             ["crates/cpl-next-ir/src/ops.rs:3: ctz", "crates/cpl-next-ir/src/ops.rs:5: raw_get"])
+                             ["crates/cpl-next-ir/src/ops.rs:3: ctz", "crates/cpl-next-ir/src/ops.rs:6: raw_get"])
 
     def test_next_std_names_skips_test_code(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
