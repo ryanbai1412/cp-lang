@@ -328,7 +328,7 @@
   "next_masked": 129,
   "next_refusal_kinds": 60,
   "next_core_privilege": 16,
-  "next_whole_program_inputs": 601,
+  "next_whole_program_inputs": 600,
   "next_handoff_side_fields": 11,
   "next_reference_evaluator_lines": 589,
   "next_oracle_callers": 0,

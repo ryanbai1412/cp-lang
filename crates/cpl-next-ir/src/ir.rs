@@ -587,6 +587,118 @@ impl Declared {
     }
 }
 
+/// Calls `ty` on every type a generic fn's locals, result and body name, and `set` on every set
+/// argument a call in it names outside a type.
+pub fn visit_types<'f>(
+    f: &'f Func<Ty>,
+    ty: &mut impl FnMut(&'f Ty),
+    set: &mut impl FnMut(&'f SetTy),
+) {
+    struct V<'v, A, B> {
+        ty: &'v mut A,
+        set: &'v mut B,
+    }
+    impl<'f, A: FnMut(&'f Ty), B: FnMut(&'f SetTy)> V<'_, A, B> {
+        fn target(&mut self, t: &'f Target<Ty>) {
+            match t {
+                Target::Fn(r) => {
+                    r.targs.iter().for_each(&mut *self.ty);
+                    r.sets.iter().for_each(&mut *self.set);
+                }
+                Target::Trait {
+                    args,
+                    self_ty,
+                    targs,
+                    ret,
+                    ..
+                } => {
+                    args.iter()
+                        .chain([self_ty, ret])
+                        .chain(targs)
+                        .for_each(&mut *self.ty);
+                }
+                Target::Value(e) => self.expr(e),
+                Target::Case | Target::Inst(_) => {}
+            }
+        }
+        fn args(&mut self, xs: &'f [Arg<Ty>]) {
+            for a in xs {
+                if let Arg::Value(e) = a {
+                    self.expr(e);
+                }
+            }
+        }
+        fn expr(&mut self, e: &'f Expr<Ty>) {
+            (self.ty)(&e.ty);
+            match &e.kind {
+                EK::MakeStruct(xs) | EK::MakeClosure(xs) => xs.iter().for_each(|x| self.expr(x)),
+                EK::Inject(x) | EK::Widen(x) | EK::MakeUnion(_, x) => self.expr(x),
+                EK::DomLen(t) | EK::DomLo(t) | EK::DomHeld(t) | EK::DomCounted(t) => (self.ty)(t),
+                EK::HasBound(t, _, args) => {
+                    (self.ty)(t);
+                    args.iter().for_each(&mut *self.ty);
+                }
+                EK::Intr(_, xs, _) => self.args(xs),
+                EK::Call(t, xs, _) => {
+                    self.target(t);
+                    self.args(xs);
+                }
+                EK::CallValue(g, xs, _) => {
+                    self.expr(g);
+                    self.args(xs);
+                }
+                EK::Int(_)
+                | EK::F64(_)
+                | EK::Bool(_)
+                | EK::Unit
+                | EK::Copy(_)
+                | EK::Pass(..)
+                | EK::AddrOf(_)
+                | EK::Lent(_)
+                | EK::Text(_)
+                | EK::Tag(_) => {}
+            }
+        }
+        fn block(&mut self, b: &'f [Stmt<Ty>]) {
+            for s in b {
+                match s {
+                    Stmt::Let(_, e)
+                    | Stmt::Assign(_, e)
+                    | Stmt::Expr(e)
+                    | Stmt::Yield(e)
+                    | Stmt::Fact(e)
+                    | Stmt::Check { cond: e, .. } => self.expr(e),
+                    Stmt::Return(e) => e.iter().for_each(|e| self.expr(e)),
+                    Stmt::If(c, x, y) => {
+                        self.expr(c);
+                        self.block(x);
+                        self.block(y);
+                    }
+                    Stmt::Loop(x, y, _) => {
+                        self.block(x);
+                        self.block(y);
+                    }
+                    Stmt::Switch(c, arms) => {
+                        self.expr(c);
+                        arms.iter().for_each(|a| self.block(a));
+                    }
+                    Stmt::Region {
+                        target, args, body, ..
+                    } => {
+                        self.target(target);
+                        self.args(args);
+                        self.block(body);
+                    }
+                    Stmt::Event(EventPoint { vals, .. }) => vals.iter().for_each(|x| self.expr(x)),
+                    Stmt::LendOut(_) | Stmt::Drop(_) | Stmt::Break | Stmt::Continue => {}
+                }
+            }
+        }
+    }
+    f.locals.iter().chain([&f.ret]).for_each(&mut *ty);
+    V { ty, set }.block(&f.body);
+}
+
 /// Calls `f` on every place a block names, outermost first: read, written, lent, viewed or
 /// addressed. A `let`'s local and a region's variable come as `Place::Local`, and a local
 /// `f` leaves them is their new one.

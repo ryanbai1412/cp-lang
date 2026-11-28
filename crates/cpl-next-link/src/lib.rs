@@ -602,65 +602,33 @@ impl Link<'_> {
             sets: f.sets.iter().map(|s| self.set(s, env)).collect(),
         }
     }
-    /// The set parameters a fn's generic IR names anywhere.
+    /// The set parameters a fn's generic IR names anywhere. A lambda's set argument counts only
+    /// where that lambda names it: a set a nested closure is given but never uses is no set the
+    /// fn around it names.
     fn params_named(&mut self, k: FuncKey) -> BTreeSet<usize> {
         if let Some(u) = self.named.get(&k) {
             return u.clone();
         }
-        let text = self
-            .generic
-            .generic(&k)
-            .map(|f| format!("{:?} {:?} {:?}", f.locals, f.ret, f.body))
-            .unwrap_or_default();
+        let (mut tys, mut sets) = (Vec::new(), Vec::new());
+        if let Some(f) = self.generic.generic(&k) {
+            visit_types(f, &mut |t| tys.push(t), &mut |s| sets.push(s));
+        }
+        let mut n = Named::default();
+        tys.into_iter().for_each(|t| n.ty(t));
+        sets.into_iter().for_each(|s| n.set(s));
         self.named_busy.insert(k.clone());
-        let text = self.kept_text(&text);
-        self.named_busy.remove(&k);
-        let mut u = BTreeSet::new();
-        for part in text.split("SetParam(").skip(1) {
-            let digits: String = part.chars().take_while(|c| c.is_ascii_digit()).collect();
-            if let Ok(i) = digits.parse() {
-                u.insert(i);
+        while let Some((id, ss)) = n.lambdas.pop() {
+            let key = FuncKey::Lambda(id);
+            let used = (!self.named_busy.contains(&key)).then(|| self.params_named(key));
+            for (i, s) in ss.iter().enumerate() {
+                if used.as_ref().is_none_or(|u| u.contains(&i)) {
+                    n.set(s);
+                }
             }
         }
-        self.named.insert(k, u.clone());
-        u
-    }
-    /// `text` with each lambda's set arguments kept only where that lambda names them: a set
-    /// a nested closure is given but never uses is no set the fn around it names.
-    fn kept_text(&mut self, text: &str) -> String {
-        const AT: &str = "Lambda(LambdaId(";
-        let mut out = String::new();
-        let mut rest = text;
-        while let Some(p) = rest.find(AT) {
-            let (head, tail) = rest.split_at(p + AT.len());
-            out.push_str(head);
-            let digits: String = tail.chars().take_while(char::is_ascii_digit).collect();
-            let lists = (tail.find('['))
-                .and_then(|a| Some((a, closing(tail, a)?)))
-                .and_then(|(a, b)| {
-                    let c = b + tail[b..].find('[')?;
-                    Some((a, c, closing(tail, c)?))
-                });
-            let (Ok(id), Some((_, c, d))) = (digits.parse::<usize>(), lists) else {
-                rest = tail;
-                continue;
-            };
-            let key = FuncKey::Lambda(LambdaId(id));
-            let used = (!self.named_busy.contains(&key)).then(|| self.params_named(key));
-            out.push_str(&self.kept_text(&tail[..=c]));
-            let kept: Vec<String> = (top_level(&tail[c + 1..d]).into_iter().enumerate())
-                .map(
-                    |(i, el)| match used.as_ref().is_none_or(|u| u.contains(&i)) {
-                        true => self.kept_text(el),
-                        false => "_".to_string(),
-                    },
-                )
-                .collect();
-            out.push_str(&kept.join(", "));
-            rest = &tail[d..];
-        }
-        out.push_str(rest);
-        out
+        self.named_busy.remove(&k);
+        self.named.insert(k, n.sets.clone());
+        n.sets
     }
     fn clo(&mut self, c: &CloRef, env: &Env) -> Option<InstKey> {
         match c {
@@ -1702,49 +1670,68 @@ fn ret_sets_in(t: &Ty, c: &CTy, out: &mut [Option<CSet>]) {
     }
 }
 
-/// The index of the bracket closing the one at `open` in a value's debug text.
-fn closing(s: &str, open: usize) -> Option<usize> {
-    let (mut depth, mut quoted, mut escaped) = (0usize, false, false);
-    for (i, b) in s.bytes().enumerate().skip(open) {
-        match (quoted, b) {
-            (true, _) if escaped => escaped = false,
-            (true, b'\\') => escaped = true,
-            (_, b'"') => quoted = !quoted,
-            (true, _) => {}
-            (false, b'[' | b'(' | b'{') => depth += 1,
-            (false, b']' | b')' | b'}') => {
-                depth = depth.checked_sub(1)?;
-                if depth == 0 {
-                    return Some(i);
+/// The set parameters some types name, and each lambda's set arguments among them, which count
+/// only where that lambda names them (`Link::params_named`).
+#[derive(Default)]
+struct Named<'t> {
+    sets: BTreeSet<usize>,
+    lambdas: Vec<(LambdaId, &'t [SetTy])>,
+}
+impl<'t> Named<'t> {
+    fn ty(&mut self, t: &'t Ty) {
+        match t {
+            Ty::Struct(_, ts, ss) => {
+                ts.iter().for_each(|t| self.ty(t));
+                ss.iter().for_each(|s| self.set(s));
+            }
+            Ty::Fn(ps, r, s) => {
+                ps.iter().chain([&**r]).for_each(|t| self.ty(t));
+                self.set(s);
+            }
+            Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) | Ty::Mut(t) | Ty::RangeTo(t, ..) => self.ty(t),
+            Ty::Clo(c) => self.clo(c),
+            Ty::Int
+            | Ty::Range(..)
+            | Ty::RangeOf(_)
+            | Ty::AnyRange(_)
+            | Ty::Bool
+            | Ty::Char
+            | Ty::U64
+            | Ty::I128
+            | Ty::F64
+            | Ty::Unit
+            | Ty::Param(_)
+            | Ty::Dom(_)
+            | Ty::Var(_)
+            | Ty::Error => {}
+        }
+    }
+    fn set(&mut self, s: &'t SetTy) {
+        match s {
+            SetTy::Param(i) => {
+                self.sets.insert(*i);
+            }
+            SetTy::Closed(ms) => {
+                for m in ms {
+                    match m {
+                        Member::Clo(c) => self.clo(c),
+                        Member::Sub(s) => self.set(s),
+                    }
                 }
             }
-            _ => {}
+            SetTy::Var(_) | SetTy::AddedAt(_) | SetTy::RetSlot(_) | SetTy::Global(..) => {}
         }
     }
-    None
-}
-
-/// The elements of a debug-printed list's inside, split at its top-level commas.
-fn top_level(s: &str) -> Vec<&str> {
-    let (mut out, mut from) = (Vec::new(), 0);
-    let (mut depth, mut quoted, mut escaped) = (0usize, false, false);
-    for (i, b) in s.bytes().enumerate() {
-        match (quoted, b) {
-            (true, _) if escaped => escaped = false,
-            (true, b'\\') => escaped = true,
-            (_, b'"') => quoted = !quoted,
-            (true, _) => {}
-            (false, b'[' | b'(' | b'{') => depth += 1,
-            (false, b']' | b')' | b'}') => depth = depth.saturating_sub(1),
-            (false, b',') if depth == 0 => {
-                out.push(&s[from..i]);
-                from = i + 1;
+    fn clo(&mut self, c: &'t CloRef) {
+        match c {
+            CloRef::Item(f) => {
+                f.targs.iter().for_each(|t| self.ty(t));
+                f.sets.iter().for_each(|s| self.set(s));
             }
-            _ => {}
+            CloRef::Lambda(id, ts, ss) => {
+                ts.iter().for_each(|t| self.ty(t));
+                self.lambdas.push((*id, ss));
+            }
         }
     }
-    if !s.trim().is_empty() {
-        out.push(&s[from..]);
-    }
-    out
 }

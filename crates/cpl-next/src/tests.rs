@@ -1215,6 +1215,24 @@ fn a_view_goes_only_to_a_viewed_param() {
     }
 }
 
+/// A lambda's identity holds only the sets its IR names, read off the IR's structure: a string
+/// in its body that reads like a set parameter names none, so the closure a recursive call
+/// passes stays one instance.
+#[test]
+fn a_lambdas_identity_reads_its_ir_not_its_text() {
+    let src = "fn walk(n: Int, f: Int -> ()):\n    f(n)\n    if n > 0:\n        walk(n - 1, x => print(\"SetParam(0)\", x))\n\nwalk(2, x => print(x))\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        false,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    assert_eq!(c.run("").output, "2\nSetParam(0) 1\nSetParam(0) 0\n");
+}
+
 /// A default lambda read in a generic caller is an instance per the caller's type arguments
 /// (`by: T -> K = x => x` of `sort`), not one of an error type that sorts nothing.
 #[test]
