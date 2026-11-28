@@ -6,7 +6,7 @@
 
 use crate::file::NodeKind;
 use crate::grammar::{contextual, Contextual};
-use crate::ops;
+use crate::ops::{self, BinOp, CmpOp, UnOp};
 use crate::token::TokenKind;
 use crate::tree::{SyntaxElement, SyntaxNode, SyntaxToken};
 use cpl_diag::Span;
@@ -1351,6 +1351,14 @@ impl BinExpr {
     pub fn rhs(&self) -> Option<Expr> {
         children(&self.0).nth(1)
     }
+
+    /// What the operator computes; `None` for a comparison, which is a [`CompareExpr`].
+    pub fn op_kind(&self) -> Option<BinOp> {
+        match ops::binary(self.op()?.kind())?.kind {
+            ops::Kind::Bin(op) => Some(op),
+            ops::Kind::Cmp(_) => None,
+        }
+    }
 }
 
 impl PrefixExpr {
@@ -1360,6 +1368,10 @@ impl PrefixExpr {
 
     pub fn operand(&self) -> Option<Expr> {
         child(&self.0)
+    }
+
+    pub fn op_kind(&self) -> Option<UnOp> {
+        ops::prefix_op(self.op()?.kind())
     }
 }
 
@@ -1599,7 +1611,52 @@ impl ExprStmt {
     }
 }
 
+/// How an assignment writes its place: `=`, `+=`, or `p f= e` (`p = f(p, e)`).
+#[derive(Clone, Debug)]
+pub enum AssignOp {
+    Set,
+    Op(BinOp),
+    /// The fn's name token: `gcd` in `g gcd= x`.
+    Fn(SyntaxToken),
+}
+
+impl AssignOp {
+    /// The assignment written `text`: `=` or a compound `+=`. A `p f= e` names its fn, so
+    /// it has no fixed spelling.
+    pub fn from_spelling(text: &str) -> Option<AssignOp> {
+        match text {
+            "=" => Some(AssignOp::Set),
+            _ => ops::compound(text).map(AssignOp::Op),
+        }
+    }
+}
+
+impl std::fmt::Display for AssignOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AssignOp::Set => f.write_str("="),
+            AssignOp::Op(op) => write!(f, "{op}="),
+            AssignOp::Fn(name) => write!(f, "{}=", name.text()),
+        }
+    }
+}
+
 impl AssignStmt {
+    pub fn op(&self) -> Option<AssignOp> {
+        let mut tokens = own_tokens(&self.0).peekable();
+        while let Some(t) = tokens.next() {
+            match t.kind() {
+                TokenKind::OpEq => return ops::compound(t.text()).map(AssignOp::Op),
+                TokenKind::Ident if tokens.peek().is_some_and(|n| n.kind() == TokenKind::Eq) => {
+                    return Some(AssignOp::Fn(t));
+                }
+                TokenKind::Eq => return Some(AssignOp::Set),
+                _ => {}
+            }
+        }
+        None
+    }
+
     /// The place written: `a[i]` in `a[i] += 1`.
     pub fn target(&self) -> Option<Expr> {
         child(&self.0)
@@ -2093,6 +2150,26 @@ impl CompareExpr {
     /// `a`, `b`, `c` in `a < b <= c`.
     pub fn operands(&self) -> impl Iterator<Item = Expr> + '_ {
         children(&self.0)
+    }
+
+    /// The links between the operands, in order: `not in` is one [`CmpOp::NotIn`].
+    pub fn ops(&self) -> Vec<CmpOp> {
+        let mut out = Vec::new();
+        let mut negated = false;
+        for t in own_tokens(&self.0) {
+            if t.kind() == TokenKind::Not {
+                negated = true;
+                continue;
+            }
+            if let Some(ops::Kind::Cmp(op)) = ops::binary(t.kind()).map(|b| b.kind) {
+                out.push(match op {
+                    CmpOp::In if negated => CmpOp::NotIn,
+                    op => op,
+                });
+            }
+            negated = false;
+        }
+        out
     }
 }
 
