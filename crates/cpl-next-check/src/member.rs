@@ -923,6 +923,104 @@ impl<'a> Cx<'a> {
         block(pre, call)
     }
 
+    /// `[D]T`'s key `D` when it is a parameter with no `Domain` bound: at `D = Int` its instance
+    /// is a `List<T>`, so nothing binds to `Array`'s own fns.
+    pub(super) fn open_key(&self, rt: &Ty) -> Option<usize> {
+        let Ty::Struct(s, ts, _) = rt else {
+            return None;
+        };
+        if Some(*s) != self.array_id() || ts.len() != 2 {
+            return None;
+        }
+        let Ty::Param(i) = self.shallow(&ts[0]) else {
+            return None;
+        };
+        let dom = self.rows.role_trait(Role::Positions)?;
+        (!self.bounds_of(i, false).iter().any(|r| r.tr == dom)).then_some(i)
+    }
+    /// `a.len` on an open `[D]T` (`open_key`): a member of a trait `List` implements too, called
+    /// through the trait so each instance picks its impl (R04.8.11).
+    fn open_array_member(
+        &mut self,
+        recv: TExpr,
+        rt: &Ty,
+        key: usize,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
+        span: Span,
+    ) -> TExpr {
+        let through = match self.member_named(rt, name.sym) {
+            Some(decls::Member::Method(m, ts, ss)) => self.listed_too(m, &ts, &ss, key, span),
+            Some(decls::Member::Field(..)) => None,
+            None => return self.method_call(recv, name.text, Vec::new(), span, false),
+        };
+        let Some(tr) = through else {
+            return self.open_refusal(key, name.text, span);
+        };
+        let Some(m) = member_of(&self.items.t(tr.tr).methods, name) else {
+            self.err(
+                span,
+                Msg::internal("an impl gives a member its trait lacks"),
+            );
+            return Self::error_node(span);
+        };
+        self.b
+            .obligations
+            .push((rt.clone(), tr.clone(), self.b.item.at(span), Origin::Bound));
+        self.bound_trait_call(recv, rt, (&tr, m), name, call, span)
+    }
+    /// `a.m` on an open `[D]T` where `m` is `Array`'s alone: a `List` has none.
+    pub(super) fn open_refusal(&mut self, key: usize, m: &str, span: Span) -> TExpr {
+        let d = self.show(&Ty::Param(key));
+        let text = format!("`[{d}]T` has `{m}` only where `{d}: Domain`");
+        let help = format!("bound `{d}: Domain`");
+        self.err_help(
+            span,
+            Msg::verdict(cpl_diag::codes::MISSING_IMPL, text),
+            Some(help),
+        );
+        Self::error_node(span)
+    }
+    /// The trait of `Array`'s impl member `m` at `ts`, where `List` implements it at `D = Int`
+    /// too: the obligation that `List<T>` does is the impl's bounds on `T`.
+    pub(super) fn listed_too(
+        &mut self,
+        m: FnId,
+        ts: &[Ty],
+        ss: &[SetTy],
+        key: usize,
+        span: Span,
+    ) -> Option<decls::TraitRef> {
+        let Some(decls::Owner::Impl(k)) = self.items.f(m).owner else {
+            return None;
+        };
+        let (list, im) = (
+            self.role_structs.role_struct(decls::Role::List)?,
+            self.items.imp(k),
+        );
+        let at = |tys: &[Ty]| {
+            let sub = Subst { tys, sets: ss };
+            decls::TraitRef {
+                tr: im.trait_.tr,
+                args: im.trait_.args.iter().map(|a| sub.ty(a)).collect(),
+            }
+        };
+        let ints: Vec<Ty> = (ts.iter())
+            .map(|t| match self.shallow(t) {
+                Ty::Param(i) if i == key => Ty::Int,
+                t => t,
+            })
+            .collect();
+        let (tr, listed) = (at(ts), at(&ints));
+        let elem = ints.last()?.clone();
+        let lt = Ty::Struct(list, vec![elem], Vec::new());
+        if !self.impls().holds(&lt, &listed) {
+            return None;
+        }
+        (self.b.obligations).push((lt, listed, self.b.item.at(span), Origin::Bound));
+        Some(tr)
+    }
+
     pub(super) fn member(
         &mut self,
         base: &next::Expr,
@@ -1168,6 +1266,13 @@ impl<'a> Cx<'a> {
                     return self.two_traits_give(two, shown, &rt, name, shown, span);
                 }
             }
+        }
+        if let Some(k) = self.open_key(&rt) {
+            let e = self.open_array_member(recv, &rt, k, name, call, span);
+            if let Some(w) = want.filter(|_| self.unknown(&e.ty)) {
+                self.unify(&e.ty, w);
+            }
+            return e;
         }
         // Members are found before extension fns: two impls that give `name` leave the call to
         // say which (R08.1.2, R08.1.4).

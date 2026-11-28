@@ -317,6 +317,44 @@ impl<'a> Cx<'a> {
     /// `a < b`, `a == b` and the rest on a type that is not a number: its `Ord` or `Eq` fn, from
     /// the bound on a type parameter or the type's impl (R08.1.5). `a > b` is `b < a`, `a <= b` is
     /// `not b < a`, and `a != b` is `not a == b`; operands are still read left to right.
+    /// `a == b` on an open `[D]T` (`open_key`): through the trait, as its members are.
+    fn open_op_call(
+        &mut self,
+        key: usize,
+        (named, method): (TraitId, &str),
+        recv: TExpr,
+        arg: TExpr,
+        span: Span,
+    ) -> TExpr {
+        let rt = self.shallow(&recv.ty);
+        let found = (self.syms.get(method))
+            .and_then(|sym| self.impls().impl_member(&rt, sym, Some(named)))
+            .and_then(|found| match found {
+                decls::Member::Method(m, ts, ss) => self.listed_too(m, &ts, &ss, key, span),
+                decls::Member::Field(..) => None,
+            });
+        let Some(tr) = found else {
+            return self.open_refusal(key, method, span);
+        };
+        if let Some(m) = self.method_in(&self.items.t(tr.tr).methods, method) {
+            self.reach(m);
+        }
+        let arg = self.coerce(arg, &rt);
+        TExpr {
+            kind: TK::CallTrait {
+                ctx: self.trait_ctx(tr.tr, method),
+                tr,
+                method: method.to_string(),
+                self_ty: Box::new(recv.ty.clone()),
+                targs: Box::default(),
+                sets: Box::default(),
+                recv: Some(Box::new(TArg::Value(recv))),
+                args: vec![TArg::Value(arg)],
+            },
+            ty: Ty::Bool,
+            span,
+        }
+    }
     pub(super) fn op_call(&mut self, op: CmpOp, a: TExpr, b: TExpr, span: Span) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         // `>`, `<=` and `>=` follow from `<`, and `!=` from `==` (R08.1.5).
@@ -347,7 +385,13 @@ impl<'a> Cx<'a> {
         };
         let (recv, arg) = if swap { (b, a) } else { (a, b) };
         let rt = self.shallow(&recv.ty);
-        let call = if let Ty::Param(i) = &rt {
+        let call = if let Some(k) = self.open_key(&rt) {
+            let call = self.open_op_call(k, (named, method), recv, arg, span);
+            if self.is_error(&call.ty) {
+                return call;
+            }
+            Some(call)
+        } else if let Ty::Param(i) = &rt {
             let tr = (self.bound_traits(*i).into_iter())
                 .find(|t| ops.contains(&t.tr))
                 .or_else(|| {
