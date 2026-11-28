@@ -5448,6 +5448,15 @@ def unhidden_wrong(root: Path, ref: str) -> list[str]:
 # The commit whose std the old pipeline is pinned to (`crates/cpl-check/frozen/std`).
 FROZEN_PIN = "c7ac8761d^"
 
+# Frozen-pipeline edits admitted one by one, by the patch id of what each changes in
+# `OLD_PIPELINE_CRATES` (`git show SHA -- crates/cpl-check ... | git patch-id --stable`), which a
+# rebase keeps; each with the coordinator's reason. No path or trailer admits one.
+FROZEN_ADMITTED = {
+    # 9c099f408, "check: name Some a prelude value for the pinned std" (coordinator, 18:47).
+    "910ad35fff394684a3ace2a84930b6cc54a2d8df":
+        "restores shipped cpl after 9ad9cbbd1 changed cpl-syntax; old pipeline must keep working until the switch",
+}
+
 
 SKIPPED_RATCHET_RE = re.compile(r"^Skipped:.*\b(ratchet|debt-ratchet|full suite|lists?)\b", re.M | re.I)
 
@@ -5524,6 +5533,10 @@ def frozen_edits(root: Path, base: str) -> list[str]:
         # FROZEN_PIN, each fitted to the crates outside the freeze, and only one commit can.
         pins = bool(blob(sha, FROZEN_STD)) and not blob(f"{sha}^", FROZEN_STD)
         return bool(touched) and (pins or all(blob(sha, f) == blob(FROZEN_PIN, f) for f in touched))
+    def admitted(sha: str) -> bool:
+        diff = subprocess.run(["git", "-C", str(root), "show", sha, "--", *paths], capture_output=True).stdout
+        pid = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()
+        return bool(pid) and pid[0].decode() in FROZEN_ADMITTED
     out = []
     for sha in _git(root, "rev-list", "--no-merges", f"{base}..HEAD", "--", *paths):
         # A shallow clone's oldest commit has no parent here, so `show` would count the whole
@@ -5532,7 +5545,7 @@ def frozen_edits(root: Path, base: str) -> list[str]:
             continue
         rows = [l.split("\t") for l in _git(root, "show", "--numstat", "--format=", sha, "--", *paths)]
         added = sum(int(r[0]) for r in rows if r[0].isdigit())
-        if added and not restores(sha):
+        if added and not restores(sha) and not admitted(sha):
             out.append(f"{sha[:9]}: adds {added} lines to the frozen old pipeline; send the fix to a "
                        f"conformance case the new pipeline must pass")
     return out

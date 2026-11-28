@@ -1039,7 +1039,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "swap",
     "copy",
     "rand",
-    "some",
+    "Some",
     "laws_hold",
     "flush",
     "len",
