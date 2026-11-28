@@ -99,3 +99,32 @@ fn consts_contexts_operators_and_inline_mod_items_are_keyed_by_name() {
         "fn g() -> Int = 1"
     );
 }
+
+#[test]
+fn a_site_is_found_from_its_item_and_moves_only_its_position() {
+    let (db, f) = db_with(TWO);
+    let span = cpl_diag::Span { start: 2, end: 5 };
+    let site = SourceId {
+        item: id("b", 0),
+        span,
+    };
+    let at = db.get::<ItemAt>(&site.item).unwrap().unwrap();
+    let found = |k: u32| {
+        Ok(Some(Definition {
+            path: "main.cp".into(),
+            span: cpl_diag::Span {
+                start: k + 2,
+                end: k + 5,
+            },
+        }))
+    };
+    assert_eq!(db.get::<SourceOf>(&site), found(at));
+    db.set::<Source>(f, format!("# note\n{TWO}").into())
+        .unwrap();
+    assert_eq!(db.get::<SourceOf>(&site), found(at + 7));
+    let gone = SourceId {
+        item: id("c", 0),
+        span,
+    };
+    assert_eq!(db.get::<SourceOf>(&gone), Ok(None));
+}

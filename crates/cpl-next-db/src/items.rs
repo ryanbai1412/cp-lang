@@ -4,8 +4,8 @@
 //! offsets in either, so an edit to one item changes only that item's answer; where the item
 //! sits in its file is `item_at(ItemId)`, the only answer a line added above it changes.
 use crate::db::{Db, DbError, Input, Query};
-use cpl_contract::FileId;
-use cpl_next_ir::ids::ItemId;
+use cpl_contract::{Definition, FileId};
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_syntax::ast::{self, AstNode};
 use cpl_next_syntax::{GreenNode, SyntaxNode};
 use std::hash::{Hash, Hasher};
@@ -174,6 +174,32 @@ impl Query for ItemAt {
     const NAME: &'static str = "item_at";
     fn compute(db: &Db, id: &ItemId) -> Result<Self::Value, DbError> {
         Ok(node(db, id)?.map(|n| n.span().start))
+    }
+}
+
+/// `source_of(SourceId)`: where a site is in its file, the site's span counted from its item's
+/// start. The only answer that turns a site into a file position, so a line added above the
+/// item moves this and nothing the site's events say.
+pub struct SourceOf;
+impl Query for SourceOf {
+    type Key = SourceId;
+    type Value = Option<Definition>;
+    const NAME: &'static str = "source_of";
+    fn compute(db: &Db, site: &SourceId) -> Result<Self::Value, DbError> {
+        let Some(at) = db.get::<ItemAt>(&site.item)? else {
+            return Ok(None);
+        };
+        let Some(file) = db.input::<ModuleFile>(&site.item.module)? else {
+            return Ok(None);
+        };
+        let span = cpl_diag::Span {
+            start: at + site.span.start,
+            end: at + site.span.end,
+        };
+        Ok(Some(Definition {
+            path: file.path().into(),
+            span,
+        }))
     }
 }
 
