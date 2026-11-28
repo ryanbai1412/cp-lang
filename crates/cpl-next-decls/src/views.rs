@@ -322,6 +322,8 @@ pub trait Checked {
     fn in_program(&self, f: FnId) -> bool;
     /// The context copy of `f` that runs under context copy `ctx` of a trait's fn.
     fn ctx_impl(&self, ctx: u32, f: FnId) -> Option<u32>;
+    /// The types of struct `s`'s fields, their constants worked out.
+    fn fields(&self, s: StructId) -> &[Ty];
 }
 
 /// The lowered program's checker answers, until the query database answers each per item.
@@ -734,6 +736,9 @@ impl Checked for Answers<'_> {
     }
     fn ctx_impl(&self, ctx: u32, f: FnId) -> Option<u32> {
         self.whole.ctx_impls.get(&(ctx, f)).copied()
+    }
+    fn fields(&self, s: StructId) -> &[Ty] {
+        &self.whole.fields[s.0]
     }
 }
 

@@ -62,11 +62,12 @@ fn member(d: &dyn Items, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnI
     (members.iter()).find_map(|(n, f)| (d.text(*n) == name).then_some(*f))
 }
 
-fn held_params(d: &dyn Items, s: StructId) -> BTreeSet<usize> {
-    let sd = d.s(s);
+fn held_params(d: &dyn Items, c: &dyn Checked, s: StructId) -> BTreeSet<usize> {
     let mut out = BTreeSet::new();
-    let payloads = sd.variants.iter().flat_map(|(_, p)| &d.s(*p).fields);
-    (sd.fields.iter().chain(payloads)).for_each(|(_, t)| params_in(t, &mut out));
+    let payloads = d.s(s).variants.iter().map(|(_, p)| *p);
+    (std::iter::once(s).chain(payloads))
+        .flat_map(|s| c.fields(s))
+        .for_each(|t| params_in(t, &mut out));
     out
 }
 
@@ -441,11 +442,7 @@ impl Link<'_> {
             guards: Vec::new(),
             fast: f.fast,
             declared: (f.locals.iter())
-                .map(|t| {
-                    Declared::of(t, &|s| {
-                        self.d.s(s).fields.iter().map(|f| f.1.clone()).collect()
-                    })
-                })
+                .map(|t| Declared::of(t, &|s| self.c.fields(s).to_vec()))
                 .collect(),
         }
     }
@@ -512,7 +509,7 @@ impl Link<'_> {
             // field's, which link still reads from decls) has no instance.
             Ty::Const(ConstArg::Int(k)) => CTy::Const(*k),
             Ty::Const(ConstArg::At(_)) => {
-                let what = "a constant argument check did not evaluate reached link (a struct field's type, which check does not resolve yet)";
+                let what = "a constant argument check did not work out reached link (a field naming a constant still being worked out)";
                 if !self.errors.iter().any(|m| m.text == what) {
                     self.errors.push(Msg::internal(what));
                 }
@@ -581,7 +578,7 @@ impl Link<'_> {
             Ty::Struct(d, ts, ss) => {
                 // A lend changes a struct only through a field that holds it: `Version<S>`
                 // keeps no `S`, so `Version<lent Arr>` is `Version<Arr>`.
-                let held = held_params(self.d, *d);
+                let held = held_params(self.d, self.c, *d);
                 let ts: Vec<CTy> = (ts.iter().enumerate())
                     .map(|(i, t)| match self.targ(t, env) {
                         t if held.contains(&i) => t,
@@ -592,12 +589,12 @@ impl Link<'_> {
                 let out = CTy::Struct(*d, ts.clone(), ss.clone());
                 if !self.structs.contains_key(&out) {
                     self.structs.insert(out.clone(), Vec::new());
-                    let fields = self.d.s(*d).fields.clone();
+                    let fields = self.c.fields(*d).to_vec();
                     let inner = Env {
                         targs: &ts,
                         sets: &ss,
                     };
-                    let fs = fields.iter().map(|(_, t)| self.ty(t, &inner)).collect();
+                    let fs = fields.iter().map(|t| self.ty(t, &inner)).collect();
                     self.structs.insert(out.clone(), fs);
                     let own: Vec<Ty> = (0..ts.len()).map(Ty::Param).collect();
                     let payloads: Vec<CTy> = (self.d.s(*d).variants.clone().iter())

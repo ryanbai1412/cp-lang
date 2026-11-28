@@ -337,6 +337,7 @@ fn whole(d: &Decls, typed: &Typed) -> cpl_next_ir::whole::Whole {
             .filter(|f| d.of_program(d.f(*f).module))
             .collect(),
         ctx_impls: typed.ctx_impls.clone(),
+        fields: typed.fields.clone(),
     }
 }
 

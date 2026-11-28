@@ -96,7 +96,7 @@ pub(super) fn struct_body(d: &mut Decls, mid: ModId, item: &ItemId, id: StructId
         names: &|n: Sym| view.get(&n).copied(),
         env: &tables,
         syms: &tables.syms,
-        item: None,
+        item: Some(item.clone()),
         generics: &sd.generics,
         outer: &sd.generics,
         args: None,

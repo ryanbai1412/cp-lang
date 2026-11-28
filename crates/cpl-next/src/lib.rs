@@ -363,7 +363,7 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
         .collect();
     let g = &mut f.g;
     let d = &f.d;
-    let before = own::before(d, &mut g.funcs, &mut g.globals, &names);
+    let before = own::before(d, &mut g.funcs, &mut g.globals, &names, &g.whole.fields);
     let (fns, tys) = (&g.funcs, &g.globals[..]);
     let checked = Answers {
         whole: &g.whole,

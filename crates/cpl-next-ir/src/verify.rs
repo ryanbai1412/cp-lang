@@ -163,6 +163,17 @@ pub fn all<'a, T: StageTy + PartialEq + std::fmt::Debug + 'a>(
         .collect()
 }
 
+/// What check left unworked in the structs' field types (`Whole::fields`), as `all` says it
+/// of a generic fn's types: one message per fault.
+pub fn fields(fields: &[Vec<crate::ty::Ty>]) -> Vec<Msg> {
+    let faults: std::collections::BTreeSet<_> = (fields.iter().flatten())
+        .filter_map(|t| t.wrong(Stage::Generic))
+        .collect();
+    (faults.into_iter())
+        .map(|e| Msg::internal(format!("Generic IR: a field's type: {e}")))
+        .collect()
+}
+
 /// What instance `func` breaks of the optimized contract against its canonical IR: each check
 /// the optional passes left out is named by a `Proved` (contract 6, proof-accounted).
 pub fn accounted(

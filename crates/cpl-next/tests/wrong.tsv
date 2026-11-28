@@ -855,7 +855,6 @@ std-matrix/solve-f64-singular-none.cp	wrong-reject	check: std.matrix:438:12: E06
 std-matrix/solve-f64-wrong-length-traps.cp	wrong-reject	check: std.matrix:438:12: E0606: `T` does not implement `Eq`
 std-matrix/sum-adds-under-its-semiring.cp	wrong-reject	check: program:11:44: E0806: nothing here says what `None` is an optional of; write the type
 std-matrix/transpose-of-a-row.cp	wrong-reject	check: std.matrix:233:42: E0606: `T` does not implement `Domain`
-std-mod/a-const-modulus-in-a-field.cp	wrong-reject	link: E9999: a constant argument check did not evaluate reached link (a struct field's type, which check does not resolve yet)
 std-mod/barrett-reduces-without-division.cp	wrong-reject	check: std.mod:417:22: E0201: unknown name `I128`
 std-mod/barrett.cp	wrong-reject	check: std.mod:417:22: E0201: unknown name `I128`
 std-mod/mod-comb-k-past-n.cp	wrong-reject	check: std.math:963:15: E0201: unknown name `I128`

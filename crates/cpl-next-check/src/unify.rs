@@ -163,6 +163,45 @@ impl<'a> Cx<'a> {
             _ => {}
         }
     }
+    /// A struct field's type as link lays it out: its constants worked out once, here, and
+    /// one that is not an error said where it is written.
+    pub(super) fn field_ty(&mut self, t: &Ty) -> Ty {
+        self.const_errors(t);
+        self.consts_in(t)
+    }
+    fn consts_in(&self, t: &Ty) -> Ty {
+        use cpl_next_ir::ty::{ConstArg, End};
+        let end = |e: &End| match e {
+            End::Of(t) => match self.consts_in(t) {
+                Ty::Const(ConstArg::Int(k)) => End::Lit(k),
+                t => End::Of(Box::new(t)),
+            },
+            e => e.clone(),
+        };
+        let boxed = |t: &Ty| Box::new(self.consts_in(t));
+        match t {
+            Ty::Const(c) => self
+                .const_int(c)
+                .map_or_else(|| t.clone(), |k| Ty::Const(ConstArg::Int(k))),
+            Ty::RangeEnds { lo, hi, inclusive } => Ty::range_ends(end(lo), end(hi), *inclusive),
+            Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(boxed(e), *m, *lo, *k),
+            Ty::Raw(e) => Ty::Raw(boxed(e)),
+            Ty::Ref(e) => Ty::Ref(boxed(e)),
+            Ty::Lent(e) => Ty::Lent(boxed(e)),
+            Ty::Mut(e) => Ty::Mut(boxed(e)),
+            Ty::Struct(d, ts, ss) => Ty::Struct(
+                *d,
+                ts.iter().map(|t| self.consts_in(t)).collect(),
+                ss.clone(),
+            ),
+            Ty::Fn(ps, r, s) => Ty::Fn(
+                ps.iter().map(|t| self.consts_in(t)).collect(),
+                boxed(r),
+                s.clone(),
+            ),
+            _ => t.clone(),
+        }
+    }
     pub(super) fn zonk(&self, t: &Ty) -> Ty {
         match self.shallow(t) {
             Ty::Const(c) => match self.const_int(&c) {

@@ -222,10 +222,12 @@ pub fn before(
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
     tys: &mut [Ty],
     globals: &[(String, bool)],
+    fields: &[Vec<Ty>],
 ) -> Before {
     use cpl_next_ir::verify::{all, Stage};
     let mutable: Vec<bool> = globals.iter().map(|(_, m)| *m).collect();
-    let generic = all(funcs.values(), Stage::Generic, &[], tys.len());
+    let mut generic = all(funcs.values(), Stage::Generic, &[], tys.len());
+    generic.extend(cpl_next_ir::verify::fields(fields));
     lent::mark(d, funcs, tys, &mutable);
     let cache = inst::cache_calls(d, funcs);
     Before { generic, cache }

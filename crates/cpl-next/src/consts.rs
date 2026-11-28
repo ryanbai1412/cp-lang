@@ -249,7 +249,9 @@ impl<'a> Evaluator<'a> {
             .map(|g| (g.name.clone(), g.mutable))
             .collect();
         let d = self.d;
-        let before = own::before(d, &mut low.funcs, &mut low.globals, &names);
+        // A field naming the constant being worked out is still open here; link says so if
+        // what the constant reads lays that struct out.
+        let before = own::before(d, &mut low.funcs, &mut low.globals, &names, &[]);
         let (fns, tys) = (&low.funcs, &low.globals[..]);
         let checked = Answers {
             whole: &low.whole,

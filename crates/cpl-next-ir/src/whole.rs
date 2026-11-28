@@ -60,6 +60,9 @@ pub struct Whole {
     /// For a call of a trait's fn's `k`-th context copy, the copy of each impl's fn it runs
     /// (R09.1.3): `(k, impl fn)` to that fn's copy.
     pub ctx_impls: HashMap<(u32, FnId), u32>,
+    /// By `StructId`, variants' payloads too: each field's type as check worked out its
+    /// constants (decision 688). Link lays a struct out from these, not from its declaration.
+    pub fields: Vec<Vec<crate::ty::Ty>>,
 }
 
 impl Whole {

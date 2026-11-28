@@ -414,6 +414,8 @@ pub struct Typed {
     /// The copy of an impl's fn that a trait's fn's copy runs when the impl is picked.
     pub ctx_impls: HashMap<(u32, FnId), u32>,
     pub globals: Vec<Local>,
+    /// By `StructId`, variants' payloads too: each field's type, its constants worked out.
+    pub fields: Vec<Vec<Ty>>,
     pub main: Vec<TStmt>,
     pub lambdas: Vec<LambdaInfo>,
     /// The closures a fn's body adds to its i-th set parameter, a callee's adds included.
@@ -750,6 +752,7 @@ pub struct Checker<'a> {
     top: Vec<ItemId>,
     values: Vec<cpl_next_ir::ids::SourceId>,
     todo: Vec<FnId>,
+    structs: usize,
 }
 
 impl<'a> Checker<'a> {
@@ -891,6 +894,7 @@ impl<'a> Checker<'a> {
             top: Vec::new(),
             values: Vec::new(),
             todo: Vec::new(),
+            structs: d.structs.len(),
         }
     }
 
@@ -932,6 +936,7 @@ impl<'a> Checker<'a> {
             top,
             values,
             todo,
+            structs,
         } = self;
         let items = cx.items;
         let mut main_out = Vec::new();
@@ -1315,7 +1320,15 @@ impl<'a> Checker<'a> {
         if cx.cyclic.get() {
             cx.errors.push(Msg::internal("a variable holding a function is assigned a function built from its own old value, so the set of functions it can hold contains itself; bind the new function to a new name"));
         }
+        let fields = (0..structs)
+            .map(|s| {
+                (items.s(StructId(s)).fields.iter())
+                    .map(|(_, t)| cx.field_ty(t))
+                    .collect()
+            })
+            .collect();
         Typed {
+            fields,
             checks: cx.checks,
             domains: std::mem::take(&mut cx.domains),
             dom_rows: std::mem::take(&mut cx.dom_rows),
