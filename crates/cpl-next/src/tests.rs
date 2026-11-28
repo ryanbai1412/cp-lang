@@ -962,7 +962,7 @@ fn types_told_apart_by_domains_share_a_representation() {
 fn an_edit_to_one_body_leaves_the_others_typed_the_same() {
     let std = Std::read();
     let typed = |src: &str, prior: &check::Ids| {
-        let loaded = modules::load(&std, src, &Roots::std());
+        let loaded = modules::load(&cpl_next_db::db::Db::default(), &std, src, &Roots::std());
         let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
         let values = consts::Evaluator::new(&d, &loaded, &main);
         let t = check::check(
@@ -1017,7 +1017,7 @@ fn a_body_adding_to_a_global_set_leaves_its_readers_typed_the_same() {
         )
     };
     let top = |src: &str| {
-        let loaded = modules::load(&std, src, &Roots::std());
+        let loaded = modules::load(&cpl_next_db::db::Db::default(), &std, src, &Roots::std());
         let (d, main) = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
         let values = consts::Evaluator::new(&d, &loaded, &main);
         let t = check::check(

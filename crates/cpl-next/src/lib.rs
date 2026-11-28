@@ -339,7 +339,7 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>)> {
 
 /// `judge` is the judge the snapshot is built for; it is the tool's to resolve (contract 0).
 fn front(std: &Std, user_src: &str, roots: &Roots, judge: Option<&Judge>, checks: Checks) -> Front {
-    let loaded = modules::load(std, user_src, roots);
+    let loaded = modules::load(&cpl_next_db::db::Db::default(), std, user_src, roots);
     // What the parser could not read is checked as error nodes; a later layer says nothing
     // on what the parser rejected, and every other unit is checked as if it were alone.
     let rejected: Vec<SourceId> = (loaded.poisoned.iter().cloned())
@@ -383,10 +383,11 @@ pub(crate) fn std_unchecked(
     judge: Option<&Judge>,
     checks: Checks,
 ) -> Vec<(String, Vec<Diag>)> {
+    let db = &cpl_next_db::db::Db::default();
     (std.module_names())
         .filter(|m| *m != "std.prelude")
         .map(|m| {
-            let loaded = modules::load(std, &format!("use {m}\n"), &Roots::std());
+            let loaded = modules::load(db, std, &format!("use {m}\n"), &Roots::std());
             let (d, main) =
                 decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
             let at = (d.module_names.iter())

@@ -475,14 +475,15 @@ fn unread(item: &SyntaxNode) -> impl Iterator<Item = Span> {
     out.into_iter()
 }
 
-pub fn load(std: &Std, user: &str, roots: &Roots) -> Loaded {
+/// The program `user` and every module it reaches from `std` and `roots`, each file read
+/// through `db`'s item queries, so a session's edit re-parses only the file it touches.
+pub fn load(db: &Db, std: &Std, user: &str, roots: &Roots) -> Loaded {
     enum Got {
         Std(usize),
         Lib(Parsed),
     }
     let mut errors = Vec::new();
     let prelude = std.prelude.clone();
-    let db = &Db::default();
     let program = Parsed::new(db, FileId::new(PROGRAM), PROGRAM, user.into());
     // A module and, for the program's own `use` lines, where it is named.
     let mut queue: VecDeque<(String, Option<SourceId>)> = uses(&program.items)
