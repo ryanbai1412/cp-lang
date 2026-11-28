@@ -6,7 +6,7 @@
 use crate::lends;
 use crate::{overlap, Fx, Pl, Root, Step};
 use cpl_diag::{codes, Code};
-use cpl_next_decls::decls::Decls;
+use cpl_next_decls::decls::{Decls, Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
 use cpl_next_ir::ir::{Arg, Expr, Place, Stmt, Target, EK};
 use cpl_next_ir::ir::{Func, FuncKey, Site};
@@ -57,6 +57,12 @@ pub(crate) struct Walk<'a> {
     pub spilled: HashMap<Root, Pl>,
     /// Temps holding an element read out by a call that declares no `lends`.
     pub elems: BTreeSet<Root>,
+    /// Temps holding storage a call made, owned by no binding: they die with their statement.
+    pub made: BTreeSet<Root>,
+    /// The instances that build a literal the program wrote.
+    pub literals: BTreeSet<usize>,
+    /// The instances that are methods: what their result views is cut from the receiver.
+    pub receivers: BTreeSet<usize>,
     pub copies: BTreeSet<(usize, Site)>,
     pub report: bool,
     pub errors: Vec<Msg>,
@@ -232,6 +238,17 @@ impl Walk<'_> {
             true => self.elems.insert(temp),
             false => self.elems.remove(&temp),
         };
+        let made = match &e.kind {
+            EK::Call(Target::Inst(i), ..) => !self.declares_lends(*i) && !self.literals.contains(i),
+            EK::Copy(p) => {
+                (self.pl(p)).is_some_and(|q| q.path.is_empty() && self.made.contains(&q.root))
+            }
+            _ => false,
+        };
+        match made && self.p.stores(&e.ty) {
+            true => self.made.insert(temp),
+            false => self.made.remove(&temp),
+        };
         let whole = match &e.kind {
             EK::Copy(p) if !self.p.plain(&e.ty) => self.pl(p).filter(|q| {
                 q.path.is_empty() && !self.temp(q.root) && !self.borrowed.contains(&q.root)
@@ -382,6 +399,8 @@ impl Walk<'_> {
             self.pending.push((b, site, codes::USED_WHILE_LENT, msg));
         }
     }
+    /// An unnamed temporary holding storage a call made, not a lend: it dies at the end of its
+    /// statement (R07.5.10).
     /// R8: a lent value is kept only in storage that dies no later than what it borrows.
     fn keep(&mut self, site: u32, storage: Root, what: &BTreeSet<Pl>) {
         if what.is_empty() {
@@ -394,8 +413,22 @@ impl Walk<'_> {
                 .extend(what.iter().cloned());
             return;
         }
+        // R07.5.10: a temporary holding its own value dies at the end of its statement.
+        if what
+            .iter()
+            .any(|p| fresh(&self.made, &self.spilled, &self.lent, p.root))
+        {
+            let n = self.root_name(storage);
+            let m = format!(
+                "{n} keeps a view of a temporary, which dies at the end of its statement; \
+                 copy it with List(...)"
+            );
+            self.err(site, codes::LENT_ESCAPES, m);
+        }
         let home = self.decl.get(&storage).cloned();
-        let roots: BTreeSet<Root> = what.iter().map(|p| p.root).collect();
+        let roots: BTreeSet<Root> = (what.iter().map(|p| p.root))
+            .filter(|r| !fresh(&self.made, &self.spilled, &self.lent, *r))
+            .collect();
         for r in roots {
             let ok = match (&home, self.decl.get(&r)) {
                 // A parameter's storage is the caller's, and a top-level binding outlives any fn.
@@ -469,6 +502,8 @@ impl Walk<'_> {
             return BTreeSet::new();
         }
         let mut out = BTreeSet::new();
+        // What a receiver's view cuts from a temporary holding its own value (R07.5.10).
+        let mut cut = BTreeSet::new();
         if matches!(
             e.ty,
             CTy::Int
@@ -534,6 +569,14 @@ impl Walk<'_> {
                             let heap = !self.p.plain(&v.ty) || self.declares_lends(*i);
                             if let (EK::Copy(p), true) = (&v.kind, heap) {
                                 out.extend(self.lent_pl(p));
+                                // A view cut from a temporary holds it (R07.5.10).
+                                let viewed = (k == 0 && self.receivers.contains(i))
+                                    || self.declares_lends(*i);
+                                if viewed && !self.p.copied(&e.ty) {
+                                    cut.extend(self.pl(p).filter(|q| {
+                                        fresh(&self.made, &self.spilled, &self.lent, q.root)
+                                    }));
+                                }
                             }
                         }
                         Arg::View(p) | Arg::Lend(p) => {
@@ -566,8 +609,11 @@ impl Walk<'_> {
             }
             _ => {}
         }
-        // A temp is never a source itself; what it holds already is.
+        // A temp is never a source itself, what it holds already is, unless a view is cut from
+        // the value it holds: that dies at the end of its statement (R07.5.10). A fresh value
+        // passed to any other parameter moves in.
         out.retain(|p| !self.temp(p.root));
+        out.extend(cut);
         out
     }
     /// The arguments an instance's result lends, receiver first (R05.5.3).
@@ -973,7 +1019,10 @@ impl Walk<'_> {
                 self.bind(Root::Local(*l));
                 let mut src = self.sources(e);
                 if self.var(Root::Local(*l)) && self.elem_read(e) {
-                    src.retain(|p| self.borrowed.contains(&p.root));
+                    src.retain(|p| {
+                        self.borrowed.contains(&p.root)
+                            || fresh(&self.made, &self.spilled, &self.lent, p.root)
+                    });
                 }
                 // A spill of a borrowed binding or of a field path is a lend of it; a spill of a
                 // whole owned binding is that value.
@@ -998,7 +1047,8 @@ impl Walk<'_> {
                     }
                 }
                 if !src.is_empty() {
-                    self.lent.insert(Root::Local(*l), src);
+                    self.lent.remove(&Root::Local(*l));
+                    self.keep(e.site, Root::Local(*l), &src);
                 }
             }
             Stmt::Assign(p, e) => {
@@ -1051,7 +1101,10 @@ impl Walk<'_> {
                     }
                     let mut what = self.sources(e);
                     if q.path.is_empty() && self.var(q.root) && self.elem_read(e) {
-                        what.retain(|p| self.borrowed.contains(&p.root));
+                        what.retain(|p| {
+                            self.borrowed.contains(&p.root)
+                                || fresh(&self.made, &self.spilled, &self.lent, p.root)
+                        });
                     }
                     if q.path.is_empty() && !walked.is_empty() {
                         self.frozen
@@ -1333,6 +1386,17 @@ impl Walk<'_> {
     }
 }
 
+/// Whether temp `r` holds storage a call made, owned by no binding and lent by nothing: it
+/// dies at the end of its statement (R07.5.10).
+fn fresh(
+    made: &BTreeSet<Root>,
+    spilled: &HashMap<Root, Pl>,
+    lent: &HashMap<Root, BTreeSet<Pl>>,
+    r: Root,
+) -> bool {
+    made.contains(&r) && !spilled.contains_key(&r) && !lent.contains_key(&r)
+}
+
 /// Ownership of every instance link made: callees first, each summarized for its callers.
 fn run(
     d: &Decls,
@@ -1340,6 +1404,28 @@ fn run(
     p: &Program,
     globals: &[(String, bool)],
 ) -> Owned {
+    // A literal the program wrote (`[a, b]` through the `@literal("[]")` impl, `"s"` through
+    // `@str_literal`) is the program's value, not a call's temporary (R07.5.10).
+    let list = d.literal_trait("[]");
+    let literals = (p.insts.iter().enumerate())
+        .filter(|(_, f)| match &f.key {
+            FuncKey::Decl(f) | FuncKey::Ctx(f, _) => {
+                d.sugar.str_literal == Some(*f)
+                    || matches!(d.f(*f).owner, Some(Owner::Impl(k)) if Some(d.impls[k].trait_.tr) == list)
+            }
+            _ => false,
+        })
+        .map(|(i, _)| i)
+        .collect();
+    // A method's result is cut from its receiver; a fresh value passed to any other parameter
+    // moves in, unless the signature says the result `lends` it.
+    let receivers = (p.insts.iter().enumerate())
+        .filter(|(_, f)| match &f.key {
+            FuncKey::Decl(f) | FuncKey::Ctx(f, _) => d.f(*f).self_mode != SelfMode::None,
+            _ => false,
+        })
+        .map(|(i, _)| i)
+        .collect();
     let mut w = Walk {
         d,
         p,
@@ -1359,6 +1445,9 @@ fn run(
         caps: HashMap::new(),
         spilled: HashMap::new(),
         elems: BTreeSet::new(),
+        made: BTreeSet::new(),
+        literals,
+        receivers,
         copies: BTreeSet::new(),
         pending: vec![],
         report: false,
@@ -1402,6 +1491,7 @@ impl Walk<'_> {
         self.caps.clear();
         self.spilled.clear();
         self.elems.clear();
+        self.made.clear();
         // A lambda's own params are its values, as in the fn it is written in; its captures are lent.
         let own = |k: usize| matches!(f.key, FuncKey::Lambda(_)) && k >= f.n_captures;
         self.borrowed = (f.params.iter().enumerate())

@@ -2928,3 +2928,4 @@ core-07/take-drop-clamped.cp
 std-seq/drop-past-len-is-empty.cp
 std-seq/seq-u44-take-drop-while.cp
 std-seq/zip-rev-shorter-later-arg.cp
+next/n_temp_values_are_kept_whole.cp
