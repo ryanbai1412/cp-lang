@@ -453,10 +453,14 @@ pub struct Item {
     /// Its first line past any decorators, as written, less a trailing `:`:
     /// `fn twice(n: Int) -> Int`.
     pub head: String,
+    /// The `///` comment above it, past its decorators.
+    pub doc: Option<String>,
+    /// Whether it is a fn, so `head` is its signature.
+    pub function: bool,
 }
 
 /// The item whose declaration starts at `at`.
-fn item_of(f: &Front, at: &SourceId) -> Item {
+fn item_of(f: &Front, at: &SourceId, function: bool) -> Item {
     let text = f.loaded.text_of(at);
     let span = text.span(at);
     let (line, col) = text.line_col(span.start);
@@ -467,11 +471,14 @@ fn item_of(f: &Front, at: &SourceId) -> Item {
         .trim_end()
         .trim_end_matches(':')
         .to_string();
+    let doc = cpl_next_syntax::doc::doc_above(&text.text, span.start as usize);
     Item {
         module: text.name.clone(),
         span,
         line,
         head,
+        doc: (!doc.is_empty()).then_some(doc),
+        function,
     }
 }
 
@@ -495,7 +502,8 @@ pub(crate) fn items(f: &Front) -> HashMap<String, Item> {
     (f.d.views[program.0].iter())
         .filter_map(|(name, x)| {
             let at = declared(*x)?;
-            Some((f.d.text(*name).to_string(), item_of(f, &at)))
+            let function = matches!(x, decls::Named::Fn(_));
+            Some((f.d.text(*name).to_string(), item_of(f, &at, function)))
         })
         .collect()
 }
@@ -598,7 +606,7 @@ impl<'s> Type<'s> {
         match self.shown() {
             ty::Ty::Struct(id, ..) => {
                 let s = Signatures::s(&self.front.d, *id);
-                Some(item_of(self.front, &item_start(&s.item)))
+                Some(item_of(self.front, &item_start(&s.item), false))
             }
             _ => None,
         }
@@ -621,11 +629,11 @@ impl<'s> Type<'s> {
         use cpl_next_decls::views::Signatures;
         let (f, ty) = (self.front, self.shown());
         let mut out = Vec::new();
-        let fn_item = |id| item_of(f, &Signatures::f(&f.d, id).span);
+        let fn_item = |id| item_of(f, &Signatures::f(&f.d, id).span, true);
         if let ty::Ty::Struct(id, ..) = ty {
             let s = Signatures::s(&f.d, *id);
             for ((name, _), at) in s.fields.iter().zip(&s.field_at) {
-                out.push((f.d.text(*name).to_string(), item_of(f, at)));
+                out.push((f.d.text(*name).to_string(), item_of(f, at, false)));
             }
             out.extend(
                 s.methods

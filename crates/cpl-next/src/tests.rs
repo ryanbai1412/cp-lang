@@ -995,15 +995,25 @@ fn a_session_answers_from_its_snapshot() {
 #[test]
 fn hover_and_definition_read_the_scope_and_signatures() {
     use crate::facade::{Session, Snapshot};
-    let src = "fn twice(n: Int) -> Int:\n    n * 2\n\nprint(twice(3))\n";
+    use cpl_contract::Typed;
+    let src = "/// Doubles `n`.\n///\n/// cost: O(1)\nfn twice(n: Int) -> Int:\n    n * 2\n\nprint(twice(3))\n";
     let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
     let call = src.rfind("twice").unwrap() as u32 + 2;
-    assert_eq!(s.hover("program.cp", call), Some("fn twice(n: Int) -> Int"));
+    let h = s.hover("program.cp", call).unwrap();
+    assert_eq!(h.text, "fn twice(n: Int) -> Int");
+    assert_eq!(&src[h.span.start as usize..h.span.end as usize], "twice");
+    assert!(
+        h.doc.as_deref().is_some_and(|d| d.contains("Doubles")),
+        "{:?}",
+        h.doc
+    );
+    assert_eq!(h.cost.as_deref(), Some("O(1)"));
+    assert_eq!((h.typed, h.signature), (Some(Typed::Fn), true));
     let d = s.definition("program.cp", call).unwrap();
     assert_eq!(d.path, "program.cp");
     assert_eq!(&src[d.span.start as usize..][..2], "fn");
     let local = src.find("n * 2").unwrap() as u32;
-    assert_eq!(s.hover("program.cp", local), None);
+    assert!(s.hover("program.cp", local).is_none());
     let print = s
         .definition("program.cp", src.find("print").unwrap() as u32)
         .unwrap();

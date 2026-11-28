@@ -246,6 +246,7 @@ dependencies = [
  "cpl-next-link",
  "cpl-next-lower",
  "cpl-next-own",
+ "cpl-next-syntax",
  "cpl-syntax",
  "cpl-wait",
  "mimalloc",

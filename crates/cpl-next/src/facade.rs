@@ -3,6 +3,7 @@
 //! once, on the first query that needs it, and never changes.
 
 pub use cpl_contract::{Definition, FileId, Text, World};
+use cpl_contract::{Hover, Typed};
 use cpl_next_decls::modules;
 use cpl_next_ir::build::Judge;
 use std::collections::HashMap;
@@ -303,14 +304,36 @@ impl Session {
     /// The item the name at byte `at` of `file` names, if it names one.
     fn item_at(&self, file: &str, at: u32) -> Option<&Item> {
         let (_, text, f) = self.file(file)?;
-        let name = word_at(text, at as usize)?;
+        let (_, name) = word_at(text, at as usize)?;
         let front = self.front(file)?;
         f.items.get_or_init(|| items(front)).get(name)
     }
 
-    /// How the item named at byte `at` of `file` is declared: its declaration's first line.
-    pub fn hover(&self, file: &str, at: u32) -> Option<&str> {
-        self.item_at(file, at).map(|i| i.head.as_str())
+    /// The item named at byte `offset` of `file`: its declaration's first line, its doc and
+    /// the cost the doc states.
+    pub fn hover(&self, file: &str, offset: u32) -> Option<Hover> {
+        let (_, text, _) = self.file(file)?;
+        let (start, name) = word_at(text, offset as usize)?;
+        let item = self.item_at(file, offset)?;
+        let typed = match item.function {
+            true => Some(Typed::Fn),
+            false => self.type_at(file, offset).map(|t| match t.ty {
+                cpl_next_ir::ty::Ty::Int => Typed::Int,
+                cpl_next_ir::ty::Ty::Fn(..) => Typed::Fn,
+                _ => Typed::Other,
+            }),
+        };
+        let cost = (item.doc.as_deref())
+            .and_then(|d| cpl_next_syntax::doc::Facts::parse(d).cost)
+            .map(|c| cpl_diag::plain::text(&c));
+        Some(Hover {
+            span: cpl_diag::Span::new(start as u32, (start + name.len()) as u32),
+            text: item.head.clone(),
+            doc: item.doc.clone(),
+            cost,
+            typed,
+            signature: item.function,
+        })
     }
 
     fn typed(&self, file: &str) -> Option<(&Front, &[TypedAt])> {
@@ -395,11 +418,12 @@ impl Session {
 }
 
 /// The identifier `at` is in, or ends at.
-fn word_at(text: &str, at: usize) -> Option<&str> {
+/// The name at byte `at`, and where it starts.
+fn word_at(text: &str, at: usize) -> Option<(usize, &str)> {
     let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
     let at = at.min(text.len());
     let start = text[..at].rfind(|c| !word(c)).map_or(0, |i| i + 1);
     let end = text[at..].find(|c| !word(c)).map_or(text.len(), |i| at + i);
     let w = &text[start..end];
-    (w.chars().next()?.is_ascii_alphabetic() || w.starts_with('_')).then_some(w)
+    (w.chars().next()?.is_ascii_alphabetic() || w.starts_with('_')).then_some((start, w))
 }
