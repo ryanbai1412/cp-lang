@@ -1217,3 +1217,17 @@ fn a_one_line_body_may_be_an_if_while_or_for() {
     assert!(got[0].contains("YieldStmt(yield"), "{}", got[0]);
     assert!(got[1].contains("Block(: ForStmt(for "), "{}", got[1]);
 }
+
+#[test]
+fn a_match_statement_is_an_expression_statement() {
+    let src = "match x:\n    3 => print(1)\n    _ => print(2)\nprint(3)\n";
+    let file = parse_stmts(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let stmts: Vec<ast::Stmt> = file.root.children().filter_map(ast::Stmt::cast).collect();
+    assert_eq!(stmts.len(), 2);
+    let ast::Stmt::Expr(s) = &stmts[0] else {
+        panic!("{}", shape(&file.root));
+    };
+    assert!(matches!(s.expr(), Some(ast::Expr::Match(_))));
+}

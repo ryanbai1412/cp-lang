@@ -59,7 +59,13 @@ impl Parser<'_> {
                     self.while_stmt()
                 }
             }
-            T::Match => self.match_expr(),
+            // A `match` written as a statement is an expression statement, so a block counts
+            // it among its statements and takes it as its value when it comes last.
+            T::Match => {
+                self.start(NodeKind::ExprStmt);
+                self.match_expr();
+                self.finish();
+            }
             T::Unchecked => self.headed(NodeKind::UncheckedStmt, |_| {}),
             T::Ident if self.word() == Some(Contextual::Repeat) && self.nth(1) != T::Eq => {
                 self.headed(NodeKind::RepeatStmt, |p| p.expr())
