@@ -28,7 +28,7 @@ pub use impls::{ImplIdx, Impls};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{
-    alias_type, body_type, literal_int, prim_type, static_axis, struct_args, BodyScope,
+    alias_type, body_type, literal_int, prim_type, range_type, static_axis, struct_args, BodyScope,
 };
 pub(crate) use tyconv::{by_arity, unnamed};
 

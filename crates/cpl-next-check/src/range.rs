@@ -11,9 +11,9 @@ impl Cx<'_> {
     /// in `[V].filled(0)`.
     pub(super) fn domain_member(
         &mut self,
-        base: &ast::Expr,
-        name: &ast::Name,
-        call: Option<&[ast::Arg]>,
+        base: &next::Expr,
+        name: Called,
+        call: Option<&[CallArg]>,
         span: Span,
         want: Option<&Ty>,
     ) -> Option<TExpr> {
@@ -33,44 +33,60 @@ impl Cx<'_> {
             }
             // `D.m` for a `@member(m)` struct, named as a value: the domain of them; `D.m(x)`
             // converts `x` to one (R04.2.5, R04.2.17).
-            if let Some(t) = self.member_type(&dty, &name.text) {
+            if let Some(t) = self.member_type(&dty, name.text) {
                 return match call {
                     None => Some(self.domain_value(t, span)),
-                    Some([a]) if a.name.is_none() => {
-                        Some(self.convert(t, &a.value, span, Origin::Convert))
-                    }
+                    Some(
+                        [CallArg {
+                            label: None,
+                            value: Some(v),
+                            ..
+                        }],
+                    ) => Some(self.convert(t, v, span, Origin::Convert)),
                     Some(_) => None,
                 };
             }
         }
         // `[e].f(args)`: a fn of the array type `[e]_` with no receiver, as in `[V].filled(0)`.
-        if let (ExprKind::List(xs), Some(args)) = (&base.kind, call) {
-            if let [index] = &xs[..] {
-                let elem = ast::Type {
-                    kind: TypeKind::Tuple(Vec::new()),
-                    span,
+        let (next::Expr::List(l), Some(args)) = (base, call) else {
+            return None;
+        };
+        let [index] = &l.elems().collect::<Vec<_>>()[..] else {
+            return None;
+        };
+        let array = self.d.sugar().array?;
+        let mut pre = Vec::new();
+        let axis = self.axis_of(index, span, &mut pre)?;
+        let m = self.d.member(&self.d.s(array).methods, name.text)?;
+        let given = vec![axis, self.new_ty()];
+        let f = self.fnref(m, given, Vec::new());
+        let call = self.call_fn(f, None, args, span, want);
+        Some(block(pre, call))
+    }
+    /// The axis `[e]` keys an array by: a domain, a constant range, or a domain of its own.
+    fn axis_of(&mut self, e: &next::Expr, span: Span, pre: &mut Vec<TStmt>) -> Option<Ty> {
+        if let Some(t) = self.type_path(e) {
+            return Some(t);
+        }
+        if let next::Expr::Range(re) = e {
+            if self.static_axis(re) {
+                let scoped = |n| self.owned_named(n);
+                let at = decls::BodyScope {
+                    sigs: self.d,
+                    scope: self.d,
+                    m: self.b.module,
+                    generics: &self.b.generics,
+                    doms: &self.b.doms,
+                    scoped: &scoped,
                 };
-                let t = ast::Type {
-                    kind: TypeKind::Array {
-                        index: vec![ast::Type::of_index(index)],
-                        elem: Box::new(elem),
-                    },
-                    span,
-                };
-                let mut pre = Vec::new();
-                if let Ty::Struct(d, ts, _) = self.body_ty(&t, span, &mut pre) {
-                    let given: Vec<Ty> = (ts.into_iter())
-                        .map(|a| if a == Ty::Unit { self.new_ty() } else { a })
-                        .collect();
-                    if let Some(m) = self.d.member(&self.d.s(d).methods, &name.text) {
-                        let f = self.fnref(m, given, Vec::new());
-                        let call = self.call_fn(f, None, args, span, want);
-                        return Some(block(pre, call));
-                    }
+                let (t, errs) = decls::range_type(&at, re);
+                for e in errs {
+                    self.err(span, e);
                 }
+                return Some(t);
             }
         }
-        None
+        self.value_axis(e, span, pre)
     }
     /// `D.count`, `D.nth(k)`, `D.at(x)` and `D.all`: the core's `Domain` declares them; each
     /// `@intrinsic` one is the domain operation it names (R04.2.8, R04.2.9).
@@ -612,7 +628,8 @@ impl Cx<'_> {
             let shown = self.show(&t);
             let code = cpl_diag::codes::TYPE_MISMATCH;
             let msg = format!("an open range's end is an `Int` or a domain value, not `{shown}`");
-            self.err(given.span, Msg::verdict(code, msg));
+            let at = self.at(given);
+            self.err(at, Msg::verdict(code, msg));
             return Err(Box::new(Self::error_node(span)));
         }
         let v = self.coerce(v, &Ty::Int);

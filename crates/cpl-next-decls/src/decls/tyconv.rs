@@ -816,6 +816,11 @@ pub fn body_type(
     at.run_at(Some(axes), |cx, errors| conv(cx, t, errors))
 }
 
+/// The range type `lo..hi` is when decls makes it (see [`static_axis`]), read in a body.
+pub fn range_type(at: &BodyScope, re: &next::RangeExpr) -> (Ty, Vec<Msg>) {
+    at.run(|cx, errors| conv_range(cx, re, errors))
+}
+
 /// Whether a range axis `[lo..hi]T` is keyed by its range type, which decls makes: both ends
 /// constant, or ending at a domain's count. Any other the checker names in a body.
 pub fn static_axis(

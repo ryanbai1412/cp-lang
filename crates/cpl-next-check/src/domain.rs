@@ -321,7 +321,7 @@ impl Cx<'_> {
         self.err(span, Unbuilt::DomainKind { kind });
         let sym = self.sym(name);
         self.b.doms.insert(sym, Ty::Error);
-        self.b.refused_names.insert(sym);
+        self.b.refused_names.insert(name.to_string());
     }
     /// `let (domain N, i) = e`: `e` is held whole, `N` names its fresh domain afresh, and each
     /// other pattern binds the field in its position (R02.5.5).
@@ -566,7 +566,7 @@ impl Cx<'_> {
             _ => {}
         }
     }
-    fn static_axis(&self, re: &next::RangeExpr) -> bool {
+    pub(super) fn static_axis(&self, re: &next::RangeExpr) -> bool {
         decls::static_axis(
             self.d,
             self.d,
@@ -579,28 +579,10 @@ impl Cx<'_> {
     /// An array axis over a range with a value end, or over a count `n`: a domain of its own.
     pub(super) fn array_axis(&mut self, ix: &next::Type, out: &mut Vec<TStmt>) -> Option<Ty> {
         let span = self.at(ix);
-        let zero = TExpr {
-            kind: TK::Int(0),
-            ty: Ty::Int,
-            span,
-        };
-        let (lo, hi, inclusive) = match ix {
+        match ix {
             next::Type::Range(r) => match r.expr()? {
-                next::Expr::Range(re) => {
-                    if self.static_axis(&re) {
-                        return None;
-                    }
-                    let (lo, hi) = (re.lo()?, re.hi()?);
-                    // Its cells count from a number; one from a value is a domain (R04.3.4).
-                    if decls::literal_int(&lo).is_none() {
-                        let msg = "an array over a range that starts at a value: name it as a \
-                                   domain, `domain D = lo..hi`, then `[D]T`";
-                        self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, msg));
-                    }
-                    let lo = self.expr_as_typed(&lo, None);
-                    (lo, self.expr_as_typed(&hi, None), re.is_inclusive())
-                }
-                e => (zero, self.expr_as_typed(&e, None), false),
+                next::Expr::Range(re) if self.static_axis(&re) => None,
+                e => self.value_axis(&e, span, out),
             },
             next::Type::Path(p) => {
                 let segs: Vec<SyntaxToken> = p.segments().collect();
@@ -614,19 +596,62 @@ impl Cx<'_> {
                 {
                     return None;
                 }
-                (zero, self.name(n, span), false)
+                let zero = TExpr {
+                    kind: TK::Int(0),
+                    ty: Ty::Int,
+                    span,
+                };
+                let count = self.name(n, span);
+                Some(self.axis_domain(zero, count, false, span, out))
             }
-            _ => return None,
+            _ => None,
+        }
+    }
+    /// An axis `[lo..hi]` with a value end, or a count `[n]`: a domain of its own.
+    pub(super) fn value_axis(
+        &mut self,
+        e: &next::Expr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> Option<Ty> {
+        let (lo, hi, inclusive) = match e {
+            next::Expr::Range(re) => {
+                let (lo, hi) = (re.lo()?, re.hi()?);
+                // Its cells count from a number; one from a value is a domain (R04.3.4).
+                if decls::literal_int(&lo).is_none() {
+                    let msg = "an array over a range that starts at a value: name it as a \
+                               domain, `domain D = lo..hi`, then `[D]T`";
+                    self.err(span, Msg::verdict(cpl_diag::codes::TYPE_MISMATCH, msg));
+                }
+                let lo = self.expr_as_typed(&lo, None);
+                (lo, self.expr_as_typed(&hi, None), re.is_inclusive())
+            }
+            e => {
+                let zero = TExpr {
+                    kind: TK::Int(0),
+                    ty: Ty::Int,
+                    span,
+                };
+                (zero, self.expr_as_typed(e, None), false)
+            }
         };
+        Some(self.axis_domain(lo, hi, inclusive, span, out))
+    }
+    fn axis_domain(
+        &mut self,
+        lo: TExpr,
+        hi: TExpr,
+        inclusive: bool,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> Ty {
         let (lo, hi) = match (&lo.kind, inclusive) {
             (TK::Int(0), false) if self.int_range(&hi.ty) => self.key_run(hi, out),
             _ => (lo, hi),
         };
         let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
         let name = format!("$range{}", self.domains.len());
-        Some(Ty::Dom(
-            self.declare_domain(&name, lo, end, within, span, out),
-        ))
+        Ty::Dom(self.declare_domain(&name, lo, end, within, span, out))
     }
     /// A range type `lo..hi` with value ends: each end held once in a slot, the type their range.
     fn value_range(&mut self, re: &next::RangeExpr, out: &mut Vec<TStmt>) -> Ty {
