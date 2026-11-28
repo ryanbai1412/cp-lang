@@ -1,4 +1,5 @@
 // expect: ok, output "5 6 7 8 9\n6 5 9 8 7\n9 5 6 7 8"
+// rule: 05.1.1
 // rule: 05.6.3
 // A `lends mut` slice is a place like any other: a generic fn that changes its `mut` argument, or a method that changes its receiver, writes through it into the source.
 domain V = 0..5

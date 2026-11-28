@@ -173,7 +173,7 @@ for k in 0..n:
         for x in adj[u.ord]:
             if comp[u] > comp[V(x)]: bad = "op {k}: scc order {u}"
     for c in C:
-        let want = [(to: comp[V(b)]) for u in V if comp[u] == c for b in adj[u.ord] if comp[V(b)] != c]
+        let want = [(to: comp[V(b)]) for u in V if comp[u] == c, b in adj[u.ord] if comp[V(b)] != c]
         if h2[c].len != want.len: bad = "op {k}: condense"
     let rs = reach_sets(g)
     for u in V:
@@ -215,8 +215,8 @@ for k in 0..n:
             for (a, b) in pairs:
                 lp[b] = max(lp[b], lp[a] + 1)
         if dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) != Some([V] v => lp[v.ord]): bad = "op {k}: dag_fold"
-        if count_paths::<Int>(g, from: [V(s)]) != Some([V] v => cnt[v.ord]): bad = "op {k}: count_paths"
-    elif dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) != None or count_paths::<Int>(g, from: [V(s)]) != None: bad = "op {k}: dag fold on a cycle"
+        if count_paths<Int>(g, from: [V(s)]) != Some([V] v => cnt[v.ord]): bad = "op {k}: count_paths"
+    elif dag_fold(g, init: v => 0, step: (x, a) => x + 1, op: max) != None or count_paths<Int>(g, from: [V(s)]) != None: bad = "op {k}: dag fold on a cycle"
     // dominators: d dominates v when cutting d makes v unreachable from s
     let rr = [[if x == s: true else: (reach_of(adj, d)[s][x]) for x in 0..6] for d in 0..7]
     let reach_s = [x == s or r[s][x] for x in 0..6]

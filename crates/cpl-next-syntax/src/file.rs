@@ -1,5 +1,6 @@
 //! A file's tree: its items, the trivia between them and its end.
 
+use crate::ast::{self, AstNode};
 use crate::items::split_items;
 use crate::lexer::lex;
 use crate::parser::parse_item;
@@ -24,7 +25,11 @@ pub enum NodeKind {
     Name,
     /// A number, string, raw string or char, `true` or `false`.
     Literal,
+    /// `{x}` or `{x:.2f}` in a string `Literal`: the value and its format.
+    Interp,
     /// A name used as a value: `x`, `self`.
+    /// `_` where a value goes: an end of `_..=_`.
+    HoleExpr,
     NameRef,
     /// `(e)`.
     ParenExpr,
@@ -50,6 +55,8 @@ pub enum NodeKind {
     RecordExpr,
     /// `name: e`, or `name:` for the variable `name`.
     RecordField,
+    /// `..e` or `..e without (u, v)` in a record expression.
+    RecordRest,
     /// `Name<T>`: a name with type arguments, as a value.
     GenericExpr,
     /// `+` where a value goes: the fn `(a, b) => a + b`.
@@ -109,10 +116,14 @@ pub enum NodeKind {
     PatArgs,
     /// `(p, q)`.
     TuplePat,
+    /// `(p)`: a pattern in parentheses, one element and no comma.
+    ParenPat,
     /// `(x: a, y)`: a record's fields, by name.
     RecordPat,
-    /// `x: a`, or `y` for `y: y`.
+    /// `x: a`, or `y:` for `y: y`.
     RecordPatField,
+    /// `..` in `(u:, ..)`: the fields a record pattern leaves out.
+    RecordPatRest,
     /// `1`, `-1`, `"s"`.
     LiteralPat,
     /// `p | q`.
@@ -151,6 +162,8 @@ pub enum NodeKind {
     /// `with ctx(..): ...`.
     WithStmt,
     UncheckedStmt,
+    /// `@trusted: ...` (R09.5.4).
+    TrustedStmt,
     /// `repeat k: ...`.
     RepeatStmt,
     /// `Name`, `a.B`, `Vec<Int>`.
@@ -183,6 +196,10 @@ pub enum NodeKind {
     RangeType,
     /// `1 | 2 | 3`, `"a" | "b"`.
     LiteralType,
+    /// `_` as a type: the checker infers it.
+    InferType,
+    /// `type_of(f)`, `type_of(+)`: the type of a fn or an operator.
+    TypeOfType,
     /// `@!name(args)` on its own line.
     Directive,
     /// `@name(args)` before an item; part of that item.
@@ -250,6 +267,17 @@ impl SyntaxFile {
     /// The file's items, in order.
     pub fn items(&self) -> impl Iterator<Item = SyntaxNode> + '_ {
         self.root.children().filter(|n| n.kind() == NodeKind::Item)
+    }
+
+    /// The module's decorators, such as `@role(prelude)` (R11.6): those at
+    /// the file's top, above its first `use`. A `use` takes no decorator of
+    /// its own, so the ones it holds are the module's.
+    pub fn decorators(&self) -> Vec<ast::Decorator> {
+        let first = self.items().next().and_then(ast::Item::cast);
+        match first.and_then(|i| i.decl()) {
+            Some(ast::Decl::Use(u)) => u.decorators().collect(),
+            _ => Vec::new(),
+        }
     }
 }
 

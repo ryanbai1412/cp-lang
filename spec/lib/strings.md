@@ -502,10 +502,10 @@ domain Letter = 'a'..='z'
 fn to_letters(s: Str) -> List<Letter> = [Letter(c.lower) for c in s]
 
 let (n, m): (Int, Int) = read()
-let words = [to_letters(read::<Str>()) for _ in 0..n]
+let words = [to_letters(read<Str>()) for _ in 0..n]
 let ac = AhoCorasick<Letter>(words)
 repeat m:
-    let text = to_letters(read::<Str>())
+    let text = to_letters(read<Str>())
     print(count(c > 0 for c in ac.counts(text)))
 ```
 

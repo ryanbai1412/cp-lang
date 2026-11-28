@@ -7,7 +7,7 @@ use crate::ast::{
     BinOp, CmpOp, Cond, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, TypeKind,
 };
 use crate::ParsedItem;
-use crate::{Token, TokenKind};
+use crate::{arg_labels, Token, TokenKind};
 use cpl_diag::{msgs, Diagnostic, Span};
 use std::fmt::Display;
 
@@ -242,7 +242,7 @@ fn declared_on(
         };
         let names = |toks: &[(TokenKind, String)]| -> Vec<String> {
             let kinds: Vec<TokenKind> = toks.iter().map(|t| t.0).collect();
-            (toks.iter().zip(labels(&kinds)))
+            (toks.iter().zip(arg_labels(&kinds)))
                 .filter(|((k, t), label)| is_name(*k, t) && !label)
                 .map(|((_, t), _)| t.clone())
                 .collect()
@@ -486,32 +486,6 @@ pub fn is_name(kind: TokenKind, text: &str) -> bool {
     kind == TokenKind::Ident || (kind == TokenKind::SelfKw && text == "self")
 }
 
-/// Per token, whether it is a named argument's label (`from` in
-/// `f(from: x)`): it names the parameter, so it is never a hole. A `fn`'s
-/// own parameters (`fn go(u: Int)`) are names, not labels.
-pub fn labels(kinds: &[TokenKind]) -> Vec<bool> {
-    use TokenKind as K;
-    let mut open = Vec::new();
-    (0..kinds.len())
-        .map(|i| {
-            let label = kinds[i] == K::Ident
-                && open.last() == Some(&Some(K::LParen))
-                && kinds.get(i + 1) == Some(&K::Colon)
-                && matches!(kinds[i - 1], K::LParen | K::Comma);
-            let params = i >= 2 && kinds[i - 1] == K::Ident && kinds[i - 2] == K::Fn;
-            match kinds[i] {
-                K::LParen if params => open.push(None),
-                K::LParen | K::LBracket | K::LBrace => open.push(Some(kinds[i])),
-                K::RParen | K::RBracket | K::RBrace => {
-                    open.pop();
-                }
-                _ => {}
-            }
-            label
-        })
-        .collect()
-}
-
 /// A pattern's tokens with their text.
 pub type Tokens = Vec<(TokenKind, String)>;
 
@@ -610,7 +584,7 @@ mod tests {
         let src = "fn go(u: Int):\n    f(from: u, u)";
         let toks = crate::lex(src).tokens;
         let kinds: Vec<_> = toks.iter().map(|t| t.kind).collect();
-        let labelled: Vec<&str> = (toks.iter().zip(super::labels(&kinds)))
+        let labelled: Vec<&str> = (toks.iter().zip(super::arg_labels(&kinds)))
             .filter(|(_, l)| *l)
             .map(|(t, _)| &src[t.span.start as usize..t.span.end as usize])
             .collect();

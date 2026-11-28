@@ -1,4 +1,5 @@
 // expect: ok, output "1 1 1 1 1 1 1\n1 1 0"
+// rule: 06.4.14
 // rule: std.derive.hash_fields
 // `Hash` is `@structural` in std: a tuple, struct, optional, position, array or
 // record has it when each part does, and a scalar through its own std impl, as

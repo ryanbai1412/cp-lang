@@ -47,7 +47,7 @@ for k in 0..n:
     let owner = [x for x in V if cd.depth(x) == dc - 1 and reach(adj, x, y => cd.depth(y) >= dc).0.contains(c)]
     let v = V(rng.int(0, 10))
     let anc = [(c: x, dist: reach(adj, x, y => cd.depth(y) >= cd.depth(x)).1[v]) for x in V if reach(adj, x, y => cd.depth(y) >= cd.depth(x)).0.contains(v)]
-    let sorted_anc = [e for dd in (0..12).rev for e in anc if cd.depth(e.c) == dd]
+    let sorted_anc = [e for dd in (0..12).rev, e in anc if cd.depth(e.c) == dd]
     if cd.depth(cd.root) != 0 or cd.parent(cd.root) != None: bad = "op {k}: root"
     elif got != want: bad = "op {k}: piece {c}"
     elif not halves: bad = "op {k}: {c} is no centroid of its piece"

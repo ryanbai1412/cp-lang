@@ -1748,39 +1748,7 @@ fn shift_signed(mut diag: Diagnostic, delta: i64) -> Diagnostic {
     diag
 }
 
-/// Processes backslash escapes and doubled braces in string text.
-pub(crate) fn unescape(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        match c {
-            '\\' => match chars.next() {
-                Some('n') => out.push('\n'),
-                Some('t') => out.push('\t'),
-                Some('r') => out.push('\r'),
-                Some('0') => out.push('\0'),
-                Some('x') => {
-                    let hex: String = chars.clone().take(2).collect();
-                    match u8::from_str_radix(&hex, 16) {
-                        Ok(b) if hex.len() == 2 => {
-                            chars.nth(1);
-                            out.push(char::from(b));
-                        }
-                        _ => out.push('x'),
-                    }
-                }
-                Some(other) => out.push(other),
-                None => out.push('\\'),
-            },
-            '{' | '}' if chars.peek() == Some(&c) => {
-                chars.next();
-                out.push(c);
-            }
-            _ => out.push(c),
-        }
-    }
-    out
-}
+pub(crate) use crate::literal::unescape;
 
 pub(super) const BINARY_OPS: &[TokenKind] = &[
     T::Plus,

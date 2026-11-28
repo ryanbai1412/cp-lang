@@ -18,6 +18,15 @@ impl Parser<'_> {
         }
     }
 
+    /// `@trusted:`, a statement and not a decorator (R09.5.4).
+    pub(super) fn trusted_ahead(&self) -> bool {
+        self.at(T::At)
+            && self.glued(1)
+            && self.nth(1) == T::Ident
+            && contextual(self.nth_text(1)) == Some(Contextual::Trusted)
+            && self.nth(2) == T::Colon
+    }
+
     pub(super) fn word(&self) -> Option<Contextual> {
         if self.at(T::Ident) {
             contextual(self.text())
@@ -30,6 +39,15 @@ impl Parser<'_> {
         match self.peek() {
             T::Newline => self.bump(),
             T::Indent => self.stray_indent(|p| p.stmts_until(T::Dedent)),
+            // Kept whole so that decls says where a directive belongs.
+            T::At if self.nth(1) == T::Bang && self.glued(1) => self.directive(),
+            T::At if self.trusted_ahead() => {
+                self.start(NodeKind::TrustedStmt);
+                self.bump();
+                self.bump();
+                self.block();
+                self.finish();
+            }
             _ if self.item_ahead() => self.item(),
             T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
             T::While => self.while_stmt(),
@@ -45,6 +63,9 @@ impl Parser<'_> {
             T::Unchecked => self.headed(NodeKind::UncheckedStmt, |_| {}),
             T::Ident if self.word() == Some(Contextual::Repeat) && self.nth(1) != T::Eq => {
                 self.headed(NodeKind::RepeatStmt, |p| p.expr())
+            }
+            T::Ident if self.word() == Some(Contextual::Guard) && self.nth(1) == T::Let => {
+                self.guard_let()
             }
             T::Ident if self.word() == Some(Contextual::Loop) && self.nth(1) == T::Colon => {
                 let span = self.span();
@@ -138,13 +159,16 @@ impl Parser<'_> {
 
     pub(super) fn simple(&mut self) {
         match self.peek() {
-            T::Let | T::Var => self.let_stmt(),
+            T::Let | T::Var => {
+                let at = self.checkpoint();
+                self.let_stmt(at);
+            }
             T::Const => {
                 let at = self.checkpoint();
                 self.const_decl(at);
             }
             T::Return => self.keyword_stmt(NodeKind::ReturnStmt, true),
-            T::Yield => self.keyword_stmt(NodeKind::YieldStmt, true),
+            T::Yield => self.yield_stmt(),
             T::Break => self.keyword_stmt(NodeKind::BreakStmt, false),
             T::Continue => self.keyword_stmt(NodeKind::ContinueStmt, false),
             T::Ident
@@ -183,11 +207,30 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn let_stmt(&mut self) {
+    /// `yield x`, or `yield from xs` to yield each value of `xs`; `from`
+    /// followed by `.`, `(` or `[` is a value named `from`.
+    fn yield_stmt(&mut self) {
+        self.start(NodeKind::YieldStmt);
+        self.bump();
+        if self.word() == Some(Contextual::From)
+            && !matches!(
+                self.nth(1),
+                T::Newline | T::Eof | T::Dedent | T::Semi | T::Dot | T::LParen | T::LBracket
+            )
+        {
+            self.bump();
+        }
+        if !matches!(self.peek(), T::Newline | T::Eof | T::Dedent | T::Semi) {
+            self.expr();
+        }
+        self.finish();
+    }
+
+    pub(super) fn let_stmt(&mut self, at: Checkpoint) {
         if self.at(T::Let) && self.nth(1) == T::LParen && self.nth(2) == T::Domain {
             return self.domain_let();
         }
-        self.start(NodeKind::LetStmt);
+        self.start_at(at, NodeKind::LetStmt);
         self.bump();
         self.pattern();
         while self.eat(T::Comma) {
@@ -262,17 +305,28 @@ impl Parser<'_> {
     pub(super) fn if_clauses(&mut self, node: NodeKind, body: fn(&mut Self)) {
         self.start(node);
         self.bump();
+        self.eat(T::Const);
         self.cond();
         body(self);
+        // A value's `elif`/`else` may sit on deeper lines below it (R01.2.4):
+        // the parser reads that layout, so the shared lexer stays as the
+        // frozen `cpl` reads it.
+        let mut indented = false;
         loop {
-            let next = match (self.peek(), self.nth(1)) {
-                (T::Elif | T::Else, _) => 0,
-                (T::Newline, T::Elif | T::Else) if node == NodeKind::IfStmt => 1,
+            let next = match (self.peek(), self.nth(1), self.nth(2)) {
+                (T::Elif | T::Else, _, _) => 0,
+                (T::Newline, T::Elif | T::Else, _) => 1,
+                (T::Newline, T::Indent, T::Elif | T::Else)
+                    if node == NodeKind::IfExpr && !indented =>
+                {
+                    2
+                }
                 _ => break,
             };
-            if next == 1 {
+            for _ in 0..next {
                 self.bump();
             }
+            indented |= next == 2;
             let elif = self.at(T::Elif);
             self.start(if elif {
                 NodeKind::ElifClause
@@ -288,6 +342,12 @@ impl Parser<'_> {
             if !elif {
                 break;
             }
+        }
+        if indented {
+            if self.at(T::Newline) && self.nth(1) == T::Dedent {
+                self.bump();
+            }
+            self.want(T::Dedent, "the end of the indented `elif`/`else` lines");
         }
         self.finish();
     }
@@ -333,30 +393,105 @@ impl Parser<'_> {
 
     pub(super) fn cond(&mut self) {
         self.start(NodeKind::Condition);
-        loop {
-            if self.at(T::Let) {
-                self.start(NodeKind::LetCond);
-                self.bump();
-                self.pattern();
-                if self.want(T::Eq, "`=` and the value to match") {
-                    self.expr();
-                }
-                self.finish();
-            } else if self.bound_cond_ahead() {
-                self.start(NodeKind::BoundCond);
-                self.start(NodeKind::NameRef);
-                self.bump();
-                self.finish();
-                self.bump();
-                self.bound();
-                self.finish();
-            } else {
-                self.expr();
-            }
-            if !self.eat(T::Comma) {
-                break;
-            }
+        self.cond_part();
+        while self.eat(T::Comma) {
+            self.cond_part();
         }
+        self.finish();
+    }
+
+    /// A clause's `if` filter (01:356): a condition, where a `,`
+    /// before `p in e` starts the next clause instead.
+    pub(super) fn filter(&mut self) {
+        self.start(NodeKind::Condition);
+        self.cond_part();
+        while self.at(T::Comma) && !self.clause_after_comma() {
+            self.bump();
+            self.cond_part();
+        }
+        self.finish();
+    }
+
+    /// `, x in e` or `, (a, b) in e` at the cursor.
+    pub(super) fn clause_after_comma(&self) -> bool {
+        match self.nth(1) {
+            T::Ident => self.nth(2) == T::In,
+            T::LParen => {
+                let (mut depth, mut n) = (0usize, 1);
+                loop {
+                    match self.nth(n) {
+                        T::LParen => depth += 1,
+                        T::RParen => {
+                            depth -= 1;
+                            if depth == 0 {
+                                return self.nth(n + 1) == T::In;
+                            }
+                        }
+                        T::Eof | T::Newline => return false,
+                        _ => {}
+                    }
+                    n += 1;
+                }
+            }
+            _ => false,
+        }
+    }
+
+    /// One part of a condition: `let p = e`, a bound test, or a `Bool`.
+    pub(super) fn cond_part(&mut self) {
+        if self.at(T::Let) {
+            self.start(NodeKind::LetCond);
+            self.bump();
+            self.pattern();
+            if self.want(T::Eq, "`=` and the value to match") {
+                let outer = std::mem::replace(&mut self.no_and, true);
+                self.expr();
+                self.no_and = outer;
+            }
+            self.finish();
+            if self.at(T::And) {
+                self.and_after_let();
+                self.cond_part();
+            }
+        } else if self.bound_cond_ahead() {
+            self.start(NodeKind::BoundCond);
+            self.start(NodeKind::PathType);
+            self.bump();
+            self.finish();
+            self.bump();
+            self.bound();
+            self.finish();
+        } else {
+            self.expr();
+        }
+    }
+
+    /// `guard let p = e else: leave`: one spelling, the let-else (R01.6.2);
+    /// the fix deletes `guard`.
+    fn guard_let(&mut self) {
+        let word = self.span();
+        let to_let = Span::new(word.start, self.nth_span(1).start);
+        let err = msgs::syntax::GUARD_LET.error(word, &[]);
+        self.diagnostics
+            .push(err.with_fix("delete `guard`", to_let, ""));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+        self.stmt();
+    }
+
+    /// `if let p = e and c:`: a `let` joins what follows with `,` (01:505);
+    /// the fix writes `,`.
+    fn and_after_let(&mut self) {
+        let and = self.span();
+        let prev = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(and.start, |t| t.span.end);
+        let err = msgs::syntax::AND_LET.error(and, &[]);
+        let fix = Span::new(prev, and.end);
+        self.diagnostics.push(err.with_fix("write `,`", fix, ","));
+        self.start(NodeKind::Error);
+        self.bump();
         self.finish();
     }
 
@@ -385,7 +520,7 @@ impl Parser<'_> {
                 self.expr();
             }
             if self.eat(T::If) {
-                self.expr_at(crate::ops::Level::Expr);
+                self.filter();
             }
             self.finish();
             if !self.eat(T::Comma) {
@@ -478,17 +613,54 @@ impl Parser<'_> {
     }
 
     /// An arm's or a lambda's body: an expression or an assignment on the
-    /// line, or an indented run of statements.
+    /// line, a statement that leaves (`break`, `continue`, `return`,
+    /// `assert`, typed Never), or an indented run of statements.
     pub(super) fn arm_body(&mut self) {
-        if self.at(T::Newline) && self.nth(1) == T::Indent {
-            self.start(NodeKind::Block);
-            self.bump();
-            self.bump();
-            self.stmts_until(T::Dedent);
-            self.want(T::Dedent, "the end of the block");
-            self.finish();
-        } else {
-            self.expr_or_assign(false);
+        if self.word() == Some(Contextual::Do) && self.nth(1) == T::Colon {
+            return self.do_block();
         }
+        if self.indented_block() {
+            return;
+        }
+        match self.peek() {
+            T::Return | T::Break | T::Continue | T::Assert => self.simple(),
+            _ => self.expr_or_assign(false),
+        }
+    }
+
+    /// `=> do: ...`: the block follows `=>` itself (decision 4.5).
+    fn do_block(&mut self) {
+        let word = self.span();
+        let prev = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(word.start, |t| t.span.end);
+        let err = msgs::syntax::DO_BLOCK.error(word, &[]);
+        let fix = Span::new(prev, self.nth_span(1).end);
+        self.diagnostics.push(err.with_fix("delete `do:`", fix, ""));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+        self.block();
+    }
+
+    /// An `if` expression's branch: a value on the line or an indented
+    /// block, as an arm's (decision 4.5).
+    pub(super) fn value_body(&mut self) {
+        if !self.indented_block() {
+            self.expr();
+        }
+    }
+
+    fn indented_block(&mut self) -> bool {
+        if !(self.at(T::Newline) && self.nth(1) == T::Indent) {
+            return false;
+        }
+        self.start(NodeKind::Block);
+        self.bump();
+        self.bump();
+        self.stmts_until(T::Dedent);
+        self.want(T::Dedent, "the end of the block");
+        self.finish();
+        true
     }
 }

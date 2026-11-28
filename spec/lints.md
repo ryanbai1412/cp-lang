@@ -11,7 +11,6 @@ those, then run `just gen`. `cpl explain <code>` prints a lint's page.
 | L0201 | var_never_reassigned | a `var` that is never changed |
 | L0202 | unread_field | a struct field that is never read |
 | L0203 | shadows_top_level | a local name that hides a top-level `let` |
-| L0204 | turbofish_type_args | `f::<T>(...)`: canonical generic call spelling is `f<T>(...)` |
 | L0207 | is_in_cond_header | `if`/`elif`/`while` headers bind with `let p = x`, not `x is p` |
 | L0208 | redundant_prelude_import | `use std.tree.{Rooted}` imports what the prelude gives every program |
 | L0209 | redundant_arg_name | `f(moves: moves)` or `(val: val)` can be punned as `f(moves:)` / `(val:)` |

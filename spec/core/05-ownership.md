@@ -58,7 +58,7 @@ Anything the compiler trusts without proof is an `@` attribute from this
 closed list, so `grep -E '@(cache|law|trusted|cpp)'` finds all of it, and
 adding to the list takes a decision entry. Codegen never optimizes on a
 promise (no `__restrict` from a `disjoint` law), which is what keeps a
-broken promise from becoming undefined behaviour.
+broken promise from becoming undefined behaviour. (R05.1.1)
 
 ### The picture
 
@@ -131,8 +131,9 @@ callee reads the caller's value. `mut x: T` lends the caller's place, and
 the caller marks the argument `mut`. `var x: T` owns its argument, which
 moves in at the call as with any binding (R2), so the caller marks nothing
 and can't use a moved heap value afterwards; it is mutable in the body.
-The modes don't combine, and there is no other: no `&mut T` type and no
-`lazy` parameter. (R05.2.3)
+The modes don't combine, and there is no other: no `&mut T` type, no
+`lazy` parameter and no `yields` parameter (only a fn's result yields).
+(R05.2.3)
 
 ```python
 fn split(var xs: List<Int>) -> Int:   // xs is the fn's own

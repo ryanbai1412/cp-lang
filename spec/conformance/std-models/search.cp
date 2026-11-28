@@ -85,11 +85,11 @@ for k in 0..n:
     let got = dinkelbach(0.0, solve: l => ch[(0..ch.len).max(by: i => ch[i].num - l * ch[i].den)!])
     if not near(got, best): bad = "op {k}: dinkelbach {got} want {best}"
     let groups = [(l..l + rng.int(0, len - l)) for l in [rng.int(0, len) for _ in 0..rng.int(0, 3)]]
-    let vals = [f[i] for g in groups for i in g].sorted(by: x => desc(x))
+    let vals = [f[i] for g in groups, i in g].sorted(by: x => desc(x))
     if split_best(groups, range: g => g, best: (_, r) => r.map(i => (f[i], i)).max()!).collect() != vals: bad = "op {k}: split_best"
     let fc = [rng.int(-9, 9) for _ in cs]
     let cg: List<Range<C.cuts>> = [cs[l]..cs[l + rng.int(0, cs.len - 1 - l)] for l in [rng.int(0, cs.len - 1) for _ in 0..rng.int(0, 3)]]
-    let cv = [fc[x.ord] for g in cg for x in g].sorted(by: x => desc(x))
+    let cv = [fc[x.ord] for g in cg, x in g].sorted(by: x => desc(x))
     if split_best<Range<C.cuts>, C.cuts, Int>(cg, range: g => g, best: (_, r) => r.map(x => (fc[x.ord], x)).max()!).collect() != cv:
         bad = "op {k}: split_best on a cuts domain"
     if bad != "": break

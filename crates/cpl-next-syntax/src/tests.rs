@@ -235,6 +235,20 @@ fn texts(tokens: impl Iterator<Item = crate::tree::SyntaxToken>) -> Vec<String> 
 }
 
 #[test]
+fn a_leading_semicolon_makes_every_param_named_only() {
+    let [ast::Decl::Fn(f)] = &decls("fn g(; from: Str, base: Int = 10) -> Int: 0\n")[..] else {
+        panic!()
+    };
+    let p: Vec<_> = f.params().unwrap().params().collect();
+    let names: Vec<_> = p
+        .iter()
+        .map(|p| p.name().unwrap().text().to_string())
+        .collect();
+    assert_eq!(names, ["from", "base"]);
+    assert!(p.iter().all(|p| p.is_named_only()));
+}
+
+#[test]
 fn a_fn_signature_reads_through_its_views() {
     let src = "@inline\npub fn gcd<T: Eq + Ord, const N: Int = 3>(a: T, by step: T; mut k = 1, var xs: List<T>, ..rest: Int) -> lends(a) mut T uses io where T: Copy = a\n";
     let [ast::Decl::Fn(f)] = &decls(src)[..] else {
@@ -348,7 +362,10 @@ fn types_read_through_their_views() {
     };
     let muts: Vec<_> = args.elems().into_iter().map(|(m, _)| m).collect();
     assert_eq!(muts, [true, false]);
-    assert!(matches!(f.ret(), Some(ast::Type::Path(_))));
+    assert!(matches!(
+        f.ret().and_then(|r| r.ty()),
+        Some(ast::Type::Path(_))
+    ));
     let ast::Type::Range(r) = &tys[1] else {
         panic!()
     };
@@ -373,6 +390,204 @@ fn types_read_through_their_views() {
     };
     let rest: Vec<_> = u.fields().map(|f| f.is_rest()).collect();
     assert_eq!(rest, [false, true]);
+}
+
+#[test]
+fn a_row_without_and_an_inferred_type_read() {
+    use crate::ast::{self, AstNode};
+    let src =
+        "type A<R> = (to: Int, ..R without (u, v))\nfn f(x: List<_>) -> (..R without (q)) = x\nimpl Read for _..=_:\n    fn read() = 1\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let rests: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::RecordTypeField::cast)
+        .filter(|f| f.is_rest())
+        .collect();
+    let read = |f: &ast::RecordTypeField| {
+        let removed: Vec<_> = f.removed().iter().map(|t| t.text().to_string()).collect();
+        (
+            f.name().is_none(),
+            f.ty().unwrap().syntax().text().trim().to_string(),
+            removed,
+        )
+    };
+    assert_eq!(
+        read(&rests[0]),
+        (
+            true,
+            "R".to_string(),
+            vec!["u".to_string(), "v".to_string()]
+        )
+    );
+    assert_eq!(
+        read(&rests[1]),
+        (true, "R".to_string(), vec!["q".to_string()])
+    );
+    let infers = file
+        .root
+        .descendants()
+        .filter_map(ast::Type::cast)
+        .filter(|t| matches!(t, ast::Type::Infer(_)));
+    assert_eq!(infers.count(), 1);
+}
+
+#[test]
+fn type_of_and_a_domain_binder_read() {
+    use crate::ast::{self, AstNode};
+    let src = "type F = type_of(+)\ntype G = type_of(max)\nfn f() -> (domain P, [P]Int) = todo\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let args: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::TypeOfType::cast)
+        .map(|t| t.arg().unwrap())
+        .collect();
+    assert!(
+        matches!(args[..], [ast::Expr::OpValue(_), ast::Expr::Name(_)]),
+        "{args:?}"
+    );
+    let binder = file
+        .root
+        .descendants()
+        .find_map(ast::DomainBinder::cast)
+        .unwrap();
+    assert_eq!(binder.name().unwrap().text(), "P");
+}
+
+#[test]
+fn struct_and_impl_members_beyond_fns_and_fields_read() {
+    use crate::ast::{self, AstNode};
+    let src = "struct M<T>(id: T):\n    const zero = M(0)\n    domain Idx = 0..3\n    law ident(a: T) = a == a\n    x: Int\nimpl Index for P:\n    let count = 4\n    pub const n = 2\n    fn f() = 1\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let ms: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::Members::cast)
+        .collect();
+    let count = |m: &ast::Members| {
+        (
+            m.consts().count(),
+            m.domains().count(),
+            m.laws().count(),
+            m.fields().count(),
+            m.lets().count(),
+            m.fns().count(),
+        )
+    };
+    assert_eq!(count(&ms[0]), (1, 1, 1, 1, 0, 0));
+    assert_eq!(count(&ms[1]), (1, 0, 0, 0, 1, 1));
+}
+
+#[test]
+fn an_optional_mut_a_yielding_fn_type_and_a_record_binder_read() {
+    use crate::ast::{self, AstNode};
+    let src = "fn f(seen: ?mut [V]Bool, next: S -> yields S) -> (domain C, comp: [V]C) = x\nfn g(p: (domain P, [P]Int)) = p\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let opt = file
+        .root
+        .descendants()
+        .find_map(ast::OptionalType::cast)
+        .unwrap();
+    assert!(opt.is_mut());
+    let fnty = file.root.descendants().find_map(ast::FnType::cast).unwrap();
+    let ret = fnty.ret().unwrap();
+    assert!(ret.is_yields());
+    assert_eq!(ret.ty().unwrap().syntax().text().trim(), "S");
+    let rec = file
+        .root
+        .descendants()
+        .find_map(ast::RecordType::cast)
+        .unwrap();
+    let first = rec
+        .syntax()
+        .children()
+        .find_map(ast::RecordTypeField::cast)
+        .unwrap();
+    assert!(first.name().is_none() && !first.is_rest());
+    assert!(matches!(first.ty(), Some(ast::Type::DomainBinder(_))));
+    assert_eq!(
+        file.root
+            .descendants()
+            .filter_map(ast::TupleType::cast)
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn an_if_value_takes_blocks_and_an_arm_may_leave() {
+    use crate::ast::{self, AstNode};
+    let src = "fn f(s: S) -> Int:\n    let (p, q) = if s.a < s.b:\n        (s.a, s.b)\n    elif s.a == s.b:\n        (s.b, s.b)\n    else:\n        (s.b, s.a)\n    match p:\n        0 => assert false\n        1 => return 2\n        _ => q\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let blocks = file
+        .root
+        .descendants()
+        .filter_map(ast::IfExpr::cast)
+        .next()
+        .unwrap()
+        .syntax()
+        .descendants()
+        .filter(|n| n.kind() == crate::NodeKind::Block)
+        .count();
+    assert_eq!(blocks, 3);
+    assert_eq!(
+        file.root
+            .descendants()
+            .filter(|n| matches!(
+                n.kind(),
+                crate::NodeKind::AssertStmt | crate::NodeKind::ReturnStmt
+            ))
+            .count(),
+        2
+    );
+}
+
+fn first<N: AstNode>(n: &SyntaxNode) -> Option<N> {
+    N::cast(n.clone()).or_else(|| n.children().find_map(|c| first(&c)))
+}
+
+#[test]
+fn a_directive_heads_its_item_and_one_in_a_block_is_kept() {
+    let src = "@!multitest\nfn main():\n    @!multitest(flush: true)\n    print(1)\n";
+    let file = parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let item = file.items().find_map(ast::Item::cast).unwrap();
+    let d = item.directive().unwrap();
+    assert_eq!(d.name().unwrap().text(), "multitest");
+    assert!(d.args().is_none());
+    assert!(matches!(item.decl(), Some(ast::Decl::Fn(_))));
+    let block: ast::Block = first(item.syntax()).unwrap();
+    let inner: Vec<_> = block.directives().collect();
+    assert_eq!(inner.len(), 1);
+    assert_eq!(inner[0].name().unwrap().text(), "multitest");
+    assert_eq!(inner[0].args().unwrap().args().count(), 1);
+    assert_eq!(block.stmts().count(), 1);
+}
+
+#[test]
+fn a_record_expression_takes_a_rest_that_drops_fields() {
+    let src = "let c = (to: e.v, ..e without (u, v))\nlet d = (..a, w:)\nlet t = (..n, 3)\n\
+               fn f(kept: Bool, v: Int) -> Int:\n    var reach = 0\n    reach max= if kept: v else: 0\n    reach\n";
+    let file = parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let items: Vec<SyntaxNode> = file.items().collect();
+    let text =
+        |t: Vec<crate::SyntaxToken>| t.iter().map(|t| t.text().to_string()).collect::<Vec<_>>();
+    let c: ast::RecordExpr = first(&items[0]).unwrap();
+    let rest = c.rest().unwrap();
+    assert!(matches!(rest.expr(), Some(ast::Expr::Name(_))));
+    assert_eq!(text(rest.removed()), ["u", "v"]);
+    assert_eq!(text(c.fields().filter_map(|f| f.name()).collect()), ["to"]);
+    let d: ast::RecordExpr = first(&items[1]).unwrap();
+    assert!(d.rest().unwrap().removed().is_empty());
+    assert!(d.fields().next().unwrap().value().is_none());
+    assert!(first::<ast::RecordExpr>(&items[2]).is_none());
 }
 
 #[test]

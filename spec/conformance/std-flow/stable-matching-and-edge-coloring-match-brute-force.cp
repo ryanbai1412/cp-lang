@@ -2,7 +2,7 @@
 use std.flow.{stable_matching, edge_coloring}
 
 fn random_prefs<A, B>() -> [A]List<B>:
-    [A] _ => do:
+    [A] _ =>
         var p = [b for b in B if rand(0, 3) > 0]
         for i in 1..p.len:
             let j = rand(0, i)
@@ -42,7 +42,7 @@ fn stable_matchings_are_stable_and_proposer_optimal():
         assert is_stable(m, rl, rr)
         let base = R.count + 1
         for code in 0..base ** L.count:
-            let other: [L]?R = [L] l => do:
+            let other: [L]?R = [L] l =>
                 let d = code / base ** l.ord % base
                 if d == R.count: None else: Some(R.nth(d))
             if not is_stable(other, rl, rr): continue

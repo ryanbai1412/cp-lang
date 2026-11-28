@@ -177,7 +177,7 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 fn bfs_over_a_stored_graph_and_over_a_lambda():
     domain V = 0..10
     let next = [V] v => [V.nth(x) for x in [v.ord + 1, v.ord * 2, v.ord - 3] if 0 <= x < 10]
-    let es = [(v, w) for v in V for w in next[v]]
+    let es = [(v, w) for v in V, w in next[v]]
     let stored = bfs(Graph.directed(es), from: [V(1)])
     let lambda = bfs<V>(v => next[v], from: [V(1)])
     var dist: [V]?Int = None

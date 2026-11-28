@@ -59,7 +59,8 @@ fn dist(a: P, b: P) -> Int:
   continuation line (below), which extends that body. (R01.2.3)
 - **Continuation.** A line indented deeper than the previous logical
   line, where that line does not end in `:`, continues it when its first
-  token is `.`, `??`, `and`, `or` or a binary operator; blank and
+  token is `.`, `??`, `and`, `or` or a binary operator, or `elif`/`else`
+  while the line holds an inline `if` no `else` has closed; blank and
   comment-only lines between are skipped, as they are for blocks. This is how
   method chains and fallbacks wrap without brackets: (R01.2.4)
 
@@ -97,10 +98,12 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
   variant; `match h: big => ...` binds `big`. (R01.3.3)
 - In an expression, `Name<` opens type arguments when `Name` is
   capitalized and what follows parses as type arguments closed by `>`,
-  and `name<` (lowercase) when the closing `>` is immediately followed by
-  `(`, as in `s.parse<Mod<P>>()`.
-  So `a < b` is a comparison and `SegTree<0..=4e9>(+, a)` needs no
-  turbofish. A lowercase generic function takes its type arguments from
+  and `name<` (lowercase) when the closing `>` (or a split `>>`) is
+  immediately followed by `(` or by the end of the expression (`)`, `]`,
+  `}`, `,`, or the line's end), as in `s.parse<Mod<P>>()` and
+  `let g = id<Int>`, and no argument is a bare lowercase name.
+  So `a < b` and `a < b > c` are comparisons, and there is one spelling,
+  with no `::`. A lowercase generic function takes its type arguments from
   the expected type, or explicitly as `read<[n]Int>()`. (R01.3.4)
 - `_` is the discard name in patterns and parameters. (R01.3.5)
 
@@ -130,6 +133,7 @@ names elsewhere:
 | `is` | `x is pat` in value position (decision 111) |
 | `with` | `with ctx(...):` blocks and `@with` (chapter 9); record update `x with f: v` |
 | `yields` | `-> yields T` on a generator fn (chapter 6) |
+| `from` | `yield from e` in a generator body (R06.3.6) |
 | `repeat` | `repeat k:` at the start of a statement, `k` evaluated once; a block run `k` times, the same as `for _ in 0..k:`, with `break`, `continue` and `return` acting as there; write it when the index is unused |
 | `law` | inside a `trait` or `impl` body (chapter 8) |
 | `where` | trait bounds after a signature (chapter 8) |
@@ -244,7 +248,8 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   `let Some(y) = x else:` are the same. The bindings are in scope after
   the statement, unwrapped, at top level as in a `fn` or loop body, and
   not inside the block (E0201). Without `else`, `p` must always match:
-  `let (1, b) = p` and `for (a, 2) in xs` are E0106. (R01.6.2)
+  `let (1, b) = p` and `for (a, 2) in xs` are E0106. There is no
+  `guard let` (E0503, decision 658). (R01.6.2)
 - `var` inside a pattern makes that one binding mutable:
   `for (var left, v) in items:`. (R01.6.3)
 - Assignment `place = e`, destructuring `(a, b) = (b, a)` (its places may be elements of one
@@ -455,7 +460,7 @@ use_decl    := 'pub'? 'use' path ('.' '{' NAME (',' NAME)* ','? '}')? NL
 fn_decl     := 'pub'? 'fn' fn_name generics? '(' params? ')' ret? where?
                (block | '=' expr NL)
 fn_name     := NAME | '(' param ')' BINOP '(' param ')'     // operator fns
-ret         := '->' ('yields' | 'lends' lend_src?)? type
+ret         := '->' ('yields' | 'lends' lend_src? 'mut'?)? type   // fn types too
 lend_src    := '(' NAME (',' NAME)* ')'
 params      := param (',' param)* (';' param (',' param)*)? ','?
 param       := ('mut' | 'var')? (WORD NAME | pattern | 'self') (':' type)? ('=' expr)?
@@ -469,7 +474,8 @@ bound       := type ('+' type)*
 where       := 'where' TYPE_NAME ':' bound (',' TYPE_NAME ':' bound)*
 
 struct_decl := 'pub'? 'struct' TYPE_NAME generics? (':' fields NL
-             | ':' NL INDENT (field NL | fn_decl)+ DEDENT | NL)  // bodyless: opaque
+             | ':' NL INDENT (field NL | fn_decl | const_member | domain_decl
+               | law)+ DEDENT | NL)  // bodyless: opaque; members: R04, R08.3, R12
 fields      := field (',' field)*
 field       := 'pub'? 'var'? NAME ':' type ('=' expr)?   // `pub`: R11.1.4
 enum_decl   := 'pub'? 'enum' TYPE_NAME generics? ('=' NAME ('|' NAME)* NL
@@ -481,7 +487,9 @@ trait_item  := 'type' TYPE_NAME (':' bound)? NL | field NL | fn_sig NL
              | fn_decl | law
 law         := 'law' NAME '(' params? ')' '=' expr NL
 impl_decl   := 'impl' generics? bound ('for' type)? where? (':' NL INDENT
-               (fn_decl | 'type' TYPE_NAME '=' type NL | law)+ DEDENT | NL)
+               (fn_decl | 'type' TYPE_NAME '=' type NL | law | const_member
+               | 'let' NAME '=' expr NL)+ DEDENT | NL)
+const_member := 'pub'? 'const' NAME (':' type)? '=' expr NL   // R12, 12:238
 type_decl   := 'pub'? 'type' TYPE_NAME generics? '=' type NL
 domain_decl := 'domain' TYPE_NAME '=' expr NL
              | 'let' '(' 'domain' TYPE_NAME (',' pattern)* ')' '=' expr NL
@@ -493,6 +501,7 @@ simple_stmts:= simple (';' simple)*
 simple      := let | assign | expr | 'return' expr? | 'break' LABEL?
              | 'continue' LABEL? | 'assert' expr (',' expr)?
              | 'lend' 'mut'? place               // a `lends` body's place (R05.6.3)
+             | 'yield' 'from'? expr?             // `yield from e` delegates (R06.3.6)
 let         := ('let' | 'var' | 'const') pattern (',' NAME)* (':' type)?
                '=' expr ('else' block)?
 assign      := place ('=' | ASSIGN_OP | NAME '=') expr     // `x min= y`, `x f= y`
@@ -503,7 +512,7 @@ cond        := 'let' pattern '=' expr (',' cond)* | expr (',' cond)*
              | place ('min=' | 'max=') expr      // true when improved (R01.6.4)
              | NAME ':' bound                    // `if M: Selective<T>:` (R08, decision 602)
 for_stmt    := (LABEL ':')? 'for' clause (',' clause)* block ('else' block)?
-clause      := pattern 'in' expr ('if' expr)?
+clause      := pattern 'in' expr ('if' cond)?   // `, p in e` after a filter is the next clause (decision 659)
 while_stmt  := (LABEL ':')? 'while' cond block ('else' block)?
 match_stmt  := 'match' expr ':' (arm (',' arm)* NL | NL INDENT (arm NL)+ DEDENT)
 arm         := pattern ('if' expr)? '=>' (expr | assign | NL INDENT stmt+ DEDENT)
@@ -517,11 +526,11 @@ pattern     := '_' | 'var'? NAME | literal | range_pat
              | path ('(' pattern (',' pattern)* ')')?       // variants, V(j)
              | pattern '|' pattern
 range_pat   := literal ('..' | '..=') literal
-type        := '?' type | '[' dims ']' type | '(' type (',' type)* ','? ')'
-             | '(' NAME ':' type (',' NAME ':' type)* (',' '..' TYPE_NAME
+type        := '?' 'mut'? type | '[' dims ']' type | '(' type (',' type)* ','? ')'
+             | '(' ('domain' TYPE_NAME ',')? NAME ':' type (',' NAME ':' type)* (',' '..' TYPE_NAME
                ('without' '(' NAME (',' NAME)* ')')?)? ')'     // records, rows
              | path generic_args? | range_type | lit_type ('|' lit_type)*
-             | '(' (type (',' type)*)? ')' '->' type          // fn types
+             | '(' (type (',' type)*)? ')' ret                // fn types
              | type 'of' STRING
 dims        := type (',' type)* | '(' type (',' type)* ')' | expr
 range_type  := expr? ('..' | '..=') expr?
@@ -530,7 +539,8 @@ lit_type    := INT | STRING | CHAR                 // `Bool` and `?T` are alread
 expr        := lambda | if_expr | match_expr | binary
 lambda      := lparams '=>' (expr | assign | NL INDENT stmt+ DEDENT)   // the last stmt may be the value
 lparams     := NAME | '_' | '(' (param (',' param)*)? ')' ('->' type)?
-if_expr     := 'if' cond ':' expr ('elif' cond ':' expr)* 'else' ':' expr
+if_expr     := 'if' cond ':' value ('elif' cond ':' value)* 'else' ':' value
+value       := expr | NL INDENT stmt+ DEDENT   // as an arm's body (4.5)
 match_expr  := 'match' expr ':' NL INDENT (pattern ('if' expr)? '=>' expr NL)+ DEDENT
                // a match used as a value: every arm gives one, of one type (R01.10.3)
 binary      := the operators of 1.5 over unary; `not` is the prefix
@@ -547,6 +557,9 @@ arg         := expr | NAME ':' expr | 'mut' place
 primary     := literal | NAME | path generic_args? | '(' expr ')' | tuple
              | record | list | map | comprehension | table | '{' block_expr '}'
              | 'todo' | BINOP                                 // `+` as an op value
+record      := '(' rfield (',' rfield)* ','? ')'
+rfield      := NAME ':' expr? | '..' expr ('without' '(' NAME (',' NAME)* ')')?
+             // `(x: 1, y:)`, `(..a, to: u)`, `(to: e.v, ..e without (u, v))` (R12.11.4)
 ```
 
 Call arguments: positional first, named after in any order, each
@@ -557,7 +570,7 @@ decision 53: `sum(f(x) for x in xs)`, `count(c == x for c in cs)`,
 same sequence (`max` gives `?T`). `argmax(f(v) for v in V)` and `argmin`
 give the position, what the `for`s bind: `v`, or over several `for`s or a
 pattern the tuple of the names bound, in order, so
-`argmax(g[i, j] for i in R for j in C)` is a `?(R, C)`. A generator is only ever a call
+`argmax(g[i, j] for i in R, j in C)` is a `?(R, C)`. A generator is only ever a call
 argument: `(f(x) for x in xs).max()` is E0103, with `max(f(x) for x in xs)`
 as the fix. A `mut`
 parameter is marked `mut` at the call too (`link(mut d, a, b)`), except

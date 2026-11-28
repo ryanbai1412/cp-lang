@@ -320,7 +320,7 @@ let pairs: [Pair](u: Item, v: Item, w: 0..=1e9) = read()
 
 domain Node = Item + Pair
 fn profit(v: Node) -> Int = match v: Item(i) => -cost[i], Pair(e) => pairs[e].w
-let needs = Graph.directed([(Node(i), Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]])
+let needs = Graph.directed([(Node(i), Node(e)) for e in Pair, i in [pairs[e].u, pairs[e].v]])
 print(max_closure(before: needs, profit: profit).value)
 ```
 

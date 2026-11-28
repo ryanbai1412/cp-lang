@@ -75,7 +75,7 @@ fn rref_b(g: List<List<F>>, cols: Int) -> (List<List<F>>, List<Int>):
         piv.push(c)
     (a, piv)
 
-fn mk(g: List<List<F>>, r: Int, c: Int) -> Mat<F> = Mat<F>.from_flat(r, c, [g[i][j] for i in 0..r for j in 0..c])
+fn mk(g: List<List<F>>, r: Int, c: Int) -> Mat<F> = Mat<F>.from_flat(r, c, [g[i][j] for i in 0..r, j in 0..c])
 
 fn grid(m: Mat<F>) -> List<List<F>> = [[m.get(i, j) for j in 0..m.cols] for i in 0..m.rows]
 
@@ -104,7 +104,7 @@ for k in 0..n:
     let sq = mk(q, s, s)
     if op == 0:
         let h = rand_grid(mut rng, r, c)
-        let flat = [g[i][j] for i in 0..r for j in 0..c]
+        let flat = [g[i][j] for i in 0..r, j in 0..c]
         var e = Mat<F>.zeros(r, c)
         for i in 0..r:
             for j in 0..c:

@@ -136,6 +136,12 @@ let s = divisors(n).filter(d => d % 2 == 0).sum()
   yield events (`Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)`). (R06.3.4)
 - Generators are push-only; there is no cursor. Lockstep over two
   generators is `List(g)` first, a visible allocation. (R06.3.5)
+- `yield from e` in a `-> yields T` body is exactly `for x in e: yield x`.
+  `e` is any `Seq` of `T`, a generator value included; `break`, `return`
+  and steering (R06.3.4) act as in that loop, and a recursive generator
+  delegating to itself follows R06.3.3. `from` followed by `.`, `(` or
+  `[` is the name `from`, so a list or parenthesised operand is bound
+  to a name first (decision 668). (R06.3.6)
 - Sequences, views, chains and capabilities are chapter 7.
 
 ## 6.4 Decorators
@@ -163,7 +169,7 @@ library or by this spec:
   author promise of logical correctness (chapter 5 §10a). (R06.4.4)
 - `@trusted:` blocks and `@cpp` items: the unsafe tier (chapter 9).
 - `@grader(...)`: judge entry points (chapter 10).
-- `@laws(sample: n)`: stress sampling of a type's laws.
+- `@laws(sample: n)`: stress sampling of a type's laws. (R06.4.13)
 - `@tag(lit)` on an enum variant: the token it reads and prints as
   (chapter 2).
 - `@droppable`: the result may be dropped without the unused-result
@@ -193,12 +199,12 @@ library or by this spec:
 - `@structural` on a trait (std's `Hash`): a tuple, record, optional,
   array or struct has it when each part does, a position when `Int` does,
   and a built-in scalar only through its own `impl` (so `F64`, with none, is
-  not `Hash`).
+  not `Hash`). (R06.4.14)
 - `@word(name)` on a std struct: `name(args)` is a call of its
-  constructor (std's `@word(prefix)` on `Prefix`).
+  constructor (std's `@word(prefix)` on `Prefix`). (R06.4.15)
 - `@member(name)` on a std struct `S<B>`: `D.name` is a domain whose
   positions are the values of `S<D>` (std's `@member(subsets)` on `Subset`,
-  so `V.subsets` is the domain of `V`'s subsets).
+  so `V.subsets` is the domain of `V`'s subsets). (R06.4.16)
 - Markers, each on the one declaration it names: `@operator("op")` (the trait an operator calls,
   through its first declared fn: `"=="` is `Eq`'s `eq`, `"<"` is `Ord`'s
   `lt`, `"[]"` is the read `s[k]` calls and `"[]="` the write `s[k] = v`),

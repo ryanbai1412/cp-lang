@@ -42,12 +42,12 @@ for op in 0..n:
     let b = rand_sorted(mut rng, rng.int(0, 6))
     let t = rng.int(-1, 7)
     var why = ""
-    let both = [x for x in 0..=6 for _ in 0..occ(a, x) + occ(b, x)]
+    let both = [x for x in 0..=6, _ in 0..occ(a, x) + occ(b, x)]
     let uni = [x for x in 0..=6 if occ(a, x) + occ(b, x) > 0]
-    let inter = [x for x in 0..=6 for _ in 0..min(occ(a, x), occ(b, x))]
-    let diff = [x for x in 0..=6 for _ in 0..max(occ(a, x) - occ(b, x), 0)]
+    let inter = [x for x in 0..=6, _ in 0..min(occ(a, x), occ(b, x))]
+    let diff = [x for x in 0..=6, _ in 0..max(occ(a, x) - occ(b, x), 0)]
     let c = rand_sorted(mut rng, rng.int(0, 4))
-    let three = [x for x in 0..=6 for _ in 0..occ(a, x) + occ(b, x) + occ(c, x)]
+    let three = [x for x in 0..=6, _ in 0..occ(a, x) + occ(b, x) + occ(c, x)]
     let gt = (0..a.len).filter(i => a[i] > t).first()
     let lt = (0..a.len).filter(i => a[i] < t).last()
     let eq = [i for i in 0..a.len if a[i] == t]

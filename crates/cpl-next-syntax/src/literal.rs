@@ -86,9 +86,70 @@ pub fn string_parts(text: &str) -> Vec<StrPart> {
     parts
 }
 
+/// The text of a string or char literal with its escapes decoded: `\n`,
+/// `\t`, `\r`, `\0`, `\xHH`, and `\c` for any other `c`; `{{` and `}}` are
+/// one brace.
+pub fn unescape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => match chars.next() {
+                Some('n') => out.push('\n'),
+                Some('t') => out.push('\t'),
+                Some('r') => out.push('\r'),
+                Some('0') => out.push('\0'),
+                Some('x') => {
+                    let hex: String = chars.clone().take(2).collect();
+                    match u8::from_str_radix(&hex, 16) {
+                        Ok(b) if hex.len() == 2 => {
+                            chars.nth(1);
+                            out.push(char::from(b));
+                        }
+                        _ => out.push('x'),
+                    }
+                }
+                Some(other) => out.push(other),
+                None => out.push('\\'),
+            },
+            '{' | '}' if chars.peek() == Some(&c) => {
+                chars.next();
+                out.push(c);
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// The value of a char literal, quotes included: `'a'`, `'\n'`, `'\x41'`.
+/// `None` when the text is not one quoted, decoded char.
+pub fn char_value(text: &str) -> Option<char> {
+    let inner = text.strip_prefix('\'')?.strip_suffix('\'')?;
+    let decoded = unescape(inner);
+    let mut chars = decoded.chars();
+    let c = chars.next()?;
+    chars.next().is_none().then_some(c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn char_literals_decode_as_the_old_parser_did() {
+        assert_eq!(char_value("'a'"), Some('a'));
+        assert_eq!(char_value("'\\n'"), Some('\n'));
+        assert_eq!(char_value("'\\0'"), Some('\0'));
+        assert_eq!(char_value("'\\x41'"), Some('A'));
+        assert_eq!(char_value("'\\''"), Some('\''));
+        assert_eq!(char_value("'\\\\'"), Some('\\'));
+        assert_eq!(char_value("'\\q'"), Some('q'));
+        assert_eq!(char_value("'ab'"), None);
+        assert_eq!(char_value("''"), None);
+        assert_eq!(char_value("'a"), None);
+        assert_eq!(unescape("a{{b}}\\tc"), "a{b}\tc");
+    }
 
     #[test]
     fn integer_literals() {
@@ -134,5 +195,69 @@ mod tests {
     #[test]
     fn an_unclosed_interpolation_runs_to_the_end() {
         assert_eq!(parts(r#""a {b + "#), vec![('t', "a "), ('e', "b + ")]);
+    }
+}
+
+/// A number format: `W` (least width), `0W` (zero-filled), then `.D` or
+/// `.Df` (digits after the point), `x` (hex) or `b` (binary).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct FmtSpec {
+    pub zero: bool,
+    pub width: u32,
+    pub kind: FmtKind,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FmtKind {
+    Dec,
+    Hex,
+    Bin,
+    Fixed(u32),
+}
+
+impl std::fmt::Display for FmtSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(if self.zero { ":0" } else { ":" })?;
+        if self.width > 0 {
+            write!(f, "{}", self.width)?;
+        }
+        match self.kind {
+            FmtKind::Dec => Ok(()),
+            FmtKind::Hex => f.write_str("x"),
+            FmtKind::Bin => f.write_str("b"),
+            FmtKind::Fixed(places) => write!(f, ".{places}f"),
+        }
+    }
+}
+
+/// The letters a format can end in after its width: `{x:08x}` hex, `{m:b}` binary (R01.4.4).
+const FMT_LETTERS: [(&str, FmtKind); 2] = [("x", FmtKind::Hex), ("b", FmtKind::Bin)];
+
+impl FmtSpec {
+    /// The format `text` spells (what follows the `:`), if it is one.
+    pub fn parse(text: &str) -> Option<FmtSpec> {
+        let digits = |s: &str| s.len() - s.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        let zero = text.starts_with('0') && text.len() > 1 && text.as_bytes()[1].is_ascii_digit();
+        let rest = if zero { &text[1..] } else { text };
+        let (width, rest) = rest.split_at(digits(rest));
+        let lettered = FMT_LETTERS.iter().find(|(l, _)| *l == rest);
+        let kind = match lettered {
+            _ if rest.is_empty() && !width.is_empty() => FmtKind::Dec,
+            Some((_, k)) => *k,
+            None => {
+                let places = rest.strip_prefix('.')?;
+                let places = places.strip_suffix('f').unwrap_or(places);
+                if places.is_empty() || digits(places) != places.len() {
+                    return None;
+                }
+                FmtKind::Fixed(places.parse().ok().filter(|d| *d <= 300)?)
+            }
+        };
+        let width = if width.is_empty() {
+            0
+        } else {
+            width.parse().ok().filter(|w| *w <= 4096)?
+        };
+        Some(FmtSpec { zero, width, kind })
     }
 }

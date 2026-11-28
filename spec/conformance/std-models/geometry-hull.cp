@@ -171,7 +171,7 @@ for k in 0..n:
         // Minkowski sums, overlap and triangulation of hulls.
         let a = wrap(pts + [rp(mut rng, 4)], false)
         let b = wrap([rp(mut rng, 4) for _ in 0..rng.int(1, 6)], false)
-        let sums = [p + q for p in a for q in b]
+        let sums = [p + q for p in a, q in b]
         var ms = wrap(sums, false)
         if ms.len > 2:
             var st = 0
@@ -192,8 +192,8 @@ for k in 0..n:
         let ub = upper_hull(srt(b))
         let la = lower_hull(srt(a))
         let lb = lower_hull(srt(b))
-        let wu = upper_hull(srt([p + q for p in ua for q in ub]))
-        let wl = lower_hull(srt([p + q for p in la for q in lb]))
+        let wu = upper_hull(srt([p + q for p in ua, q in ub]))
+        let wl = lower_hull(srt([p + q for p in la, q in lb]))
         if minkowski_upper(ua, ub) != wu or minkowski_lower(la, lb) != wl: bad = "op {k}: minkowski_upper/lower of {a}, {b}"
         if bad != "" or ab.len < 3: continue
         let tri = polygon_triangulate(ab)

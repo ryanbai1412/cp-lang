@@ -16,6 +16,15 @@ super::msgs! {
     LOOP_KEYWORD = REMOVED_SYNTAX, "CP Lang has no `loop`; the loop that exits in the middle is `while true:`";
     UNNAMED_PAYLOAD = REMOVED_SYNTAX, "a variant's payload fields are `name: Type`, like a struct's";
     LAZY_PARAM = REMOVED_SYNTAX, "a parameter can't be `lazy`; it is lent, `mut` or `var`, and a deferred value is a `() -> T`";
+    YIELDS_PARAM = REMOVED_SYNTAX, "a parameter can't be `yields`; it is lent, `mut` or `var`, and only a fn's result yields";
+    GUARD_LET = REMOVED_SYNTAX, "CP Lang has no `guard let`; `let p = e else: ...` binds `p` or leaves";
+    DO_BLOCK = REMOVED_SYNTAX, "there is no `do:`; a lambda's or arm's block is indented on the lines after `=>`";
+    TURBOFISH = REMOVED_SYNTAX, "type arguments follow the name directly, `f<T>`, with no `::`";
+    FN_TYPE_KEYWORD = REMOVED_SYNTAX, "a fn type is written `A -> B` or `(A, B) -> C`, with no `fn`";
+    LENDS_ARROW = REMOVED_SYNTAX, "a lent result follows `->`: `-> lends T`";
+    INTERACTIVE_DIRECTIVE = REMOVED_SYNTAX, "`@!multitest` is the one file directive: interactive mode is `let wire = Wire()` (R10.4)";
+    SECOND_FOR = REMOVED_SYNTAX, "a comprehension's clauses are joined with `,`: `for x in xs, y in ys`";
+    AND_LET = REMOVED_SYNTAX, "a `let` condition is joined to the next one with `,`, not `and`";
     AMP_MUT_PARAM = REMOVED_SYNTAX, "CP Lang has no `&mut` types; a parameter that changes the caller's place is `mut x: T`";
     MATCH_NEEDS_ARMS = EXPECTED_BLOCK, "expected indented `pattern => value` arms after `match`";
     BAD_NUMBER_FORMAT = UNEXPECTED_TOKEN, "`:{}` is not a number format";

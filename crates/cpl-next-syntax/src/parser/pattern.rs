@@ -25,6 +25,12 @@ impl Parser<'_> {
                 self.bump();
                 self.finish();
             }
+            T::Var if self.nth(1) == T::Ident => {
+                self.start(NodeKind::PathPat);
+                self.bump();
+                self.bump();
+                self.finish();
+            }
             T::Ident => {
                 self.start(NodeKind::PathPat);
                 self.bump();
@@ -39,34 +45,60 @@ impl Parser<'_> {
                 }
                 self.finish();
             }
+            T::SelfKw => {
+                self.start(NodeKind::PathPat);
+                self.bump();
+                self.finish();
+            }
             T::LParen => {
                 let mut record = false;
+                let (mut elems, mut comma) = (0, false);
                 self.list(NodeKind::TuplePat, T::RParen, "the tuple pattern", |p| {
-                    if p.at(T::Ident) && p.nth(1) == T::Colon {
+                    if p.at(T::DotDot) && matches!(p.nth(1), T::Comma | T::RParen) {
+                        record = true;
+                        p.start(NodeKind::RecordPatRest);
+                        p.bump();
+                        p.finish();
+                    } else if p.at(T::Ident) && p.nth(1) == T::Colon {
                         record = true;
                         p.start(NodeKind::RecordPatField);
                         p.bump();
                         p.bump();
-                        p.pattern();
+                        if !matches!(p.peek(), T::Comma | T::RParen) {
+                            p.pattern();
+                        }
                         p.finish();
                     } else {
                         p.pattern();
                     }
+                    elems += 1;
+                    comma |= p.at(T::Comma);
                 });
                 if record {
                     self.b.relabel_last(NodeKind::RecordPat);
+                } else if elems == 1 && !comma {
+                    self.b.relabel_last(NodeKind::ParenPat);
                 }
             }
             k if begins_pattern(k) => {
                 self.start(NodeKind::LiteralPat);
-                self.eat(T::Minus);
+                let minus = self.at(T::Minus);
+                if minus {
+                    self.start(NodeKind::PrefixExpr);
+                    self.bump();
+                }
                 if matches!(
                     self.peek(),
                     T::Int | T::Float | T::Str | T::RawStr | T::Char | T::True | T::False
                 ) {
+                    self.start(NodeKind::Literal);
                     self.bump();
+                    self.finish();
                 } else {
                     self.recover(codes::EXPECTED_TOKEN, "a number after `-`");
+                }
+                if minus {
+                    self.finish();
                 }
                 self.finish();
             }

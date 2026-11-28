@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::grammar::{contextual, Contextual};
+use crate::literal::{self, FmtSpec, StrPart};
 use crate::ops::{self, Assoc, Level};
 
 /// Tokens that can begin an operand.
@@ -29,8 +30,9 @@ impl Parser<'_> {
     pub(super) fn expr(&mut self) {
         match self.peek() {
             T::If => self.if_clauses(NodeKind::IfExpr, |p| {
-                p.want(T::Colon, "`:` and the value");
-                p.expr();
+                if p.want(T::Colon, "`:` and the value") {
+                    p.value_body();
+                }
             }),
             T::Match => self.match_expr(),
             _ if self.lambda_ahead() => self.lambda(),
@@ -74,12 +76,12 @@ impl Parser<'_> {
                     p.eat(T::Mut);
                     p.pattern();
                     if p.eat(T::Colon) {
-                        p.expr_at(Level::Range);
+                        p.ty();
                     }
                 },
             );
             if self.eat(T::Arrow) {
-                self.expr_at(Level::Range);
+                self.ty();
             }
         } else {
             self.start(NodeKind::ParamList);
@@ -95,6 +97,7 @@ impl Parser<'_> {
     /// An expression whose operators all bind at least as tight as `min`.
     pub(super) fn expr_at(&mut self, min: Level) {
         let at = self.checkpoint();
+        let start = self.span().start;
         self.operand(min);
         loop {
             let kind = self.peek();
@@ -113,7 +116,12 @@ impl Parser<'_> {
                     self.start_at(at, NodeKind::KeepExpr);
                     self.bump();
                     self.bump();
-                    self.expr_at(Level::Range);
+                    // `place max= expr` (01:506): an `if` or `match` value too.
+                    if matches!(self.peek(), T::If | T::Match) {
+                        self.expr();
+                    } else {
+                        self.expr_at(Level::Range);
+                    }
                     self.finish();
                     continue;
                 }
@@ -140,6 +148,7 @@ impl Parser<'_> {
                 }
                 Assoc::Left | Assoc::Right => {
                     self.start_at(at, NodeKind::BinExpr);
+                    let three_way = self.at(T::Spaceship).then(|| self.span());
                     self.bump();
                     let rhs = match (op.assoc, op.level) {
                         (_, Level::Pow) => Level::Unary,
@@ -147,15 +156,42 @@ impl Parser<'_> {
                         (_, l) => l.tighter(),
                     };
                     self.expr_at(rhs);
+                    if let Some(op) = three_way {
+                        self.three_way(start, op);
+                    }
                     self.finish();
                 }
             }
         }
     }
 
+    /// `a <=> b`, which CP Lang spells `cmp(a, b)` (decision 4.5).
+    fn three_way(&mut self, start: u32, op: Span) {
+        let end = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(op.end, |t| t.span.end);
+        let src = self.src;
+        let l = src[start as usize..op.start as usize].trim_end();
+        let r = src[op.end as usize..end as usize].trim_start();
+        let ours = format!("cmp({l}, {r})");
+        self.diagnostics.push(
+            cpl_diag::msgs::foreign::THREE_WAY
+                .error(op, &[])
+                .with_help(cpl_diag::habits::THREE_WAY.say(&[]))
+                .with_fix(
+                    cpl_diag::habits::THREE_WAY_2.say(&[&l, &r]),
+                    Span::new(start, end),
+                    &ours,
+                ),
+        );
+    }
+
     /// The binary operator here: `ops::BINARY`'s, or `not in`.
     fn binary_here(&self) -> Option<ops::Binary> {
         if self.no_gt && matches!(self.peek(), T::Gt | T::Shr | T::GtEq) {
+            return None;
+        }
+        if self.no_and && self.at(T::And) {
             return None;
         }
         if self.at(T::Not) && self.nth(1) == T::In {
@@ -299,9 +335,31 @@ impl Parser<'_> {
                 } else {
                     self.recover(codes::EXPECTED_TOKEN, "a field name after `.`");
                 }
+                self.finish();
+                // `"1 2".parse<[2]Int>()`: a method's type arguments.
+                self.type_args_after(at, false);
+                continue;
             }
             self.finish();
         }
+    }
+
+    /// `<T>` after a name or a method, when [`Self::type_args_ahead`]; a
+    /// `::<T>` is E0503 and its fix deletes `::` (R01.3.4).
+    fn type_args_after(&mut self, at: Checkpoint, upper: bool) {
+        if self.at(T::ColonColon) && self.nth(1) == T::Lt {
+            let cc = self.span();
+            let err = msgs::syntax::TURBOFISH.error(cc, &[]);
+            self.diagnostics.push(err.with_fix("delete `::`", cc, ""));
+            self.start(NodeKind::Error);
+            self.bump();
+            self.finish();
+        } else if !(self.at(T::Lt) && self.type_args_ahead(upper)) {
+            return;
+        }
+        self.start_at(at, NodeKind::GenericExpr);
+        self.generic_args();
+        self.finish();
     }
 
     pub(super) fn arg(&mut self) {
@@ -325,20 +383,45 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `for p in xs if c`, one or more: a comprehension's or generator's.
+    /// `for p in xs if c, q in ys`: a comprehension's or generator's clauses, the first
+    /// holding the `for` (01:298, 353). A `,` not before `p in e` ends them.
     fn clauses(&mut self) {
-        while self.at(T::For) {
-            self.start(NodeKind::CompClause);
-            self.bump();
+        self.start(NodeKind::CompClause);
+        self.bump();
+        loop {
             self.pattern();
             if self.want(T::In, "`in` and what to walk") {
                 self.expr_at(Level::Expr);
             }
             while self.eat(T::If) {
-                self.expr_at(Level::Expr);
+                self.filter();
             }
             self.finish();
+            if self.at(T::For) {
+                self.second_for();
+                self.start(NodeKind::CompClause);
+                continue;
+            }
+            if !(self.at(T::Comma) && self.clause_after_comma()) {
+                break;
+            }
+            self.bump();
+            self.start(NodeKind::CompClause);
         }
+    }
+
+    /// `[e for x in xs for y in ys]`: clauses are joined with `,` (decision 660).
+    fn second_for(&mut self) {
+        let word = self.span();
+        let prev = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(word.start, |t| t.span.end);
+        let err = msgs::syntax::SECOND_FOR.error(word, &[]);
+        let fix = Span::new(prev, word.end);
+        self.diagnostics.push(err.with_fix("write `,`", fix, ","));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
     }
 
     /// An operator alone where a value goes: `fold(+, xs)`, `(+)`.
@@ -350,9 +433,9 @@ impl Parser<'_> {
     }
 
     /// `Name<..>` reads as type arguments when they close and what follows
-    /// can follow a value. A lowercase fn takes them only before a call,
-    /// and only when no argument is a bare lowercase name, so `a < b > (c)`
-    /// stays a comparison.
+    /// can follow a value. A lowercase fn takes them before a call or an
+    /// expression's end (R01.3.4), and only when no argument is a bare
+    /// lowercase name, so `a < b > (c)` and `a < b > c` stay comparisons.
     fn type_args_ahead(&self, upper: bool) -> bool {
         let (mut depth, mut nest) = (0i32, 0i32);
         let (mut seg, mut lower) = (0usize, false);
@@ -412,7 +495,18 @@ impl Parser<'_> {
                             | T::Eq
                     )
                 } else {
-                    next == T::LParen
+                    matches!(
+                        next,
+                        T::LParen
+                            | T::RParen
+                            | T::RBracket
+                            | T::RBrace
+                            | T::Comma
+                            | T::Newline
+                            | T::Eof
+                            | T::Dedent
+                            | T::Semi
+                    )
                 };
             }
         }
@@ -428,10 +522,59 @@ impl Parser<'_> {
         })
     }
 
+    /// A string literal. An interpolating one is split losslessly: the text
+    /// around its holes as `StrText` tokens, and each `{..}` an `Interp`
+    /// whose value is parsed as an expression (R10.3.2).
+    fn string(&mut self) {
+        let token = self.tokens[self.pos];
+        let text = token.span.text(self.src);
+        let holes: Vec<Span> = (literal::string_parts(text).into_iter())
+            .filter_map(|p| match p {
+                StrPart::Expr(s) => Some(s),
+                StrPart::Text(_) => None,
+            })
+            .collect();
+        self.start(NodeKind::Literal);
+        if holes.is_empty() {
+            self.bump();
+            self.finish();
+            return;
+        }
+        let mut found = Vec::new();
+        let mut at = 0;
+        for hole in holes {
+            let open = hole.start as usize - 1;
+            if open > at {
+                self.b.token(T::StrText, &text[at..open]);
+            }
+            let closed = text.as_bytes().get(hole.end as usize) == Some(&b'}');
+            let (node, diags) = interp(hole.text(text), closed);
+            self.b.node(node);
+            let by = token.span.start + hole.start;
+            found.extend(diags.into_iter().map(|d| d.shift(by)));
+            at = hole.end as usize + usize::from(closed);
+        }
+        if at < text.len() {
+            self.b.token(T::StrText, &text[at..]);
+        }
+        self.pos += 1;
+        self.emitted = self.pos;
+        self.skip_trivia();
+        self.finish();
+        // One string, one diagnostic.
+        self.diagnostics.extend(found.into_iter().next());
+    }
+
     fn primary(&mut self) {
         match self.peek() {
-            T::Int | T::Float | T::Str | T::RawStr | T::Char | T::True | T::False => {
+            T::Str => self.string(),
+            T::Int | T::Float | T::RawStr | T::Char | T::True | T::False => {
                 self.start(NodeKind::Literal);
+                self.bump();
+                self.finish();
+            }
+            T::Ident if self.word() == Some(Contextual::Wildcard) => {
+                self.start(NodeKind::HoleExpr);
                 self.bump();
                 self.finish();
             }
@@ -441,11 +584,7 @@ impl Parser<'_> {
                 self.start(NodeKind::NameRef);
                 self.bump();
                 self.finish();
-                if self.at(T::Lt) && self.type_args_ahead(upper) {
-                    self.start_at(at, NodeKind::GenericExpr);
-                    self.generic_args();
-                    self.finish();
-                }
+                self.type_args_after(at, upper);
             }
             k if self.op_value_ahead() => {
                 debug_assert!(ops::binary(k).is_some() || ops::prefix(k).is_some());
@@ -492,7 +631,12 @@ impl Parser<'_> {
             } else {
                 self.simple();
             }
-            if !self.eat(T::Semi) {
+            // `{ if c:\n return 1\n n }`: a statement whose indented block
+            // closed ends there, as `;` ends one (R01.7.6).
+            let closed = (self.tokens[..self.pos].iter().rev())
+                .find(|t| !t.kind.is_trivia())
+                .is_some_and(|t| t.kind == T::Dedent);
+            if !self.eat(T::Semi) && !closed {
                 break;
             }
         }
@@ -622,15 +766,57 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `(e)`, a tuple `()`, `(a,)`, `(a, b)`, or a record `(x: 1, y)`.
+    /// Whether the parentheses at the cursor hold a record: a `name:` or a
+    /// `without` at their top level. One pass to the closing `)`.
+    fn record_ahead(&self) -> bool {
+        let mut toks = (self.tokens[self.pos..].iter())
+            .filter(|t| !t.kind.is_trivia())
+            .skip(1)
+            .peekable();
+        let (mut depth, mut start) = (0usize, true);
+        while let Some(t) = toks.next() {
+            match t.kind {
+                T::Eof => return false,
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace if depth == 0 => return false,
+                T::RParen | T::RBracket | T::RBrace => depth -= 1,
+                T::Comma if depth == 0 => {
+                    start = true;
+                    continue;
+                }
+                T::Ident if depth == 0 => {
+                    let word = crate::grammar::contextual(t.span.text(self.src));
+                    let named = start && toks.peek().is_some_and(|n| n.kind == T::Colon);
+                    if named || word == Some(Contextual::Without) {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+            start = false;
+        }
+        false
+    }
+
+    /// `(e)`, a tuple `()`, `(a,)`, `(a, b)`, or a record `(x: 1, y:)`,
+    /// `(..a, to: u)`, `(to: e.v, ..e without (u, v))` (R12.11.4).
     fn paren(&mut self) {
         let mut elems = 0;
         let mut comma = false;
-        let mut record = false;
+        let mut record = self.record_ahead();
+        let rest = record;
         let outer = std::mem::replace(&mut self.no_gt, false);
         self.list(NodeKind::TupleExpr, T::RParen, "the parentheses", |p| {
             elems += 1;
-            if p.at(T::Ident) && p.nth(1) == T::Colon {
+            if rest && p.at(T::DotDot) {
+                p.start(NodeKind::RecordRest);
+                p.bump();
+                p.expr_at(Level::BitOr);
+                if p.word() == Some(Contextual::Without) {
+                    p.row_without();
+                }
+                p.finish();
+            } else if p.at(T::Ident) && p.nth(1) == T::Colon {
                 record = true;
                 p.start(NodeKind::RecordField);
                 p.bump();
@@ -669,4 +855,60 @@ pub(super) fn begins_pattern(kind: TokenKind) -> bool {
             | T::False
             | T::Minus
     )
+}
+
+/// One `{..}` of a string, from what its braces hold; the diagnostics'
+/// spans are relative to `inner`.
+fn interp(inner: &str, closed: bool) -> (GreenNode, Vec<Diagnostic>) {
+    let lexed = lex(inner);
+    let tokens = lexed.lossless(inner);
+    let mut p = Parser::new(inner, &tokens);
+    p.b.start_node(NodeKind::Interp);
+    p.b.token(T::LBrace, "{");
+    p.expr();
+    // The value ends at a `:`; the rest is how to write it, not code.
+    let colon = p.at(T::Colon).then(|| p.span());
+    if let Some(colon) = colon {
+        p.flush();
+        p.b.token(T::Colon, ":");
+        let written = &inner[colon.end as usize..];
+        if !written.is_empty() {
+            p.b.token(T::StrText, written);
+        }
+        if FmtSpec::parse(written).is_none() {
+            let at = Span::new(colon.start, inner.len() as u32);
+            let help = "a format is a width (`:5`, `:05`), digits after the point \
+                        (`:.3`, `:8.3f`), `:x` or `:b`";
+            (p.diagnostics).push(
+                msgs::syntax::BAD_NUMBER_FORMAT
+                    .error(at, &[&written])
+                    .with_help(help),
+            );
+        }
+        p.pos = p.tokens.len();
+        p.emitted = p.pos;
+    } else if !matches!(p.peek(), T::Newline | T::Eof) {
+        p.error_here(codes::UNEXPECTED_TOKEN, "`}` to end the interpolation");
+        p.start(NodeKind::Error);
+        while !matches!(p.peek(), T::Newline | T::Eof) {
+            p.bump();
+        }
+        p.finish();
+    }
+    // What is left is trivia and the end of `inner`'s file, which is no text.
+    for t in &p.tokens[p.emitted..] {
+        if t.span.start < t.span.end {
+            p.b.token(t.kind, t.span.text(inner));
+        }
+    }
+    if closed {
+        p.b.token(T::RBrace, "}");
+    }
+    p.b.finish_node();
+    let value_end = colon.map_or(u32::MAX, |c| c.start);
+    let mut diags: Vec<Diagnostic> = (lexed.diagnostics.into_iter())
+        .filter(|d| d.span.start < value_end)
+        .collect();
+    diags.extend(p.diagnostics);
+    (p.b.finish(), diags)
 }

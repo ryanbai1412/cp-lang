@@ -108,6 +108,7 @@ fn every_child_a_view_reads_has_a_view() {
         K::Missing,
         K::Decorator,
         K::LendSrc,
+        K::RetType,
         K::Bound,
         K::GenericParams,
         K::WhereClause,

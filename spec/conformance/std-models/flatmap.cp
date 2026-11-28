@@ -59,7 +59,7 @@ for k in 0..n:
         if not o.is_empty: bad = "op {k}: absorb left other non-empty"
         for j in 0..40:
             if let w = b[j]:
-                a[j] = if let x = a[j] and join: Some(x * 10 + w) else: Some(w)
+                a[j] = if let x = a[j], join: Some(x * 10 + w) else: Some(w)
     if bad != "": break
     let want = entries(a)
     if m.len != want.len or m.is_empty != (want.len == 0):

@@ -1775,7 +1775,7 @@ std/seq.cp: tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, I
 std/seq.cp: to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T>
 std/seq.cp: union<T>(mut self: Set<T>, o: Set<T>)
 std/seq.cp: unzip<S: Seq<(A, B)
-std/seq.cp: update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)
+std/seq.cp: update<K, V>(mut self: Map<K, V>, k: K, init: V, f: V -> V)
 std/seq.cp: valleys<D, T>(self: [D]T) -> yields Range<D>
 std/seq.cp: windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>
 std/seq.cp: with_domain<T>(self: List<T>) -> (domain I, [I]T)

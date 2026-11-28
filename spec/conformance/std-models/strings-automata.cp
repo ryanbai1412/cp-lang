@@ -93,7 +93,7 @@ for k in 0..n:
     if bad != "": break
     let ps = [word(mut rng, 3) for _ in 0..rng.int(1, 4)]
     let ac = AhoCorasick<Char>(ps)
-    let pre = uniq([cut(p, 0, j) for p in ps for j in 0..=p.len])
+    let pre = uniq([cut(p, 0, j) for p in ps, j in 0..=p.len])
     let sof = (x: Str) => walk(ac, x)
     let best = (x: Str) => [cut(x, i, x.len) for i in 0..=x.len if pre.contains(cut(x, i, x.len))][0]
     let byend = (x: Str) => (0..ps.len).filter(p => suf(x, ps[p])).sorted(by: p => (-ps[p].len, p))
@@ -101,7 +101,7 @@ for k in 0..n:
     var bfs = [""]
     var lvl = [""]
     while lvl.len > 0:
-        lvl = [x + "{c}" for x in lvl for c in "ab" if pre.contains(x + "{c}")]
+        lvl = [x + "{c}" for x in lvl, c in "ab" if pre.contains(x + "{c}")]
         bfs = bfs + lvl
     for e in 0..=text.len:
         for p in byend(cut(text, 0, e)): hits.push((at: e - ps[p].len, pattern: p))
@@ -129,7 +129,7 @@ for k in 0..n:
         cur += "{c}"
         if pt.push(c) != pt.last_state: bad = "op {k}: PalindromicTree.push"
     let m = cur.len
-    let pals = uniq([cut(cur, l, r) for l in 0..m for r in l + 1..=m if pal(cut(cur, l, r))])
+    let pals = uniq([cut(cur, l, r) for l in 0..m, r in l + 1..=m if pal(cut(cur, l, r))])
     var dp = [0]
     for i in 1..=m: dp.push((0..i).filter(j => pal(cut(cur, j, i))).map(j => dp[j] + 1).min()!)
     if pt.distinct != pals.len or pt.len != pals.len + 2 or pt.min_palindrome_partition() != dp: bad = "op {k}: PalindromicTree.distinct of {cur}"

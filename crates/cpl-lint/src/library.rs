@@ -158,7 +158,7 @@ fn declare(
             spelled.push((w.to_string(), s));
         }
     }
-    let labels = library_lint::labels(&kinds);
+    let labels = cpl_syntax::arg_labels(&kinds);
     let mut receiver = None;
     for i in 1..from.len() {
         if receiver.is_none() && !labels[i - 1] && from[i].0 == K::Dot {
@@ -556,7 +556,7 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
         for t in &to {
             to_kinds.push(t.kind);
         }
-        let to_labels = library_lint::labels(&to_kinds);
+        let to_labels = cpl_syntax::arg_labels(&to_kinds);
         let mut to_words = Vec::new();
         for (t, &label) in to.iter().zip(&to_labels) {
             if !label {
@@ -791,7 +791,7 @@ pub(crate) fn find(file: &File, declared: &[Declared], only: Option<Code>) -> Ve
                 for t in &write_toks {
                     write_kinds.push(t.kind);
                 }
-                let write_labels = library_lint::labels(&write_kinds);
+                let write_labels = cpl_syntax::arg_labels(&write_kinds);
                 let m = Matcher {
                     repeated: &plain[..d.decl.holes.len()],
                     ..matcher(pat, &plain[..pat.len()], &plain[..pat.len()])

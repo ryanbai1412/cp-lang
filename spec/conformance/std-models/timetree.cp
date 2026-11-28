@@ -47,7 +47,7 @@ for k in 0..n:
         mark: () => stack.len,
         apply: e => stack.push(e),
         answer: _ => sorted(stack),
-        undo: m => do:
+        undo: m =>
             while stack.len > m: stack.pop()
     )
     let over = offline_over(
@@ -57,7 +57,7 @@ for k in 0..n:
         mark: () => stack.len,
         apply: e => stack.push(e),
         answer: _ => sorted(stack),
-        undo: m => do:
+        undo: m =>
             while stack.len > m: stack.pop()
     )
     if bad == "" and ran != want: bad = "op {k}: run answer {ran} want {want}"
@@ -65,7 +65,7 @@ for k in 0..n:
     let m = rng.int(0, 9)
     var pairs = List.filled(m * m, 0)
     var order_ok = true
-    cdq([i for i in 0..m], on_cross: (l, r) => do:
+    cdq([i for i in 0..m], on_cross: (l, r) =>
         for i in l:
             for j in r:
                 pairs[i * m + j] += 1

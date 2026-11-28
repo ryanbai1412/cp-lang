@@ -29,7 +29,8 @@ mod words;
 
 pub use cpl_next_syntax::literal;
 pub use cpl_next_syntax::{
-    lex, removed_keyword, split_items, ItemRange, Lexed, Token, TokenKind, KEYWORDS, LITERAL_WORDS,
+    arg_labels, lex, removed_keyword, split_items, ItemRange, Lexed, Token, TokenKind, KEYWORDS,
+    LITERAL_WORDS,
 };
 pub use parser::{parse_item, ParsedItem};
 

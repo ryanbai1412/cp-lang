@@ -149,11 +149,11 @@ for k in 0..n:
         let hc = rng.int(0, 5)
         let h = [[rng.int(0, 1) == 0 for _ in 0..hc] for _ in 0..c]
         let prod = m.mul(to_bm(h, c, hc))
-        if any(m.get(i, j) != g[i][j] for i in 0..r for j in 0..c) or m.rows != r or m.cols != c: bad = "op {k}: BitMat get/set"
+        if any(m.get(i, j) != g[i][j] for i in 0..r, j in 0..c) or m.rows != r or m.cols != c: bad = "op {k}: BitMat get/set"
         elif m.rank() != rk: bad = "op {k}: BitMat.rank {r}x{c}"
         elif (sol != None) != solvable or (sol != None and mv(g, sol!) != b): bad = "op {k}: BitMat.solve {r}x{c}"
         elif (sp != None) != solvable or (sp != None and (sp!.x0 != sol! or sp!.basis.len != c - rk or any(mv(g, v) != List.filled(r, false) for v in sp!.basis))): bad = "op {k}: BitMat.solve_space {r}x{c}"
-        elif any(prod.get(i, j) != (count(g[i][t] and h[t][j] for t in 0..c) % 2 == 1) for i in 0..r for j in 0..hc): bad = "op {k}: BitMat.mul"
+        elif any(prod.get(i, j) != (count(g[i][t] and h[t][j] for t in 0..c) % 2 == 1) for i in 0..r, j in 0..hc): bad = "op {k}: BitMat.mul"
         else:
             let s = if wide: rng.int(62, 66) else: rng.int(0, 6)
             var q = [[rng.int(0, 1) == 0 for _ in 0..s] for _ in 0..s]
@@ -163,8 +163,8 @@ for k in 0..n:
             let id = BitMat.identity(s)
             let back = if inv != None: sq.mul(inv!) else: id
             if sq.det() != full or (inv != None) != full: bad = "op {k}: BitMat.det/inverse {s}"
-            elif any(id.get(i, j) != (i == j) for i in 0..s for j in 0..s): bad = "op {k}: BitMat.identity({s})"
-            elif full and any(back.get(i, j) != (i == j) for i in 0..s for j in 0..s): bad = "op {k}: BitMat.inverse {s}"
+            elif any(id.get(i, j) != (i == j) for i in 0..s, j in 0..s): bad = "op {k}: BitMat.identity({s})"
+            elif full and any(back.get(i, j) != (i == j) for i in 0..s, j in 0..s): bad = "op {k}: BitMat.inverse {s}"
     if bad != "":
         break
 print(if bad == "": "ok" else: bad)

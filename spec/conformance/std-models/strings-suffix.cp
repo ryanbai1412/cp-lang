@@ -17,7 +17,7 @@ fn at(s: Str, i: Int, p: Str) -> Bool = 0 <= i and i + p.len <= s.len and cut(s,
 fn uniq(xs: List<Str>) -> List<Str>:
     let ys = xs.sorted()
     [ys[i] for i in 0..ys.len if i == 0 or ys[i] != ys[i - 1]]
-fn subs(s: Str) -> List<Str> = [cut(s, l, r) for l in 0..s.len for r in l + 1..=s.len]
+fn subs(s: Str) -> List<Str> = [cut(s, l, r) for l in 0..s.len, r in l + 1..=s.len]
 fn cmp(a: Str, b: Str) -> Int = if a < b: -1 elif a == b: 0 else: 1
 fn ends(s: Str, w: Str) -> List<Int> = [i + w.len - 1 for i in 0..s.len if at(s, i, w)]
 

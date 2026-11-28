@@ -25,6 +25,9 @@ impl Parser<'_> {
     }
 
     pub(super) fn item(&mut self) {
+        if self.trusted_ahead() {
+            return self.stmt();
+        }
         if self.at(T::At) && self.nth(1) == T::Bang && self.glued(1) {
             // A directive heads the item written below it.
             self.directive();
@@ -141,7 +144,7 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn nth_text(&self, n: usize) -> &str {
+    pub(super) fn nth_text(&self, n: usize) -> &str {
         self.nth_index(n)
             .map_or("", |i| self.tokens[i].span.text(self.src))
     }
@@ -154,10 +157,17 @@ impl Parser<'_> {
         }
     }
 
-    fn directive(&mut self) {
+    pub(super) fn directive(&mut self) {
         self.start(NodeKind::Directive);
         self.bump();
         self.bump();
+        if self.at(T::Ident)
+            && crate::grammar::Decorator::of(self.nth_text(0))
+                == Some(crate::grammar::Decorator::Interactive)
+        {
+            let err = msgs::syntax::INTERACTIVE_DIRECTIVE.error(self.span(), &[]);
+            self.diagnostics.push(err);
+        }
         self.want(T::Ident, "the directive's name");
         if self.at(T::LParen) {
             self.list(NodeKind::ArgList, T::RParen, "the argument list", Self::arg);
@@ -186,7 +196,13 @@ impl Parser<'_> {
         self.start_at(at, NodeKind::FnDecl);
         self.eat(T::Pub);
         self.bump();
-        if self.at(T::LParen) {
+        if ops::prefix(self.peek()).is_some() && self.nth(1) == T::LParen {
+            // `fn -(a: V) -> V`: a prefix operator (R12).
+            self.start(NodeKind::OpFnName);
+            self.bump();
+            self.params();
+            self.finish();
+        } else if self.at(T::LParen) {
             self.start(NodeKind::OpFnName);
             self.params();
             if ops::binary(self.peek()).is_some() || self.at(T::In) {
@@ -235,6 +251,8 @@ impl Parser<'_> {
     pub(super) fn params(&mut self) {
         self.start(NodeKind::ParamList);
         if self.want(T::LParen, "`(` and the parameters") {
+            // `(; c)` has no positional params.
+            self.eat(T::Semi);
             while !matches!(self.peek(), T::RParen | T::Newline | T::Eof | T::Dedent) {
                 self.param();
                 if !(self.eat(T::Comma) || self.eat(T::Semi)) {
@@ -272,6 +290,9 @@ impl Parser<'_> {
             if self.at(T::Amp) && self.nth(1) == T::Mut {
                 self.amp_mut_param(start);
             }
+            if self.word() == Some(W::Yields) && self.nth(1) != T::Comma {
+                self.yields_param();
+            }
             self.ty();
         }
         if self.eat(T::Eq) {
@@ -287,6 +308,19 @@ impl Parser<'_> {
         let err = msgs::syntax::LAZY_PARAM.error(word, &[]);
         self.diagnostics
             .push(err.with_fix("delete `lazy`", to_name, ""));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+    }
+
+    /// `xs: yields T`: no such mode (R05.2.3), only a fn's result yields;
+    /// the fix deletes `yields`.
+    fn yields_param(&mut self) {
+        let word = self.span();
+        let to_ty = Span::new(word.start, self.nth_span(1).start);
+        let err = msgs::syntax::YIELDS_PARAM.error(word, &[]);
+        self.diagnostics
+            .push(err.with_fix("delete `yields`", to_ty, ""));
         self.start(NodeKind::Error);
         self.bump();
         self.finish();
@@ -309,12 +343,23 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn ret(&mut self) {
-        if !self.at(T::Arrow) {
+    /// `-> T`, `-> yields T`, `-> lends mut T`: a fn's result and a fn
+    /// type's alike.
+    pub(super) fn ret(&mut self) {
+        let bare_lends = self.at(T::Lends);
+        if !self.at(T::Arrow) && !bare_lends {
             return;
         }
         self.start(NodeKind::RetType);
-        self.bump();
+        if bare_lends {
+            let at = self.span();
+            let err = msgs::syntax::LENDS_ARROW.error(at, &[]);
+            let fix = Span::new(at.start, at.start);
+            self.diagnostics
+                .push(err.with_fix("write `-> lends`", fix, "-> "));
+        } else {
+            self.bump();
+        }
         if self.word() == Some(W::Yields) {
             self.bump();
         } else if self.eat(T::Lends) {
@@ -491,7 +536,7 @@ impl Parser<'_> {
                 self.field();
             }
         } else if self.at(T::Colon) {
-            self.members(|p| p.fn_or(Self::field_at));
+            self.members(|p| p.fn_or(Self::struct_member));
         }
         self.finish();
     }
@@ -639,9 +684,7 @@ impl Parser<'_> {
         }
         self.where_clause();
         if self.at(T::Colon) {
-            self.members(|p| {
-                p.assoc_member(|p, _| p.recover(codes::EXPECTED_TOKEN, "a fn, a `type` or a `law`"))
-            });
+            self.members(|p| p.assoc_member(Self::impl_member));
         }
         self.finish();
     }
@@ -652,18 +695,54 @@ impl Parser<'_> {
             let at = self.checkpoint();
             return self.type_alias(at, NodeKind::AssocType);
         }
-        if self.word() == Some(W::Law) && self.nth(1) == T::Ident {
-            self.start(NodeKind::LawDecl);
-            self.bump();
-            self.name("the law's name");
-            self.params();
-            self.where_clause();
-            if self.want(T::Eq, "`=` and the law's condition") {
-                self.expr();
-            }
-            return self.finish();
+        if self.law_ahead() {
+            let at = self.checkpoint();
+            return self.law_decl(at);
         }
         self.fn_or(other);
+    }
+
+    fn law_ahead(&self) -> bool {
+        self.word() == Some(W::Law) && self.nth(1) == T::Ident
+    }
+
+    /// `law assoc(a: T, b: T) where T: Eq = e` (R08.3).
+    fn law_decl(&mut self, at: Checkpoint) {
+        self.start_at(at, NodeKind::LawDecl);
+        self.bump();
+        self.name("the law's name");
+        self.params();
+        self.where_clause();
+        if self.want(T::Eq, "`=` and the law's condition") {
+            self.expr();
+        }
+        self.finish();
+    }
+
+    /// A struct member other than a fn: a field, `const zero = e` (R12),
+    /// `let BASE = 5` (R02.6), `domain Idx = 0..src.len` (R04) or a `law`
+    /// the struct states (R08.3).
+    fn struct_member(&mut self, at: Checkpoint) {
+        match self.nth(usize::from(self.at(T::Pub))) {
+            T::Const => self.const_decl(at),
+            T::Let => self.let_stmt(at),
+            T::Domain if self.nth(1) == T::Ident => self.domain_decl(at),
+            _ if self.law_ahead() => self.law_decl(at),
+            _ => self.field_at(at),
+        }
+    }
+
+    /// An impl member other than a fn, a `type` or a `law`: `const name = e`
+    /// (R12) or `let count = e` (R04).
+    fn impl_member(&mut self, at: Checkpoint) {
+        match self.nth(usize::from(self.at(T::Pub))) {
+            T::Const => self.const_decl(at),
+            T::Let => self.let_stmt(at),
+            _ => self.recover(
+                codes::EXPECTED_TOKEN,
+                "a fn, a `type`, a `law`, a `const` or a `let`",
+            ),
+        }
     }
 
     /// `type Name<G>: Bound = T`; a trait's associated type has no `= T`.
