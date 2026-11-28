@@ -205,10 +205,19 @@ impl Cx<'_> {
         want: Option<&Ty>,
         span: Span,
     ) -> TExpr {
-        let Some(body) = c.body() else {
+        self.comp_of(c.body(), c.clauses().collect(), want, span)
+    }
+    /// A comprehension's list from its parts, for `[e for ..]` and the generator `(e for ..)`.
+    pub(super) fn comp_of(
+        &mut self,
+        body: Option<next::Expr>,
+        clauses: Vec<next::CompClause>,
+        want: Option<&Ty>,
+        span: Span,
+    ) -> TExpr {
+        let Some(body) = body else {
             return error(span);
         };
-        let clauses: Vec<next::CompClause> = c.clauses().collect();
         self.b.scopes.push(HashMap::new());
         let e = match self.new_list("$comp", 0, want, span) {
             Some((l, init)) => {
