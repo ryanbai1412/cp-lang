@@ -988,6 +988,21 @@ impl<'a> Cx<'a> {
                 return self.const_read(c, span);
             }
         }
+        // `MaxSub.zero`: a self-less `@get` fn of a trait the struct implements, read without
+        // `()`, where the struct has no member of that name.
+        if let (Some((_, d)), None) = (named, call) {
+            if member_of(&self.items.s(d).methods, name).is_none() && !self.walks_for(d, name) {
+                let mut pre = Vec::new();
+                let given = (written.iter().take(self.items.s(d).generics.len()))
+                    .map(|t| self.body_ty(t, &mut pre))
+                    .collect::<Vec<_>>();
+                let t = Ty::Struct(d, self.shapes.with_defaults_of(d, &given), Vec::new());
+                if let Some(e) = self.type_static(t, name, None, span) {
+                    self.no_targs(name, written_targs, span);
+                    return block(pre, e);
+                }
+            }
+        }
         // `Subset<B>.empty`: a self-less `@get` fn of the type, read without `()`.
         let get = named.filter(|_| call.is_none()).is_some_and(|(_, d)| {
             (member_of(&self.items.s(d).methods, name)).is_some_and(|m| {
