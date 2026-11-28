@@ -4,6 +4,7 @@
 //! the types here, so an error reads the same on the command line and in the
 //! editor (`plan/30-compiler.md` 3.7).
 
+mod file;
 mod fix;
 pub mod habits;
 pub mod json;
@@ -15,6 +16,7 @@ mod source;
 pub mod usage;
 pub mod view;
 
+pub use file::FileId;
 pub use fix::{import_edit, splice, splice_fixes};
 pub use registry::{lookup, CodeInfo, REGISTRY};
 pub use render::{render, render_all};

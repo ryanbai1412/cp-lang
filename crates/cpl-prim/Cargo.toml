@@ -1,6 +1,6 @@
 [package]
 name = "cpl-prim"
-description = "The primitive operations `@intrinsic` names: each one's id and stable number."
+description = "Core's primitive types, and the primitive operations `@intrinsic` names: each one's id and stable number."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true

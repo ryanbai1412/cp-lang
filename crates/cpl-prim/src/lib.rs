@@ -2,6 +2,9 @@
 //! stable number. The compiler matches [`PrimOp`] values, never the names libraries give them;
 //! what each computes and the C++ it emits live with the engines that read this.
 
+mod core_ty;
+pub use core_ty::Prim;
+
 /// A scalar type a primitive takes or gives, as its table cells write it.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Kind {

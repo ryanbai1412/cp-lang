@@ -1,9 +1,9 @@
 //! The data contracts 0 and 9 pass between a tool, the facade and the pipeline: one
 //! definition each, so the facade's API names the same types whichever pipeline answers it.
 
+pub use cpl_diag::FileId;
 use cpl_diag::Span;
-pub use cpl_next_ir::ids::FileId;
-pub use cpl_next_ir::prim::Prim;
+pub use cpl_prim::Prim;
 use std::sync::Arc;
 
 /// A file's exact text.

@@ -121,7 +121,7 @@ name = "cpl-contract"
 version = "0.3.0"
 dependencies = [
  "cpl-diag",
- "cpl-next-ir",
+ "cpl-prim",
 ]
 
 [[package]]
