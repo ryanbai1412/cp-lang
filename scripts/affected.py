@@ -305,6 +305,14 @@ def run_slices(names, reds_base=None):
     return run.returncode
 
 
+# What `cpl build` on the old pipeline is built from: a change here must leave its output
+# byte-identical (scripts/old-pipeline-same.py, the freeze's behaviour half).
+OLD_PIPELINE_INPUTS = ("crates/cpl-cli/", "crates/cpl-check/", "crates/cpl-ir/", "crates/cpl-interp/",
+                       "crates/cpl-codegen/", "crates/cpl-syntax/", "crates/cpl-next-syntax/", "crates/cpl-diag/",
+                       "crates/cpl-prim/", "crates/cpl-config/", "crates/cpl-contract/", "crates/cpl-json/",
+                       "crates/cpl-rt/", "Cargo.lock")
+
+
 WRONG_ACCEPT_INPUTS = ("std/", "crates/cpl-next", "crates/cpl-syntax/", "crates/cpl-prim/", "crates/cpl-diag/",
                        "crates/cpl-config/", "crates/cpl-json/", "crates/cpl-contract/", "spec/conformance/core-05/",
                        "spec/conformance/core-06/", "spec/conformance/std-seq/")
@@ -313,7 +321,7 @@ WRONG_ACCEPT_INPUTS = ("std/", "crates/cpl-next", "crates/cpl-syntax/", "crates/
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
            "script_tests": [], "site": False, "conform_cases": [], "data_filter": "",
-           "check_files": [], "audit": False, "idioms_catalog": False, "spec_traits": False, "dreams": False, "wrong_accepts": False, "slices": [], "steps": []}
+           "check_files": [], "audit": False, "idioms_catalog": False, "spec_traits": False, "dreams": False, "wrong_accepts": False, "old_same": False, "slices": [], "steps": []}
     packages, tests, data, steps = set(), set(), [], set()
     step_scripts = ci.step_scripts()
     for path in paths:
@@ -532,6 +540,7 @@ def main(argv):
     print(f"spec_traits={int(sel['spec_traits'])}")
     print(f"dreams={int(sel['dreams'])}")
     print(f"wrong_accepts={int(sel['wrong_accepts'])}")
+    print(f"old_same={int(sel['old_same'])}")
     print("slices=" + " ".join(sel["slices"]))
     print("steps=" + " ".join(sel["steps"]))
     print("slice_filter=" + slice_filter(sel["slices"]))

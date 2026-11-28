@@ -401,7 +401,9 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
 - **A `match` arm is `pattern => body`, never `pattern: body`.** Syntax,
   4.1: the old parser also took a colon arm, a second spelling of one
   construct. The new parser reports it as a syntax error whose fix writes
-  `=>`, and std and conformance use `=>` arms only.
+  `=>`, and std and conformance use `=>` arms only. The old parser stays
+  frozen and still reads it (coordinator, 2026-11-27 20:17: a ruled form
+  is an error only in the new parser; `tests/old-parser-accepts.txt`).
 - **`lend mut place` is a statement.** Syntax, 5.12/16.9: R05.6.3 is
   normative; a block body lends with `lend mut place` (or `lend place`),
   and the code after it is write-back, which a tail expression can't
@@ -410,12 +412,13 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
 - **There is no `loop`.** Syntax, 4.1: the old parser took `loop:` by a
   text compare, a second spelling of `while true:` (R01.7.2). The new
   parser reports it with a fix writing `while true`, and std and
-  conformance use `while true:`.
+  conformance use `while true:`. The old parser still reads it (20:17).
 - **A variant's payload fields have names.** Syntax, 2.7: `fields` is
   `NAME ':' type`, for struct fields and variant payloads alike. The old
   parser also took a positional `One(T)` (a field with no label, a second
   answer) and a shared label `Merge(a, b: Ship)`, which `fields` doesn't
-  have. Both are E0503 now, with a fix naming a type payload `v`, `v2`, ....
+  have. Both are E0503 in the new parser, with a fix naming a type payload
+  `v`, `v2`, ...; the old parser still reads them (20:17).
   The two conformance cases that used `One(T)` name it.
 - **A variant has no value.** Syntax, 2.7 and 30.8: `variant` is
   `decorator* NAME ('(' fields ')')?`, so `Neg = -1` is E0504 (not in the
@@ -430,7 +433,8 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   the grammar nor R05 wrote down. `param` gains `('mut' | 'var')?` and
   R05.2.3 states it: the argument moves in, the caller marks nothing, and
   `mut` (the caller's place) doesn't combine with `var`. The old parser's
-  `lazy f: T` and `x: &mut T` had no spec and no uses; both are E0503, with
+  `lazy f: T` and `x: &mut T` had no spec and no uses; both are E0503 in the
+  new parser (the old one still reads them, 20:17), with
   fixes deleting `lazy` and writing `mut x: T` (R05 13a: no `&mut T`).
 - **Structs and impls state constants, domains and laws.** Syntax, 4.1:
   std writes `let count = e` in an impl (R04, 04:71), `const zero = e` in
@@ -9639,3 +9643,22 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `@!interactive` was a second spelling of R10.4's `Wire`, so `@!multitest` stays the one file directive (R01.9.1). The table lists `interactive` as removed; the corpus and the stress case move to `let wire = Wire()` and `wire.ask(..)` in their own commit, and the new parser's E0503 lands after them.
 - **Why.** Coordinator ruling of 2026-11-27, 19:54 and 19:57.
 - **Reverse.** Spec `@!interactive` as a file directive beside `@!multitest`.
+
+## 668. `yield from e` stays, as `for x in e: yield x` (spec, 2026-11-27)
+
+- **Call.** `yield from e` in a `-> yields T` body is exactly `for x in e: yield x` (R06.3.6): `e` is any `Seq` of `T`, a generator value included, and `break`, `return` and steering act as in that loop; a recursive generator follows R06.3.3. `from` is a contextual word only right after `yield` and is the name `from` when `.`, `(` or `[` follows (`yield from.x` yields a field, `yield from(a)` a call), as the old parser read it. The grammar's `simple` gains the `yield` production it lacked.
+- **Why.** Coordinator ruling of 2026-11-27, 20:48: the old parser read it and the corpus uses it (cases/ok/gen1.cp, programs/batch20_yields_lazy.cp), so the new parser cutting it would cut a feature.
+- **Reverse.** Write the loop; drop the contextual word.
+
+## 655. A read that must wait for more input flushes first, in every mode (io, 2026-11-27)
+
+- **Call.** R10.4 no longer has an interactive mode that `Wire` switches on. In every program, a read that must wait for more input hands the judge the output written so far first; `flush()` and every exit do too, and a read the input already holds flushes nothing. `ops::Input` decides when a read must wait, and the reference interpreter and the engine follow it by writing to `RunInput::out`, the sink of a streamed run (`cpl-next` streams stdin and stdout through the facade's run API); in C++ it is `fflush(stdout)` before the `read()` syscall, which now reads the input in 64 KiB pieces. `Wire` stays ordinary std over `print`, `flush` and `read`. The output's bytes are the same as before; only when the judge gets them moves.
+- **Why.** Wire's mode was hidden state that only a std type could set. A read that waits is the one place a program can deadlock with an interactor, so flushing there is enough in every mode and needs no privilege. A batch program reads its input from a file or a pipe that is already full, so it waits only when a 64 KiB piece runs dry and pays one empty flush per piece; reading 10^6 Ints in C++ measured 69 ms before and 70 ms after.
+- **Reverse.** Restore the mode bit, set by `Wire()`, and flush at reads only when it is set.
+
+## 656. Stacker grows the interpreters' host stack; a run's stack is its judge's (deps, 2026-11-27)
+
+- **Call.** `stacker` (pinned `=0.1.25`) is the workspace's sixth external crate, signed off by the coordinator. The reference interpreter's and the engine's `call` run under `stacker::maybe_grow` (1 MB red zone, 64 MB segments), and `cli::on_run_stack` gives the run's thread the judge's stack, `Limits::stack`, which the emitted C++ now uses too in place of a fixed 1 GB. A thread the machine will not give that stack is a clear error (exit 2). `external_crates` goes 5 → 14, every package in Cargo.lock: stacker, psm, cfg-if and libc at run time; ar_archive_writer, object and memchr building psm; windows-sys and windows-link on Windows only. `next_reference_evaluator_lines` goes 581 → 583 for the `maybe_grow` wrap of the interpreter's `call`.
+- **Why.** 728b1ebf5 ran every program on a fixed 16 GB thread stack. CI runners refuse a mapping that size, so 405 listed passes crashed. Both interpreters recurse natively, and a host frame there is 32 to 128 times the run's counted frame words, so no thread size tied to the judge's stack lets R0601 (`Stack::enter`) run out before the host does. Growing the host stack in segments does, and only touches what a run uses. A fresh thread per segment would need no crate, but the interpreter's values hold `Rc` and cannot cross threads.
+- **Reverse.** The engine leaves stacker once it runs on its own frame stack (lane F). The oracle, a small tree-walker, keeps it, so the crate stays and the count does not drop.
+

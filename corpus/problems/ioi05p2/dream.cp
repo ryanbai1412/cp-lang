@@ -8,11 +8,11 @@ enum Cmd: Set(a: Rail, b: Rail, d: -1e9..=1e9) | Ask(h: 0..=1e9)
 var cmds = List<Cmd>()
 while true:
     match read<Char>():
-        'E': break
-        'I':
+        'E' => break
+        'I' =>
             let (a, b, d): (Rail, Rail, -1e9..=1e9) = read()
             cmds.push(Cmd.Set(a, b, d))
-        _: cmds.push(Cmd.Ask(read()))
+        _ => cmds.push(Cmd.Ask(read()))
 let (domain Piece, piece) = Rail.range.pieces(
     cuts: [x for c in cmds if let Cmd.Set(a, b, _) = c for x in [a.l, b.r]]
 )
@@ -35,8 +35,8 @@ var track = SegTree(then, [Piece] p => Rise(0, 0, piece[p].len), act: slope)
 
 for c in cmds:
     match c:
-        Set(a, b, d): track.apply(piece.covering(a..=b), d)
-        Ask(h):
+        Set(a, b, d) => track.apply(piece.covering(a..=b), d)
+        Ask(h) =>
             let stop = track.right_while(Piece.cuts.first!, x => x.peak <= h)
             if let p = stop.r:  // the piece where the car stops
                 let at = track.get(p)

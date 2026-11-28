@@ -450,7 +450,12 @@ impl<'a> Cx<'a> {
         let Some(n) = &bare_name(base) else {
             return None;
         };
-        if self.lookup(n).is_some() || self.d.named(self.b.module, n).is_some() {
+        if self.lookup(n).is_some()
+            || !matches!(
+                self.d.named(self.b.module, n),
+                None | Some(decls::Named::Alias(_))
+            )
+        {
             return None;
         }
         let t = match self.d.named(self.b.module, n) {
@@ -470,6 +475,13 @@ impl<'a> Cx<'a> {
         let t = self.shallow(&t);
         if matches!(t, Ty::Error | Ty::Param(_) | Ty::Var(_)) {
             return None;
+        }
+        // `type P = Pair<Int>` then `P.new(..)`: the struct's own fn before a trait's.
+        if let (Ty::Struct(d, given, _), Some(args)) = (&t, call) {
+            if let Some(m) = self.d.member(&self.d.s(*d).methods, &name.text) {
+                let f = self.fnref(m, given.clone(), Vec::new());
+                return Some(self.call_fn(f, None, args, span, None));
+            }
         }
         self.type_static(t, name, call, span)
     }
@@ -917,6 +929,15 @@ impl<'a> Cx<'a> {
             if let Some((_, d)) = named.filter(|&(_, d)| !walks && !self.walks_for(d, &name.text)) {
                 let s = self.d.s(d);
                 let Some(m) = self.d.member(&s.methods, &name.text) else {
+                    // `Str.default()`: a self-less fn of a trait the struct implements.
+                    let mut pre = Vec::new();
+                    let given = (written.iter().take(s.generics.len()))
+                        .map(|t| self.body_ty(t, span, &mut pre))
+                        .collect();
+                    let t = Ty::Struct(d, self.d.with_defaults_of(d, given), Vec::new());
+                    if let Some(e) = self.type_static(t, name, Some(args), span) {
+                        return block(pre, e);
+                    }
                     self.err(
                         span,
                         Msg::verdict(

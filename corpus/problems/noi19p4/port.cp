@@ -31,10 +31,10 @@ var dist: [City]Int = 0
 frontier.offer(At(City.first!), 0)
 while let (u, d) = frontier.pop():
     match u:
-        At(c):
+        At(c) =>
             dist[c] = d
             for p in out[c]: frontier.offer(Via(p), d + portal[p].t)
-        Via(p):
+        Via(p) =>
             let r = portal[p]
             for i in unreached.drain(Int(r.xl)..Int(r.xr) + 1, r.yl..r.yr + 1):
                 frontier.offer(At(City.nth(i)), d)

@@ -7,7 +7,8 @@
 //! new `Version` handle. All earlier versions remain readable in \(O(\log n)\).
 use std.algebra.{Action, Monoid}
 use std.marks.{Id}
-use std.math.{splitmix64, bit_width}
+use std.hash.{splitmix64}
+use std.math.{bit_width}
 use std.range.{Len, ends}
 use std.seq.{each, Seq, deduped, all}
 

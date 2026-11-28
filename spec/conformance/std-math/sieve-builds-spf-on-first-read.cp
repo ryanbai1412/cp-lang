@@ -1,6 +1,6 @@
 // expect: ok, output "25 YES NO YES\n3 2 2 97\nYES"
 // rule: 08.1.2
-// `Sieve(n)` keeps the primes and a primality bitset; `spf` is built on its first read (by `spf`, `factor` or a table) and then kept, and reads before and after it agree.
+// `Sieve(n)` keeps the primes, a primality bitset and `spf`, built with the sieve (R05.10.9: a `@cache` field cannot be lent), and reads of `spf` agree with `is_prime`.
 use std.math.{Sieve}
 let sv = Sieve(100)
 print(sv.primes.len, yes(sv.is_prime(97)), yes(sv.is_prime(91)), yes(sv.is_prime(2)))

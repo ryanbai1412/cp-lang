@@ -65,8 +65,11 @@ pub(crate) struct Walk<'a> {
     /// The instances that are methods: what their result views is cut from the receiver.
     pub receivers: BTreeSet<usize>,
     pub copies: BTreeSet<(usize, Site)>,
+    pub last: crate::Last,
     pub report: bool,
     pub errors: Vec<Msg>,
+    /// Each binding's sources where the reporting walk binds it (`cpl-next --dump-own`).
+    pub binds: Vec<Bound>,
 }
 
 impl Walk<'_> {
@@ -159,7 +162,7 @@ impl Walk<'_> {
                 let i = *self.p.index.get(k)?;
                 let caps = (xs.iter())
                     .map(|x| match &x.kind {
-                        EK::AddrOf(p) | EK::Copy(p) => Some(p.clone()),
+                        EK::AddrOf(p) | EK::Copy(p) | EK::Lent(p) => Some(p.clone()),
                         _ => None,
                     })
                     .collect::<Option<Vec<_>>>()?;
@@ -560,6 +563,20 @@ impl Walk<'_> {
                             // one, or any the signature says `lends` (a fixed-size grid).
                             let heap = !self.p.plain(&v.ty) || self.declares_lends(*i);
                             if let (EK::Copy(p), true) = (&v.kind, heap) {
+                                // An owned binding read for the last time moves in, with what
+                                // it borrows (R05.5.3).
+                                if let Place::Local(l) = p {
+                                    let r = Root::Local(*l);
+                                    if self.last.here.contains(l)
+                                        && self.decl.contains_key(&r)
+                                        && !self.borrowed.contains(&r)
+                                    {
+                                        out.extend(
+                                            self.lent.get(&r).into_iter().flatten().cloned(),
+                                        );
+                                        continue;
+                                    }
+                                }
                                 out.extend(self.lent_pl(p));
                                 // A view cut from a temporary holds it (R07.5.10).
                                 let viewed = (k == 0 && self.receivers.contains(i))
@@ -750,6 +767,7 @@ impl Walk<'_> {
         {
             q.path.push(Step::Key(*k));
         }
+        let mut captured = BTreeSet::new();
         let (mut other, mut keeps) = (
             Fx::default(),
             kept.iter().copied().collect::<BTreeSet<usize>>(),
@@ -776,6 +794,14 @@ impl Walk<'_> {
             other.reads.extend(ot.into_iter().filter_map(map));
             other.writes.extend(ow.into_iter().filter_map(map));
             fx.reads.extend(tr.into_iter().filter_map(map));
+            // A write through a viewed parameter is a closure's write to what it captured: the
+            // call writes that place (R05.10.3).
+            let viewed = |p: &&&Pl| match p.root {
+                Root::Local(l) => (ps.iter().position(|x| *x == l))
+                    .is_some_and(|i| matches!(args.get(i), Some(Arg::View(_)))),
+                Root::Global(_) => false,
+            };
+            captured.extend(tw.iter().filter(viewed).filter_map(|p| map(p)));
             fx.writes.extend(tw.into_iter().filter_map(map));
             other.held.extend(sum.fx.held.iter().filter_map(map));
         }
@@ -965,11 +991,9 @@ impl Walk<'_> {
         for p in lent.clone() {
             self.store(site, p.root, kept.clone());
         }
-        for p in lent
-            .iter()
-            .chain(&other.writes)
+        for p in (lent.iter().chain(&other.writes).chain(&captured))
             .cloned()
-            .collect::<Vec<_>>()
+            .collect::<BTreeSet<_>>()
         {
             self.wrote_via(site, &p, &via);
         }
@@ -994,6 +1018,7 @@ impl Walk<'_> {
         (held, lent)
     }
     fn stmt(&mut self, s: &Stmt<CTy>, fx: &mut Fx) {
+        self.last.stmt(s);
         if let Stmt::Let(l, e) = s {
             if copy_of(e).is_some_and(|m| self.closure_params.contains(&m)) {
                 self.closure_params.insert(*l);
@@ -1034,12 +1059,15 @@ impl Walk<'_> {
                             .filter(|q| !q.path.is_empty() || self.borrowed.contains(&q.root)),
                     );
                 }
-                if (!self.p.plain(&e.ty) || self.walks(&e.ty)) && !src.is_empty() {
+                // A fn value holds only its captures' names: they are borrowed per call, so a
+                // write between calls is no conflict (R05.10.3).
+                let closure = self.closure_caps(e).is_some();
+                if (!self.p.plain(&e.ty) || self.walks(&e.ty)) && !src.is_empty() && !closure {
                     self.frozen.insert(Root::Local(*l), src.clone());
                 }
                 src.extend(uses);
                 // A closure holds what its captures borrow, as a view does (R05.7.1).
-                if self.closure_caps(e).is_some() {
+                if closure {
                     let through = self.through(&src);
                     if !through.is_empty() {
                         self.frozen
@@ -1051,6 +1079,17 @@ impl Walk<'_> {
                 if !src.is_empty() {
                     self.lent.remove(&Root::Local(*l));
                     self.keep(e.site, Root::Local(*l), &src);
+                }
+                if self.report {
+                    let r = Root::Local(*l);
+                    (self.binds).extend(bound(
+                        self.cur,
+                        self.f(),
+                        self.globals,
+                        r,
+                        &self.frozen,
+                        &self.lent,
+                    ));
                 }
             }
             Stmt::Assign(p, e) => {
@@ -1124,6 +1163,18 @@ impl Walk<'_> {
                             .extend(what.iter().cloned());
                     }
                     self.store(e.site, q.root, what);
+                    // The file body's `let`s are globals, bound where first written.
+                    if self.report && q.path.is_empty() && matches!(q.root, Root::Global(_)) {
+                        let r = q.root;
+                        (self.binds).extend(bound(
+                            self.cur,
+                            self.f(),
+                            self.globals,
+                            r,
+                            &self.frozen,
+                            &self.lent,
+                        ));
+                    }
                     fx.writes.insert(q);
                 }
             }
@@ -1157,8 +1208,10 @@ impl Walk<'_> {
             }
             Stmt::Loop(a, b, site) => {
                 let (at, before) = (self.next, self.moved.clone());
+                self.last.depth += 1;
                 self.block(a, fx);
                 self.block(b, fx);
+                self.last.depth -= 1;
                 self.moved_in_loop(*site, at, &before);
             }
             Stmt::Switch(c, arms) => {
@@ -1435,9 +1488,11 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
         literals,
         receivers,
         copies: BTreeSet::new(),
+        last: crate::Last::default(),
         pending: vec![],
         report: false,
         errors: vec![],
+        binds: vec![],
     };
     let order = w.order();
     // Summaries only grow, so a recursive group settles; then one reporting walk.
@@ -1459,6 +1514,7 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
     Owned {
         errors: w.errors,
         copies: w.copies,
+        binds: w.binds,
     }
 }
 
@@ -1466,6 +1522,7 @@ impl Walk<'_> {
     fn instance(&mut self, i: usize) -> Summary {
         self.cur = i;
         let f = &self.p.insts[i];
+        self.last = crate::Last::new(&f.body);
         self.lent.clear();
         self.moved.clear();
         self.decl.clear();
@@ -1675,22 +1732,91 @@ fn holding<T>(b: &[Stmt<T>], lent: &dyn Fn(&Place) -> bool, out: &mut Vec<u32>) 
 pub struct Owned {
     pub errors: Vec<Msg>,
     pub copies: BTreeSet<(usize, Site)>,
+    pub binds: Vec<Bound>,
 }
 
-/// Ownership on the instances link made, before their passed places settle. `cache` is what
-/// `cache_calls` found on the generic fns before link.
-pub(crate) fn check(
-    d: &dyn Signatures,
-    p: &Program,
+/// `r`'s `--dump-own` line where `f`, instance `inst`, binds it, if it freezes or lends any place.
+fn bound(
+    inst: usize,
+    f: &cpl_next_ir::ir::Func<CTy>,
     globals: &[(String, bool)],
-    cache: Vec<Msg>,
+    r: Root,
+    frozen: &HashMap<Root, BTreeSet<Pl>>,
+    lent: &HashMap<Root, BTreeSet<Pl>>,
+) -> Option<Bound> {
+    let (frozen, lent) = (frozen.get(&r), lent.get(&r));
+    if frozen.is_none() && lent.is_none() {
+        return None;
+    }
+    let show = |ps: Option<&BTreeSet<Pl>>| -> Vec<String> {
+        (ps.into_iter().flatten())
+            .map(|p| dump_pl(f, globals, p))
+            .collect()
+    };
+    Some(Bound {
+        inst,
+        fn_name: f.name.clone(),
+        local: dump_pl(f, globals, &Pl::whole(r)),
+        frozen: show(frozen),
+        lent: show(lent),
+    })
+}
+
+/// `p` as `--dump-own` shows it: its root's name, `$` and an index for a temp, then its path.
+fn dump_pl(f: &cpl_next_ir::ir::Func<CTy>, globals: &[(String, bool)], p: &Pl) -> String {
+    let mut out = match p.root {
+        Root::Local(l) => match f.names.get(l) {
+            Some(n) if !n.is_empty() => n.clone(),
+            _ => format!("${l}"),
+        },
+        Root::Global(g) => match globals.get(g) {
+            Some((n, _)) => n.clone(),
+            None => format!("$g{g}"),
+        },
+    };
+    for s in &p.path {
+        match s {
+            Step::Field(k) => out.push_str(&format!(".{k}")),
+            Step::Key(k) => out.push_str(&format!("[{k}]")),
+        }
+    }
+    out
+}
+
+/// A local where it is bound, in the instance `inst` (named `fn_name`): the places a write to
+/// which conflicts with it while it is used (`frozen`, E0602) and the places it lends (`lent`,
+/// R8), as own holds them. A temp is `$` and its index.
+#[derive(Debug)]
+pub struct Bound {
+    pub inst: usize,
+    pub fn_name: String,
+    pub local: String,
+    pub frozen: Vec<String>,
+    pub lent: Vec<String>,
+}
+
+/// Ownership after link (contract 4): checks the instances link made, reporting what
+/// [`crate::before`] found on the generic fns too, then settles their passed places.
+pub fn after(
+    d: &dyn Signatures,
+    p: &mut Program,
+    globals: &[(String, bool)],
+    before: crate::Before,
 ) -> Owned {
+    use cpl_next_ir::verify::{all, callees, instances, Stage};
+    let fast = callees(&p.insts);
+    p.errors.extend(before.generic);
+    p.errors
+        .extend(all(&p.insts, Stage::Instances, &fast, p.globals.len()));
     let mut owned = run(d, p, globals);
-    owned.errors.extend(cache);
+    owned.errors.extend(before.cache);
     owned.errors.extend(lenders_lend(p));
     if p.errors.is_empty() {
         owned.errors.extend(escape(d, p));
     }
+    crate::place_copies(p, &owned.copies);
+    let raw = instances(&p.insts, Stage::Raw, p.globals.len());
+    p.errors.extend(raw);
     owned
 }
 

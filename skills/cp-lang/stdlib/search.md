@@ -8,8 +8,8 @@ In prelude (no `use` needed): `dinkelbach`, `parallel_bsearch`, `split_best`, `t
 
 ## Functions
 
-- `fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I` — \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`; The position of `r` where a discrete unimodal `f` is largest, or `None` when `r` is empty.
-- `fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I` — \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`; The position of `r` where a discrete unimodal `f` is smallest, or `None` when `r` is empty.
+- `fn ternary_max<I, K: Ord>(r: Range<I>, f: I -> K) -> ?I` — \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`; The position of `r` where a discrete unimodal `f` is largest, or `None` when `r` is empty.
+- `fn ternary_min<I, K: Ord>(r: Range<I>, f: I -> K) -> ?I` — \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`; The position of `r` where a discrete unimodal `f` is smallest, or `None` when `r` is empty.
 - `fn parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (), apply: I -> (), ok: Int -> Bool) -> List<?I>` — \(O((n + \mathit{queries}) \log n)\) calls of `apply` and `ok`, \(O(n + \mathit{queries})\) memory, for n = `r.len`; Many binary searches over one timeline `r` at once: `out[q]` is the first `t` of `r` such that `ok(q)` holds once every event of `r` up to and including `t` is applied, or `None` when it never holds.; traps: when `queries < 0`
 - `fn gallop_first<I: Add + Ord>(from: I, ok: I -> Bool) -> ?I` — \(O(\log d)\) calls of `ok`, for d the distance from `from` to the answer; The first `i >= from` with `ok(i)`, for a monotone `ok` (false then true) whose upper end is unknown, or `None` when `ok` stays false to the end of `I`.
 - `fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64` — \(O(\log(1 / \mathit{eps}))\) calls of `solve`, usually a handful; The largest ratio `num / den` over a family of choices (Dinkelbach's method), where `solve(l)` returns the choice maximizing `num - l * den`.; traps: when `solve` returns `den <= 0`

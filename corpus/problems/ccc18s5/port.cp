@@ -28,6 +28,6 @@ var planets = Dsu<Planet>()
 var kept = 0
 for (cost, link) in links:
     match link:
-        Flight(f): if cities.unite(flights[f].a, flights[f].b): kept += cost * planets.components
-        Portal(g): if planets.unite(portals[g].a, portals[g].b): kept += cost * cities.components
+        Flight(f) => if cities.unite(flights[f].a, flights[f].b): kept += cost * planets.components
+        Portal(g) => if planets.unite(portals[g].a, portals[g].b): kept += cost * cities.components
 print(n * sum(f.cost for f in flights) + m * sum(g.cost for g in portals) - kept)

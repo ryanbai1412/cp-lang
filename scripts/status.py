@@ -113,7 +113,24 @@ def render():
     return "\n".join(out) + "\n"
 
 
+def raises_since(since: str | None) -> list[str]:
+    """Each `Raise:` trailer in `since..HEAD`, by default since plan/STATUS.md was last written:
+    a baseline raised by the coordinator's sign-off, for the coordinator and the audits to check
+    against a ruling."""
+    git = lambda *a: subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, check=False).stdout
+    since = since or git("log", "-1", "--format=%H", "--", "plan/STATUS.md").strip()
+    log = git("log", "--no-merges", "--format=%h%x1f%(trailers:key=Raise,valueonly,separator=%x1e)",
+              f"{since}..HEAD" if since else "HEAD")
+    return [f"{sha} Raise: {r.strip()}" for sha, _, rs in (l.partition("\x1f") for l in log.splitlines())
+            for r in rs.split("\x1e") if r.strip()]
+
+
 def main(argv):
+    if "--raises" in argv:
+        i = argv.index("--raises")
+        found = raises_since(argv[i + 1] if i + 1 < len(argv) else None)
+        print("\n".join(found) if found else "status: no baseline raised")
+        return 0
     text = render()
     if "--check" in argv:
         if not OUT.exists() or OUT.read_text() != text:

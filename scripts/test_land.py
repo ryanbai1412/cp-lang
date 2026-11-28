@@ -66,7 +66,7 @@ class LandTest(unittest.TestCase):
 
     def commit(self, repo, msg):
         git(repo, "add", "-A")
-        git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra")
+        git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra\nLane: G")
 
     def land(self, repo, **extra):
         env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_FULL": "1", "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_LOCK_POLL": "1", **extra}
@@ -678,7 +678,7 @@ class LandTest(unittest.TestCase):
     def _hooked_commit(self, repo, msg):
         env = {**os.environ, "CPL_COMMIT_TIMEOUT": "1"}
         git(repo, "add", "-A")
-        subprocess.run(["git", "-c", "core.hooksPath=.githooks", "commit", "-q", "-m", msg, "-m", "Domain: infra"],
+        subprocess.run(["git", "-c", "core.hooksPath=.githooks", "commit", "-q", "-m", msg, "-m", "Domain: infra\nLane: G"],
                        cwd=repo, env=env, check=True, capture_output=True, text=True)
 
     def test_a_cut_before_the_wasm_check_leaves_it_to_land_which_refuses_its_warning(self):
@@ -1588,7 +1588,7 @@ done
             "    os.makedirs(t + '/std', exist_ok=True)\n"
             "    open(t + '/std/b.cp', 'w').write('pub fn g(x: Int):\\n')\n"
             "    subprocess.run(['git', 'add', '-A'], cwd=t, check=True)\n"
-            "    subprocess.run(['git', 'commit', '-q', '--no-verify', '-m', 'std', '-m', 'Domain: infra'],\n"
+            "    subprocess.run(['git', 'commit', '-q', '--no-verify', '-m', 'std', '-m', 'Domain: infra\\nLane: G'],\n"
             "                   cwd=t, check=True)\n"
             "    subprocess.run(['git', 'push', '-q', 'origin', 'HEAD:main'], cwd=t, check=True)\n"
             "    subprocess.run(['git', 'fetch', '-q', 'origin', 'main'], check=True)\n"
@@ -1752,7 +1752,7 @@ done
         self.assertEqual((ours / RATCHET).read_text(), edited)
         (ours / "other.txt").write_text("other\n")
         git(ours, "add", "other.txt")
-        git(ours, "commit", "-q", "--no-verify", "-m", "ours", "-m", "Domain: infra")
+        git(ours, "commit", "-q", "--no-verify", "-m", "ours", "-m", "Domain: infra\nLane: G")
         (theirs / "src.txt").write_text("2\n")
         self.commit(theirs, "theirs again")
         git(theirs, "push", "-q", "origin", "HEAD:main")

@@ -101,7 +101,7 @@ fn an_instance_holding_an_error_type_is_named() {
         &[Callee::default(), Callee::default()],
         0,
     );
-    assert_eq!(named, vec!["t".to_string()]);
+    assert_eq!(named, vec!["t: local 0 Lent(Error)".to_string()]);
 }
 
 #[test]

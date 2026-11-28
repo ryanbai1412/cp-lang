@@ -14,6 +14,7 @@
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
 use std.algebra.{Monoid, FromOp}
+use std.hash.{Hash, HashMap, HashSet}
 use std.math.{abs, popcount, bit}
 use std.prefix.{Prefix}
 use std.range.{Len, RingRange, ends, first_true, last_true}
@@ -494,7 +495,7 @@ pub fn record_highs<D, T, K: Ord>(self: [D]T, by: T -> K = x => x) -> yields D:
 /// order: first-seen order; a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 1, 3, 2, 1].distinct() == [3, 1, 2]`
-pub fn distinct<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> List<T>:
+pub fn distinct<S: Seq<T>, T, K: Hash + Eq>(self: S, by: T -> K = x => x) -> List<T>:
     var seen = HashSet<K>()
     let out: List<T> = [x for x in self if seen.add(by(x))]
     out
@@ -2902,7 +2903,7 @@ pub fn counting_sort<S: IndexedMut<D, T>, D: Domain, T, K>(mut self: S, by: T ->
 /// traps: never
 /// example: `[1, 2, 2].is_permutation([2, 1, 2]) == true`
 /// example: `[2, 0, 1].is_permutation(0..3) == true`
-pub fn is_permutation<A: Seq<T>, B: Seq<T>, T>(self: A, b: B) -> Bool:
+pub fn is_permutation<A: Seq<T>, B: Seq<T>, T: Hash + Eq>(self: A, b: B) -> Bool:
     var left = HashMap<T, Int>()
     var n = 0
     for x in self:
@@ -4413,7 +4414,7 @@ pub fn next_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool 
 /// order: keyed by `D`
 /// traps: never
 /// example: `[1, 2, 1].prev_same() == [None, None, Some(0)]`
-pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
+pub fn prev_same<D, T, K: Hash + Eq>(self: [D]T, by: T -> K = x => x) -> [D]?D:
     var out: [D]?D = None
     var seen = HashMap<K, D>()
     for i in D:
@@ -4429,7 +4430,7 @@ pub fn prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 /// order: keyed by `D`
 /// traps: never
 /// example: `[1, 2, 1].next_same() == [Some(2), None, None]`
-pub fn next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D:
+pub fn next_same<D, T, K: Hash + Eq>(self: [D]T, by: T -> K = x => x) -> [D]?D:
     var out: [D]?D = None
     var seen = HashMap<K, D>()
     for j in (0..D.count).rev:
@@ -4641,3 +4642,23 @@ impl Show for StepKeys:
             if not out.is_empty: out += " "
             out += "{s.first + s.from + j * s.k}"
         out
+
+// The hash tables' sequence impls live with the traits: `std.hash` sits below `std.seq`.
+impl<K: Hash + Eq, V> IndexGet<K, V> for HashMap<K, V>:
+    fn at(self, k: K) -> V:
+        check_key(k in self)
+        self.get(k)!
+
+impl<K: Hash + Eq, V> Seq<(K, V)> for HashMap<K, V>:
+    fn iter(self) -> yields (K, V):
+        for p in self.items: yield p
+
+impl<K: Hash + Eq, V> Sized for HashMap<K, V>:
+    @get fn len(self) -> Int = self.len
+
+impl<T: Hash + Eq> Seq<T> for HashSet<T>:
+    fn iter(self) -> yields T:
+        for x in self.items: yield x
+
+impl<T: Hash + Eq> Sized for HashSet<T>:
+    @get fn len(self) -> Int = self.len

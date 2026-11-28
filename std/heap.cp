@@ -13,6 +13,7 @@ use std.algebra.{Desc, desc}
 use std.math.{bit_width}
 use std.range.{Len}
 use std.seq.{each, Seq}
+use std.hash.{Hash, HashMap}
 
 /// A priority queue on `<`. `push` and `pop` are \(O(\log n)\), `peek` is \(O(1)\); memory is one list.
 /// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the
@@ -1467,7 +1468,7 @@ pub struct MaxHeap<T: Ord>:
 ///
 /// `best` picks the better of two priorities and must return one of its arguments, like `min`
 /// and `max`; with any other function the popped priorities are unspecified. Keys are hashed.
-pub struct Settle<K, P>(best: (P, P) -> P = min):
+pub struct Settle<K: Hash + Eq, P>(best: (P, P) -> P = min):
     cur: HashMap<K, P> = HashMap()
     done: HashMap<K, Bool> = HashMap()
     q: List<(P, K)> = []
@@ -1615,7 +1616,7 @@ impl Show for MaxHeap<T: Ord + Show>:
             out += "{x}"
         out
 
-impl Show for Settle<K, P>:
+impl Show for Settle<K: Hash + Eq, P>:
     /// How many keys are settled and how many are still open, as `s settled, o open`.
     ///
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('b', 3); s.pop(); "{s}" == "1 settled, 1 open"`

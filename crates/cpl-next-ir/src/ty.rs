@@ -339,29 +339,6 @@ pub fn map_slots(t: &Ty, f: &dyn Fn(usize) -> SetTy) -> Ty {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_fn_value_holds_an_address_and_is_copied() {
-        let fields = |t: &Ty| match t {
-            Ty::Struct(StructId(0), ..) => {
-                vec![Ty::Int, Ty::Fn(vec![], Box::new(Ty::Int), SetTy::Var(0))]
-            }
-            Ty::Struct(..) => vec![Ty::Raw(Box::new(Ty::Int))],
-            _ => vec![],
-        };
-        let with_fn = Ty::Struct(StructId(0), vec![], vec![]);
-        let with_raw = Ty::Struct(StructId(1), vec![], vec![]);
-        assert_eq!(Ty::Int.holds(&fields, 0), Holds::Nothing);
-        assert_eq!(with_fn.holds(&fields, 0), Holds::Address);
-        assert!(with_fn.copied(&fields));
-        assert_eq!(with_raw.holds(&fields, 0), Holds::Storage);
-        assert!(!with_raw.copied(&fields) && !Ty::Param(0).copied(&fields));
-    }
-}
-
 impl Ty {
     /// The core type `p` is.
     pub fn of_prim(p: cpl_contract::Prim) -> Ty {
@@ -393,5 +370,28 @@ impl Ty {
             Ty::F64 => Prim::F64,
             _ => return None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_fn_value_holds_an_address_and_is_copied() {
+        let fields = |t: &Ty| match t {
+            Ty::Struct(StructId(0), ..) => {
+                vec![Ty::Int, Ty::Fn(vec![], Box::new(Ty::Int), SetTy::Var(0))]
+            }
+            Ty::Struct(..) => vec![Ty::Raw(Box::new(Ty::Int))],
+            _ => vec![],
+        };
+        let with_fn = Ty::Struct(StructId(0), vec![], vec![]);
+        let with_raw = Ty::Struct(StructId(1), vec![], vec![]);
+        assert_eq!(Ty::Int.holds(&fields, 0), Holds::Nothing);
+        assert_eq!(with_fn.holds(&fields, 0), Holds::Address);
+        assert!(with_fn.copied(&fields));
+        assert_eq!(with_raw.holds(&fields, 0), Holds::Storage);
+        assert!(!with_raw.copied(&fields) && !Ty::Param(0).copied(&fields));
     }
 }

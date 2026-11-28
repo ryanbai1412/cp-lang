@@ -2,6 +2,8 @@
 //! the judge, the std, the compile and what a run writes to stderr.
 use cpl_next::facade::{Program, Session, Snapshot, Verdict, World};
 use cpl_next::{Form, Std};
+use cpl_next_ir::build::Judge;
+use cpl_next_ir::run::Limits;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -10,20 +12,44 @@ use std::sync::Arc;
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-/// Spec 9.6: the program runs on a thread with a 1 GB stack. The interpreter's frames are
-/// larger than the compiled program's, so it gets more, to never be the first to run out.
-pub fn on_big_stack(main: fn()) {
-    match std::thread::Builder::new().stack_size(16 << 30).spawn(main) {
-        Ok(t) => {
-            if t.join().is_err() {
-                std::process::exit(101);
+/// Runs `f` on a thread whose stack is the run's (spec 9.6): `Limits::stack`, the judge's, the
+/// number the C++ target and S19 report. The interpreters grow theirs past it as a call needs
+/// (`stacker`), so the run's own count is what runs out (R0601). A stack the machine will not
+/// give is an error saying so.
+pub fn on_run_stack<T: Send>(limits: Limits, f: impl FnOnce() -> T + Send) -> T {
+    std::thread::scope(|s| {
+        let spawned = (std::thread::Builder::new())
+            .stack_size(usize::try_from(limits.stack).unwrap_or(usize::MAX))
+            .spawn_scoped(s, f);
+        match spawned {
+            Ok(t) => t.join().unwrap_or_else(|_| std::process::exit(101)),
+            Err(e) => {
+                eprintln!(
+                    "cpl-next: this machine will not give the run the judge's {} MB stack: {e}",
+                    limits.stack >> 20
+                );
+                std::process::exit(2);
             }
         }
-        Err(e) => {
-            eprintln!("cpl-next: no thread for the program: {e}");
-            std::process::exit(2);
-        }
-    }
+    })
+}
+
+/// The limits of a run on the judge `--judge NAME=MB` names, or the generic judge's.
+pub fn limits(args: &[String]) -> Limits {
+    let at = args.iter().position(|a| a == "--judge");
+    let given = at
+        .and_then(|i| args.get(i + 1))
+        .and_then(|j| judge_given(j));
+    limits_on(given)
+}
+
+/// The limits of a run on the judge `NAME=MB` gives, or the generic judge's.
+pub fn limits_on(given: Option<(&str, u64)>) -> Limits {
+    let judge = given.map(|(name, memory_mb)| Judge {
+        name: name.into(),
+        memory_mb,
+    });
+    Limits::of(judge.as_ref())
 }
 
 pub fn has(args: &[String], flag: &str) -> bool {
@@ -64,16 +90,6 @@ pub fn program(args: &[String], usage: &str) -> Arc<Program> {
             std::process::exit(code(session.verdict(path)));
         }
     }
-}
-
-/// All of stdin, the run's input.
-pub fn stdin() -> String {
-    let mut input = String::new();
-    if let Err(e) = std::io::Read::read_to_string(&mut std::io::stdin(), &mut input) {
-        eprintln!("cpl-next: stdin: {e}");
-        std::process::exit(2);
-    }
-    input
 }
 
 /// 1: the program is rejected. 4: refused, which says nothing about the program.

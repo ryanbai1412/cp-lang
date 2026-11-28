@@ -37,7 +37,7 @@ use std.bag.{SortedBag, SortedMap, SortedRange, SortedSet}
 use std.beats.{BeatsSegTree}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
-use std.derive.{Hash}
+use std.hash.{Hash, HashMap, HashSet, splitmix64}
 use std.dp.{
     LiChao,
     Line,
@@ -152,7 +152,7 @@ use std.graph.{
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
 use std.heap.{Heap, MaxHeap, MinHeap, Settle}
 use std.interval.{IntervalMap}
-use std.io.{Wire, io, read_all, yes}
+use std.io.{Wire, flush, io, read_all, yes}
 use std.lazy.{Flip}
 use std.marks.{Marks}
 use std.matrix.{Mat}
@@ -212,7 +212,6 @@ use std.math.{
     mul_mod,
     primitive_root,
     sieve_multiplicative,
-    splitmix64,
 }
 use std.mo.{mo}
 use std.mod.{Comb, Mod}

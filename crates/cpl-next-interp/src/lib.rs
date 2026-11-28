@@ -84,7 +84,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         funcs,
         globals: vec![V::Unit; p.globals.len()],
         frames: Vec::new(),
-        out: Written::default(),
+        out: Written::to(input.out),
         input: input.io.input(),
         rand: ops::RAND_SEED,
         at: 0,
@@ -96,11 +96,7 @@ pub fn run(p: &Program, funcs: &[Func<CTy>], input: RunInput) -> Outcome {
         calls: m.calls(),
         ..t
     });
-    Outcome {
-        events: m.out.events,
-        output: m.out.text,
-        trap,
-    }
+    m.out.end(trap)
 }
 
 /// The origin is filled in where the run ends: it is `Machine::at` then.
@@ -125,48 +121,52 @@ impl<'a> Machine<'a> {
         calls
     }
     /// Runs a fn. Returns its result, what its lent parameters hold now, and how a region body left, if it did.
+    /// A call of `f`. It recurses natively, its host frames larger than the run's counted words,
+    /// so the host stack grows in segments (`stacker`) and R0601 (`Stack::enter`) runs out first.
     fn call(
         &mut self,
         f: usize,
         args: Vec<V>,
         region: Option<Region<'a>>,
     ) -> R<(V, Vec<V>, Option<Flow>)> {
-        let func: &'a Func<CTy> = &self.funcs[f];
-        let mut locals = vec![V::Unit; func.locals.len()];
-        for ((l, _), a) in func.params.iter().zip(args) {
-            locals[*l] = a;
-        }
-        // Spec 9.6: no depth counting in the language; the stack runs out at the run's limit.
-        self.room.stack.enter(f, self.frames.len())?;
-        let parent = (!self.frames.is_empty()).then_some(self.cur);
-        self.frames.push(Frame {
-            locals,
-            f,
-            parent,
-            origin: self.at,
-            region,
-            pending: None,
-        });
-        let fp = self.frames.len() - 1;
-        self.cur = fp;
-        let flow = self.block(&func.body, fp)?;
-        let Some(mut frame) = self.frames.pop() else {
-            return broken("a call returned with no frame");
-        };
-        self.cur = frame.parent.unwrap_or(0);
-        let (ret, exit) = match flow {
-            Flow::Return(v) => (v, frame.pending.take()),
-            Flow::Exit(f) => (V::Unit, Some(*f)),
-            _ => (V::Unit, frame.pending.take()),
-        };
-        // What the lent parameters hold now goes back to the caller's places.
-        let back = func
-            .params
-            .iter()
-            .filter(|(_, lent)| *lent)
-            .map(|(l, _)| std::mem::take(&mut frame.locals[*l]))
-            .collect();
-        Ok((ret, back, exit))
+        stacker::maybe_grow(1 << 20, 64 << 20, || {
+            let func: &'a Func<CTy> = &self.funcs[f];
+            let mut locals = vec![V::Unit; func.locals.len()];
+            for ((l, _), a) in func.params.iter().zip(args) {
+                locals[*l] = a;
+            }
+            // Spec 9.6: no depth counting in the language; the stack runs out at the run's limit.
+            self.room.stack.enter(f, self.frames.len())?;
+            let parent = (!self.frames.is_empty()).then_some(self.cur);
+            self.frames.push(Frame {
+                locals,
+                f,
+                parent,
+                origin: self.at,
+                region,
+                pending: None,
+            });
+            let fp = self.frames.len() - 1;
+            self.cur = fp;
+            let flow = self.block(&func.body, fp)?;
+            let Some(mut frame) = self.frames.pop() else {
+                return broken("a call returned with no frame");
+            };
+            self.cur = frame.parent.unwrap_or(0);
+            let (ret, exit) = match flow {
+                Flow::Return(v) => (v, frame.pending.take()),
+                Flow::Exit(f) => (V::Unit, Some(*f)),
+                _ => (V::Unit, frame.pending.take()),
+            };
+            // What the lent parameters hold now goes back to the caller's places.
+            let back = func
+                .params
+                .iter()
+                .filter(|(_, lent)| *lent)
+                .map(|(l, _)| std::mem::take(&mut frame.locals[*l]))
+                .collect();
+            Ok((ret, back, exit))
+        })
     }
     fn place(&mut self, fp: usize, p: &Place) -> R<&mut V> {
         Ok(match p {
@@ -566,15 +566,11 @@ impl<'a> Machine<'a> {
             Intr::RawSet => {
                 let i = self.int(&args[1], fp)?;
                 let x = self.arg(&args[2], fp)?;
-                let r = self.lent_raw(&args[0], fp)?;
-                let len = match &**r {
-                    Store::Ints(xs) => xs.len(),
-                    Store::Any(xs) => xs.len(),
-                };
-                let i = ops::cell(i, len, true)?;
-                match (Rc::make_mut(r), x) {
-                    (Store::Ints(xs), V::Int(x)) => xs[i] = x,
-                    (Store::Any(xs), x) => xs[i] = x,
+                match (Rc::make_mut(self.lent_raw(&args[0], fp)?), x) {
+                    (Store::Ints(xs), V::Int(x)) => {
+                        ops::cell(i, xs.len(), true).map(|i| xs[i] = x)?
+                    }
+                    (Store::Any(xs), x) => ops::cell(i, xs.len(), true).map(|i| xs[i] = x)?,
                     (Store::Ints(_), _) => return broken("a non-integer in integer storage"),
                 }
                 V::Unit
@@ -587,16 +583,20 @@ impl<'a> Machine<'a> {
                 ops::check(op, self.bool(&args[0], fp)?)?;
                 V::Unit
             }
-            Intr::InputLeft => V::Bool(self.input.left()),
-            Intr::ReadByte => V::Int(self.input.byte()),
+            Intr::InputLeft => V::Bool(self.input.left(&mut self.out)),
+            Intr::ReadByte => V::Int(self.input.byte(&mut self.out)),
             Intr::PeekByte => {
                 let k = self.int(&args[0], fp)?;
-                V::Int(self.input.peek(k))
+                V::Int(self.input.peek(&mut self.out, k))
             }
             Intr::RandWord => V::U64(ops::rand_word(&mut self.rand)),
+            Intr::Flush => {
+                self.out.flush();
+                V::Unit
+            }
             Intr::Unset => V::Unit,
             Intr::ReadInt => {
-                let t = self.input.token();
+                let t = self.input.token(&mut self.out);
                 V::Int(ops::read_int(t.as_deref()).map_err(|f| Trap::at_token(f, t.as_deref()))?)
             }
             _ => return broken("a scalar operation outside `ops::scalar`"),

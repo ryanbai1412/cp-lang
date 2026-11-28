@@ -17,7 +17,8 @@ struct Snapshot {
     compiler: CompilerVersion,
 }
 struct LibPin { hash: ContentHash, store: Option<LibStore> }   // store: contract 2 and 4 outputs, prebuilt
-struct RunInput { entry: Entry, io: Io, args: List<Str>, choices: ChoiceTape /* seed, or recorded generator choices to shrink */,
+struct RunInput { entry: Entry, io: Io, out: Option<Writer> /* where a `Stream` run's output goes as it is flushed (R10.4) */,
+                  args: List<Str>, choices: ChoiceTape /* seed, or recorded generator choices to shrink */,
                   limits: Limits, cold_caches: bool }
 enum Entry { Program,                              // the file's statements, top to bottom
              Call { f: DeclId, args: List<Value> } // one fn on given values: "try this part" in the editor, a unit test, a law sample

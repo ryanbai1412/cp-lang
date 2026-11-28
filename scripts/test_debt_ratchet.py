@@ -532,6 +532,29 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(got), 2, got)
             self.assertTrue(all("no `Lane:` trailer" in g for g in got))
 
+    def test_lane_for_signed_by_the_coordinator_gives_a_pushed_commit_its_lane(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git, commit, head = self._repo(root)
+            self._write(root, "std/a.cp", "fn a() = 1\n")
+            git("add", "-A"); commit("base")
+            base = head()
+            self._write(root, "std/a.cp", "fn a() = 2\n")
+            commit("stdlib: a is 2\n\nDomain: stdlib")
+            given = head()
+            self._write(root, "std/a.cp", "fn a() = 3\n")
+            commit("stdlib: a is 3\n\nDomain: stdlib")
+            other = head()
+            self._write(root, "std/a.cp", "fn a() = 4\n")
+            commit(f"stdlib: a is 4\n\nDomain: stdlib\nLane: B\n"
+                   f"Lane-for: {given[:9]} D, signed off by coordinator\n"
+                   f"Lane-for: {other[:9]} D, signed off by B")
+            got = dr.unlaned(root, base)
+            self.assertEqual(len(got), 2, got)
+            self.assertTrue(any("signed off by coordinator`" in g and "signed off by B" in g for g in got), got)
+            self.assertTrue(any(g.startswith(other[:9]) and "no `Lane:` trailer" in g for g in got), got)
+            self.assertFalse(any(g.startswith(given[:9]) for g in got), got)
+
     def test_a_run_measured_raise_names_a_full_run_and_its_commit(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -1300,6 +1323,40 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "decisions.md", "lint_std_names may rise\n")
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
                              ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
+
+    def test_only_the_coordinator_signs_a_raise_and_it_gives_its_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, capture_output=True, env=dr._git_env())
+            git("init", "-q", "-b", "main")
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"external_crates": 5}))
+            self._write(root, "decisions.md", "# Decisions\n")
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("checkout", "-q", "-b", "lane")
+            bump = lambda raise_: mock.patch.dict(os.environ, {"CPL_RAISE": raise_} if raise_ else {})
+            said = lambda: dr.unexplained_bumps(root, {"external_crates": 6}, ref="main")
+            with bump(""):
+                self.assertIn("signed off by coordinator", said()[0])
+            with bump("external_crates 5 -> 6, signed off by E"):
+                self.assertIn("only the coordinator signs a raise", said()[0])
+            with bump("external_crates 5 -> 6, signed off by coordinator"):
+                self.assertIn("gives no reason", said()[0])
+            self._write(root, "decisions.md", "# Decisions\nexternal_crates goes 5 -> 6: why.\n")
+            with bump("external_crates 5 -> 7, signed off by coordinator"):
+                self.assertIn("does not match the baseline's 5 -> 6", said()[0])
+            with bump("external_crates 5 -> 6, signed off by coordinator"):
+                self.assertEqual(said(), [])
+            self._write(root, "decisions.md", "# Decisions\n")
+            git("commit", "-q", "--allow-empty", "-m", "x: y\n\nexternal_crates grows: why.\n\nRaise: external_crates 5 -> 6, signed off by coordinator")
+            self.assertEqual(said(), [])
+            self.assertEqual(dr.raises(root, "main"), [(git("rev-parse", "--short=9", "HEAD").stdout.decode().strip(),
+                                                        "external_crates", "5 -> 6, signed off by coordinator")])
+
+    def test_a_hard_zero_counter_is_never_raised_even_signed(self) -> None:
+        with mock.patch.dict(os.environ, {"CPL_RAISE": "frozen_std_drift 0 -> 1, signed off by coordinator"}):
+            self.assertIn("hard-zero", dr.signed_raise(Path("."), "HEAD", "frozen_std_drift", 0, 1))
 
     def test_main_lowering_a_baseline_mid_land_is_not_this_changes_raise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2211,6 +2268,38 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-next-syntax/src/parser.rs", 'if text == "max" {}\n')
             self.assertEqual(dr.next_std_names(root), ["crates/cpl-next-syntax/src/parser.rs:1: max"])
 
+    def test_next_std_names_skips_only_the_ids_std_binds_in_an_id_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/raw.cp", 'pub fn raw_get() = @intrinsic("raw_get")\npub fn ctz() = 0\n'
+                        '@fast(clz)\npub fn clz() = 0\n')
+            self._write(root, "crates/cpl-next-ir/src/ops.rs",
+                        'pub const INTRINSICS: &[(&str, I)] = &[\n    ("raw_get", I::Get),\n    ("ctz", I::Ctz),\n'
+                        '    ("clz", I::Clz),\n];\nif n == "raw_get" {}\n')
+            self.assertEqual(dr.next_std_names(root),
+                             ["crates/cpl-next-ir/src/ops.rs:3: ctz", "crates/cpl-next-ir/src/ops.rs:6: raw_get"])
+
+    def test_next_std_names_skips_only_the_check_names_the_spec_lists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/ratio.cp", "pub fn div(a, b) = a\npub fn odd(a) = a\n")
+            self._write(root, "spec/core/09-contexts-checks.md",
+                        "Each row has one check name, used by `with checks(...)`: `bounds`, `div`.\n"
+                        "This is the one list.\n")
+            self._write(root, "crates/cpl-next-ir/src/build.rs",
+                        'pub const ALL: [(&str, C); 2] = [\n    ("div", C::Div),\n    ("odd", C::Odd),\n];\n'
+                        'if n == "div" {}\n')
+            self.assertEqual(dr.next_std_names(root),
+                             ["crates/cpl-next-ir/src/build.rs:3: odd", "crates/cpl-next-ir/src/build.rs:5: div"])
+
+    def test_next_std_names_skips_test_code(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write(root, "std/seq.cp", "pub fn total(self) -> Int = 0\n")
+            self._write(root, "crates/cpl-next-db/src/db.rs",
+                        'if n == "total" {}\n#[cfg(test)]\nmod tests {\n    fn t() { q("total"); }\n}\n')
+            self.assertEqual(dr.next_std_names(root), ["crates/cpl-next-db/src/db.rs:1: total"])
+
     def test_ir_builtin_names_reads_tuple_arms(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -2474,6 +2563,29 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (2, 6, 9, 10, 11, 16, 18, 27, 33, 34)])
 
+    def test_whole_program_inputs_count_a_bare_holder_name_only_where_it_resolves(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            files = {
+                "cpl-next/src/lib.rs": "pub struct Type<'s> {\n    d: Decls,\n}\npub use cpl_next_decls::modules::Std;\n",
+                "cpl-next-decls/src/modules.rs": "pub struct Std {\n    d: Decls,\n}\n",
+                # Imported through a multi-line `use crate::{..}` of this crate's re-export.
+                "cpl-next/src/facade.rs": "use crate::{\n    Std,\n};\nstruct Held {\n    s: Std,\n}\n",
+                # Another crate's `Type`.
+                "cpl-next-decls/src/cycles.rs": "use cpl_next_syntax::ast::{GenericArg, Type};\nfn parts(t: &Type) {}\n",
+                "cpl-next-check/src/a.rs": "use cpl_next::{\n    Type,\n};\nfn f(t: &Type) {}\n",
+                "cpl-next-link/src/lib.rs": "struct Env<'e> {\n    d: Decls,\n}\nfn k(env: &Env) {}\n",
+                # A fn-local struct of the same name.
+                "cpl-next-decls/src/decls.rs": "fn g() {\n    struct Env {\n        n: usize,\n    }\n    fn h(env: &Env) {}\n}\n",
+            }
+            for rel, text in files.items():
+                (root / "crates" / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / "crates" / rel).write_text(text)
+            self.assertEqual(dr.next_whole_program_inputs(root), sorted([
+                "crates/cpl-next/src/lib.rs:2", "crates/cpl-next-decls/src/modules.rs:2",
+                "crates/cpl-next/src/facade.rs:5", "crates/cpl-next-check/src/a.rs:4",
+                "crates/cpl-next-link/src/lib.rs:2", "crates/cpl-next-link/src/lib.rs:4"]))
+
     def test_debt_already_on_main_fails_a_push_that_does_not_lower_it(self) -> None:
         label = lambda n: f"{dr.COUNTERS[n][0]}: increased"
         hard = sorted(dr.HARD_ZERO)[0]
@@ -2502,6 +2614,49 @@ class DebtRatchetTest(unittest.TestCase):
             )
             self.assertEqual(dr.next_whole_program_inputs(root),
                              [f"crates/cpl-next-decls/src/lib.rs:{i}" for i in (19, 21)])
+
+    def test_decls_const_op_arms_count_operator_arms_not_literal_kinds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-decls/src/decls"
+            src.mkdir(parents=True)
+            (src / "tyconv.rs").write_text(
+                "match t.kind() {\n    TokenKind::Int => i64::try_from(v).ok(),\n    _ => None,\n}\n"
+                "Expr::Prefix(p) if p.op()?.kind() == TokenKind::Minus => neg(),\n"
+                "match b.op()?.kind() {\n    TokenKind::Plus => x.checked_add(y),\n"
+                "    TokenKind::StarStar => x.checked_pow(y),\n}\n"
+                "let m = k == TokenKind::Minus;\n")
+            self.assertEqual(dr.decls_const_op_arms(root), [
+                "crates/cpl-next-decls/src/decls/tyconv.rs:5", "crates/cpl-next-decls/src/decls/tyconv.rs:7",
+                "crates/cpl-next-decls/src/decls/tyconv.rs:8"])
+            self.assertIn("decls_const_op_arms", dr.HARD_ZERO)
+
+    def test_synthetic_name_tests_count_only_dollar_prefix_tests_in_the_checker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-check/src"
+            src.mkdir(parents=True)
+            (src / "place.rs").write_text(
+                "let a = name.starts_with('$');\nlet b = !n.starts_with(\"$\");\n"
+                "let c = name.starts_with('_');\nlet d = local.synthetic;\n")
+            other = root / "crates/cpl-next-ir/src"
+            other.mkdir(parents=True)
+            (other / "lib.rs").write_text("let a = name.starts_with('$');\n")
+            self.assertEqual(dr.next_synthetic_name_tests(root),
+                             ["crates/cpl-next-check/src/place.rs:1", "crates/cpl-next-check/src/place.rs:2"])
+
+    def test_a_view_keyed_by_a_concrete_type_value_is_a_view(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "crates/cpl-next-decls/src"
+            src.mkdir(parents=True)
+            (src / "lib.rs").write_text(
+                "pub trait ImplChoice {\n    fn impl_for(&self, tr: TraitId, t: &Ty) -> Option<Chosen>;\n"
+                "    fn impls_on(&self, t: &ir::Ty) -> Vec<(TraitId, Chosen)>;\n}\n"
+                "pub trait Tabled {\n    fn on(&self, t: &TyTable) -> Option<Chosen>;\n    fn of(&self, ts: &[Ty]) -> usize;\n}\n"
+                "fn a(c: &dyn ImplChoice, t: &dyn Tabled) {}\n"
+            )
+            self.assertEqual(dr.next_whole_program_inputs(root), ["crates/cpl-next-decls/src/lib.rs:9"])
 
     def test_audit_counters_find_soundness_core_checks_ownership_and_foreign_deps(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -5,10 +5,10 @@ domain X = 0..n
 var phones = Fenwick2D<X, X, Int>.new()
 while true:
     match read<Int>():
-        1:
+        1 =>
             let (x, y, a): (X, X, -32767..=32767) = read()
             phones.add(x, y, a)
-        2:
+        2 =>
             let (l, b, r, t): (X, X, X, X) = read()
             print(phones.fold(l..=r, b..=t))
-        _: break
+        _ => break

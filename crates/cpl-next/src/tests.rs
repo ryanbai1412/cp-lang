@@ -30,6 +30,8 @@ fn compile(
     crate::compile(&db, std, &root, events, judge, checks)
 }
 
+mod run_io;
+
 #[path = "../../cpl-cli/tests/support/cxx.rs"]
 mod cxx;
 
@@ -711,7 +713,10 @@ fn a_refused_local_item_shadows_and_says_nothing_more() {
 fn type_arguments_on_an_unknown_name_report_the_name() {
     let src = "fn f<K>() -> Int:\n    var m = HashMop<K, Int>()\n    0\nprint(f<Int>())\n";
     let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
-    assert_eq!(ds, ["check: program:2:13: E0201: unknown name `HashMop`"]);
+    assert_eq!(
+        ds,
+        ["check: program:2:13: E0201: unknown name `HashMop`\n  = help: did you mean `HashMap`?"]
+    );
 }
 
 /// A refused domain is the error: its uses give no verdict of their own.
@@ -1443,6 +1448,27 @@ fn dump_ir_prints_each_stage_and_a_rejections_diagnostics() {
 }
 
 #[test]
+fn dump_own_shows_what_each_binding_freezes_and_lends() {
+    let open = |src: &str| {
+        facade::Session::open(
+            facade::Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src),
+        )
+    };
+    let src = "fn f(n: Int) -> Int:\n    var xs = [n, 2]\n    let v = xs.rev\n    fn put(i: Int):\n        xs[i] = i\n    put(0)\n    xs.len\nprint(f(1))\n";
+    let text = open(src).ir("program.cp", IrStage::Borrows).unwrap();
+    // A view freezes and lends its source; a nested fn lends its captures but freezes none.
+    assert!(text.contains(" v: frozen [xs] lent [xs]"), "{text}");
+    assert!(text.contains(" put: frozen [] lent [xs]"), "{text}");
+    // A file body's `let` is a global, shown where it is first written.
+    let top = open("var xs = [1, 2]\nlet v = xs.rev\nprint(v.len)\n");
+    let text = top.ir("program.cp", IrStage::Borrows).unwrap();
+    assert!(text.contains(" v: frozen [xs] lent [xs]"), "{text}");
+    assert!(open("print(nope)\n")
+        .ir("program.cp", IrStage::Borrows)
+        .is_err());
+}
+
+#[test]
 fn a_lends_without_its_arrow_offers_to_insert_it() {
     use crate::facade::{Session, Snapshot};
     let src = "domain V = 1..=4\nvar a: [V]Int = 0\nfn get(xs: [V]Int, l: V) lends Int = xs[l]\nprint(get(a, 1))\n";
@@ -1610,6 +1636,7 @@ fn the_stack_runs_out_at_the_runs_limit() {
                 stack,
                 ..Limits::default()
             },
+            out: None,
         };
         let raw = cpl_next_interp::run(p, fs, input());
         let fast = cpl_next_engine::run(&c.prog, &c.opt, input());
@@ -1621,59 +1648,6 @@ fn the_stack_runs_out_at_the_runs_limit() {
             );
             assert_eq!(o.output, if out { "" } else { "100\n" }, "{stack}");
         }
-    }
-}
-
-/// Input streamed as the program reads gives what the same bytes given whole give, on the
-/// reference interpreter and the engine.
-#[test]
-fn streamed_input_reads_as_fixed_input_does() {
-    use cpl_next_engine::{Io, Limits, RunInput};
-    struct Trickle(Vec<u8>, usize);
-    impl std::io::Read for Trickle {
-        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-            let Some(&b) = self.0.get(self.1) else {
-                return Ok(0);
-            };
-            buf[0] = b;
-            self.1 += 1;
-            Ok(1)
-        }
-    }
-    let src = "let n: 1..=100 = read()\nlet xs: [n]Int = read()\nprint(n, xs)\n";
-    let text = b"3\n1 2  3\n";
-    let c = compile(
-        &Std::read(),
-        src,
-        &Roots::std(),
-        false,
-        None,
-        Checks::CHECKED,
-    )
-    .expect("compiles");
-    let (p, fs) = c.form(Form::Raw);
-    let fixed = || RunInput {
-        io: Io::Fixed(text.to_vec()),
-        limits: Limits::default(),
-    };
-    let streamed = || RunInput {
-        io: Io::Stream(Box::new(Trickle(text.to_vec(), 0))),
-        limits: Limits::default(),
-    };
-    let want = cpl_next_interp::run(p, fs, fixed());
-    assert!(
-        want.trap.is_none() && !want.output.is_empty(),
-        "{}",
-        want.output
-    );
-    let runs = [
-        cpl_next_interp::run(p, fs, streamed()),
-        cpl_next_engine::run(&c.prog, &c.opt, streamed()),
-        cpl_next_engine::run(&c.prog, &c.opt, fixed()),
-    ];
-    for o in runs {
-        assert!(o.trap.is_none());
-        assert_eq!(o.output, want.output);
     }
 }
 
@@ -1887,6 +1861,42 @@ fn an_event_shows_a_bool_and_an_option() {
     assert_eq!(
         String::from_utf8_lossy(&ran.stderr),
         "ev set b false\nev set b true\nev set o none\nev set o 3\n"
+    );
+}
+
+/// An event shows a `HashMap` and a `HashSet`, which are not `Show` (R10.3.8), through std.hash's
+/// trace fns: as a `Map` and a `Set` write, in table order (Rtrace.7), alike on the interpreter,
+/// the engine and the C++.
+#[test]
+fn an_event_shows_a_hash_map_and_set() {
+    let src = "var h = HashMap([(1, 10), (2, 20)])\nvar s = HashSet([3, 4])\nprint(h.len, s.len)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let want = [["1 10\n2 20"], ["3 4"]];
+    for o in [raw(&c), c.run("")] {
+        assert_eq!(o.output, "2 2\n");
+        assert_eq!(
+            o.events.iter().map(|e| e.vals.clone()).collect::<Vec<_>>(),
+            want
+        );
+    }
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "2 2\n");
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stderr),
+        "ev set h 1 10\n2 20\nev set s 3 4\n"
     );
 }
 

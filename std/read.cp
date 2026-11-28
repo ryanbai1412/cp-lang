@@ -209,21 +209,22 @@ impl<D: Ordered> Read for D:
 
 /// `I128` reads one whole number; one past `I128`'s range traps R0502 (R10.2.6).
 impl Read for I128:
-    fn read() -> I128:
-        skip_blank()
-        let neg = peek_byte(0) == 45
-        if neg: read_byte()
-        check_input(peek_byte(0) in 48..=57)
+    fn read(mut input: Input) -> I128:
+        input.skip_blank()
+        let neg = input.peek(0) == 45
+        if neg: input.byte()
+        input.token(input.peek(0) in 48..=57)
         // Built as a negative, so the least `I128` reads too.
         let least = (I128(1) << 126) * I128(-2)
         var v = I128(0)
-        while peek_byte(0) in 48..=57:
-            let d = I128(read_byte() - 48)
-            check_input(v >= (least + d) / I128(10))
-            v = v * I128(10) - d
-        check_input(neg or v != least)
-        end_token()
-        if neg: v else: -v
+        while input.peek(0) in 48..=57:
+            let d = I128(input.byte() - 48)
+            let fits = v >= (least + d) / I128(10)
+            input.holds(fits)
+            if fits: v = v * I128(10) - d
+        input.holds(neg or v != least)
+        input.end_token()
+        if neg or v == least: v else: -v
 
 /// `Str` reads one token (R10.2.1).
 impl Read for Str:

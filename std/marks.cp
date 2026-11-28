@@ -11,6 +11,7 @@
 use std.interval.{IntervalMap}
 use std.range.{Len}
 use std.seq.{each, Seq}
+use std.hash.{Hash, HashMap}
 
 const MAX_GEN = 2_000_000_000
 
@@ -199,7 +200,7 @@ impl<D: Domain, T> Contains<D> for MarkMap<D, T>:
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 0); m.contains(2) and not m.contains(3)`
     fn contains(self, v: D) -> Bool = stamp[v] == gen
 
-impl<K> Seq<K> for Interner<K>:
+impl<K: Hash + Eq> Seq<K> for Interner<K>:
     /// Visit every interned key; `for k in t` uses this.
     ///
     /// cost: \(O(1)\) per step
@@ -213,7 +214,7 @@ impl<K> Seq<K> for Interner<K>:
 /// Online value-to-id interner assigning contiguous `0..len` IDs to distinct keys `K`.
 /// `id`, `get`, and `key` are \(O(1)\) expected; `len`, `is_empty`, `clear` are \(O(1)\).
 /// It prints its keys in id order, space-separated, so output never depends on hash order.
-pub struct Interner<K>:
+pub struct Interner<K: Hash + Eq>:
     to_id: HashMap<K, Int>
     var keys: List<K>
 
@@ -285,7 +286,7 @@ pub struct Interner<K>:
         assert cap >= 0
         keys.reserve(cap)
 
-impl<K> Contains<K> for Interner<K>:
+impl<K: Hash + Eq> Contains<K> for Interner<K>:
     /// Whether `k` has been interned; `get(k) != None`.
     ///
     /// cost: \(O(1)\) expected
@@ -650,7 +651,7 @@ fn marks_walk_and_show():
     t.id("x")
     assert t.each().collect() == ["y", "x"]
 
-impl Show for Interner<K: Show>:
+impl Show for Interner<K: Hash + Eq + Show>:
     fn show(t):
         var out = ""
         for k in t.keys:
