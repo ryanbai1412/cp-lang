@@ -1330,7 +1330,8 @@ impl<'a> Cx<'a> {
         let d = self.d;
         let f = d.f(id);
         self.b.decl = Some(id);
-        self.made = [0; 4];
+        // A body checked on demand from the top level leaves the top level's own count as it was.
+        let top_made = std::mem::replace(&mut self.made, [0; 4]);
         self.b.module = f.module;
         let top_doms = self.b.doms.clone();
         let top_owned = self.b.owned.clone();
@@ -1479,6 +1480,7 @@ impl<'a> Cx<'a> {
         // Typed once checked: no later body changes this one's types (`SetTy::AddedAt`, `SetTy::Global`).
         self.zonk_fn(&mut out);
         self.b.decl = None;
+        self.made = top_made;
         self.b.module = d.program;
         self.b.region = None;
         self.b.doms = top_doms;

@@ -2526,6 +2526,7 @@ next/n_checks_fields_01_on_names_every_check.cp
 next/n_domain_over_count.cp
 next/n_domain_over_sequence.cp
 next/n_fresh_domain_struct.cp
+next/n_fresh_domain_two_fns.cp
 next/n_gen_09_generator_fn_item_as_a_value.cp
 next/n_generic_01_bound_free_member_names_its_bound.cp
 next/n_generic_02_two_bounds_give_one_static_member.cp
