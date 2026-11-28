@@ -982,7 +982,10 @@ impl Link<'_> {
             fits_head(d, im, &st, &mut binds)
                 && (d.t(tr).inputs(&im.trait_.args).iter().zip(&want))
                     .all(|(p, w)| fit_cty(p, w, &mut binds))
-                && blanket_met(d, im, &binds)
+                // An impl's bounds hold too: `List<T: Show>` is `Show` for `List<Int>`, not for
+                // `List<Bool>`.
+                && (im.bounds.iter())
+                    .all(|(i, r)| binds[*i].as_ref().is_none_or(|t| cty_meets(d, t, r.tr)))
         });
         by_impl || (want.is_empty() && cty_meets(d, &st, tr))
     }

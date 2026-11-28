@@ -606,6 +606,7 @@ impl Emit<'_> {
     }
     /// A struct's field types, in the layout table's order (not a closure's or a union's).
     fn fields(&self, t: &CTy) -> Option<Vec<CTy>> {
+        let t = self.p.rep(t);
         let l = (self.lays.get(t)).filter(|_| matches!(t, CTy::Struct(..)))?;
         match &self.lays.shape[l as usize] {
             Shape::Struct(fs) => Some(
