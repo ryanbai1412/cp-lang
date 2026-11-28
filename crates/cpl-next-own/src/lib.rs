@@ -214,6 +214,16 @@ pub struct Before {
     pub(crate) cache: Vec<cpl_next_ir::msg::Msg>,
 }
 
+impl Before {
+    /// What a constant's own run keeps: it links its globals alone, so a generic fn it never
+    /// calls may name a constant still being worked out; the instances' verify after link
+    /// covers every fn it reaches.
+    pub fn reached_only(mut self) -> Self {
+        self.generic.clear();
+        self
+    }
+}
+
 /// Ownership before link (contract 4): marks what the generic fns lend (`lent`), since link
 /// keys an instance by those marks, and checks the `@cache` rule on the bodies as written.
 /// `globals` names each top-level binding and whether it is a `var`.

@@ -803,7 +803,6 @@ pub fn memo_clear_name(f: &str) -> String {
 /// reaches `0..=9` (R06.4.1). `None` for every other parameter. A fn's parameters and a nested
 /// fn's read it alike.
 pub fn jagged(params: &[(String, Option<next::Type>)]) -> Vec<Option<((i64, i64), next::Type)>> {
-    use crate::ops::{bin_intr, fold};
     use cpl_next_syntax::ops::BinOp;
     use next::Expr;
     fn reach(e: &Expr, known: &HashMap<String, (i64, i64)>) -> Option<(i64, i64)> {
@@ -816,8 +815,12 @@ pub fn jagged(params: &[(String, Option<next::Type>)]) -> Vec<Option<((i64, i64)
                     .op_kind()
                     .filter(|op| matches!(op, BinOp::Add | BinOp::Sub))?;
                 let ((a, c), k) = (reach(&b.lhs()?, known)?, literal_int(&b.rhs()?)?);
-                let op = bin_intr(op)?;
-                Some((fold(op, &[a, k])?, fold(op, &[c, k])?))
+                let k = if op == BinOp::Add {
+                    k
+                } else {
+                    k.checked_neg()?
+                };
+                Some((a.checked_add(k)?, c.checked_add(k)?))
             }
             _ => literal_int(e).map(|v| (v, v)),
         }

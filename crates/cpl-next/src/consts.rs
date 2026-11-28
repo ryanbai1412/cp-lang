@@ -251,7 +251,7 @@ impl<'a> Evaluator<'a> {
         let d = self.d;
         // A field naming the constant being worked out is still open here; link says so if
         // what the constant reads lays that struct out.
-        let before = own::before(d, &mut low.funcs, &mut low.globals, &names, &[]);
+        let before = own::before(d, &mut low.funcs, &mut low.globals, &names, &[]).reached_only();
         let (fns, tys) = (&low.funcs, &low.globals[..]);
         let checked = Answers {
             whole: &low.whole,
@@ -319,6 +319,15 @@ impl check::Consts for Evaluator<'_> {
     /// One asked for by a check run to work out another constant, and decided at run time, is
     /// that outer check's to say.
     fn value(&self, at: SourceId) -> Value {
+        // A literal is its value: no program is checked to read it, so any check may ask for
+        // it, a run's own included (std's `0..LCG_MOD` and `Mod<NTT_P1>` while std is checked).
+        if let Some(next::Expr::Literal(l)) = self.expr_at(&at) {
+            if let Some(t) = l.token().filter(|t| t.kind() == TokenKind::Int) {
+                return Ok(cpl_next_syntax::literal::int_value(t.text())
+                    .and_then(|v| i64::try_from(v).ok())
+                    .map(Scalar::Int));
+            }
+        }
         if self.batching.get() {
             return Err(ConstError::Pending);
         }
@@ -339,16 +348,6 @@ impl check::Consts for Evaluator<'_> {
             return Err(ConstError::Pending);
         }
         let mut v = match self.expr_at(&at) {
-            // A literal is its value: no program is checked to read it (std's `NTT_P1`, which
-            // its own signatures' `Mod<NTT_P1>` ask for while std is checked).
-            Some(next::Expr::Literal(l))
-                if l.token().is_some_and(|t| t.kind() == TokenKind::Int) =>
-            {
-                let t = l.token().map(|t| t.text().to_string()).unwrap_or_default();
-                Ok(cpl_next_syntax::literal::int_value(&t)
-                    .and_then(|v| i64::try_from(v).ok())
-                    .map(Scalar::Int))
-            }
             Some(e) => self.run(&at.item, &e),
             None => {
                 let what = "a constant's expression is not in its item";

@@ -3,7 +3,6 @@
 //! written type and every form decls makes reaches one conversion, keyed by `Sym`.
 use super::forms::TyForm;
 use super::*;
-use crate::ops::{bin_intr, fold, un_intr};
 use crate::views::{Names, RoleStructs, Shapes, Texts, TypeTables};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::{ConstArg, End};
@@ -716,7 +715,7 @@ fn conv_range(cx: &mut TyCx, re: &next::RangeExpr, errors: &mut Vec<Msg>) -> Ty 
         }
     }
     // `0..=V.count`: its end is the domain's, where a struct's arguments name it.
-    if let Some((lo, d, m, k)) = count_end(cx, lo.as_ref(), hi.as_ref(), re.is_inclusive()) {
+    if let Some((lo, d, m, k)) = count_end(lo.as_ref(), hi.as_ref(), re.is_inclusive()) {
         if let (true, Some(m)) = (
             is_type_name(cx, &d),
             cx.syms.get(m.text()).and_then(|m| cx.env.getter(m)),
@@ -735,8 +734,11 @@ fn conv_range(cx: &mut TyCx, re: &next::RangeExpr, errors: &mut Vec<Msg>) -> Ty 
 /// A range type's end: a constant, a value parameter of the declaration, or a value the top
 /// level binds with `let` (R02.10.3).
 fn end(cx: &TyCx, e: &Expr) -> Option<End> {
-    if let Some(k) = const_int(cx, e) {
+    if let Some(k) = literal_int(e) {
         return Some(End::Lit(k));
+    }
+    if let Some(at) = const_at(cx, e) {
+        return Some(End::Of(Box::new(Ty::Const(ConstArg::At(at)))));
     }
     let Expr::Name(n) = e else {
         return None;
@@ -772,41 +774,54 @@ fn var_end(cx: &TyCx, ends: [Option<&Expr>; 2]) -> Option<Msg> {
     Some(Msg::verdict(cpl_diag::codes::RANGE_END_VAR, msg))
 }
 
-/// The integer a constant expression is: literals, `+ - *`, and a `const` written as one
-/// (`0..=CAP` with `const CAP = 2_000_000_000`).
-pub(super) fn const_int(cx: &TyCx, e: &Expr) -> Option<i64> {
-    let konst = |n: Sym| match (cx.names)(n) {
-        Some(Named::Const(c)) => const_value(&cx.env.konst(c).init, &|_| None),
+/// Whether `e` is a constant expression: integer literals and `const`s under operators and
+/// parentheses (`0..=CAP`, `0..P + 1`). Its value is check's to work out, once, through `Consts`
+/// (decision 688); decls reads only its shape.
+fn is_constant(cx: &TyCx, e: &Expr) -> bool {
+    match e {
+        Expr::Literal(l) => l.token().is_some_and(|t| t.kind() == TokenKind::Int),
+        Expr::Paren(p) => p.inner().is_some_and(|e| is_constant(cx, &e)),
+        Expr::Prefix(p) => p.operand().is_some_and(|e| is_constant(cx, &e)),
+        Expr::Bin(b) => {
+            (b.lhs().zip(b.rhs())).is_some_and(|(l, r)| is_constant(cx, &l) && is_constant(cx, &r))
+        }
+        Expr::Name(n) => (n.ident().and_then(|k| cx.syms.get(k.text())))
+            .is_some_and(|s| matches!((cx.names)(s), Some(Named::Const(_)))),
+        _ => false,
+    }
+}
+
+/// Where constant expression `e`'s value is written, for check to work out once: a `const`'s
+/// name is its initializer (std's `0..LCG_MOD` read in std), anything else is `e` itself.
+fn const_at(cx: &TyCx, e: &Expr) -> Option<cpl_next_ir::ids::SourceId> {
+    match e {
+        Expr::Paren(p) => const_at(cx, &p.inner()?),
+        Expr::Name(n) => match (cx.names)(cx.syms.get(n.ident()?.text())?) {
+            Some(Named::Const(c)) => {
+                let k = cx.env.konst(c);
+                Some(k.item.at(k.init.syntax().span()))
+            }
+            _ => None,
+        },
+        _ if is_constant(cx, e) => Some(cx.item.as_ref()?.at(e.syntax().span())),
         _ => None,
-    };
-    const_value(e, &|t: &SyntaxToken| konst(cx.syms.get(t.text())?))
+    }
 }
 
-/// The integer a constant expression of literals is.
+/// The integer a type's end written as one literal is, signed (`7`, `-1`, `(3)`): all decls
+/// reads of a value; every other constant is check's.
 pub fn literal_int(e: &Expr) -> Option<i64> {
-    const_value(e, &|_| None)
-}
-
-/// The integer `e` is, with each name's value from `name`.
-fn const_value(e: &Expr, name: &dyn Fn(&SyntaxToken) -> Option<i64>) -> Option<i64> {
     match e {
         Expr::Literal(l) => {
             let t = l.token()?;
-            match t.kind() {
-                TokenKind::Int => i64::try_from(int_value(t.text())?).ok(),
-                _ => None,
-            }
+            (t.kind() == TokenKind::Int)
+                .then(|| i64::try_from(int_value(t.text())?).ok())
+                .flatten()
         }
-        Expr::Paren(p) => const_value(&p.inner()?, name),
-        Expr::Prefix(p) => {
-            let op = p.op_kind()?;
-            fold(un_intr(op)?, &[const_value(&p.operand()?, name)?])
+        Expr::Paren(p) => literal_int(&p.inner()?),
+        Expr::Prefix(p) if matches!(p.op_kind()?, cpl_next_syntax::ops::UnOp::Neg) => {
+            literal_int(&p.operand()?)?.checked_neg()
         }
-        Expr::Bin(b) => {
-            let (x, y) = (const_value(&b.lhs()?, name)?, const_value(&b.rhs()?, name)?);
-            fold(bin_intr(b.op_kind()?)?, &[x, y])
-        }
-        Expr::Name(n) => name(&n.ident()?),
         _ => None,
     }
 }
@@ -815,14 +830,13 @@ fn const_value(e: &Expr, name: &dyn Fn(&SyntaxToken) -> Option<i64>) -> Option<i
 /// named `D`, give or take a constant (`0..=V.count`, `1..V.count + 1`). Gives `lo`, `D`, `m`
 /// and `k`.
 fn count_end(
-    cx: &TyCx,
     lo: Option<&Expr>,
     hi: Option<&Expr>,
     inclusive: bool,
 ) -> Option<(i64, SyntaxToken, SyntaxToken, i64)> {
-    fn end(cx: &TyCx, e: &Expr) -> Option<(SyntaxToken, SyntaxToken, i64)> {
+    fn end(e: &Expr) -> Option<(SyntaxToken, SyntaxToken, i64)> {
         match e {
-            Expr::Paren(p) => end(cx, &p.inner()?),
+            Expr::Paren(p) => end(&p.inner()?),
             Expr::Field(f) => match f.base()? {
                 Expr::Name(d) => Some((d.ident()?, f.name()?, 0)),
                 _ => None,
@@ -832,15 +846,19 @@ fn count_end(
                 let op = b
                     .op_kind()
                     .filter(|op| matches!(op, BinOp::Add | BinOp::Sub))?;
-                let j = const_int(cx, &b.rhs()?)?;
-                let (d, m, k) = end(cx, &b.lhs()?)?;
-                Some((d, m, fold(bin_intr(op)?, &[k, j])?))
+                let j = literal_int(&b.rhs()?)?;
+                let (d, m, k) = end(&b.lhs()?)?;
+                let k = match op {
+                    BinOp::Add => k.checked_add(j),
+                    _ => k.checked_sub(j),
+                };
+                Some((d, m, k?))
             }
             _ => None,
         }
     }
-    let lo = const_int(cx, lo?)?;
-    let (d, m, k) = end(cx, hi?)?;
+    let lo = literal_int(lo?)?;
+    let (d, m, k) = end(hi?)?;
     let k = if inclusive { k } else { k.checked_sub(1)? };
     Some((lo, d, m, k))
 }
@@ -1002,8 +1020,8 @@ pub fn static_axis(
 }
 
 fn static_range(cx: &TyCx, re: &next::RangeExpr) -> bool {
-    let constant = (re.lo().zip(re.hi()))
-        .is_some_and(|(l, h)| const_int(cx, &l).is_some() && const_int(cx, &h).is_some());
+    let constant =
+        (re.lo().zip(re.hi())).is_some_and(|(l, h)| is_constant(cx, &l) && is_constant(cx, &h));
     constant || count_axis(cx, re)
 }
 
@@ -1180,16 +1198,14 @@ impl Shapes for Tables {
 
 /// `[0..V.count - 1]T`: an axis ending at a domain's count, keyed by that range type (R04.3.4).
 fn count_axis(cx: &TyCx, re: &next::RangeExpr) -> bool {
-    count_end(cx, re.lo().as_ref(), re.hi().as_ref(), re.is_inclusive()).is_some_and(
-        |(_, d, m, _)| {
-            is_type_name(cx, &d)
-                && cx
-                    .syms
-                    .get(m.text())
-                    .and_then(|m| cx.env.getter(m))
-                    .is_some()
-        },
-    )
+    count_end(re.lo().as_ref(), re.hi().as_ref(), re.is_inclusive()).is_some_and(|(_, d, m, _)| {
+        is_type_name(cx, &d)
+            && cx
+                .syms
+                .get(m.text())
+                .and_then(|m| cx.env.getter(m))
+                .is_some()
+    })
 }
 
 /// The record struct with fields written `names`: none when a name is one no declaration gave.
