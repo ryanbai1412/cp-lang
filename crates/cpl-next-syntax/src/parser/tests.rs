@@ -1195,3 +1195,15 @@ fn none_is_a_name_that_reads_as_the_empty_optional() {
     assert!(!is_none("Nonee"));
     assert!(!is_none("x"));
 }
+
+#[test]
+fn a_record_rest_first_is_an_update_and_otherwise_a_without_form() {
+    let src = "let a = (..r, lo: 0)\nlet b = (to: 1, ..r)\nlet c = (..r without (u))\nlet d = (to: 1, ..r without (u))\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    let got: Vec<bool> = (file.root.descendants())
+        .filter_map(ast::RecordExpr::cast)
+        .map(|r| r.is_update())
+        .collect();
+    assert_eq!(got, [true, false, false, false]);
+}

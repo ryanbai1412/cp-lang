@@ -594,6 +594,10 @@ impl<'a> Cx<'a> {
             next::Expr::Generator(g) => self.comp_of(g.body(), g.clauses().collect(), want, span),
             next::Expr::Table(t) => self.table(t, span, want),
             next::Expr::Record(r) => match r.rest() {
+                Some(rest) if r.is_update() => match rest.expr() {
+                    Some(base) => self.record_update(&base, &r.fields().collect::<Vec<_>>(), span),
+                    None => Self::error_node(span),
+                },
                 Some(rest) => {
                     let prefix: Vec<next::RecordField> = r.fields().collect();
                     self.without(&prefix, &rest, want, span)

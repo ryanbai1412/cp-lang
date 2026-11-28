@@ -1219,6 +1219,15 @@ impl RecordExpr {
     pub fn rest(&self) -> Option<RecordRest> {
         child(&self.0)
     }
+
+    /// `(..e, to: u)`, a record update like `e with to: u` (R02.5.3): the rest comes first and
+    /// drops nothing, so it is no `without` form.
+    pub fn is_update(&self) -> bool {
+        self.rest().is_some_and(|r| {
+            let at = r.syntax().span().start;
+            r.removed().is_empty() && self.fields().all(|f| f.syntax().span().start > at)
+        })
+    }
 }
 
 impl RecordField {

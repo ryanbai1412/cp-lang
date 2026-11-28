@@ -182,7 +182,10 @@ pub fn forms(mods: &[crate::modules::Module]) -> Vec<Form> {
             out.insert((field_names(&fs), token_texts(&rest.removed())));
         }
     }
-    for e in all_of::<next::RecordExpr>(mods) {
+    for e in all_of::<next::RecordExpr>(mods)
+        .into_iter()
+        .filter(|e| !e.is_update())
+    {
         if let Some(rest) = e.rest() {
             let added = e
                 .fields()
