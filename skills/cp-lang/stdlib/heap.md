@@ -145,7 +145,7 @@ Fields: `h: Heap<Desc<T>>`.
 - `fn push_all(mut self, items: Seq<T>)` — \(O(n + k \log(n + k))\); Push every element of `items`.
 - `fn drain(mut self) -> yields T` — \(O(\log n)\) per step; Pop and yield every element, largest first, leaving the heap empty.
 
-## `struct Settle<K, P>(best: (P, P) -> P = min)`
+## `struct Settle<K: Hash + Eq, P>(best: (P, P) -> P = min)`
 
 A keyed frontier where each key pops exactly once.
 
