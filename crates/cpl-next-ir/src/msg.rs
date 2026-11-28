@@ -120,7 +120,7 @@ impl Stage {
 }
 
 /// The diagnostics of each library fn reached only through a trait, each naming the layer that
-/// found it: link says them if an instance runs the fn.
+/// found it: the build says them if link makes an instance of the fn.
 #[derive(Clone, Debug, Default)]
 pub struct Deferred(std::collections::HashMap<crate::ty::FnId, Vec<Msg>>);
 

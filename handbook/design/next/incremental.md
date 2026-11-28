@@ -304,7 +304,7 @@ table beside its fns. Link reads each fact by id from a per-item query:
 | `Whole.program_fns` | a fact of `signature(fn)`: the module it is in | `FnId` |
 | `Whole.ctx_impls` | a fact of `body(fn)`: the context copy each impl fn's call runs | the impl fn's `ItemId` and the copy |
 | `Generic.adds` | `summary(fn)`, which `Summaries` already reads | `FnId` |
-| `Generic.deferred`, `Generic.untyped` | `diagnostics(ItemId)`: what checking the body found, said when an instance of it is made | the fn's `ItemId` |
+| `Typed.deferred`, `Generic.quiet`, `Generic.untyped` | `diagnostics(ItemId)`: what checking and lowering the body found, said when an instance of it is made | the fn's `ItemId` |
 
 The checker's side tables go the same way: what a body's own nodes need
 moves into its typed tree, and what other items read is one of these
@@ -383,11 +383,17 @@ appended when a body first reads it.
    runs it. `generic(ItemId)` answers lower's for a quiet fn the same
    way. `program(Job)` answers which fns its instances run, and the
    facade joins each item's diagnostics with the deferred ones of each
-   fn that runs. `Deferred`, lower's copy of the checker's, and link's
-   `l.errors.extend(c.deferred(g))` are deleted: link says only its
-   own. `link_reads_check` (lane G) follows relays and trait objects,
-   so a checker diagnostic that reaches link through lower or a `&dyn`
-   fails it.
+   fn that runs. Lower's copy of the checker's, `Checked::deferred` and
+   link's `l.errors.extend(c.deferred(g))` are deleted: link says only
+   its own, and the build joins the checker's `Typed.deferred` and
+   lower's `Generic.quiet` for each fn of link's instances (`reached`),
+   to become the query. Decls keeps an item's own errors in
+   `Decls.item_errors`, not in the `FnDecl`, `StructDecl` or
+   `TraitDecl` link reads. `link_reads_check` walks the type graph
+   from link's `Inputs`, through struct fields, enum variants and
+   trait methods, so a checker type or a diagnostic (`Msg`,
+   `Deferred`) that reaches link through lower or a `&dyn` fails it,
+   whatever it is named.
 
 Steps 1 to 3 each land on their own and make the batch pipeline
 cleaner even before the database exists.

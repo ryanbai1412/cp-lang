@@ -623,6 +623,8 @@ fn a_build_reaching_an_untyped_library_body_reports_it() {
         ds.iter().any(|d| d.contains("unknown name `nope`")),
         "{ds:?}"
     );
+    // The checker says it, for the build: link carries no diagnostic in.
+    assert!(!ds.iter().any(|d| d.starts_with("link:")), "{ds:?}");
     let c = unreached.expect("an untyped body it never reaches leaves it clean");
     assert_eq!(c.run("").output, "1\n");
 }

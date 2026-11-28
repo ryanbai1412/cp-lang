@@ -89,8 +89,6 @@ pub struct FnDecl {
     /// When the collector made it: the round, then the pass (traits, fns and types, impls,
     /// derived impls). Std's and a program's together are checked in this order.
     pub made: (u32, u8),
-    /// What its signature uses that the slice does not build, said only when a call reaches it.
-    pub errors: Vec<Msg>,
 }
 
 impl FnDecl {
@@ -146,8 +144,6 @@ pub struct StructDecl {
     pub ctor: Option<FnId>,
     /// An enum's variants, each with the struct of its payload, named `Enum.Variant` (R02.7).
     pub variants: Vec<(Sym, StructId)>,
-    /// What its fields use that the slice does not build, said only when the program reaches it.
-    pub errors: Vec<Msg>,
     /// An enum's `Int` of each variant: its written value (`Neg = -1`), else its place from 0.
     pub values: Vec<i64>,
     /// The traits its parameters are bounded by (`struct Range<D: Domain>`).
@@ -162,8 +158,6 @@ pub struct TraitDecl {
     /// Its supertraits, in its own type parameters (R08.1.1).
     pub supers: Vec<TraitRef>,
     pub methods: HashMap<Sym, FnId>,
-    /// What its library impls use that the slice does not build, said when one of its fns is reached.
-    pub errors: Vec<Msg>,
     /// `trait Add<Rhs = Self>`: each parameter's default, in `Self` and the parameters before it.
     pub defaults: Vec<Option<Ty>>,
     /// `type Arc: Target<V>`: its associated types, its last parameters, which an impl writes
@@ -464,6 +458,29 @@ impl Role {
     }
 }
 
+/// What each library item uses that the slice does not build, said only when the program reaches
+/// it: a fn's signature when a call reaches it, a struct's fields when the program does, and a
+/// trait's library impls when one of its fns is reached. Held apart from the items, which the
+/// layers after the checker read, so no diagnostic reaches them.
+#[derive(Default, Clone)]
+pub struct ItemErrors {
+    pub fns: HashMap<FnId, Vec<Msg>>,
+    pub structs: HashMap<StructId, Vec<Msg>>,
+    pub traits: HashMap<TraitId, Vec<Msg>>,
+}
+
+impl ItemErrors {
+    pub fn of_fn(&self, f: FnId) -> &[Msg] {
+        self.fns.get(&f).map_or(&[], Vec::as_slice)
+    }
+    pub fn of_struct(&self, s: StructId) -> &[Msg] {
+        self.structs.get(&s).map_or(&[], Vec::as_slice)
+    }
+    pub fn of_trait(&self, t: TraitId) -> &[Msg] {
+        self.traits.get(&t).map_or(&[], Vec::as_slice)
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct Decls {
     pub fns: Layer<FnDecl>,
@@ -488,6 +505,7 @@ pub struct Decls {
     pub program: ModId,
     /// Per library module, what it uses outside its fns that the slice does not build.
     pub module_errors: Vec<Vec<Msg>>,
+    pub item_errors: ItemErrors,
     /// Why each `Named::Refused` library item is not built.
     pub refused: Vec<Unbuilt>,
     pub consts: Layer<LibConst>,
@@ -1862,9 +1880,12 @@ fn add_fn(
         span: item.at(s.span),
         item,
         module: m,
-        errors,
     });
-    FnId(d.fns.len() - 1)
+    let id = FnId(d.fns.len() - 1);
+    if !errors.is_empty() {
+        d.item_errors.fns.insert(id, errors);
+    }
+    id
 }
 
 /// The ends of a range type when both are literals, as an inclusive pair.

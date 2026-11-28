@@ -1214,11 +1214,11 @@ impl<'a> Cx<'a> {
         let module = &d.module_names[f.module.0];
         let mut said = Vec::new();
         if self.reported.insert((0, id.0)) {
-            said.extend(f.errors.iter().cloned());
+            said.extend(d.item_errors.of_fn(id).iter().cloned());
         }
         if let Some(Owner::Struct(s)) = f.owner {
             if self.reported.insert((1, s.0)) {
-                said.extend(d.s(s).errors.iter().cloned());
+                said.extend(d.item_errors.of_struct(s).iter().cloned());
             }
         }
         let tr = match f.owner {
@@ -1227,7 +1227,7 @@ impl<'a> Cx<'a> {
             _ => None,
         };
         if let Some(t) = tr.filter(|t| self.reported.insert((3, t.0))) {
-            said.extend(d.t(t).errors.iter().cloned());
+            said.extend(d.item_errors.of_trait(t).iter().cloned());
         }
         if self.reported.insert((2, f.module.0)) {
             said.extend(d.module_errors[f.module.0].iter().cloned());
@@ -1301,8 +1301,8 @@ impl<'a> Cx<'a> {
         let ret = self.b.ret.clone();
         // A fn refused as declared (a decorator the slice lacks) is that refusal, and one rejected
         // as declared is that error: its body is not checked.
-        let refused =
-            (f.errors.iter()).any(|e| e.refusal.is_some()) || d.rejected_bodies.contains(&id);
+        let refused = (d.item_errors.of_fn(id).iter()).any(|e| e.refusal.is_some())
+            || d.rejected_bodies.contains(&id);
         // A body that can end without its value is that error, not a mismatch at its end.
         let falls = !refused
             && f.region.is_none()

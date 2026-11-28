@@ -295,23 +295,36 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.next_snapshot_keyed_queries(root),
                              ["crates/cpl-next/src/facade.rs:2", "crates/cpl-next/src/linked.rs:3"])
 
-    def test_link_reads_check_counts_the_linkers_typed_tree_reads(self) -> None:
+    def test_link_reads_check_follows_the_type_graph_from_links_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
+            self._write(root, "crates/cpl-next-link/Cargo.toml", "[dependencies]\ncpl-next-decls = { path = \"x\" }\n")
+            self._write(root, "crates/cpl-next-decls/Cargo.toml", "[dependencies]\ncpl-next-ir = { path = \"x\" }\n")
             self._write(root, "crates/cpl-next-link/src/lib.rs",
-                        "use cpl_next_check::Typed;\nfn f(p: &Program) {}\nlet g = typed.globals;\n")
-            self.assertEqual(dr.link_reads_check(root),
-                             ["crates/cpl-next-link/src/lib.rs:1", "crates/cpl-next-link/src/lib.rs:3"])
-
-    def test_link_reads_check_follows_checker_data_through_holders(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
+                        "pub struct Inputs<'a> {\n    pub checked: &'a dyn Checked,\n}\n")
             self._write(root, "crates/cpl-next-decls/src/views.rs",
-                        "pub struct Answers<'a> {\n    pub whole: &'a Whole,\n}\n")
-            self._write(root, "crates/cpl-next-link/src/lib.rs",
-                        "fn a(adds: &SetAdds) {}\nfn b(c: &dyn Checked) {}\nstruct L<'a> {\n    x: &'a views::Answers<'a>,\n}\n"
-                        "fn c(d: Deferred) {}\n")
-            self.assertEqual(dr.link_reads_check(root), [f"crates/cpl-next-link/src/lib.rs:{i}" for i in (1, 4, 6)])
+                        "pub trait Checked {\n    fn deferred(&self, f: FnId) -> &Deferred;\n}\n")
+            self._write(root, "crates/cpl-next-ir/src/msg.rs", "pub struct Deferred(Vec<u8>);\npub struct FnId(u32);\n")
+            self.assertEqual(dr.link_reads_check(root), ["crates/cpl-next-ir/src/msg.rs: link's Inputs reaches "
+                                                         "Deferred via Inputs -> Checked -> Deferred"])
+            self._write(root, "crates/cpl-next-decls/src/views.rs",
+                        "pub trait Checked {\n    fn domain(&self, f: FnId) -> u32;\n}\n")
+            self.assertEqual(dr.link_reads_check(root), [])
+
+    def test_link_reads_check_resolves_a_name_in_the_crates_link_reaches(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-link/Cargo.toml", "[dependencies]\ncpl-next-ir = { path = \"x\" }\n")
+            self._write(root, "crates/cpl-next-link/src/lib.rs", "pub struct Inputs {\n    pub l: Local,\n}\n")
+            self._write(root, "crates/cpl-next-ir/src/ir.rs", "pub struct Local(u32);\n")
+            self._write(root, "crates/cpl-next-check/src/lib.rs", "pub struct Local {\n    pub t: Typed,\n}\npub struct Typed(u8);\n")
+            self.assertEqual(dr.link_reads_check(root), [])
+            self._write(root, "crates/cpl-next-ir/src/ir.rs", "pub struct Local {\n    pub held: Holder,\n}\n")
+            self._write(root, "crates/cpl-next-ir/src/held.rs", "pub struct Holder(Typed);\n")
+            self._write(root, "crates/cpl-next-ir/Cargo.toml", "[dependencies]\ncpl-next-check = { path = \"x\" }\n")
+            self.assertEqual(dr.link_reads_check(root), [
+                "crates/cpl-next-check/src/lib.rs: link's Inputs reaches Typed via Inputs -> Local -> Holder -> Typed",
+                "crates/cpl-next-link/Cargo.toml: reaches the checker via cpl-next-link -> cpl-next-ir -> cpl-next-check"])
 
     def test_frozen_std_drift_is_any_change_to_the_pinned_copy(self) -> None:
         with tempfile.TemporaryDirectory() as d:

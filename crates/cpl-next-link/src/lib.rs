@@ -211,7 +211,6 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
     }
     let mut insts: Vec<Func<CTy>> = Vec::new();
     let mut next = 0;
-    let mut said = std::collections::HashSet::new();
     let mut traced = !events;
     let mut made = std::collections::HashMap::new();
     loop {
@@ -225,11 +224,6 @@ pub fn link(v: Inputs, roots: &Roots, events: bool) -> Program {
             if made[&key.func.decl()] > LIMIT {
                 l.errors.push(Msg::internal(format!("instantiation does not end: `{}` makes a new copy of itself at every level, which the checker's growing-type rule (R08.2.10) does not see (a function passed to its own recursive call, wrapped in a new closure)", f.name)));
                 break;
-            }
-            if let Some(g) = key.func.decl() {
-                if said.insert(g) {
-                    l.errors.extend(c.deferred(g).iter().cloned());
-                }
             }
             // A fn used at a domain declared in its own body: inside that instance the type
             // argument and the local domain would be one type with two sizes. A run-time value

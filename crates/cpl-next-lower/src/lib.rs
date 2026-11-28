@@ -21,7 +21,9 @@ pub struct Generic {
     pub adds: cpl_next_ir::ty::SetAdds,
     /// What link reads of the program beyond its fns.
     pub whole: cpl_next_ir::whole::Whole,
-    pub deferred: cpl_next_ir::msg::Deferred,
+    /// Lowering's own errors in each fn the checker reached only through a trait: the build
+    /// says them if link makes an instance of the fn, as it does the checker's.
+    pub quiet: cpl_next_ir::msg::Deferred,
 }
 
 struct Lw<'a> {
@@ -86,11 +88,8 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             globals: typed.global_adds.clone(),
         },
         whole: whole(d, typed),
-        deferred: Default::default(),
+        quiet: Default::default(),
     };
-    for (f, msgs) in &typed.deferred {
-        out.deferred.add(*f, msgs.iter().cloned());
-    }
     let mut lw = Lw {
         d,
         typed,
@@ -206,7 +205,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             let es = es
                 .into_iter()
                 .map(|e| e.from_layer(cpl_next_ir::msg::Stage::Lower.name()));
-            out.deferred.add(*id, es);
+            out.quiet.add(*id, es);
         }
         let (sites, origins) = lw.take_sites();
         out.funcs.insert(

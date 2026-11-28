@@ -225,7 +225,6 @@ impl<'a> Evaluator<'a> {
         let (fns, tys) = (&low.funcs, &low.globals[..]);
         let checked = Answers {
             whole: &low.whole,
-            deferred: &low.deferred,
             globals: tys,
         };
         let v = inst::Inputs {
@@ -235,6 +234,11 @@ impl<'a> Evaluator<'a> {
             checked: &checked,
         };
         let mut prog = inst::link(v, &crate::roots(fns, tys.len()), false);
+        if (crate::ran(&prog).into_iter())
+            .any(|id| t.deferred.contains_key(&id) || !low.quiet.of(id).is_empty())
+        {
+            return Ran::Open;
+        }
         let owned = own::after(d, &mut prog, &names, before);
         if !owned.errors.is_empty() {
             return Ran::Open;

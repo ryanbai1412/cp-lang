@@ -317,7 +317,7 @@ impl Cx<'_> {
     ) -> TExpr {
         let fd = self.d.f(f.decl);
         // A call of a fn refused as declared is downstream of that refusal: it is the error.
-        if (fd.errors.iter()).any(|e| e.refusal.is_some()) {
+        if (self.d.item_errors.of_fn(f.decl).iter()).any(|e| e.refusal.is_some()) {
             return Self::error_node(span);
         }
         let sub = Subst {

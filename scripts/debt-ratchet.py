@@ -4049,23 +4049,71 @@ def next_snapshot_keyed_queries(root: Path) -> list[str]:
 NEXT_WHOLE_PIPELINE_RE = re.compile(r"(?<![\w.])(?:crate::)?(?:compile|front|back)\(")
 
 
-LINK_READS_CHECK_RE = re.compile(r"\b(?:cpl_next_check|Typed|typed)\b")
+TYPE_ITEM_RE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum|trait|type)\s+(\w+)")
+# Diagnostics: the checker's, and its relay of them, are checker data wherever they are defined.
+CHECKER_RELAYS = ("Deferred", "Msg")
 
 
-LINK_CHECKED_TYPES = NEXT_WHOLE_PROGRAM_TYPES + ("Deferred", "SetAdds")
+def _link_input_checker_types(root: Path) -> list[str]:
+    """Each checker type link's inputs reach, by the type graph: from cpl-next-link's `Inputs`,
+    every type a struct's fields, an enum's variants, a trait's method signatures or an alias
+    name, each name resolved in the nearest crate defining it: the naming crate, then its
+    dependencies, then theirs. A type defined
+    in cpl-next-check, or a diagnostic (`Msg`, or the relay of them `Deferred`), counts, with its path."""
+    deps = _crate_deps(root)
+    def layers(c: str) -> list[set[str]]:
+        """The crates `c` reaches, nearest first: itself, its dependencies, theirs, ..."""
+        seen, out, at = {c}, [{c}], {c}
+        while at := {d for x in at for d in deps.get(x, []) if d not in seen}:
+            seen |= at
+            out.append(at)
+        return out
+    defs: dict[str, list[tuple[str, str, set[str]]]] = {}
+    for p in _rs_files(root, *_next_srcs(root), tests=False):
+        rel = _rel(root, p)
+        lines = list(_lines(p))
+        for i, line in enumerate(lines):
+            if m := TYPE_ITEM_RE.match(line):
+                body = " ".join(x.split("//")[0] for x in lines[i:_block(lines, i) + 1])
+                names = set(re.findall(r"\b[A-Z]\w*", body)) - {m.group(1)}
+                defs.setdefault(m.group(1), []).append((rel.split("/")[1], rel, names))
+    start = [("cpl-next-link", "Inputs")]
+    if not any(c == "cpl-next-link" for c, _, _ in defs.get("Inputs", [])):
+        return []
+    prev: dict[tuple[str, str], tuple[str, str] | None] = {start[0]: None}
+    where: dict[tuple[str, str], str] = {}
+    todo, out = list(start), []
+    while todo:
+        node = todo.pop(0)
+        crate, name = node
+        mine = [(r, ns) for c, r, ns in defs.get(name, []) if c == crate]
+        for rel, names in mine:
+            where.setdefault(node, rel)
+            for n in sorted(names):
+                found = next(([c for c, _, _ in defs.get(n, []) if c in at] for at in layers(crate)
+                              if any(c in at for c, _, _ in defs.get(n, []))), [])
+                for c in found:
+                    if (c, n) not in prev:
+                        prev[(c, n)] = node
+                        todo.append((c, n))
+    for node in prev:
+        crate, name = node
+        if crate == "cpl-next-check" or name in CHECKER_RELAYS:
+            path, at = [], node
+            while at:
+                path.append(at[1])
+                at = prev[at]
+            out.append(f"{where.get(node, crate)}: link's Inputs reaches {name} via {' -> '.join(reversed(path))}")
+    return sorted(out)
 
 
 def link_reads_check(root: Path) -> list[str]:
-    """Where checker data reaches the linker (cpl-next-link) other than as a per-item answer
-    (shortcut audit S18). By data: each line of cpl-next-link that holds the checker's tables
-    (`Whole`, `Deferred`, `SetAdds`) or a whole-program value, directly or through a struct
-    holding one, by `next_whole_program_inputs`'s rule. Link reads them through the `Checked`,
-    `Summaries` and `Signatures` views, by id, so this is 0. By name: lines naming the typed tree.
-    By crate: no crate past lowering may reach the checker, through however many crates."""
-    out = _holding_lines(root, LINK_CHECKED_TYPES, "crates/cpl-next-link/")
-    for p in _rs_files(root, "crates/cpl-next-link/src", tests=False):
-        rel = _rel(root, p)
-        out += [f"{rel}:{i}" for i, line in enumerate(_lines(p), 1) if LINK_READS_CHECK_RE.search(line)]
+    """Where checker data reaches the linker (cpl-next-link) (shortcut audit S18), by the type
+    graph, not by names: each checker type link's `Inputs` reach through the types they name
+    (`_link_input_checker_types`), so a checker diagnostic or table relayed through lower or a
+    view counts however it is spelled. By crate: no crate past lowering may reach the checker,
+    through however many crates."""
+    out = _link_input_checker_types(root)
     # The structural half: no crate past lowering may reach the checker at all, whatever names it
     # uses and through however many crates (a direct-only check misses `link -> x -> check`).
     deps = _crate_deps(root)
@@ -5174,7 +5222,7 @@ COUNTERS = {
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "next_check_name_keys": ("checker keys built by formatting another name, not an id (Core)", next_check_name_keys, True),
     "next_string_keyed_maps": ("new-pipeline tables keyed by a name's text after resolution, not an id (S4, Core)", next_string_keyed_maps, True),
-    "link_reads_check": ("lines of the new pipeline's linker reading the typed tree, not the IR (Core)", link_reads_check, True),
+    "link_reads_check": ("checker types and diagnostics the new pipeline's linker's inputs reach by the type graph (Core)", link_reads_check, True),
     "string_keyed_maps": ("name-keyed HashMaps in cpl-check, not NameMap", string_keyed_maps, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),

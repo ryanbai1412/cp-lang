@@ -9,7 +9,6 @@ use crate::decls::{
 };
 use crate::sym::Sym;
 use cpl_next_ir::ir::{Func, FuncKey};
-use cpl_next_ir::msg::{Deferred, Msg};
 use cpl_next_ir::ty::{FnId, FnRef, SetAdds, SetTy, StructId, TraitId, Ty};
 use cpl_next_ir::whole::{Dom, DomId, Global, GlobalId, Whole};
 use std::collections::HashMap;
@@ -99,8 +98,6 @@ pub trait Summaries {
 /// `checked(ItemId)`: what the checker answered about one item that link reads by id. No
 /// method lists a whole table, so link reads only the items it instantiates.
 pub trait Checked {
-    /// `diagnostics(FnId)`: what the checker leaves to say once `f` is instantiated.
-    fn deferred(&self, f: FnId) -> &[Msg];
     /// `domain(DomId)`.
     fn domain(&self, d: DomId) -> &Dom;
     /// `global(GlobalId)`.
@@ -116,7 +113,6 @@ pub trait Checked {
 /// The lowered program's checker answers, until the query database answers each per item.
 pub struct Answers<'a> {
     pub whole: &'a Whole,
-    pub deferred: &'a Deferred,
     pub globals: &'a [Ty],
 }
 
@@ -264,9 +260,6 @@ impl Summaries for SetAdds {
 }
 
 impl Checked for Answers<'_> {
-    fn deferred(&self, f: FnId) -> &[Msg] {
-        self.deferred.of(f)
-    }
     fn domain(&self, d: DomId) -> &Dom {
         self.whole.dom(d)
     }

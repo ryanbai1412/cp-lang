@@ -297,6 +297,17 @@ fn staged(
         .collect()
 }
 
+/// The declared fns `prog` runs, once each, in the order link made their instances: what the
+/// checker and lowering left to say of a fn reached only through a trait (`Typed::deferred`,
+/// `Generic::quiet`) is said for these alone.
+fn ran(prog: &inst::Program) -> Vec<ty::FnId> {
+    let mut said = std::collections::HashSet::new();
+    (prog.insts.iter())
+        .filter_map(|f| f.key.decl())
+        .filter(|f| said.insert(*f))
+        .collect()
+}
+
 /// A whole build's link roots: every fn of `fns` and the first `globals` globals.
 pub(crate) fn roots(fns: &HashMap<ir::FuncKey, ir::Func<ty::Ty>>, globals: usize) -> inst::Roots {
     inst::Roots {
@@ -320,7 +331,6 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
     let (fns, tys) = (&g.funcs, &g.globals[..]);
     let checked = Answers {
         whole: &g.whole,
-        deferred: &g.deferred,
         globals: tys,
     };
     let v = inst::Inputs {
@@ -330,6 +340,16 @@ fn back(f: &mut Front, events: bool) -> Option<(inst::Program, Vec<Diag>, Vec<ow
         checked: &checked,
     };
     let mut prog = inst::link(v, &roots(fns, tys.len()), events);
+    let mut quiet = Vec::new();
+    for id in ran(&prog) {
+        if let Some(ms) = f.t.deferred.get(&id) {
+            quiet.extend(staged(Stage::Check, ms, &f.loaded, &f.rejected));
+        }
+        quiet.extend(staged(Stage::Lower, g.quiet.of(id), &f.loaded, &f.rejected));
+    }
+    if !quiet.is_empty() {
+        return Some((prog, quiet, Vec::new()));
+    }
     let owned = own::after(d, &mut prog, &names, before);
     let diags = staged(Stage::Own, &owned.errors, &f.loaded, &f.rejected);
     Some((prog, diags, owned.binds))
@@ -449,7 +469,6 @@ pub(crate) fn compile(
     if events {
         let answers = cpl_next_decls::views::Answers {
             whole: &f.g.whole,
-            deferred: &f.g.deferred,
             globals: &f.g.globals,
         };
         inst::add_events(&mut prog, &answers);

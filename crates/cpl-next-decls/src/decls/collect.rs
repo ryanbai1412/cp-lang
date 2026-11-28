@@ -435,7 +435,6 @@ fn layer(
                             shaped: HashMap::new(),
                             ctor: None,
                             variants: Vec::new(),
-                            errors: Vec::new(),
                             values: Vec::new(),
                             bounds: Vec::new(),
                         });
@@ -513,7 +512,6 @@ fn layer(
                             alias: *alias,
                             supers: Vec::new(),
                             methods: HashMap::new(),
-                            errors: Vec::new(),
                             defaults: Vec::new(),
                             assoc: Vec::new(),
                             assoc_bounds: Vec::new(),
@@ -780,7 +778,7 @@ fn layer(
             .collect();
         Arc::make_mut(&mut d.struct_defaults).insert(*id, tys);
         if d.is_library(*mid) {
-            d.structs[id.0].errors.extend(errors);
+            d.item_errors.structs.entry(*id).or_default().extend(errors);
         } else {
             d.errors.extend(errors);
         }
@@ -878,7 +876,7 @@ fn layer(
                         })
                         .collect();
                     if d.is_library(mid) {
-                        d.structs[id.0].errors.extend(errors);
+                        d.item_errors.structs.entry(id).or_default().extend(errors);
                     } else {
                         d.errors.extend(errors);
                     }
@@ -1156,8 +1154,18 @@ fn layer(
                     // it: through its type when that is a struct, else through its trait.
                     if let (Some(r), true) = (&tref, d.is_library(mid) && !errors.is_empty()) {
                         match &for_ {
-                            Ty::Struct(sd, ..) => d.structs[sd.0].errors.append(&mut errors),
-                            _ => d.traits[r.tr.0].errors.append(&mut errors),
+                            Ty::Struct(sd, ..) => d
+                                .item_errors
+                                .structs
+                                .entry(*sd)
+                                .or_default()
+                                .append(&mut errors),
+                            _ => d
+                                .item_errors
+                                .traits
+                                .entry(r.tr)
+                                .or_default()
+                                .append(&mut errors),
                         }
                         continue;
                     }
