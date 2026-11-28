@@ -853,7 +853,6 @@ pub fn check(
                 ty: Ty::Int,
                 span,
             });
-            cx.b.scopes.push(HashMap::new());
             cases = Some((count, Vec::new()));
         }
         let unbuilt: Vec<String> = (s.directive().filter(|x| !multitest(x)))
@@ -919,7 +918,6 @@ pub fn check(
     }
     cx.solve(true);
     if let Some((count, body)) = cases {
-        cx.b.scopes.pop();
         main_out.push(TStmt::Cases(count, body));
     }
     cx.own_global_sets();
