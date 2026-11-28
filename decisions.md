@@ -9621,3 +9621,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Reverse.** At the switch, when the old pipeline and its pin are deleted, gen-ref reads `std/` again and the live-only modules are published.
 
 ## 694. (reserved, C)
+
+## 695. (reserved, B: B: a type parameter only an omitted default mentions takes Int)
