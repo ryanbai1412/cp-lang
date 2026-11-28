@@ -1,8 +1,8 @@
 // Core: what every module names unimported, each a `pub use` of an ordinary std module. A
 // library declares nothing here that it could not declare in its own file.
-use std.ops.{Eq, Ord, Add, Sub, Mul, Div, Rem, Pow, Neg, BitXor, BitOr, BitAnd, Contains, Zero, One, Bounded}
+use std.ops.{Eq, Ord, Add, Sub, Mul, Div, Rem, Pow, Neg, BitXor, BitOr, BitAnd, Contains, Zero, One, FromInt, Bounded}
 /// The traits of `==`, `<`, `+` and the other operators, and of `T.zero`, `T.one` (R08.1.5).
-pub use std.ops.{Eq, Ord, Add, Sub, Mul, Div, Rem, Pow, Neg, BitXor, BitOr, BitAnd, Contains, Zero, One, Bounded}
+pub use std.ops.{Eq, Ord, Add, Sub, Mul, Div, Rem, Pow, Neg, BitXor, BitOr, BitAnd, Contains, Zero, One, FromInt, Bounded}
 use std.clone.{Clone}
 /// `x.clone()` (R05.2.2).
 pub use std.clone.{Clone}

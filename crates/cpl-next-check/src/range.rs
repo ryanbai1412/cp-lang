@@ -187,7 +187,7 @@ impl Cx<'_> {
         })
     }
     /// Whether `t` is a type parameter bound by `Domain`.
-    fn domain_param(&self, t: &Ty) -> bool {
+    pub(super) fn domain_param(&self, t: &Ty) -> bool {
         let Ty::Param(i) = t else {
             return false;
         };

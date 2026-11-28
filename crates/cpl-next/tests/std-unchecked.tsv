@@ -32,13 +32,13 @@ std.mem	0
 std.memo	0
 std.mo	0
 std.mod	48
-std.ntt	104
+std.ntt	103
 std.ops	0
 std.opt	0
 std.optional	0
 std.pair	0
 std.persistent	11
-std.poly	79
+std.poly	66
 std.prefix	0
 std.rand	5
 std.range	2

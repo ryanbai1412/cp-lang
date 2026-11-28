@@ -295,7 +295,8 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    `[D].filled(x)`; `[D]` followed by a value without `=>` is a type,
    never a table. (R04.4.27)
 6. **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where
-   a `Mod<P>` is expected is `Mod<P>.from_int(x)`, reduced mod `P`:
+   a `Mod<P>` is expected is `Mod<P>.from_int(x)`, its `FromInt` impl
+   (decision 687), reduced mod `P`:
    `var ways: [0..=n]Z = 0`, `ways[0] = 1`, `cnt[v] = deg[v]`; an `Int`
    operand of `+`, `-` or `*` beside a `Mod<P>` is expected too, so
    `before[i] + 1` is `Mod<P>` arithmetic. (R04.4.28)

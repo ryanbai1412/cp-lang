@@ -7,10 +7,10 @@ std.interval	8
 std.lazy	2
 std.math	1
 std.matrix	32
-std.mod	31
-std.ntt	102
+std.mod	33
+std.ntt	101
 std.persistent	1
-std.poly	6
+std.poly	4
 std.segtree	6
 std.seq	1
 std.strings	1

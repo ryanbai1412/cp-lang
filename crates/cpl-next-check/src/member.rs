@@ -451,7 +451,7 @@ impl<'a> Cx<'a> {
     /// `T.MIN` where no bound of `T` gives `MIN` but a trait does: a body is checked against its
     /// bounds alone (R08.2.2), so the error names the bound to write. None when no trait has a
     /// self-less fn `name`.
-    fn unbound_static(&mut self, t: &str, name: Called<'_>, span: Span) -> Option<TExpr> {
+    fn unbound_static(&mut self, t: &str, name: Called<'_>, bound_free: bool, span: Span) -> TExpr {
         let mut givers: Vec<&str> = (name
             .sym
             .map_or_else(Vec::new, |s| self.methods.traits_declaring(s))
@@ -470,19 +470,28 @@ impl<'a> Cx<'a> {
             .iter()
             .map(|g| format!("`{t}: {g}`"))
             .collect::<Vec<_>>();
-        if shown.is_empty() {
-            return None;
-        }
         let m = &name.text;
+        let has = match bound_free {
+            true => "has none",
+            false => "has no bound that does",
+        };
+        let help = match shown.is_empty() {
+            true => format!(
+                "no trait gives a `fn {m}` without `self`: declare one and bound `{t}` by it"
+            ),
+            false => format!("write {}", shown.join(" or ")),
+        };
         self.err_help(
             span,
             Msg::verdict(
                 cpl_diag::codes::MISSING_IMPL,
-                format!("`{t}.{m}` needs a bound on `{t}` that gives `{m}`, and `{t}` has none (R08.2.2)"),
+                format!(
+                    "`{t}.{m}` needs a bound on `{t}` that gives `{m}`, and `{t}` {has} (R08.2.2)"
+                ),
             ),
-            Some(format!("write {}", shown.join(" or "))),
+            Some(help),
         );
-        Some(Self::error_node(span))
+        Self::error_node(span)
     }
     /// `Int.zero`, or `F.zero` in a default where `F` names the call's type: a self-less fn of a
     /// trait the named type implements. None for a name that is a value, a struct or no type.
@@ -588,10 +597,12 @@ impl<'a> Cx<'a> {
                     self.err_help(span, msg, Some(help));
                     return Some(Self::error_node(span));
                 }
+                // A domain parameter's other members are its range's, read below.
+                if self.domain_param(&Ty::Param(i)) {
+                    return None;
+                }
                 let bound_free = self.bound_traits(i).is_empty();
-                return bound_free
-                    .then(|| self.unbound_static(&n, name, span))
-                    .flatten();
+                return Some(self.unbound_static(&n, name, bound_free, span));
             };
             return Some(self.static_call(Ty::Param(i), tr, m, name, call, span));
         }

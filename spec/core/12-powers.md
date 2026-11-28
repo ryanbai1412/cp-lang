@@ -12,20 +12,26 @@ inlined C++; any `std::function` or hidden allocation is logged debt.
 
 ## W1. Numeric types (P1)
 
-A type becomes a number by defining operators, `Int` literal conversion and
-`read`/`print`. Compound assignments (`+=`, `min=`) come from the operators.
+A type becomes a number by implementing the operator traits (`Add`, `Mul`,
+...), `FromInt` (`Int` conversion, decision 687) and `Read`/`Show`. Compound
+assignments (`+=`, `min=`) come from the operators. A generic body lifts an
+`Int` with `T.from_int(n)`, which needs `T: FromInt` like any static member
+(R08.2.2).
 
-    struct Frac: p: Int, q: Int
-    impl Num for Frac:
+    struct Frac(p: Int, q: Int)
+    impl FromInt for Frac:
         fn from_int(n: Int) -> Frac = Frac(n, 1)
-        fn (a: Frac) + (b: Frac) -> Frac = norm(a.p * b.q + b.p * a.q, a.q * b.q)
-        fn (a: Frac) * (b: Frac) -> Frac = norm(a.p * b.p, a.q * b.q)
-    let half: Frac = 1 / 2          // literals convert through from_int
+    impl Add for Frac:
+        fn add(a, b) = norm(a.p * b.q + b.p * a.q, a.q * b.q)
+    impl Mul for Frac:
+        fn mul(a, b) = norm(a.p * b.p, a.q * b.q)
+    let half: Frac = 1 / 2          // literals convert through FromInt
 
 Range facts (what the overflow checker may assume about a result) are
 declared on the return type: `fn (a: Mod<P>) + (b: Mod<P>) -> 0..P`.
 Needs: `Mod<P>`, `Frac`, `Matrix`, `Poly`, `Point`, `I128`. Status: partial
-(operators check; literal conversion through `from_int` does not).
+(operators and `T.from_int` check; implicit `Int` literal conversion through
+`FromInt` does not).
 
 ## W2. Niches (P2)
 
