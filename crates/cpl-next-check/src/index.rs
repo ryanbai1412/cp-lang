@@ -14,9 +14,10 @@ impl Cx<'_> {
     pub(super) fn elem(&mut self, s: TExpr, i: TExpr, span: Span) -> TExpr {
         let at = self.index_read();
         let rt = self.recv_ty(&s.ty);
-        let read = self
-            .impls()
-            .impl_member_by(&rt, &at, |f| f.region.is_none());
+        let read = self.d.sym(&at).and_then(|sym| {
+            self.impls()
+                .impl_member_by(&rt, sym, |f| f.region.is_none())
+        });
         let call = match (&rt, read) {
             (Ty::Param(p), _) => self.bound_call(*p, s, &at, vec![TArg::Value(i)], span),
             (_, Some(decls::Member::Method(m, ts, ss))) => {
@@ -307,8 +308,9 @@ impl Cx<'_> {
     /// The key and cell types of `rt`'s `Indexed` read.
     fn read_sig(&self, rt: &Ty) -> Option<(Ty, Ty)> {
         match self
-            .impls()
-            .impl_member_by(rt, &self.index_read(), |f| f.region.is_none())
+            .d
+            .sym(&self.index_read())
+            .and_then(|sym| self.impls().impl_member_by(rt, sym, |f| f.region.is_none()))
         {
             Some(decls::Member::Method(m, ts, _)) => {
                 let sub = Subst {
@@ -383,7 +385,9 @@ impl Cx<'_> {
         let rt = self.shallow(&b.ty);
         let d = &self.d;
         let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
-        self.impls().impl_member_by(&rt, name, of_tr)?;
+        self.d
+            .sym(name)
+            .and_then(|sym| self.impls().impl_member_by(&rt, sym, of_tr))?;
         let callee = ast::Expr {
             kind: ExprKind::Field {
                 base: Box::new(base.clone()),
@@ -491,8 +495,10 @@ impl Cx<'_> {
             tys.extend(tr.args.iter().cloned());
             (Callee::Trait(tr, read.to_string()), m, tys, Vec::new())
         } else {
-            let Some(decls::Member::Method(m, ts, ss)) =
-                self.impls().impl_member_by(&rt, read, lends)
+            let Some(decls::Member::Method(m, ts, ss)) = self
+                .d
+                .sym(read)
+                .and_then(|sym| self.impls().impl_member_by(&rt, sym, lends))
             else {
                 if !matches!(rt, Ty::Error) {
                     let shown = self.show(&rt);
@@ -564,7 +570,11 @@ impl Cx<'_> {
         let probe = self.expr(base, None);
         self.errors.truncate(seen);
         let rt = self.shallow(&probe.ty);
-        let writes = match self.impls().lookup_member(&rt, &name.text) {
+        let writes = match self
+            .d
+            .sym(&name.text)
+            .and_then(|sym| self.impls().lookup_member(&rt, sym))
+        {
             Some(decls::Member::Method(m, ..)) => {
                 self.d.f(m).self_mode == SelfMode::Mut || self.d.writes_cache(m)
             }
