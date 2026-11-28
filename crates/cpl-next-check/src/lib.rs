@@ -864,7 +864,7 @@ pub fn check(
             let later = |im: &decls::ImplDecl| {
                 !d.live(im) || matches!(im.for_, Ty::Struct(s, ..) if d.s(s).record)
             };
-            (roots.contains(&f.module) || !d.is_library(f.module) && f.module != decls::CORE)
+            (roots.contains(&f.module) || !d.is_library(f.module))
                 && !matches!(f.owner, Some(Owner::Impl(i)) if later(d.imp(i)))
         })
         .collect();

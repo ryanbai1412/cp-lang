@@ -67,11 +67,6 @@ pub enum Unbuilt {
     AliasCall {
         name: String,
     },
-    CoreStandInArity {
-        name: String,
-        given: usize,
-        takes: usize,
-    },
     Derived {
         tr: String,
         ty: String,
@@ -204,9 +199,6 @@ impl fmt::Display for Unbuilt {
             Read { ty } => write!(f, "`read` of `{ty}`"),
             TypeArgsValue => write!(f, "a type with type arguments used as a value"),
             AliasCall { name } => write!(f, "building a value by calling the alias `{name}`"),
-            CoreStandInArity { name, given, takes } => {
-                write!(f, "`{name}` with {given} arguments (the core stand-in takes {takes})")
-            }
             Derived { tr, ty } => write!(f, "derived `{tr}` for `{ty}`"),
             FieldwiseTrait { ty, tr } => write!(f, "`{ty}` meeting `{tr}` by its fields"),
             ConversionWithoutConvert => write!(f, "a conversion without core's `@convert` trait"),

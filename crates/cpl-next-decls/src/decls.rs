@@ -673,10 +673,6 @@ impl Decls {
     pub fn struct_named(&self, m: ModId, name: &str) -> Option<StructId> {
         struct_named(&self.views[m.0], name)
     }
-    /// The core's fn of this name, whatever the module calls its own.
-    pub fn core_fn(&self, name: &str) -> Option<FnId> {
-        self.fn_named(CORE, name)
-    }
     /// A read-only method that may still write its receiver's `@cache` fields, so a call
     /// lends the receiver for writing (R05.10.10).
     pub fn writes_cache(&self, f: FnId) -> bool {
@@ -686,7 +682,7 @@ impl Decls {
     }
     /// A library declaration's place is not the program's: its module's name.
     pub fn is_library(&self, m: ModId) -> bool {
-        m != CORE && !self.of_program(m)
+        !self.of_program(m)
     }
     /// Whether `m` holds only items: a library, or an inline `mod` (R11.1.2, R11.1.3).
     pub fn items_only(&self, m: ModId) -> bool {

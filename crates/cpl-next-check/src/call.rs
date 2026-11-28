@@ -357,24 +357,6 @@ impl Cx<'_> {
         for p in &mut formals {
             p.ty = self.fresh_sets(&p.ty);
         }
-        // The core file stands in for std until std's own `List` and `Str` load (stage 4):
-        // a call std's signature takes but the stand-in's does not is not built, not an error.
-        let variadic = formals.iter().any(|f| f.variadic);
-        if fd.module == decls::CORE && args.len() > formals.len() && !variadic {
-            self.err(
-                span,
-                Unbuilt::CoreStandInArity {
-                    name: fd.name.clone(),
-                    given: args.len(),
-                    takes: formals.len(),
-                },
-            );
-            return TExpr {
-                kind: TK::Error,
-                ty: Ty::Error,
-                span,
-            };
-        }
         let held = fd.region.is_some() && !std::mem::take(&mut self.b.allow_region);
         let unbuilt =
             held && (fd.region.as_ref().is_some_and(|r| r.0) || self.d.roles().recipe.is_none());
