@@ -1026,7 +1026,7 @@ fn lower_in<T: Ord>(a: List<T>, x: T) -> Int:
             if a[mid] < x: lo = mid + 1 else: hi = mid
     lo
 
-fn sa_order<S: Indexed>(s: S) -> List<Int>:
+fn sa_order<S: Indexed<K, T>, K, T: Ord>(s: S) -> List<Int>:
     let n = s.len
     if n == 0: return []
     var vec = List.filled(n + 1, 0)
@@ -1076,7 +1076,7 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
     sa
 
 // The suffix array of `s`, its inverse and Kasai's adjacent LCP array.
-fn sa_rank_lcp<S: Indexed>(s: S) -> (List<Int>, List<Int>, List<Int>):
+fn sa_rank_lcp<S: Indexed<K, T>, K, T: Ord>(s: S) -> (List<Int>, List<Int>, List<Int>):
     let n = s.len
     let sa = sa_order(s)
     var rank = List.filled(n, 0)
