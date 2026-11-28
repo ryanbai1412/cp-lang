@@ -25,7 +25,7 @@ an input it read has changed. Nothing else in the compiler holds state.
 ```text
 input   file_text(FileId) -> Text, config() -> Config         set by the snapshot
 query   syntax(FileId)              -> SyntaxFile              contract 1
-query   items(FileId)               -> ItemList                names, kinds, ItemIds, no bodies
+query   items(FileId, module)       -> ItemList                names, kinds, ItemIds, no bodies
 query   scope(ModId)                -> Scope                   what each name in a module means
 query   signature(ItemId)           -> Signature               contract 2, never reads a body
 query   impls(TraitId)              -> ImplIndex               coherence, per trait
@@ -47,8 +47,21 @@ database, so a new snapshot shares every answer the edit did not touch.
 
 - An `ItemId` is a path: module, item name, and a disambiguator for
   impls and repeated names (`impl Show for V`, the k-th top-level
-  statement block). It never depends on byte offsets or on the order
-  in which modules were loaded, so the same program gives the same IDs.
+  statement block), plus the file that holds the module. It never
+  depends on byte offsets or on the order in which modules were
+  loaded, so the same program gives the same IDs. The file is part of
+  its identity (equality and hash), so two programs' `main`s, or two
+  `cp.toml`s' `kit.m`, are different items in one session's database;
+  what a person reads (diagnostics, `m.name` paths, dump-ir) is
+  `module.name`, never the file (lanes I and J, 2026-11-27).
+- `items(FileId, module)` reads a file as a module, so a file one
+  program opens as its root and another uses as a library is two
+  modules. A library module's file is `module_file(root, module)`,
+  over the `Libraries(root)` input a session reads from `cp.toml`.
+  A query never writes an input: the loader returns the library files
+  its database lacks, the session reads them and asks again, a bound
+  of one round per file, and a file still missing is an unknown
+  module.
 - A node inside a body is `(ItemId, local index)`. Spans inside a body
   are relative to the item's start. The absolute place is the separate
   `spans` query, which is the only thing a blank line above the item

@@ -22,7 +22,9 @@ fn func<T>(locals: Vec<T>, body: Vec<Stmt<T>>, ret: T) -> Func<T> {
         ret,
         region: None,
         line: 0,
-        sites: vec![ItemId::file("m".into()).at(cpl_diag::Span::new(0, 0))],
+        sites: vec![
+            ItemId::file(cpl_contract::FileId::new("m"), "m".into()).at(cpl_diag::Span::new(0, 0))
+        ],
         origins: vec![0],
         shown: "t".into(),
         guards: Vec::new(),

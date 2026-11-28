@@ -204,7 +204,7 @@ statement replaced which, not a content hash), and never by a line
 string or a line number:
 
 ```rust
-struct StmtId { item: ItemId, stmt: u32 }   // ItemId: module, name, nth (contract 1)
+struct StmtId { item: ItemId, stmt: u32 }   // ItemId: module, name, nth, file (contract 1)
 struct At { call: CallPath, site: StmtId, nth: u32 }
 fn source_of(&self, site: StmtId) -> Option<Source>  // Session: module, span, line, now
 struct Source { module: String, span: Span, line: u32 }

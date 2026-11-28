@@ -10,6 +10,7 @@ use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_syntax::ast::{self, AstNode};
 use cpl_next_syntax::{GreenNode, SyntaxNode};
 use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 /// A file's text, as the snapshot holds it.
@@ -19,18 +20,35 @@ impl Input for Source {
     type Value = Arc<str>;
 }
 
-/// The module path the loader gives a file.
-pub struct ModulePath;
-impl Input for ModulePath {
+/// The libraries root file `root` reads beside std: each `[libs]` name of the `cp.toml` at or
+/// above it and the directory it names, a nearer one first.
+pub struct Libraries;
+impl Input for Libraries {
     type Key = FileId;
-    type Value = Arc<str>;
+    type Value = Arc<[(Arc<str>, PathBuf)]>;
 }
 
-/// The file a module path names.
+/// The extension of a source file.
+pub const SOURCE_EXT: &str = "cp";
+
+/// `module_file(root, module)`: the file root file `root` reads library module `module` from:
+/// `kit.m` is `m.cp` in the directory its `[libs]` call `kit`. Whether the file is there is
+/// `Source`'s answer, not this one's.
 pub struct ModuleFile;
-impl Input for ModuleFile {
-    type Key = Arc<str>;
-    type Value = FileId;
+impl Query for ModuleFile {
+    type Key = (FileId, Arc<str>);
+    type Value = Option<FileId>;
+    const NAME: &'static str = "module_file";
+    fn compute(db: &Db, (root, module): &Self::Key) -> Result<Self::Value, DbError> {
+        let Some((lib, rest)) = module.split_once('.') else {
+            return Ok(None);
+        };
+        let libs = db.input::<Libraries>(root)?.unwrap_or_default();
+        Ok((libs.iter().find(|(n, _)| &**n == lib)).map(|(_, dir)| {
+            let path = dir.join(format!("{}.{SOURCE_EXT}", rest.replace('.', "/")));
+            FileId::new(&path.display().to_string())
+        }))
+    }
 }
 
 /// The name an item's id carries: what it declares, an operator fn's operator, an impl's head
@@ -58,7 +76,7 @@ fn item_name(item: &ast::Item) -> String {
 /// that name come before them.
 fn flatten(
     items: impl Iterator<Item = ast::Item>,
-    module: &Arc<str>,
+    (file, module): &(FileId, Arc<str>),
     path: &str,
     out: &mut Vec<(ItemId, SyntaxNode)>,
 ) {
@@ -72,10 +90,11 @@ fn flatten(
             module: module.clone(),
             name: name.clone(),
             nth,
+            file: file.clone(),
         };
         out.push((id, it.syntax().clone()));
         if let Some(ast::Decl::Mod(m)) = it.decl() {
-            flatten(m.items(), module, &name, out);
+            flatten(m.items(), &(file.clone(), module.clone()), &name, out);
         }
     }
 }
@@ -105,36 +124,32 @@ impl Query for Parse {
     }
 }
 
-/// The items of `file`, each with its id, in file order.
-fn item_nodes(db: &Db, file: &FileId) -> Result<Vec<(ItemId, SyntaxNode)>, DbError> {
-    let Some(Parsed { green, .. }) = db.get::<Parse>(file)? else {
+/// The items of file `of.0` read as module `of.1`, each with its id, in file order.
+fn item_nodes(db: &Db, of: &(FileId, Arc<str>)) -> Result<Vec<(ItemId, SyntaxNode)>, DbError> {
+    let Some(Parsed { green, .. }) = db.get::<Parse>(&of.0)? else {
         return Ok(Vec::new());
     };
-    let module = db
-        .input::<ModulePath>(file)?
-        .unwrap_or_else(|| file.path().into());
     let root = SyntaxNode::new_root(green);
     let mut out = Vec::new();
     flatten(
         root.children().filter_map(ast::Item::cast),
-        &module,
+        of,
         "",
         &mut out,
     );
     Ok(out)
 }
 
-/// `items(FileId)`: each item's id, in file order.
+/// `items(FileId, module)`: each item's id, in file order, of the file read as the module. One
+/// file a session reads as two modules (a program, and a library another program uses) is
+/// two modules' items.
 pub struct Items;
 impl Query for Items {
-    type Key = FileId;
+    type Key = (FileId, Arc<str>);
     type Value = Vec<ItemId>;
     const NAME: &'static str = "items";
-    fn compute(db: &Db, file: &FileId) -> Result<Self::Value, DbError> {
-        Ok(item_nodes(db, file)?
-            .into_iter()
-            .map(|(id, _)| id)
-            .collect())
+    fn compute(db: &Db, of: &Self::Key) -> Result<Self::Value, DbError> {
+        Ok(item_nodes(db, of)?.into_iter().map(|(id, _)| id).collect())
     }
 }
 
@@ -146,16 +161,14 @@ pub struct Item {
     pub hash: u64,
 }
 
-/// `id`'s node, if its module's file holds it. Reads `items` first, so an edit that leaves
-/// the file's ids as they were reaches only the items whose text changed.
+/// `id`'s node, if its file holds it. Reads `items` first, so an edit that leaves the file's
+/// ids as they were reaches only the items whose text changed.
 fn node(db: &Db, id: &ItemId) -> Result<Option<SyntaxNode>, DbError> {
-    let Some(file) = db.input::<ModuleFile>(&id.module)? else {
-        return Ok(None);
-    };
-    if !db.get::<Items>(&file)?.contains(id) {
+    let of = (id.file.clone(), id.module.clone());
+    if !db.get::<Items>(&of)?.contains(id) {
         return Ok(None);
     }
-    Ok(item_nodes(db, &file)?
+    Ok(item_nodes(db, &of)?
         .into_iter()
         .find(|(i, _)| i == id)
         .map(|(_, n)| n))
@@ -203,14 +216,11 @@ impl Query for SourceOf {
         let Some(at) = db.get::<ItemAt>(&site.item)? else {
             return Ok(None);
         };
-        let Some(file) = db.input::<ModuleFile>(&site.item.module)? else {
-            return Ok(None);
-        };
         let mut span = site.span;
         span.start += at;
         span.end += at;
         Ok(Some(Definition {
-            path: file.path().into(),
+            path: site.item.file.path().into(),
             span,
         }))
     }

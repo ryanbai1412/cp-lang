@@ -5,7 +5,7 @@ use cpl_next_check::*;
 use cpl_next_decls::decls::{Decls, FnDecl, Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
 use cpl_next_ir::build::{CheckName, Checks};
-use cpl_next_ir::ids::{ItemId, SourceId};
+use cpl_next_ir::ids::{FileId, ItemId, SourceId};
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ty::*;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -112,7 +112,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
         in_main: true,
         key: FuncKey::Main,
         case: None,
-        off: ItemId::file(cpl_next_decls::modules::PROGRAM.into()),
+        off: nowhere().item,
         src,
         made: false,
         sites: fresh_sites().0,
@@ -1690,11 +1690,16 @@ fn breaks(stmts: &[Stmt<Ty>]) -> bool {
     })
 }
 
+/// The place of what no item holds: the program's file as a whole.
+fn nowhere() -> SourceId {
+    let program = cpl_next_decls::modules::PROGRAM;
+    ItemId::file(FileId::new(program), program.into()).at(Span::default())
+}
+
 /// A fn's site tables before its first site: site 0, which has no place.
 /// Site 0 is the fn as a whole: where its calls enter and leave, and where compiler-made code is.
 fn fresh_sites() -> (Vec<SourceId>, Vec<u32>) {
-    let nowhere = ItemId::file(cpl_next_decls::modules::PROGRAM.into()).at(Span::default());
-    (vec![nowhere], vec![0])
+    (vec![nowhere()], vec![0])
 }
 
 /// Whether `e` names a place: a variable, or a field of one.

@@ -597,7 +597,10 @@ impl Body {
             refused_names: Default::default(),
             nested: None,
             joining: false,
-            item: ItemId::file(crate::modules::PROGRAM.into()),
+            item: ItemId::file(
+                cpl_next_ir::ids::FileId::new(crate::modules::PROGRAM),
+                crate::modules::PROGRAM.into(),
+            ),
             module: d.program,
         }
     }

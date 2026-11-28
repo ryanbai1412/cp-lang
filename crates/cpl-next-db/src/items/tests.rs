@@ -16,8 +16,6 @@ fn db_with(text: &str) -> (Db, FileId) {
     let db = Db::default();
     let f = FileId::new("main.cp");
     db.set::<Source>(f.clone(), text.into()).unwrap();
-    db.set::<ModulePath>(f.clone(), "main".into()).unwrap();
-    db.set::<ModuleFile>("main".into(), f.clone()).unwrap();
     (db, f)
 }
 
@@ -26,6 +24,7 @@ fn id(name: &str, nth: u32) -> ItemId {
         module: "main".into(),
         name: name.into(),
         nth,
+        file: FileId::new("main.cp"),
     }
 }
 
@@ -35,7 +34,7 @@ const TWO: &str = "fn a() -> Int:\n    return 1\n\nfn b() -> Int:\n    return 2\
 fn items_are_keyed_by_module_name_and_rank() {
     let (db, f) = db_with("fn a():\n    pass\n\nfn a():\n    pass\n\nfn b():\n    pass\n");
     assert_eq!(
-        db.get::<Items>(&f),
+        db.get::<Items>(&(f.clone(), "main".into())),
         Ok(vec![id("a", 0), id("a", 1), id("b", 0)])
     );
     assert_eq!(db.get::<ItemAt>(&id("b", 0)), Ok(Some(36)));
@@ -52,7 +51,7 @@ fn an_impl_is_keyed_by_its_head_and_a_statement_block_by_its_rank() {
         id("", 0),
         id("", 1),
     ];
-    assert_eq!(db.get::<Items>(&f), Ok(ids));
+    assert_eq!(db.get::<Items>(&(f.clone(), "main".into())), Ok(ids));
 }
 
 #[test]
@@ -92,7 +91,7 @@ fn consts_contexts_operators_and_inline_mod_items_are_keyed_by_name() {
         id("m", 0),
         id("m.g", 0),
     ];
-    assert_eq!(db.get::<Items>(&f), Ok(ids));
+    assert_eq!(db.get::<Items>(&(f.clone(), "main".into())), Ok(ids));
     let g = db.get::<ItemOf>(&id("m.g", 0)).unwrap().unwrap();
     assert_eq!(
         SyntaxNode::new_root(g.green).text().trim(),
@@ -127,4 +126,35 @@ fn a_site_is_found_from_its_item_and_moves_only_its_position() {
         span,
     };
     assert_eq!(db.get::<SourceOf>(&gone), Ok(None));
+}
+
+#[test]
+fn two_programs_main_are_two_modules_of_items() {
+    let (db, f) = db_with(TWO);
+    let g = FileId::new("other.cp");
+    db.set::<Source>(g.clone(), "fn b() -> Int:\n    return 9\n".into())
+        .unwrap();
+    let b_of = |file: &FileId| ItemId {
+        file: file.clone(),
+        ..id("b", 0)
+    };
+    let (in_f, in_g) = (db.get::<ItemOf>(&b_of(&f)), db.get::<ItemOf>(&b_of(&g)));
+    assert_ne!(b_of(&f), b_of(&g));
+    assert_ne!(in_f, in_g);
+    assert_eq!(db.get::<ItemAt>(&b_of(&g)), Ok(Some(0)));
+}
+
+#[test]
+fn a_library_module_is_the_file_its_root_names_for_it() {
+    let db = Db::default();
+    let root = FileId::new("a/main.cp");
+    let libs: Arc<[(Arc<str>, PathBuf)]> = Arc::from(vec![("kit".into(), PathBuf::from("lib"))]);
+    db.set::<Libraries>(root.clone(), libs).unwrap();
+    let file = |m: &str| db.get::<ModuleFile>(&(root.clone(), m.into()));
+    assert_eq!(
+        file("kit.graph.dsu"),
+        Ok(Some(FileId::new("lib/graph/dsu.cp")))
+    );
+    assert_eq!(file("other.m"), Ok(None));
+    assert_eq!(file("kit"), Ok(None));
 }
