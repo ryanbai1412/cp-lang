@@ -487,6 +487,28 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(len(got), 5, got)
             self.assertTrue(all("adds 1 lines to the frozen old pipeline" in g for g in got[:1] + got[2:]), got)
 
+    def test_frozen_edits_freeze_the_old_parser_and_the_facade_not_the_shared_lexer(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            env = dr._git_env()
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, env=env, capture_output=True)
+            commit = lambda m: git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", m)
+            git("init", "-q")
+            for c in ("cpl-syntax", "cpl-facade", "cpl-next-syntax"):
+                self._write(root, f"crates/{c}/src/lib.rs", "fn a() {}\n")
+            git("add", "-A"); commit("base")
+            base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, env=env,
+                                  capture_output=True, text=True).stdout.strip()
+            for c in ("cpl-syntax", "cpl-facade", "cpl-next-syntax"):
+                self._write(root, f"crates/{c}/src/lib.rs", "fn a() {}\nfn b() {}\n")
+                commit(f"tools: grow {c}")
+            with mock.patch.object(dr, "FROZEN_PIN", base):
+                got = dr.frozen_edits(root, base)
+            self.assertEqual(len(got), 2, got)
+            lexer = subprocess.run(["git", "rev-parse", "--short=9", "HEAD"], cwd=root, env=env,
+                                   capture_output=True, text=True).stdout.strip()
+            self.assertFalse(any(g.startswith(lexer) for g in got), got)
+
     def test_skipped_ratchet_flags_new_pipeline_commits_that_skip_it(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

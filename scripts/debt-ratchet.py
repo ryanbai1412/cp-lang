@@ -2733,6 +2733,10 @@ def old_std_copy_lines(root: Path) -> list[str]:
 
 
 OLD_PIPELINE_CRATES = ("cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen")
+# What frozen_edits refuses new lines in: the old pipeline, its parser (cpl-syntax, whose lexer
+# is cpl-next-syntax's, the one shared lexer) and cpl-facade over it (review-16 (3)). Only the
+# four above are what stage 5 deletes and old_pipeline_lines counts.
+FROZEN_CRATES = OLD_PIPELINE_CRATES + ("cpl-syntax", "cpl-facade")
 # The std the old pipeline reads, a copy of std/ at 6a31a3747^ (migration rule 9): stage 5 deletes it.
 FROZEN_STD = "crates/cpl-check/frozen/std"
 # `git rev-parse 6a31a3747^:std`: the tree FROZEN_STD has to stay.
@@ -5706,7 +5710,7 @@ def frozen_edits(root: Path, base: str) -> list[str]:
     it adds passes it; this sees each commit. No trailer excuses one: the only commits that may
     add lines put each old-crate file they touch back as it was at `FROZEN_PIN`, or vendor
     `FROZEN_STD`, the pinned std the old pipeline reads. A fix goes to a conformance case."""
-    paths = [f"crates/{c}" for c in OLD_PIPELINE_CRATES]
+    paths = [f"crates/{c}" for c in FROZEN_CRATES]
     def restores(sha: str) -> bool:
         touched = _git(root, "diff-tree", "--no-commit-id", "--name-only", "-r", sha, "--", *paths)
         def blob(ref: str, f: str) -> str:
