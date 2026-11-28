@@ -324,24 +324,7 @@ impl<'a> Cx<'a> {
         }
         let g = self.b.syms.of(self.syms, n)?;
         let i = self.b.generics.iter().position(|x| *x == g)?;
-        let pick = |fd: &decls::FnDecl| fd.self_mode == SelfMode::None && takes(fd, call);
-        let found = match self.bound_giving(i, name, pick, span) {
-            Ok(found) => found,
-            Err(two) => return Some(self.two_traits_give(two, n, &Ty::Param(i), name, "", span)),
-        };
-        let Some((tr, m)) = found else {
-            if let Some(help) = self.lacked_trait_help(&Ty::Param(i), name) {
-                let text = format!("`{n}` has no member `{}`", name.text);
-                let msg = Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, text);
-                self.err_help(span, msg, Some(help));
-                return Some(Self::error_node(span));
-            }
-            let bound_free = self.bound_traits(i).is_empty();
-            return bound_free
-                .then(|| self.unbound_static(n, name, span))
-                .flatten();
-        };
-        Some(self.static_call(Ty::Param(i), tr, m, name, call, span))
+        self.type_static(Ty::Param(i), name, call, span)
     }
     /// The bound of type parameter `i` whose trait gives the fn `name` that `pick` takes:
     /// two written traits are no choice (R08.1.4), and one trait at several arguments is left open
@@ -548,8 +531,6 @@ impl<'a> Cx<'a> {
         }
         self.type_static(t, name, call, span)
     }
-    /// `T.f(args)` on a type that is not a parameter, as `V.cuts.count`: a fn without `self` of
-    /// a trait it implements.
     /// `D.find(p)` on a domain struct with no fn `find`: its walk of positions answers (R04.2.20).
     fn walks_for(&self, d: StructId, name: Called<'_>) -> bool {
         let s = self.items.s(d);
@@ -570,6 +551,8 @@ impl<'a> Cx<'a> {
         let given = self.shapes.with_defaults_of(d, &given);
         self.is_domain(&Ty::Struct(d, given, Vec::new()))
     }
+    /// `T.f(args)`, as `V.cuts.count`: a fn without `self` of a trait `T` implements, or of a
+    /// bound when `T` is a parameter, as a made fn's `A.count` is.
     pub(super) fn type_static(
         &mut self,
         t: Ty,
@@ -577,6 +560,30 @@ impl<'a> Cx<'a> {
         call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
+        // A parameter's fn is its bound's, chosen per instance, as a made fn's `A.count` is.
+        if let Ty::Param(i) = t {
+            let n = self.show(&t);
+            let pick = |fd: &decls::FnDecl| fd.self_mode == SelfMode::None && takes(fd, call);
+            let found = match self.bound_giving(i, name, pick, span) {
+                Ok(found) => found,
+                Err(two) => {
+                    return Some(self.two_traits_give(two, &n, &Ty::Param(i), name, "", span))
+                }
+            };
+            let Some((tr, m)) = found else {
+                if let Some(help) = self.lacked_trait_help(&Ty::Param(i), name) {
+                    let text = format!("`{n}` has no member `{}`", name.text);
+                    let msg = Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, text);
+                    self.err_help(span, msg, Some(help));
+                    return Some(Self::error_node(span));
+                }
+                let bound_free = self.bound_traits(i).is_empty();
+                return bound_free
+                    .then(|| self.unbound_static(&n, name, span))
+                    .flatten();
+            };
+            return Some(self.static_call(Ty::Param(i), tr, m, name, call, span));
+        }
         let found: Vec<(TraitId, FnId)> = (name
             .sym
             .map_or_else(Vec::new, |s| self.methods.traits_declaring(s))
