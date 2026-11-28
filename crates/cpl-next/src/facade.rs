@@ -225,16 +225,6 @@ pub struct Session {
 
 impl Session {
     pub fn open(snapshot: Snapshot) -> Session {
-        Session::with(snapshot, Arc::default())
-    }
-
-    /// A session for `snapshot` sharing this one's database: an answer whose inputs are the
-    /// same in both is computed once. This session still answers for its own snapshot.
-    pub fn at(&self, snapshot: Snapshot) -> Session {
-        Session::with(snapshot, self.work.clone())
-    }
-
-    fn with(snapshot: Snapshot, work: Arc<Mutex<Work>>) -> Session {
         let files = snapshot
             .0
             .files
@@ -244,7 +234,16 @@ impl Session {
         Session {
             snapshot,
             files,
-            work,
+            work: Arc::default(),
+        }
+    }
+
+    /// A session for `snapshot` sharing this one's database: an answer whose inputs are the
+    /// same in both is computed once. This session still answers for its own snapshot.
+    pub fn at(&self, snapshot: Snapshot) -> Session {
+        Session {
+            work: self.work.clone(),
+            ..Session::open(snapshot)
         }
     }
 
