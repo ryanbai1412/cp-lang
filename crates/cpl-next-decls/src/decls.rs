@@ -2044,9 +2044,9 @@ fn rest_forms(d: &Decls, names: &View, f: &forms::FnForm) -> Vec<(Sym, crate::re
     use cpl_next_syntax::ast::{GenericArg, Type};
     /// What an alias's parameters stand for while its body is walked: each one's argument,
     /// with where that argument is written.
-    struct Env<'e> {
+    struct AliasScope<'e> {
         names: &'e View,
-        sub: HashMap<Sym, (Type, &'e Env<'e>)>,
+        sub: HashMap<Sym, (Type, &'e AliasScope<'e>)>,
     }
     fn bare(d: &Decls, t: &Type) -> Option<Sym> {
         let Type::Path(p) = t else { return None };
@@ -2059,7 +2059,7 @@ fn rest_forms(d: &Decls, names: &View, f: &forms::FnForm) -> Vec<(Sym, crate::re
     fn walk(
         d: &Decls,
         f: &forms::FnForm,
-        env: &Env,
+        env: &AliasScope,
         t: &Type,
         out: &mut Vec<(Sym, crate::records::Form)>,
     ) {
@@ -2095,7 +2095,7 @@ fn rest_forms(d: &Decls, names: &View, f: &forms::FnForm) -> Vec<(Sym, crate::re
                         walk(
                             d,
                             f,
-                            &Env {
+                            &AliasScope {
                                 names: &a.names,
                                 sub,
                             },
@@ -2173,7 +2173,7 @@ fn rest_forms(d: &Decls, names: &View, f: &forms::FnForm) -> Vec<(Sym, crate::re
             _ => {}
         }
     }
-    let env = Env {
+    let env = AliasScope {
         names,
         sub: HashMap::new(),
     };
