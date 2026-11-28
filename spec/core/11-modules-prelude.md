@@ -152,7 +152,8 @@ Rules:
   it no role and changes no syntax. (R11.6.1)
 - `@role(name)` may be written in any module, library or program. A second
   filler of one role in one program is E0202, naming both; `trace` takes
-  one filler per value type, and two that both take one type are E0202. An unknown role
+  one filler per value type, and two that both take one type are E0202,
+  said when a traced run shows a value of that type. An unknown role
   name is E0201.
 - A filler has the shape its role needs: `option` is a generic type with a
   one-part constructor `Some` and an empty one `None`, `show` a trait with
