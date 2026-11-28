@@ -731,7 +731,8 @@ impl<'a> Cx<'a> {
         span: Span,
     ) -> Option<TExpr> {
         let (i, j) = known_range(&self.b.let_ranges, &|v| self.var_ty(v), e)?;
-        if i == j && (least.is_some_and(|l| i < l.0) || most.is_some_and(|m| i > m.1)) {
+        let outside = least.is_some_and(|l| i < l.0) || most.is_some_and(|m| i > m.1);
+        if i == j && outside && self.constant(e) {
             self.const_out_of_range(e, i, want, span);
         } else if !(least.is_some_and(|l| l.1 <= i) && most.is_some_and(|m| j <= m.0)) {
             return None;
@@ -740,6 +741,22 @@ impl<'a> Cx<'a> {
             ty: want.clone(),
             ..e.clone()
         })
+    }
+    /// Whether `e` is a constant (R04.4.24): a literal, a `const` or a module-level `let`,
+    /// or negation, `+`, `-` and `*` of those. A local never is, whatever it is known to hold.
+    fn constant(&self, e: &TExpr) -> bool {
+        match &e.kind {
+            TK::Int(_) => true,
+            TK::Neg(x) => self.constant(x),
+            TK::Bin(BinOp::Add | BinOp::Sub | BinOp::Mul, l, r) => {
+                self.constant(l) && self.constant(r)
+            }
+            TK::Var(VarRef::Global(g)) => {
+                let v = &self.globals[*g];
+                v.top && !v.mutable && !v.synthetic
+            }
+            _ => false,
+        }
     }
     /// E0902 for a constant `i` (or a `let` that keeps it) stored where `want` cannot hold it.
     fn const_out_of_range(&mut self, e: &TExpr, i: i64, want: &Ty, span: Span) {

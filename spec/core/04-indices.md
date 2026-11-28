@@ -273,7 +273,10 @@ operand fixes the type. Nothing else converts. (R04.4.22)
    The other way, an `Int` passed or stored into a range type
    (`f(odd - 1)` with `odd: 0..=100`) is a checked narrowing: in range it is
    free, out of range it traps in a checked build, as any range store does
-   (R02.10.2).
+   (R02.10.2). A constant out of range is instead an error when compiled
+   (E0902): a literal, a `const`, a module-level `let` that keeps one, or
+   negation, `+`, `-` and `*` of those. A local is never a constant, whatever
+   it is known to hold, so it is always the checked narrowing.
    (R04.4.24)
 3. **Integer literal to position or cut** of an integer domain (R04.2.18).
    For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`),
