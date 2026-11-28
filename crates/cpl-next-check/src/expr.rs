@@ -1380,6 +1380,27 @@ impl<'a> Cx<'a> {
                 let v = self.expr(&one, want);
                 block(pre, v)
             }
+            // A slice is contiguous, so its range takes no step (R01.8.5).
+            ExprKind::Index { base, indices }
+                if indices
+                    .iter()
+                    .any(|e| match &super::index::unparen(e).kind {
+                        ExprKind::Range { step, .. } => step.is_some(),
+                        ExprKind::By { walk, .. } => matches!(walk.kind, ExprKind::Range { .. }),
+                        _ => false,
+                    }) =>
+            {
+                let b = self.expr(base, None);
+                let text =
+                    cpl_diag::msgs::check::BAD_OPERANDS_STEPPED_SLICE.say(&[&self.show(&b.ty)]);
+                let help = "walk it instead: `a[i] for i in l..r by k`".to_string();
+                self.err_help(
+                    span,
+                    Msg::verdict(cpl_diag::codes::BAD_OPERANDS, text),
+                    Some(help),
+                );
+                Self::error_node(span)
+            }
             ExprKind::Index { base, indices } if indices.len() == 1 => {
                 let again = self.b.indexed_again.take();
                 let point = |e: &ast::Expr| {
