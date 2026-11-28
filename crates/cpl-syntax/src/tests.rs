@@ -990,10 +990,13 @@ fn an_if_let_chains_more_lets_and_conditions() {
 }
 
 #[test]
-fn a_match_arm_of_statements_takes_a_colon_and_a_block() {
+fn a_colon_arm_is_one_error_and_keeps_its_block() {
     let src = "match cmd:\n    Install(pkg):\n        var fresh = 0\n        print(fresh)\n    Uninstall(pkg) => print(pkg)\n";
-    assert!(codes(src).is_empty());
-    let StmtKind::Expr(e) = one_stmt(src).kind else {
+    let file = parse_file(src);
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    assert_eq!(file.diagnostics[0].fixes[0].edits[0].1, " =>");
+    let mut stmts = file.items.into_iter().flat_map(|(_, item)| item.stmts);
+    let StmtKind::Expr(e) = stmts.next().unwrap().kind else {
         panic!("not an expression")
     };
     let ExprKind::Match { arms, .. } = e.kind else {
@@ -1658,12 +1661,12 @@ fn an_unindented_body_line_is_read_as_the_body() {
 }
 
 #[test]
-fn a_switch_reads_as_a_match_with_one_error_per_foreign_word() {
+fn a_switch_reads_as_a_match_with_one_error_per_foreign_form() {
     let d =
         parse_file("switch x:\n    case 1:\n        print(1)\n    default:\n        print(0)\n")
             .diagnostics;
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
-    assert_eq!(fixed, ["match", "", "_"], "{d:?}");
+    assert_eq!(fixed, ["match", "", " =>", "_", " =>"], "{d:?}");
 }
 
 #[test]
