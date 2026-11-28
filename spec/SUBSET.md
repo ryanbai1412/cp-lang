@@ -98,6 +98,7 @@ documented.
 | R10.1 | 10.1 Program shape | supported |  |
 | R10.2 | 10.2 Reading | supported |  |
 | R10.3 | 10.3 Printing | supported |  |
+| R10.4 | 10.4 Interaction | supported |  |
 | R11.1 | 11.1 Program files and library files | supported |  |
 | R11.2 | 11.2 `use` | supported |  |
 | R11.3 | 11.3 The prelude | supported |  |

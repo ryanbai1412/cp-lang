@@ -160,7 +160,7 @@ impl Walk<'_> {
                 let i = *self.p.index.get(k)?;
                 let caps = (xs.iter())
                     .map(|x| match &x.kind {
-                        EK::AddrOf(p) | EK::Copy(p) => Some(p.clone()),
+                        EK::AddrOf(p) | EK::Copy(p) | EK::Lent(p) => Some(p.clone()),
                         _ => None,
                     })
                     .collect::<Option<Vec<_>>>()?;
@@ -1050,12 +1050,15 @@ impl Walk<'_> {
                             .filter(|q| !q.path.is_empty() || self.borrowed.contains(&q.root)),
                     );
                 }
-                if (!self.p.plain(&e.ty) || self.walks(&e.ty)) && !src.is_empty() {
+                // A fn value holds only its captures' names: they are borrowed per call, so a
+                // write between calls is no conflict (R05.10.3).
+                let closure = self.closure_caps(e).is_some();
+                if (!self.p.plain(&e.ty) || self.walks(&e.ty)) && !src.is_empty() && !closure {
                     self.frozen.insert(Root::Local(*l), src.clone());
                 }
                 src.extend(uses);
                 // A closure holds what its captures borrow, as a view does (R05.7.1).
-                if self.closure_caps(e).is_some() {
+                if closure {
                     let through = self.through(&src);
                     if !through.is_empty() {
                         self.frozen

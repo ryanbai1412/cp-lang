@@ -2955,3 +2955,4 @@ next/n_closure_arg_kept_in_mut_param.cp
 next/n_intrinsic_has_its_entry_signature.cp
 next/n_named_arg_pack_lends_names.cp
 next/n_growing_type_through_two_fns.cp
+next/n_nested_fn_captures_borrowed_per_call.cp
