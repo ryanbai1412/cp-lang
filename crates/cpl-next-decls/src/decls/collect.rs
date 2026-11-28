@@ -1229,12 +1229,14 @@ pub(super) fn impl_names(
     use cpl_next_syntax::ast as next;
     let vars: HashSet<String> = (top.iter())
         .filter_map(|(_, f)| match f {
-            Form::Stmt(next::Stmt::Let(l)) => Some(l.patterns().collect::<Vec<_>>()),
+            Form::Stmt(next::Stmt::Let(l)) => {
+                Some(l.patterns().map(|p| (l.is_var(), p)).collect::<Vec<_>>())
+            }
             _ => None,
         })
         .flatten()
-        .filter_map(|p| match p {
-            next::Pattern::Path(p) if p.is_var() => Some(p.segments().last()?.text().to_string()),
+        .filter_map(|(is_var, p)| match p {
+            next::Pattern::Path(p) if p.is_var() || is_var => Some(p.segments().last()?.text().to_string()),
             _ => None,
         })
         .collect();
