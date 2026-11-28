@@ -26,8 +26,6 @@ pub(crate) struct Summary {
 pub(crate) struct Walk<'a> {
     pub d: &'a dyn Signatures,
     pub p: &'a Program,
-    /// Each instance's generic fn: which of its locals are of a type parameter's type.
-    pub generic: &'a HashMap<FuncKey, cpl_next_ir::ir::Func<cpl_next_ir::ty::Ty>>,
     /// What a message calls each global.
     /// Each global's name, and whether it is a `var`.
     pub globals: &'a [(String, bool)],
@@ -172,18 +170,9 @@ impl Walk<'_> {
     }
     /// A field whose type, in the generic fn this instance comes from, is a type parameter.
     fn generic_field(&self, p: &Place) -> bool {
-        use cpl_next_ir::ty::Ty;
         let Place::Field(b, i) = p else { return false };
         let Place::Local(l) = &**b else { return false };
-        let ty = (self.generic.get(&self.f().key)).and_then(|g| g.locals.get(*l));
-        let Some(Ty::Struct(sid, ts, _)) = ty else {
-            return false;
-        };
-        let field = self.d.s(*sid).fields.get(*i).map(|f| &f.1);
-        let Some(Ty::Param(_)) = field else {
-            return false;
-        };
-        ts.iter().all(|t| matches!(t, Ty::Param(_)))
+        (self.f().declared.get(*l)).is_some_and(|d| d.param_fields.contains(i))
     }
     fn place_root_ty(&self, p: &Place) -> Option<CTy> {
         match p {
@@ -1294,18 +1283,7 @@ impl Walk<'_> {
     }
     /// Whether a local's type in the generic fn holds a type parameter.
     fn of_param(&self, l: usize) -> bool {
-        use cpl_next_ir::ty::Ty;
-        fn has(t: &Ty) -> bool {
-            match t {
-                Ty::Param(_) => true,
-                Ty::Struct(_, ts, _) => ts.iter().any(has),
-                Ty::Raw(t) | Ty::Ref(t) | Ty::Mut(t) | Ty::RangeTo(t, ..) => has(t),
-                _ => false,
-            }
-        }
-        (self.generic.get(&self.f().key))
-            .and_then(|g| g.locals.get(l))
-            .is_some_and(has)
+        (self.f().declared.get(l)).is_some_and(|d| d.of_param)
     }
     /// R6: a fn returns a borrow only of what its signature lends (R05.5.3, R05.6.1).
     /// The `@cache` field of `self` that the lends result `e` would borrow (R05.10.9).
@@ -1411,12 +1389,7 @@ fn fresh(
 }
 
 /// Ownership of every instance link made: callees first, each summarized for its callers.
-fn run(
-    d: &dyn Signatures,
-    generic: &HashMap<FuncKey, cpl_next_ir::ir::Func<cpl_next_ir::ty::Ty>>,
-    p: &Program,
-    globals: &[(String, bool)],
-) -> Owned {
+fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
     // A literal the program wrote (`[a, b]` through the `@literal("[]")` impl, `"s"` through
     // `@role(str_literal)`) is the program's value, not a call's temporary (R07.5.10).
     let list = d.literal_trait("[]");
@@ -1442,7 +1415,6 @@ fn run(
     let mut w = Walk {
         d,
         p,
-        generic,
         globals,
         sums: HashMap::new(),
         cur: p.main,
@@ -1507,11 +1479,9 @@ impl Walk<'_> {
         self.elems.clear();
         self.made.clear();
         self.closure_params.clear();
-        if let Some(g) = self.generic.get(&f.key) {
-            let fns = (f.params.iter().skip(f.n_captures).map(|p| p.0))
-                .filter(|l| matches!(g.locals.get(*l), Some(Ty::Fn(..) | Ty::Clo(_))));
-            self.closure_params.extend(fns);
-        }
+        let fns = (f.params.iter().skip(f.n_captures).map(|p| p.0))
+            .filter(|l| f.declared.get(*l).is_some_and(|d| d.fn_value));
+        self.closure_params.extend(fns);
         // A lambda's own params are its values, as in the fn it is written in; its captures are lent.
         let own = |k: usize| matches!(f.key, FuncKey::Lambda(_)) && k >= f.n_captures;
         self.borrowed = (f.params.iter().enumerate())
@@ -1711,12 +1681,11 @@ pub struct Owned {
 /// `cache_calls` found on the generic fns before link.
 pub(crate) fn check(
     d: &dyn Signatures,
-    generic: &HashMap<FuncKey, Func<Ty>>,
     p: &Program,
     globals: &[(String, bool)],
     cache: Vec<Msg>,
 ) -> Owned {
-    let mut owned = run(d, generic, p, globals);
+    let mut owned = run(d, p, globals);
     owned.errors.extend(cache);
     owned.errors.extend(lenders_lend(p));
     if p.errors.is_empty() {

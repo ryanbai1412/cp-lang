@@ -26,6 +26,7 @@ fn func<T>(locals: Vec<T>, body: Vec<Stmt<T>>, ret: T) -> Func<T> {
         origins: vec![0],
         shown: "t".into(),
         guards: Vec::new(),
+        declared: Vec::new(),
         fast: None,
     }
 }

@@ -241,7 +241,7 @@ pub fn link(
         &fast,
         prog.globals.len(),
     ));
-    let owned = inst::check(d, funcs, &prog, globals, cache);
+    let owned = inst::check(d, &prog, globals, cache);
     place_copies(&mut prog, &owned.copies);
     let raw = instances(&prog.insts, Stage::Raw, prog.globals.len());
     prog.errors.extend(raw);

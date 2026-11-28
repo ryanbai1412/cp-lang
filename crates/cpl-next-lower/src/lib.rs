@@ -145,6 +145,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
             maker: None,
             shown: "top level".into(),
             guards: Vec::new(),
+            declared: Vec::new(),
             fast: None,
         },
     );
@@ -229,6 +230,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 maker: None,
                 shown: shown_name(d, fd),
                 guards: Vec::new(),
+                declared: Vec::new(),
                 fast: fd.fast.as_deref().map(|n| {
                     Intr::named(n).unwrap_or_else(|| {
                         let name = n.to_string();
@@ -277,6 +279,7 @@ pub fn lower(d: &Decls, typed: &Typed, src: &cpl_next_decls::modules::Loaded) ->
                 ret: fd.ret.clone(),
                 region: None,
                 guards: Vec::new(),
+                declared: Vec::new(),
                 fast: None,
                 line: lw.src.program_line(&fd.span),
                 sites,
@@ -1379,6 +1382,7 @@ impl Lw<'_> {
                     maker: None,
                     shown: "case".into(),
                     guards: Vec::new(),
+                    declared: Vec::new(),
                     fast: None,
                 });
                 self.off = off;
@@ -1574,6 +1578,7 @@ impl Lw<'_> {
             maker: Some(self.key.clone()),
             shown: "lambda".into(),
             guards: self.guards.clone(),
+            declared: Vec::new(),
             fast: None,
         });
         Self::capture_args(caps)

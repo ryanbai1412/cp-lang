@@ -536,6 +536,49 @@ pub struct Func<T> {
     /// For a lambda: the bound tests around where it is written, each with the branch it is
     /// in. An instance where one decides the other way never makes it (R08.2.9).
     pub guards: Vec<Guard>,
+    /// Set by link on an instance: per local, what its type is in the generic fn.
+    pub declared: Vec<Declared>,
+}
+
+/// What a local's type is in the generic fn an instance comes from, which instancing
+/// substitutes away: link records it, so ownership reads the instance alone.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Declared {
+    /// Its type holds a type parameter: each instance copies such a value itself (R05.2.2).
+    pub of_param: bool,
+    /// It is written as a fn value, not as a type parameter's type an instance makes one.
+    pub fn_value: bool,
+    /// For a struct of type parameters: its fields of a type parameter's type.
+    pub param_fields: Vec<usize>,
+}
+impl Declared {
+    /// What `t` declares, given each struct's declared field types.
+    pub fn of(t: &Ty, fields: &dyn Fn(StructId) -> Vec<Ty>) -> Declared {
+        fn has(t: &Ty) -> bool {
+            match t {
+                Ty::Param(_) => true,
+                Ty::Struct(_, ts, _) => ts.iter().any(has),
+                Ty::Raw(t) | Ty::Ref(t) | Ty::Mut(t) | Ty::RangeTo(t, ..) => has(t),
+                _ => false,
+            }
+        }
+        let param_fields = match t {
+            Ty::Struct(s, ts, _)
+                if !ts.is_empty() && ts.iter().all(|t| matches!(t, Ty::Param(_))) =>
+            {
+                (fields(*s).iter().enumerate())
+                    .filter(|(_, f)| matches!(f, Ty::Param(_)))
+                    .map(|(i, _)| i)
+                    .collect()
+            }
+            _ => Vec::new(),
+        };
+        Declared {
+            of_param: has(t),
+            fn_value: matches!(t, Ty::Fn(..) | Ty::Clo(_)),
+            param_fields,
+        }
+    }
 }
 
 /// Calls `f` on every place a block names, outermost first: read, written, lent, viewed or
