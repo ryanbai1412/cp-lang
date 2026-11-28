@@ -669,9 +669,9 @@ struct CtxFrame {
 /// incremental.md`). The driver works each out by running it on the engine, the one evaluator,
 /// so the checker holds no evaluator of its own and does not depend on the engine.
 pub trait Consts {
-    /// The value of `e`, written in program item `item`, when nothing it reads is decided at
-    /// run time: `None` for a value that is not a scalar.
-    fn value(&self, item: &ItemId, e: &next::Expr) -> Result<Option<ops::Scalar>, ConstError>;
+    /// The value of the expression at `at`, when nothing it reads is decided at run time:
+    /// `None` for a value that is not a scalar.
+    fn value(&self, at: cpl_next_ir::ids::SourceId) -> Result<Option<ops::Scalar>, ConstError>;
 }
 
 /// Why an expression has no value at compile time.
@@ -1618,7 +1618,7 @@ impl Cx<'_> {
     /// something decided at run time or working it out failed, which is said; `Some(None)` for
     /// a value that is not a scalar.
     fn const_value(&mut self, e: &next::Expr) -> Option<Option<ops::Scalar>> {
-        match self.values.value(&self.b.item, e) {
+        match self.values.value(self.b.item.at(e.syntax().span())) {
             Ok(v) => Some(v),
             Err(ConstError::Open) => None,
             Err(ConstError::Failed(m)) => {

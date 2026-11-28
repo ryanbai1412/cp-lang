@@ -31,7 +31,7 @@ impl Cx<'_> {
         let fd = (self.lookup(n).is_none())
             .then(|| self.d.fn_named(self.b.module, n))
             .flatten();
-        let Some(d) = fd.filter(|d| !self.d.f(*d).generics.is_empty()) else {
+        let Some(d) = fd.filter(|d| !self.items.f(*d).generics.is_empty()) else {
             if fd.is_none()
                 && self.lookup(n).is_none()
                 && self.d.struct_named(self.b.module, n).is_some()
@@ -132,7 +132,7 @@ impl Cx<'_> {
         written: &[Ty],
         span: Span,
     ) -> Vec<Ty> {
-        let fd = self.d.f(m);
+        let fd = self.items.f(m);
         let takes = fd.generics.len().saturating_sub(ts.len());
         if written.len() > takes {
             let name = fd.name.clone();

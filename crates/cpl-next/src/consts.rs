@@ -8,7 +8,7 @@ use cpl_next_decls::views::Answers;
 use cpl_next_decls::{decls::Decls, modules::Loaded};
 use cpl_next_engine::Stop;
 use cpl_next_ir::build::{Build, Checks};
-use cpl_next_ir::ids::ItemId;
+use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::ops::{Fault, Scalar};
 use cpl_next_ir::prog::CTy;
 use cpl_next_ir::unbuilt::Unbuilt;
@@ -132,6 +132,16 @@ impl<'a> Evaluator<'a> {
         }
     }
 
+    /// The expression at `at`, in any module's item.
+    fn expr_at(&self, at: &SourceId) -> Option<next::Expr> {
+        let item = (self.loaded.modules.iter())
+            .flat_map(|m| m.items.iter())
+            .find(|i| i.id == at.item)?;
+        (item.item.syntax().descendants())
+            .filter_map(next::Expr::cast)
+            .find(|e| e.syntax().span() == at.span)
+    }
+
     /// `e` checked, lowered and linked as the value of a program of its own, after the
     /// program's constants it names that have values, then run on the engine.
     fn run(&self, item: &ItemId, e: &next::Expr) -> Value {
@@ -143,7 +153,10 @@ impl<'a> Evaluator<'a> {
             };
             if let (Some(name), Some(init)) = (c.name(), c.value()) {
                 if named.contains(name.text())
-                    && matches!(check::Consts::value(self, k, &init), Ok(Some(_)))
+                    && matches!(
+                        check::Consts::value(self, k.at(init.syntax().span())),
+                        Ok(Some(_))
+                    )
                 {
                     items.push(k.clone());
                 }
@@ -286,11 +299,11 @@ fn scalar(ty: Option<&CTy>, w: &[u64]) -> Option<Scalar> {
 }
 
 impl check::Consts for Evaluator<'_> {
-    fn value(&self, item: &ItemId, e: &next::Expr) -> Value {
+    fn value(&self, at: SourceId) -> Value {
         if self.batching.get() {
             return Err(ConstError::Open);
         }
-        let key = (item.clone(), e.syntax().span());
+        let key = (at.item.clone(), at.span);
         if let Some(v) = self.done.borrow().get(&key) {
             return v.clone();
         }
@@ -305,14 +318,23 @@ impl check::Consts for Evaluator<'_> {
             self.cyclic.borrow_mut().insert(key);
             return Err(ConstError::Open);
         }
-        let mut v = self.run(item, e);
+        let mut v = match self.expr_at(&at) {
+            Some(e) => self.run(&at.item, &e),
+            None => {
+                let what = "a constant's expression is not in its item";
+                Err(ConstError::Failed(Box::new(Msg::at(
+                    at.clone(),
+                    Msg::internal(what),
+                ))))
+            }
+        };
         self.busy.borrow_mut().remove(&key);
         if self.cyclic.borrow_mut().remove(&key) {
             let msg = Msg::verdict(
                 codes::DEFINITION_CYCLE,
                 "this constant reads itself while it is worked out, so it has no value",
             );
-            v = Err(ConstError::Failed(Box::new(Msg::at(item.at(key.1), msg))));
+            v = Err(ConstError::Failed(Box::new(Msg::at(at, msg))));
         }
         self.done.borrow_mut().insert(key, v.clone());
         v
