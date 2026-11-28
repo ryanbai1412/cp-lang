@@ -12,13 +12,15 @@ In prelude (no `use` needed): `Heap`, `MaxHeap`, `MinHeap`, `Settle`.
 
 ## `struct Heap<T: Ord>`
 
+A priority queue on `<`.
+
 Fields: `lt: ?((T, T) -> Bool)`.
 
 - `fn new<K: Ord>(by: ?(T -> K) = None) -> Heap<T>` — \(O(1)\); Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of<K: Ord>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>` — \(O(n)\); Build a `Heap<T>` from `xs` via Floyd heapify.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
-- `@get fn peek(self) -> ?T` — \(O(1)\); Visit every element in pop order; `for x in h` uses this.
+- `@get fn peek(self) -> ?T` — \(O(1)\); The smallest element, or `None` if the heap is empty.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements from the heap.
 - `fn take(mut self) -> Heap<T>` — \(O(1)\); Move the heap's contents out in \(O(1)\), leaving `self` empty.
 - `fn push(mut self, x: T)` — \(O(\log n)\), amortized over list growth; Push `x` into the heap.

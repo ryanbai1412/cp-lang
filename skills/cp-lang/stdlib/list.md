@@ -37,6 +37,7 @@ Fields: `buf: Raw<T>`.
 
 ## `struct Str`
 
+- `fn new() -> Str` — The empty string; `Str(x)` is `x`'s conversion to a word (R07.8.1).
 - `@get fn len(self) -> Int`
 - `@get fn is_empty(self) -> Bool`
 - `fn get(self, i: Int) -> Char`
