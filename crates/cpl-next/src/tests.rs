@@ -416,22 +416,12 @@ fn facts_leave_out_only_the_checks_they_prove() {
     let at = |body: &str| proved(&format!("{head}{body}\n"));
     assert_eq!(
         at("for i in 0..n: walk.push(n - i)"),
-        [
-            (RangeStore, 3),
-            (RangeStore, 3),
-            (RangeStore, 4),
-            (RangeStore, 4)
-        ]
+        [(RangeStore, 4), (RangeStore, 4)]
     );
-    assert_eq!(
-        at("for i in 0..=n: walk.push(n - i)"),
-        [(RangeStore, 3), (RangeStore, 3), (RangeStore, 4)]
-    );
+    assert_eq!(at("for i in 0..=n: walk.push(n - i)"), [(RangeStore, 4)]);
     assert_eq!(
         at("for i in 0..n: nxt[i] = i + 1"),
         [
-            (RangeStore, 3),
-            (RangeStore, 3),
             (Key, 4),
             (Key, 4),
             (Key, 4),
@@ -441,14 +431,7 @@ fn facts_leave_out_only_the_checks_they_prove() {
     );
     assert_eq!(
         at("for i in 0..n: nxt[i + 1] = i"),
-        [
-            (RangeStore, 3),
-            (RangeStore, 3),
-            (Key, 4),
-            (Key, 4),
-            (RangeStore, 4),
-            (RangeStore, 4)
-        ]
+        [(Key, 4), (Key, 4), (RangeStore, 4), (RangeStore, 4)]
     );
 }
 
@@ -1549,12 +1532,12 @@ fn a_lends_without_its_arrow_offers_to_insert_it() {
     let s = Session::open(Snapshot::new(crate::facade::World::Closed).with_file("program.cp", src));
     let diags = s.program("program.cp").err().expect("refused");
     let d = (diags.iter())
-        .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::EXPECTED_TOKEN))
+        .find(|d| matches!(d.kind, crate::Kind::Verdict(c) if c == cpl_diag::codes::REMOVED_SYNTAX))
         .unwrap_or_else(|| panic!("{diags:?}"));
     let fix = d.fixes.first().expect("a fix");
     let ((span, new), mut fixed) = (&fix.edits[0], src.to_string());
     fixed.replace_range(span.start as usize..span.end as usize, new);
-    assert_eq!(fix.title, "insert `->`");
+    assert_eq!(fix.title, "write `-> lends`");
     assert!(
         fixed.contains("fn get(xs: [V]Int, l: V) -> lends Int = xs[l]"),
         "{fixed}"

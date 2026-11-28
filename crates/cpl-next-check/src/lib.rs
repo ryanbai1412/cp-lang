@@ -1185,11 +1185,12 @@ impl<'a> Checker<'a> {
                 deferred.insert(id, errors);
             }
         }
-        // Every top value's global is filled by its `let`; one left unfilled with no refusal to
-        // explain it is a checker ordering bug, reported rather than read as `Error`.
+        // Every top value's global is filled by its `let` when that `let` ran here (a constant's
+        // run leaves out the program's `let`s); one left unfilled with no refusal to explain it
+        // is a checker ordering bug, reported rather than read as `Error`.
         if cx.errors.is_empty() {
             for ((item, name), &g) in cx.top_keys.iter().zip(&cx.top_slots) {
-                if cx.globals[g].ty == Ty::Error {
+                if top.contains(item) && cx.globals[g].ty == Ty::Error {
                     let what = format!(
                         "`{}`'s global was never filled by its `let`",
                         items.text(*name)

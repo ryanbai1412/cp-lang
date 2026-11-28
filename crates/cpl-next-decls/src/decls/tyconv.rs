@@ -425,7 +425,7 @@ pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
         Type::Infer(_) if cx.ret_slots.is_some() => Ty::Error,
         Type::Infer(_) => unbuilt("Value", errors),
         Type::Alphabet(_) => unbuilt("Alphabet", errors),
-        Type::Literal(_) => unbuilt("Literal", errors),
+        Type::Literal(_) => unbuilt("Value", errors),
     }
 }
 
