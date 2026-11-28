@@ -405,11 +405,10 @@ pub enum Role {
     Pack,
     DeriveFields,
     VariantCheck,
-    Todo,
 }
 
 impl Role {
-    pub const ALL: [Role; 27] = [
+    pub const ALL: [Role; 26] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -436,7 +435,6 @@ impl Role {
         Role::Pack,
         Role::DeriveFields,
         Role::VariantCheck,
-        Role::Todo,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -467,7 +465,6 @@ impl Role {
             Role::Pack => "pack",
             Role::DeriveFields => "derive_fields",
             Role::VariantCheck => "variant_check",
-            Role::Todo => "todo",
         }
     }
 }
