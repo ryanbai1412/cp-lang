@@ -10,6 +10,9 @@ use std::collections::HashMap;
 
 /// What runs while a cell is lent: given the cell's name, it adds its statements.
 pub(super) type InCell<'a, C> = Box<dyn FnOnce(&mut C, TExpr, &mut Vec<TStmt>) + 'a>;
+/// What runs after a fill and before its place is lent, giving what runs on the place: the
+/// arguments of `(m[k] ??= []).push(x)` are read there, then `push` runs on the cell.
+pub(super) type Then<'a, C> = Box<dyn FnOnce(&mut C, &mut Vec<TStmt>) -> InCell<'a, C> + 'a>;
 
 impl Cx<'_> {
     /// `recv.name(args)` with already-typed arguments: used for `get` and `set` behind indexing.
@@ -409,6 +412,11 @@ impl Cx<'_> {
         Some(self.call_member(recv, m, args, at, false))
     }
     /// The `[]=` method of `t`'s impl of the trait that declares the operator.
+    /// Whether a container's cells are written by its `[]=`, as a `Map`'s are: it holds
+    /// nothing at a key it lacks (spec 12, W8).
+    pub(super) fn keyed(&mut self, t: &Ty) -> bool {
+        self.set_method(t).is_some()
+    }
     fn set_method(&mut self, t: &Ty) -> Option<(FnId, Vec<Ty>, Vec<SetTy>)> {
         let tr = *self.rows.operator_traits(self.syms.get("[]=")?).first()?;
         let name = self.syms.text(self.rows.operator_method(tr)?.0);
@@ -592,7 +600,7 @@ impl Cx<'_> {
     }
     /// Runs `inner` while cell `key` of `b` is lent, through the `at` of `b`'s `IndexedMut`
     /// (R12.4.6).
-    fn lend_cell(
+    pub(super) fn lend_cell(
         &mut self,
         b: TExpr,
         key: TExpr,
@@ -690,6 +698,29 @@ impl Cx<'_> {
         let (Some(base), Some(name)) = (callee.base(), callee.name()) else {
             return false;
         };
+        if let next::Expr::Filled(fill) = unparen(base.clone()) {
+            let (Some(target), Some(value)) = (fill.target(), fill.value()) else {
+                return true;
+            };
+            let (name, name_at, span) = (name.text().to_string(), name.span(), self.at(e));
+            let c = c.clone();
+            let then = move |this: &mut Self, out: &mut Vec<TStmt>| -> InCell<'static, Self> {
+                let args = this.held_args(&c, out);
+                Box::new(move |this: &mut Self, place: TExpr, out: &mut Vec<TStmt>| {
+                    let sym = this.syms.get(&name);
+                    let called = Called {
+                        text: &name,
+                        sym,
+                        span: name_at,
+                    };
+                    let v = this.method_on(place, called, &args, span);
+                    out.push(TStmt::Expr(v));
+                })
+            };
+            let at = self.at(&fill);
+            self.fill_place(&target, &value, at, out, Some(Box::new(then)));
+            return true;
+        }
         let next::Expr::Index(ix) = unparen(base) else {
             return false;
         };
@@ -712,21 +743,7 @@ impl Cx<'_> {
         let Some((root, keys)) = self.hoist_indices(&ix, out) else {
             return true;
         };
-        let written: Vec<next::Arg> = c.args().map(|l| l.args().collect()).unwrap_or_default();
-        let mut args = Vec::new();
-        for a in &written {
-            let a = CallArg::of(a);
-            let arg = match a.written() {
-                Some(next::Expr::Lambda(_)) | None => a,
-                Some(_) if a.mutable => a,
-                Some(v) => {
-                    let v = v.clone();
-                    let held = self.hoist(&v, (None, false), "$arg", out);
-                    CallArg::held(a.label, held, a.at)
-                }
-            };
-            args.push(arg);
-        }
+        let args = self.held_args(c, out);
         let (name, name_at, span) = (name.text().to_string(), name.span(), self.at(e));
         self.through_cell(
             root,
@@ -748,6 +765,26 @@ impl Cx<'_> {
             }),
         );
         true
+    }
+    /// A call's arguments, each value read once into a temporary before a cell is lent; a
+    /// lambda or a lent place stays as written.
+    fn held_args(&mut self, c: &next::CallExpr, out: &mut Vec<TStmt>) -> Vec<CallArg> {
+        let written: Vec<next::Arg> = c.args().map(|l| l.args().collect()).unwrap_or_default();
+        let mut args = Vec::new();
+        for a in &written {
+            let a = CallArg::of(a);
+            let arg = match a.written() {
+                Some(next::Expr::Lambda(_)) | None => a,
+                Some(_) if a.mutable => a,
+                Some(v) => {
+                    let v = v.clone();
+                    let held = self.hoist(&v, (None, false), "$arg", out);
+                    CallArg::held(a.label, held, a.at)
+                }
+            };
+            args.push(arg);
+        }
+        args
     }
     /// `recv.m(args)` on a checked receiver whose type declares `m`.
     fn method_on(&mut self, recv: TExpr, name: Called, args: &[CallArg], span: Span) -> TExpr {

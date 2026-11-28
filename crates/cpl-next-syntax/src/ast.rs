@@ -187,6 +187,9 @@ nodes! {
     UnwrapExpr,
     IsExpr,
     KeepExpr,
+    /// `(place ??= init)`: the place, filled with `init` when it holds nothing, read on as a
+    /// place (decision 1.10).
+    FillExpr,
     LambdaExpr,
     IfExpr,
     MatchExpr,
@@ -299,6 +302,7 @@ category! {
         Unwrap(UnwrapExpr),
         Is(IsExpr),
         Keep(KeepExpr),
+        Filled(FillExpr),
         Lambda(LambdaExpr),
         If(IfExpr),
         Match(MatchExpr),
@@ -2220,6 +2224,18 @@ impl KeepExpr {
 
     pub fn value(&self) -> Option<Expr> {
         after(&self.0, TokenKind::Eq)
+    }
+}
+
+impl FillExpr {
+    /// The place filled: `m[k]` in `(m[k] ??= [])`.
+    pub fn target(&self) -> Option<Expr> {
+        child(&self.0)
+    }
+
+    /// What fills it: `[]` in `(m[k] ??= [])`.
+    pub fn value(&self) -> Option<Expr> {
+        after(&self.0, TokenKind::OpEq)
     }
 }
 

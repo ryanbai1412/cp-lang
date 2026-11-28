@@ -126,7 +126,7 @@ impl<'a> Cx<'a> {
         self.operator_call(found, w, Some(k), span)
     }
     /// `x in s` as `s`'s core `@operator("in")` trait fn, `contains(x)` (R12.4.7).
-    fn membership(&mut self, x: TExpr, s: TExpr, span: Span) -> TExpr {
+    pub(super) fn membership(&mut self, x: TExpr, s: TExpr, span: Span) -> TExpr {
         if self.is_error(&x.ty) || self.is_error(&s.ty) {
             return Self::error_node(span);
         }
@@ -655,6 +655,10 @@ impl<'a> Cx<'a> {
             next::Expr::Unwrap(u) => self.unwrap_expr(u, want, span),
             next::Expr::Keep(k) => match (k.target(), k.value()) {
                 (Some(t), Some(v)) => self.keep_expr(&t, k.is_max(), &v, span),
+                _ => Self::error_node(span),
+            },
+            next::Expr::Filled(f) => match (f.target(), f.value()) {
+                (Some(t), Some(v)) => self.fill_expr(&t, &v, span),
                 _ => Self::error_node(span),
             },
             next::Expr::Lambda(l) => self.lambda_expr(l, want, span),

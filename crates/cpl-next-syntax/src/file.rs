@@ -104,6 +104,9 @@ pub enum NodeKind {
     IsExpr,
     /// `best max= x`.
     KeepExpr,
+    /// `(place ??= init)`: the place, filled with `init` when it holds nothing, read on as a
+    /// place (decision 1.10).
+    FillExpr,
     /// `x => e`, `(a, b) => e`.
     LambdaExpr,
     /// A lambda's parameters: one pattern, or `(p, q: T)`.

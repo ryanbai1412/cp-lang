@@ -881,7 +881,14 @@ impl Parser<'_> {
                 }
                 p.finish();
             } else {
+                let at = p.checkpoint();
                 p.expr();
+                if p.at(T::OpEq) && p.text() == "??=" {
+                    p.start_at(at, NodeKind::FillExpr);
+                    p.bump();
+                    p.expr();
+                    p.finish();
+                }
             }
             comma |= p.at(T::Comma);
         });

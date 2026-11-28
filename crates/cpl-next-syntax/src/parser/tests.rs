@@ -1261,3 +1261,25 @@ fn coalesce_beside_arithmetic_on_its_right_needs_parentheses() {
         );
     }
 }
+
+#[test]
+fn a_filled_place_is_read_on_as_a_place() {
+    use crate::ast::{AstNode, FillExpr};
+    let src = "(m[k] ??= []).push(v)
+(g.rows[i][j] ??= [1, 2])  // filled
+let n = ( o ??= f(x) ).len
+";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let fills: Vec<(String, String)> = (file.root.descendants())
+        .filter_map(FillExpr::cast)
+        .map(|f| {
+            let text =
+                |e: Option<crate::ast::Expr>| e.map(|e| e.syntax().text().trim().to_string());
+            (text(f.target()).unwrap(), text(f.value()).unwrap())
+        })
+        .collect();
+    let want = [("m[k]", "[]"), ("g.rows[i][j]", "[1, 2]"), ("o", "f(x)")];
+    assert_eq!(fills, want.map(|(t, v)| (t.to_string(), v.to_string())));
+}

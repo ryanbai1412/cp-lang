@@ -2,6 +2,7 @@
 //! as a condition (R02.4.6).
 
 use super::call::CallArg;
+use super::index::{InCell, Then};
 use super::*;
 
 impl<'a> Cx<'a> {
@@ -103,6 +104,9 @@ impl<'a> Cx<'a> {
         let (Some(target), Some(op), Some(value)) = (a.target(), a.op(), a.value()) else {
             return;
         };
+        if matches!(op, next::AssignOp::Op(BinOp::Coalesce)) {
+            return self.fill_place(&target, &value, span, out, None);
+        }
         let index = match super::index::unparen(target.clone()) {
             next::Expr::Tuple(t) if matches!(op, next::AssignOp::Set) => {
                 return self.assign_parts(&t, &value, span, out);
@@ -159,6 +163,157 @@ impl<'a> Cx<'a> {
                 };
                 self.through_cell(root, keys, span, out, Box::new(inner))
             }
+        }
+    }
+    /// `place ??= init` (decision 1.10): `init` runs only when the place holds nothing, the
+    /// place then holds it, and `then` runs on the place of what it holds, as the `push` of
+    /// `(m[k] ??= []).push(x)` does. A keyed container (`Map`) holds nothing at a key it lacks;
+    /// any other place is an optional. Indices are read once, before any cell is lent.
+    pub(super) fn fill_place(
+        &mut self,
+        target: &next::Expr,
+        value: &next::Expr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+        then: Option<Then<'_, Self>>,
+    ) {
+        let value = value.clone();
+        let next::Expr::Index(ix) = super::index::unparen(target.clone()) else {
+            return self.write(target, span, out, move |cx, p| {
+                let mut stmts = Vec::new();
+                cx.fill_optional(p, &value, span, &mut stmts, then);
+                let kind = TK::Block(stmts, None);
+                TStmt::Expr(TExpr {
+                    kind,
+                    ty: Ty::Unit,
+                    span,
+                })
+            });
+        };
+        let Some((root, mut keys)) = self.hoist_indices(&ix, out) else {
+            return;
+        };
+        let Some(last) = keys.pop() else {
+            return;
+        };
+        let fill = move |cx: &mut Self, c: TExpr, out: &mut Vec<TStmt>| {
+            let Some(k) = cx.level_key(&c.ty, last, span) else {
+                return;
+            };
+            if !cx.keyed(&c.ty) {
+                let opt = move |cx: &mut Self, cell: TExpr, out: &mut Vec<TStmt>| {
+                    cx.fill_optional(cell, &value, span, out, then)
+                };
+                return cx.lend_cell(c, k, span, out, Box::new(opt));
+            }
+            let mk = |kind, ty| TExpr { kind, ty, span };
+            let ty = cx.cell_of(&c.ty).unwrap_or(Ty::Error);
+            let init = cx.expr(&value, Some(&ty));
+            let init = cx.coerce(init, &ty);
+            let has = cx.membership(k.clone(), c.clone(), span);
+            if let Some(set) = cx.index_set_held(c.clone(), k.clone(), init, span) {
+                let set = mk(TK::Block(vec![TStmt::Expr(set)], None), Ty::Unit);
+                let kept = Box::new(mk(TK::Unit, Ty::Unit));
+                out.push(TStmt::Expr(mk(
+                    TK::If(Box::new(has), kept, Box::new(set)),
+                    Ty::Unit,
+                )));
+            }
+            if let Some(then) = then {
+                let on = then(cx, out);
+                cx.lend_cell(c, k, span, out, on)
+            }
+        };
+        self.through_cell(root, keys, span, out, Box::new(fill));
+    }
+    /// `cell ??= init` on an optional place, then `then` on the place of what it holds.
+    fn fill_optional(
+        &mut self,
+        cell: TExpr,
+        value: &next::Expr,
+        span: Span,
+        out: &mut Vec<TStmt>,
+        then: Option<Then<'_, Self>>,
+    ) {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let Some(inner) = self.optional_of(&cell.ty) else {
+            if !self.mentions_error(&cell.ty) {
+                let ty = self.show(&cell.ty);
+                self.err(span, Unbuilt::Coalesce { ty });
+            }
+            return;
+        };
+        let init = self.expr(value, Some(&inner));
+        let init = self.coerce(init, &inner);
+        let init = self.some(init, cell.ty.clone());
+        let has = mk(TK::Field(Box::new(cell.clone()), 0), Ty::Bool);
+        let set = mk(
+            TK::Block(vec![TStmt::Assign(cell.clone(), init)], None),
+            Ty::Unit,
+        );
+        let kept = Box::new(mk(TK::Unit, Ty::Unit));
+        out.push(TStmt::Expr(mk(
+            TK::If(Box::new(has), kept, Box::new(set)),
+            Ty::Unit,
+        )));
+        if let Some(then) = then {
+            let on = then(self, out);
+            on(self, mk(TK::Field(Box::new(cell), 1), inner), out);
+        }
+    }
+    /// `(place ??= init)` where a value is wanted: the fill, then a copy of what the place
+    /// holds, kept in an optional made before any cell is lent.
+    pub(super) fn fill_expr(
+        &mut self,
+        target: &next::Expr,
+        value: &next::Expr,
+        span: Span,
+    ) -> TExpr {
+        let mk = |kind, ty| TExpr { kind, ty, span };
+        let ty = self.filled_ty(target);
+        let opt = self.optional_ty(ty.clone());
+        let t = self.temp("$filled", opt.clone());
+        let none = [mk(TK::Bool(false), Ty::Bool), mk(TK::Unset, ty.clone())];
+        let mut out = vec![TStmt::Let(t, mk(TK::Struct(none.into()), opt.clone()))];
+        let keep = move |cx: &mut Self, place: TExpr, out: &mut Vec<TStmt>| {
+            let held = TExpr {
+                kind: TK::Owned(Box::new(place)),
+                ty: ty.clone(),
+                span,
+            };
+            let v = cx.some(held, opt.clone());
+            let var = TExpr {
+                kind: TK::Var(t),
+                ty: opt,
+                span,
+            };
+            out.push(TStmt::Assign(var, v))
+        };
+        let then = move |_: &mut Self, _: &mut Vec<TStmt>| -> InCell<'_, Self> { Box::new(keep) };
+        self.fill_place(target, value, span, &mut out, Some(Box::new(then)));
+        let ty = self.filled_ty(target);
+        let read = mk(TK::Var(t), self.optional_ty(ty.clone()));
+        let val = mk(TK::Field(Box::new(read), 1), ty.clone());
+        mk(TK::Block(out, Some(Box::new(val))), ty)
+    }
+    /// The type of what `place` holds once filled: a keyed container's element, or what the
+    /// optional holds. Read from a probe whose diagnostics are dropped; the fill says them.
+    fn filled_ty(&mut self, place: &next::Expr) -> Ty {
+        let (seen, owed) = (self.errors.len(), self.b.obligations.len());
+        let probe = self.expr(place, None);
+        let keyed = match super::index::unparen(place.clone()) {
+            next::Expr::Index(ix) => ix.base().is_some_and(|b| {
+                let b = self.expr(&b, None);
+                self.keyed(&b.ty)
+            }),
+            _ => false,
+        };
+        self.errors.truncate(seen);
+        self.b.obligations.truncate(owed);
+        match self.optional_of(&probe.ty) {
+            Some(inner) if !keyed => inner,
+            _ if keyed => probe.ty,
+            _ => Ty::Error,
         }
     }
     /// The new value of `old` under a compound assignment: `p op= e` is `p op e`, and `p f= e`
