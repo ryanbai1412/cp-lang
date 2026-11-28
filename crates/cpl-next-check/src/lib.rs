@@ -355,6 +355,19 @@ pub struct DomInfo {
     /// It is declared by a count alone (`domain E = [m]`), so `io.base` shifts it (R10.2.2).
     pub counted: bool,
 }
+/// A block's `@memo` fn, which lower builds from: `f` answers from `table` when it holds the
+/// key and else runs `body` and keeps its result; `clear` empties the table (R06.4.1).
+#[derive(Clone, Debug)]
+pub struct Memo {
+    pub f: VarRef,
+    pub body: VarRef,
+    pub table: VarRef,
+    pub clear: VarRef,
+    pub key: Vec<Ty>,
+    pub value: Ty,
+    pub word: Sym,
+}
+
 pub struct Typed {
     /// The checks the build keeps where no `with checks(..)` says otherwise (contract 0).
     pub checks: Checks,
@@ -384,6 +397,8 @@ pub struct Typed {
     /// The library fns reached only through a trait: what is wrong in one is said if it runs.
     pub quiet: HashSet<FnId>,
     pub ids: Ids,
+    /// Each block's `@memo` fn, in the order they were checked.
+    pub memos: Vec<Memo>,
 }
 
 enum SetVar {
@@ -426,6 +441,8 @@ pub struct Ids {
 
 struct Cx<'a> {
     d: &'a Decls,
+    /// Each block's `@memo` fn checked so far.
+    memos: Vec<Memo>,
     /// The `Domain` and `Ordered` impls of each domain this check declares (R04.2).
     dom_rows: Vec<ImplDecl>,
     /// What a constant expression's value is, worked out by the driver's evaluator.
@@ -661,6 +678,7 @@ pub fn check(
 ) -> Typed {
     let Build { judge, checks } = build;
     let mut cx = Cx {
+        memos: Vec::new(),
         values: consts,
         checks_kept: checks,
         checks,
@@ -1078,6 +1096,7 @@ pub fn check(
         deferred,
         quiet: quiet_fns,
         ids: cx.ids,
+        memos: cx.memos,
     }
 }
 
