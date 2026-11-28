@@ -623,6 +623,8 @@ fn layer(
     };
     pending.sort_by_key(|(_, _, s, id)| pass(s, id));
     // A derived impl waits for its fields' types' impls, and is never made if one lacks it.
+    // A derived impl asks its fields' impls, and a domain field's are its rows (R08.1.6).
+    d.add_domain_rows();
     let mut queue = pending;
     let (mut round, mut stamped, mut made) = (0, d.fns.len(), (0, 0));
     let mut fns_seen = false;

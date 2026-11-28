@@ -46,7 +46,7 @@ impl Decls {
         domain_rows(self, dom, at, module)
     }
     /// The rows of each domain decls declared since the last call (`domain_rows`).
-    fn add_domain_rows(&mut self) {
+    pub(super) fn add_domain_rows(&mut self) {
         let mut doms: Vec<(usize, ItemId)> = (self.dom_ids.iter())
             .map(|((item, _), &i)| (i, item.clone()))
             .collect();
