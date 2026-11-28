@@ -2233,6 +2233,7 @@ std-matrix/f64-identity-from-zero-and-one.cp
 std-matrix/get-outside-columns-traps.cp
 std-models/check-value.cp
 std-models/input.cp
+std-models/laws.cp
 std-models/list-str-array-cut.cp
 std-models/map.cp
 std-models/memo-array.cp
