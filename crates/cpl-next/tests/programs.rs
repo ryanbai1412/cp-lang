@@ -37,6 +37,9 @@ use std::time::Duration;
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 const LIMIT: Duration = Duration::from_secs(10);
+/// A tool test's limit on a compile or run it only reads: no case's time is judged there, so it
+/// is wide enough that a loaded machine doesn't cut a run short.
+const TOOL_LIMIT: Duration = Duration::from_secs(120);
 const CXX_FLAGS: [&str; 8] = [
     "-std=c++17",
     "-O1",
@@ -277,6 +280,18 @@ fn fnv(bytes: &[u8]) -> u64 {
 /// input give the same run. Kept under `target/cpl-next/runs` by a hash of both, with the
 /// input itself, compared before a hit; written under a name of its own and renamed, so
 /// concurrent suites never read half a run. A run killed at the limit is not kept.
+/// A tool test's run, which panics if the limit killed it, so a cut-off run's partial output
+/// never reaches g++ or a comparison as though it were the whole of it.
+fn whole(ran: Ran) -> Ran {
+    assert!(
+        ran.status.is_some(),
+        "killed at the {TOOL_LIMIT:?} limit; stdout: {:?}, stderr: {:?}",
+        ran.stdout,
+        ran.stderr
+    );
+    ran
+}
+
 fn run_kept(bin: &Path, input: &[u8], limit: Duration) -> Ran {
     run_kept_on(bin, None, input, limit)
 }
@@ -1359,7 +1374,7 @@ fn fast_ops_agree_with_their_bodies() {
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("fast.cp");
     std::fs::write(&path, fast_program(&fns)).unwrap();
-    let body = next(&path, &[], b"", LIMIT);
+    let body = whole(next(&path, &[], b"", TOOL_LIMIT));
     assert_eq!(body.status, Some(0), "{}{}", body.stdout, body.stderr);
     let ints = fns.iter().filter(|f| f.at == "Int").count();
     let lines = body.stdout.lines().count();
@@ -1378,13 +1393,16 @@ fn fast_ops_agree_with_their_bodies() {
         let flags = |f: &'static str| [&[f][..], bodies].concat();
         agree(
             &format!("engine {bodies:?}"),
-            next(&path, &flags("--engine"), b"", LIMIT),
+            whole(next(&path, &flags("--engine"), b"", TOOL_LIMIT)),
         );
-        let cpp = next(&path, &flags("--cpp"), b"", LIMIT).stdout;
+        let cpp = whole(next(&path, &flags("--cpp"), b"", TOOL_LIMIT)).stdout;
         let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
             .unwrap_or_else(|e| panic!("C++ {bodies:?}: {e}"))
             .0;
-        agree(&format!("C++ {bodies:?}"), run_kept(&bin, b"", LIMIT));
+        agree(
+            &format!("C++ {bodies:?}"),
+            whole(run_kept(&bin, b"", TOOL_LIMIT)),
+        );
     }
 }
 
@@ -1439,14 +1457,14 @@ fn a_trap_names_its_line_without_trace() {
         std::fs::write(&path, format!("fn f(n: Int) -> Int:\n{body}print(f(0))\n")).unwrap();
         let line = body.lines().position(|l| l.contains("10 / n")).unwrap() + 2;
         let want = format!("trap: R0203: line {line}: division by zero");
-        let cpp = next(&path, &["--cpp"], b"", LIMIT).stdout;
+        let cpp = whole(next(&path, &["--cpp"], b"", TOOL_LIMIT)).stdout;
         let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
             .unwrap_or_else(|e| panic!("{name}: {e}"))
             .0;
         for (what, ran) in [
-            ("reference", next(&path, &[], b"", LIMIT)),
-            ("engine", next(&path, &["--engine"], b"", LIMIT)),
-            ("C++", run_kept(&bin, b"", LIMIT)),
+            ("reference", whole(next(&path, &[], b"", TOOL_LIMIT))),
+            ("engine", whole(next(&path, &["--engine"], b"", TOOL_LIMIT))),
+            ("C++", whole(run_kept(&bin, b"", TOOL_LIMIT))),
         ] {
             assert_eq!(trap_line(&ran.stderr), want, "{name} on {what}");
         }
@@ -1465,13 +1483,13 @@ fn a_traced_cpp_run_writes_its_whole_trace() {
         let src =
             format!("fn f(n: Int) -> Int = if n == 0: {end} else: f(n - 1) + 1\nprint(f(5000))\n");
         std::fs::write(&path, src).unwrap();
-        let cpp = next(&path, &["--cpp", "--trace"], b"", LIMIT).stdout;
+        let cpp = whole(next(&path, &["--cpp", "--trace"], b"", TOOL_LIMIT)).stdout;
         let bin = cxx::build(cpp.as_bytes(), &[&CXX_FLAGS[..], &["c++"]].concat())
             .unwrap_or_else(|e| panic!("{name}: {e}"))
             .0;
         let (want, got) = (
-            next(&path, &["--trace"], b"", LIMIT),
-            run_kept(&bin, b"", LIMIT),
+            whole(next(&path, &["--trace"], b"", TOOL_LIMIT)),
+            whole(run_kept(&bin, b"", TOOL_LIMIT)),
         );
         assert!(
             got.stderr.len() > 1 << 16,
@@ -1504,7 +1522,7 @@ fn the_smoke_sample_gives_cpp_gxx_accepts() {
         let path = cases
             .get(*id)
             .unwrap_or_else(|| panic!("{id}: no such case"));
-        let ran = next(path, &["--cpp", "--trace"], b"", LIMIT);
+        let ran = whole(next(path, &["--cpp", "--trace"], b"", TOOL_LIMIT));
         if ran.status != Some(0) {
             return Some(format!(
                 "{id}: not accepted, so not a sample: {}",
