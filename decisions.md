@@ -9788,3 +9788,9 @@ named. 636's own-module level stays for extension against extension. `sum`
 keeps its plain call `sum(e for x in s)` through `@free_form` (676).
 Reverse: move `sum` back to a free `pub fn sum<S: Seq<T>>` and restore the
 old case.
+
+## 687. `FromInt` is the trait `T.from_int(n)` is (stdlib, 2026-11-28)
+
+- **Call.** `std.ops` declares `pub trait FromInt: fn from_int(n: Int) -> Self` beside `Zero` and `One`, and the core re-exports it. `Int`, `U64`, `I128`, `F64`, `Mod<P>`, `Ratio`, `BigInt` and `Poly<T>` (where `T: FromInt`) implement it, each with its one `from_int` in that impl: the inherent `from_int` on `Mod`, `Ratio` and `BigInt` moved into it. A generic body writes `T.from_int(n)` only with `T: FromInt`; Poly's `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt` and `Div` say so. An unbounded `T.from_int` is E0606 naming the missing bound (R08.2.2, `core-12/from-int-needs-its-bound.cp`), not a `Domain` error. W1 (12-powers.md) names `FromInt` and the operator traits instead of the nonexistent `Num`; R04.4.28's `Int` to `Mod<P>` is `Mod<P>`'s `FromInt` impl.
+- **Why.** Old cpl accepted `T.from_int` on any `T` by its name, and cpl-next found no bound that gives it, so std.poly reported a `Domain` error at every use. A trait is how every other static member (`T.zero`, `T.one`) reaches a generic body.
+- **Reverse.** Drop the trait and give each number an inherent `from_int`, if no generic body needs it.

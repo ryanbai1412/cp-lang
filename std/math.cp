@@ -1788,12 +1788,6 @@ pub struct Ratio(pub p: Int, q: Int):
         let g = gcd(p, q)
         if q < 0: Ratio(-p / g, -q / g) else: Ratio(p / g, q / g)
 
-    /// `n` as the fraction `n / 1`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `Ratio.from_int(3) == Ratio(3, 1)`
-    pub fn from_int(n: Int) -> Ratio = Ratio.new(n, 1)
 
     /// The multiplicative inverse `q / p`, sign moved to the numerator.
     ///
@@ -1826,6 +1820,14 @@ pub struct Ratio(pub p: Int, q: Int):
     /// example: `Ratio(-1, 2).abs == Ratio(1, 2)`
     @get pub fn abs(self) -> Ratio = Ratio.new(abs(p), q)
 
+impl FromInt for Ratio:
+    /// `n` as the fraction `n / 1`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Ratio.from_int(3) == Ratio(3, 1)`
+    fn from_int(n: Int) -> Ratio = Ratio.new(n, 1)
+
 impl Add for Ratio:
     fn add(a, b) = Ratio.new(a.p * b.q + b.p * a.q, a.q * b.q)
 
@@ -1849,20 +1851,6 @@ impl Show for Ratio:
 
 /// \(O(n)\) storage in base-10^9 limbs. Arbitrary-precision signed integer.
 pub struct BigInt(neg: Bool, limbs: List<Int>):
-    /// `x` as a `BigInt`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `BigInt.from_int(-42).to_str() == "-42"`
-    pub fn from_int(x: Int) -> BigInt:
-        var limbs: List<Int> = []
-        var y = x
-        while y != 0:
-            let r = y % BIG_BASE
-            let d = if y < 0 and r != 0: BIG_BASE - r else: r
-            limbs.push(d)
-            y = if y < 0 and r != 0: y / BIG_BASE + 1 else: y / BIG_BASE
-        BigInt(neg: x < 0, limbs:)
 
     /// Parse a decimal integer: an optional leading `-`, then one or more digits.
     ///
@@ -1943,6 +1931,22 @@ pub struct BigInt(neg: Bool, limbs: List<Int>):
         while not y.limbs.is_empty:
             (x, y) = (y, x.divmod(y).1)
         x
+
+impl FromInt for BigInt:
+    /// `x` as a `BigInt`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `BigInt.from_int(-42).to_str() == "-42"`
+    fn from_int(x: Int) -> BigInt:
+        var limbs: List<Int> = []
+        var y = x
+        while y != 0:
+            let r = y % BIG_BASE
+            let d = if y < 0 and r != 0: BIG_BASE - r else: r
+            limbs.push(d)
+            y = if y < 0 and r != 0: y / BIG_BASE + 1 else: y / BIG_BASE
+        BigInt(neg: x < 0, limbs:)
 
 impl Add for BigInt:
     fn add(a, b) = big_add(a, b.neg, b.limbs)

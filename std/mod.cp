@@ -62,16 +62,6 @@ pub struct Mod<P>(pub v: 0..P):
     @lint(fermat_inverse, from: "pow_mod(a, P - 2, P)", to: "Mod<P>(a).inv().v", holes: "a, P")
     pub fn inv(self) -> Mod<P> = self.try_inv()!
 
-    /// Lift an `Int` to `Mod<P>`; the same reduction as `new`.
-    ///
-    /// This is the conversion an `Int` literal takes where a `Mod<P>` is expected, so
-    /// `let x: Mod<7> = 10` is `Mod<7>.from_int(10)`.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `Mod<7>.from_int(10) == Mod<7>(3)`
-    /// example: `Mod<7>.from_int(-8) == Mod<7>(6)`
-    pub fn from_int(x: Int) -> Mod<P> = Mod(x % P)
 
     /// A square root modulo the prime `P` (Tonelli-Shanks), or `None` when there is None.
     ///
@@ -120,6 +110,18 @@ pub struct Mod<P>(pub v: 0..P):
             out[i] = acc * pre[i]
             acc *= xs[i]
         out
+
+impl FromInt for Mod<P>:
+    /// Lift an `Int` to `Mod<P>`; the same reduction as `new`.
+    ///
+    /// This is the conversion an `Int` literal takes where a `Mod<P>` is expected, so
+    /// `let x: Mod<7> = 10` is `Mod<7>.from_int(10)`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Mod<7>.from_int(10) == Mod<7>(3)`
+    /// example: `Mod<7>.from_int(-8) == Mod<7>(6)`
+    fn from_int(x: Int) -> Mod<P> = Mod(x % P)
 
 impl Zero for Mod<P>:
     @get fn zero() -> Mod<P> = Mod(0)

@@ -88,6 +88,16 @@ impl One for U64:
     @get fn one() -> U64 = U64(1)
 impl One for F64:
     @get fn one() -> F64 = 1.0
+/// `T.from_int(n)`: the `Int` `n` as a `T`, so a generic body can lift a count or a constant into
+/// its number type (decision 687).
+pub trait FromInt:
+    fn from_int(n: Int) -> Self
+impl FromInt for Int:
+    fn from_int(n: Int) -> Int = n
+impl FromInt for U64:
+    fn from_int(n: Int) -> U64 = U64(n)
+impl FromInt for F64:
+    fn from_int(n: Int) -> F64 = F64(n)
 /// `T.MIN`, `T.MAX`: the least and greatest values of `T`, so `max` and `min` over it have an
 /// identity (R02.2.1, decision 580).
 pub trait Bounded:
@@ -123,6 +133,8 @@ impl Zero for I128:
     @get fn zero() -> I128 = I128(0)
 impl One for I128:
     @get fn one() -> I128 = I128(1)
+impl FromInt for I128:
+    fn from_int(n: Int) -> I128 = I128(n)
 
 impl Add for Int:
     fn add(self, other: Int) -> Int = self + other
