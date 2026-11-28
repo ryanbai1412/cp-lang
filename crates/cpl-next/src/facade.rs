@@ -2,7 +2,8 @@
 //! checks, builds and runs a program, over an immutable [`Snapshot`]. Each answer is computed
 //! once, on the first query that needs it, and never changes.
 
-pub use cpl_contract::{FileId, Text, World};
+pub use cpl_contract::{Definition, FileId, Text, World};
+use cpl_next_decls::modules;
 use cpl_next_ir::build::Judge;
 use std::collections::HashMap;
 use std::path::Path;
@@ -360,8 +361,18 @@ impl Session {
     }
 
     /// Where the item named at byte `at` of `file` is declared.
-    pub fn definition(&self, file: &str, at: u32) -> Option<&Item> {
-        self.item_at(file, at)
+    pub fn definition(&self, file: &str, offset: u32) -> Option<Definition> {
+        let item = self.item_at(file, offset)?;
+        let (id, _, _) = self.file(file)?;
+        let path = match item.module.as_str() {
+            modules::PROGRAM => file.to_string(),
+            m => (self.snapshot.roots(id).path(m))
+                .map_or_else(|| modules::std_path(m), |p| p.display().to_string()),
+        };
+        Some(Definition {
+            path,
+            span: item.span,
+        })
     }
 
     /// Each std module and the diagnostics checking every one of its fns gives, not only those

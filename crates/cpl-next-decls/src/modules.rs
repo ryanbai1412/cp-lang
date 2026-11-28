@@ -252,6 +252,12 @@ const STD_FILES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_files
 /// The extension of a std source file.
 const SOURCE_EXT: &str = "cp";
 
+/// The file std module `name` is read from, from std's parent: `std.graph` is `std/graph.cp`,
+/// the name `read_dir_modules` gives it.
+pub fn std_path(name: &str) -> String {
+    format!("{}.{SOURCE_EXT}", name.replace('.', "/"))
+}
+
 /// The modules of a std directory, by module name.
 fn read_dir_modules(root: &Path) -> Vec<(String, String)> {
     let mut files = Vec::new();
@@ -300,12 +306,14 @@ impl Roots {
         });
         Roots(roots)
     }
-    /// The text of module `name`: `std.graph` is `graph.cp` in std's root, `kit.m` is `m.cp`
-    /// in the root `[libs]` calls `kit`.
-    fn source(&self, name: &str) -> Option<String> {
+    /// The file of library module `name`: `kit.m` is `m.cp` in the root `[libs]` calls `kit`.
+    pub fn path(&self, name: &str) -> Option<PathBuf> {
         let (lib, rest) = name.split_once('.')?;
         let (_, root) = self.0.iter().find(|(n, _)| n == lib)?;
-        std::fs::read_to_string(root.join(format!("{}.cp", rest.replace('.', "/")))).ok()
+        Some(root.join(format!("{}.{SOURCE_EXT}", rest.replace('.', "/"))))
+    }
+    fn source(&self, name: &str) -> Option<String> {
+        std::fs::read_to_string(self.path(name)?).ok()
     }
 }
 

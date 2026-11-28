@@ -346,7 +346,7 @@
   "next_backend_owns_reads": 0,
   "next_asks_refused": 7,
   "next_layer_foreign_deps": 0,
-  "next_facade_split": 52,
+  "next_facade_split": 50,
   "next_run_api_unbuilt": 75,
   "next_std_unchecked": 38,
   "next_lowered": 2,

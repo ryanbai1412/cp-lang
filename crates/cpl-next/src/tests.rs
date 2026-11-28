@@ -1000,20 +1000,18 @@ fn hover_and_definition_read_the_scope_and_signatures() {
     let call = src.rfind("twice").unwrap() as u32 + 2;
     assert_eq!(s.hover("program.cp", call), Some("fn twice(n: Int) -> Int"));
     let d = s.definition("program.cp", call).unwrap();
-    assert_eq!(
-        (
-            d.line,
-            &src[d.span.start as usize..d.span.end as usize][..2]
-        ),
-        (1, "fn")
-    );
+    assert_eq!(d.path, "program.cp");
+    assert_eq!(&src[d.span.start as usize..][..2], "fn");
     let local = src.find("n * 2").unwrap() as u32;
     assert_eq!(s.hover("program.cp", local), None);
     let print = s
         .definition("program.cp", src.find("print").unwrap() as u32)
         .unwrap();
-    assert_eq!(print.module, "std.show");
-    assert!(print.head.starts_with("pub fn print<"), "{}", print.head);
+    assert_eq!(print.path, "std/show.cp");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let text = std::fs::read_to_string(root.join(&print.path)).unwrap();
+    let declared = &text[print.span.start as usize..print.span.end as usize];
+    assert!(declared.contains("pub fn print<"), "{declared}");
 }
 
 /// Calls `f` with each call to an instance in `b`: the callee and its arguments.
