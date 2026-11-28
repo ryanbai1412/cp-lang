@@ -197,17 +197,9 @@ impl Cx<'_> {
         }
     }
 
-    /// `[e for p in s if c, q in t]`: a new list, then the loop its clauses write, outermost
-    /// first, each condition an `if` around the rest, pushing `e` innermost (R01.8.1).
-    pub(super) fn comprehension(
-        &mut self,
-        c: &next::CompExpr,
-        want: Option<&Ty>,
-        span: Span,
-    ) -> TExpr {
-        self.comp_of(c.body(), c.clauses().collect(), want, span)
-    }
-    /// A comprehension's list from its parts, for `[e for ..]` and the generator `(e for ..)`.
+    /// `[e for p in s if c, q in t]` and the generator `(e for ..)`: a new list, then the loop
+    /// its clauses write, outermost first, each condition an `if` around the rest, pushing `e`
+    /// innermost (R01.8.1).
     pub(super) fn comp_of(
         &mut self,
         body: Option<next::Expr>,

@@ -950,7 +950,7 @@ impl<'a> Cx<'a> {
             next::Expr::Tuple(t) => self.tuple(t, want, span),
             next::Expr::List(l) => self.list(l, want, span),
             next::Expr::Map(m) => self.map_literal(m, want, span),
-            next::Expr::Comp(c) => self.comprehension(c, want, span),
+            next::Expr::Comp(c) => self.comp_of(c.body(), c.clauses().collect(), want, span),
             next::Expr::Generator(g) => self.comp_of(g.body(), g.clauses().collect(), want, span),
             next::Expr::Table(t) => self.table(t, span, want),
             next::Expr::Record(r) => match r.rest() {
