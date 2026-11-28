@@ -112,7 +112,7 @@ tier = "ci"
 [[gen]]
 name = "words"
 files = ["editors/words.json"]
-inputs = ["crates/cpl-syntax/src/token.rs"]
+inputs = ["crates/cpl-next-syntax/src/token.rs"]
 write = ["scripts/editor-words.py"]
 check = ["scripts/editor-words.py", "--check"]
 tier = "pre-commit"
@@ -120,7 +120,7 @@ tier = "pre-commit"
 [[gen]]
 name = "lexer"
 files = ["editors/lexer.tsv"]
-inputs = ["crates/cpl-syntax/src/token.rs", "crates/cpl-syntax/src/grammar.rs"]
+inputs = ["crates/cpl-next-syntax/src/token.rs", "crates/cpl-syntax/src/grammar.rs"]
 write = ["sh", "-c", "cargo run -q -p cpl-cli -- setup jetbrains --grammar > editors/lexer.tsv"]
 check = "diff"
 tier = "ci"
@@ -128,7 +128,7 @@ tier = "ci"
 [[gen]]
 name = "textmate"
 files = ["editors/vscode/syntaxes/cp.tmLanguage.json"]
-inputs = ["crates/cpl-syntax/src/token.rs", "crates/cpl-syntax/src/grammar.rs", "crates/cpl-cli/src/setup.rs"]
+inputs = ["crates/cpl-next-syntax/src/token.rs", "crates/cpl-syntax/src/grammar.rs", "crates/cpl-cli/src/setup.rs"]
 write = ["sh", "-c", "cargo run -q -p cpl-cli -- setup vscode --grammar > editors/vscode/syntaxes/cp.tmLanguage.json"]
 check = "diff"
 tier = "ci"
