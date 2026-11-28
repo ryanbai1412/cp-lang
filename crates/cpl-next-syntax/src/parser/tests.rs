@@ -1012,7 +1012,11 @@ fn operator_kinds_come_from_the_table() {
 ";
     let file = crate::parse(src);
     assert_eq!(file.root.text(), src, "lossless");
-    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    // `<=>` is still read as its operator, under the removed-syntax error.
+    let [d] = file.diagnostics.as_slice() else {
+        panic!("{:?}", file.diagnostics)
+    };
+    assert!(d.message.contains("`<=>`"), "{d:?}");
     let of = |k| file.root.descendants().filter(move |n| n.kind() == k);
     let assigns: Vec<String> = of(NodeKind::AssignStmt)
         .filter_map(ast::AssignStmt::cast)
@@ -1161,4 +1165,33 @@ fn plain_and_raw_strings_are_one_text_piece() {
     let int = parse_expr("1");
     let lit = int.root.descendants().find_map(ast::Literal::cast).unwrap();
     assert!(lit.pieces().is_none());
+}
+
+#[test]
+fn a_three_way_comparison_is_one_error_with_a_cmp_fix() {
+    let src = "a.x + 1 <=> b";
+    let file = parse_expr(src);
+    assert_eq!(file.root.text(), src);
+    assert_eq!(file.diagnostics.len(), 1, "{:?}", file.diagnostics);
+    let d = &file.diagnostics[0];
+    assert_eq!(d.span, cpl_diag::Span::new(8, 11));
+    assert_eq!(
+        d.fixes[0].edits,
+        vec![(cpl_diag::Span::new(0, 13), "cmp(a.x + 1, b)".to_string())]
+    );
+    let e = file.root.children().find_map(ast::Expr::cast).unwrap();
+    assert!(
+        matches!(e, ast::Expr::Bin(ref b) if b.op_kind() == Some(crate::ops::BinOp::Spaceship))
+    );
+}
+
+#[test]
+fn none_is_a_name_that_reads_as_the_empty_optional() {
+    let is_none = |src: &str| match parse_expr(src).root.children().find_map(ast::Expr::cast) {
+        Some(ast::Expr::Name(n)) => n.is_none(),
+        _ => false,
+    };
+    assert!(is_none("None"));
+    assert!(!is_none("Nonee"));
+    assert!(!is_none("x"));
 }
