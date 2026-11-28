@@ -44,6 +44,8 @@ mod range;
 mod recipe;
 mod stmt;
 mod targs;
+mod types;
+pub use types::{ItemTypes, TyId, TypeFacts, TypeView};
 mod unify;
 pub use unify::show_ty;
 mod variants;
