@@ -29,41 +29,6 @@ pub type Perm<V> = [V]V
 /// sequence order. `a.max(by: f, ties: Ties.Last)` is the rightmost maximum.
 pub enum Ties = First | Last
 
-/// The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
-///
-/// A method call (`s.min()`) picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
-/// is argmin. \(O(n)\).
-///
-/// cost: \(O(n)\)
-/// empty: `let a: List<Int> = []; a.min() == None`
-/// ties: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
-/// traps: never
-/// example: `[3, 1, 1].min() == Some(1)`
-/// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
-/// example: `[(1, 'a'), (1, 'b')].min(by: .0, ties: Ties.Last) == Some((1, 'b'))`
-@lint(chmin_chmax_if, from: "x = min(x, e)", to: "x min= e", holes: "x, e")
-@lint(chmin_chmax_if, from: "x = min(e, x)", to: "x min= e", holes: "x, e")
-@lint(chmin_chmax_if, from: "if e < x: x = e", to: "x min= e", holes: "x, e")
-@lint(chmin_chmax_if, from: "if x > e: x = e", to: "x min= e", holes: "x, e")
-@lint(chmin_chmax_if, from: "if e <= x: x = e", to: "x min= e", holes: "x, e")
-@lint(chmin_chmax_if, from: "if x >= e: x = e", to: "x min= e", holes: "x, e")
-@lint(loop_argmax, from: "var j = self.first!\nfor i in self:\n    if a[i] < a[j]:\n        j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
-@lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] < a[j]:\n    j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
-@lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = min(x, y)", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
-@lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y < x:\n        x = y", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
-@lint(sort_for_extreme, from: "self.sorted()[0]", to: "self.min()!")
-@lint(sort_for_extreme, from: "self.sorted().first!", to: "self.min()!")
-@lint(sort_for_extreme, from: "self.sorted(by: by)[0]", to: "self.min(by: by)!")
-@lint(sort_for_extreme, from: "self.sorted(by: by).first!", to: "self.min(by: by)!")
-pub fn min<S: Seq<T>, T, K: Ord>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
-    let last = ties == Ties.Last
-    var best: ?T = None
-    for x in self:
-        if let b = best:
-            if by(x) < by(b) or (last and by(x) == by(b)): best = Some(x)
-        else: best = Some(x)
-    best
-
 /// The greatest element by `by`, the first on ties (`ties: Ties.Last` for the last); `None`
 /// when empty.
 ///
@@ -1470,6 +1435,40 @@ pub trait Seq<T>:
             n += 1
         if n == 0: return None
         Some(total / F64(n))
+    /// The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
+    ///
+    /// A method call (`s.min()`) picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
+    /// is argmin. \(O(n)\).
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `let a: List<Int> = []; a.min() == None`
+    /// ties: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
+    /// traps: never
+    /// example: `[3, 1, 1].min() == Some(1)`
+    /// example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
+    /// example: `[(1, 'a'), (1, 'b')].min(by: .0, ties: Ties.Last) == Some((1, 'b'))`
+    @lint(chmin_chmax_if, from: "x = min(x, e)", to: "x min= e", holes: "x, e")
+    @lint(chmin_chmax_if, from: "x = min(e, x)", to: "x min= e", holes: "x, e")
+    @lint(chmin_chmax_if, from: "if e < x: x = e", to: "x min= e", holes: "x, e")
+    @lint(chmin_chmax_if, from: "if x > e: x = e", to: "x min= e", holes: "x, e")
+    @lint(chmin_chmax_if, from: "if e <= x: x = e", to: "x min= e", holes: "x, e")
+    @lint(chmin_chmax_if, from: "if x >= e: x = e", to: "x min= e", holes: "x, e")
+    @lint(loop_argmax, from: "var j = self.first!\nfor i in self:\n    if a[i] < a[j]:\n        j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
+    @lint(loop_argmax, from: "var j = self.first!\nfor i in self if a[i] < a[j]:\n    j = i", to: "var j = self.min(by: i => a[i])!", holes: "a")
+    @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    x = min(x, y)", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
+    @lint(sentinel_scalar, from: "var x = v\nfor y in self:\n    if y < x:\n        x = y", to: "let x = self.min()", holes: "v", when: "v >= 1000000000")
+    @lint(sort_for_extreme, from: "self.sorted()[0]", to: "self.min()!")
+    @lint(sort_for_extreme, from: "self.sorted().first!", to: "self.min()!")
+    @lint(sort_for_extreme, from: "self.sorted(by: by)[0]", to: "self.min(by: by)!")
+    @lint(sort_for_extreme, from: "self.sorted(by: by).first!", to: "self.min(by: by)!")
+    fn min<K: Ord>(self, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T:
+        let last = ties == Ties.Last
+        var best: ?T = None
+        for x in self:
+            if let b = best:
+                if by(x) < by(b) or (last and by(x) == by(b)): best = Some(x)
+            else: best = Some(x)
+        best
 
 /// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
 /// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the

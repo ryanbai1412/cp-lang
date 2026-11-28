@@ -380,7 +380,6 @@ core-10/read-base-one-counted.cp	wrong-reject	check: program:7:13: E0606: `V` do
 core-10/read-bool-is-not-a-token.cp	wrong-error	wanted E0315 on line 4, got: check: program:6:1: E0606: `Bool` does not implement `Read`
 core-10/read-explicit-domain-unshifted.cp	wrong-reject	check: program:6:13: E0606: `V` does not implement `Read`
 core-10/read-needs-type.cp	wrong-accept	wanted E0806 on line 3, ran and printed: 
-core-11/binary-min-beside-imported-seq-min.cp	wrong-reject	check: program:5:7: E0606: `Int` does not implement `Seq`
 core-11/lib-table-fns-need-no-import.cp	wrong-reject	check: std.strings:1091:47: E0606: `2.hidden` has no `impl Eq`, which `==` needs (R08.1.5)
 core-11/member-private-field-outside-module.cp	wrong-accept	wanted E0207 on line 13, ran and printed: 2
 core-11/member-private-method-outside-module.cp	wrong-accept	wanted E0207 on line 13, ran and printed: 2

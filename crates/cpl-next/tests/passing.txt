@@ -1182,6 +1182,7 @@ core-10/tuple-reads-in-order.cp
 core-11/a-filler-name-gives-no-role.cp
 core-11/a-program-optional-is-not-the-option.cp
 core-11/a-program-write-is-not-the-write-role.cp
+core-11/binary-min-beside-imported-seq-min.cp
 core-11/bit-builtins.cp
 core-11/common-local-name-not-prelude.cp
 core-11/compiler-stamp.cp
