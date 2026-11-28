@@ -4364,7 +4364,7 @@ pub fn valleys<D, T: Ord>(self: [D]T) -> yields Range<D>:
 /// order: keyed by `D`
 /// traps: never
 /// example: `[2, 1, 1].spans() == [0..1, 0..3, 2..3]`
-pub fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
+pub fn spans<D: Ordered + Domain, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>:
     let left = self.prev_smaller(by:, strict: false)
     let right = self.next_smaller(by:, strict: true)
     [D] i => (if let l = left[i]: l.r else: D.cuts.nth(0))..(

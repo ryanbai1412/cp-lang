@@ -421,7 +421,7 @@ impl Reversible for MaxSub:
 /// `join` resolves ties itself, so every grouping of the same elements gives the same `at`.
 ///
 /// ties: `domain D = 0..5; let s = MaxSubAt.of(D(0), 0) + MaxSubAt.of(D(1), 1) + MaxSubAt.of(D(2), -5) + MaxSubAt.of(D(3), 1) + MaxSubAt.of(D(4), 0); s.at == D(0).l..D(1).r`
-pub struct MaxSubAt<D>(
+pub struct MaxSubAt<D: Ordered>(
     has: Bool,
     pub best: Int,
     pub at: Range<D>,
@@ -498,7 +498,7 @@ pub struct MaxSubAt<D>(
     /// example: `domain D = 0..3; MaxSubAt<D>.monoid().id.try_best == None`
     pub fn monoid() -> Monoid<MaxSubAt<D>> = Monoid(MaxSubAt<D>.zero, (a, b) => MaxSubAt.join(a, b))
 
-impl<D> Add for MaxSubAt<D>:
+impl<D: Ordered> Add for MaxSubAt<D>:
     fn add(a, b) = MaxSubAt.join(a, b)
 
 fn wider_best<D>(s: Int, r: Range<D>, t: Int, q: Range<D>) -> Bool =
