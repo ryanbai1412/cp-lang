@@ -8,6 +8,8 @@ case whose output differs fails the commit tier. The base's outputs are cached b
 every input, so a lane pays for them once per main.
 
     uv run python scripts/old-pipeline-same.py [--base REF]
+
+Rule: handbook/design/next/migration.md#rules (9: the old pipeline is frozen).
 """
 from __future__ import annotations
 
@@ -89,7 +91,7 @@ def main() -> int:
     if differ:
         print(f"old-pipeline-same: the old pipeline's `cpl build -o -` changed on {len(differ)} of "
               f"{len(names)} cases against {base[:9]}; the freeze keeps its output byte-identical "
-              f"(handbook/design/next/migration.md rule 9):", file=sys.stderr)
+              f"(handbook/design/next/migration.md#rules, rule 9):", file=sys.stderr)
         for n in differ[:40]:
             print(f"  {n}", file=sys.stderr)
         return 1
