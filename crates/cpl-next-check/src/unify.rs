@@ -851,6 +851,8 @@ impl<'a> Cx<'a> {
             return self.coerce_by(f, e, &want_s);
         }
         match (&have, &want_s) {
+            // An anonymous range's position is its `Int` (R04.3.4).
+            (Ty::Dom(d), Ty::Int) if self.domains[*d].anonymous => self.position_int(e),
             // An integer literal is that position of an integer domain (R04.2.18).
             (Ty::Int, Ty::Dom(_)) if matches!(e.kind, TK::Int(_) | TK::Neg(_)) => {
                 self.position(want_s.clone(), e, CheckKind::Domain)

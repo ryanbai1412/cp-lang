@@ -191,7 +191,7 @@ impl Cx<'_> {
         // A named domain's positions are never raw `Int`s; a literal converts into an
         // array (R02.8.1, R04.8.8), never into a view of one (R07.4.5).
         if let Ty::Dom(d) = &dty {
-            let named = !self.domains[*d].name.starts_with('$');
+            let named = !self.domains[*d].anonymous;
             if named && literal {
                 kind = CheckKind::Domain;
             }

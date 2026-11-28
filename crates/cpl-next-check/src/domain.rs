@@ -182,16 +182,33 @@ impl Cx<'_> {
                 self.domains[i] = info;
                 i
             }
-            _ => {
-                let i = self.id(super::Table::Domain, self.domains.len());
-                super::put(&mut self.domains, i, info);
-                let rows = self.d.domain_rows(i, self.b.item.at(span), self.b.module);
-                self.dom_rows.extend(rows);
-                i
-            }
+            _ => self.add_domain(info, span),
         };
         self.b.doms.insert(sym, Ty::Dom(i));
         self.b.block_doms.push(i);
+        i
+    }
+    /// An array axis's or a list's range: a domain no declaration names, so no name finds it.
+    pub(super) fn declare_anonymous(
+        &mut self,
+        lo: TExpr,
+        end: TExpr,
+        within: (Option<i64>, Option<i64>),
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) -> usize {
+        let shown = format!("$range{}", self.domains.len());
+        let mut info = self.domain_info(&shown, lo, end, within, span, out);
+        info.anonymous = true;
+        let i = self.add_domain(info, span);
+        self.b.block_doms.push(i);
+        i
+    }
+    fn add_domain(&mut self, info: DomInfo, span: Span) -> usize {
+        let i = self.id(super::Table::Domain, self.domains.len());
+        super::put(&mut self.domains, i, info);
+        let rows = self.d.domain_rows(i, self.b.item.at(span), self.b.module);
+        self.dom_rows.extend(rows);
         i
     }
     /// A domain's slots, set from its ends; `name` is what a message and the trace call it.
@@ -255,6 +272,7 @@ impl Cx<'_> {
             count,
             chars: false,
             counted: false,
+            anonymous: false,
         }
     }
     /// `domain N = e` and `let (domain N, i) = e`, at the top level or in a block: `N`'s
@@ -654,8 +672,7 @@ impl Cx<'_> {
             _ => (lo, hi),
         };
         let (lo, end, within) = self.typed_ends(lo, hi, inclusive);
-        let name = format!("$range{}", self.domains.len());
-        Ty::Dom(self.declare_domain(&name, lo, end, within, span, out))
+        Ty::Dom(self.declare_anonymous(lo, end, within, span, out))
     }
     /// A range type `lo..hi` with value ends: each end held once in a slot, the type their range.
     fn value_range(&mut self, re: &next::RangeExpr, out: &mut Vec<TStmt>) -> Ty {

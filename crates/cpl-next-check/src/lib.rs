@@ -354,6 +354,9 @@ pub struct DomInfo {
     pub chars: bool,
     /// It is declared by a count alone (`domain E = [m]`), so `io.base` shifts it (R10.2.2).
     pub counted: bool,
+    /// An array axis's or a list's range, which no declaration names: its positions are plain
+    /// `Int`s (R04.3.4).
+    pub anonymous: bool,
 }
 /// A block's `@memo` fn, which lower builds from: `f` answers from `table` when it holds the
 /// key and else runs `body` and keeps its result; `clear` empties the table (R06.4.1).
@@ -714,6 +717,7 @@ pub fn check(
                 count: None,
                 chars: false,
                 counted: false,
+                anonymous: false,
             })
             .collect(),
         fresh_eq: Vec::new(),
@@ -753,6 +757,7 @@ pub fn check(
             count: None,
             chars: false,
             counted: false,
+            anonymous: false,
         };
     }
     for (at, code, msg) in &d.misdeclared {

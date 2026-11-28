@@ -238,7 +238,7 @@ impl Cx<'_> {
         };
         let walk = match &dty {
             // An anonymous range's cells take any `Int` (R04.3.4), so its keys walk as `Int`s.
-            Ty::Dom(i) if self.domains[*i].name.starts_with('$') => {
+            Ty::Dom(i) if self.domains[*i].anonymous => {
                 let (lo, len) = (self.domains[*i].lo, self.domains[*i].len);
                 let var = |r| TExpr {
                     kind: TK::Var(r),
@@ -302,7 +302,7 @@ impl Cx<'_> {
     /// anonymous, and two written counts that differ stay a type mismatch (R04.8.10).
     fn converts(&self, from: &Ty, to: &Ty) -> bool {
         let count = |t: &Ty| match self.shallow(t) {
-            Ty::Dom(i) if self.domains[i].name.starts_with('$') => Some(self.domains[i].count),
+            Ty::Dom(i) if self.domains[i].anonymous => Some(self.domains[i].count),
             Ty::Range(lo, hi) => Some(Some(hi - lo + 1)),
             _ => None,
         };
