@@ -7,6 +7,7 @@ use crate::diag::Msg;
 use cpl_diag::{codes, msgs};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_syntax::ast::{self, AstNode};
+use cpl_next_syntax::TokenKind;
 
 /// The shapes `cpl stress` draws a type alias as (decision 25.32).
 pub const STRESS_KINDS: [&str; 6] = ["perm", "tree", "simple", "connected", "dag", "digraph"];
@@ -19,6 +20,13 @@ pub fn check(attr: &AttrForm, on: DeclKind, item: &ItemId, errors: &mut Vec<Msg>
     let msg = match attr.attr {
         Attr::Stress => stress(node, on),
         Attr::Role => role(node, on),
+        Attr::Lint if !matches!(on, DeclKind::Fn { .. }) => Some(Msg {
+            help: Some("put it on the fn whose call the lint suggests".to_string()),
+            ..Msg::verdict(
+                codes::BAD_LIBRARY_LINT,
+                msgs::syntax::LINT_NOT_ON_FN.say(&[]),
+            )
+        }),
         _ => None,
     };
     errors.extend(msg.map(|m| Msg::at(item.at(node.syntax().span()), m)));
@@ -76,6 +84,277 @@ fn role(node: &ast::Decorator, on: DeclKind) -> Option<Msg> {
         )),
         _ => None,
     }
+}
+
+/// What a `@lint` fn's declaration needs beyond the decorator: its name, its parameters'
+/// names (`self` included) and whether it yields, and the tokens of a one-expression body.
+pub struct LintedFn<'a> {
+    pub name: &'a str,
+    pub params: Vec<String>,
+    pub yields: bool,
+    pub body: Option<Vec<(TokenKind, String)>>,
+}
+
+/// `@lint(name, from: "<code>", to: "<code>")` on a fn (E0505, R06.4.9): the code the fn replaces
+/// and the call that replaces it, the fn's parameter names being the holes.
+pub fn lint(attr: &AttrForm, f: &LintedFn, item: &ItemId, errors: &mut Vec<Msg>) {
+    let Some(node) = &attr.node else {
+        return;
+    };
+    if let Some((text, help)) = lint_error(node, f) {
+        let m = Msg {
+            help: Some(help.to_string()),
+            ..Msg::verdict(codes::BAD_LIBRARY_LINT, text)
+        };
+        errors.push(Msg::at(item.at(node.syntax().span()), m));
+    }
+}
+
+/// The plain string a decorator's `key:` argument gives.
+fn arg_text(node: &ast::Decorator, key: &str) -> Option<String> {
+    let a = args(node)
+        .into_iter()
+        .find(|a| a.label().is_some_and(|l| l.text() == key))?;
+    let ast::Expr::Literal(l) = a.value()? else {
+        return None;
+    };
+    let t = l.token()?;
+    let raw = t.text().strip_prefix('"')?.strip_suffix('"')?.to_string();
+    if t.kind() != TokenKind::Str || raw.replace("{{", "").contains('{') {
+        return None;
+    }
+    let mut out = String::new();
+    let mut chars = raw
+        .replace("{{", "{")
+        .replace("}}", "}")
+        .chars()
+        .collect::<Vec<_>>()
+        .into_iter();
+    while let Some(c) = chars.next() {
+        out.push(match (c, c == '\\') {
+            (_, true) => match chars.next()? {
+                'n' => '\n',
+                't' => '\t',
+                o => o,
+            },
+            (c, false) => c,
+        });
+    }
+    Some(out)
+}
+
+/// The tokens of `src` a pattern compares: no line, block or end tokens.
+fn tokens(src: &str) -> Vec<(TokenKind, String)> {
+    (cpl_next_syntax::lex(src).tokens.into_iter())
+        .filter(|t| {
+            !matches!(
+                t.kind,
+                TokenKind::Newline | TokenKind::Indent | TokenKind::Dedent | TokenKind::Eof
+            )
+        })
+        .map(|t| {
+            (
+                t.kind,
+                src[t.span.start as usize..t.span.end as usize].to_string(),
+            )
+        })
+        .collect()
+}
+
+/// The tokens of `src` and its statement count, if it parses as a run of statements.
+fn run(src: &str) -> Option<(Vec<(TokenKind, String)>, usize)> {
+    let file = cpl_next_syntax::parse_stmts(src);
+    let n = file.root.children().count();
+    (file.diagnostics.is_empty() && n > 0).then(|| (tokens(src), n))
+}
+
+/// Per token, whether it is a named argument's label (`from` in `f(from: x)`), never a hole.
+fn labels(kinds: &[TokenKind]) -> Vec<bool> {
+    use TokenKind as K;
+    let mut open = Vec::new();
+    (0..kinds.len())
+        .map(|i| {
+            let label = kinds[i] == K::Ident
+                && open.last() == Some(&Some(K::LParen))
+                && kinds.get(i + 1) == Some(&K::Colon)
+                && matches!(kinds[i - 1], K::LParen | K::Comma);
+            let params = i >= 2 && kinds[i - 1] == K::Ident && kinds[i - 2] == K::Fn;
+            match kinds[i] {
+                K::LParen if params => open.push(None),
+                K::LParen | K::LBracket | K::LBrace => open.push(Some(kinds[i])),
+                K::RParen | K::RBracket | K::RBrace => {
+                    open.pop();
+                }
+                _ => {}
+            }
+            label
+        })
+        .collect()
+}
+
+/// The names a pattern's tokens use, labels aside: what a hole can be.
+fn names(toks: &[(TokenKind, String)]) -> Vec<String> {
+    let kinds: Vec<TokenKind> = toks.iter().map(|t| t.0).collect();
+    (toks.iter().zip(labels(&kinds)))
+        .filter(|((k, _), label)| matches!(k, TokenKind::Ident | TokenKind::SelfKw) && !label)
+        .map(|((_, t), _)| t.clone())
+        .collect()
+}
+
+/// `when:`'s comma-separated bounds, if each is a hole compared with an integer literal.
+fn bounds_ok(src: &str, holes: &[String], in_from: &[String]) -> bool {
+    use TokenKind as K;
+    src.split(',').filter(|p| !p.trim().is_empty()).all(|part| {
+        let toks = tokens(part);
+        let (n, op, v) = match toks.as_slice() {
+            [n, op, v] => (n, op, v),
+            [n, op, m, v] if m.0 == K::Minus => (n, op, v),
+            _ => return false,
+        };
+        n.0 == K::Ident
+            && v.0 == K::Int
+            && matches!(op.0, K::Gt | K::GtEq | K::Lt | K::LtEq)
+            && holes.contains(&n.1)
+            && in_from.contains(&n.1)
+    })
+}
+
+fn calls(toks: &[(TokenKind, String)], name: &str) -> bool {
+    toks.windows(2).any(|w| {
+        (w[0].0 == TokenKind::Ident && w[0].1 == name && w[1].0 == TokenKind::LParen)
+            || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == name)
+    })
+}
+
+/// The operator forms tokens write (`+`, `<`, a `let` condition): what a body-op lint teaches.
+fn op_forms(toks: &[(TokenKind, String)]) -> Vec<String> {
+    let op = |t: &str| !t.is_empty() && t != "=" && t.chars().all(|c| "+-*/%<>=!&|^".contains(c));
+    (toks.iter())
+        .filter(|(k, t)| op(t) || *k == TokenKind::Let)
+        .map(|t| t.1.clone())
+        .collect()
+}
+
+/// Why the `@lint` on `f` cannot be used, as its message and help; `None` when it can.
+fn lint_error(node: &ast::Decorator, f: &LintedFn) -> Option<(String, &'static str)> {
+    use msgs::syntax as m;
+    let text = |key: &str| arg_text(node, key);
+    let name = args(node)
+        .iter()
+        .find(|a| a.label().is_none())
+        .and_then(bare_name);
+    let to = match (text("to"), text("advice")) {
+        (Some(to), None) => Some((to, false)),
+        (None, Some(advice)) => Some((advice, true)),
+        _ => None,
+    };
+    let (Some(name), Some(from), Some((to, advice))) = (name, text("from"), to) else {
+        return Some((m::LINT_ARGS.say(&[]), "write `@lint(my_name, from: \"x * x\", to: \"sq(x)\")` (or `advice:` for `to`); `from` and `to` are plain strings"));
+    };
+    let mut holes = f.params.clone();
+    holes.extend(
+        text("holes")
+            .unwrap_or_default()
+            .split(',')
+            .map(str::trim)
+            .filter(|h| !h.is_empty())
+            .map(String::from),
+    );
+    let (also, reads, each) = (
+        text("also").unwrap_or_default(),
+        text("reads").unwrap_or_default(),
+        text("each").unwrap_or_default(),
+    );
+    let code = |s: &str| run(s).filter(|(_, n)| *n == 1).map(|(t, _)| t);
+    let read_toks = match reads.split_once("->").map(|(r, w)| (code(r.trim()), code(w.trim()))) {
+        None if reads.is_empty() => Vec::new(),
+        Some((Some(r), Some(w))) => [r, w].concat(),
+        _ => return Some((m::LINT_READS.say(&[&name]), "write `reads: \"p[k] -> p.cut(k)\"`: a read of a name `from` declares, `->`, what the fix writes for it")),
+    };
+    let each_ok = each.is_empty()
+        || each.split_once(" in ").is_some_and(|(x, xs)| {
+            tokens(&to).iter().any(|t| t.1 == x.trim())
+                && !holes.iter().any(|h| h == x.trim())
+                && holes.iter().any(|h| h == xs.trim())
+        });
+    if !each_ok {
+        return Some((m::LINT_EACH.say(&[&name]), "write `each: \"x in xs\"`: a name `to` writes that is no hole, `in`, and the hole whose element it names"));
+    }
+    let read_of = reads.split_once("->").map_or("", |r| r.0.trim());
+    let (from_run, to_run) = (run(&from), run(&to));
+    let bad_to = from_run.is_some() && to_run.is_none();
+    let (Some((from_toks, _)), Some((to_toks, _)), Some((used_toks, _))) =
+        (from_run, to_run, run(&format!("{from}\n{also}\n{read_of}")))
+    else {
+        let msg = if bad_to {
+            &m::LINT_TO_NOT_CODE
+        } else {
+            &m::LINT_FROM_NOT_CODE
+        };
+        return Some((
+            msg.say(&[&name]),
+            "write CP Lang code that parses on its own, such as `x * x`",
+        ));
+    };
+    let (in_from, in_to) = (names(&from_toks), names(&to_toks));
+    for h in &f.params {
+        match (in_from.contains(h), in_to.contains(h)) {
+            (true, false) if !advice => return Some((m::LINT_TO_DROPS.say(&[&name, h]), "use every parameter `from` matches in `to`, so the fix keeps what the code computes")),
+            (false, true) => return Some((m::LINT_TO_EXTRA.say(&[&name, h]), "`to` can use only the parameters that `from` matches")),
+            _ => {}
+        }
+    }
+    let used = names(&used_toks);
+    if let Some(h) = holes[f.params.len()..].iter().find(|h| !used.contains(h)) {
+        return Some((
+            m::LINT_HOLE_UNUSED.say(&[&name, h]),
+            "list in `holes:` only names `from` or `also:` uses",
+        ));
+    }
+    if !text("when").is_none_or(|w| bounds_ok(&w, &holes, &in_from)) {
+        return Some((
+            m::LINT_WHEN.say(&[&name]),
+            "write `when: \"b >= 1\"`: holes `from` uses, each compared with an integer",
+        ));
+    }
+    let suggests = text("builtin").unwrap_or_else(|| f.name.to_string());
+    let compound = to_toks.windows(3).any(|w| {
+        w[0].0 != TokenKind::Dot
+            && w[1].0 == TokenKind::Ident
+            && w[1].1 == f.name
+            && w[2].0 == TokenKind::Eq
+    });
+    let walks_self = f.yields
+        && (to_toks.windows(4)).any(|w| {
+            [w[0].0, w[1].0, w[2].0, w[3].0]
+                == [
+                    TokenKind::For,
+                    TokenKind::Ident,
+                    TokenKind::In,
+                    TokenKind::SelfKw,
+                ]
+        });
+    let body_ops = f.body.as_ref().is_some_and(|body| {
+        let (have, said, used) = (op_forms(body), op_forms(&from_toks), op_forms(&to_toks));
+        let calls_any = to_toks.windows(2).any(|w| {
+            w[1].0 == TokenKind::LParen && matches!(w[0].0, TokenKind::Ident | TokenKind::RParen)
+        });
+        !calls_any
+            && used.iter().any(|x| have.contains(x))
+            && used.iter().all(|x| have.contains(x) || said.contains(x))
+    });
+    let uses = calls(&to_toks, &suggests)
+        || calls(&read_toks, &suggests)
+        || body_ops
+        || compound
+        || walks_self;
+    let drops = !uses && !advice && calls(&from_toks, f.name);
+    (!uses && !drops && !advice).then(|| {
+        (
+            m::LINT_TO_NO_CALL.say(&[&name, &suggests]),
+            "a library lint suggests the fn it decorates, or drops a needless call of it",
+        )
+    })
 }
 
 #[cfg(test)]
