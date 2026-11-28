@@ -1479,6 +1479,7 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
             elif m := NEXT_IMPL_RE.match(line):
                 impls.append((m.group(1), rel, i, _block(lines, i)))
     holders: dict[str, set[str]] = {}
+    crates: dict[str, set[str]] = {}
     def paths(rel: str) -> set[str]:
         """The path segments that may qualify a struct defined in `rel`: its file's module, its
         crate's name and the short name the pipeline imports it by."""
@@ -1507,6 +1508,7 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
                 continue
             if any(holds(line) for line in files[rel][i + 1:j + 1]) or tuple_holds(files[rel][i]):
                 holders.setdefault(name, set()).update(paths(rel))
+                crates.setdefault(name, set()).add(rel.split("/")[1])
                 grew = True
     own = {(rel, k) for name, rel, i, j in structs + impls if name in types
            for k in range(i, j + 1)}
@@ -1514,7 +1516,8 @@ def _holding_lines(root: Path, types: tuple[str, ...], within: str, views: bool 
            if (rel, k) not in own and holds(line)}
     out |= {(rel, i) for name, rel, i, j in structs if name in holders and tuple_holds(files[rel][i])}
     for name, rel, i, j in impls:
-        if name not in holders:
+        # An impl is of the struct its own crate defines under that name.
+        if rel.split("/")[1] not in crates.get(name, ()):
             continue
         lines = files[rel]
         for k in range(i + 1, j + 1):

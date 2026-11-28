@@ -6,7 +6,7 @@
 //! with the field path kept, so `p.a` and `p.b` do not overlap (R05.8.1). A call through a
 //! function value is the join of the closures its set can hold; a set that is a parameter
 //! of the fn stays symbolic in the summary and is filled in at each call.
-use cpl_next_decls::decls::Decls;
+use cpl_next_decls::views::Signatures;
 use cpl_next_ir::ir::{sets, Arg, Expr, Func, FuncKey, Place, Site, Stmt, EK};
 use cpl_next_ir::prog::{CTy, Program};
 use cpl_next_ir::ty::*;
@@ -211,7 +211,7 @@ pub use inst::Owned;
 /// checks the linked instances and settles their passed places. `globals` names each
 /// top-level binding and whether it is a `var`.
 pub fn link(
-    d: &Decls,
+    d: &dyn Signatures,
     whole: &Whole,
     deferred: &cpl_next_ir::msg::Deferred,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
@@ -278,7 +278,7 @@ fn lent_slot(t: CTy, parts: &dyn Fn(&CTy) -> Vec<CTy>) -> CTy {
 /// heap ones it declares `lends` (R05.6.1), else each whose type is a type parameter the result
 /// type holds, and, for a result whose type is a type parameter, each that holds it: the result
 /// may be a cell of it (R05.5.3).
-fn lends(d: &Decls, f: FnId) -> BTreeSet<usize> {
+fn lends(d: &dyn Signatures, f: FnId) -> BTreeSet<usize> {
     use cpl_next_decls::decls::SelfMode;
     use cpl_next_ir::ty::params_in;
     let fd = d.f(f);

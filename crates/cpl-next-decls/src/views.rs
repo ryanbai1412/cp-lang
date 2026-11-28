@@ -61,6 +61,8 @@ pub trait Signatures: TypeTables {
     fn impl_args(&self, im: &ImplDecl, t: &Ty) -> Option<Vec<Ty>>;
     /// Whether `t` has an impl of `tr`.
     fn has_impl(&self, t: &Ty, tr: TraitId) -> bool;
+    /// The trait `@literal(op)` marks: `"[]"` a list literal builds through.
+    fn literal_trait(&self, op: &str) -> Option<TraitId>;
     /// The traits that declare a method `name`, by id (`traits(name)`, indexed from the
     /// signatures).
     fn traits_with(&self, name: &str) -> Vec<TraitId>;
@@ -124,6 +126,9 @@ pub trait Generics {
 }
 
 impl Signatures for Decls {
+    fn literal_trait(&self, op: &str) -> Option<TraitId> {
+        Decls::literal_trait(self, op)
+    }
     fn f(&self, id: FnId) -> &FnDecl {
         &self.fns[id.0]
     }

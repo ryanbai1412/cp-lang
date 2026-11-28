@@ -7,7 +7,8 @@
 //! address of that nothing can reassign (R05.10.1). The marks then follow the values: a call's result,
 //! a struct's type arguments, the locals they are bound to and a closure's captures.
 use crate::lends;
-use cpl_next_decls::decls::{Decls, SelfMode};
+use cpl_next_decls::decls::SelfMode;
+use cpl_next_decls::views::Signatures;
 use cpl_next_ir::ir::{visit_places, Arg, Expr, Func, FuncKey, Place, Stmt, Target, EK};
 use cpl_next_ir::ty::*;
 use std::collections::{BTreeSet, HashMap};
@@ -15,7 +16,7 @@ use std::collections::{BTreeSet, HashMap};
 /// Marks what each generic fn lends, its lambdas through the fn they are written in;
 /// `mutable` says which globals are `var`s.
 pub(crate) fn mark(
-    d: &Decls,
+    d: &dyn Signatures,
     funcs: &mut HashMap<FuncKey, Func<Ty>>,
     globals: &mut [Ty],
     mutable: &[bool],
@@ -66,7 +67,7 @@ pub(crate) fn mark(
 }
 
 struct Lw<'a> {
-    d: &'a Decls,
+    d: &'a dyn Signatures,
     /// Each fn's declared parameter types, receiver first, and its result type.
     sigs: HashMap<FnId, (Vec<Ty>, Ty)>,
     /// Each declared fn's copies: its body, and one per set of context values.

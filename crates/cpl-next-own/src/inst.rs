@@ -6,8 +6,9 @@
 use crate::lends;
 use crate::{overlap, Fx, Pl, Root, Step};
 use cpl_diag::{codes, Code};
-use cpl_next_decls::decls::{Decls, Owner, SelfMode};
+use cpl_next_decls::decls::{Owner, SelfMode};
 use cpl_next_decls::diag::Msg;
+use cpl_next_decls::views::Signatures;
 use cpl_next_ir::ir::{Arg, Expr, Place, Stmt, Target, EK};
 use cpl_next_ir::ir::{Func, FuncKey, Site};
 use cpl_next_ir::prog::{CTy, InstKey, Program};
@@ -23,7 +24,7 @@ pub(crate) struct Summary {
 }
 
 pub(crate) struct Walk<'a> {
-    pub d: &'a Decls,
+    pub d: &'a dyn Signatures,
     pub p: &'a Program,
     /// Each instance's generic fn: which of its locals are of a type parameter's type.
     pub generic: &'a HashMap<FuncKey, cpl_next_ir::ir::Func<cpl_next_ir::ty::Ty>>,
@@ -203,7 +204,7 @@ impl Walk<'_> {
     }
     /// A generator value holds what it walks, as a view does (R07.6.2).
     fn walks(&self, t: &CTy) -> bool {
-        matches!(t, CTy::Struct(s, ..) if Some(*s) == self.d.roles.recipe)
+        matches!(t, CTy::Struct(s, ..) if Some(*s) == self.d.roles().recipe)
     }
     fn temp(&self, r: Root) -> bool {
         let name = match r {
@@ -1399,7 +1400,7 @@ fn fresh(
 
 /// Ownership of every instance link made: callees first, each summarized for its callers.
 fn run(
-    d: &Decls,
+    d: &dyn Signatures,
     generic: &HashMap<FuncKey, cpl_next_ir::ir::Func<cpl_next_ir::ty::Ty>>,
     p: &Program,
     globals: &[(String, bool)],
@@ -1410,8 +1411,8 @@ fn run(
     let literals = (p.insts.iter().enumerate())
         .filter(|(_, f)| match &f.key {
             FuncKey::Decl(f) | FuncKey::Ctx(f, _) => {
-                d.sugar.str_literal == Some(*f)
-                    || matches!(d.f(*f).owner, Some(Owner::Impl(k)) if Some(d.impls[k].trait_.tr) == list)
+                d.sugar().str_literal == Some(*f)
+                    || matches!(d.f(*f).owner, Some(Owner::Impl(k)) if Some(d.imp(k).trait_.tr) == list)
             }
             _ => false,
         })
@@ -1603,7 +1604,7 @@ fn calls_in<'b, T>(b: &'b [Stmt<T>], f: &mut Calls<'b, T>) {
 /// R05.10.12: a method holding a lend into a `@cache` field of `self` calls no fn value, which
 /// could reach the struct and write the field under that lend. A rule on the body as written, so
 /// it reads generic IR: an uncalled method has no instance.
-fn cache_calls(d: &Decls, generic: &HashMap<FuncKey, Func<Ty>>) -> Vec<Msg> {
+fn cache_calls(d: &dyn Signatures, generic: &HashMap<FuncKey, Func<Ty>>) -> Vec<Msg> {
     use cpl_next_decls::decls::{Owner, SelfMode};
     let mut keys: Vec<&FuncKey> = generic.keys().collect();
     keys.sort();
@@ -1690,7 +1691,7 @@ pub struct Owned {
 /// Ownership on the instances link made, before their passed places settle (and, for `@cache`,
 /// on generic IR).
 pub(crate) fn check(
-    d: &Decls,
+    d: &dyn Signatures,
     generic: &HashMap<FuncKey, Func<Ty>>,
     p: &Program,
     globals: &[(String, bool)],
@@ -1768,7 +1769,7 @@ fn lenders_lend(p: &Program) -> Vec<Msg> {
 
 /// A closure that shares a `var` of the fn around it is lent: it cannot be returned (spec R05.10).
 /// Nor can it be stored through a `mut` parameter.
-fn escape(d: &Decls, generic: &HashMap<FuncKey, Func<Ty>>, p: &Program) -> Vec<Msg> {
+fn escape(d: &dyn Signatures, generic: &HashMap<FuncKey, Func<Ty>>, p: &Program) -> Vec<Msg> {
     // `made` keeps the closures the returning fn itself makes: one passed in through a
     // container's `new` or `at` captures what its maker's frame holds, which outlives them.
     fn holds_ref(
