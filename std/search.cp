@@ -11,6 +11,10 @@
 
 use std.seq.{Seq}
 use std.range.{RealRange}
+use std.list.{List}
+use std.ops.{Ord, max, min, Add}
+use std.optional.{Some}
+use std.ranges.{Range}
 
 fn golden_pick<I, K: Ord>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     let n = r.len

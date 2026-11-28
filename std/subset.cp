@@ -5,6 +5,11 @@
 
 use std.math.{popcount, ctz}
 use std.seq.{each, Seq}
+use std.domains.{Domain, Index}
+use std.optional.{Some}
+use std.convert.{Into}
+use std.ops.{BitAnd, BitOr, BitXor, Contains, Sub}
+use std.show.{Show}
 
 impl<B: Domain> Seq<B> for Subset<B>:
     /// What `for b in s` walks: the members, as `s.items`.

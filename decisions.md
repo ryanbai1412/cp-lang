@@ -9724,6 +9724,33 @@ type parameter it states, `law select(a: T, b: T) where T: Eq`, and `==`
 on an unbounded `T` is E0606, as in a default. Checking each impl's copy
 was turned down: it is an instance-time step, and laws stay never assumed.
 
+## 686. Core is deleted; record shapes live in the module `@role(record)` marks (check, 2026-11-28)
+
+cpl-next loaded a compiler-private module, core (`crates/cpl-next/std.cp`,
+built in with `include_str!`), first, as `ModId(0)`: every std module saw
+its re-exports without a `use`, and it held every record shape's struct,
+row trait and `without` trait. That was a power no library has. Core is
+gone. Each std module `use`s what it names (R11.3.1), the prelude gained
+the names programs saw through core, and a new module role, `record`
+(R11.6), marks `std.tuple` as the home of record shapes: the loader finds
+it by the mark above its first `use`, never by name. A second marked
+module is E0202, a record with none is E0201. A record shape's names
+start with `(`, so every module sees them as written structure, not as an
+import. A derived impl reads its names where its trait is declared as well as
+in its struct's module, so derives work whatever the struct's module
+imports.
+
+Honest `use` lines made 19 std modules one import cycle (`std.ops` needs
+`std.algebra.Ordering`, which needs `std.ops.Ord`), which core had hidden.
+R11.2.2 now holds between libraries: a library's modules may `use` each
+other, as a crate's may, and two libraries, or a library and the program,
+that need each other are still E0206. A library is the snapshot entry it
+is read from, never its name. Value cycles stay errors: a `const` reaching
+itself through two modules is E0209. Library consts are set in the order
+their initializers read them (R01.6.1), not in module order, so cyclic
+modules change no initialization. Reverse by restoring core and the
+module-level cycle check; std would then need core again.
+
 ## 682. `@on_destructure` says why a call's result can't be taken apart (check, 2026-11-28)
 
 `for (x, n) in runs(xs)` was accepted: cpl-next's tuple pattern opened

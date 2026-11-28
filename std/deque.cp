@@ -5,6 +5,12 @@
 
 use std.range.{Len}
 use std.seq.{each, Bidir, Seq}
+use std.list.{List}
+use std.mem.{swap}
+use std.optional.{Some}
+use std.ops.{max}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// A queue with both ends open: `var q = Deque<Int>()`. `push` / `pop` work at the back,
 /// `push_front` / `pop_front` at the front, all amortized \(O(1)\); `q[i]` is the `i`-th element

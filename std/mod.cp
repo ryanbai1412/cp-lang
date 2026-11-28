@@ -13,6 +13,11 @@ use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
 use std.math.{crt_all, factor, gcd, inv_mod, isqrt, mod_log, mod_sqrt, mul_mod, pow_mod}
 use std.range.{Len}
+use std.list.{List, Str}
+use std.ops.{Add, Mul, Sub, min, max, Div, Neg, One, Pow, Zero}
+use std.optional.{Some}
+use std.read.{Read, read}
+use std.show.{Show}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are \(O(1)\); `/` and `inv` are \(O(\log P)\) and need `gcd(x, P) == 1`.

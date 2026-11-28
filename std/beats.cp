@@ -12,6 +12,13 @@
 use std.math.{bit_ceil}
 use std.range.{Len, ends}
 use std.seq.{any, sum}
+use std.list.{List}
+use std.ops.{max, min}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.domains.{Domain}
+use std.show.{Show}
+use std.stream.{rand}
 
 // One node's aggregates as seen from above: the stored ones with every ancestor's pending tag
 // applied, and `add` the pending add its children have not seen yet.

@@ -9,6 +9,10 @@
 use std.dsu.{Dsu, Mark}
 use std.math.{bit_ceil}
 use std.range.{Len}
+use std.list.{List}
+use std.ops.{max, min}
+use std.optional.{Some}
+use std.ranges.{Range}
 
 /// One step in a `TimeTree` DFS traversal:
 /// - `Apply(id)`: apply event `tt.event(id)` on entry to a segment-tree node.

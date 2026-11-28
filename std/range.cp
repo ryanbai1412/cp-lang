@@ -3,6 +3,12 @@
 //!
 //! start: `first_true`, `last_true`, `bsearch`, `ends`, `RingRange`
 //! example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
+use std.domains.{Cut, Domain}
+use std.list.{Str}
+use std.ops.{max, min, Contains}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
 
 /// `lo..hi` over reals, what `0.0..8.0` is (decision 456). It has no positions to walk, so it is
 /// searched by halving (`bsearch(ok, steps:)`) and golden section (`peak`, `valley`).

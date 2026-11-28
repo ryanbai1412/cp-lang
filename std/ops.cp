@@ -4,6 +4,7 @@
 //!
 //! example: `3 + 4 == 7 and Int.zero == 0 and 2 < 3`
 use std.algebra.{Ordering}
+use std.domains.{Domain}
 
 /// `a == b` and `a != b` (R08.1.5). Tuples, records, structs and enums whose fields all have
 /// it get it field by field unless they write their own (R08.1.6).

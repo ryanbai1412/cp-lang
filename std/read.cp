@@ -6,6 +6,11 @@
 use std.tuple.{Tuple2, Tuple3, Tuple4}
 use std.io.{io}
 use std.raw.{raw_new, raw_set}
+use std.domains.{Domain, Ordered}
+use std.list.{Array, List, Str}
+use std.optional.{Optional, Some}
+use std.ranges.{Range}
+use std.show.{Show}
 
 /// A type the input reads, token by token, in order, from the `Input` it is given (R10.2.1).
 @derive

@@ -11,6 +11,12 @@ use std.algebra.{Op}
 use std.dsu.{Mark, Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.hashmap.{Counter}
 use std.seq.{Track, Indexed, collect}
+use std.domains.{Domain}
+use std.list.{List}
+use std.ops.{Eq}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
 
 /// One fold of `op` per length-`k` window of `self`, left to right, kept the way `Window(op)`
 /// keeps it (two stacks).

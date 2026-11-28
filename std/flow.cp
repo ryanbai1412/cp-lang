@@ -13,6 +13,11 @@ use std.heap.{MinHeap}
 use std.seq.{collect, next_permutation, all, any, sum}
 use std.math.{bit}
 use std.range.{Len}
+use std.list.{List}
+use std.ops.{max, min}
+use std.optional.{Some}
+use std.stream.{rand}
+use std.show.{Show}
 
 /// A handle to one arc of a `FlowGraph`. Handles from `add` stay valid as arcs are added.
 pub struct Arc(pub id: Len):

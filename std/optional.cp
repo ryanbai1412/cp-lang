@@ -2,6 +2,9 @@
 //! no module imports them.
 //!
 //! example: `let a: ?Int = Some(3); a == Some(3)`
+use std.mem.{swap}
+use std.clone.{Clone}
+use std.ops.{Eq}
 
 // `?T`: `T` or `None`. `val` is read only when `some`.
 @role(option)

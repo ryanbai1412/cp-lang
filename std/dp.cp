@@ -16,6 +16,12 @@ use std.algebra.{Monoid, FromOp}
 use std.math.{bit}
 use std.seq.{each, Seq, collect, all, sum}
 use std.range.{Len, first_true}
+use std.list.{List}
+use std.ops.{Add, Eq, Ord, Zero, max, min, Mul, Sub}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// \(O(1)\) per evaluation.
 /// The line `k * x + m`, the usual entry of a `LiChao`.

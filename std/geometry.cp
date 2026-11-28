@@ -20,6 +20,13 @@ use std.range.{Len, first_true, last_true}
 use std.math.{abs, atan2, cos, sin, sqrt}
 use std.rand.{shuffle}
 use std.strings.{min_rotation}
+use std.list.{List}
+use std.ops.{max, min, Add, Contains, Div, Eq, Mul, Neg, Ord, Sub}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.stream.{rand}
+use std.map.{Map}
+use std.show.{Show}
 
 fn igcd(a0: Int, b0: Int) -> Int:
     var a = a0

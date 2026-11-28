@@ -4,6 +4,11 @@
 //! example: `let a = [1, 2, 3]; var s = 0; mo([0..2, 1..3], add: i => s += a[i], remove: i => s -= a[i], answer: _ => s) == [3, 5]`
 use std.range.{ends}
 use std.math.{isqrt}
+use std.list.{List}
+use std.ops.{max, min}
+use std.ranges.{Range}
+use std.optional.{Some}
+use std.stream.{rand}
 
 /// The order in which to visit `queries` so a sliding window moves its endpoints
 /// \(O(n \sqrt q)\) times, as a permutation of `0..queries.len`.

@@ -8,7 +8,9 @@
 use crate::diag::Msg;
 use cpl_diag::Span;
 use cpl_next_db::db::Db;
-use cpl_next_db::items::{self as queries, ItemAt, ItemOf, ModuleFile, Parse, Source, SOURCE_EXT};
+use cpl_next_db::items::{
+    self as queries, ItemAt, ItemOf, Libraries, ModuleFile, Parse, Source, SOURCE_EXT,
+};
 use cpl_next_ir::ids::FileId;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_syntax::ast::{self, AstNode};
@@ -143,7 +145,7 @@ impl Parsed {
 /// place no program moves, and their declarations. Every program loads its std modules from
 /// one `Std`, and places its own modules after `Std::end`.
 pub struct Std {
-    /// The core first, then std's modules by name.
+    /// Std's modules by name.
     modules: Vec<Parsed>,
     index: HashMap<String, usize>,
     decls: crate::decls::Prepared,
@@ -170,7 +172,7 @@ impl Std {
         Std::from_db(db, &texts.into_iter().map(|(n, _)| n).collect::<Vec<_>>())
     }
 
-    /// Std's modules `names`, the core first, each read from the `Source` of its `std_file`
+    /// Std's modules `names`, each read from the `Source` of its `std_file`
     /// in `db`. Every text is read on this thread, so a query computing a std depends on each.
     pub fn from_db(db: &Db, names: &[String]) -> Std {
         let read: Vec<_> = (names.iter())
@@ -221,16 +223,16 @@ impl Std {
     pub fn decls(&self) -> &crate::decls::Prepared {
         &self.decls
     }
-    /// Std's modules by name, the core not among them.
+    /// Std's modules by name.
     pub fn module_names(&self) -> impl Iterator<Item = &str> {
-        self.modules[1..].iter().map(|p| p.text.name.as_str())
+        self.modules.iter().map(|p| p.text.name.as_str())
     }
 }
 
 pub struct Loaded {
     /// Each module's text, in the order of `modules`.
     pub texts: Vec<Text>,
-    /// The core first, then every std module, the program's libraries, and the program last.
+    /// Every std module, the program's libraries, and the program last.
     pub modules: Vec<Module>,
     /// Per module, whether the program loads it.
     pub seen: Vec<bool>,
@@ -276,7 +278,6 @@ impl Loaded {
     }
 }
 
-pub const CORE: &str = "core";
 pub const PROGRAM: &str = "program";
 
 /// Where each library's modules are: the roots the nearest `cp.toml` at or above the program
@@ -287,16 +288,11 @@ pub struct Roots(Vec<(String, PathBuf)>);
 /// made, so a std edit needs no rebuild (`cpl-next --std DIR` names another).
 pub const STD_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../std");
 
-/// Std's texts in the directory `root` by module name: the core first, then std's modules by
-/// name. Each is the `Source` of its `std_file`.
+/// Std's texts in the directory `root`, by module name. Each is the `Source` of its `std_file`.
 pub fn std_texts(root: &Path) -> Vec<(String, Arc<str>)> {
-    const CORE_TEXT: &str = include_str!("../../cpl-next/std.cp");
     let mut files = read_dir_modules(root);
     files.sort();
-    let files = files.into_iter().map(|(m, t)| (m, Arc::from(t)));
-    std::iter::once((CORE.to_string(), Arc::from(CORE_TEXT)))
-        .chain(files)
-        .collect()
+    files.into_iter().map(|(m, t)| (m, Arc::from(t))).collect()
 }
 
 /// The file std module `name`'s text is the `Source` of.
@@ -368,23 +364,27 @@ impl Roots {
 }
 
 /// Each `use` line's module, the line, and where it is written.
-/// Whether a module is marked `@role(prelude)`: a decorator above its first `use` (R11.6).
-fn is_prelude(items: &[Item]) -> bool {
+/// The role a module fills: a `@role(name)` above its first `use`, as `prelude` and `record`
+/// are marked (R11.6).
+pub(crate) fn module_role(items: &[Item]) -> Option<crate::decls::Role> {
     let Some(ast::Decl::Use(u)) = items.first().and_then(|it| it.item.decl()) else {
-        return false;
+        return None;
     };
-    let marked = u.decorators().any(|x| {
+    let role = u.decorators().find_map(|x| {
         let attr = x
             .name()
-            .and_then(|n| crate::attrs::Decorator::live(n.text()));
-        attr.and_then(|attr| {
-            crate::decls::form_role(&crate::decls::forms::AttrForm {
-                attr,
-                node: Some(x),
-            })
-        }) == Some(crate::decls::Role::Prelude)
+            .and_then(|n| crate::attrs::Decorator::live(n.text()))?;
+        crate::decls::form_role(&crate::decls::forms::AttrForm {
+            attr,
+            node: Some(x),
+        })
     });
-    marked
+    role
+}
+
+/// Whether a module is marked `@role(prelude)` (R11.6).
+fn is_prelude(items: &[Item]) -> bool {
+    module_role(items) == Some(crate::decls::Role::Prelude)
 }
 
 fn uses(items: &[Item]) -> impl Iterator<Item = (String, ast::UseDecl, SourceId)> + '_ {
@@ -588,8 +588,27 @@ pub fn load(db: &Db, std: &Std, root: &FileId) -> Loaded {
     };
     let mut got: Vec<Got> = Vec::new();
     let mut missing: Vec<(String, Option<SourceId>)> = Vec::new();
-    // The core's traits name std types (`Ord`'s `cmp` returns `std.algebra`'s `Ordering`).
-    queue.extend(uses(&std.modules[0].items).map(|(to, _, _)| (to, None)));
+    // The library a module comes from, by the snapshot entry that gives it: std's sources or a
+    // `[libs]` entry. The program and its inline modules are in none (R11.2.2).
+    let libraries = db
+        .input::<Libraries>(root)
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+    let library = |m: &str| {
+        let mut at = m;
+        loop {
+            if std.index.contains_key(at) {
+                return Some(Library::Std);
+            }
+            match at.rsplit_once('.') {
+                Some((up, _)) => at = up,
+                None => break,
+            }
+        }
+        let head = m.split_once('.').map_or(m, |(l, _)| l);
+        (libraries.iter().position(|(n, _)| &**n == head)).map(Library::Lib)
+    };
     while let Some((m, at)) = queue.pop_front() {
         if !seen.insert(m.clone()) {
             continue;
@@ -627,8 +646,11 @@ pub fn load(db: &Db, std: &Std, root: &FileId) -> Loaded {
         }
         got.push(g);
     }
+    // Modules of one library may name each other; the libraries, with the program a leaf, may
+    // not (R11.2.2).
+    edges.retain(|(a, b, _)| library(a).is_none() || library(a) != library(b));
     if let Some((m, at)) = cycle(&edges) {
-        let text = Msg::verdict(cpl_diag::codes::UNRESOLVED_MODULE, format!("`{m}` is in an import cycle; two modules that need each other are one module (R11.2.2)"));
+        let text = Msg::verdict(cpl_diag::codes::UNRESOLVED_MODULE, format!("`{m}` is in an import cycle that leaves one library; only one library's own modules may use each other (R11.2.2)"));
         errors.push(match at {
             Some(at) => Msg::at(at.clone(), text),
             None => text,
@@ -637,7 +659,6 @@ pub fn load(db: &Db, std: &Std, root: &FileId) -> Loaded {
     let mut texts: Vec<Text> = std.modules.iter().map(|p| p.text.clone()).collect();
     let mut modules: Vec<Module> = std.modules.iter().map(Parsed::module).collect();
     let mut seen = vec![false; modules.len()];
-    seen[0] = true;
     let mut poisoned = Vec::new();
     let mut unread = |p: &Parsed, errors: &mut Vec<Msg>| {
         errors.extend(p.unread.0.iter().cloned());
@@ -685,6 +706,13 @@ pub fn load(db: &Db, std: &Std, root: &FileId) -> Loaded {
         poisoned,
         missing: missing_files,
     }
+}
+
+/// Where a module's source came from: std's directory, or the `[libs]` entry at this index.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Library {
+    Std,
+    Lib(usize),
 }
 
 /// A module on a cycle of `use` edges, if there is one, and where it names the next.

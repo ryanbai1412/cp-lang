@@ -5,6 +5,13 @@
 use std.raw.{raw_empty, raw_new, raw_get, raw_set, raw_take, raw_cap, check_key}
 use std.literal.{ListLiteral, Filled}
 use std.seq.{Seq, IndexGet, IndexMut, IndexedMut, Keyed, Positional, Indexed}
+use std.mem.{swap}
+use std.optional.{Some}
+use std.clone.{Clone}
+use std.convert.{Into}
+use std.domains.{Domain}
+use std.ops.{Add, Eq, Ord}
+use std.ranges.{Range}
 
 fn out(text: Raw<Char>, n: Int) = @intrinsic("out")
 

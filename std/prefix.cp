@@ -9,6 +9,13 @@
 //! \(O(r \cdot c)\) `finish()`.
 use std.algebra.{Monoid, FromOp}
 use std.range.{Len, RingRange, ends, first_true}
+use std.domains.{Cut, Ordered}
+use std.list.{List}
+use std.ops.{Add, Ord, Sub, Zero, Mul, max}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// The n + 1 exclusive prefix folds, indexed by `D`'s cuts: `pre[c]` folds everything left of cut
 /// `c` (`from`, or `f`'s identity, at the first cut), and `pre[v]` for a position folds through

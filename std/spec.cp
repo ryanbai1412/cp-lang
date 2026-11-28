@@ -9,6 +9,9 @@
 
 use std.mod.{Mod}
 use std.seq.{all}
+use std.list.{List}
+use std.ops.{min, Ord}
+use std.optional.{Some}
 
 /// The first position whose element is below the one before it: `Some(i)` for the smallest
 /// `i >= 1` with `xs[i] < xs[i - 1]`, or `None` when `xs` never decreases.

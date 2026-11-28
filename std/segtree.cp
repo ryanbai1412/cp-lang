@@ -6,6 +6,13 @@ use std.algebra.{Action, Acts, Monoid}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit, popcount, bit_ceil, bit_width, ctz}
 use std.range.{Len, ends, first_true}
+use std.domains.{Cut, Domain}
+use std.list.{List, Str}
+use std.ops.{Add, Mul, One, Ord, Zero, max, min}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
+use std.stream.{rand}
 
 type Pos = 0..=2_000_000_000
 

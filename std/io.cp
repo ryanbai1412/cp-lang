@@ -3,6 +3,9 @@
 //!
 //! start: `yes`, `read_all`, `Wire`, `io`
 //! example: `yes(true) == "YES"`
+use std.list.{List, Str}
+use std.read.{read, Read}
+use std.show.{print}
 
 /// The answer word for `ok`: `io.answers.0` when true, else `io.answers.1`.
 ///

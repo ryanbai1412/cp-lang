@@ -14,6 +14,13 @@ use std.math.{bit_width}
 use std.range.{Len}
 use std.seq.{each, Seq}
 use std.hash.{Hash, HashMap}
+use std.list.{List, Str}
+use std.mem.{swap}
+use std.ops.{Add, Eq, Ord, Contains, min}
+use std.optional.{Some}
+use std.domains.{Domain}
+use std.show.{Show}
+use std.stream.{rand}
 
 impl<T: Ord> Seq<T> for Heap<T>:
     fn iter(self) -> yields T:

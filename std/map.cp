@@ -2,10 +2,15 @@
 //! tree, \(O(\log n)\) a step. Core re-exports both, so no module imports them.
 //!
 //! example: `var m = Map<Str, Int>(); m["a"] += 2; m["a"] == 2`
-use std.seq.{IndexGet, Seq, Sized}
+use std.seq.{IndexGet, Seq, Sized, IndexMut, IndexSet}
 
 /// A missing key traps (R07.12.9).
 use std.raw.{check_key}
+use std.list.{List}
+use std.ops.{Ord, Contains}
+use std.optional.{Some}
+use std.default.{Default}
+use std.show.{Show}
 
 /// The balanced search tree under `Set` and `Map`: an AVL tree whose nodes are slots of its
 /// lists, so a removed node's slot is reused. Keys are in `<` order, each once.

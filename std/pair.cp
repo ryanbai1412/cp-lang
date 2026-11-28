@@ -4,6 +4,11 @@
 //! example: `domain V = 0..3; let d: [Pair<V>]Int = [5, 6, 7]; let m = d.symmetric(diag: 0); m[2, 1] == 7 and m[0, 2] == 6 and m[1, 1] == 0`
 
 use std.math.{isqrt}
+use std.domains.{Domain, Index}
+use std.ops.{min}
+use std.optional.{Some}
+use std.convert.{Into}
+use std.show.{Show}
 
 /// An unordered pair of distinct positions `lo` and `hi` of `V`, `lo` before `hi`. `Pair<V>` is a
 /// domain of `V.count * (V.count - 1) / 2` positions, so `[Pair<V>]T` stores one value per pair,

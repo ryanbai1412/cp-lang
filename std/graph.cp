@@ -28,6 +28,12 @@ use std.opt.{is_none_or}
 use std.rand.{Random, shuffle}
 use std.range.{Len}
 use std.seq.{each, collect, reverse, count, Seq, IndexGet, Indexed, Slice, all, any, first}
+use std.domains.{Domain}
+use std.list.{List}
+use std.ops.{Add, Eq, Ord, Sub, Zero, max, min, One}
+use std.optional.{Some}
+use std.stream.{rand}
+use std.show.{Show}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by

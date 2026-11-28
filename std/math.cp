@@ -4,6 +4,14 @@
 //! example: `gcd(12, 18) == 6`
 use std.range.{last_true}
 use std.hash.{HashMap}
+use std.convert.{Into}
+use std.list.{List, Str}
+use std.map.{Map}
+use std.mem.{swap}
+use std.ops.{Add, Div, Eq, Mul, One, Sub, Zero, max, min, Neg, Ord}
+use std.optional.{Some}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.
 ///

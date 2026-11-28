@@ -20,6 +20,16 @@ use std.prefix.{Prefix}
 use std.range.{Len, RingRange, ends, first_true, last_true}
 use std.rand.{shuffle}
 use std.raw.{check_key}
+use std.domains.{Cut, Domain, Ordered}
+use std.list.{List, Str}
+use std.map.{Map, Set}
+use std.ops.{Ord, Eq, Add, Contains, Mul, One, Sub, Zero}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.io.{yes}
+use std.mem.{swap}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 @stress(perm)

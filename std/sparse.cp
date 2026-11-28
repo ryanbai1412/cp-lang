@@ -4,6 +4,13 @@
 //! example: `SparseTable(min, [3, 1, 4]).fold(0..3) == 1`
 use std.math.{gcd, bit_width}
 use std.range.{Len, ends}
+use std.list.{List, Str}
+use std.ops.{min, max, Eq}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.domains.{Domain}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// `SparseTable<V, Int>(min, a)`: built in \(O(n \log n)\) time and memory, `fold` is \(O(1)\).
 /// The operation must be associative and idempotent (`op(a, a) == a`): `min`, `max`, `gcd`,

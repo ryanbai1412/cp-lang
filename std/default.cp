@@ -1,4 +1,5 @@
 //! `Default`: the value a `Map`'s absent key starts at under `m[k] op= v` (R07.12.9).
+use std.list.{List, Str}
 
 /// The value `T.default()` a `Map`'s absent key starts at under `m[k] op= v` (R07.12.9).
 pub trait Default:

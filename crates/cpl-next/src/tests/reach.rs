@@ -59,7 +59,7 @@ fn a_library_body_that_does_not_check_is_never_accepted() {
     let dir = std::env::temp_dir().join(format!("cpl-body-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("kit")).unwrap();
     std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
-    let lib = "pub fn bad() -> Int = true\n\npub struct W:\n    x: Int\n\nimpl Show for W:\n    fn show(self) -> Str = 1\n";
+    let lib = "use std.list.{Str}\nuse std.show.{Show}\npub fn bad() -> Int = true\n\npub struct W:\n    x: Int\n\nimpl Show for W:\n    fn show(self) -> Str = 1\n";
     std::fs::write(dir.join("kit/wrong.cp"), lib).unwrap();
     let roots = Roots::from(&dir);
     let said = |src: &str| compile(&std, src, &roots, false, None, Checks::CHECKED);

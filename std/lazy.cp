@@ -7,6 +7,13 @@ use std.rand.Rng
 use std.segtree.{SegTree}
 use std.range.{Len, ends}
 use std.seq.{Seq}
+use std.list.{List}
+use std.mem.{swap}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.ops.{Eq, max, min}
+use std.show.{Show}
+use std.stream.{rand}
 
 const LCG_MOD = 2_147_483_648
 

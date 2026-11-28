@@ -296,6 +296,9 @@ use std.seq.{
     take_while,
     windows,
     zip,
+    IndexMut,
+    IndexSet,
+    IndexedMut,
 }
 use std.hashmap.{Counter, tally}
 use std.pair.{Pair}
@@ -329,4 +332,18 @@ use std.strings.{
 }
 use std.tree.{JumpTree, KruskalTree, LcaTable, Lift, PreferredPaths, Rooted, kruskal_tree}
 
-use std.ops.{Bounded}
+use std.ops.{Bounded, Add, Alike, BitAnd, BitOr, BitXor, Contains, Div, Eq, Mul, Neg, One, Ord, Pow, Rem, Sub, Zero, max, min}
+
+use std.clone.{Clone}
+use std.convert.{Into}
+use std.default.{Default}
+use std.domains.{Cut, Domain, Index, Ordered, RangeEnds, check_value}
+use std.list.{Array, List, Str}
+use std.map.{Map, Set}
+use std.mem.{swap}
+use std.optional.{Optional, Some}
+use std.ranges.{Range, slice, slice_ends, sub_range, sub_range_ends}
+use std.read.{Input, Read, read, read_line}
+use std.show.{Pack, Show, print, write}
+use std.stream.{rand}
+use std.tuple.{Tuple1, Tuple2, Tuple3, Tuple4}

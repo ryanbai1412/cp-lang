@@ -11,6 +11,13 @@ use std.hash.{splitmix64}
 use std.math.{bit_width}
 use std.range.{Len, ends}
 use std.seq.{each, Seq, deduped, all, sorted}
+use std.domains.{Domain, Cut}
+use std.list.{List}
+use std.ops.{Ord, Sub, max, min, Eq}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte
 /// `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays

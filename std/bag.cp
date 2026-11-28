@@ -5,6 +5,12 @@
 
 use std.math.{ceil_sqrt}
 use std.seq.{each, Seq, Track, sum}
+use std.list.{List, Str}
+use std.ops.{Ord, max, min, Add, Contains, Zero}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.stream.{rand}
+use std.show.{Show}
 
 /// Read-only handle to one key's slot in a `SortedBag<K>`, valid until the bag's next `add`,
 /// `remove` or `clear`, because a B+tree change may move keys between leaves (decision 579).

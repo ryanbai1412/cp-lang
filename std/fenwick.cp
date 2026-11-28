@@ -6,6 +6,13 @@ use std.algebra.{Group}
 use std.seq.{deduped, sum}
 use std.range.{Len, ends}
 use std.math.{bit_ceil}
+use std.domains.{Cut}
+use std.list.{List}
+use std.ops.{Add, Ord, Sub, Zero, max}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// Point add and range sum over anything with `+` and `-` (`Int`, `Mod<P>`).
 /// `Fenwick<D, Int>()` starts at zero and `Fenwick<D, Int>(a)` from an array, in \(O(n)\).

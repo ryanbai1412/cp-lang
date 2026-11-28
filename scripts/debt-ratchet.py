@@ -1869,10 +1869,17 @@ def decls_const_op_arms(root: Path) -> list[str]:
 
 
 def next_core_standin_lines(root: Path) -> list[str]:
-    """Lines of `crates/cpl-next/std.cp`, the private stand-in for core: std loads like any
-    library through the module loader, so this reaches 0 when core lives in std/."""
-    p = root / "crates/cpl-next/std.cp"
-    return [f"crates/cpl-next/std.cp:{i}" for i, l in enumerate(_lines(p), 1) if l.strip()] if p.is_file() else []
+    """Lines of CP source the new pipeline's crates keep beside their code (a `.cp` file under
+    `crates/cpl-next*/` outside its tests), a private stand-in for std: std loads like any
+    library through the module loader, from std/, so this stays 0."""
+    found = []
+    for crate in sorted(root.glob("crates/cpl-next*")):
+        for p in sorted(crate.rglob("*.cp")):
+            rel = p.relative_to(root).as_posix()
+            if "/tests/" in rel or "/target" in rel:
+                continue
+            found += [f"{rel}:{i}" for i, l in enumerate(_lines(p), 1) if l.strip()]
+    return found
 
 
 NEXT_RAW_OPEN_RE = re.compile(r'\br(#*)"')
@@ -2706,8 +2713,7 @@ def next_std_names(root: Path) -> list[str]:
     at most NEXT_WRAPPER_LINES lines whose body names one (`list_struct()`, `is_str(t)`). The design
     has no privileged std: the library says what a declaration is (a marker or a trait), and the
     compiler reads that, so this reaches 0."""
-    std = root / "crates/cpl-next/std.cp"
-    sources = [*([std] if std.is_file() else []), *sorted((root / "std").glob("**/*.cp"))]
+    sources = sorted((root / "std").glob("**/*.cp"))
     names = {"print", "write", "read"}
     for f in sources:
         text = f.read_text(encoding="utf-8")

@@ -15,6 +15,11 @@ use std.rand.{Rng}
 use std.seq.{collect, all, count}
 use std.spec.{berlekamp_massey}
 use std.range.{Len}
+use std.list.{List}
+use std.ops.{Add, Div, Eq, Mul, One, Ord, Sub, Zero, max, min, Pow}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
 
 const SEED = 998_244_353
 const RAND_HI = 2_000_000_000

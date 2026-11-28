@@ -3,6 +3,8 @@
 //!
 //! start: `Sample`, `Sample.samples`
 //! example: `Bool.samples() == [false, true]`
+use std.domains.{Domain}
+use std.list.{List, Str}
 
 /// A type `cpl laws` tries a law's argument with: a short fixed list holding the values a law
 /// most often breaks at (zero, one, signs, the ends).

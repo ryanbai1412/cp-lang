@@ -44,8 +44,12 @@ use lib.treap  // the contestant's library root, from cp.toml
 
 - Paths are module names, not files on a search path: `std` is the
   pinned stdlib, `lib` is the roots named in `cp.toml`. (R11.2.1)
-- Modules form an acyclic graph; two modules that need each other are
-  one module. (R11.2.2)
+- Libraries form an acyclic graph, and a program is a leaf of it: a
+  library's modules may `use` each other, but two libraries, or a
+  library and the program, that need each other are E0206. A library is
+  what the snapshot reads it from (std's directory, or one `[libs]`
+  entry), never its name. A `const` whose value reaches itself, through
+  any modules, is still E0209. (R11.2.2)
 - A local name shadows a prelude name, and so does a name a `use`
   imports, in method form too: after `use lib.mine.{step}`,
   `xs.step(2)` calls the library's `step` even where the prelude's also
@@ -157,6 +161,7 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `pack` | `Pack<H, T>` | the head-and-tail struct those fields and a variadic pack walk through |
 | `variant_check` | `check_value` | the check an `Int` converted to an enum goes through |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |
+| `record` | the module `std.tuple` | the home of every record shape's struct, row traits and `without` traits: a program's `{a: Int}` and `(Int, Str)` are its structs (R02.5.2, R08.4.1) |
 
 The operator and literal markers of R06.4.12 (`@operator("op")`,
 `@literal("[]")` and the rest) are the grammar's other roles. The
@@ -179,7 +184,8 @@ Rules:
   one method, `iteration` a trait whose `iter` yields its elements,
   `positions`, `order`, `convert`, `counted` and `range_bounds` traits, `recipe` a generic
   struct with one fn-typed field, `print`,
-  `write` and `todo` fns, and `prelude` a module (`@role(prelude)` at its top). A filler
+  `write` and `todo` fns, and `prelude` and `record` modules (`@role(..)`
+  above the module's first `use`). A filler
   of the wrong shape is E0606 at the marker.
 - Syntax whose role has no filler in the program is E0201, naming the role
   and the marker that fills it.

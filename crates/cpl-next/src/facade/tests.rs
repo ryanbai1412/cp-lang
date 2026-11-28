@@ -67,3 +67,54 @@ fn a_std_edit_is_seen_with_no_rebuild() {
     assert_eq!(parsed(&s2) - before, 1);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+/// What a program's diagnostics say with std copied to a temp directory and changed by `edit`.
+fn said_with_std(name: &str, edit: impl Fn(&Path), src: &str) -> Vec<(Option<String>, String)> {
+    let dir = std::env::temp_dir().join(format!("cpl-{name}-{}", std::process::id()));
+    copy_dir(Path::new(modules::STD_DIR), &dir);
+    edit(&dir);
+    let s = Session::open((Snapshot::new(World::Closed).with_std_dir(&dir)).with_file("p.cp", src));
+    let said = (s.diagnostics("p.cp", Layer::Typed).into_iter())
+        .map(|d| (d.code().map(str::to_string), d.message))
+        .collect();
+    std::fs::remove_dir_all(&dir).unwrap();
+    said
+}
+
+/// The record role is filled by the module it marks, once (R11.6): a second marked module is
+/// E0202 naming the first.
+#[test]
+fn a_second_record_module_is_a_duplicate() {
+    let edit = |dir: &Path| {
+        let text = "@role(record)\nuse std.ops.{Eq}\npub fn two() -> Int = 2\n";
+        std::fs::write(dir.join("records.cp"), text).unwrap();
+    };
+    let said = said_with_std(
+        "record-twice",
+        edit,
+        "use std.records.{two}\nprint(two())\n",
+    );
+    let dup = "a second module filling `@role(record)`: `std.records` fills it already";
+    assert!(
+        said.iter()
+            .any(|(c, m)| c.as_deref() == Some("E0202") && m == dup),
+        "{said:?}"
+    );
+}
+
+/// A record written where no module fills the record role is E0201 naming the role (R11.6).
+#[test]
+fn a_record_with_no_record_module_is_unresolved() {
+    let edit = |dir: &Path| {
+        let p = dir.join("tuple.cp");
+        let text = std::fs::read_to_string(&p).unwrap();
+        std::fs::write(&p, text.replacen("@role(record)\n", "", 1)).unwrap();
+    };
+    let said = said_with_std("record-none", edit, "let r = {a: 1}\nprint(r.a)\n");
+    let none = "a record shape needs the module `@role(record)` marks, and none does";
+    assert!(
+        said.iter()
+            .any(|(c, m)| c.as_deref() == Some("E0201") && m == none),
+        "{said:?}"
+    );
+}

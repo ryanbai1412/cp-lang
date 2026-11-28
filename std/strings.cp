@@ -10,6 +10,15 @@ use std.sparse.{LinearRmq}
 use std.range.{Len, first_true, last_true}
 use std.io.{io}
 use std.hash.{Hash, HashMap}
+use std.domains.{Domain}
+use std.list.{List, Str}
+use std.map.{Set}
+use std.ops.{Eq, Ord, max, min}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.read.{read, Read}
+use std.stream.{rand}
+use std.show.{Show}
 
 const CAP = 2_000_000_000
 type Count = 0..=CAP

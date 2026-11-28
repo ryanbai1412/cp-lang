@@ -1,7 +1,13 @@
 //! Tuples `(a, b)`, as `Tuple1` to `Tuple12`: compared field by field, cloned deeply, and a
-//! product domain when every part is a domain. Core re-exports them, so no module imports them.
+//! product domain when every part is a domain. This module is also the home of every record
+//! shape's struct and traits (`@role(record)`, R02.5.2).
 //!
 //! example: `(1, 2) < (1, 3) and (2, "a").clone() == (2, "a")`
+@role(record)
+use std.clone.{Clone}
+use std.convert.{Into}
+use std.domains.{Domain, Ordered}
+use std.ops.{Alike, Eq, Ord, max, min}
 
 @role(tuple)
 pub struct Tuple1<A>:

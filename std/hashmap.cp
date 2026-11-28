@@ -10,6 +10,13 @@ use std.algebra.{desc}
 use std.range.{Len}
 use std.seq.{Seq, Track, sum}
 use std.hash.{Hash, HashMap, HashSet, splitmix64}
+use std.default.{Default}
+use std.list.{List}
+use std.mem.{swap}
+use std.ops.{Add, Eq, min, Contains, Ord, Zero}
+use std.map.{Map, Set}
+use std.show.{Show}
+use std.stream.{rand}
 
 // Slot states: 0 = empty, 1 = occupied; `remove` uses backward-shift deletion (no tombstones).
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.

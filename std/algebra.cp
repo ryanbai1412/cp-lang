@@ -10,6 +10,12 @@
 //! `desc(x)` reverses an order inside a sort key or a heap entry, and a
 //! non-commutative value says how it reads backwards with `Reversible`.
 use std.math.{gcd}
+use std.domains.{Cut}
+use std.list.{Str}
+use std.ops.{Add, BitAnd, BitOr, BitXor, Bounded, Mul, One, Ord, Sub, Zero, max, min}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.show.{Show}
 
 /// An associative operation with an identity: the pair `(id, op)`, written
 /// `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.

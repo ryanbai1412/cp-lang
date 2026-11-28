@@ -691,7 +691,7 @@ fn a_build_reaching_an_untyped_library_body_reports_it() {
     let dir = std::env::temp_dir().join(format!("cpl-untyped-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("kit")).unwrap();
     std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
-    let lib = "pub struct W:\n    pub v: Int\n\nimpl Show for W:\n    fn write_to(self, mut out: Str, sep: ?Str):\n        out.append(nope)\n";
+    let lib = "use std.list.{Str}\nuse std.show.{Show}\npub struct W:\n    pub v: Int\n\nimpl Show for W:\n    fn write_to(self, mut out: Str, sep: ?Str):\n        out.append(nope)\n";
     std::fs::write(dir.join("kit/m.cp"), lib).unwrap();
     let run = |src: &str| {
         compile(
@@ -2128,4 +2128,59 @@ fn the_snapshot_says_which_checks_a_build_keeps() {
         (checked.output.as_str(), checked.trap.is_some()),
         ("", true)
     );
+}
+
+/// Modules of one library may use each other, and what they declare does not depend on which
+/// the program names first (R11.2.2): a cyclic pair loaded in both orders gives the same decls.
+#[test]
+fn a_cyclic_pair_gives_the_same_decls_in_either_order() {
+    let dir = std::env::temp_dir().join(format!("cpl-cyclic-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("kit")).unwrap();
+    std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
+    let a = "use kit.b.{Pt, inc}\npub fn three() -> Int = inc(2)\npub fn two() -> Int = 2\n\
+             pub fn origin() -> Pt = Pt(x: 0, y: 0)\n";
+    let b = "use kit.a.{two}\npub struct Pt(pub x: Int, pub y: Int)\n\
+             pub fn inc(x: Int) -> Int = x + 1\npub fn four() -> Int = two() + two()\n";
+    std::fs::write(dir.join("kit/a.cp"), a).unwrap();
+    std::fs::write(dir.join("kit/b.cp"), b).unwrap();
+    let std = Std::read();
+    let decls = |src: &str| {
+        let (db, root) = alone(&std, src, &Roots::from(&dir));
+        let loaded = modules::load(&db, &std, &root);
+        let d = decls::collect(std.decls(), &loaded.modules, &loaded.seen, &loaded.prelude);
+        let mut fns: Vec<String> = (d.fns.iter())
+            .filter(|f| d.module_names[f.module.0].starts_with("kit."))
+            .map(|f| {
+                format!(
+                    "{}.{} {}",
+                    d.module_names[f.module.0],
+                    f.name,
+                    f.params.len()
+                )
+            })
+            .collect();
+        fns.sort();
+        let mut structs: Vec<String> = (d.structs.iter())
+            .filter(|s| d.module_names[s.module.0].starts_with("kit."))
+            .map(|s| {
+                format!(
+                    "{}.{} {}",
+                    d.module_names[s.module.0],
+                    s.name,
+                    s.fields.len()
+                )
+            })
+            .collect();
+        structs.sort();
+        let errors: Vec<String> = (loaded.errors.iter().chain(&d.errors))
+            .map(|e| format!("{e:?}"))
+            .collect();
+        (fns, structs, errors)
+    };
+    let one = decls("use kit.a.{three, origin}\nuse kit.b.{four}\nprint(three(), four(), origin() == origin())\n");
+    let other = decls("use kit.b.{four}\nuse kit.a.{three, origin}\nprint(three(), four(), origin() == origin())\n");
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(one, other);
+    assert!(one.2.is_empty(), "{:?}", one.2);
+    assert!(one.0.contains(&"kit.b.inc 1".to_string()), "{:?}", one.0);
 }

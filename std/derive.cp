@@ -8,6 +8,8 @@
 //! example: `struct P(a: Int, b: Int); eq_fields(P(1, 2), P(1, 2)) == true`
 use std.hash.{splitmix64}
 use std.rand.{Random}
+use std.list.{Str}
+use std.read.{read}
 
 /// `a == b` field by field, in declaration order, stopping at the first field that differs.
 ///

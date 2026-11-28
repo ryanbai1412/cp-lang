@@ -7,6 +7,10 @@
 //! `f(c + 1) - f(c)`, largest first, in a lazy treap; `Convex` is its mirror.
 use std.lazy.{LazyTreap}
 use std.range.{Len, first_true}
+use std.ops.{min}
+use std.ranges.{Range}
+use std.show.{Show}
+use std.stream.{rand}
 
 struct Slide(base: Int, step: Int)
 

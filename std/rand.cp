@@ -3,6 +3,12 @@
 //!
 //! start: `shuffle`, `Rng`, `Rng.next`
 //! example: `var a = [3, 1, 2]; shuffle(mut a); a.sorted() == [1, 2, 3]`
+use std.list.{List}
+use std.optional.{Some}
+use std.seq.{IndexedMut}
+use std.stream.{rand}
+use std.domains.{Domain}
+use std.show.{Show}
 
 /// A type `gen<T>(..)` draws: `gen<T>(args)` is `T.gen(args)`, so a user type with `impl Random`
 /// is drawn like a std one, and an impl may take named options (R06.4.3).

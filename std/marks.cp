@@ -12,6 +12,12 @@ use std.interval.{IntervalMap}
 use std.range.{Len}
 use std.seq.{each, Seq}
 use std.hash.{Hash, HashMap}
+use std.list.{List, Str}
+use std.domains.{Domain}
+use std.ops.{Contains, Eq}
+use std.optional.{Some}
+use std.show.{Show}
+use std.stream.{rand}
 
 const MAX_GEN = 2_000_000_000
 

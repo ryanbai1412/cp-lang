@@ -5,6 +5,12 @@
 use std.algebra.{Group, GroupOp}
 use std.marks.{Id}
 use std.persistent.{PArena}
+use std.list.{List}
+use std.mem.{swap}
+use std.optional.{Some}
+use std.ops.{Eq}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// A point in the history of a structure that can step back in time, returned by `mark()`
 /// and taken by `undo_to`. Its own type, so it can't be mixed up with a count or an index.

@@ -6,6 +6,13 @@
 use std.rand.{Rng}
 use std.range.{ends}
 use std.seq.{each, Seq}
+use std.list.{List}
+use std.map.{Map}
+use std.ops.{Eq, min, Contains, max}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.domains.{Cut, Domain}
+use std.show.{Show}
 
 impl<D, T> Seq<(range: Range<D>, val: T)> for IntervalMap<D, T>:
     /// Every maximal run with its value.

@@ -6,6 +6,9 @@ use std.ranges.{Range, range_of}
 use std.raw.{check_range}
 use std.memo.{MemoTable}
 use std.seq.{Seq}
+use std.list.{List}
+use std.optional.{Some}
+use std.convert.{Into}
 
 @role(variant_check)
 pub fn check_value(ok: Bool) = @intrinsic("value_check")

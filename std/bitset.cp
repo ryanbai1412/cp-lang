@@ -5,6 +5,13 @@
 use std.seq.{each, Seq, take_all, sum}
 use std.math.{bit, popcount, bit_width, ctz}
 use std.range.{Len}
+use std.list.{List}
+use std.ops.{max, min, BitAnd, BitOr, BitXor, Contains, Sub}
+use std.optional.{Some}
+use std.ranges.{Range}
+use std.stream.{rand}
+use std.domains.{Domain}
+use std.show.{Show}
 
 impl<D> Seq<D> for Bitset<D>:
     /// The positions in the set, in increasing order; `for v in b` walks the same sequence.

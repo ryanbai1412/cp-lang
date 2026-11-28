@@ -38,6 +38,9 @@ pub(super) struct Of<'a> {
     pub impls_from: usize,
     /// The module's written forms, which an impl's `let` may not read a `var` of.
     pub top: &'a [(ItemId, Form)],
+    /// The module declaring each derivable trait: a derived impl reads the names its trait's
+    /// module sees, whatever the struct's module imports (R08.1.6).
+    pub derived_from: &'a [(Sym, ModId)],
 }
 
 pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
@@ -50,9 +53,17 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
         asks,
         impls_from,
         top,
+        derived_from,
     } = of;
     let view = d.views[mid.0].clone();
-    let names = |n: Sym| view.get(&n).copied();
+    let trait_home = match (id, tr) {
+        (Some(_), TyForm::Named(t, _)) => derived_from.iter().find(|(s, _)| s == t),
+        _ => None,
+    };
+    let home_view = trait_home.map(|(_, m)| d.views[m.0].clone());
+    let names = |n: Sym| {
+        (view.get(&n).copied()).or_else(|| home_view.as_ref().and_then(|v| v.get(&n).copied()))
+    };
     // The impl's own type parameters: those it declares, then what its header and bounds write
     // that names nothing (`K` of `impl<S: Indexed<K, T>, K, T>`).
     let mut generics: Vec<Sym> = form.generics.clone();

@@ -40,9 +40,6 @@ pub(crate) use tyconv::{by_arity, fields_of_record, fill_defaults, record_of, un
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Default)]
 pub struct ModId(pub usize);
 
-/// The core's module: the language's own declarations, seen by every module.
-pub const CORE: ModId = ModId(0);
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SelfMode {
     None,
@@ -476,10 +473,11 @@ pub enum Role {
     DeriveFields,
     VariantCheck,
     MemoTable,
+    Record,
 }
 
 impl Role {
-    pub const ALL: [Role; 28] = [
+    pub const ALL: [Role; 29] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -508,6 +506,7 @@ impl Role {
         Role::DeriveFields,
         Role::VariantCheck,
         Role::MemoTable,
+        Role::Record,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -539,6 +538,7 @@ impl Role {
             Role::Pack => "pack",
             Role::DeriveFields => "derive_fields",
             Role::VariantCheck => "variant_check",
+            Role::Record => "record",
             // The role is named for the decorator that marks its tables.
             Role::MemoTable => crate::attrs::Decorator::MemoTable.name(),
         }
@@ -669,6 +669,9 @@ pub struct Decls {
     pub seen: Vec<bool>,
     /// The records std writes and no module the program loads does: out of sight with their impls.
     pub unseen_records: HashSet<StructId>,
+    /// The module marked `@role(record)`: every record shape's struct, row trait and `without`
+    /// trait is declared there (R02.5.2, R08.4.1).
+    pub record_home: Option<ModId>,
     /// Each trait's impls, and each member name's (its trait's or its own), in order.
     pub impls_by_trait: HashMap<TraitId, Vec<usize>>,
     pub impls_by_member: HashMap<Sym, Vec<usize>>,
@@ -900,11 +903,6 @@ impl Decls {
         fd.self_mode == SelfMode::Value
             && matches!(fd.owner, Some(Owner::Struct(s)) if self.s(s).cached.contains(&true))
     }
-    /// Whether a body in `m` that does not check is the pipeline's to fix rather than the
-    /// program's: until every std fn checks (`next_std_unchecked` 0), a library's is a refusal.
-    pub fn is_library(&self, m: ModId) -> bool {
-        !self.of_program(m)
-    }
     /// Whether `m` is the program or an inline module inside it.
     pub fn of_program(&self, mut m: ModId) -> bool {
         loop {
@@ -984,6 +982,7 @@ struct Scopes<'a> {
     imports: &'a [(ModId, forms::UseForm)],
     prelude: &'a HashMap<String, String>,
     within: &'a [Option<ModId>],
+    record_home: Option<ModId>,
 }
 
 fn view(
@@ -1013,6 +1012,7 @@ fn outer_view(
         imports,
         prelude,
         within,
+        record_home,
     } = *sc;
     let index = |m: &str| names.iter().position(|n| n == m);
     let export = |t: usize, n: &str| exported(sc, t, n);
@@ -1025,13 +1025,11 @@ fn outer_view(
             }
         }
     }
-    // Every other module uses what the core exports, as if by `use core.*`.
-    if mi != CORE.0 {
-        for n in exports(sc, CORE.0) {
-            if let Some(x) = export(CORE.0, &n) {
-                v.insert(n, x);
-            }
-        }
+    // A record shape's struct and traits are named by their fields, wherever they are written
+    // (R02.5.2, R08.4.1).
+    if let Some(h) = record_home {
+        let records = own[h.0].iter().filter(|(n, _)| n.starts_with('('));
+        v.extend(records.map(|(n, x)| (n.clone(), *x)));
     }
     let mut imported: HashMap<String, Named> = HashMap::new();
     for (_, s) in imports.iter().filter(|(m, _)| m.0 == mi) {

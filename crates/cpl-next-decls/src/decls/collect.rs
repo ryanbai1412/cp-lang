@@ -107,6 +107,27 @@ fn layer(
     let within = d.within.clone();
     let in_program: Vec<bool> = (0..n).map(|i| d.of_program(ModId(i))).collect();
     d.module_errors.resize(n, Vec::new());
+    // The module `@role(record)` marks holds every record shape's declarations (R02.5.2).
+    for (mi, m) in mods.iter().enumerate().skip(from) {
+        if crate::modules::module_role(&m.items) != Some(super::Role::Record) {
+            continue;
+        }
+        let Some(first) = m.items.first() else {
+            continue;
+        };
+        let dup = Msg::at(
+            first.id.at(Span::new(0, 0)),
+            Msg::verdict(
+                cpl_diag::codes::DUPLICATE_DEFINITION,
+                format!(
+                    "a second module filling `@role(record)`: `{}` fills it already",
+                    d.record_home.map_or("", |h| mods[h.0].name.as_str())
+                ),
+            ),
+        );
+        once(&mut d.record_home, ModId(mi), dup, &mut d.errors);
+    }
+    let home = d.record_home;
     d.seen = match base {
         Some(_) => seen.to_vec(),
         None => vec![true; n],
@@ -161,12 +182,12 @@ fn layer(
     let mut pending: Vec<(ModId, ItemId, &Form, Option<Named>)> = Vec::new();
     let mut op_methods: HashMap<TraitId, Sym> = HashMap::new();
     // The core's `use` lines, for its view made again over a program's records.
-    let mut imports: Vec<(ModId, UseForm)> = match from {
-        0 => Vec::new(),
-        _ => (mods[CORE.0].items.iter())
+    let mut imports: Vec<(ModId, UseForm)> = match home.filter(|h| from > 0 && h.0 < from) {
+        None => Vec::new(),
+        Some(h) => (mods[h.0].items.iter())
             .filter_map(|it| match it.item.decl() {
                 Some(cpl_next_syntax::ast::Decl::Use(u)) => {
-                    Some((CORE, UseForm::read(it.item.is_pub(), &u)))
+                    Some((h, UseForm::read(it.item.is_pub(), &u)))
                 }
                 _ => None,
             })
@@ -203,7 +224,8 @@ fn layer(
     // A record is the program's when a module it loads writes it.
     for (shape, by) in base.iter().flat_map(|b| &b.writers) {
         if !by.iter().any(|m| d.seen(*m)) && !written.contains(shape) {
-            if let Some(Named::Struct(s)) = own[CORE.0].get(&crate::records::name(shape)) {
+            let rec = home.and_then(|h| own[h.0].get(&crate::records::name(shape)));
+            if let Some(Named::Struct(s)) = rec {
                 d.unseen_records.insert(*s);
             }
         }
@@ -217,10 +239,10 @@ fn layer(
     let old_rows = rows.clone();
     rows.extend(new_rows.iter().cloned());
     rows.sort();
-    // The core's generated declarations: each new record shape's struct, row trait and
-    // `without` trait (R02.5.2, R08.4.1), as forms of the core's first item.
+    // The record home's generated declarations: each new record shape's struct, row trait and
+    // `without` trait (R02.5.2, R08.4.1), as forms of the home's first item.
     let at = Span::new(0, 0);
-    let records: Vec<(ItemId, Form)> = match mods[CORE.0].items.first() {
+    let records: Vec<(ItemId, Form)> = match home.and_then(|h| mods[h.0].items.first()) {
         Some(it) => {
             let syms = &mut d.syms;
             let mut fs: Vec<Form> = (crate::records::structs(&new_shapes, syms, at).into_iter())
@@ -236,7 +258,15 @@ fn layer(
             );
             fs.into_iter().map(|f| (it.id.clone(), f)).collect()
         }
-        None => Vec::new(),
+        None => {
+            if !(new_shapes.is_empty() && new_rows.is_empty() && new_forms.is_empty()) {
+                d.errors.push(Msg::verdict(
+                    cpl_diag::codes::UNRESOLVED_NAME,
+                    "a record shape needs the module `@role(record)` marks, and none does",
+                ));
+            }
+            Vec::new()
+        }
     };
     let std_read: &[Vec<(ItemId, Form)>] = base.map_or(&[], |b| &b.read[..]);
     let forms_of: Vec<&[(ItemId, Form)]> = (0..mods.len())
@@ -251,6 +281,23 @@ fn layer(
         .collect();
     let each = crate::synth::derive_each(&all);
     let cmp = comparisons(&all);
+    // Where each trait a derive or a role makes impls of is declared, whose names the impls read.
+    let derived_from: Vec<(Sym, ModId)> = (forms_of.iter().enumerate())
+        .flat_map(|(mi, fs)| fs.iter().map(move |(_, f)| (ModId(mi), f)))
+        .chain(
+            home.into_iter()
+                .flat_map(|h| records.iter().map(move |(_, f)| (h, f))),
+        )
+        .filter_map(|(m, f)| match f {
+            Form::Trait(t) => {
+                let roled = t.attrs.iter().any(|a| super::form_role(a).is_some());
+                let made = each.iter().any(|(e, _)| *e == t.name)
+                    || cmp.iter().any(|(c, _, _)| *c == t.name);
+                (roled || made).then_some((t.name, m))
+            }
+            _ => None,
+        })
+        .collect();
     let convert = crate::synth::convert_marked(&all);
     let positions = crate::records::positions(&all);
     // Only a derive that rebuilds its value copies the `@cache` fields.
@@ -262,7 +309,7 @@ fn layer(
     for (mi, fs) in forms_of.iter().enumerate() {
         // Std's modules get only what a program's records add.
         let ours = mi >= from;
-        let made_here = match (mi == CORE.0, ours) {
+        let made_here = match (home == Some(ModId(mi)), ours) {
             (true, _) => module_derived(&records, &each, &cmp, &mut d.syms),
             (false, true) => module_derived(fs, &each, &cmp, &mut d.syms),
             (false, false) => Vec::new(),
@@ -270,7 +317,7 @@ fn layer(
         let mut made: Vec<(ItemId, String, Form, Asks)> = (made_here.into_iter())
             .map(|(i, n, s, caches)| (i, n, Form::Impl(s), Asks::Fields { caches }))
             .collect();
-        if let (true, Some((id, _))) = (mi == CORE.0, records.first()) {
+        if let (true, Some((id, _))) = (home == Some(ModId(mi)), records.first()) {
             let syms = &mut d.syms;
             let impls = crate::records::domain_impls(positions.as_ref(), &new_shapes, syms, at);
             made.extend(impls.into_iter().map(|(n, imp)| {
@@ -333,7 +380,9 @@ fn layer(
     }
     // Each enum as structs: its own and one per variant (R02.7).
     let mut synth: Vec<Vec<(ItemId, Form)>> = vec![Vec::new(); mods.len()];
-    synth[CORE.0].extend(records.iter().cloned());
+    if let Some(h) = home {
+        synth[h.0].extend(records.iter().cloned());
+    }
     for mi in from..mods.len() {
         let mut twice = Vec::new();
         super::attr_rules::form_lints(&read[mi], &d.syms, &mut twice);
@@ -498,7 +547,7 @@ fn layer(
             let record = |n: &Named| matches!(n, Named::Struct(s) if d.structs[s.0].record);
             let found = own[mi]
                 .get(name)
-                .or_else(|| own[CORE.0].get(name).filter(|n| record(n)));
+                .or_else(|| home.and_then(|h| own[h.0].get(name)).filter(|n| record(n)));
             let n = match s {
                 Form::Impl(imp) => match &imp.self_ty {
                     TyForm::Named(_, args) => args.len(),
@@ -528,6 +577,7 @@ fn layer(
         imports: &imports,
         prelude,
         within: &within,
+        record_home: home,
     };
     remake_views(&mut d, &sc, from, core_too, false);
     // A product's record is a core struct, so the program's domains are placed once the views are.
@@ -558,6 +608,7 @@ fn layer(
                 imports: &imports,
                 prelude,
                 within: &within,
+                record_home: home,
             };
             let mut v = outer_view(&sc, m.0, in_program[m.0], None, None);
             let outside = v.get(&name).copied();
@@ -646,6 +697,7 @@ fn layer(
                     imports: &imports,
                     prelude,
                     within: &within,
+                    record_home: home,
                 };
                 remake_views(&mut d, &sc, from, core_too, false);
             }
@@ -668,6 +720,7 @@ fn layer(
                                 .unwrap_or(Asks::Fields { caches: false }),
                             impls_from,
                             top: forms_of[mi],
+                            derived_from: &derived_from,
                         };
                         if let super::trait_impl::Made::Wait =
                             super::trait_impl::trait_impl(&mut d, of)
@@ -756,6 +809,7 @@ fn layer(
         imports: &imports,
         prelude,
         within: &within,
+        record_home: home,
     };
     remake_views(&mut d, &sc, from, core_too, true);
     // Each fn's body as body_of reads it, a written body or an impl `let`'s value alike.
@@ -862,7 +916,7 @@ fn layer(
 /// program's views miss are kept with their module the `first` time each is made.
 fn remake_views(d: &mut Decls, sc: &Scopes, from: usize, core_too: bool, first: bool) {
     for mi in 0..sc.names.len() {
-        if mi < from && !(mi == CORE.0 && core_too) {
+        if mi < from && !(d.record_home == Some(ModId(mi)) && core_too) {
             continue;
         }
         let mut missed = Vec::new();

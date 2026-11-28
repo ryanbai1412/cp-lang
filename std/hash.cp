@@ -7,6 +7,15 @@
 //! example: `var h = HashMap<Int, Int>(); h[1] = 10; h.get(1) == Some(10) and h.get(2) == None`
 
 use std.memo.{MemoTable}
+use std.list.{List, Str}
+use std.ops.{Eq, Contains}
+use std.optional.{Some}
+use std.show.{write, Show}
+use std.tuple.{Tuple1, Tuple2, Tuple3, Tuple4}
+use std.convert.{Into}
+use std.default.{Default}
+use std.io.{io}
+use std.seq.{IndexMut, IndexSet}
 
 /// A value's 64-bit hash: equal values hash equal. `Int`, `I128`, `U64`, `Char`, `Bool` and
 /// `Str` have it here (splitmix64, decision 28.8); a struct gets it from `hash_fields`, and

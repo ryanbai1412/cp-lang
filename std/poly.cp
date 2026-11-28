@@ -12,6 +12,12 @@ use std.mod.{Mod}
 use std.ntt.{convolve, ntt}
 use std.range.{Len}
 use std.seq.{Indexed}
+use std.domains.{Domain}
+use std.list.{List}
+use std.ops.{Add, Div, Eq, Mul, One, Sub, Zero, max, min, Neg}
+use std.optional.{Some}
+use std.show.{Show}
+use std.stream.{rand}
 
 /// The formal derivative `a'(x)`: coefficient `k` is `(k + 1) * a[k + 1]`. Length
 /// `max(0, a.len - 1)`, trailing zeros kept.

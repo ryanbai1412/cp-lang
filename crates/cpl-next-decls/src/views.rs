@@ -631,7 +631,7 @@ impl Names for Decls {
     }
     fn exporters(&self, name: Sym) -> Vec<ModId> {
         (0..self.module_names.len())
-            .filter(|&i| ModId(i) != crate::decls::CORE && self.of_std[i])
+            .filter(|&i| self.of_std[i])
             .filter(|&i| self.exports[i].get(&name).is_some_and(|e| e.1))
             .map(ModId)
             .collect()

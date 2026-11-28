@@ -7,6 +7,9 @@ use std.tuple.{Tuple1, Tuple2, Tuple3, Tuple4, Tuple5, Tuple6, Tuple7, Tuple8, T
 
 use std.raw.{raw_get, check_range}
 use std.io.{io}
+use std.domains.{Domain}
+use std.list.{Array, List, Str}
+use std.optional.{Some}
 /// Writes the first `n` characters of `text` to standard output.
 
 /// How a value prints, and how an interpolated string formats it (R10.3). `Bool` and `?T` are

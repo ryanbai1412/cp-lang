@@ -5,9 +5,13 @@
 //! example: `let r = 2..8 by 3; r.len == 2 and r[5] == 5`
 use std.seq.{IndexGet, Keyed, Positional, Indexed, Slice}
 use std.raw.{check_key, check_range}
-use std.ops.{By}
-use std.show.{Fmt}
+use std.ops.{By, Contains, Eq}
+use std.show.{Fmt, Show}
 use std.range.{RealRange}
+use std.domains.{Cut, Domain}
+use std.optional.{Some}
+use std.clone.{Clone}
+use std.list.{Str}
 
 /// `lo..hi by step` as a value: `n` values from `lo`, `step` apart. It walks both ways, and its
 /// `len`, `first` and `last` are O(1) (R01.8.4). `D` is the kind of its ends; `lo` and `by`

@@ -2,6 +2,7 @@
 //! Core re-exports it, so no module imports it.
 //!
 //! example: `let xs = [1, 2]; var ys = xs.clone(); ys.push(3); xs.len == 2`
+use std.domains.{Domain}
 
 /// `x.clone()`: the explicit deep copy, O(size) (R05.2.2). Tuples, records and structs whose
 /// fields all have it get it field by field unless they write their own (R08.1.6).

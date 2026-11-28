@@ -7,6 +7,10 @@
 //! example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
 
 use std.seq.{each, all, Bidir, Col, IndexGet, Indexed, Keyed, Positional, Row, Seq, Sized, Slice}
+use std.domains.{Ordered, Domain}
+use std.list.{List, Str}
+use std.ranges.{Range}
+use std.show.{Show}
 
 const DR = [-1, -1, 0, 1, 1, 1, 0, -1]
 const DC = [0, 1, 1, 1, 0, -1, -1, -1]
