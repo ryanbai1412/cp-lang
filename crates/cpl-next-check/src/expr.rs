@@ -318,10 +318,7 @@ impl<'a> Cx<'a> {
         let named = (ops.iter().copied()).find(|&tr| self.d.seen(self.d.t(tr).module));
         let Some((named, method)) = named.and_then(|tr| Some((tr, self.d.operator_method(tr)?.0)))
         else {
-            let msg = format!(
-                "`{}` needs an `@operator(\"{token}\")` trait (R08.1.5)",
-                op.to_string()
-            );
+            let msg = format!("`{}` needs an `@operator(\"{token}\")` trait (R08.1.5)", op);
             self.err(span, Msg::verdict(cpl_diag::codes::MISSING_IMPL, msg));
             return mk(TK::Error, Ty::Error);
         };
@@ -420,7 +417,7 @@ impl<'a> Cx<'a> {
                         cpl_diag::codes::MISSING_IMPL,
                         format!(
                             "`{shown}` has no `impl {trait_name}`, which `{}` needs (R08.1.5)",
-                            op.to_string()
+                            op
                         ),
                     ),
                 );
@@ -880,7 +877,7 @@ impl<'a> Cx<'a> {
             return Self::error_node(span);
         };
         let written: Vec<next::Arg> = c.args().map(|l| l.args().collect()).unwrap_or_default();
-        let args: Vec<CallArg> = written.iter().map(|a| CallArg::of(a)).collect();
+        let args: Vec<CallArg> = written.iter().map(CallArg::of).collect();
         let lone = match &written[..] {
             [a] if a.label().is_none() => a.value(),
             _ => None,
@@ -1197,8 +1194,6 @@ pub(super) fn block(pre: Vec<TStmt>, e: TExpr) -> TExpr {
         span,
     }
 }
-
-/// Whether block `b` ends in a bare `None`, which takes its type from the other branches.
 
 /// A branch whose value is a bare `None`.
 fn gives_none(b: &next::ArmBody) -> bool {
@@ -1684,7 +1679,7 @@ impl Cx<'_> {
         if let Some(p) = self.type_path(&next::Expr::Tuple(t.clone())) {
             return self.domain_value(p, span);
         }
-        let args: Vec<call::CallArg> = xs.iter().map(|x| call::CallArg::plain(x)).collect();
+        let args: Vec<call::CallArg> = xs.iter().map(call::CallArg::plain).collect();
         let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
         let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
         self.construct(d, targs, sets, &args, span, want)
