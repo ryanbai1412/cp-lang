@@ -80,6 +80,7 @@ impl Cx<'_> {
                     generics: &self.b.generics,
                     doms: &self.b.doms,
                     scoped: &scoped,
+                    item: Some(self.b.item.clone()),
                 };
                 let (t, errs) = decls::range_type(&at, re);
                 for e in errs {
@@ -410,7 +411,7 @@ impl Cx<'_> {
             let next::GenericArg::Type(t) = t else {
                 return None;
             };
-            a.push(self.body_ty(&t, pre));
+            a.push(self.body_targ(&t, pre));
         }
         let (d, a) = decls::struct_args(self.tables, d, a);
         let sets = (0..self.shapes.n_sets(d)).map(|_| self.new_set()).collect();
@@ -453,6 +454,17 @@ impl Cx<'_> {
         }
     }
     /// A name that is a domain: one declared in a body, or a type parameter used as one.
+    /// `P` of `Mod<P>`, a value parameter, read as a value (R08.2.4).
+    pub(super) fn value_param(&self, n: &str, span: Span) -> Option<TExpr> {
+        let s = self.b.syms.of(self.syms, n)?;
+        let p = self.b.generics.iter().position(|g| *g == s)?;
+        let f = self.b.decl?;
+        self.facts.value_params(f).contains(&p).then(|| TExpr {
+            kind: TK::TypeValue(Ty::Param(p)),
+            ty: Ty::Int,
+            span,
+        })
+    }
     pub(super) fn domain_named(&self, n: &str) -> Option<Ty> {
         let sym = self.b.syms.of(self.syms, n);
         // A fn's own type parameter is nearer than any domain declared outside it.
@@ -473,6 +485,7 @@ impl Cx<'_> {
                 generics: &self.b.generics,
                 doms: &self.b.doms,
                 scoped: &scoped,
+                item: Some(self.b.item.clone()),
             };
             let (t, _) = decls::alias_type(&at, id, Vec::new());
             return Some(t).filter(|t| self.is_domain(t));

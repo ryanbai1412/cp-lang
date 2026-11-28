@@ -437,7 +437,7 @@ fn layer(
                     ty,
                     value: Some(init),
                     ..
-                } if mid != d.program => {
+                } => {
                     let name = d.text(*name).to_string();
                     own[mi].insert(name.clone(), Named::Const(ConstId(d.consts.len())));
                     let ty = ty.clone();
@@ -448,6 +448,11 @@ fn layer(
                         ty,
                         init: init.clone(),
                     });
+                    // The program's top level still runs in order: a directive on the `const`
+                    // (`@!multitest`) divides the file there.
+                    if mid == d.program {
+                        main.push(item.clone());
+                    }
                 }
                 Form::Use(u) => imports.push((mid, u.clone())),
                 Form::Context { name, fields } => {
@@ -768,6 +773,7 @@ fn layer(
         }
     }
     domain_params(&mut d, fns_from, &bodies);
+    super::value_params::infer_values(&mut d.fns, &d.structs, &d.impls, fns_from);
     fresh_results(&mut d);
     let unmet: Vec<_> = (d.impls.iter().skip(impls_from))
         .flat_map(|im| supertraits_unmet(&d, im))

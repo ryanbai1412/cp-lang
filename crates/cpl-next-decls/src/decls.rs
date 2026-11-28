@@ -21,6 +21,7 @@ mod names;
 mod structs;
 mod trait_impl;
 mod tyconv;
+mod value_params;
 use crate::views::Shapes;
 pub use collect::{body_of, collect, factor_name, prepare, Prepared};
 use domains::{domain_params, fresh_results};
@@ -32,7 +33,8 @@ pub use impls::{
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{
-    alias_type, body_type, literal_int, prim_type, range_type, static_axis, struct_args, BodyScope,
+    alias_type, body_type, literal_int, prim_type, range_type, static_axis, struct_args,
+    targ_kinds, BodyScope,
 };
 pub(crate) use tyconv::{by_arity, fields_of_record, fill_defaults, record_of, unnamed};
 
@@ -76,6 +78,8 @@ pub struct FnDecl {
     pub self_ty: Option<Ty>,
     /// Type parameters: the owner's first, then its own.
     pub generics: Vec<Sym>,
+    /// Its generics that each take one value, an `Int` (`P` of `Mod<P>`, R08.2.4).
+    pub value_params: Vec<usize>,
     pub bounds: Vec<(usize, TraitRef)>,
     /// Without `self`.
     pub params: Vec<Param>,
@@ -156,6 +160,8 @@ pub struct StructDecl {
     /// A record's struct, `(lo:, hi:)` (R02.5.2), shown and matched by its fields.
     pub record: bool,
     pub generics: Vec<String>,
+    /// Its `const P: Int` generics, each one value (R08.2.4).
+    pub value_params: Vec<usize>,
     pub fields: Vec<(Sym, Ty)>,
     /// Per field: declared with `var`, so assignable after construction.
     pub var_fields: Vec<bool>,
@@ -1391,7 +1397,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
     cx.ret_slots = Some(0);
     // `-> (domain C, [C]T)`: each `domain C` is a domain of its own, which the result names.
     let mut ret_doms = doms.clone();
-    let binders = fresh_binders(f.ret.as_ref());
+    let binders = forms::fresh_binders(f.ret.as_ref());
     for (_, c) in &binders {
         let t = d.new_dom(&item);
         if let Ty::Dom(i) = t {
@@ -1733,6 +1739,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
         self_mode,
         self_name: d.syms.text(self_name).to_string(),
         self_ty,
+        value_params: value_params::positions(&f.value_params, &generics),
         generics,
         bounds,
         params,
@@ -1978,25 +1985,6 @@ fn bound_ref(
         }
     }
     out.push((i, r));
-}
-
-/// The `domain C` slots of a result `(domain C, [C]T)` or `(domain C, comp: [V]C)`: each one's
-/// place and name.
-fn fresh_binders(ret: Option<&forms::TyForm>) -> Vec<(usize, String)> {
-    use cpl_next_syntax::ast::Type;
-    let binder = |t: Option<Type>| match t {
-        Some(Type::DomainBinder(b)) => b.name().map(|n| n.text().to_string()),
-        _ => None,
-    };
-    match ret {
-        Some(forms::TyForm::Written(Type::Record(r))) => (r.fields().enumerate())
-            .filter_map(|(k, x)| Some((k, binder(x.ty())?)))
-            .collect(),
-        Some(forms::TyForm::Written(Type::Tuple(ts))) => (ts.elems().into_iter().enumerate())
-            .filter_map(|(k, (_, t))| Some((k, binder(Some(t))?)))
-            .collect(),
-        _ => Vec::new(),
-    }
 }
 
 /// The role a `@role(name)` attribute names, when `name` is one of R11.6.1's.

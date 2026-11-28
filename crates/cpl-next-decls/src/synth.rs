@@ -85,6 +85,7 @@ pub(crate) fn enum_structs(
 ) -> Vec<crate::decls::forms::StructForm> {
     use crate::decls::forms::{FieldForm, StructForm};
     let one = |name: Sym, attrs: Vec<AttrForm>, fields: Vec<FieldForm>, methods| StructForm {
+        value_params: Vec::new(),
         name,
         attrs,
         record: false,
@@ -249,6 +250,7 @@ pub(crate) fn module_derived(
 /// A made fn: one of the language's own, with its signature from the trait it meets.
 fn synth_fn(name: Sym, params: Vec<ParamForm>, body: SynthBody, span: cpl_diag::Span) -> FnForm {
     FnForm {
+        value_params: Vec::new(),
         name,
         public: false,
         attrs: Vec::new(),
@@ -362,6 +364,7 @@ pub(crate) fn field_getter(
 ) -> FnForm {
     let this = syms.intern("self");
     FnForm {
+        value_params: Vec::new(),
         name: field,
         public: false,
         attrs: vec![AttrForm {
@@ -396,6 +399,7 @@ pub(crate) fn field_getter(
 /// member of that name (R04.2.26).
 pub(crate) fn value_fn(l: &crate::decls::forms::LetForm) -> Option<FnForm> {
     Some(FnForm {
+        value_params: Vec::new(),
         name: l.name,
         public: false,
         attrs: vec![AttrForm {
@@ -423,6 +427,7 @@ pub(crate) fn field_requirement(
 ) -> FnForm {
     let this = syms.intern("self");
     FnForm {
+        value_params: Vec::new(),
         name: field,
         public: true,
         attrs: vec![AttrForm {
@@ -620,6 +625,7 @@ pub(crate) fn enum_conversions(
         let func =
             |getter: bool, name: Sym, params: Vec<ParamForm>, ret: TyForm, body: SynthBody| {
                 FnForm {
+                    value_params: Vec::new(),
                     name,
                     public: false,
                     attrs: match getter {

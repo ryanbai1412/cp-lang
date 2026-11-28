@@ -557,7 +557,7 @@ impl<'a> Cx<'a> {
         }
         let mut pre = Vec::new();
         let given = (written.iter())
-            .map(|t| self.body_ty(t, &mut pre))
+            .map(|t| self.body_targ(t, &mut pre))
             .collect::<Vec<_>>();
         let given = self.shapes.with_defaults_of(d, &given);
         self.is_domain(&Ty::Struct(d, given, Vec::new()))
@@ -1013,7 +1013,7 @@ impl<'a> Cx<'a> {
                     self.no_targs(name, written_targs, span);
                     let mut pre = Vec::new();
                     let given: Vec<Ty> = (written.iter())
-                        .map(|t| self.body_ty(t, &mut pre))
+                        .map(|t| self.body_targ(t, &mut pre))
                         .collect();
                     let given = self.shapes.with_defaults_of(e, &given);
                     let v = self.variant(e, i, given, call.unwrap_or(&[]), span);
@@ -1039,7 +1039,7 @@ impl<'a> Cx<'a> {
             if member_of(&self.items.s(d).methods, name).is_none() && !self.walks_for(d, name) {
                 let mut pre = Vec::new();
                 let given = (written.iter().take(self.items.s(d).generics.len()))
-                    .map(|t| self.body_ty(t, &mut pre))
+                    .map(|t| self.body_targ(t, &mut pre))
                     .collect::<Vec<_>>();
                 let t = Ty::Struct(d, self.shapes.with_defaults_of(d, &given), Vec::new());
                 if let Some(e) = self.type_static(t, name, None, span) {
@@ -1064,7 +1064,7 @@ impl<'a> Cx<'a> {
                     // `Str.default()`: a self-less fn of a trait the struct implements.
                     let mut pre = Vec::new();
                     let given = (written.iter().take(s.generics.len()))
-                        .map(|t| self.body_ty(t, &mut pre))
+                        .map(|t| self.body_targ(t, &mut pre))
                         .collect::<Vec<_>>();
                     let t = Ty::Struct(d, self.shapes.with_defaults_of(d, &given), Vec::new());
                     if let Some(e) = self.type_static(t, name, Some(args), span) {
@@ -1098,7 +1098,7 @@ impl<'a> Cx<'a> {
                 }
                 let mut pre = Vec::new();
                 let given: Vec<Ty> = (written.iter().take(s.generics.len()))
-                    .map(|t| self.body_ty(t, &mut pre))
+                    .map(|t| self.body_targ(t, &mut pre))
                     .collect();
                 let given = self.shapes.with_defaults_of(d, &given);
                 let f = self.fnref(m, given, Vec::new());

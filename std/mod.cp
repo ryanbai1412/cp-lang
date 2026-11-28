@@ -16,7 +16,7 @@ use std.range.{Len}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
 /// `+ - *` are \(O(1)\); `/` and `inv` are \(O(\log P)\) and need `gcd(x, P) == 1`.
-pub struct Mod<P>(pub v: 0..P):
+pub struct Mod<const P: Int>(pub v: 0..P):
     /// The modulus: `Z.MOD`.
     const MOD = P
 

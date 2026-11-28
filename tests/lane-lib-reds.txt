@@ -1,6 +1,5 @@
 # lane-j-check's red tests (scripts/lane-lib-tests.py): shrink-only, target 0 before
 # slice 1 lands. `<crate> <test>  # owner, the commit that broke it, the failure`.
-cpl-next tests::a_lambda_names_the_copy_that_makes_it  # triage: E0801 `io.base` is set to a constant
 cpl-next tests::a_lends_without_its_arrow_offers_to_insert_it  # triage: E0503 from syntax, no E0103 fix
 cpl-next tests::a_refusal_prints_its_feature_text  # triage: slice: type Literal
 cpl-next tests::facts_leave_out_only_the_checks_they_prove  # triage: RangeStore 3 facts gone

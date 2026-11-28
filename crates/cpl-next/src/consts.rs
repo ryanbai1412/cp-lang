@@ -13,6 +13,7 @@ use cpl_next_ir::ops::{Fault, Scalar};
 use cpl_next_ir::prog::CTy;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_syntax::ast::{self as next, AstNode};
+use cpl_next_syntax::TokenKind;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
@@ -154,6 +155,11 @@ impl<'a> Evaluator<'a> {
                 continue;
             };
             if let (Some(name), Some(init)) = (c.name(), c.value()) {
+                let read = (k.clone(), init.syntax().span());
+                if named.contains(name.text()) && self.busy.borrow().contains(&read) {
+                    self.cyclic.borrow_mut().insert(read);
+                    continue;
+                }
                 if named.contains(name.text())
                     && matches!(
                         check::Consts::value(self, k.at(init.syntax().span())),
@@ -302,26 +308,39 @@ fn scalar(ty: Option<&CTy>, w: &[u64]) -> Option<Scalar> {
 }
 
 impl check::Consts for Evaluator<'_> {
+    /// One asked for by a check run to work out another constant, and decided at run time, is
+    /// that outer check's to say.
     fn value(&self, at: SourceId) -> Value {
         if self.batching.get() {
-            return Err(ConstError::Open);
+            return Err(ConstError::Pending);
         }
         let key = (at.item.clone(), at.span);
         if let Some(v) = self.done.borrow().get(&key) {
-            return v.clone();
+            return pending(&self.busy.borrow(), v.clone());
         }
         if self.batch.borrow().is_none() {
             let b = self.batch();
             *self.batch.borrow_mut() = Some(b);
         }
         if let Some(v) = self.batch.borrow().as_ref().and_then(|b| b.get(&key)) {
-            return v.clone();
+            return pending(&self.busy.borrow(), v.clone());
         }
+        // A check run to work out this constant that asks for it again (a signature's
+        // `Mod<P>` while `P` is worked out) has no value for it yet; only reading it is a cycle.
         if !self.busy.borrow_mut().insert(key.clone()) {
-            self.cyclic.borrow_mut().insert(key);
-            return Err(ConstError::Open);
+            return Err(ConstError::Pending);
         }
         let mut v = match self.expr_at(&at) {
+            // A literal is its value: no program is checked to read it (std's `NTT_P1`, which
+            // its own signatures' `Mod<NTT_P1>` ask for while std is checked).
+            Some(next::Expr::Literal(l))
+                if l.token().is_some_and(|t| t.kind() == TokenKind::Int) =>
+            {
+                let t = l.token().map(|t| t.text().to_string()).unwrap_or_default();
+                Ok(cpl_next_syntax::literal::int_value(&t)
+                    .and_then(|v| i64::try_from(v).ok())
+                    .map(Scalar::Int))
+            }
             Some(e) => self.run(&at.item, &e),
             None => {
                 let what = "a constant's expression is not in its item";
@@ -340,7 +359,16 @@ impl check::Consts for Evaluator<'_> {
             v = Err(ConstError::Failed(Box::new(Msg::at(at, msg))));
         }
         self.done.borrow_mut().insert(key, v.clone());
-        v
+        pending(&self.busy.borrow(), v)
+    }
+}
+
+/// A constant decided at run time, asked for by a check run to work out other constants
+/// (`busy` is not empty), is that outer check's to say.
+fn pending<K>(busy: &HashSet<K>, v: Value) -> Value {
+    match v {
+        Err(ConstError::Open) if !busy.is_empty() => Err(ConstError::Pending),
+        v => v,
     }
 }
 

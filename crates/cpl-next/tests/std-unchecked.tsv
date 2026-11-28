@@ -1,7 +1,7 @@
 std.algebra	53
 std.bag	11
 std.beats	0
-std.bitset	13
+std.bitset	1
 std.clone	0
 std.convert	0
 std.default	0
@@ -31,14 +31,14 @@ std.matrix	54
 std.mem	0
 std.memo	0
 std.mo	0
-std.mod	48
-std.ntt	104
+std.mod	1
+std.ntt	26
 std.ops	0
 std.opt	0
 std.optional	0
 std.pair	0
 std.persistent	11
-std.poly	79
+std.poly	46
 std.prefix	0
 std.rand	5
 std.range	2

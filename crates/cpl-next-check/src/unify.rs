@@ -112,8 +112,74 @@ impl<'a> Cx<'a> {
             other => other.clone(),
         }
     }
+    /// The value a constant type argument is: the expression written for it is worked out
+    /// once, by the driver (decision 688).
+    pub(super) fn const_int(&self, c: &cpl_next_ir::ty::ConstArg) -> Option<i64> {
+        match c {
+            cpl_next_ir::ty::ConstArg::Int(k) => Some(*k),
+            cpl_next_ir::ty::ConstArg::At(at) => match self.values.value(at.clone()) {
+                Ok(Some(ops::Scalar::Int(k))) => Some(k),
+                _ => None,
+            },
+        }
+    }
+    /// The errors working out `t`'s constant arguments gives, each said where it is written:
+    /// one that traps, or one whose value is only known as the program runs.
+    pub(super) fn const_errors(&mut self, t: &Ty) {
+        use cpl_next_ir::ty::{ConstArg, End};
+        match t {
+            Ty::Const(ConstArg::At(at)) => {
+                let m = match self.values.value(at.clone()) {
+                    Ok(Some(ops::Scalar::Int(_))) => return,
+                    Err(ConstError::Pending) => return,
+                    Err(ConstError::Failed(m)) => *m,
+                    Ok(_) | Err(ConstError::Open) => Msg::at(
+                        at.clone(),
+                        Msg::verdict(
+                            cpl_diag::codes::TYPE_MISMATCH,
+                            "a type's value argument is an `Int` known as the program compiles, and this one is not",
+                        ),
+                    ),
+                };
+                if !self.errors.iter().any(|x| x.at == m.at && x.code == m.code) {
+                    self.errors.push(m);
+                }
+            }
+            Ty::RangeEnds { lo, hi, .. } => {
+                for e in [lo, hi] {
+                    if let End::Of(t) = e {
+                        self.const_errors(t);
+                    }
+                }
+            }
+            Ty::RangeTo(t, ..) | Ty::Raw(t) | Ty::Ref(t) | Ty::Lent(t) | Ty::Mut(t) => {
+                self.const_errors(t)
+            }
+            Ty::Struct(_, ts, _) => ts.iter().for_each(|t| self.const_errors(t)),
+            Ty::Fn(ps, r, _) => {
+                ps.iter().for_each(|t| self.const_errors(t));
+                self.const_errors(r);
+            }
+            _ => {}
+        }
+    }
     pub(super) fn zonk(&self, t: &Ty) -> Ty {
         match self.shallow(t) {
+            Ty::Const(c) => match self.const_int(&c) {
+                Some(k) => Ty::Const(cpl_next_ir::ty::ConstArg::Int(k)),
+                None => Ty::Error,
+            },
+            Ty::RangeEnds { lo, hi, inclusive } => {
+                use cpl_next_ir::ty::End;
+                let end = |e: End| match e {
+                    End::Of(t) => match self.zonk(&t) {
+                        Ty::Const(cpl_next_ir::ty::ConstArg::Int(k)) => End::Lit(k),
+                        t => End::Of(Box::new(t)),
+                    },
+                    e => e,
+                };
+                Ty::range_ends(end(lo), end(hi), inclusive)
+            }
             Ty::Var(_) => Ty::Error,
             Ty::Raw(e) => Ty::Raw(Box::new(self.zonk(&e))),
             Ty::RangeTo(e, m, lo, k) => Ty::RangeTo(Box::new(self.zonk(&e)), m, lo, k),
@@ -341,6 +407,12 @@ impl<'a> Cx<'a> {
                     .any(|&p| p == (*x, *y) || p == (*y, *x)) =>
             {
                 true
+            }
+            (Ty::Const(x), Ty::Const(y)) => {
+                x == y
+                    || self
+                        .const_int(x)
+                        .is_some_and(|k| self.const_int(y) == Some(k))
             }
             (Ty::Raw(x), Ty::Raw(y)) | (Ty::Mut(x), Ty::Mut(y)) => self.unify(x, y),
             (Ty::RangeTo(x, m, a, k), Ty::RangeTo(y, n, b, j)) => {
@@ -798,6 +870,20 @@ impl<'a> Cx<'a> {
     /// A range type's end as a run-time value: a constant, or the global of the top-level `let`
     /// it names (R02.10.3), made before any body is checked; `less` is one below it, for an
     /// excluded end.
+    /// Whether a range's ends are known as the program runs: a top-level `let`, a value
+    /// parameter (`0..P` of `Mod<P>`) or a constant one is given.
+    fn ends_known(&self, lo: &cpl_next_ir::ty::End, hi: &cpl_next_ir::ty::End) -> bool {
+        use cpl_next_ir::ty::End;
+        [lo, hi].iter().any(|e| match e {
+            End::Global { .. } => true,
+            End::Of(t) => self.value_end(t) || matches!(self.shallow(t), Ty::Const(_)),
+            End::Lit(_) => false,
+        })
+    }
+    /// `P` in a range's end, where `P` is a value parameter of the fn being checked.
+    fn value_end(&self, t: &Ty) -> bool {
+        matches!(self.shallow(t), Ty::Param(p) if (self.b.decl).is_some_and(|f| self.facts.value_params(f).contains(&p)))
+    }
     fn range_end(&mut self, end: &cpl_next_ir::ty::End, less: bool, span: Span) -> TExpr {
         use cpl_next_ir::ty::End;
         let mk = |kind| TExpr {
@@ -805,9 +891,19 @@ impl<'a> Cx<'a> {
             ty: Ty::Int,
             span,
         };
+        let lit = |k: i64| mk(TK::Int(if less { k.saturating_sub(1) } else { k }));
+        if let End::Of(t) = end {
+            if let Ty::Const(c) = self.shallow(t) {
+                return match self.const_int(&c) {
+                    Some(k) => lit(k),
+                    None => Self::error_node(span),
+                };
+            }
+        }
         let at = match end {
-            End::Lit(k) => return mk(TK::Int(if less { k.saturating_sub(1) } else { *k })),
+            End::Lit(k) => return lit(*k),
             End::Global { id, .. } => mk(TK::Var(VarRef::Global(self.top_slots[id.0]))),
+            End::Of(t) if self.value_end(t) => mk(TK::TypeValue((**t).clone())),
             End::Of(_) => {
                 self.err(span, Unbuilt::RangeTypeOutsideBody);
                 return Self::error_node(span);
@@ -832,7 +928,7 @@ impl<'a> Cx<'a> {
                 let end = |e: Option<VarRef>| e.map(|e| mk(TK::Var(e), Ty::Int));
                 (end(self.ranges[r].lo), end(self.ranges[r].hi))
             }
-            Ty::RangeEnds { lo, hi, inclusive } if ends_at_global(&lo, &hi) => (
+            Ty::RangeEnds { lo, hi, inclusive } if self.ends_known(&lo, &hi) => (
                 Some(self.range_end(&lo, false, span)),
                 Some(self.range_end(&hi, !inclusive, span)),
             ),
@@ -1055,7 +1151,7 @@ impl<'a> Cx<'a> {
                 TExpr { ty: want_s, ..v }
             }
             (h, Ty::RangeEnds { lo, hi, inclusive })
-                if (*h == Ty::Int || h.is_int_range()) && ends_at_global(lo, hi) =>
+                if (*h == Ty::Int || h.is_int_range()) && self.ends_known(lo, hi) =>
             {
                 let (lo, hi, inclusive) = (lo.clone(), hi.clone(), *inclusive);
                 // A top-level `let` end lies in its declared range: a constant outside every
@@ -1446,10 +1542,4 @@ pub(super) fn known_range(
             _ => None,
         },
     }
-}
-
-/// Whether a range type ends at a top-level `let`, read as it runs (R02.10.3).
-fn ends_at_global(lo: &cpl_next_ir::ty::End, hi: &cpl_next_ir::ty::End) -> bool {
-    use cpl_next_ir::ty::End;
-    [lo, hi].iter().any(|e| matches!(e, End::Global { .. }))
 }

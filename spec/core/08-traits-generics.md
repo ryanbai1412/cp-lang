@@ -197,7 +197,18 @@ struct Pair<A, B = Int>: a: A, b: B
   E0806, never an unknown type (decision 592). (R08.2.11)
 - `domain` is a kind on type parameters; `const N: Int` parameters take
   compile-time values (`Mod<998244353>`, `SegTree<0..=4e9>`); range
-  types are types and may be arguments. (R08.2.4)
+  types are types and may be arguments. A type writes its value
+  parameters, `struct Mod<const P: Int>(pub v: 0..P)`; a fn's or an
+  impl's is inferred from where it is passed, as the domain kind is
+  (`fn inv<P>(x: Mod<P>)`, `impl Show for Mod<P>`). The argument is a
+  constant: a literal, a `const`'s name or an expression of those
+  (`Mod<1e9 + 7>`), and the body reads the parameter as that `Int`
+  (`x % P`). A value read when the program runs is not one: `Mod<p>`
+  with a `p` from input is E0302, with a fix that writes
+  `type Z = Mod(p)`, the runtime modulus (decision 232). Neither is a
+  range type: `5..=5` is a type, so `Mod<5..=5>` is E0302, never
+  `Mod<5>`. Likewise a type is not a value, nor a value a type
+  (decision 688). (R08.2.4)
 - Type-parameter defaults fill omitted trailing arguments. Explicit arguments on a static call, `SegTree<V, Int>.of(max, f)` or `Box<Int>.empty()`, fix those parameters before inference, with the defaults filling the rest, so they decide the result type as they do on a constructor. A generic `fn` or type named as a value with its arguments, `id<Int>` or `Pair<Int>`, is the closure that calls it with them, as `id` alone is; a name without type parameters takes none (E0302). (R08.2.5)
 - **Trait aliases** name a bundle of bounds:
   `trait WeightedNext<V, W> = Next<V> where Arc: Target<V> + Weighted<W>`. (R08.2.6)

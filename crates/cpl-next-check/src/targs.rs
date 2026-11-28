@@ -64,7 +64,9 @@ impl Cx<'_> {
             return err;
         };
         let mut pre = Vec::new();
-        let given: Vec<Ty> = (targs.iter()).map(|t| self.body_ty(t, &mut pre)).collect();
+        let given: Vec<Ty> = (targs.iter())
+            .map(|t| self.body_targ(t, &mut pre))
+            .collect();
         let given = self.written_targs(d, Vec::new(), &given, span);
         let f = self.fnref(d, given, Vec::new());
         let v = self.fn_item_value(f, span);
@@ -98,7 +100,9 @@ impl Cx<'_> {
             };
         };
         let mut pre = Vec::new();
-        let given: Vec<Ty> = (targs.iter()).map(|t| self.body_ty(t, &mut pre)).collect();
+        let given: Vec<Ty> = (targs.iter())
+            .map(|t| self.body_targ(t, &mut pre))
+            .collect();
         let name = Called::written(self.syms, name.text(), name.span());
         let v = self.member(&base, name, Some(args), span, want, &given);
         block(pre, v)
@@ -142,6 +146,9 @@ impl Cx<'_> {
             return ts;
         }
         ts.extend(written.iter().cloned());
+        for e in decls::targ_kinds(&fd.name, &fd.value_params, &ts) {
+            self.err(span, e);
+        }
         ts
     }
 }

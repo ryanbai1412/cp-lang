@@ -1388,6 +1388,18 @@ def next_std_quiet_errors(root: Path) -> list[str]:
     return [f"{m}: error {i + 1}" for m, n in rows for i in range(int(n))]
 
 
+CONST_EVAL_RE = re.compile(r"\bimpl(?:<[^>]*>)?\s+[\w:]*\bConsts\s+for\b|\buse\s+[\w:]*ops::\{[^}]*\bfold\b|\bops::fold\(")
+
+
+def next_const_evaluators(root: Path) -> list[str]:
+    """Files of the new pipeline that work out a constant expression's value at compile time: the
+    shared `Consts` evaluator check owns (cpl-next consts.rs, decision 688), and each place that
+    folds syntax through `ops::fold` itself (a range type's end, a jagged parameter's reach).
+    Two evaluators can disagree on what is constant; at 1 every constant goes through `Consts`."""
+    return [_rel(root, p) for p in _rs_files(root, *_next_srcs(root), tests=False)
+            if any(CONST_EVAL_RE.search(l.split("//")[0]) for l in _lines(p))]
+
+
 def next_core_privilege(root: Path) -> list[str]:
     """Checks in the new pipeline that give core's module a power no other library has
     (`is_library`): core is a library like any other, so 0 is when its types and traits live
@@ -5396,6 +5408,7 @@ COUNTERS = {
     "next_error_typed": ("programs cases linking an instance that holds an error type (Core)", next_error_typed, True),
     "next_std_unchecked": ("std modules the new pipeline does not compile, every fn checked (Core)", next_std_unchecked, True),
     "next_std_quiet_errors": ("std check errors a program hides by checking library impls quietly (Core)", next_std_quiet_errors, True),
+    "next_const_evaluators": ("new-pipeline files that evaluate a constant expression, the shared Consts evaluator among them (Core)", next_const_evaluators, True),
     "next_core_privilege": ("checks giving core's module powers no library has in the new pipeline (Core)", next_core_privilege, True),
     "next_whole_program_inputs": ("new-pipeline params, fields, closures and holder-struct methods that hold a whole-program value (Core)", next_whole_program_inputs, True),
     "next_handoff_side_fields": ("fields reaching link beside the IR, through any struct or tuple of the handoff (Core)", next_handoff_side_fields, True),

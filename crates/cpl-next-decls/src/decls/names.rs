@@ -111,6 +111,9 @@ pub(super) fn name_struct(
     d.structs.push(StructDecl {
         name,
         record: sd.record,
+        value_params: (sd.value_params.iter())
+            .filter_map(|v| sd.generics.iter().position(|g| g == v))
+            .collect(),
         generics: sd.generics.iter().map(|g| d.text(*g).to_string()).collect(),
         fields: Vec::new(),
         var_fields: Vec::new(),
