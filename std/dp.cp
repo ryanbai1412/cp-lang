@@ -925,8 +925,8 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
 /// example: `[3, 1, 2].lis_ends(by: x => -x) == [1, 2, 2]`
 pub fn lis_ends<D, T, K: Ord>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> [D]Int:
     var tails: List<K> = []
-    var out: [D]Int = 0
-    for i in D:
+    var out = [self.keys].filled(0)
+    for i in self.keys:
         let k = by(self[i])
         let lo = (0..tails.len).first_true(mid => not (tails[mid] < k or (not strict and tails[mid] == k))) ?? tails.len
         if lo == tails.len: tails.push(k)

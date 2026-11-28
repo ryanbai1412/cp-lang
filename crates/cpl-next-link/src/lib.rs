@@ -1279,11 +1279,28 @@ impl Link<'_> {
                         }) => self.d.f(*f).intrinsic.and_then(|i| i.op()),
                         _ => None,
                     };
-                    match (intr, key) {
-                        (Some(op), _) => EK::Intr(op, args, *at),
-                        (None, Some(k)) => EK::Call(Target::Inst(self.intern(k)), args, *at),
+                    // A `@coerce` from a type to itself converts nothing: a fill's list where this
+                    // instance's `[K]T` is the list (R04.8.11).
+                    let same = match (&key, &args[..]) {
+                        (
+                            Some(InstKey {
+                                func: FuncKey::Decl(f),
+                                ..
+                            }),
+                            [Arg::Value(v)],
+                        ) if self.roles.marked(*f, cpl_next_decls::Decorator::Coerce)
+                            && v.ty == ty =>
+                        {
+                            Some(v.kind.clone())
+                        }
+                        _ => None,
+                    };
+                    match (same, intr, key) {
+                        (Some(v), ..) => v,
+                        (None, Some(op), _) => EK::Intr(op, args, *at),
+                        (None, None, Some(k)) => EK::Call(Target::Inst(self.intern(k)), args, *at),
                         // A call nothing runs (a method of a type nothing fixes) still has its type.
-                        (None, None) => EK::Intr(Intr::Unset, Vec::new(), *at),
+                        (None, None, None) => EK::Intr(Intr::Unset, Vec::new(), *at),
                     }
                 }
             }

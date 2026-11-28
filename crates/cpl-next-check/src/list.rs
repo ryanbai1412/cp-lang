@@ -245,6 +245,31 @@ impl Cx<'_> {
     }
     /// A table's fill, `[D] k => e`: a new list, then `body` pushed for each element of the
     /// checked `walk`, its parts bound by `pats`, as a comprehension's one clause would.
+    /// A list of `v`, read once, for each element `walk` gives: `[w.keys].filled(v)`.
+    pub(super) fn fill_with(&mut self, walk: TExpr, v: TExpr, span: Span) -> TExpr {
+        self.b.scopes.push(HashMap::new());
+        let held = self.bind("$cell", v.ty.clone());
+        let read = TExpr {
+            kind: TK::Var(held),
+            ty: v.ty.clone(),
+            span,
+        };
+        let mut stmts = vec![TStmt::Let(held, v)];
+        let e = match self.new_list("$fill", 0, None, span) {
+            Some((l, init)) => {
+                stmts.push(init);
+                let each = |cx: &mut Self, out: &mut Vec<TStmt>| {
+                    let push = cx.push_value(&l, read.clone(), span);
+                    out.push(TStmt::Expr(push));
+                };
+                self.for_over(&[], walk, each, span, &mut stmts);
+                filled(stmts, l, span)
+            }
+            None => error(span),
+        };
+        self.b.scopes.pop();
+        e
+    }
     pub(super) fn fill_over(
         &mut self,
         pats: &[next::Pattern],

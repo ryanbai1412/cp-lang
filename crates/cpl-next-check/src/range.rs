@@ -55,6 +55,25 @@ impl Cx<'_> {
         let [index] = &l.elems().collect::<Vec<_>>()[..] else {
             return None;
         };
+        // `[w.keys].filled(x)`: `x` in every cell of a table over exactly `w`'s keys (R04b.4.2).
+        if let (next::Expr::Field(fe), "filled", [arg]) = (index, name.text, args) {
+            let w = match fe.base() {
+                Some(next::Expr::Name(n)) if fe.name().is_some_and(|k| k.text() == "keys") => {
+                    n.ident()
+                }
+                _ => None,
+            };
+            let keyed = w.and_then(|w| self.keys_of(w.text(), span));
+            if let (Some((key, keys)), ArgValue::Written(x)) = (keyed, &arg.value) {
+                let cell = match self.keyed_list(want, span) {
+                    Some(Ty::Struct(_, ts, _)) => ts.first().cloned(),
+                    _ => None,
+                };
+                let x = self.expr(x, cell.as_ref());
+                let list = self.fill_with(keys, x, span);
+                return Some(self.keyed_cells(list, key, span));
+            }
+        }
         let array = self.role_structs.role_struct(Role::Array)?;
         let mut pre = Vec::new();
         let axis = self.axis_of(index, span, &mut pre)?;
@@ -201,6 +220,24 @@ impl Cx<'_> {
     pub(super) fn table(&mut self, t: &next::TableExpr, span: Span, want: Option<&Ty>) -> TExpr {
         let mut pre = Vec::new();
         let dims: Vec<next::GenericArg> = t.dims().map(|d| d.args().collect()).unwrap_or_default();
+        let pats: Vec<next::Pattern> = (t
+            .params()
+            .map(|p| p.lambda_params())
+            .unwrap_or_default()
+            .into_iter())
+        .map(|p| p.pattern)
+        .collect();
+        let Some(body) = t.body() else {
+            return self.refuse(span, Unbuilt::TableOverIndex);
+        };
+        if let [next::GenericArg::Type(ix)] = &dims[..] {
+            if let Some((key, keys)) = self.whole_keys(ix) {
+                let want_list = self.keyed_list(want, span);
+                let list = self.fill_over(&pats, keys, &body, want_list.as_ref(), span);
+                let cells = self.keyed_cells(list, key, span);
+                return block(pre, cells);
+            }
+        }
         let mut parts = Vec::new();
         for d in &dims {
             let next::GenericArg::Type(ix) = d else {
@@ -227,16 +264,6 @@ impl Cx<'_> {
         let sets = (0..self.shapes.n_sets(array))
             .map(|_| self.new_set())
             .collect();
-        let pats: Vec<next::Pattern> = (t
-            .params()
-            .map(|p| p.lambda_params())
-            .unwrap_or_default()
-            .into_iter())
-        .map(|p| p.pattern)
-        .collect();
-        let Some(body) = t.body() else {
-            return self.refuse(span, Unbuilt::TableOverIndex);
-        };
         let int = |v: i64| TExpr {
             kind: TK::Int(v),
             ty: Ty::Int,
@@ -310,6 +337,41 @@ impl Cx<'_> {
         };
         let cells = self.coerce(list, &Ty::Struct(array, vec![dty, elem], sets));
         block(pre, cells)
+    }
+    /// The list a table over exactly an `[K]T`'s keys fills, when it is written where a table
+    /// (or the list `[Int]T` is) is expected.
+    fn keyed_list(&mut self, want: Option<&Ty>, span: Span) -> Option<Ty> {
+        let (array, list) = (
+            self.role_structs.role_struct(Role::Array),
+            self.list_struct(span),
+        );
+        let cell = match want.map(|w| self.shallow(w)) {
+            Some(Ty::Struct(a, ts, _)) if Some(a) == array && ts.len() == 2 => ts[1].clone(),
+            Some(Ty::Struct(l, ts, _)) if Some(l) == list && ts.len() == 1 => ts[0].clone(),
+            _ => return None,
+        };
+        list.map(|l| Ty::Struct(l, vec![cell], Vec::new()))
+    }
+    /// A fill's cells, one per key of an `[K]T` in walk order, as the table `[K]T` over them
+    /// (R04b.4.2). At a parameter `K` they convert through core's `@coerce` with no `K: Domain`:
+    /// where the instance's `[K]T` is the list, link makes that the list itself (R04.8.11), and
+    /// anywhere else `K` is counted, a `Domain`.
+    fn keyed_cells(&mut self, list: TExpr, key: Ty, span: Span) -> TExpr {
+        let Some(array) = self.role_structs.role_struct(Role::Array) else {
+            return self.refuse(span, Unbuilt::TableOverIndex);
+        };
+        let elem = match self.shallow(&list.ty) {
+            Ty::Struct(_, ts, _) if ts.len() == 1 => ts[0].clone(),
+            _ => Ty::Error,
+        };
+        let sets = (0..self.shapes.n_sets(array))
+            .map(|_| self.new_set())
+            .collect();
+        let table = self.listed(Ty::Struct(array, vec![key.clone(), elem], sets));
+        match (self.shallow(&key), self.coercion(&list.ty, &table)) {
+            (Ty::Param(_), Some(f)) => self.coerce_by(f, list, &table, false),
+            _ => self.coerce(list, &table),
+        }
     }
     /// Whether an array over the anonymous range `from` converts to one over `to`: both are
     /// anonymous, and two written counts that differ stay a type mismatch (R04.8.10).

@@ -409,7 +409,7 @@ pub fn deduped<S: Seq<T>, T: Eq>(self: S) -> List<T>:
 /// example: `[3, 1, 4, 4, 5].record_highs().collect() == [0, 2, 4]`
 pub fn record_highs<D, T, K: Ord>(self: [D]T, by: T -> K = x => x) -> yields D:
     var best: ?K = None
-    for i in D:
+    for i in self.keys:
         let k = by(self[i])
         if (if let b = best: k > b else: true):
             best = k
@@ -894,7 +894,7 @@ pub fn runs<S: Indexed<D, T>, D: Discrete, T, K: Eq>(
 /// example: `domain D = 0..3; domain K = 0..2; let a: [D]K = [1, 0, 1]; a.buckets() == [[1], [0, 2]]`
 pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D>:
     var out: [K]List<D> = []
-    for i in D: out[self[i]].push(i)
+    for i in self.keys: out[self[i]].push(i)
     out
 
 /// The distinct values of a coordinate compression, in increasing order, indexed by their
@@ -3159,8 +3159,8 @@ pub fn subsequences<S: Indexed<D, T>, D: Discrete, T>(self: S) -> yields SubseqS
 /// example: `[3, 1, 2, 2, 5].lis(strict: false).len == 4`
 pub fn lis<D, T, K: Ord>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>:
     var tails: List<D> = []
-    var prev: [D]?D = None
-    for i in D:
+    var prev: [D]?D = [self.keys].filled(None)
+    for i in self.keys:
         let k = by(self[i])
         var (lo, hi) = (0, tails.len)
         while lo < hi:
@@ -3220,11 +3220,11 @@ pub fn cartesian_tree<D, T: Ord>(self: [D]T, min_root: Bool = true) -> (
     right: [D]?D,
     parent: [D]?D,
 ):
-    var left: [D]?D = None
-    var right: [D]?D = None
-    var parent: [D]?D = None
+    var left: [D]?D = [self.keys].filled(None)
+    var right: [D]?D = [self.keys].filled(None)
+    var parent: [D]?D = [self.keys].filled(None)
     var st: List<D> = []
-    for i in D:
+    for i in self.keys:
         var last: ?D = None
         while st.len > 0 and (
             if min_root: self[st.last!] > self[i] else: self[st.last!] < self[i]
@@ -4215,7 +4215,7 @@ pub struct Ring<D: Discrete, T>(pub src: [D]T):
                 st.pop(src[D.nth(l % n)])
                 l += 1
             if t >= n: out.push(RingSlice<D, T>(rr: self.span(D.nth(l % n), t - l + 1)))
-        [D] i => out[i.ord]
+        [src.keys] i => out[i.ord]
 
     /// For each position as the last element, the shortest wrapping piece ending there that is
     /// `ok`, or None. \(O(n)\) pushes and pops (two laps).
@@ -4230,7 +4230,7 @@ pub struct Ring<D: Discrete, T>(pub src: [D]T):
     pub fn minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>:
         let n = src.len
         var st = state
-        var out: [D]?RingSlice<D, T> = [D] _ => None
+        var out: [D]?RingSlice<D, T> = [src.keys].filled(None)
         var l = 0
         var best: ?Int = None
         for t in 0..2 * n:
@@ -4335,7 +4335,7 @@ pub struct RingSlice<D, T>():
 /// traps: never
 /// example: `[3, 1, 2, 5].valleys().collect() == [1..2, 1..3]`
 pub fn valleys<D, T: Ord>(self: [D]T) -> yields Range<D>:
-    let n = D.count
+    let n = self.len
     var ends: List<List<Int>> = [[] for _ in 0..n]
     var st: List<Int> = []
     for j in 0..n:
@@ -4373,9 +4373,9 @@ pub fn spans<D: Ordered + Domain, T, K>(self: [D]T, by: T -> K = x => x) -> [D]R
 /// traps: never
 /// example: `[2, 1, 3].prev_smaller() == [None, None, Some(1)]`
 pub fn prev_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
-    var out: [D]?D = None
+    var out: [D]?D = [self.keys].filled(None)
     var st: List<D> = []
-    for i in D:
+    for i in self.keys:
         while st.len > 0 and (
             if strict: by(self[st.last!]) >= by(self[i]) else: by(self[st.last!]) > by(self[i])
         ):
@@ -4401,10 +4401,9 @@ pub fn prev_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool 
 @lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] >= self[i]:\n    ans[st.pop()!] = i", to: "self.next_smaller(strict: false)", holes: "st, i, ans")
 @lint(monotone_stack_by_hand, from: "while st.len > 0 and self[st.last!] >= self[i]:\n    let j = st.last!\n    st.pop()\n    ans[j] = i", to: "self.next_smaller(strict: false)", holes: "st, i, ans")
 pub fn next_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D:
-    var out: [D]?D = None
+    var out: [D]?D = [self.keys].filled(None)
     var st: List<D> = []
-    for k in (0..D.count).rev:
-        let i = D.nth(k)
+    for i in self.keys.rev:
         while st.len > 0 and (
             if strict: by(self[st.last!]) >= by(self[i]) else: by(self[st.last!]) > by(self[i])
         ):
@@ -4421,9 +4420,9 @@ pub fn next_smaller<D, T, K: Ord>(self: [D]T, by: T -> K = x => x, strict: Bool 
 /// traps: never
 /// example: `[1, 2, 1].prev_same() == [None, None, Some(0)]`
 pub fn prev_same<D, T, K: Hash + Eq>(self: [D]T, by: T -> K = x => x) -> [D]?D:
-    var out: [D]?D = None
+    var out: [D]?D = [self.keys].filled(None)
     var seen = HashMap<K, D>()
-    for i in D:
+    for i in self.keys:
         let k = by(self[i])
         out[i] = seen.get(k)
         seen[k] = i
@@ -4437,10 +4436,9 @@ pub fn prev_same<D, T, K: Hash + Eq>(self: [D]T, by: T -> K = x => x) -> [D]?D:
 /// traps: never
 /// example: `[1, 2, 1].next_same() == [Some(2), None, None]`
 pub fn next_same<D, T, K: Hash + Eq>(self: [D]T, by: T -> K = x => x) -> [D]?D:
-    var out: [D]?D = None
+    var out: [D]?D = [self.keys].filled(None)
     var seen = HashMap<K, D>()
-    for j in (0..D.count).rev:
-        let i = D.nth(j)
+    for i in self.keys.rev:
         let k = by(self[i])
         out[i] = seen.get(k)
         seen[k] = i

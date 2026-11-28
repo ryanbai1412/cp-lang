@@ -15,6 +15,8 @@ pub mod records;
 pub mod sym;
 mod synth;
 pub mod views;
+/// The decorators `RoleRows::marked` reads, for the stages past syntax.
+pub use cpl_next_syntax::grammar::Decorator;
 pub use synth::{jagged, memo_clear_name, memo_key, SynthBody};
 
 /// The name of a syntax node's kind, for saying which one is not implemented.

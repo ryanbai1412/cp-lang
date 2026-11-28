@@ -64,7 +64,7 @@ impl<'a> Cx<'a> {
         self.listed(t)
     }
     /// `[D]T` is `List<T>` once `D` is known to have no count (R04.8.11).
-    fn listed(&self, t: Ty) -> Ty {
+    pub(super) fn listed(&self, t: Ty) -> Ty {
         match (&t, self.role_structs.role_struct(Role::List)) {
             (Ty::Struct(a, ts, _), Some(list))
                 if Some(*a) == self.role_structs.role_struct(Role::Array) && ts.len() == 2 =>
@@ -573,7 +573,9 @@ impl<'a> Cx<'a> {
         let pushes = stmts.iter().filter(|s| matches!(s, TStmt::Expr(_))).count();
         (local.name == "$list").then_some(pushes)
     }
-    fn coerce_by(&mut self, decl: FnId, e: TExpr, want: &Ty) -> TExpr {
+    /// `e` through `@coerce` fn `decl`; `oblige` is false where its bounds are met at every
+    /// instance that runs it.
+    pub(super) fn coerce_by(&mut self, decl: FnId, e: TExpr, want: &Ty, oblige: bool) -> TExpr {
         let span = e.span;
         // A literal whose length differs from a constant count is wrong before it runs (R04.8.10).
         if let (Some(n), Ty::Struct(a, ts, _)) = (self.literal_len(&e), want) {
@@ -595,7 +597,9 @@ impl<'a> Cx<'a> {
             }
         }
         let f = self.fnref(decl, Vec::new(), Vec::new());
-        self.oblige(&f, span);
+        if oblige {
+            self.oblige(&f, span);
+        }
         let ty = self.ret_ty(&f);
         let param = {
             let sub = Subst {
@@ -984,7 +988,7 @@ impl<'a> Cx<'a> {
             }
         }
         if let Some(f) = self.coercion(&have, &want_s) {
-            return self.coerce_by(f, e, &want_s);
+            return self.coerce_by(f, e, &want_s, true);
         }
         match (&have, &want_s) {
             // An anonymous range's position is its `Int` (R04.3.4).

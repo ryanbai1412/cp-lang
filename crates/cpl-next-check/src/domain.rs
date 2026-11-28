@@ -650,6 +650,42 @@ impl Cx<'_> {
             _ => None,
         }
     }
+    /// `[w.keys]`, `w` an `[K]T`: a table over exactly `w`'s keys is keyed by `K` itself and walks
+    /// `w.keys` (R04b.4.2), so it needs no count of `K`. The key and that walk.
+    pub(super) fn whole_keys(&mut self, ix: &next::Type) -> Option<(Ty, TExpr)> {
+        let next::Type::Path(p) = ix else {
+            return None;
+        };
+        let segs: Vec<SyntaxToken> = p.segments().collect();
+        let [head, last] = &segs[..] else {
+            return None;
+        };
+        if last.text() != "keys" || p.generic_args().is_some() {
+            return None;
+        }
+        let span = self.at(ix);
+        self.keys_of(head.text(), span)
+    }
+    /// The key `K` of local or `self` field `w` when it is an `[K]T` (a list's is `Int`,
+    /// R04.8.11), and `w.keys`.
+    pub(super) fn keys_of(&mut self, w: &str, span: Span) -> Option<(Ty, TExpr)> {
+        let known = self.lookup(w).is_some() || self.self_field(w).is_some();
+        if !known || self.domain_named(w).is_some() {
+            return None;
+        }
+        let recv = self.name(w, span);
+        let key = match self.shallow(&recv.ty) {
+            Ty::Struct(a, ts, _) if Some(a) == self.array_id() && ts.len() == 2 => ts[0].clone(),
+            Ty::Struct(l, ..) if Some(l) == self.role_structs.role_struct(Role::List) => Ty::Int,
+            _ => return None,
+        };
+        let name = super::member::Called {
+            text: "keys",
+            sym: self.syms.get("keys"),
+            span,
+        };
+        Some((key, self.member_on(recv, name, None, span, None, &[])))
+    }
     /// An axis `[lo..hi]` with a value end, or a count `[n]`: a domain of its own.
     pub(super) fn value_axis(
         &mut self,
