@@ -9,7 +9,7 @@ use crate::diag::Msg;
 use cpl_contract::FileId;
 use cpl_diag::Span;
 use cpl_next_db::db::Db;
-use cpl_next_db::items::{self as queries, ItemAt, ItemOf, ModuleFile, ModulePath, Parse, Source};
+use cpl_next_db::items::{self as queries, ItemAt, ItemOf, ModuleFile, Parse, Source, SOURCE_EXT};
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_syntax::ast::{self, AstNode};
 use cpl_next_syntax::{NodeKind, SyntaxNode};
@@ -110,19 +110,31 @@ impl Parsed {
         });
         inline.chain(std::iter::once((self.text.clone(), self.module())))
     }
-    /// Module `name`, whose text `file` holds, read through `db`'s item queries.
-    fn new(db: &Db, file: FileId, name: &str, text: Arc<str>) -> Parsed {
+    /// Module `name`, whose text `file` holds, read through `db`'s item queries; `None` when
+    /// `db` has no `Source` for `file`.
+    fn read(db: &Db, file: FileId, name: &str) -> Option<Parsed> {
+        // A failed read is reported by `parse`, which asks again.
+        let text = db.input::<Source>(&file).unwrap_or_default()?;
         let FileItems {
             items,
             starts,
             unread,
             inline,
-        } = parse(db, file, name, text.clone());
-        Parsed {
+        } = parse(db, file, name);
+        Some(Parsed {
             text: Text::new(name, text, starts),
             items: Arc::new(items),
             unread,
             inline,
+        })
+    }
+    /// Module `name` with no text: a program `db` lacks, or std's db refusing a file.
+    fn empty(name: &str, unread: Unread) -> Parsed {
+        Parsed {
+            text: Text::new(name, "".into(), HashMap::new()),
+            items: Arc::new(Vec::new()),
+            unread,
+            inline: Vec::new(),
         }
     }
 }
@@ -165,7 +177,13 @@ impl Std {
             let parsing: Vec<_> = placed
                 .map(|(name, text)| {
                     let file = FileId::new(&std_path(&name));
-                    scope.spawn(move || Parsed::new(db, file, &name, text.into()))
+                    scope.spawn(move || match db.set::<Source>(file.clone(), text.into()) {
+                        Ok(()) => Parsed::read(db, file, &name)
+                            .unwrap_or_else(|| Parsed::empty(&name, Default::default())),
+                        Err(e) => {
+                            Parsed::empty(&name, (vec![Msg::internal(e.to_string())], vec![]))
+                        }
+                    })
                 })
                 .collect();
             (parsing.into_iter())
@@ -212,6 +230,9 @@ pub struct Loaded {
     pub errors: Vec<Msg>,
     /// What the parser could not read: no later layer reports inside these (contract 3).
     pub poisoned: Vec<SourceId>,
+    /// Each module whose file the db has no `Source` for, and that file. Loading treats it as
+    /// absent; the caller reads the files it can, sets their `Source` and loads again.
+    pub missing: Vec<(String, PathBuf)>,
     /// Each module's place in `texts`.
     index: HashMap<String, usize>,
 }
@@ -255,9 +276,6 @@ pub struct Roots(Vec<(String, PathBuf)>);
 
 /// Std's modules as `std/` was when this binary was built, by module name.
 const STD_FILES: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_files.rs"));
-
-/// The extension of a std source file.
-const SOURCE_EXT: &str = "cp";
 
 /// The file std module `name` is read from, from std's parent: `std.graph` is `std/graph.cp`,
 /// the name `read_dir_modules` gives it.
@@ -313,16 +331,12 @@ impl Roots {
         });
         Roots(roots)
     }
-    /// The file of library module `name`: `kit.m` is `m.cp` in the root `[libs]` calls `kit`.
-    pub fn path(&self, name: &str) -> Option<PathBuf> {
-        let (lib, rest) = name.split_once('.')?;
-        let (_, root) = self.0.iter().find(|(n, _)| n == lib)?;
-        Some(root.join(format!("{}.{SOURCE_EXT}", rest.replace('.', "/"))))
-    }
-    fn source(&self, name: &str) -> Option<(PathBuf, String)> {
-        let path = self.path(name)?;
-        let text = std::fs::read_to_string(&path).ok()?;
-        Some((path, text))
+    /// The `Libraries` input of a program these roots are for.
+    pub fn libraries(&self) -> Arc<[(Arc<str>, PathBuf)]> {
+        self.0
+            .iter()
+            .map(|(n, p)| (n.as_str().into(), p.clone()))
+            .collect()
     }
 }
 
@@ -354,8 +368,8 @@ struct FileItems {
 
 /// The items of module `module`, whose text `file` holds, where each starts in the text, each
 /// syntax error with its code and where it is, and the places the parser could not read. The
-/// items and their ids are `db`'s `items`, `item` and `item_at` answers.
-fn parse(db: &Db, file: FileId, module: &str, text: Arc<str>) -> FileItems {
+/// items and their ids are `db`'s `items`, `item` and `item_at` answers; this only reads.
+fn parse(db: &Db, file: FileId, module: &str) -> FileItems {
     let mut out = FileItems {
         items: Vec::new(),
         starts: HashMap::new(),
@@ -363,11 +377,8 @@ fn parse(db: &Db, file: FileId, module: &str, text: Arc<str>) -> FileItems {
         inline: Vec::new(),
     };
     let read = || -> Result<_, cpl_next_db::db::DbError> {
-        db.set::<Source>(file.clone(), text)?;
-        db.set::<ModulePath>(file.clone(), module.into())?;
-        db.set::<ModuleFile>(module.into(), file.clone())?;
         let mut items = Vec::new();
-        for id in db.get::<queries::Items>(&file)? {
+        for id in db.get::<queries::Items>(&(file.clone(), module.into()))? {
             let (Some(it), Some(at)) = (db.get::<ItemOf>(&id)?, db.get::<ItemAt>(&id)?) else {
                 continue;
             };
@@ -407,7 +418,7 @@ fn parse(db: &Db, file: FileId, module: &str, text: Arc<str>) -> FileItems {
         out.items.push(it);
     }
     out.inline = inline;
-    let file_id = ItemId::file(module.into());
+    let file_id = ItemId::file(file.clone(), module.into());
     // A file's place, as the item it falls in.
     let within = |span: Span| match starts.iter().rev().find(|(_, o)| *o <= span.start) {
         Some((id, o)) => id.at(Span::new(span.start - o, span.end - o)),
@@ -475,16 +486,27 @@ fn unread(item: &SyntaxNode) -> impl Iterator<Item = Span> {
     out.into_iter()
 }
 
-/// The program `user` and every module it reaches from `std` and `roots`, each file read
-/// through `db`'s item queries, so a session's edit re-parses only the file it touches.
-pub fn load(db: &Db, std: &Std, user: &str, roots: &Roots) -> Loaded {
+/// The program in file `root` and every module it reaches from `std` and the libraries `db`'s
+/// `Libraries(root)` names, each file read through `db`'s item queries, so a session's edit
+/// re-parses only the file it touches. It only reads `db`: a file without a `Source` is in
+/// `Loaded::missing`.
+pub fn load(db: &Db, std: &Std, root: &FileId) -> Loaded {
     enum Got {
         Std(usize),
         Lib(Parsed),
     }
     let mut errors = Vec::new();
     let prelude = std.prelude.clone();
-    let program = Parsed::new(db, FileId::new(PROGRAM), PROGRAM, user.into());
+    let mut missing_files: Vec<(String, PathBuf)> = Vec::new();
+    let program = Parsed::read(db, root.clone(), PROGRAM).unwrap_or_else(|| {
+        missing_files.push((PROGRAM.into(), PathBuf::from(root.path())));
+        Parsed::empty(PROGRAM, Default::default())
+    });
+    let lib_file = |m: &str| {
+        db.get::<ModuleFile>(&(root.clone(), m.into()))
+            .ok()
+            .flatten()
+    };
     // A module and, for the program's own `use` lines, where it is named.
     let mut queue: VecDeque<(String, Option<SourceId>)> = uses(&program.items)
         .map(|(m, _, at)| (m, Some(at)))
@@ -516,7 +538,7 @@ pub fn load(db: &Db, std: &Std, user: &str, roots: &Roots) -> Loaded {
     let is_std = |m: &str| m.split_once('.').is_some_and(|(lib, _)| lib == "std");
     let exists = |m: &str| match is_std(m) {
         true => std.index.contains_key(m),
-        false => roots.source(m).is_some(),
+        false => lib_file(m).is_some_and(|f| matches!(db.input::<Source>(&f), Ok(Some(_)))),
     };
     let mut got: Vec<Got> = Vec::new();
     let mut missing: Vec<(String, Option<SourceId>)> = Vec::new();
@@ -528,9 +550,12 @@ pub fn load(db: &Db, std: &Std, user: &str, roots: &Roots) -> Loaded {
         }
         let g = match is_std(&m) {
             true => std.index.get(&m).copied().map(Got::Std),
-            false => (roots.source(&m)).map(|(path, text)| {
-                let file = FileId::new(&path.display().to_string());
-                Got::Lib(Parsed::new(db, file, &m, text.into()))
+            false => lib_file(&m).and_then(|file| {
+                let p = Parsed::read(db, file.clone(), &m);
+                if p.is_none() {
+                    missing_files.push((m.clone(), PathBuf::from(file.path())));
+                }
+                p.map(Got::Lib)
             }),
         };
         let Some(g) = g else {
@@ -612,6 +637,7 @@ pub fn load(db: &Db, std: &Std, user: &str, roots: &Roots) -> Loaded {
         prelude,
         errors,
         poisoned,
+        missing: missing_files,
     }
 }
 
@@ -661,6 +687,12 @@ mod tests {
     use super::*;
     use crate::items::Head;
 
+    fn parse_text(t: &str) -> FileItems {
+        let (db, file) = (Db::default(), FileId::new(PROGRAM));
+        db.set::<Source>(file.clone(), t.into()).unwrap();
+        parse(&db, file, PROGRAM)
+    }
+
     /// An item's path and the spans inside it are the same whatever is added above it; only
     /// where it starts moves.
     #[test]
@@ -668,8 +700,7 @@ mod tests {
         let below = "struct S\nimpl Show for S:\n    fn show(self) -> Str: \"s\"\n\nfn g() -> Int:\n    let x = 2\n    x\n";
         let above = format!("fn f() -> Int: 1\n\n{below}");
         let items = |t: &str| {
-            let FileItems { items, starts, .. } =
-                parse(&Db::default(), FileId::new(PROGRAM), PROGRAM, t.into());
+            let FileItems { items, starts, .. } = parse_text(t);
             (items.into_iter())
                 .filter(|i| &*i.id.name != "f")
                 .map(|i| {
@@ -694,9 +725,7 @@ mod tests {
         let heads = |t: &str| {
             let m = Module {
                 name: PROGRAM.into(),
-                items: Arc::new(
-                    parse(&Db::default(), FileId::new(PROGRAM), PROGRAM, t.into()).items,
-                ),
+                items: Arc::new(parse_text(t).items),
                 within: None,
             };
             crate::items::items(&m)
