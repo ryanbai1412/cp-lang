@@ -5848,7 +5848,9 @@ def signed_raise(root: Path, base: str, name: str, old: int, new: int, pending: 
     if not rows:
         return (f"remove the new debt instead, or ask the coordinator for a [[raise]] row in {SIGNOFFS}: "
                 f'counter = "{name}", old = {old}, new = {new}, why = "<reason>"')
-    row = next((r for r in rows if (int(r.get("old", -1)), int(r.get("new", -1))) == (old, new)), None)
+    signed = [r for r in rows if (int(r.get("old", -1)), int(r.get("new", -1))) == (old, new)]
+    # Two changes may each be signed for the same numbers: the one this change holds counts.
+    row = next((r for r in signed if raising_commit(root, base, r)), signed[0] if signed else None)
     if row is None:
         said = ", ".join(f"{r.get('old')} -> {r.get('new')}" for r in rows)
         return f"{SIGNOFFS} raises {name} only {said}, not {old} -> {new}"

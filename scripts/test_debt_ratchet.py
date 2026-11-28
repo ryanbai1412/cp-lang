@@ -1447,6 +1447,10 @@ class DebtRatchetTest(unittest.TestCase):
                     self.assertEqual(said(), [])
             with rows(f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "{sha[:9]}"\n'):
                 self.assertEqual(said(), [])
+            # A second row for the same numbers signs this change though the first names another.
+            with rows(f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "0000000"\n'
+                      f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "{sha[:9]}"\n'):
+                self.assertEqual(said(), [])
                 # A raise that signs itself in a commit message is refused, even with the row.
                 with mock.patch.dict(os.environ, {"CPL_RAISE": "external_crates 5 -> 6, signed off by coordinator"}):
                     self.assertIn("signs itself", said()[0])
