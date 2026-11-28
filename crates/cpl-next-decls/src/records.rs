@@ -429,7 +429,7 @@ pub fn without_impls(
                         .map(|(k, f)| (syms.intern(f), TyForm::Param(np + k)))
                         .collect(),
                 ),
-                assoc: vec![(m, made_ty)],
+                assoc: vec![(m, span, made_ty)],
                 methods: vec![build],
                 lets: Vec::new(),
                 derived: false,

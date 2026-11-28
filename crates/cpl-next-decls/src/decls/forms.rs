@@ -209,7 +209,8 @@ pub struct ImplForm {
     pub bounds: Vec<BoundForm>,
     pub trait_: Option<TyForm>,
     pub self_ty: TyForm,
-    pub assoc: Vec<(Sym, TyForm)>,
+    /// Each `type A = T` the impl writes, with where it is.
+    pub assoc: Vec<(Sym, Span, TyForm)>,
     pub methods: Vec<FnForm>,
     pub lets: Vec<LetForm>,
     /// Made by a derive: replaced by a written impl of its trait for its type (R08.1.6).
@@ -584,7 +585,13 @@ impl Reader<'_> {
         let assoc = (members
             .iter()
             .flat_map(|m| m.assoc_types().collect::<Vec<_>>()))
-        .filter_map(|a| Some((self.sym(a.name()), TyForm::Written(a.ty()?))))
+        .filter_map(|a| {
+            Some((
+                self.sym(a.name()),
+                a.syntax().span(),
+                TyForm::Written(a.ty()?),
+            ))
+        })
         .collect();
         let mut unknown = Vec::new();
         let methods = (members.iter().flat_map(|m| m.fns().collect::<Vec<_>>()))
