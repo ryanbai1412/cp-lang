@@ -1433,6 +1433,46 @@ fn a_traced_cpp_run_writes_its_whole_trace() {
     }
 }
 
+/// Every case `tests/smoke.txt` lists, a sample of unions, closures, lent slots and traced
+/// instances, gives traced C++ that g++ accepts: a commit-tier check, quick enough to run on
+/// every commit, that the C++ backend still builds what the listed passes cover.
+#[test]
+fn the_smoke_sample_gives_cpp_gxx_accepts() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let ids = std::fs::read_to_string(here.join("tests/smoke.txt")).unwrap();
+    let ids: Vec<&str> = (ids.lines().map(str::trim))
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .collect();
+    let cases: BTreeMap<String, PathBuf> = all_cases().into_iter().collect();
+    let dir = here.join("../../target/cpl-next/scratch/smoke");
+    std::fs::create_dir_all(&dir).unwrap();
+    let bad = parallel::parallel(&ids, |id| {
+        let path = cases
+            .get(*id)
+            .unwrap_or_else(|| panic!("{id}: no such case"));
+        let ran = next(path, &["--cpp", "--trace"], b"", LIMIT);
+        if ran.status != Some(0) {
+            return Some(format!(
+                "{id}: not accepted, so not a sample: {}",
+                ran.stdout.trim()
+            ));
+        }
+        let cpp = ran.stdout;
+        let file = dir.join(format!("{}.cpp", id.replace('/', "_")));
+        std::fs::write(&file, cpp).unwrap();
+        let out = Command::new("g++")
+            .args(["-std=c++17", "-fsyntax-only", "-w"])
+            .arg(&file)
+            .output()
+            .expect("g++ runs");
+        let err = String::from_utf8_lossy(&out.stderr);
+        let first = err.lines().find(|l| l.contains("error")).unwrap_or("");
+        (!out.status.success()).then(|| format!("{id}: {first}"))
+    });
+    let bad: Vec<String> = bad.into_iter().flatten().collect();
+    assert!(bad.is_empty(), "g++ rejects:\n{}", bad.join("\n"));
+}
+
 /// How many words each `@fast` fn is called on: the edge words, then seeded random ones.
 const FAST_WORDS: usize = 256;
 

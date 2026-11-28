@@ -4824,6 +4824,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "crates/cpl-cli/tests/vm_fallbacks.txt": ("vm_fallbacks", "tech-debt", "VM runs every program"),
     "crates/cpl-conform/silent_unknowns.txt": ("silent_unknowns", "core", "deleted: the checker types every expression or reports why not"),
     "crates/cpl-lint/corpus_warnings.txt": ("corpus_lint_warnings", "lint-fmt", "deleted: corpus_tests.rs fails on any std or spec.cp warning"),
+    "crates/cpl-next/tests/smoke.txt": (None, "core", "data: the commit-tier smoke sample each backend runs"),
     "crates/cpl-next/tests/passing.txt": ("next_not_passing", "core", "every case listed: the landing that switches `cpl` to cpl-next deletes the list"),
     "tests/old-parser-accepts.txt": ("next_old_parser_accepts", "core", "deleted: the decls and check move onto the tree, so cpl-next reads the new parser"),
     "crates/cpl-next/tests/lowered.txt": ("next_lowered", "core", "deleted: programs.rs fails on any error only lowering finds"),
