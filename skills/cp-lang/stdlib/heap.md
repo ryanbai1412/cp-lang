@@ -149,8 +149,8 @@ Fields: `h: Heap<Desc<T>>`.
 
 A keyed frontier where each key pops exactly once.
 
-- `fn offer(mut self, k: K, p: P)` — \(O(\log n)\) amortized, `n` the offers so far; Offer priority `p` for key `k`: an unsettled key keeps `best(old, p)` (or `p` when it had None); a settled key ignores the offer.
-- `fn pop(mut self) -> ?(K, P)` — \(O(\log n)\) amortized, `n` the offers so far; Settle and return the unsettled key whose priority is best, with that priority, or `None` when every offered key has settled.
+- `fn offer(mut self, k: K, p: P) where P: Eq` — \(O(\log n)\) amortized, `n` the offers so far; Offer priority `p` for key `k`: an unsettled key keeps `best(old, p)` (or `p` when it had None); a settled key ignores the offer.
+- `fn pop(mut self) -> ?(K, P) where P: Eq` — \(O(\log n)\) amortized, `n` the offers so far; Settle and return the unsettled key whose priority is best, with that priority, or `None` when every offered key has settled.
 - `fn settled(self, k: K) -> Bool` — \(O(1)\) expected; Whether `k` has popped.
 - `fn get(self, k: K) -> ?P` — \(O(1)\) expected; The best priority offered for `k` so far (for a settled key, the one it popped with), or `None` if `k` was never offered.
 

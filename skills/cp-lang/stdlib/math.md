@@ -57,7 +57,7 @@ An exponent `e >= 0` kept small enough to reduce: `v` is `e` itself when `e < m`
 Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: Map<Int, T>`.
 
 - `fn new(n: 0.., f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T> where T: Zero` — \(O(\mathit{f\_small}.\mathit{len})\) to build; queries as `sum`; A Du's-sieve cache for the prefix sums `F(m) = sum_{k=1..=m} f(k)` of a multiplicative `f`, up to `n`.; traps: when `n < 0`
-- `fn sum(mut self, m: Int) -> T where T: One` — \(O(1)\) cached; \(O(n^{2/3})\) total across all `n / i` queries; The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.; traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
+- `fn sum(mut self, m: Int) -> T where T: One + Eq` — \(O(1)\) cached; \(O(n^{2/3})\) total across all `n / i` queries; The prefix sum `F(m) = sum_{k=1..=m} f(k)`, with `F(0) == 0`.; traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
 
 ## `struct Ratio(pub p: Int, q: Int)`
 
@@ -94,7 +94,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)` — \(O(\log \min(\lvert a \rvert, \lvert b \rvert))\); `(g, x, y)` with `a * x + b * y == g == gcd(a, b)`.; traps: when `g` is `2^63`
 - `fn ceil_div(self: Int, b: Int) -> Int` — \(O(1)\); `ceil(self / b)` for any non-zero `b`; `n.ceil_div(k)` or `ceil_div(n, k)`.; traps: when `b == 0`, or on overflow (`ceil_div(Int.MIN, -1)`)
 - `fn divmod(self: Int, d: Int) -> (Int, Int)` — \(O(1)\); The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < \|d\|` and `self == q * d + r`.; traps: when `d == 0`, or on overflow (`Int.MIN.divmod(-1)`)
-- `fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T> where T: One` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
+- `fn sieve_multiplicative<T>(n: 0.., prime_pow: (Int, Int, Int) -> T) -> List<T> where T: One + Mul` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
 - `fn popcount<W: Word>(x: W) -> Int` — \(O(1)\); The number of 1 bits in `x`'s 64-bit word, one `popcnt`: a negative `Int` counts its two's complement.
 - `fn ctz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits below the lowest 1 bit of `x`'s 64-bit word; `ctz(0) == 64`.
 - `fn clz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits above the highest 1 bit of `x`'s 64-bit word; `clz(0) == 64`.
@@ -145,7 +145,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn submasks(mask: 0..) -> yields Int` — \(O(2^\mathit{popcount}(\mathit{mask}))\); Every submask of `mask`, in descending order, ending with 0.; traps: when `mask < 0`
 - `fn bit_subsets(n: 0.., k: Int) -> yields Int` — \(O(C(n, k))\); Every subset of `0..n` with exactly `k` elements, as a bitmask, in ascending order (Gosper's hack).; traps: when `n < 0`, `k < 0` or `n > 62`
 - `fn dirichlet_convolve<T: Add + Mul + Zero>(a: List<T>, b: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet convolution `(a * b)[k] = sum_{d \| k} a[d] * b[k / d]` for `k` in `1..=n`.; traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
-- `fn dirichlet_inv<T: Sub + Mul + Div + Zero + One>(a: List<T>, n: 0..) -> List<T>` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet inverse of `a` on `1..=n`: the `b` with `a * b` the unit (1 at 1, 0 elsewhere).; traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
+- `fn dirichlet_inv<T: Sub + Mul + Div + Zero + One>(a: List<T>, n: 0..) -> List<T> where T: Add + Eq` — \(O(n \log n)\) time, \(O(n)\) memory; The Dirichlet inverse of `a` on `1..=n`: the `b` with `a * b` the unit (1 at 1, 0 elsewhere).; traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 - `fn sum_phi(n: Int) -> Int` — \(O(n^{2/3})\) time and memory; The totient summatory function `sum_{k=1..=n} phi(k)`; 0 for `n <= 0`.; traps: when the sum overflows `Int`
 - `fn sum_mobius(n: Int) -> Int` — \(O(n^{2/3})\) time and memory; The Mertens function `sum_{k=1..=n} mu(k)`; 0 for `n <= 0`.
 - `fn sum_multiplicative<T: Add + Sub + Mul + Zero + One>(n: Int, prime_pow: (Int, Int, Int) -> T, prime_sum: List<T>) -> T` — \(O(n^{3/4} / \log n)\) time, \(O(\sqrt n)\) memory; The prefix sum `sum_{k=1..=n} f(k)` of a multiplicative `f` (Min_25 sieve).; traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`

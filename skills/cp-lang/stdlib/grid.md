@@ -48,10 +48,10 @@ The columns of a grid, made by `g.cols`; lends the grid.
 
 ## Functions
 
-- `@get fn up<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row up from `self` (towards row 0), or `None` on the top row.
-- `@get fn down<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row down from `self`, or `None` on the bottom row.
-- `@get fn left<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column left of `self`, or `None` in the first column.
-- `@get fn right<R, C>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column right of `self`, or `None` in the last column.
+- `@get fn up<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row up from `self` (towards row 0), or `None` on the top row.
+- `@get fn down<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one row down from `self`, or `None` on the bottom row.
+- `@get fn left<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column left of `self`, or `None` in the first column.
+- `@get fn right<R: Ordered, C: Ordered>(self: (R, C)) -> ?(R, C)` — \(O(1)\); The cell one column right of `self`, or `None` in the last column.
 - `fn step<R: Ordered, C: Ordered, D: Dir>(self: (R, C), d: D) -> ?(R, C)` — \(O(1)\); The cell one step from `self` in direction `d` (a `Dir4` or a `Dir8`), or `None` when that step leaves the grid `(R, C)`.
 - `fn ray<R: Ordered, C: Ordered, D: Dir>(self: (R, C), d: D) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The cells from `self` (not included) to the edge of the grid in direction `d`, nearest first: `p.step(d)`, then a step from that, until a step leaves the grid.
 - `@get fn adj4<R: Ordered, C: Ordered>(self: (R, C)) -> yields (R, C)` — \(O(1)\) to create, \(O(1)\) per cell; The up to four cells sharing a side with `self`: `self.step(d)` for each `d` in `Dir4.all()`, skipping steps that leave the grid.
