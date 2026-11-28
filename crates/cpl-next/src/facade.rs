@@ -354,11 +354,14 @@ impl Session {
             IrStage::Optimized => dumped(&program()?.0.opt),
             // Ownership's own record, so also for a program ownership rejects.
             IrStage::Borrows => {
-                let Some((id, text, _)) = self.file(file) else {
+                let Some((id, _, _)) = self.file(file) else {
                     return Err(Arc::from(Vec::new()));
                 };
-                let (h, roots) = (&self.snapshot.0, self.snapshot.roots(id));
-                let mut f = crate::front(&h.std, text, &roots, h.judge.as_ref(), h.checks);
+                let Ok(w) = self.work(id) else {
+                    return Err(Arc::from(Vec::new()));
+                };
+                let h = &self.snapshot.0;
+                let mut f = crate::front(&w.db, &h.std, id, h.judge.as_ref(), h.checks);
                 match crate::back(&mut f, false) {
                     Some((_, _, binds)) => binds.iter().map(bound_line).collect(),
                     None => return Err(Arc::from(f.diags)),
