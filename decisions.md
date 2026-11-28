@@ -9593,3 +9593,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 683. (reserved, E: a law body is checked like a trait default, once and generically)
 
 ## 684. (reserved, E: a bare name in a trait's fn finds the trait's own members)
+
+## 685. (reserved, H: `and` and `or` as values are std fns marked `@operator`)
