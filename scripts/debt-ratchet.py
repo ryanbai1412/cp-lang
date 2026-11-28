@@ -5830,14 +5830,14 @@ def raising_commit(root: Path, base: str, row: dict) -> bool:
     return False
 
 
-def signed_raise(root: Path, base: str, name: str, old: int, new: int) -> str | None:
+def signed_raise(root: Path, base: str, name: str, old: int, new: int, pending: bool = False) -> str | None:
     """None when a `[[raise]]` row of `SIGNOFFS` raises `name` from `old` to `new` with its
     reason (`why`), for a commit in `base..HEAD` (`raising_commit`). The one check for main
     (`old` its baseline) and lane-j-check (`old` the lane tip's count). Only the coordinator's
     rows count, so no lane admits its own debt: a `Raise:` that signs itself in a commit message
     is refused, and a hard-zero counter is never raised. The commit being made is not in
-    `base..HEAD` yet, so pre-commit (CPL_PRE_COMMIT) only warns that its raise is pending; the
-    push and the queue gate check it. Else what is missing."""
+    `base..HEAD` yet, so pre-commit (CPL_PRE_COMMIT) and `--update` (`pending`) only warn that
+    its raise is pending; the push and the queue gate check it. Else what is missing."""
     if name in HARD_ZERO or name in HARD_FLOOR:
         return f"{name} is hard-zero; it is never raised (remove the debt)"
     selfsigned = [w for w, n, rest in raises(root, base) if n == name and "signed off" in rest]
@@ -5857,7 +5857,7 @@ def signed_raise(root: Path, base: str, name: str, old: int, new: int) -> str | 
     if not (str(row.get("sha", "")).strip() or str(row.get("patch_id", "")).strip()):
         return f"{SIGNOFFS}'s raise of {name} names no commit (`sha` or `patch_id`)"
     if not raising_commit(root, base, row):
-        if os.environ.get("CPL_PRE_COMMIT"):
+        if pending or os.environ.get("CPL_PRE_COMMIT"):
             print(f"debt-ratchet: WARNING: unsigned raise pending: {name} {old} -> {new} is signed for "
                   f"{row.get('sha') or row.get('patch_id')}, checked at push", file=sys.stderr)
             return None
@@ -5932,7 +5932,7 @@ def measured_without_restore(root: Path, base: str, name: str) -> int | None:
 
 
 def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
-                      upstream: dict | None = None) -> list[str]:
+                      upstream: dict | None = None, pending: bool = False) -> list[str]:
     """Baseline entries raised above `ref`'s.
 
     A raise passes only when the same change rewrites the code that measures
@@ -6003,7 +6003,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main",
             for n, key in raised
             for need in [raise_evidence(root, base, n) if n in RUN_MEASURED
                          else None if remeasured(root, base, key)
-                         else signed_raise(root, base, n, old[n], baseline[n]) if n in COUNTERS
+                         else signed_raise(root, base, n, old[n], baseline[n], pending) if n in COUNTERS
                          else stale] if need]
 
 
@@ -6203,7 +6203,8 @@ def main(argv: list[str] | None = None) -> int:
                 base[keys.get(n, n)] = data[keys.get(n, n)]
             data = base
         # A stale local baseline must not carry main's tightening back up.
-        bumps = unexplained_bumps(args.root, data, os.environ.get("CPL_RATCHET_BASE") or "origin/main")
+        # The raising commit isn't made yet when its baseline is written.
+        bumps = unexplained_bumps(args.root, data, os.environ.get("CPL_RATCHET_BASE") or "origin/main", pending=True)
         if bumps:
             print("debt-ratchet: refusing to write a baseline above origin/main (pull first, or remove the debt):\n  "
                   + "\n  ".join(bumps), file=sys.stderr)
