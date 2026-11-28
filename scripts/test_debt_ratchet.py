@@ -2631,6 +2631,18 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/cpl-next-decls/src/decls/tyconv.rs:8"])
             self.assertIn("decls_const_op_arms", dr.HARD_ZERO)
 
+    def test_raw_int_range_alternation_counts_either_order_outside_ir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for c in ("cpl-next-check", "cpl-next-ir"):
+                (root / "crates" / c / "src").mkdir(parents=True)
+                (root / "crates" / c / "src/lib.rs").write_text(
+                    "Ty::Range(..) | Ty::RangeOf(_) => 1,\nt @ (Ty::RangeOf(_) | Ty::Range(..)) => 2,\n"
+                    "Ty::Range(..) | Ty::RangeTo(..) => 3,\nt if t.is_int_range() => 4,\n"
+                    "Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeEnds { .. } => 5,\n")
+            self.assertEqual(dr.raw_int_range_alternation(root),
+                             ["crates/cpl-next-check/src/lib.rs:1", "crates/cpl-next-check/src/lib.rs:2"])
+
     def test_synthetic_name_tests_count_only_dollar_prefix_tests_in_the_checker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

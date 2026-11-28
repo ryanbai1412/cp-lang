@@ -63,8 +63,7 @@ fn selfless(d: &dyn Signatures, key: &InstKey) -> bool {
     let FuncKey::Decl(m) = key.func else {
         return false;
     };
-    matches!(d.f(m).body, cpl_syntax::ast::FnBody::None)
-        && (key.targs.first()).is_none_or(|t| *t == CTy::Error)
+    d.f(m).bodiless() && (key.targs.first()).is_none_or(|t| *t == CTy::Error)
 }
 /// The key of a generic fn item as a value nothing calls (`type_of(max)`), one for every
 /// instance of the fn (R08.1.10): no body runs under it.
@@ -1019,7 +1018,7 @@ impl Link<'_> {
         // an impl (a domain, for `Domain`) runs.
         let default = |trait_args: Vec<CTy>| {
             (d.member_named(&d.t(*tr).methods, method))
-                .filter(|&tm| !matches!(d.f(tm).body, cpl_syntax::ast::FnBody::None))
+                .filter(|&tm| !d.f(tm).bodiless())
                 .map(|tm| InstKey {
                     func: FuncKey::Decl(tm),
                     targs: std::iter::once(st.clone()).chain(trait_args).collect(),
