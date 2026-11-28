@@ -122,8 +122,8 @@ pub trait Names {
 pub trait FnFacts {
     /// A read-only method that may still write its receiver's `@cache` fields.
     fn writes_cache(&self, f: FnId) -> bool;
-    /// Of `first` and its overloads, the one whose labels `given` fit.
-    fn overload(&self, first: FnId, given: &[Sym]) -> FnId;
+    /// The other fns of `first`'s name, which a call's labels choose between (R06.1.6).
+    fn overloads(&self, first: FnId) -> &[FnId];
     /// The params of `f` whose type is a domain.
     fn domain_params(&self, f: FnId) -> &[usize];
     /// The params of `f` whose type is ordered.
@@ -340,9 +340,8 @@ impl FnFacts for Decls {
     fn writes_cache(&self, f: FnId) -> bool {
         self.writes_cache(f)
     }
-    fn overload(&self, first: FnId, given: &[Sym]) -> FnId {
-        let given: Vec<&str> = given.iter().map(|s| self.syms.text(*s)).collect();
-        self.overload(first, &given)
+    fn overloads(&self, first: FnId) -> &[FnId] {
+        self.overloads.get(&first).map_or(&[], Vec::as_slice)
     }
     fn domain_params(&self, f: FnId) -> &[usize] {
         self.domain_params.get(&f).map_or(&[], Vec::as_slice)
