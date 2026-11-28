@@ -795,7 +795,7 @@ impl<'a> Cx<'a> {
     }
     /// A name as a value: a variant the expected enum has, a declared fn filled to the fn
     /// wanted, or what the name is bound to.
-    fn name_value(&mut self, n: &str, want: Option<&Ty>, span: Span) -> TExpr {
+    pub(super) fn name_value(&mut self, n: &str, want: Option<&Ty>, span: Span) -> TExpr {
         if let Some((e, i)) = self.expected_variant(n, want) {
             return self.variant(e, i, Vec::new(), &[], span);
         }

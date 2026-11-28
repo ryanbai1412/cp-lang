@@ -23,6 +23,8 @@ pub(super) struct CallArg {
 pub(super) enum ArgValue {
     Written(next::Expr),
     Checked(TExpr),
+    /// `f(by:)`: the variable its label names.
+    Punned,
     /// The parser found it missing and has said so.
     Missing,
 }
@@ -39,9 +41,14 @@ impl CallArg {
     pub(super) fn plain(x: &next::Expr) -> CallArg {
         CallArg::labelled(None, Some(x.clone()), x.syntax().span())
     }
-    /// An argument a form gives with `label`, the parser's missing value as `None`.
+    /// An argument a form gives with `label`, its value `None` when it is punned (`by:`) or,
+    /// unlabelled, missing.
     pub(super) fn labelled(label: Option<String>, value: Option<next::Expr>, at: Span) -> CallArg {
-        let value = value.map_or(ArgValue::Missing, ArgValue::Written);
+        let value = match (value, &label) {
+            (Some(x), _) => ArgValue::Written(x),
+            (None, Some(_)) => ArgValue::Punned,
+            (None, None) => ArgValue::Missing,
+        };
         CallArg {
             label,
             value,
@@ -66,7 +73,7 @@ impl CallArg {
     pub(super) fn written(&self) -> Option<&next::Expr> {
         match &self.value {
             ArgValue::Written(x) => Some(x),
-            ArgValue::Checked(_) | ArgValue::Missing => None,
+            ArgValue::Checked(_) | ArgValue::Punned | ArgValue::Missing => None,
         }
     }
 }
@@ -77,6 +84,7 @@ impl Cx<'_> {
         match &a.value {
             ArgValue::Written(x) => self.expr(x, want),
             ArgValue::Checked(v) => v.clone(),
+            ArgValue::Punned => self.punned(a, want),
             ArgValue::Missing => Self::error_node(a.at),
         }
     }
@@ -1241,6 +1249,16 @@ impl Cx<'_> {
                 let v = self.lift_item(v.clone(), pty);
                 return TArg::Value(self.coerce(v, pty));
             }
+            ArgValue::Punned if pmut => {
+                let n = a.label.as_deref().unwrap_or_default();
+                let p = self.name(n, a.at);
+                return self.mut_arg(a, false, p, a.at, pty);
+            }
+            ArgValue::Punned => {
+                let v = self.punned(a, Some(pty));
+                let v = self.lift_item(v, pty);
+                return TArg::Value(self.coerce(v, pty));
+            }
             ArgValue::Missing => return TArg::Value(Self::error_node(a.at)),
         };
         let at = self.at(x);
@@ -1253,39 +1271,52 @@ impl Cx<'_> {
             return TArg::Value(Self::error_node(at));
         };
         if pmut {
-            if !a.mutable && !marked {
-                self.err(
-                    at,
-                    Msg::verdict(
-                        cpl_diag::codes::MISSING_MUT_AT_CALL,
-                        "a `mut` parameter is marked `mut` at the call",
-                    ),
-                );
-            }
             let p = self.place(&inner);
-            if let Some(name) = self.let_root(&p) {
-                let msg = Msg::verdict(cpl_diag::codes::MUT_OF_IMMUTABLE, format!("`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`"));
-                self.err(at, self.with_var_fix(&p, &name, msg));
-            }
-            if !self.unify(&p.ty, pty) {
-                self.err(
-                    at,
-                    Msg::verdict(
-                        cpl_diag::codes::TYPE_MISMATCH,
-                        format!(
-                            "expected `{}`, found `{}`",
-                            self.show(pty),
-                            self.show(&p.ty)
-                        ),
-                    ),
-                );
-            }
-            TArg::Mut(p)
+            self.mut_arg(a, marked, p, at, pty)
         } else {
             let v = self.expr(&inner, Some(pty));
             let v = self.lift_item(v, pty);
             TArg::Value(self.coerce(v, pty))
         }
+    }
+    /// `by:` of `f(by:)`: the variable `by`, read as a name written there would be.
+    fn punned(&mut self, a: &CallArg, want: Option<&Ty>) -> TExpr {
+        self.name_value(a.label.as_deref().unwrap_or_default(), want, a.at)
+    }
+    /// The place `p` lent to a `mut` parameter of type `pty`; `marked` when written `mut x`.
+    fn mut_arg(&mut self, a: &CallArg, marked: bool, p: TExpr, at: Span, pty: &Ty) -> TArg {
+        if !a.mutable && !marked {
+            self.err(
+                at,
+                Msg::verdict(
+                    cpl_diag::codes::MISSING_MUT_AT_CALL,
+                    "a `mut` parameter is marked `mut` at the call",
+                ),
+            );
+        }
+        if let Some(name) = self.let_root(&p) {
+            let msg = Msg::verdict(
+                cpl_diag::codes::MUT_OF_IMMUTABLE,
+                format!(
+                    "`{name}` is bound by `let`, so it cannot be lent `mut`; declare it with `var`"
+                ),
+            );
+            self.err(at, self.with_var_fix(&p, &name, msg));
+        }
+        if !self.unify(&p.ty, pty) {
+            self.err(
+                at,
+                Msg::verdict(
+                    cpl_diag::codes::TYPE_MISMATCH,
+                    format!(
+                        "expected `{}`, found `{}`",
+                        self.show(pty),
+                        self.show(&p.ty)
+                    ),
+                ),
+            );
+        }
+        TArg::Mut(p)
     }
     /// A default is read where its fn or struct is declared: none of the caller's names are seen,
     /// and the declaration's type parameters name this call's types (`id: F = F.zero`).
