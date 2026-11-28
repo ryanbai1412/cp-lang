@@ -1032,7 +1032,8 @@ mod tests {
 
     #[test]
     fn every_intrinsic_has_its_cpp() {
-        for &(name, op) in INTRINSICS {
+        for &(name, i) in INTRINSICS {
+            let Some(op) = i.op() else { continue };
             let text = cpp_text(op, Operand::Int);
             assert!(!text.contains("not an operation"), "{name}: {text}");
         }
