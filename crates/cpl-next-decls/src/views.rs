@@ -92,6 +92,33 @@ pub trait Signatures: TypeTables + Items {
     fn member_named(&self, members: &HashMap<Sym, FnId>, name: &str) -> Option<FnId>;
 }
 
+/// `names(ModId)`: what a module-level name means, keyed by the module and the interned name
+/// (C's name resolution reads it; text becomes a `Sym` only through `Syms`). Every answer is an
+/// id, rendered through `Texts` for display only.
+pub trait Names {
+    fn named(&self, m: ModId, name: Sym) -> Option<Named>;
+    /// What module `m` exports as `name`, and whether it is `pub`.
+    fn export(&self, m: ModId, name: Sym) -> Option<(Named, bool)>;
+    /// Whether two of module `m`'s `use` lines import `name` as different items (R08.1.4).
+    fn is_ambiguous(&self, m: ModId, name: Sym) -> bool;
+    fn fn_named(&self, m: ModId, name: Sym) -> Option<FnId> {
+        match self.named(m, name) {
+            Some(Named::Fn(f)) => Some(f),
+            _ => None,
+        }
+    }
+    fn struct_named(&self, m: ModId, name: Sym) -> Option<StructId> {
+        match self.named(m, name) {
+            Some(Named::Struct(s)) => Some(s),
+            _ => None,
+        }
+    }
+    /// The program's top-level value `name` binds, the last one bound under it.
+    fn top_value(&self, m: ModId, name: Sym) -> Option<cpl_next_ir::ty::TopValueId>;
+    /// Module `m`'s names, for closest-name candidates: one module's answer.
+    fn names(&self, m: ModId) -> Vec<(Sym, Named)>;
+}
+
 /// `scope(ModId)`: what a name means in a module.
 pub trait Scope {
     fn named(&self, m: ModId, name: &str) -> Option<Named>;
@@ -279,6 +306,26 @@ impl TypeTables for Decls {
     }
     fn roles(&self) -> &Roles {
         &self.roles
+    }
+}
+
+impl Names for Decls {
+    fn named(&self, m: ModId, name: Sym) -> Option<Named> {
+        self.views[m.0].get(&name).copied()
+    }
+    fn export(&self, m: ModId, name: Sym) -> Option<(Named, bool)> {
+        self.exports[m.0].get(&name).copied()
+    }
+    fn is_ambiguous(&self, m: ModId, name: Sym) -> bool {
+        self.ambiguous[m.0].contains(&name)
+    }
+    fn top_value(&self, m: ModId, name: Sym) -> Option<cpl_next_ir::ty::TopValueId> {
+        (m == self.program)
+            .then(|| crate::decls::top_value(&self.top_values, name))
+            .flatten()
+    }
+    fn names(&self, m: ModId) -> Vec<(Sym, Named)> {
+        self.views[m.0].iter().map(|(n, x)| (*n, *x)).collect()
     }
 }
 
