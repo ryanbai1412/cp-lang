@@ -1369,13 +1369,6 @@ fn layer(
                             d.overloads.entry(first).or_default().push(fid);
                             continue;
                         }
-                        if d.is_library(mid) {
-                            let e = Unbuilt::LibraryOverload {
-                                name: f.name.text.clone(),
-                            };
-                            d.fns[fid.0].errors.push(e.into());
-                            continue;
-                        }
                         // Two with a `self` are one method's overloads unless one call could take
                         // both (R08.1.4); that test isn't built.
                         if d.f(first).self_ty.is_some() && d.f(fid).self_ty.is_some() {

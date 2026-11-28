@@ -114,9 +114,6 @@ pub enum Unbuilt {
     VariantValue {
         name: String,
     },
-    LibraryOverload {
-        name: String,
-    },
     MethodsOfOneName {
         name: String,
     },
@@ -228,7 +225,6 @@ impl fmt::Display for Unbuilt {
             UndeclaredTopDomain => write!(f, "a top-level domain that is not declared"),
             DomainKind { kind } => write!(f, "a domain that is {kind}"),
             VariantValue { name } => write!(f, "the value of variant `{name}`"),
-            LibraryOverload { name } => write!(f, "a library with two fns named `{name}`"),
             MethodsOfOneName { name } => write!(f, "methods of one name in one module (`{name}`)"),
             LazyParam { name } => write!(f, "a lazy parameter `{name}`"),
             UseOfOwn { name } => write!(f, "`use` of `{name}`, which this file also declares"),

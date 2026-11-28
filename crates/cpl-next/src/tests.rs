@@ -499,6 +499,41 @@ fn a_library_second_marked_declaration_is_a_duplicate() {
     );
 }
 
+/// A library's misdeclarations are a program's errors, said at once: two fns of one name and
+/// one label set (R06.1.6), and a `@get` fn with a parameter that has no default (R02.6.6).
+#[test]
+fn a_library_misdeclaration_is_said_as_a_programs() {
+    let dir = std::env::temp_dir().join(format!("cpl-misdeclared-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("kit")).unwrap();
+    std::fs::write(dir.join("cp.toml"), "[libs]\nkit = \"kit\"\n").unwrap();
+    let cases = [
+        (
+            "pub fn f(x: Int) -> Int = x\npub fn f(x: Str) -> Int = 0\npub fn one() -> Int = 1\n",
+            "E0702",
+        ),
+        (
+            "pub struct T(pub k: Int):\n    @get pub fn at(self, i: Int) -> Int = self.k + i\npub fn one() -> Int = 1\n",
+            "E0317",
+        ),
+    ];
+    for (lib, code) in cases {
+        std::fs::write(dir.join("kit/m.cp"), lib).unwrap();
+        let got = compile(
+            &Std::read(),
+            "use kit.m.{one}\nprint(one())\n",
+            &Roots::from(&dir),
+            false,
+            None,
+            Checks::CHECKED,
+        );
+        let ds: Vec<String> = (got.err().expect("rejected").iter())
+            .map(|d| d.to_string())
+            .collect();
+        assert!(ds.iter().any(|d| d.contains(code)), "{code}: {ds:?}");
+    }
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
 /// A library fn reached only through a trait, whose body has a type error, lowers that part to
 /// a trap; a build that reaches it reports the error and is not clean, and one that does not
 /// reach it runs.

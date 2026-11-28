@@ -1671,13 +1671,9 @@ fn add_fn(
             "getter `{}` is read like a field, so each parameter but `self` needs a default",
             f.name.text
         );
-        if d.is_library(m) {
-            errors.push(Msg::internal(msg));
-        } else {
-            let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS;
-            d.misdeclared
-                .push((item.at(Span::new(s.span.start, s.span.start)), code, msg));
-        }
+        let code = cpl_diag::codes::GETTER_NEEDS_DEFAULTS;
+        d.misdeclared
+            .push((item.at(Span::new(s.span.start, s.span.start)), code, msg));
     }
     if !binders.is_empty() {
         let slots = binders.iter().map(|b| b.0).collect();
