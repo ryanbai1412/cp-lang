@@ -101,6 +101,14 @@ class PushRejected(Exception):
     """Main moved between the fetch and the push."""
 
 
+def lane_texts(remote: str) -> list[str]:
+    """decisions.md on each of `remote`'s lane branches: a number a lane already heads is taken,
+    or the lane's merge into main heads it twice (679, 11-28)."""
+    git("fetch", "-q", remote, f"+refs/heads/lane-*:refs/remotes/{remote}/lane-*")
+    refs = git("for-each-ref", "--format=%(refname)", f"refs/remotes/{remote}/lane-*").stdout.split()
+    return [show(r) or "" for r in refs]
+
+
 def reserve(lane: str | None, title: str | None, domain: str, remote: str, tries: int) -> int:
     if why := reservation_problem(lane, title):
         print(f"spec-gate decisions: no number reserved: {why}", file=sys.stderr)
@@ -115,7 +123,7 @@ def reserve(lane: str | None, title: str | None, domain: str, remote: str, tries
             return 2
         base = git("rev-parse", "FETCH_HEAD").stdout.strip()
         text = show(base) or ""
-        n = max(next_number(text), next_number(local))
+        n = max(next_number(text), next_number(local), *map(next_number, lane_texts(remote)))
         blob = git("hash-object", "-w", "--stdin", stdin=with_stub(text, n, lane, title)).stdout.strip()
         with tempfile.TemporaryDirectory() as tmp:
             env = dict(os.environ, GIT_INDEX_FILE=os.path.join(tmp, "index"))

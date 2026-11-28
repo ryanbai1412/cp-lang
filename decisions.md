@@ -9582,7 +9582,7 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Reverse.** Drop the two impls and `Str.new`; `Str(cs)` goes back to
   constructing from a `List<Char>` field.
 
-## 679. (reserved, J: There is no guard let; the let-else is the one spelling)
+## 679. (reserved, I: Std is read from std/ when a snapshot is made, as database sources)
 
 ## 680. (reserved, A: A member is inherent or a trait method of an impl)
 

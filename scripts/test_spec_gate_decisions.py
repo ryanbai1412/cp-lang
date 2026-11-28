@@ -94,6 +94,18 @@ class ReserveTest(unittest.TestCase):
         self.assertEqual(MOD.check_landing("FETCH_HEAD"), 1)
         self.assertEqual(MOD.check_landing("no-such-ref"), 2)
 
+    def test_reserve_takes_no_number_a_lane_branch_heads(self):
+        a, b = self.clones
+        _git(b, "pull", "-q", "origin", "main")
+        _git(b, "checkout", "-qb", "lane-x")
+        open(os.path.join(b, "decisions.md"), "a").write("\n## 7. Only on the lane\n")
+        _git(b, "commit", "-qam", "lane decision")
+        _git(b, "push", "-q", "origin", "lane-x")
+        self._use(a)
+        self.assertEqual(MOD.reserve("E", "after the lane", "spec", "origin", 3), 0)
+        _git(a, "fetch", "-q", "origin", "main")
+        self.assertIn("## 8. (reserved, E: after the lane)", MOD.show("FETCH_HEAD"))
+
     def test_a_reservation_names_its_lane_and_title_or_refuses(self):
         a = self.clones[0]
         self._use(a)
