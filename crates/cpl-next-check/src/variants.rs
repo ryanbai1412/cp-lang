@@ -394,7 +394,7 @@ impl Cx<'_> {
             self.b.scopes.pop();
             // An arm that leaves gives no value, so it says nothing of the match's type.
             let body = match &ty {
-                _ if arm_leaves(&arm_body) => body,
+                _ if arm_leaves(&arm_body, &|n| self.traps(n)) => body,
                 Some(t) if self.shallow(t) != Ty::Unit => self.coerce(body, t),
                 Some(_) => body,
                 // With no expected type, the arms meet in a type of their own, as an `if`'s do.

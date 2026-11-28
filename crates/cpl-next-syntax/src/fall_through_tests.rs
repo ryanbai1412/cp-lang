@@ -15,9 +15,14 @@ fn first<N: AstNode>(src: &str, kind: NodeKind) -> (crate::SyntaxFile, N) {
     (file, n)
 }
 
+/// The prelude's `todo`, as the checker resolves it.
+fn todo(n: &ast::NameRef) -> bool {
+    n.ident().is_some_and(|t| t.text() == "todo")
+}
+
 fn end(src: &str) -> Option<(String, &'static str)> {
     let (_, f) = first::<ast::FnDecl>(src, NodeKind::FnDecl);
-    let (span, how) = f.body()?.falls_through()?;
+    let (span, how) = f.body()?.falls_through(&todo)?;
     Some((src[span.start as usize..span.end as usize].to_string(), how))
 }
 
@@ -48,7 +53,7 @@ fn a_body_falls_through_where_its_last_statement_can_end() {
 fn a_block_never_ends_when_it_leaves_or_loops_forever() {
     let never = |src: &str| {
         let (_, f) = first::<ast::FnDecl>(src, NodeKind::FnDecl);
-        f.body().unwrap().never_ends()
+        f.body().unwrap().never_ends(&todo)
     };
     assert!(never("fn f() -> Int:\n    return 1\n"));
     assert!(never("fn f() -> Int:\n    todo\n"));

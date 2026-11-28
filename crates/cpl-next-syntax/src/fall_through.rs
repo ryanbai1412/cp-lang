@@ -4,7 +4,7 @@
 
 use crate::ast::{
     ArmBody, AstNode, Block, BlockEntry, BlockExpr, CondPart, Condition, ElseClause, Expr, FnBody,
-    IfExpr, IfStmt, Stmt,
+    IfExpr, IfStmt, NameRef, Stmt,
 };
 use crate::token::TokenKind;
 use crate::tree::SyntaxNode;
@@ -13,76 +13,80 @@ use cpl_diag::Span;
 /// Where the body can end without a value, and how it does, for the message.
 pub type End = Option<(Span, &'static str)>;
 
+/// Whether a bare name is the `@role(todo)` fn, which traps where it is reached (R01.6.7). The
+/// tree can't say, so whoever resolves names answers.
+pub type Traps<'a> = &'a dyn Fn(&NameRef) -> bool;
+
 impl FnBody {
     /// Where running the body can reach its end without giving a value.
-    pub fn falls_through(&self) -> End {
+    pub fn falls_through(&self, todo: Traps) -> End {
         match self {
-            FnBody::Block(b) => b.falls_through(),
-            FnBody::Expr(e) => e.falls_through(),
+            FnBody::Block(b) => b.falls_through(todo),
+            FnBody::Expr(e) => e.falls_through(todo),
         }
     }
 
     /// Running the body can't reach its end; see [`Block::never_ends`].
-    pub fn never_ends(&self) -> bool {
+    pub fn never_ends(&self, todo: Traps) -> bool {
         match self {
-            FnBody::Block(b) => b.never_ends(),
-            FnBody::Expr(e) => e.never_ends(),
+            FnBody::Block(b) => b.never_ends(todo),
+            FnBody::Expr(e) => e.never_ends(todo),
         }
     }
 }
 
 impl Block {
     /// Where running the block can reach its end without giving a value.
-    pub fn falls_through(&self) -> End {
-        stmt_falls(&last_stmt(self.entries())?)
+    pub fn falls_through(&self, todo: Traps) -> End {
+        stmt_falls(&last_stmt(self.entries())?, todo)
     }
 
     /// The block always leaves before its end: its last statement is a `return`, `break`,
     /// `continue` or `assert false`, or an expression that leaves.
-    pub fn leaves(&self) -> bool {
-        last_stmt(self.entries()).is_some_and(|s| stmt_leaves(&s))
+    pub fn leaves(&self, todo: Traps) -> bool {
+        last_stmt(self.entries()).is_some_and(|s| stmt_leaves(&s, todo))
     }
 
     /// The block can't reach its end: it leaves ([`Block::leaves`]), or its last statement is
     /// a `while true` with no `break` out of it.
-    pub fn never_ends(&self) -> bool {
-        self.leaves() || last_stmt(self.entries()).is_some_and(|s| loops_forever(&s))
+    pub fn never_ends(&self, todo: Traps) -> bool {
+        self.leaves(todo) || last_stmt(self.entries()).is_some_and(|s| loops_forever(&s))
     }
 }
 
 impl BlockExpr {
     /// See [`Block::falls_through`].
-    pub fn falls_through(&self) -> End {
-        stmt_falls(&last_stmt(self.entries())?)
+    pub fn falls_through(&self, todo: Traps) -> End {
+        stmt_falls(&last_stmt(self.entries())?, todo)
     }
 
     /// See [`Block::leaves`].
-    pub fn leaves(&self) -> bool {
-        last_stmt(self.entries()).is_some_and(|s| stmt_leaves(&s))
+    pub fn leaves(&self, todo: Traps) -> bool {
+        last_stmt(self.entries()).is_some_and(|s| stmt_leaves(&s, todo))
     }
 
     /// See [`Block::never_ends`].
-    pub fn never_ends(&self) -> bool {
-        self.leaves() || last_stmt(self.entries()).is_some_and(|s| loops_forever(&s))
+    pub fn never_ends(&self, todo: Traps) -> bool {
+        self.leaves(todo) || last_stmt(self.entries()).is_some_and(|s| loops_forever(&s))
     }
 }
 
 impl ArmBody {
     /// See [`Block::falls_through`].
-    pub fn falls_through(&self) -> End {
+    pub fn falls_through(&self, todo: Traps) -> End {
         match self {
-            ArmBody::Block(b) => b.falls_through(),
-            ArmBody::Expr(e) => e.falls_through(),
-            ArmBody::Stmt(s) => stmt_falls(s),
+            ArmBody::Block(b) => b.falls_through(todo),
+            ArmBody::Expr(e) => e.falls_through(todo),
+            ArmBody::Stmt(s) => stmt_falls(s, todo),
         }
     }
 
     /// See [`Block::leaves`].
-    pub fn leaves(&self) -> bool {
+    pub fn leaves(&self, todo: Traps) -> bool {
         match self {
-            ArmBody::Block(b) => b.leaves(),
-            ArmBody::Expr(e) => e.leaves(),
-            ArmBody::Stmt(s) => stmt_leaves(s),
+            ArmBody::Block(b) => b.leaves(todo),
+            ArmBody::Expr(e) => e.leaves(todo),
+            ArmBody::Stmt(s) => stmt_leaves(s, todo),
         }
     }
 }
@@ -90,41 +94,42 @@ impl ArmBody {
 impl Expr {
     /// Running the expression always leaves: `todo`, a `return`, `break` or `continue` in
     /// value position, or a block, `if`/`else` or `match` all of whose paths leave.
-    pub fn leaves(&self) -> bool {
+    pub fn leaves(&self, todo: Traps) -> bool {
         match self {
-            Expr::Name(n) => n.ident().is_some_and(|t| t.text() == "todo"),
+            Expr::Name(n) => todo(n),
             Expr::Return(_) | Expr::Break(_) | Expr::Continue(_) => true,
-            Expr::Block(b) => b.leaves(),
-            Expr::If(i) => if_expr_leaves(i),
+            Expr::Block(b) => b.leaves(todo),
+            Expr::If(i) => if_expr_leaves(i, todo),
             Expr::Match(m) => {
                 let mut arms = m.arms().peekable();
-                arms.peek().is_some() && arms.all(|a| a.body().is_some_and(|b| b.leaves()))
+                arms.peek().is_some() && arms.all(|a| a.body().is_some_and(|b| b.leaves(todo)))
             }
             _ => false,
         }
     }
 
     /// Running the expression can't reach its end; see [`Block::never_ends`].
-    pub fn never_ends(&self) -> bool {
+    pub fn never_ends(&self, todo: Traps) -> bool {
         match self {
-            Expr::Block(b) => b.never_ends(),
-            _ => self.leaves(),
+            Expr::Block(b) => b.never_ends(todo),
+            _ => self.leaves(todo),
         }
     }
 
     /// Where running the expression can end without giving a value; see
     /// [`Block::falls_through`].
-    pub fn falls_through(&self) -> End {
+    pub fn falls_through(&self, todo: Traps) -> End {
         match self {
-            Expr::Block(b) => b.falls_through(),
+            Expr::Block(b) => b.falls_through(todo),
             Expr::If(i) => if_falls(
                 i.syntax(),
                 i.body()
                     .into_iter()
                     .chain(i.elifs().filter_map(|e| e.body())),
                 i.else_clause(),
+                todo,
             ),
-            Expr::Match(m) => m.arms().find_map(|a| a.body()?.falls_through()),
+            Expr::Match(m) => m.arms().find_map(|a| a.body()?.falls_through(todo)),
             _ => None,
         }
     }
@@ -197,9 +202,9 @@ fn head(node: &SyntaxNode, n: u32) -> Span {
     Span::new(at, at + n)
 }
 
-fn stmt_falls(s: &Stmt) -> End {
+fn stmt_falls(s: &Stmt, todo: Traps) -> End {
     match s {
-        Stmt::Expr(e) => e.expr()?.falls_through(),
+        Stmt::Expr(e) => e.expr()?.falls_through(todo),
         Stmt::If(i) => if_falls(
             i.syntax(),
             i.body()
@@ -207,26 +212,28 @@ fn stmt_falls(s: &Stmt) -> End {
                 .into_iter()
                 .chain(i.elifs().filter_map(|e| e.body())),
             i.else_clause(),
+            todo,
         ),
-        Stmt::Unchecked(u) => u.body()?.falls_through(),
+        Stmt::Unchecked(u) => u.body()?.falls_through(todo),
         Stmt::While(w) => loop_falls(
             head(w.syntax(), 5),
             forever(w.cond()),
             w.body(),
             w.else_clause(),
+            todo,
         ),
-        Stmt::For(f) => loop_falls(head(f.syntax(), 3), false, f.body(), f.else_clause()),
+        Stmt::For(f) => loop_falls(head(f.syntax(), 3), false, f.body(), f.else_clause(), todo),
         _ => None,
     }
 }
 
-fn stmt_leaves(s: &Stmt) -> bool {
+fn stmt_leaves(s: &Stmt, todo: Traps) -> bool {
     match s {
         Stmt::Return(_) | Stmt::Break(_) | Stmt::Continue(_) => true,
         Stmt::Assert(a) => a.cond().is_some_and(|c| is_bool(&c, false)),
-        Stmt::Unchecked(u) => u.body().is_some_and(|b| b.leaves()),
-        Stmt::Expr(e) => e.expr().is_some_and(|e| e.leaves()),
-        Stmt::If(i) => if_stmt_leaves(i),
+        Stmt::Unchecked(u) => u.body().is_some_and(|b| b.leaves(todo)),
+        Stmt::Expr(e) => e.expr().is_some_and(|e| e.leaves(todo)),
+        Stmt::If(i) => if_stmt_leaves(i, todo),
         _ => false,
     }
 }
@@ -240,30 +247,31 @@ fn if_falls(
     node: &SyntaxNode,
     mut branches: impl Iterator<Item = ArmBody>,
     otherwise: Option<ElseClause>,
+    todo: Traps,
 ) -> End {
-    if let Some(end) = branches.find_map(|b| b.falls_through()) {
+    if let Some(end) = branches.find_map(|b| b.falls_through(todo)) {
         return Some(end);
     }
     match otherwise {
-        Some(e) => e.body()?.falls_through(),
+        Some(e) => e.body()?.falls_through(todo),
         None => Some((head(node, 2), "this `if` has no `else`")),
     }
 }
 
-fn if_stmt_leaves(i: &IfStmt) -> bool {
+fn if_stmt_leaves(i: &IfStmt, todo: Traps) -> bool {
     i.else_clause()
         .and_then(|e| e.body())
-        .is_some_and(|b| b.leaves())
-        && i.body().is_some_and(|b| b.leaves())
-        && i.elifs().all(|e| e.body().is_some_and(|b| b.leaves()))
+        .is_some_and(|b| b.leaves(todo))
+        && i.body().is_some_and(|b| b.leaves(todo))
+        && i.elifs().all(|e| e.body().is_some_and(|b| b.leaves(todo)))
 }
 
-fn if_expr_leaves(i: &IfExpr) -> bool {
+fn if_expr_leaves(i: &IfExpr, todo: Traps) -> bool {
     i.else_clause()
         .and_then(|e| e.body())
-        .is_some_and(|b| b.leaves())
-        && i.body().is_some_and(|b| b.leaves())
-        && i.elifs().all(|e| e.body().is_some_and(|b| b.leaves()))
+        .is_some_and(|b| b.leaves(todo))
+        && i.body().is_some_and(|b| b.leaves(todo))
+        && i.elifs().all(|e| e.body().is_some_and(|b| b.leaves(todo)))
 }
 
 fn is_bool(e: &Expr, value: bool) -> bool {
@@ -285,7 +293,7 @@ fn forever(cond: Option<Condition>) -> bool {
     match &e {
         Expr::Name(n) => n.ident().is_some_and(|t| {
             cpl_diag::habits::find(cpl_diag::habits::Kind::Value, t.text())
-                .is_some_and(|h| h.fix == "true")
+                .is_some_and(|h| TokenKind::keyword(h.fix) == Some(TokenKind::True))
         }),
         _ => is_bool(&e, true),
     }
@@ -293,11 +301,17 @@ fn forever(cond: Option<Condition>) -> bool {
 
 /// A loop ends unless it is `while true` with no `break` out of it; after
 /// an `else:` the loop's end is the `else` block's.
-fn loop_falls(head: Span, forever: bool, body: Option<Block>, else_: Option<ElseClause>) -> End {
+fn loop_falls(
+    head: Span,
+    forever: bool,
+    body: Option<Block>,
+    else_: Option<ElseClause>,
+    todo: Traps,
+) -> End {
     let breaks = body.is_some_and(|b| breaks_out(&b, false, &mut Vec::new()));
     match else_.and_then(|e| e.block()) {
         _ if forever && !breaks => None,
-        Some(b) if !breaks => b.falls_through(),
+        Some(b) if !breaks => b.falls_through(todo),
         _ => Some((head, "this loop can end")),
     }
 }

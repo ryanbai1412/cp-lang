@@ -1398,7 +1398,7 @@ impl<'a> Cx<'a> {
             }
             decls::Body::Synth(_) | decls::Body::None => None,
         };
-        let end = syntax.as_ref().and_then(next::FnBody::falls_through);
+        let end = (syntax.as_ref()).and_then(|b| b.falls_through(&|n| self.traps(n)));
         let falls = !refused
             && f.region.is_none()
             && f.intrinsic.is_none()
@@ -1441,7 +1441,7 @@ impl<'a> Cx<'a> {
                 v @ TExpr {
                     kind: TK::Block(_, None),
                     ..
-                } if f.region.is_none() && !b.never_ends() && !lends_last(b) => {
+                } if f.region.is_none() && !b.never_ends(&|n| self.traps(n)) && !lends_last(b) => {
                     self.coerce(v, &ret)
                 }
                 v => v,
@@ -1460,7 +1460,9 @@ impl<'a> Cx<'a> {
                 }
             }
             // An expression that never gives a value is the body, not its result (R01.6.7).
-            Some(next::FnBody::Expr(e)) if e.leaves() => self.tail_block(&[], Some(e), Some(&ret)),
+            Some(next::FnBody::Expr(e)) if e.leaves(&|n| self.traps(n)) => {
+                self.tail_block(&[], Some(e), Some(&ret))
+            }
             // A `lends mut` fn's one expression is the place it lends (R05.6.3).
             Some(next::FnBody::Expr(e)) if matches!(f.region, Some((true, _))) => {
                 let span = self.at(e);

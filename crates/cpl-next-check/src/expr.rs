@@ -431,6 +431,17 @@ impl<'a> Cx<'a> {
         };
         block(pre, call)
     }
+    /// Whether bare name `n` is the `@role(todo)` fn, found in [`Cx::name`]'s order: a nearer
+    /// binding or a const of that name hides it (R01.6.7).
+    pub(super) fn traps(&self, n: &next::NameRef) -> bool {
+        let Some(t) = n.ident() else { return false };
+        let n = t.text();
+        let nearer = self.lookup(n).is_some()
+            || self.itself(n, Span::new(0, 0)).is_some()
+            || self.self_field(n).is_some()
+            || matches!(self.d.named(self.b.module, n), Some(decls::Named::Const(_)));
+        !nearer && (self.d.fn_named(self.b.module, n)).is_some_and(|d| self.d.roles.todo == Some(d))
+    }
     pub(super) fn name(&mut self, n: &str, span: Span) -> TExpr {
         if let Some(e) = self.itself(n, span) {
             return e;
@@ -1013,7 +1024,8 @@ impl<'a> Cx<'a> {
         let mut else_ = None;
         if let (Some(o), None) = (&otherwise, &ty) {
             if gives_none(o) {
-                let first = (branches.iter()).position(|(_, b)| !b.leaves() && !gives_none(b));
+                let first = (branches.iter())
+                    .position(|(_, b)| !b.leaves(&|n| self.traps(n)) && !gives_none(b));
                 if let Some(i) = first {
                     let arm = self.if_arm(&branches[i], None);
                     ty = Some(self.join_ty(&arm.1.ty.clone()));
@@ -1024,7 +1036,7 @@ impl<'a> Cx<'a> {
                 let e = self.arm_body(o, None);
                 self.b.joining = want.is_none();
                 let t = self.join_ty(&e.ty.clone());
-                let e = match !o.leaves() && self.shallow(&t) != Ty::Unit {
+                let e = match !o.leaves(&|n| self.traps(n)) && self.shallow(&t) != Ty::Unit {
                     true => self.coerce(e, &t),
                     false => e,
                 };
@@ -1050,7 +1062,9 @@ impl<'a> Cx<'a> {
             None => self.join_ty(&else_.ty.clone()),
         };
         let converts = valued && self.shallow(&ty) != Ty::Unit;
-        let else_leaves = otherwise.as_ref().is_some_and(|o| o.leaves());
+        let else_leaves = otherwise
+            .as_ref()
+            .is_some_and(|o| o.leaves(&|n| self.traps(n)));
         let mut tail = match converts && !else_leaves && !checked {
             true => self.coerce(else_, &ty),
             false => else_,
@@ -1094,7 +1108,7 @@ impl<'a> Cx<'a> {
         }
         self.b.assumed.truncate(n);
         self.b.scopes.pop();
-        (c, b2, b.leaves())
+        (c, b2, b.leaves(&|n| self.traps(n)))
     }
     fn if_expr(&mut self, i: &next::IfExpr, want: Option<&Ty>, span: Span) -> TExpr {
         if i.is_const() {
