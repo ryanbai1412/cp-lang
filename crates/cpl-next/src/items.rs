@@ -6,9 +6,9 @@
 use crate::db::{Db, DbError, Input, Query};
 use cpl_contract::FileId;
 use cpl_next_ir::ids::ItemId;
+use cpl_next_syntax::ast::{self, AstNode};
 use cpl_next_syntax::{GreenNode, NodeKind, SyntaxNode};
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 /// A file's text, as the snapshot holds it.
@@ -32,10 +32,22 @@ impl Input for ModuleFile {
     type Value = FileId;
 }
 
-/// How an item's declared name is read from its node: the syntax tree's `ast::Item::name()`.
-/// An item that declares none (a block of top-level statements) has none.
-pub trait Names: Send + Sync + 'static {
-    fn name(item: &SyntaxNode) -> Option<String>;
+/// The name an item's id carries: what it declares, an impl's head (`impl Ord for P`), or
+/// none for a block of top-level statements.
+fn item_name(item: &SyntaxNode) -> String {
+    let item = ast::Item::cast(item.clone());
+    if let Some(t) = item.as_ref().and_then(ast::Item::name) {
+        return t.text().to_string();
+    }
+    let words = |n: SyntaxNode| n.text().split_whitespace().collect::<Vec<_>>().join(" ");
+    match item.and_then(|i| i.decl()) {
+        Some(ast::Decl::Impl(d)) => match (d.trait_ref(), d.self_ty()) {
+            (Some(t), Some(s)) => format!("impl {} for {}", words(t), words(s)),
+            (None, Some(s)) => format!("impl {}", words(s)),
+            _ => "impl".to_string(),
+        },
+        _ => String::new(),
+    }
 }
 
 /// `parse(FileId)`: the file's green tree.
@@ -64,8 +76,8 @@ fn item_nodes(db: &Db, file: &FileId) -> Result<Vec<SyntaxNode>, DbError> {
 
 /// `items(FileId)`: each top-level item's id, in file order. Items of one name are told apart
 /// by how many of that name come before them.
-pub struct Items<N>(PhantomData<N>);
-impl<N: Names> Query for Items<N> {
+pub struct Items;
+impl Query for Items {
     type Key = FileId;
     type Value = Vec<ItemId>;
     const NAME: &'static str = "items";
@@ -75,7 +87,7 @@ impl<N: Names> Query for Items<N> {
             .unwrap_or_else(|| file.path().into());
         let mut ids: Vec<ItemId> = Vec::new();
         for n in item_nodes(db, file)? {
-            let name: Arc<str> = N::name(&n).unwrap_or_default().into();
+            let name: Arc<str> = item_name(&n).into();
             let nth = ids.iter().filter(|i| i.name == name).count() as u32;
             ids.push(ItemId {
                 module: module.clone(),
@@ -96,22 +108,22 @@ pub struct Item {
 }
 
 /// `id`'s node, if its module's file holds it.
-fn node<N: Names>(db: &Db, id: &ItemId) -> Result<Option<SyntaxNode>, DbError> {
+fn node(db: &Db, id: &ItemId) -> Result<Option<SyntaxNode>, DbError> {
     let Some(file) = db.input::<ModuleFile>(&id.module)? else {
         return Ok(None);
     };
-    let at = db.get::<Items<N>>(&file)?.iter().position(|i| i == id);
+    let at = db.get::<Items>(&file)?.iter().position(|i| i == id);
     Ok(at.and_then(|k| item_nodes(db, &file).ok()?.into_iter().nth(k)))
 }
 
 /// `item(ItemId)`: the item's green node and its text's hash.
-pub struct ItemOf<N>(PhantomData<N>);
-impl<N: Names> Query for ItemOf<N> {
+pub struct ItemOf;
+impl Query for ItemOf {
     type Key = ItemId;
     type Value = Option<Item>;
     const NAME: &'static str = "item";
     fn compute(db: &Db, id: &ItemId) -> Result<Self::Value, DbError> {
-        Ok(node::<N>(db, id)?.map(|n| {
+        Ok(node(db, id)?.map(|n| {
             let mut h = std::collections::hash_map::DefaultHasher::new();
             n.text().hash(&mut h);
             Item {
@@ -124,13 +136,13 @@ impl<N: Names> Query for ItemOf<N> {
 
 /// `item_at(ItemId)`: the byte the item starts at in its file, which the item's spans count
 /// from.
-pub struct ItemAt<N>(PhantomData<N>);
-impl<N: Names> Query for ItemAt<N> {
+pub struct ItemAt;
+impl Query for ItemAt {
     type Key = ItemId;
     type Value = Option<u32>;
     const NAME: &'static str = "item_at";
     fn compute(db: &Db, id: &ItemId) -> Result<Self::Value, DbError> {
-        Ok(node::<N>(db, id)?.map(|n| n.span().start))
+        Ok(node(db, id)?.map(|n| n.span().start))
     }
 }
 
