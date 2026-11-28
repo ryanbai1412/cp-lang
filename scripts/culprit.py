@@ -4,6 +4,7 @@
     culprit.py --good SHA --bad SHA TEST...        TEST: `binary_id name`
     culprit.py --good SHA --bad SHA --from-log F   the FAIL lines of a CI log
         [--json OUT] [--push-reverts] [--in-place]
+    culprit.py --run ID --bad SHA [--from-log F]   also each red job's own range
 
 Main's CI cancels superseded runs, so a red run covers dozens of commits.
 For each failing nextest test this bisects good..bad in a scratch worktree
@@ -19,6 +20,12 @@ newest commits in good..bad that touch the test's file (else its crate),
 with their lanes. A shard red for one test still routes every other test
 it hides, and the report is saved after each test, so a bisect cut by the
 job's timeout keeps what it found.
+
+--run names a culprit for every red job, nextest or not: the job's range
+runs from the newest earlier main run where that same job passed, so a main
+that stays red for hours, with no fully green run, still gets a range per
+job, with each commit in it and its lane. Without --good, the bisect starts
+from the oldest of those.
 """
 
 import argparse
@@ -210,7 +217,79 @@ def explains(sha, test, cwd):
     return run_tests([test], cwd) == "pass"
 
 
+def gh_json(path, paginate=True):
+    out = subprocess.run(["gh", "api", *(["--paginate"] if paginate else []), path,
+                          "--jq", ".jobs[]? // .workflow_runs[]?"],
+                         check=True, text=True, capture_output=True).stdout
+    return [json.loads(line) for line in out.splitlines() if line.strip()]
+
+
+def job_ranges(run, bad, cwd, repo=None, runs=None, jobs_of=None, depth=40, keep=20):
+    """Each red job of `run`: the newest earlier main run where that job passed
+    (`good`) and the commits in good..bad, each with its lane."""
+    repo = repo or os.environ.get("GITHUB_REPOSITORY", "ryanbai1412/cp-lang")
+    jobs_of = jobs_of or (lambda rid: gh_json(f"repos/{repo}/actions/runs/{rid}/jobs?per_page=100"))
+    if runs is None:
+        # Finished runs only: a run cancelled while queued has no jobs.
+        runs, page = [], 1
+        while len(runs) < depth and page <= 10:
+            got = gh_json(f"repos/{repo}/actions/workflows/ci.yml/runs?branch=main&event=push"
+                          f"&status=completed&per_page=100&page={page}", paginate=False)
+            runs += [r for r in got if r.get("conclusion") in ("success", "failure")]
+            page += 1
+            if not got:
+                break
+        runs = runs[:depth]
+    red = sorted({j["name"] for j in jobs_of(run) if j.get("conclusion") == "failure"})
+    good = {}
+    for r in sorted((r for r in runs if int(r["id"]) < int(run)), key=lambda r: -int(r["id"])):
+        if len(good) == len(red):
+            break
+        for j in jobs_of(r["id"]):
+            if j["name"] in red and j["name"] not in good and j.get("conclusion") == "success":
+                good[j["name"]] = r["head_sha"]
+    out = []
+    for name in red:
+        g = good.get(name)
+        entry = {"job": name, "good": g, "commits": [], "count": None}
+        if g and subprocess.run(["git", "merge-base", "--is-ancestor", g, bad], cwd=cwd).returncode == 0:
+            shas = git("rev-list", "--first-parent", f"{g}..{bad}", cwd=cwd).split()
+            entry["count"] = len(shas)
+            for sha in shas[:keep]:
+                subject, _ = describe(sha, cwd)
+                entry["commits"].append({"sha": sha, "subject": subject, "lane": lane_of(sha, cwd)})
+        out.append(entry)
+    return out
+
+
+def lane_of(sha, cwd):
+    return git("log", "-1", "--format=%(trailers:key=Lane,valueonly,separator=)", sha, cwd=cwd) or "no lane"
+
+
+def oldest_good(jobs, cwd):
+    goods = [j["good"] for j in jobs if j["good"]]
+    if not goods or len(goods) < len(jobs):
+        return None
+    return min(goods, key=lambda g: int(git("rev-list", "--count", g, cwd=cwd)))
+
+
+def job_summary(report):
+    lines = []
+    for j in report.get("jobs", []):
+        if not j["good"]:
+            lines.append(f"- {j['job']}: red in every finished main run checked (the last 40); no range")
+            continue
+        lines.append(f"- {j['job']}: red since {j['good'][:9]}, {j['count']} commit(s) to {report['bad'][:9]}:")
+        lines += [f"    {c['sha'][:9]} ({c['lane']}) {c['subject']}" for c in j["commits"]]
+        if j["count"] and j["count"] > len(j["commits"]):
+            lines.append(f"    ... {j['count'] - len(j['commits'])} older")
+    return "\n".join(["each red job's range (since that job last passed on main):", *lines]) if lines else ""
+
+
 def summary(report):
+    jobs = job_summary(report)
+    if not report.get("good"):
+        return jobs
     lines = [f"suspects per failing test in {report['good'][:9]}..{report['bad'][:9]}:"]
     for t in report.get("triage", []):
         who = ", ".join(f"{s['sha'][:9]} ({s['domain'] or 'no domain'})" for s in t["suspects"])
@@ -227,7 +306,7 @@ def summary(report):
     for key in ("flaky", "already_failing", "unbisected"):
         if report.get(key):
             lines.append(f"{key.replace('_', ' ')}: " + ", ".join(report[key]))
-    return "\n".join(lines)
+    return "\n".join(([jobs] if jobs else []) + lines)
 
 
 def main():
@@ -240,31 +319,38 @@ def main():
     ap.add_argument("--json")
     ap.add_argument("--push-reverts", action="store_true")
     ap.add_argument("--in-place", action="store_true", help="bisect this clean checkout, not a worktree")
+    ap.add_argument("--run", help="the red CI run: name each red job's own range")
     ap.add_argument("tests", nargs="*", help="`binary_id name`, e.g. 'cpl-cli::diagnostics golden'")
     args = ap.parse_args()
     if args.summary:
         with open(args.summary) as f:
             print(summary(json.load(f)))
         return
-    if not (args.good and args.bad):
-        ap.error("--good and --bad are required")
+    if not args.bad or not (args.good or args.run):
+        ap.error("--bad and one of --good or --run are required")
     tests = [tuple(t.split(None, 1)) for t in args.tests]
     if args.from_log:
         with open(args.from_log, errors="replace") as f:
             tests += [t for t in failing_tests(f.read()) if t not in tests]
-    if not tests:
-        print("culprit: no failing nextest tests to bisect")
-        return
     global ROOT
     ROOT = git("rev-parse", "--show-toplevel", cwd=os.getcwd())
-    good = git("rev-parse", args.good, cwd=ROOT)
     bad = git("rev-parse", args.bad, cwd=ROOT)
     def save(report):
         if args.json:
             with open(args.json, "w") as f:
                 json.dump(report, f, indent=2)
 
-    report = {"good": good, "bad": bad, "triage": triage(good, bad, tests, ROOT)}
+    jobs = job_ranges(args.run, bad, ROOT) if args.run else []
+    good = args.good or oldest_good(jobs, ROOT)
+    report = {"good": good and git("rev-parse", good, cwd=ROOT), "bad": bad, "jobs": jobs}
+    good = report["good"]
+    if not tests or not good:
+        save(report)
+        print(summary(report) or "culprit: no red job")
+        print("culprit: no failing nextest tests to bisect" if not tests else
+              "culprit: some red job never passed in the runs checked; no bisect")
+        return
+    report["triage"] = triage(good, bad, tests, ROOT)
     save(report)
     print(summary(report), flush=True)
     if args.triage_only:
