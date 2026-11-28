@@ -1953,7 +1953,8 @@ def next_asks_refused(root: Path) -> list[str]:
 
 
 # `cpl-syntax` is counted on its own, by `next_syntax_old_refs`.
-NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config", "cpl-contract")
+# `cpl-prim` is the spec's primitive set (R12.14): ids and numbers, no tool or build fact.
+NEXT_LAYER_MAY_USE = ("cpl-syntax", "cpl-diag", "cpl-config", "cpl-contract", "cpl-prim")
 
 
 def next_layer_foreign_deps(root: Path) -> list[str]:

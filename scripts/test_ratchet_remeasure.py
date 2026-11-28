@@ -50,5 +50,15 @@ class MeasureAllTest(unittest.TestCase):
         self.assertIsInstance(got[2], rr.Refused)
 
 
+class RestateTest(unittest.TestCase):
+    def test_a_rule_change_moves_a_baseline_by_what_it_stops_counting(self):
+        self.assertEqual(rr.restate(147, 147, 139), 139)
+
+    def test_debt_over_the_baseline_is_not_taken_off_it(self):
+        self.assertEqual(rr.restate(147, 155, 147), 147)
+        self.assertEqual(rr.restate(147, 155, 150), 147)
+        self.assertEqual(rr.restate(147, 155, 140), 140)
+
+
 if __name__ == "__main__":
     unittest.main()

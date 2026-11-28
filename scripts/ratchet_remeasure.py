@@ -101,6 +101,13 @@ def measure(mods, name, sides, root, build=build_cpl):
     return None
 
 
+def restate(baseline, old, new):
+    """`baseline` by the new rule, from what the old rule (`old`) and the new (`new`) measure.
+    A side already over its baseline by the old rule holds debt the rule change can't place:
+    9887838f1's rule dropped 8 lines main had over its 147, and baseline + new - old made it 139."""
+    return min(baseline, new) if old > baseline else baseline + new - old
+
+
 def measure_all(mods, jobs, root):
     """`measure` for each job, in forked processes: serially a rule change reaching a shared
     helper re-measured dozens of counters one by one. A refusal comes back as its exception."""
@@ -148,7 +155,8 @@ def main(argv):
             return 1
         if measured is None:
             continue
-        value = max(0, min(int(counts[s][name]) + (measured["tip"] - measured[s] if s in moved else 0) for s in sides))
+        value = max(0, min(restate(int(counts[s][name]), measured[s], measured["tip"]) if s in moved
+                           else int(counts[s][name]) for s in sides))
         if value != current[name]:
             restated.append(f"{name} {current[name]} -> {value}")
             current[name] = value
