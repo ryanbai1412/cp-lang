@@ -439,6 +439,13 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   states its laws on itself, and `laws_hold` uses them, spec/lib/math.md
   418). None was in `struct_decl` or `impl_decl`, so the grammar gains
   them, and the CST keeps each as its own member node.
+- **`?mut T`, a fn type's result, and a record's domain.** Syntax, 4.1:
+  a parameter may be an optional lent place, `seen: ?mut [V]Bool` (the
+  std-api snapshot, core-05), so `type` gains `'?' 'mut'?`. A fn type's
+  result is `ret`, the same production as a fn's, so `S -> yields S` and
+  `-> lends mut T` read alike in both. A record type may bind a domain
+  first, `(domain C, comp: [V]C)`, as `let (domain C, ..)` does in
+  domain_decl (01:483).
 - **`if T: Bound:` is a condition.** Syntax, 8 (decision 602): R08 §190's
   bound test was missing from `cond`. It is `NAME ':' bound` with a full
   trait ref, told from a one-line `if ok: x` by the `:` that ends the bound.

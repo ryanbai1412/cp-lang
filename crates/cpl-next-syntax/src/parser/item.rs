@@ -309,7 +309,9 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn ret(&mut self) {
+    /// `-> T`, `-> yields T`, `-> lends mut T`: a fn's result and a fn
+    /// type's alike.
+    pub(super) fn ret(&mut self) {
         if !self.at(T::Arrow) {
             return;
         }

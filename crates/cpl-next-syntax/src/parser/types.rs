@@ -18,8 +18,7 @@ impl Parser<'_> {
         }
         if self.at(T::Arrow) {
             self.start_at(at, NodeKind::FnType);
-            self.bump();
-            self.ty();
+            self.ret();
             self.finish();
         }
     }
@@ -29,6 +28,7 @@ impl Parser<'_> {
             T::Question => {
                 self.start(NodeKind::OptionalType);
                 self.bump();
+                self.eat(T::Mut);
                 self.ty();
                 self.finish();
             }
@@ -198,11 +198,16 @@ impl Parser<'_> {
     }
 
     fn paren_type(&mut self) {
-        let record = self.nth(1) == T::Ident && self.nth(2) == T::Colon || self.nth(1) == T::DotDot;
+        let field =
+            |n| self.nth(n) == T::Ident && self.nth(n + 1) == T::Colon || self.nth(n) == T::DotDot;
+        let binder = self.nth(1) == T::Domain && self.nth(2) == T::Ident && self.nth(3) == T::Comma;
+        let record = field(1) || binder && field(4);
         if record {
             return self.list(NodeKind::RecordType, T::RParen, "the record type", |p| {
                 p.start(NodeKind::RecordTypeField);
-                if p.eat(T::DotDot) {
+                if p.at(T::Domain) {
+                    p.ty();
+                } else if p.eat(T::DotDot) {
                     if !matches!(p.peek(), T::RParen | T::Comma) {
                         p.ty();
                         if p.word() == Some(Contextual::Without) {

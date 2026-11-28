@@ -1072,6 +1072,11 @@ impl OptionalType {
     pub fn inner(&self) -> Option<Type> {
         child(&self.0)
     }
+
+    /// `?mut T`: an optional lent-`mut` place.
+    pub fn is_mut(&self) -> bool {
+        has(&self.0, TokenKind::Mut)
+    }
 }
 
 impl ArrayType {
@@ -1153,8 +1158,9 @@ impl FnType {
         children(&self.0).next()
     }
 
-    pub fn ret(&self) -> Option<Type> {
-        children(&self.0).nth(1)
+    /// `-> yields S` and `-> lends T` read as a fn's result does.
+    pub fn ret(&self) -> Option<RetType> {
+        child(&self.0)
     }
 }
 

@@ -348,7 +348,7 @@ fn types_read_through_their_views() {
     };
     let muts: Vec<_> = args.elems().into_iter().map(|(m, _)| m).collect();
     assert_eq!(muts, [true, false]);
-    assert!(matches!(f.ret(), Some(ast::Type::Path(_))));
+    assert!(matches!(f.ret().and_then(|r| r.ty()), Some(ast::Type::Path(_))));
     let ast::Type::Range(r) = &tys[1] else {
         panic!()
     };
@@ -463,4 +463,41 @@ fn struct_and_impl_members_beyond_fns_and_fields_read() {
     };
     assert_eq!(count(&ms[0]), (1, 1, 1, 1, 0, 0));
     assert_eq!(count(&ms[1]), (1, 0, 0, 0, 1, 1));
+}
+
+#[test]
+fn an_optional_mut_a_yielding_fn_type_and_a_record_binder_read() {
+    use crate::ast::{self, AstNode};
+    let src = "fn f(seen: ?mut [V]Bool, next: S -> yields S) -> (domain C, comp: [V]C) = x\nfn g(p: (domain P, [P]Int)) = p\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let opt = file
+        .root
+        .descendants()
+        .find_map(ast::OptionalType::cast)
+        .unwrap();
+    assert!(opt.is_mut());
+    let fnty = file.root.descendants().find_map(ast::FnType::cast).unwrap();
+    let ret = fnty.ret().unwrap();
+    assert!(ret.is_yields());
+    assert_eq!(ret.ty().unwrap().syntax().text().trim(), "S");
+    let rec = file
+        .root
+        .descendants()
+        .find_map(ast::RecordType::cast)
+        .unwrap();
+    let first = rec
+        .syntax()
+        .children()
+        .find_map(ast::RecordTypeField::cast)
+        .unwrap();
+    assert!(first.name().is_none() && !first.is_rest());
+    assert!(matches!(first.ty(), Some(ast::Type::DomainBinder(_))));
+    assert_eq!(
+        file.root
+            .descendants()
+            .filter_map(ast::TupleType::cast)
+            .count(),
+        1
+    );
 }

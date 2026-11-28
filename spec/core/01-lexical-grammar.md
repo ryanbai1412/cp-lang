@@ -455,7 +455,7 @@ use_decl    := 'pub'? 'use' path ('.' '{' NAME (',' NAME)* ','? '}')? NL
 fn_decl     := 'pub'? 'fn' fn_name generics? '(' params? ')' ret? where?
                (block | '=' expr NL)
 fn_name     := NAME | '(' param ')' BINOP '(' param ')'     // operator fns
-ret         := '->' ('yields' | 'lends' lend_src?)? type
+ret         := '->' ('yields' | 'lends' lend_src? 'mut'?)? type   // fn types too
 lend_src    := '(' NAME (',' NAME)* ')'
 params      := param (',' param)* (';' param (',' param)*)? ','?
 param       := ('mut' | 'var')? (WORD NAME | pattern | 'self') (':' type)? ('=' expr)?
@@ -520,11 +520,11 @@ pattern     := '_' | 'var'? NAME | literal | range_pat
              | path ('(' pattern (',' pattern)* ')')?       // variants, V(j)
              | pattern '|' pattern
 range_pat   := literal ('..' | '..=') literal
-type        := '?' type | '[' dims ']' type | '(' type (',' type)* ','? ')'
-             | '(' NAME ':' type (',' NAME ':' type)* (',' '..' TYPE_NAME
+type        := '?' 'mut'? type | '[' dims ']' type | '(' type (',' type)* ','? ')'
+             | '(' ('domain' TYPE_NAME ',')? NAME ':' type (',' NAME ':' type)* (',' '..' TYPE_NAME
                ('without' '(' NAME (',' NAME)* ')')?)? ')'     // records, rows
              | path generic_args? | range_type | lit_type ('|' lit_type)*
-             | '(' (type (',' type)*)? ')' '->' type          // fn types
+             | '(' (type (',' type)*)? ')' ret                // fn types
              | type 'of' STRING
 dims        := type (',' type)* | '(' type (',' type)* ')' | expr
 range_type  := expr? ('..' | '..=') expr?
