@@ -308,9 +308,13 @@ fn dom_impls(d: &Decls, typed: &Typed, i: usize) -> Vec<cpl_next_ir::ty::TraitId
         rows: &typed.dom_rows,
     };
     let dom = cpl_next_ir::ty::Ty::Dom(i);
-    (d.roles.discrete.into_iter().chain(d.roles.domain).chain(d.roles.order))
-        .filter(|&tr| impls.trait_impls(tr).any(|(_, im)| im.for_ == dom))
-        .collect()
+    (d.roles
+        .discrete
+        .into_iter()
+        .chain(d.roles.domain)
+        .chain(d.roles.order))
+    .filter(|&tr| impls.trait_impls(tr).any(|(_, im)| im.for_ == dom))
+    .collect()
 }
 
 fn whole(d: &Decls, typed: &Typed) -> cpl_next_ir::whole::Whole {
