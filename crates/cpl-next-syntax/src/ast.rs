@@ -1177,6 +1177,12 @@ impl Dims {
 }
 
 impl TupleType {
+    /// `(T)`: one type in parentheses with no comma, which is `T` itself; only a fn type's
+    /// parameter list reads it as one parameter.
+    pub fn is_grouping(&self) -> bool {
+        self.elems().len() == 1 && !has(&self.0, TokenKind::Comma) && !has(&self.0, TokenKind::Mut)
+    }
+
     /// Each element's type and whether it is `mut`, as a fn type's
     /// parameters can be.
     pub fn elems(&self) -> Vec<(bool, Type)> {

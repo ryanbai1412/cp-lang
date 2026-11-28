@@ -361,6 +361,9 @@ pub(super) fn conv(cx: &mut TyCx, t: &Type, errors: &mut Vec<Msg>) -> Ty {
             if elems.is_empty() {
                 return Ty::Unit;
             }
+            if ts.is_grouping() {
+                return conv(cx, &elems[0].1, errors);
+            }
             // `(A, B)` is the `@role(tuple)` struct with two fields.
             let Some(d) = cx.env.tuple(elems.len()) else {
                 return unbuilt("Tuple", errors);
