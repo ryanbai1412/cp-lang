@@ -1763,3 +1763,33 @@ fn each_item_lists_the_fns_it_writes() {
         fs.iter().for_each(|&i| assert_eq!(&d.f(i).item, item));
     }
 }
+
+/// A view, a lazy std seq and a closure stored past its frame each lend their source: writing
+/// or escaping it is rejected (wrong-accepted after 12be3511f until fd3058663).
+#[test]
+fn a_lent_source_cannot_be_written_or_escaped() {
+    let cases = [
+        (
+            "var xs = [3, 1, 2]\nlet w = xs[0..2]\nxs.push(4)\nprint(w.sum())\n",
+            "program:3:",
+            "E0602",
+        ),
+        (
+            "use std.seq.{map}\nvar xs = [1, 2, 3]\nlet f = map(xs, x => x + 1)\nxs.push(9)\nvar n = 0\nfor _ in f:\n    n += 1\nprint(n)\n",
+            "program:4:",
+            "E0602",
+        ),
+        (
+            "var fs: List<Int -> Int> = []\nfn mk(n: Int):\n    var k = n\n    fs.push(x => x + k)\n    k += 1\nmk(5)\nprint(fs[0](1))\n",
+            "program:4:",
+            "E0603",
+        ),
+    ];
+    for (src, at, code) in cases {
+        let ds: Vec<String> = diags(src).iter().map(|d| d.to_string()).collect();
+        assert!(
+            ds.iter().any(|d| d.contains(at) && d.contains(code)),
+            "{code} at {at}: {ds:?}\n{src}"
+        );
+    }
+}
