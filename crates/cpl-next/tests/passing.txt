@@ -565,6 +565,7 @@ core-04/three-d-str-cell-append-and-last-dim-trap.cp
 core-04/trap-in-a-small-fn-names-its-frame.cp
 core-04/tuple-holding-record-fits-named-product.cp
 core-04/tuple-of-domains-indexes-pair-table.cp
+core-04/unnamed-value-sizes-its-own-domain.cp
 core-04/value-domain-has-domain-members.cp
 core-04/with-domain.cp
 core-04/wrap-negative-is-euclidean.cp
@@ -939,6 +940,8 @@ core-07/zip-takes-a-rev.cp
 core-08/a-callee-generic-is-not-the-receivers-of-the-same-name.cp
 core-08/a-fn-item-passes-for-its-own-type-of.cp
 core-08/a-std-struct-answers-its-static-trait-fns.cp
+core-08/a-sub-impl-missing-a-supertrait-member-is-rejected.cp
+core-08/a-sub-impl-serves-its-supertraits.cp
 core-08/a-struct-with-a-domain-field-derives-eq.cp
 core-08/a-tuple-meets-no-constant-trait.cp
 core-08/a-variant-named-like-a-trait-does-not-hide-it.cp
@@ -1063,6 +1066,7 @@ core-08/trait-typed-param-in-method.cp
 core-08/trait-typed-param-of-a-local-trait.cp
 core-08/trait-typed-param-reads-its-assoc-type-bound.cp
 core-08/two-impls-of-a-trait-for-one-fn-item-are-rejected.cp
+core-08/two-impls-serving-one-supertrait-are-rejected.cp
 core-08/type-arguments-on-a-value-are-rejected.cp
 core-08/type-of-local-fn-takes-a-std-trait-impl.cp
 core-08/type-param-default.cp

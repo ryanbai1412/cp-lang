@@ -128,7 +128,6 @@ core-04/spec-block-empty-domain-first.cp	wrong-reject	check: program:7:24: E0302
 core-04/spec-block-first-drop-next-greater.cp	wrong-reject	check: program:7:23: E0302: expected `Int`, found `Range<K>`
 core-04/spec-block-split-by-search.cp	wrong-reject	check: program:8:16: E0302: expected `Str`, found `Slice<Str>`
 core-04/type-param-enum-has-domain-members.cp	wrong-reject	check: program:6:27: E0606: `A` does not implement `Domain`
-core-04/unnamed-value-sizes-its-own-domain.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
 core-04/z-function-of-slice-keyed-like-input-traps.cp	wrong-reject	check: std.strings:386:5: E0203: `List<Int>` has no member `rekey`
 core-05/at-assign-is-index-assign.cp	wrong-reject	check: program:4:1: E0302: this call does not lend a place, so it cannot be assigned
 core-05/at-assign-needs-var.cp	wrong-error	wanted E0401 on line 4, got: check: program:4:1: E0302: this call does not lend a place, so it cannot be assigned

@@ -756,6 +756,119 @@ pub(super) fn supertraits_unmet(
     }
     out
 }
+impl Decls {
+    /// An impl that writes its supertraits' members is also the impl of each supertrait with none of
+    /// its own for that type, a member it leaves out being the supertrait's default (R08.1.1). Each
+    /// one made is an ordinary impl, so it serves its own supertraits in turn.
+    pub(super) fn serve_supertraits(&mut self, from: usize) {
+        let d = self;
+        // A domain's own rows count as its impls (`Ord` on a `Worker` field).
+        d.add_domain_rows();
+        // Each impl made here, with the written impl it comes from.
+        let mut served: Vec<(usize, usize)> = Vec::new();
+        let mut k = from;
+        while k < d.impls.len() {
+            let im = d.impls[k].clone();
+            let root = served.iter().find(|s| s.0 == k).map_or(k, |s| s.1);
+            k += 1;
+            if matches!(im.for_, Ty::Param(_)) || !d.live(&im) {
+                continue;
+            }
+            let sub = Subst {
+                tys: &im.trait_.args,
+                sets: &[],
+            };
+            let supers: Vec<TraitRef> = (d.traits[im.trait_.tr.0].supers.iter())
+                .map(|s| TraitRef {
+                    tr: s.tr,
+                    args: s.args.iter().map(|a| sub.ty(a)).collect(),
+                })
+                .collect();
+            for r in supers {
+                let st = &d.traits[r.tr.0];
+                if st.alias || st.row {
+                    continue;
+                }
+                let mut own: Vec<(Sym, FnId)> = st.methods.iter().map(|(&n, &f)| (n, f)).collect();
+                own.sort_by_key(|&(n, _)| d.text(n).to_string());
+                // A name its own trait declares again is that trait's member (`IndexMut.at`).
+                let mine = |n: &Sym| d.traits[im.trait_.tr.0].methods.contains_key(n);
+                let writes = (own.iter()).any(|(n, _)| im.methods.contains_key(n) && !mine(n));
+                // An impl it has by its bounds too: `impl<D: Domain> Sized for D` is not `Wrap`'s.
+                // Every range type meets the same impls.
+                let head = match im.for_ {
+                    Ty::AnyRange(_) => Ty::Range(0, 0),
+                    ref t => t.clone(),
+                };
+                let has = (Impls::of(&*d)
+                    .best_in(&head, &r, CAP, Applies::Bounds)
+                    .into_iter())
+                .find_map(|(o, _)| match o {
+                    ImplIdx::Decl(o) => Some(o),
+                    ImplIdx::Row(_) => None,
+                });
+                match has {
+                    Some(o) if writes && !served.contains(&(o, root)) => {
+                        let (tname, sname) =
+                            (&d.traits[im.trait_.tr.0].name, &d.traits[r.tr.0].name);
+                        let msg = format!(
+                            "`impl {tname}` writes `{sname}`'s members, and the type has \
+                             another impl of `{sname}` (R08.1.1)"
+                        );
+                        let at = im.at.clone();
+                        d.misdeclared
+                            .push((at, cpl_diag::codes::DUPLICATE_DEFINITION, msg));
+                        continue;
+                    }
+                    Some(_) => continue,
+                    None => {}
+                }
+                // It takes the members of the supertrait's own supertraits too, which it serves next.
+                let (mut names, mut todo, mut seen) = (Vec::new(), vec![r.tr], HashSet::new());
+                while let Some(t) = todo.pop() {
+                    if seen.insert(t) {
+                        names.extend(d.traits[t.0].methods.keys().copied());
+                        todo.extend(d.traits[t.0].supers.iter().map(|s| s.tr));
+                    }
+                }
+                let methods: HashMap<Sym, FnId> = (im.methods.iter())
+                    .filter(|(n, _)| names.contains(n) && !mine(n))
+                    .map(|(&n, &f)| (n, f))
+                    .collect();
+                for (n, tm) in own {
+                    if !methods.contains_key(&n) && d.f(tm).bodiless() {
+                        let (tname, sname) =
+                            (&d.traits[im.trait_.tr.0].name, &d.traits[r.tr.0].name);
+                        let m = d.text(n);
+                        let msg = format!(
+                            "`impl {tname}` is also the type's `{sname}`, so it needs a body \
+                             for `{sname}`'s `{m}` (R08.1.1)"
+                        );
+                        d.misdeclared
+                            .push((im.at.clone(), cpl_diag::codes::MISSING_IMPL, msg));
+                    }
+                }
+                // A member is found through the impl it now belongs to, never twice.
+                for n in methods.keys() {
+                    d.impls[k - 1].methods.remove(n);
+                    if let Some(ks) = d.impls_by_member.get_mut(n) {
+                        ks.retain(|&o| o != k - 1);
+                    }
+                }
+                let assoc = d.traits[r.tr.0].assoc.len();
+                served.push((d.impls.len(), root));
+                d.push_impl(ImplDecl {
+                    trait_: r,
+                    methods,
+                    assoc_at: vec![im.at.clone(); assoc],
+                    derived: false,
+                    replaced: false,
+                    ..im.clone()
+                });
+            }
+        }
+    }
+}
 /// Whether one type could fit both impl headers. A bare parameter and a written type don't: the
 /// impl for the written type is more specific and is the one chosen (R08.1.2).
 pub(super) fn overlap(a: &Ty, b: &Ty) -> bool {

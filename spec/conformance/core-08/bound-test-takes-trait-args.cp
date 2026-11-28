@@ -18,6 +18,8 @@ impl Chooser<Int> for Mx:
 struct Lo
 impl Op<Int> for Lo:
     fn op(self, a: Int, b: Int) -> Int = if a < b: a else: b
+impl Op<F64> for Lo:
+    fn op(self, a: F64, b: F64) -> F64 = if a < b: a else: b
 impl Chooser<F64> for Lo:
     fn choose(self, a: F64, b: F64) -> Bool = a < b
 fn pick<T, M: Op<T>>(m: M, a: T, b: T) -> Int = if M: Selective<T>: 1 else: 0

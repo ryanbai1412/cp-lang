@@ -771,6 +771,7 @@ fn layer(
     }
     domain_params(&mut d, fns_from, &bodies);
     fresh_results(&mut d);
+    d.serve_supertraits(impls_from);
     let unmet: Vec<_> = (d.impls.iter().skip(impls_from))
         .flat_map(|im| supertraits_unmet(&d, im))
         .collect();
