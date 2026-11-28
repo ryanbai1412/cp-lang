@@ -3,10 +3,11 @@
 //! R04.2.10, R08.4.1). Every variant over fields is built from one per-field typed expansion,
 //! [`Cx::per_field`], which std's `fields(a)` unrolling reuses once derived bodies are std's.
 use super::call::CallArg;
+use super::lambda::{LamBody, LamParam};
 use super::member::Called;
 use super::*;
 use cpl_next_decls::decls::Role;
-use cpl_next_decls::SynthBody;
+use cpl_next_decls::{LawRow, SynthBody};
 
 impl<'a> Cx<'a> {
     /// The body `b` of made fn `f`, its receiver and parameters bound to `params`.
@@ -162,7 +163,90 @@ impl<'a> Cx<'a> {
             SynthBody::ProductCount { .. } | SynthBody::EnumCount(_) => {
                 self.synth_static(f, b, span)
             }
+            SynthBody::Laws { len, laws } => self.laws_list(&first, *len, laws, ret, span),
         }
+    }
+
+    /// `laws` of `me`: per law `(name: "..", sizes: s => [pool.len, ..], holds: (s, p) =>
+    /// law(me, pool[p[0]], ..))`, each pool the samples `s` or their field, and the law called as
+    /// its owner's fn, so a trait's law runs the impl's fns (R08.3.5).
+    fn laws_list(&mut self, me: &TExpr, len: Sym, laws: &[LawRow], ret: &Ty, span: Span) -> TExpr {
+        let row = match self.shallow(ret) {
+            Ty::Struct(_, ts, _) => ts.first().cloned(),
+            _ => None,
+        };
+        let Some((rec, _)) = row.as_ref().and_then(|r| self.field_tys(r)) else {
+            return Self::error_node(span);
+        };
+        let names: Vec<Sym> = self.items.s(rec).fields.iter().map(|(n, _)| *n).collect();
+        let (Some(row), [_, _, _]) = (row, &names[..]) else {
+            self.err(
+                span,
+                Msg::internal("`@role(lawful)`'s laws are not (name, sizes, holds)"),
+            );
+            return Self::error_node(span);
+        };
+        let mut out = Vec::new();
+        for law in laws {
+            let v = self.made_struct(&row, &names, span, |cx, n, t| {
+                let pools = law.pools.clone();
+                let pool = move |cx: &mut Cx<'a>, s: &TExpr, p: &Option<Sym>| match p {
+                    Some(f) => cx.field_named(s, *f, span),
+                    None => s.clone(),
+                };
+                let param = || LamParam {
+                    pat: None,
+                    ty: None,
+                    mutable: false,
+                };
+                if n == names[0] {
+                    return cx.text_value(law.name.clone(), span);
+                }
+                if n == names[1] {
+                    let body = move |cx: &mut Cx<'a>, xs: Vec<TExpr>, _: &Ty| {
+                        let Some(s) = xs.into_iter().next() else {
+                            return Self::error_node(span);
+                        };
+                        let lens = (pools.iter())
+                            .map(|p| {
+                                let p = pool(cx, &s, p);
+                                cx.member_on(p, cx.called(len, span), None, span, None, &[])
+                            })
+                            .collect();
+                        cx.list_of(lens, span)
+                    };
+                    let body = LamBody::Built(Box::new(body));
+                    return cx.lambda_of(vec![param()], None, body, Some(t), span);
+                }
+                let (me, f, targs) = (me.clone(), law.law, law.targs.clone());
+                // A struct's law takes its sets as the struct's own methods do: the receiver's.
+                let sets = match (cx.items.f(f).owner, cx.shallow(&me.ty)) {
+                    (Some(Owner::Struct(_)), Ty::Struct(_, _, ss)) => ss,
+                    _ => Vec::new(),
+                };
+                let body = move |cx: &mut Cx<'a>, xs: Vec<TExpr>, _: &Ty| {
+                    let [s, picks] = &xs[..] else {
+                        return Self::error_node(span);
+                    };
+                    let args: Vec<CallArg> = (pools.iter().enumerate())
+                        .map(|(k, p)| {
+                            let p = pool(cx, s, p);
+                            let k = lit(TK::Int(k as i64), Ty::Int, span);
+                            let k = cx.elem(picks.clone(), k, span);
+                            CallArg::held(None, cx.elem(p, k, span), span)
+                        })
+                        .collect();
+                    let callee = cx.fnref(f, targs, sets);
+                    let recv = cx.recv_arg(f, me, span);
+                    cx.call_method(callee, recv, false, Some(&args), span, None)
+                };
+                let body = LamBody::Built(Box::new(body));
+                cx.lambda_of(vec![param(), param()], None, body, Some(t), span)
+            });
+            out.push(v);
+        }
+        let list = self.list_of(out, span);
+        self.coerce(list, ret)
     }
 
     /// A made fn with no receiver or parameter: a domain's size.

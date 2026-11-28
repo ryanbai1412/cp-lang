@@ -257,16 +257,18 @@ decorators! {
 pub enum RoleMember {
     MemoGet,
     MemoSet,
+    Laws,
 }
 
 impl RoleMember {
-    pub const ALL: [RoleMember; 2] = [RoleMember::MemoGet, RoleMember::MemoSet];
+    pub const ALL: [RoleMember; 3] = [RoleMember::MemoGet, RoleMember::MemoSet, RoleMember::Laws];
 
     /// The `@role(name)` whose trait declares it, and its name there.
     pub fn spelling(self) -> (&'static str, &'static str) {
         match self {
             RoleMember::MemoGet => ("memo_table", "get"),
             RoleMember::MemoSet => ("memo_table", "set"),
+            RoleMember::Laws => ("lawful", "laws"),
         }
     }
 }

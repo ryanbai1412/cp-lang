@@ -18,9 +18,23 @@ impl Cx<'_> {
             .and_then(|op| self.rows.binary_operator(op))
             .filter(|_| open)?;
         let f = self.fnref(m, Vec::new(), Vec::new());
+        let ty = Ty::Clo(Box::new(CloRef::Item(f.clone())));
+        // Given to a bound, the operator is its own value only where an impl takes that value
+        // or a `@from_op` fn lifts it; otherwise it is the fn an impl of the bound targets, as
+        // a lambda is (`laws_hold(-, xs)`).
+        if let Some(Ty::Var(v)) = want.map(|w| self.shallow(w)) {
+            let own = (self.bounds_on(v).into_iter()).any(|tr| {
+                (self.impls().impls_of(tr)).any(|im| {
+                    matches!(im.for_, Ty::Clo(_)) && self.impls().fits_impl(im, &ty).is_some()
+                })
+            });
+            if !own && self.op_bound_fn(v, &ty).is_none() {
+                return None;
+            }
+        }
         Some(TExpr {
-            kind: TK::FnItem(f.clone()),
-            ty: Ty::Clo(Box::new(CloRef::Item(f))),
+            kind: TK::FnItem(f),
+            ty,
             span,
         })
     }

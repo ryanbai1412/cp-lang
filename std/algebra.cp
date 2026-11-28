@@ -11,6 +11,41 @@
 //! non-commutative value says how it reads backwards with `Reversible`.
 use std.math.{gcd}
 
+/// What `laws_hold` checks: each `law` by name, the size of each of its parameters' pools of
+/// samples `S`, and the law on the samples it picks. A struct that declares laws, and each impl
+/// of a trait that declares them, has it (R08.3.5).
+@role(lawful)
+pub trait Lawful<S>:
+    @get fn laws(self) -> List<(name: Str, sizes: S -> List<Int>, holds: (S, List<Int>) -> Bool)>
+
+/// Whether every law of `x` holds on `samples`: each `law` in turn, over every way to pick its
+/// parameters from their pools, false at the first pick a law fails on (R08.3.3).
+///
+/// cost: one law call per pick, the product of the law's pool sizes
+/// empty: a law with an empty pool has no pick and holds
+/// traps: never
+/// example: `laws_hold(+, [1, 2, 3])`
+/// example: `not laws_hold(-, [1, 2, 3])`
+pub fn laws_hold<L: Lawful<S>, S>(x: L, samples: S) -> Bool:
+    for l in x.laws:
+        let sizes = l.sizes(samples)
+        if sizes.any(n => n == 0):
+            continue
+        var at = [0 for _ in sizes]
+        var more = true
+        while more:
+            if not l.holds(samples, at):
+                return false
+            var k = 0
+            while k < at.len and at[k] + 1 == sizes[k]:
+                at[k] = 0
+                k += 1
+            if k == at.len:
+                more = false
+            else:
+                at[k] += 1
+    true
+
 /// An associative operation with an identity: the pair `(id, op)`, written
 /// `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.
 /// `op(a, b)` folds `a` on the left of `b`, which matters when it does not commute.
@@ -173,7 +208,7 @@ fn unreversed<T>(x: T) -> T:
 ///
 /// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
 /// `compose` still type-checks, so check a hand-written action once with
-/// `laws_hold(act, T: [...], F: [...])`.
+/// `laws_hold(act, (T: [...], F: [...]))`.
 pub struct Action<T, F>(
     pub id: F,
     pub compose: (F, F) -> F,
@@ -694,7 +729,7 @@ fn affine_action_laws():
         (f, val, span) => f.0 * val + f.1 * span,
         over: +,
     )
-    assert laws_hold(act, T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5), (0, 7)])
+    assert laws_hold(act, (T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5), (0, 7)]))
     assert act.over.id == 0
     // Non-commutative check: old = (*2 + 1), new = (*3 + 5) => 3*(2x + 1) + 5 = 6x + 8
     let combined = act.compose((3, 5), (2, 1))
@@ -717,7 +752,7 @@ fn named_arguments_build_the_same_monoid_and_action():
         compose: (new_f, old_f) => (new_f.0 * old_f.0, new_f.0 * old_f.1 + new_f.1),
         id: (1, 0),
     )
-    assert laws_hold(named, T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5)])
+    assert laws_hold(named, (T: [-3, 0, 4], F: [(1, 0), (2, 3), (-1, 5)]))
     for f in [(1, 0), (2, 3), (-1, 5)]:
         for g in [(0, 7), (3, -2)]:
             assert named.compose(f, g) == positional.compose(f, g)
@@ -841,6 +876,12 @@ impl<T> Op<T> for (T, T) -> T:
     fn op(self, a: T, b: T) -> T = self(a, b)
     fn folds(self) -> Monoid<?T> = self.opt()
     fn lift(self, x: T) -> ?T = Some(x)
+
+/// A bare operation promises it is associative, `op(op(a, b), c) == op(a, op(b, c))`, on any
+/// three samples.
+impl<T: Eq> Lawful<List<T>> for (T, T) -> T:
+    @get fn laws(self) -> List<(name: Str, sizes: List<T> -> List<Int>, holds: (List<T>, List<Int>) -> Bool)> =
+        [(name: "assoc", sizes: xs => [xs.len, xs.len, xs.len], holds: (xs, at) => self(self(xs[at[0]], xs[at[1]]), xs[at[2]]) == self(xs[at[0]], self(xs[at[1]], xs[at[2]])))]
 
 /// The identity of an operation. Law: `op(id, a) == a == op(a, id)`.
 pub trait HasId<T>:
@@ -968,7 +1009,7 @@ fn compose_onto_matches_compose_with_and_without_compose_in():
     let app = (f: (Int, Int), v: Int, span: Int) => f.0 * v + f.1 * span
     let good = Action<Int, (Int, Int)>(id: (1, 0), compose: comp, apply: app, compose_in: (mut o, nf) => affine_onto(mut o, nf))
     let plain = Action<Int, (Int, Int)>(id: (1, 0), compose: comp, apply: app)
-    assert laws_hold(good, T: [-3, 0, 4], F: fs)
+    assert laws_hold(good, (T: [-3, 0, 4], F: fs))
     for f in fs:
         for g in fs:
             var h = g
@@ -999,12 +1040,12 @@ fn laws_hold_checks_every_kind_of_operation():
     assert laws_hold(Semigroup<Int>((a, b) => max(a, b)), xs)
     assert laws_hold(Group<Int>.of(+), xs) and laws_hold(Group<Int>.of(^), xs)
     assert laws_hold(Larger(), xs)
-    assert laws_hold(Action<Int, Int>.of(add, +), T: xs, F: xs)
+    assert laws_hold(Action<Int, Int>.of(add, +), (T: xs, F: xs))
 
 @test
 fn stock_actions_compose_and_apply():
     let f3 = [(1, 0), (2, 3), (-1, 5)]
-    assert laws_hold(Action<Int, (Int, Int)>.of(affine, +), T: [-3, 0, 4], F: f3)
+    assert laws_hold(Action<Int, (Int, Int)>.of(affine, +), (T: [-3, 0, 4], F: f3))
     let add_sum = Action<Int, Int>.of(add, +)
     assert add_sum.compose(2, 5) == 7 and add_sum.apply(2, 10, 3) == 16 and add_sum.commutes
     let add_max = Action<Int, Int>.of(add, max)
@@ -1039,8 +1080,8 @@ fn assign_actions_replace_and_never_commute():
     let max_set = Action<Int, ?Int>.of(assign, max)
     let sum_set_add = Action<Int, (set: ?Int, add: Int)>.of(assign_add, +)
     let max_set_add = Action<Int, (set: ?Int, add: Int)>.of(assign_add, max)
-    assert laws_hold(sum_set, T: xs, F: fs) and laws_hold(max_set, T: xs, F: fs)
-    assert laws_hold(sum_set_add, T: xs, F: gs) and laws_hold(max_set_add, T: xs, F: gs)
+    assert laws_hold(sum_set, (T: xs, F: fs)) and laws_hold(max_set, (T: xs, F: fs))
+    assert laws_hold(sum_set_add, (T: xs, F: gs)) and laws_hold(max_set_add, (T: xs, F: gs))
     assert not sum_set.commutes and not max_set.commutes
     assert not sum_set_add.commutes and not max_set_add.commutes
     let sets = max_set.replaces!

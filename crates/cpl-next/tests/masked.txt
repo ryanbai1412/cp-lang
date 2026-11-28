@@ -109,7 +109,6 @@ std-segtree/max-identity-is-range-alias-low-end.cp
 std-segtree/merge-trees-chained-match-brute.cp
 std-segtree/merge-trees-match-brute.cp
 std-segtree/new-apply-all-and-at.cp
-std-segtree/replaces-true-on-id-breaks-the-law.cp
 std-segtree/replacing-and-plain-actions-match-brute.cp
 std-segtree/tag-into-untagged-node-matches-brute.cp
 std-seq/bsearch-cut-and-int-range-ends.cp

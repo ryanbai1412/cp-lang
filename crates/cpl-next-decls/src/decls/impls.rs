@@ -61,9 +61,195 @@ impl Decls {
         }
         self.dom_rows_made = self.dom_ids.len();
     }
+    /// The `@role(lawful)` impl of each struct that declares `law`s and of each impl of a trait
+    /// that does, made since the last call, unless its type writes its own `laws` (R08.3.5).
+    fn add_law_rows(&mut self) {
+        let (s0, i0) = self.law_rows_made;
+        self.law_rows_made = (self.structs.len(), self.impls.len());
+        let member = self
+            .role_members
+            .get(&cpl_next_syntax::grammar::RoleMember::Laws);
+        let (Some(lawful), Some(&(name, tm))) = (self.roles.lawful, member) else {
+            return;
+        };
+        let mut rows = Vec::new();
+        for s in s0..self.law_rows_made.0 {
+            let sd = &self.structs[s];
+            let Some(first) = sd.laws.first() else {
+                continue;
+            };
+            let targs: Vec<Ty> = (0..sd.generics.len()).map(Ty::Param).collect();
+            let for_ = Ty::Struct(
+                StructId(s),
+                targs.clone(),
+                (0..sd.n_sets).map(SetTy::Param).collect(),
+            );
+            let laws: Vec<_> = sd.laws.iter().map(|&l| (l, targs.clone())).collect();
+            let at = self.fns[first.0].span.clone();
+            let generics = sd.generics.clone();
+            rows.push((laws, for_, generics, Vec::new(), sd.n_sets, at, sd.module));
+        }
+        for k in i0..self.law_rows_made.1 {
+            let im = &self.impls[k];
+            let laws = &self.traits[im.trait_.tr.0].laws;
+            if laws.is_empty() || im.replaced {
+                continue;
+            }
+            let mut targs = vec![im.for_.clone()];
+            targs.extend(im.trait_.args.iter().cloned());
+            let laws: Vec<_> = laws.iter().map(|&l| (l, targs.clone())).collect();
+            let sets = (im.methods.values()).map(|m| self.fns[m.0].n_sets).max();
+            let (at, bounds) = (im.at.clone(), im.bounds.clone());
+            let row = (laws, im.for_.clone(), im.generics.clone(), bounds);
+            rows.push((row.0, row.1, row.2, row.3, sets.unwrap_or(0), at, im.module));
+        }
+        for (laws, for_, generics, mut bounds, n_sets, at, module) in rows {
+            // What its laws' `where`s ask of the impl's parameters; of a type they name, the
+            // call to the law asks it.
+            for (l, targs) in &laws {
+                let fd = &self.fns[l.0];
+                for (i, b) in &fd.bounds {
+                    let own = matches!(fd.owner, Some(Owner::Trait(t)) if t == b.tr);
+                    let (Some(Ty::Param(j)), false) = (targs.get(*i), own) else {
+                        continue;
+                    };
+                    let sub = Subst {
+                        tys: targs,
+                        sets: &[],
+                    };
+                    let args = b.args.iter().map(|t| sub.ty(t)).collect();
+                    let b = (*j, TraitRef { tr: b.tr, args });
+                    if !bounds.contains(&b) {
+                        bounds.push(b);
+                    }
+                }
+            }
+            // A written `impl Lawful` is the impl; a written `laws` member is its `laws` (R08.3.5).
+            let own = match &for_ {
+                Ty::Struct(s, ..)
+                    if (self.impls_by_head.get(s)).is_some_and(|trs| trs.contains(&lawful)) =>
+                {
+                    continue;
+                }
+                Ty::Struct(s, ..) => self.structs[s.0].methods.get(&name).copied(),
+                _ => None,
+            };
+            let (samples, laws_fn) = if let Some(m) = own {
+                let Some(samples) = written_samples(&self.fns[m.0].ret) else {
+                    continue;
+                };
+                (samples, m)
+            } else {
+                let Some((samples, laws)) = self.law_samples(&laws, &self.fns[tm.0].ret) else {
+                    continue;
+                };
+                let Some(len) = self.syms.get("len") else {
+                    return;
+                };
+                let mut f = self.fns[tm.0].clone();
+                let ret_sets: Vec<SetTy> =
+                    (n_sets..n_sets + f.n_ret_sets).map(SetTy::Param).collect();
+                let sub = Subst {
+                    tys: &[for_.clone(), samples.clone()],
+                    sets: &ret_sets,
+                };
+                f.ret = sub.ty(&f.ret);
+                f.owner = Some(Owner::Impl(self.impls.len()));
+                f.self_ty = Some(for_.clone());
+                f.generics = generics.iter().map(|g| self.syms.intern(g)).collect();
+                f.bounds = bounds.clone();
+                f.n_sets = n_sets;
+                f.body = Body::Synth(crate::synth::SynthBody::Laws { len, laws });
+                f.public = true;
+                (f.item, f.span, f.module) = (at.item.clone(), at.clone(), module);
+                let fid = FnId(self.fns.len());
+                self.fns.push(f);
+                (samples, fid)
+            };
+            self.push_impl(ImplDecl {
+                trait_: TraitRef {
+                    tr: lawful,
+                    args: vec![samples],
+                },
+                generics,
+                bounds,
+                for_,
+                methods: HashMap::from([(name, laws_fn)]),
+                at,
+                assoc_at: Vec::new(),
+                module,
+                derived: true,
+                replaced: false,
+            });
+        }
+    }
+    /// What a made `laws` samples from, its `S`: a `List` of the one type its laws' parameters
+    /// have, else a record of one list per type, keyed by the name the law writes it with; and
+    /// each law's row. `None` when a type has no such name or the record isn't a known shape.
+    fn law_samples(
+        &self,
+        laws: &[(FnId, Vec<Ty>)],
+        laws_ret: &Ty,
+    ) -> Option<(Ty, Vec<crate::synth::LawRow>)> {
+        let Ty::Struct(list, ..) = laws_ret else {
+            return None;
+        };
+        let list_of = |t: Ty| Ty::Struct(*list, vec![t], Vec::new());
+        // Each type the laws' parameters have, as their owner writes it, and as the impl has it.
+        let mut kinds: Vec<(FnId, Ty, Ty)> = Vec::new();
+        let mut picks: Vec<Vec<usize>> = Vec::new();
+        for (l, targs) in laws {
+            let sub = Subst {
+                tys: targs,
+                sets: &[],
+            };
+            let mut pools = Vec::new();
+            for p in &self.fns[l.0].params {
+                let at = match kinds.iter().position(|(_, t, _)| *t == p.ty) {
+                    Some(at) => at,
+                    None => {
+                        kinds.push((*l, p.ty.clone(), sub.ty(&p.ty)));
+                        kinds.len() - 1
+                    }
+                };
+                pools.push(at);
+            }
+            picks.push(pools);
+        }
+        let (samples, fields) = match &kinds[..] {
+            [(_, _, t)] => (list_of(t.clone()), None),
+            _ => {
+                let named = |(l, t, _): &(FnId, Ty, Ty)| match t {
+                    Ty::Param(i) => {
+                        Some(self.syms.text(*self.fns[l.0].generics.get(*i)?).to_string())
+                    }
+                    Ty::Struct(s, ..) => Some(self.structs[s.0].name.clone()),
+                    _ => None,
+                };
+                let names: Vec<String> = kinds.iter().map(named).collect::<Option<_>>()?;
+                let rec = *self.records.get(&names)?;
+                let tys = kinds.into_iter().map(|(_, _, t)| list_of(t)).collect();
+                let fields: Vec<Sym> = self.structs[rec.0].fields.iter().map(|f| f.0).collect();
+                (Ty::Struct(rec, tys, Vec::new()), Some(fields))
+            }
+        };
+        let rows = (laws.iter().zip(picks))
+            .map(|((l, targs), pools)| crate::synth::LawRow {
+                name: self.fns[l.0].name.clone(),
+                law: *l,
+                targs: targs.clone(),
+                pools: pools
+                    .iter()
+                    .map(|&k| fields.as_ref().map(|fs| fs[k]))
+                    .collect(),
+            })
+            .collect();
+        Some((samples, rows))
+    }
     /// Fills `impls_ranked` from the impls a lookup may find now, each domain's rows with them.
     pub fn rank_impls(&mut self) {
         self.add_domain_rows();
+        self.add_law_rows();
         let rank = |ks: &[usize]| {
             let mut ks: Vec<usize> = (ks.iter().copied())
                 .filter(|&k| self.live(&self.impls[k]))
@@ -963,6 +1149,25 @@ pub fn hidden_member(
     let text = format!("`{name}` is private to module `{m}`");
     let msg = Msg::verdict(cpl_diag::codes::PRIVATE_NAME, text);
     Some((msg, format!("mark `{name}` `pub` in `mod {m}`")))
+}
+
+/// The `S` a written `laws` samples from: its entries' `sizes: S -> List<Int>`, beside
+/// `holds: (S, List<Int>) -> Bool`.
+fn written_samples(ret: &Ty) -> Option<Ty> {
+    let Ty::Struct(_, entry, _) = ret else {
+        return None;
+    };
+    let [Ty::Struct(_, fields, _)] = &entry[..] else {
+        return None;
+    };
+    let sizes = fields.iter().find_map(|f| match f {
+        Ty::Fn(ps, ..) if ps.len() == 1 => Some(ps[0].clone()),
+        _ => None,
+    })?;
+    let holds = fields.iter().any(
+        |f| matches!(f, Ty::Fn(ps, r, _) if ps.len() == 2 && ps[0] == sizes && **r == Ty::Bool),
+    );
+    holds.then_some(sizes)
 }
 
 #[cfg(test)]

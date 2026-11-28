@@ -657,8 +657,8 @@ costs):
 
 A law is a promise; the tools make it cheap to check:
 
-- `laws_hold(op, samples)` evaluates every law the value promises on sampled
-  inputs and returns the first failure: `"Lcm breaks assoc at (4, 6, 10)"`.
+- `laws_hold(op, samples)` evaluates every law the value promises on every
+  pick from the samples and is false at the first pick a law fails on.
 - `cpl stress` samples the laws of every op and action used in the run,
   drawing inputs from the values that actually flow through the structure,
   so a law that fails only on real data is found too.

@@ -4,6 +4,6 @@
 // stops on a predicate that claims it, so a fold never trusts `id` to set a span.
 use std.algebra.{Action}
 let good = Action<Int, ?Int>(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, over: max, replaces: f => f != None)
-assert laws_hold(good, T: [1, 5, -3], F: [None, Some(2), Some(7)])
+assert laws_hold(good, (T: [1, 5, -3], F: [None, Some(2), Some(7)]))
 let bad = Action<Int, ?Int>(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, over: max, replaces: _ => true)
-print(laws_hold(bad, T: [1, 5, -3], F: [None, Some(2), Some(7)])) // <- here
+assert laws_hold(bad, (T: [1, 5, -3], F: [None, Some(2), Some(7)])) // <- here

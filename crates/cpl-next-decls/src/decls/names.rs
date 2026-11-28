@@ -109,6 +109,7 @@ pub(super) fn name_struct(
         });
     }
     d.structs.push(StructDecl {
+        laws: Vec::new(),
         name,
         record: sd.record,
         generics: sd.generics.iter().map(|g| d.text(*g).to_string()).collect(),
@@ -155,6 +156,7 @@ pub(super) fn name_trait(
             Some(Role::Endpoint) => &mut d.roles.endpoint,
             Some(Role::DeriveFields) => &mut d.roles.derive_fields,
             Some(Role::MemoTable) => &mut d.roles.memo_table,
+            Some(Role::Lawful) => &mut d.roles.lawful,
             _ => {
                 let at = item.at(attr_at(x, t.span));
                 d.errors.push(misplaced_role(item, at, role, "trait"));
@@ -207,6 +209,7 @@ pub(super) fn name_trait(
     own.insert(name.clone(), Named::Trait(id));
     let unimplemented = unimplemented(item, &t.attrs, &mut d.errors);
     d.traits.push(TraitDecl {
+        laws: Vec::new(),
         name,
         module: mid,
         alias: t.alias,

@@ -1121,7 +1121,14 @@ impl Cx<'_> {
                     continue;
                 }
                 typed[k] = match slot.iter().position(|s| *s == Some(k)) {
-                    Some(i) => Some(self.arg(a, &formals[i].ty, formals[i].mutable)),
+                    Some(i) => {
+                        // An earlier argument's bounds can fix this one's type (`S` of a
+                        // `L: Lawful<S>` once `L` is known).
+                        if k > 0 && self.unknown(&formals[i].ty) {
+                            self.solve(false);
+                        }
+                        Some(self.arg(a, &formals[i].ty, formals[i].mutable))
+                    }
                     None => {
                         self.arg_expr(a, None);
                         None

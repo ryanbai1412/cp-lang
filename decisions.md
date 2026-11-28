@@ -9825,3 +9825,20 @@ named. 636's own-module level stays for extension against extension. `sum`
 keeps its plain call `sum(e for x in s)` through `@free_form` (676).
 Reverse: move `sum` back to a free `pub fn sum<S: Seq<T>>` and restore the
 old case.
+
+## 691. The lawful role `Lawful<S>`: laws are a derived member, `laws_hold` is an ordinary std fn (check, 2026-11-28)
+
+A type or trait with `law`s gets `laws` as a derived member, made by the same
+derived-impl path as the other derived members (decls `add_law_rows` through
+`push_impl`, typed expansion in check's synth.rs, no CP text). Each law is one
+entry `(name, sizes, holds)`: its parameters are picks from the samples (a
+list, or a record `(T: [..], F: [..])` for laws over several types) and
+`holds` calls the law fn through `Self`. std marks `Lawful<S>` with
+`@role(lawful)` (R11.6), so no trait name is privileged; a second filler is
+E0202 (`core-11/a-second-lawful-filler-is-a-duplicate.cp`). A written `laws`
+is kept as the impl's method (`core-08/a-written-laws-member-is-kept.cp`).
+`laws_hold(x, samples)` is a plain std fn over `x.laws`, false at the first
+pick a law fails on (R08.3.3); an operator value is the fn a `Lawful` impl
+for fn types targets, so `laws_hold(-, xs)` is false, not E0606. The old
+pipeline's privileged `laws_hold` goes when that pipeline is deleted.
+Reverse: restore the checker-known `laws_hold` and drop the role.

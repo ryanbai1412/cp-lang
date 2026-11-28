@@ -473,6 +473,7 @@ impl RoleRows for Decls {
             Role::Endpoint => self.roles.endpoint,
             Role::DeriveFields => self.roles.derive_fields,
             Role::MemoTable => self.roles.memo_table,
+            Role::Lawful => self.roles.lawful,
             _ => None,
         }
     }

@@ -333,7 +333,6 @@ core-08/impl-choosing-an-assoc-type-writes-its-default-fns.cp	wrong-error	wanted
 core-08/impl-fn-params-take-the-traits-types.cp	wrong-reject	check: program:23:24: E0203: `P` has no `both`
 core-08/impl-for-a-table-binds-its-params.cp	wrong-reject	check: program:15:5: E0606: `impl Nx` chooses a type for `Arc` with no `impl Tg` (R08.1.1)
 core-08/law-calls-trait-method.cp	wrong-reject	check: program:6:35: E0201: unknown name `op`
-core-08/laws-hold.cp	wrong-reject	check: program:3:11: E0201: unknown name `laws_hold`
 core-08/list-bsearch-never-picks-range-bsearch.cp	wrong-reject	check: program:11:29: E0203: `List<Int>` has no member `bsearch`
 core-08/method-returning-a-deeper-instance.cp	wrong-reject	check: program:11:27: E0606: `S` does not implement `Domain`
 core-08/no-orphan-impl-of-an-imported-trait.cp	wrong-error	wanted E0501 on line 5, got: decls: E0204: unknown trait `Monoid`
@@ -351,8 +350,6 @@ core-08/trait-arg-only-impl-params-bind-at-the-call.cp	wrong-reject	check: progr
 core-08/trait-default-calls-trait-fn.cp	wrong-reject	check: program:6:33: E0201: unknown name `op`
 core-08/trait-default-fn-sees-params-and-assoc-default.cp	wrong-reject	check: program:7:39: E0302: expected `Self.Out`, found `Optional<T>`
 core-08/trait-default-sees-its-assoc-default-inside-a-type.cp	wrong-reject	check: program:8:16: E0806: nothing here says what `None` is an optional of; write the type
-core-08/trait-law-calls-impl-fn.cp	wrong-reject	check: program:10:7: E0203: `S` has no `op`
-core-08/trait-laws-are-a-derived-member.cp	wrong-reject	check: program:7:35: E0201: unknown name `op`
 core-08/trait-typed-method-param-checks-its-bound.cp	wrong-error	wanted E0302 on line 12, got: check: program:12:7: E0606: `Int` does not implement `Big`
 core-08/tuple-and-record-take-a-shape-met-traits-defaults.cp	wrong-reject	check: program:13:9: E0203: `Tuple2<Int, Int>` has no member `twice`
 core-08/type-arguments-on-a-plain-struct-are-an-error.cp	wrong-error	wanted E0303 on line 7, got: check: program:7:22: E0302: expected `Pt<1..=100>`, found `Pt`
@@ -461,9 +458,6 @@ ownership/top-temp-assign-after.cp	wrong-error	wanted E0603 on line 5, got: chec
 ownership/top-temp-let.cp	wrong-error	wanted E0603 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
 ownership/top-temp-push-after.cp	wrong-error	wanted E0603 on line 5, got: check: program:5:9: E0302: expected `List<Int>`, found `Slice<List<Int>>`
 ownership/top-temp-var.cp	wrong-error	wanted E0603 on line 4, got: check: std.seq:323:5: E0302: this cannot be walked with `for`
-std-algebra/a-group-with-a-one-sided-identity-breaks-its-laws.cp	wrong-reject	check: program:10:8: E0201: unknown name `laws_hold`
-std-algebra/a-group-with-a-one-sided-inverse-breaks-its-laws.cp	wrong-reject	check: program:10:8: E0201: unknown name `laws_hold`
-std-algebra/a-one-sided-identity-breaks-the-monoid-laws.cp	wrong-reject	check: program:5:8: E0201: unknown name `laws_hold`
 std-algebra/a-summary-type-is-not-a-fold-op.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:26: E0201: unknown name `MaxSub`
 std-algebra/affine.cp	wrong-reject	check: std.algebra:632:36: E0606: `T` does not implement `Add`
 std-algebra/char-folds-by-max-and-min.cp	wrong-reject	check: program:6:7: E0606: `a function` does not implement `FromOp`
@@ -1382,7 +1376,6 @@ core-04/domain-through-a-value-is-a-domain.cp	wrong-reject	check: program:7:7: E
 core-04/pieces-of-a-domain-take-its-cuts.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
 core-04/product-result-indexed-by-parts.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 core-04/tuple-with-subset-is-a-domain.cp	wrong-reject	check: program:11:7: E0305: `Paths<Tuple2<R, Subset<T>>, Int, Int>` is not indexed: it has no `Indexed` impl
-core-08/laws-are-a-derived-member.cp	wrong-reject	check: std.algebra:180:23: E0606: `T` has no `impl Eq`, which `==` needs (R08.1.5)
 core-08/static-fn-struct-generic-from-lambda-body.cp	wrong-reject	check: program:6:29: E0203: `V` has no member `idx`
 core-09/acos-outside-domain-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`
 core-09/asin-outside-domain-trap.cp	wrong-reject	check: program:5:14: E0606: `F64` does not implement `Read`

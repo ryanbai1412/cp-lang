@@ -911,6 +911,19 @@ pub enum SynthBody {
     IntToEnum { check: Sym, variants: Vec<Sym> },
     /// A payload-free enum's size as a domain: its number of variants (R04.2.22).
     EnumCount(usize),
+    /// `laws` of a `@role(lawful)` impl: each law by name, the `len` of each of its parameters'
+    /// pools of samples, and the law called through its owner's fn on the samples it picks.
+    Laws { len: Sym, laws: Vec<LawRow> },
+}
+
+/// One law of a made `laws` (R08.3.5): its fn and the type arguments the impl calls it with,
+/// and per parameter its pool: the samples, or the samples' field of that name.
+#[derive(Clone, Debug)]
+pub struct LawRow {
+    pub name: String,
+    pub law: cpl_next_ir::ty::FnId,
+    pub targs: Vec<cpl_next_ir::ty::Ty>,
+    pub pools: Vec<Option<Sym>>,
 }
 
 /// Whether a `@derive` method makes a `Self` from its first parameter, as `Read`'s does.

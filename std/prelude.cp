@@ -30,6 +30,7 @@ use std.algebra.{
     desc,
     each,
     flip,
+    laws_hold,
     minmax,
     pow,
 }

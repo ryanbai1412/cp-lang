@@ -159,6 +159,7 @@ pub(super) fn struct_body(d: &mut Decls, mid: ModId, item: &ItemId, id: StructId
         let fid = add_fn(d, mid, item.clone(), &f, within);
         methods.insert(f.name, fid);
     }
+    let mut laws = Vec::new();
     for l in &sd.laws {
         let within = Within {
             owner: Some(Owner::Struct(id)),
@@ -167,8 +168,9 @@ pub(super) fn struct_body(d: &mut Decls, mid: ModId, item: &ItemId, id: StructId
             self_ty: Some(self_ty.clone()),
             sig: None,
         };
-        add_fn(d, mid, item.clone(), l, within);
+        laws.push(add_fn(d, mid, item.clone(), l, within));
     }
+    d.structs[id.0].laws = laws;
     let ctor = d.member(&methods, "new");
     let cached = |f: &FieldForm| f.attrs.iter().any(|a| a.attr == Decorator::Cache);
     let sdecl = &mut d.structs[id.0];
@@ -273,7 +275,9 @@ pub(super) fn trait_body(d: &mut Decls, mid: ModId, item: &ItemId, id: TraitId, 
             args: (1..tgen.len()).map(Ty::Param).collect(),
         };
         d.fns[fid.0].bounds.push((0, own));
-        if !laws {
+        if laws {
+            d.traits[id.0].laws.push(fid);
+        } else {
             methods.insert(m.name, fid);
         }
     }

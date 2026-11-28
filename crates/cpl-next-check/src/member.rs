@@ -605,7 +605,7 @@ impl<'a> Cx<'a> {
             let fd = self.items.f(m);
             (fd.self_mode == SelfMode::None
                 && takes(fd, call)
-                && td.defaults.is_empty()
+                && td.defaults.iter().all(Option::is_none)
                 && self.impls().has_impl(&t, tr))
             .then_some((tr, m))
         })

@@ -152,6 +152,8 @@ pub struct Param {
 }
 #[derive(Clone)]
 pub struct StructDecl {
+    /// Its `law`s, in declaration order: fns giving `Bool`, never members (R08.3.1).
+    pub laws: Vec<FnId>,
     pub name: String,
     /// A record's struct, `(lo:, hi:)` (R02.5.2), shown and matched by its fields.
     pub record: bool,
@@ -189,6 +191,8 @@ pub struct StructDecl {
 }
 #[derive(Clone)]
 pub struct TraitDecl {
+    /// Its `law`s, in declaration order: fns giving `Bool`, never members (R08.3.1).
+    pub laws: Vec<FnId>,
     pub name: String,
     pub module: ModId,
     /// `trait Both = Sh + Nm`: met by meeting its supertraits, never implemented (R08.2.6).
@@ -443,6 +447,9 @@ pub struct Roles {
     /// The `@role(memo_table)` trait: a `@memo_table(word)` struct's impl of it is the table a
     /// `@memo(word)` fn reads with `get` and keeps results in with `set` (R06.4.1).
     pub memo_table: Option<TraitId>,
+    /// The `@role(lawful)` trait: each struct with `law`s and each impl of a trait with them
+    /// gets an impl of it, whose `laws` lists them (R08.3.5).
+    pub lawful: Option<TraitId>,
 }
 
 /// A language role of R11.6.1.
@@ -476,10 +483,11 @@ pub enum Role {
     DeriveFields,
     VariantCheck,
     MemoTable,
+    Lawful,
 }
 
 impl Role {
-    pub const ALL: [Role; 28] = [
+    pub const ALL: [Role; 29] = [
         Role::Option,
         Role::Show,
         Role::Print,
@@ -508,6 +516,7 @@ impl Role {
         Role::DeriveFields,
         Role::VariantCheck,
         Role::MemoTable,
+        Role::Lawful,
     ];
     /// The name `@role(name)` gives it.
     pub fn name(self) -> &'static str {
@@ -541,6 +550,7 @@ impl Role {
             Role::VariantCheck => "variant_check",
             // The role is named for the decorator that marks its tables.
             Role::MemoTable => crate::attrs::Decorator::MemoTable.name(),
+            Role::Lawful => "lawful",
         }
     }
 }
@@ -621,6 +631,8 @@ pub struct Decls {
     pub dom_ids: HashMap<(ItemId, u32), usize>,
     /// How many of `dom_ids` have their `Domain` and `Ordered` rows in `impls`.
     pub dom_rows_made: usize,
+    /// The structs and impls `add_law_rows` has read.
+    pub law_rows_made: (usize, usize),
     /// How many domains each item has made.
     dom_made: HashMap<ItemId, u32>,
     /// The fns whose result's slots are `domain C`s, till those slots are made `Range<C>`s.

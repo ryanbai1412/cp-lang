@@ -1235,6 +1235,7 @@ core-11/runtime-domain-reads-in-order.cp
 core-11/runtime-domain-use-before-definition.cp
 core-11/use-std-paths.cp
 core-11/use-unknown-module.cp
+core-11/a-second-lawful-filler-is-a-duplicate.cp
 core-12/a-call-bound-result-is-checked.cp
 core-12/aka-on-a-user-fn-runs.cp
 core-12/aka-strip-names-trim.cp
@@ -2053,6 +2054,9 @@ std-algebra/minmax-is-a-std-fn.cp
 std-algebra/reversing-a-fold-with-no-rev-traps.cp
 std-algebra/unit-literal-is-unit.cp
 std-algebra/user-ord-fold-max-needs-ends.cp
+std-algebra/a-group-with-a-one-sided-identity-breaks-its-laws.cp
+std-algebra/a-group-with-a-one-sided-inverse-breaks-its-laws.cp
+std-algebra/a-one-sided-identity-breaks-the-monoid-laws.cp
 std-bag/sorted-bag-add-many-zero.cp
 std-bag/sorted-bag-duplicates.cp
 std-bag/sorted-bag-of-a-list-is-rejected.cp
@@ -2829,6 +2833,7 @@ core-10/yes-answers.cp
 next/n_domain_over_sequence.cp
 std-graph/clique.cp
 std-segtree/wavelet-matrix-matches-sort.cp
+std-segtree/replaces-true-on-id-breaks-the-law.cp
 core-10/read-base-param-beats-io.cp
 next/n_read_base_01_tuple_parts_and_strings_take_the_base.cp
 core-04/domain-subsets-array-and-loop.cp
@@ -2945,6 +2950,12 @@ core-08/indexed-bound-types-the-body.cp
 core-08/method-bound-binds-the-struct-param.cp
 core-08/partial-struct-args-infer-the-rest.cp
 core-08/seq-supertraits-come-from-std.cp
+core-08/a-user-impl-of-a-std-trait-gets-its-laws.cp
+core-08/a-written-laws-member-is-kept.cp
+core-08/laws-are-a-derived-member.cp
+core-08/laws-hold.cp
+core-08/trait-law-calls-impl-fn.cp
+core-08/trait-laws-are-a-derived-member.cp
 core-12/a-bound-reads-its-roles-off-the-trait.cp
 std-seq/chunks-on-generic-indexed.cp
 std-seq/sized-and-keyed-through-std-impls.cp

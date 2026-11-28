@@ -169,6 +169,25 @@ pub fn shapes(
             out.insert(named);
         }
     }
+    // The samples of the `laws` of a struct or trait whose laws take more than one type: a
+    // record keyed by those types' names, in the order the laws write them (R08.3.5).
+    for m in all_of::<next::Members>(mods) {
+        let mut names: Vec<String> = Vec::new();
+        let params =
+            (m.laws().filter_map(|l| l.params())).flat_map(|ps| ps.params().collect::<Vec<_>>());
+        for p in params {
+            let Some(next::Type::Path(t)) = p.ty() else {
+                continue;
+            };
+            let n = t.segments().last().map(|n| n.text().to_string());
+            if let Some(n) = n.filter(|n| !names.contains(n)) {
+                names.push(n);
+            }
+        }
+        if names.len() > 1 {
+            out.insert(names);
+        }
+    }
     out.into_iter().collect()
 }
 
