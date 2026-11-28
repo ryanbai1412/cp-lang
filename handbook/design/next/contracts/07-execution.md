@@ -12,10 +12,12 @@ trait Backend { fn run(program: &Program, input: RunInput, events: &mut dyn Sink
 enum Outcome {
     Finished { output: Bytes, exit: i32, used: Usage },
     Failed   { check: CheckName, at: SourceId, origin: List<Origin>, message: Str, output_so_far: Bytes },
-    Limit    { which: Time | Memory | Stack | Output | PeerTurns, estimated: bool },
+    Limit    { which: Time | Memory | Stack | Output | PeerTurns, at: SourceId, estimated: bool },   // at: the site it tripped at, as Failed names one
     Stalled  { waiting_on: Program | Peer },         // interactive: both sides are reading
     CompilerBug { instance: InstanceId, detail },
 }
+struct Value   { words: List<Word>, storages: List<Storage> }  // Entry::Call's arguments: the words `Layouts` lays the value's type out in; each handle word indexes `storages`
+struct Storage { lay: Lay, len: u64, cells: List<Word> }        // one heap object: `len` cells of layout `lay`, `Layouts::size[lay]` words each; a cell's handle words index `storages` too
 struct Intrinsic {              // the only meeting point outside the IR
     id, signature, effects, cost, result_facts,
     model:  fn,                 // reference interpreter: written for clarity
@@ -155,7 +157,9 @@ struct JudgeProfile { compiler, flags, limits, kept_checks, size_limit, grader_w
 - **A fn as the entry.** `Entry::Call` is a property of the run, not
   of the program: the instance set is the program's, plus the
   instances the call's argument types need. A backend gets one entry
-  instance id and argument values in the engine's value form.
+  instance id and argument `Value`s: words and the storages they hold,
+  sized only through `Layouts`. Each backend loads them into its own
+  heap; none has a second value form for arguments.
 - **Interactive runs.** A peer is a second `run` on its own program
   whose output is this run's input and the reverse. Both use the same
   backend trait; the pump between them lives in the facade, not in a

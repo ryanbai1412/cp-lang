@@ -112,6 +112,21 @@ impl Room {
         crate::ops::storage_size(n, self.lays.cell_bytes(l), self.memory)
     }
 }
+/// A value handed to a run from outside it, as `Entry::Call`'s arguments (contract 7): the words
+/// `Layouts` lays its type out in, and the storages they hold. A handle word indexes `storages`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Value {
+    pub words: Vec<u64>,
+    pub storages: Vec<Storage>,
+}
+/// One storage a `Value` holds: `len` cells of layout `lay`, `Layouts::size[lay]` words each. A
+/// cell's handle words index the `Value`'s `storages` too.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Storage {
+    pub lay: crate::layout::Lay,
+    pub len: u64,
+    pub cells: Vec<u64>,
+}
 /// What a run may use (contract 0's `Limits`).
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
