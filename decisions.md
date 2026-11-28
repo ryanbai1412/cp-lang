@@ -9607,3 +9607,5 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 ## 690. (reserved, G: D: Discrete is positions without a count; Domain, Ordered and Cyclic add to it)
 
 ## 691. (reserved, E: the lawful role `Lawful<S>`: laws are a derived member, `laws_hold` is an ordinary std fn)
+
+## 692. (reserved, D: a @coerce fn applies only from a struct or enum parameter; a built-in source converts explicitly)
