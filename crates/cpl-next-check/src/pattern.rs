@@ -657,7 +657,7 @@ impl Cx<'_> {
         out: &mut Vec<TStmt>,
     ) -> Option<(usize, usize)> {
         let c = self.fresh_slot_of(t)?;
-        let shown = self.sym_text(name).to_string();
+        let shown = self.b.syms.text(&self.d.syms, name).to_string();
         let i = self.fresh_from(&shown, c, span, out);
         self.b.doms.insert(name, Ty::Dom(i));
         Some((c, i))
@@ -727,7 +727,7 @@ impl Cx<'_> {
     }
     /// `t.Pre` written in a type: the domain the binding `t` owns as its `Pre`.
     pub(super) fn owned_named(&self, n: Sym) -> Option<Ty> {
-        let mut parts = self.sym_text(n).split('.');
+        let mut parts = self.b.syms.text(&self.d.syms, n).split('.');
         let head = parts.next()?;
         let path: Vec<String> = parts.map(str::to_string).collect();
         self.owned_at(head, &path)
@@ -741,11 +741,14 @@ impl Cx<'_> {
     }
     /// `let (tree, ..) = r`: what `r` owns under `tree` the new binding `tree` owns.
     pub(super) fn hand_down(&mut self, whole: Sym, field: Sym, part: Sym) {
-        let (whole, part) = (self.sym_text(whole), self.sym_text(part));
+        let (whole, part) = (
+            self.b.syms.text(&self.d.syms, whole),
+            self.b.syms.text(&self.d.syms, part),
+        );
         let (Some((from, _)), Some((to, _))) = (self.lookup(whole), self.lookup(part)) else {
             return;
         };
-        let field = self.sym_text(field);
+        let field = self.b.syms.text(&self.d.syms, field);
         let moved: Vec<_> = (self.b.owned.iter())
             .filter(|((v, path), _)| *v == from && path.first().is_some_and(|f| f == field))
             .map(|((_, path), &i)| ((to, path[1..].to_vec()), i))
