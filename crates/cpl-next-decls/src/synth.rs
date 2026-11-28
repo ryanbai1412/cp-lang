@@ -4,12 +4,12 @@ use crate::decls::unnamed;
 use crate::decls::{fills, Role};
 use crate::diag::Msg;
 use crate::records::marker;
+use crate::sym::Sym;
 use cpl_next_ir::ids::ItemId;
+use cpl_next_ir::ty::StructId;
 use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use cpl_syntax::decorators::Mark;
-use crate::sym::Sym;
-use cpl_next_ir::ty::StructId;
 use std::collections::HashMap;
 
 /// An enum's tag errors (R02.7.2): a variant whose token another one before it has (E0407), and
@@ -1463,12 +1463,22 @@ pub enum SynthBody {
     MadeEach { method: Sym, fields: Vec<Sym> },
     /// `Pack(a.x, Pack(a.y, ())).m(rest..)`: a `@derive_fields` method on the fields packed into
     /// the `@pack` struct (R08.1.6).
-    PackFields { pack: StructId, method: Sym, fields: Vec<Sym> },
+    PackFields {
+        pack: StructId,
+        method: Sym,
+        fields: Vec<Sym>,
+    },
     /// An enum read by its tags: the variant `p.variant([tags])` picks, its payload read field by
     /// field (R10.2.1).
-    VariantByTag { method: Sym, variants: Vec<(Sym, String, usize)> },
+    VariantByTag {
+        method: Sym,
+        variants: Vec<(Sym, String, usize)>,
+    },
     /// A `@derive_fields` method on an enum: that method on the variant's token (R10.3.5).
-    VariantName { method: Sym, variants: Vec<(Sym, String)> },
+    VariantName {
+        method: Sym,
+        variants: Vec<(Sym, String)>,
+    },
     /// `@get fn name(self) = self.name`: a bodiless `@get` member met by the field of its name
     /// (R12.11.3, R08.1.7).
     Getter(Sym),

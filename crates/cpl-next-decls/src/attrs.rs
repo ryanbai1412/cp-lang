@@ -139,9 +139,17 @@ const ATTRS: &[(Attr, &str)] = &[
 
 const INTERNAL: &[(Attr, &str)] = &[(Attr::Record, "record")];
 
-const DIRECTIVES: &[(Directive, &str)] = &[(Directive::Multitest, "multitest"), (Directive::Interactive, "interactive")];
+const DIRECTIVES: &[(Directive, &str)] = &[
+    (Directive::Multitest, "multitest"),
+    (Directive::Interactive, "interactive"),
+];
 
-const REMOVED: &[(Removed, &str)] = &[(Removed::Brute, "brute"), (Removed::Checker, "checker"), (Removed::Allow, "allow"), (Removed::Tags, "tags")];
+const REMOVED: &[(Removed, &str)] = &[
+    (Removed::Brute, "brute"),
+    (Removed::Checker, "checker"),
+    (Removed::Allow, "allow"),
+    (Removed::Tags, "tags"),
+];
 
 fn find<T: Copy>(table: &[(T, &'static str)], name: &str) -> Option<T> {
     table.iter().find(|(_, n)| *n == name).map(|(t, _)| *t)

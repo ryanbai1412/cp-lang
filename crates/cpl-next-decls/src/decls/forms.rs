@@ -162,12 +162,18 @@ impl Reader<'_> {
         t.map(TyForm::Written)
     }
 
-    pub fn generics(&mut self, g: Option<ast::GenericParams>) -> (Vec<Sym>, Vec<Option<TyForm>>, Vec<BoundForm>) {
+    pub fn generics(
+        &mut self,
+        g: Option<ast::GenericParams>,
+    ) -> (Vec<Sym>, Vec<Option<TyForm>>, Vec<BoundForm>) {
         let (mut names, mut defaults, mut bounds) = (Vec::new(), Vec::new(), Vec::new());
         for p in g.iter().flat_map(|g| g.params().collect::<Vec<_>>()) {
             let name = self.sym(p.name());
             for t in p.bound().iter().flat_map(|b| b.types().collect::<Vec<_>>()) {
-                bounds.push(BoundForm { param: name, tr: TyForm::Written(t) });
+                bounds.push(BoundForm {
+                    param: name,
+                    tr: TyForm::Written(t),
+                });
             }
             names.push(name);
             defaults.push(self.ty(p.default()));
@@ -177,10 +183,15 @@ impl Reader<'_> {
 
     pub fn where_bounds(&mut self, w: Option<ast::WhereClause>, out: &mut Vec<BoundForm>) {
         for p in w.iter().flat_map(|w| w.preds().collect::<Vec<_>>()) {
-            let Some(ast::Type::Path(t)) = p.ty() else { continue };
+            let Some(ast::Type::Path(t)) = p.ty() else {
+                continue;
+            };
             let param = self.syms.intern(&crate::cycles::path_text(&t));
             for tr in p.bound().iter().flat_map(|b| b.types().collect::<Vec<_>>()) {
-                out.push(BoundForm { param, tr: TyForm::Written(tr) });
+                out.push(BoundForm {
+                    param,
+                    tr: TyForm::Written(tr),
+                });
             }
         }
     }
@@ -207,17 +218,30 @@ impl Reader<'_> {
     pub fn func(&mut self, f: &ast::FnDecl, attrs: Vec<AttrForm>) -> FnForm {
         let (generics, _, mut bounds) = self.generics(f.generics());
         self.where_bounds(f.where_clause(), &mut bounds);
-        let params = (f.params().iter().flat_map(|l| l.params().collect::<Vec<_>>()))
-            .map(|p| self.param(&p))
-            .collect();
+        let params = (f
+            .params()
+            .iter()
+            .flat_map(|l| l.params().collect::<Vec<_>>()))
+        .map(|p| self.param(&p))
+        .collect();
         let ret = f.ret();
         let lends = ret.as_ref().filter(|r| r.lends()).map(|r| {
-            let srcs = r.lend_sources().iter().flat_map(|s| s.names().collect::<Vec<_>>()).collect::<Vec<_>>();
-            (r.lends_mut(), srcs.into_iter().map(|t| self.sym(Some(t))).collect())
+            let srcs = r
+                .lend_sources()
+                .iter()
+                .flat_map(|s| s.names().collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+            (
+                r.lends_mut(),
+                srcs.into_iter().map(|t| self.sym(Some(t))).collect(),
+            )
         });
-        let uses = (f.uses().iter().flat_map(|u| u.contexts().collect::<Vec<_>>()))
-            .map(|t| self.sym(Some(t)))
-            .collect();
+        let uses = (f
+            .uses()
+            .iter()
+            .flat_map(|u| u.contexts().collect::<Vec<_>>()))
+        .map(|t| self.sym(Some(t)))
+        .collect();
         FnForm {
             name: self.sym(f.name()),
             public: f.is_pub(),
@@ -232,5 +256,168 @@ impl Reader<'_> {
             body: f.body().map_or(BodyForm::None, BodyForm::Written),
             span: f.signature_span(),
         }
+    }
+
+    /// Each decorator on a node as the attribute it is; the unknown and removed ones come back
+    /// apart, for the item to report at their nodes.
+    pub fn attrs(
+        &mut self,
+        ds: impl Iterator<Item = ast::Decorator>,
+    ) -> (Vec<AttrForm>, Vec<ast::Decorator>) {
+        let (mut known, mut other) = (Vec::new(), Vec::new());
+        for x in ds {
+            match x.name().and_then(|n| Attr::of(n.text())) {
+                Some(attr) => known.push(AttrForm {
+                    attr,
+                    node: Some(x),
+                }),
+                None => other.push(x),
+            }
+        }
+        (known, other)
+    }
+
+    fn bound_types(&mut self, b: Option<ast::Bound>) -> Vec<TyForm> {
+        b.iter()
+            .flat_map(|b| b.types().collect::<Vec<_>>())
+            .map(TyForm::Written)
+            .collect()
+    }
+
+    pub fn field(&mut self, f: &ast::FieldDecl, attrs: Vec<AttrForm>) -> Option<FieldForm> {
+        Some(FieldForm {
+            name: self.sym(f.name()),
+            ty: TyForm::Written(f.ty()?),
+            public: f.is_pub(),
+            var: f.is_var(),
+            attrs,
+            default: f.default(),
+            span: f.syntax().span(),
+        })
+    }
+
+    pub fn alias(&mut self, a: &ast::TypeAlias, attrs: Vec<AttrForm>) -> Option<AliasForm> {
+        let (generics, ..) = self.generics(a.generics());
+        Some(AliasForm {
+            name: self.sym(a.name()),
+            public: a.is_pub(),
+            attrs,
+            generics,
+            ty: TyForm::Written(a.ty()?),
+            span: a.syntax().span(),
+        })
+    }
+
+    pub fn trait_(&mut self, t: &ast::TraitDecl, attrs: Vec<AttrForm>) -> TraitForm {
+        let (generics, generic_defaults, _) = self.generics(t.generics());
+        let members = t.members();
+        let assoc = (members
+            .iter()
+            .flat_map(|m| m.assoc_types().collect::<Vec<_>>()))
+        .map(|a| AssocForm {
+            name: self.sym(a.name()),
+            bounds: self.bound_types(a.bound()),
+            default: a.ty().map(TyForm::Written),
+        })
+        .collect();
+        let methods = (members.iter().flat_map(|m| m.fns().collect::<Vec<_>>()))
+            .map(|f| {
+                let (attrs, _) = self.attrs(f.decorators());
+                self.func(&f, attrs)
+            })
+            .collect();
+        let alias = t.alias().is_some();
+        let supers = match t.alias() {
+            Some(b) => self.bound_types(Some(b)),
+            None => self.bound_types(t.supertraits()),
+        };
+        TraitForm {
+            name: self.sym(t.name()),
+            public: t.is_pub(),
+            attrs,
+            alias,
+            generics,
+            generic_defaults,
+            supers,
+            assoc,
+            methods,
+            span: t.syntax().span(),
+        }
+    }
+
+    pub fn struct_(
+        &mut self,
+        sd: &ast::StructDecl,
+        attrs: Vec<AttrForm>,
+    ) -> (StructForm, Vec<ast::Decorator>) {
+        let (generics, generic_defaults, bounds) = self.generics(sd.generics());
+        let mut unknown = Vec::new();
+        let fields = (sd.fields().iter())
+            .filter_map(|f| {
+                let (attrs, other) = self.attrs(f.decorators());
+                unknown.extend(other);
+                self.field(f, attrs)
+            })
+            .collect();
+        let members = sd.members();
+        let methods = (members.iter().flat_map(|m| m.fns().collect::<Vec<_>>()))
+            .map(|f| {
+                let (attrs, other) = self.attrs(f.decorators());
+                unknown.extend(other);
+                self.func(&f, attrs)
+            })
+            .collect();
+        let consts = (members.iter().flat_map(|m| m.consts().collect::<Vec<_>>()))
+            .filter_map(|c| Some((self.sym(c.name()), c.ty().map(TyForm::Written), c.value()?)))
+            .collect();
+        let form = StructForm {
+            name: self.sym(sd.name()),
+            public: sd.is_pub(),
+            attrs,
+            generics,
+            generic_defaults,
+            bounds,
+            fields,
+            methods,
+            consts,
+            span: sd.syntax().span(),
+        };
+        (form, unknown)
+    }
+
+    pub fn impl_(
+        &mut self,
+        im: &ast::ImplDecl,
+        attrs: Vec<AttrForm>,
+    ) -> Option<(ImplForm, Vec<ast::Decorator>)> {
+        let (generics, _, mut bounds) = self.generics(im.generics());
+        self.where_bounds(im.where_clause(), &mut bounds);
+        let trait_ = self.bound_types(im.trait_ref()).into_iter().next();
+        let members = im.members();
+        let assoc = (members
+            .iter()
+            .flat_map(|m| m.assoc_types().collect::<Vec<_>>()))
+        .filter_map(|a| Some((self.sym(a.name()), TyForm::Written(a.ty()?))))
+        .collect();
+        let mut unknown = Vec::new();
+        let methods = (members.iter().flat_map(|m| m.fns().collect::<Vec<_>>()))
+            .map(|f| {
+                let (attrs, other) = self.attrs(f.decorators());
+                unknown.extend(other);
+                self.func(&f, attrs)
+            })
+            .collect();
+        let form = ImplForm {
+            attrs,
+            generics,
+            bounds,
+            trait_,
+            self_ty: TyForm::Written(im.self_ty()?),
+            assoc,
+            methods,
+            derived: false,
+            span: im.syntax().span(),
+        };
+        Some((form, unknown))
     }
 }
