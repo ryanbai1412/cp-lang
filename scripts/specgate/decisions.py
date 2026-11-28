@@ -2,15 +2,17 @@
 
 Usage:
     scripts/spec-gate.py decisions                # next integer (max + 1 over this tree and origin/main)
-    scripts/spec-gate.py decisions --reserve      # push a `## N. (reserved, <lane>)` stub to main, print N
+    CPL_LANE=E scripts/spec-gate.py decisions --reserve --title "views own their keys"
+                                                  # push a `## N. (reserved, E: <title>)` stub to main, print N
     scripts/spec-gate.py decisions --check        # fail if duplicate heading numbers exist
     scripts/spec-gate.py decisions --check-landing FETCH_HEAD
                                                   # fail if HEAD heads a number the base never had
 
 A number is taken only once it is on main, so two lanes cannot both take
 `max + 1`: `--reserve` commits the stub on top of main without touching the
-worktree and pushes it, retrying on a rejected push. Pull, then replace the
-stub's heading with the decision. `scripts/land.sh` runs `--check-landing`.
+worktree and pushes it, retrying on a rejected push. The stub's heading and
+the commit's `Lane:` trailer name the lane and the title, so nobody has to
+ask whose number it is. Pull, then replace the stub's heading with the decision. `scripts/land.sh` runs `--check-landing`.
 """
 import os
 import re
@@ -73,8 +75,23 @@ def unreserved(base: str, head: str) -> list[int]:
     return sorted({n for n in parse_decision_numbers(head) if n not in have})
 
 
-def with_stub(text: str, n: int, lane: str) -> str:
-    return text.rstrip("\n") + f"\n\n## {n}. (reserved, {lane})\n"
+def stub(n: int, lane: str, title: str) -> str:
+    return f"## {n}. (reserved, {lane}: {title})"
+
+
+def with_stub(text: str, n: int, lane: str, title: str) -> str:
+    return text.rstrip("\n") + f"\n\n{stub(n, lane, title)}\n"
+
+
+def reservation_problem(lane: str | None, title: str | None) -> str | None:
+    """Why a reservation must not run: a stub must say whose number it is and for what."""
+    if not lane or lane == "unknown" or not re.fullmatch(r"[\w-]+", lane):
+        return "set CPL_LANE (or --lane) to your lane, e.g. CPL_LANE=E"
+    if not title or not title.strip():
+        return 'give the decision a --title, e.g. --title "views own their keys"'
+    if re.search(r"[()\n]", title):
+        return "a --title has no parentheses or newlines (the stub's heading closes on `)`)"
+    return None
 
 
 MOVED_RE = re.compile(r"fetch first|non-fast-forward|cannot lock ref|incorrect old value")
@@ -84,7 +101,11 @@ class PushRejected(Exception):
     """Main moved between the fetch and the push."""
 
 
-def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
+def reserve(lane: str | None, title: str | None, domain: str, remote: str, tries: int) -> int:
+    if why := reservation_problem(lane, title):
+        print(f"spec-gate decisions: no number reserved: {why}", file=sys.stderr)
+        return 2
+    title = title.strip()
     local = open(DECISIONS, encoding="utf-8").read() if os.path.exists(DECISIONS) else ""
 
     def push_reservation() -> int:
@@ -95,13 +116,13 @@ def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
         base = git("rev-parse", "FETCH_HEAD").stdout.strip()
         text = show(base) or ""
         n = max(next_number(text), next_number(local))
-        blob = git("hash-object", "-w", "--stdin", stdin=with_stub(text, n, lane)).stdout.strip()
+        blob = git("hash-object", "-w", "--stdin", stdin=with_stub(text, n, lane, title)).stdout.strip()
         with tempfile.TemporaryDirectory() as tmp:
             env = dict(os.environ, GIT_INDEX_FILE=os.path.join(tmp, "index"))
             git("read-tree", base, env=env)
             git("update-index", "--cacheinfo", f"100644,{blob},decisions.md", env=env)
             tree = git("write-tree", env=env).stdout.strip()
-        msg = f"spec: reserve decision {n} for {lane}\n\nDomain: {domain}\n"
+        msg = f"spec: reserve decision {n} for lane {lane}\n\n{title}\n\nDomain: {domain}\nLane: {lane}\n"
         commit = git("commit-tree", tree, "-p", base, stdin=msg).stdout.strip()
         # The commit is main's tree plus one stub, so the local pre-push hook,
         # which checks the working tree, has nothing to say about it.
@@ -110,7 +131,7 @@ def reserve(lane: str, domain: str, remote: str, tries: int) -> int:
             print(n)
             print(
                 f"spec-gate decisions: reserved {n} on main ({commit[:9]}); `git pull --rebase`, "
-                f"then replace `## {n}. (reserved, {lane})` with the decision",
+                f"then replace `{stub(n, lane, title)}` with the decision",
                 file=sys.stderr,
             )
             return 0
@@ -141,7 +162,7 @@ def check_landing(base_ref: str) -> int:
     if new:
         print(
             f"spec-gate decisions: decision heading(s) {new} are not reserved on main; run "
-            "`uv run scripts/spec-gate.py decisions --reserve`, pull, and put the entry under the stub",
+            "`CPL_LANE=<lane> uv run scripts/spec-gate.py decisions --reserve --title <title>`, pull, and put the entry under the stub",
             file=sys.stderr,
         )
         return 1
@@ -153,7 +174,8 @@ def args(parser) -> None:
     parser.add_argument("--check", action="store_true", help="Fail if duplicate decision numbers exist")
     parser.add_argument("--reserve", action="store_true", help="Reserve the next number on main")
     parser.add_argument("--check-landing", metavar="BASE", help="Fail on headings BASE never had")
-    parser.add_argument("--lane", default=os.environ.get("CPL_LANE", "unknown"))
+    parser.add_argument("--lane", default=os.environ.get("CPL_LANE"))
+    parser.add_argument("--title", help="With --reserve: what the decision is about")
     parser.add_argument("--domain", default=os.environ.get("CPL_DOMAIN", "spec"))
     parser.add_argument("--remote", default="origin")
     parser.add_argument("--tries", type=int, default=int(os.environ.get("CPL_LAND_TRIES", "5")))
@@ -161,7 +183,7 @@ def args(parser) -> None:
 
 def run(args) -> list[Problem]:
     if args.reserve:
-        code = reserve(args.lane, args.domain, args.remote, args.tries)
+        code = reserve(args.lane, args.title, args.domain, args.remote, args.tries)
         return [Problem("decisions.md", "no number reserved; see above")] if code else []
     if args.check_landing:
         code = check_landing(args.check_landing)

@@ -32,13 +32,13 @@ class NextDecisionTest(unittest.TestCase):
         self.assertEqual(MOD.unreserved(base, base + "## 3. C\n"), [3])
 
     def test_stub_is_appended_as_a_heading(self):
-        text = MOD.with_stub("## 4. A\nbody\n", 5, "content")
+        text = MOD.with_stub("## 4. A\nbody\n", 5, "content", "a title")
         self.assertEqual(MOD.parse_decision_numbers(text), [4, 5])
         self.assertTrue(MOD.STUB_RE.search(text))
 
 
 def _git(cwd, *args):
-    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout
 
 
 class ReserveTest(unittest.TestCase):
@@ -75,16 +75,16 @@ class ReserveTest(unittest.TestCase):
     def test_reserve_then_land(self):
         a, b = self.clones
         self._use(a)
-        self.assertEqual(MOD.reserve("one", "spec", "origin", 3), 0)
+        self.assertEqual(MOD.reserve("one", "first", "spec", "origin", 3), 0)
         self._use(b)
-        self.assertEqual(MOD.reserve("two", "spec", "origin", 3), 0)
+        self.assertEqual(MOD.reserve("two", "second", "spec", "origin", 3), 0)
         _git(b, "fetch", "-q", "origin", "main")
         main = MOD.show("FETCH_HEAD")
         self.assertEqual(MOD.parse_decision_numbers(main), [1, 2, 3])
         self.assertEqual(len(MOD.STUB_RE.findall(main)), 2)
         _git(b, "pull", "-q", "--rebase", "origin", "main")
         path = os.path.join(b, "decisions.md")
-        text = open(path).read().replace("## 3. (reserved, two)", "## 3. Taken")
+        text = open(path).read().replace("## 3. (reserved, two: second)", "## 3. Taken")
         open(path, "w").write(text)
         _git(b, "commit", "-qam", "use 3")
         _git(b, "fetch", "-q", "origin", "main")
@@ -93,6 +93,21 @@ class ReserveTest(unittest.TestCase):
         _git(b, "commit", "-qam", "take 4")
         self.assertEqual(MOD.check_landing("FETCH_HEAD"), 1)
         self.assertEqual(MOD.check_landing("no-such-ref"), 2)
+
+    def test_a_reservation_names_its_lane_and_title_or_refuses(self):
+        a = self.clones[0]
+        self._use(a)
+        before = _git(a, "ls-remote", "origin", "main")
+        for lane, title in [(None, "views"), ("unknown", "views"), ("E", None), ("E", "  "), ("E", "a (b)")]:
+            self.assertEqual(MOD.reserve(lane, title, "spec", "origin", 3), 2, (lane, title))
+        self.assertEqual(_git(a, "ls-remote", "origin", "main"), before)
+        self.assertEqual(MOD.reserve("E", "views own their keys", "spec", "origin", 3), 0)
+        _git(a, "fetch", "-q", "origin", "main")
+        self.assertIn("## 2. (reserved, E: views own their keys)", MOD.show("FETCH_HEAD"))
+        self.assertEqual(len(MOD.STUB_RE.findall(MOD.show("FETCH_HEAD"))), 1)
+        body = _git(a, "log", "-1", "--format=%B", "FETCH_HEAD")
+        self.assertIn("views own their keys", body)
+        self.assertEqual(_git(a, "log", "-1", "--format=%(trailers:key=Lane,valueonly)", "FETCH_HEAD").strip(), "E")
 
     def _hook(self, hooks, name, body):
         os.makedirs(hooks, exist_ok=True)
@@ -107,14 +122,14 @@ class ReserveTest(unittest.TestCase):
         self._hook(hooks, "pre-push", "exit 1\n")
         _git(a, "config", "core.hooksPath", hooks)
         self._use(a)
-        self.assertEqual(MOD.reserve("one", "spec", "origin", 3), 0)
+        self.assertEqual(MOD.reserve("one", "first", "spec", "origin", 3), 0)
 
     def test_a_refused_push_says_why_and_does_not_retry(self):
         self._hook(os.path.join(self.remote, "hooks"), "pre-receive", "echo branch is protected >&2; exit 1\n")
         self._use(self.clones[0])
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
-            self.assertEqual(MOD.reserve("one", "spec", "origin", 3), 1)
+            self.assertEqual(MOD.reserve("one", "first", "spec", "origin", 3), 1)
         self.assertIn("branch is protected", err.getvalue())
         self.assertNotIn("retry:", err.getvalue())
 
