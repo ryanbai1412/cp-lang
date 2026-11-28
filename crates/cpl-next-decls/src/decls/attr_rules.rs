@@ -450,6 +450,36 @@ pub fn module_lints<'a>(
     }
 }
 
+/// E0107 on a decorator no chapter documents (R06.4.11), with the nearest live one as help.
+pub fn unknown(item: &ItemId, x: &ast::Decorator, errors: &mut Vec<Msg>) {
+    let Some(n) = x.name() else {
+        return;
+    };
+    let name = n.text();
+    if Decorator::of(name).is_some() {
+        return;
+    }
+    let live = cpl_next_syntax::grammar::DECORATORS.iter().map(|(d, _)| *d);
+    let near = (live.clone())
+        .filter(|d| cpl_diag::edit_distance(d, name) <= 2)
+        .min_by_key(|d| cpl_diag::edit_distance(d, name));
+    let help = match near {
+        Some(d) => format!("did you mean `@{d}`?"),
+        None => {
+            let all: Vec<String> = live.map(|d| format!("`@{d}`")).collect();
+            format!("the decorators are {}", all.join(", "))
+        }
+    };
+    let m = Msg {
+        help: Some(help),
+        ..Msg::verdict(
+            codes::UNEXPECTED_TOKEN,
+            msgs::stmt::UNKNOWN_DECORATOR.say(&[&name]),
+        )
+    };
+    errors.push(Msg::at(item.at(n.span()), m));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

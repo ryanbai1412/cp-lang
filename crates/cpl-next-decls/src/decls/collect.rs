@@ -122,6 +122,14 @@ fn layer(
             false => Vec::new(),
         })
         .collect();
+    for (m, (item, x)) in &unknown_marks {
+        let mut found = Vec::new();
+        super::attr_rules::unknown(item, x, &mut found);
+        match *m == d.program {
+            true => d.errors.extend(found),
+            false => d.module_errors[m.0].extend(found),
+        }
+    }
     if base.is_some() {
         let values = (read[n - 1].iter())
             .filter_map(|(item, f)| top_value_of(&mut d.syms, item, f))
