@@ -2191,7 +2191,7 @@ NEXT_WEAK_EXPECT_RE = re.compile(r"^// expect: (exit 1|ok)\s*$")
 
 def next_weak_oracle_passes(root: Path) -> list[str]:
     """Passing cases whose oracle does not pin the behaviour: `// expect: exit 1` (any rejection
-    passes) or `// expect: ok` with no `// output:` or `// last:` (it only has to run). Each should name the
+    passes) or `// expect: ok` with no `// output:`, `// last:`, `// has:` or `// lacks:` (it only has to run). Each should name the
     code and line it rejects with, or the output it prints."""
     out = []
     listed = root / NEXT_TESTS / "passing.txt"
@@ -2200,7 +2200,7 @@ def next_weak_oracle_passes(root: Path) -> list[str]:
         f = root / (NEXT_TESTS + "/programs/" + c.removeprefix("next/") if c.startswith("next/") else "spec/conformance/" + c)
         head = list(itertools.takewhile(lambda l: l.startswith("//"), _lines(f))) if f.is_file() else []
         weak = [m.group(1) for l in head if (m := NEXT_WEAK_EXPECT_RE.match(l))]
-        if "exit 1" in weak or ("ok" in weak and not any(l.startswith(("// output:", "// last:")) for l in head)):
+        if "exit 1" in weak or ("ok" in weak and not any(l.startswith(("// output:", "// last:", "// has:", "// lacks:")) for l in head)):
             out.append(c)
     return out
 

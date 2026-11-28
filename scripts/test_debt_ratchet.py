@@ -2854,10 +2854,11 @@ class DebtRatchetTest(unittest.TestCase):
     def test_weak_oracles_and_syntax_std_names(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self._write(root, "crates/cpl-next/tests/passing.txt", "a/x.cp\na/y.cp\na/z.cp\nnext/n.cp\n")
+            self._write(root, "crates/cpl-next/tests/passing.txt", "a/x.cp\na/y.cp\na/z.cp\na/h.cp\nnext/n.cp\n")
             self._write(root, "spec/conformance/a/x.cp", "// expect: exit 1\nfn main() {}\n")
             self._write(root, "spec/conformance/a/y.cp", "// expect: ok\n// output: 1\nprint(1)\n")
             self._write(root, "spec/conformance/a/z.cp", "// expect: ok\nprint(1)\n// output: 1\n")
+            self._write(root, "spec/conformance/a/h.cp", "// expect: ok\n// has: 1\n// lacks: 2\nprint(1)\n")
             self._write(root, "crates/cpl-next/tests/programs/n.cp", "// expect: E0606\nlet x = 1\n")
             self.assertEqual(dr.next_weak_oracle_passes(root), ["a/x.cp", "a/z.cp"])
             self._write(root, "std/cut.cp", "pub struct Cut<D>:\n    lo: D\n")
