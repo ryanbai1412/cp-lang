@@ -23,7 +23,7 @@ mod structs;
 mod trait_impl;
 mod tyconv;
 pub use collect::{collect, factor_name, prepare, Prepared};
-pub use impls::Impls;
+pub use impls::{ImplIdx, Impls};
 pub use layer::Layer;
 use tyconv::*;
 pub use tyconv::{alias_type, body_type, prim_type, BodyScope};

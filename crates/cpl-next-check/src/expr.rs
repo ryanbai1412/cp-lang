@@ -761,8 +761,10 @@ impl<'a> Cx<'a> {
                     Ty::Bool,
                 )
             })
-        } else if let Some(decls::Member::Method(m, ts, ss)) =
-            self.impls().impl_member(&rt, method, Some(named))
+        } else if let Some(decls::Member::Method(m, ts, ss)) = self
+            .d
+            .sym(method)
+            .and_then(|sym| self.impls().impl_member(&rt, sym, Some(named)))
         {
             let f = self.fnref(m, ts, ss);
             let ty = self.ret_ty(&f);
@@ -774,7 +776,7 @@ impl<'a> Cx<'a> {
             let param = fd.params.first().map_or(Ty::Error, |p| sub.ty(&p.ty));
             // The impl's own bounds hold too: `?T`'s `==` needs `T: Eq` (R08.1.5).
             if let Some(decls::Owner::Impl(k)) = fd.owner {
-                let im = self.impls().imp(k);
+                let im = self.d.imp(k);
                 if !im.bounds.is_empty() {
                     let tr = decls::TraitRef {
                         tr: im.trait_.tr,
@@ -841,7 +843,11 @@ impl<'a> Cx<'a> {
         }
         // A field of `self`, written bare inside a method.
         if let Some(s) = self.self_expr(span) {
-            if let Some(decls::Member::Field(i, ty)) = self.impls().lookup_member(&s.ty, n) {
+            if let Some(decls::Member::Field(i, ty)) = self
+                .d
+                .sym(n)
+                .and_then(|sym| self.impls().lookup_member(&s.ty, sym))
+            {
                 return TExpr {
                     kind: TK::Field(Box::new(s), i),
                     ty,
@@ -1728,7 +1734,11 @@ impl<'a> Cx<'a> {
     }
     pub(super) fn self_field(&self, n: &str) -> Option<usize> {
         let s = self.self_expr(Span::new(0, 0))?;
-        match self.impls().lookup_member(&s.ty, n) {
+        match self
+            .d
+            .sym(n)
+            .and_then(|sym| self.impls().lookup_member(&s.ty, sym))
+        {
             Some(decls::Member::Field(i, _)) => Some(i),
             _ => None,
         }

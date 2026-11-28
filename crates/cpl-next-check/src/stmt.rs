@@ -145,8 +145,12 @@ impl<'a> Cx<'a> {
                 return self.bound_walk(p, call, name, body, span, out);
             }
             self.b.allow_region = true;
-            let own = (self.d.iteration_own_walk())
-                .filter(|(n, _)| self.impls().lookup_member(&rt, n).is_some());
+            let own = (self.d.iteration_own_walk()).filter(|(n, _)| {
+                self.d
+                    .sym(n)
+                    .and_then(|sym| self.impls().lookup_member(&rt, sym))
+                    .is_some()
+            });
             let walk = (own.or_else(|| self.d.iteration_walk()))
                 .map_or_else(String::new, |(n, _)| n.to_string());
             call = self.method_call(call, &walk, vec![], span, false);

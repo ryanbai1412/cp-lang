@@ -352,7 +352,7 @@ impl<'a> Cx<'a> {
     }
     pub(super) fn show(&self, t: &Ty) -> String {
         show_ty(
-            self.impls(),
+            self.d,
             &self.domains,
             &self.b.generics,
             &|t| self.shallow(t),
@@ -1208,13 +1208,13 @@ pub(super) fn ground(t: &Ty) -> bool {
 /// How a diagnostic writes `t`, once `resolve` has looked through what inference has solved:
 /// `domains` and `generics` name the domains and type parameters in scope.
 pub fn show_ty(
-    impls: cpl_next_decls::decls::Impls<'_>,
+    d: &dyn cpl_next_decls::views::Signatures,
     domains: &[DomInfo],
     generics: &[String],
     resolve: &dyn Fn(&Ty) -> Ty,
     t: &Ty,
 ) -> String {
-    let show = |t: &Ty| show_ty(impls, domains, generics, resolve, t);
+    let show = |t: &Ty| show_ty(d, domains, generics, resolve, t);
     match resolve(t) {
         Ty::Int => "Int".into(),
         Ty::Range(lo, i64::MAX) => format!("{lo}.."),
@@ -1235,7 +1235,7 @@ pub fn show_ty(
                 k if k > 0 => format!(" + {k}"),
                 k => format!(" - {}", -k),
             };
-            lo.to_string() + &format!("..={}.{}{k}", show(&d), impls.d.f(m).name)
+            lo.to_string() + &format!("..={}.{}{k}", show(&d), d.f(m).name)
         }
         Ty::Bool => "Bool".into(),
         Ty::Char => "Char".into(),
@@ -1247,14 +1247,13 @@ pub fn show_ty(
         Ty::Mut(e) => format!("mut {}", show(&e)),
         Ty::Ref(e) => format!("&{}", show(&e)),
         Ty::Lent(e) => show(&e),
-        Ty::Struct(d, ts, _) if Some(d) == impls.d.roles().option => format!("?{}", show(&ts[0])),
+        Ty::Struct(d, ts, _) if Some(d) == d.roles().option => format!("?{}", show(&ts[0])),
         Ty::Struct(d, ts, _) => {
-            let n = &impls.d.s(d).name;
-            if impls.d.s(d).record {
-                let fields = impls.d.s(d).fields.iter().zip(&ts);
-                let fs: Vec<String> = (fields
-                    .map(|((f, _), t)| format!("{}: {}", impls.d.text(*f), show(t))))
-                .collect();
+            let n = &d.s(d).name;
+            if d.s(d).record {
+                let fields = d.s(d).fields.iter().zip(&ts);
+                let fs: Vec<String> =
+                    (fields.map(|((f, _), t)| format!("{}: {}", d.text(*f), show(t)))).collect();
                 return format!("({})", fs.join(", "));
             }
             if ts.is_empty() {
