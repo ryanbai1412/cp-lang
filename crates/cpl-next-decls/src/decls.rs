@@ -7,7 +7,7 @@ use crate::ty::*;
 use cpl_diag::Span;
 use cpl_next_ir::ids::{ItemId, SourceId};
 use cpl_next_ir::unbuilt::Unbuilt;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 pub mod attr_rules;
@@ -633,6 +633,9 @@ pub struct Decls {
     pub input_fns: Vec<FnId>,
     /// The `@index` fns, in declaration order.
     pub index_fns: Vec<FnId>,
+    /// Each `@free_form` trait method, with its trait and name: `f(x, ..)` is `x.f(..)` in a
+    /// module whose view has the trait (R01.10.1).
+    pub free_forms: BTreeMap<FnId, (TraitId, Sym)>,
     /// Per module, whether the program loads it: std's others are declared but out of sight.
     pub seen: Vec<bool>,
     /// The records std writes and no module the program loads does: out of sight with their impls.
@@ -851,6 +854,14 @@ impl Decls {
     pub fn is_ambiguous(&self, m: ModId, name: &str) -> bool {
         self.sym(name)
             .is_some_and(|s| self.ambiguous[m.0].contains(&s))
+    }
+    /// The trait and method a plain call `name(x, ..)` in module `m` is, when `name` is a
+    /// `@free_form` method of a trait in `m`'s view: the call is `x.name(..)` (R01.10.1).
+    pub fn free_form(&self, m: ModId, name: Sym) -> Option<(TraitId, Sym)> {
+        match self.views[m.0].get(&name)? {
+            Named::Fn(f) => self.free_forms.get(f).copied(),
+            _ => None,
+        }
     }
     pub fn fn_named(&self, m: ModId, name: &str) -> Option<FnId> {
         match self.named(m, name) {
@@ -1743,6 +1754,7 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
                 | Decorator::Stress
                 | Decorator::OnUnimplemented
                 | Decorator::Memo
+                | Decorator::FreeForm
         )
     };
     let attr_at = |x: &forms::AttrForm| {
@@ -1794,6 +1806,14 @@ fn add_fn(d: &mut Decls, m: ModId, item: ItemId, f: &forms::FnForm, within: With
     };
     if has(Decorator::Index) {
         d.index_fns.push(FnId(d.fns.len()));
+    }
+    for x in f.attrs.iter().filter(|x| x.attr == Decorator::FreeForm) {
+        match owner {
+            Some(Owner::Trait(tr)) if self_mode != SelfMode::None => {
+                d.free_forms.insert(FnId(d.fns.len()), (tr, f.name));
+            }
+            _ => errors.push(Msg::at(attr_at(x), attr_rules::free_form_misplaced())),
+        }
     }
     if has(Decorator::FromOp) {
         d.from_op.push(FnId(d.fns.len()));

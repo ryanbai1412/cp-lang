@@ -828,8 +828,9 @@ fn remake_views(d: &mut Decls, sc: &Scopes, from: usize, core_too: bool, first: 
         let mut ambiguous = HashSet::new();
         let v = view(sc, mi, whole, e, &mut ambiguous);
         d.module_errors[mi].extend(missed);
-        let v = v.into_iter().map(|(n, x)| (d.syms.intern(&n), x)).collect();
-        let ambiguous = ambiguous.iter().map(|n| d.syms.intern(n)).collect();
+        let mut v: View = v.into_iter().map(|(n, x)| (d.syms.intern(&n), x)).collect();
+        let mut ambiguous: HashSet<Sym> = ambiguous.iter().map(|n| d.syms.intern(n)).collect();
+        free_names(d, &mut v, &mut ambiguous);
         let exports = export_map(sc, mi).into_iter();
         let exports = Arc::new(exports.map(|(n, x)| (d.syms.intern(&n), x)).collect());
         d.exports
@@ -851,6 +852,34 @@ fn remake_views(d: &mut Decls, sc: &Scopes, from: usize, core_too: bool, first: 
             if let Some(t) = t.flatten() {
                 let key = d.syms.intern(&crate::synth::memo_key(d.syms.text(*w)));
                 Arc::make_mut(&mut d.views[mi]).insert(key, t);
+            }
+        }
+    }
+}
+
+/// A view gains each `@free_form` method of a trait it has, under the method's name, as a glob
+/// import of the trait would bring it: a name the module declares or imports shadows it, and
+/// two traits' methods of one name are ambiguous (R01.10.1, R11.2.3).
+fn free_names(d: &Decls, v: &mut View, ambiguous: &mut HashSet<Sym>) {
+    let traits: HashSet<TraitId> = (v.values())
+        .filter_map(|x| match x {
+            Named::Trait(t) => Some(*t),
+            _ => None,
+        })
+        .collect();
+    let mut found: BTreeMap<Sym, Vec<FnId>> = BTreeMap::new();
+    for (f, (t, name)) in &d.free_forms {
+        if traits.contains(t) && !v.contains_key(name) {
+            found.entry(*name).or_default().push(*f);
+        }
+    }
+    for (name, fs) in found {
+        match fs[..] {
+            [f] => {
+                v.insert(name, Named::Fn(f));
+            }
+            _ => {
+                ambiguous.insert(name);
             }
         }
     }

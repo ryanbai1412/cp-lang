@@ -87,7 +87,8 @@ impl Ord for Frac:
   imports it calls the member with no error, and a fn a catalog member
   stands for (std's own `first_gt` behind `List.first_gt`) hides nothing.
   To give a type its own cost, override the trait method instead
-  (decision 486). (R08.1.4)
+  (decision 486). A `@free_form` method's plain call `f(x, ..)` is the
+  method call `x.f(..)` and picks by these same rules (R01.10.1). (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `By`, `Ord`, `Eq`, `Hash`,
   `Show`, `Read`, `Unwrap`). `Eq<Rhs = Self>` and `Ord<Rhs = Self>` take

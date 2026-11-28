@@ -26,9 +26,22 @@ pub fn check(attr: &AttrForm, on: DeclKind, item: &ItemId, errors: &mut Vec<Msg>
                 msgs::syntax::LINT_NOT_ON_FN.say(&[]),
             )
         }),
+        Decorator::FreeForm if !matches!(on, DeclKind::Fn { .. }) => Some(free_form_misplaced()),
         _ => None,
     };
     errors.extend(msg.map(|m| Msg::at(item.at(node.syntax().span()), m)));
+}
+
+/// `@free_form` on anything but a trait's method with `self` (E0505, R01.10.1): only a
+/// receiver's method has a plain-call spelling `f(x, ..)` for `x.f(..)`.
+pub fn free_form_misplaced() -> Msg {
+    Msg {
+        help: Some("put it on a method of a trait, one that takes `self`".to_string()),
+        ..Msg::verdict(
+            codes::BAD_LIBRARY_LINT,
+            "`@free_form` sits on a trait's method with `self`: `f(x, ..)` is `x.f(..)`",
+        )
+    }
 }
 
 /// The errors of the decorators on a declaration other than a fn, and on its fields and

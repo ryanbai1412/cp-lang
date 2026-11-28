@@ -572,7 +572,14 @@ give the position, what the `for`s bind: `v`, or over several `for`s or a
 pattern the tuple of the names bound, in order, so
 `argmax(g[i, j] for i in R, j in C)` is a `?(R, C)`. A generator is only ever a call
 argument: `(f(x) for x in xs).max()` is E0103, with `max(f(x) for x in xs)`
-as the fix. A `mut`
+as the fix. A trait's method with `self` marked `@free_form` has the plain
+spelling too: `f(x, ..)` is `x.f(..)`, found by method lookup on `x`
+(R08.1.4), so a type's own override is the call and a generator `x` is the
+sequence. The name `f` is in scope wherever the trait is, by `use` or the
+prelude (R11.2.3), as if a glob import of the trait brought it: a name the
+module declares or imports shadows it, and two traits in scope with a
+`@free_form` method of one name make `f` ambiguous (E0701). `@free_form` on
+anything else is E0505. A `mut`
 parameter is marked `mut` at the call too (`link(mut d, a, b)`), except
 for the receiver of a method call. (R01.10.1)
 

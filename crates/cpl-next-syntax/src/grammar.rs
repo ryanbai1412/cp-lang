@@ -236,6 +236,7 @@ decorators! {
     Pattern = "pattern", "R06.4.12", "on a fn: what a pattern over its type calls";
     Reject = "reject", "R06.4.17", "`@reject(when: T = Bool, \"..\", code: C)` on a defaulted parameter: a call taking the default where `when` holds is that error";
     Input = "input", "R06.4.12", "on a fn: a value it gives is input, so a range it fills is a contract";
+    FreeForm = "free_form", "R01.10.1", "on a trait's method with `self`: `f(x, ..)` is `x.f(..)` where the trait is in scope";
     ]
     directives: [
     Multitest = "multitest", "R01.7.5", "file directive: loop over t test cases below, with fresh scope";

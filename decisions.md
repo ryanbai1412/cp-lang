@@ -9716,3 +9716,20 @@ the call with std's message; `count(p)` and `count(x for x in b)` pass
 `and`, so it is typed and has no body; any library may use it, and
 misuse is E0505. It reuses `@on_unimplemented`'s message and `code:` (R06.4.17).
 Reverse it by deleting the decorator and `rejected_defaults`.
+
+## 676. `@free_form` gives a trait method the plain call `f(x, ..)` (spec, 2026-11-28)
+
+Folds are default methods of their trait (decision 486), so a type's own
+`sum` overrides `Seq.sum` and generic code calls it. Decision 53 spells a
+fold over a generator `sum(e for x in s)`, and a generator has no method
+spelling (R01.10.1). Making every trait method a free name would change
+name resolution for all code to serve a few folds; writing each fold twice
+is debt. A trait's method with `self` marked `@free_form` is instead also
+callable as `f(x, ..)`, which is `x.f(..)` by ordinary member lookup
+(R08.1.4, decision 9500), so overrides apply. The name is in scope where the
+trait is, as a glob import of it would bring it: the module's own names
+shadow it, and two traits' free names of one spelling are ambiguous
+(E0701). Any library may use it; on anything else it is E0505. Decls keeps
+the marked methods by `FnId` and adds them to each view that has the trait.
+Reverse it by deleting `Decorator::FreeForm`, `free_forms` and the
+`core-01/free-form-*` cases.

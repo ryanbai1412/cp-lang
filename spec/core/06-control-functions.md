@@ -223,6 +223,8 @@ library or by this spec:
   Core declares each with them, and any module may: a
   second declaration of one marker, or of one `@operator` with the same
   method, is E0202. (R06.4.12)
+- `@free_form` on a trait's method with `self` (std's `Seq.sum`): `f(x, ..)`
+  is a call of `x.f(..)` wherever the trait is in scope (R01.10.1).
 - `@input` on a fn: a value it gives is input, so a range type it fills
   is the input's contract, R0502 when broken, not a range store (std's
   `read`, R10.2.2). `@fast(op)` on a fn with a body: the engines and C++ run
