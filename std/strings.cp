@@ -850,7 +850,7 @@ pub struct Palindromes(pub odd: List<Len>, even: List<Len>, first: Int = 0):
     /// cost: \(O(1)\)
     /// traps: when `r` reaches outside `0..=self.len`
     /// example: `let p = manacher("abacaba"); p.is_palindrome(0..3) and not p.is_palindrome(1..4)`
-    pub fn is_palindrome<R>(self, r: R) -> Bool:
+    pub fn is_palindrome<D: Domain>(self, r: Range<D>) -> Bool:
         if r.is_empty: return true
         let l = r.start.ord
         let hi = r.end.ord

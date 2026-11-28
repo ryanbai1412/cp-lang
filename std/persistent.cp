@@ -10,7 +10,7 @@ use std.marks.{Id}
 use std.hash.{splitmix64}
 use std.math.{bit_width}
 use std.range.{Len, ends}
-use std.seq.{each, Seq, deduped, all}
+use std.seq.{each, Seq, deduped, all, sorted}
 
 /// An append-only node pool for persistent structures, held by the user: `alloc` returns a 4-byte
 /// `Id<T>`, and a node never changes after it is allocated, so every version that shares it stays

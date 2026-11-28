@@ -27,7 +27,7 @@ use std.math.{abs, gcd, popcount, ctz}
 use std.opt.{is_none_or}
 use std.rand.{Random, shuffle}
 use std.range.{Len}
-use std.seq.{each, collect, reverse, count, Seq, IndexGet, Indexed, Slice, all, any}
+use std.seq.{each, collect, reverse, count, Seq, IndexGet, Indexed, Slice, all, any, first}
 
 /// \(O(\deg u)\) per walk of `out(u)`.
 /// What every graph algorithm walks: the arcs out of `u`. Implemented by
@@ -52,7 +52,7 @@ pub trait Target<V>:
     /// traps: never
     /// example: `domain V = 0..3; V(2).to == 2`
     /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.to == 1`
-    @get fn to(self) -> V = self
+    @get fn to(self) -> V
 
 impl<V: Domain> Target<V> for V:
     @get fn to(self) -> V = self

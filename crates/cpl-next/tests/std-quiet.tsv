@@ -2,7 +2,7 @@ std.algebra	12
 std.bag	4
 std.dp	2
 std.fenwick	39
-std.graph	8
+std.graph	7
 std.interval	8
 std.lazy	2
 std.math	1
@@ -14,6 +14,6 @@ std.pair	2
 std.persistent	1
 std.poly	6
 std.segtree	6
-std.seq	5
+std.seq	2
 std.strings	1
 std.subset	1

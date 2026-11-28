@@ -1389,7 +1389,7 @@ pub fn gomory_hu<V, E>(edges: [E](u: V, v: V, w: Int)) -> List<(u: V, v: V, w: I
     for e in E: g.add_both(edges[e].u, edges[e].v, edges[e].w)
     var parent: [V]V = V.first!
     var tree = List<(u: V, v: V, w: Int)>()
-    for i in V.after(V.first!):
+    for i in V.first!.after:
         g.reset()
         let w = g.max_flow(i, parent[i])
         let side = g.min_cut(i)

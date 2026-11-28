@@ -2180,7 +2180,7 @@ pub fn step<S: Indexed<K, T>, K, T>(self: S, k: 1..) -> Stepped<S, T>:
 
 /// \(O(1)\) to make. The view `s.step(k)`: `s` walked `k` elements at a time from position
 /// `from`, keys unchanged.
-pub struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0):
+pub struct Stepped<S: Positional<T>, T>(pub src: S, pub k: Int, pub from: Int = 0):
     /// \(O(1)\). How many elements the walk visits: `ceil((src.len - from) / k)`, or 0.
     ///
     /// cost: \(O(1)\)
@@ -2218,7 +2218,7 @@ pub struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0):
     /// cost: \(O(1)\)
     /// traps: unless `i` is a key the stride visits (`first`, `first + k`, ...), naming them
     /// example: `[10, 20, 30, 40, 50].step(2).at(4) == 50`
-    pub fn at<K>(self, i: K) -> T:
+    pub fn at<K>(self, i: K) -> T where S: Indexed<K, T>:
         assert i in self.keys
         src.at(i)
 
@@ -2227,7 +2227,7 @@ pub struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `4 in [10, 20, 30, 40, 50].step(2).keys and not (1 in [10, 20, 30, 40, 50].step(2).keys)`
-    @get pub fn keys(self) -> StepKeys:
+    @get pub fn keys<K>(self) -> StepKeys where S: Indexed<K, T>:
         StepKeys(if src.len == 0: 0 else: src.keys.first!.ord, src.len, k, from)
 
 /// The keys a `step(k)` view visits, made by its `keys`: of the `n` source keys from position
@@ -4601,18 +4601,18 @@ impl Show for Rect<R, C, T: Show>:
     fn gap(self, mut out: Str):
         out.push('\n')
 
-impl Seq<T> for Stepped<S, T>:
+impl<S: Positional<T>, T> Seq<T> for Stepped<S, T>:
     fn iter(self) -> yields T:
         for j in 0..self.len: yield self.nth(j)
 
-impl Bidir<T> for Stepped<S, T>:
+impl<S: Positional<T>, T> Bidir<T> for Stepped<S, T>:
     fn iter_rev(self) -> yields T:
         var j = self.len
         while j > 0:
             j -= 1
             yield self.nth(j)
 
-impl Show for Stepped<S, T: Show>:
+impl<S: Positional<T>, T: Show> Show for Stepped<S, T>:
     fn show(v):
         var out = ""
         var first = true
