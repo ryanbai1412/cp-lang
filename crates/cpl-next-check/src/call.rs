@@ -842,6 +842,12 @@ fn open_lambda(x: &next::Expr) -> bool {
 }
 
 impl Cx<'_> {
+    /// `n(x, ..)` where `n` names a `@free_form` trait method here: `x.n(..)` (R01.10.1).
+    pub(super) fn free_form_call(&self, n: &str, args: &[CallArg]) -> bool {
+        args.first()
+            .is_some_and(|a| a.label.is_none() && a.written().is_some())
+            && (self.syms.get(n)).is_some_and(|s| self.d.free_form(self.b.module, s).is_some())
+    }
     /// `n(x for x in xs, ..)` where `n` is a free fn with no `self`.
     pub(super) fn fold_form(&self, n: &str, args: &[CallArg]) -> bool {
         args.first().is_some_and(|a| {
