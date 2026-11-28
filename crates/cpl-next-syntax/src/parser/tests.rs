@@ -1283,3 +1283,32 @@ let n = ( o ??= f(x) ).len
     let want = [("m[k]", "[]"), ("g.rows[i][j]", "[1, 2]"), ("o", "f(x)")];
     assert_eq!(fills, want.map(|(t, v)| (t.to_string(), v.to_string())));
 }
+
+#[test]
+fn removed_spellings_say_what_replaced_them() {
+    let codes = |src: &str| -> Vec<(String, String)> {
+        let file = crate::parse(src);
+        assert_eq!(file.root.text(), src, "lossless");
+        (file.diagnostics.iter())
+            .map(|d| (d.code.0.to_string(), d.help.clone().unwrap_or_default()))
+            .collect()
+    };
+    assert_eq!(codes("let a = 1; print(a)\n"), []);
+    assert_eq!(codes("print(1);\n")[0].0, "E0107");
+    for (src, help) in [
+        ("@brute(f)\nfn g() = 1\n", "@alt(f)"),
+        ("@alt(main)\nfn g() = 1\n", "@alt(program)"),
+        ("@checker\nfn g() -> Bool = true\n", "@check"),
+        (
+            "@allow(float_equality)\nfn g() = 1\n",
+            "with lint(float_equality: allow)",
+        ),
+    ] {
+        let got = codes(src);
+        assert!(
+            matches!(got.as_slice(), [(c, h)] if c == "E0503" && h.contains(help)),
+            "{src}: {got:?}"
+        );
+    }
+    assert_eq!(codes("@alt(f)\nfn g() = 1\n"), []);
+}

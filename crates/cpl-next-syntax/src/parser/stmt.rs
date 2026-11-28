@@ -103,10 +103,10 @@ impl Parser<'_> {
             }
             _ => {
                 self.simple();
-                while self.eat(T::Semi) {
-                    if !matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
-                        self.simple();
-                    }
+                // `a; b` is two statements; a `;` that ends the line is the end_line error.
+                while self.at(T::Semi) && !matches!(self.nth(1), T::Newline | T::Eof | T::Dedent) {
+                    self.bump();
+                    self.simple();
                 }
                 self.end_line();
             }

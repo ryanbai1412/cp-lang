@@ -179,21 +179,68 @@ impl Parser<'_> {
     /// `@path(args)`, and its newline: the decorated item follows.
     fn decorator(&mut self) {
         self.start(NodeKind::Decorator);
+        let at = self.span().start;
         self.bump();
-        let reject = self.at(T::Ident)
-            && crate::grammar::Decorator::of(self.text())
-                == Some(crate::grammar::Decorator::Reject);
+        let named = (self.at(T::Ident))
+            .then(|| crate::grammar::Decorator::of(self.text()))
+            .flatten();
         self.want(T::Ident, "the decorator's name");
         while self.at(T::Dot) && self.nth(1) == T::Ident {
             self.bump();
             self.bump();
         }
+        let args = self.pos;
         if self.at(T::LParen) {
+            let reject = named == Some(crate::grammar::Decorator::Reject);
             let arg = if reject { Self::reject_arg } else { Self::arg };
             self.list(NodeKind::ArgList, T::RParen, "the argument list", arg);
         }
+        self.removed_decorator(named, at, args);
         self.eat(T::Newline);
         self.finish();
+    }
+
+    /// E0503 on a decorator spelling the language removed, with what replaced it (R06.4.3,
+    /// R09.4.4). `args` is where its argument list starts.
+    fn removed_decorator(
+        &mut self,
+        named: Option<crate::grammar::Decorator>,
+        at: u32,
+        args: usize,
+    ) {
+        use crate::grammar::Decorator as D;
+        let words: Vec<&str> = (self.tokens[args..self.pos].iter())
+            .filter(|t| t.kind == T::Ident)
+            .map(|t| t.span.text(self.src))
+            .collect();
+        let end = self.tokens[..self.pos].last().map_or(at, |t| t.span.end);
+        let span = Span::new(at, end);
+        let alt =
+            "`@alt(program)` marks a whole slow program for `cpl stress`, `@alt(f)` a slow `f`";
+        let (diag, help) = match named {
+            Some(D::Brute) => (
+                msgs::stmt::ALT_MAIN_REMOVED.error(span, &[&"@brute"]),
+                alt.into(),
+            ),
+            Some(D::Alt) if words == ["main"] => (
+                msgs::stmt::ALT_MAIN_REMOVED.error(span, &[&"@alt(main)"]),
+                alt.into(),
+            ),
+            Some(D::Checker) => (
+                msgs::stmt::CHECKER_REMOVED.error(span, &[]),
+                "`@check` marks the fn that judges an output".to_string(),
+            ),
+            Some(D::Allow) => {
+                let lints: Vec<String> = words.iter().map(|w| format!("{w}: allow")).collect();
+                let with = format!("with lint({})", lints.join(", "));
+                let help = format!(
+                    "write `{with}` as the first line of the body, or around the statement"
+                );
+                (msgs::stmt::ALLOW_REMOVED.error(span, &[]), help)
+            }
+            _ => return,
+        };
+        self.diagnostics.push(diag.with_help(help));
     }
 
     /// `when: T = Bool and U = Int`, a `@reject` condition: pairs of types, not an expression
