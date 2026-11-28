@@ -37,7 +37,7 @@ var probe = Bucket.first
 while let cur = unmeasured_from(probe):
     probe = cur.next
     var held = 0
-    loop:
+    while true:
         probe = unmeasured_from(probe)
         var gave: ?Int = None
         if let p = probe:

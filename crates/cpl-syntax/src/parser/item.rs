@@ -767,29 +767,23 @@ impl<'a> Parser<'a> {
         };
         let name = self.expect_name("a variant name");
         let fields = if self.eat(T::LParen) {
+            let mut n = 0;
             self.comma_list(T::RParen, "the variant's fields", |p| {
-                // `Merge(a, b: Ship)`: several labels share one type.
-                let mut labels = Vec::new();
-                while p.at(T::Ident) && p.peek_n(1) == T::Comma && !p.name_is_type_like() {
-                    labels.push(p.name());
-                    p.bump();
-                }
+                n += 1;
                 if p.at(T::Ident) && p.peek_n(1) == T::Colon {
-                    labels.push(p.name());
+                    let label = p.name();
                     p.bump();
+                    return (Some(label), p.ty());
                 }
-                let ty = p.ty();
-                if labels.is_empty() {
-                    return vec![(None, ty)];
+                let (span, name) = (p.span(), if n == 1 { "v".into() } else { format!("v{n}") });
+                let mut err = cpl_diag::msgs::syntax::UNNAMED_PAYLOAD.error(span, &[]);
+                if p.name_is_type_like() {
+                    let at = Span::new(span.start, span.start);
+                    err = err.with_fix(format!("name it `{name}`"), at, format!("{name}: "));
                 }
-                labels
-                    .into_iter()
-                    .map(|label| (Some(label), ty.clone()))
-                    .collect()
+                p.error(err);
+                (None, p.ty())
             })
-            .into_iter()
-            .flatten()
-            .collect()
         } else {
             Vec::new()
         };

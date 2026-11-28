@@ -31,7 +31,7 @@ let start = min(e.from for e in edges if leaving(e.from).len == 1)!
 var at = start
 var by = leaving(start)[0].tile
 var boundary: List<Pt> = []
-loop:
+while true:
     boundary.push(at)
     let out = leaving(at)
     let step = out.find(e => e.tile != by) ?? out[0]

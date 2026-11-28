@@ -52,12 +52,12 @@ fn first_arrangement(k: Int, x: Int, y: Int) -> List<Slot> =
 
 fn decision_tree(k: Int, x: Int, y: Int) -> Tree:
     var root = first_arrangement(k, x, y)
-    loop:
+    while true:
         let buckets = (0..1 << k).group(by: m => answer(root, m))
         var leaves: Map<Int, Leaf> = Map()
         for (r, masks) in buckets:
             var q = first_arrangement(k, x, y)
-            loop:
+            while true:
                 if let mask_of = split(masks, q):
                     leaves[r] = Leaf(masks, q, mask_of)
                     break

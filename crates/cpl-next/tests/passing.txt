@@ -286,6 +286,7 @@ core-02/table-blank-param-fill.cp
 core-02/tuple-fields.cp
 core-02/unit-field-given-to-a-fn-value.cp
 core-02/unit-field-of-a-nested-generic-is-stored-nowhere.cp
+core-02/unnamed-payload-is-rejected.cp
 core-02/var-field-assign.cp
 core-02/variant-named-like-prelude-type.cp
 core-02/variant-through-tuple-annotation.cp

@@ -3,7 +3,7 @@ var s = 0
 repeat n + 1:
     s += 1
 var i = 0
-loop:
+while true:
     i += 1
     if i >= 3: break
 let t: Str = "ab"

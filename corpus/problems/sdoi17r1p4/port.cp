@@ -18,7 +18,7 @@ let a: [Boy, Girl]1..=1e4 = read()
 let b: [Boy, Girl]1..=1e4 = read()
 
 var (num, den) = (0, 1)
-loop:
+while true:
     let best = max_weight_matching<Boy, Girl>((i, j) => den * a[i, j] - num * b[i, j])
     if best.total == 0: break
     (num, den) = (Boy.sum(i => a[i, best.mate[i]]), Boy.sum(i => b[i, best.mate[i]]))

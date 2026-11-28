@@ -15,7 +15,7 @@ if depth > 0:
     // every bit from `low` up is known in `known`
     var low = depth - 1
     var known = 1 << low
-    loop:
+    while true:
         let guess = known | rand(0, (1 << low) - 1)
         let missed: 0..=120 = wire.ask("{guess}")
         if missed == 0: break

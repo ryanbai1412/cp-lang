@@ -32,7 +32,7 @@ for d in 1..=V:
     for j in (2 * d..=V).step(d): mult[d] += mult[j]
 var tuples = [Z(mu[d]) for d in 1..=V]
 var k = 1
-loop:
+while true:
     var count = Z(0)
     for d in 1..=V:
         tuples[d - 1] *= mult[d]

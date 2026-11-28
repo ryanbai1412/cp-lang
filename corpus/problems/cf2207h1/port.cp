@@ -67,7 +67,7 @@ var top = solve(0, n, is_max, if is_max: loc_incr else: loc_decr)
 var root = top.pop()!
 while let a = top.pop(): root = join(a, root, is_max)
 print("!")
-loop:
+while true:
     let first_v: Int = read()
     if first_v == 0: break
     let vals = [first_v] + [read<Int>() for _ in 1..n]

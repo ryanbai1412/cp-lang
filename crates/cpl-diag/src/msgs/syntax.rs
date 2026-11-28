@@ -14,6 +14,7 @@ super::msgs! {
     ELSE_IF = REMOVED_SYNTAX, "use `elif`, not `else if`";
     COLON_ARM = REMOVED_SYNTAX, "a `match` arm takes `=>` after its pattern, not `:`";
     LOOP_KEYWORD = REMOVED_SYNTAX, "CP Lang has no `loop`; the loop that exits in the middle is `while true:`";
+    UNNAMED_PAYLOAD = REMOVED_SYNTAX, "a variant's payload fields are `name: Type`, like a struct's";
     MATCH_NEEDS_ARMS = EXPECTED_BLOCK, "expected indented `pattern => value` arms after `match`";
     BAD_NUMBER_FORMAT = UNEXPECTED_TOKEN, "`:{}` is not a number format";
     OPTIONAL_MARK_FIRST = EXPECTED_TYPE, "an optional type puts its `?` first in CP Lang";

@@ -23,7 +23,7 @@ for p in 0..n:
         let d = cand[p][idx].d
         var pts: List<Int> = [p]
         var (cur, ci) = (p, idx)
-        loop:
+        while true:
             vis[cur][ci] = true
             let nxt = cur + cand[cur][ci].h
             pts.push(nxt)

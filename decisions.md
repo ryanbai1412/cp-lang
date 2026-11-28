@@ -411,6 +411,12 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   text compare, a second spelling of `while true:` (R01.7.2). The new
   parser reports it with a fix writing `while true`, and std and
   conformance use `while true:`.
+- **A variant's payload fields have names.** Syntax, 2.7: `fields` is
+  `NAME ':' type`, for struct fields and variant payloads alike. The old
+  parser also took a positional `One(T)` (a field with no label, a second
+  answer) and a shared label `Merge(a, b: Ship)`, which `fields` doesn't
+  have. Both are E0503 now, with a fix naming a type payload `v`, `v2`, ....
+  The two conformance cases that used `One(T)` name it.
 - **`if T: Bound:` is a condition.** Syntax, 8 (decision 602): R08 §190's
   bound test was missing from `cond`. It is `NAME ':' bound` with a full
   trait ref, told from a one-line `if ok: x` by the `:` that ends the bound.

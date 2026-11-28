@@ -406,3 +406,30 @@ fn lend_statements_and_bound_conditions_parse() {
     );
     assert!(!got[3].contains("BoundCond"), "{}", got[3]);
 }
+
+#[test]
+fn an_unnamed_payload_is_reported_and_kept() {
+    let src = "enum E = One(T) | Two(Int, b: Str) | Three(a, b: Int)\n";
+    let file = crate::parse(src);
+    let fixes: Vec<_> = (file.diagnostics.iter())
+        .map(|d| {
+            d.fixes
+                .iter()
+                .map(|f| f.edits[0].1.clone())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    assert_eq!(
+        fixes,
+        [vec!["v: ".to_string()], vec!["v: ".into()], vec![]],
+        "{:?}",
+        file.diagnostics
+    );
+    let item = file.items().next().unwrap();
+    let fields = item
+        .descendants()
+        .filter(|n| n.kind() == NodeKind::FieldDecl)
+        .count();
+    assert_eq!(fields, 5);
+    assert_eq!(file.root.text(), src);
+}

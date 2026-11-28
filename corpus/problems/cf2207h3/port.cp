@@ -70,7 +70,7 @@ var root = chain.pop()!
 while let a = chain.pop(): root = join(a, root, is_max)
 print("!")
 
-loop:
+while true:
     let first: Int = read()
     if first == 0: break
     let vals = [first] + [read<Int>() for _ in 1..n]

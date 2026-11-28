@@ -490,14 +490,40 @@ impl Parser<'_> {
         self.name("a variant's name");
         if self.at(T::LParen) {
             self.bump();
+            let mut n = 0;
             while !matches!(self.peek(), T::RParen | T::Newline | T::Eof) {
-                self.field();
+                n += 1;
+                if self.at(T::Ident) && self.nth(1) == T::Colon {
+                    self.field();
+                } else {
+                    self.unnamed_payload(n);
+                }
                 if !self.eat(T::Comma) {
                     break;
                 }
             }
             self.want(T::RParen, "`)` to close the variant's fields");
         }
+        self.finish();
+    }
+
+    /// `One(T)` or `Merge(a, b: Ship)`: a payload field with no name of its
+    /// own, reported with a fix naming a type `v`, `v2`, ... (R01 `fields`).
+    fn unnamed_payload(&mut self, n: usize) {
+        let span = self.span();
+        let mut err = msgs::syntax::UNNAMED_PAYLOAD.error(span, &[]);
+        if self.text().starts_with(|c: char| c.is_uppercase()) {
+            let name = if n == 1 {
+                "v".to_string()
+            } else {
+                format!("v{n}")
+            };
+            let at = Span::new(span.start, span.start);
+            err = err.with_fix(format!("name it `{name}`"), at, format!("{name}: "));
+        }
+        self.diagnostics.push(err);
+        self.start(NodeKind::FieldDecl);
+        self.ty();
         self.finish();
     }
 

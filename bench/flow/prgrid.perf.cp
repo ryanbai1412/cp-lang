@@ -42,7 +42,7 @@ for a in head[V(0)]: push(a, left[a])
 var top = 0
 var flow = 0
 unchecked:
-    loop:
+    while true:
         while active[top].len == 0 and top > 0: top -= 1
         if active[top].len == 0:
             flow = -ex[0]
