@@ -1016,6 +1016,7 @@ core-08/no-inheritance.cp
 core-08/no-macros.cp
 core-08/no-orphan-impl.cp
 core-08/no-record-subtyping.cp
+core-08/none-into-a-fields-cell-takes-the-cell-type.cp
 core-08/one-generic-fn-at-four-types.cp
 core-08/operator-compound.cp
 core-08/operator-missing.cp

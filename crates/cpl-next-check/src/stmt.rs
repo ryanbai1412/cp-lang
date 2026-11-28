@@ -1128,9 +1128,18 @@ impl<'a> Cx<'a> {
                         };
                         // The cell's type, so `out[v] = j..i` of cuts is a piece (R04.4.4).
                         let cell = match &super::index::unparen(base).kind {
-                            ExprKind::Name(n) => self.lookup(n).and_then(|(_, t)| self.cell_of(&t)),
+                            ExprKind::Name(n) => self.lookup(n).map(|(_, t)| t),
                             _ => None,
                         };
+                        // A field, `self`'s by name or not, is typed by reading it.
+                        let cell = cell.or_else(|| {
+                            let seen = self.errors.len();
+                            let t = self.expr_as_typed(base, None).ty;
+                            let clean = self.errors.len() == seen;
+                            self.errors.truncate(seen);
+                            clean.then_some(t)
+                        });
+                        let cell = cell.and_then(|t| self.cell_of(&t));
                         // The value is read whole before the cell is written (R01.6.4).
                         let value = self.hoist(value, (cell.as_ref(), true), "$rhs", out);
                         let (op, span) = (*op, s.span);
