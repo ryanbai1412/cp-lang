@@ -29,6 +29,13 @@ class AffectedTest(unittest.TestCase):
         for path in ("crates/cpl-fmt/src/lib.rs", "corpus/problems/p1/dream.cp", "web/x.ts"):
             self.assertFalse(self.sel(path)["dreams"], path)
 
+    def test_the_shared_lexer_and_old_crates_select_old_pipeline_same(self):
+        for path in ("crates/cpl-next-syntax/src/lexer.rs", "crates/cpl-syntax/src/lib.rs",
+                     "crates/cpl-facade/src/lib.rs", "crates/cpl-check/src/lib.rs", "Cargo.lock"):
+            self.assertTrue(self.sel(path)["old_same"], path)
+        for path in ("crates/cpl-next-check/src/lib.rs", "std/vec.cp", "web/x.ts"):
+            self.assertFalse(self.sel(path)["old_same"], path)
+
     def test_a_crate_file_selects_its_package_by_name_not_directory(self):
         s = self.sel("crates/cpl-prover/src/lib.rs")
         self.assertEqual((s["all"], s["packages"]), (False, ["cpl-prover"]))

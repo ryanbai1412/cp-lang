@@ -36,6 +36,18 @@ pub fn prod<S: Seq<T>, T>(self: S) -> T where T: One:
     for x in self: out *= x
     out
 
+/// Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each
+/// element first (`xs.sum(of: x => x * x)`). \(O(n)\).
+///
+/// cost: \(O(n)\)
+/// empty: `let a: List<Int> = []; a.sum() == 0`
+/// traps: never (overflow wraps in release, traps in debug)
+/// example: `[1, 2, 3].sum(of: x => x * x) == 14`
+pub fn sum<S: Seq<T>, T, U: Zero + Add>(self: S, of: T -> U = x => x) -> U:
+    var out = U.zero
+    for x in self: out += of(x)
+    out
+
 /// The average of `of` over the elements as `F64`; `None` when empty.
 ///
 /// cost: \(O(n)\)
@@ -1454,17 +1466,6 @@ pub trait Seq<T>:
     /// example: `Heap([3, 1, 2]).each().collect() == [1, 2, 3]`
     fn each(self) -> yields T:
         for x in self.iter(): yield x
-    /// Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each
-    /// element first (`xs.sum(of: x => x * x)`). \(O(n)\).
-    ///
-    /// cost: \(O(n)\)
-    /// empty: `let a: List<Int> = []; a.sum() == 0`
-    /// traps: never (overflow wraps in release, traps in debug)
-    /// example: `[1, 2, 3].sum(of: x => x * x) == 14`
-    fn sum<U: Zero + Add>(self, of: T -> U = x => x) -> U:
-        var out = U.zero
-        for x in self: out += of(x)
-        out
 
 /// A `-> yields T` call made outside a `for`: the call, held. Nothing runs until something walks
 /// it, and each walk reruns it from the start (R07.6.2). It walks and nothing more: keep the

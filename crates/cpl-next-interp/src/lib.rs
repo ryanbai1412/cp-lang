@@ -411,6 +411,23 @@ impl<'a> Machine<'a> {
             _ => broken("storage written without a lend"),
         }
     }
+    /// The first `args[1]` characters of the storage `args[0]` (`ops::out_len`).
+    fn text(&mut self, args: &'a [Arg<CTy>], fp: usize) -> R<String> {
+        let n = self.int(&args[1], fp)?;
+        let V::Raw(r) = self.arg(&args[0], fp)? else {
+            return broken("text of non-storage");
+        };
+        let Store::Any(cs) = &*r else {
+            return broken("text of storage of another kind");
+        };
+        let chars = cs.iter().take(ops::out_len(n, cs.len()));
+        chars
+            .map(|c| match c {
+                V::Char(c) => Ok(char::from(*c)),
+                _ => broken("text of a non-character"),
+            })
+            .collect()
+    }
     fn int(&mut self, a: &'a Arg<CTy>, fp: usize) -> R<i64> {
         match self.arg(a, fp)? {
             V::Int(i) => Ok(i),
@@ -548,21 +565,11 @@ impl<'a> Machine<'a> {
                 }
             }
             Intr::Out => {
-                let n = self.int(&args[1], fp)?;
-                let V::Raw(r) = self.arg(&args[0], fp)? else {
-                    return broken("output of non-storage");
-                };
-                let Store::Any(cs) = &*r else {
-                    return broken("output of storage of another kind");
-                };
-                for c in cs.iter().take(ops::out_len(n, cs.len())) {
-                    let V::Char(c) = c else {
-                        return broken("output of a value that is not a character");
-                    };
-                    self.out.text.push(char::from(*c));
-                }
+                let text = self.text(args, fp)?;
+                self.out.text.push_str(&text);
                 V::Unit
             }
+            Intr::ParseF64 => V::F64(ops::f64_token(&self.text(args, fp)?)?),
             Intr::RawSet => {
                 let i = self.int(&args[1], fp)?;
                 let x = self.arg(&args[2], fp)?;

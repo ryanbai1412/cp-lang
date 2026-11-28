@@ -4268,6 +4268,18 @@ def std_model_gaps(root: Path) -> list[str]:
     return mod.gaps(mod.std_texts(root), mod.case_texts(root))
 
 
+def std_default_model_gaps(root: Path) -> list[str]:
+    """Pub std traits' default methods (`Seq.sum`) no spec/conformance/std-models/ case checks
+    against a brute force: std_model_gaps's pub fns, moved into a trait (a12ba755e)."""
+    import importlib.util
+    if not (root / "scripts/std-models.py").exists():
+        return []
+    spec = importlib.util.spec_from_file_location("std_models", root / "scripts/std-models.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.default_gaps(mod.std_texts(root), mod.case_texts(root))
+
+
 def edge_labels_unrun(root: Path) -> list[str]:
     """std `empty:`/`ties:` labels `cpl-conform docs` can't run: prose, or a bare value
     rather than a claim (`docs.rs` `runnable_label`), so no case checks that edge (Content)."""
@@ -5306,6 +5318,8 @@ COUNTERS = {
                          std_trait_matrix, True),
     "std_model_gaps": ("std types and pub std fns with no seeded model case against a brute force (Content)",
                        std_model_gaps, True),
+    "std_default_model_gaps": ("pub std traits' default methods with no seeded model case against a brute force (Content)",
+                               std_default_model_gaps, True),
     "edge_labels_unrun": ("std empty:/ties: labels that are not a claim cpl-conform docs runs (Content)",
                           edge_labels_unrun, True),
     "corpus_known": ("entries of corpus/*-known.txt (scoreboard K6, Content)", corpus_known, True),
@@ -5382,7 +5396,7 @@ def _count(name: str, root: Path) -> int:
 
 CI_ONLY = ("explain_copy_mismatches",)
 
-SLOW_COUNTERS = ("explain_copy_mismatches", "std_model_gaps", "near_dup_fns", "corpus_no_statement", "unwrap_input", "written_twice",
+SLOW_COUNTERS = ("explain_copy_mismatches", "std_model_gaps", "std_default_model_gaps", "near_dup_fns", "corpus_no_statement", "unwrap_input", "written_twice",
                  "corpus_walkers")
 
 

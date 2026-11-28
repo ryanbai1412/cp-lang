@@ -5,6 +5,7 @@
 //! example: `let (n, k): (Int, Int) = read()`
 use std.tuple.{Tuple2, Tuple3, Tuple4}
 use std.io.{io}
+use std.raw.{raw_new, raw_set}
 
 /// A type the input reads, token by token, in order, from the `Input` it is given (R10.2.1).
 @derive
@@ -53,6 +54,7 @@ fn stdin_peek(k: Int) -> Int = @intrinsic("input_peek")
 fn stdin_token(ok: Bool) = @intrinsic("token_check")
 fn stdin_holds(ok: Bool) = @intrinsic("input_check")
 fn stdin_left() -> Bool = @intrinsic("input_left")
+fn f64_of(text: Raw<Char>, n: Int) -> F64 = @intrinsic("f64_parse")
 fn blank(c: Int) -> Bool = c == 32 or c in 9..=13
 
 /// The integer `s` is, when it is one.
@@ -225,6 +227,35 @@ impl Read for I128:
         input.holds(neg or v != least)
         input.end_token()
         if neg or v == least: v else: -v
+
+/// `F64` reads one number: a sign, digits with at most one `.` among them, then `e` or `E`, a
+/// sign and digits; the value is the `F64` nearest it (R10.2.6). `inf` and `nan` are not numbers.
+impl Read for F64:
+    fn read(mut input: Input) -> F64:
+        input.skip_blank()
+        var k = if input.peek(0) == 45 or input.peek(0) == 43: 1 else: 0
+        var digits = 0
+        while input.peek(k) in 48..=57:
+            k += 1
+            digits += 1
+        if input.peek(k) == 46:
+            k += 1
+            while input.peek(k) in 48..=57:
+                k += 1
+                digits += 1
+        var ok = digits > 0
+        if ok and (input.peek(k) == 101 or input.peek(k) == 69):
+            k += 1
+            if input.peek(k) == 45 or input.peek(k) == 43: k += 1
+            ok = input.peek(k) in 48..=57
+            while input.peek(k) in 48..=57: k += 1
+        let c = input.peek(k)
+        input.token(ok and (c == -1 or blank(c)))
+        if not ok: return 0.0
+        var text = raw_new(k, Char(48))
+        for i in 0..k: raw_set(mut text, i, Char(input.byte()))
+        input.end_token()
+        f64_of(text, k)
 
 /// `Str` reads one token (R10.2.1).
 impl Read for Str:

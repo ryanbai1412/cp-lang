@@ -1256,6 +1256,51 @@ mod tests {
                 format!("{}\n", i32::from(ops::is_space(c))),
             );
         }
+        let halves = |w: i128| format!("{} {}", (w as u128 >> 64) as u64, w as u64);
+        let wide = |w: i128| {
+            let (hi, lo) = ((w as u128 >> 64) as u64, w as u64);
+            format!("(__int128)(((unsigned __int128)UINT64_C({hi}) << 64) | UINT64_C({lo}))")
+        };
+        let wides = [
+            i128::MIN,
+            -(1 << 100),
+            -3,
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            64,
+            127,
+            128,
+            1 << 64,
+            i128::MAX,
+        ];
+        let wide_ops = [
+            Intr::Add,
+            Intr::Sub,
+            Intr::Mul,
+            Intr::Div,
+            Intr::Rem,
+            Intr::Pow,
+            Intr::BitAnd,
+            Intr::BitOr,
+            Intr::BitXor,
+        ];
+        for op in wide_ops {
+            let Some(ops::Cpp::Call(f)) = ops::cpp_wide(op) else {
+                panic!("{op:?} has no I128 C++ helper");
+            };
+            for a in wides {
+                for b in wides {
+                    case(
+                        format!("__int128 r = {f}({}, {}); printf(\"%llu %llu\\n\", (unsigned long long)((unsigned __int128)r >> 64), (unsigned long long)r);", wide(a), wide(b)),
+                        expect(ops::wide(op, a, b).map(halves)),
+                    );
+                }
+            }
+        }
         let floats = [
             0.0,
             -0.0,

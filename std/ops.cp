@@ -22,7 +22,7 @@ pub trait Ord(Eq):
     fn cmp(self, other: Self) -> Ordering =
         if self < other: Ordering.Less elif self == other: Ordering.Equal else: Ordering.Greater
 
-/// `a + b` on a type that is not a number (R08.1.5); `-`, `*`, `/`, `%` and `-a` likewise.
+/// `a + b` on a type that is not a number (R08.1.5); `-`, `*`, `/`, `%`, `**` and `-a` likewise.
 @operator("+")
 pub trait Add<Rhs = Self>:
     fn add(self, other: Rhs) -> Self
@@ -38,6 +38,10 @@ pub trait Div<Rhs = Self>:
 @operator("%")
 pub trait Rem<Rhs = Self>:
     fn rem(self, other: Rhs) -> Self
+/// `a ** e`: `a` to the power `e`, an `Int` unless the impl says otherwise.
+@operator("**")
+pub trait Pow<Rhs = Int>:
+    fn pow(self, e: Rhs) -> Self
 @operator("-")
 pub trait Neg:
     fn neg(self) -> Self
@@ -128,6 +132,8 @@ impl Div for Int:
     fn div(self, other: Int) -> Int = self / other
 impl Rem for Int:
     fn rem(self, other: Int) -> Int = self % other
+impl Pow for Int:
+    fn pow(self, e: Int) -> Int = self ** e
 impl Neg for Int:
     fn neg(self) -> Int = -self
 impl Add for U64:
@@ -140,6 +146,8 @@ impl Div for U64:
     fn div(self, other: U64) -> U64 = self / other
 impl Rem for U64:
     fn rem(self, other: U64) -> U64 = self % other
+impl Pow for U64:
+    fn pow(self, e: Int) -> U64 = self ** e
 impl Add for I128:
     fn add(self, other: I128) -> I128 = self + other
 impl Sub for I128:
@@ -150,6 +158,8 @@ impl Div for I128:
     fn div(self, other: I128) -> I128 = self / other
 impl Rem for I128:
     fn rem(self, other: I128) -> I128 = self % other
+impl Pow for I128:
+    fn pow(self, e: Int) -> I128 = self ** e
 impl Neg for I128:
     fn neg(self) -> I128 = -self
 impl Add for F64:

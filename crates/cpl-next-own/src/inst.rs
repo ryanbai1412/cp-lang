@@ -563,9 +563,17 @@ impl Walk<'_> {
                             // one, or any the signature says `lends` (a fixed-size grid).
                             let heap = !self.p.plain(&v.ty) || self.declares_lends(*i);
                             if let (EK::Copy(p), true) = (&v.kind, heap) {
+                                // A view cut from a temporary holds it (R07.5.10).
+                                let viewed = (k == 0 && self.receivers.contains(i))
+                                    || self.declares_lends(*i);
+                                let cut_here = (self.pl(p))
+                                    .filter(|q| {
+                                        fresh(&self.made, &self.spilled, &self.lent, q.root)
+                                    })
+                                    .filter(|_| viewed && !self.p.copied(&e.ty));
                                 // An owned binding read for the last time moves in, with what
-                                // it borrows (R05.5.3).
-                                if let Place::Local(l) = p {
+                                // it borrows (R05.5.3); a temporary a view is cut from does not.
+                                if let (Place::Local(l), None) = (p, &cut_here) {
                                     let r = Root::Local(*l);
                                     if self.last.here.contains(l)
                                         && self.decl.contains_key(&r)
@@ -578,14 +586,7 @@ impl Walk<'_> {
                                     }
                                 }
                                 out.extend(self.lent_pl(p));
-                                // A view cut from a temporary holds it (R07.5.10).
-                                let viewed = (k == 0 && self.receivers.contains(i))
-                                    || self.declares_lends(*i);
-                                if viewed && !self.p.copied(&e.ty) {
-                                    cut.extend(self.pl(p).filter(|q| {
-                                        fresh(&self.made, &self.spilled, &self.lent, q.root)
-                                    }));
-                                }
+                                cut.extend(cut_here);
                             }
                         }
                         Arg::View(p) | Arg::Lend(p) => {
@@ -1082,14 +1083,7 @@ impl Walk<'_> {
                 }
                 if self.report {
                     let r = Root::Local(*l);
-                    (self.binds).extend(bound(
-                        self.cur,
-                        self.f(),
-                        self.globals,
-                        r,
-                        &self.frozen,
-                        &self.lent,
-                    ));
+                    (self.binds).extend(bound(self.cur, r, &self.frozen, &self.lent));
                 }
             }
             Stmt::Assign(p, e) => {
@@ -1166,14 +1160,7 @@ impl Walk<'_> {
                     // The file body's `let`s are globals, bound where first written.
                     if self.report && q.path.is_empty() && matches!(q.root, Root::Global(_)) {
                         let r = q.root;
-                        (self.binds).extend(bound(
-                            self.cur,
-                            self.f(),
-                            self.globals,
-                            r,
-                            &self.frozen,
-                            &self.lent,
-                        ));
+                        (self.binds).extend(bound(self.cur, r, &self.frozen, &self.lent));
                     }
                     fx.writes.insert(q);
                 }
@@ -1735,11 +1722,9 @@ pub struct Owned {
     pub binds: Vec<Bound>,
 }
 
-/// `r`'s `--dump-own` line where `f`, instance `inst`, binds it, if it freezes or lends any place.
+/// `r`'s binding in instance `inst`, if it freezes or lends any place.
 fn bound(
     inst: usize,
-    f: &cpl_next_ir::ir::Func<CTy>,
-    globals: &[(String, bool)],
     r: Root,
     frozen: &HashMap<Root, BTreeSet<Pl>>,
     lent: &HashMap<Root, BTreeSet<Pl>>,
@@ -1748,51 +1733,24 @@ fn bound(
     if frozen.is_none() && lent.is_none() {
         return None;
     }
-    let show = |ps: Option<&BTreeSet<Pl>>| -> Vec<String> {
-        (ps.into_iter().flatten())
-            .map(|p| dump_pl(f, globals, p))
-            .collect()
-    };
+    let all = |ps: Option<&BTreeSet<Pl>>| ps.into_iter().flatten().cloned().collect();
     Some(Bound {
         inst,
-        fn_name: f.name.clone(),
-        local: dump_pl(f, globals, &Pl::whole(r)),
-        frozen: show(frozen),
-        lent: show(lent),
+        local: r,
+        frozen: all(frozen),
+        lent: all(lent),
     })
 }
 
-/// `p` as `--dump-own` shows it: its root's name, `$` and an index for a temp, then its path.
-fn dump_pl(f: &cpl_next_ir::ir::Func<CTy>, globals: &[(String, bool)], p: &Pl) -> String {
-    let mut out = match p.root {
-        Root::Local(l) => match f.names.get(l) {
-            Some(n) if !n.is_empty() => n.clone(),
-            _ => format!("${l}"),
-        },
-        Root::Global(g) => match globals.get(g) {
-            Some((n, _)) => n.clone(),
-            None => format!("$g{g}"),
-        },
-    };
-    for s in &p.path {
-        match s {
-            Step::Field(k) => out.push_str(&format!(".{k}")),
-            Step::Key(k) => out.push_str(&format!("[{k}]")),
-        }
-    }
-    out
-}
-
-/// A local where it is bound, in the instance `inst` (named `fn_name`): the places a write to
-/// which conflicts with it while it is used (`frozen`, E0602) and the places it lends (`lent`,
-/// R8), as own holds them. A temp is `$` and its index.
+/// A local where it is bound, in instance `inst`: the places a write to which conflicts with it
+/// while it is used (`frozen`, E0602) and the places it lends (`lent`, R8), as own holds them.
+/// The facade names them for `--dump-own`.
 #[derive(Debug)]
 pub struct Bound {
     pub inst: usize,
-    pub fn_name: String,
-    pub local: String,
-    pub frozen: Vec<String>,
-    pub lent: Vec<String>,
+    pub local: Root,
+    pub frozen: Vec<Pl>,
+    pub lent: Vec<Pl>,
 }
 
 /// Ownership after link (contract 4): checks the instances link made, reporting what
@@ -1804,8 +1762,17 @@ pub fn after(
     before: crate::Before,
 ) -> Owned {
     use cpl_next_ir::verify::{all, callees, instances, Stage};
-    let fast = callees(&p.insts);
+    // A program link rejected can be partial (it stops at an instantiation that does not
+    // end), so ownership has nothing sound to walk; link's error is the answer.
+    let linked = p.errors.is_empty();
     p.errors.extend(before.generic);
+    if !linked {
+        return Owned {
+            errors: before.cache,
+            ..Owned::default()
+        };
+    }
+    let fast = callees(&p.insts);
     p.errors
         .extend(all(&p.insts, Stage::Instances, &fast, p.globals.len()));
     let mut owned = run(d, p, globals);

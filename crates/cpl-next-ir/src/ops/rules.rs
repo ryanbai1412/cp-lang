@@ -140,6 +140,19 @@ kernels! {
         "__int128 r; if (__builtin_sub_overflow(a, b, &r)) cpl_fail(CPL_OVERFLOW); return r;"
     wmul(a: i128, b: i128) -> i128 { a.checked_mul(b).ok_or(Fault::Overflow) }
         "__int128 r; if (__builtin_mul_overflow(a, b, &r)) cpl_fail(CPL_OVERFLOW); return r;"
+    wpow(a: i128, b: i128) -> i128 {
+        // Past `u32` only 0, 1 and -1 have a power that is a value.
+        match u32::try_from(b) {
+            Ok(e) => a.checked_pow(e),
+            Err(_) => match a {
+                0 | 1 => Some(a),
+                -1 => Some(if b % 2 == 0 { 1 } else { -1 }),
+                _ => None,
+            },
+        }
+        .ok_or(Fault::Overflow)
+    }
+        "__int128 r = 1; for (; b > 0; b >>= 1) { if (b & 1) r = cpl_k_wmul(r, a); if (b > 1) a = cpl_k_wmul(a, a); } return r;"
     wneg(a: i128) -> i128 { a.checked_neg().ok_or(Fault::Overflow) }
         "if (a == I128_MIN) cpl_fail(CPL_OVERFLOW); return -a;"
     wabs(a: i128) -> i128 { a.checked_abs().ok_or(Fault::Overflow) }
@@ -231,6 +244,7 @@ rows! {
     wadd(a: i128, b: i128) -> i128 [] wadd;
     wsub(a: i128, b: i128) -> i128 [] wsub;
     wmul(a: i128, b: i128) -> i128 [] wmul;
+    wpow(a: i128, b: i128) -> i128 [b < 0 => NegativePower] wpow;
     wneg(a: i128) -> i128 [] wneg;
     wabs(a: i128) -> i128 [] wabs;
     wdiv(a: i128, b: i128) -> i128 [b == 0 => DivisionByZero] wdiv;
