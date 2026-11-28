@@ -656,8 +656,11 @@ impl ImplChoice for Choice<'_> {
         a
     }
     fn impls_on(&self, t: &Ty) -> Vec<(TraitId, Chosen)> {
-        (0..self.impls.items.traits())
-            .map(TraitId)
+        let mut trs = self.impls.items.impl_traits(t);
+        trs.extend(self.impls.rows.iter().map(|im| im.trait_.tr));
+        trs.sort();
+        trs.dedup();
+        trs.into_iter()
             .filter_map(|tr| {
                 let r = TraitRef {
                     tr,
@@ -983,5 +986,35 @@ mod tests {
         assert!(fwd
             .iter()
             .all(|(i, a)| fresh.choose(&qs[*i].1, &qs[*i].0) == *a));
+    }
+
+    /// `impls_on` asks only the traits an impl's head may fit, and answers as asking every one.
+    #[test]
+    fn impls_on_answers_as_asking_every_trait() {
+        let std = crate::modules::Std::read();
+        let d = &std.decls().d;
+        let c = Choice::new(Impls::of(d));
+        let every = |t: &Ty| -> Vec<(TraitId, Chosen)> {
+            (0..d.traits.len())
+                .map(TraitId)
+                .filter_map(|tr| Some((tr, c.impl_for(&at(tr, vec![]), t)?)))
+                .collect()
+        };
+        let mut tys = vec![
+            Ty::Int,
+            Ty::Bool,
+            Ty::Char,
+            Ty::U64,
+            Ty::Error,
+            list_of(d, Ty::Int),
+        ];
+        tys.extend((0..d.structs.len()).map(|s| Ty::Struct(StructId(s), vec![], vec![])));
+        let mut some = 0;
+        for t in &tys {
+            let got = c.impls_on(t);
+            assert_eq!(got, every(t), "{t:?}");
+            some += usize::from(!got.is_empty());
+        }
+        assert!(some > 3);
     }
 }

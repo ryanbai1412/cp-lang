@@ -136,8 +136,9 @@ pub trait Items: Texts {
     fn impls_named(&self, name: Sym) -> &[usize];
     /// Whether a lookup may find impl `i` (R11.3.4).
     fn live(&self, i: usize) -> bool;
-    /// How many traits there are: `TraitId(0)` up to it.
-    fn traits(&self) -> usize;
+    /// The traits with an impl whose head may fit `t`, ascending, each once: a struct's own
+    /// impls and the impls headed by anything else (a type not known yet may fit every impl).
+    fn impl_traits(&self, t: &Ty) -> Vec<TraitId>;
 }
 
 /// `signature(ItemId)`: what an item declares, never its body.
@@ -219,13 +220,6 @@ pub trait DomFacts {
     fn fresh_dom(&self, c: usize) -> bool;
     /// Whether module `m` is reached by the program.
     fn seen(&self, m: ModId) -> bool;
-}
-
-/// `scope(ModId)`: what a name means in a module.
-pub trait Scope {
-    fn named(&self, m: ModId, name: &str) -> Option<Named>;
-    /// Each name the module's scope gives and what it means, in no fixed order.
-    fn names(&self, m: ModId) -> Vec<(&str, Named)>;
 }
 
 /// `summary(ItemId)`: what a fn's body adds to its set parameters, read without checking it.
@@ -341,8 +335,18 @@ impl Items for Decls {
     fn live(&self, i: usize) -> bool {
         Decls::live(self, &self.impls[i])
     }
-    fn traits(&self) -> usize {
-        self.traits.len()
+    fn impl_traits(&self, t: &Ty) -> Vec<TraitId> {
+        let mut out: Vec<TraitId> = match t {
+            Ty::Var(_) | Ty::Error => self.impls_by_trait.keys().copied().collect(),
+            Ty::Struct(s, ..) => (self.impls_by_head.get(s).into_iter().flatten())
+                .chain(&self.impls_unheaded)
+                .copied()
+                .collect(),
+            _ => self.impls_unheaded.clone(),
+        };
+        out.sort();
+        out.dedup();
+        out
     }
 }
 
@@ -619,18 +623,6 @@ impl Methods for Decls {
     }
     fn trait_fns(&self, tr: TraitId) -> Vec<(Sym, FnId)> {
         self.trait_fns(tr)
-    }
-}
-
-impl Scope for Decls {
-    fn named(&self, m: ModId, name: &str) -> Option<Named> {
-        self.named(m, name)
-    }
-    fn names(&self, m: ModId) -> Vec<(&str, Named)> {
-        self.views[m.0]
-            .iter()
-            .map(|(n, x)| (self.syms.text(*n), *x))
-            .collect()
     }
 }
 

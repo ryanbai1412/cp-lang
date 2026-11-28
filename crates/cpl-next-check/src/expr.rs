@@ -536,8 +536,8 @@ impl<'a> Cx<'a> {
         };
         let scoped = self.b.scopes.iter().flat_map(|s| s.iter()).filter(in_scope);
         let globals = (self.global_names.iter()).filter(|&(_, &g)| !self.globals[g].synthetic);
-        let module = self.d.names(self.b.module);
-        let names = (module.iter().map(|(name, _)| *name))
+        let module = cpl_next_decls::views::Names::names(self.d, self.b.module);
+        let names = (module.iter().map(|(name, _)| self.d.syms.text(*name)))
             .chain(globals.map(|(name, _)| name.as_str()))
             .chain(scoped.map(|(name, _)| name.as_str()));
         cpl_diag::closest(n, names)

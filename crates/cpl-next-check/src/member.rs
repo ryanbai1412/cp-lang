@@ -600,17 +600,19 @@ impl<'a> Cx<'a> {
             return None;
         }
         let sym = self.d.sym(n)?;
-        let found = (self.d.names(self.b.module).into_iter().map(|(_, x)| x))
-            .filter_map(|x| match x {
-                decls::Named::Trait(tr) => Some(tr),
-                _ => None,
-            })
-            .filter_map(|tr| {
-                let m = *self.items.t(tr).methods.get(&sym)?;
-                let fd = self.items.f(m);
-                (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
-            })
-            .min_by_key(|(tr, _)| tr.0)?;
+        let found = (cpl_next_decls::views::Names::names(self.d, self.b.module)
+            .into_iter()
+            .map(|(_, x)| x))
+        .filter_map(|x| match x {
+            decls::Named::Trait(tr) => Some(tr),
+            _ => None,
+        })
+        .filter_map(|tr| {
+            let m = *self.items.t(tr).methods.get(&sym)?;
+            let fd = self.items.f(m);
+            (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
+        })
+        .min_by_key(|(tr, _)| tr.0)?;
         Some((n.clone(), found))
     }
     /// `gen<T>(args)`: `T.gen(args)`, through `T`'s impl of the trait that declares it.

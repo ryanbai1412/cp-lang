@@ -625,6 +625,10 @@ pub struct Decls {
     /// Each trait's impls, and each member name's (its trait's or its own), in order.
     pub impls_by_trait: HashMap<TraitId, Vec<usize>>,
     pub impls_by_member: HashMap<Sym, Vec<usize>>,
+    /// The traits each struct has an impl of headed by it, and those of every other impl:
+    /// which traits `impls_on` asks at a type.
+    pub impls_by_head: HashMap<StructId, Vec<TraitId>>,
+    pub impls_unheaded: Vec<TraitId>,
     /// Every name a member of a struct, trait or impl has, as an id.
     pub syms: Syms,
     /// Each core type by the name it is written with.
@@ -909,6 +913,10 @@ impl Decls {
         self.impls_ranked = None;
         let k = self.impls.len();
         self.impls_by_trait.entry(im.trait_.tr).or_default().push(k);
+        match im.for_ {
+            Ty::Struct(s, ..) => self.impls_by_head.entry(s).or_default().push(im.trait_.tr),
+            _ => self.impls_unheaded.push(im.trait_.tr),
+        }
         let mut names: Vec<Sym> = im.methods.keys().copied().collect();
         names.extend(self.traits[im.trait_.tr.0].methods.keys());
         names.sort();
