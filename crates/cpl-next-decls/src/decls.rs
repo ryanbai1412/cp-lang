@@ -2278,11 +2278,13 @@ fn reject(
                 Msg::verdict(cpl_diag::codes::BAD_LIBRARY_LINT, why.to_string()),
             )
         };
-        if !x.name().is_some_and(|n| n.text() == "reject") {
+        if x.name().and_then(|n| crate::attrs::Decorator::of(n.text()))
+            != Some(crate::attrs::Decorator::Reject)
+        {
             errors.push(bad("only `@reject` goes on a parameter"));
             continue;
         }
-        let said = collect::said(item, x, "reject", errors);
+        let said = collect::said(item, x, crate::attrs::Decorator::Reject, errors);
         let (mut when, mut typed) = (Vec::new(), true);
         let args: Vec<_> = x.args().map(|l| l.args().collect()).unwrap_or_default();
         for a in args

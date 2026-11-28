@@ -866,6 +866,7 @@ pub fn check(
             ));
         }
     }
+    let errs = cx.errors.len();
     let mut main_out = Vec::new();
     let mut cases: Option<(Option<TExpr>, Vec<TStmt>)> = None;
     // A `const` with a scalar value, and a domain whose ends have values, hoist; one read at
@@ -1103,7 +1104,6 @@ pub fn check(
         }
         cx.zonk_stmt(s);
     }
-    let errs = cx.errors.len();
     cx.unfixed_targs(errs);
     cx.rejected_defaults();
     for (caller, m) in cx.inherited_rejects() {

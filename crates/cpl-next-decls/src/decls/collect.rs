@@ -1095,7 +1095,7 @@ pub(super) fn unimplemented(
         .find(|a| a.attr == crate::attrs::Decorator::OnUnimplemented)
         .and_then(|a| a.node.as_ref())
     {
-        Some(node) => said(item, node, "on_unimplemented", errors),
+        Some(node) => said(item, node, Decorator::OnUnimplemented, errors),
         None => Unimplemented::default(),
     }
 }
@@ -1105,7 +1105,7 @@ pub(super) fn unimplemented(
 pub(super) fn said(
     item: &ItemId,
     node: &cpl_next_syntax::ast::Decorator,
-    name: &str,
+    d: Decorator,
     errors: &mut Vec<Msg>,
 ) -> Unimplemented {
     use cpl_next_syntax::literal::{string_parts, StrPart};
@@ -1114,7 +1114,7 @@ pub(super) fn said(
     let args: Vec<next::Arg> = node.args().map(|l| l.args().collect()).unwrap_or_default();
     for a in args {
         let label = a.label().map(|l| l.text().to_string());
-        if name == "reject" && label.as_deref() == Some("when") {
+        if d == Decorator::Reject && label.as_deref() == Some("when") {
             continue;
         }
         let value = a.value();
@@ -1159,7 +1159,10 @@ pub(super) fn said(
                 item.at(span),
                 Msg::verdict(
                     cpl_diag::codes::UNRESOLVED_NAME,
-                    format!("`@{name}` takes a message and `code:` a diagnostic code"),
+                    format!(
+                        "`@{}` takes a message and `code:` a diagnostic code",
+                        d.name()
+                    ),
                 ),
             ));
         }

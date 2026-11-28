@@ -180,7 +180,9 @@ impl Parser<'_> {
     fn decorator(&mut self) {
         self.start(NodeKind::Decorator);
         self.bump();
-        let reject = self.at(T::Ident) && self.text() == "reject";
+        let reject = self.at(T::Ident)
+            && crate::grammar::Decorator::of(self.text())
+                == Some(crate::grammar::Decorator::Reject);
         self.want(T::Ident, "the decorator's name");
         while self.at(T::Dot) && self.nth(1) == T::Ident {
             self.bump();

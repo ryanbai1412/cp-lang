@@ -98,9 +98,10 @@ impl Cx<'_> {
         };
         self.call_of(n, named, written, args, span, want)
     }
-    /// Whether `f`'s type parameter `i` is in its result and in no parameter or `self`: only
-    /// the place its value goes can fix it, as `read`'s `T` (R01.3.4). A `@coerce` fn is no
-    /// written call: the list a `[D]T` is wanted for keys a domain of its own (R04.8.10).
+    /// Whether `f`'s type parameter `i` is in its result and in no parameter or `self`, nor in
+    /// a bound of one that is: only the place its value goes can fix it, as `read`'s `T`
+    /// (R01.3.4), where `collect`'s `T` is its `S: Seq<T>`'s. A `@coerce` fn is no written
+    /// call: the list a `[D]T` is wanted for keys a domain of its own (R04.8.10).
     pub(super) fn only_in_result(&self, f: FnId, i: usize) -> bool {
         if self.d.coercions.contains(&f) {
             return false;
@@ -109,6 +110,17 @@ impl Cx<'_> {
         let (mut given, mut ret) = (BTreeSet::new(), BTreeSet::new());
         for t in (fd.params.iter().map(|p| &p.ty)).chain(fd.self_ty.as_ref()) {
             cpl_next_ir::ty::params_in(t, &mut given);
+        }
+        let mut grew = true;
+        while grew {
+            grew = false;
+            for (j, b) in &fd.bounds {
+                if given.contains(j) {
+                    let n = given.len();
+                    (b.args.iter()).for_each(|t| cpl_next_ir::ty::params_in(t, &mut given));
+                    grew |= given.len() > n;
+                }
+            }
         }
         cpl_next_ir::ty::params_in(&fd.ret, &mut ret);
         ret.contains(&i) && !given.contains(&i)
