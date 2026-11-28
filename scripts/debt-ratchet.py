@@ -6042,6 +6042,19 @@ def lane_verdict(root: Path, max_rs_lines: int, baseline: dict, actual: dict, fu
             + hand_lowered(root, baseline, actual, lane))
 
 
+def lane_base(root: Path) -> str | None:
+    """The lane-j-check commit HEAD builds on, when HEAD holds lane commits main doesn't: off CI,
+    a commit there is held shrink-only to it, as a push is to the tip it replaces, so a commit
+    that adds no error needs neither --no-verify nor a `Skipped:` (coordinator 03:27)."""
+    if os.environ.get("CI") or not _git(root, "rev-parse", "-q", "--verify", "origin/lane-j-check",
+                                        env=_git_env()):
+        return None
+    base = _git(root, "merge-base", "HEAD", "origin/lane-j-check", env=_git_env())
+    main = ["--not", "origin/main"] if _git(root, "rev-parse", "-q", "--verify", "origin/main", env=_git_env()) else []
+    lane_only = base and _git(root, "rev-list", "-1", base[0], *main, env=_git_env())
+    return base[0] if lane_only else None
+
+
 def lane_trailers(root: Path, lane: str) -> list[str]:
     """Every commit since `lane` that main does not already hold, whatever it touches: one
     with no `Lane:` trailer, or one whose `Skipped:` names the ratchet, fails (coordinator 02:38).
@@ -6239,8 +6252,9 @@ def main(argv: list[str] | None = None) -> int:
     # On main, HEAD is origin/main: CI names the tip it last saw instead.
     ref = os.environ.get("CPL_RATCHET_BASE") or "origin/main"
     bumps = unexplained_bumps(args.root, baseline, ref)
-    # A push to lane-j-check names the tip it replaces: the shrink-only gate, until slice 1.
-    if lane := os.environ.get("CPL_RATCHET_LANE"):
+    # A push to lane-j-check names the tip it replaces, and a commit on it the lane commit it
+    # builds on: the shrink-only gate, until slice 1.
+    if lane := os.environ.get("CPL_RATCHET_LANE") or lane_base(args.root):
         full = errors + bumps + hand_lowered(args.root, baseline, actual, ref)
         errors, bumps, warnings = lane_verdict(args.root, max_lines, baseline, actual, full, lane), [], \
             warnings + [f"main's --check finds {len(full)} errors here; 0 before the slice-1 switch"]

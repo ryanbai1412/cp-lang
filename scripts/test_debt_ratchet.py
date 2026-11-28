@@ -2118,6 +2118,32 @@ class DebtRatchetTest(unittest.TestCase):
             git("update-ref", "refs/remotes/origin/main", "HEAD~1")
             self.assertEqual(len(dr.lane_trailers(root, "tip")), 1)
 
+    def test_a_lane_commit_is_held_to_the_lane_commit_it_builds_on(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
+                                            env=dr._git_env())
+            commit = lambda msg: git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-aqm", msg)
+            git("init", "-q")
+            (root / "a.md").write_text("0\n")
+            git("add", ".")
+            commit("docs: main")
+            git("update-ref", "refs/remotes/origin/main", "HEAD")
+            self.enterContext(mock.patch.dict(os.environ, {"CI": ""}))
+            self.assertIsNone(dr.lane_base(root))
+            git("update-ref", "refs/remotes/origin/lane-j-check", "HEAD")
+            # A tree of main's alone is main's: the lane gate is not its.
+            self.assertIsNone(dr.lane_base(root))
+            (root / "a.md").write_text("1\n")
+            commit("docs: lane\n\nLane: J")
+            git("update-ref", "refs/remotes/origin/lane-j-check", "HEAD")
+            lane = git("rev-parse", "HEAD").stdout.decode().strip()
+            (root / "a.md").write_text("2\n")
+            commit("docs: mine\n\nLane: G")
+            self.assertEqual(dr.lane_base(root), lane)
+            with mock.patch.dict(os.environ, {"CI": "1"}):
+                self.assertIsNone(dr.lane_base(root))
+
     def test_check_fails_debt_already_on_main_unless_lowered(self):
         with tempfile.TemporaryDirectory() as d:
             ratchet = Path(d, "r.json")
