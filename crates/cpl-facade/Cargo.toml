@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 cpl-check.workspace = true
 cpl-codegen = { workspace = true, optional = true }
+cpl-contract.workspace = true
 cpl-diag.workspace = true
 cpl-interp.workspace = true
 cpl-ir.workspace = true

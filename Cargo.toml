@@ -11,6 +11,7 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 cpl-config = { path = "crates/cpl-config" }
 cpl-conform = { path = "crates/cpl-conform" }
+cpl-contract = { path = "crates/cpl-contract" }
 cpl-diag = { path = "crates/cpl-diag" }
 cpl-env = { path = "crates/cpl-env" }
 cpl-json = { path = "crates/cpl-json" }
