@@ -133,6 +133,7 @@ names elsewhere:
 | `is` | `x is pat` in value position (decision 111) |
 | `with` | `with ctx(...):` blocks and `@with` (chapter 9); record update `x with f: v` |
 | `yields` | `-> yields T` on a generator fn (chapter 6) |
+| `from` | `yield from e` in a generator body (R06.3.6) |
 | `repeat` | `repeat k:` at the start of a statement, `k` evaluated once; a block run `k` times, the same as `for _ in 0..k:`, with `break`, `continue` and `return` acting as there; write it when the index is unused |
 | `law` | inside a `trait` or `impl` body (chapter 8) |
 | `where` | trait bounds after a signature (chapter 8) |
@@ -500,6 +501,7 @@ simple_stmts:= simple (';' simple)*
 simple      := let | assign | expr | 'return' expr? | 'break' LABEL?
              | 'continue' LABEL? | 'assert' expr (',' expr)?
              | 'lend' 'mut'? place               // a `lends` body's place (R05.6.3)
+             | 'yield' 'from'? expr?             // `yield from e` delegates (R06.3.6)
 let         := ('let' | 'var' | 'const') pattern (',' NAME)* (':' type)?
                '=' expr ('else' block)?
 assign      := place ('=' | ASSIGN_OP | NAME '=') expr     // `x min= y`, `x f= y`

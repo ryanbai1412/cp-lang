@@ -136,6 +136,12 @@ let s = divisors(n).filter(d => d % 2 == 0).sum()
   yield events (`Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)`). (R06.3.4)
 - Generators are push-only; there is no cursor. Lockstep over two
   generators is `List(g)` first, a visible allocation. (R06.3.5)
+- `yield from e` in a `-> yields T` body is exactly `for x in e: yield x`.
+  `e` is any `Seq` of `T`, a generator value included; `break`, `return`
+  and steering (R06.3.4) act as in that loop, and a recursive generator
+  delegating to itself follows R06.3.3. `from` followed by `.`, `(` or
+  `[` is the name `from`, so a list or parenthesised operand is bound
+  to a name first (decision 668). (R06.3.6)
 - Sequences, views, chains and capabilities are chapter 7.
 
 ## 6.4 Decorators

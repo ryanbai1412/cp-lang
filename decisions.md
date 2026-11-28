@@ -9639,3 +9639,9 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `@!interactive` was a second spelling of R10.4's `Wire`, so `@!multitest` stays the one file directive (R01.9.1). The table lists `interactive` as removed; the corpus and the stress case move to `let wire = Wire()` and `wire.ask(..)` in their own commit, and the new parser's E0503 lands after them.
 - **Why.** Coordinator ruling of 2026-11-27, 19:54 and 19:57.
 - **Reverse.** Spec `@!interactive` as a file directive beside `@!multitest`.
+
+## 668. `yield from e` stays, as `for x in e: yield x` (spec, 2026-11-27)
+
+- **Call.** `yield from e` in a `-> yields T` body is exactly `for x in e: yield x` (R06.3.6): `e` is any `Seq` of `T`, a generator value included, and `break`, `return` and steering act as in that loop; a recursive generator follows R06.3.3. `from` is a contextual word only right after `yield` and is the name `from` when `.`, `(` or `[` follows (`yield from.x` yields a field, `yield from(a)` a call), as the old parser read it. The grammar's `simple` gains the `yield` production it lacked.
+- **Why.** Coordinator ruling of 2026-11-27, 20:48: the old parser read it and the corpus uses it (cases/ok/gen1.cp, programs/batch20_yields_lazy.cp), so the new parser cutting it would cut a feature.
+- **Reverse.** Write the loop; drop the contextual word.
