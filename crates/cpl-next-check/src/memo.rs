@@ -12,11 +12,21 @@ impl Cx<'_> {
         let Some(name) = fd.name().map(|t| t.text().to_string()) else {
             return;
         };
+        // `@memo` spells its table: the word names which (R06.4.1).
+        let unspelled = |x: &next::Decorator| x.args().is_none_or(|a| a.args().next().is_none());
+        if let Some(x) = memo_mark(fd).filter(unspelled) {
+            let msg = Msg::verdict(
+                cpl_diag::codes::BAD_MEMO,
+                "`@memo` spells its table: write `@memo(array)` or `@memo(map)`",
+            );
+            let at = self.at(&x);
+            self.err(at, msg);
+        }
         let Some((word, table)) = self.memo_table(fd) else {
             self.nested_fn(fd, &name, out);
             return;
         };
-        let (key, value) = self.nested_sig(fd, out);
+        let (key, value) = self.nested_sig(fd);
         let n_sets = self.d.s(table).n_sets;
         let sets: Vec<SetTy> = (0..n_sets).map(|_| self.new_set()).collect();
         let key_ty = match &key[..] {
@@ -54,10 +64,7 @@ impl Cx<'_> {
     /// fn the table can key: written parameters, none `mut` or variadic, a written result, no
     /// type parameters and no lend.
     fn memo_table(&mut self, fd: &next::FnDecl) -> Option<(Sym, StructId)> {
-        use cpl_next_syntax::grammar::Decorator;
-        let x = fd
-            .decorators()
-            .find(|x| x.name().and_then(|n| Decorator::of(n.text())) == Some(Decorator::Memo))?;
+        let x = memo_mark(fd)?;
         let ps: Vec<next::Param> = fd.params()?.params().collect();
         let plain = |p: &next::Param| p.ty().is_some() && !p.is_mut() && !p.is_variadic();
         let ret = fd.ret()?;
@@ -146,4 +153,11 @@ impl Cx<'_> {
             self.err(span, Msg::verdict(cpl_diag::codes::BAD_MEMO, text));
         }
     }
+}
+
+/// The `@memo` written on `fd`.
+fn memo_mark(fd: &next::FnDecl) -> Option<next::Decorator> {
+    use cpl_next_syntax::grammar::Decorator;
+    fd.decorators()
+        .find(|x| x.name().and_then(|n| Decorator::of(n.text())) == Some(Decorator::Memo))
 }

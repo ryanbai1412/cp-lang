@@ -328,7 +328,7 @@ pub struct LambdaInfo {
     pub yields: Option<Ty>,
     /// A nested `fn` with a jagged parameter: each parameter's name, and its written range when
     /// jagged; empty otherwise.
-    pub written: Vec<(String, Option<ast::Type>)>,
+    pub written: Vec<(String, Option<next::Type>)>,
 }
 /// A range with run-time ends: the variables that hold them, each inclusive; `None` is an open end.
 #[derive(Clone)]
@@ -1407,7 +1407,10 @@ impl<'a> Cx<'a> {
                     self.tail_block(&[], Some(e), Some(&ret))
                 } else {
                     let span = self.at(e);
-                    self.scoped_block(Some(&ret), |cx, out| cx.yield_all(e, span, out))
+                    self.scoped_block(Some(&ret), span, |cx, out| {
+                        cx.yield_all(e, span, out);
+                        None
+                    })
                 }
             }
             // An expression that never gives a value is the body, not its result (R01.6.7).
@@ -1415,7 +1418,10 @@ impl<'a> Cx<'a> {
             // A `lends mut` fn's one expression is the place it lends (R05.6.3).
             Some(next::FnBody::Expr(e)) if matches!(f.region, Some((true, _))) => {
                 let span = self.at(e);
-                self.scoped_block(Some(&ret), |cx, out| cx.lend_stmt(true, e, span, out))
+                self.scoped_block(Some(&ret), span, |cx, out| {
+                    cx.lend_stmt(true, e, span, out);
+                    None
+                })
             }
             // A `()` fn's one expression is a statement: its value is dropped, as it would be
             // last in a block (R06.1.1, R06.4.8).

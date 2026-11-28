@@ -201,8 +201,7 @@ impl Cx<'_> {
         &mut self,
         elem: Ty,
         g: TExpr,
-        name: &str,
-        body: &next::Block,
+        each: impl FnOnce(&mut Self, Ty) -> (VarRef, TExpr),
         out: &mut Vec<TStmt>,
     ) {
         let Ty::Struct(s, targs, sets) = self.shallow(&g.ty) else {
@@ -219,10 +218,7 @@ impl Cx<'_> {
             ty: fty,
             span,
         };
-        self.b.scopes.push(HashMap::new());
-        let var = self.bind(name, elem);
-        let body = self.block(body, None);
-        self.b.scopes.pop();
+        let (var, body) = each(self, elem);
         out.push(TStmt::Region {
             callee: Callee::Value(Box::new(run)),
             recv: None,
