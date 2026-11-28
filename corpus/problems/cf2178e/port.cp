@@ -9,15 +9,13 @@
 //   O(log^2 n) queries; the last block's sum is the answer.
 // Bounds: n: 1..=100_000
 
-@!interactive
+let wire = Wire()
 
 @!multitest
 let n: 1..=100_000 = read()
 domain Pos = 1..=n
 
-fn ask(lo: Pos, hi: Pos) -> Int:
-    print("?", lo, hi)
-    read()
+fn ask(lo: Pos, hi: Pos) -> Int = wire.ask("? {lo} {hi}")
 
 var l = Pos(1)
 var r = Pos(n)

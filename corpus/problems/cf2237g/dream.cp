@@ -7,7 +7,7 @@
 // b holds q_p, the largest power of each of those primes that is at most V. For
 // such an x <= V, gcd(x, q_p) is exactly the p-part of x, so the product of the
 // P gcds is x itself, which the second run looks up.
-@!interactive
+let wire = Wire()
 const V = 1_000_000
 const P = 150
 const WORD = 20
@@ -55,8 +55,6 @@ for _ in 0..read<Int>():
             print(b)
         Second:
             let (n, k): (Int, Int) = read()
-            fn ask(i: Int, j: Int) -> Int:
-                print("?", i + 1, j + 1)
-                read()
+            fn ask(i: Int, j: Int) -> Int = wire.ask("? {i + 1} {j + 1}")
             let b = (0..k - P).map(i => symbol[(0..P).map(j => ask(i, k - P + j)).prod()]!)
             print("!", recut(b, SYMBOL, WORD, n))

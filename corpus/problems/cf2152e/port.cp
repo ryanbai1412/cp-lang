@@ -10,7 +10,7 @@
 //   left; walking back from it through layers n - 1..0 gives a decreasing sequence. O(n^3).
 // Bounds: n: 1..=100; got: 1..=n * n + 1
 
-@!interactive
+let wire = Wire()
 @!multitest
 let n: 1..=100 = read()
 domain Pos = 1..=n * n + 1

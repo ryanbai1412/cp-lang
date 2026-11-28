@@ -1301,13 +1301,11 @@ fn ok():
         seen.insert(v)
 "#;
 
-// 10. cf2135b: Interactive + `@!multitest`, in-file `@interactor`, typed hidden input + shrinking.
+// 10. cf2135b: `Wire` + `@!multitest`, in-file `@interactor`, typed hidden input + shrinking.
 const CF2135B_GOOD: &str = r#"
-@!interactive
+let wire = Wire()
 
-fn ask_move(d: Char, dist: Int) -> Int:
-    print("?", d, dist)
-    read()
+fn ask_move(d: Char, dist: Int) -> Int = wire.ask("? {d} {dist}")
 
 @!multitest
 let n: 1..=100 = read()
@@ -1359,11 +1357,9 @@ fn judge(mut sol: Interactor):
 "#;
 
 const CF2135B_BUGGY: &str = r#"
-@!interactive
+let wire = Wire()
 
-fn ask_move(d: Char, dist: Int) -> Int:
-    print("?", d, dist)
-    read()
+fn ask_move(d: Char, dist: Int) -> Int = wire.ask("? {d} {dist}")
 
 @!multitest
 let n: 1..=100 = read()

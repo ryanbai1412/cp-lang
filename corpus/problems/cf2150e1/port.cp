@@ -10,7 +10,7 @@
 //   length; stop when one Both value is left. About 4n queries, O(n^2) time.
 // Bounds: n: 1..=300
 
-@!interactive
+let wire = Wire()
 use std.rand.Rng
 
 enum Copies: None | One | Both

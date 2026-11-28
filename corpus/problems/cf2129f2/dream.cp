@@ -13,7 +13,7 @@
 // One type-3 query (`query_values`, returning up to `TYPE3_LIMIT = 300` values)
 // on one random position per pair resolves every pair in a single round.
 
-@!interactive
+let wire = Wire()
 use std.rand.Rng
 
 const TYPE3_LIMIT = 300

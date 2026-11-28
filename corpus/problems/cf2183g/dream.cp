@@ -19,7 +19,7 @@
 //   `ans[i] == 1` from `ans[i] == 2`.
 // - Otherwise `ans[i] == 2`.
 
-@!interactive
+let wire = Wire()
 
 fn ask(s: Str) -> List<Int>:
     print("?", s)

@@ -14,7 +14,7 @@
 // Every non-singleton contributes 2 units and `v*` contributes 1, so the half
 // whose total weight exceeds its length contains `v*`.
 
-@!interactive
+let wire = Wire()
 use std.rand.Rng
 
 enum Copies: None | One | Both

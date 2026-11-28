@@ -13,16 +13,14 @@
 // - `(')', ')')` -> `"))()()"` => `r = 3`
 // When `n` is odd, the final pair re-queries `Pos(n)` with itself.
 
-@!interactive
+let wire = Wire()
 
 @!multitest
 let n: 2..=1_000 = read()
 domain Pos = 1..=n
 var ans: [Pos]Char = '?'
 
-fn ask(inds: List<Pos>) -> Int:
-    print("?", inds.len, inds)
-    read()
+fn ask(inds: List<Pos>) -> Int = wire.ask("? {inds.len} {inds}")
 
 var (mi, ma) = (0, n)
 while ma - mi > 1:

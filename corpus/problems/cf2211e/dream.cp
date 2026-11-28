@@ -11,7 +11,7 @@
 // If `good[cur] == 1`, no child component can absorb `cur`, so `cur` opens a
 // new component (`cost[cur] += 1`, `good[cur] = a`).
 
-@!interactive
+let wire = Wire()
 @!multitest
 let n: 1..=200_000 = read()
 domain V = 1..=n

@@ -13,7 +13,7 @@
 //   is a split pair, not the single, so most candidates die in a query or two.
 // Bounds: n: 1..=300
 
-@!interactive
+let wire = Wire()
 use std.rand.Rng
 
 const SHUFFLE_SEED = 48

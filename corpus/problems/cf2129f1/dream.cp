@@ -10,7 +10,7 @@
 // 300 + 29 * 60 = 2040 total capacity. Taking each triple on the three queries
 // with the most remaining room fills all 845 without exhausting any query.
 
-@!interactive
+let wire = Wire()
 domain Query = 0..30
 domain MaxVal = 1..=845
 type Mask = Set<Query>

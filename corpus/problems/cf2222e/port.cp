@@ -23,7 +23,7 @@
 //      whereas `nv ^ v == nv - v < nv` leaves no element `>= nv` (`0 != 1`).
 // Bounds: n: 2..=60
 
-@!interactive
+let wire = Wire()
 
 fn ask(kind: Char, x: Int) -> Int:
     print(kind, x)

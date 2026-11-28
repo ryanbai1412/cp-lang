@@ -11,7 +11,7 @@
 //   O(n log A) for the gcds.
 // Bounds: n: 1..=200_000; a: 1..=10 ** 18; k: 0..=n; children: 1..=n
 
-@!interactive
+let wire = Wire()
 @!multitest
 let n: 1..=200_000 = read()
 domain V = 1..=n

@@ -10,15 +10,13 @@
 // into the shorter of `[l..=mid]` and `[mid + 1..=r]` at least halves the
 // remaining length each round, isolating the maximum element in `O(log^2 n)` queries.
 
-@!interactive
+let wire = Wire()
 
 @!multitest
 let n: 1..=100_000 = read()
 domain Pos = 1..=n
 
-fn ask(lo: Pos, hi: Pos) -> Int:
-    print("?", lo, hi)
-    read()
+fn ask(lo: Pos, hi: Pos) -> Int = wire.ask("? {lo} {hi}")
 
 var l = Pos(1)
 var r = Pos(n)

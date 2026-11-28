@@ -22,7 +22,7 @@
 //      strict supermask of `v`: `nv | v == nv` gives `ask('Q', nv) == 1`,
 //      whereas `nv ^ v == nv - v < nv` leaves no element `>= nv` (`0 != 1`).
 
-@!interactive
+let wire = Wire()
 
 fn ask(kind: Char, x: Int) -> Int:
     print(kind, x)

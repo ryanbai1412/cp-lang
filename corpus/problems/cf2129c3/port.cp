@@ -11,7 +11,7 @@
 //   ones within 1000 indices, so the count decodes greedily, largest first. About 77 + 10 queries.
 // Bounds: n: 2..=1000
 
-@!interactive
+let wire = Wire()
 
 const MAX_QUERY_LEN = 1000
 fn tri(k: Int) -> Int = k * (k + 1) / 2
@@ -35,9 +35,7 @@ let blk = weights.len
 let n: 2..=1000 = read()
 domain Pos = 1..=n
 
-fn ask(inds: List<Pos>) -> Int:
-    print("?", inds.len, inds)
-    read()
+fn ask(inds: List<Pos>) -> Int = wire.ask("? {inds.len} {inds}")
 
 let open_i = (Pos(2)..=Pos.last!).first_true(
     p => ask([x for x in Pos if x <= p]) > 0,

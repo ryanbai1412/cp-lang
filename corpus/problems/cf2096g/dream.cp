@@ -11,7 +11,7 @@
 // in at least 2 rounds; after at most one '?' erasure, the unique coin matching
 // every known round is the fake.
 
-@!interactive
+let wire = Wire()
 
 enum Side: Left | Right | Off
 

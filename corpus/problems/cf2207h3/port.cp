@@ -10,7 +10,7 @@
 //   recurse). One probe with the nearer left and right subtrees reversed tells which joins m
 //   first, so the two chains zip with one probe per join. Then evaluate the built tree per input.
 // Bounds: n: 1..=5000
-@!interactive
+let wire = Wire()
 
 struct Gate:
     span: Range<Int>

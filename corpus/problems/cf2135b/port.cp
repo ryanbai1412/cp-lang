@@ -8,11 +8,9 @@
 //   answer is -X + Y + 4e9 - max(-x + y). Solve the two sums for X and Y: 8 moves, O(n).
 // Bounds: n: 1..=100
 
-@!interactive
+let wire = Wire()
 
-fn ask(d: Char, dist: Int) -> Int:
-    print("?", d, dist)
-    read()
+fn ask(d: Char, dist: Int) -> Int = wire.ask("? {d} {dist}")
 
 @!multitest
 let n: 1..=100 = read()

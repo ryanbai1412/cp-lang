@@ -10,7 +10,7 @@
 //   each position collects its value's subset, which a map inverts. 30 queries, O(30 n) work.
 // Bounds: n: 2..=845; resp: 1..=n
 
-@!interactive
+let wire = Wire()
 domain Query = 0..30
 domain MaxVal = 1..=845
 

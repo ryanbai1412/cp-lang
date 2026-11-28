@@ -11,16 +11,14 @@
 //   0, 1, 3 or 6 tells both brackets (odd n repeats the last index). log n + n/2 queries.
 // Bounds: n: 2..=1_000
 
-@!interactive
+let wire = Wire()
 
 @!multitest
 let n: 2..=1_000 = read()
 domain Pos = 1..=n
 var ans: [Pos]Char = '?'
 
-fn ask(inds: List<Pos>) -> Int:
-    print("?", inds.len, inds)
-    read()
+fn ask(inds: List<Pos>) -> Int = wire.ask("? {inds.len} {inds}")
 
 let ma = (1..n).first_true(md => ask([Pos(i) for i in 1..=md + 1]) > 0) ?? n
 let open_i = Pos(ma)

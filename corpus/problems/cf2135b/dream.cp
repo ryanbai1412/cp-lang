@@ -15,11 +15,9 @@
 //    `ul_pos = -x0 + y0 = max(-x + y) + d_ul - 4 * step`.
 // Solving recovers `x0 = (ur_pos - ul_pos) / 2` and `y0 = (ur_pos + ul_pos) / 2`.
 
-@!interactive
+let wire = Wire()
 
-fn ask(d: Char, dist: Int) -> Int:
-    print("?", d, dist)
-    read()
+fn ask(d: Char, dist: Int) -> Int = wire.ask("? {d} {dist}")
 
 @!multitest
 let n: 1..=100 = read()

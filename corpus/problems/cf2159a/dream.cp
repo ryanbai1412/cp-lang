@@ -10,15 +10,13 @@
 // `1..=n` and `cur` holds the `n` remaining first occurrences.
 // Pass 2: for each `p in cur`, querying `oth + [p]` uniquely returns `ans[p]`.
 
-@!interactive
+let wire = Wire()
 
 @!multitest
 let n: 1..=300 = read()
 domain P = 1..=2 * n
 
-fn ask(s: List<P>) -> Int:
-    print("?", s.len, s)
-    read()
+fn ask(s: List<P>) -> Int = wire.ask("? {s.len} {s}")
 
 var ans: [P]Int = 0
 var cur: List<P> = []

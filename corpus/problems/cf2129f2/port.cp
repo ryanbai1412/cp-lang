@@ -14,7 +14,7 @@
 // Bounds: n: 2..=890; found: 1..=890
 use std.rand.{Rng}
 
-@!interactive
+let wire = Wire()
 const TYPE3_LIMIT = 300
 domain Q = 0..29
 domain Val = 1..=890

@@ -14,7 +14,7 @@
 // brackets per query under `MAX_QUERY_LEN = 1000`. Chunking `Pos` into blocks
 // of size `blk` padded with `Pos.last` harmlessly re-decodes `ans[Pos.last]`.
 
-@!interactive
+let wire = Wire()
 
 const MAX_QUERY_LEN = 1000
 fn tri(k: Int) -> Int = k * (k + 1) / 2
@@ -38,9 +38,7 @@ let blk = weights.len
 let n: 2..=1000 = read()
 domain Pos = 1..=n
 
-fn ask(inds: List<Pos>) -> Int:
-    print("?", inds.len, inds)
-    read()
+fn ask(inds: List<Pos>) -> Int = wire.ask("? {inds.len} {inds}")
 
 let open_i = (Pos(2)..=Pos.last!).bsearch(p => ask((Pos.first!..=p).collect()) > 0).l!
 

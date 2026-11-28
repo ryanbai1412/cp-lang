@@ -11,7 +11,7 @@
 //   a[i] - 1; otherwise its speed is 2. O(n) per test.
 // Bounds: n: 1..=200_000; a: 1..=4 * n
 
-@!interactive
+let wire = Wire()
 
 fn ask(s: Str) -> List<Int>:
     print("?", s)

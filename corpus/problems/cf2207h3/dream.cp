@@ -14,7 +14,7 @@
 // Both sides come back as chains of subtrees hanging off `m`. Reversing `x`
 // over the nearer left and right subtrees together makes the one that joins
 // `m` first win the next probe, so one probe per join zips the chains.
-@!interactive
+let wire = Wire()
 
 struct Gate:
     span: Range<Int>

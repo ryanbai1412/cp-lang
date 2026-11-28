@@ -14,16 +14,14 @@
 //   `i <= W` and 2 lines iff `i > W`, so `resp2 = (w_max - w_min) + (w_max - W)`,
 //   giving `W = (w_max - w_min) + w_max - resp2`.
 
-@!interactive
+let wire = Wire()
 
 const WMAX = 100_000
 const G = 125
 const Q1 = 10_000
 const Q02 = 15_000
 
-fn ask(vals: List<Int>) -> Int:
-    print("?", vals.len, vals)
-    read()
+fn ask(vals: List<Int>) -> Int = wire.ask("? {vals.len} {vals}")
 
 @!multitest
 let resp1 = ask(List.filled(Q1, G))

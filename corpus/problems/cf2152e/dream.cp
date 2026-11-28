@@ -14,7 +14,7 @@
 // always finds a larger element to the left, yielding a decreasing subsequence
 // of length `n + 1`.
 
-@!interactive
+let wire = Wire()
 @!multitest
 let n: 1..=100 = read()
 domain Pos = 1..=n * n + 1

@@ -19,7 +19,7 @@
 // into disjoint monotone runs — emitting each `(len, t)` once — in
 // `O(sum_{len=1}^n (n / len) log(len) + m) = O(n log^2 n + m)` queries.
 
-@!interactive
+let wire = Wire()
 
 @!multitest
 let n: 1..=500 = read()
@@ -31,9 +31,7 @@ domain Time = 1..=2 * n - 1
 // through `end` inclusive.
 struct Seg(val: Val, len: Int, cur: Time, end: Time, dir: Int)
 
-fn query(len: Int, t: Time) -> Val:
-    print("?", len, t)
-    read<Val>()
+fn query(len: Int, t: Time) -> Val = wire.ask("? {len} {t}")
 
 let a: [0..n, 0..n]Val = read()
 var diag: [Val]Int = 0

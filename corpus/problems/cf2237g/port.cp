@@ -8,7 +8,7 @@
 //   sieve walk); the last 150 entries of b are q_p, the largest power <= 1e6 of each of the
 //   first 150 primes. A smooth x is the product of gcd(x, q_p), so 150 queries decode a symbol
 //   by table lookup: 150 ceil(10n/9) <= 180n + 150 queries; recut the symbols to 20-bit words.
-@!interactive
+let wire = Wire()
 const V = 1_000_000
 const P = 150
 const WORD = 20

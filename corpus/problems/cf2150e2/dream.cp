@@ -15,7 +15,7 @@
 // candidate in that half splits every normal pair across sub-halves, while
 // `v*` narrows to a single position.
 
-@!interactive
+let wire = Wire()
 use std.rand.Rng
 
 const SHUFFLE_SEED = 48

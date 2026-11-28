@@ -10,7 +10,7 @@
 //   digits, so the one number matching every known answer is x. O(n q).
 // Bounds: n: 2..=200_000
 
-@!interactive
+let wire = Wire()
 
 enum Side: Left | Right | Off
 
