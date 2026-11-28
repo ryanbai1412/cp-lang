@@ -348,7 +348,10 @@ fn types_read_through_their_views() {
     };
     let muts: Vec<_> = args.elems().into_iter().map(|(m, _)| m).collect();
     assert_eq!(muts, [true, false]);
-    assert!(matches!(f.ret().and_then(|r| r.ty()), Some(ast::Type::Path(_))));
+    assert!(matches!(
+        f.ret().and_then(|r| r.ty()),
+        Some(ast::Type::Path(_))
+    ));
     let ast::Type::Range(r) = &tys[1] else {
         panic!()
     };
@@ -499,5 +502,34 @@ fn an_optional_mut_a_yielding_fn_type_and_a_record_binder_read() {
             .filter_map(ast::TupleType::cast)
             .count(),
         1
+    );
+}
+
+#[test]
+fn an_if_value_takes_blocks_and_an_arm_may_leave() {
+    use crate::ast::{self, AstNode};
+    let src = "fn f(s: S) -> Int:\n    let (p, q) = if s.a < s.b:\n        (s.a, s.b)\n    elif s.a == s.b:\n        (s.b, s.b)\n    else:\n        (s.b, s.a)\n    match p:\n        0 => assert false\n        1 => return 2\n        _ => q\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:#?}", file.diagnostics);
+    let blocks = file
+        .root
+        .descendants()
+        .filter_map(ast::IfExpr::cast)
+        .next()
+        .unwrap()
+        .syntax()
+        .descendants()
+        .filter(|n| n.kind() == crate::NodeKind::Block)
+        .count();
+    assert_eq!(blocks, 3);
+    assert_eq!(
+        file.root
+            .descendants()
+            .filter(|n| matches!(
+                n.kind(),
+                crate::NodeKind::AssertStmt | crate::NodeKind::ReturnStmt
+            ))
+            .count(),
+        2
     );
 }

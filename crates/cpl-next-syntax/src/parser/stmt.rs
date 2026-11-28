@@ -270,7 +270,7 @@ impl Parser<'_> {
         loop {
             let next = match (self.peek(), self.nth(1)) {
                 (T::Elif | T::Else, _) => 0,
-                (T::Newline, T::Elif | T::Else) if node == NodeKind::IfStmt => 1,
+                (T::Newline, T::Elif | T::Else) => 1,
                 _ => break,
             };
             if next == 1 {
@@ -481,17 +481,36 @@ impl Parser<'_> {
     }
 
     /// An arm's or a lambda's body: an expression or an assignment on the
-    /// line, or an indented run of statements.
+    /// line, a statement that leaves (`break`, `continue`, `return`,
+    /// `assert`, typed Never), or an indented run of statements.
     pub(super) fn arm_body(&mut self) {
-        if self.at(T::Newline) && self.nth(1) == T::Indent {
-            self.start(NodeKind::Block);
-            self.bump();
-            self.bump();
-            self.stmts_until(T::Dedent);
-            self.want(T::Dedent, "the end of the block");
-            self.finish();
-        } else {
-            self.expr_or_assign(false);
+        if self.indented_block() {
+            return;
         }
+        match self.peek() {
+            T::Return | T::Break | T::Continue | T::Assert => self.simple(),
+            _ => self.expr_or_assign(false),
+        }
+    }
+
+    /// An `if` expression's branch: a value on the line or an indented
+    /// block, as an arm's (decision 4.5).
+    pub(super) fn value_body(&mut self) {
+        if !self.indented_block() {
+            self.expr();
+        }
+    }
+
+    fn indented_block(&mut self) -> bool {
+        if !(self.at(T::Newline) && self.nth(1) == T::Indent) {
+            return false;
+        }
+        self.start(NodeKind::Block);
+        self.bump();
+        self.bump();
+        self.stmts_until(T::Dedent);
+        self.want(T::Dedent, "the end of the block");
+        self.finish();
+        true
     }
 }

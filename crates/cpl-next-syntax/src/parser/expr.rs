@@ -29,8 +29,9 @@ impl Parser<'_> {
     pub(super) fn expr(&mut self) {
         match self.peek() {
             T::If => self.if_clauses(NodeKind::IfExpr, |p| {
-                p.want(T::Colon, "`:` and the value");
-                p.expr();
+                if p.want(T::Colon, "`:` and the value") {
+                    p.value_body();
+                }
             }),
             T::Match => self.match_expr(),
             _ if self.lambda_ahead() => self.lambda(),

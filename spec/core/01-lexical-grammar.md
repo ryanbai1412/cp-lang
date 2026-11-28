@@ -533,7 +533,8 @@ lit_type    := INT | STRING | CHAR                 // `Bool` and `?T` are alread
 expr        := lambda | if_expr | match_expr | binary
 lambda      := lparams '=>' (expr | assign | NL INDENT stmt+ DEDENT)   // the last stmt may be the value
 lparams     := NAME | '_' | '(' (param (',' param)*)? ')' ('->' type)?
-if_expr     := 'if' cond ':' expr ('elif' cond ':' expr)* 'else' ':' expr
+if_expr     := 'if' cond ':' value ('elif' cond ':' value)* 'else' ':' value
+value       := expr | NL INDENT stmt+ DEDENT   // as an arm's body (4.5)
 match_expr  := 'match' expr ':' NL INDENT (pattern ('if' expr)? '=>' expr NL)+ DEDENT
                // a match used as a value: every arm gives one, of one type (R01.10.3)
 binary      := the operators of 1.5 over unary; `not` is the prefix

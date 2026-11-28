@@ -446,6 +446,12 @@ against their originals as ports, and `crates/cpl-cli/tests/cases/ergo/` and
   `-> lends mut T` read alike in both. A record type may bind a domain
   first, `(domain C, comp: [V]C)`, as `let (domain C, ..)` does in
   domain_decl (01:483).
+- **An `if` value's branches and an arm's value.** Syntax, 4.5: an `if`
+  expression's branch is a value on the line or an indented block, the
+  same as a `match` arm's body, and its `elif`/`else` may start the next
+  line. An arm's value may be a statement that leaves, `break`,
+  `continue`, `return` or `assert` (type Never), as
+  core-01/an-arm-of-a-whole-value-leaves writes.
 - **`if T: Bound:` is a condition.** Syntax, 8 (decision 602): R08 §190's
   bound test was missing from `cond`. It is `NAME ':' bound` with a full
   trait ref, told from a one-line `if ok: x` by the `:` that ends the bound.
