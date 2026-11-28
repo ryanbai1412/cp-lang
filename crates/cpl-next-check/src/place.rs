@@ -63,7 +63,13 @@ impl Cx<'_> {
     }
 
     /// `lend mut place` in a lender of `t`s: `place` is what its caller's body runs on.
-    pub(super) fn lend_out(&mut self, place: &ast::Expr, t: &Ty, span: Span, out: &mut Vec<TStmt>) {
+    pub(super) fn lend_out(
+        &mut self,
+        place: &next::Expr,
+        t: &Ty,
+        span: Span,
+        out: &mut Vec<TStmt>,
+    ) {
         let p = self.place(place);
         if !self.unify(&p.ty, t) {
             self.err(
@@ -77,14 +83,15 @@ impl Cx<'_> {
         out.push(TStmt::LendOut(p));
     }
 
-    pub(super) fn place(&mut self, e: &ast::Expr) -> TExpr {
+    pub(super) fn place(&mut self, e: &next::Expr) -> TExpr {
+        let span = self.at(e);
         let v = self.expr_as_typed(e, None);
         if !matches!(
             v.kind,
             TK::Var(_) | TK::Field(..) | TK::Slot(..) | TK::Error
         ) {
             self.err(
-                e.span,
+                span,
                 Msg::verdict(
                     cpl_diag::codes::TYPE_MISMATCH,
                     "this is not a place that can be assigned or lent",

@@ -417,7 +417,7 @@ impl Cx<'_> {
     fn head_impl(&self, t: &Ty, r: &TraitRef) -> Option<(ImplIdx, Vec<Ty>)> {
         let mut found = (self.d.impls.iter().enumerate())
             .filter(|(_, im)| im.trait_.tr == r.tr && !im.blanket())
-            .filter_map(|(k, im)| Some((k, self.impls().fits_impl(im, t)?)));
+            .filter_map(|(k, im)| Some((ImplIdx::Decl(k), self.impls().fits_impl(im, t)?)));
         let one = found.next()?;
         found.next().is_none().then_some(one)
     }
@@ -460,37 +460,44 @@ impl Cx<'_> {
     }
     /// The traits the fn being checked bounds its type parameter `i` by, with their supertraits (R08.1.1).
     /// `if T: Tr<A>:`: a test of `T` against the bound, which each instance decides (R08.2.9).
-    pub(super) fn has_bound(&mut self, param: &ast::Name, bound: &ast::Type, span: Span) -> TExpr {
+    pub(super) fn has_bound(&mut self, c: &next::BoundCond, span: Span) -> TExpr {
         let error = TExpr {
             kind: TK::Error,
             ty: Ty::Error,
             span,
         };
         let mut pre = Vec::new();
-        let tested = ast::Type {
-            kind: ast::TypeKind::Named {
-                name: param.clone(),
-                args: Vec::new(),
-            },
-            span: param.span,
+        let Some(param) = c.param() else {
+            return error;
         };
-        let t = self.body_ty(&tested, span, &mut pre);
-        let ast::TypeKind::Named { name, args } = &bound.kind else {
+        let t = self.name_ty(&param, &mut pre);
+        let mut bounds = c
+            .bound()
+            .into_iter()
+            .flat_map(|b| b.types().collect::<Vec<_>>());
+        let (Some(next::Type::Path(bound)), None) = (bounds.next(), bounds.next()) else {
             self.err(span, Unbuilt::BoundNotNamed);
             return error;
         };
-        let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, &name.text) else {
+        let name: Vec<String> = bound.segments().map(|s| s.text().to_string()).collect();
+        let name = name.join(".");
+        let Some(decls::Named::Trait(tr)) = self.d.named(self.b.module, &name) else {
             let code = cpl_diag::codes::UNKNOWN_TYPE;
-            self.err(
-                bound.span,
-                Msg::verdict(code, format!("unknown trait `{}`", name.text)),
-            );
+            let at = self.at(&bound);
+            self.err(at, Msg::verdict(code, format!("unknown trait `{name}`")));
             return error;
         };
-        let args = args
-            .iter()
-            .map(|a| self.body_ty(a, span, &mut pre))
-            .collect();
+        let written: Vec<next::GenericArg> = bound
+            .generic_args()
+            .map_or_else(Vec::new, |g| g.args().collect());
+        let mut args = Vec::new();
+        for a in written {
+            let next::GenericArg::Type(a) = a else {
+                self.err(span, Unbuilt::BoundNotNamed);
+                return error;
+            };
+            args.push(self.body_ty(&a, &mut pre));
+        }
         let r = self.d.with_defaults(TraitRef { tr, args }, &t);
         if t == Ty::Error {
             return error;

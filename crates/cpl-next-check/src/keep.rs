@@ -3,7 +3,8 @@ use super::*;
 
 impl Cx<'_> {
     /// The place an assignment writes, after checking that it may be written.
-    pub(super) fn assign_place(&mut self, target: &ast::Expr) -> TExpr {
+    pub(super) fn assign_place(&mut self, target: &next::Expr) -> TExpr {
+        let span = self.at(target);
         let place = self.place(target);
         // A place that is the error was said where it was made.
         if self.is_error(&place.ty) {
@@ -19,7 +20,7 @@ impl Cx<'_> {
                     if !cache && !sd.var_fields.get(*i).copied().unwrap_or(true) {
                         let (st, f) = (sd.name.clone(), self.d.text(sd.fields[*i].0).to_string());
                         self.err(
-                            target.span,
+                            span,
                             Msg::verdict(
                                 cpl_diag::codes::ASSIGN_FIXED_FIELD,
                                 format!(
@@ -37,14 +38,20 @@ impl Cx<'_> {
                 cpl_diag::codes::ASSIGN_TO_LET,
                 format!("`{name}` is bound by `let` and cannot be assigned; declare it with `var`"),
             );
-            self.err(target.span, self.with_var_fix(&place, &name, msg));
+            self.err(span, self.with_var_fix(&place, &name, msg));
         }
         place
     }
 
     /// `place min= value` (`max=` when `max`) as a `Bool`: true when the place strictly
     /// improved. A `None` place takes a present value; a `None` value changes nothing.
-    pub(super) fn keep(&mut self, place: TExpr, max: bool, value: &ast::Expr, span: Span) -> TExpr {
+    pub(super) fn keep(
+        &mut self,
+        place: TExpr,
+        max: bool,
+        value: &next::Expr,
+        span: Span,
+    ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let op = if max { CmpOp::Gt } else { CmpOp::Lt };
         let v = self.expr(value, Some(&place.ty));
@@ -87,28 +94,19 @@ impl Cx<'_> {
     /// leaves its `Bool` in a new variable.
     pub(super) fn keep_expr(
         &mut self,
-        target: &ast::Expr,
+        target: &next::Expr,
         max: bool,
-        value: &ast::Expr,
+        value: &next::Expr,
         span: Span,
     ) -> TExpr {
         let mk = |kind, ty| TExpr { kind, ty, span };
         let t = self.bind("$kept", Ty::Bool);
         let mut out = vec![TStmt::Let(t, mk(TK::Bool(false), Ty::Bool))];
-        let op = if max {
-            ast::AssignOp::Max
-        } else {
-            ast::AssignOp::Min
-        };
-        let (target, value) = (target.clone(), value.clone());
-        let assign = ast::Stmt {
-            kind: ast::StmtKind::Assign { target, op, value },
-            span,
-            decorators: Vec::new(),
-            public: false,
-        };
         self.b.kept = Some(t);
-        self.stmt(&assign, &mut out);
+        self.write(target, span, &mut out, |cx, place| {
+            let k = cx.keep(place, max, value, span);
+            Self::kept(cx.b.kept, k)
+        });
         self.b.kept = None;
         mk(
             TK::Block(out, Some(Box::new(mk(TK::Var(t), Ty::Bool)))),

@@ -13,16 +13,15 @@ pub(super) struct Frame {
 }
 
 impl Cx<'_> {
-    pub(super) fn framed_loop(&mut self, s: &ast::Stmt, out: &mut Vec<TStmt>) {
-        let span = s.span;
-        let mut inner = s.clone();
-        let (label, else_body) = match &mut inner.kind {
-            StmtKind::For {
-                label, else_body, ..
-            } => (label.take().map(|l| l.text), else_body.take()),
-            StmtKind::While { else_body, .. } => (None, else_body.take()),
+    pub(super) fn framed_loop(&mut self, s: &next::Stmt, out: &mut Vec<TStmt>) {
+        let span = self.at(s);
+        let (label, else_body) = match s {
+            next::Stmt::For(f) => (f.label(), f.else_clause()),
+            next::Stmt::While(w) => (w.label(), w.else_clause()),
             _ => (None, None),
         };
+        let label = label.map(|l| l.text().to_string());
+        let else_body = else_body.and_then(|e| e.block());
         let framed = label.is_some() || else_body.is_some();
         if framed {
             let flag = self.bind(&format!("$broke{}", span.start), Ty::Bool);
@@ -36,7 +35,7 @@ impl Cx<'_> {
         }
         let before: Vec<u32> = self.b.loop_frames.iter().map(|f| f.hits).collect();
         let was = self.b.framed.replace(span.start);
-        self.stmt(&inner, out);
+        self.stmt(s, out);
         self.b.framed = was;
         let own = if framed {
             self.b.loop_frames.pop()
@@ -67,17 +66,16 @@ impl Cx<'_> {
         }
     }
     /// `break`, or `break 'name` to the loop of that label around it.
-    pub(super) fn break_to(&mut self, label: Option<&ast::Name>, span: Span, out: &mut Vec<TStmt>) {
+    pub(super) fn break_to(&mut self, label: Option<&str>, span: Span, out: &mut Vec<TStmt>) {
         let at = match label {
             None => (self.b.loop_frames.last())
                 .filter(|f| f.depth == self.b.loops)
                 .map(|_| self.b.loop_frames.len() - 1),
             Some(l) => {
-                let at =
-                    (self.b.loop_frames.iter()).rposition(|f| f.label.as_deref() == Some(&l.text));
+                let at = (self.b.loop_frames.iter()).rposition(|f| f.label.as_deref() == Some(l));
                 if at.is_none() {
                     let code = cpl_diag::codes::UNRESOLVED_NAME;
-                    let text = format!("no loop around this `break` is labelled `{}`", l.text);
+                    let text = format!("no loop around this `break` is labelled `{l}`");
                     return self.err(span, Msg::verdict(code, text));
                 }
                 at
