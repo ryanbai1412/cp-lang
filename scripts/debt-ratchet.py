@@ -5815,11 +5815,29 @@ def raises(root: Path, base: str) -> list[tuple[str, str, str]]:
     return out + [("this commit", r[0].rstrip(":"), r[1] if len(r) > 1 else "") for r in given]
 
 
+def raising_commit(root: Path, base: str, row: dict) -> bool:
+    """Whether the commit a `[[raise]]` row names is in `base..HEAD`: by `sha`, or by `patch_id`
+    (`git patch-id --stable` of the whole commit), which a rebase onto a new base keeps."""
+    shas = _git(root, "rev-list", "--no-merges", f"{base}..HEAD")
+    sha, pid = str(row.get("sha", "")).strip(), str(row.get("patch_id", "")).strip()
+    if sha and any(s.startswith(sha) for s in shas):
+        return True
+    for s in shas if pid else []:
+        diff = subprocess.run(["git", "-C", str(root), "show", s], capture_output=True).stdout
+        got = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()
+        if got and got[0].decode() == pid:
+            return True
+    return False
+
+
 def signed_raise(root: Path, base: str, name: str, old: int, new: int) -> str | None:
     """None when a `[[raise]]` row of `SIGNOFFS` raises `name` from `old` to `new` with its
-    reason (`why`). Only the coordinator's rows count, so no lane admits its own debt: a
-    `Raise:` that signs itself in a commit message is refused, and a hard-zero counter is
-    never raised. Else what is missing."""
+    reason (`why`), for a commit in `base..HEAD` (`raising_commit`). The one check for main
+    (`old` its baseline) and lane-j-check (`old` the lane tip's count). Only the coordinator's
+    rows count, so no lane admits its own debt: a `Raise:` that signs itself in a commit message
+    is refused, and a hard-zero counter is never raised. The commit being made is not in
+    `base..HEAD` yet, so pre-commit (CPL_PRE_COMMIT) only warns that its raise is pending; the
+    push and the queue gate check it. Else what is missing."""
     if name in HARD_ZERO or name in HARD_FLOOR:
         return f"{name} is hard-zero; it is never raised (remove the debt)"
     selfsigned = [w for w, n, rest in raises(root, base) if n == name and "signed off" in rest]
@@ -5836,6 +5854,15 @@ def signed_raise(root: Path, base: str, name: str, old: int, new: int) -> str | 
         return f"{SIGNOFFS} raises {name} only {said}, not {old} -> {new}"
     if not str(row.get("why", "")).strip():
         return f"{SIGNOFFS}'s raise of {name} gives no reason (`why`)"
+    if not (str(row.get("sha", "")).strip() or str(row.get("patch_id", "")).strip()):
+        return f"{SIGNOFFS}'s raise of {name} names no commit (`sha` or `patch_id`)"
+    if not raising_commit(root, base, row):
+        if os.environ.get("CPL_PRE_COMMIT"):
+            print(f"debt-ratchet: WARNING: unsigned raise pending: {name} {old} -> {new} is signed for "
+                  f"{row.get('sha') or row.get('patch_id')}, checked at push", file=sys.stderr)
+            return None
+        return (f"{SIGNOFFS}'s raise of {name} {old} -> {new} is for "
+                f"{row.get('sha') or row.get('patch_id')}, which is not in {base[:9]}..HEAD")
     return None
 
 

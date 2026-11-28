@@ -4,7 +4,9 @@
 # to it, on every branch. No commit-message trailer signs a raise, a lane or an edit.
 #
 # [[lane_for]]     a pushed commit with no `Lane:` trailer: sha, lane, why.
-# [[raise]]        a counter raise: counter, old, new, why.
+# [[raise]]        a counter raise: counter, old, new, why, and the raising commit as sha or
+#                  patch_id (`git show SHA | git patch-id --stable`, which a rebase keeps). On
+#                  lane-j-check `old` is the lane tip's count.
 # [[frozen]]       an edit to the frozen old-pipeline crates, by `git patch-id --stable` of
 #                  `git show SHA -- crates/<FROZEN_CRATES>`, which a rebase keeps: patch_id, sha, why.
 # [[budget_raise]] a cpl.wasm crate budget raise (web/scripts/wasm-crates.mjs); never a frozen
@@ -69,3 +71,11 @@ why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/39
 patch_id = "2acc6195d58dc02b47b8c7513e965dfe157ad73b"
 sha = "fb18097c7"
 why = "verbatim move into cpl-next-syntax or doc cite; old-pipeline-same 3936/3936 at base 2098206e8 (J, 03:31 11-28); doc comment only (R02.10.3 -> R02.10.4); coordinator 03:32 11-28"
+
+[[raise]]
+counter = "next_whole_program_inputs"
+old = 764
+new = 768
+sha = "e2d693ab7"
+patch_id = "ec8eb61ced02b479439f62c6592bdfdfb6a1d9fe"
+why = "lane-j-check: .laws expansion closes over Cx in check/synth.rs (laws_list, its pool closure, two LamBody::Built bodies) (E; coordinator 10:00 11-28)"

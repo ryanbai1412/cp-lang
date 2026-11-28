@@ -1432,6 +1432,20 @@ class DebtRatchetTest(unittest.TestCase):
             with rows('[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = ""\n'):
                 self.assertIn("gives no reason", said()[0])
             with rows('[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\n'):
+                self.assertIn("names no commit", said()[0])
+            git("commit", "-q", "--allow-empty", "-m", "x: raise")
+            sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+            diff = subprocess.run(["git", "show", "HEAD"], cwd=root, capture_output=True).stdout
+            pid = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True).stdout.split()
+            with rows('[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "0000000"\n'):
+                self.assertIn("which is not in", said()[0])
+                # The commit being made isn't in the range yet: pre-commit only warns.
+                with mock.patch.dict(os.environ, {"CPL_PRE_COMMIT": "1"}):
+                    self.assertEqual(said(), [])
+            if pid:
+                with rows(f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\npatch_id = "{pid[0].decode()}"\n'):
+                    self.assertEqual(said(), [])
+            with rows(f'[[raise]]\ncounter = "external_crates"\nold = 5\nnew = 6\nwhy = "w"\nsha = "{sha[:9]}"\n'):
                 self.assertEqual(said(), [])
                 # A raise that signs itself in a commit message is refused, even with the row.
                 with mock.patch.dict(os.environ, {"CPL_RAISE": "external_crates 5 -> 6, signed off by coordinator"}):

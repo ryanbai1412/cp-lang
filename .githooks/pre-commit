@@ -14,7 +14,7 @@ own="$(cd "$(git rev-parse --git-dir)" && pwd)"
 # scripts/ci.py lists here the commit-tier steps it has yet to finish.
 progress="$own/cpl-commit-progress.$$"
 trap 'rm -f "$out" "$progress"' EXIT
-CPL_COMMIT_PROGRESS="$progress" timeout "$limit" "$root/scripts/check.sh" --commit 2>&1 | tee "$out"
+CPL_PRE_COMMIT=1 CPL_COMMIT_PROGRESS="$progress" timeout "$limit" "$root/scripts/check.sh" --commit 2>&1 | tee "$out"
 status=${PIPESTATUS[0]}
 if [ "$status" -ne 124 ]; then
     # land.sh shows this when a failed hook left nothing to land.
