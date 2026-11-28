@@ -863,14 +863,15 @@ impl Emit<'_> {
                 ),
                 // Events go to the trace stream in order (`cpl_tput`).
                 Stmt::Event(ev) => {
-                    // The code that shows an event's value places no events of its own.
+                    // The code that shows an event's value places no events of its own. The
+                    // values are shown before the event is written, so one that traps leaves
+                    // no event, as on the engine.
                     let label = format!("ev {}", ev.label(self.funcs));
-                    put_line!(s, "{pad}if (!cpl_capture) {{ cpl_tput({label:?}, {});", label.len());
+                    put_line!(s, "{pad}if (!cpl_capture) {{ std::string cpl_e; cpl_capture = &cpl_e;");
                     for v in &ev.vals {
-                        let v = self.expr(v);
-                        put_line!(s, "{pad}{{ std::string cpl_s; cpl_capture = &cpl_s; {v}; cpl_capture = nullptr; cpl_tput(\" \", 1); cpl_tput(cpl_s.data(), cpl_s.size()); }}");
+                        put_line!(s, "{pad}cpl_e += ' '; {};", self.expr(v));
                     }
-                    put_line!(s, "{pad}cpl_tput(\"\\n\", 1); }}");
+                    put_line!(s, "{pad}cpl_capture = nullptr; cpl_tput({label:?}, {}); cpl_tput(cpl_e.data(), cpl_e.size()); cpl_tput(\"\\n\", 1); }}", label.len());
                 }
                 // A lender finishes its own code first; the caller leaves after it.
                 Stmt::LendOut(p) => put_line!(s, "{pad}cpl_code = body({});", self.place(p)),

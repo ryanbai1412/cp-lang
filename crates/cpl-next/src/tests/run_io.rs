@@ -214,3 +214,40 @@ fn the_last_token_reads_with_no_newline_after_it() {
         assert_eq!(String::from_utf8_lossy(&ran.stdout), want, "{input:?}");
     }
 }
+
+/// An event whose value traps while it is shown is not written, on the engine and in the C++:
+/// the trap starts its own line, after the whole events before it.
+#[test]
+fn an_event_whose_value_traps_is_not_written() {
+    let src = "let a = [0, 1, 2]\nlet m = a.map(x => 10 / x)\nprint(m.drop(1))\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let o = c.run("");
+    assert_eq!(o.trap.as_ref().map(|t| t.code()), Some("R0203"));
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-pthread", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    let err = String::from_utf8_lossy(&ran.stderr);
+    let lines: Vec<_> = err
+        .lines()
+        .filter(|l| !l.starts_with("call stack: "))
+        .collect();
+    let (trap, evs) = lines.split_last().expect("a trap line");
+    assert!(trap.starts_with("trap: R0203: line 2:"), "{err}");
+    assert!(
+        evs.iter()
+            .all(|l| l.starts_with("ev ") && !l.contains("trap:")),
+        "{err}"
+    );
+    assert_eq!(evs.len(), o.events.len(), "{err}");
+}
