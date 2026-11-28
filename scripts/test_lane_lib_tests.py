@@ -21,6 +21,22 @@ class LaneLibTests(unittest.TestCase):
                "failures:\n    tests::b\n\ntest result: FAILED. 2 passed; 1 failed\n")
         self.assertEqual(MOD.reds_of(out), {"tests::b"})
 
+    def test_a_run_of_many_test_binaries_names_the_reds_of_each(self) -> None:
+        out = ("running 2 tests\n.F\nfailures:\n\n---- tests::b stdout ----\npanicked\n\n"
+               "test result: FAILED. 1 passed; 1 failed\n\nrunning 1 test\nF\nfailures:\n\n"
+               "---- std_unchecked_is_what_checking_every_std_fn_finds stdout ----\npanicked\n")
+        self.assertEqual(MOD.reds_of(out), {"tests::b", "std_unchecked_is_what_checking_every_std_fn_finds"})
+
+    def test_the_gate_runs_every_cpl_next_test_binary_but_the_lists_test(self) -> None:
+        cmd = MOD.command("cpl-next")
+        self.assertIn("--tests", cmd)
+        self.assertIn("--lib", cmd)
+        tail = cmd[cmd.index("--"):]
+        self.assertIn("--exact", tail)
+        self.assertEqual([t for a, t in zip(tail, tail[1:]) if a == "--skip"], ["every_case_is_where_the_lists_say"])
+        self.assertTrue((MOD.ROOT / "crates/cpl-next/tests/std_modules.rs").is_file())
+        self.assertIn("--lib", MOD.command("cpl-doc"))
+
     def test_the_list_reads_rows_and_skips_comments(self):
         text = "# header\ncpl-next tests::b  # H, abc\n\ncpl-doc tests::d\n"
         self.assertEqual(MOD.listed(text), {("cpl-next", "tests::b"), ("cpl-doc", "tests::d")})

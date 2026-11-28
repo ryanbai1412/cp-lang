@@ -52,11 +52,11 @@ if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
     cargo fmt --all --check >/dev/null 2>&1 || fail "not formatted; run: cargo fmt --all"
 fi
 
-# 2c. lane-j-check's landing gate: cpl-next's and cpl-doc's lib tests, every red listed in
+# 2c. lane-j-check's landing gate: cpl-next's lib and integration tests and cpl-doc's lib tests, every red listed in
 # tests/lane-lib-reds.txt (shrink-only, target 0 before slice 1). CI's lane-check holds a
 # `--no-verify` push to it too.
 if [ "$to_lane" = 1 ] && [ -f scripts/lane-lib-tests.py ]; then
-    python3 scripts/lane-lib-tests.py || fail "lane-j-check's lib tests (above); fix the red or, if it is not yours, name its owner"
+    python3 scripts/lane-lib-tests.py || fail "lane-j-check's tests (above); fix the red or, if it is not yours, name its owner"
 fi
 
 [ "$to_main" = 1 ] || exit 0

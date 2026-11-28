@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""The lane-j-check landing gate's unit tests: `cargo test -p cpl-next --lib` and
-`cargo test -p cpl-doc --lib` (coordinator, 00:18 and 00:25: a slice-1 switch blocker).
+"""The lane-j-check landing gate's tests: cpl-next's lib and integration tests and cpl-doc's
+lib tests (coordinator, 00:18 and 00:25: a slice-1 switch blocker; 02:02: `--lib` alone
+missed tests/std_modules.rs). The one test left out is programs.rs's
+`every_case_is_where_the_lists_say`, the corpus against passing.txt/wrong.tsv, which the
+lists job and debt-ratchet's list counters judge.
 
-    lane-lib-tests.py            run both, refuse a red that tests/lane-lib-reds.txt doesn't list
+    lane-lib-tests.py            run them all, refuse a red that tests/lane-lib-reds.txt doesn't list
     lane-lib-tests.py --list     print the reds of a run, one `<crate> <test>` a line
 
 Every red refuses unless the list names it; the list is shrink-only: a listed test that
@@ -17,7 +20,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REDS = ROOT / "tests" / "lane-lib-reds.txt"
-CRATES = ("cpl-next", "cpl-doc")
+CRATES = {
+    "cpl-next": ["--lib", "--tests"],
+    "cpl-doc": ["--lib"],
+}
+SKIPPED = ["every_case_is_where_the_lists_say"]
 FAILED = re.compile(r"^test (\S+) \.\.\. FAILED$")
 PANICKED = re.compile(r"^---- (\S+) stdout ----$")  # `-q` prints no `test ... FAILED` line
 
@@ -48,9 +55,13 @@ def verdict(found: set[tuple[str, str]], allowed: set[tuple[str, str]], ran: set
     return out
 
 
+def command(crate: str) -> list[str]:
+    skips = [a for t in SKIPPED for a in ("--skip", t)]
+    return ["cargo", "test", "-q", "-p", crate, *CRATES[crate], "--no-fail-fast", "--", "--exact", *skips]
+
+
 def run(crate: str) -> tuple[int, str]:
-    done = subprocess.run(["cargo", "test", "-q", "-p", crate, "--lib", "--no-fail-fast"], cwd=ROOT,
-                          capture_output=True, text=True)
+    done = subprocess.run(command(crate), cwd=ROOT, capture_output=True, text=True)
     return done.returncode, done.stdout + done.stderr
 
 
@@ -63,7 +74,7 @@ def main(argv: list[str]) -> int:
         reds = reds_of(out)
         if code and not reds:
             sys.stderr.write(out[-4000:])
-            print(f"lane-lib-tests: cargo test -p {crate} --lib failed with no test named (a build error)", file=sys.stderr)
+            print(f"lane-lib-tests: {' '.join(command(crate))} failed with no test named (a build error)", file=sys.stderr)
             return 1
         ran.add(crate)
         found |= {(crate, t) for t in reds}
