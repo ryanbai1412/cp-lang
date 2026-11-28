@@ -905,7 +905,7 @@ pub fn body_of(
                 .nth(rank)
         }
         Body::Value => {
-            let name = d.text(decl.name);
+            let name = decl.name.as_str();
             let members = match item.decl() {
                 Some(next::Decl::Impl(i)) => i.members(),
                 _ => None,
