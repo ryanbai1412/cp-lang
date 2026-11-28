@@ -549,6 +549,9 @@ struct Body {
     self_local: Option<LocalId>,
     /// Bounds calls must meet, with where: a type, the trait it must implement, and why.
     obligations: Vec<(Ty, decls::TraitRef, Span, Origin)>,
+    /// The parameter types of omitted defaulted arguments: a variable only they mention takes
+    /// `Int` at the end, as a literal does (R08.2.11).
+    defaulted: Vec<Ty>,
     /// Temporaries holding an input value whose parts are held to their types one by one.
     input_parts: std::collections::HashSet<VarRef>,
     /// The range each `let` keeps from its initializer, where it is known (R02.10.2).
@@ -620,6 +623,7 @@ impl Body {
             scopes: vec![HashMap::new()],
             self_local: None,
             obligations: Vec::new(),
+            defaulted: Vec::new(),
             input_parts: Default::default(),
             let_ranges: Default::default(),
             ret: Ty::Unit,

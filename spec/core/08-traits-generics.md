@@ -176,7 +176,10 @@ struct Pair<A, B = Int>: a: A, b: B
   parameter nothing else fixes takes `Int` parameters, as a literal does:
   `ap(+)` for `fn ap<X>(op: X) -> X` is an `(Int, Int) -> Int`, and so is
   `SegTree(max, xs)`'s op. When its body does not check with `Int`s it is
-  E0806, never an unknown type (decision 592). (R08.2.11)
+  E0806, never an unknown type (decision 592). A type parameter only an
+  omitted defaulted argument mentions takes `Int` too: `K` of
+  `fn new<K: Ord>(by: ?(T -> K) = None)` called without `by` (decision 695).
+  (R08.2.11)
 - `domain` is a kind on type parameters; `const N: Int` parameters take
   compile-time values (`Mod<998244353>`, `SegTree<0..=4e9>`); range
   types are types and may be arguments. (R08.2.4)

@@ -9622,4 +9622,8 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 
 ## 694. (reserved, C)
 
-## 695. (reserved, B: B: a type parameter only an omitted default mentions takes Int)
+## 695. A type parameter only an omitted default mentions takes `Int` (spec, 2026-11-28)
+
+- **Call.** When a call leaves a defaulted argument out and nothing else in the body fixes a type parameter its type names, that parameter takes `Int`, the way an integer literal does (decision 592): `Heap<T>()` with `fn new<K: Ord>(by: ?(T -> K) = None)` is `Heap.new<T, Int>`. The parameter's bounds are then checked against `Int` as for any argument. (R08.2.11)
+- **Why.** The default `None` fixes nothing about `K`, so `K` stayed an unknown type and every `Heap()`, `MeldHeap()` and `ErasableHeap()` instance carried an error type into lowering (30 of `error-typed.txt`'s 34 rows). Picking `Int` keeps the instance typed without a std or compiler special case; `K` is never read when `by` is absent.
+- **Reverse.** Drop the `defaulted` field (cpl-next-check `lib.rs`), its loop at the top of `solve`'s last round (`oblige.rs`), and its push in `expr.rs`'s default-argument arm.

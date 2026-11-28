@@ -426,6 +426,7 @@ impl<'a> Cx<'a> {
                 Some(a) => a,
                 None => TArg::Value(match f.default {
                     Some((e, m, ref item, ref named)) => {
+                        self.b.defaulted.push(f.ty.clone());
                         self.default_arg((e, m, item.clone()), named, &f.ty)
                     }
                     None => TExpr {

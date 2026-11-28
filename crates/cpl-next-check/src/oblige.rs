@@ -24,6 +24,27 @@ impl Cx<'_> {
     }
     /// Meets each bound whose type is known by now; `last` drops those never known.
     pub(super) fn solve(&mut self, last: bool) {
+        if last {
+            // A variable only an omitted default's type leaves open takes `Int`, as a literal
+            // does (R08.2.11): `K` of `fn new<K: Ord>(by: ?(T -> K) = None)` called without `by`.
+            let mut open = std::mem::take(&mut self.b.defaulted);
+            while let Some(t) = open.pop() {
+                match self.shallow(&t) {
+                    v @ Ty::Var(_) => {
+                        self.unify(&v, &Ty::Int);
+                    }
+                    Ty::Raw(e) | Ty::Mut(e) | Ty::Ref(e) | Ty::Lent(e) | Ty::RangeTo(e, ..) => {
+                        open.push(*e)
+                    }
+                    Ty::Struct(_, ts, _) => open.extend(ts),
+                    Ty::Fn(ps, r, _) => {
+                        open.extend(ps);
+                        open.push(*r);
+                    }
+                    _ => {}
+                }
+            }
+        }
         loop {
             let pending = std::mem::take(&mut self.b.obligations);
             // A bound met by an impl may leave the impl's own bounds: they count as progress too.
