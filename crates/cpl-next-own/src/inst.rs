@@ -11,8 +11,8 @@ use cpl_next_decls::diag::Msg;
 use cpl_next_decls::views::Signatures;
 use cpl_next_ir::ir::{Arg, Expr, Place, Stmt, Target, EK};
 use cpl_next_ir::ir::{Func, FuncKey, Site};
-use cpl_next_ir::prog::{CTy, InstKey, Program};
-use cpl_next_ir::ty::Ty;
+use cpl_next_ir::prog::{CTy, Holds, InstKey, Program};
+use cpl_next_ir::ty::{Subst, Ty};
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
 
@@ -64,6 +64,10 @@ pub(crate) struct Walk<'a> {
     pub literals: BTreeSet<usize>,
     /// The instances that are methods: what their result views is cut from the receiver.
     pub receivers: BTreeSet<usize>,
+    /// The instances whose result can hold storage the call made: its type still holds storage
+    /// with each type parameter taken to hold nothing. A `Slice<S>` holds only the `S` it is
+    /// given, so one cut from a literal is the literal's, not a temporary (R07.5.10).
+    pub makers: BTreeSet<usize>,
     pub copies: BTreeSet<(usize, Site)>,
     pub last: crate::Last,
     pub report: bool,
@@ -233,8 +237,23 @@ impl Walk<'_> {
             true => self.elems.insert(temp),
             false => self.elems.remove(&temp),
         };
+        // A value given to a parameter the result holds moves in, made storage among them.
+        let made_in = |a: &Arg<CTy>| match a {
+            Arg::Value(v) => match &v.kind {
+                EK::Copy(p) | EK::Pass(p, ..) => {
+                    (self.pl(p)).is_some_and(|q| q.path.is_empty() && self.made.contains(&q.root))
+                }
+                _ => false,
+            },
+            _ => false,
+        };
         let made = match &e.kind {
-            EK::Call(Target::Inst(i), ..) => !self.declares_lends(*i) && !self.literals.contains(i),
+            EK::Call(Target::Inst(i), args, _) => {
+                !self.declares_lends(*i)
+                    && !self.literals.contains(i)
+                    && (self.makers.contains(i)
+                        || (self.lends(*i).iter()).any(|k| args.get(*k).is_some_and(made_in)))
+            }
             EK::Copy(p) => {
                 (self.pl(p)).is_some_and(|q| q.path.is_empty() && self.made.contains(&q.root))
             }
@@ -1452,6 +1471,23 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
         })
         .map(|(i, _)| i)
         .collect();
+    let fields = cpl_next_decls::fields::fields(d);
+    let makers = (p.insts.iter().enumerate())
+        .filter(|(_, f)| match &f.key {
+            FuncKey::Decl(f) | FuncKey::Ctx(f, _) => {
+                let fd = d.f(*f);
+                let nothing = vec![Ty::Unit; fd.generics.len()];
+                let ret = Subst {
+                    tys: &nothing,
+                    sets: &[],
+                }
+                .ty(&fd.ret);
+                ret.holds(&fields, 0) == Holds::Storage
+            }
+            _ => true,
+        })
+        .map(|(i, _)| i)
+        .collect();
     let mut w = Walk {
         d,
         p,
@@ -1474,6 +1510,7 @@ fn run(d: &dyn Signatures, p: &Program, globals: &[(String, bool)]) -> Owned {
         made: BTreeSet::new(),
         literals,
         receivers,
+        makers,
         copies: BTreeSet::new(),
         last: crate::Last::default(),
         pending: vec![],

@@ -1056,7 +1056,6 @@ std-seq/perm-sign-rejects-non-permutation.cp	wrong-reject	link: E0606: a type ar
 std-seq/permutations-lcs-radix-outermost.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/pop-merge-partition-majority-bodies.cp	wrong-reject	check: std.seq:2782:37: E0606: `T` does not implement `Clone`
 std-seq/prelude-find-resolves-to-seq.cp	wrong-reject	check: std.strings:425:8: E0203: `P` has no member `is_empty`
-std-seq/rebase-str-keys-from-zero.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<Str>>` has no member `keys`
 std-seq/rekey-a-stepped-view-copy-by-a-range.cp	wrong-reject	check: program:4:13: E0203: `List<_>` has no member `rekey`
 std-seq/rekey-takes-a-range-not-stepped-keys.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:27: E0203: `List<_>` has no member `rekey`
 std-seq/rev-piece-walks-backward.cp	wrong-reject	check: std.seq:1720:50: E0606: `S` does not implement `Indexed`
