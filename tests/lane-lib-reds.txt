@@ -7,4 +7,3 @@ cpl-next tests::facts_leave_out_only_the_checks_they_prove  # triage: RangeStore
 cpl-next tests::types_told_apart_by_domains_share_a_representation  # triage: E0606 `t.P` does not implement Domain
 cpl-doc tests::every_std_module_opens_with_an_outline  # core std modules without start: (589e688c7 and 8 more, unlabelled); laws, subset, default, raw
 cpl-next the_smoke_sample_gives_cpp_gxx_accepts  # D: core-02/fresh-domain-struct-return E0606 Domain; J: core-07/group-lists-keep-walk-order E0505 lint from
-cpl-next every_unit_an_error_does_not_reach_types_and_lowers  # J (lane parser recovery): injected units say nothing; passes on main
