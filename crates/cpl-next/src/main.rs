@@ -144,18 +144,14 @@ fn real_main() {
 
 /// `dump-ir --stage STAGE FILE`.
 fn dump_ir(args: &[String]) {
-    fn usage() -> ! {
+    let at = args.iter().position(|a| a == "--stage");
+    let stage = at
+        .and_then(|i| args.get(i + 1))
+        .and_then(|s| IrStage::named(s));
+    let (Some(stage), Some(path)) = (stage, file(args)) else {
         eprintln!("usage: cpl-next dump-ir --stage raw|owned|canonical|optimized FILE");
         std::process::exit(2);
-    }
-    let at = args.iter().position(|a| a == "--stage");
-    let Some(stage) = at
-        .and_then(|i| args.get(i + 1))
-        .and_then(|s| IrStage::named(s))
-    else {
-        usage()
     };
-    let Some(path) = file(args) else { usage() };
     let src = std::fs::read_to_string(path).unwrap_or_else(|e| {
         eprintln!("{path}: {e}");
         std::process::exit(2);
