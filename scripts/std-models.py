@@ -104,6 +104,21 @@ def trait_defaults(texts):
     return found
 
 
+def default_gaps(texts, cases):
+    """Pub std traits' default methods no `// model:` or `// brute:` line names: std code every
+    implementing type runs, unchecked against a brute force (std_default_model_gaps)."""
+    have = set(modelled(cases)) | {f for _, text in cases for f in BRUTE.findall(text)}
+    out = []
+    for rel, text in texts:
+        trait = None
+        for line in text.splitlines():
+            if line and not line[0].isspace() and not line.startswith(("///", "@")):
+                trait = (m := TRAIT.match(line)) and m.group(1)
+            elif trait and (m := DEFAULT.match(line)) and has_body(line) and m.group(1) not in have:
+                out.append(f"{rel}: `{trait}.{m.group(1)}` has no model case in spec/conformance/std-models/")
+    return sorted(set(out))
+
+
 def public_types(texts):
     """Every `pub struct`/`pub enum` name in std."""
     return {m.group(1) for _, text in texts for line in text.splitlines() if (m := TYPE.match(line))}

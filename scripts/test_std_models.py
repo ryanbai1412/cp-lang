@@ -71,6 +71,24 @@ trait Private:
             "c/w.cp: `// model: quiet` names no std type or pub std fn",
         ])
 
+    def test_a_default_method_no_model_or_brute_line_names_is_a_default_gap(self):
+        walk = [("std/w.cp", """\
+pub trait Walk<T>:
+    fn iter(self) -> yields T
+    fn first(self, d: T = 0) -> T
+    fn total(self) -> Int:
+        0
+    fn twice(self, by: Int = 2) -> (Int, Int) = (by, by)
+    fn thrice(self) -> Int = 3
+
+trait Private:
+    fn quiet(self) -> Int = 0
+""")]
+        case = "// model: total\n// brute: twice\n"
+        self.assertEqual(m.default_gaps(walk, [("c/w.cp", case)]), [
+            "std/w.cp: `Walk.thrice` has no model case in spec/conformance/std-models/",
+        ])
+
     def test_shrink_finds_the_shortest_failing_prefix(self):
         self.assertEqual(m.shrink(lambda n: n >= 17, 300), 17)
         self.assertEqual(m.shrink(lambda n: True, 300), 1)
