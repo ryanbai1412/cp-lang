@@ -203,8 +203,10 @@ impl Cx<'_> {
             next::Pattern::Wildcard(_) | next::Pattern::Literal(_) => {}
         }
     }
+    /// Whether `head`, where the body is, names an `@pattern` fn: `Some`.
     fn present_pattern(&self, head: &str) -> bool {
-        (self.rows.marked_fns(Decorator::Pattern).iter()).any(|f| self.items.f(*f).name == head)
+        (self.fn_named(self.b.module, head))
+            .is_some_and(|f| self.rows.marked_fns(Decorator::Pattern).contains(&f))
     }
     /// A tuple pattern of `n` at `at` that can't open `t`, what `callee` gives (its call ends
     /// at `end`): `callee`'s `@on_destructure` says why, with its fix (R02.5.5). Whether it did.
