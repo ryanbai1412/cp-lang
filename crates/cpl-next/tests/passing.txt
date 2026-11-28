@@ -3099,6 +3099,7 @@ diagnostics/definition-cycle.cp
 core-02/enum-field-runtime-domain.cp
 core-02/payload-free-variant-tags-read-and-print.cp
 core-02/token-set-is-an-enum.cp
+core-02/top-level-let-ends-a-signature-range.cp
 core-10/parse-enum-command.cp
 core-10/range-field-in-variant-reads-two-ends.cp
 core-10/read-array-of-tagged-commands.cp

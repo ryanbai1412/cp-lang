@@ -50,6 +50,8 @@ pub(super) struct TyCx<'a> {
     pub(super) ret_slots: Option<usize>,
     /// Next implicit set parameter; `None` where a fn type may not appear bare.
     pub(super) next_set: Option<usize>,
+    /// Where a signature keeps its ranges that end at top-level `let`s; `None` where none may.
+    pub(super) top_ranges: Option<&'a std::cell::RefCell<Vec<TopRange>>>,
 }
 
 /// The set for one function type written here: a parameter of the signature, a result slot, or a
@@ -100,6 +102,7 @@ pub(super) fn alias(cx: &mut TyCx, id: usize, n: &str, a: Vec<Ty>, errors: &mut 
         scoped: if decl.program { cx.scoped } else { &unscoped },
         ret_slots: cx.ret_slots,
         next_set: cx.next_set,
+        top_ranges: cx.top_ranges,
     };
     let t = conv(&mut inner, &decl.ty, errors);
     (cx.ret_slots, cx.next_set) = (inner.ret_slots, inner.next_set);
@@ -182,23 +185,9 @@ pub(super) fn trait_ref(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> 
 /// value: a struct field's layout is fixed before input is read, so no field is bounded by one
 /// (R03.1.3).
 pub(super) fn input_bound(t: &ast::Type, bound: &dyn Fn(&str) -> bool) -> Option<(String, String)> {
-    struct Named<'a>(&'a dyn Fn(&str) -> bool, Option<String>);
-    impl cpl_syntax::visit::Visitor for Named<'_> {
-        fn expr(&mut self, e: &ast::Expr) {
-            match &e.kind {
-                ast::ExprKind::Name(n) if self.1.is_none() && (self.0)(n) => {
-                    self.1 = Some(n.clone())
-                }
-                _ => {}
-            }
-        }
-    }
     match &t.kind {
         TypeKind::Range { lo, hi, inclusive } => {
-            let mut v = Named(bound, None);
-            for e in [lo, hi].into_iter().flatten() {
-                cpl_syntax::visit::walk_expr(e, &mut v);
-            }
+            let named = end_names(t).into_iter().find(|n| bound(n));
             let end = |e: &Option<Box<ast::Expr>>| match e.as_deref().map(|e| &e.kind) {
                 Some(ast::ExprKind::Int(k)) => k.to_string(),
                 Some(ast::ExprKind::Name(n)) => n.clone(),
@@ -206,12 +195,31 @@ pub(super) fn input_bound(t: &ast::Type, bound: &dyn Fn(&str) -> bool) -> Option
                 None => String::new(),
             };
             let dots = if *inclusive { "..=" } else { ".." };
-            v.1.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
+            named.map(|n| (format!("{}{dots}{}", end(lo), end(hi)), n))
         }
         TypeKind::Tuple(ts) => ts.iter().find_map(|t| input_bound(t, bound)),
         TypeKind::Optional(t) => input_bound(t, bound),
         _ => None,
     }
+}
+
+/// The names a range type's ends read, in the order written.
+fn end_names(t: &ast::Type) -> Vec<String> {
+    struct Names(Vec<String>);
+    impl cpl_syntax::visit::Visitor for Names {
+        fn expr(&mut self, e: &ast::Expr) {
+            if let ast::ExprKind::Name(n) = &e.kind {
+                self.0.push(n.clone());
+            }
+        }
+    }
+    let mut v = Names(Vec::new());
+    if let TypeKind::Range { lo, hi, .. } = &t.kind {
+        for e in [lo, hi].into_iter().flatten() {
+            cpl_syntax::visit::walk_expr(e, &mut v);
+        }
+    }
+    v.0
 }
 
 pub(crate) fn unnamed(t: &ast::Type, names: &dyn Fn(&str) -> Option<Named>, out: &mut Vec<String>) {
@@ -390,8 +398,38 @@ pub(super) fn conv(cx: &mut TyCx, t: &ast::Type, errors: &mut Vec<Msg>) -> Ty {
                 Ty::RangeTo(Box::new(d), m, lo, k)
             }
             None => {
-                errors.push(match input_bound(t, &|n| cx.env.top_var(n)) {
-                    Some((_, n)) => {
+                let names = end_names(t);
+                let var = names.iter().find(|n| cx.env.top_var(n)).cloned();
+                let reads: Vec<String> = names
+                    .iter()
+                    .filter(|n| cx.env.top_value(n))
+                    .cloned()
+                    .collect();
+                let top = (cx.item.as_ref().zip(cx.top_ranges)).filter(|_| {
+                    var.is_none()
+                        && !reads.is_empty()
+                        && names
+                            .iter()
+                            .all(|n| cx.env.top_value(n) || (cx.names)(n).is_some())
+                });
+                if let Some((item, cell)) = top {
+                    let at = item.at(t.span);
+                    let mut rows = cell.borrow_mut();
+                    let i = match rows.iter().position(|r| r.at == at) {
+                        Some(i) => i,
+                        None => {
+                            rows.push(TopRange {
+                                at,
+                                ty: t.clone(),
+                                reads,
+                            });
+                            rows.len() - 1
+                        }
+                    };
+                    return Ty::RangeOf(i);
+                }
+                errors.push(match var {
+                    Some(n) => {
                         let m = Msg {
                             help: Some(format!("freeze it first: `let {n}` in place of `var {n}`")),
                             ..Msg::verdict(
@@ -543,6 +581,7 @@ pub fn body_type(
         scoped,
         ret_slots: None,
         next_set: None,
+        top_ranges: None,
     };
     let t = conv(&mut cx, t, &mut errors);
     (t, errors)
