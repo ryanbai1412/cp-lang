@@ -1153,13 +1153,40 @@ fn top_value_of(syms: &mut crate::sym::Syms, item: &ItemId, form: &Form) -> Opti
                 [n] => Some(TopValue {
                     name: syms.intern(n.text()),
                     item: item.clone(),
-                    mutable: p.is_var(),
+                    mutable: l.is_var() || p.is_var(),
+                    within: declared_within(l.ty()),
                 }),
                 _ => None,
             }
         }
         _ => None,
     }
+}
+
+/// The range a top-level value's written type declares, by its literal ends.
+fn declared_within(t: Option<cpl_next_syntax::ast::Type>) -> (i64, i64) {
+    use cpl_next_syntax::ast::{Expr, Type};
+    let all = (i64::MIN + 1, i64::MAX);
+    let Some(Expr::Range(r)) = (match t {
+        Some(Type::Range(t)) => t.expr(),
+        _ => None,
+    }) else {
+        return all;
+    };
+    let lo = r
+        .lo()
+        .map_or(Some(all.0), |e| super::tyconv::literal_int(&e));
+    let hi = match r.hi() {
+        None => Some(all.1),
+        Some(e) => super::tyconv::literal_int(&e).and_then(|k| {
+            if r.is_inclusive() {
+                Some(k)
+            } else {
+                k.checked_sub(1)
+            }
+        }),
+    };
+    (lo.unwrap_or(all.0), hi.unwrap_or(all.1))
 }
 
 #[cfg(test)]

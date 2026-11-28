@@ -208,7 +208,7 @@ pub(super) fn input_bound(t: &Type, values: &[TopValue], syms: &Syms) -> Option<
 }
 
 /// The single capitals a type writes that name nothing: an impl header's undeclared type
-/// parameters (R02.10.3).
+/// parameters (R02.10.4).
 pub(crate) fn unnamed(
     t: &Type,
     names: &dyn Fn(Sym) -> Option<Named>,
@@ -591,11 +591,15 @@ fn conv_range(cx: &mut TyCx, re: &next::RangeExpr, errors: &mut Vec<Msg>) -> Ty 
             return Ty::RangeTo(Box::new(d), m, lo, k);
         }
     }
-    errors.push(Unbuilt::RangeTypeOutsideBody.into());
+    match var_end(cx, [lo.as_ref(), hi.as_ref()]) {
+        Some(m) => errors.push(m),
+        None => errors.push(Unbuilt::RangeTypeOutsideBody.into()),
+    }
     Ty::Error
 }
 
-/// A range type's end: a constant, or a value parameter of the declaration.
+/// A range type's end: a constant, a value parameter of the declaration, or a value the top
+/// level binds with `let` (R02.10.3).
 fn end(cx: &TyCx, e: &Expr) -> Option<End> {
     if let Some(k) = const_int(cx, e) {
         return Some(End::Lit(k));
@@ -603,9 +607,32 @@ fn end(cx: &TyCx, e: &Expr) -> Option<End> {
     let Expr::Name(n) = e else {
         return None;
     };
-    let s = cx.env.sym(n.ident()?.text())?;
-    let i = cx.generics.iter().position(|g| *g == s)?;
-    Some(End::Of(Box::new(param(cx, i))))
+    let k = n.ident()?;
+    let s = cx.env.sym(k.text())?;
+    if let Some(i) = cx.generics.iter().position(|g| *g == s) {
+        return Some(End::Of(Box::new(param(cx, i))));
+    }
+    let (id, v) = cx.env.top_value(k.text())?;
+    (!v.mutable).then_some(End::Global {
+        id,
+        within: v.within,
+    })
+}
+
+/// A range type ending at a top-level `var`: its value may change while the type is in use, so
+/// only a `let` may end one (R02.10.3).
+fn var_end(cx: &TyCx, ends: [Option<&Expr>; 2]) -> Option<Msg> {
+    let k = ends.into_iter().flatten().find_map(|e| match e {
+        Expr::Name(n) => n
+            .ident()
+            .filter(|k| cx.env.top_value(k.text()).is_some_and(|(_, v)| v.mutable)),
+        _ => None,
+    })?;
+    let msg = format!(
+        "a type can't end at `{0}`, a `var` that may change while the type is in use; declare `{0}` with `let`",
+        k.text()
+    );
+    Some(Msg::verdict(cpl_diag::codes::RANGE_END_VAR, msg))
 }
 
 /// The integer a constant expression is: literals, `+ - *`, and a `const` written as one
@@ -756,7 +783,7 @@ fn item_of(cx: &mut TyCx, o: &next::TypeOfType, errors: &mut Vec<Msg>) -> Ty {
             };
             match cx.env.sym(k.text()).and_then(|s| (cx.names)(s)) {
                 Some(Named::Fn(f)) => return fn_ref(f),
-                None if !cx.env.top_value(k.text()) => Msg::verdict(
+                None if cx.env.top_value(k.text()).is_none() => Msg::verdict(
                     cpl_diag::codes::UNRESOLVED_NAME,
                     format!("unknown name `{}`", k.text()),
                 ),
@@ -958,10 +985,9 @@ impl TypeTables for Tables {
     fn core_type(&self, n: Sym) -> Option<CoreType> {
         self.core.get(&n).copied()
     }
-    fn top_value(&self, name: &str) -> bool {
-        self.syms
-            .get(name)
-            .is_some_and(|s| top_value(&self.values, s).is_some())
+    fn top_value(&self, name: &str) -> Option<(TopValueId, TopValue)> {
+        let g = top_value(&self.values, self.syms.get(name)?)?;
+        Some((g, self.values[g.0].clone()))
     }
     fn operator(&self, op: &str) -> Option<FnId> {
         let op = self.syms.get(op)?;

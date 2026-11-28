@@ -1,8 +1,8 @@
 //! Assignment, one path for `=`, `op=`, `f=` and `min=`/`max=` (R01.6.4), and `min=`/`max=`
 //! as a condition (R02.4.6).
 
+use super::call::CallArg;
 use super::*;
-use cpl_next_ir::unbuilt::Unbuilt;
 
 impl<'a> Cx<'a> {
     /// A write to the place `target` is, `step` the statement on the place: through the cell
@@ -103,10 +103,6 @@ impl<'a> Cx<'a> {
         let (Some(target), Some(op), Some(value)) = (a.target(), a.op(), a.value()) else {
             return;
         };
-        if let next::AssignOp::Fn(f) = &op {
-            let kind = format!("`{} =`", f.text());
-            return self.err(span, Unbuilt::Statement { kind });
-        }
         let index = match super::index::unparen(target.clone()) {
             next::Expr::Tuple(t) if matches!(op, next::AssignOp::Set) => {
                 return self.assign_parts(&t, &value, span, out);
@@ -117,10 +113,13 @@ impl<'a> Cx<'a> {
         let Some(ix) = index else {
             let target_at = self.at(&target);
             return self.write(&target, span, out, |cx, p| {
-                let v = cx.expr(&value, Some(&p.ty));
-                let v = match op {
-                    next::AssignOp::Op(b) => cx.binary(b, p.clone(), v, target_at),
-                    _ => v,
+                let v = match &op {
+                    next::AssignOp::Fn(_) => cx.expr(&value, None),
+                    _ => cx.expr(&value, Some(&p.ty)),
+                };
+                let v = match &op {
+                    next::AssignOp::Set => v,
+                    how => cx.combine(how, p.clone(), v, target_at),
                 };
                 let ty = p.ty.clone();
                 let v = cx.coerce(v, &ty);
@@ -136,19 +135,12 @@ impl<'a> Cx<'a> {
             _ => None,
         };
         // The value is read whole before the cell is written (R01.6.4).
-        let v = self.hoist(&value, (cell.as_ref(), true), "$rhs", out);
+        let want = cell
+            .as_ref()
+            .filter(|_| !matches!(op, next::AssignOp::Fn(_)));
+        let v = self.hoist(&value, (want, true), "$rhs", out);
         match op {
-            next::AssignOp::Op(b) => {
-                let target_at = self.at(&target);
-                let inner = move |cx: &mut Self, cell: TExpr, out: &mut Vec<TStmt>| {
-                    let r = cx.binary(b, cell.clone(), v, target_at);
-                    let ty = cell.ty.clone();
-                    let r = cx.coerce(r, &ty);
-                    out.push(TStmt::Assign(cell, r))
-                };
-                self.through_cell(root, keys, span, out, Box::new(inner))
-            }
-            _ => {
+            next::AssignOp::Set => {
                 let held = v.clone();
                 let assign = move |cx: &mut Self, cell: TExpr, out: &mut Vec<TStmt>| {
                     let ty = cell.ty.clone();
@@ -156,6 +148,32 @@ impl<'a> Cx<'a> {
                     out.push(TStmt::Assign(cell, v))
                 };
                 self.cell_set(root, keys, v, span, out, Box::new(assign))
+            }
+            how => {
+                let target_at = self.at(&target);
+                let inner = move |cx: &mut Self, cell: TExpr, out: &mut Vec<TStmt>| {
+                    let r = cx.combine(&how, cell.clone(), v, target_at);
+                    let ty = cell.ty.clone();
+                    let r = cx.coerce(r, &ty);
+                    out.push(TStmt::Assign(cell, r))
+                };
+                self.through_cell(root, keys, span, out, Box::new(inner))
+            }
+        }
+    }
+    /// The new value of `old` under a compound assignment: `p op= e` is `p op e`, and `p f= e`
+    /// is `f(p, e)` with `f` any two-argument fn in scope (R01.6.4).
+    fn combine(&mut self, how: &next::AssignOp, old: TExpr, v: TExpr, at: Span) -> TExpr {
+        match how {
+            next::AssignOp::Set => v,
+            next::AssignOp::Op(b) => self.binary(*b, old, v, at),
+            next::AssignOp::Fn(f) => {
+                let want = old.ty.clone();
+                let args = [
+                    CallArg::held(None, old, at),
+                    CallArg::held(None, v.clone(), v.span),
+                ];
+                self.call_named(f.text(), &[], &args, at, Some(&want))
             }
         }
     }

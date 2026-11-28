@@ -62,20 +62,9 @@ impl Cx<'_> {
         (local.fixed && !local.synthetic).then(|| local.name.clone())
     }
 
-    /// `lend mut place` in a lender of `t`s: `place` is what its caller's body runs on.
-    pub(super) fn lend_out(
-        &mut self,
-        place: &next::Expr,
-        t: &Ty,
-        span: Span,
-        out: &mut Vec<TStmt>,
-    ) {
-        let p = self.place(place);
-        self.lend_out_value(p, t, span, out);
-    }
-
-    /// `lend mut` of the checked place `p`, as `lend_out` and a lent cell (`lend mut s[k]`) do.
-    pub(super) fn lend_out_value(&mut self, p: TExpr, t: &Ty, span: Span, out: &mut Vec<TStmt>) {
+    /// `lend mut p` in a lender of `t`s: the checked place `p` (a written place or a lent
+    /// cell, `lend mut s[k]`) is what its caller's body runs on.
+    pub(super) fn lend_out(&mut self, p: TExpr, t: &Ty, span: Span, out: &mut Vec<TStmt>) {
         if !self.unify(&p.ty, t) {
             self.err(
                 span,

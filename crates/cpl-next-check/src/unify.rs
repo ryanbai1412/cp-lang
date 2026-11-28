@@ -719,6 +719,29 @@ impl<'a> Cx<'a> {
         );
         mk(TK::Block(hold, Some(Box::new(pick))), opt)
     }
+    /// A range type's end as a run-time value: a constant, or the global of the top-level `let`
+    /// it names (R02.10.3), made before any body is checked; `less` is one below it, for an
+    /// excluded end.
+    fn range_end(&mut self, end: &cpl_next_ir::ty::End, less: bool, span: Span) -> TExpr {
+        use cpl_next_ir::ty::End;
+        let mk = |kind| TExpr {
+            kind,
+            ty: Ty::Int,
+            span,
+        };
+        let at = match end {
+            End::Lit(k) => return mk(TK::Int(if less { k.saturating_sub(1) } else { *k })),
+            End::Global { id, .. } => mk(TK::Var(VarRef::Global(self.top_slots[id.0]))),
+            End::Of(_) => {
+                self.err(span, Unbuilt::RangeTypeOutsideBody);
+                return Self::error_node(span);
+            }
+        };
+        match less {
+            true => mk(TK::Bin(BinOp::Sub, Box::new(at), Box::new(mk(TK::Int(1))))),
+            false => at,
+        }
+    }
     /// Whether `v`, of `want`'s `Int` parts, lies in each range in `want`; `None` when `want`
     /// has none.
     fn within(&mut self, v: &TExpr, want: &Ty) -> Option<TExpr> {
@@ -733,6 +756,10 @@ impl<'a> Cx<'a> {
                 let end = |e: Option<VarRef>| e.map(|e| mk(TK::Var(e), Ty::Int));
                 (end(self.ranges[r].lo), end(self.ranges[r].hi))
             }
+            Ty::RangeEnds { lo, hi, inclusive } if ends_at_global(&lo, &hi) => (
+                Some(self.range_end(&lo, false, span)),
+                Some(self.range_end(&hi, !inclusive, span)),
+            ),
             Ty::Struct(..) => {
                 let ((_, have), (_, wants)) = (self.field_tys(&v.ty)?, self.field_tys(want)?);
                 let mut all = None;
@@ -935,6 +962,16 @@ impl<'a> Cx<'a> {
                 let (lo, hi) = (end(self.ranges[*r].lo), end(self.ranges[*r].hi));
                 let v = TExpr { ty: Ty::Int, ..e };
                 let v = self.checked_between(v, lo, hi, span);
+                TExpr { ty: want_s, ..v }
+            }
+            (h, Ty::RangeEnds { lo, hi, inclusive })
+                if (*h == Ty::Int || h.is_int_range()) && ends_at_global(lo, hi) =>
+            {
+                let (lo, hi, inclusive) = (lo.clone(), hi.clone(), *inclusive);
+                let lo = self.range_end(&lo, false, span);
+                let hi = self.range_end(&hi, !inclusive, span);
+                let v = TExpr { ty: Ty::Int, ..e };
+                let v = self.checked_between(v, Some(lo), Some(hi), span);
                 TExpr { ty: want_s, ..v }
             }
             (Ty::Range(a, b), Ty::Range(lo, hi)) if lo <= a && b <= hi => TExpr { ty: want_s, ..e },
@@ -1222,6 +1259,7 @@ pub fn show_ty(
             let end = |e: &cpl_next_ir::ty::End| match e {
                 cpl_next_ir::ty::End::Lit(k) => k.to_string(),
                 cpl_next_ir::ty::End::Of(t) => show(t),
+                cpl_next_ir::ty::End::Global { id, .. } => items.text(items.top_name(*id)).into(),
             };
             let dots = if inclusive { "..=" } else { ".." };
             format!("{}{dots}{}", end(&lo), end(&hi))
@@ -1308,4 +1346,10 @@ pub(super) fn known_range(lets: &HashMap<VarRef, (i64, i64)>, e: &TExpr) -> Opti
             _ => None,
         },
     }
+}
+
+/// Whether a range type ends at a top-level `let`, read as it runs (R02.10.3).
+fn ends_at_global(lo: &cpl_next_ir::ty::End, hi: &cpl_next_ir::ty::End) -> bool {
+    use cpl_next_ir::ty::End;
+    [lo, hi].iter().any(|e| matches!(e, End::Global { .. }))
 }

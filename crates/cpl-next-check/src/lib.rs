@@ -308,6 +308,18 @@ pub struct Local {
     /// Made by the checker, not named by the program: no suggestion or fix names it.
     pub synthetic: bool,
 }
+/// The global a top-level value's `let` binds, before its type is known.
+fn top_global(d: &Decls, t: &cpl_next_decls::decls::TopValue) -> Local {
+    Local {
+        name: d.syms.text(t.name).to_string(),
+        ty: Ty::Error,
+        top: true,
+        mutable: t.mutable,
+        fixed: false,
+        let_at: None,
+        synthetic: false,
+    }
+}
 pub struct TypedFn {
     pub self_local: Option<LocalId>,
     pub params: Vec<LocalId>,
@@ -475,6 +487,9 @@ struct Cx<'a> {
     copy: u32,
     globals: Vec<Local>,
     global_names: HashMap<String, LocalId>,
+    /// The global each top-level value (`Decls::top_values`, by `TopValueId`) binds, made before
+    /// any body is checked so a fn's range type may end at it wherever the fn is (R02.10.3).
+    top_slots: Vec<LocalId>,
     param_adds: HashMap<(FnId, usize), Vec<Member>>,
     /// What the top level and each body put in a global's set (`SetTy::Global`).
     global_adds: HashMap<(usize, usize), Vec<Member>>,
@@ -702,8 +717,9 @@ pub fn check(
         ids: prior.clone(),
         made: [0; 4],
         copy: 0,
-        globals: Vec::new(),
+        globals: d.top_values.iter().map(|t| top_global(d, t)).collect(),
         global_names: HashMap::new(),
+        top_slots: (0..d.top_values.len()).collect(),
         param_adds: HashMap::new(),
         global_adds: HashMap::new(),
         added: Vec::new(),
@@ -983,6 +999,20 @@ pub fn check(
                 false => errors,
             };
             deferred.insert(id, errors);
+        }
+    }
+    // Every top value's global is filled by its `let`; one left unfilled with no refusal to
+    // explain it is a checker ordering bug, reported rather than read as `Error`.
+    if cx.errors.is_empty() {
+        for (t, &g) in d.top_values.iter().zip(&cx.top_slots) {
+            if cx.globals[g].ty == Ty::Error {
+                let what = format!(
+                    "`{}`'s global was never filled by its `let`",
+                    d.syms.text(t.name)
+                );
+                cx.errors
+                    .push(Msg::at(t.item.at(Span::default()), Msg::internal(what)));
+            }
         }
     }
     let call_live = cx.adds_live();

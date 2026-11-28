@@ -1830,6 +1830,14 @@ def raw_int_range_alternation(root: Path) -> list[str]:
             for p in _rs_files(root, _rel(root, d / "src"))
             for i, l in enumerate(_lines(p), 1) if RAW_INT_RANGE_RE.search(l) and "RangeEnds" not in l]
 
+def catalogue_next_markers(root: Path) -> list[str]:
+    """A code row the error catalogue marks `*(next)*` (the legend doesn't count): a code only cpl-next emits, whose trigger
+    cpl-cli's catalogue test runs through cpl-next because old cpl is frozen (coordinator ruling
+    21:36; lane D's E0326). The switch landing makes cpl-next the `cpl`, so this goes to 0."""
+    cat = root / "spec/diagnostics.md"
+    return [f"spec/diagnostics.md:{i}" for i, l in enumerate(_lines(cat), 1)
+            if l.startswith("|") and "*(next)*" in l] if cat.is_file() else []
+
 
 DECLS_OP_ARM_RE = re.compile(r"\bTokenKind::(?:Plus|Minus|Star|StarStar|Slash|SlashSlash|Percent|Shl|Shr|"
                              r"Amp|Pipe|Caret|Tilde)\b[^=]*=>")
@@ -5150,6 +5158,11 @@ COUNTERS = {
     "raw_int_range_alternation": (
         "`Ty::Range(..) | Ty::RangeOf(_)` spelled out in cpl-next outside ir, not `is_int_range()` (Core)",
         raw_int_range_alternation,
+        True,
+    ),
+    "catalogue_next_markers": (
+        "error codes the catalogue marks `*(next)*`, emitted only by cpl-next until the switch (Core)",
+        catalogue_next_markers,
         True,
     ),
     "next_op_arms_outside_ir": ("new-pipeline `Intr::` match arms outside cpl-next-ir that are not a back end's machine primitive, or a primitive a back end lacks (Core)", next_op_arms_outside_ir, True),

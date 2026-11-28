@@ -227,6 +227,8 @@ pub mod codes {
     pub const NOT_A_TOKEN_TYPE: Code = Code("E0315");
     /// `x: 0..=n` in a struct with `n` read: layout never depends on input (R03.1.3).
     pub const FIELD_BOUND_FROM_INPUT: Code = Code("E0316");
+    /// `fn f(c: 1..=m)` with `var m`: only a top-level `let` may end a type (R02.10.3).
+    pub const RANGE_END_VAR: Code = Code("E0326");
     /// `@get fn f(self, k: Int)`: a getter's parameters all need defaults (R02.6.6).
     pub const GETTER_NEEDS_DEFAULTS: Code = Code("E0317");
     /// A `match` arm after one that matches everything (R01.7.3).

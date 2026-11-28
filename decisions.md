@@ -9644,6 +9644,12 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Why.** Coordinator ruling of 2026-11-27, 19:54 and 19:57.
 - **Reverse.** Spec `@!interactive` as a file directive beside `@!multitest`.
 
+## 671. A range type may end at a top-level `let` (spec, 2026-11-27)
+
+- **Call.** A range type anywhere, a signature and a field type included, may end at a value the program's top level binds with `let` (R02.10.3): `let m: 1..=1e4 = read()`, then `fn dump(..) -> 0..=m`, `c: 1..=m`, `[B]?1..=m`. Decls resolves the end to `End::Global { id, within }`, where `id` is the `TopValueId` of the `let` in `top_values` and `within` its declared range. `Ty::proven` reads proven bounds and storage width from `within`, the same path as constant ends. The checker reads the end as the global's slot where it checks a store, so lower, the engine and C++ see the same compares and `Int` storage as for `var i: 1..=n`, and agree by construction. A top-level `var` there is E0326, whose fix is `let`.
+- **Why.** Coordinator ruling of 2026-11-27, 21:23. Old cpl accepts it, and dmopc20c6p6's port uses it. It follows R04.4.25, where a domain's count may already be a module-level runtime value. The `let` is fixed before any fn runs, so the type is one range for the whole run. A `var` could change while a value of the type is live.
+- **Reverse.** Drop `End::Global` and write such bounds as `Int`, checking by hand.
+
 ## 668. `yield from e` stays, as `for x in e: yield x` (spec, 2026-11-27)
 
 - **Call.** `yield from e` in a `-> yields T` body is exactly `for x in e: yield x` (R06.3.6): `e` is any `Seq` of `T`, a generator value included, and `break`, `return` and steering act as in that loop; a recursive generator follows R06.3.3. `from` is a contextual word only right after `yield` and is the name `from` when `.`, `(` or `[` follows (`yield from.x` yields a field, `yield from(a)` a call), as the old parser read it. The grammar's `simple` gains the `yield` production it lacked.
