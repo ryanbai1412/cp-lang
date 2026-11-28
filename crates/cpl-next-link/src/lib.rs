@@ -39,6 +39,8 @@ struct Link<'a> {
     frame: Vec<CTy>,
     /// The trace role's instance for each type an event shows (`Program::shown`).
     shown: HashMap<CTy, InstKey>,
+    /// The closures whose captures are being read, so one met inside itself is not entered.
+    captures_busy: BTreeSet<InstKey>,
 }
 struct Env<'e> {
     targs: &'e [CTy],
@@ -132,8 +134,10 @@ fn closed_fn(d: &dyn Signatures, f: FnId) -> bool {
         && !matches!(fd.owner, Some(cpl_next_decls::decls::Owner::Trait(_)))
 }
 
-/// Given a type and how to read its parts, the type of a slot a value of it is lent in.
-pub type Lend = dyn Fn(CTy, &dyn Fn(&CTy) -> Vec<CTy>) -> CTy;
+/// Given a type, how to read its parts and what each closure in it captures, the type of a
+/// slot a value of it is lent in.
+pub type Lend =
+    dyn Fn(CTy, &dyn Fn(&CTy) -> Vec<CTy>, &dyn Fn(&InstKey) -> Option<Vec<CTy>>) -> CTy;
 
 /// What link reads, each answer by id: the views the query database serves per item.
 #[derive(Clone, Copy)]
@@ -171,6 +175,7 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
         globals: Vec::new(),
         frame: Vec::new(),
         shown: HashMap::new(),
+        captures_busy: BTreeSet::new(),
     };
     let none = Env {
         targs: &[],
@@ -490,7 +495,48 @@ impl Link<'_> {
             Ty::Mut(e) => self.ty(e, env),
             Ty::Lent(e) => match self.ty(e, env) {
                 CTy::Lent(t) => CTy::Lent(t),
-                t => (self.lent)(t, &|s| self.parts(s)),
+                t => {
+                    // What each closure a value of `t` can hold captures, as its instance has
+                    // them; one met inside its own captures is left out, so it holds storage.
+                    let mut caps: HashMap<InstKey, Vec<CTy>> = HashMap::new();
+                    let mut seen = BTreeSet::new();
+                    let mut todo = vec![t.clone()];
+                    while let Some(s) = todo.pop() {
+                        if !seen.insert(s.clone()) {
+                            continue;
+                        }
+                        let keys: Vec<InstKey> = match &s {
+                            CTy::Struct(..) => {
+                                todo.extend(self.parts(&s));
+                                continue;
+                            }
+                            CTy::Clo(k) => vec![(**k).clone()],
+                            CTy::Fn(_, _, ms) => ms.clone(),
+                            _ => continue,
+                        };
+                        let generic = self.generic;
+                        for k in keys {
+                            if caps.contains_key(&k) || self.captures_busy.contains(&k) {
+                                continue;
+                            }
+                            let Some(f) = generic.generic(&k.func) else {
+                                continue;
+                            };
+                            self.captures_busy.insert(k.clone());
+                            let env = Env {
+                                targs: &k.targs,
+                                sets: &k.sets,
+                            };
+                            let cs: Vec<CTy> = (f.params[..f.n_captures].iter())
+                                .map(|(l, _)| self.ty(&f.locals[*l], &env))
+                                .collect();
+                            self.captures_busy.remove(&k);
+                            todo.extend(cs.iter().cloned());
+                            caps.insert(k, cs);
+                        }
+                    }
+                    (self.lent)(t, &|s| self.parts(s), &|k| caps.get(k).cloned())
+                }
             },
             Ty::Param(i) | Ty::AnyRange(i) => match env.targs.get(*i) {
                 Some(CTy::Range(..) | CTy::RangeTo(..)) => CTy::Int,
