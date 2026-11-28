@@ -425,7 +425,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
 
     fn w(self, j: Int, i: Int) -> K = cost(nodes[j], nodes[i])
 
-    fn setup(mut self):
+    fn setup(mut self) where K: Zero:
         if top >= 0: return
         assert nodes.len > 0
         vals = List.filled(nodes.len, K.zero)
@@ -448,7 +448,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// ties: `var p = MongePath([0, 1, 2], (a, b) => b - a); p.next(); p.next().val == 2`
     /// traps: when every node has been reached (`len == nodes.len`)
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.next() == (val: 2, prev: 1)`
-    pub fn next(mut self) -> (val: K, prev: Int) where K: Ord:
+    pub fn next(mut self) -> (val: K, prev: Int) where K: Ord + Zero:
         self.setup()
         assert reached < nodes.len, "`MongePath.next`: every node has been reached"
         let rows = nodes.len - 1
@@ -520,7 +520,7 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     /// cost: \(O(1)\)
     /// traps: when `i < 0` or `i >= len`
     /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.val(1) == 1`
-    pub fn val(self, i: 0..) -> K:
+    pub fn val(self, i: 0..) -> K where K: Zero:
         assert 0 <= i < self.len
         if i == 0: K.zero else: vals[i]
     /// The number of nodes reached so far, `nodes.first` included, so a fresh `MongePath` has `len == 1`.

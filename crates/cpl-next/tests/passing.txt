@@ -2039,6 +2039,7 @@ std-bag/sortedset-last-1.cp
 std-bag/sortedset-last_true-1.cp
 std-bag/sortedset-len-1.cp
 std-bag/stale-cursor-traps-after-the-bag-empties.cp
+std-bag/sum-needs-element-zero.cp
 std-bitset/a-domain-is-no-bitset.cp
 std-bitset/and-of-disjoint-is-empty.cp
 std-bitset/bitor-bitand-bitxor-empty.cp

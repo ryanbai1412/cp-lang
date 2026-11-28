@@ -146,7 +146,7 @@ pub const subset = Disjoint()
 /// example: `convolve([0, 1, 1, 1], [0, 1, 1, 1], on: lcm) == [0, 1, 3, 3]`
 /// example: `convolve([0, 1, 3], [0, 2, 5], over: Semiring(min, +), shape: Both) == [0, 1, 3, 5, 8]`
 /// example: `let e: List<Int> = []; convolve([1, 2], e) == []`
-pub fn convolve<T: Add + Sub + Mul, O, R>(
+pub fn convolve<T: Add + Sub + Mul + Zero, O, R>(
     a: List<T>,
     b: List<T>,
     on: O = +,

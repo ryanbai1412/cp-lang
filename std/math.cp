@@ -1412,7 +1412,7 @@ pub fn bit_subsets(n: 0.., k: Int) -> yields Int:
 /// traps: when `n < 0`, or `a.len` or `b.len` is below `n + 1`
 /// example: `dirichlet_convolve([0, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, 2, 2, 3, 2, 4]`
 /// example: `dirichlet_convolve([0, 1, 2, 3], [0, 1, 0, 0], 3) == [0, 1, 2, 3]`
-pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: 0..) -> List<T>:
+pub fn dirichlet_convolve<T: Add + Mul + Zero>(a: List<T>, b: List<T>, n: 0..) -> List<T>:
     assert n >= 0, "dirichlet_convolve requires n >= 0"
     assert a.len >= n + 1 and b.len >= n + 1, "dirichlet_convolve requires a.len and b.len >= n + 1"
     var c = List.filled(n + 1, T.zero)
@@ -1431,7 +1431,7 @@ pub fn dirichlet_convolve<T: Add + Mul>(a: List<T>, b: List<T>, n: 0..) -> List<
 /// order: `b[k]` at key `k`, `k` in `0..=n`; a new `List`
 /// traps: when `n < 0`, `a.len < n + 1`, or `a[1]` is not invertible
 /// example: `dirichlet_inv([0, 1, 1, 1, 1, 1, 1], 6) == [0, 1, -1, -1, 0, -1, 1]`
-pub fn dirichlet_inv<T: Sub + Mul + Div>(a: List<T>, n: 0..) -> List<T>:
+pub fn dirichlet_inv<T: Sub + Mul + Div + Zero + One>(a: List<T>, n: 0..) -> List<T>:
     assert n >= 0, "dirichlet_inv requires n >= 0"
     var b = List.filled(n + 1, T.zero)
     if n == 0: return b
@@ -1468,7 +1468,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     /// empty: `var ds = DirichletSum<Int>(10, [], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// traps: when `n < 0`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
-    pub fn new(n: 0.., f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>:
+    pub fn new(n: 0.., f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T> where T: Zero:
         assert n >= 0, "DirichletSum requires n >= 0"
         var pre = List.filled(max(f_small.len, 1), T.zero)
         for k in 1..f_small.len: pre[k] = pre[k - 1] + f_small[k]
@@ -1491,7 +1491,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
     /// traps: when `m` is outside `0..=n`, or `g(1)` is not invertible
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4], m => m, m => m * (m + 1) / 2); ds.sum(10) == 32`
     /// example: `var ds = DirichletSum<Int>(10, [0, 1, 1, 2, 2], m => m, m => m * (m + 1) / 2); ds.sum(0) == 0`
-    pub fn sum(mut self, m: Int) -> T:
+    pub fn sum(mut self, m: Int) -> T where T: One:
         assert 0 <= m <= self.n, "DirichletSum.sum requires m in 0..=n"
         if m < self.pre.len: return self.pre[m]
         if let v = self.memo.get(m): return v
@@ -1566,7 +1566,7 @@ fn du_limit(n: Int) -> Int:
 /// traps: when `n < 0`, or `prime_sum.len` is not the number of distinct `n / i`
 /// example: `sum_multiplicative(10, (p, e, pe) => 1, [0, 1, 2, 3, 4]) == 10`
 /// example: `sum_multiplicative(10, (p, e, pe) => e + 1, [0, 2, 4, 6, 8]) == 27`
-pub fn sum_multiplicative<T: Add + Sub + Mul>(
+pub fn sum_multiplicative<T: Add + Sub + Mul + Zero + One>(
     n: Int,
     prime_pow: (Int, Int, Int) -> T,
     prime_sum: List<T>,

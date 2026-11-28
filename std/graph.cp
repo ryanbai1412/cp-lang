@@ -1217,7 +1217,7 @@ pub struct Paths<V, W: Add, A>:
     /// order: keyed by `V`; each list in arc order; unreached vertices get `[]`
     /// traps: never
     /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; let t = bfs(g, from: [V(0)]).tight(g); t[0] == [1, 2] and t[2] == [3] and t[3] == []`
-    pub fn tight<>(self, g: Next<V>) -> [V]List<A>:
+    pub fn tight<>(self, g: Next<V>) -> [V]List<A> where W: One:
         var res: [V]List<A> = []
         for u in V:
             if let du = dist[u]:
@@ -1446,7 +1446,7 @@ pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M>(
 /// ties: `domain S = 0..3; let p = fixed_cost_paths([S(0)], [10, 20], cost: m => 1, step: (m, s) => if s == S(0): Some(S(2)) else: None); p.arcs(2) == Some([10])`
 /// traps: on a negative cost
 /// example: `domain S = 0..5; let p = fixed_cost_paths([S(0)], [1, 2], cost: m => if m == 1: 1 else: 3, step: (m, s) => if Int(s) + m < 5: Some(S(Int(s) + m)) else: None); p[4] == Some(4) and p[2] == Some(2)`
-pub fn fixed_cost_paths<S, M, W: Add + Ord>(
+pub fn fixed_cost_paths<S, M, W: Add + Ord + Zero>(
     from: List<S>,
     moves: List<M>,
     cost: M -> W,
@@ -2286,7 +2286,7 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 4), (u: 0, v: 2, w: 5), (u: 2, v: 1, w: -3)]; let d = johnson(Graph.directed(es))!; d[0, 1] == Some(2) and d[1, 0] == None and d[1, 1] == Some(0)`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; johnson(Graph.directed(es)) == None`
-pub fn johnson<V, W: Add + Sub + Ord>(g: WeightedNext<V, W>) -> ?[V, V]?W:
+pub fn johnson<V, W: Add + Sub + Ord + Zero>(g: WeightedNext<V, W>) -> ?[V, V]?W:
     var h: [V]W = W.zero
     for round in 0..V.count:
         var changed = false
@@ -2326,7 +2326,7 @@ pub fn johnson<V, W: Add + Sub + Ord>(g: WeightedNext<V, W>) -> ?[V, V]?W:
 /// traps: on a negative weight
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: 1)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [1, 3, 5]`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 7)]; k_shortest(Graph.directed(es), from: [V(0)], to: V(1), k: 3) == [7]`
-pub fn k_shortest<V, W: Add + Ord>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W>:
+pub fn k_shortest<V, W: Add + Ord + Zero>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k: Int) -> List<W>:
     var ans = List<W>()
     if k <= 0: return ans
     var rev: [V]List<(V, W)> = []
@@ -2376,7 +2376,7 @@ pub fn k_shortest<V, W: Add + Ord>(g: WeightedNext<V, W>, from: Seq<V>, to: V, k
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V, w: Int) = [(u: 2, v: 0, w: 1), (u: 0, v: 1, w: 1), (u: 1, v: 0, w: -2)]; negative_cycle(Graph.directed(es))!.len == 2`
 /// example: `domain V = 0..2; domain E = 0..2; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 1), (u: 1, v: 0, w: -1)]; negative_cycle(Graph.directed(es)) == None`
-pub fn negative_cycle<V, W: Add, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
+pub fn negative_cycle<V, W: Add + Zero, G: WeightedNext<V, W>>(g: G) -> ?List<G.Arc>:
     var dist: [V]W = W.zero
     var par: [V]?V = None
     var par_arc: [V]?G.Arc = None
@@ -2547,7 +2547,7 @@ pub fn dag_fold<V, T, M, G: Next<V>>(g: G, init: V -> T, step: (T, G.Arc) -> T, 
 /// order: keyed by `V`
 /// traps: on overflow of `T`, as its arithmetic does
 /// example: `domain V = 0..4; let g: [V]List<V> = [[1, 2], [3], [3], []]; count_paths::<Int>(g, from: [V(0)]) == Some([1, 1, 1, 2])`
-pub fn count_paths<T: Add, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
+pub fn count_paths<T: Add + Zero + One, V>(g: Next<V>, from: Seq<V>) -> ?[V]T:
     let ord = topo(g) ?? return None
     var dp: [V]T = T.zero
     for s in from: dp[s] = T.one
@@ -3269,7 +3269,7 @@ pub fn kruskal<V, E, W, R: (u: V, v: V, w: W, ..), K: Ord>(
 /// ties: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[0, 2] = Some(1); w[2, 0] = Some(1); w[1, 2] = Some(1); w[2, 1] = Some(1); prim(w) == Some((total: 2, parent: [None, Some(0), Some(0)]))`
 /// traps: never
 /// example: `domain V = 0..3; var w: [V, V]?Int = None; w[0, 1] = Some(1); w[1, 0] = Some(1); w[1, 2] = Some(2); w[2, 1] = Some(2); w[0, 2] = Some(5); w[2, 0] = Some(5); prim(w) == Some((total: 3, parent: [None, Some(0), Some(1)]))`
-pub fn prim<V, W: Ord>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
+pub fn prim<V, W: Ord + Zero>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
     var parent: [V]?V = None
     var best: [V]?W = None
     var done: [V]Bool = false
@@ -3358,7 +3358,7 @@ pub fn boruvka<V, C, W>(
 /// traps: never
 /// example: `domain V = 0..3; domain E = 0..4; let es: [E](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 0, v: 2, w: 1), (u: 2, v: 1, w: 1), (u: 1, v: 2, w: 1)]; arborescence(es, root: V(0)) == Some((total: 2, parent: [None, Some(2), Some(1)]))`
 /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V, w: Int) = [(u: 1, v: 0, w: 1)]; arborescence(es, root: V(0)) == None`
-pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(
+pub fn arborescence<V, E, W: Add + Sub + Zero, R: (u: V, v: V, w: W, ..)>(edges: [E]R, root: V) -> ?(
     total: W,
     parent: [V]?E,
 ):
@@ -3456,7 +3456,7 @@ struct ArbHeap<W>:
     var r: List<Int>
     var rank: List<Int>
 
-fn arb_push<W: Add + Sub>(mut h: ArbHeap<W>, a: Int):
+fn arb_push<W: Add + Sub + Zero>(mut h: ArbHeap<W>, a: Int):
     let d = h.lazy[a]
     h.w[a] += d
     if h.l[a] >= 0: h.lazy[h.l[a]] += d

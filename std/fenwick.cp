@@ -24,7 +24,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// traps: never
     /// example: `Fenwick([1, 2, 3]).all == 6`
     /// example: `Fenwick<0..3, Int>().all == 0`
-    pub fn new(a: ?[D]T = None) -> Fenwick<D, T>:
+    pub fn new(a: ?[D]T = None) -> Fenwick<D, T> where T: Zero:
         var t = List.filled(D.count + 1, T.zero)
         if let init = a:
             for i in D:
@@ -55,7 +55,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// example: `Fenwick([1, 2, 3]).prefix((0..2).r) == 3`
     /// example: `Fenwick([1, 2, 3]).prefix((0..0).r) == 0`
     @lint(hand_rolled_range_tree, from: "while b > 0:\n    s += t[b]\n    b -= b & -b", to: "s += t.prefix(b)", holes: "s, t")
-    pub fn prefix(self, b: Cut<D>) -> T:
+    pub fn prefix(self, b: Cut<D>) -> T where T: Zero:
         var p = b.ord
         var acc = T.zero
         while p > 0:
@@ -178,7 +178,7 @@ pub struct Fenwick<D, T: Add + Sub>:
     /// cost: \(O(\lvert D \rvert)\)
     /// traps: never
     /// example: `var f = Fenwick([1, 2, 3]); f.clear(); f.all == 0`
-    pub fn clear(mut self):
+    pub fn clear(mut self) where T: Zero:
         for p in 0..t.len: t[p] = T.zero
 
 /// Point add and rectangle sum on a grid. `add` and `sum` are \(O(\log R \cdot \log C)\);
@@ -191,7 +191,7 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
     /// cost: \(O(\lvert R \rvert \lvert C \rvert)\) time; memory (|R| + 1)(|C| + 1) values
     /// traps: never
     /// example: `Fenwick2D<0..2, 0..2, Int>().fold(0..2, 0..2) == 0`
-    pub fn new() -> Fenwick2D<R, C, T> = Fenwick2D(List.filled((R.count + 1) * (C.count + 1), T.zero))
+    pub fn new() -> Fenwick2D<R, C, T> where T: Zero = Fenwick2D(List.filled((R.count + 1) * (C.count + 1), T.zero))
 
     /// Add `x` to the cell `(r, c)`: `a[r, c] += x`.
     ///
@@ -207,7 +207,7 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
                 q += q & -q
             p += p & -p
 
-    fn corner(self, r: Int, c: Int) -> T:
+    fn corner(self, r: Int, c: Int) -> T where T: Zero:
         var acc = T.zero
         var p = r
         while p > 0:
@@ -258,7 +258,7 @@ pub struct Fenwick2D<R, C, T: Add + Sub>:
     /// cost: \(O(\lvert R \rvert \lvert C \rvert)\)
     /// traps: never
     /// example: `var f = Fenwick2D<0..2, 0..2, Int>(); f.add(1, 1, 2); f.clear(); f.get(1, 1) == 0`
-    pub fn clear(mut self):
+    pub fn clear(mut self) where T: Zero:
         for p in 0..t.len: t[p] = T.zero
 
 /// Range add and point get via a difference Fenwick tree.
@@ -275,7 +275,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
     /// order: positions keep the domain `D` (of `a`, when given)
     /// traps: never
     /// example: `DualFenwick([1, 2, 3]).get(2) == 3`
-    pub fn new(a: ?[D]T = None) -> DualFenwick<D, T>:
+    pub fn new(a: ?[D]T = None) -> DualFenwick<D, T> where T: Zero:
         var f = DualFenwick(List.filled(D.count + 1, T.zero))
         if let init = a:
             var prev = T.zero
@@ -301,7 +301,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
     /// traps: when a non-empty `r` reaches outside `D`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(0..2, 10); d.get(1) == 12`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(0..2, 10); d.get(2) == 3`
-    pub fn add(mut self, r: Range<D>, x: T):
+    pub fn add(mut self, r: Range<D>, x: T) where T: Zero:
         let (lo, hi) = r.ends
         if lo == hi: return
         self.add_at(lo + 1, x)
@@ -313,7 +313,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
     /// cost: \(O(\log \lvert D \rvert)\)
     /// traps: when `i` is outside `D`
     /// example: `var d = DualFenwick([1, 2, 3]); d.add(1..3, 5); d.get(1) == 7`
-    pub fn get(self, i: D) -> T:
+    pub fn get(self, i: D) -> T where T: Zero:
         var p = i.ord + 1
         var acc = T.zero
         while p > 0:
@@ -326,7 +326,7 @@ pub struct DualFenwick<D, T: Add + Sub>:
     /// cost: \(O(\lvert D \rvert)\)
     /// traps: never
     /// example: `var d = DualFenwick([1, 2, 3]); d.clear(); d.get(0) == 0`
-    pub fn clear(mut self):
+    pub fn clear(mut self) where T: Zero:
         for p in 0..t.len: t[p] = T.zero
 
 /// Range add and range sum over `Int` with two difference Fenwick trees (`d[i]` and
@@ -506,7 +506,7 @@ pub struct SparseFenwick2D<T: Add + Sub>:
     /// cost: \(O(n \log n)\) for `n` registered points; memory \(O(n \log n)\)
     /// traps: when called a second time
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.fold(1..2, 2..3) == 0`
-    pub fn build(mut self):
+    pub fn build(mut self) where T: Zero:
         assert not built, "`build` called twice"
         built = true
         var all_x: List<Int> = [x for (x, _) in pts]
@@ -542,7 +542,7 @@ pub struct SparseFenwick2D<T: Add + Sub>:
                 j += j & -j
             i += i & -i
 
-    fn corner(self, x: Int, y: Int) -> T:
+    fn corner(self, x: Int, y: Int) -> T where T: Zero:
         var acc = T.zero
         var i = lower_bound(xs, x)
         while i > 0:
@@ -561,7 +561,7 @@ pub struct SparseFenwick2D<T: Add + Sub>:
     /// traps: before `build`
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.add_point(3, 4); f.build(); f.add(1, 2, 5); f.add(3, 4, 7); f.fold(0..10, 3..5) == 7`
     /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.add(1, 2, 5); f.fold(2..2, 0..10) == 0`
-    pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T:
+    pub fn fold(self, xs: Range<Int>, ys: Range<Int>) -> T where T: Zero:
         assert built, "`fold` before `build`"
         if xs.start >= xs.end or ys.start >= ys.end: return T.zero
         self.corner(xs.end, ys.end) - self.corner(xs.start, ys.end) - self.corner(

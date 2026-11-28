@@ -173,7 +173,7 @@ pub struct Mat<T>:
     /// traps: never
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).sum() == 10`
     /// example: `domain V = 0..2; Mat([V, V] (i, j) => Some(Int(i) + Int(j)), over: Semiring(max, +)).sum() == Some(2)`
-    pub fn sum(self) -> T:
+    pub fn sum(self) -> T where T: Zero:
         if T: Add:
             if ring == None:
                 var s = T.zero
@@ -251,7 +251,7 @@ pub struct Mat<T>:
     /// order: indexed by row
     /// traps: when `v.len != cols`
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).mul_vec([1, 1]) == [3, 7]`
-    pub fn mul_vec(self, v: List<T>) -> List<T>:
+    pub fn mul_vec(self, v: List<T>) -> List<T> where T: Zero:
         assert v.len == cols, "vector length must match matrix columns"
         if self.sentinel: return Mat(rows, cols, self.data, ring).mul_vec(v)
         if T: Add:
@@ -631,7 +631,7 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square
     /// example: `let a = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).adjugate(); a.get(0, 0) == Mod<7>(4) and a.get(0, 1) == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[5]]).adjugate().get(0, 0) == Mod<7>(1)`
-    pub fn adjugate(self) -> Mat<T> where T: Mul + Div:
+    pub fn adjugate(self) -> Mat<T> where T: Mul + Div + One + Zero:
         assert rows == cols, "adjugate requires a square matrix"
         let n = rows
         if n == 0: return Mat(0, 0, List<T>())
@@ -684,7 +684,7 @@ impl<T: Sub> Sub for Mat<T>:
         assert a.rows == b.rows and a.cols == b.cols
         Mat(a.rows, a.cols, [a.cells[i] - b.cells[i] for i in 0..a.cells.len])
 
-impl Mul for Mat<T>:
+impl Mul for Mat<T: Zero>:
     fn mul(a, b) -> Mat<T>:
         assert a.cols == b.rows, "matrix dimensions do not match for multiplication"
         let (r, m, c) = (a.rows, a.cols, b.cols)

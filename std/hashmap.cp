@@ -433,7 +433,7 @@ pub struct Counter<K, V: Add = Int>:
     /// empty: `var c: Counter<Char, Int> = Counter(); c.total() == 0`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `Counter.of([1, 1, 2]).total() == 3`
-    pub fn total(self) -> V:
+    pub fn total(self) -> V where V: Zero:
         let t = V.zero + sum(v for (_, v) in m.items)
         t
 

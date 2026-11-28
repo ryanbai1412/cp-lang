@@ -805,14 +805,14 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == Some(0)`
-    @get pub fn one() -> Poly<T> = Poly([T.one])
+    @get pub fn one() -> Poly<T> where T: One = Poly([T.one])
 
     /// The indeterminate `x`: coefficients `[0, 1]`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Poly<Int>.x.deg() == Some(1) and Poly<Int>.x.at(1) == 1`
-    @get pub fn x() -> Poly<T> = Poly([T.zero, T.one])
+    @get pub fn x() -> Poly<T> where T: Zero + One = Poly([T.zero, T.one])
 
     /// The number of stored coefficients, trailing zeros included.
     ///
@@ -847,7 +847,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// empty: `Poly<Int>([]).deg() == None`
     /// example: `Poly<Int>([1, 2, 0]).deg() == Some(1)`
     /// example: `Poly<Int>([0, 0]).deg() == None`
-    pub fn deg(self) -> ?Int:
+    pub fn deg(self) -> ?Int where T: Zero:
         var d = c.len - 1
         while d >= 0 and c[d] == T.zero: d -= 1
         if d < 0: None else: Some(d)
@@ -864,14 +864,14 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: \(O(1)\)
     /// traps: when `i < 0`
     /// example: `Poly<Int>([1, 2]).at(1) == 2 and Poly<Int>([1, 2]).at(5) == 0`
-    pub fn at(self, i: 0..) -> T = if 0 <= i < c.len: c[i] else: T.zero
+    pub fn at(self, i: 0..) -> T where T: Zero = if 0 <= i < c.len: c[i] else: T.zero
 
     /// Write coefficient `i`, growing with zeros if needed.
     ///
     /// cost: \(O(1)\), or \(O(i)\) when it grows
     /// traps: when `i < 0`
     /// example: `var p = Poly<Int>([1]); p.set(3, 7); p.len == 4 and p.at(2) == 0 and p.at(3) == 7`
-    pub fn set(mut self, i: 0.., v: T):
+    pub fn set(mut self, i: 0.., v: T) where T: Zero:
         assert i >= 0
         while c.len <= i: c.push(T.zero)
         c[i] = v
@@ -892,7 +892,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: \(O(n)\)
     /// traps: when `T` cannot divide by some `k` in `1..=n` (`n >= P` for `Mod<P>`)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 3]).integral().at(3) == Z(1)`
-    pub fn integral(self) -> Poly<T>:
+    pub fn integral(self) -> Poly<T> where T: Zero:
         if c.is_empty: return Poly([])
         let out = [T.zero] + [c[i] / T.from_int(i + 1) for i in 0..c.len]
         Poly(out)
@@ -924,7 +924,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\)
     /// traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, -1]).inv(3).at(2) == Z(1)`
-    pub fn inv(self, n: Int) -> Poly<T>:
+    pub fn inv(self, n: Int) -> Poly<T> where T: Zero + One:
         assert n >= 0, "Poly.inv requires n >= 0"
         if n == 0: return Poly([])
         assert self.at(0) != T.zero, "Poly.inv requires self.at(0) != 0"
@@ -939,7 +939,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\)
     /// traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).log(3).at(2) == Z(-1)`
-    pub fn log(self, n: Int) -> Poly<T>:
+    pub fn log(self, n: Int) -> Poly<T> where T: One:
         assert n >= 0, "Poly.log requires n >= 0"
         if n == 0: return Poly([])
         assert self.at(0) == T.one, "Poly.log requires self.at(0) == 1"
@@ -950,7 +950,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n \log n)\) for a `FastProduct` `T` (as `Mod<P>`), else \(O(n^2)\)
     /// traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 2]).exp(3).at(2) == Z(2)`
-    pub fn exp(self, n: Int) -> Poly<T>:
+    pub fn exp(self, n: Int) -> Poly<T> where T: Zero:
         assert n >= 0, "Poly.exp requires n >= 0"
         if n == 0: return Poly([])
         assert self.at(0) == T.zero, "Poly.exp requires self.at(0) == 0"
@@ -976,7 +976,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: Newton doubling over `*` and `inv`: \(O(n \log n)\) for a `FastProduct` `T`, else \(O(n^2 \log n)\), plus one `T.sqrt()`
     /// traps: when `n < 0` or `n >= 2^31`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
-    pub fn sqrt(self, n: Len) -> ?Poly<T>:
+    pub fn sqrt(self, n: Len) -> ?Poly<T> where T: Zero + One:
         if n == 0: return Some(Poly([]))
         var d = 0
         while d < n and self.at(d) == T.zero: d += 1
@@ -997,7 +997,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// cost: \(O(n)\)
     /// traps: never
     /// example: `Poly<Int>([1, 2, 3]).eval(2) == 17`
-    pub fn eval(self, x: T) -> T:
+    pub fn eval(self, x: T) -> T where T: Zero:
         var acc = T.zero
         for i in (0..c.len).rev: acc = acc * x + c[i]
         acc
@@ -1012,7 +1012,7 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// traps: over `Int`, when a coefficient of some `(x + c)^m` or a partial sum overflows, even if
     /// the result's coefficients fit
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 0, 1]).shift(Z(1)).at(1) == Z(2)`
-    pub fn shift(self, c: T) -> Poly<T>:
+    pub fn shift(self, c: T) -> Poly<T> where T: One:
         var pw = [Poly([c, T.one])]
         while (1 << pw.len) < self.len: pw.push(pw.last! * pw.last!)
         self.shift_split(pw).truncated(self.len)
@@ -1036,7 +1036,7 @@ impl<T: Div + Add> Add for Poly<T>:
 impl<T: Div + Sub> Sub for Poly<T>:
     fn sub(a, b) = Poly([a.at(i) - b.at(i) for i in 0..max(a.len, b.len)])
 
-impl<T: Div + Sub> Neg for Poly<T>:
+impl<T: Div + Sub + Zero> Neg for Poly<T>:
     fn neg(a) = Poly([T.zero - a.at(i) for i in 0..a.len])
 
 impl<T: Div + Add + Sub + Mul> Mul for Poly<T>:
@@ -1045,7 +1045,7 @@ impl<T: Div + Add + Sub + Mul> Mul for Poly<T>:
 /// The quotient of polynomial long division; the divisor is not zero.
 ///
 /// trap: `Poly<Int>([1, 2]) / Poly<Int>.zero`
-impl<T: Div + Sub + Mul> Div for Poly<T>:
+impl<T: Div + Sub + Mul + One + Zero> Div for Poly<T>:
     fn div(a, b):
         assert not b.is_zero(), "Poly division by the zero polynomial"
         let db = b.deg()!

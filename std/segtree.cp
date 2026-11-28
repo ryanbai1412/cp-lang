@@ -1706,7 +1706,7 @@ pub struct MergeTrees<D, Z: Add + Mul>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
-    pub fn new() -> MergeTrees<D, Z> = MergeTrees([MergeNode(sm: Z.zero, tag: Z.one)])
+    pub fn new() -> MergeTrees<D, Z> where Z: Zero + One = MergeTrees([MergeNode(sm: Z.zero, tag: Z.one)])
 
     /// Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool:
     /// a `set` and the `merge`s that later split its position off add at most
@@ -1727,18 +1727,18 @@ pub struct MergeTrees<D, Z: Add + Mul>:
         _nodes[u].sm *= k
         _nodes[u].tag *= k
 
-    fn down(mut self, u: Int):
+    fn down(mut self, u: Int) where Z: One:
         let k = _nodes[u].tag
         self.scale_node(_nodes[u].l, k)
         self.scale_node(_nodes[u].r, k)
         _nodes[u].tag = Z.one
 
-    fn chain(mut self, k: Int, v: Z) -> Int:
+    fn chain(mut self, k: Int, v: Z) -> Int where Z: One:
         _nodes.push(MergeNode(l: k, r: MERGE_CHAIN, sm: v, tag: Z.one))
         _nodes.len - 1
 
     // Gives the chain node c over lo..hi one child, the chain one level down.
-    fn split(mut self, c: Int, lo: Int, hi: Int):
+    fn split(mut self, c: Int, lo: Int, hi: Int) where Z: One:
         let k = _nodes[c].l
         let w = self.chain(k, _nodes[c].sm)
         (_nodes[c].l, _nodes[c].r) = if k < (lo + hi) / 2: (w, 0) else: (0, w)
@@ -1767,7 +1767,7 @@ pub struct MergeTrees<D, Z: Add + Mul>:
         u
 
     // The sum over the positions before b, walking one root-to-leaf path.
-    fn prefix(self, root: Int, b: Int) -> Z:
+    fn prefix(self, root: Int, b: Int) -> Z where Z: One + Zero:
         var (u, lo, hi, k, s) = (root, 0, D.count, Z.one, Z.zero)
         while u != 0 and lo < b:
             if hi <= b or _nodes[u].r == MERGE_CHAIN and _nodes[u].l < b:
@@ -1782,7 +1782,7 @@ pub struct MergeTrees<D, Z: Add + Mul>:
                 (u, lo) = (_nodes[u].r, mid)
         s
 
-    fn part(self, u: Int, lo: Int, hi: Int, a: Int, b: Int) -> Z:
+    fn part(self, u: Int, lo: Int, hi: Int, a: Int, b: Int) -> Z where Z: Zero:
         if u == 0 or b <= lo or hi <= a: return Z.zero
         if a <= lo and hi <= b: return _nodes[u].sm
         if _nodes[u].r == MERGE_CHAIN:
@@ -1801,7 +1801,7 @@ pub struct MergeTrees<D, Z: Add + Mul>:
         pa: Z,
         pb: Z,
         leaf: (Z, Z, Z, Z) -> Z,
-    ) -> Int:
+    ) -> Int where Z: One + Zero:
         if b == 0:
             self.scale_node(a, leaf(Z.one, Z.zero, pa, pb))
             return a

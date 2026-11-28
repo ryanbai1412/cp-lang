@@ -757,7 +757,7 @@ pub struct SortedBag<K: Ord>:
     /// empty: `SortedBag<Int>().sum() == 0`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `SortedBag.of([2, 2, 5]).sum() == 9`
-    pub fn sum(self) -> K:
+    pub fn sum(self) -> K where K: Add + Zero:
         var t = K.zero
         for (k, c) in self.entries():
             for _ in 0..c: t = t + k

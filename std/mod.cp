@@ -19,8 +19,6 @@ use std.range.{Len}
 pub struct Mod<P>(pub v: 0..P):
     /// The modulus: `Z.MOD`.
     let MOD = P
-    let zero = Mod(0)
-    let one = Mod(1 % P)
 
     /// Any `Int`, reduced into `0..P` by Euclidean remainder: `Mod<7>(-1)` is 6.
     ///
@@ -122,6 +120,12 @@ pub struct Mod<P>(pub v: 0..P):
             out[i] = acc * pre[i]
             acc *= xs[i]
         out
+
+impl Zero for Mod<P>:
+    @get fn zero() -> Mod<P> = Mod(0)
+
+impl One for Mod<P>:
+    @get fn one() -> Mod<P> = Mod(1 % P)
 
 impl Add for Mod<P>:
     // Reduce first and test the sign: one sum and a select, where comparing the sum
