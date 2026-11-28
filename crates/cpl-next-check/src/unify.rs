@@ -1,5 +1,6 @@
 //! Type and function-set variables: unification, coercion, display.
 
+use super::member::Called;
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
@@ -904,12 +905,10 @@ impl<'a> Cx<'a> {
                     span,
                 };
                 let (lo, k, m) = (*lo, *k, *m);
-                let name = ast::Name {
-                    text: self.d.f(m).name.clone(),
-                    span,
-                };
-                let Some(end) = self.domain_fn_of((**d).clone(), m, &name, None, span) else {
-                    let what = format!("`{}` has no `{}`", self.show(d), name.text);
+                let text = self.d.f(m).name.clone();
+                let name = Called { text: &text, span };
+                let Some(end) = self.domain_fn_of((**d).clone(), m, name, None, span) else {
+                    let what = format!("`{}` has no `{}`", self.show(d), text);
                     self.err(span, Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, what));
                     return TExpr { ty: want_s, ..e };
                 };
@@ -1208,7 +1207,7 @@ pub fn show_ty(
     items: &dyn cpl_next_decls::views::Items,
     option: Option<StructId>,
     domains: &[DomInfo],
-    generics: &[String],
+    generics: &[Sym],
     resolve: &dyn Fn(&Ty) -> Ty,
     t: &Ty,
 ) -> String {
@@ -1270,7 +1269,7 @@ pub fn show_ty(
             show(&r)
         ),
         Ty::Clo(_) => "a function".into(),
-        Ty::Param(i) => generics.get(i).cloned().unwrap_or("?".into()),
+        Ty::Param(i) => (generics.get(i)).map_or("?".into(), |g| items.text(*g).to_string()),
         Ty::Dom(d) => domains[d].name.clone(),
         Ty::Var(_) => "_".into(),
         Ty::Error => "<error>".into(),
