@@ -97,7 +97,7 @@ impl<'a> Cx<'a> {
     fn operator_trait(&self, text: &str, binary: bool, t: &Ty) -> Option<(TraitId, String, FnId)> {
         let found = self.d.operator_traits(text).find_map(|tr| {
             let (n, m) = self.d.operator_method(tr)?;
-            (self.d.f(m).params.len() == usize::from(binary)).then(|| (tr, n.to_string(), m))
+            (self.items.f(m).params.len() == usize::from(binary)).then(|| (tr, n.to_string(), m))
         })?;
         let applies = match self.shallow(t) {
             // An unbounded parameter's `+` is a missing bound, unless it is a position (R08.2.2).
@@ -201,7 +201,7 @@ impl<'a> Cx<'a> {
     ) -> FnRef {
         self.reach(decl);
         let ctx = self.ctx_copy(decl);
-        let f = self.d.f(decl);
+        let f = self.items.f(decl);
         // An impl parameter only a bound names that the receiver's type cannot fix (`K` of
         // `impl<S: Indexed<K, T>, K, T>` on a `Slice<S>` of a type parameter) is left to the bound.
         let mut targs: Vec<Ty> = (given_tys.into_iter())
@@ -251,7 +251,7 @@ impl<'a> Cx<'a> {
         };
         let f = self.fnref(decl, Vec::new(), Vec::new());
         let ty = self.ret_ty(&f);
-        let fd = self.d.f(f.decl);
+        let fd = self.items.f(f.decl);
         let sub = Subst {
             tys: &f.targs,
             sets: &f.sets,
@@ -315,7 +315,7 @@ impl<'a> Cx<'a> {
             CmpOp::In | CmpOp::NotIn => return mk(TK::Error, Ty::Error),
         };
         let ops: Vec<TraitId> = self.d.operator_traits(token).collect();
-        let named = (ops.iter().copied()).find(|&tr| self.d.seen(self.d.t(tr).module));
+        let named = (ops.iter().copied()).find(|&tr| self.d.seen(self.items.t(tr).module));
         let Some((named, method)) = named.and_then(|tr| Some((tr, self.d.operator_method(tr)?.0)))
         else {
             let msg = format!(
@@ -325,7 +325,7 @@ impl<'a> Cx<'a> {
             self.err(span, Msg::verdict(cpl_diag::codes::MISSING_IMPL, msg));
             return mk(TK::Error, Ty::Error);
         };
-        let trait_name = self.d.t(named).name.clone();
+        let trait_name = self.items.t(named).name.clone();
         let swap = matches!(op, CmpOp::Gt | CmpOp::Le);
         let mut pre = Vec::new();
         let a = if swap && !matches!(a.kind, TK::Var(_)) {
@@ -348,7 +348,7 @@ impl<'a> Cx<'a> {
                     })
                 });
             tr.map(|tr| {
-                if let Some(m) = self.d.member(&self.d.t(tr.tr).methods, method) {
+                if let Some(m) = self.d.member(&self.items.t(tr.tr).methods, method) {
                     self.reach(m);
                 }
                 let arg = self.coerce(arg, &rt);
@@ -372,7 +372,7 @@ impl<'a> Cx<'a> {
         {
             let f = self.fnref(m, ts, ss);
             let ty = self.ret_ty(&f);
-            let fd = self.d.f(f.decl);
+            let fd = self.items.f(f.decl);
             let sub = Subst {
                 tys: &f.targs,
                 sets: &f.sets,
@@ -380,7 +380,7 @@ impl<'a> Cx<'a> {
             let param = fd.params.first().map_or(Ty::Error, |p| sub.ty(&p.ty));
             // The impl's own bounds hold too: `?T`'s `==` needs `T: Eq` (R08.1.5).
             if let Some(decls::Owner::Impl(k)) = fd.owner {
-                let im = self.d.imp(k);
+                let im = self.items.imp(k);
                 if !im.bounds.is_empty() {
                     let tr = decls::TraitRef {
                         tr: im.trait_.tr,
@@ -404,7 +404,7 @@ impl<'a> Cx<'a> {
         };
         let Some(call) = call else {
             let shown = self.show(&rt);
-            if matches!(rt, Ty::Struct(id, ..) if !self.d.s(id).variants.is_empty()) {
+            if matches!(rt, Ty::Struct(id, ..) if !self.items.s(id).variants.is_empty()) {
                 // Its variants may give it a structural impl (R08.1.6).
                 self.err(
                     span,
@@ -533,7 +533,7 @@ impl<'a> Cx<'a> {
                 m.starts_with("std.") && self.d.export(ModId(*i), n).is_some_and(|e| e.1)
             })
             .map(|(_, m)| m.as_str())?;
-        let text = self.src.text_of(&self.b.item.at(span));
+        let text = self.bodies.source(&self.b.item.at(span));
         let (point, edit) = cpl_diag::import_edit(&text.text, module.strip_prefix("std.")?, n);
         Some(cpl_next_ir::msg::Fix {
             title: format!("add `use {module}.{{{n}}}`"),
@@ -1343,7 +1343,7 @@ impl Cx<'_> {
                     tys: &f.targs,
                     sets: &f.sets,
                 },
-                self.d.f(put),
+                self.items.f(put),
             );
             self.unify(&formals[0].ty, &ty);
             self.unify(&formals[1].ty, &v.ty);
@@ -1689,7 +1689,9 @@ impl Cx<'_> {
         }
         let args: Vec<call::CallArg> = xs.iter().map(|x| call::CallArg::plain(x)).collect();
         let targs = (0..xs.len()).map(|_| self.new_ty()).collect();
-        let sets = (0..self.d.s(d).n_sets).map(|_| self.new_set()).collect();
+        let sets = (0..self.items.s(d).n_sets)
+            .map(|_| self.new_set())
+            .collect();
         self.construct(d, targs, sets, &args, span, want)
     }
 

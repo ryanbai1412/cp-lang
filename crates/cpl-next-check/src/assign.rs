@@ -35,7 +35,7 @@ impl<'a> Cx<'a> {
                 let TK::Call { f, recv, args } = call.kind else {
                     return;
                 };
-                let Some((true, elem)) = self.d.f(f.decl).region.clone() else {
+                let Some((true, elem)) = self.items.f(f.decl).region.clone() else {
                     let code = cpl_diag::codes::TYPE_MISMATCH;
                     let text = "this call does not lend a place, so it cannot be assigned";
                     return self.err(span, Msg::verdict(code, text));
@@ -257,10 +257,13 @@ impl<'a> Cx<'a> {
         while let TK::Field(b, i) = &root.kind {
             if let Ty::Struct(sid, ..) = self.shallow(&b.ty) {
                 {
-                    let sd = self.d.s(sid);
+                    let sd = self.items.s(sid);
                     cache |= sd.cached.get(*i).copied().unwrap_or(false);
                     if !cache && !sd.var_fields.get(*i).copied().unwrap_or(true) {
-                        let (st, f) = (sd.name.clone(), self.d.text(sd.fields[*i].0).to_string());
+                        let (st, f) = (
+                            sd.name.clone(),
+                            self.items.text(sd.fields[*i].0).to_string(),
+                        );
                         self.err(
                             span,
                             Msg::verdict(

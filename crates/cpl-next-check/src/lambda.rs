@@ -537,7 +537,7 @@ impl<'a> Cx<'a> {
             return None;
         };
         let f = (self.d.fn_named(self.b.module, n)).filter(|_| self.lookup(n).is_none())?;
-        let fd = self.d.f(f);
+        let fd = self.items.f(f);
         if fd.params.len() <= ps.len() || fd.params[ps.len()..].iter().any(|p| p.default.is_none())
         {
             return None;
@@ -598,7 +598,7 @@ impl<'a> Cx<'a> {
             .d
             .fn_named(self.b.module, n)
             .filter(|_| self.declared(n))?;
-        let fd = self.d.f(d);
+        let fd = self.items.f(d);
         let rest = fd.params.get(ps.len()..).filter(|r| !r.is_empty())?;
         if !rest.iter().all(|p| p.default.is_some() || p.variadic)
             || fd.params[..ps.len()].iter().any(|p| p.variadic)
@@ -614,7 +614,7 @@ impl<'a> Cx<'a> {
         let Ty::Struct(d, ..) = self.shallow(t) else {
             return None;
         };
-        let s = self.d.s(d);
+        let s = self.items.s(d);
         let names = self.d.field_names(d);
         let positional = (names.iter().enumerate()).all(|(k, n)| *n == format!("_{k}"));
         (positional || s.record).then_some(names)

@@ -29,12 +29,12 @@ impl Cx<'_> {
             ty,
             span,
         };
-        let fd = self.d.f(m);
+        let fd = self.items.f(m);
         let recv = (self.b.self_local).map(|l| Box::new(TArg::Value(var(l, Ty::Param(0)))));
         let args = (params.iter().zip(&fd.params))
             .map(|(&l, p)| TArg::Value(var(l, p.ty.clone())))
             .collect();
-        let n = self.d.t(tr).defaults.len();
+        let n = self.items.t(tr).defaults.len();
         TExpr {
             kind: TK::CallTrait {
                 ctx: self.trait_ctx(tr, &fd.name),
@@ -54,7 +54,7 @@ impl Cx<'_> {
     }
     fn op_struct_fn(&self, s: StructId) -> Option<FnId> {
         (self.d.from_op.iter().copied())
-            .find(|f| self.d.f(*f).owner == Some(decls::Owner::Struct(s)))
+            .find(|f| self.items.f(*f).owner == Some(decls::Owner::Struct(s)))
     }
     /// Whether some impl of `tr` is for `t`'s own type.
     pub(super) fn has_impl(&self, t: &Ty, tr: TraitId) -> bool {
@@ -73,7 +73,7 @@ impl Cx<'_> {
         let Ty::Clo(c) = t else { return false };
         let CloRef::Item(f) = &**c else { return false };
         (self.d.operators.iter())
-            .any(|(_, tr)| self.d.f(f.decl).owner == Some(decls::Owner::Trait(*tr)))
+            .any(|(_, tr)| self.items.f(f.decl).owner == Some(decls::Owner::Trait(*tr)))
     }
     /// The `@from_op` fn whose struct has an impl of a bound on `v` that `item` has none of (any
     /// bound, for a bare operator, which always takes the struct's impl), and whose bounds on its
@@ -84,7 +84,7 @@ impl Cx<'_> {
             .filter(|tr| op || !self.has_impl(item, *tr))
             .collect();
         (self.d.from_op.iter().copied()).find(|&m| {
-            let fd = self.d.f(m);
+            let fd = self.items.f(m);
             let Some(decls::Owner::Struct(s)) = fd.owner else {
                 return false;
             };
@@ -132,7 +132,7 @@ impl Cx<'_> {
             tys: &f.targs,
             sets: &f.sets,
         }
-        .ty(&self.d.f(m).params[0].ty);
+        .ty(&self.items.f(m).params[0].ty);
         self.unify(&ret, want);
         self.oblige(&f, span);
         let arg = self.coerce(e, &param);
