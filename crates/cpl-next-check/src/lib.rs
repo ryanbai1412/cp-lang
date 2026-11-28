@@ -743,7 +743,7 @@ pub struct Checker<'a> {
     /// How many errors the declarations gave before any item.
     errs: usize,
     top: Vec<ItemId>,
-    values: Vec<(ItemId, String, next::Expr)>,
+    values: Vec<cpl_next_ir::ids::SourceId>,
     todo: Vec<FnId>,
 }
 
@@ -895,9 +895,11 @@ impl<'a> Checker<'a> {
         self.top.push(id);
     }
 
-    /// A value bound below the program's items by a top-level `let name`.
-    pub fn value(&mut self, item: ItemId, name: String, e: next::Expr) {
-        self.values.push((item, name, e));
+    /// The expression at `at`, bound below the program's items by a top-level `let`: a
+    /// `const`'s value under the const's name, so a later value reads it, any other held
+    /// unnamed. A constant's run reads each from the globals they bind, in order.
+    pub fn value(&mut self, at: cpl_next_ir::ids::SourceId) {
+        self.values.push(at);
     }
 
     /// Fn `id`'s body. A made fn (a record's impls, a derived one) and one of an impl that is not
@@ -1036,11 +1038,21 @@ impl<'a> Checker<'a> {
             }
         }
         // Each value a constant's run works out is a top-level `let` after the program's items.
-        for (item, name, e) in &values {
-            cx.b.item = item.clone();
-            main_out.push(TStmt::Item(item.clone()));
-            let span = cx.at(e);
-            cx.let_name(name, e, span, &mut main_out);
+        for at in &values {
+            let item = cx.bodies.item(&at.item);
+            let e = (item.iter().flat_map(|i| i.syntax().descendants()))
+                .filter_map(next::Expr::cast)
+                .find(|e| e.syntax().span() == at.span);
+            let (Some(item), Some(e)) = (item, e) else {
+                let what = "a constant's expression is not in its item";
+                cx.errors.push(Msg::at(at.clone(), Msg::internal(what)));
+                continue;
+            };
+            cx.b.item = at.item.clone();
+            main_out.push(TStmt::Item(at.item.clone()));
+            let span = cx.at(&e);
+            let name = const_name(&item, &e).unwrap_or_else(|| HELD.to_string());
+            cx.let_name(&name, &e, span, &mut main_out);
         }
         cx.solve(true);
         if let Some((count, body)) = cases {
@@ -1750,6 +1762,18 @@ fn statements(bodies: &dyn views::Bodies, items: &[ItemId]) -> Vec<(ItemId, next
     (items.iter())
         .filter_map(|id| Some((id.clone(), bodies.item(id)?)))
         .collect()
+}
+
+/// The name of a value `Checker::value` binds that is no `const`'s: no program can write it.
+const HELD: &str = "$value";
+
+/// The name of the `const` item `item` is, when `e` is its value.
+fn const_name(item: &next::Item, e: &next::Expr) -> Option<String> {
+    let Some(next::Decl::Const(c)) = item.decl() else {
+        return None;
+    };
+    let value = c.value()?;
+    (value.syntax().span() == e.syntax().span()).then_some(c.name()?.text().to_string())
 }
 
 /// The one name pattern `p` binds when it is a bare name, as `x` in `let x = ..`.

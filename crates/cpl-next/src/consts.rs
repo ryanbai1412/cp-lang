@@ -80,7 +80,6 @@ impl<'a> Evaluator<'a> {
             }
         }
         let mut admitted: HashSet<String> = HashSet::new();
-        let mut stmts = Vec::new();
         let mut keys = Vec::new();
         for (k, s) in &self.main {
             let closed = |e: &next::Expr, admitted: &HashSet<String>| {
@@ -94,7 +93,6 @@ impl<'a> Evaluator<'a> {
                     };
                     if closed(&init, &admitted) {
                         keys.push((k.clone(), init.syntax().span()));
-                        stmts.push((k.clone(), name.text().to_string(), init));
                         admitted.insert(name.text().to_string());
                     }
                 }
@@ -118,17 +116,17 @@ impl<'a> Evaluator<'a> {
                     };
                     for e in ends.into_iter().filter(|e| closed(e, &admitted)) {
                         keys.push((k.clone(), e.syntax().span()));
-                        stmts.push((k.clone(), "$value".to_string(), e));
                     }
                 }
                 _ => {}
             }
         }
-        if stmts.is_empty() {
+        if keys.is_empty() {
             return HashMap::new();
         }
+        let values: Vec<SourceId> = keys.iter().map(|(k, span)| k.at(*span)).collect();
         self.batching.set(true);
-        let ran = self.execute(&[], &stmts, stmts.len());
+        let ran = self.execute(&[], &values);
         self.batching.set(false);
         match ran {
             Ran::Values(vs) => keys.into_iter().zip(vs.into_iter().map(Ok)).collect(),
@@ -167,14 +165,14 @@ impl<'a> Evaluator<'a> {
             }
         }
         let span = e.syntax().span();
-        let value = [(item.clone(), "$value".to_string(), e.clone())];
+        let value = [item.at(span)];
         let failed = |code, text: String| {
             Err(ConstError::Failed(Box::new(Msg::at(
                 item.at(span),
                 Msg::verdict(code, text),
             ))))
         };
-        match self.execute(&items, &value, 1) {
+        match self.execute(&items, &value) {
             Ran::Values(mut vs) => Ok(vs.pop().flatten()),
             // What the engine cannot run yet runs at start-up instead.
             Ran::Open | Ran::Stop(Stop::Input) => Err(ConstError::Open),
@@ -201,14 +199,10 @@ impl<'a> Evaluator<'a> {
         }
     }
 
-    /// Runs the program of items `main` then `values`, each bound by a top-level `let`, on the
-    /// engine: the values of the globals its last `lets` top-level `let`s bind.
-    fn execute(
-        &self,
-        main: &[ItemId],
-        values: &[(ItemId, String, next::Expr)],
-        lets: usize,
-    ) -> Ran {
+    /// Runs the program of items `main` then the expressions at `values`, each bound by a
+    /// top-level `let`, on the engine: the values of the globals those `let`s bind.
+    fn execute(&self, main: &[ItemId], values: &[SourceId]) -> Ran {
+        let lets = values.len();
         let mut c = crate::checker(
             self.d,
             self.loaded,
@@ -223,8 +217,8 @@ impl<'a> Evaluator<'a> {
             &check::Ids::default(),
             main,
         );
-        for (item, name, e) in values {
-            c.value(item.clone(), name.clone(), e.clone());
+        for at in values {
+            c.value(at.clone());
         }
         let t = c.finish();
         // The program's own domains are declared by statements this run leaves out; one the
