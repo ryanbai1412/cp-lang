@@ -5,8 +5,8 @@ use crate::compile::*;
 use crate::layout::Lay;
 use crate::Stop;
 use cpl_next_ir::ops::{self, Fault};
-use cpl_next_ir::run::{Outcome, Trap, Written};
 use cpl_next_ir::run::{Io, Limits, RunInput, Stack};
+use cpl_next_ir::run::{Outcome, Trap, Written};
 
 struct Obj {
     rc: u32,

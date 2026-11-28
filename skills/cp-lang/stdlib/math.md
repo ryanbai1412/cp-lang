@@ -40,7 +40,7 @@ A 64-bit machine word whose bits `popcount` counts: an `Int` as its two's comple
 
 `Int` or `F64`: has a `sqrt`, through its `F64`.
 
-## `enum Sign: Neg`
+## `enum Sign`
 
 Which side of zero a number is on.
 

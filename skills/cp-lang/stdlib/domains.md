@@ -35,6 +35,10 @@ A cut of `D`: the place between two neighbouring positions, or at either end, wi
 
 Fields: `k: Int`.
 
+- `fn write(self)` — A cut prints as its integer (R04.2.16).
+- `@get fn l(self) -> ?D` — `c.l`: the position just before `c`, or `None` at the start (R04.3.2).
+- `@get fn r(self) -> ?D` — `c.r`: the position just after `c`, or `None` at the end (R04.3.2).
+
 ## `trait RangeEnds<D: Domain>`
 
 A run's ends as cuts: `[r]T` covers the keys from `r.start` to `r.end` (R04b.1.5).

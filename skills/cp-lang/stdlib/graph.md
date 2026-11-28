@@ -101,7 +101,7 @@ A conjunction of two-literal clauses over the variables `X`.
 - `fn add_eq(mut self, a: Lit<X>, b: Lit<X>)` — \(O(1)\) amortized; Adds "`a` and `b` hold together or not at all" (two clauses).
 - `fn solve(self) -> ?[X]Bool` — \(O(\lvert X \rvert + \mathit{clauses})\); An assignment satisfying every clause, or `None` if there is None.
 
-## `enum Visit<V, A>: Enter(v: V, via: ?A), Exit(v: V, via: ?A), Again(from: V, via: A)`
+## `enum Visit<V, A>`
 
 \(O(1)\): one event of `dfs`, the same shape as `Rooted.tour` yields: `via` is the arc that discovered `v` (`None` for a source); `Again(from, via)` is an arc into a discovered vertex.
 

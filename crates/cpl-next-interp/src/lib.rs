@@ -4,8 +4,8 @@
 use cpl_next_ir::ir::*;
 use cpl_next_ir::ops::{self, Fault};
 use cpl_next_ir::prog::{CTy, Program};
-use cpl_next_ir::run::{RunInput, Stack, Written};
 pub use cpl_next_ir::run::{Outcome, Trap};
+use cpl_next_ir::run::{RunInput, Stack, Written};
 use std::rc::Rc;
 
 /// What a `Raw<T>` holds. Integers are stored flat, so storage of a hundred million of them

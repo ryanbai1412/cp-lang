@@ -8,8 +8,39 @@ Import: `use std.list.{...}`.
 
 ## `struct List<T>`
 
+- `fn new() -> List<T>`
+- `fn filled(n: Int, x: T) -> List<T>`
+- `@get fn len(self) -> Int`
+- `fn get(self, i: Int) -> T`
+- `fn each(self) -> yields T`
+- `fn reserve(mut self, k: Int)` — Room for `k` elements without another move of the ones held.
+- `fn swap(mut self, i: Int, j: Int)`
+- `fn insert(mut self, i: Int, x: T)` — `x` at position `i`, the elements from `i` on one later.
+- `fn remove(mut self, i: Int) -> T` — The element at `i`, the ones after it one earlier.
+- `fn extend(mut self, xs: List<T>)`
+- `@get fn is_empty(self) -> Bool`
+- `fn pop(mut self) -> ?T`
+- `fn truncate(mut self, k: Int)`
+- `fn clear(mut self)`
+- `fn resize(mut self, k: Int, x: T)` — `k` elements: the first ones kept, any new ones `x` (seq/U58).
+- `fn fill(mut self, x: T)` — Every element `x` (seq/U58).
+
 ## `struct Array<D: Domain, T>`
 
 Fields: `buf: Raw<T>`.
 
+- `@get fn len(self) -> Int`
+- `@get fn is_empty(self) -> Bool`
+- `fn filled(x: T) -> Array<D, T>`
+- `fn get(self, i: D) -> T`
+- `fn each(self) -> yields T`
+
 ## `struct Str`
+
+- `@get fn len(self) -> Int`
+- `@get fn is_empty(self) -> Bool`
+- `fn get(self, i: Int) -> Char`
+- `fn each(self) -> yields Char`
+- `fn push(mut self, c: Char)`
+- `fn write_out(self)` — Writes the text to standard output as it is.
+- `fn append(mut self, s: Str)`

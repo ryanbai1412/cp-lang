@@ -172,7 +172,7 @@ Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `ag
 
 How a permutation-tree node joins its two children `l` (earlier positions) and `r`.
 
-## `enum PermNode<I, N>: Leaf(i: I), Inner(l: N, r: N, kind: PermKind)`
+## `enum PermNode<I, N>`
 
 A permutation-tree node as `PermTree.node` shows it: `Leaf(i)` for position `i`, or `Inner(l, r, kind)` with its two children and how they join.
 
