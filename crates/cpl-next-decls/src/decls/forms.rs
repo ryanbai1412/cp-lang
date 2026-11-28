@@ -103,6 +103,26 @@ pub struct StructForm {
     pub span: Span,
 }
 
+/// A variant: its payload's fields and the `@tag` it reads and prints as (R02.7.2).
+#[derive(Clone, Debug)]
+pub struct VariantForm {
+    pub name: Sym,
+    pub attrs: Vec<AttrForm>,
+    pub fields: Vec<FieldForm>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnumForm {
+    pub name: Sym,
+    pub public: bool,
+    pub attrs: Vec<AttrForm>,
+    pub generics: Vec<Sym>,
+    pub variants: Vec<VariantForm>,
+    pub methods: Vec<FnForm>,
+    pub span: Span,
+}
+
 #[derive(Clone, Debug)]
 pub struct AssocForm {
     pub name: Sym,
@@ -146,6 +166,34 @@ pub struct AliasForm {
     pub generics: Vec<Sym>,
     pub ty: TyForm,
     pub span: Span,
+}
+
+/// What one item declares, as its form.
+#[derive(Clone, Debug)]
+pub enum Form {
+    Fn(FnForm),
+    Struct(StructForm),
+    Enum(EnumForm),
+    Trait(TraitForm),
+    Impl(ImplForm),
+    Alias(AliasForm),
+    Const {
+        name: Sym,
+        public: bool,
+        ty: Option<TyForm>,
+        value: Option<ast::Expr>,
+    },
+    Context {
+        name: Sym,
+        fields: Vec<FieldForm>,
+    },
+    Domain(ast::DomainDecl),
+    Use(ast::UseDecl),
+    /// A top-level statement: a `let`, an expression, an assignment.
+    Stmt(ast::Stmt),
+    /// A declaration decls reads no form of (an `extern`, a `mod`), or one the parser could
+    /// not read.
+    Other(ast::Item),
 }
 
 /// Reads a written item into its form: each name interned once, here, at the token.
@@ -419,5 +467,102 @@ impl Reader<'_> {
             span: im.syntax().span(),
         };
         Some((form, unknown))
+    }
+
+    pub fn enum_(
+        &mut self,
+        e: &ast::EnumDecl,
+        attrs: Vec<AttrForm>,
+    ) -> (EnumForm, Vec<ast::Decorator>) {
+        let (generics, ..) = self.generics(e.generics());
+        let mut unknown = Vec::new();
+        let variants = (e.variants().iter())
+            .map(|v| {
+                let (attrs, other) = self.attrs(v.decorators());
+                unknown.extend(other);
+                let fields = (v.fields().collect::<Vec<_>>().iter())
+                    .filter_map(|f| {
+                        let (attrs, other) = self.attrs(f.decorators());
+                        unknown.extend(other);
+                        self.field(f, attrs)
+                    })
+                    .collect();
+                VariantForm {
+                    name: self.sym(v.name()),
+                    attrs,
+                    fields,
+                    span: v.syntax().span(),
+                }
+            })
+            .collect();
+        let members = e.members();
+        let methods = (members.iter().flat_map(|m| m.fns().collect::<Vec<_>>()))
+            .map(|f| {
+                let (attrs, other) = self.attrs(f.decorators());
+                unknown.extend(other);
+                self.func(&f, attrs)
+            })
+            .collect();
+        let form = EnumForm {
+            name: self.sym(e.name()),
+            public: e.is_pub(),
+            attrs,
+            generics,
+            variants,
+            methods,
+            span: e.syntax().span(),
+        };
+        (form, unknown)
+    }
+
+    /// The item's form, and its decorators no attribute names, for the item to report.
+    pub fn item(&mut self, it: &ast::Item) -> (Form, Vec<ast::Decorator>) {
+        use ast::Decl as D;
+        let (attrs, mut unknown) = self.attrs(it.decorators().into_iter());
+        let form = match it.decl() {
+            Some(D::Fn(f)) => Form::Fn(self.func(&f, attrs)),
+            Some(D::Struct(sd)) => {
+                let (f, u) = self.struct_(&sd, attrs);
+                unknown.extend(u);
+                Form::Struct(f)
+            }
+            Some(D::Enum(e)) => {
+                let (f, u) = self.enum_(&e, attrs);
+                unknown.extend(u);
+                Form::Enum(f)
+            }
+            Some(D::Trait(t)) => Form::Trait(self.trait_(&t, attrs)),
+            Some(D::Impl(im)) => match self.impl_(&im, attrs) {
+                Some((f, u)) => {
+                    unknown.extend(u);
+                    Form::Impl(f)
+                }
+                None => Form::Other(it.clone()),
+            },
+            Some(D::TypeAlias(a)) => match self.alias(&a, attrs) {
+                Some(f) => Form::Alias(f),
+                None => Form::Other(it.clone()),
+            },
+            Some(D::Const(c)) => Form::Const {
+                name: self.sym(c.name()),
+                public: c.is_pub(),
+                ty: c.ty().map(TyForm::Written),
+                value: c.value(),
+            },
+            Some(D::Context(c)) => Form::Context {
+                name: self.sym(c.name()),
+                fields: (c.fields().iter())
+                    .filter_map(|f| self.field(f, Vec::new()))
+                    .collect(),
+            },
+            Some(D::Domain(dd)) => Form::Domain(dd),
+            Some(D::Use(u)) => Form::Use(u),
+            Some(D::Mod(_) | D::Extern(_)) => Form::Other(it.clone()),
+            None => match it.stmt() {
+                Some(s) => Form::Stmt(s),
+                None => Form::Other(it.clone()),
+            },
+        };
+        (form, unknown)
     }
 }
