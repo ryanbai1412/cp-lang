@@ -686,7 +686,7 @@ impl Cx<'_> {
         let next::Expr::Index(ix) = unparen(base) else {
             return false;
         };
-        if ix.indices().count() != 1 {
+        if ix.indices().next().is_none() {
             return false;
         }
         let seen = self.errors.len();
