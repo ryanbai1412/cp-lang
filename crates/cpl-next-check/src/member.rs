@@ -293,6 +293,17 @@ impl<'a> Cx<'a> {
         }
         let g = self.b.syms.of(self.syms, n)?;
         let i = self.b.generics.iter().position(|x| *x == g)?;
+        self.param_static(i, n, name, call, span)
+    }
+    /// `T.f(args)` on type parameter `i`, shown as `n`: the fn of the bound that gives it.
+    fn param_static(
+        &mut self,
+        i: usize,
+        n: &str,
+        name: Called<'_>,
+        call: Option<&[CallArg]>,
+        span: Span,
+    ) -> Option<TExpr> {
         let pick = |fd: &decls::FnDecl| fd.self_mode == SelfMode::None && takes(fd, call);
         let found = match self.bound_giving(i, name, pick, span) {
             Ok(found) => found,
@@ -517,8 +528,6 @@ impl<'a> Cx<'a> {
         }
         self.type_static(t, name, call, span)
     }
-    /// `T.f(args)` on a type that is not a parameter, as `V.cuts.count`: a fn without `self` of
-    /// a trait it implements.
     /// `D.find(p)` on a domain struct with no fn `find`: its walk of positions answers (R04.2.20).
     fn walks_for(&self, d: StructId, name: Called<'_>) -> bool {
         let s = self.items.s(d);
@@ -539,6 +548,8 @@ impl<'a> Cx<'a> {
         let given = self.shapes.with_defaults_of(d, &given);
         self.is_domain(&Ty::Struct(d, given, Vec::new()))
     }
+    /// `T.f(args)`, as `V.cuts.count`: a fn without `self` of a trait `T` implements, or of a
+    /// bound when `T` is a parameter, as a made fn's `A.count` is.
     pub(super) fn type_static(
         &mut self,
         t: Ty,
@@ -546,6 +557,10 @@ impl<'a> Cx<'a> {
         call: Option<&[CallArg]>,
         span: Span,
     ) -> Option<TExpr> {
+        if let Ty::Param(i) = t {
+            let n = self.show(&t);
+            return self.param_static(i, &n, name, call, span);
+        }
         let found: Vec<(TraitId, FnId)> = (name
             .sym
             .map_or_else(Vec::new, |s| self.methods.traits_declaring(s))
