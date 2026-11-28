@@ -35,7 +35,7 @@ impl Cx<'_> {
             }
         }
         let v = match self.shallow(&v.ty) {
-            Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => self.coerce(v, &Ty::Int),
+            t if t.is_int_range() => self.coerce(v, &Ty::Int),
             _ => v,
         };
         let conv = self.d.roles().convert.and_then(|tr| {

@@ -129,7 +129,7 @@ impl Decls {
             (Some(Ty::Param(_)), _) | (_, Ty::Var(_) | Ty::Error) => true,
             (Some(st @ Ty::Struct(..)), _) => fit(st, recv, &mut vec![None; f.generics.len()]),
             // `self: 0..` takes an `Int` receiver as a parameter of that type takes an argument.
-            (Some(Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)), Ty::Int) => true,
+            (Some(st), Ty::Int) if st.is_int_range() => true,
             // A fn-typed `self` takes a closure's own type, coerced in as an argument is.
             (Some(Ty::Fn(..)), Ty::Clo(_)) => true,
             (Some(t), r) => std::mem::discriminant(t) == std::mem::discriminant(r),
@@ -473,7 +473,7 @@ impl<'a> Impls<'a> {
     /// type only when its trait has none for `_..=_`.
     pub fn head_fits(&self, im: &ImplDecl, t: &Ty) -> bool {
         match t {
-            Ty::Range(..) | Ty::RangeOf(_) if im.for_ == Ty::Int => {
+            t if t.is_int_range() && im.for_ == Ty::Int => {
                 !(self.impls_of(im.trait_.tr)).any(|o| matches!(o.for_, Ty::AnyRange(_)))
             }
             _ => true,
@@ -667,7 +667,7 @@ fn agree(a: &Ty, b: &Ty) -> bool {
 }
 fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
     match (p, t) {
-        (Ty::AnyRange(i), Ty::Range(..) | Ty::RangeOf(_) | Ty::Var(_) | Ty::Error) => {
+        (Ty::AnyRange(i), t) if t.is_int_range() || matches!(t, Ty::Var(_) | Ty::Error) => {
             fit(&Ty::Param(*i), t, binds)
         }
         (Ty::AnyRange(_), _) => false,
@@ -691,8 +691,7 @@ fn fit(p: &Ty, t: &Ty, binds: &mut [Option<Ty>]) -> bool {
         (Ty::Struct(d1, a, _), Ty::Struct(d2, b, _)) => {
             d1 == d2 && a.len() == b.len() && a.iter().zip(b).all(|(x, y)| fit(x, y, binds))
         }
-        (Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Int)
-        | (Ty::Int, Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..)) => true,
+        (r, Ty::Int) | (Ty::Int, r) if r.is_int_range() => true,
         (Ty::Clo(x), Ty::Clo(y)) => same_item(x, y),
         // A fn type is a type like any other: `impl<T> Op<T> for (T, T) -> T` fits any set.
         (Ty::Fn(pa, ra, _), Ty::Fn(pb, rb, _)) => {

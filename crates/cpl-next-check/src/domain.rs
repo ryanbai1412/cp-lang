@@ -69,7 +69,7 @@ impl Cx<'_> {
             span: def_at,
         };
         let count = match (&t, self.d.roles().counted) {
-            (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), _) => Some(v),
+            (t, _) if *t == Ty::Int || t.is_int_range() => Some(v),
             (_, Some(tr)) if self.has_impl(&t, tr) => self.count_of(tr, v, out),
             _ => None,
         };
@@ -375,7 +375,8 @@ impl Cx<'_> {
             span,
         };
         let first = read(0, fields.first().cloned().unwrap_or(Ty::Error));
-        match self.bind_fresh(self.b.syms.intern(&self.d.syms, name), &first.ty, span, out) {
+        let fresh = self.b.syms.intern(&self.d.syms, name);
+        match self.bind_fresh(fresh, &first.ty, span, out) {
             Some((c, i)) => {
                 let t = crate::pattern::retag(&ty, c, i);
                 if let VarRef::Local(k) | VarRef::Global(k) = whole {

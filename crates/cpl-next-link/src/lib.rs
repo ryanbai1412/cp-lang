@@ -486,7 +486,7 @@ impl Link<'_> {
     }
     fn ty(&mut self, t: &Ty, env: &Env) -> CTy {
         match t {
-            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..) => CTy::Int,
+            t if *t == Ty::Int || t.is_int_range() => CTy::Int,
             Ty::Bool => CTy::Bool,
             Ty::Char => CTy::Char,
             Ty::U64 => CTy::U64,
@@ -1678,10 +1678,9 @@ fn fit_cty(p: &Ty, t: &CTy, binds: &mut [Option<CTy>]) -> bool {
                 true
             }
         },
-        (
-            Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..),
-            CTy::Int | CTy::Range(..) | CTy::RangeTo(..),
-        ) => true,
+        (t, CTy::Int | CTy::Range(..) | CTy::RangeTo(..)) if *t == Ty::Int || t.is_int_range() => {
+            true
+        }
         (Ty::Bool, CTy::Bool)
         | (Ty::Char, CTy::Char)
         | (Ty::U64, CTy::U64)

@@ -118,7 +118,9 @@ impl TypeFacts for TypeView<'_> {
     fn range(&self, t: &TyId) -> Option<(Option<i64>, Option<i64>)> {
         match self.ty(t)?.1 {
             Ty::Range(lo, hi) => Some((Some(*lo), Some(*hi))),
-            Ty::Int | Ty::RangeOf(_) | Ty::AnyRange(_) | Ty::RangeTo(..) => Some((None, None)),
+            t if *t == Ty::Int || t.is_int_range() || matches!(t, Ty::AnyRange(_)) => {
+                Some((None, None))
+            }
             _ => None,
         }
     }
