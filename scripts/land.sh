@@ -21,6 +21,13 @@ cd "$(git rev-parse --show-toplevel)"
 remote="${1:-origin}"
 tries="${CPL_LAND_TRIES:-5}"
 t0=${CPL_LAND_T0:-$(date +%s)}
+# Seconds per phase, summed across pulls and re-execs, for the timing line: where a slow
+# land went (rebase, cpl build, ratchet, lock wait), not only its total.
+declare -A phase_s=()
+for kv in ${CPL_LAND_PHASES:-}; do phase_s[${kv%%=*}]=${kv#*=}; done
+phase_t=${CPL_LAND_PHASE_T:-$t0}
+phase() { local now; now=$(date +%s); phase_s[$1]=$(( ${phase_s[$1]:-0} + now - phase_t )); phase_t=$now; }
+phases() { local k out=""; for k in "${!phase_s[@]}"; do out="$out $k=${phase_s[$k]}"; done; printf %s "${out# }"; }
 # By default a land is fast: rebase, conflict markers, fmt, the case-list rule and the
 # ratchet (check, then lower what improved), push,
 # in under a minute. A lane ran its focused tests and `debt-ratchet --check` before
@@ -91,7 +98,9 @@ pull() {
     before=$(git rev-parse HEAD)
     if git pull -q --rebase --autostash "$remote" main; then
         stash_conflict && return 1
+        phase rebase
         remeasure && regen_end_state
+        phase remeasure
         return
     fi
     while rebasing; do
@@ -148,11 +157,12 @@ reexec_if_land_changed() {
     # Set only once push() ran, after drop_lock is defined; the first pull holds no lock.
     [ -z "${lock_held:-}" ] || drop_lock
     [ -z "${queued:-}" ] || dequeue
-    CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_CHECKED=$checked CPL_LAND_TICKET=${ticket:-} \
+    CPL_LAND_MAIN=1 CPL_LAND_T0=$t0 CPL_LAND_PHASES="$(phase rebase; phases)" CPL_LAND_PHASE_T=$(date +%s) CPL_LAND_CHECKED=$checked CPL_LAND_TICKET=${ticket:-} \
         CPL_LAND_RECHECKED=${rechecked:-} CPL_LAND_STEPS_RUNS=${steps_runs:-0} \
         exec bash scripts/land.sh ${land_args[@]+"${land_args[@]}"}
 }
 pull || exit 1
+phase rebase
 # The main this land rebased onto, pinned: FETCH_HEAD moves with any fetch in this
 # worktree meanwhile, and diffing against a newer main reads its std commits as this
 # change's (VM-expr's interp-only series ran the std signature callers).
@@ -392,6 +402,7 @@ fi
 # A fast land runs the ratchet too (about 30 s): it is what holds main's counters and lists.
 [ ! -f scripts/debt-ratchet.py ] || [ ! -f Cargo.toml ] || cargo build -q -p cpl-cli ||
     { echo "land: cargo build -p cpl-cli failed at the rebased tip; the ratchet runs that cpl" >&2; exit 1; }
+phase build
 # A counter that improved is lowered to its number in the commit that improved it.
 tighten=--check
 [ -z "$(git rev-list "$main_base"..HEAD)" ] || ! git diff --quiet HEAD -- "$ratchet" || tighten=--tighten
@@ -400,6 +411,7 @@ tighten=--check
 [ "$tighten" = --check ] || git diff --quiet -- "$ratchet" ||
     { git commit -q --amend --no-edit --no-verify -- "$ratchet" &&
         echo "land: lowered the ratchet's improved counters in $(git rev-parse --short HEAD)" >&2; }
+phase ratchet
 # A decision number is taken once it is on main (decision 505): a heading
 # main never had, even as a `--reserve` stub, would collide with another lane.
 [ ! -f scripts/specgate/decisions.py ] || uv run --quiet python scripts/spec-gate.py decisions --check-landing "$main_base" || exit 1
@@ -775,8 +787,10 @@ push() {
         [ -z "$users" ] || refuse_if_broken "$(cargo check -q $users --all-targets 2>&1)"
         git fetch -q "$remote" main
     done
+    phase gates
     lock_step pushing
     take_lock || exit 1
+    phase lock
     git fetch -q "$remote" main
     # The holder this land waited on pushed: rebase holding the lock, else every
     # waiter's turn goes to the next push (compiler's land lost 5 of 5 tries so).
@@ -819,9 +833,11 @@ push_held() {
 RETRY_TRIES=$tries RETRY_WAIT=0 retry push || { echo "land: gave up after $tries tries" >&2; exit 1; }
 drop_lock
 rm -f "$pending_steps"
+phase push
 secs=$(( $(date +%s) - t0 ))
-printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
+printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s","phases":{%s}}\n' \
     "$domain" "$(date +%s)" "$secs" "$try" "$(git rev-parse HEAD)" \
+    "$(for kv in $(phases); do printf '"%s":%s,' "${kv%%=*}" "${kv#*=}"; done | sed 's/,$//')" \
     >>"$(git rev-parse --git-common-dir)/cpl-land.log"
-echo "land: pushed $(git rev-parse --short HEAD) to $remote main in ${secs}s (try $try)"
+echo "land: pushed $(git rev-parse --short HEAD) to $remote main in ${secs}s (try $try) [$(phases)]"
 git rev-parse HEAD >"$seen"
