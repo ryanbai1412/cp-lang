@@ -322,7 +322,7 @@ pub struct Sugar {
 }
 
 /// The declarations filling the language roles, each found by its `@role(name)` (R11.6.1).
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 pub struct Roles {
     /// `?T`, `Some` and `None`: the struct `Optional<T>`.
     pub option: Option<StructId>,
@@ -330,8 +330,9 @@ pub struct Roles {
     pub print: Option<FnId>,
     /// `write(...)`: `print` without the line end.
     pub write: Option<FnId>,
-    /// What an event shows of a value (contract 8): the text the fn writes to `out`.
-    pub trace: Option<FnId>,
+    /// What an event shows of a value (contract 8): each fn writes the text for the values its
+    /// parameter takes, and link picks the one that takes a value's type.
+    pub trace: Vec<FnId>,
     /// `for x in s`: the trait whose one yielding method walks `s`.
     pub iteration: Option<TraitId>,
     /// The `@role(recipe)` struct: the value of a `-> yields T` call made outside a `for`
@@ -1683,10 +1684,13 @@ fn add_fn(
         }
     }
     for (x, role) in role_marks(s) {
+        if let Some(Role::Trace) = role {
+            d.roles.trace.push(id);
+            continue;
+        }
         let slot = match role {
             Some(Role::Print) => &mut d.roles.print,
             Some(Role::Write) => &mut d.roles.write,
-            Some(Role::Trace) => &mut d.roles.trace,
             Some(_) => {
                 let name = x.name.text.clone();
                 errors.push(Msg::at(item.at(x.span), Unbuilt::Decorator { name }));

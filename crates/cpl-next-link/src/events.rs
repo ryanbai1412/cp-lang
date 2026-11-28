@@ -4,19 +4,18 @@ use cpl_next_decls::views::Checked;
 use cpl_next_ir::ids::SourceId;
 use cpl_next_ir::ir::*;
 use cpl_next_ir::prog::{CTy, InstKey, Program};
-use cpl_next_ir::ty::FnId;
 use std::collections::HashMap;
 
 /// Contract 8: event points, placed on instance IR after the link step, only when asked for.
 /// They are not in generic IR and are not uses for ownership. Reported here: entering and
 /// leaving a fn of the user's file, and each write the user's file makes to one of its
-/// top-level bindings. A value an event shows is the text the `trace` role's fn writes for
-/// it; a type link made no copy of that fn for shows none.
-pub fn add_events(p: &mut Program, checked: &dyn Checked, trace: Option<FnId>) {
+/// top-level bindings. A value an event shows is the text the `trace` role's fn that link
+/// picked for its type writes for it (`Program::shown`); a type with none shows nothing.
+pub fn add_events(p: &mut Program, checked: &dyn Checked) {
     let shows = Shows {
         checked,
         index: &p.index,
-        trace,
+        shown: &p.shown,
     };
     for (i, f) in p.insts.iter_mut().enumerate() {
         let func = i as u32;
@@ -60,18 +59,13 @@ fn point(kind: EventKind, func: u32, site: Site, vals: Vec<Expr<CTy>>) -> Stmt<C
 struct Shows<'a> {
     checked: &'a dyn Checked,
     index: &'a HashMap<InstKey, usize>,
-    trace: Option<FnId>,
+    shown: &'a HashMap<CTy, InstKey>,
 }
 
 impl Shows<'_> {
     /// The call that shows a copy of the value at `at`, of type `t`, when link made one for `t`.
     fn of(&self, t: &CTy, at: Place) -> Option<Expr<CTy>> {
-        let key = InstKey {
-            func: FuncKey::Decl(self.trace?),
-            targs: vec![t.unlent().clone()],
-            sets: vec![],
-        };
-        let i = *self.index.get(&key)?;
+        let i = *self.index.get(self.shown.get(t.unlent())?)?;
         let x = Expr {
             site: 0,
             kind: EK::Copy(at),

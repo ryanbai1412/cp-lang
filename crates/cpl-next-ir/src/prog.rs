@@ -53,6 +53,8 @@ pub struct InstKey {
 pub struct Program {
     pub insts: Vec<Func<CTy>>,
     pub index: HashMap<InstKey, usize>,
+    /// The trace role's instance that shows a value of each type an event can show (contract 8).
+    pub shown: HashMap<CTy, InstKey>,
     pub main: usize,
     pub globals: Vec<CTy>,
     pub structs: HashMap<CTy, Vec<CTy>>,

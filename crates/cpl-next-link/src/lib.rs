@@ -37,6 +37,8 @@ struct Link<'a> {
     globals: Vec<CTy>,
     /// The locals of the instance being made, to type its places.
     frame: Vec<CTy>,
+    /// The trace role's instance for each type an event shows (`Program::shown`).
+    shown: HashMap<CTy, InstKey>,
 }
 struct Env<'e> {
     targs: &'e [CTy],
@@ -168,6 +170,7 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
         errors: Vec::new(),
         globals: Vec::new(),
         frame: Vec::new(),
+        shown: HashMap::new(),
     };
     let none = Env {
         targs: &[],
@@ -292,6 +295,7 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
     let mut p = Program {
         insts,
         index: l.index,
+        shown: l.shown,
         main,
         globals,
         structs: l.structs,
@@ -311,18 +315,15 @@ pub fn link(v: Inputs, roots: &Roots, lent: &Lend, events: bool) -> Program {
 }
 
 impl Link<'_> {
-    /// Contract 8: the `trace` role's fn for the type of each value an event can show, a
-    /// parameter or result of a fn of the user's file or a top-level binding. A type without
-    /// the fn's bound gets none, and its events show no value.
+    /// Contract 8: for the type of each value an event can show, a parameter or result of a fn
+    /// of the user's file or a top-level binding, the instance of the one `trace` role fn whose
+    /// parameter takes it. A type no such fn takes gets none, and its events show no value; two
+    /// that take one type are E0202.
     fn trace_instances(&mut self, insts: &[Func<CTy>]) {
-        let Some(f) = self.d.roles().trace else {
+        let fillers = self.d.roles().trace.clone();
+        if fillers.is_empty() {
             return;
-        };
-        let fd = self.d.f(f);
-        let (Some(param), Some((_, bound))) = (fd.params.first(), fd.bounds.first()) else {
-            return;
-        };
-        let (param, bound) = (param.ty.clone(), bound.clone());
+        }
         let mut tys = BTreeSet::new();
         for i in insts {
             let mine = matches!(&i.key, FuncKey::Decl(g) | FuncKey::Ctx(g, _)
@@ -336,19 +337,53 @@ impl Link<'_> {
             |g: usize| (self.c.global(GlobalId(g))).is_some_and(|x| x.top && !x.name.contains('$'));
         let tops = (self.globals.iter().enumerate()).filter(|(g, _)| top(*g));
         tys.extend(tops.map(|(_, t)| t.clone()));
+        let mut said = BTreeSet::new();
         for t in tys {
-            let targs = [t];
-            let env = Env {
-                targs: &targs,
-                sets: &[],
-            };
-            if self.has_bound(&param, bound.tr, &bound.args, &env) {
-                self.intern(InstKey {
-                    func: FuncKey::Decl(f),
-                    targs: targs.to_vec(),
-                    sets: vec![],
-                });
+            let mut taking: Vec<(FnId, Vec<CTy>)> = Vec::new();
+            for &f in &fillers {
+                let d = self.d;
+                let fd = d.f(f);
+                let mut binds = vec![None; fd.generics.len()];
+                let Some(param) = fd.params.first() else {
+                    continue;
+                };
+                if !fit_cty(&param.ty, &t, &mut binds) {
+                    continue;
+                }
+                let Some(targs) = binds.into_iter().collect::<Option<Vec<CTy>>>() else {
+                    continue;
+                };
+                let env = Env {
+                    targs: &targs,
+                    sets: &[],
+                };
+                let holds = (fd.bounds.iter())
+                    .all(|(i, b)| self.has_bound(&Ty::Param(*i), b.tr, &b.args, &env));
+                if holds {
+                    taking.push((f, targs));
+                }
             }
+            let Some((first, targs)) = taking.first().cloned() else {
+                continue;
+            };
+            for (again, _) in &taking[1..] {
+                if said.insert((first, *again)) {
+                    let msg = format!(
+                        "a second `@role(trace)` fn taking the values `{}` takes",
+                        self.d.f(first).name
+                    );
+                    let at = self.d.f(*again).span.clone();
+                    let code = cpl_diag::codes::DUPLICATE_DEFINITION;
+                    self.errors.push(Msg::at(at, Msg::verdict(code, msg)));
+                }
+            }
+            let key = InstKey {
+                func: FuncKey::Decl(first),
+                targs,
+                sets: vec![],
+            };
+            self.intern(key.clone());
+            self.shown.insert(t, key);
         }
     }
     fn parts(&self, t: &CTy) -> Vec<CTy> {

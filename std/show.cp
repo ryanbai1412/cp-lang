@@ -194,6 +194,15 @@ pub fn write<Ts: ShowAll<Bare>>(..xs: Ts, sep: ?Str = None, precision: ?Int = No
 @role(trace)
 fn traced<T: Show>(x: T) uses io = write(x)
 
+/// What a trace shows of a `Bool`, which is not `Show` (R10.3): `true` or `false`.
+@role(trace)
+fn traced_bool(x: Bool) uses io = write(if x: "true" else: "false")
+
+/// What a trace shows of a `?T`, which is not `Show`: `none`, or the value it holds.
+@role(trace)
+fn traced_option<T: Show>(x: ?T) uses io:
+    if let v = x: write(v) else: write("none")
+
 /// `write(xs, none: d)`, as `print(xs, none: d)` without the line's end.
 pub fn write<Ts: ShowAll<WithNone>, N: Show>(..xs: Ts, sep: ?Str = None, none: N, precision: ?Int = None) uses io:
     put_line(xs, sep, "", fmt_none(precision, none))

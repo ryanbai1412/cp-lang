@@ -1904,6 +1904,9 @@ next/n_table_into_anon_range.cp
 next/n_targs_01_written.cp
 next/n_targs_02_field_takes_none.cp
 next/n_todo_01_todo_traps_where_reached.cp
+next/n_trace_01_shows_a_bool.cp
+next/n_trace_02_shows_an_optional_int.cp
+next/n_trace_03_shows_an_optional_list.cp
 next/n_trait_call_01.cp
 next/n_trait_call_02_no_impl.cp
 next/n_trait_static_fn.cp

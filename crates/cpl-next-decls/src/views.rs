@@ -45,7 +45,7 @@ pub trait TypeTables {
     /// The `@member(m)` struct.
     fn member(&self, m: &str) -> Option<StructId>;
     fn sugar(&self) -> Sugar;
-    fn roles(&self) -> Roles;
+    fn roles(&self) -> &Roles;
 }
 
 /// `signature(ItemId)`: what an item declares, never its body.
@@ -230,8 +230,8 @@ impl TypeTables for Decls {
     fn sugar(&self) -> Sugar {
         self.sugar
     }
-    fn roles(&self) -> Roles {
-        self.roles
+    fn roles(&self) -> &Roles {
+        &self.roles
     }
 }
 

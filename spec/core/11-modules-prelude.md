@@ -134,7 +134,7 @@ or `print` a program declares shadows that name and leaves the role alone.
 | `print` | `print` | `print(...)`: shows its values and ends the line, reading `io`'s `sep` and `precision` |
 | `write` | `write` | `write(...)`: the same without the line end |
 | `iteration` | `Seq`, with `iter` and `each` | `for x in s`, `s.each(f)` and `s.iter()` |
-| `trace` | `traced` | what a trace event (contract 8) shows of a value: the text the fn writes, kept in the event instead of the output |
+| `trace` | `traced`, `traced_bool` and `traced_option` | what a trace event (contract 8) shows of a value: the text the fn whose parameter takes the value writes, kept in the event instead of the output (Rtrace.7) |
 | `todo` | `todo` | the expression `todo`, of any type, that traps when run (R01.6.7) |
 | `recipe` | `Gen<T>` | the value of a `-> yields T` call made outside a `for` head, which a `for` over it runs (R07.6.2) |
 | `prelude` | the module `std.prelude` | the names every program sees without a `use` (§11.3) |
@@ -151,7 +151,8 @@ Rules:
   by its marker: declaring a type, trait or fn with a filler's name gives
   it no role and changes no syntax. (R11.6.1)
 - `@role(name)` may be written in any module, library or program. A second
-  filler of one role in one program is E0202, naming both. An unknown role
+  filler of one role in one program is E0202, naming both; `trace` takes
+  one filler per value type, and two that both take one type are E0202. An unknown role
   name is E0201.
 - A filler has the shape its role needs: `option` is a generic type with a
   one-part constructor `Some` and an empty one `None`, `show` a trait with

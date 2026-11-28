@@ -548,7 +548,7 @@ impl Decls {
             struct_arity: self.struct_arity.clone(),
             tuples: self.tuples.clone(),
             sugar: self.sugar,
-            roles: self.roles,
+            roles: self.roles.clone(),
             records: self.records.clone(),
             members: self.member_types.clone(),
         }
@@ -609,8 +609,8 @@ impl TypeTables for Tables {
     fn sugar(&self) -> Sugar {
         self.sugar
     }
-    fn roles(&self) -> Roles {
-        self.roles
+    fn roles(&self) -> &Roles {
+        &self.roles
     }
 }
 

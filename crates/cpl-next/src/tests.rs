@@ -1691,8 +1691,64 @@ fn a_std_module_copied_into_a_library_behaves_as_std() {
     assert!(ran > 30, "{ran} cases");
 }
 
+/// An event shows a `Bool` and a `?T`, which are not `Show` (R10.3), through std's other trace
+/// fns: `true` or `false`, and `none` or the value held (Rtrace.7), alike on the interpreter,
+/// the engine and the C++.
+/// Two `@role(trace)` fns whose parameters take one type are E0202: an event's value has one
+/// text (§11.6).
+#[test]
+fn two_trace_fns_taking_one_type_are_said() {
+    let src =
+        "@role(trace)\nfn mine(x: Bool) uses io = write(\"b\")\nvar b = false\nprint(yes(b))\n";
+    let got = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    );
+    let said: Vec<_> = (got.err().expect("rejected").iter())
+        .map(|d| d.code())
+        .collect();
+    assert_eq!(said, [Some("E0202")]);
+}
+
+#[test]
+fn an_event_shows_a_bool_and_an_option() {
+    let src = "var b = false\nb = true\nvar o: ?Int = None\no = Some(3)\nprint(yes(b), o ?? 0)\n";
+    let c = compile(
+        &Std::read(),
+        src,
+        &Roots::std(),
+        true,
+        None,
+        Checks::CHECKED,
+    )
+    .expect("compiles");
+    let want = [["false"], ["true"], ["none"], ["3"]];
+    for o in [raw(&c), c.run("")] {
+        assert_eq!(o.output, "YES 3\n");
+        assert_eq!(
+            o.events.iter().map(|e| e.vals.clone()).collect::<Vec<_>>(),
+            want
+        );
+    }
+    let (bin, _) = cxx::build(
+        c.cpp().as_bytes(),
+        &["-std=c++17", "-O1", "-w", "-x", "c++"],
+    )
+    .expect("g++ builds it");
+    let ran = std::process::Command::new(bin).output().expect("runs");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), "YES 3\n");
+    assert_eq!(
+        String::from_utf8_lossy(&ran.stderr),
+        "ev set b false\nev set b true\nev set o none\nev set o 3\n"
+    );
+}
+
 /// An event shows a value as `write` gives it, through std's `traced`: a struct by its own
-/// `Show`, a list by std's, and a `Bool`, which is not `Show` (R10.3), by nothing. The `Show`
+/// `Show`, a list by std's, and a `Bool`, which is not `Show` (R10.3), by `traced_bool`. The `Show`
 /// it runs places no events, alike on the interpreter, the engine and the C++.
 #[test]
 fn an_event_shows_a_value_as_write_does() {
@@ -1720,7 +1776,7 @@ return [n, p.x]\nbest = f(3, P(x: 4), true)\nprint(best.len)\n";
     };
     let want = [
         r#"set best ["1 2"]"#,
-        r#"enter ["3", "P"]"#,
+        r#"enter ["3", "P", "true"]"#,
         r#"exit ["3 4"]"#,
         r#"set best ["3 4"]"#,
     ];
@@ -1737,7 +1793,7 @@ return [n, p.x]\nbest = f(3, P(x: 4), true)\nprint(best.len)\n";
     assert_eq!(String::from_utf8_lossy(&ran.stdout), "2\n");
     assert_eq!(
         String::from_utf8_lossy(&ran.stderr),
-        "ev set best 1 2\nev enter f 3 P\nev exit f 3 4\nev set best 3 4\n"
+        "ev set best 1 2\nev enter f 3 P true\nev exit f 3 4\nev set best 3 4\n"
     );
 }
 

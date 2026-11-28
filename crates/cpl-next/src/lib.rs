@@ -429,7 +429,7 @@ pub(crate) fn compile(
             deferred: &f.g.deferred,
             globals: &f.g.globals,
         };
-        inst::add_events(&mut prog, &answers, f.d.roles.trace);
+        inst::add_events(&mut prog, &answers);
     }
     let canon =
         inst::canonicalize(&mut prog, &cpl_next_own::expand_calls).map_err(|es| link(&es))?;
