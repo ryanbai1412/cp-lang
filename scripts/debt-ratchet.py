@@ -2536,13 +2536,21 @@ def next_std_names(root: Path) -> list[str]:
     # `cpl-prim` holds the `@intrinsic` ids the IR maps to its operations, so it is scanned too.
     files = {_rel(root, p): _lines(p) for p in _rs_files(root, *_next_srcs(root), "crates/cpl-prim/src", tests=False)
              if _rel(root, p) != NEXT_GRAMMAR_TABLE}
+    # An id table's row binds an id std writes as `@intrinsic("id")`; a row std writes no
+    # binding for is a name the compiler knows, and counts.
+    ids = {i for f in sources for i in NEXT_INTRINSIC_ID_RE.findall(f.read_text(encoding="utf-8"))}
     out: list[str] = []
     wrappers: dict[str, tuple[str, int]] = {}
     for rel, lines in files.items():
-        for i, line in enumerate(lines, 1):
+        table = None
+        for i, line in _ungated_lines(lines):
             if line.lstrip().startswith("//"):
                 continue
-            hits = [n for n in RUST_STR_RE.findall(line) if n in names]
+            if (t := NEXT_INTRINSIC_TABLES.get(rel)) and re.match(rf"\s*pub const {t}\b", line):
+                table = t
+            hits = [n for n in RUST_STR_RE.findall(line) if n in names and not (table and n in ids)]
+            if table and line.strip().startswith("];"):
+                table = None
             # A display arm naming its own variant (`Stage::Check => "check"`) is the compiler's label.
             if (arm := NEXT_LABEL_ARM_RE.match(line)) and hits == [arm.group(1).lower()]:
                 hits = []
@@ -2573,6 +2581,9 @@ def next_std_names(root: Path) -> list[str]:
 
 
 NEXT_WRAPPER_LINES = 8
+NEXT_INTRINSIC_ID_RE = re.compile(r'@intrinsic\("(\w+)"\)')
+# The one table of `@intrinsic` ids each file keeps, by its `const`'s name.
+NEXT_INTRINSIC_TABLES = {"crates/cpl-next-ir/src/ops.rs": "INTRINSICS", "crates/cpl-prim/src/lib.rs": "IDS"}
 NEXT_QUERY_NAME_RE = re.compile(r'^\s*const NAME: &\'static str = "[a-z_]+";\s*$')
 NEXT_LABEL_ARM_RE = re.compile(r'^\s*[A-Z]\w*::([A-Z]\w*)\s*=>\s*"[a-z_]+",?\s*$')
 NEXT_FN_RE = re.compile(r"^(\s*)(?:pub(?:\([^)]*\))?\s+)?(?:const\s+)?fn\s+([a-z_]\w*)")
