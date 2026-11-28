@@ -5685,7 +5685,12 @@ def owner_approved(sha: str) -> bool:
     owners = {o.lstrip("@").lower() for l in (ROOT / ".github/CODEOWNERS").read_text().splitlines()
               if l.split() and l.split()[0] == f"/{SIGNOFFS}" for o in l.split()[1:]} \
         if (ROOT / ".github/CODEOWNERS").is_file() else set()
-    gh = lambda path: json.loads(subprocess.run(["gh", "api", path], capture_output=True, text=True).stdout or "[]")
+    def gh(path: str) -> list:
+        got = subprocess.run(["gh", "api", path], capture_output=True, text=True)
+        if got.returncode:
+            print(f"debt-ratchet: gh api {path} failed, so no approval is seen: {got.stderr.strip()}",
+                  file=sys.stderr)
+        return json.loads(got.stdout or "[]") if got.returncode == 0 else []
     try:
         return any(pr.get("merged_at") and any(r.get("state") == "APPROVED" and
                                                (r.get("user") or {}).get("login", "").lower() in owners
