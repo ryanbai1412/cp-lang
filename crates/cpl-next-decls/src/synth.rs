@@ -1,7 +1,7 @@
 //! Declarations the compiler writes for a program: an enum's structs and the `Eq` and `Ord` a
 //! struct derives from its fields.
 use crate::attrs::Attr;
-use crate::decls::forms::{AttrForm, BodyForm, FnForm, ParamForm, TyForm};
+use crate::decls::forms::{AttrForm, BodyForm, FnForm, Form, ImplForm, ParamForm, TyForm};
 use crate::decls::unnamed;
 use crate::decls::{fills, Role};
 use crate::diag::Msg;
@@ -10,6 +10,7 @@ use crate::sym::Sym;
 use cpl_next_ir::ids::ItemId;
 use cpl_next_ir::ty::StructId;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::ast::{self as next, AstNode as _};
 use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use cpl_syntax::decorators::Mark;
 use std::collections::HashMap;
@@ -651,140 +652,79 @@ pub(crate) fn field_requirement(
     }
 }
 
-/// `trait HasW: w: Int` as the member it means, `@get fn w(self) -> Int` (R08.1.7).
-pub(crate) fn trait_fields(s: &mut ast::Stmt) {
-    let StmtKind::Trait { body, .. } = &mut s.kind else {
-        return;
-    };
-    for m in &mut body.stmts {
-        if let StmtKind::Let {
-            pat:
-                ast::Pattern {
-                    kind: ast::PatternKind::Name(name),
-                    ..
-                },
-            ty: Some(ty),
-            init: None,
-            ..
-        } = &m.kind
-        {
-            *m = field_requirement(name, ty.clone(), m.span);
-        }
-    }
-}
-
 /// Per record shape with a field for each member of a trait made only of bodiless `@get` members,
 /// a bodiless impl of it, written with the trait: `impl<V, A> Target<V> for (to: V, w: A)`, its
 /// members then met by the fields (R12.11.3). A written impl replaces it.
 pub(crate) fn field_trait_impls(
-    items: &[crate::modules::Item],
+    items: &[(ItemId, Form)],
     shapes: &[Vec<String>],
-) -> Vec<(ItemId, String, ast::Stmt)> {
+    syms: &mut crate::sym::Syms,
+) -> Vec<(ItemId, String, ImplForm)> {
     let mut out = Vec::new();
-    for (item, s) in items
-        .iter()
-        .flat_map(|it| it.stmts.iter().map(move |s| (&it.id, s)))
-    {
-        let StmtKind::Trait {
-            name,
-            generics,
-            supers,
-            body,
-            alias: false,
-            bounds,
-            ..
-        } = &s.kind
-        else {
+    for (item, form) in items {
+        let Form::Trait(t) = form else {
             continue;
         };
-        if !supers.is_empty() || !bounds.is_empty() || body.stmts.is_empty() {
+        if t.alias || !t.supers.is_empty() || t.methods.is_empty() {
             continue;
         }
-        fn member(m: &ast::Stmt) -> Option<(&str, &ast::Type)> {
-            match &m.kind {
-                StmtKind::Fn(f)
-                    if matches!(f.body, FnBody::None)
-                        && f.params.len() <= 1
-                        && m.mark(Mark::Get).is_some() =>
-                {
-                    (f.ret.as_ref())
-                        .filter(|t| writable(t))
-                        .map(|t| (f.name.text.as_str(), t))
-                }
-                _ => None,
+        let getter = |f: &FnForm| f.attrs.iter().any(|a| a.attr == Attr::Get);
+        let member = |f: &FnForm| match (&f.body, &f.ret) {
+            (BodyForm::None, Some(TyForm::Written(ty)))
+                if f.params.len() <= 1 && getter(f) && writable(ty) =>
+            {
+                Some((f.name, ty.clone()))
             }
-        }
-        let Some(members) = body.stmts.iter().map(member).collect::<Option<Vec<_>>>() else {
+            _ => None,
+        };
+        let Some(members) = t.methods.iter().map(member).collect::<Option<Vec<_>>>() else {
             continue;
         };
-        let mut taken: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
-        for (_, t) in &members {
-            unnamed(t, &|_| None, &mut taken);
+        let mut taken: Vec<String> = t
+            .generics
+            .iter()
+            .map(|g| syms.text(*g).to_string())
+            .collect();
+        for (_, ty) in &members {
+            let names = ty.syntax().descendants().filter_map(next::PathType::cast);
+            taken.extend(names.map(|p| crate::cycles::path_text(&p)));
         }
         let fresh: Vec<String> = (b'A'..=b'Z')
             .map(|c| (c as char).to_string())
             .filter(|c| !taken.contains(c))
             .collect();
-        let span = s.span;
-        let nm = |t: &str| ast::Name {
-            text: t.to_string(),
-            span,
-        };
-        let named = |t: &str| ast::Type {
-            kind: TypeKind::Named {
-                name: nm(t),
-                args: Vec::new(),
-            },
-            span,
-        };
+        let own = t.generics.len();
         for fs in shapes {
-            if !members.iter().all(|(m, _)| fs.iter().any(|f| f == m)) {
+            let names: Vec<Sym> = fs.iter().map(|f| syms.intern(f)).collect();
+            if !members.iter().all(|(m, _)| names.contains(m)) {
                 continue;
             }
-            let mut params: Vec<String> = generics.iter().map(|g| g.text.clone()).collect();
+            let mut generics = t.generics.clone();
             let mut extra = fresh.iter();
             let mut fields = Vec::new();
-            for f in fs {
+            for f in &names {
                 match members.iter().find(|(m, _)| m == f) {
-                    Some((_, t)) => fields.push((nm(f), (*t).clone())),
+                    Some((_, ty)) => fields.push((*f, TyForm::Written(ty.clone()))),
                     None => {
                         let Some(g) = extra.next() else { break };
-                        params.push(g.clone());
-                        fields.push((nm(f), named(g)));
+                        generics.push(syms.intern(g));
+                        fields.push((*f, TyForm::Param(generics.len() - 1)));
                     }
                 }
             }
             if fields.len() != fs.len() {
                 continue;
             }
-            let kind = StmtKind::Impl {
-                trait_name: Some(ast::Type {
-                    kind: TypeKind::Named {
-                        name: name.clone(),
-                        args: generics.iter().map(|g| named(&g.text)).collect(),
-                    },
-                    span,
-                }),
-                target: ast::Type {
-                    kind: TypeKind::Record(fields),
-                    span,
-                },
-                bounds: (params.iter())
-                    .map(|p| ast::Bound {
-                        name: nm(p),
-                        traits: Vec::new(),
-                    })
-                    .collect(),
-                body: ast::Block {
-                    stmts: Vec::new(),
-                    span,
-                },
-            };
-            let imp = ast::Stmt {
-                kind,
-                span,
-                decorators: Vec::new(),
-                public: false,
+            let imp = ImplForm {
+                attrs: Vec::new(),
+                generics,
+                bounds: Vec::new(),
+                trait_: Some(TyForm::Named(t.name, (0..own).map(TyForm::Param).collect())),
+                self_ty: TyForm::Record(fields),
+                assoc: Vec::new(),
+                methods: Vec::new(),
+                derived: false,
+                span: t.span,
             };
             out.push((item.clone(), crate::records::name(fs), imp));
         }
@@ -793,14 +733,28 @@ pub(crate) fn field_trait_impls(
 }
 
 /// A field type an impl can write as it is: no `Self`, no associated type.
-fn writable(t: &ast::Type) -> bool {
-    match &t.kind {
-        TypeKind::Named { name, args } => {
-            !name.text.starts_with("Self") && !name.text.contains('.') && args.iter().all(writable)
+/// Whether a member's type can be a field's as written: no `Self` and no path through a module.
+fn writable(t: &next::Type) -> bool {
+    use cpl_next_syntax::TokenKind;
+    let types = |args: Vec<next::GenericArg>| {
+        args.into_iter().all(|a| match a {
+            next::GenericArg::Type(t) => writable(&t),
+            next::GenericArg::Param(_) => false,
+        })
+    };
+    match t {
+        next::Type::Path(p) => {
+            let segs: Vec<_> = p.segments().collect();
+            segs.len() == 1
+                && segs[0].kind() != TokenKind::SelfKw
+                && types(p.generic_args().map_or(Vec::new(), |a| a.args().collect()))
         }
-        TypeKind::Optional(e) => writable(e),
-        TypeKind::Tuple(ts) => ts.iter().all(writable),
-        TypeKind::Array { index, elem } => index.iter().chain([&**elem]).all(writable),
+        next::Type::Optional(o) => o.inner().is_some_and(|t| writable(&t)),
+        next::Type::Tuple(ts) => ts.elems().iter().all(|(_, t)| writable(t)),
+        next::Type::Array(a) => {
+            types(a.dims().map_or(Vec::new(), |d| d.args().collect()))
+                && a.elem().is_some_and(|t| writable(&t))
+        }
         _ => false,
     }
 }
