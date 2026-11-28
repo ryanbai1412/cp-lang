@@ -16,6 +16,7 @@ use cpl_next_ir::unbuilt::Unbuilt;
 use cpl_next_ir::{ir, ops, ty};
 use cpl_next_syntax::ast::{self as next, AstNode};
 use cpl_next_syntax::fall_through;
+use cpl_next_syntax::grammar::Decorator;
 use cpl_next_syntax::ops::{BinOp, CmpOp, UnOp};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -980,7 +981,7 @@ impl<'a> Checker<'a> {
                 .and_then(|x| x.name())
                 .into_iter()
                 .chain(s.decorators().iter().filter_map(next::Decorator::name))
-                .filter(|n| !(memo_item && n.text() == "memo"))
+                .filter(|n| !(memo_item && Decorator::of(n.text()) == Some(Decorator::Memo)))
                 .map(|t| t.text().to_string())
                 .collect();
             for name in unbuilt {

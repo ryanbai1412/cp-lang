@@ -262,11 +262,11 @@ pub enum RoleMember {
 impl RoleMember {
     pub const ALL: [RoleMember; 2] = [RoleMember::MemoGet, RoleMember::MemoSet];
 
-    /// The `@role(name)` whose trait declares it, and its name there.
-    pub fn spelling(self) -> (&'static str, &'static str) {
+    /// Its name in the trait of the role that declares it.
+    pub fn name(self) -> &'static str {
         match self {
-            RoleMember::MemoGet => ("memo_table", "get"),
-            RoleMember::MemoSet => ("memo_table", "set"),
+            RoleMember::MemoGet => "get",
+            RoleMember::MemoSet => "set",
         }
     }
 }

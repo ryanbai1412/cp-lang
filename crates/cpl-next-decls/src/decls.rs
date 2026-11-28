@@ -477,6 +477,13 @@ pub enum Role {
 }
 
 impl Role {
+    /// The role whose trait declares member `m`.
+    pub fn of_member(m: cpl_next_syntax::grammar::RoleMember) -> Role {
+        use cpl_next_syntax::grammar::RoleMember as M;
+        match m {
+            M::MemoGet | M::MemoSet => Role::MemoTable,
+        }
+    }
     pub const ALL: [Role; 29] = [
         Role::Option,
         Role::Show,

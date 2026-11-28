@@ -163,10 +163,12 @@ pub(super) fn name_trait(
         };
         let dup = again(item, t.span, "role(..)");
         once(slot, id, dup, &mut d.errors);
-        let role = role.map_or("", Role::name);
-        let members = RoleMember::ALL.into_iter().map(RoleMember::spelling);
-        for (_, m) in members.filter(|(r, _)| *r == role) {
-            if !t.methods.iter().any(|f| d.syms.text(f.name) == m) {
+        let members = RoleMember::ALL
+            .into_iter()
+            .filter(|m| role == Some(Role::of_member(*m)));
+        for m in members {
+            if !t.methods.iter().any(|f| f.name == Syms::member(m)) {
+                let (role, m) = (role.map_or("", Role::name), m.name());
                 let msg = Msg::verdict(
                     cpl_diag::codes::UNRESOLVED_NAME,
                     format!("`@role({role})` is a trait declaring `{m}`, which this one lacks"),

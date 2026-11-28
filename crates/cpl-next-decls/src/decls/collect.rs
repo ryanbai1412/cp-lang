@@ -858,11 +858,9 @@ fn layer(
     }
     // Each role trait's members, which check reaches by `RoleMember`, not by their text.
     for m in RoleMember::ALL {
-        let (role, name) = m.spelling();
-        let role = Role::ALL.into_iter().find(|r| r.name() == role);
-        let tr = role.and_then(|r| crate::views::RoleRows::role_trait(&d, r));
-        let found = (tr.zip(d.syms.get(name)))
-            .and_then(|(tr, s)| d.traits[tr.0].methods.get(&s).map(|f| (s, *f)));
+        let s = crate::sym::Syms::member(m);
+        let tr = crate::views::RoleRows::role_trait(&d, Role::of_member(m));
+        let found = tr.and_then(|tr| d.traits[tr.0].methods.get(&s).map(|f| (s, *f)));
         if let Some(found) = found {
             d.role_members.insert(m, found);
         }

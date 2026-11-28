@@ -1,18 +1,41 @@
 //! The one table that turns a name's text into an id. Every table after it is keyed by `Sym`,
 //! so a lookup that starts from text asks here first.
+use cpl_next_syntax::grammar::RoleMember;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct Sym(pub u32);
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Syms {
     ids: Arc<HashMap<String, Sym>>,
     texts: Arc<Vec<String>>,
 }
 
+/// Each role member's name is interned first, so its id is known before any declaration.
+impl Default for Syms {
+    fn default() -> Self {
+        let mut s = Syms {
+            ids: Arc::default(),
+            texts: Arc::default(),
+        };
+        for m in RoleMember::ALL {
+            assert_eq!(
+                s.intern(m.name()),
+                Syms::member(m),
+                "two role members share a name"
+            );
+        }
+        s
+    }
+}
+
 impl Syms {
+    /// The id of role member `m`'s name, whichever declaration writes it.
+    pub fn member(m: RoleMember) -> Sym {
+        Sym(m as u32)
+    }
     pub fn intern(&mut self, text: &str) -> Sym {
         if let Some(&s) = self.ids.get(text) {
             return s;
