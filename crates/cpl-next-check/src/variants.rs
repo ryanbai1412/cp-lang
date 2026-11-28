@@ -194,7 +194,8 @@ impl Cx<'_> {
             })
             .collect();
         let name = cpl_next_decls::records::without_member(&form);
-        self.member(&base, &name, span, Some(&args), span, want, &[])
+        let name = super::member::Called::written(self.syms, &name, span);
+        self.member(&base, name, Some(&args), span, want, &[])
     }
 
     pub(super) fn record_update(
