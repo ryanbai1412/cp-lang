@@ -36,7 +36,7 @@ use std.bag.{SortedBag, SortedMap, SortedRange, SortedSet}
 use std.beats.{BeatsSegTree}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
-use std.derive.{Hash}
+use std.hash.{Hash, HashMap, HashSet, splitmix64}
 use std.dp.{
     LiChao,
     Line,
@@ -211,7 +211,6 @@ use std.math.{
     mul_mod,
     primitive_root,
     sieve_multiplicative,
-    splitmix64,
 }
 use std.mo.{mo}
 use std.mod.{Comb, Mod}

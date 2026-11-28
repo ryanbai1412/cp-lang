@@ -3,6 +3,7 @@
 //! start: `gcd`, `Sieve`, `isqrt`, `ext_gcd`, `popcount`
 //! example: `gcd(12, 18) == 6`
 use std.range.{last_true}
+use std.hash.{HashMap}
 
 /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.
 ///
@@ -810,22 +811,6 @@ pub fn bit(self: Int, i: 0..) -> Bool = if i >= 64: self < 0 else: (self >> i) &
 /// example: `6.is_pow2 == false`
 /// example: `0.is_pow2 == false`
 @get pub fn is_pow2(self: Int) -> Bool = self > 0 and self & (self - 1) == 0
-
-/// SplitMix64: mixes the 64 bits of `x` so that inputs close together land far apart.
-///
-/// One full splitmix64 step on state `x`: `z = x + 0x9E3779B97F4A7C15`, then `z ^= z >> 30; z *=
-/// 0xBF58476D1CE4E5B9; z ^= z >> 27; z *= 0x94D049BB133111EB; z ^= z >> 31`, all wrapping. It is
-/// the usual guard for `HashMap` keys, and `std.rand.Rng.next` is this applied to its state.
-///
-/// cost: \(O(1)\)
-/// traps: never
-/// example: `splitmix64(0) == 0xE220A8397B1DCDAF`
-/// example: `splitmix64(1) != splitmix64(2)`
-pub fn splitmix64(x: U64) -> U64:
-    var z: U64 = x + 0x9e3779b97f4a7c15
-    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9
-    z = (z ^ (z >> 27)) * 0x94d049bb133111eb
-    z ^ (z >> 31)
 
 /// The prime factorization of `x >= 1` as `(prime, exponent)` pairs, for any 64-bit `Int`.
 ///
@@ -2189,12 +2174,6 @@ fn sign_is_minus_one_zero_or_one():
 fn is_pow2_is_one_set_bit():
     assert 1.is_pow2 and 2.is_pow2 and 1024.is_pow2 and (1 << 62).is_pow2
     assert not 0.is_pow2 and not 6.is_pow2 and not (-4).is_pow2 and not 1023.is_pow2
-
-@test
-fn splitmix64_matches_the_reference_values():
-    assert splitmix64(0) == 0xe220a8397b1dcdaf
-    assert splitmix64(0x9e3779b97f4a7c15) == 0x6e789e6aa1b965f4
-    assert splitmix64(1) != splitmix64(2)
 
 @test
 fn miller_rabin_agrees_with_the_sieve_and_refuses_pseudoprimes():

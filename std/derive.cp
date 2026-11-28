@@ -6,6 +6,7 @@
 //!
 //! start: `eq_fields`, `lt_fields`, `show_fields`, `read_fields`, `hash_fields`
 //! example: `struct P(a: Int, b: Int); eq_fields(P(1, 2), P(1, 2)) == true`
+use std.hash.{splitmix64}
 use std.rand.{Random}
 
 /// `a == b` field by field, in declaration order, stopping at the first field that differs.
@@ -68,53 +69,6 @@ pub fn read_fields<T>() -> T = T(read() for _ in fields(T))
 /// example: `struct P(a: 1..=9); gen_fields<P>().a <= 9`
 pub fn gen_fields<T>() -> T = T(gen() for _ in fields(T))
 
-/// A value's 64-bit hash: equal values hash equal. `Int`, `I128`, `U64`, `Char`, `Bool` and
-/// `Str` have it here (splitmix64, decision 28.8); a struct gets it from `hash_fields`, and
-/// `@structural` gives a tuple, record, optional or array it when each part has it.
-@structural
-pub trait Hash:
-    fn hash(self) -> U64
-
-/// splitmix64's finalizer: every input bit moves about half the output bits.
-fn mix64(z0: U64) -> U64:
-    let top = U64(1) << 63
-    var z = z0 + (U64(0x1e3779b97f4a7c15) | top)
-    z = (z ^ (z >> 30)) * (U64(0x3f58476d1ce4e5b9) | top)
-    z = (z ^ (z >> 27)) * (U64(0x14d049bb133111eb) | top)
-    z ^ (z >> 31)
-
-impl Hash for Int:
-    /// cost: \(O(1)\)
-    /// example: `5.hash() == 5.hash()`
-    fn hash(self) -> U64 = mix64(U64(self))
-
-impl Hash for I128:
-    /// cost: \(O(1)\)
-    /// example: `I128(-5).hash() != I128(5).hash()`
-    fn hash(self) -> U64:
-        let low = (I128(1) << 64) - I128(1)
-        mix64(U64(self & low) ^ mix64(U64((self >> 64) & low)))
-
-impl Hash for U64:
-    /// cost: \(O(1)\)
-    fn hash(self) -> U64 = mix64(self)
-
-impl Hash for Char:
-    /// cost: \(O(1)\)
-    fn hash(self) -> U64 = mix64(U64(Int(self)))
-
-impl Hash for Bool:
-    /// cost: \(O(1)\)
-    fn hash(self) -> U64 = mix64(if self: U64(1) else: U64(0))
-
-impl Hash for Str:
-    /// cost: \(O(\mathit{length})\)
-    /// example: `"ab".hash() != "ba".hash()`
-    fn hash(self) -> U64:
-        var h = U64(self.len)
-        for c in self: h = mix64(h ^ U64(Int(c)))
-        h
-
 /// The fields' hashes combined in declaration order, so equal structs hash equal and
 /// reordered field values usually do not.
 ///
@@ -126,7 +80,7 @@ impl Hash for Str:
 /// example: `struct P(a: Int, b: Int); hash_fields(P(1, 2)) != hash_fields(P(2, 1))`
 pub fn hash_fields<T>(a: T) -> U64:
     var h = U64(0)
-    for f in fields(a): h = mix64(h ^ f.hash())
+    for f in fields(a): h = splitmix64(h ^ f.hash())
     h
 
 @test

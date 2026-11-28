@@ -6,10 +6,10 @@
 //! `FlatMap<V>` stores keys, values, and occupancy states in flat parallel arrays with
 //! linear probing and power-of-two capacity, avoiding per-node heap allocations when
 //! built-in `HashMap<Int, V>` overhead matters.
-use std.math.{splitmix64}
 use std.algebra.{desc}
 use std.range.{Len}
-use std.seq.{Seq, Track}
+use std.seq.{Seq, Track, sum}
+use std.hash.{Hash, HashMap, HashSet, splitmix64}
 
 // Slot states: 0 = empty, 1 = occupied; `remove` uses backward-shift deletion (no tombstones).
 /// Flat open-addressing hash map from `Int` keys to `V`, salted with `splitmix64`.
@@ -274,9 +274,9 @@ impl<V> Contains<Int> for FlatMap<V>:
 /// Invariant: no stored entry equals `init`. A write that leaves a key at `init` (`add`, `set`,
 /// `absorb`) removes it, so `len` is the number of keys whose value differs from `init` and
 /// `contains(k)` is `get(k) != init`.
-pub struct Counter<K, V: Add = Int>:
+pub struct Counter<K: Hash + Eq, V: Add + Eq + Default = Int>:
     _len: Int
-    m: HashMap<K, V>
+    var m: HashMap<K, V>
     init: V
 
     /// Count each element of `xs`, as Python's `Counter(xs)` does; `Counter()` starts empty.
@@ -289,7 +289,7 @@ pub struct Counter<K, V: Add = Int>:
     /// traps: never
     /// example: `let c = Counter(['a', 'b', 'a']); c['a'] == 2 and c['z'] == 0 and c.len == 2`
     /// example: `var c: Counter<Char, Int> = Counter(); c.get('z') == 0 and c.len == 0`
-    pub fn new(xs: Seq<K> = List<K>(); init: V = V(0)) -> Counter<K, V>:
+    pub fn new(xs: Seq<K> = List<K>(); init: V = V.default()) -> Counter<K, V>:
         var c = Counter(0, HashMap<K, V>(), init)
         for x in xs: c.add(x, V(1))
         c
@@ -485,7 +485,7 @@ pub struct Counter<K, V: Add = Int>:
     @get pub fn values(self) -> yields V:
         for (_, v) in m.items: yield v
 
-impl<K, V: Add> Contains<K> for Counter<K, V>:
+impl<K: Hash + Eq, V: Add + Eq + Default> Contains<K> for Counter<K, V>:
     /// Whether `k` currently has a stored entry.
     ///
     /// cost: \(O(1)\) expected
@@ -501,7 +501,7 @@ impl<K, V: Add> Contains<K> for Counter<K, V>:
 /// example: `var c = Counter.of([2, 1, 2]); c.push(1); c[1] == 2`
 @lint(counter_by_map, from: "var m: Map<K, Int> = Map()\nfor y in xs:\n    m[x] = (m.get(x) ?? 0) + 1", to: "var m = Counter<K>()\nfor y in xs:\n    m.push(x)", holes: "K, xs")
 @lint(counter_by_map, from: "var m: HashMap<K, Int> = HashMap()\nfor y in xs:\n    m[x] = (m.get(x) ?? 0) + 1", to: "var m = Counter<K>()\nfor y in xs:\n    m.push(x)", holes: "K, xs")
-pub fn push<K>(mut self: Counter<K, Int>, x: K):
+pub fn push<K: Hash + Eq>(mut self: Counter<K, Int>, x: K):
     self.add(x, 1)
 
 /// Count one fewer `x`: `c.add(x, -1)`, the undo of `push`.
@@ -509,7 +509,7 @@ pub fn push<K>(mut self: Counter<K, Int>, x: K):
 /// cost: \(O(1)\) expected
 /// traps: never
 /// example: `var c = Counter.of([2, 1, 2]); c.pop(2); c[2] == 1`
-pub fn pop<K>(mut self: Counter<K, Int>, x: K):
+pub fn pop<K: Hash + Eq>(mut self: Counter<K, Int>, x: K):
     self.add(x, -1)
 
 @test
@@ -585,7 +585,7 @@ fn flat_map_shows_by_key():
 /// example: `[1, 1, 2].tally()[7] == 0`
 @lint(counter_by_map, from: "var m: Map<K, Int> = Map()\nfor x in self:\n    m[x] += 1", to: "let m = self.tally()", holes: "K")
 @lint(counter_by_map, from: "var m: HashMap<K, Int> = HashMap()\nfor x in self:\n    m[x] += 1", to: "let m = self.tally()", holes: "K")
-pub fn tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
+pub fn tally<S: Seq<T>, T, K: Hash + Eq>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
     var out = Counter<K, Int>()
     for x in self:
         out.add(by(x), 1)
@@ -593,7 +593,7 @@ pub fn tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
 
 /// `push(x)` adds 1 to `x`'s count and `pop(x)` takes 1 away, so `len` is the number of distinct
 /// values in the window.
-impl Track<K> for Counter<K, Int>:
+impl Track<K> for Counter<K: Hash + Eq, Int>:
     fn push(mut self, x: K):
         self.add(x, 1)
     fn pop(mut self, x: K):
@@ -605,7 +605,7 @@ fn tally_counts_each_key():
     assert t[3] == 3 and t[1] == 1 and t[2] == 0
 
 /// A Counter prints `k=v` in key order on both engines, not in hash order: \(O(n \log n)\).
-impl Show for Counter<K: Ord + Show, V: Show>:
+impl Show for Counter<K: Hash + Eq + Ord + Show, V: Add + Eq + Default + Show>:
     fn show(c):
         var out = ""
         for (k, v) in c.items.sorted(by: e => e.0):
