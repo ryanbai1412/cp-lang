@@ -7,10 +7,8 @@ use crate::diag::Msg;
 use cpl_diag::{codes, msgs};
 use cpl_next_ir::ids::ItemId;
 use cpl_next_syntax::ast::{self, AstNode};
+use cpl_next_syntax::grammar::{LintArg, StressKind};
 use cpl_next_syntax::TokenKind;
-
-/// The shapes `cpl stress` draws a type alias as (decision 25.32).
-pub const STRESS_KINDS: [&str; 6] = ["perm", "tree", "simple", "connected", "dag", "digraph"];
 
 /// The errors of the decorator `attr` on a declaration of kind `on` in `item`.
 pub fn check(attr: &AttrForm, on: DeclKind, item: &ItemId, errors: &mut Vec<Msg>) {
@@ -59,10 +57,10 @@ fn stress(node: &ast::Decorator, on: DeclKind) -> Option<Msg> {
             [a] => bare_name(a),
             _ => None,
         };
-        if kind.is_some_and(|k| STRESS_KINDS.contains(&k.as_str())) {
+        if kind.is_some_and(|k| StressKind::of(&k).is_some()) {
             return None;
         }
-        let kinds = STRESS_KINDS.map(|k| format!("`{k}`")).join(", ");
+        let kinds = StressKind::ROWS.map(|r| format!("`{}`", r.1)).join(", ");
         (
             msgs::syntax::STRESS_KIND.say(&[&kinds]),
             "write one bare kind, as in `@stress(tree)`",
@@ -111,10 +109,11 @@ pub fn lint(attr: &AttrForm, f: &LintedFn, item: &ItemId, errors: &mut Vec<Msg>)
 }
 
 /// The plain string a decorator's `key:` argument gives.
-fn arg_text(node: &ast::Decorator, key: &str) -> Option<String> {
-    let a = args(node)
-        .into_iter()
-        .find(|a| a.label().is_some_and(|l| l.text() == key))?;
+fn arg_text(node: &ast::Decorator, key: LintArg) -> Option<String> {
+    let a = args(node).into_iter().find(|a| {
+        a.label()
+            .is_some_and(|l| LintArg::of(l.text()) == Some(key))
+    })?;
     let ast::Expr::Literal(l) = a.value()? else {
         return None;
     };
@@ -214,22 +213,22 @@ fn op_forms(toks: &[(TokenKind, String)]) -> Vec<String> {
 /// Why the `@lint` on `f` cannot be used, as its message and help; `None` when it can.
 fn lint_error(node: &ast::Decorator, f: &LintedFn) -> Option<(String, &'static str)> {
     use msgs::syntax as m;
-    let text = |key: &str| arg_text(node, key);
+    let text = |key: LintArg| arg_text(node, key);
     let name = args(node)
         .iter()
         .find(|a| a.label().is_none())
         .and_then(bare_name);
-    let to = match (text("to"), text("advice")) {
+    let to = match (text(LintArg::To), text(LintArg::Advice)) {
         (Some(to), None) => Some((to, false)),
         (None, Some(advice)) => Some((advice, true)),
         _ => None,
     };
-    let (Some(name), Some(from), Some((to, advice))) = (name, text("from"), to) else {
+    let (Some(name), Some(from), Some((to, advice))) = (name, text(LintArg::From), to) else {
         return Some((m::LINT_ARGS.say(&[]), "write `@lint(my_name, from: \"x * x\", to: \"sq(x)\")` (or `advice:` for `to`); `from` and `to` are plain strings"));
     };
     let mut holes = f.params.clone();
     holes.extend(
-        text("holes")
+        text(LintArg::Holes)
             .unwrap_or_default()
             .split(',')
             .map(str::trim)
@@ -237,9 +236,9 @@ fn lint_error(node: &ast::Decorator, f: &LintedFn) -> Option<(String, &'static s
             .map(String::from),
     );
     let (also, reads, each) = (
-        text("also").unwrap_or_default(),
-        text("reads").unwrap_or_default(),
-        text("each").unwrap_or_default(),
+        text(LintArg::Also).unwrap_or_default(),
+        text(LintArg::Reads).unwrap_or_default(),
+        text(LintArg::Each).unwrap_or_default(),
     );
     let code = |s: &str| run(s).filter(|(_, n)| *n == 1).map(|(t, _)| t);
     let read_toks = match reads.split_once("->").map(|(r, w)| (code(r.trim()), code(w.trim()))) {
@@ -287,13 +286,13 @@ fn lint_error(node: &ast::Decorator, f: &LintedFn) -> Option<(String, &'static s
             "list in `holes:` only names `from` or `also:` uses",
         ));
     }
-    if !text("when").is_none_or(|w| bounds_ok(&w, &holes, &in_from)) {
+    if !text(LintArg::When).is_none_or(|w| bounds_ok(&w, &holes, &in_from)) {
         return Some((
             m::LINT_WHEN.say(&[&name]),
             "write `when: \"b >= 1\"`: holes `from` uses, each compared with an integer",
         ));
     }
-    let suggests = text("builtin").unwrap_or_else(|| f.name.to_string());
+    let suggests = text(LintArg::Builtin).unwrap_or_else(|| f.name.to_string());
     let compound = to_toks.windows(3).any(|w| {
         w[0].0 != TokenKind::Dot
             && w[1].0 == TokenKind::Ident
@@ -354,7 +353,9 @@ pub fn module_lints<'a>(
             .iter()
             .find(|a| a.label().is_none())
             .and_then(bare_name);
-        let from = arg_text(node, "from").and_then(|f| run(&f)).map(|(t, _)| t);
+        let from = arg_text(node, LintArg::From)
+            .and_then(|f| run(&f))
+            .map(|(t, _)| t);
         let (Some(name), Some(from)) = (name, from) else {
             continue;
         };
@@ -407,7 +408,7 @@ mod tests {
 
     #[test]
     fn stress_names_one_kind_on_a_type_alias() {
-        for kind in STRESS_KINDS {
+        for (_, kind, _) in StressKind::ROWS {
             let src = format!("@stress({kind})\ntype T = [3]Int\n");
             assert!(errors(&src, DeclKind::Alias).is_empty(), "{kind}");
         }

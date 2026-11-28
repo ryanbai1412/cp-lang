@@ -289,3 +289,100 @@ impl Decorator {
         Self::ROWS.iter().map(|r| r.2)
     }
 }
+
+/// A shape `@stress(kind)` says `cpl stress` makes and shrinks a type alias's
+/// values as. The word is read here once; later passes match the variant.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum StressKind {
+    /// Each value of the index once.
+    Perm,
+    /// The `V.len - 1` edges of a tree over `V`.
+    Tree,
+    /// No loop and no repeated unordered pair.
+    Simple,
+    /// Simple and connected.
+    Connected,
+    /// Arcs that follow a vertex order.
+    Dag,
+    /// Arcs with no loop and no repeated arc.
+    Digraph,
+}
+
+impl StressKind {
+    /// Each row: the variant, its spelling and the spec rule that defines it.
+    pub const ROWS: [(StressKind, &'static str, &'static str); 6] = [
+        (StressKind::Perm, "perm", "R12.13.3"),
+        (StressKind::Tree, "tree", "R12.13.3"),
+        (StressKind::Simple, "simple", "R12.13.3"),
+        (StressKind::Connected, "connected", "R12.13.3"),
+        (StressKind::Dag, "dag", "R12.13.3"),
+        (StressKind::Digraph, "digraph", "R12.13.3"),
+    ];
+
+    /// The kind `@stress(word)` names, if any.
+    pub fn of(word: &str) -> Option<StressKind> {
+        Self::ROWS.iter().find(|r| r.1 == word).map(|r| r.0)
+    }
+
+    pub fn name(self) -> &'static str {
+        Self::ROWS.iter().find(|r| r.0 == self).map_or("", |r| r.1)
+    }
+
+    /// The spec rule that defines it.
+    pub fn rule(self) -> &'static str {
+        Self::ROWS.iter().find(|r| r.0 == self).map_or("", |r| r.2)
+    }
+}
+
+/// A labelled argument of `@lint(name, from: "..", to: "..")`: what the lint
+/// matches, what its fix writes and where it applies.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum LintArg {
+    /// The code the lint matches.
+    From,
+    /// The code its fix writes.
+    To,
+    /// Advice shown in place of a fix.
+    Advice,
+    /// Names `from` matches besides the fn's parameters.
+    Holes,
+    /// Statements the match must also find.
+    Also,
+    /// A read of a matched name, `->`, what the fix writes for it.
+    Reads,
+    /// The singular `to` writes for one matched name.
+    Each,
+    /// Bounds on holes the match needs.
+    When,
+    /// The call the fix suggests when it is not the fn's own.
+    Builtin,
+}
+
+impl LintArg {
+    /// Each row: the variant, its spelling and the spec rule that defines it.
+    pub const ROWS: [(LintArg, &'static str, &'static str); 9] = [
+        (LintArg::From, "from", "R06.4.9"),
+        (LintArg::To, "to", "R06.4.9"),
+        (LintArg::Advice, "advice", "R06.4.9"),
+        (LintArg::Holes, "holes", "R06.4.9"),
+        (LintArg::Also, "also", "R06.4.9"),
+        (LintArg::Reads, "reads", "R06.4.9"),
+        (LintArg::Each, "each", "R06.4.9"),
+        (LintArg::When, "when", "R06.4.9"),
+        (LintArg::Builtin, "builtin", "R06.4.9"),
+    ];
+
+    /// The argument the label `word:` is, if any.
+    pub fn of(word: &str) -> Option<LintArg> {
+        Self::ROWS.iter().find(|r| r.1 == word).map(|r| r.0)
+    }
+
+    pub fn name(self) -> &'static str {
+        Self::ROWS.iter().find(|r| r.0 == self).map_or("", |r| r.1)
+    }
+
+    /// The spec rule that defines it.
+    pub fn rule(self) -> &'static str {
+        Self::ROWS.iter().find(|r| r.0 == self).map_or("", |r| r.2)
+    }
+}

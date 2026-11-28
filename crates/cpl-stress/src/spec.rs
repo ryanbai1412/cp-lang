@@ -167,14 +167,14 @@ pub(crate) enum Made {
 
 impl Made {
     pub(crate) fn of(decorators: &[cpl_syntax::ast::Decorator]) -> Option<Made> {
-        use cpl_syntax::stress::Stress;
-        Some(match Stress::of(decorators)? {
-            Stress::Perm => Made::Perm,
-            Stress::Tree => Made::Tree,
-            Stress::Simple => Made::Graph(GraphKind::Simple),
-            Stress::Connected => Made::Graph(GraphKind::Connected),
-            Stress::Dag => Made::Graph(GraphKind::Dag),
-            Stress::Digraph => Made::Graph(GraphKind::Digraph),
+        use cpl_syntax::stress::{kind_of, StressKind as K};
+        Some(match kind_of(decorators)? {
+            K::Perm => Made::Perm,
+            K::Tree => Made::Tree,
+            K::Simple => Made::Graph(GraphKind::Simple),
+            K::Connected => Made::Graph(GraphKind::Connected),
+            K::Dag => Made::Graph(GraphKind::Dag),
+            K::Digraph => Made::Graph(GraphKind::Digraph),
         })
     }
 }

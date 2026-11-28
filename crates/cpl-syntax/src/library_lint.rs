@@ -9,6 +9,7 @@ use crate::ast::{
 use crate::ParsedItem;
 use crate::{arg_labels, Token, TokenKind};
 use cpl_diag::{msgs, Diagnostic, Span};
+use cpl_next_syntax::grammar::LintArg;
 use std::fmt::Display;
 
 /// One usable `@lint` declaration.
@@ -156,7 +157,7 @@ fn declared_on(
             );
             continue;
         };
-        let text = |key: &str| arg_text(d, key);
+        let text = |key: LintArg| arg_text(d, key);
         let name = d
             .args
             .iter()
@@ -165,12 +166,12 @@ fn declared_on(
                 ExprKind::Name(n) => Some(n.clone()),
                 _ => None,
             });
-        let to = match (text("to"), text("advice")) {
+        let to = match (text(LintArg::To), text(LintArg::Advice)) {
             (Some(to), None) => Some((to, false)),
             (None, Some(advice)) => Some((advice, true)),
             _ => None,
         };
-        let (Some(name), Some(from), Some((to, advice))) = (name, text("from"), to) else {
+        let (Some(name), Some(from), Some((to, advice))) = (name, text(LintArg::From), to) else {
             error(
                 &msgs::syntax::LINT_ARGS,
                 &[],
@@ -181,13 +182,13 @@ fn declared_on(
         };
         let mut holes: Vec<String> = f.params.iter().map(|p| p.name.text.clone()).collect();
         let params = holes.len();
-        for h in text("holes").unwrap_or_default().split(',') {
+        for h in text(LintArg::Holes).unwrap_or_default().split(',') {
             if !h.trim().is_empty() {
                 holes.push(h.trim().to_string());
             }
         }
-        let also = text("also").unwrap_or_default();
-        let reads = text("reads").unwrap_or_default();
+        let also = text(LintArg::Also).unwrap_or_default();
+        let reads = text(LintArg::Reads).unwrap_or_default();
         let read = (reads.split_once("->")).map(|(r, w)| (code(r.trim()), code(w.trim())));
         let read_toks = match read {
             None if reads.is_empty() => Vec::new(),
@@ -202,7 +203,7 @@ fn declared_on(
                 continue;
             }
         };
-        let each = text("each").unwrap_or_default();
+        let each = text(LintArg::Each).unwrap_or_default();
         let each_ok = each.is_empty()
             || each.split_once(" in ").is_some_and(|(x, xs)| {
                 let x_in_to = tokens(&to)
@@ -272,7 +273,7 @@ fn declared_on(
             );
             continue;
         }
-        let when = text("when").map_or(Some(Vec::new()), |w| bounds(&w));
+        let when = text(LintArg::When).map_or(Some(Vec::new()), |w| bounds(&w));
         let Some(when) = when.filter(|w| {
             w.iter()
                 .all(|b| in_from.contains(&b.hole) && holes.contains(&b.hole))
@@ -285,7 +286,7 @@ fn declared_on(
             );
             continue;
         };
-        let suggests = text("builtin").unwrap_or_else(|| f.name.text.clone());
+        let suggests = text(LintArg::Builtin).unwrap_or_else(|| f.name.text.clone());
         let calls = |toks: &[(TokenKind, String)], name: &str| {
             toks.windows(2).any(|w| {
                 (w[0].0 == TokenKind::Ident && w[0].1 == name && w[1].0 == TokenKind::LParen)
@@ -335,11 +336,12 @@ fn declared_on(
 /// The plain string a decorator's `key:` argument gives. Not inlined:
 /// `declared_on` reads seven of them.
 #[inline(never)]
-fn arg_text(d: &crate::ast::Decorator, key: &str) -> Option<String> {
-    let a = d
-        .args
-        .iter()
-        .find(|a| a.name.as_ref().is_some_and(|n| n.text == key))?;
+fn arg_text(d: &crate::ast::Decorator, key: LintArg) -> Option<String> {
+    let a = d.args.iter().find(|a| {
+        a.name
+            .as_ref()
+            .is_some_and(|n| LintArg::of(&n.text) == Some(key))
+    })?;
     match &a.value.kind {
         ExprKind::Str(pieces) => match pieces.as_slice() {
             [StrPiece::Text(t)] => Some(t.clone()),
