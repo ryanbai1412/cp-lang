@@ -19,7 +19,7 @@ from specgate import Problem
 
 HELP = "every (trait, claimer, method) has a traits.toml case; spec/conformance/traits/ generated (--write regenerates)"
 
-TRAIT = re.compile(r"pub trait (\w+)(<[^>]*>)?(:\s*(.*))?$")
+TRAIT = re.compile(r"pub trait (\w+)(<[^>]*>)?(\([^)]*\))?(:\s*(.*))?$")
 METHOD = re.compile(r"\s+(?:@get\s+)?fn (\w+)\(")
 IMPL = re.compile(r"impl(?:<(?:[^<>]|<[^<>]*>)*>)? (\w+)(?:<[^>]*>)? for ([\w<>, \[\]:+]+):$")
 

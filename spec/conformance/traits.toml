@@ -25,8 +25,6 @@ methods = ["bitxor"]
 methods = ["lt"]
 [trait.Show]
 methods = ["show"]
-[trait.Into]
-methods = ["into"]
 [trait.Index]
 methods = ["ord", "nth"]
 
@@ -3553,7 +3551,7 @@ print(fresh("ab").len)
 """
 out = "0"
 
-[case."Domain/Cut/after"]
+[case."Ordered/Cut/after"]
 code = """
 domain P = 0..4
 print(Cut<P>.nth(1).after.len)
@@ -3567,14 +3565,14 @@ print(Cut<P>.all.len)
 """
 out = "5"
 
-[case."Domain/Cut/at"]
+[case."Ordered/Cut/at"]
 code = """
 domain P = 0..4
 print(Cut<P>.at(4)!.ord, (Cut<P>.at(9) ?? Cut<P>.nth(1)).ord)
 """
 out = "4 1"
 
-[case."Domain/Cut/before"]
+[case."Ordered/Cut/before"]
 code = """
 domain P = 0..4
 print(Cut<P>.nth(1).before.len)
@@ -3628,7 +3626,7 @@ print(bit((P, P, P, P).counted), bit(E.counted))
 out = "0 1"
 engines = "next"
 
-[case."Domain/Cut/l"]
+[case."Ordered/Cut/l"]
 code = """
 domain P = 0..4
 fn left<D: Domain>(d: D) -> Cut<D> = d.l
@@ -3636,7 +3634,7 @@ print(left(P.cuts.nth(2)).ord)
 """
 out = "2"
 
-[case."Domain/Cut/next"]
+[case."Ordered/Cut/next"]
 code = """
 domain P = 0..4
 print(Cut<P>.nth(1).next!.ord, (Cut<P>.nth(4).next ?? Cut<P>.nth(0)).ord)
@@ -3650,14 +3648,14 @@ print(Cut<P>.nth(2).ord)
 """
 out = "2"
 
-[case."Domain/Cut/prev"]
+[case."Ordered/Cut/prev"]
 code = """
 domain P = 0..4
 print(Cut<P>.nth(3).prev!.ord)
 """
 out = "2"
 
-[case."Domain/Cut/r"]
+[case."Ordered/Cut/r"]
 code = """
 domain P = 0..4
 fn right<D: Domain>(d: D) -> Cut<D> = d.r
@@ -3672,7 +3670,7 @@ print(Cut<P>.range.len)
 """
 out = "5"
 
-[case."Domain/Cut/wrap"]
+[case."Ordered/Cut/wrap"]
 code = """
 domain P = 0..4
 print(Cut<P>.wrap(-1).ord, Cut<P>.wrap(7).ord)
