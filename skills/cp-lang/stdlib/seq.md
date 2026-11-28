@@ -258,7 +258,6 @@ Fields: `k: Int,`.
 - `fn windows<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per window; traps: when `k < 1`
 - `fn chunks<S: Indexed>(self: S, k: 1..) -> yields Slice<S>` — \(O(1)\) per chunk; traps: when `k < 1`
 - `@get fn adjacent<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Adjacent pairs `(prev, x)` of `self`, left to right: `[10, 20, 30].adjacent` gives `(10, 20)` then `(20, 30)`.
-- `fn each<S: Seq<T>, T>(self: S) -> yields T` — what `iter` costs; The sequence's elements from its start: `iter`, by the name the sequence types give it.
 - `fn pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(n^2)\) to walk, \(O(1)\) per pair; Every pair `(x, y)` with `x` before `y`: `[10, 20, 30].pairs()` gives `(10, 20)`, `(10, 30)`, `(20, 30)`.
 - `@get fn with_prev<S: Seq<T>, T>(self: S) -> yields (?T, T)` — \(O(1)\) per step; Every element paired with the one before it, starting with `(None, first)`: `[10, 20, 30].with_prev` gives `(None, 10)`, `(10, 20)`, `(20, 30)`.
 - `fn cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T)` — \(O(1)\) per step; Every element with the one after it, the last with the first: the sides of a polygon, the links of a ring.
