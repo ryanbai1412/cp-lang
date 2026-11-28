@@ -9,31 +9,48 @@ use cpl_syntax::ast::{self, FnBody, StmtKind, TypeKind};
 use cpl_syntax::decorators::Mark;
 use std::collections::HashMap;
 
-/// An enum-level `@tags(..)` is removed: each variant writes its own `@tag` (R02.7.2, decision
+/// An enum's tag errors (R02.7.2): a variant whose token another one before it has (E0407), and
+/// an enum-level `@tags(..)`, which is removed: each variant writes its own `@tag` (decision
 /// 459). With one plain tag per variant, the help is the rewrite.
-pub(crate) fn enum_level_tags(item: &ItemId, s: &ast::Stmt, e: &ast::EnumDecl) -> Option<Msg> {
-    let x = s.decorators.iter().find(|x| x.mark == Some(Mark::Tags))?;
-    let text = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.say(&[]);
-    let mut m = Msg::at(
-        item.at(x.span),
-        Msg::verdict(cpl_diag::codes::REMOVED_SYNTAX, text),
-    );
-    let tag = |a: &ast::Arg| match &a.value.kind {
-        ast::ExprKind::Str(p) => match p.as_slice() {
-            [ast::StrPiece::Text(t)] => Some(format!("{t:?}")),
+pub(crate) fn enum_tags(item: &ItemId, s: &ast::Stmt, e: &ast::EnumDecl) -> Vec<Msg> {
+    let mut out: Vec<Msg> = (e.variants.iter().enumerate())
+        .filter_map(|(i, v)| {
+            let t = token(v);
+            let first = e.variants[..i].iter().find(|w| token(w) == t)?;
+            let what = format!(
+                "`{}` reads and prints as `{t}`, as `{}` does: tags are distinct within an enum",
+                v.name.text, first.name.text
+            );
+            let m = Msg::verdict(cpl_diag::codes::DUPLICATE_VARIANT_TAG, what);
+            Some(Msg::at(item.at(v.name.span), m))
+        })
+        .collect();
+    let level = || -> Option<Msg> {
+        let x = s.decorators.iter().find(|x| x.mark == Some(Mark::Tags))?;
+        let text = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.say(&[]);
+        let mut m = Msg::at(
+            item.at(x.span),
+            Msg::verdict(cpl_diag::codes::REMOVED_SYNTAX, text),
+        );
+        let tag = |a: &ast::Arg| match &a.value.kind {
+            ast::ExprKind::Str(p) => match p.as_slice() {
+                [ast::StrPiece::Text(t)] => Some(format!("{t:?}")),
+                _ => None,
+            },
             _ => None,
-        },
-        _ => None,
+        };
+        let each = (x.args.len() == e.variants.len())
+            .then(|| x.args.iter().zip(&e.variants))
+            .into_iter()
+            .flatten()
+            .map(|(a, v)| Some(format!("@tag({}) {}", tag(a)?, v.name.text)))
+            .collect::<Option<Vec<_>>>()
+            .filter(|w| !w.is_empty());
+        m.help = each.map(|w| cpl_diag::habits::ENUM_TAGS.say(&[&e.name.text, &w.join(" | ")]));
+        Some(m)
     };
-    let each = (x.args.len() == e.variants.len())
-        .then(|| x.args.iter().zip(&e.variants))
-        .into_iter()
-        .flatten()
-        .map(|(a, v)| Some(format!("@tag({}) {}", tag(a)?, v.name.text)))
-        .collect::<Option<Vec<_>>>()
-        .filter(|w| !w.is_empty());
-    m.help = each.map(|w| cpl_diag::habits::ENUM_TAGS.say(&[&e.name.text, &w.join(" | ")]));
-    Some(m)
+    out.extend(level());
+    out
 }
 
 /// An enum as structs: its own, with no fields (the parser makes its methods an `impl`), then one
@@ -182,29 +199,6 @@ pub(crate) fn module_derived(
                 let caches = copies_caches(&derive);
                 let derived = derived_impl(s, sd, derive, tr);
                 out.push((item.clone(), sd.name.text.clone(), derived, caches));
-            }
-        }
-    }
-    out
-}
-
-/// Each variant whose token another variant already has: tags are distinct within the enum
-/// (R02.7.2, E0407).
-pub(crate) fn duplicate_tags(item: &ItemId, e: &ast::EnumDecl) -> Vec<Msg> {
-    let mut seen: HashMap<String, &str> = HashMap::new();
-    let mut out = Vec::new();
-    for v in &e.variants {
-        let t = token(v);
-        match seen.get(t.as_str()) {
-            Some(first) => out.push(Msg::at(
-                item.at(v.name.span),
-                Msg::verdict(
-                    cpl_diag::codes::DUPLICATE_VARIANT_TAG,
-                    format!("`{}` reads and prints as `{t}`, as `{first}` does: tags are distinct within an enum", v.name.text),
-                ),
-            )),
-            None => {
-                seen.insert(t, &v.name.text);
             }
         }
     }

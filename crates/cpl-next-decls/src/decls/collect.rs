@@ -279,8 +279,7 @@ fn layer(
                     }
                     if let StmtKind::Enum(e) = &s.kind {
                         let (structs, mut errors, values) = enum_structs(s, e);
-                        errors.extend(crate::synth::enum_level_tags(item, s, e));
-                        errors.extend(crate::synth::duplicate_tags(item, e));
+                        errors.extend(crate::synth::enum_tags(item, s, e));
                         match ModId(mi) == d.program {
                             true => d.errors.extend(errors),
                             false => d.module_errors[mi].extend(errors),

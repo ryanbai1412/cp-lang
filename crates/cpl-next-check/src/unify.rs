@@ -944,7 +944,15 @@ impl<'a> Cx<'a> {
             (Ty::Int | Ty::Range(..) | Ty::RangeOf(_) | Ty::RangeTo(..), Ty::Range(lo, hi)) => {
                 let (lo, hi) = (*lo, *hi);
                 // A constant is checked here, not when the program runs (R03.1.10).
-                if let TK::Int(i) = e.kind {
+                let k = match &e.kind {
+                    TK::Int(i) => Some(*i),
+                    TK::Neg(x) => match x.kind {
+                        TK::Int(i) => i.checked_neg(),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                if let Some(i) = k {
                     if i < lo || i > hi {
                         self.err(
                             span,
