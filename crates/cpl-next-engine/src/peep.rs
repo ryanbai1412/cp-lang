@@ -538,7 +538,7 @@ fn effect(op: &Op, places: &[PlaceCode], lays: &Layouts) -> Option<(Vec<Words>, 
         } => (vec![(a, 2), (b, if narrow { 1 } else { 2 })], vec![(d, 2)]),
         Op::WideCmp { d, a, b, .. } => (vec![(a, 2), (b, 2)], vec![one(d)]),
         Op::Unary { sig, d, a, .. } => (
-            vec![(a, sig.args[0].words() as u32)],
+            vec![(a, sig.arg.words() as u32)],
             vec![(d, sig.res.words() as u32)],
         ),
         Op::RawCap { d, n: a, .. } => (vec![one(a)], vec![one(d)]),
@@ -613,7 +613,7 @@ fn operands<'a>(op: &'a mut Op, lays: &Layouts) -> Vec<&'a mut Reg> {
     match op {
         Op::Int { a, b, .. } | Op::Word { a, b, .. } | Op::Float { a, b, .. } => vec![a, b],
         Op::Cmp { a, b, .. } => vec![a, b],
-        Op::Unary { a, sig, .. } if sig.args[0].words() == 1 => vec![a],
+        Op::Unary { a, sig, .. } if sig.arg.words() == 1 => vec![a],
         Op::RawCap { n: a, .. }
         | Op::Check { c: a, .. }
         | Op::Guard { c: a, .. }

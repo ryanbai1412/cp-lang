@@ -632,7 +632,7 @@ impl M<'_> {
                     self.stack[r(d)] = u64::from(ops::compare(op, x, y)?);
                 }
                 Op::Unary { op, sig, d, a } => {
-                    let hi = if sig.args[0].words() == 2 {
+                    let hi = if sig.arg.words() == 2 {
                         self.stack[r(a) + 1]
                     } else {
                         0

@@ -536,10 +536,11 @@ pub fn compares(op: Intr) -> bool {
     matches!(op, I::Eq | I::Ne | I::Lt | I::Le | I::Gt | I::Ge | I::Below)
 }
 
-/// The kinds of a scalar operation's operands and of its result.
+/// The kinds of a scalar operation's first operand and of its result; a second operand's
+/// kind is its own type's, which check chose from the operator's impl.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Sig {
-    pub args: [Operand; 2],
+    pub arg: Operand,
     pub res: Operand,
 }
 
@@ -565,16 +566,7 @@ pub fn sig(op: Intr, first: Operand) -> Sig {
         I::CharOf => O::Char,
         _ => first,
     };
-    // A shift's count and a power's exponent are `Int`s (R02.1, `Pow`'s `Rhs = Int`).
-    let second = if matches!(op, I::Shl | I::Shr | I::Pow) {
-        O::Int
-    } else {
-        first
-    };
-    Sig {
-        args: [first, second],
-        res,
-    }
+    Sig { arg: first, res }
 }
 
 /// The value of kind `k` that register words `w` hold.
@@ -604,7 +596,7 @@ pub fn words(s: Scalar) -> [u64; 2] {
 /// A scalar operation of one operand, on the register words that hold it.
 pub fn unary(op: Intr, sig: Sig, a: [u64; 2]) -> Result<[u64; 2], Fault> {
     let other = || Fault::Internal("an operand of another kind");
-    let x = load(sig.args[0], a).ok_or_else(other)?;
+    let x = load(sig.arg, a).ok_or_else(other)?;
     scalar(op, &[x]).ok_or_else(other)?.map(words)
 }
 
@@ -628,12 +620,11 @@ pub fn scalar(op: Intr, xs: &[Scalar]) -> Option<Result<Scalar, Fault>> {
         (_, &[S::F64(a), S::F64(b)]) if cmp => compare_float(op, f(a), f(b)).map(S::Bool),
         (_, &[a, b]) if cmp => compare(op, whole(a)?, whole(b)?).map(S::Bool),
         (_, &[S::F64(a), S::F64(b)]) => fl(float(op, f(a), f(b))),
-        (I::Shl | I::Shr | I::Pow, &[S::U64(a), S::Int(b)]) => word(op, a, b as u64).map(S::U64),
+        // An `Int` right side beside a wider left is a count or an exponent, as check typed it.
+        (_, &[S::U64(a), S::Int(b)]) => word(op, a, b as u64).map(S::U64),
         (_, &[S::U64(a), S::U64(b)]) => word(op, a, b).map(S::U64),
         (_, &[S::Int(a), S::Int(b)]) => int(op, a, b).map(S::Int),
-        (I::Shl | I::Shr | I::Pow, &[S::I128(a), S::Int(b)]) => {
-            wide(op, a, i128::from(b)).map(S::I128)
-        }
+        (_, &[S::I128(a), S::Int(b)]) => wide(op, a, i128::from(b)).map(S::I128),
         (_, &[S::I128(a), S::I128(b)]) => wide(op, a, b).map(S::I128),
         (I::Neg, &[S::I128(w)]) => wneg(w).map(S::I128),
         (I::Abs, &[S::I128(w)]) => wabs(w).map(S::I128),

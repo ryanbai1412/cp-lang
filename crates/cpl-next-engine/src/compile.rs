@@ -1295,7 +1295,12 @@ impl Fc<'_> {
         let Some(rs) = self.operands(args) else {
             return self.fail("a lent operand");
         };
-        let wide = sig.args[0] == ops::Operand::I128;
+        let wide = sig.arg == ops::Operand::I128;
+        let second = match args.get(1) {
+            Some(Arg::Value(v)) => ops::Operand::of(&v.ty),
+            Some(Arg::View(p) | Arg::Lend(p)) => ops::Operand::of(&self.place_ty(p)),
+            None => ops::Operand::Other,
+        };
         let code = match *rs.as_slice() {
             [a] => Op::Unary { op, sig, d, a },
             [a, b] => {
@@ -1307,7 +1312,7 @@ impl Fc<'_> {
                         d,
                         a,
                         b,
-                        narrow: sig.args[1].words() == 1,
+                        narrow: second.words() == 1,
                     },
                     (true, Kind::Int | Kind::Bool | Kind::U64 | Kind::F64) => {
                         Op::Cmp { op, d, a, b, kind }
