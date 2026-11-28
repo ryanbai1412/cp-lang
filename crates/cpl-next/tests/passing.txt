@@ -1538,6 +1538,7 @@ next/a_gen_15_fn_field_reassigned.cp
 next/a_gen_16_fn_var_three_members.cp
 next/a_gen_17_fn_reads_later_top_level_var.cp
 next/a_gen_19_for_else.cp
+next/a_gen_20_420_functions.cp
 next/a_gen_21_continue_in_plain_loop.cp
 next/a_io_02_nbsp_is_not_whitespace.cp
 next/a_io_04_minus_zero.cp

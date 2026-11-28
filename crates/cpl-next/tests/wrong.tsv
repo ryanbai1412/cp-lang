@@ -429,7 +429,6 @@ matrix/optional/std_generic--while_let_fn.cp	wrong-reject	check: std.graph:213:9
 matrix/optional/std_generic--while_let_loop.cp	wrong-reject	check: std.graph:213:9: E0302: this cannot be walked with `for`
 matrix/optional/std_generic--while_let_top.cp	wrong-reject	check: std.graph:213:9: E0302: this cannot be walked with `for`
 next/a_decl_04_struct_constant.cp	wrong-reject	check: program:7:28: E0201: unknown name `BASE`
-next/a_gen_20_420_functions.cp	wrong-reject	link: E0319: instantiation does not end: `main` makes a new copy of itself at every level (a function passed to its own recursive call, wrapped in a new closure)
 next/a_multi_04_fn_below_divider_captures_case.cp	wrong-reject	check: program:10:14: E0201: unknown name `a`
 next/n_swap_01_swap_is_an_ordinary_fn.cp	wrong-reject	own: std.mem:7:6: E0602: `a` is written here while `$parts40_1`, which borrows it, is still used
 next/o21_lender_assign_reads_same.cp	wrong-error	wanted E0604 on line 13, got: own: program:13:15: E0602: `s` is lent to `at` for writing while its cell is in use, and this uses it
