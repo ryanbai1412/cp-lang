@@ -3,6 +3,35 @@ use super::expr::{block, pure, Formal};
 use super::*;
 use cpl_next_ir::unbuilt::Unbuilt;
 
+/// One argument of a call: written (`f(x)`, `f(k: x)`, `f(mut x)`), or given by a form that
+/// calls a member for the program, as `..r without (u, v)` does.
+pub(super) struct CallArg {
+    pub label: Option<String>,
+    pub value: Option<next::Expr>,
+    pub mutable: bool,
+    pub at: Span,
+}
+
+impl CallArg {
+    pub(super) fn of(cx: &Cx, a: &next::Arg) -> CallArg {
+        CallArg {
+            label: a.label().map(|t| t.text().to_string()),
+            value: a.value(),
+            mutable: a.is_mut(),
+            at: cx.at(a),
+        }
+    }
+    /// An argument written without a label: `x` of `f(x)`.
+    pub(super) fn plain(cx: &Cx, x: &next::Expr) -> CallArg {
+        CallArg {
+            label: None,
+            value: Some(x.clone()),
+            mutable: false,
+            at: cx.at(x),
+        }
+    }
+}
+
 impl Cx<'_> {
     /// A call of a declared fn or struct, with the type arguments written at the call.
     pub(super) fn call_named(
