@@ -2275,6 +2275,7 @@ std-search/split-best-multi-group.cp
 std-search/split-best-orders-by-best.cp
 std-segtree/of-explicit-args-reject-wrong-fill.cp
 std-seq/a-bidir-struct-of-its-own-has-last.cp
+std-seq/a-types-own-sum-wins-over-the-seq-default.cp
 std-seq/adjacent-diff-short.cp
 std-seq/adjacent_diff-1.cp
 std-seq/all-1.cp
