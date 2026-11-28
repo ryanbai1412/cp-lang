@@ -994,3 +994,51 @@ fn self_and_parenthesized_patterns_parse() {
         assert_eq!(t.patterns().count(), n);
     }
 }
+
+#[test]
+fn operator_kinds_come_from_the_table() {
+    use crate::ops::{BinOp, CmpOp, UnOp};
+    let src = "fn f():
+    a += 1
+    a **= 2
+    a ??= b
+    a <<= 1
+    a = b
+    g gcd= x
+    let y = -a + b ** c <=> d ?? e
+    let z = not (x < y <= w not in s)
+    let q = ~x | y & z ^ w >> 1 % 2
+";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let of = |k| file.root.descendants().filter(move |n| n.kind() == k);
+    let assigns: Vec<String> = of(NodeKind::AssignStmt)
+        .filter_map(ast::AssignStmt::cast)
+        .map(|a| match a.op().unwrap() {
+            ast::AssignOp::Set => "Set".into(),
+            ast::AssignOp::Op(op) => format!("{op:?}"),
+            ast::AssignOp::Fn(f) => format!("Fn({})", f.text()),
+        })
+        .collect();
+    assert_eq!(assigns, ["Add", "Pow", "Coalesce", "Shl", "Set", "Fn(gcd)"]);
+    let bins: Vec<_> = of(NodeKind::BinExpr)
+        .filter_map(ast::BinExpr::cast)
+        .map(|b| b.op_kind().unwrap())
+        .collect();
+    use BinOp::*;
+    assert_eq!(
+        bins,
+        [Coalesce, Spaceship, Add, Pow, BitOr, BitXor, BitAnd, Shr, Rem]
+    );
+    let pre: Vec<_> = of(NodeKind::PrefixExpr)
+        .filter_map(ast::PrefixExpr::cast)
+        .map(|p| p.op_kind().unwrap())
+        .collect();
+    assert_eq!(pre, [UnOp::Neg, UnOp::Not, UnOp::BitNot]);
+    let cmp = of(NodeKind::CompareExpr)
+        .find_map(ast::CompareExpr::cast)
+        .unwrap();
+    assert_eq!(cmp.ops(), [CmpOp::Lt, CmpOp::Le, CmpOp::NotIn]);
+    assert_eq!(cmp.operands().count(), 4);
+}

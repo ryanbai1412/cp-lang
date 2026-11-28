@@ -64,20 +64,81 @@ pub enum Assoc {
     Chain,
 }
 
-/// A binary operator: its token, its level, how it groups, and the level
-/// its right operand is read at.
+/// What a binary operator computes; a comparison is a [`CmpOp`].
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Pow,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Shl,
+    Shr,
+    And,
+    Or,
+    Coalesce,
+    /// `<=>`.
+    Spaceship,
+}
+
+/// A link of a comparison chain: `a < b <= c` has two.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum CmpOp {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    In,
+    /// `not in`, two tokens read as one.
+    NotIn,
+}
+
+/// What a prefix operator computes.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum UnOp {
+    Pos,
+    Neg,
+    Not,
+    BitNot,
+}
+
+/// What a binary row computes: a [`Assoc::Chain`] row is a comparison.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum Kind {
+    Bin(BinOp),
+    Cmp(CmpOp),
+}
+
+/// A binary operator: its token and how it is written, its level, how it groups, and what
+/// it computes.
 #[derive(Clone, Copy, Debug)]
 pub struct Binary {
     pub token: TokenKind,
+    pub spelling: &'static str,
     pub level: Level,
     pub assoc: Assoc,
+    pub kind: Kind,
 }
 
-const fn bin(token: TokenKind, level: Level, assoc: Assoc) -> Binary {
+const fn bin(
+    token: TokenKind,
+    spelling: &'static str,
+    level: Level,
+    assoc: Assoc,
+    kind: Kind,
+) -> Binary {
     Binary {
         token,
+        spelling,
         level,
         assoc,
+        kind,
     }
 }
 
@@ -85,39 +146,99 @@ const fn bin(token: TokenKind, level: Level, assoc: Assoc) -> Binary {
 /// [`binary`]; ranges (`..`, `..=`) have their own node and are listed in
 /// [`RANGE`].
 pub const BINARY: &[Binary] = &[
-    bin(QuestionQuestion, Level::Coalesce, Assoc::Right),
-    bin(Or, Level::Or, Assoc::Left),
-    bin(And, Level::And, Assoc::Left),
-    bin(EqEq, Level::Compare, Assoc::Chain),
-    bin(NotEq, Level::Compare, Assoc::Chain),
-    bin(Lt, Level::Compare, Assoc::Chain),
-    bin(LtEq, Level::Compare, Assoc::Chain),
-    bin(Gt, Level::Compare, Assoc::Chain),
-    bin(GtEq, Level::Compare, Assoc::Chain),
-    bin(In, Level::Compare, Assoc::Chain),
-    bin(Spaceship, Level::Compare, Assoc::Left),
-    bin(Pipe, Level::BitOr, Assoc::Left),
-    bin(Caret, Level::BitXor, Assoc::Left),
-    bin(Amp, Level::BitAnd, Assoc::Left),
-    bin(Shl, Level::Shift, Assoc::Left),
-    bin(Shr, Level::Shift, Assoc::Left),
-    bin(Plus, Level::Add, Assoc::Left),
-    bin(Minus, Level::Add, Assoc::Left),
-    bin(Star, Level::Mul, Assoc::Left),
-    bin(Slash, Level::Mul, Assoc::Left),
-    bin(Percent, Level::Mul, Assoc::Left),
-    bin(StarStar, Level::Pow, Assoc::Right),
+    bin(
+        QuestionQuestion,
+        "??",
+        Level::Coalesce,
+        Assoc::Right,
+        Kind::Bin(BinOp::Coalesce),
+    ),
+    bin(Or, "or", Level::Or, Assoc::Left, Kind::Bin(BinOp::Or)),
+    bin(And, "and", Level::And, Assoc::Left, Kind::Bin(BinOp::And)),
+    bin(
+        EqEq,
+        "==",
+        Level::Compare,
+        Assoc::Chain,
+        Kind::Cmp(CmpOp::Eq),
+    ),
+    bin(
+        NotEq,
+        "!=",
+        Level::Compare,
+        Assoc::Chain,
+        Kind::Cmp(CmpOp::Ne),
+    ),
+    bin(Lt, "<", Level::Compare, Assoc::Chain, Kind::Cmp(CmpOp::Lt)),
+    bin(
+        LtEq,
+        "<=",
+        Level::Compare,
+        Assoc::Chain,
+        Kind::Cmp(CmpOp::Le),
+    ),
+    bin(Gt, ">", Level::Compare, Assoc::Chain, Kind::Cmp(CmpOp::Gt)),
+    bin(
+        GtEq,
+        ">=",
+        Level::Compare,
+        Assoc::Chain,
+        Kind::Cmp(CmpOp::Ge),
+    ),
+    bin(In, "in", Level::Compare, Assoc::Chain, Kind::Cmp(CmpOp::In)),
+    bin(
+        Spaceship,
+        "<=>",
+        Level::Compare,
+        Assoc::Left,
+        Kind::Bin(BinOp::Spaceship),
+    ),
+    bin(
+        Pipe,
+        "|",
+        Level::BitOr,
+        Assoc::Left,
+        Kind::Bin(BinOp::BitOr),
+    ),
+    bin(
+        Caret,
+        "^",
+        Level::BitXor,
+        Assoc::Left,
+        Kind::Bin(BinOp::BitXor),
+    ),
+    bin(
+        Amp,
+        "&",
+        Level::BitAnd,
+        Assoc::Left,
+        Kind::Bin(BinOp::BitAnd),
+    ),
+    bin(Shl, "<<", Level::Shift, Assoc::Left, Kind::Bin(BinOp::Shl)),
+    bin(Shr, ">>", Level::Shift, Assoc::Left, Kind::Bin(BinOp::Shr)),
+    bin(Plus, "+", Level::Add, Assoc::Left, Kind::Bin(BinOp::Add)),
+    bin(Minus, "-", Level::Add, Assoc::Left, Kind::Bin(BinOp::Sub)),
+    bin(Star, "*", Level::Mul, Assoc::Left, Kind::Bin(BinOp::Mul)),
+    bin(Slash, "/", Level::Mul, Assoc::Left, Kind::Bin(BinOp::Div)),
+    bin(Percent, "%", Level::Mul, Assoc::Left, Kind::Bin(BinOp::Rem)),
+    bin(
+        StarStar,
+        "**",
+        Level::Pow,
+        Assoc::Right,
+        Kind::Bin(BinOp::Pow),
+    ),
 ];
 
 /// The range operators, at [`Level::Range`].
 pub const RANGE: &[TokenKind] = &[DotDot, DotDotEq];
 
-/// Prefix operators and the level of their operand.
-pub const PREFIX: &[(TokenKind, Level)] = &[
-    (Not, Level::Not),
-    (Minus, Level::Unary),
-    (Plus, Level::Unary),
-    (Tilde, Level::Unary),
+/// Prefix operators, the level of their operand, and what they compute.
+pub const PREFIX: &[(TokenKind, Level, UnOp)] = &[
+    (Not, Level::Not, UnOp::Not),
+    (Minus, Level::Unary, UnOp::Neg),
+    (Plus, Level::Unary, UnOp::Pos),
+    (Tilde, Level::Unary, UnOp::BitNot),
 ];
 
 /// Postfix operators that take no operand (`x?`, `x!`).
@@ -130,7 +251,27 @@ pub fn binary(token: TokenKind) -> Option<Binary> {
 
 /// The level of `token` as a prefix operator, if it is one.
 pub fn prefix(token: TokenKind) -> Option<Level> {
-    PREFIX.iter().find(|(t, _)| *t == token).map(|(_, l)| *l)
+    PREFIX
+        .iter()
+        .find(|(t, ..)| *t == token)
+        .map(|(_, l, _)| *l)
+}
+
+/// What `token` computes as a prefix operator, if it is one.
+pub fn prefix_op(token: TokenKind) -> Option<UnOp> {
+    PREFIX
+        .iter()
+        .find(|(t, ..)| *t == token)
+        .map(|(.., op)| *op)
+}
+
+/// The binary operator a compound assignment's `OpEq` token applies: `+` in `+=`.
+pub fn compound(op_eq: &str) -> Option<BinOp> {
+    let spelled = op_eq.strip_suffix('=')?;
+    BINARY.iter().find_map(|b| match b.kind {
+        Kind::Bin(op) if b.spelling == spelled => Some(op),
+        _ => None,
+    })
 }
 
 /// Every level `token` is an operator at: `-` is both `Add` and `Unary`.
