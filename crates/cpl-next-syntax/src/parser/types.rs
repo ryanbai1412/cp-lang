@@ -184,7 +184,7 @@ impl Parser<'_> {
 
     /// `()`, `(A, B)`, `(A) -> B`, or a record type `(lo: Int, ..R)`.
     /// `without (u, v)` after a row's rest `..R`.
-    fn row_without(&mut self) {
+    pub(super) fn row_without(&mut self) {
         self.bump();
         if self.want(T::LParen, "`(` and the fields it removes") {
             loop {

@@ -160,6 +160,10 @@ nodes! {
     GeneratorExpr,
     TableExpr,
     RecordExpr,
+    /// `x: 1` or a punned `x:` in a record expression.
+    RecordField,
+    /// `..e` or `..e without (u, v)` in a record expression.
+    RecordRest,
     GenericExpr,
     OpValue,
     IntrinsicExpr,
@@ -1145,6 +1149,44 @@ impl TupleType {
 impl RecordType {
     pub fn fields(&self) -> impl Iterator<Item = RecordTypeField> + '_ {
         children(&self.0)
+    }
+}
+
+impl RecordExpr {
+    pub fn fields(&self) -> impl Iterator<Item = RecordField> + '_ {
+        children(&self.0)
+    }
+
+    /// `..e` in `(..e, to: u)` or `(to: v, ..e without (u, v))`.
+    pub fn rest(&self) -> Option<RecordRest> {
+        child(&self.0)
+    }
+}
+
+impl RecordField {
+    pub fn name(&self) -> Option<SyntaxToken> {
+        own_token(&self.0, TokenKind::Ident)
+    }
+
+    /// `None` for a punned `x:`, which is `x: x`.
+    pub fn value(&self) -> Option<Expr> {
+        child(&self.0)
+    }
+}
+
+impl RecordRest {
+    /// `e` in `..e`: the record the other fields come from.
+    pub fn expr(&self) -> Option<Expr> {
+        child(&self.0)
+    }
+
+    /// `u`, `v` in `..e without (u, v)`: the fields the rest drops.
+    pub fn removed(&self) -> Vec<SyntaxToken> {
+        own_tokens(&self.0)
+            .skip_while(|t| !is_word(t, Contextual::Without))
+            .skip(1)
+            .filter(|t| t.kind() == TokenKind::Ident)
+            .collect()
     }
 }
 

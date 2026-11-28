@@ -555,3 +555,23 @@ fn a_directive_heads_its_item_and_one_in_a_block_is_kept() {
     assert_eq!(inner[0].args().unwrap().args().count(), 1);
     assert_eq!(block.stmts().count(), 1);
 }
+
+#[test]
+fn a_record_expression_takes_a_rest_that_drops_fields() {
+    let src = "let c = (to: e.v, ..e without (u, v))\nlet d = (..a, w:)\nlet t = (..n, 3)\n\
+               fn f(kept: Bool, v: Int) -> Int:\n    var reach = 0\n    reach max= if kept: v else: 0\n    reach\n";
+    let file = parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    let items: Vec<SyntaxNode> = file.items().collect();
+    let text =
+        |t: Vec<crate::SyntaxToken>| t.iter().map(|t| t.text().to_string()).collect::<Vec<_>>();
+    let c: ast::RecordExpr = first(&items[0]).unwrap();
+    let rest = c.rest().unwrap();
+    assert!(matches!(rest.expr(), Some(ast::Expr::Name(_))));
+    assert_eq!(text(rest.removed()), ["u", "v"]);
+    assert_eq!(text(c.fields().filter_map(|f| f.name()).collect()), ["to"]);
+    let d: ast::RecordExpr = first(&items[1]).unwrap();
+    assert!(d.rest().unwrap().removed().is_empty());
+    assert!(d.fields().next().unwrap().value().is_none());
+    assert!(first::<ast::RecordExpr>(&items[2]).is_none());
+}

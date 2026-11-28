@@ -114,7 +114,12 @@ impl Parser<'_> {
                     self.start_at(at, NodeKind::KeepExpr);
                     self.bump();
                     self.bump();
-                    self.expr_at(Level::Range);
+                    // `place max= expr` (01:506): an `if` or `match` value too.
+                    if matches!(self.peek(), T::If | T::Match) {
+                        self.expr();
+                    } else {
+                        self.expr_at(Level::Range);
+                    }
                     self.finish();
                     continue;
                 }
@@ -623,15 +628,57 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `(e)`, a tuple `()`, `(a,)`, `(a, b)`, or a record `(x: 1, y)`.
+    /// Whether the parentheses at the cursor hold a record: a `name:` or a
+    /// `without` at their top level. One pass to the closing `)`.
+    fn record_ahead(&self) -> bool {
+        let mut toks = (self.tokens[self.pos..].iter())
+            .filter(|t| !t.kind.is_trivia())
+            .skip(1)
+            .peekable();
+        let (mut depth, mut start) = (0usize, true);
+        while let Some(t) = toks.next() {
+            match t.kind {
+                T::Eof => return false,
+                T::LParen | T::LBracket | T::LBrace => depth += 1,
+                T::RParen | T::RBracket | T::RBrace if depth == 0 => return false,
+                T::RParen | T::RBracket | T::RBrace => depth -= 1,
+                T::Comma if depth == 0 => {
+                    start = true;
+                    continue;
+                }
+                T::Ident if depth == 0 => {
+                    let word = crate::grammar::contextual(t.span.text(self.src));
+                    let named = start && toks.peek().is_some_and(|n| n.kind == T::Colon);
+                    if named || word == Some(Contextual::Without) {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+            start = false;
+        }
+        false
+    }
+
+    /// `(e)`, a tuple `()`, `(a,)`, `(a, b)`, or a record `(x: 1, y:)`,
+    /// `(..a, to: u)`, `(to: e.v, ..e without (u, v))` (R12.11.4).
     fn paren(&mut self) {
         let mut elems = 0;
         let mut comma = false;
-        let mut record = false;
+        let mut record = self.record_ahead();
+        let rest = record;
         let outer = std::mem::replace(&mut self.no_gt, false);
         self.list(NodeKind::TupleExpr, T::RParen, "the parentheses", |p| {
             elems += 1;
-            if p.at(T::Ident) && p.nth(1) == T::Colon {
+            if rest && p.at(T::DotDot) {
+                p.start(NodeKind::RecordRest);
+                p.bump();
+                p.expr_at(Level::BitOr);
+                if p.word() == Some(Contextual::Without) {
+                    p.row_without();
+                }
+                p.finish();
+            } else if p.at(T::Ident) && p.nth(1) == T::Colon {
                 record = true;
                 p.start(NodeKind::RecordField);
                 p.bump();

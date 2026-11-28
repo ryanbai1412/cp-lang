@@ -270,7 +270,9 @@ Graphs (decision 146) need five mechanisms; each is open to user code.
 - **Row bounds and record update.** `R: (u: V, v: V, ..)` bounds a type
   parameter to records with at least those fields; `(to: V, ..R without
   (u, v))` is R's other fields after new ones, in R's order; `(..a, to: u)`
-  is `a` with `to` replaced (heap fields move). No record subtyping: rows
+  is `a` with `to` replaced (heap fields move), and `(to: e.v, ..e without
+  (u, v))` is its value mirror: `e`'s other fields after the new ones, the
+  value of the row type `(to: V, ..R without (u, v))`. No record subtyping: rows
   only bound type parameters, matched by monomorphization. A generic body
   sees only the named fields. (R12.11.4)
 

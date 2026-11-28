@@ -551,6 +551,9 @@ arg         := expr | NAME ':' expr | 'mut' place
 primary     := literal | NAME | path generic_args? | '(' expr ')' | tuple
              | record | list | map | comprehension | table | '{' block_expr '}'
              | 'todo' | BINOP                                 // `+` as an op value
+record      := '(' rfield (',' rfield)* ','? ')'
+rfield      := NAME ':' expr? | '..' expr ('without' '(' NAME (',' NAME)* ')')?
+             // `(x: 1, y:)`, `(..a, to: u)`, `(to: e.v, ..e without (u, v))` (R12.11.4)
 ```
 
 Call arguments: positional first, named after in any order, each

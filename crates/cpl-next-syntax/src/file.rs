@@ -50,6 +50,8 @@ pub enum NodeKind {
     RecordExpr,
     /// `name: e`, or `name:` for the variable `name`.
     RecordField,
+    /// `..e` or `..e without (u, v)` in a record expression.
+    RecordRest,
     /// `Name<T>`: a name with type arguments, as a value.
     GenericExpr,
     /// `+` where a value goes: the fn `(a, b) => a + b`.
