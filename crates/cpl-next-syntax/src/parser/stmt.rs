@@ -18,6 +18,15 @@ impl Parser<'_> {
         }
     }
 
+    /// `@trusted:`, a statement and not a decorator (R09.5.4).
+    pub(super) fn trusted_ahead(&self) -> bool {
+        self.at(T::At)
+            && self.glued(1)
+            && self.nth(1) == T::Ident
+            && contextual(self.nth_text(1)) == Some(Contextual::Trusted)
+            && self.nth(2) == T::Colon
+    }
+
     pub(super) fn word(&self) -> Option<Contextual> {
         if self.at(T::Ident) {
             contextual(self.text())
@@ -32,6 +41,13 @@ impl Parser<'_> {
             T::Indent => self.stray_indent(|p| p.stmts_until(T::Dedent)),
             // Kept whole so that decls says where a directive belongs.
             T::At if self.nth(1) == T::Bang && self.glued(1) => self.directive(),
+            T::At if self.trusted_ahead() => {
+                self.start(NodeKind::TrustedStmt);
+                self.bump();
+                self.bump();
+                self.block();
+                self.finish();
+            }
             _ if self.item_ahead() => self.item(),
             T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
             T::While => self.while_stmt(),
@@ -270,6 +286,7 @@ impl Parser<'_> {
     pub(super) fn if_clauses(&mut self, node: NodeKind, body: fn(&mut Self)) {
         self.start(node);
         self.bump();
+        self.eat(T::Const);
         self.cond();
         body(self);
         loop {
@@ -564,6 +581,9 @@ impl Parser<'_> {
     /// line, a statement that leaves (`break`, `continue`, `return`,
     /// `assert`, typed Never), or an indented run of statements.
     pub(super) fn arm_body(&mut self) {
+        if self.word() == Some(Contextual::Do) && self.nth(1) == T::Colon {
+            return self.do_block();
+        }
         if self.indented_block() {
             return;
         }
@@ -571,6 +591,21 @@ impl Parser<'_> {
             T::Return | T::Break | T::Continue | T::Assert => self.simple(),
             _ => self.expr_or_assign(false),
         }
+    }
+
+    /// `=> do: ...`: the block follows `=>` itself (decision 4.5).
+    fn do_block(&mut self) {
+        let word = self.span();
+        let prev = (self.tokens[..self.pos].iter().rev())
+            .find(|t| !t.kind.is_trivia())
+            .map_or(word.start, |t| t.span.end);
+        let err = msgs::syntax::DO_BLOCK.error(word, &[]);
+        let fix = Span::new(prev, self.nth_span(1).end);
+        self.diagnostics.push(err.with_fix("delete `do:`", fix, ""));
+        self.start(NodeKind::Error);
+        self.bump();
+        self.finish();
+        self.block();
     }
 
     /// An `if` expression's branch: a value on the line or an indented

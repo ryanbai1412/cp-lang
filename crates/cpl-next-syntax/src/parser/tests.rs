@@ -1,3 +1,4 @@
+use crate::ast::{self, AstNode};
 use crate::file::NodeKind;
 use crate::lexer::lex;
 use crate::ops::{levels, Level};
@@ -577,4 +578,51 @@ fn a_second_for_in_a_comprehension_is_reported_with_a_comma_fix() {
     );
     let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
     assert_eq!(count(NodeKind::CompClause), 2);
+}
+
+#[test]
+fn trusted_if_const_record_pattern_shorthand_var_and_holes_parse() {
+    let src = "@trusted:\n    y = 6
+if const verbose:\n    print(1)\nelse:\n    print(2)\nfor (u:, v:) in es:\n    print(u)\nlet (w:, ..) = e\nfor var x in xs:\n    x += 1\nimpl Len for _..=_:\n    fn len(self) -> Int = 0\n";
+    let file = crate::parse(src);
+    assert!(file.diagnostics.is_empty(), "{:?}", file.diagnostics);
+    assert_eq!(file.root.text(), src, "lossless");
+    let count = |k| file.root.descendants().filter(|n| n.kind() == k).count();
+    assert_eq!(count(NodeKind::TrustedStmt), 1);
+    assert_eq!(count(NodeKind::RecordPatField), 3);
+    assert_eq!(count(NodeKind::RecordPatRest), 1);
+    assert_eq!(count(NodeKind::HoleExpr), 2);
+    let ifs: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::IfStmt::cast)
+        .collect();
+    assert!(ifs[0].is_const());
+    let pats: Vec<_> = file
+        .root
+        .descendants()
+        .filter_map(ast::RecordPat::cast)
+        .collect();
+    assert_eq!((pats[0].has_rest(), pats[1].has_rest()), (false, true));
+    assert!(pats[0].fields().all(|f| f.pattern().is_none()));
+    assert!(file
+        .root
+        .descendants()
+        .filter_map(ast::PathPat::cast)
+        .any(|p| p.is_var()));
+}
+
+#[test]
+fn do_before_a_block_is_reported_with_a_fix_that_deletes_it() {
+    let src = "let f = x => do:\n    let y = x\n    y\nprint(g(m => do:\n    m\n))\n";
+    let file = crate::parse(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    assert_eq!(file.diagnostics.len(), 2, "{:?}", file.diagnostics);
+    let (span, text) = file.diagnostics[0].fixes[0].edits[0].clone();
+    assert_eq!(
+        (&src[span.start as usize..span.end as usize], text.as_str()),
+        (" do:", "")
+    );
+    let fixed = "let f = x =>\n    let y = x\n    y\nprint(g(m =>\n    m\n))\n";
+    assert!(crate::parse(fixed).diagnostics.is_empty());
 }

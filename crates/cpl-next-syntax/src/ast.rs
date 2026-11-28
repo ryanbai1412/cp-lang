@@ -125,6 +125,7 @@ nodes! {
     ForStmt,
     WithStmt,
     UncheckedStmt,
+    TrustedStmt,
     RepeatStmt,
     LendStmt,
     /// `Int`, `List<Int>`, `std.Pair`, `Str(len: 1..=n)`.
@@ -152,6 +153,7 @@ nodes! {
     TypeOfType,
     Literal,
     NameRef,
+    HoleExpr,
     ParenExpr,
     TupleExpr,
     ListExpr,
@@ -191,6 +193,7 @@ nodes! {
     PatArgs,
     TuplePat,
     RecordPat,
+    RecordPatField,
     OrPat,
     LiteralPat,
 }
@@ -228,6 +231,7 @@ category! {
         For(ForStmt),
         With(WithStmt),
         Unchecked(UncheckedStmt),
+        Trusted(TrustedStmt),
         Repeat(RepeatStmt),
         Lend(LendStmt),
     }
@@ -254,6 +258,7 @@ category! {
     Expr {
         Literal(Literal),
         Name(NameRef),
+        Hole(HoleExpr),
         Paren(ParenExpr),
         Tuple(TupleExpr),
         List(ListExpr),
@@ -1363,6 +1368,11 @@ impl PathPat {
         child(&self.0)
     }
 
+    /// `var x`: the binding is a `var` (R01.6).
+    pub fn is_var(&self) -> bool {
+        has(&self.0, TokenKind::Var)
+    }
+
     /// The name a one-word pattern with no arguments binds or names.
     pub fn binding(&self) -> Option<SyntaxToken> {
         let mut segments = self.segments();
@@ -1374,5 +1384,42 @@ impl PathPat {
 impl PatArgs {
     pub fn patterns(&self) -> impl Iterator<Item = Pattern> + '_ {
         children(&self.0)
+    }
+}
+
+impl IfStmt {
+    /// `if const c:`, chosen at compile time (R08.2.9).
+    pub fn is_const(&self) -> bool {
+        has(&self.0, TokenKind::Const)
+    }
+}
+
+impl TrustedStmt {
+    pub fn body(&self) -> Option<Block> {
+        child(&self.0)
+    }
+}
+
+impl RecordPat {
+    pub fn fields(&self) -> impl Iterator<Item = RecordPatField> + '_ {
+        children(&self.0)
+    }
+
+    /// `(u:, ..)`: the fields not named are left out (R02.5.5).
+    pub fn has_rest(&self) -> bool {
+        self.0
+            .children()
+            .any(|n| n.kind() == NodeKind::RecordPatRest)
+    }
+}
+
+impl RecordPatField {
+    pub fn name(&self) -> Option<SyntaxToken> {
+        own_token(&self.0, TokenKind::Ident)
+    }
+
+    /// `None` for `u:`, which binds `u`.
+    pub fn pattern(&self) -> Option<Pattern> {
+        child(&self.0)
     }
 }

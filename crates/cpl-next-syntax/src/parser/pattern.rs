@@ -25,6 +25,12 @@ impl Parser<'_> {
                 self.bump();
                 self.finish();
             }
+            T::Var if self.nth(1) == T::Ident => {
+                self.start(NodeKind::PathPat);
+                self.bump();
+                self.bump();
+                self.finish();
+            }
             T::Ident => {
                 self.start(NodeKind::PathPat);
                 self.bump();
@@ -42,12 +48,19 @@ impl Parser<'_> {
             T::LParen => {
                 let mut record = false;
                 self.list(NodeKind::TuplePat, T::RParen, "the tuple pattern", |p| {
-                    if p.at(T::Ident) && p.nth(1) == T::Colon {
+                    if p.at(T::DotDot) && matches!(p.nth(1), T::Comma | T::RParen) {
+                        record = true;
+                        p.start(NodeKind::RecordPatRest);
+                        p.bump();
+                        p.finish();
+                    } else if p.at(T::Ident) && p.nth(1) == T::Colon {
                         record = true;
                         p.start(NodeKind::RecordPatField);
                         p.bump();
                         p.bump();
-                        p.pattern();
+                        if !matches!(p.peek(), T::Comma | T::RParen) {
+                            p.pattern();
+                        }
                         p.finish();
                     } else {
                         p.pattern();

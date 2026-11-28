@@ -114,6 +114,8 @@ pub enum Contextual {
     /// `lazy f: T`, reported: a param is lent, `mut` or `var` (R05.2.3).
     Lazy,
     Guard,
+    Trusted,
+    Do,
 }
 
 /// Each contextual word and how it is spelled.
@@ -140,6 +142,8 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("loop", Contextual::Loop),
     ("lazy", Contextual::Lazy),
     ("guard", Contextual::Guard),
+    ("trusted", Contextual::Trusted),
+    ("do", Contextual::Do),
     ("without", Contextual::Without),
     ("type_of", Contextual::TypeOf),
 ];

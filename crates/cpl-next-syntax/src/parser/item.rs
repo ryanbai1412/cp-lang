@@ -25,6 +25,9 @@ impl Parser<'_> {
     }
 
     pub(super) fn item(&mut self) {
+        if self.trusted_ahead() {
+            return self.stmt();
+        }
         if self.at(T::At) && self.nth(1) == T::Bang && self.glued(1) {
             // A directive heads the item written below it.
             self.directive();
@@ -141,7 +144,7 @@ impl Parser<'_> {
         self.finish();
     }
 
-    fn nth_text(&self, n: usize) -> &str {
+    pub(super) fn nth_text(&self, n: usize) -> &str {
         self.nth_index(n)
             .map_or("", |i| self.tokens[i].span.text(self.src))
     }

@@ -25,6 +25,8 @@ pub enum NodeKind {
     /// A number, string, raw string or char, `true` or `false`.
     Literal,
     /// A name used as a value: `x`, `self`.
+    /// `_` where a value goes: an end of `_..=_`.
+    HoleExpr,
     NameRef,
     /// `(e)`.
     ParenExpr,
@@ -113,8 +115,10 @@ pub enum NodeKind {
     TuplePat,
     /// `(x: a, y)`: a record's fields, by name.
     RecordPat,
-    /// `x: a`, or `y` for `y: y`.
+    /// `x: a`, or `y:` for `y: y`.
     RecordPatField,
+    /// `..` in `(u:, ..)`: the fields a record pattern leaves out.
+    RecordPatRest,
     /// `1`, `-1`, `"s"`.
     LiteralPat,
     /// `p | q`.
@@ -153,6 +157,8 @@ pub enum NodeKind {
     /// `with ctx(..): ...`.
     WithStmt,
     UncheckedStmt,
+    /// `@trusted: ...` (R09.5.4).
+    TrustedStmt,
     /// `repeat k: ...`.
     RepeatStmt,
     /// `Name`, `a.B`, `Vec<Int>`.

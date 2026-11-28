@@ -9597,3 +9597,15 @@ Amends decision 486. R08.1.4 picks among a call's candidates in one precedence o
 - **Call.** `[(i, j) for i in R for j in C]` is E0503, and the fix replaces ` for` with `,`: `[(i, j) for i in R, j in C]`, as decision 659 and 01:552 write it. std, the conformance cases and spec prose (01:569, lib/flows.md, lib/math.md) are rewritten in a commit before the rejection.
 - **Why.** Coordinator ruling of 2026-11-27, 19:06: one spelling, and ruling 4 (18:31) gives clauses `,` and no `for`.
 - **Reverse.** Accept a repeated `for` as a second spelling of `,`.
+
+## 661. `if const`, `@trusted:`, record-pattern shorthand and rest, `var` patterns and `_` ends parse (compiler, 2026-11-27)
+
+- **Call.** The new parser reads `if const c:` (R08.2.9; `IfStmt::is_const`), a `@trusted:` block statement (R09.5.4; `TrustedStmt`), `(u:, v:)` and `(u:, ..)` record patterns (R02.5.5; `RecordPatField::pattern` is `None` for `u:`, `RecordPat::has_rest`), `var x` in a pattern (01:519; `PathPat::is_var`), and `_` as a value (`HoleExpr`), so `impl Len for _..=_` gives typed ends and no reader compares text.
+- **Why.** Coordinator ruling of 2026-11-27, 18:31 (item 5); lane C's `_..=_` request (R04.2.31).
+- **Reverse.** Drop the forms from the CST; the old parser keeps them.
+
+## 662. There is no `do:`; a lambda's block follows `=>` (compiler, 2026-11-27)
+
+- **Call.** `x => do:` with a block is E0503, and the fix deletes ` do:`, leaving `=>` at the end of the line and the block indented below it (01:536, decision 4.5). std/flow.cp and three conformance cases are rewritten in a commit before the rejection.
+- **Why.** Coordinator ruling of 2026-11-27, 18:31: deleted by 4.5.
+- **Reverse.** Accept `do:` as a spelling of an indented block.

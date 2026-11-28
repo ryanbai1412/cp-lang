@@ -469,6 +469,11 @@ impl Parser<'_> {
                 self.bump();
                 self.finish();
             }
+            T::Ident if self.word() == Some(Contextual::Wildcard) => {
+                self.start(NodeKind::HoleExpr);
+                self.bump();
+                self.finish();
+            }
             T::Ident | T::SelfKw => {
                 let upper = self.text().starts_with(|c: char| c.is_uppercase());
                 let at = self.checkpoint();
