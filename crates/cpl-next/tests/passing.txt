@@ -347,6 +347,7 @@ core-03/structs-holding-each-other-is-an-error.cp
 core-03/tag-byte-enum.cp
 core-03/window-plus-over-ranged-is-int.cp
 core-04/a1-walk-fold.cp
+core-04/a11-rebase-reads-from-zero.cp
 core-04/a4-zip-offsets.cp
 core-04/after-before-pieces.cp
 core-04/after-before-walk.cp
@@ -414,6 +415,7 @@ core-04/domain-is-its-range.cp
 core-04/domain-mask.cp
 core-04/domain-mixup.cp
 core-04/domain-slice-by-position.cp
+core-04/domain-through-a-value-is-a-domain.cp
 core-04/e1-list-copy-fix.cp
 core-04/e1-list-param-rejects-slice.cp
 core-04/empty-array-literal-fits-empty-domain.cp
@@ -538,6 +540,9 @@ core-04/rb1-q15-no-int-to-position.cp
 core-04/rb1-q17-cut-int-counts-before.cp
 core-04/rb1-q19-stored-cut-range-not-piece.cp
 core-04/rb1-q20-int-range-last-true.cp
+core-04/rebase-fresh-domain.cp
+core-04/rebase-keys-dont-mix.cp
+core-04/rebased-str-indexes-from-zero.cp
 core-04/record-fits-named-product.cp
 core-04/record-with-swapped-names-is-no-position.cp
 core-04/reversed-range-empty.cp
@@ -551,6 +556,8 @@ core-04/slice-key-outside-view-traps.cp
 core-04/slice-relative-index-by-int-is-wrong-domain.cp
 core-04/static-method-binds-domain-from-list.cp
 core-04/stored-cut-range-not-piece.cp
+core-04/struct-domain-from-fields-is-per-value.cp
+core-04/struct-domains-of-two-values-dont-mix.cp
 core-04/table-one-cell-parameter.cp
 core-04/table-over-view-keys-keeps-keys.cp
 core-04/three-axis-table-one-name.cp
@@ -558,6 +565,7 @@ core-04/three-d-str-cell-append-and-last-dim-trap.cp
 core-04/trap-in-a-small-fn-names-its-frame.cp
 core-04/tuple-holding-record-fits-named-product.cp
 core-04/tuple-of-domains-indexes-pair-table.cp
+core-04/value-domain-has-domain-members.cp
 core-04/with-domain.cp
 core-04/wrap-negative-is-euclidean.cp
 core-04/zip-keyed-by-first.cp
@@ -2379,6 +2387,8 @@ std-seq/present-1.cp
 std-seq/present-unwraps-pieces.cp
 std-seq/prev-permutation-at-first.cp
 std-seq/range-mid-is-a-cut.cp
+std-seq/rebase-runs-std-rebased.cp
+std-seq/rebased-shows-its-elements.cp
 std-seq/reduce-1.cp
 std-seq/rekey-length-mismatch-traps.cp
 std-seq/rekey-std-body-over-declared-domain.cp

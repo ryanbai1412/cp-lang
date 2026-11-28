@@ -186,6 +186,9 @@ pub struct StructDecl {
     pub values: Vec<i64>,
     /// The traits its parameters are bounded by (`struct Range<D: Domain>`).
     pub bounds: Vec<(usize, TraitId)>,
+    /// Its body's `domain Idx = 0..src.len`s: the parameter each is, the fresh domain its
+    /// constructor makes, and the size read from the new value's fields (R04b.1.7).
+    pub owned: Vec<(usize, Ty, cpl_next_syntax::ast::Expr)>,
 }
 #[derive(Clone)]
 pub struct TraitDecl {
@@ -324,6 +327,13 @@ impl Decls {
         let next = self.dom_ids.len();
         Ty::Dom(*self.dom_ids.entry(key).or_insert(next))
     }
+}
+
+/// Struct `s`'s parameters that are each value's own domain, with their names.
+pub(crate) fn owned_params(s: &StructDecl) -> Vec<(usize, &str, Ty)> {
+    (s.owned.iter())
+        .map(|(k, c, _)| (*k, s.generics[*k].as_str(), c.clone()))
+        .collect()
 }
 
 impl Decls {

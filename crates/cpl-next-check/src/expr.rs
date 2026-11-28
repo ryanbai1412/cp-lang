@@ -1016,6 +1016,10 @@ impl<'a> Cx<'a> {
                 let (Some(base), Some(m)) = (f.base(), f.name()) else {
                     return Self::error_node(span);
                 };
+                // `w.Idx(0)`: a position of the domain `w` owns (R04b.1.7).
+                if let (Some(to), Some(x)) = (self.owned_domain(&base, &m), &lone) {
+                    return self.domain_from(to, x, span);
+                }
                 let name = Called::written(self.syms, m.text(), m.span());
                 self.member(&base, name, Some(&args), span, want, &[])
             }

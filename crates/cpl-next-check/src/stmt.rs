@@ -120,6 +120,14 @@ impl<'a> Cx<'a> {
             .map(|id| (VarRef::Global(*id), self.globals[*id].ty.clone()))
     }
     pub(super) fn self_expr(&self, span: Span) -> Option<TExpr> {
+        if let Some(v) = self.b.made {
+            let ty = self.var_ty(v);
+            return Some(TExpr {
+                kind: TK::Var(v),
+                ty,
+                span,
+            });
+        }
         let id = self.b.self_local?;
         Some(TExpr {
             kind: TK::Var(VarRef::Local(id)),
@@ -1452,7 +1460,7 @@ impl<'a> Cx<'a> {
             m: self.b.module,
             generics: &generics,
             doms: &self.b.doms,
-            scoped: &|n| self.owned_named(n),
+            scoped: &|n: &str| self.owned_named(n),
         };
         let (ty, errs) = decls::body_type(&at, &axes, t);
         for e in errs {

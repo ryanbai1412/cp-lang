@@ -122,8 +122,12 @@ impl Cx<'_> {
     }
     pub(super) fn index_arg(&mut self, base: &Ty, i: TExpr) -> TExpr {
         let array = matches!(self.shallow(base), Ty::Struct(a, ..) if Some(a) == self.array_id());
+        // A value's own domain counts from 0, so a literal is a position in it, as in an array:
+        // `w.rebase[0]` (R04a.11.5, R04b.1.7).
+        let own =
+            matches!(self.shallow(base), Ty::Struct(a, ..) if !self.items.s(a).owned.is_empty());
         let i = match self.key_of(base) {
-            Some(k) => self.fit_key(&k, array, i),
+            Some(k) => self.fit_key(&k, (array, own), i),
             None => i,
         };
         // A position of one domain never indexes an array over another (R04.3.1).
@@ -162,14 +166,14 @@ impl Cx<'_> {
     /// `i` fitted to the key `k`: an `Int` becomes a position of a domain key, by the rules
     /// below, and a tuple written in place, as in `g[1, j]`, is fitted part by part to the
     /// product's factors (R04.2.10).
-    fn fit_key(&mut self, k: &Ty, array: bool, mut i: TExpr) -> TExpr {
+    fn fit_key(&mut self, k: &Ty, (array, own): (bool, bool), mut i: TExpr) -> TExpr {
         let dty = self.shallow(k);
         if let (Ty::Struct(t, fs, _), Ty::Struct(u, _, sets)) = (&dty, self.shallow(&i.ty)) {
             let tuple = u == *t && self.shapes.tuple(fs.len()).as_ref() == Some(t);
             if let TK::Struct(ps) = &mut i.kind {
                 if tuple && ps.len() == fs.len() {
                     let ps: Vec<TExpr> = (std::mem::take(ps).into_iter().zip(fs))
-                        .map(|(p, f)| self.fit_key(f, array, p))
+                        .map(|(p, f)| self.fit_key(f, (array, own), p))
                         .collect();
                     let ty = Ty::Struct(u, ps.iter().map(|p| p.ty.clone()).collect(), sets);
                     return TExpr {
@@ -200,7 +204,7 @@ impl Cx<'_> {
             if named && literal {
                 kind = CheckKind::Domain;
             }
-            if named && !(array && literal) {
+            if named && !((array || own) && literal) {
                 let name = self.domains[*d].name.clone();
                 let what = if array {
                     format!("a `[{name}]` array")

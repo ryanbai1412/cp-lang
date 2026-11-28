@@ -139,6 +139,12 @@ pub(super) fn struct_body(d: &mut Decls, mid: ModId, item: &ItemId, id: StructId
         })
         .collect();
     d.structs[id.0].errors.extend(errors);
+    if let Some(domain) = d.roles.domain {
+        let owned: Vec<usize> = d.structs[id.0].owned.iter().map(|o| o.0).collect();
+        d.structs[id.0]
+            .bounds
+            .extend(owned.into_iter().map(|k| (k, domain)));
+    }
     let self_ty = Ty::Struct(
         id,
         (0..sd.generics.len()).map(Ty::Param).collect(),

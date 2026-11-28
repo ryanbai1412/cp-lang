@@ -1254,10 +1254,15 @@ impl<'a> Cx<'a> {
                         let text = self.text(span);
                         format!("check each element into the range: `[x for x in {text}]`")
                     });
+                    // A position of one domain is never one of another (R04.3.1).
+                    let code = match (self.shallow(&have), self.shallow(&want_s)) {
+                        (Ty::Dom(_), Ty::Dom(_)) => cpl_diag::codes::WRONG_DOMAIN,
+                        _ => cpl_diag::codes::TYPE_MISMATCH,
+                    };
                     self.err_help(
                         span,
                         Msg::verdict(
-                            cpl_diag::codes::TYPE_MISMATCH,
+                            code,
                             format!(
                                 "expected `{}`, found `{}`",
                                 self.show(&want_s),

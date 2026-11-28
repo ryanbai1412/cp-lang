@@ -64,6 +64,21 @@ pub(super) fn trait_impl(d: &mut Decls, of: Of) -> Made {
             unnamed(t, &names, &mut d.syms, &mut generics);
         }
     }
+    // `impl Indexed<Idx, T> for Rebased<S>`: the domain each value owns is a parameter too.
+    if let TyForm::Written(cpl_next_syntax::ast::Type::Path(p)) = &form.self_ty {
+        let head = d.syms.intern(&tyconv::path_text(p));
+        if let Some(Named::Struct(s)) = names(head) {
+            let owned: Vec<String> = (super::owned_params(&d.structs[s.0]).into_iter())
+                .map(|(_, n, _)| n.to_string())
+                .collect();
+            for n in owned {
+                let n = d.syms.intern(&n);
+                if !generics.contains(&n) {
+                    generics.push(n);
+                }
+            }
+        }
+    }
     let mut heads: Vec<(Sym, usize, TraitId, usize)> = Vec::new();
     for b in &form.bounds {
         if let Some((n, k)) = bound_trait(&d.syms, &b.tr) {

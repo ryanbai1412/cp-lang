@@ -62,7 +62,6 @@ core-03/range-type-param-converts.cp	wrong-reject	check: std.hashmap: E0204: unk
 core-03/rb1-q32-no-u8.cp	wrong-error	wanted E0901 on line 3, got: check: program:3:1: E0204: unknown type `U8`
 core-03/str-plus-eq-char-if.cp	wrong-reject	check: program:6:21: E0302: expected `Str`, found `Char`
 core-04/a-part-or-a-built-value-returned.cp	wrong-reject	own: program:8:27: E0603: this returns a value that borrows `self`: `self` is lent by the caller; return a `.clone()`
-core-04/a11-rebase-reads-from-zero.cp	wrong-reject	check: program:5:7: E0305: `Rebased<Slice<List<Int>>>` is not indexed: it has no `Indexed` impl
 core-04/a2-compare-by-order.cp	wrong-reject	check: std.strings:47:32: E0302: expected `3.hidden`, found `6.hidden`
 core-04/a3-concat.cp	wrong-reject	check: program:5:9: E0606: `Slice<List<Int>>` does not implement `Add`
 core-04/a6-in-place-verbs.cp	wrong-reject	check: program:4:1: E0403: a `mut self` method needs a place
@@ -120,9 +119,6 @@ core-04/product-table-empty-list-takes-expected-element.cp	wrong-reject	check: p
 core-04/range-generic-endpoints.cp	wrong-reject	check: program:5:43: E0203: `Cut<D>` has no member `idx`
 core-04/range-type-binds-generic-domain.cp	wrong-reject	check: program:10:29: E0302: expected `Array<$range0, List<0..=1>>`, found `Array<$range0, List<Int>>`
 core-04/ranged-cells-take-a-narrower-list.cp	wrong-reject	check: program:8:11: E0302: expected `List<0..=99>`, found `List<0..=49>`
-core-04/rebase-fresh-domain.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<List<Int>>>` has no member `Idx`
-core-04/rebase-keys-dont-mix.cp	wrong-error	wanted E0301 on line 6, got: check: program:6:9: E0203: `Rebased<Slice<List<Int>>>` has no member `Idx`
-core-04/rebased-str-indexes-from-zero.cp	wrong-reject	check: program:6:46: E0203: `Rebased<Slice<Str>>` has no member `keys`
 core-04/rekey-length-mismatch-traps.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
 core-04/rekey-onto-range.cp	wrong-reject	check: program:3:9: E0203: `List<Int>` has no member `rekey`
 core-04/rev-keyed-counts-in-walk-order.cp	wrong-reject	check: program:7:15: E0606: `Rev<List<Int>>` does not implement `Keyed`
@@ -131,11 +127,8 @@ core-04/spec-block-drop-rest.cp	wrong-reject	check: program:9:12: E0302: expecte
 core-04/spec-block-empty-domain-first.cp	wrong-reject	check: program:7:24: E0302: expected `E`, found `()`
 core-04/spec-block-first-drop-next-greater.cp	wrong-reject	check: program:7:23: E0302: expected `Int`, found `Range<K>`
 core-04/spec-block-split-by-search.cp	wrong-reject	check: program:8:16: E0302: expected `Str`, found `Slice<Str>`
-core-04/struct-domain-from-fields-is-per-value.cp	wrong-reject	decls: E0204: unknown type `Idx`
-core-04/struct-domains-of-two-values-dont-mix.cp	wrong-error	wanted E0301 on line 9, got: decls: E0204: unknown type `Idx`
 core-04/type-param-enum-has-domain-members.cp	wrong-reject	check: program:6:27: E0606: `A` does not implement `Domain`
 core-04/unnamed-value-sizes-its-own-domain.cp	wrong-reject	decls: E0204: unknown trait `Indexed`
-core-04/value-domain-has-domain-members.cp	wrong-reject	check: program:7:7: E0203: `Wrap` has no member `Idx`
 core-04/z-function-of-slice-keyed-like-input-traps.cp	wrong-reject	check: std.strings:386:5: E0203: `List<Int>` has no member `rekey`
 core-05/at-assign-is-index-assign.cp	wrong-reject	check: program:4:1: E0302: this call does not lend a place, so it cannot be assigned
 core-05/at-assign-needs-var.cp	wrong-error	wanted E0401 on line 4, got: check: program:4:1: E0302: this call does not lend a place, so it cannot be assigned
@@ -1063,9 +1056,7 @@ std-seq/perm-sign-rejects-non-permutation.cp	wrong-reject	link: E0606: a type ar
 std-seq/permutations-lcs-radix-outermost.cp	wrong-reject	check: std.seq:323:5: E0302: this cannot be walked with `for`
 std-seq/pop-merge-partition-majority-bodies.cp	wrong-reject	check: std.seq:2782:37: E0606: `T` does not implement `Clone`
 std-seq/prelude-find-resolves-to-seq.cp	wrong-reject	check: std.strings:425:8: E0203: `P` has no member `is_empty`
-std-seq/rebase-runs-std-rebased.cp	wrong-reject	check: program:12:15: E0606: `Rebased<Slice<List<Int>>>` does not implement `Keyed`
 std-seq/rebase-str-keys-from-zero.cp	wrong-reject	check: program:5:9: E0203: `Rebased<Slice<Str>>` has no member `keys`
-std-seq/rebased-shows-its-elements.cp	no-cxx	g++ failed on 44bee3b0b8925877.cpp: | 44bee3b0b8925877.cpp: In function ‘cpl_unit f0()’: | 44bee3b0b8925877.cpp:543:16: error: cannot convert ‘S12*’ to ‘const S14*’ in initialization |   543 |     l26 = S13{(&l50)};
 std-seq/rekey-a-stepped-view-copy-by-a-range.cp	wrong-reject	check: program:4:13: E0203: `List<_>` has no member `rekey`
 std-seq/rekey-takes-a-range-not-stepped-keys.cp	wrong-error	wanted E0302 on line 4, got: check: program:4:27: E0203: `List<_>` has no member `rekey`
 std-seq/rev-piece-walks-backward.cp	wrong-reject	check: std.seq:1720:50: E0606: `S` does not implement `Indexed`
@@ -1378,7 +1369,6 @@ traits/Versioned/PersistentArray--get.cp	wrong-reject	check: std.persistent:717:
 traits/Versioned/PersistentSegTree--get.cp	wrong-reject	check: std.persistent:150:17: E0606: `M` does not implement `FromOp`
 core-04/library-domain-nth-out-of-range.cp	timeout	wanted R0001, ran its impl's nth unbounded: `Two.nth(k)` takes `Index`'s impl over `Domain`'s blanket (R08.1.4), so the R04.2.27 check is skipped
 core-04/second-position-of-a-user-index-is-checked-too.cp	wrong-output	wanted R0001: `T.nth(k)` takes `Index`'s impl over `Domain`'s blanket (R08.1.4), so the R04.2.27 check is skipped
-core-04/domain-through-a-value-is-a-domain.cp	wrong-reject	check: program:7:7: E0203: `all` is a method: call it with `()`
 core-04/pieces-of-a-domain-take-its-cuts.cp	wrong-reject	check: std.seq:1120:36: E0302: expected `Cut<D>`, found `2.hidden`
 core-04/product-result-indexed-by-parts.cp	wrong-reject	check: std.graph:55:29: E0302: expected `V`, found `Self`
 core-04/tuple-with-subset-is-a-domain.cp	wrong-reject	check: program:11:7: E0305: `Paths<Tuple2<R, Subset<T>>, Int, Int>` is not indexed: it has no `Indexed` impl

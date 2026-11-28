@@ -774,8 +774,8 @@ impl Cx<'_> {
         self.owned_at(b.ident()?.text(), &[name.text().to_string()])
     }
     /// `t.Pre` written in a type: the domain the binding `t` owns as its `Pre`.
-    pub(super) fn owned_named(&self, n: Sym) -> Option<Ty> {
-        let mut parts = self.b.syms.text(self.syms, n).split('.');
+    pub(super) fn owned_named(&self, n: &str) -> Option<Ty> {
+        let mut parts = n.split('.');
         let head = parts.next()?;
         let path: Vec<String> = parts.map(str::to_string).collect();
         self.owned_at(head, &path)
@@ -817,11 +817,12 @@ impl Cx<'_> {
             let shown = [name].into_iter().chain(p.iter().map(String::as_str));
             let i = self.fresh_from(&shown.collect::<Vec<_>>().join("."), c, span, out);
             self.b.owned.insert((var, p), i);
+            let held = self.zonk(&self.var_ty(var));
             let slot = match var {
                 VarRef::Local(k) => &mut self.b.locals[k].ty,
                 VarRef::Global(k) => &mut self.globals[k].ty,
             };
-            *slot = retag(slot, c, i);
+            *slot = retag(&held, c, i);
         }
     }
     /// The result's `domain C` whose positions `t` is.

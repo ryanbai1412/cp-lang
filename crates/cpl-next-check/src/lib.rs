@@ -599,6 +599,8 @@ struct Body {
     syms: BodySyms,
     scopes: Vec<HashMap<String, LocalId>>,
     self_local: Option<LocalId>,
+    /// The value a struct's body reads its bare fields from as it is made (R04b.1.7).
+    made: Option<VarRef>,
     /// Bounds calls must meet, with where: a type, the trait it must implement, and why.
     obligations: Vec<(Ty, decls::TraitRef, cpl_next_ir::ids::SourceId, Origin)>,
     /// Temporaries holding an input value whose parts are held to their types one by one.
@@ -678,6 +680,7 @@ impl Body {
             syms: BodySyms::default(),
             scopes: vec![HashMap::new()],
             self_local: None,
+            made: None,
             obligations: Vec::new(),
             input_parts: Default::default(),
             let_ranges: Default::default(),

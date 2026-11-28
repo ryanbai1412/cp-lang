@@ -97,6 +97,7 @@ pub(crate) fn enum_structs(
         laws: Vec::new(),
         lets: Vec::new(),
         consts: Vec::new(),
+        domains: Vec::new(),
         span: e.span,
     };
     // The enum's own struct has the methods its body declares (R02.7.4).

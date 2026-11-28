@@ -78,7 +78,7 @@ pub(super) struct TyCx<'a> {
     /// The types a body declares by name: its domains, and its ranges with run-time ends.
     pub(super) doms: &'a HashMap<Sym, Ty>,
     /// `t.Pre`: a domain a binding in scope owns, found through that binding, not by spelling.
-    pub(super) scoped: &'a dyn Fn(Sym) -> Option<Ty>,
+    pub(super) scoped: &'a dyn Fn(&str) -> Option<Ty>,
     /// `Self` of the trait or impl being converted, for a form's [`TyForm::SelfTy`].
     pub(super) self_ty: Option<Ty>,
     /// Each `(to: X, ..R without (u, v))` met over a row-bound parameter `R`: its index, its form
@@ -472,7 +472,7 @@ fn generic_args(p: &next::PathType) -> Vec<GenericArg> {
         .unwrap_or_default()
 }
 
-fn path_text(p: &next::PathType) -> String {
+pub(crate) fn path_text(p: &next::PathType) -> String {
     p.segments()
         .map(|s| s.text().to_string())
         .collect::<Vec<_>>()
@@ -494,7 +494,8 @@ fn conv_path(cx: &mut TyCx, segs: &[SyntaxToken], a: Vec<Ty>, errors: &mut Vec<M
     let text = segs.iter().map(|s| s.text()).collect::<Vec<_>>().join(".");
     match cx.syms.get(&text) {
         Some(n) => named(cx, n, a, errors),
-        None => unknown(&text, errors),
+        // `t.Pre`: a domain the binding `t` owns, which no declaration names (R02.9.3).
+        None => (cx.scoped)(&text).unwrap_or_else(|| unknown(&text, errors)),
     }
 }
 
@@ -509,7 +510,12 @@ pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>
         let env = cx.env;
         return alias(cx, id.0, env.text(n), a, errors);
     }
-    if let Some(t) = cx.doms.get(&n).cloned().or_else(|| (cx.scoped)(n)) {
+    if let Some(t) = cx
+        .doms
+        .get(&n)
+        .cloned()
+        .or_else(|| (cx.scoped)(cx.env.text(n)))
+    {
         return t;
     }
     match cx.env.core_type(n) {
@@ -520,7 +526,26 @@ pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>
     match found {
         // Set arguments of a struct named in a signature are fresh parameters.
         Some(Named::Struct(d)) => {
-            let (d, a) = struct_args(cx.env, d, a);
+            let (d, mut a) = struct_args(cx.env, d, a);
+            // A value's own domain is left out: an impl over it names it, a result makes it.
+            for (k, name, made) in cx.env.owned_params(d) {
+                if a.len() != k {
+                    continue;
+                }
+                let sym = cx.syms.get(name);
+                let named = cx.generics.iter().position(|g| Some(*g) == sym);
+                a.push(match named {
+                    Some(i) => param(cx, i),
+                    None if cx.ret_slots.is_some() => made,
+                    None => {
+                        errors.push(Msg::verdict(
+                            cpl_diag::codes::WRONG_ARG_COUNT,
+                            format!("each value owns its domain `{name}`, so only a result or an impl over it leaves it out"),
+                        ));
+                        Ty::Error
+                    }
+                });
+            }
             let sets = (0..cx.env.n_sets(d)).map(|_| slot(cx)).collect();
             Ty::Struct(d, a, sets)
         }
@@ -528,6 +553,8 @@ pub(super) fn named(cx: &mut TyCx, n: Sym, mut a: Vec<Ty>, errors: &mut Vec<Msg>
     }
 }
 
+/// `Rebased<S>` leaves out the domain each value owns: an impl's parameter of that name, or in a
+/// result the domain each value made takes, which its binding owns (R04b.1.7).
 fn unknown(n: &str, errors: &mut Vec<Msg>) -> Ty {
     errors.push(Msg::verdict(
         cpl_diag::codes::UNKNOWN_TYPE,
@@ -916,7 +943,7 @@ pub struct BodyScope<'a> {
     pub m: ModId,
     pub generics: &'a [Sym],
     pub doms: &'a HashMap<Sym, Ty>,
-    pub scoped: &'a dyn Fn(Sym) -> Option<Ty>,
+    pub scoped: &'a dyn Fn(&str) -> Option<Ty>,
 }
 
 impl BodyScope<'_> {
@@ -1037,6 +1064,9 @@ impl Shapes for Tables {
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>> {
         self.struct_defaults.get(&s)
     }
+    fn owned_params(&self, s: StructId) -> Vec<(usize, &str, Ty)> {
+        crate::decls::owned_params(&self.structs[s.0])
+    }
     fn by_arity(&self, s: StructId, n: usize) -> StructId {
         by_arity(&self.struct_arity, s, n)
     }
@@ -1084,7 +1114,7 @@ fn record_named(cx: &TyCx, names: &[String]) -> Option<StructId> {
 }
 
 /// No binding is in scope where decls reads a type.
-pub(super) fn unscoped(_: Sym) -> Option<Ty> {
+pub(super) fn unscoped(_: &str) -> Option<Ty> {
     None
 }
 

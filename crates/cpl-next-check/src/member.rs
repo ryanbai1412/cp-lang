@@ -521,12 +521,7 @@ impl<'a> Cx<'a> {
                 .syms
                 .of(self.syms, n)
                 .and_then(|s| self.b.doms.get(&s).cloned()))
-            .or_else(|| {
-                self.b
-                    .syms
-                    .of(self.syms, n)
-                    .and_then(|s| self.owned_named(s))
-            })
+            .or_else(|| self.owned_named(n))
             .or_else(|| decls::prim_type(n))?,
         };
         let t = self.shallow(&t);
@@ -981,6 +976,15 @@ impl<'a> Cx<'a> {
         if let Some(e) = self.domain_member(base, name, call, span, want) {
             self.no_targs(name, written_targs, span);
             return e;
+        }
+        // `w.Idx.count`: a member of the domain value `w` owns (R04b.1.7).
+        if let next::Expr::Field(f) = base {
+            if let Some(t) = (f.base().zip(f.name())).and_then(|(b, n)| self.owned_domain(&b, &n)) {
+                if let Some(e) = self.type_static(t, name, call, span) {
+                    self.no_targs(name, written_targs, span);
+                    return e;
+                }
+            }
         }
         if let Some(e) = self.bound_static(base, name, call, span) {
             self.no_targs(name, written_targs, span);

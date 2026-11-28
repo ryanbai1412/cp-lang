@@ -129,7 +129,22 @@ pub(super) fn name_struct(
         errors: Vec::new(),
         values: Vec::new(),
         bounds: Vec::new(),
+        owned: Vec::new(),
     });
+    // Named before any type is read, so `Rebased<S>` anywhere leaves its `Idx` out.
+    for (n, size) in &sd.domains {
+        let Some(k) = sd.generics.iter().position(|g| g == n) else {
+            continue;
+        };
+        let c = d.new_dom(item);
+        if let Ty::Dom(i) = c {
+            let shown = format!("{}.{}", d.structs[id.0].name, d.text(*n));
+            d.fresh_doms.push((i, shown));
+        }
+        let key = d.syms.intern(&format!("${}", d.fresh_doms.len()));
+        d.top_doms.insert(key, c.clone());
+        d.structs[id.0].owned.push((k, c, size.clone()));
+    }
     id
 }
 

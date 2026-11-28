@@ -150,6 +150,8 @@ pub struct StructForm {
     pub laws: Vec<FnForm>,
     pub lets: Vec<LetForm>,
     pub consts: Vec<(Sym, Option<ast::Type>, ast::Expr)>,
+    /// Its body's `domain Idx = 0..src.len`s, each also its last type parameters (R04b.1.7).
+    pub domains: Vec<(Sym, ast::Expr)>,
     pub span: Span,
 }
 
@@ -596,7 +598,16 @@ impl Reader<'_> {
         sd: &ast::StructDecl,
         attrs: Vec<AttrForm>,
     ) -> (StructForm, Vec<ast::Decorator>) {
-        let (generics, generic_defaults, bounds) = self.generics(sd.generics());
+        let (mut generics, mut generic_defaults, bounds) = self.generics(sd.generics());
+        // Each value's own domain is a parameter its constructor fixes (R04b.1.7).
+        let domains: Vec<(Sym, ast::Expr)> = (sd.members().iter())
+            .flat_map(|m| m.domains().collect::<Vec<_>>())
+            .filter_map(|m| Some((self.sym(m.name()), m.size()?)))
+            .collect();
+        for (n, _) in &domains {
+            generics.push(*n);
+            generic_defaults.push(None);
+        }
         let mut unknown = Vec::new();
         let fields = (sd.fields().iter())
             .filter_map(|f| {
@@ -629,6 +640,7 @@ impl Reader<'_> {
             laws: self.laws(&members),
             consts,
             lets: self.lets(&members),
+            domains,
             span: sd.syntax().span(),
         };
         (form, unknown)

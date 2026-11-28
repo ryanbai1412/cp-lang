@@ -415,6 +415,7 @@ pub fn structs(shapes: &[Vec<String>], syms: &mut Syms, span: Span) -> Vec<Struc
                 laws: Vec::new(),
                 lets: Vec::new(),
                 consts: Vec::new(),
+                domains: Vec::new(),
                 span,
             }
         })

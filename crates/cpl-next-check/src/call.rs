@@ -297,7 +297,7 @@ impl Cx<'_> {
             let missing = (self.tables.alias(id).generics.len()).saturating_sub(written.len());
             let mut targs = given.clone();
             targs.extend((0..missing).map(|_| self.new_ty()));
-            let scoped = |n| self.owned_named(n);
+            let scoped = |n: &str| self.owned_named(n);
             let at = decls::BodyScope {
                 tables: self.tables,
                 names: self.names,
@@ -1471,7 +1471,7 @@ impl Cx<'_> {
     }
     /// The declarations' view of this body's names, for a type a body writes.
     pub(super) fn with_body_scope<R>(&self, f: impl FnOnce(&decls::BodyScope) -> R) -> R {
-        let scoped = |n: Sym| self.owned_named(n);
+        let scoped = |n: &str| self.owned_named(n);
         f(&decls::BodyScope {
             tables: self.tables,
             names: self.names,

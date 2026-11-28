@@ -175,9 +175,12 @@ impl Lw<'_> {
             Stmt::Let(l, v) => {
                 let pack = fr.packs.contains(l);
                 self.expr_in(fr, v, pack);
+                // A binding takes the marks of the value it is bound to, keeping its own
+                // domains: `let t = s.rebase` owns `t.Idx` (R04b.1.7).
                 if let Some(t) = fr.locals.get_mut(*l) {
-                    if v.ty != *t && strip_lent(&v.ty) == *t {
-                        *t = v.ty.clone();
+                    let marked = mark_lent(t, &v.ty);
+                    if marked != *t && strip_lent(&marked) == *t {
+                        *t = marked;
                     }
                 }
             }
@@ -186,8 +189,9 @@ impl Lw<'_> {
                 // A top-level binding takes the marks of the value it is bound to.
                 if let Place::Global(g) = p {
                     if let Some(t) = self.globals.get_mut(*g) {
-                        if v.ty != *t && strip_lent(&v.ty) == *t && strip_lent(t) == *t {
-                            *t = v.ty.clone();
+                        let marked = mark_lent(t, &v.ty);
+                        if marked != *t && strip_lent(&marked) == *t && strip_lent(t) == *t {
+                            *t = marked;
                         }
                     }
                 }

@@ -146,21 +146,91 @@ impl Cx<'_> {
                 reject: None,
             })
             .collect();
-        let (pre, fields) = self.args(args, &formals, span);
+        let (mut pre, fields) = self.args(args, &formals, span);
         let fields = (fields.into_iter())
             .map(|a| match a {
                 TArg::Value(v) | TArg::Mut(v) => v,
             })
             .collect();
-        let ty = Ty::Struct(d, targs, sets);
-        block(
-            pre,
+        let made = TExpr {
+            kind: TK::Struct(fields),
+            ty: Ty::Struct(d, targs, sets),
+            span,
+        };
+        // `Wrap(xs)` for `struct Wrap(xs: ..): domain Idx = 0..xs.len`: the new value is held, its
+        // size read from its fields as the struct's body declares it, and its fresh `Idx` takes
+        // those ends, so each value made has its own (R04b.1.7).
+        let s = self.items.s(d);
+        let made = if s.owned.is_empty() {
+            made
+        } else {
+            let owned = s.owned.clone();
+            let (ty, span) = (made.ty.clone(), made.span);
+            let blank = self.b.syms.intern(self.syms, "");
+            let unnamed = vec![blank; self.b.generics.len()];
+            let module = std::mem::replace(&mut self.b.module, s.module);
+            let item = std::mem::replace(&mut self.b.item, s.item.clone());
+            let scopes = std::mem::replace(&mut self.b.scopes, vec![HashMap::new()]);
+            let generics = std::mem::replace(&mut self.b.generics, unnamed);
+            let held = self.temp("$made", ty.clone());
+            pre.push(TStmt::Let(held, made));
+            let self_local = self.b.self_local.take();
+            let outer = self.b.made.replace(held);
+            for (k, c, size) in owned {
+                let at = self.at(&size);
+                let ends = match &size {
+                    next::Expr::Range(r) if r.step().is_none() && r.walk().is_none() => r
+                        .lo()
+                        .zip(r.hi())
+                        .map(|(lo, hi)| (lo, hi, r.is_inclusive())),
+                    _ => None,
+                };
+                let Some((lo, hi, inclusive)) = ends else {
+                    self.err(
+                        at,
+                        Unbuilt::DomainKind {
+                            kind: crate::kind_name(&size),
+                        },
+                    );
+                    continue;
+                };
+                let (lo, end, ..) = self.domain_ends(&lo, &hi, inclusive);
+                let lo = self.hold(lo, "$lo", &mut pre);
+                let Ty::Dom(i) = c else {
+                    continue;
+                };
+                let var = |r| TExpr {
+                    kind: TK::Var(r),
+                    ty: Ty::Int,
+                    span: at,
+                };
+                let (to_lo, to_len) = (self.domains[i].lo, self.domains[i].len);
+                let len = TExpr {
+                    kind: TK::Bin(BinOp::Sub, Box::new(end), Box::new(lo.clone())),
+                    ty: Ty::Int,
+                    span: at,
+                };
+                pre.push(TStmt::Assign(var(to_lo), lo));
+                pre.push(TStmt::Assign(var(to_len), len));
+                if let Ty::Struct(_, targs, _) = &ty {
+                    if let Some(t) = targs.get(k) {
+                        self.unify(t, &c);
+                    }
+                }
+            }
+            self.b.module = module;
+            self.b.item = item;
+            self.b.scopes = scopes;
+            self.b.self_local = self_local;
+            self.b.made = outer;
+            self.b.generics = generics;
             TExpr {
-                kind: TK::Struct(fields),
+                kind: TK::Var(held),
                 ty,
                 span,
-            },
-        )
+            }
+        };
+        block(pre, made)
     }
 
     /// `e with f: v` and `(..e, f: v)`: a copy of `e` with those fields replaced (R02.5.3). `e`

@@ -103,6 +103,9 @@ pub trait Shapes: Texts {
     fn n_sets(&self, s: StructId) -> usize;
     /// Each of struct `s`'s type parameters' default, when it declares any.
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>>;
+    /// The parameters of struct `s` that are each value's own domain, by name, with the domain
+    /// a value it makes takes (R04b.1.7).
+    fn owned_params(&self, s: StructId) -> Vec<(usize, &str, Ty)>;
     /// The struct of `s`'s name with `n` type parameters, else `s` (R02.11.4).
     fn by_arity(&self, s: StructId, n: usize) -> StructId;
     /// Core's `@role(tuple)` struct with `n` fields; `None` past the widest, where a longer tuple
@@ -556,6 +559,9 @@ impl Shapes for Decls {
     }
     fn struct_defaults(&self, s: StructId) -> Option<&Vec<Option<Ty>>> {
         self.struct_defaults.get(&s)
+    }
+    fn owned_params(&self, s: StructId) -> Vec<(usize, &str, Ty)> {
+        crate::decls::owned_params(&self.structs[s.0])
     }
     fn by_arity(&self, s: StructId, n: usize) -> StructId {
         crate::decls::by_arity(&self.struct_arity, s, n)

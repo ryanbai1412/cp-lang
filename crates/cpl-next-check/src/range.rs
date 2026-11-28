@@ -71,7 +71,7 @@ impl Cx<'_> {
         }
         if let next::Expr::Range(re) = e {
             if self.static_axis(re) {
-                let scoped = |n| self.owned_named(n);
+                let scoped = |n: &str| self.owned_named(n);
                 let at = decls::BodyScope {
                     tables: self.tables,
                     names: self.names,
@@ -464,7 +464,7 @@ impl Cx<'_> {
         }
         // `type Cell = (Row, Col)` names the product domain too (R04.2.10).
         if let Some(decls::Named::Alias(id)) = self.named(self.b.module, n) {
-            let scoped = |n| self.owned_named(n);
+            let scoped = |n: &str| self.owned_named(n);
             let at = decls::BodyScope {
                 tables: self.tables,
                 names: self.names,
