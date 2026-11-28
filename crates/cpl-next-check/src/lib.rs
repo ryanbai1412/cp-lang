@@ -1331,7 +1331,7 @@ impl<'a> Cx<'a> {
         let f = d.f(id);
         self.b.decl = Some(id);
         // A body checked on demand from the top level leaves the top level's own count as it was.
-        let top_made = std::mem::replace(&mut self.made, [0; 4]);
+        let top_made = std::mem::take(&mut self.made);
         self.b.module = f.module;
         let top_doms = self.b.doms.clone();
         let top_owned = self.b.owned.clone();
