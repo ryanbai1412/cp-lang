@@ -8,7 +8,7 @@ use cpl_next_decls::decls::{
     self, Decls, ImplDecl, Impls, ModId, Named, Owner, SelfMode, TraitRef,
 };
 use cpl_next_decls::sym::{Sym, Syms};
-use cpl_next_decls::views::{self as views, Items, Shapes, Signatures, TypeTables};
+use cpl_next_decls::views::{self as views, Items, Shapes, TypeTables};
 use cpl_next_decls::{diag, kind_name, modules, records};
 use cpl_next_ir::build::{Build, CheckName, Checks};
 use cpl_next_ir::ids::ItemId;

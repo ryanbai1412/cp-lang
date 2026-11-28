@@ -610,19 +610,17 @@ impl<'a> Cx<'a> {
             return None;
         }
         let sym = self.syms.get(n)?;
-        let found = (cpl_next_decls::views::Names::names(self.d, self.b.module)
-            .into_iter()
-            .map(|(_, x)| x))
-        .filter_map(|x| match x {
-            decls::Named::Trait(tr) => Some(tr),
-            _ => None,
-        })
-        .filter_map(|tr| {
-            let m = *self.items.t(tr).methods.get(&sym)?;
-            let fd = self.items.f(m);
-            (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
-        })
-        .min_by_key(|(tr, _)| tr.0)?;
+        let found = (self.names.names(self.b.module).into_iter().map(|(_, x)| x))
+            .filter_map(|x| match x {
+                decls::Named::Trait(tr) => Some(tr),
+                _ => None,
+            })
+            .filter_map(|tr| {
+                let m = *self.items.t(tr).methods.get(&sym)?;
+                let fd = self.items.f(m);
+                (fd.self_mode == SelfMode::None && fd.ret == Ty::Param(0)).then_some((tr, m))
+            })
+            .min_by_key(|(tr, _)| tr.0)?;
         Some((n.clone(), found))
     }
     /// `gen<T>(args)`: `T.gen(args)`, through `T`'s impl of the trait that declares it.
@@ -724,15 +722,18 @@ impl<'a> Cx<'a> {
         let Some(n) = &bare_name(base) else {
             return None;
         };
-        let d = self.d;
         let Some(decls::Named::Context(id)) = (self.lookup(n).is_none())
-            .then(|| d.named(self.b.module, n))
+            .then(|| self.named(self.b.module, n))
             .flatten()
         else {
             return None;
         };
-        let c = &d.contexts[id.0];
-        let Some(f) = c.fields.iter().find(|f| d.sym(name.text) == Some(f.name)) else {
+        let c = self.items.context(id);
+        let Some(f) = c
+            .fields
+            .iter()
+            .find(|f| self.syms.get(name.text) == Some(f.name))
+        else {
             let code = cpl_diag::codes::UNKNOWN_FIELD;
             self.err(
                 span,
@@ -775,9 +776,8 @@ impl<'a> Cx<'a> {
         let Some(m) = &bare_name(base) else {
             return None;
         };
-        let d = self.d;
         let Some(decls::Named::Module(t)) = (self.lookup(m).is_none())
-            .then(|| d.named(self.b.module, m))
+            .then(|| self.named(self.b.module, m))
             .flatten()
         else {
             return None;
@@ -787,7 +787,7 @@ impl<'a> Cx<'a> {
             ty: Ty::Error,
             span,
         };
-        let x = match d.export(t, name.text) {
+        let x = match (self.syms.get(name.text)).and_then(|s| self.names.export(t, s)) {
             Some((x, true)) => x,
             Some((_, false)) => {
                 let code = cpl_diag::codes::PRIVATE_NAME;

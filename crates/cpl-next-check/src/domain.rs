@@ -601,8 +601,8 @@ impl Cx<'_> {
     }
     pub(super) fn static_axis(&self, re: &next::RangeExpr) -> bool {
         decls::static_axis(
-            self.d,
-            self.d,
+            self.tables,
+            self.names,
             &self.b.syms.over(self.syms),
             self.b.module,
             &self.b.generics,

@@ -362,7 +362,7 @@ impl<'a> Cx<'a> {
     }
     pub(super) fn show(&self, t: &Ty) -> String {
         show_ty(
-            self.d,
+            self.items,
             self.role_structs.role_struct(Role::Option),
             &self.domains,
             &self.b.generics,

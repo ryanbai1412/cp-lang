@@ -291,8 +291,8 @@ impl Cx<'_> {
             targs.extend((0..missing).map(|_| self.new_ty()));
             let scoped = |n| self.owned_named(n);
             let at = decls::BodyScope {
-                tables: self.d,
-                names: self.d,
+                tables: self.tables,
+                names: self.names,
                 syms: &self.b.syms.over(self.syms),
                 m: self.b.module,
                 generics: &self.b.generics,
@@ -729,14 +729,16 @@ impl Cx<'_> {
             },
             _ => None,
         };
-        let d = self.d;
+        let items = self.items;
         let formals: Vec<Formal> = match &item {
-            Some(f) if (d.f(f.decl).params.iter()).any(|p| p.variadic || p.default.is_some()) => {
+            Some(f)
+                if (items.f(f.decl).params.iter()).any(|p| p.variadic || p.default.is_some()) =>
+            {
                 let sub = Subst {
                     tys: &f.targs,
                     sets: &f.sets,
                 };
-                self.formals(&sub, d.f(f.decl))
+                self.formals(&sub, items.f(f.decl))
             }
             _ => (ps.into_iter().enumerate())
                 .map(|(k, ty)| {
@@ -862,7 +864,7 @@ impl Cx<'_> {
     pub(super) fn free_form_call(&self, n: &str, args: &[CallArg]) -> bool {
         args.first()
             .is_some_and(|a| a.label.is_none() && a.written().is_some())
-            && (self.syms.get(n)).is_some_and(|s| self.d.free_form(self.b.module, s).is_some())
+            && (self.syms.get(n)).is_some_and(|s| self.names.free_form(self.b.module, s).is_some())
     }
     /// `n(x for x in xs, ..)` where `n` is a free fn with no `self`.
     pub(super) fn fold_form(&self, n: &str, args: &[CallArg]) -> bool {
@@ -1357,8 +1359,8 @@ impl Cx<'_> {
     pub(super) fn with_body_scope<R>(&self, f: impl FnOnce(&decls::BodyScope) -> R) -> R {
         let scoped = |n: Sym| self.owned_named(n);
         f(&decls::BodyScope {
-            tables: self.d,
-            names: self.d,
+            tables: self.tables,
+            names: self.names,
             syms: &self.b.syms.over(self.syms),
             m: self.b.module,
             generics: &self.b.generics,

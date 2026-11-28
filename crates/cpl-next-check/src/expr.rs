@@ -545,7 +545,7 @@ impl<'a> Cx<'a> {
         };
         let scoped = self.b.scopes.iter().flat_map(|s| s.iter()).filter(in_scope);
         let globals = (self.global_names.iter()).filter(|&(_, &g)| !self.globals[g].synthetic);
-        let module = cpl_next_decls::views::Names::names(self.d, self.b.module);
+        let module = self.names.names(self.b.module);
         let names = (module.iter().map(|(name, _)| self.syms.text(*name)))
             .chain(globals.map(|(name, _)| name.as_str()))
             .chain(scoped.map(|(name, _)| name.as_str()));
@@ -772,7 +772,7 @@ impl<'a> Cx<'a> {
             let it = TExpr { span: at, ..it };
             let name = Called {
                 text: &text,
-                sym: cx.d.sym(&text),
+                sym: cx.syms.get(&text),
                 span: at,
             };
             cx.member_on(it, name, None, span, None, &[])

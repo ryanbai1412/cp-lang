@@ -330,14 +330,12 @@ impl Cx<'_> {
             return None;
         }
         let mut found: Vec<(StructId, usize)> =
-            (cpl_next_decls::views::Names::names(self.d, self.b.module)
-                .into_iter()
-                .map(|(_, x)| x))
-            .filter_map(|x| match x {
-                decls::Named::Struct(e) => Some((e, self.variant_named(e, n)?)),
-                _ => None,
-            })
-            .collect();
+            (self.names.names(self.b.module).into_iter().map(|(_, x)| x))
+                .filter_map(|x| match x {
+                    decls::Named::Struct(e) => Some((e, self.variant_named(e, n)?)),
+                    _ => None,
+                })
+                .collect();
         found.sort_by_key(|f| f.0 .0);
         found.dedup();
         match found[..] {

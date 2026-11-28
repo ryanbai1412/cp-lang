@@ -5,6 +5,7 @@
 use super::call::CallArg;
 use super::member::Called;
 use super::*;
+use cpl_next_decls::decls::Role;
 use cpl_next_decls::SynthBody;
 
 impl<'a> Cx<'a> {
@@ -313,7 +314,7 @@ impl<'a> Cx<'a> {
 
     /// `Pack(a.x, Pack(a.y, ()))` over the `@role(pack)` struct.
     fn packed(&mut self, a: &TExpr, fields: &[Sym], span: Span) -> TExpr {
-        let Some(pack) = self.d.roles.pack else {
+        let Some(pack) = self.role_structs.role_struct(Role::Pack) else {
             self.err(span, Msg::internal("no struct has `@role(pack)`"));
             return Self::error_node(span);
         };
@@ -399,7 +400,7 @@ impl<'a> Cx<'a> {
             .reduce(|a, b| lit(TK::Bin(BinOp::Or, Box::new(a), Box::new(b)), Ty::Bool, span))
             .unwrap_or_else(|| lit(TK::Bool(false), Ty::Bool, span));
         let checked = self.marked_call(
-            self.d.roles.variant_check,
+            self.rows.role_fn(Role::VariantCheck),
             "role(variant_check)",
             vec![known],
             span,

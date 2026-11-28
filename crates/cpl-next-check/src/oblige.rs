@@ -168,22 +168,23 @@ impl Cx<'_> {
     /// parameters fixed by the bound's arguments. `v` becomes that fn type, so the lambda passes
     /// as a value of it.
     pub(super) fn fn_impl_for(&mut self, v: usize, arity: usize) -> Option<Ty> {
-        let d = self.d;
+        let items = self.items;
         let bounds: Vec<TraitRef> = (self.b.obligations.iter())
             .filter(|(t, ..)| self.shallow(t) == Ty::Var(v))
             .map(|(_, r, ..)| r.clone())
             .collect();
         let found: Vec<(usize, &TraitRef)> = (bounds.iter())
             .flat_map(|r| {
-                (d.trait_impls(r.tr))
-                    .filter(|(_, im)| matches!(&im.for_, Ty::Fn(ps, ..) if ps.len() == arity))
-                    .map(move |(k, _)| (k, r))
+                (items.impls_by_trait(r.tr).iter())
+                    .filter(|&&k| items.live(k))
+                    .filter(|&&k| matches!(&items.imp(k).for_, Ty::Fn(ps, ..) if ps.len() == arity))
+                    .map(move |&k| (k, r))
             })
             .collect();
         let [(k, r)] = found[..] else {
             return None;
         };
-        let im = d.imp(k);
+        let im = items.imp(k);
         let Ty::Fn(ps, ret, _) = &im.for_ else {
             return None;
         };
@@ -431,7 +432,10 @@ impl Cx<'_> {
         }
         // Blankets chain: `impl<D: Domain + Eq> Ord for D` holds once `impl<D: Domain> Eq for D`
         // has given `Eq`.
-        let blankets: Vec<&decls::ImplDecl> = (self.d.impls.iter())
+        let unheaded = self.items.impl_traits(&Ty::Param(0));
+        let blankets: Vec<&decls::ImplDecl> = (unheaded.iter())
+            .flat_map(|&t| self.items.impls_by_trait(t))
+            .map(|&k| self.items.imp(k))
             .filter(|im| im.trait_.args.is_empty() && matches!(im.for_, Ty::Param(_)))
             .collect();
         loop {

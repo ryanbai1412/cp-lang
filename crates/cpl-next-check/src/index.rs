@@ -5,6 +5,7 @@ use super::member::Called;
 use super::*;
 use cpl_next_decls::decls::Role;
 use cpl_next_ir::unbuilt::Unbuilt;
+use cpl_next_syntax::grammar::Decorator;
 use std::collections::HashMap;
 
 /// What runs while a cell is lent: given the cell's name, it adds its statements.
@@ -55,8 +56,9 @@ impl Cx<'_> {
     }
     /// The `Range` struct: the key of the `@index` fn that cuts any indexed `S` (R07.4.17).
     pub(super) fn range_struct(&self) -> Option<StructId> {
-        let d = self.d;
-        (d.index_fns.iter()).find_map(|f| match (&d.f(*f).self_ty, &d.f(*f).params[..]) {
+        let items = self.items;
+        let mut index = self.rows.marked_fns(Decorator::Index).iter();
+        index.find_map(|f| match (&items.f(*f).self_ty, &items.f(*f).params[..]) {
             (Some(Ty::Param(_)), [p]) => match p.ty {
                 Ty::Struct(r, ..) => Some(r),
                 _ => None,
@@ -77,14 +79,14 @@ impl Cx<'_> {
         let Ty::Struct(sid, ..) = self.shallow(ty) else {
             return;
         };
-        let d = self.d;
+        let items = self.items;
         // A view: what an `@index` fn cuts from a source of another type. A range's sub-range is
         // a range, keyed by its values (R07.2.15).
         let view = |f: &FnId| {
-            matches!(d.f(*f).ret, Ty::Struct(s, ..) if s == sid)
-                && !matches!(d.f(*f).self_ty, Some(Ty::Struct(s, ..)) if s == sid)
+            matches!(items.f(*f).ret, Ty::Struct(s, ..) if s == sid)
+                && !matches!(items.f(*f).self_ty, Some(Ty::Struct(s, ..)) if s == sid)
         };
-        if !d.index_fns.iter().any(view) {
+        if !self.rows.marked_fns(Decorator::Index).iter().any(view) {
             return;
         }
         let keys = match unparen(base.clone()) {
@@ -229,9 +231,9 @@ impl Cx<'_> {
         if self.key_of(s).is_none_or(|k| self.fits(&k, i)) {
             return None;
         }
-        let d = self.d;
-        (d.index_fns.iter().copied()).find(|&f| {
-            let fd = d.f(f);
+        let (rows, items) = (self.rows, self.items);
+        (rows.marked_fns(Decorator::Index).iter().copied()).find(|&f| {
+            let fd = items.f(f);
             let mut binds = HashMap::new();
             fd.params.len() == 1
                 && (fd.self_ty.as_ref()).is_some_and(|t| self.shape_fits(s, t, &mut binds))
@@ -340,9 +342,7 @@ impl Cx<'_> {
         match self.shallow(s) {
             Ty::Param(p) => (self.bound_traits(p).into_iter())
                 .find(|t| {
-                    self.d
-                        .member(&self.items.t(t.tr).methods, &self.index_read())
-                        .is_some()
+                    (self.method_in(&self.items.t(t.tr).methods, &self.index_read())).is_some()
                 })
                 .and_then(|t| t.args.first().cloned()),
             _ => self.read_sig(&self.recv_ty(s)).map(|(k, _)| k),
@@ -355,10 +355,10 @@ impl Cx<'_> {
             Ty::Struct(sid, ..) => Some(sid),
             _ => None,
         };
-        let d = self.d;
+        let (rows, items) = (self.rows, self.items);
         let range = self.range_struct();
         let ends = |f: &FnId| {
-            let ps = &d.f(*f).params;
+            let ps = &items.f(*f).params;
             let first = match ps.first().map(|p| &p.ty) {
                 Some(Ty::Struct(k, ..)) => Some(*k),
                 _ => None,
@@ -366,8 +366,8 @@ impl Cx<'_> {
             ps.len() == arity && first.is_some() && (arity > 1 || first == range)
         };
         let mut any = None;
-        for &f in d.index_fns.iter().filter(|f| ends(f)) {
-            match &d.f(f).self_ty {
+        for &f in rows.marked_fns(Decorator::Index).iter().filter(|f| ends(f)) {
+            match &items.f(f).self_ty {
                 Some(Ty::Struct(sid, ..)) => {
                     if Some(*sid) == own {
                         return Some(f);
@@ -413,8 +413,8 @@ impl Cx<'_> {
         let tr = *self.rows.operator_traits(self.syms.get("[]=")?).first()?;
         let name = self.syms.text(self.rows.operator_method(tr)?.0);
         let rt = self.recv_ty(t);
-        let d = &self.d;
-        let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if d.imp(i).trait_.tr == tr);
+        let items = self.items;
+        let of_tr = |f: &decls::FnDecl| matches!(f.owner, Some(decls::Owner::Impl(i)) if items.imp(i).trait_.tr == tr);
         let found =
             (self.syms.get(name)).and_then(|sym| self.impls().impl_member_by(&rt, sym, of_tr));
         match found {
@@ -609,11 +609,10 @@ impl Cx<'_> {
         let lends = |f: &decls::FnDecl| matches!(f.region, Some((true, _)));
         // A type parameter's cell is lent by the method of its bound; anything else's by its impl.
         let read = &self.index_read();
-        let d = self.d;
         let bound = match rt {
             Ty::Param(p) => (self.bound_traits(p).into_iter()).find_map(|tr| {
-                let m = d.member(&d.t(tr.tr).methods, read)?;
-                lends(d.f(m)).then_some((tr, m))
+                let m = self.method_in(&self.items.t(tr.tr).methods, read)?;
+                lends(self.items.f(m)).then_some((tr, m))
             }),
             _ => None,
         };
@@ -644,7 +643,7 @@ impl Cx<'_> {
             let (decl, tys, sets) = (f.decl, f.targs.clone(), f.sets.clone());
             (Callee::Fn(f), decl, tys, sets)
         };
-        let fd = d.f(decl);
+        let fd = self.items.f(decl);
         let sub = Subst {
             tys: &tys,
             sets: &sets,
@@ -739,7 +738,7 @@ impl Cx<'_> {
                     cell,
                     Called {
                         text: &name,
-                        sym: this.d.sym(&name),
+                        sym: this.syms.get(&name),
                         span: name_at,
                     },
                     &args,

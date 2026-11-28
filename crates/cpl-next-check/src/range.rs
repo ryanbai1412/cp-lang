@@ -73,8 +73,8 @@ impl Cx<'_> {
             if self.static_axis(re) {
                 let scoped = |n| self.owned_named(n);
                 let at = decls::BodyScope {
-                    tables: self.d,
-                    names: self.d,
+                    tables: self.tables,
+                    names: self.names,
                     syms: &self.b.syms.over(self.syms),
                     m: self.b.module,
                     generics: &self.b.generics,
@@ -412,7 +412,7 @@ impl Cx<'_> {
             };
             a.push(self.body_ty(&t, pre));
         }
-        let (d, a) = decls::struct_args(self.d, d, a);
+        let (d, a) = decls::struct_args(self.tables, d, a);
         let sets = (0..self.shapes.n_sets(d)).map(|_| self.new_set()).collect();
         Some(Ty::Struct(d, a, sets))
     }
@@ -466,8 +466,8 @@ impl Cx<'_> {
         if let Some(decls::Named::Alias(id)) = self.named(self.b.module, n) {
             let scoped = |n| self.owned_named(n);
             let at = decls::BodyScope {
-                tables: self.d,
-                names: self.d,
+                tables: self.tables,
+                names: self.names,
                 syms: &self.b.syms.over(self.syms),
                 m: self.b.module,
                 generics: &self.b.generics,
@@ -1011,10 +1011,10 @@ impl Cx<'_> {
     /// reached here so the impl an instance runs is checked (R04.2.15).
     pub(super) fn position_int(&mut self, e: TExpr) -> TExpr {
         if matches!(self.shallow(&e.ty), Ty::Param(_)) {
-            let d = self.d;
-            let ord = (d.roles().domain.iter())
-                .flat_map(|tr| d.t(*tr).methods.values())
-                .find(|&&m| d.f(m).intrinsic == Some(Intrinsic::Domain(DomainOp::Ord)));
+            let items = self.items;
+            let ord = (self.rows.role_trait(Role::Positions).iter())
+                .flat_map(|tr| items.t(*tr).methods.values())
+                .find(|&&m| items.f(m).intrinsic == Some(Intrinsic::Domain(DomainOp::Ord)));
             if let Some(&m) = ord {
                 self.reach(m);
             }

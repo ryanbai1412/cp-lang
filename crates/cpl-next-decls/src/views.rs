@@ -130,6 +130,8 @@ pub trait Items: Texts {
     fn t(&self, id: TraitId) -> &TraitDecl;
     /// Impl `i`, an index into the program's impls.
     fn imp(&self, i: usize) -> &ImplDecl;
+    /// Context `id`, declared by `context` (R09.1.1).
+    fn context(&self, id: crate::decls::ContextId) -> &crate::decls::ContextDecl;
     /// The name of top-level value `g`, for showing a range type that ends at it.
     fn top_name(&self, g: cpl_next_ir::ty::TopValueId) -> Sym;
     /// The impls of `tr`, by index, in order, found or not (see `live`).
@@ -177,6 +179,9 @@ pub trait Names {
     fn export(&self, m: ModId, name: Sym) -> Option<(Named, bool)>;
     /// Whether two of module `m`'s `use` lines import `name` as different items (R08.1.4).
     fn is_ambiguous(&self, m: ModId, name: Sym) -> bool;
+    /// The trait and method a plain call `name(x, ..)` in module `m` is, when `name` is a
+    /// `@free_form` method of a trait in `m`'s view: the call is `x.name(..)` (R01.10.1).
+    fn free_form(&self, m: ModId, name: Sym) -> Option<(TraitId, Sym)>;
     fn fn_named(&self, m: ModId, name: Sym) -> Option<FnId> {
         match self.named(m, name) {
             Some(Named::Fn(f)) => Some(f),
@@ -330,6 +335,9 @@ impl Items for Decls {
     }
     fn imp(&self, i: usize) -> &ImplDecl {
         &self.impls[i]
+    }
+    fn context(&self, id: crate::decls::ContextId) -> &crate::decls::ContextDecl {
+        &self.contexts[id.0]
     }
     fn impls_by_trait(&self, tr: TraitId) -> &[usize] {
         self.impls_by_trait.get(&tr).map_or(&[], Vec::as_slice)
@@ -588,6 +596,9 @@ impl Names for Decls {
     }
     fn is_ambiguous(&self, m: ModId, name: Sym) -> bool {
         self.ambiguous[m.0].contains(&name)
+    }
+    fn free_form(&self, m: ModId, name: Sym) -> Option<(TraitId, Sym)> {
+        Decls::free_form(self, m, name)
     }
     fn top_value(&self, m: ModId, name: Sym) -> Option<cpl_next_ir::ty::TopValueId> {
         (m == self.program)
