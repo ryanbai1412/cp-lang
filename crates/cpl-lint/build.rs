@@ -106,13 +106,25 @@ fn std_fns(manifest: &std::path::Path) {
         };
         let text =
             std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        // A `@free_form` trait member is a plain std fn too (R01.10.1).
+        let mut free = false;
         for line in text.lines() {
             // `@get pub fn len(self)`: attributes come before `pub fn`.
             let mut rest = line.trim_start();
             while let Some(attr) = rest.strip_prefix('@') {
+                free |= attr
+                    .split(|c: char| !c.is_alphanumeric() && c != '_')
+                    .next()
+                    == Some("free_form");
                 rest = attr.split_once(' ').map_or("", |(_, r)| r).trim_start();
             }
-            let Some(rest) = rest.strip_prefix("pub fn ") else {
+            if rest.is_empty() {
+                continue;
+            }
+            let member = std::mem::take(&mut free)
+                .then(|| rest.strip_prefix("fn "))
+                .flatten();
+            let Some(rest) = rest.strip_prefix("pub fn ").or(member) else {
                 continue;
             };
             let name: String = rest
