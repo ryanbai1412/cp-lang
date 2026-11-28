@@ -218,7 +218,7 @@ use std.mod.{Comb, Mod}
 use std.opt.{and_then, is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
 use std.rand.{shuffle, Random}
-use std.range.{Len, RingRange}
+use std.range.{Len, RealRange, RingRange}
 use std.raw.{todo}
 use std.search.{
     split_best,

@@ -56,7 +56,7 @@ impl Ord for Frac:
   calls a `fn contains(self: [0..2]Int, i: Int, x: Int)`. Of the
   candidates, one is chosen when it is more specific than every other:
   `A` is more specific than `B` when `B`'s `self` binds to `A`'s and not
-  the other way, so `self: Range<F64>` beats `self: Range<D>` and
+  the other way, so `self: Range<Int>` beats `self: Range<D>` and
   `[V]List<V>` beats `[D]T`. A concrete `self` beats a bare `self: S`
   whose bounds it meets: `self: Str` beats `self: S` with
   `S: Indexed<D, T>`, and `self: Range<Int>` beats std's `sum<S: Seq<T>>`.
@@ -122,8 +122,8 @@ impl Ord for Frac:
   (decision 456). A bare operator takes the impl for a struct with a
   `@from_op` static fn (`Monoid.of` in std) and becomes that fn's call.
   A fn type is a type an impl may be for, and an impl may
-  cover every domain (`impl<domain D> Search for D`) beside one for a
-  concrete type (`impl Search for F64`). A generic fn names the choice as
+  cover every domain (`impl<domain D> Endpoint for D`) beside one for a
+  concrete type (`impl Endpoint for F64`). A generic fn names the choice as
   `M.Name` (R08.2.7), and its body is checked against the bound alone
   (R08.2.2): it can't assume `M.Name` is one type, so `fn f<B: Box>(b: B) ->
   Int = b.get()` is E0302. A trait may give an associated type a default

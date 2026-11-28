@@ -10,6 +10,7 @@
 //! example: `ternary_max(0..6, i => -(i - 3) * (i - 3)) == Some(3)`
 
 use std.seq.{Seq}
+use std.range.{RealRange}
 
 fn golden_pick<I, K: Ord>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     let n = r.len
@@ -313,9 +314,33 @@ pub fn split_best<G, D, T: Ord>(
         push_entry(g, r.l..at.l, g_idx)
         push_entry(g, at.r..r.r, g_idx)
 
+/// Where `ok` flips along `self`: false then true by default, true then false with `last: true`
+/// (decision 456). The result is the flip point to within `(hi - lo) / 2^steps`, on the side
+/// where `ok` holds, or `None` when `ok` fails at `hi` (at `lo` with `last: true`). It first
+/// tests that end, then `steps` midpoints, keeping the half that holds the flip.
+///
+/// cost: exactly `steps + 1` calls of `ok`
+/// traps: when `self` is written backwards or `steps < 0`
+/// example: `abs((0.0..2.0).bsearch(x => x * x >= 2.0, steps: 100)! - 1.4142135623730951) <= 1e-9`
+/// example: `(0.0..8.0).bsearch(x => x >= 3.0, steps: 3) == Some(3.0)`
+/// example: `(0.0..8.0).bsearch(x => x <= 3.0, last: true, steps: 3) == Some(3.0)`
+/// example: `(0.0..1.0).bsearch(x => x > 2.0) == None`
+/// example: `(2.0..2.0).bsearch(x => true, steps: 5) == Some(2.0)`
+pub fn bsearch(self: RealRange, ok: F64 -> Bool, last: Bool = false, steps: Int = 100) -> ?F64:
+    assert self.lo <= self.hi and steps >= 0
+    let edge = if last: self.lo else: self.hi
+    if not ok(edge): return None
+    var a = self.lo
+    var b = self.hi
+    for _ in 0..steps:
+        let m = (a + b) / 2.0
+        if ok(m) != last: b = m
+        else: a = m
+    Some(if last: a else: b)
+
 /// A point of `self` where a continuous unimodal `by` is largest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the maximizer: the real `peak`, picked by the range's
-/// element type (decision 419).
+/// type (decisions 419, 456).
 ///
 /// On a plateau at the maximum it is whichever plateau point the bracket closes on.
 ///
@@ -324,8 +349,8 @@ pub fn split_best<G, D, T: Ord>(
 /// ties: `let x = (0.0..4.0).peak(by: t => min(t, 2.0) - max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((0.0..4.0).peak(by: x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
-pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
-    golden_real(self.start, self.end, by, steps, larger: true)
+pub fn peak(self: RealRange, by: F64 -> F64, steps: Int = 100) -> F64 =
+    golden_real(self.lo, self.hi, by, steps, larger: true)
 
 /// A point of `self` where a continuous unimodal `by` is smallest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the minimizer.
@@ -337,5 +362,5 @@ pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
 /// ties: `let x = (0.0..4.0).valley(by: t => max(2.0 - t, 0.0) + max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((-3.0..3.0).valley(by: x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
-pub fn valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
-    golden_real(self.start, self.end, by, steps, larger: false)
+pub fn valley(self: RealRange, by: F64 -> F64, steps: Int = 100) -> F64 =
+    golden_real(self.lo, self.hi, by, steps, larger: false)

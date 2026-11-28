@@ -22,6 +22,8 @@ exhaustive form, and `plan/STATUS.md` lists what is still open.
 
 ### Library
 
+- `lo..hi` over `F64` builds a `RealRange`, whose `bsearch`, `peak` and `valley` take `steps:`. On a
+  domain range `bsearch` returns a `Cut<D>`, and the `Search` trait is gone (decision 672).
 - `blocks(g)` walks one flat copy of the arcs with a single DFS path and edge stack instead of
   building a list of arcs per vertex: about 1.5x faster, and below hand-written C++ on
   cco16p3's largest input.
