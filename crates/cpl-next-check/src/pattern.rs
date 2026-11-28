@@ -724,9 +724,7 @@ impl Cx<'_> {
             span,
         };
         let info = self.domain_info(name, var(lo), end, (None, None), span, out);
-        let i = self.id(super::Table::Domain, self.domains.len());
-        super::put(&mut self.domains, i, info);
-        i
+        self.add_domain(info, span)
     }
     /// The fresh domains `t`'s struct holds as its own parameters, each with that parameter's
     /// name: `Pre` of a `Rooted.new` result.
