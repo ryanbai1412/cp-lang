@@ -147,6 +147,7 @@ pub(super) fn name_trait(
     for (x, role) in roles(&t.attrs) {
         let slot = match role {
             Some(Role::Iteration) => &mut d.roles.iteration,
+            Some(Role::Discrete) => &mut d.roles.discrete,
             Some(Role::Positions) => &mut d.roles.domain,
             Some(Role::Order) => &mut d.roles.order,
             Some(Role::Convert) => &mut d.roles.convert,

@@ -457,7 +457,7 @@ impl<T: StageTy + PartialEq + std::fmt::Debug> V<'_, T> {
                 self.expr(g, "a called value");
                 self.args(xs, "a call's argument");
             }
-            EK::DomLen(t) | EK::DomLo(t) | EK::DomHeld(t) | EK::DomCounted(t) => self.ty(t),
+            EK::DomLen(t) | EK::DomLo(t) | EK::DomHeld(t) | EK::DomFromCount(t) => self.ty(t),
             EK::TypeValue(t) => {
                 if self.stage >= Stage::Instances {
                     self.bad("a value parameter's read left for an instance".into());

@@ -692,14 +692,14 @@ pub(crate) fn enum_conversions(
             continue;
         };
         let (count, nth, ord) = (p.count, p.nth, p.ord);
+        let counts = vec![func(
+            true,
+            count,
+            Vec::new(),
+            int.clone(),
+            SynthBody::EnumCount(variants.len()),
+        )];
         let methods = vec![
-            func(
-                true,
-                count,
-                Vec::new(),
-                int.clone(),
-                SynthBody::EnumCount(variants.len()),
-            ),
             func(
                 false,
                 nth,
@@ -718,12 +718,13 @@ pub(crate) fn enum_conversions(
                 SynthBody::EnumToInt(variants.clone()),
             ),
         ];
-        let domain = p.tr;
-        out.push((
-            item.clone(),
-            name.clone(),
-            imp(TyForm::Named(domain, Vec::new()), enum_ty.clone(), methods),
-        ));
+        for (tr, ms) in [(p.discrete, methods), (p.tr, counts)] {
+            out.push((
+                item.clone(),
+                name.clone(),
+                imp(TyForm::Named(tr, Vec::new()), enum_ty.clone(), ms),
+            ));
+        }
         // An enum's variants are in declaration order (R04.2.31).
         if let Some(o) = &p.order {
             let o = *o;

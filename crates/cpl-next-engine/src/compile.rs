@@ -1079,7 +1079,7 @@ impl Fc<'_> {
                 self.expr(x, d + 1);
             }
             EK::Inject(x) | EK::Widen(x) => self.expr(x, d),
-            EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) | EK::DomCounted(_) => {
+            EK::DomLen(_) | EK::DomLo(_) | EK::DomHeld(_) | EK::DomFromCount(_) => {
                 self.fail("a domain value the link step did not resolve")
             }
             EK::HasBound(..) => self.fail("a bound test the link step did not decide"),

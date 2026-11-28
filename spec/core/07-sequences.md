@@ -110,7 +110,7 @@ a.items           // (i, a[i]) pairs with a's own indices
 | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps (R07.3.3) |
 | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` (R07.3.4) |
 | `Positional<T>` | `Seq` + `Sized` + `s.nth(k)`, the element `k` steps into the walk, in \(O(1)\) | everything `Indexed`, `s.rev` of an `Indexed`, a domain (R07.3.7) |
-| `Indexed<D, T>` | `Keyed` + `Positional` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices (`a[r]`, `take`/`drop`, `windows`, `chunks`, `runs`, `split`), `.map(f)`, `zip(a, b)`; not `.rev` or `filter` (R07.3.5) |
+| `Indexed<D, T>` | `Keyed` + `Positional` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`; `[Int]T` is `List<T>`, R04.8.11), ranges, slices (`a[r]`, `take`/`drop`, `windows`, `chunks`, `runs`, `split`), `.map(f)`, `zip(a, b)`; not `.rev` or `filter` (R07.3.5) |
 | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment | `[D]T`, `List`, `Str`, `mut` slices (R07.3.6) |
 
 **Cost rule.** Views are \(O(1)\) to make and allocate nothing. A

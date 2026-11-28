@@ -305,7 +305,7 @@ pub struct SparseTable2D<R, C, T>(op: (T, T) -> T):
 /// A static range min or max in \(O(1)\) per query after \(O(\lvert D \rvert)\) build and memory,
 /// by block-of-64 bitmask RMQ (Four Russians): for \(O(1)\) LCA, or a static RMQ where
 /// \(O(n \log n)\) space is too large.
-pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
+pub struct LinearRmq<D: Discrete, T>(before: (T, T) -> Bool):
     n: Len
     /// The values it was built over: `a` itself, kept rather than copied.
     pub values: [D]T
@@ -504,7 +504,7 @@ impl Show for SparseTable2D<R: Domain, C: Domain, T: Show>:
             out += row
         out
 
-impl Show for LinearRmq<D, T: Show>:
+impl Show for LinearRmq<D: Discrete, T: Show>:
     /// The values it was built from, in key order, space-separated.
     ///
     /// example: `"{LinearRmq([3, 1, 2])}" == "3 1 2"`
