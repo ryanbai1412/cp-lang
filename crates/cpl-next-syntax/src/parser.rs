@@ -7,6 +7,8 @@
 
 mod expr;
 mod pattern;
+mod stmt;
+mod types;
 
 use crate::file::{NodeKind, SyntaxFile};
 use crate::lexer::lex;
@@ -32,6 +34,26 @@ pub fn parse_expr(src: &str) -> SyntaxFile {
         }
         p.finish();
     }
+    while p.pos < p.tokens.len() {
+        p.bump();
+    }
+    p.finish();
+    let mut diagnostics = lexed.diagnostics;
+    diagnostics.extend(p.diagnostics);
+    SyntaxFile {
+        root: SyntaxNode::new_root(p.b.finish()),
+        diagnostics,
+    }
+}
+
+/// The tree of `src` read as a run of statements, as a block's body is:
+/// a `File` holding each statement. Total, like [`crate::parse`].
+pub fn parse_stmts(src: &str) -> SyntaxFile {
+    let lexed = lex(src);
+    let tokens = lexed.lossless(src);
+    let mut p = Parser::new(src, &tokens);
+    p.start(NodeKind::File);
+    p.stmts_until(T::Eof);
     while p.pos < p.tokens.len() {
         p.bump();
     }
@@ -70,6 +92,9 @@ pub(crate) struct Parser<'t> {
     /// are not in the tree yet.
     pos: usize,
     emitted: usize,
+    /// A `>>` closed an inner type-argument list; the enclosing one closes
+    /// on the same token.
+    half_gt: bool,
     b: GreenBuilder,
     diagnostics: Vec<Diagnostic>,
 }
@@ -81,6 +106,7 @@ impl<'t> Parser<'t> {
             tokens,
             pos: 0,
             emitted: 0,
+            half_gt: false,
             b: GreenBuilder::default(),
             diagnostics: Vec::new(),
         };

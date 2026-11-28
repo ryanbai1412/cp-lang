@@ -84,6 +84,10 @@ pub enum Contextual {
     Min,
     /// `_`, the pattern that binds nothing.
     Wildcard,
+    /// `repeat k:` runs its block `k` times.
+    Repeat,
+    /// `with ctx(..):` runs its block in a context.
+    With,
 }
 
 /// Each contextual word and how it is spelled.
@@ -93,6 +97,8 @@ pub const CONTEXTUAL: &[(&str, Contextual)] = &[
     ("max", Contextual::Max),
     ("min", Contextual::Min),
     ("_", Contextual::Wildcard),
+    ("repeat", Contextual::Repeat),
+    ("with", Contextual::With),
 ];
 
 /// The contextual word `text` spells, if any.

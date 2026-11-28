@@ -72,6 +72,64 @@ pub enum NodeKind {
     LiteralPat,
     /// `p | q`.
     OrPat,
+    /// `: stmts` on its line, or `:` then an indented run of statements.
+    Block,
+    /// `let p: T = e else: ...`, also `var` and `const`.
+    LetStmt,
+    ExprStmt,
+    /// `place = e`, `place += e`, `place f= e`.
+    AssignStmt,
+    ReturnStmt,
+    BreakStmt,
+    ContinueStmt,
+    YieldStmt,
+    /// `assert c, message`.
+    AssertStmt,
+    /// `if c: ... elif c: ... else: ...`.
+    IfStmt,
+    /// `if c: a elif d: b else: e` as a value.
+    IfExpr,
+    ElifClause,
+    ElseClause,
+    /// A condition: comma-separated tests and `let p = e` bindings.
+    Condition,
+    /// `let p = e` inside a condition.
+    LetCond,
+    WhileStmt,
+    ForStmt,
+    /// `p in xs if f`.
+    ForClause,
+    /// `match e:` and its arms, as a statement or a value.
+    MatchExpr,
+    /// `p if g => body`.
+    MatchArm,
+    /// `with ctx(..): ...`.
+    WithStmt,
+    UncheckedStmt,
+    /// `repeat k: ...`.
+    RepeatStmt,
+    /// `Name`, `a.B`, `Vec<Int>`.
+    PathType,
+    /// `<T, 3>` after a type's name.
+    GenericArgs,
+    /// `?T`.
+    OptionalType,
+    /// `[D]T`, `[n, m]T`.
+    ArrayType,
+    /// `[D]` before an array's element type.
+    Dims,
+    /// `(A, B)`, `()`.
+    TupleType,
+    /// `(lo: Int, hi: V, ..R)`.
+    RecordType,
+    /// `name: T` in a record type.
+    RecordTypeField,
+    /// `(A, B) -> C`.
+    FnType,
+    /// `0..n`, `..=9` as a type.
+    RangeType,
+    /// `1 | 2 | 3`, `"a" | "b"`.
+    LiteralType,
 }
 
 /// One file's syntax.

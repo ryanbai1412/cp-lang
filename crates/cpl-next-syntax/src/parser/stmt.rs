@@ -1,0 +1,371 @@
+//! Statements and blocks. A broken statement ends at its `Newline`; the
+//! block's other statements, and a broken header's block, still parse.
+
+use super::*;
+use crate::grammar::{contextual, Contextual};
+
+impl Parser<'_> {
+    /// Statements up to `end`, or a `Dedent` or the end of input.
+    pub(super) fn stmts_until(&mut self, end: TokenKind) {
+        while !matches!(self.peek(), T::Dedent | T::Eof) && !self.at(end) {
+            let before = self.pos;
+            self.stmt();
+            if self.pos == before {
+                self.start(NodeKind::Error);
+                self.bump();
+                self.finish();
+            }
+        }
+    }
+
+    fn word(&self) -> Option<Contextual> {
+        if self.at(T::Ident) {
+            contextual(self.text())
+        } else {
+            None
+        }
+    }
+
+    pub(super) fn stmt(&mut self) {
+        match self.peek() {
+            T::Newline => self.bump(),
+            T::Indent => self.stray_indent(),
+            T::If => self.if_clauses(NodeKind::IfStmt, Self::block),
+            T::While => self.while_stmt(),
+            T::For => self.for_stmt(),
+            T::Label if self.nth(1) == T::Colon && matches!(self.nth(2), T::For | T::While) => {
+                if self.nth(2) == T::For {
+                    self.for_stmt()
+                } else {
+                    self.while_stmt()
+                }
+            }
+            T::Match => self.match_expr(),
+            T::Unchecked => self.headed(NodeKind::UncheckedStmt, |_| {}),
+            T::Ident if self.word() == Some(Contextual::Repeat) && self.nth(1) != T::Eq => {
+                self.headed(NodeKind::RepeatStmt, |p| p.expr())
+            }
+            T::Ident if self.word() == Some(Contextual::With) && self.nth(1) == T::Ident => self
+                .headed(NodeKind::WithStmt, |p| {
+                    p.expr();
+                    while p.eat(T::Comma) {
+                        p.expr();
+                    }
+                }),
+            _ => {
+                self.simple();
+                while self.eat(T::Semi) {
+                    if !matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
+                        self.simple();
+                    }
+                }
+                self.end_line();
+            }
+        }
+        // A compound statement whose block ended on its own line.
+        if self.at(T::Newline) {
+            self.bump();
+        }
+    }
+
+    /// An indented run where a statement was wanted: one diagnostic, and
+    /// its statements are kept.
+    fn stray_indent(&mut self) {
+        self.diagnostics.push(
+            msgs::stmt::STRAY_INDENT
+                .error(Span::point(self.span().start), &[])
+                .with_help("remove the extra indentation, or end the line above with `:`"),
+        );
+        self.bump();
+        self.stmts_until(T::Dedent);
+        self.eat(T::Dedent);
+    }
+
+    /// The end of a simple statement's line. Anything left on it is one
+    /// `Error` node with one diagnostic.
+    fn end_line(&mut self) {
+        if matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
+            return;
+        }
+        self.error_here(codes::UNEXPECTED_TOKEN, "the end of the line");
+        self.start(NodeKind::Error);
+        while !matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
+            self.bump();
+        }
+        self.finish();
+    }
+
+    /// `keyword header block`.
+    fn headed(&mut self, node: NodeKind, header: impl FnOnce(&mut Self)) {
+        self.start(node);
+        self.bump();
+        header(self);
+        self.block();
+        self.finish();
+    }
+
+    fn simple(&mut self) {
+        match self.peek() {
+            T::Let | T::Var | T::Const => self.let_stmt(),
+            T::Return => self.keyword_stmt(NodeKind::ReturnStmt, true),
+            T::Yield => self.keyword_stmt(NodeKind::YieldStmt, true),
+            T::Break => self.keyword_stmt(NodeKind::BreakStmt, false),
+            T::Continue => self.keyword_stmt(NodeKind::ContinueStmt, false),
+            T::Assert => {
+                self.start(NodeKind::AssertStmt);
+                self.bump();
+                self.expr();
+                if self.eat(T::Comma) {
+                    self.expr();
+                }
+                self.finish();
+            }
+            _ => self.expr_or_assign(true),
+        }
+    }
+
+    /// `return e`, `yield e`, `break 'outer`, `continue`.
+    fn keyword_stmt(&mut self, node: NodeKind, value: bool) {
+        self.start(node);
+        self.bump();
+        if value && !matches!(self.peek(), T::Newline | T::Eof | T::Dedent | T::Semi) {
+            self.expr();
+        }
+        if !value {
+            self.eat(T::Label);
+        }
+        self.finish();
+    }
+
+    fn let_stmt(&mut self) {
+        self.start(NodeKind::LetStmt);
+        self.bump();
+        self.pattern();
+        while self.eat(T::Comma) {
+            self.pattern();
+        }
+        if self.eat(T::Colon) {
+            self.ty();
+        }
+        if self.want(T::Eq, "`=` and a value") {
+            self.expr();
+            if self.at(T::Else) {
+                self.start(NodeKind::ElseClause);
+                self.bump();
+                self.block();
+                self.finish();
+            }
+        }
+        self.finish();
+    }
+
+    /// An expression, or an assignment to it: `p = e`, `p += e`, `p f= e`.
+    /// As a statement (`stmt`), a plain expression is an `ExprStmt`; as an
+    /// arm's or a lambda's body it is the value itself.
+    fn expr_or_assign(&mut self, stmt: bool) {
+        let at = self.checkpoint();
+        self.expr();
+        let named = self.at(T::Ident) && self.nth(1) == T::Eq && self.glued(1);
+        if matches!(self.peek(), T::Eq | T::OpEq) || named {
+            self.start_at(at, NodeKind::AssignStmt);
+            if named {
+                self.bump();
+            }
+            self.bump();
+            self.expr();
+        } else if stmt {
+            self.start_at(at, NodeKind::ExprStmt);
+        } else {
+            return;
+        }
+        self.finish();
+    }
+
+    /// `:` then the statements on the line, or a newline and an indented
+    /// run. A missing `:` is one diagnostic, and an indented body after it
+    /// still parses as the block.
+    pub(super) fn block(&mut self) {
+        self.start(NodeKind::Block);
+        let colon = self.at(T::Colon);
+        if colon {
+            self.bump();
+        } else {
+            self.error_here(codes::EXPECTED_TOKEN, "`:` and a block");
+        }
+        if self.at(T::Newline) && self.nth(1) == T::Indent {
+            self.bump();
+            self.bump();
+            self.stmts_until(T::Dedent);
+            self.want(T::Dedent, "the end of the block");
+        } else if colon && !matches!(self.peek(), T::Newline | T::Eof | T::Dedent) {
+            self.simple();
+            while self.eat(T::Semi) {
+                self.simple();
+            }
+        } else if colon {
+            self.error_here(codes::EXPECTED_TOKEN, "a statement after `:`");
+        }
+        self.finish();
+    }
+
+    /// `if c <body> (elif c <body>)* (else <body>)?`, as a statement with
+    /// blocks or a value with `: expr` bodies.
+    pub(super) fn if_clauses(&mut self, node: NodeKind, body: fn(&mut Self)) {
+        self.start(node);
+        self.bump();
+        self.cond();
+        body(self);
+        loop {
+            let next = match (self.peek(), self.nth(1)) {
+                (T::Elif | T::Else, _) => 0,
+                (T::Newline, T::Elif | T::Else) if node == NodeKind::IfStmt => 1,
+                _ => break,
+            };
+            if next == 1 {
+                self.bump();
+            }
+            let elif = self.at(T::Elif);
+            self.start(if elif {
+                NodeKind::ElifClause
+            } else {
+                NodeKind::ElseClause
+            });
+            self.bump();
+            if elif {
+                self.cond();
+            }
+            body(self);
+            self.finish();
+            if !elif {
+                break;
+            }
+        }
+        self.finish();
+    }
+
+    /// `c, let p = e, d`.
+    pub(super) fn cond(&mut self) {
+        self.start(NodeKind::Condition);
+        loop {
+            if self.at(T::Let) {
+                self.start(NodeKind::LetCond);
+                self.bump();
+                self.pattern();
+                if self.want(T::Eq, "`=` and the value to match") {
+                    self.expr();
+                }
+                self.finish();
+            } else {
+                self.expr();
+            }
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        self.finish();
+    }
+
+    fn while_stmt(&mut self) {
+        self.start(NodeKind::WhileStmt);
+        if self.eat(T::Label) {
+            self.bump();
+        }
+        self.bump();
+        self.cond();
+        self.block();
+        self.loop_else();
+        self.finish();
+    }
+
+    fn for_stmt(&mut self) {
+        self.start(NodeKind::ForStmt);
+        if self.eat(T::Label) {
+            self.bump();
+        }
+        self.bump();
+        loop {
+            self.start(NodeKind::ForClause);
+            self.pattern();
+            if self.want(T::In, "`in` and what to walk") {
+                self.expr();
+            }
+            if self.eat(T::If) {
+                self.expr_at(crate::ops::Level::Expr);
+            }
+            self.finish();
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        self.block();
+        self.loop_else();
+        self.finish();
+    }
+
+    fn loop_else(&mut self) {
+        let next = usize::from(self.at(T::Newline));
+        if self.nth(next) == T::Else {
+            if next == 1 {
+                self.bump();
+            }
+            self.start(NodeKind::ElseClause);
+            self.bump();
+            self.block();
+            self.finish();
+        }
+    }
+
+    /// `match e:` and its arms, on the line separated by `,` or one per
+    /// indented line.
+    pub(super) fn match_expr(&mut self) {
+        self.start(NodeKind::MatchExpr);
+        self.bump();
+        self.expr();
+        self.want(T::Colon, "`:` and the arms");
+        if self.at(T::Newline) && self.nth(1) == T::Indent {
+            self.bump();
+            self.bump();
+            while !matches!(self.peek(), T::Dedent | T::Eof) {
+                if !self.eat(T::Newline) {
+                    self.arm();
+                    self.end_line();
+                }
+            }
+            self.want(T::Dedent, "the end of the arms");
+        } else {
+            self.arm();
+            while self.eat(T::Comma) {
+                self.arm();
+            }
+        }
+        self.finish();
+    }
+
+    fn arm(&mut self) {
+        self.start(NodeKind::MatchArm);
+        self.pattern();
+        // A guard is never a lambda: its `=>` starts the arm's value.
+        if self.eat(T::If) {
+            self.expr_at(crate::ops::Level::Expr);
+        }
+        if self.want(T::FatArrow, "`=>` and the arm's value") {
+            self.arm_body();
+        }
+        self.finish();
+    }
+
+    /// An arm's or a lambda's body: an expression or an assignment on the
+    /// line, or an indented run of statements.
+    pub(super) fn arm_body(&mut self) {
+        if self.at(T::Newline) && self.nth(1) == T::Indent {
+            self.start(NodeKind::Block);
+            self.bump();
+            self.bump();
+            self.stmts_until(T::Dedent);
+            self.want(T::Dedent, "the end of the block");
+            self.finish();
+        } else {
+            self.expr_or_assign(false);
+        }
+    }
+}

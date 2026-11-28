@@ -25,10 +25,15 @@ fn begins_operand(kind: TokenKind) -> bool {
 
 impl Parser<'_> {
     pub(super) fn expr(&mut self) {
-        if self.lambda_ahead() {
-            return self.lambda();
+        match self.peek() {
+            T::If => self.if_clauses(NodeKind::IfExpr, |p| {
+                p.want(T::Colon, "`:` and the value");
+                p.expr();
+            }),
+            T::Match => self.match_expr(),
+            _ if self.lambda_ahead() => self.lambda(),
+            _ => self.expr_at(Level::Expr),
         }
-        self.expr_at(Level::Expr);
     }
 
     /// `x =>` or `(...) =>` / `(...) ->`.
@@ -79,8 +84,9 @@ impl Parser<'_> {
             self.pattern();
             self.finish();
         }
-        self.want(T::FatArrow, "`=>` before the lambda's body");
-        self.expr();
+        if self.want(T::FatArrow, "`=>` before the lambda's body") {
+            self.arm_body();
+        }
         self.finish();
     }
 

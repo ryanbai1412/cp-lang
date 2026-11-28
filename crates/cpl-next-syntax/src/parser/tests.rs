@@ -1,8 +1,8 @@
 use crate::file::NodeKind;
 use crate::lexer::lex;
 use crate::ops::{levels, Level};
-use crate::parse_expr;
 use crate::tree::{SyntaxElement, SyntaxNode};
+use crate::{parse_expr, parse_stmts};
 
 /// The tree as `Kind(child child)`, tokens by text, trivia left out.
 fn shape(node: &SyntaxNode) -> String {
@@ -167,4 +167,70 @@ fn the_table_is_the_specs_precedence_list() {
         last = Some(levels[0]);
     }
     assert!(lines >= 13, "read {lines} operator lines");
+}
+
+fn stmts(src: &str) -> (Vec<String>, usize) {
+    let file = parse_stmts(src);
+    assert_eq!(file.root.text(), src, "lossless");
+    (
+        file.root.children().map(|n| shape(&n)).collect(),
+        file.diagnostics.len(),
+    )
+}
+
+#[test]
+fn statements_and_blocks() {
+    let (got, errors) = stmts(
+        "let (a, b): (Int, [N]?Vec<Vec<Int>>) = f(x)\nbest max= a\nfor i in 0..n if i % 2 == 0, j in xs:\n    s += i\nelse: s = 0\nif let Some(v) = m, v > 0: return v\nelif q: break\nelse:\n    match v:\n        0 | 1 => x\n        _ if y => z = 1\n",
+    );
+    assert_eq!(errors, 0, "{got:#?}");
+    let kinds: Vec<&str> = got.iter().map(|s| s.split('(').next().unwrap()).collect();
+    assert_eq!(kinds, ["LetStmt", "ExprStmt", "ForStmt", "IfStmt"]);
+    assert!(
+        got[0].contains("GenericArgs(< PathType(Vec GenericArgs(< PathType(Int) >>))))"),
+        "{}",
+        got[0]
+    );
+    assert!(
+        got[2].contains("ElseClause(else Block(: AssignStmt(NameRef(s) = Literal(0))))"),
+        "{}",
+        got[2]
+    );
+    assert!(
+        got[3].contains(
+            "MatchArm(WildcardPat(_) if NameRef(y) => AssignStmt(NameRef(z) = Literal(1)))"
+        ),
+        "{}",
+        got[3]
+    );
+}
+
+#[test]
+fn a_broken_statement_keeps_its_block_and_neighbours() {
+    // A broken `while` condition is one error: its block and the
+    // statements around it, in the same block, are all in the tree.
+    let (got, errors) = stmts("x = 1\nwhile a + :\n    y = 2\n    z =\n    w = 3\nv = 4\n");
+    assert_eq!(errors, 2, "{got:#?}");
+    assert_eq!(got.len(), 3, "{got:#?}");
+    assert!(
+        got[1].contains("BinExpr(NameRef(a) + Missing())"),
+        "{}",
+        got[1]
+    );
+    assert!(
+        got[1].contains("AssignStmt(NameRef(y) = Literal(2))"),
+        "{}",
+        got[1]
+    );
+    assert!(
+        got[1].contains("AssignStmt(NameRef(w) = Literal(3))"),
+        "{}",
+        got[1]
+    );
+    assert!(
+        got[1].contains("AssignStmt(NameRef(z) = Missing())"),
+        "{}",
+        got[1]
+    );
+    assert_eq!(got[2], "AssignStmt(NameRef(v) = Literal(4))");
 }
