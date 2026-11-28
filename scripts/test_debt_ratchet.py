@@ -343,6 +343,21 @@ class DebtRatchetTest(unittest.TestCase):
                         'if n == "todo" {}\n// n == "x"\n"Some" => 1,\n| "a" | "b" => 2,\nmatches!(k, Name(n) if n == "on")\nif s.eq("print") {}\nlet m = "text";\nif a == b {}\n')
             self.assertEqual(dr.next_name_compares(root), [f"crates/cpl-next-check/src/lib.rs:{i}" for i in (1, 3, 4, 5, 6)])
 
+    def test_name_compares_count_a_name_text_against_anything_where_names_resolve(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self._write(root, "crates/cpl-next-check/src/pattern.rs",
+                        'any(|f| f.name == head)\nif p.text() == "??=" {}\nif head != r.name() {}\n'
+                        'let n = f.name;\nif f.name() .is_some() {}\nif a == b {}\nlet ok = x.name_of(y) == z;\n// f.name == head\n')
+            self._write(root, "crates/cpl-next-decls/src/collect.rs",
+                        'for m in RoleMember::ALL {\n    let r = Role::ALL.into_iter().find(|r| r.name() == role);\n}\n'
+                        'for m in RoleMember::ALL {\n    seen.insert(m);\n}\n')
+            self._write(root, "crates/cpl-next-ir/src/lib.rs", 'if f.name == head {}\n')
+            self.assertEqual(dr.next_name_compares(root), [
+                "crates/cpl-next-check/src/pattern.rs:1", "crates/cpl-next-check/src/pattern.rs:2",
+                "crates/cpl-next-check/src/pattern.rs:3", "crates/cpl-next-decls/src/collect.rs:1",
+                "crates/cpl-next-decls/src/collect.rs:2"])
+
     def test_library_gates_count_each_call_and_its_wrapper(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

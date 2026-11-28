@@ -2068,9 +2068,28 @@ def next_name_compares(root: Path) -> list[str]:
     pat = re.compile(r'(?:==|!=)\s*"[A-Za-z_]\w*"|^\s*(?:\|\s*)?[^=|]*"[A-Za-z_]\w*"[^=]*(?:\|.*)?=>'
                      r'|matches!\([^)]*"[A-Za-z_]\w*"|\.eq\(\s*"[A-Za-z_]\w*"\s*\)'
                      r'|\.(?:get|get_mut|contains_key|remove|entry)\(\s*"[A-Za-z_]\w*"\s*\)')
-    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
-            for i, l in enumerate(_lines(p), 1)
-            if not l.lstrip().startswith("//") and pat.search(l)]
+    found = {f"{_rel(root, p)}:{i}" for p in _rs_files(root, *_next_srcs(root), tests=False)
+             for i, l in enumerate(_lines(p), 1)
+             if not l.lstrip().startswith("//") and pat.search(l)}
+    # In the layers that resolve names, a name's text compared with anything, a variable too
+    # (`f.name == head`, `r.name() == role`, `p.text() == "??="`), and a walk of `Role::ALL` or
+    # `RoleMember::ALL` that finds its row by one (3 AM blind audit).
+    for p in _rs_files(root, *NAME_COMPARE_LAYERS, tests=False):
+        lines = [l.split("//")[0] for l in _lines(p)]
+        for i, l in enumerate(lines):
+            if NAME_TEXT_COMPARE_RE.search(l) or (
+                    ROLE_WALK_RE.search(l) and any(NAME_TEXT_COMPARE_RE.search(x) for x in lines[i:_block(lines, i) + 1])):
+                found.add(f"{_rel(root, p)}:{i + 1}")
+    return sorted(found, key=lambda x: (x.rsplit(":", 1)[0], int(x.rsplit(":", 1)[1])))
+
+
+# The layers that resolve names: there a name is an id or a declared role, not its text.
+NAME_COMPARE_LAYERS = ("crates/cpl-next-syntax/src/parser", "crates/cpl-next-syntax/src/parser.rs",
+                       "crates/cpl-next-decls/src", "crates/cpl-next-check/src", "crates/cpl-next-lower/src",
+                       "crates/cpl-next-link/src", "crates/cpl-next-own/src")
+NAME_TEXT = r"\.(?:name|text)\(\)|\.name\b(?!\s*\()"
+NAME_TEXT_COMPARE_RE = re.compile(rf"(?:{NAME_TEXT})\s*[=!]=(?!=)|(?<![=!<>])[=!]=\s*[\w.&*]*?(?:{NAME_TEXT})")
+ROLE_WALK_RE = re.compile(r"\b(?:Role|RoleMember)::ALL\b")
 
 
 def next_domain_fiat(root: Path) -> list[str]:
