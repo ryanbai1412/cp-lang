@@ -1023,15 +1023,16 @@ fn domain_at(d: &Decls, t: &Ty, pos: &[TraitId], i: usize, depth: usize) -> bool
     let Ty::Struct(s, ts, _) = t else {
         return *t == Ty::Param(i);
     };
-    depth < 8 && (d.impls.iter()).any(|m| {
-        let Ty::Struct(f, ps, _) = &m.for_ else {
-            return false;
-        };
-        pos.contains(&m.trait_.tr) && f == s && (ps.iter().zip(ts)).any(|(p, a)| {
+    depth < 8
+        && (d.impls.iter()).any(|m| {
+            let Ty::Struct(f, ps, _) = &m.for_ else {
+                return false;
+            };
+            pos.contains(&m.trait_.tr) && f == s && (ps.iter().zip(ts)).any(|(p, a)| {
             matches!(p, Ty::Param(j) if m.bounds.iter().any(|(b, r)| b == j && pos.contains(&r.tr)))
                 && domain_at(d, a, pos, i, depth + 1)
         })
-    })
+        })
 }
 
 /// `s`'s parameter `k` is a domain: a field keys by it, as `at: [Pre]V` does, or it is bounded so.
