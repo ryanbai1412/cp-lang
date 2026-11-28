@@ -311,9 +311,18 @@ type Z = Mod(read<2..=1e9 + 7>())  // runtime modulus
   Range inference goes through arithmetic on `let`s, runs no loop
   fixpoints and crosses no calls. A local's range type may have runtime
 bounds (`var i: 1..=n = read()`). (R02.10.2)
+- A range type anywhere, a signature or a field type included, may end
+  at a value the program's top level binds with `let` (`let m: 1..=1e4 =
+  read()`, then `fn f(c: 1..=m) -> 0..=m`, `[B]?1..=m`). The value is fixed
+  before any fn runs, so the type is one range for the whole run, as a
+  domain's runtime count is (R04.4.25). What a value of it is proven to
+  lie in, and the width that holds it, come from the `let`'s own declared
+  range (`1..=1e4`); a store into it is checked against the run-time end.
+  A top-level `var` can't end a type (E0326): it may change while the
+  type is in use, so freeze it first with `let`. (R02.10.3)
 - Function signatures are written in full except that a single-capital
   type parameter used in a parameter type may be left undeclared
-  (`fn peel(s: [D]Bool)`). (R02.10.3)
+  (`fn peel(s: [D]Bool)`). (R02.10.4)
 
 ## 2.11 Never implicit
 

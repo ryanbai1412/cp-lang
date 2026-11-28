@@ -1,5 +1,5 @@
 // expect: ok, output "3 x"
-// rule: R02.10.3
+// rule: R02.10.4
 // An impl's type parameters declared in `<..>` are its own whatever their names: `Elem`
 // and `Key` with no bound are parameters, not types to look up.
 trait Pair<A, B>:

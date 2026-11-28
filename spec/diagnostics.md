@@ -6,7 +6,9 @@ rule and the fix; one diagnostic per root cause. Codes marked *(0.3)*
 are specified here and not yet emitted; the rest are emitted by
 `cpl` (`crates/cpl-diag`, `crates/cpl-lint`). A *(retired)* code is never emitted
 and never reused; a *(reserved)* one is kept for a check that reports
-under another code today. `crates/cpl-cli/tests/catalogue.rs` holds the
+under another code today. A *(next)* code is emitted by `cpl-next` only,
+until it ships as `cpl`; its trigger runs there and must not fire on old
+`cpl`. `crates/cpl-cli/tests/catalogue.rs` holds the
 table to the compiler: every emitted code has a trigger that produces
 exactly it and a fix that clears it.
 
@@ -66,6 +68,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0323 | alias_cycle | `type A` is defined by itself, so it never names a type; write the type `A` stands for, or give the alias a name of its own (R02.6.2) |
 | E0324 | not_a_fn_item | `type_of(sq)`: `sq` is a `let`, not a fn item, so it has no type of its own; declare it with `fn sq(...)`, or write its fn type `(Int) -> Int` (R08.1.10) |
 | E0325 | bad_stress | an `@stress` on anything but a type alias, or with anything but one bare kind of `perm`, `tree`, `simple`, `connected`, `dag` and `digraph` (decision 25.32) |
+| E0326 | range_end_var *(next)* | a type can't end at `m`, a `var` that may change while the type is in use; declare `m` with `let` (R02.10.3) |
 | E0401 | assign_to_let | `x` is a `let`, so it can't be assigned |
 | E0402 | missing_mut_at_call | write `mut seen` at the call |
 | E0403 | mut_of_immutable | `a` is a `let`, so it can't be passed as `mut` |

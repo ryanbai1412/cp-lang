@@ -32,7 +32,7 @@ impl<'a> Cx<'a> {
     /// A new binding: a global at top level, a local in a fn.
     pub(super) fn bind(&mut self, name: &str, ty: Ty) -> VarRef {
         if self.b.decl.is_none() && self.b.scopes.len() == 1 {
-            self.globals.push(Local {
+            let local = Local {
                 name: name.to_string(),
                 ty,
                 top: true,
@@ -40,10 +40,27 @@ impl<'a> Cx<'a> {
                 fixed: false,
                 let_at: None,
                 synthetic: false,
-            });
-            self.global_names
-                .insert(name.to_string(), self.globals.len() - 1);
-            VarRef::Global(self.globals.len() - 1)
+            };
+            // A top-level value (R02.10.3) fills the global made for it, found by item and Sym.
+            let sym = self.b.syms.of(&self.d.syms, name);
+            let item = &self.b.item;
+            let top = self
+                .d
+                .top_values
+                .iter()
+                .position(|t| t.item == *item && Some(t.name) == sym);
+            let g = match top {
+                Some(i) => {
+                    self.globals[self.top_slots[i]] = local;
+                    self.top_slots[i]
+                }
+                None => {
+                    self.globals.push(local);
+                    self.globals.len() - 1
+                }
+            };
+            self.global_names.insert(name.to_string(), g);
+            VarRef::Global(g)
         } else if self.b.decl.is_none() {
             // A binding inside a top-level block lives in the globals too, under its scope.
             self.globals.push(Local {

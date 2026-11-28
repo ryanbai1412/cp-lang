@@ -96,6 +96,86 @@ fn reported(mode: &str, src: &str, input: &str, name: &str) -> (Vec<String>, Vec
     (codes("error"), codes("warning"))
 }
 
+/// Codes marked *(next)*: only cpl-next emits them until it ships as `cpl`.
+fn next_only() -> BTreeSet<String> {
+    let text = std::fs::read_to_string(root().join("spec/diagnostics.md")).unwrap();
+    text.lines()
+        .filter_map(|l| {
+            let cells: Vec<&str> = l.split('|').map(str::trim).collect();
+            (cells.get(2)?.contains("*(next)*")).then(|| cells[1].to_string())
+        })
+        .collect()
+}
+
+/// A *(next)* code's trigger reports exactly it on cpl-next and its fix
+/// nothing, while old `cpl` does not report it, so the marker stays true.
+fn next_only_holds(
+    code: &str,
+    mode: &str,
+    info: &cpl_diag::registry::CodeInfo,
+) -> Result<(), String> {
+    let (old, _) = reported(mode, info.trigger, info.input, &format!("{code}_old"));
+    if old.iter().any(|c| c == code) {
+        return Err(format!(
+            "{code}: marked *(next)*, but old cpl reports it too"
+        ));
+    }
+    let trigger = next_reported(mode, info.trigger, info.input, &format!("{code}_next"))?;
+    if trigger != [code] {
+        return Err(format!("{code}: cpl-next trigger reports {trigger:?}"));
+    }
+    let fix = next_reported(mode, info.fix, info.input, &format!("{code}_next_fix"))?;
+    match fix.is_empty() {
+        true => Ok(()),
+        false => Err(format!("{code}: cpl-next fix still reports {fix:?}")),
+    }
+}
+
+/// The codes `cpl-next` (built beside `cpl`) reports for `src`.
+fn next_reported(mode: &str, src: &str, input: &str, name: &str) -> Result<Vec<String>, String> {
+    let next = Path::new(env!("CARGO_BIN_EXE_cpl")).with_file_name(if cfg!(windows) {
+        "cpl-next.exe"
+    } else {
+        "cpl-next"
+    });
+    if !next.exists() {
+        return Err(format!(
+            "a *(next)* code needs {}; build it: cargo build -p cpl-next",
+            next.display()
+        ));
+    }
+    let dir =
+        Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("catalogue_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join(format!("{name}.cp"));
+    std::fs::write(&file, src).unwrap();
+    let mut cmd = Command::new(next);
+    cmd.arg(&file);
+    if mode == "check" {
+        cmd.arg("--check");
+    }
+    let mut child = cmd
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("cpl-next starts: {e}"))?;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().expect("cpl-next exits");
+    let is_code = |c: &&str| {
+        c.len() == 5 && c.starts_with(['E', 'W', 'R']) && c[1..].chars().all(|d| d.is_ascii_digit())
+    };
+    Ok(String::from_utf8_lossy(&out.stderr)
+        .lines()
+        .filter_map(|l| l.split(": ").find(is_code).map(str::to_string))
+        .collect())
+}
+
 /// `src` with the fix-it of its first diagnostic applied, if it has one.
 fn apply_first_fix_it(src: &str) -> Option<String> {
     let mut db = cpl_facade::Session::default();
@@ -152,6 +232,7 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
     let mut failures = Vec::new();
     let (mut tested, mut with_fix_it, mut emitted) = (0, 0, 0);
     let mut no_fix_it = Vec::new();
+    let next = next_only();
     let catalogue: Vec<(String, bool)> = catalogue()
         .into_iter()
         .filter(|(c, _)| !c.starts_with('L'))
@@ -177,6 +258,13 @@ fn every_emitted_code_has_an_exact_trigger_and_a_clean_fix() {
                 continue;
             }
         };
+        if next.contains(&code) {
+            match next_only_holds(&code, mode, info) {
+                Ok(()) => tested += 1,
+                Err(why) => failures.push(why),
+            }
+            continue;
+        }
         let (errors, warnings) =
             reported(mode, info.trigger, info.input, &format!("{code}_trigger"));
         let exact = if code.starts_with('W') {
@@ -234,7 +322,7 @@ fn named_rows(text: &str) -> std::collections::BTreeMap<String, (String, Option<
         {
             continue;
         }
-        let marker = ["*(retired)*", "*(reserved)*", "*(0.3)*"]
+        let marker = ["*(retired)*", "*(reserved)*", "*(0.3)*", "*(next)*"]
             .into_iter()
             .find(|m| name.contains(m));
         let base = name.split_whitespace().next().unwrap_or("").to_string();
