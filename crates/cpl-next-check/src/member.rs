@@ -1092,9 +1092,21 @@ impl<'a> Cx<'a> {
         }
         let found = self.d.lookup_member(&rt, &name.text);
         let at = self.b.module;
-        let hidden = found
-            .as_ref()
-            .and_then(|x| self.d.hidden_member(x, &rt, &name.text, at));
+        let operator = (found.as_ref()).and_then(|x| {
+            let op = self.d.operator_by_name(x, &name.text)?;
+            let recv = self.text(base.span);
+            let fix = match call.unwrap_or(&[]) {
+                [] => format!("{op}{recv}"),
+                [a] => format!("{recv} {op} {}", self.text(a.value.span)),
+                _ => return None,
+            };
+            let text = format!("`{}` is what `{op}` calls: write the operator", name.text);
+            let msg = Msg::verdict(cpl_diag::codes::UNKNOWN_FIELD, text);
+            Some((msg, format!("write `{fix}`")))
+        });
+        let hidden = operator.or_else(|| {
+            (found.as_ref()).and_then(|x| self.d.hidden_member(x, &rt, &name.text, at))
+        });
         if let Some((msg, help)) = hidden {
             self.err_help(span, msg, Some(help));
             return Self::error_node(span);

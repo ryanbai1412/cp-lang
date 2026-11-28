@@ -39,9 +39,11 @@ pub trait Div<Rhs = Self>:
 @operator("%")
 pub trait Rem<Rhs = Self>:
     fn rem(self, other: Rhs) -> Self
-/// `a ** e`: `a` to the power `e`, an `Int` unless the impl says otherwise.
+/// `a ** e`: `a` to the power `e`, an `Int` unless the impl says otherwise. `a.pow(e)` is not
+/// its spelling: the call is told to write `a ** e` (R01.11.1).
 @operator("**")
 pub trait Pow<Rhs = Int>:
+    @aka(pow)
     fn pow(self, e: Rhs) -> Self
 @operator("-")
 pub trait Neg:
