@@ -466,10 +466,13 @@ export function shrunk(fns, parent) {
  * raise a bucket's budget only by what it lowers others (the total never rises), and
  * only by what the lowered buckets' normalized code dropped (`drops`, from shrunk), so
  * a budget follows moved code and can't hide new growth. No drops measured: no raise.
+ * A raise the coordinator signed (`signed`, from signedRaises) is exact and outside the
+ * transfer: a bucket over a budget its code never fit, or code moved before the parent.
  */
-export function budgetTransfer(budgets, was, drops = {}) {
+export function budgetTransfer(budgets, was, drops = {}, signed = {}) {
   const b = (n) => n.toLocaleString('en-US');
-  const raised = Object.entries(budgets).map(([c, n]) => [c, n - (was[c] ?? 0)]).filter(([, d]) => d > 0);
+  const raised = Object.entries(budgets).map(([c, n]) => [c, n - (was[c] ?? 0)])
+    .filter(([c, d]) => d > 0 && !(signed[c] && signed[c][0] === (was[c] ?? 0) && signed[c][1] === budgets[c]));
   if (!raised.length) return [];
   const cuts = Object.entries(was).map(([c, n]) => [c, n - (budgets[c] ?? 0)]).filter(([, d]) => d > 0);
   const total = (xs) => xs.reduce((s, [, d]) => s + d, 0);
@@ -511,17 +514,38 @@ export function ratchet(rows, budgets, map, growth) {
   return { errors, warnings: [], held, grew };
 }
 
+/**
+ * The coordinator-signed budget raises in commit trailers' values, one per line:
+ * `Budget-raise: cpl_ir 445500->470872, signed off by coordinator` -> {cpl_ir: [445500, 470872]}.
+ * A row without the sign-off is no raise.
+ */
+export function signedRaises(text) {
+  const out = {};
+  for (const line of text.split('\n')) {
+    const m = line.trim().match(/^(\S+) (\d+)->(\d+), signed off by coordinator$/);
+    if (m) out[m[1]] = [Number(m[2]), Number(m[3])];
+  }
+  return out;
+}
+
+/** The old pipeline's frozen crates: they only shrink, so a lowered budget has no room. */
+export const FROZEN_CRATES = new Set(['cpl_ir', 'cpl_check', 'cpl_interp']);
+
 /** A lowered budget for a crate measured at `gz`: 1% or 256 B of room, to the next 100. */
 export const lowerTo = (gz) => Math.ceil((gz + Math.max(gz * 0.01, 256)) / 100) * 100;
 
 /**
  * The budgets after a build within them: each budget with more room than lowerTo
  * gives over its crate's measurement comes down to lowerTo, so slack a cut freed
- * can't be regrown. Budgets only go down. Null when nothing lowers.
+ * can't be regrown; a frozen crate's comes down to its measurement. Budgets only go down.
+ * Null when nothing lowers.
  */
 export function lowered(rows, budgets) {
   const next = { ...budgets };
-  for (const [crate, , gz] of rows) if (budgets[crate] !== undefined && lowerTo(gz) < budgets[crate]) next[crate] = lowerTo(gz);
+  for (const [crate, , gz] of rows) {
+    const to = FROZEN_CRATES.has(crate) ? gz : lowerTo(gz);
+    if (budgets[crate] !== undefined && to < budgets[crate]) next[crate] = to;
+  }
   return Object.keys(next).some((c) => next[c] !== budgets[c]) ? next : null;
 }
 
@@ -548,7 +572,8 @@ export function dataOverBudget(rows, budgets) {
 // grew. `--normalized DIR/cpl.wasm OUT.json` writes normalizedFunctions as
 // {crate: {fn: hex}}. `--parent-budgets FILE` (the parent's wasm-crate-budgets.json)
 // checks a budget transfer against the code that moved, and `--budgets FILE` alone
-// refuses any raise (budgetTransfer). `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
+// refuses any raise (budgetTransfer) but the coordinator-signed `Budget-raise:` rows land.sh
+// passes in CPL_BUDGET_RAISES (signedRaises). `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`, and
 // `--data` takes such a file in place of a build. `--lower-budgets` lowers each budget
 // with slack after a pass (lowered).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--normalized') {
@@ -558,7 +583,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
 } else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--budgets') {
   const here = dirname(fileURLToPath(import.meta.url));
   const budgets = JSON.parse(readFileSync(join(here, 'wasm-crate-budgets.json'), 'utf8'));
-  const errors = budgetTransfer(budgets, JSON.parse(readFileSync(process.argv[3], 'utf8')));
+  const errors = budgetTransfer(budgets, JSON.parse(readFileSync(process.argv[3], 'utf8')), {}, signedRaises(process.env.CPL_BUDGET_RAISES ?? ''));
   for (const e of errors) console.error(`wasm-crates: ${e} (no wasm build measured the moved code; build one: scripts/wasm-warm.sh --wait)`);
   process.exit(errors.length ? 1 : 0);
 } else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
@@ -592,7 +617,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
     ? ratchet(rows, budgets, map, grown(sized ? sized.fns ?? {} : normalizedSizes(wasm, rows), parent.fns))
     : touchedOverBudget(rows, budgets, map, touched);
   const parentBudgets = flag('--parent-budgets') && JSON.parse(readFileSync(flag('--parent-budgets'), 'utf8'));
-  if (parentBudgets) errors.push(...budgetTransfer(budgets, parentBudgets, shrunk(sized ? sized.fns ?? {} : normalizedSizes(wasm, rows), parent?.fns ?? {})));
+  if (parentBudgets) errors.push(...budgetTransfer(budgets, parentBudgets, shrunk(sized ? sized.fns ?? {} : normalizedSizes(wasm, rows), parent?.fns ?? {}), signedRaises(process.env.CPL_BUDGET_RAISES ?? '')));
   let next;
   const copies = sized ? Array(sized.sorts ?? 0).fill('') : sortCopies(functionNames(wasm));
   const sorts = checkSortCopies(copies, JSON.parse(readFileSync(join(here, '../..', sortCopiesFile), 'utf8')).max);

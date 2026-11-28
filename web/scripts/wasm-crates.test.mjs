@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, budgetTransfer, checkBudgets, checkSortCopies, crateOf, gateCrateOf, grown, normalizedFunctions, normalizedSizes, shrunk, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
+import { budgetFor, budgetTransfer, checkBudgets, checkSortCopies, crateOf, gateCrateOf, grown, normalizedFunctions, normalizedSizes, shrunk, sharedName, DATA, dataOverBudget, lowered, lowerTo, ownerOf, signedRaises, FROZEN_CRATES, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -114,6 +114,22 @@ describe('wasm crate budgets', () => {
     // Lowering alone, and no measurement, are fine; a raise with nothing measured refuses.
     expect(budgetTransfer({ cpl_ir: 440000, cpl_rt: 500 }, was)).toEqual([]);
     expect(budgetTransfer({ cpl_ir: 440000, cpl_rt: 600 }, was)).toHaveLength(1);
+  });
+
+  test('a raise the coordinator signed lands exactly, and an unsigned or inexact one refuses', () => {
+    const was = { cpl_ir: 445500, cpl_rt: 500 };
+    const signed = signedRaises('cpl_ir 445500->470872, signed off by coordinator\ncpl_rt 500->900\n');
+    expect(signed).toEqual({ cpl_ir: [445500, 470872] });
+    expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 500 }, was, {}, signed)).toEqual([]);
+    expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 900 }, was, {}, signed)).not.toEqual([]);
+    expect(budgetTransfer({ cpl_ir: 471000, cpl_rt: 500 }, was, {}, signed)).not.toEqual([]);
+    expect(budgetTransfer({ cpl_ir: 470872, cpl_rt: 500 }, { ...was, cpl_ir: 445000 }, {}, signed)).not.toEqual([]);
+  });
+
+  test("a frozen crate's budget lowers to its measurement, with no room", () => {
+    expect(FROZEN_CRATES.has('cpl_ir')).toBe(true);
+    expect(lowered([['cpl_ir', 1, 470000], ['cpl_rt', 1, 100]], { cpl_ir: 470872, cpl_rt: 500 }))
+      .toEqual({ cpl_ir: 470000, cpl_rt: 400 });
   });
 
   test('an over-budget crate that grows through a dependency it calls is refused', () => {

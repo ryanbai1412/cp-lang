@@ -1985,6 +1985,39 @@ done
         self.assertIn("no wasm build measured the moved code", r.stderr)
         self.assertNotIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
 
+    def _raise(self, trailer):
+        """A land raising cpl_y's wasm budget 100 -> 150 with no build measuring a transfer,
+        its commit carrying `trailer`."""
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        web = theirs / "web" / "scripts"
+        web.mkdir(parents=True)
+        shutil.copy(HERE.parent / "web" / "scripts" / "wasm-crates.mjs", web)
+        (web / "wasm-crate-budgets.json").write_text('{"cpl_x": 100, "cpl_y": 100}')
+        self.commit(theirs, "theirs")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "--rebase", "origin", "main")
+        (ours / "web" / "scripts" / "wasm-crate-budgets.json").write_text('{"cpl_x": 100, "cpl_y": 150}')
+        git(ours, "add", "-A")
+        git(ours, "commit", "-q", "--no-verify", "-m", "ours", "-m", f"Domain: infra\nLane: G\n{trailer}")
+        env = self._wasm(ours, 0)
+        (self.tmp / "bin" / "node").unlink()
+        return self.land(ours, **env)
+
+    def test_a_budget_raise_the_coordinator_signed_lands(self):
+        r = self._raise("Budget-raise: cpl_y 100->150, signed off by coordinator")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("ours", git(self.tmp / "remote.git", "log", "--format=%s", "main"))
+
+    def test_a_budget_raise_without_the_coordinators_sign_off_refuses(self):
+        r = self._raise("Budget-raise: cpl_y 100->150")
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("no wasm build measured the moved code", r.stderr)
+
+    def test_a_signed_budget_raise_to_another_number_refuses(self):
+        r = self._raise("Budget-raise: cpl_y 100->140, signed off by coordinator")
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("no wasm build measured the moved code", r.stderr)
+
     def _check(self, ours_gz, budgets, parent_gz=None, built_gz=None):
         """The commit tier's wasm step (ci.py wasm_data runs scripts/wasm-warm.sh --check)
         through the real wasm-crates.mjs: a build measuring `ours_gz` (crate -> B gz)
